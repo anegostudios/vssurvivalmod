@@ -1,0 +1,33 @@
+﻿using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
+using Vintagestory.API.MathTools;
+
+namespace Vintagestory.GameContent
+{
+    public class ItemDryGrass : Item
+    {
+        public override bool OnHeldInteractStart(IItemSlot itemslot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        {
+            if (blockSel == null || byEntity?.World == null && !byEntity.Controls.Sneak) return false;
+
+            IWorldAccessor world = byEntity.World;
+            Block firepitBlock = world.GetBlock(new AssetLocation("firepit-construct1"));
+            if (firepitBlock == null) return false;
+
+            BlockPos onPos = blockSel.DidOffset ? blockSel.Position : blockSel.Position.AddCopy(blockSel.Face);
+
+            Block block = world.BlockAccessor.GetBlock(onPos.DownCopy());
+            Block atBlock = world.BlockAccessor.GetBlock(onPos);
+
+            if (!block.CanAttachBlockAt(byEntity.World.BlockAccessor, firepitBlock, onPos.DownCopy(), BlockFacing.UP)) return false;
+            if (!firepitBlock.IsSuitablePosition(world, onPos)) return false;
+
+            world.BlockAccessor.SetBlock(firepitBlock.BlockId, onPos);
+
+            if (firepitBlock.Sounds != null) world.PlaySoundAt(firepitBlock.Sounds.Place, blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z);
+
+            itemslot.Itemstack.StackSize--;
+            return true;
+        }
+    }
+}

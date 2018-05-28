@@ -1,0 +1,151 @@
+﻿using System;
+using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
+using Vintagestory.API.MathTools;
+
+namespace Vintagestory.GameContent
+{
+    public class BlockIngotPile : Block
+    {
+        public Cuboidf[][] CollisionBoxesByFillLevel;
+
+        public BlockIngotPile()
+        {
+            CollisionBoxesByFillLevel = new Cuboidf[9][];
+
+            for (int i = 0; i <= 8; i++)
+            {
+                CollisionBoxesByFillLevel[i] = new Cuboidf[] { new Cuboidf(0, 0, 0, 1, i * 0.125f, 1) };
+            }
+        }
+
+        public int FillLevel(IBlockAccessor blockAccessor, BlockPos pos)
+        {
+            BlockEntity be = blockAccessor.GetBlockEntity(pos);
+            if (be is BlockEntityIngotPile)
+            {
+                return (int)Math.Ceiling(((BlockEntityIngotPile)be).OwnStackSize / 8.0);
+            }
+
+            return 1;
+        }
+
+        public override Cuboidf[] GetCollisionBoxes(IBlockAccessor blockAccessor, BlockPos pos)
+        {
+            return CollisionBoxesByFillLevel[FillLevel(blockAccessor, pos)];
+        }
+
+        public override Cuboidf[] GetSelectionBoxes(IBlockAccessor blockAccessor, BlockPos pos)
+        {
+            return CollisionBoxesByFillLevel[FillLevel(blockAccessor, pos)];
+        }
+
+        public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
+        {
+            BlockEntity be = world.BlockAccessor.GetBlockEntity(blockSel.Position);
+            if (be is BlockEntityIngotPile)
+            {
+                BlockEntityIngotPile pile = (BlockEntityIngotPile)be;
+                return pile.OnPlayerInteract(byPlayer);
+            }
+
+            return false;
+        }
+
+        public override void OnBlockBroken(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)
+        {
+            BlockEntityItemPile be = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityItemPile;
+            be?.OnBlockBroken();
+            base.OnBlockBroken(world, pos, byPlayer, dropQuantityMultiplier);
+        }
+
+
+        internal bool Construct(IItemSlot slot, IWorldAccessor world, BlockPos pos, IPlayer player)
+        {
+            Block belowBlock = world.BlockAccessor.GetBlock(pos.DownCopy());
+            if (!belowBlock.SideSolid[BlockFacing.UP.Index] && (belowBlock != this || FillLevel(world.BlockAccessor, pos.DownCopy()) != 8)) return false;
+
+
+            world.BlockAccessor.SetBlock(BlockId, pos);
+
+            BlockEntity be = world.BlockAccessor.GetBlockEntity(pos);
+            if (be is BlockEntityIngotPile)
+            {
+                BlockEntityIngotPile pile = (BlockEntityIngotPile)be;
+                if (player.WorldData.CurrentGameMode == EnumGameMode.Creative)
+                {
+                    pile.inventory.GetSlot(0).Itemstack = slot.Itemstack.Clone();
+                    pile.inventory.GetSlot(0).Itemstack.StackSize = 1;
+                } else
+                {
+                    pile.inventory.GetSlot(0).Itemstack = slot.TakeOut(1);
+                }
+                
+                pile.MarkDirty();
+                world.BlockAccessor.MarkBlockDirty(pos);
+                world.PlaySoundAt(new AssetLocation("sounds/block/ingot"), pos.X, pos.Y, pos.Z, null, false);
+            }
+
+
+            if (CollisionTester.AabbIntersect(
+                GetCollisionBoxes(world.BlockAccessor, pos)[0],
+                pos.X, pos.Y, pos.Z,
+                player.Entity.CollisionBox,
+                player.Entity.LocalPos.XYZ
+            ))
+            {
+                player.Entity.LocalPos.Y += GetCollisionBoxes(world.BlockAccessor, pos)[0].Y2;
+            }
+
+
+            return true;
+        }
+
+        public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)
+        {
+            // Handled by BlockEntityItemPile
+            return new ItemStack[0];
+        }
+
+
+        public override void OnNeighourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
+        {
+            Block belowBlock = world.BlockAccessor.GetBlock(pos.DownCopy());
+            if (!belowBlock.SideSolid[BlockFacing.UP.Index] && (belowBlock != this || FillLevel(world.BlockAccessor, pos.DownCopy()) < 8))
+            {
+                world.BlockAccessor.BreakBlock(pos, null);
+                //world.PlaySoundAt(new AssetLocation("sounds/block/ingot"), pos.X, pos.Y, pos.Z, null, false);
+            }
+        }
+
+
+        public override int TextureSubIdForRandomBlockPixel(IWorldAccessor world, BlockPos pos, BlockFacing facing, ref int tintIndex)
+        {
+            BlockEntityIngotPile be = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityIngotPile;
+            if (be == null) return base.TextureSubIdForRandomBlockPixel(world, pos, facing, ref tintIndex);
+            string metalType = be.MetalType;
+            if (metalType == null) return base.TextureSubIdForRandomBlockPixel(world, pos, facing, ref tintIndex);
+
+            return Textures[be.MetalType].Baked.TextureSubId;
+        }
+
+
+        public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
+        {
+            BlockEntity be = world.BlockAccessor.GetBlockEntity(pos);
+            if (be is BlockEntityIngotPile)
+            {
+                BlockEntityIngotPile pile = (BlockEntityIngotPile)be;
+                ItemStack stack = pile.inventory.GetSlot(0).Itemstack;
+                if (stack != null)
+                {
+                    ItemStack pickstack = stack.Clone();
+                    pickstack.StackSize = 1;
+                    return pickstack;
+                }
+            }
+
+            return new ItemStack(this);
+        }
+    }
+}
