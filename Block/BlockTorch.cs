@@ -56,7 +56,7 @@ namespace Vintagestory.GameContent
 
         public override void OnNeighourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
         {
-            if (!CanTorchStay(world, pos))
+            if (!CanTorchStay(world.BlockAccessor, pos))
             {
                 world.BlockAccessor.BreakBlock(pos, null);
             }
@@ -80,15 +80,11 @@ namespace Vintagestory.GameContent
             return false;
         }
 
-        bool CanTorchStay(IWorldAccessor world, BlockPos pos)
+        bool CanTorchStay(IBlockAccessor blockAccessor, BlockPos pos)
         {
             BlockFacing facing = BlockFacing.FromCode(LastCodePart());
-            Block block = world.BlockAccessor.GetBlock(world.BlockAccessor.GetBlockId(pos.AddCopy(facing.GetOpposite())));
-
-            BlockFacing onFace = facing;
-            //if (onFace.IsHorizontal) onFace = onFace.GetOpposite(); - why is this here? Breaks attachment
-
-            return block.CanAttachBlockAt(world.BlockAccessor, this, pos, onFace);
+            Block block = blockAccessor.GetBlock(blockAccessor.GetBlockId(pos.AddCopy(facing.GetOpposite())));
+            return block.CanAttachBlockAt(blockAccessor, this, pos, facing);
         }
 
         public override bool CanAttachBlockAt(IBlockAccessor blockAccessor, Block block, BlockPos pos, BlockFacing blockFace)
@@ -112,6 +108,12 @@ namespace Vintagestory.GameContent
                 return CodeWithParts(facing.GetOpposite().Code);
             }
             return Code;
+        }
+
+
+        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace)
+        {
+            return CanTorchStay(blockAccessor, pos) && base.TryPlaceBlockForWorldGen(blockAccessor, pos, onBlockFace);
         }
     }
 }

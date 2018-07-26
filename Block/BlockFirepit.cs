@@ -66,11 +66,12 @@ namespace Vintagestory.GameContent
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
             int stage = Stage;
+            ItemStack stack = byPlayer.InventoryManager.ActiveHotbarSlot?.Itemstack;
 
             if (stage == 5)
             {
                 BlockEntityFirepit bef = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityFirepit;
-                ItemStack stack = byPlayer.InventoryManager.ActiveHotbarSlot?.Itemstack;
+                
                 if (bef != null && stack != null && byPlayer.Entity.Controls.Sneak)
                 {
                     if (stack.Collectible.CombustibleProps != null && stack.Collectible.CombustibleProps.MeltingPoint > 0)
@@ -91,13 +92,26 @@ namespace Vintagestory.GameContent
                 return base.OnBlockInteractStart(world, byPlayer, blockSel);
             }
 
-            
+
+            if (stack != null && TryConstruct(world, blockSel.Position, stack.Collectible))
+            {
+                if (byPlayer != null && byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
+                {
+                    byPlayer.InventoryManager.ActiveHotbarSlot.TakeOut(1);
+                }
+                return true;
+            }
+
 
             return false;
         }
 
-        public bool Construct(IWorldAccessor world, BlockPos pos, CombustibleProperties props) {
+        public bool TryConstruct(IWorldAccessor world, BlockPos pos, CollectibleObject obj) {
             int stage = Stage;
+
+            if (obj.Attributes?["firepitConstructable"]?.AsBool(false) != true) return false;
+
+            CombustibleProperties combprops = obj.CombustibleProps;
 
             if (stage == 5) return false;
 
@@ -121,7 +135,7 @@ namespace Vintagestory.GameContent
                 BlockEntity be = world.BlockAccessor.GetBlockEntity(pos);
                 if (be is BlockEntityFirepit)
                 {
-                    ((BlockEntityFirepit)be).igniteWithFuel(props, 4);
+                    ((BlockEntityFirepit)be).igniteWithFuel(combprops, 4);
                 }
             }
 

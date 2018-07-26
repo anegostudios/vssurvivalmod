@@ -121,7 +121,7 @@ namespace Vintagestory.GameContent
                 if (data != null) Locations = SerializerUtil.Deserialize<Dictionary<BlockPos, TeleporterLocation>>(data);
             } catch (Exception e)
             {
-                sapi.World.Logger.Error("Failed loading tp locations " + e);
+                sapi.World.Logger.Error("Failed loading tp locations: {0}", e);
             }
             
         }

@@ -84,6 +84,8 @@ namespace Vintagestory.GameContent
 
             MeshData mesh = null;
             BlockLantern block = api.World.BlockAccessor.GetBlock(pos) as BlockLantern;
+            if (block == null) return null;
+
             string orient = block.LastCodePart();
 
             if (lanternMeshes.TryGetValue(material + "-" + lining + "-" + orient, out mesh))

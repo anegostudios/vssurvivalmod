@@ -18,6 +18,8 @@ namespace Vintagestory.GameContent
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
+            if (world.BlockAccessor.GetBlock(blockSel.Position.UpCopy()).Id != 0) return false;
+
             if (blockSel.SelectionBoxIndex == 1)
             {
                 BlockEntityQuern beQuern = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityQuern;

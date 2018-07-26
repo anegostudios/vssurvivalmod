@@ -34,9 +34,9 @@ namespace Vintagestory.GameContent
 
         }
 
-        public override void Initialize(IWorldAccessor world, long chunkindex3d)
+        public override void Initialize(ICoreAPI api, long chunkindex3d)
         {
-            base.Initialize(world, chunkindex3d);
+            base.Initialize(api, chunkindex3d);
 
             Name = WatchedAttributes.GetTreeAttribute("nametag")?.GetString("name");
         }

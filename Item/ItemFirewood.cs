@@ -22,13 +22,7 @@ namespace Vintagestory.GameContent
 
             if (block is BlockFirepit)
             {
-                bool constructed = ((BlockFirepit)block).Construct(byEntity.World, onBlockPos, slot.Itemstack.Collectible.CombustibleProps);
-                if (constructed)
-                {
-                    if (byPlayer == null || byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative) slot.TakeOut(1);
-                    return true;
-                }
-
+                // Prevent placing firewoodpiles when trying to construct firepits
                 return false;
             } else
             {

@@ -11,12 +11,16 @@ namespace Vintagestory.GameContent
     public class QuernTopRenderer : IRenderer
     {
         internal bool ShouldRender;
+        internal bool ShouldRotate;
+
         private ICoreClientAPI api;
         private BlockPos pos;
         
 
         MeshRef meshref;
-        internal long GrindStartMs;
+
+
+        public float Angle;
 
         public QuernTopRenderer(ICoreClientAPI coreClientAPI, BlockPos pos, MeshData mesh)
         {
@@ -57,7 +61,7 @@ namespace Vintagestory.GameContent
             rpi.GlTranslate(pos.X - camPos.X, pos.Y - camPos.Y, pos.Z - camPos.Z);
 
             rpi.GlTranslate(0.5f, 11f / 16f, 0.5f);
-            rpi.GlRotate((api.World.ElapsedMilliseconds - GrindStartMs) / 25f, 0, 1, 0);
+            rpi.GlRotate(Angle, 0, 1, 0);
             rpi.GlTranslate(-0.5f, 0, -0.5f);
             prog.ModelViewMatrix = rpi.CurrentModelviewMatrix;
 
@@ -66,7 +70,13 @@ namespace Vintagestory.GameContent
             rpi.GlPopMatrix();
 
             prog.Stop();
+
+            if (ShouldRotate)
+            {
+                Angle += deltaTime * 40;
+            }
         }
+
 
         internal void Unregister()
         {

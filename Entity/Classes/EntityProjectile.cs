@@ -44,11 +44,11 @@ namespace Vintagestory.GameContent
             get { return false; }
         }
 
-        public override void Initialize(IWorldAccessor world, long InChunkIndex3d)
+        public override void Initialize(ICoreAPI api, long InChunkIndex3d)
         {
-            base.Initialize(world, InChunkIndex3d);
+            base.Initialize(api, InChunkIndex3d);
 
-            msLaunch = world.ElapsedMilliseconds;
+            msLaunch = World.ElapsedMilliseconds;
 
             collisionTestBox = CollisionBox.Clone().OmniGrowBy(0.05f);
         }

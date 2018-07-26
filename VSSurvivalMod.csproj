@@ -209,6 +209,10 @@
     <Compile Include="Block\BlockWaterLily.cs" />
     <Compile Include="Block\BlockWaterPlant.cs" />
     <Compile Include="Block\BlockChisel.cs" />
+    <Compile Include="Entity\Classes\EntityTrader.cs" />
+    <Compile Include="Inventory\InventoryTrader.cs" />
+    <Compile Include="Inventory\ItemSellingSlot.cs" />
+    <Compile Include="Inventory\ItemSlotBuyingSlot.cs" />
     <Compile Include="Systems\ChiselBlockModelCache.cs" />
     <Compile Include="EntityRenderer\EntityBlockFallingRenderer.cs" />
     <Compile Include="EntityRenderer\EntityItemRenderer.cs" />
@@ -307,6 +311,7 @@
     <Compile Include="Mechanics\Network\MechNetworkManager.cs" />
     <Compile Include="Mechanics\Renderer\MechNetworkRenderer.cs" />
     <Compile Include="Systems\SaplingControl.cs" />
+    <Compile Include="Systems\WorldMapManager.cs" />
     <Compile Include="Systems\Sleeping.cs" />
     <Compile Include="Systems\TeleporterManager.cs" />
     <Compile Include="Systems\WeatherSimulator.cs" />

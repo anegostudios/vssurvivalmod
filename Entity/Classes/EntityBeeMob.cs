@@ -17,13 +17,13 @@ namespace Vintagestory.GameContent
 
         public override bool IsInteractable { get { return false; } }
 
-        public override void Initialize(IWorldAccessor world, long InChunkIndex3d)
+        public override void Initialize(ICoreAPI api, long InChunkIndex3d)
         {
-            base.Initialize(world, InChunkIndex3d);
+            base.Initialize(api, InChunkIndex3d);
 
-            if (buzzSound == null && world.Side == EnumAppSide.Client)
+            if (buzzSound == null && World.Side == EnumAppSide.Client)
             {
-                buzzSound = ((IClientWorldAccessor)world).LoadSound(new SoundParams()
+                buzzSound = ((IClientWorldAccessor)World).LoadSound(new SoundParams()
                 {
                     Location = new AssetLocation("sounds/creature/beemob.ogg"),
                     ShouldLoop = true,

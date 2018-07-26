@@ -316,7 +316,14 @@ namespace Vintagestory.GameContent
 
         private void SetVineStage(Block block, int toStage)
         {
-            ReplaceSelf(block.CodeWithParts("" + toStage, toStage == 4 ? "withered" : "normal"));
+            try
+            {
+                ReplaceSelf(block.CodeWithParts("" + toStage, toStage == 4 ? "withered" : "normal"));
+            } catch (Exception)
+            {
+                api.World.BlockAccessor.SetBlock(0, pos);
+            }
+            
         }
 
         private void SetPumpkinStage(Block pumpkinBlock, BlockPos pumpkinPos, int toStage)

@@ -15,11 +15,6 @@ namespace Vintagestory.GameContent.Mechanics
 
 
     /// <summary>
-    /// For now:
-    /// 1. 1 Draw call per block
-    /// 2. If a quick performance fix is needed: Don't render distant mech. power blocks
-    /// 
-    /// Future Concept:
     /// 1. Use instanced rendering to issue one draw call for all mech.power blocks of one type. (i.e. 1 draw call for all axles)
     /// 2. Each block type has only 1 default shape per orientation. Different orientations are made with transformation matrixes
     /// 3. Each frame, upload a transformation matrix for the full block
@@ -72,7 +67,6 @@ namespace Vintagestory.GameContent.Mechanics
             //capi.Event.RegisterRenderer(this, EnumRenderStage.Opaque);
             //capi.Event.RegisterReloadShaders(LoadShader);
             //LoadShader();
-
 
             MeshData gearboxCageMesh;
             MeshData gearboxPegMesh;

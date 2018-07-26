@@ -43,24 +43,24 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void Initialize(IWorldAccessor world, long InChunkIndex3d)
+        public override void Initialize(ICoreAPI api, long InChunkIndex3d)
         {
             if (be != null)
             {
                 this.blockEntityAttributes = new TreeAttribute();
                 be.ToTreeAttributes(blockEntityAttributes);
-                blockEntityClass = world.ClassRegistry.GetBlockEntityClass(be.GetType());
+                blockEntityClass = api.World.ClassRegistry.GetBlockEntityClass(be.GetType());
                 be = null;
             }
 
-            SetType(world.GetEntityType(GlobalConstants.EntityBlockFallingTypeCode));
+            SetType(api.World.GetEntityType(GlobalConstants.EntityBlockFallingTypeCode));
 
-            TrackingRange = 3 * world.BlockAccessor.ChunkSize;
+            TrackingRange = 3 * api.World.BlockAccessor.ChunkSize;
             
-            base.Initialize(world, InChunkIndex3d);
+            base.Initialize(api, InChunkIndex3d);
 
             // Need to capture this now before we remove the block and start to fall
-            drops = Block.GetDrops(world, initialPos, null);
+            drops = Block.GetDrops(api.World, initialPos, null);
         }
 
         /// <summary>

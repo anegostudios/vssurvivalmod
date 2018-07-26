@@ -101,8 +101,7 @@ namespace Vintagestory.GameContent
                 (int)EnumCharacterDressType.Hand,
             };
 
-            //int q = gearInv.QuantitySlots;
-            //for (int slotid = 0; slotid < gearInv.QuantitySlots; slotid++)
+
             for (int i = 0; i < renderOrder.Length; i++)
             {
                 int slotid = renderOrder[i];
