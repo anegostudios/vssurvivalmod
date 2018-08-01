@@ -23,8 +23,8 @@ namespace Vintagestory.GameContent
         {
             if (isShadowPass) return;
 
-            IRenderAPI rapi = api.Render;
-            IEntityPlayer entityPlayer = api.World.Player.Entity;
+            IRenderAPI rapi = capi.Render;
+            IEntityPlayer entityPlayer = capi.World.Player.Entity;
 
 
             ItemRenderInfo renderInfo = rapi.GetItemStackRenderInfo(entityitem.Itemstack, EnumItemRenderTarget.Ground);
@@ -39,17 +39,20 @@ namespace Vintagestory.GameContent
             rapi.GlPushMatrix();
             rapi.GlLoadMatrix(rapi.CameraMatrixOrigin);
             
-            float angle = (api.World.ElapsedMilliseconds / 15f + (entity.Entityid * 20) % 360) % 360; // Double modulo because high numbers of Entityid breaks accuracy
-            float size = 0.2f * renderInfo.Transform.Scale;
+            float angle = (capi.World.ElapsedMilliseconds / 15f + (entity.Entityid * 20) % 360) % 360; // Double modulo because high numbers of Entityid breaks accuracy
+            float sizeX = 0.2f * renderInfo.Transform.ScaleXYZ.X;
+            float sizeY = 0.2f * renderInfo.Transform.ScaleXYZ.Y;
+            float sizeZ = 0.2f * renderInfo.Transform.ScaleXYZ.Z;
+
             float bobbing = entity.Collided ? GameMath.Sin(angle * GameMath.DEG2RAD) / 15 : 0;
 
             rapi.GlTranslate(0f, 0.15f + bobbing + yOffset, 0f);
 
             rapi.GlTranslate(entityitem.Pos.X - entityPlayer.CameraPos.X, entityitem.Pos.Y - entityPlayer.CameraPos.Y, entityitem.Pos.Z - entityPlayer.CameraPos.Z);
 
-            rapi.GlTranslate(renderInfo.Transform.Translation.X, renderInfo.Transform.Translation.Y + 0.5 * size, renderInfo.Transform.Translation.Z);
+            rapi.GlTranslate(renderInfo.Transform.Translation.X, renderInfo.Transform.Translation.Y + 0.5 * sizeY, renderInfo.Transform.Translation.Z);
 
-            rapi.GlScale(size, size, size);
+            rapi.GlScale(sizeX, sizeY, sizeZ);
 
             rapi.GlRotate(renderInfo.Transform.Rotation.Y + angle, 0, 1, 0);
             rapi.GlRotate(renderInfo.Transform.Rotation.Z, 0, 0, 1);
@@ -58,8 +61,8 @@ namespace Vintagestory.GameContent
             rapi.GlTranslate(-0.5f, -0.5f, -0.5f);
 
             BlockPos pos = entityitem.Pos.AsBlockPos;
-            Vec4f lightrgbs = api.World.BlockAccessor.GetLightRGBs(pos.X, pos.Y, pos.Z);
-            int temp = (int)entityitem.Itemstack.Collectible.GetTemperature(api.World, entityitem.Itemstack);
+            Vec4f lightrgbs = capi.World.BlockAccessor.GetLightRGBs(pos.X, pos.Y, pos.Z);
+            int temp = (int)entityitem.Itemstack.Collectible.GetTemperature(capi.World, entityitem.Itemstack);
             float[] glowColor = ColorUtil.getIncandescenceColorAsColor4f(temp);
             lightrgbs[0] += 2 * glowColor[0];
             lightrgbs[1] += 2 * glowColor[1];

@@ -45,7 +45,7 @@ namespace Vintagestory.GameContent
             inventory.ResolveBlocksOrItems();
         }
 
-        public void OnBlockBroken()
+        public override void OnBlockBroken()
         {
             if (api.World is IServerWorldAccessor)
             {
@@ -85,7 +85,7 @@ namespace Vintagestory.GameContent
 
 
 
-        internal virtual bool OnPlayerInteract(IPlayer byPlayer)
+        public virtual bool OnPlayerInteract(IPlayer byPlayer)
         {
             BlockPos abovePos = pos.UpCopy();
 

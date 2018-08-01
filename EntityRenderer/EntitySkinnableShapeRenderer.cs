@@ -11,7 +11,7 @@ namespace Vintagestory.GameContent
         IInventory gearInv;
         EntityAgent eagent;
 
-        public int AtlasSize { get { return api.EntityTextureAtlas.Size; } }
+        public int AtlasSize { get { return capi.EntityTextureAtlas.Size; } }
 
         public TextureAtlasPosition this[string textureCode]
         {
@@ -51,11 +51,11 @@ namespace Vintagestory.GameContent
 
         protected override ITexPositionSource GetTextureSource()
         {
-            TextureAtlasPosition origTexPos = api.EntityTextureAtlas.Positions[entity.Type.Client.FirstTexture.Baked.TextureSubId];
+            TextureAtlasPosition origTexPos = capi.EntityTextureAtlas.Positions[entity.Type.Client.FirstTexture.Baked.TextureSubId];
             int width = (int)((origTexPos.x2 - origTexPos.x1) * AtlasSize);
             int height = (int)((origTexPos.x2 - origTexPos.x1) * AtlasSize);
 
-            api.EntityTextureAtlas.AllocateTextureSpace(width, height, out skinTextureSubId, out skinTexPos);
+            capi.EntityTextureAtlas.AllocateTextureSpace(width, height, out skinTextureSubId, out skinTexPos);
 
             return this;
         }
@@ -63,78 +63,85 @@ namespace Vintagestory.GameContent
 
         void ReloadSkin()
         {
-            TextureAtlasPosition origTexPos = api.EntityTextureAtlas.Positions[entity.Type.Client.FirstTexture.Baked.TextureSubId];
+            TextureAtlasPosition origTexPos = capi.EntityTextureAtlas.Positions[entity.Type.Client.FirstTexture.Baked.TextureSubId];
 
-            LoadedTexture skinnedTex = new LoadedTexture(origTexPos.atlasTextureId, AtlasSize, AtlasSize);
+            LoadedTexture skinnedTex = new LoadedTexture(capi, origTexPos.atlasTextureId, AtlasSize, AtlasSize);
 
             
             LoadedTexture entityAtlas = new LoadedTexture(null) {
-                textureId = origTexPos.atlasTextureId,
-                width = api.EntityTextureAtlas.Size,
-                height = api.EntityTextureAtlas.Size
+                TextureId = origTexPos.atlasTextureId,
+                Width = capi.EntityTextureAtlas.Size,
+                Height = capi.EntityTextureAtlas.Size
             };
 
-            api.Render.GlToggleBlend(false);
-            api.EntityTextureAtlas.RenderTextureIntoAtlas(
+            capi.Render.GlToggleBlend(false);
+            capi.EntityTextureAtlas.RenderTextureIntoAtlas(
                 entityAtlas,
                 (int)(origTexPos.x1 * AtlasSize),
                 (int)(origTexPos.y1 * AtlasSize),
                 (int)((origTexPos.x2 - origTexPos.x1) * AtlasSize),
                 (int)((origTexPos.x2 - origTexPos.x1) * AtlasSize),
-                skinTexPos.x1 * api.EntityTextureAtlas.Size,
-                skinTexPos.y1 * api.EntityTextureAtlas.Size,
+                skinTexPos.x1 * capi.EntityTextureAtlas.Size,
+                skinTexPos.y1 * capi.EntityTextureAtlas.Size,
                 -1
             );
-            api.Render.GlToggleBlend(true, EnumBlendMode.Overlay);
+            capi.Render.GlToggleBlend(true, EnumBlendMode.Overlay);
 
             int[] renderOrder = new int[]
             {
                 (int)EnumCharacterDressType.LowerBody,
                 (int)EnumCharacterDressType.Foot,
                 (int)EnumCharacterDressType.UpperBody,
+                (int)EnumCharacterDressType.UpperBodyOver,
                 (int)EnumCharacterDressType.Waist,
                 (int)EnumCharacterDressType.Shoulder,
                 (int)EnumCharacterDressType.Emblem,
-                (int)EnumCharacterDressType.Necklace,
+                (int)EnumCharacterDressType.Neck,
                 (int)EnumCharacterDressType.Head,
                 (int)EnumCharacterDressType.Ring,
+                (int)EnumCharacterDressType.Arm,
                 (int)EnumCharacterDressType.Hand,
             };
 
+            if (gearInv == null && eagent?.GearInventory != null)
+            {
+                eagent.GearInventory.SlotModified += (slotid) => ReloadSkin();
+                gearInv = eagent.GearInventory;
+            }
 
             for (int i = 0; i < renderOrder.Length; i++)
             {
                 int slotid = renderOrder[i];
 
-                ItemStack stack = gearInv.GetSlot(slotid).Itemstack;
+                ItemStack stack = gearInv.GetSlot(slotid)?.Itemstack;
                 if (stack == null) continue;
 
                 int itemTextureSubId = stack.Item.FirstTexture.Baked.TextureSubId;
 
-                TextureAtlasPosition itemTexPos = api.ItemTextureAtlas.Positions[itemTextureSubId];
+                TextureAtlasPosition itemTexPos = capi.ItemTextureAtlas.Positions[itemTextureSubId];
                 
                 LoadedTexture itemAtlas = new LoadedTexture(null) {
-                    textureId = itemTexPos.atlasTextureId,
-                    width = api.ItemTextureAtlas.Size,
-                    height = api.ItemTextureAtlas.Size
+                    TextureId = itemTexPos.atlasTextureId,
+                    Width = capi.ItemTextureAtlas.Size,
+                    Height = capi.ItemTextureAtlas.Size
                 };
                 
 
-                api.EntityTextureAtlas.RenderTextureIntoAtlas(
+                capi.EntityTextureAtlas.RenderTextureIntoAtlas(
                     itemAtlas,
-                    itemTexPos.x1 * api.ItemTextureAtlas.Size,
-                    itemTexPos.y1 * api.ItemTextureAtlas.Size,
-                    (itemTexPos.x2 - itemTexPos.x1) * api.ItemTextureAtlas.Size,
-                    (itemTexPos.y2 - itemTexPos.y1) * api.ItemTextureAtlas.Size,
+                    itemTexPos.x1 * capi.ItemTextureAtlas.Size,
+                    itemTexPos.y1 * capi.ItemTextureAtlas.Size,
+                    (itemTexPos.x2 - itemTexPos.x1) * capi.ItemTextureAtlas.Size,
+                    (itemTexPos.y2 - itemTexPos.y1) * capi.ItemTextureAtlas.Size,
                     //entityTexPos.atlasNumber,
-                    skinTexPos.x1 * api.EntityTextureAtlas.Size,
-                    skinTexPos.y1 * api.EntityTextureAtlas.Size
+                    skinTexPos.x1 * capi.EntityTextureAtlas.Size,
+                    skinTexPos.y1 * capi.EntityTextureAtlas.Size
                 );
             }
 
-            api.Render.GlToggleBlend(true);
-            api.Render.BindTexture2d(skinTexPos.atlasTextureId);
-            api.Render.GlGenerateTex2DMipmaps();
+            capi.Render.GlToggleBlend(true);
+            capi.Render.BindTexture2d(skinTexPos.atlasTextureId);
+            capi.Render.GlGenerateTex2DMipmaps();
         }
 
 
@@ -142,7 +149,7 @@ namespace Vintagestory.GameContent
         {
             base.Dispose();
 
-            api.Event.OnReloadTextures -= ReloadSkin;
+            capi.Event.OnReloadTextures -= ReloadSkin;
         }
     }
 }

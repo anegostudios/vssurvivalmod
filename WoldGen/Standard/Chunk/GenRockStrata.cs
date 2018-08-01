@@ -10,12 +10,12 @@ namespace Vintagestory.ServerMods
 {
     public class GenRockStrata : ModStdWorldGen
     {
-        NormalizedPerlinNoise noiseGen;
+        NormalizedSimplexNoise noiseGen;
         RockstrataWorldProperty rockstrata;
         GeologicProvinces provinces;
 
-        NormalizedPerlinNoise distort2dX;
-        NormalizedPerlinNoise distort2dZ;
+        NormalizedSimplexNoise distort2dX;
+        NormalizedSimplexNoise distort2dZ;
 
         ICoreServerAPI api;
         int regionSize;
@@ -92,9 +92,9 @@ namespace Vintagestory.ServerMods
 
             rand = new Random(api.WorldManager.Seed);
 
-            noiseGen = NormalizedPerlinNoise.FromDefaultOctaves(1, 0.0005, 1, api.WorldManager.Seed);
-            distort2dX = new NormalizedPerlinNoise(new double[] { 0.9, 0.5 }, new double[] { 0.01/3, 0.05/3 }, api.WorldManager.Seed + 7123);
-            distort2dZ = new NormalizedPerlinNoise(new double[] { 0.9, 0.5 }, new double[] { 0.01/3, 0.05/3 }, api.WorldManager.Seed + 7123);
+            noiseGen = NormalizedSimplexNoise.FromDefaultOctaves(1, 0.0005, 1, api.WorldManager.Seed);
+            distort2dX = new NormalizedSimplexNoise(new double[] { 0.9, 0.5 }, new double[] { 0.01/3, 0.05/3 }, api.WorldManager.Seed + 7123);
+            distort2dZ = new NormalizedSimplexNoise(new double[] { 0.9, 0.5 }, new double[] { 0.01/3, 0.05/3 }, api.WorldManager.Seed + 7123);
 
             Random rnd = new Random(api.WorldManager.Seed);
             Dictionary<EnumRockGroup, List<RockStrataVariant>> variantsByRockGroup = new Dictionary<EnumRockGroup, List<RockStrataVariant>>();

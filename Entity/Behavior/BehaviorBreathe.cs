@@ -13,6 +13,8 @@ namespace Vintagestory.GameContent
     {
         Cuboidd tmp = new Cuboidd();
         float breatheInterval = 0;
+        //the padding that the collisionbox is adjusted by for suffocation damage.  Can be adjusted as necessary - don't set to exactly 0.
+        float padding = 0.1f; 
 
         
         public EntityBehaviorBreathe(Entity entity) : base(entity)
@@ -23,11 +25,9 @@ namespace Vintagestory.GameContent
         {
             if (entity is EntityPlayer)
             {
-                // Asphyxiation damage for players is broken (particularly on dedicated server play)
-                return;
-                /*EntityPlayer plr = (EntityPlayer)entity;
+                EntityPlayer plr = (EntityPlayer)entity;
                 EnumGameMode mode = entity.World.PlayerByUid(plr.PlayerUID).WorldData.CurrentGameMode;
-                if (mode == EnumGameMode.Creative || mode == EnumGameMode.Spectator) return;*/
+                if (mode == EnumGameMode.Creative || mode == EnumGameMode.Spectator) return;
             }
             
             BlockPos pos = new BlockPos(
@@ -38,22 +38,32 @@ namespace Vintagestory.GameContent
 
             Block block = entity.World.BlockAccessor.GetBlock(pos);
             Cuboidf[] collisionboxes = block.GetCollisionBoxes(entity.World.BlockAccessor, pos);
-            
+
+            Cuboidf box = new Cuboidf();
 
             if (collisionboxes == null) return;
 
             for (int i = 0; i < collisionboxes.Length; i++)
             {
-                Cuboidf box = collisionboxes[i];
+                box.Set(collisionboxes[i]);
+                box.OmniGrowBy(-padding);
                 tmp.Set(pos.X + box.X1, pos.Y + box.Y1, pos.Z + box.Z1, pos.X + box.X2, pos.Y + box.Y2, pos.Z + box.Z2);
+                box.OmniGrowBy(padding);
 
                 if (tmp.Contains(entity.ServerPos.X, entity.ServerPos.Y + ((EntityAgent)entity).EyeHeight(), entity.ServerPos.Z))
                 {
-                    DamageSource dmgsrc = new DamageSource() { source = EnumDamageSource.Block, sourceBlock = block, type = EnumDamageType.Asphyxiation };
-                    entity.ReceiveDamage(dmgsrc, 1f);
+                    Cuboidd EntitySuffocationBox = entity.CollisionBox.ToDouble();
 
-                    break;
+                    if (tmp.Intersects(EntitySuffocationBox))
+                    {
+                        DamageSource dmgsrc = new DamageSource() { source = EnumDamageSource.Block, sourceBlock = block, type = EnumDamageType.Suffocation };
+                        entity.ReceiveDamage(dmgsrc, 1f);
+                        break;
+                    }
+
+
                 }
+
             }
 
         }

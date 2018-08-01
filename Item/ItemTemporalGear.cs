@@ -177,10 +177,7 @@ namespace Vintagestory.GameContent
                 IServerPlayer plr = byEntity.World.PlayerByUid((byEntity as EntityPlayer).PlayerUID) as IServerPlayer;
                 ICoreServerAPI sapi = byEntity.World.Api as ICoreServerAPI;
 
-            //    plr.SendMessage(GlobalConstants.GeneralChatGroup, "Spawn point set", EnumChatType.Notification);
-
-                BlockPos pos = blockSel.Position;
-                plr.SetSpawnPosition(new PlayerSpawnPos(pos.X, pos.Y, pos.Z) { yaw = byEntity.ServerPos.Yaw, pitch = byEntity.ServerPos.Pitch });
+                plr.SetSpawnPosition(new PlayerSpawnPos(byEntity.ServerPos.XYZInt.X, byEntity.ServerPos.XYZInt.Y, byEntity.ServerPos.XYZInt.Z) { yaw = byEntity.ServerPos.Yaw, pitch = byEntity.ServerPos.Pitch });
             }
 
         }

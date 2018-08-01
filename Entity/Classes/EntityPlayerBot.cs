@@ -41,11 +41,11 @@ namespace Vintagestory.GameContent
             Name = WatchedAttributes.GetTreeAttribute("nametag")?.GetString("name");
         }
 
-        public override void SetName(string playername)
+        /*public override void SetName(string playername)
         {
             base.SetName(playername);
             this.Name = playername;
-        }
+        }*/
 
         public override void ToBytes(BinaryWriter writer, bool forClient)
         {

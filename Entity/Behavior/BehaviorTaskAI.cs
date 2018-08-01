@@ -7,7 +7,7 @@ namespace Vintagestory.GameContent
 {
     public class EntityBehaviorTaskAI : EntityBehavior
     {
-        AiTaskManager taskManager;
+        public AiTaskManager taskManager;
 
 
         public EntityBehaviorTaskAI(Entity entity) : base(entity)

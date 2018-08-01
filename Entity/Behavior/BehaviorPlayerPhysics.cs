@@ -12,7 +12,7 @@ namespace Vintagestory.GameContent
 {
     public class EntityBehaviorPlayerPhysics : EntityBehaviorControlledPhysics
     {
-        public EntityBehaviorPlayerPhysics(EntityPlayer entity) : base(entity)
+        public EntityBehaviorPlayerPhysics(Entity entity) : base(entity)
         {
         }
 

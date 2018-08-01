@@ -40,7 +40,7 @@
     <UseVSHostingProcess>false</UseVSHostingProcess>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
-    <LangVersion>6</LangVersion>
+    <LangVersion>7</LangVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -85,6 +85,7 @@
   <ItemGroup>
     <Compile Include="BlockBehavior\BehaviorFillable.cs" />
     <Compile Include="BlockBehavior\BehaviorOmniRotatable.cs" />
+    <Compile Include="BlockBehavior\BehaviorPushEventOnBlockBroken.cs" />
     <Compile Include="BlockEntityRenderer\FirepitContentsRenderer.cs" />
     <Compile Include="BlockEntityRenderer\QuernTopRenderer.cs" />
     <Compile Include="BlockEntity\BEBeehive.cs" />
@@ -117,6 +118,7 @@
     <Compile Include="BlockEntity\BEPlatePile.cs" />
     <Compile Include="BlockEntity\BEPumpkinVine.cs" />
     <Compile Include="BlockEntity\BESign.cs" />
+    <Compile Include="BlockEntity\BESpawner.cs" />
     <Compile Include="BlockEntity\BEStove.cs" />
     <Compile Include="BlockEntity\BETeleporter.cs" />
     <Compile Include="BlockEntity\BEToolMold.cs" />
@@ -166,12 +168,14 @@
     <Compile Include="Block\BlockClayForm.cs" />
     <Compile Include="Block\BlockCookingContainer.cs" />
     <Compile Include="Block\BlockCrop.cs" />
+    <Compile Include="Block\BaseDoor.cs" />
     <Compile Include="Block\BlockDoor.cs" />
     <Compile Include="Block\BlockFence.cs" />
     <Compile Include="Block\BlockFenceGate.cs" />
     <Compile Include="Block\BlockFirepit.cs" />
     <Compile Include="Block\BlockFirewoodPile.cs" />
     <Compile Include="Block\BlockFlowerPot.cs" />
+    <Compile Include="Block\BlockFoodBowl.cs" />
     <Compile Include="Block\BlockForge.cs" />
     <Compile Include="Block\BlockFullCoating.cs" />
     <Compile Include="Block\BlockGenericTypedContainer.cs" />
@@ -179,6 +183,7 @@
     <Compile Include="Block\BlockIngotPile.cs" />
     <Compile Include="Block\BlockKnappingSurface.cs" />
     <Compile Include="Block\BlockLantern.cs" />
+    <Compile Include="Block\BlockPlaceOnDrop.cs" />
     <Compile Include="Block\BlockQuern.cs" />
     <Compile Include="Block\BlockSkep.cs" />
     <Compile Include="Block\BlockSoil.cs" />
@@ -201,6 +206,7 @@
     <Compile Include="Block\BlockSmeltingContainer.cs" />
     <Compile Include="Block\BlockStairs.cs" />
     <Compile Include="Block\BlockTeleporter.cs" />
+    <Compile Include="Block\BlockTinted.cs" />
     <Compile Include="Block\BlockToolMold.cs" />
     <Compile Include="Block\BlockToolRack.cs" />
     <Compile Include="Block\BlockTorch.cs" />
@@ -209,10 +215,25 @@
     <Compile Include="Block\BlockWaterLily.cs" />
     <Compile Include="Block\BlockWaterPlant.cs" />
     <Compile Include="Block\BlockChisel.cs" />
+    <Compile Include="Block\BlockWithGrassOverlay.cs" />
+    <Compile Include="Entity\AI\Task\AiTaskGotoEntity.cs" />
+    <Compile Include="Entity\AI\Task\AiTaskLookAtEntity.cs" />
+    <Compile Include="Systems\LeafBlockDecay.cs" />
     <Compile Include="Entity\Classes\EntityTrader.cs" />
+    <Compile Include="Gui\Element\GuiElementMap.cs" />
+    <Compile Include="Gui\GuiDialogBlockEntityQuern.cs" />
+    <Compile Include="Gui\GuiDialogBlockEntityRecipeSelector.cs" />
+    <Compile Include="Gui\GuiDialogBlockEntityFirepit.cs" />
+    <Compile Include="Gui\GuiDialogBlockEntityText.cs" />
+    <Compile Include="Gui\GuiDialogLogViewer.cs" />
+    <Compile Include="Gui\GuiDialogItemLootRandomizer.cs" />
+    <Compile Include="Gui\GuiDialogItemStackRandomizer.cs" />
+    <Compile Include="Gui\GuiDialogJournal.cs" />
+    <Compile Include="Gui\GuiDialogSpawner.cs" />
+    <Compile Include="Gui\GuiDialogTrader.cs" />
+    <Compile Include="Gui\GuiDialogWorldMap.cs" />
     <Compile Include="Inventory\InventoryTrader.cs" />
-    <Compile Include="Inventory\ItemSellingSlot.cs" />
-    <Compile Include="Inventory\ItemSlotBuyingSlot.cs" />
+    <Compile Include="Inventory\TradeItemSlot.cs" />
     <Compile Include="Systems\ChiselBlockModelCache.cs" />
     <Compile Include="EntityRenderer\EntityBlockFallingRenderer.cs" />
     <Compile Include="EntityRenderer\EntityItemRenderer.cs" />
@@ -239,7 +260,6 @@
     <Compile Include="Entity\Behavior\BehaviorHunger.cs" />
     <Compile Include="Entity\Behavior\BehaviorInterpolatePosition.cs" />
     <Compile Include="Entity\Behavior\BehaviorMultiply.cs" />
-    <Compile Include="Entity\Behavior\BehaviorNameTag.cs" />
     <Compile Include="Entity\Behavior\BehaviorPassivePhysics.cs" />
     <Compile Include="Entity\Behavior\BehaviorPlayerPhysics.cs" />
     <Compile Include="Entity\Behavior\BehaviorRepulseAgents.cs" />
@@ -292,6 +312,7 @@
     <Compile Include="Item\ItemTemporalGear.cs" />
     <Compile Include="Item\ItemWorkItem.cs" />
     <Compile Include="Item\ItemStackRandomizer.cs" />
+    <Compile Include="Systems\ErrorReporter.cs" />
     <Compile Include="Systems\Journal.cs" />
     <Compile Include="Loading\BlockBehaviorType.cs" />
     <Compile Include="Loading\BlockLoader\CollectibleType.cs" />
@@ -302,19 +323,29 @@
     <Compile Include="Loading\JsonPatchLoader.cs" />
     <Compile Include="Loading\RecipeLoader.cs" />
     <Compile Include="Systems\LootRandomizer.cs" />
-    <Compile Include="Mechanics\MechanicalPower.cs" />
-    <Compile Include="Mechanics\Network\BlockEntityMechNetworkDeviceBase.cs" />
-    <Compile Include="Mechanics\Network\IMechanicalPowerDevice.cs" />
-    <Compile Include="Mechanics\Network\IMechanicalPowerNetworkNode.cs" />
-    <Compile Include="Mechanics\Network\IMechanicalPowerNetworkRelay.cs" />
-    <Compile Include="Mechanics\Network\MechanicalNetwork.cs" />
-    <Compile Include="Mechanics\Network\MechNetworkManager.cs" />
-    <Compile Include="Mechanics\Renderer\MechNetworkRenderer.cs" />
+    <Compile Include="Systems\MechanicalPower\MechanicalPower.cs" />
+    <Compile Include="Systems\MechanicalPower\Network\BlockEntityMechNetworkDeviceBase.cs" />
+    <Compile Include="Systems\MechanicalPower\Network\IMechanicalPowerDevice.cs" />
+    <Compile Include="Systems\MechanicalPower\Network\IMechanicalPowerNetworkNode.cs" />
+    <Compile Include="Systems\MechanicalPower\Network\IMechanicalPowerNetworkRelay.cs" />
+    <Compile Include="Systems\MechanicalPower\Network\MechanicalNetwork.cs" />
+    <Compile Include="Systems\MechanicalPower\Network\MechNetworkManager.cs" />
+    <Compile Include="Systems\MechanicalPower\Renderer\MechNetworkRenderer.cs" />
     <Compile Include="Systems\SaplingControl.cs" />
-    <Compile Include="Systems\WorldMapManager.cs" />
+    <Compile Include="Systems\Weather\CloudMeshUtil.cs" />
+    <Compile Include="Systems\Weather\CloudRenderer.cs" />
+    <Compile Include="Systems\Weather\CloudTile.cs" />
+    <Compile Include="Systems\Weather\SimpleWeatherPatternSimulator.cs" />
+    <Compile Include="Systems\Weather\Weather.cs" />
+    <Compile Include="Systems\Weather\WeatherPattern.cs" />
+    <Compile Include="Systems\Weather\WeatherSimulation.cs" />
+    <Compile Include="Systems\WorldMap\MapComponent\EntityMapComponent.cs" />
+    <Compile Include="Systems\WorldMap\MapComponent\MapComponent.cs" />
+    <Compile Include="Systems\WorldMap\MapComponent\WaypointMapComponent.cs" />
+    <Compile Include="Systems\WorldMap\WorldMapManager.cs" />
     <Compile Include="Systems\Sleeping.cs" />
     <Compile Include="Systems\TeleporterManager.cs" />
-    <Compile Include="Systems\WeatherSimulator.cs" />
+    <Compile Include="Systems\Weather\LocalWeatherPatternSimulation.cs" />
     <Compile Include="WoldGen\Standard\Chunk\GenCreatures.cs" />
     <Compile Include="WoldGen\Standard\Chunk\GenRivulets.cs" />
     <Compile Include="WoldGen\Standard\Chunk\GenStructures.cs" />
@@ -342,10 +373,8 @@
     <Compile Include="WoldGen\Standard\Treegen\TreeGenBlocks.cs" />
     <Compile Include="WoldGen\Standard\Model\Blocklayer\BlockLayerConfig.cs" />
     <Compile Include="WoldGen\Standard\Model\Blocklayer\BlockLayer.cs" />
-    <None Include="Systems\Tools\BuildLog.cs" />
     <Compile Include="WoldGen\Standard\Model\InerhitableRotatableCube.cs" />
     <Compile Include="WoldGen\Standard\Treegen\TreeSupplier.cs" />
-    <None Include="Systems\Tools\VandalFinder.cs" />
     <Compile Include="WoldGen\Standard\Chunk\GenBlockLayers.cs" />
     <Compile Include="WoldGen\Standard\Chunk\GenCaves.cs" />
     <Compile Include="WoldGen\Standard\Chunk\GenDeposits.cs" />
@@ -398,6 +427,11 @@
     <Compile Include="WoldGen\Standard\TerraGenConfig.cs" />
     <Compile Include="WoldGen\Standard\WgenCommands.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Systems\WorldMap\ChunkMapLayer.cs" />
+    <Compile Include="Systems\WorldMap\WaypointMapLayer.cs" />
+    <Compile Include="Systems\WorldMap\IMapDataSink.cs" />
+    <Compile Include="Systems\WorldMap\MapLayer.cs" />
+    <Compile Include="Systems\WorldMap\PlayerMapLayer.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Cairo\Cairo.csproj">

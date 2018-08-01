@@ -9,15 +9,15 @@ namespace Vintagestory.ServerMods
 {
     public class MapLayerPerlin : MapLayerBase
     {
-        NormalizedPerlinNoise noisegenX;
-        NormalizedPerlinNoise noisegenY;
+        NormalizedSimplexNoise noisegenX;
+        NormalizedSimplexNoise noisegenY;
 
         float multiplier;
 
         public MapLayerPerlin(long seed, int octaves, float persistence, int scale, int multiplier) : base(seed)
         {
-            noisegenX = NormalizedPerlinNoise.FromDefaultOctaves(octaves, 1f / scale, persistence, seed);
-            noisegenY = NormalizedPerlinNoise.FromDefaultOctaves(octaves, 1f / scale, persistence, seed + 1232);
+            noisegenX = NormalizedSimplexNoise.FromDefaultOctaves(octaves, 1f / scale, persistence, seed);
+            noisegenY = NormalizedSimplexNoise.FromDefaultOctaves(octaves, 1f / scale, persistence, seed + 1232);
             this.multiplier = multiplier;
         }
 

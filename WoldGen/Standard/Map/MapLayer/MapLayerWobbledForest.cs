@@ -10,13 +10,13 @@ namespace Vintagestory.ServerMods
 {
     class MapLayerWobbledForest : MapLayerBase
     {
-        NormalizedPerlinNoise noisegen;
+        NormalizedSimplexNoise noisegen;
 
         float multiplier;
         int offset;
 
-        NormalizedPerlinNoise noisegenX;
-        NormalizedPerlinNoise noisegenY;
+        NormalizedSimplexNoise noisegenX;
+        NormalizedSimplexNoise noisegenY;
 
         //float wobbleScale;
         float wobbleIntensity;
@@ -34,7 +34,7 @@ namespace Vintagestory.ServerMods
                 amplitudes[i] = Math.Pow(persistence, i);
             }
 
-            noisegen = new NormalizedPerlinNoise(amplitudes, frequencies, seed);
+            noisegen = new NormalizedSimplexNoise(amplitudes, frequencies, seed);
 
             this.offset = offset;
             this.multiplier = multiplier;
@@ -43,8 +43,8 @@ namespace Vintagestory.ServerMods
             float wscale = 128;
             float wpersistence = 0.9f;
             wobbleIntensity = scale / 3f;
-            noisegenX = NormalizedPerlinNoise.FromDefaultOctaves(woctaves, 1 / wscale, wpersistence, seed + 2);
-            noisegenY = NormalizedPerlinNoise.FromDefaultOctaves(woctaves, 1 / wscale, wpersistence, seed + 1231296);
+            noisegenX = NormalizedSimplexNoise.FromDefaultOctaves(woctaves, 1 / wscale, wpersistence, seed + 2);
+            noisegenY = NormalizedSimplexNoise.FromDefaultOctaves(woctaves, 1 / wscale, wpersistence, seed + 1231296);
         }
 
         public override int[] GenLayer(int xCoord, int zCoord, int sizeX, int sizeZ)

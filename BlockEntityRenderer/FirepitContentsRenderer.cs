@@ -20,7 +20,7 @@ namespace Vintagestory.GameContent
 
         public double RenderOrder
         {
-            get { return 0; }
+            get { return 0.5; }
         }
 
         public int RenderRange

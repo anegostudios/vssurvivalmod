@@ -122,7 +122,7 @@ namespace Vintagestory.ServerMods.NoObf
                         if (k > 0)
                         {
                             rotations[k] = rotations[0].Clone();
-                            rotations[k].RotateWhilePacked(api.World.BlockAccessor, k * 90);
+                            rotations[k].RotateWhilePacked(api.World, EnumOrigin.BottomCenter, k * 90);
                         }
                         rotations[k].blockLayerConfig = config;
                         rotations[k].Init(api.World.BlockAccessor);

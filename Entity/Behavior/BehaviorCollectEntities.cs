@@ -31,7 +31,7 @@ namespace Vintagestory.GameContent
             if (waitTicks-- > 0) return;
 
             tmp.Set(entity.ServerPos.X, entity.ServerPos.Y + entity.CollisionBox.Y1 + entity.CollisionBox.Y2 / 2, entity.ServerPos.Z);
-            IEntity[] entities = entity.World.GetEntitiesAround(tmp, 2f, 1.5f, entityMatcher);
+            IEntity[] entities = entity.World.GetEntitiesAround(tmp, 1.5f, 1.5f, entityMatcher);
             if (entities.Length == 0)
             {
                 unconsumedDeltaTime = 0;

@@ -30,7 +30,7 @@ namespace Vintagestory.GameContent
 
         public double RenderOrder
         {
-            get { return 0; }
+            get { return 0.5; }
         }
 
         public int RenderRange
@@ -143,7 +143,7 @@ namespace Vintagestory.GameContent
             this.ingot = workitem;
             MeshData workItemMesh = new MeshData(24, 36, false);
             workItemMesh.Flags = null;
-            workItemMesh.rgba2 = null;
+            workItemMesh.Rgba2 = null;
 
             float subPixelPadding = api.BlockTextureAtlas.SubPixelPadding;
 
@@ -206,7 +206,7 @@ namespace Vintagestory.GameContent
         private void RegenOutlineMesh(ClayFormingRecipe recipeToOutline, bool[,,] Voxels, int recipeLayer)
         {
             MeshData recipeOutlineMesh = new MeshData(24, 36, false, false, true, false, false);
-            recipeOutlineMesh.setMode(EnumDrawMode.Lines);
+            recipeOutlineMesh.SetMode(EnumDrawMode.Lines);
 
             int greenCol = (156 << 24) | (100 << 16) | (200 << 8) | (100);
             int orangeCol = (156 << 24) | (226 << 16) | (171 << 8) | (92);

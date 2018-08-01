@@ -3,22 +3,23 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockFenceGate : Block
+    public class BlockFenceGate : BaseDoor
     {
-        public string GetKnobOrientation()
+        public override string GetKnobOrientation()
         {
             return GetKnobOrientation(this);
         }
+
+        public override BlockFacing GetDirection()
+        {
+            string[] parts = Code.Path.Split('-');
+            return BlockFacing.FromFirstLetter(parts[2]);
+        }
+
         public string GetKnobOrientation(Block block)
         {
             string[] parts = block.Code.Path.Split('-');
             return parts[parts.Length - 1];
-        }
-        public bool IsFenceGate(Block block)
-        {
-            string[] parts = Code.Path.Split('-');
-            string[] otherParts = block.Code.Path.Split('-');
-            return parts[0] == otherParts[0];
         }
 
         public bool IsOpened()
@@ -28,6 +29,12 @@ namespace Vintagestory.GameContent
 
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel)
         {
+            if (!world.TestPlayerAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            {
+                byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
+                return false;
+            }
+
             if (IsSuitablePosition(world, blockSel.Position))
             {
                 BlockFacing[] horVer = SuggestedHVOrientation(byPlayer, blockSel);
@@ -51,8 +58,8 @@ namespace Vintagestory.GameContent
             Block nBlock1 = ba.GetBlock(pos.AddCopy(facing.GetCCW()));
             Block nBlock2 = ba.GetBlock(pos.AddCopy(facing.GetCW()));
 
-            bool isDoor1 = IsFenceGate(nBlock1);
-            bool isDoor2 = IsFenceGate(nBlock2);
+            bool isDoor1 = IsSameDoor(nBlock1);
+            bool isDoor2 = IsSameDoor(nBlock2);
             if (isDoor1 && isDoor2)
             {
                 leftOrRight = "left";
@@ -71,17 +78,19 @@ namespace Vintagestory.GameContent
             return leftOrRight;
         }
 
-        public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
+        protected override void Open(IWorldAccessor world, IPlayer byPlayer, BlockPos pos)
         {
             AssetLocation newCode = CodeWithParts(IsOpened() ? "closed" : "opened", GetKnobOrientation());
 
-            world.BlockAccessor.SetBlock(world.BlockAccessor.GetBlock(newCode).BlockId, blockSel.Position);
-
-            world.PlaySoundAt(new AssetLocation("sounds/block/door"), blockSel.Position.X + 0.5f, blockSel.Position.Y + 0.5f, blockSel.Position.Z + 0.5f, byPlayer);
-
-            return true;
+            world.BlockAccessor.SetBlock(world.BlockAccessor.GetBlock(newCode).BlockId, pos);
         }
 
+        protected override BlockPos TryGetConnectedDoorPos(BlockPos pos)
+        {
+            string knob = GetKnobOrientation();
+            BlockFacing dir = GetDirection();
+            return knob == "right" ? pos.AddCopy(dir.GetCW()) : pos.AddCopy(dir.GetCCW());
+        }
 
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)
         {
@@ -94,8 +103,6 @@ namespace Vintagestory.GameContent
             Block block = world.BlockAccessor.GetBlock(CodeWithPath(CodeWithoutParts(3) + "-n-closed-left"));
             return new ItemStack(block);
         }
-
-
 
         public override AssetLocation GetRotatedBlockCode(int angle)
         {

@@ -76,6 +76,13 @@ namespace Vintagestory.ServerMods
             {
                 JToken property = null;
                 JObject blockTypeObject = entry.Value;
+
+                if (blockTypeObject == null)
+                {
+                    api.Server.LogWarning("Unable to load block type {0}, does not seem to be a json file. Will ignore.", entry.Key);
+                    continue;
+                }
+
                 AssetLocation location=null;
                 try
                 {
@@ -103,6 +110,13 @@ namespace Vintagestory.ServerMods
                 JToken property = null;
                 JObject itemTypeObject = entry.Value;
 
+                if (itemTypeObject == null)
+                {
+                    api.Server.LogWarning("Unable to load item type {0}, does not seem to be a json file. Will ignore.", entry.Key);
+                    continue;
+                }
+                
+                
                 AssetLocation location = itemTypeObject.GetValue("code").ToObject<AssetLocation>();
                 location.Domain = entry.Key.Domain;
 
@@ -249,7 +263,7 @@ namespace Vintagestory.ServerMods
 
             if (api.ClassRegistry.GetItemClass(typedItemType.Class) == null)
             {
-                api.Server.Logger.Error("Item with code {0} has defined an item class {1}, but it does not exist. Will ignore.", typedItemType.Code, typedItemType.Class);
+                api.Server.Logger.Error("Item with code {0} has defined an item class {1}, but no such class registered. Will ignore.", typedItemType.Code, typedItemType.Class);
                 item = new Item();
             } else
             {
@@ -405,7 +419,7 @@ namespace Vintagestory.ServerMods
 
             if (api.ClassRegistry.GetBlockClass(typedBlockType.Class) == null)
             {
-                api.Server.Logger.Error("Block with code {0} has defined a block class {1}, but it does not exist. Will ignore.", typedBlockType.Code, typedBlockType.Class);
+                api.Server.Logger.Error("Block with code {0} has defined a block class {1}, no such class registered. Will ignore.", typedBlockType.Code, typedBlockType.Class);
                 block = new Block();
             } else
             {
@@ -420,7 +434,7 @@ namespace Vintagestory.ServerMods
                     block.EntityClass = typedBlockType.EntityClass;
                 } else
                 {
-                    api.Server.Logger.Error("Block with code {0} has defined a block entity class {1}, but it does not exist. Will ignore.", typedBlockType.Code, typedBlockType.EntityClass);
+                    api.Server.Logger.Error("Block with code {0} has defined a block entity class {1}, no such class registered. Will ignore.", typedBlockType.Code, typedBlockType.EntityClass);
                 }
             }
 
@@ -433,25 +447,7 @@ namespace Vintagestory.ServerMods
             block.Fertility = typedBlockType.Fertility;
             block.LightAbsorption = typedBlockType.LightAbsorption;
             block.LightHsv = typedBlockType.LightHsv;
-
-            // With Backwards compatibility
-#pragma warning disable CS0618 // Type or member is obsolete
-            if (typedBlockType.VertexFlags != null)
-            {
-                block.VertexFlags = (VertexFlags)typedBlockType.VertexFlags;
-
-                block.GlowLevel = block.VertexFlags.GlowLevel;
-                block.RenderFlags = block.VertexFlags.All >> 8;
-            }
-            else
-            {
-                block.GlowLevel = typedBlockType.GlowLevel;
-                block.RenderFlags = typedBlockType.RenderFlags;
-                block.VertexFlags = new VertexFlags((block.RenderFlags << 8) | block.GlowLevel);
-            }
-#pragma warning restore CS0618 // Type or member is obsolete
-
-
+            block.VertexFlags = typedBlockType.VertexFlags?.Clone() ?? new VertexFlags(0);
             block.Resistance = typedBlockType.Resistance;
             block.BlockMaterial = typedBlockType.BlockMaterial;
             block.Shape = typedBlockType.Shape;

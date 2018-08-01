@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -483,7 +484,7 @@ namespace Vintagestory.GameContent
 
 
 
-        public static void OpenDialog(IClientWorldAccessor world, BlockPos pos, ItemStack baseMaterial)
+        public void OpenDialog(IClientWorldAccessor world, BlockPos pos, ItemStack baseMaterial)
         {
             List<ItemStack> stacks = new List<ItemStack>();
             
@@ -496,7 +497,10 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            world.OpenDialog("BlockEntityRecipeSelector", "Select recipe", stacks.ToArray(), pos);
+            stacks = stacks.OrderBy(x => x.GetName()).ToList();
+
+            GuiDialog dlg = new GuiDialogBlockEntityRecipeSelector("Select recipe", stacks.ToArray(), pos, api as ICoreClientAPI);
+            dlg.TryOpen();
         }
 
         public override void OnBlockUnloaded()

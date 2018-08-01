@@ -45,6 +45,12 @@ namespace Vintagestory.GameContent
 
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel)
         {
+            if (!world.TestPlayerAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            {
+                byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
+                return false;
+            }
+
             string orientations = GetOrientations(world, blockSel.Position);
             Block block = world.BlockAccessor.GetBlock(CodeWithParts(orientations));
 

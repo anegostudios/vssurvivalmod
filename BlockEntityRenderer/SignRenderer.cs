@@ -29,7 +29,7 @@ namespace Vintagestory.GameContent
 
         public double RenderOrder
         {
-            get { return 0; }
+            get { return 0.5; }
         }
 
         public int RenderRange
@@ -55,8 +55,8 @@ namespace Vintagestory.GameContent
             };
             modeldata.Rgba = new byte[4 * 4];
             modeldata.Rgba.Fill((byte)255);
-            modeldata.rgba2 = new byte[4 * 4];
-            modeldata.rgba2.Fill((byte)255);
+            modeldata.Rgba2 = new byte[4 * 4];
+            modeldata.Rgba2.Fill((byte)255);
 
             quadModelRef = api.Render.UploadMesh(modeldata);
 
@@ -98,7 +98,7 @@ namespace Vintagestory.GameContent
         internal void SetNewText(string text)
         {
             loadedTexture?.Dispose();
-            loadedTexture = api.Render.GenTextTexture(text, font, TextWidth, TextHeight, null, EnumTextOrientation.Center, 0.9f);
+            loadedTexture = api.Gui.Text.GenTextTexture(text, font, TextWidth, TextHeight, null, EnumTextOrientation.Center, 0.9f);
         }
 
 
@@ -116,7 +116,7 @@ namespace Vintagestory.GameContent
 
             IStandardShaderProgram prog = rpi.PreparedStandardShader(pos.X, pos.Y, pos.Z);
 
-            prog.Tex2D = loadedTexture.textureId;
+            prog.Tex2D = loadedTexture.TextureId;
             
             api.Render.GlMatrixModeModelView();
 

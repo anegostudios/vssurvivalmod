@@ -13,8 +13,8 @@ namespace Vintagestory.ServerMods
     {
         private NoiseGeoProvince noiseGeoProvince;
 
-        NormalizedPerlinNoise noisegenX;
-        NormalizedPerlinNoise noisegenY;
+        NormalizedSimplexNoise noisegenX;
+        NormalizedSimplexNoise noisegenY;
         float wobbleIntensity;
 
         public MapLayerGeoProvince(long seed, ICoreServerAPI api) : base(seed)
@@ -25,8 +25,8 @@ namespace Vintagestory.ServerMods
             float wscale = 1.5f * TerraGenConfig.geoProvMapScale;
             float wpersistence = 0.9f;
             wobbleIntensity = TerraGenConfig.geoProvMapScale * 1.5f;
-            noisegenX = NormalizedPerlinNoise.FromDefaultOctaves(woctaves, 1 / wscale, wpersistence, seed + 2);
-            noisegenY = NormalizedPerlinNoise.FromDefaultOctaves(woctaves, 1 / wscale, wpersistence, seed + 1231296);
+            noisegenX = NormalizedSimplexNoise.FromDefaultOctaves(woctaves, 1 / wscale, wpersistence, seed + 2);
+            noisegenY = NormalizedSimplexNoise.FromDefaultOctaves(woctaves, 1 / wscale, wpersistence, seed + 1231296);
         }
 
 

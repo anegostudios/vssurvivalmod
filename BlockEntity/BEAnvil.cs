@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -503,8 +504,12 @@ namespace Vintagestory.GameContent
                 workitemRenderer.Unregister();
                 workitemRenderer = null;
             }
+        }
 
-            if (workItemStack != null) {
+        public override void OnBlockBroken()
+        {
+            if (workItemStack != null)
+            {
                 workItemStack.Attributes.SetBytes("voxels", serializeVoxels());
                 workItemStack.Attributes.SetInt("availableVoxels", AvailableVoxels);
                 workItemStack.Attributes.SetInt("selectedRecipeNumber", selectedRecipeNumber);
@@ -680,7 +685,10 @@ namespace Vintagestory.GameContent
 
             IClientWorldAccessor clientWorld = (IClientWorldAccessor)api.World;
 
-            clientWorld.OpenDialog("BlockEntityRecipeSelector", "Select smithing recipe", stacks.ToArray(), pos);
+            stacks = stacks.OrderBy(x => x.GetName()).ToList();
+
+            GuiDialog dlg = new GuiDialogBlockEntityRecipeSelector("Select smithing recipe", stacks.ToArray(), pos, api as ICoreClientAPI);
+            dlg.TryOpen();
         }
 
 

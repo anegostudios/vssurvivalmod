@@ -82,7 +82,8 @@ namespace Vintagestory.GameContent
 
                     IClientWorldAccessor clientWorld = (IClientWorldAccessor)api.World;
 
-                    clientWorld.OpenDialog(dialogClassName, dialogTitle, pos, text);
+                    GuiDialog dlg = new GuiDialogBlockEntityTextInput(dialogTitle, pos, text, api as ICoreClientAPI);
+                    dlg.TryOpen();
                 }
             }
 

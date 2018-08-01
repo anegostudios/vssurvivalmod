@@ -155,13 +155,13 @@ namespace Vintagestory.ServerMods
                 return;
             }
 
-            blockAccess.SetBlock(oldBlockId, blockSel.Position, withItemStack);
+            blockAccessRev.SetBlock(oldBlockId, blockSel.Position, withItemStack);
 
             treeGenerators.ReloadTreeGenerators();
-            treeGenerators.RunGenerator(new AssetLocation(TreeVariant), blockAccess, blockSel.Position.DownCopy(), MinTreeSize + (float)rand.NextDouble() * (MaxTreeSize - MinTreeSize));
+            treeGenerators.RunGenerator(new AssetLocation(TreeVariant), blockAccessRev, blockSel.Position.DownCopy(), MinTreeSize + (float)rand.NextDouble() * (MaxTreeSize - MinTreeSize));
 
-            blockAccess.SetHistoryStateBlock(blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z, oldBlockId, blockAccess.GetBlockId(blockSel.Position));
-            blockAccess.Commit();
+            blockAccessRev.SetHistoryStateBlock(blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z, oldBlockId, blockAccessRev.GetBlockId(blockSel.Position));
+            blockAccessRev.Commit();
         }
 
     }

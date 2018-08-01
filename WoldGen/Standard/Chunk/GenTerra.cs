@@ -14,7 +14,7 @@ namespace Vintagestory.ServerMods
         int regionChunkSize;
         int regionMapSize;
 
-        private NormalizedPerlinNoise TerrainNoise;
+        private NormalizedSimplexNoise TerrainNoise;
 
         GenRockStrata rockstrataGen;
 
@@ -77,7 +77,7 @@ namespace Vintagestory.ServerMods
             regionMapSize = api.WorldManager.MapSizeX / api.WorldManager.RegionSize;
 
 
-            TerrainNoise = NormalizedPerlinNoise.FromDefaultOctaves(
+            TerrainNoise = NormalizedSimplexNoise.FromDefaultOctaves(
                 TerraGenConfig.terrainGenOctaves, 0.001, 0.9, api.WorldManager.Seed
             );
 

@@ -38,7 +38,7 @@ namespace Vintagestory.GameContent
 
         public double RenderOrder
         {
-            get { return 0; }
+            get { return 0.5; }
         }
 
         public int RenderRange
@@ -133,7 +133,7 @@ namespace Vintagestory.GameContent
 
             MeshData mesh;
             capi.Tesselator.TesselateShape("block-fcr", shape, out mesh, this, null, 0, 0, stack.StackSize);
-            mesh.rgba2 = null;
+            mesh.Rgba2 = null;
 
             workItemMeshRef = capi.Render.UploadMesh(mesh);
         }

@@ -14,6 +14,13 @@ namespace Vintagestory.GameContent
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel)
         {
             if (!byPlayer.Entity.Controls.Sneak) return false;
+
+            if (!world.TestPlayerAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            {
+                byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
+                return false;
+            }
+
             if (IsSuitablePosition(world, blockSel.Position) && world.BlockAccessor.GetBlock(blockSel.Position.DownCopy()).SideSolid[BlockFacing.UP.Index])
             {
                 DoPlaceBlock(world, blockSel.Position, blockSel.Face, itemstack);

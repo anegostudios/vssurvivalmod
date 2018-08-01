@@ -28,7 +28,7 @@ namespace Vintagestory.ServerMods
 
         IBlockAccessor blockAccessor;
 
-        internal FastRandom depositRand;
+        internal FastPositionalRandom depositRand;
 
         Block[] blockTypes;
 
@@ -94,7 +94,7 @@ namespace Vintagestory.ServerMods
                 }
             }
 
-            depositRand = new FastRandom(api.WorldManager.Seed + 34613);
+            depositRand = new FastPositionalRandom(api.WorldManager.Seed + 34613);
 
             blockTypes = api.World.Blocks;
         }
@@ -301,7 +301,7 @@ namespace Vintagestory.ServerMods
 
             if (forceInitialPosY != null)
             {
-                depthf = (float)forceInitialPosY / mapchunk.RainHeightMap[offsetX * chunksize + offsetZ];
+                depthf = (float)forceInitialPosY / mapchunk.WorldGenTerrainHeightMap[offsetX * chunksize + offsetZ];
             } else
             {
                 depthf = variant.Depth.nextFloat(1, depositRand);
@@ -332,17 +332,17 @@ namespace Vintagestory.ServerMods
 
                     if (variant.Placement == EnumDepositPlacement.FollowSurfaceBelow)
                     {
-                        posY = mapchunk.RainHeightMap[z * chunksize + x] - depthi;
+                        posY = mapchunk.WorldGenTerrainHeightMap[z * chunksize + x] - depthi;
                     }
                     else if (variant.Placement == EnumDepositPlacement.FollowSurface)
                     {
                         yOff = (int)GameMath.BiLerp(topLeft, topRight, botLeft, botRight, (x - offsetX + radiusX) / (2f * radiusX), (z - offsetZ + radiusZ) / (2f * radiusZ));
 
-                        posY = (int)(depthf * mapchunk.RainHeightMap[z * chunksize + x]) + yOff / 2;
+                        posY = (int)(depthf * mapchunk.WorldGenTerrainHeightMap[z * chunksize + x]) + yOff / 2;
                     }
                     else if (variant.Placement == EnumDepositPlacement.Straight)
                     {
-                        posY = (int)(depthf * mapchunk.RainHeightMap[z * chunksize + x]);
+                        posY = (int)(depthf * mapchunk.WorldGenTerrainHeightMap[z * chunksize + x]);
                     }
                     else
                     {

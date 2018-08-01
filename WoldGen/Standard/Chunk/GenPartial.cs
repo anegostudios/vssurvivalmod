@@ -18,7 +18,7 @@ namespace Vintagestory.ServerMods
 
         internal abstract int chunkRange { get; }
 
-        internal FastRandom chunkRand;
+        internal FastPositionalRandom chunkRand;
 
         public override bool ShouldLoad(EnumAppSide side)
         {
@@ -45,7 +45,7 @@ namespace Vintagestory.ServerMods
             LoadGlobalConfig(api);
 
             worldheight = api.WorldManager.MapSizeY;
-            chunkRand = new FastRandom(api.WorldManager.Seed);
+            chunkRand = new FastPositionalRandom(api.WorldManager.Seed);
         }
 
 

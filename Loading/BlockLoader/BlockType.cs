@@ -68,15 +68,9 @@ namespace Vintagestory.ServerMods.NoObf
         public int Replaceable;
         [JsonProperty]
         public int Fertility;
-        [JsonProperty]
-        [Obsolete("Use VertexFlags instead")]
-        public byte GlowLevel = 0;
-        [JsonProperty]
-        [Obsolete("Use VertexFlags instead")]
-        public int RenderFlags = 0;
 
         [JsonProperty]
-        public VertexFlags? VertexFlags;
+        public VertexFlags VertexFlags;
 
         [JsonProperty]
         public byte[] LightHsv = new byte[] { 0, 0, 0 };

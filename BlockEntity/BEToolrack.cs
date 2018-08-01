@@ -169,6 +169,11 @@ namespace Vintagestory.GameContent
 
         public override void OnBlockRemoved()
         {
+            
+        }
+
+        public override void OnBlockBroken()
+        {
             for (int i = 0; i < 4; i++)
             {
                 ItemStack stack = inventory.GetSlot(i).Itemstack;

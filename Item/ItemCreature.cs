@@ -20,7 +20,14 @@ namespace Vintagestory.GameContent
         {
             if (blockSel == null) return false;
 
-            if (!(byEntity is EntityPlayer) || byEntity.World.PlayerByUid((byEntity as EntityPlayer).PlayerUID).WorldData.CurrentGameMode != EnumGameMode.Creative)
+            IPlayer player = byEntity.World.PlayerByUid((byEntity as EntityPlayer).PlayerUID);
+
+            if (!byEntity.World.TestPlayerAccessBlock(player, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            {
+                return false;
+            }
+
+            if (!(byEntity is EntityPlayer) || player.WorldData.CurrentGameMode != EnumGameMode.Creative)
             {
                 slot.TakeOut(1);
                 slot.MarkDirty();

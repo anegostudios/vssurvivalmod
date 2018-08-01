@@ -36,7 +36,7 @@ namespace Vintagestory.GameContent
         public float smokeLevel;
 
 
-        IGuiDialog clientDialog;
+        GuiDialogBlockEntityFirepit clientDialog;
         bool clientSidePrevBurning;
         
         Block ownBlock;
@@ -122,24 +122,11 @@ namespace Vintagestory.GameContent
 
             inventory.pos = pos;
             inventory.LateInitialize("smelting-1", api);
-            Inventory.AfterBlocksLoaded(api.World);
             
 
             RegisterGameTickListener(OnBurnTick, 100);
             RegisterGameTickListener(OnSyncTick, 500);
-
-            if (ambientSound == null && api.Side == EnumAppSide.Client)
-            {
-                ambientSound = ((IClientWorldAccessor)api.World).LoadSound(new SoundParams()
-                {
-                    Location = new AssetLocation("sounds/environment/fireplace.ogg"),
-                    ShouldLoop = true,
-                    Position = pos.ToVec3f().Add(0.5f, 0.25f, 0.5f),
-                    DisposeOnFinish = false,
-                    Volume = SoundLevel
-                });
-            }
-
+            
             if (api is ICoreClientAPI)
             {
                 renderer = new FirepitContentsRenderer(api as ICoreClientAPI, pos);
@@ -150,6 +137,32 @@ namespace Vintagestory.GameContent
             }
 
             ownBlock = api.World.BlockAccessor.GetBlock(pos);
+        }
+
+
+        public void ToggleAmbientSounds(bool on)
+        {
+            if (api.Side != EnumAppSide.Client) return;
+
+            if (on)
+            {
+                ambientSound = ((IClientWorldAccessor)api.World).LoadSound(new SoundParams()
+                {
+                    Location = new AssetLocation("sounds/environment/fireplace.ogg"),
+                    ShouldLoop = true,
+                    Position = pos.ToVec3f().Add(0.5f, 0.25f, 0.5f),
+                    DisposeOnFinish = false,
+                    Volume = SoundLevel
+                });
+                ambientSound.Start();
+            }
+            else
+            {
+                ambientSound.Stop();
+                ambientSound.Dispose();
+                ambientSound = null;
+            }
+            
         }
 
 
@@ -235,7 +248,10 @@ namespace Vintagestory.GameContent
                 {
                     fuelBurnTime = 0;
                     maxFuelBurnTime = 0;
-                    setStoveBurning(false);
+                    if (!canSmelt()) // This check avoids light flicker when a piece of fuel is consumed and more is available
+                    {
+                        setStoveBurning(false);
+                    }
                 }
             }
 
@@ -451,13 +467,11 @@ namespace Vintagestory.GameContent
             
             if (burning)
             {
-                block.Ignite(api.World, pos);
+                if (block.Ignite(api.World, pos)) MarkDirty(true);
             } else
             {
-                block.Extinguish(api.World, pos);
+                if (block.Extinguish(api.World, pos)) MarkDirty(true);
             }
-
-            MarkDirty(true);
         }
 
 
@@ -548,7 +562,7 @@ namespace Vintagestory.GameContent
 
             if (api?.Side == EnumAppSide.Client && clientSidePrevBurning != IsBurning)
             {
-                ambientSound.Toggle(IsBurning);
+                ToggleAmbientSounds(IsBurning);
                 clientSidePrevBurning = IsBurning;
                 MarkDirty(true);
             }
@@ -605,11 +619,6 @@ namespace Vintagestory.GameContent
         {
             base.OnBlockRemoved();
 
-            if (api.World is IServerWorldAccessor)
-            {
-                Inventory.DropAll(pos.ToVec3d().Add(0.5, 0.5, 0.5));
-            }
-
             if (ambientSound != null)
             {
                 ambientSound.Stop();
@@ -621,6 +630,11 @@ namespace Vintagestory.GameContent
                 renderer.Unregister();
                 renderer = null;
             }
+        }
+
+        public override void OnBlockBroken()
+        {
+            base.OnBlockBroken();
         }
 
         ~BlockEntityFirepit()
@@ -670,7 +684,8 @@ namespace Vintagestory.GameContent
                     SyncedTreeAttribute dtree = new SyncedTreeAttribute();
                     SetDialogValues(dtree);
 
-                    clientDialog = clientWorld.OpenDialog(dialogClassName, dialogTitle, Inventory, pos, dtree);
+                    clientDialog = new GuiDialogBlockEntityFirepit(dialogTitle, Inventory, pos, dtree, api as ICoreClientAPI);
+                    clientDialog.TryOpen();
                 }
             }
 

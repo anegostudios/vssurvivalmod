@@ -14,6 +14,12 @@ namespace Vintagestory.GameContent
             if (byEntity is IEntityPlayer) byPlayer = byEntity.World.PlayerByUid(((IEntityPlayer)byEntity).PlayerUID);
             if (byPlayer == null) return false;
 
+            if (!byEntity.World.TestPlayerAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            {
+                itemslot.MarkDirty();
+                return false;
+            }
+
 
             BlockEntity be = byEntity.World.BlockAccessor.GetBlockEntity(blockSel.Position);
             if (be is BlockEntityPlatePile)

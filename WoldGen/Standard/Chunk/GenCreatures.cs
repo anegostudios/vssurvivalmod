@@ -306,7 +306,7 @@ namespace Vintagestory.ServerMods
             IBlockAccessor blockAccess;
             int chunksize = wgenBlockAccessor.ChunkSize;
 
-            Cuboidd entityCuboid = entityBoxRel.ToDouble().Add(pos);
+            Cuboidd entityCuboid = entityBoxRel.ToDouble().Translate(pos);
             Vec3d blockPosAsVec = new Vec3d();
 
             int minX = (int)(entityBoxRel.X1 + pos.X);

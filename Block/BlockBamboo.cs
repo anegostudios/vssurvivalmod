@@ -30,13 +30,13 @@ namespace Vintagestory.GameContent
             ICoreServerAPI sapi = api as ICoreServerAPI;
             if (sapi != null)
             {
-                if (Code.Path.Equals("bamboo-green-segment1"))
+                if (Code.Path.Equals("bamboo-grown-green-segment1"))
                 {
-                    sapi.RegisterTreeGenerator(new AssetLocation("bamboo-green"), this);
+                    sapi.RegisterTreeGenerator(new AssetLocation("bamboo-grown-green"), this);
                 }
-                if (Code.Path.Equals("bamboo-brown-segment1"))
+                if (Code.Path.Equals("bamboo-grown-brown-segment1"))
                 {
-                    sapi.RegisterTreeGenerator(new AssetLocation("bamboo-brown"), this);
+                    sapi.RegisterTreeGenerator(new AssetLocation("bamboo-grown-brown"), this);
                 }
             }
         }
@@ -51,15 +51,15 @@ namespace Vintagestory.GameContent
         {
             if (greenSeg1 == null)
             {
-                greenSeg1 = blockAccess.GetBlock(new AssetLocation("bamboo-green-segment1"));
-                greenSeg2 = blockAccess.GetBlock(new AssetLocation("bamboo-green-segment2"));
-                greenSeg3 = blockAccess.GetBlock(new AssetLocation("bamboo-green-segment3"));
+                greenSeg1 = blockAccess.GetBlock(new AssetLocation("bamboo-grown-green-segment1"));
+                greenSeg2 = blockAccess.GetBlock(new AssetLocation("bamboo-grown-green-segment2"));
+                greenSeg3 = blockAccess.GetBlock(new AssetLocation("bamboo-grown-green-segment3"));
 
-                brownSeg1 = blockAccess.GetBlock(new AssetLocation("bamboo-brown-segment1"));
-                brownSeg2 = blockAccess.GetBlock(new AssetLocation("bamboo-brown-segment2"));
-                brownSeg3 = blockAccess.GetBlock(new AssetLocation("bamboo-brown-segment3"));
+                brownSeg1 = blockAccess.GetBlock(new AssetLocation("bamboo-grown-brown-segment1"));
+                brownSeg2 = blockAccess.GetBlock(new AssetLocation("bamboo-grown-brown-segment2"));
+                brownSeg3 = blockAccess.GetBlock(new AssetLocation("bamboo-grown-brown-segment3"));
 
-                leaves = blockAccess.GetBlock(new AssetLocation("bambooleaves"));
+                leaves = blockAccess.GetBlock(new AssetLocation("bambooleaves-grown"));
             }
 
             string part = LastCodePart();
@@ -73,22 +73,28 @@ namespace Vintagestory.GameContent
 
         public void GrowTree(IBlockAccessor blockAccessor, BlockPos pos, float sizeModifier = 1, float vineGrowthChance = 0, float forestDensity = 0)
         {
-            BlockPos upos = pos.UpCopy();
-
             double quantity = 1 + (1 + rand.NextDouble() * 4) * (1 - forestDensity) * (1 - forestDensity);
 
             while (quantity-- > 0)
             {
-                GrowStalk(blockAccessor, upos, sizeModifier, vineGrowthChance);
+                GrowStalk(blockAccessor, pos.UpCopy(), sizeModifier, vineGrowthChance);
+                
+                pos.X += rand.Next(5) - 2;
+                pos.Z += rand.Next(5) - 2;
 
-                upos.X += rand.Next(5) - 2;
-                upos.Z += rand.Next(5) - 2;
-                upos.Y = blockAccessor.GetTerrainMapheightAt(upos);
-
-                Block block = blockAccessor.GetBlock(upos);
-                if (block.Fertility == 0) break;
-
-                upos.Y++;
+                // Test up to 2 blocks up and down.
+                bool foundSuitableBlock = false;
+                for (int y = 2; y >= -2; y--)
+                {
+                    Block block = blockAccessor.GetBlock(pos.X, pos.Y + y, pos.Z);
+                    if (block.Fertility > 0)
+                    {
+                        pos.Y = pos.Y + y;
+                        foundSuitableBlock = true;
+                        break;
+                    }
+                }
+                if (!foundSuitableBlock) break;
             }
         }
 

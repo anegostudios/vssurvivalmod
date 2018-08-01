@@ -41,25 +41,28 @@ namespace Vintagestory.GameContent
         }
 
 
-        public virtual void Ignite(IWorldAccessor world, BlockPos pos)
+        public virtual bool Ignite(IWorldAccessor world, BlockPos pos)
         {
-            if (LastCodePart() == "lit") return;
+            if (LastCodePart() == "lit") return false;
             Block litblock = world.GetBlock(CodeWithParts("lit"));
-            if (litblock == null) return;
+            if (litblock == null) return false;
 
             world.BlockAccessor.ExchangeBlock(litblock.BlockId, pos);
             // world.Logger.Notification("light");
+            return true;
         }
 
 
-        public void Extinguish(IWorldAccessor world, BlockPos pos)
+        public virtual bool Extinguish(IWorldAccessor world, BlockPos pos)
         {
-            if (LastCodePart() == "extinct") return;
+            if (LastCodePart() == "extinct") return false;
             Block litblock = world.GetBlock(CodeWithParts("extinct"));
-            if (litblock == null) return;
+            if (litblock == null) return false;
 
             world.BlockAccessor.ExchangeBlock(litblock.BlockId, pos);
             //world.Logger.Notification("exti");
+
+            return true;
         }
 
 

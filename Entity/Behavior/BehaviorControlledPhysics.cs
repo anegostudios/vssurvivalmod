@@ -23,7 +23,7 @@ namespace Vintagestory.GameContent
         Cuboidf smallerCollisionBox = new Cuboidf();
 
 
-        public EntityBehaviorControlledPhysics(EntityAgent entity) : base(entity)
+        public EntityBehaviorControlledPhysics(Entity entity) : base(entity)
         {
             Locomotors.Add(new EntityOnGround());
             Locomotors.Add(new EntityInWater());
@@ -157,7 +157,7 @@ namespace Vintagestory.GameContent
             {
                 int height = (int)Math.Ceiling(entity.CollisionBox.Y2);
 
-                entityBox.Set(entity.CollisionBox).Add(pos.X, pos.Y, pos.Z);
+                entityBox.Set(entity.CollisionBox).Translate(pos.X, pos.Y, pos.Z);
 
                 for (int dy = 0; dy < height; dy++)
                 {
@@ -381,7 +381,7 @@ namespace Vintagestory.GameContent
             if (!controls.TriesToMove || (!entity.OnGround && !entity.Swimming)) return false;
 
             Cuboidd entityCollisionBox = entity.CollisionBox.ToDouble();
-            entityCollisionBox.Add(pos.X, pos.Y, pos.Z);
+            entityCollisionBox.Translate(pos.X, pos.Y, pos.Z);
 
             Vec3d walkVec = controls.WalkVector;
             Vec3d testVec = new Vec3d();

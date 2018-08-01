@@ -33,6 +33,12 @@ namespace Vintagestory.GameContent
 
             if (haveKnappableStone)
             {
+                if (!byEntity.World.TestPlayerAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.Use))
+                {
+                    itemslot.MarkDirty();
+                    return false;
+                }
+
                 IWorldAccessor world = byEntity.World;
                 Block knappingBlock = world.GetBlock(new AssetLocation("knappingsurface"));
                 if (knappingBlock == null) return false;
@@ -52,14 +58,13 @@ namespace Vintagestory.GameContent
                 {
                     bec.BaseMaterial = itemslot.Itemstack.Clone();
                     bec.BaseMaterial.StackSize = 1;
-                }
-                
 
-                if (byEntity.World is IClientWorldAccessor)
-                {
-                    BlockEntityKnappingSurface.OpenDialog(world as IClientWorldAccessor, pos, itemslot.Itemstack);
-                }
+                    if (byEntity.World is IClientWorldAccessor)
+                    {
+                        bec.OpenDialog(world as IClientWorldAccessor, pos, itemslot.Itemstack);
+                    }
 
+                }
                 //itemslot.Take(1);
 
                 return true;

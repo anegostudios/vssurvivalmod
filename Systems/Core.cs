@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿
+using Newtonsoft.Json;
 using System;
 using System.IO;
 using Vintagestory.API.Client;
@@ -43,6 +44,11 @@ namespace Vintagestory.ServerMods
             api.RegisterEntityRendererClass("BlockFalling", typeof(EntityBlockFallingRenderer));
             api.RegisterEntityRendererClass("Shape", typeof(EntityShapeRenderer));
             api.RegisterEntityRendererClass("SkinnableShape", typeof(EntitySkinnableShapeRenderer));
+
+            //api.RegisterDialog("BlockEntityTextInput", typeof(GuiDialogBlockEntityTextInput));
+            //api.RegisterDialog("BlockEntityStove", typeof(GuiDialogBlockEntityStove));
+            //api.RegisterDialog("BlockEntityQuern", typeof(GuiDialogBlockEntityQuern));
+
         }
 
 
@@ -161,6 +167,11 @@ namespace Vintagestory.ServerMods
             api.RegisterBlockClass("BlockGenericTypedContainer", typeof(BlockGenericTypedContainer));
             api.RegisterBlockClass("BlockTeleporter", typeof(BlockTeleporter));
             api.RegisterBlockClass("BlockQuern", typeof(BlockQuern));
+            api.RegisterBlockClass("BlockFoodBowl", typeof(BlockFoodBowl));
+            api.RegisterBlockClass("BlockWithGrassOverlay", typeof(BlockWithGrassOverlay));
+            api.RegisterBlockClass("BlockFoliageTinted", typeof(BlockFoliageTinted));
+            api.RegisterBlockClass("BlockPlaceOnDrop", typeof(BlockPlaceOnDrop));
+
         }
         
         private void RegisterDefaultBlockBehaviors()
@@ -185,6 +196,7 @@ namespace Vintagestory.ServerMods
             api.RegisterBlockBehaviorClass("ExchangeOnInteract", typeof(BlockBehaviorExchangeOnInteract));
             api.RegisterBlockBehaviorClass("Ladder", typeof(BlockBehaviorLadder));
             api.RegisterBlockBehaviorClass("OmniRotatable", typeof(BlockBehaviorOmniRotatable));
+            api.RegisterBlockBehaviorClass("PushEventOnBlockBroken", typeof(BlockBehaviorPushEventOnBlockBroken));
         }
 
 
@@ -226,6 +238,7 @@ namespace Vintagestory.ServerMods
             api.RegisterBlockEntityClass("Chisel", typeof(BlockEntityChisel));
             api.RegisterBlockEntityClass("Teleporter", typeof(BlockEntityTeleporter));
             api.RegisterBlockEntityClass("Quern", typeof(BlockEntityQuern));
+            api.RegisterBlockEntityClass("Spawner", typeof(BlockEntitySpawner));
         }
 
 
@@ -283,6 +296,7 @@ namespace Vintagestory.ServerMods
             api.RegisterEntity("EntityThrownStone", typeof(EntityThrownStone));
             api.RegisterEntity("EntityBeeMob", typeof(EntityBeeMob));
             api.RegisterEntity("EntityThrownBeenade", typeof(EntityThrownBeenade));
+            api.RegisterEntity("EntityTrader", typeof(EntityTrader));
         }
 
 

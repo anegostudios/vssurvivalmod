@@ -146,7 +146,7 @@ namespace Vintagestory.GameContent
             {
                 handling = EnumHandling.Last;
                 world.BlockAccessor.BreakBlock(pos, null);
-                world.BlockAccessor.MarkBlockUpdated(pos);
+                world.BlockAccessor.TriggerNeighbourBlockUpdate(pos);
                 return;
             }
 

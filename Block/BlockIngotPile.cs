@@ -51,13 +51,7 @@ namespace Vintagestory.GameContent
 
             return false;
         }
-
-        public override void OnBlockBroken(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)
-        {
-            BlockEntityItemPile be = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityItemPile;
-            be?.OnBlockBroken();
-            base.OnBlockBroken(world, pos, byPlayer, dropQuantityMultiplier);
-        }
+        
 
 
         internal bool Construct(IItemSlot slot, IWorldAccessor world, BlockPos pos, IPlayer player)
@@ -83,7 +77,7 @@ namespace Vintagestory.GameContent
                 
                 pile.MarkDirty();
                 world.BlockAccessor.MarkBlockDirty(pos);
-                world.PlaySoundAt(new AssetLocation("sounds/block/ingot"), pos.X, pos.Y, pos.Z, null, false);
+                world.PlaySoundAt(new AssetLocation("sounds/block/ingot"), pos.X, pos.Y, pos.Z, player, false);
             }
 
 

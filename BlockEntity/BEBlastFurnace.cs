@@ -211,8 +211,9 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void OnBlockRemoved()
+        public override void OnBlockBroken()
         {
+            
             if (api.World is IServerWorldAccessor)
             {
                 Inventory.DropAll(pos.ToVec3d().Add(0.5, 0.5, 0.5));
@@ -258,7 +259,7 @@ namespace Vintagestory.GameContent
 
                     IClientWorldAccessor clientWorld = (IClientWorldAccessor)api.World;
 
-                    clientWorld.OpenDialog(dialogClassName, dialogTitle, Inventory);
+                    //clientWorld.OpenDialog(dialogClassName, dialogTitle, Inventory);
                 }
             }
 

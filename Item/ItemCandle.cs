@@ -26,6 +26,13 @@ namespace Vintagestory.GameContent
             AssetLocation loc = new AssetLocation(this.Attributes["blockfirstcodepart"].AsString());
             string firstcodepart = loc.Path;
 
+            IPlayer player = byEntity.World.PlayerByUid((byEntity as EntityPlayer)?.PlayerUID);
+            if (!byEntity.World.TestPlayerAccessBlock(player, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            {
+                slot.MarkDirty();
+                return false;
+            }
+
             if (targetedBlock.FirstCodePart() == firstcodepart)
             {
                 int stage = 1;

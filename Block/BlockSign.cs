@@ -8,6 +8,12 @@ namespace Vintagestory.GameContent
     {
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection bs)
         {
+            if (!world.TestPlayerAccessBlock(byPlayer, bs.Position, EnumBlockAccessFlags.BuildOrBreak))
+            {
+                byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
+                return false;
+            }
+
             if (bs.Face.IsHorizontal && world.BlockAccessor.GetBlock(bs.Position.AddCopy(bs.Face.GetOpposite())).CanAttachBlockAt(world.BlockAccessor, this, bs.Position, bs.Face))
             {
                 Block block = world.BlockAccessor.GetBlock(CodeWithParts("wall", bs.Face.GetOpposite().Code));

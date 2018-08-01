@@ -30,7 +30,7 @@ namespace Vintagestory.GameContent
 
         public double RenderOrder
         {
-            get { return 0; }
+            get { return 0.5; }
         }
 
         public int RenderRange
@@ -159,7 +159,7 @@ namespace Vintagestory.GameContent
             voxelMesh.Flags = new int[24];
             voxelMesh.TintsCount = 6;
             for (int i = 0; i < voxelMesh.Rgba.Length; i++) voxelMesh.Rgba[i] = 255;
-            voxelMesh.rgba2 = voxelMesh.Rgba;
+            voxelMesh.Rgba2 = voxelMesh.Rgba;
 
 
             MeshData voxelMeshOffset = voxelMesh.Clone();
@@ -204,7 +204,7 @@ namespace Vintagestory.GameContent
         private void RegenOutlineMesh(SmithingRecipe recipeToOutline)
         {
             MeshData recipeOutlineMesh = new MeshData(24, 36, false, false, true, false, false);
-            recipeOutlineMesh.setMode(EnumDrawMode.Lines);
+            recipeOutlineMesh.SetMode(EnumDrawMode.Lines);
 
             MeshData voxelMesh = LineMeshUtil.GetCube((180 << 24) | (100 << 16) | (200 << 8) | (200));
             for (int i = 0; i < voxelMesh.xyz.Length; i++)

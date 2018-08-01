@@ -44,7 +44,7 @@ namespace Vintagestory.GameContent
 
     
 
-    public class BlockEntityChisel : BlockEntity, IBlockShapeSupplier
+    public class BlockEntityChisel : BlockEntity, IBlockShapeSupplier, IBlockEntityRotatable
     {
         static CuboidWithMaterial tmpCuboid = new CuboidWithMaterial();
 
@@ -241,6 +241,27 @@ namespace Vintagestory.GameContent
         }
 
 
+        public void OnRotated(ITreeAttribute tree, int byDegrees, bool verticalFlip = false)
+        {
+            List<uint> rotatedCuboids = new List<uint>();
+
+            VoxelCuboids = new List<uint>((tree["cuboids"] as IntArrayAttribute).AsUint);
+
+            foreach (var val in this.VoxelCuboids)
+            {
+                FromUint(val, ref tmpCuboid);
+                Cuboidi rotated = tmpCuboid.RotatedCopy(0, byDegrees, 0, new Vec3d(8, 8, 8));
+                if (verticalFlip) rotated = rotated.RotatedCopy(90, 0, 0, new Vec3d(8, 8, 8));
+
+                tmpCuboid.Set(rotated.X1, rotated.Y1, rotated.Z1, rotated.X2, rotated.Y2, rotated.Z2);
+                rotatedCuboids.Add(ToCuboid(tmpCuboid));
+            }
+
+            tree["cuboids"] = new IntArrayAttribute(rotatedCuboids.ToArray());
+        }
+
+
+
         public void SendUseOverPacket(IPlayer byPlayer, Vec3i voxelPos, BlockFacing facing, bool isBreak)
         {
             byte[] data;
@@ -328,7 +349,6 @@ namespace Vintagestory.GameContent
         public bool SetVoxel(Vec3i voxelPos, bool state, IPlayer byPlayer)
         {
             bool[,,] Voxels = new bool[16, 16, 16];
-            bool[,,] VoxelVisited = new bool[16, 16, 16];
             byte[,,] VoxelMaterial = new byte[16, 16, 16];
 
             for (int i = 0; i < VoxelCuboids.Count; i++)
@@ -368,7 +388,38 @@ namespace Vintagestory.GameContent
             }
 
             if (!wasChanged) return false;
-            
+
+            RebuildCuboidList(Voxels, VoxelMaterial);
+
+            return true;
+        }
+
+
+
+        public void SetData(bool[,,] Voxels, byte[,,] VoxelMaterial)
+        {
+            RebuildCuboidList(Voxels, VoxelMaterial);
+
+            if (api.Side == EnumAppSide.Client)
+            {
+                RegenMesh();
+            }
+
+            RegenSelectionBoxes(null);
+            MarkDirty(true);
+
+            if (VoxelCuboids.Count == 0)
+            {
+                api.World.BlockAccessor.SetBlock(0, pos);
+                return;
+            }
+        }
+
+
+        private void RebuildCuboidList(bool[,,] Voxels, byte[,,] VoxelMaterial)
+        {
+            bool[,,] VoxelVisited = new bool[16, 16, 16];
+
             // And now let's rebuild the cuboids with some greedy search algo thing
             VoxelCuboids.Clear();
 
@@ -402,11 +453,6 @@ namespace Vintagestory.GameContent
                     }
                 }
             }
-
-            //VoxelCuboids.Clear();
-            //VoxelCuboids.Add(ToCuboid(0, 0, 0, 16, 16, 16, 0));
-
-            return true;
         }
 
 
@@ -661,16 +707,19 @@ namespace Vintagestory.GameContent
                 bool isOutside =
                     (
                         (facing == BlockFacing.NORTH && voxelZ == 0) ||
-                        (facing == BlockFacing.EAST && voxelX == 15) ||
-                        (facing == BlockFacing.SOUTH && voxelZ == 15) ||
+                        (facing == BlockFacing.EAST && voxelX + length == 16) ||
+                        (facing == BlockFacing.SOUTH && voxelZ + width == 16) ||
                         (facing == BlockFacing.WEST && voxelX == 0) ||
-                        (facing == BlockFacing.UP && voxelY == 15) ||
+                        (facing == BlockFacing.UP && voxelY + height == 16) ||
                         (facing == BlockFacing.DOWN && voxelY == 0)
                     )
                 ;
 
                 TextureAtlasPosition tpos = isOutside ? texSource[facing.Code] : texSource["inside-" + facing.Code];
-                if (tpos == null) tpos = texSource[facing.Code];
+                if (tpos == null)
+                {
+                    tpos = texSource[facing.Code];
+                }
 
                 for (int j = 0; j < 2*4; j++)
                 {
@@ -695,9 +744,9 @@ namespace Vintagestory.GameContent
             mesh.Rgba.Fill((byte)(255 * sideShadings[faceIndex]));
             for (int j = 3; j < mesh.Rgba.Length; j += 4) mesh.Rgba[j] = (byte)255; // Alpha value
 
-            mesh.rgba2 = new byte[16];
-            mesh.rgba2.Fill((byte)(255 * sideShadings[faceIndex]));
-            for (int j = 3; j < mesh.rgba2.Length; j += 4) mesh.rgba2[j] = (byte)255; // Alpha value
+            mesh.Rgba2 = new byte[16];
+            mesh.Rgba2.Fill((byte)(255 * sideShadings[faceIndex]));
+            for (int j = 3; j < mesh.Rgba2.Length; j += 4) mesh.Rgba2[j] = (byte)255; // Alpha value
 
             mesh.Flags = new int[4];
             mesh.Flags.Fill(0);
@@ -748,7 +797,6 @@ namespace Vintagestory.GameContent
             mesher.AddMeshData(Mesh);
             return true;
         }
-
 
     }
 }

@@ -16,6 +16,14 @@ namespace Vintagestory.GameContent
 
             if (byEntity.Controls.Sneak)
             {
+                IPlayer player = byEntity.World.PlayerByUid((byEntity as EntityPlayer)?.PlayerUID);
+
+                if (!byEntity.World.TestPlayerAccessBlock(player, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+                {
+                    slot.MarkDirty();
+                    return false;
+                }
+
                 BlockEntityClayForm bec = byEntity.World.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityClayForm;
 
                 if (bec != null)
@@ -72,6 +80,10 @@ namespace Vintagestory.GameContent
             if (byEntity is IEntityPlayer) byPlayer = byEntity.World.PlayerByUid(((IEntityPlayer)byEntity).PlayerUID);
             if (byPlayer == null) return;
 
+            if (!byEntity.World.CanPlayerAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.Use))
+            {
+                return;
+            }
 
             if (bea.AvailableVoxels <= 0)
             {
@@ -99,6 +111,11 @@ namespace Vintagestory.GameContent
             IPlayer byPlayer = null;
             if (byEntity is IEntityPlayer) byPlayer = byEntity.World.PlayerByUid(((IEntityPlayer)byEntity).PlayerUID);
             if (byPlayer == null) return false;
+
+            if (!byEntity.World.TestPlayerAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.Use))
+            {
+                return false;
+            }
 
             bea.OnBeginUse(byPlayer, blockSel);
             return true;
@@ -128,7 +145,11 @@ namespace Vintagestory.GameContent
 
             int curMode = GetToolMode(slot, byPlayer, blockSel);
 
-            
+            if (!byEntity.World.CanPlayerAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.Use))
+            {
+                return;
+            }
+
             // The server side call is made using a custom network packet
             if (byEntity.World is IClientWorldAccessor)
             {

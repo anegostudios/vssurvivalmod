@@ -1,4 +1,7 @@
+using System;
 using System.Collections.Generic;
+using System.Linq;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
@@ -11,7 +14,7 @@ namespace Vintagestory.GameContent
     /// It only grows on soil that has a sun light level of 7 or higher when there is an adjacent grass block near it. The
     /// adjacent grass block can be at a y level between 1 below it to 1 above it. 
     /// </summary>
-    public class BlockSoil : Block
+    public class BlockSoil : BlockWithGrassOverlay
     {
         /// <summary>
         /// Data structure for easy access to BlockLayers. 
@@ -149,8 +152,7 @@ namespace Vintagestory.GameContent
         private bool isSmotheringBlock(IWorldAccessor world, BlockPos pos)
         {
             Block block = world.BlockAccessor.GetBlock(pos);
-            return block.SideSolid[BlockFacing.DOWN.Index] &&
-                    block.SideOpaque[BlockFacing.DOWN.Index];
+            return block.SideSolid[BlockFacing.DOWN.Index] && block.SideOpaque[BlockFacing.DOWN.Index];
         }
 
         private Block tryGetBlockForGrowing(IWorldAccessor world, BlockPos pos)
@@ -250,20 +252,28 @@ namespace Vintagestory.GameContent
 
         /// <summary>
         /// Compares the ClimateCondition at the given BlockPos with the requirements of the 
-        /// BlockLayer associated with the next growth stage block.
+        /// BlockLayer associated with the next growth stage block. The low fertility variant
+        /// is checked first. If it will grow then it returns true immediately, otherwise it
+        /// checks the specific block layer for this variant.
         /// </summary>
         /// <param name="world"></param>
         /// <param name="pos"></param>
         /// <returns>True if the climate is appropriate for growth, false otherwise</returns>
         private bool isAppropriateClimateToGrow(IWorldAccessor world, BlockPos pos)
         {
-            ICoreServerAPI api = (ICoreServerAPI)world.Api;
-            int mapheight = api.WorldManager.MapSizeY;
             ClimateCondition climate = world.BlockAccessor.GetClimateAt(pos);
 
-            AssetLocation newGrowthStage = getNextGrowthStageCode();
+            return isAppropriateClimateToGrow(world, pos, getLowFertilityVariant(), climate) ||
+                   isAppropriateClimateToGrow(world, pos, getNextGrowthStageCode(), climate);
+        }
+
+        private bool isAppropriateClimateToGrow(IWorldAccessor world, BlockPos pos, AssetLocation blockCode, ClimateCondition climate)
+        {
+            ICoreServerAPI api = (ICoreServerAPI)world.Api;
+            int mapheight = api.WorldManager.MapSizeY;
+
             BlockLayers layers = getBlockLayers(world);
-            BlockLayer bl = layers.GetBlockLayerForNextGrowthStage(world, newGrowthStage);
+            BlockLayer bl = layers.GetBlockLayerForNextGrowthStage(world, blockCode);
             //Check climate conditions to see whether the soil can grow to the next stage
             return (
                     climate.Temperature >= bl.MinTemp && climate.Temperature <= bl.MaxTemp &&
@@ -271,6 +281,16 @@ namespace Vintagestory.GameContent
                     climate.Fertility >= bl.MinFertility && climate.Fertility <= bl.MaxFertility &&
                     (float)pos.Y / mapheight <= bl.MaxY
             );
+
+        }
+
+        private AssetLocation getLowFertilityVariant()
+        {
+            AssetLocation newCode = Code.Clone();
+            string[] parts = newCode.Path.Split('-');
+            parts[1] = "low";
+            newCode.Path = String.Join("-", parts);
+            return newCode;
         }
 
         private bool isGrassNearby(IWorldAccessor world, BlockPos pos)
@@ -344,5 +364,8 @@ namespace Vintagestory.GameContent
                 return blockLayers;
             }
         }
+
+
+
     }
 }

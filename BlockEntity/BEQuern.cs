@@ -36,7 +36,7 @@ namespace Vintagestory.GameContent
         public float prevInputGrindTime;
 
 
-        IGuiDialog clientDialog;
+        GuiDialogBlockEntityQuern clientDialog;
         
         Block ownBlock;
         QuernTopRenderer renderer;
@@ -126,7 +126,7 @@ namespace Vintagestory.GameContent
 
         public virtual float SoundLevel
         {
-            get { return 1f; }
+            get { return 0.5f; }
         }        
 
         // seconds it requires to melt the ore once beyond melting point
@@ -178,8 +178,7 @@ namespace Vintagestory.GameContent
             ownBlock = api.World.BlockAccessor.GetBlock(pos);
 
             inventory.LateInitialize("quern-1", api);
-            Inventory.AfterBlocksLoaded(api.World);
-
+            
 
             RegisterGameTickListener(Every100ms, 100);
             RegisterGameTickListener(Every500ms, 500);
@@ -431,11 +430,6 @@ namespace Vintagestory.GameContent
         {
             base.OnBlockRemoved();
 
-            if (api.World is IServerWorldAccessor)
-            {
-                Inventory.DropAll(pos.ToVec3d().Add(0.5, 0.5, 0.5));
-            }
-
             if (ambientSound != null)
             {
                 ambientSound.Stop();
@@ -447,6 +441,11 @@ namespace Vintagestory.GameContent
                 renderer.Unregister();
                 renderer = null;
             }
+        }
+
+        public override void OnBlockBroken()
+        {
+            base.OnBlockBroken();
         }
 
         ~BlockEntityQuern()
@@ -496,7 +495,8 @@ namespace Vintagestory.GameContent
                     SyncedTreeAttribute dtree = new SyncedTreeAttribute();
                     SetDialogValues(dtree);
 
-                    clientDialog = clientWorld.OpenDialog(dialogClassName, dialogTitle, Inventory, pos, dtree);
+                    clientDialog = new GuiDialogBlockEntityQuern(dialogTitle, Inventory, pos, dtree, api as ICoreClientAPI);
+                    clientDialog.TryOpen();
                 }
             }
 

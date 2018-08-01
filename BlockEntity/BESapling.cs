@@ -22,7 +22,7 @@ namespace Vintagestory.ServerMods
             { "pine", "scotspine" },
             { "acacia", "truemulga" },
             { "kapok", "kapok" },
-            { "bamboo", "bamboo-brown" }
+            { "bamboo", "bamboo-grown-brown" }
         };
 
 

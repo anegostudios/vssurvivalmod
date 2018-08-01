@@ -17,6 +17,12 @@ namespace Vintagestory.GameContent
 
             Block blockToPlace = this;
 
+            if (!world.TestPlayerAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            {
+                byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
+                return false;
+            }
+
             if (block.IsLiquid())
             {
                 if (block.LiquidLevel == 7) blockToPlace = world.GetBlock(CodeWithParts("water", LastCodePart()));

@@ -50,6 +50,12 @@ namespace Vintagestory.GameContent
         {
             if (!byPlayer.Entity.Controls.Sneak) return false;
 
+            if (!world.TestPlayerAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            {
+                byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
+                return false;
+            }
+
             Block block = world.BlockAccessor.GetBlock(blockSel.Position);
             Block belowBlock = world.BlockAccessor.GetBlock(blockSel.Position.DownCopy());
 

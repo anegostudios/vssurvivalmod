@@ -6,6 +6,8 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
+    
+
     public class ItemSpear : Item
     {
         public override string GetHeldTpUseAnimation(IItemSlot activeHotbarSlot, IEntity byEntity)
@@ -74,7 +76,7 @@ namespace Vintagestory.GameContent
             if (byEntity is IEntityPlayer) byPlayer = byEntity.World.PlayerByUid(((IEntityPlayer)byEntity).PlayerUID);
             byEntity.World.PlaySoundAt(new AssetLocation("sounds/player/throw"), byEntity, byPlayer, false, 8);
 
-            EntityType type = byEntity.World.GetEntityType(new AssetLocation("spear"));
+            EntityType type = byEntity.World.GetEntityType(new AssetLocation(Attributes["spearEntityCode"].AsString()));
             Entity entity = byEntity.World.ClassRegistry.CreateEntity(type.Class);
             entity.SetType(type);
             ((EntityProjectile)entity).FiredBy = byEntity;

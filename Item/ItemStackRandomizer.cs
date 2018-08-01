@@ -146,6 +146,8 @@ namespace Vintagestory.GameContent
 
             for (int i = 0; i < Stacks.Length; i++)
             {
+                if (Stacks[i].ResolvedStack == null) continue;
+
                 if (Stacks[i].Quantity.var == 0)
                 {
                     dsc.AppendLine(Lang.Get("{0}%: {1}x {2}",

@@ -8,7 +8,7 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.ServerMods
 {
-    class WeightedOctavedNoise : NormalizedPerlinNoise
+    class WeightedOctavedNoise : NormalizedSimplexNoise
     {
         private double[] offsets;
 

@@ -68,7 +68,7 @@ namespace Vintagestory.ServerMods.NoObf
         public ushort BlockId;
        
 
-        ClampedPerlinNoise noise;
+        ClampedSimplexNoise noise;
 
         public Dictionary<ushort, ushort> BlockIdMapping;
         
@@ -76,7 +76,7 @@ namespace Vintagestory.ServerMods.NoObf
         {
             if (NoiseAmplitudes != null && NoiseFrequencies != null)
             {
-                noise = new ClampedPerlinNoise(NoiseAmplitudes, NoiseFrequencies, rnd.Next());
+                noise = new ClampedSimplexNoise(NoiseAmplitudes, NoiseFrequencies, rnd.Next());
             }
 
             ResolveBlockIds(api, rockstrata);

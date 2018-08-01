@@ -44,6 +44,9 @@ namespace Vintagestory.GameContent
             {
                 if (q == 0) break;
                 BlockFacing facing = BlockFacing.FromVector(player.Entity.ServerPos.GetViewVector()).GetOpposite();
+
+                if (!player.Entity.World.CanPlayerAccessBlock(player, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak)) continue;
+                
                 player.Entity.World.BlockAccessor.DamageBlock(val.Key, facing, damage);
                 q--;
             }

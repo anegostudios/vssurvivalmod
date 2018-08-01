@@ -19,6 +19,12 @@ namespace Vintagestory.GameContent
                 return false;
             }
 
+            if (!world.TestPlayerAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            {
+                byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
+                return false;
+            }
+
             // Prefer selected block face
             if (blockSel.Face.IsHorizontal || blockSel.Face == BlockFacing.UP)
             {

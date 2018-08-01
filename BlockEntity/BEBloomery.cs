@@ -86,7 +86,6 @@ namespace Vintagestory.GameContent
             base.Initialize(api);
 
             bloomeryInv.LateInitialize("bloomery-1", api);
-            bloomeryInv.AfterBlocksLoaded(api.World);
 
             RegisterGameTickListener(OnGameTick, 100);
 
@@ -249,20 +248,24 @@ namespace Vintagestory.GameContent
                 renderer.Unregister();
             }
 
+            base.OnBlockRemoved();
+        }
+
+        public override void OnBlockBroken()
+        {
             if (burning)
             {
                 Vec3d dpos = pos.ToVec3d().Add(0.5, 0.5, 0.5);
                 bloomeryInv.DropSlots(dpos, new int[] { 0, 2 });
 
 
-                breakSparks.minPos = pos.ToVec3d().AddCopy(dpos.X - 4/16f, dpos.Y - 4 / 16f, dpos.Z - 4 / 16f);
+                breakSparks.minPos = pos.ToVec3d().AddCopy(dpos.X - 4 / 16f, dpos.Y - 4 / 16f, dpos.Z - 4 / 16f);
                 api.World.SpawnParticles(breakSparks, null);
-            } else
+            }
+            else
             {
                 bloomeryInv.DropAll(pos.ToVec3d().Add(0.5, 0.5, 0.5));
             }
-
-            base.OnBlockRemoved();
         }
 
         public override void OnBlockUnloaded()

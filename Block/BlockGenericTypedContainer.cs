@@ -15,6 +15,7 @@ namespace Vintagestory.GameContent
         public int AtlasSize { get { return tmpTextureSource.AtlasSize; } }
 
         string curType;
+        string defaultType;
         ITexPositionSource tmpTextureSource;
         ICoreAPI api;
              
@@ -31,6 +32,8 @@ namespace Vintagestory.GameContent
         {
             base.OnLoaded(api);
             this.api = api;
+
+            defaultType = Attributes["defaultType"].AsString("normal-generic");
         }
 
 
@@ -42,7 +45,7 @@ namespace Vintagestory.GameContent
                 return be.type;
             }
 
-            return "normal-generic";
+            return defaultType;
         }
 
 
@@ -52,7 +55,7 @@ namespace Vintagestory.GameContent
             Dictionary<string, MeshRef> meshrefs = new Dictionary<string, MeshRef>();
 
             object obj;
-            if (capi.ObjectCache.TryGetValue("genericTypedContainerMeshRefs", out obj))
+            if (capi.ObjectCache.TryGetValue("genericTypedContainerMeshRefs" + FirstCodePart(), out obj))
             {
                 meshrefs = obj as Dictionary<string, MeshRef>;
             }
@@ -65,10 +68,10 @@ namespace Vintagestory.GameContent
                     meshrefs[val.Key] = capi.Render.UploadMesh(val.Value);
                 }
 
-                capi.ObjectCache["genericTypedContainerMeshRefs"] = meshrefs;
+                capi.ObjectCache["genericTypedContainerMeshRefs" + FirstCodePart()] = meshrefs;
             }
 
-            string type = itemstack.Attributes.GetString("type", "normal-generic");
+            string type = itemstack.Attributes.GetString("type", defaultType);
 
             meshrefs.TryGetValue(type, out renderinfo.ModelRef);
         }
@@ -82,7 +85,7 @@ namespace Vintagestory.GameContent
             if (capi == null) return;
 
             object obj;
-            if (capi.ObjectCache.TryGetValue("genericTypedContainerMeshRefs", out obj))
+            if (capi.ObjectCache.TryGetValue("genericTypedContainerMeshRefs" + FirstCodePart(), out obj))
             {
                 Dictionary<string, MeshRef> meshrefs = obj as Dictionary<string, MeshRef>;
 
@@ -91,7 +94,7 @@ namespace Vintagestory.GameContent
                     val.Value.Dispose();
                 }
 
-                capi.ObjectCache.Remove("genericTypedContainerMeshRefs");
+                capi.ObjectCache.Remove("genericTypedContainerMeshRefs" + FirstCodePart());
             }
         }
 
@@ -116,10 +119,14 @@ namespace Vintagestory.GameContent
         {
             tmpTextureSource = capi.Tesselator.GetTexSource(this);
 
-            Shape shape = capi.Assets.TryGet("shapes/block/wood/chest/" + shapename + ".json")?.ToObject<Shape>();
+            Shape shape = capi.Assets.TryGet("shapes/" + shapename + ".json")?.ToObject<Shape>();
             if (shape == null)
             {
-                shape = capi.Assets.TryGet("shapes/block/wood/chest/" + shapename + "1.json").ToObject<Shape>();
+                shape = capi.Assets.TryGet("shapes/" + shapename + "1.json")?.ToObject<Shape>();
+            }
+            if (shape == null)
+            {
+                return new MeshData();
             }
             
             curType = type;
@@ -137,10 +144,10 @@ namespace Vintagestory.GameContent
                 string shapename = this.Attributes["shape"][be.type].AsString();
                 blockModelData = GenMesh(capi, be.type, shapename);
 
-                Shape shape = capi.Assets.TryGet("shapes/block/wood/chest/" + shapename + ".json")?.ToObject<Shape>();
+                Shape shape = capi.Assets.TryGet("shapes/" + shapename + ".json")?.ToObject<Shape>();
                 if (shape == null)
                 {
-                    shape = capi.Assets.TryGet("shapes/block/wood/chest/" + shapename + "1.json").ToObject<Shape>();
+                    shape = capi.Assets.TryGet("shapes/" + shapename + "1.json").ToObject<Shape>();
                 }
 
                 MeshData md;
@@ -178,7 +185,7 @@ namespace Vintagestory.GameContent
             }
             else
             {
-                stack.Attributes.SetString("type", "normal-generic");
+                stack.Attributes.SetString("type", defaultType);
             }
 
             return stack;
@@ -204,6 +211,15 @@ namespace Vintagestory.GameContent
                 }
             }
 
+            if (EntityClass != null)
+            {
+                BlockEntity entity = world.BlockAccessor.GetBlockEntity(pos);
+                if (entity != null)
+                {
+                    entity.OnBlockBroken();
+                }
+            }
+
             world.BlockAccessor.SetBlock(0, pos);
         }
 
@@ -220,7 +236,7 @@ namespace Vintagestory.GameContent
 
             string type = stack.Attributes.GetString("type");
 
-            dsc.AppendLine(Lang.Get("Type: {0}", Lang.Get("generictype-" + type)));
+            dsc.AppendLine("\n" + Lang.Get("Type: {0}", Lang.Get("generictype-" + type)));
         }
 
 

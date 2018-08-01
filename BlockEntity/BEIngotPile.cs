@@ -2,6 +2,7 @@
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.Server;
 
 namespace Vintagestory.GameContent
@@ -89,6 +90,17 @@ namespace Vintagestory.GameContent
 
             inventory.ResolveBlocksOrItems();
             EnsureMeshExists();
+        }
+
+
+        public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
+        {
+            base.FromTreeAtributes(tree, worldForResolving);
+
+            if (api?.Side == EnumAppSide.Client)
+            {
+                EnsureMeshExists();
+            }
         }
 
         public string MetalType

@@ -21,7 +21,7 @@ namespace Vintagestory.GameContent
         public abstract string InventoryClassName { get; }
 
         IInventory IBlockEntityContainer.Inventory { get { return Inventory; } }
-        protected IGuiDialog invDialog;
+        protected GuiDialogBlockEntityInventory invDialog;
 
         public abstract bool OnPlayerRightClick(IPlayer byPlayer, BlockSelection blockSel);
 
@@ -33,7 +33,7 @@ namespace Vintagestory.GameContent
             Inventory.ResolveBlocksOrItems();
         }
 
-        public override void OnBlockRemoved()
+        public override void OnBlockBroken()
         {
             if (api.World is IServerWorldAccessor)
             {
@@ -88,7 +88,8 @@ namespace Vintagestory.GameContent
                     Inventory.FromTreeAttributes(tree);
                     Inventory.ResolveBlocksOrItems();
                     
-                    invDialog = clientWorld.OpenDialog(dialogClassName, dialogTitle, Inventory, pos, cols);
+                    invDialog = new GuiDialogBlockEntityInventory(dialogTitle, Inventory, pos, cols, api as ICoreClientAPI);
+                    invDialog.TryOpen();
                 }
             }
 

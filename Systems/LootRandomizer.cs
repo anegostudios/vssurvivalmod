@@ -36,7 +36,7 @@ namespace Vintagestory.GameContent
     {
         ICoreClientAPI capi;
         ICoreServerAPI sapi;
-        Dictionary<ItemSlot, IGuiDialog> dialogs = new Dictionary<ItemSlot, IGuiDialog>();
+        Dictionary<ItemSlot, GuiDialogGeneric> dialogs = new Dictionary<ItemSlot, GuiDialogGeneric>();
 
         IServerNetworkChannel serverChannel;
         IClientNetworkChannel clientChannel;
@@ -126,8 +126,9 @@ namespace Vintagestory.GameContent
             }
             
 
-            dialogs[slot] = capi.World.OpenDialog("ItemLootRandomizer", stacks, chances);
-            dialogs[slot].OnClosed = () => DidCloseLootRandomizer(slot, dialogs[slot]);
+            dialogs[slot] = new GuiDialogItemLootRandomizer(stacks, chances, capi);
+            dialogs[slot].TryOpen();
+            dialogs[slot].OnClosed += () => DidCloseLootRandomizer(slot, dialogs[slot]);
 
         }
 
@@ -141,11 +142,12 @@ namespace Vintagestory.GameContent
             ItemSlot slot = capi.World.Player.InventoryManager.GetInventory(inventoryd).GetSlot(slotId);
             if (dialogs.ContainsKey(slot)) return;
 
-            dialogs[slot] = capi.World.OpenDialog("ItemStackRandomizer", (data as TreeAttribute).GetFloat("totalChance"));
-            dialogs[slot].OnClosed = () => DidCloseStackRandomizer(slot, dialogs[slot]);
+            dialogs[slot] = new GuiDialogItemStackRandomizer((data as TreeAttribute).GetFloat("totalChance"), capi);
+            dialogs[slot].TryOpen();
+            dialogs[slot].OnClosed += () => DidCloseStackRandomizer(slot, dialogs[slot]);
         }
 
-        private void DidCloseStackRandomizer(ItemSlot slot, IGuiDialog dialog)
+        private void DidCloseStackRandomizer(ItemSlot slot, GuiDialogGeneric dialog)
         {
             dialogs.Remove(slot);
             if (slot.Itemstack == null) return;
@@ -168,7 +170,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        private void DidCloseLootRandomizer(ItemSlot slot, IGuiDialog dialog)
+        private void DidCloseLootRandomizer(ItemSlot slot, GuiDialogGeneric dialog)
         {
             dialogs.Remove(slot);
             if (slot.Itemstack == null) return;

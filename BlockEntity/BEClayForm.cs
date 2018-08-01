@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -660,7 +661,7 @@ namespace Vintagestory.GameContent
 
 
 
-        public static void OpenDialog(IClientWorldAccessor world, BlockPos pos, ItemStack ingredient)
+        public void OpenDialog(IClientWorldAccessor world, BlockPos pos, ItemStack ingredient)
         {
             List<ItemStack> stacks = new List<ItemStack>();
 
@@ -677,7 +678,10 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            world.OpenDialog("BlockEntityRecipeSelector", "Select recipe", stacks.ToArray(), pos);
+            stacks = stacks.OrderBy(x => x.GetName()).ToList();
+
+            GuiDialog dlg = new GuiDialogBlockEntityRecipeSelector("Select recipe", stacks.ToArray(), pos, api as ICoreClientAPI);
+            dlg.TryOpen();
         }
 
 
@@ -696,7 +700,7 @@ namespace Vintagestory.GameContent
             if (capi != null)
             {
                 HotKey k = null;
-                capi.HotKeys.TryGetValue("toolmodeselect", out k);
+                capi.Input.HotKeys.TryGetValue("toolmodeselect", out k);
                 if (k != null)
                 {
                     sb.AppendLine(Lang.Get("Hit '{0}' to select tool mode for quicker crafting", k.CurrentMapping.ToString()));

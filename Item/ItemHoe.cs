@@ -17,7 +17,7 @@ namespace Vintagestory.GameContent
             if (!block.Code.Path.StartsWith("soil")) return false;
 
             string fertility = block.LastCodePart(1);
-            Block farmland = byEntity.World.GetBlock(CodeWithPath("farmland-dry-" + fertility));
+            Block farmland = byEntity.World.GetBlock(new AssetLocation("farmland-dry-" + fertility));
 
             IPlayer byPlayer = null;
             if (byEntity is IEntityPlayer) byPlayer = byEntity.World.PlayerByUid(((IEntityPlayer)byEntity).PlayerUID);

@@ -22,7 +22,7 @@ namespace Vintagestory.GameContent
             if (!CanPlantStay(world.BlockAccessor, pos))
             {
                 world.BlockAccessor.BreakBlock(pos, null);
-                world.BlockAccessor.MarkBlockUpdated(pos);
+                world.BlockAccessor.TriggerNeighbourBlockUpdate(pos);
             }
         }
 

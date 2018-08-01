@@ -60,7 +60,7 @@ namespace Vintagestory.GameContent
 
         }
 
-        RectangleFloat[] anvilFillQuadsByLevel = null;
+        Cuboidf[] fillQuadsByLevel = null;
 
         public override void Initialize(ICoreAPI api)
         {
@@ -78,49 +78,31 @@ namespace Vintagestory.GameContent
             fillHeight = block.Attributes["fillHeight"].AsFloat(1);
             requiredUnits = block.Attributes["requiredUnits"].AsInt(100);
 
+            if (block.Attributes["fillQuadsByLevel"].Exists)
+            {
+                fillQuadsByLevel = block.Attributes["fillQuadsByLevel"].AsObject<Cuboidf[]>();
+            }
+            
+
+            if (fillQuadsByLevel == null)
+            {
+                fillQuadsByLevel = new Cuboidf[] { new Cuboidf(2, 0, 2, 14, 0, 14), };
+            }
+
             if (api is ICoreClientAPI)
             {
                 ICoreClientAPI capi = (ICoreClientAPI)api;
 
-                bool isAnvil = block.Code.Path == "toolmold-burned-anvil";
-                if (isAnvil)
-                {
-                    LoadHardcodedFillLevels();
-                }
 
-                capi.Event.RegisterRenderer(renderer = new ToolMoldRenderer(pos, capi, isAnvil ? anvilFillQuadsByLevel : null), EnumRenderStage.Opaque);
+
+                capi.Event.RegisterRenderer(renderer = new ToolMoldRenderer(pos, capi, fillQuadsByLevel), EnumRenderStage.Opaque);
                 
                 UpdateRenderer();
             }
 
             RegisterGameTickListener(OnGameTick, 50);
         }
-
-
         
-        private void LoadHardcodedFillLevels()
-        {
-            anvilFillQuadsByLevel = new RectangleFloat[]
-            {
-                new RectangleFloat(4f, 4f, 12f, 10f),
-                new RectangleFloat(4f, 4f, 12f, 10f),
-                new RectangleFloat(4f, 4f, 12f, 10f),
-
-                new RectangleFloat(9f, 10f, 8f, 6f),
-                new RectangleFloat(9f, 10f, 8f, 6f),
-                new RectangleFloat(9f, 10f, 8f, 6f),
-                new RectangleFloat(9f, 10f, 8f, 6f),
-
-                new RectangleFloat(4f, 10f, 10f, 6f),
-                new RectangleFloat(0f, 10f, 16f, 6f),
-                new RectangleFloat(0f, 10f, 16f, 6f)
-            };
-
-            if (renderer != null) renderer.fillQuadsByLevel = anvilFillQuadsByLevel;
-        }
-
-
-
 
         private void OnGameTick(float dt)
         {

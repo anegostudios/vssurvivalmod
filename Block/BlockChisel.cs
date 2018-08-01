@@ -73,6 +73,10 @@ namespace Vintagestory.GameContent
 
             TreeAttribute tree = new TreeAttribute();
             bec.ToTreeAttributes(tree);
+            tree.RemoveAttribute("posx");
+            tree.RemoveAttribute("posy");
+            tree.RemoveAttribute("posz");
+            
             return new ItemStack(this.Id, EnumItemClass.Block, 1, tree, world);
         }
 
@@ -185,5 +189,28 @@ namespace Vintagestory.GameContent
 
             return base.TextureSubIdForRandomBlockPixel(world, pos, facing, ref tintIndex);
         }
+
+
+        public override bool Equals(ItemStack thisStack, ItemStack otherStack, params string[] ignoreAttributeSubTrees)
+        {
+            List<string> ign = new List<string>(ignoreAttributeSubTrees);
+            ign.Add("meshid");
+            return base.Equals(thisStack, otherStack, ign.ToArray());
+        }
+
+        public override int GetBlockColor(ICoreClientAPI capi, BlockPos pos)
+        {
+            BlockEntityChisel be = capi.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityChisel;
+            if (be?.Materials != null && be.Materials.Length > 0)
+            {
+                Block block = capi.World.GetBlock(be.Materials[0]);
+                return block.GetBlockColor(capi, pos);
+            }
+
+            return base.GetBlockColor(capi, pos);
+        }
+
+
+        
     }
 }

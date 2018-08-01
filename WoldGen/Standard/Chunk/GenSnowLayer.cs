@@ -99,23 +99,26 @@ namespace Vintagestory.ServerMods
                     float temp = TerraGenConfig.GetScaledAdjustedTemperatureFloat((climate >> 16) & 0xff, posY - TerraGenConfig.seaLevel);
 
                     int prevY = posY;
-                    PlaceSnowLayer(x, prevY, z, chunks, temp);
+                    if (PlaceSnowLayer(x, prevY, z, chunks, temp))
+                    {
+                        heightMap[z * chunksize + x]++;
+                    }
                 }
             }
         }
 
 
-        void PlaceSnowLayer(int x, int posY, int z, IServerChunk[] chunks, float temp)
+        bool PlaceSnowLayer(int x, int posY, int z, IServerChunk[] chunks, float temp)
         {
             float transDistance = temp - minTemp;
 
             if (temp > maxTemp)
             {
-                return;
+                return false;
             }
             if (transDistance > rnd.NextDouble() * transSize)
             {
-                return;
+                return false;
             }
 
             while (posY < worldheight - 1 && chunks[(posY+1) / chunksize].Blocks[(chunksize * ((posY + 1) % chunksize) + z) * chunksize + x] != 0)
@@ -123,14 +126,17 @@ namespace Vintagestory.ServerMods
                 posY++;
             }
 
-            if (posY >= worldheight - 1) return;
+            if (posY >= worldheight - 1) return false;
 
             int blockId = chunks[posY / chunksize].Blocks[(chunksize * (posY % chunksize) + z) * chunksize + x];
             Block block = api.WorldManager.GetBlockType(blockId);
             if (block.SnowCoverage == null && block.SideSolid[BlockFacing.UP.Index] || (block.SnowCoverage == true))
             {
                 chunks[(posY + 1) / chunksize].Blocks[(chunksize * ((posY + 1) % chunksize) + z) * chunksize + x] = blockLayerConfig.SnowLayer.BlockId;
+                return true;
             }
+
+            return false;
         }
 
 

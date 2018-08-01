@@ -22,7 +22,7 @@ namespace Vintagestory.GameContent
 
         public double RenderOrder
         {
-            get { return 0; }
+            get { return 0.5; }
         }
 
         public int RenderRange
@@ -41,18 +41,12 @@ namespace Vintagestory.GameContent
 
         public AssetLocation TextureName = null;
 
-        internal RectangleFloat[] fillQuadsByLevel;
+        internal Cuboidf[] fillQuadsByLevel;
 
-        public static RectangleFloat[] stdFillQuadsByLevel = new RectangleFloat[]
-        {
-            new RectangleFloat(2, 2, 14, 14),
-        };
-
-        public ToolMoldRenderer(BlockPos pos, ICoreClientAPI api, RectangleFloat[] fillQuadsByLevel = null)
+        public ToolMoldRenderer(BlockPos pos, ICoreClientAPI api, Cuboidf[] fillQuadsByLevel = null)
         {
             this.pos = pos;
             this.api = api;
-            if (fillQuadsByLevel == null) fillQuadsByLevel = stdFillQuadsByLevel;
 
             this.fillQuadsByLevel = fillQuadsByLevel;
 
@@ -64,14 +58,14 @@ namespace Vintagestory.GameContent
 
             for (int i = 0; i < quadModelRefs.Length; i++)
             {
-                RectangleFloat size = fillQuadsByLevel[i];
+                Cuboidf size = fillQuadsByLevel[i];
 
                 modeldata.Uv = new float[]
                 {
-                    size.X/16f + size.Width/16f, size.Y/16f + size.Height/16f,
-                    size.X/16f, size.Y/16f + size.Height/16f,
-                    size.X/16f, size.Y/16f,
-                    size.X/16f + size.Width/16f, size.Y/16f
+                    size.X2/16f, size.Z2/16f,
+                    size.X1/16f, size.Z2/16f,
+                    size.X1/16f, size.Z1/16f,
+                    size.X2/16f, size.Z1/16f
                 };
 
                 quadModelRefs[i] = api.Render.UploadMesh(modeldata);
@@ -116,11 +110,12 @@ namespace Vintagestory.GameContent
             rpi.GlLoadMatrix(api.Render.CameraMatrixOrigin);
             rpi.GlTranslate(pos.X - camPos.X, pos.Y - camPos.Y, pos.Z - camPos.Z);
 
-            RectangleFloat rect = fillQuadsByLevel[voxelY];
+            Cuboidf rect = fillQuadsByLevel[voxelY];
 
-            rpi.GlTranslate(rect.X / 32f + rect.Width / 32f, 1.01f / 16f + Math.Max(0, Level / 16f - 0.0625f/3), rect.Y / 32f + rect.Height / 32f);
+            rpi.GlTranslate(1 - rect.X1 / 16f, 1.01f / 16f + Math.Max(0, Level / 16f - 0.0625f / 3), 1 - rect.Z1 / 16f);
             rpi.GlRotate(90, 1, 0, 0);
-            rpi.GlScale(0.5f * rect.Width / 16f, 0.5f * rect.Height / 16f, 0.5f);
+            rpi.GlScale(0.5f * rect.Width / 16f, 0.5f * rect.Length / 16f, 0.5f);
+            rpi.GlTranslate(-1, -1, 0);
 
             prog.ProjectionMatrix = rpi.CurrentProjectionMatrix;
             prog.ModelViewMatrix = rpi.CurrentModelviewMatrix;

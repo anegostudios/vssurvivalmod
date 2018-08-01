@@ -272,9 +272,11 @@ namespace Vintagestory.GameContent
                 quantityMolds--;
                 if (ingotRenderer != null) ingotRenderer.QuantityMolds = quantityMolds;
 
-                if (!byPlayer.InventoryManager.TryGiveItemstack(new ItemStack(api.World.GetBlock(new AssetLocation("ingotmold-burned")))))
+                
+
+                if (!byPlayer.InventoryManager.TryGiveItemstack(new ItemStack(this.block)))
                 {
-                    api.World.SpawnItemEntity(new ItemStack(api.World.GetBlock(new AssetLocation("ingotmold-burned"))), pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                    api.World.SpawnItemEntity(new ItemStack(block), pos.ToVec3d().Add(0.5, 0.5, 0.5));
                 }
                 if (quantityMolds == 0)
                 {
@@ -297,9 +299,9 @@ namespace Vintagestory.GameContent
                 quantityMolds--;
                 if (ingotRenderer != null) ingotRenderer.QuantityMolds = quantityMolds;
 
-                if (!byPlayer.InventoryManager.TryGiveItemstack(new ItemStack(api.World.GetBlock(new AssetLocation("ingotmold-burned")))))
+                if (!byPlayer.InventoryManager.TryGiveItemstack(new ItemStack(block)))
                 {
-                    api.World.SpawnItemEntity(new ItemStack(api.World.GetBlock(new AssetLocation("ingotmold-burned"))), pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                    api.World.SpawnItemEntity(new ItemStack(block), pos.ToVec3d().Add(0.5, 0.5, 0.5));
                 }
                 if (quantityMolds == 0)
                 {

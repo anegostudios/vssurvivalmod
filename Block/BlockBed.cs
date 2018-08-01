@@ -23,6 +23,12 @@ namespace Vintagestory.GameContent
 
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel)
         {
+            if (!world.TestPlayerAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            {
+                byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
+                return false;
+            }
+
             if (IsSuitablePosition(world, blockSel.Position))
             {
                 BlockFacing[] horVer = SuggestedHVOrientation(byPlayer, blockSel);
@@ -120,9 +126,9 @@ namespace Vintagestory.GameContent
             base.GetHeldItemInfo(stack, dsc, world, withDebugInfo);
 
             double eff = stack.Collectible.Attributes["sleepEfficiency"].AsDouble();
-            double sleephours = eff * world.Calendar.HoursPerDay;
+            double sleephours = eff * world.Calendar.HoursPerDay / 2;
 
-            dsc.AppendLine(Lang.Get("Lets you sleep for {0} hours a day", sleephours.ToString("#.#")));
+            dsc.AppendLine("\n" + Lang.Get("Lets you sleep for {0} hours a day", sleephours.ToString("#.#")));
         }
 
         public override string GetPlacedBlockInfo(IWorldAccessor world, BlockPos pos, IPlayer forPlayer)

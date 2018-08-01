@@ -1,4 +1,5 @@
-﻿using Vintagestory.API.Common;
+﻿using Vintagestory.API.Client;
+using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
@@ -18,5 +19,12 @@ namespace Vintagestory.GameContent
             return base.TextureSubIdForRandomBlockPixel(world, pos, facing, ref tintIndex);
         }
 
+
+        public override int GetBlockColor(ICoreClientAPI capi, BlockPos pos)
+        {
+            int color = base.GetBlockColor(capi, pos);
+
+            return capi.ApplyColorTint(1, color, pos.X, pos.Y, pos.Z);
+        }
     }
 }

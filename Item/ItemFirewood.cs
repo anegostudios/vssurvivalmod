@@ -16,9 +16,16 @@ namespace Vintagestory.GameContent
 
             IPlayer byPlayer = null;
             if (byEntity is IEntityPlayer) byPlayer = byEntity.World.PlayerByUid(((IEntityPlayer)byEntity).PlayerUID);
+            if (byPlayer == null) return false;
+
+
+            if (!byEntity.World.TestPlayerAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            {
+                return false;
+            }
+
 
             
-            if (byPlayer == null) return false;
 
             if (block is BlockFirepit)
             {

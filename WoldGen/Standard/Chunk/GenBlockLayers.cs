@@ -17,8 +17,8 @@ namespace Vintagestory.ServerMods
 
         Random rnd;
         int mapheight;
-        ClampedPerlinNoise grassDensity;
-        ClampedPerlinNoise grassHeight;
+        ClampedSimplexNoise grassDensity;
+        ClampedSimplexNoise grassHeight;
 
 
         RockStrataVariant dummyRock;
@@ -64,8 +64,8 @@ namespace Vintagestory.ServerMods
             blockLayerConfig.ResolveBlockIds(api, rockstrata);
 
             rnd = new Random(api.WorldManager.Seed);
-            grassDensity = new ClampedPerlinNoise(new double[] { 4 }, new double[] { 0.5 }, rnd.Next());
-            grassHeight = new ClampedPerlinNoise(new double[] { 1.5 }, new double[] { 0.5 }, rnd.Next());
+            grassDensity = new ClampedSimplexNoise(new double[] { 4 }, new double[] { 0.5 }, rnd.Next());
+            grassHeight = new ClampedSimplexNoise(new double[] { 1.5 }, new double[] { 0.5 }, rnd.Next());
 
             mapheight = api.WorldManager.MapSizeY;
         }

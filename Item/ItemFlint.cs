@@ -46,11 +46,11 @@ namespace Vintagestory.GameContent
                 {
                     bec.BaseMaterial = slot.Itemstack.Clone();
                     bec.BaseMaterial.StackSize = 1;
-                }
 
-                if (byEntity.World is IClientWorldAccessor)
-                {
-                    BlockEntityKnappingSurface.OpenDialog(world as IClientWorldAccessor, pos, slot.Itemstack);
+                    if (byEntity.World is IClientWorldAccessor)
+                    {
+                        bec.OpenDialog(world as IClientWorldAccessor, pos, slot.Itemstack);
+                    }
                 }
 
                 slot.TakeOut(1);
@@ -74,6 +74,11 @@ namespace Vintagestory.GameContent
             IPlayer byPlayer = null;
             if (byEntity is IEntityPlayer) byPlayer = byEntity.World.PlayerByUid(((IEntityPlayer)byEntity).PlayerUID);
             if (byPlayer == null) return false;
+
+            if (!byEntity.World.TestPlayerAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.Use))
+            {
+                return false;
+            }
 
             bea.OnBeginUse(byPlayer, blockSel);
             return true;
@@ -103,7 +108,11 @@ namespace Vintagestory.GameContent
 
             int curMode = GetToolMode(slot, byPlayer, blockSel);
 
-            
+            if (!byEntity.World.CanPlayerAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.Use))
+            {
+                return;
+            }
+
             // The server side call is made using a custom network packet
             if (byEntity.World is IClientWorldAccessor)
             {

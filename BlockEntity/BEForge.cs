@@ -178,6 +178,11 @@ namespace Vintagestory.GameContent
                 renderer.Unregister();
                 renderer = null;
             }
+            
+        }
+
+        public override void OnBlockBroken()
+        {
             if (contents != null)
             {
                 api.World.SpawnItemEntity(contents, pos.ToVec3d().Add(0.5, 0.5, 0.5));

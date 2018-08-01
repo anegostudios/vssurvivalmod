@@ -91,7 +91,7 @@ namespace Vintagestory.ServerMods
 
             if (GameSpeedBoost <= 0 && !AllSleeping) return;
 
-            GameSpeedBoost = GameMath.Clamp(GameSpeedBoost + dt * (AllSleeping ? 200 : -1500), 0, 10000);
+            GameSpeedBoost = GameMath.Clamp(GameSpeedBoost + dt * (AllSleeping ? 400 : -2000), 0, 17000);
             api.World.Calendar.SetTimeSpeedModifier("sleeping", (int)GameSpeedBoost);
         }
 

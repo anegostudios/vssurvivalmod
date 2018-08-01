@@ -46,12 +46,6 @@ namespace Vintagestory.GameContent
             return new ItemStack[0];
         }
 
-        public override void OnBlockBroken(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)
-        {
-            BlockEntityItemPile be = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityItemPile;
-            be?.OnBlockBroken();
-            base.OnBlockBroken(world, pos, byPlayer, dropQuantityMultiplier);
-        }
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {

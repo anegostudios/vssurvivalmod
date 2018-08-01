@@ -14,13 +14,21 @@ namespace Vintagestory.GameContent
         public override bool OnHeldInteractStart(IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
             if (blockSel == null) return false;
+            IPlayer player = byEntity.World.PlayerByUid((byEntity as EntityPlayer)?.PlayerUID);
 
-            if (!(byEntity is EntityPlayer) || byEntity.World.PlayerByUid((byEntity as EntityPlayer).PlayerUID).WorldData.CurrentGameMode != EnumGameMode.Creative)
+
+            if (!byEntity.World.TestPlayerAccessBlock(player, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            {
+                slot.MarkDirty();
+                return false;
+            }
+
+            if (!(byEntity is EntityPlayer) || player.WorldData.CurrentGameMode != EnumGameMode.Creative)
             {
                 slot.TakeOut(1);
                 slot.MarkDirty();
             }
-
+            
             EntityType type = byEntity.World.GetEntityType(new AssetLocation("strawdummy"));
             Entity entity = byEntity.World.ClassRegistry.CreateEntity(type);
 
@@ -32,8 +40,6 @@ namespace Vintagestory.GameContent
                 entity.ServerPos.Yaw = byEntity.LocalPos.Yaw + GameMath.PI;
 
                 entity.Pos.SetFrom(entity.ServerPos);
-
-                IPlayer player = (byEntity is EntityPlayer) ? byEntity.World.PlayerByUid((byEntity as EntityPlayer).PlayerUID) : null;
 
                 byEntity.World.PlaySoundAt(new AssetLocation("sounds/block/torch"), entity, player);
 

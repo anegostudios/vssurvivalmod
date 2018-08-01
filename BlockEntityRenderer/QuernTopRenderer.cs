@@ -32,7 +32,7 @@ namespace Vintagestory.GameContent
 
         public double RenderOrder
         {
-            get { return 0; }
+            get { return 0.5; }
         }
 
         public int RenderRange => 24;
@@ -51,8 +51,7 @@ namespace Vintagestory.GameContent
             rpi.GlToggleBlend(true);
 
             IStandardShaderProgram prog = rpi.PreparedStandardShader(pos.X, pos.Y, pos.Z);
-
-            api.Render.BindTexture2d(api.BlockTextureAtlas.AtlasTextureIds[0]);
+            prog.Tex2D = api.BlockTextureAtlas.AtlasTextureIds[0];
             api.Render.GlMatrixModeModelView();
 
             api.Render.GlPushMatrix();

@@ -151,7 +151,7 @@ namespace Vintagestory.GameContent
             entity.PathTraverser.CurrentTarget.Y = targetEntity.ServerPos.Y;
             entity.PathTraverser.CurrentTarget.Z = targetEntity.ServerPos.Z;
 
-            Cuboidd targetBox = targetEntity.CollisionBox.ToDouble().Add(targetEntity.ServerPos.X, targetEntity.ServerPos.Y, targetEntity.ServerPos.Z);
+            Cuboidd targetBox = targetEntity.CollisionBox.ToDouble().Translate(targetEntity.ServerPos.X, targetEntity.ServerPos.Y, targetEntity.ServerPos.Z);
             Vec3d pos = entity.ServerPos.XYZ.Add(0, entity.CollisionBox.Y2 / 2, 0).Ahead((entity.CollisionBox.X2 - entity.CollisionBox.X1) / 2, 0, entity.ServerPos.Yaw);
             double distance = targetBox.ShortestDistanceFrom(pos);
             

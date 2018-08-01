@@ -19,7 +19,7 @@ namespace Vintagestory.ServerMods
 
         public override double ExecuteOrder() { return 0.3; }
 
-        internal FastRandom caveRand;
+        internal FastPositionalRandom caveRand;
         IWorldGenBlockAccessor worldgenBlockAccessor;
 
         Random rand = new Random();
@@ -35,7 +35,7 @@ namespace Vintagestory.ServerMods
 
         private void CmdCaveGenTest(IServerPlayer player, int groupId, CmdArgs args)
         {
-            chunkRand = new FastRandom(api.WorldManager.Seed);
+            chunkRand = new FastPositionalRandom(api.WorldManager.Seed);
 
             airBlockId = api.World.GetBlock(new AssetLocation("rock-granite")).BlockId;
 
@@ -116,7 +116,7 @@ namespace Vintagestory.ServerMods
         internal override void OnGameWorldLoaded()
         {
             base.OnGameWorldLoaded();
-            caveRand = new FastRandom(api.WorldManager.Seed + 123128);
+            caveRand = new FastPositionalRandom(api.WorldManager.Seed + 123128);
         }
 
         internal override void GeneratePartial(IServerChunk[] chunks, int chunkX, int chunkZ, int cdx, int cdz)

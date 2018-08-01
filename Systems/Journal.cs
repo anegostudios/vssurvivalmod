@@ -93,9 +93,8 @@ namespace Vintagestory.GameContent
         {
             this.capi = api;
 
-            capi.RegisterHotKey("journal", "Journal", GlKeys.J, HotkeyType.GeneralControls);
-            capi.SetHotKeyHandler("journal", OnHotkeyJournal);
-
+            capi.Input.RegisterHotKey("journal", "Journal", GlKeys.J, HotkeyType.GeneralControls);
+            capi.Input.SetHotKeyHandler("journal", OnHotkeyJournal);
 
             clientChannel =
                 api.Network.RegisterChannel("journal")
@@ -108,7 +107,7 @@ namespace Vintagestory.GameContent
             ;
         }
 
-        IGuiDialog dialog;
+        GuiDialogJournal dialog;
 
         private bool OnHotkeyJournal(KeyCombination comb)
         {
@@ -130,8 +129,9 @@ namespace Vintagestory.GameContent
                 tree[entry.Title] = new StringArrayAttribute(chapters);
             }
 
-            dialog = capi.World.OpenDialog("Journal", tree);
-            dialog.OnClosed = () => dialog = null;
+            dialog = new GuiDialogJournal(tree, capi);
+            dialog.TryOpen();
+            dialog.OnClosed += () => dialog = null;
 
             return true;
         }

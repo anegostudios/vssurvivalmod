@@ -73,7 +73,9 @@ namespace Vintagestory.GameContent
             Block block = api.World.BlockAccessor.GetBlock(pos);
             string nextCodePart = (block.LastCodePart() == "empty") ? "flowering" : "ripe";
 
-            Block nextBlock = api.World.GetBlock(block.CodeWithParts(nextCodePart));
+            AssetLocation loc = block.CodeWithParts(nextCodePart);
+            if (loc.Path.Length == 0) return;
+            Block nextBlock = api.World.GetBlock(loc);
             if (nextBlock?.Code == null) return;
 
             api.World.BlockAccessor.ExchangeBlock(nextBlock.BlockId, pos);

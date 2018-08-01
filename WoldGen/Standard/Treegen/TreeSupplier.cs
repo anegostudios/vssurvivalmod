@@ -125,6 +125,11 @@ namespace Vintagestory.ServerMods
 
                     float vinesGrowthChance = 2f * rainVal * tempVal;
 
+                    ITreeGenerator treegen = treeGenerators.GetGenerator(val.Key.Generator);
+                    if(treegen == null)
+                    {
+                        System.Diagnostics.Debug.WriteLine("Unable to find tree gen for " + val.Key.Generator);
+                    }
                     return new TreeGenForClimate(treeGenerators.GetGenerator(val.Key.Generator), size, vinesGrowthChance);
                 }
             }

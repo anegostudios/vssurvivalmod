@@ -85,7 +85,7 @@ namespace Vintagestory.ServerMods
             List<uint> voxelCuboids = new List<uint>((tree["cuboids"] as IntArrayAttribute).AsUint);
             
             MeshData mesh = BlockEntityChisel.CreateMesh(capi, voxelCuboids, materials);
-            mesh.rgba2 = null;
+            mesh.Rgba2 = null;
 
             return capi.Render.UploadMesh(mesh);
         }

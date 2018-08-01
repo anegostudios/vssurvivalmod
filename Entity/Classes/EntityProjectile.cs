@@ -26,9 +26,9 @@ namespace Vintagestory.GameContent
 
         public IEntity FiredBy;
         public float Weight = 0.1f;
-        internal float Damage;
+        public float Damage;
         public ItemStack ProjectileStack;
-        internal bool DropOnImpact = false;
+        public bool DropOnImpact = false;
 
         Cuboidf collisionTestBox;
 
@@ -122,7 +122,7 @@ namespace Vintagestory.GameContent
 
             EntityPos pos = LocalPos;
 
-            Cuboidd projectileBox = CollisionBox.ToDouble().Add(ServerPos.X, ServerPos.Y, ServerPos.Z);
+            Cuboidd projectileBox = CollisionBox.ToDouble().Translate(ServerPos.X, ServerPos.Y, ServerPos.Z);
             if (ServerPos.Motion.X < 0) projectileBox.X1 += ServerPos.Motion.X;
             else projectileBox.X2 += ServerPos.Motion.X;
             if (ServerPos.Motion.Y < 0) projectileBox.Y1 += ServerPos.Motion.Y;
@@ -139,7 +139,7 @@ namespace Vintagestory.GameContent
                     return false;
                 }
 
-                Cuboidd eBox = e.CollisionBox.ToDouble().Add(e.ServerPos.X, e.ServerPos.Y, e.ServerPos.Z);
+                Cuboidd eBox = e.CollisionBox.ToDouble().Translate(e.ServerPos.X, e.ServerPos.Y, e.ServerPos.Z);
 
                 return eBox.IntersectsOrTouches(projectileBox);
             });

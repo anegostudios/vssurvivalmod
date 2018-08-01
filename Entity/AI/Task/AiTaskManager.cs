@@ -48,13 +48,30 @@ namespace Vintagestory.GameContent
             Tasks.Remove(task);
         }
 
+        public void ExecuteTask(IAiTask task, int slot)
+        {
+            task.StartExecute();
+            ActiveTasksBySlot[slot] = task;
+        }
+
+        public void StopTask(Type taskType)
+        {
+            foreach (IAiTask task in ActiveTasksBySlot)
+            {
+                if (task?.GetType() == taskType)
+                {
+                    task.FinishExecute(true);
+                }
+            }
+        }
+
         public void OnGameTick(float dt)
         {
             foreach (IAiTask task in Tasks)
             {
                 int slot = task.Slot;
 
-                if ((ActiveTasksBySlot[slot] == null || task.Priority > ActiveTasksBySlot[slot].PriorityForCancel) && task.ShouldExecute())
+                if ((ActiveTasksBySlot[slot] == null || task.Priority > ActiveTasksBySlot[slot].PriorityForCancel) && task.ShouldExecute() && entity.ShouldExecuteTask(task))
                 {
                     if (ActiveTasksBySlot[slot] != null)
                     {

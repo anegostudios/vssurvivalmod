@@ -104,7 +104,7 @@ namespace Vintagestory.GameContent
                 
                 pile.MarkDirty(true);
                 
-                world.PlaySoundAt(new AssetLocation("sounds/block/ingot"), pos.X, pos.Y, pos.Z, null, false);
+                world.PlaySoundAt(new AssetLocation("sounds/block/ingot"), pos.X, pos.Y, pos.Z, player, false);
             }
 
             return true;

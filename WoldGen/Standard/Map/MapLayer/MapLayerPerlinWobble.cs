@@ -10,16 +10,16 @@ namespace Vintagestory.ServerMods
 {
     class MapLayerPerlinWobble : MapLayerTransformBase
     {
-        NormalizedPerlinNoise noisegenX;
-        NormalizedPerlinNoise noisegenY;
+        NormalizedSimplexNoise noisegenX;
+        NormalizedSimplexNoise noisegenY;
 
         float scale;
         float intensity;
 
         public MapLayerPerlinWobble(long seed, MapLayerBase parent, int octaves, float persistence, float scale, float intensity = 1) : base(seed, parent)
         {
-            noisegenX = NormalizedPerlinNoise.FromDefaultOctaves(octaves, 1 / scale, persistence, seed);
-            noisegenY = NormalizedPerlinNoise.FromDefaultOctaves(octaves, 1 / scale, persistence, seed + 1231296);
+            noisegenX = NormalizedSimplexNoise.FromDefaultOctaves(octaves, 1 / scale, persistence, seed);
+            noisegenY = NormalizedSimplexNoise.FromDefaultOctaves(octaves, 1 / scale, persistence, seed + 1231296);
 
             this.scale = scale;
             this.intensity = intensity;

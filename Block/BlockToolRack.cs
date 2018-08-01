@@ -30,7 +30,7 @@ namespace Vintagestory.GameContent
         }
 
         // We need the tool item textures also in the block atlas
-        public override void OnCollectTextures(ICoreAPI api, OrderedDictionary<AssetLocation, bool> textureDict)
+        public override void OnCollectTextures(ICoreAPI api, OrderedDictionary<AssetLocationAndSource, bool> textureDict)
         {
             base.OnCollectTextures(api, textureDict);
 
@@ -44,8 +44,8 @@ namespace Vintagestory.GameContent
                 foreach (var val in item.Textures)
                 {
                     val.Value.Bake(api.Assets);
-                    textureDict[val.Value.Baked.BakedName] = true;
-                    tt.TextureSubIdsByCode[val.Key] = textureDict.IndexOfKey(val.Value.Baked.BakedName);
+                    textureDict[new AssetLocationAndSource(val.Value.Baked.BakedName, "Item code " + item.Code)] = true;
+                    tt.TextureSubIdsByCode[val.Key] = textureDict.IndexOfKey(new AssetLocationAndSource(val.Value.Baked.BakedName));
                 }
 
                 /*if (item.Shape != null)

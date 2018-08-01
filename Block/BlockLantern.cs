@@ -191,6 +191,15 @@ namespace Vintagestory.GameContent
                 }
             }
 
+            if (EntityClass != null)
+            {
+                BlockEntity entity = world.BlockAccessor.GetBlockEntity(pos);
+                if (entity != null)
+                {
+                    entity.OnBlockBroken();
+                }
+            }
+
             world.BlockAccessor.SetBlock(0, pos);
         }
 

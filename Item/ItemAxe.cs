@@ -89,8 +89,8 @@ namespace Vintagestory.GameContent
             string treeType;
             Stack<BlockPos> foundPositions = FindTree(world, blockSel.Position, out treeType);
             
-            Block leavesBranchyBlock = world.GetBlock(new AssetLocation("leavesbranchy-" + treeType));
-            Block leavesBlock = world.GetBlock(new AssetLocation("leaves-" + treeType));
+            Block leavesBranchyBlock = world.GetBlock(new AssetLocation("leavesbranchy-grown-" + treeType));
+            Block leavesBlock = world.GetBlock(new AssetLocation("leaves-grown-" + treeType));
 
             if (foundPositions.Count == 0)
             {
@@ -107,9 +107,9 @@ namespace Vintagestory.GameContent
                 BlockPos pos = foundPositions.Pop();
                 Block block = world.BlockAccessor.GetBlock(pos);
 
-                bool isLog = block.Code.Path.StartsWith("beehive-inlog-" + treeType) || block.Code.Path.StartsWith("log-grown-"+treeType) || block.Code.Path.StartsWith("bamboo-brown-segment") || block.Code.Path.StartsWith("bamboo-green-segment");
+                bool isLog = block.Code.Path.StartsWith("beehive-inlog-" + treeType) || block.Code.Path.StartsWith("log-grown-"+treeType) || block.Code.Path.StartsWith("bamboo-grown-brown-segment") || block.Code.Path.StartsWith("bamboo-grown-green-segment");
                 bool isBranchy = block == leavesBranchyBlock;
-                bool isLeaves = block == leavesBlock || block.Code.Path == "bambooleaves";
+                bool isLeaves = block == leavesBlock || block.Code.Path == "bambooleaves-grown";
 
                 world.BlockAccessor.BreakBlock(pos, byPlayer, isLeaves ? leavesMul : (isBranchy ? leavesBranchyMul : 1));
 
@@ -142,7 +142,7 @@ namespace Vintagestory.GameContent
 
             treeType = "";
 
-            if (block.Code.Path.StartsWith("beehive-inlog-" + treeType) || block.Code.Path.StartsWith("log-grown") || block.Code.Path.StartsWith("bamboo-brown-segment") || block.Code.Path.StartsWith("bamboo-green-segment"))
+            if (block.Code.Path.StartsWith("beehive-inlog-" + treeType) || block.Code.Path.StartsWith("log-grown") || block.Code.Path.StartsWith("bamboo-grown-brown-segment") || block.Code.Path.StartsWith("bamboo-grown-green-segment"))
             {
                 treeType = block.FirstCodePart(2);
 
@@ -152,8 +152,8 @@ namespace Vintagestory.GameContent
             }
 
             string logcode = "log-grown-" + treeType;
-            string leavescode = "leaves-" + treeType;
-            string leavesbranchycode = "leavesbranchy-" + treeType;
+            string leavescode = "leaves-grown-" + treeType;
+            string leavesbranchycode = "leavesbranchy-grown-" + treeType;
 
 
             while (queue.Count > 0)
@@ -179,7 +179,7 @@ namespace Vintagestory.GameContent
 
                     block = world.BlockAccessor.GetBlock(neibPos);
 
-                    if (block.Code.Path.StartsWith(logcode) || block.Code.Path.StartsWith("bamboo-brown-segment") || block.Code.Path.StartsWith("bamboo-green-segment"))
+                    if (block.Code.Path.StartsWith(logcode) || block.Code.Path.StartsWith("bamboo-grown-brown-segment") || block.Code.Path.StartsWith("bamboo-grown-green-segment"))
                     {
                         if (pos.W < 2) continue;
 
@@ -191,7 +191,7 @@ namespace Vintagestory.GameContent
 
                         foundPositions.Push(neibPos.Copy());
                         queue.Enqueue(new Vec4i(neibPos.X, neibPos.Y, neibPos.Z, 1));
-                    } else if (block.Code.Path.StartsWith(leavescode) || block.Code.Path == "bambooleaves")
+                    } else if (block.Code.Path.StartsWith(leavescode) || block.Code.Path == "bambooleaves-grown")
                     {
                         foundPositions.Push(neibPos.Copy());
                         queue.Enqueue(new Vec4i(neibPos.X, neibPos.Y, neibPos.Z, 0));

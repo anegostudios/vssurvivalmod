@@ -211,7 +211,7 @@ namespace Vintagestory.ServerMods
             Random rnd = new Random();
             long seed = rnd.Next();
 
-            NormalizedPerlinNoise noise = NormalizedPerlinNoise.FromDefaultOctaves(octaves, 5, 0.7, seed);
+            NormalizedSimplexNoise noise = NormalizedSimplexNoise.FromDefaultOctaves(octaves, 5, 0.7, seed);
             int size = 800;
             Bitmap bmp = new Bitmap(size, size);
 

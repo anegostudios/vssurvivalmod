@@ -43,7 +43,7 @@ namespace Vintagestory.GameContent
 
         IClientNetworkChannel clientChannel;
         ICoreClientAPI capi;
-        IGuiDialog dialog;
+        GuiJsonDialog dialog;
         JsonDialogSettings dialogSettings;
         TeleporterLocation forLocation = new TeleporterLocation();
         float volume;
@@ -192,7 +192,7 @@ namespace Vintagestory.GameContent
             dialogSettings.OnGet = OnGetValuesDialog;
             dialogSettings.OnSet = OnSetValuesDialog;
 
-            dialog = capi.World.OpenDialog("JsonDialog", dialogSettings);
+            dialog = new GuiJsonDialog(dialogSettings, capi);
         }
 
         private void OnSetValuesDialog(string elementCode, string newValue)

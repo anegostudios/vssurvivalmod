@@ -49,6 +49,12 @@ namespace Vintagestory.GameContent
                 return false;
             }
 
+            if (!world.TestPlayerAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            {
+                byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
+                return false;
+            }
+
             if (blockSel.Face.IsHorizontal)
             {
                 if (TryAttachTo(world.BlockAccessor, blockSel.Position, blockSel.Face)) return true;
@@ -103,7 +109,7 @@ namespace Vintagestory.GameContent
             if (!CanVineStay(world, pos))
             {
                 world.BlockAccessor.SetBlock(0, pos);
-                world.BlockAccessor.MarkBlockUpdated(pos);
+                world.BlockAccessor.TriggerNeighbourBlockUpdate(pos);
                 return;
             }
         }

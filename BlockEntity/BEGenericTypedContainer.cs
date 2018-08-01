@@ -15,7 +15,7 @@ namespace Vintagestory.GameContent
     {
         internal InventoryGeneric inventory;
         public string type = "normal-generic";
-
+        public string defaultType;
 
         public int quantitySlots = 16;
         public string inventoryClassName = "chest";
@@ -43,6 +43,10 @@ namespace Vintagestory.GameContent
         {
             ownBlock = api.World.BlockAccessor.GetBlock(pos);
 
+            defaultType = ownBlock.Attributes?["defaultType"]?.AsString("normal-generic");
+            if (defaultType == null) defaultType = "normal-generic";
+            
+
             // Newly placed 
             if (inventory == null)
             {
@@ -58,7 +62,7 @@ namespace Vintagestory.GameContent
         {
             if (byItemStack?.Attributes != null)
             {
-                string nowType = byItemStack.Attributes.GetString("type", "normal-generic");
+                string nowType = byItemStack.Attributes.GetString("type", defaultType);
 
                 if (nowType != type)
                 {
@@ -74,13 +78,14 @@ namespace Vintagestory.GameContent
 
             base.OnBlockPlaced();
         }
-
+       
+        
 
 
 
         public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
-            type = tree.GetString("type", "normal-generic");
+            type = tree.GetString("type", defaultType);
 
             if (inventory == null)
             {
@@ -102,6 +107,7 @@ namespace Vintagestory.GameContent
                         quantitySlots = 8;
                         inventoryClassName = "basket";
                         dialogTitleLangCode = "basketcontents";
+                        if (type == null) type = "reed";
                     }
 
                     InitInventory(null);
@@ -116,6 +122,9 @@ namespace Vintagestory.GameContent
             base.ToTreeAttributes(tree);
 
             if (ownBlock != null) tree.SetString("forBlockCode", ownBlock.Code.ToShortString());
+
+            if (type == null) type = defaultType; // No idea why. Somewhere something has no type. Probably some worldgen ruins
+
             tree.SetString("type", type);
         }
 
@@ -196,13 +205,13 @@ namespace Vintagestory.GameContent
             Dictionary<string, MeshData> meshes = null;
 
             object obj;
-            if (api.ObjectCache.TryGetValue("typedContainerMeshes", out obj))
+            if (api.ObjectCache.TryGetValue("typedContainerMeshes" + ownBlock.FirstCodePart(), out obj))
             {
                 meshes = obj as Dictionary<string, MeshData>;
             }
             else
             {
-                api.ObjectCache["typedContainerMeshes"] = meshes = new Dictionary<string, MeshData>();
+                api.ObjectCache["typedContainerMeshes" + ownBlock.FirstCodePart()] = meshes = new Dictionary<string, MeshData>();
             }
 
             MeshData mesh = null;

@@ -21,6 +21,19 @@ namespace Vintagestory.GameContent
     public class EntityShapeRenderer : EntityRenderer
     {
         static Dictionary<string, Animation[]> AnimationsByShape;
+        static bool handlerAssigned;
+        static void OnRetesselatedStatic(ICoreClientAPI capi)
+        {
+            AnimationsByShape.Clear();
+
+            foreach (EntityType type in capi.World.EntityTypes)
+            {
+                if (type.Client?.Renderer == "Shape" || type.Client?.Renderer == "SkinnableShape")
+                {
+                    type.Client.LoadShape(type, capi);
+                }
+            }
+        }
         
         LoadedTexture nameTagTexture = null;
         LoadedTexture debugTagTexture = null;
@@ -79,13 +92,19 @@ namespace Vintagestory.GameContent
                 messageTextures = new List<MessageTexture>();
                 api.Event.OnChatMessage += OnChatMessage;
             }
+            
+            if (!handlerAssigned)
+            {
+                handlerAssigned = true;
+                api.Event.OnReloadShapes += () => OnRetesselatedStatic(api);
+            }
 
-            api.Event.RegisterReloadShapes(RetesselateShape);
+            api.Event.OnReloadShapes += TesselateShape;
         }
 
         private void OnChatMessage(int groupId, string message, EnumChatType chattype, string data)
         {
-            if (data != null && data.StartsWith("From:") && entity.Pos.SquareDistanceTo(api.World.Player.Entity.Pos.XYZ) < 20*20 && message.Length > 0)
+            if (data != null && data.StartsWith("From:") && entity.Pos.SquareDistanceTo(capi.World.Player.Entity.Pos.XYZ) < 20*20 && message.Length > 0)
             {
                 int entityid = 0;
                 int.TryParse(data.Split(new string[] { ":" }, StringSplitOptions.None)[1], out entityid);
@@ -97,9 +116,9 @@ namespace Vintagestory.GameContent
                         message = message.Substring((name + ": ").Length);
                     }
 
-                    LoadedTexture tex = api.Render.GenTextTexture(
+                    LoadedTexture tex = capi.Gui.Text.GenTextTexture(
                         message,
-                        api.Render.GetFont(30, api.Render.StandardFontName, ColorUtil.WhiteArgbDouble),
+                        capi.Render.GetFont(30, capi.Render.StandardFontName, ColorUtil.WhiteArgbDouble),
                         350,
                         new TextBackground() { color = ElementGeometrics.DialogLightBgColor, padding = 3, radius = ElementGeometrics.ElementBGRadius },
                         EnumTextOrientation.Center
@@ -109,23 +128,12 @@ namespace Vintagestory.GameContent
                     {
                         tex = tex,
                         message = message,
-                        receivedTime = api.World.ElapsedMilliseconds
+                        receivedTime = capi.World.ElapsedMilliseconds
                     });
 
                 }
             }
         }
-
-        void RetesselateShape()
-        {
-            entity.Type.Client?.LoadShape(entity.Type, api);
-
-            string animDictkey = (entity.Type.Code + entity.Type.Client.Shape.Base.ToString());
-            AnimationsByShape.Remove(animDictkey);
-
-            TesselateShape();
-        }
-
 
 
 
@@ -157,7 +165,7 @@ namespace Vintagestory.GameContent
 
                 TextureAtlasPosition pos = texSource["all"];
                 CompositeTexture tex = altTexNumber == 0 ? entity.Type.Client.FirstTexture : entity.Type.Client.FirstTexture.Alternates[altTexNumber - 1];
-                meshdata = api.Tesselator.VoxelizeTexture(tex, api.EntityTextureAtlas.Size, pos);
+                meshdata = capi.Tesselator.VoxelizeTexture(tex, capi.EntityTextureAtlas.Size, pos);
                 for (int i = 0; i < meshdata.xyz.Length; i+=3)
                 {
                     meshdata.xyz[i] -= 0.125f;
@@ -172,10 +180,10 @@ namespace Vintagestory.GameContent
 
                 try
                 {
-                    api.Tesselator.TesselateShapeWithJointIds("entity", entityShape, out meshdata, texSource, new Vec3f(), compositeShape.QuantityElements, compositeShape.SelectiveElements);
+                    capi.Tesselator.TesselateShapeWithJointIds("entity", entityShape, out meshdata, texSource, new Vec3f(), compositeShape.QuantityElements, compositeShape.SelectiveElements);
                 } catch (Exception e)
                 {
-                    api.World.Logger.Fatal("Failed tesselating entity {0} with id {1}. Entity will probably be invisible!. The teselator threw {2}", entity.Type.Code, entity.EntityId, e);
+                    capi.World.Logger.Fatal("Failed tesselating entity {0} with id {1}. Entity will probably be invisible!. The teselator threw {2}", entity.Type.Code, entity.EntityId, e);
                     curAnimator = new BlendEntityAnimator(entity, entityShape.Animations, entityShape.Elements, entityShape.JointsById, headElement);
                     return;
                 }
@@ -198,16 +206,16 @@ namespace Vintagestory.GameContent
                 curAnimator = new BlendEntityAnimator(entity, entityShape.Animations, entityShape.Elements, entityShape.JointsById, headElement);
             }
 
-            meshdata.rgba2 = null;
+            meshdata.Rgba2 = null;
 
             if (meshRefOpaque != null)
             {
-                api.Render.DeleteMesh(meshRefOpaque);
+                capi.Render.DeleteMesh(meshRefOpaque);
                 meshRefOpaque = null;
             }
             if (meshRefOit != null)
             {
-                api.Render.DeleteMesh(meshRefOit);
+                capi.Render.DeleteMesh(meshRefOit);
                 meshRefOit = null;
             }
 
@@ -219,12 +227,12 @@ namespace Vintagestory.GameContent
 
             if (opaqueMesh.VerticesCount > 0)
             {
-                meshRefOpaque = api.Render.UploadMesh(opaqueMesh);
+                meshRefOpaque = capi.Render.UploadMesh(opaqueMesh);
             }
 
             if (oitMesh.VerticesCount > 0)
             {
-                meshRefOit = api.Render.UploadMesh(oitMesh);
+                meshRefOit = capi.Render.UploadMesh(oitMesh);
             }
             
         }
@@ -233,7 +241,7 @@ namespace Vintagestory.GameContent
         protected virtual ITexPositionSource GetTextureSource()
         {
             int altTexNumber = entity.WatchedAttributes.GetInt("textureIndex", 0);
-            return api.Tesselator.GetTextureSource(entity.Type, altTexNumber);
+            return capi.Tesselator.GetTextureSource(entity.Type, altTexNumber);
         }
         
         
@@ -268,7 +276,7 @@ namespace Vintagestory.GameContent
 
         private void OnDebugInfoChanged()
         {
-            bool showDebuginfo = ClientSettingsApi.ShowEntityDebugInfo;
+            bool showDebuginfo = capi.Settings.Bool["showEntityDebugInfo"];
 
             if (showDebuginfo && !entity.DebugAttributes.AllDirty && !entity.DebugAttributes.PartialDirty) return;
 
@@ -287,9 +295,9 @@ namespace Vintagestory.GameContent
                 text.AppendLine(val.Key +": " + val.Value.ToString());
             }
 
-            debugTagTexture = api.Render.GenUnscaledTextTexture(
+            debugTagTexture = capi.Gui.Text.GenUnscaledTextTexture(
                 text.ToString(), 
-                api.Render.GetFont(20, api.Render.StandardFontName, ColorUtil.WhiteArgbDouble), 
+                capi.Render.GetFont(20, capi.Render.StandardFontName, ColorUtil.WhiteArgbDouble), 
                 new TextBackground() { color = ElementGeometrics.DialogDefaultBgColor, padding = 3, radius = ElementGeometrics.ElementBGRadius }
             );
 
@@ -307,9 +315,9 @@ namespace Vintagestory.GameContent
             string name = GetNameTagName();
             if (name != null)
             {
-                nameTagTexture = api.Render.GenUnscaledTextTexture(
+                nameTagTexture = capi.Gui.Text.GenUnscaledTextTexture(
                     name,
-                    api.Render.GetFont(30, api.Render.StandardFontName, ColorUtil.WhiteArgbDouble),
+                    capi.Render.GetFont(30, capi.Render.StandardFontName, ColorUtil.WhiteArgbDouble),
                     new TextBackground() { color = ElementGeometrics.DialogLightBgColor, padding = 3, radius = ElementGeometrics.ElementBGRadius }
                 );
             }
@@ -317,30 +325,30 @@ namespace Vintagestory.GameContent
 
         public string GetNameTagName()
         {
-            EntityBehaviorNameTag behavior = (EntityBehaviorNameTag)entity.GetBehavior("displayname");
+            EntityBehaviorNameTag behavior = entity.GetBehavior<EntityBehaviorNameTag>();
             return behavior?.DisplayName;
         }
 
         public override void BeforeRender(float dt)
         {
             if (meshRefOpaque == null && meshRefOit == null) return;
-            if (api.IsGamePaused) return;
+            if (capi.IsGamePaused) return;
 
             if (HeadControl && player == null && entity is EntityPlayer)
             {
-                player = api.World.PlayerByUid((entity as EntityPlayer).PlayerUID);
+                player = capi.World.PlayerByUid((entity as EntityPlayer).PlayerUID);
             }
 
             isSpectator = player != null && player.WorldData.CurrentGameMode == EnumGameMode.Spectator;
             if (isSpectator) return;
 
 
-            curAnimator.FastMode = !DoRenderHeldItem && !ClientSettingsApi.HighQualityAnimations;
+            curAnimator.FastMode = !DoRenderHeldItem && !capi.Settings.Bool["highQualityAnimations"];
 
             if (DisplayChatMessages && messageTextures.Count > 0)
             {
                 MessageTexture tex = messageTextures.Last();
-                if (api.World.ElapsedMilliseconds > tex.receivedTime + 3500 + 100 * (tex.message.Length - 10))
+                if (capi.World.ElapsedMilliseconds > tex.receivedTime + 3500 + 100 * (tex.message.Length - 10))
                 {
                     messageTextures.RemoveAt(messageTextures.Count - 1);
                     tex.tex.Dispose();
@@ -348,7 +356,7 @@ namespace Vintagestory.GameContent
                     if (messageTextures.Count > 0)
                     {
                         tex = messageTextures[messageTextures.Count - 1];
-                        long msvisible = tex.receivedTime + 3500 + 100 * (tex.message.Length - 10) - api.World.ElapsedMilliseconds;
+                        long msvisible = tex.receivedTime + 3500 + 100 * (tex.message.Length - 10) - capi.World.ElapsedMilliseconds;
                         tex.receivedTime += Math.Max(0, 1000 - msvisible);
                     }
                 }
@@ -359,6 +367,29 @@ namespace Vintagestory.GameContent
 
             if (HeadControl)
             {
+                /*if (player == api.World.Player && api.Render.CameraType == EnumCameraMode.FirstPerson)
+                {
+                    AttachmentPointAndPose apap = null;
+                    curAnimator.AttachmentPointByCode.TryGetValue("Eyes", out apap);
+                    float[] tmpMat = Mat4f.Create();
+
+                    for (int i = 0; i < 16; i++) tmpMat[i] = ModelMat[i];
+                    AttachmentPoint ap = apap.AttachPoint;
+
+                    float[] mat = apap.Pose.AnimModelMatrix;
+                    Mat4f.Mul(tmpMat, tmpMat, mat);
+
+                    Mat4f.Translate(tmpMat, tmpMat, (float)ap.PosX / 16f, (float)ap.PosY / 16f, (float)ap.PosZ / 16f);
+                    Mat4f.RotateX(tmpMat, tmpMat, (float)(ap.RotationX) * GameMath.DEG2RAD);
+                    Mat4f.RotateY(tmpMat, tmpMat, (float)(ap.RotationY) * GameMath.DEG2RAD);
+                    Mat4f.RotateZ(tmpMat, tmpMat, (float)(ap.RotationZ) * GameMath.DEG2RAD);
+                    float[] vec = new float[] { 0,0,0, 0 };
+                    float[] outvec = Mat4f.MulWithVec4(tmpMat, vec);
+
+                    api.Render.CameraOffset.Translation.Set(outvec[0], outvec[1] + 1, outvec[2]);
+                }*/
+
+
                 float diff = GameMath.AngleRadDistance(bodyYaw, entity.Pos.Yaw);
 
                 if (Math.Abs(diff) > GameMath.PIHALF * 1.2f) opposite = true;
@@ -375,13 +406,13 @@ namespace Vintagestory.GameContent
                 curAnimator.HeadPitch = GameMath.Clamp((entity.Pos.Pitch - GameMath.PI) * 0.75f, -1.2f, 1.2f);
 
 
-                if (api.World.Player.CameraMode == EnumCameraMode.Overhead || api.World.Player.Entity.MountedOn != null)
+                if (capi.World.Player.CameraMode == EnumCameraMode.Overhead || capi.World.Player.Entity.MountedOn != null)
                 {
                     bodyYaw = entity.Pos.Yaw;
                 } else
                 {
                     float yawDist = GameMath.AngleRadDistance(bodyYaw, entity.Pos.Yaw);
-                    if (Math.Abs(yawDist) > 1f - (api.World.Player.Entity.Controls.TriesToMove ? 0.99f : 0) || rotateTpYawNow)
+                    if (Math.Abs(yawDist) > 1f - (capi.World.Player.Entity.Controls.TriesToMove ? 0.99f : 0) || rotateTpYawNow)
                     {
                         bodyYaw += GameMath.Clamp(yawDist, -dt * 3, dt * 3);
                         rotateTpYawNow = Math.Abs(yawDist) > 0.01f;
@@ -408,14 +439,14 @@ namespace Vintagestory.GameContent
 
             if (HeadControl)
             {
-                bool isSelf = api.World.Player.Entity.EntityId == entity.EntityId;
+                bool isSelf = capi.World.Player.Entity.EntityId == entity.EntityId;
                 loadModelMatrixForPlayer(entity, isSelf);
                 if (isSelf) OriginPos.Set(0, 0, 0);
             }
             else
             {
                 loadModelMatrix(entity, isShadowPass);
-                Vec3d camPos = api.World.Player.Entity.CameraPos;
+                Vec3d camPos = capi.World.Player.Entity.CameraPos;
                 OriginPos.Set((float)(entity.Pos.X - camPos.X), (float)(entity.Pos.Y - camPos.Y), (float)(entity.Pos.Z - camPos.Z));
             }
 
@@ -428,7 +459,7 @@ namespace Vintagestory.GameContent
 
         void RenderHeldItem(bool isShadowPass)
         {
-            IRenderAPI rpi = api.Render;
+            IRenderAPI rpi = capi.Render;
             ItemStack stack = (entity as IEntityAgent).RightHandItemSlot?.Itemstack;
 
             BlendEntityAnimator bea = curAnimator as BlendEntityAnimator;
@@ -444,7 +475,7 @@ namespace Vintagestory.GameContent
 
             float[] mat = apap.Pose.AnimModelMatrix;
             float[] orig = new float[16];
-            for (int i = 0; i < 16; i++) orig[i] = (float)api.Render.CameraMatrixOrigin[i];
+            for (int i = 0; i < 16; i++) orig[i] = (float)capi.Render.CameraMatrixOrigin[i];
 
             if(!isShadowPass) Mat4f.Mul(tmpMvMat, orig, tmpMvMat);
             Mat4f.Mul(tmpMvMat, tmpMvMat, mat);
@@ -474,13 +505,13 @@ namespace Vintagestory.GameContent
                 prog.Tex2D = renderInfo.TextureId;
                 prog.AlphaTest = stack.Collectible.RenderAlphaTest;
                 
-                Vec4f lightrgbs = api.World.BlockAccessor.GetLightRGBs(
+                Vec4f lightrgbs = capi.World.BlockAccessor.GetLightRGBs(
                     (int)entity.Pos.X,
                     (int)(entity.Pos.Y + entity.EyeHeight()),
                     (int)entity.Pos.Z
                 );
 
-                int temp = (int)stack.Collectible.GetTemperature(api.World, stack);
+                int temp = (int)stack.Collectible.GetTemperature(capi.World, stack);
                 float[] glowColor = ColorUtil.getIncandescenceColorAsColor4f(temp);
                 lightrgbs.R += 2 * glowColor[0];
                 lightrgbs.G += 2 * glowColor[1];
@@ -493,7 +524,7 @@ namespace Vintagestory.GameContent
 
             Mat4f.Translate(tmpMvMat, tmpMvMat, renderInfo.Transform.Origin.X, renderInfo.Transform.Origin.Y, renderInfo.Transform.Origin.Z);
 
-            Mat4f.Scale(tmpMvMat, tmpMvMat, renderInfo.Transform.Scale, renderInfo.Transform.Scale, renderInfo.Transform.Scale);
+            Mat4f.Scale(tmpMvMat, tmpMvMat, renderInfo.Transform.ScaleXYZ.X, renderInfo.Transform.ScaleXYZ.Y, renderInfo.Transform.ScaleXYZ.Z);
 
             Mat4f.Translate(tmpMvMat, tmpMvMat, (float)ap.PosX / 16f + renderInfo.Transform.Translation.X, (float)ap.PosY / 16f + renderInfo.Transform.Translation.Y, (float)ap.PosZ / 16f + renderInfo.Transform.Translation.Z);
             Mat4f.RotateX(tmpMvMat, tmpMvMat, (float)(ap.RotationX + renderInfo.Transform.Rotation.X) * GameMath.DEG2RAD);
@@ -504,15 +535,15 @@ namespace Vintagestory.GameContent
 
             if (isShadowPass)
             {
-                Mat4f.Mul(tmpMvMat, api.Render.CurrentShadowProjectionMatrix, tmpMvMat);
-                api.Render.CurrentActiveShader.UniformMatrix("mvpMatrix", tmpMvMat);
-                api.Render.CurrentActiveShader.Uniform("origin", OriginPos);
+                Mat4f.Mul(tmpMvMat, capi.Render.CurrentShadowProjectionMatrix, tmpMvMat);
+                capi.Render.CurrentActiveShader.UniformMatrix("mvpMatrix", tmpMvMat);
+                capi.Render.CurrentActiveShader.Uniform("origin", OriginPos);
             } else
             {
                 prog.ModelViewMatrix = tmpMvMat;
             }
 
-            api.Render.RenderMesh(renderInfo.ModelRef);
+            capi.Render.RenderMesh(renderInfo.ModelRef);
 
             if (!isShadowPass) prog.Stop();
         }
@@ -533,31 +564,31 @@ namespace Vintagestory.GameContent
 
             if (isShadowPass)
             {
-                Mat4f.Mul(tmpMvMat, api.Render.CurrentModelviewMatrix, ModelMat);
-                api.Render.CurrentActiveShader.UniformMatrix("modelViewMatrix", tmpMvMat);
+                Mat4f.Mul(tmpMvMat, capi.Render.CurrentModelviewMatrix, ModelMat);
+                capi.Render.CurrentActiveShader.UniformMatrix("modelViewMatrix", tmpMvMat);
             }
             else
             {
-                Vec4f lightrgbs = api.World.BlockAccessor.GetLightRGBs((int)entity.Pos.X, (int)entity.Pos.Y, (int)entity.Pos.Z);
-                api.Render.CurrentActiveShader.Uniform("rgbaLightIn", lightrgbs);
-                api.Render.CurrentActiveShader.Uniform("extraGlow", entity.Type.Client.GlowLevel);
-                api.Render.CurrentActiveShader.UniformMatrix("modelMatrix", ModelMat);
-                api.Render.CurrentActiveShader.UniformMatrix("viewMatrix", api.Render.CurrentModelviewMatrix);
+                Vec4f lightrgbs = capi.World.BlockAccessor.GetLightRGBs((int)entity.Pos.X, (int)entity.Pos.Y, (int)entity.Pos.Z);
+                capi.Render.CurrentActiveShader.Uniform("rgbaLightIn", lightrgbs);
+                capi.Render.CurrentActiveShader.Uniform("extraGlow", entity.Type.Client.GlowLevel);
+                capi.Render.CurrentActiveShader.UniformMatrix("modelMatrix", ModelMat);
+                capi.Render.CurrentActiveShader.UniformMatrix("viewMatrix", capi.Render.CurrentModelviewMatrix);
 
                 color[0] = (entity.RenderColor >> 16 & 0xff) / 255f;
                 color[1] = ((entity.RenderColor >> 8) & 0xff) / 255f;
                 color[2] = ((entity.RenderColor >> 0) & 0xff) / 255f;
                 color[3] = ((entity.RenderColor >> 24) & 0xff) / 255f;
 
-                api.Render.CurrentActiveShader.Uniform("renderColor", color);
+                capi.Render.CurrentActiveShader.Uniform("renderColor", color);
             }
 
-            api.Render.CurrentActiveShader.UniformMatrices("elementTransforms", GlobalConstants.MaxAnimatedElements, curAnimator.Matrices);
-            api.Render.RenderMesh(meshRefOpaque);
+            capi.Render.CurrentActiveShader.UniformMatrices("elementTransforms", GlobalConstants.MaxAnimatedElements, curAnimator.Matrices);
+            capi.Render.RenderMesh(meshRefOpaque);
 
             if (meshRefOit != null)
             {
-                api.Render.RenderMesh(meshRefOit);
+                capi.Render.RenderMesh(meshRefOit);
             }
         }
 
@@ -586,11 +617,11 @@ namespace Vintagestory.GameContent
         {
             if (isSpectator || (nameTagTexture == null && debugTagTexture == null)) return;
 
-            IRenderAPI rapi = api.Render;
-            EntityPlayer entityPlayer = api.World.Player.Entity;
+            IRenderAPI rapi = capi.Render;
+            EntityPlayer entityPlayer = capi.World.Player.Entity;
             Vec3d aboveHeadPos;
 
-            if (api.World.Player.Entity.EntityId == entity.EntityId) {
+            if (capi.World.Player.Entity.EntityId == entity.EntityId) {
                 if (rapi.CameraType == EnumCameraMode.FirstPerson) return;
                 aboveHeadPos = new Vec3d(entityPlayer.CameraPos.X, entityPlayer.CameraPos.Y + entity.CollisionBox.Y2 + 0.5, entityPlayer.CameraPos.Z);
             } else
@@ -614,21 +645,21 @@ namespace Vintagestory.GameContent
 
             if (nameTagTexture != null)
             {
-                float posx = (float)pos.X - cappedScale * nameTagTexture.width / 2;
-                float posy = rapi.FrameHeight - (float)pos.Y + (nameTagTexture.height * Math.Max(0, scale - 1));
+                float posx = (float)pos.X - cappedScale * nameTagTexture.Width / 2;
+                float posy = rapi.FrameHeight - (float)pos.Y + (nameTagTexture.Height * Math.Max(0, scale - 1));
 
                 rapi.Render2DTexture(
-                    nameTagTexture.textureId, posx, posy, cappedScale * nameTagTexture.width, cappedScale * nameTagTexture.height, 20
+                    nameTagTexture.TextureId, posx, posy, cappedScale * nameTagTexture.Width, cappedScale * nameTagTexture.Height, 20
                 );
             }
 
             if (debugTagTexture != null)
             {
-                float posx = (float)pos.X - cappedScale * debugTagTexture.width / 2;
-                float posy = rapi.FrameHeight - (float)pos.Y - (debugTagTexture.height * Math.Max(0, scale - 1));
+                float posx = (float)pos.X - cappedScale * debugTagTexture.Width / 2;
+                float posy = rapi.FrameHeight - (float)pos.Y - (debugTagTexture.Height * Math.Max(0, scale - 1));
 
                 rapi.Render2DTexture(
-                    debugTagTexture.textureId, posx, posy - offY - 10, cappedScale * debugTagTexture.width, cappedScale * debugTagTexture.height, 20
+                    debugTagTexture.TextureId, posx, posy - offY - 10, cappedScale * debugTagTexture.Width, cappedScale * debugTagTexture.Height, 20
                 );
             }
 
@@ -638,14 +669,14 @@ namespace Vintagestory.GameContent
 
                 foreach (MessageTexture mt in messageTextures)
                 {
-                    offY += (mt.tex.height * cappedScale) + 4;
+                    offY += (mt.tex.Height * cappedScale) + 4;
 
-                    float posx = (float)pos.X - cappedScale * mt.tex.width / 2;
+                    float posx = (float)pos.X - cappedScale * mt.tex.Width / 2;
                     float posy = (float)pos.Y + offY;
                     
 
                     rapi.Render2DTexture(
-                        mt.tex.textureId, posx, rapi.FrameHeight - posy, cappedScale * mt.tex.width, cappedScale * mt.tex.height, 20
+                        mt.tex.TextureId, posx, rapi.FrameHeight - posy, cappedScale * mt.tex.Width, cappedScale * mt.tex.Height, 20
                     );
                     // - cappedScale * mt.tex.height
 
@@ -680,14 +711,14 @@ namespace Vintagestory.GameContent
                 debugTagTexture = null;
             }
 
-            api.Event.UnregisterReloadShapes(RetesselateShape);
+            capi.Event.OnReloadShapes -= TesselateShape;
         }
 
 
 
         public void loadModelMatrix(Entity entity, bool isShadowPass)
         {
-            IEntityPlayer entityPlayer = api.World.Player.Entity;
+            IEntityPlayer entityPlayer = capi.World.Player.Entity;
 
             Mat4f.Identity(ModelMat);
             //if (!isShadowPass) - why was this here? it causes creature shadows to render on the player
@@ -718,7 +749,7 @@ namespace Vintagestory.GameContent
 
         public void loadModelMatrixForPlayer(Entity entity, bool isSelf)
         {
-            EntityPlayer entityPlayer = api.World.Player.Entity;
+            EntityPlayer entityPlayer = capi.World.Player.Entity;
 
             Mat4f.Identity(ModelMat);
 
@@ -743,7 +774,7 @@ namespace Vintagestory.GameContent
 
         void loadModelMatrixForGui(Entity entity, double posX, double posY, double posZ, double yawDelta, float size)
         {
-            IEntityPlayer entityPlayer = api.World.Player.Entity;
+            IEntityPlayer entityPlayer = capi.World.Player.Entity;
 
             Mat4f.Identity(ModelMat);
             Mat4f.Translate(ModelMat, ModelMat, (float)posX, (float)posY, (float)posZ);
