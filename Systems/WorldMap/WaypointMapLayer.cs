@@ -125,6 +125,7 @@ namespace Vintagestory.GameContent
                     }
 
                     Waypoints.Remove(ownwpaypoints[(int)id]);
+                    RebuildMapComponents();
                     ResendWaypoints(player);
                     player.SendMessage(groupId, Lang.Get("Ok, deleted waypoint."), EnumChatType.CommandSuccess);
                     break;

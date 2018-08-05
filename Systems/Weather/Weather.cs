@@ -74,7 +74,7 @@ namespace Vintagestory.GameContent
                .RegisterMessageType(typeof(WeatherState))
             ;
 
-            sapi.RegisterCommand("weather", "Show current weather info", "", cmdWeatherServer);
+            sapi.RegisterCommand("weather", "Show current weather info", "", cmdWeatherServer, Privilege.controlserver);
 
             sapi.Event.RegisterGameTickListener(OnGameTick, 50);
 

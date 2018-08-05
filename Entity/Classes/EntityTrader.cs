@@ -356,6 +356,8 @@ namespace Vintagestory.GameContent
 
         public override void OnReceivedServerPacket(int packetid, byte[] data)
         {
+            base.OnReceivedServerPacket(packetid, data);
+
             if (packetid == 1001)
             {
                 talkUtil.Talk(EnumTalkType.Hurt);

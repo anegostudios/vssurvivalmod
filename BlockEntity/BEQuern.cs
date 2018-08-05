@@ -220,6 +220,18 @@ namespace Vintagestory.GameContent
             {
                 SetDialogValues(clientDialog.Attributes);
             }
+
+            if (slotid == 0)
+            {
+                inputGrindTime = 0.0f; //reset the progress to 0 if the item is removed.
+                MarkDirty();
+
+                if(clientDialog != null)
+                {
+                    clientDialog.SingleComposer.ReCompose();
+                }
+            }
+
         }
 
         internal MeshData GenMesh(string type = "base")

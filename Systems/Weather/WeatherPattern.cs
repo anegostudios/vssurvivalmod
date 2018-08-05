@@ -16,7 +16,7 @@ namespace Vintagestory.GameContent
         public float FlatFogDensityOffset = 0f;
         public float CloudYOffset = 0f;
 
-        public float ChanceOfWeatherChange = 0.002f;
+        public float ChanceOfWeatherChange = 0.001f;
 
         public string Name;
 

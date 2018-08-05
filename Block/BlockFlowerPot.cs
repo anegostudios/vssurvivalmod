@@ -38,8 +38,9 @@ namespace Vintagestory.GameContent
 
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
         {
-            Block block = world.BlockAccessor.GetBlock(CodeWithParts("empty"));
-            return new ItemStack(block);
+            return base.OnPickBlock(world, pos);
+            //Block block = world.BlockAccessor.GetBlock(CodeWithParts("empty"));
+            //return new ItemStack(block);
         }
 
 

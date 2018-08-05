@@ -22,7 +22,7 @@ namespace Vintagestory.GameContent
             {
                 if (invslot is CreativeSlot) return true;
 
-                if (invslot.Itemstack != null && invslot.Itemstack.Collectible.Code.Path.StartsWith("arrow"))
+                if (invslot.Itemstack != null && invslot.Itemstack.Collectible.Code.Path.StartsWith("arrow-"))
                 {
                     slot = invslot;
                     return false;

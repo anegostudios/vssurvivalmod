@@ -23,6 +23,8 @@ namespace Vintagestory.GameContent
         int texId;
         internal string Material;
 
+        Vec4f outLineColorMul = new Vec4f(1, 1, 1, 1);
+
         public KnappingRenderer(BlockPos pos, ICoreClientAPI capi)
         {
             this.pos = pos;
@@ -94,6 +96,7 @@ namespace Vintagestory.GameContent
         }
 
 
+        
 
         private void RenderRecipeOutLine()
         {
@@ -117,6 +120,9 @@ namespace Vintagestory.GameContent
 
             rpi.GlTranslate(pos.X - camPos.X, pos.Y - camPos.Y, pos.Z - camPos.Z);
 
+            outLineColorMul.A = 1 - GameMath.Clamp((float)Math.Sqrt(plrPos.SquareDistanceTo(pos.X, pos.Y, pos.Z))/5 - 1f, 0, 1);
+
+            prog.Uniform("colorIn", outLineColorMul);
             prog.UniformMatrix("projectionMatrix", rpi.CurrentProjectionMatrix);
             prog.UniformMatrix("modelViewMatrix", rpi.CurrentModelviewMatrix);
 

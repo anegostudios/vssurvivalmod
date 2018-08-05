@@ -10,6 +10,16 @@ namespace Vintagestory.GameContent
 {
     public class ItemFlint : Item
     {
+        public override string GetHeldTpHitAnimation(IItemSlot slot, IEntity byEntity)
+        {
+            /*if (slot.Itemstack?.Collectible == this)
+            {
+                return (byEntity as EntityAgent).Controls.FloorSitting ? /*"knapsitting" - bleh not blending correctly  base.GetHeldTpHitAnimation(slot, byEntity) : "knapstanding";
+            }*/
+
+            return base.GetHeldTpHitAnimation(slot, byEntity);
+        }
+
         public override bool OnHeldInteractStart(IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
             IPlayer byPlayer = null;

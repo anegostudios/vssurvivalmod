@@ -114,7 +114,7 @@ namespace Vintagestory.GameContent
                     return;
                 }
 
-                float spreadChance = (TimePassed - 0.5f) / 200f;
+                float spreadChance = (TimePassed - 2.5f) / 500f;
 
                 if (spreadChance > api.World.Rand.NextDouble())
                 {

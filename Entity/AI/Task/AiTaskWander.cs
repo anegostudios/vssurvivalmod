@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API;
 using Vintagestory.API.Common;
@@ -9,11 +10,14 @@ namespace Vintagestory.GameContent
 {
     public class AiTaskWander : AiTaskBase
     {
-        Vec3d target;
+        public Vec3d MainTarget;
+
         bool done;
         float moveSpeed = 0.03f;
         float wanderChance = 0.015f;
         float maxHeight = 7f;
+        float? preferredLightLevel;
+
         bool awaitReached = true;
 
         NatFloat wanderRange = NatFloat.createStrongerInvexp(3, 30);
@@ -44,18 +48,26 @@ namespace Vintagestory.GameContent
                 maxHeight = taskConfig["maxHeight"].AsFloat(7f);
             }
 
+            if (taskConfig["preferredLightLevel"] != null)
+            {
+                preferredLightLevel = taskConfig["preferredLightLevel"].AsFloat(-99);
+                if (preferredLightLevel < 0) preferredLightLevel = null;
+            }
+
             if (taskConfig["awaitReached"] != null)
             {
                 awaitReached = taskConfig["awaitReached"].AsBool(true);
             }
+            
         }
 
         public override bool ShouldExecute()
         {
             if (rand.NextDouble() > wanderChance) return false;
 
+            List<Vec3d> goodtargets = new List<Vec3d>();
 
-            int tries = 6;
+            int tries = 9;
             while (tries-- > 0)
             {
                 int terrainYPos = entity.World.BlockAccessor.GetTerrainMapheightAt(tmpPos);
@@ -65,11 +77,11 @@ namespace Vintagestory.GameContent
                 float dz = wanderRange.nextFloat() * (rand.Next(2) * 2 - 1);
 
                 
-                target = entity.ServerPos.XYZ.Add(dx, dy, dz);
-                target.Y = Math.Min(target.Y, terrainYPos + maxHeight);
+                MainTarget = entity.ServerPos.XYZ.Add(dx, dy, dz);
+                MainTarget.Y = Math.Min(MainTarget.Y, terrainYPos + maxHeight);
 
-                tmpPos.X = (int)target.X;
-                tmpPos.Z = (int)target.Z;
+                tmpPos.X = (int)MainTarget.X;
+                tmpPos.Z = (int)MainTarget.Z;
                 
                 if ((entity.Controls.IsClimbing && !entity.Type.FallDamage) || (entity.Type.Habitat != EnumHabitat.Land))
                 {
@@ -83,6 +95,10 @@ namespace Vintagestory.GameContent
                 }
                 else
                 {
+                    int yDiff = (int)entity.ServerPos.Y - terrainYPos;
+
+                    double slopeness = yDiff / Math.Max(1, GameMath.Sqrt(MainTarget.HorizontalSquareDistanceTo(entity.ServerPos.XYZ)) - 2);
+
                     tmpPos.Y = terrainYPos;
                     Block block = entity.World.BlockAccessor.GetBlock(tmpPos);
                     Block belowblock = entity.World.BlockAccessor.GetBlock(tmpPos.X, tmpPos.Y - 1, tmpPos.Z);
@@ -90,8 +106,31 @@ namespace Vintagestory.GameContent
                     bool canStep = block.CollisionBoxes == null || block.CollisionBoxes.Max((cuboid) => cuboid.Y2) <= 1f;
                     bool canStand = belowblock.CollisionBoxes != null && belowblock.CollisionBoxes.Length > 0;
 
-                    if (canStand && canStep) return true;
+                    if (slopeness < 3 && canStand && canStep)
+                    {
+                        if (preferredLightLevel == null) return true;
+                        goodtargets.Add(MainTarget);
+                    }
                 }
+            }
+
+            int smallestdiff = 999;
+            Vec3d bestTarget = null;
+            for (int i = 0; i < goodtargets.Count; i++)
+            {
+                int lightdiff = Math.Abs((int)preferredLightLevel - entity.World.BlockAccessor.GetLightLevel(goodtargets[i].AsBlockPos, EnumLightLevelType.MaxLight));
+
+                if (lightdiff < smallestdiff)
+                {
+                    smallestdiff = lightdiff;
+                    bestTarget = goodtargets[i];
+                }
+            }
+
+            if (bestTarget != null)
+            {
+                MainTarget = bestTarget;
+                return true;
             }
 
             return false;
@@ -103,7 +142,7 @@ namespace Vintagestory.GameContent
             base.StartExecute();
 
             done = false;
-            entity.PathTraverser.GoTo(target, moveSpeed, OnGoalReached, OnStuck);
+            entity.PathTraverser.GoTo(MainTarget, moveSpeed, OnGoalReached, OnStuck);
         }
 
         public override bool ContinueExecute(float dt)

@@ -22,6 +22,8 @@ namespace Vintagestory.GameContent
         ItemStack ingot;
         int texId;
 
+        Vec4f outLineColorMul = new Vec4f(1, 1, 1, 1);
+
         public AnvilWorkItemRenderer(BlockPos pos, ICoreClientAPI capi)
         {
             this.pos = pos;
@@ -116,6 +118,9 @@ namespace Vintagestory.GameContent
 
             prog.UniformMatrix("projectionMatrix", rpi.CurrentProjectionMatrix);
             prog.UniformMatrix("modelViewMatrix", rpi.CurrentModelviewMatrix);
+
+            outLineColorMul.A = 1 - GameMath.Clamp((float)Math.Sqrt(plrPos.SquareDistanceTo(pos.X, pos.Y, pos.Z)) / 5 - 1f, 0, 1);
+            prog.Uniform("colorIn", outLineColorMul);
 
             rpi.RenderMesh(recipeOutlineMeshRef);
 

@@ -89,6 +89,25 @@ namespace Vintagestory.GameContent
                     cmp?.Dispose();
                 }
 
+                if (player.Entity == null)
+                {
+                    capi.World.Logger.Warning("Can't add player {0} to world map, missing entity :<", player.PlayerUID);
+
+                    foreach (var val in capi.World.LoadedEntities)
+                    {
+                        if (val.Value is EntityPlayer)
+                        {
+                            EntityPlayer eplr = val.Value as EntityPlayer;
+                            if (eplr.PlayerUID == player.PlayerUID)
+                            {
+                                Console.WriteLine("but in loaded?");
+                            }
+                        }
+                    }
+
+                    continue;
+                }
+
                 cmp = new EntityMapComponent(capi, player == capi.World.Player ? ownTexture : otherTexture, player.Entity);
 
                 MapComps[player] = cmp;

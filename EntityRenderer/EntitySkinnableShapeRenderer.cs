@@ -65,8 +65,6 @@ namespace Vintagestory.GameContent
         {
             TextureAtlasPosition origTexPos = capi.EntityTextureAtlas.Positions[entity.Type.Client.FirstTexture.Baked.TextureSubId];
 
-            LoadedTexture skinnedTex = new LoadedTexture(capi, origTexPos.atlasTextureId, AtlasSize, AtlasSize);
-
             
             LoadedTexture entityAtlas = new LoadedTexture(null) {
                 TextureId = origTexPos.atlasTextureId,

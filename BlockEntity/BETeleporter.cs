@@ -85,6 +85,8 @@ namespace Vintagestory.GameContent
         
         private void OnClientGameTick(float dt)
         {
+            if (block == null || api?.World == null) return;
+
             SimpleParticleProperties currentParticles = (api.World.ElapsedMilliseconds > 100 && api.World.ElapsedMilliseconds - lastCollideMsOwnPlayer < 100) ? 
                 block.insideParticles : 
                 block.idleParticles
@@ -102,7 +104,9 @@ namespace Vintagestory.GameContent
 
             foreach (var val in tpingEntities)
             {
-                val.Value.SecondsPassed += dt;
+                if (val.Value.Entity.Teleporting) continue;
+
+                val.Value.SecondsPassed += Math.Min(0.5f, dt);
 
                 if (api.World.ElapsedMilliseconds - val.Value.LastCollideMs > 100)
                 {
@@ -113,6 +117,17 @@ namespace Vintagestory.GameContent
                 if (val.Value.SecondsPassed > 3 && tpLocation?.TargetPos != null)
                 {
                     val.Value.Entity.TeleportTo(tpLocation.TargetPos.AddCopy(0,1,0));
+
+                    Entity e = val.Value.Entity;
+                    if (e is EntityPlayer)
+                    {
+                        api.World.Logger.Debug("Teleporting player {0} to {1}", (e as EntityPlayer).GetBehavior<EntityBehaviorNameTag>().DisplayName, tpLocation.TargetPos);
+                    } else
+                    {
+                        api.World.Logger.Debug("Teleporting entity {0} to {1}", e.Type?.Code, tpLocation.TargetPos);
+                    }
+                    
+
                     toremove.Add(val.Key);
                 }
             }

@@ -12,7 +12,6 @@ using Vintagestory.API.Server;
 
 namespace Vintagestory.GameContent
 {
-
     public class BlockEntityAnvil : BlockEntity
     {
         public static SimpleParticleProperties bigMetalSparks;
@@ -123,6 +122,11 @@ namespace Vintagestory.GameContent
         {
             float temperature = stack.Collectible.GetTemperature(api.World, stack);
             float meltingpoint = stack.Collectible.GetMeltingPoint(api.World, null, new DummySlot(baseMaterial));
+
+            if (stack.Collectible.Attributes?["workableTemperature"].Exists == true)
+            {
+                return stack.Collectible.Attributes["workableTemperature"].AsFloat(meltingpoint / 2) <= temperature;
+            }
 
             return temperature >= meltingpoint / 2;
         }
@@ -649,44 +653,33 @@ namespace Vintagestory.GameContent
         {
             baseMaterial = new ItemStack(api.World.GetItem(new AssetLocation("ingot-" + workItemStack.Collectible.LastCodePart())));
 
-            OrderedDictionary<int, ItemStack> stacks = new OrderedDictionary<int, ItemStack>();
+            SmithingRecipe recipe = api.World.SmithingRecipes
+                .Where(r => r.Ingredient.SatisfiesAsIngredient(baseMaterial))
+                .OrderBy(r => r.Output.ResolvedItemstack.GetName())
+                .ElementAtOrDefault(num)
+            ;
 
-            int i = 0;
-            foreach (SmithingRecipe smithRecipe in api.World.SmithingRecipes)
-            {
-                if (smithRecipe.Ingredient.SatisfiesAsIngredient(baseMaterial))
-                {
-                    stacks[i] = smithRecipe.Output.ResolvedItemstack;
-                }
-                i++;
-            }
-
-            return stacks.GetKeyAtIndex(num);
+            return new List<SmithingRecipe>(api.World.SmithingRecipes).IndexOf(recipe);
         }
 
 
 
         internal void OpenDialog(ItemStack ingredient)
         {
-            List<ItemStack> stacks = new List<ItemStack>();
-
             if (ingredient.Collectible is ItemWorkItem)
             {
                 ingredient = new ItemStack(api.World.GetItem(new AssetLocation("ingot-" + ingredient.Collectible.LastCodePart())));
             }
 
-            foreach (SmithingRecipe smithRecipe in api.World.SmithingRecipes)
-            {
-                if (smithRecipe.Ingredient.SatisfiesAsIngredient(ingredient))
-                {
-                    stacks.Add(smithRecipe.Output.ResolvedItemstack);
-                }
-            }
+            List<ItemStack> stacks = api.World.SmithingRecipes
+                .Where(r => r.Ingredient.SatisfiesAsIngredient(ingredient))
+                .OrderBy(r => r.Output.ResolvedItemstack.GetName())
+                .Select(r => r.Output.ResolvedItemstack)
+                .ToList()
+            ;
 
             IClientWorldAccessor clientWorld = (IClientWorldAccessor)api.World;
-
-            stacks = stacks.OrderBy(x => x.GetName()).ToList();
-
+            
             GuiDialog dlg = new GuiDialogBlockEntityRecipeSelector("Select smithing recipe", stacks.ToArray(), pos, api as ICoreClientAPI);
             dlg.TryOpen();
         }

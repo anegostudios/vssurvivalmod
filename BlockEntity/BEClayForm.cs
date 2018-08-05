@@ -636,54 +636,38 @@ namespace Vintagestory.GameContent
         {
             baseMaterial = new ItemStack(api.World.GetItem(new AssetLocation("clay-" + workItemStack.Collectible.LastCodePart())));
 
-            OrderedDictionary<int, ItemStack> stacks = new OrderedDictionary<int, ItemStack>();
+            ClayFormingRecipe recipe = api.World.ClayFormingRecipes
+                .Where(r => r.Ingredient.SatisfiesAsIngredient(baseMaterial))
+                .OrderBy(r => r.Output.ResolvedItemstack.GetName())
+                .ElementAtOrDefault(num)
+            ;
 
-            int i = 0;
-            foreach (ClayFormingRecipe recipe in api.World.ClayFormingRecipes)
-            {
-                if (recipe.Ingredient.SatisfiesAsIngredient(baseMaterial))
-                {
-                    stacks[i] = recipe.Output.ResolvedItemstack;
-                }
-                i++;
-            }
-
-            if(num >= stacks.Count || num < 0)
-            {
-                return false;
-            }
-            else
-            {
-                selectedRecipeNumber = stacks.GetKeyAtIndex(num);
-                return true;
-            }
+            selectedRecipeNumber = new List<ClayFormingRecipe>(api.World.ClayFormingRecipes).IndexOf(recipe);
+            return selectedRecipeNumber >= 0;
         }
 
 
 
         public void OpenDialog(IClientWorldAccessor world, BlockPos pos, ItemStack ingredient)
         {
-            List<ItemStack> stacks = new List<ItemStack>();
-
             if (ingredient.Collectible is ItemWorkItem)
             {
                 ingredient = new ItemStack(world.GetItem(new AssetLocation("clay-" + ingredient.Collectible.LastCodePart())));
             }
 
-            foreach (ClayFormingRecipe recipe in world.ClayFormingRecipes)
-            {
-                if (recipe.Ingredient.SatisfiesAsIngredient(ingredient))
-                {
-                    stacks.Add(recipe.Output.ResolvedItemstack);
-                }
-            }
-
-            stacks = stacks.OrderBy(x => x.GetName()).ToList();
-
+            List<ItemStack> stacks = world.ClayFormingRecipes
+                .Where(r => r.Ingredient.SatisfiesAsIngredient(ingredient))
+                .OrderBy(r => r.Output.ResolvedItemstack.GetName())
+                .Select(r => r.Output.ResolvedItemstack)
+                .ToList()
+            ;
+            
             GuiDialog dlg = new GuiDialogBlockEntityRecipeSelector("Select recipe", stacks.ToArray(), pos, api as ICoreClientAPI);
             dlg.TryOpen();
         }
 
+
+        
 
         public override string GetBlockInfo(IPlayer forPlayer)
         {

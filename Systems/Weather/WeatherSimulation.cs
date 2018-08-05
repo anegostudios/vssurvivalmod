@@ -79,26 +79,26 @@ namespace Vintagestory.GameContent
             CumulusCloudsWithFlatMist.Ambient.FlatFogDensity = new WeightedFloat(-100/250f, 1);
             CumulusCloudsWithFlatMist.BeginUse += () =>
             {
-                CumulusCloudsWithFlatMist.Ambient.FlatFogDensity.Value = (-50 - 50 * (float)rand.NextDouble()) / 250f;
+                CumulusCloudsWithFlatMist.Ambient.FlatFogDensity.Value = (-50 - 100 * (float)rand.NextDouble()) / 250f;
                 CumulusCloudsWithFlatMist.Ambient.FlatFogYPos.Value = -1 - 7 * (float)rand.NextDouble();
             };
 
-            CumulusCloudsWithFlatMist.ChanceOfWeatherChange = 0.01f;
-            CumulusCloudsWithFlatMist.Chance = 0.35f;
+            CumulusCloudsWithFlatMist.ChanceOfWeatherChange = 0.008f;
+            CumulusCloudsWithFlatMist.Chance = 0.15f;
 
             WeatherPattern CumulusCloudsWithTallMist = CumulusClouds.Clone();
             CumulusCloudsWithTallMist.Name = "Cumulus Clouds + Tall dense Mist";
             CumulusCloudsWithTallMist.Ambient.FlatFogYPos = new WeightedFloat(40, 1);
             CumulusCloudsWithTallMist.Ambient.FlatFogDensity = new WeightedFloat(-30 / 250f, 1);
-            CumulusCloudsWithTallMist.BeginUse += () => { CumulusCloudsWithTallMist.Ambient.FlatFogDensity.Value = (-15 - 15 * (float)rand.NextDouble()) / 250f; };
-            CumulusCloudsWithTallMist.ChanceOfWeatherChange = 0.01f;
-            CumulusCloudsWithTallMist.Chance = 0.35f;
+            CumulusCloudsWithTallMist.BeginUse += () => { CumulusCloudsWithTallMist.Ambient.FlatFogDensity.Value = (-15 - 50 * (float)rand.NextDouble()) / 250f; };
+            CumulusCloudsWithTallMist.ChanceOfWeatherChange = 0.008f;
+            CumulusCloudsWithTallMist.Chance = 0.15f;
 
             WeatherPattern CumulusCloudsWithFog = CumulusClouds.Clone();
             CumulusCloudsWithFog.Name = "Cumulus Clouds + Fog";
             CumulusCloudsWithFog.Ambient.FogDensity = new WeightedFloat(40 / 2000f, 1);
             CumulusCloudsWithFog.BeginUse += () => { CumulusCloudsWithFog.Ambient.FogDensity.Value = (10 + 30 * (float)rand.NextDouble()) / 2000f; };
-            CumulusCloudsWithFog.Chance = 0.35f;
+            CumulusCloudsWithFog.Chance = 0.22f;
 
             WeatherPattern NimboStratusClouds = new WeatherPattern(ws, "Nimbostratus Clouds", 1)
             {

@@ -61,7 +61,7 @@ namespace Vintagestory.GameContent
         IServerNetworkChannel serverChannel;
 
 
-
+        
 
 
 
@@ -95,9 +95,13 @@ namespace Vintagestory.GameContent
             base.StartClientSide(api);
 
             capi = api;
-            capi.Input.RegisterHotKey("worldmap", "World Map", GlKeys.M, HotkeyType.GeneralControls);
-            capi.Input.SetHotKeyHandler("worldmap", OnHotKeyWorldMap);
+            capi.Input.RegisterHotKey("worldmaphud", "World Map HUD (Small overlay)", GlKeys.F6, HotkeyType.GeneralControls);
+            capi.Input.RegisterHotKey("worldmapdialog", "World Map Dialog", GlKeys.M, HotkeyType.GeneralControls);
+            capi.Input.SetHotKeyHandler("worldmaphud", OnHotKeyWorldMapHud);
+            capi.Input.SetHotKeyHandler("worldmapdialog", OnHotKeyWorldMapDlg);
             capi.Event.BlockTexturesLoaded(OnLoaded);
+            capi.Event.OnLevelFinalize += OnLvlFinalize;
+
             capi.Event.LeaveWorld += () => isShuttingDown = true;
 
             clientChannel =
@@ -107,6 +111,15 @@ namespace Vintagestory.GameContent
                .RegisterMessageType(typeof(OnMapToggle))
                .SetMessageHandler<MapLayerData[]>(OnMapLayerDataReceivedClient)
             ;
+        }
+
+        private void OnLvlFinalize()
+        {
+            if (capi != null && (capi.Settings.Bool["hudOpened"] || !capi.Settings.Bool.Exists("hudOpened")) && (worldMapDlg == null || !worldMapDlg.IsOpened()))
+            {
+                ToggleMap(EnumDialogType.HUD);
+            }
+
         }
 
         private void OnMapLayerDataReceivedClient(MapLayerData[] msg)
@@ -146,14 +159,58 @@ namespace Vintagestory.GameContent
 
             mapLayerGenThread.IsBackground = true;
             mapLayerGenThread.Start();
+
         }
 
-        private bool OnHotKeyWorldMap(KeyCombination comb)
+        private bool OnHotKeyWorldMapHud(KeyCombination comb)
         {
+            ToggleMap(EnumDialogType.HUD);
+            return true;
+        }
+
+        private bool OnHotKeyWorldMapDlg(KeyCombination comb)
+        {
+            ToggleMap(EnumDialogType.Dialog);
+            return true;
+        }
+
+
+        void ToggleMap(EnumDialogType asType)
+        {
+            bool isDlgOpened = worldMapDlg != null && worldMapDlg.IsOpened();
+
             if (worldMapDlg != null)
             {
-                worldMapDlg.Toggle();
-                return true;
+                if (!isDlgOpened)
+                {
+                    if (asType == EnumDialogType.HUD) capi.Settings.Bool["hudOpened"] = true;
+
+                    worldMapDlg.Open(asType);
+                }
+                else
+                {
+                    if (asType == EnumDialogType.HUD)
+                    {
+                        worldMapDlg.TryClose();
+                        capi.Settings.Bool["hudOpened"] = false;
+                    } else
+                    {
+                        if (worldMapDlg.DialogType != asType)
+                        {
+                            worldMapDlg.Open(asType);
+                            return;
+                        }
+
+                        if (capi.Settings.Bool["hudOpened"])
+                        {
+                            worldMapDlg.Open(EnumDialogType.HUD);
+                        } else
+                        {
+                            worldMapDlg.TryClose();
+                        }
+                    }                    
+                }
+                return;
             }
 
             worldMapDlg = new GuiDialogWorldMap(onViewChangedClient, capi);
@@ -169,11 +226,13 @@ namespace Vintagestory.GameContent
                 clientChannel.SendPacket(new OnMapToggle() { OpenOrClose = false });
             };
 
-            worldMapDlg.Toggle();
-
-
-            return true;
+            worldMapDlg.Open(asType);
+            if (asType == EnumDialogType.HUD) capi.Settings.Bool["hudOpened"] = true;
         }
+
+
+
+
 
         private void onViewChangedClient(List<Vec2i> nowVisible, List<Vec2i> nowHidden)
         {

@@ -63,6 +63,8 @@ namespace Vintagestory.GameContent
             block = api.World.BlockAccessor.GetBlock(pos);
             if (block.Attributes != null) sleepEfficiency = block.Attributes["sleepEfficiency"].AsFloat(0.5f);
 
+            
+
             Cuboidf[] collboxes = block.GetCollisionBoxes(api.World.BlockAccessor, pos);
             if (collboxes!=null && collboxes.Length > 0) y2 = collboxes[0].Y2;
 
@@ -79,12 +81,15 @@ namespace Vintagestory.GameContent
         {
             double hoursPassed = api.World.Calendar.TotalHours - hoursTotal;
 
+            // Since waking up takes an hour, we take away one hour from the sleepEfficiency
+            float sleepEff = sleepEfficiency - 1f / 12;
+
             if (hoursPassed > 0)
             {
                 EntityBehaviorTiredness ebt = MountedBy?.GetBehavior("tiredness") as EntityBehaviorTiredness;
                 if (ebt != null)
                 {
-                    float newval = Math.Max(0, ebt.Tiredness - (float)hoursPassed / sleepEfficiency);
+                    float newval = Math.Max(0, ebt.Tiredness - (float)hoursPassed / sleepEff);
                     ebt.Tiredness = newval;
                     if (newval <= 0)
                     {

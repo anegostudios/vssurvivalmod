@@ -459,46 +459,27 @@ namespace Vintagestory.GameContent
 
         private bool TrySetSelectedRecipe(int num)
         {
-            OrderedDictionary<int, ItemStack> stacks = new OrderedDictionary<int, ItemStack>();
+            KnappingRecipe recipe = api.World.KnappingRecipes
+                .Where(r => r.Ingredient.SatisfiesAsIngredient(BaseMaterial))
+                .OrderBy(r => r.Output.ResolvedItemstack.GetName())
+                .ElementAtOrDefault(num)
+            ;
 
-            int i = 0;
-            foreach (KnappingRecipe recipe in api.World.KnappingRecipes)
-            {
-                if (recipe.Ingredient.SatisfiesAsIngredient(BaseMaterial)) 
-                {
-                    stacks[i] = recipe.Output.ResolvedItemstack;
-                }
-                i++;
-            }
-
-            if(num >= stacks.Count || num < 0)
-            {
-                return false;
-            }
-            else
-            {
-                selectedRecipeNumber = stacks.GetKeyAtIndex(num);
-                return true;
-            }
+            selectedRecipeNumber = new List<KnappingRecipe>(api.World.KnappingRecipes).IndexOf(recipe);
+            return selectedRecipeNumber >= 0;
         }
 
 
 
         public void OpenDialog(IClientWorldAccessor world, BlockPos pos, ItemStack baseMaterial)
         {
-            List<ItemStack> stacks = new List<ItemStack>();
+            List<ItemStack> stacks = world.KnappingRecipes
+               .Where(r => r.Ingredient.SatisfiesAsIngredient(baseMaterial))
+               .OrderBy(r => r.Output.ResolvedItemstack.GetName())
+               .Select(r => r.Output.ResolvedItemstack)
+               .ToList()
+           ;
             
-
-            foreach (KnappingRecipe recipe in world.KnappingRecipes)
-            {
-                if (recipe.Ingredient.SatisfiesAsIngredient(baseMaterial))
-                {
-                    stacks.Add(recipe.Output.ResolvedItemstack);
-                }
-            }
-
-            stacks = stacks.OrderBy(x => x.GetName()).ToList();
-
             GuiDialog dlg = new GuiDialogBlockEntityRecipeSelector("Select recipe", stacks.ToArray(), pos, api as ICoreClientAPI);
             dlg.TryOpen();
         }

@@ -122,31 +122,14 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void Toggle()
+        public void Open(EnumDialogType type)
         {
-            if (toggleMode == 0)
-            {
-                dialogType = EnumDialogType.HUD;
-                TryOpen();
-            }
-
-            if (toggleMode == 1)
-            {
-                dialogType = EnumDialogType.Dialog;
-                opened = false;
-                TryOpen();
-            }
-
-            if (toggleMode == 2)
-            {
-                TryClose();
-                return;
-            }
-
-            toggleMode = (toggleMode + 1) % 3;
+            this.dialogType = type;
+            opened = false;
+            TryOpen();
         }
         
-
+        
         
         public override void OnGuiClosed()
         {
@@ -171,8 +154,17 @@ namespace Vintagestory.GameContent
 
             if (SingleComposer.Bounds.PointInside(args.X, args.Y))
             {
+                double x = args.X - SingleComposer.Bounds.absX;
+                double y = args.Y - SingleComposer.Bounds.absY - GuiElement.scaled(30); // no idea why the 30 :/
+                //Console.WriteLine("{0}/{1}", args.X, args.Y);
+
                 StringBuilder hoverText = new StringBuilder();
-                mapElem.TranslateViewPosToWorldPos(new Vec2f(args.X, args.Y), ref hoveredWorldPos);
+                mapElem.TranslateViewPosToWorldPos(new Vec2f((float)x, (float)y), ref hoveredWorldPos);
+                hoveredWorldPos.Y++;
+
+                //BlockPos pos = capi.World.Player.Entity.Pos.AsBlockPos;
+
+                hoveredWorldPos.Sub(capi.World.SpawnPosition.AsBlockPos);
 
                 hoverText.AppendLine(string.Format("{0}, {1}, {2}", (int)hoveredWorldPos.X, (int)hoveredWorldPos.Y, (int)hoveredWorldPos.Z));
 
