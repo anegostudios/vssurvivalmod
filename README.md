@@ -6,7 +6,4 @@ This is proprietary software owned by Anego Studios. All rights reserved.
 You may NOT sell this software in any way, shape or form.
 You may NOT copy, compile or distribute this software in its unmodified form.
 
-You may read it, learn from it, and use it as a basis for mods of the game Vintage Story, but your mod should be made of at least 50% of your original work, measured by lines of code. 
-In other words, please don't distribute just slightly modified versions of this as your own mod. 
-
-Anyhow, in case of doubt, do ask the Vintage Story Team on our official Forums or Discord. Enjoy! <3
+You may read it, learn from it, and use it as a basis for mods of the game Vintage Story. In case of doubt, just ask the VS Team on the official Forums or Discord Server! :-)
