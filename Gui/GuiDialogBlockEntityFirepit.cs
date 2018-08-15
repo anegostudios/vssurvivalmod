@@ -58,6 +58,8 @@ namespace Vintagestory.GameContent
 
         void SetupDialog()
         {
+            ClearComposers();
+
             ItemSlot hoveredSlot = capi.World.Player.InventoryManager.CurrentHoveredSlot;
             if (hoveredSlot != null && hoveredSlot.Inventory == inventory)
             {

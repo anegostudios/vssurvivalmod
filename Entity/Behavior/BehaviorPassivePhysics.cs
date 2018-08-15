@@ -61,6 +61,8 @@ namespace Vintagestory.GameContent
                 DoPhysics(dt2, pos);
                 accumulator -= dt2;
             }
+
+            entity.World.FrameProfiler.Mark("entity-physics");
         }
 
         public void DoPhysics(float dt, EntityPos pos)

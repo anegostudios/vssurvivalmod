@@ -82,7 +82,7 @@ namespace Vintagestory.GameContent
             ElementBounds dialogBounds = ElementStdBounds.AutosizedMainDialog.WithAlignment(EnumDialogArea.RightMiddle)
                 .WithFixedAlignmentOffset(-ElementGeometrics.DialogToScreenPadding, 0);
 
-
+            ClearComposers();
             SingleComposer = capi.Gui
                 .CreateCompo("blockentitymillstone", dialogBounds, false)
                 .AddDialogBG(bgBounds)

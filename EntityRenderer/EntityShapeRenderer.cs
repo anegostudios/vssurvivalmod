@@ -278,7 +278,7 @@ namespace Vintagestory.GameContent
         {
             bool showDebuginfo = capi.Settings.Bool["showEntityDebugInfo"];
 
-            if (showDebuginfo && !entity.DebugAttributes.AllDirty && !entity.DebugAttributes.PartialDirty) return;
+            if (showDebuginfo && !entity.DebugAttributes.AllDirty && !entity.DebugAttributes.PartialDirty && debugTagTexture != null) return;
 
             if (debugTagTexture != null)
             {
@@ -656,10 +656,10 @@ namespace Vintagestory.GameContent
             if (debugTagTexture != null)
             {
                 float posx = (float)pos.X - cappedScale * debugTagTexture.Width / 2;
-                float posy = rapi.FrameHeight - (float)pos.Y - (debugTagTexture.Height * Math.Max(0, scale - 1));
+                float posy = rapi.FrameHeight - (float)pos.Y - (debugTagTexture.Height * Math.Max(0, cappedScale));
 
                 rapi.Render2DTexture(
-                    debugTagTexture.TextureId, posx, posy - offY - 10, cappedScale * debugTagTexture.Width, cappedScale * debugTagTexture.Height, 20
+                    debugTagTexture.TextureId, posx, posy - offY, cappedScale * debugTagTexture.Width, cappedScale * debugTagTexture.Height, 20
                 );
             }
 

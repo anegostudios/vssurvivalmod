@@ -17,8 +17,6 @@ namespace Vintagestory.GameContent
 
     public class GuiDialogWorldMap : GuiDialogGeneric
     {
-        int toggleMode = 0;
-
         public override bool DisableWorldInteract()
         {
             return false;
@@ -79,6 +77,8 @@ namespace Vintagestory.GameContent
 
             Vec3d centerPos = capi.World.Player.Entity.Pos.XYZ;
 
+            if (SingleComposer != null) SingleComposer.Dispose();
+
             SingleComposer = capi.Gui
                 .CreateCompo("worldmap", dialogBounds, false)
                 .AddDialogBG(bgBounds)
@@ -113,6 +113,8 @@ namespace Vintagestory.GameContent
             if (mapElem != null) mapElem.worldBoundsBefore = new Cuboidi();
             mapComponents.Clear();
             mapElem.EnsureMapFullyLoaded();
+
+            OnMouseMove(new MouseEvent() { X = capi.Input.MouseX, Y = capi.Input.MouseY });
         }
 
 
@@ -137,7 +139,6 @@ namespace Vintagestory.GameContent
 
             capi.Event.UnregisterGameTickListener(listenerId);
             listenerId = 0;
-            toggleMode = 0;
 
             foreach (MapComponent cmp in mapComponents)
             {
@@ -152,7 +153,7 @@ namespace Vintagestory.GameContent
         {
             base.OnMouseMove(args);
 
-            if (SingleComposer.Bounds.PointInside(args.X, args.Y))
+            if (SingleComposer != null && SingleComposer.Bounds.PointInside(args.X, args.Y))
             {
                 double x = args.X - SingleComposer.Bounds.absX;
                 double y = args.Y - SingleComposer.Bounds.absY - GuiElement.scaled(30); // no idea why the 30 :/
@@ -164,7 +165,7 @@ namespace Vintagestory.GameContent
 
                 //BlockPos pos = capi.World.Player.Entity.Pos.AsBlockPos;
 
-                hoveredWorldPos.Sub(capi.World.SpawnPosition.AsBlockPos);
+                hoveredWorldPos.Sub(capi.World.DefaultSpawnPosition.AsBlockPos);
 
                 hoverText.AppendLine(string.Format("{0}, {1}, {2}", (int)hoveredWorldPos.X, (int)hoveredWorldPos.Y, (int)hoveredWorldPos.Z));
 

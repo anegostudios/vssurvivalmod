@@ -62,6 +62,8 @@ namespace Vintagestory.GameContent
                 GameTick(entity, GlobalConstants.PhysicsFrameTime);
                 accumulator -= GlobalConstants.PhysicsFrameTime;
             }
+
+            entity.World.FrameProfiler.Mark("entity-controlledphysics-end");
         }
 
 

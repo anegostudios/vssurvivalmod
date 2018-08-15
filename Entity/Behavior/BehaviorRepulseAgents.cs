@@ -56,6 +56,8 @@ namespace Vintagestory.GameContent
             pushVector.Y = GameMath.Clamp(pushVector.Y, -3, 3);
             pushVector.Z = GameMath.Clamp(pushVector.Z, -3, 3);
             entity.LocalPos.Motion.Add(pushVector.X / 15, pushVector.Y / 30, pushVector.Z / 15);
+
+            entity.World.FrameProfiler.Mark("entity-repulse");
         }
 
         public override string PropertyName()

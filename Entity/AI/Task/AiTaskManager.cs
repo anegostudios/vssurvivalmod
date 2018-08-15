@@ -22,7 +22,7 @@ namespace Vintagestory.GameContent
             RegisterTaskType("lookaround", typeof(AiTaskLookAround));
             RegisterTaskType("meleeattack", typeof(AiTaskMeleeAttack));
             RegisterTaskType("seekentity", typeof(AiTaskSeekEntity));
-            RegisterTaskType("fleeplayer", typeof(AiTaskFleePlayer));
+            RegisterTaskType("fleeentity", typeof(AiTaskFleeEntity));
             RegisterTaskType("stayclosetoentity", typeof(AiTaskStayCloseToEntity));
             RegisterTaskType("getoutofwater", typeof(AiTaskGetOutOfWater));
             RegisterTaskType("idle", typeof(AiTaskIdle));

@@ -75,6 +75,7 @@ namespace Vintagestory.GameContent
             if (cooldownUntilMs > entity.World.ElapsedMilliseconds) return false;
             if (rand.NextDouble() > 0.03f) return false;
             if (whenInEmotionState != null && !entity.HasEmotionState(whenInEmotionState)) return false;
+            if (whenNotInEmotionState != null && entity.HasEmotionState(whenNotInEmotionState)) return false;
 
             targetEntity = (EntityAgent)entity.World.GetNearestEntity(entity.ServerPos.XYZ, seekingRange, seekingRange, (e) => {
                 if (!e.Alive || !e.IsInteractable || e.Type == null || e.Entityid == this.entity.Entityid) return false;
@@ -86,7 +87,7 @@ namespace Vintagestory.GameContent
                         if (e.Type.Code.Path == "player")
                         {
                             IPlayer player = entity.World.PlayerByUid(((EntityPlayer)e).PlayerUID);
-                            return player == null || player.WorldData.CurrentGameMode != EnumGameMode.Creative;
+                            return player == null || (player.WorldData.CurrentGameMode != EnumGameMode.Creative && player.WorldData.CurrentGameMode != EnumGameMode.Spectator);
                         }
                         return true;
                     }

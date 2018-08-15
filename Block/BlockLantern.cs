@@ -100,9 +100,10 @@ namespace Vintagestory.GameContent
 
         public Dictionary<string, MeshData> GenGuiMeshes(ICoreClientAPI capi)
         {
-            string[] materials = new string[] { "copper", "brass", "blackbronze", "tinbronze", "bismuthbronze", "iron", "molybdochalkos", "silver", "gold" };
+            string[] materials = new string[] { "copper", "brass", "bismuth", "blackbronze", "tinbronze", "bismuthbronze", "iron", "molybdochalkos", "silver", "gold" };
             string[] linings = new string[] { "plain", "silver", "gold" };
-            Shape shape = capi.Assets.TryGet("shapes/"+this.Shape.Base.Path+".json").ToObject<Shape>();
+            AssetLocation shapeloc = Shape.Base.Clone().WithPathPrefix("shapes/").WithPathAppendix(".json");
+            Shape shape = capi.Assets.TryGet(shapeloc).ToObject<Shape>();
 
             Dictionary<string, MeshData> meshes = new Dictionary<string, MeshData>();
 

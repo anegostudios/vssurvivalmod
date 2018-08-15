@@ -122,6 +122,8 @@ namespace Vintagestory.GameContent
                 entity.World.SpawnEntity(childEntity);
                 entity.Attributes.SetString("origin", "reproduction");
             }
+
+            entity.World.FrameProfiler.Mark("entity-multiply");
         }
 
         private bool HasRequiredEntityNearby()

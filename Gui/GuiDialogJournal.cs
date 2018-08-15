@@ -51,6 +51,8 @@ namespace Vintagestory.GameContent
                 .ForkBoundingParent(elemToDlgPad, elemToDlgPad, elemToDlgPad, elemToDlgPad)
             ;
 
+            ClearComposers();
+
             DialogComposers["loreList"] =
                 capi.Gui
                 .CreateCompo("loreList", dialogBounds, false)
@@ -89,36 +91,8 @@ namespace Vintagestory.GameContent
                 fulltext.Append(journalitems[currentLoreItemIndex].Pieces[p]);
             }
 
-            string[] lines = prober.InsertAutoLineBreaks(font, fulltext, GuiElement.scaled(629));
-            double lineheight = prober.GetLineHeight(font, 1.15f);
-
-            int maxlinesPerPage = (int)(GuiElement.scaled(450) / lineheight);
+            pages = Paginate(fulltext, font, GuiElement.scaled(629), GuiElement.scaled(450), 1.15);
             
-
-            List<string> pagesTemp = new List<string>();
-            StringBuilder pageBuilder = new StringBuilder();
-
-            int j = 0;
-            
-            while (j < lines.Length)
-            {
-                for (int l = 0; l < maxlinesPerPage; l++)
-                {
-                    if (j >= lines.Length) break;
-                    if (lines[j].Trim().Equals("___NEWPAGE___"))
-                    {
-                        j++;
-                        break;
-                    }
-
-                    pageBuilder.AppendLine(lines[j++]);
-                }
-
-                pagesTemp.Add(pageBuilder.ToString());
-                pageBuilder.Clear();
-            }
-            pages = pagesTemp.ToArray();
-
 
             double elemToDlgPad = ElementGeometrics.ElementToDialogPadding;
 
@@ -140,6 +114,55 @@ namespace Vintagestory.GameContent
             ;
 
             return true;
+        }
+
+
+        private string[] Paginate(StringBuilder fullText, CairoFont font, double pageWidth, double pageHeight, double lineHeight)
+        {
+            int i = 0;
+            TextSizeProber prober = new TextSizeProber();
+            Stack<string> lines = new Stack<string>(prober.InsertAutoLineBreaks(font, fullText, pageWidth).Reverse());
+            
+            double lineheight = prober.GetLineHeight(font, lineHeight);
+            int maxlinesPerPage = (int)(pageHeight / lineheight);
+
+            List<string> pagesTemp = new List<string>();
+            StringBuilder pageBuilder = new StringBuilder();
+
+            while (lines.Count > 0)
+            {
+                int currentPageLines = 0;
+
+                while (currentPageLines < maxlinesPerPage && lines.Count > 0)
+                {
+                    string line = lines.Pop();
+                    string[] parts = line.Split(new string[] { "___NEWPAGE___" }, 2, StringSplitOptions.None);
+
+                    if (parts.Length > 1)
+                    {
+                        pageBuilder.AppendLine(parts[0]);
+                        if (parts[1].Length > 0)
+                        {
+                            lines.Push(parts[1]);
+                        }
+                        break;
+                    }
+
+                    currentPageLines++;
+                    pageBuilder.AppendLine(line);
+                }
+
+                string pageText = pageBuilder.ToString().TrimEnd();
+
+                if (pageText.Length > 0)
+                {
+                    pagesTemp.Add(pageText);
+                }
+
+                pageBuilder.Clear();
+            }
+
+            return pagesTemp.ToArray();
         }
 
         private bool OnNextPage()

@@ -10,7 +10,7 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
-    public class AiTaskFleePlayer : AiTaskBase
+    public class AiTaskFleeEntity : AiTaskBase
     {
         EntityAgent targetEntity;
         Vec3d targetPos;
@@ -25,7 +25,10 @@ namespace Vintagestory.GameContent
         long fleeStartMs;
         bool stuck;
 
-        public AiTaskFleePlayer(EntityAgent entity) : base(entity)
+        string[] fleeEntityCodesExact = new string[] { "player" };
+        string[] fleeEntityCodesBeginsWith = new string[0];
+
+        public AiTaskFleeEntity(EntityAgent entity) : base(entity)
         {
         }
 
@@ -67,7 +70,25 @@ namespace Vintagestory.GameContent
             {
                 fleeDurationMs = taskConfig["fleeDurationMs"].AsInt(5000);
             }
-            
+
+            if (taskConfig["entityCodes"] != null)
+            {
+                string[] codes = taskConfig["entityCodes"].AsStringArray(new string[] { "player" });
+
+                List<string> exact = new List<string>();
+                List<string> beginswith = new List<string>();
+
+                for (int i = 0; i < codes.Length; i++)
+                {
+                    string code = codes[i];
+                    if (code.EndsWith("*")) beginswith.Add(code.Substring(0, code.Length - 1));
+                    else exact.Add(code);
+                }
+
+                fleeEntityCodesExact = exact.ToArray();
+                fleeEntityCodesBeginsWith = beginswith.ToArray();
+            }
+
         }
 
 
@@ -75,19 +96,38 @@ namespace Vintagestory.GameContent
         {
             if (rand.NextDouble() > executionChance || entity.World.Calendar.DayLightStrength < minDayLight) return false;
             if (whenInEmotionState != null && !entity.HasEmotionState(whenInEmotionState)) return false;
+            if (whenNotInEmotionState != null && entity.HasEmotionState(whenNotInEmotionState)) return false;
 
-            targetEntity = (EntityAgent)entity.World.GetNearestEntity(entity.ServerPos.XYZ, seekingRange, seekingRange, (e) => { return e is EntityPlayer && e.Alive; });
+            targetEntity = (EntityAgent)entity.World.GetNearestEntity(entity.ServerPos.XYZ, seekingRange, seekingRange, (e) => {
+                if (!e.Alive || !e.IsInteractable || e.Type == null || e.Entityid == this.entity.Entityid) return false;
 
+                for (int i = 0; i < fleeEntityCodesExact.Length; i++)
+                {
+                    if (e.Type.Code.Path == fleeEntityCodesExact[i])
+                    {
+                        if (e.Type.Code.Path == "player")
+                        {
+                            IPlayer player = entity.World.PlayerByUid(((EntityPlayer)e).PlayerUID);
+                            return player == null || (player.WorldData.CurrentGameMode != EnumGameMode.Creative && player.WorldData.CurrentGameMode != EnumGameMode.Spectator);
+                        }
+                        return true;
+                    }
+                }
+
+
+                for (int i = 0; i < fleeEntityCodesBeginsWith.Length; i++)
+                {
+                    if (e.Type.Code.Path.StartsWith(fleeEntityCodesBeginsWith[i])) return true;
+                }
+
+                return false;
+            });
+
+            
             if (targetEntity != null)
             {
                 updateTargetPos();
-
-                IPlayer player = entity.World.PlayerByUid(((EntityPlayer)targetEntity).PlayerUID);
-                if (player != null && (player.WorldData.CurrentGameMode == EnumGameMode.Creative || player.WorldData.CurrentGameMode == EnumGameMode.Spectator))
-                {
-                    return false;
-                }
-
+                
                 return true;
             }
 

@@ -26,5 +26,23 @@ namespace Vintagestory.GameContent
 
             return inv.GetSlot((int)dresstype).TryFlipWith(slot);
         }
+
+        public override void GetHeldItemInfo(ItemStack stack, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
+        {
+            base.GetHeldItemInfo(stack, dsc, world, withDebugInfo);
+
+            EnumCharacterDressType dresstype;
+            string strdress = stack.ItemAttributes["clothescategory"].AsString();
+            if (!Enum.TryParse(strdress, true, out dresstype))
+            {
+                dsc.AppendLine(Lang.Get("Cloth Category: Unknown"));
+            } else
+            {
+                dsc.AppendLine(Lang.Get("Cloth Category: {0}", Lang.Get("clothcategory-" + stack.ItemAttributes["clothescategory"].AsString())));
+            }
+
+            
+
+        }
     }
 }

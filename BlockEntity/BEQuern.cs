@@ -226,7 +226,7 @@ namespace Vintagestory.GameContent
                 inputGrindTime = 0.0f; //reset the progress to 0 if the item is removed.
                 MarkDirty();
 
-                if(clientDialog != null)
+                if (clientDialog != null && clientDialog.IsOpened())
                 {
                     clientDialog.SingleComposer.ReCompose();
                 }
@@ -252,21 +252,21 @@ namespace Vintagestory.GameContent
         {
             if (api.Side == EnumAppSide.Client)
             {
-                if (IsGrinding)
+                if (!IsGrinding || InputStack == null) return;
+
+                if (InputStack.Class == EnumItemClass.Block)
                 {
-                    if (InputStack.Class == EnumItemClass.Block)
-                    {
-                        FlourParticles.color = CollectibleParticleProperties.RandomBlockPixel(api as ICoreClientAPI, InputStack.Block, BlockFacing.UP, pos);
-                    }
-                    else
-                    {
-                        FlourParticles.color = CollectibleParticleProperties.RandomItemPixel(api as ICoreClientAPI, InputStack.Item, BlockFacing.UP, pos);
-                    }
-
-                    FlourParticles.minPos.Set(pos.X - 1/32f, pos.Y + 11 / 16f, pos.Z - 1 / 32f);
-
-                    api.World.SpawnParticles(FlourParticles);
+                    FlourParticles.color = CollectibleParticleProperties.RandomBlockPixel(api as ICoreClientAPI, InputStack.Block, BlockFacing.UP, pos);
                 }
+                else
+                {
+                    FlourParticles.color = CollectibleParticleProperties.RandomItemPixel(api as ICoreClientAPI, InputStack.Item, BlockFacing.UP, pos);
+                }
+
+                FlourParticles.minPos.Set(pos.X - 1/32f, pos.Y + 11 / 16f, pos.Z - 1 / 32f);
+
+                api.World.SpawnParticles(FlourParticles);
+
                 return;
             }
 

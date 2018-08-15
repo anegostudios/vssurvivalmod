@@ -96,6 +96,8 @@ namespace Vintagestory.GameContent
             {
                 callbackId = entity.World.RegisterCallback(CheckGrowth, 3000);
             }
+
+            entity.World.FrameProfiler.Mark("entity-checkgrowth");
         }
 
 

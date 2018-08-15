@@ -75,6 +75,7 @@ namespace Vintagestory.GameContent
                 return false;
             }
             if (whenInEmotionState != null && !entity.HasEmotionState(whenInEmotionState)) return false;
+            if (whenNotInEmotionState != null && entity.HasEmotionState(whenNotInEmotionState)) return false;
 
             Vec3d pos = entity.ServerPos.XYZ.Add(0, entity.CollisionBox.Y2 / 2, 0).Ahead((entity.CollisionBox.X2 - entity.CollisionBox.X1) / 2, 0, entity.ServerPos.Yaw);
 
@@ -164,11 +165,17 @@ namespace Vintagestory.GameContent
 
                 if (!directContact) return false;
 
+                bool alive = targetEntity.Alive;
 
                 ((EntityAgent)targetEntity).ReceiveDamage(
                     new DamageSource() { source = EnumDamageSource.Entity, sourceEntity = entity, type = EnumDamageType.BluntAttack },
                     damage
                 );
+
+                if (alive && !targetEntity.Alive)
+                {
+                    this.entity.GetBehavior<EntityBehaviorEmotionStates>()?.TryTriggerState("saturated");
+                }
 
                 damageInflicted = true;
             }

@@ -91,6 +91,8 @@ namespace Vintagestory.GameContent
             Block belowBlock = world.BlockAccessor.GetBlock(pos.DownCopy());
             if (!belowBlock.SideSolid[BlockFacing.UP.Index] && (belowBlock != this || FillLevel(world.BlockAccessor, pos.DownCopy()) != 16)) return false;
 
+            if (!world.BlockAccessor.GetBlock(pos).IsReplacableBy(this)) return false;
+
             world.BlockAccessor.SetBlock(BlockId, pos);
 
             BlockEntity be = world.BlockAccessor.GetBlockEntity(pos);

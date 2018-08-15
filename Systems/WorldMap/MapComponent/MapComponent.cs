@@ -39,7 +39,13 @@ namespace Vintagestory.GameContent
                 renderZ
             );
         }
-        
+
+        public override void Dispose()
+        {
+            base.Dispose();
+            Texture.Dispose();
+        }
+
     }
 
     public abstract class MapComponent

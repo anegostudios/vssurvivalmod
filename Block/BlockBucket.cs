@@ -14,10 +14,17 @@ namespace Vintagestory.GameContent
         public override bool OnHeldInteractStart(IItemSlot itemslot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
             if (blockSel == null) return true;
+            IPlayer byPlayer = null;
+            if (byEntity is IEntityPlayer) byPlayer = byEntity.World.PlayerByUid(((IEntityPlayer)byEntity).PlayerUID);
 
             Block targetedBlock = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
             if (targetedBlock.HasBehavior(typeof(BlockBehaviorLiquidContainer), true))
             {
+                if (!byEntity.World.TestPlayerAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.Use))
+                {
+                    return false;
+                }
+
                 BlockBehaviorLiquidContainer bh = targetedBlock.GetBehavior(typeof(BlockBehaviorLiquidContainer), true) as BlockBehaviorLiquidContainer;
 
                 if (bh.OnInteractWithBucket(itemslot, byEntity, blockSel)) return true;
@@ -25,8 +32,11 @@ namespace Vintagestory.GameContent
 
             BlockPos pos = blockSel.Position;
 
-            IPlayer byPlayer = null;
-            if (byEntity is IEntityPlayer) byPlayer = byEntity.World.PlayerByUid(((IEntityPlayer)byEntity).PlayerUID);
+
+            if (!byEntity.World.TestPlayerAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            {
+                return false;
+            }
 
             IBlockAccessor blockAcc = byEntity.World.BlockAccessor;
 

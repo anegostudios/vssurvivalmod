@@ -58,7 +58,7 @@ namespace Vintagestory.GameContent
 
         public bool PlayerDistanceOk()
         {
-            if (minPlayerDistance == null) return true;
+            if (minPlayerDistance == null) return false;
 
             IPlayer player = entity.World.NearestPlayer(entity.ServerPos.X, entity.ServerPos.Y, entity.ServerPos.Z);
 
@@ -67,7 +67,8 @@ namespace Vintagestory.GameContent
 
         public bool LightLevelOk()
         {
-            if (belowLightLevel == null) return true;
+            if (belowLightLevel == null) return false;
+
             int level = entity.World.BlockAccessor.GetLightLevel(entity.ServerPos.AsBlockPos, EnumLightLevelType.MaxLight);
 
             return level >= belowLightLevel;

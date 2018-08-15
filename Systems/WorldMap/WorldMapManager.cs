@@ -189,11 +189,13 @@ namespace Vintagestory.GameContent
                 }
                 else
                 {
+                    worldMapDlg.TryClose();
+
                     if (asType == EnumDialogType.HUD)
                     {
-                        worldMapDlg.TryClose();
                         capi.Settings.Bool["hudOpened"] = false;
-                    } else
+                    }
+                    else
                     {
                         if (worldMapDlg.DialogType != asType)
                         {
@@ -204,11 +206,8 @@ namespace Vintagestory.GameContent
                         if (capi.Settings.Bool["hudOpened"])
                         {
                             worldMapDlg.Open(EnumDialogType.HUD);
-                        } else
-                        {
-                            worldMapDlg.TryClose();
                         }
-                    }                    
+                    }                
                 }
                 return;
             }

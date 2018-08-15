@@ -109,6 +109,7 @@ namespace Vintagestory.GameContent
                 {
                     if (loadedMapData.ContainsKey(cord))
                     {
+                        loadedMapData[cord].Dispose();
                         mapSink.RemoveMapData(loadedMapData[cord]);
                     }
 

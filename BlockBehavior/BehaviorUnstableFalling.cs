@@ -35,7 +35,7 @@ namespace Vintagestory.GameContent
 
         private bool TryFalling(IWorldAccessor world, BlockPos pos)
         {
-            if (IsAirBeneath(world, pos))
+            if (IsReplacableBeneath(world, pos))
             {
                 // Prevents duplication
                 IEntity entity = world.GetNearestEntity(pos.ToVec3d().Add(0.5, 0.5, 0.5), 1, 3, (e) =>
@@ -55,10 +55,10 @@ namespace Vintagestory.GameContent
             return false;
         }
 
-        private bool IsAirBeneath(IWorldAccessor world, BlockPos pos)
+        private bool IsReplacableBeneath(IWorldAccessor world, BlockPos pos)
         {
             Block bottomBlock = world.BlockAccessor.GetBlock(pos.DownCopy());
-            return (bottomBlock != null && bottomBlock.BlockId == 0);
+            return (bottomBlock != null && bottomBlock.Replaceable > 6000);
         }
     }
 }

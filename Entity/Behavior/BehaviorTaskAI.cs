@@ -51,6 +51,8 @@ namespace Vintagestory.GameContent
             if (entity.State != EnumEntityState.Active) return;
 
             taskManager.OnGameTick(deltaTime);
+
+            entity.World.FrameProfiler.Mark("entity-ai");
         }
 
 

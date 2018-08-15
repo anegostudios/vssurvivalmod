@@ -16,13 +16,16 @@ namespace Vintagestory.GameContent
 
         public int minduration;
         public int maxduration;
+        public float chance;
 
         public long idleUntilMs;
 
         public override void LoadConfig(JsonObject taskConfig, JsonObject aiConfig)
         {
-            this.minduration = (int)taskConfig["minduration"]?.AsInt(2000);
-            this.maxduration = (int)taskConfig["maxduration"]?.AsInt(4000);
+            this.minduration = taskConfig["minduration"].AsInt(2000);
+            this.maxduration = taskConfig["maxduration"].AsInt(4000);
+            this.chance = taskConfig["chance"].AsFloat(1.1f);
+
 
             idleUntilMs = entity.World.ElapsedMilliseconds + minduration + entity.World.Rand.Next(maxduration - minduration);
 
@@ -31,7 +34,7 @@ namespace Vintagestory.GameContent
 
         public override bool ShouldExecute()
         {
-            return cooldownUntilMs < entity.World.ElapsedMilliseconds;
+            return entity.World.Rand.NextDouble() < chance && cooldownUntilMs < entity.World.ElapsedMilliseconds;
         }
 
         public override void StartExecute()

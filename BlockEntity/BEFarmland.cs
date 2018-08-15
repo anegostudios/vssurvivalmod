@@ -46,7 +46,7 @@ namespace Vintagestory.GameContent
         public override void Initialize(ICoreAPI api)
         {
             base.Initialize(api);
-            upPos = pos.UpCopy();
+            upPos = base.pos.UpCopy();
 
             if (api is ICoreServerAPI)
             {
@@ -58,7 +58,7 @@ namespace Vintagestory.GameContent
                 RegisterGameTickListener(SlowTick, 15000);
             }
 
-            Block block = api.World.BlockAccessor.GetBlock(pos);
+            Block block = api.World.BlockAccessor.GetBlock(base.pos);
             if (block.Attributes != null)
             {
                 delayGrowthBelowSunLight = block.Attributes["delayGrowthBelowSunLight"].AsInt(19);
@@ -90,7 +90,7 @@ namespace Vintagestory.GameContent
                 for (int dz = -3; dz <= 3; dz++)
                 {
                     if (dx == 0 && dz == 0) continue;
-                    if (api.World.BlockAccessor.GetBlock(pos.X + dx, pos.Y, pos.Z + dz).IsWater())
+                    if (api.World.BlockAccessor.GetBlock(base.pos.X + dx, base.pos.Y, base.pos.Z + dz).IsWater())
                     {
                         newWatered = true;
                         break;
@@ -100,12 +100,12 @@ namespace Vintagestory.GameContent
 
             if (newWatered != isWatered)
             {
-                Block block = api.World.BlockAccessor.GetBlock(pos);
+                Block block = api.World.BlockAccessor.GetBlock(base.pos);
                 if (block.BlockMaterial == EnumBlockMaterial.Air)
                 {
                     // Block must have been removed already. This code should not get excecuted in that case but it does. I don't know why yet.
                     // OnBlockRemoved should have removed the game tick listener during removal.
-                    api.World.BlockAccessor.RemoveBlockEntity(pos);
+                    api.World.BlockAccessor.RemoveBlockEntity(base.pos);
                     return;
                 }
 
@@ -113,16 +113,16 @@ namespace Vintagestory.GameContent
                 Block nextBlock = api.World.GetBlock(newCode);
                 if (nextBlock == null)
                 {
-                    api.World.BlockAccessor.RemoveBlockEntity(pos);
+                    api.World.BlockAccessor.RemoveBlockEntity(base.pos);
                     return;
                 }
 
-                api.World.BlockAccessor.ExchangeBlock(nextBlock.BlockId, pos);
+                api.World.BlockAccessor.ExchangeBlock(nextBlock.BlockId, base.pos);
 
                 isWatered = newWatered;
 
-                api.World.BlockAccessor.MarkBlockEntityDirty(pos);
-                api.World.BlockAccessor.MarkBlockDirty(pos);
+                api.World.BlockAccessor.MarkBlockEntityDirty(base.pos);
+                api.World.BlockAccessor.MarkBlockDirty(base.pos);
 
                 if (isWatered && HasUnripeCrop() && growListenerId == 0)
                 {
@@ -181,7 +181,7 @@ namespace Vintagestory.GameContent
                 if (currentlyConsumedNutrient != EnumSoilNutrient.P) nutrients[1] = Math.Min(originalFertility, nutrients[1] + fertilityGained);
                 if (currentlyConsumedNutrient != EnumSoilNutrient.K) nutrients[2] = Math.Min(originalFertility, nutrients[2] + fertilityGained);
 
-                api.World.BlockAccessor.MarkBlockEntityDirty(pos);
+                api.World.BlockAccessor.MarkBlockEntityDirty(base.pos);
             }
 
 
@@ -199,7 +199,7 @@ namespace Vintagestory.GameContent
             }
 
             // Slow down growth on bad light levels
-            int sunlight = api.World.BlockAccessor.GetLightLevel(pos.UpCopy(), EnumLightLevelType.OnlySunLight);
+            int sunlight = api.World.BlockAccessor.GetLightLevel(base.pos.UpCopy(), EnumLightLevelType.MaxLight);
             double lightGrowthSpeedFactor = GameMath.Clamp(1 - (delayGrowthBelowSunLight - sunlight) * lossPerLevel, 0, 1);
 
             if (lightGrowthSpeedFactor <= 0)
@@ -339,13 +339,13 @@ namespace Vintagestory.GameContent
 
             if (prevLevel != nowLevel)
             {
-                Block farmlandBlock = api.World.BlockAccessor.GetBlock(pos);
+                Block farmlandBlock = api.World.BlockAccessor.GetBlock(base.pos);
                 Block nextFarmlandBlock = api.World.GetBlock(farmlandBlock.CodeWithParts(Fertilities.GetKeyAtIndex(nowLevel)));
-                api.World.BlockAccessor.ExchangeBlock(nextFarmlandBlock.BlockId, pos);
+                api.World.BlockAccessor.ExchangeBlock(nextFarmlandBlock.BlockId, base.pos);
             }
 
-            api.World.BlockAccessor.MarkBlockEntityDirty(pos);
-            api.World.BlockAccessor.MarkBlockDirty(pos);
+            api.World.BlockAccessor.MarkBlockEntityDirty(base.pos);
+            api.World.BlockAccessor.MarkBlockDirty(base.pos);
         }
 
 
@@ -465,7 +465,7 @@ namespace Vintagestory.GameContent
         {
             get
             {
-                return pos;
+                return base.pos;
             }
         }
 

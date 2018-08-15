@@ -80,6 +80,8 @@ namespace Vintagestory.GameContent
                 breatheInterval--;
                 Check();
             }
+
+            entity.World.FrameProfiler.Mark("entity-breathe");
         }
 
         public override string PropertyName()

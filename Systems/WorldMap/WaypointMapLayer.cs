@@ -137,7 +137,9 @@ namespace Vintagestory.GameContent
                     int i = 0;
                     foreach (Waypoint p in Waypoints.Where((p) => p.OwningPlayerUid == player.PlayerUID).ToArray())
                     {
-                        wps.AppendLine(string.Format("{0}: {1} at {2}", i, p.Title, p.Position));
+                        Vec3d pos = p.Position.Clone();
+                        pos.Sub(api.World.DefaultSpawnPosition.XYZ);
+                        wps.AppendLine(string.Format("{0}: {1} at {2}", i, p.Title, pos.AsBlockPos));
                         i++;
                     }
 

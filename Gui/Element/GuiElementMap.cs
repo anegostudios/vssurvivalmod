@@ -237,5 +237,13 @@ namespace Vintagestory.GameContent
         {
             mapComponents.Remove(cmp);
         }
+
+        public override void Dispose()
+        {
+            foreach (var val in mapComponents)
+            {
+                val.Dispose();
+            }
+        }
     }
 }

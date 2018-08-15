@@ -224,6 +224,10 @@ namespace Vintagestory.GameContent
             }
 
             string shapename = ownBlock.Attributes["shape"][type].AsString();
+            if (shapename == null)
+            {
+                return null;
+            }
 
             return meshes[type] = (block as BlockGenericTypedContainer).GenMesh(api as ICoreClientAPI, type, shapename);
         }

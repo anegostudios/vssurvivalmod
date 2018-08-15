@@ -43,6 +43,11 @@ namespace Vintagestory.GameContent
             return true;
         }
 
+        public override void StartPre(ICoreAPI api)
+        {
+            api.World.Logger.EntryAdded += Logger_EntryAdded;
+        }
+
         public override void Start(ICoreAPI api)
         {
             this.api = api;
@@ -54,7 +59,6 @@ namespace Vintagestory.GameContent
 
             api.RegisterCommand("errorreporter", "Reopens the error reporting dialog", "[on|off]", ClientCmdErrorRep);
 
-            api.World.Logger.EntryAdded += Logger_EntryAdded;
             api.Event.OnLevelFinalize += OnClientReady;
             clientChannel =
                 api.Network.RegisterChannel("errorreporter")
@@ -84,6 +88,7 @@ namespace Vintagestory.GameContent
         {
             clientEnabled = true;
             readyFlags++;
+            logEntries.AddRange(msg.LogEntries);
 
             if (readyFlags == 2 && logEntries.Count > 0) ShowDialog();
         }
@@ -106,8 +111,6 @@ namespace Vintagestory.GameContent
             this.sapi = api;
 
             api.RegisterCommand("errorreporter", "Toggles on/off the error reporting dialog on startup", "[on|off]", OnCmdErrRep, Privilege.controlserver);
-
-            api.World.Logger.EntryAdded += Logger_EntryAdded;
 
             serverChannel =
                api.Network.RegisterChannel("errorreporter")

@@ -123,11 +123,6 @@ namespace Vintagestory.GameContent
 
             capi.Shader.RegisterFileShaderProgram("clouds", prog);
 
-            prog.VertexShader.PrefixCode = prog.FragmentShader.PrefixCode =
-                "#define SHADOWQUALITY " + capi.Settings.Int["shadowMapQuality"] + "\r\n" +
-                "#define DYNLIGHTS " + capi.Settings.Int["maxDynamicLights"] + "\r\n"
-            ;
-
             prog.PrepareUniformLocations("zNear", "zFar", "sunPosition", "sunColor", "dayLight", "windOffset", "playerPos", "globalCloudBrightness", "rgbaFogIn", "fogMinIn", "fogDensityIn", "flatFogDensity", "flatFogStart", "projectionMatrix", "modelViewMatrix", "shadowDistanceFar", "toShadowMapSpaceMatrixFar", "shadowDistanceNear", "toShadowMapSpaceMatrixNear", "pointLights", "pointLightColors", "pointLightQuantity", "cloudTileSize", "cloudsLength");
 
             return prog.Compile();

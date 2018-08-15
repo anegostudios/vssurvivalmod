@@ -360,7 +360,8 @@ namespace Vintagestory.ServerMods
                     }
 
                     Block block = baseBlockFromBlockType(blockType, fullcode, variant.Codes);
-                    block.FillPlaceHolders(variant.Codes);
+
+                    block.FillPlaceHolders(api.World.Logger, variant.Codes);
 
                     if (blockType.SkipVariants != null)
                     {

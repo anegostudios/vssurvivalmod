@@ -106,6 +106,16 @@ namespace Vintagestory.ServerMods
         int climateBotLeft;
         int climateBotRight;
 
+        int forestUpLeft;
+        int forestUpRight;
+        int forestBotLeft;
+        int forestBotRight;
+
+        int shrubsUpLeft;
+        int shrubsUpRight;
+        int shrubsBotLeft;
+        int shrubsBotRight;
+
 
         private void OnChunkColumnGen(IServerChunk[] chunks, int chunkX, int chunkZ)
         {
@@ -121,6 +131,21 @@ namespace Vintagestory.ServerMods
             climateUpRight = climateMap.GetUnpaddedInt((int)(rlX * facC + facC), (int)(rlZ * facC));
             climateBotLeft = climateMap.GetUnpaddedInt((int)(rlX * facC), (int)(rlZ * facC + facC));
             climateBotRight = climateMap.GetUnpaddedInt((int)(rlX * facC + facC), (int)(rlZ * facC + facC));
+
+            IntMap forestMap = chunks[0].MapChunk.MapRegion.ForestMap;
+            float facF = (float)forestMap.InnerSize / regionChunkSize;
+            forestUpLeft = forestMap.GetUnpaddedInt((int)(rlX * facF), (int)(rlZ * facF));
+            forestUpRight = forestMap.GetUnpaddedInt((int)(rlX * facF + facF), (int)(rlZ * facF));
+            forestBotLeft = forestMap.GetUnpaddedInt((int)(rlX * facF), (int)(rlZ * facF + facF));
+            forestBotRight = forestMap.GetUnpaddedInt((int)(rlX * facF + facF), (int)(rlZ * facF + facF));
+
+            IntMap shrubMap = chunks[0].MapChunk.MapRegion.ShrubMap;
+            float facS = (float)shrubMap.InnerSize / regionChunkSize;
+            shrubsUpLeft = shrubMap.GetUnpaddedInt((int)(rlX * facS), (int)(rlZ * facS));
+            shrubsUpRight = shrubMap.GetUnpaddedInt((int)(rlX * facS + facS), (int)(rlZ * facS));
+            shrubsBotLeft = shrubMap.GetUnpaddedInt((int)(rlX * facS), (int)(rlZ * facS + facS));
+            shrubsBotRight = shrubMap.GetUnpaddedInt((int)(rlX * facS + facS), (int)(rlZ * facS + facS));
+
 
             Vec3d posAsVec = new Vec3d();
             BlockPos pos = new BlockPos();
@@ -156,9 +181,15 @@ namespace Vintagestory.ServerMods
         {
             BlockPos pos = origin.Copy();
 
-            int climate = GameMath.BiLerpRgbColor((float)(posAsVec.X % chunksize) / chunksize, (float)(posAsVec.Z % chunksize) / chunksize, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight);
+            float xRel = (float)(posAsVec.X % chunksize) / chunksize;
+            float zRel = (float)(posAsVec.Z % chunksize) / chunksize;
+
+            int climate = GameMath.BiLerpRgbColor(xRel, zRel, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight);
             float temp = TerraGenConfig.GetScaledAdjustedTemperatureFloat((climate >> 16) & 0xff, (int)posAsVec.Y - TerraGenConfig.seaLevel);
             float rain = ((climate >> 8) & 0xff) / 255f;
+            float forestDensity = GameMath.BiLerp(forestUpLeft, forestUpRight, forestBotLeft, forestBotRight, xRel, zRel);
+            float shrubDensity = GameMath.BiLerp(shrubsUpLeft, shrubsUpRight, shrubsBotLeft, shrubsBotRight, xRel, zRel);
+
             int spawned = 0;
 
             WorldGenSpawnConditions sc = entityType.Server.SpawnConditions.Worldgen;
@@ -204,13 +235,17 @@ namespace Vintagestory.ServerMods
                         pos.Y
                     ;
 
-                    climate = GameMath.BiLerpRgbColor((float)(posAsVec.X % chunksize) / chunksize, (float)(posAsVec.Z % chunksize) / chunksize, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight);
+                    xRel = (float)(posAsVec.X % chunksize) / chunksize;
+                    zRel = (float)(posAsVec.Z % chunksize) / chunksize;
+
+                    climate = GameMath.BiLerpRgbColor(xRel, zRel, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight);
                     temp = TerraGenConfig.GetScaledAdjustedTemperatureFloat((climate >> 16) & 0xff, (int)posAsVec.Y - TerraGenConfig.seaLevel);
                     rain = ((climate >> 8) & 0xff) / 255f;
+                    forestDensity = GameMath.BiLerp(forestUpLeft, forestUpRight, forestBotLeft, forestBotRight, xRel, zRel) / 255f;
+                    shrubDensity = GameMath.BiLerp(shrubsUpLeft, shrubsUpRight, shrubsBotLeft, shrubsBotRight, xRel, zRel) / 255f;
 
 
-
-                    if (CanSpawnAt(blockAccesssor, typeToSpawn, pos, posAsVec, sc, rain, temp))
+                    if (CanSpawnAt(blockAccesssor, typeToSpawn, pos, posAsVec, sc, rain, temp, forestDensity, shrubDensity))
                     {
                         spawnPositions.Add(new SpawnOppurtunity() { ForType = typeToSpawn, Pos = posAsVec.Clone() });
                         spawned++;
@@ -257,6 +292,7 @@ namespace Vintagestory.ServerMods
             entity.ServerPos.SetPos(spawnPosition);
             entity.ServerPos.SetYaw(rnd.Next() * GameMath.TWOPI);
             entity.Pos.SetFrom(entity.ServerPos);
+            entity.Attributes.SetString("origin", "worldgen");
             return entity;
         }
 
@@ -264,7 +300,7 @@ namespace Vintagestory.ServerMods
 
 
 
-        private bool CanSpawnAt(IBlockAccessor blockAccessor, EntityType type, BlockPos pos, Vec3d posAsVec, BaseSpawnConditions sc, float rain, float temp)
+        private bool CanSpawnAt(IBlockAccessor blockAccessor, EntityType type, BlockPos pos, Vec3d posAsVec, BaseSpawnConditions sc, float rain, float temp, float forestDensity, float shrubsDensity)
         {
             if (!api.World.BlockAccessor.IsValidPos(pos)) return false;
 
@@ -274,6 +310,10 @@ namespace Vintagestory.ServerMods
             if (sc.MinLightLevel > lightLevel || sc.MaxLightLevel < lightLevel) return false;
             if (sc.MinTemp > temp || sc.MaxTemp < temp) return false;
             if (sc.MinRain > rain || sc.MaxRain < rain) return false;
+            if (sc.MinForest > forestDensity || sc.MaxForest < forestDensity) return false;
+            if (sc.MinShrubs > shrubsDensity || sc.MaxShrubs < shrubsDensity) return false;
+            if (sc.MinForestOrShrubs > Math.Max(forestDensity, shrubsDensity)) return false;
+            
 
             Block belowBlock = blockAccessor.GetBlock(pos.X, pos.Y - 1, pos.Z);
             if (!belowBlock.CanCreatureSpawnOn(blockAccessor, pos.DownCopy(), type, sc))

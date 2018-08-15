@@ -79,26 +79,29 @@ namespace Vintagestory.GameContent
             CumulusCloudsWithFlatMist.Ambient.FlatFogDensity = new WeightedFloat(-100/250f, 1);
             CumulusCloudsWithFlatMist.BeginUse += () =>
             {
-                CumulusCloudsWithFlatMist.Ambient.FlatFogDensity.Value = (-50 - 100 * (float)rand.NextDouble()) / 250f;
-                CumulusCloudsWithFlatMist.Ambient.FlatFogYPos.Value = -1 - 7 * (float)rand.NextDouble();
+                CumulusCloudsWithFlatMist.Ambient.FlatFogDensity.Value = (-50 - 100 * (float)(rand.NextDouble() * rand.NextDouble())) / 300f;
+                CumulusCloudsWithFlatMist.Ambient.FlatFogYPos.Value = 1 + 7 * (float)rand.NextDouble();
             };
 
             CumulusCloudsWithFlatMist.ChanceOfWeatherChange = 0.008f;
-            CumulusCloudsWithFlatMist.Chance = 0.15f;
+            CumulusCloudsWithFlatMist.Chance = 0.1f;
 
             WeatherPattern CumulusCloudsWithTallMist = CumulusClouds.Clone();
             CumulusCloudsWithTallMist.Name = "Cumulus Clouds + Tall dense Mist";
             CumulusCloudsWithTallMist.Ambient.FlatFogYPos = new WeightedFloat(40, 1);
             CumulusCloudsWithTallMist.Ambient.FlatFogDensity = new WeightedFloat(-30 / 250f, 1);
-            CumulusCloudsWithTallMist.BeginUse += () => { CumulusCloudsWithTallMist.Ambient.FlatFogDensity.Value = (-15 - 50 * (float)rand.NextDouble()) / 250f; };
+            CumulusCloudsWithTallMist.BeginUse += () => {
+                CumulusCloudsWithTallMist.Ambient.FlatFogDensity.Value = (-50 - 50 * (float)(rand.NextDouble() * rand.NextDouble())) / 2000f;
+                CumulusCloudsWithTallMist.Ambient.FlatFogYPos.Value = 30 + 30 * (float)rand.NextDouble();
+            };
             CumulusCloudsWithTallMist.ChanceOfWeatherChange = 0.008f;
-            CumulusCloudsWithTallMist.Chance = 0.15f;
+            CumulusCloudsWithTallMist.Chance = 0.05f;
 
             WeatherPattern CumulusCloudsWithFog = CumulusClouds.Clone();
             CumulusCloudsWithFog.Name = "Cumulus Clouds + Fog";
             CumulusCloudsWithFog.Ambient.FogDensity = new WeightedFloat(40 / 2000f, 1);
             CumulusCloudsWithFog.BeginUse += () => { CumulusCloudsWithFog.Ambient.FogDensity.Value = (10 + 30 * (float)rand.NextDouble()) / 2000f; };
-            CumulusCloudsWithFog.Chance = 0.22f;
+            CumulusCloudsWithFog.Chance = 0.35f;
 
             WeatherPattern NimboStratusClouds = new WeatherPattern(ws, "Nimbostratus Clouds", 1)
             {
@@ -148,13 +151,20 @@ namespace Vintagestory.GameContent
             {
                 smoothedLightLevel = ws.capi.World.BlockAccessor.GetLightLevel(ws.capi.World.Player.Entity.Pos.AsBlockPos, EnumLightLevelType.OnlySunLight);
             }
+
+            NewPattern = Patterns[0];
+            OldPattern = Patterns[0];
         }
 
         public void Update(float dt)
         {
             if (ws.api.Side == EnumAppSide.Client)
             {
-                int lightlevel = ws.capi.World.BlockAccessor.GetLightLevel(ws.capi.World.Player.Entity.Pos.AsBlockPos, EnumLightLevelType.OnlySunLight);
+                BlockPos pos = ws.capi.World.Player.Entity.Pos.AsBlockPos;
+                int lightlevel = Math.Max(
+                    ws.capi.World.BlockAccessor.GetLightLevel(pos, EnumLightLevelType.OnlySunLight),
+                    ws.capi.World.BlockAccessor.GetLightLevel(pos.Up(), EnumLightLevelType.OnlySunLight)
+                );
                 smoothedLightLevel += (lightlevel - smoothedLightLevel) * dt * 4;
 
 
@@ -171,16 +181,15 @@ namespace Vintagestory.GameContent
 
 
                 BlendedAmbient.FlatFogDensity.Value = NewPattern.Ambient.FlatFogDensity.Value * Weight + OldPattern.Ambient.FlatFogDensity.Value * (1 - Weight);
-                BlendedAmbient.FlatFogDensity.Value *= fogMultiplier;
-
                 BlendedAmbient.FlatFogDensity.Weight = NewPattern.Ambient.FlatFogDensity.Weight * Weight + OldPattern.Ambient.FlatFogDensity.Weight * (1 - Weight);
+                BlendedAmbient.FlatFogDensity.Weight *= fogMultiplier;
 
                 BlendedAmbient.FlatFogYPos.Value = NewPattern.Ambient.FlatFogYPos.Value * Weight + OldPattern.Ambient.FlatFogYPos.Value * (1 - Weight);
                 BlendedAmbient.FlatFogYPos.Weight = GameMath.Clamp(NewPattern.Ambient.FlatFogYPos.Weight + OldPattern.Ambient.FlatFogYPos.Weight, 0, 1);
 
                 BlendedAmbient.FogDensity.Value = ws.capi.Ambient.Base.FogDensity.Value + NewPattern.Ambient.FogDensity.Value * Weight + OldPattern.Ambient.FogDensity.Value * (1 - Weight);
-                BlendedAmbient.FogDensity.Value *= fogMultiplier;
                 BlendedAmbient.FogDensity.Weight = GameMath.Clamp(NewPattern.Ambient.FogDensity.Weight + OldPattern.Ambient.FogDensity.Weight, 0, 1);
+                BlendedAmbient.FogDensity.Weight *= fogMultiplier;
             }
 
             if (Transitioning)
