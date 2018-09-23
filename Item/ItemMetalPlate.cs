@@ -6,18 +6,18 @@ namespace Vintagestory.GameContent
 {
     public class ItemMetalPlate : Item
     {
-        public override bool OnHeldInteractStart(IItemSlot itemslot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override void OnHeldInteractStart(IItemSlot itemslot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
         {
-            if (blockSel == null || byEntity?.World == null || !byEntity.Controls.Sneak) return false;
+            if (blockSel == null || byEntity?.World == null || !byEntity.Controls.Sneak) return;
 
             IPlayer byPlayer = null;
             if (byEntity is IEntityPlayer) byPlayer = byEntity.World.PlayerByUid(((IEntityPlayer)byEntity).PlayerUID);
-            if (byPlayer == null) return false;
+            if (byPlayer == null) return;
 
             if (!byEntity.World.TestPlayerAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
             {
                 itemslot.MarkDirty();
-                return false;
+                return;
             }
 
 
@@ -25,20 +25,31 @@ namespace Vintagestory.GameContent
             if (be is BlockEntityPlatePile)
             {
                 BlockEntityPlatePile pile = (BlockEntityPlatePile)be;
-                if (pile.OnPlayerInteract(byPlayer)) return true;
+                if (pile.OnPlayerInteract(byPlayer))
+                {
+                    handling = EnumHandHandling.PreventDefault;
+                    return;
+                }
             }
 
             be = byEntity.World.BlockAccessor.GetBlockEntity(blockSel.Position.AddCopy(blockSel.Face));
             if (be is BlockEntityPlatePile)
             {
                 BlockEntityPlatePile pile = (BlockEntityPlatePile)be;
-                if (pile.OnPlayerInteract(byPlayer)) return true;
+                if (pile.OnPlayerInteract(byPlayer))
+                {
+                    handling = EnumHandHandling.PreventDefault;
+                    return;
+                }
             }
 
             Block block = byEntity.World.GetBlock(new AssetLocation("platepile"));
-            if (block == null) return false;
+            if (block == null) return;
 
-            return ((BlockPlatePile)block).Construct(itemslot, byEntity.World, blockSel.Position.AddCopy(blockSel.Face), byPlayer);
+            if (((BlockPlatePile)block).Construct(itemslot, byEntity.World, blockSel.Position.AddCopy(blockSel.Face), byPlayer))
+            {
+                handling = EnumHandHandling.PreventDefault;
+            }
         }
 
 

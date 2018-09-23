@@ -144,7 +144,7 @@ namespace Vintagestory.GameContent
         {
             if (!HasSupport(block, world.BlockAccessor, pos))
             {
-                handling = EnumHandling.Last;
+                handling = EnumHandling.PreventSubsequent;
                 world.BlockAccessor.BreakBlock(pos, null);
                 world.BlockAccessor.TriggerNeighbourBlockUpdate(pos);
                 return;

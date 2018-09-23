@@ -124,7 +124,7 @@ namespace Vintagestory.GameContent
                         api.World.Logger.Debug("Teleporting player {0} to {1}", (e as EntityPlayer).GetBehavior<EntityBehaviorNameTag>().DisplayName, tpLocation.TargetPos);
                     } else
                     {
-                        api.World.Logger.Debug("Teleporting entity {0} to {1}", e.Type?.Code, tpLocation.TargetPos);
+                        api.World.Logger.Debug("Teleporting entity {0} to {1}", e.Code, tpLocation.TargetPos);
                     }
                     
 

@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -8,22 +9,12 @@ using Vintagestory.API.Server;
 
 namespace Vintagestory.GameContent
 {
-    public enum EnumBlockContainerPacketId
-    {
-        OpenInventory = 1000,
-        CloseInventory = 1001
-    }
-
-
     public abstract class BlockEntityContainer : BlockEntity, IBlockEntityContainer
     {
         public abstract InventoryBase Inventory { get; }
         public abstract string InventoryClassName { get; }
 
         IInventory IBlockEntityContainer.Inventory { get { return Inventory; } }
-        protected GuiDialogBlockEntityInventory invDialog;
-
-        public abstract bool OnPlayerRightClick(IPlayer byPlayer, BlockSelection blockSel);
 
         public override void Initialize(ICoreAPI api)
         {
@@ -31,6 +22,20 @@ namespace Vintagestory.GameContent
 
             Inventory.LateInitialize(InventoryClassName + "-" + pos.X + "/" + pos.Y + "/" + pos.Z, api);
             Inventory.ResolveBlocksOrItems();
+        }
+
+        public override void OnBlockPlaced(ItemStack byItemStack = null)
+        {
+            BlockContainer container = byItemStack?.Block as BlockContainer;
+            if (container != null)
+            {
+                ItemStack[] stacks = container.GetContents(api.World, byItemStack);
+                for (int i = 0; stacks != null && i < stacks.Length; i++)
+                {
+                    Inventory.GetSlot(i).Itemstack = stacks[i];
+                }
+
+            }
         }
 
         public override void OnBlockBroken()
@@ -41,68 +46,19 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override void OnReceivedClientPacket(IPlayer player, int packetid, byte[] data)
+        public ItemStack[] GetContentStacks(bool cloned = true)
         {
-            if (packetid < 1000)
+            List<ItemStack> stacklist = new List<ItemStack>();
+            for (int i = 0; i < Inventory.QuantitySlots; i++)
             {
-                Inventory.InvNetworkUtil.HandleClientPacket(player, packetid, data);
-
-                // Tell server to save this chunk to disk again
-                api.World.BlockAccessor.GetChunkAtBlockPos(pos.X, pos.Y, pos.Z).MarkModified();
-
-                return;
+                ItemSlot slot = Inventory.GetSlot(i);
+                if (slot.Empty) continue;
+                stacklist.Add(cloned ? slot.Itemstack.Clone() : slot.Itemstack);
             }
 
-            if (packetid == (int)EnumBlockContainerPacketId.CloseInventory)
-            {
-                if (player.InventoryManager != null)
-                {
-                    player.InventoryManager.CloseInventory(Inventory);
-                }
-            }
+            return stacklist.ToArray();
         }
 
-        public override void OnReceivedServerPacket(int packetid, byte[] data)
-        {
-            IClientWorldAccessor clientWorld = (IClientWorldAccessor)api.World;
-
-            if (packetid == (int)EnumBlockContainerPacketId.OpenInventory)
-            {
-                if (invDialog != null)
-                {
-                    invDialog.TryClose();
-                    invDialog = null;
-                    return;
-                }
-
-                using (MemoryStream ms = new MemoryStream(data))
-                {
-                    BinaryReader reader = new BinaryReader(ms);
-
-                    string dialogClassName = reader.ReadString();
-                    string dialogTitle = reader.ReadString();
-                    int cols = reader.ReadByte();
-
-                    TreeAttribute tree = new TreeAttribute();
-                    tree.FromBytes(reader);
-                    Inventory.FromTreeAttributes(tree);
-                    Inventory.ResolveBlocksOrItems();
-                    
-                    invDialog = new GuiDialogBlockEntityInventory(dialogTitle, Inventory, pos, cols, api as ICoreClientAPI);
-                    invDialog.TryOpen();
-                }
-            }
-
-            if (packetid == (int)EnumBlockContainerPacketId.CloseInventory)
-            {
-                
-                clientWorld.Player.InventoryManager.CloseInventory(Inventory);
-
-                invDialog?.TryClose();
-                invDialog = null;
-            }
-        }
-        
         public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
             base.FromTreeAtributes(tree, worldForResolving);
@@ -140,18 +96,32 @@ namespace Vintagestory.GameContent
             {
                 ItemSlot slot = Inventory.GetSlot(i);
                 if (slot.Itemstack == null) continue;
-                slot.Itemstack.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve);
+
+                if (!slot.Itemstack.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve))
+                {
+                    slot.Itemstack = null;
+                }
 
                 if (slot.Itemstack?.Collectible is ItemLootRandomizer)
                 {
                     (slot.Itemstack.Collectible as ItemLootRandomizer).ResolveLoot(slot, Inventory, worldForResolve);
 
                     slot.Itemstack?.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve);
+
+                    if (slot.Itemstack?.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve) == false)
+                    {
+                        slot.Itemstack = null;
+                    }
                 }
 
                 if (slot.Itemstack?.Collectible is ItemStackRandomizer)
                 {
                     (slot.Itemstack.Collectible as ItemStackRandomizer).Resolve(slot, worldForResolve);
+
+                    if (slot.Itemstack?.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve) == false)
+                    {
+                        slot.Itemstack = null;
+                    }
                 }
             }
         }

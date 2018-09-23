@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+﻿ using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -14,7 +14,22 @@ namespace Vintagestory.GameContent
 
     public class BlockToolRack : Block
     {
-        public static Dictionary<Item, ToolTextures> toolTextureSubIds = new Dictionary<Item, ToolTextures>();
+        public static Dictionary<Item, ToolTextures> ToolTextureSubIds(ICoreAPI api)
+        {
+            Dictionary<Item, ToolTextures> toolTextureSubIds = null;
+            object obj;
+
+            if (api.ObjectCache.TryGetValue("toolTextureSubIds", out obj)) {
+
+                toolTextureSubIds = obj as Dictionary<Item, ToolTextures>;
+            } else
+            {
+                api.ObjectCache["toolTextureSubIds"] = toolTextureSubIds = new Dictionary<Item, ToolTextures>();
+            }
+
+            return toolTextureSubIds;
+        }
+        
 
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
@@ -59,7 +74,8 @@ namespace Vintagestory.GameContent
                     }
                 }*/
 
-                toolTextureSubIds[item] = tt;
+
+                ToolTextureSubIds(api)[item] = tt;
             }
         }
     }

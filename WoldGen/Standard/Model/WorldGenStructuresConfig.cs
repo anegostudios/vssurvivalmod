@@ -21,10 +21,10 @@ namespace Vintagestory.ServerMods.NoObf
 
         internal void Init(ICoreServerAPI api)
         {
-            IAsset asset = api.Assets.Get("worldgen/terrain/standard/rockstrata.json");
+            IAsset asset = api.Assets.Get("worldgen/rockstrata.json");
             RockstrataWorldProperty rockstrata = asset.ToObject<RockstrataWorldProperty>();
 
-            asset = api.Assets.Get("worldgen/terrain/standard/blocklayerconfig.json");
+            asset = api.Assets.Get("worldgen/blocklayerconfig.json");
             blockLayerConfig = asset.ToObject<BlockLayerConfig>();
             blockLayerConfig.ResolveBlockIds(api, rockstrata);
 

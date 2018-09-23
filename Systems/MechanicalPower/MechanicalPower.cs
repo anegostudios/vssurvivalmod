@@ -33,7 +33,7 @@ namespace Vintagestory.GameContent.Mechanics
             base.StartClientSide(api);
             this.capi = api;
 
-            api.Event.BlockTexturesLoaded(onLoaded);
+            api.Event.BlockTexturesLoaded += onLoaded;
             api.Event.LeaveWorld += () =>
             {
                 Renderer?.Dispose();

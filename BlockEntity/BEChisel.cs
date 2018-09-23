@@ -241,7 +241,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public void OnRotated(ITreeAttribute tree, int byDegrees, bool verticalFlip = false)
+        public void OnTransformed(ITreeAttribute tree, int byDegrees, EnumAxis? aroundAxis)
         {
             List<uint> rotatedCuboids = new List<uint>();
 
@@ -250,8 +250,26 @@ namespace Vintagestory.GameContent
             foreach (var val in this.VoxelCuboids)
             {
                 FromUint(val, ref tmpCuboid);
-                Cuboidi rotated = tmpCuboid.RotatedCopy(0, byDegrees, 0, new Vec3d(8, 8, 8));
-                if (verticalFlip) rotated = rotated.RotatedCopy(90, 0, 0, new Vec3d(8, 8, 8));
+                Cuboidi rotated = tmpCuboid.Clone();
+
+                if (aroundAxis == EnumAxis.X)
+                {
+                    rotated.Y1 = 16 - rotated.Y1;
+                    rotated.Y2 = 16 - rotated.Y2;
+                }
+                if (aroundAxis == EnumAxis.Y)
+                {
+                    rotated.X1 = 16 - rotated.X1;
+                    rotated.X2 = 16 - rotated.X2;
+                }
+                if (aroundAxis == EnumAxis.Z)
+                {
+                    rotated.Z1 = 16 - rotated.Z1;
+                    rotated.Z2 = 16 - rotated.Z2;
+                }
+
+                rotated = rotated.RotatedCopy(0, byDegrees, 0, new Vec3d(8, 8, 8));
+                
 
                 tmpCuboid.Set(rotated.X1, rotated.Y1, rotated.Z1, rotated.X2, rotated.Y2, rotated.Z2);
                 rotatedCuboids.Add(ToCuboid(tmpCuboid));

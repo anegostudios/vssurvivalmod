@@ -3,7 +3,7 @@ using Vintagestory.API.Server;
 
 namespace Vintagestory.ServerMods
 {
-    public class GenLight : ModSystem
+    public class GenLightSurvival : ModSystem
     {
         private ICoreServerAPI api;
 
@@ -18,8 +18,8 @@ namespace Vintagestory.ServerMods
         {
             this.api = api;
 
-            this.api.Event.ChunkColumnGeneration(this.OnChunkColumnGeneration, EnumWorldGenPass.Vegetation, EnumPlayStyleFlag.All);
-            this.api.Event.ChunkColumnGeneration(this.OnChunkColumnGenerationFlood, EnumWorldGenPass.NeighbourSunLightFlood, EnumPlayStyleFlag.All);
+            this.api.Event.ChunkColumnGeneration(this.OnChunkColumnGeneration, EnumWorldGenPass.Vegetation, EnumPlayStyleFlag.Survival);
+            this.api.Event.ChunkColumnGeneration(this.OnChunkColumnGenerationFlood, EnumWorldGenPass.NeighbourSunLightFlood, EnumPlayStyleFlag.Survival);
 
             this.api.Event.GetWorldgenBlockAccessor(OnWorldGenBlockAccessor);
         }

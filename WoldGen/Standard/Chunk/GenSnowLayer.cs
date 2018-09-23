@@ -38,7 +38,7 @@ namespace Vintagestory.ServerMods
             
             api.Event.ChunkColumnGeneration(OnChunkColumnGen, EnumWorldGenPass.Vegetation);
             api.Event.GetWorldgenBlockAccessor(OnWorldGenBlockAccessor);
-            api.Event.SaveGameLoaded(GameWorldLoaded);
+            api.Event.SaveGameLoaded += GameWorldLoaded;
 
             // Call our loaded method manually if the server is already running (happens when mods are reloaded at runtime)
             if (api.Server.CurrentRunPhase == EnumServerRunPhase.RunGame)
@@ -51,7 +51,7 @@ namespace Vintagestory.ServerMods
         {
             LoadGlobalConfig(api);
 
-            IAsset asset = api.Assets.Get("worldgen/terrain/standard/blocklayerconfig.json");
+            IAsset asset = api.Assets.Get("worldgen/blocklayerconfig.json");
             blockLayerConfig = asset.ToObject<BlockLayerConfig>();
 
             blockLayerConfig.SnowLayer.BlockId = api.WorldManager.GetBlockId(blockLayerConfig.SnowLayer.BlockCode);

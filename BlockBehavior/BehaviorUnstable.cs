@@ -34,7 +34,7 @@ namespace Vintagestory.GameContent
         {
             if (!IsAttached(world.BlockAccessor, blockSel.Position))
             {
-                handled = EnumHandling.Last;
+                handled = EnumHandling.PreventSubsequent;
                 return false;
             }
 

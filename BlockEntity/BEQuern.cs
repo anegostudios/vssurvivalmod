@@ -10,13 +10,15 @@ using Vintagestory.API.Server;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockEntityQuern : BlockEntityContainer, IBlockShapeSupplier
+    public class BlockEntityQuern : BlockEntityOpenableContainer, IBlockShapeSupplier
     {
         static SimpleParticleProperties FlourParticles;
 
+        static SimpleParticleProperties FlourDustParticles;
+
         static BlockEntityQuern()
         {
-            FlourParticles = new SimpleParticleProperties(1, 3, ColorUtil.ColorFromArgb(40, 220, 220, 220), new Vec3d(), new Vec3d(), new Vec3f(-0.25f, -0.25f, -0.25f), new Vec3f(0.25f, 0.25f, 0.25f), 1, 1, 0.1f, 0.3f, EnumParticleModel.Quad);
+            FlourParticles = new SimpleParticleProperties(1, 3, ColorUtil.ToRgba(40, 220, 220, 220), new Vec3d(), new Vec3d(), new Vec3f(-0.25f, -0.25f, -0.25f), new Vec3f(0.25f, 0.25f, 0.25f), 1, 1, 0.1f, 0.3f, EnumParticleModel.Quad);
             FlourParticles.addPos.Set(1 + 2 / 32f, 0, 1 + 2 / 32f);
             FlourParticles.addQuantity = 20;
             FlourParticles.minVelocity.Set(-0.25f, 0, -0.25f);
@@ -25,6 +27,20 @@ namespace Vintagestory.GameContent
             FlourParticles.model = EnumParticleModel.Cube;
             FlourParticles.lifeLength = 1.5f;
             FlourParticles.SizeEvolve = EvolvingNatFloat.create(EnumTransformFunction.QUADRATIC, -0.4f);
+
+
+            FlourDustParticles = new SimpleParticleProperties(1, 3, ColorUtil.ToRgba(40, 220, 220, 220), new Vec3d(), new Vec3d(), new Vec3f(-0.25f, -0.25f, -0.25f), new Vec3f(0.25f, 0.25f, 0.25f), 1, 1, 0.1f, 0.3f, EnumParticleModel.Quad);
+            FlourDustParticles.addPos.Set(1 + 2 / 32f, 0, 1 + 2 / 32f);
+            FlourDustParticles.addQuantity = 5;
+            FlourDustParticles.minVelocity.Set(-0.05f, 0, -0.05f);
+            FlourDustParticles.addVelocity.Set(0.1f, 0.2f, 0.1f);
+            FlourDustParticles.WithTerrainCollision = false;
+            FlourDustParticles.model = EnumParticleModel.Quad;
+            FlourDustParticles.lifeLength = 1.5f;
+            FlourDustParticles.SelfPropelled = true;
+            FlourDustParticles.gravityEffect = 0;
+            FlourDustParticles.SizeEvolve = EvolvingNatFloat.create(EnumTransformFunction.QUADRATIC, 0.4f);
+            FlourDustParticles.OpacityEvolve = EvolvingNatFloat.create(EnumTransformFunction.QUADRATIC, -16f);
         }
 
         ILoadedSound ambientSound;
@@ -254,18 +270,18 @@ namespace Vintagestory.GameContent
             {
                 if (!IsGrinding || InputStack == null) return;
 
-                if (InputStack.Class == EnumItemClass.Block)
-                {
-                    FlourParticles.color = CollectibleParticleProperties.RandomBlockPixel(api as ICoreClientAPI, InputStack.Block, BlockFacing.UP, pos);
-                }
-                else
-                {
-                    FlourParticles.color = CollectibleParticleProperties.RandomItemPixel(api as ICoreClientAPI, InputStack.Item, BlockFacing.UP, pos);
-                }
+                FlourDustParticles.color = FlourParticles.color = InputStack.Collectible.GetRandomColor(api as ICoreClientAPI, InputStack);
+                FlourDustParticles.color &= 0xffffff;
+                FlourDustParticles.color |= (200 << 24);
 
                 FlourParticles.minPos.Set(pos.X - 1/32f, pos.Y + 11 / 16f, pos.Z - 1 / 32f);
+                FlourDustParticles.minPos.Set(pos.X - 1 / 32f, pos.Y + 11 / 16f, pos.Z - 1 / 32f);
+
+                FlourDustParticles.minVelocity.Set(-0.1f, 0, -0.1f);
+                FlourDustParticles.addVelocity.Set(0.2f, 0.2f, 0.2f);
 
                 api.World.SpawnParticles(FlourParticles);
+                api.World.SpawnParticles(FlourDustParticles);
 
                 return;
             }
@@ -585,7 +601,10 @@ namespace Vintagestory.GameContent
             {
                 ItemSlot slot = Inventory.GetSlot(i);
                 if (slot.Itemstack == null) continue;
-                slot.Itemstack.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve);
+                if (!slot.Itemstack.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve))
+                {
+                    slot.Itemstack = null;
+                }
             }
         }
 

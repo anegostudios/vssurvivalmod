@@ -25,9 +25,13 @@ namespace Vintagestory.GameContent
             }*/
         }
 
-        public override bool OnHeldInteractStart(IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override void OnHeldInteractStart(IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handHandling)
         {
-            if (blockSel == null) return base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel);
+            if (blockSel == null)
+            {
+                base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, ref handHandling);
+                return;
+            }
 
             ITreeAttribute tree = slot.Itemstack.Attributes;
 
@@ -35,10 +39,7 @@ namespace Vintagestory.GameContent
             string path = tree.GetString("path");
             ITreeAttribute beotree = tree.GetTreeAttribute("attributes");
 
-            
-
-
-            return true;
+            handHandling = EnumHandHandling.PreventDefault;
         }
 
         public override void GetHeldItemInfo(ItemStack stack, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)

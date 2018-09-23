@@ -16,9 +16,9 @@ namespace Vintagestory.GameContent
         {
         }
 
-        public override bool OnHeldInteractStart(IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandling handling)
+        public override void OnHeldInteractStart(IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handHandling, ref EnumHandling blockHandling)
         {
-            if (blockSel == null) return false;
+            if (blockSel == null) return;
             Block block = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
 
             if (!byEntity.Controls.Sneak)
@@ -26,21 +26,19 @@ namespace Vintagestory.GameContent
                 EnumHandling igniteHandled = EnumHandling.NotHandled;
                 bool handledResult = block.OnTryIgniteBlock(byEntity, blockSel.Position, 0, ref igniteHandled);
 
-                if (igniteHandled == EnumHandling.NotHandled) return false;
+                if (igniteHandled == EnumHandling.NotHandled) return;
             }
             
 
 
             Block freeBlock = byEntity.World.BlockAccessor.GetBlock(blockSel.Position.AddCopy(blockSel.Face));
-            if (freeBlock.BlockId != 0) return false;
+            if (freeBlock.BlockId != 0) return;
 
-            handling = EnumHandling.PreventDefault;
+            blockHandling = EnumHandling.PreventDefault;
+            handHandling = EnumHandHandling.PreventDefault;
 
-            IPlayer byPlayer = null;
-            if (byEntity is IEntityPlayer) byPlayer = byEntity.World.PlayerByUid(((IEntityPlayer)byEntity).PlayerUID);
+            IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
             byEntity.World.PlaySoundAt(new AssetLocation("sounds/torch-ignite"), byEntity, byPlayer, false, 16);
-
-            return true;
         }
 
         public override bool OnHeldInteractStep(float secondsUsed, IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandling handling)
@@ -63,7 +61,7 @@ namespace Vintagestory.GameContent
 
                 tf.Translation.Set(0, -Math.Min(1.1f / 3, secondsUsed * 4 / 3f), -Math.Min(1.1f, secondsUsed * 4));
                 tf.Rotation.X = -Math.Min(85, secondsUsed * 90 * 4f);
-                byEntity.Controls.UsingHeldItemTransform = tf;
+                byEntity.Controls.UsingHeldItemTransformBefore = tf;
 
 
                 if (igniteHandled == EnumHandling.NotHandled && secondsUsed > 0.25f && (int)(30 * secondsUsed) % 2 == 1)

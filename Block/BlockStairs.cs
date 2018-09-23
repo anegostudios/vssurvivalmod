@@ -8,6 +8,18 @@ namespace Vintagestory.GameContent
 {
     public class BlockStairs : Block
     {
+        bool hasDownVariant = true;
+
+        public override void OnLoaded(ICoreAPI api)
+        {
+            base.OnLoaded(api);
+
+            if (Attributes?["noDownVariant"].AsBool() == true)
+            {
+                hasDownVariant = false;
+            }
+        }
+
         public BlockFacing GetHorizontalFacing() {
             string[] split = Code.Path.Split('-');
             return BlockFacing.FromCode(split[split.Length - 1]);
@@ -39,7 +51,7 @@ namespace Vintagestory.GameContent
                 horVer[1] = blockSel.Face;
             } else
             {
-                horVer[1] = blockSel.HitPosition.Y < 0.5 ? BlockFacing.UP : BlockFacing.DOWN;
+                horVer[1] = blockSel.HitPosition.Y < 0.5 || !hasDownVariant ? BlockFacing.UP : BlockFacing.DOWN;
             }
 
             AssetLocation blockCode = CodeWithParts(horVer[1].Code, horVer[0].Code);
@@ -71,7 +83,7 @@ namespace Vintagestory.GameContent
 
         public override AssetLocation GetVerticallyFlippedBlockCode()
         {
-            return LastCodePart(1) == "up" ? CodeWithParts("down", LastCodePart()) : CodeWithParts("up", LastCodePart());
+            return LastCodePart(1) == "up" && hasDownVariant ? CodeWithParts("down", LastCodePart()) : CodeWithParts("up", LastCodePart());
         }
 
         public override AssetLocation GetHorizontallyFlippedBlockCode(EnumAxis axis)

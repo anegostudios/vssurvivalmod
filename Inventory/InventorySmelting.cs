@@ -19,6 +19,9 @@ namespace Vintagestory.GameContent
 
         public IItemSlot[] CookingSlots { get { return HaveCookingContainer ? cookingSlots : new IItemSlot[0]; } }
 
+        /// <summary>
+        /// Returns the cooking slots
+        /// </summary>
         public IItemSlot[] Slots
         {
             get { return cookingSlots; }
@@ -116,13 +119,15 @@ namespace Vintagestory.GameContent
 
         protected override ItemSlot NewSlot(int i)
         {
+            if (i == 0) return new ItemSlotSurvival(this); // Fuel
+            if (i == 1) return new ItemSlotInput(this, 2);
             if (i == 2) return new ItemSlotOutput(this);
 
-            return new ItemSlotSurvival(this);
+            return new ItemSlotCooking(this);
         }
 
 
-        public override WeightedSlot GetBestSuitedSlot(IPlayer actingPlayer, ItemSlot sourceSlot, List<IItemSlot> skipSlots = null)
+        public override WeightedSlot GetBestSuitedSlot(ItemSlot sourceSlot, List<IItemSlot> skipSlots = null)
         {
             if (!HaveCookingContainer)
             {
@@ -133,19 +138,19 @@ namespace Vintagestory.GameContent
                 skipSlots.Add(slots[6]);
             }
 
-            WeightedSlot slot = base.GetBestSuitedSlot(actingPlayer, sourceSlot, skipSlots);
+            WeightedSlot slot = base.GetBestSuitedSlot(sourceSlot, skipSlots);
 
             return slot;
         }
 
 
-        public override float GetSuitability(IPlayer actingPlayer, ItemSlot sourceSlot, ItemSlot targetSlot, bool isMerge)
+        public override float GetSuitability(ItemSlot sourceSlot, ItemSlot targetSlot, bool isMerge)
         {
             ItemStack stack = sourceSlot.Itemstack;
 
             if (targetSlot == slots[0] && (stack.Collectible.CombustibleProps == null || stack.Collectible.CombustibleProps.BurnTemperature <= 0)) return 0;
 
-            return base.GetSuitability(actingPlayer, sourceSlot, targetSlot, isMerge);
+            return base.GetSuitability(sourceSlot, targetSlot, isMerge);
         }
 
 
@@ -158,6 +163,10 @@ namespace Vintagestory.GameContent
             if (inputStack.Collectible is BlockSmeltingContainer)
             {
                 return ((BlockSmeltingContainer)inputStack.Collectible).GetOutputText(Api.World, this, slots[1]);
+            }
+            if (inputStack.Collectible is BlockCookingContainer)
+            {
+                return ((BlockCookingContainer)inputStack.Collectible).GetOutputText(Api.World, this, slots[1]);
             }
 
             ItemStack smeltedStack = inputStack.Collectible.CombustibleProps?.SmeltedStack?.ResolvedItemstack;

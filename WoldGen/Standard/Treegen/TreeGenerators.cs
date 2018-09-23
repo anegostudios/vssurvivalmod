@@ -18,7 +18,7 @@ namespace Vintagestory.ServerMods
 
         public void ReloadTreeGenerators()
         {
-            int quantity = sapi.Assets.Reload(new AssetLocation("worldgen/tree"));
+            int quantity = sapi.Assets.Reload(new AssetLocation("worldgen/treegen"));
             sapi.Server.LogNotification("{0} tree generators reloaded", quantity);
 
             LoadTreeGenerators();
@@ -26,7 +26,7 @@ namespace Vintagestory.ServerMods
 
         public void LoadTreeGenerators()
         {
-            Dictionary<AssetLocation, TreeGenConfig> TreeGenModelsByTree = sapi.Assets.GetMany<TreeGenConfig>(sapi.Server.Logger, "worldgen/tree");
+            Dictionary<AssetLocation, TreeGenConfig> TreeGenModelsByTree = sapi.Assets.GetMany<TreeGenConfig>(sapi.Server.Logger, "worldgen/treegen");
             
             string names = "";
             foreach (var val in TreeGenModelsByTree)
@@ -40,7 +40,7 @@ namespace Vintagestory.ServerMods
                     
                 names += name;
 
-                name.Path = val.Key.Path.Substring("worldgen/tree/".Length);
+                name.Path = val.Key.Path.Substring("worldgen/treegen/".Length);
                 name.RemoveEnding();
 
                 val.Value.Init(val.Key, sapi.Server.Logger);

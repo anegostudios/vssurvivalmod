@@ -83,8 +83,8 @@ namespace Vintagestory.GameContent
         public override void StartServerSide(ICoreServerAPI api)
         {
             this.sapi = api;
-            api.Event.SaveGameLoaded(OnLoadGame);
-            api.Event.GameWorldSave(OnSaveGame);
+            api.Event.SaveGameLoaded += OnLoadGame;
+            api.Event.GameWorldSave += OnSaveGame;
 
             api.Event.RegisterEventBusListener(OnConfigEventServer, 0.5, "configTeleporter");
 

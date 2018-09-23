@@ -23,6 +23,7 @@ namespace Vintagestory.GameContent
         int texId;
 
         Vec4f outLineColorMul = new Vec4f(1, 1, 1, 1);
+        protected Matrixf ModelMat = new Matrixf();
 
         public AnvilWorkItemRenderer(BlockPos pos, ICoreClientAPI capi)
         {
@@ -53,43 +54,38 @@ namespace Vintagestory.GameContent
             IClientWorldAccessor worldAccess = api.World;
             Vec3d camPos = worldAccess.Player.Entity.CameraPos;
             EntityPos plrPos = worldAccess.Player.Entity.Pos;
+            int temp = (int)ingot.Collectible.GetTemperature(api.World, ingot);
+
+            Vec4f lightrgbs = worldAccess.BlockAccessor.GetLightRGBs(pos.X, pos.Y, pos.Z);
+            float[] glowColor = ColorUtil.GetIncandescenceColorAsColor4f(temp);
+            lightrgbs[0] += 2 * glowColor[0];
+            lightrgbs[1] += 2 * glowColor[1];
+            lightrgbs[2] += 2 * glowColor[2];
+
+
 
             rpi.GlDisableCullFace();
 
             IStandardShaderProgram prog = rpi.StandardShader;
             prog.Use();
+            rpi.BindTexture2d(texId);
             prog.RgbaAmbientIn = rpi.AmbientColor;
             prog.RgbaFogIn = rpi.FogColor;
             prog.FogMinIn = rpi.FogMin;
+            prog.WaterWave = 0;
             prog.FogDensityIn = rpi.FogDensity;
             prog.RgbaTint = ColorUtil.WhiteArgbVec;
-
-            rpi.GlMatrixModeModelView();
-
-            int temp = (int)ingot.Collectible.GetTemperature(api.World, ingot);
-
-            Vec4f lightrgbs = worldAccess.BlockAccessor.GetLightRGBs(pos.X, pos.Y, pos.Z);
-            float[] glowColor = ColorUtil.getIncandescenceColorAsColor4f(temp);
-            lightrgbs[0] += 2 * glowColor[0];
-            lightrgbs[1] += 2 * glowColor[1];
-            lightrgbs[2] += 2 * glowColor[2];
-
             prog.RgbaLightIn = lightrgbs;
             prog.RgbaBlockIn = ColorUtil.WhiteArgbVec;
-            prog.ExtraGlow = GameMath.Clamp((temp - 700) / 4, 0, 255);
-
-
-            rpi.BindTexture2d(texId);
-            rpi.GlPushMatrix();
-            rpi.GlLoadMatrix(api.Render.CameraMatrixOrigin);
-            rpi.GlTranslate(pos.X - camPos.X, pos.Y - camPos.Y, pos.Z - camPos.Z);
-
+            prog.ExtraGlow = GameMath.Clamp((temp - 700) / 2, 0, 255);
+            prog.ModelMatrix = ModelMat
+                .Identity()
+                .Translate(pos.X - camPos.X, pos.Y - camPos.Y, pos.Z - camPos.Z)
+                .Values
+            ;
+            prog.ViewMatrix = rpi.CameraMatrixOriginf;
             prog.ProjectionMatrix = rpi.CurrentProjectionMatrix;
-            prog.ModelViewMatrix = rpi.CurrentModelviewMatrix;
             rpi.RenderMesh(workItemMeshRef);
-            rpi.GlPopMatrix();
-
-
             prog.Stop();
         }
 

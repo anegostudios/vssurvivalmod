@@ -40,14 +40,14 @@ namespace Vintagestory.ServerMods
 
         public override void StartServerSide(ICoreServerAPI api)
         {
-            IAsset asset = api.Assets.Get("worldgen/terrain/standard/deposits.json");
+            IAsset asset = api.Assets.Get("worldgen/deposits.json");
             deposits = asset.ToObject<Deposits>();
 
             base.StartServerSide(api);
             
             api.Event.ChunkColumnGeneration(GenChunkColumn, EnumWorldGenPass.TerrainFeatures);
             api.Event.GetWorldgenBlockAccessor(OnWorldGenBlockAccessor);
-            api.Event.MapRegionGeneration(OnMapRegionGen, EnumPlayStyleFlag.All);
+            api.Event.MapRegionGeneration(OnMapRegionGen, EnumPlayStyleFlag.Survival);
         }
 
 

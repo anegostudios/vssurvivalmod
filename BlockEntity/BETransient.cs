@@ -35,15 +35,35 @@ namespace Vintagestory.GameContent
             if (transitionAtTotalDays > api.World.Calendar.TotalDays) return;
 
             Block block = api.World.BlockAccessor.GetBlock(pos);
+            Block tblock;
 
             if (block.Attributes == null) return;
 
+            string fromCode = block.Attributes["convertFrom"].AsString();
+            string toCode = block.Attributes["convertTo"].AsString();
+            if (fromCode == null || toCode == null) return;
+
+            if (fromCode.IndexOf(":") == -1) fromCode = block.Code.Domain + ":" + fromCode;
+            if (toCode.IndexOf(":") == -1) toCode = block.Code.Domain + ":" + toCode;
+
+
+            if (fromCode == null || !toCode.Contains("*"))
+            {
+                tblock = api.World.GetBlock(new AssetLocation(toCode));
+                if (tblock == null) return;
+
+                api.World.BlockAccessor.SetBlock(tblock.BlockId, pos);
+                return;
+            }
+
+
+
             AssetLocation blockCode = block.WildCardPop(
-                new AssetLocation(block.Attributes["convertFrom"].AsString()), 
-                new AssetLocation(block.Attributes["convertTo"].AsString())
+                new AssetLocation(fromCode), 
+                new AssetLocation(toCode)
             );
 
-            Block tblock = api.World.GetBlock(blockCode);
+            tblock = api.World.GetBlock(blockCode);
             if (tblock == null) return;
 
             api.World.BlockAccessor.SetBlock(tblock.BlockId, pos);

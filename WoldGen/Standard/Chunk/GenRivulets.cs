@@ -27,7 +27,7 @@ namespace Vintagestory.ServerMods
             this.api = api;
             
             api.Event.ChunkColumnGeneration(OnChunkColumnGen, EnumWorldGenPass.Vegetation);
-            api.Event.SaveGameLoaded(GameWorldLoaded);
+            api.Event.SaveGameLoaded += GameWorldLoaded;
             api.Event.GetWorldgenBlockAccessor(OnWorldGenBlockAccessor);
 
 

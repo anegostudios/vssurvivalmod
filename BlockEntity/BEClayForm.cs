@@ -704,6 +704,27 @@ namespace Vintagestory.GameContent
             workitemRenderer?.Unregister();
         }
 
+
+
+        public override void OnStoreCollectibleMappings(Dictionary<int, AssetLocation> blockIdMapping, Dictionary<int, AssetLocation> itemIdMapping)
+        {
+            workItemStack?.Collectible.OnStoreCollectibleMappings(api.World, new DummySlot(workItemStack), blockIdMapping, itemIdMapping);
+            baseMaterial?.Collectible.OnStoreCollectibleMappings(api.World, new DummySlot(baseMaterial), blockIdMapping, itemIdMapping);
+        }
+
+        public override void OnLoadCollectibleMappings(IWorldAccessor worldForResolve, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping)
+        {
+            if (workItemStack?.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve) == false)
+            {
+                workItemStack = null;
+            }
+
+            if (baseMaterial?.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve) == false)
+            {
+                baseMaterial = null;
+            }
+        }
+
     }
 
     public enum EnumClayFormingPacket

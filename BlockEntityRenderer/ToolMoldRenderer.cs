@@ -19,6 +19,7 @@ namespace Vintagestory.GameContent
 
 
         MeshRef[] quadModelRefs;
+        public Matrixf ModelMat = new Matrixf();
 
         public double RenderOrder
         {
@@ -92,10 +93,10 @@ namespace Vintagestory.GameContent
             prog.FogMinIn = rpi.FogMin;
             prog.FogDensityIn = rpi.FogDensity;
             prog.RgbaTint = ColorUtil.WhiteArgbVec;
-
+            prog.WaterWave = 0;
 
             Vec4f lightrgbs = api.World.BlockAccessor.GetLightRGBs(pos.X, pos.Y, pos.Z);
-            float[] glowColor = ColorUtil.getIncandescenceColorAsColor4f((int)Temperature);
+            float[] glowColor = ColorUtil.GetIncandescenceColorAsColor4f((int)Temperature);
             lightrgbs.R += 2 * glowColor[0];
             lightrgbs.G += 2 * glowColor[1];
             lightrgbs.B += 2 * glowColor[2];
@@ -105,24 +106,25 @@ namespace Vintagestory.GameContent
             prog.ExtraGlow = (int)GameMath.Clamp((Temperature - 500) / 4, 0, 255);
 
             int texid = api.Render.GetOrLoadTexture(TextureName);
-            rpi.BindTexture2d(texid);
-            rpi.GlPushMatrix();
-            rpi.GlLoadMatrix(api.Render.CameraMatrixOrigin);
-            rpi.GlTranslate(pos.X - camPos.X, pos.Y - camPos.Y, pos.Z - camPos.Z);
-
             Cuboidf rect = fillQuadsByLevel[voxelY];
 
-            rpi.GlTranslate(1 - rect.X1 / 16f, 1.01f / 16f + Math.Max(0, Level / 16f - 0.0625f / 3), 1 - rect.Z1 / 16f);
-            rpi.GlRotate(90, 1, 0, 0);
-            rpi.GlScale(0.5f * rect.Width / 16f, 0.5f * rect.Length / 16f, 0.5f);
-            rpi.GlTranslate(-1, -1, 0);
+            rpi.BindTexture2d(texid);
 
+            prog.ModelMatrix = ModelMat
+                .Identity()
+                .Translate(pos.X - camPos.X, pos.Y - camPos.Y, pos.Z - camPos.Z)
+                .Translate(1 - rect.X1 / 16f, 1.01f / 16f + Math.Max(0, Level / 16f - 0.0625f / 3), 1 - rect.Z1 / 16f)
+                .RotateX(90 * GameMath.DEG2RAD)
+                .Scale(0.5f * rect.Width / 16f, 0.5f * rect.Length / 16f, 0.5f)
+                .Translate(-1, -1, 0)
+                .Values
+            ;
+
+            prog.ViewMatrix = rpi.CameraMatrixOriginf;
             prog.ProjectionMatrix = rpi.CurrentProjectionMatrix;
-            prog.ModelViewMatrix = rpi.CurrentModelviewMatrix;
-            rpi.RenderMesh(quadModelRefs[voxelY]);
-            rpi.GlPopMatrix();
             
-
+            rpi.RenderMesh(quadModelRefs[voxelY]);
+            
             prog.Stop();
 
             rpi.GlEnableCullFace();

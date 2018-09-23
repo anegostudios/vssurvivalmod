@@ -49,7 +49,7 @@ namespace Vintagestory.GameContent
         {
             if (api.Side == EnumAppSide.Client) return;
 
-            IAsset asset = api.Assets.Get("worldgen/terrain/standard/deposits.json");
+            IAsset asset = api.Assets.Get("worldgen/deposits.json");
             Deposits deposits = asset.ToObject<Deposits>();
 
             for (int i = 0; i < deposits.variants.Length; i++)
@@ -119,11 +119,11 @@ namespace Vintagestory.GameContent
                     itemslot.Itemstack.Attributes["probePositions"] = attr = new IntArrayAttribute();
                     attr.AddInt(blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z);
 
-                    splr.SendMessage(GlobalConstants.CurrentChatGroup, "Ok, need 3 more good samples", EnumChatType.Notification);
+                    splr.SendMessage(GlobalConstants.CurrentChatGroup, "Ok, need 2 more samples", EnumChatType.Notification);
                 }
                 else
                 {
-                    float requiredSamples = 3;
+                    float requiredSamples = 2;
 
                     attr.AddInt(blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z);
 
@@ -160,7 +160,7 @@ namespace Vintagestory.GameContent
                     if (requiredSamples > 0)
                     {
                         int q = (int)Math.Ceiling(requiredSamples);
-                        splr.SendMessage(GlobalConstants.CurrentChatGroup, "Ok, need " + q + " more good " + (q == 1 ? "sample" : "samples"), EnumChatType.Notification);
+                        splr.SendMessage(GlobalConstants.CurrentChatGroup, "Ok, need " + q + " more " + (q == 1 ? "sample" : "samples"), EnumChatType.Notification);
                     }
                     else
                     {

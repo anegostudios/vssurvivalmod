@@ -178,11 +178,13 @@ namespace Vintagestory.ServerMods
 		public override AssetLocation GetHorizontallyFlippedBlockCode(EnumAxis axis, ref EnumHandling handling) {
             handling = EnumHandling.PreventDefault;
 
-            var m = hrRe.Match(block.Code.Path);
-			if (m.Success) {
-				return block.CodeWithParts(flipTab[m.Result("${dir}")]);
-			}
-			return block.Code;
+            BlockFacing curFacing = BlockFacing.FromCode(block.LastCodePart());
+            if (curFacing.Axis == axis) return block.CodeWithParts(curFacing.GetOpposite().Code);
+
+            curFacing = BlockFacing.FromCode(block.LastCodePart(1));
+            if (curFacing != null && curFacing.Axis == axis) return block.CodeWithParts(curFacing.GetOpposite().Code, block.LastCodePart());
+
+            return block.Code;
 		}
 
 		public override AssetLocation GetVerticallyFlippedBlockCode(ref EnumHandling handling) {
@@ -192,13 +194,8 @@ namespace Vintagestory.ServerMods
             if (curFacing.IsVertical) return block.CodeWithParts(curFacing.GetOpposite().Code);
 
             curFacing = BlockFacing.FromCode(block.LastCodePart(1));
-            if (curFacing.IsVertical) return block.CodeWithParts(curFacing.GetOpposite().Code);
+            if (curFacing != null && curFacing.IsVertical) return block.CodeWithParts(curFacing.GetOpposite().Code, block.LastCodePart());
 
-
-            /*var m = vrRe.Match(block.Code.Path);
-			if (m.Success) {
-				return block.CodeWithParts(flipTab[m.Result("${dir}")]);
-			}*/
             return block.Code;
 		}
 

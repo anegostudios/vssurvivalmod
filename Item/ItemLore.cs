@@ -14,24 +14,19 @@ namespace Vintagestory.GameContent
 {
     public class ItemLore : Item
     {
-        ICoreAPI api;
 
-        public override void OnLoaded(ICoreAPI api)
+        public override void OnHeldInteractStart(IItemSlot itemslot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
         {
-            base.OnLoaded(api);
-
-            this.api = api;
-        }
-
-
-        public override bool OnHeldInteractStart(IItemSlot itemslot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
-        {
-            if (byEntity.World.Side != EnumAppSide.Server) return true;
+            if (byEntity.World.Side != EnumAppSide.Server)
+            {
+                handling = EnumHandHandling.PreventDefault;
+                return;
+            }
 
             IPlayer byPlayer = null;
             if (byEntity is IEntityPlayer) byPlayer = byEntity.World.PlayerByUid(((IEntityPlayer)byEntity).PlayerUID);
 
-            if (!(byPlayer is IServerPlayer)) return false;
+            if (!(byPlayer is IServerPlayer)) return;
             IServerPlayer serverplayer = byPlayer as IServerPlayer;
 
             TreeAttribute tree = new TreeAttribute();
@@ -44,7 +39,7 @@ namespace Vintagestory.GameContent
             itemslot.TakeOut(1);
             itemslot.MarkDirty();
 
-            return true;
+            handling = EnumHandHandling.PreventDefault;
         }
 
         public override bool OnHeldInteractStep(float secondsUsed, IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)

@@ -20,7 +20,7 @@ namespace Vintagestory.GameContent
             foreach (BlockBehavior behavior in BlockBehaviors)
             {
                 behavior.OnBlockBroken(world, pos, byPlayer, ref handled);
-                if (handled == EnumHandling.Last) return;
+                if (handled == EnumHandling.PreventSubsequent) return;
             }
 
             if (handled == EnumHandling.PreventDefault) return;
@@ -37,10 +37,7 @@ namespace Vintagestory.GameContent
                     }
                 }
 
-                if (Sounds?.Break != null)
-                {
-                    world.PlaySoundAt(Sounds.Break, pos.X, pos.Y, pos.Z, byPlayer);
-                }
+                world.PlaySoundAt(Sounds.GetBreakSound(byPlayer), pos.X, pos.Y, pos.Z, byPlayer);
             }
 
             world.BlockAccessor.SetBlock(0, pos);

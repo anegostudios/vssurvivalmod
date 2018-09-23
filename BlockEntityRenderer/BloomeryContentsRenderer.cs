@@ -20,6 +20,7 @@ namespace Vintagestory.GameContent
         int textureId;
         int voxelHeight;
         public int glowLevel;
+        protected Matrixf ModelMat = new Matrixf();
 
         public double RenderOrder
         {
@@ -69,16 +70,15 @@ namespace Vintagestory.GameContent
             Vec3d camPos = api.World.Player.Entity.CameraPos;
 
             rpi.BindTexture2d(textureId);
-            rpi.GlPushMatrix();
-            rpi.GlLoadMatrix(api.Render.CameraMatrixOrigin);
-            rpi.GlTranslate(8 / 16f + pos.X - camPos.X, pos.Y - camPos.Y + voxelHeight / 24f, 8 / 16f + pos.Z - camPos.Z);
-            
+
+            prog.ModelMatrix = ModelMat
+                .Identity()
+                .Translate(8 / 16f + pos.X - camPos.X, pos.Y - camPos.Y + voxelHeight / 24f, 8 / 16f + pos.Z - camPos.Z)
+                .Values
+            ;
+            prog.ViewMatrix = rpi.CameraMatrixOriginf;
             prog.ProjectionMatrix = rpi.CurrentProjectionMatrix;
-            prog.ModelViewMatrix = rpi.CurrentModelviewMatrix;
-            rpi.RenderMesh(cubeModelRef);
-            rpi.GlPopMatrix();
-            
-            
+            rpi.RenderMesh(cubeModelRef);            
             prog.Stop();
         }
 

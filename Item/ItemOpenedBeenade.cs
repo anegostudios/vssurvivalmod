@@ -10,17 +10,20 @@ namespace Vintagestory.GameContent
 {
     public class ItemOpenedBeenade : Item
     {
-        public override string GetHeldTpUseAnimation(IItemSlot activeHotbarSlot, IEntity byEntity)
+        public override string GetHeldTpUseAnimation(IItemSlot activeHotbarSlot, Entity byEntity)
         {
             return null;
         }
 
-        public override bool OnHeldInteractStart(IItemSlot itemslot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override void OnHeldInteractStart(IItemSlot itemslot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
         {
-            if (blockSel == null) return false;
+            if (blockSel == null) return;
 
             Block block = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
-            return block is BlockSkep && block.FirstCodePart(1).Equals("populated");
+            if (block is BlockSkep && block.FirstCodePart(1).Equals("populated"))
+            {
+                handling = EnumHandHandling.PreventDefaultAction;
+            }
         }
 
         public override bool OnHeldInteractStep(float secondsUsed, IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
@@ -36,7 +39,7 @@ namespace Vintagestory.GameContent
 
                 tf.Translation.Set(-offset, offset / 4f, 0);
 
-                byEntity.Controls.UsingHeldItemTransform = tf;
+                byEntity.Controls.UsingHeldItemTransformBefore = tf;
             }
 
             SimpleParticleProperties bees = BlockEntityBeehive.Bees;
@@ -44,7 +47,7 @@ namespace Vintagestory.GameContent
             Random rand = byEntity.World.Rand;
 
             Vec3d startPos = new Vec3d(pos.X + rand.NextDouble(), pos.Y + rand.NextDouble() * 0.25f, pos.Z + rand.NextDouble());
-            Vec3d endPos = new Vec3d(byEntity.LocalPos.X, byEntity.LocalPos.Y + byEntity.EyeHeight() - 0.2f, byEntity.LocalPos.Z);
+            Vec3d endPos = new Vec3d(byEntity.LocalPos.X, byEntity.LocalPos.Y + byEntity.EyeHeight - 0.2f, byEntity.LocalPos.Z);
 
             Vec3f minVelo = new Vec3f((float)(endPos.X - startPos.X), (float)(endPos.Y - startPos.Y), (float)(endPos.Z - startPos.Z));
             minVelo.Normalize();

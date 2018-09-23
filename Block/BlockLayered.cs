@@ -56,6 +56,12 @@ namespace Vintagestory.GameContent
 
         public override void OnNeighourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
         {
+            if (GetBehavior<BlockBehaviorUnstableFalling>() != null)
+            {
+                base.OnNeighourBlockChange(world, pos, neibpos);
+                return;
+            }
+
             if (!CanLayerStay(world, pos))
             {
                 world.BlockAccessor.BreakBlock(pos, null);

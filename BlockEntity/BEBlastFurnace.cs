@@ -15,7 +15,7 @@ namespace Vintagestory.GameContent
         UpdateGUI = 1002
     }
 
-    public class FurnaceSection : BlockEntityContainer
+    public class FurnaceSection : BlockEntityOpenableContainer
     {
         public int MaxTemperature = 900;
 

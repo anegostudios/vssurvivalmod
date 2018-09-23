@@ -510,12 +510,15 @@ namespace Vintagestory.GameContent
 
             if (contentsLeft != null)
             {
-                contents = string.Format("{0} units of {1} {2} ({3} °C)\n", fillLevelLeft, IsSolidLeft ? "solidified" : "liquid", contentsLeft.GetName(), (int)TemperatureLeft);
+                string temp = TemperatureLeft < 21 ? Lang.Get("Cold") : Lang.Get("{0} °C", (int)TemperatureLeft);
+                contents = string.Format("{0} units of {1} {2} ({3})\n", fillLevelLeft, IsSolidLeft ? "solidified" : "liquid", contentsLeft.GetName(), temp);
             }
 
             if (contentsRight != null)
             {
-                contents += string.Format("{0} units of {1} {2} ({3} °C)\n", fillLevelRight, IsSolidRight ? "solidified" : "liquid", contentsRight.GetName(), (int)TemperatureRight);
+                string temp = TemperatureRight < 21 ? Lang.Get("Cold") : Lang.Get("{0} °C", (int)TemperatureRight);
+
+                contents += string.Format("{0} units of {1} {2} ({3})\n", fillLevelRight, IsSolidRight ? "solidified" : "liquid", contentsRight.GetName(), temp);
             }
 
             return contents.Length == 0 ? "Empty" : contents;
@@ -526,6 +529,27 @@ namespace Vintagestory.GameContent
             base.OnBlockUnloaded();
 
             ingotRenderer?.Unregister();
+        }
+
+
+
+        public override void OnStoreCollectibleMappings(Dictionary<int, AssetLocation> blockIdMapping, Dictionary<int, AssetLocation> itemIdMapping)
+        {
+            contentsLeft?.Collectible.OnStoreCollectibleMappings(api.World, new DummySlot(contentsLeft), blockIdMapping, itemIdMapping);
+            contentsRight?.Collectible.OnStoreCollectibleMappings(api.World, new DummySlot(contentsRight), blockIdMapping, itemIdMapping);
+        }
+
+        public override void OnLoadCollectibleMappings(IWorldAccessor worldForResolve, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping)
+        {
+            if (contentsLeft?.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve) == false)
+            {
+                contentsLeft = null;
+            }
+
+            if (contentsRight?.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve) == false)
+            {
+                contentsRight = null;
+            }
         }
 
     }

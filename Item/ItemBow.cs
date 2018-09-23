@@ -10,7 +10,7 @@ namespace Vintagestory.GameContent
 {
     public class ItemBow : Item
     {
-        public override string GetHeldTpUseAnimation(IItemSlot activeHotbarSlot, IEntity byEntity)
+        public override string GetHeldTpUseAnimation(IItemSlot activeHotbarSlot, Entity byEntity)
         {
             return null;
         }
@@ -20,7 +20,7 @@ namespace Vintagestory.GameContent
             IItemSlot slot = null;
             byEntity.WalkInventory((invslot) =>
             {
-                if (invslot is CreativeSlot) return true;
+                if (invslot is ItemSlotCreative) return true;
 
                 if (invslot.Itemstack != null && invslot.Itemstack.Collectible.Code.Path.StartsWith("arrow-"))
                 {
@@ -34,10 +34,10 @@ namespace Vintagestory.GameContent
             return slot;
         }
 
-        public override bool OnHeldInteractStart(IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override void OnHeldInteractStart(IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
         {
             IItemSlot invslot = GetNextArrow(byEntity);
-            if (invslot == null) return false;
+            if (invslot == null) return;
 
             if (byEntity.World is IClientWorldAccessor)
             {
@@ -46,13 +46,14 @@ namespace Vintagestory.GameContent
 
             // Not ideal to code the aiming controls this way. Needs an elegant solution - maybe an event bus?
             byEntity.Attributes.SetInt("aiming", 1);
+            byEntity.Attributes.SetInt("aimingCancel", 0);
             byEntity.StartAnimation("bowaim");
 
             IPlayer byPlayer = null;
             if (byEntity is IEntityPlayer) byPlayer = byEntity.World.PlayerByUid(((IEntityPlayer)byEntity).PlayerUID);
             byEntity.World.PlaySoundAt(new AssetLocation("sounds/bow-draw"), byEntity, byPlayer, false, 8);
 
-            return true;
+            handling = EnumHandHandling.PreventDefault;
         }
 
         public override bool OnHeldInteractStep(float secondsUsed, IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
@@ -76,11 +77,18 @@ namespace Vintagestory.GameContent
             {
                 slot.Itemstack.TempAttributes.SetInt("renderVariant", 0);
             }
+
+            if (cancelReason != EnumItemUseCancelReason.ReleasedMouse)
+            {
+                byEntity.Attributes.SetInt("aimingCancel", 1);
+            }
+
             return true;
         }
 
         public override void OnHeldInteractStop(float secondsUsed, IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
+            if (byEntity.Attributes.GetInt("aimingCancel") == 1) return;
             byEntity.Attributes.SetInt("aiming", 0);
             byEntity.StopAnimation("bowaim");
 
@@ -116,26 +124,27 @@ namespace Vintagestory.GameContent
             if (byEntity is IEntityPlayer) byPlayer = byEntity.World.PlayerByUid(((IEntityPlayer)byEntity).PlayerUID);
             byEntity.World.PlaySoundAt(new AssetLocation("sounds/bow-release"), byEntity, byPlayer, false, 8);
 
-            EntityType type = byEntity.World.GetEntityType(new AssetLocation("arrow"));
-            Entity entity = byEntity.World.ClassRegistry.CreateEntity(type.Class);
-            entity.SetType(type);
+            EntityProperties type = byEntity.World.GetEntityType(new AssetLocation("arrow"));
+            Entity entity = byEntity.World.ClassRegistry.CreateEntity(type);
             ((EntityProjectile)entity).FiredBy = byEntity;
             ((EntityProjectile)entity).Damage = damage;
             ((EntityProjectile)entity).ProjectileStack = stack;
+            ((EntityProjectile)entity).DropOnImpactChance = (arrowMaterial == "flint") ? 0.5f : 0.65f; ;
 
-            int? texIndex = entity.Type.Attributes?["texturealternateByType"]?[arrowMaterial]?.AsInt(0);
+
+            int? texIndex = type.Attributes?["texturealternateMapping"]?[arrowMaterial].AsInt(0);
             entity.WatchedAttributes.SetInt("textureIndex", texIndex == null ? 0 : (int)texIndex);
 
             float acc = (1 - byEntity.Attributes.GetFloat("aimingAccuracy", 0));
             double rndpitch = byEntity.WatchedAttributes.GetDouble("aimingRandPitch", 1) * acc * 0.75;
             double rndyaw = byEntity.WatchedAttributes.GetDouble("aimingRandYaw", 1) * acc * 0.75;
             
-            Vec3d pos = byEntity.ServerPos.XYZ.Add(0, byEntity.EyeHeight() - 0.2, 0);
+            Vec3d pos = byEntity.ServerPos.XYZ.Add(0, byEntity.EyeHeight - 0.2, 0);
             Vec3d aheadPos = pos.AheadCopy(1, byEntity.ServerPos.Pitch + rndpitch, byEntity.ServerPos.Yaw + rndyaw);
             Vec3d velocity = (aheadPos - pos) * 0.75;
 
 
-            entity.ServerPos.SetPos(byEntity.ServerPos.BehindCopy(0.21).XYZ.Add(0, byEntity.EyeHeight() - 0.2, 0));
+            entity.ServerPos.SetPos(byEntity.ServerPos.BehindCopy(0.21).XYZ.Add(0, byEntity.EyeHeight - 0.2, 0));
             entity.ServerPos.Motion.Set(velocity);
 
             entity.Pos.SetFrom(entity.ServerPos);

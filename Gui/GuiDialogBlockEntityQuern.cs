@@ -44,7 +44,7 @@ namespace Vintagestory.GameContent
 
             attributes.OnModified.Add(new TreeModifiedListener() { listener = OnAttributesModified });
 
-            inventory.SlotModified += OnInventorySlotModified;
+            
 
             capi.World.Player.InventoryManager.OpenInventory(inventory);
 
@@ -167,10 +167,13 @@ namespace Vintagestory.GameContent
         public override void OnGuiOpened()
         {
             inventory.Open(capi.World.Player);
+            inventory.SlotModified += OnInventorySlotModified;
         }
 
         public override void OnGuiClosed()
         {
+            inventory.SlotModified -= OnInventorySlotModified;
+
             inventory.Close(capi.World.Player);
             capi.World.Player.InventoryManager.CloseInventory(inventory);
 

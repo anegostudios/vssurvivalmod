@@ -147,7 +147,7 @@ namespace Vintagestory.GameContent
                 }
 
                 // Merge heatable item
-                if (contents != null && contents.Equals(slot.Itemstack, GlobalConstants.IgnoredStackAttributes) && contents.StackSize < 4 && contents.StackSize < contents.Collectible.MaxStackSize)
+                if (contents != null && contents.Equals(api.World, slot.Itemstack, GlobalConstants.IgnoredStackAttributes) && contents.StackSize < 4 && contents.StackSize < contents.Collectible.MaxStackSize)
                 {
                     float myTemp = contents.Collectible.GetTemperature(api.World, contents);
                     float histemp = slot.Itemstack.Collectible.GetTemperature(api.World, slot.Itemstack);
@@ -229,7 +229,10 @@ namespace Vintagestory.GameContent
 
         public override void OnLoadCollectibleMappings(IWorldAccessor worldForResolve, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping)
         {
-            contents?.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve);
+            if (contents?.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve) == false)
+            {
+                contents = null;
+            }
         }
 
         public override void OnStoreCollectibleMappings(Dictionary<int, AssetLocation> blockIdMapping, Dictionary<int, AssetLocation> itemIdMapping)

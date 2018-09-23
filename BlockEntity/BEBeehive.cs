@@ -48,7 +48,7 @@ namespace Vintagestory.GameContent
         {
             Bees = new SimpleParticleProperties(
                 1, 1,
-                ColorUtil.ColorFromArgb(255, 65, 156, 215),
+                ColorUtil.ToRgba(255, 215, 156, 65),
                 new Vec3d(), new Vec3d(),
                 new Vec3f(0, 0, 0),
                 new Vec3f(0, 0, 0),
@@ -242,6 +242,7 @@ namespace Vintagestory.GameContent
             if (3 * quantityNearbyHives + 3 > quantityNearbyFlowers)
             {
                 skepToPop = null;
+                MarkDirty(false);
                 return;
             }
 
@@ -249,6 +250,7 @@ namespace Vintagestory.GameContent
             {
                 TryPopCurrentSkep();
                 cooldownUntilTotalHours = api.World.Calendar.TotalHours + 4 * 24;
+                MarkDirty(false);
                 return;
             }
 
@@ -265,6 +267,7 @@ namespace Vintagestory.GameContent
                 if (!emptySkeps.Contains(skepToPop))
                 {
                     skepToPop = null;
+                    MarkDirty(false);
                     return;
                 }
 
@@ -314,6 +317,7 @@ namespace Vintagestory.GameContent
 
             api.World.BlockAccessor.SetBlock(fullSkep.BlockId, skepToPop);
             hivePopSize = EnumHivePopSize.Poor;
+            this.skepToPop = null;
         }
 
         public override void ToTreeAttributes(ITreeAttribute tree)
@@ -441,7 +445,24 @@ namespace Vintagestory.GameContent
             }
 
             string str = Lang.Get("Nearby flowers: {0}\nPopulation Size: {1}", quantityNearbyFlowers, hivePopSize);
-            if (Harvestable) str += "\nHarvestable";
+            if (Harvestable) str += "\n" + Lang.Get("Harvestable");
+
+            if (skepToPop != null && api.World.Calendar.TotalHours > cooldownUntilTotalHours)
+            {
+                double inhours = beginPopStartTotalHours + popHiveAfterHours - api.World.Calendar.TotalHours;
+                double days = inhours / api.World.Calendar.HoursPerDay;
+
+                if (days > 1.5)
+                {
+                    str += "\n" + Lang.Get("Will swarm in approx. {0} days", Math.Round(days));
+                } else if (days > 0.5)
+                {
+                    str += "\n" + Lang.Get("Will swarm in approx. one day");
+                } else
+                {
+                    str += "\n" + Lang.Get("Will swarm in less than a day");
+                }
+            }
 
             return str;
         }

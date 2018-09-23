@@ -9,6 +9,11 @@ namespace Vintagestory.GameContent
 {
     public class BlockSkep : Block
     {
+        public bool IsEmpty()
+        {
+            return LastCodePart(1) == "empty";
+        }
+
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
             string collectibleCode = byPlayer.InventoryManager.ActiveHotbarSlot?.Itemstack?.Collectible.Code.Path;
@@ -30,9 +35,9 @@ namespace Vintagestory.GameContent
         {
             base.OnBlockBroken(world, pos, byPlayer, dropQuantityMultiplier);
 
-            if (world.Rand.NextDouble() < 0.4)
+            if (!IsEmpty() && world.Rand.NextDouble() < 0.4)
             {
-                EntityType type = world.GetEntityType(new AssetLocation("beemob"));
+                EntityProperties type = world.GetEntityType(new AssetLocation("beemob"));
                 Entity entity = world.ClassRegistry.CreateEntity(type);
 
                 if (entity != null)
@@ -52,10 +57,15 @@ namespace Vintagestory.GameContent
 
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1)
         {
+            if (IsEmpty())
+            {
+                return new ItemStack[] { new ItemStack(this) };
+            }
+
             BlockEntityBeehive beh = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityBeehive;
             if (beh == null || !beh.Harvestable)
             {
-                return new ItemStack[0];
+                return new ItemStack[] { new ItemStack(this) };
             }
 
             if (Drops == null) return null;

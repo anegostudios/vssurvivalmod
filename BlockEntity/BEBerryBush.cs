@@ -73,8 +73,14 @@ namespace Vintagestory.GameContent
             Block block = api.World.BlockAccessor.GetBlock(pos);
             string nextCodePart = (block.LastCodePart() == "empty") ? "flowering" : "ripe";
 
+
             AssetLocation loc = block.CodeWithParts(nextCodePart);
-            if (loc.Path.Length == 0) return;
+            if (!loc.Valid)
+            {
+                api.World.BlockAccessor.RemoveBlockEntity(pos);
+                return;
+            }
+
             Block nextBlock = api.World.GetBlock(loc);
             if (nextBlock?.Code == null) return;
 

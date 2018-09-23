@@ -11,20 +11,20 @@ namespace Vintagestory.GameContent
 {
     public class ItemCreature : Item
     {
-        public override string GetHeldTpUseAnimation(IItemSlot activeHotbarSlot, IEntity byEntity)
+        public override string GetHeldTpUseAnimation(IItemSlot activeHotbarSlot, Entity byEntity)
         {
             return null;
         }
 
-        public override bool OnHeldInteractStart(IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override void OnHeldInteractStart(IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handHandling)
         {
-            if (blockSel == null) return false;
+            if (blockSel == null) return;
 
             IPlayer player = byEntity.World.PlayerByUid((byEntity as EntityPlayer).PlayerUID);
 
             if (!byEntity.World.TestPlayerAccessBlock(player, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
             {
-                return false;
+                return;
             }
 
             if (!(byEntity is EntityPlayer) || player.WorldData.CurrentGameMode != EnumGameMode.Creative)
@@ -32,9 +32,9 @@ namespace Vintagestory.GameContent
                 slot.TakeOut(1);
                 slot.MarkDirty();
             }
-            
 
-            EntityType type = byEntity.World.GetEntityType(new AssetLocation(CodeEndWithoutParts(1)));
+
+            EntityProperties type = byEntity.World.GetEntityType(new AssetLocation(CodeEndWithoutParts(1)));
             Entity entity = byEntity.World.ClassRegistry.CreateEntity(type);
 
             if (entity != null)
@@ -48,15 +48,13 @@ namespace Vintagestory.GameContent
 
                 entity.Attributes.SetString("origin", "playerplaced");
                 byEntity.World.SpawnEntity(entity);
-                return true;
+                handHandling = EnumHandHandling.PreventDefaultAction;
             }
-
-            return false;
         }
 
-        public override string GetHeldTpIdleAnimation(IItemSlot activeHotbarSlot, IEntity byEntity)
+        public override string GetHeldTpIdleAnimation(IItemSlot activeHotbarSlot, Entity byEntity)
         {
-            EntityType type = byEntity.World.GetEntityType(new AssetLocation(CodeEndWithoutParts(1)));
+            EntityProperties type = byEntity.World.GetEntityType(new AssetLocation(CodeEndWithoutParts(1)));
             float size = Math.Max(type.HitBoxSize.X, type.HitBoxSize.Y);
 
             if (size > 1) return "holdunderarm";

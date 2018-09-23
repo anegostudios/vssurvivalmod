@@ -84,10 +84,7 @@ namespace Vintagestory.GameContent
                         }
                     }
 
-                    if (Sounds?.Break != null)
-                    {
-                        world.PlaySoundAt(Sounds.Break, pos.X, pos.Y, pos.Z, byPlayer);
-                    }
+                    world.PlaySoundAt(Sounds.GetBreakSound(byPlayer), pos.X, pos.Y, pos.Z, byPlayer);
                 }
 
                 world.BlockAccessor.SetBlock(prev.BlockId, pos);

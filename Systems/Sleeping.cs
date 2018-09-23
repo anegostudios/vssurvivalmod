@@ -9,7 +9,7 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.GameContent;
 
-namespace Vintagestory.ServerMods
+namespace Vintagestory.GameContent
 {
     [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
     public class NetworksMessageAllSleepMode
@@ -74,7 +74,7 @@ namespace Vintagestory.ServerMods
 
             if (!nowAllSleeping)
             {
-                api.World.Calendar.RemoveTimeSpeedModifier("sleeping");
+                api.World.Calendar?.RemoveTimeSpeedModifier("sleeping");
                 GameSpeedBoost = 0;
             }
         }
@@ -181,7 +181,7 @@ void main () {
 
             api.Event.RegisterGameTickListener(FastTick, 20);
 
-            api.Event.RegisterReloadShaders(LoadShader);
+            api.Event.ReloadShader += LoadShader;
             LoadShader();
             
             renderer = new EyesOverlayRenderer(api, eyeShaderProg);

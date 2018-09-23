@@ -25,7 +25,7 @@ namespace Vintagestory.GameContent
         static BlockEntityBloomery() {
             smallMetalSparks = new SimpleParticleProperties(
                 2, 5,
-                ColorUtil.ColorFromArgb(255, 83, 233, 255),
+                ColorUtil.ToRgba(255, 255, 233, 83),
                 new Vec3d(), new Vec3d(),
                 new Vec3f(-3f, 8f, -3f),
                 new Vec3f(3f, 12f, 3f),
@@ -34,13 +34,14 @@ namespace Vintagestory.GameContent
                 0.25f, 0.25f,
                 EnumParticleModel.Quad
             );
+            smallMetalSparks.WithTerrainCollision = false;
             smallMetalSparks.glowLevel = 128;
             smallMetalSparks.addPos.Set(1 / 16f, 0, 1 / 16f);
             smallMetalSparks.SizeEvolve = new EvolvingNatFloat(EnumTransformFunction.LINEAR, -0.05f);
 
             breakSparks = new SimpleParticleProperties(
                 40, 80,
-                ColorUtil.ColorFromArgb(255, 83, 233, 255),
+                ColorUtil.ToRgba(255, 255, 233, 83),
                 new Vec3d(), new Vec3d(),
                 new Vec3f(-1f, 0.5f, -1f),
                 new Vec3f(2f, 1.5f, 2f),
@@ -53,7 +54,7 @@ namespace Vintagestory.GameContent
             breakSparks.SizeEvolve = new EvolvingNatFloat(EnumTransformFunction.LINEAR, -0.25f);
 
             smoke = new SimpleParticleProperties(
-                1, 1, ColorUtil.ColorFromArgb(128, 110, 110, 110), new Vec3d(), new Vec3d(),
+                1, 1, ColorUtil.ToRgba(128, 110, 110, 110), new Vec3d(), new Vec3d(),
                 new Vec3f(-0.2f, 0.3f, -0.2f), new Vec3f(0.2f, 0.3f, 0.2f), 2, 0, 0.5f, 1f, EnumParticleModel.Quad
             );
             smoke.SelfPropelled = true;
@@ -100,6 +101,7 @@ namespace Vintagestory.GameContent
                     Volume = 0.3f,
                     Range = 8
                 });
+                if (burning) ambientSound.Start();
             }
 
             if (api.Side == EnumAppSide.Client)
@@ -144,7 +146,7 @@ namespace Vintagestory.GameContent
                 int q = OreStack.StackSize / OreStack.Collectible.CombustibleProps.SmeltedRatio;
 
                 OutSlot.Itemstack = OreStack.Collectible.CombustibleProps.SmeltedStack.ResolvedItemstack.Clone();
-                OutSlot.Itemstack.StackSize = q;
+                OutSlot.Itemstack.StackSize *= q;
 
                 OreSlot.Itemstack.StackSize -= q * OreStack.Collectible.CombustibleProps.SmeltedRatio;
                 if (OreSlot.StackSize == 0) OreSlot.Itemstack = null;

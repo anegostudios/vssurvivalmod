@@ -12,28 +12,17 @@ namespace Vintagestory.GameContent
 {
     public class ItemLootRandomizer : Item
     {
-        ICoreAPI api;
 
-        public override void OnLoaded(ICoreAPI api)
+        public override void OnHeldInteractStart(IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handHandling)
         {
-            base.OnLoaded(api);
-            this.api = api;
-        }
-
-
-        public override bool OnHeldInteractStart(IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
-        {
-            IPlayer byPlayer = null;
-            if (byEntity is IEntityPlayer) byPlayer = byEntity.World.PlayerByUid(((IEntityPlayer)byEntity).PlayerUID);
-            if (byPlayer == null) return false;
+            IPlayer byPlayer = (byEntity as EntityPlayer).Player;
+            if (byPlayer == null) return;
 
 
             TreeAttribute tree = new TreeAttribute();
             tree.SetString("inventoryId", slot.Inventory.InventoryID);
             tree.SetInt("slotId", slot.Inventory.GetSlotId(slot));
             api.Event.PushEvent("OpenLootRandomizerDialog", tree);
-
-            return false;
         }
 
         public override void GetHeldItemInfo(ItemStack stack, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)

@@ -52,10 +52,10 @@ namespace Vintagestory.ServerMods
 
         public override void StartServerSide(ICoreServerAPI api)
         {
-            IAsset asset = api.Assets.Get("worldgen/terrain/standard/rockstrata.json");
+            IAsset asset = api.Assets.Get("worldgen/rockstrata.json");
             rockstrata = asset.ToObject<RockstrataWorldProperty>();
 
-            asset = api.Assets.Get("worldgen/terrain/standard/geologicprovinces.json");
+            asset = api.Assets.Get("worldgen/geologicprovinces.json");
             provinces = asset.ToObject<GeologicProvinces>();
 
             this.api = api;
@@ -68,7 +68,7 @@ namespace Vintagestory.ServerMods
             }
 
             api.Event.ChunkColumnGeneration(GenChunkColumn, EnumWorldGenPass.Terrain);
-            api.Event.SaveGameLoaded(OnGameWorldLoaded);
+            api.Event.SaveGameLoaded += OnGameWorldLoaded;
         }
 
 

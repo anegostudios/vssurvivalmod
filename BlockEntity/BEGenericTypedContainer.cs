@@ -11,7 +11,7 @@ using Vintagestory.API.Server;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockEntityGenericTypedContainer : BlockEntityContainer, IBlockShapeSupplier
+    public class BlockEntityGenericTypedContainer : BlockEntityOpenableContainer, IBlockShapeSupplier
     {
         internal InventoryGeneric inventory;
         public string type = "normal-generic";

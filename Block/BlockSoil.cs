@@ -365,7 +365,14 @@ namespace Vintagestory.GameContent
             }
         }
 
-
+        public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing)
+        {
+            if (facing == BlockFacing.UP)
+            {
+                return capi.ApplyColorTintOnRgba(1, capi.BlockTextureAtlas.GetRandomPixel(Textures["specialSecondTexture"].Baked.TextureSubId), pos.X, pos.Y, pos.Z);
+            }
+            return base.GetRandomColor(capi, pos, facing);
+        }
 
     }
 }

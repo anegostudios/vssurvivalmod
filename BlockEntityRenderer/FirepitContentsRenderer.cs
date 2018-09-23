@@ -14,9 +14,14 @@ namespace Vintagestory.GameContent
         MeshRef meshref;
         ICoreClientAPI api;
         BlockPos pos;
-        ItemStack contents;
+        public ItemStack ContentStack;
         int textureId;
-        
+        Matrixf ModelMat = new Matrixf();
+
+        ModelTransform transform;
+        ModelTransform defaultTransform;
+
+        public IInFirepitRenderer contentStackRenderer;
 
         public double RenderOrder
         {
@@ -32,40 +37,82 @@ namespace Vintagestory.GameContent
         {
             this.api = api;
             this.pos = pos;
+            transform = new ModelTransform().EnsureDefaultValues();
+            transform.Origin.X = 8 / 16f;
+            transform.Origin.Y = 1 / 16f;
+            transform.Origin.Z = 8 / 16f;
+            transform.Rotation.X = 90;
+            transform.Rotation.Y = 90;
+            transform.Rotation.Z = 0;
+            transform.Translation.X = 0 / 32f;
+            transform.Translation.Y = 4f / 16f;
+            transform.Translation.Z = 0 / 32f;
+            transform.ScaleXYZ.X = 0.25f;
+            transform.ScaleXYZ.Y = 0.25f;
+            transform.ScaleXYZ.Z = 0.25f;
+
+            defaultTransform = transform;
+
         }
 
-        public void SetContents(ItemStack stack)
+
+        internal void SetChildRenderer(ItemStack contentStack, IInFirepitRenderer renderer)
         {
+            this.ContentStack = contentStack;
             if (meshref != null)
             {
                 api.Render.DeleteMesh(meshref);
                 meshref = null;
             }
 
-            if (stack == null || stack.Class == EnumItemClass.Block)
+            contentStackRenderer = renderer;
+        }
+
+        public void SetContents(ItemStack newContentStack, ModelTransform transform)
+        {
+            contentStackRenderer?.Dispose();
+            contentStackRenderer = null;
+
+            this.transform = transform;
+            if (transform == null) this.transform = defaultTransform;
+            this.transform.EnsureDefaultValues();
+
+            if (meshref != null)
             {
-                this.contents = null;
+                api.Render.DeleteMesh(meshref);
+                meshref = null;
+            }
+
+            if (newContentStack == null || newContentStack.Class == EnumItemClass.Block)
+            {
+                this.ContentStack = null;
                 return;
             }
 
             MeshData ingredientMesh;
-            if (stack.Class == EnumItemClass.Item)
+            if (newContentStack.Class == EnumItemClass.Item)
             {
-                api.Tesselator.TesselateItem(stack.Item, out ingredientMesh);
-                textureId = api.ItemTextureAtlas.GetPosition(stack.Item).atlasTextureId;
+                api.Tesselator.TesselateItem(newContentStack.Item, out ingredientMesh);
+                textureId = api.ItemTextureAtlas.Positions[newContentStack.Item.FirstTexture.Baked.TextureSubId].atlasTextureId;
             }
             else
             {
-                api.Tesselator.TesselateBlock(stack.Block, out ingredientMesh);
-                textureId = api.BlockTextureAtlas.GetPosition(stack.Block, "ember").atlasTextureId;
+                api.Tesselator.TesselateBlock(newContentStack.Block, out ingredientMesh);
+                textureId = api.ItemTextureAtlas.Positions[newContentStack.Block.Textures.FirstOrDefault().Value.Baked.TextureSubId].atlasTextureId;
             }
 
             meshref = api.Render.UploadMesh(ingredientMesh);
-            this.contents = stack;
+            this.ContentStack = newContentStack;
         }
 
         public void OnRenderFrame(float deltaTime, EnumRenderStage stage)
         {
+            if (contentStackRenderer != null)
+            {
+                contentStackRenderer.OnRenderFrame(deltaTime, stage);
+                return;
+            }
+
             if (meshref == null) return;
             
             IRenderAPI rpi = api.Render;
@@ -74,24 +121,45 @@ namespace Vintagestory.GameContent
             rpi.GlDisableCullFace();
             rpi.GlToggleBlend(true);
 
-            IStandardShaderProgram prog = rpi.PreparedStandardShader(pos.X, pos.Y, pos.Z);
+            IStandardShaderProgram prog = rpi.StandardShader;
+            prog.Use();
+            prog.WaterWave = 0;
+            prog.RgbaAmbientIn = rpi.AmbientColor;
+            prog.RgbaFogIn = rpi.FogColor;
+            prog.FogMinIn = rpi.FogMin;
+            prog.FogDensityIn = rpi.FogDensity;
+            prog.RgbaTint = ColorUtil.WhiteArgbVec;
 
-            api.Render.BindTexture2d(textureId);
-            api.Render.GlMatrixModeModelView();
+            api.Render.BindTexture2d(api.ItemTextureAtlas.AtlasTextureIds[0]);
 
-            api.Render.GlPushMatrix();
-            api.Render.GlLoadMatrix(api.Render.CameraMatrixOrigin);
+            int temp = (int)ContentStack.Collectible.GetTemperature(api.World, ContentStack);
+            Vec4f lightrgbs = api.World.BlockAccessor.GetLightRGBs(pos.X, pos.Y, pos.Z);
+            float[] glowColor = ColorUtil.GetIncandescenceColorAsColor4f(temp);
+            lightrgbs[0] += 2 * glowColor[0];
+            lightrgbs[1] += 2 * glowColor[1];
+            lightrgbs[2] += 2 * glowColor[2];
 
-            rpi.GlTranslate(pos.X - camPos.X, pos.Y - camPos.Y, pos.Z - camPos.Z);
+            prog.RgbaLightIn = lightrgbs;
+            prog.RgbaBlockIn = ColorUtil.WhiteArgbVec;
+            prog.ExtraGlow = (int)GameMath.Clamp((temp - 500) / 4, 0, 255);
 
-            rpi.GlTranslate(0.25f + 0.125f, 0.6f, 0.5f + 0.125f);
-            rpi.GlRotate(90, 0, 1, 0);
-            rpi.GlScale(0.25f, 0.25f, 0.25f);
-            prog.ModelViewMatrix = rpi.CurrentModelviewMatrix;
+            
+            prog.ModelMatrix = ModelMat
+                .Identity()
+                .Translate(pos.X - camPos.X + transform.Translation.X, pos.Y - camPos.Y + transform.Translation.Y, pos.Z - camPos.Z + transform.Translation.Z)
+                .Translate(transform.Origin.X, 0.6f + transform.Origin.Y, transform.Origin.Z)
+                .RotateX((90 + transform.Rotation.X) * GameMath.DEG2RAD)
+                .RotateY(transform.Rotation.Y * GameMath.DEG2RAD)
+                .RotateZ(transform.Rotation.Z * GameMath.DEG2RAD)
+                .Scale(transform.ScaleXYZ.X, transform.ScaleXYZ.Y, transform.ScaleXYZ.Z)
+                .Translate(-transform.Origin.X, -transform.Origin.Y, -transform.Origin.Z)
+                .Values
+            ;
+
+            prog.ViewMatrix = rpi.CameraMatrixOriginf;
+            prog.ProjectionMatrix = rpi.CurrentProjectionMatrix;
 
             rpi.RenderMesh(meshref);
-
-            rpi.GlPopMatrix();
 
             prog.Stop();
         }
@@ -105,8 +173,8 @@ namespace Vintagestory.GameContent
         public void Dispose()
         {
             api.Render.DeleteMesh(meshref);
+            contentStackRenderer?.Dispose();
         }
-
 
     }
 }

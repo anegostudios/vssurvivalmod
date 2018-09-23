@@ -36,6 +36,8 @@ namespace Vintagestory.GameContent
         string tmpMetal;
         ITexPositionSource tmpTextureSource;
 
+        Matrixf ModelMat = new Matrixf();
+
         public double RenderOrder
         {
             get { return 0.5; }
@@ -157,19 +159,19 @@ namespace Vintagestory.GameContent
             prog.FogMinIn = rpi.FogMin;
             prog.FogDensityIn = rpi.FogDensity;
             prog.RgbaTint = ColorUtil.WhiteArgbVec;
+            prog.WaterWave = 0;
+            //rpi.GlMatrixModeModelView();
 
-            rpi.GlMatrixModeModelView();
-           
 
             if (stack != null && workItemMeshRef != null)
             {
                 int temp = (int)stack.Collectible.GetTemperature(capi.World, stack);
 
-                prog.ExtraGlow = GameMath.Clamp((temp - 700) / 4, 0, 255);
+                prog.ExtraGlow = GameMath.Clamp((temp - 700) / 2, 0, 255);
 
                 Vec4f lightrgbs = capi.World.BlockAccessor.GetLightRGBs(pos.X, pos.Y, pos.Z);
                 
-                float[] glowColor = ColorUtil.getIncandescenceColorAsColor4f(temp);
+                float[] glowColor = ColorUtil.GetIncandescenceColorAsColor4f(temp);
                 lightrgbs[0] += 2 * glowColor[0];
                 lightrgbs[1] += 2 * glowColor[1];
                 lightrgbs[2] += 2 * glowColor[2];
@@ -179,13 +181,14 @@ namespace Vintagestory.GameContent
 
                 // The work item
                 rpi.BindTexture2d(workItemTexPos.atlasTextureId);
-                rpi.GlPushMatrix();
-                rpi.GlLoadMatrix(capi.Render.CameraMatrixOrigin);
-                rpi.GlTranslate(pos.X - camPos.X, pos.Y - camPos.Y + 7/16f + fuelLevel * 0.65f, pos.Z - camPos.Z);
+
+                prog.ModelMatrix = ModelMat.Identity().Translate(pos.X - camPos.X, pos.Y - camPos.Y + 7 / 16f + fuelLevel * 0.65f, pos.Z - camPos.Z).Values;
+                prog.ViewMatrix = rpi.CameraMatrixOriginf;
                 prog.ProjectionMatrix = rpi.CurrentProjectionMatrix;
-                prog.ModelViewMatrix = rpi.CurrentModelviewMatrix;
+                
                 rpi.RenderMesh(workItemMeshRef);
-                rpi.GlPopMatrix();
+
+                
             }
 
             if (fuelLevel > 0)
@@ -198,14 +201,13 @@ namespace Vintagestory.GameContent
 
                 // The coal or embers
                 rpi.BindTexture2d(burning ? embertexpos.atlasTextureId : coaltexpos.atlasTextureId);
-                rpi.GlPushMatrix();
-                rpi.GlLoadMatrix(capi.Render.CameraMatrixOrigin);
-                rpi.GlTranslate(pos.X - camPos.X, pos.Y - camPos.Y + 7 / 16f + fuelLevel * 0.65f, pos.Z - camPos.Z);
 
+                prog.ModelMatrix = ModelMat.Identity().Translate(pos.X - camPos.X, pos.Y - camPos.Y + 7 / 16f + fuelLevel * 0.65f, pos.Z - camPos.Z).Values;
+                prog.ViewMatrix = rpi.CameraMatrixOriginf;
                 prog.ProjectionMatrix = rpi.CurrentProjectionMatrix;
-                prog.ModelViewMatrix = rpi.CurrentModelviewMatrix;
+
                 rpi.RenderMesh(burning ? emberQuadRef : coalQuadRef);
-                rpi.GlPopMatrix();
+                
             }
 
 

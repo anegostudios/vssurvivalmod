@@ -31,7 +31,7 @@ namespace Vintagestory.ServerMods
         {
             this.api = api;
             api.Event.MapRegionGeneration(OnMapRegionGen, EnumPlayStyleFlag.All);
-            api.Event.SaveGameLoaded(GameWorldLoaded);
+            api.Event.SaveGameLoaded += GameWorldLoaded;
 
             // Call our loaded method manually if the server is already running (happens when mods are reloaded at runtime)
             if (api.Server.CurrentRunPhase == EnumServerRunPhase.RunGame)

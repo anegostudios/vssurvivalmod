@@ -51,7 +51,7 @@ namespace Vintagestory.ServerMods
         {
             this.api = api;
             api.Event.ChunkColumnGeneration(OnChunkColumnGen, EnumWorldGenPass.TerrainFeatures);
-            api.Event.SaveGameLoaded(GameWorldLoaded);
+            api.Event.SaveGameLoaded += GameWorldLoaded;
             api.Event.GetWorldgenBlockAccessor(OnWorldGenBlockAccessor);
 
             // Call our loaded method manually if the server is already running (happens when mods are reloaded at runtime)
@@ -80,10 +80,10 @@ namespace Vintagestory.ServerMods
             mapheight = api.WorldManager.MapSizeY;
             didCheckPosition = new bool[searchSize * searchSize];
 
-            IAsset asset = api.Assets.Get("worldgen/terrain/standard/rockstrata.json");
+            IAsset asset = api.Assets.Get("worldgen/rockstrata.json");
             RockstrataWorldProperty rockstrata = asset.ToObject<RockstrataWorldProperty>();
 
-            asset = api.Assets.Get("worldgen/terrain/standard/blocklayerconfig.json");
+            asset = api.Assets.Get("worldgen/blocklayerconfig.json");
             BlockLayerConfig blockLayerConfig = asset.ToObject<BlockLayerConfig>();
             blockLayerConfig.ResolveBlockIds(api, rockstrata);
 

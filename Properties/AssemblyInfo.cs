@@ -39,8 +39,10 @@ using Vintagestory.API.Config;
 [assembly: AssemblyFileVersion(GameVersion.OverallVersion)]
 [assembly: InternalsVisibleTo("VSSurvivalModTests")]
 
-[assembly: ModInfo("Survival Mode", "game",
+[assembly: ModInfo("Survival Mode", "survival",
     Version = GameVersion.ShortGameVersion,
     Description = "The Vintage Story Survival experience. Contains all standard Blocks, Items, Creatures and pretty world generation",
     Authors = new[] { "Tyron" },
-    RequiredOnClient = false)]
+    RequiredOnClient = false )]
+
+[assembly: ModDependency("game")]

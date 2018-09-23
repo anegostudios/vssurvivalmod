@@ -19,15 +19,18 @@ namespace Vintagestory.GameContent
         InventoryTrader traderInventory;
         EntityAgent owningEntity;
 
-        double prevAbsFixedX, prevAbsFixedY;
-        double notifyMoneyTextSeconds;
+        double prevPlrAbsFixedX, prevPlrAbsFixedY;
+        double prevTdrAbsFixedX, prevTdrAbsFixedY;
+        double notifyPlayerMoneyTextSeconds;
+        double notifyTraderMoneyTextSeconds;
+
 
         public GuiDialogTrader(InventoryTrader traderInventory, EntityAgent owningEntity, ICoreClientAPI capi) : base(capi)
         {
             this.traderInventory = traderInventory;
             this.owningEntity = owningEntity;
 
-            traderInventory.SlotModified += TraderInventory_SlotModified;
+            
 
 
             double pad = GuiElementItemSlotGrid.unscaledSlotPadding;
@@ -46,7 +49,13 @@ namespace Vintagestory.GameContent
             ElementBounds bgBounds = ElementBounds.Fill.WithFixedPadding(ElementGeometrics.ElementToDialogPadding);
             bgBounds.BothSizing = ElementSizing.FitToChildren;
 
-            
+
+
+            ElementBounds costTextBounds = ElementBounds.Fixed(pad, 55 + 2 * pad + leftTopSlotBounds.fixedHeight + leftBotSlotBounds.fixedHeight, 150, 25);
+            ElementBounds offerTextBounds = ElementBounds.Fixed(leftTopSlotBounds.fixedWidth + pad + 20, 55 + 2 * pad + leftTopSlotBounds.fixedHeight + leftBotSlotBounds.fixedHeight, 150, 25);
+
+            ElementBounds traderMoneyBounds = offerTextBounds.FlatCopy().WithAddedFixedPosition(0, offerTextBounds.fixedHeight);
+            ElementBounds playerMoneyBounds = costTextBounds.FlatCopy().WithAddedFixedPosition(0, costTextBounds.fixedHeight);
 
             ElementBounds dialogBounds = ElementStdBounds
                 .AutosizedMainDialog.WithAlignment(EnumDialogArea.RightMiddle)
@@ -71,13 +80,18 @@ namespace Vintagestory.GameContent
                     .AddStaticText("Your Selection", CairoFont.WhiteDetailText(), ElementBounds.Fixed(pad, 40 + 2*pad + leftTopSlotBounds.fixedHeight, 150, 25))
                     .AddStaticText("Your Offer", CairoFont.WhiteDetailText(), ElementBounds.Fixed(leftTopSlotBounds.fixedWidth + pad + 20, 40 + 2*pad + leftTopSlotBounds.fixedHeight, 150, 25))
 
-                    .AddDynamicText("", CairoFont.WhiteDetailText(), EnumTextOrientation.Left, ElementBounds.Fixed(pad, 55 + 2 * pad + leftTopSlotBounds.fixedHeight + leftBotSlotBounds.fixedHeight, 150, 25), 1, "costText")
-                    .AddDynamicText("", CairoFont.WhiteDetailText(), EnumTextOrientation.Left, ElementBounds.Fixed(leftTopSlotBounds.fixedWidth + pad + 20, 55 + 2 * pad + leftTopSlotBounds.fixedHeight + leftBotSlotBounds.fixedHeight, 150, 25), 1, "gainText")
-                    
+                    // Cost
+                    .AddDynamicText("", CairoFont.WhiteDetailText(), EnumTextOrientation.Left, costTextBounds, 1, "costText")
+                    // Player money
+                    .AddDynamicText("", CairoFont.WhiteDetailText(), EnumTextOrientation.Left, playerMoneyBounds , 1, "playerMoneyText")
+                    // Offer
+                    .AddDynamicText("", CairoFont.WhiteDetailText(), EnumTextOrientation.Left, offerTextBounds, 1, "gainText")
+                    // Trader money
+                    .AddDynamicText("", CairoFont.WhiteDetailText(), EnumTextOrientation.Left, traderMoneyBounds , 1, "traderMoneyText")
 
-                    .AddSmallButton("Goodbye!", OnByeClicked, leftButton.FixedUnder(leftBotSlotBounds, 30).WithFixedPadding(8, 5))
-                    .AddSmallButton("Buy / Sell", OnByeSellClicked, rightButton.FixedUnder(rightBotSlotBounds, 30).WithFixedPadding(8, 5), EnumButtonStyle.Normal, EnumTextOrientation.Left, "buysellButton")
-                    .AddDynamicText("", CairoFont.WhiteDetailText(), EnumTextOrientation.Center, ElementBounds.Fixed(EnumDialogArea.CenterFixed, 0, leftButton.fixedY + 6, 200, 25), 1, "moneyText")
+                    .AddSmallButton("Goodbye!", OnByeClicked, leftButton.FixedUnder(playerMoneyBounds, 30).WithFixedPadding(8, 5))
+                    .AddSmallButton("Buy / Sell", OnByeSellClicked, rightButton.FixedUnder(traderMoneyBounds, 30).WithFixedPadding(8, 5), EnumButtonStyle.Normal, EnumTextOrientation.Left, "buysellButton")
+                    
 
                 .EndChildElements()
                 .Compose()
@@ -85,28 +99,16 @@ namespace Vintagestory.GameContent
 
             SingleComposer.GetButton("buysellButton").Enabled = false;
 
-            CalcOwnMoney();
+            CalcAndUpdateAssetsDisplay();
         }
 
-        void CalcOwnMoney()
+        void CalcAndUpdateAssetsDisplay()
         {
-            int totalAssets = 0;
+            int playerAssets = traderInventory.GetPlayerAssets(capi.World.Player);
+            SingleComposer.GetDynamicText("playerMoneyText").SetNewText(Lang.Get("You have {0} Gears", playerAssets));
 
-            capi.World.Player.Entity.WalkInventory((invslot) =>
-            {
-                if (invslot is CreativeSlot) return true;
-                if (invslot.Itemstack == null || invslot.Itemstack.Collectible.Attributes == null) return true;
-
-                JsonObject obj = invslot.Itemstack.Collectible.Attributes["currency"];
-                if (obj.Exists && obj["value"].Exists)
-                {
-                    totalAssets += obj["value"].AsInt(0) * invslot.StackSize;
-                }
-
-                return true;
-            });
-
-            SingleComposer.GetDynamicText("moneyText").SetNewText(Lang.Get("You have {0} Gears", totalAssets));
+            int traderAssets = traderInventory.GetTraderAssets();
+            SingleComposer.GetDynamicText("traderMoneyText").SetNewText(Lang.Get("{0} has {1} Gears", owningEntity.GetBehavior<EntityBehaviorNameTag>().DisplayName, traderAssets));
         }
 
         private void TraderInventory_SlotModified(int slotid)
@@ -119,30 +121,44 @@ namespace Vintagestory.GameContent
 
             SingleComposer.GetButton("buysellButton").Enabled = totalCost > 0 || totalGain > 0;
 
-            CalcOwnMoney();
+            CalcAndUpdateAssetsDisplay();
         }
 
         private bool OnByeSellClicked()
         {
-            if (traderInventory.DoBuySell(capi.World.Player))
+            EnumTransactionResult result = traderInventory.TryBuySell(capi.World.Player);
+            if (result == EnumTransactionResult.Success)
             {
                 capi.Gui.PlaySound(new AssetLocation("sounds/effect/cashregister"), false);
-            } else
+            } 
+
+            if (result == EnumTransactionResult.PlayerNotEnoughAssets)
             {
                 (owningEntity as EntityTrader).talkUtil.Talk(EnumTalkType.Complain);
-                if (notifyMoneyTextSeconds <= 0)
+                if (notifyPlayerMoneyTextSeconds <= 0)
                 {
-                    prevAbsFixedX = SingleComposer.GetDynamicText("moneyText").Bounds.absFixedX;
-                    prevAbsFixedY = SingleComposer.GetDynamicText("moneyText").Bounds.absFixedY;
+                    prevPlrAbsFixedX = SingleComposer.GetDynamicText("playerMoneyText").Bounds.absFixedX;
+                    prevPlrAbsFixedY = SingleComposer.GetDynamicText("playerMoneyText").Bounds.absFixedY;
                 }
-                notifyMoneyTextSeconds = 1.5f;
-
+                notifyPlayerMoneyTextSeconds = 1.5f;
             }
+
+            if (result == EnumTransactionResult.TraderNotEnoughAssets)
+            {
+                (owningEntity as EntityTrader).talkUtil.Talk(EnumTalkType.Complain);
+                if (notifyTraderMoneyTextSeconds <= 0)
+                {
+                    prevTdrAbsFixedX = SingleComposer.GetDynamicText("traderMoneyText").Bounds.absFixedX;
+                    prevTdrAbsFixedY = SingleComposer.GetDynamicText("traderMoneyText").Bounds.absFixedY;
+                }
+                notifyTraderMoneyTextSeconds = 1.5f;
+            }
+
 
             capi.Network.SendEntityPacket(owningEntity.EntityId, 1000, null);
 
             TraderInventory_SlotModified(0);
-            CalcOwnMoney();
+            CalcAndUpdateAssetsDisplay();
 
             return true;
         }
@@ -163,9 +179,19 @@ namespace Vintagestory.GameContent
             TryClose();
         }
 
+        public override void OnGuiOpened()
+        {
+            base.OnGuiOpened();
+            traderInventory.SlotModified += TraderInventory_SlotModified;
+        }
+
         public override void OnGuiClosed()
         {
             base.OnGuiClosed();
+
+            traderInventory.SlotModified -= TraderInventory_SlotModified;
+
+            (owningEntity as EntityTrader).talkUtil.Talk(EnumTalkType.Goodbye);
 
             capi.Network.SendPacketClient(capi.World.Player.InventoryManager.CloseInventory(traderInventory));
 
@@ -179,18 +205,35 @@ namespace Vintagestory.GameContent
         {
             base.OnBeforeRenderFrame3D(deltaTime);
 
-            if (notifyMoneyTextSeconds > 0)
+            if (notifyPlayerMoneyTextSeconds > 0)
             {
-                notifyMoneyTextSeconds -= deltaTime;
+                notifyPlayerMoneyTextSeconds -= deltaTime;
 
-                if (notifyMoneyTextSeconds <= 0)
+                if (notifyPlayerMoneyTextSeconds <= 0)
                 {
-                    SingleComposer.GetDynamicText("moneyText").Bounds.absFixedX = prevAbsFixedX;
-                    SingleComposer.GetDynamicText("moneyText").Bounds.absFixedY = prevAbsFixedY;
+                    SingleComposer.GetDynamicText("playerMoneyText").Bounds.absFixedX = prevPlrAbsFixedX;
+                    SingleComposer.GetDynamicText("playerMoneyText").Bounds.absFixedY = prevPlrAbsFixedY;
                 } else
                 {
-                    SingleComposer.GetDynamicText("moneyText").Bounds.absFixedX = prevAbsFixedX + notifyMoneyTextSeconds * (capi.World.Rand.NextDouble() * 4 - 2);
-                    SingleComposer.GetDynamicText("moneyText").Bounds.absFixedY = prevAbsFixedY + notifyMoneyTextSeconds * (capi.World.Rand.NextDouble() * 4 - 2);
+                    SingleComposer.GetDynamicText("playerMoneyText").Bounds.absFixedX = prevPlrAbsFixedX + notifyPlayerMoneyTextSeconds * (capi.World.Rand.NextDouble() * 4 - 2);
+                    SingleComposer.GetDynamicText("playerMoneyText").Bounds.absFixedY = prevPlrAbsFixedY + notifyPlayerMoneyTextSeconds * (capi.World.Rand.NextDouble() * 4 - 2);
+                }
+            }
+
+
+            if (notifyTraderMoneyTextSeconds > 0)
+            {
+                notifyTraderMoneyTextSeconds -= deltaTime;
+
+                if (notifyTraderMoneyTextSeconds <= 0)
+                {
+                    SingleComposer.GetDynamicText("traderMoneyText").Bounds.absFixedX = prevPlrAbsFixedX;
+                    SingleComposer.GetDynamicText("traderMoneyText").Bounds.absFixedY = prevPlrAbsFixedY;
+                }
+                else
+                {
+                    SingleComposer.GetDynamicText("traderMoneyText").Bounds.absFixedX = prevTdrAbsFixedX + notifyTraderMoneyTextSeconds * (capi.World.Rand.NextDouble() * 4 - 2);
+                    SingleComposer.GetDynamicText("traderMoneyText").Bounds.absFixedY = prevTdrAbsFixedY + notifyTraderMoneyTextSeconds * (capi.World.Rand.NextDouble() * 4 - 2);
                 }
             }
 

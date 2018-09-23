@@ -17,7 +17,6 @@ namespace Vintagestory.GameContent
         string curType;
         string defaultType;
         ITexPositionSource tmpTextureSource;
-        ICoreAPI api;
              
 
         public TextureAtlasPosition this[string textureCode]
@@ -31,7 +30,6 @@ namespace Vintagestory.GameContent
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
-            this.api = api;
 
             defaultType = Attributes["defaultType"].AsString("normal-generic");
         }
@@ -207,10 +205,7 @@ namespace Vintagestory.GameContent
                     }
                 }
 
-                if (Sounds?.Break != null)
-                {
-                    world.PlaySoundAt(Sounds.Break, pos.X, pos.Y, pos.Z, byPlayer);
-                }
+                world.PlaySoundAt(Sounds.GetBreakSound(byPlayer), pos.X, pos.Y, pos.Z, byPlayer);
             }
 
             if (EntityClass != null)
@@ -242,19 +237,19 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override int TextureSubIdForRandomBlockPixel(IWorldAccessor world, BlockPos pos, BlockFacing facing, ref int tintIndex)
+        public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing)
         {
-            BlockEntityGenericTypedContainer be = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityGenericTypedContainer;
+            BlockEntityGenericTypedContainer be = capi.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityGenericTypedContainer;
             if (be != null)
             {
                 CompositeTexture tex = null;
                 if (!Textures.TryGetValue(be.type + "-lid", out tex)) {
                     Textures.TryGetValue(be.type + "-top", out tex);
                 }
-                return tex?.Baked == null ? 0 : tex.Baked.TextureSubId;
+                return capi.BlockTextureAtlas.GetRandomPixel(tex?.Baked == null ? 0 : tex.Baked.TextureSubId);
             }
 
-            return base.TextureSubIdForRandomBlockPixel(world, pos, facing, ref tintIndex);
+            return base.GetRandomColor(capi, pos, facing);
         }
     }
 }

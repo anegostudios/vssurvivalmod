@@ -94,10 +94,10 @@ namespace Vintagestory.ServerMods.NoObf
 
                 if (Schematics[i].EndsWith("*"))
                 {
-                    assets = api.Assets.GetMany("worldgen/terrain/standard/schematics/" + Schematics[i].Substring(0, Schematics[i].Length - 1)).ToArray();
+                    assets = api.Assets.GetMany("worldgen/schematics/" + Schematics[i].Substring(0, Schematics[i].Length - 1)).ToArray();
                 } else
                 {
-                    assets = new IAsset[] { api.Assets.Get("worldgen/terrain/standard/schematics/" + Schematics[i] + ".json") };
+                    assets = new IAsset[] { api.Assets.Get("worldgen/schematics/" + Schematics[i] + ".json") };
                 }
 
                 for (int j = 0; j < assets.Length; j++)
@@ -122,7 +122,7 @@ namespace Vintagestory.ServerMods.NoObf
                         if (k > 0)
                         {
                             rotations[k] = rotations[0].Clone();
-                            rotations[k].RotateWhilePacked(api.World, EnumOrigin.BottomCenter, k * 90);
+                            rotations[k].TransformWhilePacked(api.World, EnumOrigin.BottomCenter, k * 90);
                         }
                         rotations[k].blockLayerConfig = config;
                         rotations[k].Init(api.World.BlockAccessor);

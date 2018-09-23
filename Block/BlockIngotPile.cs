@@ -1,4 +1,5 @@
 ﻿using System;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
@@ -113,14 +114,14 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override int TextureSubIdForRandomBlockPixel(IWorldAccessor world, BlockPos pos, BlockFacing facing, ref int tintIndex)
+        public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing)
         {
-            BlockEntityIngotPile be = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityIngotPile;
-            if (be == null) return base.TextureSubIdForRandomBlockPixel(world, pos, facing, ref tintIndex);
+            BlockEntityIngotPile be = capi.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityIngotPile;
+            if (be == null) return base.GetRandomColor(capi, pos, facing);
             string metalType = be.MetalType;
-            if (metalType == null) return base.TextureSubIdForRandomBlockPixel(world, pos, facing, ref tintIndex);
+            if (metalType == null) return base.GetRandomColor(capi, pos, facing);
 
-            return Textures[be.MetalType].Baked.TextureSubId;
+            return capi.BlockTextureAtlas.GetRandomPixel(Textures[be.MetalType].Baked.TextureSubId);
         }
 
 

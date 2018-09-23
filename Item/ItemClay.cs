@@ -10,9 +10,9 @@ namespace Vintagestory.GameContent
 {
     public class ItemClay : Item
     {
-        public override bool OnHeldInteractStart(IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override void OnHeldInteractStart(IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
         {
-            if (blockSel == null) return false;
+            if (blockSel == null) return;
 
             if (byEntity.Controls.Sneak)
             {
@@ -21,26 +21,27 @@ namespace Vintagestory.GameContent
                 if (!byEntity.World.TestPlayerAccessBlock(player, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
                 {
                     slot.MarkDirty();
-                    return false;
+                    return;
                 }
 
                 BlockEntityClayForm bec = byEntity.World.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityClayForm;
 
                 if (bec != null)
                 {
-                    return OnHeldAttackStart(slot, byEntity, blockSel, entitySel);
+                    OnHeldAttackStart(slot, byEntity, blockSel, entitySel, ref handling);
+                    return;
                 }
 
                 IWorldAccessor world = byEntity.World;
                 Block clayformBlock = world.GetBlock(new AssetLocation("clayform"));
-                if (clayformBlock == null) return false;
+                if (clayformBlock == null) return;
 
                 Block block = world.BlockAccessor.GetBlock(blockSel.Position);
 
-                if (!block.CanAttachBlockAt(byEntity.World.BlockAccessor, clayformBlock, blockSel.Position, BlockFacing.UP)) return false;
+                if (!block.CanAttachBlockAt(byEntity.World.BlockAccessor, clayformBlock, blockSel.Position, BlockFacing.UP)) return;
 
                 BlockPos pos = blockSel.Position.AddCopy(blockSel.Face);
-                if (!world.BlockAccessor.GetBlock(pos).IsReplacableBy(clayformBlock)) return false;
+                if (!world.BlockAccessor.GetBlock(pos).IsReplacableBy(clayformBlock)) return;
 
                 world.BlockAccessor.SetBlock(clayformBlock.BlockId, pos);
 
@@ -50,12 +51,12 @@ namespace Vintagestory.GameContent
                 bec = byEntity.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityClayForm;
 
                 if (bec != null) bec.PutClay(slot);
-                
-                
-                return true;
+
+                handling = EnumHandHandling.PreventDefaultAction;
+                return;
             }
 
-            return OnHeldAttackStart(slot, byEntity, blockSel, entitySel);
+            OnHeldAttackStart(slot, byEntity, blockSel, entitySel, ref handling);
         }
 
         public override bool OnHeldInteractCancel(float secondsUsed, IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)
@@ -100,25 +101,25 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override bool OnHeldAttackStart(IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override void OnHeldAttackStart(IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
         {
-            if (blockSel == null) return false;
-            if (!(byEntity.World.BlockAccessor.GetBlock(blockSel.Position) is BlockClayForm)) return false;
+            if (blockSel == null) return;
+            if (!(byEntity.World.BlockAccessor.GetBlock(blockSel.Position) is BlockClayForm)) return;
 
             BlockEntityClayForm bea = byEntity.World.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityClayForm;
-            if (bea == null) return false;
+            if (bea == null) return;
 
             IPlayer byPlayer = null;
             if (byEntity is IEntityPlayer) byPlayer = byEntity.World.PlayerByUid(((IEntityPlayer)byEntity).PlayerUID);
-            if (byPlayer == null) return false;
+            if (byPlayer == null) return;
 
             if (!byEntity.World.TestPlayerAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.Use))
             {
-                return false;
+                return;
             }
 
             bea.OnBeginUse(byPlayer, blockSel);
-            return true;
+            handling = EnumHandHandling.PreventDefaultAction;
         }
 
         public override bool OnHeldAttackCancel(float secondsPassed, IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSelection, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)

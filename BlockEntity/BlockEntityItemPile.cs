@@ -100,7 +100,7 @@ namespace Vintagestory.GameContent
           
             IItemSlot hotbarSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
 
-            bool equalStack = hotbarSlot.Itemstack != null && hotbarSlot.Itemstack.Equals(inventory.GetSlot(0).Itemstack, GlobalConstants.IgnoredStackAttributes);
+            bool equalStack = hotbarSlot.Itemstack != null && hotbarSlot.Itemstack.Equals(api.World, inventory.GetSlot(0).Itemstack, GlobalConstants.IgnoredStackAttributes);
 
             if (sneaking && !equalStack)
             {
@@ -157,7 +157,7 @@ namespace Vintagestory.GameContent
                 api.World.PlaySoundAt(SoundLocation, pos.X, pos.Y, pos.Z, null, false);
             }
 
-            if (invSlot.Itemstack.Equals(hotbarSlot.Itemstack, GlobalConstants.IgnoredStackAttributes))
+            if (invSlot.Itemstack.Equals(api.World, hotbarSlot.Itemstack, GlobalConstants.IgnoredStackAttributes))
             {
                 int q = GameMath.Min(hotbarSlot.StackSize, TakeQuantity, MaxStackSize - OwnStackSize);
 
@@ -227,9 +227,9 @@ namespace Vintagestory.GameContent
         public override void OnLoadCollectibleMappings(IWorldAccessor worldForResolve, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping)
         {
             ItemStack stack = inventory?.GetSlot(0)?.Itemstack;
-            if (stack != null)
+            if (stack?.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve) == false)
             {
-                stack.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve);
+                inventory.GetSlot(0).Itemstack = null;
             }
         }
 

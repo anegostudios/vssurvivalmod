@@ -16,7 +16,7 @@ namespace Vintagestory.GameContent
         {
             base.OnBlockBroken(world, pos, byPlayer, dropQuantityMultiplier);
 
-            EntityType type = world.GetEntityType(new AssetLocation("beemob"));
+            EntityProperties type = world.GetEntityType(new AssetLocation("beemob"));
             Entity entity = world.ClassRegistry.CreateEntity(type);
 
             if (entity != null)

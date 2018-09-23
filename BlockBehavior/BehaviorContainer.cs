@@ -10,15 +10,15 @@ namespace Vintagestory.GameContent
         {
         }
 
-        public override bool OnPlayerBlockInteract(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ref EnumHandling handling)
+        public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ref EnumHandling handling)
         {
-            handling = EnumHandling.Last;
+            handling = EnumHandling.PreventSubsequent;
 
             BlockEntity entity = world.BlockAccessor.GetBlockEntity(blockSel.Position);
 
-            if (entity is BlockEntityContainer)
+            if (entity is BlockEntityOpenableContainer)
             {
-                BlockEntityContainer beContainer = (BlockEntityContainer)entity;
+                BlockEntityOpenableContainer beContainer = (BlockEntityOpenableContainer)entity;
                 return beContainer.OnPlayerRightClick(byPlayer, blockSel);
             }
 
@@ -31,9 +31,9 @@ namespace Vintagestory.GameContent
         
             BlockEntity entity = world.BlockAccessor.GetBlockEntity(pos);
 
-            if (entity is BlockEntityContainer)
+            if (entity is BlockEntityOpenableContainer)
             {
-                BlockEntityContainer container = (BlockEntityContainer)entity;
+                BlockEntityOpenableContainer container = (BlockEntityOpenableContainer)entity;
 
                 IPlayer[] players = world.AllOnlinePlayers;
                 for (int i = 0; i < players.Length; i++)

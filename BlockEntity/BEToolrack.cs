@@ -25,7 +25,7 @@ namespace Vintagestory.GameContent
             get {
                 ToolTextures tt = null;
 
-                if (BlockToolRack.toolTextureSubIds.TryGetValue((Item)tmpItem, out tt))
+                if (BlockToolRack.ToolTextureSubIds(api).TryGetValue((Item)tmpItem, out tt))
                 {
                     int textureSubId = 0;
                     if (tt.TextureSubIdsByCode.TryGetValue(textureCode, out textureSubId))
@@ -267,7 +267,10 @@ namespace Vintagestory.GameContent
             {
                 ItemSlot slot = inventory.GetSlot(i);
                 if (slot.Itemstack == null) continue;
-                slot.Itemstack.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve);
+                if (!slot.Itemstack.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve))
+                {
+                    slot.Itemstack = null;
+                }
             }
         }
 

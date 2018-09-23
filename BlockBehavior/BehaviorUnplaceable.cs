@@ -12,7 +12,7 @@ namespace Vintagestory.GameContent
 
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref EnumHandling handled)
         {
-            handled = EnumHandling.Last;
+            handled = EnumHandling.PreventSubsequent;
             return false;
         }
     }

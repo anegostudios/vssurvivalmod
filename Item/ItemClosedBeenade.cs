@@ -10,20 +10,20 @@ namespace Vintagestory.GameContent
 {
     public class ItemClosedBeenade : Item
     {
-        public override string GetHeldTpUseAnimation(IItemSlot activeHotbarSlot, IEntity byEntity)
+        public override string GetHeldTpUseAnimation(IItemSlot activeHotbarSlot, Entity byEntity)
         {
             return null;
         }
 
-        public override bool OnHeldInteractStart(IItemSlot itemslot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override void OnHeldInteractStart(IItemSlot itemslot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
         {
-            if (blockSel != null && byEntity.World.BlockAccessor.GetBlock(blockSel.Position).FirstCodePart() == "skep") return false;
+            if (blockSel != null && byEntity.World.BlockAccessor.GetBlock(blockSel.Position).FirstCodePart() == "skep") return;
 
             // Not ideal to code the aiming controls this way. Needs an elegant solution - maybe an event bus?
             byEntity.Attributes.SetInt("aiming", 1);
             byEntity.StartAnimation("aim");
 
-            return true;
+            handling = EnumHandHandling.PreventDefault;
         }
 
         public override bool OnHeldInteractStep(float secondsUsed, IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
@@ -37,7 +37,7 @@ namespace Vintagestory.GameContent
 
                 tf.Translation.Set(offset, -offset / 4f, 0);
 
-                byEntity.Controls.UsingHeldItemTransform = tf;
+                byEntity.Controls.UsingHeldItemTransformBefore = tf;
             }
 
             return true;
@@ -70,9 +70,8 @@ namespace Vintagestory.GameContent
             if (byEntity is IEntityPlayer) byPlayer = byEntity.World.PlayerByUid(((IEntityPlayer)byEntity).PlayerUID);
             byEntity.World.PlaySoundAt(new AssetLocation("sounds/player/throw"), byEntity, byPlayer, false, 8);
 
-            EntityType type = byEntity.World.GetEntityType(new AssetLocation("thrownbeenade"));
-            Entity entity = byEntity.World.ClassRegistry.CreateEntity(type.Class);
-            entity.SetType(type);
+            EntityProperties type = byEntity.World.GetEntityType(new AssetLocation("thrownbeenade"));
+            Entity entity = byEntity.World.ClassRegistry.CreateEntity(type);
             ((EntityThrownBeenade)entity).FiredBy = byEntity;
             ((EntityThrownBeenade)entity).Damage = damage;
             ((EntityThrownBeenade)entity).ProjectileStack = stack;
@@ -81,11 +80,11 @@ namespace Vintagestory.GameContent
             double rndpitch = byEntity.WatchedAttributes.GetDouble("aimingRandPitch", 1) * acc * 0.75;
             double rndyaw = byEntity.WatchedAttributes.GetDouble("aimingRandYaw", 1) * acc * 0.75;
 
-            Vec3d pos = byEntity.ServerPos.XYZ.Add(0, byEntity.EyeHeight() - 0.2, 0);
+            Vec3d pos = byEntity.ServerPos.XYZ.Add(0, byEntity.EyeHeight - 0.2, 0);
             Vec3d aheadPos = pos.AheadCopy(1, byEntity.ServerPos.Pitch + rndpitch, byEntity.ServerPos.Yaw + rndyaw);
             Vec3d velocity = (aheadPos - pos) * 0.5;
 
-            entity.ServerPos.SetPos(byEntity.ServerPos.BehindCopy(0.21).XYZ.Add(0, byEntity.EyeHeight() - 0.2, 0).Ahead(0.25, 0, byEntity.ServerPos.Yaw + GameMath.PIHALF));
+            entity.ServerPos.SetPos(byEntity.ServerPos.BehindCopy(0.21).XYZ.Add(0, byEntity.EyeHeight - 0.2, 0).Ahead(0.25, 0, byEntity.ServerPos.Yaw + GameMath.PIHALF));
             entity.ServerPos.Motion.Set(velocity);
 
             entity.Pos.SetFrom(entity.ServerPos);

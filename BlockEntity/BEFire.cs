@@ -83,7 +83,7 @@ namespace Vintagestory.GameContent
                 Entity entity = entities[i];
                 if (CollisionTester.AabbIntersect(entity.CollisionBox, entity.ServerPos.X, entity.ServerPos.Y, entity.ServerPos.Z, fireCuboid, ownPos))
                 {
-                    entity.ReceiveDamage(new DamageSource() { source = EnumDamageSource.Block, sourceBlock = fireBlock, sourcePos = ownPos, type = EnumDamageType.Fire }, 2f);
+                    entity.ReceiveDamage(new DamageSource() { Source = EnumDamageSource.Block, sourceBlock = fireBlock, sourcePos = ownPos, Type = EnumDamageType.Fire }, 2f);
                 }
             }
         }

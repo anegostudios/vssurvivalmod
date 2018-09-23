@@ -100,7 +100,7 @@ namespace Vintagestory.GameContent
                 ItemStack smeltedStack = alloy.Output.ResolvedItemstack.Clone();
                 int units = (int)(alloy.GetTotalOutputQuantity(stacks) * 100);
 
-                ((BlockLiquidMetalContainer)block).SetContents(outputStack, smeltedStack, units);
+                ((BlockSmeltedContainer)block).SetContents(outputStack, smeltedStack, units);
                 outputStack.Collectible.SetTemperature(world, outputStack, GetIngredientsTemperature(world, stacks));
                 outputSlot.Itemstack = outputStack;
                 inputSlot.Itemstack = null;
@@ -119,7 +119,7 @@ namespace Vintagestory.GameContent
 
             if (match != null)
             {
-                ((BlockLiquidMetalContainer)block).SetContents(outputStack, match.output, (int)(match.stackSize * 100));
+                ((BlockSmeltedContainer)block).SetContents(outputStack, match.output, (int)(match.stackSize * 100));
                 outputStack.Collectible.SetTemperature(world, outputStack, GetIngredientsTemperature(world, stacks));
                 outputSlot.Itemstack = outputStack;
                 inputSlot.Itemstack = null;

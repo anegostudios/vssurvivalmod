@@ -22,6 +22,7 @@ namespace Vintagestory.GameContent
 
         LoadedTexture loadedTexture;
         MeshRef quadModelRef;
+        public Matrixf ModelMat = new Matrixf();
 
         float rotY = 0;
         float translateX = 0;
@@ -117,24 +118,21 @@ namespace Vintagestory.GameContent
             IStandardShaderProgram prog = rpi.PreparedStandardShader(pos.X, pos.Y, pos.Z);
 
             prog.Tex2D = loadedTexture.TextureId;
+
+            prog.ModelMatrix = ModelMat
+                .Identity()
+                .Translate(pos.X - camPos.X, pos.Y - camPos.Y, pos.Z - camPos.Z)
+                .Translate(translateX, 0.5625f, translateZ)
+                .RotateY(rotY * GameMath.DEG2RAD)
+                .Scale(0.45f * QuadWidth, 0.45f * QuadHeight, 0.45f * QuadWidth)
+                .Values
+            ;
+
+            prog.ViewMatrix = rpi.CameraMatrixOriginf;
+            prog.ProjectionMatrix = rpi.CurrentProjectionMatrix;
             
-            api.Render.GlMatrixModeModelView();
-
-            api.Render.GlPushMatrix();
-            api.Render.GlLoadMatrix(api.Render.CameraMatrixOrigin);
-
-            rpi.GlTranslate(pos.X - camPos.X, pos.Y - camPos.Y, pos.Z - camPos.Z);
-
-            rpi.GlTranslate(translateX, 0.5625f, translateZ);
-            rpi.GlRotate(rotY, 0, 1, 0);
-
-            rpi.GlScale(0.45f * QuadWidth, 0.45f * QuadHeight, 0.45f * QuadWidth);
-            prog.ModelViewMatrix = rpi.CurrentModelviewMatrix;
 
             rpi.RenderMesh(quadModelRef);
-
-            rpi.GlPopMatrix();
-
             prog.Stop();
         }
 

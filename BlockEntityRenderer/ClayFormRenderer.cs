@@ -21,6 +21,7 @@ namespace Vintagestory.GameContent
 
         ItemStack ingot;
         int texId;
+        Matrixf ModelMat = new Matrixf();
 
         Vec4f outLineColorMul = new Vec4f(1, 1, 1, 1);
 
@@ -53,6 +54,7 @@ namespace Vintagestory.GameContent
             IClientWorldAccessor worldAccess = api.World;
             Vec3d camPos = worldAccess.Player.Entity.CameraPos;
             EntityPos plrPos = worldAccess.Player.Entity.Pos;
+            Vec4f lightrgbs = api.World.BlockAccessor.GetLightRGBs(pos.X, pos.Y, pos.Z);
 
             rpi.GlDisableCullFace();
 
@@ -64,30 +66,18 @@ namespace Vintagestory.GameContent
             prog.FogMinIn = rpi.FogMin;
             prog.FogDensityIn = rpi.FogDensity;
             prog.RgbaTint = ColorUtil.WhiteArgbVec;
-
-            rpi.GlMatrixModeModelView();
-
-            
-
-            Vec4f lightrgbs = api.World.BlockAccessor.GetLightRGBs(pos.X, pos.Y, pos.Z);
-
-
             prog.RgbaLightIn = lightrgbs;
             prog.RgbaBlockIn = ColorUtil.WhiteArgbVec;
-
-
+            prog.WaterWave = 0;
 
             rpi.BindTexture2d(texId);
-            rpi.GlPushMatrix();
-            rpi.GlLoadMatrix(api.Render.CameraMatrixOrigin);
-            rpi.GlTranslate(pos.X - camPos.X, pos.Y - camPos.Y, pos.Z - camPos.Z);
 
+            prog.ModelMatrix = ModelMat.Identity().Translate(pos.X - camPos.X, pos.Y - camPos.Y, pos.Z - camPos.Z).Values;
+            prog.ViewMatrix = rpi.CameraMatrixOriginf;
             prog.ProjectionMatrix = rpi.CurrentProjectionMatrix;
-            prog.ModelViewMatrix = rpi.CurrentModelviewMatrix;
+
             rpi.RenderMesh(workItemMeshRef);
-            rpi.GlPopMatrix();
-
-
+            
             prog.Stop();
         }
 

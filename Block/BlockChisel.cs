@@ -13,14 +13,7 @@ namespace Vintagestory.GameContent
 {
     public class BlockChisel : Block
     {
-        ICoreAPI api;
-
-        public override void OnLoaded(ICoreAPI api)
-        {
-            base.OnLoaded(api);
-            this.api = api;
-        }
-
+        
         public override bool DoParticalSelection(IWorldAccessor world, BlockPos pos)
         {
             return true;
@@ -91,10 +84,7 @@ namespace Vintagestory.GameContent
                     world.SpawnItemEntity(stack, new Vec3d(pos.X + 0.5, pos.Y + 0.5, pos.Z + 0.5), null);
                 }
 
-                if (Sounds != null && Sounds.Break != null)
-                {
-                    world.PlaySoundAt(Sounds.Break, pos.X, pos.Y, pos.Z, byPlayer);
-                }
+                world.PlaySoundAt(Sounds.GetBreakSound(byPlayer), pos.X, pos.Y, pos.Z, byPlayer);
             }
 
             world.BlockAccessor.SetBlock(0, pos);
@@ -178,16 +168,16 @@ namespace Vintagestory.GameContent
             return base.GetSelectionBoxes(blockAccessor, pos);
         }
 
-        public override int TextureSubIdForRandomBlockPixel(IWorldAccessor world, BlockPos pos, BlockFacing facing, ref int tintIndex)
+        public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing)
         {
-            BlockEntityChisel be = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityChisel;
+            BlockEntityChisel be = capi.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityChisel;
             if (be?.Materials != null && be.Materials.Length > 0)
             {
-                Block block = world.GetBlock(be.Materials[0]);
-                return block.TextureSubIdForRandomBlockPixel(world, pos, facing, ref tintIndex);
+                Block block = capi.World.GetBlock(be.Materials[0]);
+                return block.GetRandomColor(capi, pos, facing);
             }
 
-            return base.TextureSubIdForRandomBlockPixel(world, pos, facing, ref tintIndex);
+            return base.GetRandomColor(capi, pos, facing);
         }
 
 
@@ -198,16 +188,16 @@ namespace Vintagestory.GameContent
             return base.Equals(thisStack, otherStack, ign.ToArray());
         }
 
-        public override int GetBlockColor(ICoreClientAPI capi, BlockPos pos)
+        public override int GetColor(ICoreClientAPI capi, BlockPos pos)
         {
             BlockEntityChisel be = capi.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityChisel;
             if (be?.Materials != null && be.Materials.Length > 0)
             {
                 Block block = capi.World.GetBlock(be.Materials[0]);
-                return block.GetBlockColor(capi, pos);
+                return block.GetColor(capi, pos);
             }
 
-            return base.GetBlockColor(capi, pos);
+            return base.GetColor(capi, pos);
         }
 
 

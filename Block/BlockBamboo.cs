@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
@@ -12,15 +13,15 @@ namespace Vintagestory.GameContent
 {
     public class BlockBamboo : Block, ITreeGenerator
     {
-        static Block greenSeg1;
-        static Block greenSeg2;
-        static Block greenSeg3;
+        Block greenSeg1;
+        Block greenSeg2;
+        Block greenSeg3;
 
-        static Block brownSeg1;
-        static Block brownSeg2;
-        static Block brownSeg3;
+        Block brownSeg1;
+        Block brownSeg2;
+        Block brownSeg3;
 
-        static Block leaves;
+        Block leaves;
 
         static Random rand = new Random();
 
@@ -39,18 +40,11 @@ namespace Vintagestory.GameContent
                     sapi.RegisterTreeGenerator(new AssetLocation("bamboo-grown-brown"), this);
                 }
             }
-        }
 
-
-        public string Type()
-        {
-            return LastCodePart(1);
-        }
-
-        public Block NextSegment(IBlockAccessor blockAccess)
-        {
             if (greenSeg1 == null)
             {
+                IBlockAccessor blockAccess = api.World.BlockAccessor;
+
                 greenSeg1 = blockAccess.GetBlock(new AssetLocation("bamboo-grown-green-segment1"));
                 greenSeg2 = blockAccess.GetBlock(new AssetLocation("bamboo-grown-green-segment2"));
                 greenSeg3 = blockAccess.GetBlock(new AssetLocation("bamboo-grown-green-segment3"));
@@ -62,6 +56,17 @@ namespace Vintagestory.GameContent
                 leaves = blockAccess.GetBlock(new AssetLocation("bambooleaves-grown"));
             }
 
+        }
+
+
+        public string Type()
+        {
+            return LastCodePart(1);
+        }
+
+        public Block NextSegment(IBlockAccessor blockAccess)
+        {
+            
             string part = LastCodePart();
 
             return Type() == "green" ?
@@ -157,5 +162,23 @@ namespace Vintagestory.GameContent
                 upos.Up();
             }
         }
+
+        public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing)
+        {
+            if (this != brownSeg3 && this != capi.World.GetBlock(new AssetLocation("bamboo-placed-green-segment3"))) return base.GetRandomColor(capi, pos, facing);
+
+            if (Textures == null || Textures.Count == 0) return 0;
+            CompositeTexture tex;
+            if (!Textures.TryGetValue(facing.Code, out tex))
+            {
+                tex = Textures.First().Value;
+            }
+            if (tex?.Baked == null) return 0;
+
+            int color = capi.BlockTextureAtlas.GetRandomPixel(tex.Baked.TextureSubId);
+           
+            return capi.ApplyColorTintOnRgba(1, color, pos.X, pos.Y, pos.Z);
+        }
+
     }
 }

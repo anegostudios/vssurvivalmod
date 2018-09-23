@@ -20,9 +20,9 @@ namespace Vintagestory.GameContent
         }
         
 
-        public override float OnBlockBreaking(IPlayer player, BlockSelection blockSel, IItemSlot itemslot, float remainingResistance, float dt)
+        public override float OnBlockBreaking(IPlayer player, BlockSelection blockSel, IItemSlot itemslot, float remainingResistance, float dt, int counter)
         {
-            float newResist = base.OnBlockBreaking(player, blockSel, itemslot, remainingResistance, dt);
+            float newResist = base.OnBlockBreaking(player, blockSel, itemslot, remainingResistance, dt, counter);
             int leftDurability = itemslot.Itemstack.Attributes.GetInt("durability", Durability);
             DamageNearbyBlocks(player, blockSel, remainingResistance - newResist, leftDurability);
 

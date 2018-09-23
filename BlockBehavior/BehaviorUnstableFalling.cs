@@ -17,6 +17,12 @@ namespace Vintagestory.GameContent
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref EnumHandling handling)
         {
             handling = EnumHandling.NotHandled;
+            
+            if (blockSel != null && !world.BlockAccessor.GetBlock(blockSel.Position.DownCopy()).SideSolid[BlockFacing.UP.Index])
+            {
+                handling = EnumHandling.PreventDefault;
+                return false;
+            }
 
             if (TryFalling(world, blockSel.Position))
             {
@@ -46,7 +52,8 @@ namespace Vintagestory.GameContent
 
                 if (entity == null)
                 {
-                    world.SpawnEntity(new EntityBlockFalling(block, world.BlockAccessor.GetBlockEntity(pos), pos));
+                    EntityBlockFalling entityblock = new EntityBlockFalling(block, world.BlockAccessor.GetBlockEntity(pos), pos);
+                    world.SpawnEntity(entityblock);
                 }
                 
                 return true;

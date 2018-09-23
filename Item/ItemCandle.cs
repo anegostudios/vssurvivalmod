@@ -10,9 +10,9 @@ namespace Vintagestory.GameContent
     public class ItemCandle: Item
     {
 
-        public override bool OnHeldInteractStart(IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override void OnHeldInteractStart(IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handHandling)
         {
-            if (blockSel == null || byEntity?.World == null || !byEntity.Controls.Sneak) return false;
+            if (blockSel == null || byEntity?.World == null || !byEntity.Controls.Sneak) return;
 
             IWorldAccessor world = byEntity.World;
 
@@ -30,14 +30,14 @@ namespace Vintagestory.GameContent
             if (!byEntity.World.TestPlayerAccessBlock(player, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
             {
                 slot.MarkDirty();
-                return false;
+                return;
             }
 
             if (targetedBlock.FirstCodePart() == firstcodepart)
             {
                 int stage = 1;
                 int.TryParse(targetedBlock.LastCodePart(), out stage);
-                if (stage == 9) return false;
+                if (stage == 9) return;
 
                 nextblock = world.GetBlock(targetedBlock.CodeWithPart("" + (stage + 1), 1));
 
@@ -46,11 +46,11 @@ namespace Vintagestory.GameContent
             else
             {
                 nextblock = byEntity.World.GetBlock(loc.WithPathAppendix("-1"));
-                if (nextblock == null) return false;
+                if (nextblock == null) return;
 
                 Block blockAtTargetPos = world.BlockAccessor.GetBlock(offsetedPos);
-                if (!blockAtTargetPos.IsReplacableBy(nextblock)) return false;
-                if (!world.BlockAccessor.GetBlock(belowPos).SideSolid[BlockFacing.UP.Index]) return false;
+                if (!blockAtTargetPos.IsReplacableBy(nextblock)) return;
+                if (!world.BlockAccessor.GetBlock(belowPos).SideSolid[BlockFacing.UP.Index]) return;
 
                 world.BlockAccessor.SetBlock(nextblock.BlockId, offsetedPos);
             }
@@ -65,7 +65,7 @@ namespace Vintagestory.GameContent
                 world.PlaySoundAt(nextblock.Sounds.Place, blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z, byPlayer);
             }
 
-            return true;
+            handHandling = EnumHandHandling.PreventDefault;
         }
 
     }

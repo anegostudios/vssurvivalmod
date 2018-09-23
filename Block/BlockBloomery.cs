@@ -15,9 +15,11 @@ namespace Vintagestory.GameContent
         public override bool OnTryIgniteBlock(IEntityAgent byEntity, BlockPos pos, float secondsIgniting, ref EnumHandling handling)
         {
             BlockEntityBloomery beb = byEntity.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityBloomery;
-            handling = EnumHandling.PreventDefault;
+            
 
-            return (beb == null || beb.IsBurning || !beb.CanBurn()) ? false : secondsIgniting < 2f;
+            bool ok = (beb == null || beb.IsBurning || !beb.CanBurn()) ? false : secondsIgniting < 2f;
+            if (ok) handling = EnumHandling.PreventDefault;
+            return ok;
         }
 
         public override void OnTryIgniteBlockOver(IEntityAgent byEntity, BlockPos pos, float secondsIgniting, ref EnumHandling handling)
@@ -33,13 +35,27 @@ namespace Vintagestory.GameContent
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
+            ItemStack hotbarstack = byPlayer.InventoryManager.ActiveHotbarSlot.Itemstack;
+
+            if (hotbarstack.Class == EnumItemClass.Block && hotbarstack.Collectible.Code.Path.StartsWith("bloomerychimney"))
+            {
+                Block aboveBlock = world.BlockAccessor.GetBlock(blockSel.Position.UpCopy());
+                if (aboveBlock.IsReplacableBy(hotbarstack.Block))
+                {
+                    hotbarstack.Block.DoPlaceBlock(world, blockSel.Position.UpCopy(), BlockFacing.UP, hotbarstack);
+                    world.PlaySoundAt(Sounds?.Place, blockSel.Position.X, blockSel.Position.Y + 1, blockSel.Position.Z, byPlayer, true, 16, 1);
+                }
+                
+                return true;
+            }
+
             BlockEntityBloomery beb = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityBloomery;
             if (beb != null)
             {
-                ItemStack hotbarstack = byPlayer.InventoryManager.ActiveHotbarSlot.Itemstack;
+                
                 if (hotbarstack == null) return false;
-                beb.TryAdd(byPlayer.InventoryManager.ActiveHotbarSlot);
-                return true;
+                return beb.TryAdd(byPlayer.InventoryManager.ActiveHotbarSlot);
+                
             }
 
             return base.OnBlockInteractStart(world, byPlayer, blockSel);

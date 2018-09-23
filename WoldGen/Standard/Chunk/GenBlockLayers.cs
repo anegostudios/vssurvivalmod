@@ -39,7 +39,7 @@ namespace Vintagestory.ServerMods
             this.api = api;
             
             this.api.Event.ChunkColumnGeneration(this.OnChunkColumnGeneration, EnumWorldGenPass.Terrain);
-            this.api.Event.SaveGameLoaded(this.GameWorldLoaded);
+            this.api.Event.SaveGameLoaded += this.GameWorldLoaded;
 
             // Call our loaded method manually if the server is already running (happens when mods are reloaded at runtime)
             if (this.api.Server.CurrentRunPhase == EnumServerRunPhase.RunGame)
@@ -56,10 +56,10 @@ namespace Vintagestory.ServerMods
         {
             LoadGlobalConfig(api);
 
-            IAsset asset = api.Assets.Get("worldgen/terrain/standard/rockstrata.json");
+            IAsset asset = api.Assets.Get("worldgen/rockstrata.json");
             RockstrataWorldProperty rockstrata = asset.ToObject<RockstrataWorldProperty>();
 
-            asset = api.Assets.Get("worldgen/terrain/standard/blocklayerconfig.json");
+            asset = api.Assets.Get("worldgen/blocklayerconfig.json");
             blockLayerConfig = asset.ToObject<BlockLayerConfig>();
             blockLayerConfig.ResolveBlockIds(api, rockstrata);
 

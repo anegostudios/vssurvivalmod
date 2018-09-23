@@ -14,7 +14,7 @@ namespace Vintagestory.ServerMods
 
         public NoiseGeoProvince(long seed, ICoreServerAPI api) : base(seed)
         {
-            IAsset asset = api.Assets.Get("worldgen/terrain/standard/geologicprovinces.json");
+            IAsset asset = api.Assets.Get("worldgen/geologicprovinces.json");
             provinces = asset.ToObject<GeologicProvinces>();
 
 

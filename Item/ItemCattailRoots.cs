@@ -10,11 +10,12 @@ namespace Vintagestory.GameContent
 {
     public class ItemCattailRoot : Item
     {
-        public override bool OnHeldInteractStart(IItemSlot itemslot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override void OnHeldInteractStart(IItemSlot itemslot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handHandling)
         {
             if (blockSel == null || byEntity?.World == null || !byEntity.Controls.Sneak)
             {
-                return base.OnHeldInteractStart(itemslot, byEntity, blockSel, entitySel);
+                base.OnHeldInteractStart(itemslot, byEntity, blockSel, entitySel, ref handHandling);
+                return;
             }
 
             bool waterBlock = byEntity.World.BlockAccessor.GetBlock(blockSel.Position.AddCopy(blockSel.Face)).IsWater();
@@ -23,7 +24,8 @@ namespace Vintagestory.GameContent
 
             if (block == null)
             {
-                return base.OnHeldInteractStart(itemslot, byEntity, blockSel, entitySel);
+                base.OnHeldInteractStart(itemslot, byEntity, blockSel, entitySel, ref handHandling);
+                return;
             }
 
             IPlayer byPlayer = null;
@@ -38,9 +40,8 @@ namespace Vintagestory.GameContent
             {
                 itemslot.TakeOut(1);
                 itemslot.MarkDirty();
+                handHandling = EnumHandHandling.PreventDefaultAction;
             }
-
-            return ok;
         }
     }
 }

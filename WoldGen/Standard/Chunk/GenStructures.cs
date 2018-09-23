@@ -42,7 +42,7 @@ namespace Vintagestory.ServerMods
             base.StartServerSide(api);
             api.Event.ChunkColumnGeneration(OnChunkColumnGen, EnumWorldGenPass.TerrainFeatures);
             api.Event.GetWorldgenBlockAccessor(OnWorldGenBlockAccessor);
-            api.Event.SaveGameLoaded(OnGameWorldLoaded);
+            api.Event.SaveGameLoaded += OnGameWorldLoaded;
 
             // Call our loaded method manually if the server is already running (happens when mods are reloaded at runtime)
             if (api.Server.CurrentRunPhase == EnumServerRunPhase.RunGame)
@@ -67,7 +67,7 @@ namespace Vintagestory.ServerMods
             chunkMapSizeY = api.WorldManager.MapSizeY / chunksize;
             regionChunkSize = api.WorldManager.RegionSize / chunksize;
 
-            IAsset asset = api.Assets.Get("worldgen/terrain/standard/structures.json");
+            IAsset asset = api.Assets.Get("worldgen/structures.json");
             scfg = asset.ToObject<WorldGenStructuresConfig>();
             scfg.Init(api);
 

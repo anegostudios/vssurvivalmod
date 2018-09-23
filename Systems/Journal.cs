@@ -165,9 +165,9 @@ namespace Vintagestory.GameContent
         public override void StartServerSide(ICoreServerAPI api)
         {
             this.sapi = api;
-            api.Event.PlayerJoin(OnPlayerJoin);
-            api.Event.SaveGameLoaded(OnSaveGameLoaded);
-            api.Event.GameWorldSave(OnGameGettingSaved);
+            api.Event.PlayerJoin += OnPlayerJoin;
+            api.Event.SaveGameLoaded += OnSaveGameLoaded;
+            api.Event.GameWorldSave += OnGameGettingSaved;
 
             serverChannel =
                api.Network.RegisterChannel("journal")

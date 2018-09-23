@@ -13,7 +13,7 @@ namespace Vintagestory.ServerMods
         {
             chunksize = api.World.BlockAccessor.ChunkSize;
 
-            IAsset asset = api.Assets.Get("worldgen/terrain/standard/global.json");
+            IAsset asset = api.Assets.Get("worldgen/global.json");
             GlobalConfig = asset.ToObject<GlobalConfig>();
 
             GlobalConfig.defaultRockId = api.World.GetBlock(GlobalConfig.defaultRockCode).BlockId;

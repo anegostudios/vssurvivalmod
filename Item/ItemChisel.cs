@@ -17,9 +17,13 @@ namespace Vintagestory.GameContent
     public class ItemChisel : Item
     {
 
-        public override bool OnHeldAttackStart(IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override void OnHeldAttackStart(IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
         {
-            if (blockSel == null) return base.OnHeldAttackStart(slot, byEntity, blockSel, entitySel);
+            if (blockSel == null)
+            {
+                base.OnHeldAttackStart(slot, byEntity, blockSel, entitySel, ref handling);
+                return;
+            }
 
             Block block = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
             Block chiseledblock = byEntity.World.GetBlock(new AssetLocation("chiseledblock"));
@@ -28,15 +32,19 @@ namespace Vintagestory.GameContent
             {
                 IPlayer byPlayer = null;
                 if (byEntity is IEntityPlayer) byPlayer = byEntity.World.PlayerByUid(((IEntityPlayer)byEntity).PlayerUID);
-                return OnBlockInteract(byEntity.World, byPlayer, blockSel, true);
-            }
 
-            return false;
+                OnBlockInteract(byEntity.World, byPlayer, blockSel, true, ref handling);
+                return;
+            }
         }
 
-        public override bool OnHeldInteractStart(IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override void OnHeldInteractStart(IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
         {
-            if (blockSel == null) return base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel);
+            if (blockSel == null)
+            {
+                base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, ref handling);
+                return;
+            }
             
             Block block = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
 
@@ -47,31 +55,31 @@ namespace Vintagestory.GameContent
             {
                 IPlayer byPlayer = null;
                 if (byEntity is IEntityPlayer) byPlayer = byEntity.World.PlayerByUid(((IEntityPlayer)byEntity).PlayerUID);
-                return OnBlockInteract(byEntity.World, byPlayer, blockSel, false);
+                OnBlockInteract(byEntity.World, byPlayer, blockSel, false, ref handling);
+                return;
             }
 
-            if (block.DrawType != API.Client.EnumDrawType.Cube) return false;
+            if (block.DrawType != API.Client.EnumDrawType.Cube) return;
             
 
             byEntity.World.BlockAccessor.SetBlock(chiseledblock.BlockId, blockSel.Position);
 
             BlockEntityChisel be = byEntity.World.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityChisel;
-            if (be == null) return false;
+            if (be == null) return;
 
             be.WasPlaced(block);
-            return true;
+            handling = EnumHandHandling.PreventDefaultAction;
         }
 
-        public bool OnBlockInteract(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, bool isBreak)
+
+        public void OnBlockInteract(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, bool isBreak, ref EnumHandHandling handling)
         {
             BlockEntityChisel bec = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityChisel;
             if (bec != null)
             {
                 bec.OnBlockInteract(byPlayer, blockSel, isBreak);
-                return true;
+                handling = EnumHandHandling.PreventDefaultAction;
             }
-
-            return false;
         }
 
 

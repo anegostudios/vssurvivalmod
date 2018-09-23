@@ -11,20 +11,22 @@ namespace Vintagestory.GameContent
 {
     public class ItemDress : Item
     {
-        public override bool OnHeldInteractStart(IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override void OnHeldInteractStart(IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handHandling)
         {
-            IPlayer byPlayer = null;
-            if (byEntity is IEntityPlayer) byPlayer = byEntity.World.PlayerByUid(((IEntityPlayer)byEntity).PlayerUID);
-            if (byPlayer == null) return false;
+            IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
+            if (byPlayer == null) return;
 
             EnumCharacterDressType dresstype;
             string strdress = slot.Itemstack.ItemAttributes["clothescategory"].AsString();
-            if (!Enum.TryParse(strdress, true, out dresstype)) return false;
+            if (!Enum.TryParse(strdress, true, out dresstype)) return;
 
             IInventory inv = byPlayer.InventoryManager.GetOwnInventory(GlobalConstants.characterInvClassName);
-            if (inv == null) return false;
+            if (inv == null) return;
 
-            return inv.GetSlot((int)dresstype).TryFlipWith(slot);
+            if (inv.GetSlot((int)dresstype).TryFlipWith(slot))
+            {
+                handHandling = EnumHandHandling.PreventDefault;
+            }
         }
 
         public override void GetHeldItemInfo(ItemStack stack, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)

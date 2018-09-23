@@ -29,7 +29,7 @@ namespace Vintagestory.GameContent
         {
             if(IsSurroundedByNonSolid(world, pos))
             {
-                handled = EnumHandling.Last;
+                handled = EnumHandling.PreventSubsequent;
                 return new ItemStack[] { new ItemStack(block) };
             }
             else
@@ -44,7 +44,7 @@ namespace Vintagestory.GameContent
             handling = EnumHandling.NotHandled;
             if (IsSurroundedByNonSolid(world, pos) && byPlayer != null && byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
             {
-                handling = EnumHandling.Last;
+                handling = EnumHandling.PreventSubsequent;
             }
         }
 

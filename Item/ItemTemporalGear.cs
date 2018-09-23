@@ -12,9 +12,11 @@ namespace Vintagestory.GameContent
 
         public override void OnLoaded(ICoreAPI api)
         {
+            base.OnLoaded(api);
+
             particlesHeld = new SimpleParticleProperties(
                 1, 1,
-                ColorUtil.ColorFromArgb(50, 220, 220, 220),
+                ColorUtil.ToRgba(50, 220, 220, 220),
                 new Vec3d(),
                 new Vec3d(),
                 new Vec3f(-0.1f, -0.1f, -0.1f),
@@ -44,7 +46,7 @@ namespace Vintagestory.GameContent
             {
                 particlesHeld.minQuantity = 1;
 
-                float angle = (entityItem.World.ElapsedMilliseconds / 15f + entityItem.Entityid * 20) % 360;
+                float angle = (entityItem.World.ElapsedMilliseconds / 15f + entityItem.EntityId * 20) % 360;
                 float bobbing = entityItem.Collided ? GameMath.Sin(angle * GameMath.DEG2RAD) / 15 : 0;
                 Vec3d pos = entityItem.LocalPos.XYZ;
                 pos.Y += 0.15f + bobbing;
@@ -74,9 +76,9 @@ namespace Vintagestory.GameContent
 
         }
 
-        public override bool OnHeldInteractStart(IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override void OnHeldInteractStart(IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handHandling)
         {
-            if (blockSel == null) return false;
+            if (blockSel == null) return;
 
             if (byEntity.World is IClientWorldAccessor)
             {
@@ -118,7 +120,7 @@ namespace Vintagestory.GameContent
                 }, 20);
             }
 
-            return true;
+            handHandling = EnumHandHandling.PreventDefault;
         }
 
         public override bool OnHeldInteractStep(float secondsUsed, IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
@@ -203,7 +205,7 @@ namespace Vintagestory.GameContent
                 int v = 100 + world.Rand.Next(50);
 
                 particlesHeld.minPos = pos;
-                particlesHeld.color = ColorUtil.ToBGRABytes(ColorUtil.HSV2ARGB(h, 180, v));
+                particlesHeld.color = ColorUtil.HsvToRgba(h, 180, v);
                 world.SpawnParticles(particlesHeld);
             }
         }

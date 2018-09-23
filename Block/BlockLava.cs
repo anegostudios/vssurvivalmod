@@ -173,9 +173,15 @@ namespace Vintagestory.GameContent
         {
             if (world.Side == EnumAppSide.Server)
             {
-                entity.ReceiveDamage(new DamageSource() { type = EnumDamageType.Fire, source = EnumDamageSource.Block, sourceBlock = this, sourcePos = pos.ToVec3d() }, 3f);
-            }
-            
+                entity.ReceiveDamage(new DamageSource() { Type = EnumDamageType.Fire, Source = EnumDamageSource.Block, sourceBlock = this, sourcePos = pos.ToVec3d() }, 3f);
+            }   
+        }
+
+
+        public override bool ShouldReceiveClientGameTicks(IWorldAccessor world, IPlayer player, BlockPos pos)
+        {
+            Block block = world.BlockAccessor.GetBlock(pos.X, pos.Y + 1, pos.Z);
+            return !block.IsLiquid() && (block.CollisionBoxes == null || block.CollisionBoxes.Length == 0);
         }
     }
 }

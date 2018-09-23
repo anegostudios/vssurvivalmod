@@ -11,9 +11,9 @@ namespace Vintagestory.GameContent
 {
     public class BlockToolMold : Block
     {
-        public override bool OnHeldInteractStart(IItemSlot itemslot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override void OnHeldInteractStart(IItemSlot itemslot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handHandling)
         {
-            if (blockSel == null) return false;
+            if (blockSel == null) return;
 
             BlockEntity be = byEntity.World.BlockAccessor.GetBlockEntity(blockSel.Position.AddCopy(blockSel.Face.GetOpposite()));
 
@@ -23,10 +23,11 @@ namespace Vintagestory.GameContent
             if (byPlayer != null && be is BlockEntityToolMold)
             {
                 BlockEntityToolMold beim = (BlockEntityToolMold)be;
-                return beim.OnPlayerInteract(byPlayer, blockSel.Face, blockSel.HitPosition);
+                if (beim.OnPlayerInteract(byPlayer, blockSel.Face, blockSel.HitPosition))
+                {
+                    handHandling = EnumHandHandling.PreventDefault;
+                }
             }
-
-            return false;
         }
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)

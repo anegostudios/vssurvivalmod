@@ -11,16 +11,16 @@ namespace Vintagestory.GameContent
 {
     public class ItemStrawDummy : Item
     {
-        public override bool OnHeldInteractStart(IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override void OnHeldInteractStart(IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
         {
-            if (blockSel == null) return false;
+            if (blockSel == null) return;
             IPlayer player = byEntity.World.PlayerByUid((byEntity as EntityPlayer)?.PlayerUID);
 
 
             if (!byEntity.World.TestPlayerAccessBlock(player, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
             {
                 slot.MarkDirty();
-                return false;
+                return;
             }
 
             if (!(byEntity is EntityPlayer) || player.WorldData.CurrentGameMode != EnumGameMode.Creative)
@@ -29,7 +29,7 @@ namespace Vintagestory.GameContent
                 slot.MarkDirty();
             }
             
-            EntityType type = byEntity.World.GetEntityType(new AssetLocation("strawdummy"));
+            EntityProperties type = byEntity.World.GetEntityType(new AssetLocation("strawdummy"));
             Entity entity = byEntity.World.ClassRegistry.CreateEntity(type);
 
             if (entity != null)
@@ -38,16 +38,19 @@ namespace Vintagestory.GameContent
                 entity.ServerPos.Y = blockSel.Position.Y + (blockSel.DidOffset ? 0 : blockSel.Face.Normali.Y);
                 entity.ServerPos.Z = blockSel.Position.Z + (blockSel.DidOffset ? 0 : blockSel.Face.Normali.Z) + 0.5f;
                 entity.ServerPos.Yaw = byEntity.LocalPos.Yaw + GameMath.PI;
-
+                if (player?.PlayerUID != null)
+                {
+                    entity.WatchedAttributes.SetString("ownerUid", player.PlayerUID);
+                }
+                
                 entity.Pos.SetFrom(entity.ServerPos);
 
                 byEntity.World.PlaySoundAt(new AssetLocation("sounds/block/torch"), entity, player);
 
                 byEntity.World.SpawnEntity(entity);
-                return true;
+                handling = EnumHandHandling.PreventDefaultAction;
             }
 
-            return false;
         }
     }
 }

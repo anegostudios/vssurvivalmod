@@ -23,6 +23,8 @@ namespace Vintagestory.GameContent
         int texId;
         internal string Material;
 
+        Matrixf ModelMat = new Matrixf();
+
         Vec4f outLineColorMul = new Vec4f(1, 1, 1, 1);
 
         public KnappingRenderer(BlockPos pos, ICoreClientAPI capi)
@@ -68,10 +70,7 @@ namespace Vintagestory.GameContent
             prog.FogMinIn = rpi.FogMin;
             prog.FogDensityIn = rpi.FogDensity;
             prog.RgbaTint = ColorUtil.WhiteArgbVec;
-
-            rpi.GlMatrixModeModelView();
-
-
+            prog.WaterWave = 0;
 
             Vec4f lightrgbs = api.World.BlockAccessor.GetLightRGBs(pos.X, pos.Y, pos.Z);
 
@@ -79,18 +78,14 @@ namespace Vintagestory.GameContent
             prog.RgbaLightIn = lightrgbs;
             prog.RgbaBlockIn = ColorUtil.WhiteArgbVec;
 
-
-
+            
             rpi.BindTexture2d(texId);
-            rpi.GlPushMatrix();
-            rpi.GlLoadMatrix(api.Render.CameraMatrixOrigin);
-            rpi.GlTranslate(pos.X - camPos.X, pos.Y - camPos.Y, pos.Z - camPos.Z);
 
             prog.ProjectionMatrix = rpi.CurrentProjectionMatrix;
-            prog.ModelViewMatrix = rpi.CurrentModelviewMatrix;
-            rpi.RenderMesh(workItemMeshRef);
-            rpi.GlPopMatrix();
+            prog.ViewMatrix = rpi.CameraMatrixOriginf;
+            prog.ModelMatrix = ModelMat.Identity().Translate(pos.X - camPos.X, pos.Y - camPos.Y, pos.Z - camPos.Z).Values;
 
+            rpi.RenderMesh(workItemMeshRef);
 
             prog.Stop();
         }

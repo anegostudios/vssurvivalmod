@@ -46,7 +46,7 @@ namespace Vintagestory.ServerMods
 
         internal void LoadTrees()
         {
-            treeGenProps = api.Assets.Get("worldgen/terrain/standard/treengenproperties.json").ToObject<TreeGenProperties>();
+            treeGenProps = api.Assets.Get("worldgen/treengenproperties.json").ToObject<TreeGenProperties>();
             treeGenProps.descVineMinTempRel = TerraGenConfig.DescaleTemperature(treeGenProps.vinesMinTemp) / 255f;
 
             treeGenerators.LoadTreeGenerators();

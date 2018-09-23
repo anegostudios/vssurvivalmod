@@ -8,19 +8,17 @@ namespace Vintagestory.GameContent
 {
     public class ItemStone : Item
     {
-        public override string GetHeldTpUseAnimation(IItemSlot activeHotbarSlot, IEntity byEntity)
+        public override string GetHeldTpUseAnimation(IItemSlot activeHotbarSlot, Entity byEntity)
         {
             return null;
         }
 
-        public override bool OnHeldInteractStart(IItemSlot itemslot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override void OnHeldInteractStart(IItemSlot itemslot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
         {
             bool knappable = itemslot.Itemstack.Collectible.Attributes != null && itemslot.Itemstack.Collectible.Attributes["knappable"].AsBool(false);
             bool haveKnappableStone = false;
 
-            IPlayer byPlayer = null;
-            if (byEntity is IEntityPlayer) byPlayer = byEntity.World.PlayerByUid(((IEntityPlayer)byEntity).PlayerUID);
-
+            IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
 
             if (knappable && byEntity.Controls.Sneak && blockSel != null)
             {
@@ -36,15 +34,15 @@ namespace Vintagestory.GameContent
                 if (!byEntity.World.TestPlayerAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.Use))
                 {
                     itemslot.MarkDirty();
-                    return false;
+                    return;
                 }
 
                 IWorldAccessor world = byEntity.World;
                 Block knappingBlock = world.GetBlock(new AssetLocation("knappingsurface"));
-                if (knappingBlock == null) return false;
+                if (knappingBlock == null) return;
 
                 BlockPos pos = blockSel.Position;
-                if (!knappingBlock.IsSuitablePosition(world, pos)) return false;
+                if (!knappingBlock.IsSuitablePosition(world, pos)) return;
 
                 world.BlockAccessor.SetBlock(knappingBlock.BlockId, pos);
 
@@ -67,17 +65,16 @@ namespace Vintagestory.GameContent
                 }
                 //itemslot.Take(1);
 
-                return true;
+                handling = EnumHandHandling.PreventDefault;
+                return;
             }
-
-            
 
             if (blockSel != null && byEntity?.World != null && byEntity.Controls.Sneak)
             {
                 IWorldAccessor world = byEntity.World;
                 Block block = world.GetBlock(CodeWithPath("loosestones-" + LastCodePart()));
-                if (block == null) return false;
-                if (!world.BlockAccessor.GetBlock(blockSel.Position).SideSolid[BlockFacing.UP.Index]) return false;
+                if (block == null) return;
+                if (!world.BlockAccessor.GetBlock(blockSel.Position).SideSolid[BlockFacing.UP.Index]) return;
 
                 BlockPos targetpos = blockSel.Position.AddCopy(blockSel.Face);
                 BlockSelection placeSel = blockSel.Clone();
@@ -85,24 +82,26 @@ namespace Vintagestory.GameContent
                 placeSel.DidOffset = true;
                 if(!block.TryPlaceBlock(world, byPlayer, itemslot.Itemstack, placeSel))
                 { 
-                    return false;
+                    return;
                 }
 
                 if (block.Sounds != null) world.PlaySoundAt(block.Sounds.Place, blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z);
 
                 itemslot.Itemstack.StackSize--;
 
-                return true;
+                handling = EnumHandHandling.PreventDefault;
+                return;
             }
 
-            if (byEntity.Controls.Sneak) return false;
+            if (byEntity.Controls.Sneak) return;
 
         
             // Not ideal to code the aiming controls this way. Needs an elegant solution - maybe an event bus?
             byEntity.Attributes.SetInt("aiming", 1);
+            byEntity.Attributes.SetInt("aimingCancel", 0);
             byEntity.StartAnimation("aim");
 
-            return true;
+            handling = EnumHandHandling.PreventDefault;
         }
 
         public override bool OnHeldInteractStep(float secondsUsed, IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
@@ -112,11 +111,12 @@ namespace Vintagestory.GameContent
                 ModelTransform tf = new ModelTransform();
                 tf.EnsureDefaultValues();
 
-                float offset = GameMath.Clamp(secondsUsed * 3, 0, 2f);
+                float offset = GameMath.Clamp(secondsUsed * 3, 0, 1.5f);
 
-                tf.Translation.Set(offset, -offset / 4f, 0);
+                tf.Translation.Set(offset / 4f, offset / 2f, 0);
+                tf.Rotation.Set(0, 0, GameMath.Min(90, secondsUsed * 360/1.5f));
 
-                byEntity.Controls.UsingHeldItemTransform = tf;
+                byEntity.Controls.UsingHeldItemTransformBefore = tf;
             }
 
 
@@ -128,12 +128,18 @@ namespace Vintagestory.GameContent
         {
             byEntity.Attributes.SetInt("aiming", 0);
             byEntity.StopAnimation("aim");
+
+            if (cancelReason != EnumItemUseCancelReason.ReleasedMouse)
+            {
+                byEntity.Attributes.SetInt("aimingCancel", 1);
+            }
+
             return true;
         }
 
         public override void OnHeldInteractStop(float secondsUsed, IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
-            if (byEntity.Attributes.GetInt("aiming") == 0) return;
+            if (byEntity.Attributes.GetInt("aimingCancel") == 1) return;
 
             byEntity.Attributes.SetInt("aiming", 0);
             byEntity.StopAnimation("aim");
@@ -150,26 +156,26 @@ namespace Vintagestory.GameContent
             if (byEntity is IEntityPlayer) byPlayer = byEntity.World.PlayerByUid(((IEntityPlayer)byEntity).PlayerUID);
             byEntity.World.PlaySoundAt(new AssetLocation("sounds/player/throw"), byEntity, byPlayer, false, 8);
 
-            EntityType type = byEntity.World.GetEntityType(new AssetLocation("thrownstone"));
-            Entity entity = byEntity.World.ClassRegistry.CreateEntity(type.Class);
-            entity.SetType(type);
+            EntityProperties type = byEntity.World.GetEntityType(new AssetLocation("thrownstone"));
+            Entity entity = byEntity.World.ClassRegistry.CreateEntity(type);
             ((EntityThrownStone)entity).FiredBy = byEntity;
             ((EntityThrownStone)entity).Damage = damage;
             ((EntityThrownStone)entity).ProjectileStack = stack;
 
-            int? texIndex = entity.Type.Attributes?["texturealternateByType"]?[rockType]?.AsInt(0);
+
+            int? texIndex = type.Attributes?["texturealternateMapping"]?[rockType].AsInt(0);
             entity.WatchedAttributes.SetInt("textureIndex", texIndex == null ? 0 : (int)texIndex);
 
             float acc = (1 - byEntity.Attributes.GetFloat("aimingAccuracy", 0));
             double rndpitch = byEntity.WatchedAttributes.GetDouble("aimingRandPitch", 1) * acc * 0.75;
             double rndyaw = byEntity.WatchedAttributes.GetDouble("aimingRandYaw", 1) * acc * 0.75;
 
-            Vec3d pos = byEntity.ServerPos.XYZ.Add(0, byEntity.EyeHeight() - 0.2, 0);
+            Vec3d pos = byEntity.ServerPos.XYZ.Add(0, byEntity.EyeHeight - 0.2, 0);
             Vec3d aheadPos = pos.AheadCopy(1, byEntity.ServerPos.Pitch + rndpitch, byEntity.ServerPos.Yaw + rndyaw);
             Vec3d velocity = (aheadPos - pos) * 0.5;
 
             entity.ServerPos.SetPos(
-                byEntity.ServerPos.BehindCopy(0.21).XYZ.Add(0, byEntity.EyeHeight() - 0.2, 0)
+                byEntity.ServerPos.BehindCopy(0.21).XYZ.Add(0, byEntity.EyeHeight - 0.2, 0)
             );
 
             //.Ahead(0.25, 0, byEntity.ServerPos.Yaw + GameMath.PIHALF)
@@ -193,20 +199,21 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override bool OnHeldAttackStart(IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override void OnHeldAttackStart(IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
         {
-            if (blockSel == null) return false;
-            if (!(byEntity.World.BlockAccessor.GetBlock(blockSel.Position) is BlockKnappingSurface)) return false;
+            if (blockSel == null) return;
+            if (!(byEntity.World.BlockAccessor.GetBlock(blockSel.Position) is BlockKnappingSurface)) return;
 
             BlockEntityKnappingSurface bea = byEntity.World.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityKnappingSurface;
-            if (bea == null) return false;
+            if (bea == null) return;
 
             IPlayer byPlayer = null;
             if (byEntity is IEntityPlayer) byPlayer = byEntity.World.PlayerByUid(((IEntityPlayer)byEntity).PlayerUID);
-            if (byPlayer == null) return false;
+            if (byPlayer == null) return;
 
             bea.OnBeginUse(byPlayer, blockSel);
-            return true;
+
+            handling = EnumHandHandling.PreventDefaultAction;
         }
 
         public override bool OnHeldAttackCancel(float secondsPassed, IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSelection, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)

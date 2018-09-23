@@ -8,7 +8,7 @@ using Vintagestory.API.Server;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockEntityGenericContainer : BlockEntityContainer
+    public class BlockEntityGenericContainer : BlockEntityOpenableContainer
     {
         internal InventoryGeneric inventory;
 

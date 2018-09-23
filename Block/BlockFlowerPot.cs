@@ -16,6 +16,10 @@ namespace Vintagestory.GameContent
             if (block != null) return block;
 
             block = world.BlockAccessor.GetBlock(CodeWithPath("sapling-" + name));
+            if (block != null) return block;
+
+            block = world.BlockAccessor.GetBlock(CodeWithPath("mushroom-" + name + "-normal"));
+
             return block;
         }
 

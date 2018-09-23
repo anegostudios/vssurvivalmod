@@ -186,10 +186,7 @@ namespace Vintagestory.GameContent
                     }
                 }
 
-                if (Sounds?.Break != null)
-                {
-                    world.PlaySoundAt(Sounds.Break, pos.X, pos.Y, pos.Z, byPlayer);
-                }
+                world.PlaySoundAt(Sounds.GetBreakSound(byPlayer), pos.X, pos.Y, pos.Z, byPlayer);
             }
 
             if (EntityClass != null)
@@ -223,16 +220,16 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override int TextureSubIdForRandomBlockPixel(IWorldAccessor world, BlockPos pos, BlockFacing facing, ref int tintIndex)
+        public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing)
         {
-            BELantern be = world.BlockAccessor.GetBlockEntity(pos) as BELantern;
+            BELantern be = capi.World.BlockAccessor.GetBlockEntity(pos) as BELantern;
             if (be != null)
             {
                 CompositeTexture tex = null;
                 if (Textures.TryGetValue(be.material, out tex)) return tex.Baked.TextureSubId;
             }
 
-            return base.TextureSubIdForRandomBlockPixel(world, pos, facing, ref tintIndex);
+            return base.GetRandomColor(capi, pos, facing);
         }
     }
 }

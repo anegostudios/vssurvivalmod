@@ -53,7 +53,6 @@ namespace Vintagestory.GameContent
     public class ItemStackRandomizer : Item
     {
         RandomStack[] Stacks;
-        ICoreAPI api;
 
         public override void OnLoaded(ICoreAPI api)
         {
@@ -74,17 +73,16 @@ namespace Vintagestory.GameContent
             {
                 Stacks[i].Chance *= scale;
             }
-
-            this.api = api;
+            
 
             base.OnLoaded(api);
         }
 
-        public override bool OnHeldInteractStart(IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override void OnHeldInteractStart(IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
         {
             IPlayer byPlayer = null;
             if (byEntity is IEntityPlayer) byPlayer = byEntity.World.PlayerByUid(((IEntityPlayer)byEntity).PlayerUID);
-            if (byPlayer == null) return false;
+            if (byPlayer == null) return;
 
 
             TreeAttribute tree = new TreeAttribute();
@@ -94,8 +92,7 @@ namespace Vintagestory.GameContent
             tree.SetInt("slotId", slot.Inventory.GetSlotId(slot));
 
             api.Event.PushEvent("OpenStackRandomizerDialog", tree);
-
-            return false;
+            
         }
 
 

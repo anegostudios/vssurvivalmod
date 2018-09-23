@@ -40,7 +40,7 @@ namespace Vintagestory.GameContent.Mechanics
         int quantityRotors = 0;
 
         float[] tmpMat = Mat4f.Create();
-        double[] quat = Quaternion.Create();
+        double[] quat = Quaterniond.Create();
         float[] qf = new float[4];
         float[] rotMat = Mat4f.Create();
         private MechanicalPowerMod mechanicalPowerMod;
@@ -65,7 +65,7 @@ namespace Vintagestory.GameContent.Mechanics
             if (block == null) return;
 
             capi.Event.RegisterRenderer(this, EnumRenderStage.Opaque);
-            capi.Event.RegisterReloadShaders(LoadShader);
+            capi.Event.ReloadShader += LoadShader;
             LoadShader();
 
             MeshData gearboxCageMesh;
@@ -186,9 +186,9 @@ namespace Vintagestory.GameContent.Mechanics
             quat[1] = 0;
             quat[2] = 0;
             quat[3] = 1;
-            Quaternion.RotateX(quat, quat, rotX);
-            Quaternion.RotateY(quat, quat, rotY);
-            Quaternion.RotateZ(quat, quat, rotZ);
+            Quaterniond.RotateX(quat, quat, rotX);
+            Quaterniond.RotateY(quat, quat, rotY);
+            Quaterniond.RotateZ(quat, quat, rotZ);
 
             for (int i = 0; i < quat.Length; i++) qf[i] = (float)quat[i];
             Mat4f.Mul(tmpMat, tmpMat, Mat4f.FromQuat(rotMat, qf));

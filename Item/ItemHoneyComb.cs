@@ -8,18 +8,26 @@ namespace Vintagestory.GameContent
 {
     public class ItemHoneyComb : Item
     {
-        public override bool OnHeldInteractStart(IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public bool CanSqueezeInto(Block block)
         {
-            if (blockSel == null) return false;
+            return block.Code.Path == "bowl-burned" || block is BlockBucket;
+        }
+
+        public override void OnHeldInteractStart(IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
+        {
+            if (blockSel == null) return;
 
             Block block = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
 
-            if (byEntity.World is IClientWorldAccessor && block.Code.Path == "bowl-burned")
+            if (byEntity.World is IClientWorldAccessor && CanSqueezeInto(block))
             {
                 byEntity.World.PlaySoundAt(new AssetLocation("sounds/player/squeezehoneycomb"), byEntity);
             }
 
-            return block.Code.Path == "bowl-burned";
+            if (CanSqueezeInto(block))
+            {
+                handling = EnumHandHandling.PreventDefault;
+            }
         }
 
         public override bool OnHeldInteractStep(float secondsUsed, IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
@@ -39,7 +47,7 @@ namespace Vintagestory.GameContent
                     tf.Translation.X += (float)Math.Sin(secondsUsed * 30) / 10;
                 }
 
-                byEntity.Controls.UsingHeldItemTransform = tf;
+                byEntity.Controls.UsingHeldItemTransformBefore = tf;
             }
 
             return secondsUsed < 2f;
@@ -53,9 +61,17 @@ namespace Vintagestory.GameContent
             IWorldAccessor world = byEntity.World;
 
             Block block = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
-            if (block.Code.Path != "bowl-burned") return;
+            if (!CanSqueezeInto(block)) return;
 
-            world.BlockAccessor.SetBlock(world.GetBlock(new AssetLocation("bowl-honey")).BlockId, blockSel.Position);
+            BlockBucket blockbucket = block as BlockBucket;
+            if (blockbucket != null)
+            {
+                if (blockbucket.TryAddContent(world, blockSel.Position, new ItemStack(world.GetItem(new AssetLocation("honeyportion"))), 1) == 0) return;
+            }
+            else
+            {
+                world.BlockAccessor.SetBlock(world.GetBlock(new AssetLocation("bowl-honey")).BlockId, blockSel.Position);
+            }
 
             slot.TakeOut(1);
             slot.MarkDirty();

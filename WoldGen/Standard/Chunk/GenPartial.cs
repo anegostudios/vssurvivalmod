@@ -36,7 +36,7 @@ namespace Vintagestory.ServerMods
                 OnGameWorldLoaded();
             }
 
-            api.Event.SaveGameLoaded(OnGameWorldLoaded);
+            api.Event.SaveGameLoaded += OnGameWorldLoaded;
 
         }
 

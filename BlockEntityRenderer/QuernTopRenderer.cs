@@ -18,7 +18,7 @@ namespace Vintagestory.GameContent
         
 
         MeshRef meshref;
-
+        public Matrixf ModelMat = new Matrixf();
 
         public float Angle;
 
@@ -52,23 +52,23 @@ namespace Vintagestory.GameContent
 
             IStandardShaderProgram prog = rpi.PreparedStandardShader(pos.X, pos.Y, pos.Z);
             prog.Tex2D = api.BlockTextureAtlas.AtlasTextureIds[0];
-            api.Render.GlMatrixModeModelView();
 
-            api.Render.GlPushMatrix();
-            api.Render.GlLoadMatrix(api.Render.CameraMatrixOrigin);
 
-            rpi.GlTranslate(pos.X - camPos.X, pos.Y - camPos.Y, pos.Z - camPos.Z);
+            prog.ModelMatrix = ModelMat
+                .Identity()
+                .Translate(pos.X - camPos.X, pos.Y - camPos.Y, pos.Z - camPos.Z)
+                .Translate(0.5f, 11f / 16f, 0.5f)
+                .RotateY(Angle * GameMath.DEG2RAD)
+                .Translate(-0.5f, 0, -0.5f)
+                .Values
+            ;
 
-            rpi.GlTranslate(0.5f, 11f / 16f, 0.5f);
-            rpi.GlRotate(Angle, 0, 1, 0);
-            rpi.GlTranslate(-0.5f, 0, -0.5f);
-            prog.ModelViewMatrix = rpi.CurrentModelviewMatrix;
-
+            prog.ViewMatrix = rpi.CameraMatrixOriginf;
+            prog.ProjectionMatrix = rpi.CurrentProjectionMatrix;
             rpi.RenderMesh(meshref);
-
-            rpi.GlPopMatrix();
-
             prog.Stop();
+
+
 
             if (ShouldRotate)
             {

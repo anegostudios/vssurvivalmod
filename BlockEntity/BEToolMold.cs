@@ -351,7 +351,8 @@ namespace Vintagestory.GameContent
 
             if (this.metalContent != null)
             {
-                contents = string.Format("{0}/{4} units of {1} {2} ({3} °C)\n", fillLevel, IsSolid ? "solidified" : "liquid", this.metalContent.GetName(), (int)Temperature, requiredUnits);
+                string temp = Temperature < 21 ? Lang.Get("Cold") : Lang.Get("{0} °C", (int)Temperature);
+                contents = string.Format("{0}/{4} units of {1} {2} ({3})\n", fillLevel, IsSolid ? "solidified" : "liquid", this.metalContent.GetName(), temp, requiredUnits);
             }
             
 
@@ -363,6 +364,20 @@ namespace Vintagestory.GameContent
             base.OnBlockUnloaded();
 
             renderer?.Unregister();
+        }
+
+
+        public override void OnStoreCollectibleMappings(Dictionary<int, AssetLocation> blockIdMapping, Dictionary<int, AssetLocation> itemIdMapping)
+        {
+            metalContent?.Collectible.OnStoreCollectibleMappings(api.World, new DummySlot(metalContent), blockIdMapping, itemIdMapping);
+        }
+
+        public override void OnLoadCollectibleMappings(IWorldAccessor worldForResolve, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping)
+        {
+            if (metalContent?.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve) == null)
+            {
+                metalContent = null;
+            }
         }
 
 

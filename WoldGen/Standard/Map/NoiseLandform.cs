@@ -23,7 +23,7 @@ namespace Vintagestory.ServerMods
 
         public static void LoadLandforms(ICoreServerAPI api)
         { 
-            IAsset asset = api.Assets.Get("worldgen/terrain/standard/landforms.json");
+            IAsset asset = api.Assets.Get("worldgen/landforms.json");
             landforms = asset.ToObject<LandformsWorldProperty>();
 
             int quantityMutations = 0;

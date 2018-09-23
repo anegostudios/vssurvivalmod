@@ -221,7 +221,7 @@ namespace Vintagestory.GameContent
         {
             float minQuantity = 50;
             float maxQuantity = 100;
-            int color = ColorUtil.ColorFromArgb(100, 225, 225, 225);
+            int color = ColorUtil.ToRgba(100, 225, 225, 225);
             Vec3d minPos = new Vec3d();
             Vec3d addPos = new Vec3d();
             Vec3f minVelocity = new Vec3f(-0.25f, 0.1f, -0.25f);

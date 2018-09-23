@@ -15,48 +15,14 @@ namespace Vintagestory.GameContent
 {
     public class ItemAxe : Item
     {
-        // All block facing + diagonals
-        public static Vec3i[] Faces = new Vec3i[]
-        {
-            new Vec3i(1, 0, 0),
-            new Vec3i(0, 1, 0),
-            new Vec3i(0, 0, 1),
-            new Vec3i(-1, 0, 0),
-            new Vec3i(0, -1, 0),
-            new Vec3i(0, 0, -1),
-            new Vec3i(-1, 0, -1),
-            new Vec3i(1, 0, -1),
-            new Vec3i(1, 0, 1),
-            new Vec3i(1, 0, -1),
-
-            new Vec3i(1, 1, 0),
-            new Vec3i(-1, 1, 0),
-            new Vec3i(0, 1, 1),
-            new Vec3i(0, 1, -1),
-            new Vec3i(-1, 1, -1),
-            new Vec3i(1, 1, -1),
-            new Vec3i(1, 1, 1),
-            new Vec3i(1, 1, -1),
-
-            new Vec3i(1, -1, 0),
-            new Vec3i(-1, -1, 0),
-            new Vec3i(0, -1, 1),
-            new Vec3i(0, -1, -1),
-            new Vec3i(-1, -1, -1),
-            new Vec3i(1, -1, -1),
-            new Vec3i(1, -1, 1),
-            new Vec3i(1, -1, -1),
-        };
-        
-
-        public override float OnBlockBreaking(IPlayer player, BlockSelection blockSel, IItemSlot itemslot, float remainingResistance, float dt)
+        public override float OnBlockBreaking(IPlayer player, BlockSelection blockSel, IItemSlot itemslot, float remainingResistance, float dt, int counter)
         {
             ITreeAttribute tempAttr = itemslot.Itemstack.TempAttributes;
             int posx = tempAttr.GetInt("lastposX", -1);
             int posy = tempAttr.GetInt("lastposY", -1);
             int posz = tempAttr.GetInt("lastposZ", -1);
             float treeTesistance = tempAttr.GetFloat("treeTesistance", 1);
-            int counter = tempAttr.GetInt("breakCounter", 0);
+            //int counter = tempAttr.GetInt("breakCounter", 0);
 
             BlockPos pos = blockSel.Position;
 
@@ -69,13 +35,13 @@ namespace Vintagestory.GameContent
                 tempAttr.SetFloat("treeTesistance", treeTesistance);
             }
 
-            tempAttr.SetInt("breakCounter", counter + 1);
+            //tempAttr.SetInt("breakCounter", counter + 1);
             tempAttr.SetInt("lastposX", pos.X);
             tempAttr.SetInt("lastposY", pos.Y);
             tempAttr.SetInt("lastposZ", pos.Z);
 
 
-            return base.OnBlockBreaking(player, blockSel, itemslot, remainingResistance, dt / treeTesistance);
+            return base.OnBlockBreaking(player, blockSel, itemslot, remainingResistance, dt / treeTesistance, counter);
         }
 
         public override bool OnBlockBrokenWith(IWorldAccessor world, IEntity byEntity, IItemSlot itemslot, BlockSelection blockSel)
@@ -84,7 +50,7 @@ namespace Vintagestory.GameContent
             if (byEntity is IEntityPlayer) byPlayer = byEntity.World.PlayerByUid(((IEntityPlayer)byEntity).PlayerUID);
 
             ITreeAttribute tempAttr = itemslot.Itemstack.TempAttributes;
-            tempAttr.SetInt("breakCounter", 0);
+            //tempAttr.SetInt("breakCounter", 0);
 
             string treeType;
             Stack<BlockPos> foundPositions = FindTree(world, blockSel.Position, out treeType);
@@ -133,7 +99,6 @@ namespace Vintagestory.GameContent
 
         public Stack<BlockPos> FindTree(IWorldAccessor world, BlockPos startPos, out string treeType)
         {
-
             Queue<Vec4i> queue = new Queue<Vec4i>();
             HashSet<BlockPos> checkedPositions = new HashSet<BlockPos>();
             Stack<BlockPos> foundPositions = new Stack<BlockPos>();
@@ -158,16 +123,16 @@ namespace Vintagestory.GameContent
 
             while (queue.Count > 0)
             {
-                if (checkedPositions.Count > 2500)
+                if (foundPositions.Count > 1000)
                 {
                     break;
                 }
 
                 Vec4i pos = queue.Dequeue();
 
-                for (int i = 0; i < Faces.Length; i++)
+                for (int i = 0; i < Vec3i.DirectAndIndirectNeighbours.Length; i++)
                 {
-                    Vec3i facing = Faces[i];
+                    Vec3i facing = Vec3i.DirectAndIndirectNeighbours[i];
                     BlockPos neibPos = new BlockPos(pos.X + facing.X , pos.Y + facing.Y, pos.Z + facing.Z);
                     
                     float hordist = GameMath.Sqrt(neibPos.HorDistanceSqTo(startPos.X, startPos.Z));

@@ -38,7 +38,7 @@ namespace Vintagestory.ServerMods
             this.api = api;
 
             api.Event.ChunkColumnGeneration(OnChunkColumnGen, EnumWorldGenPass.Terrain);
-            api.Event.SaveGameLoaded(GameWorldLoaded);
+            api.Event.SaveGameLoaded += GameWorldLoaded;
 
             rockstrataGen = new GenRockStrata();
             rockstrataGen.StartServerSide(api);
@@ -141,6 +141,7 @@ namespace Vintagestory.ServerMods
             // Store heightmap in the map chunk
             ushort[] rainheightmap = chunks[0].MapChunk.RainHeightMap;
             ushort[] terrainheightmap = chunks[0].MapChunk.WorldGenTerrainHeightMap;
+            
 
             // Terrain thresholds
             double tnoiseY0;
@@ -280,6 +281,13 @@ namespace Vintagestory.ServerMods
                     }
                 }
             }
+
+            int ymax = 0;
+            for (int i = 0; i < rainheightmap.Length; i++)
+            {
+                ymax = Math.Max(ymax, rainheightmap[i]);
+            }
+            chunks[0].MapChunk.YMax = (ushort)ymax;
         }
 
 

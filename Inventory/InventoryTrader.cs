@@ -9,6 +9,14 @@ using Vintagestory.API.Datastructures;
 
 namespace Vintagestory.GameContent
 {
+    public enum EnumTransactionResult
+    {
+        PlayerNotEnoughAssets,
+        TraderNotEnoughAssets,
+        Failure,
+        Success,
+    };
+
     public class InventoryTrader : InventoryBase
     {
         EntityTrader traderEntity;
@@ -17,7 +25,10 @@ namespace Vintagestory.GameContent
         // Slots 16..19: Buying cart
         // Slots 20..35: Buying slots
         // Slots 36..39: Selling cart
+        // Slot 40: Money slot
         ItemSlot[] slots;
+        
+
 
         public int BuyingCartTotalCost
         {
@@ -26,6 +37,11 @@ namespace Vintagestory.GameContent
                 return 0;
             }
 
+        }
+
+        public ItemSlot MoneySlot
+        {
+            get { return slots[40]; }
         }
 
         public InventoryTrader(string inventoryID, ICoreAPI api) : base(inventoryID, api)
@@ -44,21 +60,21 @@ namespace Vintagestory.GameContent
             base.LateInitialize(id, api);
             this.traderEntity = traderEntity;
 
-            if (traderEntity?.TradeConf != null)
+            if (traderEntity?.TradeProps != null)
             {
                 for (int slotId = 0; slotId < slots.Length; slotId++)
                 {
-                    if (!(slots[slotId] is TradeItemSlot) || slots[slotId].Empty) continue;
+                    if (!(slots[slotId] is ItemSlotTrade) || slots[slotId].Empty) continue;
 
-                    string name = (slots[slotId] as TradeItemSlot).TradeItem?.Name;
+                    string name = (slots[slotId] as ItemSlotTrade).TradeItem?.Name;
 
                     if (slotId < 20)
                     {
-                        (slots[slotId] as TradeItemSlot).TradeItem = GetTradeItemByName(name, traderEntity.TradeConf.Selling);
+                        (slots[slotId] as ItemSlotTrade).TradeItem = GetTradeItemByName(name, traderEntity.TradeProps.Selling);
                     }
                     else
                     {
-                        (slots[slotId] as TradeItemSlot).TradeItem = GetTradeItemByName(name, traderEntity.TradeConf.Buying);
+                        (slots[slotId] as ItemSlotTrade).TradeItem = GetTradeItemByName(name, traderEntity.TradeProps.Buying);
                     }
 
                 }
@@ -70,14 +86,14 @@ namespace Vintagestory.GameContent
             // Player clicked an item from the selling list, move to buying cart
             if (slotId <= 15)
             {
-                AddToBuyingCart(slots[slotId] as TradeItemSlot);
+                AddToBuyingCart(slots[slotId] as ItemSlotTrade);
                 return InvNetworkUtil.GetActivateSlotPacket(slotId, op); ;
             }
 
             // Player clicked an item in the buying cart, remove it
             if (slotId <= 19)
             {
-                TradeItemSlot cartSlot = slots[slotId] as TradeItemSlot;
+                ItemSlotTrade cartSlot = slots[slotId] as ItemSlotTrade;
 
                 if (op.MouseButton == EnumMouseButton.Right)
                 {
@@ -109,20 +125,20 @@ namespace Vintagestory.GameContent
         }
 
 
-        private void AddToBuyingCart(TradeItemSlot sellingSlot)
+        private void AddToBuyingCart(ItemSlotTrade sellingSlot)
         {
             if (sellingSlot.Empty) return;
 
             // Try merge existing first
             for (int i = 0; i < 4; i++)
             {
-                TradeItemSlot slot = slots[16 + i] as TradeItemSlot;
+                ItemSlotTrade slot = slots[16 + i] as ItemSlotTrade;
                 if (slot.Empty) continue;
 
                 if (slot.Itemstack.Equals(sellingSlot.Itemstack) && slot.Itemstack.StackSize + sellingSlot.TradeItem.Stack.StackSize <= slot.Itemstack.Collectible.MaxStackSize)
                 {
                     
-                    slot.Itemstack.StackSize += (sellingSlot as TradeItemSlot).TradeItem.Stack.StackSize;
+                    slot.Itemstack.StackSize += (sellingSlot as ItemSlotTrade).TradeItem.Stack.StackSize;
                     slot.MarkDirty();
                     return;
                 }
@@ -131,12 +147,12 @@ namespace Vintagestory.GameContent
             // Otherwise find an empty slot
             for (int i = 0; i < 4; i++)
             {
-                TradeItemSlot slot = slots[16 + i] as TradeItemSlot;
+                ItemSlotTrade slot = slots[16 + i] as ItemSlotTrade;
                 if (!slot.Empty) continue;
 
-                slot.Itemstack = (sellingSlot as TradeItemSlot).TradeItem.Stack.Clone();
+                slot.Itemstack = (sellingSlot as ItemSlotTrade).TradeItem.Stack.Clone();
                 slot.Itemstack.ResolveBlockOrItem(Api.World);
-                slot.TradeItem = (sellingSlot as TradeItemSlot).TradeItem;
+                slot.TradeItem = (sellingSlot as ItemSlotTrade).TradeItem;
                 slot.MarkDirty();
                 return;
             }
@@ -147,7 +163,7 @@ namespace Vintagestory.GameContent
         {
             get
             {
-                return 4 * 4 + 4 + 4 * 4 + 4;
+                return 4 * 4 + 4 + 4 * 4 + 4 + 1;
             }
         }
 
@@ -177,9 +193,9 @@ namespace Vintagestory.GameContent
 
             for (int slotId = 0; slotId < slots.Length; slotId++)
             {
-                if (!(slots[slotId] is TradeItemSlot) || slots[slotId].Empty) continue;
+                if (!(slots[slotId] is ItemSlotTrade) || slots[slotId].Empty) continue;
 
-                (slots[slotId] as TradeItemSlot).TradeItem = new ResolvedTradeItem(tradeItems.GetTreeAttribute(slotId + ""));
+                (slots[slotId] as ItemSlotTrade).TradeItem = new ResolvedTradeItem(tradeItems.GetTreeAttribute(slotId + ""));
             }
         }
 
@@ -192,9 +208,9 @@ namespace Vintagestory.GameContent
 
             for (int i = 0; i < slots.Length; i++)
             {
-                if (slots[i].Itemstack == null) continue;
+                if (slots[i].Itemstack == null || !(slots[i] is ItemSlotTrade)) continue;
                 TreeAttribute subtree = new TreeAttribute();
-                (slots[i] as TradeItemSlot).TradeItem?.ToTreeAttributes(subtree);
+                (slots[i] as ItemSlotTrade).TradeItem?.ToTreeAttributes(subtree);
                 tradeItemTree[i + ""] = subtree;
             }
 
@@ -202,23 +218,24 @@ namespace Vintagestory.GameContent
         }
 
 
-        internal bool DoBuySell(IPlayer buyingPlayer)
+        internal EnumTransactionResult TryBuySell(IPlayer buyingPlayer)
         {
-            if (!CanBuySell(buyingPlayer)) return false;
-            
+            if (!HasPlayerEnoughAssets(buyingPlayer)) return EnumTransactionResult.PlayerNotEnoughAssets;
+            if (!HasTraderEnoughAssets()) return EnumTransactionResult.TraderNotEnoughAssets;
+
             if (Api.Side == EnumAppSide.Client)
             {
                 for (int i = 0; i < 4; i++) GetBuyingCartSlot(i).Itemstack = null;
-                return true;
+                return EnumTransactionResult.Success;
             }
 
             // Take care of they moneys first
-            if (!HandleMoneyTransaction(buyingPlayer)) return false;
+            if (!HandleMoneyTransaction(buyingPlayer)) return EnumTransactionResult.Failure;
 
             // Now hand over buying cart contents
             for (int i = 0; i < 4; i++)
             {
-                TradeItemSlot slot = GetBuyingCartSlot(i);
+                ItemSlotTrade slot = GetBuyingCartSlot(i);
                 if (slot.Itemstack == null) continue;
 
                 GiveOrDrop(buyingPlayer, slot.Itemstack);
@@ -241,53 +258,89 @@ namespace Vintagestory.GameContent
                 slot.MarkDirty();
             }
 
-            return true;
+            return EnumTransactionResult.Success;
         }
 
 
-        public bool CanBuySell(IPlayer buyingPlayer)
+        public bool HasPlayerEnoughAssets(IPlayer buyingPlayer)
         {
             int playerAssets = GetPlayerAssets(buyingPlayer);
             int totalCost = GetTotalCost();
             int totalGain = GetTotalGain();
 
-            // Player does not have enough money
             if (playerAssets - totalCost + totalGain < 0) return false;
 
             return true;
         }
 
+        public bool HasTraderEnoughAssets()
+        {
+            int traderAssets = GetTraderAssets();
+            int totalCost = GetTotalCost();
+            int totalGain = GetTotalGain();
+
+            if (traderAssets + totalCost - totalGain < 0) return false;
+
+            return true;
+        }
 
         bool HandleMoneyTransaction(IPlayer buyingPlayer)
         {
             int playerAssets = GetPlayerAssets(buyingPlayer);
+            int traderAssets = GetTraderAssets();
             int totalCost = GetTotalCost();
             int totalGain = GetTotalGain();
 
             // Player does not have enough money
             if (playerAssets - totalCost + totalGain < 0) return false;
+
+            // Trader does not have enough money
+            if (traderAssets + totalCost - totalGain < 0) return false;
+
 
             int deduct = totalCost - totalGain;
 
             if (deduct > 0)
             {
-                DeductMoney(buyingPlayer, deduct);
+                DeductFromPlayer(buyingPlayer, deduct);
+                GiveToTrader(deduct);
             } else
             {
-                GiveOrDrop(buyingPlayer, new ItemStack(Api.World.GetItem(new AssetLocation("gear-rusty"))), -deduct);
+                GiveOrDropToPlayer(buyingPlayer, new ItemStack(Api.World.GetItem(new AssetLocation("gear-rusty"))), -deduct);
+                DeductFromTrader(-deduct);
             }
 
             return true;
         }
 
+        public void GiveToTrader(int units)
+        {
+            if (MoneySlot.Empty)
+            {
+                MoneySlot.Itemstack = new ItemStack(Api.World.GetItem(new AssetLocation("gear-rusty")), units);
+            } else
+            {
+                MoneySlot.Itemstack.StackSize += units;
+            }
+            MoneySlot.MarkDirty();
+        }
 
-        public void DeductMoney(IPlayer buyingPlayer, int totalUnitsToDeduct)
+
+        public void DeductFromTrader(int units)
+        {
+            MoneySlot.Itemstack.StackSize -= units;
+            if (MoneySlot.StackSize <= 0) MoneySlot.Itemstack = null;
+            MoneySlot.MarkDirty();
+        }
+
+
+        public void DeductFromPlayer(IPlayer buyingPlayer, int totalUnitsToDeduct)
         {
             SortedDictionary<int, List<IItemSlot>> moneys = new SortedDictionary<int, List<IItemSlot>>();
 
             buyingPlayer.Entity.WalkInventory((invslot) =>
             {
-                if (invslot is CreativeSlot) return true;
+                if (invslot is ItemSlotCreative) return true;
                 if (invslot.Itemstack == null || invslot.Itemstack.Collectible.Attributes == null) return true;
 
                 JsonObject obj = invslot.Itemstack.Collectible.Attributes["currency"];
@@ -351,7 +404,7 @@ namespace Vintagestory.GameContent
             // ...and return single value gears 
             if (totalUnitsToDeduct < 0)
             {
-                GiveOrDrop(buyingPlayer, new ItemStack(Api.World.GetItem(new AssetLocation("gear-rusty"))), -totalUnitsToDeduct);
+                GiveOrDropToPlayer(buyingPlayer, new ItemStack(Api.World.GetItem(new AssetLocation("gear-rusty"))), -totalUnitsToDeduct);
             }
         }
 
@@ -359,10 +412,10 @@ namespace Vintagestory.GameContent
         {
             if (stack == null) return;
 
-            GiveOrDrop(buyingPlayer, stack, stack.StackSize);
+            GiveOrDropToPlayer(buyingPlayer, stack, stack.StackSize);
         }
 
-        public void GiveOrDrop(IPlayer buyingPlayer, ItemStack stack, int quantity)
+        public void GiveOrDropToPlayer(IPlayer buyingPlayer, ItemStack stack, int quantity)
         {
             if (stack == null) return;
 
@@ -390,8 +443,9 @@ namespace Vintagestory.GameContent
 
             player.Entity.WalkInventory((invslot) =>
             {
-                if (invslot is CreativeSlot) return true;
+                if (invslot is ItemSlotCreative) return true;
                 if (invslot.Itemstack == null || invslot.Itemstack.Collectible.Attributes == null) return true;
+                if (!(invslot.Inventory is InventoryBasePlayer)) return true;
 
                 JsonObject obj = invslot.Itemstack.Collectible.Attributes["currency"];
                 if (obj.Exists && obj["value"].Exists)
@@ -406,13 +460,28 @@ namespace Vintagestory.GameContent
         }
 
 
+        public int GetTraderAssets()
+        {
+            int totalAssets = 0;
+            if (MoneySlot.Empty) return 0;
+
+            JsonObject obj = MoneySlot.Itemstack.Collectible.Attributes["currency"];
+            if (obj.Exists && obj["value"].Exists)
+            {
+                totalAssets += obj["value"].AsInt(0) * MoneySlot.StackSize;
+            }
+
+            return totalAssets;
+        }
+
+
         public int GetTotalCost()
         {
             int totalCost = 0;
 
             for (int i = 0; i < 4; i++)
             {
-                TradeItemSlot buySlot = GetBuyingCartSlot(i);
+                ItemSlotTrade buySlot = GetBuyingCartSlot(i);
                 ResolvedTradeItem tradeitem = buySlot.TradeItem;
 
                 if (tradeitem != null)
@@ -461,25 +530,25 @@ namespace Vintagestory.GameContent
         // Slots 36..39: Selling cart
         protected override ItemSlot NewSlot(int slotId)
         {
-            if (slotId < 36) return new TradeItemSlot(this);
+            if (slotId < 36) return new ItemSlotTrade(this);
 
             return new ItemSlotSurvival(this);
         }
 
-        public TradeItemSlot GetSellingSlot(int index)
+        public ItemSlotTrade GetSellingSlot(int index)
         {
-            return slots[index] as TradeItemSlot;
+            return slots[index] as ItemSlotTrade;
         }
 
-        public TradeItemSlot GetBuyingSlot(int index)
+        public ItemSlotTrade GetBuyingSlot(int index)
         {
-            return slots[4*4 + 4 + index] as TradeItemSlot;
+            return slots[4*4 + 4 + index] as ItemSlotTrade;
         }
 
 
-        public TradeItemSlot GetBuyingCartSlot(int index)
+        public ItemSlotTrade GetBuyingCartSlot(int index)
         {
-            return slots[16 + index] as TradeItemSlot;
+            return slots[16 + index] as ItemSlotTrade;
         }
 
         public ItemSlotSurvival GetSellingCartSlot(int index)
@@ -491,7 +560,7 @@ namespace Vintagestory.GameContent
         {
             for (int i = 0; i < 4*4; i++)
             {
-                TradeItemSlot slot = GetBuyingSlot(i);
+                ItemSlotTrade slot = GetBuyingSlot(i);
                 if (slot.Itemstack == null) continue;
 
                 if (slot.Itemstack.Equals(forStack))

@@ -13,17 +13,17 @@ namespace Vintagestory.GameContent
 {
     public class ItemHammer : Item
     {
-        public override bool OnHeldAttackStart(IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override void OnHeldAttackStart(IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
         {
-            if (blockSel == null) return false;
-            if (!(byEntity.World.BlockAccessor.GetBlock(blockSel.Position) is BlockAnvil)) return false;
+            if (blockSel == null) return;
+            if (!(byEntity.World.BlockAccessor.GetBlock(blockSel.Position) is BlockAnvil)) return;
 
             BlockEntityAnvil bea = byEntity.World.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityAnvil;
-            if (bea == null) return false;
+            if (bea == null) return;
 
             IPlayer byPlayer = null;
             if (byEntity is IEntityPlayer) byPlayer = byEntity.World.PlayerByUid(((IEntityPlayer)byEntity).PlayerUID);
-            if (byPlayer == null) return false;
+            if (byPlayer == null) return;
 
 
             bea.OnBeginUse(byPlayer, blockSel);
@@ -37,7 +37,7 @@ namespace Vintagestory.GameContent
             }, 464);
 
 
-            return true;
+            handling = EnumHandHandling.PreventDefault;
         }
 
         public override bool OnHeldAttackCancel(float secondsPassed, IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSelection, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)
@@ -65,7 +65,7 @@ namespace Vintagestory.GameContent
                 tf.Origin.Set(0, 0, 0.5f);
                 tf.Translation.Set(0, 0, Math.Max(-0.25f, -1.25f * Math.Max(0, secondsUsed - 0.25f)));
                 tf.Rotation.Y = rotationY;
-                byEntity.Controls.UsingHeldItemTransform = tf;
+                byEntity.Controls.UsingHeldItemTransformBefore = tf;
             }
             
 

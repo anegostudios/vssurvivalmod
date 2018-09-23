@@ -1,4 +1,5 @@
-﻿using Vintagestory.API.Common;
+﻿using Vintagestory.API.Client;
+using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 
@@ -37,6 +38,11 @@ namespace Vintagestory.GameContent
         {
             if (!CanPlantStay(blockAccessor, pos)) return false;
             return base.TryPlaceBlockForWorldGen(blockAccessor, pos, onBlockFace);
+        }
+
+        public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing)
+        {
+            return base.GetRandomColor(capi, pos, facing);
         }
     }
 }

@@ -17,6 +17,7 @@ namespace Vintagestory.GameContent
         BlockPos pos;
         ICoreClientAPI api;
         MeshRef quadModelRef;
+        Matrixf ModelMat = new Matrixf();
 
         public double RenderOrder
         {
@@ -83,12 +84,12 @@ namespace Vintagestory.GameContent
             prog.FogMinIn = rpi.FogMin;
             prog.FogDensityIn = rpi.FogDensity;
             prog.RgbaTint = ColorUtil.WhiteArgbVec;
-
+            prog.WaterWave = 0;
 
             if (LevelLeft > 0 && TextureNameLeft != null)
             {
                 Vec4f lightrgbs = api.World.BlockAccessor.GetLightRGBs(pos.X, pos.Y, pos.Z);
-                float[] glowColor = ColorUtil.getIncandescenceColorAsColor4f((int)TemperatureLeft);
+                float[] glowColor = ColorUtil.GetIncandescenceColorAsColor4f((int)TemperatureLeft);
                 lightrgbs[0] += 2 * glowColor[0];
                 lightrgbs[1] += 2 * glowColor[1];
                 lightrgbs[2] += 2 * glowColor[2];
@@ -99,30 +100,28 @@ namespace Vintagestory.GameContent
 
                 int texid = api.Render.GetOrLoadTexture(TextureNameLeft);
                 rpi.BindTexture2d(texid);
-                rpi.GlPushMatrix();
-                rpi.GlLoadMatrix(api.Render.CameraMatrixOrigin);
-                rpi.GlTranslate(pos.X - camPos.X, pos.Y - camPos.Y, pos.Z - camPos.Z);
-                if (QuantityMolds > 1)
-                {
-                    rpi.GlTranslate(4.5f / 16f, 1 / 16f + LevelLeft / 850f, 8.5f / 16);
-                } else
-                {
-                    rpi.GlTranslate(8.5f / 16f, 1 / 16f + LevelLeft / 850f, 8.5f / 16);
-                }
-                
-                rpi.GlRotate(90, 1, 0, 0);
-                rpi.GlScale(0.5f * 3 / 16f, 0.5f * 7 / 16f, 0.5f);
+         
+                float xzOffset = (QuantityMolds > 1) ? 4.5f : 8.5f;
+
+                prog.ModelMatrix = ModelMat
+                    .Identity()
+                    .Translate(pos.X - camPos.X, pos.Y - camPos.Y, pos.Z - camPos.Z)
+                    .Translate(xzOffset / 16f, 1 / 16f + LevelLeft / 850f, 8.5f / 16)
+                    .RotateX(90 * GameMath.DEG2RAD)
+                    .Scale(0.5f * 3 / 16f, 0.5f * 7 / 16f, 0.5f)
+                    .Values
+                ;
                 prog.ProjectionMatrix = rpi.CurrentProjectionMatrix;
-                prog.ModelViewMatrix = rpi.CurrentModelviewMatrix;
+                prog.ViewMatrix = rpi.CameraMatrixOriginf;
+
                 rpi.RenderMesh(quadModelRef);
-                rpi.GlPopMatrix();
             }
             
 
             if (LevelRight > 0 && QuantityMolds > 1 && TextureNameRight != null)
             {
                 Vec4f lightrgbs = api.World.BlockAccessor.GetLightRGBs(pos.X, pos.Y, pos.Z);
-                float[] glowColor = ColorUtil.getIncandescenceColorAsColor4f((int)TemperatureRight);
+                float[] glowColor = ColorUtil.GetIncandescenceColorAsColor4f((int)TemperatureRight);
                 lightrgbs[0] += 2 * glowColor[0];
                 lightrgbs[1] += 2 * glowColor[1];
                 lightrgbs[2] += 2 * glowColor[2];
@@ -134,6 +133,8 @@ namespace Vintagestory.GameContent
 
                 int texid = api.Render.GetOrLoadTexture(TextureNameRight);
                 rpi.BindTexture2d(texid);
+
+                /*
                 rpi.GlPushMatrix();
                 rpi.GlLoadMatrix(api.Render.CameraMatrixOrigin);
                 rpi.GlTranslate(pos.X - camPos.X, pos.Y - camPos.Y, pos.Z - camPos.Z);
@@ -142,8 +143,23 @@ namespace Vintagestory.GameContent
                 rpi.GlScale(0.5f * 3 / 16f, 0.5f * 7 / 16f, 0.5f);
                 prog.ProjectionMatrix = rpi.CurrentProjectionMatrix;
                 prog.ModelViewMatrix = rpi.CurrentModelviewMatrix;
-                rpi.RenderMesh(quadModelRef);
                 rpi.GlPopMatrix();
+                */
+
+                prog.ModelMatrix = ModelMat
+                    .Identity()
+                    .Translate(pos.X - camPos.X, pos.Y - camPos.Y, pos.Z - camPos.Z)
+                    .Translate(11.5f / 16f, 1 / 16f + LevelRight / 850f, 8.5f / 16)
+                    .RotateX(90 * GameMath.DEG2RAD)
+                    .Scale(0.5f * 3 / 16f, 0.5f * 7 / 16f, 0.5f)
+                    .Values
+                ;
+                prog.ProjectionMatrix = rpi.CurrentProjectionMatrix;
+                prog.ViewMatrix = rpi.CameraMatrixOriginf;
+
+
+                rpi.RenderMesh(quadModelRef);
+                
             }
 
 

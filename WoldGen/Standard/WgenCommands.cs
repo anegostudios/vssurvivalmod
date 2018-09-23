@@ -47,9 +47,9 @@ namespace Vintagestory.ServerMods
             this.api = m;
             treeGenerators = new TreeGeneratorsUtil(m);
 
-            m.RegisterCommand("wgen", "World generator tools", "[testmap|testnoise|chunk|region|pos|tree]", CmdWgen, Privilege.controlserver);
+            m.RegisterCommand("wgen", "World generator tools", "[testmap|genmap|testnoise|chunk|region|pos|tree]", CmdWgen, Privilege.controlserver);
 
-            m.Event.SaveGameLoaded(OnGameWorldLoaded);
+            m.Event.SaveGameLoaded += OnGameWorldLoaded;
             if (api.Server.CurrentRunPhase == EnumServerRunPhase.RunGame)
             {
                 OnGameWorldLoaded();
@@ -79,7 +79,7 @@ namespace Vintagestory.ServerMods
             switch (arguments[0])
             {
                 case "autogen":
-                    arguments.PopSingle();
+                    arguments.PopWord();
                     api.WorldManager.AutoGenerateChunks = (bool)arguments.PopBool(false);
                     player.SendMessage(groupId, "Autogen now " + (api.WorldManager.AutoGenerateChunks ? "on" : "off"), EnumChatType.CommandError);
                     break;
@@ -109,12 +109,16 @@ namespace Vintagestory.ServerMods
                     TestMap(player, arguments);
                     break;
 
+                case "genmap":
+                    GenMap(player, arguments);
+                    break;
+
                 case "chunk":
                     ReadChunk(player, arguments);
                     break;
 
                 case "region":
-                    arguments.PopSingle();
+                    arguments.PopWord();
                     ReadRegion(player, arguments);
                     break;
 
@@ -411,6 +415,107 @@ namespace Vintagestory.ServerMods
         }
 
 
+
+        void GenMap(IServerPlayer player, CmdArgs arguments)
+        {
+            if (arguments.Length < 2)
+            {
+                player.SendMessage(groupId, "/wgen genmap [climate|forest|wind|gprov|landform|ore]", EnumChatType.CommandError);
+                return;
+            }
+
+            int seed = api.World.Seed;
+            BlockPos pos = player.Entity.ServerPos.XYZ.AsBlockPos;
+
+            int noiseSizeClimate = api.WorldManager.RegionSize / TerraGenConfig.climateMapScale;
+            int noiseSizeForest = api.WorldManager.RegionSize / TerraGenConfig.forestMapScale;
+            int noiseSizeShrubs = api.WorldManager.RegionSize / TerraGenConfig.shrubMapScale;
+            int noiseSizeGeoProv = api.WorldManager.RegionSize / TerraGenConfig.geoProvMapScale;
+            int noiseSizeLandform = api.WorldManager.RegionSize / TerraGenConfig.landformMapScale;
+
+            NoiseClimate noiseClimate = new NoiseClimate(seed);
+
+            MapLayerBase climateGen = GenMaps.GetClimateMap(seed + 1, noiseClimate);
+            MapLayerBase forestGen = GenMaps.GetForestMap(seed + 2, TerraGenConfig.forestMapScale);
+            MapLayerBase bushGen = GenMaps.GetForestMap(seed + 109, TerraGenConfig.shrubMapScale);
+            MapLayerBase flowerGen = GenMaps.GetForestMap(seed + 223, TerraGenConfig.forestMapScale);
+            MapLayerBase geologicprovinceGen = GenMaps.GetGeologicProvinceMap(seed + 3, api);
+            MapLayerBase landformsGen = GenMaps.GetLandformMap(seed + 4, noiseClimate, api);
+
+            int regionX = pos.X / api.WorldManager.RegionSize;
+            int regionZ = pos.Z / api.WorldManager.RegionSize;
+
+            
+
+            NoiseBase.Debug = true;
+
+            switch (arguments[1])
+            {
+                case "climate":
+                    {
+                        int startX = regionX * noiseSizeClimate - 256;
+                        int startZ = regionZ * noiseSizeClimate - 256;
+
+
+                        climateGen.DebugDrawBitmap(0, startX, startZ, "climatemap");
+                        player.SendMessage(groupId, "Climate map generated", EnumChatType.CommandSuccess);
+                    }
+                    break;
+
+                case "forest":
+                    {
+                        //forestGen.SetInputMap(climateGen, new IntMap() { Size = 512 });
+
+                       // forestGen.DebugDrawBitmap(1, 0, 0, "Forest 1 - Forest");
+                        player.SendMessage(groupId, "Forest map gen not added yet", EnumChatType.CommandSuccess);
+                    }
+                    break;
+
+
+                case "ore":
+                    {
+                        /*NoiseOre noiseOre = new NoiseOre(seed);
+                        MapLayerBase climate = GenMaps.GetOreMap(seed, noiseOre);
+                        
+                        climate.DebugDrawBitmap(0, 0, 0, 1024, "Ore 1 - Ore");
+                        player.SendMessage(groupId, "ore map generated", EnumChatType.CommandSuccess);*/
+                    }
+                    break;
+                    
+                case "gprov":
+                    {
+                        int startX = regionX * noiseSizeGeoProv - 256;
+                        int startZ = regionZ * noiseSizeGeoProv - 256;
+
+                        geologicprovinceGen.DebugDrawBitmap(3, startX, startZ, "gprovmap");
+                        player.SendMessage(groupId, "Province map generated", EnumChatType.CommandSuccess);
+                        break;
+                    }
+
+                case "landform":
+                    {
+                        int startX = regionX * noiseSizeLandform - 256;
+                        int startZ = regionZ * noiseSizeLandform - 256;
+
+                        landformsGen.DebugDrawBitmap(2, startX, startZ, "landformmap");
+                        player.SendMessage(groupId, "Landforms map generated", EnumChatType.CommandSuccess);
+                    }
+                    break;
+
+
+                default:
+                    player.SendMessage(groupId, "/wgen testmap [climate|forest|wind|gprov]", EnumChatType.CommandError);
+                    break;
+            }
+
+
+            NoiseBase.Debug = false;
+        }
+
+
+
+
+
         void ReadChunk(IServerPlayer player, CmdArgs arguments)
         {
             if (arguments.Length < 2)
@@ -445,9 +550,9 @@ namespace Vintagestory.ServerMods
             int regionX = pos.X / regionSize;
             int regionZ = pos.Z / regionSize;
 
-            string arg = arguments.PopSingle();
+            string arg = arguments.PopWord();
 
-            string subarg = arguments.PopSingle();
+            string subarg = arguments.PopWord();
             bool dolerp = subarg == "nolerp";
 
             NoiseBase.Debug = true;
@@ -459,7 +564,7 @@ namespace Vintagestory.ServerMods
                     break;
 
                 case "ore":
-                    string type = dolerp ? arguments.PopSingle("limonite") : subarg;
+                    string type = dolerp ? arguments.PopWord("limonite") : subarg;
                     if (type == null) type = "limonite";
 
                     if (!mapRegion.OreMaps.ContainsKey(type))

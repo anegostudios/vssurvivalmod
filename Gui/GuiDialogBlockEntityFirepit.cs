@@ -44,7 +44,7 @@ namespace Vintagestory.GameContent
 
             attributes.OnModified.Add(new TreeModifiedListener() { listener = OnAttributesModified } );
 
-            inventory.SlotModified += OnInventorySlotModified;
+            
 
             capi.World.Player.InventoryManager.OpenInventory(inventory);
 
@@ -53,13 +53,12 @@ namespace Vintagestory.GameContent
 
         private void OnInventorySlotModified(int slotid)
         {
+            //Console.WriteLine("slot modified: {0}", slotid);
             SetupDialog();
         }
 
         void SetupDialog()
         {
-            ClearComposers();
-
             ItemSlot hoveredSlot = capi.World.Player.InventoryManager.CurrentHoveredSlot;
             if (hoveredSlot != null && hoveredSlot.Inventory == inventory)
             {
@@ -72,16 +71,32 @@ namespace Vintagestory.GameContent
             string newOutputText = attributes.GetString("outputText", ""); // inventory.GetOutputText();
             bool newHaveCookingContainer = attributes.GetInt("haveCookingContainer") > 0; //inventory.HaveCookingContainer;
 
+            GuiElementDynamicText outputTextElem;
+
             if (haveCookingContainer == newHaveCookingContainer && SingleComposer != null)
             {
-                SingleComposer.GetDynamicText("outputText").SetNewText(newOutputText, true);
+                outputTextElem = SingleComposer.GetDynamicText("outputText");
+                outputTextElem.SetNewText(newOutputText, true);
                 SingleComposer.GetCustomDraw("symbolDrawer").Redraw();
 
                 haveCookingContainer = newHaveCookingContainer;
                 currentOutputText = newOutputText;
 
+                outputTextElem.Bounds.fixedOffsetY = 0;
+
+                if (outputTextElem.QuantityTextLines > 2)
+                {
+                    outputTextElem.Bounds.fixedOffsetY = -outputTextElem.Font.GetFontExtents().Height;
+                }
+                outputTextElem.Bounds.CalcWorldBounds();
+
+                //Console.WriteLine("new text is now " + newOutputText + ", lines = " + outputTextElem.QuantityTextLines);
+
                 return;
             }
+
+            //ClearComposers();
+
 
             haveCookingContainer = newHaveCookingContainer;
             currentOutputText = newOutputText;
@@ -108,11 +123,28 @@ namespace Vintagestory.GameContent
             ElementBounds dialogBounds = ElementStdBounds.AutosizedMainDialog.WithAlignment(EnumDialogArea.RightMiddle)
                 .WithFixedAlignmentOffset(-ElementGeometrics.DialogToScreenPadding, 0);
 
+
+            int openedFirepits = 0;
+            foreach (var val in capi.OpenedGuis)
+            {
+                if (val is GuiDialogBlockEntityFirepit)
+                {
+                    openedFirepits++;
+                }
+            }
+
+            if (!capi.Settings.Bool["floatyGuis"])
+            {
+             //   if (openedFirepits % 3 == 1) dialogBounds.fixedOffsetY -= stoveBounds.fixedHeight + 100;
+                //if (openedFirepits % 3 == 2) dialogBounds.fixedOffsetY += stoveBounds.fixedHeight + 100;
+            }
+
+
             int[] cookingSlotIds = new int[qCookingSlots];
             for (int i = 0; i < qCookingSlots; i++) cookingSlotIds[i] = 3 + i;
 
             SingleComposer = capi.Gui
-                .CreateCompo("blockentitystove", dialogBounds, false)
+                .CreateCompo("blockentitystove"+blockEntityPos, dialogBounds, false)
                 .AddDialogBG(bgBounds)
                 .AddDialogTitleBar(DialogTitle, OnTitleBarClose)
                 .BeginChildElements(bgBounds)
@@ -137,6 +169,17 @@ namespace Vintagestory.GameContent
             {
                 SingleComposer.OnMouseMove(capi, new MouseEvent() { X = capi.Input.MouseX, Y = capi.Input.MouseY });
             }
+
+            outputTextElem = SingleComposer.GetDynamicText("outputText");
+            outputTextElem.Bounds.fixedOffsetY = 0;
+            
+            if (outputTextElem.QuantityTextLines > 2)
+            {
+                outputTextElem.Bounds.fixedOffsetY = -outputTextElem.Font.GetFontExtents().Height;
+            }
+            outputTextElem.Bounds.CalcWorldBounds();
+
+
         }
 
 
@@ -232,10 +275,12 @@ namespace Vintagestory.GameContent
         public override void OnGuiOpened()
         {
             inventory.Open(capi.World.Player);
+            inventory.SlotModified += OnInventorySlotModified;
         }
 
         public override void OnGuiClosed()
         {
+            inventory.SlotModified -= OnInventorySlotModified;
             inventory.Close(capi.World.Player);
             capi.World.Player.InventoryManager.CloseInventory(inventory);
 

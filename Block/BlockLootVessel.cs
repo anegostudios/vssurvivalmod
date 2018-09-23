@@ -171,7 +171,7 @@ namespace Vintagestory.GameContent
         static BlockLootVessel() {
 
             lootLists["seed"] = LootList.Create(1, 
-                LootItem.Item(1, 2, 4, "seeds-carrot", "seeds-onion", "seeds-spelt", "seeds-turnip", "seeds-rice", "seeds-rye", "seeds-soybean", "seeds-pumpkin")
+                LootItem.Item(1, 2, 4, "seeds-carrot", "seeds-onion", "seeds-spelt", "seeds-turnip", "seeds-rice", "seeds-rye", "seeds-soybean", "seeds-pumpkin", "seeds-cabbage")
             );
 
             lootLists["food"] = LootList.Create(1, 
@@ -212,6 +212,7 @@ namespace Vintagestory.GameContent
                 LootItem.Item(0.75f, 1, 3, "feather"),
                 LootItem.Item(0.75f, 1, 5, "flaxfibers"),
                 LootItem.Item(0.35f, 1, 2, "flaxtwine"),
+                LootItem.Item(0.75f, 1, 2, "seeds-cabbage"),
                 LootItem.Item(0.75f, 1, 5, "cattails")
             );    
         }
@@ -225,7 +226,7 @@ namespace Vintagestory.GameContent
             return list.GenerateLoot(world);
         }
 
-        public override float OnGettingBroken(IPlayer player, BlockSelection blockSel, IItemSlot itemslot, float remainingResistance, float dt)
+        public override float OnGettingBroken(IPlayer player, BlockSelection blockSel, IItemSlot itemslot, float remainingResistance, float dt, int counter)
         {
             EnumTool? tool = itemslot.Itemstack?.Collectible?.Tool;
 
@@ -234,7 +235,7 @@ namespace Vintagestory.GameContent
                 return remainingResistance - 0.05f;
             }
 
-            return base.OnGettingBroken(player, blockSel, itemslot, remainingResistance, dt);
+            return base.OnGettingBroken(player, blockSel, itemslot, remainingResistance, dt, counter);
         }
 
         public override void OnBlockBroken(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1)
@@ -242,7 +243,7 @@ namespace Vintagestory.GameContent
             SimpleParticleProperties props =
                 new SimpleParticleProperties(
                     15, 22,
-                    ColorUtil.ColorFromArgb(150, 255, 255, 255),
+                    ColorUtil.ToRgba(150, 255, 255, 255),
                     new Vec3d(pos.X, pos.Y, pos.Z),
                     new Vec3d(pos.X + 1, pos.Y + 1, pos.Z + 1),
                     new Vec3f(-0.2f, -0.1f, -0.2f),
@@ -264,7 +265,7 @@ namespace Vintagestory.GameContent
             SimpleParticleProperties spiders =
                 new SimpleParticleProperties(
                     8, 16,
-                    ColorUtil.ColorFromArgb(255, 30, 30, 30),
+                    ColorUtil.ToRgba(255, 30, 30, 30),
                     new Vec3d(pos.X, pos.Y, pos.Z),
                     new Vec3d(pos.X + 1, pos.Y + 1, pos.Z + 1),
                     new Vec3f(-2f, -0.3f, -2f),

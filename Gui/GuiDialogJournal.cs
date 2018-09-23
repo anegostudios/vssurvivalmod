@@ -119,7 +119,6 @@ namespace Vintagestory.GameContent
 
         private string[] Paginate(StringBuilder fullText, CairoFont font, double pageWidth, double pageHeight, double lineHeight)
         {
-            int i = 0;
             TextSizeProber prober = new TextSizeProber();
             Stack<string> lines = new Stack<string>(prober.InsertAutoLineBreaks(font, fullText, pageWidth).Reverse());
             

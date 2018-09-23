@@ -36,13 +36,19 @@ namespace Vintagestory.GameContent
 
         // Stored values
         float[] nutrients = new float[3];
-        bool isWatered = false;
+        double lastWateredTotalHours = 0;
+
+        // When watering with a watering can, not stored values
+        float currentlyWateredSeconds;
+        long lastWateredMs;
+
+
         int originalFertility; // The fertility the soil will recover to (the soil from which the farmland was made of)
         TreeAttribute cropAttrs = new TreeAttribute();
 
         int delayGrowthBelowSunLight = 19;
         float lossPerLevel = 0.1f; 
-            
+        
         public override void Initialize(ICoreAPI api)
         {
             base.Initialize(api);
@@ -83,22 +89,27 @@ namespace Vintagestory.GameContent
         private void SlowTick(float dt)
         {
             // 1. Watered check
-            bool newWatered = false;
+            bool waterNearby = false;
 
-            for (int dx = -3; dx <= 3 && !newWatered; dx++)
+            for (int dx = -3; dx <= 3 && !waterNearby; dx++)
             {
                 for (int dz = -3; dz <= 3; dz++)
                 {
                     if (dx == 0 && dz == 0) continue;
                     if (api.World.BlockAccessor.GetBlock(base.pos.X + dx, base.pos.Y, base.pos.Z + dz).IsWater())
                     {
-                        newWatered = true;
+                        waterNearby = true;
                         break;
                     }
                 }
             }
 
-            if (newWatered != isWatered)
+            if (waterNearby)
+            {
+                lastWateredTotalHours = api.World.Calendar.TotalHours;
+            }
+
+            if (IsWatered)
             {
                 Block block = api.World.BlockAccessor.GetBlock(base.pos);
                 if (block.BlockMaterial == EnumBlockMaterial.Air)
@@ -109,29 +120,16 @@ namespace Vintagestory.GameContent
                     return;
                 }
 
-                AssetLocation newCode = block.CodeWithParts(newWatered ? "moist" : "dry", block.LastCodePart());
-                Block nextBlock = api.World.GetBlock(newCode);
-                if (nextBlock == null)
-                {
-                    api.World.BlockAccessor.RemoveBlockEntity(base.pos);
-                    return;
-                }
-
-                api.World.BlockAccessor.ExchangeBlock(nextBlock.BlockId, base.pos);
-
-                isWatered = newWatered;
-
-                api.World.BlockAccessor.MarkBlockEntityDirty(base.pos);
-                api.World.BlockAccessor.MarkBlockDirty(base.pos);
-
-                if (isWatered && HasUnripeCrop() && growListenerId == 0)
+                if (HasUnripeCrop() && growListenerId == 0)
                 {
                     growListenerId = RegisterGameTickListener(CheckGrow, 2000);
                 }
             }
 
+            UpdateFarmlandBlock();
+
             // 2. Increase fertility when fallow
-            if (!isWatered)
+            if (!IsWatered)
             {
                 totalHoursFertilityCheck = api.World.Calendar.TotalHours;
                 return;
@@ -183,15 +181,19 @@ namespace Vintagestory.GameContent
 
                 api.World.BlockAccessor.MarkBlockEntityDirty(base.pos);
             }
-
-
         }
 
         private void CheckGrow(float dt)
         {
             double hoursNextStage = GetHoursForNextStage();
 
-            if (!isWatered)
+            if (api.World.ElapsedMilliseconds - lastWateredMs > 10000)
+            {
+                currentlyWateredSeconds = Math.Max(0, currentlyWateredSeconds - dt);
+            }
+            
+
+            if (!IsWatered)
             {
                 // Delay growth by the passed time
                 totalHoursForNextStage = api.World.Calendar.TotalHours + hoursNextStage;
@@ -316,7 +318,7 @@ namespace Vintagestory.GameContent
                     foreach (CropBehavior behavior in block.CropProps.Behaviors)
                     {
                         result = behavior.TryGrowCrop(api, this, currentTotalHours, newGrowthStage, ref handled);
-                        if (handled == EnumHandling.Last) return result;
+                        if (handled == EnumHandling.PreventSubsequent) return result;
                     }
                     if (handled == EnumHandling.PreventDefault) return result;
                 }
@@ -328,24 +330,32 @@ namespace Vintagestory.GameContent
             return false;
         }
 
-        private void ConsumeNutrients(Block block)
+        private void ConsumeNutrients(Block cropBlock)
         {
-            int prevLevel = FertilityLevel((nutrients[0] + nutrients[1] + nutrients[2]) / 3);
+            float nutrientLoss = cropBlock.CropProps.NutrientConsumption / cropBlock.CropProps.GrowthStages;
+            nutrients[(int)cropBlock.CropProps.RequiredNutrient] = Math.Max(0, nutrients[(int)cropBlock.CropProps.RequiredNutrient] - nutrientLoss);
+            UpdateFarmlandBlock();
+        }
 
-            float nutrientLoss = block.CropProps.NutrientConsumption / block.CropProps.GrowthStages;
-            nutrients[(int)block.CropProps.RequiredNutrient] = Math.Max(0, nutrients[(int)block.CropProps.RequiredNutrient] - nutrientLoss);
 
+        void UpdateFarmlandBlock()
+        {
             int nowLevel = FertilityLevel((nutrients[0] + nutrients[1] + nutrients[2]) / 3);
+            Block farmlandBlock = api.World.BlockAccessor.GetBlock(pos);
+            Block nextFarmlandBlock = api.World.GetBlock(farmlandBlock.CodeWithParts(IsWatered ? "moist" : "dry", Fertilities.GetKeyAtIndex(nowLevel)));
 
-            if (prevLevel != nowLevel)
+            if (nextFarmlandBlock == null)
             {
-                Block farmlandBlock = api.World.BlockAccessor.GetBlock(base.pos);
-                Block nextFarmlandBlock = api.World.GetBlock(farmlandBlock.CodeWithParts(Fertilities.GetKeyAtIndex(nowLevel)));
-                api.World.BlockAccessor.ExchangeBlock(nextFarmlandBlock.BlockId, base.pos);
+                api.World.BlockAccessor.RemoveBlockEntity(pos);
+                return;
             }
 
-            api.World.BlockAccessor.MarkBlockEntityDirty(base.pos);
-            api.World.BlockAccessor.MarkBlockDirty(base.pos);
+            if (farmlandBlock.BlockId != nextFarmlandBlock.BlockId)
+            {
+                api.World.BlockAccessor.ExchangeBlock(nextFarmlandBlock.BlockId, pos);
+                api.World.BlockAccessor.MarkBlockEntityDirty(pos);
+                api.World.BlockAccessor.MarkBlockDirty(pos);
+            }
         }
 
 
@@ -353,7 +363,7 @@ namespace Vintagestory.GameContent
         {
             int i = 0;
             foreach (var val in Fertilities) {
-                if (val.Value > fertiltyValue) return i;
+                if (val.Value >= fertiltyValue) return i;
                 i++;
             }
             return 3;
@@ -381,7 +391,7 @@ namespace Vintagestory.GameContent
             nutrients[0] = tree.GetFloat("n");
             nutrients[1] = tree.GetFloat("p");
             nutrients[2] = tree.GetFloat("k");
-            isWatered = tree.GetInt("isWatered") > 0;
+            lastWateredTotalHours = tree.GetDouble("lastWateredTotalHours");
             originalFertility = tree.GetInt("originalFertility");
 
             if (tree.HasAttribute("totalHoursForNextStage"))
@@ -405,7 +415,7 @@ namespace Vintagestory.GameContent
             tree.SetFloat("n", nutrients[0]);
             tree.SetFloat("p", nutrients[1]);
             tree.SetFloat("k", nutrients[2]);
-            tree.SetInt("isWatered", isWatered ? 1 : 0);
+            tree.SetDouble("lastWateredTotalHours", lastWateredTotalHours);
             tree.SetInt("originalFertility", originalFertility);
             tree.SetDouble("totalHoursForNextStage", totalHoursForNextStage);
             tree.SetDouble("totalHoursFertilityCheck", totalHoursFertilityCheck);
@@ -419,6 +429,29 @@ namespace Vintagestory.GameContent
                 "Nutrient Levels: N " + (int)nutrients[0] + "%, P " + (int)nutrients[1] + "%, K " + (int)nutrients[2] + "%\n" +
                 "Growth Speeds: N " + Math.Round(100*1/LowNutrientPenalty(EnumSoilNutrient.N),0) + "%, P " + Math.Round(100*1/LowNutrientPenalty(EnumSoilNutrient.P),0) + "%, K " + Math.Round(100*1/LowNutrientPenalty(EnumSoilNutrient.K),0) + "%\n"
             ;
+        }
+
+        public void WaterFarmland(float dt, bool waterNeightbours = true)
+        {
+            currentlyWateredSeconds += dt;
+            lastWateredMs = api.World.ElapsedMilliseconds;
+
+            if (currentlyWateredSeconds > 1f)
+            {
+                if (IsWatered && waterNeightbours)
+                {
+                    foreach (BlockFacing neib in BlockFacing.HORIZONTALS) {
+                        BlockPos npos = pos.AddCopy(neib);
+                        BlockEntityFarmland bef = api.World.BlockAccessor.GetBlockEntity(npos) as BlockEntityFarmland;
+                        if (bef != null) bef.WaterFarmland(1.01f, false);
+                    }
+                }
+
+                lastWateredTotalHours = api.World.Calendar.TotalHours;
+                UpdateFarmlandBlock();
+                currentlyWateredSeconds--;
+            }
+
         }
 
         public double TotalHoursForNextStage
@@ -449,7 +482,7 @@ namespace Vintagestory.GameContent
         {
             get
             {
-                return isWatered;
+                return lastWateredTotalHours > 0 && (api.World.Calendar.TotalHours - lastWateredTotalHours) < 24.5;
             }
         }
 

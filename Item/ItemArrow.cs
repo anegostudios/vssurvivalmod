@@ -9,7 +9,6 @@ namespace Vintagestory.GameContent
 {
     public class ItemArrow : Item
     {
-
         public override void GetHeldItemInfo(ItemStack stack, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
         {
             base.GetHeldItemInfo(stack, dsc, world, withDebugInfo);

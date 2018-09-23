@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
@@ -45,12 +46,29 @@ namespace Vintagestory.GameContent
             return false;
         }
 
-        public override float OnGettingBroken(IPlayer player, BlockSelection blockSel, IItemSlot itemslot, float remainingResistance, float dt)
+        public override float OnGettingBroken(IPlayer player, BlockSelection blockSel, IItemSlot itemslot, float remainingResistance, float dt, int counter)
         {
             if (LastCodePart() == "harvested") dt /= 2;
-            else if (player.InventoryManager.ActiveTool != EnumTool.Knife) dt /= 3;
+            else if (player.InventoryManager.ActiveTool != EnumTool.Knife)
+            {
+                dt /= 3;
+            } else
+            {
+                float mul = 1f;
+                if (itemslot.Itemstack.Collectible.MiningSpeed.TryGetValue(EnumBlockMaterial.Plant, out mul)) dt *= mul;
+            }
 
-            return RequiredMiningTier == 0 ? remainingResistance - dt : remainingResistance;
+            float resistance = RequiredMiningTier == 0 ? remainingResistance - dt : remainingResistance;
+
+            if (counter % 5 == 0 || resistance <= 0)
+            {
+                double posx = blockSel.Position.X + blockSel.HitPosition.X;
+                double posy = blockSel.Position.Y + blockSel.HitPosition.Y;
+                double posz = blockSel.Position.Z + blockSel.HitPosition.Z;
+                player.Entity.World.PlaySoundAt(resistance > 0 ? Sounds.GetHitSound(player) : Sounds.GetBreakSound(player), posx, posy, posz, player, true, 16, 1);
+            }
+
+            return resistance;
         }
 
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
@@ -78,10 +96,7 @@ namespace Vintagestory.GameContent
                     world.SpawnItemEntity(drop, new Vec3d(pos.X + 0.5, pos.Y + 0.5, pos.Z + 0.5), null);
                 }
 
-                if (Sounds?.Break != null)
-                {
-                    world.PlaySoundAt(Sounds.Break, pos.X, pos.Y, pos.Z, byPlayer);
-                }
+                world.PlaySoundAt(Sounds.GetBreakSound(byPlayer), pos.X, pos.Y, pos.Z, byPlayer);
             }
 
             if (byPlayer != null && LastCodePart() == "normal" && byPlayer.InventoryManager.ActiveTool == EnumTool.Knife)
@@ -142,12 +157,15 @@ namespace Vintagestory.GameContent
             return false;
         }
 
-        public override int TextureSubIdForRandomBlockPixel(IWorldAccessor world, BlockPos pos, BlockFacing facing, ref int tintIndex)
+        public override int GetRandomColor(ICoreClientAPI capi , BlockPos pos, BlockFacing facing)
         {
-            tintIndex = 1;
-            return Textures.Last().Value.Baked.TextureSubId;
+            return capi.ApplyColorTintOnRgba(1, capi.BlockTextureAtlas.GetRandomPixel(Textures.Last().Value.Baked.TextureSubId), pos.X, pos.Y, pos.Z);
         }
 
+        public override bool IsWater()
+        {
+            return LastCodePart(1) == "water";
+        }
 
     }
 }

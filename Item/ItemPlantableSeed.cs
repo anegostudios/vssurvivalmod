@@ -9,9 +9,9 @@ namespace Vintagestory.GameContent
     public class ItemPlantableSeed : Item
     {
 
-        public override bool OnHeldInteractStart(IItemSlot itemslot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override void OnHeldInteractStart(IItemSlot itemslot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handHandling)
         {
-            if (blockSel == null) return false;
+            if (blockSel == null) return;
 
             BlockPos pos = blockSel.Position;
 
@@ -21,7 +21,7 @@ namespace Vintagestory.GameContent
             if (be is BlockEntityFarmland)
             {
                 Block cropBlock = byEntity.World.GetBlock(CodeWithPath("crop-" + lastCodePart + "-1"));
-                if (cropBlock == null) return false;
+                if (cropBlock == null) return;
 
                 IPlayer byPlayer = null;
                 if (byEntity is IEntityPlayer) byPlayer = byEntity.World.PlayerByUid(((IEntityPlayer)byEntity).PlayerUID);
@@ -38,10 +38,8 @@ namespace Vintagestory.GameContent
                     }
                 }
 
-                return planted;
+                if (planted) handHandling = EnumHandHandling.PreventDefault;
             }
-
-            return false;
         }
 
         public override void GetHeldItemInfo(ItemStack stack, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)

@@ -7,21 +7,21 @@ namespace Vintagestory.GameContent
     class ItemFirewood : Item
     {
 
-        public override bool OnHeldInteractStart(IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override void OnHeldInteractStart(IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
         {
-            if (blockSel == null || byEntity?.World == null || !byEntity.Controls.Sneak) return false;
+            if (blockSel == null || byEntity?.World == null || !byEntity.Controls.Sneak) return;
 
             BlockPos onBlockPos = blockSel.Position;
             Block block = byEntity.World.BlockAccessor.GetBlock(onBlockPos);
 
             IPlayer byPlayer = null;
             if (byEntity is IEntityPlayer) byPlayer = byEntity.World.PlayerByUid(((IEntityPlayer)byEntity).PlayerUID);
-            if (byPlayer == null) return false;
+            if (byPlayer == null) return;
 
 
             if (!byEntity.World.TestPlayerAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
             {
-                return false;
+                return;
             }
 
 
@@ -30,7 +30,7 @@ namespace Vintagestory.GameContent
             if (block is BlockFirepit)
             {
                 // Prevent placing firewoodpiles when trying to construct firepits
-                return false;
+                return;
             } else
             {
 
@@ -38,18 +38,26 @@ namespace Vintagestory.GameContent
                 if (be is BlockEntityFirewoodPile)
                 {
                     BlockEntityFirewoodPile pile = (BlockEntityFirewoodPile)be;
-                    if (pile.OnPlayerInteract(byPlayer)) return true;
+                    if (pile.OnPlayerInteract(byPlayer))
+                    {
+                        handling = EnumHandHandling.PreventDefault;
+                        return;
+                    }
                 }
 
                 be = byEntity.World.BlockAccessor.GetBlockEntity(onBlockPos.AddCopy(blockSel.Face));
                 if (be is BlockEntityFirewoodPile)
                 {
                     BlockEntityFirewoodPile pile = (BlockEntityFirewoodPile)be;
-                    if (pile.OnPlayerInteract(byPlayer)) return true;
+                    if (pile.OnPlayerInteract(byPlayer))
+                    {
+                        handling = EnumHandHandling.PreventDefault;
+                        return;
+                    }
                 }
 
                 block = byEntity.World.GetBlock(new AssetLocation("firewoodpile"));
-                if (block == null) return false;
+                if (block == null) return;
                 BlockPos pos = onBlockPos.AddCopy(blockSel.Face);
                 bool ok = ((BlockFirewoodPile)block).Construct(slot, byEntity.World, pos, byPlayer);
 
@@ -60,8 +68,10 @@ namespace Vintagestory.GameContent
                     byPlayer.Entity.LocalPos.Y += collisionBoxes[0].Y2 - (byPlayer.Entity.LocalPos.Y - (int)byPlayer.Entity.LocalPos.Y);
                 }
 
-                return ok;
-
+                if (ok)
+                {
+                    handling = EnumHandHandling.PreventDefault;
+                }
             }
 
         }

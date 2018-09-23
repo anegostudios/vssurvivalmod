@@ -20,7 +20,7 @@ namespace Vintagestory.GameContent
             return base.GetHeldTpHitAnimation(slot, byEntity);
         }
 
-        public override bool OnHeldInteractStart(IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override void OnHeldInteractStart(IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
         {
             IPlayer byPlayer = null;
             if (byEntity is IEntityPlayer) byPlayer = byEntity.World.PlayerByUid(((IEntityPlayer)byEntity).PlayerUID);
@@ -30,20 +30,20 @@ namespace Vintagestory.GameContent
             {
                 IWorldAccessor world = byEntity.World;
                 Block knappingBlock = world.GetBlock(new AssetLocation("knappingsurface"));
-                if (knappingBlock == null) return false;
+                if (knappingBlock == null) return;
 
                 Block block = world.BlockAccessor.GetBlock(blockSel.Position);
-                if (!block.CanAttachBlockAt(byEntity.World.BlockAccessor, knappingBlock, blockSel.Position, BlockFacing.UP)) return false;
+                if (!block.CanAttachBlockAt(byEntity.World.BlockAccessor, knappingBlock, blockSel.Position, BlockFacing.UP)) return;
 
                 BlockPos pos = blockSel.Position.AddCopy(blockSel.Face);
-                if (!world.BlockAccessor.GetBlock(pos).IsReplacableBy(knappingBlock)) return false;
+                if (!world.BlockAccessor.GetBlock(pos).IsReplacableBy(knappingBlock)) return;
 
                 BlockSelection placeSel = blockSel.Clone();
                 placeSel.Position = pos;
                 placeSel.DidOffset = true;
                 if (!knappingBlock.TryPlaceBlock(world, byPlayer, slot.Itemstack, placeSel))
                 {
-                    return false;
+                    return;
                 }
 
                 if (knappingBlock.Sounds != null)
@@ -64,34 +64,36 @@ namespace Vintagestory.GameContent
                 }
 
                 slot.TakeOut(1);
-                
-                return true;
+
+                handling = EnumHandHandling.PreventDefaultAction;
+                return;
             }
 
-            return base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel);
+            base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, ref handling);
         }
-        
 
 
-        public override bool OnHeldAttackStart(IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+
+        public override void OnHeldAttackStart(IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
         {
-            if (blockSel == null) return false;
-            if (!(byEntity.World.BlockAccessor.GetBlock(blockSel.Position) is BlockKnappingSurface)) return false;
+            if (blockSel == null) return;
+            if (!(byEntity.World.BlockAccessor.GetBlock(blockSel.Position) is BlockKnappingSurface)) return;
 
             BlockEntityKnappingSurface bea = byEntity.World.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityKnappingSurface;
-            if (bea == null) return false;
+            if (bea == null) return;
 
             IPlayer byPlayer = null;
             if (byEntity is IEntityPlayer) byPlayer = byEntity.World.PlayerByUid(((IEntityPlayer)byEntity).PlayerUID);
-            if (byPlayer == null) return false;
+            if (byPlayer == null) return;
 
             if (!byEntity.World.TestPlayerAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.Use))
             {
-                return false;
+                return;
             }
 
             bea.OnBeginUse(byPlayer, blockSel);
-            return true;
+
+            handling = EnumHandHandling.PreventDefault;
         }
 
         public override bool OnHeldAttackCancel(float secondsPassed, IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSelection, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)

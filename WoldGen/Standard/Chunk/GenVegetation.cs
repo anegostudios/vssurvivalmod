@@ -36,7 +36,7 @@ namespace Vintagestory.ServerMods
             treeSupplier = new WgenTreeSupplier(api);
             api.Event.ChunkColumnGeneration(OnChunkColumnGen, EnumWorldGenPass.Vegetation);
             api.Event.GetWorldgenBlockAccessor(OnWorldGenBlockAccessor);
-            api.Event.SaveGameLoaded(GameWorldLoaded);
+            api.Event.SaveGameLoaded += GameWorldLoaded;
 
             
 
@@ -70,12 +70,12 @@ namespace Vintagestory.ServerMods
             regionChunkSize = api.WorldManager.RegionSize / chunksize;
 
             RockBlockIdsByType = new Dictionary<string, ushort>();
-            RockstrataWorldProperty rockstrata = api.Assets.Get("worldgen/terrain/standard/rockstrata.json").ToObject<RockstrataWorldProperty>();
+            RockstrataWorldProperty rockstrata = api.Assets.Get("worldgen/rockstrata.json").ToObject<RockstrataWorldProperty>();
             for (int i = 0; i < rockstrata.Variants.Length; i++)
             {
                 RockBlockIdsByType.Add(rockstrata.Variants[i].RockType, api.World.GetBlock(rockstrata.Variants[i].BlockCode).BlockId);
             }
-            IAsset asset = api.Assets.Get("worldgen/terrain/standard/blockpatchconfig.json");
+            IAsset asset = api.Assets.Get("worldgen/blockpatchconfig.json");
             bpc = asset.ToObject<BlockPatchConfig>();
             bpc.ResolveBlockIds(api, rockstrata);
         }

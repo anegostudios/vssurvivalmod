@@ -12,7 +12,7 @@ namespace Vintagestory.ServerMods
 {
     public class SpawnOppurtunity
     {
-        public EntityType ForType;
+        public EntityProperties ForType;
         public Vec3d Pos;
     }
 
@@ -25,7 +25,7 @@ namespace Vintagestory.ServerMods
         CollisionTester collisionTester = new CollisionTester();
 
        
-        Dictionary<EntityType, EntityType[]> entityTypeGroups = new Dictionary<EntityType, EntityType[]>();
+        Dictionary<EntityProperties, EntityProperties[]> entityTypeGroups = new Dictionary<EntityProperties, EntityProperties[]>();
 
 
         public override bool ShouldLoad(EnumAppSide side)
@@ -46,7 +46,7 @@ namespace Vintagestory.ServerMods
             api.Event.ChunkColumnGeneration(OnChunkColumnGen, EnumWorldGenPass.PreDone, EnumPlayStyleFlag.SurviveAndAutomate | EnumPlayStyleFlag.SurviveAndBuild | EnumPlayStyleFlag.WildernessSurvival);
 
             api.Event.GetWorldgenBlockAccessor(OnWorldGenBlockAccessor);
-            api.Event.SaveGameLoaded(GameWorldLoaded);
+            api.Event.SaveGameLoaded += GameWorldLoaded;
 
             // Call our loaded method manually if the server is already running (happens when mods are reloaded at runtime)
             if (api.Server.CurrentRunPhase == EnumServerRunPhase.RunGame)
@@ -68,7 +68,7 @@ namespace Vintagestory.ServerMods
             chunksize = api.WorldManager.ChunkSize;
             worldheight = api.WorldManager.MapSizeY;
 
-            Dictionary<AssetLocation, EntityType> entityTypesByCode = new Dictionary<AssetLocation, EntityType>();
+            Dictionary<AssetLocation, EntityProperties> entityTypesByCode = new Dictionary<AssetLocation, EntityProperties>();
 
             for (int i = 0; i < api.World.EntityTypes.Length; i++)
             {
@@ -79,9 +79,9 @@ namespace Vintagestory.ServerMods
             {
                 if (api.World.EntityTypes[i].Server?.SpawnConditions?.Worldgen == null) continue;
 
-                List<EntityType> grouptypes = new List<EntityType>();
+                List<EntityProperties> grouptypes = new List<EntityProperties>();
 
-                EntityType type = api.World.EntityTypes[i];
+                EntityProperties type = api.World.EntityTypes[i];
                 grouptypes.Add(type);
 
                 AssetLocation[] companions = type.Server.SpawnConditions.Worldgen.Companions;
@@ -89,7 +89,7 @@ namespace Vintagestory.ServerMods
 
                 for (int j = 0; j < companions.Length; j++)
                 {
-                    EntityType cptype = null;
+                    EntityProperties cptype = null;
                     if (entityTypesByCode.TryGetValue(companions[j], out cptype))
                     {
                         grouptypes.Add(cptype);
@@ -152,7 +152,7 @@ namespace Vintagestory.ServerMods
 
             foreach (var val in entityTypeGroups)
             {
-                EntityType entitytype = val.Key;
+                EntityProperties entitytype = val.Key;
                 float tries = entitytype.Server.SpawnConditions.Worldgen.TriesPerChunk.nextFloat(1, rnd);
 
                 while (tries-- > rnd.NextDouble())
@@ -177,7 +177,7 @@ namespace Vintagestory.ServerMods
 
         List<SpawnOppurtunity> spawnPositions = new List<SpawnOppurtunity>();
 
-        private void TrySpawnGroupAt(BlockPos origin, Vec3d posAsVec, EntityType entityType, EntityType[] grouptypes)
+        private void TrySpawnGroupAt(BlockPos origin, Vec3d posAsVec, EntityProperties entityType, EntityProperties[] grouptypes)
         {
             BlockPos pos = origin.Copy();
 
@@ -210,7 +210,7 @@ namespace Vintagestory.ServerMods
             {
                 if (spawned >= nextGroupSize) break;
 
-                EntityType typeToSpawn = entityType;
+                EntityProperties typeToSpawn = entityType;
 
                 // First entity 80% chance to spawn the dominant creature, every subsequent only 20% chance for males (or even lower if more than 5 companion types)
                 double dominantChance = i == 0 ? 0.8 : Math.Min(0.2, 1f / grouptypes.Length);
@@ -285,10 +285,9 @@ namespace Vintagestory.ServerMods
         }
 
 
-        private Entity CreateEntity(EntityType entityType, Vec3d spawnPosition)
+        private Entity CreateEntity(EntityProperties entityType, Vec3d spawnPosition)
         {
-            Entity entity = api.ClassRegistry.CreateEntity(entityType.Class);
-            entity.SetType(entityType);
+            Entity entity = api.ClassRegistry.CreateEntity(entityType);
             entity.ServerPos.SetPos(spawnPosition);
             entity.ServerPos.SetYaw(rnd.Next() * GameMath.TWOPI);
             entity.Pos.SetFrom(entity.ServerPos);
@@ -300,7 +299,7 @@ namespace Vintagestory.ServerMods
 
 
 
-        private bool CanSpawnAt(IBlockAccessor blockAccessor, EntityType type, BlockPos pos, Vec3d posAsVec, BaseSpawnConditions sc, float rain, float temp, float forestDensity, float shrubsDensity)
+        private bool CanSpawnAt(IBlockAccessor blockAccessor, EntityProperties type, BlockPos pos, Vec3d posAsVec, BaseSpawnConditions sc, float rain, float temp, float forestDensity, float shrubsDensity)
         {
             if (!api.World.BlockAccessor.IsValidPos(pos)) return false;
 
@@ -324,14 +323,7 @@ namespace Vintagestory.ServerMods
             Block block = blockAccessor.GetBlock(pos);
             if (!block.WildCardMatch(sc.InsideBlockCodes)) return false;
 
-            Cuboidf collisionBox = new Cuboidf()
-            {
-                X1 = -type.HitBoxSize.X / 2,
-                Z1 = -type.HitBoxSize.X / 2,
-                X2 = type.HitBoxSize.X / 2,
-                Z2 = type.HitBoxSize.X / 2,
-                Y2 = type.HitBoxSize.Y
-            }.OmniNotDownGrowBy(0.1f);
+            Cuboidf collisionBox = type.SpawnCollisionBox.OmniNotDownGrowBy(0.1f);
 
             return !IsColliding(collisionBox, posAsVec);
         }

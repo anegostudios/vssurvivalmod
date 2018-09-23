@@ -59,7 +59,7 @@ namespace Vintagestory.ServerMods
                 treeGenerators = new TreeGeneratorsUtil(worldEdit.sapi);
             }
 
-            string cmd = args.PopSingle();
+            string cmd = args.PopWord();
             switch (cmd)
             {
                 case "tsizemin":
@@ -105,7 +105,7 @@ namespace Vintagestory.ServerMods
                 case "tv":
                     int index = 0;
 
-                    string variant = args.PopSingle();
+                    string variant = args.PopWord();
 
                     bool numeric = int.TryParse(variant, out index);
 
