@@ -155,12 +155,16 @@ namespace Vintagestory.ServerMods
                 return;
             }
 
-            blockAccessRev.SetBlock(oldBlockId, blockSel.Position, withItemStack);
+            //blockAccessRev.SetBlock(oldBlockId, blockSel.Position, withItemStack);
+            worldEdit.sapi.World.BlockAccessor.SetBlock(oldBlockId, blockSel.Position);
+            blockSel.Position.Add(blockSel.Face.GetOpposite());
+
+            blockAccessRev.ReadFromStagedByDefault = true;
 
             treeGenerators.ReloadTreeGenerators();
             treeGenerators.RunGenerator(new AssetLocation(TreeVariant), blockAccessRev, blockSel.Position.DownCopy(), MinTreeSize + (float)rand.NextDouble() * (MaxTreeSize - MinTreeSize));
 
-            blockAccessRev.SetHistoryStateBlock(blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z, oldBlockId, blockAccessRev.GetBlockId(blockSel.Position));
+            blockAccessRev.SetHistoryStateBlock(blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z, oldBlockId, blockAccessRev.GetStagedBlockId(blockSel.Position));
             blockAccessRev.Commit();
         }
 

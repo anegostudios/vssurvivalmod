@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -82,7 +83,9 @@ namespace Vintagestory.GameContent
 
                     IClientWorldAccessor clientWorld = (IClientWorldAccessor)api.World;
 
-                    GuiDialog dlg = new GuiDialogBlockEntityTextInput(dialogTitle, pos, text, api as ICoreClientAPI);
+                    GuiDialogBlockEntityTextInput dlg = new GuiDialogBlockEntityTextInput(dialogTitle, pos, text, api as ICoreClientAPI);
+                    dlg.OnTextChanged = DidChangeTextClientSide;
+                    dlg.OnCloseCancel = () => signRenderer.SetNewText(text);
                     dlg.TryOpen();
                 }
             }
@@ -100,6 +103,11 @@ namespace Vintagestory.GameContent
             }
         }
 
+
+        private void DidChangeTextClientSide(string text)
+        {
+            signRenderer?.SetNewText(text);
+        }
 
 
         internal void OpenDialog(IPlayer byPlayer)

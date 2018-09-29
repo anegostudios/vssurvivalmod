@@ -282,12 +282,13 @@ namespace Vintagestory.GameContent
         public override string GetBlockInfo(IPlayer forPlayer)
         {
             ContentConfig config = contentConfigs.FirstOrDefault(c => c.Code == contentCode);
-            if (config == null) return null;
             ItemStack firstStack = inventory.GetSlot(0).Itemstack;
+
+            if (config == null || firstStack == null) return null;
+
             int fillLevel = firstStack.StackSize / config.QuantityPerFillLevel;
 
             return Lang.Get("Portions: {0}", fillLevel);
-
         }
     }
 }

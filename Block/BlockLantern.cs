@@ -226,7 +226,7 @@ namespace Vintagestory.GameContent
             if (be != null)
             {
                 CompositeTexture tex = null;
-                if (Textures.TryGetValue(be.material, out tex)) return tex.Baked.TextureSubId;
+                if (Textures.TryGetValue(be.material, out tex)) return capi.BlockTextureAtlas.GetRandomPixel(tex.Baked.TextureSubId);
             }
 
             return base.GetRandomColor(capi, pos, facing);

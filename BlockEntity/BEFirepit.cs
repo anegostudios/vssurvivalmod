@@ -642,7 +642,8 @@ namespace Vintagestory.GameContent
             inputStack.Collectible.DoSmelt(api.World, inventory, inputSlot, outputSlot);
             InputStackTemp = enviromentTemperature();
             inputStackCookingTime = 0;
-            MarkDirty();
+            MarkDirty(true);
+            inputSlot.MarkDirty();
         }
 
 

@@ -73,11 +73,11 @@ namespace Vintagestory.ServerMods
             int humidity = climateMid & 0xff;
             int temp = (climateMid >> 16) & 0xff;
 
-            // Lake density at chunk center
-            int rivulets = (int)(70 * (rain + humidity) / 255f) * (api.WorldManager.MapSizeY / chunksize) - Math.Max(0, 100 - temp);
+            
+            int quantityRivulets = (int)(80 * (rain + humidity) / 255f) * (api.WorldManager.MapSizeY / chunksize) - Math.Max(0, 100 - temp);
             int fx, fy, fz;
 
-            while (rivulets-- > 0)
+            while (quantityRivulets-- > 0)
             {
                 int dx = 1 + rnd.Next(chunksize - 2);
                 int y = 1 + rnd.Next(api.WorldManager.MapSizeY - 2);

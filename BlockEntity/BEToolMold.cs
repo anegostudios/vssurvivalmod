@@ -33,14 +33,22 @@ namespace Vintagestory.GameContent
             get { return metalContent.Collectible.GetTemperature(api.World, metalContent); }
         }
 
-        public bool IsSolid
+        public bool IsHardened
         {
             get
             {
                 return Temperature < 0.2f * metalContent?.Collectible.GetMeltingPoint(api.World, null, new DummySlot(metalContent));
             }
         }
-        
+
+        public bool IsLiquid
+        {
+            get
+            {
+                return Temperature > 0.8f * metalContent?.Collectible.GetMeltingPoint(api.World, null, new DummySlot(metalContent));
+            }
+        }
+
 
         public bool CanReceiveAny
         {
@@ -171,7 +179,7 @@ namespace Vintagestory.GameContent
         {
             if (api is ICoreServerAPI) MarkDirty();
 
-            if (metalContent != null && fillLevel >= requiredUnits && IsSolid)
+            if (metalContent != null && fillLevel >= requiredUnits && IsHardened)
             {
                 api.World.PlaySoundAt(new AssetLocation("sounds/block/ingot"), pos.X, pos.Y, pos.Z, byPlayer, false);
 
@@ -269,10 +277,17 @@ namespace Vintagestory.GameContent
             }
         }
 
+        public override void OnBlockUnloaded()
+        {
+            base.OnBlockUnloaded();
+            renderer?.Unregister();
+        }
+
+
 
         public ItemStack GetReadyMoldedStack()
         {
-            if (fillLevel < requiredUnits || !IsSolid) return null;
+            if (fillLevel < requiredUnits || !IsHardened) return null;
             if (metalContent?.Collectible == null) return null;
 
             ItemStack stack = GetMoldedStack(metalContent);
@@ -351,19 +366,14 @@ namespace Vintagestory.GameContent
 
             if (this.metalContent != null)
             {
+                string state = IsLiquid ? Lang.Get("liquid") : (IsHardened ? Lang.Get("hardened") : Lang.Get("soft"));
+                
                 string temp = Temperature < 21 ? Lang.Get("Cold") : Lang.Get("{0} °C", (int)Temperature);
-                contents = string.Format("{0}/{4} units of {1} {2} ({3})\n", fillLevel, IsSolid ? "solidified" : "liquid", this.metalContent.GetName(), temp, requiredUnits);
+                contents = string.Format("{0}/{4} units of {1} {2} ({3})\n", fillLevel, state, this.metalContent.GetName(), temp, requiredUnits);
             }
             
 
             return contents.Length == 0 ? "Empty" : contents;
-        }
-
-        public override void OnBlockUnloaded()
-        {
-            base.OnBlockUnloaded();
-
-            renderer?.Unregister();
         }
 
 

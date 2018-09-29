@@ -458,7 +458,7 @@ namespace Vintagestory.GameContent
 
         public override void OnHeldInteractStart(IItemSlot itemslot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handHandling)
         {
-            if (blockSel == null) return;
+            if (blockSel == null || byEntity.Controls.Sneak) return;
             IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
 
             Block targetedBlock = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
@@ -489,11 +489,7 @@ namespace Vintagestory.GameContent
             bool isEmpty = contentStack == null;
 
 
-            if (isEmpty)
-            {
-                TryFillBucketFromBlock(itemslot, byEntity, blockSel.Position); 
-            }
-            else
+            if (!TryFillBucketFromBlock(itemslot, byEntity, blockSel.Position))
             {
                 BlockBucket targetBucket = targetedBlock as BlockBucket;
                 if (targetBucket != null)
@@ -520,25 +516,37 @@ namespace Vintagestory.GameContent
 
 
 
-        public void TryFillBucketFromBlock(IItemSlot itemslot, IEntityAgent byEntity, BlockPos pos)
+        public bool TryFillBucketFromBlock(IItemSlot itemslot, IEntityAgent byEntity, BlockPos pos)
         {
             IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
             IBlockAccessor blockAcc = byEntity.World.BlockAccessor;
 
             Block block = blockAcc.GetBlock(pos);
-            if (block.Attributes?["waterTightContainerProps"].Exists == false) return;
+            if (block.Attributes?["waterTightContainerProps"].Exists == false) return false;
 
             WaterTightContainableProps props = block.Attributes?["waterTightContainerProps"]?.AsObject<WaterTightContainableProps>();
-            if (props?.WhenFilled == null || !props.Containable) return;
+            if (props?.WhenFilled == null || !props.Containable) return false;
 
             props.WhenFilled.Stack.Resolve(byEntity.World, "blockbucket");
 
-            ItemStack contentStack = props.WhenFilled.Stack.ResolvedItemstack;
+            ItemStack contentStack = GetContent(byEntity.World, itemslot.Itemstack);
+            
+            if (contentStack != null && contentStack.Equals(props.WhenFilled.Stack.ResolvedItemstack))
+            {
+                SetContent(itemslot.Itemstack, contentStack);
+                itemslot.MarkDirty();
+                return true;
+            }
+
+            // Is full
+            if (contentStack != null && contentStack.StackSize == (int)(props.ItemsPerLitre * BucketCapacityLitres)) return false;
+
+            contentStack = props.WhenFilled.Stack.ResolvedItemstack.Clone();
             contentStack.StackSize = (int)(props.ItemsPerLitre * BucketCapacityLitres);
 
-            
             ItemStack fullBucketStack = new ItemStack(this);
             SetContent(fullBucketStack, contentStack);
+
 
             if (itemslot.Itemstack.StackSize <= 1)
             {
@@ -555,6 +563,8 @@ namespace Vintagestory.GameContent
 
             itemslot.MarkDirty();
             byEntity.World.PlaySoundAt(props.FillSpillSound, pos.X, pos.Y, pos.Z, byPlayer);
+
+            return true;
         }
 
 
@@ -604,8 +614,7 @@ namespace Vintagestory.GameContent
 
             WaterTightContainableProps props = GetContentProps(byEntity.World, bucketSlot.Itemstack);
 
-            if (!props.AllowSpill) return false;
-            if (props?.WhenSpilled == null) return false;
+            if (props == null || !props.AllowSpill || props.WhenSpilled == null) return false;
 
             if (props.WhenSpilled.Action == WaterTightContainableProps.EnumSpilledAction.PlaceBlock)
             {
@@ -619,15 +628,21 @@ namespace Vintagestory.GameContent
                     if (fillLevelStack != null) waterBlock = byEntity.World.GetBlock(fillLevelStack.Code);
                 }
 
-                if (blockAcc.GetBlock(pos).IsLiquid())
+                if (blockAcc.GetBlock(pos).Replaceable >= 6000)
                 {
                     blockAcc.SetBlock(waterBlock.BlockId, pos);
                     blockAcc.MarkBlockDirty(pos);
                 }
                 else
                 {
-                    blockAcc.SetBlock(waterBlock.BlockId, secondPos);
-                    blockAcc.MarkBlockDirty(secondPos);
+                    if (blockAcc.GetBlock(secondPos).Replaceable >= 6000)
+                    {
+                        blockAcc.SetBlock(waterBlock.BlockId, secondPos);
+                        blockAcc.MarkBlockDirty(secondPos);
+                    } else
+                    {
+                        return false;
+                    }
                 }
             }
 
@@ -711,6 +726,50 @@ namespace Vintagestory.GameContent
             return Lang.Get("Contents: {0} litres of {1}", litres, inbucketname);
         }
 
+
+        public override void TryMergeStacks(ItemStackMergeOperation op)
+        {
+            op.MovableQuantity = GetMergableQuantity(op.SinkSlot.Itemstack, op.SourceSlot.Itemstack);
+            if (op.MovableQuantity == 0) return;
+            if (!op.SinkSlot.CanTakeFrom(op.SourceSlot)) return;
+
+            ItemStack sinkContent = GetContent(op.World, op.SinkSlot.Itemstack);
+            ItemStack sourceContent = GetContent(op.World, op.SourceSlot.Itemstack);
+
+            if (sinkContent == null && sourceContent == null)
+            {
+                base.TryMergeStacks(op);
+                return;
+            }
+
+            if (sinkContent == null || sourceContent == null) { op.MovableQuantity = 0; return; }
+
+            if (!sinkContent.Equals(op.World, sourceContent, GlobalConstants.IgnoredStackAttributes)) { op.MovableQuantity = 0; return; }
+
+            WaterTightContainableProps props = GetStackProps(sourceContent);
+            float maxItems = BucketCapacityLitres * props.ItemsPerLitre;
+            int sourceEmptySpace = (int)(maxItems - (float)sourceContent.StackSize / props.ItemsPerLitre);
+            int sinkEmptySpace = (int)(maxItems - (float)sinkContent.StackSize / props.ItemsPerLitre);
+            if (sourceEmptySpace == 0 && sinkEmptySpace == 0)
+            {
+                // Full buckets are not stackable
+                op.MovableQuantity = 0;
+                //base.TryMergeStacks(op);
+                return;
+            }
+
+            if (op.CurrentPriority == EnumMergePriority.DirectMerge)
+            {
+                int moved = TryAddContent(op.World, op.SinkSlot.Itemstack, sinkContent, sourceContent.StackSize);
+                TryTakeContent(op.World, op.SourceSlot.Itemstack, moved);
+                op.SourceSlot.MarkDirty();
+                op.SinkSlot.MarkDirty();
+            }
+            
+            
+            op.MovableQuantity = 0;
+            return;
+        }
 
         public override bool MatchesForCrafting(ItemStack inputStack, GridRecipe gridRecipe, CraftingRecipeIngredient ingredient)
         {

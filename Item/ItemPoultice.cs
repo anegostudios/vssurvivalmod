@@ -14,6 +14,18 @@ namespace Vintagestory.GameContent
     {
         public override void OnHeldInteractStart(IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
         {
+            byEntity.World.RegisterCallback((dt) =>
+            {
+                if (byEntity.Controls.HandUse == EnumHandInteract.HeldItemInteract)
+                {
+                    IPlayer player = null;
+                    if (byEntity is IEntityPlayer) player = byEntity.World.PlayerByUid(((IEntityPlayer)byEntity).PlayerUID);
+
+                    byEntity.World.PlaySoundAt(new AssetLocation("sounds/player/poultice"), byEntity, player);
+                }
+            }, 200);
+
+
             JsonObject attr = slot.Itemstack.Collectible.Attributes;
             if (attr != null && attr["health"].Exists)
             {
@@ -26,6 +38,7 @@ namespace Vintagestory.GameContent
 
         public override bool OnHeldInteractStep(float secondsUsed, IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
+
             if (byEntity.World is IClientWorldAccessor)
             {
                 ModelTransform tf = new ModelTransform();
@@ -40,14 +53,16 @@ namespace Vintagestory.GameContent
                 tf.Rotation.Y += Math.Min(130f, secondsUsed * 350);
 
                 byEntity.Controls.UsingHeldItemTransformAfter = tf;
+
+                return secondsUsed < 0.75f;
             }
 
-            return secondsUsed < 0.75;
+            return true;
         }
 
         public override void OnHeldInteractStop(float secondsUsed, IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
-            if (secondsUsed > 0.7f)
+            if (secondsUsed > 0.7f && byEntity.World.Side == EnumAppSide.Server)
             {
                 JsonObject attr = slot.Itemstack.Collectible.Attributes;
                 float health = attr["health"].AsFloat();

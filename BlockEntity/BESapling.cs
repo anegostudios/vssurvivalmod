@@ -70,7 +70,7 @@ namespace Vintagestory.ServerMods
             }
 
             api.World.BlockAccessor.SetBlock(0, pos);
-
+            api.World.BulkBlockAccessor.ReadFromStagedByDefault = true;
             float size = 0.6f + (float)api.World.Rand.NextDouble() * 0.5f;
             sapi.World.TreeGenerators[code].GrowTree(api.World.BulkBlockAccessor, pos.DownCopy(), size);
 

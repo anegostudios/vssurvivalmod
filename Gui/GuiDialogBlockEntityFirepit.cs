@@ -149,7 +149,7 @@ namespace Vintagestory.GameContent
                 .AddDialogTitleBar(DialogTitle, OnTitleBarClose)
                 .BeginChildElements(bgBounds)
                     .AddDynamicCustomDraw(stoveBounds, OnBgDraw, "symbolDrawer")
-                    .AddDynamicText(currentOutputText, CairoFont.WhiteDetailText(), EnumTextOrientation.Left, ElementBounds.Fixed(15, 30, 235, 45), 1, "outputText")
+                    .AddDynamicText("", CairoFont.WhiteDetailText(), EnumTextOrientation.Left, ElementBounds.Fixed(15, 30, 235, 45), 1, "outputText")
                     .AddIf(haveCookingContainer)
                         .AddItemSlotGrid(inventory, SendInvPacket, 4, cookingSlotIds, cookingSlotsSlotBounds, "ingredientSlots")
                     .EndIf()
@@ -171,6 +171,7 @@ namespace Vintagestory.GameContent
             }
 
             outputTextElem = SingleComposer.GetDynamicText("outputText");
+            outputTextElem.SetNewText(currentOutputText, true);
             outputTextElem.Bounds.fixedOffsetY = 0;
             
             if (outputTextElem.QuantityTextLines > 2)

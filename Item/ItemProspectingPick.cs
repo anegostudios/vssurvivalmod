@@ -105,8 +105,8 @@ namespace Vintagestory.GameContent
 
             Block block = world.BlockAccessor.GetBlock(blockSel.Position);
             block.OnBlockBroken(world, blockSel.Position, byPlayer, 0);
-    
-            if (!(block is BlockLooseStones) && block.BlockMaterial != EnumBlockMaterial.Stone) return;
+
+            if (!block.Code.Path.StartsWith("rock") && !block.Code.Path.StartsWith("ore")) return;
 
             IServerPlayer splr = byPlayer as IServerPlayer;
 
@@ -150,7 +150,7 @@ namespace Vintagestory.GameContent
 
                             if (mindist > 16)
                             {
-                                splr.SendMessage(GlobalConstants.CurrentChatGroup, "Sample too far away from intial reading. Sampling around this point now, need 3 more good samples.", EnumChatType.Notification);
+                                splr.SendMessage(GlobalConstants.CurrentChatGroup, "Sample too far away from initial reading. Sampling around this point now, need 2 more samples.", EnumChatType.Notification);
                                 attr.value = new int[] { blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z };
                                 return;
                             }

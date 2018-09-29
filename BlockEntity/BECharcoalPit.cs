@@ -31,10 +31,13 @@ namespace Vintagestory.GameContent
         {
             base.Initialize(api);
 
-            RegisterGameTickListener(OnTick, 3000);
+            
             if (api.Side == EnumAppSide.Client)
             {
                 RegisterGameTickListener(OnClientTick, 150);
+            } else
+            {
+                RegisterGameTickListener(OnServerTick, 3000);
             }
 
             startingAfterTotalHours = api.World.Calendar.TotalHours + 0.5f;
@@ -65,7 +68,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        private void OnTick(float dt)
+        private void OnServerTick(float dt)
         {
             if (startingAfterTotalHours <= api.World.Calendar.TotalHours && state == 0)
             {

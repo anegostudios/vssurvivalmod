@@ -32,7 +32,7 @@ namespace Vintagestory.GameContent
                 ItemStack[] stacks = container.GetContents(api.World, byItemStack);
                 for (int i = 0; stacks != null && i < stacks.Length; i++)
                 {
-                    Inventory.GetSlot(i).Itemstack = stacks[i];
+                    Inventory.GetSlot(i).Itemstack = stacks[i].Clone();
                 }
 
             }
@@ -106,8 +106,6 @@ namespace Vintagestory.GameContent
                 {
                     (slot.Itemstack.Collectible as ItemLootRandomizer).ResolveLoot(slot, Inventory, worldForResolve);
 
-                    slot.Itemstack?.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve);
-
                     if (slot.Itemstack?.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve) == false)
                     {
                         slot.Itemstack = null;
@@ -118,10 +116,12 @@ namespace Vintagestory.GameContent
                 {
                     (slot.Itemstack.Collectible as ItemStackRandomizer).Resolve(slot, worldForResolve);
 
-                    if (slot.Itemstack?.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve) == false)
+                    // Wtf is this good for?
+                    // The whole point of the stack randomizer is that this is not necessary, plus slot.ItemStack is something different at this point!
+                    /*if (slot.Itemstack?.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve) == false)
                     {
                         slot.Itemstack = null;
-                    }
+                    }*/
                 }
             }
         }

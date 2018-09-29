@@ -36,9 +36,10 @@ namespace Vintagestory.GameContent
                 Block clayformBlock = world.GetBlock(new AssetLocation("clayform"));
                 if (clayformBlock == null) return;
 
-                Block block = world.BlockAccessor.GetBlock(blockSel.Position);
+                BlockPos belowPos = blockSel.Position.AddCopy(blockSel.Face).Down();
+                Block belowBlock = world.BlockAccessor.GetBlock(belowPos);
 
-                if (!block.CanAttachBlockAt(byEntity.World.BlockAccessor, clayformBlock, blockSel.Position, BlockFacing.UP)) return;
+                if (!belowBlock.CanAttachBlockAt(byEntity.World.BlockAccessor, clayformBlock, belowPos, BlockFacing.UP)) return;
 
                 BlockPos pos = blockSel.Position.AddCopy(blockSel.Face);
                 if (!world.BlockAccessor.GetBlock(pos).IsReplacableBy(clayformBlock)) return;

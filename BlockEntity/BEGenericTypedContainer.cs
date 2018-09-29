@@ -223,7 +223,7 @@ namespace Vintagestory.GameContent
                 return mesh;
             }
 
-            string shapename = ownBlock.Attributes["shape"][type].AsString();
+            string shapename = ownBlock.Attributes?["shape"][type].AsString();
             if (shapename == null)
             {
                 return null;

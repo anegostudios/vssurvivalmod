@@ -35,16 +35,18 @@ namespace Vintagestory.GameContent
             }
 
             pos = pos.DownCopy();
+            block = blockAccessor.GetBlock(pos);
 
-            if (block.IsReplacableBy(this) && blockAccessor.GetBlock(pos).SideSolid[BlockFacing.UP.Index])
+            if (block.IsReplacableBy(this) && block.SideSolid[BlockFacing.UP.Index])
             {
                 blockAccessor.SetBlock(rndGearBlock().BlockId, pos);
                 return true;
             }
 
             pos.Down();
+            block = blockAccessor.GetBlock(pos);
 
-            if (block.IsReplacableBy(this) && blockAccessor.GetBlock(pos).SideSolid[BlockFacing.UP.Index])
+            if (block.IsReplacableBy(this) && block.SideSolid[BlockFacing.UP.Index])
             {
                 blockAccessor.SetBlock(rndGearBlock().BlockId, pos);
                 return true;

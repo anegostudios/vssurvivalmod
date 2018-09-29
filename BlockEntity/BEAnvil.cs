@@ -21,7 +21,7 @@ namespace Vintagestory.GameContent
         {
             smallMetalSparks = new SimpleParticleProperties(
                 2, 5,
-                ColorUtil.ToRgba(255, 83, 233, 255),
+                ColorUtil.ToRgba(255, 255, 233, 83),
                 new Vec3d(), new Vec3d(),
                 new Vec3f(-3f, 8f, -3f),
                 new Vec3f(3f, 12f, 3f),
@@ -37,7 +37,7 @@ namespace Vintagestory.GameContent
 
             bigMetalSparks = new SimpleParticleProperties(
                 2, 8,
-                ColorUtil.ToRgba(255, 83, 233, 255),
+                ColorUtil.ToRgba(255, 255, 233, 83),
                 new Vec3d(), new Vec3d(),
                 new Vec3f(-1f, 0.5f, -1f),
                 new Vec3f(2f, 1.5f, 2f),

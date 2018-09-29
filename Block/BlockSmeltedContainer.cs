@@ -51,7 +51,7 @@ namespace Vintagestory.GameContent
 
             bigMetalSparks = new SimpleParticleProperties(
                 1, 1,
-                ColorUtil.ToRgba(255, 83, 233, 255),
+                ColorUtil.ToRgba(255, 255, 233, 83),
                 new Vec3d(), new Vec3d(),
                 new Vec3f(-3f, 1f, -3f),
                 new Vec3f(3f, 8f, 3f),
@@ -122,6 +122,15 @@ namespace Vintagestory.GameContent
             if (be != null && be.CanReceiveAny)
             {
                 KeyValuePair<ItemStack, int> contents = GetContents(byEntity.World, slot.Itemstack);
+
+                if (contents.Key == null)
+                {
+                    slot.Itemstack = new ItemStack(byEntity.World.GetBlock(new AssetLocation("crucible-burned")));
+                    slot.MarkDirty();
+                    handHandling = EnumHandHandling.PreventDefault;
+                    return;
+                }
+                
 
                 if (HasSolidifed(slot.Itemstack, contents.Key, byEntity.World))
                 {
@@ -247,7 +256,7 @@ namespace Vintagestory.GameContent
                 slot.Itemstack.Attributes.SetInt("units", newAmount);
                 
 
-                if (newAmount == 0 && byEntity.World is IServerWorldAccessor)
+                if (newAmount <= 0 && byEntity.World is IServerWorldAccessor)
                 {
                     slot.Itemstack = new ItemStack(byEntity.World.GetBlock(new AssetLocation("crucible-burned")));
                     slot.MarkDirty();
@@ -339,6 +348,8 @@ namespace Vintagestory.GameContent
 
         public bool HasSolidifed(ItemStack ownStack, ItemStack contentstack, IWorldAccessor world)
         {
+            if (ownStack?.Collectible == null) return false;
+
             return ownStack.Collectible.GetTemperature(world, ownStack) < 0.9 * contentstack.Collectible.GetMeltingPoint(world, null, null);
         }
 

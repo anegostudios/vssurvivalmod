@@ -27,7 +27,7 @@ namespace Vintagestory.GameContent
             );
 
             WaterParticles.addPos = new Vec3d(0.125 / 2, 2 / 16f, 0.125 / 2);
-            WaterParticles.SizeEvolve = new EvolvingNatFloat(EnumTransformFunction.LINEAR, -1.3f);
+            WaterParticles.SizeEvolve = new EvolvingNatFloat(EnumTransformFunction.LINEAR, -1f);
             WaterParticles.TintIndex = 2;
             WaterParticles.addQuantity = 1;
         }

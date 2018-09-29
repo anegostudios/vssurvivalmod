@@ -124,8 +124,16 @@ namespace Vintagestory.GameContent
 
             if (byEntity.World.Side == EnumAppSide.Server && multiProps != null && secondsUsed >= 0.95f)
             {
+                slot.TakeOut(1);
+                slot.MarkDirty();
                 IPlayer player = (byEntity as EntityPlayer).Player;
 
+                Block block = byEntity.World.GetBlock(new AssetLocation("bowl-burned"));
+                if (player == null || !player.InventoryManager.TryGiveItemstack(new ItemStack(block), true))
+                {
+                    byEntity.World.SpawnItemEntity(new ItemStack(block), byEntity.LocalPos.XYZ);
+                }
+                
                 foreach (var nutriProps in multiProps)
                 {
                     player.Entity.ReceiveSaturation(nutriProps.Saturation, nutriProps.FoodCategory, 10 + nutriProps.Saturation / 100f * 30f);
@@ -148,14 +156,6 @@ namespace Vintagestory.GameContent
                 }
 
 
-                slot.Itemstack.StackSize--;
-                slot.MarkDirty();
-
-                Block block = byEntity.World.GetBlock(new AssetLocation("bowl-burned"));
-                if (player == null || !player.InventoryManager.TryGiveItemstack(new ItemStack(block), true))
-                {
-                    byEntity.World.SpawnItemEntity(new ItemStack(block), byEntity.LocalPos.XYZ);
-                }
             }
         }
 
@@ -314,6 +314,12 @@ namespace Vintagestory.GameContent
                     stackProps = obj.GetNutritionProperties(world, contentStacks[i], forEntity);
                 }
 
+                float? customSat = obj.Attributes?["saturationWhenInMeal"].AsFloat(-1);
+                if (customSat != null && customSat >= 0)
+                {
+                    stackProps.Saturation = (float)customSat;
+                }
+
                 if (stackProps == null) continue;
                 foodProps.Add(stackProps);
             }
@@ -357,9 +363,9 @@ namespace Vintagestory.GameContent
                 sb.AppendLine("- " + Lang.Get("" + val.Key) + ": " + val.Value + " sat.");
             }
 
-            if (totalHealth > 0)
+            if (totalHealth != 0)
             {
-                sb.AppendLine("- " + Lang.Get("Health: {0}{1}", totalHealth > 0 ? "+" : "", totalHealth));
+                sb.AppendLine("- " + Lang.Get("Health: {0}{1} hp", totalHealth > 0 ? "+" : "", totalHealth));
             }
 
             return sb.ToString();

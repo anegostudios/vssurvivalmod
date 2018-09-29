@@ -14,7 +14,9 @@ namespace Vintagestory.GameContent
                 return false;
             }
 
-            if (bs.Face.IsHorizontal && world.BlockAccessor.GetBlock(bs.Position.AddCopy(bs.Face.GetOpposite())).CanAttachBlockAt(world.BlockAccessor, this, bs.Position, bs.Face))
+            BlockPos supportingPos = bs.Position.AddCopy(bs.Face.GetOpposite());
+
+            if (bs.Face.IsHorizontal && world.BlockAccessor.GetBlock(supportingPos).CanAttachBlockAt(world.BlockAccessor, this, bs.Position, bs.Face) && world.BlockAccessor.GetBlock(bs.Position).IsReplacableBy(this))
             {
                 Block block = world.BlockAccessor.GetBlock(CodeWithParts("wall", bs.Face.GetOpposite().Code));
 

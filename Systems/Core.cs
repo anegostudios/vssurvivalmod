@@ -99,7 +99,7 @@ namespace Vintagestory.GameContent
             //api.WorldManager.SetCurrencyIcon(config.CurrencyItemIcon);
 
             api.Event.PlayerCreate += Event_PlayerCreate;
-            api.Event.ServerRunPhase(EnumServerRunPhase.LoadGamePre, () => config.ResolveStartItems(api.World));
+            api.Event.ServerRunPhase(EnumServerRunPhase.LoadGame, () => config.ResolveStartItems(api.World));
         }
 
         private void Event_PlayerCreate(IServerPlayer byPlayer)
@@ -217,6 +217,8 @@ namespace Vintagestory.GameContent
             api.RegisterBlockClass("BlockTrough", typeof(BlockTrough));
             api.RegisterBlockClass("BlockLeaves", typeof(BlockLeaves));
             api.RegisterBlockClass("BlockTroughDoubleBlock", typeof(BlockTroughDoubleBlock));
+            api.RegisterBlockClass("BlockFarmland", typeof(BlockFarmland));
+            
         }
         
         private void RegisterDefaultBlockBehaviors()
@@ -253,7 +255,7 @@ namespace Vintagestory.GameContent
             api.RegisterBlockEntityClass("GenericContainer", typeof(BlockEntityGenericContainer));
             api.RegisterBlockEntityClass("GenericTypedContainer", typeof(BlockEntityGenericTypedContainer));
             api.RegisterBlockEntityClass("Sign", typeof(BlockEntitySign));
-            api.RegisterBlockEntityClass("ParticleEmitter", typeof(BlockEntityParticleEmitter));
+
             api.RegisterBlockEntityClass("BerryBush", typeof(BlockEntityBerryBush));
             api.RegisterBlockEntityClass("IngotPile", typeof(BlockEntityIngotPile));
             api.RegisterBlockEntityClass("PlatePile", typeof(BlockEntityPlatePile));
@@ -273,7 +275,6 @@ namespace Vintagestory.GameContent
 
             api.RegisterBlockEntityClass("Fire", typeof(BlockEntityFire));
             api.RegisterBlockEntityClass("CharcoalPit", typeof(BlockEntityCharcoalPit));
-            api.RegisterBlockEntityClass("Transient", typeof(BlockEntityTransient));
             api.RegisterBlockEntityClass("PumpkinVine", typeof(BlockEntityPumpkinVine));
             api.RegisterBlockEntityClass("ClayForm", typeof(BlockEntityClayForm));
             api.RegisterBlockEntityClass("KnappingSurface", typeof(BlockEntityKnappingSurface));
@@ -342,6 +343,8 @@ namespace Vintagestory.GameContent
             api.RegisterItemClass("ItemWoodenClub", typeof(ItemWoodenClub));
             api.RegisterItemClass("ItemSword", typeof(ItemSword));
             api.RegisterItemClass("ItemPoultice", typeof(ItemPoultice));
+            api.RegisterItemClass("ItemRustyGear", typeof(ItemRustyGear));
+            
         }
 
 

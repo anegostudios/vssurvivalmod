@@ -171,27 +171,27 @@ namespace Vintagestory.GameContent
         static BlockLootVessel() {
 
             lootLists["seed"] = LootList.Create(1, 
-                LootItem.Item(1, 2, 4, "seeds-carrot", "seeds-onion", "seeds-spelt", "seeds-turnip", "seeds-rice", "seeds-rye", "seeds-soybean", "seeds-pumpkin", "seeds-cabbage")
+                LootItem.Item(1, 3, 5, "seeds-carrot", "seeds-onion", "seeds-spelt", "seeds-turnip", "seeds-rice", "seeds-rye", "seeds-soybean", "seeds-pumpkin", "seeds-cabbage")
             );
 
             lootLists["food"] = LootList.Create(1, 
-                LootItem.Item(1, 2, 5, "grain-spelt", "grain-rice", "grain-flax", "grain-rye")
+                LootItem.Item(1, 8, 15, "grain-spelt", "grain-rice", "grain-flax", "grain-rye")
             );
 
             lootLists["forage"] = LootList.Create(3.5f, 
-                LootItem.Item(1, 0.5f, 3, "flint"),
-                LootItem.Item(1, 0.5f, 3, "stick"),
-                LootItem.Item(1, 0.5f, 3, "drygrass"),
-                LootItem.Item(1, 3, 12, "stone-andesite", "stone-chalk", "stone-claystone", "stone-granite", "stone-sandstone", "stone-shale"),
-                LootItem.Item(1, 3, 12, "clay-blue", "clay-fire"),
-                LootItem.Item(1, 3, 12, "cattails")
+                LootItem.Item(1, 0.5f, 6, "flint"),
+                LootItem.Item(1, 0.5f, 6, "stick"),
+                LootItem.Item(1, 0.5f, 12, "drygrass"),
+                LootItem.Item(1, 3, 24, "stone-andesite", "stone-chalk", "stone-claystone", "stone-granite", "stone-sandstone", "stone-shale"),
+                LootItem.Item(1, 3, 24, "clay-blue", "clay-fire"),
+                LootItem.Item(1, 3, 24, "cattails")
             );
 
             lootLists["ore"] = LootList.Create(2.75f,
-                LootItem.Item(1, 2, 6, "ore-lignite", "ore-bituminouscoal"),
-                LootItem.Item(1, 2, 4, "ore-nativecopper", "ore-quartz", "ore-galena"),
-                LootItem.Item(0.3f, 2, 4, "ore-galena", "ore-cassiterite", "ore-sphalerite", "ore-bismuthinite"),
-                LootItem.Item(0.1f, 2, 4, "ore-limonite", "ore-quartz_nativegold", "ore-chromite", "ore-platinum", "ore-ilmenite", "ore-quartz_nativesilver", "ore-magnetite")
+                LootItem.Item(1, 2, 12, "ore-lignite", "ore-bituminouscoal"),
+                LootItem.Item(1, 2, 8, "ore-nativecopper", "ore-quartz", "ore-galena"),
+                LootItem.Item(0.3f, 2, 6, "ore-galena", "ore-cassiterite", "ore-sphalerite", "ore-bismuthinite"),
+                LootItem.Item(0.1f, 2, 6, "ore-limonite", "ore-quartz_nativegold", "ore-chromite", "ore-platinum", "ore-ilmenite", "ore-quartz_nativesilver", "ore-magnetite")
             );
 
             lootLists["tool"] = LootList.Create(2.2f, 
@@ -209,11 +209,11 @@ namespace Vintagestory.GameContent
             lootLists["farming"] = LootList.Create(2.75f,
                 LootItem.Item(0.1f, 1, 1, "linensack"),
                 LootItem.Item(0.5f, 1, 1, "basket"),
-                LootItem.Item(0.75f, 1, 3, "feather"),
-                LootItem.Item(0.75f, 1, 5, "flaxfibers"),
-                LootItem.Item(0.35f, 1, 2, "flaxtwine"),
-                LootItem.Item(0.75f, 1, 2, "seeds-cabbage"),
-                LootItem.Item(0.75f, 1, 5, "cattails")
+                LootItem.Item(0.75f, 3, 10, "feather"),
+                LootItem.Item(0.75f, 2, 10, "flaxfibers"),
+                LootItem.Item(0.35f, 2, 10, "flaxtwine"),
+                LootItem.Item(0.75f, 2, 4, "seeds-cabbage"),
+                LootItem.Item(0.75f, 5, 10, "cattails")
             );    
         }
 

@@ -7,6 +7,12 @@ using Vintagestory.API.Server;
 
 namespace Vintagestory.GameContent
 {
+    public class CodeAndChance
+    {
+        public AssetLocation Code;
+        public float Chance;
+    } 
+
     // Definitions:
     // Farmland has 3 nutrient levels N, P and K
     // - Each nutrient level has a range of 0-100
@@ -18,8 +24,10 @@ namespace Vintagestory.GameContent
     public class BlockEntityFarmland : BlockEntity, IFarmlandBlockEntity
     {
         static Random rand = new Random();
-        static AssetLocation[] tallGrassNames = new AssetLocation[] { new AssetLocation("tallgrass-veryshort"), new AssetLocation("tallgrass-short"), new AssetLocation("tallgrass-mediumshort"), new AssetLocation("tallgrass-medium") };
-        static OrderedDictionary<string, float> Fertilities = new OrderedDictionary<string, float>{
+        static CodeAndChance[] weedNames;
+        static float totalWeedChance;
+
+        public static OrderedDictionary<string, float> Fertilities = new OrderedDictionary<string, float>{
             { "verylow", 5 },
             { "low", 25 },
             { "medium", 50 },
@@ -43,7 +51,7 @@ namespace Vintagestory.GameContent
         long lastWateredMs;
 
 
-        int originalFertility; // The fertility the soil will recover to (the soil from which the farmland was made of)
+        public int originalFertility; // The fertility the soil will recover to (the soil from which the farmland was made of)
         TreeAttribute cropAttrs = new TreeAttribute();
 
         int delayGrowthBelowSunLight = 19;
@@ -69,6 +77,16 @@ namespace Vintagestory.GameContent
             {
                 delayGrowthBelowSunLight = block.Attributes["delayGrowthBelowSunLight"].AsInt(19);
                 lossPerLevel = block.Attributes["lossPerLevel"].AsFloat(0.1f);
+
+                if (weedNames == null)
+                {
+                    weedNames = block.Attributes["weedBlockCodes"].AsObject<CodeAndChance[]>();
+                    for (int i = 0; weedNames != null && i < weedNames.Length; i++)
+                    {
+                        totalWeedChance += weedNames[i].Chance;
+                    }
+                }
+                
             }
         }
 
@@ -76,6 +94,10 @@ namespace Vintagestory.GameContent
         internal void CreatedFromSoil(Block block)
         {
             string fertility = block.LastCodePart(1);
+            if (block is BlockFarmland)
+            {
+                fertility = block.LastCodePart();
+            }
             originalFertility = (int)Fertilities[fertility];
 
             nutrients[0] = originalFertility;
@@ -128,14 +150,6 @@ namespace Vintagestory.GameContent
 
             UpdateFarmlandBlock();
 
-            // 2. Increase fertility when fallow
-            if (!IsWatered)
-            {
-                totalHoursFertilityCheck = api.World.Calendar.TotalHours;
-                return;
-            }
-
-            
 
             Block upblock = api.World.BlockAccessor.GetBlock(upPos);
             if (upblock == null) return;
@@ -156,14 +170,24 @@ namespace Vintagestory.GameContent
                 growTallGrass |= rand.NextDouble() < 0.006;
             }
 
-            if (fertilityGained > 0 && upblock.BlockMaterial == EnumBlockMaterial.Air && growTallGrass)
+            if (upblock.BlockMaterial == EnumBlockMaterial.Air && growTallGrass)
             {
-                Block weedsBlock = api.World.GetBlock(tallGrassNames[rand.Next(tallGrassNames.Length)]);
-                if (weedsBlock != null)
+                double rnd = rand.NextDouble() * totalWeedChance;
+                for (int i = 0; i < weedNames.Length; i++)
                 {
-                    api.World.BlockAccessor.SetBlock(weedsBlock.BlockId, upPos);
-                }
+                    rnd -= weedNames[i].Chance;
+                    if (rnd <= 0)
+                    {
+                        Block weedsBlock = api.World.GetBlock(weedNames[i].Code);
+                        if (weedsBlock != null)
+                        {
+                            api.World.BlockAccessor.SetBlock(weedsBlock.BlockId, upPos);
+                        }
+                        break;
+                    }
+                }  
             }
+            
 
             if (fertilityGained > 0 && (nutrients[0] < originalFertility || nutrients[1] < originalFertility || nutrients[2] < originalFertility))
             {

@@ -211,7 +211,12 @@ namespace Vintagestory.ServerMods
             int regionChunkSize = api.WorldManager.RegionSize / chunksize;
             IMapChunk mapchunk=null;
             IServerChunk chunk = null;
-            IServerChunk belowChunk = null;
+            IServerChunk chunkOneBlockBelow = null;
+
+            int ly = GameMath.Mod(lakeYPos, chunksize);
+
+            bool extraLakeDepth = rand.NextDouble() > 0.5;
+            bool withSeabed = extraLakeDepth || lakePositions.Count > 16;
 
             foreach (Vec2i p in lakePositions)
             {
@@ -219,7 +224,6 @@ namespace Vintagestory.ServerMods
                 curChunkZ = p.Y / chunksize;
 
                 int lx = GameMath.Mod(p.X, chunksize);
-                int ly = GameMath.Mod(lakeYPos, chunksize);
                 int lz = GameMath.Mod(p.Y, chunksize);
 
                 // Get correct chunk and correct climate data if we don't have it already
@@ -228,8 +232,14 @@ namespace Vintagestory.ServerMods
                     chunk = ((IServerChunk)blockAccessor.GetChunk(curChunkX, lakeYPos / chunksize, curChunkZ));
                     chunk.Unpack();
 
-                    belowChunk = ((IServerChunk)blockAccessor.GetChunk(curChunkX, (lakeYPos - 1) / chunksize, curChunkZ));
-                    belowChunk.Unpack();
+                    if (ly == 0)
+                    {
+                        chunkOneBlockBelow = ((IServerChunk)blockAccessor.GetChunk(curChunkX, (lakeYPos - 1) / chunksize, curChunkZ));
+                        chunkOneBlockBelow.Unpack();
+                    } else
+                    {
+                        chunkOneBlockBelow = chunk;
+                    }
 
                     mapchunk = chunk.MapChunk;
                     IntMap climateMap = mapchunk.MapRegion.ClimateMap;
@@ -256,34 +266,40 @@ namespace Vintagestory.ServerMods
                 float temp = TerraGenConfig.GetScaledAdjustedTemperatureFloat((climate >> 16) & 0xff, lakeYPos - TerraGenConfig.seaLevel);
 
 
-                // Place water or ice block 
+                // 1. Place water or ice block 
                 chunk.Blocks[(ly * chunksize + lz) * chunksize + lx] = temp < -5 ? GlobalConfig.lakeIceBlockId : GlobalConfig.waterBlockId;
 
 
-                // Let's check the block below
-                ly = ly == 0 ? chunksize - 1 : ly - 1;
-                Block block = api.World.Blocks[belowChunk.Blocks[(ly * chunksize + lz) * chunksize + lx]];
+                // 2. Let's make a nice muddy gravely sea bed
+                if (!withSeabed) continue;
+
+                // Need to check the block below first
+                int index = ly == 0 ? 
+                    ((31 * chunksize + lz) * chunksize + lx) : 
+                    (((ly - 1) * chunksize + lz) * chunksize + lx)
+                ;
+                
+                Block belowBlock = api.World.Blocks[chunkOneBlockBelow.Blocks[index]];
 
                 // Water below? Seabed already placed
-                if (block.IsLiquid()) continue;
+                if (belowBlock.IsLiquid()) continue;
                 
                 float rainRel = TerraGenConfig.GetRainFall((climate >> 8) & 0xff, lakeYPos) / 255f;
                 ushort rockBlockId = mapchunk.TopRockIdMap[lz * chunksize + lx];
-
-                if (rockBlockId != 0)
+                if (rockBlockId == 0) continue;
+                
+                for (int i = 0; i < lakebedLayerConfig.BlockCodeByMin.Length; i++)
                 {
-                    for (int i = 0; i < lakebedLayerConfig.BlockCodeByMin.Length; i++)
+                    if (lakebedLayerConfig.BlockCodeByMin[i].Suitable(temp, rainRel, (float)lakeYPos / mapheight, rand))
                     {
-                        if (lakebedLayerConfig.BlockCodeByMin[i].Suitable(temp, rainRel, (float)lakeYPos / mapheight, rand))
-                        {
-                            belowChunk.Blocks[(ly * chunksize + lz) * chunksize + lx] = lakebedLayerConfig.BlockCodeByMin[i].GetBlockForMotherRock(rockBlockId);
-                            break;
-                        }
+                        chunkOneBlockBelow.Blocks[index] = lakebedLayerConfig.BlockCodeByMin[i].GetBlockForMotherRock(rockBlockId);
+                        break;
                     }
-                } 
+                }
             }
 
-            if (lakePositions.Count > 0 && rand.NextDouble() > 0.5f)
+
+            if (lakePositions.Count > 0 && extraLakeDepth)
             {
                 TryPlaceLakeAt(dx, dz, chunkX, chunkZ, heightmap, depth + 1);
             }

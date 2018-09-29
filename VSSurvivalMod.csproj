@@ -72,7 +72,6 @@
     <Reference Include="System.Core" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.Xml.Linq" />
-    <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Data" />
     <Reference Include="System.Net.Http" />
@@ -119,7 +118,6 @@
     <Compile Include="BlockEntity\BEIngotPile.cs" />
     <Compile Include="BlockEntity\BEKnappingSurface.cs" />
     <Compile Include="BlockEntity\BESmeltedContainer.cs" />
-    <Compile Include="BlockEntity\BEParticleEmitter.cs" />
     <Compile Include="BlockEntity\BEPlatePile.cs" />
     <Compile Include="BlockEntity\BEPumpkinVine.cs" />
     <Compile Include="BlockEntity\BESign.cs" />
@@ -128,7 +126,6 @@
     <Compile Include="BlockEntity\BETeleporter.cs" />
     <Compile Include="BlockEntity\BEToolMold.cs" />
     <Compile Include="BlockEntity\BEToolrack.cs" />
-    <Compile Include="BlockEntity\BETransient.cs" />
     <Compile Include="BlockEntity\BEWateringCan.cs" />
     <Compile Include="BlockEntity\BEWindmillRotor.cs" />
     <Compile Include="BlockEntity\BEChisel.cs" />
@@ -168,6 +165,7 @@
     <Compile Include="BlockEntity\BlockSpawner.cs" />
     <Compile Include="Block\BlockAnvil.cs" />
     <Compile Include="Block\BlockBamboo.cs" />
+    <Compile Include="Block\BlockFarmland.cs" />
     <Compile Include="Block\BlockLeaves.cs" />
     <Compile Include="Block\BlockTrough.cs" />
     <Compile Include="Block\BlockTroughDoubleBlock.cs" />
@@ -237,6 +235,7 @@
     <Compile Include="Entities\EntityStrawDummy.cs" />
     <Compile Include="Item\ItemKnife.cs" />
     <Compile Include="Item\ItemPoultice.cs" />
+    <Compile Include="Item\ItemRustyGear.cs" />
     <Compile Include="Item\ItemSword.cs" />
     <Compile Include="Item\ItemLiquidPortion.cs" />
     <Compile Include="Item\ItemWoodenClub.cs" />

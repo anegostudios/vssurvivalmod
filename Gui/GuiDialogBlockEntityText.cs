@@ -8,6 +8,10 @@ namespace Vintagestory.GameContent
     {
         double textareaFixedY;
         BlockPos blockEntityPos;
+        public API.Common.Action<string> OnTextChanged;
+        public API.Common.Action OnCloseCancel;
+
+        bool didSave;
 
         public GuiDialogBlockEntityTextInput(string DialogTitle, BlockPos blockEntityPos, string text, ICoreClientAPI capi) : base(DialogTitle, capi)
         {
@@ -41,7 +45,7 @@ namespace Vintagestory.GameContent
                 .AddDialogTitleBar(DialogTitle, OnTitleBarClose)
                 .BeginChildElements(bgBounds)
                     .BeginClip(clippingBounds)
-                    .AddTextArea(textAreaBounds, OnTextChanged, CairoFont.TextInput(), "text")
+                    .AddTextArea(textAreaBounds, OnTextAreaChanged, CairoFont.TextInput(), "text")
                     .EndClip()
                     .AddVerticalScrollbar(OnNewScrollbarvalue, scrollbarBounds, "scrollbar")
                     .AddSmallButton("Cancel", OnButtonCancel, cancelButtonBounds)
@@ -70,10 +74,12 @@ namespace Vintagestory.GameContent
             SingleComposer.FocusElement(SingleComposer.GetTextArea("text").TabIndex);
         }
 
-        private void OnTextChanged(string value)
+        private void OnTextAreaChanged(string value)
         {
             GuiElementTextArea textArea = SingleComposer.GetTextArea("text");
             SingleComposer.GetScrollbar("scrollbar").SetNewTotalHeight((float)textArea.Bounds.fixedHeight);
+
+            OnTextChanged?.Invoke(textArea.GetText());
         }
 
         private void OnNewScrollbarvalue(float value)
@@ -103,7 +109,7 @@ namespace Vintagestory.GameContent
             }
 
             capi.Network.SendBlockEntityPacket(blockEntityPos.X, blockEntityPos.Y, blockEntityPos.Z, 1000, data);
-
+            didSave = true;
             TryClose();
             return true;
         }
@@ -112,6 +118,12 @@ namespace Vintagestory.GameContent
         {
             TryClose();
             return true;
+        }
+
+        public override void OnGuiClosed()
+        {
+            if (!didSave) OnCloseCancel?.Invoke();
+            base.OnGuiClosed();
         }
 
 

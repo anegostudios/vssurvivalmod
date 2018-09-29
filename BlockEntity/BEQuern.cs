@@ -92,6 +92,12 @@ namespace Vintagestory.GameContent
 
             quantityPlayersGrinding = playersGrinding.Count;
 
+            updateGrindingState(beforeGrinding);
+        }
+
+
+        void updateGrindingState(bool beforeGrinding)
+        {
             bool nowGrinding = IsGrinding;
 
             if (nowGrinding != beforeGrinding)
@@ -106,12 +112,19 @@ namespace Vintagestory.GameContent
                 if (nowGrinding)
                 {
                     ambientSound?.Start();
-                } else
+                }
+                else
                 {
                     ambientSound?.Stop();
                 }
+
+                if (api.Side == EnumAppSide.Server)
+                {
+                    MarkDirty();
+                }
             }
         }
+
 
 
         MeshData quernBaseMesh
@@ -401,6 +414,10 @@ namespace Vintagestory.GameContent
             if (worldForResolving.Side == EnumAppSide.Client)
             {
                 List<int> clientIds = new List<int>((tree["clientIdsGrinding"] as IntArrayAttribute).value);
+                bool wasGrinding = quantityPlayersGrinding > 0;
+
+                quantityPlayersGrinding = clientIds.Count;
+
                 for (int i = 0; i < playersGrinding.Count; i++)
                 {
                     IPlayer plr = playersGrinding[i];
@@ -420,6 +437,7 @@ namespace Vintagestory.GameContent
                     if (plr != null) playersGrinding.Add(plr);
                 }
                 
+                updateGrindingState(wasGrinding);
             }
             
 

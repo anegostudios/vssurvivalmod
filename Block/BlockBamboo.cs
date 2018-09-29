@@ -163,6 +163,9 @@ namespace Vintagestory.GameContent
             }
         }
 
+
+        
+
         public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing)
         {
             if (this != brownSeg3 && this != capi.World.GetBlock(new AssetLocation("bamboo-placed-green-segment3"))) return base.GetRandomColor(capi, pos, facing);

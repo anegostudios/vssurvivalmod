@@ -37,14 +37,18 @@ namespace Vintagestory.GameContent
         {
             ItemStack hotbarstack = byPlayer.InventoryManager.ActiveHotbarSlot.Itemstack;
 
-            if (hotbarstack.Class == EnumItemClass.Block && hotbarstack.Collectible.Code.Path.StartsWith("bloomerychimney"))
+            if (hotbarstack != null && hotbarstack.Class == EnumItemClass.Block && hotbarstack.Collectible.Code.Path.StartsWith("bloomerychimney"))
             {
                 Block aboveBlock = world.BlockAccessor.GetBlock(blockSel.Position.UpCopy());
                 if (aboveBlock.IsReplacableBy(hotbarstack.Block))
                 {
                     hotbarstack.Block.DoPlaceBlock(world, blockSel.Position.UpCopy(), BlockFacing.UP, hotbarstack);
                     world.PlaySoundAt(Sounds?.Place, blockSel.Position.X, blockSel.Position.Y + 1, blockSel.Position.Z, byPlayer, true, 16, 1);
+
+                    byPlayer.InventoryManager.ActiveHotbarSlot.TakeOut(1);
                 }
+
+
                 
                 return true;
             }

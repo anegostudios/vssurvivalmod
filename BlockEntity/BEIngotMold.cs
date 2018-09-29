@@ -49,18 +49,34 @@ namespace Vintagestory.GameContent
             get { return contentsRight.Collectible.GetTemperature(api.World, contentsRight); }
         }
 
-        public bool IsSolidLeft
+        public bool IsHardenedLeft
         {
             get {
                 return TemperatureLeft < 0.2f * contentsLeft?.Collectible.GetMeltingPoint(api.World, null, new DummySlot(contentsLeft));
             }
         }
 
-        public bool IsSolidRight
+        public bool IsHardenedRight
         {
             get
             {
                 return TemperatureRight < 0.2f * contentsRight?.Collectible.GetMeltingPoint(api.World, null, new DummySlot(contentsRight));
+            }
+        }
+
+
+        public bool IsLiquidLeft
+        {
+            get {
+                return TemperatureLeft > 0.8f * contentsLeft?.Collectible.GetMeltingPoint(api.World, null, new DummySlot(contentsLeft));
+            }
+        }
+
+        public bool IsLiquidRight
+        {
+            get
+            {
+                return TemperatureRight > 0.8f * contentsRight?.Collectible.GetMeltingPoint(api.World, null, new DummySlot(contentsRight));
             }
         }
 
@@ -190,7 +206,7 @@ namespace Vintagestory.GameContent
 
         public ItemStack GetLeftContents()
         {
-            if (contentsLeft != null && fillLevelLeft >= 100 && IsSolidLeft)
+            if (contentsLeft != null && fillLevelLeft >= 100 && IsHardenedLeft)
             {
                 ItemStack outstack = contentsLeft.Clone();
                 (outstack.Attributes["temperature"] as ITreeAttribute)?.RemoveAttribute("cooldownSpeed");
@@ -202,7 +218,7 @@ namespace Vintagestory.GameContent
 
         public ItemStack GetRightContents()
         {
-            if (contentsRight != null && fillLevelRight >= 100 && IsSolidRight)
+            if (contentsRight != null && fillLevelRight >= 100 && IsHardenedRight)
             {
                 ItemStack outstack = contentsRight.Clone();
                 (outstack.Attributes["temperature"] as ITreeAttribute)?.RemoveAttribute("cooldownSpeed");
@@ -510,15 +526,17 @@ namespace Vintagestory.GameContent
 
             if (contentsLeft != null)
             {
+                string state = IsLiquidLeft ? Lang.Get("liquid") : (IsHardenedLeft ? Lang.Get("hardened") : Lang.Get("soft"));
                 string temp = TemperatureLeft < 21 ? Lang.Get("Cold") : Lang.Get("{0} °C", (int)TemperatureLeft);
-                contents = string.Format("{0} units of {1} {2} ({3})\n", fillLevelLeft, IsSolidLeft ? "solidified" : "liquid", contentsLeft.GetName(), temp);
+                contents = string.Format("{0} units of {1} {2} ({3})\n", fillLevelLeft, state, contentsLeft.GetName(), temp);
             }
 
             if (contentsRight != null)
             {
+                string state = IsLiquidRight ? Lang.Get("liquid") : (IsHardenedRight ? Lang.Get("hardened") : Lang.Get("soft"));
                 string temp = TemperatureRight < 21 ? Lang.Get("Cold") : Lang.Get("{0} °C", (int)TemperatureRight);
 
-                contents += string.Format("{0} units of {1} {2} ({3})\n", fillLevelRight, IsSolidRight ? "solidified" : "liquid", contentsRight.GetName(), temp);
+                contents += string.Format("{0} units of {1} {2} ({3})\n", fillLevelRight, state, contentsRight.GetName(), temp);
             }
 
             return contents.Length == 0 ? "Empty" : contents;

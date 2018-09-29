@@ -66,6 +66,7 @@ namespace Vintagestory.GameContent
                 //itemslot.Take(1);
 
                 handling = EnumHandHandling.PreventDefault;
+                byEntity.Attributes.SetInt("aimingCancel", 1);
                 return;
             }
 
@@ -90,6 +91,7 @@ namespace Vintagestory.GameContent
                 itemslot.Itemstack.StackSize--;
 
                 handling = EnumHandHandling.PreventDefault;
+                byEntity.Attributes.SetInt("aimingCancel", 1);
                 return;
             }
 

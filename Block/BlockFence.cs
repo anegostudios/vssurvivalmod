@@ -59,9 +59,10 @@ namespace Vintagestory.GameContent
             if (block.IsSuitablePosition(world, blockSel.Position))
             {
                 world.BlockAccessor.SetBlock(block.BlockId, blockSel.Position);
+                return true;
             }
-            
-            return true;
+
+            return false;
         }
 
         public override void OnNeighourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)

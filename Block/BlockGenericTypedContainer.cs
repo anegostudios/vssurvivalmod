@@ -233,7 +233,7 @@ namespace Vintagestory.GameContent
 
             string type = stack.Attributes.GetString("type");
 
-            dsc.AppendLine("\n" + Lang.Get("Type: {0}", Lang.Get("generictype-" + type)));
+            dsc.AppendLine("\n" + Lang.Get("Type: {0}", Lang.Get("genericcontainer-" + type)));
         }
 
 

@@ -235,6 +235,8 @@ namespace Vintagestory.ServerMods
         {
             if (targetPos.X < 0 || targetPos.Y < 0 || targetPos.Z < 0 || targetPos.X >= api.MapSizeX || targetPos.Y >= api.MapSizeY || targetPos.Z >= api.MapSizeZ) return false;
 
+            // Should be like this but seems to work just fine anyway? o.O
+            //int currentblockId = (api is IBulkBlockAccessor) ? ((IBulkBlockAccessor)api).GetStagedBlockId(targetPos) : api.GetBlockId(targetPos);
             int currentblockId = api.GetBlockId(targetPos);
             if (currentblockId == -1) return false;
 
