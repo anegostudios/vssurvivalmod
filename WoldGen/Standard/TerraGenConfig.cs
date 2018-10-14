@@ -46,7 +46,7 @@ namespace Vintagestory.ServerMods
         public static int oreMapSubScale = 8;
 
         public static int oreMapPadding = 0;
-        public static int climateMapPadding = 0;
+        public static int climateMapPadding = 1;
 
         public static int geoProvMapPadding = 3;
         public static int geoProvMapScale = 128;
@@ -54,7 +54,7 @@ namespace Vintagestory.ServerMods
 
         public static int landformMapPadding = 3;
         public static int landformMapScale = 16;
-        public static int landFormSmothingRadius = 2;
+        public static int landFormSmoothingRadius = 2;
 
         public static int seaLevel = 110;
 
@@ -97,9 +97,9 @@ namespace Vintagestory.ServerMods
 
             return (int)Math.Max(0, f - Math.Max(0, 50 * (posYRel - 0.5f)) * weight);
         }
+        
 
-
-        public static int GetFertility2(int rain, int unscaledTemp, float posYRel)
+        public static int GetFertilityFromUnscaledTemp(int rain, int unscaledTemp, float posYRel)
         {
             float f = Math.Min(255, rain / 2f + Math.Max(0, rain * unscaledTemp / 512f)); // + Math.Max(0, 100 - 60 * (rock.SoilpH - 6.5f)));
 

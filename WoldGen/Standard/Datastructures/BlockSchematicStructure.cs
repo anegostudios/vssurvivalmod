@@ -151,7 +151,7 @@ namespace Vintagestory.ServerMods.NoObf
             float temperature = TerraGenConfig.GetScaledAdjustedTemperatureFloat(unscaledTemp, posY - TerraGenConfig.seaLevel);
             float rainRel = TerraGenConfig.GetRainFall(unscaledRain, posY) / 255f;
             float heightRel = ((float)posY - TerraGenConfig.seaLevel) / ((float)mapheight - TerraGenConfig.seaLevel);
-            float fertilityRel = TerraGenConfig.GetFertility2((int)(rainRel * 255), unscaledTemp, heightRel) / 255f;
+            float fertilityRel = TerraGenConfig.GetFertilityFromUnscaledTemp((int)(rainRel * 255), unscaledTemp, heightRel) / 255f;
 
             for (int j = forDepth; j < blockLayerConfig.Blocklayers.Length; j++)
             {
@@ -164,7 +164,7 @@ namespace Vintagestory.ServerMods.NoObf
                     (float)posY / mapheight <= bl.MaxY
                 )
                 {
-                    ushort blockId = bl.GetBlockId(temperature, rainRel, fertilityRel, firstBlockId);
+                    ushort blockId = bl.GetBlockId(0.1, temperature, rainRel, fertilityRel, firstBlockId);
                     if (blockId != 0)
                     {
                         return blocks[blockId];

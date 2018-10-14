@@ -63,7 +63,16 @@ namespace Vintagestory.GameContent
             }
 
             base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, ref handHandling);
+        }
 
+        public override bool OnHeldInteractStep(float secondsUsed, IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        {
+            if (blockSel != null && (byEntity.World.BlockAccessor.GetBlock(blockSel.Position) as BlockBucket) != null)
+            {
+                return false;
+            }
+
+            return base.OnHeldInteractStep(secondsUsed, slot, byEntity, blockSel, entitySel);
         }
 
 

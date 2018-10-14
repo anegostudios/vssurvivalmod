@@ -29,7 +29,7 @@ namespace Vintagestory.GameContent
         {
             smallSparks = new SimpleParticleProperties(
                 1, 1,
-                ColorUtil.ToRgba(255, 0, 233, 255),
+                ColorUtil.ToRgba(255, 255, 233, 0),
                 new Vec3d(), new Vec3d(),
                 new Vec3f(-3f, 5f, -3f),
                 new Vec3f(3f, 8f, 3f),

@@ -44,7 +44,37 @@ namespace Vintagestory.GameContent
                 }
 
                 return;
-            }            
+            }
+
+            // TODO: merge those 2 things into one generic LiquidContainer block
+            if (sourceSlot.Itemstack?.Block is BlockBowl && sourceSlot.Itemstack.Block.LastCodePart() == "honey")
+            {
+                ItemStack honeystack = new ItemStack(world.GetItem(new AssetLocation("honeyportion")));
+                bool stackable = !Empty && itemstack.Equals(world, honeystack, GlobalConstants.IgnoredStackAttributes);
+
+                if ((Empty || stackable) && honeystack != null)
+                {
+                    if (stackable) this.itemstack.StackSize++;
+                    else this.itemstack = honeystack;
+
+                    MarkDirty();
+                    ItemStack bowlStack = new ItemStack(world.GetBlock(new AssetLocation("bowl-burned")));
+                    if (sourceSlot.StackSize == 1)
+                    {
+                        sourceSlot.Itemstack = bowlStack;
+                    } else
+                    {
+                        sourceSlot.Itemstack.StackSize--;
+                        if (!op.ActingPlayer.InventoryManager.TryGiveItemstack(bowlStack))
+                        {
+                            world.SpawnItemEntity(bowlStack, op.ActingPlayer.Entity.Pos.XYZ);
+                        }
+                    }
+                    sourceSlot.MarkDirty();
+                }
+
+                return;
+            }
 
             base.ActivateSlotLeftClick(sourceSlot, ref op);
         }
@@ -74,6 +104,33 @@ namespace Vintagestory.GameContent
                     }
                 }
                 
+
+                return;
+            }
+
+            ItemStack honeystack = new ItemStack(world.GetItem(new AssetLocation("honeyportion")));
+            if (sourceSlot.Itemstack?.Block is BlockBowl && sourceSlot.Itemstack.Block.LastCodePart() == "burned")
+            {
+                if (itemstack != null && itemstack.Equals(world, honeystack, GlobalConstants.IgnoredStackAttributes))
+                {
+                    ItemStack bowlStack = new ItemStack(world.GetBlock(new AssetLocation("bowl-honey")));
+
+                    if (sourceSlot.StackSize == 1)
+                    {
+                        sourceSlot.Itemstack = bowlStack;
+                    }
+                    else
+                    {
+                        sourceSlot.Itemstack.StackSize--;
+                        if (!op.ActingPlayer.InventoryManager.TryGiveItemstack(bowlStack))
+                        {
+                            world.SpawnItemEntity(bowlStack, op.ActingPlayer.Entity.Pos.XYZ);
+                        }
+                    }
+
+                    sourceSlot.MarkDirty();
+                    TakeOut(1);
+                }
 
                 return;
             }

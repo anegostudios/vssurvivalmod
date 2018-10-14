@@ -25,7 +25,10 @@ namespace Vintagestory.GameContent
         {
             base.OnBlockPlaced(byItemStack);
 
-            SecondsWateringLeft = (byItemStack.Block as BlockWateringCan).GetRemainingWateringSeconds(byItemStack);
+            if (byItemStack != null)
+            {
+                SecondsWateringLeft = (byItemStack.Block as BlockWateringCan).GetRemainingWateringSeconds(byItemStack);
+            }
         }
 
         public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)

@@ -289,7 +289,7 @@ namespace Vintagestory.ServerMods
         {
             Entity entity = api.ClassRegistry.CreateEntity(entityType);
             entity.ServerPos.SetPos(spawnPosition);
-            entity.ServerPos.SetYaw(rnd.Next() * GameMath.TWOPI);
+            entity.ServerPos.SetYaw((float)rnd.NextDouble() * GameMath.TWOPI);
             entity.Pos.SetFrom(entity.ServerPos);
             entity.Attributes.SetString("origin", "worldgen");
             return entity;

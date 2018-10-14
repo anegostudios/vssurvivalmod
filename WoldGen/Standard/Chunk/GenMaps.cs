@@ -80,6 +80,13 @@ namespace Vintagestory.ServerMods
             mapRegion.GeologicProvinceMap.Size = noiseSizeGeoProv + 2 * pad;
             mapRegion.GeologicProvinceMap.TopLeftPadding = mapRegion.GeologicProvinceMap.BottomRightPadding = pad;
 
+            /*
+             *             pad = TerraGenConfig.climateMapPadding;
+            mapRegion.ClimateMap.Size = noiseSizeClimate + 2* pad;
+            mapRegion.ClimateMap.BottomRightPadding = pad;
+            mapRegion.ClimateMap.TopLeftPadding = pad;
+            mapRegion.ClimateMap.Data = climateGen.GenLayer(regionX * noiseSizeClimate - pad, regionZ * noiseSizeClimate - pad, noiseSizeClimate+2*pad, noiseSizeClimate + 2 * pad);
+*/
             mapRegion.ClimateMap.Size = noiseSizeClimate + 1;
             mapRegion.ClimateMap.BottomRightPadding = 1;
             mapRegion.ClimateMap.Data = climateGen.GenLayer(regionX * noiseSizeClimate, regionZ * noiseSizeClimate, noiseSizeClimate+1, noiseSizeClimate+1);
@@ -174,7 +181,7 @@ namespace Vintagestory.ServerMods
         }*/
 
 
-        public static MapLayerBase GetGeologicProvinceMap(long seed, ICoreServerAPI api)
+            public static MapLayerBase GetGeologicProvinceMap(long seed, ICoreServerAPI api)
         {
             MapLayerBase provinces = new MapLayerGeoProvince(seed + 5, api);
             provinces.DebugDrawBitmap(3, 0, 0, "Geologic Province 1 - WobbleProvinces");

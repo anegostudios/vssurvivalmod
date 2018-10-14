@@ -13,17 +13,18 @@ namespace Vintagestory.GameContent
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref EnumHandling handled)
         {
             handled = EnumHandling.PreventDefault;
-            BlockFacing[] horVer = Block.SuggestedHVOrientation(byPlayer, blockSel);
+            //BlockFacing[] horVer = Block.SuggestedHVOrientation(byPlayer, blockSel);
 
             string rotation = "ud";
-            if (horVer[1] == null)
+            //if (horVer[1] == null)
             {
-                switch (horVer[0].Axis)
+                switch (blockSel.Face.Axis/* horVer[0].Axis*/)
                 {
                     case EnumAxis.X: rotation = "we"; break;
                     case EnumAxis.Z: rotation = "ns"; break;
                 }
             }
+
             Block orientedBlock = world.BlockAccessor.GetBlock(block.CodeWithParts(rotation));
 
             if (orientedBlock.IsSuitablePosition(world, blockSel.Position))

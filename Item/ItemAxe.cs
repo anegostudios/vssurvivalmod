@@ -103,9 +103,10 @@ namespace Vintagestory.GameContent
             HashSet<BlockPos> checkedPositions = new HashSet<BlockPos>();
             Stack<BlockPos> foundPositions = new Stack<BlockPos>();
 
-            Block block = world.BlockAccessor.GetBlock(startPos);
-
             treeType = "";
+
+            Block block = world.BlockAccessor.GetBlock(startPos);
+            if (block.Code == null) return foundPositions;
 
             if (block.Code.Path.StartsWith("beehive-inlog-" + treeType) || block.Code.Path.StartsWith("log-grown") || block.Code.Path.StartsWith("bamboo-grown-brown-segment") || block.Code.Path.StartsWith("bamboo-grown-green-segment"))
             {
@@ -143,6 +144,7 @@ namespace Vintagestory.GameContent
                     if (checkedPositions.Contains(neibPos)) continue;
 
                     block = world.BlockAccessor.GetBlock(neibPos);
+                    if (block.Code == null) continue;
 
                     if (block.Code.Path.StartsWith(logcode) || block.Code.Path.StartsWith("bamboo-grown-brown-segment") || block.Code.Path.StartsWith("bamboo-grown-green-segment"))
                     {

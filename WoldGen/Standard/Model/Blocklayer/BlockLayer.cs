@@ -125,7 +125,7 @@ namespace Vintagestory.ServerMods.NoObf
             }
         }
 
-        public ushort GetBlockId(float temp, float rainRel, float fertilityRel, ushort firstBlockId)
+        public ushort GetBlockId(double posRand, float temp, float rainRel, float fertilityRel, ushort firstBlockId)
         {
             if (BlockCode != null)
             {
@@ -143,7 +143,11 @@ namespace Vintagestory.ServerMods.NoObf
             {
                 BlockLayerCodeByMin blcv = BlockCodeByMin[i];
 
-                if (blcv.MinTemp <= temp && blcv.MinRain <= rainRel && blcv.MinFertility <= fertilityRel && blcv.MaxFertility >= fertilityRel)
+                float tempDist = Math.Abs(temp - GameMath.Max(temp, blcv.MinTemp));
+                float rainDist = Math.Abs(rainRel - GameMath.Max(rainRel, blcv.MinRain));
+                float fertDist = Math.Abs(fertilityRel - GameMath.Clamp(fertilityRel, blcv.MinFertility, blcv.MaxFertility));
+
+                if (tempDist + rainDist + fertDist <= posRand)
                 {
                     ushort mapppedBlockId = blcv.BlockId;
                     if (blcv.BlockIdMapping != null)

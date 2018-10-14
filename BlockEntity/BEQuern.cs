@@ -98,6 +98,8 @@ namespace Vintagestory.GameContent
 
         void updateGrindingState(bool beforeGrinding)
         {
+            if (api?.World == null) return;
+
             bool nowGrinding = IsGrinding;
 
             if (nowGrinding != beforeGrinding)

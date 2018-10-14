@@ -486,7 +486,7 @@ namespace Vintagestory.GameContent
 
             ItemStack contentStack = GetContent(byEntity.World, itemslot.Itemstack);
 
-            bool isEmpty = contentStack == null;
+            bool isEmpty = contentStack == null || contentStack.StackSize == 0;
 
 
             if (!TryFillBucketFromBlock(itemslot, byEntity, blockSel.Position))
@@ -494,11 +494,11 @@ namespace Vintagestory.GameContent
                 BlockBucket targetBucket = targetedBlock as BlockBucket;
                 if (targetBucket != null)
                 {
+                    WaterTightContainableProps props = GetContentProps(byEntity.World, itemslot.Itemstack);
+
                     if (targetBucket.TryAddContent(byEntity.World, blockSel.Position, contentStack, 1) > 0)
                     {
                         TryTakeContent(byEntity.World, itemslot.Itemstack, 1);
-                        WaterTightContainableProps props = GetContentProps(byEntity.World, itemslot.Itemstack);
-
                         byEntity.World.PlaySoundAt(props.FillSpillSound, blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z, byPlayer);
                     }
                        

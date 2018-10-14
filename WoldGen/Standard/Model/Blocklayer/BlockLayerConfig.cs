@@ -10,7 +10,7 @@ namespace Vintagestory.ServerMods.NoObf
 
     public class BlockLayerConfig
     {
-        public int blockLayerTransitionSize;
+        public float blockLayerTransitionSize;
 
         public BlockLayer[] Blocklayers;
 

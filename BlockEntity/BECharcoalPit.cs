@@ -127,7 +127,7 @@ namespace Vintagestory.GameContent
             Queue<BlockPos> bfsQueue = new Queue<BlockPos>();
             bfsQueue.Enqueue(pos);
 
-            int maxHalfSize = 4;
+            int maxHalfSize = 6;
             ushort firewoodBlockId = api.World.GetBlock(new AssetLocation("firewoodpile")).BlockId;
 
             Vec2i curQuantityAndYPos = new Vec2i();
@@ -162,7 +162,7 @@ namespace Vintagestory.GameContent
                     // Only traverse inside the firewood pile
                     if (nBlock.BlockId != firewoodBlockId) continue;
 
-                    // Only traverse within a 8x8x8 block cube
+                    // Only traverse within a 12x12x12 block cube
                     bool inCube = Math.Abs(npos.X - pos.X) <= maxHalfSize && Math.Abs(npos.Y - pos.Y) <= maxHalfSize && Math.Abs(npos.Z - pos.Z) <= maxHalfSize;
 
                     if (inCube && !visitedPositions.Contains(npos))
@@ -206,7 +206,7 @@ namespace Vintagestory.GameContent
             ushort firewoodBlockId = api.World.GetBlock(new AssetLocation("firewoodpile")).BlockId;
             ushort charcoalPitBlockId = api.World.GetBlock(new AssetLocation("charcoalpit")).BlockId;
 
-            int maxHalfSize = 4;
+            int maxHalfSize = 6;
             
 
             while (bfsQueue.Count > 0)
@@ -233,7 +233,7 @@ namespace Vintagestory.GameContent
                     // Only traverse inside the firewood pile
                     if (nBlock.BlockId != firewoodBlockId) continue;
 
-                    // Only traverse within a 8x8x8 block cube
+                    // Only traverse within a 12x12x12 block cube
                     bool inCube = Math.Abs(npos.X - pos.X) <= maxHalfSize && Math.Abs(npos.Y - pos.Y) <= maxHalfSize && Math.Abs(npos.Z - pos.Z) <= maxHalfSize;
 
                     if (inCube && !visitedPositions.Contains(npos))

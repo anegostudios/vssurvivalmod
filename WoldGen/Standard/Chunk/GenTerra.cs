@@ -301,7 +301,7 @@ namespace Vintagestory.ServerMods
 
             // 2. Create
             map = LandformMapByRegion[regionZ * regionMapSize + regionX] 
-                = new LerpedWeightedIndex2DMap(mapchunk.MapRegion.LandformMap.Data, mapchunk.MapRegion.LandformMap.Size, TerraGenConfig.landFormSmothingRadius);
+                = new LerpedWeightedIndex2DMap(mapchunk.MapRegion.LandformMap.Data, mapchunk.MapRegion.LandformMap.Size, TerraGenConfig.landFormSmoothingRadius);
 
             return map;
         }

@@ -90,7 +90,11 @@ namespace Vintagestory.ServerMods
                     break;
 
                 case "regen":
-                    TestWgen(player, arguments);
+                    RegenChunksAroundPlayer(player, arguments);
+                    break;
+
+                case "regenc":
+                    RegenChunks(player, arguments);
                     break;
 
                 case "del":
@@ -144,7 +148,12 @@ namespace Vintagestory.ServerMods
             Regen(player, arguments, true);
         }
 
-        private void TestWgen(IServerPlayer player, CmdArgs arguments)
+        private void RegenChunksAroundPlayer(IServerPlayer player, CmdArgs arguments)
+        {
+            RegenChunks(player, arguments, true);
+        }
+
+        private void RegenChunks(IServerPlayer player, CmdArgs arguments, bool aroundPlayer = false)
         {
             NoiseLandforms.ReloadLandforms(api);
 
@@ -154,13 +163,19 @@ namespace Vintagestory.ServerMods
             api.ModLoader.GetModSystem<GenTerra>().GameWorldLoaded();
             api.ModLoader.GetModSystem<GenBlockLayers>().GameWorldLoaded();
 
-            Regen(player, arguments, false);
+            Regen(player, arguments, false, aroundPlayer);
         }
 
-        void Regen(IServerPlayer player, CmdArgs arguments, bool onlydelete)
+        void Regen(IServerPlayer player, CmdArgs arguments, bool onlydelete, bool aroundPlayer = false)
         {
             int chunkMidX = api.WorldManager.MapSizeX / api.WorldManager.ChunkSize / 2;
             int chunkMidZ = api.WorldManager.MapSizeZ / api.WorldManager.ChunkSize / 2;
+
+            if (aroundPlayer)
+            {
+                chunkMidX = (int)player.Entity.Pos.X / api.WorldManager.ChunkSize;
+                chunkMidZ = (int)player.Entity.Pos.Z / api.WorldManager.ChunkSize;
+            }
 
             List<Vec2i> coords = new List<Vec2i>();
 
@@ -783,7 +798,7 @@ namespace Vintagestory.ServerMods
 
                         IntMap intmap = mapRegion.LandformMap;
 
-                        LerpedWeightedIndex2DMap map = new LerpedWeightedIndex2DMap(intmap.Data, mapRegion.LandformMap.Size, TerraGenConfig.landFormSmothingRadius);
+                        LerpedWeightedIndex2DMap map = new LerpedWeightedIndex2DMap(intmap.Data, mapRegion.LandformMap.Size, TerraGenConfig.landFormSmoothingRadius);
 
                         WeightedIndex[] indices = map[intmap.TopLeftPadding + posXInRegion, intmap.TopLeftPadding + posZInRegion];
 

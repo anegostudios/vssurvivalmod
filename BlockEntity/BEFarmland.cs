@@ -156,8 +156,8 @@ namespace Vintagestory.GameContent
 
             double hoursPassed = api.World.Calendar.TotalHours - totalHoursFertilityCheck;
 
-            // Let's increase fertility every 2 - 3 game hours
-            double hoursRequired = (2 + rand.NextDouble());
+            // Let's increase fertility every 3-4 game hours
+            double hoursRequired = (3 + rand.NextDouble());
             int fertilityGained = 0;
             bool growTallGrass = false;
             while (hoursPassed > hoursRequired)

@@ -90,7 +90,7 @@ namespace Vintagestory.GameContent
                     .AddDynamicText("", CairoFont.WhiteDetailText(), EnumTextOrientation.Left, traderMoneyBounds , 1, "traderMoneyText")
 
                     .AddSmallButton("Goodbye!", OnByeClicked, leftButton.FixedUnder(playerMoneyBounds, 30).WithFixedPadding(8, 5))
-                    .AddSmallButton("Buy / Sell", OnByeSellClicked, rightButton.FixedUnder(traderMoneyBounds, 30).WithFixedPadding(8, 5), EnumButtonStyle.Normal, EnumTextOrientation.Left, "buysellButton")
+                    .AddSmallButton("Buy / Sell", OnBuySellClicked, rightButton.FixedUnder(traderMoneyBounds, 30).WithFixedPadding(8, 5), EnumButtonStyle.Normal, EnumTextOrientation.Left, "buysellButton")
                     
 
                 .EndChildElements()
@@ -124,7 +124,7 @@ namespace Vintagestory.GameContent
             CalcAndUpdateAssetsDisplay();
         }
 
-        private bool OnByeSellClicked()
+        private bool OnBuySellClicked()
         {
             EnumTransactionResult result = traderInventory.TryBuySell(capi.World.Player);
             if (result == EnumTransactionResult.Success)
