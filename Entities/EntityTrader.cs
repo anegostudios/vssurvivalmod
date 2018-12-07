@@ -281,7 +281,11 @@ namespace Vintagestory.GameContent
         public override void OnEntitySpawn()
         {
             base.OnEntitySpawn();
-            
+
+            GetBehavior<EntityBehaviorTaskAI>().taskManager.ShouldExecuteTask =
+                (task) => tradingWith == null || (task is AiTaskIdle || task is AiTaskSeekEntity || task is AiTaskGotoEntity);
+
+
             if (World.Api.Side == EnumAppSide.Server)
             {
                 RefreshBuyingSellingInventory();
@@ -419,11 +423,7 @@ namespace Vintagestory.GameContent
                 tradingWith = null;
             }
         }
-
-        public override bool ShouldExecuteTask(IAiTask task)
-        {
-            return tradingWith == null || (task is AiTaskIdle || task is AiTaskSeekEntity || task is AiTaskGotoEntity);
-        }
+        
 
         public override void FromBytes(BinaryReader reader, bool forClient)
         {

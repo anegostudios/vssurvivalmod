@@ -72,7 +72,7 @@ namespace Vintagestory.GameContent
             prog.RgbaAmbientIn = rpi.AmbientColor;
             prog.RgbaFogIn = rpi.FogColor;
             prog.FogMinIn = rpi.FogMin;
-            prog.WaterWave = 0;
+            prog.DontWarpVertices = 0;
             prog.FogDensityIn = rpi.FogDensity;
             prog.RgbaTint = ColorUtil.WhiteArgbVec;
             prog.RgbaLightIn = lightrgbs;
@@ -83,6 +83,8 @@ namespace Vintagestory.GameContent
                 .Translate(pos.X - camPos.X, pos.Y - camPos.Y, pos.Z - camPos.Z)
                 .Values
             ;
+            prog.AddRenderFlags = 0;
+
             prog.ViewMatrix = rpi.CameraMatrixOriginf;
             prog.ProjectionMatrix = rpi.CurrentProjectionMatrix;
             rpi.RenderMesh(workItemMeshRef);

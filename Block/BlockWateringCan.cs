@@ -33,7 +33,7 @@ namespace Vintagestory.GameContent
         }
         
 
-        public override void OnHeldInteractStart(IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handHandling)
+        public override void OnHeldInteractStart(IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handHandling)
         {
             if (blockSel == null) return;
             if (byEntity.Controls.Sneak) return;
@@ -41,7 +41,7 @@ namespace Vintagestory.GameContent
             slot.Itemstack.TempAttributes.SetFloat("secondsUsed", 0);
 
             IPlayer byPlayer = null;
-            if (byEntity is IEntityPlayer) byPlayer = byEntity.World.PlayerByUid(((IEntityPlayer)byEntity).PlayerUID);
+            if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
 
             if (byEntity.World.BlockAccessor.GetBlock(blockSel.Position).IsWater())
             {
@@ -148,7 +148,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override bool OnHeldInteractStep(float secondsUsed, IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override bool OnHeldInteractStep(float secondsUsed, IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
             if (blockSel == null) return false;
             if (slot.Itemstack.TempAttributes.GetInt("refilled") > 0) return false;
@@ -201,7 +201,7 @@ namespace Vintagestory.GameContent
             }
 
             IPlayer byPlayer = null;
-            if (byEntity is IEntityPlayer) byPlayer = byEntity.World.PlayerByUid(((IEntityPlayer)byEntity).PlayerUID);
+            if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
 
 
             if (secondsUsed > 1 / speed)
@@ -215,13 +215,13 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        public override bool OnHeldInteractCancel(float secondsUsed, IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)
+        public override bool OnHeldInteractCancel(float secondsUsed, IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)
         {
             return base.OnHeldInteractCancel(secondsUsed, slot, byEntity, blockSel, entitySel, cancelReason);
         }
 
 
-        public override void OnHeldInteractStop(float secondsUsed, IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override void OnHeldInteractStop(float secondsUsed, IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
             pouringLoop?.Stop();
             pouringLoop?.Dispose();

@@ -171,9 +171,9 @@ namespace Vintagestory.GameContent
         public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing)
         {
             BlockEntityChisel be = capi.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityChisel;
-            if (be?.Materials != null && be.Materials.Length > 0)
+            if (be?.MaterialIds != null && be.MaterialIds.Length > 0)
             {
-                Block block = capi.World.GetBlock(be.Materials[0]);
+                Block block = capi.World.GetBlock(be.MaterialIds[0]);
                 return block.GetRandomColor(capi, pos, facing);
             }
 
@@ -191,9 +191,9 @@ namespace Vintagestory.GameContent
         public override int GetColor(ICoreClientAPI capi, BlockPos pos)
         {
             BlockEntityChisel be = capi.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityChisel;
-            if (be?.Materials != null && be.Materials.Length > 0)
+            if (be?.MaterialIds != null && be.MaterialIds.Length > 0)
             {
-                Block block = capi.World.GetBlock(be.Materials[0]);
+                Block block = capi.World.GetBlock(be.MaterialIds[0]);
                 return block.GetColor(capi, pos);
             }
 

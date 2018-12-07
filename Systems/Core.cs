@@ -320,7 +320,7 @@ namespace Vintagestory.GameContent
             api.RegisterItemClass("ItemShears", typeof(ItemShears));
             api.RegisterItemClass("ItemCattailRoot", typeof(ItemCattailRoot));
             api.RegisterItemClass("ItemClay", typeof(ItemClay));
-            api.RegisterItemClass("ItemLore", typeof(ItemLore));
+            api.RegisterItemClass("ItemLore", typeof(ItemRandomLore));
             api.RegisterItemClass("ItemFlint", typeof(ItemFlint));
             api.RegisterItemClass("ItemSpear", typeof(ItemSpear));
             api.RegisterItemClass("ItemAxe", typeof(ItemAxe));
@@ -344,7 +344,7 @@ namespace Vintagestory.GameContent
             api.RegisterItemClass("ItemSword", typeof(ItemSword));
             api.RegisterItemClass("ItemPoultice", typeof(ItemPoultice));
             api.RegisterItemClass("ItemRustyGear", typeof(ItemRustyGear));
-            
+            api.RegisterItemClass("ItemJournalEntry", typeof(ItemJournalEntry));
         }
 
 
@@ -352,7 +352,8 @@ namespace Vintagestory.GameContent
 
         private void RegisterDefaultEntities()
         {    
-            api.RegisterEntity("EntityNpc", typeof(EntityPlayerNpc));
+            api.RegisterEntity("EntityPlayerBot", typeof(EntityPlayerBot));
+            api.RegisterEntity("EntityAnimalBot", typeof(EntityAnimalBot));
             api.RegisterEntity("EntityProjectile", typeof(EntityProjectile));
             api.RegisterEntity("EntityThrownStone", typeof(EntityThrownStone));
             api.RegisterEntity("EntityBeeMob", typeof(EntityBeeMob));
@@ -360,6 +361,7 @@ namespace Vintagestory.GameContent
             api.RegisterEntity("EntityThrownBeenade", typeof(EntityThrownBeenade));
             api.RegisterEntity("EntityTrader", typeof(EntityTrader));
             api.RegisterEntity("EntityStrawDummy", typeof(EntityStrawDummy));
+            api.RegisterEntity("EntityGlowingAgent", typeof(EntityGlowingAgent));
         }
 
 

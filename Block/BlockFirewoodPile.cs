@@ -75,11 +75,11 @@ namespace Vintagestory.GameContent
                 BlockEntityFirewoodPile pile = (BlockEntityFirewoodPile)be;
                 if (player == null || player.WorldData.CurrentGameMode != EnumGameMode.Creative)
                 {
-                    pile.inventory.GetSlot(0).Itemstack = (ItemStack)slot.TakeOut(2);
+                    pile.inventory[0].Itemstack = (ItemStack)slot.TakeOut(2);
                     slot.MarkDirty();
                 } else
                 {
-                    pile.inventory.GetSlot(0).Itemstack = (ItemStack)slot.Itemstack.Clone();
+                    pile.inventory[0].Itemstack = (ItemStack)slot.Itemstack.Clone();
                 }
 
                 pile.MarkDirty();

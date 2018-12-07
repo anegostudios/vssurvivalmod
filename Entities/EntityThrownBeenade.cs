@@ -21,7 +21,7 @@ namespace Vintagestory.GameContent
 
         CollisionTester collTester = new CollisionTester();
 
-        public IEntity FiredBy;
+        public Entity FiredBy;
         internal float Damage;
         public ItemStack ProjectileStack;
 
@@ -77,7 +77,7 @@ namespace Vintagestory.GameContent
 
             if (World is IServerWorldAccessor)
             {
-                IEntity entity = World.GetNearestEntity(ServerPos.XYZ, 5f, 5f, (e) => {
+                Entity entity = World.GetNearestEntity(ServerPos.XYZ, 5f, 5f, (e) => {
                     if (e.EntityId == this.EntityId || (FiredBy != null && e.EntityId == FiredBy.EntityId && World.ElapsedMilliseconds - msLaunch < 500) || !e.IsInteractable)
                     {
                         return false;

@@ -44,10 +44,10 @@ namespace Vintagestory.GameContent
             return base.OnBlockBreaking(player, blockSel, itemslot, remainingResistance, dt / treeTesistance, counter);
         }
 
-        public override bool OnBlockBrokenWith(IWorldAccessor world, IEntity byEntity, IItemSlot itemslot, BlockSelection blockSel)
+        public override bool OnBlockBrokenWith(IWorldAccessor world, Entity byEntity, IItemSlot itemslot, BlockSelection blockSel)
         {
             IPlayer byPlayer = null;
-            if (byEntity is IEntityPlayer) byPlayer = byEntity.World.PlayerByUid(((IEntityPlayer)byEntity).PlayerUID);
+            if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
 
             ITreeAttribute tempAttr = itemslot.Itemstack.TempAttributes;
             //tempAttr.SetInt("breakCounter", 0);

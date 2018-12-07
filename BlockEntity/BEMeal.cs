@@ -65,7 +65,7 @@ namespace Vintagestory.GameContent
                 ItemStack[] stacks = blockmeal.GetContents(api.World, byItemStack);
                 for (int i = 0; i < stacks.Length; i++)
                 {
-                    Inventory.GetSlot(i).Itemstack = stacks[i];
+                    Inventory[i].Itemstack = stacks[i];
                 }
 
                 RecipeCode = blockmeal.GetRecipeCode(api.World, byItemStack);

@@ -232,7 +232,12 @@
     <Compile Include="Block\BlockWaterPlant.cs" />
     <Compile Include="Block\BlockChisel.cs" />
     <Compile Include="Block\BlockWithGrassOverlay.cs" />
+    <Compile Include="Entities\EntityAnimalBot.cs" />
+    <Compile Include="Entities\EntityGlowingAgent.cs" />
     <Compile Include="Entities\EntityStrawDummy.cs" />
+    <Compile Include="Entity\AITask\AiTaskButterflyFeedOnFlowers.cs" />
+    <Compile Include="Entity\AITask\AiTaskButterflyWander.cs" />
+    <Compile Include="Item\ItemJournalEntry.cs" />
     <Compile Include="Item\ItemKnife.cs" />
     <Compile Include="Item\ItemPoultice.cs" />
     <Compile Include="Item\ItemRustyGear.cs" />
@@ -283,7 +288,7 @@
     <Compile Include="Item\ItemHoneyComb.cs" />
     <Compile Include="Item\ItemIngot.cs" />
     <Compile Include="Item\ItemLootRandomizer.cs" />
-    <Compile Include="Item\ItemLore.cs" />
+    <Compile Include="Item\ItemRandomLore.cs" />
     <Compile Include="Item\ItemMetalPlate.cs" />
     <Compile Include="Item\ItemOpenedBeenade.cs" />
     <Compile Include="Item\ItemOre.cs" />
@@ -297,6 +302,7 @@
     <Compile Include="Item\ItemTemporalGear.cs" />
     <Compile Include="Item\ItemWorkItem.cs" />
     <Compile Include="Item\ItemStackRandomizer.cs" />
+    <Compile Include="Systems\GameEffects.cs" />
     <Compile Include="Systems\Journal.cs" />
     <Compile Include="Systems\LootRandomizer.cs" />
     <Compile Include="Systems\MechanicalPower\MechanicalPower.cs" />
@@ -307,6 +313,7 @@
     <Compile Include="Systems\MechanicalPower\Network\MechanicalNetwork.cs" />
     <Compile Include="Systems\MechanicalPower\Network\MechNetworkManager.cs" />
     <Compile Include="Systems\MechanicalPower\Renderer\MechNetworkRenderer.cs" />
+    <Compile Include="Systems\NpcControl.cs" />
     <Compile Include="Systems\SaplingControl.cs" />
     <Compile Include="Systems\Sleeping.cs" />
     <Compile Include="Systems\TeleporterManager.cs" />

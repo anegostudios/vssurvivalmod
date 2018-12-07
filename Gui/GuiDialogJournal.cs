@@ -10,15 +10,10 @@ using Vintagestory.API.Datastructures;
 
 namespace Vintagestory.GameContent
 {
-    public class JournalItem
-    {
-        public string Title;
-        public string[] Pieces;
-    }
 
     public class GuiDialogJournal : GuiDialogGeneric
     {
-        List<JournalItem> journalitems = new List<JournalItem>();
+        List<JournalEntry> journalitems = new List<JournalEntry>();
         string[] pages;
         int currentLoreItemIndex;
         int page;
@@ -29,20 +24,15 @@ namespace Vintagestory.GameContent
             get { return null; }
         }
 
-        public GuiDialogJournal(TreeAttribute tree, ICoreClientAPI capi) : base("Journal", capi)
+        public GuiDialogJournal(List<JournalEntry> journalitems, ICoreClientAPI capi) : base("Journal", capi)
         {
-            foreach (var val in tree)
-            {
-                string title = val.Key;
-                string[] pieces = (val.Value as StringArrayAttribute).value;
-                journalitems.Add(new JournalItem() { Title = title, Pieces = pieces });
-            }
+            this.journalitems = journalitems;
         }
         
 
         void ComposeDialog()
         {
-            double elemToDlgPad = ElementGeometrics.ElementToDialogPadding;
+            double elemToDlgPad = GuiStyle.ElementToDialogPadding;
 
             ElementBounds button = ElementBounds.Fixed(15, 40, 290, 30).WithFixedPadding(10, 2);
 
@@ -55,7 +45,7 @@ namespace Vintagestory.GameContent
 
             DialogComposers["loreList"] =
                 capi.Gui
-                .CreateCompo("loreList", dialogBounds, false)
+                .CreateCompo("loreList", dialogBounds)
                 .AddDialogBG(ElementBounds.Fill)
                 .AddDialogTitleBar("Journal Inventory", CloseIconPressed)
             ;
@@ -71,9 +61,7 @@ namespace Vintagestory.GameContent
             }
 
 
-            DialogComposers["loreList"]
-                .Compose()
-            ;
+            DialogComposers["loreList"].Compose();
         }
 
 
@@ -82,19 +70,19 @@ namespace Vintagestory.GameContent
             currentLoreItemIndex = i;
             page = 0;
 
-            CairoFont font = CairoFont.WhiteDetailText().WithFontSize(17);
-            TextSizeProber prober = new TextSizeProber();
+            CairoFont font = CairoFont.WhiteDetailText().WithFontSize(17).WithLineSpacing(1.15f);
+            TextDrawUtil prober = new TextDrawUtil();
             StringBuilder fulltext = new StringBuilder();
-            for (int p = 0; p < journalitems[currentLoreItemIndex].Pieces.Length; p++)
+            for (int p = 0; p < journalitems[currentLoreItemIndex].Chapters.Count; p++)
             {
                 if (p > 0) fulltext.AppendLine();
-                fulltext.Append(journalitems[currentLoreItemIndex].Pieces[p]);
+                fulltext.Append(journalitems[currentLoreItemIndex].Chapters[p].Text);
             }
 
-            pages = Paginate(fulltext, font, GuiElement.scaled(629), GuiElement.scaled(450), 1.15);
+            pages = Paginate(fulltext.ToString(), font, GuiElement.scaled(629), GuiElement.scaled(450));
             
 
-            double elemToDlgPad = ElementGeometrics.ElementToDialogPadding;
+            double elemToDlgPad = GuiStyle.ElementToDialogPadding;
 
             ElementBounds textBounds = ElementBounds.Fixed(0, 0, 630, 450);
             ElementBounds dialogBounds = textBounds.ForkBoundingParent(elemToDlgPad, elemToDlgPad + 20, elemToDlgPad, elemToDlgPad + 30).WithAlignment(EnumDialogArea.LeftMiddle);
@@ -103,11 +91,11 @@ namespace Vintagestory.GameContent
 
             DialogComposers["loreItem"] =
                 capi.Gui
-                .CreateCompo("loreItem", dialogBounds, false)
+                .CreateCompo("loreItem", dialogBounds)
                 .AddDialogBG(ElementBounds.Fill, true)
                 .AddDialogTitleBar(journalitems[i].Title, CloseIconPressedLoreItem)
-                .AddDynamicText(pages[0], font, EnumTextOrientation.Left, textBounds, 1.15f, "page")
-                .AddDynamicText("1 / " + pages.Length, CairoFont.WhiteSmallishText(), EnumTextOrientation.Center, ElementBounds.Fixed(250, 500, 100, 30), 1, "currentpage") 
+                .AddDynamicText(pages[0], font, EnumTextOrientation.Left, textBounds, "page")
+                .AddDynamicText("1 / " + pages.Length, CairoFont.WhiteSmallishText(), EnumTextOrientation.Center, ElementBounds.Fixed(250, 500, 100, 30), "currentpage") 
                 .AddButton("Previous Page", OnPrevPage, ElementBounds.Fixed(17, 500, 100, 23).WithFixedPadding(10, 4), CairoFont.WhiteSmallishText())
                 .AddButton("Next Page", OnNextPage, ElementBounds.Fixed(520, 500, 100, 23).WithFixedPadding(10, 4), CairoFont.WhiteSmallishText())
                 .Compose()
@@ -117,12 +105,15 @@ namespace Vintagestory.GameContent
         }
 
 
-        private string[] Paginate(StringBuilder fullText, CairoFont font, double pageWidth, double pageHeight, double lineHeight)
+        private string[] Paginate(string fullText, CairoFont font, double pageWidth, double pageHeight)
         {
-            TextSizeProber prober = new TextSizeProber();
-            Stack<string> lines = new Stack<string>(prober.InsertAutoLineBreaks(font, fullText, pageWidth).Reverse());
-            
-            double lineheight = prober.GetLineHeight(font, lineHeight);
+            TextDrawUtil textUtil = new TextDrawUtil();
+            Stack<string> lines = new Stack<string>();
+            IEnumerable<TextLine> textlines = textUtil.Lineize(font, fullText, pageWidth).Reverse();
+            foreach (var val in textlines) lines.Push(val.Text);
+
+
+            double lineheight = textUtil.GetLineHeight(font);
             int maxlinesPerPage = (int)(pageHeight / lineheight);
 
             List<string> pagesTemp = new List<string>();
@@ -202,16 +193,8 @@ namespace Vintagestory.GameContent
             //bounds.calcWorldBounds();
         }
 
-        
-        public override ITreeAttribute Attributes
-        {
-            get
-            {
-                return null;
-            }
-        }
 
-        public override bool DisableWorldInteract()
+        public override bool RequiresUngrabbedMouse()
         {
             return false;
         }

@@ -1,5 +1,6 @@
 ﻿using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
@@ -62,9 +63,9 @@ namespace Vintagestory.GameContent
             string info = world.BlockAccessor.GetBlock(pos.DownCopy()).GetPlacedBlockInfo(world, pos.DownCopy(), forPlayer);
 
             return
-                "Required Nutrient: " + CropProps.RequiredNutrient + "\n" +
-                "Growth stage: " + CurrentStage() + " / " + CropProps.GrowthStages +
-                (info != null && info.Length > 0 ? "\n\nSoil:\n" + info : "")
+                Lang.Get("requiredNutrient") + CropProps.RequiredNutrient + "\n" +
+                Lang.Get("Growth Stage") + CurrentStage() + " / " + CropProps.GrowthStages +
+                (info != null && info.Length > 0 ? "\n\n"+ Lang.Get("soil-tooltip") +"\n" + info : "")
             ;
         }
 

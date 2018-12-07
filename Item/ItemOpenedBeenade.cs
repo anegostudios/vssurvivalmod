@@ -15,7 +15,7 @@ namespace Vintagestory.GameContent
             return null;
         }
 
-        public override void OnHeldInteractStart(IItemSlot itemslot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
+        public override void OnHeldInteractStart(IItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
         {
             if (blockSel == null) return;
 
@@ -26,7 +26,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override bool OnHeldInteractStep(float secondsUsed, IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override bool OnHeldInteractStep(float secondsUsed, IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
             if (blockSel == null) return false;
 
@@ -58,7 +58,7 @@ namespace Vintagestory.GameContent
             bees.WithTerrainCollision = true;
 
             IPlayer byPlayer = null;
-            if (byEntity is IEntityPlayer) byPlayer = byEntity.World.PlayerByUid(((IEntityPlayer)byEntity).PlayerUID);
+            if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
 
             byEntity.World.SpawnParticles(bees, byPlayer);
 
@@ -66,13 +66,13 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override bool OnHeldInteractCancel(float secondsUsed, IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)
+        public override bool OnHeldInteractCancel(float secondsUsed, IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)
         {
             
             return true;
         }
 
-        public override void OnHeldInteractStop(float secondsUsed, IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override void OnHeldInteractStop(float secondsUsed, IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
             if (blockSel == null) return;
 
@@ -86,7 +86,7 @@ namespace Vintagestory.GameContent
             slot.TakeOut(1);
 
             IPlayer byPlayer = null;
-            if (byEntity is IEntityPlayer) byPlayer = byEntity.World.PlayerByUid(((IEntityPlayer)byEntity).PlayerUID);
+            if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
             byPlayer?.InventoryManager.TryGiveItemstack(new ItemStack(byEntity.World.GetItem(new AssetLocation("beenade-closed"))));
 
             Block skepemtpyblock = byEntity.World.GetBlock(new AssetLocation("skep-empty-" + block.LastCodePart()));

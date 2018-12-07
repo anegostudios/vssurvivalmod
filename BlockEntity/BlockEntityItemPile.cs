@@ -24,7 +24,7 @@ namespace Vintagestory.GameContent
 
         public int OwnStackSize
         {
-            get { return inventory.GetSlot(0) == null ? 0 : inventory.GetSlot(0).StackSize; }
+            get { return inventory[0]?.StackSize ?? 0; }
         }
 
         public int AtlasSize
@@ -49,7 +49,7 @@ namespace Vintagestory.GameContent
         {
             if (api.World is IServerWorldAccessor)
             {
-                IItemSlot slot = inventory.GetSlot(0);
+                IItemSlot slot = inventory[0];
                 while (slot.StackSize > 0)
                 {
                     ItemStack split = slot.TakeOut(GameMath.Clamp(slot.StackSize, 1, System.Math.Max(1, slot.Itemstack.Collectible.MaxStackSize / 4)));
@@ -100,7 +100,7 @@ namespace Vintagestory.GameContent
           
             IItemSlot hotbarSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
 
-            bool equalStack = hotbarSlot.Itemstack != null && hotbarSlot.Itemstack.Equals(api.World, inventory.GetSlot(0).Itemstack, GlobalConstants.IgnoredStackAttributes);
+            bool equalStack = hotbarSlot.Itemstack != null && hotbarSlot.Itemstack.Equals(api.World, inventory[0].Itemstack, GlobalConstants.IgnoredStackAttributes);
 
             if (sneaking && !equalStack)
             {
@@ -148,7 +148,7 @@ namespace Vintagestory.GameContent
 
             if (hotbarSlot.Itemstack == null) return false;
 
-            IItemSlot invSlot = inventory.GetSlot(0);
+            IItemSlot invSlot = inventory[0];
 
             if (invSlot.Itemstack == null)
             {
@@ -189,9 +189,9 @@ namespace Vintagestory.GameContent
         {
             int q = GameMath.Min(TakeQuantity, OwnStackSize);
 
-            if (inventory.GetSlot(0)?.Itemstack != null)
+            if (inventory[0]?.Itemstack != null)
             {
-                ItemStack stack = inventory.GetSlot(0).TakeOut(q);
+                ItemStack stack = inventory[0].TakeOut(q);
                 player.InventoryManager.TryGiveItemstack(stack);
 
                 if (stack.StackSize > 0)
@@ -215,7 +215,7 @@ namespace Vintagestory.GameContent
 
         public override string GetBlockInfo(IPlayer forPlayer)
         {
-            ItemStack stack = inventory.GetSlot(0).Itemstack;
+            ItemStack stack = inventory[0].Itemstack;
             if (stack == null) return null;
 
             return stack.StackSize + "x " + stack.GetName();
@@ -226,19 +226,19 @@ namespace Vintagestory.GameContent
 
         public override void OnLoadCollectibleMappings(IWorldAccessor worldForResolve, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping)
         {
-            ItemStack stack = inventory?.GetSlot(0)?.Itemstack;
+            ItemStack stack = inventory?[0]?.Itemstack;
             if (stack?.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve) == false)
             {
-                inventory.GetSlot(0).Itemstack = null;
+                inventory[0].Itemstack = null;
             }
         }
 
         public override void OnStoreCollectibleMappings(Dictionary<int, AssetLocation> blockIdMapping, Dictionary<int, AssetLocation> itemIdMapping)
         {
-            ItemStack stack = inventory?.GetSlot(0)?.Itemstack;
+            ItemStack stack = inventory?[0]?.Itemstack;
             if (stack != null)
             {
-                stack.Collectible.OnStoreCollectibleMappings(api.World, inventory.GetSlot(0), blockIdMapping, itemIdMapping);
+                stack.Collectible.OnStoreCollectibleMappings(api.World, inventory[0], blockIdMapping, itemIdMapping);
             }
         }
     }

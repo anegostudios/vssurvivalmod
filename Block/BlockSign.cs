@@ -8,7 +8,7 @@ namespace Vintagestory.GameContent
     {
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection bs)
         {
-            if (!world.TestPlayerAccessBlock(byPlayer, bs.Position, EnumBlockAccessFlags.BuildOrBreak))
+            if (!world.TryAccessBlock(byPlayer, bs.Position, EnumBlockAccessFlags.BuildOrBreak))
             {
                 byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
                 return false;

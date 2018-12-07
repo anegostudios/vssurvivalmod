@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -73,7 +74,7 @@ namespace Vintagestory.GameContent
             for (int i = 0; i < 4; i++)
             {
                 toolMeshes[i] = null;
-                IItemStack stack = inventory.GetSlot(i).Itemstack;
+                IItemStack stack = inventory[i].Itemstack;
                 if (stack == null) continue;
 
                 tmpItem = stack.Collectible;
@@ -121,7 +122,7 @@ namespace Vintagestory.GameContent
             if (facing == BlockFacing.WEST && hit.Z > 0.5) slot++;
             if (facing == BlockFacing.EAST && hit.Z < 0.5) slot++;
 
-            IItemStack stack = inventory.GetSlot(slot).Itemstack;
+            IItemStack stack = inventory[slot].Itemstack;
 
             if (stack != null)
             {
@@ -137,7 +138,7 @@ namespace Vintagestory.GameContent
             IItemStack stack = player.InventoryManager.ActiveHotbarSlot.Itemstack;
             if (stack == null || stack.Collectible.Tool == null) return false;
 
-            player.InventoryManager.ActiveHotbarSlot.TryPutInto(api.World, inventory.GetSlot(slot));
+            player.InventoryManager.ActiveHotbarSlot.TryPutInto(api.World, inventory[slot]);
 
             didInteract(player);
             return true;
@@ -146,7 +147,7 @@ namespace Vintagestory.GameContent
 
         bool TakeFromSlot(IPlayer player, int slot)
         {
-            ItemStack stack = inventory.GetSlot(slot).TakeOutWhole();
+            ItemStack stack = inventory[slot].TakeOutWhole();
             
             if (!player.InventoryManager.TryGiveItemstack(stack))
             {
@@ -176,7 +177,7 @@ namespace Vintagestory.GameContent
         {
             for (int i = 0; i < 4; i++)
             {
-                ItemStack stack = inventory.GetSlot(i).Itemstack;
+                ItemStack stack = inventory[i].Itemstack;
                 if (stack == null) continue;
                 api.World.SpawnItemEntity(stack, pos.ToVec3d().Add(0.5, 0.5, 0.5));
             }
@@ -243,10 +244,8 @@ namespace Vintagestory.GameContent
 
         public override void OnStoreCollectibleMappings(Dictionary<int, AssetLocation> blockIdMapping, Dictionary<int, AssetLocation> itemIdMapping)
         {
-            int q = inventory.QuantitySlots;
-            for (int i = 0; i < q; i++)
+            foreach (var slot in inventory)
             {
-                ItemSlot slot = inventory.GetSlot(i);
                 if (slot.Itemstack == null) continue;
 
                 if (slot.Itemstack.Class == EnumItemClass.Item)
@@ -262,16 +261,39 @@ namespace Vintagestory.GameContent
 
         public override void OnLoadCollectibleMappings(IWorldAccessor worldForResolve, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping)
         {
-            int q = inventory.QuantitySlots;
-            for (int i = 0; i < q; i++)
+            foreach (var slot in inventory)
             {
-                ItemSlot slot = inventory.GetSlot(i);
                 if (slot.Itemstack == null) continue;
                 if (!slot.Itemstack.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve))
                 {
                     slot.Itemstack = null;
                 }
             }
+        }
+
+        public override string GetBlockInfo(IPlayer forPlayer)
+        {
+            StringBuilder sb = new StringBuilder();
+            int i = 0;
+            foreach (var slot in inventory)
+            {
+                if (sb.Length > 0 && i == 2)
+                {
+                    sb.Append("\n");
+                }
+                i++;
+                if (slot.Itemstack == null) continue;
+
+                if (sb.Length > 0 && sb[sb.Length - 1] != '\n')
+                {
+                    sb.Append(", ");
+                }
+
+                
+                sb.Append(slot.Itemstack.GetName());
+            }
+
+            return sb.ToString();
         }
 
     }

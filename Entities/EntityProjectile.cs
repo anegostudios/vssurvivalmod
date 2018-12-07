@@ -24,7 +24,7 @@ namespace Vintagestory.GameContent
 
         CollisionTester collTester = new CollisionTester();
 
-        public IEntity FiredBy;
+        public Entity FiredBy;
         public float Weight = 0.1f;
         public float Damage;
         public ItemStack ProjectileStack;

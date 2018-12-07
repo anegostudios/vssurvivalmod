@@ -48,7 +48,7 @@ namespace Vintagestory.GameContent
         public override void Initialize(ICoreAPI api)
         {
             base.Initialize(api);
-            api.Event.RegisterGameTickListener(OnSlowTick, 100);
+            RegisterGameTickListener(OnSlowTick, 100);
         }
 
         private void OnSlowTick(float dt)
@@ -162,7 +162,7 @@ namespace Vintagestory.GameContent
 
         public IItemSlot Slot(int i)
         {
-            return inventory.GetSlot(i);
+            return inventory[i];
         }
 
         public ItemStack getSmeltedOre(IItemSlot oreSlot)

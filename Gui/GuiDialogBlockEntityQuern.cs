@@ -11,42 +11,20 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
-    public class GuiDialogBlockEntityQuern : GuiDialogGeneric
+    public class GuiDialogBlockEntityQuern : GuiDialogBlockEntity
     {
-        InventoryBase inventory;
-        BlockPos blockEntityPos;
-
-
-        SyncedTreeAttribute attributes = new SyncedTreeAttribute();
-
         long lastRedrawMs;
-        bool isduplicate = false;
 
-        public override ITreeAttribute Attributes
+        protected override double FloatyDialogPosition => 0.75;
+
+        public GuiDialogBlockEntityQuern(string DialogTitle, InventoryBase Inventory, BlockPos BlockEntityPosition, SyncedTreeAttribute tree, ICoreClientAPI capi)
+            : base(DialogTitle, Inventory, BlockEntityPosition, capi)
         {
-            get { return attributes; }
-        }
+            if (IsDuplicate) return;
+            tree.OnModified.Add(new TreeModifiedListener() { listener = OnAttributesModified });
+            Attributes = tree;
 
-        public GuiDialogBlockEntityQuern(string DialogTitle, InventoryBase inventory, BlockPos blockEntityPos, SyncedTreeAttribute tree, ICoreClientAPI capi) : base(DialogTitle, capi)
-        {
-            foreach (var val in capi.World.Player.InventoryManager.Inventories)
-            {
-                if (val.Value == inventory)
-                {
-                    isduplicate = true;
-                    return;
-                }
-            }
-
-            this.inventory = inventory;
-            this.blockEntityPos = blockEntityPos;
-            this.attributes = tree;
-
-            attributes.OnModified.Add(new TreeModifiedListener() { listener = OnAttributesModified });
-
-            
-
-            capi.World.Player.InventoryManager.OpenInventory(inventory);
+            capi.World.Player.InventoryManager.OpenInventory(Inventory);
 
             SetupDialog();
         }
@@ -59,7 +37,7 @@ namespace Vintagestory.GameContent
         void SetupDialog()
         {
             ItemSlot hoveredSlot = capi.World.Player.InventoryManager.CurrentHoveredSlot;
-            if (hoveredSlot != null && hoveredSlot.Inventory == inventory)
+            if (hoveredSlot != null && hoveredSlot.Inventory == Inventory)
             {
                 capi.Input.TriggerOnMouseLeaveSlot(hoveredSlot);
             }
@@ -74,23 +52,23 @@ namespace Vintagestory.GameContent
             ElementBounds outputSlotBounds = ElementStdBounds.SlotGrid(EnumDialogArea.None, 173, 30, 1, 1);
 
             // 2. Around all that is 10 pixel padding
-            ElementBounds bgBounds = ElementBounds.Fill.WithFixedPadding(ElementGeometrics.ElementToDialogPadding);
+            ElementBounds bgBounds = ElementBounds.Fill.WithFixedPadding(GuiStyle.ElementToDialogPadding);
             bgBounds.BothSizing = ElementSizing.FitToChildren;
             bgBounds.WithChildren(quernBounds);
 
             // 3. Finally Dialog
             ElementBounds dialogBounds = ElementStdBounds.AutosizedMainDialog.WithAlignment(EnumDialogArea.RightMiddle)
-                .WithFixedAlignmentOffset(-ElementGeometrics.DialogToScreenPadding, 0);
+                .WithFixedAlignmentOffset(-GuiStyle.DialogToScreenPadding, 0);
 
             ClearComposers();
             SingleComposer = capi.Gui
-                .CreateCompo("blockentitymillstone", dialogBounds, false)
+                .CreateCompo("blockentitymillstone", dialogBounds)
                 .AddDialogBG(bgBounds)
                 .AddDialogTitleBar(DialogTitle, OnTitleBarClose)
                 .BeginChildElements(bgBounds)
                     .AddDynamicCustomDraw(quernBounds, OnBgDraw, "symbolDrawer")
-                    .AddItemSlotGrid(inventory, SendInvPacket, 1, new int[] { 0 }, inputSlotBounds, "inputSlot")
-                    .AddItemSlotGrid(inventory, SendInvPacket, 1, new int[] { 1 }, outputSlotBounds, "outputslot")
+                    .AddItemSlotGrid(Inventory, SendInvPacket, 1, new int[] { 0 }, inputSlotBounds, "inputSlot")
+                    .AddItemSlotGrid(Inventory, SendInvPacket, 1, new int[] { 1 }, outputSlotBounds, "outputslot")
                 .EndChildElements()
                 .Compose()
             ;
@@ -99,7 +77,7 @@ namespace Vintagestory.GameContent
 
             if (hoveredSlot != null)
             {
-                SingleComposer.OnMouseMove(capi, new MouseEvent() { X = capi.Input.MouseX, Y = capi.Input.MouseY });
+                SingleComposer.OnMouseMove(new MouseEvent(capi.Input.MouseX, capi.Input.MouseY));
             }
         }
 
@@ -129,7 +107,7 @@ namespace Vintagestory.GameContent
             ctx.Matrix = m;
             capi.Gui.Icons.DrawArrowRight(ctx, 2);
 
-            double dx = attributes.GetFloat("inputGrindTime") / attributes.GetFloat("maxGrindTime", 1);
+            double dx = Attributes.GetFloat("inputGrindTime") / Attributes.GetFloat("maxGrindTime", 1);
 
 
             ctx.Rectangle(GuiElement.scaled(5), 0, GuiElement.scaled(125 * dx), GuiElement.scaled(100));
@@ -148,7 +126,7 @@ namespace Vintagestory.GameContent
 
         private void SendInvPacket(object p)
         {
-            capi.Network.SendBlockEntityPacket(blockEntityPos.X, blockEntityPos.Y, blockEntityPos.Z, p);
+            capi.Network.SendBlockEntityPacket(BlockEntityPosition.X, BlockEntityPosition.Y, BlockEntityPosition.Z, p);
         }
 
 
@@ -158,62 +136,20 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override bool TryOpen()
-        {
-            if (isduplicate) return false;
-            return base.TryOpen();
-        }
-
         public override void OnGuiOpened()
         {
-            inventory.Open(capi.World.Player);
-            inventory.SlotModified += OnInventorySlotModified;
+            base.OnGuiOpened();
+            Inventory.SlotModified += OnInventorySlotModified;
         }
 
         public override void OnGuiClosed()
         {
-            inventory.SlotModified -= OnInventorySlotModified;
-
-            inventory.Close(capi.World.Player);
-            capi.World.Player.InventoryManager.CloseInventory(inventory);
+            Inventory.SlotModified -= OnInventorySlotModified;
 
             SingleComposer.GetSlotGrid("inputSlot").OnGuiClosed(capi);
             SingleComposer.GetSlotGrid("outputslot").OnGuiClosed(capi);
 
-            capi.Network.SendBlockEntityPacket(blockEntityPos.X, blockEntityPos.Y, blockEntityPos.Z, (int)EnumBlockContainerPacketId.CloseInventory);
-        }
-
-        public void ReloadValues()
-        {
-
-        }
-
-        public override void OnFinalizeFrame(float dt)
-        {
-            base.OnFinalizeFrame(dt);
-
-            if (!IsInRangeOfBlock(blockEntityPos))
-            {
-                // Because we cant do it in here
-                capi.Event.RegisterCallback((deltatime) => TryClose(), 0);
-            }
-        }
-
-
-        public override void OnRender2D(float deltaTime)
-        {
-            if (capi.Settings.Bool["floatyGuis"])
-            {
-                PositionDialogAbove(new Vec3d(blockEntityPos.X + 0.5, blockEntityPos.Y + 1.5, blockEntityPos.Z + 0.5));
-            }
-
-            base.OnRender2D(deltaTime);
-        }
-
-
-        public override bool DisableWorldInteract()
-        {
-            return false;
+            base.OnGuiClosed();
         }
     }
 }

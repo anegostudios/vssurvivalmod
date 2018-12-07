@@ -16,7 +16,7 @@ namespace Vintagestory.GameContent
         static float QuadHeight = 0.45f;
 
 
-        ICairoFont font;
+        CairoFont font;
         BlockPos pos;
         ICoreClientAPI api;
 
@@ -42,7 +42,8 @@ namespace Vintagestory.GameContent
         {
             this.api = api;
             this.pos = pos;
-            font = api.Render.GetFont(20, api.Render.StandardFontName, new double[] { 0, 0, 0, 0.8 });
+            font = api.Render.GetFont(20, GuiStyle.StandardFontName, new double[] { 0, 0, 0, 0.8 });
+            font.LineHeightMultiplier = 0.9f;
 
             api.Event.RegisterRenderer(this, EnumRenderStage.Opaque);
 
@@ -99,7 +100,7 @@ namespace Vintagestory.GameContent
         internal void SetNewText(string text)
         {
             loadedTexture?.Dispose();
-            loadedTexture = api.Gui.Text.GenTextTexture(text, font, TextWidth, TextHeight, null, EnumTextOrientation.Center, 0.9f);
+            loadedTexture = api.Gui.TextTexture.GenTextTexture(text, font, TextWidth, TextHeight, null, EnumTextOrientation.Center);
         }
 
 

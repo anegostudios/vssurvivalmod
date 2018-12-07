@@ -77,7 +77,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void OnHeldIdle(IItemSlot slot, IEntityAgent byEntity)
+        public override void OnHeldIdle(IItemSlot slot, EntityAgent byEntity)
         {
             if (byEntity.World.Side == EnumAppSide.Client && GetTemperature(byEntity.World, slot.Itemstack) > 50 && byEntity.World.Rand.NextDouble() < 0.07)
             {
@@ -227,7 +227,7 @@ namespace Vintagestory.GameContent
 
 
 
-        public override void OnHeldInteractStart(IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handHandling)
+        public override void OnHeldInteractStart(IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handHandling)
         {
             if (blockSel != null)
             {
@@ -261,7 +261,7 @@ namespace Vintagestory.GameContent
             ItemStack[] stacks = GetContents(api.World, potslot.Itemstack);
             for (int i = 0; i < stacks.Length; i++)
             {
-                bemeal.inventory.GetSlot(i).Itemstack = stacks[i].Clone();
+                bemeal.inventory[i].Itemstack = stacks[i].Clone();
             }
 
             int quantityServings = GetServings(world, potslot.Itemstack);

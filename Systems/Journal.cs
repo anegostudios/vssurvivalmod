@@ -71,6 +71,7 @@ namespace Vintagestory.GameContent
         ICoreClientAPI capi;
         IClientNetworkChannel clientChannel;
         Journal ownJournal = new Journal();
+        GuiDialogJournal dialog;
 
 
         public override bool ShouldLoad(EnumAppSide side)
@@ -93,7 +94,7 @@ namespace Vintagestory.GameContent
         {
             this.capi = api;
 
-            capi.Input.RegisterHotKey("journal", "Journal", GlKeys.J, HotkeyType.GeneralControls);
+            capi.Input.RegisterHotKey("journal", "Journal", GlKeys.J, HotkeyType.GUIOrOtherControls);
             capi.Input.SetHotKeyHandler("journal", OnHotkeyJournal);
 
             clientChannel =
@@ -107,8 +108,7 @@ namespace Vintagestory.GameContent
             ;
         }
 
-        GuiDialogJournal dialog;
-
+        
         private bool OnHotkeyJournal(KeyCombination comb)
         {
             if (dialog != null)
@@ -118,18 +118,7 @@ namespace Vintagestory.GameContent
                 return true;
             }
 
-            TreeAttribute tree = new TreeAttribute();
-
-            foreach (var entry in ownJournal.Entries)
-            {
-                string[] chapters = new string[entry.Chapters.Count];
-                for (int i = 0; i < chapters.Length; i++) {
-                    chapters[i] = entry.Chapters[i].Text;
-                }
-                tree[entry.Title] = new StringArrayAttribute(chapters);
-            }
-
-            dialog = new GuiDialogJournal(tree, capi);
+            dialog = new GuiDialogJournal(ownJournal.Entries, capi);
             dialog.TryOpen();
             dialog.OnClosed += () => dialog = null;
 
@@ -214,6 +203,8 @@ namespace Vintagestory.GameContent
             if (loreDiscoveryiesByPlayerUid == null) loreDiscoveryiesByPlayerUid = new Dictionary<string, Dictionary<string, LoreDiscovery>>();
         }
 
+
+
         private void OnPlayerJoin(IServerPlayer byPlayer)
         {
             Journal journal = null;
@@ -225,7 +216,29 @@ namespace Vintagestory.GameContent
 
 
 
+        public void AddOrUpdateJournalEntry(IServerPlayer forPlayer, JournalEntry entry)
+        {
+            Journal journal;
+            if (!journalsByPlayerUid.TryGetValue(forPlayer.PlayerUID, out journal))
+            {
+                journalsByPlayerUid[forPlayer.PlayerUID] = journal = new Journal();
+            }
 
+            for (int i = 0; i < journal.Entries.Count; i++)
+            {
+                JournalEntry exentry = journal.Entries[i];
+
+                if (exentry.LoreCode == entry.LoreCode)
+                {
+                    journal.Entries[i] = entry;
+                    serverChannel.SendPacket(entry, forPlayer);
+                    return;
+                }
+            }
+
+            journal.Entries.Add(entry);
+            serverChannel.SendPacket(entry, forPlayer);
+        }
 
 
 

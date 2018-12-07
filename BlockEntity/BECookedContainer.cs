@@ -83,7 +83,7 @@ namespace Vintagestory.GameContent
                 for (int i = 0; i < stacks.Length; i++)
                 {
                     ItemStack stack = stacks[i].Clone();
-                    Inventory.GetSlot(i).Itemstack = stack;
+                    Inventory[i].Itemstack = stack;
 
                     // Clone temp attribute    
                     if (tempTree != null) stack.Attributes["temperature"] = tempTree.Clone();

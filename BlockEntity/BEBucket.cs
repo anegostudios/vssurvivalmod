@@ -57,13 +57,13 @@ namespace Vintagestory.GameContent
 
         public ItemStack GetContent()
         {
-            return inventory.GetSlot(0).Itemstack;
+            return inventory[0].Itemstack;
         }
 
 
         internal void SetContent(ItemStack stack)
         {
-            inventory.GetSlot(0).Itemstack = stack;
+            inventory[0].Itemstack = stack;
             MarkDirty(true);
         }
         
@@ -101,7 +101,7 @@ namespace Vintagestory.GameContent
 
         public override string GetBlockInfo(IPlayer forPlayer)
         {
-            ItemSlot slot = inventory.GetSlot(0);
+            ItemSlot slot = inventory[0];
 
             if (slot.Empty) return Lang.Get("Empty");
 

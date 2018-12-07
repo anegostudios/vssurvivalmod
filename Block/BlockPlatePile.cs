@@ -73,7 +73,7 @@ namespace Vintagestory.GameContent
             if (be is BlockEntityPlatePile)
             {
                 BlockEntityPlatePile pile = (BlockEntityPlatePile)be;
-                ItemStack stack = pile.inventory.GetSlot(0).Itemstack;
+                ItemStack stack = pile.inventory[0].Itemstack;
                 if (stack != null)
                 {
                     ItemStack pickstack = stack.Clone();
@@ -99,8 +99,8 @@ namespace Vintagestory.GameContent
             if (be is BlockEntityPlatePile)
             {
                 BlockEntityPlatePile pile = (BlockEntityPlatePile)be;
-                pile.inventory.GetSlot(0).Itemstack = (ItemStack)slot.Itemstack.Clone();
-                pile.inventory.GetSlot(0).Itemstack.StackSize = 1;
+                pile.inventory[0].Itemstack = (ItemStack)slot.Itemstack.Clone();
+                pile.inventory[0].Itemstack.StackSize = 1;
 
                 if (player.WorldData.CurrentGameMode != EnumGameMode.Creative) slot.TakeOut(1);
                 

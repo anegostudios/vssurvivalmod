@@ -113,9 +113,11 @@ namespace Vintagestory.GameContent
         }
 
 
-        public MeshData GenMesh(ICoreClientAPI capi, string type, string shapename)
+        public MeshData GenMesh(ICoreClientAPI capi, string type, string shapename, ITesselatorAPI tesselator = null)
         {
-            tmpTextureSource = capi.Tesselator.GetTexSource(this);
+            if (tesselator == null) tesselator = capi.Tesselator;
+
+            tmpTextureSource = tesselator.GetTexSource(this);
 
             AssetLocation shapeloc = new AssetLocation(shapename).WithPathPrefix("shapes/");
             Shape shape = capi.Assets.TryGet(shapeloc + ".json")?.ToObject<Shape>();
@@ -130,7 +132,7 @@ namespace Vintagestory.GameContent
             
             curType = type;
             MeshData mesh;
-            capi.Tesselator.TesselateShape("typedcontainer", shape, out mesh, this, new Vec3f(Shape.rotateX, Shape.rotateY, Shape.rotateZ));
+            tesselator.TesselateShape("typedcontainer", shape, out mesh, this, new Vec3f(Shape.rotateX, Shape.rotateY, Shape.rotateZ));
             return mesh;
         }
         
@@ -225,6 +227,12 @@ namespace Vintagestory.GameContent
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
             return base.OnBlockInteractStart(world, byPlayer, blockSel);
+        }
+
+        public override string GetHeldItemName(ItemStack itemStack)
+        {
+            string type = itemStack.Attributes.GetString("type");
+            return Lang.GetMatching(Code?.Domain + AssetLocation.LocationSeparator + "block-" + type + "-" + Code?.Path);
         }
 
         public override void GetHeldItemInfo(ItemStack stack, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)

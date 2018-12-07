@@ -17,6 +17,7 @@ namespace Vintagestory.GameContent
             if (!Alive || World.Side == EnumAppSide.Client || mode == 0)
             {
                 base.OnInteract(byEntity, slot, hitPosition, mode);
+                return;
             }
 
             string owneruid = WatchedAttributes.GetString("ownerUid", null);

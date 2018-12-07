@@ -13,19 +13,7 @@ namespace Vintagestory.ServerMods
     public class BlockEntitySapling : BlockEntity
     {
         static Random rand = new Random();
-
-        static Dictionary<string, string> TreeGenMapping = new Dictionary<string, string>
-        {
-            { "birch", "silverbirch" },
-            { "oak", "englishoak" },
-            { "maple", "sugarmaple" },
-            { "pine", "scotspine" },
-            { "acacia", "truemulga" },
-            { "kapok", "kapok" },
-            { "bamboo", "bamboo-grown-brown" }
-        };
-
-
+        
         double totalHoursTillGrowth;
         long growListenerId;
 
@@ -50,10 +38,10 @@ namespace Vintagestory.ServerMods
         {
             if (api.World.Calendar.TotalHours < totalHoursTillGrowth) return;
 
-            string treeCode = api.World.BlockAccessor.GetBlock(pos).LastCodePart();
+            Block block = api.World.BlockAccessor.GetBlock(pos);
+            string treeGenCode = block.Attributes?["treeGen"].AsString(null);
 
-            string treeGenCode = null;
-            if (!TreeGenMapping.TryGetValue(treeCode, out treeGenCode))
+            if (treeGenCode == null)
             {
                 api.Event.UnregisterGameTickListener(growListenerId);
                 return;

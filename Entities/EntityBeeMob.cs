@@ -35,7 +35,7 @@ namespace Vintagestory.GameContent
                 buzzSound.Start();
             }
 
-            StartAnimation("enraged");
+            AnimManager.StartAnimation("enraged");
         }
 
         public override void OnGameTick(float dt)
@@ -59,17 +59,7 @@ namespace Vintagestory.GameContent
             base.OnEntityDespawn(despawn);
         }
 
-
-        public override void StartAnimation(AnimationMetaData animdata)
-        {
-            base.StartAnimation(animdata);
-        }
-
-        public override void StartAnimation(string configCode)
-        {
-            base.StartAnimation(configCode);
-        }
-
+        
 
         public override void OnReceivedServerAnimations(int[] activeAnimations, int activeAnimationsCount, float[] activeAnimationSpeeds)
         {

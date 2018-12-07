@@ -105,19 +105,19 @@ namespace Vintagestory.GameContent
 
         public string MetalType
         {
-            get { return inventory?.GetSlot(0)?.Itemstack?.Collectible?.LastCodePart(); }
+            get { return inventory?[0]?.Itemstack?.Collectible?.LastCodePart(); }
         }
 
         public override bool OnTesselation(ITerrainMeshPool meshdata, ITesselatorAPI tesselator)
         {
             lock (inventoryLock)
             {
-                if (inventory.GetSlot(0).Itemstack == null) return true;
+                if (inventory[0].Itemstack == null) return true;
 
                 MeshData[] mesh = null;
                 if (MetalType != null && meshesByType.TryGetValue(new AssetLocation(MetalType), out mesh))
                 {
-                    meshdata.AddMeshData(mesh[inventory.GetSlot(0).StackSize]);
+                    meshdata.AddMeshData(mesh[inventory[0].StackSize]);
                 }
             }
 

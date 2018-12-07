@@ -12,6 +12,11 @@ namespace Vintagestory.GameContent
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ref EnumHandling handling)
         {
+            if (!world.TryAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.Use))
+            {
+                return false;
+            }
+            
             handling = EnumHandling.PreventDefault;
 
             if (block.Code.Path.Contains("ripe") && block.Drops != null && block.Drops.Length >= 1)

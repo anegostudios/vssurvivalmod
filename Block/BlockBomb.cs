@@ -11,7 +11,7 @@ namespace Vintagestory.GameContent
 {
     public class BlockBomb : Block
     {
-        public override bool OnTryIgniteBlock(IEntityAgent byEntity, BlockPos pos, float secondsIgniting, ref EnumHandling handling)
+        public override bool OnTryIgniteBlock(EntityAgent byEntity, BlockPos pos, float secondsIgniting, ref EnumHandling handling)
         {
             BlockEntityBomb bebomb = byEntity.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityBomb;
             handling = EnumHandling.PreventDefault;
@@ -19,14 +19,14 @@ namespace Vintagestory.GameContent
             return (bebomb == null || bebomb.IsLit) ? false : secondsIgniting < 0.75f;
         }
 
-        public override void OnTryIgniteBlockOver(IEntityAgent byEntity, BlockPos pos, float secondsIgniting, ref EnumHandling handling)
+        public override void OnTryIgniteBlockOver(EntityAgent byEntity, BlockPos pos, float secondsIgniting, ref EnumHandling handling)
         {
             if (secondsIgniting < 0.7f) return;
 
             handling = EnumHandling.PreventDefault;
 
             IPlayer byPlayer = null;
-            if (byEntity is IEntityPlayer) byPlayer = byEntity.World.PlayerByUid(((IEntityPlayer)byEntity).PlayerUID);
+            if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
             if (byPlayer == null) return;
 
             BlockEntityBomb bebomb = byPlayer.Entity.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityBomb;

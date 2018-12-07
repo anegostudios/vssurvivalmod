@@ -47,12 +47,12 @@ namespace Vintagestory.GameContent
 
         public InventoryTrader(string inventoryID, ICoreAPI api) : base(inventoryID, api)
         {
-            slots = GenEmptySlots(QuantitySlots);
+            slots = GenEmptySlots(Count);
         }
 
         public InventoryTrader(string className, string instanceID, ICoreAPI api) : base(className, instanceID, api)
         {
-            slots = GenEmptySlots(QuantitySlots);
+            slots = GenEmptySlots(Count);
         }
 
 
@@ -160,11 +160,23 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override int QuantitySlots
+        public override int Count
+        {
+            get { return 4 * 4 + 4 + 4 * 4 + 4 + 1; }
+        }
+
+        public override ItemSlot this[int slotId]
         {
             get
             {
-                return 4 * 4 + 4 + 4 * 4 + 4 + 1;
+                if (slotId < 0 || slotId >= Count) return null;
+                return slots[slotId];
+            }
+            set
+            {
+                if (slotId < 0 || slotId >= Count) throw new ArgumentOutOfRangeException(nameof(slotId));
+                if (value == null) throw new ArgumentNullException(nameof(value));
+                slots[slotId] = value;
             }
         }
 
@@ -515,13 +527,6 @@ namespace Vintagestory.GameContent
             }
 
             return totalGain;
-        }
-
-
-
-        public override ItemSlot GetSlot(int slotId)
-        {
-            return slots[slotId];
         }
 
 

@@ -48,10 +48,27 @@ namespace Vintagestory.GameContent
             cookingSlots = new ItemSlot[] { slots[3], slots[4], slots[5], slots[6] };
         }
 
-        public override int QuantitySlots
+
+        public override int Count
         {
             get { return slots.Length; }
         }
+
+        public override ItemSlot this[int slotId]
+        {
+            get
+            {
+                if (slotId < 0 || slotId >= Count) return null;
+                return slots[slotId];
+            }
+            set
+            {
+                if (slotId < 0 || slotId >= Count) throw new ArgumentOutOfRangeException(nameof(slotId));
+                if (value == null) throw new ArgumentNullException(nameof(value));
+                slots[slotId] = value;
+            }
+        }
+
 
         public override void DidModifyItemSlot(IItemSlot slot, IItemStack extractedStack = null)
         {
@@ -77,12 +94,6 @@ namespace Vintagestory.GameContent
                 }
                 
             }
-        }
-
-
-        public override ItemSlot GetSlot(int slotId)
-        {
-            return slots[slotId];
         }
 
 

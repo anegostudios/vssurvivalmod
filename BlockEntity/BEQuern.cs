@@ -562,31 +562,31 @@ namespace Vintagestory.GameContent
 
         public IItemSlot InputSlot
         {
-            get { return inventory.GetSlot(0); }
+            get { return inventory[0]; }
         }
 
         public IItemSlot OutputSlot
         {
-            get { return inventory.GetSlot(1); }
+            get { return inventory[1]; }
         }
 
         public ItemStack InputStack
         {
-            get { return inventory.GetSlot(0).Itemstack; }
-            set { inventory.GetSlot(0).Itemstack = value; inventory.GetSlot(0).MarkDirty(); }
+            get { return inventory[0].Itemstack; }
+            set { inventory[0].Itemstack = value; inventory[0].MarkDirty(); }
         }
 
         public ItemStack OutputStack
         {
-            get { return inventory.GetSlot(1).Itemstack; }
-            set { inventory.GetSlot(1).Itemstack = value; inventory.GetSlot(1).MarkDirty(); }
+            get { return inventory[1].Itemstack; }
+            set { inventory[1].Itemstack = value; inventory[1].MarkDirty(); }
         }
 
 
         public GrindingProperties InputGrindProps
         {
             get {
-                IItemSlot slot = inventory.GetSlot(0);
+                IItemSlot slot = inventory[0];
                 if (slot.Itemstack == null) return null;
                 return slot.Itemstack.Collectible.GrindingProps;
             }
@@ -597,10 +597,8 @@ namespace Vintagestory.GameContent
 
         public override void OnStoreCollectibleMappings(Dictionary<int, AssetLocation> blockIdMapping, Dictionary<int, AssetLocation> itemIdMapping)
         {
-            int q = Inventory.QuantitySlots;
-            for (int i = 0; i < q; i++)
+            foreach (var slot in Inventory)
             {
-                ItemSlot slot = Inventory.GetSlot(i);
                 if (slot.Itemstack == null) continue;
 
                 if (slot.Itemstack.Class == EnumItemClass.Item)
@@ -616,10 +614,8 @@ namespace Vintagestory.GameContent
 
         public override void OnLoadCollectibleMappings(IWorldAccessor worldForResolve, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping)
         {
-            int q = Inventory.QuantitySlots;
-            for (int i = 0; i < q; i++)
+            foreach (var slot in Inventory)
             {
-                ItemSlot slot = Inventory.GetSlot(i);
                 if (slot.Itemstack == null) continue;
                 if (!slot.Itemstack.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve))
                 {

@@ -26,24 +26,12 @@ namespace Vintagestory.GameContent
 
             Block block = api.World.BlockAccessor.GetBlock(pos);
             origlightHsv = block.LightHsv;
-
-            if (api.Side == EnumAppSide.Client && currentMesh == null)
-            {
-                currentMesh = getMesh();
-                MarkDirty(true);
-            }
         }
 
         public void DidPlace(string material, string lining)
         {
             this.lining = lining;
             this.material = material;
-
-            if (api.Side == EnumAppSide.Client)
-            {
-                currentMesh = getMesh();
-                MarkDirty(true);
-            }
         }
 
 
@@ -54,12 +42,11 @@ namespace Vintagestory.GameContent
             material = tree.GetString("material", "copper");
             lining = tree.GetString("lining", "plain");
 
-            if (api != null && api.Side == EnumAppSide.Client && currentMesh == null)
+            if (api != null && api.Side == EnumAppSide.Client)
             {
-                currentMesh = getMesh();
+                currentMesh = null;
                 MarkDirty(true);
             }
-
         }
 
         internal byte[] GetLightHsv()
@@ -68,7 +55,7 @@ namespace Vintagestory.GameContent
             return lightHsv;
         }
 
-        private MeshData getMesh()
+        private MeshData getMesh(ITesselatorAPI tesselator)
         {
             Dictionary<string, MeshData> lanternMeshes = null;
 
@@ -93,7 +80,7 @@ namespace Vintagestory.GameContent
                 return mesh;
             }
 
-            return lanternMeshes[material + "-" + lining + "-" + orient] = block.GenMesh(api as ICoreClientAPI, material, lining);
+            return lanternMeshes[material + "-" + lining + "-" + orient] = block.GenMesh(api as ICoreClientAPI, material, lining, null, tesselator);
         }
 
         public override void ToTreeAttributes(ITreeAttribute tree)
@@ -107,10 +94,13 @@ namespace Vintagestory.GameContent
 
         public bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
         {
-            if (currentMesh != null)
+            if (currentMesh == null)
             {
-                mesher.AddMeshData(currentMesh);
+                currentMesh = getMesh(tesselator);
+                if (currentMesh == null) return false;
             }
+
+            mesher.AddMeshData(currentMesh);
             return true;
         }
 

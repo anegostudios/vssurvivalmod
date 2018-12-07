@@ -171,6 +171,7 @@ namespace Vintagestory.GameContent
             return true;
         }
 
+
         private bool TryPut(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
             IItemSlot slot = byPlayer.InventoryManager.ActiveHotbarSlot;
@@ -679,7 +680,8 @@ namespace Vintagestory.GameContent
             ;
 
             IClientWorldAccessor clientWorld = (IClientWorldAccessor)api.World;
-            
+
+            clientWorld.Logger.Notification("Call to BEAnvil.OpenDialog");
             GuiDialog dlg = new GuiDialogBlockEntityRecipeSelector("Select smithing recipe", stacks.ToArray(), pos, api as ICoreClientAPI);
             dlg.TryOpen();
         }

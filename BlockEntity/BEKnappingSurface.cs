@@ -45,17 +45,17 @@ namespace Vintagestory.GameContent
         {
             base.Initialize(api);
 
+            if (BaseMaterial != null)
+            {
+                BaseMaterial.ResolveBlockOrItem(api.World);
+            }
+
             if (api is ICoreClientAPI)
             {
                 ICoreClientAPI capi = (ICoreClientAPI)api;
                 workitemRenderer = new KnappingRenderer(pos, capi);
 
                 RegenMeshAndSelectionBoxes();
-            }
-
-            if (BaseMaterial != null)
-            {
-                BaseMaterial.ResolveBlockOrItem(api.World);
             }
         }
 
@@ -332,6 +332,8 @@ namespace Vintagestory.GameContent
             {
                 BaseMaterial?.ResolveBlockOrItem(api.World);
             }
+
+            RegenMeshAndSelectionBoxes();
         }
 
         public override void ToTreeAttributes(ITreeAttribute tree)

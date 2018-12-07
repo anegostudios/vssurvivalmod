@@ -90,9 +90,9 @@ namespace Vintagestory.GameContent
         {
             lock (inventoryLock)
             {
-                if (inventory.GetSlot(0).Itemstack == null) return true;
-                string metal = inventory.GetSlot(0).Itemstack.Collectible.LastCodePart();
-                int index = Math.Min(16, inventory.GetSlot(0).StackSize);
+                if (inventory[0].Itemstack == null) return true;
+                string metal = inventory[0].Itemstack.Collectible.LastCodePart();
+                int index = Math.Min(16, inventory[0].StackSize);
 
                 meshdata.AddMeshData(meshesByType[new AssetLocation(metal)][index]);
             }

@@ -120,9 +120,11 @@ namespace Vintagestory.GameContent
         }
 
 
-        public MeshData GenMesh(ICoreClientAPI capi, string material, string lining, Shape shape = null)
+        public MeshData GenMesh(ICoreClientAPI capi, string material, string lining, Shape shape = null, ITesselatorAPI tesselator = null)
         {
-            tmpTextureSource = capi.Tesselator.GetTexSource(this);
+            if (tesselator == null) tesselator = capi.Tesselator;
+
+            tmpTextureSource = tesselator.GetTexSource(this);
 
             if (shape == null)
             {
@@ -133,7 +135,7 @@ namespace Vintagestory.GameContent
             curMat = material;
             curLining = lining;
             MeshData mesh;
-            capi.Tesselator.TesselateShape("blocklantern", shape, out mesh, this, new Vec3f(Shape.rotateX, Shape.rotateY, Shape.rotateZ));
+            tesselator.TesselateShape("blocklantern", shape, out mesh, this, new Vec3f(Shape.rotateX, Shape.rotateY, Shape.rotateZ));
             return mesh;
         }
 
@@ -206,6 +208,13 @@ namespace Vintagestory.GameContent
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
             return base.OnBlockInteractStart(world, byPlayer, blockSel);
+        }
+
+        public override string GetHeldItemName(ItemStack itemStack)
+        {
+            string material = itemStack.Attributes.GetString("material");
+            
+            return Lang.GetMatching(Code?.Domain + AssetLocation.LocationSeparator + "block-" + Code?.Path + "-" + material);
         }
 
         public override void GetHeldItemInfo(ItemStack stack, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)

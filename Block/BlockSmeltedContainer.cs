@@ -65,7 +65,7 @@ namespace Vintagestory.GameContent
 
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel)
         {
-            if (!world.TestPlayerAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            if (!world.TryAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
             {
                 byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
                 return false;
@@ -82,7 +82,7 @@ namespace Vintagestory.GameContent
                     BlockEntitySmeltedContainer belmc = (BlockEntitySmeltedContainer)be;
                     KeyValuePair<ItemStack, int> contents = GetContents(world, itemstack);
                     contents.Key.Collectible.SetTemperature(world, contents.Key, GetTemperature(world, itemstack));
-                    belmc.contents = contents.Key;
+                    belmc.contents = contents.Key.Clone();
                     belmc.units = contents.Value;
                 }
 
@@ -93,7 +93,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void OnHeldIdle(IItemSlot slot, IEntityAgent byEntity)
+        public override void OnHeldIdle(IItemSlot slot, EntityAgent byEntity)
         {
             if (byEntity.World is IClientWorldAccessor && byEntity.World.Rand.NextDouble() < 0.02)
             {
@@ -113,7 +113,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override void OnHeldInteractStart(IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handHandling)
+        public override void OnHeldInteractStart(IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handHandling)
         {
             if (blockSel == null) return;
 
@@ -146,7 +146,7 @@ namespace Vintagestory.GameContent
                     if (byEntity.Controls.HandUse == EnumHandInteract.HeldItemInteract)
                     {
                         IPlayer byPlayer = null;
-                        if (byEntity is IEntityPlayer) byPlayer = byEntity.World.PlayerByUid(((IEntityPlayer)byEntity).PlayerUID);
+                        if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
 
                         world.PlaySoundAt(new AssetLocation("sounds/hotmetal"), byEntity, byPlayer);
                     }
@@ -157,7 +157,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override bool OnHeldInteractStep(float secondsUsed, IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override bool OnHeldInteractStep(float secondsUsed, IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
             if (blockSel == null) return false;
 
@@ -184,7 +184,7 @@ namespace Vintagestory.GameContent
             }
 
             IPlayer byPlayer = null;
-            if (byEntity is IEntityPlayer) byPlayer = byEntity.World.PlayerByUid(((IEntityPlayer)byEntity).PlayerUID);
+            if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
 
 
             if (secondsUsed > 1 / speed)
@@ -272,7 +272,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void OnHeldInteractStop(float secondsUsed, IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override void OnHeldInteractStop(float secondsUsed, IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
             slot.MarkDirty();
 
@@ -295,9 +295,10 @@ namespace Vintagestory.GameContent
             if (be is BlockEntitySmeltedContainer)
             {
                 BlockEntitySmeltedContainer belmc = (BlockEntitySmeltedContainer)be;
-                SetContents(stacks[0], belmc.contents, belmc.units);
+                ItemStack contents = belmc.contents.Clone();
+                SetContents(stacks[0], contents, belmc.units);
                 belmc.contents?.ResolveBlockOrItem(world);
-                stacks[0].Collectible.SetTemperature(world, stacks[0], belmc.contents.Collectible.GetTemperature(world, belmc.contents));
+                stacks[0].Collectible.SetTemperature(world, stacks[0], belmc.contents.Collectible.GetTemperature(world, contents));
             }
 
             return stacks;
@@ -330,7 +331,7 @@ namespace Vintagestory.GameContent
             {
                 // cheap hax to get metal name
                 string name = contents.Key.GetName();
-                string metal = name.Substring(name.IndexOf("(") + 1, name.Length - 2 - name.IndexOf("("));
+                string metal = name.Substring(name.IndexOf("(") + 1, name.Length - 1 - name.IndexOf("("));
 
                 dsc.Append(string.Format("{0} units of {1}\n", (int)(contents.Value), metal));
 

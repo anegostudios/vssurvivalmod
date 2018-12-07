@@ -30,17 +30,17 @@ namespace Vintagestory.GameContent
 
 
             // 2. Around all that is 10 pixel padding
-            ElementBounds bgBounds = ElementBounds.Fill.WithFixedPadding(ElementGeometrics.ElementToDialogPadding);
+            ElementBounds bgBounds = ElementBounds.Fill.WithFixedPadding(GuiStyle.ElementToDialogPadding);
             bgBounds.BothSizing = ElementSizing.FitToChildren;
             bgBounds.WithChildren(clippingBounds, scrollbarBounds, cancelButtonBounds, saveButtonBounds); //textAreaBounds, 
 
             // 3. Finally Dialog
             ElementBounds dialogBounds = ElementStdBounds.AutosizedMainDialog.WithAlignment(EnumDialogArea.RightMiddle)
-                .WithFixedAlignmentOffset(-ElementGeometrics.DialogToScreenPadding, 0);
+                .WithFixedAlignmentOffset(-GuiStyle.DialogToScreenPadding, 0);
 
 
             SingleComposer = capi.Gui
-                .CreateCompo("blockentitytexteditordialog", dialogBounds, false)
+                .CreateCompo("blockentitytexteditordialog", dialogBounds)
                 .AddDialogBG(bgBounds)
                 .AddDialogTitleBar(DialogTitle, OnTitleBarClose)
                 .BeginChildElements(bgBounds)

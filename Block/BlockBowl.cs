@@ -21,7 +21,7 @@ namespace Vintagestory.GameContent
             return part;
         }
 
-        public override void OnHeldInteractStart(IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handHandling)
+        public override void OnHeldInteractStart(IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handHandling)
         {
             if (blockSel == null)
             {
@@ -65,7 +65,7 @@ namespace Vintagestory.GameContent
             base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, ref handHandling);
         }
 
-        public override bool OnHeldInteractStep(float secondsUsed, IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override bool OnHeldInteractStep(float secondsUsed, IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
             if (blockSel != null && (byEntity.World.BlockAccessor.GetBlock(blockSel.Position) as BlockBucket) != null)
             {
@@ -76,7 +76,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        private void TakeoutHoney(IItemSlot itemslot, IEntityAgent byEntity)
+        private void TakeoutHoney(IItemSlot itemslot, EntityAgent byEntity)
         {
             Block emptyBowl = byEntity.World.GetBlock(new AssetLocation("bowl-burned"));
             ItemStack emptyStack = new ItemStack(emptyBowl);
@@ -100,7 +100,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        private void InsertHoney(IItemSlot itemslot, IEntityAgent byEntity)
+        private void InsertHoney(IItemSlot itemslot, EntityAgent byEntity)
         {
             Block emptyBowl = byEntity.World.GetBlock(new AssetLocation("bowl-honey"));
             ItemStack emptyStack = new ItemStack(emptyBowl);

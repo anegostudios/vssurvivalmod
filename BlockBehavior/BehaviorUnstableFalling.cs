@@ -18,7 +18,7 @@ namespace Vintagestory.GameContent
         {
             handling = EnumHandling.NotHandled;
             
-            if (blockSel != null && !world.BlockAccessor.GetBlock(blockSel.Position.DownCopy()).SideSolid[BlockFacing.UP.Index])
+            if (blockSel != null && !world.BlockAccessor.GetBlock(blockSel.Position.DownCopy()).SideSolid[BlockFacing.UP.Index] && block.Attributes?["allowUnstablePlacement"].AsBool() != true)
             {
                 handling = EnumHandling.PreventDefault;
                 return false;
@@ -44,7 +44,7 @@ namespace Vintagestory.GameContent
             if (IsReplacableBeneath(world, pos))
             {
                 // Prevents duplication
-                IEntity entity = world.GetNearestEntity(pos.ToVec3d().Add(0.5, 0.5, 0.5), 1, 3, (e) =>
+                Entity entity = world.GetNearestEntity(pos.ToVec3d().Add(0.5, 0.5, 0.5), 1, 3, (e) =>
                 {
                     return e is EntityBlockFalling && ((EntityBlockFalling)e).initialPos.Equals(pos);
                 }

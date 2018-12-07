@@ -8,6 +8,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Server;
 
 namespace Vintagestory.GameContent
 {
@@ -116,7 +117,7 @@ namespace Vintagestory.GameContent
 
                 float spreadChance = (TimePassed - 2.5f) / 500f;
 
-                if (spreadChance > api.World.Rand.NextDouble())
+                if (((ICoreServerAPI)api).Server.Config.AllowFireSpread && spreadChance > api.World.Rand.NextDouble())
                 {
                     TrySpreadFire();
                 }
@@ -217,7 +218,10 @@ namespace Vintagestory.GameContent
 
         ~BlockEntityFire()
         {
-            if (ambientSound != null) ambientSound?.Dispose();
+            if (ambientSound != null)
+            {
+                ambientSound?.Dispose();
+            }
         }
 
         public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldForResolving)

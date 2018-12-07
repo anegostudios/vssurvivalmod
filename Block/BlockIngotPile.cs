@@ -69,11 +69,11 @@ namespace Vintagestory.GameContent
                 BlockEntityIngotPile pile = (BlockEntityIngotPile)be;
                 if (player.WorldData.CurrentGameMode == EnumGameMode.Creative)
                 {
-                    pile.inventory.GetSlot(0).Itemstack = slot.Itemstack.Clone();
-                    pile.inventory.GetSlot(0).Itemstack.StackSize = 1;
+                    pile.inventory[0].Itemstack = slot.Itemstack.Clone();
+                    pile.inventory[0].Itemstack.StackSize = 1;
                 } else
                 {
-                    pile.inventory.GetSlot(0).Itemstack = slot.TakeOut(1);
+                    pile.inventory[0].Itemstack = slot.TakeOut(1);
                 }
                 
                 pile.MarkDirty();
@@ -131,7 +131,7 @@ namespace Vintagestory.GameContent
             if (be is BlockEntityIngotPile)
             {
                 BlockEntityIngotPile pile = (BlockEntityIngotPile)be;
-                ItemStack stack = pile.inventory.GetSlot(0).Itemstack;
+                ItemStack stack = pile.inventory[0].Itemstack;
                 if (stack != null)
                 {
                     ItemStack pickstack = stack.Clone();

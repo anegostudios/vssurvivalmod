@@ -176,7 +176,7 @@ namespace Vintagestory.ServerMods.NoObf
         }
 
 
-        public new BlockSchematicStructure Clone()
+        public BlockSchematicStructure Clone()
         {
             BlockSchematicStructure cloned = new BlockSchematicStructure();
 

@@ -8,6 +8,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
+using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
@@ -17,6 +18,32 @@ namespace Vintagestory.GameContent
         ItemStack contents;
         float fuelLevel;
         bool burning;
+
+
+        static SimpleParticleProperties smokeParticles;
+
+        static BlockEntityForge()
+        {
+            smokeParticles = new SimpleParticleProperties(
+                   1, 1,
+                   ColorUtil.ToRgba(150, 80, 80, 80),
+                   new Vec3d(),
+                   new Vec3d(0.75, 0, 0.75),
+                   new Vec3f(-1 / 32f, 0.1f, -1 / 32f),
+                   new Vec3f(1 / 32f, 0.1f, 1 / 32f),
+                   1.5f,
+                   -0.025f / 4,
+                   0.2f,
+                   0.4f,
+                   EnumParticleModel.Quad
+               );
+
+            smokeParticles.SizeEvolve = new EvolvingNatFloat(EnumTransformFunction.LINEAR, -0.25f);
+            smokeParticles.SelfPropelled = true;
+            smokeParticles.addPos.Set(8 / 16.0, 0, 8 / 16.0);
+        }
+
+
 
         public override void Initialize(ICoreAPI api)
         {
@@ -30,14 +57,21 @@ namespace Vintagestory.GameContent
                 renderer.SetContents(contents, fuelLevel, burning, true);
             }
 
-            
-            api.Event.RegisterGameTickListener(OnGameTick, 50);
+            RegisterGameTickListener(OnGameTick, 50);
         }
 
         private void OnGameTick(float dt)
         {
             if (burning)
             {
+                if (api.Side == EnumAppSide.Client && api.World.Rand.NextDouble() < 0.1) 
+                {
+                    smokeParticles.minPos.Set(pos.X + 4/16f, pos.Y + 14/16f, pos.Z + 4 / 16f);
+                    int g = 50 + api.World.Rand.Next(50);
+                    smokeParticles.color = ColorUtil.ToRgba(150, g, g, g);
+                    api.World.SpawnParticles(smokeParticles);
+                }
+
                 if (fuelLevel > 0) fuelLevel = Math.Max(0, fuelLevel - 0.0001f);
 
                 if (fuelLevel <= 0)
@@ -183,6 +217,8 @@ namespace Vintagestory.GameContent
 
         public override void OnBlockBroken()
         {
+            base.OnBlockBroken();
+
             if (contents != null)
             {
                 api.World.SpawnItemEntity(contents, pos.ToVec3d().Add(0.5, 0.5, 0.5));

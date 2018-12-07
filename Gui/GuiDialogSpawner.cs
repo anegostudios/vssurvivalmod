@@ -54,7 +54,7 @@ namespace Vintagestory.GameContent
 
 
             // 2. Around all that is 10 pixel padding
-            ElementBounds bgBounds = ElementBounds.Fill.WithFixedPadding(ElementGeometrics.ElementToDialogPadding);
+            ElementBounds bgBounds = ElementBounds.Fill.WithFixedPadding(GuiStyle.ElementToDialogPadding);
             bgBounds.BothSizing = ElementSizing.FitToChildren;
             bgBounds.WithChildren(dropDownBounds, creatureTextBounds, closeButtonBounds, saveButtonBounds);
 
@@ -78,7 +78,7 @@ namespace Vintagestory.GameContent
             ElementBounds tmpBoundsDim3;
 
             SingleComposer = capi.Gui
-                .CreateCompo("spawnwerconfig", dialogBounds, false)
+                .CreateCompo("spawnwerconfig", dialogBounds)
                 .AddDialogBG(bgBounds, true)
                 .AddDialogTitleBar(DialogTitle, OnTitleBarClose)
                 .AddStaticText("Entity to spawn", CairoFont.WhiteDetailText(), creatureTextBounds)
@@ -212,7 +212,7 @@ namespace Vintagestory.GameContent
             return false;
         }
 
-        public override bool DisableWorldInteract()
+        public override bool RequiresUngrabbedMouse()
         {
             return false;
         }

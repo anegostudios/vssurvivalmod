@@ -7,7 +7,7 @@ namespace Vintagestory.GameContent
     class ItemFirewood : Item
     {
 
-        public override void OnHeldInteractStart(IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
+        public override void OnHeldInteractStart(IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
         {
             if (blockSel == null || byEntity?.World == null || !byEntity.Controls.Sneak) return;
 
@@ -15,11 +15,11 @@ namespace Vintagestory.GameContent
             Block block = byEntity.World.BlockAccessor.GetBlock(onBlockPos);
 
             IPlayer byPlayer = null;
-            if (byEntity is IEntityPlayer) byPlayer = byEntity.World.PlayerByUid(((IEntityPlayer)byEntity).PlayerUID);
+            if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
             if (byPlayer == null) return;
 
 
-            if (!byEntity.World.TestPlayerAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            if (!byEntity.World.TryAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
             {
                 return;
             }
@@ -40,7 +40,7 @@ namespace Vintagestory.GameContent
                     BlockEntityFirewoodPile pile = (BlockEntityFirewoodPile)be;
                     if (pile.OnPlayerInteract(byPlayer))
                     {
-                        handling = EnumHandHandling.PreventDefault;
+                        handling = EnumHandHandling.PreventDefaultAction;
                         return;
                     }
                 }
@@ -51,7 +51,7 @@ namespace Vintagestory.GameContent
                     BlockEntityFirewoodPile pile = (BlockEntityFirewoodPile)be;
                     if (pile.OnPlayerInteract(byPlayer))
                     {
-                        handling = EnumHandHandling.PreventDefault;
+                        handling = EnumHandHandling.PreventDefaultAction;
                         return;
                     }
                 }
@@ -70,7 +70,7 @@ namespace Vintagestory.GameContent
 
                 if (ok)
                 {
-                    handling = EnumHandHandling.PreventDefault;
+                    handling = EnumHandHandling.PreventDefaultAction;
                 }
             }
 

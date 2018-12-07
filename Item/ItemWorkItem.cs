@@ -1,6 +1,7 @@
 ﻿using System.Text;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
@@ -20,7 +21,7 @@ namespace Vintagestory.GameContent
             }
 
             SmithingRecipe smithRecipe = world.SmithingRecipes[selectedRecipeNumber];
-            dsc.AppendLine("Unfinished " + smithRecipe.Name);
+            dsc.AppendLine(Lang.Get("Unfinished {0}", smithRecipe.Output.ResolvedItemstack.GetName()));
         }
     }
 }

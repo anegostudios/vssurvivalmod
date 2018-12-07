@@ -16,10 +16,17 @@ namespace Vintagestory.GameContent
         {
         }
 
-        public override void OnHeldInteractStart(IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handHandling, ref EnumHandling blockHandling)
+        public override void OnHeldInteractStart(IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handHandling, ref EnumHandling blockHandling)
         {
             if (blockSel == null) return;
             Block block = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
+
+            IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
+            if (!byEntity.World.TryAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            {
+                return;
+            }
+
 
             if (!byEntity.Controls.Sneak)
             {
@@ -37,13 +44,20 @@ namespace Vintagestory.GameContent
             blockHandling = EnumHandling.PreventDefault;
             handHandling = EnumHandHandling.PreventDefault;
 
-            IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
+            
             byEntity.World.PlaySoundAt(new AssetLocation("sounds/torch-ignite"), byEntity, byPlayer, false, 16);
         }
 
-        public override bool OnHeldInteractStep(float secondsUsed, IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandling handling)
+        public override bool OnHeldInteractStep(float secondsUsed, IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandling handling)
         {
-            if (blockSel == null) return false;            
+            if (blockSel == null) return false;
+
+            IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
+            if (!byEntity.World.TryAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            {
+                return false;
+            }
+
 
             Block block = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
 
@@ -65,8 +79,7 @@ namespace Vintagestory.GameContent
 
 
                 if (igniteHandled == EnumHandling.NotHandled && secondsUsed > 0.25f && (int)(30 * secondsUsed) % 2 == 1)
-                {
-                    
+                { 
                     Vec3d pos = BlockEntityFire.RandomBlockPos(byEntity.World.BlockAccessor, blockSel.Position, block, blockSel.Face);
 
                     Block blockFire = byEntity.World.GetBlock(new AssetLocation("fire"));
@@ -74,9 +87,6 @@ namespace Vintagestory.GameContent
                     AdvancedParticleProperties props = blockFire.ParticleProperties[blockFire.ParticleProperties.Length - 1];
                     props.basePos = pos;
                     props.Quantity.avg = 1;
-
-                    IPlayer byPlayer = null;
-                    if (byEntity is IEntityPlayer) byPlayer = byEntity.World.PlayerByUid(((IEntityPlayer)byEntity).PlayerUID);
 
                     byEntity.World.SpawnParticles(props, byPlayer);
 
@@ -87,7 +97,7 @@ namespace Vintagestory.GameContent
             return igniteHandled != EnumHandling.NotHandled ? handledResult : secondsUsed <= 3.1;
         }
 
-        public override void OnHeldInteractStop(float secondsUsed, IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandling handling)
+        public override void OnHeldInteractStop(float secondsUsed, IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandling handling)
         {
             if (blockSel == null) return;
 

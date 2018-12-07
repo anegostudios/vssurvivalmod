@@ -84,7 +84,8 @@ namespace Vintagestory.GameContent
             prog.FogMinIn = rpi.FogMin;
             prog.FogDensityIn = rpi.FogDensity;
             prog.RgbaTint = ColorUtil.WhiteArgbVec;
-            prog.WaterWave = 0;
+            prog.DontWarpVertices = 0;
+            prog.AddRenderFlags = 0;
 
             if (LevelLeft > 0 && TextureNameLeft != null)
             {

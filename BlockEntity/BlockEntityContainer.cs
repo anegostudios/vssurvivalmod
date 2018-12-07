@@ -32,7 +32,7 @@ namespace Vintagestory.GameContent
                 ItemStack[] stacks = container.GetContents(api.World, byItemStack);
                 for (int i = 0; stacks != null && i < stacks.Length; i++)
                 {
-                    Inventory.GetSlot(i).Itemstack = stacks[i].Clone();
+                    Inventory[i].Itemstack = stacks[i].Clone();
                 }
 
             }
@@ -49,9 +49,8 @@ namespace Vintagestory.GameContent
         public ItemStack[] GetContentStacks(bool cloned = true)
         {
             List<ItemStack> stacklist = new List<ItemStack>();
-            for (int i = 0; i < Inventory.QuantitySlots; i++)
+            foreach (var slot in Inventory)
             {
-                ItemSlot slot = Inventory.GetSlot(i);
                 if (slot.Empty) continue;
                 stacklist.Add(cloned ? slot.Itemstack.Clone() : slot.Itemstack);
             }
@@ -79,10 +78,8 @@ namespace Vintagestory.GameContent
 
         public override void OnStoreCollectibleMappings(Dictionary<int, AssetLocation> blockIdMapping, Dictionary<int, AssetLocation> itemIdMapping)
         {
-            int q = Inventory.QuantitySlots;
-            for (int i = 0; i < q; i++)
+            foreach (var slot in Inventory)
             {
-                ItemSlot slot = Inventory.GetSlot(i);
                 if (slot.Itemstack == null) continue;
 
                 slot.Itemstack.Collectible.OnStoreCollectibleMappings(api.World, slot, blockIdMapping, itemIdMapping);
@@ -91,10 +88,8 @@ namespace Vintagestory.GameContent
 
         public override void OnLoadCollectibleMappings(IWorldAccessor worldForResolve, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping)
         {
-            int q = Inventory.QuantitySlots;
-            for (int i = 0; i < q; i++)
+            foreach (var slot in Inventory)
             {
-                ItemSlot slot = Inventory.GetSlot(i);
                 if (slot.Itemstack == null) continue;
 
                 if (!slot.Itemstack.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve))

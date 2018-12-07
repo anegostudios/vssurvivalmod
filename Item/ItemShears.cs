@@ -45,7 +45,7 @@ namespace Vintagestory.GameContent
                 if (q == 0) break;
                 BlockFacing facing = BlockFacing.FromVector(player.Entity.ServerPos.GetViewVector()).GetOpposite();
 
-                if (!player.Entity.World.CanPlayerAccessBlock(player, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak)) continue;
+                if (!player.Entity.World.TryAccessBlock(player, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak)) continue;
                 
                 player.Entity.World.BlockAccessor.DamageBlock(val.Key, facing, damage);
                 q--;
@@ -56,15 +56,15 @@ namespace Vintagestory.GameContent
 
 
 
-        public override bool OnBlockBrokenWith(IWorldAccessor world, IEntity byEntity, IItemSlot itemslot, BlockSelection blockSel)
+        public override bool OnBlockBrokenWith(IWorldAccessor world, Entity byEntity, IItemSlot itemslot, BlockSelection blockSel)
         {
             Block block = world.BlockAccessor.GetBlock(blockSel.Position);
 
             base.OnBlockBrokenWith(world, byEntity, itemslot, blockSel);            
 
-            if (byEntity as IEntityPlayer == null || itemslot.Itemstack == null) return true;
+            if (byEntity as EntityPlayer == null || itemslot.Itemstack == null) return true;
 
-            IPlayer plr = world.PlayerByUid((byEntity as IEntityPlayer).PlayerUID);
+            IPlayer plr = world.PlayerByUid((byEntity as EntityPlayer).PlayerUID);
 
             if (!CanMultiBreak(block)) return true;
 

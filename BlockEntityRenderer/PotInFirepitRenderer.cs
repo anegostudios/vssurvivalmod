@@ -74,7 +74,7 @@ namespace Vintagestory.GameContent
             IStandardShaderProgram prog = rpi.PreparedStandardShader(pos.X, pos.Y, pos.Z);
             capi.Render.BindTexture2d(capi.BlockTextureAtlas.AtlasTextureIds[0]);
 
-            prog.WaterWave = 0;
+            prog.DontWarpVertices = 0;
             prog.ModelMatrix = ModelMat
                 .Identity()
                 .Translate(pos.X - camPos.X + 0.001f, pos.Y - camPos.Y, pos.Z - camPos.Z - 0.001f)

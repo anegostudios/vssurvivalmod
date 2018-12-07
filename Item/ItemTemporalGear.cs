@@ -55,7 +55,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override void OnHeldIdle(IItemSlot slot, IEntityAgent byEntity)
+        public override void OnHeldIdle(IItemSlot slot, EntityAgent byEntity)
         {
             if (byEntity.World is IClientWorldAccessor)
             {
@@ -76,7 +76,7 @@ namespace Vintagestory.GameContent
 
         }
 
-        public override void OnHeldInteractStart(IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handHandling)
+        public override void OnHeldInteractStart(IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handHandling)
         {
             if (blockSel == null) return;
 
@@ -123,7 +123,7 @@ namespace Vintagestory.GameContent
             handHandling = EnumHandHandling.PreventDefault;
         }
 
-        public override bool OnHeldInteractStep(float secondsUsed, IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override bool OnHeldInteractStep(float secondsUsed, IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
             if (blockSel == null || !(byEntity is EntityPlayer)) return false;
             
@@ -148,7 +148,7 @@ namespace Vintagestory.GameContent
             return secondsUsed < 3.5;
         }
 
-        public override void OnHeldInteractStop(float secondsUsed, IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override void OnHeldInteractStop(float secondsUsed, IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
             if (byEntity.World.Side == EnumAppSide.Client)
             {
@@ -184,7 +184,7 @@ namespace Vintagestory.GameContent
 
         }
 
-        public override bool OnHeldInteractCancel(float secondsUsed, IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)
+        public override bool OnHeldInteractCancel(float secondsUsed, IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)
         {
             if (byEntity.World.Side == EnumAppSide.Client)
             {
@@ -205,7 +205,7 @@ namespace Vintagestory.GameContent
                 int v = 100 + world.Rand.Next(50);
 
                 particlesHeld.minPos = pos;
-                particlesHeld.color = ColorUtil.HsvToRgba(h, 180, v);
+                particlesHeld.color = ColorUtil.ReverseColorBytes(ColorUtil.HsvToRgba(h, 180, v));
                 world.SpawnParticles(particlesHeld);
             }
         }

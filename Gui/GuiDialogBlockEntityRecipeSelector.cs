@@ -79,13 +79,13 @@ namespace Vintagestory.GameContent
 
             SingleComposer =
                 capi.Gui
-                .CreateCompo("toolmodeselect", ElementStdBounds.AutosizedMainDialog, false)
+                .CreateCompo("toolmodeselect", ElementStdBounds.AutosizedMainDialog)
                 .AddDialogTitleBar("Select Recipe", OnTitleBarClose)
-                .AddDialogBG(ElementStdBounds.DialogBackground(), false, ElementGeometrics.TitleBarHeight - 1)
+                .AddDialogBG(ElementStdBounds.DialogBackground(), false, GuiStyle.TitleBarHeight - 1)
                 .BeginChildElements()
                     .AddSkillItemGrid(skillItems, cols, rows, OnSlotClick, skillGridBounds, "skillitemgrid")
-                    .AddDynamicText("", CairoFont.WhiteSmallishText(), EnumTextOrientation.Left, textBounds, 1, "name")
-                    .AddDynamicText("", CairoFont.WhiteDetailText(), EnumTextOrientation.Left, textBounds.BelowCopy(0,10,0,0), 1, "desc")
+                    .AddDynamicText("", CairoFont.WhiteSmallishText(), EnumTextOrientation.Left, textBounds, "name")
+                    .AddDynamicText("", CairoFont.WhiteDetailText(), EnumTextOrientation.Left, textBounds.BelowCopy(0,10,0,0), "desc")
                 .EndChildElements()
                 .Compose()
             ;
@@ -130,6 +130,19 @@ namespace Vintagestory.GameContent
                 capi.Network.SendBlockEntityPacket(blockEntityPos.X, blockEntityPos.Y, blockEntityPos.Z, 1003);
             }
         }
+
+        public override bool TryClose()
+        {
+            capi.Logger.Notification("Call to GuiDialogBlockEntityRecipeSelector.TryClose");
+            return base.TryClose();
+        }
+
+        public override bool TryOpen()
+        {
+            capi.Logger.Notification("Call to GuiDialogBlockEntityRecipeSelector.TryOpen");
+            return base.TryOpen();
+        }
+
 
         private void SendInvPacket(object packet)
         {

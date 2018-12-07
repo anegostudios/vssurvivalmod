@@ -28,17 +28,17 @@ namespace Vintagestory.GameContent
             ElementBounds leftButton = ElementBounds.Fixed(EnumDialogArea.LeftFixed, 0, 0, 0, 0).WithFixedPadding(10, 1);
             ElementBounds rightButton = ElementBounds.Fixed(EnumDialogArea.RightFixed, 0, 0, 0, 0).WithFixedPadding(10, 1);
 
-            ElementBounds bgBounds = ElementBounds.Fill.WithFixedPadding(ElementGeometrics.ElementToDialogPadding);
+            ElementBounds bgBounds = ElementBounds.Fill.WithFixedPadding(GuiStyle.ElementToDialogPadding);
             bgBounds.BothSizing = ElementSizing.FitToChildren;
 
 
             ElementBounds dialogBounds = ElementStdBounds
                 .AutosizedMainDialog.WithAlignment(EnumDialogArea.CenterMiddle)
-                .WithFixedAlignmentOffset(ElementGeometrics.DialogToScreenPadding, 0);
+                .WithFixedAlignmentOffset(GuiStyle.DialogToScreenPadding, 0);
 
 
             SingleComposer = capi.Gui
-                .CreateCompo("itemstackrandomizer", dialogBounds, false)
+                .CreateCompo("itemstackrandomizer", dialogBounds)
                 .AddDialogBG(bgBounds, true)
                 .AddDialogTitleBar("Item Stack Randomizer", OnTitleBarClose)
                 .BeginChildElements(bgBounds)

@@ -81,7 +81,7 @@ namespace Vintagestory.GameContent
 
         private void OnLootRndMsg(IServerPlayer fromPlayer, SaveLootRandomizerAttributes networkMessage)
         {
-            ItemSlot slot = fromPlayer.InventoryManager.GetInventory(networkMessage.InventoryId)?.GetSlot(networkMessage.SlotId);
+            ItemSlot slot = fromPlayer.InventoryManager.GetInventory(networkMessage.InventoryId)?[networkMessage.SlotId];
             if (slot == null) return;
 
             using (MemoryStream ms = new MemoryStream(networkMessage.attributes))
@@ -94,7 +94,7 @@ namespace Vintagestory.GameContent
         
         private void OnStackRndMsg(IServerPlayer fromPlayer, SaveStackRandomizerAttributes networkMessage)
         {
-            ItemSlot slot = fromPlayer.InventoryManager.GetInventory(networkMessage.InventoryId)?.GetSlot(networkMessage.SlotId);
+            ItemSlot slot = fromPlayer.InventoryManager.GetInventory(networkMessage.InventoryId)?[networkMessage.SlotId];
             if (slot == null) return;
 
             slot.Itemstack.Attributes.SetFloat("totalChance", networkMessage.TotalChance);
@@ -106,7 +106,7 @@ namespace Vintagestory.GameContent
 
             string inventoryd = (data as TreeAttribute).GetString("inventoryId");
             int slotId = (data as TreeAttribute).GetInt("slotId");
-            ItemSlot slot = capi.World.Player.InventoryManager.GetInventory(inventoryd).GetSlot(slotId);
+            ItemSlot slot = capi.World.Player.InventoryManager.GetInventory(inventoryd)[slotId];
 
             if (dialogs.ContainsKey(slot)) return;
 
@@ -139,7 +139,7 @@ namespace Vintagestory.GameContent
 
             string inventoryd = (data as TreeAttribute).GetString("inventoryId");
             int slotId = (data as TreeAttribute).GetInt("slotId");
-            ItemSlot slot = capi.World.Player.InventoryManager.GetInventory(inventoryd).GetSlot(slotId);
+            ItemSlot slot = capi.World.Player.InventoryManager.GetInventory(inventoryd)[slotId];
             if (dialogs.ContainsKey(slot)) return;
 
             dialogs[slot] = new GuiDialogItemStackRandomizer((data as TreeAttribute).GetFloat("totalChance"), capi);

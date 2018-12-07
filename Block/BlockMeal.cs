@@ -15,7 +15,7 @@ namespace Vintagestory.GameContent
 {
     public class BlockMeal : BlockContainer
     {
-        public override void OnHeldIdle(IItemSlot slot, IEntityAgent byEntity)
+        public override void OnHeldIdle(IItemSlot slot, EntityAgent byEntity)
         {
             if (byEntity.World.Side == EnumAppSide.Client && GetTemperature(byEntity.World, slot.Itemstack) > 50 && byEntity.World.Rand.NextDouble() < 0.07)
             {
@@ -39,7 +39,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void OnHeldInteractStart(IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handHandling)
+        public override void OnHeldInteractStart(IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handHandling)
         {
             if (!byEntity.Controls.Sneak && GetContentNutritionProperties(byEntity.World, slot.Itemstack, byEntity as Entity) != null)
             {
@@ -51,7 +51,7 @@ namespace Vintagestory.GameContent
                     }
                 }, 500);
 
-                byEntity.StartAnimation("eat");
+                byEntity.AnimManager.StartAnimation("eat");
 
                 handHandling = EnumHandHandling.PreventDefault;
                 return;
@@ -69,9 +69,23 @@ namespace Vintagestory.GameContent
         /// <param name="blockSel"></param>
         /// <param name="entitySel"></param>
         /// <returns>False if the interaction should be stopped. True if the interaction should continue</returns>
-        public override bool OnHeldInteractStep(float secondsUsed, IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override bool OnHeldInteractStep(float secondsUsed, IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
             if (GetContentNutritionProperties(byEntity.World, slot.Itemstack, byEntity as Entity) == null) return false;
+
+            Vec3d pos = byEntity.Pos.AheadCopy(0.4f).XYZ;
+            pos.Y += byEntity.EyeHeight - 0.4f;
+
+            IPlayer player = (byEntity as EntityPlayer).Player;
+
+            if (secondsUsed > 0.5f && (int)(30 * secondsUsed) % 7 == 1)
+            {
+                ItemStack[] contents = GetContents(byEntity.World, slot.Itemstack);
+                ItemStack rndStack = contents[byEntity.World.Rand.Next(contents.Length)];
+
+                byEntity.World.SpawnCubeParticles(pos, rndStack, 0.3f, 4, 1, player);
+            }
+
 
             if (byEntity.World is IClientWorldAccessor)
             {
@@ -91,16 +105,8 @@ namespace Vintagestory.GameContent
 
                 byEntity.Controls.UsingHeldItemTransformBefore = tf;
 
-                Vec3d pos = byEntity.Pos.AheadCopy(0.4f).XYZ;
-                pos.Y += byEntity.EyeHeight - 0.4f;
 
-                if (secondsUsed > 0.5f && (int)(30 * secondsUsed) % 7 == 1)
-                {
-                    ItemStack[] contents = GetContents(byEntity.World, slot.Itemstack);
-                    ItemStack rndStack = contents[byEntity.World.Rand.Next(contents.Length)];
-
-                    byEntity.World.SpawnCubeParticles(pos, rndStack, 0.3f, 4, 1);
-                }
+                
 
                 return secondsUsed <= 1f;
             }
@@ -118,7 +124,7 @@ namespace Vintagestory.GameContent
         /// <param name="byEntity"></param>
         /// <param name="blockSel"></param>
         /// <param name="entitySel"></param>
-        public override void OnHeldInteractStop(float secondsUsed, IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override void OnHeldInteractStop(float secondsUsed, IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
             FoodNutritionProperties[] multiProps = GetContentNutritionProperties(byEntity.World, slot.Itemstack, byEntity as Entity);
 
@@ -128,15 +134,17 @@ namespace Vintagestory.GameContent
                 slot.MarkDirty();
                 IPlayer player = (byEntity as EntityPlayer).Player;
 
-                Block block = byEntity.World.GetBlock(new AssetLocation("bowl-burned"));
+                Block block = byEntity.World.GetBlock(new AssetLocation(Attributes["eatenBlock"].AsString()));
                 if (player == null || !player.InventoryManager.TryGiveItemstack(new ItemStack(block), true))
                 {
                     byEntity.World.SpawnItemEntity(new ItemStack(block), byEntity.LocalPos.XYZ);
                 }
-                
+
+                float totalHealth = 0;
+
                 foreach (var nutriProps in multiProps)
                 {
-                    player.Entity.ReceiveSaturation(nutriProps.Saturation, nutriProps.FoodCategory, 10 + nutriProps.Saturation / 100f * 30f);
+                    player.Entity.ReceiveSaturation(nutriProps.Saturation, nutriProps.FoodCategory, 10 + nutriProps.Saturation / 100f * 60f);
 
                     if (nutriProps.EatenStack?.ResolvedItemstack != null)
                     {
@@ -146,13 +154,16 @@ namespace Vintagestory.GameContent
                         }
                     }
 
-                    if (nutriProps.Health != 0)
+                    totalHealth += nutriProps.Health;
+                }
+
+                if (totalHealth != 0)
+                {
+                    byEntity.ReceiveDamage(new DamageSource()
                     {
-                        byEntity.ReceiveDamage(new DamageSource() {
-                            Source = EnumDamageSource.Internal,
-                            Type = nutriProps.Health > 0 ? EnumDamageType.Heal : EnumDamageType.Poison
-                        }, Math.Abs(nutriProps.Health));
-                    }
+                        Source = EnumDamageSource.Internal,
+                        Type = totalHealth > 0 ? EnumDamageType.Heal : EnumDamageType.Poison
+                    }, Math.Abs(totalHealth));
                 }
 
 
@@ -267,6 +278,8 @@ namespace Vintagestory.GameContent
 
             if (world.Side == EnumAppSide.Server && multiProps != null && secondsUsed >= 0.95f)
             {
+                float totalHealth = 0;
+
                 foreach (var nutriProps in multiProps)
                 {
                     byPlayer.Entity.ReceiveSaturation(nutriProps.Saturation, nutriProps.FoodCategory, 10 + nutriProps.Saturation/100f * 30f);
@@ -279,13 +292,19 @@ namespace Vintagestory.GameContent
                         }
                     }
 
-                    if (nutriProps.Health != 0)
-                    {
-                        byPlayer.Entity.ReceiveDamage(new DamageSource() { Source = EnumDamageSource.Internal, Type = nutriProps.Health > 0 ? EnumDamageType.Heal : EnumDamageType.Poison }, Math.Abs(nutriProps.Health));
-                    }
+                    totalHealth += nutriProps.Health;
                 }
 
-                Block block = world.GetBlock(new AssetLocation("bowl-burned"));
+
+                if (totalHealth != 0)
+                {
+                    byPlayer.Entity.ReceiveDamage(new DamageSource() {
+                        Source = EnumDamageSource.Internal, Type = totalHealth > 0 ? EnumDamageType.Heal : EnumDamageType.Poison
+                    }, Math.Abs(totalHealth));
+                }
+
+
+                Block block = world.GetBlock(new AssetLocation(Attributes["eatenBlock"].AsString()));
                 world.BlockAccessor.SetBlock(block.BlockId, blockSel.Position);
             }
         }
@@ -314,10 +333,9 @@ namespace Vintagestory.GameContent
                     stackProps = obj.GetNutritionProperties(world, contentStacks[i], forEntity);
                 }
 
-                float? customSat = obj.Attributes?["saturationWhenInMeal"].AsFloat(-1);
-                if (customSat != null && customSat >= 0)
+                if (obj.Attributes?["nutritionPropsWhenInMeal"].Exists == true)
                 {
-                    stackProps.Saturation = (float)customSat;
+                    stackProps = obj.Attributes?["nutritionPropsWhenInMeal"].AsObject<FoodNutritionProperties>();
                 }
 
                 if (stackProps == null) continue;

@@ -46,7 +46,7 @@ namespace Vintagestory.GameContent
             ElementBounds leftButton = ElementBounds.Fixed(EnumDialogArea.LeftFixed, 0, 0, 0, 0).WithFixedPadding(10, 1);
             ElementBounds rightButton = ElementBounds.Fixed(EnumDialogArea.RightFixed, 0, 0, 0, 0).WithFixedPadding(10, 1);
 
-            ElementBounds bgBounds = ElementBounds.Fill.WithFixedPadding(ElementGeometrics.ElementToDialogPadding);
+            ElementBounds bgBounds = ElementBounds.Fill.WithFixedPadding(GuiStyle.ElementToDialogPadding);
             bgBounds.BothSizing = ElementSizing.FitToChildren;
 
 
@@ -59,12 +59,12 @@ namespace Vintagestory.GameContent
 
             ElementBounds dialogBounds = ElementStdBounds
                 .AutosizedMainDialog.WithAlignment(EnumDialogArea.RightMiddle)
-                .WithFixedAlignmentOffset(-ElementGeometrics.DialogToScreenPadding, 0);
+                .WithFixedAlignmentOffset(-GuiStyle.DialogToScreenPadding, 0);
 
 
             SingleComposer = 
                 capi.Gui
-                .CreateCompo("itemlootrandomizer", dialogBounds, false)
+                .CreateCompo("itemlootrandomizer", dialogBounds)
                 .AddDialogBG(bgBounds, true)
                 .AddDialogTitleBar(owningEntity.GetBehavior<EntityBehaviorNameTag>().DisplayName + " Has Wares, If You Have Coin", OnTitleBarClose)
                 .BeginChildElements(bgBounds)
@@ -81,13 +81,13 @@ namespace Vintagestory.GameContent
                     .AddStaticText("Your Offer", CairoFont.WhiteDetailText(), ElementBounds.Fixed(leftTopSlotBounds.fixedWidth + pad + 20, 40 + 2*pad + leftTopSlotBounds.fixedHeight, 150, 25))
 
                     // Cost
-                    .AddDynamicText("", CairoFont.WhiteDetailText(), EnumTextOrientation.Left, costTextBounds, 1, "costText")
+                    .AddDynamicText("", CairoFont.WhiteDetailText(), EnumTextOrientation.Left, costTextBounds, "costText")
                     // Player money
-                    .AddDynamicText("", CairoFont.WhiteDetailText(), EnumTextOrientation.Left, playerMoneyBounds , 1, "playerMoneyText")
+                    .AddDynamicText("", CairoFont.WhiteDetailText(), EnumTextOrientation.Left, playerMoneyBounds, "playerMoneyText")
                     // Offer
-                    .AddDynamicText("", CairoFont.WhiteDetailText(), EnumTextOrientation.Left, offerTextBounds, 1, "gainText")
+                    .AddDynamicText("", CairoFont.WhiteDetailText(), EnumTextOrientation.Left, offerTextBounds, "gainText")
                     // Trader money
-                    .AddDynamicText("", CairoFont.WhiteDetailText(), EnumTextOrientation.Left, traderMoneyBounds , 1, "traderMoneyText")
+                    .AddDynamicText("", CairoFont.WhiteDetailText(), EnumTextOrientation.Left, traderMoneyBounds, "traderMoneyText")
 
                     .AddSmallButton("Goodbye!", OnByeClicked, leftButton.FixedUnder(playerMoneyBounds, 30).WithFixedPadding(8, 5))
                     .AddSmallButton("Buy / Sell", OnBuySellClicked, rightButton.FixedUnder(traderMoneyBounds, 30).WithFixedPadding(8, 5), EnumButtonStyle.Normal, EnumTextOrientation.Left, "buysellButton")

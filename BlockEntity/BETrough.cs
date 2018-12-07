@@ -82,9 +82,9 @@ namespace Vintagestory.GameContent
             ContentConfig config = contentConfigs.FirstOrDefault(c => c.Code == contentCode);
             if (config == null) return 0f;
 
-            inventory.GetSlot(0).TakeOut(config.QuantityPerFillLevel);
+            inventory[0].TakeOut(config.QuantityPerFillLevel);
 
-            if (inventory.GetSlot(0).Empty)
+            if (inventory[0].Empty)
             {
                 contentCode = "";
             }
@@ -167,7 +167,7 @@ namespace Vintagestory.GameContent
 
             ICoreClientAPI capi = api as ICoreClientAPI;
 
-            ItemStack firstStack = inventory.GetSlot(0).Itemstack;
+            ItemStack firstStack = inventory[0].Itemstack;
             if (firstStack == null) return null;
 
             int fillLevel = Math.Max(0, firstStack.StackSize / config.QuantityPerFillLevel - 1);
@@ -223,7 +223,7 @@ namespace Vintagestory.GameContent
                     if (canAdd)
                     {
                         contentCode = contentConfigs[i].Code;
-                        inventory.GetSlot(0).Itemstack = handSlot.TakeOut(contentConfigs[i].QuantityPerFillLevel);
+                        inventory[0].Itemstack = handSlot.TakeOut(contentConfigs[i].QuantityPerFillLevel);
 
                         if (api.Side == EnumAppSide.Client) currentMesh = GenMesh();
                         MarkDirty(true);
@@ -246,7 +246,7 @@ namespace Vintagestory.GameContent
             if (canAdd)
             {
                 handSlot.TakeOut(config.QuantityPerFillLevel);
-                inventory.GetSlot(0).Itemstack.StackSize += config.QuantityPerFillLevel;
+                inventory[0].Itemstack.StackSize += config.QuantityPerFillLevel;
 
                 if (api.Side == EnumAppSide.Client) currentMesh = GenMesh();
                 MarkDirty(true);
@@ -282,7 +282,7 @@ namespace Vintagestory.GameContent
         public override string GetBlockInfo(IPlayer forPlayer)
         {
             ContentConfig config = contentConfigs.FirstOrDefault(c => c.Code == contentCode);
-            ItemStack firstStack = inventory.GetSlot(0).Itemstack;
+            ItemStack firstStack = inventory[0].Itemstack;
 
             if (config == null || firstStack == null) return null;
 

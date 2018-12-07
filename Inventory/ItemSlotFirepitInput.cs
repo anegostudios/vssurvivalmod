@@ -35,7 +35,7 @@ namespace Vintagestory.API.Common
 
         public bool CanBeStackedWithOutputSlotItem(ItemSlot sourceSlot, bool notifySlot = true)
         {
-            ItemSlot outslot = inventory.GetSlot(outputSlotId);
+            ItemSlot outslot = inventory[outputSlotId];
             if (outslot.Empty) return true;
 
             ItemStack compareStack = sourceSlot.Itemstack.Collectible.CombustibleProps?.SmeltedStack?.ResolvedItemstack;

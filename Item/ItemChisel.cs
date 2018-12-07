@@ -16,9 +16,25 @@ namespace Vintagestory.GameContent
     /// </summary>
     public class ItemChisel : Item
     {
+        public bool canMicroChisel;
 
-        public override void OnHeldAttackStart(IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
+        public override void OnLoaded(ICoreAPI api)
         {
+            base.OnLoaded(api);
+
+            canMicroChisel = Attributes?["microBlockChiseling"].AsBool() == true;
+        }
+
+        public override void OnHeldAttackStart(IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
+        {
+            IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
+
+            if (!canMicroChisel && byPlayer?.WorldData.CurrentGameMode != EnumGameMode.Creative)
+            {
+                base.OnHeldAttackStart(slot, byEntity, blockSel, entitySel, ref handling);
+                return;
+            }
+
             if (blockSel == null)
             {
                 base.OnHeldAttackStart(slot, byEntity, blockSel, entitySel, ref handling);
@@ -30,16 +46,22 @@ namespace Vintagestory.GameContent
 
             if (block == chiseledblock)
             {
-                IPlayer byPlayer = null;
-                if (byEntity is IEntityPlayer) byPlayer = byEntity.World.PlayerByUid(((IEntityPlayer)byEntity).PlayerUID);
-
+                
                 OnBlockInteract(byEntity.World, byPlayer, blockSel, true, ref handling);
                 return;
             }
         }
 
-        public override void OnHeldInteractStart(IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
+        public override void OnHeldInteractStart(IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
         {
+            IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
+
+            if (!canMicroChisel && byPlayer?.WorldData.CurrentGameMode != EnumGameMode.Creative)
+            {
+                base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, ref handling);
+                return;
+            }
+
             if (blockSel == null)
             {
                 base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, ref handling);
@@ -53,8 +75,6 @@ namespace Vintagestory.GameContent
 
             if (block == chiseledblock)
             {
-                IPlayer byPlayer = null;
-                if (byEntity is IEntityPlayer) byPlayer = byEntity.World.PlayerByUid(((IEntityPlayer)byEntity).PlayerUID);
                 OnBlockInteract(byEntity.World, byPlayer, blockSel, false, ref handling);
                 return;
             }
@@ -169,8 +189,6 @@ namespace Vintagestory.GameContent
 
             cr.Restore();
         }
-
-
 
         public void Drawcreate16_svg(Context cr, int x, int y, float width, float height, double[] rgba)
         {

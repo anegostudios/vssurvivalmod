@@ -32,21 +32,21 @@ namespace Vintagestory.GameContent
             ElementBounds chanceTextBounds = ElementBounds.Fixed(EnumDialogArea.CenterFixed, 0, 0, 150, 30).WithFixedPadding(10, 1);
             ElementBounds rightButton = ElementBounds.Fixed(EnumDialogArea.RightFixed, 0, 0, 0, 0).WithFixedPadding(10, 1);
 
-            ElementBounds bgBounds = ElementBounds.Fill.WithFixedPadding(ElementGeometrics.ElementToDialogPadding);
+            ElementBounds bgBounds = ElementBounds.Fill.WithFixedPadding(GuiStyle.ElementToDialogPadding);
             bgBounds.BothSizing = ElementSizing.FitToChildren;
 
             inv = new InventoryGeneric(10, "lootrandomizer-1", capi, null);
-            for (int i = 0; i < 10; i++) inv.GetSlot(i).Itemstack = stacks[i];
+            for (int i = 0; i < 10; i++) inv[i].Itemstack = stacks[i];
 
             ElementBounds dialogBounds = ElementStdBounds
                 .AutosizedMainDialog.WithAlignment(EnumDialogArea.CenterMiddle)
-                .WithFixedAlignmentOffset(ElementGeometrics.DialogToScreenPadding, 0);
+                .WithFixedAlignmentOffset(GuiStyle.DialogToScreenPadding, 0);
 
             float totalChance = chances.Sum();
             string text = "Total chance: " + (int)totalChance + "%";
 
             SingleComposer = capi.Gui
-                .CreateCompo("itemlootrandomizer", dialogBounds, false)
+                .CreateCompo("itemlootrandomizer", dialogBounds)
                 .AddDialogBG(bgBounds, true)
                 .AddDialogTitleBar("Item Loot Randomizer", OnTitleBarClose)
                 .BeginChildElements(bgBounds)
@@ -63,7 +63,7 @@ namespace Vintagestory.GameContent
                     .AddNumberInput(chanceInputBounds = chanceInputBounds.RightCopy(3), (t) => OnTextChanced(9), CairoFont.WhiteDetailText(), "chance10")
 
                     .AddButton("Close", OnCloseClicked, leftButton.FixedUnder(chanceInputBounds, 25))
-                    .AddDynamicText(text, CairoFont.WhiteDetailText(), EnumTextOrientation.Left, chanceTextBounds.FixedUnder(chanceInputBounds, 25), 1, "totalchance")
+                    .AddDynamicText(text, CairoFont.WhiteDetailText(), EnumTextOrientation.Left, chanceTextBounds.FixedUnder(chanceInputBounds, 25), "totalchance")
                     .AddButton("Save", OnSaveClicked, rightButton.FixedUnder(chanceInputBounds, 25))
 
 
@@ -116,7 +116,7 @@ namespace Vintagestory.GameContent
 
             for (int i = 0; i < 10; i++)
             {
-                ItemSlot slot = inv.GetSlot(i);
+                ItemSlot slot = inv[i];
 
                 quantityFilledSlots += (slot.Itemstack != null) ? 1 : 0;
 
@@ -132,7 +132,7 @@ namespace Vintagestory.GameContent
             for (int i = 0; i < 10; i++)
             {
                 GuiElementNumberInput inp = SingleComposer.GetNumberInput("chance" + (i + 1));
-                ItemSlot slot = inv.GetSlot(i);
+                ItemSlot slot = inv[i];
                 if (slot.Itemstack == null)
                 {
                     inp.SetValue("");
@@ -169,15 +169,15 @@ namespace Vintagestory.GameContent
 
             if (mousestack == null)
             {
-                inv.GetSlot(slotID).Itemstack = null;
+                inv[slotID].Itemstack = null;
             } else
             {
-                inv.GetSlot(slotID).Itemstack = mousestack.Clone();
+                inv[slotID].Itemstack = mousestack.Clone();
                 
             }
 
 
-            inv.GetSlot(slotID).MarkDirty();
+            inv[slotID].MarkDirty();
             UpdateRatios();
 
             return false;
@@ -215,7 +215,7 @@ namespace Vintagestory.GameContent
                 int num = 0;
                 for (int i = 0; i < 10; i++)
                 {
-                    ItemStack stack = inv.GetSlot(i).Itemstack;
+                    ItemStack stack = inv[i].Itemstack;
                     if (stack == null) continue;
 
                     GuiElementNumberInput inp = SingleComposer.GetNumberInput("chance" + (i + 1));

@@ -68,7 +68,8 @@ namespace Vintagestory.GameContent
             prog.RgbaTint = ColorUtil.WhiteArgbVec;
             prog.RgbaLightIn = lightrgbs;
             prog.RgbaBlockIn = ColorUtil.WhiteArgbVec;
-            prog.WaterWave = 0;
+            prog.DontWarpVertices = 0;
+            prog.AddRenderFlags = 0;
 
             rpi.BindTexture2d(texId);
 

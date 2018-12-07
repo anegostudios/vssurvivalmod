@@ -5,6 +5,7 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Server;
 
 namespace Vintagestory.GameContent
 {
@@ -15,7 +16,7 @@ namespace Vintagestory.GameContent
             return null;
         }
 
-        IItemSlot GetNextArrow(IEntityAgent byEntity)
+        IItemSlot GetNextArrow(EntityAgent byEntity)
         {
             IItemSlot slot = null;
             byEntity.WalkInventory((invslot) =>
@@ -34,7 +35,7 @@ namespace Vintagestory.GameContent
             return slot;
         }
 
-        public override void OnHeldInteractStart(IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
+        public override void OnHeldInteractStart(IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
         {
             IItemSlot invslot = GetNextArrow(byEntity);
             if (invslot == null) return;
@@ -44,23 +45,34 @@ namespace Vintagestory.GameContent
                 slot.Itemstack.TempAttributes.SetInt("renderVariant", 1);
             }
 
+            slot.Itemstack.Attributes.SetInt("renderVariant", 1);
+
             // Not ideal to code the aiming controls this way. Needs an elegant solution - maybe an event bus?
             byEntity.Attributes.SetInt("aiming", 1);
             byEntity.Attributes.SetInt("aimingCancel", 0);
-            byEntity.StartAnimation("bowaim");
+            byEntity.AnimManager.StartAnimation("bowaim");
 
             IPlayer byPlayer = null;
-            if (byEntity is IEntityPlayer) byPlayer = byEntity.World.PlayerByUid(((IEntityPlayer)byEntity).PlayerUID);
+            if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
             byEntity.World.PlaySoundAt(new AssetLocation("sounds/bow-draw"), byEntity, byPlayer, false, 8);
 
             handling = EnumHandHandling.PreventDefault;
         }
 
-        public override bool OnHeldInteractStep(float secondsUsed, IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override bool OnHeldInteractStep(float secondsUsed, IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
-            if (byEntity.World is IClientWorldAccessor)
+//            if (byEntity.World is IClientWorldAccessor)
             {
-                slot.Itemstack.TempAttributes.SetInt("renderVariant", GameMath.Clamp((int)Math.Ceiling(secondsUsed * 4), 0, 3));
+                int renderVariant = GameMath.Clamp((int)Math.Ceiling(secondsUsed * 4), 0, 3);
+                int prevRenderVariant = slot.Itemstack.Attributes.GetInt("renderVariant", 0);
+
+                slot.Itemstack.TempAttributes.SetInt("renderVariant", renderVariant);
+                slot.Itemstack.Attributes.SetInt("renderVariant", renderVariant);
+
+                if (prevRenderVariant != renderVariant)
+                {
+                    (byEntity as EntityPlayer)?.Player?.InventoryManager.BroadcastHotbarSlot();
+                }
             }
 
             
@@ -68,15 +80,18 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override bool OnHeldInteractCancel(float secondsUsed, IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)
+        public override bool OnHeldInteractCancel(float secondsUsed, IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)
         {
             byEntity.Attributes.SetInt("aiming", 0);
-            byEntity.StopAnimation("bowaim");
+            byEntity.AnimManager.StopAnimation("bowaim");
 
             if (byEntity.World is IClientWorldAccessor)
             {
-                slot.Itemstack.TempAttributes.SetInt("renderVariant", 0);
+                slot.Itemstack.TempAttributes.RemoveAttribute("renderVariant");
             }
+
+            slot.Itemstack.Attributes.SetInt("renderVariant", 0);
+            (byEntity as EntityPlayer)?.Player?.InventoryManager.BroadcastHotbarSlot();
 
             if (cancelReason != EnumItemUseCancelReason.ReleasedMouse)
             {
@@ -86,16 +101,19 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        public override void OnHeldInteractStop(float secondsUsed, IItemSlot slot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override void OnHeldInteractStop(float secondsUsed, IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
             if (byEntity.Attributes.GetInt("aimingCancel") == 1) return;
             byEntity.Attributes.SetInt("aiming", 0);
-            byEntity.StopAnimation("bowaim");
+            byEntity.AnimManager.StopAnimation("bowaim");
 
             if (byEntity.World is IClientWorldAccessor)
             {
-                slot.Itemstack.TempAttributes.SetInt("renderVariant", 0);
+                slot.Itemstack.TempAttributes.RemoveAttribute("renderVariant");
             }
+
+            slot.Itemstack.Attributes.SetInt("renderVariant", 0);
+            (byEntity as EntityPlayer)?.Player?.InventoryManager.BroadcastHotbarSlot();
 
             if (secondsUsed < 0.35f) return;
 
@@ -121,7 +139,7 @@ namespace Vintagestory.GameContent
             arrowSlot.MarkDirty();
 
             IPlayer byPlayer = null;
-            if (byEntity is IEntityPlayer) byPlayer = byEntity.World.PlayerByUid(((IEntityPlayer)byEntity).PlayerUID);
+            if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
             byEntity.World.PlaySoundAt(new AssetLocation("sounds/bow-release"), byEntity, byPlayer, false, 8);
 
             EntityProperties type = byEntity.World.GetEntityType(new AssetLocation("arrow"));
@@ -155,7 +173,7 @@ namespace Vintagestory.GameContent
 
             slot.Itemstack.Collectible.DamageItem(byEntity.World, byEntity, slot);
 
-            byEntity.StartAnimation("bowhit");
+            byEntity.AnimManager.StartAnimation("bowhit");
         }
 
 

@@ -87,7 +87,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override bool OnBlockBrokenWith(IWorldAccessor world, IEntity byEntity, IItemSlot itemslot, BlockSelection blockSel)
+        public override bool OnBlockBrokenWith(IWorldAccessor world, Entity byEntity, IItemSlot itemslot, BlockSelection blockSel)
         {
             ProbeGround(world, byEntity, itemslot, blockSel);
 
@@ -100,10 +100,10 @@ namespace Vintagestory.GameContent
         }
 
 
-        void ProbeGround(IWorldAccessor world, IEntity byEntity, IItemSlot itemslot, BlockSelection blockSel)
+        void ProbeGround(IWorldAccessor world, Entity byEntity, IItemSlot itemslot, BlockSelection blockSel)
         {
             IPlayer byPlayer = null;
-            if (byEntity is IEntityPlayer) byPlayer = world.PlayerByUid(((IEntityPlayer)byEntity).PlayerUID);
+            if (byEntity is EntityPlayer) byPlayer = world.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
 
             Block block = world.BlockAccessor.GetBlock(blockSel.Position);
             block.OnBlockBroken(world, blockSel.Position, byPlayer, 0);
@@ -225,7 +225,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void OnHeldIdle(IItemSlot slot, IEntityAgent byEntity)
+        public override void OnHeldIdle(IItemSlot slot, EntityAgent byEntity)
         {
             base.OnHeldIdle(slot, byEntity);
         }

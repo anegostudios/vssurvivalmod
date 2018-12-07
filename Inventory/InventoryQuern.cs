@@ -15,12 +15,7 @@ namespace Vintagestory.GameContent
     {
         ItemSlot[] slots;
         public IItemSlot[] Slots { get { return slots; } }
-        
 
-        public override int QuantitySlots
-        {
-            get { return 2; }
-        }
 
         public InventoryQuern(string inventoryID, ICoreAPI api) : base(inventoryID, api)
         {
@@ -34,9 +29,25 @@ namespace Vintagestory.GameContent
             slots = GenEmptySlots(2);
         }
 
-        public override ItemSlot GetSlot(int slotId)
+
+        public override int Count
         {
-            return slots[slotId];
+            get { return 2; }
+        }
+
+        public override ItemSlot this[int slotId]
+        {
+            get
+            {
+                if (slotId < 0 || slotId >= Count) return null;
+                return slots[slotId];
+            }
+            set
+            {
+                if (slotId < 0 || slotId >= Count) throw new ArgumentOutOfRangeException(nameof(slotId));
+                if (value == null) throw new ArgumentNullException(nameof(value));
+                slots[slotId] = value;
+            }
         }
 
 

@@ -54,8 +54,6 @@ namespace Vintagestory.GameContent
             }
 
             base.Initialize(api);
-
-            if (api?.Side == EnumAppSide.Client) ownMesh = GenMesh();
         }
 
         public override void OnBlockPlaced(ItemStack byItemStack = null)
@@ -114,6 +112,12 @@ namespace Vintagestory.GameContent
                 }
             }
 
+            if (api != null && api.Side == EnumAppSide.Client)
+            {
+                ownMesh = null;
+                MarkDirty(true);
+            }
+
             base.FromTreeAtributes(tree, worldForResolving);
         }
 
@@ -145,8 +149,6 @@ namespace Vintagestory.GameContent
             inventory.PutLocked = retrieveOnly;
             inventory.OnInventoryClosed += OnInvClosed;
             inventory.OnInventoryOpened += OnInvOpened;
-            
-            if (api?.Side == EnumAppSide.Client) ownMesh = GenMesh();
         }
 
         protected virtual void OnInvOpened(IPlayer player)
@@ -200,7 +202,7 @@ namespace Vintagestory.GameContent
 
         
 
-        private MeshData GenMesh()
+        private MeshData GenMesh(ITesselatorAPI tesselator)
         {
             Dictionary<string, MeshData> meshes = null;
 
@@ -229,14 +231,18 @@ namespace Vintagestory.GameContent
                 return null;
             }
 
-            return meshes[type] = (block as BlockGenericTypedContainer).GenMesh(api as ICoreClientAPI, type, shapename);
+            return meshes[type] = (block as BlockGenericTypedContainer).GenMesh(api as ICoreClientAPI, type, shapename, tesselator);
         }
 
 
 
         public bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
         {
-            if (ownMesh == null) return false;
+            if (ownMesh == null)
+            {
+                ownMesh = GenMesh(tesselator);
+                if (ownMesh == null) return false;
+            }
 
             string facing = ownBlock.LastCodePart();
             if (facing == "north") { mesher.AddMeshData(ownMesh.Clone().Rotate(new API.MathTools.Vec3f(0.5f, 0.5f, 0.5f), 0, 1 * GameMath.PIHALF, 0)); }

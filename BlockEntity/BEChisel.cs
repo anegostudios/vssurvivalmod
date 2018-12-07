@@ -60,7 +60,7 @@ namespace Vintagestory.GameContent
         /// <summary>
         /// List of block ids for the materials used
         /// </summary>
-        public ushort[] Materials;
+        public ushort[] MaterialIds;
         
         
         public MeshData Mesh;
@@ -96,7 +96,7 @@ namespace Vintagestory.GameContent
         {
             base.Initialize(api);
 
-            if (Materials != null)
+            if (MaterialIds != null)
             {
                 if (api.Side == EnumAppSide.Client) RegenMesh();
                 RegenSelectionBoxes(null);
@@ -106,7 +106,7 @@ namespace Vintagestory.GameContent
 
         public void WasPlaced(Block block)
         {
-            Materials = new ushort[] { block.BlockId };
+            MaterialIds = new ushort[] { block.BlockId };
             VoxelCuboids.Add(ToCuboid(0, 0, 0, 16, 16, 16, 0));
 
             if (api.Side == EnumAppSide.Client && Mesh == null)
@@ -434,6 +434,7 @@ namespace Vintagestory.GameContent
         }
 
 
+
         private void RebuildCuboidList(bool[,,] Voxels, byte[,,] VoxelMaterial)
         {
             bool[,,] VoxelVisited = new bool[16, 16, 16];
@@ -498,7 +499,6 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-
         private bool TryGrowY(CuboidWithMaterial cub, bool[,,] voxels, bool[,,] voxelVisited, byte[,,] voxelMaterial)
         {
             if (cub.Y2 > 15) return false;
@@ -522,7 +522,6 @@ namespace Vintagestory.GameContent
             cub.Y2++;
             return true;
         }
-
 
         private bool TryGrowZ(CuboidWithMaterial cub, bool[,,] voxels, bool[,,] voxelVisited, byte[,,] voxelMaterial)
         {
@@ -579,6 +578,7 @@ namespace Vintagestory.GameContent
             RegenSelectionVoxelBoxes(true, byPlayer);
         }
 
+
         public void RegenSelectionVoxelBoxes(bool mustLoad, IPlayer byPlayer)
         {
             if (selectionBoxesVoxels == null && !mustLoad) return;
@@ -619,12 +619,13 @@ namespace Vintagestory.GameContent
 
         public void RegenMesh()
         {
-            Mesh = CreateMesh(api as ICoreClientAPI, VoxelCuboids, Materials);
+            Mesh = CreateMesh(api as ICoreClientAPI, VoxelCuboids, MaterialIds);
         }
 
         public static MeshData CreateMesh(ICoreClientAPI coreClientAPI, List<uint> voxelCuboids, ushort[] materials)
         {
             MeshData mesh = new MeshData(24, 36, false).WithTints().WithRenderpasses().WithXyzFaces();
+            if (voxelCuboids == null || materials == null) return mesh;
 
             for (int i = 0; i < voxelCuboids.Count; i++)
             {
@@ -634,7 +635,6 @@ namespace Vintagestory.GameContent
 
                 //TextureAtlasPosition tpos = coreClientAPI.BlockTextureAtlas.GetPosition(block, BlockFacing.ALLFACES[0].Code);
                 float subPixelPadding = coreClientAPI.BlockTextureAtlas.SubPixelPadding;
-
 
                 MeshData cuboidmesh = genCube(
                     tmpCuboid.X1, tmpCuboid.Y1, tmpCuboid.Z1, 
@@ -725,13 +725,14 @@ namespace Vintagestory.GameContent
                 bool isOutside =
                     (
                         (facing == BlockFacing.NORTH && voxelZ == 0) ||
-                        (facing == BlockFacing.EAST && voxelX + length == 16) ||
-                        (facing == BlockFacing.SOUTH && voxelZ + width == 16) ||
+                        (facing == BlockFacing.EAST && voxelX + width == 16) ||
+                        (facing == BlockFacing.SOUTH && voxelZ + length == 16) ||
                         (facing == BlockFacing.WEST && voxelX == 0) ||
                         (facing == BlockFacing.UP && voxelY + height == 16) ||
                         (facing == BlockFacing.DOWN && voxelY == 0)
                     )
                 ;
+                 
 
                 TextureAtlasPosition tpos = isOutside ? texSource[facing.Code] : texSource["inside-" + facing.Code];
                 if (tpos == null)
@@ -787,7 +788,20 @@ namespace Vintagestory.GameContent
         {
             base.FromTreeAtributes(tree, worldAccessForResolve);
 
-            Materials = (tree["materials"] as IntArrayAttribute).AsUShort;
+            if (tree["materials"] is IntArrayAttribute)
+            {
+                // Pre 1.8 storage 
+                MaterialIds = (tree["materials"] as IntArrayAttribute).AsUShort;
+            } else
+            {
+                string[] codes = (tree["materials"] as StringArrayAttribute).value;
+                MaterialIds = new ushort[codes.Length];
+                for (int i = 0; i < MaterialIds.Length; i++)
+                {
+                    MaterialIds[i] = worldAccessForResolve.GetBlock(new AssetLocation(codes[i])).BlockId;
+                }
+            }
+             
             VoxelCuboids = new List<uint>((tree["cuboids"] as IntArrayAttribute).AsUint);
 
             if (api is ICoreClientAPI)
@@ -802,7 +816,15 @@ namespace Vintagestory.GameContent
         {
             base.ToTreeAttributes(tree);
 
-            tree["materials"] = new IntArrayAttribute(Materials);
+            StringArrayAttribute attr = new StringArrayAttribute();
+            string[] materialCodes = new string[MaterialIds.Length];
+            for (int i = 0; i < MaterialIds.Length; i++)
+            {
+                materialCodes[i] = api.World.Blocks[MaterialIds[i]].Code.ToString();
+            }
+            attr.value = materialCodes;
+
+            tree["materials"] = attr;
             tree["cuboids"] = new IntArrayAttribute(VoxelCuboids.ToArray());
         }
 
@@ -815,6 +837,5 @@ namespace Vintagestory.GameContent
             mesher.AddMeshData(Mesh);
             return true;
         }
-
     }
 }

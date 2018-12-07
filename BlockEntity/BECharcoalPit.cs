@@ -74,6 +74,7 @@ namespace Vintagestory.GameContent
             {
                 finishedAfterTotalHours = api.World.Calendar.TotalHours + BurnHours;
                 state = 1;
+                MarkDirty(false);
             }
 
             if (state == 0) return;
@@ -235,7 +236,7 @@ namespace Vintagestory.GameContent
 
                     // Only traverse within a 12x12x12 block cube
                     bool inCube = Math.Abs(npos.X - pos.X) <= maxHalfSize && Math.Abs(npos.Y - pos.Y) <= maxHalfSize && Math.Abs(npos.Z - pos.Z) <= maxHalfSize;
-
+                    
                     if (inCube && !visitedPositions.Contains(npos))
                     {
                         bfsQueue.Enqueue(npos);
@@ -250,9 +251,13 @@ namespace Vintagestory.GameContent
 
         public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
+            int beforeState = state;
             base.FromTreeAtributes(tree, worldForResolving);
+
             finishedAfterTotalHours = tree.GetDouble("finishedAfterTotalHours");
             state = tree.GetInt("state");
+
+            if (beforeState != state && api?.Side == EnumAppSide.Client) FindHoleInPit();
         }
 
         public override void ToTreeAttributes(ITreeAttribute tree)

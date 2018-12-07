@@ -305,7 +305,7 @@ namespace Vintagestory.GameContent
             StringBuilder str = new StringBuilder();
             for (int i = 0; i < 3; i++)
             {
-                ItemStack stack = bloomeryInv.GetSlot(i).Itemstack;
+                ItemStack stack = bloomeryInv[i].Itemstack;
                 if (stack != null) str.AppendLine("  " + stack.StackSize + "x " + stack.GetName());
             }
 
@@ -316,12 +316,12 @@ namespace Vintagestory.GameContent
         }
 
 
-        ItemSlot FuelSlot { get { return bloomeryInv.GetSlot(0); } }
-        ItemSlot OreSlot { get { return bloomeryInv.GetSlot(1); } }
-        ItemSlot OutSlot { get { return bloomeryInv.GetSlot(2); } }
+        ItemSlot FuelSlot { get { return bloomeryInv[0]; } }
+        ItemSlot OreSlot { get { return bloomeryInv[1]; } }
+        ItemSlot OutSlot { get { return bloomeryInv[2]; } }
 
-        ItemStack FuelStack { get { return bloomeryInv.GetSlot(0).Itemstack; } }
-        ItemStack OreStack { get { return bloomeryInv.GetSlot(1).Itemstack; } }
-        ItemStack OutStack { get { return bloomeryInv.GetSlot(2).Itemstack; } }
+        ItemStack FuelStack { get { return bloomeryInv[0].Itemstack; } }
+        ItemStack OreStack { get { return bloomeryInv[1].Itemstack; } }
+        ItemStack OutStack { get { return bloomeryInv[2].Itemstack; } }
     }
 }

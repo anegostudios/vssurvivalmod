@@ -123,12 +123,13 @@ namespace Vintagestory.GameContent
 
             IStandardShaderProgram prog = rpi.StandardShader;
             prog.Use();
-            prog.WaterWave = 0;
+            prog.DontWarpVertices = 0;
             prog.RgbaAmbientIn = rpi.AmbientColor;
             prog.RgbaFogIn = rpi.FogColor;
             prog.FogMinIn = rpi.FogMin;
             prog.FogDensityIn = rpi.FogDensity;
             prog.RgbaTint = ColorUtil.WhiteArgbVec;
+            prog.AddRenderFlags = 0;
 
             api.Render.BindTexture2d(api.ItemTextureAtlas.AtlasTextureIds[0]);
 

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using Cairo;
 using Vintagestory.API.Client;
 using Vintagestory.API.Datastructures;
@@ -7,46 +8,25 @@ using Vintagestory.API.Common;
 
 namespace Vintagestory.GameContent
 {
-    public class GuiDialogBlockEntityFirepit : GuiDialogGeneric
+    public class GuiDialogBlockEntityFirepit : GuiDialogBlockEntity
     {
-        InventoryBase inventory;
-        BlockPos blockEntityPos;
-
         bool haveCookingContainer;
         string currentOutputText;
 
         ElementBounds cookingSlotsSlotBounds;
 
-        SyncedTreeAttribute attributes = new SyncedTreeAttribute();
-
         long lastRedrawMs;
-        bool isduplicate = false;
 
-        public override ITreeAttribute Attributes
+        protected override double FloatyDialogPosition => 0.6;
+        protected override double FloatyDialogAlign => 0.8;
+
+        public GuiDialogBlockEntityFirepit(string dialogTitle, InventoryBase Inventory, BlockPos BlockEntityPosition,
+                                           SyncedTreeAttribute tree, ICoreClientAPI capi)
+            : base(dialogTitle, Inventory, BlockEntityPosition, capi)
         {
-            get { return attributes; }
-        }
-
-        public GuiDialogBlockEntityFirepit(string DialogTitle, InventoryBase inventory, BlockPos blockEntityPos, SyncedTreeAttribute tree, ICoreClientAPI capi) : base(DialogTitle, capi)
-        {
-            foreach (var val in capi.World.Player.InventoryManager.Inventories)
-            {
-                if (val.Value == inventory)
-                {
-                    isduplicate = true;
-                    return;
-                }
-            }
-
-            this.inventory = inventory;
-            this.blockEntityPos = blockEntityPos;
-            this.attributes = tree;
-
-            attributes.OnModified.Add(new TreeModifiedListener() { listener = OnAttributesModified } );
-
-            
-
-            capi.World.Player.InventoryManager.OpenInventory(inventory);
+            if (IsDuplicate) return;
+            tree.OnModified.Add(new TreeModifiedListener() { listener = OnAttributesModified } );
+            Attributes = tree;
 
             SetupDialog();
         }
@@ -60,7 +40,7 @@ namespace Vintagestory.GameContent
         void SetupDialog()
         {
             ItemSlot hoveredSlot = capi.World.Player.InventoryManager.CurrentHoveredSlot;
-            if (hoveredSlot != null && hoveredSlot.Inventory == inventory)
+            if (hoveredSlot != null && hoveredSlot.Inventory == Inventory)
             {
                 capi.Input.TriggerOnMouseLeaveSlot(hoveredSlot);
             } else
@@ -68,8 +48,8 @@ namespace Vintagestory.GameContent
                 hoveredSlot = null;
             }
 
-            string newOutputText = attributes.GetString("outputText", ""); // inventory.GetOutputText();
-            bool newHaveCookingContainer = attributes.GetInt("haveCookingContainer") > 0; //inventory.HaveCookingContainer;
+            string newOutputText = Attributes.GetString("outputText", ""); // Inventory.GetOutputText();
+            bool newHaveCookingContainer = Attributes.GetInt("haveCookingContainer") > 0; //Inventory.HaveCookingContainer;
 
             GuiElementDynamicText outputTextElem;
 
@@ -101,7 +81,7 @@ namespace Vintagestory.GameContent
             haveCookingContainer = newHaveCookingContainer;
             currentOutputText = newOutputText;
 
-            int qCookingSlots = attributes.GetInt("quantityCookingSlots");
+            int qCookingSlots = Attributes.GetInt("quantityCookingSlots");
 
             ElementBounds stoveBounds = ElementBounds.Fixed(0, 0, 250, 250);
 
@@ -115,23 +95,16 @@ namespace Vintagestory.GameContent
             ElementBounds outputSlotBounds = ElementStdBounds.SlotGrid(EnumDialogArea.None, 173, top, 1, 1);
 
             // 2. Around all that is 10 pixel padding
-            ElementBounds bgBounds = ElementBounds.Fill.WithFixedPadding(ElementGeometrics.ElementToDialogPadding);
+            ElementBounds bgBounds = ElementBounds.Fill.WithFixedPadding(GuiStyle.ElementToDialogPadding);
             bgBounds.BothSizing = ElementSizing.FitToChildren;
             bgBounds.WithChildren(stoveBounds);
 
             // 3. Finally Dialog
             ElementBounds dialogBounds = ElementStdBounds.AutosizedMainDialog.WithAlignment(EnumDialogArea.RightMiddle)
-                .WithFixedAlignmentOffset(-ElementGeometrics.DialogToScreenPadding, 0);
+                .WithFixedAlignmentOffset(-GuiStyle.DialogToScreenPadding, 0);
 
 
-            int openedFirepits = 0;
-            foreach (var val in capi.OpenedGuis)
-            {
-                if (val is GuiDialogBlockEntityFirepit)
-                {
-                    openedFirepits++;
-                }
-            }
+            int openedFirepits = capi.OpenedGuis.OfType<GuiDialogBlockEntityFirepit>().Count();
 
             if (!capi.Settings.Bool["floatyGuis"])
             {
@@ -144,30 +117,29 @@ namespace Vintagestory.GameContent
             for (int i = 0; i < qCookingSlots; i++) cookingSlotIds[i] = 3 + i;
 
             SingleComposer = capi.Gui
-                .CreateCompo("blockentitystove"+blockEntityPos, dialogBounds, false)
+                .CreateCompo("blockentitystove"+BlockEntityPosition, dialogBounds)
                 .AddDialogBG(bgBounds)
                 .AddDialogTitleBar(DialogTitle, OnTitleBarClose)
                 .BeginChildElements(bgBounds)
                     .AddDynamicCustomDraw(stoveBounds, OnBgDraw, "symbolDrawer")
-                    .AddDynamicText("", CairoFont.WhiteDetailText(), EnumTextOrientation.Left, ElementBounds.Fixed(15, 30, 235, 45), 1, "outputText")
+                    .AddDynamicText("", CairoFont.WhiteDetailText(), EnumTextOrientation.Left, ElementBounds.Fixed(15, 30, 235, 45), "outputText")
                     .AddIf(haveCookingContainer)
-                        .AddItemSlotGrid(inventory, SendInvPacket, 4, cookingSlotIds, cookingSlotsSlotBounds, "ingredientSlots")
+                        .AddItemSlotGrid(Inventory, SendInvPacket, 4, cookingSlotIds, cookingSlotsSlotBounds, "ingredientSlots")
                     .EndIf()
-                    .AddItemSlotGrid(inventory, SendInvPacket, 1, new int[] { 0 }, fuelSlotBounds, "fuelslot")
-                    .AddDynamicText("", CairoFont.WhiteDetailText(), EnumTextOrientation.Left, fuelSlotBounds.RightCopy(20, 15), 1, "fueltemp")
-                    .AddItemSlotGrid(inventory, SendInvPacket, 1, new int[] { 1 }, inputSlotBounds, "oreslot")
-                    .AddDynamicText("", CairoFont.WhiteDetailText(), EnumTextOrientation.Left, inputSlotBounds.RightCopy(30, 15), 1, "oretemp")
+                    .AddItemSlotGrid(Inventory, SendInvPacket, 1, new int[] { 0 }, fuelSlotBounds, "fuelslot")
+                    .AddDynamicText("", CairoFont.WhiteDetailText(), EnumTextOrientation.Left, fuelSlotBounds.RightCopy(20, 15), "fueltemp")
+                    .AddItemSlotGrid(Inventory, SendInvPacket, 1, new int[] { 1 }, inputSlotBounds, "oreslot")
+                    .AddDynamicText("", CairoFont.WhiteDetailText(), EnumTextOrientation.Left, inputSlotBounds.RightCopy(30, 15), "oretemp")
 
-                    .AddItemSlotGrid(inventory, SendInvPacket, 1, new int[] { 2 }, outputSlotBounds, "outputslot")
+                    .AddItemSlotGrid(Inventory, SendInvPacket, 1, new int[] { 2 }, outputSlotBounds, "outputslot")
                 .EndChildElements()
-                .Compose()
-            ;
+                .Compose();
 
             lastRedrawMs = capi.ElapsedMilliseconds;
 
             if (hoveredSlot != null)
             {
-                SingleComposer.OnMouseMove(capi, new MouseEvent() { X = capi.Input.MouseX, Y = capi.Input.MouseY });
+                SingleComposer.OnMouseMove(new MouseEvent(capi.Input.MouseX, capi.Input.MouseY));
             }
 
             outputTextElem = SingleComposer.GetDynamicText("outputText");
@@ -188,8 +160,8 @@ namespace Vintagestory.GameContent
         {
             if (!IsOpened()) return;
 
-            string fuelTemp = attributes.GetFloat("furnaceTemperature").ToString("#");
-            string oreTemp = attributes.GetFloat("oreTemperature").ToString("#");
+            string fuelTemp = Attributes.GetFloat("furnaceTemperature").ToString("#");
+            string oreTemp = Attributes.GetFloat("oreTemperature").ToString("#");
 
             fuelTemp += fuelTemp.Length > 0 ? "°C" : "";
             oreTemp += oreTemp.Length > 0 ? "°C" : "";
@@ -204,7 +176,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-    
+
 
         private void OnBgDraw(Context ctx, ImageSurface surface, ElementBounds currentBounds)
         {
@@ -218,7 +190,7 @@ namespace Vintagestory.GameContent
             ctx.Matrix = m;
             capi.Gui.Icons.DrawFlame(ctx);
 
-            double dy = 210 - 210 * (attributes.GetFloat("fuelBurnTime", 0) / attributes.GetFloat("maxFuelBurnTime", 1));
+            double dy = 210 - 210 * (Attributes.GetFloat("fuelBurnTime", 0) / Attributes.GetFloat("maxFuelBurnTime", 1));
             ctx.Rectangle(0, dy, 200, 210 - dy);
             ctx.Clip();
             LinearGradient gradient = new LinearGradient(0, GuiElement.scaled(250), 0, 0);
@@ -238,7 +210,7 @@ namespace Vintagestory.GameContent
             ctx.Matrix = m;
             capi.Gui.Icons.DrawArrowRight(ctx, 2);
 
-            double dx = attributes.GetFloat("oreCookingTime") / attributes.GetFloat("maxOreCookingTime", 1);
+            double dx = Attributes.GetFloat("oreCookingTime") / Attributes.GetFloat("maxOreCookingTime", 1);
 
             
             ctx.Rectangle(GuiElement.scaled(5), 0, GuiElement.scaled(125 * dx), GuiElement.scaled(100));
@@ -254,10 +226,9 @@ namespace Vintagestory.GameContent
 
 
 
-
         private void SendInvPacket(object packet)
         {
-            capi.Network.SendBlockEntityPacket(blockEntityPos.X, blockEntityPos.Y, blockEntityPos.Z, packet);
+            capi.Network.SendBlockEntityPacket(BlockEntityPosition.X, BlockEntityPosition.Y, BlockEntityPosition.Z, packet);
         }
 
 
@@ -267,80 +238,22 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override bool TryOpen()
-        {
-            if (isduplicate) return false;
-            return base.TryOpen();
-        }
-
         public override void OnGuiOpened()
         {
-            inventory.Open(capi.World.Player);
-            inventory.SlotModified += OnInventorySlotModified;
+            base.OnGuiOpened();
+            Inventory.SlotModified += OnInventorySlotModified;
         }
 
         public override void OnGuiClosed()
         {
-            inventory.SlotModified -= OnInventorySlotModified;
-            inventory.Close(capi.World.Player);
-            capi.World.Player.InventoryManager.CloseInventory(inventory);
+            Inventory.SlotModified -= OnInventorySlotModified;
 
             SingleComposer.GetSlotGrid("fuelslot").OnGuiClosed(capi);
             SingleComposer.GetSlotGrid("oreslot").OnGuiClosed(capi);
             SingleComposer.GetSlotGrid("outputslot").OnGuiClosed(capi);
             SingleComposer.GetSlotGrid("ingredientSlots")?.OnGuiClosed(capi);
 
-            capi.Network.SendBlockEntityPacket(blockEntityPos.X, blockEntityPos.Y, blockEntityPos.Z, (int)EnumBlockContainerPacketId.CloseInventory);
-        }
-
-        public void ReloadValues()
-        {
-            
-        }
-
-        public override void OnFinalizeFrame(float dt)
-        {
-            base.OnFinalizeFrame(dt);
-
-            if (!IsInRangeOfBlock(blockEntityPos))
-            {
-                // Because we cant do it in here
-                capi.Event.RegisterCallback((deltatime) => TryClose(), 0);
-            }
-        }
-
-
-        public override void OnRender2D(float deltaTime)
-        {
-            if (capi.Settings.Bool["floatyGuis"])
-            {
-
-                EntityPlayer entityPlayer = capi.World.Player.Entity;
-                Vec3d aboveHeadPos = new Vec3d(blockEntityPos.X + 0.5, blockEntityPos.Y + 1.5, blockEntityPos.Z + 0.5);
-                Vec3d pos = MatrixToolsd.Project(aboveHeadPos, capi.Render.PerspectiveProjectionMat, capi.Render.PerspectiveViewMat, capi.Render.FrameWidth, capi.Render.FrameHeight);
-
-                // Z negative seems to indicate that the name tag is behind us \o/
-                if (pos.Z < 0)
-                {
-                    return;
-                }
-
-                SingleComposer.Bounds.Alignment = EnumDialogArea.None;
-                SingleComposer.Bounds.fixedOffsetX = 0;
-                SingleComposer.Bounds.fixedOffsetY = 0;
-                SingleComposer.Bounds.absFixedX = pos.X - SingleComposer.Bounds.OuterWidth / 2;
-                SingleComposer.Bounds.absFixedY = capi.Render.FrameHeight - pos.Y;
-                SingleComposer.Bounds.absMarginX = 0;
-                SingleComposer.Bounds.absMarginY = 0;
-            }
-
-            base.OnRender2D(deltaTime);
-        }
-
-
-        public override bool DisableWorldInteract()
-        {
-            return false;
+            base.OnGuiClosed();
         }
     }
 }

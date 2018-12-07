@@ -68,7 +68,7 @@ namespace Vintagestory.GameContent
         {
             lock(inventoryLock)
             {
-                int index = Math.Min(16, (int)Math.Ceiling(inventory.GetSlot(0).StackSize / 2.0));
+                int index = Math.Min(16, (int)Math.Ceiling(inventory[0].StackSize / 2.0));
 
                 meshdata.AddMeshData(meshes[index]);
             }

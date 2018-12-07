@@ -23,7 +23,7 @@ namespace Vintagestory.GameContent
 
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel)
         {
-            if (!world.TestPlayerAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            if (!world.TryAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
             {
                 byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
                 return false;
@@ -53,6 +53,11 @@ namespace Vintagestory.GameContent
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
+            if (!world.TryAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.Use))
+            {
+                return false;
+            }
+
             BlockFacing facing = BlockFacing.FromCode(LastCodePart()).GetOpposite();
             BlockEntityBed beBed = world.BlockAccessor.GetBlockEntity(LastCodePart(1) == "feet" ? blockSel.Position.AddCopy(facing) : blockSel.Position) as BlockEntityBed;
 
@@ -62,7 +67,7 @@ namespace Vintagestory.GameContent
             EntityBehaviorTiredness ebt = byPlayer.Entity.GetBehavior("tiredness") as EntityBehaviorTiredness;
             if (ebt != null && ebt.Tiredness <= 8)
             {
-                if (world.Side == EnumAppSide.Client) (byPlayer as IClientPlayer).ShowChatNotification("I'm not tired enough to sleep.");
+                if (world.Side == EnumAppSide.Client) (byPlayer as IClientPlayer).ShowChatNotification(Lang.Get("not-tired-enough"));
                 return false;
             }
 

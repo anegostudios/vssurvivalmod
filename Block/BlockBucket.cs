@@ -456,7 +456,7 @@ namespace Vintagestory.GameContent
 
         #region Held Interact
 
-        public override void OnHeldInteractStart(IItemSlot itemslot, IEntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handHandling)
+        public override void OnHeldInteractStart(IItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handHandling)
         {
             if (blockSel == null || byEntity.Controls.Sneak) return;
             IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
@@ -464,7 +464,7 @@ namespace Vintagestory.GameContent
             Block targetedBlock = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
             if (targetedBlock.HasBehavior(typeof(BlockBehaviorLiquidContainer), true))
             {
-                if (!byEntity.World.TestPlayerAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.Use))
+                if (!byEntity.World.TryAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.Use))
                 {
                     return;
                 }
@@ -479,7 +479,7 @@ namespace Vintagestory.GameContent
             }
 
 
-            if (!byEntity.World.TestPlayerAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            if (!byEntity.World.TryAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
             {
                 return;
             }
@@ -516,7 +516,7 @@ namespace Vintagestory.GameContent
 
 
 
-        public bool TryFillBucketFromBlock(IItemSlot itemslot, IEntityAgent byEntity, BlockPos pos)
+        public bool TryFillBucketFromBlock(IItemSlot itemslot, EntityAgent byEntity, BlockPos pos)
         {
             IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
             IBlockAccessor blockAcc = byEntity.World.BlockAccessor;
@@ -604,7 +604,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        private bool SpillContents(IItemSlot bucketSlot, IEntityAgent byEntity, BlockSelection blockSel)
+        private bool SpillContents(IItemSlot bucketSlot, EntityAgent byEntity, BlockSelection blockSel)
         {
             BlockPos pos = blockSel.Position;
             IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
