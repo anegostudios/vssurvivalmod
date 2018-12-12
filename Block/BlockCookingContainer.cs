@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
@@ -159,10 +160,10 @@ namespace Vintagestory.GameContent
                 double quantity = recipe.GetQuantityServings(stacks);
                 if (quantity != 1)
                 {
-                    return string.Format("Will create {0} servings of {1}", (int)quantity, recipe.GetOutputName(world, stacks).ToLowerInvariant());
+                    return string.Format(Lang.Get("mealcreation-makeplural"), (int)quantity, recipe.GetOutputName(world, stacks).ToLowerInvariant());
                 } else
                 {
-                    return string.Format("Will create {0} serving of {1}", (int)quantity, recipe.GetOutputName(world, stacks).ToLowerInvariant());
+                    return string.Format(Lang.Get("mealcreation-makesingular"), (int)quantity, recipe.GetOutputName(world, stacks).ToLowerInvariant());
                 }
             }
 

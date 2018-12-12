@@ -60,6 +60,7 @@ namespace Vintagestory.GameContent
                 if (invDialog != null)
                 {
                     invDialog.TryClose();
+                    invDialog?.Dispose();
                     invDialog = null;
                     return;
                 }
@@ -88,10 +89,19 @@ namespace Vintagestory.GameContent
                 clientWorld.Player.InventoryManager.CloseInventory(Inventory);
 
                 invDialog?.TryClose();
+                invDialog?.Dispose();
                 invDialog = null;
             }
         }
-        
+
+
+        public override void OnBlockUnloaded()
+        {
+            base.OnBlockUnloaded();
+
+            invDialog?.Dispose();
+        }
+
 
     }
 }

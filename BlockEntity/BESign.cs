@@ -38,6 +38,7 @@ namespace Vintagestory.GameContent
         {
             base.FromTreeAtributes(tree, worldForResolving);
             text = tree.GetString("text", "");
+            signRenderer?.SetNewText(text);
         }
 
         public override void ToTreeAttributes(ITreeAttribute tree)

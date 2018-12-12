@@ -2,6 +2,7 @@
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
@@ -197,7 +198,7 @@ namespace Vintagestory.GameContent
         {
             base.GetHeldItemInfo(stack, dsc, world, withDebugInfo);
 
-            dsc.AppendLine("1 blunt damage when thrown");
+            dsc.AppendLine(Lang.Get("1 blunt damage when thrown"));
         }
 
 

@@ -109,11 +109,11 @@ namespace Vintagestory.GameContent
             if (tree != null) inv.FromTreeAttributes(tree);
         }
 
-        public override void OnInteract(EntityAgent byEntity, IItemSlot slot, Vec3d hitPosition, int mode)
+        public override void OnInteract(EntityAgent byEntity, IItemSlot slot, Vec3d hitPosition, EnumInteractMode mode)
         {
             base.OnInteract(byEntity, slot, hitPosition, mode);
 
-            if ((byEntity as EntityPlayer)?.Controls.Sneak == true && mode == 1 && byEntity.World.Side == EnumAppSide.Server)
+            if ((byEntity as EntityPlayer)?.Controls.Sneak == true && mode == EnumInteractMode.Interact && byEntity.World.Side == EnumAppSide.Server)
             {
                 inv.DiscardAll();
                 WatchedAttributes.MarkAllDirty();

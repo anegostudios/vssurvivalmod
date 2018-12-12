@@ -159,6 +159,7 @@ namespace Vintagestory.GameContent
         protected virtual void OnInvClosed(IPlayer player)
         {
             inventory.PutLocked = retrieveOnly;
+            invDialog?.Dispose();
             invDialog = null;
         }
 

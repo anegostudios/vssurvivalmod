@@ -2,6 +2,7 @@
 using System.Text;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
@@ -49,9 +50,9 @@ namespace Vintagestory.GameContent
             Block cropBlock = world.GetBlock(CodeWithPath("crop-" + stack.Collectible.LastCodePart() + "-1"));
             if (cropBlock == null || cropBlock.CropProps == null) return;
 
-            dsc.AppendLine("Required Nutrient: " + cropBlock.CropProps.RequiredNutrient);
-            dsc.AppendLine("Nutrient Consumption: " + cropBlock.CropProps.NutrientConsumption);
-            dsc.AppendLine("Growth Time: " + Math.Round(cropBlock.CropProps.TotalGrowthDays, 1) + " days");
+            dsc.AppendLine(Lang.Get("soil-nutrition-requirement") + cropBlock.CropProps.RequiredNutrient);
+            dsc.AppendLine(Lang.Get("soil-nutrition-consumption") + cropBlock.CropProps.NutrientConsumption);
+            dsc.AppendLine(Lang.Get("soil-growth-time") + Math.Round(cropBlock.CropProps.TotalGrowthDays, 1) + " days");
         }
     }
 }

@@ -12,7 +12,7 @@ namespace Vintagestory.GameContent
 {
     public class EntityStrawDummy : EntityHumanoid
     {
-        public override void OnInteract(EntityAgent byEntity, IItemSlot slot, Vec3d hitPosition, int mode)
+        public override void OnInteract(EntityAgent byEntity, IItemSlot slot, Vec3d hitPosition, EnumInteractMode mode)
         {
             if (!Alive || World.Side == EnumAppSide.Client || mode == 0)
             {

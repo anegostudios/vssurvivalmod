@@ -282,12 +282,14 @@ namespace Vintagestory.GameContent
         {
             base.OnEntitySpawn();
 
-            GetBehavior<EntityBehaviorTaskAI>().taskManager.ShouldExecuteTask =
-                (task) => tradingWith == null || (task is AiTaskIdle || task is AiTaskSeekEntity || task is AiTaskGotoEntity);
-
-
             if (World.Api.Side == EnumAppSide.Server)
             {
+                EntityBehaviorTaskAI taskAi = GetBehavior<EntityBehaviorTaskAI>();
+
+                taskAi.taskManager.ShouldExecuteTask =
+                    (task) => tradingWith == null || (task is AiTaskIdle || task is AiTaskSeekEntity || task is AiTaskGotoEntity);
+
+
                 RefreshBuyingSellingInventory();
 
                 Inventory.GiveToTrader((int)TradeProps.Money.nextFloat(1f, World.Rand));
@@ -336,9 +338,9 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void OnInteract(EntityAgent byEntity, IItemSlot slot, Vec3d hitPosition, int mode)
+        public override void OnInteract(EntityAgent byEntity, IItemSlot slot, Vec3d hitPosition, EnumInteractMode mode)
         {
-            if (mode != 1 || !(byEntity is EntityPlayer))
+            if (mode != EnumInteractMode.Interact || !(byEntity is EntityPlayer))
             {
                 base.OnInteract(byEntity, slot, hitPosition, mode);
                 return;

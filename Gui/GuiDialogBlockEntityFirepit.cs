@@ -106,7 +106,7 @@ namespace Vintagestory.GameContent
 
             int openedFirepits = capi.OpenedGuis.OfType<GuiDialogBlockEntityFirepit>().Count();
 
-            if (!capi.Settings.Bool["floatyGuis"])
+            if (!capi.Settings.Bool["immersiveMouseMode"])
             {
              //   if (openedFirepits % 3 == 1) dialogBounds.fixedOffsetY -= stoveBounds.fixedHeight + 100;
                 //if (openedFirepits % 3 == 2) dialogBounds.fixedOffsetY += stoveBounds.fixedHeight + 100;

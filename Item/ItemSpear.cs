@@ -3,6 +3,7 @@ using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
@@ -217,7 +218,7 @@ namespace Vintagestory.GameContent
                 damage = stack.Collectible.Attributes["damage"].AsFloat(0);
             }
 
-            dsc.AppendLine(damage + " piercing damage when thrown");
+            dsc.AppendLine(damage + Lang.Get("piercing-damage-thrown"));
         }
     }
 }

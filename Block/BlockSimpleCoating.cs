@@ -77,7 +77,7 @@ namespace Vintagestory.GameContent
 
             Block block = world.BlockAccessor.GetBlock(blockId);
 
-            return block.CanAttachBlockAt(world.BlockAccessor, this, pos, facing);
+            return block.CanAttachBlockAt(world.BlockAccessor, this, pos, facing.GetOpposite());
         }
 
         public override bool CanAttachBlockAt(IBlockAccessor world, Block block, BlockPos pos, BlockFacing blockFace)

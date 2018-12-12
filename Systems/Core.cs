@@ -345,6 +345,7 @@ namespace Vintagestory.GameContent
             api.RegisterItemClass("ItemPoultice", typeof(ItemPoultice));
             api.RegisterItemClass("ItemRustyGear", typeof(ItemRustyGear));
             api.RegisterItemClass("ItemJournalEntry", typeof(ItemJournalEntry));
+            api.RegisterItemClass("ItemKnife", typeof(ItemKnife));
         }
 
 

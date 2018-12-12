@@ -4,6 +4,7 @@ using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
@@ -184,7 +185,7 @@ namespace Vintagestory.GameContent
             if (stack.Collectible.Attributes == null) return;
 
             float dmg = stack.Collectible.Attributes["damage"].AsFloat(0);
-            if (dmg != 0) dsc.AppendLine(dmg + " piercing damage");
+            if (dmg != 0) dsc.AppendLine(dmg + Lang.Get("piercing-damage"));
         }
 
     }
