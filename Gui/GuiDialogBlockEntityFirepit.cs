@@ -16,6 +16,7 @@ namespace Vintagestory.GameContent
         ElementBounds cookingSlotsSlotBounds;
 
         long lastRedrawMs;
+        EnumPosFlag screenPos;
 
         protected override double FloatyDialogPosition => 0.6;
         protected override double FloatyDialogAlign => 0.8;
@@ -27,13 +28,10 @@ namespace Vintagestory.GameContent
             if (IsDuplicate) return;
             tree.OnModified.Add(new TreeModifiedListener() { listener = OnAttributesModified } );
             Attributes = tree;
-
-            SetupDialog();
         }
 
         private void OnInventorySlotModified(int slotid)
         {
-            //Console.WriteLine("slot modified: {0}", slotid);
             SetupDialog();
         }
 
@@ -48,8 +46,11 @@ namespace Vintagestory.GameContent
                 hoveredSlot = null;
             }
 
-            string newOutputText = Attributes.GetString("outputText", ""); // Inventory.GetOutputText();
-            bool newHaveCookingContainer = Attributes.GetInt("haveCookingContainer") > 0; //Inventory.HaveCookingContainer;
+            
+
+
+            string newOutputText = Attributes.GetString("outputText", "");
+            bool newHaveCookingContainer = Attributes.GetInt("haveCookingContainer") > 0;
 
             GuiElementDynamicText outputTextElem;
 
@@ -66,33 +67,30 @@ namespace Vintagestory.GameContent
 
                 if (outputTextElem.QuantityTextLines > 2)
                 {
-                    outputTextElem.Bounds.fixedOffsetY = -outputTextElem.Font.GetFontExtents().Height;
+                    outputTextElem.Bounds.fixedOffsetY = -outputTextElem.Font.GetFontExtents().Height * 0.6;
                 }
-                outputTextElem.Bounds.CalcWorldBounds();
 
-                //Console.WriteLine("new text is now " + newOutputText + ", lines = " + outputTextElem.QuantityTextLines);
+                outputTextElem.Bounds.CalcWorldBounds();
 
                 return;
             }
-
-            //ClearComposers();
-
+            
 
             haveCookingContainer = newHaveCookingContainer;
             currentOutputText = newOutputText;
 
             int qCookingSlots = Attributes.GetInt("quantityCookingSlots");
 
-            ElementBounds stoveBounds = ElementBounds.Fixed(0, 0, 250, 250);
+            ElementBounds stoveBounds = ElementBounds.Fixed(0, 0, 210, 250);
 
-            cookingSlotsSlotBounds = ElementStdBounds.SlotGrid(EnumDialogArea.None, 20, 30 + 45, 4, qCookingSlots / 4);
+            cookingSlotsSlotBounds = ElementStdBounds.SlotGrid(EnumDialogArea.None, 0, 30 + 45, 4, qCookingSlots / 4);
             cookingSlotsSlotBounds.fixedHeight += 10;
 
             double top = cookingSlotsSlotBounds.fixedHeight + cookingSlotsSlotBounds.fixedY;
 
-            ElementBounds inputSlotBounds = ElementStdBounds.SlotGrid(EnumDialogArea.None, 20, top, 1, 1);
-            ElementBounds fuelSlotBounds = ElementStdBounds.SlotGrid(EnumDialogArea.None, 20, 120 + top, 1, 1);
-            ElementBounds outputSlotBounds = ElementStdBounds.SlotGrid(EnumDialogArea.None, 173, top, 1, 1);
+            ElementBounds inputSlotBounds = ElementStdBounds.SlotGrid(EnumDialogArea.None, 0, top, 1, 1);
+            ElementBounds fuelSlotBounds = ElementStdBounds.SlotGrid(EnumDialogArea.None, 0, 110 + top, 1, 1);
+            ElementBounds outputSlotBounds = ElementStdBounds.SlotGrid(EnumDialogArea.None, 153, top, 1, 1);
 
             // 2. Around all that is 10 pixel padding
             ElementBounds bgBounds = ElementBounds.Fill.WithFixedPadding(GuiStyle.ElementToDialogPadding);
@@ -100,16 +98,15 @@ namespace Vintagestory.GameContent
             bgBounds.WithChildren(stoveBounds);
 
             // 3. Finally Dialog
-            ElementBounds dialogBounds = ElementStdBounds.AutosizedMainDialog.WithAlignment(EnumDialogArea.RightMiddle)
-                .WithFixedAlignmentOffset(-GuiStyle.DialogToScreenPadding, 0);
+            ElementBounds dialogBounds = ElementStdBounds.AutosizedMainDialog
+                .WithFixedAlignmentOffset(IsRight(screenPos) ? -GuiStyle.DialogToScreenPadding : GuiStyle.DialogToScreenPadding, 0)
+                .WithAlignment(IsRight(screenPos) ? EnumDialogArea.RightMiddle : EnumDialogArea.LeftMiddle)
+            ;
 
-
-            int openedFirepits = capi.OpenedGuis.OfType<GuiDialogBlockEntityFirepit>().Count();
 
             if (!capi.Settings.Bool["immersiveMouseMode"])
             {
-             //   if (openedFirepits % 3 == 1) dialogBounds.fixedOffsetY -= stoveBounds.fixedHeight + 100;
-                //if (openedFirepits % 3 == 2) dialogBounds.fixedOffsetY += stoveBounds.fixedHeight + 100;
+                dialogBounds.fixedOffsetY += (stoveBounds.fixedHeight + 65 + (haveCookingContainer ? 25 : 0)) * YOffsetMul(screenPos);
             }
 
 
@@ -118,18 +115,18 @@ namespace Vintagestory.GameContent
 
             SingleComposer = capi.Gui
                 .CreateCompo("blockentitystove"+BlockEntityPosition, dialogBounds)
-                .AddDialogBG(bgBounds)
+                .AddShadedDialogBG(bgBounds)
                 .AddDialogTitleBar(DialogTitle, OnTitleBarClose)
                 .BeginChildElements(bgBounds)
                     .AddDynamicCustomDraw(stoveBounds, OnBgDraw, "symbolDrawer")
-                    .AddDynamicText("", CairoFont.WhiteDetailText(), EnumTextOrientation.Left, ElementBounds.Fixed(15, 30, 235, 45), "outputText")
+                    .AddDynamicText("", CairoFont.WhiteDetailText(), EnumTextOrientation.Left, ElementBounds.Fixed(0, 30, 210, 45), "outputText")
                     .AddIf(haveCookingContainer)
                         .AddItemSlotGrid(Inventory, SendInvPacket, 4, cookingSlotIds, cookingSlotsSlotBounds, "ingredientSlots")
                     .EndIf()
                     .AddItemSlotGrid(Inventory, SendInvPacket, 1, new int[] { 0 }, fuelSlotBounds, "fuelslot")
-                    .AddDynamicText("", CairoFont.WhiteDetailText(), EnumTextOrientation.Left, fuelSlotBounds.RightCopy(20, 15), "fueltemp")
+                    .AddDynamicText("", CairoFont.WhiteDetailText(), EnumTextOrientation.Left, fuelSlotBounds.RightCopy(17, 16).WithFixedHeight(30), "fueltemp")
                     .AddItemSlotGrid(Inventory, SendInvPacket, 1, new int[] { 1 }, inputSlotBounds, "oreslot")
-                    .AddDynamicText("", CairoFont.WhiteDetailText(), EnumTextOrientation.Left, inputSlotBounds.RightCopy(30, 15), "oretemp")
+                    .AddDynamicText("", CairoFont.WhiteDetailText(), EnumTextOrientation.Left, inputSlotBounds.RightCopy(23, 16).WithFixedHeight(30), "oretemp")
 
                     .AddItemSlotGrid(Inventory, SendInvPacket, 1, new int[] { 2 }, outputSlotBounds, "outputslot")
                 .EndChildElements()
@@ -148,7 +145,7 @@ namespace Vintagestory.GameContent
             
             if (outputTextElem.QuantityTextLines > 2)
             {
-                outputTextElem.Bounds.fixedOffsetY = -outputTextElem.Font.GetFontExtents().Height;
+                outputTextElem.Bounds.fixedOffsetY = -outputTextElem.Font.GetFontExtents().Height * 0.6;
             }
             outputTextElem.Bounds.CalcWorldBounds();
 
@@ -185,7 +182,7 @@ namespace Vintagestory.GameContent
             // 1. Fire
             ctx.Save();
             Matrix m = ctx.Matrix;
-            m.Translate(GuiElement.scaled(25), GuiElement.scaled(60 + top));
+            m.Translate(GuiElement.scaled(5), GuiElement.scaled(53 + top));
             m.Scale(GuiElement.scaled(0.25), GuiElement.scaled(0.25));
             ctx.Matrix = m;
             capi.Gui.Icons.DrawFlame(ctx);
@@ -205,7 +202,7 @@ namespace Vintagestory.GameContent
             // 2. Arrow Right
             ctx.Save();
             m = ctx.Matrix;
-            m.Translate(GuiElement.scaled(83), GuiElement.scaled(top + 2));
+            m.Translate(GuiElement.scaled(63), GuiElement.scaled(top + 2));
             m.Scale(GuiElement.scaled(0.6), GuiElement.scaled(0.6));
             ctx.Matrix = m;
             capi.Gui.Icons.DrawArrowRight(ctx, 2);
@@ -242,6 +239,10 @@ namespace Vintagestory.GameContent
         {
             base.OnGuiOpened();
             Inventory.SlotModified += OnInventorySlotModified;
+
+            screenPos = GetFreePos("smallblockgui");
+            OccupyPos("smallblockgui", screenPos);
+            SetupDialog();
         }
 
         public override void OnGuiClosed()
@@ -254,6 +255,8 @@ namespace Vintagestory.GameContent
             SingleComposer.GetSlotGrid("ingredientSlots")?.OnGuiClosed(capi);
 
             base.OnGuiClosed();
+
+            FreePos("smallblockgui", screenPos);
         }
     }
 }

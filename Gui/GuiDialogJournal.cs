@@ -24,7 +24,7 @@ namespace Vintagestory.GameContent
             get { return null; }
         }
 
-        public GuiDialogJournal(List<JournalEntry> journalitems, ICoreClientAPI capi) : base("Journal", capi)
+        public GuiDialogJournal(List<JournalEntry> journalitems, ICoreClientAPI capi) : base(Lang.Get("Journal"), capi)
         {
             this.journalitems = journalitems;
         }
@@ -43,25 +43,25 @@ namespace Vintagestory.GameContent
 
             ClearComposers();
 
-            DialogComposers["loreList"] =
+            Composers["loreList"] =
                 capi.Gui
                 .CreateCompo("loreList", dialogBounds)
-                .AddDialogBG(ElementBounds.Fill)
-                .AddDialogTitleBar("Journal Inventory", CloseIconPressed)
+                .AddShadedDialogBG(ElementBounds.Fill)
+                .AddDialogTitleBar(Lang.Get("Journal Inventory"), CloseIconPressed)
             ;
 
             for (int i = 0; i < journalitems.Count; i++)
             {
                 int page = i;
-                DialogComposers["loreList"].AddButton(journalitems[i].Title, () => { return onClickItem(page); }, button, CairoFont.WhiteSmallText(), EnumButtonStyle.None, EnumTextOrientation.Left, "button-"+i);
+                Composers["loreList"].AddButton(journalitems[i].Title, () => { return onClickItem(page); }, button, CairoFont.WhiteSmallText(), EnumButtonStyle.None, EnumTextOrientation.Left, "button-"+i);
 
-                DialogComposers["loreList"].GetButton("button-" + i).PlaySound = false;
+                Composers["loreList"].GetButton("button-" + i).PlaySound = false;
 
                 button = button.BelowCopy();
             }
 
 
-            DialogComposers["loreList"].Compose();
+            Composers["loreList"].Compose();
         }
 
 
@@ -70,7 +70,7 @@ namespace Vintagestory.GameContent
             currentLoreItemIndex = i;
             page = 0;
 
-            CairoFont font = CairoFont.WhiteDetailText().WithFontSize(17).WithLineSpacing(1.15f);
+            CairoFont font = CairoFont.WhiteDetailText().WithFontSize(17).WithLineHeightMultiplier(1.15f);
             TextDrawUtil prober = new TextDrawUtil();
             StringBuilder fulltext = new StringBuilder();
             for (int p = 0; p < journalitems[currentLoreItemIndex].Chapters.Count; p++)
@@ -89,15 +89,15 @@ namespace Vintagestory.GameContent
             dialogBounds.fixedX = 350;
             
 
-            DialogComposers["loreItem"] =
+            Composers["loreItem"] =
                 capi.Gui
                 .CreateCompo("loreItem", dialogBounds)
-                .AddDialogBG(ElementBounds.Fill, true)
+                .AddShadedDialogBG(ElementBounds.Fill, true)
                 .AddDialogTitleBar(journalitems[i].Title, CloseIconPressedLoreItem)
                 .AddDynamicText(pages[0], font, EnumTextOrientation.Left, textBounds, "page")
                 .AddDynamicText("1 / " + pages.Length, CairoFont.WhiteSmallishText(), EnumTextOrientation.Center, ElementBounds.Fixed(250, 500, 100, 30), "currentpage") 
-                .AddButton("Previous Page", OnPrevPage, ElementBounds.Fixed(17, 500, 100, 23).WithFixedPadding(10, 4), CairoFont.WhiteSmallishText())
-                .AddButton("Next Page", OnNextPage, ElementBounds.Fixed(520, 500, 100, 23).WithFixedPadding(10, 4), CairoFont.WhiteSmallishText())
+                .AddButton(Lang.Get("Previous Page"), OnPrevPage, ElementBounds.Fixed(17, 500, 100, 23).WithFixedPadding(10, 4), CairoFont.WhiteSmallishText())
+                .AddButton(Lang.Get("Next Page"), OnNextPage, ElementBounds.Fixed(520, 500, 100, 23).WithFixedPadding(10, 4), CairoFont.WhiteSmallishText())
                 .Compose()
             ;
 
@@ -158,16 +158,16 @@ namespace Vintagestory.GameContent
         private bool OnNextPage()
         {
             page = Math.Min(pages.Length - 1, page + 1);
-            DialogComposers["loreItem"].GetDynamicText("page").SetNewText(pages[page]);
-            DialogComposers["loreItem"].GetDynamicText("currentpage").SetNewText((page + 1) + " / " + pages.Length);
+            Composers["loreItem"].GetDynamicText("page").SetNewText(pages[page]);
+            Composers["loreItem"].GetDynamicText("currentpage").SetNewText((page + 1) + " / " + pages.Length);
             return true;
         }
 
         private bool OnPrevPage()
         {
             page = Math.Max(0, page - 1);
-            DialogComposers["loreItem"].GetDynamicText("page").SetNewText(pages[page]);
-            DialogComposers["loreItem"].GetDynamicText("currentpage").SetNewText((page + 1) + " / " + pages.Length);
+            Composers["loreItem"].GetDynamicText("page").SetNewText(pages[page]);
+            Composers["loreItem"].GetDynamicText("currentpage").SetNewText((page + 1) + " / " + pages.Length);
             return true;
         }
 
@@ -183,7 +183,7 @@ namespace Vintagestory.GameContent
 
         private void CloseIconPressedLoreItem()
         {
-            DialogComposers.Remove("loreItem");
+            Composers.Remove("loreItem");
         }
 
         private void OnNewScrollbarvalue(float value)

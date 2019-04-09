@@ -17,11 +17,12 @@ namespace Vintagestory.GameContent
             return world.BlockAccessor.GetBlock(CodeWithPath(basecode.Replace("layer", "block")));
         }
 
-        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel)
+        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
         {
-            if (!world.TryAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            if (!world.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
             {
                 byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
+                failureCode = "claimed";
                 return false;
             }
 
@@ -39,10 +40,11 @@ namespace Vintagestory.GameContent
 
             if (!CanLayerStay(world, blockSel.Position))
             {
+                failureCode = "belowblockcannotsupport";
                 return false;
             }
 
-            base.TryPlaceBlock(world, byPlayer, itemstack, blockSel);
+            base.TryPlaceBlock(world, byPlayer, itemstack, blockSel, ref failureCode);
             return true;
         }
 

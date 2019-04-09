@@ -50,13 +50,12 @@ namespace Vintagestory.GameContent
             } else
             {
                 RegisterGameTickListener(OnClientGameTick, 50);
-
-
             }
 
             block = api.World.BlockAccessor.GetBlock(pos) as BlockTeleporter;
             posvec = new Vec3d(pos.X, pos.Y + 1, pos.Z);
         }
+
 
         internal void OnEntityCollide(Entity entity)
         {

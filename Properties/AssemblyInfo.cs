@@ -43,6 +43,25 @@ using Vintagestory.API.Config;
     Version = GameVersion.ShortGameVersion,
     Description = "The Vintage Story Survival experience. Contains all standard Blocks, Items, Creatures and pretty world generation",
     Authors = new[] { "Tyron" },
-    RequiredOnClient = false )]
+    RequiredOnClient = false,
+    WorldConfig = @"
+    {
+	    playstyles: [
+		    {
+			    code: ""surviveandbuild"",
+			    mods: [""game"", ""survival""],
+                listOrder: 5,
+			    worldType: ""standard"",
+			    worldConfig: {
+				    worldClimate: ""realistic"",
+				    gameMode: ""survival"",
+				    hoursPerDay: 24
+			    }
+		    }
+	    ],
+	    worldConfigAttributes: [	
+	    ]
+    }"
+)]
 
 [assembly: ModDependency("game")]

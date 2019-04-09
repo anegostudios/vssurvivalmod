@@ -63,16 +63,23 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel)
+        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
         {
-            if (!world.TryAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            if (!world.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
             {
                 byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
+                failureCode = "claimed";
                 return false;
             }
 
-            if (!byPlayer.Entity.Controls.Sneak) return false;
-            if (IsSuitablePosition(world, blockSel.Position) && world.BlockAccessor.GetBlock(blockSel.Position.DownCopy()).SideSolid[BlockFacing.UP.Index])
+            if (!byPlayer.Entity.Controls.Sneak)
+            {
+                failureCode = "__ignore__";
+                return false;
+            }
+            if (!IsSuitablePosition(world, blockSel.Position, ref failureCode)) return false;
+
+            if (world.BlockAccessor.GetBlock(blockSel.Position.DownCopy()).SideSolid[BlockFacing.UP.Index])
             {
                 DoPlaceBlock(world, blockSel.Position, blockSel.Face, itemstack);
 
@@ -85,15 +92,16 @@ namespace Vintagestory.GameContent
                     belmc.contents = contents.Key.Clone();
                     belmc.units = contents.Value;
                 }
-
                 return true;
             }
+
+            failureCode = "requiresolidground";
 
             return false;
         }
 
 
-        public override void OnHeldIdle(IItemSlot slot, EntityAgent byEntity)
+        public override void OnHeldIdle(ItemSlot slot, EntityAgent byEntity)
         {
             if (byEntity.World is IClientWorldAccessor && byEntity.World.Rand.NextDouble() < 0.02)
             {
@@ -113,7 +121,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override void OnHeldInteractStart(IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handHandling)
+        public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handHandling)
         {
             if (blockSel == null) return;
 
@@ -157,7 +165,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override bool OnHeldInteractStep(float secondsUsed, IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override bool OnHeldInteractStep(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
             if (blockSel == null) return false;
 
@@ -272,7 +280,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void OnHeldInteractStop(float secondsUsed, IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override void OnHeldInteractStop(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
             slot.MarkDirty();
 

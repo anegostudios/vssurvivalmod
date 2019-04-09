@@ -23,25 +23,18 @@ namespace Vintagestory.GameContent
     /// </summary>
     public class BlockSoil : BlockWithGrassOverlay
     {
-        static List<AssetLocation> tallGrassCodes = new List<AssetLocation>();
-        static string[] growthStages = new string[] { "none", "verysparse", "sparse", "normal" };
-        static string[] tallGrassGrowthStages = new string[] { "veryshort", "short", "mediumshort", "medium", "tall", "verytall" };
+        protected List<AssetLocation> tallGrassCodes = new List<AssetLocation>();
+        protected string[] growthStages = new string[] { "none", "verysparse", "sparse", "normal" };
+        protected string[] tallGrassGrowthStages = new string[] { "veryshort", "short", "mediumshort", "medium", "tall", "verytall" };
 
-        int growthLightLevel;
-        string growthBlockLayer;
-        float tallGrassGrowthProbability;
-        BlockLayerConfig blocklayerconfig;
-        int chunksize;
+        protected int growthLightLevel;
+        protected string growthBlockLayer;
+        protected float tallGrassGrowthChance;
+        protected BlockLayerConfig blocklayerconfig;
+        protected int chunksize;
 
-        static BlockSoil()
-        {           
-            tallGrassCodes.Add(new AssetLocation("tallgrass-veryshort"));
-            tallGrassCodes.Add(new AssetLocation("tallgrass-short"));
-            tallGrassCodes.Add(new AssetLocation("tallgrass-mediumshort"));
-            tallGrassCodes.Add(new AssetLocation("tallgrass-medium"));
-            tallGrassCodes.Add(new AssetLocation("tallgrass-tall"));
-            tallGrassCodes.Add(new AssetLocation("tallgrass-verytall"));
-        }
+        protected virtual int MaxStage => 3;
+
 
         int GrowthStage(string stage)
         {
@@ -63,11 +56,18 @@ namespace Vintagestory.GameContent
 
             growthLightLevel = Attributes?["growthLightLevel"] != null ? Attributes["growthLightLevel"].AsInt(7) : 7;
             growthBlockLayer = Attributes?["growthBlockLayer"]?.AsString("l1soilwithgrass");
-            tallGrassGrowthProbability = Attributes?["tallGrassGrowthProbability"] != null ? Attributes["tallGrassGrowthProbability"].AsFloat(0.3f) : 0.3f;
+            tallGrassGrowthChance = Attributes?["tallGrassGrowthChance"] != null ? Attributes["tallGrassGrowthChance"].AsFloat(0.3f) : 0.3f;
 
+            tallGrassCodes.Add(new AssetLocation("tallgrass-veryshort"));
+            tallGrassCodes.Add(new AssetLocation("tallgrass-short"));
+            tallGrassCodes.Add(new AssetLocation("tallgrass-mediumshort"));
+            tallGrassCodes.Add(new AssetLocation("tallgrass-medium"));
+            tallGrassCodes.Add(new AssetLocation("tallgrass-tall"));
+            tallGrassCodes.Add(new AssetLocation("tallgrass-verytall"));
+            
             if (api.Side == EnumAppSide.Server)
             {
-                (api as ICoreServerAPI).Event.ServerRunPhase(EnumServerRunPhase.LoadGame, () =>
+                (api as ICoreServerAPI).Event.ServerRunPhase(EnumServerRunPhase.RunGame, () =>
                 {
                     blocklayerconfig = api.ModLoader.GetModSystem<GenBlockLayers>().blockLayerConfig;
                 });
@@ -88,7 +88,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override bool ShouldReceiveServerGameTicks(IWorldAccessor world, BlockPos pos, out object extra)
+        public override bool ShouldReceiveServerGameTicks(IWorldAccessor world, BlockPos pos, Random offThreadRandom, out object extra)
         {
             extra = null;
 
@@ -119,17 +119,17 @@ namespace Vintagestory.GameContent
             return extra != null;
         }
 
-        private bool isSmotheringBlock(IWorldAccessor world, BlockPos pos)
+        protected bool isSmotheringBlock(IWorldAccessor world, BlockPos pos)
         {
             Block block = world.BlockAccessor.GetBlock(pos);
             return block.SideSolid[BlockFacing.DOWN.Index] && block.SideOpaque[BlockFacing.DOWN.Index];
         }
 
-        private Block tryGetBlockForGrowing(IWorldAccessor world, BlockPos pos)
+        protected Block tryGetBlockForGrowing(IWorldAccessor world, BlockPos pos)
         {
             int targetStage = 0;
             int currentStage = CurrentStage();
-            if (currentStage != 3 && isGrassNearby(world, pos) && (targetStage = getClimateSuitedGrowthStage(world, pos, world.BlockAccessor.GetClimateAt(pos))) != CurrentStage())
+            if (currentStage != MaxStage && isGrassNearby(world, pos) && (targetStage = getClimateSuitedGrowthStage(world, pos, world.BlockAccessor.GetClimateAt(pos))) != CurrentStage())
             {
                 int nextStage = GameMath.Clamp(targetStage, currentStage - 1, currentStage + 1);
 
@@ -139,7 +139,7 @@ namespace Vintagestory.GameContent
             return null;
         }
 
-        private Block tryGetBlockForDying(IWorldAccessor world)
+        protected Block tryGetBlockForDying(IWorldAccessor world)
         {
             int nextStage = Math.Max(CurrentStage() - 1, 0);
             if (nextStage != CurrentStage())
@@ -158,14 +158,14 @@ namespace Vintagestory.GameContent
         /// <param name="world"></param>
         /// <param name="abovePos"></param>
         /// <returns></returns>
-        private Block getTallGrassBlock(IWorldAccessor world, BlockPos abovePos)
+        protected Block getTallGrassBlock(IWorldAccessor world, BlockPos abovePos)
         {
-            if (world.Rand.NextDouble() > tallGrassGrowthProbability) return null;
+            if (world.Rand.NextDouble() > tallGrassGrowthChance) return null;
             Block block = world.BlockAccessor.GetBlock(abovePos);
 
             int curTallgrassStage = (block.FirstCodePart() == "tallgrass") ? Array.IndexOf(tallGrassGrowthStages, block.LastCodePart()) : 0;
 
-            int nextTallgrassStage = Math.Min(curTallgrassStage + 1 + world.Rand.Next(3), tallGrassGrowthStages.Length);
+            int nextTallgrassStage = Math.Min(curTallgrassStage + 1 + world.Rand.Next(3), tallGrassGrowthStages.Length - 1);
 
             return world.GetBlock(tallGrassCodes[nextTallgrassStage]);
         }
@@ -182,7 +182,7 @@ namespace Vintagestory.GameContent
         /// <param name="world"></param>
         /// <param name="pos"></param>
         /// <returns>true if grass can grow on this block at this location, false otherwise</returns>
-        private bool canGrassGrowHere(IWorldAccessor world, BlockPos pos)
+        protected bool canGrassGrowHere(IWorldAccessor world, BlockPos pos)
         {
             string grasscoverage = LastCodePart();
             bool isFullyGrown = "normal".Equals(grasscoverage);
@@ -196,9 +196,9 @@ namespace Vintagestory.GameContent
             return false;
         }
 
-            
 
-        private int getClimateSuitedGrowthStage(IWorldAccessor world, BlockPos pos, ClimateCondition climate)
+
+        protected int getClimateSuitedGrowthStage(IWorldAccessor world, BlockPos pos, ClimateCondition climate)
         {
             ICoreServerAPI api = (ICoreServerAPI)world.Api;
             int mapheight = api.WorldManager.MapSizeY;
@@ -218,7 +218,10 @@ namespace Vintagestory.GameContent
 
                 if (tempDist + rainDist + fertDist + yDist <= posRand)
                 {
-                    ushort topblockid = world.BlockAccessor.GetMapChunkAtBlockPos(pos).TopRockIdMap[(pos.Z % chunksize) * chunksize + (pos.X % chunksize)];
+                    IMapChunk mapchunk = world.BlockAccessor.GetMapChunkAtBlockPos(pos);
+                    if (mapchunk == null) return 0;
+
+                    ushort topblockid = mapchunk.TopRockIdMap[(pos.Z % chunksize) * chunksize + (pos.X % chunksize)];
                     ushort blockId = bl.GetBlockId(posRand, climate.Temperature, climate.Rainfall, climate.Fertility, topblockid);
 
                     Block block = world.Blocks[blockId];
@@ -233,7 +236,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        private bool isGrassNearby(IWorldAccessor world, BlockPos pos)
+        protected bool isGrassNearby(IWorldAccessor world, BlockPos pos)
         {
             BlockPos neighborPos = new BlockPos();
             for (int y = -1; y < 2; y++)
@@ -254,27 +257,16 @@ namespace Vintagestory.GameContent
         /// <summary>
         /// Returns true if the neighbor block can spread grass. It must be a soil block with some grass on it.
         /// </summary>
-        /// <param name="neighbor"></param>
+        /// <param name="block"></param>
         /// <returns>true if the neighbor block can spread grass, false otherwise</returns>
-        private bool grassCanSpreadFrom(Block neighbor)
+        protected bool grassCanSpreadFrom(Block block)
         {
-            string[] parts = neighbor.Code.Path.Split('-');
-            if ("soil".Equals(parts[0]))
-            {
-                string grasscoverage = parts[parts.Length - 1];
-                if (!"none".Equals(grasscoverage))
-                {
-                    return true;
-                }
-            }
-            return false;
+            return block.Attributes?["spreadsGrass"].AsBool(true) == true;
         }
 
 
         public override int GetColor(ICoreClientAPI capi, BlockPos pos)
         {
-
-
             return base.GetColor(capi, pos);
         }
 

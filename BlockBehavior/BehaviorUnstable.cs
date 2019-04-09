@@ -30,18 +30,19 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref EnumHandling handled)
+        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref EnumHandling handled, ref string failureCode)
         {
             if (!IsAttached(world.BlockAccessor, blockSel.Position))
             {
                 handled = EnumHandling.PreventSubsequent;
+                failureCode = "requiresolidground";
                 return false;
             }
 
             return true;
         }
 
-        public override void OnNeighourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos, ref EnumHandling handled)
+        public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos, ref EnumHandling handled)
         {
             if (!IsAttached(world.BlockAccessor, pos))
             {
@@ -50,7 +51,7 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            base.OnNeighourBlockChange(world, pos, neibpos, ref handled);
+            base.OnNeighbourBlockChange(world, pos, neibpos, ref handled);
         }
 
 

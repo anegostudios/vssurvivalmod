@@ -1,4 +1,5 @@
-﻿using Vintagestory.API.Common;
+﻿using System;
+using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
@@ -18,11 +19,11 @@ namespace Vintagestory.GameContent
             tickGrowthProbability = Attributes?["tickGrowthProbability"] != null ? Attributes["tickGrowthProbability"].AsFloat(defaultGrowthProbability) : defaultGrowthProbability;
         }
 
-        public override bool ShouldReceiveServerGameTicks(IWorldAccessor world, BlockPos pos, out object extra)
+        public override bool ShouldReceiveServerGameTicks(IWorldAccessor world, BlockPos pos, Random offThreadRandom, out object extra)
         {
             extra = null;
 
-            if(world.Rand.NextDouble() < tickGrowthProbability && IsNotOnFarmland(world, pos))
+            if(offThreadRandom.NextDouble() < tickGrowthProbability && IsNotOnFarmland(world, pos))
             {
                 extra = GetNextGrowthStageBlock(world, pos);
                 return true;
@@ -63,8 +64,8 @@ namespace Vintagestory.GameContent
             string info = world.BlockAccessor.GetBlock(pos.DownCopy()).GetPlacedBlockInfo(world, pos.DownCopy(), forPlayer);
 
             return
-                Lang.Get("requiredNutrient") + CropProps.RequiredNutrient + "\n" +
-                Lang.Get("Growth Stage") + CurrentStage() + " / " + CropProps.GrowthStages +
+                Lang.Get("Required Nutrient: {0}", CropProps.RequiredNutrient) + "\n" +
+                Lang.Get("Growth Stage: {0} / {1}", CurrentStage(), CropProps.GrowthStages) +
                 (info != null && info.Length > 0 ? "\n\n"+ Lang.Get("soil-tooltip") +"\n" + info : "")
             ;
         }

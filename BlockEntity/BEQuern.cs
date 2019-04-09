@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
@@ -82,12 +83,10 @@ namespace Vintagestory.GameContent
                 {
                     playersGrinding.Add(player);
                 }
-                //Console.WriteLine("added player");
             }
             else
             {
                 playersGrinding.Remove(player);
-                //Console.WriteLine("removed player");
             }
 
             quantityPlayersGrinding = playersGrinding.Count;
@@ -173,7 +172,7 @@ namespace Vintagestory.GameContent
 
         public virtual string DialogTitle
         {
-            get { return "Quern"; }
+            get { return Lang.Get("Quern"); }
         }
 
         public override InventoryBase Inventory
@@ -188,7 +187,6 @@ namespace Vintagestory.GameContent
         {
             if (renderer == null) return; // Maybe already disposed
 
-            //Console.WriteLine("did retesselate now, players using: {0}, grind flag: {1}", playersGrinding.Count, IsGrinding);
             renderer.ShouldRender = IsGrinding;
         }
 
@@ -247,7 +245,7 @@ namespace Vintagestory.GameContent
 
         private void OnSlotModifid(int slotid)
         {
-            if (api is ICoreClientAPI && clientDialog != null)
+            if (api is ICoreClientAPI && clientDialog?.Attributes != null)
             {
                 SetDialogValues(clientDialog.Attributes);
             }
@@ -444,7 +442,7 @@ namespace Vintagestory.GameContent
             
 
 
-            if (api?.Side == EnumAppSide.Client && clientDialog != null)
+            if (api?.Side == EnumAppSide.Client && clientDialog?.Attributes != null && clientDialog.IsOpened())
             {
                 SetDialogValues(clientDialog.Attributes);
             }
@@ -545,6 +543,7 @@ namespace Vintagestory.GameContent
 
                     clientDialog = new GuiDialogBlockEntityQuern(dialogTitle, Inventory, pos, dtree, api as ICoreClientAPI);
                     clientDialog.TryOpen();
+                    clientDialog.OnClosed += () => clientDialog = null;
                 }
             }
 
@@ -560,12 +559,12 @@ namespace Vintagestory.GameContent
         #region Helper getters
 
 
-        public IItemSlot InputSlot
+        public ItemSlot InputSlot
         {
             get { return inventory[0]; }
         }
 
-        public IItemSlot OutputSlot
+        public ItemSlot OutputSlot
         {
             get { return inventory[1]; }
         }
@@ -586,7 +585,7 @@ namespace Vintagestory.GameContent
         public GrindingProperties InputGrindProps
         {
             get {
-                IItemSlot slot = inventory[0];
+                ItemSlot slot = inventory[0];
                 if (slot.Itemstack == null) return null;
                 return slot.Itemstack.Collectible.GrindingProps;
             }
@@ -629,9 +628,7 @@ namespace Vintagestory.GameContent
         public bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
         {
             if (ownBlock == null) return false;
-
-            //Console.WriteLine("call to ontesseleation. Isgrinding={0}", IsGrinding);
-
+            
             mesher.AddMeshData(this.quernBaseMesh);
             if (!IsGrinding)
             {

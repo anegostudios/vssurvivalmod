@@ -15,7 +15,7 @@ namespace Vintagestory.GameContent
 {
     public class ItemAxe : Item
     {
-        public override float OnBlockBreaking(IPlayer player, BlockSelection blockSel, IItemSlot itemslot, float remainingResistance, float dt, int counter)
+        public override float OnBlockBreaking(IPlayer player, BlockSelection blockSel, ItemSlot itemslot, float remainingResistance, float dt, int counter)
         {
             ITreeAttribute tempAttr = itemslot.Itemstack.TempAttributes;
             int posx = tempAttr.GetInt("lastposX", -1);
@@ -44,7 +44,7 @@ namespace Vintagestory.GameContent
             return base.OnBlockBreaking(player, blockSel, itemslot, remainingResistance, dt / treeTesistance, counter);
         }
 
-        public override bool OnBlockBrokenWith(IWorldAccessor world, Entity byEntity, IItemSlot itemslot, BlockSelection blockSel)
+        public override bool OnBlockBrokenWith(IWorldAccessor world, Entity byEntity, ItemSlot itemslot, BlockSelection blockSel)
         {
             IPlayer byPlayer = null;
             if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);

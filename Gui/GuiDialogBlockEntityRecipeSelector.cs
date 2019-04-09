@@ -19,11 +19,14 @@ namespace Vintagestory.GameContent
         int prevSlotOver = -1;
         Dictionary<int, SkillItem> skillItems;
         bool didSelect = false;
-        
+        API.Common.Action<int> onSelectedRecipe;
+        API.Common.Action onCancelSelect;
 
-        public GuiDialogBlockEntityRecipeSelector(string DialogTitle, ItemStack[] recipeOutputs, BlockPos blockEntityPos, ICoreClientAPI capi) : base(DialogTitle, capi)
+        public GuiDialogBlockEntityRecipeSelector(string DialogTitle, ItemStack[] recipeOutputs, API.Common.Action<int> onSelectedRecipe, API.Common.Action onCancelSelect, BlockPos blockEntityPos, ICoreClientAPI capi) : base(DialogTitle, capi)
         {
             this.blockEntityPos = blockEntityPos;
+            this.onSelectedRecipe = onSelectedRecipe;
+            this.onCancelSelect = onCancelSelect;
 
             skillItems = new Dictionary<int, SkillItem>();
 
@@ -69,20 +72,25 @@ namespace Vintagestory.GameContent
 
         void SetupDialog()
         {
-            int rows = (int)Math.Ceiling(skillItems.Count / 5f);
-            int cols = Math.Min(skillItems.Count, 5);
+            int cols = Math.Min(skillItems.Count, 7);
+
+            int rows = (int)Math.Ceiling(skillItems.Count / (float)cols);
+            
             double size = GuiElementPassiveItemSlot.unscaledSlotSize + GuiElementItemSlotGrid.unscaledSlotPadding;
             double innerWidth = Math.Max(300, cols * size);
             ElementBounds skillGridBounds = ElementBounds.Fixed(0, 30, innerWidth, rows * size);
 
             ElementBounds textBounds = ElementBounds.Fixed(0, rows*size + 50, innerWidth, 33);
 
+            ElementBounds bgBounds = ElementBounds.Fill.WithFixedPadding(GuiStyle.ElementToDialogPadding);
+            bgBounds.BothSizing = ElementSizing.FitToChildren;
+
             SingleComposer =
                 capi.Gui
                 .CreateCompo("toolmodeselect", ElementStdBounds.AutosizedMainDialog)
-                .AddDialogTitleBar("Select Recipe", OnTitleBarClose)
-                .AddDialogBG(ElementStdBounds.DialogBackground(), false, GuiStyle.TitleBarHeight - 1)
-                .BeginChildElements()
+                .AddShadedDialogBG(bgBounds, true)
+                .AddDialogTitleBar(Lang.Get("Select Recipe"), OnTitleBarClose)
+                .BeginChildElements(bgBounds)
                     .AddSkillItemGrid(skillItems, cols, rows, OnSlotClick, skillGridBounds, "skillitemgrid")
                     .AddDynamicText("", CairoFont.WhiteSmallishText(), EnumTextOrientation.Left, textBounds, "name")
                     .AddDynamicText("", CairoFont.WhiteDetailText(), EnumTextOrientation.Left, textBounds.BelowCopy(0,10,0,0), "desc")
@@ -107,15 +115,8 @@ namespace Vintagestory.GameContent
 
         private void OnSlotClick(int num)
         {
-            byte[] data;
-            using (MemoryStream ms = new MemoryStream())
-            {
-                BinaryWriter writer = new BinaryWriter(ms);
-                writer.Write(num);
-                data = ms.ToArray();
-            }
+            onSelectedRecipe(num);
 
-            capi.Network.SendBlockEntityPacket(blockEntityPos.X, blockEntityPos.Y, blockEntityPos.Z, 1001, data);
             didSelect = true;
 
             TryClose();
@@ -127,19 +128,19 @@ namespace Vintagestory.GameContent
 
             if (!didSelect)
             {
-                capi.Network.SendBlockEntityPacket(blockEntityPos.X, blockEntityPos.Y, blockEntityPos.Z, 1003);
+                onCancelSelect();
             }
         }
 
         public override bool TryClose()
         {
-            capi.Logger.Notification("Call to GuiDialogBlockEntityRecipeSelector.TryClose");
+            ///capi.Logger.Notification("Call to GuiDialogBlockEntityRecipeSelector.TryClose");
             return base.TryClose();
         }
 
         public override bool TryOpen()
         {
-            capi.Logger.Notification("Call to GuiDialogBlockEntityRecipeSelector.TryOpen");
+            //capi.Logger.Notification("Call to GuiDialogBlockEntityRecipeSelector.TryOpen");
             return base.TryOpen();
         }
 

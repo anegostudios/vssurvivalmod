@@ -22,6 +22,7 @@ namespace Vintagestory.GameContent
         MeshData currentMesh;
 
         public string RecipeCode;
+        public int QuantityServings;
 
         public CookingRecipe FromRecipe
         {
@@ -119,6 +120,7 @@ namespace Vintagestory.GameContent
             base.FromTreeAtributes(tree, worldForResolving);
 
             RecipeCode = tree.GetString("recipeCode");
+            QuantityServings = tree.GetInt("quantityServings");
 
             if (api?.Side == EnumAppSide.Client && currentMesh == null)
             {
@@ -132,6 +134,7 @@ namespace Vintagestory.GameContent
             base.ToTreeAttributes(tree);
 
             tree.SetString("recipeCode", RecipeCode == null ? "" : RecipeCode);
+            tree.SetInt("quantityServings", QuantityServings);
         }
 
 

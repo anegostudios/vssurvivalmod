@@ -1,0 +1,49 @@
+﻿using Vintagestory.API.Common;
+using Vintagestory.API.MathTools;
+
+namespace Vintagestory.GameContent.Mechanics
+{
+    public class BlockWindmillRotor : BlockMPBase
+    {
+        public override void DidConnectAt(IWorldAccessor world, BlockPos pos, BlockFacing face)
+        {
+            
+        }
+
+        public override bool HasConnectorAt(IWorldAccessor world, BlockPos pos, BlockFacing face)
+        {
+            return false;
+        }
+
+        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
+        {
+            foreach (BlockFacing face in BlockFacing.HORIZONTALS)
+            {
+                BlockPos pos = blockSel.Position.AddCopy(face);
+                IMechanicalPowerBlock block = world.BlockAccessor.GetBlock(pos) as IMechanicalPowerBlock;
+                if (block != null)
+                {
+                    if (block.HasConnectorAt(world, pos, face.GetOpposite()))
+                    {
+                        Block toPlaceBlock = world.GetBlock(new AssetLocation(FirstCodePart() + "-" + face.GetOpposite().Code));
+
+                        world.BlockAccessor.SetBlock(toPlaceBlock.BlockId, blockSel.Position);
+
+                        block.DidConnectAt(world, pos, face.GetOpposite());
+                        WasPlaced(world, blockSel.Position, face, block);
+
+                        return true;
+                    }
+                }
+            }
+
+            bool ok = base.TryPlaceBlock(world, byPlayer, itemstack, blockSel, ref failureCode);
+            if (ok)
+            {
+                WasPlaced(world, blockSel.Position);
+            }
+            return ok;
+        }
+
+    }
+}

@@ -31,15 +31,16 @@ namespace Vintagestory.GameContent
             return BlockFacing.FromCode(split[split.Length - 2]);
         }
 
-        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel)
+        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
         {
-            if (!world.TryAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            if (!world.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
             {
                 byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
+                failureCode = "claimed";
                 return false;
             }
 
-            if (!IsSuitablePosition(world, blockSel.Position))
+            if (!IsSuitablePosition(world, blockSel.Position, ref failureCode))
             {
                 return false;
             }

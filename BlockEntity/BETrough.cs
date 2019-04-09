@@ -9,6 +9,7 @@ using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -69,7 +70,7 @@ namespace Vintagestory.GameContent
 
             for (int i = 0; i < config.Foodfor.Length; i++)
             {
-                if (RegistryObject.WildCardMatch(config.Foodfor[i], entity.Code)) return true;
+                if (WildcardUtil.Match(config.Foodfor[i], entity.Code)) return true;
             }
 
             return false; 

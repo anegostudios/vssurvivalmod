@@ -1,9 +1,11 @@
 ﻿using System;
 using System.IO;
+using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
+using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
 namespace Vintagestory.GameContent
@@ -12,6 +14,9 @@ namespace Vintagestory.GameContent
     {
         public string text = "";
         BlockEntitySignRenderer signRenderer;
+        int color;
+        int tempColor;
+        ItemStack tempStack;
 
         public override void Initialize(ICoreAPI coreapi)
         {
@@ -21,7 +26,7 @@ namespace Vintagestory.GameContent
             {
                 signRenderer = new BlockEntitySignRenderer(pos, (ICoreClientAPI)coreapi);
                 
-                if (text.Length > 0) signRenderer.SetNewText(text);
+                if (text.Length > 0) signRenderer.SetNewText(text, color);
             }
         }
 
@@ -37,19 +42,24 @@ namespace Vintagestory.GameContent
         public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
             base.FromTreeAtributes(tree, worldForResolving);
+            color = tree.GetInt("color");
+            if (color == 0) color = ColorUtil.BlackArgb;
+
             text = tree.GetString("text", "");
-            signRenderer?.SetNewText(text);
+            
+            signRenderer?.SetNewText(text, color);
         }
 
         public override void ToTreeAttributes(ITreeAttribute tree)
         {
             base.ToTreeAttributes(tree);
+            tree.SetInt("color", color);
             tree.SetString("text", text);
         }
 
         public override void OnReceivedClientPacket(IPlayer player, int packetid, byte[] data)
         {
-            if (packetid == (int)EnumSignPacketId.ReceivedText)
+            if (packetid == (int)EnumSignPacketId.SaveText)
             {
                 using (MemoryStream ms = new MemoryStream(data))
                 {
@@ -58,14 +68,24 @@ namespace Vintagestory.GameContent
                     if (text == null) text = "";
                 }
 
-                ((ICoreServerAPI)api).Network.BroadcastBlockEntityPacket(
+                color = tempColor;
+
+                /*((ICoreServerAPI)api).Network.BroadcastBlockEntityPacket(
                     pos.X, pos.Y, pos.Z,
-                    (int)EnumSignPacketId.ReceivedText,
+                    (int)EnumSignPacketId.NowText,
                     data
-                );
+                );*/
+
+                MarkDirty(true);
 
                 // Tell server to save this chunk to disk again
                 api.World.BlockAccessor.GetChunkAtBlockPos(pos.X, pos.Y, pos.Z).MarkModified();
+            }
+
+            if (packetid == (int)EnumSignPacketId.CancelEdit && tempStack != null)
+            {
+                player.InventoryManager.TryGiveItemstack(tempStack);
+                tempStack = null;
             }
         }
 
@@ -86,20 +106,28 @@ namespace Vintagestory.GameContent
 
                     GuiDialogBlockEntityTextInput dlg = new GuiDialogBlockEntityTextInput(dialogTitle, pos, text, api as ICoreClientAPI);
                     dlg.OnTextChanged = DidChangeTextClientSide;
-                    dlg.OnCloseCancel = () => signRenderer.SetNewText(text);
+                    dlg.OnCloseCancel = () =>
+                    {
+                        signRenderer.SetNewText(text, color);
+                        (api as ICoreClientAPI).Network.SendBlockEntityPacket(pos.X, pos.Y, pos.Z, (int)EnumSignPacketId.CancelEdit, null);
+                    };
                     dlg.TryOpen();
                 }
             }
 
-            if (packetid == (int)EnumSignPacketId.ReceivedText)
+
+            if (packetid == (int)EnumSignPacketId.NowText)
             {
                 using (MemoryStream ms = new MemoryStream(data))
                 {
                     BinaryReader reader = new BinaryReader(ms);
                     text = reader.ReadString();
                     if (text == null) text = "";
-
-                    if(signRenderer != null) signRenderer.SetNewText(text);
+                    
+                    if (signRenderer != null)
+                    {
+                        signRenderer.SetNewText(text, color);
+                    }
                 }
             }
         }
@@ -107,31 +135,46 @@ namespace Vintagestory.GameContent
 
         private void DidChangeTextClientSide(string text)
         {
-            signRenderer?.SetNewText(text);
+            signRenderer?.SetNewText(text, tempColor);
         }
 
 
-        internal void OpenDialog(IPlayer byPlayer)
+        public void OnRightClick(IPlayer byPlayer)
         {
-            if (api.World is IServerWorldAccessor)
+            if (byPlayer?.Entity?.Controls?.Sneak == true)
             {
-                byte[] data;
-
-                using (MemoryStream ms = new MemoryStream())
+                ItemSlot hotbarSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
+                if (hotbarSlot?.Itemstack?.ItemAttributes?["pigment"]?["color"].Exists == true)
                 {
-                    BinaryWriter writer = new BinaryWriter(ms);
-                    writer.Write("BlockEntityTextInput");
-                    writer.Write("Sign Text");
-                    writer.Write(text);
-                    data = ms.ToArray();
-                }
+                    JsonObject jobj = hotbarSlot.Itemstack.ItemAttributes["pigment"]["color"];
+                    int r = jobj["red"].AsInt();
+                    int g = jobj["green"].AsInt();
+                    int b = jobj["blue"].AsInt();
 
-                ((ICoreServerAPI)api).Network.SendBlockEntityPacket(
-                    (IServerPlayer)byPlayer,
-                    pos.X, pos.Y, pos.Z,
-                    (int)EnumSignPacketId.OpenDialog,
-                    data
-                );
+                    tempColor = ColorUtil.ToRgba(255, r, g, b);
+                    tempStack = hotbarSlot.TakeOut(1);
+
+                    if (api.World is IServerWorldAccessor)
+                    {
+                        byte[] data;
+
+                        using (MemoryStream ms = new MemoryStream())
+                        {
+                            BinaryWriter writer = new BinaryWriter(ms);
+                            writer.Write("BlockEntityTextInput");
+                            writer.Write("Sign Text");
+                            writer.Write(text);
+                            data = ms.ToArray();
+                        }
+
+                        ((ICoreServerAPI)api).Network.SendBlockEntityPacket(
+                            (IServerPlayer)byPlayer,
+                            pos.X, pos.Y, pos.Z,
+                            (int)EnumSignPacketId.OpenDialog,
+                            data
+                        );
+                    }
+                }
             }
         }
 
@@ -146,7 +189,10 @@ namespace Vintagestory.GameContent
 
     public enum EnumSignPacketId
     {
-        ReceivedText = 1000,
-        OpenDialog = 1001
+        NowText = 1000,
+        OpenDialog = 1001,
+        SaveText = 1002,
+        CancelEdit = 1003
+            
     }
 }

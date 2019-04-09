@@ -10,10 +10,10 @@ namespace Vintagestory.GameContent
 {
     public class BlockLeaves : Block
     {
-        public override bool ShouldReceiveServerGameTicks(IWorldAccessor world, BlockPos pos, out object extra)
+        public override bool ShouldReceiveServerGameTicks(IWorldAccessor world, BlockPos pos, Random offThreadRandom, out object extra)
         {
             extra = null;
-            return world.Rand.NextDouble() < 0.1;
+            return offThreadRandom.NextDouble() < 0.1;
         }
 
         public override void OnServerGameTick(IWorldAccessor world, BlockPos pos, object extra = null)
@@ -36,7 +36,7 @@ namespace Vintagestory.GameContent
 
         public override int GetColor(ICoreClientAPI capi, BlockPos pos)
         {
-            return capi.ApplyColorTintOnRgba(1, base.GetColor(capi, pos), pos.X, pos.Y, pos.Z, false);
+            return capi.ApplyColorTintOnRgba(1, base.GetColorWithoutTint(capi, pos), pos.X, pos.Y, pos.Z, false);
         }
     }
 }

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -9,6 +10,7 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -21,16 +23,17 @@ namespace Vintagestory.GameContent
 
         // Temporary data, generated on be creation
 
-
+        
         Cuboidf[] selectionBoxes = new Cuboidf[0];
         KnappingRenderer workitemRenderer;
-        public int DidBeginUse;
+        
 
         public KnappingRecipe SelectedRecipe
         {
             get { return selectedRecipeNumber >= 0 ? api.World.KnappingRecipes[selectedRecipeNumber] : null; }
         }
         
+
 
 
         public BlockEntityKnappingSurface() : base() { }
@@ -78,7 +81,7 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            DidBeginUse++;
+           // DidBeginUse++;
         }
 
 
@@ -100,7 +103,7 @@ namespace Vintagestory.GameContent
         {
             if (voxelPos == null)
             {
-                DidBeginUse = Math.Max(DidBeginUse, DidBeginUse - 1);
+               // DidBeginUse = Math.Max(0, DidBeginUse - 1);
                 return;
             }
 
@@ -111,10 +114,10 @@ namespace Vintagestory.GameContent
                 SendUseOverPacket(byPlayer, voxelPos, facing, mouseMode);
             }
 
-            IItemSlot slot = byPlayer.InventoryManager.ActiveHotbarSlot;
+            ItemSlot slot = byPlayer.InventoryManager.ActiveHotbarSlot;
             if (slot.Itemstack == null)
             {
-                DidBeginUse = Math.Max(DidBeginUse, DidBeginUse - 1);
+          //      DidBeginUse = Math.Max(0, DidBeginUse - 1);
                 return;
             }
 
@@ -122,17 +125,49 @@ namespace Vintagestory.GameContent
 
             float yaw = GameMath.Mod(byPlayer.Entity.Pos.Yaw, 2 * GameMath.PI);
             BlockFacing towardsFace = BlockFacing.HorizontalFromAngle(yaw);
-
             
 
-
-            if (DidBeginUse > 0)
+            //if (DidBeginUse > 0)
             {
+                bool didRemove = mouseMode && OnRemove(voxelPos, facing, toolMode, byPlayer);
+                
                 if (mouseMode)
                 {
-                    OnRemove(voxelPos, facing, toolMode, byPlayer);
+                    api.World.PlaySoundAt(new AssetLocation("sounds/player/knap" + (api.World.Rand.Next(2) > 0 ? 1 : 2)), lastRemovedLocalPos.X, lastRemovedLocalPos.Y, lastRemovedLocalPos.Z, byPlayer, true, 12, 1);
                 }
-                
+
+                if (didRemove && api.Side == EnumAppSide.Client)
+                {
+                    Random rnd = api.World.Rand;
+                    for (int i = 0; i < 3; i++)
+                    {
+                        api.World.SpawnParticles(new SimpleParticleProperties()
+                        {
+                            minQuantity = 1,
+                            addQuantity = 2,
+                            color = BaseMaterial.Collectible.GetRandomColor(api as ICoreClientAPI, BaseMaterial),
+                            minPos = new Vec3d(lastRemovedLocalPos.X, lastRemovedLocalPos.Y + 1 / 16f + 0.01f, lastRemovedLocalPos.Z),
+                            addPos = new Vec3d(1 / 16f, 0.01f, 1 / 16f),
+                            minVelocity = new Vec3f(0, 1, 0),
+                            addVelocity = new Vec3f(
+                                4 * ((float)rnd.NextDouble() - 0.5f),
+                                1 * ((float)rnd.NextDouble() - 0.5f),
+                                4 * ((float)rnd.NextDouble() - 0.5f)
+                            ),
+                            lifeLength = 0.2f,
+                            gravityEffect = 1f,
+                            minSize = 0.1f,
+                            maxSize = 0.4f,
+                            model = EnumParticleModel.Cube,
+                            SizeEvolve = new EvolvingNatFloat(EnumTransformFunction.LINEAR, -0.15f)
+                        });
+                    }
+
+                }
+
+
+
+
                 RegenMeshAndSelectionBoxes();
                 api.World.BlockAccessor.MarkBlockDirty(pos);
                 api.World.BlockAccessor.MarkBlockEntityDirty(pos);
@@ -144,7 +179,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            DidBeginUse = Math.Max(DidBeginUse, DidBeginUse - 1);
+           // DidBeginUse = Math.Max(0, DidBeginUse - 1);
             CheckIfFinished(byPlayer);
             MarkDirty();
         }
@@ -242,9 +277,11 @@ namespace Vintagestory.GameContent
             return voxelPos.X >= bounds.X1 && voxelPos.X <= bounds.X2 && voxelPos.Y >= 0 && voxelPos.Y < 16 && voxelPos.Z >= bounds.Z1 && voxelPos.Z <= bounds.Z2;
         }
 
-        private void OnRemove(Vec3i voxelPos, BlockFacing facing, int radius, IPlayer byPlayer)
+        Vec3d lastRemovedLocalPos = new Vec3d();
+        private bool OnRemove(Vec3i voxelPos, BlockFacing facing, int radius, IPlayer byPlayer)
         {
-            if (SelectedRecipe.Voxels[voxelPos.X, voxelPos.Z]) return;
+            // Required voxel, don't let the player break it
+            if (SelectedRecipe.Voxels[voxelPos.X, voxelPos.Z]) return false;
 
             for (int dx = -(int)Math.Ceiling(radius/2f); dx <= radius /2; dx++)
             {
@@ -256,14 +293,13 @@ namespace Vintagestory.GameContent
                     {
                         Voxels[offPos.X, offPos.Z] = false;
 
-                        double posx = pos.X + voxelPos.X / 16f;
-                        double posy = pos.Y + voxelPos.Y / 16f;
-                        double posz = pos.Z + voxelPos.Z / 16f;
-
-                        api.World.PlaySoundAt(new AssetLocation("sounds/player/knap" + (api.World.Rand.Next(2) > 0 ? 1 : 2)), posx, posy, posz, byPlayer, true, 12, 1);
+                        lastRemovedLocalPos.Set(pos.X + voxelPos.X / 16f, pos.Y + voxelPos.Y / 16f, pos.Z + voxelPos.Z / 16f);
+                        return true;
                     }
                 }
             }
+
+            return false;
         }
 
 
@@ -421,13 +457,8 @@ namespace Vintagestory.GameContent
 
             if (packetid == (int)EnumClayFormingPacket.SelectRecipe)
             {
-                int num;
-                using (MemoryStream ms = new MemoryStream(data))
-                {
-                    BinaryReader reader = new BinaryReader(ms);
-                    num = reader.ReadInt32();
-                }
-                if(!TrySetSelectedRecipe(num))
+                int num = SerializerUtil.Deserialize<int>(data);
+                if (!TrySetSelectedRecipe(num))
                 {
                     return;
                 }
@@ -481,10 +512,40 @@ namespace Vintagestory.GameContent
                .Select(r => r.Output.ResolvedItemstack)
                .ToList()
            ;
-            
-            GuiDialog dlg = new GuiDialogBlockEntityRecipeSelector("Select recipe", stacks.ToArray(), pos, api as ICoreClientAPI);
+
+            ICoreClientAPI capi = api as ICoreClientAPI;
+
+            GuiDialog dlg = new GuiDialogBlockEntityRecipeSelector(
+                Lang.Get("Select recipe"),
+                stacks.ToArray(),
+                (recipeNum) => {
+                    TrySetSelectedRecipe(recipeNum);
+                    capi.Network.SendBlockEntityPacket(pos.X, pos.Y, pos.Z, (int)EnumClayFormingPacket.SelectRecipe, SerializerUtil.Serialize(recipeNum));
+                },
+                () => {
+                    capi.Network.SendBlockEntityPacket(pos.X, pos.Y, pos.Z, (int)EnumClayFormingPacket.CancelSelect);
+                },
+                pos,
+                api as ICoreClientAPI
+            );
+
             dlg.TryOpen();
         }
+
+
+        public override string GetBlockInfo(IPlayer forPlayer)
+        {
+            if (BaseMaterial == null || SelectedRecipe == null)
+            {
+                return "";
+            }
+
+            StringBuilder sb = new StringBuilder();
+            sb.AppendLine(Lang.Get("Output: {0}", SelectedRecipe.Output?.ResolvedItemstack?.GetName()));
+
+            return sb.ToString();
+        }
+
 
         public override void OnBlockUnloaded()
         {

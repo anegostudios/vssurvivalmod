@@ -14,15 +14,15 @@ namespace Vintagestory.GameContent
         {
         }
 
-        public override void OnNeighourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos, ref EnumHandling handled)
+        public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos, ref EnumHandling handled)
         {
-            handled = EnumHandling.NotHandled;
+            handled = EnumHandling.PassThrough;
 
             if (IsSurroundedByNonSolid(world, pos))
             {
                 world.BlockAccessor.BreakBlock(pos, null);
             }
-            base.OnNeighourBlockChange(world, pos, neibpos, ref handled);
+            base.OnNeighbourBlockChange(world, pos, neibpos, ref handled);
         }
 
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier, ref EnumHandling handled)
@@ -34,21 +34,22 @@ namespace Vintagestory.GameContent
             }
             else
             {
-                handled = EnumHandling.NotHandled;
+                handled = EnumHandling.PassThrough;
                 return null;
             }
         }
 
         public override void OnBlockBroken(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, ref EnumHandling handling)
         {
-            handling = EnumHandling.NotHandled;
-            if (IsSurroundedByNonSolid(world, pos) && byPlayer != null && byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
+            handling = EnumHandling.PassThrough;
+            // Whats this good for? it prevents breaking of stone blocks o.o
+            /*if (IsSurroundedByNonSolid(world, pos) && byPlayer != null && byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
             {
                 handling = EnumHandling.PreventSubsequent;
-            }
+            }*/
         }
 
-        private bool IsSurroundedByNonSolid(IWorldAccessor world, BlockPos pos)
+        public bool IsSurroundedByNonSolid(IWorldAccessor world, BlockPos pos)
         {
             foreach(BlockFacing facing in BlockFacing.ALLFACES)
             {

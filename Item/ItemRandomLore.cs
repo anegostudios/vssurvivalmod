@@ -15,7 +15,7 @@ namespace Vintagestory.GameContent
     public class ItemRandomLore : Item
     {
 
-        public override void OnHeldInteractStart(IItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
+        public override void OnHeldInteractStart(ItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
         {
             if (byEntity.World.Side != EnumAppSide.Server)
             {
@@ -44,7 +44,7 @@ namespace Vintagestory.GameContent
             byEntity.World.PlaySoundAt(new AssetLocation("sounds/effect/writing"), byEntity, byPlayer);
         }
 
-        public override bool OnHeldInteractStep(float secondsUsed, IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override bool OnHeldInteractStep(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
             /* if (byEntity.World is IClientWorldAccessor)
              {
@@ -65,7 +65,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override bool OnHeldInteractCancel(float secondsUsed, IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)
+        public override bool OnHeldInteractCancel(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)
         {
             return true;
         }
@@ -73,7 +73,7 @@ namespace Vintagestory.GameContent
 
         
 
-        public override void OnHeldInteractStop(float secondsUsed, IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override void OnHeldInteractStop(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
             if (secondsUsed < 1.9) return;
 

@@ -71,7 +71,7 @@ namespace Vintagestory.GameContent
 
             ItemStackMoveOperation op = new ItemStackMoveOperation(World, EnumMouseButton.Left, 0, EnumMergePriority.AutoMerge, itemstack.StackSize);
 
-            WeightedSlot wslot = inv.GetBestSuitedSlot(dummySlot, new List<IItemSlot>());
+            WeightedSlot wslot = inv.GetBestSuitedSlot(dummySlot, new List<ItemSlot>());
             if (wslot.weight > 0)
             {
                 dummySlot.TryPutInto(wslot.slot, ref op);
@@ -109,7 +109,7 @@ namespace Vintagestory.GameContent
             if (tree != null) inv.FromTreeAttributes(tree);
         }
 
-        public override void OnInteract(EntityAgent byEntity, IItemSlot slot, Vec3d hitPosition, EnumInteractMode mode)
+        public override void OnInteract(EntityAgent byEntity, ItemSlot slot, Vec3d hitPosition, EnumInteractMode mode)
         {
             base.OnInteract(byEntity, slot, hitPosition, mode);
 
@@ -141,7 +141,7 @@ namespace Vintagestory.GameContent
             baseWeight = 2.5f;
         }
 
-        public override void OnItemSlotModified(IItemSlot slot)
+        public override void OnItemSlotModified(ItemSlot slot)
         {
             base.OnItemSlotModified(slot);
         }

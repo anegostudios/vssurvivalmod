@@ -133,11 +133,8 @@ namespace Vintagestory.GameContent
 
         public void RegenMesh(bool[,] Voxels, KnappingRecipe recipeToOutline)
         {
-            if (workItemMeshRef != null)
-            {
-                api.Render.DeleteMesh(workItemMeshRef);
-                workItemMeshRef = null;
-            }
+            workItemMeshRef?.Dispose();
+            workItemMeshRef = null;
 
             workItem = new ItemStack(api.World.GetBlock(new AssetLocation("knappingsurface")));
             if (workItem?.Block == null) return;
@@ -263,8 +260,8 @@ namespace Vintagestory.GameContent
         // Called by UnregisterRenderer
         public void Dispose()
         {
-            if (recipeOutlineMeshRef != null) api.Render.DeleteMesh(recipeOutlineMeshRef);
-            if (workItemMeshRef != null) api.Render.DeleteMesh(workItemMeshRef);
+            recipeOutlineMeshRef?.Dispose();
+            workItemMeshRef?.Dispose();
         }
     }
 }

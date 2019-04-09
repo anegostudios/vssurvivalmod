@@ -4,13 +4,14 @@ using Cairo;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
     public class ItemFlint : Item
     {
-        public override string GetHeldTpHitAnimation(IItemSlot slot, Entity byEntity)
+        public override string GetHeldTpHitAnimation(ItemSlot slot, Entity byEntity)
         {
             /*if (slot.Itemstack?.Collectible == this)
             {
@@ -20,7 +21,7 @@ namespace Vintagestory.GameContent
             return base.GetHeldTpHitAnimation(slot, byEntity);
         }
 
-        public override void OnHeldInteractStart(IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
+        public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
         {
             IPlayer byPlayer = null;
             if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
@@ -33,7 +34,14 @@ namespace Vintagestory.GameContent
                 if (knappingBlock == null) return;
 
                 Block block = world.BlockAccessor.GetBlock(blockSel.Position);
-                if (!block.CanAttachBlockAt(byEntity.World.BlockAccessor, knappingBlock, blockSel.Position, BlockFacing.UP)) return;
+                if (!block.CanAttachBlockAt(byEntity.World.BlockAccessor, knappingBlock, blockSel.Position, BlockFacing.UP))
+                {
+                    if (api.Side == EnumAppSide.Client)
+                    {
+                        (api as ICoreClientAPI).TriggerIngameError(this, "cantplace", Lang.Get("Cannot place a knapping surface here"));
+                    }
+                    return;
+                }
 
                 BlockPos pos = blockSel.Position.AddCopy(blockSel.Face);
                 if (!world.BlockAccessor.GetBlock(pos).IsReplacableBy(knappingBlock)) return;
@@ -41,8 +49,25 @@ namespace Vintagestory.GameContent
                 BlockSelection placeSel = blockSel.Clone();
                 placeSel.Position = pos;
                 placeSel.DidOffset = true;
-                if (!knappingBlock.TryPlaceBlock(world, byPlayer, slot.Itemstack, placeSel))
+                string useless = "";
+
+                if (!knappingBlock.TryPlaceBlock(world, byPlayer, slot.Itemstack, placeSel, ref useless))
                 {
+                    if (api.Side == EnumAppSide.Client)
+                    {
+                        bool selfBlocked = false;
+                        bool entityBlocked = world.GetIntersectingEntities(pos, knappingBlock.GetCollisionBoxes(world.BlockAccessor, pos), e => { selfBlocked = e == byEntity; return !(e is EntityItem); }).Length != 0;
+
+                        string err =
+                            entityBlocked ?
+                                (selfBlocked ? Lang.Get("Cannot place a knapping surface here, too close to you") : Lang.Get("Cannot place a knapping surface here, to close to another player or creature.")) :
+                                Lang.Get("Cannot place a knapping surface here")
+                        ;
+
+                        (api as ICoreClientAPI).TriggerIngameError(this, "cantplace", err);
+                        
+                    }
+
                     return;
                 }
 
@@ -74,7 +99,7 @@ namespace Vintagestory.GameContent
 
 
 
-        public override void OnHeldAttackStart(IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
+        public override void OnHeldAttackStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
         {
             if (blockSel == null) return;
             if (!(byEntity.World.BlockAccessor.GetBlock(blockSel.Position) is BlockKnappingSurface)) return;
@@ -86,27 +111,27 @@ namespace Vintagestory.GameContent
             if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
             if (byPlayer == null) return;
 
-            if (!byEntity.World.TryAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.Use))
+            if (!byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.Use))
             {
                 return;
             }
 
             bea.OnBeginUse(byPlayer, blockSel);
 
-            handling = EnumHandHandling.PreventDefault;
+            handling = EnumHandHandling.PreventDefaultAction;
         }
 
-        public override bool OnHeldAttackCancel(float secondsPassed, IItemSlot slot, EntityAgent byEntity, BlockSelection blockSelection, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)
+        public override bool OnHeldAttackCancel(float secondsPassed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSelection, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)
         {
             return false;
         }
 
-        public override bool OnHeldAttackStep(float secondsUsed, IItemSlot slot, EntityAgent byEntity, BlockSelection blockSelection, EntitySelection entitySel)
+        public override bool OnHeldAttackStep(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSelection, EntitySelection entitySel)
         {
             return false;
         }
 
-        public override void OnHeldAttackStop(float secondsPassed, IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override void OnHeldAttackStop(float secondsPassed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
             if (blockSel == null) return;
             if (!(byEntity.World.BlockAccessor.GetBlock(blockSel.Position) is BlockKnappingSurface)) return;
@@ -120,7 +145,7 @@ namespace Vintagestory.GameContent
 
             int curMode = GetToolMode(slot, byPlayer, blockSel);
 
-            if (!byEntity.World.TryAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.Use))
+            if (!byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.Use))
             {
                 return;
             }

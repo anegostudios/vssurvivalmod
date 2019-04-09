@@ -17,6 +17,7 @@ namespace Vintagestory.ServerMods
         double totalHoursTillGrowth;
         long growListenerId;
 
+
         public override void Initialize(ICoreAPI api)
         {
             base.Initialize(api);
@@ -25,12 +26,25 @@ namespace Vintagestory.ServerMods
             {   
                 growListenerId = RegisterGameTickListener(CheckGrow, 2000);
             }
+
+            
         }
 
 
         public override void OnBlockPlaced(ItemStack byItemStack = null)
         {
-            totalHoursTillGrowth = api.World.Calendar.TotalHours + (5 + 3 * rand.NextDouble()) * 24;
+            Block block = api.World.BlockAccessor.GetBlock(pos);
+
+            double minDays = 5;
+            double maxDays = 8;
+
+            if (block?.Attributes != null)
+            {
+                minDays = block.Attributes["minGrowthDays"].AsDouble(5);
+                maxDays = block.Attributes["maxGrowthDays"].AsDouble(8);
+            }
+
+            totalHoursTillGrowth = api.World.Calendar.TotalHours + (minDays + (maxDays - minDays) * rand.NextDouble()) * 24;
         }
 
         

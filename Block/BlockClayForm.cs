@@ -6,12 +6,21 @@ using System.Threading.Tasks;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
     public class BlockClayForm : Block
     {
+
+        Cuboidf box = new Cuboidf(0, 0, 0, 1, 1 / 16f, 1);
+
+        public override Cuboidf GetParticleBreakBox(IBlockAccessor blockAccess, BlockPos pos, BlockFacing facing)
+        {
+            return box;
+        }
+
 
         public override Cuboidf[] GetSelectionBoxes(IBlockAccessor blockAccessor, BlockPos pos)
         {
@@ -48,6 +57,7 @@ namespace Vintagestory.GameContent
                 world.BlockAccessor.BreakBlock(pos, null);
             }
         }
+        
     }
 
 

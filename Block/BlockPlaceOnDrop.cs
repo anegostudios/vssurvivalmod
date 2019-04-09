@@ -69,12 +69,14 @@ namespace Vintagestory.GameContent
             Block block = world.BlockAccessor.GetBlock(pos.DownCopy());
             if (!block.SideSolid[BlockFacing.UP.Index]) return false;
 
+            string useless = "";
+
             bool ok = TryPlaceBlock(world, null, entityItem.Itemstack, new BlockSelection()
             {
                 Position = pos,
                 Face = BlockFacing.UP,
                 HitPosition = new Vec3d(0.5, 1, 0.5)
-            });
+            }, ref useless);
 
             if (ok) entityItem.World.PlaySoundAt(entityItem.Itemstack.Block.Sounds?.Place, pos.X, pos.Y, pos.Z, null);
             

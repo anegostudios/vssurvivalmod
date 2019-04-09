@@ -188,7 +188,7 @@ namespace Vintagestory.GameContent
             return base.Equals(thisStack, otherStack, ign.ToArray());
         }
 
-        public override int GetColor(ICoreClientAPI capi, BlockPos pos)
+        public override int GetColorWithoutTint(ICoreClientAPI capi, BlockPos pos)
         {
             BlockEntityChisel be = capi.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityChisel;
             if (be?.MaterialIds != null && be.MaterialIds.Length > 0)
@@ -197,7 +197,7 @@ namespace Vintagestory.GameContent
                 return block.GetColor(capi, pos);
             }
 
-            return base.GetColor(capi, pos);
+            return base.GetColorWithoutTint(capi, pos);
         }
 
 

@@ -47,7 +47,7 @@ namespace Vintagestory.GameContent
                 farmland.CropAttributes.SetFloat("vineGrowthQuantity", vineGrowthQuantity);
             }
 
-            handling = EnumHandling.NotHandled;
+            handling = EnumHandling.PassThrough;
 
             if (newGrowthStage >= vineGrowthStage)
             {

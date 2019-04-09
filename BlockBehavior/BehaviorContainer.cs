@@ -27,7 +27,7 @@ namespace Vintagestory.GameContent
 
         public override void OnBlockRemoved(IWorldAccessor world, BlockPos pos, ref EnumHandling handling)
         {
-            handling = EnumHandling.PreventDefault;
+            handling = EnumHandling.PassThrough;
         
             BlockEntity entity = world.BlockAccessor.GetBlockEntity(pos);
 

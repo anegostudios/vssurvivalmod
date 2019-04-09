@@ -7,7 +7,7 @@ namespace Vintagestory.GameContent
     class ItemFirewood : Item
     {
 
-        public override void OnHeldInteractStart(IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
+        public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
         {
             if (blockSel == null || byEntity?.World == null || !byEntity.Controls.Sneak) return;
 
@@ -19,7 +19,7 @@ namespace Vintagestory.GameContent
             if (byPlayer == null) return;
 
 
-            if (!byEntity.World.TryAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            if (!byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
             {
                 return;
             }

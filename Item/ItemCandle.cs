@@ -10,7 +10,7 @@ namespace Vintagestory.GameContent
     public class ItemCandle: Item
     {
 
-        public override void OnHeldInteractStart(IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handHandling)
+        public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handHandling)
         {
             if (blockSel == null || byEntity?.World == null || !byEntity.Controls.Sneak) return;
 
@@ -27,7 +27,7 @@ namespace Vintagestory.GameContent
             string firstcodepart = loc.Path;
 
             IPlayer player = byEntity.World.PlayerByUid((byEntity as EntityPlayer)?.PlayerUID);
-            if (!byEntity.World.TryAccessBlock(player, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            if (!byEntity.World.Claims.TryAccess(player, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
             {
                 slot.MarkDirty();
                 return;

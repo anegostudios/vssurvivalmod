@@ -130,6 +130,16 @@ namespace Vintagestory.GameContent
             EntityBehaviorTiredness ebt = MountedBy?.GetBehavior("tiredness") as EntityBehaviorTiredness;
             if (ebt != null) ebt.IsSleeping = false;
             MountedBy = null;
+            
+            foreach (BlockFacing facing in BlockFacing.HORIZONTALS)
+            {
+                Vec3d placepos = pos.ToVec3d().AddCopy(facing).Add(0.5, 0.001, 0.5);
+                if (!api.World.CollisionTester.IsColliding(api.World.BlockAccessor, entityAgent.CollisionBox, placepos, false))
+                {
+                    entityAgent.TeleportTo(placepos);
+                    break;
+                }
+            }
 
             base.OnBlockRemoved();
         }

@@ -17,12 +17,12 @@ namespace Vintagestory.GameContent
         public BlockPos pos;
         int defaultStorageType = (int)(EnumItemStorageFlags.General | EnumItemStorageFlags.Agriculture | EnumItemStorageFlags.Alchemy | EnumItemStorageFlags.Jewellery | EnumItemStorageFlags.Metallurgy | EnumItemStorageFlags.Outfit);
 
-        public IItemSlot[] CookingSlots { get { return HaveCookingContainer ? cookingSlots : new IItemSlot[0]; } }
+        public ItemSlot[] CookingSlots { get { return HaveCookingContainer ? cookingSlots : new ItemSlot[0]; } }
 
         /// <summary>
         /// Returns the cooking slots
         /// </summary>
-        public IItemSlot[] Slots
+        public ItemSlot[] Slots
         {
             get { return cookingSlots; }
         }
@@ -30,6 +30,14 @@ namespace Vintagestory.GameContent
         public bool HaveCookingContainer
         {
             get { return slots[1].Itemstack?.Collectible.Attributes?.KeyExists("cookingContainerSlots") == true; }
+        }
+
+        public int CookingContainerMaxSlotStackSize
+        {
+            get {
+                if (!HaveCookingContainer) return 0;
+                return slots[1].Itemstack.Collectible.Attributes["maxContainerSlotStackSize"].AsInt(999);
+            }
         }
 
         public InventorySmelting(string inventoryID, ICoreAPI api) : base(inventoryID, api)
@@ -48,6 +56,15 @@ namespace Vintagestory.GameContent
             cookingSlots = new ItemSlot[] { slots[3], slots[4], slots[5], slots[6] };
         }
 
+        public override void LateInitialize(string inventoryID, ICoreAPI api)
+        {
+            base.LateInitialize(inventoryID, api);
+
+            for (int i = 0; i < cookingSlots.Length; i++)
+            {
+                cookingSlots[i].MaxSlotStackSize = CookingContainerMaxSlotStackSize;
+            }
+        }
 
         public override int Count
         {
@@ -70,7 +87,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void DidModifyItemSlot(IItemSlot slot, IItemStack extractedStack = null)
+        public override void DidModifyItemSlot(ItemSlot slot, IItemStack extractedStack = null)
         {
             base.DidModifyItemSlot(slot, extractedStack);
 
@@ -90,6 +107,7 @@ namespace Vintagestory.GameContent
                     for (int i = 0; i < cookingSlots.Length; i++)
                     {
                         cookingSlots[i].StorageType = (EnumItemStorageFlags)storageType;
+                        cookingSlots[i].MaxSlotStackSize = CookingContainerMaxSlotStackSize;
                     }
                 }
                 
@@ -116,14 +134,23 @@ namespace Vintagestory.GameContent
             slots = SlotsFromTreeAttributes(tree, slots, modifiedSlots);
             for (int i = 0; i < modifiedSlots.Count; i++) MarkSlotDirty(GetSlotId(modifiedSlots[i]));
 
+            if (Api != null)
+            {
+                for (int i = 0; i < cookingSlots.Length; i++)
+                {
+                    cookingSlots[i].MaxSlotStackSize = CookingContainerMaxSlotStackSize;
+                }
+            }
         }
+            
+        
 
         public override void ToTreeAttributes(ITreeAttribute tree)
         {
             SlotsToTreeAttributes(slots, tree);
         }
 
-        public override void OnItemSlotModified(IItemSlot slot)
+        public override void OnItemSlotModified(ItemSlot slot)
         {
             base.OnItemSlotModified(slot);
         }
@@ -138,7 +165,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override WeightedSlot GetBestSuitedSlot(ItemSlot sourceSlot, List<IItemSlot> skipSlots = null)
+        public override WeightedSlot GetBestSuitedSlot(ItemSlot sourceSlot, List<ItemSlot> skipSlots = null)
         {
             if (!HaveCookingContainer)
             {

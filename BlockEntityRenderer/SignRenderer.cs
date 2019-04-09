@@ -9,24 +9,25 @@ namespace Vintagestory.GameContent
 {
     public class BlockEntitySignRenderer : IRenderer
     {
-        static int TextWidth = 200;
-        static int TextHeight = 100;
+        protected static int TextWidth = 200;
+        protected static int TextHeight = 100;
 
-        static float QuadWidth = 0.9f;
-        static float QuadHeight = 0.45f;
+        protected static float QuadWidth = 0.9f;
+        protected static float QuadHeight = 0.45f;
 
 
-        CairoFont font;
-        BlockPos pos;
-        ICoreClientAPI api;
+        protected CairoFont font;
+        protected BlockPos pos;
+        protected ICoreClientAPI api;
 
-        LoadedTexture loadedTexture;
-        MeshRef quadModelRef;
+        protected LoadedTexture loadedTexture;
+        protected MeshRef quadModelRef;
         public Matrixf ModelMat = new Matrixf();
 
-        float rotY = 0;
-        float translateX = 0;
-        float translateZ = 0;
+        protected float rotY = 0;
+        protected float translateX = 0;
+        protected float translateY = 0.5625f;
+        protected float translateZ = 0;
 
         public double RenderOrder
         {
@@ -91,14 +92,13 @@ namespace Vintagestory.GameContent
                     rotY = 270;
 
                     break;
-
-
+                    
             }
-
         }
 
-        internal void SetNewText(string text)
+        public virtual void SetNewText(string text, int color)
         {
+            font.WithColor(ColorUtil.ToRGBADoubles(color));
             loadedTexture?.Dispose();
             loadedTexture = api.Gui.TextTexture.GenTextTexture(text, font, TextWidth, TextHeight, null, EnumTextOrientation.Center);
         }
@@ -106,7 +106,7 @@ namespace Vintagestory.GameContent
 
 
 
-        public void OnRenderFrame(float deltaTime, EnumRenderStage stage)
+        public virtual void OnRenderFrame(float deltaTime, EnumRenderStage stage)
         {
             if (loadedTexture == null) return;
 
@@ -123,7 +123,7 @@ namespace Vintagestory.GameContent
             prog.ModelMatrix = ModelMat
                 .Identity()
                 .Translate(pos.X - camPos.X, pos.Y - camPos.Y, pos.Z - camPos.Z)
-                .Translate(translateX, 0.5625f, translateZ)
+                .Translate(translateX, translateY, translateZ)
                 .RotateY(rotY * GameMath.DEG2RAD)
                 .Scale(0.45f * QuadWidth, 0.45f * QuadHeight, 0.45f * QuadWidth)
                 .Values

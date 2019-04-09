@@ -60,7 +60,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        internal bool Construct(IItemSlot slot, IWorldAccessor world, BlockPos pos, IPlayer player)
+        internal bool Construct(ItemSlot slot, IWorldAccessor world, BlockPos pos, IPlayer player)
         {
             Block block = world.BlockAccessor.GetBlock(pos);
             if (!block.IsReplacableBy(this)) return false;

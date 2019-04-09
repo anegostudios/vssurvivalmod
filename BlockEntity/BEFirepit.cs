@@ -160,7 +160,7 @@ namespace Vintagestory.GameContent
 
         public virtual string DialogTitle
         {
-            get { return "Firepit"; }
+            get { return Lang.Get("Firepit"); }
         }
 
         public override InventoryBase Inventory
@@ -701,7 +701,7 @@ namespace Vintagestory.GameContent
             {
                 UpdateRenderer();
 
-                 if(clientDialog != null) SetDialogValues(clientDialog.Attributes);
+                if (clientDialog != null) SetDialogValues(clientDialog.Attributes);
             }
 
 
@@ -720,7 +720,16 @@ namespace Vintagestory.GameContent
 
             ItemStack contentStack = inputStack == null ? outputStack : inputStack;
             ItemStack prevStack = renderer.ContentStack;
-            
+
+            bool useOldRenderer = 
+                renderer.ContentStack != null && 
+                renderer.contentStackRenderer != null &&
+                contentStack?.Collectible is IInFirepitRendererSupplier &&
+                renderer.ContentStack.Equals(api.World, contentStack, GlobalConstants.IgnoredStackAttributes)
+            ;
+
+            if (useOldRenderer) return; // Otherwise the cooking sounds restarts all the time
+
             renderer.contentStackRenderer?.Dispose();
             renderer.contentStackRenderer = null;
 
@@ -888,22 +897,22 @@ namespace Vintagestory.GameContent
         #region Helper getters
 
 
-        public IItemSlot fuelSlot
+        public ItemSlot fuelSlot
         {
             get { return inventory[0]; }
         }
 
-        public IItemSlot inputSlot
+        public ItemSlot inputSlot
         {
             get { return inventory[1]; }
         }
 
-        public IItemSlot outputSlot
+        public ItemSlot outputSlot
         {
             get { return inventory[2]; }
         }
 
-        public IItemSlot[] otherCookingSlots
+        public ItemSlot[] otherCookingSlots
         {
             get { return inventory.CookingSlots; }
         }
@@ -934,7 +943,7 @@ namespace Vintagestory.GameContent
 
         public CombustibleProperties getCombustibleOpts(int slotid)
         {
-            IItemSlot slot = inventory[slotid];
+            ItemSlot slot = inventory[slotid];
             if (slot.Itemstack == null) return null;
             return slot.Itemstack.Collectible.CombustibleProps;
         }
@@ -956,6 +965,8 @@ namespace Vintagestory.GameContent
                 {
                     blockIdMapping[slot.Itemstack.Block.BlockId] = slot.Itemstack.Block.Code;
                 }
+
+                slot.Itemstack.Collectible.OnStoreCollectibleMappings(api.World, slot, blockIdMapping, itemIdMapping);
             }
 
             foreach (ItemSlot slot in inventory.CookingSlots)
@@ -970,6 +981,8 @@ namespace Vintagestory.GameContent
                 {
                     blockIdMapping[slot.Itemstack.Block.BlockId] = slot.Itemstack.Block.Code;
                 }
+
+                slot.Itemstack.Collectible.OnStoreCollectibleMappings(api.World, slot, blockIdMapping, itemIdMapping);
             }
         }
 
@@ -981,6 +994,9 @@ namespace Vintagestory.GameContent
                 if (!slot.Itemstack.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve))
                 {
                     slot.Itemstack = null;
+                } else
+                {
+                    slot.Itemstack.Collectible.OnLoadCollectibleMappings(worldForResolve, slot, oldBlockIdMapping, oldItemIdMapping);
                 }
             }
 
@@ -990,6 +1006,10 @@ namespace Vintagestory.GameContent
                 if (!slot.Itemstack.FixMapping(oldBlockIdMapping, oldItemIdMapping, api.World))
                 {
                     slot.Itemstack = null;
+                }
+                else
+                {
+                    slot.Itemstack.Collectible.OnLoadCollectibleMappings(worldForResolve, slot, oldBlockIdMapping, oldItemIdMapping);
                 }
             }
         }

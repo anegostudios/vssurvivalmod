@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -9,6 +10,7 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -65,7 +67,6 @@ namespace Vintagestory.GameContent
         ItemStack baseMaterial;
         
         Cuboidf[] selectionBoxes = new Cuboidf[1];
-        public int didBeginUse;
         public int OwnMetalTier;
         AnvilWorkItemRenderer workitemRenderer;
 
@@ -174,7 +175,7 @@ namespace Vintagestory.GameContent
 
         private bool TryPut(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
-            IItemSlot slot = byPlayer.InventoryManager.ActiveHotbarSlot;
+            ItemSlot slot = byPlayer.InventoryManager.ActiveHotbarSlot;
             if (slot.Itemstack == null) return false;
 
             ItemStack stack = slot.Itemstack;
@@ -194,10 +195,13 @@ namespace Vintagestory.GameContent
                     }
 
                     CreateInitialWorkItem();
+
                     workItemStack = new ItemStack(api.World.GetItem(new AssetLocation("workitem-" + stack.Collectible.LastCodePart())));
                     workItemStack.Collectible.SetTemperature(api.World, workItemStack, stack.Collectible.GetTemperature(api.World, stack));
 
                     baseMaterial = new ItemStack(api.World.GetItem(new AssetLocation("ingot-" + stack.Collectible.LastCodePart())));
+
+                    selectedRecipeNumber = FindSmithingRecipeNumber(0);
                 }
 
                 AvailableVoxels += 32;
@@ -250,7 +254,6 @@ namespace Vintagestory.GameContent
 
         internal void OnBeginUse(IPlayer byPlayer, BlockSelection blockSel)
         {
-            didBeginUse++;
         }
 
 
@@ -273,7 +276,6 @@ namespace Vintagestory.GameContent
         {
             if (voxelPos == null)
             {
-                didBeginUse = Math.Max(didBeginUse, didBeginUse - 1);
                 return;
             }
 
@@ -285,10 +287,9 @@ namespace Vintagestory.GameContent
             }
 
 
-            IItemSlot slot = byPlayer.InventoryManager.ActiveHotbarSlot;
+            ItemSlot slot = byPlayer.InventoryManager.ActiveHotbarSlot;
             if (slot.Itemstack == null || !CanWorkCurrent)
             {
-                didBeginUse = Math.Max(didBeginUse, didBeginUse - 1);
                 return;
             }
             int toolMode = slot.Itemstack.Collectible.GetToolMode(slot, byPlayer, blockSel);
@@ -297,19 +298,9 @@ namespace Vintagestory.GameContent
             BlockFacing towardsFace = BlockFacing.HorizontalFromAngle(yaw);
 
 
-            /*if (selectionBoxIndex < selectionBoxes.Length)
-            {
-                Cuboidf box = selectionBoxes[selectionBoxIndex];
-                Console.WriteLine("{0}: {1} is voxel at {2} {3} ", api.World is IServerWorldAccessor ? "Server" : "Client", selectionBoxIndex, (int)(box.X1 * 16), (int)(box.Z1 * 16));
-            } else
-            {
-                return;
-            }*/
-
             float temp = workItemStack.Collectible.GetTemperature(api.World, workItemStack);
-
-
-            if (didBeginUse > 0 && Voxels[voxelPos.X, voxelPos.Y, voxelPos.Z])
+            
+            if (Voxels[voxelPos.X, voxelPos.Y, voxelPos.Z])
             {
                 if (temp > 800)
                 {
@@ -351,12 +342,10 @@ namespace Vintagestory.GameContent
                 {
                     AvailableVoxels = 0;
                     workItemStack = null;
-                    didBeginUse = 0;
                     return;
                 }
             }
 
-            didBeginUse = Math.Max(0, didBeginUse - 1);
             CheckIfFinished(byPlayer);
             MarkDirty();
         }
@@ -451,7 +440,10 @@ namespace Vintagestory.GameContent
                     {
                         Voxels[npos.X, npos.Y, npos.Z] = true;
                         AvailableVoxels--;
-                        if (AvailableVoxels <= 0) return;
+                        if (AvailableVoxels <= 0)
+                        {
+                            return;
+                        }
                     }
                 }
             }
@@ -477,7 +469,7 @@ namespace Vintagestory.GameContent
                     {
                         if (Voxels[x, y, z])
                         {
-                           // Console.WriteLine("box {0} is voxel at {1},{2}", boxes.Count, x, z);
+                           
                             boxes.Add(new Cuboidf(x / 16f, y / 16f, z / 16f, x / 16f + 1 / 16f, y / 16f + 1 / 16f, z / 16f + 1 / 16f));
                         }
                     }
@@ -621,13 +613,7 @@ namespace Vintagestory.GameContent
         {
             if (packetid == (int)EnumAnvilPacket.SelectRecipe)
             {
-                int num;
-                using (MemoryStream ms = new MemoryStream(data))
-                {
-                    BinaryReader reader = new BinaryReader(ms);
-                    num = reader.ReadInt32();
-                }
-
+                int num = SerializerUtil.Deserialize<int>(data);
                 selectedRecipeNumber = FindSmithingRecipeNumber(num);
 
                 // Tell server to save this chunk to disk again
@@ -680,23 +666,50 @@ namespace Vintagestory.GameContent
             ;
 
             IClientWorldAccessor clientWorld = (IClientWorldAccessor)api.World;
+            ICoreClientAPI capi = api as ICoreClientAPI;
+            
+            GuiDialog dlg = new GuiDialogBlockEntityRecipeSelector(
+                Lang.Get("Select smithing recipe"),
+                stacks.ToArray(),
+                (recipeNum) => {
+                    selectedRecipeNumber = FindSmithingRecipeNumber(recipeNum);
+                    capi.Network.SendBlockEntityPacket(pos.X, pos.Y, pos.Z, (int)EnumClayFormingPacket.SelectRecipe, SerializerUtil.Serialize(recipeNum));
+                },
+                () => {
+                    capi.Network.SendBlockEntityPacket(pos.X, pos.Y, pos.Z, (int)EnumClayFormingPacket.CancelSelect);
+                },
+                pos,
+                api as ICoreClientAPI
+            );
 
-            clientWorld.Logger.Notification("Call to BEAnvil.OpenDialog");
-            GuiDialog dlg = new GuiDialogBlockEntityRecipeSelector("Select smithing recipe", stacks.ToArray(), pos, api as ICoreClientAPI);
             dlg.TryOpen();
         }
 
 
         public override string GetBlockInfo(IPlayer forPlayer)
         {
-            if (workItemStack == null)
+            if (workItemStack == null || SelectedRecipe == null)
             {
                 return "";
             }
 
             float temperature = workItemStack.Collectible.GetTemperature(api.World, workItemStack);
 
-            return string.Format("Available Voxels: {0}\nTemperature: {1}°C{2}{3}", AvailableVoxels, (int)temperature, !CanWorkCurrent ? "\nToo cold to work" : "", AvailableVoxels <= 0 ? "\nAdd another hot ingot to continue smithing" : "");
+            StringBuilder sb = new StringBuilder();
+
+            sb.AppendLine(Lang.Get("Output: {0}", SelectedRecipe.Output?.ResolvedItemstack?.GetName()));
+            sb.AppendLine(Lang.Get("Available Voxels: {0}", AvailableVoxels));
+            sb.AppendLine(Lang.Get("Temperature: {0}°C", (int)temperature));
+            if (!CanWorkCurrent)
+            {
+                sb.AppendLine(Lang.Get("Too cold to work"));
+            }
+            if (AvailableVoxels <= 0)
+            { 
+                sb.AppendLine(Lang.Get("Add another hot ingot to continue smithing"));
+            }
+
+            return sb.ToString();
         }
 
 

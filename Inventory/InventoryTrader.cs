@@ -82,7 +82,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override object ActivateSlot(int slotId, IItemSlot mouseSlot, ref ItemStackMoveOperation op)
+        public override object ActivateSlot(int slotId, ItemSlot mouseSlot, ref ItemStackMoveOperation op)
         {
             // Player clicked an item from the selling list, move to buying cart
             if (slotId <= 15)
@@ -349,7 +349,7 @@ namespace Vintagestory.GameContent
 
         public void DeductFromPlayer(IPlayer buyingPlayer, int totalUnitsToDeduct)
         {
-            SortedDictionary<int, List<IItemSlot>> moneys = new SortedDictionary<int, List<IItemSlot>>();
+            SortedDictionary<int, List<ItemSlot>> moneys = new SortedDictionary<int, List<ItemSlot>>();
 
             buyingPlayer.Entity.WalkInventory((invslot) =>
             {
@@ -361,8 +361,8 @@ namespace Vintagestory.GameContent
                 {
                     int pieceValue = obj["value"].AsInt(0);
 
-                    List<IItemSlot> slots = null;
-                    if (!moneys.TryGetValue(pieceValue, out slots)) slots = new List<IItemSlot>();
+                    List<ItemSlot> slots = null;
+                    if (!moneys.TryGetValue(pieceValue, out slots)) slots = new List<ItemSlot>();
 
                     slots.Add(invslot);
 
@@ -376,7 +376,7 @@ namespace Vintagestory.GameContent
             {
                 int pieceValue = val.Key;
 
-                foreach (IItemSlot slot in val.Value)
+                foreach (ItemSlot slot in val.Value)
                 {
                     int removeUnits = Math.Min(pieceValue * slot.StackSize, totalUnitsToDeduct);
 
@@ -399,7 +399,7 @@ namespace Vintagestory.GameContent
                 {
                     int pieceValue = val.Key;
 
-                    foreach (IItemSlot slot in val.Value)
+                    foreach (ItemSlot slot in val.Value)
                     {
                         int removeUnits = Math.Max(pieceValue, Math.Min(pieceValue * slot.StackSize, totalUnitsToDeduct));
 
@@ -440,9 +440,9 @@ namespace Vintagestory.GameContent
                 ItemStack stackPart = stack.Clone();
                 stackPart.StackSize = stacksize;
 
-                if (!buyingPlayer.InventoryManager.TryGiveItemstack(stack, true))
+                if (!buyingPlayer.InventoryManager.TryGiveItemstack(stackPart, true))
                 {
-                    Api.World.SpawnItemEntity(stack, buyingPlayer.Entity.Pos.XYZ);
+                    Api.World.SpawnItemEntity(stackPart, buyingPlayer.Entity.Pos.XYZ);
                 }
 
                 quantity -= stacksize;
@@ -536,7 +536,7 @@ namespace Vintagestory.GameContent
         // Slots 36..39: Selling cart
         protected override ItemSlot NewSlot(int slotId)
         {
-            if (slotId < 36) return new ItemSlotTrade(this);
+            if (slotId < 36) return new ItemSlotTrade(this, slotId > 19 && slotId <= 35);
 
             return new ItemSlotSurvival(this);
         }
@@ -587,8 +587,8 @@ namespace Vintagestory.GameContent
             {
                 // Clear buying cart
                 slots[i + 16].Itemstack = null;
-                // Drop selling cart contents
 
+                // Drop selling cart contents
                 Api.World.SpawnItemEntity(slots[i + 36].Itemstack, traderEntity.ServerPos.XYZ);
                 slots[i + 36].Itemstack = null;
             }

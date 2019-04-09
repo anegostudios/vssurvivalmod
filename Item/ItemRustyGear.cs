@@ -15,7 +15,7 @@ namespace Vintagestory.GameContent
 {
     public class ItemRustyGear : Item
     {
-        public override void OnHeldInteractStart(IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
+        public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
         {
             IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
 
@@ -25,7 +25,7 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            if (!byEntity.World.TryAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            if (!byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
             {
                 return;
             }
@@ -50,14 +50,14 @@ namespace Vintagestory.GameContent
 
 
             BlockPos placePos = blockSel.Position.AddCopy(blockSel.Face);
-            if (!byEntity.World.TryAccessBlock((byEntity as EntityPlayer)?.Player, placePos, EnumBlockAccessFlags.BuildOrBreak))
+            if (!byEntity.World.Claims.TryAccess((byEntity as EntityPlayer)?.Player, placePos, EnumBlockAccessFlags.BuildOrBreak))
             {
                 return;
             }
 
             block = byEntity.World.BlockAccessor.GetBlock(placePos);
             Block gearBlock = byEntity.World.GetBlock(new AssetLocation("loosegears-1"));
-            if (block.IsReplacableBy(gearBlock))
+            if (block.IsReplacableBy(gearBlock) && byEntity.World.BlockAccessor.GetBlock(placePos.DownCopy()).SideSolid[BlockFacing.UP.Index])
             {
                 byEntity.World.BlockAccessor.SetBlock(gearBlock.BlockId, placePos);
                 slot.TakeOut(1);

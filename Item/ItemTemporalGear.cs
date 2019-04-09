@@ -55,7 +55,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override void OnHeldIdle(IItemSlot slot, EntityAgent byEntity)
+        public override void OnHeldIdle(ItemSlot slot, EntityAgent byEntity)
         {
             if (byEntity.World is IClientWorldAccessor)
             {
@@ -76,7 +76,7 @@ namespace Vintagestory.GameContent
 
         }
 
-        public override void OnHeldInteractStart(IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handHandling)
+        public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handHandling)
         {
             if (blockSel == null) return;
 
@@ -123,7 +123,7 @@ namespace Vintagestory.GameContent
             handHandling = EnumHandHandling.PreventDefault;
         }
 
-        public override bool OnHeldInteractStep(float secondsUsed, IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override bool OnHeldInteractStep(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
             if (blockSel == null || !(byEntity is EntityPlayer)) return false;
             
@@ -148,14 +148,13 @@ namespace Vintagestory.GameContent
             return secondsUsed < 3.5;
         }
 
-        public override void OnHeldInteractStop(float secondsUsed, IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override void OnHeldInteractStop(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
             if (byEntity.World.Side == EnumAppSide.Client)
             {
                 ILoadedSound sound = byEntity.World.Api.ObjectCache["temporalGearSound"] as ILoadedSound;
                 sound?.Stop();
                 sound?.Dispose();
-                //Console.WriteLine("sound stop");
             }
 
             if (blockSel == null || secondsUsed < 3.45) return;
@@ -184,14 +183,13 @@ namespace Vintagestory.GameContent
 
         }
 
-        public override bool OnHeldInteractCancel(float secondsUsed, IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)
+        public override bool OnHeldInteractCancel(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)
         {
             if (byEntity.World.Side == EnumAppSide.Client)
             {
                 ILoadedSound sound = byEntity.World.Api.ObjectCache["temporalGearSound"] as ILoadedSound;
                 sound?.Stop();
                 sound?.Dispose();
-               // Console.WriteLine("sound stop");
             }
 
             return true;

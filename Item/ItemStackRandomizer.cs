@@ -54,8 +54,12 @@ namespace Vintagestory.GameContent
     {
         RandomStack[] Stacks;
 
+        Random rand;
+
         public override void OnLoaded(ICoreAPI api)
         {
+            rand = new Random(api.World.Seed);
+
             this.Stacks = Attributes["stacks"].AsObject<RandomStack[]>();
             float totalchance = 0;
 
@@ -78,7 +82,7 @@ namespace Vintagestory.GameContent
             base.OnLoaded(api);
         }
 
-        public override void OnHeldInteractStart(IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
+        public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
         {
             IPlayer byPlayer = null;
             if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
@@ -99,11 +103,14 @@ namespace Vintagestory.GameContent
 
         internal void Resolve(ItemSlot intoslot, IWorldAccessor worldForResolve)
         {
-            // uh oh - background thread rand again?
-            double diceRoll = worldForResolve.Rand.NextDouble();
+            object dval = null;
+            worldForResolve.Api.ObjectCache.TryGetValue("donotResolveImports", out dval);
+            if (dval is bool && (bool)dval) return;
+
+            double diceRoll = rand.NextDouble();
             ITreeAttribute attributes = intoslot.Itemstack.Attributes;
 
-            if (attributes.GetFloat("totalChance", 1) < worldForResolve.Rand.NextDouble())
+            if (attributes.GetFloat("totalChance", 1) < rand.NextDouble())
             {
                 intoslot.Itemstack = null;
                 return;
@@ -118,7 +125,7 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            Stacks.Shuffle(worldForResolve.Rand);
+            Stacks.Shuffle(rand);
 
             for (int i = 0; i < Stacks.Length; i++)
             {

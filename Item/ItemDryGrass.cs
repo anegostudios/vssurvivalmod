@@ -6,7 +6,7 @@ namespace Vintagestory.GameContent
 {
     public class ItemDryGrass : Item
     {
-        public override void OnHeldInteractStart(IItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handHandling)
+        public override void OnHeldInteractStart(ItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handHandling)
         {
             if (blockSel == null || byEntity?.World == null || !byEntity.Controls.Sneak) return;
 
@@ -15,7 +15,7 @@ namespace Vintagestory.GameContent
             if (firepitBlock == null) return;
 
             IPlayer player = byEntity.World.PlayerByUid((byEntity as EntityPlayer)?.PlayerUID);
-            if (!byEntity.World.TryAccessBlock(player, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            if (!byEntity.World.Claims.TryAccess(player, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
             {
                 return;
             }
@@ -25,8 +25,10 @@ namespace Vintagestory.GameContent
             Block block = world.BlockAccessor.GetBlock(onPos.DownCopy());
             Block atBlock = world.BlockAccessor.GetBlock(onPos);
 
+            string useless = "";
+
             if (!block.CanAttachBlockAt(byEntity.World.BlockAccessor, firepitBlock, onPos.DownCopy(), BlockFacing.UP)) return;
-            if (!firepitBlock.IsSuitablePosition(world, onPos)) return;
+            if (!firepitBlock.IsSuitablePosition(world, onPos, ref useless)) return;
 
             world.BlockAccessor.SetBlock(firepitBlock.BlockId, onPos);
 

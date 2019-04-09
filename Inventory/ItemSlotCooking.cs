@@ -10,6 +10,7 @@ namespace Vintagestory.GameContent
 {
     public class ItemSlotCooking : ItemSlotSurvival
     {
+
         public ItemSlotCooking(InventoryBase inventory) : base(inventory)
         {
         }
@@ -76,6 +77,7 @@ namespace Vintagestory.GameContent
                 return;
             }
 
+            
             base.ActivateSlotLeftClick(sourceSlot, ref op);
         }
 
@@ -138,5 +140,10 @@ namespace Vintagestory.GameContent
 
             base.ActivateSlotRightClick(sourceSlot, ref op);
         }
+
+        
+
+
+
     }
 }

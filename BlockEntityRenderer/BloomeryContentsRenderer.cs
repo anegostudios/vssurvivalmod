@@ -46,9 +46,7 @@ namespace Vintagestory.GameContent
 
             this.voxelHeight = voxelHeight;
 
-            if (cubeModelRef != null) {
-                api.Render.DeleteMesh(cubeModelRef);
-            }
+            cubeModelRef?.Dispose();
 
             if (voxelHeight == 0) return;
 
@@ -91,7 +89,7 @@ namespace Vintagestory.GameContent
         // Called by UnregisterRenderer
         public void Dispose()
         {
-            api.Render.DeleteMesh(cubeModelRef);
+            cubeModelRef?.Dispose();
         }
     }
 }

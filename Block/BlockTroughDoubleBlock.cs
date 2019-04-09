@@ -26,20 +26,21 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel)
+        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
         {
-            if (!world.TryAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            if (!world.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
             {
                 byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
+                failureCode = "claimed";
                 return false;
             }
 
-            if (IsSuitablePosition(world, blockSel.Position))
+            if (IsSuitablePosition(world, blockSel.Position, ref failureCode))
             {
                 BlockFacing[] horVer = SuggestedHVOrientation(byPlayer, blockSel);
                 BlockPos secondPos = blockSel.Position.AddCopy(horVer[0]);
 
-                if (!IsSuitablePosition(world, secondPos)) return false;
+                if (!IsSuitablePosition(world, secondPos, ref failureCode)) return false;
 
                 string code = horVer[0].GetOpposite().Code;
 
@@ -152,7 +153,7 @@ namespace Vintagestory.GameContent
             return capi.BlockTextureAtlas.GetRandomPixel(Textures["wood"].Baked.TextureSubId);
         }
 
-        public override int GetColor(ICoreClientAPI capi, BlockPos pos)
+        public override int GetColorWithoutTint(ICoreClientAPI capi, BlockPos pos)
         {
             int texSubId = Textures["wood"].Baked.TextureSubId;
 

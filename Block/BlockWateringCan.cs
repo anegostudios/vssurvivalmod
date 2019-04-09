@@ -33,7 +33,7 @@ namespace Vintagestory.GameContent
         }
         
 
-        public override void OnHeldInteractStart(IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handHandling)
+        public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handHandling)
         {
             if (blockSel == null) return;
             if (byEntity.Controls.Sneak) return;
@@ -43,7 +43,7 @@ namespace Vintagestory.GameContent
             IPlayer byPlayer = null;
             if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
 
-            if (byEntity.World.BlockAccessor.GetBlock(blockSel.Position).IsWater())
+            if (byEntity.World.BlockAccessor.GetBlock(blockSel.Position).LiquidCode == "water")
             {
                 BlockPos pos = blockSel.Position;
                 SetRemainingWateringSeconds(slot.Itemstack, CapacitySeconds);
@@ -56,7 +56,7 @@ namespace Vintagestory.GameContent
             }
 
             BlockBucket bucket = byEntity.World.BlockAccessor.GetBlock(blockSel.Position) as BlockBucket;
-            if (bucket != null && bucket.GetContent(byEntity.World, blockSel.Position)?.Collectible.IsWater() == true)
+            if (bucket != null && bucket.GetContent(byEntity.World, blockSel.Position)?.Block?.LiquidCode == "water")
             {
                 BlockPos pos = blockSel.Position;
                 ItemStack takenWater = bucket.TryTakeContent(byEntity.World, blockSel.Position, 5);
@@ -148,7 +148,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override bool OnHeldInteractStep(float secondsUsed, IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override bool OnHeldInteractStep(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
             if (blockSel == null) return false;
             if (slot.Itemstack.TempAttributes.GetInt("refilled") > 0) return false;
@@ -215,13 +215,13 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        public override bool OnHeldInteractCancel(float secondsUsed, IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)
+        public override bool OnHeldInteractCancel(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)
         {
             return base.OnHeldInteractCancel(secondsUsed, slot, byEntity, blockSel, entitySel, cancelReason);
         }
 
 
-        public override void OnHeldInteractStop(float secondsUsed, IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override void OnHeldInteractStop(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
             pouringLoop?.Stop();
             pouringLoop?.Dispose();

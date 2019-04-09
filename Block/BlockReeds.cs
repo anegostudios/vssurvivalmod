@@ -12,41 +12,53 @@ namespace Vintagestory.GameContent
 {
     public class BlockReeds : BlockPlant
     {
-        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel)
+        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
         {
             Block block = world.BlockAccessor.GetBlock(blockSel.Position);
 
             Block blockToPlace = this;
 
-            if (!world.TryAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            if (!world.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
             {
                 byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
+                failureCode = "claimed";
                 return false;
             }
 
-            if (block.IsLiquid())
-            {
-                if (block.LiquidLevel == 7) blockToPlace = world.GetBlock(CodeWithParts("water", LastCodePart()));
-                else return false;
+            bool inWater = block.IsLiquid() && block.LiquidLevel == 7 && block.LiquidCode.Contains("water");
 
+            if (inWater)
+            {
+                blockToPlace = world.GetBlock(CodeWithParts("water", LastCodePart()));
                 if (blockToPlace == null) blockToPlace = this;
             }
             else
             {
-                if (LastCodePart(1) != "free") return false;
+                if (LastCodePart(1) != "free")
+                {
+                    failureCode = "requirefullwater";
+                    return false;
+                }
             }
 
             
-            if (blockToPlace != null && CanPlantStay(world.BlockAccessor, blockSel.Position) && blockToPlace.IsSuitablePosition(world, blockSel.Position))
+            if (blockToPlace != null && blockToPlace.IsSuitablePosition(world, blockSel.Position, ref failureCode))
             {
-                world.BlockAccessor.SetBlock(blockToPlace.BlockId, blockSel.Position);
+                if (CanPlantStay(world.BlockAccessor, blockSel.Position))
+                {
+                    world.BlockAccessor.SetBlock(blockToPlace.BlockId, blockSel.Position);
+                } else {
+                    failureCode = "requirefertileground";
+                    return false;
+                }
+                
                 return true;
             }
 
             return false;
         }
 
-        public override float OnGettingBroken(IPlayer player, BlockSelection blockSel, IItemSlot itemslot, float remainingResistance, float dt, int counter)
+        public override float OnGettingBroken(IPlayer player, BlockSelection blockSel, ItemSlot itemslot, float remainingResistance, float dt, int counter)
         {
             if (LastCodePart() == "harvested") dt /= 2;
             else if (player.InventoryManager.ActiveTool != EnumTool.Knife)
@@ -107,7 +119,8 @@ namespace Vintagestory.GameContent
 
             if (LastCodePart(1) != "free")
             {
-                world.BlockAccessor.SetBlock(world.GetBlock(new AssetLocation("water-7")).BlockId, pos);
+                world.BlockAccessor.SetBlock(world.GetBlock(new AssetLocation("water-still-7")).BlockId, pos);
+                world.BlockAccessor.GetBlock(pos).OnNeighourBlockChange(world, pos, pos);
             } else
             {
                 world.BlockAccessor.SetBlock(0, pos);
@@ -127,7 +140,7 @@ namespace Vintagestory.GameContent
             Block belowBlock = blockAccessor.GetBlock(pos.X, pos.Y - 1, pos.Z);
             if (belowBlock.Fertility > 0)
             {
-                if (block.IsWater())
+                if (block.LiquidCode == "water")
                 {
                     return TryPlaceBlockInWater(blockAccessor, pos.UpCopy());
                 }
@@ -138,7 +151,7 @@ namespace Vintagestory.GameContent
                 return true;
             }
 
-            if (belowBlock.IsWater())
+            if (belowBlock.LiquidCode == "water")
             {
                 return TryPlaceBlockInWater(blockAccessor, pos);
             }
@@ -162,10 +175,6 @@ namespace Vintagestory.GameContent
             return capi.ApplyColorTintOnRgba(1, capi.BlockTextureAtlas.GetRandomPixel(Textures.Last().Value.Baked.TextureSubId), pos.X, pos.Y, pos.Z);
         }
 
-        public override bool IsWater()
-        {
-            return LastCodePart(1) == "water";
-        }
-
+        
     }
 }

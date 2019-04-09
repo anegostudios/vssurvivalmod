@@ -60,7 +60,7 @@ namespace Vintagestory.GameContent
                         {
                             blockAccessor.SpawnBlockEntity(EntityClass, atpos);
                         }
-                     //   Console.WriteLine("/tp ={0} ={1} ={2}", pos.X, pos.Y - i - 1, pos.Z);
+                     
                         return true;
                     }
 
@@ -69,14 +69,9 @@ namespace Vintagestory.GameContent
                     int dx = pos.X % blockAccessor.ChunkSize;
                     int dz = pos.Z % blockAccessor.ChunkSize;
                     int surfacey = blockAccessor.GetMapChunkAtBlockPos(atpos).WorldGenTerrainHeightMap[dz * blockAccessor.ChunkSize + dx];
-                   // Console.WriteLine(surfacey);
+                   
                     if (pos.Y - surfacey < 4) return false;
-
-                    // Require 3 air blocks below
-                    //if (blockAccessor.GetBlock(pos.X, pos.Y - i - 2, pos.Z).Id != 0 || blockAccessor.GetBlock(pos.X, pos.Y - i - 3, pos.Z).Id != 0) return false;
-
-                 //   Console.WriteLine("/tp ={0} ={1} ={2}", pos.X, pos.Y - i - 1, pos.Z);
-
+                    
                     blockAccessor.SetBlock(BlockId, atpos);
                     if (EntityClass != null)
                     {

@@ -20,7 +20,7 @@ namespace Vintagestory.GameContent
             ownFirstCodePart = block.FirstCodePart();
         }
 
-        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref EnumHandling handling)
+        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref EnumHandling handling, ref string failureCode)
         {
             handling = EnumHandling.PreventDefault;
             BlockPos pos = blockSel.Position;
@@ -35,7 +35,7 @@ namespace Vintagestory.GameContent
                 
             // Has ladder above at aimed position?
             Block aboveBlock = world.BlockAccessor.GetBlock(pos.X, pos.Y + 1, pos.Z);
-            if (aboveBlock.FirstCodePart() == ownFirstCodePart && HasSupport(aboveBlock, world.BlockAccessor, pos) && aboveBlock.IsSuitablePosition(world, pos))
+            if (aboveBlock.FirstCodePart() == ownFirstCodePart && HasSupport(aboveBlock, world.BlockAccessor, pos) && aboveBlock.IsSuitablePosition(world, pos, ref failureCode))
             {
                 aboveBlock.DoPlaceBlock(world, pos, blockSel.Face, itemstack);
                 return true;
@@ -43,7 +43,7 @@ namespace Vintagestory.GameContent
 
             // Has ladder below  at aimed position?
             Block belowBlock = world.BlockAccessor.GetBlock(pos.X, pos.Y - 1, pos.Z);
-            if (belowBlock.FirstCodePart() == ownFirstCodePart && HasSupport(belowBlock, world.BlockAccessor, pos) && belowBlock.IsSuitablePosition(world, pos))
+            if (belowBlock.FirstCodePart() == ownFirstCodePart && HasSupport(belowBlock, world.BlockAccessor, pos) && belowBlock.IsSuitablePosition(world, pos, ref failureCode))
             {
                 belowBlock.DoPlaceBlock(world, pos, blockSel.Face, itemstack);
                 return true;
@@ -68,7 +68,7 @@ namespace Vintagestory.GameContent
 
             Block orientedBlock = world.BlockAccessor.GetBlock(blockCode);
             // Otherwise place if we have support for it
-            if (HasSupport(orientedBlock, world.BlockAccessor, pos) && orientedBlock.IsSuitablePosition(world, pos))
+            if (HasSupport(orientedBlock, world.BlockAccessor, pos) && orientedBlock.IsSuitablePosition(world, pos, ref failureCode))
             {
                 orientedBlock.DoPlaceBlock(world, pos, blockSel.Face, itemstack);
                 return true;
@@ -78,13 +78,16 @@ namespace Vintagestory.GameContent
             // Otherwise maybe on the other side?
             blockCode = block.CodeWithParts(blockSel.Face.GetOpposite().Code);
             orientedBlock = world.BlockAccessor.GetBlock(blockCode);
-            if (orientedBlock != null && HasSupport(orientedBlock, world.BlockAccessor, pos) && orientedBlock.IsSuitablePosition(world, pos))
+            if (orientedBlock != null && HasSupport(orientedBlock, world.BlockAccessor, pos) && orientedBlock.IsSuitablePosition(world, pos, ref failureCode))
             {
                 orientedBlock.DoPlaceBlock(world, pos, blockSel.Face, itemstack);
                 return true;
             }
-            
-            
+
+            failureCode = "cantattachladder";
+
+
+
             return false;
         }
 
@@ -106,8 +109,10 @@ namespace Vintagestory.GameContent
                 abovePos.Up();
             }
 
+            string useless="";
+
             if (aboveBlock == null || aboveBlock.FirstCodePart() == ownFirstCodePart) return false;
-            if (!ladderBlock.IsSuitablePosition(world, abovePos)) return false;
+            if (!ladderBlock.IsSuitablePosition(world, abovePos, ref useless)) return false;
 
             ladderBlock.DoPlaceBlock(world, abovePos, face, itemstack);
             return true;
@@ -129,9 +134,11 @@ namespace Vintagestory.GameContent
                 belowPos.Down();
             }
 
+            string useless = "";
+
             if (belowBlock == null || belowBlock.FirstCodePart() == ownFirstCodePart) return false;
             if (!belowBlock.IsReplacableBy(block)) return false;
-            if (!ladderBlock.IsSuitablePosition(world, belowPos)) return false;
+            if (!ladderBlock.IsSuitablePosition(world, belowPos, ref useless)) return false;
 
             ladderBlock.DoPlaceBlock(world, belowPos, face, itemstack);
             return true;
@@ -140,7 +147,7 @@ namespace Vintagestory.GameContent
 
 
 
-        public override void OnNeighourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos, ref EnumHandling handling)
+        public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos, ref EnumHandling handling)
         {
             if (!HasSupport(block, world.BlockAccessor, pos))
             {
@@ -150,7 +157,7 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            base.OnNeighourBlockChange(world, pos, neibpos, ref handling);
+            base.OnNeighbourBlockChange(world, pos, neibpos, ref handling);
         }
 
 

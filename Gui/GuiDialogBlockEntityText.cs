@@ -1,5 +1,6 @@
 ﻿using System.IO;
 using Vintagestory.API.Client;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
@@ -13,7 +14,7 @@ namespace Vintagestory.GameContent
 
         bool didSave;
 
-        public GuiDialogBlockEntityTextInput(string DialogTitle, BlockPos blockEntityPos, string text, ICoreClientAPI capi) : base(DialogTitle, capi)
+        public GuiDialogBlockEntityTextInput(string DialogTitle, BlockPos blockEntityPos, string text, ICoreClientAPI capi, int maxLines = 4) : base(DialogTitle, capi)
         {
             this.blockEntityPos = blockEntityPos;
 
@@ -41,20 +42,20 @@ namespace Vintagestory.GameContent
 
             SingleComposer = capi.Gui
                 .CreateCompo("blockentitytexteditordialog", dialogBounds)
-                .AddDialogBG(bgBounds)
+                .AddShadedDialogBG(bgBounds)
                 .AddDialogTitleBar(DialogTitle, OnTitleBarClose)
                 .BeginChildElements(bgBounds)
                     .BeginClip(clippingBounds)
                     .AddTextArea(textAreaBounds, OnTextAreaChanged, CairoFont.TextInput(), "text")
                     .EndClip()
                     .AddVerticalScrollbar(OnNewScrollbarvalue, scrollbarBounds, "scrollbar")
-                    .AddSmallButton("Cancel", OnButtonCancel, cancelButtonBounds)
-                    .AddSmallButton("Save", OnButtonSave, saveButtonBounds)
+                    .AddSmallButton(Lang.Get("Cancel"), OnButtonCancel, cancelButtonBounds)
+                    .AddSmallButton(Lang.Get("Save"), OnButtonSave, saveButtonBounds)
                 .EndChildElements()
                 .Compose()
             ;
 
-            SingleComposer.GetTextArea("text").SetMaxLines(4);
+            SingleComposer.GetTextArea("text").SetMaxLines(maxLines);
 
             SingleComposer.GetScrollbar("scrollbar").SetHeights(
                 (float)textAreaBounds.fixedHeight, (float)textAreaBounds.fixedHeight
@@ -108,7 +109,7 @@ namespace Vintagestory.GameContent
                 data = ms.ToArray();
             }
 
-            capi.Network.SendBlockEntityPacket(blockEntityPos.X, blockEntityPos.Y, blockEntityPos.Z, 1000, data);
+            capi.Network.SendBlockEntityPacket(blockEntityPos.X, blockEntityPos.Y, blockEntityPos.Z, (int)EnumSignPacketId.SaveText, data);
             didSave = true;
             TryClose();
             return true;

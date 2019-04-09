@@ -1,21 +1,62 @@
-﻿using System;
+﻿
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
     public class BlockOre : Block
     {
+        public string Grade
+        {
+            get
+            {
+                string part = FirstCodePart(1);
+                if (part == "poor" || part == "medium" || part == "rich" || part == "bountiful") return part;
+                return null;
+            }
+        }
+
+        public string MotherRock
+        {
+            get
+            {
+                return LastCodePart();
+            }
+        }
+
+        public string OreName
+        {
+            get
+            {
+                return LastCodePart(1);
+            }
+        }
+
+        public string InfoText
+        {
+            get
+            {
+                StringBuilder dsc = new StringBuilder();
+                if (Grade != null) dsc.AppendLine(Lang.Get("ore-grade-" + Grade));
+                dsc.AppendLine(Lang.Get("ore-in-rock", Lang.Get("ore-" + OreName), Lang.Get("rock-" + MotherRock)));
+
+                return dsc.ToString();
+            }
+        }
+
+
         public override void OnBlockBroken(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1)
         {
             //base.OnBlockBroken(world, pos, byPlayer, dropQuantityMultiplier);
             // Ugly: copy pasted from Block so EnumHandled.Last prevents placement of empty rock
 
-            EnumHandling handled = EnumHandling.NotHandled;
+            EnumHandling handled = EnumHandling.PassThrough;
 
             foreach (BlockBehavior behavior in BlockBehaviors)
             {
@@ -53,6 +94,20 @@ namespace Vintagestory.GameContent
             }
 
         }
+
+
+        public override void GetHeldItemInfo(ItemStack stack, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
+        {
+            base.GetHeldItemInfo(stack, dsc, world, withDebugInfo);
+            dsc.AppendLine(InfoText);
+        }
+
+        public override string GetPlacedBlockInfo(IWorldAccessor world, BlockPos pos, IPlayer forPlayer)
+        {
+            return InfoText + "\n" + (LastCodePart(1) == "flint" ? Lang.Get("Break with bare hands to extract flint") + "\n" : "") + base.GetPlacedBlockInfo(world, pos, forPlayer);
+        }
+
+
 
     }
 }

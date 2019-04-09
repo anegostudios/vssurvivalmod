@@ -16,11 +16,15 @@ namespace Vintagestory.GameContent
         public static readonly string harvestedCodePart = "harvested";
 
 
-        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel)
+        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
         {
-            if (byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative) return false;
+            if (byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
+            {
+                failureCode = "__ignore__";
+                return false;
+            }
 
-            return base.TryPlaceBlock(world, byPlayer, itemstack, blockSel);
+            return base.TryPlaceBlock(world, byPlayer, itemstack, blockSel, ref failureCode);
         }
 
         public override void OnBlockBroken(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)

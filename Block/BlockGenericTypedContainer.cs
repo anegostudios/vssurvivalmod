@@ -71,7 +71,12 @@ namespace Vintagestory.GameContent
 
             string type = itemstack.Attributes.GetString("type", defaultType);
 
-            meshrefs.TryGetValue(type, out renderinfo.ModelRef);
+            if (!meshrefs.TryGetValue(type, out renderinfo.ModelRef))
+            {
+                MeshData mesh = GenGuiMesh(capi, type);
+                meshrefs[type] = renderinfo.ModelRef = capi.Render.UploadMesh(mesh);
+            }
+            
         }
 
 
@@ -96,6 +101,13 @@ namespace Vintagestory.GameContent
             }
         }
 
+
+        MeshData GenGuiMesh(ICoreClientAPI capi, string type)
+        {
+            string shapename = this.Attributes["shape"][type].AsString();
+            return GenMesh(capi, type, shapename);
+        }
+
         public Dictionary<string, MeshData> GenGuiMeshes(ICoreClientAPI capi)
         {
             string[] types = this.Attributes["types"].AsStringArray();
@@ -115,6 +127,7 @@ namespace Vintagestory.GameContent
 
         public MeshData GenMesh(ICoreClientAPI capi, string type, string shapename, ITesselatorAPI tesselator = null)
         {
+            if (shapename == null) return new MeshData();
             if (tesselator == null) tesselator = capi.Tesselator;
 
             tmpTextureSource = tesselator.GetTexSource(this);

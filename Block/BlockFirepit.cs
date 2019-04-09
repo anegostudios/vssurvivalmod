@@ -92,6 +92,43 @@ namespace Vintagestory.GameContent
                     }
                 }
 
+                if (stack?.Collectible is BlockBowl && (stack.Collectible as BlockBowl)?.BowlContents() == null && stack.Collectible.Attributes?["mealContainer"].AsBool() == true)
+                {
+                    ItemSlot potSlot = null;
+                    if (bef?.inputStack?.Collectible is BlockCookedContainer)
+                    {
+                        potSlot = bef.inputSlot;
+                    }
+                    if (bef?.outputStack?.Collectible is BlockCookedContainer)
+                    {
+                        potSlot = bef.outputSlot;
+                    }
+
+                    if (potSlot != null)
+                    {
+                        BlockCookedContainer blockPot = potSlot.Itemstack.Collectible as BlockCookedContainer;
+                        ItemSlot targetSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
+                        if (byPlayer.InventoryManager.ActiveHotbarSlot.StackSize > 1)
+                        {
+                            targetSlot = new DummySlot(targetSlot.TakeOut(1));
+                            byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
+                            blockPot.ServeIntoBowlStack(targetSlot, potSlot, world);
+                            if (!byPlayer.InventoryManager.TryGiveItemstack(targetSlot.Itemstack, true))
+                            {
+                                world.SpawnItemEntity(targetSlot.Itemstack, byPlayer.Entity.ServerPos.XYZ);
+                            }
+                        } else
+                        {
+                            blockPot.ServeIntoBowlStack(targetSlot, potSlot, world);
+                        }
+                        
+                    }
+
+                    return true;
+                }
+
+                
+
                 return base.OnBlockInteractStart(world, byPlayer, blockSel);
             }
 

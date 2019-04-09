@@ -47,7 +47,7 @@ namespace Vintagestory.GameContent
 
             SingleComposer = capi.Gui
                 .CreateCompo("itemlootrandomizer", dialogBounds)
-                .AddDialogBG(bgBounds, true)
+                .AddShadedDialogBG(bgBounds, true)
                 .AddDialogTitleBar("Item Loot Randomizer", OnTitleBarClose)
                 .BeginChildElements(bgBounds)
                     .AddItemSlotGrid(inv, SendInvPacket, 10, slotBounds, "slots")

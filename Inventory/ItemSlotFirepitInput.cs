@@ -15,7 +15,7 @@ namespace Vintagestory.API.Common
             this.outputSlotId = outputSlotId;
         }
 
-        public override bool CanHold(IItemSlot slot)
+        public override bool CanHold(ItemSlot slot)
         {
             return CanBeStackedWithOutputSlotItem(slot as ItemSlot);
         }
@@ -25,9 +25,9 @@ namespace Vintagestory.API.Common
             return true;
         }
 
-        public override bool CanTakeFrom(IItemSlot sourceSlot)
+        public override bool CanTakeFrom(ItemSlot sourceSlot)
         {
-            return CanBeStackedWithOutputSlotItem(sourceSlot as ItemSlot);
+            return CanBeStackedWithOutputSlotItem(sourceSlot as ItemSlot) && base.CanTakeFrom(sourceSlot);
         }
 
        

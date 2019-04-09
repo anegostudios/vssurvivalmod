@@ -9,19 +9,19 @@ namespace Vintagestory.GameContent
 {
     public class ItemStone : Item
     {
-        public override string GetHeldTpUseAnimation(IItemSlot activeHotbarSlot, Entity byEntity)
+        public override string GetHeldTpUseAnimation(ItemSlot activeHotbarSlot, Entity byEntity)
         {
             return null;
         }
 
-        public override void OnHeldInteractStart(IItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
+        public override void OnHeldInteractStart(ItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
         {
             bool knappable = itemslot.Itemstack.Collectible.Attributes != null && itemslot.Itemstack.Collectible.Attributes["knappable"].AsBool(false);
             bool haveKnappableStone = false;
 
             IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
 
-            if (knappable && byEntity.Controls.Sneak && blockSel != null)
+            if (byEntity.Controls.Sneak && blockSel != null)
             {
                 Block block = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
                 haveKnappableStone = 
@@ -32,7 +32,16 @@ namespace Vintagestory.GameContent
 
             if (haveKnappableStone)
             {
-                if (!byEntity.World.TryAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.Use))
+                if (!knappable)
+                {
+                    if (byEntity.World.Side == EnumAppSide.Client)
+                    {
+                        (this.api as ICoreClientAPI).TriggerIngameError(this, "toosoft", Lang.Get("This type of stone is too soft to be used for knapping."));
+                    }
+                    return;
+                }
+
+                if (!byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.Use))
                 {
                     itemslot.MarkDirty();
                     return;
@@ -42,8 +51,10 @@ namespace Vintagestory.GameContent
                 Block knappingBlock = world.GetBlock(new AssetLocation("knappingsurface"));
                 if (knappingBlock == null) return;
 
+                string useless = "";
+
                 BlockPos pos = blockSel.Position;
-                if (!knappingBlock.IsSuitablePosition(world, pos)) return;
+                if (!knappingBlock.IsSuitablePosition(world, pos, ref useless)) return;
 
                 world.BlockAccessor.SetBlock(knappingBlock.BlockId, pos);
 
@@ -75,14 +86,21 @@ namespace Vintagestory.GameContent
             {
                 IWorldAccessor world = byEntity.World;
                 Block block = world.GetBlock(CodeWithPath("loosestones-" + LastCodePart()));
+                if (block == null)
+                {
+                    block = world.GetBlock(CodeWithPath("loosestones-" + LastCodePart(1) + "-" + LastCodePart(0)));
+                }
                 if (block == null) return;
+
                 if (!world.BlockAccessor.GetBlock(blockSel.Position).SideSolid[BlockFacing.UP.Index]) return;
 
                 BlockPos targetpos = blockSel.Position.AddCopy(blockSel.Face);
                 BlockSelection placeSel = blockSel.Clone();
                 placeSel.Position = targetpos;
                 placeSel.DidOffset = true;
-                if(!block.TryPlaceBlock(world, byPlayer, itemslot.Itemstack, placeSel))
+                string useless = "";
+
+                if (!block.TryPlaceBlock(world, byPlayer, itemslot.Itemstack, placeSel, ref useless))
                 { 
                     return;
                 }
@@ -107,8 +125,10 @@ namespace Vintagestory.GameContent
             handling = EnumHandHandling.PreventDefault;
         }
 
-        public override bool OnHeldInteractStep(float secondsUsed, IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override bool OnHeldInteractStep(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
+            if (byEntity.Attributes.GetInt("aimingCancel") == 1) return false;
+
             if (byEntity.World is IClientWorldAccessor)
             {
                 ModelTransform tf = new ModelTransform();
@@ -127,7 +147,7 @@ namespace Vintagestory.GameContent
         }
 
         
-        public override bool OnHeldInteractCancel(float secondsUsed, IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)
+        public override bool OnHeldInteractCancel(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)
         {
             byEntity.Attributes.SetInt("aiming", 0);
             byEntity.StopAnimation("aim");
@@ -140,7 +160,7 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        public override void OnHeldInteractStop(float secondsUsed, IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override void OnHeldInteractStop(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
             if (byEntity.Attributes.GetInt("aimingCancel") == 1) return;
 
@@ -202,7 +222,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void OnHeldAttackStart(IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
+        public override void OnHeldAttackStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
         {
             if (blockSel == null) return;
             if (!(byEntity.World.BlockAccessor.GetBlock(blockSel.Position) is BlockKnappingSurface)) return;
@@ -219,17 +239,17 @@ namespace Vintagestory.GameContent
             handling = EnumHandHandling.PreventDefaultAction;
         }
 
-        public override bool OnHeldAttackCancel(float secondsPassed, IItemSlot slot, EntityAgent byEntity, BlockSelection blockSelection, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)
+        public override bool OnHeldAttackCancel(float secondsPassed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSelection, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)
         {
             return false;
         }
 
-        public override bool OnHeldAttackStep(float secondsUsed, IItemSlot slot, EntityAgent byEntity, BlockSelection blockSelection, EntitySelection entitySel)
+        public override bool OnHeldAttackStep(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSelection, EntitySelection entitySel)
         {
             return false;
         }
 
-        public override void OnHeldAttackStop(float secondsPassed, IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override void OnHeldAttackStop(float secondsPassed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
             if (blockSel == null) return;
             if (!(byEntity.World.BlockAccessor.GetBlock(blockSel.Position) is BlockKnappingSurface)) return;

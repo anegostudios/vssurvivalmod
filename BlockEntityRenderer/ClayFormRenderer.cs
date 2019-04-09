@@ -19,7 +19,7 @@ namespace Vintagestory.GameContent
         MeshRef workItemMeshRef;
         MeshRef recipeOutlineMeshRef;
 
-        ItemStack ingot;
+        ItemStack workItem;
         int texId;
         Matrixf ModelMat = new Matrixf();
 
@@ -123,11 +123,8 @@ namespace Vintagestory.GameContent
 
         public void RegenMesh(ItemStack workitem, bool[,,] Voxels, ClayFormingRecipe recipeToOutline, int recipeLayer)
         {
-            if (workItemMeshRef != null)
-            {
-                api.Render.DeleteMesh(workItemMeshRef);
-                workItemMeshRef = null;
-            }
+            workItemMeshRef?.Dispose();
+            workItemMeshRef = null;
 
             if (workitem == null) return;
 
@@ -136,14 +133,14 @@ namespace Vintagestory.GameContent
                 RegenOutlineMesh(recipeToOutline, Voxels, recipeLayer);
             }
 
-            this.ingot = workitem;
+            this.workItem = workitem;
             MeshData workItemMesh = new MeshData(24, 36, false);
             workItemMesh.Flags = null;
             workItemMesh.Rgba2 = null;
 
             float subPixelPadding = api.BlockTextureAtlas.SubPixelPadding;
 
-            TextureAtlasPosition tpos = api.BlockTextureAtlas.GetPosition(api.World.GetBlock(new AssetLocation("clayform")), "clay");
+            TextureAtlasPosition tpos = api.BlockTextureAtlas.GetPosition(api.World.GetBlock(new AssetLocation("clayform")), workitem.Collectible.Code.ToShortString());
             MeshData singleVoxelMesh = CubeMeshUtil.GetCubeOnlyScaleXyz(1 / 32f, 1 / 32f, new Vec3f(1 / 32f, 1 / 32f, 1 / 32f));
             singleVoxelMesh.Rgba = CubeMeshUtil.GetShadedCubeRGBA(ColorUtil.WhiteArgb, CubeMeshUtil.DefaultBlockSideShadings, false);
 
@@ -255,8 +252,8 @@ namespace Vintagestory.GameContent
         // Called by UnregisterRenderer
         public void Dispose()
         {
-            if (recipeOutlineMeshRef != null) api.Render.DeleteMesh(recipeOutlineMeshRef);
-            if (workItemMeshRef != null) api.Render.DeleteMesh(workItemMeshRef);
+            recipeOutlineMeshRef?.Dispose();
+            workItemMeshRef?.Dispose();
         }
     }
 }

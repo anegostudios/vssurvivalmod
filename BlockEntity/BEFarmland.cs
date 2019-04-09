@@ -23,9 +23,9 @@ namespace Vintagestory.GameContent
     // - Some crops can be harvested with right click, without destroying the crop
     public class BlockEntityFarmland : BlockEntity, IFarmlandBlockEntity
     {
-        static Random rand = new Random();
-        static CodeAndChance[] weedNames;
-        static float totalWeedChance;
+        protected static Random rand = new Random();
+        protected static CodeAndChance[] weedNames;
+        protected static float totalWeedChance;
 
         public static OrderedDictionary<string, float> Fertilities = new OrderedDictionary<string, float>{
             { "verylow", 5 },
@@ -34,28 +34,30 @@ namespace Vintagestory.GameContent
             { "high", 75 },
         };
 
+        // How many hours this block can retain water before becoming dry
+        protected double totalHoursWaterRetention = 24.5;
 
-        BlockPos upPos;
-        long growListenerId;
+        protected BlockPos upPos;
+        protected long growListenerId;
         // Total game hours from where on it can enter the next growth stage
-        double totalHoursForNextStage;
+        protected double totalHoursForNextStage;
         // The last time fertility increase was checked
-        double totalHoursFertilityCheck;
+        protected double totalHoursFertilityCheck;
 
         // Stored values
-        float[] nutrients = new float[3];
-        double lastWateredTotalHours = 0;
+        protected float[] nutrients = new float[3];
+        protected double lastWateredTotalHours = 0;
 
         // When watering with a watering can, not stored values
-        float currentlyWateredSeconds;
-        long lastWateredMs;
+        protected float currentlyWateredSeconds;
+        protected long lastWateredMs;
 
 
         public int originalFertility; // The fertility the soil will recover to (the soil from which the farmland was made of)
-        TreeAttribute cropAttrs = new TreeAttribute();
+        protected TreeAttribute cropAttrs = new TreeAttribute();
 
-        int delayGrowthBelowSunLight = 19;
-        float lossPerLevel = 0.1f; 
+        protected int delayGrowthBelowSunLight = 19;
+        protected float lossPerLevel = 0.1f; 
         
         public override void Initialize(ICoreAPI api)
         {
@@ -110,26 +112,7 @@ namespace Vintagestory.GameContent
 
         private void SlowTick(float dt)
         {
-            // 1. Watered check
-            bool waterNearby = false;
-
-            for (int dx = -3; dx <= 3 && !waterNearby; dx++)
-            {
-                for (int dz = -3; dz <= 3; dz++)
-                {
-                    if (dx == 0 && dz == 0) continue;
-                    if (api.World.BlockAccessor.GetBlock(base.pos.X + dx, base.pos.Y, base.pos.Z + dz).IsWater())
-                    {
-                        waterNearby = true;
-                        break;
-                    }
-                }
-            }
-
-            if (waterNearby)
-            {
-                lastWateredTotalHours = api.World.Calendar.TotalHours;
-            }
+            FindNearbyWater();
 
             if (IsWatered)
             {
@@ -207,6 +190,31 @@ namespace Vintagestory.GameContent
             }
         }
 
+
+        protected void FindNearbyWater()
+        {
+            // 1. Watered check
+            bool waterNearby = false;
+
+            for (int dx = -3; dx <= 3 && !waterNearby; dx++)
+            {
+                for (int dz = -3; dz <= 3; dz++)
+                {
+                    if (dx == 0 && dz == 0) continue;
+                    if (api.World.BlockAccessor.GetBlock(base.pos.X + dx, base.pos.Y, base.pos.Z + dz).LiquidCode == "water")
+                    {
+                        waterNearby = true;
+                        break;
+                    }
+                }
+            }
+
+            if (waterNearby)
+            {
+                lastWateredTotalHours = api.World.Calendar.TotalHours;
+            }
+        }
+
         private void CheckGrow(float dt)
         {
             double hoursNextStage = GetHoursForNextStage();
@@ -215,13 +223,11 @@ namespace Vintagestory.GameContent
             {
                 currentlyWateredSeconds = Math.Max(0, currentlyWateredSeconds - dt);
             }
-            
 
-            if (!IsWatered)
+            // If chunk got loaded after a long inactivity, test for water right away, otherwise crops wont fast forward
+            if (!IsWatered && api.World.Calendar.TotalHours - lastWateredTotalHours >= totalHoursWaterRetention - 1)
             {
-                // Delay growth by the passed time
-                totalHoursForNextStage = api.World.Calendar.TotalHours + hoursNextStage;
-                return;
+                FindNearbyWater();
             }
 
             // Slow down growth on bad light levels
@@ -234,12 +240,21 @@ namespace Vintagestory.GameContent
             }
 
             double lightHoursPenalty = hoursNextStage / lightGrowthSpeedFactor - hoursNextStage;
+            double totalHoursNextGrowthState = totalHoursForNextStage + lightHoursPenalty;
 
 
-            while (api.World.Calendar.TotalHours > totalHoursForNextStage + lightHoursPenalty)
+            while (api.World.Calendar.TotalHours > totalHoursNextGrowthState)
             {
+                // Did the farmland run out of water at this time?
+                if (lastWateredTotalHours - totalHoursNextGrowthState < -totalHoursWaterRetention)
+                {
+                    totalHoursForNextStage = api.World.Calendar.TotalHours + hoursNextStage;
+                    break;
+                }
+
                 TryGrowCrop(totalHoursForNextStage);
                 totalHoursForNextStage += hoursNextStage;
+                totalHoursNextGrowthState = totalHoursForNextStage + lightHoursPenalty;
             }
             
             if (HasRipeCrop())
@@ -337,7 +352,7 @@ namespace Vintagestory.GameContent
 
                 if (block.CropProps.Behaviors != null)
                 {
-                    EnumHandling handled = EnumHandling.NotHandled;
+                    EnumHandling handled = EnumHandling.PassThrough;
                     bool result = false;
                     foreach (CropBehavior behavior in block.CropProps.Behaviors)
                     {
@@ -506,7 +521,7 @@ namespace Vintagestory.GameContent
         {
             get
             {
-                return lastWateredTotalHours > 0 && (api.World.Calendar.TotalHours - lastWateredTotalHours) < 24.5;
+                return lastWateredTotalHours > 0 && (api.World.Calendar.TotalHours - lastWateredTotalHours) < totalHoursWaterRetention;
             }
         }
 

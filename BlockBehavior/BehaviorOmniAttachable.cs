@@ -18,11 +18,11 @@ namespace Vintagestory.GameContent
             facingPos = properties["facingPos"].AsInt(1);
         }
 
-        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref EnumHandling handled)
+        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref EnumHandling handled, ref string failureCode)
         {
             handled = EnumHandling.PreventDefault;
 
-            if (!block.IsSuitablePosition(world, blockSel.Position))
+            if (!block.IsSuitablePosition(world, blockSel.Position, ref failureCode))
             {
                 return false;
             }
@@ -39,6 +39,8 @@ namespace Vintagestory.GameContent
 
                 if (TryAttachTo(world, blockSel.Position, faces[i], itemstack)) return true;
             }
+
+            failureCode = "requireattachable";
 
             return false;
         }
@@ -61,7 +63,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void OnNeighourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos, ref EnumHandling handled)
+        public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos, ref EnumHandling handled)
         {
             handled = EnumHandling.PreventDefault;
 

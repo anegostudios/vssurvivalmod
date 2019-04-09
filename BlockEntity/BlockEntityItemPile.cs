@@ -49,7 +49,7 @@ namespace Vintagestory.GameContent
         {
             if (api.World is IServerWorldAccessor)
             {
-                IItemSlot slot = inventory[0];
+                ItemSlot slot = inventory[0];
                 while (slot.StackSize > 0)
                 {
                     ItemStack split = slot.TakeOut(GameMath.Clamp(slot.StackSize, 1, System.Math.Max(1, slot.Itemstack.Collectible.MaxStackSize / 4)));
@@ -98,7 +98,7 @@ namespace Vintagestory.GameContent
             bool sneaking = byPlayer.Entity.Controls.Sneak;
 
           
-            IItemSlot hotbarSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
+            ItemSlot hotbarSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
 
             bool equalStack = hotbarSlot.Itemstack != null && hotbarSlot.Itemstack.Equals(api.World, inventory[0].Itemstack, GlobalConstants.IgnoredStackAttributes);
 
@@ -144,11 +144,11 @@ namespace Vintagestory.GameContent
         {
             if (OwnStackSize >= MaxStackSize) return false;
 
-            IItemSlot hotbarSlot = player.InventoryManager.ActiveHotbarSlot;
+            ItemSlot hotbarSlot = player.InventoryManager.ActiveHotbarSlot;
 
             if (hotbarSlot.Itemstack == null) return false;
 
-            IItemSlot invSlot = inventory[0];
+            ItemSlot invSlot = inventory[0];
 
             if (invSlot.Itemstack == null)
             {

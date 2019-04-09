@@ -73,6 +73,7 @@ namespace Vintagestory.GameContent
             prog.RgbaFogIn = rpi.FogColor;
             prog.FogMinIn = rpi.FogMin;
             prog.DontWarpVertices = 0;
+            prog.AddRenderFlags = 0;
             prog.FogDensityIn = rpi.FogDensity;
             prog.RgbaTint = ColorUtil.WhiteArgbVec;
             prog.RgbaLightIn = lightrgbs;
@@ -83,7 +84,7 @@ namespace Vintagestory.GameContent
                 .Translate(pos.X - camPos.X, pos.Y - camPos.Y, pos.Z - camPos.Z)
                 .Values
             ;
-            prog.AddRenderFlags = 0;
+            
 
             prog.ViewMatrix = rpi.CameraMatrixOriginf;
             prog.ProjectionMatrix = rpi.CurrentProjectionMatrix;
@@ -131,12 +132,9 @@ namespace Vintagestory.GameContent
 
         public void RegenMesh(ItemStack ingot, bool[,,] Voxels, SmithingRecipe recipeToOutline)
         {
-            if (workItemMeshRef != null)
-            {
-                api.Render.DeleteMesh(workItemMeshRef);
-                workItemMeshRef = null;
-            }
-
+            workItemMeshRef?.Dispose();
+            workItemMeshRef = null;
+            
             if (ingot == null) return;
 
             if (recipeToOutline != null)
@@ -206,6 +204,8 @@ namespace Vintagestory.GameContent
 
         private void RegenOutlineMesh(SmithingRecipe recipeToOutline)
         {
+            recipeOutlineMeshRef?.Dispose();
+
             MeshData recipeOutlineMesh = new MeshData(24, 36, false, false, true, false, false);
             recipeOutlineMesh.SetMode(EnumDrawMode.Lines);
 
@@ -250,8 +250,8 @@ namespace Vintagestory.GameContent
         // Called by UnregisterRenderer
         public void Dispose()
         {
-            if (recipeOutlineMeshRef != null) api.Render.DeleteMesh(recipeOutlineMeshRef);
-            if (workItemMeshRef != null) api.Render.DeleteMesh(workItemMeshRef);
+            recipeOutlineMeshRef?.Dispose();
+            workItemMeshRef?.Dispose();
         }
     }
 }

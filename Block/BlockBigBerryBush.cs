@@ -9,8 +9,12 @@ namespace Vintagestory.GameContent
     {
         internal override bool CanPlantStay(IBlockAccessor blockAccessor, BlockPos pos)
         {
-            Block block = blockAccessor.GetBlock(pos.DownCopy());
-            return block.Fertility > 0 || (Attributes?["stackable"]?.AsBool() == true && block.Attributes?["stackable"]?.AsBool() == true && block is BlockBerryBush);
+            Block belowBlock = blockAccessor.GetBlock(pos.DownCopy());
+            Block belowbelowBlock = blockAccessor.GetBlock(pos.DownCopy(2));
+
+            return 
+                belowBlock.Fertility > 0 || 
+                (Attributes?["stackable"]?.AsBool() == true && belowBlock.Attributes?["stackable"]?.AsBool() == true && belowBlock is BlockBerryBush && belowbelowBlock.Fertility > 0);
         }
 
 
@@ -28,7 +32,7 @@ namespace Vintagestory.GameContent
 
         public override int GetColor(ICoreClientAPI capi, BlockPos pos)
         {
-            int color = base.GetColor(capi, pos);
+            int color = base.GetColorWithoutTint(capi, pos);
 
             return capi.ApplyColorTintOnRgba(1, color, pos.X, pos.Y, pos.Z, false);
         }

@@ -42,16 +42,17 @@ namespace Vintagestory.GameContent
             return false;
         }
 
-        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel)
+        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
         {
-            if (!IsSuitablePosition(world, blockSel.Position))
+            if (!IsSuitablePosition(world, blockSel.Position, ref failureCode))
             {
                 return false;
             }
 
-            if (!world.TryAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            if (!world.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
             {
                 byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
+                failureCode = "claimed";
                 return false;
             }
 
@@ -68,6 +69,8 @@ namespace Vintagestory.GameContent
                 world.BlockAccessor.SetBlock(block == null ? upBlock.BlockId : block.BlockId, blockSel.Position);
                 return true;
             }
+
+            failureCode = "requirevineattachable";
 
             return false;
         }

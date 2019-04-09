@@ -10,8 +10,8 @@ namespace Vintagestory.GameContent
 {
     public enum EnumBlockContainerPacketId
     {
-        OpenInventory = 1000,
-        CloseInventory = 1001
+        OpenInventory = 5000,
+        CloseInventory = 5001
     }
 
 

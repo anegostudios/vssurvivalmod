@@ -34,18 +34,19 @@ namespace Vintagestory.GameContent
             return parts[parts.Length - 2] == "opened";
         }
 
-        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel)
+        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
         {
-            if (!world.TryAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            if (!world.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
             {
                 byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
+                failureCode = "claimed";
                 return false;
             }
 
             BlockPos abovePos = blockSel.Position.AddCopy(0, 1, 0);
             IBlockAccessor ba = world.BlockAccessor;
             
-            if (ba.GetBlockId(abovePos) == 0 && IsSuitablePosition(world, blockSel.Position))
+            if (ba.GetBlockId(abovePos) == 0 && IsSuitablePosition(world, blockSel.Position, ref failureCode))
             {
                 BlockFacing[] horVer = SuggestedHVOrientation(byPlayer, blockSel);
 

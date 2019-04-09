@@ -19,6 +19,9 @@ namespace Vintagestory.GameContent
             if (block != null) return block;
 
             block = world.BlockAccessor.GetBlock(CodeWithPath("mushroom-" + name + "-normal"));
+            if (block != null) return block;
+
+            block = world.BlockAccessor.GetBlock(CodeWithPath("flower-" + LastCodePart(0) + "-" + LastCodePart(1)));
 
             return block;
         }
@@ -31,20 +34,23 @@ namespace Vintagestory.GameContent
             if (block != null)
             {
                 world.SpawnItemEntity(new ItemStack(block), pos.ToVec3d().Add(0.5, 0.5, 0.5));
-            }            
+            }
         }
 
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)
         {
             Block block = world.BlockAccessor.GetBlock(CodeWithParts("empty"));
+            if (block == null)
+            {
+                block = world.BlockAccessor.GetBlock(new AssetLocation(Code.Domain, FirstCodePart() + "-empty"));
+            }
+
             return new ItemStack[] { new ItemStack(block) };
         }
 
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
         {
             return base.OnPickBlock(world, pos);
-            //Block block = world.BlockAccessor.GetBlock(CodeWithParts("empty"));
-            //return new ItemStack(block);
         }
 
 
@@ -82,6 +88,13 @@ namespace Vintagestory.GameContent
                 type = heldItem.Block.LastCodePart(1);
                 block = world.BlockAccessor.GetBlock(CodeWithParts(type));
             }
+
+            if (block == null)
+            {
+                type = heldItem.Block.LastCodePart(1) + "-" + heldItem.Block.LastCodePart(0);
+                block = world.BlockAccessor.GetBlock(CodeWithParts(type));
+            }
+
             return block;
         }
     }

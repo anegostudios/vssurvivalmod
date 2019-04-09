@@ -21,21 +21,21 @@ namespace Vintagestory.GameContent
             return beBed;
         }
 
-        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel)
+        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
         {
-            if (!world.TryAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            if (!world.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
             {
                 byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
                 return false;
             }
 
-            if (IsSuitablePosition(world, blockSel.Position))
+            if (IsSuitablePosition(world, blockSel.Position, ref failureCode))
             {
                 BlockFacing[] horVer = SuggestedHVOrientation(byPlayer, blockSel);
 
                 BlockPos secondPos = blockSel.Position.AddCopy(horVer[0]);
 
-                if (!IsSuitablePosition(world, secondPos)) return false;
+                if (!IsSuitablePosition(world, secondPos, ref failureCode)) return false;
 
                 string code = horVer[0].GetOpposite().Code;
 
@@ -53,7 +53,7 @@ namespace Vintagestory.GameContent
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
-            if (!world.TryAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.Use))
+            if (!world.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.Use))
             {
                 return false;
             }
@@ -67,7 +67,7 @@ namespace Vintagestory.GameContent
             EntityBehaviorTiredness ebt = byPlayer.Entity.GetBehavior("tiredness") as EntityBehaviorTiredness;
             if (ebt != null && ebt.Tiredness <= 8)
             {
-                if (world.Side == EnumAppSide.Client) (byPlayer as IClientPlayer).ShowChatNotification(Lang.Get("not-tired-enough"));
+                if (world.Side == EnumAppSide.Client) (api as ICoreClientAPI).TriggerIngameError(this, "nottiredenough", Lang.Get("not-tired-enough"));
                 return false;
             }
 

@@ -39,7 +39,7 @@ namespace Vintagestory.GameContent
 
             SingleComposer = capi.Gui
                 .CreateCompo("itemstackrandomizer", dialogBounds)
-                .AddDialogBG(bgBounds, true)
+                .AddShadedDialogBG(bgBounds, true)
                 .AddDialogTitleBar("Item Stack Randomizer", OnTitleBarClose)
                 .BeginChildElements(bgBounds)
                     .AddStaticText("Chance for any loot to appear:", CairoFont.WhiteDetailText(), ElementBounds.Fixed(0, 30, 250, 30))

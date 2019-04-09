@@ -21,7 +21,7 @@ namespace Vintagestory.GameContent
 
         public override void OnBlockBroken(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, ref EnumHandling handling)
         {
-            handling = EnumHandling.NotHandled;
+            handling = EnumHandling.PassThrough;
 
             if(byPlayer != null)
             {

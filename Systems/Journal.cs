@@ -173,8 +173,8 @@ namespace Vintagestory.GameContent
 
         private void OnGameGettingSaved()
         {
-            sapi.WorldManager.StoreData("journalItemsByPlayerUid", SerializerUtil.Serialize(journalsByPlayerUid));
-            sapi.WorldManager.StoreData("loreDiscoveriesByPlayerUid", SerializerUtil.Serialize(loreDiscoveryiesByPlayerUid));
+            sapi.WorldManager.SaveGame.StoreData("journalItemsByPlayerUid", SerializerUtil.Serialize(journalsByPlayerUid));
+            sapi.WorldManager.SaveGame.StoreData("loreDiscoveriesByPlayerUid", SerializerUtil.Serialize(loreDiscoveryiesByPlayerUid));
         }
 
 
@@ -182,7 +182,7 @@ namespace Vintagestory.GameContent
         {
             try
             {
-                byte[] data = sapi.WorldManager.GetData("journalItemsByPlayerUid");
+                byte[] data = sapi.WorldManager.SaveGame.GetData("journalItemsByPlayerUid");
                 if (data != null) journalsByPlayerUid = SerializerUtil.Deserialize<Dictionary<string, Journal>>(data);
             } catch (Exception e)
             {
@@ -192,7 +192,7 @@ namespace Vintagestory.GameContent
 
             try
             {
-                byte[] data = sapi.WorldManager.GetData("loreDiscoveriesByPlayerUid");
+                byte[] data = sapi.WorldManager.SaveGame.GetData("loreDiscoveriesByPlayerUid");
                 if (data != null) loreDiscoveryiesByPlayerUid = SerializerUtil.Deserialize<Dictionary<string, Dictionary<string, LoreDiscovery>>>(data);
             }
             catch (Exception e)
@@ -299,7 +299,7 @@ namespace Vintagestory.GameContent
                 serverChannel.SendPacket(entry, plr);
             }
 
-            plr.SendMessage(GlobalConstants.GeneralChatGroup, Lang.Get("Recovered a piece of text from a writing titled {0}", entry.Title), EnumChatType.Notification);
+            plr.SendMessage(GlobalConstants.GeneralChatGroup, Lang.Get("lorediscovery", entry.Title), EnumChatType.Notification);
         }
 
 

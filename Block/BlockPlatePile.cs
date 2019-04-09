@@ -86,7 +86,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        internal bool Construct(IItemSlot slot, IWorldAccessor world, BlockPos pos, IPlayer player)
+        internal bool Construct(ItemSlot slot, IWorldAccessor world, BlockPos pos, IPlayer player)
         {
             Block belowBlock = world.BlockAccessor.GetBlock(pos.DownCopy());
             if (!belowBlock.SideSolid[BlockFacing.UP.Index] && (belowBlock != this || FillLevel(world.BlockAccessor, pos.DownCopy()) != 16)) return false;

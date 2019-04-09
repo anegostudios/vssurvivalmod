@@ -12,7 +12,7 @@ namespace Vintagestory.GameContent
 {
     public class ItemPoultice : Item
     {
-        public override void OnHeldInteractStart(IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
+        public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
         {
             byEntity.World.RegisterCallback((dt) =>
             {
@@ -36,7 +36,7 @@ namespace Vintagestory.GameContent
             base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, ref handling);
         }
 
-        public override bool OnHeldInteractStep(float secondsUsed, IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override bool OnHeldInteractStep(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
 
             if (byEntity.World is IClientWorldAccessor)
@@ -60,7 +60,7 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        public override void OnHeldInteractStop(float secondsUsed, IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override void OnHeldInteractStop(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
             if (secondsUsed > 0.7f && byEntity.World.Side == EnumAppSide.Server)
             {

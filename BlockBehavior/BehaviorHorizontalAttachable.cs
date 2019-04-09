@@ -21,22 +21,24 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref EnumHandling handled)
+        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref EnumHandling handled, ref string failureCode)
         {
             handled = EnumHandling.PreventDefault;
 
             // Prefer selected block face
             if (blockSel.Face.IsHorizontal)
             {
-                if (TryAttachTo(world, blockSel.Position, blockSel.Face)) return true;
+                if (TryAttachTo(world, blockSel.Position, blockSel.Face, ref failureCode)) return true;
             }
 
             // Otherwise attach to any possible face
             BlockFacing[] faces = BlockFacing.HORIZONTALS;
             for (int i = 0; i < faces.Length; i++)
             {
-                if (TryAttachTo(world, blockSel.Position, faces[i])) return true;
+                if (TryAttachTo(world, blockSel.Position, faces[i], ref failureCode)) return true;
             }
+
+            failureCode = "requirehorizontalattachable";
 
             return false;
         }
@@ -49,7 +51,7 @@ namespace Vintagestory.GameContent
                 return new ItemStack[] { new ItemStack(world.BlockAccessor.GetBlock(block.CodeWithParts("north"))) };
             } else
             {
-                handled = EnumHandling.NotHandled;
+                handled = EnumHandling.PassThrough;
                 return null;
             }
             
@@ -63,7 +65,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void OnNeighourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos, ref EnumHandling handled)
+        public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos, ref EnumHandling handled)
         {
             handled = EnumHandling.PreventDefault;
 
@@ -74,7 +76,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        bool TryAttachTo(IWorldAccessor world, BlockPos blockpos, BlockFacing onBlockFace)
+        bool TryAttachTo(IWorldAccessor world, BlockPos blockpos, BlockFacing onBlockFace, ref string failureCode)
         {
             BlockFacing oppositeFace = onBlockFace.GetOpposite();
 
@@ -82,7 +84,7 @@ namespace Vintagestory.GameContent
             Block attachingBlock = world.BlockAccessor.GetBlock(world.BlockAccessor.GetBlockId(attachingBlockPos));
             Block orientedBlock = world.BlockAccessor.GetBlock(block.CodeWithParts(oppositeFace.Code));
 
-            if (attachingBlock.CanAttachBlockAt(world.BlockAccessor, block, attachingBlockPos, onBlockFace) && orientedBlock.IsSuitablePosition(world, blockpos))
+            if (attachingBlock.CanAttachBlockAt(world.BlockAccessor, block, attachingBlockPos, onBlockFace) && orientedBlock.IsSuitablePosition(world, blockpos, ref failureCode))
             {
                 orientedBlock.DoPlaceBlock(world, blockpos, onBlockFace, null);
                 return true;

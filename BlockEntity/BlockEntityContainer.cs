@@ -80,9 +80,7 @@ namespace Vintagestory.GameContent
         {
             foreach (var slot in Inventory)
             {
-                if (slot.Itemstack == null) continue;
-
-                slot.Itemstack.Collectible.OnStoreCollectibleMappings(api.World, slot, blockIdMapping, itemIdMapping);
+                slot.Itemstack?.Collectible.OnStoreCollectibleMappings(api.World, slot, blockIdMapping, itemIdMapping);
             }
         }
 
@@ -95,7 +93,12 @@ namespace Vintagestory.GameContent
                 if (!slot.Itemstack.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve))
                 {
                     slot.Itemstack = null;
+                } else
+                {
+                    slot.Itemstack.Collectible.OnLoadCollectibleMappings(worldForResolve, slot, oldBlockIdMapping, oldItemIdMapping);
                 }
+
+                
 
                 if (slot.Itemstack?.Collectible is ItemLootRandomizer)
                 {
@@ -110,13 +113,6 @@ namespace Vintagestory.GameContent
                 if (slot.Itemstack?.Collectible is ItemStackRandomizer)
                 {
                     (slot.Itemstack.Collectible as ItemStackRandomizer).Resolve(slot, worldForResolve);
-
-                    // Wtf is this good for?
-                    // The whole point of the stack randomizer is that this is not necessary, plus slot.ItemStack is something different at this point!
-                    /*if (slot.Itemstack?.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve) == false)
-                    {
-                        slot.Itemstack = null;
-                    }*/
                 }
             }
         }

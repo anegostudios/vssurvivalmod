@@ -6,11 +6,12 @@ namespace Vintagestory.GameContent
 {
     public class BlockSlab : Block
     {
-        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel)
+        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
         {
-            if (!world.TryAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            if (!world.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
             {
                 byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
+                failureCode = "claimed";
                 return false;
             }
 
@@ -18,7 +19,7 @@ namespace Vintagestory.GameContent
             {
                 Block block = world.BlockAccessor.GetBlock(CodeWithParts("up"));
 
-                if (!IsSuitablePosition(world, blockSel.Position))
+                if (!IsSuitablePosition(world, blockSel.Position, ref failureCode))
                 {
                     block.DoPlaceBlock(world, blockSel.Position, blockSel.Face, itemstack);
                     return true;
@@ -27,7 +28,7 @@ namespace Vintagestory.GameContent
                 return false;
             }
 
-            return base.TryPlaceBlock(world, byPlayer, itemstack, blockSel); 
+            return base.TryPlaceBlock(world, byPlayer, itemstack, blockSel, ref failureCode); 
         }
 
 

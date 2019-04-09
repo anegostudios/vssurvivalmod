@@ -16,23 +16,57 @@ namespace Vintagestory.GameContent
         {
             if (CombustibleProps?.SmeltedStack == null)
             {
+                if (Attributes["metalUnits"].Exists)
+                {
+                    float units = Attributes["metalUnits"].AsInt();
+
+                    string orename = LastCodePart(1);
+                    if (orename.Contains("_"))
+                    {
+                        orename = orename.Split('_')[1];
+                    }
+                    AssetLocation loc = new AssetLocation("nugget-" + orename);
+                    Item item = api.World.GetItem(loc);
+                    if (item?.CombustibleProps != null)
+                    {
+                        string metalname = item.CombustibleProps.SmeltedStack.ResolvedItemstack.GetName().Replace(" ingot", "");
+                        dsc.AppendLine(Lang.Get("{0} units of {1}", units.ToString("0.#"), metalname));
+                    }
+
+                    dsc.AppendLine(Lang.Get("Parent Material: {0}", Lang.Get("rock-" + LastCodePart())));
+                }
+            }
+            else
+            {
+
                 base.GetHeldItemInfo(stack, dsc, world, withDebugInfo);
-                return;
+
+                string smelttype = CombustibleProps.SmeltingType.ToString().ToLowerInvariant();
+                int instacksize = CombustibleProps.SmeltedRatio;
+                int outstacksize = CombustibleProps.SmeltedStack.ResolvedItemstack.StackSize;
+                float units = outstacksize * 100f / instacksize;
+
+                string metalname = CombustibleProps.SmeltedStack.ResolvedItemstack.GetName().Replace(" ingot", "");
+
+                string str = Lang.Get("game:smeltdesc-" + smelttype + "ore-plural", units.ToString("0.#"), metalname);
+                dsc.AppendLine(str);
             }
 
-            CombustibleProperties props = CombustibleProps;
+            
 
             base.GetHeldItemInfo(stack, dsc, world, withDebugInfo);
+        }
 
-            string smelttype = CombustibleProps.SmeltingType.ToString().ToLowerInvariant();
-            int instacksize = CombustibleProps.SmeltedRatio;
-            int outstacksize = CombustibleProps.SmeltedStack.ResolvedItemstack.StackSize;
-            float units = outstacksize * 100f / instacksize;
+        public override string GetHeldItemName(ItemStack itemStack)
+        {
+            if (Attributes["metalUnits"].Exists)
+            {
+                string orename = LastCodePart(1);
+                string rockname = LastCodePart(0);
+                return Lang.Get(LastCodePart(2) + "-ore-chunk", Lang.Get("ore-" + orename));
+            }
 
-            string metalname = CombustibleProps.SmeltedStack.ResolvedItemstack.GetName().Replace(" ingot", "");
-
-            string str = Lang.Get("game:smeltdesc-" + smelttype + "ore-plural", units.ToString("0.#"), metalname);
-            dsc.AppendLine(str);
+            return base.GetHeldItemName(itemStack);
         }
     }
 }

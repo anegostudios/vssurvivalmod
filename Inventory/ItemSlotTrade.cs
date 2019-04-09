@@ -13,14 +13,17 @@ namespace Vintagestory.GameContent
     {
         public ResolvedTradeItem TradeItem;
 
+        bool isBuyingSlot;
+
         public void SetTradeItem(ResolvedTradeItem tradeItem)
         {
             this.TradeItem = tradeItem;
             this.itemstack = tradeItem.Stack;
         }
 
-        public ItemSlotTrade(InventoryBase inventory) : base(inventory)
+        public ItemSlotTrade(InventoryBase inventory, bool isBuyingSlot = false) : base(inventory)
         {
+            this.isBuyingSlot = isBuyingSlot;
         }
 
         public override bool CanTake()
@@ -28,12 +31,12 @@ namespace Vintagestory.GameContent
             return false;
         }
 
-        public override bool CanTakeFrom(IItemSlot sourceSlot)
+        public override bool CanTakeFrom(ItemSlot sourceSlot)
         {
             return false;
         }
 
-        public override bool CanHold(IItemSlot sourceSlot)
+        public override bool CanHold(ItemSlot sourceSlot)
         {
             return false;
         }
@@ -54,12 +57,12 @@ namespace Vintagestory.GameContent
             
         }
 
-        public override void TryPutInto(IItemSlot sinkSlot, ref ItemStackMoveOperation op)
+        public override void TryPutInto(ItemSlot sinkSlot, ref ItemStackMoveOperation op)
         {
             
         }
 
-        public override void TryPutInto(IWorldAccessor world, IItemSlot sinkSlot)
+        public override void TryPutInto(IWorldAccessor world, ItemSlot sinkSlot)
         {
             
         }
@@ -68,7 +71,15 @@ namespace Vintagestory.GameContent
         {
             if (TradeItem == null) return base.GetStackDescription(world, extendedDebugInfo);
 
-            return Lang.Get("Price: {0} gears\nIn Stock: {1}", TradeItem.Price, TradeItem.Stock) + "\n\n" + base.GetStackDescription(world, extendedDebugInfo);
+            if (isBuyingSlot)
+            {
+                return Lang.Get("Price: {0} gears", TradeItem.Price, TradeItem.Stock) + "\n\n" + base.GetStackDescription(world, extendedDebugInfo);
+            } else
+            {
+                return Lang.Get("Price: {0} gears\nSupply: {1}", TradeItem.Price, TradeItem.Stock) + "\n\n" + base.GetStackDescription(world, extendedDebugInfo);
+            }
+
+            
         }
     }
 }

@@ -110,14 +110,14 @@ namespace Vintagestory.GameContent
 
         private void OnSaveGame()
         {
-            sapi.WorldManager.StoreData("tpLocations", SerializerUtil.Serialize(Locations));
+            sapi.WorldManager.SaveGame.StoreData("tpLocations", SerializerUtil.Serialize(Locations));
         }
 
         private void OnLoadGame()
         {
             try
             {
-                byte[] data = sapi.WorldManager.GetData("tpLocations");
+                byte[] data = sapi.WorldManager.SaveGame.GetData("tpLocations");
                 if (data != null) Locations = SerializerUtil.Deserialize<Dictionary<BlockPos, TeleporterLocation>>(data);
             } catch (Exception e)
             {

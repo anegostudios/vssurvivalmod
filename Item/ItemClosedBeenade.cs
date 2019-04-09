@@ -10,12 +10,12 @@ namespace Vintagestory.GameContent
 {
     public class ItemClosedBeenade : Item
     {
-        public override string GetHeldTpUseAnimation(IItemSlot activeHotbarSlot, Entity byEntity)
+        public override string GetHeldTpUseAnimation(ItemSlot activeHotbarSlot, Entity byEntity)
         {
             return null;
         }
 
-        public override void OnHeldInteractStart(IItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
+        public override void OnHeldInteractStart(ItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
         {
             if (blockSel != null && byEntity.World.BlockAccessor.GetBlock(blockSel.Position).FirstCodePart() == "skep") return;
 
@@ -26,7 +26,7 @@ namespace Vintagestory.GameContent
             handling = EnumHandHandling.PreventDefault;
         }
 
-        public override bool OnHeldInteractStep(float secondsUsed, IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override bool OnHeldInteractStep(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
             if (byEntity.World is IClientWorldAccessor)
             {
@@ -44,14 +44,14 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override bool OnHeldInteractCancel(float secondsUsed, IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)
+        public override bool OnHeldInteractCancel(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)
         {
             byEntity.Attributes.SetInt("aiming", 0);
             byEntity.StopAnimation("aim");
             return true;
         }
 
-        public override void OnHeldInteractStop(float secondsUsed, IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override void OnHeldInteractStop(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
             if (byEntity.Attributes.GetInt("aiming") == 0) return;
 

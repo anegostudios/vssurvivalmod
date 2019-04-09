@@ -1,6 +1,7 @@
 ﻿using ProtoBuf;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -17,15 +18,50 @@ namespace Vintagestory.GameContent
     [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
     public class BESpawnerData
     {
-        public string EntityCode;
-        public Cuboidi SpawnArea = new Cuboidi(-3, 0, -3, 3, 3, 3);
+        // Config data
+
+        public string[] EntityCodes;
+        public Cuboidi SpawnArea;
         public float InGameHourInterval;
+        /// <summary>
+        /// Max entities this spawner should spawn
+        /// </summary>
         public int MaxCount;
+        /// <summary>
+        /// Amount of entities to spawn each interval
+        /// </summary>
+        public int GroupSize = 1;
+        /// <summary>
+        /// If nonzero the spanwer will only spawn this amount of entities and then self destruct
+        /// </summary>
+        public int RemoveAfterSpawnCount;
+        public int InitialSpawnQuantity = 0;
+        public bool SpawnOnlyAfterImport=true;
+
+
+        // Runtime data
+        public bool WasImported = false;
+        public int InitialQuantitySpawned = 0;
+
+        [ProtoAfterDeserialization]
+        void afterDeserialization()
+        {
+            initDefaults();
+        }
+
+        public BESpawnerData initDefaults()
+        {
+            if (SpawnArea == null)
+            {
+                SpawnArea = new Cuboidi(-3, 0, -3, 3, 3, 3);
+            }
+            return this;
+        }
     }
 
     public class BlockEntitySpawner : BlockEntity
     {
-        BESpawnerData data = new BESpawnerData();
+        public BESpawnerData Data = new BESpawnerData().initDefaults();
 
         List<long> spawnedEntities = new List<long>();
         double lastSpawnTotalHours;
@@ -50,13 +86,20 @@ namespace Vintagestory.GameContent
 
         private void OnGameTick(float dt)
         {
-            if (data.EntityCode == null) return;
-            if (lastSpawnTotalHours + data.InGameHourInterval > api.World.Calendar.TotalHours) return;
+            if (Data.EntityCodes == null || Data.EntityCodes.Length == 0)
+            {
+                lastSpawnTotalHours = api.World.Calendar.TotalHours;
+                return;
+            }
+            if (lastSpawnTotalHours + Data.InGameHourInterval > api.World.Calendar.TotalHours && Data.InitialSpawnQuantity <= 0) return;
             if (!IsAreaLoaded()) return;
-
+            if (Data.SpawnOnlyAfterImport && !Data.WasImported) return;
             
             ICoreServerAPI sapi = api as ICoreServerAPI;
-            EntityProperties type = api.World.GetEntityType(new AssetLocation(data.EntityCode));
+
+            int rnd = sapi.World.Rand.Next(Data.EntityCodes.Length);
+
+            EntityProperties type = api.World.GetEntityType(new AssetLocation(Data.EntityCodes[rnd]));
             if (type == null) return;
 
             for (int i = 0; i < spawnedEntities.Count; i++)
@@ -67,7 +110,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            if (spawnedEntities.Count >= data.MaxCount)
+            if (spawnedEntities.Count >= Data.MaxCount)
             {
                 lastSpawnTotalHours = api.World.Calendar.TotalHours;
                 return;
@@ -82,28 +125,76 @@ namespace Vintagestory.GameContent
                 Y2 = type.HitBoxSize.Y
             }.OmniNotDownGrowBy(0.1f);
 
-            Vec3d spawnPos = new Vec3d();
-            for (int tries = 0; tries < 15; tries++)
+            int q = Data.GroupSize;
+
+            while (q-- > 0)
             {
-                spawnPos.Set(pos).Add(
-                    0.5 + data.SpawnArea.MinX + api.World.Rand.NextDouble() * data.SpawnArea.SizeX,
-                    data.SpawnArea.MinY + api.World.Rand.NextDouble() * data.SpawnArea.SizeY,
-                    0.5 + data.SpawnArea.MinZ + api.World.Rand.NextDouble() * data.SpawnArea.SizeZ
-                );
 
-
-                if (!collisionTester.IsColliding(api.World.BlockAccessor, collisionBox, spawnPos, false))
+                Vec3d spawnPos = new Vec3d();
+                for (int tries = 0; tries < 15; tries++)
                 {
-                    long herdid = sapi.WorldManager.GetNextHerdId();
-                    DoSpawn(type, spawnPos, herdid);
-                    lastSpawnTotalHours = api.World.Calendar.TotalHours;
-                    return;
+                    spawnPos.Set(pos).Add(
+                        0.5 + Data.SpawnArea.MinX + api.World.Rand.NextDouble() * Data.SpawnArea.SizeX,
+                        Data.SpawnArea.MinY + api.World.Rand.NextDouble() * Data.SpawnArea.SizeY,
+                        0.5 + Data.SpawnArea.MinZ + api.World.Rand.NextDouble() * Data.SpawnArea.SizeZ
+                    );
+
+                    if (!collisionTester.IsColliding(api.World.BlockAccessor, collisionBox, spawnPos, false))
+                    {
+                        long herdid = sapi.WorldManager.GetNextHerdId();
+                        DoSpawn(type, spawnPos, herdid);
+                        lastSpawnTotalHours = api.World.Calendar.TotalHours;
+
+                        if (Data.InitialQuantitySpawned > 0)
+                        {
+                            Data.InitialQuantitySpawned--;
+                        }
+                        
+
+                        // Self destruct, if configured so
+                        if (Data.RemoveAfterSpawnCount > 0)
+                        {
+                            Data.RemoveAfterSpawnCount--;
+                            if (Data.RemoveAfterSpawnCount == 0)
+                            {
+                                api.World.BlockAccessor.SetBlock(0, pos);
+                            }
+                        }
+
+                        return;
+                    }
                 }
             }
         }
 
 
-        private void DoSpawn(EntityProperties entityType, Vec3d spawnPosition, long herdid)
+        public override void OnBlockPlaced(ItemStack byItemStack = null)
+        {
+            base.OnBlockPlaced(byItemStack);
+
+            lastSpawnTotalHours = api.World.Calendar.TotalHours;
+
+            if (byItemStack == null) return;
+            byte[] data = byItemStack.Attributes.GetBytes("spawnerData", null);
+            if (data == null) return;
+
+            try
+            {
+                this.Data = SerializerUtil.Deserialize<BESpawnerData>(data);
+            }
+            catch {
+                this.Data = new BESpawnerData().initDefaults();
+            }    
+        }
+
+
+        public override void OnBlockRemoved()
+        {
+            base.OnBlockRemoved();
+        }
+
+
+        protected virtual void DoSpawn(EntityProperties entityType, Vec3d spawnPosition, long herdid)
         {
             Entity entity = api.World.ClassRegistry.CreateEntity(entityType);
 
@@ -111,14 +202,12 @@ namespace Vintagestory.GameContent
             if (agent != null) agent.HerdId = herdid;
 
             entity.ServerPos.SetPos(spawnPosition);
-            entity.ServerPos.SetYaw(api.World.Rand.Next() * GameMath.TWOPI);
+            entity.ServerPos.SetYaw((float)api.World.Rand.NextDouble() * GameMath.TWOPI);
             entity.Pos.SetFrom(entity.ServerPos);
             entity.Attributes.SetString("origin", "entityspawner");
             api.World.SpawnEntity(entity);
 
             spawnedEntities.Add(entity.EntityId);
-
-            //Console.WriteLine("spawn " + entityType.Code);
         }
 
         public bool IsAreaLoaded()
@@ -130,12 +219,12 @@ namespace Vintagestory.GameContent
             int sizeY = sapi.WorldManager.MapSizeY / chunksize;
             int sizeZ = sapi.WorldManager.MapSizeZ / chunksize;
 
-            int mincx = GameMath.Clamp((pos.X + data.SpawnArea.MinX) / chunksize, 0, sizeX - 1);
-            int maxcx = GameMath.Clamp((pos.Y + data.SpawnArea.MaxX) / chunksize, 0, sizeX - 1);
-            int mincy = GameMath.Clamp((pos.Z + data.SpawnArea.MinY) / chunksize, 0, sizeY - 1);
-            int maxcy = GameMath.Clamp((pos.X + data.SpawnArea.MaxY) / chunksize, 0, sizeY - 1);
-            int mincz = GameMath.Clamp((pos.Y + data.SpawnArea.MinZ) / chunksize, 0, sizeZ - 1);
-            int maxcz = GameMath.Clamp((pos.Z + data.SpawnArea.MaxZ) / chunksize, 0, sizeZ - 1);
+            int mincx = GameMath.Clamp((pos.X + Data.SpawnArea.MinX) / chunksize, 0, sizeX - 1);
+            int maxcx = GameMath.Clamp((pos.Y + Data.SpawnArea.MaxX) / chunksize, 0, sizeX - 1);
+            int mincy = GameMath.Clamp((pos.Z + Data.SpawnArea.MinY) / chunksize, 0, sizeY - 1);
+            int maxcy = GameMath.Clamp((pos.X + Data.SpawnArea.MaxY) / chunksize, 0, sizeY - 1);
+            int mincz = GameMath.Clamp((pos.Y + Data.SpawnArea.MinZ) / chunksize, 0, sizeZ - 1);
+            int maxcz = GameMath.Clamp((pos.Z + Data.SpawnArea.MaxZ) / chunksize, 0, sizeZ - 1);
             
             for (int cx = mincx; cx <= maxcx; cx++)
             {
@@ -162,23 +251,24 @@ namespace Vintagestory.GameContent
             if (api.Side == EnumAppSide.Server)
             {
                 ICoreServerAPI sapi = api as ICoreServerAPI;
-                sapi.Network.SendBlockEntityPacket(byPlayer as IServerPlayer, pos.X, pos.Y, pos.Z, 1000, SerializerUtil.Serialize(data));
+                sapi.Network.SendBlockEntityPacket(byPlayer as IServerPlayer, pos.X, pos.Y, pos.Z, 1000, SerializerUtil.Serialize(Data));
                 return;
             }
 
             dlg = new GuiDialogSpawner(pos, api as ICoreClientAPI);
-            dlg.spawnerData = data;
+            dlg.spawnerData = Data;
             dlg.TryOpen();
+            dlg.OnClosed += () => { dlg?.Dispose(); dlg = null; };
         }
 
         public override void OnReceivedServerPacket(int packetid, byte[] bytes)
         {
             if (packetid == 1000)
             {
-                data = SerializerUtil.Deserialize<BESpawnerData>(bytes);
+                Data = SerializerUtil.Deserialize<BESpawnerData>(bytes);
                 if (dlg?.IsOpened() == true)
                 {
-                    dlg.UpdateFromServer(data);
+                    dlg.UpdateFromServer(Data);
                 }
             }
         }
@@ -187,7 +277,7 @@ namespace Vintagestory.GameContent
         {
             if (packetid == 1001)
             {
-                data = SerializerUtil.Deserialize<BESpawnerData>(bytes);
+                Data = SerializerUtil.Deserialize<BESpawnerData>(bytes);
                 MarkDirty();
             }
         }
@@ -196,16 +286,25 @@ namespace Vintagestory.GameContent
         {
             base.ToTreeAttributes(tree);
 
-            tree.SetInt("maxCount", data.MaxCount);
-            tree.SetFloat("intervalHours", data.InGameHourInterval);
-            tree.SetString("entityCode", data.EntityCode == null ? "" : data.EntityCode);
-            tree.SetInt("x1", data.SpawnArea.X1);
-            tree.SetInt("y1", data.SpawnArea.Y1);
-            tree.SetInt("z1", data.SpawnArea.Z1);
+            tree.SetInt("maxCount", Data.MaxCount);
+            tree.SetFloat("intervalHours", Data.InGameHourInterval);
 
-            tree.SetInt("x2", data.SpawnArea.X2);
-            tree.SetInt("y2", data.SpawnArea.Y2);
-            tree.SetInt("z2", data.SpawnArea.Z2);
+            tree.SetDouble("lastSpawnTotalHours", lastSpawnTotalHours);
+
+            tree["entityCodes"] = new StringArrayAttribute(Data.EntityCodes == null ? new string[0] : Data.EntityCodes);
+
+            tree.SetInt("x1", Data.SpawnArea.X1);
+            tree.SetInt("y1", Data.SpawnArea.Y1);
+            tree.SetInt("z1", Data.SpawnArea.Z1);
+
+            tree.SetInt("x2", Data.SpawnArea.X2);
+            tree.SetInt("y2", Data.SpawnArea.Y2);
+            tree.SetInt("z2", Data.SpawnArea.Z2);
+            tree.SetInt("spawnCount", Data.RemoveAfterSpawnCount);
+            tree.SetBool("spawnOnlyAfterImport", Data.SpawnOnlyAfterImport);
+            tree.SetInt("initialQuantitySpawned", Data.InitialQuantitySpawned);
+            tree.SetInt("initialSpawnQuantity", Data.InitialSpawnQuantity);
+            tree.SetInt("groupSize", Data.GroupSize);
 
             tree["spawnedEntities"] = new LongArrayAttribute(this.spawnedEntities.ToArray());
         }
@@ -213,21 +312,39 @@ namespace Vintagestory.GameContent
         public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
         {
             base.FromTreeAtributes(tree, worldAccessForResolve);
-
-            data = new BESpawnerData()
+            
+            Data = new BESpawnerData()
             {
-                EntityCode = tree.GetString("entityCode"),
+                EntityCodes = (tree["entityCodes"] as StringArrayAttribute)?.value,
                 MaxCount = tree.GetInt("maxCount"),
                 InGameHourInterval = tree.GetFloat("intervalHours"),
                 SpawnArea = new Cuboidi(
                     tree.GetInt("x1"), tree.GetInt("y1"), tree.GetInt("z1"),
                     tree.GetInt("x2"), tree.GetInt("y2"), tree.GetInt("z2")
-                )
+                ),
+                RemoveAfterSpawnCount = tree.GetInt("spawnCount"),
+                SpawnOnlyAfterImport = tree.GetBool("spawnOnlyAfterImport"),
+                GroupSize = tree.GetInt("groupSize"),
+                InitialQuantitySpawned = tree.GetInt("initialQuantitySpawned"),
+                InitialSpawnQuantity = tree.GetInt("initialSpawnQuantity")
             };
 
             long[] values = (tree["spawnedEntities"] as LongArrayAttribute)?.value;
 
+            lastSpawnTotalHours = tree.GetDecimal("lastSpawnTotalHours");
+
             this.spawnedEntities = new List<long>(values == null ? new long[0] : values);
+        }
+
+        public override void OnLoadCollectibleMappings(IWorldAccessor worldForNewMappings, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping)
+        {
+            base.OnLoadCollectibleMappings(worldForNewMappings, oldBlockIdMapping, oldItemIdMapping);
+
+            object dval = null;
+            worldForNewMappings.Api.ObjectCache.TryGetValue("donotResolveImports", out dval);
+            if (dval is bool && (bool)dval) return;
+
+            Data.WasImported = true;
         }
     }
 }

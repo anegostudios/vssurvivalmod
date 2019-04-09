@@ -12,8 +12,15 @@ namespace Vintagestory.GameContent
 {
     public class ItemLootRandomizer : Item
     {
+        Random rand;
 
-        public override void OnHeldInteractStart(IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handHandling)
+        public override void OnLoaded(ICoreAPI api)
+        {
+            rand = new Random(api.World.Seed);
+            base.OnLoaded(api);
+        }
+
+        public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handHandling)
         {
             IPlayer byPlayer = (byEntity as EntityPlayer).Player;
             if (byPlayer == null) return;
@@ -52,13 +59,17 @@ namespace Vintagestory.GameContent
 
         internal void ResolveLoot(ItemSlot slot, InventoryBase inventory, IWorldAccessor worldForResolve)
         {
-            double diceRoll = worldForResolve.Rand.NextDouble();
+            object dval = null;
+            worldForResolve.Api.ObjectCache.TryGetValue("donotResolveImports", out dval);
+            if (dval is bool && (bool)dval) return;
+
+            double diceRoll = rand.NextDouble();
 
             ItemStack ownstack = slot.Itemstack;
             slot.Itemstack = null;
 
             IAttribute[] vals = ownstack.Attributes.Values;
-            vals.Shuffle(worldForResolve.Rand);
+            vals.Shuffle(rand);
 
             foreach (var val in vals)
             {
@@ -83,8 +94,7 @@ namespace Vintagestory.GameContent
         public override void OnStoreCollectibleMappings(IWorldAccessor world, ItemSlot inSlot, Dictionary<int, AssetLocation> blockIdMapping, Dictionary<int, AssetLocation> itemIdMapping)
         {
             base.OnStoreCollectibleMappings(world, inSlot, blockIdMapping, itemIdMapping);
-
-
+            
             foreach (var val in inSlot.Itemstack.Attributes)
             {
                 if (!val.Key.StartsWith("stack") || !(val.Value is TreeAttribute)) continue;

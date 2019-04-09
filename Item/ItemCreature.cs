@@ -11,18 +11,18 @@ namespace Vintagestory.GameContent
 {
     public class ItemCreature : Item
     {
-        public override string GetHeldTpUseAnimation(IItemSlot activeHotbarSlot, Entity byEntity)
+        public override string GetHeldTpUseAnimation(ItemSlot activeHotbarSlot, Entity byEntity)
         {
             return null;
         }
 
-        public override void OnHeldInteractStart(IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handHandling)
+        public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handHandling)
         {
             if (blockSel == null) return;
 
             IPlayer player = byEntity.World.PlayerByUid((byEntity as EntityPlayer).PlayerUID);
 
-            if (!byEntity.World.TryAccessBlock(player, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            if (!byEntity.World.Claims.TryAccess(player, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
             {
                 return;
             }
@@ -52,9 +52,11 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override string GetHeldTpIdleAnimation(IItemSlot activeHotbarSlot, Entity byEntity)
+        public override string GetHeldTpIdleAnimation(ItemSlot activeHotbarSlot, Entity byEntity, EnumHand hand)
         {
             EntityProperties type = byEntity.World.GetEntityType(new AssetLocation(CodeEndWithoutParts(1)));
+            if (type == null) return base.GetHeldTpIdleAnimation(activeHotbarSlot, byEntity, hand);
+
             float size = Math.Max(type.HitBoxSize.X, type.HitBoxSize.Y);
 
             if (size > 1) return "holdunderarm";

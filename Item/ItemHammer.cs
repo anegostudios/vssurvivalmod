@@ -13,7 +13,7 @@ namespace Vintagestory.GameContent
 {
     public class ItemHammer : Item
     {
-        public override void OnHeldAttackStart(IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
+        public override void OnHeldAttackStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
         {
             if (blockSel == null) return;
             if (!(byEntity.World.BlockAccessor.GetBlock(blockSel.Position) is BlockAnvil)) return;
@@ -40,12 +40,12 @@ namespace Vintagestory.GameContent
             handling = EnumHandHandling.PreventDefault;
         }
 
-        public override bool OnHeldAttackCancel(float secondsPassed, IItemSlot slot, EntityAgent byEntity, BlockSelection blockSelection, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)
+        public override bool OnHeldAttackCancel(float secondsPassed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSelection, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)
         {
             return false;
         }
 
-        public override bool OnHeldAttackStep(float secondsUsed, IItemSlot slot, EntityAgent byEntity, BlockSelection blockSelection, EntitySelection entitySel)
+        public override bool OnHeldAttackStep(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSelection, EntitySelection entitySel)
         {
             if (byEntity.World is IClientWorldAccessor)
             {
@@ -72,9 +72,9 @@ namespace Vintagestory.GameContent
             return secondsUsed < 0.6f;
         }
 
-        public override void OnHeldAttackStop(float secondsPassed, IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override void OnHeldAttackStop(float secondsPassed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
-            if (blockSel == null) return;
+            if (blockSel == null || secondsPassed < 0.4f) return;
             if (!(byEntity.World.BlockAccessor.GetBlock(blockSel.Position) is BlockAnvil)) return;
 
             BlockEntityAnvil bea = byEntity.World.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityAnvil;
@@ -87,7 +87,6 @@ namespace Vintagestory.GameContent
 
             if (bea.AvailableVoxels <= 0 && GetToolMode(slot, byPlayer, blockSel) != 5)
             {
-                bea.didBeginUse--;
                 return;
             }
 
@@ -100,14 +99,14 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override int GetQuantityToolModes(IItemSlot slot, IPlayer byPlayer, BlockSelection blockSelection)
+        public override int GetQuantityToolModes(ItemSlot slot, IPlayer byPlayer, BlockSelection blockSelection)
         {
             if (blockSelection == null) return 0;
             Block block = byPlayer.Entity.World.BlockAccessor.GetBlock(blockSelection.Position);
             return block is BlockAnvil ? 6 : 0;
         }
 
-        public override void DrawToolModeIcon(IItemSlot slot, IPlayer byPlayer, BlockSelection blockSelection, Context cr, int x, int y, int width, int height, int toolMode, int color)
+        public override void DrawToolModeIcon(ItemSlot slot, IPlayer byPlayer, BlockSelection blockSelection, Context cr, int x, int y, int width, int height, int toolMode, int color)
         {
             float[] colordoubles = ColorUtil.ToRGBAFloats(color);
             
@@ -737,12 +736,12 @@ namespace Vintagestory.GameContent
 
 
 
-        public override int GetToolMode(IItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
+        public override int GetToolMode(ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
         {
             return slot.Itemstack.Attributes.GetInt("toolMode");
         }
 
-        public override void SetToolMode(IItemSlot slot, IPlayer byPlayer, BlockSelection blockSel, int toolMode)
+        public override void SetToolMode(ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel, int toolMode)
         {
             slot.Itemstack.Attributes.SetInt("toolMode", toolMode);
         }

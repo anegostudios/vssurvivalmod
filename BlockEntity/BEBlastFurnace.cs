@@ -160,12 +160,12 @@ namespace Vintagestory.GameContent
         }
 
 
-        public IItemSlot Slot(int i)
+        public ItemSlot Slot(int i)
         {
             return inventory[i];
         }
 
-        public ItemStack getSmeltedOre(IItemSlot oreSlot)
+        public ItemStack getSmeltedOre(ItemSlot oreSlot)
         {
             if (oreSlot.Itemstack == null) return null;
 

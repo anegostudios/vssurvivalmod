@@ -10,6 +10,7 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -35,7 +36,7 @@ namespace Vintagestory.GameContent
         ItemStack baseMaterial;
 
         Cuboidf[] selectionBoxes = new Cuboidf[0];
-        public int didBeginUse;
+
         ClayFormRenderer workitemRenderer;
 
 
@@ -79,7 +80,6 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-
         internal Cuboidf[] GetSelectionBoxes(IBlockAccessor world, BlockPos pos)
         {
             return selectionBoxes;
@@ -87,7 +87,7 @@ namespace Vintagestory.GameContent
         
 
 
-        public void PutClay(IItemSlot slot)
+        public void PutClay(ItemSlot slot)
         {
             if (workItemStack == null)
             {
@@ -112,7 +112,7 @@ namespace Vintagestory.GameContent
 
         
 
-        internal void OnBeginUse(IPlayer byPlayer, BlockSelection blockSel)
+        public void OnBeginUse(IPlayer byPlayer, BlockSelection blockSel)
         {
             if (SelectedRecipe == null)
             {
@@ -123,14 +123,13 @@ namespace Vintagestory.GameContent
                 
                 return;
             }
-
-            didBeginUse++;
+            
         }
 
 
 
 
-        internal void OnUseOver(IPlayer byPlayer, int selectionBoxIndex, BlockFacing facing, bool mouseBreakMode)
+        public void OnUseOver(IPlayer byPlayer, int selectionBoxIndex, BlockFacing facing, bool mouseBreakMode)
         {
             if (selectionBoxIndex < 0 || selectionBoxIndex >= selectionBoxes.Length) return;
 
@@ -142,11 +141,11 @@ namespace Vintagestory.GameContent
         }
 
 
-        internal void OnUseOver(IPlayer byPlayer, Vec3i voxelPos, BlockFacing facing, bool mouseBreakMode)
+        public void OnUseOver(IPlayer byPlayer, Vec3i voxelPos, BlockFacing facing, bool mouseBreakMode)
         {
             if (voxelPos == null)
             {
-                didBeginUse = Math.Max(didBeginUse, didBeginUse - 1);
+                
                 return;
             }
 
@@ -159,10 +158,10 @@ namespace Vintagestory.GameContent
             }
 
 
-            IItemSlot slot = byPlayer.InventoryManager.ActiveHotbarSlot;
+            ItemSlot slot = byPlayer.InventoryManager.ActiveHotbarSlot;
             if (slot.Itemstack == null || !CanWorkCurrent)
             {
-                didBeginUse = Math.Max(didBeginUse, didBeginUse - 1);
+                
                 return;
             }
             int toolMode = slot.Itemstack.Collectible.GetToolMode(slot, byPlayer, new BlockSelection() { Position = pos });
@@ -173,7 +172,7 @@ namespace Vintagestory.GameContent
             
 
 
-            if (didBeginUse > 0)
+            //if (didBeginUse > 0)
             {
                 bool didmodify = false;
 
@@ -202,12 +201,12 @@ namespace Vintagestory.GameContent
                 {
                     AvailableVoxels = 0;
                     workItemStack = null;
-                    didBeginUse = 0;
+                    //didBeginUse = 0;
                     return;
                 }
             }
 
-            didBeginUse = Math.Max(didBeginUse, didBeginUse - 1);
+            //didBeginUse = Math.Max(0, didBeginUse - 1);
             CheckIfFinished(byPlayer);
             MarkDirty();
         }
@@ -451,7 +450,6 @@ namespace Vintagestory.GameContent
                     {
                         if (y == 0 || Voxels[x, y, z] || (recipeVoxels!=null && y == layer && recipeVoxels[x, y, z]))
                         {
-                            // Console.WriteLine("box {0} is voxel at {1},{2}", boxes.Count, x, z);
                             boxes.Add(new Cuboidf(x / 16f, y / 16f, z / 16f, x / 16f + 1 / 16f, y / 16f + 1 / 16f, z / 16f + 1 / 16f));
                         }
                     }
@@ -594,13 +592,9 @@ namespace Vintagestory.GameContent
 
             if (packetid == (int)EnumClayFormingPacket.SelectRecipe)
             {
-                int num;
-                using (MemoryStream ms = new MemoryStream(data))
-                {
-                    BinaryReader reader = new BinaryReader(ms);
-                    num = reader.ReadInt32();
-                }
-                if(!TrySetSelectedRecipe(num))
+                int num = SerializerUtil.Deserialize<int>(data);
+
+                if (!TrySetSelectedRecipe(num))
                 {
                     return;
                 }
@@ -661,8 +655,22 @@ namespace Vintagestory.GameContent
                 .Select(r => r.Output.ResolvedItemstack)
                 .ToList()
             ;
+
+            ICoreClientAPI capi = api as ICoreClientAPI;
             
-            GuiDialog dlg = new GuiDialogBlockEntityRecipeSelector("Select recipe", stacks.ToArray(), pos, api as ICoreClientAPI);
+            GuiDialog dlg = new GuiDialogBlockEntityRecipeSelector(
+                Lang.Get("Select recipe"), 
+                stacks.ToArray(), 
+                (recipeNum) => {
+                    TrySetSelectedRecipe(recipeNum);
+                    capi.Network.SendBlockEntityPacket(pos.X, pos.Y, pos.Z, (int)EnumClayFormingPacket.SelectRecipe, SerializerUtil.Serialize(recipeNum));
+                },
+                () => {
+                    capi.Network.SendBlockEntityPacket(pos.X, pos.Y, pos.Z, (int)EnumClayFormingPacket.CancelSelect);
+                },
+                pos, 
+                api as ICoreClientAPI
+            );
             dlg.TryOpen();
         }
 
@@ -671,13 +679,14 @@ namespace Vintagestory.GameContent
 
         public override string GetBlockInfo(IPlayer forPlayer)
         {
-            if (workItemStack == null)
+            if (workItemStack == null || SelectedRecipe == null)
             {
                 return "";
             }
 
             float temperature = workItemStack.Collectible.GetTemperature(api.World, workItemStack);
             StringBuilder sb = new StringBuilder();
+            sb.AppendLine(Lang.Get("Output: {0}", SelectedRecipe?.Output?.ResolvedItemstack?.GetName()));
             sb.AppendLine(Lang.Get("Available Voxels: {0}", AvailableVoxels));
 
             ICoreClientAPI capi = api as ICoreClientAPI;

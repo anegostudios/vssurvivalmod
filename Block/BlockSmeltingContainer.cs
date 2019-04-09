@@ -11,26 +11,38 @@ namespace Vintagestory.GameContent
 {
     public class BlockSmeltingContainer : Block
     {
-        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel)
+        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
         {
-            if (!byPlayer.Entity.Controls.Sneak) return false;
-
-            if (!world.TryAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            if (!byPlayer.Entity.Controls.Sneak)
             {
+                failureCode = "__ignore__";
+                return false;
+            }
+
+            if (!world.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            {
+                failureCode = "claimed";
                 byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
                 return false;
             }
 
-            if (IsSuitablePosition(world, blockSel.Position) && world.BlockAccessor.GetBlock(blockSel.Position.DownCopy()).SideSolid[BlockFacing.UP.Index])
+            if (!IsSuitablePosition(world, blockSel.Position, ref failureCode))
+            {
+                return false;
+            }
+
+            if (world.BlockAccessor.GetBlock(blockSel.Position.DownCopy()).SideSolid[BlockFacing.UP.Index])
             {
                 DoPlaceBlock(world, blockSel.Position, blockSel.Face, itemstack);
                 return true;
             }
 
+            failureCode = "requiresolidground";
+
             return false;
         }
 
-        public override float GetMeltingDuration(IWorldAccessor world, ISlotProvider cookingSlotsProvider, IItemSlot inputSlot)
+        public override float GetMeltingDuration(IWorldAccessor world, ISlotProvider cookingSlotsProvider, ItemSlot inputSlot)
         {
             float duration = 0;
 
@@ -48,7 +60,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override float GetMeltingPoint(IWorldAccessor world, ISlotProvider cookingSlotsProvider, IItemSlot inputSlot)
+        public override float GetMeltingPoint(IWorldAccessor world, ISlotProvider cookingSlotsProvider, ItemSlot inputSlot)
         {
             float meltpoint = 0;
 
@@ -86,7 +98,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void DoSmelt(IWorldAccessor world, ISlotProvider cookingSlotsProvider, IItemSlot inputSlot, IItemSlot outputSlot)
+        public override void DoSmelt(IWorldAccessor world, ISlotProvider cookingSlotsProvider, ItemSlot inputSlot, ItemSlot outputSlot)
         {
             ItemStack[] stacks = GetIngredients(world, cookingSlotsProvider);
 
@@ -133,7 +145,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public string GetOutputText(IWorldAccessor world, ISlotProvider cookingSlotsProvider, IItemSlot inputSlot)
+        public string GetOutputText(IWorldAccessor world, ISlotProvider cookingSlotsProvider, ItemSlot inputSlot)
         {
             if (inputSlot.Itemstack == null) return null;
 

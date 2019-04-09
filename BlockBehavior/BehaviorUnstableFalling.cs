@@ -1,6 +1,7 @@
 ﻿using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Server;
 
 namespace Vintagestory.GameContent
 {
@@ -14,13 +15,14 @@ namespace Vintagestory.GameContent
         {
         }
 
-        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref EnumHandling handling)
+        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref EnumHandling handling, ref string failureCode)
         {
-            handling = EnumHandling.NotHandled;
+            handling = EnumHandling.PassThrough;
             
             if (blockSel != null && !world.BlockAccessor.GetBlock(blockSel.Position.DownCopy()).SideSolid[BlockFacing.UP.Index] && block.Attributes?["allowUnstablePlacement"].AsBool() != true)
             {
                 handling = EnumHandling.PreventDefault;
+                failureCode = "requiresolidground";
                 return false;
             }
 
@@ -32,15 +34,20 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        public override void OnNeighourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos, ref EnumHandling handling)
+        public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos, ref EnumHandling handling)
         {
-            base.OnNeighourBlockChange(world, pos, neibpos, ref handling);
+            base.OnNeighbourBlockChange(world, pos, neibpos, ref handling);
 
             TryFalling(world, pos);
         }
 
         private bool TryFalling(IWorldAccessor world, BlockPos pos)
         {
+            if (world.Side == EnumAppSide.Client) return false;
+
+            ICoreServerAPI sapi = (world as IServerWorldAccessor).Api as ICoreServerAPI;
+            if (!sapi.Server.Config.AllowFallingBlocks) return false;
+
             if (IsReplacableBeneath(world, pos))
             {
                 // Prevents duplication

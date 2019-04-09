@@ -234,9 +234,8 @@ namespace Vintagestory.GameContent
         {
             if (api is ICoreServerAPI) MarkDirty();
             
-
             ItemStack leftStack = GetLeftContents();
-            if (leftStack != null && hitPosition.X < 0.5f)
+            if (leftStack != null && (hitPosition.X < 0.5f || quantityMolds == 1))
             {
                 api.World.PlaySoundAt(new AssetLocation("sounds/block/ingot"), pos.X, pos.Y, pos.Z, byPlayer, false);
                 if (api is ICoreServerAPI)
@@ -527,14 +526,14 @@ namespace Vintagestory.GameContent
             if (contentsLeft != null)
             {
                 string state = IsLiquidLeft ? Lang.Get("liquid") : (IsHardenedLeft ? Lang.Get("hardened") : Lang.Get("soft"));
-                string temp = TemperatureLeft < 21 ? Lang.Get("Cold") : Lang.Get("{0} °C", (int)TemperatureLeft);
+                string temp = TemperatureLeft < 21 ? Lang.Get("Cold") : Lang.Get("{0}°C", (int)TemperatureLeft);
                 contents = string.Format("{0} units of {1} {2} ({3})\n", fillLevelLeft, state, contentsLeft.GetName(), temp);
             }
 
             if (contentsRight != null)
             {
                 string state = IsLiquidRight ? Lang.Get("liquid") : (IsHardenedRight ? Lang.Get("hardened") : Lang.Get("soft"));
-                string temp = TemperatureRight < 21 ? Lang.Get("Cold") : Lang.Get("{0} °C", (int)TemperatureRight);
+                string temp = TemperatureRight < 21 ? Lang.Get("Cold") : Lang.Get("{0}°C", (int)TemperatureRight);
 
                 contents += string.Format("{0} units of {1} {2} ({3})\n", fillLevelRight, state, contentsRight.GetName(), temp);
             }

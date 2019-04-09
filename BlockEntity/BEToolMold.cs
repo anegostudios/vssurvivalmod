@@ -368,7 +368,7 @@ namespace Vintagestory.GameContent
             {
                 string state = IsLiquid ? Lang.Get("liquid") : (IsHardened ? Lang.Get("hardened") : Lang.Get("soft"));
                 
-                string temp = Temperature < 21 ? Lang.Get("Cold") : Lang.Get("{0} °C", (int)Temperature);
+                string temp = Temperature < 21 ? Lang.Get("Cold") : Lang.Get("{0}°C", (int)Temperature);
                 contents = string.Format("{0}/{4} units of {1} {2} ({3})\n", fillLevel, state, this.metalContent.GetName(), temp, requiredUnits);
             }
             

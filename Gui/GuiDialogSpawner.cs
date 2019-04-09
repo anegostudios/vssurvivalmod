@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Vintagestory.API.Client;
+using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
@@ -17,6 +19,7 @@ namespace Vintagestory.GameContent
         public BESpawnerData spawnerData = new BESpawnerData();
         BlockPos blockEntityPos;
         bool updating;
+        HashSet<string> codes;
 
         public GuiDialogSpawner(BlockPos blockEntityPos, ICoreClientAPI capi) : base("Spawner config", capi)
         {
@@ -33,12 +36,12 @@ namespace Vintagestory.GameContent
         {
             ClearComposers();
 
-            ElementBounds creatureTextBounds = ElementBounds.Fixed(0, 30, 300, 25);
+            ElementBounds creatureTextBounds = ElementBounds.Fixed(0, 30, 400, 25);
 
-            ElementBounds dropDownBounds = ElementBounds.Fixed(0, 0, 300, 28).FixedUnder(creatureTextBounds, 0);
+            ElementBounds dropDownBounds = ElementBounds.Fixed(0, 0, 400, 28).FixedUnder(creatureTextBounds, 0);
 
 
-            ElementBounds areaTextBounds = ElementBounds.Fixed(0, 30, 300, 25).FixedUnder(dropDownBounds, 0);
+            ElementBounds areaTextBounds = ElementBounds.Fixed(0, 30, 400, 25).FixedUnder(dropDownBounds, 0);
 
             ElementBounds closeButtonBounds = ElementBounds
                 .FixedSize(0, 0)
@@ -59,12 +62,11 @@ namespace Vintagestory.GameContent
             bgBounds.WithChildren(dropDownBounds, creatureTextBounds, closeButtonBounds, saveButtonBounds);
 
             // 3. Finally Dialog
-            ElementBounds dialogBounds = ElementStdBounds.AutosizedMainDialog.WithAlignment(EnumDialogArea.CenterMiddle);
+            ElementBounds dialogBounds = ElementStdBounds.AutosizedMainDialog.WithAlignment(EnumDialogArea.RightMiddle).WithFixedAlignmentOffset(-20, 0);
 
             List<string> entityCodes = new List<string>();
             List<string> entityNames = new List<string>();
-            entityCodes.Add("");
-            entityNames.Add("-");
+            
 
             foreach (EntityProperties type in capi.World.EntityTypes)
             {
@@ -79,10 +81,10 @@ namespace Vintagestory.GameContent
 
             SingleComposer = capi.Gui
                 .CreateCompo("spawnwerconfig", dialogBounds)
-                .AddDialogBG(bgBounds, true)
+                .AddShadedDialogBG(bgBounds, true)
                 .AddDialogTitleBar(DialogTitle, OnTitleBarClose)
-                .AddStaticText("Entity to spawn", CairoFont.WhiteDetailText(), creatureTextBounds)
-                .AddDropDown(entityCodes.ToArray(), entityNames.ToArray(), 0, didSelectEntity, dropDownBounds, "entityCode")
+                .AddStaticText("Entities to spawn", CairoFont.WhiteDetailText(), creatureTextBounds)
+                .AddMultiSelectDropDown(entityCodes.ToArray(), entityNames.ToArray(), 0, didSelectEntity, dropDownBounds, "entityCode")
 
                 .AddStaticText("Spawn area dimensions", CairoFont.WhiteDetailText(), tmpBoundsDim1 = dropDownBounds.BelowCopy(0, 10))
                 .AddStaticText("X1", CairoFont.WhiteDetailText(), tmpBoundsDim1 = tmpBoundsDim1.BelowCopy(0, 7).WithFixedSize(20, 29))
@@ -99,11 +101,17 @@ namespace Vintagestory.GameContent
                 .AddStaticText("Z2", CairoFont.WhiteDetailText(), tmpBoundsDim2 = tmpBoundsDim2.RightCopy(10, 7).WithFixedSize(20, 29))
                 .AddNumberInput(tmpBoundsDim2 = tmpBoundsDim2.RightCopy(5, -7).WithFixedSize(60, 29), OnDimensionsChanged, CairoFont.WhiteDetailText(), "z2")
 
-                .AddStaticText("Interval (ingame hours)", CairoFont.WhiteDetailText(), tmpBoundsDim3 = dropDownBounds.FlatCopy().WithFixedSize(300, 30).FixedUnder(tmpBoundsDim2, -40))
+                .AddStaticText("Interval (ingame hours)", CairoFont.WhiteDetailText(), tmpBoundsDim3 = dropDownBounds.FlatCopy().WithFixedSize(400, 30).FixedUnder(tmpBoundsDim2, -40))
                 .AddNumberInput(tmpBoundsDim3 = tmpBoundsDim3.BelowCopy(0, -10).WithFixedSize(100, 29), OnIntervalChanged, CairoFont.WhiteDetailText(), "interval")
 
-                .AddStaticText("Max concurrent entities to spawn", CairoFont.WhiteDetailText(), tmpBoundsDim3 = tmpBoundsDim3.BelowCopy(0, 10).WithFixedSize(300, 30))
+                .AddStaticText("Max concurrent entities to spawn", CairoFont.WhiteDetailText(), tmpBoundsDim3 = tmpBoundsDim3.BelowCopy(0, 10).WithFixedSize(400, 30))
                 .AddNumberInput(tmpBoundsDim3 = tmpBoundsDim3.BelowCopy(0, -10).WithFixedSize(100, 29), OnMaxChanged, CairoFont.WhiteDetailText(), "maxentities")
+
+                .AddStaticText("Spawn 'x' entities, then remove block (0 for infinite)", CairoFont.WhiteDetailText(), tmpBoundsDim3 = tmpBoundsDim3.BelowCopy(0, 10).WithFixedSize(400, 30))
+                .AddNumberInput(tmpBoundsDim3 = tmpBoundsDim3.BelowCopy(0, -10).WithFixedSize(100, 29), OnCountChanged, CairoFont.WhiteDetailText(), "spawncount")
+
+                .AddStaticText("Begin spawning only after being imported", CairoFont.WhiteDetailText(), tmpBoundsDim3 = tmpBoundsDim3.BelowCopy(0, 10).WithFixedSize(400, 30))
+                .AddSwitch(onTogglePrimer, tmpBoundsDim3 = tmpBoundsDim3.BelowCopy(0, -10), "primerSwitch", 20)
 
 
                 .AddSmallButton("Close", OnButtonClose, closeButtonBounds.FixedUnder(tmpBoundsDim3, 20))
@@ -114,10 +122,21 @@ namespace Vintagestory.GameContent
             UpdateFromServer(this.spawnerData);
         }
 
+        private void onTogglePrimer(bool on)
+        {
+            spawnerData.SpawnOnlyAfterImport = on;
+        }
+
         private void OnMaxChanged(string t1)
         {
             float max = SingleComposer.GetNumberInput("maxentities").GetValue();
             spawnerData.MaxCount = (int)max;
+        }
+
+        private void OnCountChanged(string t1)
+        {
+            float count = SingleComposer.GetNumberInput("spawncount").GetValue();
+            spawnerData.RemoveAfterSpawnCount = (int)count;
         }
 
         private void OnIntervalChanged(string t1)
@@ -132,7 +151,7 @@ namespace Vintagestory.GameContent
             if (updating) return;
             spawnerData.SpawnArea = ParseDimensions();
             
-            capi.World.HighlightBlocks(capi.World.Player, new List<BlockPos>() { spawnerData.SpawnArea.Start.AsBlockPos.Add(blockEntityPos), spawnerData.SpawnArea.End.AsBlockPos.Add(blockEntityPos) }, EnumHighlightBlocksMode.Absolute, API.Common.EnumHighlightShape.Cube);
+            capi.World.HighlightBlocks(capi.World.Player, (int)EnumHighlightSlot.Spawner, new List<BlockPos>() { spawnerData.SpawnArea.Start.AsBlockPos.Add(blockEntityPos), spawnerData.SpawnArea.End.AsBlockPos.Add(blockEntityPos) }, EnumHighlightBlocksMode.Absolute, API.Common.EnumHighlightShape.Cube);
         }
 
         private Cuboidi ParseDimensions()
@@ -150,9 +169,17 @@ namespace Vintagestory.GameContent
             );
         }
 
-        private void didSelectEntity(string code)
+        private void didSelectEntity(string code, bool selected)
         {
-            spawnerData.EntityCode = code;
+            if (selected)
+            {
+                codes.Add(code);
+            } else
+            {
+                codes.Remove(code);
+            }
+
+            spawnerData.EntityCodes = codes.ToArray();
         }
 
         public void UpdateFromServer(BESpawnerData data)
@@ -166,10 +193,26 @@ namespace Vintagestory.GameContent
             SingleComposer.GetNumberInput("y2").SetValue(data.SpawnArea.Y2);
             SingleComposer.GetNumberInput("z2").SetValue(data.SpawnArea.Z2);
             SingleComposer.GetNumberInput("maxentities").SetValue(data.MaxCount);
-            SingleComposer.GetNumberInput("interval").SetValue(data.InGameHourInterval);
-            SingleComposer.GetDropDown("entityCode").SetSelectedValue(data.EntityCode);
+            SingleComposer.GetNumberInput("spawncount").SetValue(data.RemoveAfterSpawnCount);
 
-            capi.World.HighlightBlocks(capi.World.Player, new List<BlockPos>() { spawnerData.SpawnArea.Start.AsBlockPos.Add(blockEntityPos), spawnerData.SpawnArea.End.AsBlockPos.Add(blockEntityPos) }, EnumHighlightBlocksMode.Absolute, API.Common.EnumHighlightShape.Cube);
+            SingleComposer.GetSwitch("primerSwitch").SetValue(data.SpawnOnlyAfterImport);
+
+            SingleComposer.GetNumberInput("interval").SetValue(data.InGameHourInterval);
+            SingleComposer.GetDropDown("entityCode").SetSelectedValue(data.EntityCodes);
+
+            if (spawnerData.EntityCodes == null)
+            {
+                codes = new HashSet<string>();
+            } else
+            {
+                codes = new HashSet<string>(spawnerData.EntityCodes);
+            }
+            
+
+            capi.World.HighlightBlocks(capi.World.Player, (int)EnumHighlightSlot.Spawner, new List<BlockPos>() {
+                spawnerData.SpawnArea.Start.AsBlockPos.Add(blockEntityPos), spawnerData.SpawnArea.End.AsBlockPos.Add(blockEntityPos)
+            }, EnumHighlightBlocksMode.Absolute, API.Common.EnumHighlightShape.Cube);
+
             updating = false;
         }
 
@@ -221,7 +264,7 @@ namespace Vintagestory.GameContent
         {
             base.OnGuiClosed();
 
-            capi.World.HighlightBlocks(capi.World.Player, new List<BlockPos>() {});
+            capi.World.HighlightBlocks(capi.World.Player, (int)EnumHighlightSlot.Spawner, new List<BlockPos>() {});
         }
 
     }

@@ -109,11 +109,8 @@ namespace Vintagestory.GameContent
 
         void RegenMesh()
         {
-            if (workItemMeshRef != null)
-            {
-                capi.Render.DeleteMesh(workItemMeshRef);
-                workItemMeshRef = null;
-            }
+            workItemMeshRef?.Dispose();
+            workItemMeshRef = null;
             if (stack == null) return;
 
             Shape shape;
@@ -223,8 +220,8 @@ namespace Vintagestory.GameContent
         // Called by UnregisterRenderer
         public void Dispose()
         {
-            capi.Render.DeleteMesh(emberQuadRef);
-            capi.Render.DeleteMesh(coalQuadRef);
+            emberQuadRef?.Dispose();
+            coalQuadRef?.Dispose();
         }
     }
 }

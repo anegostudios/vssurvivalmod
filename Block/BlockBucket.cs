@@ -6,6 +6,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -456,7 +457,7 @@ namespace Vintagestory.GameContent
 
         #region Held Interact
 
-        public override void OnHeldInteractStart(IItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handHandling)
+        public override void OnHeldInteractStart(ItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handHandling)
         {
             if (blockSel == null || byEntity.Controls.Sneak) return;
             IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
@@ -464,7 +465,7 @@ namespace Vintagestory.GameContent
             Block targetedBlock = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
             if (targetedBlock.HasBehavior(typeof(BlockBehaviorLiquidContainer), true))
             {
-                if (!byEntity.World.TryAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.Use))
+                if (!byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.Use))
                 {
                     return;
                 }
@@ -479,7 +480,7 @@ namespace Vintagestory.GameContent
             }
 
 
-            if (!byEntity.World.TryAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            if (!byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
             {
                 return;
             }
@@ -516,7 +517,7 @@ namespace Vintagestory.GameContent
 
 
 
-        public bool TryFillBucketFromBlock(IItemSlot itemslot, EntityAgent byEntity, BlockPos pos)
+        public bool TryFillBucketFromBlock(ItemSlot itemslot, EntityAgent byEntity, BlockPos pos)
         {
             IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
             IBlockAccessor blockAcc = byEntity.World.BlockAccessor;
@@ -604,7 +605,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        private bool SpillContents(IItemSlot bucketSlot, EntityAgent byEntity, BlockSelection blockSel)
+        private bool SpillContents(ItemSlot bucketSlot, EntityAgent byEntity, BlockSelection blockSel)
         {
             BlockPos pos = blockSel.Position;
             IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
@@ -788,12 +789,12 @@ namespace Vintagestory.GameContent
 
             return
                 contentStack.Class.ToString().ToLowerInvariant() == contentType.ToLowerInvariant()
-                && WildCardMatch(contentStack.Collectible.Code, new AssetLocation(contentCode))
+                && WildcardUtil.Match(contentStack.Collectible.Code, new AssetLocation(contentCode))
                 && contentStack.StackSize >= q
             ;
         }
 
-        public override void OnConsumedByCrafting(IItemSlot[] allInputSlots, IItemSlot stackInSlot, GridRecipe gridRecipe, CraftingRecipeIngredient fromIngredient, IPlayer byPlayer, int quantity)
+        public override void OnConsumedByCrafting(ItemSlot[] allInputSlots, ItemSlot stackInSlot, GridRecipe gridRecipe, CraftingRecipeIngredient fromIngredient, IPlayer byPlayer, int quantity)
         {
             if (gridRecipe.Attributes?["bucketProps"].Exists != true)
             {

@@ -19,9 +19,20 @@ namespace Vintagestory.GameContent
             return block.SideSolid[BlockFacing.UP.Index];
         }
 
-        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel)
+        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
         {
-            return HasSolidGround(world.BlockAccessor, blockSel.Position) && base.TryPlaceBlock(world, byPlayer, itemstack, blockSel);
+            if (!HasSolidGround(world.BlockAccessor, blockSel.Position))
+            {
+                failureCode = "requiresolidground";
+                return false;
+            }
+            return base.TryPlaceBlock(world, byPlayer, itemstack, blockSel, ref failureCode);
+        }
+
+        Cuboidf box = new Cuboidf(0, 0, 0, 1, 1 / 16f, 1);
+        public override Cuboidf GetParticleBreakBox(IBlockAccessor blockAccess, BlockPos pos, BlockFacing facing)
+        {
+            return box;
         }
 
         public override Cuboidf[] GetSelectionBoxes(IBlockAccessor blockAccessor, BlockPos pos)

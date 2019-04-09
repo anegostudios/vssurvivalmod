@@ -14,7 +14,7 @@ namespace Vintagestory.GameContent
         {
         }
 
-        public virtual bool OnInteractWithBucket(IItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel)
+        public virtual bool OnInteractWithBucket(ItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel)
         {
             return false;
         }

@@ -41,7 +41,7 @@ namespace Vintagestory.GameContent
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ref EnumHandling handling)
         {
-            if (!world.TryAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.Use))
+            if (!world.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.Use))
             {
                 return false;
             }
@@ -59,7 +59,7 @@ namespace Vintagestory.GameContent
             }
             if (index == -1) return false;
 
-            AssetLocation loc = block.WildCardPop(blockCodes[index], blockCodes[(index + 1) % blockCodes.Length]);
+            AssetLocation loc = block.WildCardReplace(blockCodes[index], blockCodes[(index + 1) % blockCodes.Length]);
             Block nextBlock = world.GetBlock(loc);
 
             if (nextBlock == null) return false;

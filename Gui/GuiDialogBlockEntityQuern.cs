@@ -46,10 +46,10 @@ namespace Vintagestory.GameContent
                 hoveredSlot = null;
             }
 
-            ElementBounds quernBounds = ElementBounds.Fixed(0, 0, 250, 90);
+            ElementBounds quernBounds = ElementBounds.Fixed(0, 0, 200, 90);
             
-            ElementBounds inputSlotBounds = ElementStdBounds.SlotGrid(EnumDialogArea.None, 20, 30, 1, 1);
-            ElementBounds outputSlotBounds = ElementStdBounds.SlotGrid(EnumDialogArea.None, 173, 30, 1, 1);
+            ElementBounds inputSlotBounds = ElementStdBounds.SlotGrid(EnumDialogArea.None, 0, 30, 1, 1);
+            ElementBounds outputSlotBounds = ElementStdBounds.SlotGrid(EnumDialogArea.None, 153, 30, 1, 1);
 
             // 2. Around all that is 10 pixel padding
             ElementBounds bgBounds = ElementBounds.Fill.WithFixedPadding(GuiStyle.ElementToDialogPadding);
@@ -63,7 +63,7 @@ namespace Vintagestory.GameContent
             ClearComposers();
             SingleComposer = capi.Gui
                 .CreateCompo("blockentitymillstone", dialogBounds)
-                .AddDialogBG(bgBounds)
+                .AddShadedDialogBG(bgBounds)
                 .AddDialogTitleBar(DialogTitle, OnTitleBarClose)
                 .BeginChildElements(bgBounds)
                     .AddDynamicCustomDraw(quernBounds, OnBgDraw, "symbolDrawer")
@@ -102,7 +102,7 @@ namespace Vintagestory.GameContent
             // Arrow Right
             ctx.Save();
             Matrix m = ctx.Matrix;
-            m.Translate(GuiElement.scaled(83), GuiElement.scaled(top + 2));
+            m.Translate(GuiElement.scaled(63), GuiElement.scaled(top + 2));
             m.Scale(GuiElement.scaled(0.6), GuiElement.scaled(0.6));
             ctx.Matrix = m;
             capi.Gui.Icons.DrawArrowRight(ctx, 2);

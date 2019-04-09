@@ -35,7 +35,7 @@ namespace Vintagestory.ServerMods
             api.Event.OnPlayerInteractEntity += Event_OnPlayerInteractEntity;
         }
 
-        private void Event_OnPlayerInteractEntity(Entity entity, IPlayer byPlayer, IItemSlot slot, Vec3d hitPosition, int mode, ref EnumHandling handling)
+        private void Event_OnPlayerInteractEntity(Entity entity, IPlayer byPlayer, ItemSlot slot, Vec3d hitPosition, int mode, ref EnumHandling handling)
         {
             if (entity is EntityAnimalBot && mode == 1)
             {

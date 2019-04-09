@@ -6,36 +6,40 @@ namespace Vintagestory.GameContent
 {
     public class BlockSign : Block
     {
-        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection bs)
+        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection bs, ref string failureCode)
         {
-            if (!world.TryAccessBlock(byPlayer, bs.Position, EnumBlockAccessFlags.BuildOrBreak))
+            if (!world.Claims.TryAccess(byPlayer, bs.Position, EnumBlockAccessFlags.BuildOrBreak))
             {
+                failureCode = "claimed";
                 byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
                 return false;
             }
 
             BlockPos supportingPos = bs.Position.AddCopy(bs.Face.GetOpposite());
+            Block supportingBlock = world.BlockAccessor.GetBlock(supportingPos);
 
-            if (bs.Face.IsHorizontal && world.BlockAccessor.GetBlock(supportingPos).CanAttachBlockAt(world.BlockAccessor, this, bs.Position, bs.Face) && world.BlockAccessor.GetBlock(bs.Position).IsReplacableBy(this))
+            if (!world.BlockAccessor.GetBlock(bs.Position).IsReplacableBy(this))
             {
-                Block block = world.BlockAccessor.GetBlock(CodeWithParts("wall", bs.Face.GetOpposite().Code));
-
-                world.BlockAccessor.SetBlock(block.BlockId, bs.Position);
-                return true;
-            }
-
-            if (world.BlockAccessor.GetBlock(bs.Position).IsReplacableBy(this))
-            {
-                BlockFacing[] horVer = SuggestedHVOrientation(byPlayer, bs);
-
-                AssetLocation blockCode = CodeWithParts(horVer[0].Code);
-                Block block = world.BlockAccessor.GetBlock(blockCode);
-                world.BlockAccessor.SetBlock(block.BlockId, bs.Position);
-                return true;
+                failureCode = "notreplaceable";
+                return false;
             }
 
 
-            return false;
+            if (bs.Face.IsHorizontal && (supportingBlock.CanAttachBlockAt(world.BlockAccessor, this, bs.Position, bs.Face) || supportingBlock.Attributes?["partialAttachable"].AsBool() == true))
+            {
+                Block wallblock = world.BlockAccessor.GetBlock(CodeWithParts("wall", bs.Face.GetOpposite().Code));
+
+                world.BlockAccessor.SetBlock(wallblock.BlockId, bs.Position);
+                return true;
+            }
+
+
+            BlockFacing[] horVer = SuggestedHVOrientation(byPlayer, bs);
+
+            AssetLocation blockCode = CodeWithParts(horVer[0].Code);
+            Block block = world.BlockAccessor.GetBlock(blockCode);
+            world.BlockAccessor.SetBlock(block.BlockId, bs.Position);
+            return true;
         }
 
 
@@ -65,7 +69,7 @@ namespace Vintagestory.GameContent
             if (entity is BlockEntitySign)
             {
                 BlockEntitySign besigh = (BlockEntitySign)entity;
-                besigh.OpenDialog(byPlayer);
+                besigh.OnRightClick(byPlayer);
                 return true;
             }
 

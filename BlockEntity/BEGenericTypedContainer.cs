@@ -25,6 +25,11 @@ namespace Vintagestory.GameContent
         public Block ownBlock;
         MeshData ownMesh;
 
+        public virtual string DialogTitle
+        {
+            get { return Lang.Get(dialogTitleLangCode); }
+        }
+
         public override InventoryBase Inventory
         {
             get { return inventory; }
@@ -180,7 +185,7 @@ namespace Vintagestory.GameContent
                 {
                     BinaryWriter writer = new BinaryWriter(ms);
                     writer.Write("BlockEntityInventory");
-                    writer.Write(Lang.Get(dialogTitleLangCode));
+                    writer.Write(DialogTitle);
                     writer.Write((byte)4);
                     TreeAttribute tree = new TreeAttribute();
                     inventory.ToTreeAttributes(tree);

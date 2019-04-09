@@ -21,7 +21,7 @@ namespace Vintagestory.GameContent
 
         public override int GetColor(ICoreClientAPI capi, BlockPos pos)
         {
-            return capi.ApplyColorTintOnRgba(1, base.GetColor(capi, pos), pos.X, pos.Y, pos.Z, false);
+            return capi.ApplyColorTintOnRgba(1, base.GetColorWithoutTint(capi, pos), pos.X, pos.Y, pos.Z, false);
         }
     }
 }

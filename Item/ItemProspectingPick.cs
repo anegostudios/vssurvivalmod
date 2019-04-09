@@ -11,33 +11,7 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
-
-
-namespace Vintagestory.GameContent
-{
-    public class Deposits
-    {
-        public DepositVariant[] variants;
-    }
-
-    [JsonObject(MemberSerialization.OptIn)]
-    public class DepositVariant : WorldPropertyVariant
-    {
-        [JsonProperty]
-        public new string Code;
-        [JsonProperty]
-        public NatFloat Radius;
-        [JsonProperty]
-        public NatFloat Thickness;
-        [JsonProperty]
-        public float Quantity;
-        [JsonProperty]
-        public bool WithOreMap;
-        [JsonProperty]
-        public DepositVariant[] ChildDeposits;
-    }
-}
-
+using Vintagestory.ServerMods;
 
 namespace Vintagestory.GameContent
 {
@@ -51,45 +25,43 @@ namespace Vintagestory.GameContent
 
             if (api.Side == EnumAppSide.Client) return;
 
-            IAsset asset = api.Assets.Get("worldgen/deposits.json");
-            Deposits deposits = asset.ToObject<Deposits>();
-
-            for (int i = 0; i < deposits.variants.Length; i++)
+            ((ICoreServerAPI)api).Event.ServerRunPhase(EnumServerRunPhase.RunGame, () =>
             {
-                DepositVariant variant = deposits.variants[i];
-                if (variant.WithOreMap)
-                {
-                    absAvgQuantity[variant.Code] = GetAbsAvgQuantity(variant);
-                }
 
-                for (int k = 0; variant.ChildDeposits != null && k < variant.ChildDeposits.Length; k++)
+                DepositVariant[] deposits = api.ModLoader.GetModSystem<GenDeposits>()?.Deposits;
+                if (deposits == null) return;
+
+                for (int i = 0; i < deposits.Length; i++)
                 {
-                    DepositVariant childVariant = variant.ChildDeposits[k];
-                    if (!childVariant.WithOreMap) continue;
-                    absAvgQuantity[childVariant.Code] = GetAbsAvgQuantity(childVariant);
+                    DepositVariant variant = deposits[i];
+
+                    if (variant.WithOreMap)
+                    {
+                        if (absAvgQuantity.ContainsKey(variant.Code))
+                        {
+                            absAvgQuantity[variant.Code] += variant.GetAbsAvgQuantity();
+                        } else
+                        {
+                            absAvgQuantity[variant.Code] = variant.GetAbsAvgQuantity();
+                        }            
+                    }
+
+                    
+
+                    for (int k = 0; variant.ChildDeposits != null && k < variant.ChildDeposits.Length; k++)
+                    {
+                        DepositVariant childVariant = variant.ChildDeposits[k];
+                        if (!childVariant.WithOreMap) continue;
+                        absAvgQuantity[childVariant.Code] = childVariant.GetAbsAvgQuantity();
+                    }
                 }
-            }
+            });
         }
 
-        private float GetAbsAvgQuantity(DepositVariant variant)
+
+        public override bool OnBlockBrokenWith(IWorldAccessor world, Entity byEntity, ItemSlot itemslot, BlockSelection blockSel)
         {
-            float radius = 0;
-            float thickness = 0;
-            for (int j = 0; j < 100; j++)
-            {
-                radius += variant.Radius.nextFloat();
-                thickness += variant.Thickness.nextFloat();
-            }
-            radius /= 100;
-            thickness /= 100;
-
-            return thickness * radius * radius * GameMath.PI * variant.Quantity;
-        }
-
-
-        public override bool OnBlockBrokenWith(IWorldAccessor world, Entity byEntity, IItemSlot itemslot, BlockSelection blockSel)
-        {
-            ProbeGround(world, byEntity, itemslot, blockSel);
+            ProbeBlock(world, byEntity, itemslot, blockSel);
 
             if (DamagedBy != null && DamagedBy.Contains(EnumItemDamageSource.BlockBreaking))
             {
@@ -100,7 +72,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        void ProbeGround(IWorldAccessor world, Entity byEntity, IItemSlot itemslot, BlockSelection blockSel)
+        void ProbeBlock(IWorldAccessor world, Entity byEntity, ItemSlot itemslot, BlockSelection blockSel)
         {
             IPlayer byPlayer = null;
             if (byEntity is EntityPlayer) byPlayer = world.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
@@ -177,8 +149,11 @@ namespace Vintagestory.GameContent
         }
 
 
-        void PrintProbeResults(IWorldAccessor world, IServerPlayer byPlayer, IItemSlot itemslot, BlockPos pos)
+        void PrintProbeResults(IWorldAccessor world, IServerPlayer byPlayer, ItemSlot itemslot, BlockPos pos)
         {
+            DepositVariant[] deposits = api.ModLoader.GetModSystem<GenDeposits>()?.Deposits;
+            if (deposits == null) return;
+
             IBlockAccessor blockAccess = world.BlockAccessor;
             int chunksize = blockAccess.ChunkSize;
             int regsize = blockAccess.RegionSize;
@@ -193,6 +168,8 @@ namespace Vintagestory.GameContent
             StringBuilder outtext = new StringBuilder();
             int found = 0;
 
+            ushort[] blockColumn = loadBlockColumn(world, pos);
+
             foreach (var val in reg.OreMaps)
             {
                 IntMap map = val.Value;
@@ -203,17 +180,23 @@ namespace Vintagestory.GameContent
 
                 int oreDist = map.GetUnpaddedColorLerped(posXInRegionOre, posZInRegionOre);
 
-                double absAvgq = absAvgQuantity[val.Key];
-                double factor = (oreDist & 0xff) / 255.0;
-                double quantity = factor * absAvgq;
-                double relq = quantity / qchunkblocks;
+                double absAvgQuantity = this.absAvgQuantity[val.Key];
+                double oreMapFactor = (oreDist & 0xff) / 255.0;
+                double rockFactor = oreBearingBlockQuantityRelative(val.Key, deposits, blockColumn);
+                double totalFactor = oreMapFactor * rockFactor;
+
+                double quantityOres = totalFactor * absAvgQuantity;
+                
+                //world.Logger.Notification(val.Key + "rock factor: " + rockFactor);
+
+                double relq = quantityOres / qchunkblocks;
                 double ppt = relq * 1000;
                 string[] names = new string[] { "Very poor density", "Poor density", "Decent density", "High density", "Very high density", "Ultra high density" };
 
-                if (factor > 0.05)
+                if (totalFactor > 0.05)
                 {
                     if (found > 0) outtext.Append("\n");
-                    outtext.Append(string.Format("{1}: {2} ({0}‰)", ppt.ToString("0.#"), val.Key.Substring(0,1).ToUpper() + val.Key.Substring(1), names[(int)GameMath.Clamp(factor * 5, 0, 5)]));
+                    outtext.Append(string.Format("{1}: {2} ({0}‰)", ppt.ToString("0.#"), val.Key.Substring(0,1).ToUpper() + val.Key.Substring(1), names[(int)GameMath.Clamp(totalFactor * 5, 0, 5)]));
                     found++;
                 }
             }
@@ -224,8 +207,45 @@ namespace Vintagestory.GameContent
             splr.SendMessage(GlobalConstants.CurrentChatGroup,  outtext.ToString(), EnumChatType.Notification);
         }
 
+        private ushort[] loadBlockColumn(IWorldAccessor world, BlockPos pos)
+        {
+            List<ushort> blocks = new List<ushort>();
 
-        public override void OnHeldIdle(IItemSlot slot, EntityAgent byEntity)
+            int maxy = world.BlockAccessor.GetRainMapHeightAt(pos);
+            for (int y = 0; y < maxy; y++)
+            {
+                blocks.Add(world.BlockAccessor.GetBlock(pos.X, y, pos.Z).BlockId);
+            }
+
+            return blocks.ToArray();
+        }
+
+        private double oreBearingBlockQuantityRelative(string oreCode, DepositVariant[] deposits, ushort[] blockColumn)
+        {
+            HashSet<ushort> oreBearingBlocks = new HashSet<ushort>();
+
+            for (int i = 0; i < deposits.Length; i++)
+            {
+                DepositVariant deposit = deposits[i];
+                if (deposit.Code == oreCode)
+                {
+                    ushort[] blocks = deposit.GeneratorInst.GetBearingBlocks();
+                    if (blocks == null) return 1;
+
+                    foreach (var val in blocks) oreBearingBlocks.Add(val);
+                }
+            }
+
+            int q = 0;
+            for (int i = 0; i < blockColumn.Length; i++)
+            {
+                if (oreBearingBlocks.Contains(blockColumn[i])) q++;
+            }
+
+            return (double)q / blockColumn.Length;
+        }
+
+        public override void OnHeldIdle(ItemSlot slot, EntityAgent byEntity)
         {
             base.OnHeldIdle(slot, byEntity);
         }

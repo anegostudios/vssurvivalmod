@@ -196,14 +196,14 @@ namespace Vintagestory.GameContent
 
             Block wildhive1 = api.World.GetBlock(new AssetLocation("wildbeehive-medium"));
             Block wildhive2 = api.World.GetBlock(new AssetLocation("wildbeehive-large"));
-
-       //     Console.WriteLine("Scan start: {0}/{1}", minX, minZ);
+            
 
             api.World.BlockAccessor.WalkBlocks(pos.AddCopy(minX, -5, minZ), pos.AddCopy(minX + size - 1, 5, minZ + size - 1), (block, pos) =>
             {
                 if (block.Id == 0) return;
 
-                if (block.Code.Path.StartsWith("flower")) scanQuantityNearbyFlowers++;
+                if (block.Attributes?["beeFeed"].AsBool() == true) scanQuantityNearbyFlowers++;
+
                 if (block == emptySkepN || block == emptySkepE || block == emptySkepS || block == emptySkepW)
                 {
                     scanEmptySkeps.Add(pos.Copy());

@@ -14,7 +14,7 @@ namespace Vintagestory.GameContent
     public class InventoryQuern : InventoryBase, ISlotProvider
     {
         ItemSlot[] slots;
-        public IItemSlot[] Slots { get { return slots; } }
+        public ItemSlot[] Slots { get { return slots; } }
 
 
         public InventoryQuern(string inventoryID, ICoreAPI api) : base(inventoryID, api)

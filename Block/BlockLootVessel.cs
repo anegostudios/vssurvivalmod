@@ -83,7 +83,7 @@ namespace Vintagestory.GameContent
                     stack = new ItemStack(block, quantity);
                 } else
                 {
-                    world.Logger.Warning("LootItem: Failed resolving block code {0}", code);
+                    world.Logger.Warning("BlockLootVessel: Failed resolving block code {0}", code);
                 }
             } else
             {
@@ -94,7 +94,7 @@ namespace Vintagestory.GameContent
                 }
                 else
                 {
-                    world.Logger.Warning("LootItem: Failed resolving item code {0}", code);
+                    world.Logger.Warning("BlockLootVessel: Failed resolving item code {0}", code);
                 }
             }
 
@@ -175,35 +175,41 @@ namespace Vintagestory.GameContent
             );
 
             lootLists["food"] = LootList.Create(1, 
-                LootItem.Item(1, 8, 15, "grain-spelt", "grain-rice", "grain-flax", "grain-rye")
+                LootItem.Item(3, 8, 15, "grain-spelt", "grain-rice", "grain-flax", "grain-rye"),
+                LootItem.Item(0.1f, 1, 1, "resonancearchive-1", "resonancearchive-2", "resonancearchive-3", "resonancearchive-4", "resonancearchive-5", "resonancearchive-6", "resonancearchive-7", "resonancearchive-8", "resonancearchive-9")
             );
 
             lootLists["forage"] = LootList.Create(3.5f, 
-                LootItem.Item(1, 0.5f, 6, "flint"),
-                LootItem.Item(1, 0.5f, 6, "stick"),
-                LootItem.Item(1, 0.5f, 12, "drygrass"),
+                LootItem.Item(1, 2, 6, "flint"),
+                LootItem.Item(1, 3, 9, "stick"),
+                LootItem.Item(1, 3, 16, "drygrass"),
                 LootItem.Item(1, 3, 24, "stone-andesite", "stone-chalk", "stone-claystone", "stone-granite", "stone-sandstone", "stone-shale"),
                 LootItem.Item(1, 3, 24, "clay-blue", "clay-fire"),
-                LootItem.Item(1, 3, 24, "cattails")
+                LootItem.Item(1, 3, 24, "cattailtops"),
+                LootItem.Item(1, 1, 4, "poultice-linen-horsetail"), 
+                LootItem.Item(0.5f, 1, 12, "flaxfibers"),
+                LootItem.Item(0.3f, 1, 3, "honeycomb"),
+                LootItem.Item(0.3f, 2, 6, "bamboostakes"),
+                LootItem.Item(0.3f, 2, 6, "beenade-closed")
             );
 
             lootLists["ore"] = LootList.Create(2.75f,
                 LootItem.Item(1, 2, 12, "ore-lignite", "ore-bituminouscoal"),
-                LootItem.Item(1, 2, 8, "ore-nativecopper", "ore-quartz", "ore-galena"),
-                LootItem.Item(0.3f, 2, 6, "ore-galena", "ore-cassiterite", "ore-sphalerite", "ore-bismuthinite"),
-                LootItem.Item(0.1f, 2, 6, "ore-limonite", "ore-quartz_nativegold", "ore-chromite", "ore-platinum", "ore-ilmenite", "ore-quartz_nativesilver", "ore-magnetite")
+                LootItem.Item(1, 2, 8, "nugget-nativecopper", "ore-quartz", "nugget-galena"),
+                LootItem.Item(0.3f, 4, 12, "nugget-galena", "nugget-cassiterite", "nugget-sphalerite", "nugget-bismuthinite"),
+                LootItem.Item(0.1f, 4, 12, "nugget-limonite", "nugget-nativegold", "nugget-chromite", "nugget-ilmenite", "nugget_nativesilver", "nugget-magnetite")
             );
 
             lootLists["tool"] = LootList.Create(2.2f, 
                 LootItem.Item(1, 1, 1, "axe-flint"),
                 LootItem.Item(1, 1, 1, "shovel-flint"),
-                LootItem.Item(1, 1, 1, "pickaxe-flint"),
                 LootItem.Item(1, 1, 1, "knife-flint"),
                 LootItem.Item(0.1f, 1, 1, "axe-copper", "axe-copper", "axe-tinbronze"),
                 LootItem.Item(0.1f, 1, 1, "shovel-copper", "shovel-copper", "shovel-tinbronze"),
                 LootItem.Item(0.1f, 1, 1, "pickaxe-copper", "pickaxe-copper", "pickaxe-tinbronze"),
                 LootItem.Item(0.1f, 1, 1, "knife-copper", "knife-copper", "knife-tinbronze"),
-                LootItem.Item(0.1f, 1, 1, "sword-copper", "sword-copper", "sword-tinbronze")
+                LootItem.Item(0.1f, 1, 1, "sword-copper", "sword-copper", "sword-tinbronze"),
+                LootItem.Item(0.1f, 1, 4, "gear-rusty")
             );
 
             lootLists["farming"] = LootList.Create(2.75f,
@@ -213,7 +219,8 @@ namespace Vintagestory.GameContent
                 LootItem.Item(0.75f, 2, 10, "flaxfibers"),
                 LootItem.Item(0.35f, 2, 10, "flaxtwine"),
                 LootItem.Item(0.75f, 2, 4, "seeds-cabbage"),
-                LootItem.Item(0.75f, 5, 10, "cattails")
+                LootItem.Item(0.75f, 5, 10, "cattailtops"),
+                LootItem.Item(0.1f, 1, 1, "scythe-copper", "scythe-tinbronze")
             );    
         }
 
@@ -226,7 +233,7 @@ namespace Vintagestory.GameContent
             return list.GenerateLoot(world);
         }
 
-        public override float OnGettingBroken(IPlayer player, BlockSelection blockSel, IItemSlot itemslot, float remainingResistance, float dt, int counter)
+        public override float OnGettingBroken(IPlayer player, BlockSelection blockSel, ItemSlot itemslot, float remainingResistance, float dt, int counter)
         {
             EnumTool? tool = itemslot.Itemstack?.Collectible?.Tool;
 

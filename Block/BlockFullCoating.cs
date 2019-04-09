@@ -55,15 +55,16 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel)
+        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
         {
-            if (!world.TryAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            if (!world.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
             {
                 byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
+                failureCode = "claimed";
                 return false;
             }
 
-            if (!IsSuitablePosition(world, blockSel.Position))
+            if (!IsSuitablePosition(world, blockSel.Position, ref failureCode))
             {
                 return false;
             }
@@ -147,6 +148,8 @@ namespace Vintagestory.GameContent
 
         public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace)
         {
+            if (pos.Y < 16) return false;
+
             string facings = getSolidFacesAtPos(blockAccessor, pos);
 
             if (facings.Length > 0)

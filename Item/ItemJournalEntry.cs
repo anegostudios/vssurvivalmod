@@ -16,7 +16,7 @@ namespace Vintagestory.GameContent
     public class ItemJournalEntry : Item
     {
 
-        public override void OnHeldInteractStart(IItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
+        public override void OnHeldInteractStart(ItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
         {
             if (byEntity.World.Side != EnumAppSide.Server)
             {

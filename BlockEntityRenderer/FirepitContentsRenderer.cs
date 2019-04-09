@@ -59,12 +59,9 @@ namespace Vintagestory.GameContent
         internal void SetChildRenderer(ItemStack contentStack, IInFirepitRenderer renderer)
         {
             this.ContentStack = contentStack;
-            if (meshref != null)
-            {
-                api.Render.DeleteMesh(meshref);
-                meshref = null;
-            }
-
+            meshref?.Dispose();
+            meshref = null;
+            
             contentStackRenderer = renderer;
         }
 
@@ -77,12 +74,9 @@ namespace Vintagestory.GameContent
             if (transform == null) this.transform = defaultTransform;
             this.transform.EnsureDefaultValues();
 
-            if (meshref != null)
-            {
-                api.Render.DeleteMesh(meshref);
-                meshref = null;
-            }
-
+            meshref?.Dispose();
+            meshref = null;
+            
             if (newContentStack == null || newContentStack.Class == EnumItemClass.Block)
             {
                 this.ContentStack = null;
@@ -124,12 +118,12 @@ namespace Vintagestory.GameContent
             IStandardShaderProgram prog = rpi.StandardShader;
             prog.Use();
             prog.DontWarpVertices = 0;
+            prog.AddRenderFlags = 0;
             prog.RgbaAmbientIn = rpi.AmbientColor;
             prog.RgbaFogIn = rpi.FogColor;
             prog.FogMinIn = rpi.FogMin;
             prog.FogDensityIn = rpi.FogDensity;
             prog.RgbaTint = ColorUtil.WhiteArgbVec;
-            prog.AddRenderFlags = 0;
 
             api.Render.BindTexture2d(api.ItemTextureAtlas.AtlasTextureIds[0]);
 
@@ -173,7 +167,7 @@ namespace Vintagestory.GameContent
         // Called by UnregisterRenderer
         public void Dispose()
         {
-            api.Render.DeleteMesh(meshref);
+            meshref?.Dispose();
             contentStackRenderer?.Dispose();
         }
 

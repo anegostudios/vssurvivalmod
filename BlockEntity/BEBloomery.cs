@@ -192,7 +192,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public bool TryAdd(IItemSlot sourceSlot)
+        public bool TryAdd(ItemSlot sourceSlot)
         {
             if (OutSlot.StackSize > 0) return false;
             if (sourceSlot.Itemstack == null) return false;

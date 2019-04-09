@@ -7,12 +7,14 @@ namespace Vintagestory.GameContent
 {
     public class BlockPlant : Block
     {
-        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel)
+        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
         {
             if (CanPlantStay(world.BlockAccessor, blockSel.Position))
             {
-                return base.TryPlaceBlock(world, byPlayer, itemstack, blockSel);
+                return base.TryPlaceBlock(world, byPlayer, itemstack, blockSel, ref failureCode);
             }
+
+            failureCode = "requirefertileground";
 
             return false;
         }
@@ -42,7 +44,15 @@ namespace Vintagestory.GameContent
 
         public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing)
         {
-            return base.GetRandomColor(capi, pos, facing);
+            int color = base.GetRandomColor(capi, pos, facing);
+
+            if (EntityClass == "Sapling")
+            {
+                color = capi.ApplyColorTintOnRgba(1, color, pos.X, pos.Y, pos.Z);
+            }
+
+            return color;
         }
+        
     }
 }

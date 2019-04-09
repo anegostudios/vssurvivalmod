@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using Vintagestory.API;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -47,16 +48,16 @@ namespace Vintagestory.GameContent
             collidesWith = properties["collidesWith"]?.AsString();
         }
 
-        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref EnumHandling handled)
+        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref EnumHandling handled, ref string failureCode)
         {
             if (world is IServerWorldAccessor)
             {
                 world.RegisterCallbackUnique(OnDelayedWaterUpdateCheck, blockSel.Position, spreadDelay);
             }
-            return base.TryPlaceBlock(world, byPlayer, itemstack, blockSel, ref handled);
+            return base.TryPlaceBlock(world, byPlayer, itemstack, blockSel, ref handled, ref failureCode);
         }
 
-        public override void OnNeighourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos, ref EnumHandling handled)
+        public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos, ref EnumHandling handled)
         {
             handled = EnumHandling.PreventDefault;
 
@@ -70,6 +71,9 @@ namespace Vintagestory.GameContent
         {
             SpreadAndUpdateLiquidLevels(world, pos);
             world.BulkBlockAccessor.Commit();
+
+            Block block = world.BlockAccessor.GetBlock(pos);
+            if (block.LiquidLevel > 0) updateOwnFlowDir(block, world, pos);
         }
 
         private void SpreadAndUpdateLiquidLevels(IWorldAccessor world, BlockPos pos)
@@ -82,7 +86,8 @@ namespace Vintagestory.GameContent
             int liquidLevel = block.LiquidLevel;
             if (liquidLevel > 0)
             {
-                if (TryLoweringLiquidLevel(block, world, pos) == false)//Lower liquid if not connected to source block
+                //Lower liquid if not connected to source block
+                if (!TryLoweringLiquidLevel(block, world, pos)) 
                 {
                     Block downBlock = world.BlockAccessor.GetBlock(pos.DownCopy());
                     bool onSolidGround = downBlock.Replaceable < ReplacableThreshold;
@@ -90,21 +95,24 @@ namespace Vintagestory.GameContent
                     {
                         TrySpreadDownwards(block, world, pos);
                     }
-                    else if (liquidLevel > 1)//Can we still spread somewhere
+                    else if (liquidLevel > 1) //Can we still spread somewhere
                     {
                         List<PosAndDist> downwardPaths = FindDownwardPaths(world, pos, block);
-                        if (downwardPaths.Count > 0)//Prefer flowing to downward paths rather than outward
+                        if (downwardPaths.Count > 0) //Prefer flowing to downward paths rather than outward
                         {
                             FlowTowardDownwardPaths(downwardPaths, block, world);
                         }
-                        else if (TryFindSourceAndSpread(pos, world) == false)
+                        else //if (TryFindSourceAndSpread(pos, world) == false) - wtf was that good for 
                         {
                             TrySpreadHorizontal(block, world, pos);
                         }
                     }
                 }
+
+                
             }
         }
+
 
         private void FlowTowardDownwardPaths(List<PosAndDist> downwardPaths, Block block, IWorldAccessor world)
         {
@@ -119,7 +127,7 @@ namespace Vintagestory.GameContent
                     }
                     else
                     {
-                        SpreadLiquid(GetLessLiquidBlockId(world, block), pod.pos, world);
+                        SpreadLiquid(GetLessLiquidBlockId(world, pod.pos, block), pod.pos, world);
                     }
                 }
             }
@@ -159,6 +167,13 @@ namespace Vintagestory.GameContent
             if (replacementBlock != null)
             {
                 world.BulkBlockAccessor.SetBlock(replacementBlock.BlockId, pos);
+                
+                BlockBehaviorBreakIfFloating bh = replacementBlock.GetBehavior<BlockBehaviorBreakIfFloating>();
+                if (bh != null && bh.IsSurroundedByNonSolid(world, pos))
+                {
+                    world.BulkBlockAccessor.SetBlock(replacementBlock.BlockId, pos.DownCopy());
+                }
+
                 NotifyNeighborsOfBlockChange(pos, world);
                 GenerateSteamParticles(pos, world);
                 world.PlaySoundAt(collisionReplaceSound, pos.X, pos.Y, pos.Z);
@@ -174,6 +189,16 @@ namespace Vintagestory.GameContent
             Block ourBlock = world.GetBlock(blockId);
             TryReplaceNearbyLiquidBlocks(ourBlock, pos, world);
         }
+
+        private void updateOwnFlowDir(Block block, IWorldAccessor world, BlockPos pos)
+        {
+            ushort blockId = GetLiquidBlockId(world, pos, block, block.LiquidLevel);
+            if (block.BlockId != blockId)
+            {
+                world.BlockAccessor.SetBlock(blockId, pos);
+            }
+        }
+
 
         /// <summary>
         /// Replaces nearby liquid if it's not the same as this liquid. Prevents lava and water from being adjacent blocks
@@ -268,28 +293,22 @@ namespace Vintagestory.GameContent
         }
 
         /// <summary>
-        /// Returns true when this block and the other block have a matterstate of liquid and are different types of liquids.
-        /// Only counts liquids with block codes of length 2. This allows us to exclude plants that live under water and only
-        /// consider things like water and lava which have block codes that look like "water-7" and "lava-7". The other
-        /// block must be the one configured in the collidesWith property.
+        /// Returns true when this block and the other block are different types of liquids
         /// </summary>
         /// <param name="block">The block owning this behavior</param>
         /// <param name="other">The block we are colliding with</param>
         /// <returns>True if the two blocks are different liquids that can collide, false otherwise</returns>
         private bool IsDifferentCollidableLiquid(Block block, Block other)
         {
-            if(other.IsLiquid() && block.IsLiquid())
-            {
-                string[] blockParts = block.Code.Path.Split('-');
-                string[] otherBlockParts = other.Code.Path.Split('-');
-                return collidesWith != null && collidesWith.Equals(otherBlockParts[0]) && otherBlockParts.Length == 2 && blockParts.Length == 2 && blockParts[0] != otherBlockParts[0];
-            }
-            return false;
+            return
+                other.IsLiquid() && block.IsLiquid() &&
+                other.LiquidCode == collidesWith
+            ;
         }
 
         private bool IsSameLiquid(Block block, Block other)
         {
-            return block.CodeWithoutParts(1) == other.CodeWithoutParts(1);
+            return block.LiquidCode == other.LiquidCode;
         }
 
         private bool IsLiquidSourceBlock(Block block)
@@ -321,7 +340,7 @@ namespace Vintagestory.GameContent
 
         private void LowerLiquidLevelAndNotifyNeighbors(Block block, BlockPos pos, IWorldAccessor world)
         {
-            SpreadLiquid(GetLessLiquidBlockId(world, block), pos, world);
+            SpreadLiquid(GetLessLiquidBlockId(world, pos, block), pos, world);
 
             for (int i = 0; i < BlockFacing.ALLFACES.Length; i++)
             {
@@ -342,20 +361,54 @@ namespace Vintagestory.GameContent
                 }
                 else
                 {
-                    SpreadLiquid(GetLessLiquidBlockId(world, ourblock), npos, world);
+                    SpreadLiquid(GetLessLiquidBlockId(world, npos, ourblock), npos, world);
                 }
             }
         }
 
-        public ushort GetLessLiquidBlockId(IWorldAccessor world, Block block)
+        public ushort GetLessLiquidBlockId(IWorldAccessor world, BlockPos pos, Block block)
         {
-            if (block.LiquidLevel == 1) return 0;
-            return world.GetBlock(block.CodeWithParts("" + (block.LiquidLevel - 1))).BlockId;
+            return GetLiquidBlockId(world, pos, block, block.LiquidLevel - 1);
         }
 
+        public ushort GetLiquidBlockId(IWorldAccessor world, BlockPos pos, Block block, int liquidLevel)
+        {
+            if (liquidLevel < 1) return 0;
+
+            Vec3i dir = new Vec3i();
+            foreach (var val in Cardinal.ALL)
+            {
+                Block nblock = world.BlockAccessor.GetBlock(pos.X + val.Normali.X, pos.Y, pos.Z + val.Normali.Z);
+                if (nblock.LiquidLevel == liquidLevel || nblock.Replaceable < 6000 || !nblock.IsLiquid()) continue;
+
+                Vec3i normal = nblock.LiquidLevel < liquidLevel ? val.Normali : val.Opposite.Normali;
+
+                dir.X += normal.X;
+                dir.Z += normal.Z;
+            }
+
+            dir.X = Math.Sign(dir.X);
+            dir.Z = Math.Sign(dir.Z);
+
+            Cardinal flowDir = Cardinal.FromNormali(dir);
+
+            if (flowDir == null)
+            {
+                if (IsSameLiquid(world.BlockAccessor.GetBlock(pos.X, pos.Y - 1, pos.Z), block) || IsSameLiquid(world.BlockAccessor.GetBlock(pos.X, pos.Y + 1, pos.Z), block))
+                {
+                    return world.GetBlock(block.CodeWithParts("d", "" + liquidLevel)).BlockId;
+                }
+
+                return world.GetBlock(block.CodeWithParts("still", "" + liquidLevel)).BlockId;
+            }
+
+            return world.GetBlock(block.CodeWithParts(flowDir.Initial, "" + liquidLevel)).BlockId;
+        }
+
+        
         private ushort GetFallingLiquidBlockId(Block ourBlock, IWorldAccessor world)
         {
-            return world.GetBlock(ourBlock.CodeWithParts("6")).BlockId;
+            return world.GetBlock(ourBlock.CodeWithParts("d", "6")).BlockId;
         }
 
         public int GetMaxNeighbourLiquidLevel(Block ourblock, IWorldAccessor world, BlockPos pos)
@@ -383,7 +436,7 @@ namespace Vintagestory.GameContent
 
         public bool CanSpreadIntoBlock(Block ourblock, Block neighborBlock, IWorldAccessor world)
         {
-            bool isSameLiquid = neighborBlock.CodeWithoutParts(1) == ourblock.CodeWithoutParts(1);
+            bool isSameLiquid = neighborBlock.LiquidCode == ourblock.LiquidCode;
 
             return
                 // Either neighbour liquid at a lower level
@@ -489,9 +542,9 @@ namespace Vintagestory.GameContent
 
             if (block.ParticleProperties == null || block.ParticleProperties.Length == 0) return false;
 
-            //Would be better to configure with a property but since the client does not call Initialize, the properties are not honored
-            //in this method. This will have to do until the properties are honored or this method becomes a separate client behavior.
-            if (block.Code.Path.StartsWith("lava"))
+            // Would be better to configure with a property but since the client does not call Initialize, the properties are not honored
+            // in this method. This will have to do until the properties are honored or this method becomes a separate client behavior.
+            if (block.LiquidCode == "lava")
             {
                 int r = world.BlockAccessor.GetBlock(pos.X, pos.Y + 1, pos.Z).Replaceable;
                 return r > ReplacableThreshold;

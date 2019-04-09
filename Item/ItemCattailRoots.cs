@@ -10,7 +10,7 @@ namespace Vintagestory.GameContent
 {
     public class ItemCattailRoot : Item
     {
-        public override void OnHeldInteractStart(IItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handHandling)
+        public override void OnHeldInteractStart(ItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handHandling)
         {
             if (blockSel == null || byEntity?.World == null || !byEntity.Controls.Sneak)
             {
@@ -18,7 +18,7 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            bool waterBlock = byEntity.World.BlockAccessor.GetBlock(blockSel.Position.AddCopy(blockSel.Face)).IsWater();
+            bool waterBlock = byEntity.World.BlockAccessor.GetBlock(blockSel.Position.AddCopy(blockSel.Face)).LiquidCode == "water";
 
             Block block = byEntity.World.GetBlock(new AssetLocation(waterBlock ? "tallplant-coopersreed-water-harvested" : "tallplant-coopersreed-free-harvested"));
 
@@ -34,7 +34,9 @@ namespace Vintagestory.GameContent
             blockSel = blockSel.Clone();
             blockSel.Position.Add(blockSel.Face);
 
-            bool ok = block.TryPlaceBlock(byEntity.World, byPlayer, itemslot.Itemstack, blockSel);
+            string useless = "";
+
+            bool ok = block.TryPlaceBlock(byEntity.World, byPlayer, itemslot.Itemstack, blockSel, ref useless);
 
             if (ok)
             {

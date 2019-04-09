@@ -27,15 +27,16 @@ namespace Vintagestory.GameContent
             return LastCodePart(1) == "opened";
         }
 
-        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel)
+        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
         {
-            if (!world.TryAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            if (!world.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
             {
                 byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
+                failureCode = "claimed";
                 return false;
             }
 
-            if (IsSuitablePosition(world, blockSel.Position))
+            if (IsSuitablePosition(world, blockSel.Position, ref failureCode))
             {
                 BlockFacing[] horVer = SuggestedHVOrientation(byPlayer, blockSel);
 
@@ -106,11 +107,17 @@ namespace Vintagestory.GameContent
 
         public override AssetLocation GetRotatedBlockCode(int angle)
         {
-            string[] angles = { "w", "n" };
-            int index = angle / 90;
-            if (LastCodePart() == "n") index++;
+            BlockFacing nowFacing = BlockFacing.FromFirstLetter(LastCodePart(2));
+            BlockFacing rotatedFacing = BlockFacing.HORIZONTALS_ANGLEORDER[(nowFacing.HorizontalAngleIndex + angle / 90) % 4];
 
-            return CodeWithParts(angles[index % 2], IsOpened() ? "opened" : "closed", GetKnobOrientation());
+            string part = LastCodePart(2);
+
+            if (nowFacing.Axis != rotatedFacing.Axis)
+            {
+                part = (part == "n" ? "w" : "n");
+            }
+
+            return CodeWithParts(part, IsOpened() ? "opened" : "closed", GetKnobOrientation());
         }
     }
 }

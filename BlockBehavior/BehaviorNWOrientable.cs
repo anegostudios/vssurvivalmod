@@ -11,11 +11,12 @@ namespace Vintagestory.GameContent
 
         }
 
-        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref EnumHandling handled)
+        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref EnumHandling handled, ref string failureCode)
         {
-            if (!world.TryAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            if (!world.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
             {
                 byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
+                failureCode = "claimed";
                 return false;
             }
 
@@ -25,7 +26,7 @@ namespace Vintagestory.GameContent
             if (horVer[0].Index == 1 || horVer[0].Index == 3) code = "we";
             Block orientedBlock = world.BlockAccessor.GetBlock(block.CodeWithParts(code));
 
-            if (orientedBlock.IsSuitablePosition(world, blockSel.Position))
+            if (orientedBlock.IsSuitablePosition(world, blockSel.Position, ref failureCode))
             {
                 orientedBlock.DoPlaceBlock(world, blockSel.Position, blockSel.Face, itemstack);
                 return true;

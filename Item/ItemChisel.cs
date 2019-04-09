@@ -25,7 +25,7 @@ namespace Vintagestory.GameContent
             canMicroChisel = Attributes?["microBlockChiseling"].AsBool() == true;
         }
 
-        public override void OnHeldAttackStart(IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
+        public override void OnHeldAttackStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
         {
             IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
 
@@ -52,7 +52,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override void OnHeldInteractStart(IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
+        public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
         {
             IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
 
@@ -104,14 +104,14 @@ namespace Vintagestory.GameContent
 
 
 
-        public override int GetQuantityToolModes(IItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
+        public override int GetQuantityToolModes(ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
         {
             if (blockSel == null) return 0;
             Block block = byPlayer.Entity.World.BlockAccessor.GetBlock(blockSel.Position);
             return block is BlockChisel ? 5 : 0;
         }
 
-        public override void DrawToolModeIcon(IItemSlot slot, IPlayer byPlayer, BlockSelection blockSelection, Context cr, int x, int y, int width, int height, int toolMode, int color)
+        public override void DrawToolModeIcon(ItemSlot slot, IPlayer byPlayer, BlockSelection blockSelection, Context cr, int x, int y, int width, int height, int toolMode, int color)
         {
             double[] colordoubles = ColorUtil.ToRGBADoubles(color);
 
@@ -125,12 +125,12 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override int GetToolMode(IItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
+        public override int GetToolMode(ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
         {
             return slot.Itemstack.Attributes.GetInt("toolMode");
         }
 
-        public override void SetToolMode(IItemSlot slot, IPlayer byPlayer, BlockSelection blockSel, int toolMode)
+        public override void SetToolMode(ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel, int toolMode)
         {
             slot.Itemstack.Attributes.SetInt("toolMode", toolMode);
         }

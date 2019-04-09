@@ -116,7 +116,7 @@ namespace Vintagestory.GameContent
 
         internal bool OnPlayerInteract(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
-            IItemSlot slot = byPlayer.InventoryManager.ActiveHotbarSlot;
+            ItemSlot slot = byPlayer.InventoryManager.ActiveHotbarSlot;
 
             if (!byPlayer.Entity.Controls.Sneak)
             {
@@ -131,7 +131,7 @@ namespace Vintagestory.GameContent
 
                 if (!byPlayer.InventoryManager.TryGiveItemstack(split))
                 {
-                    world.SpawnItemEntity(contents, pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                    world.SpawnItemEntity(split, pos.ToVec3d().Add(0.5, 0.5, 0.5));
                 }
 
                 renderer?.SetContents(contents, fuelLevel, burning, true);

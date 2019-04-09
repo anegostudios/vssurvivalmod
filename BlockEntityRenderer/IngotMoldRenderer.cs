@@ -176,7 +176,7 @@ namespace Vintagestory.GameContent
         // Called by UnregisterRenderer
         public void Dispose()
         {
-            api.Render.DeleteMesh(quadModelRef);
+            quadModelRef?.Dispose();
         }
     }
 }

@@ -20,7 +20,7 @@ namespace Vintagestory.GameContent
         }
         
 
-        public override float OnBlockBreaking(IPlayer player, BlockSelection blockSel, IItemSlot itemslot, float remainingResistance, float dt, int counter)
+        public override float OnBlockBreaking(IPlayer player, BlockSelection blockSel, ItemSlot itemslot, float remainingResistance, float dt, int counter)
         {
             float newResist = base.OnBlockBreaking(player, blockSel, itemslot, remainingResistance, dt, counter);
             int leftDurability = itemslot.Itemstack.Attributes.GetInt("durability", Durability);
@@ -45,7 +45,7 @@ namespace Vintagestory.GameContent
                 if (q == 0) break;
                 BlockFacing facing = BlockFacing.FromVector(player.Entity.ServerPos.GetViewVector()).GetOpposite();
 
-                if (!player.Entity.World.TryAccessBlock(player, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak)) continue;
+                if (!player.Entity.World.Claims.TryAccess(player, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak)) continue;
                 
                 player.Entity.World.BlockAccessor.DamageBlock(val.Key, facing, damage);
                 q--;
@@ -56,7 +56,7 @@ namespace Vintagestory.GameContent
 
 
 
-        public override bool OnBlockBrokenWith(IWorldAccessor world, Entity byEntity, IItemSlot itemslot, BlockSelection blockSel)
+        public override bool OnBlockBrokenWith(IWorldAccessor world, Entity byEntity, ItemSlot itemslot, BlockSelection blockSel)
         {
             Block block = world.BlockAccessor.GetBlock(blockSel.Position);
 

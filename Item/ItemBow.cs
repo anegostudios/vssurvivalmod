@@ -12,14 +12,14 @@ namespace Vintagestory.GameContent
 {
     public class ItemBow : Item
     {
-        public override string GetHeldTpUseAnimation(IItemSlot activeHotbarSlot, Entity byEntity)
+        public override string GetHeldTpUseAnimation(ItemSlot activeHotbarSlot, Entity byEntity)
         {
             return null;
         }
 
-        IItemSlot GetNextArrow(EntityAgent byEntity)
+        ItemSlot GetNextArrow(EntityAgent byEntity)
         {
-            IItemSlot slot = null;
+            ItemSlot slot = null;
             byEntity.WalkInventory((invslot) =>
             {
                 if (invslot is ItemSlotCreative) return true;
@@ -36,9 +36,9 @@ namespace Vintagestory.GameContent
             return slot;
         }
 
-        public override void OnHeldInteractStart(IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
+        public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
         {
-            IItemSlot invslot = GetNextArrow(byEntity);
+            ItemSlot invslot = GetNextArrow(byEntity);
             if (invslot == null) return;
 
             if (byEntity.World is IClientWorldAccessor)
@@ -60,7 +60,7 @@ namespace Vintagestory.GameContent
             handling = EnumHandHandling.PreventDefault;
         }
 
-        public override bool OnHeldInteractStep(float secondsUsed, IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override bool OnHeldInteractStep(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
 //            if (byEntity.World is IClientWorldAccessor)
             {
@@ -81,7 +81,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override bool OnHeldInteractCancel(float secondsUsed, IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)
+        public override bool OnHeldInteractCancel(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)
         {
             byEntity.Attributes.SetInt("aiming", 0);
             byEntity.AnimManager.StopAnimation("bowaim");
@@ -102,7 +102,7 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        public override void OnHeldInteractStop(float secondsUsed, IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override void OnHeldInteractStop(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
             if (byEntity.Attributes.GetInt("aimingCancel") == 1) return;
             byEntity.Attributes.SetInt("aiming", 0);
@@ -118,7 +118,7 @@ namespace Vintagestory.GameContent
 
             if (secondsUsed < 0.35f) return;
 
-            IItemSlot arrowSlot = GetNextArrow(byEntity);
+            ItemSlot arrowSlot = GetNextArrow(byEntity);
             if (arrowSlot == null) return;
 
             string arrowMaterial = arrowSlot.Itemstack.Collectible.FirstCodePart(1);
@@ -143,12 +143,15 @@ namespace Vintagestory.GameContent
             if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
             byEntity.World.PlaySoundAt(new AssetLocation("sounds/bow-release"), byEntity, byPlayer, false, 8);
 
+            float breakChance = 0.5f;
+            if (stack.ItemAttributes != null) breakChance = stack.ItemAttributes["breakChanceOnImpact"].AsFloat(0.5f);
+
             EntityProperties type = byEntity.World.GetEntityType(new AssetLocation("arrow"));
             Entity entity = byEntity.World.ClassRegistry.CreateEntity(type);
             ((EntityProjectile)entity).FiredBy = byEntity;
             ((EntityProjectile)entity).Damage = damage;
             ((EntityProjectile)entity).ProjectileStack = stack;
-            ((EntityProjectile)entity).DropOnImpactChance = (arrowMaterial == "flint") ? 0.5f : 0.65f; ;
+            ((EntityProjectile)entity).DropOnImpactChance = 1 - breakChance;
 
 
             int? texIndex = type.Attributes?["texturealternateMapping"]?[arrowMaterial].AsInt(0);

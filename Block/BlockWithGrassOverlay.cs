@@ -10,10 +10,44 @@ namespace Vintagestory.GameContent
 {
     public class BlockWithGrassOverlay : Block
     {
+        public override int GetColorWithoutTint(ICoreClientAPI capi, BlockPos pos)
+        {
+            string grasscover = LastCodePart();
+            if (grasscover == "none") return base.GetColorWithoutTint(capi, pos);
+
+            CompositeTexture tex;
+            if (Textures == null || !Textures.TryGetValue("specialSecondTexture", out tex))
+            {
+                tex = Textures?.First().Value;
+            }
+
+            int? textureSubId = tex?.Baked.TextureSubId;
+            if (textureSubId == null)
+            {
+                return ColorUtil.WhiteArgb;
+            }
+
+            int grassColor = ColorUtil.ReverseColorBytes(capi.BlockTextureAtlas.GetPixelAt((int)textureSubId, 0.5f, 0.5f));
+            
+            if (grasscover == "normal")
+            {
+                return grassColor;
+
+            }
+            else
+            {
+                int soilColor = ColorUtil.ReverseColorBytes(capi.BlockTextureAtlas.GetPixelAt((int)Textures["up"].Baked.TextureSubId, 0.5f, 0.5f));
+
+                return ColorUtil.ColorOverlay(soilColor, grassColor, grasscover == "verysparse" ? 0.5f : 0.75f);
+            }
+        }
+
+
+
         public override int GetColor(ICoreClientAPI capi, BlockPos pos)
         {
             string grasscover = LastCodePart();
-            if (grasscover == "none") return base.GetColor(capi, pos);
+            if (grasscover == "none") return base.GetColorWithoutTint(capi, pos);
 
             CompositeTexture tex;
             if (Textures == null || !Textures.TryGetValue("specialSecondTexture", out tex))

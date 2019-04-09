@@ -48,7 +48,7 @@ namespace VSSurvivalMod.Systems
 
         AmbientModifier rainfogAmbient;
 
-        public void Dispose()
+        public override void Dispose()
         {
         }
 

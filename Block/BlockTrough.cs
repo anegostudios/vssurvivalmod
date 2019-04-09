@@ -72,7 +72,7 @@ namespace Vintagestory.GameContent
             return capi.BlockTextureAtlas.GetRandomPixel(Textures["wood"].Baked.TextureSubId);
         }
 
-        public override int GetColor(ICoreClientAPI capi, BlockPos pos)
+        public override int GetColorWithoutTint(ICoreClientAPI capi, BlockPos pos)
         {
             int texSubId = Textures["wood"].Baked.TextureSubId;
 

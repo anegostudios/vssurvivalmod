@@ -142,7 +142,7 @@ namespace Vintagestory.GameContent
         {
             for (int i = 0; i < quadModelRefs.Length; i++)
             {
-                api.Render.DeleteMesh(quadModelRefs[i]);
+                quadModelRefs[i]?.Dispose();
             }
 
             

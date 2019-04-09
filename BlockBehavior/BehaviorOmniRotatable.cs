@@ -30,7 +30,7 @@ namespace Vintagestory.ServerMods
 			// NOP
 		}
 
-		public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref EnumHandling handling) {
+		public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref EnumHandling handling, ref string failureCode) {
 			handling = EnumHandling.PreventDefault;
 
 			AssetLocation blockCode = null;
@@ -126,7 +126,7 @@ namespace Vintagestory.ServerMods
 			}
 
             Block orientedBlock = world.BlockAccessor.GetBlock(blockCode);
-            if (orientedBlock.IsSuitablePosition(world, blockSel.Position))
+            if (orientedBlock.IsSuitablePosition(world, blockSel.Position, ref failureCode))
             {
                 world.BlockAccessor.SetBlock(orientedBlock.BlockId, blockSel.Position);
                 return true;

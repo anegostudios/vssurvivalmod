@@ -43,11 +43,12 @@ namespace Vintagestory.GameContent
             return world.BlockAccessor.GetBlock(blockPos).Code.Path.Contains("fencegate");
         }
 
-        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel)
+        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
         {
-            if (!world.TryAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            if (!world.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
             {
                 byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
+                failureCode = "claimed";
                 return false;
             }
 
@@ -56,7 +57,7 @@ namespace Vintagestory.GameContent
 
             if (block == null) block = this;
 
-            if (block.IsSuitablePosition(world, blockSel.Position))
+            if (block.IsSuitablePosition(world, blockSel.Position, ref failureCode))
             {
                 world.BlockAccessor.SetBlock(block.BlockId, blockSel.Position);
                 return true;
@@ -77,6 +78,7 @@ namespace Vintagestory.GameContent
                 if (block == null) return;
 
                 world.BlockAccessor.SetBlock(block.BlockId, pos);
+                world.BlockAccessor.TriggerNeighbourBlockUpdate(pos);
             }
         }
 

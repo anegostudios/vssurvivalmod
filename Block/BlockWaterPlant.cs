@@ -7,30 +7,34 @@ namespace Vintagestory.GameContent
     public class BlockWaterPlant : BlockPlant
     {
 
-        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel)
+        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
         {
             Block block = world.BlockAccessor.GetBlock(blockSel.Position);
 
-            if (!world.TryAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            if (!world.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
             {
                 byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
+                failureCode = "claimed";
                 return false;
             }
 
             Block blockToPlace = this;
+            bool inWater = block.IsLiquid() && block.LiquidLevel == 7 && block.LiquidCode.Contains("water");
 
-            if (block.IsLiquid())
+            if (inWater)
             {
-                if (block.LiquidLevel == 7) blockToPlace = world.GetBlock(CodeWithParts("water"));
-                else return false;
-
+                blockToPlace = world.GetBlock(CodeWithParts("water"));
                 if (blockToPlace == null) blockToPlace = this;
             } else
             {
-                if (LastCodePart() != "free") return false;
+                if (LastCodePart() != "free")
+                {
+                    failureCode = "requirefullwater";
+                    return false;
+                }
             }
 
-            if (blockToPlace != null && CanPlantStay(world.BlockAccessor, blockSel.Position) && blockToPlace.IsSuitablePosition(world, blockSel.Position))
+            if (blockToPlace != null && CanPlantStay(world.BlockAccessor, blockSel.Position) && blockToPlace.IsSuitablePosition(world, blockSel.Position, ref failureCode))
             {
                 world.BlockAccessor.SetBlock(blockToPlace.BlockId, blockSel.Position);
                 return true;
@@ -45,7 +49,8 @@ namespace Vintagestory.GameContent
 
             if (LastCodePart() != "free")
             {
-                world.BlockAccessor.SetBlock(world.GetBlock(new AssetLocation("water-7")).BlockId, pos);
+                world.BlockAccessor.SetBlock(world.GetBlock(new AssetLocation("water-still-7")).BlockId, pos);
+                world.BlockAccessor.GetBlock(pos).OnNeighourBlockChange(world, pos, pos);
             }
         }
 
@@ -68,7 +73,7 @@ namespace Vintagestory.GameContent
                 return true;
             }
 
-            if (belowBlock.IsWater())
+            if (belowBlock.LiquidCode == "water")
             {
                 return TryPlaceBlockInWater(blockAccessor, pos);
             }

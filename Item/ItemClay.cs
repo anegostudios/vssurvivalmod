@@ -10,7 +10,7 @@ namespace Vintagestory.GameContent
 {
     public class ItemClay : Item
     {
-        public override void OnHeldInteractStart(IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
+        public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
         {
             if (blockSel == null) return;
 
@@ -18,7 +18,7 @@ namespace Vintagestory.GameContent
             {
                 IPlayer player = byEntity.World.PlayerByUid((byEntity as EntityPlayer)?.PlayerUID);
 
-                if (!byEntity.World.TryAccessBlock(player, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+                if (!byEntity.World.Claims.TryAccess(player, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
                 {
                     slot.MarkDirty();
                     return;
@@ -60,17 +60,17 @@ namespace Vintagestory.GameContent
             OnHeldAttackStart(slot, byEntity, blockSel, entitySel, ref handling);
         }
 
-        public override bool OnHeldInteractCancel(float secondsUsed, IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)
+        public override bool OnHeldInteractCancel(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)
         {
             return false;
         }
 
-        public override bool OnHeldInteractStep(float secondsUsed, IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override bool OnHeldInteractStep(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
             return false;
         }
 
-        public override void OnHeldInteractStop(float secondsUsed, IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override void OnHeldInteractStop(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
             if (blockSel == null) return;
             if (!(byEntity.World.BlockAccessor.GetBlock(blockSel.Position) is BlockClayForm)) return;
@@ -82,7 +82,7 @@ namespace Vintagestory.GameContent
             if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
             if (byPlayer == null) return;
 
-            if (!byEntity.World.TryAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.Use))
+            if (!byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.Use))
             {
                 return;
             }
@@ -102,7 +102,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void OnHeldAttackStart(IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
+        public override void OnHeldAttackStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
         {
             if (blockSel == null) return;
             if (!(byEntity.World.BlockAccessor.GetBlock(blockSel.Position) is BlockClayForm)) return;
@@ -114,7 +114,7 @@ namespace Vintagestory.GameContent
             if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
             if (byPlayer == null) return;
 
-            if (!byEntity.World.TryAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.Use))
+            if (!byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.Use))
             {
                 return;
             }
@@ -123,17 +123,17 @@ namespace Vintagestory.GameContent
             handling = EnumHandHandling.PreventDefaultAction;
         }
 
-        public override bool OnHeldAttackCancel(float secondsPassed, IItemSlot slot, EntityAgent byEntity, BlockSelection blockSelection, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)
+        public override bool OnHeldAttackCancel(float secondsPassed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSelection, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)
         {
             return false;
         }
 
-        public override bool OnHeldAttackStep(float secondsUsed, IItemSlot slot, EntityAgent byEntity, BlockSelection blockSelection, EntitySelection entitySel)
+        public override bool OnHeldAttackStep(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSelection, EntitySelection entitySel)
         {
             return false;
         }
 
-        public override void OnHeldAttackStop(float secondsPassed, IItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override void OnHeldAttackStop(float secondsPassed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
             if (blockSel == null) return;
             if (!(byEntity.World.BlockAccessor.GetBlock(blockSel.Position) is BlockClayForm)) return;
@@ -147,7 +147,7 @@ namespace Vintagestory.GameContent
 
             int curMode = GetToolMode(slot, byPlayer, blockSel);
 
-            if (!byEntity.World.TryAccessBlock(byPlayer, blockSel.Position, EnumBlockAccessFlags.Use))
+            if (!byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.Use))
             {
                 return;
             }
@@ -160,14 +160,14 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override int GetQuantityToolModes(IItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
+        public override int GetQuantityToolModes(ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
         {
             if (blockSel == null) return 0;
             Block block = byPlayer.Entity.World.BlockAccessor.GetBlock(blockSel.Position);
             return block is BlockClayForm ? 4 : 0;
         }
 
-        public override void DrawToolModeIcon(IItemSlot slot, IPlayer byPlayer, BlockSelection blockSelection, Context cr, int x, int y, int width, int height, int toolMode, int color)
+        public override void DrawToolModeIcon(ItemSlot slot, IPlayer byPlayer, BlockSelection blockSelection, Context cr, int x, int y, int width, int height, int toolMode, int color)
         {
             double[] colordoubles = ColorUtil.ToRGBADoubles(color);
 
@@ -1489,12 +1489,12 @@ namespace Vintagestory.GameContent
 
 
 
-        public override int GetToolMode(IItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
+        public override int GetToolMode(ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
         {
             return slot.Itemstack.Attributes.GetInt("toolMode");
         }
 
-        public override void SetToolMode(IItemSlot slot, IPlayer byPlayer, BlockSelection blockSel, int toolMode)
+        public override void SetToolMode(ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel, int toolMode)
         {
             slot.Itemstack.Attributes.SetInt("toolMode", toolMode);
         }

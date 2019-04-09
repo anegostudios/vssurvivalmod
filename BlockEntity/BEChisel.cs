@@ -75,7 +75,7 @@ namespace Vintagestory.GameContent
 
         public int ChiselMode(IPlayer player)
         {
-            IItemSlot slot = player?.InventoryManager?.ActiveHotbarSlot;
+            ItemSlot slot = player?.InventoryManager?.ActiveHotbarSlot;
             int? mode = slot?.Itemstack?.Collectible.GetToolMode(slot, player, new BlockSelection() { Position = pos });
 
             return mode == null ? 0 : (int)mode;
