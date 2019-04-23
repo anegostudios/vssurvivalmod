@@ -240,7 +240,9 @@ namespace Vintagestory.GameContent
             api.RegisterBlockClass("BlockRequireSolidGround", typeof(BlockRequireSolidGround));
             api.RegisterBlockClass("BlockLocustNest", typeof(BlockLocustNest));
             api.RegisterBlockClass("BlockMetalSpikes", typeof(BlockMetalSpikes));
-
+            api.RegisterBlockClass("BlockLabeledChest", typeof(BlockLabeledChest));
+            api.RegisterBlockClass("BlockStalagSection", typeof(BlockStalagSection));
+            
         }
         
         private void RegisterDefaultBlockBehaviors()
@@ -320,6 +322,7 @@ namespace Vintagestory.GameContent
 
             api.RegisterBlockEntityClass("StaticTranslocator", typeof(BlockEntityStaticTranslocator));
             api.RegisterBlockEntityClass("EchoChamber", typeof(BlockEntityEchoChamber));
+
             api.RegisterBlockEntityClass("LocustNest", typeof(BlockEntityLocustNest));
             api.RegisterBlockEntityClass("LabeledChest", typeof(BlockEntityLabeledChest));
         }

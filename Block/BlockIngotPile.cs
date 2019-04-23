@@ -142,5 +142,30 @@ namespace Vintagestory.GameContent
 
             return new ItemStack(this);
         }
+
+        public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
+        {
+            return new WorldInteraction[]
+            {
+                new WorldInteraction()
+                {
+                    ActionLangCode = "blockhelp-ingotpile-add",
+                    MouseButton = EnumMouseButton.Right,
+                    HotKeyCode = "sneak",
+                    Itemstacks = new ItemStack[] { new ItemStack(this) },
+                    GetMatchingStacks = (wi, bs, es) =>
+                    {
+                        BlockEntityIngotPile pile = world.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityIngotPile;
+                        return pile != null && pile.MaxStackSize > pile.inventory[0].StackSize ? new ItemStack[] { pile.inventory[0].Itemstack } : null;
+                    }
+                },
+                new WorldInteraction()
+                {
+                    ActionLangCode = "blockhelp-ingotpile-remove",
+                    MouseButton = EnumMouseButton.Right
+                }
+            };
+        }
+
     }
 }

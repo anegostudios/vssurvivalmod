@@ -18,7 +18,7 @@ namespace Vintagestory.GameContent
 
         MeshRef cubeModelRef;
         int textureId;
-        int voxelHeight;
+        float voxelHeight;
         public int glowLevel;
         protected Matrixf ModelMat = new Matrixf();
 
@@ -40,7 +40,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public void SetFillLevel(int voxelHeight)
+        public void SetFillLevel(float voxelHeight)
         {
             if (this.voxelHeight == voxelHeight && cubeModelRef != null) return;
 
@@ -50,7 +50,7 @@ namespace Vintagestory.GameContent
 
             if (voxelHeight == 0) return;
 
-            MeshData modeldata = CubeMeshUtil.GetCube(8 / 32f, voxelHeight / 24f, new Vec3f(0,0,0));
+            MeshData modeldata = CubeMeshUtil.GetCube(8 / 32f, voxelHeight / 32f, new Vec3f(0,0,0));
             modeldata.Flags = new int[6 * 4];
 
             cubeModelRef = api.Render.UploadMesh(modeldata);

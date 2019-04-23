@@ -48,7 +48,7 @@ namespace Vintagestory.GameContent
 
             if (taskConfig["searchFrequency"] != null)
             {
-                searchFrequency = taskConfig["searchFrequency"].AsFloat(0.05f);
+                searchFrequency = taskConfig["searchFrequency"].AsFloat(0.07f);
             }
 
             if (taskConfig["awaitReached"] != null)
@@ -93,7 +93,7 @@ namespace Vintagestory.GameContent
             taskState = 0;
             pathTraverser.GoTo(MainTarget, moveSpeed, targetDistance, OnGoalReached, OnStuck);
 
-            feedTime = 2 + rand.NextDouble() * 5;
+            feedTime = 3 + rand.NextDouble() * 10;
         }
 
         public override bool ContinueExecute(float dt)

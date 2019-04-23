@@ -117,10 +117,10 @@ namespace Vintagestory.ServerMods
                 WeightedIndex[] weightedIndicesBottom = Lerp(
                     groups[(posZRight + topleftPadding) * sizeX + posXLeft + topleftPadding],
                     groups[(posZRight + topleftPadding) * sizeX + posXRight + topleftPadding ],
-                    fz
+                    fx
                 );
 
-                return LerpSorted(weightedIndicesTop, weightedIndicesBottom, z - (int)z);
+                return LerpSorted(weightedIndicesTop, weightedIndicesBottom, fz);
             }
         }
 

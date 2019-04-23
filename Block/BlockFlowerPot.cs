@@ -1,4 +1,6 @@
-﻿using Vintagestory.API.Common;
+﻿using System.Collections.Generic;
+using Vintagestory.API.Client;
+using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 
@@ -6,6 +8,66 @@ namespace Vintagestory.GameContent
 {
     public class BlockFlowerPot : Block
     {
+        WorldInteraction[] interactions = null;
+
+        public override void OnLoaded(ICoreAPI api)
+        {
+            List<ItemStack> stacks = new List<ItemStack>();
+
+            if (Variant["contents"] != "empty")
+            {
+                return;
+            }
+
+            foreach (var block in api.World.Blocks)
+            {
+                if (block.Code == null || block.IsMissing) continue;
+
+                if (block is BlockFlowerPot)
+                {
+                    string name = block.Variant["contents"];
+
+                    Block plantBlock = api.World.BlockAccessor.GetBlock(CodeWithPath("flower-" + name));
+                    if (plantBlock != null)
+                    {
+                        stacks.Add(new ItemStack(plantBlock));
+                        continue;
+                    }
+
+                    plantBlock = api.World.BlockAccessor.GetBlock(CodeWithPath("sapling-" + name));
+                    if (plantBlock != null)
+                    {
+                        stacks.Add(new ItemStack(plantBlock));
+                        continue;
+                    }
+
+                    plantBlock = api.World.BlockAccessor.GetBlock(CodeWithPath("mushroom-" + name + "-normal"));
+                    if (plantBlock != null)
+                    {
+                        stacks.Add(new ItemStack(plantBlock));
+                        continue;
+                    }
+
+                    plantBlock = api.World.BlockAccessor.GetBlock(CodeWithPath("flower-" + LastCodePart(0) + "-" + LastCodePart(1)));
+                    if (plantBlock != null)
+                    {
+                        stacks.Add(new ItemStack(plantBlock));
+                        continue;
+                    }
+                }
+            }
+
+            interactions = new WorldInteraction[]
+            {
+                new WorldInteraction()
+                {
+                    ActionLangCode = "blockhelp-flowerpot-plant",
+                    MouseButton = EnumMouseButton.Right,
+                    Itemstacks = stacks.ToArray()
+                }
+            };
+        }
+
         public Block GetPottedPlant(IWorldAccessor world)
         {
             string name = Code.Path.Substring(Code.Path.LastIndexOf("-") + 1);
@@ -96,6 +158,12 @@ namespace Vintagestory.GameContent
             }
 
             return block;
+        }
+
+
+        public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
+        {
+            return interactions;
         }
     }
 }

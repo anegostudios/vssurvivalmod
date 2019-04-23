@@ -1,4 +1,5 @@
 ﻿using System;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
@@ -112,6 +113,24 @@ namespace Vintagestory.GameContent
             return base.CanAttachBlockAt(blockAccessor, block, pos, blockFace);
         }
 
-
+        public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
+        {
+            return new WorldInteraction[]
+            {
+                new WorldInteraction()
+                {
+                    ActionLangCode = "blockhelp-firewoodpile-addlog",
+                    MouseButton = EnumMouseButton.Right,
+                    HotKeyCode = "sneak",
+                    Itemstacks = new ItemStack[] { new ItemStack(world.GetItem(new AssetLocation("firewood"))) }
+                },
+                new WorldInteraction()
+                {
+                    ActionLangCode = "blockhelp-firewoodpile-removelog",
+                    MouseButton = EnumMouseButton.Right,
+                    HotKeyCode = null
+                }
+            };
+        }
     }
 }

@@ -14,6 +14,9 @@ namespace Vintagestory.GameContent
         {
             if (blockSel == null) return;
 
+            BlockEntityClayForm bec = byEntity.World.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityClayForm;
+            if (bec != null && bec.BaseMaterial.Collectible.LastCodePart() != LastCodePart()) return;
+
             if (byEntity.Controls.Sneak)
             {
                 IPlayer player = byEntity.World.PlayerByUid((byEntity as EntityPlayer)?.PlayerUID);
@@ -23,9 +26,7 @@ namespace Vintagestory.GameContent
                     slot.MarkDirty();
                     return;
                 }
-
-                BlockEntityClayForm bec = byEntity.World.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityClayForm;
-
+                
                 if (bec != null)
                 {
                     OnHeldAttackStart(slot, byEntity, blockSel, entitySel, ref handling);

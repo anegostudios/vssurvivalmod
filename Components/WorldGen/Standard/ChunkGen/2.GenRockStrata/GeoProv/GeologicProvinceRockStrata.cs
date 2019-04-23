@@ -8,7 +8,6 @@ namespace Vintagestory.ServerMods.NoObf
 {
     public class GeologicProvinceRockStrata
     {
-        public float MaxQuantity = 0;
         public float MaxThickness = 99;
 
         // World seed dependent

@@ -10,7 +10,7 @@ namespace Vintagestory.GameContent
     {
         public bool CanSqueezeInto(Block block)
         {
-            return block.Code.Path == "bowl-burned" || block is BlockBucket;
+            return block is BlockBucket || block?.Attributes?["contentItem2BlockCodes"]?["honeyportion"].Exists == true;
         }
 
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
@@ -70,7 +70,8 @@ namespace Vintagestory.GameContent
             }
             else
             {
-                world.BlockAccessor.SetBlock(world.GetBlock(new AssetLocation("bowl-honey")).BlockId, blockSel.Position);
+                AssetLocation loc = new AssetLocation(block.Attributes["contentItem2BlockCodes"]["honeyportion"].AsString());
+                world.BlockAccessor.SetBlock(world.GetBlock(loc).BlockId, blockSel.Position);
             }
 
             slot.TakeOut(1);

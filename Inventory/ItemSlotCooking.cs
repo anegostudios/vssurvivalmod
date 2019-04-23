@@ -48,9 +48,10 @@ namespace Vintagestory.GameContent
             }
 
             // TODO: merge those 2 things into one generic LiquidContainer block
-            if (sourceSlot.Itemstack?.Block is BlockBowl && sourceSlot.Itemstack.Block.LastCodePart() == "honey")
+            string contentItemCode = sourceSlot.Itemstack?.ItemAttributes?["contentItemCode"].AsString();
+            if (contentItemCode != null)
             {
-                ItemStack honeystack = new ItemStack(world.GetItem(new AssetLocation("honeyportion")));
+                ItemStack honeystack = new ItemStack(world.GetItem(new AssetLocation(contentItemCode)));
                 bool stackable = !Empty && itemstack.Equals(world, honeystack, GlobalConstants.IgnoredStackAttributes);
 
                 if ((Empty || stackable) && honeystack != null)
@@ -59,7 +60,7 @@ namespace Vintagestory.GameContent
                     else this.itemstack = honeystack;
 
                     MarkDirty();
-                    ItemStack bowlStack = new ItemStack(world.GetBlock(new AssetLocation("bowl-burned")));
+                    ItemStack bowlStack = new ItemStack(world.GetBlock(new AssetLocation(sourceSlot.Itemstack.ItemAttributes["emptiedBlockCode"].AsString())));
                     if (sourceSlot.StackSize == 1)
                     {
                         sourceSlot.Itemstack = bowlStack;

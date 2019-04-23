@@ -58,7 +58,9 @@ namespace Vintagestory.GameContent
 
                 block = byEntity.World.GetBlock(new AssetLocation("firewoodpile"));
                 if (block == null) return;
-                BlockPos pos = onBlockPos.AddCopy(blockSel.Face);
+                BlockPos pos = onBlockPos;
+                if (byEntity.World.BlockAccessor.GetBlock(pos).Replaceable < 6000) pos.Add(blockSel.Face);
+
                 bool ok = ((BlockFirewoodPile)block).Construct(slot, byEntity.World, pos, byPlayer);
 
                 Cuboidf[] collisionBoxes = byEntity.World.BlockAccessor.GetBlock(pos).GetCollisionBoxes(byEntity.World.BlockAccessor, pos);

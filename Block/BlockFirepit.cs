@@ -1,4 +1,5 @@
-﻿using Vintagestory.API.Common;
+﻿using Vintagestory.API.Client;
+using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 
@@ -92,7 +93,7 @@ namespace Vintagestory.GameContent
                     }
                 }
 
-                if (stack?.Collectible is BlockBowl && (stack.Collectible as BlockBowl)?.BowlContents() == null && stack.Collectible.Attributes?["mealContainer"].AsBool() == true)
+                if (stack?.Collectible is BlockBowl && (stack.Collectible as BlockBowl)?.BowlContentItemCode() == null && stack.Collectible.Attributes?["mealContainer"].AsBool() == true)
                 {
                     ItemSlot potSlot = null;
                     if (bef?.inputStack?.Collectible is BlockCookedContainer)
@@ -180,6 +181,25 @@ namespace Vintagestory.GameContent
             }
 
             return true;
+        }
+
+
+        public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
+        {
+            return new WorldInteraction[]
+            {
+                new WorldInteraction()
+                {
+                    ActionLangCode = "blockhelp-firepit-open",
+                    MouseButton = EnumMouseButton.Right
+                }, 
+                new WorldInteraction()
+                {
+                    ActionLangCode = "blockhelp-firepit-refuel",
+                    MouseButton = EnumMouseButton.Right,
+                    HotKeyCode = "sneak"
+                }
+            };
         }
     }
 }

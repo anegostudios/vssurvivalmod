@@ -38,6 +38,7 @@ namespace Vintagestory.GameContent
                 signRenderer = null;
             }
         }
+        
 
         public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {

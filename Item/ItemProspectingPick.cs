@@ -18,6 +18,7 @@ namespace Vintagestory.GameContent
     public class ItemProspectingPick : Item
     {
         Dictionary<string, float> absAvgQuantity = new Dictionary<string, float>();
+        Dictionary<string, string> pageCodes = new Dictionary<string, string>();
 
         public override void OnLoaded(ICoreAPI api)
         {
@@ -43,7 +44,8 @@ namespace Vintagestory.GameContent
                         } else
                         {
                             absAvgQuantity[variant.Code] = variant.GetAbsAvgQuantity();
-                        }            
+                            pageCodes[variant.Code] = variant.HandbookPageCode;
+                        }       
                     }
 
                     
@@ -53,6 +55,7 @@ namespace Vintagestory.GameContent
                         DepositVariant childVariant = variant.ChildDeposits[k];
                         if (!childVariant.WithOreMap) continue;
                         absAvgQuantity[childVariant.Code] = childVariant.GetAbsAvgQuantity();
+                        pageCodes[childVariant.Code] = childVariant.HandbookPageCode;
                     }
                 }
             });
@@ -84,66 +87,68 @@ namespace Vintagestory.GameContent
 
             IServerPlayer splr = byPlayer as IServerPlayer;
 
-            if (splr != null)
+            if (splr == null) return;
+
+            
+            IntArrayAttribute attr = itemslot.Itemstack.Attributes["probePositions"] as IntArrayAttribute;
+
+            if (attr == null || attr.value == null || attr.value.Length == 0)
             {
-                IntArrayAttribute attr = itemslot.Itemstack.Attributes["probePositions"] as IntArrayAttribute;
+                itemslot.Itemstack.Attributes["probePositions"] = attr = new IntArrayAttribute();
+                attr.AddInt(blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z);
 
-                if (attr == null || attr.value == null || attr.value.Length == 0)
+                splr.SendMessage(GlobalConstants.CurrentChatGroup, "Ok, need 2 more samples", EnumChatType.Notification);
+            }
+            else
+            {
+                float requiredSamples = 2;
+
+                attr.AddInt(blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z);
+
+                int[] vals = attr.value;
+                for (int i = 0; i < vals.Length; i += 3)
                 {
-                    itemslot.Itemstack.Attributes["probePositions"] = attr = new IntArrayAttribute();
-                    attr.AddInt(blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z);
+                    int x = vals[i];
+                    int y = vals[i + 1];
+                    int z = vals[i + 2];
 
-                    splr.SendMessage(GlobalConstants.CurrentChatGroup, "Ok, need 2 more samples", EnumChatType.Notification);
+                    float mindist = 99;
+
+
+                    for (int j = i + 3; j < vals.Length; j += 3)
+                    {
+                        int dx = x - vals[j];
+                        int dy = y - vals[j + 1];
+                        int dz = z - vals[j + 2];
+
+                        mindist = Math.Min(mindist, GameMath.Sqrt(dx * dx + dy * dy + dz * dz));
+                    }
+
+                    if (i + 3 < vals.Length)
+                    {
+                        requiredSamples -= GameMath.Clamp(mindist * mindist, 3, 16) / 16;
+
+                        if (mindist > 20)
+                        {
+                            splr.SendMessage(GlobalConstants.CurrentChatGroup, "Sample too far away from initial reading. Sampling around this point now, need 2 more samples.", EnumChatType.Notification);
+                            attr.value = new int[] { blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z };
+                            return;
+                        }
+                    }
+                }
+
+                if (requiredSamples > 0)
+                {
+                    int q = (int)Math.Ceiling(requiredSamples);
+                    splr.SendMessage(GlobalConstants.CurrentChatGroup, "Ok, need " + q + " more " + (q == 1 ? "sample" : "samples"), EnumChatType.Notification);
                 }
                 else
                 {
-                    float requiredSamples = 2;
-
-                    attr.AddInt(blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z);
-
-                    int[] vals = attr.value;
-                    for (int i = 0; i < vals.Length; i += 3)
-                    {
-                        int x = vals[i];
-                        int z = vals[i + 2];
-
-                        float mindist = 99;
-
-
-                        for (int j = i + 3; j < vals.Length; j += 3)
-                        {
-                            int dx = x - vals[j];
-                            int dz = z - vals[j + 2];
-
-                            mindist = Math.Min(mindist, GameMath.Sqrt(dx * dx + dz * dz));
-                        }
-
-                        if (i + 3 < vals.Length)
-                        {
-                            requiredSamples -= GameMath.Clamp(mindist * mindist, 0, 16) / 16;
-
-                            if (mindist > 16)
-                            {
-                                splr.SendMessage(GlobalConstants.CurrentChatGroup, "Sample too far away from initial reading. Sampling around this point now, need 2 more samples.", EnumChatType.Notification);
-                                attr.value = new int[] { blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z };
-                                return;
-                            }
-                        }
-                    }
-
-                    if (requiredSamples > 0)
-                    {
-                        int q = (int)Math.Ceiling(requiredSamples);
-                        splr.SendMessage(GlobalConstants.CurrentChatGroup, "Ok, need " + q + " more " + (q == 1 ? "sample" : "samples"), EnumChatType.Notification);
-                    }
-                    else
-                    {
-                        int startX = vals[0];
-                        int startY = vals[1];
-                        int startZ = vals[2];
-                        PrintProbeResults(world, splr, itemslot, new BlockPos(startX, startY, startZ));
-                        attr.value = new int[0];
-                    }
+                    int startX = vals[0];
+                    int startY = vals[1];
+                    int startZ = vals[2];
+                    PrintProbeResults(world, splr, itemslot, new BlockPos(startX, startY, startZ));
+                    attr.value = new int[0];
                 }
             }
         }
@@ -195,8 +200,9 @@ namespace Vintagestory.GameContent
 
                 if (totalFactor > 0.05)
                 {
+                    string pageCode = pageCodes[val.Key];
                     if (found > 0) outtext.Append("\n");
-                    outtext.Append(string.Format("{1}: {2} ({0}‰)", ppt.ToString("0.#"), val.Key.Substring(0,1).ToUpper() + val.Key.Substring(1), names[(int)GameMath.Clamp(totalFactor * 5, 0, 5)]));
+                    outtext.Append(string.Format("<a href=\"handbook://{3}\">{1}</a>: {2} ({0}‰)", ppt.ToString("0.#"), Lang.Get("ore-"+val.Key), names[(int)GameMath.Clamp(totalFactor * 5, 0, 5)], pageCode));
                     found++;
                 }
             }

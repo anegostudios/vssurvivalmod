@@ -14,6 +14,7 @@ namespace Vintagestory.GameContent
     {
         PlayerNotEnoughAssets,
         TraderNotEnoughAssets,
+        TraderNotEnoughSupplyOrDemand,
         Failure,
         Success,
     };
@@ -199,7 +200,7 @@ namespace Vintagestory.GameContent
 
         public override void FromTreeAttributes(ITreeAttribute tree)
         {
-            slots = SlotsFromTreeAttributes(tree);
+            slots = SlotsFromTreeAttributes(tree, slots);
             ITreeAttribute tradeItems = tree.GetTreeAttribute("tradeItems");
 
             if (tradeItems == null) return;
@@ -236,6 +237,9 @@ namespace Vintagestory.GameContent
             if (!HasPlayerEnoughAssets(buyingPlayer)) return EnumTransactionResult.PlayerNotEnoughAssets;
             if (!HasTraderEnoughAssets()) return EnumTransactionResult.TraderNotEnoughAssets;
 
+            if (!HasTraderEnoughStock(buyingPlayer)) return EnumTransactionResult.TraderNotEnoughSupplyOrDemand;
+            if (!HasTraderEnoughDemand(buyingPlayer)) return EnumTransactionResult.TraderNotEnoughSupplyOrDemand;
+
             if (Api.Side == EnumAppSide.Client)
             {
                 for (int i = 0; i < 4; i++) GetBuyingCartSlot(i).Itemstack = null;
@@ -264,15 +268,92 @@ namespace Vintagestory.GameContent
                 ItemSlot slot = GetSellingCartSlot(i);
                 if (slot.Itemstack == null) continue;
 
-                ResolvedTradeItem tradeitem = GetBuyingConditions(slot.Itemstack);
-                if (tradeitem == null) continue;
+                ResolvedTradeItem tradeItem = GetBuyingConditionsSlot(slot.Itemstack).TradeItem;
+                if (tradeItem == null) continue;
 
+                tradeItem.Stock -= slot.Itemstack.StackSize / tradeItem.Stack.StackSize;
                 slot.Itemstack = null;
                 slot.MarkDirty();
             }
 
             return EnumTransactionResult.Success;
         }
+
+
+        public bool HasTraderEnoughStock(IPlayer player)
+        {
+            Dictionary<int, int> Stocks = new Dictionary<int, int>();
+
+            for (int i = 0; i < 4; i++)
+            {
+                ItemSlotTrade slot = GetBuyingCartSlot(i);
+                if (slot.Itemstack == null) continue;
+
+                ItemSlotTrade tradeSlot = GetSellingConditionsSlot(slot.Itemstack);
+
+                int tradeslotid = GetSlotId(tradeSlot);
+                int stock;
+                if (!Stocks.TryGetValue(tradeslotid, out stock))
+                {
+                    stock = slot.TradeItem.Stock;
+                }
+
+                Stocks[tradeslotid] = stock - slot.Itemstack.StackSize / slot.TradeItem.Stack.StackSize;
+
+                if (Stocks[tradeslotid] < 0)
+                {
+                    player.InventoryManager.NotifySlot(player, slot);
+                    player.InventoryManager.NotifySlot(player, tradeSlot);
+                    
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+
+        public bool HasTraderEnoughDemand(IPlayer player)
+        {
+            Dictionary<int, int> Stocks = new Dictionary<int, int>();
+
+            for (int i = 0; i < 4; i++)
+            {
+                ItemSlot slot = GetSellingCartSlot(i);
+                if (slot.Itemstack == null) continue;
+
+                ItemSlotTrade tradeSlot = GetBuyingConditionsSlot(slot.Itemstack);
+                ResolvedTradeItem tradeItem = tradeSlot?.TradeItem;
+
+                if (tradeItem == null)
+                {
+                    player.InventoryManager.NotifySlot(player, slot);
+                    return false;
+                }
+
+                int tradeslotid = GetSlotId(tradeSlot);
+                int stock;
+                if (!Stocks.TryGetValue(tradeslotid, out stock))
+                {
+                    stock = tradeItem.Stock;
+                }
+
+                Stocks[tradeslotid] = stock - slot.Itemstack.StackSize / tradeItem.Stack.StackSize;
+
+                if (Stocks[tradeslotid] < 0)
+                {
+                    player.InventoryManager.NotifySlot(player, tradeSlot);
+                    player.InventoryManager.NotifySlot(player, slot);
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+
+
+
 
 
         public bool HasPlayerEnoughAssets(IPlayer buyingPlayer)
@@ -407,6 +488,12 @@ namespace Vintagestory.GameContent
 
                         slot.Itemstack.StackSize -= removeUnits / pieceValue;
 
+                        if (slot.StackSize <= 0)
+                        {
+                            slot.Itemstack = null;
+                        }
+                        slot.MarkDirty();
+
                         totalUnitsToDeduct -= removeUnits;
                     }
 
@@ -517,7 +604,7 @@ namespace Vintagestory.GameContent
 
                 if (sellSlot.Itemstack == null) continue;
 
-                ResolvedTradeItem tradeitem = GetBuyingConditions(sellSlot.Itemstack);
+                ResolvedTradeItem tradeitem = GetBuyingConditionsSlot(sellSlot.Itemstack).TradeItem;
 
                 if (tradeitem != null)
                 {
@@ -562,7 +649,7 @@ namespace Vintagestory.GameContent
             return slots[36 + index] as ItemSlotSurvival;
         }
 
-        public ResolvedTradeItem GetBuyingConditions(ItemStack forStack)
+        public ItemSlotTrade GetBuyingConditionsSlot(ItemStack forStack)
         {
             for (int i = 0; i < 4*4; i++)
             {
@@ -571,7 +658,23 @@ namespace Vintagestory.GameContent
 
                 if (slot.Itemstack.Equals(Api.World, forStack, GlobalConstants.IgnoredStackAttributes))
                 {
-                    return slot.TradeItem;
+                    return slot;
+                }
+            }
+
+            return null;
+        }
+
+        public ItemSlotTrade GetSellingConditionsSlot(ItemStack forStack)
+        {
+            for (int i = 0; i < 4 * 4; i++)
+            {
+                ItemSlotTrade slot = GetSellingSlot(i);
+                if (slot.Itemstack == null) continue;
+
+                if (slot.Itemstack.Equals(Api.World, forStack, GlobalConstants.IgnoredStackAttributes))
+                {
+                    return slot;
                 }
             }
 

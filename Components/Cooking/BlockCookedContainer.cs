@@ -9,6 +9,7 @@ using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -16,6 +17,44 @@ namespace Vintagestory.GameContent
     {
         public static SimpleParticleProperties smokeHeld;
         public static SimpleParticleProperties foodSparks;
+
+        WorldInteraction[] interactions;
+
+        public override void OnLoaded(ICoreAPI api)
+        {
+            if (api.Side != EnumAppSide.Client) return;
+            ICoreClientAPI capi = api as ICoreClientAPI;
+
+            interactions = ObjectCacheUtil.GetOrCreate(api, "cookedContainerBlockInteractions", () =>
+            {
+                List<ItemStack> fillableStacklist = new List<ItemStack>();
+
+                foreach (CollectibleObject obj in api.World.Collectibles)
+                {
+                    if (obj.Attributes?["mealContainer"].AsBool() == true)
+                    {
+                        List<ItemStack> stacks = obj.GetHandBookStacks(capi);
+                        if (stacks != null) fillableStacklist.AddRange(stacks);
+                    }
+                }
+
+                return new WorldInteraction[] {
+                    new WorldInteraction()
+                    {
+                        ActionLangCode = "blockhelp-cookedcontainer-takefood",
+                        HotKeyCode = null,
+                        MouseButton = EnumMouseButton.Right,
+                        Itemstacks = fillableStacklist.ToArray()
+                    },
+                    new WorldInteraction()
+                    {
+                        ActionLangCode = "blockhelp-cookedcontainer-pickup",
+                        HotKeyCode = null,
+                        MouseButton = EnumMouseButton.Right
+                    }
+                };
+            });
+        }
 
         static BlockCookedContainer()
         {
@@ -202,7 +241,7 @@ namespace Vintagestory.GameContent
         {
             ItemSlot hotbarSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
 
-            if (!hotbarSlot.Empty && hotbarSlot.Itemstack.Collectible.Attributes["mealContainer"].AsBool() == true)
+            if (!hotbarSlot.Empty && hotbarSlot.Itemstack.Collectible.Attributes?["mealContainer"].AsBool() == true)
             {
                 BlockEntityCookedContainer bec = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityCookedContainer;
                 if (bec == null) return false;
@@ -224,6 +263,7 @@ namespace Vintagestory.GameContent
 
             return base.OnBlockInteractStart(world, byPlayer, blockSel);
         }
+
 
 
 
@@ -366,5 +406,10 @@ namespace Vintagestory.GameContent
             return EnumFirepitModel.Wide;
         }
 
+
+        public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
+        {
+            return interactions;
+        }
     }
 }

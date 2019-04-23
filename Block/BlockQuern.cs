@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
@@ -64,6 +65,33 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        
+        public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
+        {
+            if (selection.SelectionBoxIndex == 0)
+            {
+                return new WorldInteraction[] {
+                    new WorldInteraction()
+                    {
+                        ActionLangCode = "blockhelp-quern-addremoveitems",
+                        MouseButton = EnumMouseButton.Right
+                    }
+                };
+            }
+            else
+            {
+                return new WorldInteraction[] {
+                    new WorldInteraction()
+                    {
+                        ActionLangCode = "blockhelp-quern-grind",
+                        MouseButton = EnumMouseButton.Right,
+                        ShouldApply = (wi, bs, es) => {
+                            BlockEntityQuern beQuern = world.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityQuern;
+                            return beQuern != null && beQuern.CanGrind();
+                        }
+                    }
+                };
+            }
+        }
+
     }
 }

@@ -272,5 +272,18 @@ namespace Vintagestory.GameContent
 
             return base.GetRandomColor(capi, pos, facing);
         }
+
+
+        public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
+        {
+            return new WorldInteraction[]
+            {
+                new WorldInteraction()
+                {
+                    ActionLangCode = "blockhelp-chest-open",
+                    MouseButton = EnumMouseButton.Right
+                }
+            };
+        }
     }
 }

@@ -14,14 +14,16 @@ namespace Vintagestory.GameContent
 {
     public class BlockBowl : Block
     {
-        public string BowlContents()
+        public string BowlContentItemCode()
         {
-            return Attributes["bowlContents"].AsString();
+            return Attributes["contentItemCode"].AsString();
         }
-
-        public bool CanHoldContents(string contents)
+        
+        public Block ContentBlockForContents(string contents)
         {
-            return Attributes["itemContainers"][contents]?.Exists == true && api.World.GetBlock(CodeWithParts(contents)) != null;
+            if (Attributes["contentItem2BlockCodes"][contents]?.Exists != true) return null;
+
+            return api.World.GetBlock(new AssetLocation(Attributes["contentItem2BlockCodes"][contents].AsString()));
         }
 
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handHandling)
@@ -33,14 +35,14 @@ namespace Vintagestory.GameContent
             }
 
             BlockBucket blockbucket = byEntity.World.BlockAccessor.GetBlock(blockSel.Position) as BlockBucket;
-            string contents = BowlContents();
+            string contents = BowlContentItemCode();
 
             if (blockbucket != null)
             {
                 if (contents == null)
                 {
                     ItemStack stack = blockbucket.GetContent(byEntity.World, blockSel.Position);
-                    if (stack != null && CanHoldContents(stack.Collectible.Code.Path))
+                    if (stack != null && ContentBlockForContents(stack.Collectible.Code.Path) !=null)
                     {
                         InsertIntoBowl(slot, byEntity, stack.Collectible.Code.Path);
                         blockbucket.TryTakeContent(byEntity.World, blockSel.Position, 1);
@@ -49,9 +51,9 @@ namespace Vintagestory.GameContent
                 else
                 {
                     ItemStack stack = blockbucket.GetContent(byEntity.World, blockSel.Position);
-                    if (stack == null || stack.Collectible.Code.Equals(new AssetLocation(BowlContents())))
+                    if (stack == null || stack.Collectible.Code.Equals(new AssetLocation(BowlContentItemCode())))
                     {
-                        Item contentItem = byEntity.World.GetItem(new AssetLocation(LastCodePart()));
+                        Item contentItem = byEntity.World.GetItem(new AssetLocation(BowlContentItemCode()));
                         if (blockbucket.TryAddContent(byEntity.World, blockSel.Position, new ItemStack(contentItem), 1) > 0)
                         {
                             EmptyOutBowl(slot, byEntity);
@@ -105,21 +107,21 @@ namespace Vintagestory.GameContent
 
         private void InsertIntoBowl(ItemSlot itemslot, EntityAgent byEntity, string contents)
         {
-            Block emptyBowl = byEntity.World.GetBlock(new AssetLocation(Attributes["itemContainers"]["contents"].AsString()));
-            ItemStack emptyStack = new ItemStack(emptyBowl);
+            Block filledBowl = ContentBlockForContents(contents);
+            ItemStack stack = new ItemStack(filledBowl);
 
             if (itemslot.Itemstack.StackSize <= 1)
             {
-                itemslot.Itemstack = emptyStack;
+                itemslot.Itemstack = stack;
             }
             else
             {
                 IPlayer player = (byEntity as EntityPlayer)?.Player;
 
                 itemslot.TakeOut(1);
-                if (!player.InventoryManager.TryGiveItemstack(emptyStack, true))
+                if (!player.InventoryManager.TryGiveItemstack(stack, true))
                 {
-                    byEntity.World.SpawnItemEntity(emptyStack, byEntity.LocalPos.XYZ);
+                    byEntity.World.SpawnItemEntity(stack, byEntity.LocalPos.XYZ);
                 }
             }
 

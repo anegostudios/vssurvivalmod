@@ -157,7 +157,7 @@ namespace Vintagestory.ServerMods
 
             //blockAccessRev.SetBlock(oldBlockId, blockSel.Position, withItemStack);
             worldEdit.sapi.World.BlockAccessor.SetBlock(oldBlockId, blockSel.Position);
-            blockSel.Position.Add(blockSel.Face.GetOpposite());
+            //blockSel.Position.Add(blockSel.Face.GetOpposite()); - prevented trees from growing o.O
 
             blockAccessRev.ReadFromStagedByDefault = true;
 

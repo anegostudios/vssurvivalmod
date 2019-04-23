@@ -305,6 +305,7 @@ namespace Vintagestory.GameContent
             tree.SetInt("initialQuantitySpawned", Data.InitialQuantitySpawned);
             tree.SetInt("initialSpawnQuantity", Data.InitialSpawnQuantity);
             tree.SetInt("groupSize", Data.GroupSize);
+            tree.SetBool("wasImported", Data.WasImported);
 
             tree["spawnedEntities"] = new LongArrayAttribute(this.spawnedEntities.ToArray());
         }
@@ -326,7 +327,8 @@ namespace Vintagestory.GameContent
                 SpawnOnlyAfterImport = tree.GetBool("spawnOnlyAfterImport"),
                 GroupSize = tree.GetInt("groupSize"),
                 InitialQuantitySpawned = tree.GetInt("initialQuantitySpawned"),
-                InitialSpawnQuantity = tree.GetInt("initialSpawnQuantity")
+                InitialSpawnQuantity = tree.GetInt("initialSpawnQuantity"),
+                WasImported = tree.GetBool("wasImported"),
             };
 
             long[] values = (tree["spawnedEntities"] as LongArrayAttribute)?.value;

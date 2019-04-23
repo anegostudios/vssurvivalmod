@@ -5,6 +5,7 @@ using Vintagestory.API;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.ServerMods.NoObf;
@@ -908,6 +909,10 @@ namespace Vintagestory.ServerMods
 
             switch (arguments[1])
             {
+                case "coords":
+                    player.SendMessage(groupId, string.Format("Chunk X/Z: {0}/{1}, Region X/Z: {2},{3}", chunkX, chunkZ, regionX, regionZ), EnumChatType.CommandSuccess);
+                    break;
+
                 case "structures":
                     bool found = false;
                     api.World.BlockAccessor.WalkStructures(pos, (struc) =>
@@ -953,17 +958,12 @@ namespace Vintagestory.ServerMods
                     {
                         int noiseSizeGeoProv = mapRegion.GeologicProvinceMap.InnerSize;
 
-                        float posXInRegion = ((float)pos.X / regionSize - pos.X / regionSize) * noiseSizeGeoProv;
-                        float posZInRegion = ((float)pos.Z / regionSize - pos.Z / regionSize) * noiseSizeGeoProv;
-
-
+                        float posXInRegion = ((float)pos.X / regionSize - regionX) * noiseSizeGeoProv;
+                        float posZInRegion = ((float)pos.Z / regionSize - regionZ) * noiseSizeGeoProv;
                         GeologicProvinceVariant[] provincesByIndex = NoiseGeoProvince.provinces.Variants;
-
                         IntMap intmap = mapRegion.GeologicProvinceMap;
-
                         LerpedWeightedIndex2DMap map = new LerpedWeightedIndex2DMap(intmap.Data, mapRegion.GeologicProvinceMap.Size, TerraGenConfig.geoProvSmoothingRadius, mapRegion.GeologicProvinceMap.TopLeftPadding, mapRegion.GeologicProvinceMap.BottomRightPadding);
-
-                        WeightedIndex[] indices = map[intmap.TopLeftPadding + posXInRegion, intmap.TopLeftPadding + posZInRegion];
+                        WeightedIndex[] indices = map[posXInRegion, posZInRegion];
 
                         string text = "";
                         foreach (WeightedIndex windex in indices)
@@ -975,6 +975,125 @@ namespace Vintagestory.ServerMods
                         }
 
                         player.SendMessage(groupId, text, EnumChatType.CommandSuccess);
+
+                        break;
+                    }
+
+
+                case "rockstrata":
+                    {
+                        GenRockStrataNew rockstratagen = api.ModLoader.GetModSystem<GenRockStrataNew>();
+
+                        int noiseSizeGeoProv = mapRegion.GeologicProvinceMap.InnerSize;
+                        float posXInRegion = ((float)pos.X / regionSize - pos.X / regionSize) * noiseSizeGeoProv;
+                        float posZInRegion = ((float)pos.Z / regionSize - pos.Z / regionSize) * noiseSizeGeoProv;
+                        GeologicProvinceVariant[] provincesByIndex = NoiseGeoProvince.provinces.Variants;
+                        IntMap intmap = mapRegion.GeologicProvinceMap;
+                        LerpedWeightedIndex2DMap map = new LerpedWeightedIndex2DMap(intmap.Data, mapRegion.GeologicProvinceMap.Size, TerraGenConfig.geoProvSmoothingRadius, mapRegion.GeologicProvinceMap.TopLeftPadding, mapRegion.GeologicProvinceMap.BottomRightPadding);
+                        WeightedIndex[] indices = map[posXInRegion, posZInRegion];
+
+                        float[] rockGroupMaxThickness = new float[4];
+
+                        rockGroupMaxThickness[0] = rockGroupMaxThickness[1] = rockGroupMaxThickness[2] = rockGroupMaxThickness[3] = 0;
+
+                        int rdx = chunkX % regionChunkSize;
+                        int rdz = chunkZ % regionChunkSize;
+                        IntMap rockMap;
+                        float step = 0;
+                        float distx = (float)rockstratagen.distort2dx.Noise(pos.X, pos.Z);
+                        float distz = (float)rockstratagen.distort2dz.Noise(pos.X, pos.Z);
+
+
+
+                        for (int i = 0; i < indices.Length; i++)
+                        {
+                            float w = indices[i].Weight;
+
+                            GeologicProvinceVariant var = NoiseGeoProvince.provinces.Variants[indices[i].Index];
+
+                            rockGroupMaxThickness[0] += var.RockStrataIndexed[0].MaxThickness * w;
+                            rockGroupMaxThickness[1] += var.RockStrataIndexed[1].MaxThickness * w;
+                            rockGroupMaxThickness[2] += var.RockStrataIndexed[2].MaxThickness * w;
+                            rockGroupMaxThickness[3] += var.RockStrataIndexed[3].MaxThickness * w;
+                        }
+
+                        System.Text.StringBuilder sb = new System.Text.StringBuilder();
+
+                        sb.AppendLine("Sedimentary max thickness: " + rockGroupMaxThickness[(int)EnumRockGroup.Sedimentary]);
+                        sb.AppendLine("Metamorphic max thickness: " + rockGroupMaxThickness[(int)EnumRockGroup.Metamorphic]);
+                        sb.AppendLine("Igneous max thickness: " + rockGroupMaxThickness[(int)EnumRockGroup.Igneous]);
+                        sb.AppendLine("Volcanic max thickness: " + rockGroupMaxThickness[(int)EnumRockGroup.Volcanic]);
+                        sb.AppendLine("========");
+
+                        for (int id = 0; id < rockstratagen.strata.Variants.Length; id++)
+                        {
+                            rockMap = mapchunk.MapRegion.RockStrata[id];
+                            step = (float)rockMap.InnerSize / regionChunkSize;
+
+                            float dist = 1 + GameMath.Clamp((distx + distz) / 30, 0.9f, 1.1f);
+                            sb.AppendLine(rockstratagen.strata.Variants[id].BlockCode.ToShortString() + " max thickness: " + rockMap.GetIntLerpedCorrectly(rdx * step + step * (float)(lx + distx) / chunkSize, rdz * step + step * (float)(lz + distz) / chunkSize));
+                        }
+
+                        sb.AppendLine("======");
+
+                        int surfaceY = api.World.BlockAccessor.GetTerrainMapheightAt(pos);
+                        int ylower = 1;
+                        int yupper = surfaceY;
+                        int rockStrataId = -1;
+                        float strataThickness = 0;
+                        RockStratum stratum = null;
+                        
+
+                        OrderedDictionary<ushort, int> stratathicknesses = new OrderedDictionary<ushort, int>();
+
+                        while (ylower <= yupper)
+                        {
+                            if (--strataThickness <= 0)
+                            {
+                                rockStrataId++;
+                                if (rockStrataId >= rockstratagen.strata.Variants.Length)
+                                {
+                                    break;
+                                }
+                                stratum = rockstratagen.strata.Variants[rockStrataId];
+                                rockMap = mapchunk.MapRegion.RockStrata[rockStrataId];
+                                step = (float)rockMap.InnerSize / regionChunkSize;
+
+                                int grp = (int)stratum.RockGroup;
+                                
+                                float dist = 1 + GameMath.Clamp((distx + distz) / 30, 0.9f, 1.1f);
+                                strataThickness = Math.Min(rockGroupMaxThickness[grp] * dist, rockMap.GetIntLerpedCorrectly(rdx * step + step * (float)(lx + distx) / chunkSize, rdz * step + step * (float)(lz + distz) / chunkSize));
+
+                                strataThickness -= (stratum.RockGroup == EnumRockGroup.Sedimentary) ? Math.Max(0, yupper - TerraGenConfig.seaLevel) * 0.5f : 0;
+
+                                if (strataThickness < 2)
+                                {
+                                    strataThickness = -1;
+                                    continue;
+                                }
+                            }
+
+                            if (!stratathicknesses.ContainsKey(stratum.BlockId)) stratathicknesses[stratum.BlockId] = 0;
+                            stratathicknesses[stratum.BlockId]++;
+
+                            if (stratum.GenDir == EnumStratumGenDir.BottomUp)
+                            {
+                                ylower++;
+
+                            }
+                            else
+                            {
+                                yupper--;
+                            }
+                        }
+
+                        foreach (var val in stratathicknesses)
+                        {
+                            sb.AppendLine(api.World.Blocks[val.Key].Code.ToShortString() + " : " + val.Value + " blocks"); 
+                        }
+
+
+                        player.SendMessage(groupId, sb.ToString(), EnumChatType.CommandSuccess);
 
                         break;
                     }
@@ -994,7 +1113,7 @@ namespace Vintagestory.ServerMods
 
                         LerpedWeightedIndex2DMap map = new LerpedWeightedIndex2DMap(intmap.Data, mapRegion.LandformMap.Size, TerraGenConfig.landFormSmoothingRadius, intmap.TopLeftPadding, intmap.BottomRightPadding);
 
-                        WeightedIndex[] indices = map[intmap.TopLeftPadding + posXInRegion, intmap.TopLeftPadding + posZInRegion];
+                        WeightedIndex[] indices = map[posXInRegion, posZInRegion];
 
                         string text = "";
                         foreach (WeightedIndex windex in indices)

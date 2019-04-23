@@ -7,11 +7,44 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
     public class BlockReeds : BlockPlant
     {
+        WorldInteraction[] interactions = null;
+
+        public override void OnLoaded(ICoreAPI api)
+        {
+            if (LastCodePart() == "harvested") return;
+
+            interactions = ObjectCacheUtil.GetOrCreate(api, "reedsBlockInteractions", () =>
+            {
+                List<ItemStack> knifeStacklist = new List<ItemStack>();
+
+                foreach (Item item in api.World.Items)
+                {
+                    if (item.Code == null) continue;
+
+                    if (item.Tool == EnumTool.Knife)
+                    {
+                        knifeStacklist.Add(new ItemStack(item));
+                    }
+                }
+
+                return new WorldInteraction[] {
+                    new WorldInteraction()
+                    {
+                        ActionLangCode = "blockhelp-reeds-harvest",
+                        MouseButton = EnumMouseButton.Left,
+                        Itemstacks = knifeStacklist.ToArray()
+                    }
+                };
+            });
+        }
+
+
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
         {
             Block block = world.BlockAccessor.GetBlock(blockSel.Position);
@@ -175,6 +208,11 @@ namespace Vintagestory.GameContent
             return capi.ApplyColorTintOnRgba(1, capi.BlockTextureAtlas.GetRandomPixel(Textures.Last().Value.Baked.TextureSubId), pos.X, pos.Y, pos.Z);
         }
 
-        
+        public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
+        {
+            return interactions;
+        }
+
+
     }
 }

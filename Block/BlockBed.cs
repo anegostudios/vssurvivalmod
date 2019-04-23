@@ -143,5 +143,17 @@ namespace Vintagestory.GameContent
 
             return base.GetPlacedBlockInfo(world, pos, forPlayer) + Lang.Get("Lets you sleep for up to {0} hours", System.Math.Round(sleepEfficiency * world.Calendar.HoursPerDay / 2, 2));
         }
+
+        public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
+        {
+            return new WorldInteraction[]
+            {
+                new WorldInteraction()
+                {
+                    ActionLangCode = "blockhelp-bed-sleep",
+                    MouseButton = EnumMouseButton.Right
+                }
+            };
+        }
     }
 }

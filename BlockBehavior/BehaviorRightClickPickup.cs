@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 
@@ -18,6 +19,11 @@ namespace Vintagestory.GameContent
         {
             ItemStack stack = block.OnPickBlock(world, blockSel.Position);
 
+            if (!world.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            {
+                return false;
+            }
+
             if (!byPlayer.Entity.Controls.Sneak && byPlayer.InventoryManager.ActiveHotbarSlot.Empty)
             {
                 if (byPlayer.InventoryManager.TryGiveItemstack(stack, true))
@@ -31,6 +37,19 @@ namespace Vintagestory.GameContent
 
             return false;
         }
-        
+
+        public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer, ref EnumHandling handled)
+        {
+            return new WorldInteraction[]
+            {
+                new WorldInteraction()
+                {
+                    ActionLangCode = "blockhelp-behavior-rightclickpickup",
+                    MouseButton = EnumMouseButton.Right,
+                    RequireFreeHand = true
+                }
+            };
+        }
+
     }
 }

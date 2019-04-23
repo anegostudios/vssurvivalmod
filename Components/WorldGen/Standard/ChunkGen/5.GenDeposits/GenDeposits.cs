@@ -96,8 +96,7 @@ namespace Vintagestory.ServerMods
             noiseSizeClimate = regionSize / TerraGenConfig.climateMapScale;
             noiseSizeOre = regionSize / TerraGenConfig.oreMapScale;
             
-
-
+            
             int seed = api.WorldManager.Seed;
             depositRand = new LCGRandom(api.WorldManager.Seed + 34613);
 
@@ -125,10 +124,8 @@ namespace Vintagestory.ServerMods
                     }
                 }
             }
-
             
             blockTypes = api.World.Blocks;
-
             verticalDistortBottom = GenMaps.GetDepositVerticalDistort(seed++);
             verticalDistortTop = GenMaps.GetDepositVerticalDistort(seed++);
         }
@@ -160,20 +157,26 @@ namespace Vintagestory.ServerMods
         }
 
 
-        public override void GeneratePartial(IServerChunk[] chunks, int originChunkX, int originChunkZ, int chunkdX, int chunkdZ)
+        protected override void GenChunkColumn(IServerChunk[] chunks, int chunkX, int chunkZ)
         {
-            int chunkx = originChunkX + chunkdX;
-            int chunkz = originChunkZ + chunkdZ;
+            base.GenChunkColumn(chunks, chunkX, chunkZ);
+        }
 
-            int baseX = chunkx * chunksize;
-            int baseZ = chunkz * chunksize;
+        public override void GeneratePartial(IServerChunk[] chunks, int chunkX, int chunkZ, int chunkdX, int chunkdZ)
+        {
+            int fromChunkx = chunkX + chunkdX;
+            int fromChunkz = chunkZ + chunkdZ;
+
+            int fromBaseX = fromChunkx * chunksize;
+            int fromBaseZ = fromChunkz * chunksize;
 
             subDepositsToPlace.Clear();
 
             for (int i = 0; i < Deposits.Length; i++)
             {
                 DepositVariant variant = Deposits[i];
-                float quantityFactor = variant.WithOreMap ? variant.GetOreMapFactor(chunkx, chunkz) : 1;
+
+                float quantityFactor = variant.WithOreMap ? variant.GetOreMapFactor(fromChunkx, fromChunkz) : 1;
 
                 float qModified = variant.TriesPerChunk * quantityFactor * chanceMultiplier;
                 int quantity = (int)qModified;
@@ -181,18 +184,21 @@ namespace Vintagestory.ServerMods
                 
                 while (quantity-- > 0)
                 {
-                    tmpPos.Set(baseX + chunkRand.NextInt(chunksize), -99, baseZ + chunkRand.NextInt(chunksize));
+                    tmpPos.Set(fromBaseX + chunkRand.NextInt(chunksize), -99, fromBaseZ + chunkRand.NextInt(chunksize));
 
                     depositRand.SetWorldSeed(chunkRand.NextInt(10000000));
-                    depositRand.InitPositionSeed(chunkx, chunkz);
+                    depositRand.InitPositionSeed(fromChunkx, fromChunkz);
 
-                    GenDeposit(chunks, originChunkX, originChunkZ, tmpPos, variant);
+                    GenDeposit(chunks, chunkX, chunkZ, tmpPos, variant);
                 }
             }
 
             foreach (var val in subDepositsToPlace)
             {
-                val.Value.GeneratorInst.GenDeposit(blockAccessor, chunks, originChunkX, originChunkZ, val.Key, ref subDepositsToPlace);
+                depositRand.SetWorldSeed(chunkRand.NextInt(10000000));
+                depositRand.InitPositionSeed(fromChunkx, fromChunkz);
+
+                val.Value.GeneratorInst.GenDeposit(blockAccessor, chunks, chunkX, chunkZ, val.Key, ref subDepositsToPlace);
             }
         }
 
@@ -203,17 +209,17 @@ namespace Vintagestory.ServerMods
         /// forceInitialPosY is for subdeposits
         /// </summary>
         /// <param name="chunks"></param>
-        /// <param name="originChunkX"></param>
-        /// <param name="originChunkZ"></param>
+        /// <param name="chunkX"></param>
+        /// <param name="chunkZ"></param>
         /// <param name="offsetX"></param>
         /// <param name="offsetZ"></param>
         /// <param name="variant"></param>
         /// <param name="forceInitialPosY"></param>
         /// <returns></returns>
-        void GenDeposit(IServerChunk[] chunks, int originChunkX, int originChunkZ, BlockPos pos, DepositVariant variant)
+        void GenDeposit(IServerChunk[] chunks, int chunkX, int chunkZ, BlockPos depoCenterPos, DepositVariant variant)
         {
-            int lx = GameMath.Mod(pos.X, chunksize);
-            int lz = GameMath.Mod(pos.Z, chunksize);
+            int lx = GameMath.Mod(depoCenterPos.X, chunksize);
+            int lz = GameMath.Mod(depoCenterPos.Z, chunksize);
 
             IMapChunk heremapchunk = chunks[0].MapChunk;
 
@@ -222,24 +228,24 @@ namespace Vintagestory.ServerMods
             {
                 IMapChunk originMapchunk = null;
 
-                originMapchunk = api.WorldManager.GetMapChunk(pos.X / chunksize, pos.Z / chunksize); 
+                originMapchunk = api.WorldManager.GetMapChunk(depoCenterPos.X / chunksize, depoCenterPos.Z / chunksize); 
                 if (originMapchunk == null) return; // Definition: Climate dependent deposits are limited to size 32x32x32 
 
-                pos.Y = originMapchunk.RainHeightMap[lz * chunksize + lx];
+                depoCenterPos.Y = originMapchunk.RainHeightMap[lz * chunksize + lx];
 
-                IntMap climateMap = api.World.BlockAccessor.GetMapRegion(pos.X / regionSize, pos.Z / regionSize).ClimateMap;
+                IntMap climateMap = api.World.BlockAccessor.GetMapRegion(depoCenterPos.X / regionSize, depoCenterPos.Z / regionSize).ClimateMap;
 
                 float posXInRegionClimate = ((float)lx / regionSize - (float)lx / regionSize) * noiseSizeClimate;
                 float posZInRegionClimate = ((float)lz / regionSize - (float)lz / regionSize) * noiseSizeClimate;
 
                 int climate = climateMap.GetUnpaddedColorLerped(posXInRegionClimate, posZInRegionClimate);
-                float temp = TerraGenConfig.GetScaledAdjustedTemperatureFloat((climate >> 16) & 0xff, pos.Y - TerraGenConfig.seaLevel);
-                float rainRel = TerraGenConfig.GetRainFall((climate >> 8) & 0xff, pos.Y) / 255f;
+                float temp = TerraGenConfig.GetScaledAdjustedTemperatureFloat((climate >> 16) & 0xff, depoCenterPos.Y - TerraGenConfig.seaLevel);
+                float rainRel = TerraGenConfig.GetRainFall((climate >> 8) & 0xff, depoCenterPos.Y) / 255f;
 
                 if (rainRel < variant.Climate.MinRain || rainRel > variant.Climate.MaxRain || temp < variant.Climate.MinTemp || temp > variant.Climate.MaxTemp) return;
             }
 
-            variant.GeneratorInst.GenDeposit(blockAccessor, chunks, originChunkX, originChunkZ, pos, ref subDepositsToPlace);
+            variant.GeneratorInst.GenDeposit(blockAccessor, chunks, chunkX, chunkZ, depoCenterPos, ref subDepositsToPlace);
         }
 
     }

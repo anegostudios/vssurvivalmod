@@ -21,8 +21,8 @@ namespace Vintagestory.ServerMods
 
         internal RockStrataConfig strata;
 
-        SimplexNoise distort2dx;
-        SimplexNoise distort2dz;
+        internal SimplexNoise distort2dx;
+        internal SimplexNoise distort2dz;
         internal MapLayerCustomPerlin[] strataNoises;
 
         int regionMapSize;
@@ -138,9 +138,8 @@ namespace Vintagestory.ServerMods
 
 
         float[] rockGroupMaxThickness = new float[4];
-        float[] rockGroupMaxQuantity = new float[4];
-        int[] rockGroupCounter = new int[4];
-
+        int[] rockGroupCurrentThickness = new int[4];
+        
         internal void GenChunkColumn(IServerChunk[] chunks, int chunkX, int chunkZ)
         {
             IMapChunk mapChunk = chunks[0].MapChunk;
@@ -160,7 +159,7 @@ namespace Vintagestory.ServerMods
             float chunkInRegionZ = (chunkZ % regionChunkSize) * lerpMapInv * chunksize;
 
             GeologicProvinces provinces = NoiseGeoProvince.provinces;
-            
+            int grp=0;
 
             for (int x = 0; x < chunksize; x++)
             {
@@ -176,8 +175,7 @@ namespace Vintagestory.ServerMods
                         chunkInRegionZ + z * lerpMapInv
                     ];
                     rockGroupMaxThickness[0] = rockGroupMaxThickness[1] = rockGroupMaxThickness[2] = rockGroupMaxThickness[3] = 0;
-                    rockGroupMaxQuantity[0] = rockGroupMaxQuantity[1] = rockGroupMaxQuantity[2] = rockGroupMaxQuantity[3] = 0;
-                    rockGroupCounter[0] = rockGroupCounter[1] = rockGroupCounter[2] = rockGroupCounter[3] = 0;
+                    rockGroupCurrentThickness[0] = rockGroupCurrentThickness[1] = rockGroupCurrentThickness[2] = rockGroupCurrentThickness[3] = 0;
 
                     for (int i = 0; i < indices.Length; i++)
                     {
@@ -189,11 +187,6 @@ namespace Vintagestory.ServerMods
                         rockGroupMaxThickness[1] += var.RockStrataIndexed[1].MaxThickness * w;
                         rockGroupMaxThickness[2] += var.RockStrataIndexed[2].MaxThickness * w;
                         rockGroupMaxThickness[3] += var.RockStrataIndexed[3].MaxThickness * w;
-
-                        rockGroupMaxQuantity[0] += var.RockStrataIndexed[0].MaxQuantity * w;
-                        rockGroupMaxQuantity[1] += var.RockStrataIndexed[1].MaxQuantity * w;
-                        rockGroupMaxQuantity[2] += var.RockStrataIndexed[2].MaxQuantity * w;
-                        rockGroupMaxQuantity[3] += var.RockStrataIndexed[3].MaxQuantity * w;
                     }
 
                     
@@ -217,18 +210,24 @@ namespace Vintagestory.ServerMods
                             rockMap = mapChunk.MapRegion.RockStrata[rockStrataId];
                             step = (float)rockMap.InnerSize / regionChunkSize;
 
-                            int grp = (int)stratum.RockGroup;
-                            float diff = rockGroupMaxQuantity[grp] - rockGroupCounter[grp];
-                            if (diff <= 0) continue;
+                            grp = (int)stratum.RockGroup;
 
-                            rockGroupCounter[grp]++;
-                            float dist = 1 + GameMath.Clamp((distx + distz) / 30, 0.9f, 1.1f);
-                            strataThickness = Math.Min(rockGroupMaxThickness[grp] * dist * Math.Min(1, diff), rockMap.GetIntLerpedCorrectly(rdx * step + step * (float)(x + distx) / chunksize, rdz * step + step * (float)(z + distz) / chunksize));
+                            float thicknessDistort = GameMath.Clamp((distx + distz) / 30, 0.9f, 1.1f);
+
+                            float allowedThickness = rockGroupMaxThickness[grp] * thicknessDistort - rockGroupCurrentThickness[grp];
+
+                            strataThickness = Math.Min(allowedThickness, rockMap.GetIntLerpedCorrectly(rdx * step + step * (float)(x + distx) / chunksize, rdz * step + step * (float)(z + distz) / chunksize));
 
                             strataThickness -= (stratum.RockGroup == EnumRockGroup.Sedimentary) ? Math.Max(0, yupper - TerraGenConfig.seaLevel)*0.5f : 0;
 
-                            if (strataThickness <= 0 || strataThickness < 2) continue;
+                            if (strataThickness < 2)
+                            {
+                                strataThickness = -1;
+                                continue;
+                            }
                         }
+
+                        rockGroupCurrentThickness[grp]++;
 
                         if (stratum.GenDir == EnumStratumGenDir.BottomUp)
                         {

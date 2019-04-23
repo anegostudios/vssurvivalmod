@@ -522,6 +522,23 @@ namespace Vintagestory.GameContent
             ItemStack rndStack = stacks[capi.World.Rand.Next(stacks.Length)];
             return rndStack.Collectible.GetRandomColor(capi, rndStack);
         }
-        
+
+        public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
+        {
+            return new WorldInteraction[]
+            {
+                new WorldInteraction()
+                {
+                    ActionLangCode = "blockhelp-meal-pickup",
+                    MouseButton = EnumMouseButton.Right,
+                },
+                new WorldInteraction()
+                {
+                    ActionLangCode = "blockhelp-meal-eat",
+                    MouseButton = EnumMouseButton.Right,
+                    HotKeyCode = "sneak"
+                }
+            };
+        }
     }
 }

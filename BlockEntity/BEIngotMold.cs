@@ -80,6 +80,23 @@ namespace Vintagestory.GameContent
             }
         }
 
+        public bool IsFullLeft
+        {
+            get
+            {
+                return fillLevelLeft >= 100;
+            }
+        }
+
+        public bool IsFullRight
+        {
+            get
+            {
+                return fillLevelRight >= 100;
+            }
+        }
+
+
         public bool CanReceiveAny
         {
             get { return block.Code.Path.Contains("burned"); }

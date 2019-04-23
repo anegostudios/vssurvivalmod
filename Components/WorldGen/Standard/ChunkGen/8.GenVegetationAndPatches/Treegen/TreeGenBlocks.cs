@@ -82,7 +82,7 @@ namespace Vintagestory.ServerMods.NoObf
             }
 
             blockIds.Add((ushort)leavesBlockId);
-            blockIds.Add((ushort)leavesBranchyDeadBlockId);
+            blockIds.Add((ushort)leavesBranchyBlockId);
             blockIds.Add((ushort)logBlockId);
         }
     }

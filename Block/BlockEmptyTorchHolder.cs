@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
@@ -31,6 +32,19 @@ namespace Vintagestory.GameContent
 
             return base.OnBlockInteractStart(world, byPlayer, blockSel);
         }
-        
+
+
+        public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
+        {
+            return new WorldInteraction[]
+            {
+                new WorldInteraction()
+                {
+                    ActionLangCode = "blockhelp-torchholder-addtorch",
+                    MouseButton = EnumMouseButton.Right,
+                    Itemstacks = new ItemStack[] { new ItemStack(world.GetBlock(new AssetLocation("torch-up"))) }
+                }
+            };
+        }
     }
 }

@@ -23,8 +23,12 @@ namespace Vintagestory.GameContent
 
         public override void Initialize(EntityProperties properties, ICoreAPI api, long InChunkIndex3d)
         {
+            if (api.Side == EnumAppSide.Server)
+            {
+                int a = 1;
+            }
             base.Initialize(properties, api, InChunkIndex3d);
-
+            
             if (api.Side == EnumAppSide.Client)
             {
                 WatchedAttributes.RegisterModifiedListener("sitHeight", () =>
@@ -62,7 +66,7 @@ namespace Vintagestory.GameContent
                 float desiredYaw = (float)Math.Atan2(ServerPos.X - Pos.X, ServerPos.Z - Pos.Z);
 
                 float yawDist = GameMath.AngleRadDistance(LocalPos.Yaw, desiredYaw);
-                Pos.Yaw += GameMath.Clamp(yawDist, -15 * dt, 15 * dt);
+                Pos.Yaw += GameMath.Clamp(yawDist, -35 * dt, 35 * dt);
                 Pos.Yaw = Pos.Yaw % GameMath.TWOPI;
             }
         }

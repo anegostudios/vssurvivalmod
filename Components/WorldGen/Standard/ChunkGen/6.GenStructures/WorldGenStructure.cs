@@ -531,7 +531,7 @@ namespace Vintagestory.ServerMods
 
             foreach (var val in mapregion.GeneratedStructures)
             {
-                if (val.Location.Contains(pos))
+                if (val.Location.Contains(pos) || val.Location.Contains(pos.X, pos.Y - 3, pos.Z))
                 {
                     return true;
                 }

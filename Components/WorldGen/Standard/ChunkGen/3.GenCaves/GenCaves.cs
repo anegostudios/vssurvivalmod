@@ -40,6 +40,15 @@ namespace Vintagestory.ServerMods
         }
 
 
+        public override void initWorldGen()
+        {
+            base.initWorldGen();
+            caveRand = new LCGRandom(api.WorldManager.Seed + 123128);
+            basaltNoise = NormalizedSimplexNoise.FromDefaultOctaves(2, 1f / 3.5f, 0.9f, api.World.Seed + 12);
+            heightvarNoise = NormalizedSimplexNoise.FromDefaultOctaves(3, 1f / 20f, 0.9f, api.World.Seed + 12);
+        }
+
+
         private void OnMapChunkGen(IMapChunk mapChunk, int chunkX, int chunkZ)
         {
             mapChunk.CaveHeightDistort = new byte[chunksize * chunksize];
@@ -48,7 +57,10 @@ namespace Vintagestory.ServerMods
             {
                 for (int dz = 0; dz < chunksize; dz++)
                 {
-                     mapChunk.CaveHeightDistort[dz * chunksize + dx] = (byte)(255 * heightvarNoise.Noise(chunksize * chunkX + dx, chunksize * chunkZ + dz));
+                    double val = heightvarNoise.Noise(chunksize * chunkX + dx, chunksize * chunkZ + dz) - 0.5;
+                    val = val > 0 ? Math.Max(0, val - 0.07) : Math.Min(0, val + 0.07);
+
+                    mapChunk.CaveHeightDistort[dz * chunksize + dx] = (byte)(128 * val + 127);
                 }
             }
         }
@@ -73,6 +85,7 @@ namespace Vintagestory.ServerMods
                     int chunkZ = baseChunkZ + dz;
 
                     IServerChunk[] chunks = GetChunkColumn(chunkX, chunkZ);
+
                     for (int i = 0; i < chunks.Length; i++)
                     {
                         if (chunks[i] == null)
@@ -81,6 +94,8 @@ namespace Vintagestory.ServerMods
                             return;
                         }
                     }
+
+                    OnMapChunkGen(chunks[0].MapChunk, chunkX, chunkZ);
                 }
             }
 
@@ -160,17 +175,9 @@ namespace Vintagestory.ServerMods
             worldgenBlockAccessor = chunkProvider.GetBlockAccessor(false);
         }
 
-        public override void initWorldGen()
-        {
-            base.initWorldGen();
-            caveRand = new LCGRandom(api.WorldManager.Seed + 123128);
-            basaltNoise = NormalizedSimplexNoise.FromDefaultOctaves(2, 1f / 3.5f, 0.9f, api.World.Seed + 12);
-            heightvarNoise = NormalizedSimplexNoise.FromDefaultOctaves(5, 1f / 40f, 0.9f, api.World.Seed + 12);
-        }
-
         public override void GeneratePartial(IServerChunk[] chunks, int chunkX, int chunkZ, int cdx, int cdz)
         {
-            int quantityCaves = chunkRand.NextInt(100) > 35 ? 1 : 0;
+            int quantityCaves = chunkRand.NextInt(100) < TerraGenConfig.CavesPerChunkColumn*100 ? 1 : 0;
 
             while (quantityCaves-- > 0)
             {
@@ -195,7 +202,7 @@ namespace Vintagestory.ServerMods
                     verticalSize = chunkRand.NextFloat() * 2 + chunkRand.NextFloat();
                 }
 
-                bool extraBranchy = chunkRand.NextFloat() < 0.02f;
+                bool extraBranchy = (posY < TerraGenConfig.seaLevel / 2) ? chunkRand.NextFloat() < 0.02f : false;
                 bool largeNearLavaLayer = chunkRand.NextFloat() < 0.3f;
 
                 float curviness = chunkRand.NextFloat() < 0.01f ? 0.035f : (chunkRand.NextFloat() < 0.03f ? 0.5f : 0.1f);
@@ -292,7 +299,7 @@ namespace Vintagestory.ServerMods
                 // Rarely go pretty wide
                 if ((rnd -= 60) <= 0)
                 {
-                    horRadiusGain = caveRand.NextFloat() * caveRand.NextFloat() * 7;
+                    horRadiusGain = caveRand.NextFloat() * caveRand.NextFloat() * 3.5f;
                 } else
                 // Rarely go thin
                 if ((rnd -= 60) <= 0)
@@ -313,7 +320,7 @@ namespace Vintagestory.ServerMods
                 {
                     if (posY < TerraGenConfig.seaLevel - 20)
                     {
-                        horRadiusGain = 2 + caveRand.NextFloat() * caveRand.NextFloat() * 11f;
+                        horRadiusGain = 1 + caveRand.NextFloat() * caveRand.NextFloat() * 5f;
                     }
                 } else
                 // Very rarely go really tall
@@ -361,7 +368,8 @@ namespace Vintagestory.ServerMods
                 }
 
                 // Horizontal branch
-                if ((vertRadius > 1 || horRadius > 1) && branchLevel < 3 && caveRand.NextInt(branchRand) == 0)
+                int brand = branchRand + 2 * Math.Max(0, (int)posY - (TerraGenConfig.seaLevel - 20)); // Lower chance of branches above sealevel because Saraty does not like strongly cut out mountains
+                if ((vertRadius > 1 || horRadius > 1) && branchLevel < 3 && caveRand.NextInt(brand) == 0)
                 {
                     CarveTunnel(
                         chunks,
@@ -499,7 +507,7 @@ namespace Vintagestory.ServerMods
             double xdistRel, ydistRel, zdistRel;
             double hRadiusSq = horRadius * horRadius;
             double vRadiusSq = vertRadius * vertRadius;
-            double distortStrength = vertRadius < 1.5 ? 1 / 22.0 : 1 / 11.0;
+            double distortStrength = GameMath.Clamp(vertRadius / 4.0, 0, 0.1);
 
 
             bool foundWater = false;
@@ -547,8 +555,6 @@ namespace Vintagestory.ServerMods
 
             hRadiusSq = horRadius * horRadius;
             vRadiusSq = vertRadius * vertRadius;
-            distortStrength = vertRadius < 1.5 ? 1 / 22.0 : 1 / 11.0;
-
             
 
             for (int lx = mindx; lx <= maxdx; lx++)

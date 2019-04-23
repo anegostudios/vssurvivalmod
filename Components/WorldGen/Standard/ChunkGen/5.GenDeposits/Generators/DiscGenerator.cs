@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -154,6 +155,24 @@ namespace Vintagestory.ServerMods
                             childGeneratorsByInBlockId[block.BlockId].Init(block, key, value);
                         }
                     }
+
+                    // Host rock for
+                    if (block.Attributes == null) block.Attributes = new JsonObject(JToken.Parse("{}"));
+                    ushort[] oreIds = block.Attributes["hostRockFor"].AsArray<ushort>(new ushort[0]);
+                    oreIds = oreIds.Append(placeBlockByInBlockId[block.BlockId].Blocks.Select(b => b.BlockId).ToArray());
+                    block.Attributes.Token["hostRockFor"] = JToken.FromObject(oreIds);
+
+                    // In host rock
+                    Block[] placeBlocks = placeBlockByInBlockId[block.BlockId].Blocks;
+                    for (int i = 0; i < placeBlocks.Length; i++)
+                    {
+                        Block pblock = placeBlocks[i];
+                        if (pblock.Attributes == null) pblock.Attributes = new JsonObject(JToken.Parse("{}"));
+                        oreIds = pblock.Attributes["hostRock"].AsArray<ushort>(new ushort[0]);
+                        oreIds = oreIds.Append(block.BlockId);
+                        pblock.Attributes.Token["hostRock"] = JToken.FromObject(oreIds);
+                    }
+
                 }
             }
             else
@@ -165,7 +184,7 @@ namespace Vintagestory.ServerMods
 
 
 
-        public override void GenDeposit(IBlockAccessor blockAccessor, IServerChunk[] chunks, int originChunkX, int originChunkZ, BlockPos pos, ref Dictionary<BlockPos, DepositVariant> subDepositsToPlace)
+        public override void GenDeposit(IBlockAccessor blockAccessor, IServerChunk[] chunks, int chunkX, int chunkZ, BlockPos depoCenterPos, ref Dictionary<BlockPos, DepositVariant> subDepositsToPlace)
         {
             int depositGradeIndex = PlaceBlock.MaxGrade == 0 ? 0 : DepositRand.NextInt(PlaceBlock.MaxGrade);
 
@@ -179,17 +198,18 @@ namespace Vintagestory.ServerMods
             radiusZ = radius + (int)(radius * deform);
             
             
-            int baseX = originChunkX * chunksize;
-            int baseZ = originChunkZ * chunksize;
+            int baseX = chunkX * chunksize;
+            int baseZ = chunkZ * chunksize;
+
 
             // No need to caluclate further if this deposit won't be part of this chunk
-            if (pos.X + radiusX < baseX-6 || pos.Z + radiusZ < baseZ-6 || pos.X - radiusX >= baseX + chunksize + 6 || pos.Z - radiusZ >= baseZ + chunksize + 6) return;
-            
+            if (depoCenterPos.X + radiusX < baseX - 6 || depoCenterPos.Z + radiusZ < baseZ - 6 || depoCenterPos.X - radiusX >= baseX + chunksize + 6 || depoCenterPos.Z - radiusZ >= baseZ + chunksize + 6) return;
+
             IMapChunk heremapchunk = chunks[0].MapChunk;
 
             
-            beforeGenDeposit(heremapchunk, pos);
-
+            beforeGenDeposit(heremapchunk, depoCenterPos);
+            
             // Ok generate
             float th = Thickness.nextFloat(1, DepositRand);
             depoitThickness = (int)th + (DepositRand.NextFloat() < th - (int)th ? 1 : 0);
@@ -203,44 +223,52 @@ namespace Vintagestory.ServerMods
 
             bool shouldGenSurfaceDeposit = DepositRand.NextFloat() <= GenSurfaceBlockChance && SurfaceBlock != null;
 
-            int lx = GameMath.Mod(pos.X, chunksize);
-            int lz = GameMath.Mod(pos.Z, chunksize);
-
+            int lx = GameMath.Mod(depoCenterPos.X, chunksize);
+            int lz = GameMath.Mod(depoCenterPos.Z, chunksize);
+            int distx, distz;
 
             // No need to go search far beyond chunk boundaries
-            int minx = GameMath.Clamp(lx - radiusX, -8, chunksize + 8) - lx;
-            int maxx = GameMath.Clamp(lx + radiusX, -8, chunksize + 8) - lx;
-            int minz = GameMath.Clamp(lz - radiusZ, -8, chunksize + 8) - lz;
-            int maxz = GameMath.Clamp(lz + radiusZ, -8, chunksize + 8) - lz;
+            int minx = baseX - 6;
+            int maxx = baseX + chunksize + 6;
+            int minz = baseZ - 6;
+            int maxz = baseZ + chunksize + 6;
+
+            minx = GameMath.Clamp(depoCenterPos.X - radiusX, minx, maxx);
+            maxx = GameMath.Clamp(depoCenterPos.X + radiusX, minx, maxx);
+            minz = GameMath.Clamp(depoCenterPos.Z - radiusZ, minz, maxz);
+            maxz = GameMath.Clamp(depoCenterPos.Z + radiusZ, minz, maxz);          
 
             float invChunkAreaSize = 1f / (chunksize * chunksize);
             double val = 1;
             
-            for (int dx = minx; dx < maxx; dx++)
+            for (int posx = minx; posx < maxx; posx++)
             {
-                targetPos.X = pos.X + dx;
+                targetPos.X = posx;
                 lx = targetPos.X - baseX;
+                distx = posx - depoCenterPos.X;
 
-                float xSq = dx * dx * xRadSqInv;
+                float xSq = distx * distx * xRadSqInv;
 
-                for (int dz = minz; dz < maxz; dz++)
+                for (int posz = minz; posz < maxz; posz++)
                 {
-                    targetPos.Y = pos.Y;
-                    targetPos.Z = pos.Z + dz;
+                    targetPos.Y = depoCenterPos.Y;
+                    targetPos.Z = posz;
                     lz = targetPos.Z - baseZ;
-
+                    distz = posz - depoCenterPos.Z;
+                    
                     // Kinda weird mathematically speaking, but seems to work as a means to distort the perfect circleness of deposits ¯\_(ツ)_/¯
                     // Also not very efficient to use direct perlin noise in here :/
                     // But after ~10 hours of failing (=weird lines of missing deposit material) with a pre-generated 2d distortion map i give up >.>
-                    val = 1;// DistortNoiseGen.Noise(targetPos.X / 3.0, targetPos.Z / 3.0) * 1.5 + 0.15;
-                    double distanceToEdge = val - (xSq + dz * dz * zRadSqInv);
+                    val = 1 - DistortNoiseGen.Noise(targetPos.X / 3.0, targetPos.Z / 3.0) * 1.5 + 0.15;
+                    double distanceToEdge = val - (xSq + distz * distz * zRadSqInv);
 
                     if (distanceToEdge < 0 || lx < 0 || lz < 0 || lx >= chunksize || lz >= chunksize) continue;
                     
                     loadYPosAndThickness(heremapchunk, lx, lz, targetPos, distanceToEdge);
 
+
                     // Some deposits may not appear all over cliffs
-                    if (Math.Abs(pos.Y - targetPos.Y) > MaxYRoughness) continue;
+                    if (Math.Abs(depoCenterPos.Y - targetPos.Y) > MaxYRoughness) continue;
 
 
                     for (int y = 0; y < hereThickness; y++)
@@ -282,7 +310,7 @@ namespace Vintagestory.ServerMods
                                 {
                                     BlockPos childpos = new BlockPos(targetPos.X, targetPos.Y, targetPos.Z);
 
-                                    if (ShouldPlaceAdjustedForOreMap(variant.ChildDeposits[i], originChunkX * chunksize + lx, originChunkZ * chunksize + lz, quantity, rndVal))
+                                    if (ShouldPlaceAdjustedForOreMap(variant.ChildDeposits[i], chunkX * chunksize + lx, chunkZ * chunksize + lz, quantity, rndVal))
                                     {
                                         subDepositsToPlace[childpos] = variant.ChildDeposits[i];
                                     }

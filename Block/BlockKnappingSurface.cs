@@ -7,11 +7,42 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
     public class BlockKnappingSurface : Block
     {
+        WorldInteraction[] interactions;
+
+        public override void OnLoaded(ICoreAPI api)
+        {
+            if (api.Side != EnumAppSide.Client) return;
+            ICoreClientAPI capi = api as ICoreClientAPI;
+
+            interactions = ObjectCacheUtil.GetOrCreate(api, "knappingBlockInteractions", () =>
+            {
+                List<ItemStack> knappableStacklist = new List<ItemStack>();
+
+                foreach (CollectibleObject obj in api.World.Collectibles)
+                {
+                    if (obj.Attributes?["knappable"].AsBool() == true)
+                    {
+                        knappableStacklist.Add(new ItemStack(obj));
+                    }
+                }
+
+                return new WorldInteraction[] {
+                    new WorldInteraction()
+                    {
+                        ActionLangCode = "blockhelp-knappingsurface-knap",
+                        HotKeyCode = null,
+                        MouseButton = EnumMouseButton.Left,
+                        Itemstacks = knappableStacklist.ToArray()
+                    },
+                };
+            });
+        }
 
         internal virtual bool HasSolidGround(IBlockAccessor blockAccessor, BlockPos pos)
         {
@@ -69,6 +100,11 @@ namespace Vintagestory.GameContent
             {
                 world.BlockAccessor.BreakBlock(pos, null);
             }
+        }
+
+        public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
+        {
+            return interactions;
         }
     }
 

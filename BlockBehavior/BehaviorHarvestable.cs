@@ -1,4 +1,5 @@
-﻿using Vintagestory.API.Common;
+﻿using Vintagestory.API.Client;
+using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 
@@ -37,6 +38,23 @@ namespace Vintagestory.GameContent
             }
 
             return false;
+        }
+
+        public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer, ref EnumHandling handled)
+        {
+            if (block.Code.Path.Contains("ripe") && block.Drops != null && block.Drops.Length >= 1)
+            {
+                return new WorldInteraction[]
+                {
+                    new WorldInteraction()
+                    {
+                        ActionLangCode = "blockhelp-harvetable-harvest",
+                        MouseButton = EnumMouseButton.Right
+                    }
+                };
+            }
+
+            return base.GetPlacedBlockInteractionHelp(world, selection, forPlayer, ref handled);
         }
     }
 }

@@ -72,11 +72,12 @@ namespace Vintagestory.GameContent
                 return false;
             }
 
-            if (!byPlayer.Entity.Controls.Sneak)
+            if (!byPlayer.Entity.Controls.Sneak || world.BlockAccessor.GetBlockEntity(blockSel.Position.DownCopy()) is ILiquidMetalSink)
             {
                 failureCode = "__ignore__";
                 return false;
             }
+
             if (!IsSuitablePosition(world, blockSel.Position, ref failureCode)) return false;
 
             if (world.BlockAccessor.GetBlock(blockSel.Position.DownCopy()).SideSolid[BlockFacing.UP.Index])
@@ -126,6 +127,11 @@ namespace Vintagestory.GameContent
             if (blockSel == null) return;
 
             ILiquidMetalSink be = byEntity.World.BlockAccessor.GetBlockEntity(blockSel.Position) as ILiquidMetalSink;
+
+            if (be != null)
+            {
+                handHandling = EnumHandHandling.PreventDefault;
+            }
 
             if (be != null && be.CanReceiveAny)
             {

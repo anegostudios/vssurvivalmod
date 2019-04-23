@@ -13,6 +13,8 @@ namespace Vintagestory.ServerMods
     {
         #region WorldGen
 
+        public static double CavesPerChunkColumn = 0.37;
+
         /// <summary>
         /// Amount of octaves used by terrain gen
         /// </summary>

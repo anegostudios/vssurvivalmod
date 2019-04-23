@@ -62,7 +62,7 @@ namespace Vintagestory.GameContent
             
         }
 
-        public override void TryPutInto(IWorldAccessor world, ItemSlot sinkSlot)
+        public override void TryPutInto(IWorldAccessor world, ItemSlot sinkSlot, int quantity = 1)
         {
             
         }
@@ -73,7 +73,7 @@ namespace Vintagestory.GameContent
 
             if (isBuyingSlot)
             {
-                return Lang.Get("Price: {0} gears", TradeItem.Price, TradeItem.Stock) + "\n\n" + base.GetStackDescription(world, extendedDebugInfo);
+                return Lang.Get("Price: {0} gears\nDemand: {1}", TradeItem.Price, TradeItem.Stock) + "\n\n" + base.GetStackDescription(world, extendedDebugInfo);
             } else
             {
                 return Lang.Get("Price: {0} gears\nSupply: {1}", TradeItem.Price, TradeItem.Stock) + "\n\n" + base.GetStackDescription(world, extendedDebugInfo);

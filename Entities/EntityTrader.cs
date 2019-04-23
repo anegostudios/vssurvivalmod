@@ -146,8 +146,11 @@ namespace Vintagestory.GameContent
                     TradeProps = new JsonObject(json).AsObject<TradeProperties>();
                 } catch (Exception e)
                 {
-                    api.World.Logger.Error("Failed deserializing TradeProperties, exception logged to verbose debug");
-                    api.World.Logger.VerboseDebug("Failed deserializing TradeProperties: " + e);
+                    api.World.Logger.Error("Failed deserializing TradeProperties for trader {0}, exception logged to verbose debug", properties.Code);
+                    api.World.Logger.VerboseDebug("Failed deserializing TradeProperties: {0}", e);
+                    api.World.Logger.VerboseDebug("=================");
+                    api.World.Logger.VerboseDebug("Tradeprops json:");
+                    api.World.Logger.VerboseDebug("{0}", Properties.Server.Attributes["tradeProps"].ToJsonToken());
                 }
                 
             } else
@@ -187,8 +190,9 @@ namespace Vintagestory.GameContent
                 taskAi.taskManager.ShouldExecuteTask =
                     (task) => tradingWith == null || (task is AiTaskIdle || task is AiTaskSeekEntity || task is AiTaskGotoEntity);
 
-
                 RefreshBuyingSellingInventory();
+
+                WatchedAttributes.SetDouble("lastRefreshTotalDays", World.Calendar.TotalDays + 4 + World.Rand.NextDouble() * 10);
 
                 Inventory.GiveToTrader((int)TradeProps.Money.nextFloat(1f, World.Rand));
 
@@ -209,7 +213,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        private void RefreshBuyingSellingInventory()
+        private void RefreshBuyingSellingInventory(float refreshChance = 1.1f)
         {
             if (TradeProps == null) return;
 
@@ -218,6 +222,8 @@ namespace Vintagestory.GameContent
 
             for (int i = 0; i < quantity; i++)
             {
+                if (World.Rand.NextDouble() > refreshChance) continue;
+
                 ItemSlotTrade slot = Inventory.GetBuyingSlot(i);
                 TradeItem tradeItem = TradeProps.Buying.List[i];
                 if (tradeItem.Name == null) tradeItem.Name = i + "";
@@ -233,6 +239,8 @@ namespace Vintagestory.GameContent
 
             for (int i = 0; i < quantity; i++)
             {
+                if (World.Rand.NextDouble() > refreshChance) continue;
+
                 ItemSlotTrade slot = Inventory.GetSellingSlot(i);
                 TradeItem tradeItem = TradeProps.Selling.List[i];
                 if (tradeItem.Name == null) tradeItem.Name = i + "";
@@ -254,6 +262,8 @@ namespace Vintagestory.GameContent
                 base.OnInteract(byEntity, slot, hitPosition, mode);
                 return;
             }
+
+            if (!Alive) return;
 
             EntityPlayer entityplr = byEntity as EntityPlayer;
             IPlayer player = World.PlayerByUid(entityplr.PlayerUID);
@@ -312,6 +322,10 @@ namespace Vintagestory.GameContent
                 {
                     AnimManager.StopAnimation("idle");
                     AnimManager.StartAnimation(new AnimationMetaData() { Animation = "nod", Code = "nod", Weight = 10, EaseOutSpeed = 10000, EaseInSpeed = 10000 });
+
+                    TreeAttribute tree = new TreeAttribute();
+                    Inventory.ToTreeAttributes(tree);
+                    (Api as ICoreServerAPI).Network.BroadcastEntityPacket(EntityId, 1234, tree.ToBytes());
                 }
             }
         }
@@ -328,10 +342,17 @@ namespace Vintagestory.GameContent
             {
                 talkUtil.Talk(EnumTalkType.Death);
             }
+            if (packetid == 1234)
+            {
+                TreeAttribute tree = new TreeAttribute();
+                tree.FromBytes(data);
+                Inventory.FromTreeAttributes(tree);
+            }
         }
 
-        
 
+
+        int tickCount = 0;
 
         public override void OnGameTick(float dt)
         {
@@ -345,6 +366,19 @@ namespace Vintagestory.GameContent
 
             if (World.Side == EnumAppSide.Client) {
                 talkUtil.OnGameTick(dt);
+            } else
+            {
+                if (tickCount++ % 1000 == 0)
+                {
+                    double lastRefreshTotalDays = WatchedAttributes.GetDouble("lastRefreshTotalDays", 0);
+
+                    if (World.Calendar.TotalDays - lastRefreshTotalDays > 14 && tradingWith == null)
+                    {
+                        RefreshBuyingSellingInventory(0.5f);
+                        WatchedAttributes.SetDouble("lastRefreshTotalDays", World.Calendar.TotalDays);
+                        tickCount = 1;
+                    }
+                }
             }
 
             if (tradingWith != null && (tradingWith.Pos.SquareDistanceTo(this.Pos) > 5 || Inventory.openedByPlayerGUIds.Count == 0))

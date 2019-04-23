@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Collections.Generic;
+using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -83,6 +84,37 @@ namespace Vintagestory.GameContent
                     0.5f
                 )
             );
+        }
+
+        public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
+        {
+            BlockEntityTrough betr = world.BlockAccessor.GetBlockEntity(selection.Position) as BlockEntityTrough;
+            if (betr == null) return base.GetPlacedBlockInteractionHelp(world, selection, forPlayer);
+
+            ItemStack[] stacks = betr.GetContentStacks();
+            
+            if (stacks == null || stacks.Length == 0)
+            {
+                List<ItemStack> allowedstacks = new List<ItemStack>();
+
+                foreach (var val in betr.ContentConfig)
+                {
+                    allowedstacks.Add(val.Content.ResolvedItemstack);
+                }
+
+                stacks = allowedstacks.ToArray();
+            }
+
+            return new WorldInteraction[]
+            {
+                new WorldInteraction()
+                {
+                    ActionLangCode = "blockhelp-trough-addfeed",
+                    MouseButton = EnumMouseButton.Right,
+                    Itemstacks = stacks,
+                    GetMatchingStacks = (wi, bs, es) => betr.IsFull ? null : wi.Itemstacks
+                }
+            };
         }
 
     }

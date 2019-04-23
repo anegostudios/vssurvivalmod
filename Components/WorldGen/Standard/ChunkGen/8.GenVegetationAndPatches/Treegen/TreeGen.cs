@@ -254,7 +254,7 @@ namespace Vintagestory.ServerMods
             Block currentBlock = api.GetBlock(currentblockId);
             Block desiredBock = api.GetBlock(desiredblockId);
 
-            if (currentBlock.Replaceable < 6000 && !config.treeBlocks.blockIds.Contains(currentBlock.BlockId))
+            if (currentBlock.Replaceable < 6000 && !config.treeBlocks.blockIds.Contains(currentBlock.BlockId) && (desiredBock.BlockMaterial != EnumBlockMaterial.Wood || currentBlock.Fertility == 0) /* Allow logs to replace soil */)
             {
                 return PlaceResumeState.Stop;
             }

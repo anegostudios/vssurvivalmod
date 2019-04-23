@@ -3,7 +3,7 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
-    class BlockDoor : BaseDoor
+    class BlockDoor : BlockBaseDoor
     {
         public override string GetKnobOrientation()
         {

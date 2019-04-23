@@ -49,13 +49,26 @@ using Vintagestory.API.Config;
 	    playstyles: [
 		    {
 			    code: ""surviveandbuild"",
-			    mods: [""game"", ""survival""],
-                listOrder: 5,
+                langcode: ""surviveandbuild-bands"",
+			    requestMods: [""game"", ""survival""],
+                listOrder: 6,
 			    worldType: ""standard"",
 			    worldConfig: {
 				    worldClimate: ""realistic"",
 				    gameMode: ""survival"",
-				    hoursPerDay: 24
+				    hoursPerDay: 48
+			    }
+		    },
+		    {
+			    code: ""surviveandbuild"",
+                langcode: ""surviveandbuild-patchy"",
+			    requestMods: [""game"", ""survival""],
+                listOrder: 5,
+			    worldType: ""standard"",
+			    worldConfig: {
+				    worldClimate: ""patchy"",
+				    gameMode: ""survival"",
+				    hoursPerDay: 48
 			    }
 		    }
 	    ],

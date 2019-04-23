@@ -84,5 +84,20 @@ namespace Vintagestory.GameContent
 
             return todrop.ToArray();
         }
+
+
+        public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
+        {
+            return new WorldInteraction[]
+            {
+                new WorldInteraction()
+                {
+                    ActionLangCode = LastCodePart(1) == "populated" ? "blockhelp-skep-putinbagslot" : "blockhelp-skep-pickup",
+                    MouseButton = EnumMouseButton.Right
+                }
+            };
+
+            
+        }
     }
 }

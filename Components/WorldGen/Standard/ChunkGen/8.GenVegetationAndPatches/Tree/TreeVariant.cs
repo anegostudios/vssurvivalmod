@@ -24,7 +24,7 @@ namespace Vintagestory.ServerMods.NoObf
         public float MinSize = 0.2f;
 
         [JsonProperty]
-        public float MaxSize = 0.8f;
+        public float MaxSize = 1f;
 
         [JsonProperty]
         public float SuitabilitySizeBonus = 0.5f;

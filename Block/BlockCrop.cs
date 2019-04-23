@@ -1,4 +1,5 @@
 ﻿using System;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
@@ -11,6 +12,16 @@ namespace Vintagestory.GameContent
         private static readonly float defaultGrowthProbability = 0.8f;
 
         private float tickGrowthProbability;
+
+        public int CurrentCropStage
+        {
+            get
+            {
+                int stage = 0;
+                int.TryParse(LastCodePart(), out stage);
+                return stage;
+            }
+        }
 
         public override void OnLoaded(ICoreAPI api)
         {
@@ -85,6 +96,20 @@ namespace Vintagestory.GameContent
                 nextStage = 1;
             }
             return world.GetBlock(CodeWithParts(nextStage.ToString()));
+        }
+
+
+        public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
+        {
+            return new WorldInteraction[]
+            {
+                new WorldInteraction()
+                {
+                    ActionLangCode = "blockhelp-crop-breaktoharvest",
+                    MouseButton = EnumMouseButton.Left,
+                    ShouldApply = (wi, bs, es) => CropProps.GrowthStages == CurrentCropStage 
+                }
+            };
         }
     }
 }

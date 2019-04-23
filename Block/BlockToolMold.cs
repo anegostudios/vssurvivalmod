@@ -3,14 +3,77 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
     public class BlockToolMold : Block
     {
+        WorldInteraction[] interactions;
+
+        public override void OnLoaded(ICoreAPI api)
+        {
+            if (api.Side != EnumAppSide.Client) return;
+            ICoreClientAPI capi = api as ICoreClientAPI;
+
+            interactions = ObjectCacheUtil.GetOrCreate(api, "toolmoldBlockInteractions", () =>
+            {
+                List<ItemStack> smeltedContainerStacks = new List<ItemStack>();
+
+                foreach (CollectibleObject obj in api.World.Collectibles)
+                {
+                    if (obj is BlockSmeltedContainer)
+                    {
+                        smeltedContainerStacks.Add(new ItemStack(obj));
+                    }
+                }
+
+                return new WorldInteraction[] {
+                    new WorldInteraction()
+                    {
+                        ActionLangCode = "blockhelp-toolmold-pour",
+                        HotKeyCode = "sneak",
+                        MouseButton = EnumMouseButton.Right,
+                        Itemstacks = smeltedContainerStacks.ToArray(),
+                        GetMatchingStacks = (wi, bs, es) =>
+                        {
+                            BlockEntityToolMold betm = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityToolMold;
+                            return (betm != null && !betm.IsFull) ? wi.Itemstacks : null;
+                        }
+                    },
+                    new WorldInteraction()
+                    {
+                        ActionLangCode = "blockhelp-toolmold-takeworkitem",
+                        HotKeyCode = null,
+                        MouseButton = EnumMouseButton.Right,
+                        ShouldApply = (wi, bs, es) =>
+                        {
+                            BlockEntityToolMold betm = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityToolMold;
+                            return betm != null && betm.IsFull && betm.IsHardened;
+                        }
+                    },
+                    new WorldInteraction()
+                    {
+                        ActionLangCode = "blockhelp-toolmold-pickup",
+                        HotKeyCode = null,
+                        RequireFreeHand = true,
+                        MouseButton = EnumMouseButton.Right,
+                        ShouldApply = (wi, bs, es) =>
+                        {
+                            BlockEntityToolMold betm = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityToolMold;
+                            return betm != null && betm.metalContent == null;
+                        }
+                    }
+                };
+            });
+        }
+
+
+
         public override void OnHeldInteractStart(ItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handHandling)
         {
             if (blockSel == null) return;
@@ -43,7 +106,7 @@ namespace Vintagestory.GameContent
             }
             
 
-            return handled;
+            return true;
         }
 
 
@@ -95,6 +158,11 @@ namespace Vintagestory.GameContent
 
 
             return stacks.ToArray();
+        }
+
+        public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
+        {
+            return interactions;
         }
 
     }

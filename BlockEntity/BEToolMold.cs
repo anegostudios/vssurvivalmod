@@ -49,6 +49,13 @@ namespace Vintagestory.GameContent
             }
         }
 
+        public bool IsFull
+        {
+            get
+            {
+                return fillLevel >= requiredUnits;
+            }
+        }
 
         public bool CanReceiveAny
         {

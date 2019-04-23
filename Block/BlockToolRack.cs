@@ -4,6 +4,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -29,7 +30,45 @@ namespace Vintagestory.GameContent
 
             return toolTextureSubIds;
         }
-        
+
+        WorldInteraction[] interactions;
+
+        public override void OnLoaded(ICoreAPI api)
+        {
+            if (api.Side != EnumAppSide.Client) return;
+            ICoreClientAPI capi = api as ICoreClientAPI;
+
+            interactions = ObjectCacheUtil.GetOrCreate(api, "toolrackBlockInteractions", () =>
+            {
+                List<ItemStack> rackableStacklist = new List<ItemStack>();
+
+                foreach (CollectibleObject obj in api.World.Collectibles)
+                {
+                    if (obj.Tool != null)
+                    {
+                        List<ItemStack> stacks = obj.GetHandBookStacks(capi);
+                        if (stacks != null) rackableStacklist.AddRange(stacks);
+                    }
+                }
+
+                return new WorldInteraction[] {
+                    new WorldInteraction()
+                    {
+                        ActionLangCode = "blockhelp-toolrack-place",
+                        HotKeyCode = null,
+                        MouseButton = EnumMouseButton.Right,
+                        Itemstacks = rackableStacklist.ToArray()
+                    },
+                    new WorldInteraction()
+                    {
+                        ActionLangCode = "blockhelp-toolrack-take",
+                        HotKeyCode = null,
+                        MouseButton = EnumMouseButton.Right,
+                    }
+                };
+            });
+        }
+
 
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
@@ -77,6 +116,11 @@ namespace Vintagestory.GameContent
 
                 ToolTextureSubIds(api)[item] = tt;
             }
+        }
+
+        public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
+        {
+            return interactions;
         }
     }
 }

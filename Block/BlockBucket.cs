@@ -82,6 +82,39 @@ namespace Vintagestory.GameContent
     {
         public virtual float BucketCapacityLitres => 10;
 
+        #region interaction help
+        WorldInteraction[] interactions;
+
+        public override void OnLoaded(ICoreAPI api)
+        {
+            if (api.Side != EnumAppSide.Client) return;
+            ICoreClientAPI capi = api as ICoreClientAPI;
+
+            interactions = ObjectCacheUtil.GetOrCreate(api, "bucketBlockInteractions", () =>
+            {
+                List<ItemStack> liquidContainerStacks = new List<ItemStack>();
+
+                foreach (CollectibleObject obj in api.World.Collectibles)
+                {
+                    if ((obj is BlockBowl && obj.LastCodePart() != "raw") || obj is BlockBucket || obj is BlockWateringCan)
+                    {
+                        List<ItemStack> stacks = obj.GetHandBookStacks(capi);
+                        if (stacks != null) liquidContainerStacks.AddRange(stacks);
+                    }
+                }
+
+                return new WorldInteraction[] {
+                    new WorldInteraction()
+                    {
+                        ActionLangCode = "blockhelp-bucket-rightclick",
+                        MouseButton = EnumMouseButton.Right,
+                        Itemstacks = liquidContainerStacks.ToArray()
+                    }
+                };
+            });
+        }
+        #endregion
+
         #region Take/Remove Contents
 
         /// <summary>
@@ -482,6 +515,8 @@ namespace Vintagestory.GameContent
 
             if (!byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
             {
+                byEntity.World.BlockAccessor.MarkBlockDirty(blockSel.Position.AddCopy(blockSel.Face));
+                byPlayer?.InventoryManager.ActiveHotbarSlot?.MarkDirty();
                 return;
             }
 
@@ -507,8 +542,6 @@ namespace Vintagestory.GameContent
                 {
                     SpillContents(itemslot, byEntity, blockSel);
                 }
-
-                
             }
 
             // Prevent placing on normal use
@@ -616,6 +649,11 @@ namespace Vintagestory.GameContent
             WaterTightContainableProps props = GetContentProps(byEntity.World, bucketSlot.Itemstack);
 
             if (props == null || !props.AllowSpill || props.WhenSpilled == null) return false;
+
+            if (!byEntity.World.Claims.TryAccess(byPlayer, secondPos, EnumBlockAccessFlags.BuildOrBreak))
+            {
+                return false;
+            }
 
             if (props.WhenSpilled.Action == WaterTightContainableProps.EnumSpilledAction.PlaceBlock)
             {
@@ -806,5 +844,10 @@ namespace Vintagestory.GameContent
             TryTakeContent(byPlayer.Entity.World, stackInSlot.Itemstack, q);
         }
 
+
+        public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
+        {
+            return base.GetPlacedBlockInteractionHelp(world, selection, forPlayer).Append(interactions);
+        }
     }
 }

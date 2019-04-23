@@ -69,5 +69,21 @@ namespace Vintagestory.GameContent
             else 
                 return "";
         }
+
+
+        public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
+        {
+            if (CandleCount == 8) return null;
+
+            return new WorldInteraction[]
+            {
+                new WorldInteraction()
+                {
+                    ActionLangCode = "blockhelp-chandelier-addcandle",
+                    MouseButton = EnumMouseButton.Right,
+                    Itemstacks = new ItemStack[] { new ItemStack(world.GetItem(new AssetLocation("candle"))) }
+                }
+            };
+        }
     }
 }

@@ -1,11 +1,44 @@
-﻿using Vintagestory.API.Common;
+﻿using System.Collections.Generic;
+using Vintagestory.API.Client;
+using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
+using System.Linq;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
     public class BlockSign : Block
     {
+        WorldInteraction[] interactions;
+
+        public override void OnLoaded(ICoreAPI api)
+        {
+            if (api.Side != EnumAppSide.Client) return;
+
+            interactions = ObjectCacheUtil.GetOrCreate(api, "signBlockInteractions", () =>
+            {
+                List<ItemStack> stacksList = new List<ItemStack>();
+
+                foreach (CollectibleObject collectible in api.World.Collectibles)
+                {
+                    if (collectible.Attributes?["pigment"].Exists == true)
+                    {
+                        stacksList.Add(new ItemStack(collectible));
+                    }
+                }
+
+                return new WorldInteraction[] { new WorldInteraction()
+                    {
+                        ActionLangCode = "blockhelp-sign-write",
+                        HotKeyCode = "sneak",
+                        MouseButton = EnumMouseButton.Right,
+                        Itemstacks = stacksList.ToArray()
+                    }
+                };
+            });
+        }
+
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection bs, ref string failureCode)
         {
             if (!world.Claims.TryAccess(byPlayer, bs.Position, EnumBlockAccessFlags.BuildOrBreak))
@@ -84,6 +117,11 @@ namespace Vintagestory.GameContent
                 return CodeWithParts(facing.GetOpposite().Code);
             }
             return Code;
+        }
+
+        public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
+        {
+            return interactions;
         }
     }
 }

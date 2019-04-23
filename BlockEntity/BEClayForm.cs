@@ -50,6 +50,11 @@ namespace Vintagestory.GameContent
             get { return workItemStack != null && CanWork(workItemStack); }
         }
 
+        public ItemStack BaseMaterial
+        {
+            get { return baseMaterial; }
+        }
+
 
         public BlockEntityClayForm() : base() { }
 

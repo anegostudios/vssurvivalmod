@@ -1,10 +1,15 @@
-﻿using Vintagestory.API.Common;
+﻿using System.Collections.Generic;
+using Vintagestory.API.Client;
+using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
     public class BlockMushroom : BlockPlant
     {
+        WorldInteraction[] interactions = null;
+
         /// <summary>
         /// Code part indicating a non harvested, fully grown mushroom
         /// </summary>
@@ -14,6 +19,36 @@ namespace Vintagestory.GameContent
         /// Code part indicating a harvested mushroom
         /// </summary>
         public static readonly string harvestedCodePart = "harvested";
+
+
+        public override void OnLoaded(ICoreAPI api)
+        {
+            if (LastCodePart() == "harvested") return;
+
+            interactions = ObjectCacheUtil.GetOrCreate(api, "mushromBlockInteractions", () =>
+            {
+                List<ItemStack> knifeStacklist = new List<ItemStack>();
+                
+                foreach (Item item in api.World.Items)
+                {
+                    if (item.Code == null) continue;
+
+                    if (item.Tool == EnumTool.Knife)
+                    {
+                        knifeStacklist.Add(new ItemStack(item));
+                    }
+                }
+
+                return new WorldInteraction[] {
+                    new WorldInteraction()
+                    {
+                        ActionLangCode = "blockhelp-mushroom-harvest",
+                        MouseButton = EnumMouseButton.Left,
+                        Itemstacks = knifeStacklist.ToArray()
+                    }
+                };
+            });
+        }
 
 
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
@@ -70,6 +105,12 @@ namespace Vintagestory.GameContent
         {
             AssetLocation newBlockCode = Code.CopyWithPath(Code.Path.Replace(normalCodePart, harvestedCodePart));
             return world.GetBlock(newBlockCode);
+        }
+
+
+        public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
+        {
+            return interactions;
         }
 
     }

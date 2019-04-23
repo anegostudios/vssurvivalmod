@@ -19,6 +19,8 @@ namespace Vintagestory.GameContent
         float fuelLevel;
         bool burning;
 
+        public ItemStack Contents => contents;
+        public float FuelLevel => fuelLevel;
 
         static SimpleParticleProperties smokeParticles;
 
@@ -126,8 +128,6 @@ namespace Vintagestory.GameContent
                 contents.StackSize--;
                 
                 if (contents.StackSize == 0) contents = null;
-
-                //api.World.Logger.Notification("Forge item retrieve temp: {0}, side {1}", split.Collectible.GetTemperature(api.World, split), api.Side);
 
                 if (!byPlayer.InventoryManager.TryGiveItemstack(split))
                 {

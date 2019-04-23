@@ -8,11 +8,66 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
     public class BlockClayForm : Block
     {
+        WorldInteraction[] interactions;
+
+        public override void OnLoaded(ICoreAPI api)
+        {
+            if (api.Side != EnumAppSide.Client) return;
+            ICoreClientAPI capi = api as ICoreClientAPI;
+
+            interactions = ObjectCacheUtil.GetOrCreate(api, "clayformBlockInteractions", () =>
+            {
+                List<ItemStack> clayStackList = new List<ItemStack>();
+
+                foreach (CollectibleObject obj in api.World.Collectibles)
+                {
+                    if (obj is ItemClay)
+                    {
+                        clayStackList.Add(new ItemStack(obj));
+                    }
+                }
+
+                return new WorldInteraction[] {
+                    new WorldInteraction()
+                    {
+                        ActionLangCode = "blockhelp-clayform-addclay",
+                        HotKeyCode = null,
+                        MouseButton = EnumMouseButton.Right,
+                        Itemstacks = clayStackList.ToArray(),
+                        GetMatchingStacks = getMatchingStacks
+                    },
+                    new WorldInteraction()
+                    {
+                        ActionLangCode = "blockhelp-clayform-removeclay",
+                        HotKeyCode = null,
+                        MouseButton = EnumMouseButton.Left,
+                        Itemstacks = clayStackList.ToArray(),
+                        GetMatchingStacks = getMatchingStacks
+                    },
+                };
+            });
+        }
+
+        private ItemStack[] getMatchingStacks(WorldInteraction wi, BlockSelection bs, EntitySelection es)
+        {
+            BlockEntityClayForm bec = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityClayForm;
+            List<ItemStack> stacks = new List<ItemStack>();
+
+            foreach (var val in wi.Itemstacks)
+            {
+                if (bec != null && bec.BaseMaterial.Collectible.LastCodePart() == val.Collectible.LastCodePart())
+                {
+                    stacks.Add(val);
+                }
+            }
+            return stacks.ToArray();
+        }
 
         Cuboidf box = new Cuboidf(0, 0, 0, 1, 1 / 16f, 1);
 
@@ -57,7 +112,12 @@ namespace Vintagestory.GameContent
                 world.BlockAccessor.BreakBlock(pos, null);
             }
         }
-        
+
+
+        public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
+        {
+            return interactions;
+        }
     }
 
 

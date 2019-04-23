@@ -177,7 +177,7 @@ namespace Vintagestory.GameContent
                 NotifyNeighborsOfBlockChange(pos, world);
                 GenerateSteamParticles(pos, world);
                 world.PlaySoundAt(collisionReplaceSound, pos.X, pos.Y, pos.Z);
-                world.RegisterCallbackUnique(OnDelayedWaterUpdateCheck, pos.UpCopy(), spreadDelay);
+                //world.RegisterCallbackUnique(OnDelayedWaterUpdateCheck, pos.UpCopy(), spreadDelay); - wtf is this here for? it creates infinite pillars of basalt
             }
         }
 

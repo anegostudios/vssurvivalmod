@@ -44,6 +44,20 @@ namespace Vintagestory.GameContent
 
         string contentCode = "";
 
+        public ContentConfig[] ContentConfig => contentConfigs;
+
+        public bool IsFull
+        {
+            get
+            {
+                ItemStack[] stacks = GetContentStacks();
+                ContentConfig config = contentConfigs.FirstOrDefault(c => c.Code == contentCode);
+                if (config == null) return false;
+
+                return stacks.Length != 0 && stacks[0].StackSize >= config.QuantityPerFillLevel * config.MaxFillLevels;
+            }
+        }
+
 
         public TextureAtlasPosition this[string textureCode]
         {
@@ -108,6 +122,11 @@ namespace Vintagestory.GameContent
             if (contentConfigs == null)
             {
                 contentConfigs = ownBlock.Attributes["contentConfig"].AsObject<ContentConfig[]>();
+
+                foreach (var val in contentConfigs)
+                {
+                    val.Content.Resolve(api.World, "troughcontentconfig");
+                }
             }
 
             if (api.Side == EnumAppSide.Client)
@@ -214,8 +233,6 @@ namespace Vintagestory.GameContent
             {
                 for (int i = 0; i < contentConfigs.Length; i++)
                 {
-                    contentConfigs[i].Content.Resolve(api.World, "troughcontentconfig");
-
                     canAdd =
                         handSlot.Itemstack.Equals(api.World, contentConfigs[i].Content.ResolvedItemstack, GlobalConstants.IgnoredStackAttributes) &&
                         handSlot.StackSize >= contentConfigs[i].QuantityPerFillLevel

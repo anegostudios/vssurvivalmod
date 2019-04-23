@@ -166,13 +166,13 @@ namespace Vintagestory.GameContent
                 if (alloy != null)
                 {
                     double quantity = alloy.GetTotalOutputQuantity(stacks);
-                    return string.Format("Will create {0} units of {1}", (int)(quantity * 100), CheapMetalNameHax(alloy.Output.ResolvedItemstack));
+                    return string.Format("Will create {0} units of {1}", (int)Math.Round(quantity * 100, 4), CheapMetalNameHax(alloy.Output.ResolvedItemstack));
                 }
 
                 MatchedSmeltableStack match = GetSingleSmeltableStack(stacks);
                 if (match != null)
                 {
-                    return string.Format("Will create {0} units of {1}", (int)(match.stackSize * 100), CheapMetalNameHax(match.output));
+                    return string.Format("Will create {0} units of {1}", (int)Math.Round(match.stackSize * 100, 4), CheapMetalNameHax(match.output));
                 }
 
                 return null;

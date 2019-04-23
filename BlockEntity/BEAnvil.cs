@@ -81,6 +81,15 @@ namespace Vintagestory.GameContent
             get { return workItemStack != null && CanWork(workItemStack); }
         }
 
+        public ItemStack WorkItem
+        {
+            get { return workItemStack; }
+        }
+
+        public ItemStack BaseMaterial
+        {
+            get { return baseMaterial; }
+        }
 
         public BlockEntityAnvil() : base() { }
         

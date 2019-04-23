@@ -73,21 +73,21 @@ namespace Vintagestory.GameContent
             {
                 case 0: // N
                     translateX = 0.5f;
-                    translateZ = 1 - 0.68f - wallOffset;
+                    translateZ = 1 - 0.71f - wallOffset;
                     rotY = 180;
                     break;
                 case 1: // E
-                    translateX = 0.68f + wallOffset;
+                    translateX = 0.71f + wallOffset;
                     translateZ = 0.5f;
                     rotY = 90;
                     break;
                 case 2: // S
                     translateX = 0.5f;
-                    translateZ = 0.68f + wallOffset;
+                    translateZ = 0.71f + wallOffset;
 
                     break;
                 case 3: // W
-                    translateX = 1 - 0.68f - wallOffset;
+                    translateX = 1 - 0.71f - wallOffset;
                     translateZ = 0.5f;
                     rotY = 270;
 

@@ -10,15 +10,36 @@ namespace Vintagestory.ServerMods
 {
     public class NoiseClimateRealistic : NoiseClimatePatchy
     {
-        double zTempOffset;
+        double zOffset;
         double mapsizeZ;
 
+        double halfRange;
+        
         public NoiseClimateRealistic(long seed, double mapsizeZ) : base(seed+1)
         {
-            //120 = 10 deg
-            //125 = 18 deg
-            // => 1.6 deg for each num
-            zTempOffset = 118 + NextInt(5);
+            // We want the full range (from min temp to max temp) to pass every 50.000 blocks 
+            double climateBandWaveLength = 50000;
+            
+            // range must be divided by the climate map scaling
+            halfRange = climateBandWaveLength / TerraGenConfig.climateMapScale / TerraGenConfig.climateMapSubScale;
+
+            // We want the player to spawn in an area of temperature from 6 to 15 degrees
+            float minTemp = 6;
+            float maxTemp = 14;
+
+            // Our temperature values are stored in a range from 0..255, so lets descale them
+            int minTempDescaled = TerraGenConfig.DescaleTemperature(minTemp);
+            int maxTempDescaled = TerraGenConfig.DescaleTemperature(maxTemp);
+
+            // Chose one random value between min and max temp
+            double rndTemp = minTempDescaled + NextInt(maxTempDescaled - minTempDescaled + 1);
+
+            // A change of one degree 
+            double zPerDegDescaled = halfRange / 255;
+           
+            // We need to shift over z by this much to achieve 6-15 degrees
+            zOffset = rndTemp * zPerDegDescaled;  
+
             this.mapsizeZ = mapsizeZ;
         }
 
@@ -71,40 +92,20 @@ namespace Vintagestory.ServerMods
         // 0-7 bits = Blue = unused 
         int GetRandomClimate(double posX, double posZ)
         {
+            int tempRnd = NextInt(51) - 30;
+
+            // https://stackoverflow.com/a/22400799/1873041
+            // y = (A / P) * (P - abs(x % (2 * P) - P))
+            // A = amplitude
+            // P = half length
+
+            double A = 255;
+            double P = halfRange;
+            double z = posZ - mapsizeZ / 2 + zOffset;
+
+            int temperature = GameMath.Clamp((int)((A / P) * (P - Math.Abs(z % (2 * P) - P))) + tempRnd, 0, 255);
+            int rain = NextInt(256);
             int humidity = 0;
-            int temperature;
-            int rain;
-
-            double centerZ = zTempOffset + (posZ - mapsizeZ/2);
-
-            // at z==0 we need y = 0.4 - 0.65
-            // which is produzed by z = 2.73 to 2.44
-            // *1/0.04 is 68.25 to 61
-
-            //gaussRnd2(70) - 15 + 
-
-            temperature = (int)GameMath.Clamp(140 * GameMath.Cos((float)-centerZ * 0.04) + 128, 0, 255);
-
-
-            //Console.WriteLine(centerZ +": "+ GameMath.Cos((float)-centerZ * 0.04) + " = " + temperature);
-
-            /*int rnd = NextInt(100);
-            // 20% very dry
-            // 80% random dry - wet
-            // 20% very wet 
-            if (rnd < 19)
-            {
-                rain = GameMath.Clamp(gaussRnd2(40), 0, Math.Max(40, 20 + temperature));
-            } else if (rnd < 80)
-            {
-                rain = GameMath.Clamp(gaussRnd3(300), 0, Math.Max(40, 20 + temperature));
-            }
-            else
-            {
-                rain = GameMath.Clamp(180 + gaussRnd2(100), 0, Math.Max(40, 20 + temperature));
-            }*/
-
-            rain = NextInt(256);
             
             return (temperature << 16) + (rain << 8) + (humidity);
         }

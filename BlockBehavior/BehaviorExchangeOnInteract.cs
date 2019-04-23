@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Vintagestory.API;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 
@@ -13,6 +14,7 @@ namespace Vintagestory.GameContent
     {
         AssetLocation[] blockCodes;
         string sound;
+        string actionlangcode;
 
         public BlockBehaviorExchangeOnInteract(Block block) : base(block)
         {
@@ -36,6 +38,7 @@ namespace Vintagestory.GameContent
             }
 
             sound = properties["sound"].AsString();
+            actionlangcode = properties["actionLangCode"].AsString();
             base.Initialize(properties);
         }
 
@@ -72,6 +75,18 @@ namespace Vintagestory.GameContent
             }
 
             return true;
+        }
+
+        public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer, ref EnumHandling handled)
+        {
+            return new WorldInteraction[]
+            {
+                new WorldInteraction()
+                {
+                    ActionLangCode = actionlangcode,
+                    MouseButton = EnumMouseButton.Right
+                }
+            };
         }
     }
 }

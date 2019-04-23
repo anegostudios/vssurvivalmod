@@ -1,9 +1,10 @@
-﻿using Vintagestory.API.Common;
+﻿using Vintagestory.API.Client;
+using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
-    abstract public class BaseDoor : Block
+    abstract public class BlockBaseDoor : Block
     {
         public abstract string GetKnobOrientation();
         public abstract BlockFacing GetDirection();
@@ -40,13 +41,27 @@ namespace Vintagestory.GameContent
                 bool isDoor2 = IsSameDoor(nBlock2);
                 if (isDoor1 && isDoor2)
                 {
-                    if(nBlock2 is BaseDoor)
+                    if(nBlock2 is BlockBaseDoor)
                     {
-                        BaseDoor door2 = (BaseDoor)nBlock2;
+                        BlockBaseDoor door2 = (BlockBaseDoor)nBlock2;
                         door2.Open(world, byPlayer, door2Pos);
                     }
                 }
             }
+        }
+
+
+
+        public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
+        {
+            return new WorldInteraction[]
+            {
+                new WorldInteraction()
+                {
+                    ActionLangCode = "blockhelp-door-openclose",
+                    MouseButton = EnumMouseButton.Right,
+                }
+            };
         }
     }
 }

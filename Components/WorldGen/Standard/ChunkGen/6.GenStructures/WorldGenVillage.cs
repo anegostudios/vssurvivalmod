@@ -17,6 +17,7 @@ namespace Vintagestory.ServerMods
     {
         public string Path;
         public int OffsetY = 0;
+        public double Weight;
 
         public BlockSchematicStructure[] Structures;
     }
@@ -74,11 +75,12 @@ namespace Vintagestory.ServerMods
 
         internal ushort[] replaceblockids = new ushort[0];
         Random rand;
-        
+        double totalWeight;
 
         public void Init(ICoreServerAPI api, BlockLayerConfig config, Random rand)
         {
             this.rand = rand;
+            totalWeight = 0;
             
             for (int i = 0; i < Schematics.Length; i++)
             {
@@ -88,6 +90,8 @@ namespace Vintagestory.ServerMods
                 IAsset[] assets;
 
                 VillageSchematic schem = Schematics[i];
+
+                totalWeight += schem.Weight;
 
                 if (schem.Path.EndsWith("*"))
                 {
@@ -181,17 +185,24 @@ namespace Vintagestory.ServerMods
                     schemPos.Set(pos);
                     schemPos.Add(rand.Next(50) - 25 , 0, rand.Next(50) - 25);
                     schemPos.Y = blockAccessor.GetTerrainMapheightAt(schemPos);
-                    
-                    VillageSchematic schem = Schematics[rand.Next(Schematics.Length)];
+
+                    double rndVal = rand.NextDouble() * totalWeight;
+                    int i = 0;
+                    VillageSchematic schem = null;
+                    while (rndVal > 0)
+                    {
+                        schem = Schematics[i++];
+                        rndVal -= schem.Weight;
+                    }
                     BlockSchematicStructure struc = GetGeneratableStructure(schem, blockAccessor, worldForCollectibleResolve, schemPos);
 
                     if (struc != null)
                     {
                         location.Set(schemPos.X, schemPos.Y, schemPos.Z, schemPos.X + struc.SizeX, schemPos.Y + struc.SizeY, schemPos.Z + struc.SizeZ);
                         bool intersect = false;
-                        for (int i = 0; i < generatables.Count; i++)
+                        for (int k = 0; k < generatables.Count; k++)
                         {
-                            if (location.IntersectsOrTouches(generatables[i].location))
+                            if (location.IntersectsOrTouches(generatables[k].location))
                             {
                                 intersect = true;
                                 break;
@@ -254,6 +265,7 @@ namespace Vintagestory.ServerMods
             if (diff > 2) return null;
 
             pos.Y += centerY - pos.Y + 1 + schem.OffsetY;
+            if (pos.Y <= 0) return null;
 
             // Ensure not floating on water
             tmpPos.Set(pos.X - widthHalf, pos.Y - 1, pos.Z - lengthHalf);

@@ -788,20 +788,8 @@ namespace Vintagestory.GameContent
         {
             base.FromTreeAtributes(tree, worldAccessForResolve);
 
-            if (tree["materials"] is IntArrayAttribute)
-            {
-                // Pre 1.8 storage 
-                MaterialIds = (tree["materials"] as IntArrayAttribute).AsUShort;
-            } else
-            {
-                string[] codes = (tree["materials"] as StringArrayAttribute).value;
-                MaterialIds = new ushort[codes.Length];
-                for (int i = 0; i < MaterialIds.Length; i++)
-                {
-                    MaterialIds[i] = worldAccessForResolve.GetBlock(new AssetLocation(codes[i])).BlockId;
-                }
-            }
-             
+            MaterialIds = MaterialIdsFromAttributes(tree, worldAccessForResolve);
+
             VoxelCuboids = new List<uint>((tree["cuboids"] as IntArrayAttribute).AsUint);
 
             if (api is ICoreClientAPI)
@@ -809,6 +797,27 @@ namespace Vintagestory.GameContent
                 RegenMesh();
                 RegenSelectionBoxes(null);
                 MarkDirty(true);
+            }
+        }
+
+
+        public static ushort[] MaterialIdsFromAttributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
+        {
+            if (tree["materials"] is IntArrayAttribute)
+            {
+                // Pre 1.8 storage 
+                return (tree["materials"] as IntArrayAttribute).AsUShort;
+            }
+            else
+            {
+                string[] codes = (tree["materials"] as StringArrayAttribute).value;
+                ushort[] ids = new ushort[codes.Length];
+                for (int i = 0; i < ids.Length; i++)
+                {
+                    ids[i] = worldAccessForResolve.GetBlock(new AssetLocation(codes[i])).BlockId;
+                }
+
+                return ids;
             }
         }
 

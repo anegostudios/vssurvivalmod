@@ -1,4 +1,5 @@
 ﻿using System;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
@@ -123,6 +124,30 @@ namespace Vintagestory.GameContent
             }
         }
 
+
+        public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
+        {
+            return new WorldInteraction[]
+            {
+                new WorldInteraction()
+                {
+                    ActionLangCode = "blockhelp-platepile-add",
+                    MouseButton = EnumMouseButton.Right,
+                    HotKeyCode = "sneak",
+                    Itemstacks = new ItemStack[] { new ItemStack(this) },
+                    GetMatchingStacks = (wi, bs, es) =>
+                    {
+                        BlockEntityPlatePile pile = world.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityPlatePile;
+                        return pile != null && pile.MaxStackSize > pile.inventory[0].StackSize ? new ItemStack[] { pile.inventory[0].Itemstack } : null;
+                    }
+                },
+                new WorldInteraction()
+                {
+                    ActionLangCode = "blockhelp-platepile-remove",
+                    MouseButton = EnumMouseButton.Right
+                }
+            };
+        }
 
     }
 }

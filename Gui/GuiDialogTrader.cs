@@ -32,8 +32,8 @@ namespace Vintagestory.GameContent
 
             double pad = GuiElementItemSlotGrid.unscaledSlotPadding;
 
-            ElementBounds leftTopSlotBounds = ElementStdBounds.SlotGrid(EnumDialogArea.None, pad, 40 + pad, cols, rows).FixedGrow(2 * pad, 2 * pad);
-            ElementBounds rightTopSlotBounds = ElementStdBounds.SlotGrid(EnumDialogArea.None, pad + leftTopSlotBounds.fixedWidth + 20, 40 + pad, cols, rows).FixedGrow(2 * pad, 2 * pad);
+            ElementBounds leftTopSlotBounds = ElementStdBounds.SlotGrid(EnumDialogArea.None, pad, 70 + pad, cols, rows).FixedGrow(2 * pad, 2 * pad);
+            ElementBounds rightTopSlotBounds = ElementStdBounds.SlotGrid(EnumDialogArea.None, pad + leftTopSlotBounds.fixedWidth + 20, 70 + pad, cols, rows).FixedGrow(2 * pad, 2 * pad);
 
             ElementBounds rightBotSlotBounds = ElementStdBounds
                 .SlotGrid(EnumDialogArea.None, pad + leftTopSlotBounds.fixedWidth + 20, 15 + pad, cols, 1)
@@ -57,8 +57,8 @@ namespace Vintagestory.GameContent
 
 
 
-            ElementBounds costTextBounds = ElementBounds.Fixed(pad, 55 + 2 * pad + leftTopSlotBounds.fixedHeight + leftBotSlotBounds.fixedHeight, 150, 25);
-            ElementBounds offerTextBounds = ElementBounds.Fixed(leftTopSlotBounds.fixedWidth + pad + 20, 55 + 2 * pad + leftTopSlotBounds.fixedHeight + leftBotSlotBounds.fixedHeight, 150, 25);
+            ElementBounds costTextBounds = ElementBounds.Fixed(pad, 85 + 2 * pad + leftTopSlotBounds.fixedHeight + leftBotSlotBounds.fixedHeight, 150, 25);
+            ElementBounds offerTextBounds = ElementBounds.Fixed(leftTopSlotBounds.fixedWidth + pad + 20, 85 + 2 * pad + leftTopSlotBounds.fixedHeight + leftBotSlotBounds.fixedHeight, 150, 25);
 
             ElementBounds traderMoneyBounds = offerTextBounds.FlatCopy().WithFixedOffset(0, offerTextBounds.fixedHeight);
             ElementBounds playerMoneyBounds = costTextBounds.FlatCopy().WithFixedOffset(0, costTextBounds.fixedHeight);
@@ -69,14 +69,22 @@ namespace Vintagestory.GameContent
 
             string traderName = owningEntity.GetBehavior<EntityBehaviorNameTag>().DisplayName;
 
+            double daysLeft = 14 - (capi.World.Calendar.TotalDays - owningEntity.WatchedAttributes.GetDouble("lastRefreshTotalDays", 0));
+            string daysLeftString = daysLeft < 1 ? Lang.Get("Delievery of new goods in less than 1 day") : Lang.Get("Delievery of new goods in {0} days", (int)daysLeft);
+
+            CairoFont deliveryTextFont = CairoFont.WhiteDetailText();
+            deliveryTextFont.Color[3] *= 0.7;
+
             SingleComposer = 
                 capi.Gui
                 .CreateCompo("traderdialog", dialogBounds)
                 .AddShadedDialogBG(bgBounds, true)
                 .AddDialogTitleBar(Lang.Get("tradingwindow-" + owningEntity.Code.Path, traderName), OnTitleBarClose)
                 .BeginChildElements(bgBounds)
-                    .AddStaticText(Lang.Get("You can Buy"), CairoFont.WhiteDetailText(), ElementBounds.Fixed(pad, 20 + pad, 150, 25))
-                    .AddStaticText(Lang.Get("You can Sell"), CairoFont.WhiteDetailText(), ElementBounds.Fixed(leftTopSlotBounds.fixedWidth + pad + 20, 20 + pad, 150, 25))
+                    .AddStaticText(daysLeftString, deliveryTextFont, ElementBounds.Fixed(pad, 20 + pad, 300, 25))
+
+                    .AddStaticText(Lang.Get("You can Buy"), CairoFont.WhiteDetailText(), ElementBounds.Fixed(pad, 50 + pad, 150, 25))
+                    .AddStaticText(Lang.Get("You can Sell"), CairoFont.WhiteDetailText(), ElementBounds.Fixed(leftTopSlotBounds.fixedWidth + pad + 20, 50 + pad, 150, 25))
 
                     .AddItemSlotGrid(traderInventory, DoSendPacket, cols, (new int[rows*cols]).Fill(i => i), leftTopSlotBounds, "traderSellingSlots")
                     .AddItemSlotGrid(traderInventory, DoSendPacket, cols, (new int[cols]).Fill(i => rows * cols + i), leftBotSlotBounds, "playerBuyingSlots")
@@ -84,8 +92,8 @@ namespace Vintagestory.GameContent
                     .AddItemSlotGrid(traderInventory, DoSendPacket, cols, (new int[rows * cols]).Fill(i => rows * cols + cols + i), rightTopSlotBounds, "traderBuyingSlots")
                     .AddItemSlotGrid(traderInventory, DoSendPacket, cols, (new int[cols]).Fill(i => rows * cols + cols + rows * cols + i), rightBotSlotBounds, "playerSellingSlots")
 
-                    .AddStaticText("Your Selection", CairoFont.WhiteDetailText(), ElementBounds.Fixed(pad, 40 + 2*pad + leftTopSlotBounds.fixedHeight, 150, 25))
-                    .AddStaticText("Your Offer", CairoFont.WhiteDetailText(), ElementBounds.Fixed(leftTopSlotBounds.fixedWidth + pad + 20, 40 + 2*pad + leftTopSlotBounds.fixedHeight, 150, 25))
+                    .AddStaticText("Your Selection", CairoFont.WhiteDetailText(), ElementBounds.Fixed(pad, 70 + 2*pad + leftTopSlotBounds.fixedHeight, 150, 25))
+                    .AddStaticText("Your Offer", CairoFont.WhiteDetailText(), ElementBounds.Fixed(leftTopSlotBounds.fixedWidth + pad + 20, 70 + 2*pad + leftTopSlotBounds.fixedHeight, 150, 25))
 
                     // Cost
                     .AddDynamicText("", CairoFont.WhiteDetailText(), EnumTextOrientation.Left, costTextBounds, "costText")
@@ -162,6 +170,10 @@ namespace Vintagestory.GameContent
                 notifyTraderMoneyTextSeconds = 1.5f;
             }
 
+            if (result == EnumTransactionResult.TraderNotEnoughSupplyOrDemand)
+            {
+                (owningEntity as EntityTrader).talkUtil.Talk(EnumTalkType.Complain);
+            }
 
             capi.Network.SendEntityPacket(owningEntity.EntityId, 1000, null);
 

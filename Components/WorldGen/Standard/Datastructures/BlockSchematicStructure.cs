@@ -78,7 +78,7 @@ namespace Vintagestory.ServerMods
         /// <param name="climateBotRight"></param>
         /// <param name="replaceblockids"></param>
         /// <returns></returns>
-        public int PlaceRespectingBlockLayers(IBlockAccessor blockAccessor, IWorldAccessor worldForCollectibleResolve, BlockPos startPos, int climateUpLeft, int climateUpRight, int climateBotLeft, int climateBotRight, ushort[] replaceblockids)
+        public int PlaceRespectingBlockLayers(IBlockAccessor blockAccessor, IWorldAccessor worldForCollectibleResolve, BlockPos startPos, int climateUpLeft, int climateUpRight, int climateBotLeft, int climateBotRight, ushort[] replaceblockids, bool replaceMetaBlocks = true)
         {
             BlockPos curPos = new BlockPos();
             int placed = 0;
@@ -98,6 +98,9 @@ namespace Vintagestory.ServerMods
                         curPos.Set(x + startPos.X, y + startPos.Y, z + startPos.Z);
                         Block newBlock = blocksByPos[x, y, z];
                         if (newBlock == null) continue;
+
+                        if (replaceMetaBlocks && newBlock == undergroundBlock) continue;
+
 
                         if (newBlock.Replaceable < 1000)
                         {

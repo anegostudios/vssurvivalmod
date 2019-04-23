@@ -1,9 +1,10 @@
-﻿using Vintagestory.API.Common;
+﻿using Vintagestory.API.Client;
+using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockFenceGate : BaseDoor
+    public class BlockFenceGate : BlockBaseDoor
     {
         public override string GetKnobOrientation()
         {
@@ -118,6 +119,18 @@ namespace Vintagestory.GameContent
             }
 
             return CodeWithParts(part, IsOpened() ? "opened" : "closed", GetKnobOrientation());
+        }
+
+        public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
+        {
+            return new WorldInteraction[]
+            {
+                new WorldInteraction()
+                {
+                    ActionLangCode = "blockhelp-fencegate-openclose",
+                    MouseButton = EnumMouseButton.Right,
+                }
+            };
         }
     }
 }

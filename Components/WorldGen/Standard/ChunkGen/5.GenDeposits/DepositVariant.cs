@@ -30,6 +30,9 @@ namespace Vintagestory.ServerMods
         public bool WithOreMap;
 
         [JsonProperty]
+        public string HandbookPageCode;
+
+        [JsonProperty]
         public bool WithBlockCallback;
 
         [JsonProperty, JsonConverter(typeof(JsonAttributesConverter))]
@@ -60,6 +63,7 @@ namespace Vintagestory.ServerMods
 
         public void Init(ICoreServerAPI api, LCGRandom depositRand, NormalizedSimplexNoise noiseGen)
         {
+            this.api = api;
             InitWithoutGenerator(api);
 
             if (Generator == null)

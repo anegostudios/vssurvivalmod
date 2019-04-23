@@ -180,7 +180,7 @@ namespace Vintagestory.GameContent
             { EnumCharacterDressType.Arm, "bracers" },
             { EnumCharacterDressType.Waist, "belt" },
             { EnumCharacterDressType.Emblem, "medal" },
-            { EnumCharacterDressType.Ring, "ring" },
+            { EnumCharacterDressType.Face, "face" },
         };
 
 

@@ -226,7 +226,8 @@ namespace Vintagestory.ServerMods
                 // Get correct chunk and correct climate data if we don't have it already
                 if (curChunkX != prevChunkX || curChunkZ != prevChunkZ)
                 {
-                    chunk = ((IServerChunk)blockAccessor.GetChunk(curChunkX, lakeYPos / chunksize, curChunkZ));
+                    chunk = (IServerChunk)blockAccessor.GetChunk(curChunkX, lakeYPos / chunksize, curChunkZ);
+                    if (chunk == null) chunk = api.WorldManager.GetChunk(curChunkX, lakeYPos / chunksize, curChunkZ);
                     chunk.Unpack();
 
                     if (ly == 0)
