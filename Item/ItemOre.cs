@@ -14,9 +14,10 @@ namespace Vintagestory.GameContent
 
         public override void GetHeldItemInfo(ItemStack stack, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
         {
+            
             if (CombustibleProps?.SmeltedStack == null)
             {
-                if (Attributes["metalUnits"].Exists)
+                if (Attributes?["metalUnits"].Exists == true)
                 {
                     float units = Attributes["metalUnits"].AsInt();
 
@@ -34,6 +35,8 @@ namespace Vintagestory.GameContent
                     }
 
                     dsc.AppendLine(Lang.Get("Parent Material: {0}", Lang.Get("rock-" + LastCodePart())));
+                    dsc.AppendLine();
+                    dsc.AppendLine(Lang.Get("Crush with hammer to extract nuggets"));
                 }
             }
             else
@@ -41,17 +44,23 @@ namespace Vintagestory.GameContent
 
                 base.GetHeldItemInfo(stack, dsc, world, withDebugInfo);
 
-                string smelttype = CombustibleProps.SmeltingType.ToString().ToLowerInvariant();
-                int instacksize = CombustibleProps.SmeltedRatio;
-                int outstacksize = CombustibleProps.SmeltedStack.ResolvedItemstack.StackSize;
-                float units = outstacksize * 100f / instacksize;
+                if (CombustibleProps.SmeltedStack.ResolvedItemstack.GetName().Contains("ingot"))
+                {
 
-                string metalname = CombustibleProps.SmeltedStack.ResolvedItemstack.GetName().Replace(" ingot", "");
+                    string smelttype = CombustibleProps.SmeltingType.ToString().ToLowerInvariant();
+                    int instacksize = CombustibleProps.SmeltedRatio;
+                    int outstacksize = CombustibleProps.SmeltedStack.ResolvedItemstack.StackSize;
+                    float units = outstacksize * 100f / instacksize;
 
-                string str = Lang.Get("game:smeltdesc-" + smelttype + "ore-plural", units.ToString("0.#"), metalname);
-                dsc.AppendLine(str);
+                    string metalname = CombustibleProps.SmeltedStack.ResolvedItemstack.GetName().Replace(" ingot", "");
+
+                    string str = Lang.Get("game:smeltdesc-" + smelttype + "ore-plural", units.ToString("0.#"), metalname);
+                    dsc.AppendLine(str);
+                }
+
+
+                return;
             }
-
             
 
             base.GetHeldItemInfo(stack, dsc, world, withDebugInfo);
@@ -59,7 +68,7 @@ namespace Vintagestory.GameContent
 
         public override string GetHeldItemName(ItemStack itemStack)
         {
-            if (Attributes["metalUnits"].Exists)
+            if (Attributes?["metalUnits"].Exists == true)
             {
                 string orename = LastCodePart(1);
                 string rockname = LastCodePart(0);

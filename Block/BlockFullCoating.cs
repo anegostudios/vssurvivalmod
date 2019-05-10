@@ -69,7 +69,7 @@ namespace Vintagestory.GameContent
                 return false;
             }
 
-            return TryPlaceBlockForWorldGen(world.BlockAccessor, blockSel.Position, blockSel.Face);
+            return TryPlaceBlockForWorldGen(world.BlockAccessor, blockSel.Position, blockSel.Face, world.Rand);
         }
 
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)
@@ -146,7 +146,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace)
+        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, Random worldGenRand)
         {
             if (pos.Y < 16) return false;
 

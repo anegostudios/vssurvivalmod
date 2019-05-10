@@ -97,6 +97,17 @@ namespace Vintagestory.GameContent
                             BlockEntityAnvil bea = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityAnvil;
                             return bea?.WorkItem != null;
                         }
+                    },
+                    new WorldInteraction()
+                    {
+                        ActionLangCode = "blockhelp-selecttoolmode",
+                        HotKeyCode = "toolmodeselect",
+                        MouseButton = EnumMouseButton.None,
+                        Itemstacks = hammerStacklist.ToArray(),
+                        GetMatchingStacks = (wi, bs, es) => {
+                            BlockEntityAnvil bea = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityAnvil;
+                            return bea?.WorkItem == null ? null : wi.Itemstacks;
+                        }
                     }
                 };
             });
@@ -139,7 +150,7 @@ namespace Vintagestory.GameContent
 
         public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
         {
-            return interactions;
+            return interactions.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
         }
     }
 }

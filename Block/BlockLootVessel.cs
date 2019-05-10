@@ -206,7 +206,8 @@ namespace Vintagestory.GameContent
                 LootItem.Item(1, 1, 1, "knife-flint"),
                 LootItem.Item(0.1f, 1, 1, "axe-copper", "axe-copper", "axe-tinbronze"),
                 LootItem.Item(0.1f, 1, 1, "shovel-copper", "shovel-copper", "shovel-tinbronze"),
-                LootItem.Item(0.1f, 1, 1, "pickaxe-copper", "pickaxe-copper", "pickaxe-tinbronze"),
+                LootItem.Item(0.1f, 1, 1, "pickaxe-copper"),
+                LootItem.Item(0.1f, 1, 1, "scythe-copper"),
                 LootItem.Item(0.1f, 1, 1, "knife-copper", "knife-copper", "knife-tinbronze"),
                 LootItem.Item(0.1f, 1, 1, "sword-copper", "sword-copper", "sword-tinbronze"),
                 LootItem.Item(0.1f, 1, 4, "gear-rusty")
@@ -239,6 +240,14 @@ namespace Vintagestory.GameContent
 
             if (tool == EnumTool.Hammer || tool == EnumTool.Pickaxe || tool == EnumTool.Shovel || tool == EnumTool.Sword || tool == EnumTool.Spear || tool == EnumTool.Axe || tool == EnumTool.Hoe)
             {
+                if (counter % 5 == 0 || remainingResistance <= 0)
+                {
+                    double posx = blockSel.Position.X + blockSel.HitPosition.X;
+                    double posy = blockSel.Position.Y + blockSel.HitPosition.Y;
+                    double posz = blockSel.Position.Z + blockSel.HitPosition.Z;
+                    player.Entity.World.PlaySoundAt(remainingResistance > 0 ? Sounds.GetHitSound(player) : Sounds.GetBreakSound(player), posx, posy, posz, player, true, 16, 1);
+                }
+
                 return remainingResistance - 0.05f;
             }
 

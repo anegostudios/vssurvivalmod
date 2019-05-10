@@ -12,9 +12,9 @@ namespace Vintagestory.GameContent
     {
         BlockPos tmpPos = new BlockPos();
 
-        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blAcc, BlockPos pos, BlockFacing onBlockFace)
+        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blAcc, BlockPos pos, BlockFacing onBlockFace, Random worldgenRand)
         {
-            int cnt = 2 + api.World.Rand.Next(25);
+            int cnt = 2 + worldgenRand.Next(25);
             float depth = GameMath.Sqrt(GameMath.Sqrt(cnt));
             float craterRadius = GameMath.Sqrt(cnt) * 1.25f;
 
@@ -43,9 +43,9 @@ namespace Vintagestory.GameContent
             tmpPos = tmpPos.Set(pos.X, pos.Y - (int)depth-2, pos.Z);
             while (cnt-- > 0)
             {
-                tmpPos.X += api.World.Rand.Next(3) == 0 ? (api.World.Rand.Next(3) - 1) : 0;
-                tmpPos.Y += api.World.Rand.Next(8) == 0 ? (api.World.Rand.Next(3) - 1) : 0;
-                tmpPos.Z += api.World.Rand.Next(3) == 0 ? (api.World.Rand.Next(3) - 1) : 0;
+                tmpPos.X += worldgenRand.Next(3) == 0 ? (worldgenRand.Next(3) - 1) : 0;
+                tmpPos.Y += worldgenRand.Next(8) == 0 ? (worldgenRand.Next(3) - 1) : 0;
+                tmpPos.Z += worldgenRand.Next(3) == 0 ? (worldgenRand.Next(3) - 1) : 0;
 
                 blAcc.SetBlock(this.BlockId, tmpPos);
             }
@@ -85,7 +85,7 @@ namespace Vintagestory.GameContent
 
                     while (q > 0)
                     {
-                        if (q < 1 && api.World.Rand.NextDouble() > q) break;
+                        if (q < 1 && worldgenRand.NextDouble() > q) break;
 
                         Block block = blAcc.GetBlock(tmpPos);
 
@@ -97,7 +97,7 @@ namespace Vintagestory.GameContent
                         tmpPos.Y++;
                     }
 
-                    float distToCraterEdge = (dx * dx + dz * dz) / (craterRadius * craterRadius) + (float)api.World.Rand.NextDouble() * 0.1f;
+                    float distToCraterEdge = (dx * dx + dz * dz) / (craterRadius * craterRadius) + (float)worldgenRand.NextDouble() * 0.1f;
                     if (distToCraterEdge > 1) continue;
 
                     q = depth * (1 - distToCraterEdge);
@@ -122,21 +122,21 @@ namespace Vintagestory.GameContent
             }
 
             int quantityFragments = 0;
-            if (api.World.Rand.Next(10) == 0) quantityFragments = api.World.Rand.Next(10);
-            else if (api.World.Rand.Next(5) == 0) quantityFragments = api.World.Rand.Next(5);
+            if (worldgenRand.Next(10) == 0) quantityFragments = worldgenRand.Next(10);
+            else if (worldgenRand.Next(5) == 0) quantityFragments = worldgenRand.Next(5);
             
             while (quantityFragments-- > 0)
             {
                 tmpPos.Set(
-                    pos.X + (api.World.Rand.Next(11) + api.World.Rand.Next(11)) / 2 - 5,
+                    pos.X + (worldgenRand.Next(11) + worldgenRand.Next(11)) / 2 - 5,
                     0,
-                    pos.Z + (api.World.Rand.Next(11) + api.World.Rand.Next(11)) / 2 - 5
+                    pos.Z + (worldgenRand.Next(11) + worldgenRand.Next(11)) / 2 - 5
                 );
                 tmpPos.Y = blAcc.GetTerrainMapheightAt(tmpPos) + 1;
 
                 if (!blAcc.GetBlock(tmpPos.X, tmpPos.Y-1, tmpPos.Z).SideSolid[BlockFacing.UP.Index]) continue;
 
-                if (api.World.Rand.NextDouble() < 0.3)
+                if (worldgenRand.NextDouble() < 0.3)
                 {
                     blAcc.SetBlock(fragmentBlockId, tmpPos);
                 } else

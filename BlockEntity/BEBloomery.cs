@@ -250,7 +250,7 @@ namespace Vintagestory.GameContent
                 int prevsize = sourceSlot.StackSize;
                 if (FuelSlot.StackSize + quantity > 20) return true;
 
-                int moveableq = Math.Min(20 - OreSlot.StackSize, quantity);
+                int moveableq = Math.Min(20 - FuelSlot.StackSize, quantity);
 
                 sourceSlot.TryPutInto(api.World, FuelSlot, moveableq);
                 MarkDirty();

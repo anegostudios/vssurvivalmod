@@ -4,6 +4,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -95,9 +96,9 @@ namespace Vintagestory.GameContent
                     ActionLangCode = LastCodePart(1) == "populated" ? "blockhelp-skep-putinbagslot" : "blockhelp-skep-pickup",
                     MouseButton = EnumMouseButton.Right
                 }
-            };
+            }.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
 
-            
+
         }
     }
 }

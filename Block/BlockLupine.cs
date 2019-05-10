@@ -12,7 +12,6 @@ namespace Vintagestory.GameContent
 {
     public class BlockLupine : BlockPlant
     {
-        Random rand;
         Block[] uncommonVariants;
         Block[] rareVariants;
 
@@ -20,39 +19,38 @@ namespace Vintagestory.GameContent
         {
             base.OnLoaded(api);
 
-            rand = new Random(api.World.Seed);
 
             uncommonVariants = new Block[] { api.World.GetBlock(CodeWithParts("white")), api.World.GetBlock(CodeWithParts("red")) };
             rareVariants = new Block[] { api.World.GetBlock(CodeWithParts("orange")) };
         }
 
-        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace)
+        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, Random worldGenRand)
         {
-            bool placed = base.TryPlaceBlockForWorldGen(blockAccessor, pos, onBlockFace);
+            bool placed = base.TryPlaceBlockForWorldGen(blockAccessor, pos, onBlockFace, worldGenRand);
             if (!placed) return false;
 
-            double rnd = rand.NextDouble();
+            double rnd = worldGenRand.NextDouble();
             if (rnd < 1/300.0)
             {
-                GenRareColorPatch(blockAccessor, pos, uncommonVariants[rand.Next(rareVariants.Length)]);
+                GenRareColorPatch(blockAccessor, pos, uncommonVariants[worldGenRand.Next(rareVariants.Length)], worldGenRand);
             } else if (rnd < 1/120.0)
             {
-                GenRareColorPatch(blockAccessor, pos, uncommonVariants[rand.Next(uncommonVariants.Length)]);
+                GenRareColorPatch(blockAccessor, pos, uncommonVariants[worldGenRand.Next(uncommonVariants.Length)], worldGenRand);
             }
 
             return true;
         }
 
 
-        private void GenRareColorPatch(IBlockAccessor blockAccessor, BlockPos pos, Block block)
+        private void GenRareColorPatch(IBlockAccessor blockAccessor, BlockPos pos, Block block, Random worldGenRand)
         {
-            int cnt = 2 + rand.Next(6);
+            int cnt = 2 + worldGenRand.Next(6);
             int tries = 30;
             BlockPos npos = pos.Copy();
             
             while (cnt > 0 && tries-- > 0)
             {
-                npos.Set(pos).Add(rand.Next(5) - 2, 0, rand.Next(5) - 2);
+                npos.Set(pos).Add(worldGenRand.Next(5) - 2, 0, worldGenRand.Next(5) - 2);
                 npos.Y = blockAccessor.GetTerrainMapheightAt(npos) + 1;
 
                 Block nblock = blockAccessor.GetBlock(npos);

@@ -42,6 +42,8 @@ namespace Vintagestory.ServerMods
             depthf = YPosRel.nextFloat(1, DepositRand);
             depthi = (int)depthf;
 
+            targetPos.Y = depthi;
+
             step = (float)mapChunk.MapRegion.OreMapVerticalDistortTop.InnerSize / regionChunkSize;
         }
 

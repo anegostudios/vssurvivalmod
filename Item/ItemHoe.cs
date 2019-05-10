@@ -9,7 +9,7 @@ namespace Vintagestory.GameContent
 {
     public class ItemHoe : Item
     {
-        public override void OnHeldInteractStart(ItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handHandling)
+        public override void OnHeldInteractStart(ItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handHandling)
         {
             if (blockSel == null) return;
             BlockPos pos = blockSel.Position;

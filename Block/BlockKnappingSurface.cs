@@ -39,7 +39,7 @@ namespace Vintagestory.GameContent
                         HotKeyCode = null,
                         MouseButton = EnumMouseButton.Left,
                         Itemstacks = knappableStacklist.ToArray()
-                    },
+                    }
                 };
             });
         }
@@ -104,7 +104,7 @@ namespace Vintagestory.GameContent
 
         public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
         {
-            return interactions;
+            return interactions.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
         }
     }
 

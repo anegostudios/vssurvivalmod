@@ -110,7 +110,7 @@ namespace Vintagestory.GameContent
             if (alloy != null)
             {
                 ItemStack smeltedStack = alloy.Output.ResolvedItemstack.Clone();
-                int units = (int)(alloy.GetTotalOutputQuantity(stacks) * 100);
+                int units = (int)Math.Round(alloy.GetTotalOutputQuantity(stacks) * 100, 4);
 
                 ((BlockSmeltedContainer)block).SetContents(outputStack, smeltedStack, units);
                 outputStack.Collectible.SetTemperature(world, outputStack, GetIngredientsTemperature(world, stacks));

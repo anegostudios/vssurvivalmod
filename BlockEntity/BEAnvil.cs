@@ -651,7 +651,7 @@ namespace Vintagestory.GameContent
 
             SmithingRecipe recipe = api.World.SmithingRecipes
                 .Where(r => r.Ingredient.SatisfiesAsIngredient(baseMaterial))
-                .OrderBy(r => r.Output.ResolvedItemstack.GetName())
+                .OrderBy(r => r.Output.ResolvedItemstack.Collectible.Code) // Cannot sort by name, thats language dependent!
                 .ElementAtOrDefault(num)
             ;
 
@@ -669,7 +669,7 @@ namespace Vintagestory.GameContent
 
             List<ItemStack> stacks = api.World.SmithingRecipes
                 .Where(r => r.Ingredient.SatisfiesAsIngredient(ingredient))
-                .OrderBy(r => r.Output.ResolvedItemstack.GetName())
+                .OrderBy(r => r.Output.ResolvedItemstack.Collectible.Code) // Cannot sort by name, thats language dependent!
                 .Select(r => r.Output.ResolvedItemstack)
                 .ToList()
             ;

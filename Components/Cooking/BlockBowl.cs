@@ -26,11 +26,11 @@ namespace Vintagestory.GameContent
             return api.World.GetBlock(new AssetLocation(Attributes["contentItem2BlockCodes"][contents].AsString()));
         }
 
-        public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handHandling)
+        public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handHandling)
         {
             if (blockSel == null)
             {
-                base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, ref handHandling);
+                base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handHandling);
                 return;
             }
 
@@ -67,7 +67,7 @@ namespace Vintagestory.GameContent
 
             handHandling = EnumHandHandling.PreventDefault;
 
-            base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, ref handHandling);
+            base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handHandling);
         }
 
         public override bool OnHeldInteractStep(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)

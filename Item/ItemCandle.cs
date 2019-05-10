@@ -10,7 +10,7 @@ namespace Vintagestory.GameContent
     public class ItemCandle: Item
     {
 
-        public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handHandling)
+        public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handHandling)
         {
             if (blockSel == null || byEntity?.World == null || !byEntity.Controls.Sneak) return;
 

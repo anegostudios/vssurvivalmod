@@ -87,7 +87,7 @@ namespace Vintagestory.GameContent
             if (byPlayer != null && byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
             {
                 CollectibleObject coll = byPlayer?.InventoryManager.ActiveHotbarSlot.Itemstack?.Collectible;
-                if (LastCodePart(1) == "flint" && (coll == null || coll.Tool != EnumTool.Pickaxe || coll.MiningTier < this.MiningTier))
+                if (LastCodePart(1) == "flint" && (coll == null || coll.MiningTier == 0))
                 {
                     world.BlockAccessor.SetBlock(world.GetBlock(new AssetLocation("rock-" + LastCodePart())).BlockId, pos);
                 }

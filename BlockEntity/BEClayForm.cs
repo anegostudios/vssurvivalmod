@@ -148,6 +148,7 @@ namespace Vintagestory.GameContent
 
         public void OnUseOver(IPlayer byPlayer, Vec3i voxelPos, BlockFacing facing, bool mouseBreakMode)
         {
+            if (SelectedRecipe == null) return;
             if (voxelPos == null)
             {
                 
@@ -206,6 +207,7 @@ namespace Vintagestory.GameContent
                 {
                     AvailableVoxels = 0;
                     workItemStack = null;
+                    api.World.BlockAccessor.SetBlock(0, pos);
                     //didBeginUse = 0;
                     return;
                 }
@@ -311,7 +313,10 @@ namespace Vintagestory.GameContent
                 {
                     for (int z = 0; z < 16; z++)
                     {
-                        if (Voxels[x, y, z]) return true;
+                        if (Voxels[x, y, z])
+                        {
+                            return true;
+                        }
                     }
                 }
             }
@@ -656,7 +661,7 @@ namespace Vintagestory.GameContent
 
             List<ItemStack> stacks = world.ClayFormingRecipes
                 .Where(r => r.Ingredient.SatisfiesAsIngredient(ingredient))
-                .OrderBy(r => r.Output.ResolvedItemstack.GetName())
+                .OrderBy(r => r.Output.ResolvedItemstack.Collectible.Code) // Cannot sort by name, thats language dependent!
                 .Select(r => r.Output.ResolvedItemstack)
                 .ToList()
             ;
@@ -693,18 +698,7 @@ namespace Vintagestory.GameContent
             StringBuilder sb = new StringBuilder();
             sb.AppendLine(Lang.Get("Output: {0}", SelectedRecipe?.Output?.ResolvedItemstack?.GetName()));
             sb.AppendLine(Lang.Get("Available Voxels: {0}", AvailableVoxels));
-
-            ICoreClientAPI capi = api as ICoreClientAPI;
-            if (capi != null)
-            {
-                HotKey k = null;
-                capi.Input.HotKeys.TryGetValue("toolmodeselect", out k);
-                if (k != null)
-                {
-                    sb.AppendLine(Lang.Get("Hit '{0}' to select tool mode for quicker crafting", k.CurrentMapping.ToString()));
-                }
-
-            }
+            
 
             return sb.ToString();
         }

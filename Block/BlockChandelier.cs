@@ -7,6 +7,7 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -83,7 +84,7 @@ namespace Vintagestory.GameContent
                     MouseButton = EnumMouseButton.Right,
                     Itemstacks = new ItemStack[] { new ItemStack(world.GetItem(new AssetLocation("candle"))) }
                 }
-            };
+            }.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
         }
     }
 }

@@ -131,7 +131,7 @@ namespace Vintagestory.GameContent
             {
                 bool didRemove = mouseMode && OnRemove(voxelPos, facing, toolMode, byPlayer);
                 
-                if (mouseMode)
+                if (mouseMode && (didRemove || Voxels[voxelPos.X, voxelPos.Z]))
                 {
                     api.World.PlaySoundAt(new AssetLocation("sounds/player/knap" + (api.World.Rand.Next(2) > 0 ? 1 : 2)), lastRemovedLocalPos.X, lastRemovedLocalPos.Y, lastRemovedLocalPos.Z, byPlayer, true, 12, 1);
                 }
@@ -281,7 +281,7 @@ namespace Vintagestory.GameContent
         private bool OnRemove(Vec3i voxelPos, BlockFacing facing, int radius, IPlayer byPlayer)
         {
             // Required voxel, don't let the player break it
-            if (SelectedRecipe.Voxels[voxelPos.X, voxelPos.Z]) return false;
+            if (SelectedRecipe == null || SelectedRecipe.Voxels[voxelPos.X, voxelPos.Z]) return false;
 
             for (int dx = -(int)Math.Ceiling(radius/2f); dx <= radius /2; dx++)
             {
@@ -494,7 +494,7 @@ namespace Vintagestory.GameContent
         {
             KnappingRecipe recipe = api.World.KnappingRecipes
                 .Where(r => r.Ingredient.SatisfiesAsIngredient(BaseMaterial))
-                .OrderBy(r => r.Output.ResolvedItemstack.GetName())
+                .OrderBy(r => r.Output.ResolvedItemstack.Collectible.Code) // Cannot sort by name, thats language dependent!
                 .ElementAtOrDefault(num)
             ;
 
@@ -508,7 +508,7 @@ namespace Vintagestory.GameContent
         {
             List<ItemStack> stacks = world.KnappingRecipes
                .Where(r => r.Ingredient.SatisfiesAsIngredient(baseMaterial))
-               .OrderBy(r => r.Output.ResolvedItemstack.GetName())
+               .OrderBy(r => r.Output.ResolvedItemstack.Collectible.Code) // Cannot sort by name, thats language dependent!
                .Select(r => r.Output.ResolvedItemstack)
                .ToList()
            ;

@@ -79,6 +79,7 @@ namespace Vintagestory.GameContent
 
         public override void StartClientSide(ICoreClientAPI api)
         {
+            api.Event.BlockTexturesLoaded += loadConfig;
         }
 
 
@@ -99,27 +100,41 @@ namespace Vintagestory.GameContent
             //api.WorldManager.SetCurrencyIcon(config.CurrencyItemIcon);
 
             api.Event.PlayerCreate += Event_PlayerCreate;
+            api.Event.PlayerNowPlaying += Event_PlayerPlaying;
             api.Event.ServerRunPhase(EnumServerRunPhase.LoadGame, () => config.ResolveStartItems(api.World));
+
+            api.Event.ServerRunPhase(EnumServerRunPhase.LoadGamePre, loadConfig);
+        }
+
+
+        HashSet<string> createdPlayers = new HashSet<string>();
+
+        private void Event_PlayerPlaying(IServerPlayer byPlayer)
+        {
+            if (createdPlayers.Contains(byPlayer.PlayerUID))
+            {
+                createdPlayers.Remove(byPlayer.PlayerUID);
+                if (byPlayer.WorldData.CurrentGameMode == EnumGameMode.Creative || byPlayer.WorldData.CurrentGameMode == EnumGameMode.Spectator) return;
+
+                for (int i = 0; i < config.ResolvedStartStacks.Length; i++)
+                {
+                    byPlayer.Entity.TryGiveItemStack(config.ResolvedStartStacks[i].Clone());
+                }
+            }
+
         }
 
         private void Event_PlayerCreate(IServerPlayer byPlayer)
         {
-            if (byPlayer.WorldData.CurrentGameMode == EnumGameMode.Creative || byPlayer.WorldData.CurrentGameMode == EnumGameMode.Spectator) return;
-
-            for (int i = 0; i < config.ResolvedStartStacks.Length; i++)
-            {
-                byPlayer.Entity.TryGiveItemStack(config.ResolvedStartStacks[i].Clone());
-            }
+            createdPlayers.Add(byPlayer.PlayerUID);
         }
 
-        public override void Start(ICoreAPI api)
+
+        private void loadConfig()
         {
-            this.api = api;
-
-
             try
             {
-                IAsset asset = api.Assets.TryGet("config.json");
+                IAsset asset = api.Assets.TryGet("config/general.json");
                 if (asset != null)
                 {
                     config = asset.ToObject<SurvivalConfig>();
@@ -130,8 +145,12 @@ namespace Vintagestory.GameContent
                 api.World.Logger.Error("Failed loading survivalconfig.json, error {0}. Will initialize new one", e);
                 config = new SurvivalConfig();
             }
+        }
 
-
+        public override void Start(ICoreAPI api)
+        {
+            this.api = api;
+            
             RegisterDefaultBlocks();
             RegisterDefaultBlockBehaviors();
             RegisterDefaultCropBehaviors();
@@ -242,7 +261,8 @@ namespace Vintagestory.GameContent
             api.RegisterBlockClass("BlockMetalSpikes", typeof(BlockMetalSpikes));
             api.RegisterBlockClass("BlockLabeledChest", typeof(BlockLabeledChest));
             api.RegisterBlockClass("BlockStalagSection", typeof(BlockStalagSection));
-            
+            api.RegisterBlockClass("BlockLooseOres", typeof(BlockLooseOres));
+            api.RegisterBlockClass("BlockPan", typeof(BlockPan));
         }
         
         private void RegisterDefaultBlockBehaviors()
@@ -380,6 +400,7 @@ namespace Vintagestory.GameContent
             api.RegisterItemClass("ItemKnife", typeof(ItemKnife));
 
             api.RegisterItemClass("ItemGem", typeof(ItemGem));
+            
         }
 
 

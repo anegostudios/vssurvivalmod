@@ -24,6 +24,8 @@ namespace Vintagestory.GameContent
 
         public override bool StartAnimation(string configCode)
         {
+            if (ActiveAnimationsByAnimCode.ContainsKey(Personality + "nod")) return false;
+
             if (PersonalizedAnimations.Contains(configCode.ToLowerInvariant()))
             {
                 if (configCode == "laugh" && ActiveAnimationsByAnimCode.ContainsKey(Personality + "welcome")) return false;
@@ -48,6 +50,8 @@ namespace Vintagestory.GameContent
 
         public override bool StartAnimation(AnimationMetaData animdata)
         {
+            if (ActiveAnimationsByAnimCode.ContainsKey(Personality + "nod")) return false;
+
             if (PersonalizedAnimations.Contains(animdata.Animation.ToLowerInvariant()))
             {
                 if (animdata.Animation == "laugh" && ActiveAnimationsByAnimCode.ContainsKey(Personality + "welcome")) return false;
@@ -72,7 +76,6 @@ namespace Vintagestory.GameContent
 
             if (entity.Alive && ActiveAnimationsByAnimCode.Count == 0)
             {
-
                 StartAnimation(new AnimationMetaData() { Code = "idle", Animation = "idle", EaseOutSpeed = 10000, EaseInSpeed = 10000 });
             }
         }
@@ -192,7 +195,7 @@ namespace Vintagestory.GameContent
 
                 RefreshBuyingSellingInventory();
 
-                WatchedAttributes.SetDouble("lastRefreshTotalDays", World.Calendar.TotalDays + 4 + World.Rand.NextDouble() * 10);
+                WatchedAttributes.SetDouble("lastRefreshTotalDays", World.Calendar.TotalDays - World.Rand.NextDouble() * 10);
 
                 Inventory.GiveToTrader((int)TradeProps.Money.nextFloat(1f, World.Rand));
 
@@ -320,6 +323,8 @@ namespace Vintagestory.GameContent
                 EnumTransactionResult result = Inventory.TryBuySell(player);
                 if (result == EnumTransactionResult.Success)
                 {
+                    (Api as ICoreServerAPI).WorldManager.GetChunk(ServerPos.AsBlockPos)?.MarkModified();
+
                     AnimManager.StopAnimation("idle");
                     AnimManager.StartAnimation(new AnimationMetaData() { Animation = "nod", Code = "nod", Weight = 10, EaseOutSpeed = 10000, EaseInSpeed = 10000 });
 
@@ -405,9 +410,9 @@ namespace Vintagestory.GameContent
 
         public override void ToBytes(BinaryWriter writer, bool forClient)
         {
-            base.ToBytes(writer, forClient);
-
             Inventory.ToTreeAttributes(GetOrCreateTradeStore());
+
+            base.ToBytes(writer, forClient);
         }
 
 

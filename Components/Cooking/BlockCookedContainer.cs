@@ -267,12 +267,12 @@ namespace Vintagestory.GameContent
 
 
 
-        public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handHandling)
+        public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handHandling)
         {
             if (blockSel != null)
             {
                 Block selectedBlock = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
-                if (selectedBlock?.Attributes["mealcontainer"]?.AsBool() == true)
+                if (selectedBlock?.Attributes?["mealcontainer"]?.AsBool() == true)
                 {
                     ServeIntoBowl(selectedBlock, blockSel.Position, slot, byEntity.World);
                     handHandling = EnumHandHandling.PreventDefault;
@@ -280,7 +280,7 @@ namespace Vintagestory.GameContent
                 }
             }
             
-            base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, ref handHandling);
+            base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handHandling);
         }
 
 
@@ -343,7 +343,7 @@ namespace Vintagestory.GameContent
             
             SetServings(world, potslot.Itemstack, quantityServings - servingsToTransfer);
 
-            if (quantityServings <= 0)
+            if (quantityServings - servingsToTransfer <= 0)
             {
                 potslot.Itemstack = new ItemStack(api.World.GetBlock(new AssetLocation(FirstCodePart() + "-burned")));
             }
@@ -409,7 +409,7 @@ namespace Vintagestory.GameContent
 
         public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
         {
-            return interactions;
+            return interactions.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
         }
     }
 }

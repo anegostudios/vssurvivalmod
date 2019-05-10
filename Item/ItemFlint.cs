@@ -21,7 +21,7 @@ namespace Vintagestory.GameContent
             return base.GetHeldTpHitAnimation(slot, byEntity);
         }
 
-        public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
+        public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
             IPlayer byPlayer = null;
             if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
@@ -94,7 +94,7 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, ref handling);
+            base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handling);
         }
 
 

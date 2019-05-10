@@ -54,7 +54,7 @@ namespace Vintagestory.GameContent
         }
 
         
-        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace)
+        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, Random worldGenRand)
         {
             if (blockAccessor.GetBlockId(pos) != 0) return false;
 
@@ -77,19 +77,19 @@ namespace Vintagestory.GameContent
             }
 
             BlockPos tmppos = new BlockPos();
-            int tries = 55 + api.World.Rand.Next(55);
+            int tries = 55 + worldGenRand.Next(55);
             while (tries-- > 0)
             {
-                int offX = api.World.Rand.Next(15) - 7;
-                int offY = api.World.Rand.Next(15) - 7;
-                int offZ = api.World.Rand.Next(15) - 7;
+                int offX = worldGenRand.Next(15) - 7;
+                int offY = worldGenRand.Next(15) - 7;
+                int offZ = worldGenRand.Next(15) - 7;
 
-                if (api.World.Rand.NextDouble() < 0.4)
+                if (worldGenRand.NextDouble() < 0.4)
                 {
-                    tryPlaceDecoUp(tmppos.Set(cavepos.X + offX, cavepos.Y + offY, cavepos.Z + offZ), blockAccessor);
+                    tryPlaceDecoUp(tmppos.Set(cavepos.X + offX, cavepos.Y + offY, cavepos.Z + offZ), blockAccessor, worldGenRand);
                 } else
                 {
-                    tryPlaceDecoDown(tmppos.Set(cavepos.X + offX, cavepos.Y + offY, cavepos.Z + offZ), blockAccessor);
+                    tryPlaceDecoDown(tmppos.Set(cavepos.X + offX, cavepos.Y + offY, cavepos.Z + offZ), blockAccessor, worldGenRand);
                 }
 
                 
@@ -98,7 +98,7 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        private void tryPlaceDecoDown(BlockPos blockPos, IBlockAccessor blockAccessor)
+        private void tryPlaceDecoDown(BlockPos blockPos, IBlockAccessor blockAccessor, Random worldGenRand)
         {
             if (blockAccessor.GetBlockId(blockPos) != 0) return;
 
@@ -111,13 +111,13 @@ namespace Vintagestory.GameContent
                 if (block.SideSolid[BlockFacing.DOWN.Index])
                 {
                     blockPos.Y++;
-                    blockAccessor.SetBlock(DecoBlocksFloor[api.World.Rand.Next(DecoBlocksFloor.Length)].BlockId, blockPos);
+                    blockAccessor.SetBlock(DecoBlocksFloor[worldGenRand.Next(DecoBlocksFloor.Length)].BlockId, blockPos);
                     return;
                 }
             }
         }
 
-        private void tryPlaceDecoUp(BlockPos blockPos, IBlockAccessor blockAccessor)
+        private void tryPlaceDecoUp(BlockPos blockPos, IBlockAccessor blockAccessor, Random worldgenRand)
         {
             if (blockAccessor.GetBlockId(blockPos) != 0) return;
 
@@ -130,7 +130,7 @@ namespace Vintagestory.GameContent
                 if (block.SideSolid[BlockFacing.DOWN.Index])
                 {
                     blockPos.Y--;
-                    Block placeblock = DecoBlocksCeiling[api.World.Rand.Next(DecoBlocksCeiling.Length)];
+                    Block placeblock = DecoBlocksCeiling[worldgenRand.Next(DecoBlocksCeiling.Length)];
                     blockAccessor.SetBlock(placeblock.BlockId, blockPos);
                     return;
                 }

@@ -152,7 +152,7 @@ namespace Vintagestory.ServerMods
                                 block = config.treeBlocks.vinesEndBlock;
                             }
 
-                            block.TryPlaceBlockForWorldGen(api, vinePos, facing);
+                            block.TryPlaceBlockForWorldGen(api, vinePos, facing, rand);
                             vinePos.Down();
                         }
                     }

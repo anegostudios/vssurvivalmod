@@ -23,7 +23,7 @@ namespace Vintagestory.GameContent
         Block topFlowering;
         Block topRipe;
 
-        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace)
+        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, Random worldGenRand)
         {
             if (!CanPlantStay(blockAccessor, pos)) return false;
 

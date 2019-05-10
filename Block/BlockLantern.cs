@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 
@@ -28,6 +29,18 @@ namespace Vintagestory.GameContent
             }
         }
 
+        public override string GetHeldTpIdleAnimation(ItemSlot activeHotbarSlot, Entity forEntity, EnumHand hand)
+        {
+            IPlayer player = (forEntity as EntityPlayer).Player;
+
+            if (player != null && !player.InventoryManager.ActiveHotbarSlot.Empty && hand == EnumHand.Left)
+            { 
+                ItemStack stack = player.InventoryManager.ActiveHotbarSlot.Itemstack;
+                if (stack.Collectible.GetHeldTpIdleAnimation(player.InventoryManager.ActiveHotbarSlot, forEntity, EnumHand.Right) != null) return null;
+            }
+
+            return hand == EnumHand.Left ? "holdinglanternlefthand" : "holdinglanternrighthand";
+        }
 
         public override byte[] GetLightHsv(IBlockAccessor blockAccessor, BlockPos pos, ItemStack stack = null)
         {

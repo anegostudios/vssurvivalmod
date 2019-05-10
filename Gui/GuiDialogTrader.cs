@@ -92,8 +92,8 @@ namespace Vintagestory.GameContent
                     .AddItemSlotGrid(traderInventory, DoSendPacket, cols, (new int[rows * cols]).Fill(i => rows * cols + cols + i), rightTopSlotBounds, "traderBuyingSlots")
                     .AddItemSlotGrid(traderInventory, DoSendPacket, cols, (new int[cols]).Fill(i => rows * cols + cols + rows * cols + i), rightBotSlotBounds, "playerSellingSlots")
 
-                    .AddStaticText("Your Selection", CairoFont.WhiteDetailText(), ElementBounds.Fixed(pad, 70 + 2*pad + leftTopSlotBounds.fixedHeight, 150, 25))
-                    .AddStaticText("Your Offer", CairoFont.WhiteDetailText(), ElementBounds.Fixed(leftTopSlotBounds.fixedWidth + pad + 20, 70 + 2*pad + leftTopSlotBounds.fixedHeight, 150, 25))
+                    .AddStaticText(Lang.Get("trader-yourselection"), CairoFont.WhiteDetailText(), ElementBounds.Fixed(pad, 70 + 2*pad + leftTopSlotBounds.fixedHeight, 150, 25))
+                    .AddStaticText(Lang.Get("trader-youroffer"), CairoFont.WhiteDetailText(), ElementBounds.Fixed(leftTopSlotBounds.fixedWidth + pad + 20, 70 + 2*pad + leftTopSlotBounds.fixedHeight, 150, 25))
 
                     // Cost
                     .AddDynamicText("", CairoFont.WhiteDetailText(), EnumTextOrientation.Left, costTextBounds, "costText")

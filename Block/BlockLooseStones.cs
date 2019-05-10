@@ -6,9 +6,7 @@ namespace Vintagestory.GameContent
 {
     public class BlockLooseStones : Block
     {
-        Random rand = new Random();
-
-        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace)
+        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, Random worldGenRand)
         {
             if (!HasSolidGround(blockAccessor, pos))
             {
@@ -17,7 +15,7 @@ namespace Vintagestory.GameContent
 
             ushort blockId = BlockId;
 
-            if (rand.NextDouble() <= 0.20)
+            if (worldGenRand.NextDouble() <= 0.20)
             {
                 blockId = blockAccessor.GetBlock(CodeWithPath("looseflints-" + LastCodePart())).BlockId;
             }

@@ -22,14 +22,14 @@ namespace Vintagestory.GameContent
     public class InventoryTrader : InventoryBase
     {
         EntityTrader traderEntity;
-        
+
         // Slots 0..15: Selling slots
         // Slots 16..19: Buying cart
         // Slots 20..35: Buying slots
         // Slots 36..39: Selling cart
         // Slot 40: Money slot
         ItemSlot[] slots;
-        
+
 
 
         public int BuyingCartTotalCost
@@ -62,7 +62,8 @@ namespace Vintagestory.GameContent
             base.LateInitialize(id, api);
             this.traderEntity = traderEntity;
 
-            if (traderEntity?.TradeProps != null)
+            // Never gets executed because trade slots are always empty at this point. What is this code good for?
+            /*if (traderEntity?.TradeProps != null)
             {
                 for (int slotId = 0; slotId < slots.Length; slotId++)
                 {
@@ -70,17 +71,13 @@ namespace Vintagestory.GameContent
 
                     string name = (slots[slotId] as ItemSlotTrade).TradeItem?.Name;
 
-                    if (slotId < 20)
-                    {
-                        (slots[slotId] as ItemSlotTrade).TradeItem = GetTradeItemByName(name, traderEntity.TradeProps.Selling);
-                    }
-                    else
-                    {
-                        (slots[slotId] as ItemSlotTrade).TradeItem = GetTradeItemByName(name, traderEntity.TradeProps.Buying);
-                    }
+                    ItemSlotTrade tradeSlot = (slots[slotId] as ItemSlotTrade);
 
+                    if (tradeSlot.TradeItem != null) continue;
+                    
+                    tradeSlot.TradeItem = GetTradeItemByName(name, slotId < 20 ? traderEntity.TradeProps.Selling : traderEntity.TradeProps.Buying); 
                 }
-            }
+            }*/
         }
 
         public override object ActivateSlot(int slotId, ItemSlot mouseSlot, ref ItemStackMoveOperation op)
@@ -89,7 +86,7 @@ namespace Vintagestory.GameContent
             if (slotId <= 15)
             {
                 AddToBuyingCart(slots[slotId] as ItemSlotTrade);
-                return InvNetworkUtil.GetActivateSlotPacket(slotId, op); ;
+                return InvNetworkUtil.GetActivateSlotPacket(slotId, op);
             }
 
             // Player clicked an item in the buying cart, remove it
@@ -100,15 +97,18 @@ namespace Vintagestory.GameContent
                 if (op.MouseButton == EnumMouseButton.Right)
                 {
                     // Just remove one batch on right mouse    
-                    cartSlot.TakeOut(cartSlot.TradeItem.Stack.StackSize);
-                    cartSlot.MarkDirty();
+                    if (cartSlot.TradeItem?.Stack != null)
+                    {
+                        cartSlot.TakeOut(cartSlot.TradeItem.Stack.StackSize);
+                        cartSlot.MarkDirty();
+                    }
                 } else
                 {
                     cartSlot.Itemstack = null;
                     cartSlot.MarkDirty();
                 }
-                
-                return InvNetworkUtil.GetActivateSlotPacket(slotId, op); ;
+
+                return InvNetworkUtil.GetActivateSlotPacket(slotId, op);
             }
 
             // Player clicked an item on the buy slot, ignore it
@@ -139,7 +139,7 @@ namespace Vintagestory.GameContent
 
                 if (slot.Itemstack.Equals(sellingSlot.Itemstack) && slot.Itemstack.StackSize + sellingSlot.TradeItem.Stack.StackSize <= slot.Itemstack.Collectible.MaxStackSize)
                 {
-                    
+
                     slot.Itemstack.StackSize += (sellingSlot as ItemSlotTrade).TradeItem.Stack.StackSize;
                     slot.MarkDirty();
                     return;
@@ -208,8 +208,9 @@ namespace Vintagestory.GameContent
             for (int slotId = 0; slotId < slots.Length; slotId++)
             {
                 if (!(slots[slotId] is ItemSlotTrade) || slots[slotId].Empty) continue;
+                ItemSlotTrade tradeSlot = (slots[slotId] as ItemSlotTrade);
 
-                (slots[slotId] as ItemSlotTrade).TradeItem = new ResolvedTradeItem(tradeItems.GetTreeAttribute(slotId + ""));
+                tradeSlot.TradeItem = new ResolvedTradeItem(tradeItems.GetTreeAttribute(slotId + ""));
             }
         }
 
@@ -224,7 +225,8 @@ namespace Vintagestory.GameContent
             {
                 if (slots[i].Itemstack == null || !(slots[i] is ItemSlotTrade)) continue;
                 TreeAttribute subtree = new TreeAttribute();
-                (slots[i] as ItemSlotTrade).TradeItem?.ToTreeAttributes(subtree);
+                ResolvedTradeItem tradeitem = (slots[i] as ItemSlotTrade).TradeItem;
+                tradeitem?.ToTreeAttributes(subtree);
                 tradeItemTree[i + ""] = subtree;
             }
 
@@ -304,7 +306,7 @@ namespace Vintagestory.GameContent
                 {
                     player.InventoryManager.NotifySlot(player, slot);
                     player.InventoryManager.NotifySlot(player, tradeSlot);
-                    
+
                     return false;
                 }
             }
@@ -352,8 +354,25 @@ namespace Vintagestory.GameContent
         }
 
 
+        public bool IsTraderInterestedIn(ItemStack stack)
+        {
+            ItemSlotTrade tradeSlot = GetBuyingConditionsSlot(stack);
+            ResolvedTradeItem tradeItem = tradeSlot?.TradeItem;
 
+            if (tradeItem == null)
+            {
+                return false;
+            }
 
+            if (tradeItem.Stock == 0)
+            {
+                PerformNotifySlot(GetSlotId(tradeSlot));
+            }
+
+            return tradeItem.Stock > 0;
+        }
+
+    
 
 
         public bool HasPlayerEnoughAssets(IPlayer buyingPlayer)
@@ -604,7 +623,7 @@ namespace Vintagestory.GameContent
 
                 if (sellSlot.Itemstack == null) continue;
 
-                ResolvedTradeItem tradeitem = GetBuyingConditionsSlot(sellSlot.Itemstack).TradeItem;
+                ResolvedTradeItem tradeitem = GetBuyingConditionsSlot(sellSlot.Itemstack)?.TradeItem;
 
                 if (tradeitem != null)
                 {
@@ -625,7 +644,7 @@ namespace Vintagestory.GameContent
         {
             if (slotId < 36) return new ItemSlotTrade(this, slotId > 19 && slotId <= 35);
 
-            return new ItemSlotSurvival(this);
+            return new ItemSlotBuying(this);
         }
 
         public ItemSlotTrade GetSellingSlot(int index)

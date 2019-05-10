@@ -15,33 +15,44 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
+    [ProtoContract]
     public class BESpawnerData
     {
         // Config data
 
+        [ProtoMember(1)]
         public string[] EntityCodes;
+        [ProtoMember(2)]
         public Cuboidi SpawnArea;
+        [ProtoMember(3)]
         public float InGameHourInterval;
         /// <summary>
         /// Max entities this spawner should spawn
         /// </summary>
+        [ProtoMember(4)]
         public int MaxCount;
         /// <summary>
         /// Amount of entities to spawn each interval
         /// </summary>
+        [ProtoMember(5), DefaultValue(1)]
         public int GroupSize = 1;
         /// <summary>
         /// If nonzero the spanwer will only spawn this amount of entities and then self destruct
         /// </summary>
+        [ProtoMember(6)]
         public int RemoveAfterSpawnCount;
+        [ProtoMember(7), DefaultValue(0)]
         public int InitialSpawnQuantity = 0;
+        [ProtoMember(8), DefaultValue(true)]
         public bool SpawnOnlyAfterImport=true;
 
 
         // Runtime data
+        [ProtoMember(9), DefaultValue(false)]
         public bool WasImported = false;
+        [ProtoMember(10), DefaultValue(0)]
         public int InitialQuantitySpawned = 0;
+
 
         [ProtoAfterDeserialization]
         void afterDeserialization()

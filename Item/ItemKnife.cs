@@ -9,7 +9,7 @@ namespace Vintagestory.GameContent
 {
     public class ItemKnife : Item
     {
-        public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
+        public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
             EntityBehaviorHarvestable bh;
             if (byEntity.Controls.Sneak && entitySel != null && !entitySel.Entity.Alive && (bh = entitySel.Entity.GetBehavior<EntityBehaviorHarvestable>()) != null)
@@ -63,6 +63,7 @@ namespace Vintagestory.GameContent
             if (entitySel != null && (bh = entitySel.Entity.GetBehavior<EntityBehaviorHarvestable>()) != null && secondsUsed >= bh.HarvestDuration - 0.1f)
             {
                 bh.SetHarvested((byEntity as EntityPlayer)?.Player);
+                slot?.Itemstack?.Collectible.DamageItem(byEntity.World, byEntity, slot, 3);
             }
         }
 

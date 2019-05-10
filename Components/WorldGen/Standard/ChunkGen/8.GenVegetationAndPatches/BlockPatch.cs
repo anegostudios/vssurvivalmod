@@ -128,7 +128,7 @@ namespace Vintagestory.ServerMods.NoObf
                     }
                 }
 
-                blocks[index].TryPlaceBlockForWorldGen(blockAccessor, pos, BlockFacing.UP);
+                blocks[index].TryPlaceBlockForWorldGen(blockAccessor, pos, BlockFacing.UP, rnd);
             }
         }
 

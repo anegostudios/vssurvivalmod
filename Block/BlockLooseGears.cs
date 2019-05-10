@@ -23,7 +23,7 @@ namespace Vintagestory.GameContent
             Variants[4] = api.World.GetBlock(new AssetLocation("loosegears-5")); // 3.125%
         }
 
-        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace)
+        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, Random worldGenRand)
         {
             Block block = blockAccessor.GetBlock(pos);
             

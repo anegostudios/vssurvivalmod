@@ -23,10 +23,6 @@ namespace Vintagestory.GameContent
 
         public override void Initialize(EntityProperties properties, ICoreAPI api, long InChunkIndex3d)
         {
-            if (api.Side == EnumAppSide.Server)
-            {
-                int a = 1;
-            }
             base.Initialize(properties, api, InChunkIndex3d);
             
             if (api.Side == EnumAppSide.Client)

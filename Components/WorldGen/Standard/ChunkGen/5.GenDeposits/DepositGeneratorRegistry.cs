@@ -23,7 +23,8 @@ namespace Vintagestory.ServerMods
             RegisterDepositGenerator<FollowSealevelDiscGenerator>("disc-followsealevel");
             RegisterDepositGenerator<FollowSurfaceBelowDiscGenerator>("disc-followsurfacebelow");
             RegisterDepositGenerator<ChildDepositGenerator>("childdeposit-pointcloud");
-            
+
+            RegisterDepositGenerator<AlluvialDepositGenerator>("disc-alluvialdeposit");
         }
 
         public static void RegisterDepositGenerator<T>(string code) where T : DepositGeneratorBase

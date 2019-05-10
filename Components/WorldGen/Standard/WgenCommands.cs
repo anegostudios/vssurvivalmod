@@ -236,27 +236,35 @@ namespace Vintagestory.ServerMods
 
         private void RegenChunks(IServerPlayer player, CmdArgs arguments, bool aroundPlayer = false, bool randomSeed = false)
         {
-            NoiseLandforms.ReloadLandforms(api);
-
             int seedDiff = randomSeed ? api.World.Rand.Next(100000) : 0;
-
             if (randomSeed) player.SendMessage(GlobalConstants.CurrentChatGroup, "Using random seed diff " + seedDiff, EnumChatType.Notification);
 
-            api.ModLoader.GetModSystem<GenTerra>().initWorldGen();
-            api.ModLoader.GetModSystem<GenMaps>().initWorldGen();
-            api.ModLoader.GetModSystem<GenRockStrataNew>().initWorldGen(seedDiff);
+            player.SendMessage(GlobalConstants.CurrentChatGroup, "Waiting for chunk thread to pause...", EnumChatType.Notification);
 
-            if (ModStdWorldGen.DoDecorationPass)
+            if (api.Server.PauseThread("chunkdbthread"))
             {
-                api.ModLoader.GetModSystem<GenVegetation>().initWorldGen();
-                api.ModLoader.GetModSystem<GenLakes>().initWorldGen();
-                api.ModLoader.GetModSystem<GenBlockLayers>().InitWorldGen();
-                api.ModLoader.GetModSystem<GenCaves>().initWorldGen();
-                api.ModLoader.GetModSystem<GenDeposits>().initWorldGen();
+                NoiseLandforms.ReloadLandforms(api);
+
+                api.ModLoader.GetModSystem<GenTerra>().initWorldGen();
+                api.ModLoader.GetModSystem<GenMaps>().initWorldGen();
+                api.ModLoader.GetModSystem<GenRockStrataNew>().initWorldGen(seedDiff);
+
+                if (ModStdWorldGen.DoDecorationPass)
+                {
+                    api.ModLoader.GetModSystem<GenVegetation>().initWorldGen();
+                    api.ModLoader.GetModSystem<GenLakes>().initWorldGen();
+                    api.ModLoader.GetModSystem<GenBlockLayers>().InitWorldGen();
+                    api.ModLoader.GetModSystem<GenCaves>().initWorldGen();
+                    api.ModLoader.GetModSystem<GenDeposits>().initWorldGen();
+                }
+
+                Regen(player, arguments, false, aroundPlayer);
+            } else
+            {
+                player.SendMessage(GlobalConstants.CurrentChatGroup, "Unable to regenerate chunks. Was not able to pause the chunk gen thread", EnumChatType.Notification);
             }
 
-            Regen(player, arguments, false, aroundPlayer);
-
+            api.Server.ResumeThread("chunkdbthread");
             player.CurrentChunkSentRadius = 0;
         }
 

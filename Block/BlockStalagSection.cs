@@ -34,8 +34,7 @@ namespace Vintagestory.GameContent
             { "04", 5 }
         };
 
-        Random random = new Random();
-
+        
 
         public override void OnNeighourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
         {
@@ -65,25 +64,27 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace)
+        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, Random worldGenRand)
         {
             bool didplace = false;
 
             if (blockAccessor.GetBlock(pos).Replaceable < 6000) return false;
 
             pos = pos.Copy();
-            for (int i = 0; i < 5 + random.Next(25); i++)
+            for (int i = 0; i < 5 + worldGenRand.Next(25); i++)
             {
-                didplace |= TryGenStalag(blockAccessor, pos, random.Next(4));
-                pos.X += random.Next(9) - 4;
-                pos.Z += random.Next(9) - 4;
-                pos.Y += random.Next(3) - 1;
+                if (pos.Y < 15) continue; // To hot for stalactites
+
+                didplace |= TryGenStalag(blockAccessor, pos, worldGenRand.Next(4), worldGenRand);
+                pos.X += worldGenRand.Next(9) - 4;
+                pos.Y += worldGenRand.Next(3) - 1;
+                pos.Z += worldGenRand.Next(9) - 4;
             }
 
             return didplace;
         }
 
-        private bool TryGenStalag(IBlockAccessor blockAccessor, BlockPos pos, int thickOff)
+        private bool TryGenStalag(IBlockAccessor blockAccessor, BlockPos pos, int thickOff, Random worldGenRand)
         {
             bool didplace = false;
 
@@ -95,7 +96,7 @@ namespace Vintagestory.GameContent
                     string rocktype;
                     if (block.Variant.TryGetValue("rock", out rocktype))
                     {
-                        GrowDownFrom(blockAccessor, pos.AddCopy(0, dy - 1, 0), rocktype, thickOff);
+                        GrowDownFrom(blockAccessor, pos.AddCopy(0, dy - 1, 0), rocktype, thickOff, worldGenRand);
                         didplace = true;
                     }
                     break;
@@ -133,7 +134,7 @@ namespace Vintagestory.GameContent
                 if (stalagBlock == null) continue;
 
                 Block block = blockAccessor.GetBlock(pos);
-                if (block.Replaceable >= 6000 || (block as BlockStalagSection)?.ThicknessInt < stalagBlock.ThicknessInt)
+                if (!block.IsLiquid() && (block.Replaceable >= 6000 || (block as BlockStalagSection)?.ThicknessInt < stalagBlock.ThicknessInt))
                 {
                     blockAccessor.SetBlock(stalagBlock.BlockId, pos);
                 }
@@ -142,15 +143,15 @@ namespace Vintagestory.GameContent
             }
         }
 
-        private void GrowDownFrom(IBlockAccessor blockAccessor, BlockPos pos, string rocktype, int thickOff)
+        private void GrowDownFrom(IBlockAccessor blockAccessor, BlockPos pos, string rocktype, int thickOff, Random worldGenRand)
         {
-            for (int i = thicknessIndex[Thickness] + thickOff + random.Next(2); i < Thicknesses.Length; i++)
+            for (int i = thicknessIndex[Thickness] + thickOff + worldGenRand.Next(2); i < Thicknesses.Length; i++)
             {
                 Block stalagBlock = GetBlock(api.World, rocktype, Thicknesses[i]);
                 if (stalagBlock == null) continue;
 
                 Block block = blockAccessor.GetBlock(pos);
-                if (block.Replaceable >= 6000)
+                if (!block.IsLiquid() && block.Replaceable >= 6000)
                 {
                     blockAccessor.SetBlock(stalagBlock.BlockId, pos);
                 }

@@ -14,7 +14,7 @@ namespace Vintagestory.GameContent
             return null;
         }
 
-        public override void OnHeldInteractStart(ItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
+        public override void OnHeldInteractStart(ItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
             bool knappable = itemslot.Itemstack.Collectible.Attributes != null && itemslot.Itemstack.Collectible.Attributes["knappable"].AsBool(false);
             bool haveKnappableStone = false;
@@ -54,7 +54,21 @@ namespace Vintagestory.GameContent
                 string useless = "";
 
                 BlockPos pos = blockSel.Position;
-                if (!knappingBlock.IsSuitablePosition(world, pos, ref useless)) return;
+                if (!knappingBlock.IsSuitablePosition(world, pos, ref useless))
+                {
+                    bool selfBlocked = false;
+                    bool entityBlocked = world.GetIntersectingEntities(pos, knappingBlock.GetCollisionBoxes(world.BlockAccessor, pos), e => { selfBlocked = e == byEntity; return !(e is EntityItem); }).Length != 0;
+
+                    string err =
+                        entityBlocked ?
+                            (selfBlocked ? Lang.Get("Cannot place a knapping surface here, too close to you") : Lang.Get("Cannot place a knapping surface here, to close to another player or creature.")) :
+                            Lang.Get("Cannot place a knapping surface here")
+                    ;
+
+                    (api as ICoreClientAPI).TriggerIngameError(this, "cantplace", err);
+
+                    return;
+                }
 
                 world.BlockAccessor.SetBlock(knappingBlock.BlockId, pos);
 

@@ -4,6 +4,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -48,7 +49,7 @@ namespace Vintagestory.GameContent
             world.BlockAccessor.ExchangeBlock(block.BlockId, pos);
         }
 
-        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace)
+        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, Random worldGenRand)
         {
             Block block = blockAccessor.GetBlock(pos.X, pos.Y - 1, pos.Z);
             if (block.Fertility == 0) return false;
@@ -109,7 +110,7 @@ namespace Vintagestory.GameContent
                     MouseButton = EnumMouseButton.Left,
                     ShouldApply = (wi, bs, es) => CropProps.GrowthStages == CurrentCropStage 
                 }
-            };
+            }.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
         }
     }
 }

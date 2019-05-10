@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Vintagestory.API;
 using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.ServerMods.NoObf;
@@ -70,6 +71,8 @@ namespace Vintagestory.ServerMods
 
             Dictionary<AssetLocation, DepositVariant[]> depositFiles = api.Assets.GetMany<DepositVariant[]>(api.World.Logger, "worldgen/deposits/");
             List<DepositVariant> variants = new List<DepositVariant>();
+
+
             foreach (var val in depositFiles)
             {
                 foreach (var depo in val.Value)
@@ -82,10 +85,12 @@ namespace Vintagestory.ServerMods
                         foreach (var childdepo in depo.ChildDeposits)
                         {
                             childdepo.fromFile = val.Key.ToString();
+                            childdepo.parentDeposit = depo;
                         }
                     }
                 }
             }
+
             Deposits = variants.ToArray();
 
             
@@ -100,6 +105,8 @@ namespace Vintagestory.ServerMods
             int seed = api.WorldManager.Seed;
             depositRand = new LCGRandom(api.WorldManager.Seed + 34613);
 
+            Dictionary<string, MapLayerBase> maplayersByCode = new Dictionary<string, MapLayerBase>();
+
             for (int i = 0; i < Deposits.Length; i++)
             {
                 DepositVariant variant = Deposits[i];
@@ -107,8 +114,7 @@ namespace Vintagestory.ServerMods
 
                 if (variant.WithOreMap)
                 {
-                    NoiseOre noiseOre = new NoiseOre(seed++);
-                    variant.OreMapLayer = GenMaps.GetOreMap(seed++, noiseOre);
+                    variant.OreMapLayer = getOrCreateMapLayer(seed, variant.Code, maplayersByCode);
                 }
 
                 if (variant.ChildDeposits != null)
@@ -118,19 +124,30 @@ namespace Vintagestory.ServerMods
                         DepositVariant childVariant = variant.ChildDeposits[k];
                         if (childVariant.WithOreMap)
                         {
-                            NoiseOre noiseOre = new NoiseOre(seed++);
-                            childVariant.OreMapLayer = GenMaps.GetOreMap(seed++, noiseOre);
+                            childVariant.OreMapLayer = getOrCreateMapLayer(seed, childVariant.Code, maplayersByCode);
                         }
                     }
                 }
             }
             
             blockTypes = api.World.Blocks;
-            verticalDistortBottom = GenMaps.GetDepositVerticalDistort(seed++);
-            verticalDistortTop = GenMaps.GetDepositVerticalDistort(seed++);
+            verticalDistortBottom = GenMaps.GetDepositVerticalDistort(seed + 12);
+            verticalDistortTop = GenMaps.GetDepositVerticalDistort(seed + 28);
         }
 
         
+        MapLayerBase getOrCreateMapLayer(int seed, string oremapCode, Dictionary<string, MapLayerBase> maplayersByCode)
+        {
+            MapLayerBase ml = null;
+            if (!maplayersByCode.TryGetValue(oremapCode, out ml))
+            {
+                NoiseOre noiseOre = new NoiseOre(seed + oremapCode.GetHashCode());
+                maplayersByCode[oremapCode] = ml = GenMaps.GetOreMap(seed + oremapCode.GetHashCode() + 1, noiseOre);
+            }
+
+            return ml;
+        }
+
 
         private void OnMapRegionGen(IMapRegion mapRegion, int regionX, int regionZ)
         {
@@ -176,6 +193,11 @@ namespace Vintagestory.ServerMods
             {
                 DepositVariant variant = Deposits[i];
 
+                /*if (variant.Code != "sphalerite" || chunkdX != 0 || chunkdZ != 0)
+                {
+                    continue;
+                }*/
+
                 float quantityFactor = variant.WithOreMap ? variant.GetOreMapFactor(fromChunkx, fromChunkz) : 1;
 
                 float qModified = variant.TriesPerChunk * quantityFactor * chanceMultiplier;
@@ -185,8 +207,8 @@ namespace Vintagestory.ServerMods
                 while (quantity-- > 0)
                 {
                     tmpPos.Set(fromBaseX + chunkRand.NextInt(chunksize), -99, fromBaseZ + chunkRand.NextInt(chunksize));
-
-                    depositRand.SetWorldSeed(chunkRand.NextInt(10000000));
+                    long crseed = chunkRand.NextInt(10000000);
+                    depositRand.SetWorldSeed(crseed);
                     depositRand.InitPositionSeed(fromChunkx, fromChunkz);
 
                     GenDeposit(chunks, chunkX, chunkZ, tmpPos, variant);

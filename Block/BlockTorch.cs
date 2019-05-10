@@ -8,6 +8,18 @@ namespace Vintagestory.GameContent
 {
     public class BlockTorch : Block
     {
+        public override string GetHeldTpIdleAnimation(ItemSlot activeHotbarSlot, Entity forEntity, EnumHand hand)
+        {
+            IPlayer player = (forEntity as EntityPlayer).Player;
+
+            if (player != null && !player.InventoryManager.ActiveHotbarSlot.Empty && hand == EnumHand.Left)
+            {
+                ItemStack stack = player.InventoryManager.ActiveHotbarSlot.Itemstack;
+                if (stack.Collectible.GetHeldTpIdleAnimation(player.InventoryManager.ActiveHotbarSlot, forEntity, EnumHand.Right) != null) return null;
+            }
+
+            return hand == EnumHand.Left ? "holdinglanternlefthand" : "holdinglanternrighthand";
+        }
 
 
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
@@ -124,9 +136,9 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace)
+        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, Random worldGenRand)
         {
-            return CanTorchStay(blockAccessor, pos) && base.TryPlaceBlockForWorldGen(blockAccessor, pos, onBlockFace);
+            return CanTorchStay(blockAccessor, pos) && base.TryPlaceBlockForWorldGen(blockAccessor, pos, onBlockFace, worldGenRand);
         }
     }
 }

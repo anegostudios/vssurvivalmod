@@ -50,6 +50,14 @@ namespace Vintagestory.GameContent
                         Itemstacks = clayStackList.ToArray(),
                         GetMatchingStacks = getMatchingStacks
                     },
+                    new WorldInteraction()
+                    {
+                        ActionLangCode = "blockhelp-selecttoolmode",
+                        HotKeyCode = "toolmodeselect",
+                        MouseButton = EnumMouseButton.None,
+                        Itemstacks = clayStackList.ToArray(),
+                        GetMatchingStacks = getMatchingStacks
+                    }
                 };
             });
         }
@@ -116,7 +124,7 @@ namespace Vintagestory.GameContent
 
         public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
         {
-            return interactions;
+            return interactions.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
         }
     }
 

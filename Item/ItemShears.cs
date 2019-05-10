@@ -37,17 +37,18 @@ namespace Vintagestory.GameContent
             if (!CanMultiBreak(block)) return;
 
             Vec3d hitPos = blockSel.Position.ToVec3d().Add(blockSel.HitPosition);
-            var orderedPositions = GetNearblyMultibreakables(player.Entity.World, blockSel.Position, hitPos).OrderBy(x => x.Value);
+            OrderedDictionary<BlockPos, float> dict = GetNearblyMultibreakables(player.Entity.World, blockSel.Position, hitPos);
+            var orderedPositions = dict.OrderBy(x => x.Value).Select(x => x.Key);
 
             int q = Math.Min(MultiBreakQuantity, leftDurability);
-            foreach (var val in orderedPositions)
+            foreach (var pos in orderedPositions)
             {
                 if (q == 0) break;
                 BlockFacing facing = BlockFacing.FromVector(player.Entity.ServerPos.GetViewVector()).GetOpposite();
 
                 if (!player.Entity.World.Claims.TryAccess(player, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak)) continue;
                 
-                player.Entity.World.BlockAccessor.DamageBlock(val.Key, facing, damage);
+                player.Entity.World.BlockAccessor.DamageBlock(pos, facing, damage);
                 q--;
             }
         }

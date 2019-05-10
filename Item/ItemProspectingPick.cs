@@ -11,24 +11,32 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
 using Vintagestory.ServerMods;
 
 namespace Vintagestory.GameContent
 {
-    public class ItemProspectingPick : Item
+    public class ProPickWorkSpace
     {
-        Dictionary<string, float> absAvgQuantity = new Dictionary<string, float>();
-        Dictionary<string, string> pageCodes = new Dictionary<string, string>();
+        public Dictionary<string, float> absAvgQuantity = new Dictionary<string, float>();
+        public Dictionary<string, string> pageCodes = new Dictionary<string, string>();
 
-        public override void OnLoaded(ICoreAPI api)
+        GenRockStrataNew rockStrataGen;
+        ICoreServerAPI sapi;
+        
+        public void OnLoaded(ICoreAPI api)
         {
-            base.OnLoaded(api);
-
             if (api.Side == EnumAppSide.Client) return;
 
-            ((ICoreServerAPI)api).Event.ServerRunPhase(EnumServerRunPhase.RunGame, () =>
-            {
+            ICoreServerAPI sapi = api as ICoreServerAPI;
+            this.sapi = sapi;
 
+            rockStrataGen = new GenRockStrataNew();
+            rockStrataGen.setApi(sapi);
+            rockStrataGen.initWorldGen();
+
+            sapi.Event.ServerRunPhase(EnumServerRunPhase.RunGame, () =>
+            {
                 DepositVariant[] deposits = api.ModLoader.GetModSystem<GenDeposits>()?.Deposits;
                 if (deposits == null) return;
 
@@ -41,23 +49,145 @@ namespace Vintagestory.GameContent
                         if (absAvgQuantity.ContainsKey(variant.Code))
                         {
                             absAvgQuantity[variant.Code] += variant.GetAbsAvgQuantity();
-                        } else
+                        }
+                        else
                         {
                             absAvgQuantity[variant.Code] = variant.GetAbsAvgQuantity();
                             pageCodes[variant.Code] = variant.HandbookPageCode;
-                        }       
+                        }
                     }
 
-                    
+
 
                     for (int k = 0; variant.ChildDeposits != null && k < variant.ChildDeposits.Length; k++)
                     {
                         DepositVariant childVariant = variant.ChildDeposits[k];
                         if (!childVariant.WithOreMap) continue;
+
                         absAvgQuantity[childVariant.Code] = childVariant.GetAbsAvgQuantity();
                         pageCodes[childVariant.Code] = childVariant.HandbookPageCode;
                     }
                 }
+            });
+        }
+
+        // Tyrons Brute force way of getting the correct reading for a rock strata column
+        public ushort[] GetRockColumn(int posX, int posZ)
+        {
+            int chunksize = sapi.World.BlockAccessor.ChunkSize;
+            DummyChunk[] chunks = new DummyChunk[sapi.World.BlockAccessor.MapSizeY / chunksize];
+            int chunkX = posX / chunksize;
+            int chunkZ = posZ / chunksize;
+            int lx = posX % chunksize;
+            int lz = posZ % chunksize;
+
+            IMapChunk mapchunk = sapi.World.BlockAccessor.GetMapChunk(new Vec2i(chunkX, chunkZ));
+
+            for (int chunkY = 0; chunkY < chunks.Length; chunkY++)
+            {
+                chunks[chunkY] = new DummyChunk();
+                chunks[chunkY].MapChunk = mapchunk;
+                chunks[chunkY].chunkY = chunkY;
+                chunks[chunkY].Blocks = new ushort[chunksize * chunksize * chunksize];
+            }
+
+            int surfaceY = mapchunk.WorldGenTerrainHeightMap[lz * chunksize + lx];
+            for (int y = 0; y < surfaceY; y++)
+            {
+                int chunkY = y / chunksize;
+                int lY = y - chunkY * chunksize;
+                int localIndex3D = (chunksize * lY + lz) * chunksize + lx;
+
+                chunks[chunkY].Blocks[localIndex3D] = rockStrataGen.rockBlockId;
+            }
+
+            rockStrataGen.preLoad(chunks, chunkX, chunkZ);
+            rockStrataGen.genBlockColumn(chunks, chunkX, chunkZ, lx, lz);
+
+            ushort[] rockColumn = new ushort[surfaceY];
+
+            for (int y = 0; y < surfaceY; y++)
+            {
+                int chunkY = y / chunksize;
+                int lY = y - chunkY * chunksize;
+                int localIndex3D = (chunksize * lY + lz) * chunksize + lx;
+
+                rockColumn[y] = chunks[chunkY].Blocks[localIndex3D];
+            }
+
+            return rockColumn;
+        }
+
+        public class DummyChunk : IServerChunk
+        {
+            public int chunkY;
+            public IMapChunk MapChunk { get; set; }
+            public ushort[] Blocks { get; set; }
+
+            #region unused by rockstrata gen
+            public ushort[] Light { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+            public byte[] LightSat { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+            public Entity[] Entities => throw new NotImplementedException();
+            public int EntitiesCount => throw new NotImplementedException();
+            public BlockEntity[] BlockEntities { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+            public HashSet<int> LightPositions { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+            public void AddEntity(Entity entity)
+            {
+                throw new NotImplementedException();
+            }
+            public byte[] GetModdata(string key)
+            {
+                throw new NotImplementedException();
+            }
+            public byte[] GetServerModdata(string key)
+            {
+                throw new NotImplementedException();
+            }
+            public void MarkModified()
+            {
+                throw new NotImplementedException();
+            }
+            public bool RemoveEntity(long entityId)
+            {
+                throw new NotImplementedException();
+            }
+            public void RemoveModdata(string key)
+            {
+                throw new NotImplementedException();
+            }
+            public void SetModdata(string key, byte[] data)
+            {
+                throw new NotImplementedException();
+            }
+            public void SetServerModdata(string key, byte[] data)
+            {
+                throw new NotImplementedException();
+            }
+            public void Unpack()
+            {
+                throw new NotImplementedException();
+            }
+            #endregion
+        }
+    }
+
+
+
+    public class ItemProspectingPick : Item
+    {
+        ProPickWorkSpace ppws;
+            
+        public override void OnLoaded(ICoreAPI api)
+        {
+            base.OnLoaded(api);
+
+            if (api.Side == EnumAppSide.Client) return;
+
+            ppws = ObjectCacheUtil.GetOrCreate<ProPickWorkSpace>(api, "propickworkspace", () =>
+            {
+                ProPickWorkSpace ppws = new ProPickWorkSpace();
+                ppws.OnLoaded(api);
+                return ppws;
             });
         }
 
@@ -97,7 +227,7 @@ namespace Vintagestory.GameContent
                 itemslot.Itemstack.Attributes["probePositions"] = attr = new IntArrayAttribute();
                 attr.AddInt(blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z);
 
-                splr.SendMessage(GlobalConstants.CurrentChatGroup, "Ok, need 2 more samples", EnumChatType.Notification);
+                splr.SendMessage(GlobalConstants.InfoLogChatGroup, "Ok, need 2 more samples", EnumChatType.Notification);
             }
             else
             {
@@ -130,7 +260,7 @@ namespace Vintagestory.GameContent
 
                         if (mindist > 20)
                         {
-                            splr.SendMessage(GlobalConstants.CurrentChatGroup, "Sample too far away from initial reading. Sampling around this point now, need 2 more samples.", EnumChatType.Notification);
+                            splr.SendMessage(GlobalConstants.InfoLogChatGroup, "Sample too far away from initial reading. Sampling around this point now, need 2 more samples.", EnumChatType.Notification);
                             attr.value = new int[] { blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z };
                             return;
                         }
@@ -140,7 +270,7 @@ namespace Vintagestory.GameContent
                 if (requiredSamples > 0)
                 {
                     int q = (int)Math.Ceiling(requiredSamples);
-                    splr.SendMessage(GlobalConstants.CurrentChatGroup, "Ok, need " + q + " more " + (q == 1 ? "sample" : "samples"), EnumChatType.Notification);
+                    splr.SendMessage(GlobalConstants.InfoLogChatGroup, q > 1 ? Lang.Get("propick-xsamples", q) : Lang.Get("propick-1sample"), EnumChatType.Notification);
                 }
                 else
                 {
@@ -170,10 +300,9 @@ namespace Vintagestory.GameContent
             int lx = pos.X % regsize;
             int lz = pos.Z % regsize;
 
-            StringBuilder outtext = new StringBuilder();
-            int found = 0;
+            ushort[] blockColumn = ppws.GetRockColumn(pos.X, pos.Z);
 
-            ushort[] blockColumn = loadBlockColumn(world, pos);
+            List<KeyValuePair<double, string>> readouts = new List<KeyValuePair<double, string>>();
 
             foreach (var val in reg.OreMaps)
             {
@@ -185,7 +314,7 @@ namespace Vintagestory.GameContent
 
                 int oreDist = map.GetUnpaddedColorLerped(posXInRegionOre, posZInRegionOre);
 
-                double absAvgQuantity = this.absAvgQuantity[val.Key];
+                double absAvgQuantity = ppws.absAvgQuantity[val.Key];
                 double oreMapFactor = (oreDist & 0xff) / 255.0;
                 double rockFactor = oreBearingBlockQuantityRelative(val.Key, deposits, blockColumn);
                 double totalFactor = oreMapFactor * rockFactor;
@@ -196,51 +325,48 @@ namespace Vintagestory.GameContent
 
                 double relq = quantityOres / qchunkblocks;
                 double ppt = relq * 1000;
-                string[] names = new string[] { "Very poor density", "Poor density", "Decent density", "High density", "Very high density", "Ultra high density" };
+                string[] names = new string[] { "propick-density-verypoor", "propick-density-poor", "propick-density-decent", "propick-density-high", "propick-density-veryhigh", "propick-density-ultrahigh" };
 
-                if (totalFactor > 0.05)
+                if (totalFactor > 0.025)
                 {
-                    string pageCode = pageCodes[val.Key];
-                    if (found > 0) outtext.Append("\n");
-                    outtext.Append(string.Format("<a href=\"handbook://{3}\">{1}</a>: {2} ({0}‰)", ppt.ToString("0.#"), Lang.Get("ore-"+val.Key), names[(int)GameMath.Clamp(totalFactor * 5, 0, 5)], pageCode));
-                    found++;
+                    string pageCode = ppws.pageCodes[val.Key];
+                    string text = Lang.Get("propick-reading", Lang.Get(names[(int)GameMath.Clamp(totalFactor * 7.5f, 0, 5)]), pageCode, Lang.Get("ore-"+val.Key), ppt.ToString("0.#"));
+                    readouts.Add(new KeyValuePair<double, string>(totalFactor, text));
                 }
             }
 
+            string outtext;
             IServerPlayer splr = byPlayer as IServerPlayer;
-            if (outtext.Length == 0) outtext.Append("No significant resources here.");
-            else outtext.Insert(0, "Found "+found+" traces of ore\n");
-            splr.SendMessage(GlobalConstants.CurrentChatGroup,  outtext.ToString(), EnumChatType.Notification);
-        }
-
-        private ushort[] loadBlockColumn(IWorldAccessor world, BlockPos pos)
-        {
-            List<ushort> blocks = new List<ushort>();
-
-            int maxy = world.BlockAccessor.GetRainMapHeightAt(pos);
-            for (int y = 0; y < maxy; y++)
+            if (readouts.Count == 0) outtext = Lang.Get("propick-noreading");
+            else
             {
-                blocks.Add(world.BlockAccessor.GetBlock(pos.X, y, pos.Z).BlockId);
-            }
+                var elems = readouts.OrderByDescending(val => val.Key);
+                StringBuilder sb = new StringBuilder();
+                sb.AppendLine(Lang.Get("propick-reading-title", readouts.Count));
+                foreach (var elem in elems) sb.AppendLine(elem.Value);
 
-            return blocks.ToArray();
+                outtext = sb.ToString();
+                
+            }
+            splr.SendMessage(GlobalConstants.InfoLogChatGroup, outtext.ToString(), EnumChatType.Notification);
         }
+
+
 
         private double oreBearingBlockQuantityRelative(string oreCode, DepositVariant[] deposits, ushort[] blockColumn)
         {
             HashSet<ushort> oreBearingBlocks = new HashSet<ushort>();
 
-            for (int i = 0; i < deposits.Length; i++)
-            {
-                DepositVariant deposit = deposits[i];
-                if (deposit.Code == oreCode)
-                {
-                    ushort[] blocks = deposit.GeneratorInst.GetBearingBlocks();
-                    if (blocks == null) return 1;
+            DepositVariant deposit = getDepositByOreMapCode(oreCode, deposits);
+            if (deposit == null) return 0;
 
-                    foreach (var val in blocks) oreBearingBlocks.Add(val);
-                }
-            }
+            if (deposit.parentDeposit != null) deposit = deposit.parentDeposit;
+            
+
+            ushort[] blocks = deposit.GeneratorInst.GetBearingBlocks();
+            if (blocks == null) return 1;
+
+            foreach (var val in blocks) oreBearingBlocks.Add(val);
 
             int q = 0;
             for (int i = 0; i < blockColumn.Length; i++)
@@ -249,6 +375,30 @@ namespace Vintagestory.GameContent
             }
 
             return (double)q / blockColumn.Length;
+        }
+
+
+        public DepositVariant getDepositByOreMapCode(string oreCode, DepositVariant[] deposits)
+        {
+            for (int i = 0; i < deposits.Length; i++)
+            {
+                DepositVariant deposit = deposits[i];
+
+                if (deposit.Code == oreCode)
+                {
+                    return deposit;
+                }
+
+                if (deposit.ChildDeposits != null)
+                {
+                    foreach (var val in deposit.ChildDeposits)
+                    {
+                        if (val.Code == oreCode) return val;
+                    }
+                }
+            }
+
+            return null;
         }
 
         public override void OnHeldIdle(ItemSlot slot, EntityAgent byEntity)

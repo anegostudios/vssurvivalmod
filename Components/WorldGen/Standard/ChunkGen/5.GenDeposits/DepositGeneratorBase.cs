@@ -16,12 +16,16 @@ namespace Vintagestory.ServerMods
         public NormalizedSimplexNoise DistortNoiseGen;
         protected DepositVariant variant;
 
+        protected Random rand;
+
         public DepositGeneratorBase(ICoreServerAPI api, DepositVariant variant, LCGRandom depositRand, NormalizedSimplexNoise noiseGen)
         {
             this.variant = variant;
             this.Api = api;
             this.DepositRand = depositRand;
             this.DistortNoiseGen = noiseGen;
+
+            rand = new Random(api.World.Seed);
         }
         
         public abstract void GenDeposit(IBlockAccessor blockAccessor, IServerChunk[] chunks, int originChunkX, int originChunkZ, BlockPos pos, ref Dictionary<BlockPos, DepositVariant> subDepositsToPlace);

@@ -6,14 +6,14 @@ namespace Vintagestory.GameContent
 {
     public class BlockRequireSolidGround : Block
     {
-        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace)
+        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, Random worldGenRand)
         {
             if (!HasSolidGround(blockAccessor, pos))
             {
                 return false;
             }
 
-            return base.TryPlaceBlockForWorldGen(blockAccessor, pos, onBlockFace);
+            return base.TryPlaceBlockForWorldGen(blockAccessor, pos, onBlockFace, worldGenRand);
         }
 
         internal virtual bool HasSolidGround(IBlockAccessor blockAccessor, BlockPos pos)

@@ -15,13 +15,13 @@ namespace Vintagestory.GameContent
 {
     public class ItemRustyGear : Item
     {
-        public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
+        public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
             IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
 
             if (blockSel == null || !byEntity.Controls.Sneak)
             {
-                base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, ref handling);
+                base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handling);
                 return;
             }
 

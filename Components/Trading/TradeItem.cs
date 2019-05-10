@@ -32,7 +32,7 @@ namespace Vintagestory.GameContent
             {
                 Stack = this.ResolvedItemstack,
                 Name = Name,
-                Price = (int)Math.Round(Price.nextFloat(1f, world.Rand)),
+                Price = (int)Math.Max(1, Math.Round(Price.nextFloat(1f, world.Rand))),
                 Stock = Stock == null ? 0 : (int)Math.Round(Stock.nextFloat(1f, world.Rand)),
                 Restock = Restock,
                 SupplyDemand = SupplyDemand

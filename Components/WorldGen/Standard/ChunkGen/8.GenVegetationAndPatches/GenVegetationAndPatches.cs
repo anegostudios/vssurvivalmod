@@ -197,8 +197,6 @@ namespace Vintagestory.ServerMods
                         ushort firstBlockId = 0;
                         bool found = true;
 
-
-
                         if (blockPatch.BlocksByRockType != null)
                         {
                             found = false;

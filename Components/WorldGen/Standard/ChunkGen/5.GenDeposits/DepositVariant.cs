@@ -52,6 +52,7 @@ namespace Vintagestory.ServerMods
         int regionSize;
         int chunksize;
         ICoreServerAPI api;
+        internal DepositVariant parentDeposit;
 
         public void InitWithoutGenerator(ICoreServerAPI api)
         {
@@ -161,6 +162,8 @@ namespace Vintagestory.ServerMods
                 ChildDeposits = ChildDeposits == null ? null : (DepositVariant[])ChildDeposits.Clone(),
                 OreMapLayer = OreMapLayer,
             };
+
+            foreach (var val in ChildDeposits) val.parentDeposit = var;
 
             var.GeneratorInst = DepositGeneratorRegistry.CreateGenerator(Generator, Attributes, api, var, GeneratorInst.DepositRand, GeneratorInst.DistortNoiseGen);
 

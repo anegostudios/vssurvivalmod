@@ -17,7 +17,7 @@ namespace Vintagestory.GameContent
             return null;
         }
 
-        public override void OnHeldInteractStart(ItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
+        public override void OnHeldInteractStart(ItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
             // Not ideal to code the aiming controls this way. Needs an elegant solution - maybe an event bus?
             byEntity.Attributes.SetInt("aiming", 1);

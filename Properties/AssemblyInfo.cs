@@ -40,10 +40,10 @@ using Vintagestory.API.Config;
 [assembly: InternalsVisibleTo("VSSurvivalModTests")]
 
 [assembly: ModInfo("Survival Mode", "survival",
-    Version = GameVersion.ShortGameVersion,
+    Version = GameVersion.NetworkVersion, // So that players with newer versions of the game can still connect
     Description = "The Vintage Story Survival experience. Contains all standard Blocks, Items, Creatures and pretty world generation",
     Authors = new[] { "Tyron" },
-    RequiredOnClient = false,
+    RequiredOnClient = true,
     WorldConfig = @"
     {
 	    playstyles: [
@@ -51,7 +51,7 @@ using Vintagestory.API.Config;
 			    code: ""surviveandbuild"",
                 langcode: ""surviveandbuild-bands"",
 			    requestMods: [""game"", ""survival""],
-                listOrder: 6,
+                listOrder: 5,
 			    worldType: ""standard"",
 			    worldConfig: {
 				    worldClimate: ""realistic"",
@@ -63,7 +63,7 @@ using Vintagestory.API.Config;
 			    code: ""surviveandbuild"",
                 langcode: ""surviveandbuild-patchy"",
 			    requestMods: [""game"", ""survival""],
-                listOrder: 5,
+                listOrder: 6,
 			    worldType: ""standard"",
 			    worldConfig: {
 				    worldClimate: ""patchy"",

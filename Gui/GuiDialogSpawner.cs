@@ -246,7 +246,9 @@ namespace Vintagestory.GameContent
 
         private bool OnButtonSave()
         {
-            capi.Network.SendBlockEntityPacket(blockEntityPos.X, blockEntityPos.Y, blockEntityPos.Z, 1001, SerializerUtil.Serialize(spawnerData));
+            byte[] data = SerializerUtil.Serialize(spawnerData);
+            capi.Network.SendBlockEntityPacket(blockEntityPos.X, blockEntityPos.Y, blockEntityPos.Z, 1001, data);
+            
             return true;
         }
 

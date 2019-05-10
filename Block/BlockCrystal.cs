@@ -32,7 +32,7 @@ namespace Vintagestory.GameContent
 
 
 
-        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace)
+        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, Random worldgenRand)
         {
             return false;
             Block block = blockAccessor.GetBlock(pos);

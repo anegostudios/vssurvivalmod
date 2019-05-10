@@ -31,7 +31,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace)
+        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, Random worldGenRand)
         {
             blockAccessor.SetBlock(BlockId, pos);
 
@@ -81,7 +81,7 @@ namespace Vintagestory.GameContent
                 extra = new GrassTick()
                 {
                     Grass = grass,
-                    TallGrass = isGrowing ? getTallGrassBlock(world, upPos) : null
+                    TallGrass = isGrowing ? getTallGrassBlock(world, upPos, offThreadRandom) : null
                 };
             }
             return extra != null;

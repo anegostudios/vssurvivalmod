@@ -39,7 +39,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handHandling)
+        public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handHandling)
         {
             if (!byEntity.Controls.Sneak && GetContentNutritionProperties(byEntity.World, slot.Itemstack, byEntity as Entity) != null)
             {
@@ -57,7 +57,7 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, ref handHandling);
+            base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handHandling);
         }
 
         /// <summary>
@@ -168,7 +168,7 @@ namespace Vintagestory.GameContent
 
                 foreach (var nutriProps in multiProps)
                 {
-                    player.Entity.ReceiveSaturation(nutriProps.Saturation * satMul, nutriProps.FoodCategory, 10 + nutriProps.Saturation / 100f * 60f);
+                    player.Entity.ReceiveSaturation(nutriProps.Saturation * satMul, nutriProps.FoodCategory, 10 + nutriProps.Saturation / 70f * 60f);
 
                     if (nutriProps.EatenStack?.ResolvedItemstack != null)
                     {
@@ -538,7 +538,7 @@ namespace Vintagestory.GameContent
                     MouseButton = EnumMouseButton.Right,
                     HotKeyCode = "sneak"
                 }
-            };
+            }.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
         }
     }
 }

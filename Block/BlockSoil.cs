@@ -113,7 +113,7 @@ namespace Vintagestory.GameContent
                 extra = new GrassTick()
                 {
                     Grass = grass,
-                    TallGrass = isGrowing ? getTallGrassBlock(world, upPos) : null
+                    TallGrass = isGrowing ? getTallGrassBlock(world, upPos, offThreadRandom) : null
                 };
             }
             return extra != null;
@@ -158,14 +158,14 @@ namespace Vintagestory.GameContent
         /// <param name="world"></param>
         /// <param name="abovePos"></param>
         /// <returns></returns>
-        protected Block getTallGrassBlock(IWorldAccessor world, BlockPos abovePos)
+        protected Block getTallGrassBlock(IWorldAccessor world, BlockPos abovePos, Random offthreadRandom)
         {
-            if (world.Rand.NextDouble() > tallGrassGrowthChance) return null;
+            if (offthreadRandom.NextDouble() > tallGrassGrowthChance) return null;
             Block block = world.BlockAccessor.GetBlock(abovePos);
 
             int curTallgrassStage = (block.FirstCodePart() == "tallgrass") ? Array.IndexOf(tallGrassGrowthStages, block.LastCodePart()) : 0;
 
-            int nextTallgrassStage = Math.Min(curTallgrassStage + 1 + world.Rand.Next(3), tallGrassGrowthStages.Length - 1);
+            int nextTallgrassStage = Math.Min(curTallgrassStage + 1 + offthreadRandom.Next(3), tallGrassGrowthStages.Length - 1);
 
             return world.GetBlock(tallGrassCodes[nextTallgrassStage]);
         }

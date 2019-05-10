@@ -36,7 +36,7 @@ namespace Vintagestory.GameContent
             return slot;
         }
 
-        public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
+        public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
             ItemSlot invslot = GetNextArrow(byEntity);
             if (invslot == null) return;

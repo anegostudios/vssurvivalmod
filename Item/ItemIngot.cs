@@ -6,7 +6,7 @@ namespace Vintagestory.GameContent
 {
     public class ItemIngot : Item
     {
-        public override void OnHeldInteractStart(ItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handHandling)
+        public override void OnHeldInteractStart(ItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handHandling)
         {
             if (blockSel == null || byEntity?.World == null || !byEntity.Controls.Sneak) return;
 

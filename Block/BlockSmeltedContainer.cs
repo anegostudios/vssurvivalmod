@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
@@ -122,7 +123,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handHandling)
+        public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handHandling)
         {
             if (blockSel == null) return;
 
@@ -326,11 +327,12 @@ namespace Vintagestory.GameContent
                 BlockEntitySmeltedContainer belmc = (BlockEntitySmeltedContainer)be;
                 belmc.contents.ResolveBlockOrItem(world);
 
-                return
+                /*return
                     "Units: " + (int)(belmc.units) + "\n" +
                     "Metal: " + belmc.contents.GetName() + "\n" +
                     "Temperature: " + (int)belmc.Temperature + " °C\n"
-                ;
+                ;*/
+                return Lang.Get("blocksmeltedcontainer-contents", (int)(belmc.units), belmc.contents.GetName(), (int)belmc.Temperature);
             }
 
             return base.GetPlacedBlockInfo(world, pos, forPlayer);
@@ -347,11 +349,11 @@ namespace Vintagestory.GameContent
                 string name = contents.Key.GetName();
                 string metal = name.Substring(name.IndexOf("(") + 1, name.Length - 1 - name.IndexOf("("));
 
-                dsc.Append(string.Format("{0} units of {1}\n", (int)(contents.Value), metal));
+                dsc.Append(Lang.Get("item-unitdrop", (int)(contents.Value), metal));
 
                 if (HasSolidifed(stack, contents.Key, world))
                 {
-                    dsc.Append(string.Format("Solidified, reheat to melt again\n"));
+                    dsc.Append(Lang.Get("metalwork-toocold"));
                 }
             }
 

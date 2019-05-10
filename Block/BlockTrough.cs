@@ -6,6 +6,7 @@ using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -114,7 +115,7 @@ namespace Vintagestory.GameContent
                     Itemstacks = stacks,
                     GetMatchingStacks = (wi, bs, es) => betr.IsFull ? null : wi.Itemstacks
                 }
-            };
+            }.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
         }
 
     }

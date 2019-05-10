@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -44,7 +45,7 @@ namespace Vintagestory.GameContent
                     MouseButton = EnumMouseButton.Right,
                     Itemstacks = new ItemStack[] { new ItemStack(world.GetBlock(new AssetLocation("torch-up"))) }
                 }
-            };
+            }.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
         }
     }
 }

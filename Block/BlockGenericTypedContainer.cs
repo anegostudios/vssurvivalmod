@@ -6,7 +6,9 @@ using System.Threading.Tasks;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -47,6 +49,10 @@ namespace Vintagestory.GameContent
         }
 
 
+        public override List<ItemStack> GetHandBookStacks(ICoreClientAPI capi)
+        {
+            return base.GetHandBookStacks(capi);
+        }
 
         public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
         {
@@ -253,8 +259,9 @@ namespace Vintagestory.GameContent
             base.GetHeldItemInfo(stack, dsc, world, withDebugInfo);
 
             string type = stack.Attributes.GetString("type");
-
-            dsc.AppendLine("\n" + Lang.Get("Type: {0}", Lang.Get("genericcontainer-" + type)));
+            int? qslots = stack.ItemAttributes?["quantitySlots"]?[type]?.AsInt(0);
+            
+            dsc.AppendLine("\n" + Lang.Get("Quantity Slots: {0}", qslots));
         }
 
 
@@ -283,7 +290,7 @@ namespace Vintagestory.GameContent
                     ActionLangCode = "blockhelp-chest-open",
                     MouseButton = EnumMouseButton.Right
                 }
-            };
+            }.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
         }
     }
 }

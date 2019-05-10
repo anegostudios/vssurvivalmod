@@ -62,7 +62,7 @@ namespace Vintagestory.GameContent
 
             ClearComposers();
             SingleComposer = capi.Gui
-                .CreateCompo("blockentitymillstone", dialogBounds)
+                .CreateCompo("blockentitymillstone" + BlockEntityPosition, dialogBounds)
                 .AddShadedDialogBG(bgBounds)
                 .AddDialogTitleBar(DialogTitle, OnTitleBarClose)
                 .BeginChildElements(bgBounds)

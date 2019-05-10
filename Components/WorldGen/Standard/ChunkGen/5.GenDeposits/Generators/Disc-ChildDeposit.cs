@@ -20,8 +20,11 @@ namespace Vintagestory.ServerMods
         [JsonProperty]
         public NatFloat RandomTries;
 
+        
+
         public ChildDepositGenerator(ICoreServerAPI api, DepositVariant variant, LCGRandom depositRand, NormalizedSimplexNoise noiseGen) : base(api, variant, depositRand, noiseGen)
         {
+            
         }
 
         public override void Init()
@@ -29,9 +32,13 @@ namespace Vintagestory.ServerMods
 
         }
 
-        public void Init(Block inblock, string key, string value)
+        public void ResolveAdd(Block inblock, string key, string value)
         {
             placeBlockByInBlockId[inblock.BlockId] = PlaceBlock.Resolve(variant.fromFile, Api, inblock, key, value);
+            if (SurfaceBlock != null)
+            {
+                surfaceBlockByInBlockId[inblock.BlockId] = SurfaceBlock.Resolve(variant.fromFile, Api, inblock, key, value);
+            }
         }
 
         public override void GenDeposit(IBlockAccessor blockAccessor, IServerChunk[] chunks, int originChunkX, int originChunkZ, BlockPos pos, ref Dictionary<BlockPos, DepositVariant> subDepositsToPlace)
@@ -50,13 +57,13 @@ namespace Vintagestory.ServerMods
             for (int i = 0; i < tries; i++)
             {
                 targetPos.Set(
-                    pos.X + DepositRand.NextInt(radius) - radius / 2,
-                    pos.Y + DepositRand.NextInt(radius) - radius / 2,
-                    pos.Z + DepositRand.NextInt(radius) - radius / 2
+                    pos.X + DepositRand.NextInt(2 * radius + 1) - radius,
+                    pos.Y + DepositRand.NextInt(2 * radius + 1) - radius,
+                    pos.Z + DepositRand.NextInt(2 * radius + 1) - radius
                 );
 
-                int lx = targetPos.X - pos.X / chunksize;
-                int lz = targetPos.Z - pos.Z / chunksize;
+                int lx = targetPos.X - pos.X;
+                int lz = targetPos.Z - pos.Z;
 
                 if (targetPos.Y <= 1 || targetPos.Y >= worldheight || lx < 0 || lz < 0 || lx >= chunksize || lz >= chunksize) continue;
                 
@@ -71,7 +78,7 @@ namespace Vintagestory.ServerMods
 
                     if (variant.WithBlockCallback)
                     {
-                        placeblock.TryPlaceBlockForWorldGen(blockAccessor, targetPos, BlockFacing.UP);
+                        placeblock.TryPlaceBlockForWorldGen(blockAccessor, targetPos, BlockFacing.UP, rand);
                     }
                     else
                     {
@@ -91,7 +98,7 @@ namespace Vintagestory.ServerMods
 
                             if (belowBlock.SideSolid[BlockFacing.UP.Index] && chunks[(surfaceY + 1) / chunksize].Blocks[index3d] == 0)
                             {
-                                chunks[(surfaceY + 1) / chunksize].Blocks[index3d] = surfaceBlockByInBlockId[blockId].Blocks[depositGradeIndex].BlockId;
+                                chunks[(surfaceY + 1) / chunksize].Blocks[index3d] = surfaceBlockByInBlockId[blockId].Blocks[0].BlockId;
                             }
                         }
                     }
