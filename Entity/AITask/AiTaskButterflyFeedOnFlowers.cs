@@ -5,7 +5,9 @@ using System.Text;
 using System.Threading.Tasks;
 using Vintagestory.API;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Server;
 
 namespace Vintagestory.GameContent
 {
@@ -28,7 +30,20 @@ namespace Vintagestory.GameContent
 
         public AiTaskButterflyFeedOnFlowers(EntityAgent entity) : base(entity)
         {
+            (entity.Api as ICoreServerAPI).Event.DidBreakBlock += Event_DidBreakBlock;
+        }
 
+        public override void OnEntityDespawn(EntityDespawnReason reason)
+        {
+            (entity.Api as ICoreServerAPI).Event.DidBreakBlock -= Event_DidBreakBlock;
+        }
+
+        private void Event_DidBreakBlock(IServerPlayer byPlayer, ushort oldblockId, BlockSelection blockSel)
+        {
+            if (tmpPos != null && blockSel.Position.Equals(tmpPos))
+            {
+                taskState = 4;
+            }
         }
 
         public override void LoadConfig(JsonObject taskConfig, JsonObject aiConfig)

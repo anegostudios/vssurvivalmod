@@ -317,7 +317,8 @@ namespace Vintagestory.GameContent
 
             if (quantityServings <= 0)
             {
-                potslot.Itemstack = new ItemStack(api.World.GetBlock(new AssetLocation(FirstCodePart() + "-burned")));
+                Block emptyPotBlock = world.GetBlock(new AssetLocation(Attributes["emptiedBlockCode"].AsString()));
+                potslot.Itemstack = new ItemStack(emptyPotBlock);
             }
 
             potslot.MarkDirty();
@@ -345,7 +346,8 @@ namespace Vintagestory.GameContent
 
             if (quantityServings - servingsToTransfer <= 0)
             {
-                potslot.Itemstack = new ItemStack(api.World.GetBlock(new AssetLocation(FirstCodePart() + "-burned")));
+                Block emptyPotBlock = world.GetBlock(new AssetLocation(Attributes["emptiedBlockCode"].AsString()));
+                potslot.Itemstack = new ItemStack(emptyPotBlock);
             }
 
             potslot.MarkDirty();

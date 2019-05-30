@@ -8,6 +8,7 @@ using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
@@ -221,42 +222,101 @@ namespace Vintagestory.GameContent
             if (TradeProps == null) return;
 
             TradeProps.Buying.List.Shuffle(World.Rand);
-            int quantity = Math.Min(TradeProps.Buying.List.Length, TradeProps.Buying.MaxItems);
-
-            for (int i = 0; i < quantity; i++)
-            {
-                if (World.Rand.NextDouble() > refreshChance) continue;
-
-                ItemSlotTrade slot = Inventory.GetBuyingSlot(i);
-                TradeItem tradeItem = TradeProps.Buying.List[i];
-                if (tradeItem.Name == null) tradeItem.Name = i + "";
-
-                slot.SetTradeItem(tradeItem.Resolve(World));
-                slot.MarkDirty();
-            }
-
+            int buyingQuantity = Math.Min(TradeProps.Buying.List.Length, TradeProps.Buying.MaxItems);
 
             TradeProps.Selling.List.Shuffle(World.Rand);
-            quantity = Math.Min(TradeProps.Selling.List.Length, TradeProps.Selling.MaxItems);
-            
+            int sellingQuantity = Math.Min(TradeProps.Selling.List.Length, TradeProps.Selling.MaxItems);
 
-            for (int i = 0; i < quantity; i++)
+
+
+            // Pick quantity items from the trade list that the trader doesn't already sell
+            // Slots 0..15: Selling slots
+            // Slots 16..19: Buying cart
+            // Slots 20..35: Buying slots
+            // Slots 36..39: Selling cart
+            // Slot 40: Money slot
+
+            Stack<TradeItem> newBuyItems = new Stack<TradeItem>();
+            Stack<TradeItem> newsellItems = new Stack<TradeItem>();
+
+            ItemSlotTrade[] sellingSlots = Inventory.SellingSlots;
+            ItemSlotTrade[] buyingSlots = Inventory.BuyingSlots;
+
+            #region Avoid duplicate sales
+
+            for (int i = 0; i < TradeProps.Selling.List.Length; i++)
             {
-                if (World.Rand.NextDouble() > refreshChance) continue;
+                if (newsellItems.Count >= sellingQuantity) break;
 
-                ItemSlotTrade slot = Inventory.GetSellingSlot(i);
-                TradeItem tradeItem = TradeProps.Selling.List[i];
-                if (tradeItem.Name == null) tradeItem.Name = i + "";
+                TradeItem item = TradeProps.Selling.List[i];
+                item.Resolve(World, "tradeItem resolver");
+                
+                bool alreadySelling = sellingSlots.Any((slot) => slot?.Itemstack != null && slot.TradeItem.Stock > 0 && item.ResolvedItemstack.Equals(World, slot.Itemstack, GlobalConstants.IgnoredStackAttributes));
 
-                slot.SetTradeItem(tradeItem.Resolve(World));
-                slot.MarkDirty();
+                if (!alreadySelling)
+                {
+                    newsellItems.Push(item);
+                }
             }
 
+            for (int i = 0; i < TradeProps.Buying.List.Length; i++)
+            {
+                if (newBuyItems.Count >= buyingQuantity) break;
+
+                TradeItem item = TradeProps.Buying.List[i];
+                item.Resolve(World, "tradeItem resolver");
+
+                bool alreadySelling = buyingSlots.Any((slot) => slot?.Itemstack != null && slot.TradeItem.Stock > 0 && item.ResolvedItemstack.Equals(World, slot.Itemstack, GlobalConstants.IgnoredStackAttributes));
+
+                if (!alreadySelling)
+                {
+                    newBuyItems.Push(item);
+                }
+            }
+            #endregion
+
+            replaceTradeItems(newBuyItems, buyingSlots, buyingQuantity, refreshChance);
+            replaceTradeItems(newsellItems, sellingSlots, sellingQuantity, refreshChance);
 
             ITreeAttribute tree = GetOrCreateTradeStore();
             Inventory.ToTreeAttributes(tree);
         }
 
+        private void replaceTradeItems(Stack<TradeItem> newItems, ItemSlotTrade[] slots, int quantity, float refreshChance)
+        {
+            HashSet<int> refreshedSlots = new HashSet<int>();
+
+            for (int i = 0; i < quantity; i++)
+            {
+                if (World.Rand.NextDouble() > refreshChance) continue;
+                if (newItems.Count == 0) break;
+
+                TradeItem newTradeItem = newItems.Pop();
+
+                int slotIndex = slots.IndexOf((bslot) => bslot.Itemstack != null && bslot.TradeItem.Stock == 0 && newTradeItem.ResolvedItemstack.Equals(World, bslot.Itemstack, GlobalConstants.IgnoredStackAttributes));
+
+                ItemSlotTrade intoSlot;
+
+                // The trader already sells this but is out of stock - replace
+                if (slotIndex != -1)
+                {
+                    intoSlot = slots[slotIndex];
+                    refreshedSlots.Add(slotIndex);
+                }
+                else
+                {
+                    while (refreshedSlots.Contains(i)) i++;
+                    if (i >= slots.Length) break;
+                    intoSlot = slots[i];
+                    refreshedSlots.Add(i);
+                }
+
+                if (newTradeItem.Name == null) newTradeItem.Name = i + "";
+
+                intoSlot.SetTradeItem(newTradeItem.Resolve(World));
+                intoSlot.MarkDirty();
+            }
+        }
 
         public override void OnInteract(EntityAgent byEntity, ItemSlot slot, Vec3d hitPosition, EnumInteractMode mode)
         {
@@ -277,7 +337,7 @@ namespace Vintagestory.GameContent
 
             if (World.Side == EnumAppSide.Client)
             {
-                if (tradingWith.Pos.SquareDistanceTo(this.Pos) <= 5)
+                if (tradingWith.Pos.SquareDistanceTo(this.Pos) <= 5 && dlg?.IsOpened() != true)
                 {
                     dlg = new GuiDialogTrader(Inventory, this, World.Api as ICoreClientAPI);
                     dlg.TryOpen();

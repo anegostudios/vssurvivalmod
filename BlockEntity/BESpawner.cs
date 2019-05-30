@@ -102,15 +102,18 @@ namespace Vintagestory.GameContent
                 lastSpawnTotalHours = api.World.Calendar.TotalHours;
                 return;
             }
-            if (lastSpawnTotalHours + Data.InGameHourInterval > api.World.Calendar.TotalHours && Data.InitialSpawnQuantity <= 0) return;
-            if (!IsAreaLoaded()) return;
-            if (Data.SpawnOnlyAfterImport && !Data.WasImported) return;
-            
+
+
             ICoreServerAPI sapi = api as ICoreServerAPI;
 
             int rnd = sapi.World.Rand.Next(Data.EntityCodes.Length);
 
             EntityProperties type = api.World.GetEntityType(new AssetLocation(Data.EntityCodes[rnd]));
+
+            if (lastSpawnTotalHours + Data.InGameHourInterval > api.World.Calendar.TotalHours && Data.InitialSpawnQuantity <= 0) return;
+            if (!IsAreaLoaded()) return;
+            if (Data.SpawnOnlyAfterImport && !Data.WasImported) return;
+           
             if (type == null) return;
 
             for (int i = 0; i < spawnedEntities.Count; i++)
@@ -358,6 +361,7 @@ namespace Vintagestory.GameContent
             if (dval is bool && (bool)dval) return;
 
             Data.WasImported = true;
+            lastSpawnTotalHours = 0;
         }
     }
 }

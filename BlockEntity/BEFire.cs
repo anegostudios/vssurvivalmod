@@ -69,11 +69,13 @@ namespace Vintagestory.GameContent
         {
             if (api.Side == EnumAppSide.Client) return;
 
-            neibBlock = api.World.BlockAccessor.GetBlock(pos.AddCopy(fromFacing.GetOpposite()));
-            if (neibBlock.CombustibleProps == null || neibBlock.CombustibleProps.BurnDuration <=0)
+            BlockPos neibPos = pos.AddCopy(fromFacing.GetOpposite());
+            neibBlock = api.World.BlockAccessor.GetBlock(neibPos);
+            if (!canBurn(neibBlock, neibPos))
             {
                 api.World.BlockAccessor.SetBlock(0, pos);
                 api.World.BlockAccessor.RemoveBlockEntity(pos); // Sometimes block entities don't get removed properly o.O
+                api.World.BlockAccessor.TriggerNeighbourBlockUpdate(pos);
                 return;
             }
 
@@ -100,7 +102,7 @@ namespace Vintagestory.GameContent
                     BlockPos fuelPos = pos.AddCopy(fromFacing.GetOpposite());
                     Block fuelBlock = api.World.BlockAccessor.GetBlock(fuelPos);
 
-                    if (fuelBlock.CombustibleProps != null && fuelBlock.CombustibleProps.BurnDuration > 0)
+                    if (canBurn(fuelBlock, fuelPos))
                     {
                         api.World.BlockAccessor.SetBlock(fireBlock.BlockId, fuelPos);
                         BlockEntityFire befire = api.World.BlockAccessor.GetBlockEntity(pos.AddCopy(fromFacing.GetOpposite())) as BlockEntityFire;
@@ -112,10 +114,11 @@ namespace Vintagestory.GameContent
 
                     api.World.BlockAccessor.SetBlock(0, pos);
                     api.World.BlockAccessor.RemoveBlockEntity(pos); // Sometimes block entities don't get removed properly o.O
+                    api.World.BlockAccessor.TriggerNeighbourBlockUpdate(pos);
                     return;
                 }
 
-                float spreadChance = (TimePassed - 2.5f) / 500f;
+                float spreadChance = (TimePassed - 2.5f) / 450f;
 
                 if (((ICoreServerAPI)api).Server.Config.AllowFireSpread && spreadChance > api.World.Rand.NextDouble())
                 {
@@ -145,7 +148,8 @@ namespace Vintagestory.GameContent
             {
                 BlockPos npos = opos.AddCopy(facing);
                 Block nBlock = api.World.BlockAccessor.GetBlock(npos);
-                if (nBlock.CombustibleProps != null && nBlock.CombustibleProps.BurnDuration > 0)
+
+                if (canBurn(nBlock, npos))
                 {
                     if (api.World.BlockAccessor.GetBlock(npos.AddCopy(fromFacing)).BlockId == 0)
                     {
@@ -160,11 +164,13 @@ namespace Vintagestory.GameContent
                     bool dobreak = false;
                     foreach (BlockFacing firefacing in BlockFacing.ALLFACES)
                     {
-                        if (api.World.BlockAccessor.GetBlock(npos.AddCopy(firefacing)).BlockId == 0)
+                        BlockPos nnpos = npos.AddCopy(firefacing);
+                        Block nnblock = api.World.BlockAccessor.GetBlock(nnpos);
+                        if (canBurn(nnblock, nnpos))
                         {
-                            api.World.BlockAccessor.SetBlock(fireBlock.BlockId, npos.AddCopy(firefacing));
+                            api.World.BlockAccessor.SetBlock(fireBlock.BlockId, nnpos);
 
-                            BlockEntityFire befire = api.World.BlockAccessor.GetBlockEntity(npos.AddCopy(firefacing)) as BlockEntityFire;
+                            BlockEntityFire befire = api.World.BlockAccessor.GetBlockEntity(nnpos) as BlockEntityFire;
                             if (befire != null) befire.Init(firefacing);
 
                             dobreak = true;
@@ -177,18 +183,28 @@ namespace Vintagestory.GameContent
             }
         }
 
+
+        bool canBurn(Block block, BlockPos pos)
+        {
+            if (block?.CombustibleProps == null || block.CombustibleProps.BurnDuration <= 0) return false;
+
+            return api.ModLoader.GetModSystem<ModSystemBlockReinforcement>()?.IsReinforced(pos) != true;
+        }
+
         public void Init(BlockFacing fromFacing)
         {
             this.fromFacing = fromFacing;
 
-            neibBlock = api.World.BlockAccessor.GetBlock(pos.AddCopy(fromFacing.GetOpposite()));
+            BlockPos neibPos = pos.AddCopy(fromFacing.GetOpposite());
+            neibBlock = api.World.BlockAccessor.GetBlock(neibPos);
 
-            if (neibBlock?.CombustibleProps == null || neibBlock.CombustibleProps.BurnDuration <= 0)
+            if (!canBurn(neibBlock, neibPos))
             {
                 foreach (BlockFacing facing in BlockFacing.ALLFACES)
                 {
-                    neibBlock = api.World.BlockAccessor.GetBlock(pos.AddCopy(facing));
-                    if (neibBlock?.CombustibleProps != null && neibBlock.CombustibleProps.BurnDuration > 0)
+                    BlockPos nnpos = pos.AddCopy(facing);
+                    neibBlock = api.World.BlockAccessor.GetBlock(nnpos);
+                    if (canBurn(neibBlock, nnpos))
                     {
                         this.fromFacing = facing.GetOpposite();
                         startDuration = remainingBurnDuration = neibBlock.CombustibleProps.BurnDuration;

@@ -54,7 +54,7 @@ namespace Vintagestory.GameContent
 
         // Permanent data
         ItemStack workItemStack;
-        int selectedRecipeNumber = -1;
+        int selectedRecipeId = -1;
         public int AvailableVoxels;
         public bool[,,] Voxels = new bool[16, 16, 16];
 
@@ -73,7 +73,7 @@ namespace Vintagestory.GameContent
 
         public SmithingRecipe SelectedRecipe
         {
-            get { return selectedRecipeNumber >= 0 ? api.World.SmithingRecipes[selectedRecipeNumber] : null; }
+            get { return api.World.SmithingRecipes.FirstOrDefault(r => r.RecipeId == selectedRecipeId); }
         }
 
         public bool CanWorkCurrent
@@ -164,7 +164,7 @@ namespace Vintagestory.GameContent
 
             workItemStack.Attributes.SetBytes("voxels", serializeVoxels());
             workItemStack.Attributes.SetInt("availableVoxels", AvailableVoxels);
-            workItemStack.Attributes.SetInt("selectedRecipeNumber", selectedRecipeNumber);
+            workItemStack.Attributes.SetInt("selectedRecipeId", selectedRecipeId);
 
             if (!byPlayer.InventoryManager.TryGiveItemstack(workItemStack))
             {
@@ -210,7 +210,13 @@ namespace Vintagestory.GameContent
 
                     baseMaterial = new ItemStack(api.World.GetItem(new AssetLocation("ingot-" + stack.Collectible.LastCodePart())));
 
-                    selectedRecipeNumber = FindSmithingRecipeNumber(0);
+                    List<SmithingRecipe> recipes = api.World.SmithingRecipes
+                        .Where(r => r.Ingredient.SatisfiesAsIngredient(baseMaterial))
+                        .OrderBy(r => r.Output.ResolvedItemstack.Collectible.Code)
+                        .ToList()
+                    ;
+
+                    selectedRecipeId = recipes[0].RecipeId;
                 }
 
                 AvailableVoxels += 32;
@@ -235,7 +241,7 @@ namespace Vintagestory.GameContent
                 {
                     deserializeVoxels(slot.Itemstack.Attributes.GetBytes("voxels"));
                     AvailableVoxels = slot.Itemstack.Attributes.GetInt("availableVoxels");
-                    selectedRecipeNumber = slot.Itemstack.Attributes.GetInt("selectedRecipeNumber");
+                    selectedRecipeId = slot.Itemstack.Attributes.GetInt("selectedRecipeId");
 
                     workItemStack = stack.Clone();
                     slot.Itemstack = null;
@@ -246,7 +252,7 @@ namespace Vintagestory.GameContent
 
                 }
 
-                if (selectedRecipeNumber < 0 && world is IClientWorldAccessor)
+                if (selectedRecipeId < 0 && world is IClientWorldAccessor)
                 {
                     OpenDialog(stack);
                 }
@@ -368,7 +374,7 @@ namespace Vintagestory.GameContent
                 Voxels = new bool[16, 16, 16];
                 AvailableVoxels = 0;
                 ItemStack outstack = SelectedRecipe.Output.ResolvedItemstack.Clone();
-                selectedRecipeNumber = -1;
+                selectedRecipeId = -1;
 
                 if (!byPlayer.InventoryManager.TryGiveItemstack(outstack))
                 {
@@ -518,7 +524,7 @@ namespace Vintagestory.GameContent
             {
                 workItemStack.Attributes.SetBytes("voxels", serializeVoxels());
                 workItemStack.Attributes.SetInt("availableVoxels", AvailableVoxels);
-                workItemStack.Attributes.SetInt("selectedRecipeNumber", selectedRecipeNumber);
+                workItemStack.Attributes.SetInt("selectedRecipeId", selectedRecipeId);
 
                 api.World.SpawnItemEntity(workItemStack, pos.ToVec3d().Add(0.5, 0.5, 0.5));
             }
@@ -531,7 +537,7 @@ namespace Vintagestory.GameContent
             deserializeVoxels(tree.GetBytes("voxels"));
             workItemStack = tree.GetItemstack("workItemStack");
             AvailableVoxels = tree.GetInt("availableVoxels");
-            selectedRecipeNumber = tree.GetInt("selectedRecipeNumber", -1);
+            selectedRecipeId = tree.GetInt("selectedRecipeId", -1);
 
             if (api != null && workItemStack != null)
             {
@@ -548,7 +554,7 @@ namespace Vintagestory.GameContent
             tree.SetBytes("voxels", serializeVoxels());
             tree.SetItemstack("workItemStack", workItemStack);
             tree.SetInt("availableVoxels", AvailableVoxels);
-            tree.SetInt("selectedRecipeNumber", selectedRecipeNumber);
+            tree.SetInt("selectedRecipeId", selectedRecipeId);
         }
 
 
@@ -622,8 +628,16 @@ namespace Vintagestory.GameContent
         {
             if (packetid == (int)EnumAnvilPacket.SelectRecipe)
             {
-                int num = SerializerUtil.Deserialize<int>(data);
-                selectedRecipeNumber = FindSmithingRecipeNumber(num);
+                int recipeid = SerializerUtil.Deserialize<int>(data);
+                SmithingRecipe recipe = api.World.SmithingRecipes.FirstOrDefault(r => r.RecipeId == recipeid);
+
+                if (recipe == null)
+                {
+                    api.World.Logger.Error("Client tried to selected smithing recipe with id {0}, but no such recipe exists!");
+                    return;
+                }
+
+                selectedRecipeId = recipe.RecipeId;
 
                 // Tell server to save this chunk to disk again
                 MarkDirty();
@@ -644,22 +658,7 @@ namespace Vintagestory.GameContent
         }
 
 
-
-        private int FindSmithingRecipeNumber(int num)
-        {
-            baseMaterial = new ItemStack(api.World.GetItem(new AssetLocation("ingot-" + workItemStack.Collectible.LastCodePart())));
-
-            SmithingRecipe recipe = api.World.SmithingRecipes
-                .Where(r => r.Ingredient.SatisfiesAsIngredient(baseMaterial))
-                .OrderBy(r => r.Output.ResolvedItemstack.Collectible.Code) // Cannot sort by name, thats language dependent!
-                .ElementAtOrDefault(num)
-            ;
-
-            return new List<SmithingRecipe>(api.World.SmithingRecipes).IndexOf(recipe);
-        }
-
-
-
+        
         internal void OpenDialog(ItemStack ingredient)
         {
             if (ingredient.Collectible is ItemWorkItem)
@@ -667,9 +666,13 @@ namespace Vintagestory.GameContent
                 ingredient = new ItemStack(api.World.GetItem(new AssetLocation("ingot-" + ingredient.Collectible.LastCodePart())));
             }
 
-            List<ItemStack> stacks = api.World.SmithingRecipes
+            List<SmithingRecipe> recipes = api.World.SmithingRecipes
                 .Where(r => r.Ingredient.SatisfiesAsIngredient(ingredient))
                 .OrderBy(r => r.Output.ResolvedItemstack.Collectible.Code) // Cannot sort by name, thats language dependent!
+                .ToList()
+            ;
+
+            List<ItemStack> stacks = recipes
                 .Select(r => r.Output.ResolvedItemstack)
                 .ToList()
             ;
@@ -680,9 +683,9 @@ namespace Vintagestory.GameContent
             GuiDialog dlg = new GuiDialogBlockEntityRecipeSelector(
                 Lang.Get("Select smithing recipe"),
                 stacks.ToArray(),
-                (recipeNum) => {
-                    selectedRecipeNumber = FindSmithingRecipeNumber(recipeNum);
-                    capi.Network.SendBlockEntityPacket(pos.X, pos.Y, pos.Z, (int)EnumClayFormingPacket.SelectRecipe, SerializerUtil.Serialize(recipeNum));
+                (selectedIndex) => {
+                    selectedRecipeId = recipes[selectedIndex].RecipeId;
+                    capi.Network.SendBlockEntityPacket(pos.X, pos.Y, pos.Z, (int)EnumClayFormingPacket.SelectRecipe, SerializerUtil.Serialize(recipes[selectedIndex].RecipeId));
                 },
                 () => {
                     capi.Network.SendBlockEntityPacket(pos.X, pos.Y, pos.Z, (int)EnumClayFormingPacket.CancelSelect);

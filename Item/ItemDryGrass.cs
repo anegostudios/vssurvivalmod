@@ -32,7 +32,7 @@ namespace Vintagestory.GameContent
 
             world.BlockAccessor.SetBlock(firepitBlock.BlockId, onPos);
 
-            if (firepitBlock.Sounds != null) world.PlaySoundAt(firepitBlock.Sounds.Place, blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z);
+            if (firepitBlock.Sounds != null) world.PlaySoundAt(firepitBlock.Sounds.Place, blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z, player);
 
             itemslot.Itemstack.StackSize--;
             handHandling = EnumHandHandling.PreventDefaultAction;

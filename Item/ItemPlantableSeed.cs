@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Text;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
@@ -31,6 +32,8 @@ namespace Vintagestory.GameContent
                 if (planted)
                 {
                     byEntity.World.PlaySoundAt(new AssetLocation("sounds/block/plant"), pos.X, pos.Y, pos.Z, byPlayer);
+
+                    ((byEntity as EntityPlayer)?.Player as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
 
                     if (byPlayer?.WorldData?.CurrentGameMode != EnumGameMode.Creative)
                     {

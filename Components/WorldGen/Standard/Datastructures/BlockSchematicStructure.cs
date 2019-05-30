@@ -90,8 +90,11 @@ namespace Vintagestory.ServerMods
                 for (int z = 0; z < SizeZ; z++)
                 {
                     curPos.Set(x + startPos.X, startPos.Y, z + startPos.Z);
-                    ushort rockblockid = blockAccessor.GetMapChunkAtBlockPos(curPos).TopRockIdMap[(curPos.Z % chunksize) * chunksize + curPos.X % chunksize];                    
+                    IMapChunk mapchunk = blockAccessor.GetMapChunkAtBlockPos(curPos);
+                    ushort rockblockid = mapchunk.TopRockIdMap[(curPos.Z % chunksize) * chunksize + curPos.X % chunksize];                    
                     int depth = 0;
+
+                    int maxY = -1;
 
                     for (int y = SizeY - 1; y >= 0; y--)
                     {
@@ -113,8 +116,16 @@ namespace Vintagestory.ServerMods
                             depth++;
                         }
 
+                        
                         Block oldBlock = blockAccessor.GetBlock(curPos);
-                        placed += handler(blockAccessor, curPos, oldBlock, newBlock);
+                        int p = handler(blockAccessor, curPos, oldBlock, newBlock);
+                        placed += p;
+
+                        if (p > 0 && !newBlock.RainPermeable)
+                        {
+                            maxY = Math.Max(curPos.Y, maxY);
+                        }
+                        
 
                         byte[] lightHsv = newBlock.GetLightHsv(blockAccessor, curPos);
 
@@ -123,6 +134,14 @@ namespace Vintagestory.ServerMods
                             int chunkSize = blockAccessor.ChunkSize;
                             ((IWorldGenBlockAccessor)blockAccessor).ScheduleBlockLightUpdate(curPos.Copy(), oldBlock.BlockId, newBlock.BlockId);
                         }
+                    }
+
+                    // In the post pass the rain map does not update, so let's set it ourselves
+                    if (maxY >= 0)
+                    {
+                        int lx = curPos.X % chunksize;
+                        int lz = curPos.Z % chunksize;
+                        mapchunk.RainHeightMap[lz * chunksize + lx] = (ushort)Math.Max(mapchunk.RainHeightMap[lz * chunksize + lx], maxY);
                     }
                 }
             }

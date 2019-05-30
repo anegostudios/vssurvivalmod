@@ -73,7 +73,7 @@ namespace Vintagestory.GameContent
 
             if (wasPlaced)
             {
-                harvestableAtTotalHours = api.World.Calendar.TotalHours + 24 * (3 + api.World.Rand.NextDouble() * 8);
+                harvestableAtTotalHours = api.World.Calendar.TotalHours + 24/2 * (3 + api.World.Rand.NextDouble() * 8);
             }
 
 
@@ -141,7 +141,7 @@ namespace Vintagestory.GameContent
             wasPlaced = true;
             if (api?.World != null)
             {
-                harvestableAtTotalHours = api.World.Calendar.TotalHours + 24 * (3 + api.World.Rand.NextDouble() * 8);
+                harvestableAtTotalHours = api.World.Calendar.TotalHours + 24 / 2 * (3 + api.World.Rand.NextDouble() * 8);
             }
         }
 
@@ -249,7 +249,7 @@ namespace Vintagestory.GameContent
             if (skepToPop != null && api.World.Calendar.TotalHours > beginPopStartTotalHours + popHiveAfterHours)
             {
                 TryPopCurrentSkep();
-                cooldownUntilTotalHours = api.World.Calendar.TotalHours + 4 * 24;
+                cooldownUntilTotalHours = api.World.Calendar.TotalHours + 4 / 2 * 24;
                 MarkDirty(false);
                 return;
             }
@@ -261,7 +261,7 @@ namespace Vintagestory.GameContent
             // After spreading: 4 extra days cooldown
             if (skepToPop != null)
             {
-                float newPopHours = 4 * 24 * GameMath.Clamp(quantityNearbyHives / GameMath.Sqrt(quantityNearbyFlowers - 3 * quantityNearbyHives - 3), 1, 1000);
+                float newPopHours = 4 * 24 / 2 * GameMath.Clamp(quantityNearbyHives / GameMath.Sqrt(quantityNearbyFlowers - 3 * quantityNearbyHives - 3), 1, 1000);
                 this.popHiveAfterHours = (float)(0.75 * popHiveAfterHours + 0.25 * newPopHours);
 
                 if (!emptySkeps.Contains(skepToPop))
@@ -273,7 +273,7 @@ namespace Vintagestory.GameContent
 
             } else
             {
-                popHiveAfterHours = 4 * 24 * GameMath.Clamp(quantityNearbyHives / GameMath.Sqrt(quantityNearbyFlowers - 3 * quantityNearbyHives - 3), 1, 1000);
+                popHiveAfterHours = 4 * 24 / 2 * GameMath.Clamp(quantityNearbyHives / GameMath.Sqrt(quantityNearbyFlowers - 3 * quantityNearbyHives - 3), 1, 1000);
 
                 beginPopStartTotalHours = api.World.Calendar.TotalHours;
 

@@ -33,7 +33,7 @@ namespace Vintagestory.GameContent
             this.pos = pos;
             this.isInOutputSlot = isInOutputSlot;
 
-            BlockCookedContainer potBlock = capi.World.GetBlock(new AssetLocation("claypot-cooked")) as BlockCookedContainer;
+            BlockCookedContainer potBlock = capi.World.GetBlock(stack.Collectible.CodeWithVariant("type", "cooked")) as BlockCookedContainer;
 
             if (isInOutputSlot)
             {

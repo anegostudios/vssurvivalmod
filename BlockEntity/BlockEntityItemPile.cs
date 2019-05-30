@@ -15,6 +15,7 @@ namespace Vintagestory.GameContent
         public object inventoryLock = new object(); // Because OnTesselation runs in another thread
 
         public abstract AssetLocation SoundLocation { get; }
+        public bool RandomizeSoundPitch;
         public abstract string BlockCode { get; }
         public abstract int MaxStackSize { get; }
 
@@ -154,7 +155,7 @@ namespace Vintagestory.GameContent
             {
                 invSlot.Itemstack = hotbarSlot.Itemstack.Clone();
                 invSlot.Itemstack.StackSize = 0;
-                api.World.PlaySoundAt(SoundLocation, pos.X, pos.Y, pos.Z, null, false);
+                api.World.PlaySoundAt(SoundLocation, pos.X, pos.Y, pos.Z, null, RandomizeSoundPitch);
             }
 
             if (invSlot.Itemstack.Equals(api.World, hotbarSlot.Itemstack, GlobalConstants.IgnoredStackAttributes))
@@ -168,7 +169,7 @@ namespace Vintagestory.GameContent
                     hotbarSlot.OnItemSlotModified(null);
                 }
 
-                api.World.PlaySoundAt(SoundLocation, pos.X, pos.Y, pos.Z, player, false);
+                api.World.PlaySoundAt(SoundLocation, pos.X, pos.Y, pos.Z, player, RandomizeSoundPitch);
 
                 MarkDirty();
 
@@ -205,9 +206,11 @@ namespace Vintagestory.GameContent
                 api.World.BlockAccessor.SetBlock(0, pos);
             }
 
-            api.World.PlaySoundAt(SoundLocation, pos.X, pos.Y, pos.Z, player, false);
+            api.World.PlaySoundAt(SoundLocation, pos.X, pos.Y, pos.Z, player, RandomizeSoundPitch);
 
             MarkDirty();
+
+            (player as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
 
             return true;
         }

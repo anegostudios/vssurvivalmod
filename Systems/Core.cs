@@ -263,6 +263,8 @@ namespace Vintagestory.GameContent
             api.RegisterBlockClass("BlockStalagSection", typeof(BlockStalagSection));
             api.RegisterBlockClass("BlockLooseOres", typeof(BlockLooseOres));
             api.RegisterBlockClass("BlockPan", typeof(BlockPan));
+
+            api.RegisterBlockClass("BlockLog", typeof(BlockLog));
         }
         
         private void RegisterDefaultBlockBehaviors()
@@ -290,6 +292,8 @@ namespace Vintagestory.GameContent
             api.RegisterBlockBehaviorClass("PushEventOnBlockBroken", typeof(BlockBehaviorPushEventOnBlockBroken));
             api.RegisterBlockBehaviorClass("RightClickPickup", typeof(BehaviorRightClickPickup));
             api.RegisterBlockBehaviorClass("SneakPlacing", typeof(BehaviorSneakPlacing));
+
+            api.RegisterBlockBehaviorClass("Lockable", typeof(BlockBehaviorLockable));
         }
 
 
@@ -400,7 +404,7 @@ namespace Vintagestory.GameContent
             api.RegisterItemClass("ItemKnife", typeof(ItemKnife));
 
             api.RegisterItemClass("ItemGem", typeof(ItemGem));
-            
+            api.RegisterItemClass("ItemPadlock", typeof(ItemPadlock));
         }
 
 

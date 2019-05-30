@@ -171,7 +171,7 @@ namespace Vintagestory.GameContent
         static BlockLootVessel() {
 
             lootLists["seed"] = LootList.Create(1, 
-                LootItem.Item(1, 3, 5, "seeds-carrot", "seeds-onion", "seeds-spelt", "seeds-turnip", "seeds-rice", "seeds-rye", "seeds-soybean", "seeds-pumpkin", "seeds-cabbage")
+                LootItem.Item(1, 5, 7, "seeds-carrot", "seeds-onion", "seeds-spelt", "seeds-turnip", "seeds-rice", "seeds-rye", "seeds-soybean", "seeds-pumpkin", "seeds-cabbage")
             );
 
             lootLists["food"] = LootList.Create(1, 
@@ -197,7 +197,7 @@ namespace Vintagestory.GameContent
                 LootItem.Item(1, 2, 12, "ore-lignite", "ore-bituminouscoal"),
                 LootItem.Item(1, 2, 8, "nugget-nativecopper", "ore-quartz", "nugget-galena"),
                 LootItem.Item(0.3f, 4, 12, "nugget-galena", "nugget-cassiterite", "nugget-sphalerite", "nugget-bismuthinite"),
-                LootItem.Item(0.1f, 4, 12, "nugget-limonite", "nugget-nativegold", "nugget-chromite", "nugget-ilmenite", "nugget_nativesilver", "nugget-magnetite")
+                LootItem.Item(0.1f, 4, 12, "nugget-limonite", "nugget-nativegold", "nugget-chromite", "nugget-ilmenite", "nugget-nativesilver", "nugget-magnetite")
             );
 
             lootLists["tool"] = LootList.Create(2.2f, 
@@ -226,6 +226,24 @@ namespace Vintagestory.GameContent
         }
 
         
+        public override BlockDropItemStack[] GetDropsForHandbook(IWorldAccessor world, BlockPos pos, IPlayer byPlayer)
+        {
+            LootList list = lootLists[LastCodePart()];
+            List<BlockDropItemStack> drops = new List<BlockDropItemStack>();
+
+            foreach (var val in list.lootItems)
+            {
+                for (int i = 0; i < val.codes.Length; i++)
+                {
+                    BlockDropItemStack stack = new BlockDropItemStack(val.GetItemStack(world, i));
+                    stack.Quantity.avg = val.chance / list.TotalChance / val.codes.Length;
+                    drops.Add(stack);
+                }   
+            }
+
+            return drops.ToArray();
+        }
+
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)
         {
             LootList list = lootLists[LastCodePart()];

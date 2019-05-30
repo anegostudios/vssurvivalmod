@@ -38,6 +38,7 @@ namespace Vintagestory.GameContent
         public override void Initialize(ICoreAPI api)
         {
             base.Initialize(api);
+            RandomizeSoundPitch = true;
 
             if (api is ICoreClientAPI && meshes == null)
             {

@@ -19,6 +19,8 @@ namespace Vintagestory.GameContent
         float fuelLevel;
         bool burning;
 
+        double lastHeatTotalHours;
+
         public ItemStack Contents => contents;
         public float FuelLevel => fuelLevel;
 
@@ -86,7 +88,9 @@ namespace Vintagestory.GameContent
                     float temp = contents.Collectible.GetTemperature(api.World, contents);
                     if (temp < 1100)
                     {
-                        contents.Collectible.SetTemperature(api.World, contents, temp + 2);
+                        float tempGain = (float)(api.World.Calendar.TotalHours - lastHeatTotalHours) * 1500;
+
+                        contents.Collectible.SetTemperature(api.World, contents, temp + tempGain);
                     }
                 }
             }
@@ -95,6 +99,8 @@ namespace Vintagestory.GameContent
             {
                 renderer.SetContents(contents, fuelLevel, burning, false);
             }
+
+            lastHeatTotalHours = api.World.Calendar.TotalHours;
         }
 
         public bool IsBurning

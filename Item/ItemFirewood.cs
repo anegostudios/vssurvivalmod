@@ -1,4 +1,5 @@
-﻿using Vintagestory.API.Common;
+﻿using Vintagestory.API.Client;
+using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 
@@ -41,6 +42,8 @@ namespace Vintagestory.GameContent
                     if (pile.OnPlayerInteract(byPlayer))
                     {
                         handling = EnumHandHandling.PreventDefaultAction;
+
+                        ((byEntity as EntityPlayer)?.Player as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
                         return;
                     }
                 }
@@ -52,13 +55,15 @@ namespace Vintagestory.GameContent
                     if (pile.OnPlayerInteract(byPlayer))
                     {
                         handling = EnumHandHandling.PreventDefaultAction;
+
+                        ((byEntity as EntityPlayer)?.Player as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
                         return;
                     }
                 }
 
                 block = byEntity.World.GetBlock(new AssetLocation("firewoodpile"));
                 if (block == null) return;
-                BlockPos pos = onBlockPos;
+                BlockPos pos = onBlockPos.Copy();
                 if (byEntity.World.BlockAccessor.GetBlock(pos).Replaceable < 6000) pos.Add(blockSel.Face);
 
                 bool ok = ((BlockFirewoodPile)block).Construct(slot, byEntity.World, pos, byPlayer);
@@ -73,6 +78,7 @@ namespace Vintagestory.GameContent
                 if (ok)
                 {
                     handling = EnumHandHandling.PreventDefaultAction;
+                    ((byEntity as EntityPlayer)?.Player as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
                 }
             }
 

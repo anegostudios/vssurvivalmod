@@ -56,12 +56,19 @@ namespace Vintagestory.GameContent
             }
 
             AssetLocation blockCode = CodeWithParts(horVer[1].Code, horVer[0].Code);
+            Block block = world.BlockAccessor.GetBlock(blockCode);
+            if (block == null) return false;
 
-            world.BlockAccessor.SetBlock(world.BlockAccessor.GetBlock(blockCode).BlockId, blockSel.Position);
+            world.BlockAccessor.SetBlock(block.BlockId, blockSel.Position);
 
             return true;
         }
 
+
+        public override BlockDropItemStack[] GetDropsForHandbook(IWorldAccessor world, BlockPos pos, IPlayer byPlayer)
+        {
+            return new BlockDropItemStack[] { new BlockDropItemStack(OnPickBlock(world, pos)) };
+        }
 
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)
         {

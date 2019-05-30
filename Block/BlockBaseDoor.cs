@@ -19,8 +19,52 @@ namespace Vintagestory.GameContent
             return parts[0] == otherParts[0];
         }
 
+        public bool DoesBehaviorAllow(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
+        {
+            bool preventDefault = false;
+
+            foreach (BlockBehavior behavior in BlockBehaviors)
+            {
+                EnumHandling handled = EnumHandling.PassThrough;
+                bool behaviorResult = behavior.OnBlockInteractStart(world, byPlayer, blockSel, ref handled);
+                if (handled != EnumHandling.PassThrough)
+                {
+                    preventDefault = true;
+                }
+
+                if (handled == EnumHandling.PreventSubsequent) return false;
+            }
+            if (preventDefault) return false;
+
+            
+            if (this is BlockDoor)
+            {
+                blockSel = blockSel.Clone();
+                blockSel.Position = (this as BlockDoor).IsUpperHalf() ? blockSel.Position.DownCopy() : blockSel.Position.UpCopy();
+
+                foreach (BlockBehavior behavior in BlockBehaviors)
+                {
+                    EnumHandling handled = EnumHandling.PassThrough;
+                    bool behaviorResult = behavior.OnBlockInteractStart(world, byPlayer, blockSel, ref handled);
+                    if (handled != EnumHandling.PassThrough)
+                    {
+                        preventDefault = true;
+                    }
+
+                    if (handled == EnumHandling.PreventSubsequent) return false;
+                }
+
+                if (preventDefault) return false;
+            }
+
+            return true;
+        }
+
+
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
+            if (!DoesBehaviorAllow(world, byPlayer, blockSel)) return true;
+
             BlockPos pos = blockSel.Position;
             Open(world, byPlayer, pos);
 

@@ -34,6 +34,11 @@ namespace Vintagestory.GameContent
             return color;
         }
 
+        public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
+        {
+            return new ItemStack(world.GetBlock(CodeWithParts("placed", LastCodePart())));
+        }
+
         public override int GetColor(ICoreClientAPI capi, BlockPos pos)
         {
             return capi.ApplyColorTintOnRgba(1, base.GetColorWithoutTint(capi, pos), pos.X, pos.Y, pos.Z, false);

@@ -42,6 +42,11 @@ namespace Vintagestory.GameContent
             return CollisionBoxesByFillLevel[FillLevel(blockAccessor, pos)];
         }
 
+        public override BlockDropItemStack[] GetDropsForHandbook(IWorldAccessor world, BlockPos pos, IPlayer byPlayer)
+        {
+            return new BlockDropItemStack[0];
+        }
+
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)
         {
             // Handled by BlockEntityItemPile
@@ -86,7 +91,7 @@ namespace Vintagestory.GameContent
 
                 pile.MarkDirty();
                 world.BlockAccessor.MarkBlockDirty(pos);
-                world.PlaySoundAt(new AssetLocation("sounds/block/planks"), pos.X, pos.Y, pos.Z, player, false);
+                world.PlaySoundAt(new AssetLocation("sounds/block/planks"), pos.X, pos.Y, pos.Z, player, true);
             }
 
             return true;

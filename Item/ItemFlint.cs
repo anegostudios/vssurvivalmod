@@ -13,10 +13,10 @@ namespace Vintagestory.GameContent
     {
         public override string GetHeldTpHitAnimation(ItemSlot slot, Entity byEntity)
         {
-            /*if (slot.Itemstack?.Collectible == this)
+            if (slot.Itemstack?.Collectible == this)
             {
-                return (byEntity as EntityAgent).Controls.FloorSitting ? /*"knapsitting" - bleh not blending correctly  base.GetHeldTpHitAnimation(slot, byEntity) : "knapstanding";
-            }*/
+                return (byEntity as EntityAgent).Controls.FloorSitting || (byEntity as EntityAgent).Controls.Sneak ? base.GetHeldTpHitAnimation(slot, byEntity) : "knapstanding";
+            }
 
             return base.GetHeldTpHitAnimation(slot, byEntity);
         }

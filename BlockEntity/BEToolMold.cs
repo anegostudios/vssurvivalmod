@@ -88,7 +88,7 @@ namespace Vintagestory.GameContent
             
 
             block = api.World.BlockAccessor.GetBlock(pos);
-            if (block == null || block.Code == null) return;
+            if (block == null || block.Code == null || block.Attributes == null) return;
 
             fillHeight = block.Attributes["fillHeight"].AsFloat(1);
             requiredUnits = block.Attributes["requiredUnits"].AsInt(100);
@@ -377,6 +377,9 @@ namespace Vintagestory.GameContent
                 
                 string temp = Temperature < 21 ? Lang.Get("Cold") : Lang.Get("{0}°C", (int)Temperature);
                 contents = string.Format("{0}/{4} units of {1} {2} ({3})\n", fillLevel, state, this.metalContent.GetName(), temp, requiredUnits);
+            } else
+            {
+                contents = string.Format("0/{0} units of metal\n", requiredUnits);
             }
             
 

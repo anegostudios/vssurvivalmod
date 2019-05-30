@@ -69,7 +69,7 @@ namespace Vintagestory.GameContent
 
             foreach (var val in wi.Itemstacks)
             {
-                if (bec != null && bec.BaseMaterial.Collectible.LastCodePart() == val.Collectible.LastCodePart())
+                if (bec?.BaseMaterial != null && bec.BaseMaterial.Collectible.LastCodePart() == val.Collectible.LastCodePart())
                 {
                     stacks.Add(val);
                 }
@@ -106,6 +106,11 @@ namespace Vintagestory.GameContent
         public override bool DoParticalSelection(IWorldAccessor world, BlockPos pos)
         {
             return true;
+        }
+
+        public override BlockDropItemStack[] GetDropsForHandbook(IWorldAccessor world, BlockPos pos, IPlayer byPlayer)
+        {
+            return new BlockDropItemStack[0];
         }
 
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)

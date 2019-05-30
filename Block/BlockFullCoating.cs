@@ -72,6 +72,11 @@ namespace Vintagestory.GameContent
             return TryPlaceBlockForWorldGen(world.BlockAccessor, blockSel.Position, blockSel.Face, world.Rand);
         }
 
+        public override BlockDropItemStack[] GetDropsForHandbook(IWorldAccessor world, BlockPos pos, IPlayer byPlayer)
+        {
+            return GetHandbookDropsFromBreakDrops(world, pos, byPlayer);
+        }
+
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)
         {
             int quantity = 0;

@@ -34,7 +34,12 @@ namespace Vintagestory.GameContent
             }
 
 
-            EntityProperties type = byEntity.World.GetEntityType(new AssetLocation(CodeEndWithoutParts(1)));
+            AssetLocation location = new AssetLocation(Code.Domain, CodeEndWithoutParts(1));
+            EntityProperties type = byEntity.World.GetEntityType(location);
+            if (type == null)
+            {
+                byEntity.World.Logger.Error("ItemCreature: No such entity - {0}", location);
+            }
             Entity entity = byEntity.World.ClassRegistry.CreateEntity(type);
 
             if (entity != null)
@@ -54,7 +59,7 @@ namespace Vintagestory.GameContent
 
         public override string GetHeldTpIdleAnimation(ItemSlot activeHotbarSlot, Entity byEntity, EnumHand hand)
         {
-            EntityProperties type = byEntity.World.GetEntityType(new AssetLocation(CodeEndWithoutParts(1)));
+            EntityProperties type = byEntity.World.GetEntityType(new AssetLocation(Code.Domain, CodeEndWithoutParts(1)));
             if (type == null) return base.GetHeldTpIdleAnimation(activeHotbarSlot, byEntity, hand);
 
             float size = Math.Max(type.HitBoxSize.X, type.HitBoxSize.Y);

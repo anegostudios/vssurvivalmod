@@ -30,6 +30,31 @@ namespace Vintagestory.GameContent
         // Slot 40: Money slot
         ItemSlot[] slots;
 
+        /// <summary>
+        /// Returns a new array containing all selling slots
+        /// </summary>
+        public ItemSlotTrade[] SellingSlots {
+            get
+            {
+                ItemSlotTrade[] sellslots = new ItemSlotTrade[16];
+                for (int i = 0; i < 16; i++) sellslots[i] = this.slots[i] as ItemSlotTrade;
+                return sellslots;
+            }
+        }
+
+
+        /// <summary>
+        /// Returns a new array containing all selling slots
+        /// </summary>
+        public ItemSlotTrade[] BuyingSlots
+        {
+            get
+            {
+                ItemSlotTrade[] buyslots = new ItemSlotTrade[16];
+                for (int i = 0; i < 16; i++) buyslots[i] = this.slots[20 + i] as ItemSlotTrade;
+                return buyslots;
+            }
+        }
 
 
         public int BuyingCartTotalCost
@@ -483,6 +508,7 @@ namespace Vintagestory.GameContent
                     removeUnits = (removeUnits / pieceValue) * pieceValue;
 
                     slot.Itemstack.StackSize -= removeUnits / pieceValue;
+                    if (slot.StackSize <= 0) slot.Itemstack = null;
                     slot.MarkDirty();
 
                     totalUnitsToDeduct -= removeUnits;

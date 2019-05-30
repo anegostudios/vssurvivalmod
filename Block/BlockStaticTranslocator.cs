@@ -61,7 +61,8 @@ namespace Vintagestory.GameContent
         {
             if (On)
             {
-
+                //BlockEntityStaticTranslocator best = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityStaticTranslocator;
+                //best.StartAnimation(new AnimationMetaData() { Code = "active" });
             }
 
             return base.OnBlockInteractStart(world, byPlayer, blockSel);
@@ -71,7 +72,7 @@ namespace Vintagestory.GameContent
         {
             base.OnEntityCollide(world, entity, pos, facing, collideSpeed, isImpact);
 
-            BlockEntityTeleporter be = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityTeleporter;
+            BlockEntityStaticTranslocator be = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityStaticTranslocator;
             if (be == null) return;
             be.OnEntityCollide(entity);
         }

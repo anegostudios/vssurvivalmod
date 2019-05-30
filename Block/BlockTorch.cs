@@ -10,12 +10,19 @@ namespace Vintagestory.GameContent
     {
         public override string GetHeldTpIdleAnimation(ItemSlot activeHotbarSlot, Entity forEntity, EnumHand hand)
         {
-            IPlayer player = (forEntity as EntityPlayer).Player;
+            IPlayer player = (forEntity as EntityPlayer)?.Player;
 
-            if (player != null && !player.InventoryManager.ActiveHotbarSlot.Empty && hand == EnumHand.Left)
+            if (forEntity.AnimManager.IsAnimationActive("sleep", "wave", "cheer", "shrug", "cry", "nod", "facepalm", "bow"))
+            {
+                return null;
+            }
+
+            if (player?.InventoryManager?.ActiveHotbarSlot != null && !player.InventoryManager.ActiveHotbarSlot.Empty && hand == EnumHand.Left)
             {
                 ItemStack stack = player.InventoryManager.ActiveHotbarSlot.Itemstack;
-                if (stack.Collectible.GetHeldTpIdleAnimation(player.InventoryManager.ActiveHotbarSlot, forEntity, EnumHand.Right) != null) return null;
+                if (stack?.Collectible?.GetHeldTpIdleAnimation(player.InventoryManager.ActiveHotbarSlot, forEntity, EnumHand.Right) != null) return null;
+
+                if (player?.Entity?.Controls.LeftMouseDown == true && stack?.Collectible?.GetHeldTpHitAnimation(player.InventoryManager.ActiveHotbarSlot, forEntity) != null) return null;
             }
 
             return hand == EnumHand.Left ? "holdinglanternlefthand" : "holdinglanternrighthand";
@@ -63,6 +70,10 @@ namespace Vintagestory.GameContent
             return false;
         }
 
+        public override BlockDropItemStack[] GetDropsForHandbook(IWorldAccessor world, BlockPos pos, IPlayer byPlayer)
+        {
+            return GetHandbookDropsFromBreakDrops(world, pos, byPlayer);
+        }
 
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)
         {
@@ -81,6 +92,12 @@ namespace Vintagestory.GameContent
 
         public override void OnNeighourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
         {
+            if (HasBehavior<BlockBehaviorUnstableFalling>())
+            {
+                base.OnNeighourBlockChange(world, pos, neibpos);
+                return;
+            }
+
             if (!CanTorchStay(world.BlockAccessor, pos))
             {
                 world.BlockAccessor.BreakBlock(pos, null);

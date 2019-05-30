@@ -1,9 +1,11 @@
 ﻿using System;
+using System.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -21,7 +23,7 @@ namespace Vintagestory.GameContent
     // - Each crop has different total growth speed
     // - Each crop can have any amounts of growth stages
     // - Some crops can be harvested with right click, without destroying the crop
-    public class BlockEntityFarmland : BlockEntity, IFarmlandBlockEntity
+    public class BlockEntityFarmland : BlockEntity, IFarmlandBlockEntity, IAnimalFoodSource
     {
         protected static Random rand = new Random();
         protected static CodeAndChance[] weedNames;
@@ -72,6 +74,8 @@ namespace Vintagestory.GameContent
                 }
 
                 RegisterGameTickListener(SlowTick, 15000);
+
+                api.ModLoader.GetModSystem<POIRegistry>().AddPOI(this);
             }
 
             Block block = api.World.BlockAccessor.GetBlock(base.pos);
@@ -324,6 +328,7 @@ namespace Vintagestory.GameContent
             Block block = api.World.BlockAccessor.GetBlock(upPos);
             return block == null || block.BlockMaterial == EnumBlockMaterial.Air;
         }
+        
 
         internal bool HasUnripeCrop()
         {
@@ -556,5 +561,31 @@ namespace Vintagestory.GameContent
                 return cropAttrs;
             }
         }
+
+
+        #region IAnimalFoodSource impl
+        public bool IsSuitableFor(Entity entity)
+        {
+            Block cropBlock = GetCrop();
+            if (cropBlock == null) return false;
+            if (cropBlock.Code.Path.Contains("pumpkin")) return false;
+
+            string[] diet = entity.Properties.Attributes?["diet"]?.AsArray<string>();
+            return diet != null && diet.Contains("crops");
+        }
+
+        public float ConsumeOnePortion()
+        {
+            Block cropBlock = GetCrop();
+            if (cropBlock == null) return 0;
+
+            api.World.BlockAccessor.BreakBlock(upPos, null);
+
+            return 0.5f;
+        }
+
+        public Vec3d Position => pos.ToVec3d().Add(0.5, 1, 0.5);
+        public string Type => "food";
+        #endregion
     }
 }

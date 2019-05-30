@@ -97,8 +97,13 @@ namespace Vintagestory.GameContent
 
             inventory.OnInventoryClosed += OnInvClosed;
             inventory.OnInventoryOpened += OnInvOpened;
+            inventory.SlotModified += OnSlotModifid;
         }
 
+        private void OnSlotModifid(int slot)
+        {
+            api.World.BlockAccessor.GetChunkAtBlockPos(pos)?.MarkModified();
+        }
 
         protected virtual void OnInvOpened(IPlayer player)
         {

@@ -135,7 +135,7 @@ namespace Vintagestory.GameContent
             }
 
 
-            if (stack != null && TryConstruct(world, blockSel.Position, stack.Collectible))
+            if (stack != null && TryConstruct(world, blockSel.Position, stack.Collectible, byPlayer))
             {
                 if (byPlayer != null && byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
                 {
@@ -148,7 +148,7 @@ namespace Vintagestory.GameContent
             return false;
         }
 
-        public bool TryConstruct(IWorldAccessor world, BlockPos pos, CollectibleObject obj) {
+        public bool TryConstruct(IWorldAccessor world, BlockPos pos, CollectibleObject obj, IPlayer player) {
             int stage = Stage;
 
             if (obj.Attributes?["firepitConstructable"]?.AsBool(false) != true) return false;
@@ -170,7 +170,7 @@ namespace Vintagestory.GameContent
             Block block = world.GetBlock(CodeWithParts(NextStageCodePart));
             world.BlockAccessor.ExchangeBlock(block.BlockId, pos);
             world.BlockAccessor.MarkBlockDirty(pos);
-            if (block.Sounds != null) world.PlaySoundAt(block.Sounds.Place, pos.X, pos.Y, pos.Z);
+            if (block.Sounds != null) world.PlaySoundAt(block.Sounds.Place, pos.X, pos.Y, pos.Z, player);
 
             if (stage == 4)
             {

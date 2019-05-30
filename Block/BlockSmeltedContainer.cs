@@ -149,6 +149,7 @@ namespace Vintagestory.GameContent
 
                 if (HasSolidifed(slot.Itemstack, contents.Key, byEntity.World))
                 {
+                    handHandling = EnumHandHandling.NotHandled;
                     return;
                 }
 
@@ -300,6 +301,11 @@ namespace Vintagestory.GameContent
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
         {
             return GetDrops(world, pos, null)[0];
+        }
+
+        public override BlockDropItemStack[] GetDropsForHandbook(IWorldAccessor world, BlockPos pos, IPlayer byPlayer)
+        {
+            return GetHandbookDropsFromBreakDrops(world, pos, byPlayer);
         }
 
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)

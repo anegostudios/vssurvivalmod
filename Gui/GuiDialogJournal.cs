@@ -194,10 +194,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override bool RequiresUngrabbedMouse()
-        {
-            return false;
-        }
+        public override bool PrefersUngrabbedMouse => false;
 
         public void ReloadValues()
         {

@@ -221,6 +221,7 @@ namespace Vintagestory.GameContent
                     Volume = SoundLevel
                 });
                 ambientSound.Start();
+                
             }
             else
             {
@@ -246,6 +247,8 @@ namespace Vintagestory.GameContent
             {
                 SetDialogValues(clientDialog.Attributes);
             }
+
+            api.World.BlockAccessor.GetChunkAtBlockPos(pos)?.MarkModified();
         }
 
         internal void GenFirepitMeshes()

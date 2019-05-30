@@ -16,6 +16,7 @@ namespace Vintagestory.GameContent
 
         static EntityButterfly() {
             AiTaskRegistry.Register<AiTaskButterflyWander>("butterflywander");
+            AiTaskRegistry.Register<AiTaskButterflyChase>("butterflychase");
             AiTaskRegistry.Register<AiTaskButterflyFeedOnFlowers>("butterflyfeedonflowers");
         }
 

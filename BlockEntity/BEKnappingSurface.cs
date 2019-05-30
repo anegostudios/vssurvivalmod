@@ -17,7 +17,7 @@ namespace Vintagestory.GameContent
     public class BlockEntityKnappingSurface : BlockEntity
     {
         // Permanent data
-        int selectedRecipeNumber = -1;
+        int selectedRecipeId = -1;
         public bool[,] Voxels = new bool[16, 16];
         public ItemStack BaseMaterial;
 
@@ -30,7 +30,7 @@ namespace Vintagestory.GameContent
 
         public KnappingRecipe SelectedRecipe
         {
-            get { return selectedRecipeNumber >= 0 ? api.World.KnappingRecipes[selectedRecipeNumber] : null; }
+            get { return api.World.KnappingRecipes.FirstOrDefault(r => r.RecipeId == selectedRecipeId); }
         }
         
 
@@ -191,7 +191,7 @@ namespace Vintagestory.GameContent
             {
                 Voxels = new bool[16, 16];
                 ItemStack outstack = SelectedRecipe.Output.ResolvedItemstack.Clone();
-                selectedRecipeNumber = -1;
+                selectedRecipeId = -1;
 
                 if (outstack.StackSize == 1 && outstack.Class == EnumItemClass.Block)
                 {
@@ -199,6 +199,7 @@ namespace Vintagestory.GameContent
                     return;
                 }
 
+                int tries = 0;
                 while (outstack.StackSize > 0)
                 {
                     ItemStack dropStack = outstack.Clone();
@@ -212,6 +213,11 @@ namespace Vintagestory.GameContent
                     else
                     {
                         api.World.SpawnItemEntity(dropStack, pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                    }
+
+                    if (tries++ > 1000)
+                    {
+                        throw new Exception("Endless loop prevention triggered. Something seems broken with a matching knapping recipe with number " + selectedRecipeId + ". Tried 1000 times to drop the resulting stack " + outstack.ToString());
                     }
                 }
 
@@ -360,7 +366,7 @@ namespace Vintagestory.GameContent
         {
             base.FromTreeAtributes(tree, worldForResolving);
             deserializeVoxels(tree.GetBytes("voxels"));
-            selectedRecipeNumber = tree.GetInt("selectedRecipeNumber", -1);
+            selectedRecipeId = tree.GetInt("selectedRecipeId", -1);
             BaseMaterial = tree.GetItemstack("baseMaterial");
             RegenMeshAndSelectionBoxes();
 
@@ -376,7 +382,7 @@ namespace Vintagestory.GameContent
         {
             base.ToTreeAttributes(tree);
             tree.SetBytes("voxels", serializeVoxels());
-            tree.SetInt("selectedRecipeNumber", selectedRecipeNumber);
+            tree.SetInt("selectedRecipeId", selectedRecipeId);
             tree.SetItemstack("baseMaterial", BaseMaterial);
         }
 
@@ -457,11 +463,16 @@ namespace Vintagestory.GameContent
 
             if (packetid == (int)EnumClayFormingPacket.SelectRecipe)
             {
-                int num = SerializerUtil.Deserialize<int>(data);
-                if (!TrySetSelectedRecipe(num))
+                int recipeid = SerializerUtil.Deserialize<int>(data);
+                KnappingRecipe recipe = api.World.KnappingRecipes.FirstOrDefault(r => r.RecipeId == recipeid);
+
+                if (recipe == null)
                 {
+                    api.World.Logger.Error("Client tried to selected knapping recipe with id {0}, but no such recipe exists!");
                     return;
                 }
+
+                selectedRecipeId = recipe.RecipeId;
 
                 // Tell server to save this chunk to disk again
                 MarkDirty();
@@ -489,38 +500,27 @@ namespace Vintagestory.GameContent
         }
 
 
-
-        private bool TrySetSelectedRecipe(int num)
-        {
-            KnappingRecipe recipe = api.World.KnappingRecipes
-                .Where(r => r.Ingredient.SatisfiesAsIngredient(BaseMaterial))
-                .OrderBy(r => r.Output.ResolvedItemstack.Collectible.Code) // Cannot sort by name, thats language dependent!
-                .ElementAtOrDefault(num)
-            ;
-
-            selectedRecipeNumber = new List<KnappingRecipe>(api.World.KnappingRecipes).IndexOf(recipe);
-            return selectedRecipeNumber >= 0;
-        }
-
-
-
         public void OpenDialog(IClientWorldAccessor world, BlockPos pos, ItemStack baseMaterial)
         {
-            List<ItemStack> stacks = world.KnappingRecipes
+            List<KnappingRecipe> recipes = world.KnappingRecipes
                .Where(r => r.Ingredient.SatisfiesAsIngredient(baseMaterial))
                .OrderBy(r => r.Output.ResolvedItemstack.Collectible.Code) // Cannot sort by name, thats language dependent!
+               .ToList()
+            ;
+
+            List<ItemStack> stacks = recipes
                .Select(r => r.Output.ResolvedItemstack)
                .ToList()
-           ;
+            ;
 
             ICoreClientAPI capi = api as ICoreClientAPI;
 
             GuiDialog dlg = new GuiDialogBlockEntityRecipeSelector(
                 Lang.Get("Select recipe"),
                 stacks.ToArray(),
-                (recipeNum) => {
-                    TrySetSelectedRecipe(recipeNum);
-                    capi.Network.SendBlockEntityPacket(pos.X, pos.Y, pos.Z, (int)EnumClayFormingPacket.SelectRecipe, SerializerUtil.Serialize(recipeNum));
+                (selectedIndex) => {
+                    selectedRecipeId = recipes[selectedIndex].RecipeId;
+                    capi.Network.SendBlockEntityPacket(pos.X, pos.Y, pos.Z, (int)EnumClayFormingPacket.SelectRecipe, SerializerUtil.Serialize(recipes[selectedIndex].RecipeId));
                 },
                 () => {
                     capi.Network.SendBlockEntityPacket(pos.X, pos.Y, pos.Z, (int)EnumClayFormingPacket.CancelSelect);

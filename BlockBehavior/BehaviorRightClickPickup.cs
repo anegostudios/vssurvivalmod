@@ -29,6 +29,7 @@ namespace Vintagestory.GameContent
                 if (byPlayer.InventoryManager.TryGiveItemstack(stack, true))
                 {
                     world.BlockAccessor.SetBlock(0, blockSel.Position);
+                    world.BlockAccessor.TriggerNeighbourBlockUpdate(blockSel.Position);
                     world.PlaySoundAt(block.Sounds.Place, byPlayer, byPlayer);
                     handling = EnumHandling.PreventDefault;
                     return true;

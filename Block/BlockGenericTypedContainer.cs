@@ -214,6 +214,19 @@ namespace Vintagestory.GameContent
 
         public override void OnBlockBroken(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1)
         {
+            bool preventDefault = false;
+            foreach (BlockBehavior behavior in BlockBehaviors)
+            {
+                EnumHandling handled = EnumHandling.PassThrough;
+
+                behavior.OnBlockBroken(world, pos, byPlayer, ref handled);
+                if (handled == EnumHandling.PreventDefault) preventDefault = true;
+                if (handled == EnumHandling.PreventSubsequent) return;
+            }
+
+            if (preventDefault) return;
+
+
             if (world.Side == EnumAppSide.Server && (byPlayer == null || byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative))
             {
                 ItemStack[] drops = new ItemStack[] { OnPickBlock(world, pos) };
@@ -259,9 +272,12 @@ namespace Vintagestory.GameContent
             base.GetHeldItemInfo(stack, dsc, world, withDebugInfo);
 
             string type = stack.Attributes.GetString("type");
-            int? qslots = stack.ItemAttributes?["quantitySlots"]?[type]?.AsInt(0);
-            
-            dsc.AppendLine("\n" + Lang.Get("Quantity Slots: {0}", qslots));
+
+            if (type != null)
+            {
+                int? qslots = stack.ItemAttributes?["quantitySlots"]?[type]?.AsInt(0);
+                dsc.AppendLine("\n" + Lang.Get("Quantity Slots: {0}", qslots));
+            }
         }
 
 

@@ -1,5 +1,6 @@
 ﻿using System;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.Server;
 
@@ -59,7 +60,7 @@ namespace Vintagestory.GameContent
 
         public double GetDaysForNextStage()
         {
-            return 5 + rand.NextDouble();
+            return (5 + rand.NextDouble()) * 0.66;
         }
 
         public bool IsRipe()
@@ -99,6 +100,29 @@ namespace Vintagestory.GameContent
         {
             base.ToTreeAttributes(tree);
             tree.SetDouble("totalDaysForNextStage", totalDaysForNextStage);
+        }
+
+        public override string GetBlockInfo(IPlayer forPlayer)
+        {
+            Block block = api.World.BlockAccessor.GetBlock(pos);
+            double daysleft = totalDaysForNextStage - api.World.Calendar.TotalDays;
+
+            if (block.LastCodePart() == "ripe")
+            {
+                return base.GetBlockInfo(forPlayer);
+            }
+
+            string code = (block.LastCodePart() == "empty") ? "flowering" : "ripen";
+
+            if (daysleft < 1)
+            {
+                return Lang.Get("berrybush-"+ code + "-1day");
+            }
+            else
+            {
+                return Lang.Get("berrybush-" + code + "-xdays", (int)daysleft);
+            }
+
         }
     }
 }

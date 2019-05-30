@@ -36,11 +36,6 @@ namespace Vintagestory.GameContent
                 return new WorldInteraction[] {
                     new WorldInteraction()
                     {
-                        ActionLangCode = "blockhelp-chest-open",
-                        MouseButton = EnumMouseButton.Right
-                    },
-                    new WorldInteraction()
-                    {
                         ActionLangCode = "blockhelp-sign-write",
                         HotKeyCode = "sneak",
                         MouseButton = EnumMouseButton.Right,

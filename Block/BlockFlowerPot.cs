@@ -9,7 +9,7 @@ namespace Vintagestory.GameContent
 {
     public class BlockFlowerPot : Block
     {
-        WorldInteraction[] interactions = null;
+        WorldInteraction[] interactions = new WorldInteraction[0];
 
         public override void OnLoaded(ICoreAPI api)
         {
@@ -75,16 +75,7 @@ namespace Vintagestory.GameContent
 
             if (name == "empty") return null;
 
-            Block block = world.BlockAccessor.GetBlock(CodeWithPath("flower-" + name));
-            if (block != null) return block;
-
-            block = world.BlockAccessor.GetBlock(CodeWithPath("sapling-" + name));
-            if (block != null) return block;
-
-            block = world.BlockAccessor.GetBlock(CodeWithPath("mushroom-" + name + "-normal"));
-            if (block != null) return block;
-
-            block = world.BlockAccessor.GetBlock(CodeWithPath("flower-" + LastCodePart(0) + "-" + LastCodePart(1)));
+            Block block = world.BlockAccessor.GetBlock(new AssetLocation(Attributes["contentBlockCode"].AsString()));
 
             return block;
         }
@@ -98,6 +89,11 @@ namespace Vintagestory.GameContent
             {
                 world.SpawnItemEntity(new ItemStack(block), pos.ToVec3d().Add(0.5, 0.5, 0.5));
             }
+        }
+
+        public override BlockDropItemStack[] GetDropsForHandbook(IWorldAccessor world, BlockPos pos, IPlayer byPlayer)
+        {
+            return GetHandbookDropsFromBreakDrops(world, pos, byPlayer);
         }
 
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)

@@ -11,19 +11,19 @@ namespace Vintagestory.GameContent
 {
     public class AiTaskButterflyWander : AiTaskBase
     {
-        float moveSpeed = 0.03f;
-        float maxHeight = 7f;
-        float? preferredLightLevel;
+        protected float moveSpeed = 0.03f;
+        protected float maxHeight = 7f;
+        protected float? preferredLightLevel;
 
-        float wanderDuration;
-        float desiredYaw;
-        float desiredflyHeightAboveGround;
+        protected float wanderDuration;
+        protected float desiredYaw;
+        protected float desiredflyHeightAboveGround;
 
-        double desiredYPos;
-        
-        float minTurnAnglePerSec;
-        float maxTurnAnglePerSec;
-        float curTurnRadPerSec;
+        protected double desiredYPos;
+
+        protected float minTurnAnglePerSec;
+        protected float maxTurnAnglePerSec;
+        protected float curTurnRadPerSec;
 
 
         public AiTaskButterflyWander(EntityAgent entity) : base(entity)
@@ -130,7 +130,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        private void ReadjustFlyHeight()
+        protected void ReadjustFlyHeight()
         {
             int terrainYPos = entity.World.BlockAccessor.GetTerrainMapheightAt(entity.LocalPos.AsBlockPos);
             desiredYPos = terrainYPos + desiredflyHeightAboveGround;

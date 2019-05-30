@@ -24,7 +24,7 @@ namespace Vintagestory.GameContent
 
         // Permanent data
         ItemStack workItemStack;
-        int selectedRecipeNumber = -1;
+        int selectedRecipeId = -1;
         public int AvailableVoxels;
         public bool[,,] Voxels = new bool[16, 16, 16];
 
@@ -42,7 +42,7 @@ namespace Vintagestory.GameContent
 
         public ClayFormingRecipe SelectedRecipe
         {
-            get { return selectedRecipeNumber >= 0 && api != null ? api.World.ClayFormingRecipes[selectedRecipeNumber] : null; }
+            get { return api != null ? api.World.ClayFormingRecipes.FirstOrDefault(r => r.RecipeId == selectedRecipeId) : null; }
         }
 
         public bool CanWorkCurrent
@@ -119,6 +119,8 @@ namespace Vintagestory.GameContent
 
         public void OnBeginUse(IPlayer byPlayer, BlockSelection blockSel)
         {
+            //api.World.Logger.VerboseDebug("clay form on begin use");
+
             if (SelectedRecipe == null)
             {
                 if (api.Side == EnumAppSide.Client)
@@ -151,9 +153,10 @@ namespace Vintagestory.GameContent
             if (SelectedRecipe == null) return;
             if (voxelPos == null)
             {
-                
                 return;
             }
+
+            //api.World.Logger.VerboseDebug("clay form on user over start");
 
             // Send a custom network packet for server side, because
             // serverside blockselection index is inaccurate
@@ -174,8 +177,6 @@ namespace Vintagestory.GameContent
 
             float yaw = GameMath.Mod(byPlayer.Entity.Pos.Yaw, 2 * GameMath.PI);
             BlockFacing towardsFace = BlockFacing.HorizontalFromAngle(yaw);
-
-            
 
 
             //if (didBeginUse > 0)
@@ -213,9 +214,12 @@ namespace Vintagestory.GameContent
                 }
             }
 
+
             //didBeginUse = Math.Max(0, didBeginUse - 1);
             CheckIfFinished(byPlayer);
             MarkDirty();
+
+            //api.World.Logger.VerboseDebug("clay form on user over end");
         }
 
 
@@ -227,7 +231,7 @@ namespace Vintagestory.GameContent
                 Voxels = new bool[16, 16, 16];
                 AvailableVoxels = 0;
                 ItemStack outstack = SelectedRecipe.Output.ResolvedItemstack.Clone();
-                selectedRecipeNumber = -1;
+                selectedRecipeId = -1;
 
                 if (outstack.StackSize == 1 && outstack.Class == EnumItemClass.Block)
                 {
@@ -235,13 +239,14 @@ namespace Vintagestory.GameContent
                     return;
                 }
 
-                while (outstack.StackSize > 0)
+                int tries = 500;
+                while (outstack.StackSize > 0 && tries-- > 0)
                 {
                     ItemStack dropStack = outstack.Clone();
                     dropStack.StackSize = Math.Min(outstack.StackSize, outstack.Collectible.MaxStackSize);
                     outstack.StackSize -= dropStack.StackSize;
 
-                    if(byPlayer.InventoryManager.TryGiveItemstack(dropStack))
+                    if (byPlayer.InventoryManager.TryGiveItemstack(dropStack))
                     {
                         api.World.PlaySoundAt(new AssetLocation("sounds/player/collect"), byPlayer);
                     }
@@ -249,6 +254,11 @@ namespace Vintagestory.GameContent
                     {
                         api.World.SpawnItemEntity(dropStack, pos.ToVec3d().Add(0.5, 0.5, 0.5));
                     }
+                }
+
+                if (tries <= 1)
+                {
+                    api.World.Logger.Error("Tried to drop finished clay forming item but failed after 500 times?! Gave up doing so. Out stack was " + outstack);
                 }
 
                 api.World.BlockAccessor.SetBlock(0, pos);
@@ -273,8 +283,7 @@ namespace Vintagestory.GameContent
                     for (int z = 0; z < 16; z++)
                     {
                         if (Voxels[x, layer, z] != SelectedRecipe.Voxels[x, layer, z])
-                        {
-                            
+                        {                            
                             return layer;
                         }
                     }
@@ -500,7 +509,7 @@ namespace Vintagestory.GameContent
             deserializeVoxels(tree.GetBytes("voxels"));
             workItemStack = tree.GetItemstack("workItemStack");
             AvailableVoxels = tree.GetInt("availableVoxels");
-            selectedRecipeNumber = tree.GetInt("selectedRecipeNumber", -1);
+            selectedRecipeId = tree.GetInt("selectedRecipeId", -1);
 
             if (api != null && workItemStack != null)
             {
@@ -517,7 +526,7 @@ namespace Vintagestory.GameContent
             tree.SetBytes("voxels", serializeVoxels());
             tree.SetItemstack("workItemStack", workItemStack);
             tree.SetInt("availableVoxels", AvailableVoxels);
-            tree.SetInt("selectedRecipeNumber", selectedRecipeNumber);
+            tree.SetInt("selectedRecipeId", selectedRecipeId);
         }
 
 
@@ -602,13 +611,16 @@ namespace Vintagestory.GameContent
 
             if (packetid == (int)EnumClayFormingPacket.SelectRecipe)
             {
-                int num = SerializerUtil.Deserialize<int>(data);
+                int recipeid = SerializerUtil.Deserialize<int>(data);
+                ClayFormingRecipe recipe = api.World.ClayFormingRecipes.FirstOrDefault(r => r.RecipeId == recipeid);
 
-                if (!TrySetSelectedRecipe(num))
+                if (recipe == null)
                 {
+                    api.World.Logger.Error("Client tried to selected clayforming recipe with id {0}, but no such recipe exists!");
                     return;
                 }
 
+                selectedRecipeId = recipe.RecipeId;
                 // Tell server to save this chunk to disk again
                 MarkDirty();
                 api.World.BlockAccessor.GetChunkAtBlockPos(pos.X, pos.Y, pos.Z).MarkModified();
@@ -636,22 +648,6 @@ namespace Vintagestory.GameContent
 
 
 
-        private bool TrySetSelectedRecipe(int num)
-        {
-            baseMaterial = new ItemStack(api.World.GetItem(new AssetLocation("clay-" + workItemStack.Collectible.LastCodePart())));
-
-            ClayFormingRecipe recipe = api.World.ClayFormingRecipes
-                .Where(r => r.Ingredient.SatisfiesAsIngredient(baseMaterial))
-                .OrderBy(r => r.Output.ResolvedItemstack.GetName())
-                .ElementAtOrDefault(num)
-            ;
-
-            selectedRecipeNumber = new List<ClayFormingRecipe>(api.World.ClayFormingRecipes).IndexOf(recipe);
-            return selectedRecipeNumber >= 0;
-        }
-
-
-
         public void OpenDialog(IClientWorldAccessor world, BlockPos pos, ItemStack ingredient)
         {
             if (ingredient.Collectible is ItemWorkItem)
@@ -659,9 +655,14 @@ namespace Vintagestory.GameContent
                 ingredient = new ItemStack(world.GetItem(new AssetLocation("clay-" + ingredient.Collectible.LastCodePart())));
             }
 
-            List<ItemStack> stacks = world.ClayFormingRecipes
+            List<ClayFormingRecipe> recipes = world.ClayFormingRecipes
                 .Where(r => r.Ingredient.SatisfiesAsIngredient(ingredient))
                 .OrderBy(r => r.Output.ResolvedItemstack.Collectible.Code) // Cannot sort by name, thats language dependent!
+                .ToList();
+            ;
+             
+
+            List<ItemStack> stacks = recipes
                 .Select(r => r.Output.ResolvedItemstack)
                 .ToList()
             ;
@@ -671,9 +672,9 @@ namespace Vintagestory.GameContent
             GuiDialog dlg = new GuiDialogBlockEntityRecipeSelector(
                 Lang.Get("Select recipe"), 
                 stacks.ToArray(), 
-                (recipeNum) => {
-                    TrySetSelectedRecipe(recipeNum);
-                    capi.Network.SendBlockEntityPacket(pos.X, pos.Y, pos.Z, (int)EnumClayFormingPacket.SelectRecipe, SerializerUtil.Serialize(recipeNum));
+                (selectedIndex) => {
+                    selectedRecipeId = recipes[selectedIndex].RecipeId;
+                    capi.Network.SendBlockEntityPacket(pos.X, pos.Y, pos.Z, (int)EnumClayFormingPacket.SelectRecipe, SerializerUtil.Serialize(recipes[selectedIndex].RecipeId));
                 },
                 () => {
                     capi.Network.SendBlockEntityPacket(pos.X, pos.Y, pos.Z, (int)EnumClayFormingPacket.CancelSelect);

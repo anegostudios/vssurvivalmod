@@ -161,6 +161,7 @@ namespace Vintagestory.GameContent
 
             slot.TakeOut(1);
             slot.MarkDirty();
+            (byEntity as EntityPlayer)?.Player?.InventoryManager.BroadcastHotbarSlot();
 
             if (byEntity.World.Side == EnumAppSide.Client)
             {

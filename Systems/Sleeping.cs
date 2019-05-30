@@ -241,20 +241,25 @@ void main () {
         public float rndTarget;
         public float curRndVal;
 
+        LoadedTexture exitHelpTexture;
+
         public EyesOverlayRenderer(ICoreClientAPI capi, IShaderProgram eyeShaderProg)
         {
             this.capi = capi;
             this.eyeShaderProg = eyeShaderProg;
 
-            MeshData quadMesh = QuadMeshUtil.GetCustomQuadModelData(-1, -1, 0, 2, 2);
+            MeshData quadMesh = QuadMeshUtil.GetCustomQuadModelData(-1, -1, -20000 + 151 + 1, 2, 2);
             quadMesh.Rgba = null;
 
             quadRef = capi.Render.UploadMesh(quadMesh);
+
+            string hotkey = capi.Input.HotKeys["sneak"].CurrentMapping.ToString();
+            exitHelpTexture = capi.Gui.TextTexture.GenTextTexture(Lang.Get("bed-exithint", hotkey), CairoFont.WhiteSmallishText());
         }
 
         public double RenderOrder
         {
-            get { return 1.1; }
+            get { return 0.95; }
         }
 
         public int RenderRange { get { return 1; } }
@@ -262,6 +267,7 @@ void main () {
         public void Dispose()
         {
             capi.Render.DeleteMesh(quadRef);
+            exitHelpTexture?.Dispose();
             eyeShaderProg.Dispose();
         }
 
@@ -276,18 +282,21 @@ void main () {
 
             curRndVal += (rndTarget - curRndVal) * deltaTime;
 
+            capi.Render.Render2DLoadedTexture(exitHelpTexture, capi.Render.FrameWidth / 2 - exitHelpTexture.Width / 2, capi.Render.FrameHeight * 3/4f);
+
             IShaderProgram curShader = capi.Render.CurrentActiveShader;
             curShader.Stop();
 
             eyeShaderProg.Use();
 
             capi.Render.GlToggleBlend(true);
+            capi.Render.GLDepthMask(false);
             eyeShaderProg.Uniform("level", Level + curRndVal);
             
             capi.Render.RenderMesh(quadRef);
             eyeShaderProg.Stop();
 
-
+            capi.Render.GLDepthMask(true);
             curShader.Use();
         }
     }

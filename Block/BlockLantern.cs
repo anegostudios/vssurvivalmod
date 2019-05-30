@@ -31,12 +31,20 @@ namespace Vintagestory.GameContent
 
         public override string GetHeldTpIdleAnimation(ItemSlot activeHotbarSlot, Entity forEntity, EnumHand hand)
         {
-            IPlayer player = (forEntity as EntityPlayer).Player;
+            IPlayer player = (forEntity as EntityPlayer)?.Player;
 
-            if (player != null && !player.InventoryManager.ActiveHotbarSlot.Empty && hand == EnumHand.Left)
+            if (forEntity.AnimManager.IsAnimationActive("sleep", "wave", "cheer", "shrug", "cry", "nod", "facepalm", "bow"))
+            {
+                return null;
+            }
+
+
+            if (player?.InventoryManager?.ActiveHotbarSlot != null && !player.InventoryManager.ActiveHotbarSlot.Empty && hand == EnumHand.Left)
             { 
                 ItemStack stack = player.InventoryManager.ActiveHotbarSlot.Itemstack;
-                if (stack.Collectible.GetHeldTpIdleAnimation(player.InventoryManager.ActiveHotbarSlot, forEntity, EnumHand.Right) != null) return null;
+                if (stack?.Collectible?.GetHeldTpIdleAnimation(player.InventoryManager.ActiveHotbarSlot, forEntity, EnumHand.Right) != null) return null;
+
+                if (player?.Entity?.Controls.LeftMouseDown == true && stack?.Collectible?.GetHeldTpHitAnimation(player.InventoryManager.ActiveHotbarSlot, forEntity) != null) return null;
             }
 
             return hand == EnumHand.Left ? "holdinglanternlefthand" : "holdinglanternrighthand";
@@ -171,7 +179,7 @@ namespace Vintagestory.GameContent
 
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
         {
-            ItemStack stack = base.OnPickBlock(world, pos);
+            ItemStack stack = new ItemStack(world.GetBlock(CodeWithParts("up")));
 
             BELantern be = world.BlockAccessor.GetBlockEntity(pos) as BELantern;
             if (be != null)

@@ -238,6 +238,7 @@ namespace Vintagestory.GameContent
 
                 RemoveMaterial(slot);
                 slot.MarkDirty();
+                (byEntity as EntityPlayer)?.Player?.InventoryManager.BroadcastHotbarSlot();
 
                 byEntity.GetBehavior<EntityBehaviorHunger>()?.ConsumeSaturation(3f);
             }
@@ -284,7 +285,7 @@ namespace Vintagestory.GameContent
         private void TryTakeMaterial(ItemSlot slot, EntityAgent byEntity, BlockPos position)
         {
             Block block = api.World.BlockAccessor.GetBlock(position);
-            if (block.BlockMaterial == EnumBlockMaterial.Gravel || block.BlockMaterial == EnumBlockMaterial.Sand)
+            if ((block.BlockMaterial == EnumBlockMaterial.Gravel || block.BlockMaterial == EnumBlockMaterial.Sand) && block.Variant.ContainsKey("rock"))
             {
                 if (api.World.BlockAccessor.GetBlock(position.UpCopy()).Id != 0)
                 {
@@ -321,6 +322,7 @@ namespace Vintagestory.GameContent
                 }
 
                 slot.MarkDirty();
+                (byEntity as EntityPlayer)?.Player?.InventoryManager.BroadcastHotbarSlot();
             }
         }
     }

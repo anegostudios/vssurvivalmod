@@ -168,7 +168,7 @@ namespace Vintagestory.GameContent
 
                 foreach (var nutriProps in multiProps)
                 {
-                    player.Entity.ReceiveSaturation(nutriProps.Saturation * satMul, nutriProps.FoodCategory, 10 + nutriProps.Saturation / 70f * 60f);
+                    player.Entity.ReceiveSaturation(nutriProps.Saturation * satMul, nutriProps.FoodCategory, 10 + nutriProps.Saturation / 70f * 60f, 1.2f);
 
                     if (nutriProps.EatenStack?.ResolvedItemstack != null)
                     {
@@ -480,6 +480,11 @@ namespace Vintagestory.GameContent
             return stack;
         }
 
+
+        public override BlockDropItemStack[] GetDropsForHandbook(IWorldAccessor world, BlockPos pos, IPlayer byPlayer)
+        {
+            return new BlockDropItemStack[] { new BlockDropItemStack(OnPickBlock(world, pos)) };
+        }
 
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1)
         {

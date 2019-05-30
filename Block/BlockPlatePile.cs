@@ -61,6 +61,10 @@ namespace Vintagestory.GameContent
             base.OnBlockBroken(world, pos, byPlayer);
         }
 
+        public override BlockDropItemStack[] GetDropsForHandbook(IWorldAccessor world, BlockPos pos, IPlayer byPlayer)
+        {
+            return new BlockDropItemStack[0];
+        }
 
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)
         {

@@ -13,7 +13,7 @@ using Vintagestory.API.Server;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockEntityStaticTranslocator : BlockEntity
+    public class BlockEntityStaticTranslocator : BlockEntityAnimatable
     {
         public int MinTeleporterRangeInBlocks = 400;
         public int MaxTeleporterRangeInBlocks = 6000;
@@ -21,7 +21,7 @@ namespace Vintagestory.GameContent
         BlockPos tpLocation;
         Dictionary<long, TeleportingEntity> tpingEntities = new Dictionary<long, TeleportingEntity>();
 
-        BlockTeleporter block;
+        BlockStaticTranslocator block;
         Vec3d posvec;
         long lastCollideMsOwnPlayer;
 
@@ -41,15 +41,23 @@ namespace Vintagestory.GameContent
             if (api.Side == EnumAppSide.Server)
             {
                 sapi = api as ICoreServerAPI;
-                RegisterGameTickListener(OnServerGameTick, 250);
+                //RegisterGameTickListener(OnServerGameTick, 250);
             } else
             {
-                RegisterGameTickListener(OnClientGameTick, 50);
+                //RegisterGameTickListener(OnClientGameTick, 50);
             }
 
-            block = api.World.BlockAccessor.GetBlock(pos) as BlockTeleporter;
+            block = api.World.BlockAccessor.GetBlock(pos) as BlockStaticTranslocator;
             posvec = new Vec3d(pos.X, pos.Y + 1, pos.Z);
+
+            if (api.World.Side == EnumAppSide.Client)
+            {
+                float rotY = block.Shape.rotateY;
+                InitializeAnimator("translocator", new Vec3f(0, rotY, 0));
+            }
         }
+
+        
 
 
         internal void OnEntityCollide(Entity entity)

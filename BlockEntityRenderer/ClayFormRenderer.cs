@@ -198,6 +198,7 @@ namespace Vintagestory.GameContent
 
         private void RegenOutlineMesh(ClayFormingRecipe recipeToOutline, bool[,,] Voxels, int recipeLayer)
         {
+
             MeshData recipeOutlineMesh = new MeshData(24, 36, false, false, true, false, false);
             recipeOutlineMesh.SetMode(EnumDrawMode.Lines);
 
@@ -240,6 +241,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
+            recipeOutlineMeshRef?.Dispose();
             recipeOutlineMeshRef = api.Render.UploadMesh(recipeOutlineMesh);
         }
 
