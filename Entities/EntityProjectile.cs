@@ -82,6 +82,15 @@ namespace Vintagestory.GameContent
         }
 
 
+        public override void OnCollided()
+        {
+            EntityPos pos = LocalPos;
+
+            IsColliding(LocalPos, Math.Max(motionBeforeCollide.Length(), pos.Motion.Length()));
+            motionBeforeCollide.Set(pos.Motion.X, pos.Motion.Y, pos.Motion.Z);
+        }
+
+
         private void IsColliding(EntityPos pos, double impactSpeed)
         {
             pos.Motion.Set(0, 0, 0);
@@ -109,9 +118,11 @@ namespace Vintagestory.GameContent
                 TryAttackEntity(impactSpeed);
 
                 msCollide = World.ElapsedMilliseconds;
+
+                beforeCollided = true;
             }
 
-            beforeCollided = true;
+            
         }
 
 
@@ -123,12 +134,14 @@ namespace Vintagestory.GameContent
             EntityPos pos = LocalPos;
 
             Cuboidd projectileBox = CollisionBox.ToDouble().Translate(ServerPos.X, ServerPos.Y, ServerPos.Z);
-            if (ServerPos.Motion.X < 0) projectileBox.X1 += ServerPos.Motion.X;
-            else projectileBox.X2 += ServerPos.Motion.X;
-            if (ServerPos.Motion.Y < 0) projectileBox.Y1 += ServerPos.Motion.Y;
-            else projectileBox.Y2 += ServerPos.Motion.Y;
-            if (ServerPos.Motion.Z < 0) projectileBox.Z1 += ServerPos.Motion.Z;
-            else projectileBox.Z2 += ServerPos.Motion.Z;
+
+            // We give it a bit of extra leeway of 50% because physics ticks can run twice or 3 times in one game tick 
+            if (ServerPos.Motion.X < 0) projectileBox.X1 += 1.5 * ServerPos.Motion.X;
+            else projectileBox.X2 += 1.5 * ServerPos.Motion.X;
+            if (ServerPos.Motion.Y < 0) projectileBox.Y1 += 1.5 * ServerPos.Motion.Y;
+            else projectileBox.Y2 += 1.5 * ServerPos.Motion.Y;
+            if (ServerPos.Motion.Z < 0) projectileBox.Z1 += 1.5 * ServerPos.Motion.Z;
+            else projectileBox.Z2 += 1.5 * ServerPos.Motion.Z;
 
 
             Entity entity = World.GetNearestEntity(ServerPos.XYZ, 5f, 5f, (e) => {
@@ -165,6 +178,7 @@ namespace Vintagestory.GameContent
                 {
                     Die();
                 }
+
                 return true;
             }
             

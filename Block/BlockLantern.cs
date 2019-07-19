@@ -33,7 +33,7 @@ namespace Vintagestory.GameContent
         {
             IPlayer player = (forEntity as EntityPlayer)?.Player;
 
-            if (forEntity.AnimManager.IsAnimationActive("sleep", "wave", "cheer", "shrug", "cry", "nod", "facepalm", "bow"))
+            if (forEntity.AnimManager.IsAnimationActive("sleep", "wave", "cheer", "shrug", "cry", "nod", "facepalm", "bow", "laugh", "rage"))
             {
                 return null;
             }

@@ -73,24 +73,10 @@ namespace Vintagestory.GameContent
             return new ItemStack(this.Id, EnumItemClass.Block, 1, tree, world);
         }
 
-        public override void OnBlockBroken(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1)
+        public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1)
         {
-            if (world.Side == EnumAppSide.Server && (byPlayer == null || byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative))
-            {
-                ItemStack stack = OnPickBlock(world, pos);
-
-                if (stack != null)
-                {
-                    world.SpawnItemEntity(stack, new Vec3d(pos.X + 0.5, pos.Y + 0.5, pos.Z + 0.5), null);
-                }
-
-                world.PlaySoundAt(Sounds.GetBreakSound(byPlayer), pos.X, pos.Y, pos.Z, byPlayer);
-            }
-
-            world.BlockAccessor.SetBlock(0, pos);
+            return new ItemStack[] { OnPickBlock(world, pos) };
         }
-
-
 
         public override void OnBlockPlaced(IWorldAccessor world, BlockPos blockPos, ItemStack byItemStack)
         {

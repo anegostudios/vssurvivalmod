@@ -673,6 +673,8 @@ namespace Vintagestory.GameContent
                 Lang.Get("Select recipe"), 
                 stacks.ToArray(), 
                 (selectedIndex) => {
+                    capi.Logger.VerboseDebug("Select clay from recipe {0}, have {1} recipes.", selectedIndex, recipes.Count);
+
                     selectedRecipeId = recipes[selectedIndex].RecipeId;
                     capi.Network.SendBlockEntityPacket(pos.X, pos.Y, pos.Z, (int)EnumClayFormingPacket.SelectRecipe, SerializerUtil.Serialize(recipes[selectedIndex].RecipeId));
                 },
@@ -682,6 +684,7 @@ namespace Vintagestory.GameContent
                 pos, 
                 api as ICoreClientAPI
             );
+
             dlg.TryOpen();
         }
 

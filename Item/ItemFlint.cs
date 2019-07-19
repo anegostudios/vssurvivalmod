@@ -71,9 +71,11 @@ namespace Vintagestory.GameContent
                     return;
                 }
 
+                world.BlockAccessor.TriggerNeighbourBlockUpdate(pos);
+
                 if (knappingBlock.Sounds != null)
                 {
-                    world.PlaySoundAt(knappingBlock.Sounds.Place, blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z);
+                    world.PlaySoundAt(knappingBlock.Sounds.Place, pos.X, pos.Y, pos.Z);
                 }
 
                 BlockEntityKnappingSurface bec = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityKnappingSurface;

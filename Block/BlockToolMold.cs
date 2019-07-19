@@ -152,15 +152,15 @@ namespace Vintagestory.GameContent
             stacks.Add(new ItemStack(this));
 
             BlockEntityToolMold bet = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityToolMold;
-           
+
             if (bet != null)
             {
-                ItemStack outstack = bet.GetReadyMoldedStack();
-                if (outstack != null) {
-                    stacks.Add(outstack);
+                ItemStack[] outstack = bet.GetReadyMoldedStacks();
+                if (outstack != null)
+                {
+                    stacks.AddRange(outstack);
                 }
             }
-
 
             return stacks.ToArray();
         }

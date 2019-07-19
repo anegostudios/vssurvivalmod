@@ -87,6 +87,8 @@
     <Compile Include="BlockBehavior\BehaviorPushEventOnBlockBroken.cs" />
     <Compile Include="BlockBehavior\BehaviorRightClickPickup.cs" />
     <Compile Include="BlockBehavior\BehaviorSneakPlacing.cs" />
+    <Compile Include="BlockBehavior\BlockBehaviorLockable.cs" />
+    <Compile Include="BlockBehavior\BlockBehaviorReinforcable.cs" />
     <Compile Include="BlockEntityRenderer\ChestLabelRenderer.cs" />
     <Compile Include="BlockEntityRenderer\EchoChamberRenderer.cs" />
     <Compile Include="BlockEntityRenderer\FirepitContentsRenderer.cs" />
@@ -107,6 +109,7 @@
     <Compile Include="Block\BlockEchoChamber.cs" />
     <Compile Include="Block\BlockLabeledChest.cs" />
     <Compile Include="Block\BlockLocustNest.cs" />
+    <Compile Include="Block\BlockLog.cs" />
     <Compile Include="Block\BlockLooseOres.cs" />
     <Compile Include="Block\BlockLupine.cs" />
     <Compile Include="Block\BlockMetalPartPile.cs" />
@@ -294,6 +297,7 @@
     <Compile Include="Entities\EntityLocust.cs" />
     <Compile Include="Entities\EntityStrawDummy.cs" />
     <Compile Include="Entity\AITask\AiTaskButterflyFeedOnFlowers.cs" />
+    <Compile Include="Entity\AITask\AiTaskButterflyChase.cs" />
     <Compile Include="Entity\AITask\AiTaskButterflyWander.cs" />
     <Compile Include="Inventory\ItemSlotBuying.cs" />
     <Compile Include="Item\ItemGem.cs" />
@@ -301,6 +305,8 @@
     <Compile Include="Item\ItemKnife.cs" />
     <Compile Include="Item\ItemNugget.cs" />
     <Compile Include="Block\BlockPan.cs" />
+    <Compile Include="Item\ItemPadlock.cs" />
+    <Compile Include="Item\ItemPlumbAndSquare.cs" />
     <Compile Include="Item\ItemPoultice.cs" />
     <Compile Include="Item\ItemRustyGear.cs" />
     <Compile Include="Item\ItemSword.cs" />
@@ -323,6 +329,7 @@
     <Compile Include="Inventory\ItemSlotCooking.cs" />
     <Compile Include="Inventory\ItemSlotFirepitInput.cs" />
     <Compile Include="Inventory\ItemSlotTrade.cs" />
+    <Compile Include="Systems\BlockReinforcement.cs" />
     <Compile Include="Systems\ChiselBlockModelCache.cs" />
     <Compile Include="Entities\EntityBeeMob.cs" />
     <Compile Include="Entities\EntityPlayerBot.cs" />

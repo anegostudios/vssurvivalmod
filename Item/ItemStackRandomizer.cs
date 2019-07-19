@@ -132,6 +132,7 @@ namespace Vintagestory.GameContent
                 if (Stacks[i].Chance > diceRoll)
                 {
                     intoslot.Itemstack = Stacks[i].ResolvedStack.Clone();
+                    intoslot.Itemstack.StackSize = (int)Stacks[i].Quantity.nextFloat(1, rand);
                     return;
                 }
 

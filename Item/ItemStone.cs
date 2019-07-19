@@ -51,10 +51,12 @@ namespace Vintagestory.GameContent
                 Block knappingBlock = world.GetBlock(new AssetLocation("knappingsurface"));
                 if (knappingBlock == null) return;
 
-                string useless = "";
+                string failCode = "";
 
                 BlockPos pos = blockSel.Position;
-                if (!knappingBlock.IsSuitablePosition(world, pos, ref useless))
+                knappingBlock.IsSuitablePosition(world, pos, ref failCode);
+
+                if (failCode == "entityintersecting")
                 {
                     bool selfBlocked = false;
                     bool entityBlocked = world.GetIntersectingEntities(pos, knappingBlock.GetCollisionBoxes(world.BlockAccessor, pos), e => { selfBlocked = e == byEntity; return !(e is EntityItem); }).Length != 0;
@@ -71,6 +73,7 @@ namespace Vintagestory.GameContent
                 }
 
                 world.BlockAccessor.SetBlock(knappingBlock.BlockId, pos);
+                world.BlockAccessor.TriggerNeighbourBlockUpdate(blockSel.Position);
 
                 if (knappingBlock.Sounds != null)
                 {
@@ -118,6 +121,8 @@ namespace Vintagestory.GameContent
                 { 
                     return;
                 }
+
+                world.BlockAccessor.TriggerNeighbourBlockUpdate(blockSel.Position);
 
                 if (block.Sounds != null) world.PlaySoundAt(block.Sounds.Place, blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z);
 

@@ -106,9 +106,9 @@ namespace VSSurvivalMod.Systems
 
             api.Event.RegisterGameTickListener(OnServerTick, 20);
 
-            api.RegisterCommand("slomo", "", "", OnCmdSlomoToggleServer);
-            api.RegisterCommand("glitch", "", "", OnCmdGlitchToggle);
-            api.RegisterCommand("rain", "", "", OnCmdRainToggle);
+            api.RegisterCommand("slomo", "", "", OnCmdSlomoToggleServer, Privilege.controlserver);
+            api.RegisterCommand("glitch", "", "", OnCmdGlitchToggle, Privilege.controlserver);
+            api.RegisterCommand("rain", "", "", OnCmdRainToggle, Privilege.controlserver);
 
 
             serverChannel =

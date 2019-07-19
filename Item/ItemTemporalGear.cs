@@ -3,6 +3,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -140,9 +141,8 @@ namespace Vintagestory.GameContent
                 (byEntity.World as IClientWorldAccessor).ShakeCamera(0.035f);
 
 
-                ILoadedSound sound = byEntity.World.Api.ObjectCache["temporalGearSound"] as ILoadedSound;
+                ILoadedSound sound = ObjectCacheUtil.TryGet<ILoadedSound>(api, "temporalGearSound");
                 sound?.SetPitch(0.7f + secondsUsed / 4);
-
             }
 
             return secondsUsed < 3.5;
@@ -152,7 +152,7 @@ namespace Vintagestory.GameContent
         {
             if (byEntity.World.Side == EnumAppSide.Client)
             {
-                ILoadedSound sound = byEntity.World.Api.ObjectCache["temporalGearSound"] as ILoadedSound;
+                ILoadedSound sound = ObjectCacheUtil.TryGet<ILoadedSound>(api, "temporalGearSound");
                 sound?.Stop();
                 sound?.Dispose();
             }
@@ -188,7 +188,7 @@ namespace Vintagestory.GameContent
         {
             if (byEntity.World.Side == EnumAppSide.Client)
             {
-                ILoadedSound sound = byEntity.World.Api.ObjectCache["temporalGearSound"] as ILoadedSound;
+                ILoadedSound sound = ObjectCacheUtil.TryGet<ILoadedSound>(api, "temporalGearSound");
                 sound?.Stop();
                 sound?.Dispose();
             }

@@ -29,6 +29,20 @@ namespace Vintagestory.GameContent
         {
             IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
 
+            if (blockSel.Position == null) return;
+
+            if (api.ModLoader.GetModSystem<ModSystemBlockReinforcement>()?.IsReinforced(blockSel.Position) == true)
+            {
+                byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
+                return;
+            }
+
+            if (!byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            {
+                byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
+                return;
+            }
+
             if (!canMicroChisel && byPlayer?.WorldData.CurrentGameMode != EnumGameMode.Creative)
             {
                 base.OnHeldAttackStart(slot, byEntity, blockSel, entitySel, ref handling);
@@ -40,6 +54,8 @@ namespace Vintagestory.GameContent
                 base.OnHeldAttackStart(slot, byEntity, blockSel, entitySel, ref handling);
                 return;
             }
+
+
 
             Block block = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
             Block chiseledblock = byEntity.World.GetBlock(new AssetLocation("chiseledblock"));
@@ -55,6 +71,20 @@ namespace Vintagestory.GameContent
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
             IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
+
+            if (blockSel?.Position == null) return;
+
+            if (api.ModLoader.GetModSystem<ModSystemBlockReinforcement>()?.IsReinforced(blockSel.Position) == true)
+            {
+                byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
+                return;
+            }
+
+            if (!byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            {
+                byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
+                return;
+            }
 
             if (!canMicroChisel && byPlayer?.WorldData.CurrentGameMode != EnumGameMode.Creative)
             {

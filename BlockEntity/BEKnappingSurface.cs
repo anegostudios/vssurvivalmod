@@ -359,6 +359,9 @@ namespace Vintagestory.GameContent
                 workitemRenderer.Unregister();
                 workitemRenderer = null;
             }
+
+            dlg?.TryClose();
+            dlg?.Dispose();
         }
 
 
@@ -459,6 +462,7 @@ namespace Vintagestory.GameContent
                     api.World.SpawnItemEntity(BaseMaterial, pos.ToVec3d().Add(0.5));
                 }
                 api.World.BlockAccessor.SetBlock(0, pos);
+                api.World.BlockAccessor.TriggerNeighbourBlockUpdate(pos);
             }
 
             if (packetid == (int)EnumClayFormingPacket.SelectRecipe)
@@ -499,7 +503,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-
+        GuiDialog dlg;
         public void OpenDialog(IClientWorldAccessor world, BlockPos pos, ItemStack baseMaterial)
         {
             List<KnappingRecipe> recipes = world.KnappingRecipes
@@ -515,7 +519,8 @@ namespace Vintagestory.GameContent
 
             ICoreClientAPI capi = api as ICoreClientAPI;
 
-            GuiDialog dlg = new GuiDialogBlockEntityRecipeSelector(
+            dlg?.Dispose();
+            dlg = new GuiDialogBlockEntityRecipeSelector(
                 Lang.Get("Select recipe"),
                 stacks.ToArray(),
                 (selectedIndex) => {

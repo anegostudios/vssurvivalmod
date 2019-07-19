@@ -66,7 +66,7 @@ namespace Vintagestory.GameContent
         {
             return
                 (metalContent == null || (metalContent.Collectible.Equals(metalContent, metal, GlobalConstants.IgnoredStackAttributes) && fillLevel < requiredUnits))
-                && GetMoldedStack(metal) != null
+                && GetMoldedStacks(metal) != null
             ;
         }
 
@@ -85,7 +85,7 @@ namespace Vintagestory.GameContent
             {
                 metalContent.ResolveBlockOrItem(api.World);
             }
-            
+
 
             block = api.World.BlockAccessor.GetBlock(pos);
             if (block == null || block.Code == null || block.Attributes == null) return;
@@ -97,7 +97,7 @@ namespace Vintagestory.GameContent
             {
                 fillQuadsByLevel = block.Attributes["fillQuadsByLevel"].AsObject<Cuboidf[]>();
             }
-            
+
 
             if (fillQuadsByLevel == null)
             {
@@ -111,13 +111,13 @@ namespace Vintagestory.GameContent
 
 
                 capi.Event.RegisterRenderer(renderer = new ToolMoldRenderer(pos, capi, fillQuadsByLevel), EnumRenderStage.Opaque);
-                
+
                 UpdateRenderer();
             }
 
             RegisterGameTickListener(OnGameTick, 50);
         }
-        
+
 
         private void OnGameTick(float dt)
         {
@@ -130,7 +130,7 @@ namespace Vintagestory.GameContent
             {
                 renderer.Temperature = Math.Min(1300, metalContent.Collectible.GetTemperature(api.World, metalContent));
             }
-            
+
         }
 
 
@@ -172,12 +172,12 @@ namespace Vintagestory.GameContent
                         handled = true;
                     }
 
-                    
+
                 }
 
                 return handled;
             }
-            
+
 
             return false;
         }
@@ -192,15 +192,18 @@ namespace Vintagestory.GameContent
 
                 if (api is ICoreServerAPI)
                 {
-                    ItemStack outstack = GetReadyMoldedStack();
+                    ItemStack[] outstacks = GetReadyMoldedStacks();
 
-                    if (outstack != null)
+                    if (outstacks != null)
                     {
-                        outstack.Collectible.SetTemperature(api.World, outstack, metalContent.Collectible.GetTemperature(api.World, metalContent));
-
-                        if (!byPlayer.InventoryManager.TryGiveItemstack(outstack))
+                        foreach (ItemStack outstack in outstacks)
                         {
-                            api.World.SpawnItemEntity(outstack, pos.ToVec3d().Add(0.5, 0.2, 0.5));
+                            outstack.Collectible.SetTemperature(api.World, outstack, metalContent.Collectible.GetTemperature(api.World, metalContent));
+
+                            if (!byPlayer.InventoryManager.TryGiveItemstack(outstack))
+                            {
+                                api.World.SpawnItemEntity(outstack, pos.ToVec3d().Add(0.5, 0.2, 0.5));
+                            }
                         }
                     }
 
@@ -212,14 +215,14 @@ namespace Vintagestory.GameContent
 
                 return true;
             }
-            
+
 
             return false;
         }
 
 
 
-        
+
 
 
 
@@ -263,7 +266,7 @@ namespace Vintagestory.GameContent
                 UpdateRenderer();
                 return;
             }
-            
+
         }
 
         public void OnPourOver()
@@ -292,52 +295,51 @@ namespace Vintagestory.GameContent
 
 
 
-        public ItemStack GetReadyMoldedStack()
+        public ItemStack[] GetReadyMoldedStacks()
         {
             if (fillLevel < requiredUnits || !IsHardened) return null;
             if (metalContent?.Collectible == null) return null;
 
-            ItemStack stack = GetMoldedStack(metalContent);
+            ItemStack[] stacks = GetMoldedStacks(metalContent);
 
-            return stack;
+            return stacks;
         }
 
-        public ItemStack GetMoldedStack(ItemStack fromMetal)
-        { 
-            string itemclass = block.Attributes["drop"]["class"].AsString();
-            string code = block.Attributes["drop"]["code"].AsString();
-
-            string metaltype = fromMetal.Collectible.LastCodePart();
-            string tooltype = block.LastCodePart();
-            code = code.Replace("{tooltype}", tooltype).Replace("{metal}", metaltype);
-
-            ItemStack outstack = null;
-
-            if (itemclass == "Block")
+        public ItemStack[] GetMoldedStacks(ItemStack fromMetal)
+        {
+            if (block.Attributes["drop"].Exists)
             {
-                Block block = api.World.GetBlock(new AssetLocation(code));
-                
-                if (block == null)
-                {
-                    //api.World.Logger.Error("Tool mold block drop " + code + " does not exist!");
-                    return null;
-                }
+                JsonItemStack jstack = block.Attributes["drop"].AsObject<JsonItemStack>();
+                if (jstack == null) return null;
 
-                outstack = new ItemStack(block);
+                return new ItemStack[] { stackFromCode(jstack, fromMetal) };
             }
             else
             {
-                Item item = api.World.GetItem(new AssetLocation(code));
-                if (item == null)
+                JsonItemStack[] jstacks = block.Attributes["drops"].AsObject<JsonItemStack[]>();
+                List<ItemStack> stacks = new List<ItemStack>();
+
+                foreach (var jstack in jstacks)
                 {
-                    //api.World.Logger.Error("Tool mold item drop " + code + " does not exist!");
-                    return null;
+                    ItemStack stack = stackFromCode(jstack, fromMetal);
+                    if (stack != null)
+                    {
+                        stacks.Add(stack);
+                    }
                 }
 
-                outstack = new ItemStack(item);
+                return stacks.ToArray();
             }
+        }
 
-            return outstack;
+
+        ItemStack stackFromCode(JsonItemStack jstack, ItemStack fromMetal)
+        {
+            string metaltype = fromMetal.Collectible.LastCodePart();
+            string tooltype = block.LastCodePart();
+            jstack.Code.Path = jstack.Code.Path.Replace("{tooltype}", tooltype).Replace("{metal}", metaltype);
+            jstack.Resolve(api.World, "tool mold drop for " + block.Code);
+            return jstack.ResolvedItemstack;
         }
 
 
@@ -348,7 +350,7 @@ namespace Vintagestory.GameContent
             metalContent = tree.GetItemstack("contents");
             fillLevel = tree.GetInt("fillLevel");
             if (api?.World != null && metalContent != null) metalContent.ResolveBlockOrItem(api.World);
-            
+
             UpdateRenderer();
 
             if (api?.Side == EnumAppSide.Client)
@@ -374,14 +376,15 @@ namespace Vintagestory.GameContent
             if (this.metalContent != null)
             {
                 string state = IsLiquid ? Lang.Get("liquid") : (IsHardened ? Lang.Get("hardened") : Lang.Get("soft"));
-                
+
                 string temp = Temperature < 21 ? Lang.Get("Cold") : Lang.Get("{0}°C", (int)Temperature);
                 contents = string.Format("{0}/{4} units of {1} {2} ({3})\n", fillLevel, state, this.metalContent.GetName(), temp, requiredUnits);
-            } else
+            }
+            else
             {
                 contents = string.Format("0/{0} units of metal\n", requiredUnits);
             }
-            
+
 
             return contents.Length == 0 ? "Empty" : contents;
         }
