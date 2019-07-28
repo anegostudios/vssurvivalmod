@@ -13,7 +13,7 @@ using Vintagestory.API.Config;
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Tyron Madlener (Anego Studios)")]
 [assembly: AssemblyProduct("Vintage Story")]
-[assembly: AssemblyCopyright("Copyright © 2017 Anego Studios")]
+[assembly: AssemblyCopyright(GameVersion.CopyRight)]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

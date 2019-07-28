@@ -25,14 +25,14 @@ namespace Vintagestory.GameContent
         {
             base.Initialize(api);
 
-            if (api is ICoreServerAPI && !IsRipe())
+            if (api is ICoreServerAPI)
             {
                 if (totalDaysForNextStage == 0)
                 {
                     totalDaysForNextStage = api.World.Calendar.TotalDays + GetDaysForNextStage();
                 }
 
-                growListenerId = RegisterGameTickListener(CheckGrow, 2000);
+                growListenerId = RegisterGameTickListener(CheckGrow, 8000);
             }
         }
 
@@ -46,21 +46,13 @@ namespace Vintagestory.GameContent
                 DoGrow();
                 totalDaysForNextStage += GetDaysForNextStage();
             }
-
-            // If ripe we can unregister the timer
-            // The harvesting mechanic in BlockBehaviorHarvestable performs a SetBlock
-            // so it will re-initalize our blockentity, causing a new listener to be registered,
-            // so we're done here \o/
-            if (didGrow && IsRipe())
-            {
-                api.Event.UnregisterGameTickListener(growListenerId);
-                growListenerId = 0;
-            }
         }
 
         public double GetDaysForNextStage()
         {
-            return (5 + rand.NextDouble()) * 0.66;
+            if (IsRipe()) return 4 * (5 + rand.NextDouble()) * 0.8;
+
+            return (5 + rand.NextDouble()) * 0.8;
         }
 
         public bool IsRipe()
@@ -72,7 +64,8 @@ namespace Vintagestory.GameContent
         void DoGrow()
         { 
             Block block = api.World.BlockAccessor.GetBlock(pos);
-            string nextCodePart = (block.LastCodePart() == "empty") ? "flowering" : "ripe";
+            string nowCodePart = block.LastCodePart();
+            string nextCodePart = (nowCodePart == "empty") ? "flowering" : ((nowCodePart == "flowering") ? "ripe" : "empty");
 
 
             AssetLocation loc = block.CodeWithParts(nextCodePart);
@@ -86,6 +79,7 @@ namespace Vintagestory.GameContent
             if (nextBlock?.Code == null) return;
 
             api.World.BlockAccessor.ExchangeBlock(nextBlock.BlockId, pos);
+            MarkDirty(true);
         }
 
 
@@ -106,6 +100,11 @@ namespace Vintagestory.GameContent
         {
             Block block = api.World.BlockAccessor.GetBlock(pos);
             double daysleft = totalDaysForNextStage - api.World.Calendar.TotalDays;
+
+            /*if (forPlayer.WorldData.CurrentGameMode == EnumGameMode.Creative)
+            {
+                return "" + daysleft;
+            }*/
 
             if (block.LastCodePart() == "ripe")
             {

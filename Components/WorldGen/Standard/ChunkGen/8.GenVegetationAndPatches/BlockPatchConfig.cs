@@ -33,7 +33,7 @@ namespace Vintagestory.ServerMods.NoObf
 
                     if (code.Path.Contains("{rocktype}"))
                     {
-                        if (patch.BlocksByRockType == null) patch.BlocksByRockType = new Dictionary<ushort, Block[]>();                                
+                        if (patch.BlocksByRockType == null) patch.BlocksByRockType = new Dictionary<int, Block[]>();                                
 
                         for (int k = 0; k < rockstrata.Variants.Length; k++)
                         {

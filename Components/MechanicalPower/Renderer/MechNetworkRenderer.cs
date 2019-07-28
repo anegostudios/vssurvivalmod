@@ -54,7 +54,7 @@ namespace Vintagestory.GameContent.Mechanics
         }
 
 
-        public void AddDevice(IMechanicalPowerDevice device)
+        public void AddDevice(IMechanicalPowerNode device)
         {
             int index = -1;
             if (!MechBlockRendererIndexByBlock.TryGetValue(device.Block.Code, out index))
@@ -72,7 +72,7 @@ namespace Vintagestory.GameContent.Mechanics
             MechBlockRenderer[index].AddDevice(device);
         }
 
-        public void RemoveDevice(IMechanicalPowerDevice device)
+        public void RemoveDevice(IMechanicalPowerNode device)
         {
             int index = 0;
             if (MechBlockRendererIndexByBlock.TryGetValue(device.Block.Code, out index))

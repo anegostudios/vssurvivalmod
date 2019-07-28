@@ -29,7 +29,7 @@ namespace Vintagestory.GameContent
         {
             IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
 
-            if (blockSel.Position == null) return;
+            if (blockSel?.Position == null) return;
 
             if (api.ModLoader.GetModSystem<ModSystemBlockReinforcement>()?.IsReinforced(blockSel.Position) == true)
             {
@@ -99,7 +99,7 @@ namespace Vintagestory.GameContent
             }
             
             Block block = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
-
+            string blockName = block.GetPlacedBlockName(byEntity.World, blockSel.Position);
 
             Block chiseledblock = byEntity.World.GetBlock(new AssetLocation("chiseledblock"));
 
@@ -117,7 +117,7 @@ namespace Vintagestory.GameContent
             BlockEntityChisel be = byEntity.World.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityChisel;
             if (be == null) return;
 
-            be.WasPlaced(block);
+            be.WasPlaced(block, blockName);
             handling = EnumHandHandling.PreventDefaultAction;
         }
 
@@ -138,7 +138,7 @@ namespace Vintagestory.GameContent
         {
             if (blockSel == null) return 0;
             Block block = byPlayer.Entity.World.BlockAccessor.GetBlock(blockSel.Position);
-            return block is BlockChisel ? 5 : 0;
+            return block is BlockChisel ? 6 : 0;
         }
 
         public override void DrawToolModeIcon(ItemSlot slot, IPlayer byPlayer, BlockSelection blockSelection, Context cr, int x, int y, int width, int height, int toolMode, int color)
@@ -152,6 +152,7 @@ namespace Vintagestory.GameContent
                 case 2: Drawcreate16_svg(cr, x, y, width, height, colordoubles); break;
                 case 3: Drawcreate64_svg(cr, x, y, width, height, colordoubles); break;
                 case 4: Drawrotate_svg(cr, x, y, width, height, colordoubles); break;
+                case 5: Drawedit_svg(cr, x, y, width, height, colordoubles); break;
             }
         }
 
@@ -171,8 +172,8 @@ namespace Vintagestory.GameContent
             Matrix matrix = cr.Matrix;
 
             cr.Save();
-            float w = 146;
-            float h = 146;
+            float w = 119;
+            float h = 115;
             float scale = Math.Min(width / w, height / h);
             matrix.Translate(x + Math.Max(0, (width - w * scale) / 2), y + Math.Max(0, (height - h * scale) / 2));
             matrix.Scale(scale, scale);
@@ -187,14 +188,13 @@ namespace Vintagestory.GameContent
             cr.SetSource(pattern);
 
             cr.NewPath();
-            cr.MoveTo(119.050781, 45.898438);
-            cr.CurveTo(126.949219, 64.101563, 124.148438, 86.101563, 110.25, 102);
-            cr.CurveTo(90.949219, 124.199219, 57.25, 126.398438, 35.148438, 107.101563);
-            cr.CurveTo(19.648438, 93.601563, 13.851563, 73.101563, 18.449219, 54.398438);
-            cr.CurveTo(20.449219, 46.398438, 24.25, 38.699219, 30.050781, 32);
+            cr.MoveTo(100.761719, 29.972656);
+            cr.CurveTo(116.078125, 46.824219, 111.929688, 74.050781, 98.03125, 89.949219);
+            cr.CurveTo(78.730469, 112.148438, 45.628906, 113.027344, 23.527344, 93.726563);
+            cr.CurveTo(-13.023438, 56.238281, 17.898438, 7.355469, 61.082031, 7.5);
             cr.Tolerance = 0.1;
             cr.Antialias = Antialias.Default;
-            matrix = new Matrix(1, 0, 0, 1, 232.15, -324);
+            matrix = new Matrix(1, 0, 0, 1, 219.348174, -337.87843);
             pattern.Matrix = matrix;
             cr.StrokePreserve();
             if (pattern != null) pattern.Dispose();
@@ -204,13 +204,13 @@ namespace Vintagestory.GameContent
             cr.SetSource(pattern);
 
             cr.NewPath();
-            cr.MoveTo(105.148438, 26.898438);
-            cr.CurveTo(108.148438, 38.300781, 110.25, 53.601563, 109.050781, 64.898438);
-            cr.LineTo(120.449219, 48.800781);
-            cr.LineTo(139.449219, 43.699219);
-            cr.CurveTo(128.449219, 40.898438, 114.851563, 33.601563, 105.148438, 26.898438);
+            cr.MoveTo(81.890625, 11.0625);
+            cr.CurveTo(86.824219, 21.769531, 91.550781, 36.472656, 92.332031, 47.808594);
+            cr.LineTo(100.761719, 29.972656);
+            cr.LineTo(118.585938, 21.652344);
+            cr.CurveTo(107.269531, 20.804688, 92.609375, 15.976563, 81.890625, 11.0625);
             cr.ClosePath();
-            cr.MoveTo(105.148438, 26.898438);
+            cr.MoveTo(81.890625, 11.0625);
             cr.Tolerance = 0.1;
             cr.Antialias = Antialias.Default;
             cr.FillRule = FillRule.Winding;
@@ -219,6 +219,103 @@ namespace Vintagestory.GameContent
 
             cr.Restore();
         }
+
+        public void Drawedit_svg(Context cr, int x, int y, float width, float height, double[] rgba)
+        {
+            Pattern pattern = null;
+            Matrix matrix = cr.Matrix;
+
+            cr.Save();
+            float w = 382;
+            float h = 200;
+            float scale = Math.Min(width / w, height / h);
+            matrix.Translate(x + Math.Max(0, (width - w * scale) / 2), y + Math.Max(0, (height - h * scale) / 2));
+            matrix.Scale(scale, scale);
+            cr.Matrix = matrix;
+
+            cr.Operator = Operator.Over;
+            cr.LineWidth = 6;
+            cr.MiterLimit = 4;
+            cr.LineCap = LineCap.Butt;
+            cr.LineJoin = LineJoin.Miter;
+            pattern = new SolidPattern(rgba[0], rgba[1], rgba[2], rgba[3]);
+            cr.SetSource(pattern);
+
+            cr.NewPath();
+            cr.MoveTo(10.628906, 10.628906);
+            cr.LineTo(371.445313, 10.628906);
+            cr.LineTo(371.445313, 189.617188);
+            cr.LineTo(10.628906, 189.617188);
+            cr.ClosePath();
+            cr.MoveTo(10.628906, 10.628906);
+            cr.Tolerance = 0.1;
+            cr.Antialias = Antialias.Default;
+            matrix = new Matrix(3.543307, 0, 0, 3.543307, -219.495455, -129.753943);
+            pattern.Matrix = matrix;
+            cr.StrokePreserve();
+            if (pattern != null) pattern.Dispose();
+
+            cr.Operator = Operator.Over;
+            cr.LineWidth = 6;
+            cr.MiterLimit = 4;
+            cr.LineCap = LineCap.Butt;
+            cr.LineJoin = LineJoin.Miter;
+            pattern = new SolidPattern(rgba[0], rgba[1], rgba[2], rgba[3]);
+            cr.SetSource(pattern);
+
+            cr.NewPath();
+            cr.MoveTo(75.972656, 47.5625);
+            cr.LineTo(75.972656, 150.789063);
+            cr.Tolerance = 0.1;
+            cr.Antialias = Antialias.Default;
+            matrix = new Matrix(3.543307, 0, 0, 3.543307, -219.495455, -129.753943);
+            pattern.Matrix = matrix;
+            cr.StrokePreserve();
+            if (pattern != null) pattern.Dispose();
+
+            cr.Operator = Operator.Over;
+            cr.LineWidth = 6;
+            cr.MiterLimit = 4;
+            cr.LineCap = LineCap.Butt;
+            cr.LineJoin = LineJoin.Miter;
+            pattern = new SolidPattern(rgba[0], rgba[1], rgba[2], rgba[3]);
+            cr.SetSource(pattern);
+
+            cr.NewPath();
+            cr.MoveTo(52.308594, 49.4375);
+            cr.LineTo(98.714844, 49.4375);
+            cr.Tolerance = 0.1;
+            cr.Antialias = Antialias.Default;
+            matrix = new Matrix(3.543307, 0, 0, 3.543307, -219.495455, -129.753943);
+            pattern.Matrix = matrix;
+            cr.StrokePreserve();
+            if (pattern != null) pattern.Dispose();
+
+            cr.Operator = Operator.Over;
+            cr.LineWidth = 6;
+            cr.MiterLimit = 4;
+            cr.LineCap = LineCap.Butt;
+            cr.LineJoin = LineJoin.Miter;
+            pattern = new SolidPattern(rgba[0], rgba[1], rgba[2], rgba[3]);
+            cr.SetSource(pattern);
+
+            cr.NewPath();
+            cr.MoveTo(53.265625, 151.5);
+            cr.LineTo(99.667969, 151.5);
+            cr.Tolerance = 0.1;
+            cr.Antialias = Antialias.Default;
+            matrix = new Matrix(3.543307, 0, 0, 3.543307, -219.495455, -129.753943);
+            pattern.Matrix = matrix;
+            cr.StrokePreserve();
+            if (pattern != null) pattern.Dispose();
+
+            cr.Restore();
+        }
+
+
+
+
+
 
         public void Drawcreate16_svg(Context cr, int x, int y, float width, float height, double[] rgba)
         {

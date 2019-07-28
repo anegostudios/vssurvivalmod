@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
@@ -23,7 +24,7 @@ namespace Vintagestory.GameContent
     // - Each crop has different total growth speed
     // - Each crop can have any amounts of growth stages
     // - Some crops can be harvested with right click, without destroying the crop
-    public class BlockEntityFarmland : BlockEntity, IFarmlandBlockEntity, IAnimalFoodSource
+    public class BlockEntityFarmland : BlockEntity, IFarmlandBlockEntity, IAnimalFoodSource, IBlockShapeSupplier
     {
         protected static Random rand = new Random();
         protected static CodeAndChance[] weedNames;
@@ -33,7 +34,8 @@ namespace Vintagestory.GameContent
             { "verylow", 5 },
             { "low", 25 },
             { "medium", 50 },
-            { "high", 75 },
+            { "compost", 65 },
+            { "high", 80 },
         };
 
         // How many hours this block can retain water before becoming dry
@@ -384,7 +386,12 @@ namespace Vintagestory.GameContent
 
         void UpdateFarmlandBlock()
         {
-            int nowLevel = FertilityLevel((nutrients[0] + nutrients[1] + nutrients[2]) / 3);
+            // v1.10: Let's get rid of the mechanic that the farmland exchanges blocks
+            // it will just stay forever the original fertility block. For this, well make it so
+            // that in v1.10 they slowly restore to their original fertility blocks and then in v1.11 we remove the ExchangeBlock altogether
+
+
+            int nowLevel = FertilityLevel(originalFertility);// FertilityLevel((nutrients[0] + nutrients[1] + nutrients[2]) / 3);
             Block farmlandBlock = api.World.BlockAccessor.GetBlock(pos);
             Block nextFarmlandBlock = api.World.GetBlock(farmlandBlock.CodeWithParts(IsWatered ? "moist" : "dry", Fertilities.GetKeyAtIndex(nowLevel)));
 
@@ -582,6 +589,17 @@ namespace Vintagestory.GameContent
             api.World.BlockAccessor.BreakBlock(upPos, null);
 
             return 0.5f;
+        }
+
+        public bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
+        {
+            int nowLevel = FertilityLevel((nutrients[0] + nutrients[1] + nutrients[2]) / 3);
+            Block farmlandBlock = api.World.BlockAccessor.GetBlock(pos);
+            Block nextFarmlandBlock = api.World.GetBlock(farmlandBlock.CodeWithParts(IsWatered ? "moist" : "dry", Fertilities.GetKeyAtIndex(nowLevel)));
+
+            mesher.AddMeshData((api as ICoreClientAPI).TesselatorManager.GetDefaultBlockMesh(nextFarmlandBlock));
+
+            return true;
         }
 
         public Vec3d Position => pos.ToVec3d().Add(0.5, 1, 0.5);

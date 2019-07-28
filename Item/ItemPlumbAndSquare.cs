@@ -8,16 +8,43 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
     public class ItemPlumbAndSquare : Item
     {
+        WorldInteraction[] interactions;
 
         public override void OnLoaded(ICoreAPI api)
         {
-            base.OnLoaded(api);
+            if (api.Side != EnumAppSide.Client) return;
+            ICoreClientAPI capi = api as ICoreClientAPI;
+
+            interactions = ObjectCacheUtil.GetOrCreate(api, "plumbAndSquareInteractions", () =>
+            {
+                List<ItemStack> stacks = new List<ItemStack>();
+
+                foreach (CollectibleObject obj in api.World.Collectibles)
+                {
+                    if (obj.Attributes?["reinforcementStrength"].AsInt(0) > 0)
+                    {
+                        stacks.Add(new ItemStack(obj));
+                    }
+                }
+
+                return new WorldInteraction[]
+                {
+                    new WorldInteraction()
+                    {
+                        ActionLangCode = "heldhelp-reinforceblock",
+                        MouseButton = EnumMouseButton.Right,
+                        Itemstacks = stacks.ToArray()
+                    }
+                };
+            });
         }
+
 
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
@@ -108,6 +135,10 @@ namespace Vintagestory.GameContent
 
             handling = EnumHandHandling.PreventDefaultAction;
         }
-        
+
+        public override WorldInteraction[] GetHeldInteractionHelp(ItemSlot inSlot)
+        {
+            return interactions.Append(base.GetHeldInteractionHelp(inSlot));
+        }
     }
 }

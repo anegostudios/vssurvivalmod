@@ -13,7 +13,7 @@ namespace Vintagestory.GameContent
                 return false;
             }
 
-            ushort blockId = BlockId;
+            int blockId = BlockId;
 
             if (worldGenRand.NextDouble() <= 0.20)
             {

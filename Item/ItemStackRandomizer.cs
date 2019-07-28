@@ -130,7 +130,11 @@ namespace Vintagestory.GameContent
             for (int i = 0; i < Stacks.Length; i++)
             {
                 if (Stacks[i].Chance > diceRoll)
-                {
+                { 
+                    if (Stacks[i].ResolvedStack == null)
+                    {
+                        continue;
+                    }
                     intoslot.Itemstack = Stacks[i].ResolvedStack.Clone();
                     intoslot.Itemstack.StackSize = (int)Stacks[i].Quantity.nextFloat(1, rand);
                     return;
@@ -142,10 +146,10 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void GetHeldItemInfo(ItemStack stack, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
+        public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
         {
-            base.GetHeldItemInfo(stack, dsc, world, withDebugInfo);
-            float total = stack.Attributes.GetFloat("totalChance", 1);
+            base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
+            float total = inSlot.Itemstack.Attributes.GetFloat("totalChance", 1);
 
             dsc.AppendLine(Lang.Get("With a {0}% chance, will generate one of the following:", (total * 100).ToString("0.#")));
 

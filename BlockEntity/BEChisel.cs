@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
@@ -60,13 +61,16 @@ namespace Vintagestory.GameContent
         /// <summary>
         /// List of block ids for the materials used
         /// </summary>
-        public ushort[] MaterialIds;
+        public int[] MaterialIds;
         
         
         public MeshData Mesh;
         Cuboidf[] selectionBoxes = new Cuboidf[0];
         Cuboidf[] selectionBoxesVoxels = new Cuboidf[0];
         int prevSize = -1;
+        string blockName = "";
+
+        public string BlockName => blockName;
 
         public bool DetailingMode
         {
@@ -104,10 +108,11 @@ namespace Vintagestory.GameContent
         }
 
 
-        public void WasPlaced(Block block)
+        public void WasPlaced(Block block, string blockName)
         {
-            MaterialIds = new ushort[] { block.BlockId };
+            MaterialIds = new int[] { block.BlockId };
             VoxelCuboids.Add(ToCuboid(0, 0, 0, 16, 16, 16, 0));
+            this.blockName = blockName;
 
             if (api.Side == EnumAppSide.Client && Mesh == null)
             {
@@ -163,6 +168,17 @@ namespace Vintagestory.GameContent
         internal void UpdateVoxel(IPlayer byPlayer, ItemSlot itemslot, Vec3i voxelPos, BlockFacing facing, bool isBreak)
         {
             int mode = ChiselMode(byPlayer);
+
+            if (mode == 5)
+            {
+                IClientWorldAccessor clientWorld = (IClientWorldAccessor)api.World;
+
+                string prevName = blockName;
+                GuiDialogBlockEntityTextInput dlg = new GuiDialogBlockEntityTextInput(Lang.Get("Block name"), pos, blockName, api as ICoreClientAPI);
+                dlg.OnTextChanged = (text) => blockName = text;
+                dlg.OnCloseCancel = () => blockName = prevName;
+                dlg.TryOpen();
+            }
 
             bool wasChanged = false;
 
@@ -297,7 +313,7 @@ namespace Vintagestory.GameContent
 
             ((ICoreClientAPI)api).Network.SendBlockEntityPacket(
                 pos.X, pos.Y, pos.Z,
-                (int)1000,
+                (int)1010,
                 data
             );
         }
@@ -305,7 +321,21 @@ namespace Vintagestory.GameContent
 
         public override void OnReceivedClientPacket(IPlayer player, int packetid, byte[] data)
         {
-            if (packetid == 1000)
+            if (packetid == (int)EnumSignPacketId.SaveText)
+            {
+                using (MemoryStream ms = new MemoryStream(data))
+                {
+                    BinaryReader reader = new BinaryReader(ms);
+                    blockName = reader.ReadString();
+                    if (blockName == null) blockName = "";
+                }
+                MarkDirty(true);
+                // Tell server to save this chunk to disk again
+                api.World.BlockAccessor.GetChunkAtBlockPos(pos.X, pos.Y, pos.Z).MarkModified();
+            }
+
+
+            if (packetid == 1010)
             {
                 Vec3i voxelPos;
                 bool isBreak;
@@ -363,6 +393,7 @@ namespace Vintagestory.GameContent
         }
 
 
+        #region Voxel math
 
         public bool SetVoxel(Vec3i voxelPos, bool state, IPlayer byPlayer)
         {
@@ -586,6 +617,7 @@ namespace Vintagestory.GameContent
             HashSet<Cuboidf> boxes = new HashSet<Cuboidf>();
 
             int size = ChiselSize(byPlayer);
+            if (size <= 0) size = 16;
 
             float sx = size / 16f;
             float sy = size / 16f;
@@ -616,13 +648,15 @@ namespace Vintagestory.GameContent
             selectionBoxesVoxels = boxes.ToArray();
         }
 
+        #endregion
 
+        #region Mesh generation
         public void RegenMesh()
         {
             Mesh = CreateMesh(api as ICoreClientAPI, VoxelCuboids, MaterialIds);
         }
 
-        public static MeshData CreateMesh(ICoreClientAPI coreClientAPI, List<uint> voxelCuboids, ushort[] materials)
+        public static MeshData CreateMesh(ICoreClientAPI coreClientAPI, List<uint> voxelCuboids, int[] materials)
         {
             MeshData mesh = new MeshData(24, 36, false).WithTints().WithRenderpasses().WithXyzFaces();
             if (voxelCuboids == null || materials == null) return mesh;
@@ -768,7 +802,7 @@ namespace Vintagestory.GameContent
             for (int j = 3; j < mesh.Rgba2.Length; j += 4) mesh.Rgba2[j] = (byte)255; // Alpha value
 
             mesh.Flags = new int[4];
-            mesh.Flags.Fill(0);
+            mesh.Flags.Fill(block.VertexFlags.All | face.NormalPackedFlags | (1 << 14));
             mesh.RenderPasses = new int[1];
             mesh.RenderPassCount = 1;
             mesh.RenderPasses[0] = (int)block.RenderPass;
@@ -781,7 +815,7 @@ namespace Vintagestory.GameContent
         }
 
 
-
+        #endregion
 
 
         public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
@@ -789,6 +823,7 @@ namespace Vintagestory.GameContent
             base.FromTreeAtributes(tree, worldAccessForResolve);
 
             MaterialIds = MaterialIdsFromAttributes(tree, worldAccessForResolve);
+            blockName = tree.GetString("blockName", "");
 
             VoxelCuboids = new List<uint>((tree["cuboids"] as IntArrayAttribute).AsUint);
 
@@ -801,17 +836,25 @@ namespace Vintagestory.GameContent
         }
 
 
-        public static ushort[] MaterialIdsFromAttributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
+        public static int[] MaterialIdsFromAttributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
         {
             if (tree["materials"] is IntArrayAttribute)
             {
                 // Pre 1.8 storage 
-                return (tree["materials"] as IntArrayAttribute).AsUShort;
+                ushort[] values = (tree["materials"] as IntArrayAttribute).AsUShort;
+
+                int[] valuesInt = new int[values.Length];
+                for (int i = 0; i < values.Length; i++)
+                {
+                    valuesInt[i] = values[i];
+                }
+
+                return valuesInt;
             }
             else
             {
                 string[] codes = (tree["materials"] as StringArrayAttribute).value;
-                ushort[] ids = new ushort[codes.Length];
+                int[] ids = new int[codes.Length];
                 for (int i = 0; i < ids.Length; i++)
                 {
                     ids[i] = worldAccessForResolve.GetBlock(new AssetLocation(codes[i])).BlockId;
@@ -835,6 +878,8 @@ namespace Vintagestory.GameContent
 
             tree["materials"] = attr;
             tree["cuboids"] = new IntArrayAttribute(VoxelCuboids.ToArray());
+
+            tree.SetString("blockName", blockName);
         }
 
 

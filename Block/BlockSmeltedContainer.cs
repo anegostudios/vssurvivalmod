@@ -140,7 +140,9 @@ namespace Vintagestory.GameContent
 
                 if (contents.Key == null)
                 {
-                    slot.Itemstack = new ItemStack(byEntity.World.GetBlock(new AssetLocation("crucible-burned")));
+                    string emptiedCode = Attributes["emptiedBlockCode"].AsString();
+
+                    slot.Itemstack = new ItemStack(byEntity.World.GetBlock(AssetLocation.Create(emptiedCode, Code.Domain)));
                     slot.MarkDirty();
                     handHandling = EnumHandHandling.PreventDefault;
                     return;
@@ -274,7 +276,8 @@ namespace Vintagestory.GameContent
 
                 if (newAmount <= 0 && byEntity.World is IServerWorldAccessor)
                 {
-                    slot.Itemstack = new ItemStack(byEntity.World.GetBlock(new AssetLocation("crucible-burned")));
+                    string emptiedCode = Attributes["emptiedBlockCode"].AsString();
+                    slot.Itemstack = new ItemStack(byEntity.World.GetBlock(AssetLocation.Create(emptiedCode, Code.Domain)));
                     slot.MarkDirty();
                     // Since we change the item stack we have to call this ourselves
                     OnHeldInteractStop(secondsUsed, slot, byEntity, blockSel, entitySel);
@@ -345,9 +348,9 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void GetHeldItemInfo(ItemStack stack, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
+        public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
         {
-            KeyValuePair<ItemStack, int> contents = GetContents(world, stack);
+            KeyValuePair<ItemStack, int> contents = GetContents(world, inSlot.Itemstack);
 
             if (contents.Key != null)
             {
@@ -357,7 +360,7 @@ namespace Vintagestory.GameContent
 
                 dsc.Append(Lang.Get("item-unitdrop", (int)(contents.Value), metal));
 
-                if (HasSolidifed(stack, contents.Key, world))
+                if (HasSolidifed(inSlot.Itemstack, contents.Key, world))
                 {
                     dsc.Append(Lang.Get("metalwork-toocold"));
                 }
@@ -365,7 +368,7 @@ namespace Vintagestory.GameContent
 
             
 
-            base.GetHeldItemInfo(stack, dsc, world, withDebugInfo);
+            base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
         }
 
 

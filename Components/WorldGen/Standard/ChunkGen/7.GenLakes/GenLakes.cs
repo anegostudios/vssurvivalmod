@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Vintagestory.API;
 using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.ServerMods.NoObf;
@@ -87,7 +88,7 @@ namespace Vintagestory.ServerMods
             lakebedLayerConfig = blockLayerConfig.LakeBedLayer;
         }
 
-        private void OnChunkColumnGen(IServerChunk[] chunks, int chunkX, int chunkZ)
+        private void OnChunkColumnGen(IServerChunk[] chunks, int chunkX, int chunkZ, ITreeAttribute chunkGenParams = null)
         {
             ushort[] heightmap = chunks[0].MapChunk.RainHeightMap;
 
@@ -283,7 +284,7 @@ namespace Vintagestory.ServerMods
                 if (belowBlock.IsLiquid()) continue;
                 
                 float rainRel = TerraGenConfig.GetRainFall((climate >> 8) & 0xff, lakeYPos) / 255f;
-                ushort rockBlockId = mapchunk.TopRockIdMap[lz * chunksize + lx];
+                int rockBlockId = mapchunk.TopRockIdMap[lz * chunksize + lx];
                 if (rockBlockId == 0) continue;
                 
                 for (int i = 0; i < lakebedLayerConfig.BlockCodeByMin.Length; i++)

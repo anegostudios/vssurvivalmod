@@ -69,7 +69,7 @@ namespace Vintagestory.GameContent
 
             if (block.CanAttachBlockAt(world.BlockAccessor, this, attachingBlockPos, onBlockFace))
             {
-                ushort blockId = world.BlockAccessor.GetBlock(CodeWithParts(oppositeFace.Code)).BlockId;
+                int blockId = world.BlockAccessor.GetBlock(CodeWithParts(oppositeFace.Code)).BlockId;
                 world.BlockAccessor.SetBlock(blockId, blockpos);
                 return true;
             }
@@ -81,7 +81,7 @@ namespace Vintagestory.GameContent
         {
             string[] parts = Code.Path.Split('-');
             BlockFacing facing = BlockFacing.FromCode(parts[parts.Length - 1]);
-            ushort blockId = world.BlockAccessor.GetBlockId(pos.AddCopy(facing));
+            int blockId = world.BlockAccessor.GetBlockId(pos.AddCopy(facing));
 
             Block block = world.BlockAccessor.GetBlock(blockId);
 

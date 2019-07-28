@@ -143,7 +143,6 @@ namespace Vintagestory.GameContent
             if (ServerPos.Motion.Z < 0) projectileBox.Z1 += 1.5 * ServerPos.Motion.Z;
             else projectileBox.Z2 += 1.5 * ServerPos.Motion.Z;
 
-
             Entity entity = World.GetNearestEntity(ServerPos.XYZ, 5f, 5f, (e) => {
                 if (e.EntityId == this.EntityId || !e.IsInteractable) return false;
 
@@ -159,24 +158,53 @@ namespace Vintagestory.GameContent
 
             if (entity != null)
             {
+                IServerPlayer fromPlayer = null;
+                if (FiredBy is EntityPlayer)
+                {
+                    fromPlayer = (FiredBy as EntityPlayer).Player as IServerPlayer;
+                }
+
+                bool targetIsPlayer = entity is EntityPlayer;
+                bool targetIsCreature = entity is EntityAgent;
+                bool canDamage = true;
+
+                ICoreServerAPI sapi = World.Api as ICoreServerAPI;
+                if (fromPlayer != null)
+                {
+                    if (targetIsPlayer && (!sapi.Server.Config.AllowPvP || !fromPlayer.HasPrivilege("attackplayers"))) canDamage = false;
+                    if (targetIsCreature && !fromPlayer.HasPrivilege("attackcreatures")) canDamage = false;
+                }
+
                 msCollide = World.ElapsedMilliseconds;
+                World.PlaySoundAt(new AssetLocation("sounds/arrow-impact"), this, null, false, 24);
 
-                entity.ReceiveDamage(new DamageSource() { Source = EnumDamageSource.Entity, SourceEntity = this, Type = EnumDamageType.PiercingAttack }, Damage);
+                if (canDamage)
+                {
+                    bool didDamage = entity.ReceiveDamage(new DamageSource() { Source = EnumDamageSource.Entity, SourceEntity = FiredBy == null ? this : FiredBy, Type = EnumDamageType.PiercingAttack }, Damage);
 
-                float kbresist = entity.Properties.KnockbackResistance;
-                entity.LocalPos.Motion.Add(kbresist * pos.Motion.X * Weight, kbresist * pos.Motion.Y * Weight, kbresist * pos.Motion.Z * Weight);
+                    float kbresist = entity.Properties.KnockbackResistance;
+                    entity.LocalPos.Motion.Add(kbresist * pos.Motion.X * Weight, kbresist * pos.Motion.Y * Weight, kbresist * pos.Motion.Z * Weight);
 
-                World.PlaySoundAt(new AssetLocation("sounds/arrow-impact"), this, null, false, 32);
+                    int leftDurability = ProjectileStack == null ? 1 : ProjectileStack.Attributes.GetInt("durability", 1);
 
-                int leftDurability = ProjectileStack == null ? 1 : ProjectileStack.Attributes.GetInt("durability", 1);
+                    if (World.Rand.NextDouble() < DropOnImpactChance && leftDurability > 0)
+                    {
+                        pos.Motion.Set(0, 0, 0);
+                    }
+                    else
+                    {
+                        Die();
+                    }
 
-                if (World.Rand.NextDouble() < DropOnImpactChance && leftDurability > 0)
+                    if (FiredBy is EntityPlayer && didDamage)
+                    {
+                        World.PlaySoundFor(new AssetLocation("sounds/player/projectilehit"), (FiredBy as EntityPlayer).Player, false, 24);
+                    }
+
+
+                } else
                 {
                     pos.Motion.Set(0, 0, 0);
-                }
-                else
-                {
-                    Die();
                 }
 
                 return true;

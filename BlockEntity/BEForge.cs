@@ -61,6 +61,8 @@ namespace Vintagestory.GameContent
                 renderer.SetContents(contents, fuelLevel, burning, true);
             }
 
+            lastHeatTotalHours = api.World.Calendar.TotalHours;
+
             RegisterGameTickListener(OnGameTick, 50);
         }
 
@@ -154,7 +156,7 @@ namespace Vintagestory.GameContent
                 CombustibleProperties combprops = slot.Itemstack.Collectible.CombustibleProps;
                 if (combprops != null && combprops.BurnTemperature > 1000)
                 {
-                    if (fuelLevel >= 10 / 16f) return false;
+                    if (fuelLevel >= 5 / 16f) return false;
                     fuelLevel += 1 / 16f;
 
                     renderer?.SetContents(contents, fuelLevel, burning, false);

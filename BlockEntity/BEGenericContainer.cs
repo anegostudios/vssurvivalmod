@@ -1,10 +1,13 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -95,6 +98,16 @@ namespace Vintagestory.GameContent
 
             inventory = new InventoryGeneric(quantitySlots, null, null, null);
 
+            if (block.Attributes?["spoilSpeedMulByFoodCat"].Exists == true)
+            {
+                inventory.PerishableFactorByFoodCategory = block.Attributes["spoilSpeedMulByFoodCat"].AsObject<Dictionary<EnumFoodCategory, float>>();
+            }
+
+            if (block.Attributes?["transitionSpeedMulByType"].Exists == true)
+            {
+                inventory.TransitionableSpeedMulByType = block.Attributes["transitionSpeedMulByType"].AsObject<Dictionary<EnumTransitionType, float>>();
+            }
+            
             inventory.OnInventoryClosed += OnInvClosed;
             inventory.OnInventoryOpened += OnInvOpened;
             inventory.SlotModified += OnSlotModifid;
@@ -146,6 +159,17 @@ namespace Vintagestory.GameContent
             }
 
             return true;
+        }
+
+
+        public override string GetBlockInfo(IPlayer forPlayer)
+        {
+            if (retrieveOnly)
+            {
+                return base.GetBlockInfo(forPlayer);
+            }
+
+            return null;
         }
     }
 }

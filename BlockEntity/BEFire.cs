@@ -21,6 +21,8 @@ namespace Vintagestory.GameContent
         Block fireBlock;
         Block neibBlock;
 
+        string startedByPlayerUid;
+
         ILoadedSound ambientSound;
 
 
@@ -104,12 +106,7 @@ namespace Vintagestory.GameContent
 
                     if (canBurn(fuelBlock, fuelPos))
                     {
-                        api.World.BlockAccessor.SetBlock(fireBlock.BlockId, fuelPos);
-                        BlockEntityFire befire = api.World.BlockAccessor.GetBlockEntity(pos.AddCopy(fromFacing.GetOpposite())) as BlockEntityFire;
-                        if (befire != null) befire.Init(fromFacing);
-                    }
-                    else
-                    {
+                        TrySpreadTo(fuelPos, fromFacing);
                     }
 
                     api.World.BlockAccessor.SetBlock(0, pos);
@@ -151,13 +148,8 @@ namespace Vintagestory.GameContent
 
                 if (canBurn(nBlock, npos))
                 {
-                    if (api.World.BlockAccessor.GetBlock(npos.AddCopy(fromFacing)).BlockId == 0)
+                    if (api.World.BlockAccessor.GetBlock(npos.AddCopy(fromFacing)).BlockId == 0 && TrySpreadTo(npos.AddCopy(fromFacing), fromFacing))
                     {
-                        api.World.BlockAccessor.SetBlock(fireBlock.BlockId, npos.AddCopy(fromFacing));
-
-                        BlockEntityFire befire = api.World.BlockAccessor.GetBlockEntity(npos.AddCopy(fromFacing)) as BlockEntityFire;
-                        if (befire != null) befire.Init(fromFacing);
-
                         break;
                     }
 
@@ -166,13 +158,8 @@ namespace Vintagestory.GameContent
                     {
                         BlockPos nnpos = npos.AddCopy(firefacing);
                         Block nnblock = api.World.BlockAccessor.GetBlock(nnpos);
-                        if (canBurn(nnblock, nnpos))
+                        if (canBurn(nnblock, nnpos) && TrySpreadTo(nnpos, firefacing))
                         {
-                            api.World.BlockAccessor.SetBlock(fireBlock.BlockId, nnpos);
-
-                            BlockEntityFire befire = api.World.BlockAccessor.GetBlockEntity(nnpos) as BlockEntityFire;
-                            if (befire != null) befire.Init(firefacing);
-
                             dobreak = true;
                             break;
                         }
@@ -184,6 +171,23 @@ namespace Vintagestory.GameContent
         }
 
 
+        public bool TrySpreadTo(BlockPos pos, BlockFacing facing)
+        {
+            IPlayer player = api.World.PlayerByUid(startedByPlayerUid);
+            
+            if (player != null && api.World.Claims.TestAccess(player, pos, EnumBlockAccessFlags.BuildOrBreak) != EnumWorldAccessResponse.Granted) {
+                return false;
+            }
+
+            api.World.BlockAccessor.SetBlock(fireBlock.BlockId, pos);
+
+            BlockEntityFire befire = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityFire;
+            if (befire != null) befire.Init(facing, startedByPlayerUid);
+
+            return true;
+        }
+
+
         bool canBurn(Block block, BlockPos pos)
         {
             if (block?.CombustibleProps == null || block.CombustibleProps.BurnDuration <= 0) return false;
@@ -191,9 +195,10 @@ namespace Vintagestory.GameContent
             return api.ModLoader.GetModSystem<ModSystemBlockReinforcement>()?.IsReinforced(pos) != true;
         }
 
-        public void Init(BlockFacing fromFacing)
+        public void Init(BlockFacing fromFacing, string startedByPlayerUid)
         {
             this.fromFacing = fromFacing;
+            this.startedByPlayerUid = startedByPlayerUid;
 
             BlockPos neibPos = pos.AddCopy(fromFacing.GetOpposite());
             neibBlock = api.World.BlockAccessor.GetBlock(neibPos);
@@ -246,6 +251,8 @@ namespace Vintagestory.GameContent
             remainingBurnDuration = tree.GetFloat("remainingBurnDuration");
             startDuration = tree.GetFloat("startDuration");
             fromFacing = BlockFacing.ALLFACES[tree.GetInt("fromFacing")];
+
+            startedByPlayerUid = tree.GetString("startedByPlayerUid");
         }
 
         public override void ToTreeAttributes(ITreeAttribute tree)
@@ -254,6 +261,11 @@ namespace Vintagestory.GameContent
             tree.SetFloat("remainingBurnDuration", remainingBurnDuration);
             tree.SetFloat("startDuration", startDuration);
             tree.SetInt("fromFacing", fromFacing.Index);
+
+            if (startedByPlayerUid != null)
+            {
+                tree.SetString("startedByPlayerUid", startedByPlayerUid);
+            }
         }
 
 

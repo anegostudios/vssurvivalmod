@@ -67,12 +67,12 @@ namespace Vintagestory.ServerMods
 
             Dictionary<AssetLocation, EntityProperties> entityTypesByCode = new Dictionary<AssetLocation, EntityProperties>();
 
-            for (int i = 0; i < api.World.EntityTypes.Length; i++)
+            for (int i = 0; i < api.World.EntityTypes.Count; i++)
             {
                 entityTypesByCode[api.World.EntityTypes[i].Code] = api.World.EntityTypes[i];
             }
 
-            for (int i = 0; i < api.World.EntityTypes.Length; i++)
+            for (int i = 0; i < api.World.EntityTypes.Count; i++)
             {
                 if (api.World.EntityTypes[i].Server?.SpawnConditions?.Worldgen == null) continue;
 
@@ -114,7 +114,7 @@ namespace Vintagestory.ServerMods
         int shrubsBotRight;
 
 
-        private void OnChunkColumnGen(IServerChunk[] chunks, int chunkX, int chunkZ)
+        private void OnChunkColumnGen(IServerChunk[] chunks, int chunkX, int chunkZ, ITreeAttribute chunkGenParams = null)
         {
             IntMap climateMap = chunks[0].MapChunk.MapRegion.ClimateMap;
             ushort[] heightMap = chunks[0].MapChunk.WorldGenTerrainHeightMap;

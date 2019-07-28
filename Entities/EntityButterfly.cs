@@ -12,7 +12,7 @@ namespace Vintagestory.GameContent
 {
     public class EntityButterfly : EntityAgent
     {
-        double sitHeight = 1;
+        //double sitHeight = 1;
 
         static EntityButterfly() {
             AiTaskRegistry.Register<AiTaskButterflyWander>("butterflywander");
@@ -145,7 +145,7 @@ namespace Vintagestory.GameContent
                 AnimManager.StopAnimation("fly");
                 AnimManager.StopAnimation("glide");
 
-                (Properties.Client.Renderer as EntityShapeRenderer).AddRenderFlags = VertexFlags.WindWaveBitMask;
+                (Properties.Client.Renderer as EntityShapeRenderer).AddRenderFlags = VertexFlags.GrassWindWaveBitMask;
             } else
             {
                 (Properties.Client.Renderer as EntityShapeRenderer).AddRenderFlags = 0;

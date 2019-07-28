@@ -179,7 +179,7 @@ namespace Vintagestory.GameContent
                 LootItem.Item(0.1f, 1, 1, "resonancearchive-1", "resonancearchive-2", "resonancearchive-3", "resonancearchive-4", "resonancearchive-5", "resonancearchive-6", "resonancearchive-7", "resonancearchive-8", "resonancearchive-9")
             );
 
-            lootLists["forage"] = LootList.Create(3.5f, 
+            lootLists["forage"] = LootList.Create(2.5f, 
                 LootItem.Item(1, 2, 6, "flint"),
                 LootItem.Item(1, 3, 9, "stick"),
                 LootItem.Item(1, 3, 16, "drygrass"),
@@ -193,10 +193,10 @@ namespace Vintagestory.GameContent
                 LootItem.Item(0.3f, 2, 6, "beenade-closed")
             );
 
-            lootLists["ore"] = LootList.Create(2.75f,
+            lootLists["ore"] = LootList.Create(1.35f,
                 LootItem.Item(1, 2, 12, "ore-lignite", "ore-bituminouscoal"),
                 LootItem.Item(1, 2, 8, "nugget-nativecopper", "ore-quartz", "nugget-galena"),
-                LootItem.Item(0.3f, 4, 12, "nugget-galena", "nugget-cassiterite", "nugget-sphalerite", "nugget-bismuthinite"),
+                LootItem.Item(0.2f, 4, 12, "nugget-galena", "nugget-cassiterite", "nugget-sphalerite", "nugget-bismuthinite"),
                 LootItem.Item(0.1f, 4, 12, "nugget-limonite", "nugget-nativegold", "nugget-chromite", "nugget-ilmenite", "nugget-nativesilver", "nugget-magnetite")
             );
 
@@ -213,7 +213,7 @@ namespace Vintagestory.GameContent
                 LootItem.Item(0.1f, 1, 4, "gear-rusty")
             );
 
-            lootLists["farming"] = LootList.Create(2.75f,
+            lootLists["farming"] = LootList.Create(2.5f,
                 LootItem.Item(0.1f, 1, 1, "linensack"),
                 LootItem.Item(0.5f, 1, 1, "basket"),
                 LootItem.Item(0.75f, 3, 10, "feather"),

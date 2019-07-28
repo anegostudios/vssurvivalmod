@@ -22,12 +22,12 @@ namespace Vintagestory.ServerMods.NoObf
 
         public Block vinesBlock;
         public Block vinesEndBlock;
-        public ushort logBlockId;
-        public ushort leavesBlockId;
-        public ushort leavesBranchyBlockId;
-        public ushort leavesBranchyDeadBlockId;
+        public int logBlockId;
+        public int leavesBlockId;
+        public int leavesBranchyBlockId;
+        public int leavesBranchyDeadBlockId;
 
-        public HashSet<ushort> blockIds = new HashSet<ushort>();
+        public HashSet<int> blockIds = new HashSet<int>();
 
 
         public void ResolveBlockNames(ICoreServerAPI api)
@@ -38,7 +38,7 @@ namespace Vintagestory.ServerMods.NoObf
                 api.Server.LogWarning("Tree gen tree: No block found with the blockcode " + logBlockCode);
                 logBlockId = 0;
             }
-            this.logBlockId = (ushort)logBlockId;
+            this.logBlockId = logBlockId;
 
 
 
@@ -48,7 +48,7 @@ namespace Vintagestory.ServerMods.NoObf
                 api.Server.LogWarning("Tree gen tree: No block found with the blockcode " + leavesBlockCode);
                 leavesBlockId = 0;
             }
-            this.leavesBlockId = (ushort)leavesBlockId;
+            this.leavesBlockId = leavesBlockId;
 
 
             int leavesBranchyBlockId = api.WorldManager.GetBlockId(leavesBranchyBlockCode);
@@ -57,7 +57,7 @@ namespace Vintagestory.ServerMods.NoObf
                 api.Server.LogWarning("Tree gen tree: No block found with the blockcode " + leavesBranchyBlockCode);
                 leavesBranchyBlockId = 0;
             }
-            this.leavesBranchyBlockId = (ushort)leavesBranchyBlockId;
+            this.leavesBranchyBlockId = leavesBranchyBlockId;
 
             int vinesBlockId = api.WorldManager.GetBlockId(vinesBlockCode);
             if (vinesBlockId == -1)
@@ -81,9 +81,9 @@ namespace Vintagestory.ServerMods.NoObf
                 this.vinesEndBlock = api.World.Blocks[vinesEndBlockId];
             }
 
-            blockIds.Add((ushort)leavesBlockId);
-            blockIds.Add((ushort)leavesBranchyBlockId);
-            blockIds.Add((ushort)logBlockId);
+            blockIds.Add(leavesBlockId);
+            blockIds.Add(leavesBranchyBlockId);
+            blockIds.Add(logBlockId);
         }
     }
 }

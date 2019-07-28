@@ -8,6 +8,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -16,6 +17,7 @@ namespace Vintagestory.GameContent
         public int AtlasSize { get; set; }
 
         string curMat, curLining;
+        ITexPositionSource glassTextureSource;
         ITexPositionSource tmpTextureSource;
 
         public TextureAtlasPosition this[string textureCode]
@@ -25,6 +27,7 @@ namespace Vintagestory.GameContent
                 if (textureCode == "material") return tmpTextureSource[curMat];
                 if (textureCode == "material-deco") return tmpTextureSource["deco-" + curMat];
                 if (textureCode == "lining") return tmpTextureSource[curLining == "plain" ? curMat : curLining];
+                if (textureCode == "glass") return glassTextureSource["material"];
                 return tmpTextureSource[textureCode];
             }
         }
@@ -33,11 +36,10 @@ namespace Vintagestory.GameContent
         {
             IPlayer player = (forEntity as EntityPlayer)?.Player;
 
-            if (forEntity.AnimManager.IsAnimationActive("sleep", "wave", "cheer", "shrug", "cry", "nod", "facepalm", "bow", "laugh", "rage"))
+            if (forEntity.AnimManager.IsAnimationActive("sleep", "wave", "cheer", "shrug", "cry", "nod", "facepalm", "bow", "laugh", "rage", "scythe"))
             {
                 return null;
             }
-
 
             if (player?.InventoryManager?.ActiveHotbarSlot != null && !player.InventoryManager.ActiveHotbarSlot.Empty && hand == EnumHand.Left)
             { 
@@ -60,6 +62,7 @@ namespace Vintagestory.GameContent
                     return be.GetLightHsv();
                 }
             }
+
             if (stack != null)
             {
                 string lining = stack.Attributes.GetString("lining");
@@ -73,29 +76,28 @@ namespace Vintagestory.GameContent
 
         public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
         {
-            
-            Dictionary<string, MeshRef> meshrefs = new Dictionary<string, MeshRef>();
-
-            object obj;
-            if (capi.ObjectCache.TryGetValue("blockLanternGuiMeshRefs", out obj))
+            Dictionary<string, MeshRef> meshrefs = ObjectCacheUtil.GetOrCreate(capi, "blockLanternGuiMeshRefs", () =>
             {
-                meshrefs = obj as Dictionary<string, MeshRef>;
-            } else
-            {
-                Dictionary<string, MeshData> lanternMeshes = GenGuiMeshes(capi);
-
-                foreach (var val in lanternMeshes)
-                {
-                    meshrefs[val.Key] = capi.Render.UploadMesh(val.Value);
-                }
-
-                capi.ObjectCache["blockLanternGuiMeshRefs"] = meshrefs;
-            }
+                return new Dictionary<string, MeshRef>();
+            });
 
             string material = itemstack.Attributes.GetString("material");
             string lining = itemstack.Attributes.GetString("lining");
+            string glass = itemstack.Attributes.GetString("glass", "quartz");
+            
+            string key = material + "-" + lining + "-" + glass;
+            MeshRef meshref;
+            if (!meshrefs.TryGetValue(key, out meshref))
+            {
+                AssetLocation shapeloc = Shape.Base.Clone().WithPathPrefix("shapes/").WithPathAppendix(".json");
+                Shape shape = capi.Assets.TryGet(shapeloc).ToObject<Shape>();
 
-            meshrefs.TryGetValue(material + "-" + lining, out renderinfo.ModelRef);
+                MeshData mesh = GenMesh(capi, material, lining, glass, shape);
+                mesh.Rgba2 = null;
+                meshrefs[key] = meshref = capi.Render.UploadMesh(mesh);
+            }
+            
+            renderinfo.ModelRef = meshref;
         }
 
         public override void OnUnloaded(ICoreAPI api)
@@ -116,32 +118,9 @@ namespace Vintagestory.GameContent
                 capi.ObjectCache.Remove("blockLanternGuiMeshRefs");
             }
         }
+        
 
-
-
-        public Dictionary<string, MeshData> GenGuiMeshes(ICoreClientAPI capi)
-        {
-            string[] materials = new string[] { "copper", "brass", "bismuth", "blackbronze", "tinbronze", "bismuthbronze", "iron", "molybdochalkos", "silver", "gold" };
-            string[] linings = new string[] { "plain", "silver", "gold" };
-            AssetLocation shapeloc = Shape.Base.Clone().WithPathPrefix("shapes/").WithPathAppendix(".json");
-            Shape shape = capi.Assets.TryGet(shapeloc).ToObject<Shape>();
-
-            Dictionary<string, MeshData> meshes = new Dictionary<string, MeshData>();
-
-            foreach (string mat in materials)
-            {
-                foreach (string lining in linings)
-                {
-                    if (mat == lining) continue;
-                    meshes[mat + "-" + lining] = GenMesh(capi, mat, lining, shape);
-                }
-            }
-
-            return meshes;
-        }
-
-
-        public MeshData GenMesh(ICoreClientAPI capi, string material, string lining, Shape shape = null, ITesselatorAPI tesselator = null)
+        public MeshData GenMesh(ICoreClientAPI capi, string material, string lining, string glassMaterial, Shape shape = null, ITesselatorAPI tesselator = null)
         {
             if (tesselator == null) tesselator = capi.Tesselator;
 
@@ -155,6 +134,9 @@ namespace Vintagestory.GameContent
             this.AtlasSize = capi.BlockTextureAtlas.Size;
             curMat = material;
             curLining = lining;
+
+            Block glassBlock = capi.World.GetBlock(new AssetLocation("glass-" + glassMaterial));
+            glassTextureSource = tesselator.GetTexSource(glassBlock);
             MeshData mesh;
             tesselator.TesselateShape("blocklantern", shape, out mesh, this, new Vec3f(Shape.rotateX, Shape.rotateY, Shape.rotateZ));
             return mesh;
@@ -228,6 +210,13 @@ namespace Vintagestory.GameContent
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
+            if (!byPlayer.Entity.Controls.Sneak)
+            {
+                BELantern bel = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BELantern;
+                bel.Interact(byPlayer);
+                return true;
+            }
+
             return base.OnBlockInteractStart(world, byPlayer, blockSel);
         }
 
@@ -238,12 +227,12 @@ namespace Vintagestory.GameContent
             return Lang.GetMatching(Code?.Domain + AssetLocation.LocationSeparator + "block-" + Code?.Path + "-" + material);
         }
 
-        public override void GetHeldItemInfo(ItemStack stack, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
+        public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
         {
-            base.GetHeldItemInfo(stack, dsc, world, withDebugInfo);
+            base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
 
-            string material = stack.Attributes.GetString("material");
-            string lining = stack.Attributes.GetString("lining");
+            string material = inSlot.Itemstack.Attributes.GetString("material");
+            string lining = inSlot.Itemstack.Attributes.GetString("lining");
 
             dsc.AppendLine(Lang.Get("Material: {0}", Lang.Get("material-" + material)));
             dsc.AppendLine(Lang.Get("Lining: {0}", lining == "plain" ? "-" : Lang.Get("material-" + lining)));

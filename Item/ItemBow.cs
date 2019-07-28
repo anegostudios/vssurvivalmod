@@ -7,11 +7,45 @@ using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
     public class ItemBow : Item
     {
+        WorldInteraction[] interactions;
+
+        public override void OnLoaded(ICoreAPI api)
+        {
+            if (api.Side != EnumAppSide.Client) return;
+            ICoreClientAPI capi = api as ICoreClientAPI;
+
+            interactions = ObjectCacheUtil.GetOrCreate(api, "bowInteractions", () =>
+            {
+                List<ItemStack> stacks = new List<ItemStack>();
+
+                foreach (CollectibleObject obj in api.World.Collectibles)
+                {
+                    if (obj.Code.Path.StartsWith("arrow-"))
+                    {
+                        stacks.Add(new ItemStack(obj));
+                    }
+                }
+
+                return new WorldInteraction[]
+                {
+                    new WorldInteraction()
+                    {
+                        ActionLangCode = "heldhelp-chargebow",
+                        MouseButton = EnumMouseButton.Right,
+                        Itemstacks = stacks.ToArray()
+                    }
+                };
+            });
+        }
+
+
+
         public override string GetHeldTpUseAnimation(ItemSlot activeHotbarSlot, Entity byEntity)
         {
             return null;
@@ -162,11 +196,11 @@ namespace Vintagestory.GameContent
             double rndyaw = byEntity.WatchedAttributes.GetDouble("aimingRandYaw", 1) * acc * 0.75;
             
             Vec3d pos = byEntity.ServerPos.XYZ.Add(0, byEntity.EyeHeight - 0.2, 0);
-            Vec3d aheadPos = pos.AheadCopy(1, byEntity.ServerPos.Pitch + rndpitch, byEntity.ServerPos.Yaw + rndyaw);
+            Vec3d aheadPos = pos.AheadCopy(1, byEntity.LocalPos.Pitch + rndpitch, byEntity.LocalPos.Yaw + rndyaw);
             Vec3d velocity = (aheadPos - pos) * 0.95;
 
-
-            entity.ServerPos.SetPos(byEntity.ServerPos.BehindCopy(0.21).XYZ.Add(0, byEntity.EyeHeight - 0.2, 0));
+            
+            entity.ServerPos.SetPos(byEntity.LocalPos.BehindCopy(0.21).XYZ.Add(0, byEntity.EyeHeight - 0.2, 0));
             entity.ServerPos.Motion.Set(velocity);
 
             entity.Pos.SetFrom(entity.ServerPos);
@@ -181,15 +215,20 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void GetHeldItemInfo(ItemStack stack, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
+        public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
         {
-            base.GetHeldItemInfo(stack, dsc, world, withDebugInfo);
+            base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
 
-            if (stack.Collectible.Attributes == null) return;
+            if (inSlot.Itemstack.Collectible.Attributes == null) return;
 
-            float dmg = stack.Collectible.Attributes["damage"].AsFloat(0);
+            float dmg = inSlot.Itemstack.Collectible.Attributes["damage"].AsFloat(0);
             if (dmg != 0) dsc.AppendLine(dmg + Lang.Get("piercing-damage"));
         }
 
+
+        public override WorldInteraction[] GetHeldInteractionHelp(ItemSlot inSlot)
+        {
+            return interactions.Append(base.GetHeldInteractionHelp(inSlot));
+        }
     }
 }

@@ -50,7 +50,7 @@ namespace Vintagestory.GameContent
         {
             get
             {
-                ItemStack[] stacks = GetContentStacks();
+                ItemStack[] stacks = GetNonEmptyContentStacks();
                 ContentConfig config = contentConfigs.FirstOrDefault(c => c.Code == contentCode);
                 if (config == null) return false;
 
@@ -225,7 +225,7 @@ namespace Vintagestory.GameContent
             ItemSlot handSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
             if (handSlot.Empty) return false;
 
-            ItemStack[] stacks = GetContentStacks();
+            ItemStack[] stacks = GetNonEmptyContentStacks();
             bool canAdd;
 
             // Add new

@@ -76,7 +76,7 @@ namespace Vintagestory.GameContent
                 if ((api as ICoreClientAPI).World.Player.Entity == entity)
                 {
                     lastCollideMsOwnPlayer = api.World.ElapsedMilliseconds;
-                    manager.lastCollideMsOwnPlayer = lastCollideMsOwnPlayer;
+                    manager.lastTeleCollideMsOwnPlayer = lastCollideMsOwnPlayer;
                 }
             }
         }
@@ -113,6 +113,12 @@ namespace Vintagestory.GameContent
                     continue;
                 }
 
+                if (val.Value.SecondsPassed > 1.5 && tpLocation?.TargetPos != null)
+                {
+                    // Preload the chunk
+                    (api as ICoreServerAPI).WorldManager.LoadChunkColumnFast((int)tpLocation.TargetPos.X / api.World.BlockAccessor.ChunkSize, (int)tpLocation.TargetPos.Z / api.World.BlockAccessor.ChunkSize);
+                }
+
                 if (val.Value.SecondsPassed > 3 && tpLocation?.TargetPos != null)
                 {
                     val.Value.Entity.TeleportTo(tpLocation.TargetPos.AddCopy(0,1,0));
@@ -125,7 +131,6 @@ namespace Vintagestory.GameContent
                     {
                         api.World.Logger.Debug("Teleporting entity {0} to {1}", e.Code, tpLocation.TargetPos);
                     }
-                    
 
                     toremove.Add(val.Key);
                 }

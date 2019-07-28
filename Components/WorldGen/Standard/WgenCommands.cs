@@ -197,7 +197,7 @@ namespace Vintagestory.ServerMods
 
             int chunksize = api.WorldManager.ChunkSize;
 
-            Block[] blocks = api.World.Blocks;
+            List<Block> blocks = api.World.Blocks;
 
             foreach (Vec2i coord in coords)
             {
@@ -316,7 +316,7 @@ namespace Vintagestory.ServerMods
                         OnLoaded = () => {
                             for (int cy = 0; cy < api.WorldManager.MapSizeY / api.WorldManager.ChunkSize; cy++)
                             {
-                                api.WorldManager.ResendChunk(cx, cy, cz, true);
+                                api.WorldManager.BroadcastChunk(cx, cy, cz, true);
                             }
                         }
                     });
@@ -1052,7 +1052,7 @@ namespace Vintagestory.ServerMods
                         RockStratum stratum = null;
                         
 
-                        OrderedDictionary<ushort, int> stratathicknesses = new OrderedDictionary<ushort, int>();
+                        OrderedDictionary<int, int> stratathicknesses = new OrderedDictionary<int, int>();
 
                         while (ylower <= yupper)
                         {

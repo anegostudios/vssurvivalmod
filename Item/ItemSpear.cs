@@ -5,6 +5,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -206,19 +207,30 @@ namespace Vintagestory.GameContent
             });
         }
 
-        public override void GetHeldItemInfo(ItemStack stack, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
+        public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
         {
-            base.GetHeldItemInfo(stack, dsc, world, withDebugInfo);
-            if (stack.Collectible.Attributes == null) return;
+            base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
+            if (inSlot.Itemstack.Collectible.Attributes == null) return;
 
             float damage = 1.5f;
 
-            if (stack.Collectible.Attributes != null)
+            if (inSlot.Itemstack.Collectible.Attributes != null)
             {
-                damage = stack.Collectible.Attributes["damage"].AsFloat(0);
+                damage = inSlot.Itemstack.Collectible.Attributes["damage"].AsFloat(0);
             }
 
             dsc.AppendLine(damage + Lang.Get("piercing-damage-thrown"));
+        }
+
+        public override WorldInteraction[] GetHeldInteractionHelp(ItemSlot inSlot)
+        {
+            return new WorldInteraction[] {
+                new WorldInteraction()
+                {
+                    ActionLangCode = "heldhelp-throw",
+                    MouseButton = EnumMouseButton.Right,
+                }
+            }.Append(base.GetHeldInteractionHelp(inSlot));
         }
     }
 }

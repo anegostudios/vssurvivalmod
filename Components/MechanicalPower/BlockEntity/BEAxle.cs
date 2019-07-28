@@ -1,4 +1,5 @@
 ﻿using Vintagestory.API.Common;
+using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent.Mechanics
 {
@@ -8,7 +9,7 @@ namespace Vintagestory.GameContent.Mechanics
         {
             base.Initialize(api);
 
-            string orientations = Block.LastCodePart();
+            string orientations = Block.Variant["rotation"];
             switch (orientations)
             {
                 case "we":
@@ -20,6 +21,21 @@ namespace Vintagestory.GameContent.Mechanics
                     AxisMapping = new int[] { 1, 2, 0 };
                     break;
             }
+        }
+
+        public override EnumTurnDirection GetTurnDirection(BlockFacing forFacing)
+        {
+            return EnumTurnDirection.Clockwise;
+        }
+
+        public override float GetResistance()
+        {
+            return 0;
+        }
+
+        public override float GetTorque()
+        {
+            return 0;
         }
     }
 }

@@ -75,9 +75,9 @@ namespace Vintagestory.ServerMods
 
 
         // Resolved values
-        protected Dictionary<ushort, ResolvedDepositBlock> placeBlockByInBlockId = new Dictionary<ushort, ResolvedDepositBlock>();
-        protected Dictionary<ushort, ResolvedDepositBlock> surfaceBlockByInBlockId = new Dictionary<ushort, ResolvedDepositBlock>();
-        //protected Dictionary<ushort, ChildDepositGenerator> childGeneratorsByInBlockId = new Dictionary<ushort, ChildDepositGenerator>();
+        protected Dictionary<int, ResolvedDepositBlock> placeBlockByInBlockId = new Dictionary<int, ResolvedDepositBlock>();
+        protected Dictionary<int, ResolvedDepositBlock> surfaceBlockByInBlockId = new Dictionary<int, ResolvedDepositBlock>();
+        //protected Dictionary<int, ChildDepositGenerator> childGeneratorsByInBlockId = new Dictionary<int, ChildDepositGenerator>();
 
         public MapLayerBase OreMap;
 
@@ -96,10 +96,14 @@ namespace Vintagestory.ServerMods
         protected int depoitThickness;
         protected int hereThickness;
 
+        LCGRandom childDepositRand;
+
         protected DiscDepositGenerator(ICoreServerAPI api, DepositVariant variant, LCGRandom depositRand, NormalizedSimplexNoise noiseGen) : base(api, variant, depositRand, noiseGen)
         {
             chunksize = api.World.BlockAccessor.ChunkSize;
             worldheight = api.World.BlockAccessor.MapSizeY;
+
+            
 
             regionSize = api.WorldManager.RegionSize;
             regionChunkSize = api.WorldManager.RegionSize / chunksize;
@@ -168,7 +172,7 @@ namespace Vintagestory.ServerMods
 
                     // Host rock for
                     if (block.Attributes == null) block.Attributes = new JsonObject(JToken.Parse("{}"));
-                    ushort[] oreIds = block.Attributes["hostRockFor"].AsArray<ushort>(new ushort[0]);
+                    int[] oreIds = block.Attributes["hostRockFor"].AsArray<int>(new int[0]);
                     oreIds = oreIds.Append(placeBlockByInBlockId[block.BlockId].Blocks.Select(b => b.BlockId).ToArray());
                     block.Attributes.Token["hostRockFor"] = JToken.FromObject(oreIds);
 
@@ -178,7 +182,7 @@ namespace Vintagestory.ServerMods
                     {
                         Block pblock = placeBlocks[i];
                         if (pblock.Attributes == null) pblock.Attributes = new JsonObject(JToken.Parse("{}"));
-                        oreIds = pblock.Attributes["hostRock"].AsArray<ushort>(new ushort[0]);
+                        oreIds = pblock.Attributes["hostRock"].AsArray<int>(new int[0]);
                         oreIds = oreIds.Append(block.BlockId);
                         pblock.Attributes.Token["hostRock"] = JToken.FromObject(oreIds);
                     }
@@ -290,8 +294,8 @@ namespace Vintagestory.ServerMods
                     {
                         if (targetPos.Y <= 1 || targetPos.Y >= worldheight) continue;
 
-                        long index3d = ((targetPos.Y % chunksize) * chunksize + lz) * chunksize + lx;
-                        ushort blockId = chunks[targetPos.Y / chunksize].Blocks[index3d];
+                        int index3d = ((targetPos.Y % chunksize) * chunksize + lz) * chunksize + lx;
+                        int blockId = chunks[targetPos.Y / chunksize].Blocks[index3d];
 
 
                         if (!IgnoreParentTestPerBlock || !parentBlockOk)
@@ -315,17 +319,19 @@ namespace Vintagestory.ServerMods
                                 //placed++;
                             }
 
-
-                            for (int i = 0; variant.ChildDeposits != null && i < variant.ChildDeposits.Length; i++)
+                            if (variant.ChildDeposits != null)
                             {
-                                float rndVal = DepositRand.NextFloat();
-                                float quantity = variant.ChildDeposits[i].TriesPerChunk * invChunkAreaSize;
-
-                                if (quantity > rndVal)
+                                for (int i = 0; i < variant.ChildDeposits.Length; i++)
                                 {
-                                    if (ShouldPlaceAdjustedForOreMap(variant.ChildDeposits[i], targetPos.X, targetPos.Z, quantity, rndVal))
+                                    float rndVal = DepositRand.NextFloat();
+                                    float quantity = variant.ChildDeposits[i].TriesPerChunk * invChunkAreaSize;
+
+                                    if (quantity > rndVal)
                                     {
-                                        subDepositsToPlace[targetPos.Copy()] = variant.ChildDeposits[i];
+                                        if (ShouldPlaceAdjustedForOreMap(variant.ChildDeposits[i], targetPos.X, targetPos.Z, quantity, rndVal))
+                                        {
+                                            subDepositsToPlace[targetPos.Copy()] = variant.ChildDeposits[i];
+                                        }
                                     }
                                 }
                             }
@@ -405,7 +411,7 @@ namespace Vintagestory.ServerMods
         }
 
 
-        public override ushort[] GetBearingBlocks()
+        public override int[] GetBearingBlocks()
         {
             return placeBlockByInBlockId.Keys.ToArray();
         }

@@ -13,6 +13,7 @@ namespace Vintagestory.GameContent
 {
     public class BlockContainer : Block
     {
+        
         public virtual void SetContents(ItemStack containerStack, ItemStack[] stacks)
         {
             TreeAttribute stacksTree = new TreeAttribute();
@@ -33,15 +34,18 @@ namespace Vintagestory.GameContent
             foreach (var val in treeAttr)
             {
                 ItemStack stack = (val.Value as ItemstackAttribute).value;
-                if (stack == null) continue;
+                if (stack != null) stack.ResolveBlockOrItem(world);
 
-                stack.ResolveBlockOrItem(world);
                 stacks.Add(stack);
             }
 
             return stacks.ToArray();
         }
-        
+
+        public virtual ItemStack[] GetNonEmptyContents(IWorldAccessor world, ItemStack itemstack)
+        {
+            return GetContents(world, itemstack)?.Where(stack => stack != null).ToArray();
+        }
 
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
         {
@@ -82,6 +86,38 @@ namespace Vintagestory.GameContent
 
             world.BlockAccessor.SetBlock(0, pos);
         }
-        
+
+
+        public override TransitionState[] UpdateAndGetTransitionStates(IWorldAccessor world, ItemSlot inslot)
+        {
+            ItemStack[] stacks = GetContents(world, inslot.Itemstack);
+
+            for (int i = 0; stacks != null && i < stacks.Length; i++)
+            {
+                stacks[i]?.Collectible.UpdateAndGetTransitionStates(world, new DummySlot(stacks[i], inslot.Inventory));
+            }
+
+            return base.UpdateAndGetTransitionStates(world, inslot);
+        }
+
+
+        public override void SetTemperature(IWorldAccessor world, ItemStack itemstack, float temperature, bool delayCooldown = true)
+        {
+            ItemStack[] stacks = GetContents(world, itemstack);
+
+            for (int i = 0; stacks != null && i < stacks.Length; i++)
+            {
+                stacks[i]?.Collectible.SetTemperature(world, stacks[i], temperature, delayCooldown);
+            }
+
+            base.SetTemperature(world, itemstack, temperature, delayCooldown);
+        }
+
+
+        public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
+        {
+            base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
+        }
+
     }
 }

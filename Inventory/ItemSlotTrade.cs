@@ -57,14 +57,14 @@ namespace Vintagestory.GameContent
             
         }
 
-        public override void TryPutInto(ItemSlot sinkSlot, ref ItemStackMoveOperation op)
+        public override int TryPutInto(ItemSlot sinkSlot, ref ItemStackMoveOperation op)
         {
-            
+            return 0;
         }
 
-        public override void TryPutInto(IWorldAccessor world, ItemSlot sinkSlot, int quantity = 1)
+        public override int TryPutInto(IWorldAccessor world, ItemSlot sinkSlot, int quantity = 1)
         {
-            
+            return 0;
         }
 
         public override string GetStackDescription(IClientWorldAccessor world, bool extendedDebugInfo)

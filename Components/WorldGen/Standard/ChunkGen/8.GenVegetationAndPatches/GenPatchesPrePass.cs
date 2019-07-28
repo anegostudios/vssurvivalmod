@@ -44,7 +44,7 @@ namespace Vintagestory.ServerMods
             blockAccessor = chunkProvider.GetBlockAccessor(true);
         }
 
-        Dictionary<string, ushort> RockBlockIdsByType;
+        Dictionary<string, int> RockBlockIdsByType;
 
         
 
@@ -59,7 +59,7 @@ namespace Vintagestory.ServerMods
             chunkMapSizeY = api.WorldManager.MapSizeY / chunksize;
             regionChunkSize = api.WorldManager.RegionSize / chunksize;
 
-            RockBlockIdsByType = new Dictionary<string, ushort>();
+            RockBlockIdsByType = new Dictionary<string, int>();
             RockStrataConfig rockstrata = api.Assets.Get("worldgen/rockstrata.json").ToObject<RockStrataConfig>();
             for (int i = 0; i < rockstrata.Variants.Length; i++)
             {
@@ -130,7 +130,7 @@ namespace Vintagestory.ServerMods
 
                     if (bpc.IsPatchSuitableAt(blockPatch, block, api.WorldManager, climate, y, 0))
                     {
-                        ushort firstBlockId = 0;
+                        int firstBlockId = 0;
                         bool found = true;
                         
                         if (blockPatch.BlocksByRockType != null)

@@ -62,13 +62,13 @@ namespace Vintagestory.ServerMods
                     pos.Z + DepositRand.NextInt(2 * radius + 1) - radius
                 );
 
-                int lx = targetPos.X - pos.X;
-                int lz = targetPos.Z - pos.Z;
+                int lx = targetPos.X % chunksize;
+                int lz = targetPos.Z % chunksize;
 
                 if (targetPos.Y <= 1 || targetPos.Y >= worldheight || lx < 0 || lz < 0 || lx >= chunksize || lz >= chunksize) continue;
                 
-                long index3d = ((targetPos.Y % chunksize) * chunksize + lz) * chunksize + lx;
-                ushort blockId = chunks[targetPos.Y / chunksize].Blocks[index3d];
+                int index3d = ((targetPos.Y % chunksize) * chunksize + lz) * chunksize + lx;
+                int blockId = chunks[targetPos.Y / chunksize].Blocks[index3d];
                 
                 ResolvedDepositBlock resolvedPlaceBlock = null;
 

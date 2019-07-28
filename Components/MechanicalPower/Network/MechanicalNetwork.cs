@@ -6,12 +6,15 @@ using System.Text;
 using System.Threading.Tasks;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent.Mechanics
 {
     [ProtoContract]
     public class MechanicalNetwork
     {
+        List<IMechanicalPowerNode> nodes = new List<IMechanicalPowerNode>();
+
         internal MechanicalPowerMod mechanicalPowerMod;
 
         [ProtoMember(1)]
@@ -22,23 +25,14 @@ namespace Vintagestory.GameContent.Mechanics
         protected float totalResistance;
         [ProtoMember(4)]
         protected float speed;
-        [ProtoMember(5)]
-        protected int direction;
-        protected BlockFacing directionFromFacing; // From which facing is the direction?
-
-        [ProtoMember(6)]
-        private int directionFromFacingIndex
-        {
-            get { return directionFromFacing == null ? 0 : directionFromFacing.Index; }
-            set { directionFromFacing = BlockFacing.ALLFACES[value]; }
-        }
-
         [ProtoMember(7)]
         protected float serverSideAngle;
         [ProtoMember(8)]
         protected float angle = 0; // In radiant
 
         static Random rand = new Random();
+
+        float clientSpeed;
 
         /// <summary>
         /// In radiant
@@ -48,19 +42,46 @@ namespace Vintagestory.GameContent.Mechanics
             get { return angle; }
         }
 
+        public float Speed
+        {
+            get { return speed; }
+        }
+
+        public float TotalAvailableTorque
+        {
+            get { return TotalAvailableTorque; }
+        }
+
+        public EnumTurnDirection TurnDirection
+        {
+            get
+            {
+                return totalAvailableTorque > 0 ? EnumTurnDirection.Clockwise : EnumTurnDirection.Counterclockwise;
+            }
+        }
+
+
         public MechanicalNetwork()
         {
-            speed = 0.1f + (float)rand.NextDouble() / 3;
+            
         }
 
         public MechanicalNetwork(MechanicalPowerMod mechanicalPowerMod, long networkId)
         {
             this.mechanicalPowerMod = mechanicalPowerMod;
             this.networkId = networkId;
-
-            speed = 0.1f + (float)rand.NextDouble() / 3;
         }
 
+
+        public void Join(IMechanicalPowerNode node)
+        {
+            nodes.Add(node);
+        }
+
+        public void Leave(IMechanicalPowerNode node)
+        {
+            nodes.Remove(node);
+        }
 
 
         // Tick Events are called by the Network Managers
@@ -68,7 +89,9 @@ namespace Vintagestory.GameContent.Mechanics
         {
             if (speed < 0.001) return;
 
-            UpdateAngle(speed);
+            clientSpeed += GameMath.Clamp(speed - clientSpeed, -0.01f, 0.01f);
+
+            UpdateAngle(clientSpeed);
 
             // Since the server may be running at different tick speeds,
             // we slowly sync angle updates from server to reduce 
@@ -87,7 +110,7 @@ namespace Vintagestory.GameContent.Mechanics
 
             if (tickNumber % 5 == 0)
             {
-                UpdateNetwork();
+                updateNetwork();
             }
 
             if (tickNumber % 40 == 0)
@@ -95,10 +118,6 @@ namespace Vintagestory.GameContent.Mechanics
                 mechanicalPowerMod.broadcastNetwork(new MechNetworkPacket()
                 {
                     angle = angle,
-                    direction = direction,
-                    /*firstNodeX = firstPowerNode.X,
-                    firstNodeY = firstPowerNode.Y,
-                    firstNodeZ = firstPowerNode.Z,*/
                     networkId = networkId,
                     speed = speed,
                     totalAvailableTorque = totalAvailableTorque,
@@ -120,9 +139,57 @@ namespace Vintagestory.GameContent.Mechanics
 
 
         // Should run every 5 ticks or so
-        public void UpdateNetwork()
+        public void updateNetwork()
         {
+            /* 2. Determine total available torque and total resistance of the network */
+
+            totalAvailableTorque = 0;
+            totalResistance = 0;
             
+            foreach (IMechanicalPowerNode powerNode in nodes)
+            {
+                totalAvailableTorque += powerNode.GetTorque();
+                totalResistance += powerNode.GetResistance();
+            }
+            
+
+            /* 3. Unconsumed torque changes the network speed */
+
+            // Positive free torque => increase speed until maxSpeed
+            // Negative free torque => decrease speed until -maxSpeed
+            // No free torque => lower speed until 0
+
+            float unusedTorque = Math.Abs(totalAvailableTorque) - totalResistance;
+            int speedChange = (totalAvailableTorque > 0) ? 1 : -1;
+            if (unusedTorque <= 0)
+            {
+                speedChange = 0;
+            }
+            
+            // TODO: This step value should be determined by the total system drag
+            float step = 0.05f;
+
+            switch (speedChange)
+            {
+                case 1:
+                    speed = speed + step;
+                    break;
+
+                case -1:
+                    speed = speed - step;
+                    break;
+
+                case 0:
+                    if (speed > 0)
+                    {
+                        speed = Math.Max(0, speed - step);
+                    }
+                    if (speed < 0)
+                    {
+                        speed = Math.Max(0, speed + step);
+                    }
+                    break;
+            }
         }
 
 
@@ -131,7 +198,6 @@ namespace Vintagestory.GameContent.Mechanics
             totalAvailableTorque = packet.totalAvailableTorque;
             totalResistance = packet.totalResistance;
             speed = packet.speed;
-            direction = packet.direction;
             if (isNew)
             {
                 angle = packet.angle;
@@ -146,7 +212,6 @@ namespace Vintagestory.GameContent.Mechanics
             totalAvailableTorque = tree.GetFloat("totalAvailableTorque");
             totalResistance = tree.GetFloat("totalResistance");
             speed = tree.GetFloat("speed");
-            direction = tree.GetInt("direction");
             angle = tree.GetFloat("angle");
         }
 
@@ -156,9 +221,20 @@ namespace Vintagestory.GameContent.Mechanics
             tree.SetFloat("totalAvailableTorque", totalAvailableTorque);
             tree.SetFloat("totalResistance", totalResistance);
             tree.SetFloat("speed", speed);
-            tree.SetInt("direction", direction);
             tree.SetFloat("angle", angle);
         }
 
+    }
+
+
+    [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
+    public class MechNetworkPacket
+    {
+        public long networkId;
+        public float totalAvailableTorque;
+        public float totalResistance;
+        public float speed;
+        public int direction;
+        public float angle;
     }
 }

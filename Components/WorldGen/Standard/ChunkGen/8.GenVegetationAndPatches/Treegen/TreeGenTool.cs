@@ -142,7 +142,7 @@ namespace Vintagestory.ServerMods
             return false;
         }
 
-        public override void OnBuild(WorldEdit.WorldEdit worldEdit, ushort oldBlockId, BlockSelection blockSel, ItemStack withItemStack)
+        public override void OnBuild(WorldEdit.WorldEdit worldEdit, int oldBlockId, BlockSelection blockSel, ItemStack withItemStack)
         {
             if (treeGenerators == null)
             {

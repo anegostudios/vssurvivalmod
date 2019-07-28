@@ -6,11 +6,46 @@ using System.Threading.Tasks;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
     public class ItemPadlock : Item
     {
+        WorldInteraction[] interactions;
+
+        public override void OnLoaded(ICoreAPI api)
+        {
+            if (api.Side != EnumAppSide.Client) return;
+            ICoreClientAPI capi = api as ICoreClientAPI;
+
+            interactions = ObjectCacheUtil.GetOrCreate(api, "padlockInteractions", () =>
+            {
+                List<ItemStack> stacks = new List<ItemStack>();
+
+                foreach (Block block in api.World.Blocks)
+                {
+                    if (block.Code == null) continue;
+
+                    if (block.HasBehavior<BlockBehaviorLockable>() && block.CreativeInventoryTabs != null && block.CreativeInventoryTabs.Length > 0)
+                    {
+                        stacks.Add(new ItemStack(block));
+                    }
+                }
+
+                return new WorldInteraction[]
+                {
+                    new WorldInteraction()
+                    {
+                        ActionLangCode = "heldhelp-lock",
+                        HotKeyCode = "sneak",
+                        MouseButton = EnumMouseButton.Right,
+                        Itemstacks = stacks.ToArray()
+                    }
+                };
+            });
+        }
+
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
 
@@ -36,5 +71,11 @@ namespace Vintagestory.GameContent
 
             base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handling);
         }
+
+        public override WorldInteraction[] GetHeldInteractionHelp(ItemSlot inSlot)
+        {
+            return interactions.Append(base.GetHeldInteractionHelp(inSlot));
+        }
+
     }
 }

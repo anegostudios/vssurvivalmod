@@ -121,15 +121,15 @@ namespace Vintagestory.ServerMods
             return rain >= MinRain && rain <= MaxRain && MinY <= yRel && MaxY >= yRel && transDistance <= rnd.NextDouble() * transSize;
         }
 
-        public ushort GetBlockForMotherRock(ushort rockBlockid)
+        public int GetBlockForMotherRock(int rockBlockid)
         {
-            ushort resultId = BlockId;
+            int resultId = BlockId;
             BlockIdMapping?.TryGetValue(rockBlockid, out resultId);
             return resultId;
         }
 
-        public Dictionary<ushort, ushort> BlockIdMapping;
-        public ushort BlockId;
+        public Dictionary<int, int> BlockIdMapping;
+        public int BlockId;
 
         public void Init(ICoreServerAPI api, RockStrataConfig rockstrata, Random rnd)
         {
@@ -142,7 +142,7 @@ namespace Vintagestory.ServerMods
             {
                 if (BlockCode.Path.Contains("{rocktype}"))
                 {
-                    BlockIdMapping = new Dictionary<ushort, ushort>();
+                    BlockIdMapping = new Dictionary<int, int>();
                     for (int i = 0; i < rockstrata.Variants.Length; i++)
                     {
                         if (rockstrata.Variants[i].IsDeposit) continue;
@@ -181,7 +181,7 @@ namespace Vintagestory.ServerMods
         [JsonProperty]
         public AssetLocation BlockCode;
 
-        public ushort BlockId;
+        public int BlockId;
     }
 
     [JsonObject(MemberSerialization.OptIn)]
@@ -194,6 +194,6 @@ namespace Vintagestory.ServerMods
         [JsonProperty]
         public AssetLocation BlockCode;
 
-        public ushort BlockId;
+        public int BlockId;
     }
 }

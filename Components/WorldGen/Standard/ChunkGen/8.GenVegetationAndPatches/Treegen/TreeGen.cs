@@ -125,7 +125,7 @@ namespace Vintagestory.ServerMods
                 dy += Math.Min(1, Math.Max(-1, GameMath.FastCos(angleVer) - ddrag));
                 dz += sinAngleVer * sinAngleHor / Math.Max(1, Math.Abs(ddrag));
 
-                ushort blockId = getBlockId(curWidth);
+                int blockId = getBlockId(curWidth);
                 if (blockId == 0) return;
 
                 currentPos = pos.AddCopy(dx, dy, dz);
@@ -229,7 +229,7 @@ namespace Vintagestory.ServerMods
 
 
         
-        public ushort getBlockId(float width)
+        public int getBlockId(float width)
         {
             return
                 width < 0.1f ? config.treeBlocks.leavesBlockId : (
@@ -241,7 +241,7 @@ namespace Vintagestory.ServerMods
         
 
 
-        PlaceResumeState getPlaceResumeState(BlockPos targetPos, ushort desiredblockId)
+        PlaceResumeState getPlaceResumeState(BlockPos targetPos, int desiredblockId)
         {
             if (targetPos.X < 0 || targetPos.Y < 0 || targetPos.Z < 0 || targetPos.X >= api.MapSizeX || targetPos.Y >= api.MapSizeY || targetPos.Z >= api.MapSizeZ) return PlaceResumeState.Stop;
 

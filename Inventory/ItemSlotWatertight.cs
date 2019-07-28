@@ -8,10 +8,10 @@ using Vintagestory.API.Config;
 
 namespace Vintagestory.GameContent
 {
-    public class ItemSlotCooking : ItemSlotSurvival
+    public class ItemSlotWatertight : ItemSlotSurvival
     {
 
-        public ItemSlotCooking(InventoryBase inventory) : base(inventory)
+        public ItemSlotWatertight(InventoryBase inventory) : base(inventory)
         {
         }
 
@@ -36,7 +36,7 @@ namespace Vintagestory.GameContent
                 if ((Empty || stackable) && bucketContents != null)
                 {
                     ItemStack bucketStack = sourceSlot.Itemstack;
-                    ItemStack takenContent = bucketblock.TryTakeContent(world, bucketStack, 1);
+                    ItemStack takenContent = bucketblock.TryTakeContent(world, bucketStack, op.ActingPlayer?.Entity?.Controls.Sneak == true ? 10 : 1);
                     sourceSlot.Itemstack = bucketStack;
                     takenContent.StackSize += StackSize;
                     this.itemstack = takenContent;
@@ -47,20 +47,19 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            // TODO: merge those 2 things into one generic LiquidContainer block
             string contentItemCode = sourceSlot.Itemstack?.ItemAttributes?["contentItemCode"].AsString();
             if (contentItemCode != null)
             {
-                ItemStack honeystack = new ItemStack(world.GetItem(new AssetLocation(contentItemCode)));
-                bool stackable = !Empty && itemstack.Equals(world, honeystack, GlobalConstants.IgnoredStackAttributes);
+                ItemStack contentStack = new ItemStack(world.GetItem(AssetLocation.Create(contentItemCode, sourceSlot.Itemstack.Collectible.Code.Domain)));
+                bool stackable = !Empty && itemstack.Equals(world, contentStack, GlobalConstants.IgnoredStackAttributes);
 
-                if ((Empty || stackable) && honeystack != null)
+                if ((Empty || stackable) && contentStack != null)
                 {
                     if (stackable) this.itemstack.StackSize++;
-                    else this.itemstack = honeystack;
+                    else this.itemstack = contentStack;
 
                     MarkDirty();
-                    ItemStack bowlStack = new ItemStack(world.GetBlock(new AssetLocation(sourceSlot.Itemstack.ItemAttributes["emptiedBlockCode"].AsString())));
+                    ItemStack bowlStack = new ItemStack(world.GetBlock(AssetLocation.Create(sourceSlot.Itemstack.ItemAttributes["emptiedBlockCode"].AsString(), sourceSlot.Itemstack.Collectible.Code.Domain)));
                     if (sourceSlot.StackSize == 1)
                     {
                         sourceSlot.Itemstack = bowlStack;
@@ -78,7 +77,8 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            
+            if (sourceSlot.Itemstack?.ItemAttributes?["contentItem2BlockCodes"].Exists == true) return;
+
             base.ActivateSlotLeftClick(sourceSlot, ref op);
         }
 
@@ -95,39 +95,40 @@ namespace Vintagestory.GameContent
 
                 if (bucketContents == null)
                 {
-                    TakeOut(bucketblock.TryAddContent(world, sourceSlot.Itemstack, Itemstack, 1));
+                    TakeOut(bucketblock.TryPutContent(world, sourceSlot.Itemstack, Itemstack, 1));
                     MarkDirty();
                 } else
                 {
                     if (itemstack.Equals(world, bucketContents, GlobalConstants.IgnoredStackAttributes))
                     {
-                        TakeOut(bucketblock.TryAddContent(world, sourceSlot.Itemstack, bucketblock.GetContent(world, sourceSlot.Itemstack), 1));
+                        TakeOut(bucketblock.TryPutContent(world, sourceSlot.Itemstack, bucketblock.GetContent(world, sourceSlot.Itemstack), 1));
                         MarkDirty();
                         return;
                     }
-                }
-                
+                }                
 
                 return;
             }
 
-            ItemStack honeystack = new ItemStack(world.GetItem(new AssetLocation("honeyportion")));
-            if (sourceSlot.Itemstack?.Block is BlockBowl && sourceSlot.Itemstack.Block.LastCodePart() == "burned")
+            
+            if (itemstack != null && sourceSlot.Itemstack?.ItemAttributes?["contentItem2BlockCodes"].Exists == true)
             {
-                if (itemstack != null && itemstack.Equals(world, honeystack, GlobalConstants.IgnoredStackAttributes))
+                string outBlockCode = sourceSlot.Itemstack.ItemAttributes["contentItem2BlockCodes"][itemstack.Collectible.Code.ToShortString()].AsString();
+
+                if (outBlockCode != null)
                 {
-                    ItemStack bowlStack = new ItemStack(world.GetBlock(new AssetLocation("bowl-honey")));
+                    ItemStack outBlockStack = new ItemStack(world.GetBlock(AssetLocation.Create(outBlockCode, sourceSlot.Itemstack.Collectible.Code.Domain)));
 
                     if (sourceSlot.StackSize == 1)
                     {
-                        sourceSlot.Itemstack = bowlStack;
+                        sourceSlot.Itemstack = outBlockStack;
                     }
                     else
                     {
                         sourceSlot.Itemstack.StackSize--;
-                        if (!op.ActingPlayer.InventoryManager.TryGiveItemstack(bowlStack))
+                        if (!op.ActingPlayer.InventoryManager.TryGiveItemstack(outBlockStack))
                         {
-                            world.SpawnItemEntity(bowlStack, op.ActingPlayer.Entity.Pos.XYZ);
+                            world.SpawnItemEntity(outBlockStack, op.ActingPlayer.Entity.Pos.XYZ);
                         }
                     }
 
@@ -137,7 +138,8 @@ namespace Vintagestory.GameContent
 
                 return;
             }
-            
+
+            if (sourceSlot.Itemstack?.ItemAttributes?["contentItem2BlockCodes"].Exists == true || sourceSlot.Itemstack?.ItemAttributes?["contentItemCode"].AsString() != null) return;
 
             base.ActivateSlotRightClick(sourceSlot, ref op);
         }

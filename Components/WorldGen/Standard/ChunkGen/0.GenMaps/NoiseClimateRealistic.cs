@@ -103,7 +103,8 @@ namespace Vintagestory.ServerMods
             double P = halfRange;
             double z = posZ - mapsizeZ / 2 + zOffset;
 
-            int temperature = GameMath.Clamp((int)((A / P) * (P - Math.Abs(z % (2 * P) - P))) + tempRnd, 0, 255);
+            // http://fooplot.com/#W3sidHlwZSI6MCwiZXEiOiIyNTUvOTcuNjU2MjUqKDk3LjY1NjI1LWFicyhhYnMoeCklKDIqOTcuNjU2MjUpLTk3LjY1NjI1KSkiLCJjb2xvciI6IiMwMDAwMDAifSx7InR5cGUiOjEwMDAsIndpbmRvdyI6WyItMjAzMC43NjkyMzA3NjkyMzA3IiwiMTk2OS4yMzA3NjkyMzA3NjkzIiwiLTI1NSIsIjI1NSJdfV0-
+            int temperature = GameMath.Clamp((int)((A / P) * (P - Math.Abs(Math.Abs(z) % (2 * P) - P))) + tempRnd, 0, 255);
             int rain = NextInt(256);
             int humidity = 0;
             

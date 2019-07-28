@@ -19,7 +19,7 @@ namespace Vintagestory.ServerMods
 
         BlockLayerConfig blockLayerConfig;
 
-        internal void Init(ICoreServerAPI api, Random rand)
+        internal void Init(ICoreServerAPI api)
         {
             IAsset asset = api.Assets.Get("worldgen/rockstrata.json");
             RockStrataConfig rockstrata = asset.ToObject<RockStrataConfig>();
@@ -31,6 +31,7 @@ namespace Vintagestory.ServerMods
             
             for (int i = 0; i < Structures.Length; i++)
             {
+                LCGRandom rand = new LCGRandom(api.World.Seed + i + 512);
                 Structures[i].Init(api, blockLayerConfig, rand);
             }
         }

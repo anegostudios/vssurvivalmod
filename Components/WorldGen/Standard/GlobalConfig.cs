@@ -30,11 +30,11 @@ namespace Vintagestory.ServerMods.NoObf
         public AssetLocation defaultRockCode;
 
 
-        public ushort waterBlockId;
-        public ushort lakeIceBlockId;
-        public ushort lavaBlockId;
-        public ushort basaltBlockId;
-        public ushort mantleBlockId;
-        public ushort defaultRockId;
+        public int waterBlockId;
+        public int lakeIceBlockId;
+        public int lavaBlockId;
+        public int basaltBlockId;
+        public int mantleBlockId;
+        public int defaultRockId;
     }
 }

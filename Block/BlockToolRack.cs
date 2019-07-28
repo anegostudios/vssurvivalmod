@@ -88,7 +88,7 @@ namespace Vintagestory.GameContent
         {
             base.OnCollectTextures(api, textureDict);
 
-            for (int i = 0; i < api.World.Items.Length; i++)
+            for (int i = 0; i < api.World.Items.Count; i++)
             {
                 Item item = api.World.Items[i];
                 if (item.Tool == null) continue;

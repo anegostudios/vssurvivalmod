@@ -246,11 +246,11 @@ namespace Vintagestory.GameContent
             stack.Attributes.SetFloat("wateringSeconds", seconds);
         }
 
-        public override void GetHeldItemInfo(ItemStack stack, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
+        public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
         {
-            base.GetHeldItemInfo(stack, dsc, world, withDebugInfo);
+            base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
 
-            double perc = Math.Round(100 * GetRemainingWateringSeconds(stack) / CapacitySeconds);
+            double perc = Math.Round(100 * GetRemainingWateringSeconds(inSlot.Itemstack) / CapacitySeconds);
             if (perc < 1)
             {
                 dsc.AppendLine(Lang.Get("Empty"));

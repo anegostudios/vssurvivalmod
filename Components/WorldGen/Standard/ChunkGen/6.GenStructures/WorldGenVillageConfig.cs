@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Vintagestory.API.Common;
+using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
 namespace Vintagestory.ServerMods
@@ -18,7 +19,7 @@ namespace Vintagestory.ServerMods
 
         BlockLayerConfig blockLayerConfig;
 
-        internal void Init(ICoreServerAPI api, Random rand)
+        internal void Init(ICoreServerAPI api)
         {
             IAsset asset = api.Assets.Get("worldgen/rockstrata.json");
             RockStrataConfig rockstrata = asset.ToObject<RockStrataConfig>();
@@ -30,6 +31,7 @@ namespace Vintagestory.ServerMods
 
             for (int i = 0; i < VillageTypes.Length; i++)
             {
+                LCGRandom rand = new LCGRandom(api.World.Seed + i + 512);
                 VillageTypes[i].Init(api, blockLayerConfig, rand);
             }
         }

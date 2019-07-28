@@ -116,9 +116,15 @@ namespace Vintagestory.GameContent
 
                 if (entity != null)
                 {
-                    entity.ReceiveDamage(new DamageSource() { Source = EnumDamageSource.Entity, SourceEntity = this, Type = EnumDamageType.BluntAttack }, Damage);
+                    bool didDamage = entity.ReceiveDamage(new DamageSource() { Source = EnumDamageSource.Entity, SourceEntity = FiredBy == null ? this : FiredBy, Type = EnumDamageType.BluntAttack }, Damage);
                     World.PlaySoundAt(new AssetLocation("sounds/thud"), this, null, false, 32);
                     World.SpawnCubeParticles(entity.LocalPos.XYZ.OffsetCopy(0, 0.2, 0), ProjectileStack, 0.2f, 20);
+
+                    if (FiredBy is EntityPlayer && didDamage)
+                    {
+                        World.PlaySoundFor(new AssetLocation("sounds/player/projectilehit"), (FiredBy as EntityPlayer).Player, false, 24);
+                    }
+
                     Die();
                     return;
                 }

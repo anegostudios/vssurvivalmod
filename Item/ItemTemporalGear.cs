@@ -81,6 +81,9 @@ namespace Vintagestory.GameContent
         {
             if (blockSel == null) return;
 
+            Block block = api.World.BlockAccessor.GetBlock(blockSel.Position);
+            if (block is BlockStaticTranslocator) return;
+
             if (byEntity.World is IClientWorldAccessor)
             {
                 IClientWorldAccessor world = byEntity.World as IClientWorldAccessor;
@@ -96,7 +99,6 @@ namespace Vintagestory.GameContent
                 });
 
                 sound?.Start();
-
 
                 byEntity.World.RegisterCallback((dt) =>
                 {
@@ -207,6 +209,19 @@ namespace Vintagestory.GameContent
                 particlesHeld.color = ColorUtil.ReverseColorBytes(ColorUtil.HsvToRgba(h, 180, v));
                 world.SpawnParticles(particlesHeld);
             }
+        }
+
+
+        public override WorldInteraction[] GetHeldInteractionHelp(ItemSlot inSlot)
+        {
+            return new WorldInteraction[]
+            {
+                new WorldInteraction
+                {
+                    ActionLangCode = "heldhelp-useonground",
+                    MouseButton = EnumMouseButton.Right
+                }
+            }.Append(base.GetHeldInteractionHelp(inSlot));
         }
 
     }

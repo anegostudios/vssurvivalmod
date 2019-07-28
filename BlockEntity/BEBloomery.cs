@@ -215,7 +215,7 @@ namespace Vintagestory.GameContent
             if (collectible.CombustibleProps?.BurnTemperature >= 1200 && collectible.CombustibleProps.BurnDuration > 30)
             {
                 int prevsize = stack.StackSize;
-                if (FuelSlot.StackSize + quantity > 20) return false;
+                if (FuelSlot.StackSize + quantity > 6) return false;
                 if (!FuelSlot.Empty && !FuelSlot.Itemstack.Equals(api.World, stack, GlobalConstants.IgnoredStackAttributes)) return false;
 
                 return true;

@@ -181,7 +181,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        private void SpreadLiquid(ushort blockId, BlockPos pos, IWorldAccessor world)
+        private void SpreadLiquid(int blockId, BlockPos pos, IWorldAccessor world)
         {
             world.BulkBlockAccessor.SetBlock(blockId, pos);
             world.RegisterCallbackUnique(OnDelayedWaterUpdateCheck, pos, spreadDelay);
@@ -192,7 +192,7 @@ namespace Vintagestory.GameContent
 
         private void updateOwnFlowDir(Block block, IWorldAccessor world, BlockPos pos)
         {
-            ushort blockId = GetLiquidBlockId(world, pos, block, block.LiquidLevel);
+            int blockId = GetLiquidBlockId(world, pos, block, block.LiquidLevel);
             if (block.BlockId != blockId)
             {
                 world.BlockAccessor.SetBlock(blockId, pos);
@@ -366,12 +366,12 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public ushort GetLessLiquidBlockId(IWorldAccessor world, BlockPos pos, Block block)
+        public int GetLessLiquidBlockId(IWorldAccessor world, BlockPos pos, Block block)
         {
             return GetLiquidBlockId(world, pos, block, block.LiquidLevel - 1);
         }
 
-        public ushort GetLiquidBlockId(IWorldAccessor world, BlockPos pos, Block block, int liquidLevel)
+        public int GetLiquidBlockId(IWorldAccessor world, BlockPos pos, Block block, int liquidLevel)
         {
             if (liquidLevel < 1) return 0;
 
@@ -406,7 +406,7 @@ namespace Vintagestory.GameContent
         }
 
         
-        private ushort GetFallingLiquidBlockId(Block ourBlock, IWorldAccessor world)
+        private int GetFallingLiquidBlockId(Block ourBlock, IWorldAccessor world)
         {
             return world.GetBlock(ourBlock.CodeWithParts("d", "6")).BlockId;
         }
@@ -551,11 +551,9 @@ namespace Vintagestory.GameContent
             }
             else
             {
-                return
-                    pos.Y >= 2 &&
-                    world.BlockAccessor.GetBlock(pos.X, pos.Y - 1, pos.Z).Replaceable >= ReplacableThreshold &&
-                    world.BlockAccessor.GetBlock(pos.X, pos.Y - 2, pos.Z).Replaceable >= ReplacableThreshold
-                ;
+                // Water does its own handling
+                handled = EnumHandling.PassThrough;
+                return false;
             }
         }
 

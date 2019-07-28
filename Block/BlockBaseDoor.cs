@@ -71,6 +71,9 @@ namespace Vintagestory.GameContent
             world.PlaySoundAt(new AssetLocation("sounds/block/door"), pos.X + 0.5f, pos.Y + 0.5f, pos.Z + 0.5f, byPlayer);
 
             TryOpenConnectedDoor(world, byPlayer, pos);
+
+            (byPlayer as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
+
             return true;
         }
 

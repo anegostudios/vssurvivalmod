@@ -27,6 +27,9 @@ namespace Vintagestory.GameContent
 
         Block charcoalPitBlock;
 
+        string startedByPlayerUid;
+
+
         public override void Initialize(ICoreAPI api)
         {
             base.Initialize(api);
@@ -108,7 +111,7 @@ namespace Vintagestory.GameContent
                 api.World.BlockAccessor.SetBlock(fireblock.BlockId, holePos);
 
                 BlockEntityFire befire = api.World.BlockAccessor.GetBlockEntity(holePos) as BlockEntityFire;
-                befire?.Init(firefacing);
+                befire?.Init(firefacing, startedByPlayerUid);
 
                 return;
             }
@@ -129,7 +132,7 @@ namespace Vintagestory.GameContent
             bfsQueue.Enqueue(pos);
 
             int maxHalfSize = 6;
-            ushort firewoodBlockId = api.World.GetBlock(new AssetLocation("firewoodpile")).BlockId;
+            int firewoodBlockId = api.World.GetBlock(new AssetLocation("firewoodpile")).BlockId;
 
             Vec2i curQuantityAndYPos = new Vec2i();
 
@@ -193,7 +196,12 @@ namespace Vintagestory.GameContent
 
             api.World.BlockAccessor.SetBlock(0, pos);
         }
-        
+
+        internal void Init(IPlayer player)
+        {
+            startedByPlayerUid = player?.PlayerUID;
+        }
+
 
         // Returns the block pos that is adjacent to a hole
         BlockPos FindHoleInPit()
@@ -204,8 +212,8 @@ namespace Vintagestory.GameContent
             Queue<BlockPos> bfsQueue = new Queue<BlockPos>();
             bfsQueue.Enqueue(pos);
 
-            ushort firewoodBlockId = api.World.GetBlock(new AssetLocation("firewoodpile")).BlockId;
-            ushort charcoalPitBlockId = api.World.GetBlock(new AssetLocation("charcoalpit")).BlockId;
+            int firewoodBlockId = api.World.GetBlock(new AssetLocation("firewoodpile")).BlockId;
+            int charcoalPitBlockId = api.World.GetBlock(new AssetLocation("charcoalpit")).BlockId;
 
             int maxHalfSize = 6;
             
@@ -258,6 +266,8 @@ namespace Vintagestory.GameContent
             state = tree.GetInt("state");
 
             if (beforeState != state && api?.Side == EnumAppSide.Client) FindHoleInPit();
+
+            startedByPlayerUid = tree.GetString("startedByPlayerUid");
         }
 
         public override void ToTreeAttributes(ITreeAttribute tree)
@@ -265,6 +275,11 @@ namespace Vintagestory.GameContent
             base.ToTreeAttributes(tree);
             tree.SetDouble("finishedAfterTotalHours", finishedAfterTotalHours);
             tree.SetInt("state", state);
+
+            if (startedByPlayerUid != null)
+            {
+                tree.SetString("startedByPlayerUid", startedByPlayerUid);
+            }
         }
 
 

@@ -74,10 +74,10 @@ namespace Vintagestory.ServerMods
 
 
         internal ushort[] replaceblockids = new ushort[0];
-        Random rand;
+        LCGRandom rand;
         double totalWeight;
 
-        public void Init(ICoreServerAPI api, BlockLayerConfig config, Random rand)
+        public void Init(ICoreServerAPI api, BlockLayerConfig config, LCGRandom rand)
         {
             this.rand = rand;
             totalWeight = 0;
@@ -173,6 +173,8 @@ namespace Vintagestory.ServerMods
             BlockPos schemPos = pos.Copy();
             Cuboidi location = new Cuboidi();
 
+            rand.InitPositionSeed(pos.X, pos.Z);
+
             List<GeneratableStructure> generatables = new List<GeneratableStructure>();
 
             while (cnt-- > 0)
@@ -183,7 +185,7 @@ namespace Vintagestory.ServerMods
                 while (tries-- > 0)
                 {
                     schemPos.Set(pos);
-                    schemPos.Add(rand.Next(50) - 25 , 0, rand.Next(50) - 25);
+                    schemPos.Add(rand.NextInt(50) - 25 , 0, rand.NextInt(50) - 25);
                     schemPos.Y = blockAccessor.GetTerrainMapheightAt(schemPos);
 
                     double rndVal = rand.NextDouble() * totalWeight;
@@ -236,7 +238,8 @@ namespace Vintagestory.ServerMods
             int chunksize = blockAccessor.ChunkSize;
             int climate = GameMath.BiLerpRgbColor((float)(pos.X % chunksize) / chunksize, (float)(pos.Z % chunksize) / chunksize, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight);
 
-            int num = rand.Next(schem.Structures.Length);
+
+            int num = rand.NextInt(schem.Structures.Length);
             BlockSchematicStructure schematic = schem.Structures[num];
 
             int widthHalf = (int)Math.Ceiling(schematic.SizeX / 2f);
@@ -336,7 +339,7 @@ namespace Vintagestory.ServerMods
             int quantityAir = 0;
             BlockPos tmpPos = new BlockPos();
 
-            bool oppositeDir = rand.Next(2) > 0;
+            bool oppositeDir = rand.NextInt(2) > 0;
 
             for (int i = 3; i >= 1; i--)
             {

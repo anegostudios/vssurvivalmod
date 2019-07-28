@@ -180,7 +180,7 @@ namespace Vintagestory.GameContent
                 // The work item
                 rpi.BindTexture2d(workItemTexPos.atlasTextureId);
 
-                prog.ModelMatrix = ModelMat.Identity().Translate(pos.X - camPos.X, pos.Y - camPos.Y + 7 / 16f + fuelLevel * 0.65f, pos.Z - camPos.Z).Values;
+                prog.ModelMatrix = ModelMat.Identity().Translate(pos.X - camPos.X, pos.Y - camPos.Y + 10 / 16f + fuelLevel * 0.65f, pos.Z - camPos.Z).Values;
                 prog.ViewMatrix = rpi.CameraMatrixOriginf;
                 prog.ProjectionMatrix = rpi.CurrentProjectionMatrix;
                 
@@ -200,7 +200,7 @@ namespace Vintagestory.GameContent
                 // The coal or embers
                 rpi.BindTexture2d(burning ? embertexpos.atlasTextureId : coaltexpos.atlasTextureId);
 
-                prog.ModelMatrix = ModelMat.Identity().Translate(pos.X - camPos.X, pos.Y - camPos.Y + 7 / 16f + fuelLevel * 0.65f, pos.Z - camPos.Z).Values;
+                prog.ModelMatrix = ModelMat.Identity().Translate(pos.X - camPos.X, pos.Y - camPos.Y + 10 / 16f + fuelLevel * 0.65f, pos.Z - camPos.Z).Values;
                 prog.ViewMatrix = rpi.CameraMatrixOriginf;
                 prog.ProjectionMatrix = rpi.CurrentProjectionMatrix;
 
@@ -222,6 +222,7 @@ namespace Vintagestory.GameContent
         {
             emberQuadRef?.Dispose();
             coalQuadRef?.Dispose();
+            workItemMeshRef?.Dispose();
         }
     }
 }

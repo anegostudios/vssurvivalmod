@@ -221,8 +221,8 @@ namespace Vintagestory.GameContent
                     IMapChunk mapchunk = world.BlockAccessor.GetMapChunkAtBlockPos(pos);
                     if (mapchunk == null) return 0;
 
-                    ushort topblockid = mapchunk.TopRockIdMap[(pos.Z % chunksize) * chunksize + (pos.X % chunksize)];
-                    ushort blockId = bl.GetBlockId(posRand, climate.Temperature, climate.Rainfall, climate.Fertility, topblockid);
+                    int topblockid = mapchunk.TopRockIdMap[(pos.Z % chunksize) * chunksize + (pos.X % chunksize)];
+                    int blockId = bl.GetBlockId(posRand, climate.Temperature, climate.Rainfall, climate.Fertility, topblockid);
 
                     Block block = world.Blocks[blockId];
                     if (block is BlockSoil)

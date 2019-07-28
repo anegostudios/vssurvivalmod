@@ -54,7 +54,7 @@ namespace Vintagestory.GameContent.Mechanics
                     world.BlockAccessor.SetBlock(toPlaceBlock.BlockId, pos);
 
                     BEMPBase be = (world.BlockAccessor.GetBlockEntity(pos) as BEMPBase);
-                    be.SetNetwork(nw);
+                    be.JoinNetwork(nw);
                 }
             }
         }
@@ -121,7 +121,7 @@ namespace Vintagestory.GameContent.Mechanics
                 world.BlockAccessor.SetBlock(toPlaceBlock.BlockId, pos);
 
                 BEMPBase be = (world.BlockAccessor.GetBlockEntity(pos) as BEMPBase);
-                be.SetNetwork(nw);
+                be.JoinNetwork(nw);
             }
 
         }

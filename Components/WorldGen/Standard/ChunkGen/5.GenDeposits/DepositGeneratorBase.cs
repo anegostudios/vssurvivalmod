@@ -39,7 +39,7 @@ namespace Vintagestory.ServerMods
 
         public abstract float GetAbsAvgQuantity();
 
-        public abstract ushort[] GetBearingBlocks();
+        public abstract int[] GetBearingBlocks();
 
         public abstract float GetMaxRadius();
     }

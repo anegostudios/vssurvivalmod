@@ -32,15 +32,15 @@ namespace Vintagestory.GameContent
             api.Event.PushEvent("OpenLootRandomizerDialog", tree);
         }
 
-        public override void GetHeldItemInfo(ItemStack stack, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
+        public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
         {
-            base.GetHeldItemInfo(stack, dsc, world, withDebugInfo);
+            base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
 
             float[] chances = new float[10];
             ItemStack[] stacks = new ItemStack[10];
             int i = 0;
 
-            foreach (var val in stack.Attributes)
+            foreach (var val in inSlot.Itemstack.Attributes)
             {
                 if (!val.Key.StartsWith("stack") || !(val.Value is TreeAttribute)) continue;
 

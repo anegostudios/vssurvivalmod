@@ -90,6 +90,7 @@ namespace Vintagestory.GameContent
                 if (isBranchy && leavesBranchyMul > 0.015f) leavesBranchyMul *= 0.6f;
             }
 
+            //`byPlayer.Entity.GetBehavior<EntityBehaviorHunger>()?.ConsumeSaturation(GameMath.Sqrt(foundPositions.Count));
             
 
             return true;

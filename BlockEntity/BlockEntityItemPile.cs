@@ -179,6 +179,7 @@ namespace Vintagestory.GameContent
                     player.Entity.LocalPos.Y += collBoxes[0].Y2 - (player.Entity.LocalPos.Y - (int)player.Entity.LocalPos.Y);
                 }
 
+                (player as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
 
                 return true;
             }

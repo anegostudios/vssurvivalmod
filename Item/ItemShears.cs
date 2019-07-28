@@ -44,7 +44,7 @@ namespace Vintagestory.GameContent
             foreach (var pos in orderedPositions)
             {
                 if (q == 0) break;
-                BlockFacing facing = BlockFacing.FromVector(player.Entity.ServerPos.GetViewVector()).GetOpposite();
+                BlockFacing facing = BlockFacing.FromNormal(player.Entity.ServerPos.GetViewVector()).GetOpposite();
 
                 if (!player.Entity.World.Claims.TryAccess(player, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak)) continue;
                 
@@ -87,7 +87,9 @@ namespace Vintagestory.GameContent
 
                 if (q >= MultiBreakQuantity || itemslot.Itemstack == null) break;
             }
-            
+
+            //`byEntity.GetBehavior<EntityBehaviorHunger>()?.ConsumeSaturation(GameMath.Sqrt(q));
+
             return true;
         }
 

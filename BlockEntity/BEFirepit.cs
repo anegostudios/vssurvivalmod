@@ -819,6 +819,13 @@ namespace Vintagestory.GameContent
                 renderer.Unregister();
                 renderer = null;
             }
+
+            if (clientDialog != null)
+            {
+                clientDialog.TryClose();
+                clientDialog.Dispose();
+                clientDialog = null;
+            }
         }
 
         public override void OnBlockBroken()
@@ -876,11 +883,12 @@ namespace Vintagestory.GameContent
                     if (clientDialog != null)
                     {
                         clientDialog.TryClose();
+                        clientDialog?.Dispose();
                         clientDialog = null;
                     } else
                     {
                         clientDialog = new GuiDialogBlockEntityFirepit(dialogTitle, Inventory, pos, dtree, api as ICoreClientAPI);
-                        clientDialog.OnClosed += () => clientDialog = null;
+                        clientDialog.OnClosed += () => { clientDialog.Dispose(); clientDialog = null; };
                         clientDialog.TryOpen();
                         
                     }
@@ -1089,7 +1097,7 @@ namespace Vintagestory.GameContent
             }
             else
             {
-                //index += 1;
+                if (renderer.RequireSpit) index += 1;
                 return null; // Mesh drawing is handled by the FirepitContentsRenderer
             }
             

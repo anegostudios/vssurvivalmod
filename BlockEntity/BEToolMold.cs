@@ -85,7 +85,7 @@ namespace Vintagestory.GameContent
             {
                 metalContent.ResolveBlockOrItem(api.World);
             }
-
+            
 
             block = api.World.BlockAccessor.GetBlock(pos);
             if (block == null || block.Code == null || block.Attributes == null) return;
@@ -97,7 +97,7 @@ namespace Vintagestory.GameContent
             {
                 fillQuadsByLevel = block.Attributes["fillQuadsByLevel"].AsObject<Cuboidf[]>();
             }
-
+            
 
             if (fillQuadsByLevel == null)
             {
@@ -111,13 +111,13 @@ namespace Vintagestory.GameContent
 
 
                 capi.Event.RegisterRenderer(renderer = new ToolMoldRenderer(pos, capi, fillQuadsByLevel), EnumRenderStage.Opaque);
-
+                
                 UpdateRenderer();
             }
 
             RegisterGameTickListener(OnGameTick, 50);
         }
-
+        
 
         private void OnGameTick(float dt)
         {
@@ -130,7 +130,7 @@ namespace Vintagestory.GameContent
             {
                 renderer.Temperature = Math.Min(1300, metalContent.Collectible.GetTemperature(api.World, metalContent));
             }
-
+            
         }
 
 
@@ -172,17 +172,17 @@ namespace Vintagestory.GameContent
                         handled = true;
                     }
 
-
+                    
                 }
 
                 return handled;
             }
-
+            
 
             return false;
         }
 
-        private bool TryTakeContents(IPlayer byPlayer)
+        protected virtual bool TryTakeContents(IPlayer byPlayer)
         {
             if (api is ICoreServerAPI) MarkDirty();
 
@@ -215,14 +215,14 @@ namespace Vintagestory.GameContent
 
                 return true;
             }
-
+            
 
             return false;
         }
 
 
 
-
+        
 
 
 
@@ -266,7 +266,7 @@ namespace Vintagestory.GameContent
                 UpdateRenderer();
                 return;
             }
-
+            
         }
 
         public void OnPourOver()
@@ -313,8 +313,7 @@ namespace Vintagestory.GameContent
                 if (jstack == null) return null;
 
                 return new ItemStack[] { stackFromCode(jstack, fromMetal) };
-            }
-            else
+            } else
             {
                 JsonItemStack[] jstacks = block.Attributes["drops"].AsObject<JsonItemStack[]>();
                 List<ItemStack> stacks = new List<ItemStack>();
@@ -326,7 +325,7 @@ namespace Vintagestory.GameContent
                     {
                         stacks.Add(stack);
                     }
-                }
+                }                
 
                 return stacks.ToArray();
             }
@@ -350,7 +349,7 @@ namespace Vintagestory.GameContent
             metalContent = tree.GetItemstack("contents");
             fillLevel = tree.GetInt("fillLevel");
             if (api?.World != null && metalContent != null) metalContent.ResolveBlockOrItem(api.World);
-
+            
             UpdateRenderer();
 
             if (api?.Side == EnumAppSide.Client)
@@ -376,15 +375,14 @@ namespace Vintagestory.GameContent
             if (this.metalContent != null)
             {
                 string state = IsLiquid ? Lang.Get("liquid") : (IsHardened ? Lang.Get("hardened") : Lang.Get("soft"));
-
+                
                 string temp = Temperature < 21 ? Lang.Get("Cold") : Lang.Get("{0}°C", (int)Temperature);
                 contents = string.Format("{0}/{4} units of {1} {2} ({3})\n", fillLevel, state, this.metalContent.GetName(), temp, requiredUnits);
-            }
-            else
+            } else
             {
                 contents = string.Format("0/{0} units of metal\n", requiredUnits);
             }
-
+            
 
             return contents.Length == 0 ? "Empty" : contents;
         }

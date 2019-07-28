@@ -24,7 +24,7 @@ namespace Vintagestory.GameContent
 
         public override void Initialize(JsonObject properties)
         {
-            string[] blockCodes = properties["exchangeStates"].AsStringArray();
+            string[] blockCodes = properties["exchangeStates"].AsArray<string>();
 
             this.blockCodes = new AssetLocation[blockCodes.Length];
 
@@ -73,6 +73,8 @@ namespace Vintagestory.GameContent
             {
                 world.PlaySoundAt(new AssetLocation("sounds/" + sound), blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z, byPlayer);
             }
+
+            (byPlayer as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
 
             return true;
         }

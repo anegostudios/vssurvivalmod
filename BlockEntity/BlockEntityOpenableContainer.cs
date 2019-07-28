@@ -19,6 +19,9 @@ namespace Vintagestory.GameContent
     {
         protected GuiDialogBlockEntityInventory invDialog;
 
+        public virtual AssetLocation OpenSound => new AssetLocation("sounds/block/chestopen");
+        public virtual AssetLocation CloseSound => new AssetLocation("sounds/block/chestclose");
+
         public abstract bool OnPlayerRightClick(IPlayer byPlayer, BlockSelection blockSel);
 
         public override void Initialize(ICoreAPI api)
@@ -79,15 +82,23 @@ namespace Vintagestory.GameContent
                     Inventory.ResolveBlocksOrItems();
                     
                     invDialog = new GuiDialogBlockEntityInventory(dialogTitle, Inventory, pos, cols, api as ICoreClientAPI);
+
+                    Block block = api.World.BlockAccessor.GetBlock(pos);
+                    string os = block.Attributes?["openSound"]?.AsString();
+                    string cs = block.Attributes?["closeSound"]?.AsString();
+                    AssetLocation opensound = os == null ? null : AssetLocation.Create(os, block.Code.Domain);
+                    AssetLocation closesound = cs == null ? null : AssetLocation.Create(cs, block.Code.Domain);
+
+                    invDialog.OpenSound = opensound ?? this.OpenSound;
+                    invDialog.CloseSound = closesound ?? this.CloseSound;
+
                     invDialog.TryOpen();
                 }
             }
 
             if (packetid == (int)EnumBlockContainerPacketId.CloseInventory)
             {
-                
                 clientWorld.Player.InventoryManager.CloseInventory(Inventory);
-
                 invDialog?.TryClose();
                 invDialog?.Dispose();
                 invDialog = null;
@@ -102,6 +113,11 @@ namespace Vintagestory.GameContent
             invDialog?.Dispose();
         }
 
+
+        public override string GetBlockInfo(IPlayer forPlayer)
+        {
+            return base.GetBlockInfo(forPlayer);
+        }
 
     }
 }

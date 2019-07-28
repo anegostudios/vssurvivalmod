@@ -24,7 +24,7 @@ namespace Vintagestory.GameContent.Mechanics
 
         public void WasPlaced(IWorldAccessor world, BlockPos ownPos, BlockFacing connectedOnFacing = null, IMechanicalPowerBlock connectedToBlock = null)
         {
-            BEMPBase be = (world.BlockAccessor.GetBlockEntity(ownPos) as BEMPBase);
+            BEMPBase beMechBase = (world.BlockAccessor.GetBlockEntity(ownPos) as BEMPBase);
 
             MechanicalNetwork network;
 
@@ -33,18 +33,21 @@ namespace Vintagestory.GameContent.Mechanics
                 network = mechPower.CreateNetwork();
             } else
             {
-                network = connectedToBlock.GetNetwork(world, ownPos.AddCopy(connectedOnFacing));                
+                network = connectedToBlock.GetNetwork(world, ownPos.AddCopy(connectedOnFacing));
+
+                IMechanicalPowerNode node = world.BlockAccessor.GetBlockEntity(ownPos.AddCopy(connectedOnFacing)) as IMechanicalPowerNode;
+
+                beMechBase?.SetBaseTurnDirection(node.GetTurnDirection(connectedOnFacing.GetOpposite()), connectedOnFacing.GetOpposite());
             }
 
-            be?.SetNetwork(network);
+            beMechBase?.JoinNetwork(network);
         }
 
-
-
+        
 
         public MechanicalNetwork GetNetwork(IWorldAccessor world, BlockPos pos)
         {
-            IMechanicalPowerDevice be = world.BlockAccessor.GetBlockEntity(pos) as IMechanicalPowerDevice;
+            IMechanicalPowerNode be = world.BlockAccessor.GetBlockEntity(pos) as IMechanicalPowerNode;
             return be?.Network;
         }
 
@@ -54,5 +57,6 @@ namespace Vintagestory.GameContent.Mechanics
 
             return base.OnBlockInteractStart(world, byPlayer, blockSel);
         }
+        
     }
 }

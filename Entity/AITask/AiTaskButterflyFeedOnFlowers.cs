@@ -38,7 +38,7 @@ namespace Vintagestory.GameContent
             (entity.Api as ICoreServerAPI).Event.DidBreakBlock -= Event_DidBreakBlock;
         }
 
-        private void Event_DidBreakBlock(IServerPlayer byPlayer, ushort oldblockId, BlockSelection blockSel)
+        private void Event_DidBreakBlock(IServerPlayer byPlayer, int oldblockId, BlockSelection blockSel)
         {
             if (tmpPos != null && blockSel.Position.Equals(tmpPos))
             {

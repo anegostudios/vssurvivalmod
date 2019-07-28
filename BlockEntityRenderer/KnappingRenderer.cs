@@ -207,6 +207,8 @@ namespace Vintagestory.GameContent
 
         private void RegenOutlineMesh(KnappingRecipe recipeToOutline, bool[,] Voxels)
         {
+            recipeOutlineMeshRef?.Dispose();
+
             MeshData recipeOutlineMesh = new MeshData(24, 36, false, false, true, false, false);
             recipeOutlineMesh.SetMode(EnumDrawMode.Lines);
 

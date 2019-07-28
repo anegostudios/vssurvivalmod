@@ -11,24 +11,25 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockEntityMeal : BlockEntityContainer, IBlockShapeSupplier
+    public class BlockEntityMeal : BlockEntityContainer, IBlockShapeSupplier, IBlockEntityMealContainer
     {
+        InventoryBase IBlockEntityMealContainer.inventory => inventory;
         public override InventoryBase Inventory => inventory;
         public override string InventoryClassName => "meal";
-
 
         internal InventoryGeneric inventory;
         internal BlockMeal ownBlock;
         MeshData currentMesh;
 
-        public string RecipeCode;
-        public int QuantityServings;
+        public string RecipeCode { get; set; }
+        public float QuantityServings { get; set; }
 
         public CookingRecipe FromRecipe
         {
             get { return api.World.CookingRecipes.FirstOrDefault(rec => rec.Code == RecipeCode); }
         }
 
+        
         public BlockEntityMeal()
         {
             inventory = new InventoryGeneric(4, null, null);
@@ -70,6 +71,7 @@ namespace Vintagestory.GameContent
                 }
 
                 RecipeCode = blockmeal.GetRecipeCode(api.World, byItemStack);
+                QuantityServings = blockmeal.GetQuantityServings(api.World, byItemStack);
             }
             
             if (api.Side == EnumAppSide.Client)
@@ -92,7 +94,7 @@ namespace Vintagestory.GameContent
 
         private int GetTemperature()
         {
-            ItemStack[] stacks = GetContentStacks(false);
+            ItemStack[] stacks = GetNonEmptyContentStacks(false);
             if (stacks.Length == 0 || stacks[0] == null) return 0;
 
             return (int)stacks[0].Collectible.GetTemperature(api.World, stacks[0]);
@@ -102,7 +104,7 @@ namespace Vintagestory.GameContent
         internal MeshData GenMesh()
         {
             if (ownBlock == null) return null;
-            ItemStack[] stacks = GetContentStacks();
+            ItemStack[] stacks = GetNonEmptyContentStacks();
             if (stacks == null || stacks.Length == 0) return null;
 
             ICoreClientAPI capi = api as ICoreClientAPI;
@@ -120,7 +122,8 @@ namespace Vintagestory.GameContent
             base.FromTreeAtributes(tree, worldForResolving);
 
             RecipeCode = tree.GetString("recipeCode");
-            QuantityServings = tree.GetInt("quantityServings");
+            
+            QuantityServings = (float)tree.GetDecimal("quantityServings");
 
             if (api?.Side == EnumAppSide.Client && currentMesh == null)
             {
@@ -134,18 +137,27 @@ namespace Vintagestory.GameContent
             base.ToTreeAttributes(tree);
 
             tree.SetString("recipeCode", RecipeCode == null ? "" : RecipeCode);
-            tree.SetInt("quantityServings", QuantityServings);
+            tree.SetFloat("quantityServings", QuantityServings);
         }
 
 
         public override string GetBlockInfo(IPlayer forPlayer)
         {
             CookingRecipe recipe = FromRecipe;
-            if (recipe == null) return "Unknown recipe :O";
-
             StringBuilder dsc = new StringBuilder();
 
-            dsc.AppendLine(recipe.GetOutputName(forPlayer.Entity.World, GetContentStacks()).UcFirst());
+            if (recipe == null)
+            {    
+                if (inventory.Count > 0 && !inventory[0].Empty)
+                {
+                    dsc.AppendLine(inventory[0].StackSize + "x " + inventory[0].Itemstack.GetName());
+                }
+
+                return dsc.ToString();
+            }
+
+
+            dsc.AppendLine(Lang.Get("{0} serving of {1}", Math.Round(QuantityServings, 1), recipe.GetOutputName(forPlayer.Entity.World, GetNonEmptyContentStacks()).UcFirst()));
 
             if (ownBlock == null) return dsc.ToString();
 
@@ -156,10 +168,31 @@ namespace Vintagestory.GameContent
 
             dsc.AppendLine(Lang.Get("Temperature: {0}", temppretty));
 
-            string nutriFacts = ownBlock.GetContentNutritionFacts(api.World, ownBlock.OnPickBlock(api.World, pos), forPlayer.Entity);
+            string nutriFacts = ownBlock.GetContentNutritionFacts(api.World, inventory[0], GetNonEmptyContentStacks(false), forPlayer.Entity);
             if (nutriFacts != null)
             {
                 dsc.Append(nutriFacts);
+            }
+
+            TransitionState state = inventory[0].Itemstack.Collectible.UpdateAndGetTransitionState(api.World, inventory[0], EnumTransitionType.Perish);
+            if (state != null)
+            {
+                if (state.TransitionLevel > 0)
+                {
+                    dsc.AppendLine(Lang.Get("<font color=\"orange\">Perishable.</font> {0}% spoiled", (int)Math.Round(state.TransitionLevel * 100)));
+                }
+                else
+                {
+                    double hoursPerday = api.World.Calendar.HoursPerDay;
+                    if (state.FreshHoursLeft > hoursPerday)
+                    {
+                        dsc.AppendLine(Lang.Get("<font color=\"orange\">Perishable.</font> Fresh for {0} days", Math.Round(state.FreshHoursLeft / hoursPerday, 1)));
+                    }
+                    else
+                    {
+                        dsc.AppendLine(Lang.Get("<font color=\"orange\">Perishable.</font> Fresh for {0} hours", Math.Round(state.FreshHoursLeft, 1)));
+                    }
+                }
             }
 
 

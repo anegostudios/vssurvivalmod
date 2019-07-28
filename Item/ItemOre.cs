@@ -12,9 +12,8 @@ namespace Vintagestory.GameContent
     public class ItemOre : Item
     {
 
-        public override void GetHeldItemInfo(ItemStack stack, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
+        public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
         {
-            
             if (CombustibleProps?.SmeltedStack == null)
             {
                 if (Attributes?["metalUnits"].Exists == true)
@@ -42,7 +41,7 @@ namespace Vintagestory.GameContent
             else
             {
 
-                base.GetHeldItemInfo(stack, dsc, world, withDebugInfo);
+                base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
 
                 if (CombustibleProps.SmeltedStack.ResolvedItemstack.GetName().Contains("ingot"))
                 {
@@ -63,7 +62,7 @@ namespace Vintagestory.GameContent
             }
             
 
-            base.GetHeldItemInfo(stack, dsc, world, withDebugInfo);
+            base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
         }
 
         public override string GetHeldItemName(ItemStack itemStack)

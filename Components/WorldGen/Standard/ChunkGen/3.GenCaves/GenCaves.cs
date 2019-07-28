@@ -145,7 +145,7 @@ namespace Vintagestory.ServerMods
         {
             for (int chunkY = 0; chunkY < chunks.Length; chunkY++) {
                 chunks[chunkY].MarkModified();
-                api.WorldManager.ResendChunk(chunkX, chunkY, chunkZ, true);
+                api.WorldManager.BroadcastChunk(chunkX, chunkY, chunkZ, true);
             }
         }
 
@@ -216,7 +216,7 @@ namespace Vintagestory.ServerMods
             }
         }
 
-        ushort blockId;
+        int blockId;
 
         private void CarveTunnel(IServerChunk[] chunks, int chunkX, int chunkZ, double posX, double posY, double posZ, float horAngle, float vertAngle, float horizontalSize, float verticalSize, int currentIteration, int maxIterations, int branchLevel, bool extraBranchy = false, float curviness = 0.1f, bool largeNearLavaLayer = false)
         {
@@ -577,7 +577,7 @@ namespace Vintagestory.ServerMods
 
                         if (y > worldheight - 1 || xdistRel + ydistRel + zdistRel > 1.0) continue;
 
-                        ushort[] chunkBlockData = chunks[y / chunksize].Blocks;
+                        IChunkBlocks chunkBlockData = chunks[y / chunksize].Blocks;
                         int ly = y % chunksize;
 
                         chunkBlockData[(ly * chunksize + lz) * chunksize + lx] = y < 12 ? GlobalConfig.lavaBlockId : blockId;

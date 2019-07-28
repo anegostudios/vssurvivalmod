@@ -94,7 +94,7 @@ namespace Vintagestory.GameContent
                     }
                 }
 
-                if (stack?.Collectible is BlockBowl && (stack.Collectible as BlockBowl)?.BowlContentItemCode() == null && stack.Collectible.Attributes?["mealContainer"].AsBool() == true)
+                if (stack?.Collectible.Attributes?["mealContainer"].AsBool() == true)
                 {
                     ItemSlot potSlot = null;
                     if (bef?.inputStack?.Collectible is BlockCookedContainer)
@@ -163,6 +163,10 @@ namespace Vintagestory.GameContent
                 if (charcoalPitBlock != null)
                 {
                     world.BlockAccessor.SetBlock(charcoalPitBlock.BlockId, pos);
+
+                    BlockEntityCharcoalPit be = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityCharcoalPit;
+                    be?.Init(player);
+
                     return true;
                 }
             }

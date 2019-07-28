@@ -16,8 +16,8 @@ namespace Vintagestory.ServerMods
         ICoreServerAPI sapi;
 
         ushort[] heights;
-        int width;
-        int height;
+        //int width;
+        //int height;
 
 
         public override void StartServerSide(ICoreServerAPI api)

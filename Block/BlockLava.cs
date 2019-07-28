@@ -62,7 +62,7 @@ namespace Vintagestory.GameContent
             BlockEntityFire befire = world.BlockAccessor.GetBlockEntity(fireLocation.firePos) as BlockEntityFire;
             if (befire != null)
             {
-                befire.Init(fireLocation.facing);
+                befire.Init(fireLocation.facing, null);
             }
         }
 

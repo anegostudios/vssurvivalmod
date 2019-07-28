@@ -5,8 +5,10 @@ using System.Text;
 using System.Threading.Tasks;
 using Vintagestory.API;
 using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
 using Vintagestory.ServerMods.NoObf;
 
 namespace Vintagestory.ServerMods
@@ -85,29 +87,28 @@ namespace Vintagestory.ServerMods
             chunkMapSizeY = api.WorldManager.MapSizeY / chunksize;
             regionChunkSize = api.WorldManager.RegionSize / chunksize;
 
-            Random rnd = new Random(api.WorldManager.Seed + 2132121);
             strucRand = new LCGRandom(api.WorldManager.Seed + 1090);
 
             IAsset asset = api.Assets.Get("worldgen/structures.json");
             scfg = asset.ToObject<WorldGenStructuresConfig>();
-            scfg.Init(api, rnd);
+            scfg.Init(api);
 
             asset = api.Assets.Get("worldgen/villages.json");
             vcfg = asset.ToObject<WorldGenVillageConfig>();
-            vcfg.Init(api, rnd);
+            vcfg.Init(api);
         }
 
-        private void OnChunkColumnGenPostPass(IServerChunk[] chunks, int chunkX, int chunkZ)
+        private void OnChunkColumnGenPostPass(IServerChunk[] chunks, int chunkX, int chunkZ, ITreeAttribute chunkGenParams = null)
         {
             if (!TerraGenConfig.GenerateStructures) return;
 
             IMapRegion region = chunks[0].MapChunk.MapRegion;
-            DoGenStructures(region, chunkX, chunkZ, true);
 
-            DoGenVillages(region, chunkX, chunkZ, true);
+            DoGenStructures(region, chunkX, chunkZ, true, chunkGenParams);
+            DoGenVillages(region, chunkX, chunkZ, true, chunkGenParams);
         }
 
-        private void OnChunkColumnGen(IServerChunk[] chunks, int chunkX, int chunkZ)
+        private void OnChunkColumnGen(IServerChunk[] chunks, int chunkX, int chunkZ, ITreeAttribute chunkGenParams = null)
         {
             if (!TerraGenConfig.GenerateStructures) return;
 
@@ -137,25 +138,51 @@ namespace Vintagestory.ServerMods
             climateBotRight = climateMap.GetUnpaddedInt((int)(rlX * facC + facC), (int)(rlZ * facC + facC));
 
             heightmap = chunks[0].MapChunk.WorldGenTerrainHeightMap;
-
-            DoGenStructures(region, chunkX, chunkZ, false);
-            DoGenVillages(region, chunkX, chunkZ, false);
+            
+            
+            DoGenStructures(region, chunkX, chunkZ, false, chunkGenParams);
+            DoGenVillages(region, chunkX, chunkZ, false, chunkGenParams);
         }
 
-        private void DoGenStructures(IMapRegion region, int chunkX, int chunkZ, bool posPass)
+        private void DoGenStructures(IMapRegion region, int chunkX, int chunkZ, bool postPass, ITreeAttribute chunkGenParams = null)
         {
             BlockPos pos = new BlockPos();
 
+            ITreeAttribute chanceModTree = null;
+            ITreeAttribute maxQuantityModTree = null;
+            if (chunkGenParams?["structureChanceModifier"] != null)
+            {
+                chanceModTree = chunkGenParams["structureChanceModifier"] as TreeAttribute;
+            }
+            if (chunkGenParams?["structureMaxCount"] != null)
+            {
+                maxQuantityModTree = chunkGenParams["structureMaxCount"] as TreeAttribute;
+            }
+
+
             strucRand.InitPositionSeed(chunkX, chunkZ);
+
+            scfg.Structures.Shuffle(strucRand);
 
             for (int i = 0; i < scfg.Structures.Length; i++)
             {
                 WorldGenStructure struc = scfg.Structures[i];
-                if (struc.PostPass != posPass) continue;
+                if (struc.PostPass != postPass) continue;
 
                 float chance = struc.Chance * scfg.ChanceMultiplier;
+                int toGenerate = 9999;
+                if (chanceModTree != null)
+                {
+                    chance *= chanceModTree.GetFloat(struc.Code, 0);
+                }
 
-                while (chance-- > strucRand.NextDouble())
+                if (maxQuantityModTree != null)
+                {
+                    toGenerate = maxQuantityModTree.GetInt(struc.Code, 9999);
+                }
+
+
+                while (chance-- > strucRand.NextDouble() && toGenerate > 0)
                 {
                     int dx = strucRand.NextInt(chunksize);
                     int dz = strucRand.NextInt(chunksize);
@@ -166,7 +193,7 @@ namespace Vintagestory.ServerMods
                     {
                         if (struc.Depth != null)
                         {
-                            pos.Set(chunkX * chunksize + dx, ySurface - (int)struc.Depth.nextFloat(), chunkZ * chunksize + dz);
+                            pos.Set(chunkX * chunksize + dx, ySurface - (int)struc.Depth.nextFloat(1, strucRand), chunkZ * chunksize + dz);
                         }
                         else
                         {
@@ -182,7 +209,7 @@ namespace Vintagestory.ServerMods
                     if (struc.TryGenerate(worldgenBlockAccessor, api.World, pos, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight))
                     {
                         Cuboidi loc = struc.LastPlacedSchematicLocation;
-
+                        
                         string code = struc.Code + (struc.LastPlacedSchematic == null ? "" : "/" + struc.LastPlacedSchematic.FromFileName);
 
                         region.GeneratedStructures.Add(new GeneratedStructure() { Code = code, Group = struc.Group, Location = loc.Clone() });
@@ -200,7 +227,7 @@ namespace Vintagestory.ServerMods
                             });
                         }
 
-
+                        toGenerate--;
                     }
                 }
             }
@@ -211,7 +238,7 @@ namespace Vintagestory.ServerMods
 
 
 
-        private void DoGenVillages(IMapRegion region, int chunkX, int chunkZ, bool posPass)
+        private void DoGenVillages(IMapRegion region, int chunkX, int chunkZ, bool postPass, ITreeAttribute chunkGenParams = null)
         {
             BlockPos pos = new BlockPos();
 
@@ -220,7 +247,7 @@ namespace Vintagestory.ServerMods
             for (int i = 0; i < vcfg.VillageTypes.Length; i++)
             {
                 WorldGenVillage struc = vcfg.VillageTypes[i];
-                if (struc.PostPass != posPass) continue;
+                if (struc.PostPass != postPass) continue;
 
                 float chance = struc.Chance * vcfg.ChanceMultiplier;
 

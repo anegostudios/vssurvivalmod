@@ -51,7 +51,7 @@ namespace Vintagestory.GameContent
 
                 
 
-                return secondsUsed < bh.HarvestDuration;
+                return secondsUsed < bh.HarvestDuration + 0.15f;
             }
 
             return false;
@@ -59,8 +59,13 @@ namespace Vintagestory.GameContent
 
         public override void OnHeldInteractStop(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
-            EntityBehaviorHarvestable bh;
-            if (entitySel != null && (bh = entitySel.Entity.GetBehavior<EntityBehaviorHarvestable>()) != null && secondsUsed >= bh.HarvestDuration - 0.1f)
+            if (entitySel == null) return;
+
+            EntityBehaviorHarvestable bh = entitySel.Entity.GetBehavior<EntityBehaviorHarvestable>();
+
+            //byEntity.World.Logger.Debug("{0} knife interact stop, seconds used {1} / {2}", byEntity.World.Side, secondsUsed, bh?.HarvestDuration);
+
+            if (bh != null && secondsUsed >= bh.HarvestDuration - 0.1f)
             {
                 bh.SetHarvested((byEntity as EntityPlayer)?.Player);
                 slot?.Itemstack?.Collectible.DamageItem(byEntity.World, byEntity, slot, 3);

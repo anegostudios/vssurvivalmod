@@ -19,7 +19,7 @@ namespace Vintagestory.GameContent
 
             if (properties["attachedToFaces"].Exists)
             {
-                string[] faces = properties["attachedToFaces"].AsStringArray();
+                string[] faces = properties["attachedToFaces"].AsArray<string>();
                 AttachedToFaces = new BlockFacing[faces.Length];
 
                 for (int i = 0; i < faces.Length; i++)
@@ -65,7 +65,7 @@ namespace Vintagestory.GameContent
 
                 Block block = blockAccessor.GetBlock(pos.AddCopy(face));
 
-                if (block.CanAttachBlockAt(blockAccessor, block, pos.AddCopy(face), face.GetOpposite()))
+                if (block.CanAttachBlockAt(blockAccessor, this.block, pos.AddCopy(face), face.GetOpposite()))
                 {
                     return true;
                 }

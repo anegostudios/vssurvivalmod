@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Vintagestory.API;
 using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.ServerMods.NoObf;
@@ -47,7 +48,7 @@ namespace Vintagestory.ServerMods
 
 
 
-        private void OnChunkColumnGen(IServerChunk[] chunks, int chunkX, int chunkZ)
+        private void OnChunkColumnGen(IServerChunk[] chunks, int chunkX, int chunkZ, ITreeAttribute chunkGenParams = null)
         {
             int seaLevel = TerraGenConfig.seaLevel - 1;
             int chunkY = seaLevel / chunksize;
@@ -64,7 +65,7 @@ namespace Vintagestory.ServerMods
 
                 for (; index3d < chunk.Blocks.Length; index3d++)
                 {
-                    ushort blockId = chunk.Blocks[index3d];
+                    int blockId = chunk.Blocks[index3d];
                     if (blockId == 0) continue;
 
                     

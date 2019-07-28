@@ -87,7 +87,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void DidModifyItemSlot(ItemSlot slot, IItemStack extractedStack = null)
+        public override void DidModifyItemSlot(ItemSlot slot, ItemStack extractedStack = null)
         {
             base.DidModifyItemSlot(slot, extractedStack);
 
@@ -114,6 +114,11 @@ namespace Vintagestory.GameContent
             }
         }
 
+
+        public override float GetTransitionSpeedMul(EnumTransitionType transType, ItemStack stack)
+        {
+            return base.GetTransitionSpeedMul(transType, stack);
+        }
 
         public void discardCookingSlots()
         {
@@ -161,7 +166,7 @@ namespace Vintagestory.GameContent
             if (i == 1) return new ItemSlotInput(this, 2);
             if (i == 2) return new ItemSlotOutput(this);
 
-            return new ItemSlotCooking(this);
+            return new ItemSlotWatertight(this);
         }
 
 

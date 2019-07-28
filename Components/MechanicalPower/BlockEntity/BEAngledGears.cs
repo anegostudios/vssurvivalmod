@@ -1,17 +1,17 @@
 ﻿using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent.Mechanics
 {
     public class BlockEntityAngledGears : BEMPBase
     {
-
         public override void Initialize(ICoreAPI api)
         {
             base.Initialize(api);
 
-            string orientations = Block.LastCodePart();
+            string orientations = Block.Variant["orientation"];
 
             switch (orientations)
             {
@@ -94,9 +94,46 @@ namespace Vintagestory.GameContent.Mechanics
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
         {
-
-
             return base.OnTesselation(mesher, tesselator);
         }
+
+
+        public override EnumTurnDirection GetTurnDirection(BlockFacing forFacing)
+        {
+            return forFacing == turnDirFromFacing ? turnDir : (EnumTurnDirection)(1 - (int)turnDir);
+        }
+
+        
+        public override void SetBaseTurnDirection(EnumTurnDirection turnDir, BlockFacing fromFacing)
+        {
+            this.turnDirFromFacing = fromFacing;
+
+            base.SetBaseTurnDirection(turnDir, fromFacing);
+        }
+
+
+        public override void ToTreeAttributes(ITreeAttribute tree)
+        {
+            base.ToTreeAttributes(tree);
+        }
+
+
+        public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
+        {
+            base.FromTreeAtributes(tree, worldAccessForResolve);
+        }
+
+
+
+        public override float GetResistance()
+        {
+            return 0;
+        }
+
+        public override float GetTorque()
+        {
+            return 0;
+        }
+
     }
 }

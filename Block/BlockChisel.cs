@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.ServerMods;
@@ -187,6 +188,15 @@ namespace Vintagestory.GameContent
         }
 
 
-        
+        public override string GetPlacedBlockName(IWorldAccessor world, BlockPos pos)
+        {
+            BlockEntityChisel be = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityChisel;
+            if (be != null) return be.BlockName;
+
+            return base.GetPlacedBlockName(world, pos);
+        }
+
+
+
     }
 }

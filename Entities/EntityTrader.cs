@@ -59,7 +59,8 @@ namespace Vintagestory.GameContent
 
                 animdata = animdata.Clone();
                 animdata.Animation = Personality + animdata.Animation;
-                animdata.CodeCrc32 = 0;
+                animdata.Code = animdata.Animation;
+                animdata.CodeCrc32 = AnimationMetaData.GetCrc32(animdata.Code);
 
                 if (animdata.Animation != Personality + "idle")
                 {
@@ -69,6 +70,12 @@ namespace Vintagestory.GameContent
             }
 
             return base.StartAnimation(animdata);
+        }
+
+        public override void StopAnimation(string code)
+        {
+            base.StopAnimation(code);
+            base.StopAnimation(Personality + code);
         }
 
         public override void OnAnimationStopped(string code)
@@ -251,7 +258,7 @@ namespace Vintagestory.GameContent
                 TradeItem item = TradeProps.Selling.List[i];
                 item.Resolve(World, "tradeItem resolver");
                 
-                bool alreadySelling = sellingSlots.Any((slot) => slot?.Itemstack != null && slot.TradeItem.Stock > 0 && item.ResolvedItemstack.Equals(World, slot.Itemstack, GlobalConstants.IgnoredStackAttributes));
+                bool alreadySelling = sellingSlots.Any((slot) => slot?.Itemstack != null && slot.TradeItem.Stock > 0 && item.ResolvedItemstack?.Equals(World, slot.Itemstack, GlobalConstants.IgnoredStackAttributes) == true);
 
                 if (!alreadySelling)
                 {
@@ -266,7 +273,7 @@ namespace Vintagestory.GameContent
                 TradeItem item = TradeProps.Buying.List[i];
                 item.Resolve(World, "tradeItem resolver");
 
-                bool alreadySelling = buyingSlots.Any((slot) => slot?.Itemstack != null && slot.TradeItem.Stock > 0 && item.ResolvedItemstack.Equals(World, slot.Itemstack, GlobalConstants.IgnoredStackAttributes));
+                bool alreadySelling = buyingSlots.Any((slot) => slot?.Itemstack != null && slot.TradeItem.Stock > 0 && item.ResolvedItemstack?.Equals(World, slot.Itemstack, GlobalConstants.IgnoredStackAttributes) == true);
 
                 if (!alreadySelling)
                 {
@@ -311,7 +318,7 @@ namespace Vintagestory.GameContent
                     refreshedSlots.Add(i);
                 }
 
-                if (newTradeItem.Name == null) newTradeItem.Name = i + "";
+                //if (newTradeItem.Name == null) newTradeItem.Name = i + "";
 
                 intoSlot.SetTradeItem(newTradeItem.Resolve(World));
                 intoSlot.MarkDirty();

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Vintagestory.API;
 using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.ServerMods.NoObf;
@@ -12,8 +13,8 @@ namespace Vintagestory.ServerMods
     {
         private ICoreServerAPI api;
         
-        List<ushort> BlockLayersIds = new List<ushort>();
-        ushort[] layersUnderWater = new ushort[0];
+        List<int> BlockLayersIds = new List<int>();
+        int[] layersUnderWater = new int[0];
 
         Random rnd;
         int mapheight;
@@ -102,7 +103,7 @@ namespace Vintagestory.ServerMods
 
         
 
-        private void OnChunkColumnGeneration(IServerChunk[] chunks, int chunkX, int chunkZ)
+        private void OnChunkColumnGeneration(IServerChunk[] chunks, int chunkX, int chunkZ, ITreeAttribute chunkGenParams = null)
         {
             IntMap forestMap = chunks[0].MapChunk.MapRegion.ForestMap;
             IntMap climateMap = chunks[0].MapChunk.MapRegion.ClimateMap;
@@ -166,7 +167,7 @@ namespace Vintagestory.ServerMods
                         int chunkY = posY / chunksize;
                         int lY = posY % chunksize;
                         int index3d = (chunksize * lY + z) * chunksize + x;
-                        ushort blockId = chunks[chunkY].Blocks[index3d];
+                        int blockId = chunks[chunkY].Blocks[index3d];
 
                         if (blockId == 0)
                         {
@@ -208,7 +209,7 @@ namespace Vintagestory.ServerMods
                 int chunkY = posY / chunksize;
                 int lY = posY % chunksize;
                 int index3d = (chunksize * lY + z) * chunksize + x;
-                ushort blockId = chunks[chunkY].Blocks[index3d];
+                int blockId = chunks[chunkY].Blocks[index3d];
 
                 posY--;
 
@@ -277,7 +278,7 @@ namespace Vintagestory.ServerMods
         }
 
 
-        private void LoadBlockLayers(double posRand, float rainRel, float temperature, int unscaledTemp, int posY, ushort firstBlockId)
+        private void LoadBlockLayers(double posRand, float rainRel, float temperature, int unscaledTemp, int posY, int firstBlockId)
         {
             float heightRel = ((float)posY - TerraGenConfig.seaLevel) / ((float)api.WorldManager.MapSizeY - TerraGenConfig.seaLevel);
             float fertilityRel = TerraGenConfig.GetFertilityFromUnscaledTemp((int)(rainRel * 255), unscaledTemp, heightRel) / 255f;
@@ -301,7 +302,7 @@ namespace Vintagestory.ServerMods
 
                 if (tempDist + rainDist + fertDist + yDist <= posRand)
                 {
-                    ushort blockId = bl.GetBlockId(posRand, temperature, rainRel, fertilityRel, firstBlockId);
+                    int blockId = bl.GetBlockId(posRand, temperature, rainRel, fertilityRel, firstBlockId);
                     if (blockId != 0)
                     {
                         BlockLayersIds.Add(blockId);
@@ -326,11 +327,11 @@ namespace Vintagestory.ServerMods
                 LakeBedBlockCodeByMin lbbc = blockLayerConfig.LakeBedLayer.BlockCodeByMin[j];
                 if (lbbc.Suitable(temperature, rainRel, (float)posY / api.WorldManager.MapSizeY, rnd))
                 {
-                    layersUnderWater = new ushort[] { lbbc.GetBlockForMotherRock(firstBlockId) };
+                    layersUnderWater = new int[] { lbbc.GetBlockForMotherRock(firstBlockId) };
                     break;
                 }
             }
-            if (layersUnderWater == null) layersUnderWater = new ushort[0];
+            if (layersUnderWater == null) layersUnderWater = new int[0];
 
         }
 

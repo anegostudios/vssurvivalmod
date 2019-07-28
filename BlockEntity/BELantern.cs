@@ -7,6 +7,7 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
+using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
@@ -15,6 +16,8 @@ namespace Vintagestory.GameContent
     {
         public string material = "copper";
         public string lining = "plain";
+        public string glass = "quartz";
+
         MeshData currentMesh;
 
         byte[] origlightHsv = new byte[] { 7, 4, 18 };
@@ -41,6 +44,8 @@ namespace Vintagestory.GameContent
 
             material = tree.GetString("material", "copper");
             lining = tree.GetString("lining", "plain");
+            glass = tree.GetString("glass", "quartz");
+            setLightColor(glass);
 
             if (api != null && api.Side == EnumAppSide.Client)
             {
@@ -57,30 +62,20 @@ namespace Vintagestory.GameContent
 
         private MeshData getMesh(ITesselatorAPI tesselator)
         {
-            Dictionary<string, MeshData> lanternMeshes = null;
-
-            object obj;
-            if (api.ObjectCache.TryGetValue("blockLanternBlockMeshes", out obj))
-            {
-                lanternMeshes = obj as Dictionary<string, MeshData>;
-            }
-            else
-            {
-                api.ObjectCache["blockLanternBlockMeshes"] = lanternMeshes = new Dictionary<string, MeshData>();
-            }
-
+            Dictionary<string, MeshData> lanternMeshes = ObjectCacheUtil.GetOrCreate(api, "blockLanternBlockMeshes", () => new Dictionary<string, MeshData>());
+            
             MeshData mesh = null;
             BlockLantern block = api.World.BlockAccessor.GetBlock(pos) as BlockLantern;
             if (block == null) return null;
 
             string orient = block.LastCodePart();
 
-            if (lanternMeshes.TryGetValue(material + "-" + lining + "-" + orient, out mesh))
+            if (lanternMeshes.TryGetValue(material + "-" + lining + "-" + orient + "-" + glass, out mesh))
             {
                 return mesh;
             }
 
-            return lanternMeshes[material + "-" + lining + "-" + orient] = block.GenMesh(api as ICoreClientAPI, material, lining, null, tesselator);
+            return lanternMeshes[material + "-" + lining + "-" + orient + "-" + glass] = block.GenMesh(api as ICoreClientAPI, material, lining, glass, null, tesselator);
         }
 
         public override void ToTreeAttributes(ITreeAttribute tree)
@@ -89,6 +84,7 @@ namespace Vintagestory.GameContent
 
             tree.SetString("material", material);
             tree.SetString("lining", lining);
+            tree.SetString("glass", glass);
         }
 
 
@@ -106,7 +102,72 @@ namespace Vintagestory.GameContent
 
         public override string GetBlockInfo(IPlayer forPlayer)
         {
-            return Lang.Get("{0} with {1} lining", material.UcFirst(), lining.UcFirst());
+            return Lang.Get("{0} with {1} lining and {2} glass panels", material.UcFirst(), lining.UcFirst(), glass);
+        }
+
+        internal void Interact(IPlayer byPlayer)
+        {
+            ItemSlot slot = byPlayer.InventoryManager.ActiveHotbarSlot;
+            CollectibleObject obj = slot.Itemstack.Collectible;
+            if (obj.FirstCodePart() == "glass" && obj.Variant.ContainsKey("color"))
+            {
+                if (glass != "quartz" && byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
+                {
+                    ItemStack stack = new ItemStack(api.World.GetBlock(new AssetLocation("glass-" + glass)));
+                    if (!byPlayer.InventoryManager.TryGiveItemstack(stack, true))
+                    {
+                        api.World.SpawnItemEntity(stack, pos.ToVec3d().Add(0.5, 0, 0.5));
+                    }
+                }
+
+                this.glass = obj.Variant["color"];
+                if (byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative && glass != "quartz") slot.TakeOut(1);
+
+                if (api.Side == EnumAppSide.Client) (byPlayer as IClientPlayer).TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
+                Vec3d soundpos = pos.ToVec3d().Add(0.5, 0, 0.5);
+                api.World.PlaySoundAt(api.World.GetBlock(new AssetLocation("glass-" + glass)).Sounds.Place, soundpos.X, soundpos.Y, soundpos.Z, byPlayer);
+
+                setLightColor(glass);
+
+                MarkDirty(true);
+            }
+        }
+
+
+        void setLightColor(string color)
+        {
+            switch (color)
+            {
+                case "green":
+                    lightHsv[0] = 20;
+                    lightHsv[1] = 4;
+                    break;
+                case "blue":
+                    lightHsv[0] = 42;
+                    lightHsv[1] = 4;
+                    break;
+                case "violet":
+                    lightHsv[0] = 48;
+                    lightHsv[1] = 4;
+                    break;
+                case "red":
+                    lightHsv[0] = 0;
+                    lightHsv[1] = 4;
+                    break;
+                case "yellow":
+                    lightHsv[0] = 11;
+                    lightHsv[1] = 4;
+                    break;
+                case "brown":
+                    lightHsv[0] = 5;
+                    lightHsv[1] = 4;
+                    break;
+
+                default:
+                    lightHsv[1] = 3;
+                    lightHsv[0] = 7;
+                    break;
+            }
         }
     }
 }

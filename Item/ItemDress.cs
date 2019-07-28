@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -29,22 +31,30 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override void GetHeldItemInfo(ItemStack stack, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
+        public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
         {
-            base.GetHeldItemInfo(stack, dsc, world, withDebugInfo);
+            base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
 
             EnumCharacterDressType dresstype;
-            string strdress = stack.ItemAttributes["clothescategory"].AsString();
+            string strdress = inSlot.Itemstack.ItemAttributes["clothescategory"].AsString();
             if (!Enum.TryParse(strdress, true, out dresstype))
             {
                 dsc.AppendLine(Lang.Get("Cloth Category: Unknown"));
             } else
             {
-                dsc.AppendLine(Lang.Get("Cloth Category: {0}", Lang.Get("clothcategory-" + stack.ItemAttributes["clothescategory"].AsString())));
+                dsc.AppendLine(Lang.Get("Cloth Category: {0}", Lang.Get("clothcategory-" + inSlot.Itemstack.ItemAttributes["clothescategory"].AsString())));
             }
+        }
 
-            
-
+        public override WorldInteraction[] GetHeldInteractionHelp(ItemSlot inSlot)
+        {
+            return new WorldInteraction[] {
+                new WorldInteraction()
+                {
+                    ActionLangCode = "heldhelp-dress",
+                    MouseButton = EnumMouseButton.Right,
+                }
+            }.Append(base.GetHeldInteractionHelp(inSlot));
         }
     }
 }

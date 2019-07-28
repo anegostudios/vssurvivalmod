@@ -160,7 +160,7 @@ namespace Vintagestory.GameContent
             voxelMesh.Flags = new int[24];
             voxelMesh.TintsCount = 6;
             for (int i = 0; i < voxelMesh.Rgba.Length; i++) voxelMesh.Rgba[i] = 255;
-            voxelMesh.Rgba2 = voxelMesh.Rgba;
+            voxelMesh.Rgba2 = null;// voxelMesh.Rgba;
 
 
             MeshData voxelMeshOffset = voxelMesh.Clone();

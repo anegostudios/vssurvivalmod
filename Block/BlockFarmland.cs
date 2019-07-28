@@ -16,6 +16,14 @@ namespace Vintagestory.GameContent
                 befarmland?.CreatedFromSoil(byItemStack.Block);
             }
         }
-        
+
+
+        public override bool CanAttachBlockAt(IBlockAccessor world, Block block, BlockPos pos, BlockFacing blockFace)
+        {
+            if (block is BlockCrop && blockFace == BlockFacing.UP) return true;
+
+            return base.CanAttachBlockAt(world, block, pos, blockFace);
+        }
+
     }
 }

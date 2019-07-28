@@ -35,9 +35,9 @@ namespace Vintagestory.GameContent
             return stack;
         }
 
-        public override void GetHeldItemInfo(ItemStack stack, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
+        public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
         {
-            byte[] data = stack.Attributes.GetBytes("spawnerData", null);
+            byte[] data = inSlot.Itemstack.Attributes.GetBytes("spawnerData", null);
             if (data != null)
             {
                 try
@@ -65,7 +65,7 @@ namespace Vintagestory.GameContent
                 catch { }
             }
 
-            base.GetHeldItemInfo(stack, dsc, world, withDebugInfo);
+            base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
         }
     }
 }

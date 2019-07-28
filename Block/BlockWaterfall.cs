@@ -45,11 +45,21 @@ namespace Vintagestory.GameContent
             return false;
         }
 
+        public static int ReplacableThreshold = 5000;
+        public override bool ShouldReceiveClientGameTicks(IWorldAccessor world, IPlayer player, BlockPos pos)
+        {
+            return
+                    pos.Y >= 2 &&
+                    world.BlockAccessor.GetBlock(pos.X, pos.Y - 1, pos.Z).Replaceable >= ReplacableThreshold/* &&
+                    world.BlockAccessor.GetBlock(pos.X, pos.Y - 2, pos.Z).Replaceable >= ReplacableThreshold*/
+                ;
+        }
+
         public override void OnClientGameTick(IWorldAccessor world, BlockPos pos, float secondsTicking)
         {
             if (ParticleProperties != null && ParticleProperties.Length > 0)
             {
-                for (int i = 0; i < ParticleProperties.Length; i++)
+                for (int i = 0; i < 4; i++)
                 {
                     if (world.Rand.NextDouble() > particleQuantity) continue;
 
@@ -59,11 +69,12 @@ namespace Vintagestory.GameContent
 
                     AdvancedParticleProperties bps = ParticleProperties[i];
                     bps.basePos.X = pos.X + TopMiddlePos.X;
-                    bps.basePos.Y = pos.Y + TopMiddlePos.Y;
+                    bps.basePos.Y = pos.Y;
                     bps.basePos.Z = pos.Z + TopMiddlePos.Z;
 
                     bps.HsvaColor[3].avg = 180 * Math.Min(1, secondsTicking / 7f);
                     bps.Quantity.avg = 1;
+                    bps.Velocity[1].avg = -0.4f;
 
                     world.SpawnParticles(bps);
                 }

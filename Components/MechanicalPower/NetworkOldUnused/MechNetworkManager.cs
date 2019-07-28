@@ -8,20 +8,6 @@ using Vintagestory.API.Datastructures;
 
 namespace Vintagestory.GameContent.Mechanics
 {
-    [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
-    public class MechNetworkPacket {
-        public long networkId;
-        public float totalAvailableTorque;
-        public float totalResistance;
-        public float speed;
-        public int direction;
-        public float angle;
-
-        public int firstNodeX;
-        public int firstNodeY;
-        public int firstNodeZ;
-    }
-
     public class MechNetworkManagerRegistry
     {
         public static Dictionary<IWorldAccessor, MechNetworkManager> ManagersByWorld;

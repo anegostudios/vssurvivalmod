@@ -78,7 +78,7 @@ namespace Vintagestory.ServerMods.NoObf
 
         public Block[] Blocks;
 
-        public Dictionary<ushort, Block[]> BlocksByRockType;
+        public Dictionary<int, Block[]> BlocksByRockType;
         BlockPos pos = new BlockPos();
         BlockPos tempPos = new BlockPos();
 
@@ -88,7 +88,7 @@ namespace Vintagestory.ServerMods.NoObf
         }
 
 
-        public void Generate(IBlockAccessor blockAccessor, Random rnd, int posX, int posY, int posZ, ushort firstBlockId)
+        public void Generate(IBlockAccessor blockAccessor, Random rnd, int posX, int posY, int posZ, int firstBlockId)
         {
             float quantity = Quantity.nextFloat() + 1;
             int chunkSize = blockAccessor.ChunkSize;
@@ -133,7 +133,7 @@ namespace Vintagestory.ServerMods.NoObf
         }
 
 
-        private Block[] getBlocks(ushort firstBlockId)
+        private Block[] getBlocks(int firstBlockId)
         {
             Block[] blocks = this.Blocks;
             if (BlocksByRockType == null || !BlocksByRockType.TryGetValue(firstBlockId, out blocks))

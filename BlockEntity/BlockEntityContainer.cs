@@ -1,11 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
+using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.ServerMods;
 
 namespace Vintagestory.GameContent
 {
@@ -22,6 +26,64 @@ namespace Vintagestory.GameContent
 
             Inventory.LateInitialize(InventoryClassName + "-" + pos.X + "/" + pos.Y + "/" + pos.Z, api);
             Inventory.ResolveBlocksOrItems();
+            Inventory.OnAcquireTransitionSpeed += Inventory_OnAcquireTransitionSpeed;
+
+            RegisterGameTickListener(OnTick, 10000);
+        }
+
+        protected virtual void OnTick(float dt)
+        {
+            foreach (ItemSlot slot in Inventory)
+            {
+                slot.Itemstack?.Collectible.UpdateAndGetTransitionStates(api.World, slot);
+            }
+        }
+
+        protected virtual float Inventory_OnAcquireTransitionSpeed(EnumTransitionType transType, ItemStack stack, float baseMul)
+        {
+            float positionAwarePerishRate = api != null && transType == EnumTransitionType.Perish ? GetPerishRate() : 1;
+
+            return baseMul * positionAwarePerishRate;
+        }
+
+
+        public virtual float GetPerishRate()
+        {
+            BlockPos sealevelpos = pos.Copy();
+            sealevelpos.Y = api.World.SeaLevel;
+
+            ClimateCondition cond = api.World.BlockAccessor.GetClimateAt(sealevelpos);
+
+            Cellar cellar = api.ModLoader.GetModSystem<CellarRegistry>().GetCellarForPosition(pos);
+
+            float soilTempWeight = 0f;
+
+            if (cellar != null)
+            {
+                soilTempWeight = 0.5f + 0.5f * (1 - GameMath.Clamp((float)cellar.NonCoolingWallCount / Math.Max(1, cellar.CoolingWallCount), 0, 1));
+            }
+
+            int lightlevel = api.World.BlockAccessor.GetLightLevel(pos, EnumLightLevelType.OnlySunLight);
+
+            // light level above 12 makes it additionally warmer, especially when part of a cellar
+            float airTemp = cond.Temperature + GameMath.Clamp(lightlevel - 11, 0, 10) * (1f + 5 * soilTempWeight);
+
+
+            // Lets say deep soil temperature is a constant 5°C
+            float cellarTemp = 5;
+
+            // How good of a cellar it is depends on how much rock or soil was used on he cellars walls
+            float hereTemp = GameMath.Lerp(airTemp, cellarTemp, soilTempWeight);
+
+            // For fairness lets say if its colder outside, use that temp instead
+            hereTemp = Math.Min(hereTemp, airTemp);
+
+            // Some neat curve to turn the temperature into a spoilage rate
+            // http://fooplot.com/#W3sidHlwZSI6MCwiZXEiOiJtYXgoMC4xLG1pbigyLjUsM14oeC8xOS0xLjIpKS0wLjEpIiwiY29sb3IiOiIjMDAwMDAwIn0seyJ0eXBlIjoxMDAwLCJ3aW5kb3ciOlsiLTIwIiwiNDAiLCIwIiwiMyJdLCJncmlkIjpbIjIuNSIsIjAuMjUiXX1d
+            // max(0.1, min(2.5, 3^(x/15 - 1.2))-0.1)
+            float rate = Math.Max(0.1f, Math.Min(2.4f, (float)Math.Pow(3, hereTemp / 19 - 1.2) - 0.1f));
+
+            return rate;
         }
 
         public override void OnBlockPlaced(ItemStack byItemStack = null)
@@ -32,7 +94,7 @@ namespace Vintagestory.GameContent
                 ItemStack[] stacks = container.GetContents(api.World, byItemStack);
                 for (int i = 0; stacks != null && i < stacks.Length; i++)
                 {
-                    Inventory[i].Itemstack = stacks[i].Clone();
+                    Inventory[i].Itemstack = stacks[i]?.Clone();
                 }
 
             }
@@ -46,13 +108,24 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public ItemStack[] GetContentStacks(bool cloned = true)
+        public ItemStack[] GetNonEmptyContentStacks(bool cloned = true)
         {
             List<ItemStack> stacklist = new List<ItemStack>();
             foreach (var slot in Inventory)
             {
                 if (slot.Empty) continue;
                 stacklist.Add(cloned ? slot.Itemstack.Clone() : slot.Itemstack);
+            }
+
+            return stacklist.ToArray();
+        }
+
+        public ItemStack[] GetContentStacks(bool cloned = true)
+        {
+            List<ItemStack> stacklist = new List<ItemStack>();
+            foreach (var slot in Inventory)
+            {
+                stacklist.Add(cloned ? slot.Itemstack?.Clone() : slot.Itemstack);
             }
 
             return stacklist.ToArray();
@@ -115,6 +188,43 @@ namespace Vintagestory.GameContent
                     (slot.Itemstack.Collectible as ItemStackRandomizer).Resolve(slot, worldForResolve);
                 }
             }
+        }
+
+        public override string GetBlockInfo(IPlayer forPlayer)
+        {
+            float rate = GetPerishRate();
+
+            if (Inventory is InventoryGeneric)
+            {
+                InventoryGeneric inv = Inventory as InventoryGeneric;
+                float rateMul = 1;
+                if (inv.TransitionableSpeedMulByType != null && inv.TransitionableSpeedMulByType.TryGetValue(EnumTransitionType.Perish, out rateMul))
+                {
+                    rate *= rateMul;
+
+                }
+
+                if (inv.PerishableFactorByFoodCategory != null)
+                {
+                    StringBuilder sb = new StringBuilder();
+                    sb.AppendLine(Lang.Get("Stored food perish speed:"));
+
+                    foreach (var val in inv.PerishableFactorByFoodCategory)
+                    {
+                        sb.AppendLine(Lang.Get("- {0}: {1}x", Lang.Get(val.Key.ToString()), Math.Round(rate * val.Value, 2)));
+                    }
+
+                    if (inv.PerishableFactorByFoodCategory.Count != Enum.GetValues(typeof(EnumFoodCategory)).Length)
+                    {
+                        sb.AppendLine(Lang.Get("- {0}: {1}x", Lang.Get("Other"), Math.Round(rate, 2)));
+                    }
+                    
+                    return sb.ToString();
+                }
+            }
+
+            
+            return Lang.Get("Stored food perish speed: {0}x", Math.Round(rate, 2));
         }
 
     }

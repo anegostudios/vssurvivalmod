@@ -105,6 +105,12 @@ namespace Vintagestory.GameContent
         {
             Block block = world.BlockAccessor.GetBlock(ownPos.AddCopy(side));
 
+            bool attrexists = block.Attributes?["fenceConnect"][side.Code].Exists == true;
+            if (attrexists)
+            {
+                return block.Attributes["fenceConnect"][side.Code].AsBool(true);
+            }
+
             return
                 (block.FirstCodePart() == FirstCodePart() || block.FirstCodePart() == FirstCodePart() + "gate")
                 || block.SideSolid[side.GetOpposite().Index];

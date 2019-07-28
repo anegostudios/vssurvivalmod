@@ -10,6 +10,7 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -29,6 +30,24 @@ namespace Vintagestory.GameContent
 
         ICoreServerAPI sapi;
 
+        int repairState = 0;
+        bool activated;
+        bool canTeleport = false;
+        bool findNextChunk = true;
+
+        ItemStack temporalGearStack;
+        NatFloat rndPos = NatFloat.create(EnumDistribution.INVERSEGAUSSIAN, 0, 0.5f);
+
+        public bool Activated
+        {
+            get { return activated; }
+        }
+
+        public bool FullyRepaired
+        {
+            get { return repairState >= 4; }
+        }
+
         public BlockEntityStaticTranslocator()
         {
         }
@@ -38,30 +57,57 @@ namespace Vintagestory.GameContent
             base.Initialize(api);
             manager = api.ModLoader.GetModSystem<TeleporterManager>();
 
-            if (api.Side == EnumAppSide.Server)
-            {
-                sapi = api as ICoreServerAPI;
-                //RegisterGameTickListener(OnServerGameTick, 250);
-            } else
-            {
-                //RegisterGameTickListener(OnClientGameTick, 50);
-            }
+            if (FullyRepaired) setupGameTickers();
 
             block = api.World.BlockAccessor.GetBlock(pos) as BlockStaticTranslocator;
-            posvec = new Vec3d(pos.X, pos.Y + 1, pos.Z);
+            posvec = new Vec3d(pos.X + 0.5, pos.Y, pos.Z + 0.5);
 
             if (api.World.Side == EnumAppSide.Client)
             {
                 float rotY = block.Shape.rotateY;
-                InitializeAnimator("translocator", new Vec3f(0, rotY, 0));
+                animUtil.InitializeAnimator("translocator", new Vec3f(0, rotY, 0));
+
+                temporalGearStack = new ItemStack(api.World.GetItem(new AssetLocation("gear-temporal")));
             }
         }
 
-        
+        public void DoActivate()
+        {
+            activated = true;
+            MarkDirty(true);
+        }
 
+        public void DoRepair()
+        {
+            if (FullyRepaired) return;
+
+            repairState++;
+            MarkDirty(true);
+
+            if (FullyRepaired)
+            {
+                activated = true;
+                setupGameTickers();
+            }
+        }
+        
+        public void setupGameTickers()
+        {
+            if (api.Side == EnumAppSide.Server)
+            {
+                sapi = api as ICoreServerAPI;
+                RegisterGameTickListener(OnServerGameTick, 250);
+            }
+            else
+            {
+                RegisterGameTickListener(OnClientGameTick, 50);
+            }
+        }
 
         internal void OnEntityCollide(Entity entity)
         {
+            if (!FullyRepaired || !Activated) return;
+
             TeleportingEntity tpe = null;
             if (!tpingEntities.TryGetValue(entity.EntityId, out tpe))
             {
@@ -79,7 +125,7 @@ namespace Vintagestory.GameContent
                 if ((api as ICoreClientAPI).World.Player.Entity == entity)
                 {
                     lastCollideMsOwnPlayer = api.World.ElapsedMilliseconds;
-                    manager.lastCollideMsOwnPlayer = lastCollideMsOwnPlayer;
+                    manager.lastTranslocateCollideMsOwnPlayer = lastCollideMsOwnPlayer;
                 }
             }
         }
@@ -87,20 +133,59 @@ namespace Vintagestory.GameContent
         
         private void OnClientGameTick(float dt)
         {
-            if (block == null || api?.World == null || !canTeleport) return;
+            if (block == null || api?.World == null || !canTeleport || !Activated) return;
 
-            SimpleParticleProperties currentParticles = (api.World.ElapsedMilliseconds > 100 && api.World.ElapsedMilliseconds - lastCollideMsOwnPlayer < 100) ? 
+            bool playerInside = (api.World.ElapsedMilliseconds > 100 && api.World.ElapsedMilliseconds - lastCollideMsOwnPlayer < 100);
+
+            SimpleParticleProperties currentParticles = playerInside ? 
                 block.insideParticles : 
                 block.idleParticles
             ;
-            
-            currentParticles.minPos = posvec;
-            api.World.SpawnParticles(currentParticles);
 
+            if (playerInside)
+            {
+                animUtil.StartAnimation(new AnimationMetaData() { Animation = "idle", Code = "idle", AnimationSpeed = 1, EaseInSpeed = 100, EaseOutSpeed = 100, BlendMode = EnumAnimationBlendMode.Average });
+                animUtil.StartAnimation(new AnimationMetaData() { Animation = "teleport", Code = "teleport", AnimationSpeed = 1, EaseInSpeed = 8, EaseOutSpeed = 8, BlendMode = EnumAnimationBlendMode.Add });
+            }
+            else
+            {
+                animUtil.StopAnimation("teleport");
+            }
+
+            if (api.World.ElapsedMilliseconds - lastCollideMsOwnPlayer > 3000)
+            {
+                animUtil.StopAnimation("idle");
+            }
+
+            //int color = temporalGearStack.Collectible.GetRandomColor(api as ICoreClientAPI, temporalGearStack); - not working o.O
+
+            int r = 53;
+            int g = 221;
+            int b = 172;
+            currentParticles.color = (r << 16) | (g << 8) | (b << 0) | (50 << 24);
+            
+            currentParticles.addPos.Set(0, 0, 0);
+            currentParticles.BlueEvolve = null;
+            currentParticles.RedEvolve = null;
+            currentParticles.GreenEvolve = null;
+            currentParticles.minSize = 0.1f;
+            currentParticles.maxSize = 0.2f;
+            currentParticles.SizeEvolve = null;
+            currentParticles.OpacityEvolve = EvolvingNatFloat.create(EnumTransformFunction.LINEAR, 100f);
+
+            double xpos = rndPos.nextFloat();
+            double ypos = 1.9 + api.World.Rand.NextDouble() * 0.2;
+            double zpos = rndPos.nextFloat();
+
+            currentParticles.lifeLength = GameMath.Sqrt(xpos*xpos + zpos*zpos) / 10;
+            currentParticles.minPos.Set(posvec.X + xpos, posvec.Y + ypos, posvec.Z + zpos);
+            currentParticles.minVelocity.Set(-(float)xpos, -1 - (float)api.World.Rand.NextDouble()/2, -(float)zpos);
+            currentParticles.minQuantity = playerInside ? 2 : 0.25f;
+            currentParticles.addQuantity = 0;
+            
+            api.World.SpawnParticles(currentParticles);
         }
 
-        bool canTeleport = false;
-        bool findNextChunk = true;
 
         private void OnServerGameTick(float dt)
         {            
@@ -113,95 +198,178 @@ namespace Vintagestory.GameContent
 
                 int chunkX = (pos.X + dx) / sapi.World.BlockAccessor.ChunkSize;
                 int chunkZ = (pos.Z + dz) / sapi.World.BlockAccessor.ChunkSize;
-
-                TreeAttribute tree = new TreeAttribute();
-                tree.SetBool("mustructureChanceModifier-Translocator", true);
-
-                ChunkLoadOptions opts = new ChunkLoadOptions()
+                
+                ChunkPeekOptions opts = new ChunkPeekOptions()
                 {
-                    KeepLoaded = false,
-                    OnLoaded = () => TestForExitPoint(chunkX - 1, chunkZ - 1, chunkX + 1, chunkZ + 1),
-                    ChunkLoadConfig = tree
+                    OnGenerated = (chunks) => TestForExitPoint(chunks, chunkX, chunkZ),
+                    UntilPass = EnumWorldGenPass.TerrainFeatures,
+                    ChunkGenParams = chunkGenParams()
                 };
 
-                sapi.WorldManager.LoadChunkColumnFast(chunkX - 1, chunkZ - 1, chunkX + 1, chunkZ + 1, opts);
+                sapi.WorldManager.PeekChunkColumn(chunkX, chunkZ, opts);
             }
 
-            if (canTeleport)
+            if (canTeleport && activated)
             {
                 HandleTeleporting(dt);
             }
         }
 
-        private void TestForExitPoint(int chunkX1, int chunkZ1, int chunkX2, int chunkZ2)
+
+        ITreeAttribute chunkGenParams()
         {
-            BlockPos pos = FindExitPoint(chunkX1, chunkZ1, chunkX2, chunkZ2);
+            TreeAttribute tree = new TreeAttribute();
+            TreeAttribute subtree;
+            tree["structureChanceModifier"] = subtree = new TreeAttribute();
+            subtree.SetFloat("gates", 10);
+
+            tree["structureMaxCount"] = subtree = new TreeAttribute();
+            subtree.SetInt("gates", 1);
+
+            return tree;
+        }
+
+
+        private void TestForExitPoint(Dictionary<Vec2i, IServerChunk[]> columnsByChunkCoordinate, int centerCx, int centerCz)
+        {
+            BlockPos pos = HasExitPoint(columnsByChunkCoordinate, centerCx, centerCz);
+
             if (pos == null)
             {
                 findNextChunk = true;
+            }
+            else
+            {
+                sapi.WorldManager.LoadChunkColumnFast(centerCx, centerCz, new ChunkLoadOptions() { ChunkGenParams = chunkGenParams(), OnLoaded = () => exitChunkLoaded(pos) });
+            }             
+        }
+
+        private void exitChunkLoaded(BlockPos exitPos)
+        {
+            BlockStaticTranslocator exitBlock = api.World.BlockAccessor.GetBlock(exitPos) as BlockStaticTranslocator;
+
+            if (exitBlock == null)
+            {
+                // Cheap hax: Pre v1.10 chunks do not have translocators at the same location and maybe future versions will also have a changed location
+                // So let's still try to find something useful in the chunk we generated, with any luck we come across an old one. 
+                exitPos = HasExitPoint(pos);
+                if (exitPos != null)
+                {
+                    exitBlock = api.World.BlockAccessor.GetBlock(exitPos) as BlockStaticTranslocator;
+                }
+            }
+            
+            if (exitBlock != null && !exitBlock.Repaired)
+            {
+                // Repair it
+                api.World.BlockAccessor.SetBlock(block.Id, exitPos);
+                BlockEntityStaticTranslocator beExit = api.World.BlockAccessor.GetBlockEntity(exitPos) as BlockEntityStaticTranslocator;
+
+                // Connect
+                beExit.tpLocation = pos.Copy();
+                beExit.canTeleport = true;
+                beExit.repairState = 4;
+                beExit.findNextChunk = false;
+                beExit.activated = true;
+                MarkDirty(true);
+                api.World.BlockAccessor.MarkBlockEntityDirty(exitPos);
+                api.World.BlockAccessor.MarkBlockDirty(exitPos);
+
+                tpLocation = exitPos;
+                canTeleport = true;
             } else
             {
-                BlockEntityStaticTranslocator exitBe = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityStaticTranslocator;
-                if (exitBe != null)
-                {
-                    exitBe.tpLocation = pos.Copy();
-                    exitBe.canTeleport = true;
-
-                    tpLocation = pos;
-                    canTeleport = true;
-                }
+                api.World.Logger.Warning("Translocator: Regen chunk but broken translocator is gone. Structure generation perhaps seed not consistent? May also just be pre-v1.10 chunk, so probably nothing to worry about. Searching again...");
+                findNextChunk = true;
             }
         }
 
-        private BlockPos FindExitPoint(int chunkX1, int chunkZ1, int chunkX2, int chunkZ2)
+        private BlockPos HasExitPoint(BlockPos nearpos)
         {
-            Dictionary<long, IMapRegion> regions = new Dictionary<long, IMapRegion>();
+            IServerChunk chunk = api.World.BlockAccessor.GetChunkAtBlockPos(nearpos) as IServerChunk;          
+            List<GeneratedStructure> structures = chunk?.MapChunk?.MapRegion?.GeneratedStructures;
 
-            int regionSize = sapi.WorldManager.RegionSize;
-            int chunksize = sapi.WorldManager.ChunkSize;
+            if (structures == null) return null;
 
-            for (int chunkx = chunkX1; chunkx <= chunkX2; chunkx++)
+            foreach (var structure in structures)
             {
-                for (int chunkz = chunkZ1; chunkz <= chunkZ2; chunkz++)
+                if (structure.Code.Contains("gates"))
                 {
-                    int regionX = chunkx * chunksize / regionSize;
-                    int regionZ = chunkz * chunksize / regionSize;
-                    IMapRegion region = sapi.WorldManager.GetMapRegion(regionX, regionZ);
-                    if (region == null) continue;
-                    regions[MapRegionIndex2D(regionX, regionZ)] = region;
-                }
-            }
-
-            foreach (var val in regions)
-            {
-                List<GeneratedStructure> structures = val.Value.GeneratedStructures;
-                foreach (var structure in structures)
-                {
-                    if (structure.Code.Contains("translocator"))
+                    Cuboidi loc = structure.Location;
+                    BlockPos foundPos = null;
+                    api.World.BlockAccessor.WalkBlocks(loc.Start.AsBlockPos, loc.End.AsBlockPos, (block, pos) =>
                     {
-                        BlockPos pos = FindTranslocator(structure.Location);
-                        if (pos != null) return pos;
-                    }
+                        BlockStaticTranslocator transBlock = block as BlockStaticTranslocator;
+                        
+                        if (transBlock != null && !transBlock.Repaired)
+                        {
+                            foundPos = pos.Copy();
+                        }
+                    });
+
+                    if (foundPos != null) return foundPos;
                 }
             }
 
             return null;
         }
 
-        private BlockPos FindTranslocator(Cuboidi location)
+        private BlockPos HasExitPoint(Dictionary<Vec2i, IServerChunk[]> columnsByChunkCoordinate, int centerCx, int centerCz)
         {
-            BlockPos foundPos = null;
+            IMapRegion mapregion = columnsByChunkCoordinate[new Vec2i(centerCx, centerCz)][0].MapChunk.MapRegion;
 
-            sapi.World.BlockAccessor.WalkBlocks(location.Start.AsBlockPos, location.End.AsBlockPos, (block, pos) =>
+            List<GeneratedStructure> structures = mapregion.GeneratedStructures;
+            foreach (var structure in structures)
             {
-                BlockStaticTranslocator transBlock = block as BlockStaticTranslocator;
-                if (transBlock != null && !transBlock.On)
+                if (structure.Code.Contains("gates"))
                 {
-                    foundPos = pos.Copy();
+                    BlockPos pos = FindTranslocator(structure.Location, columnsByChunkCoordinate, centerCx, centerCz);
+                    if (pos != null) return pos;
                 }
-            });
+            }
 
-            return foundPos;
+            return null;
+        }
+
+        private BlockPos FindTranslocator(Cuboidi location, Dictionary<Vec2i, IServerChunk[]> columnsByChunkCoordinate, int centerCx, int centerCz)
+        {
+            int chunksize = api.World.BlockAccessor.ChunkSize;
+            
+            for (int x = location.X1; x < location.X2; x++)
+            {
+                for (int y = location.Y1; y < location.Y2; y++)
+                {
+                    for (int z = location.Z1; z < location.Z2; z++)
+                    {
+                        int cx = x / chunksize;
+                        int cy = y / chunksize;
+                        int cz = z / chunksize;
+
+                        IServerChunk[] chunks = null;
+                        if (!columnsByChunkCoordinate.TryGetValue(new Vec2i(cx, cz), out chunks))
+                        {
+                            continue;
+                        }
+
+                        IServerChunk chunk = chunks[y / chunksize];
+
+                        int lx = x % chunksize;
+                        int ly = y % chunksize;
+                        int lz = z % chunksize;
+
+                        int index3d = (ly * chunksize + lz) * chunksize + lx;
+                        Block block = api.World.Blocks[chunk.Blocks[index3d]];
+
+                        BlockStaticTranslocator transBlock = block as BlockStaticTranslocator;
+                        if (transBlock != null && !transBlock.Repaired)
+                        {
+                            return new BlockPos(x, y, z);
+                        }
+                    }
+                }
+            }
+
+            return null;
         }
 
         public long MapRegionIndex2D(int regionX, int regionZ)
@@ -228,21 +396,31 @@ namespace Vintagestory.GameContent
                     continue;
                 }
 
-                if (val.Value.SecondsPassed > 3 && tpLocation != null)
+                if (val.Value.SecondsPassed > 1.5 && tpLocation != null)
                 {
-                    val.Value.Entity.TeleportTo(tpLocation.AddCopy(0,1,0));
+                    // Preload the chunk
+                    sapi.WorldManager.LoadChunkColumnFast((int)tpLocation.X / api.World.BlockAccessor.ChunkSize, (int)tpLocation.Z / api.World.BlockAccessor.ChunkSize, new ChunkLoadOptions() { KeepLoaded = true });
+                }
+
+                if (val.Value.SecondsPassed > 5 && tpLocation != null)
+                {
+                    val.Value.Entity.TeleportTo(tpLocation.ToVec3d().Add(0.5, 1, 0.5));
 
                     Entity e = val.Value.Entity;
                     if (e is EntityPlayer)
                     {
                         api.World.Logger.Debug("Teleporting player {0} to {1}", (e as EntityPlayer).GetBehavior<EntityBehaviorNameTag>().DisplayName, tpLocation);
+                        manager.DidTranslocateServer((e as EntityPlayer).Player as IServerPlayer);
                     } else
                     {
                         api.World.Logger.Debug("Teleporting entity {0} to {1}", e.Code, tpLocation);
                     }
-                    
 
                     toremove.Add(val.Key);
+
+                    activated = false;
+                    
+                    MarkDirty();
                 }
             }
 
@@ -270,13 +448,19 @@ namespace Vintagestory.GameContent
             base.FromTreeAtributes(tree, worldAccessForResolve);
 
             canTeleport = tree.GetBool("canTele");
+            repairState = tree.GetInt("repairState");
+            findNextChunk = tree.GetBool("findNextChunk", true);
+
+            bool wasActivated = activated;
+
+            activated = tree.GetBool("activated");
 
             if (canTeleport) {
                 tpLocation = new BlockPos(tree.GetInt("teleX"), tree.GetInt("teleY"), tree.GetInt("teleZ"));
 
                 if (tpLocation.X == 0 && tpLocation.Z == 0) tpLocation = null; // For safety
-            } 
-
+            }
+            
         }
 
         public override void ToTreeAttributes(ITreeAttribute tree)
@@ -284,6 +468,10 @@ namespace Vintagestory.GameContent
             base.ToTreeAttributes(tree);
 
             tree.SetBool("canTele", canTeleport);
+            tree.SetInt("repairState", repairState);
+            tree.SetBool("findNextChunk", findNextChunk);
+            tree.SetBool("activated", activated);
+
             if (tpLocation != null)
             {
                 tree.SetInt("teleX", tpLocation.X);
@@ -292,14 +480,74 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override string GetBlockInfo(IPlayer forPlayer)
+
+        public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
         {
-            if (tpLocation == null)
+            if (animUtil.activeAnimationsByAnimCode.Count > 0)
             {
-                return Lang.Get("Warming up...");
+                return true;
             }
 
-            return Lang.Get("Teleports to {1}", tpLocation);
+            if (!FullyRepaired)
+            {
+                MeshData mesh = ObjectCacheUtil.GetOrCreate(api, "statictranslocator-" + repairState + "-" + block.Shape.rotateY, () =>
+                {
+                    float rotY = block.Shape.rotateY;
+
+                    ICoreClientAPI capi = api as ICoreClientAPI;
+
+                    string shapeCode = "normal";
+                    switch (repairState)
+                    {
+                        case 0: shapeCode = "broken"; break;
+                        case 1: shapeCode = "repairstate1"; break;
+                        case 2: shapeCode = "repairstate2"; break;
+                        case 3: shapeCode = "repairstate3"; break;
+                    }
+
+                    MeshData meshdata;
+                    IAsset asset = api.Assets.TryGet(new AssetLocation("shapes/block/machine/statictranslocator/" + shapeCode + ".json"));
+                    Shape shape = asset.ToObject<Shape>();
+
+                    capi.Tesselator.TesselateShape(block, shape, out meshdata, new Vec3f(0, rotY, 0));
+
+                    return meshdata;
+                });
+
+                mesher.AddMeshData(mesh);
+                return true;
+            }
+
+
+            return false;
+        }
+
+
+
+        public override string GetBlockInfo(IPlayer forPlayer)
+        {
+            if (!FullyRepaired)
+            {
+                return Lang.Get("Seems to be missing a couple of gears. I think I've seen such gears before.");
+            }
+            else
+            {
+                if (tpLocation == null)
+                {
+                    string[] lines = new string[] { Lang.Get("Warping spacetime."), Lang.Get("Warping spacetime.."), Lang.Get("Warping spacetime...") };
+
+                    return lines[(int)(api.World.ElapsedMilliseconds / 1000f) % 3];
+                }
+            }
+
+            if (forPlayer.WorldData.CurrentGameMode == EnumGameMode.Creative)
+            {
+                return Lang.Get("Teleports to {0}", tpLocation.Copy().Sub(api.World.DefaultSpawnPosition.AsBlockPos));
+            }
+            else
+            {
+                return Lang.Get("Spacetime subduction completed.");
+            }
         }
     }
 }

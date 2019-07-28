@@ -2,6 +2,7 @@
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -83,5 +84,21 @@ namespace Vintagestory.GameContent
             }
 
         }
+
+
+        public override WorldInteraction[] GetHeldInteractionHelp(ItemSlot inSlot)
+        {
+            return new WorldInteraction[]
+            {
+                new WorldInteraction
+                {
+                    HotKeyCode = "sneak",
+                    ActionLangCode = "heldhelp-place",
+                    MouseButton = EnumMouseButton.Right
+                }
+            }.Append(base.GetHeldInteractionHelp(inSlot));
+        }
+
+
     }
 }

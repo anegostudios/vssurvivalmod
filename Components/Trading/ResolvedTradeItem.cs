@@ -11,7 +11,7 @@ namespace Vintagestory.GameContent
 {
     public class ResolvedTradeItem
     {
-        public string Name;
+        //public string Name;
         public ItemStack Stack;
         public int Price;
         public int Stock;
@@ -34,7 +34,7 @@ namespace Vintagestory.GameContent
 
         public void FromTreeAttributes(ITreeAttribute tree)
         {
-            Name = tree.GetString("name");
+            //Name = tree.GetString("name");
             Stack = tree.GetItemstack("stack");
             Price = tree.GetInt("price");
             Stock = tree.GetInt("stock");
@@ -53,7 +53,7 @@ namespace Vintagestory.GameContent
 
         public void ToTreeAttributes(ITreeAttribute tree)
         {
-            tree.SetString("name", Name);
+            //tree.SetString("name", Name);
             tree.SetItemstack("stack", Stack);
             tree.SetInt("price", Price);
             tree.SetInt("stock", Stock);

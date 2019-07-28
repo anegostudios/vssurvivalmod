@@ -3,8 +3,13 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent.Mechanics
 {
+    public enum EnumTurnDirection
+    {
+        Clockwise,
+        Counterclockwise
+    }
     
-    public interface IMechanicalPowerDevice
+    public interface IMechanicalPowerNode
     {
         MechanicalNetwork Network { get; }
         float Angle { get; }
@@ -15,8 +20,28 @@ namespace Vintagestory.GameContent.Mechanics
 
         int[] AxisMapping { get; }
         int[] AxisSign { get; }
+
+        /// <summary>
+        /// Amount of torque produced for given speed of the mechanical network it is in. 
+        /// Return a positive number if the torque is in clockwise direction when looking north or east, and negative if counter clockwise
+        /// </summary>
+        /// <returns></returns>
+        float GetTorque();
+
+        /// <summary>
+        /// If not a power producer but a consumer, return an above zero value here
+        /// </summary>
+        /// <returns></returns>
+        float GetResistance();
+
+        
+        EnumTurnDirection GetTurnDirection(BlockFacing forFacing);
+
+        EnumTurnDirection GetBaseTurnDirection();
+        void SetBaseTurnDirection(EnumTurnDirection turnDir, BlockFacing fromDir);
     }
 
+    /*
     public interface IMechanicalPowerDeviceOld
     {
         bool hasConnectorAt(BlockFacing localFacing);
@@ -44,5 +69,5 @@ namespace Vintagestory.GameContent.Mechanics
 
         MechanicalNetworkOld[] getNetworks();
         void clearNetwork();
-    }
+    }*/
 }

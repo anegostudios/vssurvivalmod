@@ -1,14 +1,51 @@
 ﻿using System;
+using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
     public class ItemHoe : Item
     {
+        WorldInteraction[] interactions;
+
+        public override void OnLoaded(ICoreAPI api)
+        {
+            if (api.Side != EnumAppSide.Client) return;
+            ICoreClientAPI capi = api as ICoreClientAPI;
+
+            interactions = ObjectCacheUtil.GetOrCreate(api, "hoeInteractions", () =>
+            {
+                List<ItemStack> stacks = new List<ItemStack>();
+
+                foreach (Block block in api.World.Blocks)
+                {
+                    if (block.Code == null) continue;
+
+                    if (block.Code.Path.StartsWith("soil"))
+                    {
+                        stacks.Add(new ItemStack(block));
+                    }
+                }
+
+                return new WorldInteraction[]
+                {
+                    new WorldInteraction()
+                    {
+                        ActionLangCode = "heldhelp-till",
+                        MouseButton = EnumMouseButton.Right,
+                        Itemstacks = stacks.ToArray()
+                    }
+                };
+            });
+        }
+
+
+
         public override void OnHeldInteractStart(ItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handHandling)
         {
             if (blockSel == null) return;
@@ -107,9 +144,15 @@ namespace Vintagestory.GameContent
                     ((BlockEntityFarmland)be).CreatedFromSoil(block);
                 }
             }
+
+            //byEntity.GetBehavior<EntityBehaviorHunger>()?.ConsumeSaturation(5f);
         }
 
 
+        public override WorldInteraction[] GetHeldInteractionHelp(ItemSlot inSlot)
+        {
+            return interactions.Append(base.GetHeldInteractionHelp(inSlot));
+        }
 
     }
 }

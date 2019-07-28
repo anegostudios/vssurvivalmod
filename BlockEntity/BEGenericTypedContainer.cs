@@ -8,6 +8,7 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -151,6 +152,21 @@ namespace Vintagestory.GameContent
             }
 
             inventory = new InventoryGeneric(quantitySlots, null, null, null);
+
+
+            if (block?.Attributes != null)
+            {
+                if (block.Attributes["spoilSpeedMulByFoodCat"][type].Exists == true)
+                {
+                    inventory.PerishableFactorByFoodCategory = block.Attributes["spoilSpeedMulByFoodCat"][type].AsObject<Dictionary<EnumFoodCategory, float>>();
+                }
+
+                if (block.Attributes["transitionSpeedMulByType"][type].Exists == true)
+                {
+                    inventory.TransitionableSpeedMulByType = block.Attributes["transitionSpeedMulByType"][type].AsObject<Dictionary<EnumTransitionType, float>>();
+                }
+            }
+
             inventory.PutLocked = retrieveOnly;
             inventory.OnInventoryClosed += OnInvClosed;
             inventory.OnInventoryOpened += OnInvOpened;
@@ -210,23 +226,24 @@ namespace Vintagestory.GameContent
 
         private MeshData GenMesh(ITesselatorAPI tesselator)
         {
-            Dictionary<string, MeshData> meshes = null;
-
-            object obj;
-            if (api.ObjectCache.TryGetValue("typedContainerMeshes" + ownBlock.FirstCodePart(), out obj))
+            BlockGenericTypedContainer block = ownBlock as BlockGenericTypedContainer;
+            if (ownBlock == null)
             {
-                meshes = obj as Dictionary<string, MeshData>;
+                block = api.World.BlockAccessor.GetBlock(pos) as BlockGenericTypedContainer;
+                ownBlock = block;
             }
-            else
+            if (block == null) return null;
+            
+            string key = "typedContainerMeshes" + ownBlock.FirstCodePart() + block.Subtype;
+
+            Dictionary<string, MeshData> meshes = ObjectCacheUtil.GetOrCreate(api, key, () =>
             {
-                api.ObjectCache["typedContainerMeshes" + ownBlock.FirstCodePart()] = meshes = new Dictionary<string, MeshData>();
-            }
+                return new Dictionary<string, MeshData>();
+            });
 
-            MeshData mesh = null;
-            Block block = api.World.BlockAccessor.GetBlock(pos);
-            string orient = block.LastCodePart();
-
-            if (meshes.TryGetValue(type, out mesh))
+            MeshData mesh;
+            
+            if (meshes.TryGetValue(type + block.Subtype, out mesh))
             {
                 return mesh;
             }
@@ -236,8 +253,8 @@ namespace Vintagestory.GameContent
             {
                 return null;
             }
-
-            return meshes[type] = (block as BlockGenericTypedContainer).GenMesh(api as ICoreClientAPI, type, shapename, tesselator);
+            
+            return meshes[type + block.Subtype] = block.GenMesh(api as ICoreClientAPI, type, shapename, tesselator);
         }
 
 
@@ -250,11 +267,13 @@ namespace Vintagestory.GameContent
                 if (ownMesh == null) return false;
             }
 
-            string facing = ownBlock.LastCodePart();
+            mesher.AddMeshData(ownMesh);
+
+            /*string facing = ownBlock.LastCodePart();
             if (facing == "north") { mesher.AddMeshData(ownMesh.Clone().Rotate(new API.MathTools.Vec3f(0.5f, 0.5f, 0.5f), 0, 1 * GameMath.PIHALF, 0)); }
             if (facing == "east") { mesher.AddMeshData(ownMesh.Clone().Rotate(new API.MathTools.Vec3f(0.5f, 0.5f, 0.5f), 0, 0 * GameMath.PIHALF, 0)); }
             if (facing == "south") { mesher.AddMeshData(ownMesh.Clone().Rotate(new API.MathTools.Vec3f(0.5f, 0.5f, 0.5f), 0, 3 * GameMath.PIHALF, 0)); }
-            if (facing == "west") { mesher.AddMeshData(ownMesh.Clone().Rotate(new API.MathTools.Vec3f(0.5f, 0.5f, 0.5f), 0, 2 * GameMath.PIHALF, 0)); }
+            if (facing == "west") { mesher.AddMeshData(ownMesh.Clone().Rotate(new API.MathTools.Vec3f(0.5f, 0.5f, 0.5f), 0, 2 * GameMath.PIHALF, 0)); }*/
 
             return true;
         }

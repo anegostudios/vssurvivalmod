@@ -44,16 +44,18 @@ namespace Vintagestory.GameContent
         {
             get
             {
-                //               for (int i = 0; i < forContents.Length; i++)
+                if (textureCode == "rot-solids" || textureCode == "rot-spill")
+                {
+                    return blockTextureSource[textureCode];
+                }
+
                 if (ForStack != null)
                 {
-
                     string itemcode = ForStack.Collectible.Code.Path;
                     JsonObject mappingListCollection = textureSourceBlock.Attributes?["textureMapping"];
 
-                    string[] mapping = mappingListCollection?[itemcode]?.AsStringArray(null);
+                    string[] mapping = mappingListCollection?[itemcode]?.AsArray<string>(null);
                     if (customTextureMapping != null) mapping = customTextureMapping;
-
 
                     if (mapping != null && mapping[0] == textureCode)
                     {

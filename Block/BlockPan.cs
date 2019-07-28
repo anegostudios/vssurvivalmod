@@ -30,19 +30,66 @@ namespace Vintagestory.GameContent
         ILoadedSound sound;
         PanningDrop[] drops;
 
+        WorldInteraction[] interactions;
+
         public override void OnLoaded(ICoreAPI api)
         {
-            base.OnLoaded(api);
-
             drops = Attributes["panningDrops"].AsObject<PanningDrop[]>();
 
             for (int i = 0; i < drops.Length; i++)
             {
                 if (drops[i].Code.Contains("{rocktype}")) continue;
                 drops[i].ResolvedStack = Resolve(drops[i].Type, drops[i].Code);
-                
+
             }
+
+            if (api.Side != EnumAppSide.Client) return;
+            ICoreClientAPI capi = api as ICoreClientAPI;
+
+            interactions = ObjectCacheUtil.GetOrCreate(api, "panInteractions", () =>
+            {
+                List<ItemStack> stacks = new List<ItemStack>();
+
+                foreach (Block block in api.World.Blocks)
+                {
+                    if (block.Code == null || block.IsMissing) continue;
+                    if (block.CreativeInventoryTabs == null || block.CreativeInventoryTabs.Length == 0) continue;
+
+                    if (IsPannableMaterial(block))
+                    {
+                        stacks.Add(new ItemStack(block));
+                    }
+                }
+
+                ItemStack[] stacksArray = stacks.ToArray();
+
+                return new WorldInteraction[]
+                {
+                    new WorldInteraction()
+                    {
+                        ActionLangCode = "heldhelp-addmaterialtopan",
+                        MouseButton = EnumMouseButton.Right,
+                        Itemstacks = stacks.ToArray(),
+                        GetMatchingStacks = (wi, bs, es) => {
+                            ItemStack stack = (api as ICoreClientAPI).World.Player.InventoryManager.ActiveHotbarSlot.Itemstack;
+                            return GetBlockMaterialCode(stack) == null ? stacksArray : null;
+                        },
+                    },
+                    new WorldInteraction()
+                    {
+                        ActionLangCode = "heldhelp-pan",
+                        MouseButton = EnumMouseButton.Right,
+                        ShouldApply = (wi, bs, es) => {
+                            ItemStack stack = (api as ICoreClientAPI).World.Player.InventoryManager.ActiveHotbarSlot.Itemstack;
+                            return GetBlockMaterialCode(stack) != null;
+                        }
+                    }
+                };
+            });
         }
+
+
+
 
         private ItemStack Resolve(EnumItemClass type, string code)
         {
@@ -240,7 +287,7 @@ namespace Vintagestory.GameContent
                 slot.MarkDirty();
                 (byEntity as EntityPlayer)?.Player?.InventoryManager.BroadcastHotbarSlot();
 
-                byEntity.GetBehavior<EntityBehaviorHunger>()?.ConsumeSaturation(3f);
+                byEntity.GetBehavior<EntityBehaviorHunger>()?.ConsumeSaturation(4f);
             }
         }
 
@@ -280,9 +327,18 @@ namespace Vintagestory.GameContent
         }
 
 
+        public virtual bool IsPannableMaterial(Block block)
+        {
+            if ((block.BlockMaterial == EnumBlockMaterial.Gravel || block.BlockMaterial == EnumBlockMaterial.Sand) && block.Variant.ContainsKey("rock"))
+            {
+                return true;
+            }
+
+            return false;
+        }
 
 
-        private void TryTakeMaterial(ItemSlot slot, EntityAgent byEntity, BlockPos position)
+        protected virtual void TryTakeMaterial(ItemSlot slot, EntityAgent byEntity, BlockPos position)
         {
             Block block = api.World.BlockAccessor.GetBlock(position);
             if ((block.BlockMaterial == EnumBlockMaterial.Gravel || block.BlockMaterial == EnumBlockMaterial.Sand) && block.Variant.ContainsKey("rock"))
@@ -324,6 +380,12 @@ namespace Vintagestory.GameContent
                 slot.MarkDirty();
                 (byEntity as EntityPlayer)?.Player?.InventoryManager.BroadcastHotbarSlot();
             }
+        }
+
+
+        public override WorldInteraction[] GetHeldInteractionHelp(ItemSlot inSlot)
+        {
+            return interactions.Append(base.GetHeldInteractionHelp(inSlot));
         }
     }
 }

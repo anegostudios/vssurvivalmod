@@ -1,4 +1,5 @@
 ﻿using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.Server;
 
 namespace Vintagestory.ServerMods
@@ -35,13 +36,13 @@ namespace Vintagestory.ServerMods
         }
 
 
-        private void OnChunkColumnGeneration(IServerChunk[] chunks, int chunkX, int chunkZ)
+        private void OnChunkColumnGeneration(IServerChunk[] chunks, int chunkX, int chunkZ, ITreeAttribute chunkGenParams = null)
         {
             api.WorldManager.SunFloodChunkColumnForWorldGen(chunks, chunkX, chunkZ);
             blockAccessor.RunScheduledBlockLightUpdates();
         }
 
-        private void OnChunkColumnGenerationFlood(IServerChunk[] chunks, int chunkX, int chunkZ)
+        private void OnChunkColumnGenerationFlood(IServerChunk[] chunks, int chunkX, int chunkZ, ITreeAttribute chunkGenParams = null)
         {
             api.WorldManager.SunFloodChunkColumnNeighboursForWorldGen(chunks, chunkX, chunkZ);
         }

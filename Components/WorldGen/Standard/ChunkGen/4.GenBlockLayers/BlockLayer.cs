@@ -27,9 +27,9 @@ namespace Vintagestory.ServerMods
         [JsonProperty]
         public float MaxY = 1;
 
-        public ushort BlockId;
+        public int BlockId;
 
-        public Dictionary<ushort, ushort> BlockIdMapping;
+        public Dictionary<int, int> BlockIdMapping;
     }
 
     [JsonObject(MemberSerialization.OptIn)]
@@ -65,12 +65,12 @@ namespace Vintagestory.ServerMods
         [JsonProperty]
         public double[] NoiseFrequencies;
 
-        public ushort BlockId;
+        public int BlockId;
        
 
         ClampedSimplexNoise noise;
 
-        public Dictionary<ushort, ushort> BlockIdMapping;
+        public Dictionary<int, int> BlockIdMapping;
         
         public void Init(ICoreServerAPI api, RockStrataConfig rockstrata, Random rnd)
         {
@@ -88,7 +88,7 @@ namespace Vintagestory.ServerMods
             {
                 if (BlockCode.Path.Contains("{rocktype}"))
                 {
-                    BlockIdMapping = new Dictionary<ushort, ushort>();
+                    BlockIdMapping = new Dictionary<int, int>();
                     for (int i = 0; i < rockstrata.Variants.Length; i++)
                     {
                         if (rockstrata.Variants[i].IsDeposit) continue;
@@ -116,7 +116,7 @@ namespace Vintagestory.ServerMods
 
                     if (blockCode.Path.Contains("{rocktype}"))
                     {
-                        BlockCodeByMin[i].BlockIdMapping = new Dictionary<ushort, ushort>();
+                        BlockCodeByMin[i].BlockIdMapping = new Dictionary<int, int>();
                         for (int j = 0; j < rockstrata.Variants.Length; j++)
                         {
                             string rocktype = rockstrata.Variants[j].BlockCode.Path.Split('-')[1];
@@ -140,11 +140,11 @@ namespace Vintagestory.ServerMods
             }
         }
 
-        public ushort GetBlockId(double posRand, float temp, float rainRel, float fertilityRel, ushort firstBlockId)
+        public int GetBlockId(double posRand, float temp, float rainRel, float fertilityRel, int firstBlockId)
         {
             if (BlockCode != null)
             {
-                ushort mapppedBlockId = BlockId;
+                int mapppedBlockId = BlockId;
                 if (BlockIdMapping != null)
                 {
                     BlockIdMapping.TryGetValue(firstBlockId, out mapppedBlockId);
@@ -164,7 +164,7 @@ namespace Vintagestory.ServerMods
 
                 if (tempDist + rainDist + fertDist <= posRand)
                 {
-                    ushort mapppedBlockId = blcv.BlockId;
+                    int mapppedBlockId = blcv.BlockId;
                     if (blcv.BlockIdMapping != null)
                     {
                         blcv.BlockIdMapping.TryGetValue(firstBlockId, out mapppedBlockId);

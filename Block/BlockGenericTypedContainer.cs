@@ -18,8 +18,25 @@ namespace Vintagestory.GameContent
 
         string curType;
         string defaultType;
+        string variantByGroup;
+        string variantByGroupInventory;
         ITexPositionSource tmpTextureSource;
-             
+            
+        public string Subtype
+        {
+            get
+            {
+                return variantByGroup == null ? "" : Variant[variantByGroup];
+            }
+        }
+
+        public string SubtypeInventory
+        {
+            get
+            {
+                return variantByGroupInventory == null ? "" : Variant[variantByGroupInventory];
+            }
+        }
 
         public TextureAtlasPosition this[string textureCode]
         {
@@ -34,6 +51,8 @@ namespace Vintagestory.GameContent
             base.OnLoaded(api);
 
             defaultType = Attributes["defaultType"].AsString("normal-generic");
+            variantByGroup = Attributes["variantByGroup"].AsString(null);
+            variantByGroupInventory = Attributes["variantByGroupInventory"].AsString(null);
         }
 
 
@@ -58,22 +77,21 @@ namespace Vintagestory.GameContent
         {
             Dictionary<string, MeshRef> meshrefs = new Dictionary<string, MeshRef>();
 
-            object obj;
-            if (capi.ObjectCache.TryGetValue("genericTypedContainerMeshRefs" + FirstCodePart(), out obj))
-            {
-                meshrefs = obj as Dictionary<string, MeshRef>;
-            }
-            else
+            string key = "genericTypedContainerMeshRefs" + FirstCodePart() + SubtypeInventory;
+
+            meshrefs = ObjectCacheUtil.GetOrCreate(capi, key, () =>
             {
                 Dictionary<string, MeshData> meshes = GenGuiMeshes(capi);
 
                 foreach (var val in meshes)
                 {
+                    val.Value.Rgba2 = null;
                     meshrefs[val.Key] = capi.Render.UploadMesh(val.Value);
                 }
 
-                capi.ObjectCache["genericTypedContainerMeshRefs" + FirstCodePart()] = meshrefs;
-            }
+                return meshrefs;
+            });
+            
 
             string type = itemstack.Attributes.GetString("type", defaultType);
 
@@ -93,30 +111,30 @@ namespace Vintagestory.GameContent
             ICoreClientAPI capi = api as ICoreClientAPI;
             if (capi == null) return;
 
-            object obj;
-            if (capi.ObjectCache.TryGetValue("genericTypedContainerMeshRefs" + FirstCodePart(), out obj))
-            {
-                Dictionary<string, MeshRef> meshrefs = obj as Dictionary<string, MeshRef>;
-
+            string key = "genericTypedContainerMeshRefs" + FirstCodePart() + SubtypeInventory;
+            Dictionary<string, MeshRef> meshrefs = ObjectCacheUtil.TryGet<Dictionary<string, MeshRef>>(api, key);
+            
+            if (meshrefs != null) {
                 foreach (var val in meshrefs)
                 {
                     val.Value.Dispose();
                 }
 
-                capi.ObjectCache.Remove("genericTypedContainerMeshRefs" + FirstCodePart());
+                capi.ObjectCache.Remove(key);
             }
         }
 
 
         MeshData GenGuiMesh(ICoreClientAPI capi, string type)
         {
+
             string shapename = this.Attributes["shape"][type].AsString();
             return GenMesh(capi, type, shapename);
         }
 
         public Dictionary<string, MeshData> GenGuiMeshes(ICoreClientAPI capi)
         {
-            string[] types = this.Attributes["types"].AsStringArray();
+            string[] types = this.Attributes["types"].AsArray<string>();
             
 
             Dictionary<string, MeshData> meshes = new Dictionary<string, MeshData>();
@@ -124,21 +142,21 @@ namespace Vintagestory.GameContent
             foreach (string type in types)
             {
                 string shapename = this.Attributes["shape"][type].AsString();
-                meshes[type] = GenMesh(capi, type, shapename);
+                meshes[type] = GenMesh(capi, type, shapename, null, ShapeInventory == null ? null : new Vec3f(ShapeInventory.rotateX, ShapeInventory.rotateY, ShapeInventory.rotateZ));
             }
 
             return meshes;
         }
 
 
-        public MeshData GenMesh(ICoreClientAPI capi, string type, string shapename, ITesselatorAPI tesselator = null)
+        public MeshData GenMesh(ICoreClientAPI capi, string type, string shapename, ITesselatorAPI tesselator = null, Vec3f rotation = null)
         {
             if (shapename == null) return new MeshData();
             if (tesselator == null) tesselator = capi.Tesselator;
 
             tmpTextureSource = tesselator.GetTexSource(this);
 
-            AssetLocation shapeloc = new AssetLocation(shapename).WithPathPrefix("shapes/");
+            AssetLocation shapeloc = AssetLocation.Create(shapename, Code.Domain).WithPathPrefix("shapes/");
             Shape shape = capi.Assets.TryGet(shapeloc + ".json")?.ToObject<Shape>();
             if (shape == null)
             {
@@ -151,7 +169,7 @@ namespace Vintagestory.GameContent
             
             curType = type;
             MeshData mesh;
-            tesselator.TesselateShape("typedcontainer", shape, out mesh, this, new Vec3f(Shape.rotateX, Shape.rotateY, Shape.rotateZ));
+            tesselator.TesselateShape("typedcontainer", shape, out mesh, this, rotation == null ? new Vec3f(Shape.rotateX, Shape.rotateY, Shape.rotateZ) : rotation);
             return mesh;
         }
         
@@ -267,15 +285,15 @@ namespace Vintagestory.GameContent
             return Lang.GetMatching(Code?.Domain + AssetLocation.LocationSeparator + "block-" + type + "-" + Code?.Path);
         }
 
-        public override void GetHeldItemInfo(ItemStack stack, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
+        public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
         {
-            base.GetHeldItemInfo(stack, dsc, world, withDebugInfo);
+            base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
 
-            string type = stack.Attributes.GetString("type");
+            string type = inSlot.Itemstack.Attributes.GetString("type");
 
             if (type != null)
             {
-                int? qslots = stack.ItemAttributes?["quantitySlots"]?[type]?.AsInt(0);
+                int? qslots = inSlot.Itemstack.ItemAttributes?["quantitySlots"]?[type]?.AsInt(0);
                 dsc.AppendLine("\n" + Lang.Get("Quantity Slots: {0}", qslots));
             }
         }

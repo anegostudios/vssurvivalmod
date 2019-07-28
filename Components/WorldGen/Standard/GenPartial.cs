@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Vintagestory.API;
 using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
@@ -14,7 +15,7 @@ namespace Vintagestory.ServerMods
     {
         internal ICoreServerAPI api;
         internal int worldheight;
-        public ushort airBlockId = 0;
+        public int airBlockId = 0;
 
         internal abstract int chunkRange { get; }
 
@@ -42,7 +43,7 @@ namespace Vintagestory.ServerMods
         }
 
 
-        protected virtual void GenChunkColumn(IServerChunk[] chunks, int chunkX, int chunkZ)
+        protected virtual void GenChunkColumn(IServerChunk[] chunks, int chunkX, int chunkZ, ITreeAttribute chunkGenParams = null)
         {
             for (int dx = -chunkRange; dx <= chunkRange; dx++)
             {

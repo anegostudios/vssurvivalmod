@@ -31,6 +31,13 @@ namespace Vintagestory.GameContent
         public BlockPos TargetPos;
     }
 
+    [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
+    public class DidTeleport
+    {
+
+    }
+
+
     public class TeleporterManager : ModSystem
     {
         Dictionary<BlockPos, TeleporterLocation> Locations = new Dictionary<BlockPos, TeleporterLocation>();
@@ -46,10 +53,14 @@ namespace Vintagestory.GameContent
         GuiJsonDialog dialog;
         JsonDialogSettings dialogSettings;
         TeleporterLocation forLocation = new TeleporterLocation();
-        float volume;
+        float teleVolume;
+        float translocVolume;
+        float translocPitch;
 
         public ILoadedSound teleportingSound;
-        public long lastCollideMsOwnPlayer = 0;
+        public ILoadedSound translocatingSound;
+        public long lastTeleCollideMsOwnPlayer = 0;
+        public long lastTranslocateCollideMsOwnPlayer = 0;
 
         public override bool ShouldLoad(EnumAppSide side)
         {
@@ -92,6 +103,7 @@ namespace Vintagestory.GameContent
                api.Network.RegisterChannel("tpManager")
                .RegisterMessageType(typeof(TpLocations))
                .RegisterMessageType(typeof(TeleporterLocation))
+               .RegisterMessageType(typeof(DidTeleport))
                .SetMessageHandler<TeleporterLocation>(OnSetLocationReceived)
             ;
 
@@ -136,19 +148,34 @@ namespace Vintagestory.GameContent
                 api.Network.RegisterChannel("tpManager")
                .RegisterMessageType(typeof(TpLocations))
                .RegisterMessageType(typeof(TeleporterLocation))
+               .RegisterMessageType(typeof(DidTeleport))
                .SetMessageHandler<TpLocations>(OnLocationsReceived)
+               .SetMessageHandler<DidTeleport>(OnTranslocateClient)
             ;
 
             if (teleportingSound == null)
             {
-                teleportingSound = ((IClientWorldAccessor)api.World).LoadSound(new SoundParams()
+                teleportingSound = api.World.LoadSound(new SoundParams()
                 {
                     Location = new AssetLocation("sounds/block/teleporter.ogg"),
                     ShouldLoop = true,
                     Position = null,
                     RelativePosition = true,
                     DisposeOnFinish = false,
-                    Volume = 1
+                    Volume = 0.5f
+                });
+            }
+
+            if (translocatingSound == null)
+            {
+                translocatingSound = api.World.LoadSound(new SoundParams()
+                {
+                    Location = new AssetLocation("sounds/effect/translocate-active.ogg"),
+                    ShouldLoop = true,
+                    Position = null,
+                    RelativePosition = true,
+                    DisposeOnFinish = false,
+                    Volume = 0.5f
                 });
             }
 
@@ -156,26 +183,56 @@ namespace Vintagestory.GameContent
             api.Event.LeaveWorld += () => teleportingSound?.Dispose();
         }
 
+
         private void OnClientTick(float dt)
         {
-            if (capi.World.ElapsedMilliseconds - lastCollideMsOwnPlayer > 100)
+            if (capi.World.ElapsedMilliseconds - lastTeleCollideMsOwnPlayer > 100)
             {
-                volume = Math.Max(0, volume - 2 * dt);
+                teleVolume = Math.Max(0, teleVolume - 2 * dt);
             }
             else
             {
-                volume = Math.Min(1, volume + dt / 3);
+                teleVolume = Math.Min(0.5f, teleVolume + dt / 3);
             }
 
-            teleportingSound.SetVolume(volume);
+            teleportingSound.SetVolume(teleVolume);
 
             if (teleportingSound.IsPlaying)
             {
-                if (volume <= 0) teleportingSound.Stop();
+                if (teleVolume <= 0) teleportingSound.Stop();
             } else
             {
-                if (volume > 0) teleportingSound.Start();
+                if (teleVolume > 0) teleportingSound.Start();
             }
+
+
+
+            if (capi.World.ElapsedMilliseconds - lastTranslocateCollideMsOwnPlayer > 200)
+            {
+                translocVolume = Math.Max(0, translocVolume - 2 * dt);
+                translocPitch = Math.Max(translocPitch - dt, 0.5f);
+            }
+            else
+            {
+                translocVolume = Math.Min(0.5f, translocVolume + dt / 3);
+                translocPitch = Math.Min(translocPitch + dt / 3, 2.5f);
+                capi.World.ShakeCamera(0.0575f);
+            }
+
+            translocatingSound.SetVolume(translocVolume);
+            translocatingSound.SetPitch(translocPitch);
+
+            if (translocatingSound.IsPlaying)
+            {
+                if (translocVolume <= 0) translocatingSound.Stop();
+            }
+            else
+            {
+                if (translocVolume > 0) translocatingSound.Start();
+            }
+
+
+
         }
 
         private void OnLocationsReceived(TpLocations networkMessage)
@@ -262,6 +319,18 @@ namespace Vintagestory.GameContent
                 ForLocation = forLoc,
                 Locations = Locations
             }, player);
+        }
+
+
+        public void DidTranslocateServer(IServerPlayer player)
+        {
+            serverChannel.SendPacket(new DidTeleport(), player);
+        }
+
+        private void OnTranslocateClient(DidTeleport networkMessage)
+        {
+            capi.World.PlaySoundAt(new AssetLocation("sounds/effect/translocate-breakdimension"), 0, 0, 0, null, false);
+            capi.World.ShakeCamera(0.9f);
         }
 
     }

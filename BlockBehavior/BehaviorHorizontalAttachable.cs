@@ -8,6 +8,8 @@ namespace Vintagestory.GameContent
     public class BlockBehaviorHorizontalAttachable : BlockBehavior
     {
         bool handleDrops = true;
+        string dropBlockFace = "north";
+        string dropBlock = null;
 
         public BlockBehaviorHorizontalAttachable(Block block) : base(block)
         {
@@ -18,6 +20,15 @@ namespace Vintagestory.GameContent
             base.Initialize(properties);
 
             handleDrops = properties["handleDrops"].AsBool(true);
+
+            if (properties["dropBlockFace"].Exists)
+            {
+                dropBlockFace = properties["dropBlockFace"].AsString();
+            }
+            if (properties["dropBlock"].Exists)
+            {
+                dropBlock = properties["dropBlock"].AsString();
+            }
         }
 
 
@@ -48,7 +59,12 @@ namespace Vintagestory.GameContent
             if (handleDrops)
             {
                 handled = EnumHandling.PreventDefault;
-                return new ItemStack[] { new ItemStack(world.BlockAccessor.GetBlock(block.CodeWithParts("north"))) };
+                if (dropBlock != null)
+                {
+                    return new ItemStack[] { new ItemStack(world.BlockAccessor.GetBlock(new AssetLocation(dropBlock))) };
+                }
+                return new ItemStack[] { new ItemStack(world.BlockAccessor.GetBlock(block.CodeWithParts(dropBlockFace))) };
+
             } else
             {
                 handled = EnumHandling.PassThrough;
@@ -61,7 +77,12 @@ namespace Vintagestory.GameContent
         {
             handled = EnumHandling.PreventDefault;
 
-            return new ItemStack(world.BlockAccessor.GetBlock(block.CodeWithParts("north")));
+            if (dropBlock != null)
+            {
+                return new ItemStack(world.BlockAccessor.GetBlock(new AssetLocation(dropBlock)));
+            }
+
+            return new ItemStack(world.BlockAccessor.GetBlock(block.CodeWithParts(dropBlockFace)));
         }
 
 
@@ -97,7 +118,7 @@ namespace Vintagestory.GameContent
         {
             string[] parts = block.Code.Path.Split('-');
             BlockFacing facing = BlockFacing.FromCode(parts[parts.Length - 1]);
-            ushort blockId = world.BlockAccessor.GetBlockId(pos.AddCopy(facing));
+            int blockId = world.BlockAccessor.GetBlockId(pos.AddCopy(facing));
 
             Block attachingblock = world.BlockAccessor.GetBlock(blockId);
 

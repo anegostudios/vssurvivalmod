@@ -132,11 +132,11 @@ namespace Vintagestory.GameContent
             return Code;
         }
 
-        public override void GetHeldItemInfo(ItemStack stack, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
+        public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
         {
-            base.GetHeldItemInfo(stack, dsc, world, withDebugInfo);
+            base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
 
-            double eff = stack.Collectible.Attributes["sleepEfficiency"].AsDouble();
+            double eff = inSlot.Itemstack.Collectible.Attributes["sleepEfficiency"].AsDouble();
             double sleephours = eff * world.Calendar.HoursPerDay / 2;
 
             dsc.AppendLine("\n" + Lang.Get("Lets you sleep for {0} hours a day", sleephours.ToString("#.#")));

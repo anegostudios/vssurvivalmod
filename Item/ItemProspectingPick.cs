@@ -72,7 +72,7 @@ namespace Vintagestory.GameContent
         }
 
         // Tyrons Brute force way of getting the correct reading for a rock strata column
-        public ushort[] GetRockColumn(int posX, int posZ)
+        public int[] GetRockColumn(int posX, int posZ)
         {
             int chunksize = sapi.World.BlockAccessor.ChunkSize;
             DummyChunk[] chunks = new DummyChunk[sapi.World.BlockAccessor.MapSizeY / chunksize];
@@ -85,10 +85,9 @@ namespace Vintagestory.GameContent
 
             for (int chunkY = 0; chunkY < chunks.Length; chunkY++)
             {
-                chunks[chunkY] = new DummyChunk();
+                chunks[chunkY] = new DummyChunk(chunksize);
                 chunks[chunkY].MapChunk = mapchunk;
                 chunks[chunkY].chunkY = chunkY;
-                chunks[chunkY].Blocks = new ushort[chunksize * chunksize * chunksize];
             }
 
             int surfaceY = mapchunk.WorldGenTerrainHeightMap[lz * chunksize + lx];
@@ -104,7 +103,7 @@ namespace Vintagestory.GameContent
             rockStrataGen.preLoad(chunks, chunkX, chunkZ);
             rockStrataGen.genBlockColumn(chunks, chunkX, chunkZ, lx, lz);
 
-            ushort[] rockColumn = new ushort[surfaceY];
+            int[] rockColumn = new int[surfaceY];
 
             for (int y = 0; y < surfaceY; y++)
             {
@@ -122,7 +121,30 @@ namespace Vintagestory.GameContent
         {
             public int chunkY;
             public IMapChunk MapChunk { get; set; }
-            public ushort[] Blocks { get; set; }
+            IChunkBlocks IWorldChunk.Blocks => Blocks;
+            public IChunkBlocks Blocks;
+
+            public DummyChunk(int chunksize)
+            {
+                Blocks = new DummyChunkData(chunksize);
+            }
+ 
+            public class DummyChunkData : IChunkBlocks
+            {
+                public int[] blocks;
+                
+
+                public DummyChunkData(int chunksize)
+                {
+                    blocks = new int[chunksize * chunksize * chunksize];
+                }
+
+                public int this[int index3d] { get => blocks[index3d]; set => blocks[index3d] = value; }
+
+                public int Length => blocks.Length;
+
+
+            }
 
             #region unused by rockstrata gen
             public ushort[] Light { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
@@ -131,6 +153,9 @@ namespace Vintagestory.GameContent
             public int EntitiesCount => throw new NotImplementedException();
             public BlockEntity[] BlockEntities { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
             public HashSet<int> LightPositions { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+
+            public string GameVersionCreated => throw new NotImplementedException();
+
             public void AddEntity(Entity entity)
             {
                 throw new NotImplementedException();
@@ -300,7 +325,7 @@ namespace Vintagestory.GameContent
             int lx = pos.X % regsize;
             int lz = pos.Z % regsize;
 
-            ushort[] blockColumn = ppws.GetRockColumn(pos.X, pos.Z);
+            int[] blockColumn = ppws.GetRockColumn(pos.X, pos.Z);
 
             List<KeyValuePair<double, string>> readouts = new List<KeyValuePair<double, string>>();
 
@@ -353,9 +378,9 @@ namespace Vintagestory.GameContent
 
 
 
-        private double oreBearingBlockQuantityRelative(string oreCode, DepositVariant[] deposits, ushort[] blockColumn)
+        private double oreBearingBlockQuantityRelative(string oreCode, DepositVariant[] deposits, int[] blockColumn)
         {
-            HashSet<ushort> oreBearingBlocks = new HashSet<ushort>();
+            HashSet<int> oreBearingBlocks = new HashSet<int>();
 
             DepositVariant deposit = getDepositByOreMapCode(oreCode, deposits);
             if (deposit == null) return 0;
@@ -363,7 +388,7 @@ namespace Vintagestory.GameContent
             if (deposit.parentDeposit != null) deposit = deposit.parentDeposit;
             
 
-            ushort[] blocks = deposit.GeneratorInst.GetBearingBlocks();
+            int[] blocks = deposit.GeneratorInst.GetBearingBlocks();
             if (blocks == null) return 1;
 
             foreach (var val in blocks) oreBearingBlocks.Add(val);

@@ -11,7 +11,7 @@ using Vintagestory.GameContent.Mechanics;
 
 namespace Vintagestory.GameContent.Mechanics
 {
-    public abstract class BEMPBase : BlockEntity, IBlockShapeSupplier, IMechanicalPowerDevice
+    public abstract class BEMPBase : BlockEntity, IBlockShapeSupplier, IMechanicalPowerNode
     { 
         protected MechanicalPowerMod manager;
         protected MechanicalNetwork network;
@@ -31,15 +31,9 @@ namespace Vintagestory.GameContent.Mechanics
         public MechanicalNetwork Network => network;
 
         public BlockFacing orientation;
-
-        int propagationId;
-
-        /* Wether the device turns clockwise as seen from clockwiseFromFacing (standing 3 blocks away from this facing and looking towards the block */
-        public bool clockwise;
-        public BlockFacing directionFromFacing;
-
-
-        float lastKnownAngle;
+        protected EnumTurnDirection turnDir;
+        protected BlockFacing turnDirFromFacing = BlockFacing.NORTH;
+        protected float lastKnownAngle = 0;
 
         public float Angle
         {
@@ -47,7 +41,7 @@ namespace Vintagestory.GameContent.Mechanics
             {
                 if (network == null) return lastKnownAngle;
 
-                if (directionFromFacing != orientation)
+                if (network.TurnDirection != turnDir)
                 {
                     return (lastKnownAngle = 360 - network.Angle);
                 }
@@ -82,9 +76,10 @@ namespace Vintagestory.GameContent.Mechanics
         }
 
         
-        public void SetNetwork(MechanicalNetwork network)
+        public void JoinNetwork(MechanicalNetwork network)
         {
             this.network = network;
+            network.Join(this);
         
             if (network == null) NetworkId = 0;
             else
@@ -96,6 +91,7 @@ namespace Vintagestory.GameContent.Mechanics
         public override void OnBlockRemoved()
         {
             base.OnBlockRemoved();
+            network.Leave(this);
             manager.RemoveDeviceForRender(this);
         }
 
@@ -124,6 +120,8 @@ namespace Vintagestory.GameContent.Mechanics
             {
                 network = manager.GetOrCreateNetwork(NetworkId);
             }
+
+            turnDirFromFacing = BlockFacing.ALLFACES[tree.GetInt("turnDirFromFacing")];
         }
 
         public override void ToTreeAttributes(ITreeAttribute tree)
@@ -131,6 +129,7 @@ namespace Vintagestory.GameContent.Mechanics
             base.ToTreeAttributes(tree);
 
             tree.SetLong("networkid", NetworkId);
+            tree.SetInt("turnDirFromFacing", turnDirFromFacing.Index);
         }
 
         public override void OnBlockBroken()
@@ -147,13 +146,27 @@ namespace Vintagestory.GameContent.Mechanics
 
         public override string GetBlockInfo(IPlayer forPlayer)
         {
-            if (api.World.EntityDebugMode)
+            //if (api.World.EntityDebugMode)
             {
-                return "networkid: " + NetworkId + ", angle: " + Angle;
+                return "networkid: " + NetworkId + ", angle: " + Angle + "\nturnDir: " + turnDir + "\nnetwork turn dir: " + network?.TurnDirection;
             }
 
-            return base.GetBlockInfo(forPlayer);
+            //return base.GetBlockInfo(forPlayer);
         }
 
+        
+        public virtual EnumTurnDirection GetBaseTurnDirection()
+        {
+            return turnDir;
+        }
+
+        public virtual void SetBaseTurnDirection(EnumTurnDirection turnDir, BlockFacing fromFacing)
+        {
+            this.turnDir = turnDir;
+        }
+
+        public abstract float GetTorque();
+        public abstract float GetResistance();
+        public abstract EnumTurnDirection GetTurnDirection(BlockFacing forFacing);
     }
 }

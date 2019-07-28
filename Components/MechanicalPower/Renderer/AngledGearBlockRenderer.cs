@@ -48,7 +48,7 @@ namespace Vintagestory.GameContent.Mechanics
         }
 
 
-        protected override void UpdateLightAndTransformMatrix(int index, Vec3f distToCamera, float[] rotation, IMechanicalPowerDevice dev)
+        protected override void UpdateLightAndTransformMatrix(int index, Vec3f distToCamera, float[] rotation, IMechanicalPowerNode dev)
         {
             float rotX = rotation[dev.AxisMapping[0]] * dev.AxisSign[0];
             float rotY = rotation[dev.AxisMapping[1]] * dev.AxisSign[1];

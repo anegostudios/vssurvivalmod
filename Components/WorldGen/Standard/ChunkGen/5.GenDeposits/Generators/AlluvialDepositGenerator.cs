@@ -118,7 +118,7 @@ namespace Vintagestory.ServerMods
             float invChunkAreaSize = 1f / (chunksize * chunksize);
             double val = 1;
 
-            Block[] blocktypes = Api.World.Blocks;
+            List<Block> blocktypes = Api.World.Blocks;
 
             bool doGravel = DepositRand.NextFloat() > 0.33;
 
@@ -149,7 +149,7 @@ namespace Vintagestory.ServerMods
                     // Some deposits may not appear all over cliffs
                     if (Math.Abs(depoCenterPos.Y - targetPos.Y) > MaxYRoughness) continue;
 
-                    ushort rockblockid = heremapchunk.TopRockIdMap[lz * chunksize + lx];
+                    int rockblockid = heremapchunk.TopRockIdMap[lz * chunksize + lx];
 
                     Block rockblock = blocktypes[rockblockid];
                     if (!rockblock.Variant.ContainsKey("rock")) continue;
@@ -170,8 +170,8 @@ namespace Vintagestory.ServerMods
                     {
                         if (targetPos.Y <= 1 || targetPos.Y >= worldheight) continue;
 
-                        long index3d = ((targetPos.Y % chunksize) * chunksize + lz) * chunksize + lx;
-                        ushort blockId = chunks[targetPos.Y / chunksize].Blocks[index3d];
+                        int index3d = ((targetPos.Y % chunksize) * chunksize + lz) * chunksize + lx;
+                        int blockId = chunks[targetPos.Y / chunksize].Blocks[index3d];
 
                         Block block = blocktypes[blockId];
 
@@ -207,9 +207,9 @@ namespace Vintagestory.ServerMods
         }
 
 
-        public override ushort[] GetBearingBlocks()
+        public override int[] GetBearingBlocks()
         {
-            return new ushort[0];
+            return new int[0];
         }
 
         public override float GetMaxRadius()

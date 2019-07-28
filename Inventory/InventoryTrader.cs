@@ -71,6 +71,11 @@ namespace Vintagestory.GameContent
             get { return slots[40]; }
         }
 
+        public override float GetTransitionSpeedMul(EnumTransitionType transType, ItemStack stack)
+        {
+            return 0;
+        }
+
         public InventoryTrader(string inventoryID, ICoreAPI api) : base(inventoryID, api)
         {
             slots = GenEmptySlots(Count);
@@ -206,8 +211,8 @@ namespace Vintagestory.GameContent
             }
         }
 
-
-        private ResolvedTradeItem GetTradeItemByName(string name, TradeList tradeList)
+        // wtf is this for?
+        /*private ResolvedTradeItem GetTradeItemByName(string name, TradeList tradeList)
         {
             if (name == null) return null;
 
@@ -219,7 +224,7 @@ namespace Vintagestory.GameContent
             }
 
             return null;
-        }
+        }*/
 
 
 

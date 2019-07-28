@@ -31,7 +31,7 @@ namespace Vintagestory.API.Common
         public bool IsDeposit = false;
         public EnumRockGroup RockGroup;
 
-        public ushort BlockId;
+        public int BlockId;
 
         public void Init(IWorldAccessor worldForResolve)
         {

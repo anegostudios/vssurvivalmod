@@ -1,8 +1,10 @@
 ﻿using System;
+using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -12,6 +14,41 @@ namespace Vintagestory.GameContent
         {
             return block is BlockBucket || block?.Attributes?["contentItem2BlockCodes"]?["honeyportion"].Exists == true;
         }
+
+        WorldInteraction[] interactions;
+
+        public override void OnLoaded(ICoreAPI api)
+        {
+            if (api.Side != EnumAppSide.Client) return;
+            ICoreClientAPI capi = api as ICoreClientAPI;
+
+            interactions = ObjectCacheUtil.GetOrCreate(api, "honeyCombInteractions", () =>
+            {
+                List<ItemStack> stacks = new List<ItemStack>();
+
+                foreach (Block block in api.World.Blocks)
+                {
+                    if (block.Code == null) continue;
+
+                    if (CanSqueezeInto(block))
+                    {
+                        stacks.Add(new ItemStack(block));
+                    }
+                }
+
+                return new WorldInteraction[]
+                {
+                    new WorldInteraction()
+                    {
+                        ActionLangCode = "heldhelp-squeeze",
+                        MouseButton = EnumMouseButton.Right,
+                        Itemstacks = stacks.ToArray()
+                    }
+                };
+            });
+        }
+
+
 
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
@@ -66,7 +103,7 @@ namespace Vintagestory.GameContent
             BlockBucket blockbucket = block as BlockBucket;
             if (blockbucket != null)
             {
-                if (blockbucket.TryAddContent(world, blockSel.Position, new ItemStack(world.GetItem(new AssetLocation("honeyportion"))), 1) == 0) return;
+                if (blockbucket.TryPutContent(world, blockSel.Position, new ItemStack(world.GetItem(new AssetLocation("honeyportion"))), 1) == 0) return;
             }
             else
             {
@@ -80,6 +117,12 @@ namespace Vintagestory.GameContent
             IPlayer byPlayer = null;
             if (byEntity is EntityPlayer) byPlayer = world.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
             byPlayer?.InventoryManager.TryGiveItemstack(new ItemStack(world.GetItem(new AssetLocation("beeswax"))));
+        }
+
+
+        public override WorldInteraction[] GetHeldInteractionHelp(ItemSlot inSlot)
+        {
+            return interactions.Append(base.GetHeldInteractionHelp(inSlot));
         }
 
     }

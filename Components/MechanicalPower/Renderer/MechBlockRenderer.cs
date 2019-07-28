@@ -26,7 +26,7 @@ namespace Vintagestory.GameContent.Mechanics
         protected float[] rotMat = Mat4f.Create();
         protected MechanicalPowerMod mechanicalPowerMod;
 
-        protected List<IMechanicalPowerDevice> renderedDevices = new List<IMechanicalPowerDevice>();
+        protected List<IMechanicalPowerNode> renderedDevices = new List<IMechanicalPowerNode>();
 
         protected Vec3f tmp = new Vec3f();
         protected float[] testRot = new float[3];
@@ -40,13 +40,13 @@ namespace Vintagestory.GameContent.Mechanics
         }
         
 
-        public void AddDevice(IMechanicalPowerDevice device)
+        public void AddDevice(IMechanicalPowerNode device)
         {
             quantityBlocks++;
             renderedDevices.Add(device);
         }
 
-        public void RemoveDevice(IMechanicalPowerDevice device)
+        public void RemoveDevice(IMechanicalPowerNode device)
         {
             quantityBlocks--;
             renderedDevices.Remove(device);
@@ -62,7 +62,7 @@ namespace Vintagestory.GameContent.Mechanics
 
             for (int i = 0; i < renderedDevices.Count; i++)
             {
-                IMechanicalPowerDevice dev = renderedDevices[i];
+                IMechanicalPowerNode dev = renderedDevices[i];
 
                 tmp.Set((float)(dev.Position.X - pos.X), (float)(dev.Position.Y - pos.Y), (float)(dev.Position.Z - pos.Z));
 
@@ -72,7 +72,7 @@ namespace Vintagestory.GameContent.Mechanics
             }
         }
 
-        protected abstract void UpdateLightAndTransformMatrix(int index, Vec3f distToCamera, float[] rot, IMechanicalPowerDevice dev);
+        protected abstract void UpdateLightAndTransformMatrix(int index, Vec3f distToCamera, float[] rot, IMechanicalPowerNode dev);
 
 
         protected virtual void UpdateLightAndTransformMatrix(float[] values, int index, Vec3f distToCamera, Vec4f lightRgba, float rotX, float rotY, float rotZ)

@@ -6,6 +6,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
+using Vintagestory.API.Client;
 
 namespace Vintagestory.GameContent
 {
@@ -66,6 +68,17 @@ namespace Vintagestory.GameContent
 
             if (size > 1) return "holdunderarm";
             return "holdbothhands";
+        }
+
+        public override WorldInteraction[] GetHeldInteractionHelp(ItemSlot inSlot)
+        {
+            return new WorldInteraction[] {
+                new WorldInteraction()
+                {
+                    ActionLangCode = "heldhelp-place",
+                    MouseButton = EnumMouseButton.Right,
+                }
+            }.Append(base.GetHeldInteractionHelp(inSlot));
         }
     }
 }

@@ -1,6 +1,7 @@
 ﻿using System;
 using Vintagestory.API;
 using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
@@ -46,7 +47,7 @@ namespace Vintagestory.ServerMods
             rnd = new Random(api.WorldManager.Seed);
         }
 
-        private void OnChunkColumnGen(IServerChunk[] chunks, int chunkX, int chunkZ)
+        private void OnChunkColumnGen(IServerChunk[] chunks, int chunkX, int chunkZ, ITreeAttribute chunkGenParams = null)
         {
             IntMap climateMap = chunks[0].MapChunk.MapRegion.ClimateMap;
             int regionChunkSize = api.WorldManager.RegionSize / chunksize;

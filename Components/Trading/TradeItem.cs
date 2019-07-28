@@ -10,7 +10,7 @@ namespace Vintagestory.GameContent
 {
     public class TradeItem : JsonItemStack
     {
-        public string Name;
+        //public string Name;
         public NatFloat Price;
         public NatFloat Stock;
         public RestockOpts Restock = new RestockOpts()
@@ -31,7 +31,7 @@ namespace Vintagestory.GameContent
             return new ResolvedTradeItem()
             {
                 Stack = this.ResolvedItemstack,
-                Name = Name,
+                //Name = Name,
                 Price = (int)Math.Max(1, Math.Round(Price.nextFloat(1f, world.Rand))),
                 Stock = Stock == null ? 0 : (int)Math.Round(Stock.nextFloat(1f, world.Rand)),
                 Restock = Restock,

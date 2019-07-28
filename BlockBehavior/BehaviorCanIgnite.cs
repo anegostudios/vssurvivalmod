@@ -101,6 +101,13 @@ namespace Vintagestory.GameContent
         {
             if (blockSel == null) return;
 
+            IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
+            if (!byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            {
+                return;
+            }
+
+
             EnumHandling handled = EnumHandling.PassThrough;
             Block block = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
             block.OnTryIgniteBlockOver(byEntity, blockSel.Position, secondsUsed, ref handled);
@@ -112,7 +119,7 @@ namespace Vintagestory.GameContent
 
             handling = EnumHandling.PreventDefault;
 
-            if (secondsUsed >= 3 && blockSel != null)
+            if (secondsUsed >= 3 && blockSel != null && byEntity.World.Side == EnumAppSide.Server)
             {
                 BlockPos bpos = blockSel.Position.AddCopy(blockSel.Face);
                 block = byEntity.World.BlockAccessor.GetBlock(bpos);
@@ -122,7 +129,7 @@ namespace Vintagestory.GameContent
                     byEntity.World.BlockAccessor.SetBlock(byEntity.World.GetBlock(new AssetLocation("fire")).BlockId, bpos);
 
                     BlockEntityFire befire = byEntity.World.BlockAccessor.GetBlockEntity(bpos) as BlockEntityFire;
-                    if (befire != null) befire.Init(blockSel.Face);
+                    if (befire != null) befire.Init(blockSel.Face, (byEntity as EntityPlayer).PlayerUID);
                 }
             }
         }

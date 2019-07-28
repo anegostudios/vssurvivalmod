@@ -275,14 +275,18 @@ namespace Vintagestory.GameContent
         {
             base.OnBlockUnloaded();
             renderer?.Unregister();
-            StopMusic();
+            track?.Stop();
+            track = null;
+            api.Event.UnregisterCallback(handlerId);
         }
 
         public override void OnBlockRemoved()
         {
             base.OnBlockRemoved();
             renderer?.Unregister();
-            StopMusic();
+            track?.Stop();
+            track = null;
+            api.Event.UnregisterCallback(handlerId);
         }
 
 

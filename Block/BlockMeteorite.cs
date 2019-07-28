@@ -52,9 +52,9 @@ namespace Vintagestory.GameContent
             
 
 
-            ushort sueviteBlockId = api.World.GetBlock(new AssetLocation("rock-suevite")).BlockId;
-            ushort fragmentBlockId = api.World.GetBlock(new AssetLocation("loosestones-meteorite-iron")).BlockId;
-            ushort looseSueviteBlockId = api.World.GetBlock(new AssetLocation("loosestones-suevite")).BlockId;
+            int sueviteBlockId = api.World.GetBlock(new AssetLocation("rock-suevite")).BlockId;
+            int fragmentBlockId = api.World.GetBlock(new AssetLocation("loosestones-meteorite-iron")).BlockId;
+            int looseSueviteBlockId = api.World.GetBlock(new AssetLocation("loosestones-suevite")).BlockId;
 
             float impactRockRadius = craterRadius * 1.2f;
             int range = (int)Math.Ceiling(impactRockRadius);
@@ -109,7 +109,7 @@ namespace Vintagestory.GameContent
                     for (int i = -1; i <= (int)q; i++)
                     {
                         tmpPos.Y = surfaceY - i;
-                        ushort id = i == (int)q ? surfaceblock.BlockId : (ushort)0;
+                        int id = i == (int)q ? surfaceblock.BlockId : 0;
                         blAcc.SetBlock(id, tmpPos);
                     }
 

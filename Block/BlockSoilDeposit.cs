@@ -11,7 +11,7 @@ namespace Vintagestory.GameContent
 {
     public class BlockSoilDeposit : BlockSoil
     {
-        ushort soilBlockId;
+        int soilBlockId;
 
         protected override int MaxStage => 1;
 

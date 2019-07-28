@@ -196,10 +196,10 @@ namespace Vintagestory.GameContent
 
         public AlloyRecipe GetMatchingAlloy(IWorldAccessor world, ItemStack[] stacks)
         {
-            AlloyRecipe[] alloys = world.Alloys;
+            List<AlloyRecipe> alloys = world.Alloys;
             if (alloys == null) return null;
 
-            for (int j = 0; j < alloys.Length; j++)
+            for (int j = 0; j < alloys.Count; j++)
             {
                 if (alloys[j].Matches(stacks))
                 {

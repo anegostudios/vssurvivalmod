@@ -21,14 +21,14 @@ namespace Vintagestory.GameContent
             
             if (blockSel != null && !world.BlockAccessor.GetBlock(blockSel.Position.DownCopy()).SideSolid[BlockFacing.UP.Index] && block.Attributes?["allowUnstablePlacement"].AsBool() != true)
             {
-                handling = EnumHandling.PreventDefault;
+                handling = EnumHandling.PreventSubsequent;
                 failureCode = "requiresolidground";
                 return false;
             }
 
             if (TryFalling(world, blockSel.Position))
             {
-                handling = EnumHandling.PreventDefault;
+                handling = EnumHandling.PreventSubsequent;
             }
 
             return true;

@@ -43,10 +43,20 @@ namespace Vintagestory.GameContent
             {
                 byEntity.World.Logger.Error("Failed adding journal entry. Exception: {0}", e);
             }
-            
 
-            
+        }
 
+
+        public override WorldInteraction[] GetHeldInteractionHelp(ItemSlot inSlot)
+        {
+            return new WorldInteraction[]
+            {
+                new WorldInteraction
+                {
+                    ActionLangCode = "heldhelp-addtojournal",
+                    MouseButton = EnumMouseButton.Right
+                }
+            }.Append(base.GetHeldInteractionHelp(inSlot));
         }
     }
 }

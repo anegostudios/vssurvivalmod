@@ -1,15 +1,51 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
     public class ItemOpenedBeenade : Item
     {
+        WorldInteraction[] interactions;
+
+        public override void OnLoaded(ICoreAPI api)
+        {
+            if (api.Side != EnumAppSide.Client) return;
+            ICoreClientAPI capi = api as ICoreClientAPI;
+
+            interactions = ObjectCacheUtil.GetOrCreate(api, "openedBeenadeInteractions", () =>
+            {
+                List<ItemStack> stacks = new List<ItemStack>();
+
+                foreach (Block block in api.World.Blocks)
+                {
+                    if (block.Code == null) continue;
+
+                    if (block is BlockSkep && block.FirstCodePart(1).Equals("populated"))
+                    {
+                        stacks.Add(new ItemStack(block));
+                    }
+                }
+
+                return new WorldInteraction[]
+                {
+                    new WorldInteraction()
+                    {
+                        ActionLangCode = "heldhelp-fill",
+                        MouseButton = EnumMouseButton.Right,
+                        Itemstacks = stacks.ToArray()
+                    }
+                };
+            });
+        }
+
+
         public override string GetHeldTpUseAnimation(ItemSlot activeHotbarSlot, Entity byEntity)
         {
             return null;
@@ -18,6 +54,11 @@ namespace Vintagestory.GameContent
         public override void OnHeldInteractStart(ItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
             if (blockSel == null) return;
+
+            if (!byEntity.World.Claims.TryAccess((byEntity as EntityPlayer)?.Player, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            {
+                return;
+            }
 
             Block block = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
             if (block is BlockSkep && block.FirstCodePart(1).Equals("populated"))
@@ -76,6 +117,11 @@ namespace Vintagestory.GameContent
         {
             if (blockSel == null) return;
 
+            if (!byEntity.World.Claims.TryAccess((byEntity as EntityPlayer)?.Player, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            {
+                return;
+            }
+
             Block block = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
             bool ok = block is BlockSkep && block.FirstCodePart(1).Equals("populated");
             if (!ok) return;
@@ -94,12 +140,18 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void GetHeldItemInfo(ItemStack stack, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
+        public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
         {
-            base.GetHeldItemInfo(stack, dsc, world, withDebugInfo);
-            if (stack.Collectible.Attributes == null) return;
+            base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
+            if (inSlot.Itemstack.Collectible.Attributes == null) return;
             dsc.AppendLine(Lang.Get("Fill it up with bees and throw it for a stingy surprise"));
         }
+
+        public override WorldInteraction[] GetHeldInteractionHelp(ItemSlot inSlot)
+        {
+            return interactions.Append(base.GetHeldInteractionHelp(inSlot));
+        }
+
 
     }
 }

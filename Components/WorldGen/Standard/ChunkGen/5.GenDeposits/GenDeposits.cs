@@ -29,7 +29,7 @@ namespace Vintagestory.ServerMods
         public LCGRandom depositRand;
         Random rand = new Random();
 
-        Block[] blockTypes;
+        List<Block> blockTypes;
         BlockPos tmpPos = new BlockPos();
 
         NormalizedSimplexNoise depositShapeDistortNoise;
@@ -174,7 +174,7 @@ namespace Vintagestory.ServerMods
         }
 
 
-        protected override void GenChunkColumn(IServerChunk[] chunks, int chunkX, int chunkZ)
+        protected override void GenChunkColumn(IServerChunk[] chunks, int chunkX, int chunkZ, ITreeAttribute chunkGenParams = null)
         {
             base.GenChunkColumn(chunks, chunkX, chunkZ);
         }

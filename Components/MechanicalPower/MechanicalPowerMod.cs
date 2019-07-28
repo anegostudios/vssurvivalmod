@@ -144,12 +144,12 @@ namespace Vintagestory.GameContent.Mechanics
             Renderer = new MechNetworkRenderer(capi, this);
         }
 
-        public void RemoveDeviceForRender(IMechanicalPowerDevice device)
+        public void RemoveDeviceForRender(IMechanicalPowerNode device)
         {
             Renderer?.RemoveDevice(device);
         }
 
-        public void AddDeviceForRender(IMechanicalPowerDevice device)
+        public void AddDeviceForRender(IMechanicalPowerNode device)
         {
             Renderer?.AddDevice(device);
         }

@@ -5,6 +5,7 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -1499,6 +1500,19 @@ namespace Vintagestory.GameContent
         {
             slot.Itemstack.Attributes.SetInt("toolMode", toolMode);
         }
+
+        public override WorldInteraction[] GetHeldInteractionHelp(ItemSlot inSlot)
+        {
+            return new WorldInteraction[] {
+                new WorldInteraction()
+                {
+                    ActionLangCode = "heldhelp-placetoclayform",
+                    HotKeyCode = "sneak",
+                    MouseButton = EnumMouseButton.Right,
+                }
+            }.Append(base.GetHeldInteractionHelp(inSlot));
+        }
+
 
     }
 }

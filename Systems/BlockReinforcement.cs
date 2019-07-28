@@ -297,7 +297,7 @@ namespace Vintagestory.GameContent
                 try
                 {
                     reinforcmentsOfChunk = SerializerUtil.Deserialize<Dictionary<int, BlockReinforcement>>(data);
-                } catch (Exception e)
+                } catch (Exception)
                 {
                     try
                     {

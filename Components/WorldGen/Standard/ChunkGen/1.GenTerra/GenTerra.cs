@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Vintagestory.API;
 using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.ServerMods.NoObf;
@@ -105,7 +106,7 @@ namespace Vintagestory.ServerMods
 
 
 
-        private void OnChunkColumnGen(IServerChunk[] chunks, int chunkX, int chunkZ)
+        private void OnChunkColumnGen(IServerChunk[] chunks, int chunkX, int chunkZ, ITreeAttribute chunkGenParams = null)
         {
             landforms = NoiseLandforms.landforms;
             IMapChunk mapchunk = chunks[0].MapChunk;

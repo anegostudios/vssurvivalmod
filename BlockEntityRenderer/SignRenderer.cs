@@ -58,8 +58,8 @@ namespace Vintagestory.GameContent
             };
             modeldata.Rgba = new byte[4 * 4];
             modeldata.Rgba.Fill((byte)255);
-            modeldata.Rgba2 = new byte[4 * 4];
-            modeldata.Rgba2.Fill((byte)255);
+            modeldata.Rgba2 = null; //= new byte[4 * 4];
+            //modeldata.Rgba2.Fill((byte)255);
 
             quadModelRef = api.Render.UploadMesh(modeldata);
 

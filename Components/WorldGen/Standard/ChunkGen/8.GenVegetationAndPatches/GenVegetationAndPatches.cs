@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Vintagestory.API;
 using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.ServerMods.NoObf;
@@ -50,7 +51,7 @@ namespace Vintagestory.ServerMods
             blockAccessor = chunkProvider.GetBlockAccessor(true);
         }
 
-        Dictionary<string, ushort> RockBlockIdsByType;
+        Dictionary<string, int> RockBlockIdsByType;
 
 
         private void initWorldGenForSuperflat()
@@ -71,7 +72,7 @@ namespace Vintagestory.ServerMods
             chunkMapSizeY = api.WorldManager.MapSizeY / chunksize;
             regionChunkSize = api.WorldManager.RegionSize / chunksize;
 
-            RockBlockIdsByType = new Dictionary<string, ushort>();
+            RockBlockIdsByType = new Dictionary<string, int>();
             RockStrataConfig rockstrata = api.Assets.Get("worldgen/rockstrata.json").ToObject<RockStrataConfig>();
             for (int i = 0; i < rockstrata.Variants.Length; i++)
             {
@@ -107,7 +108,7 @@ namespace Vintagestory.ServerMods
         BlockPos chunkend = new BlockPos();
         List<GeneratedStructure> structuresIntersectingChunk = new List<GeneratedStructure>();
 
-        private void OnChunkColumnGen(IServerChunk[] chunks, int chunkX, int chunkZ)
+        private void OnChunkColumnGen(IServerChunk[] chunks, int chunkX, int chunkZ, ITreeAttribute chunkGenParams = null)
         {
             IMapChunk mapChunk = chunks[0].MapChunk;
 
@@ -194,7 +195,7 @@ namespace Vintagestory.ServerMods
 
                     if (bpc.IsPatchSuitableAt(blockPatch, block, api.WorldManager, climate, y, forestRel))
                     {
-                        ushort firstBlockId = 0;
+                        int firstBlockId = 0;
                         bool found = true;
 
                         if (blockPatch.BlocksByRockType != null)

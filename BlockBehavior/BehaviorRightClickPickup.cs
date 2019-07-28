@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
@@ -37,6 +38,12 @@ namespace Vintagestory.GameContent
             }
 
             return false;
+        }
+
+
+        public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos, ref EnumHandling handling)
+        {
+            return base.OnPickBlock(world, pos, ref handling);
         }
 
         public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer, ref EnumHandling handled)

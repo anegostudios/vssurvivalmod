@@ -164,6 +164,7 @@ namespace Vintagestory.GameContent
             api.World.PlaySoundAt(new AssetLocation("sounds/player/buildhigh"), pos.X, pos.Y, pos.Z, player, false);
             if (api is ICoreClientAPI) loadToolMeshes();
             MarkDirty(true);
+            player.InventoryManager.BroadcastHotbarSlot();
         }
 
 

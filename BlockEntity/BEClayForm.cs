@@ -194,6 +194,10 @@ namespace Vintagestory.GameContent
                     didmodify = mouseBreakMode ? OnRemove(voxelPos, facing, toolMode) : OnAdd(voxelPos, facing, toolMode);
                 }                
 
+                if (didmodify)
+                {
+                    //byPlayer.Entity.GetBehavior<EntityBehaviorHunger>()?.ConsumeSaturation(1f);
+                }
 
                 if (didmodify && api.Side == EnumAppSide.Client)
                 {

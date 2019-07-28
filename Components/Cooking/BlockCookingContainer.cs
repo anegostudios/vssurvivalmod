@@ -7,6 +7,7 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
@@ -17,6 +18,14 @@ namespace Vintagestory.GameContent
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
+            ItemSlot hotbarSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
+            if (!hotbarSlot.Empty && hotbarSlot.Itemstack.Collectible.Attributes?["handleCookingContainerInteract"].AsBool() == true)
+            {
+                EnumHandHandling handling = EnumHandHandling.NotHandled;
+                hotbarSlot.Itemstack.Collectible.OnHeldInteractStart(hotbarSlot, byPlayer.Entity, blockSel, null, true, ref handling);
+                if (handling == EnumHandHandling.PreventDefault || handling == EnumHandHandling.PreventDefaultAction) return true;
+            }
+
             ItemStack stack = OnPickBlock(world, blockSel.Position);
 
             if (byPlayer.InventoryManager.TryGiveItemstack(stack, true))
@@ -47,6 +56,8 @@ namespace Vintagestory.GameContent
 
             return false;
         }
+        
+
 
         public override float GetMeltingDuration(IWorldAccessor world, ISlotProvider cookingSlotsProvider, ItemSlot inputSlot)
         {
@@ -57,7 +68,7 @@ namespace Vintagestory.GameContent
             {
                 if (stacks[i].Collectible?.CombustibleProps == null)
                 {
-                    duration += 30 * stacks[i].StackSize;
+                    duration += 20 * stacks[i].StackSize;
                     continue;
                 }
 
@@ -65,7 +76,7 @@ namespace Vintagestory.GameContent
                 duration += singleDuration * stacks[i].StackSize / stacks[i].Collectible.CombustibleProps.SmeltedRatio;
             }
 
-            duration = Math.Max(60, duration / 3);
+            duration = Math.Max(40, duration / 3);
 
             return duration;
         }
@@ -102,20 +113,39 @@ namespace Vintagestory.GameContent
         public override void DoSmelt(IWorldAccessor world, ISlotProvider cookingSlotsProvider, ItemSlot inputSlot, ItemSlot outputSlot)
         {
             ItemStack[] stacks = GetCookingStacks(cookingSlotsProvider);
-
             CookingRecipe recipe = GetMatchingCookingRecipe(world, stacks);
 
-            Block block = world.GetBlock(CodeWithPath(FirstCodePart() + "-cooked"));
+            Block block = world.GetBlock(CodeWithVariant("type", "cooked"));
             ItemStack outputStack = new ItemStack(block);
 
             if (recipe != null)
             {
                 int quantityServings = recipe.GetQuantityServings(stacks);
+
                 for (int i = 0; i < stacks.Length; i++)
                 {
-                    stacks[i].StackSize /= quantityServings;
+                    CookingRecipeIngredient ingred = recipe.GetIngrendientFor(stacks[i]);
+                    ItemStack cookedStack = ingred.GetMatchingStack(stacks[i])?.CookedStack?.ResolvedItemstack.Clone();
+                    if (cookedStack != null)
+                    {
+                        stacks[i] = cookedStack;
+                    }
                 }
-                // Not active. Let's sacrifice mergability for letting players select how meals should look and named like
+
+                // Carry over and set perishable properties
+                TransitionableProperties cookedPerishProps = recipe.PerishableProps.Clone();
+                cookedPerishProps.TransitionedStack.Resolve(world, "cooking container perished stack");
+
+                CarryOverFreshness(api, cookingSlotsProvider.Slots, stacks, cookedPerishProps);
+
+                for (int i = 0; i < stacks.Length; i++)
+                {
+                    stacks[i].StackSize /= quantityServings; // whats this good for? Probably doesn't do anything meaningful
+                }
+
+                
+
+                // Disabled. Let's sacrifice mergability for letting players select how meals should look and be named like
                 //stacks = stacks.OrderBy(stack => stack.Collectible.Code.ToShortString()).ToArray(); // Required so that different arrangments of ingredients still create mergable meal bowls
 
                 ((BlockCookedContainer)block).SetContents(recipe.Code, quantityServings, outputStack, stacks);
@@ -129,6 +159,66 @@ namespace Vintagestory.GameContent
                     cookingSlotsProvider.Slots[i].Itemstack = null;
                 }
                 return;
+            }
+        }
+
+        internal int PutMeal(BlockPos pos, ItemStack[] itemStack, string recipeCode, int quantityServings)
+        {
+            Block block = api.World.GetBlock(CodeWithVariant("type", "cooked"));
+            api.World.BlockAccessor.SetBlock(block.Id, pos);
+
+            int servingsToTransfer = Math.Min(quantityServings, this.Attributes["servingCapacity"].AsInt(1));
+
+            BlockEntityCookedContainer be = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityCookedContainer;
+            be.RecipeCode = recipeCode;
+            be.QuantityServings = quantityServings;
+            for (int i = 0; i < itemStack.Length; i++)
+            {
+                be.inventory[i].Itemstack = itemStack[i];
+            }
+
+            be.MarkDirty(true);
+
+            return servingsToTransfer;
+        }
+
+        public static void CarryOverFreshness(ICoreAPI api, ItemSlot[] inputSlots, ItemStack[] outStacks, TransitionableProperties perishProps)
+        {
+            float transitionedHoursRelative = 0;
+            int quantity=0;
+
+            for (int i = 0; i < inputSlots.Length; i++)
+            {
+                ItemSlot slot = inputSlots[i];
+                if (slot.Empty) continue;
+                TransitionState state = slot.Itemstack.Collectible.UpdateAndGetTransitionState(api.World, slot, EnumTransitionType.Perish);
+                if (state == null) continue;
+
+                quantity++;
+                float val = state.TransitionedHours / (state.TransitionHours + state.FreshHours);
+
+                transitionedHoursRelative += val;
+            }
+
+            transitionedHoursRelative /= Math.Max(1, quantity);
+
+            for (int i = 0; i < outStacks.Length; i++)
+            {
+                if (!(outStacks[i].Attributes["transitionstate"] is ITreeAttribute))
+                {
+                    outStacks[i].Attributes["transitionstate"] = new TreeAttribute();
+                }
+
+                float transitionHours = perishProps.TransitionHours.nextFloat(1, api.World.Rand);
+                float freshHours = perishProps.FreshHours.nextFloat(1, api.World.Rand);
+
+                ITreeAttribute attr = (ITreeAttribute)outStacks[i].Attributes["transitionstate"];
+                attr.SetDouble("createdTotalHours", api.World.Calendar.TotalHours);
+                attr.SetDouble("lastUpdatedTotalHours", api.World.Calendar.TotalHours);
+
+                attr["freshHours"] = new FloatArrayAttribute(new float[] { freshHours });
+                attr["transitionHours"] = new FloatArrayAttribute(new float[] { transitionHours });
+                attr["transitionedHours"] = new FloatArrayAttribute(new float[] { Math.Max(0, transitionedHoursRelative * 0.8f * (transitionHours + freshHours) - 2) });
             }
         }
 
@@ -177,10 +267,10 @@ namespace Vintagestory.GameContent
 
         public CookingRecipe GetMatchingCookingRecipe(IWorldAccessor world, ItemStack[] stacks)
         {
-            CookingRecipe[] recipes = world.CookingRecipes;
+            List<CookingRecipe> recipes = world.CookingRecipes;
             if (recipes == null) return null;
 
-            for (int j = 0; j < recipes.Length; j++)
+            for (int j = 0; j < recipes.Count; j++)
             {
                 if (recipes[j].Matches(stacks))
                 {

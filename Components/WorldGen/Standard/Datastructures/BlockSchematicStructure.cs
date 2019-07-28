@@ -14,7 +14,7 @@ namespace Vintagestory.ServerMods
         public string FromFileName;
 
         public Block[,,] blocksByPos;
-        public Dictionary<ushort, Block> blockRemap = new Dictionary<ushort, Block>();
+        public Dictionary<int, Block> blockRemap = new Dictionary<int, Block>();
         RockStrataVariant dummyRock = new RockStrataVariant() { SoilpH = 6.5f, WeatheringFactor = 1f };
         Random rnd = new Random();
         public BlockLayerConfig blockLayerConfig;
@@ -91,7 +91,7 @@ namespace Vintagestory.ServerMods
                 {
                     curPos.Set(x + startPos.X, startPos.Y, z + startPos.Z);
                     IMapChunk mapchunk = blockAccessor.GetMapChunkAtBlockPos(curPos);
-                    ushort rockblockid = mapchunk.TopRockIdMap[(curPos.Z % chunksize) * chunksize + curPos.X % chunksize];                    
+                    int rockblockid = mapchunk.TopRockIdMap[(curPos.Z % chunksize) * chunksize + curPos.X % chunksize];                    
                     int depth = 0;
 
                     int maxY = -1;
@@ -154,7 +154,7 @@ namespace Vintagestory.ServerMods
 
 
 
-        private Block GetBlockLayerBlock(int unscaledRain, int unscaledTemp, int posY, ushort firstBlockId, int forDepth, Block defaultBlock, Block[] blocks)
+        private Block GetBlockLayerBlock(int unscaledRain, int unscaledTemp, int posY, int firstBlockId, int forDepth, Block defaultBlock, List<Block> blocks)
         {
             float temperature = TerraGenConfig.GetScaledAdjustedTemperatureFloat(unscaledTemp, posY - TerraGenConfig.seaLevel);
             float rainRel = TerraGenConfig.GetRainFall(unscaledRain, posY) / 255f;
@@ -172,7 +172,7 @@ namespace Vintagestory.ServerMods
                     (float)posY / mapheight <= bl.MaxY
                 )
                 {
-                    ushort blockId = bl.GetBlockId(0.1, temperature, rainRel, fertilityRel, firstBlockId);
+                    int blockId = bl.GetBlockId(0.1, temperature, rainRel, fertilityRel, firstBlockId);
                     if (blockId != 0)
                     {
                         return blocks[blockId];

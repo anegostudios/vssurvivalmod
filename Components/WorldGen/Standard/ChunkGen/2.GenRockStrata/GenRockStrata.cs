@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Vintagestory.API;
 using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.ServerMods.NoObf;
@@ -16,7 +17,7 @@ namespace Vintagestory.ServerMods
         int regionChunkSize;
         float chunkRatio;
 
-        public ushort rockBlockId;
+        public int rockBlockId;
         int worldHeight;
         Random rand;
 
@@ -168,7 +169,7 @@ namespace Vintagestory.ServerMods
         int grp = 0;
         #endregion
 
-        internal void GenChunkColumn(IServerChunk[] chunks, int chunkX, int chunkZ)
+        internal void GenChunkColumn(IServerChunk[] chunks, int chunkX, int chunkZ, ITreeAttribute chunkGenParams = null)
         {
             preLoad(chunks, chunkX, chunkZ);
 

@@ -136,6 +136,11 @@ namespace Vintagestory.GameContent
                     api.World.PlaySoundAt(new AssetLocation("sounds/player/knap" + (api.World.Rand.Next(2) > 0 ? 1 : 2)), lastRemovedLocalPos.X, lastRemovedLocalPos.Y, lastRemovedLocalPos.Z, byPlayer, true, 12, 1);
                 }
 
+                if (didRemove)
+                {
+                    //byPlayer.Entity.GetBehavior<EntityBehaviorHunger>()?.ConsumeSaturation(1f);
+                }
+
                 if (didRemove && api.Side == EnumAppSide.Client)
                 {
                     Random rnd = api.World.Rand;
@@ -371,7 +376,6 @@ namespace Vintagestory.GameContent
             deserializeVoxels(tree.GetBytes("voxels"));
             selectedRecipeId = tree.GetInt("selectedRecipeId", -1);
             BaseMaterial = tree.GetItemstack("baseMaterial");
-            RegenMeshAndSelectionBoxes();
 
             if (api?.World != null)
             {

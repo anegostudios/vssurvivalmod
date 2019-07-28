@@ -34,27 +34,27 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            BlockBucket blockbucket = byEntity.World.BlockAccessor.GetBlock(blockSel.Position) as BlockBucket;
+            BlockLiquidContainerBase blockLiqContainer = byEntity.World.BlockAccessor.GetBlock(blockSel.Position) as BlockLiquidContainerBase;
             string contents = BowlContentItemCode();
 
-            if (blockbucket != null)
+            if (blockLiqContainer != null)
             {
                 if (contents == null)
                 {
-                    ItemStack stack = blockbucket.GetContent(byEntity.World, blockSel.Position);
+                    ItemStack stack = blockLiqContainer.GetContent(byEntity.World, blockSel.Position);
                     if (stack != null && ContentBlockForContents(stack.Collectible.Code.Path) !=null)
                     {
                         InsertIntoBowl(slot, byEntity, stack.Collectible.Code.Path);
-                        blockbucket.TryTakeContent(byEntity.World, blockSel.Position, 1);
+                        blockLiqContainer.TryTakeContent(byEntity.World, blockSel.Position, 1);
                     }
                 }
                 else
                 {
-                    ItemStack stack = blockbucket.GetContent(byEntity.World, blockSel.Position);
+                    ItemStack stack = blockLiqContainer.GetContent(byEntity.World, blockSel.Position);
                     if (stack == null || stack.Collectible.Code.Equals(new AssetLocation(BowlContentItemCode())))
                     {
                         Item contentItem = byEntity.World.GetItem(new AssetLocation(BowlContentItemCode()));
-                        if (blockbucket.TryAddContent(byEntity.World, blockSel.Position, new ItemStack(contentItem), 1) > 0)
+                        if (blockLiqContainer.TryPutContent(byEntity.World, blockSel.Position, new ItemStack(contentItem), 1) > 0)
                         {
                             EmptyOutBowl(slot, byEntity);
                         }
@@ -72,7 +72,7 @@ namespace Vintagestory.GameContent
 
         public override bool OnHeldInteractStep(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
-            if (blockSel != null && (byEntity.World.BlockAccessor.GetBlock(blockSel.Position) as BlockBucket) != null)
+            if (blockSel != null && (byEntity.World.BlockAccessor.GetBlock(blockSel.Position) as BlockLiquidContainerBase) != null)
             {
                 return false;
             }

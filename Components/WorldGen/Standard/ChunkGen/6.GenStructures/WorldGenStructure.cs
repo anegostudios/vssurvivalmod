@@ -95,10 +95,10 @@ namespace Vintagestory.ServerMods
             };
         }
 
-        Random rand;
+        LCGRandom rand;
 
 
-        public void Init(ICoreServerAPI api, BlockLayerConfig config, Random rand)
+        public void Init(ICoreServerAPI api, BlockLayerConfig config, LCGRandom rand)
         {
             this.rand = rand;
 
@@ -188,6 +188,8 @@ namespace Vintagestory.ServerMods
             
             startPos.Y += OffsetY;
 
+            rand.InitPositionSeed(startPos.X, startPos.Z);
+
             return Generators[(int)Placement](blockAccessor, worldForCollectibleResolve, startPos);
         }
 
@@ -197,9 +199,8 @@ namespace Vintagestory.ServerMods
             int chunksize = blockAccessor.ChunkSize;
             int climate = GameMath.BiLerpRgbColor((float)(pos.X % chunksize) / chunksize, (float)(pos.Z % chunksize) / chunksize, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight);
 
-
-            int num = rand.Next(schematicDatas.Length);
-            int orient = rand.Next(4);
+            int num = rand.NextInt(schematicDatas.Length);
+            int orient = rand.NextInt(4);
             BlockSchematicStructure schematic = schematicDatas[num][orient];
             
 
@@ -269,9 +270,8 @@ namespace Vintagestory.ServerMods
             int chunksize = blockAccessor.ChunkSize;
             int climate = GameMath.BiLerpRgbColor((float)(pos.X % chunksize) / chunksize, (float)(pos.Z % chunksize) / chunksize, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight);
 
-
-            int num = rand.Next(schematicDatas.Length);
-            int orient = rand.Next(4);
+            int num = rand.NextInt(schematicDatas.Length);
+            int orient = rand.NextInt(4);
             BlockSchematicStructure schematic = schematicDatas[num][orient];
             
 
@@ -362,7 +362,7 @@ namespace Vintagestory.ServerMods
 
         internal bool TryGenerateUnderground(IBlockAccessor blockAccessor, IWorldAccessor worldForCollectibleResolve, BlockPos pos)
         {
-            int num = rand.Next(schematicDatas.Length);
+            int num = rand.NextInt(schematicDatas.Length);
 
             BlockSchematicStructure[] schematicStruc = schematicDatas[num];
             BlockPos targetPos = pos.Copy();
@@ -404,7 +404,7 @@ namespace Vintagestory.ServerMods
 
                 // 3. Random pathway
                 found = false;
-                int pathwayNum = rand.Next(schematicStruc[0].PathwayStarts.Length);
+                int pathwayNum = rand.NextInt(schematicStruc[0].PathwayStarts.Length);
                 int targetOrientation = 0;
                 int targetDistance = -1;
                 BlockFacing targetFacing = null;
@@ -460,7 +460,7 @@ namespace Vintagestory.ServerMods
                 return true;
             }
 
-            schematic = schematicStruc[rand.Next(4)];
+            schematic = schematicStruc[rand.NextInt(4)];
             LastPlacedSchematicLocation.Set(targetPos.X, targetPos.Y, targetPos.Z, targetPos.X + schematic.SizeX, targetPos.Y + schematic.SizeY, targetPos.Z + schematic.SizeZ);
             LastPlacedSchematic = schematic;
             if (!TestUndergroundCheckPositions(blockAccessor, targetPos, schematic.UndergroundCheckPositions)) return false;
@@ -495,7 +495,7 @@ namespace Vintagestory.ServerMods
             int quantityAir = 0;
             BlockPos tmpPos = new BlockPos();
 
-            bool oppositeDir = rand.Next(2) > 0;
+            bool oppositeDir = rand.NextInt(2) > 0;
 
             for (int i = 3; i >= 1; i--)
             {

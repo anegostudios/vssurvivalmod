@@ -1,6 +1,7 @@
 ﻿using System;
 using Vintagestory.API;
 using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.ServerMods.NoObf;
@@ -69,7 +70,7 @@ namespace Vintagestory.ServerMods
 
 
 
-        private void OnChunkColumnGen(IServerChunk[] chunks, int chunkX, int chunkZ)
+        private void OnChunkColumnGen(IServerChunk[] chunks, int chunkX, int chunkZ, ITreeAttribute chunkGenParams = null)
         {
             IntMap climateMap = chunks[0].MapChunk.MapRegion.ClimateMap;
             ushort[] heightMap = chunks[0].MapChunk.RainHeightMap;

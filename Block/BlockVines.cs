@@ -103,7 +103,7 @@ namespace Vintagestory.GameContent
 
             if (block.CanAttachBlockAt(blockAccessor, this, attachingBlockPos, onBlockFace))
             {
-                ushort blockId = blockAccessor.GetBlock(CodeWithParts(onBlockFace.Code)).BlockId;
+                int blockId = blockAccessor.GetBlock(CodeWithParts(onBlockFace.Code)).BlockId;
                 blockAccessor.SetBlock(blockId, blockpos);
                 return true;
             }

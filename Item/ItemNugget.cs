@@ -12,17 +12,18 @@ namespace Vintagestory.GameContent
     public class ItemNugget : Item
     {
 
-        public override void GetHeldItemInfo(ItemStack stack, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
+        public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
         {
+            
             if (CombustibleProps?.SmeltedStack == null)
             {
-                base.GetHeldItemInfo(stack, dsc, world, withDebugInfo);
+                base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
                 return;
             }
 
             CombustibleProperties props = CombustibleProps;
 
-            base.GetHeldItemInfo(stack, dsc, world, withDebugInfo);
+            base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
 
             string smelttype = CombustibleProps.SmeltingType.ToString().ToLowerInvariant();
             int instacksize = CombustibleProps.SmeltedRatio;

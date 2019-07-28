@@ -59,6 +59,19 @@
   <PropertyGroup>
     <RunPostBuildEvent>Always</RunPostBuildEvent>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug + Flatworld|AnyCPU'">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>..\bin\Debug\Mods\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <DebugType>full</DebugType>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <UseVSHostingProcess>false</UseVSHostingProcess>
+    <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
+    <LangVersion>7</LangVersion>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="Newtonsoft.Json">
       <HintPath>..\Lib\Newtonsoft.Json.dll</HintPath>
@@ -82,7 +95,6 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="BlockBehavior\BehaviorFillable.cs" />
     <Compile Include="BlockBehavior\BehaviorOmniRotatable.cs" />
     <Compile Include="BlockBehavior\BehaviorPushEventOnBlockBroken.cs" />
     <Compile Include="BlockBehavior\BehaviorRightClickPickup.cs" />
@@ -94,9 +106,12 @@
     <Compile Include="BlockEntityRenderer\FirepitContentsRenderer.cs" />
     <Compile Include="BlockEntityRenderer\PotInFirepitRenderer.cs" />
     <Compile Include="BlockEntityRenderer\QuernTopRenderer.cs" />
+    <Compile Include="BlockEntity\BEBarrel.cs" />
     <Compile Include="BlockEntity\BEEchoChamber.cs" />
+    <Compile Include="BlockEntity\BEItemFlow.cs" />
     <Compile Include="BlockEntity\BELabeledChest.cs" />
     <Compile Include="BlockEntity\BELocustNest.cs" />
+    <Compile Include="BlockEntity\BEShelf.cs" />
     <Compile Include="BlockEntity\BEStaticTranslocator.cs" />
     <Compile Include="BlockEntity\BETrough.cs" />
     <Compile Include="BlockEntity\BEBeehive.cs" />
@@ -104,9 +119,13 @@
     <Compile Include="BlockEntity\BELantern.cs" />
     <Compile Include="BlockEntity\BEMeal.cs" />
     <Compile Include="BlockEntity\BESapling.cs" />
+    <Compile Include="BlockEntity\BECrock.cs" />
+    <Compile Include="Block\BlockBarrel.cs" />
     <Compile Include="Block\BlockChandelier.cs" />
+    <Compile Include="Block\BlockCrock.cs" />
     <Compile Include="Block\BlockCrystal.cs" />
     <Compile Include="Block\BlockEchoChamber.cs" />
+    <Compile Include="Block\BlockHopper.cs" />
     <Compile Include="Block\BlockLabeledChest.cs" />
     <Compile Include="Block\BlockLocustNest.cs" />
     <Compile Include="Block\BlockLog.cs" />
@@ -116,10 +135,13 @@
     <Compile Include="Block\BlockMetalSpikes.cs" />
     <Compile Include="Block\BlockMeteorite.cs" />
     <Compile Include="Block\BlockRequireSolidGround.cs" />
+    <Compile Include="Block\BlockShelf.cs" />
     <Compile Include="Block\BlockStalagSection.cs" />
     <Compile Include="Block\BlockSoilDeposit.cs" />
     <Compile Include="Block\BlockStaticTranslocator.cs" />
     <Compile Include="Block\BlockWaterfall.cs" />
+    <Compile Include="Block\BlockWaterFlowing.cs" />
+    <Compile Include="Components\LiquidContainer.cs" />
     <Compile Include="Components\MechanicalPower\BlockEntity\BEAngledGears.cs" />
     <Compile Include="BlockEntity\BEAnvil.cs" />
     <Compile Include="Components\MechanicalPower\BlockEntity\BEAxle.cs" />
@@ -187,7 +209,7 @@
     <Compile Include="BlockBehavior\BehaviorUnstable.cs" />
     <Compile Include="BlockBehavior\BehaviorUnstableFalling.cs" />
     <Compile Include="BlockBehavior\Crop\PumpkinCropBehavior.cs" />
-    <Compile Include="BlockEntity\BlockSpawner.cs" />
+    <Compile Include="Block\BlockSpawner.cs" />
     <Compile Include="Block\BlockAnvil.cs" />
     <Compile Include="Block\BlockBamboo.cs" />
     <Compile Include="Block\BlockFarmland.cs" />
@@ -262,7 +284,7 @@
     <Compile Include="Components\MechanicalPower\Block\BlockMPBase.cs" />
     <Compile Include="Components\MechanicalPower\Block\BlockWindmillRotor.cs" />
     <Compile Include="Components\MechanicalPower\MechanicalPowerMod.cs" />
-    <Compile Include="Components\MechanicalPower\NetworkOld\EnunMechDeviceType.cs" />
+    <Content Include="Components\MechanicalPower\NetworkOldUnused\EnunMechDeviceType.cs" />
     <Compile Include="Components\MechanicalPower\Network\IMechanicalPowerBlock.cs" />
     <Compile Include="Components\MechanicalPower\Network\MechanicalNetwork.cs" />
     <Compile Include="Components\MechanicalPower\Renderer\AngledGearBlockRenderer.cs" />
@@ -299,7 +321,11 @@
     <Compile Include="Entity\AITask\AiTaskButterflyFeedOnFlowers.cs" />
     <Compile Include="Entity\AITask\AiTaskButterflyChase.cs" />
     <Compile Include="Entity\AITask\AiTaskButterflyWander.cs" />
+    <Compile Include="Gui\GuiDialogBarrel.cs" />
+    <Compile Include="Inventory\ItemSlotBarrelInput.cs" />
     <Compile Include="Inventory\ItemSlotBuying.cs" />
+    <Compile Include="Inventory\ItemSlotLiquidOnly.cs" />
+    <Compile Include="Inventory\ItemSlotWatertight.cs" />
     <Compile Include="Item\ItemGem.cs" />
     <Compile Include="Item\ItemJournalEntry.cs" />
     <Compile Include="Item\ItemKnife.cs" />
@@ -326,7 +352,6 @@
     <Compile Include="Gui\GuiDialogSpawner.cs" />
     <Compile Include="Gui\GuiDialogTrader.cs" />
     <Compile Include="Inventory\InventoryTrader.cs" />
-    <Compile Include="Inventory\ItemSlotCooking.cs" />
     <Compile Include="Inventory\ItemSlotFirepitInput.cs" />
     <Compile Include="Inventory\ItemSlotTrade.cs" />
     <Compile Include="Systems\BlockReinforcement.cs" />
@@ -374,14 +399,15 @@
     <Compile Include="Systems\GameEffects.cs" />
     <Compile Include="Systems\Journal.cs" />
     <Compile Include="Systems\LootRandomizer.cs" />
-    <Compile Include="Components\MechanicalPower\NetworkOld\BlockEntityMechNetworkDeviceBase.cs" />
+    <Content Include="Components\MechanicalPower\NetworkOldUnused\BlockEntityMechNetworkDeviceBase.cs" />
     <Compile Include="Components\MechanicalPower\Network\IMechanicalPowerDevice.cs" />
-    <Compile Include="Components\MechanicalPower\NetworkOld\IMechanicalPowerNetworkNode.cs" />
-    <Compile Include="Components\MechanicalPower\NetworkOld\IMechanicalPowerNetworkRelay.cs" />
-    <Compile Include="Components\MechanicalPower\NetworkOld\MechanicalNetworkOld.cs" />
-    <Compile Include="Components\MechanicalPower\NetworkOld\MechNetworkManager.cs" />
+    <Content Include="Components\MechanicalPower\NetworkOldUnused\IMechanicalPowerNetworkNode.cs" />
+    <Content Include="Components\MechanicalPower\NetworkOldUnused\IMechanicalPowerNetworkRelay.cs" />
+    <Content Include="Components\MechanicalPower\NetworkOldUnused\MechanicalNetworkOld.cs" />
+    <Content Include="Components\MechanicalPower\NetworkOldUnused\MechNetworkManager.cs" />
     <Compile Include="Components\MechanicalPower\Renderer\MechNetworkRenderer.cs" />
     <Compile Include="Systems\NpcControl.cs" />
+    <Compile Include="Systems\CellarRegistry.cs" />
     <Compile Include="Systems\SaplingControl.cs" />
     <Compile Include="Systems\Sleeping.cs" />
     <Compile Include="Systems\TeleporterManager.cs" />

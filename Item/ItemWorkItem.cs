@@ -8,13 +8,13 @@ namespace Vintagestory.GameContent
 {
     public class ItemWorkItem : Item
     {
-        public override void GetHeldItemInfo(ItemStack stack, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
+        public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
         {
-            base.GetHeldItemInfo(stack, dsc, world, withDebugInfo);
+            base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
 
-            int selectedRecipeNumber = stack.Attributes.GetInt("selectedRecipeNumber");
+            int selectedRecipeNumber = inSlot.Itemstack.Attributes.GetInt("selectedRecipeNumber");
 
-            if (selectedRecipeNumber < 0 || selectedRecipeNumber >= world.SmithingRecipes.Length)
+            if (selectedRecipeNumber < 0 || selectedRecipeNumber >= world.SmithingRecipes.Count)
             {
                 dsc.AppendLine("Unknown work item");
                 return;

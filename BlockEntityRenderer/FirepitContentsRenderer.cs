@@ -22,6 +22,13 @@ namespace Vintagestory.GameContent
         ModelTransform defaultTransform;
 
         public IInFirepitRenderer contentStackRenderer;
+        public bool RequireSpit
+        {
+            get
+            {
+                return contentStackRenderer == null && ContentStack?.Item != null;
+            }
+        }
 
         public double RenderOrder
         {

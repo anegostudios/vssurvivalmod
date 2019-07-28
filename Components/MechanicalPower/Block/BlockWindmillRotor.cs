@@ -5,6 +5,15 @@ namespace Vintagestory.GameContent.Mechanics
 {
     public class BlockWindmillRotor : BlockMPBase
     {
+        BlockFacing powerOutFacing;
+
+        public override void OnLoaded(ICoreAPI api)
+        {
+            powerOutFacing = BlockFacing.FromCode(Variant["side"]).GetOpposite();
+
+            base.OnLoaded(api);
+        }
+
         public override void DidConnectAt(IWorldAccessor world, BlockPos pos, BlockFacing face)
         {
             
@@ -12,7 +21,7 @@ namespace Vintagestory.GameContent.Mechanics
 
         public override bool HasConnectorAt(IWorldAccessor world, BlockPos pos, BlockFacing face)
         {
-            return false;
+            return face == powerOutFacing;
         }
 
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)

@@ -32,7 +32,6 @@ namespace Vintagestory.GameContent
 
 
             modBre = world.Api.ModLoader.GetModSystem<ModSystemBlockReinforcement>();
-
             BlockReinforcement bre = modBre.GetReinforcment(pos);
             
             if (bre != null && bre.Strength > 0)

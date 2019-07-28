@@ -93,6 +93,7 @@ namespace Vintagestory.GameContent
                 player.Entity.LocalPos.Y += GetCollisionBoxes(world.BlockAccessor, pos)[0].Y2;
             }
 
+            (player as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
 
             return true;
         }
