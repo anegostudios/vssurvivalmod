@@ -61,25 +61,7 @@ namespace Vintagestory.GameContent
             EntityPos plrPos = worldAccess.Player.Entity.Pos;
 
             rpi.GlDisableCullFace();
-
-            IStandardShaderProgram prog = rpi.StandardShader;
-            prog.Use();
-            prog.ExtraGlow = 0;
-            prog.RgbaAmbientIn = rpi.AmbientColor;
-            prog.RgbaFogIn = rpi.FogColor;
-            prog.FogMinIn = rpi.FogMin;
-            prog.FogDensityIn = rpi.FogDensity;
-            prog.RgbaTint = ColorUtil.WhiteArgbVec;
-            prog.DontWarpVertices = 0;
-            prog.AddRenderFlags = 0;
-
-            Vec4f lightrgbs = api.World.BlockAccessor.GetLightRGBs(pos.X, pos.Y, pos.Z);
-
-
-            prog.RgbaLightIn = lightrgbs;
-            prog.RgbaBlockIn = ColorUtil.WhiteArgbVec;
-
-            
+            IStandardShaderProgram prog = rpi.PreparedStandardShader(pos.X, pos.Y, pos.Z);
             rpi.BindTexture2d(texId);
 
             prog.ProjectionMatrix = rpi.CurrentProjectionMatrix;

@@ -24,7 +24,7 @@ namespace Vintagestory.GameContent
             rareVariants = new Block[] { api.World.GetBlock(CodeWithParts("orange")) };
         }
 
-        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, Random worldGenRand)
+        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, LCGRandom worldGenRand)
         {
             bool placed = base.TryPlaceBlockForWorldGen(blockAccessor, pos, onBlockFace, worldGenRand);
             if (!placed) return false;
@@ -32,25 +32,25 @@ namespace Vintagestory.GameContent
             double rnd = worldGenRand.NextDouble();
             if (rnd < 1/300.0)
             {
-                GenRareColorPatch(blockAccessor, pos, uncommonVariants[worldGenRand.Next(rareVariants.Length)], worldGenRand);
+                GenRareColorPatch(blockAccessor, pos, uncommonVariants[worldGenRand.NextInt(rareVariants.Length)], worldGenRand);
             } else if (rnd < 1/120.0)
             {
-                GenRareColorPatch(blockAccessor, pos, uncommonVariants[worldGenRand.Next(uncommonVariants.Length)], worldGenRand);
+                GenRareColorPatch(blockAccessor, pos, uncommonVariants[worldGenRand.NextInt(uncommonVariants.Length)], worldGenRand);
             }
 
             return true;
         }
 
 
-        private void GenRareColorPatch(IBlockAccessor blockAccessor, BlockPos pos, Block block, Random worldGenRand)
+        private void GenRareColorPatch(IBlockAccessor blockAccessor, BlockPos pos, Block block, LCGRandom worldGenRand)
         {
-            int cnt = 2 + worldGenRand.Next(6);
+            int cnt = 2 + worldGenRand.NextInt(6);
             int tries = 30;
             BlockPos npos = pos.Copy();
             
             while (cnt > 0 && tries-- > 0)
             {
-                npos.Set(pos).Add(worldGenRand.Next(5) - 2, 0, worldGenRand.Next(5) - 2);
+                npos.Set(pos).Add(worldGenRand.NextInt(5) - 2, 0, worldGenRand.NextInt(5) - 2);
                 npos.Y = blockAccessor.GetTerrainMapheightAt(npos) + 1;
 
                 Block nblock = blockAccessor.GetBlock(npos);

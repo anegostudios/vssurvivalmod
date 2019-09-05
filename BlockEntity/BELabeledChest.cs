@@ -113,6 +113,12 @@ namespace Vintagestory.GameContent
 
                 // Tell server to save this chunk to disk again
                 api.World.BlockAccessor.GetChunkAtBlockPos(pos.X, pos.Y, pos.Z).MarkModified();
+
+                // 85% chance to get back the item
+                if (api.World.Rand.NextDouble() < 0.85)
+                {
+                    player.InventoryManager.TryGiveItemstack(tempStack);
+                }
             }
 
             if (packetid == (int)EnumSignPacketId.CancelEdit && tempStack != null)

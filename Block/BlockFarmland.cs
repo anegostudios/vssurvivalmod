@@ -25,5 +25,27 @@ namespace Vintagestory.GameContent
             return base.CanAttachBlockAt(world, block, pos, blockFace);
         }
 
+
+        public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
+        {
+            BlockEntityFarmland befarmland = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityFarmland;
+            if (befarmland != null && befarmland.OnBlockInteract(byPlayer)) return true;
+
+            return base.OnBlockInteractStart(world, byPlayer, blockSel);
+        }
+
+
+        public override string GetPlacedBlockName(IWorldAccessor world, BlockPos pos)
+        {
+            BlockEntityFarmland befarmland = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityFarmland;
+
+            if (befarmland != null)
+            {
+                Block farmlandBlock = api.World.GetBlock(CodeWithVariant("state", befarmland.IsWatered ? "moist" : "dry"));
+                return new ItemStack(farmlandBlock).GetName();
+
+            }
+            return base.GetPlacedBlockName(world, pos);
+        }
     }
 }

@@ -26,7 +26,7 @@ namespace Vintagestory.GameContent
 
             Inventory.LateInitialize(InventoryClassName + "-" + pos.X + "/" + pos.Y + "/" + pos.Z, api);
             Inventory.ResolveBlocksOrItems();
-            Inventory.OnAcquireTransitionSpeed += Inventory_OnAcquireTransitionSpeed;
+            Inventory.OnAcquireTransitionSpeed = Inventory_OnAcquireTransitionSpeed;
 
             RegisterGameTickListener(OnTick, 10000);
         }
@@ -35,9 +35,19 @@ namespace Vintagestory.GameContent
         {
             foreach (ItemSlot slot in Inventory)
             {
-                slot.Itemstack?.Collectible.UpdateAndGetTransitionStates(api.World, slot);
+                if (slot.Itemstack == null) continue;
+
+                AssetLocation codeBefore = slot.Itemstack.Collectible.Code;
+                slot.Itemstack.Collectible.UpdateAndGetTransitionStates(api.World, slot);
+
+                if (slot.Itemstack?.Collectible.Code != codeBefore)
+                {
+                    MarkDirty(true);
+                }
+                    
             }
         }
+        
 
         protected virtual float Inventory_OnAcquireTransitionSpeed(EnumTransitionType transType, ItemStack stack, float baseMul)
         {
@@ -53,6 +63,7 @@ namespace Vintagestory.GameContent
             sealevelpos.Y = api.World.SeaLevel;
 
             ClimateCondition cond = api.World.BlockAccessor.GetClimateAt(sealevelpos);
+            if (cond == null) return 1;
 
             Cellar cellar = api.ModLoader.GetModSystem<CellarRegistry>().GetCellarForPosition(pos);
 
@@ -106,6 +117,8 @@ namespace Vintagestory.GameContent
             {
                 Inventory.DropAll(pos.ToVec3d().Add(0.5, 0.5, 0.5));
             }
+
+            base.OnBlockBroken();
         }
 
         public ItemStack[] GetNonEmptyContentStacks(bool cloned = true)
@@ -216,7 +229,7 @@ namespace Vintagestory.GameContent
 
                     if (inv.PerishableFactorByFoodCategory.Count != Enum.GetValues(typeof(EnumFoodCategory)).Length)
                     {
-                        sb.AppendLine(Lang.Get("- {0}: {1}x", Lang.Get("Other"), Math.Round(rate, 2)));
+                        sb.AppendLine(Lang.Get("- {0}: {1}x", Lang.Get("food_perish_speed_other"), Math.Round(rate, 2)));
                     }
                     
                     return sb.ToString();

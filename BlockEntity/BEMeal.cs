@@ -29,7 +29,25 @@ namespace Vintagestory.GameContent
             get { return api.World.CookingRecipes.FirstOrDefault(rec => rec.Code == RecipeCode); }
         }
 
-        
+        bool wasRotten;
+        int tickCnt = 0;
+
+        public bool Rotten
+        {
+            get
+            {
+                bool rotten = false;
+                for (int i = 0; i < inventory.Count; i++)
+                {
+                    rotten |= inventory[i].Itemstack?.Collectible.Code.Path == "rot";
+                }
+
+                return rotten;
+            }
+        }
+
+
+
         public BlockEntityMeal()
         {
             inventory = new InventoryGeneric(4, null, null);
@@ -88,6 +106,17 @@ namespace Vintagestory.GameContent
             {
                 BlockCookedContainer.smokeHeld.minPos = pos.ToVec3d().AddCopy(0.5 - 0.05, 0.125, 0.5 - 0.05);
                 api.World.SpawnParticles(BlockCookedContainer.smokeHeld);
+            }
+
+
+            if (tickCnt++ % 20 == 0)
+            {
+                if (!wasRotten && Rotten)
+                {
+                    currentMesh = GenMesh();
+                    MarkDirty(true);
+                    wasRotten = true;
+                }
             }
         }
 
@@ -174,27 +203,18 @@ namespace Vintagestory.GameContent
                 dsc.Append(nutriFacts);
             }
 
-            TransitionState state = inventory[0].Itemstack.Collectible.UpdateAndGetTransitionState(api.World, inventory[0], EnumTransitionType.Perish);
-            if (state != null)
+            
+            foreach (var slot in inventory)
             {
-                if (state.TransitionLevel > 0)
+                if (slot.Empty) continue;
+
+                TransitionableProperties[] propsm = slot.Itemstack.Collectible.GetTransitionableProperties(api.World, slot.Itemstack, null);
+                if (propsm != null && propsm.Length > 0)
                 {
-                    dsc.AppendLine(Lang.Get("<font color=\"orange\">Perishable.</font> {0}% spoiled", (int)Math.Round(state.TransitionLevel * 100)));
-                }
-                else
-                {
-                    double hoursPerday = api.World.Calendar.HoursPerDay;
-                    if (state.FreshHoursLeft > hoursPerday)
-                    {
-                        dsc.AppendLine(Lang.Get("<font color=\"orange\">Perishable.</font> Fresh for {0} days", Math.Round(state.FreshHoursLeft / hoursPerday, 1)));
-                    }
-                    else
-                    {
-                        dsc.AppendLine(Lang.Get("<font color=\"orange\">Perishable.</font> Fresh for {0} hours", Math.Round(state.FreshHoursLeft, 1)));
-                    }
+                    slot.Itemstack.Collectible.AppendPerishableInfoText(slot, dsc, api.World);
+                    break;
                 }
             }
-
 
             return dsc.ToString();
         }

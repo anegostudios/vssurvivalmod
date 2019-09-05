@@ -11,21 +11,19 @@ namespace Vintagestory.GameContent.Mechanics
 {
     public class GenericMechBlockRenderer : MechBlockRenderer
     {
-        Block block;
-
         CustomMeshDataPartFloat matrixAndLightFloats;
         MeshRef blockMeshRef;
 
-        
-
-        public GenericMechBlockRenderer(ICoreClientAPI capi, MechanicalPowerMod mechanicalPowerMod, Block block) : base(capi, mechanicalPowerMod, block)
+        public GenericMechBlockRenderer(ICoreClientAPI capi, MechanicalPowerMod mechanicalPowerMod, Block textureSoureBlock, CompositeShape shapeLoc) : base(capi, mechanicalPowerMod)
         {
-            this.block = block;
             MeshData blockMesh;
 
-            Shape shape = capi.Assets.TryGet(block.Shape.Base.Clone().WithPathPrefix("shapes/") + ".json").ToObject<Shape>();
-            Vec3f rot = new Vec3f(block.Shape.rotateX, block.Shape.rotateY, block.Shape.rotateZ);
-            capi.Tesselator.TesselateShape(block, shape, out blockMesh, rot);
+            AssetLocation loc = shapeLoc.Base.Clone().WithPathPrefix("shapes/").WithPathAppendixOnce(".json");
+
+            Shape shape = capi.Assets.TryGet(loc).ToObject<Shape>();
+            Vec3f rot = new Vec3f(shapeLoc.rotateX, shapeLoc.rotateY, shapeLoc.rotateZ);
+
+            capi.Tesselator.TesselateShape(textureSoureBlock, shape, out blockMesh, rot);
 
             blockMesh.Rgba2 = null;
 

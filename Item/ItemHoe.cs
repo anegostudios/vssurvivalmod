@@ -133,18 +133,15 @@ namespace Vintagestory.GameContent
             if (block.Sounds != null) byEntity.World.PlaySoundAt(block.Sounds.Place, pos.X, pos.Y, pos.Z, null);
 
             byEntity.World.BlockAccessor.SetBlock(farmland.BlockId, pos);
-            byEntity.World.BlockAccessor.MarkBlockDirty(pos);
             slot.Itemstack.Collectible.DamageItem(byEntity.World, byEntity, byPlayer.InventoryManager.ActiveHotbarSlot);
 
-            if (byEntity.World is IServerWorldAccessor)
+            BlockEntity be = byEntity.World.BlockAccessor.GetBlockEntity(pos);
+            if (be is BlockEntityFarmland)
             {
-                BlockEntity be = byEntity.World.BlockAccessor.GetBlockEntity(pos);
-                if (be is BlockEntityFarmland)
-                {
-                    ((BlockEntityFarmland)be).CreatedFromSoil(block);
-                }
+                ((BlockEntityFarmland)be).CreatedFromSoil(block);
             }
 
+            byEntity.World.BlockAccessor.MarkBlockDirty(pos);
             //byEntity.GetBehavior<EntityBehaviorHunger>()?.ConsumeSaturation(5f);
         }
 

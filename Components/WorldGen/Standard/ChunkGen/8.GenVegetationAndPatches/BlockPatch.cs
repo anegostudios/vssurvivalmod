@@ -88,7 +88,7 @@ namespace Vintagestory.ServerMods.NoObf
         }
 
 
-        public void Generate(IBlockAccessor blockAccessor, Random rnd, int posX, int posY, int posZ, int firstBlockId)
+        public void Generate(IBlockAccessor blockAccessor, LCGRandom rnd, int posX, int posY, int posZ, int firstBlockId)
         {
             float quantity = Quantity.nextFloat() + 1;
             int chunkSize = blockAccessor.ChunkSize;
@@ -112,7 +112,7 @@ namespace Vintagestory.ServerMods.NoObf
 
                 if (Placement == EnumBlockPatchPlacement.Underground)
                 {
-                    pos.Y = rnd.Next(Math.Max(1, chunk.MapChunk.WorldGenTerrainHeightMap[lz * blockAccessor.ChunkSize + lx] - 1)) ;
+                    pos.Y = rnd.NextInt(Math.Max(1, chunk.MapChunk.WorldGenTerrainHeightMap[lz * blockAccessor.ChunkSize + lx] - 1)) ;
                 }
                 else
                 {

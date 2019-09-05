@@ -1,4 +1,5 @@
-﻿using Vintagestory.API.Common;
+﻿using System.Collections.Generic;
+using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
@@ -12,26 +13,22 @@ namespace Vintagestory.GameContent
 
         public override BlockFacing GetDirection()
         {
-            string[] parts = Code.Path.Split('-');
-            return BlockFacing.FromCode(parts[1]);
+            return BlockFacing.FromCode(Variant["horizontalorientation"]);
         }
 
         public string GetKnobOrientation(Block block)
         {
-            string[] parts = block.Code.Path.Split('-');
-            return parts[parts.Length - 1];
+            return Variant["knobOrientation"];
         }
 
         public bool IsUpperHalf()
         {
-            string[] parts = Code.Path.Split('-');
-            return parts[parts.Length - 3] == "up";
+            return Variant["part"] == "up";
         }
 
         public bool IsOpened()
         {
-            string[] parts = Code.Path.Split('-');
-            return parts[parts.Length - 2] == "opened";
+            return Variant["state"] == "opened";
         }
 
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
@@ -45,17 +42,23 @@ namespace Vintagestory.GameContent
 
             BlockPos abovePos = blockSel.Position.AddCopy(0, 1, 0);
             IBlockAccessor ba = world.BlockAccessor;
-            
+
             if (ba.GetBlockId(abovePos) == 0 && IsSuitablePosition(world, blockSel.Position, ref failureCode))
             {
                 BlockFacing[] horVer = SuggestedHVOrientation(byPlayer, blockSel);
 
                 string knobOrientation = GetSuggestedKnobOrientation(ba, blockSel.Position, horVer[0]);
 
-                AssetLocation downBlockCode = CodeWithParts(horVer[0].Code, "down", "closed", knobOrientation);
+                AssetLocation downBlockCode = CodeWithVariants(new Dictionary<string, string>() { 
+                    { "horizontalorientation", horVer[0].Code },
+                    { "part", "down" },
+                    { "state", "closed" },
+                    { "knobOrientation", knobOrientation }
+                });
+
                 Block downBlock = ba.GetBlock(downBlockCode);
 
-                AssetLocation upBlockCode = CodeWithParts(horVer[0].Code, "up", "closed", knobOrientation);
+                AssetLocation upBlockCode = downBlock.CodeWithVariant("part", "up");
                 Block upBlock = ba.GetBlock(upBlockCode);
 
                 ba.SetBlock(downBlock.BlockId, blockSel.Position);
@@ -112,13 +115,20 @@ namespace Vintagestory.GameContent
 
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)
         {
-            Block block = world.BlockAccessor.GetBlock(CodeWithParts("north", "down", "closed", "left"));
-            return new ItemStack[] { new ItemStack(block) };
+            return new ItemStack[] { OnPickBlock(world, pos) };
         }
 
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
         {
-            Block block = world.BlockAccessor.GetBlock(CodeWithParts("north", "down", "closed", "left"));
+            AssetLocation blockCode = CodeWithVariants(new Dictionary<string, string>() {
+                    { "horizontalorientation", "north" },
+                    { "part", "down" },
+                    { "state", "closed" },
+                    { "knobOrientation", "left" }
+                });
+
+            Block block = world.BlockAccessor.GetBlock(blockCode);
+
             return new ItemStack(block);
         }
 
@@ -129,14 +139,16 @@ namespace Vintagestory.GameContent
 
         protected override void Open(IWorldAccessor world, IPlayer byPlayer, BlockPos position)
         {
-            AssetLocation newCode = CodeWithParts(IsUpperHalf() ? "up" : "down", IsOpened() ? "closed" : "opened", GetKnobOrientation());
-            AssetLocation otherNewCode = CodeWithParts(IsUpperHalf() ? "down" : "up", IsOpened() ? "closed" : "opened", GetKnobOrientation());
+            AssetLocation newCode = CodeWithVariant("state", IsOpened() ? "closed" : "opened");
+            Block newBlock = world.BlockAccessor.GetBlock(newCode);
+
+            AssetLocation otherNewCode = newBlock.CodeWithVariant("part", IsUpperHalf() ? "down" : "up");
+
+            world.BlockAccessor.ExchangeBlock(newBlock.BlockId, position);
 
             BlockPos otherPos = position.AddCopy(0, IsUpperHalf() ? -1 : 1, 0);
             Block otherPart = world.BlockAccessor.GetBlock(otherPos);
 
-            Block newBlock = world.BlockAccessor.GetBlock(newCode);
-            world.BlockAccessor.ExchangeBlock(newBlock.BlockId, position);
 
             if (otherPart is BlockDoor && ((BlockDoor)otherPart).IsUpperHalf() != IsUpperHalf())
             {
@@ -157,7 +169,7 @@ namespace Vintagestory.GameContent
             int rotatedIndex = GameMath.Mod(beforeFacing.HorizontalAngleIndex - angle / 90, 4);
             BlockFacing nowFacing = BlockFacing.HORIZONTALS_ANGLEORDER[rotatedIndex];
 
-            return CodeWithParts(nowFacing.Code, IsUpperHalf() ? "up" : "down", IsOpened() ? "opened" : "closed", GetKnobOrientation());
+            return CodeWithVariant("horizontalorientation", nowFacing.Code);
         }
 
     }

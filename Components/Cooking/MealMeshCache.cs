@@ -78,7 +78,10 @@ namespace Vintagestory.GameContent
             if (forRecipe != null)
             {
                 MeshData foodMesh = GenFoodMixMesh(contentStacks, forRecipe, foodTranslate);
-                containerMesh.AddMeshData(foodMesh);
+                if (foodMesh != null)
+                {
+                    containerMesh.AddMeshData(foodMesh);
+                }
             }
 
             if (contentStacks != null && contentStacks.Length > 0)
@@ -193,7 +196,7 @@ namespace Vintagestory.GameContent
             }
 
 
-            if (foodTranslate != null) mergedmesh.Translate(foodTranslate);
+            if (foodTranslate != null && mergedmesh != null) mergedmesh.Translate(foodTranslate);
 
             return mergedmesh;
         }
@@ -222,18 +225,19 @@ namespace Vintagestory.GameContent
 
         private int GetMealHashCode(CompositeShape containerShape, IClientWorldAccessor world, Block block, ItemStack[] contentStacks)
         {
-            string s = containerShape.Base.ToShortString() + block.Code.ToShortString();
+            string shapestring = containerShape.Base.ToShortString() + block.Code.ToShortString();
+            string contentstring = "";
             for (int i = 0; i < contentStacks.Length; i++)
             {
                 if (contentStacks[i].Collectible.Code.Path == "rot")
                 {
-                    return "rotten".GetHashCode();
+                    return (shapestring + "rotten").GetHashCode();
                 }
 
-                s += contentStacks[i].Collectible.Code.ToShortString();
+                contentstring += contentStacks[i].Collectible.Code.ToShortString();
             }
 
-            return s.GetHashCode();
+            return (shapestring + contentstring).GetHashCode();
         }
 
 

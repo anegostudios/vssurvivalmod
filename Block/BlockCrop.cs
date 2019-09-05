@@ -49,7 +49,16 @@ namespace Vintagestory.GameContent
             world.BlockAccessor.ExchangeBlock(block.BlockId, pos);
         }
 
-        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, Random worldGenRand)
+        public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
+        {
+            BlockEntityFarmland befarmland = world.BlockAccessor.GetBlockEntity(blockSel.Position.DownCopy()) as BlockEntityFarmland;
+            if (befarmland != null && befarmland.OnBlockInteract(byPlayer)) return true;
+
+            return base.OnBlockInteractStart(world, byPlayer, blockSel);
+        }
+
+
+        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, LCGRandom worldGenRand)
         {
             Block block = blockAccessor.GetBlock(pos.X, pos.Y - 1, pos.Z);
             if (block.Fertility == 0) return false;

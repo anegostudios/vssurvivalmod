@@ -16,7 +16,7 @@ namespace Vintagestory.ServerMods
         float vineGrowthChance; // 0..1
         Random rand;
         List<TreeGenBranch> branchesByDepth = new List<TreeGenBranch>();
-
+        LCGRandom lcgrand;
 
         // Tree config
         TreeGenConfig config;
@@ -27,6 +27,7 @@ namespace Vintagestory.ServerMods
         {
             this.config = config;
             rand = new Random(seed);
+            lcgrand = new LCGRandom(seed);
         }
 
         public void GrowTree(IBlockAccessor api, BlockPos pos, float sizeModifier = 1f, float vineGrowthChance = 0, float forestDensity = 0)
@@ -152,7 +153,7 @@ namespace Vintagestory.ServerMods
                                 block = config.treeBlocks.vinesEndBlock;
                             }
 
-                            block.TryPlaceBlockForWorldGen(api, vinePos, facing, rand);
+                            block.TryPlaceBlockForWorldGen(api, vinePos, facing, lcgrand);
                             vinePos.Down();
                         }
                     }

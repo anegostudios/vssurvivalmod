@@ -24,6 +24,7 @@ namespace Vintagestory.GameContent
         public bool Sealed { get; set; }
 
         MeshData currentMesh;
+        BlockCrock block;
 
 
         public BlockEntityCrock()
@@ -34,6 +35,8 @@ namespace Vintagestory.GameContent
         public override void Initialize(ICoreAPI api)
         {
             base.Initialize(api);
+
+            block = api.World.BlockAccessor.GetBlock(pos) as BlockCrock;
         }
 
 
@@ -53,19 +56,7 @@ namespace Vintagestory.GameContent
         protected override float Inventory_OnAcquireTransitionSpeed(EnumTransitionType transType, ItemStack stack, float baseMul)
         {
             float mul = base.Inventory_OnAcquireTransitionSpeed(transType, stack, baseMul);
-
-            if (transType == EnumTransitionType.Perish && Sealed)
-            {
-                if (RecipeCode != null)
-                {
-                    mul *= 0.1f;
-                }
-                else
-                {
-                    mul *= 0.25f;
-                }
-            }
-
+            mul *= block.GetContainingTransitionModifierPlaced(api.World, pos, transType);
             return mul;
         }
 
@@ -101,12 +92,13 @@ namespace Vintagestory.GameContent
                 return null;
             }
 
-            if (meshes.TryGetValue(labelLoc.ToShortString() + block.Shape.rotateY, out mesh))
+            string key = labelLoc.ToShortString() + block.Code.ToShortString() + "/" + rot.Y + "/" + rot.X + "/" + rot.Z;
+            if (meshes.TryGetValue(key, out mesh))
             {
                 return mesh;
             }
 
-            return meshes[labelLoc.ToString() + block.Shape.rotateY] = block.GenMesh(api as ICoreClientAPI, labelLoc, rot, tesselator);
+            return meshes[key] = block.GenMesh(api as ICoreClientAPI, labelLoc, rot, tesselator);
         }
 
 

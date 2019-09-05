@@ -139,10 +139,10 @@ namespace Vintagestory.ServerMods
             return 0;
         }
 
-        public float GetAbsAvgQuantity()
+        /*public float GetAbsAvgQuantity()
         {
             return GeneratorInst.GetAbsAvgQuantity();
-        }
+        }*/
 
 
 
@@ -168,6 +168,11 @@ namespace Vintagestory.ServerMods
             var.GeneratorInst = DepositGeneratorRegistry.CreateGenerator(Generator, Attributes, api, var, GeneratorInst.DepositRand, GeneratorInst.DistortNoiseGen);
 
             return var;
+        }
+
+        public virtual void GetPropickReading(BlockPos pos, int oreDist, int[] blockColumn, out double ppt, out double totalFactor)
+        {
+            GeneratorInst.GetPropickReading(pos, oreDist, blockColumn, out ppt, out totalFactor);
         }
     }
 

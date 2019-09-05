@@ -18,12 +18,15 @@ namespace Vintagestory.GameContent
 {
     public class ProPickWorkSpace
     {
-        public Dictionary<string, float> absAvgQuantity = new Dictionary<string, float>();
+        //public Dictionary<string, float> absAvgQuantity = new Dictionary<string, float>();
         public Dictionary<string, string> pageCodes = new Dictionary<string, string>();
+
+        public Dictionary<string, DepositVariant> depositsByCode = new Dictionary<string, DepositVariant>();
 
         GenRockStrataNew rockStrataGen;
         ICoreServerAPI sapi;
         
+
         public void OnLoaded(ICoreAPI api)
         {
             if (api.Side == EnumAppSide.Client) return;
@@ -46,26 +49,17 @@ namespace Vintagestory.GameContent
 
                     if (variant.WithOreMap)
                     {
-                        if (absAvgQuantity.ContainsKey(variant.Code))
-                        {
-                            absAvgQuantity[variant.Code] += variant.GetAbsAvgQuantity();
-                        }
-                        else
-                        {
-                            absAvgQuantity[variant.Code] = variant.GetAbsAvgQuantity();
-                            pageCodes[variant.Code] = variant.HandbookPageCode;
-                        }
+                        pageCodes[variant.Code] = variant.HandbookPageCode;
+                        depositsByCode[variant.Code] = variant;
                     }
-
-
 
                     for (int k = 0; variant.ChildDeposits != null && k < variant.ChildDeposits.Length; k++)
                     {
                         DepositVariant childVariant = variant.ChildDeposits[k];
                         if (!childVariant.WithOreMap) continue;
 
-                        absAvgQuantity[childVariant.Code] = childVariant.GetAbsAvgQuantity();
                         pageCodes[childVariant.Code] = childVariant.HandbookPageCode;
+                        depositsByCode[childVariant.Code] = childVariant;
                     }
                 }
             });
@@ -244,10 +238,14 @@ namespace Vintagestory.GameContent
 
             if (splr == null) return;
 
+            if (splr.WorldData.CurrentGameMode == EnumGameMode.Creative) {
+                PrintProbeResults(world, splr, itemslot, blockSel.Position);
+                return;
+            }
             
             IntArrayAttribute attr = itemslot.Itemstack.Attributes["probePositions"] as IntArrayAttribute;
 
-            if (attr == null || attr.value == null || attr.value.Length == 0)
+            if ((attr == null || attr.value == null || attr.value.Length == 0))
             {
                 itemslot.Itemstack.Attributes["probePositions"] = attr = new IntArrayAttribute();
                 attr.AddInt(blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z);
@@ -317,13 +315,13 @@ namespace Vintagestory.GameContent
             IBlockAccessor blockAccess = world.BlockAccessor;
             int chunksize = blockAccess.ChunkSize;
             int regsize = blockAccess.RegionSize;
-
-            int mapheight = blockAccess.GetTerrainMapheightAt(pos);
-            int qchunkblocks = mapheight * chunksize * chunksize;
-
+            
             IMapRegion reg = world.BlockAccessor.GetMapRegion(pos.X / regsize, pos.Z / regsize);
             int lx = pos.X % regsize;
             int lz = pos.Z % regsize;
+
+            pos = pos.Copy();
+            pos.Y = world.BlockAccessor.GetTerrainMapheightAt(pos);
 
             int[] blockColumn = ppws.GetRockColumn(pos.X, pos.Z);
 
@@ -339,17 +337,10 @@ namespace Vintagestory.GameContent
 
                 int oreDist = map.GetUnpaddedColorLerped(posXInRegionOre, posZInRegionOre);
 
-                double absAvgQuantity = ppws.absAvgQuantity[val.Key];
-                double oreMapFactor = (oreDist & 0xff) / 255.0;
-                double rockFactor = oreBearingBlockQuantityRelative(val.Key, deposits, blockColumn);
-                double totalFactor = oreMapFactor * rockFactor;
+                double ppt;
+                double totalFactor;
+                ppws.depositsByCode[val.Key].GetPropickReading(pos, oreDist, blockColumn, out ppt, out totalFactor);
 
-                double quantityOres = totalFactor * absAvgQuantity;
-                
-                //world.Logger.Notification(val.Key + "rock factor: " + rockFactor);
-
-                double relq = quantityOres / qchunkblocks;
-                double ppt = relq * 1000;
                 string[] names = new string[] { "propick-density-verypoor", "propick-density-poor", "propick-density-decent", "propick-density-high", "propick-density-veryhigh", "propick-density-ultrahigh" };
 
                 if (totalFactor > 0.025)
@@ -377,54 +368,7 @@ namespace Vintagestory.GameContent
         }
 
 
-
-        private double oreBearingBlockQuantityRelative(string oreCode, DepositVariant[] deposits, int[] blockColumn)
-        {
-            HashSet<int> oreBearingBlocks = new HashSet<int>();
-
-            DepositVariant deposit = getDepositByOreMapCode(oreCode, deposits);
-            if (deposit == null) return 0;
-
-            if (deposit.parentDeposit != null) deposit = deposit.parentDeposit;
-            
-
-            int[] blocks = deposit.GeneratorInst.GetBearingBlocks();
-            if (blocks == null) return 1;
-
-            foreach (var val in blocks) oreBearingBlocks.Add(val);
-
-            int q = 0;
-            for (int i = 0; i < blockColumn.Length; i++)
-            {
-                if (oreBearingBlocks.Contains(blockColumn[i])) q++;
-            }
-
-            return (double)q / blockColumn.Length;
-        }
-
-
-        public DepositVariant getDepositByOreMapCode(string oreCode, DepositVariant[] deposits)
-        {
-            for (int i = 0; i < deposits.Length; i++)
-            {
-                DepositVariant deposit = deposits[i];
-
-                if (deposit.Code == oreCode)
-                {
-                    return deposit;
-                }
-
-                if (deposit.ChildDeposits != null)
-                {
-                    foreach (var val in deposit.ChildDeposits)
-                    {
-                        if (val.Code == oreCode) return val;
-                    }
-                }
-            }
-
-            return null;
-        }
+        
 
         public override void OnHeldIdle(ItemSlot slot, EntityAgent byEntity)
         {

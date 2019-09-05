@@ -209,7 +209,7 @@ void main () {
             eyeShaderProg.FragmentShader.Code = FragmentShaderCode;
 
             capi.Shader.RegisterMemoryShaderProgram("sleepoverlay", eyeShaderProg);
-            eyeShaderProg.PrepareUniformLocations("level");
+            //eyeShaderProg.PrepareUniformLocations("level");
             
 
             if (renderer != null) renderer.eyeShaderProg = eyeShaderProg;

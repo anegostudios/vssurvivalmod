@@ -87,7 +87,7 @@ namespace Vintagestory.GameContent
             }
 
             animMeta.AnimationSpeed = speed;
-            SetDebugAnimsInfo();
+            UpdateDebugAttributes();
         }
 
         public override void OnReceivedServerAnimations(int[] activeAnimations, int activeAnimationsCount, float[] activeAnimationSpeeds)

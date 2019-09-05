@@ -42,7 +42,7 @@ namespace Vintagestory.GameContent
             }
 
             ItemStack[] contentStacks = GetContents(capi.World, itemstack);
-            if (contentStacks == null) return;
+            if (contentStacks == null || contentStacks.Length == 0) return;
 
             bool issealed = itemstack.Attributes.GetBool("sealed");
 
@@ -88,6 +88,36 @@ namespace Vintagestory.GameContent
                 capi.ObjectCache.Remove("barrelMeshRefs");
             }
         }
+
+
+        // Override to drop the barrel empty and drop its contents instead
+        public override void OnBlockBroken(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1)
+        {
+            if (world.Side == EnumAppSide.Server && (byPlayer == null || byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative))
+            {
+                ItemStack[] drops = new ItemStack[] { new ItemStack(this) };
+
+                for (int i = 0; i < drops.Length; i++)
+                {
+                    world.SpawnItemEntity(drops[i], new Vec3d(pos.X + 0.5, pos.Y + 0.5, pos.Z + 0.5), null);
+                }
+
+                world.PlaySoundAt(Sounds.GetBreakSound(byPlayer), pos.X, pos.Y, pos.Z, byPlayer);
+            }
+
+            if (EntityClass != null)
+            {
+                BlockEntity entity = world.BlockAccessor.GetBlockEntity(pos);
+                if (entity != null)
+                {
+                    entity.OnBlockBroken();
+                }
+            }
+
+            world.BlockAccessor.SetBlock(0, pos);
+        }
+
+
 
 
 
@@ -221,6 +251,43 @@ namespace Vintagestory.GameContent
                 }
             };
         }
+
+        public override void OnLoaded(ICoreAPI api)
+        {
+            if (api.Side != EnumAppSide.Client) return;
+            ICoreClientAPI capi = api as ICoreClientAPI;
+
+            interactions = ObjectCacheUtil.GetOrCreate(api, "liquidContainerBase", () =>
+            {
+                List<ItemStack> liquidContainerStacks = new List<ItemStack>();
+
+                foreach (CollectibleObject obj in api.World.Collectibles)
+                {
+                    if ((obj is BlockBowl && obj.LastCodePart() != "raw") || obj is ILiquidSource || obj is ILiquidSink || obj is BlockWateringCan)
+                    {
+                        List<ItemStack> stacks = obj.GetHandBookStacks(capi);
+                        if (stacks != null) liquidContainerStacks.AddRange(stacks);
+                    }
+                }
+
+                ItemStack[] lstacks = liquidContainerStacks.ToArray();
+
+                return new WorldInteraction[] {
+                    new WorldInteraction()
+                    {
+                        ActionLangCode = "blockhelp-bucket-rightclick",
+                        MouseButton = EnumMouseButton.Right,
+                        Itemstacks = lstacks,
+                        GetMatchingStacks = (wi, bs, ws) =>
+                        {
+                            BlockEntityBarrel bebarrel = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityBarrel;
+                            return bebarrel?.Sealed == false ? lstacks : null;
+                        }
+                    }
+                };
+            });
+        }
+
 
 
         public override void OnHeldInteractStart(ItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handHandling)

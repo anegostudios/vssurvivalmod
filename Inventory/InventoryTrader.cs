@@ -7,6 +7,7 @@ using Vintagestory.API;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -706,7 +707,7 @@ namespace Vintagestory.GameContent
                 ItemSlotTrade slot = GetBuyingSlot(i);
                 if (slot.Itemstack == null) continue;
 
-                if (slot.Itemstack.Equals(Api.World, forStack, GlobalConstants.IgnoredStackAttributes))
+                if (slot.Itemstack.Equals(Api.World, forStack, GlobalConstants.IgnoredStackAttributes.Append("backpack")))
                 {
                     return slot;
                 }

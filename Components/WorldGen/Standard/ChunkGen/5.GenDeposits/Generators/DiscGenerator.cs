@@ -91,12 +91,14 @@ namespace Vintagestory.ServerMods
 
         protected BlockPos targetPos = new BlockPos();
         protected int radiusX, radiusZ;
-        protected float depthf;
-        protected int depthi;
+        protected float ypos;
+        protected int posyi;
         protected int depoitThickness;
         protected int hereThickness;
 
-        LCGRandom childDepositRand;
+        //LCGRandom childDepositRand;
+        double absAvgQuantity;
+
 
         protected DiscDepositGenerator(ICoreServerAPI api, DepositVariant variant, LCGRandom depositRand, NormalizedSimplexNoise noiseGen) : base(api, variant, depositRand, noiseGen)
         {
@@ -193,6 +195,9 @@ namespace Vintagestory.ServerMods
             {
                 Api.Server.LogWarning("Deposit in file {0} has no inblock defined, it will never spawn.", variant.fromFile);
             }
+
+
+            absAvgQuantity = GetAbsAvgQuantity();
         }
 
 
@@ -311,7 +316,7 @@ namespace Vintagestory.ServerMods
 
                             if (variant.WithBlockCallback || (WithLastLayerBlockCallback && y == hereThickness-1))
                             {
-                                placeblock.TryPlaceBlockForWorldGen(blockAccessor, targetPos.Copy(), BlockFacing.UP, rand);
+                                placeblock.TryPlaceBlockForWorldGen(blockAccessor, targetPos.Copy(), BlockFacing.UP, DepositRand);
                             }
                             else
                             {
@@ -367,6 +372,8 @@ namespace Vintagestory.ServerMods
 
         protected abstract void loadYPosAndThickness(IMapChunk heremapchunk, int lx, int lz, BlockPos pos, double distanceToEdge);
 
+        
+
 
         public float getDepositYDistort(BlockPos pos, int lx, int lz, float step, IMapChunk heremapchunk)
         {
@@ -392,10 +399,58 @@ namespace Vintagestory.ServerMods
 
 
 
+       
+
+        public override void GetPropickReading(BlockPos pos, int oreDist, int[] blockColumn, out double ppt, out double totalFactor)
+        {
+            int mapheight = Api.World.BlockAccessor.GetTerrainMapheightAt(pos);
+            int qchunkblocks = mapheight * chunksize * chunksize;
+
+            double oreMapFactor = (oreDist & 0xff) / 255.0;
+            double rockFactor = oreBearingBlockQuantityRelative(pos, variant.Code, blockColumn);
+            totalFactor = oreMapFactor * rockFactor;
+
+            double quantityOres = totalFactor * absAvgQuantity;
+
+            //world.Logger.Notification(val.Key + "rock factor: " + rockFactor);
+
+            double relq = quantityOres / qchunkblocks;
+            ppt = relq * 1000;
+        }
+
+
+
+        private double oreBearingBlockQuantityRelative(BlockPos pos, string oreCode, int[] blockColumn)
+        {
+            HashSet<int> oreBearingBlocks = new HashSet<int>();
+
+            DepositVariant deposit = variant;
+            if (deposit == null) return 0;
+            if (deposit.parentDeposit != null) deposit = deposit.parentDeposit;
+            
+            int[] blocks = GetBearingBlocks();
+            if (blocks == null) return 1;
+
+            foreach (var val in blocks) oreBearingBlocks.Add(val);
+
+            double minYAvg;
+            double maxYAvg;
+            GetYMinMax(pos, out minYAvg, out maxYAvg);
+            
+            int q = 0;
+            for (int ypos = 0; ypos < blockColumn.Length; ypos++)
+            {
+                if (ypos < minYAvg || ypos > maxYAvg) continue;
+
+                if (oreBearingBlocks.Contains(blockColumn[ypos])) q++;
+            }
+
+            return (double)q / blockColumn.Length;
+        }
 
 
         Random avgQRand = new Random();
-        public override float GetAbsAvgQuantity()
+        public float GetAbsAvgQuantity()
         {
             float radius = 0;
             float thickness = 0;
@@ -411,7 +466,7 @@ namespace Vintagestory.ServerMods
         }
 
 
-        public override int[] GetBearingBlocks()
+        public int[] GetBearingBlocks()
         {
             return placeBlockByInBlockId.Keys.ToArray();
         }

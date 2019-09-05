@@ -98,7 +98,7 @@ namespace Vintagestory.GameContent
             if (meshCache == null) meshCache = capi.ModLoader.GetModSystem<MealMeshCache>();
 
             CookingRecipe recipe = GetCookingRecipe(capi.World, itemstack);
-            ItemStack[] contents = GetContents(capi.World, itemstack);
+            ItemStack[] contents = GetNonEmptyContents(capi.World, itemstack);
 
             float yoff = 2.5f;
 
@@ -155,13 +155,12 @@ namespace Vintagestory.GameContent
                 {
                     for (int i = 0; i < stacks.Length; i++)
                     {
-                        if (stacks[i] != null) {
+                        if (stacks[i] != null && stacks[i].StackSize > 0 && stacks[i].Collectible.Code.Path == "rot") {
                             world.SpawnItemEntity(stacks[i], entityItem.ServerPos.XYZ);
                         }
                     }
 
                     Block emptyPotBlock = world.GetBlock(new AssetLocation(Attributes["emptiedBlockCode"].AsString()));
-
                     entityItem.Itemstack = new ItemStack(emptyPotBlock);
                     entityItem.WatchedAttributes.MarkPathDirty("itemstack");
                 }
@@ -249,7 +248,6 @@ namespace Vintagestory.GameContent
 
             ItemStack[] stacks = GetContents(world, inSlot.Itemstack);
 
-            DummySlot firstContentItemSlot = new DummySlot(stacks != null && stacks.Length > 0 ? stacks[0] : null, inSlot.Inventory);
 
             if (recipe != null) {
                 if (servings == 1) {
@@ -265,7 +263,8 @@ namespace Vintagestory.GameContent
 
             if (nutriFacts != null) dsc.AppendLine(nutriFacts);
 
-            firstContentItemSlot.Itemstack?.Collectible.AppendPerishableInfoText(firstContentItemSlot, dsc, world);
+            ItemSlot slot = BlockCrock.GetDummySlotForFirstPerishableStack(api.World, stacks, null, inSlot.Inventory);
+            slot.Itemstack.Collectible.AppendPerishableInfoText(slot, dsc, world);
         }
 
         
@@ -280,8 +279,7 @@ namespace Vintagestory.GameContent
                 BlockEntityCookedContainer bec = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityCookedContainer;
                 if (bec == null) return false;
 
-                bec.ServeInto(byPlayer, hotbarSlot);
-                return true;
+                return bec.ServeInto(byPlayer, hotbarSlot);
             }
 
         
@@ -421,7 +419,9 @@ namespace Vintagestory.GameContent
 
         public override int GetRandomColor(ICoreClientAPI capi, ItemStack stack)
         {
-            ItemStack[] stacks = GetContents(capi.World, stack);
+            ItemStack[] stacks = GetNonEmptyContents(capi.World, stack);
+            if (stacks.Length == 0) return base.GetRandomColor(capi, stack);
+
             ItemStack rndStack = stacks[capi.World.Rand.Next(stacks.Length)];
 
             if (capi.World.Rand.NextDouble() < 0.4)

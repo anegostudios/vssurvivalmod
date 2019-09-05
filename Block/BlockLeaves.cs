@@ -13,7 +13,7 @@ namespace Vintagestory.GameContent
         public override bool ShouldReceiveServerGameTicks(IWorldAccessor world, BlockPos pos, Random offThreadRandom, out object extra)
         {
             extra = null;
-            return offThreadRandom.NextDouble() < 0.1;
+            return offThreadRandom.NextDouble() < 0.15;
         }
 
         public override void OnServerGameTick(IWorldAccessor world, BlockPos pos, object extra = null)

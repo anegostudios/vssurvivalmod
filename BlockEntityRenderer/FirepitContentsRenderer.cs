@@ -131,15 +131,16 @@ namespace Vintagestory.GameContent
             prog.FogMinIn = rpi.FogMin;
             prog.FogDensityIn = rpi.FogDensity;
             prog.RgbaTint = ColorUtil.WhiteArgbVec;
+            prog.ExtraGodray = 0;
 
             api.Render.BindTexture2d(api.ItemTextureAtlas.AtlasTextureIds[0]);
 
             int temp = (int)ContentStack.Collectible.GetTemperature(api.World, ContentStack);
             Vec4f lightrgbs = api.World.BlockAccessor.GetLightRGBs(pos.X, pos.Y, pos.Z);
             float[] glowColor = ColorUtil.GetIncandescenceColorAsColor4f(temp);
-            lightrgbs[0] += 2 * glowColor[0];
-            lightrgbs[1] += 2 * glowColor[1];
-            lightrgbs[2] += 2 * glowColor[2];
+            lightrgbs[0] += glowColor[0];
+            lightrgbs[1] += glowColor[1];
+            lightrgbs[2] += glowColor[2];
 
             prog.RgbaLightIn = lightrgbs;
             prog.RgbaBlockIn = ColorUtil.WhiteArgbVec;

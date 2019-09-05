@@ -22,7 +22,13 @@ namespace Vintagestory.GameContent
         };
 
         public float[] SunLightLevels = new float[] { 0.015f, 0.176f, 0.206f, 0.236f, 0.266f, 0.296f, 0.326f, 0.356f, 0.386f, 0.416f, 0.446f, 0.476f, 0.506f, 0.536f, 0.566f, 0.596f, 0.626f, 0.656f, 0.686f, 0.716f, 0.746f, 0.776f, 0.806f, 0.836f, 0.866f, 0.896f, 0.926f, 0.956f, 0.986f, 1f, 1f, 1f};
-        public float[] BlockLightLevels = new float[] { 0.0175f, 0.149f, 0.184f, 0.219f, 0.254f, 0.289f, 0.324f, 0.359f, 0.394f, 0.429f, 0.464f, 0.499f, 0.534f, 0.569f, 0.604f, 0.639f, 0.674f, 0.709f, 0.744f, 0.779f, 0.814f, 0.849f, 0.884f, 0.919f, 0.954f, 0.989f, 1f, 1f, 1f, 1f, 1f, 1f };
+
+        //public float[] BlockLightLevels = new float[] { 0.0175f, 0.149f, 0.184f, 0.219f, 0.254f, 0.289f, 0.324f, 0.359f, 0.394f, 0.429f, 0.464f, 0.499f, 0.534f, 0.569f, 0.604f, 0.639f, 0.674f, 0.709f, 0.744f, 0.779f, 0.814f, 0.849f, 0.884f, 0.919f, 0.954f, 0.989f, 1f, 1f, 1f, 1f, 1f, 1f };
+
+        public float[] BlockLightLevels = new float[] { 0.0175f, 0.06f, 0.12f, 0.18f, 0.254f, 0.289f, 0.324f, 0.359f, 0.394f, 0.429f, 0.464f, 0.499f, 0.534f, 0.569f, 0.604f, 0.639f, 0.674f, 0.709f, 0.744f, 0.779f, 0.814f, 0.849f, 0.884f, 0.919f, 0.954f, 0.989f, 1f, 1f, 1f, 1f, 1f, 1f };
+
+        public float PerishSpeedModifier = 1f;
+
         public int SunBrightness = 22;
 
 
@@ -96,7 +102,6 @@ namespace Vintagestory.GameContent
             api.WorldManager.SetBlockLightLevels(config.BlockLightLevels);
             api.WorldManager.SetSunLightLevels(config.SunLightLevels);
             api.WorldManager.SetSunBrightness(config.SunBrightness);
-
             //api.WorldManager.SetCurrencyIcon(config.CurrencyItemIcon);
 
             api.Event.PlayerCreate += Event_PlayerCreate;
@@ -145,7 +150,13 @@ namespace Vintagestory.GameContent
                 api.World.Logger.Error("Failed loading survivalconfig.json, error {0}. Will initialize new one", e);
                 config = new SurvivalConfig();
             }
+
+
+
+            // Called on both sides
+            GlobalConstants.PerishSpeedModifier = config.PerishSpeedModifier;
         }
+
 
         public override void Start(ICoreAPI api)
         {
@@ -270,9 +281,7 @@ namespace Vintagestory.GameContent
             api.RegisterBlockClass("BlockWaterflowing", typeof(BlockWaterflowing));
             api.RegisterBlockClass("BlockShelf", typeof(BlockShelf));
             api.RegisterBlockClass("BlockCrock", typeof(BlockCrock));
-
-
-
+            api.RegisterBlockClass("BlockSignPost", typeof(BlockSignPost));
         }
         
         private void RegisterDefaultBlockBehaviors()
@@ -361,6 +370,7 @@ namespace Vintagestory.GameContent
 			api.RegisterBlockEntityClass("ItemFlow", typeof(BlockEntityItemFlow));
             api.RegisterBlockEntityClass("Crock", typeof(BlockEntityCrock));
             api.RegisterBlockEntityClass("Shelf", typeof(BlockEntityShelf));
+            api.RegisterBlockEntityClass("SignPost", typeof(BlockEntitySignPost));
         }
 
 

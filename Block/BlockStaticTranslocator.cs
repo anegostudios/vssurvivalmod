@@ -95,13 +95,13 @@ namespace Vintagestory.GameContent
                     return true;
                 }
 
-                if (!be.Activated && slot.Itemstack.Collectible.Code.Path == "gear-rusty")
+                /*if (!be.Activated && slot.Itemstack.Collectible.Code.Path == "gear-rusty")
                 {
                     be.DoActivate();
                     slot.TakeOut(1);
                     world.PlaySoundAt(new AssetLocation("sounds/effect/latch"), blockSel.Position.X + 0.5, blockSel.Position.Y, blockSel.Position.Z + 0.5, byPlayer, true, 16);
                     return true;
-                }
+                }*/
             }
 
             return base.OnBlockInteractStart(world, byPlayer, blockSel);

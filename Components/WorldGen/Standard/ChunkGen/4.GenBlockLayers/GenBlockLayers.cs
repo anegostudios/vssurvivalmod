@@ -16,7 +16,7 @@ namespace Vintagestory.ServerMods
         List<int> BlockLayersIds = new List<int>();
         int[] layersUnderWater = new int[0];
 
-        Random rnd;
+        LCGRandom rnd;
         int mapheight;
         ClampedSimplexNoise grassDensity;
         ClampedSimplexNoise grassHeight;
@@ -94,9 +94,9 @@ namespace Vintagestory.ServerMods
             blockLayerConfig = asset.ToObject<BlockLayerConfig>();
             blockLayerConfig.ResolveBlockIds(api, rockstrata);
 
-            rnd = new Random(api.WorldManager.Seed);
-            grassDensity = new ClampedSimplexNoise(new double[] { 4 }, new double[] { 0.5 }, rnd.Next());
-            grassHeight = new ClampedSimplexNoise(new double[] { 1.5 }, new double[] { 0.5 }, rnd.Next());
+            rnd = new LCGRandom(api.WorldManager.Seed);
+            grassDensity = new ClampedSimplexNoise(new double[] { 4 }, new double[] { 0.5 }, rnd.NextInt());
+            grassHeight = new ClampedSimplexNoise(new double[] { 1.5 }, new double[] { 0.5 }, rnd.NextInt());
 
             mapheight = api.WorldManager.MapSizeY;
         }
@@ -105,6 +105,8 @@ namespace Vintagestory.ServerMods
 
         private void OnChunkColumnGeneration(IServerChunk[] chunks, int chunkX, int chunkZ, ITreeAttribute chunkGenParams = null)
         {
+            rnd.InitPositionSeed(chunkX, chunkZ);
+
             IntMap forestMap = chunks[0].MapChunk.MapRegion.ForestMap;
             IntMap climateMap = chunks[0].MapChunk.MapRegion.ClimateMap;
             ushort[] heightMap = chunks[0].MapChunk.RainHeightMap;
@@ -260,7 +262,7 @@ namespace Vintagestory.ServerMods
             
             int blockId = chunks[posY / chunksize].Blocks[(chunksize * (posY % chunksize) + z) * chunksize + x];
 
-            if (api.World.Blocks[blockId].Fertility <= rnd.Next(100)) return;
+            if (api.World.Blocks[blockId].Fertility <= rnd.NextInt(100)) return;
 
             double gheight = Math.Max(0, grassHeight.Noise(x, z) * blockLayerConfig.Tallgrass.BlockCodeByMin.Length - 1);
             int start = (int)gheight + (rnd.NextDouble() < gheight ? 1 : 0);

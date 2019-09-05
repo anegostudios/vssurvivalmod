@@ -113,7 +113,7 @@ namespace Vintagestory.GameContent
                     // We hit a wall, no need to scan further
                     if (nBlock.SideSolid[facing.GetOpposite().Index])
                     {
-                        if (nBlock.BlockMaterial == EnumBlockMaterial.Stone || nBlock.BlockMaterial == EnumBlockMaterial.Soil) coolingWallCount++;
+                        if (nBlock.BlockMaterial == EnumBlockMaterial.Stone || nBlock.BlockMaterial == EnumBlockMaterial.Soil || nBlock.BlockMaterial == EnumBlockMaterial.Ceramic) coolingWallCount++;
                         else nonCoolingWallCount++;
                         
                         continue;
@@ -130,7 +130,10 @@ namespace Vintagestory.GameContent
                     bool inCube = Math.Abs(npos.X - pos.X) <= maxHalfSize && Math.Abs(npos.Y - pos.Y) <= maxHalfSize && Math.Abs(npos.Z - pos.Z) <= maxHalfSize;
 
                     // Not a cellar. 
-                    if (!inCube) return null;
+                    if (!inCube)
+                    {
+                        return null;
+                    }
 
                     if (!visitedPositions.Contains(npos))
                     {

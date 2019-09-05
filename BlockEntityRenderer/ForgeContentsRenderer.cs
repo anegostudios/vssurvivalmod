@@ -158,6 +158,7 @@ namespace Vintagestory.GameContent
             prog.RgbaTint = ColorUtil.WhiteArgbVec;
             prog.DontWarpVertices = 0;
             prog.AddRenderFlags = 0;
+            prog.ExtraGodray = 0;
             //rpi.GlMatrixModeModelView();
 
 
@@ -165,14 +166,14 @@ namespace Vintagestory.GameContent
             {
                 int temp = (int)stack.Collectible.GetTemperature(capi.World, stack);
 
-                prog.ExtraGlow = GameMath.Clamp((temp - 700) / 2, 0, 255);
+                prog.ExtraGlow = GameMath.Clamp((temp - 500) / 3, 0, 255);
 
                 Vec4f lightrgbs = capi.World.BlockAccessor.GetLightRGBs(pos.X, pos.Y, pos.Z);
                 
                 float[] glowColor = ColorUtil.GetIncandescenceColorAsColor4f(temp);
-                lightrgbs[0] += 2 * glowColor[0];
-                lightrgbs[1] += 2 * glowColor[1];
-                lightrgbs[2] += 2 * glowColor[2];
+                lightrgbs[0] += glowColor[0];
+                lightrgbs[1] += glowColor[1];
+                lightrgbs[2] += glowColor[2];
 
                 prog.RgbaLightIn = lightrgbs;
                 prog.RgbaBlockIn = ColorUtil.WhiteArgbVec;

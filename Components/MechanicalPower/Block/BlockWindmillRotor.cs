@@ -54,5 +54,13 @@ namespace Vintagestory.GameContent.Mechanics
             return ok;
         }
 
+        public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
+        {
+            BlockEntityWindmillRotor be = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityWindmillRotor;
+            if (be != null) return be.OnInteract(byPlayer);
+
+            return base.OnBlockInteractStart(world, byPlayer, blockSel);
+        }
+
     }
 }

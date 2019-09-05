@@ -8,7 +8,7 @@ namespace Vintagestory.GameContent
     public class BlockBehaviorHorizontalOrientable : BlockBehavior
     {
         string dropBlockFace = "north";
-        string dropBlock = null;
+        JsonItemStack drop = null;
 
         public BlockBehaviorHorizontalOrientable(Block block) : base(block)
         {
@@ -22,10 +22,18 @@ namespace Vintagestory.GameContent
             {
                 dropBlockFace = properties["dropBlockFace"].AsString();
             }
-            if (properties["dropBlock"].Exists)
+            if (properties["drop"].Exists)
             {
-                dropBlock = properties["dropBlock"].AsString();
+                drop = properties["drop"].AsObject<JsonItemStack>(null, block.Code.Domain);
+                
             }
+        }
+
+        public override void OnLoaded(ICoreAPI api)
+        {
+            base.OnLoaded(api);
+
+            drop?.Resolve(api.World, "HorizontalOrientable drop for " + block.Code);
         }
 
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref EnumHandling handled, ref string failureCode)
@@ -48,9 +56,9 @@ namespace Vintagestory.GameContent
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier, ref EnumHandling handled)
         {
             handled = EnumHandling.PreventDefault;
-            if (dropBlock != null)
+            if (drop?.ResolvedItemstack != null)
             {
-                return new ItemStack[] { new ItemStack(world.BlockAccessor.GetBlock(new AssetLocation(dropBlock))) };
+                return new ItemStack[] { drop?.ResolvedItemstack.Clone() };
             }
             return new ItemStack[] { new ItemStack(world.BlockAccessor.GetBlock(block.CodeWithParts(dropBlockFace))) };
         }
@@ -58,9 +66,9 @@ namespace Vintagestory.GameContent
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos, ref EnumHandling handled)
         {
             handled = EnumHandling.PreventDefault;
-            if (dropBlock != null)
+            if (drop != null)
             {
-                return new ItemStack(world.BlockAccessor.GetBlock(new AssetLocation(dropBlock)));
+                return drop?.ResolvedItemstack.Clone();
             }
 
             return new ItemStack(world.BlockAccessor.GetBlock(block.CodeWithParts(dropBlockFace)));

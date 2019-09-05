@@ -11,7 +11,7 @@ namespace Vintagestory.ServerMods
     public class GenPatchesPrePass : ModStdWorldGen
     {
         ICoreServerAPI api;
-        Random rnd;
+        LCGRandom rnd;
         IBlockAccessor blockAccessor;
         int worldheight;
         int chunkMapSizeY;
@@ -52,7 +52,7 @@ namespace Vintagestory.ServerMods
         {
             LoadGlobalConfig(api);
 
-            rnd = new Random(api.WorldManager.Seed);
+            rnd = new LCGRandom(api.WorldManager.Seed);
             chunksize = api.WorldManager.ChunkSize;
 
             worldheight = api.WorldManager.MapSizeY;
@@ -82,6 +82,7 @@ namespace Vintagestory.ServerMods
 
         private void OnChunkColumnGen(IServerChunk[] chunks, int chunkX, int chunkZ)
         {
+            rnd.InitPositionSeed(chunkX, chunkZ);
             IMapChunk mapChunk = chunks[0].MapChunk;
 
             IntMap climateMap = mapChunk.MapRegion.ClimateMap;
@@ -114,8 +115,8 @@ namespace Vintagestory.ServerMods
 
                 while (chance-- > rnd.NextDouble())
                 {
-                    dx = rnd.Next(chunksize);
-                    dz = rnd.Next(chunksize);
+                    dx = rnd.NextInt(chunksize);
+                    dz = rnd.NextInt(chunksize);
                     x = dx + chunkX * chunksize;
                     z = dz + chunkZ * chunksize;
 

@@ -71,7 +71,7 @@ namespace Vintagestory.GameContent
 
             prog.ModelMatrix = ModelMat
                 .Identity()
-                .Translate(8 / 16f + pos.X - camPos.X, pos.Y - camPos.Y + voxelHeight / 24f, 8 / 16f + pos.Z - camPos.Z)
+                .Translate(8 / 16f + pos.X - camPos.X, pos.Y - camPos.Y + voxelHeight / 32f, 8 / 16f + pos.Z - camPos.Z)
                 .Values
             ;
             prog.ViewMatrix = rpi.CameraMatrixOriginf;

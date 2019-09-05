@@ -50,7 +50,14 @@ namespace Vintagestory.ServerMods.NoObf
                     }
                     else
                     {
-                        blocks.Add(api.World.GetBlock(code));
+                        Block block = api.World.GetBlock(code);
+                        if (block != null)
+                        {
+                            blocks.Add(block);
+                        } else
+                        {
+                            api.World.Logger.Warning("Block patch Nr. {0}: Unable to resolve block with code {1}. Will ignore.", i, code);
+                        }
                     }
                 }
 

@@ -98,6 +98,7 @@ namespace Vintagestory.GameContent
             api.Event.GameWorldSave += OnSaveGame;
 
             api.Event.RegisterEventBusListener(OnConfigEventServer, 0.5, "configTeleporter");
+            api.RegisterCommand("settlpos", "Set translocator target teleport position of currently looked at translocator", "[position]", onSetTlPos, Privilege.setspawn);
 
             serverChannel =
                api.Network.RegisterChannel("tpManager")
@@ -107,6 +108,32 @@ namespace Vintagestory.GameContent
                .SetMessageHandler<TeleporterLocation>(OnSetLocationReceived)
             ;
 
+        }
+
+        private void onSetTlPos(IServerPlayer player, int groupId, CmdArgs args)
+        {
+            BlockPos pos = player.CurrentBlockSelection.Position;
+            BlockEntityStaticTranslocator bet = sapi.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityStaticTranslocator;
+
+            if (bet == null)
+            {
+                player.SendMessage(groupId, "Not looking at a translocator. Must look at one to set its target", EnumChatType.CommandError);
+                return;
+            }
+
+            Vec3d spawnpos = sapi.World.DefaultSpawnPosition.XYZ;
+            spawnpos.Y = 0;
+            Vec3d targetpos = args.PopFlexiblePos(player.Entity.Pos.XYZ, spawnpos);
+
+            if (targetpos == null)
+            {
+                player.SendMessage(groupId, "Invalid position supplied. Syntax: [coord] [coord] [coord] or =[abscoord] =[abscoord] =[abscoord]", EnumChatType.CommandError);
+                return;
+            }
+
+            bet.tpLocation = targetpos.AsBlockPos;
+            bet.MarkDirty(true);
+            player.SendMessage(groupId, "Target position set.", EnumChatType.CommandError);
         }
 
         private void OnSetLocationReceived(IServerPlayer fromPlayer, TeleporterLocation networkMessage)

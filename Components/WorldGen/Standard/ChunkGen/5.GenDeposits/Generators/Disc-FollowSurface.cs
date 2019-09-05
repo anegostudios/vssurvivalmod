@@ -24,18 +24,32 @@ namespace Vintagestory.ServerMods
 
         protected override void beforeGenDeposit(IMapChunk mapChunk, BlockPos pos)
         {
-            depthf = YPosRel.nextFloat(1, DepositRand);
+            ypos = YPosRel.nextFloat(1, DepositRand);
 
-            pos.Y = (int)depthf;
+            pos.Y = (int)ypos;
 
             step = (float)mapChunk.MapRegion.OreMapVerticalDistortTop.InnerSize / regionChunkSize;
         }
+
+
+        public override void GetYMinMax(BlockPos pos, out double miny, out double maxy)
+        {
+            float yrel = 9999;
+            for (int i = 0; i < 100; i++)
+            {
+                yrel = Math.Min(yrel, YPosRel.nextFloat(1, DepositRand));
+            }
+
+            miny = yrel * pos.Y;
+            maxy = (float)pos.Y;
+        }
+
 
         protected override void loadYPosAndThickness(IMapChunk heremapchunk, int lx, int lz, BlockPos pos, double distanceToEdge)
         {
             hereThickness = depoitThickness;
 
-            pos.Y = (int)(depthf * heremapchunk.WorldGenTerrainHeightMap[lz * chunksize + lx]);
+            pos.Y = (int)(ypos * heremapchunk.WorldGenTerrainHeightMap[lz * chunksize + lx]);
             pos.Y -= (int)getDepositYDistort(pos, lx, lz, step, heremapchunk);
             
             double curTh = depoitThickness * GameMath.Clamp(distanceToEdge * 2 - 0.2, 0, 1);

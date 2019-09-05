@@ -12,6 +12,10 @@ namespace Vintagestory.GameContent.Mechanics
             string orientations = Block.Variant["rotation"];
             switch (orientations)
             {
+                case "ns":
+                    AxisSign = new int[] { -1, -1, -1 };
+                    break;
+
                 case "we":
                     AxisMapping = new int[] { 2, 1, 0 };
                     AxisSign = new int[] { -1, -1, -1 };
@@ -19,6 +23,7 @@ namespace Vintagestory.GameContent.Mechanics
 
                 case "ud":
                     AxisMapping = new int[] { 1, 2, 0 };
+                    AxisSign = new int[] { -1, -1, -1 };
                     break;
             }
         }
@@ -30,7 +35,7 @@ namespace Vintagestory.GameContent.Mechanics
 
         public override float GetResistance()
         {
-            return 0;
+            return 0.0005f;
         }
 
         public override float GetTorque()

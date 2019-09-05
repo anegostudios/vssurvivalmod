@@ -132,7 +132,7 @@ namespace Vintagestory.GameContent
         }
 
         #region Interaction help
-        WorldInteraction[] interactions;
+        protected WorldInteraction[] interactions;
 
         public override void OnLoaded(ICoreAPI api)
         {
@@ -258,9 +258,9 @@ namespace Vintagestory.GameContent
             if (becontainer == null) return null;
 
             int slotid = GetContainerSlotId(world, pos);
-            if (slotid > becontainer.Inventory.Count) return null;
+            if (slotid >=becontainer.Inventory.Count) return null;
 
-            ItemStack stack = becontainer.Inventory[slotid].Itemstack;
+            ItemStack stack = becontainer.Inventory[slotid]?.Itemstack;
             if (stack == null) return null;
 
             return GetStackProps(stack);

@@ -408,6 +408,7 @@ namespace Vintagestory.GameContent
 
             if (packetid == 1001)
             {
+                if (!Alive) return;
                 talkUtil.Talk(EnumTalkType.Hurt);
             }
             if (packetid == 1002)
@@ -453,7 +454,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            if (tradingWith != null && (tradingWith.Pos.SquareDistanceTo(this.Pos) > 5 || Inventory.openedByPlayerGUIds.Count == 0))
+            if (tradingWith != null && (tradingWith.Pos.SquareDistanceTo(this.Pos) > 5 || Inventory.openedByPlayerGUIds.Count == 0 || !Alive))
             {
                 dlg?.TryClose();
                 tradingWith = null;

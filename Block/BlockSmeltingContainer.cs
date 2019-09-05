@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
@@ -166,13 +167,13 @@ namespace Vintagestory.GameContent
                 if (alloy != null)
                 {
                     double quantity = alloy.GetTotalOutputQuantity(stacks);
-                    return string.Format("Will create {0} units of {1}", (int)Math.Round(quantity * 100, 4), CheapMetalNameHax(alloy.Output.ResolvedItemstack));
+                    return Lang.Get("Will create {0} units of {1}", (int)Math.Round(quantity * 100, 4), CheapMetalNameHax(alloy.Output.ResolvedItemstack));
                 }
 
                 MatchedSmeltableStack match = GetSingleSmeltableStack(stacks);
                 if (match != null)
                 {
-                    return string.Format("Will create {0} units of {1}", (int)Math.Round(match.stackSize * 100, 4), CheapMetalNameHax(match.output));
+                    return Lang.Get("Will create {0} units of {1}", (int)Math.Round(match.stackSize * 100, 4), CheapMetalNameHax(match.output));
                 }
 
                 return null;

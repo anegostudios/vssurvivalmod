@@ -12,9 +12,9 @@ namespace Vintagestory.GameContent
     {
         BlockPos tmpPos = new BlockPos();
 
-        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blAcc, BlockPos pos, BlockFacing onBlockFace, Random worldgenRand)
+        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blAcc, BlockPos pos, BlockFacing onBlockFace, LCGRandom worldgenRand)
         {
-            int cnt = 2 + worldgenRand.Next(25);
+            int cnt = 2 + worldgenRand.NextInt(25);
             float depth = GameMath.Sqrt(GameMath.Sqrt(cnt));
             float craterRadius = GameMath.Sqrt(cnt) * 1.25f;
 
@@ -43,9 +43,9 @@ namespace Vintagestory.GameContent
             tmpPos = tmpPos.Set(pos.X, pos.Y - (int)depth-2, pos.Z);
             while (cnt-- > 0)
             {
-                tmpPos.X += worldgenRand.Next(3) == 0 ? (worldgenRand.Next(3) - 1) : 0;
-                tmpPos.Y += worldgenRand.Next(8) == 0 ? (worldgenRand.Next(3) - 1) : 0;
-                tmpPos.Z += worldgenRand.Next(3) == 0 ? (worldgenRand.Next(3) - 1) : 0;
+                tmpPos.X += worldgenRand.NextInt(3) == 0 ? (worldgenRand.NextInt(3) - 1) : 0;
+                tmpPos.Y += worldgenRand.NextInt(8) == 0 ? (worldgenRand.NextInt(3) - 1) : 0;
+                tmpPos.Z += worldgenRand.NextInt(3) == 0 ? (worldgenRand.NextInt(3) - 1) : 0;
 
                 blAcc.SetBlock(this.BlockId, tmpPos);
             }
@@ -122,15 +122,15 @@ namespace Vintagestory.GameContent
             }
 
             int quantityFragments = 0;
-            if (worldgenRand.Next(10) == 0) quantityFragments = worldgenRand.Next(10);
-            else if (worldgenRand.Next(5) == 0) quantityFragments = worldgenRand.Next(5);
+            if (worldgenRand.NextInt(10) == 0) quantityFragments = worldgenRand.NextInt(10);
+            else if (worldgenRand.NextInt(5) == 0) quantityFragments = worldgenRand.NextInt(5);
             
             while (quantityFragments-- > 0)
             {
                 tmpPos.Set(
-                    pos.X + (worldgenRand.Next(11) + worldgenRand.Next(11)) / 2 - 5,
+                    pos.X + (worldgenRand.NextInt(11) + worldgenRand.NextInt(11)) / 2 - 5,
                     0,
-                    pos.Z + (worldgenRand.Next(11) + worldgenRand.Next(11)) / 2 - 5
+                    pos.Z + (worldgenRand.NextInt(11) + worldgenRand.NextInt(11)) / 2 - 5
                 );
                 tmpPos.Y = blAcc.GetTerrainMapheightAt(tmpPos) + 1;
 

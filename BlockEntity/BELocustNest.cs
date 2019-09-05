@@ -14,13 +14,22 @@ namespace Vintagestory.GameContent
 {
     public class BlockEntityLocustNest : BlockEntitySpawner
     {
-
+        long herdId;
 
         public override void Initialize(ICoreAPI api)
         {
             base.Initialize(api);   
         }
 
+        protected override long GetNextHerdId()
+        {
+            if (herdId == 0)
+            {
+                herdId = base.GetNextHerdId();
+            }
+
+            return herdId;
+        }
 
         public override void OnBlockPlaced(ItemStack byItemStack = null)
         {
@@ -38,7 +47,7 @@ namespace Vintagestory.GameContent
             };
         }
 
-        protected override void DoSpawn(EntityProperties entityType, Vec3d spawnPosition, long herdid)
+        protected override void DoSpawn(EntityProperties entityType, Vec3d spawnPosition, long herdId)
         {
             int dy = 0;
             while (dy < 15 && !api.World.BlockAccessor.GetBlock((int)spawnPosition.X, (int)spawnPosition.Y + dy, (int)spawnPosition.Z).SideSolid[BlockFacing.DOWN.Index])
@@ -49,7 +58,21 @@ namespace Vintagestory.GameContent
 
             spawnPosition.Y += dy - 1;
 
-            base.DoSpawn(entityType, spawnPosition, herdid);
+            base.DoSpawn(entityType, spawnPosition, herdId);
+        }
+
+
+        public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
+        {
+            base.FromTreeAtributes(tree, worldAccessForResolve);
+
+            herdId = tree.GetLong("herdId");
+        }
+
+        public override void ToTreeAttributes(ITreeAttribute tree)
+        {
+            base.ToTreeAttributes(tree);
+            tree.SetLong("herdId", herdId);
         }
     }
 }

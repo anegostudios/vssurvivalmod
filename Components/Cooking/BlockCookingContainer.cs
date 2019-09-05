@@ -162,12 +162,12 @@ namespace Vintagestory.GameContent
             }
         }
 
-        internal int PutMeal(BlockPos pos, ItemStack[] itemStack, string recipeCode, int quantityServings)
+        internal float PutMeal(BlockPos pos, ItemStack[] itemStack, string recipeCode, float quantityServings)
         {
             Block block = api.World.GetBlock(CodeWithVariant("type", "cooked"));
             api.World.BlockAccessor.SetBlock(block.Id, pos);
 
-            int servingsToTransfer = Math.Min(quantityServings, this.Attributes["servingCapacity"].AsInt(1));
+            float servingsToTransfer = Math.Min(quantityServings, this.Attributes["servingCapacity"].AsInt(1));
 
             BlockEntityCookedContainer be = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityCookedContainer;
             be.RecipeCode = recipeCode;
@@ -185,6 +185,8 @@ namespace Vintagestory.GameContent
         public static void CarryOverFreshness(ICoreAPI api, ItemSlot[] inputSlots, ItemStack[] outStacks, TransitionableProperties perishProps)
         {
             float transitionedHoursRelative = 0;
+
+            float spoilageRelMax = 0;
             int quantity=0;
 
             for (int i = 0; i < inputSlots.Length; i++)
@@ -197,10 +199,14 @@ namespace Vintagestory.GameContent
                 quantity++;
                 float val = state.TransitionedHours / (state.TransitionHours + state.FreshHours);
 
+                float spoilageRel = Math.Max(0, (state.TransitionedHours - state.FreshHours) / state.TransitionHours);
+                spoilageRelMax = Math.Max(spoilageRel, spoilageRelMax);
+
                 transitionedHoursRelative += val;
             }
 
             transitionedHoursRelative /= Math.Max(1, quantity);
+
 
             for (int i = 0; i < outStacks.Length; i++)
             {
@@ -218,7 +224,8 @@ namespace Vintagestory.GameContent
 
                 attr["freshHours"] = new FloatArrayAttribute(new float[] { freshHours });
                 attr["transitionHours"] = new FloatArrayAttribute(new float[] { transitionHours });
-                attr["transitionedHours"] = new FloatArrayAttribute(new float[] { Math.Max(0, transitionedHoursRelative * 0.8f * (transitionHours + freshHours) - 2) });
+
+                attr["transitionedHours"] = new FloatArrayAttribute(new float[] { Math.Max(0, transitionedHoursRelative * (0.2f + (2 + quantity) * spoilageRelMax) * (transitionHours + freshHours)) });
             }
         }
 

@@ -191,7 +191,7 @@ namespace Vintagestory.ServerMods
 
 
         Random avgQRand = new Random();
-        public override float GetAbsAvgQuantity()
+        public float GetAbsAvgQuantity()
         {
             float radius = 0;
             float thickness = 0;
@@ -207,7 +207,7 @@ namespace Vintagestory.ServerMods
         }
 
 
-        public override int[] GetBearingBlocks()
+        public int[] GetBearingBlocks()
         {
             return new int[0];
         }
@@ -215,6 +215,16 @@ namespace Vintagestory.ServerMods
         public override float GetMaxRadius()
         {
             return (Radius.avg + Radius.var) * 1.3f;
+        }
+
+        public override void GetPropickReading(BlockPos pos, int oreDist, int[] blockColumn, out double ppt, out double totalFactor)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override void GetYMinMax(BlockPos pos, out double miny, out double maxy)
+        {
+            throw new NotImplementedException();
         }
     }
 }

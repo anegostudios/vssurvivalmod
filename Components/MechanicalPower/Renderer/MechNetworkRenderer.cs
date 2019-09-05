@@ -22,7 +22,7 @@ namespace Vintagestory.GameContent.Mechanics
         IShaderProgram prog;
 
         List<MechBlockRenderer> MechBlockRenderer = new List<MechBlockRenderer>();
-        Dictionary<AssetLocation, int> MechBlockRendererIndexByBlock = new Dictionary<AssetLocation, int>();
+        Dictionary<int, int> MechBlockRendererByShape = new Dictionary<int, int>();
 
         public static Dictionary<string, Type> RendererByCode = new Dictionary<string, Type>()
         {
@@ -49,7 +49,6 @@ namespace Vintagestory.GameContent.Mechanics
 
             capi.Shader.RegisterFileShaderProgram("mechpower", prog);
 
-            prog.PrepareUniformLocations("rgbaFogIn", "rgbaAmbientIn", "fogMinIn", "fogDensityIn", "projectionMatrix", "modelViewMatrix", "tex");
             return prog.Compile();
         }
 
@@ -57,16 +56,16 @@ namespace Vintagestory.GameContent.Mechanics
         public void AddDevice(IMechanicalPowerNode device)
         {
             int index = -1;
-            if (!MechBlockRendererIndexByBlock.TryGetValue(device.Block.Code, out index))
+            if (!MechBlockRendererByShape.TryGetValue(device.Shape.GetHashCode(), out index))
             {
                 string rendererCode = "generic";
                 if (device.Block.Attributes?["mechanicalPower"]?["renderer"].Exists == true) {
                     rendererCode = device.Block.Attributes?["mechanicalPower"]?["renderer"].AsString("generic");
                 }
 
-                object obj = Activator.CreateInstance(RendererByCode[rendererCode], capi, mechanicalPowerMod, device.Block);
+                object obj = Activator.CreateInstance(RendererByCode[rendererCode], capi, mechanicalPowerMod, device.Block, device.Shape);
                 MechBlockRenderer.Add((MechBlockRenderer)obj);                
-                MechBlockRendererIndexByBlock[device.Block.Code] = index = MechBlockRenderer.Count - 1;
+                MechBlockRendererByShape[device.Shape.GetHashCode()] = index = MechBlockRenderer.Count - 1;
             }
 
             MechBlockRenderer[index].AddDevice(device);
@@ -75,7 +74,7 @@ namespace Vintagestory.GameContent.Mechanics
         public void RemoveDevice(IMechanicalPowerNode device)
         {
             int index = 0;
-            if (MechBlockRendererIndexByBlock.TryGetValue(device.Block.Code, out index))
+            if (MechBlockRendererByShape.TryGetValue(device.Shape.GetHashCode(), out index))
             {
                 MechBlockRenderer[index].RemoveDevice(device);
             }

@@ -280,16 +280,6 @@ namespace Vintagestory.GameContent
             return FuelSlot.StackSize > 0 && OreSlot.StackSize > 0 && (float)FuelSlot.StackSize / OreSlot.StackSize >= Coal2OreRatio;
         }
 
-        
-        public override void OnBlockRemoved()
-        {
-            if (renderer != null)
-            {
-                renderer.Unregister();
-            }
-
-            base.OnBlockRemoved();
-        }
 
         public override void OnBlockBroken()
         {
@@ -311,8 +301,13 @@ namespace Vintagestory.GameContent
         public override void OnBlockUnloaded()
         {
             base.OnBlockUnloaded();
-
             renderer?.Unregister();
+        }
+    
+        public override void OnBlockRemoved()
+        {
+            renderer?.Unregister();
+            base.OnBlockRemoved();
         }
 
         public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldForResolving)

@@ -153,7 +153,12 @@ namespace Vintagestory.GameContent.Mechanics
         {
             Renderer?.AddDevice(device);
         }
-        
+
+        public override void Dispose()
+        {
+            base.Dispose();
+            Renderer?.Dispose();
+        }
 
         public MechanicalNetwork GetOrCreateNetwork(long networkId)
         {

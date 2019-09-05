@@ -32,7 +32,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, Random worldgenRand)
+        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, LCGRandom worldgenRand)
         {
             //blockAccessor.SetBlock(blockAccessor.GetBlock(new AssetLocation("creativeblock-60")).BlockId, pos);
             

@@ -18,14 +18,14 @@ namespace Vintagestory.GameContent.Mechanics
         CustomMeshDataPartFloat floatsCage;
 
 
-        public AngledGearsBlockRenderer(ICoreClientAPI capi, MechanicalPowerMod mechanicalPowerMod, Block block) : base(capi, mechanicalPowerMod, block)
+        public AngledGearsBlockRenderer(ICoreClientAPI capi, MechanicalPowerMod mechanicalPowerMod, Block textureSoureBlock, CompositeShape shapeLoc) : base(capi, mechanicalPowerMod)
         {
-            Vec3f rot = new Vec3f(block.Shape.rotateX, block.Shape.rotateY, block.Shape.rotateZ);
+            Vec3f rot = new Vec3f(shapeLoc.rotateX, shapeLoc.rotateY, shapeLoc.rotateZ);
 
             MeshData gearboxCageMesh;
             MeshData gearboxPegMesh;
-            capi.Tesselator.TesselateShape(block, capi.Assets.TryGet("shapes/block/wood/angledgearbox-cage.json").ToObject<Shape>(), out gearboxCageMesh, rot);
-            capi.Tesselator.TesselateShape(block, capi.Assets.TryGet("shapes/block/wood/angledgearbox-peg.json").ToObject<Shape>(), out gearboxPegMesh, rot);
+            capi.Tesselator.TesselateShape(textureSoureBlock, capi.Assets.TryGet("shapes/block/wood/angledgearbox-cage.json").ToObject<Shape>(), out gearboxCageMesh, rot);
+            capi.Tesselator.TesselateShape(textureSoureBlock, capi.Assets.TryGet("shapes/block/wood/angledgearbox-peg.json").ToObject<Shape>(), out gearboxPegMesh, rot);
 
             gearboxPegMesh.Rgba2 = null;
             gearboxCageMesh.Rgba2 = null;

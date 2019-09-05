@@ -22,6 +22,7 @@ namespace Vintagestory.GameContent.Mechanics
         public virtual Vec4f LightRgba { get { return lightRbs; } }
         
         public virtual Block Block { get; protected set; }
+        public virtual CompositeShape Shape { get; protected set; }
 
         public virtual int[] AxisMapping { get; protected set; }
         public virtual int[] AxisSign { get; protected set; }
@@ -57,6 +58,7 @@ namespace Vintagestory.GameContent.Mechanics
             base.Initialize(api);
 
             Block = api.World.BlockAccessor.GetBlock(pos);
+            Shape = Block.Shape;
 
             manager = api.ModLoader.GetModSystem<MechanicalPowerMod>();
 
@@ -131,24 +133,16 @@ namespace Vintagestory.GameContent.Mechanics
             tree.SetLong("networkid", NetworkId);
             tree.SetInt("turnDirFromFacing", turnDirFromFacing.Index);
         }
-
-        public override void OnBlockBroken()
-        {
-            base.OnBlockBroken();
-
-            //network?.OnBlockBroken(pos);
-        }
-
-        public virtual void OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer)
-        {
-
-        }
+        
 
         public override string GetBlockInfo(IPlayer forPlayer)
         {
             //if (api.World.EntityDebugMode)
             {
-                return "networkid: " + NetworkId + ", angle: " + Angle + "\nturnDir: " + turnDir + "\nnetwork turn dir: " + network?.TurnDirection;
+                return "networkid: " + NetworkId + ", angle: " + Angle + "\nturnDir: " + turnDir + "\nnetwork turn dir: " + network?.TurnDirection
+                    +"\nnetwork speed: " + network?.Speed + ", network torque: " + network?.TotalAvailableTorque
+
+                    ;
             }
 
             //return base.GetBlockInfo(forPlayer);

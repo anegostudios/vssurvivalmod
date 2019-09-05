@@ -53,7 +53,7 @@ namespace Vintagestory.GameContent.Mechanics
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
-            (world.BlockAccessor.GetBlockEntity(blockSel.Position) as BEMPBase)?.OnBlockInteractStart(world, byPlayer);
+            //(world.BlockAccessor.GetBlockEntity(blockSel.Position) as BEMPBase)?.OnBlockInteractStart(world, byPlayer);
 
             return base.OnBlockInteractStart(world, byPlayer, blockSel);
         }

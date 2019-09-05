@@ -74,6 +74,7 @@ namespace Vintagestory.GameContent
             prog.RgbaBlockIn = ColorUtil.WhiteArgbVec;
             prog.DontWarpVertices = 0;
             prog.AddRenderFlags = 0;
+            prog.ExtraGodray = 0;
 
             rpi.BindTexture2d(api.BlockTextureAtlas.AtlasTextureIds[0]);
 

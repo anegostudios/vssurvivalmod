@@ -74,6 +74,7 @@ namespace Vintagestory.GameContent
                     InitInventory(ownBlock);
                     Inventory.LateInitialize(InventoryClassName + "-" + pos.X + "/" + pos.Y + "/" + pos.Z, api);
                     Inventory.ResolveBlocksOrItems();
+                    Inventory.OnAcquireTransitionSpeed = Inventory_OnAcquireTransitionSpeed;
                     MarkDirty();
                 }
 

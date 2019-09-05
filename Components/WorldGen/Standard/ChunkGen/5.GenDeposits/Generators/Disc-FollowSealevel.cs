@@ -37,12 +37,31 @@ namespace Vintagestory.ServerMods
             YPosRel.var *= TerraGenConfig.seaLevel;
         }
 
+
+
+        public override void GetYMinMax(BlockPos pos, out double miny, out double maxy)
+        {
+            float yposmin = 9999;
+            float yposmax = -9999;
+
+            for (int i = 0; i < 100; i++)
+            {
+                float ypos = YPosRel.nextFloat(1, DepositRand);
+                yposmin = Math.Min(yposmin, ypos);
+                yposmax = Math.Max(yposmax, ypos);
+            }
+
+            miny = yposmin;
+            maxy = yposmax;
+        }
+
+
         protected override void beforeGenDeposit(IMapChunk mapChunk, BlockPos targetPos)
         {
-            depthf = YPosRel.nextFloat(1, DepositRand);
-            depthi = (int)depthf;
+            ypos = YPosRel.nextFloat(1, DepositRand);
+            posyi = (int)ypos;
 
-            targetPos.Y = depthi;
+            targetPos.Y = posyi;
 
             step = (float)mapChunk.MapRegion.OreMapVerticalDistortTop.InnerSize / regionChunkSize;
         }
@@ -54,7 +73,7 @@ namespace Vintagestory.ServerMods
 
             int yOff = (int)getDepositYDistort(targetPos, lx, lz, step, heremapchunk);
 
-            pos.Y = depthi + yOff;
+            pos.Y = posyi + yOff;
         }
     }
 }

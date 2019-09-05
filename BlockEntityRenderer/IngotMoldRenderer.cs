@@ -85,19 +85,20 @@ namespace Vintagestory.GameContent
             prog.FogDensityIn = rpi.FogDensity;
             prog.RgbaTint = ColorUtil.WhiteArgbVec;
             prog.DontWarpVertices = 0;
+            prog.ExtraGodray = 0;
             prog.AddRenderFlags = 0;
 
             if (LevelLeft > 0 && TextureNameLeft != null)
             {
                 Vec4f lightrgbs = api.World.BlockAccessor.GetLightRGBs(pos.X, pos.Y, pos.Z);
                 float[] glowColor = ColorUtil.GetIncandescenceColorAsColor4f((int)TemperatureLeft);
-                lightrgbs[0] += 2 * glowColor[0];
-                lightrgbs[1] += 2 * glowColor[1];
-                lightrgbs[2] += 2 * glowColor[2];
+                lightrgbs[0] += glowColor[0];
+                lightrgbs[1] += glowColor[1];
+                lightrgbs[2] += glowColor[2];
 
                 prog.RgbaLightIn = lightrgbs;
                 prog.RgbaBlockIn = ColorUtil.WhiteArgbVec;
-                prog.ExtraGlow = (int)GameMath.Clamp((TemperatureLeft - 500) / 4, 0, 255);
+                prog.ExtraGlow = (int)GameMath.Clamp((TemperatureLeft - 500) / 3, 0, 255);
 
                 int texid = api.Render.GetOrLoadTexture(TextureNameLeft);
                 rpi.BindTexture2d(texid);

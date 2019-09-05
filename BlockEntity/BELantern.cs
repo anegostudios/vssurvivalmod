@@ -108,6 +108,8 @@ namespace Vintagestory.GameContent
         internal void Interact(IPlayer byPlayer)
         {
             ItemSlot slot = byPlayer.InventoryManager.ActiveHotbarSlot;
+            if (slot.Empty) return;
+
             CollectibleObject obj = slot.Itemstack.Collectible;
             if (obj.FirstCodePart() == "glass" && obj.Variant.ContainsKey("color"))
             {

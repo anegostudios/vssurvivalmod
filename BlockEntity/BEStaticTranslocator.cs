@@ -19,7 +19,7 @@ namespace Vintagestory.GameContent
         public int MinTeleporterRangeInBlocks = 400;
         public int MaxTeleporterRangeInBlocks = 6000;
 
-        BlockPos tpLocation;
+        public BlockPos tpLocation;
         Dictionary<long, TeleportingEntity> tpingEntities = new Dictionary<long, TeleportingEntity>();
 
         BlockStaticTranslocator block;
@@ -40,7 +40,12 @@ namespace Vintagestory.GameContent
 
         public bool Activated
         {
-            get { return activated; }
+            get { return true; }
+        }
+
+        public BlockPos TargetLocation
+        {
+            get { return tpLocation; }
         }
 
         public bool FullyRepaired
@@ -106,7 +111,7 @@ namespace Vintagestory.GameContent
 
         internal void OnEntityCollide(Entity entity)
         {
-            if (!FullyRepaired || !Activated) return;
+            if (!FullyRepaired || !Activated || !canTeleport) return;
 
             TeleportingEntity tpe = null;
             if (!tpingEntities.TryGetValue(entity.EntityId, out tpe))
@@ -209,7 +214,7 @@ namespace Vintagestory.GameContent
                 sapi.WorldManager.PeekChunkColumn(chunkX, chunkZ, opts);
             }
 
-            if (canTeleport && activated)
+            if (canTeleport && Activated)
             {
                 HandleTeleporting(dt);
             }
@@ -240,7 +245,10 @@ namespace Vintagestory.GameContent
             }
             else
             {
-                sapi.WorldManager.LoadChunkColumnFast(centerCx, centerCz, new ChunkLoadOptions() { ChunkGenParams = chunkGenParams(), OnLoaded = () => exitChunkLoaded(pos) });
+                sapi.WorldManager.LoadChunkColumnFast(centerCx, centerCz, new ChunkLoadOptions() {
+                    ChunkGenParams = chunkGenParams(),
+                    OnLoaded = () => exitChunkLoaded(pos)
+                });
             }             
         }
 
@@ -252,7 +260,7 @@ namespace Vintagestory.GameContent
             {
                 // Cheap hax: Pre v1.10 chunks do not have translocators at the same location and maybe future versions will also have a changed location
                 // So let's still try to find something useful in the chunk we generated, with any luck we come across an old one. 
-                exitPos = HasExitPoint(pos);
+                exitPos = HasExitPoint(exitPos);
                 if (exitPos != null)
                 {
                     exitBlock = api.World.BlockAccessor.GetBlock(exitPos) as BlockStaticTranslocator;
@@ -265,16 +273,23 @@ namespace Vintagestory.GameContent
                 api.World.BlockAccessor.SetBlock(block.Id, exitPos);
                 BlockEntityStaticTranslocator beExit = api.World.BlockAccessor.GetBlockEntity(exitPos) as BlockEntityStaticTranslocator;
 
-                // Connect
+                // Connect remote
                 beExit.tpLocation = pos.Copy();
                 beExit.canTeleport = true;
-                beExit.repairState = 4;
                 beExit.findNextChunk = false;
                 beExit.activated = true;
-                MarkDirty(true);
+                if (!beExit.FullyRepaired)
+                {
+                    beExit.repairState = 4;
+                    beExit.setupGameTickers();
+                }
                 api.World.BlockAccessor.MarkBlockEntityDirty(exitPos);
                 api.World.BlockAccessor.MarkBlockDirty(exitPos);
 
+                //api.World.Logger.Debug("Connected translocator at {0} (chunkpos: {2}) to my location: {1}", exitPos, pos, exitPos / 32);
+
+                // Connect self
+                MarkDirty(true);
                 tpLocation = exitPos;
                 canTeleport = true;
             } else
@@ -399,12 +414,23 @@ namespace Vintagestory.GameContent
                 if (val.Value.SecondsPassed > 1.5 && tpLocation != null)
                 {
                     // Preload the chunk
-                    sapi.WorldManager.LoadChunkColumnFast((int)tpLocation.X / api.World.BlockAccessor.ChunkSize, (int)tpLocation.Z / api.World.BlockAccessor.ChunkSize, new ChunkLoadOptions() { KeepLoaded = true });
+                    IWorldChunk chunk = sapi.World.BlockAccessor.GetChunkAtBlockPos(tpLocation);
+                    if (chunk != null)
+                    {
+                        chunk.MapChunk.MarkFresh();
+                    }
+                    else
+                    {
+                        sapi.WorldManager.LoadChunkColumnFast((int)tpLocation.X / api.World.BlockAccessor.ChunkSize, (int)tpLocation.Z / api.World.BlockAccessor.ChunkSize, new ChunkLoadOptions()
+                        {
+                            KeepLoaded = false
+                        });
+                    }
                 }
 
                 if (val.Value.SecondsPassed > 5 && tpLocation != null)
                 {
-                    val.Value.Entity.TeleportTo(tpLocation.ToVec3d().Add(0.5, 1, 0.5));
+                    val.Value.Entity.TeleportTo(tpLocation.ToVec3d().Add(-0.3, 1, -0.3)); // Fugly, need some better exit pos thing
 
                     Entity e = val.Value.Entity;
                     if (e is EntityPlayer)
@@ -450,9 +476,6 @@ namespace Vintagestory.GameContent
             canTeleport = tree.GetBool("canTele");
             repairState = tree.GetInt("repairState");
             findNextChunk = tree.GetBool("findNextChunk", true);
-
-            bool wasActivated = activated;
-
             activated = tree.GetBool("activated");
 
             if (canTeleport) {
@@ -460,6 +483,11 @@ namespace Vintagestory.GameContent
 
                 if (tpLocation.X == 0 && tpLocation.Z == 0) tpLocation = null; // For safety
             }
+
+            /*if (worldAccessForResolve.Side == EnumAppSide.Server)
+            {
+                api.World.Logger.Debug("Translocator FromTreeAttributes. Pos {0} (chunkpos {1})    - tpLocation: {2}", pos, pos / 32, tpLocation);
+            }*/
             
         }
 
@@ -478,6 +506,8 @@ namespace Vintagestory.GameContent
                 tree.SetInt("teleY", tpLocation.Y);
                 tree.SetInt("teleZ", tpLocation.Z);
             }
+
+            //api.World.Logger.Debug("Translocator ToTreeAttributes. Pos {0} (chunkpos {1})     - tpLocation: {2}", pos, pos / 32, tpLocation);
         }
 
 
@@ -509,7 +539,7 @@ namespace Vintagestory.GameContent
                     IAsset asset = api.Assets.TryGet(new AssetLocation("shapes/block/machine/statictranslocator/" + shapeCode + ".json"));
                     Shape shape = asset.ToObject<Shape>();
 
-                    capi.Tesselator.TesselateShape(block, shape, out meshdata, new Vec3f(0, rotY, 0));
+                    tessThreadTesselator.TesselateShape(block, shape, out meshdata, new Vec3f(0, rotY, 0));
 
                     return meshdata;
                 });
@@ -542,7 +572,8 @@ namespace Vintagestory.GameContent
 
             if (forPlayer.WorldData.CurrentGameMode == EnumGameMode.Creative)
             {
-                return Lang.Get("Teleports to {0}", tpLocation.Copy().Sub(api.World.DefaultSpawnPosition.AsBlockPos));
+                BlockPos pos = api.World.DefaultSpawnPosition.AsBlockPos;
+                return Lang.Get("Teleports to {0}", tpLocation.Copy().Sub(pos.X, 0, pos.Z));
             }
             else
             {

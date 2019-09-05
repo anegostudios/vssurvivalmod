@@ -544,7 +544,7 @@ namespace Vintagestory.GameContent
             {
                 string state = IsLiquidLeft ? Lang.Get("liquid") : (IsHardenedLeft ? Lang.Get("hardened") : Lang.Get("soft"));
                 string temp = TemperatureLeft < 21 ? Lang.Get("Cold") : Lang.Get("{0}°C", (int)TemperatureLeft);
-                contents = string.Format("{0} units of {1} {2} ({3})\n", fillLevelLeft, state, contentsLeft.GetName(), temp);
+                contents = Lang.Get("{0} units of {1} {2} ({3})", fillLevelLeft, state, contentsLeft.GetName(), temp) + "\n";
             }
 
             if (contentsRight != null)
@@ -552,7 +552,7 @@ namespace Vintagestory.GameContent
                 string state = IsLiquidRight ? Lang.Get("liquid") : (IsHardenedRight ? Lang.Get("hardened") : Lang.Get("soft"));
                 string temp = TemperatureRight < 21 ? Lang.Get("Cold") : Lang.Get("{0}°C", (int)TemperatureRight);
 
-                contents += string.Format("{0} units of {1} {2} ({3})\n", fillLevelRight, state, contentsRight.GetName(), temp);
+                contents += Lang.Get("{0} units of {1} {2} ({3})", fillLevelRight, state, contentsRight.GetName(), temp) + "\n";
             }
 
             return contents.Length == 0 ? "Empty" : contents;

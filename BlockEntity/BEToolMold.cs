@@ -66,7 +66,7 @@ namespace Vintagestory.GameContent
         {
             return
                 (metalContent == null || (metalContent.Collectible.Equals(metalContent, metal, GlobalConstants.IgnoredStackAttributes) && fillLevel < requiredUnits))
-                && GetMoldedStacks(metal) != null
+                && GetMoldedStacks(metal) != null && GetMoldedStacks(metal).Length > 0
             ;
         }
 
@@ -312,7 +312,10 @@ namespace Vintagestory.GameContent
                 JsonItemStack jstack = block.Attributes["drop"].AsObject<JsonItemStack>();
                 if (jstack == null) return null;
 
-                return new ItemStack[] { stackFromCode(jstack, fromMetal) };
+                ItemStack stack = stackFromCode(jstack, fromMetal);
+                if (stack == null) return new ItemStack[0];
+
+                return new ItemStack[] { stack };
             } else
             {
                 JsonItemStack[] jstacks = block.Attributes["drops"].AsObject<JsonItemStack[]>();
@@ -377,14 +380,14 @@ namespace Vintagestory.GameContent
                 string state = IsLiquid ? Lang.Get("liquid") : (IsHardened ? Lang.Get("hardened") : Lang.Get("soft"));
                 
                 string temp = Temperature < 21 ? Lang.Get("Cold") : Lang.Get("{0}°C", (int)Temperature);
-                contents = string.Format("{0}/{4} units of {1} {2} ({3})\n", fillLevel, state, this.metalContent.GetName(), temp, requiredUnits);
+                contents = Lang.Get("{0}/{4} units of {1} {2} ({3})", fillLevel, state, this.metalContent.GetName(), temp, requiredUnits) + "\n";
             } else
             {
-                contents = string.Format("0/{0} units of metal\n", requiredUnits);
+                contents = Lang.Get("0/{0} units of metal", requiredUnits) + "\n";
             }
             
 
-            return contents.Length == 0 ? "Empty" : contents;
+            return contents.Length == 0 ? Lang.Get("Empty") : contents;
         }
 
 

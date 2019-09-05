@@ -12,8 +12,6 @@ namespace Vintagestory.GameContent.Mechanics
 {
     public abstract class MechBlockRenderer
     {
-        protected Block Block { get; set; }
-
         protected ICoreClientAPI capi;
 
         protected MeshData updateMesh = new MeshData();
@@ -32,9 +30,8 @@ namespace Vintagestory.GameContent.Mechanics
         protected float[] testRot = new float[3];
 
 
-        public MechBlockRenderer(ICoreClientAPI capi, MechanicalPowerMod mechanicalPowerMod, Block block)
+        public MechBlockRenderer(ICoreClientAPI capi, MechanicalPowerMod mechanicalPowerMod)
         {
-            this.Block = block;
             this.mechanicalPowerMod = mechanicalPowerMod;
             this.capi = capi;
         }

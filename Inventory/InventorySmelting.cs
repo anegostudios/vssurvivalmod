@@ -174,6 +174,7 @@ namespace Vintagestory.GameContent
         {
             if (!HaveCookingContainer)
             {
+                if (skipSlots == null) skipSlots = new List<ItemSlot>();
                 skipSlots.Add(slots[2]);
                 skipSlots.Add(slots[3]);
                 skipSlots.Add(slots[4]);

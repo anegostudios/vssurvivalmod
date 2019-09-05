@@ -13,13 +13,69 @@ namespace Vintagestory.GameContent
 {
     public class BlockCrock : BlockContainer, IBlockMealContainer
     {
+        public override float GetContainingTransitionModifierContained(IWorldAccessor world, ItemSlot inSlot, EnumTransitionType transType)
+        {
+            float mul = 1;
+
+            if (transType == EnumTransitionType.Perish)
+            {
+                if (inSlot.Itemstack.Attributes.GetBool("sealed"))
+                {
+                    if (inSlot.Itemstack.Attributes.GetString("recipeCode") != null)
+                    {
+                        mul *= 0.1f;
+                    }
+                    else
+                    {
+                        mul *= 0.25f;
+                    }
+                }
+                else
+                {
+                    mul *= 0.85f;
+                }
+            }
+
+            return mul;
+        }
+
+        public override float GetContainingTransitionModifierPlaced(IWorldAccessor world, BlockPos pos, EnumTransitionType transType)
+        {
+            float mul = 1;
+
+            BlockEntityCrock becrock = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityCrock;
+            if (becrock == null) return mul;
+
+            if (transType == EnumTransitionType.Perish)
+            {
+                if (becrock.Sealed)
+                {
+                    if (becrock.RecipeCode != null)
+                    {
+                        mul *= 0.1f;
+                    }
+                    else
+                    {
+                        mul *= 0.25f;
+                    }
+                }
+                else
+                {
+                    mul *= 0.85f;
+                }
+            }
+
+            return mul;
+        }
+
+
         public AssetLocation LabelForContents(string recipeCode, ItemStack[] contents)
         {
             if (recipeCode != null && recipeCode.Length > 0)
             {
                 return AssetLocation.Create("shapes/block/clay/crock/label-meal.json", Code.Domain);
             }
-            if (contents == null || contents.Length == 0)
+            if (contents == null || contents.Length == 0 || contents[0] == null)
             {
                 return AssetLocation.Create("shapes/block/clay/crock/label-empty.json", Code.Domain);
             }
@@ -62,7 +118,15 @@ namespace Vintagestory.GameContent
 
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
         {
-            ItemStack stack = base.OnPickBlock(world, pos);
+            ItemStack stack = new ItemStack(world.GetBlock(CodeWithVariant("side", "east")));
+
+            BlockEntityContainer bec = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityContainer;
+
+            if (bec != null)
+            {
+                SetContents(stack, bec.GetContentStacks());
+            }
+            
 
             BlockEntityCrock becrock = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityCrock;
             if (becrock == null) return stack;
@@ -90,7 +154,7 @@ namespace Vintagestory.GameContent
                 return new Dictionary<string, MeshRef>();
             });
 
-            string key = loc.ToShortString();
+            string key = Code.ToShortString() + loc.ToShortString();
             MeshRef meshref;
             if (!meshrefs.TryGetValue(key, out meshref))
             {
@@ -101,26 +165,7 @@ namespace Vintagestory.GameContent
 
             renderinfo.ModelRef = meshref;
         }
-
-
-        public override float GetTransitionRateMul(IWorldAccessor world, ItemSlot inSlot, EnumTransitionType transType)
-        {
-            float mul = base.GetTransitionRateMul(world, inSlot, transType);
-
-            if (inSlot.Itemstack.Attributes.GetBool("sealed"))
-            {
-                if (inSlot.Itemstack.Attributes.GetString("recipeCode") != null)
-                {
-                    mul *= 0.1f;
-                }
-                else
-                {
-                    mul *= 0.25f;
-                }
-            }
-
-            return mul;
-        }
+        
 
 
         public MeshData GenMesh(ICoreClientAPI capi, AssetLocation labelLoc, Vec3f rot = null, ITesselatorAPI tesselator = null)
@@ -155,7 +200,7 @@ namespace Vintagestory.GameContent
 
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handHandling)
         {
-            if (blockSel.Position == null)
+            if (blockSel?.Position == null)
             {
                 base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handHandling);
                 return;
@@ -176,14 +221,14 @@ namespace Vintagestory.GameContent
                 ((byEntity as EntityPlayer)?.Player as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
 
                 string recipeCode = slot.Itemstack.Attributes.GetString("recipeCode");
-                int quantityServings = slot.Itemstack.Attributes.GetInt("quantityServings");
+                float quantityServings = (float)slot.Itemstack.Attributes.GetDecimal("quantityServings");
 
-                int movedServings = (block as BlockCookingContainer).PutMeal(blockSel.Position, GetContents(api.World, slot.Itemstack), recipeCode, quantityServings);
+                float movedServings = (block as BlockCookingContainer).PutMeal(blockSel.Position, GetNonEmptyContents(api.World, slot.Itemstack), recipeCode, quantityServings);
 
                 quantityServings -= movedServings;
 
                 if (quantityServings > 0) {
-                    slot.Itemstack.Attributes.SetInt("quantityServings", quantityServings);
+                    slot.Itemstack.Attributes.SetFloat("quantityServings", quantityServings);
                 } else {
 
                     slot.Itemstack.Attributes.RemoveAttribute("recipeCode");
@@ -233,6 +278,7 @@ namespace Vintagestory.GameContent
 
 
         
+
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
             ItemSlot hotbarSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
@@ -242,7 +288,7 @@ namespace Vintagestory.GameContent
                 BlockEntityCrock bec = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityCrock;
                 if (bec == null) return false;
 
-                if ((hotbarSlot.Itemstack.Collectible as IBlockMealContainer).GetQuantityServings(world, hotbarSlot.Itemstack) == 0)
+                if (hotbarSlot.Itemstack.Attributes.GetDecimal("quantityServings", 0) == 0)
                 {
                     bec.ServeInto(byPlayer, hotbarSlot);
                     bec.Sealed = false;
@@ -281,7 +327,18 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            DummySlot firstContentItemSlot = new DummySlot(stacks != null && stacks.Length > 0 ? stacks[0] : null);
+            DummyInventory dummyInv = new DummyInventory(api);
+
+            ItemSlot slot = GetDummySlotForFirstPerishableStack(api.World, stacks, null, dummyInv);
+            dummyInv.OnAcquireTransitionSpeed = (transType, stack, mul) =>
+            {
+                float val = mul * GetContainingTransitionModifierContained(world, inSlot, transType);
+
+                val *= inSlot.Inventory.GetTransitionSpeedMul(transType, inSlot.Itemstack);
+
+                return val;
+            };
+            
 
             if (recipe != null)
             {
@@ -319,11 +376,11 @@ namespace Vintagestory.GameContent
             }
 
 
-            firstContentItemSlot.Itemstack?.Collectible.AppendPerishableInfoText(firstContentItemSlot, dsc, world);
+            slot.Itemstack?.Collectible.AppendPerishableInfoText(slot, dsc, world);
 
             if (inSlot.Itemstack.Attributes.GetBool("sealed"))
             {
-                dsc.AppendLine(Lang.Get("Sealed."));
+                dsc.AppendLine("<font color=\"lightgreen\">" + Lang.Get("Sealed.") + "</font>");
             }            
         }
 
@@ -347,11 +404,18 @@ namespace Vintagestory.GameContent
 
             if (recipe != null)
             {
-                DummySlot firstContentItemSlot = new DummySlot(stacks != null && stacks.Length > 0 ? stacks[0] : null, becrock.inventory);
+                ItemSlot slot = GetDummySlotForFirstPerishableStack(api.World, stacks, forPlayer.Entity, becrock.inventory);
 
                 if (recipe != null)
                 {
-                    dsc.AppendLine(recipe.GetOutputName(world, stacks).UcFirst());
+                    if (becrock.QuantityServings == 1)
+                    {
+                        dsc.AppendLine(Lang.Get("{0} serving of {1}", Math.Round(becrock.QuantityServings, 1), recipe.GetOutputName(world, stacks)));
+                    }
+                    else
+                    {
+                        dsc.AppendLine(Lang.Get("{0} servings of {1}", Math.Round(becrock.QuantityServings, 1), recipe.GetOutputName(world, stacks)));
+                    }
                 }
 
                 string facts = mealblock.GetContentNutritionFacts(world, new DummySlot(OnPickBlock(world, pos)), null);
@@ -361,7 +425,7 @@ namespace Vintagestory.GameContent
                     dsc.Append(facts);
                 }
 
-                firstContentItemSlot.Itemstack?.Collectible.AppendPerishableInfoText(firstContentItemSlot, dsc, world);
+                slot.Itemstack?.Collectible.AppendPerishableInfoText(slot, dsc, world);
             }
             else
             {
@@ -375,11 +439,41 @@ namespace Vintagestory.GameContent
 
                 becrock.inventory[0].Itemstack.Collectible.AppendPerishableInfoText(becrock.inventory[0], dsc, api.World);
             }
+
+            if (becrock.Sealed)
+            {
+                dsc.AppendLine("<font color=\"lightgreen\">" + Lang.Get("Sealed.") + "</font>");
+            }
             
 
             return dsc.ToString();
         }
 
+
+        public static ItemSlot GetDummySlotForFirstPerishableStack(IWorldAccessor world, ItemStack[] stacks, Entity forEntity, InventoryBase slotInventory)
+        {
+            ItemStack stack = null;
+            if (stacks != null)
+            {
+                for (int i = 0; i < stacks.Length; i++)
+                {
+                    if (stacks[i] != null)
+                    {
+                        TransitionableProperties[] props = stacks[i].Collectible.GetTransitionableProperties(world, stacks[i], forEntity);
+                        if (props != null && props.Length > 0)
+                        {
+                            stack = stacks[i];
+                            break;
+                        }
+                    }
+                }
+            }
+
+            DummySlot slot = new DummySlot(stack, slotInventory);
+            slot.MarkedDirty += () => true;
+
+            return slot;
+        }
 
 
         public void SetContents(string recipeCode, ItemStack containerStack, ItemStack[] stacks, float quantityServings = 1)
@@ -453,6 +547,62 @@ namespace Vintagestory.GameContent
         {
             string recipecode = GetRecipeCode(world, containerStack);
             return world.CookingRecipes.FirstOrDefault((rec) => recipecode == rec.Code);
+        }
+
+
+        public override TransitionState[] UpdateAndGetTransitionStates(IWorldAccessor world, ItemSlot inslot)
+        {
+            return base.UpdateAndGetTransitionStates(world, inslot);
+        }
+
+
+
+        public override void OnGroundIdle(EntityItem entityItem)
+        {
+            base.OnGroundIdle(entityItem);
+
+            IWorldAccessor world = entityItem.World;
+            if (world.Side != EnumAppSide.Server) return;
+
+            if (entityItem.Swimming && world.Rand.NextDouble() < 0.01)
+            {
+                ItemStack[] stacks = GetContents(world, entityItem.Itemstack);
+                if (MealMeshCache.ContentsRotten(stacks))
+                {
+                    for (int i = 0; i < stacks.Length; i++)
+                    {
+                        if (stacks[i] != null && stacks[i].StackSize > 0 && stacks[i].Collectible.Code.Path == "rot")
+                        {
+                            world.SpawnItemEntity(stacks[i], entityItem.ServerPos.XYZ);
+                        }
+                    }
+
+                    entityItem.Itemstack.Attributes.RemoveAttribute("recipeCode");
+                    entityItem.Itemstack.Attributes.RemoveAttribute("quantityServings");
+                    entityItem.Itemstack.Attributes.RemoveAttribute("contents");
+                }
+            }
+        }
+
+
+
+        public override void OnUnloaded(ICoreAPI api)
+        {
+            ICoreClientAPI capi = api as ICoreClientAPI;
+            if (capi == null) return;
+
+            object obj;
+            if (capi.ObjectCache.TryGetValue("blockcrockGuiMeshRefs", out obj))
+            {
+                Dictionary<string, MeshRef> meshrefs = obj as Dictionary<string, MeshRef>;
+
+                foreach (var val in meshrefs)
+                {
+                    val.Value.Dispose();
+                }
+
+                capi.ObjectCache.Remove("blockcrockGuiMeshRefs");
+            }
         }
 
     }

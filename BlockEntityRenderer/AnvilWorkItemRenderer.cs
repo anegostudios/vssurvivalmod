@@ -58,9 +58,9 @@ namespace Vintagestory.GameContent
 
             Vec4f lightrgbs = worldAccess.BlockAccessor.GetLightRGBs(pos.X, pos.Y, pos.Z);
             float[] glowColor = ColorUtil.GetIncandescenceColorAsColor4f(temp);
-            lightrgbs[0] += 2 * glowColor[0];
-            lightrgbs[1] += 2 * glowColor[1];
-            lightrgbs[2] += 2 * glowColor[2];
+            lightrgbs[0] += glowColor[0];
+            lightrgbs[1] += glowColor[1];
+            lightrgbs[2] += glowColor[2];
 
 
 
@@ -79,6 +79,7 @@ namespace Vintagestory.GameContent
             prog.RgbaLightIn = lightrgbs;
             prog.RgbaBlockIn = ColorUtil.WhiteArgbVec;
             prog.ExtraGlow = GameMath.Clamp((temp - 700) / 2, 0, 255);
+            prog.ExtraGodray = 0;
             prog.ModelMatrix = ModelMat
                 .Identity()
                 .Translate(pos.X - camPos.X, pos.Y - camPos.Y, pos.Z - camPos.Z)

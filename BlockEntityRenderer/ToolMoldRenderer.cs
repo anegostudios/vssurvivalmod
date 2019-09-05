@@ -95,12 +95,13 @@ namespace Vintagestory.GameContent
             prog.RgbaTint = ColorUtil.WhiteArgbVec;
             prog.DontWarpVertices = 0;
             prog.AddRenderFlags = 0;
+            prog.ExtraGodray = 0;
 
             Vec4f lightrgbs = api.World.BlockAccessor.GetLightRGBs(pos.X, pos.Y, pos.Z);
             float[] glowColor = ColorUtil.GetIncandescenceColorAsColor4f((int)Temperature);
-            lightrgbs.R += 2 * glowColor[0];
-            lightrgbs.G += 2 * glowColor[1];
-            lightrgbs.B += 2 * glowColor[2];
+            lightrgbs.R += glowColor[0];
+            lightrgbs.G += glowColor[1];
+            lightrgbs.B += glowColor[2];
 
             prog.RgbaLightIn = lightrgbs;
             prog.RgbaBlockIn = ColorUtil.WhiteArgbVec;

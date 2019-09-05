@@ -85,6 +85,11 @@ namespace Vintagestory.GameContent
 
         }
 
+        protected virtual long GetNextHerdId()
+        {
+            return (api as ICoreServerAPI).WorldManager.GetNextUniqueId();
+        }
+
         public override void Initialize(ICoreAPI api)
         {
             base.Initialize(api);
@@ -140,6 +145,7 @@ namespace Vintagestory.GameContent
             }.OmniNotDownGrowBy(0.1f);
 
             int q = Data.GroupSize;
+            long herdId = 0;
 
             while (q-- > 0)
             {
@@ -155,8 +161,9 @@ namespace Vintagestory.GameContent
 
                     if (!collisionTester.IsColliding(api.World.BlockAccessor, collisionBox, spawnPos, false))
                     {
-                        long herdid = sapi.WorldManager.GetNextHerdId();
-                        DoSpawn(type, spawnPos, herdid);
+                        if (herdId == 0) herdId = GetNextHerdId();
+
+                        DoSpawn(type, spawnPos, herdId);
                         lastSpawnTotalHours = api.World.Calendar.TotalHours;
 
                         if (Data.InitialQuantitySpawned > 0)

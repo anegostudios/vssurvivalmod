@@ -156,24 +156,61 @@ namespace Vintagestory.GameContent
             tree.SetString("recipeCode", RecipeCode == null ? "" : RecipeCode);
         }
 
-        public void ServeInto(IPlayer player, ItemSlot slot)
+        public bool ServeInto(IPlayer player, ItemSlot slot)
         {
-            float servings = Math.Min(QuantityServings, slot.Itemstack.Collectible.Attributes["servingCapacity"].AsInt());
+            int capacity = slot.Itemstack.Collectible.Attributes["servingCapacity"].AsInt();
+            float servings = Math.Min(QuantityServings, capacity);
 
-            ItemStack mealstack = new ItemStack(api.World.GetBlock(AssetLocation.Create(slot.Itemstack.Collectible.Attributes["mealBlockCode"].AsString(), slot.Itemstack.Collectible.Code.Domain)));
-            mealstack.StackSize = 1;
-            (mealstack.Collectible as IBlockMealContainer).SetContents(RecipeCode, mealstack, GetNonEmptyContentStacks(), servings);
+            ItemStack mealStack=null;
+            IBlockMealContainer ibm = (slot.Itemstack.Collectible as IBlockMealContainer);
+
+            if (ibm != null && ibm.GetQuantityServings(api.World, slot.Itemstack) > 0)
+            {
+                float existingServings = ibm.GetQuantityServings(api.World, slot.Itemstack);
+                //string recipeCode = ibm.GetRecipeCode(api.World, slot.Itemstack);
+                ItemStack[] existingContent = ibm.GetNonEmptyContents(api.World, slot.Itemstack);
+
+                servings = Math.Min(servings, capacity - existingServings);
+                ItemStack[] potStacks = GetNonEmptyContentStacks();
+
+                if (servings == 0) return false;
+                if (existingContent.Length != potStacks.Length) return false;
+                for (int i = 0; i < existingContent.Length; i++)
+                {
+                    if (!existingContent[i].Equals(api.World, potStacks[i], GlobalConstants.IgnoredStackAttributes))
+                    {
+                        return false;
+                    }
+                }
+
+                if (slot.StackSize == 1)
+                {
+                    mealStack = slot.Itemstack;
+                    ibm.SetContents(RecipeCode, slot.Itemstack, GetNonEmptyContentStacks(), existingServings + servings);
+                } else
+                {
+                    mealStack = slot.Itemstack.Clone();
+                    ibm.SetContents(RecipeCode, mealStack, GetNonEmptyContentStacks(), existingServings + servings);
+                }
+            }
+            else
+            {
+                mealStack = new ItemStack(api.World.GetBlock(AssetLocation.Create(slot.Itemstack.Collectible.Attributes["mealBlockCode"].AsString(), slot.Itemstack.Collectible.Code.Domain)));
+                mealStack.StackSize = 1;
+                (mealStack.Collectible as IBlockMealContainer).SetContents(RecipeCode, mealStack, GetNonEmptyContentStacks(), servings);
+            }
+
 
             if (slot.StackSize == 1)
             {
-                slot.Itemstack = mealstack;
+                slot.Itemstack = mealStack;
             }
             else
             {
                 slot.TakeOut(1);
-                if (!player.InventoryManager.TryGiveItemstack(mealstack, true))
+                if (!player.InventoryManager.TryGiveItemstack(mealStack, true))
                 {
-                    api.World.SpawnItemEntity(mealstack, pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                    api.World.SpawnItemEntity(mealStack, pos.ToVec3d().Add(0.5, 0.5, 0.5));
                 }
                 slot.MarkDirty();
             }
@@ -184,12 +221,17 @@ namespace Vintagestory.GameContent
             {
                 Block block = api.World.GetBlock(ownBlock.CodeWithPath(ownBlock.FirstCodePart() + "-burned"));
                 api.World.BlockAccessor.SetBlock(block.BlockId, pos);
-                return;
+                return true;
             }
 
-            if (api.Side == EnumAppSide.Client) currentMesh = GenMesh();
-
+            if (api.Side == EnumAppSide.Client)
+            {
+                currentMesh = GenMesh();
+                (player as IClientPlayer).TriggerFpAnimation(EnumHandInteract.HeldItemAttack);
+            }
+            
             MarkDirty(true);
+            return true;
         }
 
         public MeshData GenMesh()
@@ -236,9 +278,17 @@ namespace Vintagestory.GameContent
             }
 
 
-           inventory[0].Itemstack.Collectible.AppendPerishableInfoText(inventory[0], dsc, api.World);
+            foreach (var slot in inventory)
+            {
+                if (slot.Empty) continue;
 
-            //dsc.AppendLine(base.GetBlockInfo(forPlayer));
+                TransitionableProperties[] propsm = slot.Itemstack.Collectible.GetTransitionableProperties(api.World, slot.Itemstack, null);
+                if (propsm != null && propsm.Length > 0)
+                {
+                    slot.Itemstack.Collectible.AppendPerishableInfoText(slot, dsc, api.World);
+                    break;
+                }
+            }
 
 
             return dsc.ToString();

@@ -69,13 +69,15 @@ namespace Vintagestory.GameContent
                 return false;
             }
 
-            return TryPlaceBlockForWorldGen(world.BlockAccessor, blockSel.Position, blockSel.Face, world.Rand);
+            return TryPlaceBlockForWorldGen(world.BlockAccessor, blockSel.Position, blockSel.Face);
         }
 
-        public override BlockDropItemStack[] GetDropsForHandbook(IWorldAccessor world, BlockPos pos, IPlayer byPlayer)
+        
+        public override BlockDropItemStack[] GetDropsForHandbook(ItemStack handbookStack, IPlayer forPlayer)
         {
-            return GetHandbookDropsFromBreakDrops(world, pos, byPlayer);
+            return GetHandbookDropsFromBreakDrops(handbookStack, forPlayer);
         }
+
 
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)
         {
@@ -151,7 +153,12 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, Random worldGenRand)
+        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, LCGRandom worldGenRand)
+        {
+            return TryPlaceBlockForWorldGen(blockAccessor, pos, onBlockFace);
+        }
+
+        public bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace)
         {
             if (pos.Y < 16) return false;
 

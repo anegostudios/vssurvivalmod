@@ -6,7 +6,7 @@ namespace Vintagestory.GameContent
 {
     public class BlockLooseStones : Block
     {
-        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, Random worldGenRand)
+        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, LCGRandom worldGenRand)
         {
             if (!HasSolidGround(blockAccessor, pos))
             {

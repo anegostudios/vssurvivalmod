@@ -16,7 +16,7 @@ namespace Vintagestory.GameContent
             return (block.Fertility > 0) || (block is BlockSeaweed && block.LastCodePart() == "section");
         }
 
-        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, Random worldGenRand)
+        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, LCGRandom worldGenRand)
         {
             BlockPos belowPos = pos.DownCopy();
 

@@ -37,9 +37,9 @@ namespace Vintagestory.GameContent
             }
             
 
-
-            Block freeBlock = byEntity.World.BlockAccessor.GetBlock(blockSel.Position.AddCopy(blockSel.Face));
-            if (freeBlock.BlockId != 0) return;
+            // why the eff is this here?
+           // Block freeBlock = byEntity.World.BlockAccessor.GetBlock(blockSel.Position.AddCopy(blockSel.Face));
+           // if (freeBlock.BlockId != 0) return;
 
             blockHandling = EnumHandling.PreventDefault;
             handHandling = EnumHandHandling.PreventDefault;

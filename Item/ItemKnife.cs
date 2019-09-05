@@ -18,6 +18,9 @@ namespace Vintagestory.GameContent
                 {
                     byEntity.World.PlaySoundAt(new AssetLocation("sounds/player/scrape"), entitySel.Entity, (byEntity as EntityPlayer)?.Player, false, 12);
                     handling = EnumHandHandling.PreventDefault;
+
+                    //byEntity.World.Logger.Debug("{0} knife interact start",  byEntity.World.Side);
+
                     return;
                 }
             }
@@ -27,6 +30,9 @@ namespace Vintagestory.GameContent
 
         public override bool OnHeldInteractStep(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
+            // Crappy fix to make animal harvesting not buggy T_T
+            if (api.Side == EnumAppSide.Server) return true;
+
             EntityBehaviorHarvestable bh;
             if (entitySel != null && (bh = entitySel.Entity.GetBehavior<EntityBehaviorHarvestable>()) != null)
             {
@@ -49,7 +55,7 @@ namespace Vintagestory.GameContent
                     byEntity.Controls.UsingHeldItemTransformBefore = tf;
                 }
 
-                
+                //byEntity.World.Logger.Debug("{0} knife interact step: Seconds: {1}/{2}", byEntity.World.Side, secondsUsed, bh.HarvestDuration );
 
                 return secondsUsed < bh.HarvestDuration + 0.15f;
             }
@@ -61,15 +67,25 @@ namespace Vintagestory.GameContent
         {
             if (entitySel == null) return;
 
+     
+
             EntityBehaviorHarvestable bh = entitySel.Entity.GetBehavior<EntityBehaviorHarvestable>();
 
-            //byEntity.World.Logger.Debug("{0} knife interact stop, seconds used {1} / {2}", byEntity.World.Side, secondsUsed, bh?.HarvestDuration);
+            //byEntity.World.Logger.Debug("{0} knife interact stop, seconds used {1} / {2}, entity: {3}", byEntity.World.Side, secondsUsed, bh?.HarvestDuration, entitySel.Entity);
 
             if (bh != null && secondsUsed >= bh.HarvestDuration - 0.1f)
             {
                 bh.SetHarvested((byEntity as EntityPlayer)?.Player);
                 slot?.Itemstack?.Collectible.DamageItem(byEntity.World, byEntity, slot, 3);
             }
+        }
+
+
+        public override bool OnHeldInteractCancel(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)
+        {
+            //byEntity.World.Logger.Debug("{0} knife interact cancelled, seconds used {1}", byEntity.World.Side, secondsUsed);
+
+            return base.OnHeldInteractCancel(secondsUsed, slot, byEntity, blockSel, entitySel, cancelReason);
         }
 
 

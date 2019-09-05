@@ -95,9 +95,9 @@ namespace Vintagestory.GameContent
             return knob == "right" ? pos.AddCopy(dir.GetCW()) : pos.AddCopy(dir.GetCCW());
         }
 
-        public override BlockDropItemStack[] GetDropsForHandbook(IWorldAccessor world, BlockPos pos, IPlayer byPlayer)
+        public override BlockDropItemStack[] GetDropsForHandbook(ItemStack handbookStack, IPlayer forPlayer)
         {
-            return GetHandbookDropsFromBreakDrops(world, pos, byPlayer);
+            return GetHandbookDropsFromBreakDrops(handbookStack, forPlayer);
         }
 
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)

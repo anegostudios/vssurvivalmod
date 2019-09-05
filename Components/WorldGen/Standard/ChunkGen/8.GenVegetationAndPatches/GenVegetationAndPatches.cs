@@ -12,7 +12,7 @@ namespace Vintagestory.ServerMods
     public class GenVegetation : ModStdWorldGen
     {
         ICoreServerAPI api;
-        Random rnd;
+        LCGRandom rnd;
         IBlockAccessor blockAccessor;
         WgenTreeSupplier treeSupplier;
         int worldheight;
@@ -63,7 +63,7 @@ namespace Vintagestory.ServerMods
         {
             LoadGlobalConfig(api);
 
-            rnd = new Random(api.WorldManager.Seed);
+            rnd = new LCGRandom(api.WorldManager.Seed - 87698);
             chunksize = api.WorldManager.ChunkSize;
 
             treeSupplier.LoadTrees();
@@ -110,6 +110,8 @@ namespace Vintagestory.ServerMods
 
         private void OnChunkColumnGen(IServerChunk[] chunks, int chunkX, int chunkZ, ITreeAttribute chunkGenParams = null)
         {
+            rnd.InitPositionSeed(chunkX, chunkZ);
+
             IMapChunk mapChunk = chunks[0].MapChunk;
 
             IntMap forestMap = mapChunk.MapRegion.ForestMap;
@@ -177,8 +179,8 @@ namespace Vintagestory.ServerMods
 
                 while (chance-- > rnd.NextDouble())
                 {
-                    dx = rnd.Next(chunksize);
-                    dz = rnd.Next(chunksize);
+                    dx = rnd.NextInt(chunksize);
+                    dz = rnd.NextInt(chunksize);
                     x = dx + chunkX * chunksize;
                     z = dz + chunkZ * chunksize;
 
@@ -232,8 +234,8 @@ namespace Vintagestory.ServerMods
             {
                 triesShrubs--;
 
-                dx = rnd.Next(chunksize);
-                dz = rnd.Next(chunksize);
+                dx = rnd.NextInt(chunksize);
+                dz = rnd.NextInt(chunksize);
                 x = dx + chunkX * chunksize;
                 z = dz + chunkZ * chunksize;
 
@@ -288,8 +290,8 @@ namespace Vintagestory.ServerMods
             {
                 triesTrees--;
 
-                dx = rnd.Next(chunksize);
-                dz = rnd.Next(chunksize);
+                dx = rnd.NextInt(chunksize);
+                dz = rnd.NextInt(chunksize);
                 x = dx + chunkX * chunksize;
                 z = dz + chunkZ * chunksize;
 

@@ -41,6 +41,8 @@ namespace Vintagestory.GameContent
 
         public override bool OnBlockInteractStep(float secondsUsed, IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ref EnumHandling handled)
         {
+            if (blockSel == null) return false;
+
             handled = EnumHandling.PreventDefault;
 
             (byPlayer as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemAttack);

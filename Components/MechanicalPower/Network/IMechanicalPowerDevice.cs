@@ -39,6 +39,8 @@ namespace Vintagestory.GameContent.Mechanics
 
         EnumTurnDirection GetBaseTurnDirection();
         void SetBaseTurnDirection(EnumTurnDirection turnDir, BlockFacing fromDir);
+
+        CompositeShape Shape { get; }
     }
 
     /*

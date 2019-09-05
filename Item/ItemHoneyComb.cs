@@ -116,7 +116,11 @@ namespace Vintagestory.GameContent
 
             IPlayer byPlayer = null;
             if (byEntity is EntityPlayer) byPlayer = world.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
-            byPlayer?.InventoryManager.TryGiveItemstack(new ItemStack(world.GetItem(new AssetLocation("beeswax"))));
+            ItemStack stack = new ItemStack(world.GetItem(new AssetLocation("beeswax")));
+            if (byPlayer?.InventoryManager.TryGiveItemstack(stack) == false)
+            {
+                byEntity.World.SpawnItemEntity(stack, byEntity.LocalPos.XYZ);
+            }
         }
 
 

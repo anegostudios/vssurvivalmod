@@ -177,6 +177,11 @@ namespace Vintagestory.GameContent
             return stack;
         }
 
+        public override BlockDropItemStack[] GetDropsForHandbook(ItemStack handbookStack, IPlayer forPlayer)
+        {
+            return new BlockDropItemStack[] { new BlockDropItemStack(handbookStack) };
+        }
+
         public override void OnBlockBroken(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1)
         {
             if (world.Side == EnumAppSide.Server && (byPlayer == null || byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative))

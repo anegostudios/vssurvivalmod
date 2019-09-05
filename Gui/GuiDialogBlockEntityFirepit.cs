@@ -5,6 +5,7 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 
 namespace Vintagestory.GameContent
 {
@@ -157,11 +158,17 @@ namespace Vintagestory.GameContent
         {
             if (!IsOpened()) return;
 
-            string fuelTemp = Attributes.GetFloat("furnaceTemperature").ToString("#");
-            string oreTemp = Attributes.GetFloat("oreTemperature").ToString("#");
+            float ftemp = Attributes.GetFloat("furnaceTemperature");
+            float otemp = Attributes.GetFloat("oreTemperature");
+
+            string fuelTemp = ftemp.ToString("#");
+            string oreTemp = otemp.ToString("#");
 
             fuelTemp += fuelTemp.Length > 0 ? "°C" : "";
             oreTemp += oreTemp.Length > 0 ? "°C" : "";
+
+            if (ftemp > 0 && ftemp <= 20) fuelTemp = Lang.Get("Cold");
+            if (otemp > 0 && otemp <= 20) oreTemp = Lang.Get("Cold");
 
             SingleComposer.GetDynamicText("fueltemp").SetNewText(fuelTemp);
             SingleComposer.GetDynamicText("oretemp").SetNewText(oreTemp);

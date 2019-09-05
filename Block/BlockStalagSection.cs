@@ -64,27 +64,27 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, Random worldGenRand)
+        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, LCGRandom worldGenRand)
         {
             bool didplace = false;
 
             if (blockAccessor.GetBlock(pos).Replaceable < 6000) return false;
 
             pos = pos.Copy();
-            for (int i = 0; i < 5 + worldGenRand.Next(25); i++)
+            for (int i = 0; i < 5 + worldGenRand.NextInt(25); i++)
             {
                 if (pos.Y < 15) continue; // To hot for stalactites
 
-                didplace |= TryGenStalag(blockAccessor, pos, worldGenRand.Next(4), worldGenRand);
-                pos.X += worldGenRand.Next(9) - 4;
-                pos.Y += worldGenRand.Next(3) - 1;
-                pos.Z += worldGenRand.Next(9) - 4;
+                didplace |= TryGenStalag(blockAccessor, pos, worldGenRand.NextInt(4), worldGenRand);
+                pos.X += worldGenRand.NextInt(9) - 4;
+                pos.Y += worldGenRand.NextInt(3) - 1;
+                pos.Z += worldGenRand.NextInt(9) - 4;
             }
 
             return didplace;
         }
 
-        private bool TryGenStalag(IBlockAccessor blockAccessor, BlockPos pos, int thickOff, Random worldGenRand)
+        private bool TryGenStalag(IBlockAccessor blockAccessor, BlockPos pos, int thickOff, LCGRandom worldGenRand)
         {
             bool didplace = false;
 
@@ -143,9 +143,9 @@ namespace Vintagestory.GameContent
             }
         }
 
-        private void GrowDownFrom(IBlockAccessor blockAccessor, BlockPos pos, string rocktype, int thickOff, Random worldGenRand)
+        private void GrowDownFrom(IBlockAccessor blockAccessor, BlockPos pos, string rocktype, int thickOff, LCGRandom worldGenRand)
         {
-            for (int i = thicknessIndex[Thickness] + thickOff + worldGenRand.Next(2); i < Thicknesses.Length; i++)
+            for (int i = thicknessIndex[Thickness] + thickOff + worldGenRand.NextInt(2); i < Thicknesses.Length; i++)
             {
                 Block stalagBlock = GetBlock(api.World, rocktype, Thicknesses[i]);
                 if (stalagBlock == null) continue;

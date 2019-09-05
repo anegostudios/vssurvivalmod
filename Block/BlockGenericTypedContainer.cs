@@ -180,6 +180,12 @@ namespace Vintagestory.GameContent
             {
                 ICoreClientAPI capi = api as ICoreClientAPI;
                 string shapename = this.Attributes["shape"][be.type].AsString();
+                if (shapename == null)
+                {
+                    base.GetDecal(world, pos, decalTexSource, ref decalModelData, ref blockModelData);
+                    return;
+                }
+
                 blockModelData = GenMesh(capi, be.type, shapename);
 
                 AssetLocation shapeloc = new AssetLocation(shapename).WithPathPrefix("shapes/");

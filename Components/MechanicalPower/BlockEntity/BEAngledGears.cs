@@ -15,10 +15,16 @@ namespace Vintagestory.GameContent.Mechanics
 
             switch (orientations)
             {
+                case "n":
+                case "s":
+                    //AxisMapping = new int[6] { 2, 1, 0, 0, 1, 2 };
+                    AxisSign = new int[6] { -1, -1, -1, -1, -1, -1 };
+                    break;
+
                 case "w":
                 case "e":
                     AxisMapping = new int[6] { 2, 1, 0, 0, 1, 2 };
-                    AxisSign = new int[6] { 1, 1, 1, 1, 1, 1 };
+                    AxisSign = new int[6] { -1, -1, -1, -1, -1, -1 };
                     break;
 
                 case "u":
@@ -59,7 +65,7 @@ namespace Vintagestory.GameContent.Mechanics
 
                 case "nu":
                     AxisMapping = new int[6] { 0, 2, 1, 0, 1, 2 };
-                    AxisSign = new int[6] { 1, 1, 1, 1, 1, 1 };
+                    AxisSign = new int[6] { -1, -1, -1, -1, -1, -1 };
                     break;
 
                 case "eu":
@@ -74,7 +80,7 @@ namespace Vintagestory.GameContent.Mechanics
 
                 case "wu":
                     AxisMapping = new int[6] { 1, 2, 0, 2, 1, 0 };
-                    AxisSign = new int[6] { 1, 1, 1, 1, 1, 1 };
+                    AxisSign = new int[6] { -1, -1, -1, -1, -1, -1 };
                     break;
 
 
@@ -83,14 +89,13 @@ namespace Vintagestory.GameContent.Mechanics
                     AxisSign = new int[6] { 1, 1, 1, 1, 1, 1 };
                     break;
             }
-
-            
         }
 
-        public override void OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer)
+
+        /*public override void OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer)
         {
             if (world.Side == EnumAppSide.Client) MarkDirty(true);
-        }
+        }*/
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
         {
@@ -127,7 +132,7 @@ namespace Vintagestory.GameContent.Mechanics
 
         public override float GetResistance()
         {
-            return 0;
+            return 0.0005f;
         }
 
         public override float GetTorque()

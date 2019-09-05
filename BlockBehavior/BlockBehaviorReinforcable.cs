@@ -58,10 +58,10 @@ namespace Vintagestory.GameContent
 
                 if (bre.Locked)
                 {
-                    return "\n" + Lang.Get("Has been locked and reinforced by {0}.\nStrength: {1}", bre.LastPlayername, bre.Strength);
+                    return Lang.Get("Has been locked and reinforced by {0}.", bre.LastPlayername) + "\n" + Lang.Get("Strength: {0}", bre.Strength) + "\n";
                 } else
                 {
-                    return "\n" + Lang.Get("Has been reinforced by {0}.\nStrength: {1}", bre.LastPlayername, bre.Strength);
+                    return Lang.Get("Has been reinforced by {0}.", bre.LastPlayername) + "\n" + Lang.Get("Strength: {0}", bre.Strength) + "\n";
                 }
             }
 

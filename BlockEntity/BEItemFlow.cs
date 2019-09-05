@@ -28,7 +28,7 @@ namespace Vintagestory.GameContent
         Block myBlock;
 
         public override AssetLocation OpenSound => new AssetLocation("sounds/block/hopperopen");
-        public override AssetLocation CloseSound => new AssetLocation("sounds/block/nosound");
+        public override AssetLocation CloseSound => null;
 
 
         public BlockEntityItemFlow() : base()
@@ -109,41 +109,50 @@ namespace Vintagestory.GameContent
             BlockPos InputPosition = pos.AddCopy(InputFace);
             BlockPos OutputPosition = pos.AddCopy(OutputFace);
 
-            //if inventory below, attempt to move item in me to below
-            if(api.World.BlockAccessor.GetBlockEntity(OutputPosition) is BlockEntityContainer && !inventory.IsEmpty)
+            // If inventory below, attempt to move item in me to below
+            if (!inventory.IsEmpty)
             {
-                BlockEntityContainer outputBox = (BlockEntityContainer)api.World.BlockAccessor.GetBlockEntity(OutputPosition);
-                ItemSlot transferSlot = null;
-                foreach(ItemSlot slot in inventory)
+                if (api.World.BlockAccessor.GetBlockEntity(OutputPosition) is BlockEntityContainer)
                 {
-                    if(!slot.Empty)
+                    BlockEntityContainer outputBox = (BlockEntityContainer)api.World.BlockAccessor.GetBlockEntity(OutputPosition);
+                    ItemSlot transferSlot = null;
+                    foreach (ItemSlot slot in inventory)
                     {
-                        transferSlot = slot;
-                        break;
-                    }
-                }
-
-                if(transferSlot != null)
-                {
-                    WeightedSlot ws = outputBox.Inventory.GetBestSuitedSlot(transferSlot);
-                    if (ws.slot != null)
-                    {
-                        ItemStackMoveOperation op = new ItemStackMoveOperation(api.World, EnumMouseButton.Left, 0, EnumMergePriority.DirectMerge, FlowAmount);
-                        if (transferSlot.TryPutInto(ws.slot, ref op) > 0)
+                        if (!slot.Empty)
                         {
-                            if (api.World.Rand.NextDouble() < 0.2)
-                            {
-                                api.World.PlaySoundAt(new AssetLocation("sounds/block/hoppertumble"), pos.X + 0.5, pos.Y + 0.5, pos.Z + 0.5, null, true, 8, 0.5f);
-                            }
+                            transferSlot = slot;
+                            break;
                         }
                     }
 
+                    if (transferSlot != null)
+                    {
+                        WeightedSlot ws = outputBox.Inventory.GetBestSuitedSlot(transferSlot);
+                        if (ws.slot != null)
+                        {
+                            ItemStackMoveOperation op = new ItemStackMoveOperation(api.World, EnumMouseButton.Left, 0, EnumMergePriority.DirectMerge, FlowAmount);
+                            if (transferSlot.TryPutInto(ws.slot, ref op) > 0)
+                            {
+                                if (api.World.Rand.NextDouble() < 0.2)
+                                {
+                                    api.World.PlaySoundAt(new AssetLocation("sounds/block/hoppertumble"), pos.X + 0.5, pos.Y + 0.5, pos.Z + 0.5, null, true, 8, 0.5f);
+                                }
+                            }
+                        }
 
-                }//transfer slot
 
-            }//Output move.
+                    }//transfer slot
 
-            //if inventory above, attempt to move item from above into me.  (LATER ON: CHECK FILTER)
+                } else
+                {
+
+
+
+                }
+            }
+
+
+            // If inventory above, attempt to move item from above into me.  (LATER ON: CHECK FILTER)
             if(api.World.BlockAccessor.GetBlockEntity(InputPosition) is BlockEntityContainer)
             {
                 BlockEntityContainer inputBox = (BlockEntityContainer)api.World.BlockAccessor.GetBlockEntity(InputPosition);

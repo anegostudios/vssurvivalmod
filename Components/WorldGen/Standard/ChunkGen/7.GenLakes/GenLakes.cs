@@ -12,7 +12,7 @@ namespace Vintagestory.ServerMods
     public class GenLakes : ModStdWorldGen
     {
         ICoreServerAPI api;
-        Random rand;
+        LCGRandom rand;
         int mapheight;
         IBlockAccessor blockAccessor;
         Queue<Vec2i> searchPositionsDeltas = new Queue<Vec2i>();
@@ -70,7 +70,7 @@ namespace Vintagestory.ServerMods
         {
             LoadGlobalConfig(api);
 
-            rand = new Random(api.WorldManager.Seed);
+            rand = new LCGRandom(api.WorldManager.Seed - 12);
             searchSize = 3 * chunksize;
             mapOffset = chunksize;
             minBoundary = -chunksize + 1;
@@ -90,6 +90,8 @@ namespace Vintagestory.ServerMods
 
         private void OnChunkColumnGen(IServerChunk[] chunks, int chunkX, int chunkZ, ITreeAttribute chunkGenParams = null)
         {
+            rand.InitPositionSeed(chunkX, chunkZ);
+
             ushort[] heightmap = chunks[0].MapChunk.RainHeightMap;
 
             IntMap climateMap = chunks[0].MapChunk.MapRegion.ClimateMap;
@@ -126,8 +128,8 @@ namespace Vintagestory.ServerMods
             {
                 if (maxTries < 1 && rand.NextDouble() > maxTries) break;
 
-                dx = rand.Next(chunksize);
-                dz = rand.Next(chunksize);
+                dx = rand.NextInt(chunksize);
+                dz = rand.NextInt(chunksize);
 
                 TryPlaceLakeAt(dx, dz, chunkX, chunkZ, heightmap);
 

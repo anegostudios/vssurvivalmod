@@ -37,10 +37,19 @@ namespace Vintagestory.ServerMods
             return new DepositVariant[] { sourceVariant };
         }
 
-        public abstract float GetAbsAvgQuantity();
-
-        public abstract int[] GetBearingBlocks();
+        //public abstract float GetAbsAvgQuantity();
+        //public abstract int[] GetBearingBlocks();
 
         public abstract float GetMaxRadius();
+
+        public abstract void GetPropickReading(BlockPos pos, int oreDist, int[] blockColumn, out double ppt, out double totalFactor);
+
+        /// <summary>
+        /// For pro pick readings, evaluate min max y-location where the ore can spawn in. Can be approximate
+        /// </summary>
+        /// <param name="miny"></param>
+        /// <param name="maxy"></param>
+        public abstract void GetYMinMax(BlockPos pos, out double miny, out double maxy);
+
     }
 }

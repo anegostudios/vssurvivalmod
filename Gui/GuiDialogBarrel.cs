@@ -190,6 +190,8 @@ namespace Vintagestory.GameContent
             BlockEntityBarrel bebarrel = capi.World.BlockAccessor.GetBlockEntity(BlockEntityPosition) as BlockEntityBarrel;
             if (bebarrel == null || bebarrel.Sealed) return true;
 
+            if (!bebarrel.CanSeal) return true;
+
             bebarrel.SealBarrel();
 
             capi.Network.SendBlockEntityPacket(BlockEntityPosition.X, BlockEntityPosition.Y, BlockEntityPosition.Z, 1337);

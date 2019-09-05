@@ -17,7 +17,7 @@ namespace Vintagestory.GameContent
     {
         public int CapacityLitres
         {
-            get { return 100; }
+            get { return 50; }
         }
 
         GuiDialogBarrel invDialog;
@@ -39,6 +39,16 @@ namespace Vintagestory.GameContent
         public BarrelRecipe CurrentRecipe;
         public int CurrentOutSize;
 
+        public bool CanSeal
+        {
+            get
+            {
+                FindMatchingRecipe();
+                if (CurrentRecipe != null && CurrentRecipe.SealHours > 0) return true;
+                return false;
+            }
+        }
+
         public BlockEntityBarrel()
         {
             inventory = new InventoryGeneric(2, null, null, (id, self) =>
@@ -46,15 +56,7 @@ namespace Vintagestory.GameContent
                 if (id == 0) return new ItemSlotBarrelInput(self);
                 else return new ItemSlotLiquidOnly(self);
             });
-
-
-            inventory.OnAcquireTransitionSpeed = (type, stack, basemul) =>
-            {
-                // Don't spoil while sealed
-                if (Sealed && CurrentRecipe != null && CurrentRecipe.SealHours > 0) return 0;
-
-                return type == EnumTransitionType.Perish ? 1 : 0;
-            };
+            
 
             inventory.SlotModified += Inventory_SlotModified;
 
@@ -62,6 +64,14 @@ namespace Vintagestory.GameContent
         }
 
 
+
+        protected override float Inventory_OnAcquireTransitionSpeed(EnumTransitionType transType, ItemStack stack, float baseMul)
+        {
+            // Don't spoil while sealed
+            if (Sealed && CurrentRecipe != null && CurrentRecipe.SealHours > 0) return 0;
+
+            return base.Inventory_OnAcquireTransitionSpeed(transType, stack, baseMul);
+        }
 
         public override void Initialize(ICoreAPI api)
         {
@@ -205,8 +215,11 @@ namespace Vintagestory.GameContent
                 }
             } else
             {
-                Sealed = false;
-                MarkDirty(true);
+                if (Sealed)
+                {
+                    Sealed = false;
+                    MarkDirty(true);
+                }
             }
         }
 
@@ -214,9 +227,13 @@ namespace Vintagestory.GameContent
 
         public override void OnBlockBroken()
         {
-            // Don't drop inventory contents
+            if (!Sealed)
+            {
+                base.OnBlockBroken();
+            }
 
             invDialog?.TryClose();
+            invDialog = null;
         }
 
 
@@ -277,6 +294,7 @@ namespace Vintagestory.GameContent
                     invDialog = new GuiDialogBarrel("Barrel", Inventory, pos, api as ICoreClientAPI);
                     invDialog.OnClosed += () =>
                     {
+                        invDialog = null;
                         (api as ICoreClientAPI).Network.SendBlockEntityPacket(pos.X, pos.Y, pos.Z, (int)EnumBlockContainerPacketId.CloseInventory, null);
                         byPlayer.InventoryManager.CloseInventory(inventory);
                     };

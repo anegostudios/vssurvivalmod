@@ -49,14 +49,14 @@ namespace Vintagestory.GameContent.Mechanics
 
         public float TotalAvailableTorque
         {
-            get { return TotalAvailableTorque; }
+            get { return totalAvailableTorque; }
         }
 
         public EnumTurnDirection TurnDirection
         {
             get
             {
-                return totalAvailableTorque > 0 ? EnumTurnDirection.Clockwise : EnumTurnDirection.Counterclockwise;
+                return totalAvailableTorque >= 0 ? EnumTurnDirection.Clockwise : EnumTurnDirection.Counterclockwise;
             }
         }
 
@@ -143,12 +143,12 @@ namespace Vintagestory.GameContent.Mechanics
         {
             /* 2. Determine total available torque and total resistance of the network */
 
-            totalAvailableTorque = 0;
+            float nowTorque = 0;
             totalResistance = 0;
             
             foreach (IMechanicalPowerNode powerNode in nodes)
             {
-                totalAvailableTorque += powerNode.GetTorque();
+                nowTorque += powerNode.GetTorque();
                 totalResistance += powerNode.GetResistance();
             }
             
@@ -159,37 +159,26 @@ namespace Vintagestory.GameContent.Mechanics
             // Negative free torque => decrease speed until -maxSpeed
             // No free torque => lower speed until 0
 
-            float unusedTorque = Math.Abs(totalAvailableTorque) - totalResistance;
-            int speedChange = (totalAvailableTorque > 0) ? 1 : -1;
-            if (unusedTorque <= 0)
+            float unusedTorque = Math.Abs(nowTorque) - totalResistance;
+
+
+            // http://fooplot.com/#W3sidHlwZSI6MCwiZXEiOiJtYXgoMSx4XjAuMjUpIiwiY29sb3IiOiIjMDAwMDAwIn0seyJ0eXBlIjoxMDAwLCJ3aW5kb3ciOlsiMCIsIjEwMCIsIjAiLCI1Il19XQ--
+            double drag = Math.Max(1, Math.Pow(nodes.Count, 0.25));
+            float step = 0.5f / (float)drag;
+
+            // Definition: There is no negative speed, but there can be negative torque
+            if (unusedTorque > 0)
             {
-                speedChange = 0;
+                speed += Math.Min(0.05f, step * unusedTorque);
+                totalAvailableTorque = Math.Min(nowTorque, totalAvailableTorque + step);
+
+            } else
+            {
+                speed = Math.Max(0, speed + step * unusedTorque);
+                totalAvailableTorque = Math.Max(0, totalAvailableTorque - step);
             }
+
             
-            // TODO: This step value should be determined by the total system drag
-            float step = 0.05f;
-
-            switch (speedChange)
-            {
-                case 1:
-                    speed = speed + step;
-                    break;
-
-                case -1:
-                    speed = speed - step;
-                    break;
-
-                case 0:
-                    if (speed > 0)
-                    {
-                        speed = Math.Max(0, speed - step);
-                    }
-                    if (speed < 0)
-                    {
-                        speed = Math.Max(0, speed + step);
-                    }
-                    break;
-            }
         }
 
 

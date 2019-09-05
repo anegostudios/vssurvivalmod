@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Vintagestory.API;
 using Vintagestory.API.Common;
+using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
 namespace Vintagestory.ServerMods
@@ -115,7 +116,7 @@ namespace Vintagestory.ServerMods
         int transSize = 3;
 
 
-        public bool Suitable(float temp, float rain, float yRel, Random rnd)
+        public bool Suitable(float temp, float rain, float yRel, LCGRandom rnd)
         {
             float transDistance = MinTemp - temp + transSize;
             return rain >= MinRain && rain <= MaxRain && MinY <= yRel && MaxY >= yRel && transDistance <= rnd.NextDouble() * transSize;

@@ -225,8 +225,7 @@ namespace Vintagestory.GameContent
             );    
         }
 
-        
-        public override BlockDropItemStack[] GetDropsForHandbook(IWorldAccessor world, BlockPos pos, IPlayer byPlayer)
+        public override BlockDropItemStack[] GetDropsForHandbook(ItemStack handbookStack, IPlayer forPlayer)
         {
             LootList list = lootLists[LastCodePart()];
             List<BlockDropItemStack> drops = new List<BlockDropItemStack>();
@@ -235,7 +234,9 @@ namespace Vintagestory.GameContent
             {
                 for (int i = 0; i < val.codes.Length; i++)
                 {
-                    BlockDropItemStack stack = new BlockDropItemStack(val.GetItemStack(world, i));
+                    BlockDropItemStack stack = new BlockDropItemStack(val.GetItemStack(api.World, i));
+                    if (stack == null) continue;
+                    
                     stack.Quantity.avg = val.chance / list.TotalChance / val.codes.Length;
                     drops.Add(stack);
                 }   

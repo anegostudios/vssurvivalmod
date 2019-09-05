@@ -13,7 +13,7 @@ namespace Vintagestory.GameContent
             return BlockFacing.FromCode(parts[parts.Length - 1]);
         }
 
-        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, Random worldGenRand)
+        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, LCGRandom worldGenRand)
         {
             if (!blockAccessor.GetBlock(pos).IsReplacableBy(this))
             {
@@ -77,9 +77,9 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override BlockDropItemStack[] GetDropsForHandbook(IWorldAccessor world, BlockPos pos, IPlayer byPlayer)
+        public override BlockDropItemStack[] GetDropsForHandbook(ItemStack handbookStack, IPlayer forPlayer)
         {
-            return GetHandbookDropsFromBreakDrops(world, pos, byPlayer);
+            return GetHandbookDropsFromBreakDrops(handbookStack, forPlayer);
         }
 
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)

@@ -101,6 +101,7 @@
     <Compile Include="BlockBehavior\BehaviorSneakPlacing.cs" />
     <Compile Include="BlockBehavior\BlockBehaviorLockable.cs" />
     <Compile Include="BlockBehavior\BlockBehaviorReinforcable.cs" />
+    <Compile Include="BlockEntityRenderer\BlockEntitySignPostRenderer.cs" />
     <Compile Include="BlockEntityRenderer\ChestLabelRenderer.cs" />
     <Compile Include="BlockEntityRenderer\EchoChamberRenderer.cs" />
     <Compile Include="BlockEntityRenderer\FirepitContentsRenderer.cs" />
@@ -112,6 +113,7 @@
     <Compile Include="BlockEntity\BELabeledChest.cs" />
     <Compile Include="BlockEntity\BELocustNest.cs" />
     <Compile Include="BlockEntity\BEShelf.cs" />
+    <Compile Include="BlockEntity\BESignPost.cs" />
     <Compile Include="BlockEntity\BEStaticTranslocator.cs" />
     <Compile Include="BlockEntity\BETrough.cs" />
     <Compile Include="BlockEntity\BEBeehive.cs" />
@@ -136,6 +138,7 @@
     <Compile Include="Block\BlockMeteorite.cs" />
     <Compile Include="Block\BlockRequireSolidGround.cs" />
     <Compile Include="Block\BlockShelf.cs" />
+    <Compile Include="Block\BlockSignPost.cs" />
     <Compile Include="Block\BlockStalagSection.cs" />
     <Compile Include="Block\BlockSoilDeposit.cs" />
     <Compile Include="Block\BlockStaticTranslocator.cs" />
@@ -322,6 +325,8 @@
     <Compile Include="Entity\AITask\AiTaskButterflyChase.cs" />
     <Compile Include="Entity\AITask\AiTaskButterflyWander.cs" />
     <Compile Include="Gui\GuiDialogBarrel.cs" />
+    <Compile Include="Gui\GuiDialogSignPost.cs" />
+    <Compile Include="Inventory\DummyInventory.cs" />
     <Compile Include="Inventory\ItemSlotBarrelInput.cs" />
     <Compile Include="Inventory\ItemSlotBuying.cs" />
     <Compile Include="Inventory\ItemSlotLiquidOnly.cs" />

@@ -42,7 +42,7 @@ namespace Vintagestory.GameContent
             return CollisionBoxesByFillLevel[FillLevel(blockAccessor, pos)];
         }
 
-        public override BlockDropItemStack[] GetDropsForHandbook(IWorldAccessor world, BlockPos pos, IPlayer byPlayer)
+        public override BlockDropItemStack[] GetDropsForHandbook(ItemStack handbookStack, IPlayer forPlayer)
         {
             return new BlockDropItemStack[0];
         }

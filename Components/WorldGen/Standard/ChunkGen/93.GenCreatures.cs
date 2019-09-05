@@ -257,7 +257,7 @@ namespace Vintagestory.ServerMods
             // Only spawn if the group reached the minimum group size
             if (spawnPositions.Count >= nextGroupSize)
             {
-                long herdId = api.WorldManager.GetNextHerdId();
+                long herdId = api.WorldManager.GetNextUniqueId();
 
                 foreach (SpawnOppurtunity so in spawnPositions)
                 {

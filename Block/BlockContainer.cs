@@ -13,7 +13,17 @@ namespace Vintagestory.GameContent
 {
     public class BlockContainer : Block
     {
+        public virtual float GetContainingTransitionModifierContained(IWorldAccessor world, ItemSlot inSlot, EnumTransitionType transType)
+        {
+            return 1;
+        }
+
+        public virtual float GetContainingTransitionModifierPlaced(IWorldAccessor world, BlockPos pos, EnumTransitionType transType)
+        {
+            return 1;
+        }
         
+
         public virtual void SetContents(ItemStack containerStack, ItemStack[] stacks)
         {
             TreeAttribute stacksTree = new TreeAttribute();
@@ -29,7 +39,7 @@ namespace Vintagestory.GameContent
         {
             List<ItemStack> stacks = new List<ItemStack>();
             ITreeAttribute treeAttr = itemstack.Attributes.GetTreeAttribute("contents");
-            if (treeAttr == null) return null;
+            if (treeAttr == null) return new ItemStack[0];
 
             foreach (var val in treeAttr)
             {
@@ -94,7 +104,47 @@ namespace Vintagestory.GameContent
 
             for (int i = 0; stacks != null && i < stacks.Length; i++)
             {
-                stacks[i]?.Collectible.UpdateAndGetTransitionStates(world, new DummySlot(stacks[i], inslot.Inventory));
+                DummySlot slot = null;
+
+                if (inslot.Inventory == null)
+                {
+                    DummyInventory dummyInv = new DummyInventory(api);
+                    //slot = new DummySlot(stacks != null && stacks.Length > 0 ? stacks[0] : null, dummyInv); - this seems wrong...?
+                    slot = new DummySlot(stacks[i], dummyInv);
+
+                    dummyInv.OnAcquireTransitionSpeed = (transType, stack, mul) =>
+                    {
+                        return mul * GetContainingTransitionModifierContained(world, slot, transType);
+                    };
+
+                    stacks[i]?.Collectible.UpdateAndGetTransitionStates(world, slot);
+                }
+                else {
+                    slot = new DummySlot(stacks[i], inslot.Inventory);
+
+                    var pref = inslot.Inventory.OnAcquireTransitionSpeed;
+                    inslot.Inventory.OnAcquireTransitionSpeed = (EnumTransitionType transType, ItemStack stack, float mulByConfig) =>
+                    {
+                        float mul = mulByConfig;
+                        if (pref != null)
+                        {
+                            mul = pref(transType, stack, mulByConfig);
+                        }
+
+                        return GetContainingTransitionModifierContained(world, inslot, transType) * mul;
+                        //return mulByConfig * GetContainingTransitionModifierContained(world, slot, transType); - doesn't work for sealed crocks
+                    };
+
+                    slot.MarkedDirty += () => { inslot.Inventory.DidModifyItemSlot(inslot); return true; };
+
+                    stacks[i]?.Collectible.UpdateAndGetTransitionStates(world, slot);
+
+
+                    inslot.Inventory.OnAcquireTransitionSpeed = pref;
+                }
+                
+
+                
             }
 
             return base.UpdateAndGetTransitionStates(world, inslot);

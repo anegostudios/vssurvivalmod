@@ -1,8 +1,11 @@
 ﻿using System;
 using System.Linq;
+using System.Text;
+using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
@@ -28,6 +31,8 @@ namespace Vintagestory.GameContent
     {
         protected static Random rand = new Random();
         protected static CodeAndChance[] weedNames;
+
+
         protected static float totalWeedChance;
 
         public static OrderedDictionary<string, float> Fertilities = new OrderedDictionary<string, float>{
@@ -42,15 +47,16 @@ namespace Vintagestory.GameContent
         protected double totalHoursWaterRetention = 24.5;
 
         protected BlockPos upPos;
-        protected long growListenerId;
         // Total game hours from where on it can enter the next growth stage
         protected double totalHoursForNextStage;
         // The last time fertility increase was checked
-        protected double totalHoursFertilityCheck;
+        protected double totalHoursLastUpdate;
 
         // Stored values
         protected float[] nutrients = new float[3];
+        protected float[] slowReleaseNutrients = new float[3];
         protected double lastWateredTotalHours = 0;
+        protected double lastWaterSearchedTotalHours = 0;
 
         // When watering with a watering can, not stored values
         protected float currentlyWateredSeconds;
@@ -61,8 +67,10 @@ namespace Vintagestory.GameContent
         protected TreeAttribute cropAttrs = new TreeAttribute();
 
         protected int delayGrowthBelowSunLight = 19;
-        protected float lossPerLevel = 0.1f; 
-        
+        protected float lossPerLevel = 0.1f;
+
+
+
         public override void Initialize(ICoreAPI api)
         {
             base.Initialize(api);
@@ -70,12 +78,7 @@ namespace Vintagestory.GameContent
 
             if (api is ICoreServerAPI)
             {
-                if (HasUnripeCrop())
-                {
-                    growListenerId = RegisterGameTickListener(CheckGrow, 2000);
-                }
-
-                RegisterGameTickListener(SlowTick, 15000);
+                RegisterGameTickListener(Update, 3500);
 
                 api.ModLoader.GetModSystem<POIRegistry>().AddPOI(this);
             }
@@ -99,7 +102,12 @@ namespace Vintagestory.GameContent
         }
 
 
-        internal void CreatedFromSoil(Block block)
+        public override void OnBlockPlaced(ItemStack byItemStack = null)
+        {
+            base.OnBlockPlaced(byItemStack);
+        }
+
+        public void CreatedFromSoil(Block block)
         {
             string fertility = block.LastCodePart(1);
             if (block is BlockFarmland)
@@ -112,93 +120,35 @@ namespace Vintagestory.GameContent
             nutrients[1] = originalFertility;
             nutrients[2] = originalFertility;
 
-            totalHoursFertilityCheck = api.World.Calendar.TotalHours;
+            totalHoursLastUpdate = api.World.Calendar.TotalHours;
+        }
+
+        public bool OnBlockInteract(IPlayer byPlayer)
+        {
+            JsonObject obj = byPlayer.InventoryManager.ActiveHotbarSlot.Itemstack?.Collectible?.Attributes?["fertilizerProps"];
+            if (obj == null || !obj.Exists) return false;
+            FertilizerProps props = obj.AsObject<FertilizerProps>();
+            if (props == null) return false;
+
+            slowReleaseNutrients[0] = Math.Min(150, slowReleaseNutrients[0] + props.N);
+            slowReleaseNutrients[1] = Math.Min(150, slowReleaseNutrients[1] + props.P);
+            slowReleaseNutrients[2] = Math.Min(150, slowReleaseNutrients[2] + props.K);
+
+            byPlayer.InventoryManager.ActiveHotbarSlot.TakeOut(1);
+            byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
+
+            (byPlayer as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
+            api.World.PlaySoundAt(api.World.BlockAccessor.GetBlock(pos).Sounds.Hit, pos.X + 0.5, pos.Y + 0.75, pos.Z + 0.5, byPlayer, true, 12);
+
+            MarkDirty(false);
+            return true;
         }
 
 
-        private void SlowTick(float dt)
+        protected bool FindNearbyWater()
         {
-            FindNearbyWater();
+            lastWaterSearchedTotalHours = api.World.Calendar.TotalHours;
 
-            if (IsWatered)
-            {
-                Block block = api.World.BlockAccessor.GetBlock(base.pos);
-                if (block.BlockMaterial == EnumBlockMaterial.Air)
-                {
-                    // Block must have been removed already. This code should not get excecuted in that case but it does. I don't know why yet.
-                    // OnBlockRemoved should have removed the game tick listener during removal.
-                    api.World.BlockAccessor.RemoveBlockEntity(base.pos);
-                    return;
-                }
-
-                if (HasUnripeCrop() && growListenerId == 0)
-                {
-                    growListenerId = RegisterGameTickListener(CheckGrow, 2000);
-                }
-            }
-
-            UpdateFarmlandBlock();
-
-
-            Block upblock = api.World.BlockAccessor.GetBlock(upPos);
-            if (upblock == null) return;
-
-            double hoursPassed = api.World.Calendar.TotalHours - totalHoursFertilityCheck;
-
-            // Let's increase fertility every 3-4 game hours
-            double hoursRequired = (3 + rand.NextDouble());
-            int fertilityGained = 0;
-            bool growTallGrass = false;
-            while (hoursPassed > hoursRequired)
-            {
-                fertilityGained++;
-                hoursPassed -= hoursRequired;
-                totalHoursFertilityCheck += hoursRequired;
-
-                hoursRequired = (2 + rand.NextDouble());
-                growTallGrass |= rand.NextDouble() < 0.006;
-            }
-
-            if (upblock.BlockMaterial == EnumBlockMaterial.Air && growTallGrass)
-            {
-                double rnd = rand.NextDouble() * totalWeedChance;
-                for (int i = 0; i < weedNames.Length; i++)
-                {
-                    rnd -= weedNames[i].Chance;
-                    if (rnd <= 0)
-                    {
-                        Block weedsBlock = api.World.GetBlock(weedNames[i].Code);
-                        if (weedsBlock != null)
-                        {
-                            api.World.BlockAccessor.SetBlock(weedsBlock.BlockId, upPos);
-                        }
-                        break;
-                    }
-                }  
-            }
-            
-
-            if (fertilityGained > 0 && (nutrients[0] < originalFertility || nutrients[1] < originalFertility || nutrients[2] < originalFertility))
-            {
-                EnumSoilNutrient? currentlyConsumedNutrient = null;
-                if (upblock.CropProps != null)
-                {
-                    currentlyConsumedNutrient = upblock.CropProps.RequiredNutrient;
-                    fertilityGained /= 3;
-                    if (HasRipeCrop()) fertilityGained = 0;
-                }
-
-                if (currentlyConsumedNutrient != EnumSoilNutrient.N) nutrients[0] = Math.Min(originalFertility, nutrients[0] + fertilityGained);
-                if (currentlyConsumedNutrient != EnumSoilNutrient.P) nutrients[1] = Math.Min(originalFertility, nutrients[1] + fertilityGained);
-                if (currentlyConsumedNutrient != EnumSoilNutrient.K) nutrients[2] = Math.Min(originalFertility, nutrients[2] + fertilityGained);
-
-                api.World.BlockAccessor.MarkBlockEntityDirty(base.pos);
-            }
-        }
-
-
-        protected void FindNearbyWater()
-        {
             // 1. Watered check
             bool waterNearby = false;
 
@@ -217,57 +167,161 @@ namespace Vintagestory.GameContent
 
             if (waterNearby)
             {
+                if (!IsWatered) MarkDirty(true);
                 lastWateredTotalHours = api.World.Calendar.TotalHours;
+                return true;
             }
+
+            return false;
         }
 
-        private void CheckGrow(float dt)
+
+
+
+
+
+
+
+
+        private void Update(float dt)
         {
             double hoursNextStage = GetHoursForNextStage();
+            bool nearbyWaterTested = false;
+            bool nearbyWaterFound = false;
+
+            double nowTotalHours = api.World.Calendar.TotalHours;
 
             if (api.World.ElapsedMilliseconds - lastWateredMs > 10000)
             {
                 currentlyWateredSeconds = Math.Max(0, currentlyWateredSeconds - dt);
             }
 
-            // If chunk got loaded after a long inactivity, test for water right away, otherwise crops wont fast forward
-            if (!IsWatered && api.World.Calendar.TotalHours - lastWateredTotalHours >= totalHoursWaterRetention - 1)
+            if (!IsWatered && nowTotalHours - lastWateredTotalHours >= totalHoursWaterRetention - 1 && (nowTotalHours - lastWaterSearchedTotalHours) >= 0.5f)
             {
-                FindNearbyWater();
+                nearbyWaterTested = true;
+                nearbyWaterFound = FindNearbyWater();
             }
+
+            double hoursPassed = nowTotalHours - totalHoursLastUpdate;
+            if (hoursPassed < 1) return;
 
             // Slow down growth on bad light levels
-            int sunlight = api.World.BlockAccessor.GetLightLevel(base.pos.UpCopy(), EnumLightLevelType.MaxLight);
+            int sunlight = api.World.BlockAccessor.GetLightLevel(pos.UpCopy(), EnumLightLevelType.MaxLight);
             double lightGrowthSpeedFactor = GameMath.Clamp(1 - (delayGrowthBelowSunLight - sunlight) * lossPerLevel, 0, 1);
 
-            if (lightGrowthSpeedFactor <= 0)
-            {
-                return;
-            }
-
+            Block upblock = api.World.BlockAccessor.GetBlock(upPos);
+            bool cropCanGrow = lightGrowthSpeedFactor > 0 && upblock != null && upblock.CropProps != null;
             double lightHoursPenalty = hoursNextStage / lightGrowthSpeedFactor - hoursNextStage;
             double totalHoursNextGrowthState = totalHoursForNextStage + lightHoursPenalty;
 
-
-            while (api.World.Calendar.TotalHours > totalHoursNextGrowthState)
+            EnumSoilNutrient? currentlyConsumedNutrient = null;
+            if (upblock.CropProps != null)
             {
+                currentlyConsumedNutrient = upblock.CropProps.RequiredNutrient;
+            }
+
+            // Let's increase fertility every 3-4 game hours
+            double hourIntervall = (3 + rand.NextDouble());            
+            bool growTallGrass = false;
+            float[] npkRegain = new float[3];
+
+            
+            // Fast forward in 3-4 hour intervalls
+            while ((nowTotalHours - totalHoursLastUpdate) > hourIntervall)
+            {
+                totalHoursLastUpdate += hourIntervall;
+
+                hourIntervall = (2 + rand.NextDouble());
+                growTallGrass |= rand.NextDouble() < 0.006;
+
+                hourIntervall = (3 + rand.NextDouble());
+
+                bool ripe = HasRipeCrop();
+
+                // Rule 1: Fertility increase up to original levels by 1 every 3-4 ingame hours
+                // Rule 2: Fertility does not increase with a ripe crop on it
+                npkRegain[0] = ripe ? 0 : 0.33f;
+                npkRegain[1] = ripe ? 0 : 0.33f;
+                npkRegain[2] = ripe ? 0 : 0.33f;
+
+                // Rule 3: Fertility increase up 3 times slower for the currently growing crop
+                if (currentlyConsumedNutrient != null)
+                {
+                    npkRegain[(int)currentlyConsumedNutrient] /= 3;
+                }
+                
+                for (int i = 0; i < 3; i++)
+                {
+                    nutrients[i] += Math.Max(0, npkRegain[i] + Math.Min(0, originalFertility - nutrients[i] - npkRegain[i]));
+
+                    // Rule 4: Slow release fertilizer can fertilize up to 100 fertility
+                    if (slowReleaseNutrients[i] > 0)
+                    {
+                        nutrients[i] = Math.Min(100, nutrients[i] + Math.Min(0.1f, slowReleaseNutrients[i]));
+                        slowReleaseNutrients[i] = Math.Max(0, slowReleaseNutrients[i] - 0.5f);
+                    }
+                    else
+                    {
+                        // Rule 5: Once the slow release fertilizer is consumed, the soil will slowly return to its original fertility
+
+                        if (nutrients[i] > originalFertility)
+                        {
+                            nutrients[i] = Math.Max(originalFertility, nutrients[i] - 0.05f);
+                        }
+                    }
+                }
+
+
+                if (nearbyWaterTested && nearbyWaterFound)
+                {
+                    lastWateredTotalHours = totalHoursLastUpdate;
+                } else
+                {
+                    if (!nearbyWaterTested && !IsWatered && api.World.Calendar.TotalHours - lastWateredTotalHours >= totalHoursWaterRetention - 1 && (totalHoursLastUpdate - lastWaterSearchedTotalHours) >= 0.5f)
+                    {
+                        nearbyWaterTested = true;
+                        nearbyWaterFound = FindNearbyWater();
+                    }
+                }
+
                 // Did the farmland run out of water at this time?
                 if (lastWateredTotalHours - totalHoursNextGrowthState < -totalHoursWaterRetention)
                 {
                     totalHoursForNextStage = api.World.Calendar.TotalHours + hoursNextStage;
-                    break;
+                    continue;
                 }
 
-                TryGrowCrop(totalHoursForNextStage);
-                totalHoursForNextStage += hoursNextStage;
-                totalHoursNextGrowthState = totalHoursForNextStage + lightHoursPenalty;
+                if (totalHoursNextGrowthState <= totalHoursLastUpdate)
+                {
+                    TryGrowCrop(totalHoursForNextStage);
+                    totalHoursForNextStage += hoursNextStage;
+                    totalHoursNextGrowthState = totalHoursForNextStage + lightHoursPenalty;
+                }
             }
-            
-            if (HasRipeCrop())
+
+
+
+            if (growTallGrass && upblock.BlockMaterial == EnumBlockMaterial.Air)
             {
-                api.Event.UnregisterGameTickListener(growListenerId);
-                growListenerId = 0;
+                double rnd = rand.NextDouble() * totalWeedChance;
+                for (int i = 0; i < weedNames.Length; i++)
+                {
+                    rnd -= weedNames[i].Chance;
+                    if (rnd <= 0)
+                    {
+                        Block weedsBlock = api.World.GetBlock(weedNames[i].Code);
+                        if (weedsBlock != null)
+                        {
+                            api.World.BlockAccessor.SetBlock(weedsBlock.BlockId, upPos);
+                        }
+                        break;
+                    }
+                }
             }
+
+
+            UpdateFarmlandBlock();
+            api.World.BlockAccessor.MarkBlockEntityDirty(pos);
         }
 
         public double GetHoursForNextStage()
@@ -308,11 +362,6 @@ namespace Vintagestory.GameContent
             {
                 api.World.BlockAccessor.SetBlock(block.BlockId, upPos);
                 totalHoursForNextStage = api.World.Calendar.TotalHours + GetHoursForNextStage();
-
-                if (HasUnripeCrop() && api is ICoreServerAPI && growListenerId == 0)
-                {
-                    growListenerId = RegisterGameTickListener(CheckGrow, 2000);
-                }
 
                 foreach (CropBehavior behavior in block.CropProps.Behaviors)
                 {
@@ -410,7 +459,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        int FertilityLevel(float fertiltyValue)
+        internal int FertilityLevel(float fertiltyValue)
         {
             int i = 0;
             foreach (var val in Fertilities) {
@@ -442,18 +491,24 @@ namespace Vintagestory.GameContent
             nutrients[0] = tree.GetFloat("n");
             nutrients[1] = tree.GetFloat("p");
             nutrients[2] = tree.GetFloat("k");
+
+            slowReleaseNutrients[0] = tree.GetFloat("slowN");
+            slowReleaseNutrients[1] = tree.GetFloat("slowP");
+            slowReleaseNutrients[2] = tree.GetFloat("slowK");
+
             lastWateredTotalHours = tree.GetDouble("lastWateredTotalHours");
+            lastWaterSearchedTotalHours = tree.GetDouble("lastWaterSearchedTotalHours");
             originalFertility = tree.GetInt("originalFertility");
 
             if (tree.HasAttribute("totalHoursForNextStage"))
             {
                 totalHoursForNextStage = tree.GetDouble("totalHoursForNextStage");
-                totalHoursFertilityCheck = tree.GetDouble("totalHoursFertilityCheck");
+                totalHoursLastUpdate = tree.GetDouble("totalHoursFertilityCheck");
             } else
             {
                 // Pre v1.5.1
                 totalHoursForNextStage = tree.GetDouble("totalDaysForNextStage") * 24;
-                totalHoursFertilityCheck = tree.GetDouble("totalDaysFertilityCheck") * 24;
+                totalHoursLastUpdate = tree.GetDouble("totalDaysFertilityCheck") * 24;
             }
 
             TreeAttribute cropAttrs = tree["cropAttrs"] as TreeAttribute;
@@ -466,21 +521,38 @@ namespace Vintagestory.GameContent
             tree.SetFloat("n", nutrients[0]);
             tree.SetFloat("p", nutrients[1]);
             tree.SetFloat("k", nutrients[2]);
+
+            tree.SetFloat("slowN", slowReleaseNutrients[0]);
+            tree.SetFloat("slowP", slowReleaseNutrients[1]);
+            tree.SetFloat("slowK", slowReleaseNutrients[2]);
+
             tree.SetDouble("lastWateredTotalHours", lastWateredTotalHours);
+            tree.SetDouble("lastWaterSearchedTotalHours", lastWaterSearchedTotalHours);
             tree.SetInt("originalFertility", originalFertility);
             tree.SetDouble("totalHoursForNextStage", totalHoursForNextStage);
-            tree.SetDouble("totalHoursFertilityCheck", totalHoursFertilityCheck);
+            tree.SetDouble("totalHoursFertilityCheck", totalHoursLastUpdate);
             tree["cropAttrs"] = cropAttrs;
         }
 
 
         public override string GetBlockInfo(IPlayer forPlayer)
         {
-            return
-                "Nutrient Levels: N " + (int)nutrients[0] + "%, P " + (int)nutrients[1] + "%, K " + (int)nutrients[2] + "%\n" +
-                "Growth Speeds: N " + Math.Round(100*1/LowNutrientPenalty(EnumSoilNutrient.N),0) + "%, P " + Math.Round(100*1/LowNutrientPenalty(EnumSoilNutrient.P),0) + "%, K " + Math.Round(100*1/LowNutrientPenalty(EnumSoilNutrient.K),0) + "%\n"
-            ;
+            StringBuilder sb = new StringBuilder();
+
+            sb.AppendLine(Lang.Get("Nutrient Levels: N {0}%, P {1}%, K {2}%", Math.Round(nutrients[0],1), Math.Round(nutrients[1],1), Math.Round(nutrients[2],1)));
+            float snn = (float)Math.Round(slowReleaseNutrients[0],1);
+            float snp = (float)Math.Round(slowReleaseNutrients[1],1);
+            float snk = (float)Math.Round(slowReleaseNutrients[2],1);
+            if (snn > 0 || snp > 0 || snk > 0)
+            {
+                sb.AppendLine(Lang.Get("Slow Release Nutrients: N {0}%, P {1}%, K {2}%", snn, snp, snk));
+            }
+
+            sb.AppendLine(Lang.Get("Growth speeds: N Crop: {0}%, P Crop: {1}%, K Crop: {2}%", Math.Round(100 * 1 / LowNutrientPenalty(EnumSoilNutrient.N), 0), Math.Round(100 * 1 / LowNutrientPenalty(EnumSoilNutrient.P), 0), Math.Round(100 * 1 / LowNutrientPenalty(EnumSoilNutrient.K), 0)));
+
+            return sb.ToString();
         }
+
 
         public void WaterFarmland(float dt, bool waterNeightbours = true)
         {
@@ -517,7 +589,7 @@ namespace Vintagestory.GameContent
         {
             get
             {
-                return totalHoursFertilityCheck;
+                return totalHoursLastUpdate;
             }
         }
 
@@ -593,13 +665,18 @@ namespace Vintagestory.GameContent
 
         public bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
         {
+            return false;
+
+            // Just doesn't look right anymore when fertilized soil turns its texture into compost or terra preta
+            /*if (originalFertility == 0) return false;
+
             int nowLevel = FertilityLevel((nutrients[0] + nutrients[1] + nutrients[2]) / 3);
             Block farmlandBlock = api.World.BlockAccessor.GetBlock(pos);
             Block nextFarmlandBlock = api.World.GetBlock(farmlandBlock.CodeWithParts(IsWatered ? "moist" : "dry", Fertilities.GetKeyAtIndex(nowLevel)));
 
             mesher.AddMeshData((api as ICoreClientAPI).TesselatorManager.GetDefaultBlockMesh(nextFarmlandBlock));
 
-            return true;
+            return true;*/
         }
 
         public Vec3d Position => pos.ToVec3d().Add(0.5, 1, 0.5);

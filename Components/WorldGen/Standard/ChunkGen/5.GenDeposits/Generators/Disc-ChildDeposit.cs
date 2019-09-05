@@ -32,6 +32,12 @@ namespace Vintagestory.ServerMods
 
         }
 
+        public override void GetYMinMax(BlockPos pos, out double miny, out double maxy)
+        {
+            variant.parentDeposit.GeneratorInst.GetYMinMax(pos, out miny, out maxy);
+        }
+
+
         public void ResolveAdd(Block inblock, string key, string value)
         {
             placeBlockByInBlockId[inblock.BlockId] = PlaceBlock.Resolve(variant.fromFile, Api, inblock, key, value);
@@ -78,7 +84,7 @@ namespace Vintagestory.ServerMods
 
                     if (variant.WithBlockCallback)
                     {
-                        placeblock.TryPlaceBlockForWorldGen(blockAccessor, targetPos, BlockFacing.UP, rand);
+                        placeblock.TryPlaceBlockForWorldGen(blockAccessor, targetPos, BlockFacing.UP, DepositRand);
                     }
                     else
                     {
