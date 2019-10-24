@@ -41,7 +41,7 @@ namespace Vintagestory.GameContent
                 Block aboveBlock = blockAccessor.GetBlock(pos.X, pos.Y - i, pos.Z);
                 
                 if  (
-                    (aboveBlock.BlockMaterial == EnumBlockMaterial.Wood || aboveBlock.BlockMaterial == EnumBlockMaterial.Plant) && aboveBlock.SideSolid[BlockFacing.DOWN.Index]
+                    (aboveBlock.BlockMaterial == EnumBlockMaterial.Wood || aboveBlock.BlockMaterial == EnumBlockMaterial.Leaves) && aboveBlock.SideSolid[BlockFacing.DOWN.Index]
                 )
                 {
                     BlockPos atpos = new BlockPos(pos.X, pos.Y - i - 1, pos.Z);
@@ -64,7 +64,7 @@ namespace Vintagestory.GameContent
                         return true;
                     }
 
-                    if (block.BlockMaterial != EnumBlockMaterial.Plant && block.BlockMaterial != EnumBlockMaterial.Air) continue;
+                    if (block.BlockMaterial != EnumBlockMaterial.Leaves && block.BlockMaterial != EnumBlockMaterial.Air) continue;
 
                     int dx = pos.X % blockAccessor.ChunkSize;
                     int dz = pos.Z % blockAccessor.ChunkSize;
@@ -77,6 +77,9 @@ namespace Vintagestory.GameContent
                     {
                         blockAccessor.SpawnBlockEntity(EntityClass, atpos);
                     }
+
+                   // blockAccessor.SetBlock(blockAccessor.GetBlock(new AssetLocation("creativeblock-60")).BlockId, pos);
+
                     return true;
                 }
             }

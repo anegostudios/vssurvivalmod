@@ -41,7 +41,7 @@ namespace Vintagestory.GameContent
 
             if (api is ICoreClientAPI)
             {
-                labelrenderer = new ChestLabelRenderer(pos, api as ICoreClientAPI);
+                labelrenderer = new ChestLabelRenderer(Pos, api as ICoreClientAPI);
                 labelrenderer.SetNewText(text, color);
             }
         }
@@ -63,7 +63,7 @@ namespace Vintagestory.GameContent
                     tempStack = hotbarSlot.TakeOut(1);
 
 
-                    if (api.World is IServerWorldAccessor)
+                    if (Api.World is IServerWorldAccessor)
                     {
                         byte[] data;
 
@@ -76,9 +76,9 @@ namespace Vintagestory.GameContent
                             data = ms.ToArray();
                         }
 
-                        ((ICoreServerAPI)api).Network.SendBlockEntityPacket(
+                        ((ICoreServerAPI)Api).Network.SendBlockEntityPacket(
                             (IServerPlayer)byPlayer,
-                            pos.X, pos.Y, pos.Z,
+                            Pos.X, Pos.Y, Pos.Z,
                             (int)EnumSignPacketId.OpenDialog,
                             data
                         );
@@ -112,10 +112,10 @@ namespace Vintagestory.GameContent
                 MarkDirty(true);
 
                 // Tell server to save this chunk to disk again
-                api.World.BlockAccessor.GetChunkAtBlockPos(pos.X, pos.Y, pos.Z).MarkModified();
+                Api.World.BlockAccessor.GetChunkAtBlockPos(Pos.X, Pos.Y, Pos.Z).MarkModified();
 
                 // 85% chance to get back the item
-                if (api.World.Rand.NextDouble() < 0.85)
+                if (Api.World.Rand.NextDouble() < 0.85)
                 {
                     player.InventoryManager.TryGiveItemstack(tempStack);
                 }
@@ -143,14 +143,14 @@ namespace Vintagestory.GameContent
                     text = reader.ReadString();
                     if (text == null) text = "";
 
-                    IClientWorldAccessor clientWorld = (IClientWorldAccessor)api.World;
+                    IClientWorldAccessor clientWorld = (IClientWorldAccessor)Api.World;
 
-                    GuiDialogBlockEntityTextInput dlg = new GuiDialogBlockEntityTextInput(dialogTitle, pos, text, api as ICoreClientAPI, 3);
+                    GuiDialogBlockEntityTextInput dlg = new GuiDialogBlockEntityTextInput(dialogTitle, Pos, text, Api as ICoreClientAPI, 3);
                     dlg.OnTextChanged = DidChangeTextClientSide;
                     dlg.OnCloseCancel = () =>
                     {
                         labelrenderer.SetNewText(text, color);
-                        (api as ICoreClientAPI).Network.SendBlockEntityPacket(pos.X, pos.Y, pos.Z, (int)EnumSignPacketId.CancelEdit, null);
+                        (Api as ICoreClientAPI).Network.SendBlockEntityPacket(Pos.X, Pos.Y, Pos.Z, (int)EnumSignPacketId.CancelEdit, null);
                     };
                     dlg.TryOpen();
                 }

@@ -45,7 +45,7 @@ namespace Vintagestory.GameContent
 
     
 
-    public class BlockEntityChisel : BlockEntity, IBlockShapeSupplier, IBlockEntityRotatable
+    public class BlockEntityChisel : BlockEntity, IBlockEntityRotatable
     {
         static CuboidWithMaterial tmpCuboid = new CuboidWithMaterial();
 
@@ -74,13 +74,13 @@ namespace Vintagestory.GameContent
 
         public bool DetailingMode
         {
-            get { return api.Side == EnumAppSide.Client && (api.World as IClientWorldAccessor).Player?.InventoryManager?.ActiveHotbarSlot?.Itemstack?.Collectible?.Tool == EnumTool.Chisel; }
+            get { return Api.Side == EnumAppSide.Client && (Api.World as IClientWorldAccessor).Player?.InventoryManager?.ActiveHotbarSlot?.Itemstack?.Collectible?.Tool == EnumTool.Chisel; }
         }
 
         public int ChiselMode(IPlayer player)
         {
             ItemSlot slot = player?.InventoryManager?.ActiveHotbarSlot;
-            int? mode = slot?.Itemstack?.Collectible.GetToolMode(slot, player, new BlockSelection() { Position = pos });
+            int? mode = slot?.Itemstack?.Collectible.GetToolMode(slot, player, new BlockSelection() { Position = Pos });
 
             return mode == null ? 0 : (int)mode;
         }
@@ -114,7 +114,7 @@ namespace Vintagestory.GameContent
             VoxelCuboids.Add(ToCuboid(0, 0, 0, 16, 16, 16, 0));
             this.blockName = blockName;
 
-            if (api.Side == EnumAppSide.Client && Mesh == null)
+            if (Api.Side == EnumAppSide.Client && Mesh == null)
             {
                 RegenMesh();
             }
@@ -155,7 +155,7 @@ namespace Vintagestory.GameContent
 
         internal void OnBlockInteract(IPlayer byPlayer, BlockSelection blockSel, bool isBreak)
         {
-            if (api.World.Side == EnumAppSide.Client && DetailingMode)
+            if (Api.World.Side == EnumAppSide.Client && DetailingMode)
             {
                 Cuboidf box = GetOrCreateVoxelSelectionBoxes(byPlayer)[blockSel.SelectionBoxIndex];
                 Vec3i voxelPos = new Vec3i((int)(16 * box.X1), (int)(16 * box.Y1), (int)(16 * box.Z1));
@@ -171,10 +171,10 @@ namespace Vintagestory.GameContent
 
             if (mode == 5)
             {
-                IClientWorldAccessor clientWorld = (IClientWorldAccessor)api.World;
+                IClientWorldAccessor clientWorld = (IClientWorldAccessor)Api.World;
 
                 string prevName = blockName;
-                GuiDialogBlockEntityTextInput dlg = new GuiDialogBlockEntityTextInput(Lang.Get("Block name"), pos, blockName, api as ICoreClientAPI);
+                GuiDialogBlockEntityTextInput dlg = new GuiDialogBlockEntityTextInput(Lang.Get("Block name"), Pos, blockName, Api as ICoreClientAPI);
                 dlg.OnTextChanged = (text) => blockName = text;
                 dlg.OnCloseCancel = () => blockName = prevName;
                 dlg.TryOpen();
@@ -207,7 +207,7 @@ namespace Vintagestory.GameContent
 
             if (!wasChanged) return;
 
-            if (api.Side == EnumAppSide.Client)
+            if (Api.Side == EnumAppSide.Client)
             {
                 RegenMesh();
             }
@@ -217,25 +217,25 @@ namespace Vintagestory.GameContent
 
             // Send a custom network packet for server side, because
             // serverside blockselection index is inaccurate
-            if (api.Side == EnumAppSide.Client)
+            if (Api.Side == EnumAppSide.Client)
             {
                 SendUseOverPacket(byPlayer, voxelPos, facing, isBreak);
             }
 
-            double posx = pos.X + voxelPos.X / 16f;
-            double posy = pos.Y + voxelPos.Y / 16f;
-            double posz = pos.Z + voxelPos.Z / 16f;
-            api.World.PlaySoundAt(new AssetLocation("sounds/player/knap" + (api.World.Rand.Next(2) > 0 ? 1 : 2)), posx, posy, posz, byPlayer, true, 12, 1);
+            double posx = Pos.X + voxelPos.X / 16f;
+            double posy = Pos.Y + voxelPos.Y / 16f;
+            double posz = Pos.Z + voxelPos.Z / 16f;
+            Api.World.PlaySoundAt(new AssetLocation("sounds/player/knap" + (Api.World.Rand.Next(2) > 0 ? 1 : 2)), posx, posy, posz, byPlayer, true, 12, 1);
 
             if (byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
             {
-                itemslot.Itemstack?.Collectible.DamageItem(api.World, byPlayer.Entity, itemslot);
+                itemslot.Itemstack?.Collectible.DamageItem(Api.World, byPlayer.Entity, itemslot);
             }
 
 
             if (VoxelCuboids.Count == 0)
             {
-                api.World.BlockAccessor.SetBlock(0, pos);
+                Api.World.BlockAccessor.SetBlock(0, Pos);
                 return;
             }
         }
@@ -311,8 +311,8 @@ namespace Vintagestory.GameContent
                 data = ms.ToArray();
             }
 
-            ((ICoreClientAPI)api).Network.SendBlockEntityPacket(
-                pos.X, pos.Y, pos.Z,
+            ((ICoreClientAPI)Api).Network.SendBlockEntityPacket(
+                Pos.X, Pos.Y, Pos.Z,
                 (int)1010,
                 data
             );
@@ -331,7 +331,7 @@ namespace Vintagestory.GameContent
                 }
                 MarkDirty(true);
                 // Tell server to save this chunk to disk again
-                api.World.BlockAccessor.GetChunkAtBlockPos(pos.X, pos.Y, pos.Z).MarkModified();
+                Api.World.BlockAccessor.GetChunkAtBlockPos(Pos.X, Pos.Y, Pos.Z).MarkModified();
             }
 
 
@@ -356,9 +356,9 @@ namespace Vintagestory.GameContent
 
         internal Cuboidf[] GetSelectionBoxes(IBlockAccessor world, BlockPos pos, IPlayer forPlayer = null)
         {
-            if (api.Side == EnumAppSide.Client && DetailingMode)
+            if (Api.Side == EnumAppSide.Client && DetailingMode)
             {
-                if (forPlayer == null) forPlayer = (api.World as IClientWorldAccessor).Player;
+                if (forPlayer == null) forPlayer = (Api.World as IClientWorldAccessor).Player;
 
                 int nowSize = ChiselSize(forPlayer);
                 
@@ -449,7 +449,7 @@ namespace Vintagestory.GameContent
         {
             RebuildCuboidList(Voxels, VoxelMaterial);
 
-            if (api.Side == EnumAppSide.Client)
+            if (Api.Side == EnumAppSide.Client)
             {
                 RegenMesh();
             }
@@ -459,7 +459,7 @@ namespace Vintagestory.GameContent
 
             if (VoxelCuboids.Count == 0)
             {
-                api.World.BlockAccessor.SetBlock(0, pos);
+                Api.World.BlockAccessor.SetBlock(0, Pos);
                 return;
             }
         }
@@ -653,7 +653,7 @@ namespace Vintagestory.GameContent
         #region Mesh generation
         public void RegenMesh()
         {
-            Mesh = CreateMesh(api as ICoreClientAPI, VoxelCuboids, MaterialIds);
+            Mesh = CreateMesh(Api as ICoreClientAPI, VoxelCuboids, MaterialIds);
         }
 
         public static MeshData CreateMesh(ICoreClientAPI coreClientAPI, List<uint> voxelCuboids, int[] materials)
@@ -688,7 +688,7 @@ namespace Vintagestory.GameContent
 
         public MeshData CreateDecalMesh(ITexPositionSource decalTexSource)
         {
-            return CreateDecalMesh(api as ICoreClientAPI, VoxelCuboids, decalTexSource);
+            return CreateDecalMesh(Api as ICoreClientAPI, VoxelCuboids, decalTexSource);
         }
 
         public static MeshData CreateDecalMesh(ICoreClientAPI coreClientAPI, List<uint> voxelCuboids, ITexPositionSource decalTexSource)
@@ -727,13 +727,7 @@ namespace Vintagestory.GameContent
             
             float[] sideShadings = CubeMeshUtil.DefaultBlockSideShadingsByFacing;
 
-            for (int i = 0; i < mesh.Rgba.Length; i+=4)
-            {
-                int faceIndex = i / 4 / 4;  // 4 rgba per vertex, 4 vertices per face
-
-                byte b = (byte)(255 * sideShadings[faceIndex]);
-                mesh.Rgba[i + 0] = mesh.Rgba[i + 1] = mesh.Rgba[i + 2] = b;
-            }
+            mesh.Rgba.Fill((byte)255);
 
             mesh.Flags = new int[mesh.VerticesCount];
             mesh.Flags.Fill(renderFlags);
@@ -752,9 +746,15 @@ namespace Vintagestory.GameContent
             int k = 0;
             for (int i = 0; i < 6; i++)
             {
+                BlockFacing facing = BlockFacing.ALLFACES[i];
+
                 mesh.XyzFaces[i] = i;
 
-                BlockFacing facing = BlockFacing.ALLFACES[i];
+                int normal = (VertexFlags.NormalToPackedInt(facing.Normalf.X, facing.Normalf.Y, facing.Normalf.Z) << 15) | (1 << 14);
+                mesh.Flags[i * 4 + 0] |= normal;
+                mesh.Flags[i * 4 + 1] |= normal;
+                mesh.Flags[i * 4 + 2] |= normal;
+                mesh.Flags[i * 4 + 3] |= normal;
 
                 bool isOutside =
                     (
@@ -827,7 +827,7 @@ namespace Vintagestory.GameContent
 
             VoxelCuboids = new List<uint>((tree["cuboids"] as IntArrayAttribute).AsUint);
 
-            if (api is ICoreClientAPI)
+            if (Api is ICoreClientAPI)
             {
                 RegenMesh();
                 RegenSelectionBoxes(null);
@@ -872,7 +872,7 @@ namespace Vintagestory.GameContent
             string[] materialCodes = new string[MaterialIds.Length];
             for (int i = 0; i < MaterialIds.Length; i++)
             {
-                materialCodes[i] = api.World.Blocks[MaterialIds[i]].Code.ToString();
+                materialCodes[i] = Api.World.Blocks[MaterialIds[i]].Code.ToString();
             }
             attr.value = materialCodes;
 
@@ -883,7 +883,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
+        public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
         {
             //ICoreClientAPI capi = api as ICoreClientAPI;
             if (Mesh == null) return false;

@@ -14,7 +14,7 @@ namespace Vintagestory.GameContent
 {
     public delegate MeshData CreateMeshDelegate(ICoreClientAPI capi);
 
-    public class BlockEntityEchoChamber : BlockEntityContainer, IBlockShapeSupplier
+    public class BlockEntityEchoChamber : BlockEntityContainer
     {
         internal InventoryGeneric inventory;
         public override InventoryBase Inventory => inventory;
@@ -33,7 +33,7 @@ namespace Vintagestory.GameContent
         {
             inventory = new InventoryGeneric(1, null, null);
         }
-        
+
 
         public override void Initialize(ICoreAPI api)
         {
@@ -41,7 +41,7 @@ namespace Vintagestory.GameContent
 
             if (api.Side == EnumAppSide.Client)
             {
-                (api as ICoreClientAPI).Event.RegisterRenderer(renderer = new EchoChamberRenderer(pos, api as ICoreClientAPI, getRotation()), EnumRenderStage.Opaque);
+                (api as ICoreClientAPI).Event.RegisterRenderer(renderer = new EchoChamberRenderer(Pos, api as ICoreClientAPI, getRotation()), EnumRenderStage.Opaque);
                 updateMeshesAndRenderer(api as ICoreClientAPI);
 
                 RegisterGameTickListener(OnClientTick, 50);
@@ -52,10 +52,10 @@ namespace Vintagestory.GameContent
         {
             if (track?.Sound != null && track.Sound.IsPlaying)
             {
-                Vec3d plrpos = (api as ICoreClientAPI).World.Player.Entity?.Pos?.XYZ;
+                Vec3d plrpos = (Api as ICoreClientAPI).World.Player.Entity?.Pos?.XYZ;
                 if (plrpos == null) return;
 
-                float dist = GameMath.Sqrt(plrpos.SquareDistanceTo(pos.X + 0.5, pos.Y + 0.5, pos.Z + 0.5));
+                float dist = GameMath.Sqrt(plrpos.SquareDistanceTo(Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5));
 
                 // 1/log(x + 2) - 0.7
                 //http://fooplot.com/#W3sidHlwZSI6MCwiZXEiOiIxL2xvZyh4KzIpLTAuNyIsImNvbG9yIjoiIzAwMDAwMCJ9LHsidHlwZSI6MTAwMCwid2luZG93IjpbIi0yMi4zOTkzMzg5NDIzMDc2NTgiLCIzOC42MzU4MTczMDc2OTIyNyIsIi0xLjAwMzI5NTg5ODQzNzQ5OSIsIjIuMDQ4NDYxOTE0MDYyNDk4MiJdfV0-
@@ -76,7 +76,7 @@ namespace Vintagestory.GameContent
 
                 if (!byPlayer.InventoryManager.TryGiveItemstack(stack, true))
                 {
-                    world.SpawnItemEntity(stack, pos.ToVec3d().Add(0.5, 1, 0.5));
+                    world.SpawnItemEntity(stack, Pos.ToVec3d().Add(0.5, 1, 0.5));
                 }
 
                 StopMusic();
@@ -111,28 +111,28 @@ namespace Vintagestory.GameContent
 
         void StartMusic()
         {
-            if (track != null || api.Side != EnumAppSide.Client) return;
+            if (track != null || Api.Side != EnumAppSide.Client) return;
 
             string trackstring = inventory[0].Itemstack.ItemAttributes["musicTrack"].AsString(null);
             if (trackstring == null) return;
-            startLoadingMs = api.World.ElapsedMilliseconds;
-            track = (api as ICoreClientAPI)?.StartTrack(new AssetLocation(trackstring), 99f, EnumSoundType.Sound, onTrackLoaded);
+            startLoadingMs = Api.World.ElapsedMilliseconds;
+            track = (Api as ICoreClientAPI)?.StartTrack(new AssetLocation(trackstring), 99f, EnumSoundType.Sound, onTrackLoaded);
 
-            api.World.PlaySoundAt(new AssetLocation("sounds/block/vinyl"), pos.X + 0.5, pos.Y + 0.5, pos.Z + 0.5, null, false, 16);
-            updateMeshesAndRenderer(api as ICoreClientAPI);
+            Api.World.PlaySoundAt(new AssetLocation("sounds/block/vinyl"), Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5, null, false, 16);
+            updateMeshesAndRenderer(Api as ICoreClientAPI);
             wasStopped = false;
         }
 
         void StopMusic()
         {
-            if (api.Side != EnumAppSide.Client) return;
+            if (Api.Side != EnumAppSide.Client) return;
 
             track?.Stop();
             track = null;
-            api.Event.UnregisterCallback(handlerId);
+            Api.Event.UnregisterCallback(handlerId);
 
             discMesh = null;
-            updateMeshesAndRenderer(api as ICoreClientAPI);
+            updateMeshesAndRenderer(Api as ICoreClientAPI);
 
             wasStopped = true;
         }
@@ -147,7 +147,7 @@ namespace Vintagestory.GameContent
 
             track.Sound = sound;
 
-            long longMsPassed = api.World.ElapsedMilliseconds - startLoadingMs;
+            long longMsPassed = Api.World.ElapsedMilliseconds - startLoadingMs;
             handlerId = RegisterDelayedCallback((dt) => {
                 if (!wasStopped) sound.Start();    
             }, (int)Math.Max(0, 500 - longMsPassed));
@@ -187,7 +187,7 @@ namespace Vintagestory.GameContent
         {
             Shape shape = capi.Assets.TryGet("shapes/block/wood/echochamber-needle.json").ToObject<Shape>();
             MeshData needleMesh;
-            capi.Tesselator.TesselateShape(capi.World.BlockAccessor.GetBlock(pos), shape, out needleMesh);
+            capi.Tesselator.TesselateShape(capi.World.BlockAccessor.GetBlock(Pos), shape, out needleMesh);
 
             return needleMesh;
         }
@@ -196,14 +196,14 @@ namespace Vintagestory.GameContent
         {
             Shape shape = capi.Assets.TryGet("shapes/block/wood/echochamber-base.json").ToObject<Shape>();
             MeshData mesh;
-            capi.Tesselator.TesselateShape(capi.World.BlockAccessor.GetBlock(pos), shape, out mesh, new Vec3f(0, getRotation(), 0));
+            capi.Tesselator.TesselateShape(capi.World.BlockAccessor.GetBlock(Pos), shape, out mesh, new Vec3f(0, getRotation(), 0));
 
             return mesh;
         }
 
         int getRotation()
         {
-            Block block = api.World.BlockAccessor.GetBlock(pos);
+            Block block = Api.World.BlockAccessor.GetBlock(Pos);
 
             int rot = 0;
             switch (block.LastCodePart())
@@ -220,10 +220,10 @@ namespace Vintagestory.GameContent
         MeshData getOrCreateMesh(ICoreClientAPI capi, string code, CreateMeshDelegate onCreate)
         {
             object obj;
-            if (!api.ObjectCache.TryGetValue(code, out obj))
+            if (!Api.ObjectCache.TryGetValue(code, out obj))
             {
                 MeshData mesh = onCreate(capi);
-                api.ObjectCache[code] = mesh;
+                Api.ObjectCache[code] = mesh;
                 return mesh;
             }
             else
@@ -233,7 +233,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
+        public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
         {
             if (!HasDisc) return false;
 
@@ -250,7 +250,7 @@ namespace Vintagestory.GameContent
 
             IsPlaying = tree.GetBool("isplaying", false);
 
-            if (worldForResolving.Side == EnumAppSide.Client && this.api != null)
+            if (worldForResolving.Side == EnumAppSide.Client && this.Api != null)
             {
                 if (IsPlaying && inventory[0]?.Itemstack != null) StartMusic();
                 else StopMusic();
@@ -277,7 +277,7 @@ namespace Vintagestory.GameContent
             renderer?.Unregister();
             track?.Stop();
             track = null;
-            api.Event.UnregisterCallback(handlerId);
+            Api.Event.UnregisterCallback(handlerId);
         }
 
         public override void OnBlockRemoved()
@@ -286,13 +286,14 @@ namespace Vintagestory.GameContent
             renderer?.Unregister();
             track?.Stop();
             track = null;
-            api.Event.UnregisterCallback(handlerId);
+            Api.Event.UnregisterCallback(handlerId);
         }
 
 
-        public override string GetBlockInfo(IPlayer forPlayer)
+        public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
         {
-            return "";
+            // Remove perish rate thing
+            
         }
 
     }

@@ -18,7 +18,7 @@ namespace Vintagestory.GameContent
         Large = 2
     }
 
-    public class BlockEntityBeehive : BlockEntity, IBlockShapeSupplier
+    public class BlockEntityBeehive : BlockEntity
     {        
         // Stored values
         int scanIteration;
@@ -62,7 +62,7 @@ namespace Vintagestory.GameContent
         public override void Initialize(ICoreAPI api)
         {
             base.Initialize(api);
-            
+
             RegisterGameTickListener(TestHarvestable, 3000);
             RegisterGameTickListener(OnScanForEmptySkep, api.World.Rand.Next(20000) + 120000 / 4);
 
@@ -76,10 +76,8 @@ namespace Vintagestory.GameContent
                 harvestableAtTotalHours = api.World.Calendar.TotalHours + 24/2 * (3 + api.World.Rand.NextDouble() * 8);
             }
 
-
-            Block block = api.World.BlockAccessor.GetBlock(pos);
-            orientation = block.LastCodePart();
-            isWildHive = block.FirstCodePart() != "skep";
+            orientation = Block.LastCodePart();
+            isWildHive = Block.FirstCodePart() != "skep";
             if (!isWildHive && api.Side == EnumAppSide.Client)
             {
                 ICoreClientAPI capi = api as ICoreClientAPI;
@@ -103,14 +101,14 @@ namespace Vintagestory.GameContent
         Vec3f maxVelo = new Vec3f();
         private void SpawnBeeParticles(float dt)
         {
-            if (api.World.Rand.NextDouble() > 2 * api.World.Calendar.DayLightStrength - 0.5) return;
+            if (Api.World.Rand.NextDouble() > 2 * Api.World.Calendar.DayLightStrength - 0.5) return;
 
-            Random rand = api.World.Rand;
+            Random rand = Api.World.Rand;
             
             // Leave hive
-            if (api.World.Rand.NextDouble() > 0.5)
+            if (Api.World.Rand.NextDouble() > 0.5)
             {    
-                startPos.Set(pos.X + 0.5f, pos.Y + 0.5f, pos.Z + 0.5f);
+                startPos.Set(Pos.X + 0.5f, Pos.Y + 0.5f, Pos.Z + 0.5f);
                 minVelo.Set((float)rand.NextDouble() * 3 - 1.5f, (float)rand.NextDouble() * 1 - 0.5f, (float)rand.NextDouble() * 3 - 1.5f);
 
                 Bees.minPos = startPos;
@@ -122,8 +120,8 @@ namespace Vintagestory.GameContent
             // Go back to hive
             else
             {
-                startPos.Set(pos.X + rand.NextDouble() * 5 - 2.5, pos.Y + rand.NextDouble() * 2 - 1f, pos.Z + rand.NextDouble() * 5 - 2.5f);
-                endPos.Set(pos.X + 0.5f, pos.Y + 0.5f, pos.Z + 0.5f);
+                startPos.Set(Pos.X + rand.NextDouble() * 5 - 2.5, Pos.Y + rand.NextDouble() * 2 - 1f, Pos.Z + rand.NextDouble() * 5 - 2.5f);
+                endPos.Set(Pos.X + 0.5f, Pos.Y + 0.5f, Pos.Z + 0.5f);
 
                 minVelo.Set((float)(endPos.X - startPos.X), (float)(endPos.Y - startPos.Y), (float)(endPos.Z - startPos.Z));
                 minVelo /= 2;
@@ -133,15 +131,15 @@ namespace Vintagestory.GameContent
                 Bees.WithTerrainCollision = true;
             }
 
-            api.World.SpawnParticles(Bees);
+            Api.World.SpawnParticles(Bees);
         }
 
         public override void OnBlockPlaced(ItemStack byItemStack = null)
         {
             wasPlaced = true;
-            if (api?.World != null)
+            if (Api?.World != null)
             {
-                harvestableAtTotalHours = api.World.Calendar.TotalHours + 24 / 2 * (3 + api.World.Rand.NextDouble() * 8);
+                harvestableAtTotalHours = Api.World.Calendar.TotalHours + 24 / 2 * (3 + Api.World.Rand.NextDouble() * 8);
             }
         }
 
@@ -149,7 +147,7 @@ namespace Vintagestory.GameContent
 
         private void TestHarvestable(float dt)
         {
-            if (!Harvestable && !isWildHive && api.World.Calendar.TotalHours > harvestableAtTotalHours && hivePopSize > EnumHivePopSize.Poor)
+            if (!Harvestable && !isWildHive && Api.World.Calendar.TotalHours > harvestableAtTotalHours && hivePopSize > EnumHivePopSize.Poor)
             {
                 Harvestable = true;
                 MarkDirty(true);
@@ -158,8 +156,8 @@ namespace Vintagestory.GameContent
 
         private void OnScanForEmptySkep(float dt)
         {
-            if (api.Side == EnumAppSide.Client) return;
-            if (api.World.Calendar.TotalHours < cooldownUntilTotalHours) return;
+            if (Api.Side == EnumAppSide.Client) return;
+            if (Api.World.Calendar.TotalHours < cooldownUntilTotalHours) return;
 
             if (scanIteration == 0)
             {
@@ -183,22 +181,22 @@ namespace Vintagestory.GameContent
             int minZ = -8 + 8 * (scanIteration % 2);
             int size = 8;
 
-            Block emptySkepN = api.World.GetBlock(new AssetLocation("skep-empty-north"));
-            Block emptySkepE = api.World.GetBlock(new AssetLocation("skep-empty-east"));
-            Block emptySkepS = api.World.GetBlock(new AssetLocation("skep-empty-south"));
-            Block emptySkepW = api.World.GetBlock(new AssetLocation("skep-empty-west"));
+            Block emptySkepN = Api.World.GetBlock(new AssetLocation("skep-empty-north"));
+            Block emptySkepE = Api.World.GetBlock(new AssetLocation("skep-empty-east"));
+            Block emptySkepS = Api.World.GetBlock(new AssetLocation("skep-empty-south"));
+            Block emptySkepW = Api.World.GetBlock(new AssetLocation("skep-empty-west"));
 
-            Block fullSkepN = api.World.GetBlock(new AssetLocation("skep-populated-north"));
-            Block fullSkepE = api.World.GetBlock(new AssetLocation("skep-populated-east"));
-            Block fullSkepS = api.World.GetBlock(new AssetLocation("skep-populated-south"));
-            Block fullSkepW = api.World.GetBlock(new AssetLocation("skep-populated-west"));
+            Block fullSkepN = Api.World.GetBlock(new AssetLocation("skep-populated-north"));
+            Block fullSkepE = Api.World.GetBlock(new AssetLocation("skep-populated-east"));
+            Block fullSkepS = Api.World.GetBlock(new AssetLocation("skep-populated-south"));
+            Block fullSkepW = Api.World.GetBlock(new AssetLocation("skep-populated-west"));
 
 
-            Block wildhive1 = api.World.GetBlock(new AssetLocation("wildbeehive-medium"));
-            Block wildhive2 = api.World.GetBlock(new AssetLocation("wildbeehive-large"));
+            Block wildhive1 = Api.World.GetBlock(new AssetLocation("wildbeehive-medium"));
+            Block wildhive2 = Api.World.GetBlock(new AssetLocation("wildbeehive-large"));
             
 
-            api.World.BlockAccessor.WalkBlocks(pos.AddCopy(minX, -5, minZ), pos.AddCopy(minX + size - 1, 5, minZ + size - 1), (block, pos) =>
+            Api.World.BlockAccessor.WalkBlocks(Pos.AddCopy(minX, -5, minZ), Pos.AddCopy(minX + size - 1, 5, minZ + size - 1), (block, pos) =>
             {
                 if (block.Id == 0) return;
 
@@ -246,10 +244,10 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            if (skepToPop != null && api.World.Calendar.TotalHours > beginPopStartTotalHours + popHiveAfterHours)
+            if (skepToPop != null && Api.World.Calendar.TotalHours > beginPopStartTotalHours + popHiveAfterHours)
             {
                 TryPopCurrentSkep();
-                cooldownUntilTotalHours = api.World.Calendar.TotalHours + 4 / 2 * 24;
+                cooldownUntilTotalHours = Api.World.Calendar.TotalHours + 4 / 2 * 24;
                 MarkDirty(false);
                 return;
             }
@@ -275,13 +273,13 @@ namespace Vintagestory.GameContent
             {
                 popHiveAfterHours = 4 * 24 / 2 * GameMath.Clamp(quantityNearbyHives / GameMath.Sqrt(quantityNearbyFlowers - 3 * quantityNearbyHives - 3), 1, 1000);
 
-                beginPopStartTotalHours = api.World.Calendar.TotalHours;
+                beginPopStartTotalHours = Api.World.Calendar.TotalHours;
 
                 float mindistance = 999;
                 BlockPos closestPos = new BlockPos();
                 foreach (BlockPos pos in emptySkeps)
                 {
-                    float dist = pos.DistanceTo(this.pos);
+                    float dist = pos.DistanceTo(this.Pos);
                     if (dist < mindistance)
                     {
                         mindistance = dist;
@@ -296,7 +294,7 @@ namespace Vintagestory.GameContent
 
         private void TryPopCurrentSkep()
         {
-            Block skepToPopBlock = api.World.BlockAccessor.GetBlock(skepToPop);
+            Block skepToPopBlock = Api.World.BlockAccessor.GetBlock(skepToPop);
             if (skepToPopBlock == null || !(skepToPopBlock is BlockSkep))
             {
                 // Skep must have changed since last time we checked, so lets restart 
@@ -307,15 +305,15 @@ namespace Vintagestory.GameContent
             string orient = skepToPopBlock.LastCodePart();
 
             string blockcode = "skep-populated-" + orient;
-            Block fullSkep = api.World.GetBlock(new AssetLocation(blockcode));
+            Block fullSkep = Api.World.GetBlock(new AssetLocation(blockcode));
 
             if (fullSkep == null)
             {
-                api.World.Logger.Warning("BEBeehive.TryPopSkep() - block with code {0} does not exist?", blockcode);
+                Api.World.Logger.Warning("BEBeehive.TryPopSkep() - block with code {0} does not exist?", blockcode);
                 return;
             }
 
-            api.World.BlockAccessor.SetBlock(fullSkep.BlockId, skepToPop);
+            Api.World.BlockAccessor.SetBlock(fullSkep.BlockId, skepToPop);
             hivePopSize = EnumHivePopSize.Poor;
             this.skepToPop = null;
         }
@@ -416,18 +414,18 @@ namespace Vintagestory.GameContent
             harvestableAtTotalHours = tree.GetDouble("harvestableAtTotalHours");
             hivePopSize = (EnumHivePopSize)tree.GetInt("hiveHealth");
 
-            if (Harvestable != wasHarvestable && api != null)
+            if (Harvestable != wasHarvestable && Api != null)
             {
                 MarkDirty(true);
             }
         }
 
 
-        public bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
+        public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
         {
             if (Harvestable)
             {
-                mesher.AddMeshData(api.ObjectCache["beehive-harvestablemesh-" + orientation] as MeshData);
+                mesher.AddMeshData(Api.ObjectCache["beehive-harvestablemesh-" + orientation] as MeshData);
                 return true;
             }
 
@@ -435,22 +433,22 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override string GetBlockInfo(IPlayer forPlayer)
+        public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
         {
-            if (api.World.EntityDebugMode && forPlayer.WorldData.CurrentGameMode == EnumGameMode.Creative)
+            if (Api.World.EntityDebugMode && forPlayer.WorldData.CurrentGameMode == EnumGameMode.Creative)
             {
-                return 
-                    Lang.Get("Nearby flowers: {0}, Nearby Hives: {1}, Empty Hives: {2}, Pop after hours: {3}. harvest in {4}, repop cooldown: {5}", quantityNearbyFlowers, quantityNearbyHives, emptySkeps.Count, (beginPopStartTotalHours + popHiveAfterHours - api.World.Calendar.TotalHours).ToString("#.##"), (harvestableAtTotalHours - api.World.Calendar.TotalHours).ToString("#.##"), (cooldownUntilTotalHours - api.World.Calendar.TotalHours).ToString("#.##"))
-                    + "\n" + Lang.Get("Population Size: " + hivePopSize);
+                dsc.AppendLine( 
+                    Lang.Get("Nearby flowers: {0}, Nearby Hives: {1}, Empty Hives: {2}, Pop after hours: {3}. harvest in {4}, repop cooldown: {5}", quantityNearbyFlowers, quantityNearbyHives, emptySkeps.Count, (beginPopStartTotalHours + popHiveAfterHours - Api.World.Calendar.TotalHours).ToString("#.##"), (harvestableAtTotalHours - Api.World.Calendar.TotalHours).ToString("#.##"), (cooldownUntilTotalHours - Api.World.Calendar.TotalHours).ToString("#.##"))
+                    + "\n" + Lang.Get("Population Size: " + hivePopSize));
             }
 
             string str = Lang.Get("Nearby flowers: {0}\nPopulation Size: {1}", quantityNearbyFlowers, hivePopSize);
             if (Harvestable) str += "\n" + Lang.Get("Harvestable");
 
-            if (skepToPop != null && api.World.Calendar.TotalHours > cooldownUntilTotalHours)
+            if (skepToPop != null && Api.World.Calendar.TotalHours > cooldownUntilTotalHours)
             {
-                double inhours = beginPopStartTotalHours + popHiveAfterHours - api.World.Calendar.TotalHours;
-                double days = inhours / api.World.Calendar.HoursPerDay;
+                double inhours = beginPopStartTotalHours + popHiveAfterHours - Api.World.Calendar.TotalHours;
+                double days = inhours / Api.World.Calendar.HoursPerDay;
 
                 if (days > 1.5)
                 {
@@ -464,7 +462,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            return str;
+            dsc.AppendLine(str);
         }
     }
 }

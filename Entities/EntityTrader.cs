@@ -203,7 +203,7 @@ namespace Vintagestory.GameContent
 
                 RefreshBuyingSellingInventory();
 
-                WatchedAttributes.SetDouble("lastRefreshTotalDays", World.Calendar.TotalDays - World.Rand.NextDouble() * 10);
+                WatchedAttributes.SetDouble("lastRefreshTotalDays", World.Calendar.TotalDays - World.Rand.NextDouble() * 6);
 
                 Inventory.GiveToTrader((int)TradeProps.Money.nextFloat(1f, World.Rand));
 
@@ -427,6 +427,16 @@ namespace Vintagestory.GameContent
 
         int tickCount = 0;
 
+
+        protected double doubleRefreshIntervalDays = 7;
+
+        public double NextRefreshTotalDays()
+        {
+            double lastRefreshTotalDays = WatchedAttributes.GetDouble("lastRefreshTotalDays", World.Calendar.TotalDays - 10);
+
+            return doubleRefreshIntervalDays - (World.Calendar.TotalDays - lastRefreshTotalDays);
+        }
+
         public override void OnGameTick(float dt)
         {
             base.OnGameTick(dt);
@@ -441,14 +451,26 @@ namespace Vintagestory.GameContent
                 talkUtil.OnGameTick(dt);
             } else
             {
-                if (tickCount++ % 1000 == 0)
+                if (tickCount++ % 500 == 0)
                 {
-                    double lastRefreshTotalDays = WatchedAttributes.GetDouble("lastRefreshTotalDays", 0);
+                    double lastRefreshTotalDays = WatchedAttributes.GetDouble("lastRefreshTotalDays", World.Calendar.TotalDays - 10);
+                    int maxRefreshes = 30;
 
-                    if (World.Calendar.TotalDays - lastRefreshTotalDays > 14 && tradingWith == null)
+                    while (World.Calendar.TotalDays - lastRefreshTotalDays > doubleRefreshIntervalDays && tradingWith == null && maxRefreshes-- > 0)
                     {
+                        int traderAssets = Inventory.GetTraderAssets();
+                        double giveRel = 0.07 + World.Rand.NextDouble() * 0.21;
+
+                        float nowWealth = TradeProps.Money.nextFloat(1f, World.Rand);
+
+                        int toGive = (int)Math.Max(-3, Math.Min(nowWealth, traderAssets + giveRel * (int)nowWealth) - traderAssets);
+                        Inventory.GiveToTrader(toGive);
+
                         RefreshBuyingSellingInventory(0.5f);
-                        WatchedAttributes.SetDouble("lastRefreshTotalDays", World.Calendar.TotalDays);
+
+                        lastRefreshTotalDays += doubleRefreshIntervalDays;
+                        WatchedAttributes.SetDouble("lastRefreshTotalDays", lastRefreshTotalDays);
+
                         tickCount = 1;
                     }
                 }

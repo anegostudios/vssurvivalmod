@@ -9,18 +9,21 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.ServerMods;
 
 namespace Vintagestory.GameContent
 {
     public class BlockEntityLocustNest : BlockEntitySpawner
     {
         long herdId;
+        int insideLocustCount;
 
         public override void Initialize(ICoreAPI api)
         {
-            base.Initialize(api);   
+            base.Initialize(api);
         }
 
+        // Remember the herdid forever
         protected override long GetNextHerdId()
         {
             if (herdId == 0)
@@ -35,22 +38,98 @@ namespace Vintagestory.GameContent
         {
             base.OnBlockPlaced(byItemStack);
 
+            // min(1, 1.5 - x/40)
+            // http://fooplot.com/#W3sidHlwZSI6MCwiZXEiOiJtaW4oMSwxLjUteC80MCkiLCJjb2xvciI6IiMwMDAwMDAifSx7InR5cGUiOjEwMDAsIndpbmRvdyI6WyIwIiwiMTIwIiwiMCIsIjEuNSJdfV0-
+            float corrupLocustNestChance = Math.Min(1, 1.5f - (float)Pos.Y / (0.36f * Api.World.SeaLevel));
+
+            string entityCode = "locust-bronze";
+            
+
+            if (Api.World.Rand.NextDouble() > corrupLocustNestChance)
+            {
+                entityCode = "locust-corrupt";
+            }
+            
             Data = new BESpawnerData()
             {
-                EntityCodes = new string[] { "locust" },
+                EntityCodes = new string[] { entityCode },
                 InGameHourInterval = 1,
-                MaxCount = api.World.Rand.Next(9) + 5,
+                MaxCount = Api.World.Rand.Next(7) + 3,
                 SpawnArea = new Cuboidi(-5, -5, -5, 5, 0, 5),
-                GroupSize = 2 + api.World.Rand.Next(2),
+                GroupSize = 2 + Api.World.Rand.Next(2),
                 SpawnOnlyAfterImport = false,
-                InitialSpawnQuantity = 6 + api.World.Rand.Next(13)
+                InitialSpawnQuantity = 4 + Api.World.Rand.Next(7)
             };
+        }
+
+        public void OnBlockBreaking()
+        {
+            if (Api.Side != EnumAppSide.Client) return;
+
+            if (Api.World.Rand.NextDouble() < 0.3)
+            {
+                (Api as ICoreClientAPI).Network.SendBlockEntityPacket(Pos.X, Pos.Y, Pos.Z, 123);
+            }
+        }
+
+        public override void OnReceivedClientPacket(IPlayer fromPlayer, int packetid, byte[] bytes)
+        {
+            base.OnReceivedClientPacket(fromPlayer, packetid, bytes);
+
+            if (packetid == 123)
+            {
+                if (Api.World.Rand.NextDouble() < 0.2 && insideLocustCount > 0)
+                {
+                    ICoreServerAPI sapi = Api as ICoreServerAPI;
+                    int rnd = sapi.World.Rand.Next(Data.EntityCodes.Length);
+                    EntityProperties type = Api.World.GetEntityType(new AssetLocation(Data.EntityCodes[rnd]));
+
+                    Cuboidf collisionBox = new Cuboidf()
+                    {
+                        X1 = -type.HitBoxSize.X / 2,
+                        Z1 = -type.HitBoxSize.X / 2,
+                        X2 = type.HitBoxSize.X / 2,
+                        Z2 = type.HitBoxSize.X / 2,
+                        Y2 = type.HitBoxSize.Y
+                    }.OmniNotDownGrowBy(0.1f);
+
+                    Vec3d spawnPos = new Vec3d();
+                    for (int tries = 0; tries < 15; tries++)
+                    {
+                        spawnPos.Set(Pos).Add(
+                            -0.5 + Api.World.Rand.NextDouble(),
+                            -1,
+                            -0.5 + Api.World.Rand.NextDouble()
+                        );
+
+                        if (!collisionTester.IsColliding(Api.World.BlockAccessor, collisionBox, spawnPos, false))
+                        {
+                            if (herdId == 0) herdId = GetNextHerdId();
+
+                            DoSpawn(type, spawnPos, herdId);
+                            break;
+                        }
+                    }
+
+                    insideLocustCount--;
+                }
+            }
+        }
+
+        protected override void OnGameTick(float dt)
+        {
+            base.OnGameTick(dt);
+
+            if (Api.World.Rand.NextDouble() < 0.1)
+            {
+                insideLocustCount = Math.Min(insideLocustCount + 1, 5);
+            }
         }
 
         protected override void DoSpawn(EntityProperties entityType, Vec3d spawnPosition, long herdId)
         {
             int dy = 0;
-            while (dy < 15 && !api.World.BlockAccessor.GetBlock((int)spawnPosition.X, (int)spawnPosition.Y + dy, (int)spawnPosition.Z).SideSolid[BlockFacing.DOWN.Index])
+            while (dy < 15 && !Api.World.BlockAccessor.GetBlock((int)spawnPosition.X, (int)spawnPosition.Y + dy, (int)spawnPosition.Z).SideSolid[BlockFacing.DOWN.Index])
             {
                 dy++;
             }
@@ -67,12 +146,14 @@ namespace Vintagestory.GameContent
             base.FromTreeAtributes(tree, worldAccessForResolve);
 
             herdId = tree.GetLong("herdId");
+            insideLocustCount = tree.GetInt("insideLocustCount");
         }
 
         public override void ToTreeAttributes(ITreeAttribute tree)
         {
             base.ToTreeAttributes(tree);
             tree.SetLong("herdId", herdId);
+            tree.SetInt("insideLocustCount", insideLocustCount);
         }
     }
 }

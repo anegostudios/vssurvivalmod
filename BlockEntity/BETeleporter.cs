@@ -25,7 +25,7 @@ namespace Vintagestory.GameContent
         TeleporterLocation tpLocation;
         Dictionary<long, TeleportingEntity> tpingEntities = new Dictionary<long, TeleportingEntity>();
 
-        BlockTeleporter block;
+        BlockTeleporter ownBlock;
         Vec3d posvec;
         long lastCollideMsOwnPlayer;
 
@@ -40,11 +40,12 @@ namespace Vintagestory.GameContent
             base.Initialize(api);
             manager = api.ModLoader.GetModSystem<TeleporterManager>();
 
+
             if (api.Side == EnumAppSide.Server)
             {
                 ICoreServerAPI sapi = api as ICoreServerAPI;
 
-                tpLocation = manager.GetOrCreateLocation(pos);
+                tpLocation = manager.GetOrCreateLocation(Pos);
 
                 RegisterGameTickListener(OnServerGameTick, 50);
             } else
@@ -52,8 +53,8 @@ namespace Vintagestory.GameContent
                 RegisterGameTickListener(OnClientGameTick, 50);
             }
 
-            block = api.World.BlockAccessor.GetBlock(pos) as BlockTeleporter;
-            posvec = new Vec3d(pos.X, pos.Y + 1, pos.Z);
+            ownBlock = Block as BlockTeleporter;
+            posvec = new Vec3d(Pos.X, Pos.Y + 1, Pos.Z);
         }
 
 
@@ -68,14 +69,14 @@ namespace Vintagestory.GameContent
                 };
             }
 
-            tpe.LastCollideMs = api.World.ElapsedMilliseconds;
+            tpe.LastCollideMs = Api.World.ElapsedMilliseconds;
             
             
-            if (api.Side == EnumAppSide.Client)
+            if (Api.Side == EnumAppSide.Client)
             {
-                if ((api as ICoreClientAPI).World.Player.Entity == entity)
+                if ((Api as ICoreClientAPI).World.Player.Entity == entity)
                 {
-                    lastCollideMsOwnPlayer = api.World.ElapsedMilliseconds;
+                    lastCollideMsOwnPlayer = Api.World.ElapsedMilliseconds;
                     manager.lastTeleCollideMsOwnPlayer = lastCollideMsOwnPlayer;
                 }
             }
@@ -84,15 +85,15 @@ namespace Vintagestory.GameContent
         
         private void OnClientGameTick(float dt)
         {
-            if (block == null || api?.World == null) return;
+            if (ownBlock == null || Api?.World == null) return;
 
-            SimpleParticleProperties currentParticles = (api.World.ElapsedMilliseconds > 100 && api.World.ElapsedMilliseconds - lastCollideMsOwnPlayer < 100) ? 
-                block.insideParticles : 
-                block.idleParticles
+            SimpleParticleProperties currentParticles = (Api.World.ElapsedMilliseconds > 100 && Api.World.ElapsedMilliseconds - lastCollideMsOwnPlayer < 100) ? 
+                ownBlock.insideParticles : 
+                ownBlock.idleParticles
             ;
             
             currentParticles.minPos = posvec;
-            api.World.SpawnParticles(currentParticles);
+            Api.World.SpawnParticles(currentParticles);
 
         }
 
@@ -107,7 +108,7 @@ namespace Vintagestory.GameContent
 
                 val.Value.SecondsPassed += Math.Min(0.5f, dt);
 
-                if (api.World.ElapsedMilliseconds - val.Value.LastCollideMs > 100)
+                if (Api.World.ElapsedMilliseconds - val.Value.LastCollideMs > 100)
                 {
                     toremove.Add(val.Key);
                     continue;
@@ -116,7 +117,7 @@ namespace Vintagestory.GameContent
                 if (val.Value.SecondsPassed > 1.5 && tpLocation?.TargetPos != null)
                 {
                     // Preload the chunk
-                    (api as ICoreServerAPI).WorldManager.LoadChunkColumnFast((int)tpLocation.TargetPos.X / api.World.BlockAccessor.ChunkSize, (int)tpLocation.TargetPos.Z / api.World.BlockAccessor.ChunkSize);
+                    (Api as ICoreServerAPI).WorldManager.LoadChunkColumnFast((int)tpLocation.TargetPos.X / Api.World.BlockAccessor.ChunkSize, (int)tpLocation.TargetPos.Z / Api.World.BlockAccessor.ChunkSize);
                 }
 
                 if (val.Value.SecondsPassed > 3 && tpLocation?.TargetPos != null)
@@ -126,10 +127,10 @@ namespace Vintagestory.GameContent
                     Entity e = val.Value.Entity;
                     if (e is EntityPlayer)
                     {
-                        api.World.Logger.Debug("Teleporting player {0} to {1}", (e as EntityPlayer).GetBehavior<EntityBehaviorNameTag>().DisplayName, tpLocation.TargetPos);
+                        Api.World.Logger.Debug("Teleporting player {0} to {1}", (e as EntityPlayer).GetBehavior<EntityBehaviorNameTag>().DisplayName, tpLocation.TargetPos);
                     } else
                     {
-                        api.World.Logger.Debug("Teleporting entity {0} to {1}", e.Code, tpLocation.TargetPos);
+                        Api.World.Logger.Debug("Teleporting entity {0} to {1}", e.Code, tpLocation.TargetPos);
                     }
 
                     toremove.Add(val.Key);
@@ -147,10 +148,10 @@ namespace Vintagestory.GameContent
         {
             base.OnBlockRemoved();
 
-            if (api.Side == EnumAppSide.Server)
+            if (Api.Side == EnumAppSide.Server)
             {
-                ICoreServerAPI sapi = api as ICoreServerAPI;
-                sapi.ModLoader.GetModSystem<TeleporterManager>().DeleteLocation(pos);
+                ICoreServerAPI sapi = Api as ICoreServerAPI;
+                sapi.ModLoader.GetModSystem<TeleporterManager>().DeleteLocation(Pos);
             }
         }
 
@@ -159,7 +160,7 @@ namespace Vintagestory.GameContent
         {
             base.FromTreeAtributes(tree, worldAccessForResolve);
 
-            if (tpLocation == null || api?.Side == EnumAppSide.Client)
+            if (tpLocation == null || Api?.Side == EnumAppSide.Client)
             {
                 tpLocation = new TeleporterLocation()
                 {
@@ -180,11 +181,11 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override string GetBlockInfo(IPlayer forPlayer)
+        public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
         {
-            if (tpLocation == null) return null;
+            if (tpLocation == null) return;
 
-            return Lang.Get("This is {0}\nTeleports to {1}", tpLocation.SourceName, tpLocation.TargetName);
+            dsc.AppendLine(Lang.Get("This is {0}\nTeleports to {1}", tpLocation.SourceName, tpLocation.TargetName));
         }
     }
 }

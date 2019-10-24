@@ -8,11 +8,25 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
+using Vintagestory.GameContent.Mechanics;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockQuern : Block
+    public class BlockQuern : BlockMPBase
     {
+
+        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
+        {
+            bool ok = base.TryPlaceBlock(world, byPlayer, itemstack, blockSel, ref failureCode);
+
+            if (ok)
+            {
+                tryConnect(world, byPlayer, blockSel.Position, BlockFacing.UP);
+            }
+
+            return ok;
+        }
+
         public override bool DoParticalSelection(IWorldAccessor world, BlockPos pos)
         {
             return true;
@@ -94,5 +108,14 @@ namespace Vintagestory.GameContent
             }
         }
 
+        public override void DidConnectAt(IWorldAccessor world, BlockPos pos, BlockFacing face)
+        {
+            
+        }
+
+        public override bool HasConnectorAt(IWorldAccessor world, BlockPos pos, BlockFacing face)
+        {
+            return face == BlockFacing.UP;
+        }
     }
 }

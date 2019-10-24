@@ -24,20 +24,19 @@ namespace Vintagestory.GameContent
         public string TextureCode;
     }
 
-    public class BlockEntityTrough : BlockEntityContainer, IBlockShapeSupplier, ITexPositionSource, IAnimalFoodSource
+    public class BlockEntityTrough : BlockEntityContainer, ITexPositionSource, IAnimalFoodSource
     {
         internal InventoryGeneric inventory;
         public override InventoryBase Inventory => inventory;
         public override string InventoryClassName => "trough";
 
         ITexPositionSource blockTexPosSource;
-        public int AtlasSize => (api as ICoreClientAPI).BlockTextureAtlas.Size;
+        public int AtlasSize => (Api as ICoreClientAPI).BlockTextureAtlas.Size;
 
-        public Vec3d Position => pos.ToVec3d().Add(0.5, 0.5, 0.5);
+        public Vec3d Position => Pos.ToVec3d().Add(0.5, 0.5, 0.5);
         public string Type => "food";
         
         BlockFacing facing;
-        Block ownBlock;
         MeshData currentMesh;
 
         ContentConfig[] contentConfigs;
@@ -73,7 +72,7 @@ namespace Vintagestory.GameContent
 
         public BlockEntityTrough()
         {
-            inventory = new InventoryGeneric(4, null, null);
+            inventory = new InventoryGeneric(4, null, null, (id, inv) => new ItemSlotTrough(this, inv));
         }
 
 
@@ -84,7 +83,10 @@ namespace Vintagestory.GameContent
 
             for (int i = 0; i < config.Foodfor.Length; i++)
             {
-                if (WildcardUtil.Match(config.Foodfor[i], entity.Code)) return true;
+                if (WildcardUtil.Match(config.Foodfor[i], entity.Code))
+                {
+                    return inventory[0].StackSize >= config.QuantityPerFillLevel;
+                }
             }
 
             return false; 
@@ -103,8 +105,8 @@ namespace Vintagestory.GameContent
             {
                 contentCode = "";
             }
+            inventory[0].MarkDirty();
 
-            
             MarkDirty(true);
             return 1f;
         }
@@ -115,21 +117,19 @@ namespace Vintagestory.GameContent
         {
             base.Initialize(api);
 
-            ownBlock = api.World.BlockAccessor.GetBlock(pos) as Block;            
-
-            facing = BlockFacing.FromCode(ownBlock.LastCodePart());
+            facing = BlockFacing.FromCode(Block.LastCodePart());
 
             if (contentConfigs == null)
             {
-                contentConfigs = ownBlock.Attributes["contentConfig"].AsObject<ContentConfig[]>();
+                contentConfigs = Block.Attributes["contentConfig"].AsObject<ContentConfig[]>();
 
                 foreach (var val in contentConfigs)
                 {
-                    val.Content.Resolve(api.World, "troughcontentconfig");
+                    val.Content.Resolve(Api.World, "troughcontentconfig");
                 }
             }
 
-            if (api.Side == EnumAppSide.Client)
+            if (Api.Side == EnumAppSide.Client)
             {
                 ICoreClientAPI capi = (ICoreClientAPI)api;
                 if (currentMesh == null)
@@ -138,18 +138,28 @@ namespace Vintagestory.GameContent
                 }
             } else
             {
-                api.ModLoader.GetModSystem<POIRegistry>().AddPOI(this);
+                Api.ModLoader.GetModSystem<POIRegistry>().AddPOI(this);
 
             }
 
+            inventory.SlotModified += Inventory_SlotModified;
+
         }
 
+        private void Inventory_SlotModified(int id)
+        {
+            ContentConfig config = ItemSlotTrough.getContentConfig(Api.World, contentConfigs, inventory[id]);
+            this.contentCode = config?.Code;
+
+            if (Api.Side == EnumAppSide.Client) currentMesh = GenMesh();
+            MarkDirty(true);
+        }
 
         public override void OnBlockPlaced(ItemStack byItemStack = null)
         {
             base.OnBlockPlaced(byItemStack);
 
-            if (api.Side == EnumAppSide.Client)
+            if (Api.Side == EnumAppSide.Client)
             {
                 currentMesh = GenMesh();
                 MarkDirty(true);
@@ -161,9 +171,9 @@ namespace Vintagestory.GameContent
         {
             base.OnBlockRemoved();
 
-            if (api.Side == EnumAppSide.Server)
+            if (Api.Side == EnumAppSide.Server)
             {
-                api.ModLoader.GetModSystem<POIRegistry>().RemovePOI(this);
+                Api.ModLoader.GetModSystem<POIRegistry>().RemovePOI(this);
             }
         }
 
@@ -171,9 +181,9 @@ namespace Vintagestory.GameContent
         {
             base.OnBlockUnloaded();
 
-            if (api.Side == EnumAppSide.Server)
+            if (Api.Side == EnumAppSide.Server)
             {
-                api.ModLoader.GetModSystem<POIRegistry>().RemovePOI(this);
+                Api.ModLoader.GetModSystem<POIRegistry>().RemovePOI(this);
             }
         }
 
@@ -181,11 +191,11 @@ namespace Vintagestory.GameContent
 
         internal MeshData GenMesh()
         {
-            if (ownBlock == null || contentCode == "") return null;
+            if (Block == null || contentCode == "") return null;
             ContentConfig config = contentConfigs.FirstOrDefault(c => c.Code == contentCode);
             if (config == null) return null;
 
-            ICoreClientAPI capi = api as ICoreClientAPI;
+            ICoreClientAPI capi = Api as ICoreClientAPI;
 
             ItemStack firstStack = inventory[0].Itemstack;
             if (firstStack == null) return null;
@@ -193,18 +203,18 @@ namespace Vintagestory.GameContent
             int fillLevel = Math.Max(0, firstStack.StackSize / config.QuantityPerFillLevel - 1);
             string shapeLoc = config.ShapesPerFillLevel[Math.Min(config.ShapesPerFillLevel.Length - 1, fillLevel)];
 
-            Vec3f rotation = new Vec3f(ownBlock.Shape.rotateX, ownBlock.Shape.rotateY, ownBlock.Shape.rotateZ);
+            Vec3f rotation = new Vec3f(Block.Shape.rotateX, Block.Shape.rotateY, Block.Shape.rotateZ);
             MeshData meshbase;
             MeshData meshadd;
 
-            blockTexPosSource = capi.Tesselator.GetTexSource(ownBlock);
-            capi.Tesselator.TesselateShape("betrough", api.Assets.TryGet("shapes/" + shapeLoc + ".json").ToObject<Shape>(), out meshbase, this, rotation);
+            blockTexPosSource = capi.Tesselator.GetTexSource(Block);
+            capi.Tesselator.TesselateShape("betrough", Api.Assets.TryGet("shapes/" + shapeLoc + ".json").ToObject<Shape>(), out meshbase, this, rotation);
 
-            BlockTroughDoubleBlock doubleblock = ownBlock as BlockTroughDoubleBlock;
+            BlockTroughDoubleBlock doubleblock = Block as BlockTroughDoubleBlock;
 
             if (doubleblock != null)
             {
-                capi.Tesselator.TesselateShape("betroughcontents", api.Assets.TryGet("shapes/" + shapeLoc + ".json").ToObject<Shape>(), out meshadd, this, rotation.Add(0, 180, 0), 0, 0, null, new string[] { "Origin point/contents/*" });
+                capi.Tesselator.TesselateShape("betroughcontents", Api.Assets.TryGet("shapes/" + shapeLoc + ".json").ToObject<Shape>(), out meshadd, this, rotation.Add(0, 180, 0), 0, 0, null, new string[] { "Origin point/contents/*" });
                 BlockFacing facing = doubleblock.OtherPartPos();
                 meshadd.Translate(facing.Normalf);
                 meshbase.AddMeshData(meshadd);
@@ -214,7 +224,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
+        public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
         {
             mesher.AddMeshData(currentMesh);
             return currentMesh != null;
@@ -226,48 +236,36 @@ namespace Vintagestory.GameContent
             if (handSlot.Empty) return false;
 
             ItemStack[] stacks = GetNonEmptyContentStacks();
-            bool canAdd;
+
+
+            ContentConfig contentConf = ItemSlotTrough.getContentConfig(Api.World, contentConfigs, handSlot);
+            if (contentConf == null) return false;
 
             // Add new
             if (stacks.Length == 0)
             {
-                for (int i = 0; i < contentConfigs.Length; i++)
+                if (handSlot.StackSize >= contentConf.QuantityPerFillLevel)
                 {
-                    canAdd =
-                        handSlot.Itemstack.Equals(api.World, contentConfigs[i].Content.ResolvedItemstack, GlobalConstants.IgnoredStackAttributes) &&
-                        handSlot.StackSize >= contentConfigs[i].QuantityPerFillLevel
-                    ;
-
-                    if (canAdd)
-                    {
-                        contentCode = contentConfigs[i].Code;
-                        inventory[0].Itemstack = handSlot.TakeOut(contentConfigs[i].QuantityPerFillLevel);
-
-                        if (api.Side == EnumAppSide.Client) currentMesh = GenMesh();
-                        MarkDirty(true);
-                        return true;
-                    }
+                    inventory[0].Itemstack = handSlot.TakeOut(contentConf.QuantityPerFillLevel);
+                    inventory[0].MarkDirty();
+                    return true;
                 }
+
+                return false;
             }
 
             // Or merge
-            ContentConfig config = contentConfigs.FirstOrDefault(c => c.Code == contentCode);
-            if (config == null) return false;
-
-
-            canAdd =
-                handSlot.Itemstack.Equals(api.World, stacks[0], GlobalConstants.IgnoredStackAttributes) &&
-                handSlot.StackSize >= config.QuantityPerFillLevel &&
-                stacks[0].StackSize < config.QuantityPerFillLevel * config.MaxFillLevels
+            bool canAdd =
+                handSlot.Itemstack.Equals(Api.World, stacks[0], GlobalConstants.IgnoredStackAttributes) &&
+                handSlot.StackSize >= contentConf.QuantityPerFillLevel &&
+                stacks[0].StackSize < contentConf.QuantityPerFillLevel * contentConf.MaxFillLevels
             ;
 
             if (canAdd)
             {
-                handSlot.TakeOut(config.QuantityPerFillLevel);
-                inventory[0].Itemstack.StackSize += config.QuantityPerFillLevel;
-
-                if (api.Side == EnumAppSide.Client) currentMesh = GenMesh();
-                MarkDirty(true);
+                handSlot.TakeOut(contentConf.QuantityPerFillLevel);
+                inventory[0].Itemstack.StackSize += contentConf.QuantityPerFillLevel;
+                inventory[0].MarkDirty();
                 return true;
             }
             
@@ -288,7 +286,7 @@ namespace Vintagestory.GameContent
         {
             base.FromTreeAtributes(tree, worldForResolving);
 
-            if (api?.Side == EnumAppSide.Client)
+            if (Api?.Side == EnumAppSide.Client)
             {
                 currentMesh = GenMesh();
                 MarkDirty(true);
@@ -297,16 +295,16 @@ namespace Vintagestory.GameContent
             contentCode = tree.GetString("contentCode");
         }
 
-        public override string GetBlockInfo(IPlayer forPlayer)
+        public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
         {
             ContentConfig config = contentConfigs.FirstOrDefault(c => c.Code == contentCode);
             ItemStack firstStack = inventory[0].Itemstack;
 
-            if (config == null || firstStack == null) return null;
+            if (config == null || firstStack == null) return;
 
             int fillLevel = firstStack.StackSize / config.QuantityPerFillLevel;
 
-            return Lang.Get("Portions: {0}", fillLevel);
+            dsc.AppendLine(Lang.Get("Portions: {0}", fillLevel));
         }
     }
 }

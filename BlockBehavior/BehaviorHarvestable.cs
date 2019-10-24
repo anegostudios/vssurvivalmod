@@ -58,6 +58,9 @@ namespace Vintagestory.GameContent
         public override void OnBlockInteractStop(float secondsUsed, IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ref EnumHandling handled)
         {
             handled = EnumHandling.PreventDefault;
+
+            world.Logger.VerboseDebug("BHH for {1}: Stop @{0}", blockSel?.Position, block?.Code);
+
             if (secondsUsed > harvestTime - 0.05f && block.Code.Path.Contains("ripe") && block.Drops != null && block.Drops.Length >= 1)
             {
                 BlockDropItemStack drop = block.Drops.Length == 1 ? block.Drops[0] : block.Drops[1];
@@ -69,7 +72,9 @@ namespace Vintagestory.GameContent
                     world.SpawnItemEntity(drop.GetNextItemStack(), blockSel.Position.ToVec3d().Add(0.5, 0.5, 0.5));
                 }
 
-                world.BlockAccessor.SetBlock(world.GetBlock(block.Code.CopyWithPath(block.Code.Path.Replace("ripe", "empty"))).BlockId, blockSel.Position);
+                AssetLocation loc = block.Code.CopyWithPath(block.Code.Path.Replace("ripe", "empty"));
+
+                world.BlockAccessor.SetBlock(world.GetBlock(loc).BlockId, blockSel.Position);
 
                 world.PlaySoundAt(new AssetLocation("sounds/block/plant"), blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z, byPlayer);
             }

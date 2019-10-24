@@ -16,7 +16,7 @@ namespace Vintagestory.GameContent
     {
         float remainingSeconds = 0;
         bool lit;
-        Block block;
+        
         float blastRadius;
         float injureRadius;
 
@@ -79,17 +79,16 @@ namespace Vintagestory.GameContent
                 {
                     Location = new AssetLocation("sounds/effect/fuse"),
                     ShouldLoop = true,
-                    Position = pos.ToVec3f().Add(0.5f, 0.25f, 0.5f),
+                    Position = Pos.ToVec3f().Add(0.5f, 0.25f, 0.5f),
                     DisposeOnFinish = false,
                     Volume = 0.1f,
                     Range = 16,
                 });
             }
 
-            block = api.World.BlockAccessor.GetBlock(pos);
-            blastRadius = block.Attributes["blastRadius"].AsInt(4);
-            injureRadius = block.Attributes["injureRadius"].AsInt(8);
-            blastType = (EnumBlastType)block.Attributes["blastType"].AsInt((int)EnumBlastType.OreBlast);
+            blastRadius = Block.Attributes["blastRadius"].AsInt(4);
+            injureRadius = Block.Attributes["injureRadius"].AsInt(8);
+            blastType = (EnumBlastType)Block.Attributes["blastType"].AsInt((int)EnumBlastType.OreBlast);
         }
 
         private void OnTick(float dt)
@@ -98,32 +97,32 @@ namespace Vintagestory.GameContent
             {
                 remainingSeconds -= dt;
 
-                if (api.Side == EnumAppSide.Server && remainingSeconds <= 0)
+                if (Api.Side == EnumAppSide.Server && remainingSeconds <= 0)
                 {
                     Combust(dt);
                 }
 
-                if (api.Side == EnumAppSide.Client)
+                if (Api.Side == EnumAppSide.Client)
                 {
-                    smallSparks.minPos.Set(pos.X + 0.45, pos.Y + 0.5, pos.Z + 0.45);
-                    api.World.SpawnParticles(smallSparks);
+                    smallSparks.minPos.Set(Pos.X + 0.45, Pos.Y + 0.5, Pos.Z + 0.45);
+                    Api.World.SpawnParticles(smallSparks);
                 }
             }
         }
 
         void Combust(float dt)
         {
-            api.World.BlockAccessor.SetBlock(0, pos);
-            ((IServerWorldAccessor)api.World).CreateExplosion(pos, BlastType, BlastRadius, InjureRadius);
+            Api.World.BlockAccessor.SetBlock(0, Pos);
+            ((IServerWorldAccessor)Api.World).CreateExplosion(Pos, BlastType, BlastRadius, InjureRadius);
         }
 
         internal void OnBlockExploded(BlockPos pos)
         {
-            if (api.Side == EnumAppSide.Server)
+            if (Api.Side == EnumAppSide.Server)
             {
                 if (!lit || remainingSeconds > 0.3)
                 {
-                    api.World.RegisterCallback(Combust, 250);
+                    Api.World.RegisterCallback(Combust, 250);
                 }
                 
             }
@@ -138,7 +137,7 @@ namespace Vintagestory.GameContent
         {
             if (lit) return;
 
-            if (api.Side == EnumAppSide.Client) fuseSound.Start();
+            if (Api.Side == EnumAppSide.Client) fuseSound.Start();
             lit = true;
             remainingSeconds = FuseTimeSeconds;
             MarkDirty();

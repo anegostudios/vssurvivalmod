@@ -30,28 +30,21 @@ namespace Vintagestory.GameContent
 
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
         {
-            if (!world.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
-            {
-                byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
-                failureCode = "claimed";
-                return false;
-            }
-
-            if (IsSuitablePosition(world, blockSel.Position, ref failureCode))
+            if (CanPlaceBlock(world, byPlayer, blockSel, ref failureCode))
             {
                 BlockFacing[] horVer = SuggestedHVOrientation(byPlayer, blockSel);
                 BlockPos secondPos = blockSel.Position.AddCopy(horVer[0]);
 
-                if (!IsSuitablePosition(world, secondPos, ref failureCode)) return false;
+                if (!CanPlaceBlock(world, byPlayer, new BlockSelection() { Position = secondPos, Face = blockSel.Face }, ref failureCode)) return false;
 
                 string code = horVer[0].GetOpposite().Code;
 
                 Block orientedBlock = world.BlockAccessor.GetBlock(CodeWithParts("head", code));
-                orientedBlock.DoPlaceBlock(world, secondPos, blockSel.Face, itemstack);
+                orientedBlock.DoPlaceBlock(world, byPlayer, new BlockSelection() { Position = secondPos, Face = blockSel.Face }, itemstack);
 
                 AssetLocation feetCode = CodeWithParts("feet", code);
                 orientedBlock = world.BlockAccessor.GetBlock(feetCode);
-                orientedBlock.DoPlaceBlock(world, blockSel.Position, blockSel.Face, itemstack);
+                orientedBlock.DoPlaceBlock(world, byPlayer, blockSel, itemstack);
                 return true;
             }
 
@@ -148,7 +141,12 @@ namespace Vintagestory.GameContent
             }
 
             BlockEntityTrough betr = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityTrough;
-            if (betr != null) return betr.GetBlockInfo(forPlayer);
+            if (betr != null)
+            {
+                StringBuilder dsc = new StringBuilder();
+                betr.GetBlockInfo(forPlayer, dsc);
+                return dsc.ToString();
+            }
 
 
             return base.GetPlacedBlockInfo(world, pos, forPlayer);

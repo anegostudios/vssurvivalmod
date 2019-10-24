@@ -67,89 +67,90 @@ namespace Vintagestory.ServerMods
 
 
 
-        private void CmdWgen(IServerPlayer player, int groupId, CmdArgs arguments)
+        private void CmdWgen(IServerPlayer player, int groupId, CmdArgs args)
         {
             this.groupId = groupId;
 
-            if (arguments.Length < 1)
+            if (args.Length < 1)
             {
                 player.SendMessage(groupId, "/wgen [testmap|testnoise|chunk|region|pos|tree]", EnumChatType.CommandError);
                 return;
             }
 
-            switch (arguments[0])
+            string cmd = args.PopWord();
+
+            switch (cmd)
             {
                 case "autogen":
-                    arguments.PopWord();
-                    api.WorldManager.AutoGenerateChunks = (bool)arguments.PopBool(false);
+                    api.WorldManager.AutoGenerateChunks = (bool)args.PopBool(false);
                     player.SendMessage(groupId, "Autogen now " + (api.WorldManager.AutoGenerateChunks ? "on" : "off"), EnumChatType.CommandError);
                     break;
 
                 case "gt":
-                    TerraGenConfig.GenerateVegetation = arguments.Length > 1 && (arguments[1] == "1" || arguments[1] == "on");
+                    TerraGenConfig.GenerateVegetation = (bool)args.PopBool(true);
                     player.SendMessage(groupId, "Generate trees now " + (TerraGenConfig.GenerateVegetation ? "on" : "off"), EnumChatType.CommandError);
                     break;
 
                 case "regen":
-                    RegenChunksAroundPlayer(player, arguments, false);
+                    RegenChunksAroundPlayer(player, args, false);
                     break;
 
                 case "regenr":
-                    RegenChunksAroundPlayer(player, arguments, true);
+                    RegenChunksAroundPlayer(player, args, true);
                     break;
 
                 case "regenc":
-                    RegenChunks(player, arguments);
+                    RegenChunks(player, args);
                     break;
                     
                 case "regenrc":
-                    RegenChunks(player, arguments, false, true);
+                    RegenChunks(player, args, false, true);
                     break;
 
                 case "delrock":
-                    DelRock(player, arguments, true);
+                    DelRock(player, args, true);
                     break;
 
                 case "delrockc":
-                    DelRock(player, arguments);
+                    DelRock(player, args);
                     break;
 
                 case "del":
-                    DelChunks(player, arguments);
+                    DelChunks(player, args);
                     break;
 
                 case "tree":
-                    TestTree(player, arguments);
+                    TestTree(player, args);
                     break;
 
                 case "treelineup":
-                    TreeLineup(player, arguments);
+                    TreeLineup(player, args);
                     break;
 
                 case "testmap":
-                    TestMap(player, arguments);
+                    TestMap(player, args);
                     break;
 
                 case "genmap":
-                    GenMap(player, arguments);
+                    GenMap(player, args);
                     break;
 
                 case "chunk":
-                    ReadChunk(player, arguments);
+                    ReadChunk(player, args);
                     break;
 
                 case "region":
-                    arguments.PopWord();
-                    ReadRegion(player, arguments);
+                    args.PopWord();
+                    ReadRegion(player, args);
                     break;
 
                 case "pos":
-                    ReadPos(player, arguments);
+                    ReadPos(player, args);
                     break;
 
 
                 case "testnoise":
-                    TestNoise(player, arguments);
+                    TestNoise(player, args);
                     break;
 
 
@@ -181,11 +182,7 @@ namespace Vintagestory.ServerMods
 
             List<Vec2i> coords = new List<Vec2i>();
 
-            int rad = 2;
-            if (arguments.Length > 1)
-            {
-                int.TryParse(arguments[1], out rad);
-            }
+            int rad = (int)arguments.PopInt(2);
 
             for (int x = -rad; x <= rad; x++)
             {
@@ -252,7 +249,7 @@ namespace Vintagestory.ServerMods
                 if (ModStdWorldGen.DoDecorationPass)
                 {
                     api.ModLoader.GetModSystem<GenVegetation>().initWorldGen();
-                    api.ModLoader.GetModSystem<GenLakes>().initWorldGen();
+                    api.ModLoader.GetModSystem<GenPonds>().initWorldGen();
                     api.ModLoader.GetModSystem<GenBlockLayers>().InitWorldGen();
                     api.ModLoader.GetModSystem<GenCaves>().initWorldGen();
                     api.ModLoader.GetModSystem<GenDeposits>().initWorldGen();
@@ -281,11 +278,7 @@ namespace Vintagestory.ServerMods
 
             List<Vec2i> coords = new List<Vec2i>();
 
-            int rad = 2;
-            if (arguments.Length > 1)
-            {
-                int.TryParse(arguments[1], out rad);
-            }
+            int rad = (int)arguments.PopInt(2);
 
             for (int x = -rad; x <= rad; x++)
             {
@@ -341,13 +334,7 @@ namespace Vintagestory.ServerMods
         private void TestNoise(IServerPlayer player, CmdArgs arguments)
         {
             bool use3d = false;
-            int octaves = 1;
-
-            if (arguments.Length > 1)
-            {
-                if (!int.TryParse(arguments[1], out octaves)) octaves = 1;
-            }
-            
+            int octaves = (int)arguments.PopInt(1);
 
             Random rnd = new Random();
             long seed = rnd.Next();
@@ -392,24 +379,15 @@ namespace Vintagestory.ServerMods
 
         void TestTree(IServerPlayer player, CmdArgs arguments)
         {
-            if (arguments.Length < 2)
+            if (arguments.Length < 1)
             {
                 player.SendMessage(groupId, "/wgen tree {treeWorldPropertyCode} [0.1 - 3] [aheadoffset]", EnumChatType.CommandError);
                 return;
             }
 
-            float size = 1f;
-            int aheadoffset = 0;
-
-            if (arguments.Length > 2)
-            {
-                float.TryParse(arguments[2], out size);
-            }
-
-            if (arguments.Length > 3)
-            {
-                int.TryParse(arguments[3], out aheadoffset);
-            }
+            AssetLocation loc = new AssetLocation(arguments.PopWord());
+            float size = (float)arguments.PopFloat(1);
+            int aheadoffset = (int)arguments.PopInt(0);
 
             BlockPos pos = player.Entity.Pos.HorizontalAheadCopy(aheadoffset).AsBlockPos;
 
@@ -421,11 +399,11 @@ namespace Vintagestory.ServerMods
             }
 
             treeGenerators.ReloadTreeGenerators();
-            treeGenerators.RunGenerator(new AssetLocation(arguments[1]), blockAccessor, pos, size);
+            treeGenerators.RunGenerator(loc, blockAccessor, pos, size);
 
             blockAccessor.Commit();
 
-            player.SendMessage(groupId, arguments[1] + " size " + size + " generated.", EnumChatType.CommandError);
+            player.SendMessage(groupId, loc + " size " + size + " generated.", EnumChatType.CommandError);
         }
 
 
@@ -434,7 +412,7 @@ namespace Vintagestory.ServerMods
 
         void TreeLineup(IServerPlayer player, CmdArgs arguments)
         {
-            if (arguments.Length < 2)
+            if (arguments.Length < 1)
             {
                 player.SendMessage(groupId, "/wgen treelineup {treeWorldPropertyCode} [0.1 - 3]", EnumChatType.CommandError);
                 return;
@@ -443,6 +421,7 @@ namespace Vintagestory.ServerMods
             EntityPos pos = player.Entity.Pos;
             BlockPos center = pos.HorizontalAheadCopy(25).AsBlockPos;
             IBlockAccessor blockAccessor = api.WorldManager.GetBlockAccessorBulkUpdate(true, true, true);
+            AssetLocation loc = new AssetLocation(arguments.PopWord());
 
             int size = 12;
             for (int dx = -2*size; dx < 2*size; dx++)
@@ -458,9 +437,9 @@ namespace Vintagestory.ServerMods
 
 
             treeGenerators.ReloadTreeGenerators();
-            treeGenerators.RunGenerator(new AssetLocation(arguments[1]), blockAccessor, center.AddCopy(0, -1, 0));
-            treeGenerators.RunGenerator(new AssetLocation(arguments[1]), blockAccessor, center.AddCopy(-9, -1, 0));
-            treeGenerators.RunGenerator(new AssetLocation(arguments[1]), blockAccessor, center.AddCopy(9, -1, 0));
+            treeGenerators.RunGenerator(loc, blockAccessor, center.AddCopy(0, -1, 0));
+            treeGenerators.RunGenerator(loc, blockAccessor, center.AddCopy(-9, -1, 0));
+            treeGenerators.RunGenerator(loc, blockAccessor, center.AddCopy(9, -1, 0));
 
             blockAccessor.Commit();
         }
@@ -469,16 +448,18 @@ namespace Vintagestory.ServerMods
 
         void TestMap(IServerPlayer player, CmdArgs arguments)
         {
-            if (arguments.Length < 2)
+            if (arguments.Length < 1)
             {
                 player.SendMessage(groupId, "/wgen testmap [climate|forest|wind|gprov|landform|ore]", EnumChatType.CommandError);
                 return;
             }
 
             Random rnd = new Random();
-            long seed = rnd.Next();
+            long seed = 1239123912;// rnd.Next();
 
-            switch (arguments[1])
+            string subcmd = arguments.PopWord();
+
+            switch (subcmd)
             {
                 case "climate":
                     {
@@ -522,11 +503,16 @@ namespace Vintagestory.ServerMods
 
                 case "ore":
                     {
-                        NoiseBase.Debug = false;
-                        NoiseOre noiseOre = new NoiseOre(seed);
-                        MapLayerBase climate = GenMaps.GetOreMap(seed, noiseOre);
                         NoiseBase.Debug = true;
-                        climate.DebugDrawBitmap(DebugDrawMode.RGB, 0, 0, 1024, "Ore 1 - Ore");
+                        NoiseOre noiseOre = new NoiseOre(seed);
+
+                        float scaleMul = (float)arguments.PopFloat(1f);
+                        float contrast = (float)arguments.PopFloat(1f);
+                        float sub = (float)arguments.PopFloat(0f);
+
+                        MapLayerBase oremap = GenMaps.GetOreMap(seed, noiseOre, scaleMul, contrast, sub);
+                        NoiseBase.Debug = false;
+                        //climate.DebugDrawBitmap(DebugDrawMode.RGB, 0, 0, 1024, "Ore 1 - Ore");
                         player.SendMessage(groupId, "ore map generated", EnumChatType.CommandSuccess);
                     }
                     break;
@@ -587,7 +573,7 @@ namespace Vintagestory.ServerMods
 
         void GenMap(IServerPlayer player, CmdArgs arguments)
         {
-            if (arguments.Length < 2)
+            if (arguments.Length < 1)
             {
                 player.SendMessage(groupId, "/wgen genmap [climate|forest|wind|gprov|landform|ore]", EnumChatType.CommandError);
                 return;
@@ -617,8 +603,9 @@ namespace Vintagestory.ServerMods
             
 
             NoiseBase.Debug = true;
+            string subcmd = arguments.PopWord();
 
-            switch (arguments[1])
+            switch (subcmd)
             {
                 case "climate":
                     {
@@ -686,7 +673,7 @@ namespace Vintagestory.ServerMods
 
         void ReadChunk(IServerPlayer player, CmdArgs arguments)
         {
-            if (arguments.Length < 2)
+            if (arguments.Length < 1)
             {
                 player.SendMessage(groupId, "Nothing implemented here", EnumChatType.CommandError);
                 return;
@@ -886,7 +873,7 @@ namespace Vintagestory.ServerMods
 
         void ReadPos(IServerPlayer player, CmdArgs arguments)
         {
-            if (arguments.Length < 2)
+            if (arguments.Length < 1)
             {
                 player.SendMessage(groupId, "/wgen pos [gprov|landform|climate|height]", EnumChatType.CommandError);
                 return;
@@ -915,7 +902,9 @@ namespace Vintagestory.ServerMods
             int regionX = pos.X / regionSize;
             int regionZ = pos.Z / regionSize;
 
-            switch (arguments[1])
+            string subcmd = arguments.PopWord();
+
+            switch (subcmd)
             {
                 case "coords":
                     player.SendMessage(groupId, string.Format("Chunk X/Z: {0}/{1}, Region X/Z: {2},{3}", chunkX, chunkZ, regionX, regionZ), EnumChatType.CommandSuccess);

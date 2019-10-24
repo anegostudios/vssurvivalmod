@@ -9,21 +9,21 @@ using Vintagestory.ServerMods.NoObf;
 
 namespace Vintagestory.ServerMods
 {
-    public class GenLakes : ModStdWorldGen
+    public class GenPonds : ModStdWorldGen
     {
         ICoreServerAPI api;
         LCGRandom rand;
         int mapheight;
         IBlockAccessor blockAccessor;
         Queue<Vec2i> searchPositionsDeltas = new Queue<Vec2i>();
-        Queue<Vec2i> lakePositions = new Queue<Vec2i>();
+        Queue<Vec2i> pondPositions = new Queue<Vec2i>();
         int searchSize;
         int mapOffset;
         int minBoundary;
         int maxBoundary;
 
         int ndx, ndz;
-        int lakeYPos;
+        int pondYPos;
 
         int climateUpLeft;
         int climateUpRight;
@@ -115,10 +115,10 @@ namespace Vintagestory.ServerMods
             int humidity = climateMid & 0xff;
 
             // Lake density at chunk center
-            float lakeDensity = 4 * (rain + humidity) / 255f;
+            float pondDensity = 4 * (rain + humidity) / 255f;
 
 
-            float maxTries = lakeDensity * 10;
+            float maxTries = pondDensity * 10;
 
             int dx, dz;
 
@@ -131,7 +131,7 @@ namespace Vintagestory.ServerMods
                 dx = rand.NextInt(chunksize);
                 dz = rand.NextInt(chunksize);
 
-                TryPlaceLakeAt(dx, dz, chunkX, chunkZ, heightmap);
+                TryPlacePondAt(dx, dz, chunkX, chunkZ, heightmap);
 
                 //ushort blockId = blockAccessor.GetBlock(new AssetLocation("creativeblock-37")).BlockId;
                 //blockAccessor.SetBlock(blockId, new BlockPos(chunkX * chunksize + dx, heightmap[dz * chunksize + dx] + 1, chunkZ * chunksize + dz));
@@ -140,17 +140,17 @@ namespace Vintagestory.ServerMods
 
 
 
-        public void TryPlaceLakeAt(int dx, int dz, int chunkX, int chunkZ, ushort[] heightmap, int depth = 0)
+        public void TryPlacePondAt(int dx, int dz, int chunkX, int chunkZ, ushort[] heightmap, int depth = 0)
         {
             searchPositionsDeltas.Clear();
-            lakePositions.Clear();
+            pondPositions.Clear();
 
             // Clear Array
             for (int i = 0; i < didCheckPosition.Length; i++) didCheckPosition[i] = false;
 
-            lakeYPos = heightmap[dz * chunksize + dx] + 1;
+            pondYPos = heightmap[dz * chunksize + dx] + 1;
 
-            if (lakeYPos <= 0 || lakeYPos >= mapheight - 1) return;
+            if (pondYPos <= 0 || pondYPos >= mapheight - 1) return;
 
             int basePosX = chunkX * chunksize;
             int basePosZ = chunkZ * chunksize;
@@ -159,7 +159,7 @@ namespace Vintagestory.ServerMods
             
 
             searchPositionsDeltas.Enqueue(new Vec2i(dx, dz));
-            lakePositions.Enqueue(new Vec2i(basePosX + dx, basePosZ + dz));
+            pondPositions.Enqueue(new Vec2i(basePosX + dx, basePosZ + dz));
             didCheckPosition[(dz + mapOffset) * searchSize + dx + mapOffset] = true;
 
             
@@ -175,7 +175,7 @@ namespace Vintagestory.ServerMods
 
                     tmp.Set(chunkX * chunksize + ndx, chunkZ * chunksize + ndz);
 
-                    Block belowBlock = blockAccessor.GetBlock(tmp.X, lakeYPos - 1, tmp.Y);
+                    Block belowBlock = blockAccessor.GetBlock(tmp.X, pondYPos - 1, tmp.Y);
 
                     bool inBoundary = ndx > minBoundary && ndz > minBoundary && ndx < maxBoundary && ndz < maxBoundary;
 
@@ -184,11 +184,11 @@ namespace Vintagestory.ServerMods
                     {
                         int arrayIndex = (ndz + mapOffset) * searchSize + ndx + mapOffset;
                         
-                        // Already checked or did we reach a lake border? 
-                        if (!didCheckPosition[arrayIndex] && blockAccessor.GetBlock(tmp.X, lakeYPos, tmp.Y).Replaceable >= 6000)
+                        // Already checked or did we reach a pond border? 
+                        if (!didCheckPosition[arrayIndex] && blockAccessor.GetBlock(tmp.X, pondYPos, tmp.Y).Replaceable >= 6000)
                         {
                             searchPositionsDeltas.Enqueue(new Vec2i(ndx, ndz));
-                            lakePositions.Enqueue(tmp.Copy());
+                            pondPositions.Enqueue(tmp.Copy());
 
                             didCheckPosition[arrayIndex] = true;
                         }
@@ -196,14 +196,14 @@ namespace Vintagestory.ServerMods
                     }
                     else
                     {
-                        lakePositions.Clear();
+                        pondPositions.Clear();
                         searchPositionsDeltas.Clear();
                         return;
                     }
                 }
             }
 
-            if (lakePositions.Count == 0) return;
+            if (pondPositions.Count == 0) return;
 
 
             int curChunkX, curChunkZ;
@@ -213,12 +213,12 @@ namespace Vintagestory.ServerMods
             IServerChunk chunk = null;
             IServerChunk chunkOneBlockBelow = null;
 
-            int ly = GameMath.Mod(lakeYPos, chunksize);
+            int ly = GameMath.Mod(pondYPos, chunksize);
 
-            bool extraLakeDepth = rand.NextDouble() > 0.5;
-            bool withSeabed = extraLakeDepth || lakePositions.Count > 16;
+            bool extraPondDepth = rand.NextDouble() > 0.5;
+            bool withSeabed = extraPondDepth || pondPositions.Count > 16;
 
-            foreach (Vec2i p in lakePositions)
+            foreach (Vec2i p in pondPositions)
             {
                 curChunkX = p.X / chunksize;
                 curChunkZ = p.Y / chunksize;
@@ -229,13 +229,13 @@ namespace Vintagestory.ServerMods
                 // Get correct chunk and correct climate data if we don't have it already
                 if (curChunkX != prevChunkX || curChunkZ != prevChunkZ)
                 {
-                    chunk = (IServerChunk)blockAccessor.GetChunk(curChunkX, lakeYPos / chunksize, curChunkZ);
-                    if (chunk == null) chunk = api.WorldManager.GetChunk(curChunkX, lakeYPos / chunksize, curChunkZ);
+                    chunk = (IServerChunk)blockAccessor.GetChunk(curChunkX, pondYPos / chunksize, curChunkZ);
+                    if (chunk == null) chunk = api.WorldManager.GetChunk(curChunkX, pondYPos / chunksize, curChunkZ);
                     chunk.Unpack();
 
                     if (ly == 0)
                     {
-                        chunkOneBlockBelow = ((IServerChunk)blockAccessor.GetChunk(curChunkX, (lakeYPos - 1) / chunksize, curChunkZ));
+                        chunkOneBlockBelow = ((IServerChunk)blockAccessor.GetChunk(curChunkX, (pondYPos - 1) / chunksize, curChunkZ));
                         chunkOneBlockBelow.Unpack();
                     } else
                     {
@@ -260,11 +260,11 @@ namespace Vintagestory.ServerMods
 
 
                 // Raise heightmap by 1
-                mapchunk.RainHeightMap[lz * chunksize + lx] = (ushort)lakeYPos;
+                mapchunk.RainHeightMap[lz * chunksize + lx] = (ushort)pondYPos;
 
                 // Identify correct climate at this position
                 int climate = GameMath.BiLerpRgbColor((float)lx / chunksize, (float)lz / chunksize, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight);
-                float temp = TerraGenConfig.GetScaledAdjustedTemperatureFloat((climate >> 16) & 0xff, lakeYPos - TerraGenConfig.seaLevel);
+                float temp = TerraGenConfig.GetScaledAdjustedTemperatureFloat((climate >> 16) & 0xff, pondYPos - TerraGenConfig.seaLevel);
 
 
                 // 1. Place water or ice block 
@@ -285,13 +285,13 @@ namespace Vintagestory.ServerMods
                 // Water below? Seabed already placed
                 if (belowBlock.IsLiquid()) continue;
                 
-                float rainRel = TerraGenConfig.GetRainFall((climate >> 8) & 0xff, lakeYPos) / 255f;
+                float rainRel = TerraGenConfig.GetRainFall((climate >> 8) & 0xff, pondYPos) / 255f;
                 int rockBlockId = mapchunk.TopRockIdMap[lz * chunksize + lx];
                 if (rockBlockId == 0) continue;
                 
                 for (int i = 0; i < lakebedLayerConfig.BlockCodeByMin.Length; i++)
                 {
-                    if (lakebedLayerConfig.BlockCodeByMin[i].Suitable(temp, rainRel, (float)lakeYPos / mapheight, rand))
+                    if (lakebedLayerConfig.BlockCodeByMin[i].Suitable(temp, rainRel, (float)pondYPos / mapheight, rand))
                     {
                         chunkOneBlockBelow.Blocks[index] = lakebedLayerConfig.BlockCodeByMin[i].GetBlockForMotherRock(rockBlockId);
                         break;
@@ -300,9 +300,9 @@ namespace Vintagestory.ServerMods
             }
 
 
-            if (lakePositions.Count > 0 && extraLakeDepth)
+            if (pondPositions.Count > 0 && extraPondDepth)
             {
-                TryPlaceLakeAt(dx, dz, chunkX, chunkZ, heightmap, depth + 1);
+                TryPlacePondAt(dx, dz, chunkX, chunkZ, heightmap, depth + 1);
             }
         }
     }

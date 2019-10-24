@@ -114,7 +114,7 @@ namespace Vintagestory.ServerMods
 
                 if (variant.WithOreMap)
                 {
-                    variant.OreMapLayer = getOrCreateMapLayer(seed, variant.Code, maplayersByCode);
+                    variant.OreMapLayer = getOrCreateMapLayer(seed, variant.Code, maplayersByCode, variant.OreMapScale, variant.OreMapContrast, variant.OreMapSub);
                 }
 
                 if (variant.ChildDeposits != null)
@@ -124,7 +124,7 @@ namespace Vintagestory.ServerMods
                         DepositVariant childVariant = variant.ChildDeposits[k];
                         if (childVariant.WithOreMap)
                         {
-                            childVariant.OreMapLayer = getOrCreateMapLayer(seed, childVariant.Code, maplayersByCode);
+                            childVariant.OreMapLayer = getOrCreateMapLayer(seed, childVariant.Code, maplayersByCode, variant.OreMapScale, variant.OreMapContrast, variant.OreMapSub);
                         }
                     }
                 }
@@ -136,13 +136,13 @@ namespace Vintagestory.ServerMods
         }
 
         
-        MapLayerBase getOrCreateMapLayer(int seed, string oremapCode, Dictionary<string, MapLayerBase> maplayersByCode)
+        MapLayerBase getOrCreateMapLayer(int seed, string oremapCode, Dictionary<string, MapLayerBase> maplayersByCode, float scaleMul, float contrastMul, float sub)
         {
             MapLayerBase ml = null;
             if (!maplayersByCode.TryGetValue(oremapCode, out ml))
             {
                 NoiseOre noiseOre = new NoiseOre(seed + oremapCode.GetHashCode());
-                maplayersByCode[oremapCode] = ml = GenMaps.GetOreMap(seed + oremapCode.GetHashCode() + 1, noiseOre);
+                maplayersByCode[oremapCode] = ml = GenMaps.GetOreMap(seed + oremapCode.GetHashCode() + 1, noiseOre, scaleMul, contrastMul, sub);
             }
 
             return ml;

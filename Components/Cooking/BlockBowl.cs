@@ -35,6 +35,8 @@ namespace Vintagestory.GameContent
             }
 
             BlockLiquidContainerBase blockLiqContainer = byEntity.World.BlockAccessor.GetBlock(blockSel.Position) as BlockLiquidContainerBase;
+            IPlayer player = (byEntity as EntityPlayer)?.Player;
+
             string contents = BowlContentItemCode();
 
             if (blockLiqContainer != null)
@@ -47,6 +49,38 @@ namespace Vintagestory.GameContent
                         InsertIntoBowl(slot, byEntity, stack.Collectible.Code.Path);
                         blockLiqContainer.TryTakeContent(byEntity.World, blockSel.Position, 1);
                     }
+
+                    BlockEntityContainer bebarrel = api.World.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityContainer;
+                    if (bebarrel != null && bebarrel.Inventory.Count > 0)
+                    {
+                        stack = bebarrel.Inventory[0].Itemstack;
+
+                        if (stack != null && stack.Collectible.Attributes["crockable"].AsBool() == true)
+                        {
+                            Block mealblock = api.World.GetBlock(AssetLocation.Create(slot.Itemstack.Collectible.Attributes["mealBlockCode"].AsString(), slot.Itemstack.Collectible.Code.Domain));
+                            ItemStack mealstack = new ItemStack(mealblock);
+                            mealstack.StackSize = 1;
+
+                            (mealblock as IBlockMealContainer).SetContents(null, mealstack, new ItemStack[] { bebarrel.Inventory[0].TakeOut(4) }, 1);
+
+                            if (slot.StackSize == 1)
+                            {
+                                slot.Itemstack = mealstack;
+                            }
+                            else
+                            {
+                                slot.TakeOut(1);
+                                if (!player.InventoryManager.TryGiveItemstack(mealstack, true))
+                                {
+                                    api.World.SpawnItemEntity(mealstack, byEntity.Pos.XYZ.Add(0.5, 0.5, 0.5));
+                                }
+                            }
+                            slot.MarkDirty();
+
+                            bebarrel.MarkDirty(true);
+                        }
+                    }
+
                 }
                 else
                 {
@@ -64,6 +98,7 @@ namespace Vintagestory.GameContent
                 handHandling = EnumHandHandling.PreventDefaultAction;
                 return;
             }
+
 
             handHandling = EnumHandHandling.PreventDefault;
 

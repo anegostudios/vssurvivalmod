@@ -53,7 +53,15 @@ namespace Vintagestory.GameContent
             //TryPlaceBlockForWorldGen(world.BlockAccessor, blockPos, BlockFacing.UP);
         }
 
-        
+
+        public override float OnGettingBroken(IPlayer player, BlockSelection blockSel, ItemSlot itemslot, float remainingResistance, float dt, int counter)
+        {
+            BlockEntityLocustNest bel = api.World.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityLocustNest;
+            bel?.OnBlockBreaking();
+
+            return base.OnGettingBroken(player, blockSel, itemslot, remainingResistance, dt, counter);
+        }
+
         public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, LCGRandom worldGenRand)
         {
             if (blockAccessor.GetBlockId(pos) != 0) return false;

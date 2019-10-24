@@ -12,7 +12,7 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class BELantern : BlockEntity, IBlockShapeSupplier
+    public class BELantern : BlockEntity
     {
         public string material = "copper";
         public string lining = "plain";
@@ -26,15 +26,17 @@ namespace Vintagestory.GameContent
         public override void Initialize(ICoreAPI api)
         {
             base.Initialize(api);
-
-            Block block = api.World.BlockAccessor.GetBlock(pos);
-            origlightHsv = block.LightHsv;
+            origlightHsv = Block.LightHsv;
+            lightHsv = (byte[])Block.LightHsv.Clone();
         }
 
-        public void DidPlace(string material, string lining)
+        public void DidPlace(string material, string lining, string glass)
         {
             this.lining = lining;
             this.material = material;
+            this.glass = glass;
+            if (glass == null || glass.Length == 0) this.glass = "quartz";
+            setLightColor(origlightHsv, lightHsv, glass);
         }
 
 
@@ -45,9 +47,9 @@ namespace Vintagestory.GameContent
             material = tree.GetString("material", "copper");
             lining = tree.GetString("lining", "plain");
             glass = tree.GetString("glass", "quartz");
-            setLightColor(glass);
+            setLightColor(origlightHsv, lightHsv, glass);
 
-            if (api != null && api.Side == EnumAppSide.Client)
+            if (Api != null && Api.Side == EnumAppSide.Client)
             {
                 currentMesh = null;
                 MarkDirty(true);
@@ -62,10 +64,10 @@ namespace Vintagestory.GameContent
 
         private MeshData getMesh(ITesselatorAPI tesselator)
         {
-            Dictionary<string, MeshData> lanternMeshes = ObjectCacheUtil.GetOrCreate(api, "blockLanternBlockMeshes", () => new Dictionary<string, MeshData>());
+            Dictionary<string, MeshData> lanternMeshes = ObjectCacheUtil.GetOrCreate(Api, "blockLanternBlockMeshes", () => new Dictionary<string, MeshData>());
             
             MeshData mesh = null;
-            BlockLantern block = api.World.BlockAccessor.GetBlock(pos) as BlockLantern;
+            BlockLantern block = Api.World.BlockAccessor.GetBlock(Pos) as BlockLantern;
             if (block == null) return null;
 
             string orient = block.LastCodePart();
@@ -75,7 +77,7 @@ namespace Vintagestory.GameContent
                 return mesh;
             }
 
-            return lanternMeshes[material + "-" + lining + "-" + orient + "-" + glass] = block.GenMesh(api as ICoreClientAPI, material, lining, glass, null, tesselator);
+            return lanternMeshes[material + "-" + lining + "-" + orient + "-" + glass] = block.GenMesh(Api as ICoreClientAPI, material, lining, glass, null, tesselator);
         }
 
         public override void ToTreeAttributes(ITreeAttribute tree)
@@ -88,7 +90,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
+        public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
         {
             if (currentMesh == null)
             {
@@ -100,9 +102,9 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        public override string GetBlockInfo(IPlayer forPlayer)
+        public override void GetBlockInfo(IPlayer forPlayer, StringBuilder sb)
         {
-            return Lang.Get("{0} with {1} lining and {2} glass panels", material.UcFirst(), lining.UcFirst(), glass);
+            sb.AppendLine(Lang.Get("{0} with {1} lining and {2} glass panels", material.UcFirst(), lining.UcFirst(), glass));
         }
 
         internal void Interact(IPlayer byPlayer)
@@ -115,28 +117,28 @@ namespace Vintagestory.GameContent
             {
                 if (glass != "quartz" && byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
                 {
-                    ItemStack stack = new ItemStack(api.World.GetBlock(new AssetLocation("glass-" + glass)));
+                    ItemStack stack = new ItemStack(Api.World.GetBlock(new AssetLocation("glass-" + glass)));
                     if (!byPlayer.InventoryManager.TryGiveItemstack(stack, true))
                     {
-                        api.World.SpawnItemEntity(stack, pos.ToVec3d().Add(0.5, 0, 0.5));
+                        Api.World.SpawnItemEntity(stack, Pos.ToVec3d().Add(0.5, 0, 0.5));
                     }
                 }
 
                 this.glass = obj.Variant["color"];
                 if (byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative && glass != "quartz") slot.TakeOut(1);
 
-                if (api.Side == EnumAppSide.Client) (byPlayer as IClientPlayer).TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
-                Vec3d soundpos = pos.ToVec3d().Add(0.5, 0, 0.5);
-                api.World.PlaySoundAt(api.World.GetBlock(new AssetLocation("glass-" + glass)).Sounds.Place, soundpos.X, soundpos.Y, soundpos.Z, byPlayer);
+                if (Api.Side == EnumAppSide.Client) (byPlayer as IClientPlayer).TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
+                Vec3d soundpos = Pos.ToVec3d().Add(0.5, 0, 0.5);
+                Api.World.PlaySoundAt(Api.World.GetBlock(new AssetLocation("glass-" + glass)).Sounds.Place, soundpos.X, soundpos.Y, soundpos.Z, byPlayer);
 
-                setLightColor(glass);
+                setLightColor(origlightHsv, lightHsv, glass);
 
                 MarkDirty(true);
             }
         }
 
 
-        void setLightColor(string color)
+        public static void setLightColor(byte[] origLightHsv, byte[] lightHsv, string color)
         {
             switch (color)
             {
@@ -166,8 +168,8 @@ namespace Vintagestory.GameContent
                     break;
 
                 default:
-                    lightHsv[1] = 3;
-                    lightHsv[0] = 7;
+                    lightHsv[1] = origLightHsv[1];
+                    lightHsv[0] = origLightHsv[0];
                     break;
             }
         }

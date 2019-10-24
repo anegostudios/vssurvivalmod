@@ -14,13 +14,27 @@ namespace Vintagestory.GameContent
 {
     public class BlockMetalSpikes : Block
     {
+        float sprintIntoDamage = 1;
+        float fallIntoDamageMul = 30;
+        HashSet<AssetLocation> immuneCreatures;
+
+        public override void OnLoaded(ICoreAPI api)
+        {
+            base.OnLoaded(api);
+            sprintIntoDamage = Attributes["sprintIntoDamage"].AsFloat(1);
+            fallIntoDamageMul = Attributes["fallIntoDamageMul"].AsFloat(30);
+            immuneCreatures = new HashSet<AssetLocation>(Attributes["immuneCreatures"].AsObject<AssetLocation[]>(new AssetLocation[0], this.Code.Domain));
+        }
+
         public override void OnEntityInside(IWorldAccessor world, Entity entity, BlockPos pos)
         {
             if (world.Side == EnumAppSide.Server && entity is EntityAgent && (entity as EntityAgent).ServerControls.Sprint && entity.ServerPos.Motion.LengthSq() > 0.001)
             {
-                if (world.Rand.NextDouble() > 0.05)
+                if (immuneCreatures.Contains(entity.Code)) return;
+
+                if (world.Rand.NextDouble() > 0.05) 
                 {
-                    entity.ReceiveDamage(new DamageSource() { Source = EnumDamageSource.Block, sourceBlock = this, Type = EnumDamageType.PiercingAttack, sourcePos = pos.ToVec3d() }, 1);
+                    entity.ReceiveDamage(new DamageSource() { Source = EnumDamageSource.Block, sourceBlock = this, Type = EnumDamageType.PiercingAttack, sourcePos = pos.ToVec3d() }, sprintIntoDamage);
                     entity.ServerPos.Motion.Set(0, 0, 0);
                 }
             }
@@ -31,11 +45,11 @@ namespace Vintagestory.GameContent
         {
             if (world.Side == EnumAppSide.Server && isImpact && Math.Abs(collideSpeed.Y * 30) >= 0.25)
             {
-                if (entity.Code.Path == "locust") return;
+                if (immuneCreatures.Contains(entity.Code)) return;
 
                 entity.ReceiveDamage(
                     new DamageSource() { Source = EnumDamageSource.Block, sourceBlock = this, Type = EnumDamageType.PiercingAttack, sourcePos = pos.ToVec3d() },
-                    (float)Math.Abs(collideSpeed.Y * 30)
+                    (float)Math.Abs(collideSpeed.Y * fallIntoDamageMul)
                 );
             }
         }

@@ -10,9 +10,12 @@ namespace Vintagestory.ServerMods
         // (Be aware, static vars never get unloaded even when singleplayer server has been shut down)
         public static LandformsWorldProperty landforms;
 
-        public NoiseLandforms(long seed, ICoreServerAPI api) : base(seed)
+        public float scale;
+
+        public NoiseLandforms(long seed, ICoreServerAPI api, float scale) : base(seed)
         {
             LoadLandforms(api);
+            this.scale = scale;
         }
 
         public static void ReloadLandforms(ICoreServerAPI api)
@@ -86,13 +89,13 @@ namespace Vintagestory.ServerMods
 
         public int GetLandformIndexAt(int unscaledXpos, int unscaledZpos, int temp, int rain)
         {
-            float xpos = (float)unscaledXpos / TerraGenConfig.landformMapScale;
-            float zpos = (float)unscaledZpos / TerraGenConfig.landformMapScale;
+            float xpos = (float)unscaledXpos / scale;
+            float zpos = (float)unscaledZpos / scale;
 
             int xposInt = (int)xpos;
             int zposInt = (int)zpos;
 
-            int parentIndex = GetParentLandformIndexAt(xposInt, zposInt, temp, rain, xpos - xposInt, zpos - zposInt);
+            int parentIndex = GetParentLandformIndexAt(xposInt, zposInt, temp, rain);//, xpos - xposInt, zpos - zposInt);
 
             LandformVariant[] mutations = landforms.Variants[parentIndex].Mutations;
             if (mutations != null && mutations.Length > 0)
@@ -123,7 +126,7 @@ namespace Vintagestory.ServerMods
         }
 
 
-        public int GetParentLandformIndexAt(int xpos, int zpos, int temp, int rain, float lerpx, float lerpz)
+        public int GetParentLandformIndexAt(int xpos, int zpos, int temp, int rain)//, float lerpx, float lerpz)
         {
             InitPositionSeed(xpos, zpos);
 

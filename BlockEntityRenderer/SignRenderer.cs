@@ -43,7 +43,7 @@ namespace Vintagestory.GameContent
         {
             this.api = api;
             this.pos = pos;
-            font = api.Render.GetFont(20, GuiStyle.StandardFontName, new double[] { 0, 0, 0, 0.8 });
+            font = new CairoFont(20, GuiStyle.StandardFontName, new double[] { 0, 0, 0, 0.8 });
             font.LineHeightMultiplier = 0.9f;
 
             api.Event.RegisterRenderer(this, EnumRenderStage.Opaque);

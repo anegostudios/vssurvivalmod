@@ -12,7 +12,7 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockEntityGenericTypedContainer : BlockEntityOpenableContainer, IBlockShapeSupplier
+    public class BlockEntityGenericTypedContainer : BlockEntityOpenableContainer
     {
         internal InventoryGeneric inventory;
         public string type = "normal-generic";
@@ -23,7 +23,6 @@ namespace Vintagestory.GameContent
         public string dialogTitleLangCode = "chestcontents";
         public bool retrieveOnly = false;
 
-        public Block ownBlock;
         MeshData ownMesh;
 
         public virtual string DialogTitle
@@ -47,16 +46,14 @@ namespace Vintagestory.GameContent
 
         public override void Initialize(ICoreAPI api)
         {
-            ownBlock = api.World.BlockAccessor.GetBlock(pos);
-
-            defaultType = ownBlock.Attributes?["defaultType"]?.AsString("normal-generic");
+            defaultType = Block.Attributes?["defaultType"]?.AsString("normal-generic");
             if (defaultType == null) defaultType = "normal-generic";
             
 
             // Newly placed 
             if (inventory == null)
             {
-                InitInventory(ownBlock);
+                InitInventory(Block);
             }
 
             base.Initialize(api);
@@ -71,8 +68,8 @@ namespace Vintagestory.GameContent
                 if (nowType != type)
                 {
                     this.type = nowType;
-                    InitInventory(ownBlock);
-                    Inventory.LateInitialize(InventoryClassName + "-" + pos.X + "/" + pos.Y + "/" + pos.Z, api);
+                    InitInventory(Block);
+                    Inventory.LateInitialize(InventoryClassName + "-" + Pos.X + "/" + Pos.Y + "/" + Pos.Z, Api);
                     Inventory.ResolveBlocksOrItems();
                     Inventory.OnAcquireTransitionSpeed = Inventory_OnAcquireTransitionSpeed;
                     MarkDirty();
@@ -119,7 +116,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            if (api != null && api.Side == EnumAppSide.Client)
+            if (Api != null && Api.Side == EnumAppSide.Client)
             {
                 ownMesh = null;
                 MarkDirty(true);
@@ -132,7 +129,7 @@ namespace Vintagestory.GameContent
         {
             base.ToTreeAttributes(tree);
 
-            if (ownBlock != null) tree.SetString("forBlockCode", ownBlock.Code.ToShortString());
+            if (Block != null) tree.SetString("forBlockCode", Block.Code.ToShortString());
 
             if (type == null) type = defaultType; // No idea why. Somewhere something has no type. Probably some worldgen ruins
 
@@ -141,7 +138,7 @@ namespace Vintagestory.GameContent
 
         protected virtual void InitInventory(Block block)
         {
-            this.ownBlock = block;
+            this.Block = block;
 
             if (block?.Attributes != null)
             {
@@ -194,7 +191,7 @@ namespace Vintagestory.GameContent
 
             if (inventory.PutLocked && inventory.IsEmpty) return false;
 
-            if (api.World is IServerWorldAccessor)
+            if (Api.World is IServerWorldAccessor)
             {
                 byte[] data;
 
@@ -210,9 +207,9 @@ namespace Vintagestory.GameContent
                     data = ms.ToArray();
                 }
 
-                ((ICoreServerAPI)api).Network.SendBlockEntityPacket(
+                ((ICoreServerAPI)Api).Network.SendBlockEntityPacket(
                     (IServerPlayer)byPlayer,
-                    pos.X, pos.Y, pos.Z,
+                    Pos.X, Pos.Y, Pos.Z,
                     (int)EnumBlockContainerPacketId.OpenInventory,
                     data
                 );
@@ -227,17 +224,17 @@ namespace Vintagestory.GameContent
 
         private MeshData GenMesh(ITesselatorAPI tesselator)
         {
-            BlockGenericTypedContainer block = ownBlock as BlockGenericTypedContainer;
-            if (ownBlock == null)
+            BlockGenericTypedContainer block = Block as BlockGenericTypedContainer;
+            if (Block == null)
             {
-                block = api.World.BlockAccessor.GetBlock(pos) as BlockGenericTypedContainer;
-                ownBlock = block;
+                block = Api.World.BlockAccessor.GetBlock(Pos) as BlockGenericTypedContainer;
+                Block = block;
             }
             if (block == null) return null;
             
-            string key = "typedContainerMeshes" + ownBlock.FirstCodePart() + block.Subtype;
+            string key = "typedContainerMeshes" + Block.FirstCodePart() + block.Subtype;
 
-            Dictionary<string, MeshData> meshes = ObjectCacheUtil.GetOrCreate(api, key, () =>
+            Dictionary<string, MeshData> meshes = ObjectCacheUtil.GetOrCreate(Api, key, () =>
             {
                 return new Dictionary<string, MeshData>();
             });
@@ -249,18 +246,18 @@ namespace Vintagestory.GameContent
                 return mesh;
             }
 
-            string shapename = ownBlock.Attributes?["shape"][type].AsString();
+            string shapename = Block.Attributes?["shape"][type].AsString();
             if (shapename == null)
             {
                 return null;
             }
             
-            return meshes[type + block.Subtype] = block.GenMesh(api as ICoreClientAPI, type, shapename, tesselator);
+            return meshes[type + block.Subtype] = block.GenMesh(Api as ICoreClientAPI, type, shapename, tesselator);
         }
 
 
 
-        public bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
+        public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
         {
             if (ownMesh == null)
             {

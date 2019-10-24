@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -28,11 +29,16 @@ namespace Vintagestory.GameContent
 
         public override AssetLocation GetRotatedBlockCode(int angle)
         {
-            BlockFacing beforeFacing = BlockFacing.FromCode(LastCodePart());
-            int rotatedIndex = GameMath.Mod(beforeFacing.HorizontalAngleIndex - angle / 90, 4);
-            BlockFacing nowFacing = BlockFacing.HORIZONTALS_ANGLEORDER[rotatedIndex];
+            bool flip = Math.Abs(angle) == 90 || Math.Abs(angle) == 270;
 
-            return CodeWithParts(nowFacing.Code);
+            if (flip)
+            {
+                string orient = Variant["side"];
+
+                return CodeWithVariant("side", orient == "we" ? "ns" : "we");
+            }
+
+            return Code;
         }
         
 
@@ -62,7 +68,12 @@ namespace Vintagestory.GameContent
             }
 
             BlockEntityTrough betr = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityTrough;
-            if (betr != null) return betr.GetBlockInfo(forPlayer);
+            if (betr != null)
+            {
+                StringBuilder dsc = new StringBuilder();
+                betr.GetBlockInfo(forPlayer, dsc);
+                return dsc.ToString();
+            }
 
 
             return base.GetPlacedBlockInfo(world, pos, forPlayer);

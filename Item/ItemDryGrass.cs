@@ -16,8 +16,8 @@ namespace Vintagestory.GameContent
             Block firepitBlock = world.GetBlock(new AssetLocation("firepit-construct1"));
             if (firepitBlock == null) return;
 
-            IPlayer player = byEntity.World.PlayerByUid((byEntity as EntityPlayer)?.PlayerUID);
-            if (!byEntity.World.Claims.TryAccess(player, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            IPlayer byPlayer = byEntity.World.PlayerByUid((byEntity as EntityPlayer)?.PlayerUID);
+            if (!byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
             {
                 return;
             }
@@ -30,11 +30,11 @@ namespace Vintagestory.GameContent
             string useless = "";
 
             if (!block.CanAttachBlockAt(byEntity.World.BlockAccessor, firepitBlock, onPos.DownCopy(), BlockFacing.UP)) return;
-            if (!firepitBlock.IsSuitablePosition(world, onPos, ref useless)) return;
+            if (!firepitBlock.CanPlaceBlock(world, byPlayer, new BlockSelection() { Position = onPos, Face = BlockFacing.UP }, ref useless)) return;
 
             world.BlockAccessor.SetBlock(firepitBlock.BlockId, onPos);
 
-            if (firepitBlock.Sounds != null) world.PlaySoundAt(firepitBlock.Sounds.Place, blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z, player);
+            if (firepitBlock.Sounds != null) world.PlaySoundAt(firepitBlock.Sounds.Place, blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z, byPlayer);
 
             itemslot.Itemstack.StackSize--;
             handHandling = EnumHandHandling.PreventDefaultAction;

@@ -10,53 +10,49 @@ namespace Vintagestory.GameContent.Mechanics
 {
     public abstract class BlockMPBase : Block, IMechanicalPowerBlock
     {
-        MechanicalPowerMod mechPower;
-
-        public override void OnLoaded(ICoreAPI api)
-        {
-            base.OnLoaded(api);
-
-            mechPower = api.ModLoader.GetModSystem<MechanicalPowerMod>();
-        }
-
         public abstract void DidConnectAt(IWorldAccessor world, BlockPos pos, BlockFacing face);
         public abstract bool HasConnectorAt(IWorldAccessor world, BlockPos pos, BlockFacing face);
 
+
+
         public void WasPlaced(IWorldAccessor world, BlockPos ownPos, BlockFacing connectedOnFacing = null, IMechanicalPowerBlock connectedToBlock = null)
         {
-            BEMPBase beMechBase = (world.BlockAccessor.GetBlockEntity(ownPos) as BEMPBase);
-
-            MechanicalNetwork network;
-
-            if (connectedOnFacing == null)
-            {
-                network = mechPower.CreateNetwork();
-            } else
-            {
-                network = connectedToBlock.GetNetwork(world, ownPos.AddCopy(connectedOnFacing));
-
-                IMechanicalPowerNode node = world.BlockAccessor.GetBlockEntity(ownPos.AddCopy(connectedOnFacing)) as IMechanicalPowerNode;
-
-                beMechBase?.SetBaseTurnDirection(node.GetTurnDirection(connectedOnFacing.GetOpposite()), connectedOnFacing.GetOpposite());
-            }
-
-            beMechBase?.JoinNetwork(network);
+            BEBehaviorMPBase beMechBase = world.BlockAccessor.GetBlockEntity(ownPos)?.GetBehavior<BEBehaviorMPBase>();
+            beMechBase?.WasPlaced(connectedOnFacing, connectedToBlock);
         }
 
-        
+
+        public virtual bool tryConnect(IWorldAccessor world, IPlayer byPlayer, BlockPos pos, BlockFacing face)
+        {
+            IMechanicalPowerBlock block = world.BlockAccessor.GetBlock(pos.AddCopy(face)) as IMechanicalPowerBlock;
+            if (block != null && block.HasConnectorAt(world, pos, face.GetOpposite()))
+            {
+                block.DidConnectAt(world, pos.AddCopy(face), face.GetOpposite());
+                WasPlaced(world, pos, face, block);
+                return true;
+            }
+
+            return false;
+        }
+
 
         public MechanicalNetwork GetNetwork(IWorldAccessor world, BlockPos pos)
         {
-            IMechanicalPowerNode be = world.BlockAccessor.GetBlockEntity(pos) as IMechanicalPowerNode;
+            IMechanicalPowerNode be = world.BlockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorMPBase>() as IMechanicalPowerNode;
             return be?.Network;
         }
 
-        public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
+        internal void ExchangeBlockAt(IWorldAccessor world, BlockPos pos)
         {
-            //(world.BlockAccessor.GetBlockEntity(blockSel.Position) as BEMPBase)?.OnBlockInteractStart(world, byPlayer);
+            BlockEntity be = world.BlockAccessor.GetBlockEntity(pos);
+            BEBehaviorMPBase bemp = be.GetBehavior<BEBehaviorMPBase>();
+            bemp.Block = this;
+            bemp.SetOrientations();
+            bemp.Shape = Shape;
 
-            return base.OnBlockInteractStart(world, byPlayer, blockSel);
+            world.BlockAccessor.ExchangeBlock(BlockId, pos);
+
+            
         }
-        
     }
 }

@@ -1,16 +1,28 @@
-﻿using Vintagestory.API.Client;
+﻿using System.Collections.Generic;
+using Vintagestory.API;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent.Mechanics
 {
-    public class BlockEntityAngledGears : BEMPBase
+    public class BEBehaviorMPAngledGears : BEBehaviorMPBase
     {
-        public override void Initialize(ICoreAPI api)
+        public BEBehaviorMPAngledGears(BlockEntity blockentity) : base(blockentity)
         {
-            base.Initialize(api);
+        }
 
+        public override void Initialize(ICoreAPI api, JsonObject properties)
+        {
+            base.Initialize(api, properties);
+
+            SetOrientations();
+        }
+
+        public override void SetOrientations()
+        { 
             string orientations = Block.Variant["orientation"];
 
             switch (orientations)
@@ -45,12 +57,12 @@ namespace Vintagestory.GameContent.Mechanics
 
                 case "sd":
                     AxisMapping = new int[6] { 0, 1, 2, 1, 2, 0 };
-                    AxisSign = new int[6] { 1, 1, 1, 1, 1, 1 };
+                    AxisSign = new int[6] { -1, -1, -1, -1, -1, -1 };
                     break;
 
                 case "ed":
                     AxisMapping = new int[6] { 0, 2, 1, 2, 1, 0 };
-                    AxisSign = new int[6] { 1, 1, 1, 1, 1, 1 };
+                    AxisSign = new int[6] { -1, -1, -1, -1, -1, -1 };
                     break;
 
                 case "wd":
@@ -140,5 +152,18 @@ namespace Vintagestory.GameContent.Mechanics
             return 0;
         }
 
+        protected override MechPowerPath[] GetMechPowerPaths(BlockFacing fromFacing, EnumTurnDirection turnDir)
+        {
+            BlockFacing[] connectors = (Block as BlockAngledGears).Facings;
+            connectors = connectors.Remove(fromFacing);
+
+            MechPowerPath[] paths = new MechPowerPath[connectors.Length];
+            for (int i = 0; i < paths.Length; i++)
+            {
+                paths[i] = new MechPowerPath(connectors[i], 1 - turnDir);
+            }
+
+            return paths;
+        }
     }
 }

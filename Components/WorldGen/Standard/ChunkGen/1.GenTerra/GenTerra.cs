@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Vintagestory.API;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
@@ -58,6 +59,7 @@ namespace Vintagestory.ServerMods
         float lerpDeltaVert;
 
         double[] noiseTemp;
+        float horizontalScale;
 
         public void initWorldGen()
         {
@@ -73,13 +75,20 @@ namespace Vintagestory.ServerMods
             regionMapSize = api.WorldManager.MapSizeX / api.WorldManager.RegionSize;
 
 
+
+            horizontalScale = 1f;
+            if (GameVersion.IsAtLeastVersion(api.WorldManager.SaveGame.CreatedGameVersion, "1.11.0-dev.1"))
+            {
+                horizontalScale = Math.Max(1, api.WorldManager.MapSizeY / 256f);
+            }
             TerrainNoise = NormalizedSimplexNoise.FromDefaultOctaves(
-                TerraGenConfig.terrainGenOctaves, 0.002, 0.9, api.WorldManager.Seed
+                TerraGenConfig.terrainGenOctaves, 0.002 / horizontalScale, 0.9, api.WorldManager.Seed
             );
 
             // We generate the whole terrain here so we instantly know the heightmap
             lerpHor = TerraGenConfig.lerpHorizontal;
             lerpVer = TerraGenConfig.lerpVertical;
+
 
             noiseWidth = chunksize / lerpHor;
             noiseHeight = api.WorldManager.MapSizeY / lerpVer;

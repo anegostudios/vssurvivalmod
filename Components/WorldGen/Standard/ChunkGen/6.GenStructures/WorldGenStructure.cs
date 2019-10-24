@@ -10,7 +10,7 @@ using Vintagestory.API.Server;
 
 namespace Vintagestory.ServerMods
 {
-    public delegate bool TryGenerateHandler(IBlockAccessor blockAcccessor, IWorldAccessor worldForCollectibleResolve, BlockPos pos);
+    public delegate bool TryGenerateHandler(IBlockAccessor blockAccessor, IWorldAccessor worldForCollectibleResolve, BlockPos pos);
 
     public enum EnumStructurePlacement
     {

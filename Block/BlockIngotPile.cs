@@ -74,7 +74,7 @@ namespace Vintagestory.GameContent
                     pile.inventory[0].Itemstack.StackSize = 1;
                 } else
                 {
-                    pile.inventory[0].Itemstack = slot.TakeOut(1);
+                    pile.inventory[0].Itemstack = slot.TakeOut(player.Entity.Controls.Sprint ? pile.BulkTakeQuantity : pile.DefaultTakeQuantity);
                 }
                 
                 pile.MarkDirty();
@@ -163,14 +163,47 @@ namespace Vintagestory.GameContent
                     GetMatchingStacks = (wi, bs, es) =>
                     {
                         BlockEntityIngotPile pile = world.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityIngotPile;
-                        return pile != null && pile.MaxStackSize > pile.inventory[0].StackSize ? new ItemStack[] { pile.inventory[0].Itemstack } : null;
+                        if (pile != null && pile.MaxStackSize > pile.inventory[0].StackSize && pile.inventory[0].Itemstack != null)
+                        {
+                            ItemStack displaystack = pile.inventory[0].Itemstack.Clone();
+                            displaystack.StackSize = pile.DefaultTakeQuantity;
+                            return new  ItemStack[] { displaystack };
+                        }
+                        return null;
                     }
                 },
                 new WorldInteraction()
                 {
                     ActionLangCode = "blockhelp-ingotpile-remove",
                     MouseButton = EnumMouseButton.Right
+                },
+
+
+                new WorldInteraction()
+                {
+                    ActionLangCode = "blockhelp-ingotpile-4add",
+                    MouseButton = EnumMouseButton.Right,
+                    HotKeyCodes = new string[] {"sprint", "sneak" },
+                    Itemstacks = new ItemStack[] { new ItemStack(this) },
+                    GetMatchingStacks = (wi, bs, es) =>
+                    {
+                        BlockEntityIngotPile pile = world.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityIngotPile;
+                        if (pile != null && pile.MaxStackSize > pile.inventory[0].StackSize && pile.inventory[0].Itemstack != null)
+                        {
+                            ItemStack displaystack = pile.inventory[0].Itemstack.Clone();
+                            displaystack.StackSize = pile.BulkTakeQuantity;
+                            return new  ItemStack[] { displaystack };
+                        }
+                        return null;
+                    }
+                },
+                new WorldInteraction()
+                {
+                    ActionLangCode = "blockhelp-ingotpile-4remove",
+                    HotKeyCode = "sprint",
+                    MouseButton = EnumMouseButton.Right
                 }
+
             }.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
         }
 

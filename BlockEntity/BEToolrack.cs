@@ -6,18 +6,20 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using VintagestoryAPI.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockEntityToolrack : BlockEntity, IBlockShapeSupplier, ITexPositionSource
+    public class BlockEntityToolrack : BlockEntity, ITexPositionSource
     {
         public InventoryGeneric inventory;
 
         MeshData[] toolMeshes = new MeshData[4];
+        
 
         public int AtlasSize
         {
-            get { return ((ICoreClientAPI)api).BlockTextureAtlas.Size; }
+            get { return ((ICoreClientAPI)Api).BlockTextureAtlas.Size; }
         }
 
         CollectibleObject tmpItem;
@@ -26,15 +28,15 @@ namespace Vintagestory.GameContent
             get {
                 ToolTextures tt = null;
 
-                if (BlockToolRack.ToolTextureSubIds(api).TryGetValue((Item)tmpItem, out tt))
+                if (BlockToolRack.ToolTextureSubIds(Api).TryGetValue((Item)tmpItem, out tt))
                 {
                     int textureSubId = 0;
                     if (tt.TextureSubIdsByCode.TryGetValue(textureCode, out textureSubId))
                     {
-                        return ((ICoreClientAPI)api).BlockTextureAtlas.Positions[textureSubId];
+                        return ((ICoreClientAPI)Api).BlockTextureAtlas.Positions[textureSubId];
                     }
 
-                    return ((ICoreClientAPI)api).BlockTextureAtlas.Positions[tt.TextureSubIdsByCode.First().Value];
+                    return ((ICoreClientAPI)Api).BlockTextureAtlas.Positions[tt.TextureSubIdsByCode.First().Value];
                 }
 
                 return null;
@@ -50,7 +52,7 @@ namespace Vintagestory.GameContent
         {
             base.Initialize(api);
 
-            inventory.LateInitialize("toolrack-" + pos.ToString(), api);
+            inventory.LateInitialize("toolrack-" + Pos.ToString(), api);
             inventory.ResolveBlocksOrItems();
 
             if (api is ICoreClientAPI)
@@ -69,7 +71,7 @@ namespace Vintagestory.GameContent
 
             Vec3f origin = new Vec3f(0.5f, 0.5f, 0.5f);
 
-            ICoreClientAPI clientApi = (ICoreClientAPI)api;
+            ICoreClientAPI clientApi = (ICoreClientAPI)Api;
 
             for (int i = 0; i < 4; i++)
             {
@@ -87,25 +89,42 @@ namespace Vintagestory.GameContent
                     clientApi.Tesselator.TesselateBlock(stack.Block, out toolMeshes[i]);
                 }
 
-               if (stack.Class == EnumItemClass.Item && stack.Item.Shape?.VoxelizeTexture == true)
+
+                if (tmpItem.Attributes?["toolrackTransform"].Exists == true)
+                {
+                    ModelTransform transform = tmpItem.Attributes["toolrackTransform"].AsObject<ModelTransform>();
+
+                    //ModelTransform transform = new ModelTransform();
+                    transform.EnsureDefaultValues();
+
+                    /*transform.Rotation.Y = 180;
+                    transform.Rotation.Z = -1;
+                    transform.Scale = 1.25f;
+                    transform.Translation.X = -0.2f;*/
+
+                    toolMeshes[i].ModelTransform(transform);
+                }
+
+                if (stack.Class == EnumItemClass.Item && stack.Item.Shape?.VoxelizeTexture == true)
                 {
                     toolMeshes[i].Scale(origin, 0.33f, 0.33f, 0.33f);
-                    toolMeshes[i].Translate(((i % 2) == 0) ? 0.23f : -0.3f, (i > 1) ? 0.2f : -0.3f, 0.429f * ((facing.Axis == EnumAxis.X) ? -1 : 1));
+                    toolMeshes[i].Translate(((i % 2) == 0) ? 0.23f : -0.3f, (i > 1) ? 0.2f : -0.3f, 0.433f * ((facing.Axis == EnumAxis.X) ? -1 : 1));
                     toolMeshes[i].Rotate(origin, 0, facing.HorizontalAngleIndex * 90 * GameMath.DEG2RAD, 0);
                     toolMeshes[i].Rotate(origin, 180 * GameMath.DEG2RAD, 0, 0);
 
-                } else {
+                }
+                else
+                {
 
                     toolMeshes[i].Scale(origin, 0.6f, 0.6f, 0.6f);
                     float x = ((i > 1) ? -0.2f : 0.3f);
-                    float z = ((i % 2 == 0) ? 0.23f : -0.2f) * (facing.Axis == EnumAxis.X ? 1 : -1);
+                    float z = ((i % 2 == 0) ? 0.23f : -0.2f) * (facing.Axis == EnumAxis.X ? 1f : -1f);
 
-                    toolMeshes[i].Translate(x, 0.429f, z);
+                    toolMeshes[i].Translate(x, 0.433f, z);
                     toolMeshes[i].Rotate(origin, 0, facing.HorizontalAngleIndex * 90 * GameMath.DEG2RAD, GameMath.PIHALF);
                     toolMeshes[i].Rotate(origin, 0, GameMath.PIHALF, 0);
                 }
 
-                
 
             }
         }
@@ -138,7 +157,7 @@ namespace Vintagestory.GameContent
             IItemStack stack = player.InventoryManager.ActiveHotbarSlot.Itemstack;
             if (stack == null || stack.Collectible.Tool == null) return false;
 
-            player.InventoryManager.ActiveHotbarSlot.TryPutInto(api.World, inventory[slot]);
+            player.InventoryManager.ActiveHotbarSlot.TryPutInto(Api.World, inventory[slot]);
 
             didInteract(player);
             return true;
@@ -151,7 +170,7 @@ namespace Vintagestory.GameContent
             
             if (!player.InventoryManager.TryGiveItemstack(stack))
             {
-                api.World.SpawnItemEntity(stack, pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                Api.World.SpawnItemEntity(stack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
             }
 
             didInteract(player);
@@ -161,8 +180,8 @@ namespace Vintagestory.GameContent
 
         void didInteract(IPlayer player)
         {
-            api.World.PlaySoundAt(new AssetLocation("sounds/player/buildhigh"), pos.X, pos.Y, pos.Z, player, false);
-            if (api is ICoreClientAPI) loadToolMeshes();
+            Api.World.PlaySoundAt(new AssetLocation("sounds/player/buildhigh"), Pos.X, Pos.Y, Pos.Z, player, false);
+            if (Api is ICoreClientAPI) loadToolMeshes();
             MarkDirty(true);
             player.InventoryManager.BroadcastHotbarSlot();
         }
@@ -180,21 +199,21 @@ namespace Vintagestory.GameContent
             {
                 ItemStack stack = inventory[i].Itemstack;
                 if (stack == null) continue;
-                api.World.SpawnItemEntity(stack, pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                Api.World.SpawnItemEntity(stack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
             }
         }
 
         BlockFacing getFacing()
         {
-            Block block = api.World.BlockAccessor.GetBlock(pos);
+            Block block = Api.World.BlockAccessor.GetBlock(Pos);
             BlockFacing facing = BlockFacing.FromCode(block.LastCodePart());
             return facing == null ? BlockFacing.NORTH : facing;
         }
 
-        public bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
+        public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
         {
-            ICoreClientAPI clientApi = (ICoreClientAPI)api;
-            Block block = api.World.BlockAccessor.GetBlock(pos);
+            ICoreClientAPI clientApi = (ICoreClientAPI)Api;
+            Block block = Api.World.BlockAccessor.GetBlock(Pos);
             MeshData mesh = clientApi.TesselatorManager.GetDefaultBlockMesh(block);
             if (mesh == null) return true;
 
@@ -219,16 +238,16 @@ namespace Vintagestory.GameContent
         {
             base.FromTreeAtributes(tree, worldForResolving);
             inventory.FromTreeAttributes(tree.GetTreeAttribute("inventory"));
-            if (api != null)
+            if (Api != null)
             {
-                inventory.Api = api;
+                inventory.Api = Api;
                 inventory.ResolveBlocksOrItems();
             }
 
-            if (api is ICoreClientAPI)
+            if (Api is ICoreClientAPI)
             {
                 loadToolMeshes();
-                api.World.BlockAccessor.MarkBlockDirty(pos);
+                Api.World.BlockAccessor.MarkBlockDirty(Pos);
             }
         }
 
@@ -272,9 +291,8 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override string GetBlockInfo(IPlayer forPlayer)
+        public override void GetBlockInfo(IPlayer forPlayer, StringBuilder sb)
         {
-            StringBuilder sb = new StringBuilder();
             int i = 0;
             foreach (var slot in inventory)
             {
@@ -294,7 +312,8 @@ namespace Vintagestory.GameContent
                 sb.Append(slot.Itemstack.GetName());
             }
 
-            return sb.ToString();
+            sb.AppendLineOnce();
+            sb.ToString();
         }
 
     }

@@ -30,22 +30,23 @@ namespace Vintagestory.GameContent
                 return false;
             }
 
-            if (IsSuitablePosition(world, blockSel.Position, ref failureCode))
+            if (CanPlaceBlock(world, byPlayer, blockSel, ref failureCode))
             {
                 BlockFacing[] horVer = SuggestedHVOrientation(byPlayer, blockSel);
 
                 BlockPos secondPos = blockSel.Position.AddCopy(horVer[0]);
 
-                if (!IsSuitablePosition(world, secondPos, ref failureCode)) return false;
+                BlockSelection secondBlockSel = new BlockSelection() { Position = secondPos, Face = BlockFacing.UP };
+                if (!CanPlaceBlock(world, byPlayer, secondBlockSel, ref failureCode)) return false;
 
                 string code = horVer[0].GetOpposite().Code;
 
                 Block orientedBlock = world.BlockAccessor.GetBlock(CodeWithParts("head", code));
-                orientedBlock.DoPlaceBlock(world, secondPos, blockSel.Face, itemstack);
+                orientedBlock.DoPlaceBlock(world, byPlayer, secondBlockSel, itemstack);
 
                 AssetLocation feetCode = CodeWithParts("feet", code);
                 orientedBlock = world.BlockAccessor.GetBlock(feetCode);
-                orientedBlock.DoPlaceBlock(world, blockSel.Position, blockSel.Face, itemstack);
+                orientedBlock.DoPlaceBlock(world, byPlayer, blockSel, itemstack);
                 return true;
             }
 

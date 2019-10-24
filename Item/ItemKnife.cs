@@ -12,17 +12,11 @@ namespace Vintagestory.GameContent
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
             EntityBehaviorHarvestable bh;
-            if (byEntity.Controls.Sneak && entitySel != null && !entitySel.Entity.Alive && (bh = entitySel.Entity.GetBehavior<EntityBehaviorHarvestable>()) != null)
+            if (byEntity.Controls.Sneak && entitySel != null && (bh = entitySel.Entity.GetBehavior<EntityBehaviorHarvestable>()) != null && bh.Harvestable)
             {
-                if (!bh.IsHarvested)
-                {
-                    byEntity.World.PlaySoundAt(new AssetLocation("sounds/player/scrape"), entitySel.Entity, (byEntity as EntityPlayer)?.Player, false, 12);
-                    handling = EnumHandHandling.PreventDefault;
-
-                    //byEntity.World.Logger.Debug("{0} knife interact start",  byEntity.World.Side);
-
-                    return;
-                }
+                byEntity.World.PlaySoundAt(new AssetLocation("sounds/player/scrape"), entitySel.Entity, (byEntity as EntityPlayer)?.Player, false, 12);
+                handling = EnumHandHandling.PreventDefault;
+                return;
             }
 
             handling = EnumHandHandling.NotHandled;
@@ -34,10 +28,8 @@ namespace Vintagestory.GameContent
             if (api.Side == EnumAppSide.Server) return true;
 
             EntityBehaviorHarvestable bh;
-            if (entitySel != null && (bh = entitySel.Entity.GetBehavior<EntityBehaviorHarvestable>()) != null)
+            if (entitySel != null && (bh = entitySel.Entity.GetBehavior<EntityBehaviorHarvestable>()) != null && bh.Harvestable)
             {
-                if (bh.IsHarvested) return false;
-
                 if (byEntity.World.Side == EnumAppSide.Client)
                 {
                     ModelTransform tf = new ModelTransform();
@@ -67,13 +59,11 @@ namespace Vintagestory.GameContent
         {
             if (entitySel == null) return;
 
-     
-
             EntityBehaviorHarvestable bh = entitySel.Entity.GetBehavior<EntityBehaviorHarvestable>();
 
             //byEntity.World.Logger.Debug("{0} knife interact stop, seconds used {1} / {2}, entity: {3}", byEntity.World.Side, secondsUsed, bh?.HarvestDuration, entitySel.Entity);
 
-            if (bh != null && secondsUsed >= bh.HarvestDuration - 0.1f)
+            if (bh != null && bh.Harvestable && secondsUsed >= bh.HarvestDuration - 0.1f)
             {
                 bh.SetHarvested((byEntity as EntityPlayer)?.Player);
                 slot?.Itemstack?.Collectible.DamageItem(byEntity.World, byEntity, slot, 3);

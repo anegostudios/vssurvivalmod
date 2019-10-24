@@ -74,11 +74,11 @@ namespace Vintagestory.GameContent
     {
         public BESpawnerData Data = new BESpawnerData().initDefaults();
 
-        List<long> spawnedEntities = new List<long>();
-        double lastSpawnTotalHours;
+        protected List<long> spawnedEntities = new List<long>();
+        protected double lastSpawnTotalHours;
 
-        GuiDialogSpawner dlg;
-        CollisionTester collisionTester = new CollisionTester();
+        protected GuiDialogSpawner dlg;
+        protected CollisionTester collisionTester = new CollisionTester();
 
         public BlockEntitySpawner()
         {
@@ -87,7 +87,7 @@ namespace Vintagestory.GameContent
 
         protected virtual long GetNextHerdId()
         {
-            return (api as ICoreServerAPI).WorldManager.GetNextUniqueId();
+            return (Api as ICoreServerAPI).WorldManager.GetNextUniqueId();
         }
 
         public override void Initialize(ICoreAPI api)
@@ -100,22 +100,21 @@ namespace Vintagestory.GameContent
             }
         }
 
-        private void OnGameTick(float dt)
+        protected virtual void OnGameTick(float dt)
         {
             if (Data.EntityCodes == null || Data.EntityCodes.Length == 0)
             {
-                lastSpawnTotalHours = api.World.Calendar.TotalHours;
+                lastSpawnTotalHours = Api.World.Calendar.TotalHours;
                 return;
             }
 
 
-            ICoreServerAPI sapi = api as ICoreServerAPI;
+            ICoreServerAPI sapi = Api as ICoreServerAPI;
 
             int rnd = sapi.World.Rand.Next(Data.EntityCodes.Length);
+            EntityProperties type = Api.World.GetEntityType(new AssetLocation(Data.EntityCodes[rnd]));
 
-            EntityProperties type = api.World.GetEntityType(new AssetLocation(Data.EntityCodes[rnd]));
-
-            if (lastSpawnTotalHours + Data.InGameHourInterval > api.World.Calendar.TotalHours && Data.InitialSpawnQuantity <= 0) return;
+            if (lastSpawnTotalHours + Data.InGameHourInterval > Api.World.Calendar.TotalHours && Data.InitialSpawnQuantity <= 0) return;
             if (!IsAreaLoaded()) return;
             if (Data.SpawnOnlyAfterImport && !Data.WasImported) return;
            
@@ -131,7 +130,7 @@ namespace Vintagestory.GameContent
 
             if (spawnedEntities.Count >= Data.MaxCount)
             {
-                lastSpawnTotalHours = api.World.Calendar.TotalHours;
+                lastSpawnTotalHours = Api.World.Calendar.TotalHours;
                 return;
             }
 
@@ -153,24 +152,23 @@ namespace Vintagestory.GameContent
                 Vec3d spawnPos = new Vec3d();
                 for (int tries = 0; tries < 15; tries++)
                 {
-                    spawnPos.Set(pos).Add(
-                        0.5 + Data.SpawnArea.MinX + api.World.Rand.NextDouble() * Data.SpawnArea.SizeX,
-                        Data.SpawnArea.MinY + api.World.Rand.NextDouble() * Data.SpawnArea.SizeY,
-                        0.5 + Data.SpawnArea.MinZ + api.World.Rand.NextDouble() * Data.SpawnArea.SizeZ
+                    spawnPos.Set(Pos).Add(
+                        0.5 + Data.SpawnArea.MinX + Api.World.Rand.NextDouble() * Data.SpawnArea.SizeX,
+                        Data.SpawnArea.MinY + Api.World.Rand.NextDouble() * Data.SpawnArea.SizeY,
+                        0.5 + Data.SpawnArea.MinZ + Api.World.Rand.NextDouble() * Data.SpawnArea.SizeZ
                     );
 
-                    if (!collisionTester.IsColliding(api.World.BlockAccessor, collisionBox, spawnPos, false))
+                    if (!collisionTester.IsColliding(Api.World.BlockAccessor, collisionBox, spawnPos, false))
                     {
                         if (herdId == 0) herdId = GetNextHerdId();
 
                         DoSpawn(type, spawnPos, herdId);
-                        lastSpawnTotalHours = api.World.Calendar.TotalHours;
+                        lastSpawnTotalHours = Api.World.Calendar.TotalHours;
 
                         if (Data.InitialQuantitySpawned > 0)
                         {
                             Data.InitialQuantitySpawned--;
                         }
-                        
 
                         // Self destruct, if configured so
                         if (Data.RemoveAfterSpawnCount > 0)
@@ -178,7 +176,7 @@ namespace Vintagestory.GameContent
                             Data.RemoveAfterSpawnCount--;
                             if (Data.RemoveAfterSpawnCount == 0)
                             {
-                                api.World.BlockAccessor.SetBlock(0, pos);
+                                Api.World.BlockAccessor.SetBlock(0, Pos);
                             }
                         }
 
@@ -193,7 +191,7 @@ namespace Vintagestory.GameContent
         {
             base.OnBlockPlaced(byItemStack);
 
-            lastSpawnTotalHours = api.World.Calendar.TotalHours;
+            lastSpawnTotalHours = Api.World.Calendar.TotalHours;
 
             if (byItemStack == null) return;
             byte[] data = byItemStack.Attributes.GetBytes("spawnerData", null);
@@ -217,35 +215,35 @@ namespace Vintagestory.GameContent
 
         protected virtual void DoSpawn(EntityProperties entityType, Vec3d spawnPosition, long herdid)
         {
-            Entity entity = api.World.ClassRegistry.CreateEntity(entityType);
+            Entity entity = Api.World.ClassRegistry.CreateEntity(entityType);
 
             EntityAgent agent = entity as EntityAgent;
             if (agent != null) agent.HerdId = herdid;
 
             entity.ServerPos.SetPos(spawnPosition);
-            entity.ServerPos.SetYaw((float)api.World.Rand.NextDouble() * GameMath.TWOPI);
+            entity.ServerPos.SetYaw((float)Api.World.Rand.NextDouble() * GameMath.TWOPI);
             entity.Pos.SetFrom(entity.ServerPos);
             entity.Attributes.SetString("origin", "entityspawner");
-            api.World.SpawnEntity(entity);
+            Api.World.SpawnEntity(entity);
 
             spawnedEntities.Add(entity.EntityId);
         }
 
         public bool IsAreaLoaded()
         {
-            ICoreServerAPI sapi = api as ICoreServerAPI;
+            ICoreServerAPI sapi = Api as ICoreServerAPI;
 
-            int chunksize = api.World.BlockAccessor.ChunkSize;
+            int chunksize = Api.World.BlockAccessor.ChunkSize;
             int sizeX = sapi.WorldManager.MapSizeX / chunksize;
             int sizeY = sapi.WorldManager.MapSizeY / chunksize;
             int sizeZ = sapi.WorldManager.MapSizeZ / chunksize;
 
-            int mincx = GameMath.Clamp((pos.X + Data.SpawnArea.MinX) / chunksize, 0, sizeX - 1);
-            int maxcx = GameMath.Clamp((pos.Y + Data.SpawnArea.MaxX) / chunksize, 0, sizeX - 1);
-            int mincy = GameMath.Clamp((pos.Z + Data.SpawnArea.MinY) / chunksize, 0, sizeY - 1);
-            int maxcy = GameMath.Clamp((pos.X + Data.SpawnArea.MaxY) / chunksize, 0, sizeY - 1);
-            int mincz = GameMath.Clamp((pos.Y + Data.SpawnArea.MinZ) / chunksize, 0, sizeZ - 1);
-            int maxcz = GameMath.Clamp((pos.Z + Data.SpawnArea.MaxZ) / chunksize, 0, sizeZ - 1);
+            int mincx = GameMath.Clamp((Pos.X + Data.SpawnArea.MinX) / chunksize, 0, sizeX - 1);
+            int maxcx = GameMath.Clamp((Pos.Y + Data.SpawnArea.MaxX) / chunksize, 0, sizeX - 1);
+            int mincy = GameMath.Clamp((Pos.Z + Data.SpawnArea.MinY) / chunksize, 0, sizeY - 1);
+            int maxcy = GameMath.Clamp((Pos.X + Data.SpawnArea.MaxY) / chunksize, 0, sizeY - 1);
+            int mincz = GameMath.Clamp((Pos.Y + Data.SpawnArea.MinZ) / chunksize, 0, sizeZ - 1);
+            int maxcz = GameMath.Clamp((Pos.Z + Data.SpawnArea.MaxZ) / chunksize, 0, sizeZ - 1);
             
             for (int cx = mincx; cx <= maxcx; cx++)
             {
@@ -269,14 +267,14 @@ namespace Vintagestory.GameContent
         {
             if (byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative) return;
 
-            if (api.Side == EnumAppSide.Server)
+            if (Api.Side == EnumAppSide.Server)
             {
-                ICoreServerAPI sapi = api as ICoreServerAPI;
-                sapi.Network.SendBlockEntityPacket(byPlayer as IServerPlayer, pos.X, pos.Y, pos.Z, 1000, SerializerUtil.Serialize(Data));
+                ICoreServerAPI sapi = Api as ICoreServerAPI;
+                sapi.Network.SendBlockEntityPacket(byPlayer as IServerPlayer, Pos.X, Pos.Y, Pos.Z, 1000, SerializerUtil.Serialize(Data));
                 return;
             }
 
-            dlg = new GuiDialogSpawner(pos, api as ICoreClientAPI);
+            dlg = new GuiDialogSpawner(Pos, Api as ICoreClientAPI);
             dlg.spawnerData = Data;
             dlg.TryOpen();
             dlg.OnClosed += () => { dlg?.Dispose(); dlg = null; };

@@ -5,13 +5,17 @@ using System.Text;
 using System.Threading.Tasks;
 using Vintagestory.API.Client;
 using Vintagestory.API.MathTools;
+using Vintagestory.GameContent.Mechanics;
 
 namespace Vintagestory.GameContent
 {
     public class QuernTopRenderer : IRenderer
     {
         internal bool ShouldRender;
-        internal bool ShouldRotate;
+        internal bool ShouldRotateManual;
+        internal bool ShouldRotateAutomated;
+
+        public BEBehaviorMPConsumer mechPowerPart;
 
         private ICoreClientAPI api;
         private BlockPos pos;
@@ -70,9 +74,14 @@ namespace Vintagestory.GameContent
 
 
 
-            if (ShouldRotate)
+            if (ShouldRotateManual)
             {
                 Angle += deltaTime * 40;
+            } 
+
+            if (ShouldRotateAutomated)
+            {
+                Angle = GameMath.RAD2DEG * -(mechPowerPart.Angle * (1 - (int)mechPowerPart.GetBaseTurnDirection() * 2));
             }
         }
 

@@ -39,7 +39,7 @@ namespace Vintagestory.GameContent
             textureSourceBlock = capi.World.GetBlock(new AssetLocation("claypot-cooked"));
         }
 
-        public MeshRef GetOrCreateMealMeshRef(Block blockForHashing, CompositeShape containerShape, CookingRecipe forRecipe, ItemStack[] contentStacks, Vec3f foodTranslate = null)
+        public MeshRef GetOrCreateMealInContainerMeshRef(Block containerBlock, CookingRecipe forRecipe, ItemStack[] contentStacks, Vec3f foodTranslate = null)
         {
             Dictionary<int, MeshRef> meshrefs = null;
 
@@ -55,32 +55,45 @@ namespace Vintagestory.GameContent
 
             if (contentStacks == null) return null;
 
-            int mealhashcode = GetMealHashCode(containerShape, capi.World, blockForHashing, contentStacks);
+            int mealhashcode = GetMealHashCode(capi.World, containerBlock, contentStacks, foodTranslate);
 
             MeshRef mealMeshRef = null;
 
             if (!meshrefs.TryGetValue(mealhashcode, out mealMeshRef))
             {
-                meshrefs[mealhashcode] = mealMeshRef = capi.Render.UploadMesh(CreateMealMesh(containerShape, forRecipe, contentStacks, foodTranslate));
+                meshrefs[mealhashcode] = mealMeshRef = capi.Render.UploadMesh(GenMealInContainerMesh(containerBlock, forRecipe, contentStacks, foodTranslate));
             }
 
             return mealMeshRef;
         }
 
-        public MeshData CreateMealMesh(CompositeShape cShape, CookingRecipe forRecipe, ItemStack[] contentStacks, Vec3f foodTranslate = null)
+        public MeshData GenMealInContainerMesh(Block containerBlock, CookingRecipe forRecipe, ItemStack[] contentStacks, Vec3f foodTranslate = null)
+        {
+            CompositeShape cShape = containerBlock.Shape;
+            Shape shape = capi.Assets.TryGet("shapes/" + cShape.Base.Path + ".json").ToObject<Shape>();
+            MeshData wholeMesh;
+            capi.Tesselator.TesselateShape("meal", shape, out wholeMesh, capi.Tesselator.GetTexSource(containerBlock), new Vec3f(cShape.rotateX, cShape.rotateY, cShape.rotateZ));
+
+            MeshData mealMesh = GenMealMesh(forRecipe, contentStacks, foodTranslate);
+            if (mealMesh != null)
+            {
+                wholeMesh.AddMeshData(mealMesh);
+            }
+
+            return wholeMesh;
+        }
+
+        public MeshData GenMealMesh(CookingRecipe forRecipe, ItemStack[] contentStacks, Vec3f foodTranslate = null)
         {
             MealTextureSource source = new MealTextureSource(capi, textureSourceBlock);
-            Shape shape = capi.Assets.TryGet("shapes/" + cShape.Base.Path + ".json").ToObject<Shape>();
-
-            MeshData containerMesh;
-            capi.Tesselator.TesselateShape("meal", shape, out containerMesh, source, new Vec3f(cShape.rotateX, cShape.rotateY, cShape .rotateZ));
+            
 
             if (forRecipe != null)
             {
                 MeshData foodMesh = GenFoodMixMesh(contentStacks, forRecipe, foodTranslate);
                 if (foodMesh != null)
                 {
-                    containerMesh.AddMeshData(foodMesh);
+                    return foodMesh;
                 }
             }
 
@@ -93,7 +106,13 @@ namespace Vintagestory.GameContent
 
                     MeshData contentMesh;
                     capi.Tesselator.TesselateShape("rotcontents", contentShape, out contentMesh, source);
-                    containerMesh.AddMeshData(contentMesh);
+
+                    if (foodTranslate != null)
+                    {
+                        contentMesh.Translate(foodTranslate);
+                    }
+
+                    return contentMesh;
                 }
                 else
                 {
@@ -108,12 +127,12 @@ namespace Vintagestory.GameContent
                         MeshData contentMesh;
                         capi.Tesselator.TesselateShape("picklednmealcontents", contentShape, out contentMesh, source);
 
-                        containerMesh.AddMeshData(contentMesh);
+                        return contentMesh;
                     }
                 }
             }
             
-            return containerMesh;
+            return null;
         }
 
 
@@ -121,7 +140,8 @@ namespace Vintagestory.GameContent
         {
             for (int i = 0; i < contentStacks.Length; i++)
             {
-                if (contentStacks[i].Collectible.Code.Path == "rot") return true;
+                if (contentStacks[i]?.Collectible.Code.Path == "rot") return true;
+
             }
 
             return false;
@@ -152,6 +172,7 @@ namespace Vintagestory.GameContent
             }
             else
             {
+                HashSet<string> drawnMeshes = new HashSet<string>();
 
                 for (int i = 0; i < contentStacks.Length; i++)
                 {
@@ -184,6 +205,9 @@ namespace Vintagestory.GameContent
                     if (recipestack.ShapeElement != null) selectiveElements = new string[] { recipestack.ShapeElement };
                     texSource.customTextureMapping = recipestack.TextureMapping;
 
+                    if (drawnMeshes.Contains(recipestack.ShapeElement + recipestack.TextureMapping)) continue;
+                    drawnMeshes.Add(recipestack.ShapeElement + recipestack.TextureMapping);
+
                     capi.Tesselator.TesselateShape(
                         "mealpart", shape, out meshpart, texSource,
                         new Vec3f(recipe.Shape.rotateX, recipe.Shape.rotateY, recipe.Shape.rotateZ), 0, 0, null, selectiveElements
@@ -210,7 +234,7 @@ namespace Vintagestory.GameContent
             if (capi == null) return;
 
             object obj;
-            if (capi.ObjectCache.TryGetValue("mealMeshRefs", out obj))
+            if (capi.ObjectCache.TryGetValue("cookedMeshRefs", out obj))
             {
                 Dictionary<int, MeshRef> meshrefs = obj as Dictionary<int, MeshRef>;
 
@@ -219,13 +243,15 @@ namespace Vintagestory.GameContent
                     val.Value.Dispose();
                 }
 
-                capi.ObjectCache.Remove("mealMeshRefs");
+                capi.ObjectCache.Remove("cookedMeshRefs");
             }
         }
 
-        private int GetMealHashCode(CompositeShape containerShape, IClientWorldAccessor world, Block block, ItemStack[] contentStacks)
+        private int GetMealHashCode(IClientWorldAccessor world, Block block, ItemStack[] contentStacks, Vec3f foodTranslate)
         {
-            string shapestring = containerShape.Base.ToShortString() + block.Code.ToShortString();
+            string shapestring = block.Shape.ToString() + block.Code.ToShortString();
+            if (foodTranslate != null) shapestring += foodTranslate.X + "/" + foodTranslate.Y + "/" + foodTranslate.Z;
+
             string contentstring = "";
             for (int i = 0; i < contentStacks.Length; i++)
             {

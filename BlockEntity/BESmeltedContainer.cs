@@ -16,7 +16,7 @@ namespace Vintagestory.GameContent
 
         public float Temperature
         {
-            get { return contents.Collectible.GetTemperature(api.World, contents); }
+            get { return contents.Collectible.GetTemperature(Api.World, contents); }
         }
 
         public BlockEntitySmeltedContainer() : base()
@@ -40,11 +40,11 @@ namespace Vintagestory.GameContent
             int meltingPoint = contents.Collectible.CombustibleProps.MeltingPoint;
             if (meltingPoint * 0.9 > Temperature) return;
 
-            if (api.World.Rand.NextDouble() > 0.5)
+            if (Api.World.Rand.NextDouble() > 0.5)
             {
-                Vec3d pos = this.pos.ToVec3d().Add(0.45, 0.44, 0.45);
+                Vec3d pos = this.Pos.ToVec3d().Add(0.45, 0.44, 0.45);
                 BlockSmeltedContainer.smokeHeld.minPos = pos;
-                api.World.SpawnParticles(BlockSmeltedContainer.smokeHeld);
+                Api.World.SpawnParticles(BlockSmeltedContainer.smokeHeld);
             }
         }
 
@@ -55,7 +55,7 @@ namespace Vintagestory.GameContent
             contents = tree.GetItemstack("contents");
             units = tree.GetInt("units");
 
-            if (api?.World != null) contents.ResolveBlockOrItem(api.World);
+            if (Api?.World != null) contents.ResolveBlockOrItem(Api.World);
         }
 
         public override void ToTreeAttributes(ITreeAttribute tree)

@@ -50,25 +50,11 @@ namespace Vintagestory.GameContent
                 BlockSelection placeSel = blockSel.Clone();
                 placeSel.Position = pos;
                 placeSel.DidOffset = true;
-                string useless = "";
+                string error = "";
 
-                if (!knappingBlock.TryPlaceBlock(world, byPlayer, slot.Itemstack, placeSel, ref useless))
+                if (!knappingBlock.TryPlaceBlock(world, byPlayer, slot.Itemstack, placeSel, ref error))
                 {
-                    if (api.Side == EnumAppSide.Client)
-                    {
-                        bool selfBlocked = false;
-                        bool entityBlocked = world.GetIntersectingEntities(pos, knappingBlock.GetCollisionBoxes(world.BlockAccessor, pos), e => { selfBlocked = e == byEntity; return !(e is EntityItem); }).Length != 0;
-
-                        string err =
-                            entityBlocked ?
-                                (selfBlocked ? Lang.Get("Cannot place a knapping surface here, too close to you") : Lang.Get("Cannot place a knapping surface here, to close to another player or creature.")) :
-                                Lang.Get("Cannot place a knapping surface here")
-                        ;
-
-                        (api as ICoreClientAPI).TriggerIngameError(this, "cantplace", err);
-                        
-                    }
-
+                    (api as ICoreClientAPI).TriggerIngameError(this, "cantplace", error);
                     return;
                 }
 

@@ -5,12 +5,17 @@ namespace Vintagestory.GameContent.Mechanics
 {
     public enum EnumTurnDirection
     {
-        Clockwise,
-        Counterclockwise
+        Clockwise = 0,
+        Counterclockwise = 1
     }
     
     public interface IMechanicalPowerNode
     {
+        /// <summary>
+        /// If set, then this node is the starting point for network discovery. In principal its fine for any single-connecter node to be starting point but it probably makes most sense if only power producers are
+        /// </summary>
+        BlockFacing OutFacingForNetworkDiscovery { get; }
+
         MechanicalNetwork Network { get; }
         float Angle { get; }
 
@@ -41,35 +46,12 @@ namespace Vintagestory.GameContent.Mechanics
         void SetBaseTurnDirection(EnumTurnDirection turnDir, BlockFacing fromDir);
 
         CompositeShape Shape { get; }
+
+
+        bool JoinAndSpreadNetworkToNeighbours(ICoreAPI api, long propagationId, MechanicalNetwork network, EnumTurnDirection turnDir, BlockFacing remoteFacing, out Vec3i missingChunkPos);
+
+        MechanicalNetwork CreateJoinAndDiscoverNetwork(BlockFacing powerOutFacing);
+
+        void LeaveNetwork();
     }
-
-    /*
-    public interface IMechanicalPowerDeviceOld
-    {
-        bool hasConnectorAt(BlockFacing localFacing);
-        bool isConnectedAt(BlockFacing localFacing);
-
-        void trySetNetwork(int networkId, BlockFacing localFacing);
-        MechanicalNetworkOld getNetwork(BlockFacing localFacing);
-        BlockFacing getFacing(MechanicalNetworkOld network);
-
-        void propagateNetworkToNeighbours(int propagationId, long networkId, BlockFacing remoteFacing);
-        void propagateDirectionToNeightbours(int propagationId, BlockFacing remoteFacing, bool clockwise);
-
-        bool isClockWiseDirection(BlockFacing localFacing);
-        void setClockWiseDirection(long networkId, bool clockwise);
-
-        BlockFacing getDirectionFromFacing();
-
-        void onDevicePlaced(IWorldAccessor world, BlockPos pos, BlockFacing facing, BlockFacing ontoside);
-        void onDeviceRemoved(IWorldAccessor world, BlockPos pos);
-
-
-
-        bool exists();
-        BlockPos getPosition();
-
-        MechanicalNetworkOld[] getNetworks();
-        void clearNetwork();
-    }*/
 }

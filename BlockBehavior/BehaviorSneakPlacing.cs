@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
@@ -14,7 +15,7 @@ namespace Vintagestory.GameContent
         {
         }
 
-        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref EnumHandling handling, ref string failureCode)
+        public override bool CanPlaceBlock(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ref EnumHandling handling, ref string failureCode)
         {
             if (!byPlayer.Entity.Controls.Sneak)
             {
@@ -23,7 +24,7 @@ namespace Vintagestory.GameContent
                 return false;
             }
 
-            return base.TryPlaceBlock(world, byPlayer, itemstack, blockSel, ref handling, ref failureCode);
+            return base.CanPlaceBlock(world, byPlayer, blockSel, ref handling, ref failureCode);
         }
         
     }

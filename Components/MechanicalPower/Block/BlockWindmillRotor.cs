@@ -1,4 +1,5 @@
-﻿using Vintagestory.API.Common;
+﻿using Vintagestory.API.Client;
+using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent.Mechanics
@@ -26,6 +27,11 @@ namespace Vintagestory.GameContent.Mechanics
 
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
         {
+            if (!CanPlaceBlock(world, byPlayer, blockSel, ref failureCode))
+            {
+                return false;
+            }
+
             foreach (BlockFacing face in BlockFacing.HORIZONTALS)
             {
                 BlockPos pos = blockSel.Position.AddCopy(face);
@@ -46,7 +52,7 @@ namespace Vintagestory.GameContent.Mechanics
                 }
             }
 
-            bool ok = base.TryPlaceBlock(world, byPlayer, itemstack, blockSel, ref failureCode);
+            bool ok = base.DoPlaceBlock(world, byPlayer, blockSel, itemstack);
             if (ok)
             {
                 WasPlaced(world, blockSel.Position);
@@ -56,10 +62,28 @@ namespace Vintagestory.GameContent.Mechanics
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
-            BlockEntityWindmillRotor be = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityWindmillRotor;
+            BEBehaviorWindmillRotor be = world.BlockAccessor.GetBlockEntity(blockSel.Position)?.GetBehavior<BEBehaviorWindmillRotor>();
             if (be != null) return be.OnInteract(byPlayer);
 
             return base.OnBlockInteractStart(world, byPlayer, blockSel);
+        }
+
+
+        public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
+        {
+            BEBehaviorWindmillRotor be = world.BlockAccessor.GetBlockEntity(selection.Position)?.GetBehavior<BEBehaviorWindmillRotor>();
+            if (be != null && be.SailLength >= 3) return new WorldInteraction[0];
+
+
+            return new WorldInteraction[]
+            {
+                new WorldInteraction()
+                {
+                    ActionLangCode = "heldhelp-addsails",
+                    MouseButton = EnumMouseButton.Right,
+                    Itemstacks = new ItemStack[] { new ItemStack(world.GetItem(new AssetLocation("sail")), 4) }
+                }
+            };
         }
 
     }

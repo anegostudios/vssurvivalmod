@@ -145,18 +145,19 @@ namespace Vintagestory.GameContent
                 MeshData contentMesh = getContentMesh(contentStack, forBlockPos, "contents.json");
                 if (contentMesh != null) barrelMesh.AddMeshData(contentMesh);
 
-                bool isliquid = liquidContentStack?.Attributes?.HasAttribute("waterTightContainerProps") == true;
+                bool isliquid = liquidContentStack?.ItemAttributes?["waterTightContainerProps"].Exists == true;
                 if (liquidContentStack != null && (isliquid || contentStack == null))
                 {
                     string shapefilename = isliquid ? "liquidcontents.json" : "contents.json";
                     contentMesh = getContentMesh(liquidContentStack, forBlockPos, shapefilename);
-                    barrelMesh.AddMeshData(contentMesh);
+                    if (contentMesh != null) barrelMesh.AddMeshData(contentMesh);
                 }
 
                 if (forBlockPos != null)
                 {
                     // Water flags
                     barrelMesh.CustomInts = new CustomMeshDataPartInt(barrelMesh.FlagsCount);
+                    barrelMesh.CustomInts.Values.Fill(1 << 26);
                     barrelMesh.CustomInts.Count = barrelMesh.FlagsCount;
 
                     barrelMesh.CustomFloats = new CustomMeshDataPartFloat(barrelMesh.FlagsCount * 2);
@@ -175,7 +176,7 @@ namespace Vintagestory.GameContent
         {
             ICoreClientAPI capi = api as ICoreClientAPI;
 
-            WaterTightContainableProps props = GetStackProps(stack);
+            WaterTightContainableProps props = GetInContainerProps(stack);
             ITexPositionSource contentSource = null;
 
 

@@ -139,13 +139,16 @@ namespace Vintagestory.GameContent
 
                     stacks[i]?.Collectible.UpdateAndGetTransitionStates(world, slot);
 
+                    if (slot.Itemstack == null)
+                    {
+                        stacks[i] = null;
+                    }
 
                     inslot.Inventory.OnAcquireTransitionSpeed = pref;
                 }
-                
-
-                
             }
+
+            SetContents(inslot.Itemstack, stacks);
 
             return base.UpdateAndGetTransitionStates(world, inslot);
         }

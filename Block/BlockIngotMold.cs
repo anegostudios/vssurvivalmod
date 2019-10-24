@@ -201,26 +201,19 @@ namespace Vintagestory.GameContent
         
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
         {
-            if (!world.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
-            {
-                byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
-                failureCode = "claimed";
-                return false;
-            }
-
             if (!byPlayer.Entity.Controls.Sneak)
             {
                 failureCode = "onlywhensneaking";
                 return false;
             }
 
-            if (IsSuitablePosition(world, blockSel.Position, ref failureCode) && world.BlockAccessor.GetBlock(blockSel.Position.DownCopy()).SideSolid[BlockFacing.UP.Index])
+            if (!world.BlockAccessor.GetBlock(blockSel.Position.DownCopy()).SideSolid[BlockFacing.UP.Index])
             {
-                DoPlaceBlock(world, blockSel.Position, blockSel.Face, itemstack);
-                return true;
+                failureCode = "requiresolidground";
+                return false;
             }
 
-            return false;
+            return base.TryPlaceBlock(world, byPlayer, itemstack, blockSel, ref failureCode);
         }
 
         public override BlockDropItemStack[] GetDropsForHandbook(ItemStack handbookStack, IPlayer forPlayer)

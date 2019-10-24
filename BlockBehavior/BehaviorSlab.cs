@@ -10,9 +10,9 @@ namespace Vintagestory.GameContent
         {
         }
 
-        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref EnumHandling handled, ref string failureCode)
+        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref EnumHandling handling, ref string failureCode)
         {
-            handled = EnumHandling.PreventDefault;
+            handling = EnumHandling.PreventDefault;
 
             if (!world.BlockAccessor.GetBlock(blockSel.Position).IsReplacableBy(block)) return false;
 
@@ -23,9 +23,12 @@ namespace Vintagestory.GameContent
                 orientedBlock = world.BlockAccessor.GetBlock(block.CodeWithParts("up"));
             }
 
-            orientedBlock.DoPlaceBlock(world, blockSel.Position, blockSel.Face, itemstack);
+            if (!orientedBlock.CanPlaceBlock(world, byPlayer, blockSel, ref failureCode)) return false;
+
+            orientedBlock.DoPlaceBlock(world, byPlayer, blockSel, itemstack);
             return true;
         }
+
 
 
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier, ref EnumHandling handled)

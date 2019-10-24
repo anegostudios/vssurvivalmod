@@ -31,12 +31,14 @@ namespace Vintagestory.GameContent
             return toolTextureSubIds;
         }
 
+
         WorldInteraction[] interactions;
 
         public override void OnLoaded(ICoreAPI api)
         {
             if (api.Side != EnumAppSide.Client) return;
             ICoreClientAPI capi = api as ICoreClientAPI;
+
 
             interactions = ObjectCacheUtil.GetOrCreate(api, "toolrackBlockInteractions", () =>
             {

@@ -40,22 +40,13 @@ namespace Vintagestory.GameContent
 
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection bs, ref string failureCode)
         {
-            if (!world.Claims.TryAccess(byPlayer, bs.Position, EnumBlockAccessFlags.BuildOrBreak))
+            if (!CanPlaceBlock(world, byPlayer, bs, ref failureCode))
             {
-                failureCode = "claimed";
-                byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
                 return false;
             }
 
             BlockPos supportingPos = bs.Position.DownCopy();
             Block supportingBlock = world.BlockAccessor.GetBlock(supportingPos);
-
-            if (!world.BlockAccessor.GetBlock(bs.Position).IsReplacableBy(this))
-            {
-                failureCode = "notreplaceable";
-                return false;
-            }
-
 
             if (supportingBlock.CanAttachBlockAt(world.BlockAccessor, this, bs.Position, bs.Face) || supportingBlock.Attributes?["partialAttachable"].AsBool() == true)
             {

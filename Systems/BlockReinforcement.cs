@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
@@ -49,6 +50,21 @@ namespace Vintagestory.GameContent
         public int chunkX, chunkY, chunkZ;
     }
 
+    [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
+    public class ReinforcedPrivilegeGrants
+    {
+        public string OwnedByPlayerUid;
+        public Dictionary<string, EnumBlockAccessFlags> PlayerGrants = new Dictionary<string, EnumBlockAccessFlags>();
+        public Dictionary<int, EnumBlockAccessFlags> GroupGrants = new Dictionary<int, EnumBlockAccessFlags>();
+    }
+
+    [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
+    public class PrivGrantsData
+    {
+        public Dictionary<string, ReinforcedPrivilegeGrants> privGrantsByOwningPlayerUid = new Dictionary<string, ReinforcedPrivilegeGrants>();
+    }
+
+
     public class ModSystemBlockReinforcement : ModSystem
     {
         ICoreAPI api;
@@ -59,6 +75,8 @@ namespace Vintagestory.GameContent
         // Client side data
         Dictionary<long, Dictionary<int, BlockReinforcement>> reinforcementsByChunk = new Dictionary<long, Dictionary<int, BlockReinforcement>>();
 
+        // Both sided data
+        Dictionary<string, ReinforcedPrivilegeGrants> privGrantsByOwningPlayerUid = new Dictionary<string, ReinforcedPrivilegeGrants>();
 
         public override bool ShouldLoad(EnumAppSide forSide)
         {
@@ -80,11 +98,84 @@ namespace Vintagestory.GameContent
             clientChannel = api.Network
                 .RegisterChannel("blockreinforcement")
                 .RegisterMessageType(typeof(ChunkReinforcementData))
-                .SetMessageHandler<ChunkReinforcementData>(onData)
+                .RegisterMessageType(typeof(PrivGrantsData))
+                .SetMessageHandler<ChunkReinforcementData>(onChunkData)
+                .SetMessageHandler<PrivGrantsData>(onPrivData)
             ;
         }
 
-        private void onData(ChunkReinforcementData msg)
+        public override void StartServerSide(ICoreServerAPI api)
+        {
+            api.Event.ServerRunPhase(EnumServerRunPhase.LoadGamePre, addReinforcementBehavior);
+            api.Event.SaveGameLoaded += Event_SaveGameLoaded;
+            api.Event.GameWorldSave += Event_GameWorldSave;
+
+            serverChannel = api.Network
+                .RegisterChannel("blockreinforcement")
+                .RegisterMessageType(typeof(ChunkReinforcementData))
+                .RegisterMessageType(typeof(PrivGrantsData))
+            ;
+
+            api.RegisterCommand("bre", "Block reinforcement privilege management", "[grant|revoke|grantgroup|revokegroup] [playername/groupname] [use or all]", onCmd, Privilege.chat);
+        }
+
+        private void onCmd(IServerPlayer player, int groupId, CmdArgs args)
+        {
+            string subcmd = args.PopWord();
+            string plrgrpname = args.PopWord();
+            string flagString = args.PopWord();
+
+            EnumBlockAccessFlags flags = EnumBlockAccessFlags.None;
+            if (flagString != null) {
+                if (flagString.ToLowerInvariant() == "use") flags = EnumBlockAccessFlags.Use;
+                if (flagString.ToLowerInvariant() == "all") flags = EnumBlockAccessFlags.BuildOrBreak | EnumBlockAccessFlags.Use;
+            }
+
+            if (subcmd == null || plrgrpname == null)
+            {
+                player.SendMessage(groupId, "Syntax: /bre [grant|revoke|grantgroup|revokegroup] [playername/groupname] [use or all]", EnumChatType.CommandError);
+                return;
+            }
+
+            ICoreServerAPI sapi = api as ICoreServerAPI;
+            IServerPlayerData plrData = null;
+
+            if (subcmd == "grant" || subcmd == "revoke")
+            {
+                plrData = sapi.PlayerData.GetPlayerDataByLastKnownName(plrgrpname);
+                if (plrData == null)
+                {
+                    player.SendMessage(groupId, "No player with such name found or never connected to this server", EnumChatType.CommandError);
+                    return;
+                }
+            }
+
+ 
+            switch (subcmd)
+            {
+                case "grant":
+                    if (flags == EnumBlockAccessFlags.None)
+                    {
+                        player.SendMessage(groupId, "Invalid or missing access flag. Declare 'use' or 'all'", EnumChatType.CommandError);
+                        return;
+                    }
+
+                    SetPlayerPrivilege(player, groupId, plrData.PlayerUID, flags);
+                    break;
+                case "revoke":
+                    SetPlayerPrivilege(player, groupId, plrData.PlayerUID, EnumBlockAccessFlags.None);
+                    break;
+
+                case "grantgroup":
+                    SetGroupPrivilege(player, groupId, plrgrpname, flags);
+                    break;
+                case "revokegroup":
+                    SetGroupPrivilege(player, groupId, plrgrpname, EnumBlockAccessFlags.None); ;
+                    break;
+            }
+        }
+
+        private void onChunkData(ChunkReinforcementData msg)
         {
             IWorldChunk chunk = api.World.BlockAccessor.GetChunk(msg.chunkX, msg.chunkY, msg.chunkZ);
             if (chunk != null)
@@ -93,17 +184,40 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override void StartServerSide(ICoreServerAPI api)
+        private void onPrivData(PrivGrantsData networkMessage)
         {
-            api.Event.ServerRunPhase(EnumServerRunPhase.LoadGamePre, addReinforcementBehavior);
-
-            serverChannel = api.Network
-                .RegisterChannel("blockreinforcement")
-                .RegisterMessageType(typeof(ChunkReinforcementData))
-            ;
+            this.privGrantsByOwningPlayerUid = networkMessage.privGrantsByOwningPlayerUid;
         }
-        
 
+        void SyncPrivData()
+        {
+            serverChannel?.BroadcastPacket(new PrivGrantsData() { privGrantsByOwningPlayerUid = privGrantsByOwningPlayerUid });
+        }
+
+
+
+        private void Event_GameWorldSave()
+        {
+            byte[] data = (api as ICoreServerAPI).WorldManager.SaveGame.GetData("blockreinforcementprivileges");
+            if (data != null)
+            {
+                try
+                {
+                    privGrantsByOwningPlayerUid = SerializerUtil.Deserialize<Dictionary<string, ReinforcedPrivilegeGrants>>(data);
+                } catch
+                {
+                    api.World.Logger.Notification("Unable to load group privileges for the block reinforcement system. Exception thrown when trying to deserialize it. Will be discarded.");
+                }
+            }
+        }
+
+        private void Event_SaveGameLoaded()
+        {
+            (api as ICoreServerAPI).WorldManager.SaveGame.StoreData("blockreinforcementprivileges", SerializerUtil.Serialize(privGrantsByOwningPlayerUid));
+        }
+
+
+        #region Reinforcing and Locking
         private void addReinforcementBehavior()
         {
             foreach (Block block in api.World.Blocks)
@@ -141,7 +255,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public bool TryRemoveReinforcement(BlockPos pos, IPlayer byPlayer, ref string errorCode)
+        public bool TryRemoveReinforcement(BlockPos pos, IPlayer forPlayer, ref string errorCode)
         {
             Dictionary<int, BlockReinforcement> reinforcmentsOfChunk = getOrCreateReinforcmentsAt(pos);
             if (reinforcmentsOfChunk == null) return false;
@@ -153,7 +267,7 @@ namespace Vintagestory.GameContent
                 return false;
             }
 
-            if (reinforcmentsOfChunk[index3d].PlayerUID != byPlayer.PlayerUID)
+            if (reinforcmentsOfChunk[index3d].PlayerUID != forPlayer.PlayerUID && (GetAccessFlags(reinforcmentsOfChunk[index3d].PlayerUID, forPlayer) & EnumBlockAccessFlags.BuildOrBreak) == 0)
             {
                 errorCode = "notownblock";
                 return false;
@@ -174,7 +288,7 @@ namespace Vintagestory.GameContent
             return reinforcmentsOfChunk.ContainsKey(index3d);
         }
 
-        public bool IsLocked(BlockPos pos, IPlayer forPlayer)
+        public bool IsLockedForInteract(BlockPos pos, IPlayer forPlayer)
         {
             Dictionary<int, BlockReinforcement> reinforcmentsOfChunk = getOrCreateReinforcmentsAt(pos);
             if (reinforcmentsOfChunk == null) return false;
@@ -183,10 +297,45 @@ namespace Vintagestory.GameContent
             BlockReinforcement bre;
             if (reinforcmentsOfChunk.TryGetValue(index3d, out bre))
             {
-                return bre.Locked && bre.PlayerUID != forPlayer.PlayerUID;
+                if (bre.Locked && bre.PlayerUID != forPlayer.PlayerUID)
+                {
+                    EnumBlockAccessFlags flags = GetAccessFlags(bre.PlayerUID, forPlayer);
+
+                    if ((flags & EnumBlockAccessFlags.Use) > 0) return false;
+                    return true;
+                }
             }
+
             return false;
         }
+
+
+        public EnumBlockAccessFlags GetAccessFlags(string owningPlayerUid, IPlayer forPlayer)
+        {
+            if (owningPlayerUid == forPlayer.PlayerUID) return EnumBlockAccessFlags.Use | EnumBlockAccessFlags.BuildOrBreak;
+
+            ReinforcedPrivilegeGrants grants;
+            EnumBlockAccessFlags flags = EnumBlockAccessFlags.None;
+
+            if (privGrantsByOwningPlayerUid.TryGetValue(owningPlayerUid, out grants))
+            {
+                // Maybe player privilege?
+                grants.PlayerGrants.TryGetValue(forPlayer.PlayerUID, out flags);
+                
+                // Maybe group privilege?
+                foreach (var val in grants.GroupGrants)
+                {
+                    if (forPlayer.GetGroup(val.Key) != null)
+                    {
+                        flags |= val.Value;
+                    }
+                }
+            }
+
+            return flags;
+        }
+
+
 
         public bool TryLock(BlockPos pos, IPlayer byPlayer, string itemCode)
         {
@@ -346,6 +495,71 @@ namespace Vintagestory.GameContent
             serverChannel?.BroadcastPacket(new ChunkReinforcementData() { chunkX = chunkX, chunkY = chunkY, chunkZ = chunkZ, Data = data });
         }
 
+        #endregion
+
+        #region Privilege Stuff
+
+        public void SetPlayerPrivilege(IServerPlayer owningPlayer, int chatGroupId, string forPlayerUid, EnumBlockAccessFlags access)
+        {
+            ReinforcedPrivilegeGrants grants;
+            if (!privGrantsByOwningPlayerUid.TryGetValue(owningPlayer.PlayerUID, out grants))
+            {
+                grants = new ReinforcedPrivilegeGrants();
+                privGrantsByOwningPlayerUid[owningPlayer.PlayerUID] = grants;
+            }
+
+            if (access == EnumBlockAccessFlags.None)
+            {
+                if (grants.PlayerGrants.Remove(forPlayerUid))
+                {
+                    owningPlayer.SendMessage(chatGroupId, Lang.Get("Ok, privilege revoked from player."), EnumChatType.CommandSuccess);
+                } else
+                {
+                    owningPlayer.SendMessage(chatGroupId, Lang.Get("No action taken. Player does not have any privilege to your reinforced blocks."), EnumChatType.CommandSuccess);
+                }
+            } else
+            {
+                grants.PlayerGrants[forPlayerUid] = access;
+                owningPlayer.SendMessage(chatGroupId, Lang.Get("Ok, Privilege for player set."), EnumChatType.CommandSuccess);
+            }
+        }
+
+        public void SetGroupPrivilege(IServerPlayer owningPlayer, int chatGroupId, string forGroupName, EnumBlockAccessFlags access)
+        {
+            ReinforcedPrivilegeGrants grants;
+            if (!privGrantsByOwningPlayerUid.TryGetValue(owningPlayer.PlayerUID, out grants))
+            {
+                grants = new ReinforcedPrivilegeGrants();
+                privGrantsByOwningPlayerUid[owningPlayer.PlayerUID] = grants;
+            }
+
+            PlayerGroup group = (api as ICoreServerAPI).Groups.GetPlayerGroupByName(forGroupName);
+            if (group == null)
+            {
+                owningPlayer.SendMessage(chatGroupId, Lang.Get("No such group found"), EnumChatType.CommandError);
+                return;
+            }
+
+            if (access == EnumBlockAccessFlags.None)
+            {
+                if (grants.GroupGrants.Remove(group.Uid))
+                {
+                    owningPlayer.SendMessage(chatGroupId, Lang.Get("Ok, privilege revoked from group."), EnumChatType.CommandSuccess);
+                }
+                else
+                {
+                    owningPlayer.SendMessage(chatGroupId, Lang.Get("No action taken. Group does not have any privilege to your reinforced blocks."), EnumChatType.CommandSuccess);
+                }
+            }
+            else
+            {
+                grants.GroupGrants[group.Uid] = access;
+                owningPlayer.SendMessage(chatGroupId, Lang.Get("Ok, Privilege for group set."), EnumChatType.CommandSuccess);
+            }
+        }
+
+
+        #endregion
 
         int toLocalIndex(BlockPos pos)
         {

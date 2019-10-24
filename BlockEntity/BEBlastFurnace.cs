@@ -70,11 +70,11 @@ namespace Vintagestory.GameContent
             if (state != 1) return;
 
 
-            if (api is ICoreClientAPI)
+            if (Api is ICoreClientAPI)
             {
                 // Client updates
 
-                if (api.World.Rand.Next(100) == 0)
+                if (Api.World.Rand.Next(100) == 0)
                 {
                     /*api.World.PlaySoundAt(
                         (double)((float)pos.X + 0.5F),
@@ -94,11 +94,11 @@ namespace Vintagestory.GameContent
 
                 while (quantitysmoke > 0.001f)
                 {
-                    if (quantitysmoke < 1f && api.World.Rand.NextDouble() > quantitysmoke) break;
+                    if (quantitysmoke < 1f && Api.World.Rand.NextDouble() > quantitysmoke) break;
 
-                    double x = (double)pos.X + 0.3f + api.World.Rand.NextDouble() * 0.4f;
-                    double y = (double)pos.Y + 0.7f + api.World.Rand.NextDouble() * 0.3D + 0.7D; // + (furnacetype == EnumFurnaceType.BLASTFURNACE ? 1D : 0D);
-                    double z = (double)pos.Z + 0.3f + api.World.Rand.NextDouble() * 0.4f;
+                    double x = (double)Pos.X + 0.3f + Api.World.Rand.NextDouble() * 0.4f;
+                    double y = (double)Pos.Y + 0.7f + Api.World.Rand.NextDouble() * 0.3D + 0.7D; // + (furnacetype == EnumFurnaceType.BLASTFURNACE ? 1D : 0D);
+                    double z = (double)Pos.Z + 0.3f + Api.World.Rand.NextDouble() * 0.4f;
 
                     //worldObj.spawnParticle(EnumParticleTypes.SMOKE_LARGE, x, y, z, 0.0D, 0.0D, 0.0D, new int[0]);
 
@@ -156,7 +156,7 @@ namespace Vintagestory.GameContent
 
             burntime = 0;
             receivedAirBlows = 0;
-            api.World.BlockAccessor.MarkBlockEntityDirty(pos);
+            Api.World.BlockAccessor.MarkBlockEntityDirty(Pos);
         }
 
 
@@ -214,9 +214,9 @@ namespace Vintagestory.GameContent
         public override void OnBlockBroken()
         {
             
-            if (api.World is IServerWorldAccessor)
+            if (Api.World is IServerWorldAccessor)
             {
-                Inventory.DropAll(pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                Inventory.DropAll(Pos.ToVec3d().Add(0.5, 0.5, 0.5));
             }
         }
 
@@ -227,7 +227,7 @@ namespace Vintagestory.GameContent
                 Inventory.InvNetworkUtil.HandleClientPacket(player, packetid, data);
 
                 // Tell server to save this chunk to disk again
-                api.World.BlockAccessor.GetChunkAtBlockPos(pos.X, pos.Y, pos.Z).MarkModified();
+                Api.World.BlockAccessor.GetChunkAtBlockPos(Pos.X, Pos.Y, Pos.Z).MarkModified();
 
                 return;
             }
@@ -257,7 +257,7 @@ namespace Vintagestory.GameContent
                     Inventory.FromTreeAttributes(tree);
                     Inventory.ResolveBlocksOrItems();
 
-                    IClientWorldAccessor clientWorld = (IClientWorldAccessor)api.World;
+                    IClientWorldAccessor clientWorld = (IClientWorldAccessor)Api.World;
 
                     //clientWorld.OpenDialog(dialogClassName, dialogTitle, Inventory);
                 }
@@ -265,7 +265,7 @@ namespace Vintagestory.GameContent
 
             if (packetid == (int)EnumBlockContainerPacketId.CloseInventory)
             {
-                IClientWorldAccessor clientWorld = (IClientWorldAccessor)api.World;
+                IClientWorldAccessor clientWorld = (IClientWorldAccessor)Api.World;
                 clientWorld.Player.InventoryManager.CloseInventory(Inventory);
             }
         }

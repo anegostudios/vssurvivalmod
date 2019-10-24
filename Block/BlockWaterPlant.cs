@@ -12,10 +12,8 @@ namespace Vintagestory.GameContent
         {
             Block block = world.BlockAccessor.GetBlock(blockSel.Position);
 
-            if (!world.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            if (!CanPlaceBlock(world, byPlayer, blockSel, ref failureCode))
             {
-                byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
-                failureCode = "claimed";
                 return false;
             }
 
@@ -35,7 +33,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            if (blockToPlace != null && CanPlantStay(world.BlockAccessor, blockSel.Position) && blockToPlace.IsSuitablePosition(world, blockSel.Position, ref failureCode))
+            if (blockToPlace != null && CanPlantStay(world.BlockAccessor, blockSel.Position))
             {
                 world.BlockAccessor.SetBlock(blockToPlace.BlockId, blockSel.Position);
                 return true;

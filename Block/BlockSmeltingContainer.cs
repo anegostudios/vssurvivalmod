@@ -20,21 +20,14 @@ namespace Vintagestory.GameContent
                 return false;
             }
 
-            if (!world.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
-            {
-                failureCode = "claimed";
-                byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
-                return false;
-            }
-
-            if (!IsSuitablePosition(world, blockSel.Position, ref failureCode))
+            if (!CanPlaceBlock(world, byPlayer, blockSel, ref failureCode))
             {
                 return false;
             }
 
             if (world.BlockAccessor.GetBlock(blockSel.Position.DownCopy()).SideSolid[BlockFacing.UP.Index])
             {
-                DoPlaceBlock(world, blockSel.Position, blockSel.Face, itemstack);
+                DoPlaceBlock(world, byPlayer, blockSel, itemstack);
                 return true;
             }
 

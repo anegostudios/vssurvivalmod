@@ -109,26 +109,34 @@ namespace Vintagestory.ServerMods
 
             IntMap forestMap = chunks[0].MapChunk.MapRegion.ForestMap;
             IntMap climateMap = chunks[0].MapChunk.MapRegion.ClimateMap;
+            IntMap beachMap = chunks[0].MapChunk.MapRegion.BeachMap;
+
             ushort[] heightMap = chunks[0].MapChunk.RainHeightMap;
 
             int regionChunkSize = api.WorldManager.RegionSize / chunksize;
             int rdx = chunkX % regionChunkSize;
             int rdz = chunkZ % regionChunkSize;
 
-            // "Pixels per chunk"
+            // Amount of data points per chunk
             float climateStep = (float)climateMap.InnerSize / regionChunkSize;
             float forestStep = (float)forestMap.InnerSize / regionChunkSize;
+            float beachStep = (float)beachMap.InnerSize / regionChunkSize;
 
             // Retrieves the map data on the chunk edges
             int forestUpLeft = forestMap.GetUnpaddedInt((int)(rdx * forestStep), (int)(rdz * forestStep));
             int forestUpRight = forestMap.GetUnpaddedInt((int)(rdx * forestStep + forestStep), (int)(rdz * forestStep));
             int forestBotLeft = forestMap.GetUnpaddedInt((int)(rdx * forestStep), (int)(rdz * forestStep + forestStep));
             int forestBotRight = forestMap.GetUnpaddedInt((int)(rdx * forestStep + forestStep), (int)(rdz * forestStep + forestStep));
-            
+
+            int beachUpLeft = beachMap.GetUnpaddedInt((int)(rdx * beachStep), (int)(rdz * beachStep));
+            int beachUpRight = beachMap.GetUnpaddedInt((int)(rdx * beachStep + beachStep), (int)(rdz * beachStep));
+            int beachBotLeft = beachMap.GetUnpaddedInt((int)(rdx * beachStep), (int)(rdz * beachStep + beachStep));
+            int beachBotRight = beachMap.GetUnpaddedInt((int)(rdx * beachStep + beachStep), (int)(rdz * beachStep + beachStep));
+
 
             // increasing x -> left to right  
             // increasing z -> top to bottom
-            
+
             float transitionSize = blockLayerConfig.blockLayerTransitionSize;
             
 
@@ -155,13 +163,17 @@ namespace Vintagestory.ServerMods
                     float temp = TerraGenConfig.GetScaledAdjustedTemperatureFloat(tempUnscaled, posY - TerraGenConfig.seaLevel + rnd);
                     float rainRel = TerraGenConfig.GetRainFall((climate >> 8) & 0xff, posY + rnd) / 255f;
                     float forestRel = GameMath.BiLerp(forestUpLeft, forestUpRight, forestBotLeft, forestBotRight, (float)x / chunksize, (float)z / chunksize) / 255f;
-                    
+                    float beachRel = GameMath.BiLerp(beachUpLeft, beachUpRight, beachBotLeft, beachBotRight, (float)x / chunksize, (float)z / chunksize) / 255f;
+
                     int prevY = posY;
                     
                     posY = PutLayers(transitionRand, x, posY, z, chunks, rainRel, temp, tempUnscaled, heightMap);
-                    PlaceTallGrass(x, prevY, z, chunks, rainRel, temp, forestRel);
-                    
+                    int blockID = chunks[0].MapChunk.TopRockIdMap[z * chunksize + x];
 
+                    GenBeach(x, prevY, z, chunks, rainRel, temp, beachRel, blockID);
+                    PlaceTallGrass(x, prevY, z, chunks, rainRel, temp, forestRel);
+
+                    
                     // Try again to put layers if above sealevel and we found over 10 air blocks
                     int foundAir = 0;
                     while (posY >= TerraGenConfig.seaLevel - 1)
@@ -181,7 +193,7 @@ namespace Vintagestory.ServerMods
                                 temp = TerraGenConfig.GetScaledAdjustedTemperatureFloat(tempUnscaled, posY - TerraGenConfig.seaLevel);
                                 rainRel = TerraGenConfig.GetRainFall((climate >> 8) & 0xff, posY) / 255f;
 
-                                PutLayers(transitionRand, x, posY, z, chunks, rainRel, temp, tempUnscaled, null);
+                                //PutLayers(transitionRand, x, posY, z, chunks, rainRel, temp, tempUnscaled, null);
                                 break;
                             } else
                             {
@@ -192,6 +204,9 @@ namespace Vintagestory.ServerMods
 
                         posY--;
                     }
+
+
+                    
                 }
             }
         }
@@ -251,8 +266,22 @@ namespace Vintagestory.ServerMods
         }
 
 
-        
-        
+
+
+        private void GenBeach(int x, int posY, int z, IServerChunk[] chunks, float rainRel, float temp, float beachRel, int topRockId)
+        {
+            int sandBlockId = blockLayerConfig.BeachLayer.BlockId;
+
+            if (blockLayerConfig.BeachLayer.BlockIdMapping != null && !blockLayerConfig.BeachLayer.BlockIdMapping.TryGetValue(topRockId, out sandBlockId))
+            {
+                return;
+            }
+
+            if (posY == TerraGenConfig.seaLevel-1 && beachRel > 0.5 && chunks[posY / chunksize].Blocks[(chunksize * (posY % chunksize) + z) * chunksize + x] != GlobalConfig.waterBlockId)
+            {
+                chunks[posY / chunksize].Blocks[(chunksize * (posY % chunksize) + z) * chunksize + x] = sandBlockId;
+            }
+        }
 
         void PlaceTallGrass(int x, int posY, int z, IServerChunk[] chunks, float rainRel, float temp, float forestRel)
         {

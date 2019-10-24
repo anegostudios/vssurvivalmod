@@ -24,7 +24,7 @@ namespace Vintagestory.GameContent.Mechanics
         protected float[] rotMat = Mat4f.Create();
         protected MechanicalPowerMod mechanicalPowerMod;
 
-        protected List<IMechanicalPowerNode> renderedDevices = new List<IMechanicalPowerNode>();
+        protected Dictionary<BlockPos, IMechanicalPowerNode> renderedDevices = new Dictionary<BlockPos, IMechanicalPowerNode>();
 
         protected Vec3f tmp = new Vec3f();
         protected float[] testRot = new float[3];
@@ -39,14 +39,15 @@ namespace Vintagestory.GameContent.Mechanics
 
         public void AddDevice(IMechanicalPowerNode device)
         {
-            quantityBlocks++;
-            renderedDevices.Add(device);
+            renderedDevices[device.Position] = device;
+            quantityBlocks = renderedDevices.Count;
         }
 
-        public void RemoveDevice(IMechanicalPowerNode device)
+        public bool RemoveDevice(IMechanicalPowerNode device)
         {
-            quantityBlocks--;
-            renderedDevices.Remove(device);
+            bool ok = renderedDevices.Remove(device.Position);
+            quantityBlocks = renderedDevices.Count;
+            return ok;
         }
 
 
@@ -55,17 +56,17 @@ namespace Vintagestory.GameContent.Mechanics
         protected void UpdateCustomFloatBuffer()
         {
             Vec3d pos = capi.World.Player.Entity.CameraPos;
-            
 
-            for (int i = 0; i < renderedDevices.Count; i++)
+
+            int i = 0;
+            foreach (var dev in renderedDevices.Values)
             {
-                IMechanicalPowerNode dev = renderedDevices[i];
-
                 tmp.Set((float)(dev.Position.X - pos.X), (float)(dev.Position.Y - pos.Y), (float)(dev.Position.Z - pos.Z));
 
                 testRot[2] = dev.Angle; // -(capi.World.ElapsedMilliseconds / 900f) % GameMath.TWOPI;
 
                 UpdateLightAndTransformMatrix(i, tmp, testRot, dev);
+                i++;
             }
         }
 

@@ -41,7 +41,7 @@ namespace Vintagestory.GameContent
             fireBlock = api.World.GetBlock(new AssetLocation("fire"));
             if (fireBlock == null) fireBlock = new Block();
 
-            neibBlock = api.World.BlockAccessor.GetBlock(pos.AddCopy(fromFacing.GetOpposite()));
+            neibBlock = api.World.BlockAccessor.GetBlock(Pos.AddCopy(fromFacing.GetOpposite()));
 
 
             if (ambientSound == null && api.Side == EnumAppSide.Client)
@@ -52,7 +52,7 @@ namespace Vintagestory.GameContent
                     {
                         Location = new AssetLocation("sounds/environment/fire.ogg"),
                         ShouldLoop = true,
-                        Position = pos.ToVec3f().Add(0.5f, 0.25f, 0.5f),
+                        Position = Pos.ToVec3f().Add(0.5f, 0.25f, 0.5f),
                         DisposeOnFinish = false,
                         Volume = 1f
                     });
@@ -69,20 +69,20 @@ namespace Vintagestory.GameContent
 
         private void OnSlowTick(float dt)
         {
-            if (api.Side == EnumAppSide.Client) return;
+            if (Api.Side == EnumAppSide.Client) return;
 
-            BlockPos neibPos = pos.AddCopy(fromFacing.GetOpposite());
-            neibBlock = api.World.BlockAccessor.GetBlock(neibPos);
+            BlockPos neibPos = Pos.AddCopy(fromFacing.GetOpposite());
+            neibBlock = Api.World.BlockAccessor.GetBlock(neibPos);
             if (!canBurn(neibBlock, neibPos))
             {
-                api.World.BlockAccessor.SetBlock(0, pos);
-                api.World.BlockAccessor.RemoveBlockEntity(pos); // Sometimes block entities don't get removed properly o.O
-                api.World.BlockAccessor.TriggerNeighbourBlockUpdate(pos);
+                Api.World.BlockAccessor.SetBlock(0, Pos);
+                Api.World.BlockAccessor.RemoveBlockEntity(Pos); // Sometimes block entities don't get removed properly o.O
+                Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(Pos);
                 return;
             }
 
-            Entity[] entities = api.World.GetEntitiesAround(pos.ToVec3d().Add(0.5, 0.5, 0.5), 3, 3, (e) => e.Alive);
-            Vec3d ownPos = pos.ToVec3d();
+            Entity[] entities = Api.World.GetEntitiesAround(Pos.ToVec3d().Add(0.5, 0.5, 0.5), 3, 3, (e) => e.Alive);
+            Vec3d ownPos = Pos.ToVec3d();
             for (int i = 0; i < entities.Length; i++)
             {
                 Entity entity = entities[i];
@@ -95,43 +95,43 @@ namespace Vintagestory.GameContent
 
         private void OnTick(float dt)
         {
-            if (api.Side == EnumAppSide.Server)
+            if (Api.Side == EnumAppSide.Server)
             {
                 remainingBurnDuration -= dt;
 
                 if (remainingBurnDuration <= 0)
                 {
-                    BlockPos fuelPos = pos.AddCopy(fromFacing.GetOpposite());
-                    Block fuelBlock = api.World.BlockAccessor.GetBlock(fuelPos);
+                    BlockPos fuelPos = Pos.AddCopy(fromFacing.GetOpposite());
+                    Block fuelBlock = Api.World.BlockAccessor.GetBlock(fuelPos);
 
                     if (canBurn(fuelBlock, fuelPos))
                     {
                         TrySpreadTo(fuelPos, fromFacing);
                     }
 
-                    api.World.BlockAccessor.SetBlock(0, pos);
-                    api.World.BlockAccessor.RemoveBlockEntity(pos); // Sometimes block entities don't get removed properly o.O
-                    api.World.BlockAccessor.TriggerNeighbourBlockUpdate(pos);
+                    Api.World.BlockAccessor.SetBlock(0, Pos);
+                    Api.World.BlockAccessor.RemoveBlockEntity(Pos); // Sometimes block entities don't get removed properly o.O
+                    Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(Pos);
                     return;
                 }
 
                 float spreadChance = (TimePassed - 2.5f) / 450f;
 
-                if (((ICoreServerAPI)api).Server.Config.AllowFireSpread && spreadChance > api.World.Rand.NextDouble())
+                if (((ICoreServerAPI)Api).Server.Config.AllowFireSpread && spreadChance > Api.World.Rand.NextDouble())
                 {
                     TrySpreadFire();
                 }
             }
 
-            if (api.Side == EnumAppSide.Client)
+            if (Api.Side == EnumAppSide.Client)
             {
-                int index = Math.Min(fireBlock.ParticleProperties.Length-1, api.World.Rand.Next(fireBlock.ParticleProperties.Length + 1));
+                int index = Math.Min(fireBlock.ParticleProperties.Length-1, Api.World.Rand.Next(fireBlock.ParticleProperties.Length + 1));
                 AdvancedParticleProperties particles = fireBlock.ParticleProperties[index];
-                particles.basePos = RandomBlockPos(api.World.BlockAccessor, pos.AddCopy(fromFacing.GetOpposite()), neibBlock, fromFacing);
+                particles.basePos = RandomBlockPos(Api.World.BlockAccessor, Pos.AddCopy(fromFacing.GetOpposite()), neibBlock, fromFacing);
 
                 particles.Quantity.avg = 0.75f;
                 particles.TerrainCollision = false;
-                api.World.SpawnParticles(particles);
+                Api.World.SpawnParticles(particles);
                 particles.Quantity.avg = 0;
             }
         }
@@ -139,16 +139,16 @@ namespace Vintagestory.GameContent
 
         private void TrySpreadFire()
         {
-            BlockPos opos = pos.AddCopy(fromFacing.GetOpposite());
+            BlockPos opos = Pos.AddCopy(fromFacing.GetOpposite());
 
             foreach (BlockFacing facing in BlockFacing.ALLFACES)
             {
                 BlockPos npos = opos.AddCopy(facing);
-                Block nBlock = api.World.BlockAccessor.GetBlock(npos);
+                Block nBlock = Api.World.BlockAccessor.GetBlock(npos);
 
                 if (canBurn(nBlock, npos))
                 {
-                    if (api.World.BlockAccessor.GetBlock(npos.AddCopy(fromFacing)).BlockId == 0 && TrySpreadTo(npos.AddCopy(fromFacing), fromFacing))
+                    if (Api.World.BlockAccessor.GetBlock(npos.AddCopy(fromFacing)).BlockId == 0 && TrySpreadTo(npos.AddCopy(fromFacing), fromFacing))
                     {
                         break;
                     }
@@ -157,7 +157,7 @@ namespace Vintagestory.GameContent
                     foreach (BlockFacing firefacing in BlockFacing.ALLFACES)
                     {
                         BlockPos nnpos = npos.AddCopy(firefacing);
-                        Block nnblock = api.World.BlockAccessor.GetBlock(nnpos);
+                        Block nnblock = Api.World.BlockAccessor.GetBlock(nnpos);
                         if (canBurn(nnblock, nnpos) && TrySpreadTo(nnpos, firefacing))
                         {
                             dobreak = true;
@@ -173,15 +173,15 @@ namespace Vintagestory.GameContent
 
         public bool TrySpreadTo(BlockPos pos, BlockFacing facing)
         {
-            IPlayer player = api.World.PlayerByUid(startedByPlayerUid);
+            IPlayer player = Api.World.PlayerByUid(startedByPlayerUid);
             
-            if (player != null && api.World.Claims.TestAccess(player, pos, EnumBlockAccessFlags.BuildOrBreak) != EnumWorldAccessResponse.Granted) {
+            if (player != null && Api.World.Claims.TestAccess(player, pos, EnumBlockAccessFlags.BuildOrBreak) != EnumWorldAccessResponse.Granted) {
                 return false;
             }
 
-            api.World.BlockAccessor.SetBlock(fireBlock.BlockId, pos);
+            Api.World.BlockAccessor.SetBlock(fireBlock.BlockId, pos);
 
-            BlockEntityFire befire = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityFire;
+            BlockEntityFire befire = Api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityFire;
             if (befire != null) befire.Init(facing, startedByPlayerUid);
 
             return true;
@@ -192,7 +192,7 @@ namespace Vintagestory.GameContent
         {
             if (block?.CombustibleProps == null || block.CombustibleProps.BurnDuration <= 0) return false;
 
-            return api.ModLoader.GetModSystem<ModSystemBlockReinforcement>()?.IsReinforced(pos) != true;
+            return Api.ModLoader.GetModSystem<ModSystemBlockReinforcement>()?.IsReinforced(pos) != true;
         }
 
         public void Init(BlockFacing fromFacing, string startedByPlayerUid)
@@ -200,15 +200,15 @@ namespace Vintagestory.GameContent
             this.fromFacing = fromFacing;
             this.startedByPlayerUid = startedByPlayerUid;
 
-            BlockPos neibPos = pos.AddCopy(fromFacing.GetOpposite());
-            neibBlock = api.World.BlockAccessor.GetBlock(neibPos);
+            BlockPos neibPos = Pos.AddCopy(fromFacing.GetOpposite());
+            neibBlock = Api.World.BlockAccessor.GetBlock(neibPos);
 
             if (!canBurn(neibBlock, neibPos))
             {
                 foreach (BlockFacing facing in BlockFacing.ALLFACES)
                 {
-                    BlockPos nnpos = pos.AddCopy(facing);
-                    neibBlock = api.World.BlockAccessor.GetBlock(nnpos);
+                    BlockPos nnpos = Pos.AddCopy(facing);
+                    neibBlock = Api.World.BlockAccessor.GetBlock(nnpos);
                     if (canBurn(neibBlock, nnpos))
                     {
                         this.fromFacing = facing.GetOpposite();

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
@@ -20,8 +21,6 @@ namespace Vintagestory.GameContent
         public string dialogTitleLangCode = "chestcontents";
         public bool retrieveOnly = false;
 
-        Block ownBlock;
-
         public override InventoryBase Inventory
         {
             get { return inventory; }
@@ -38,12 +37,10 @@ namespace Vintagestory.GameContent
 
         public override void Initialize(ICoreAPI api)
         {
-            ownBlock = api.World.BlockAccessor.GetBlock(pos);
-
             // Newly placed 
             if (inventory == null)
             {
-                InitInventory(ownBlock);
+                InitInventory(Block);
             }
 
             base.Initialize(api);
@@ -81,31 +78,29 @@ namespace Vintagestory.GameContent
         {
             base.ToTreeAttributes(tree);
 
-            if (ownBlock != null) tree.SetInt("forBlockId", ownBlock.BlockId);
+            if (Block != null) tree.SetInt("forBlockId", Block.BlockId);
         }
 
-        private void InitInventory(Block block)
+        private void InitInventory(Block Block)
         {
-            this.ownBlock = block;
-
-            if (block?.Attributes != null)
+            if (Block?.Attributes != null)
             {
-                inventoryClassName = block.Attributes["inventoryClassName"].AsString(inventoryClassName);
-                dialogTitleLangCode = block.Attributes["dialogTitleLangCode"].AsString(dialogTitleLangCode);
-                quantitySlots = block.Attributes["quantitySlots"].AsInt(quantitySlots);
-                retrieveOnly = block.Attributes["retrieveOnly"].AsBool(false);
+                inventoryClassName = Block.Attributes["inventoryClassName"].AsString(inventoryClassName);
+                dialogTitleLangCode = Block.Attributes["dialogTitleLangCode"].AsString(dialogTitleLangCode);
+                quantitySlots = Block.Attributes["quantitySlots"].AsInt(quantitySlots);
+                retrieveOnly = Block.Attributes["retrieveOnly"].AsBool(false);
             }
 
             inventory = new InventoryGeneric(quantitySlots, null, null, null);
 
-            if (block.Attributes?["spoilSpeedMulByFoodCat"].Exists == true)
+            if (Block.Attributes?["spoilSpeedMulByFoodCat"].Exists == true)
             {
-                inventory.PerishableFactorByFoodCategory = block.Attributes["spoilSpeedMulByFoodCat"].AsObject<Dictionary<EnumFoodCategory, float>>();
+                inventory.PerishableFactorByFoodCategory = Block.Attributes["spoilSpeedMulByFoodCat"].AsObject<Dictionary<EnumFoodCategory, float>>();
             }
 
-            if (block.Attributes?["transitionSpeedMulByType"].Exists == true)
+            if (Block.Attributes?["transitionSpeedMulByType"].Exists == true)
             {
-                inventory.TransitionableSpeedMulByType = block.Attributes["transitionSpeedMulByType"].AsObject<Dictionary<EnumTransitionType, float>>();
+                inventory.TransitionableSpeedMulByType = Block.Attributes["transitionSpeedMulByType"].AsObject<Dictionary<EnumTransitionType, float>>();
             }
             
             inventory.OnInventoryClosed += OnInvClosed;
@@ -115,7 +110,7 @@ namespace Vintagestory.GameContent
 
         private void OnSlotModifid(int slot)
         {
-            api.World.BlockAccessor.GetChunkAtBlockPos(pos)?.MarkModified();
+            Api.World.BlockAccessor.GetChunkAtBlockPos(Pos)?.MarkModified();
         }
 
         protected virtual void OnInvOpened(IPlayer player)
@@ -132,7 +127,7 @@ namespace Vintagestory.GameContent
 
         public override bool OnPlayerRightClick(IPlayer byPlayer, BlockSelection blockSel)
         {
-            if (api.World is IServerWorldAccessor)
+            if (Api.World is IServerWorldAccessor)
             {
                 byte[] data;
 
@@ -148,9 +143,9 @@ namespace Vintagestory.GameContent
                     data = ms.ToArray();
                 }
 
-                ((ICoreServerAPI)api).Network.SendBlockEntityPacket(
+                ((ICoreServerAPI)Api).Network.SendBlockEntityPacket(
                     (IServerPlayer)byPlayer,
-                    pos.X, pos.Y, pos.Z,
+                    Pos.X, Pos.Y, Pos.Z,
                     (int)EnumBlockContainerPacketId.OpenInventory,
                     data
                 );
@@ -162,14 +157,13 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override string GetBlockInfo(IPlayer forPlayer)
+        public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
         {
             if (retrieveOnly)
             {
-                return base.GetBlockInfo(forPlayer);
+                base.GetBlockInfo(forPlayer, dsc);
+                return;
             }
-
-            return null;
         }
     }
 }

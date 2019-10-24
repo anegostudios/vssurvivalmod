@@ -42,7 +42,7 @@ namespace Vintagestory.GameContent
 
         public ClayFormingRecipe SelectedRecipe
         {
-            get { return api != null ? api.World.ClayFormingRecipes.FirstOrDefault(r => r.RecipeId == selectedRecipeId) : null; }
+            get { return Api != null ? Api.World.ClayFormingRecipes.FirstOrDefault(r => r.RecipeId == selectedRecipeId) : null; }
         }
 
         public bool CanWorkCurrent
@@ -72,7 +72,7 @@ namespace Vintagestory.GameContent
             if (api is ICoreClientAPI)
             {
                 ICoreClientAPI capi = (ICoreClientAPI)api;
-                capi.Event.RegisterRenderer(workitemRenderer = new ClayFormRenderer(pos, capi), EnumRenderStage.Opaque);
+                capi.Event.RegisterRenderer(workitemRenderer = new ClayFormRenderer(Pos, capi), EnumRenderStage.Opaque);
                 capi.Event.RegisterRenderer(workitemRenderer, EnumRenderStage.AfterFinalComposition);
 
                 RegenMeshAndSelectionBoxes();
@@ -96,14 +96,14 @@ namespace Vintagestory.GameContent
         {
             if (workItemStack == null)
             {
-                if (api.World is IClientWorldAccessor)
+                if (Api.World is IClientWorldAccessor)
                 {
-                    OpenDialog(api.World as IClientWorldAccessor, pos, slot.Itemstack);
+                    OpenDialog(Api.World as IClientWorldAccessor, Pos, slot.Itemstack);
                 }
 
                 CreateInitialWorkItem();
-                workItemStack = new ItemStack(api.World.GetItem(new AssetLocation("clayworkitem-" + slot.Itemstack.Collectible.LastCodePart())));
-                baseMaterial = new ItemStack(api.World.GetItem(new AssetLocation("clay-" + slot.Itemstack.Collectible.LastCodePart())));
+                workItemStack = new ItemStack(Api.World.GetItem(new AssetLocation("clayworkitem-" + slot.Itemstack.Collectible.LastCodePart())));
+                baseMaterial = new ItemStack(Api.World.GetItem(new AssetLocation("clay-" + slot.Itemstack.Collectible.LastCodePart())));
             }
 
             AvailableVoxels += 25;
@@ -123,9 +123,9 @@ namespace Vintagestory.GameContent
 
             if (SelectedRecipe == null)
             {
-                if (api.Side == EnumAppSide.Client)
+                if (Api.Side == EnumAppSide.Client)
                 {
-                    OpenDialog(api.World as IClientWorldAccessor, pos, byPlayer.InventoryManager.ActiveHotbarSlot.Itemstack);
+                    OpenDialog(Api.World as IClientWorldAccessor, Pos, byPlayer.InventoryManager.ActiveHotbarSlot.Itemstack);
                 }
                 
                 return;
@@ -160,7 +160,7 @@ namespace Vintagestory.GameContent
 
             // Send a custom network packet for server side, because
             // serverside blockselection index is inaccurate
-            if (api.Side == EnumAppSide.Client)
+            if (Api.Side == EnumAppSide.Client)
             {
                 SendUseOverPacket(byPlayer, voxelPos, facing, mouseBreakMode);
                 
@@ -173,7 +173,7 @@ namespace Vintagestory.GameContent
                 
                 return;
             }
-            int toolMode = slot.Itemstack.Collectible.GetToolMode(slot, byPlayer, new BlockSelection() { Position = pos });
+            int toolMode = slot.Itemstack.Collectible.GetToolMode(slot, byPlayer, new BlockSelection() { Position = Pos });
 
             float yaw = GameMath.Mod(byPlayer.Entity.Pos.Yaw, 2 * GameMath.PI);
             BlockFacing towardsFace = BlockFacing.HorizontalFromAngle(yaw);
@@ -199,20 +199,20 @@ namespace Vintagestory.GameContent
                     //byPlayer.Entity.GetBehavior<EntityBehaviorHunger>()?.ConsumeSaturation(1f);
                 }
 
-                if (didmodify && api.Side == EnumAppSide.Client)
+                if (didmodify && Api.Side == EnumAppSide.Client)
                 {
-                    api.World.PlaySoundAt(new AssetLocation("sounds/player/clayform.ogg"), byPlayer, null, true, 8);
+                    Api.World.PlaySoundAt(new AssetLocation("sounds/player/clayform.ogg"), byPlayer, null, true, 8);
                 }
                 
                 RegenMeshAndSelectionBoxes();
-                api.World.BlockAccessor.MarkBlockDirty(pos);
-                api.World.BlockAccessor.MarkBlockEntityDirty(pos);
+                Api.World.BlockAccessor.MarkBlockDirty(Pos);
+                Api.World.BlockAccessor.MarkBlockEntityDirty(Pos);
 
                 if (!HasAnyVoxel())
                 {
                     AvailableVoxels = 0;
                     workItemStack = null;
-                    api.World.BlockAccessor.SetBlock(0, pos);
+                    Api.World.BlockAccessor.SetBlock(0, Pos);
                     //didBeginUse = 0;
                     return;
                 }
@@ -229,7 +229,7 @@ namespace Vintagestory.GameContent
 
         public void CheckIfFinished(IPlayer byPlayer)
         {
-            if (MatchesRecipe() && api.World is IServerWorldAccessor)
+            if (MatchesRecipe() && Api.World is IServerWorldAccessor)
             {
                 workItemStack = null;
                 Voxels = new bool[16, 16, 16];
@@ -239,7 +239,7 @@ namespace Vintagestory.GameContent
 
                 if (outstack.StackSize == 1 && outstack.Class == EnumItemClass.Block)
                 {
-                    api.World.BlockAccessor.SetBlock(outstack.Block.BlockId, pos);
+                    Api.World.BlockAccessor.SetBlock(outstack.Block.BlockId, Pos);
                     return;
                 }
 
@@ -252,20 +252,20 @@ namespace Vintagestory.GameContent
 
                     if (byPlayer.InventoryManager.TryGiveItemstack(dropStack))
                     {
-                        api.World.PlaySoundAt(new AssetLocation("sounds/player/collect"), byPlayer);
+                        Api.World.PlaySoundAt(new AssetLocation("sounds/player/collect"), byPlayer);
                     }
                     else
                     {
-                        api.World.SpawnItemEntity(dropStack, pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                        Api.World.SpawnItemEntity(dropStack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
                     }
                 }
 
                 if (tries <= 1)
                 {
-                    api.World.Logger.Error("Tried to drop finished clay forming item but failed after 500 times?! Gave up doing so. Out stack was " + outstack);
+                    Api.World.Logger.Error("Tried to drop finished clay forming item but failed after 500 times?! Gave up doing so. Out stack was " + outstack);
                 }
 
-                api.World.BlockAccessor.SetBlock(0, pos);
+                Api.World.BlockAccessor.SetBlock(0, Pos);
             }
         }
 
@@ -515,10 +515,10 @@ namespace Vintagestory.GameContent
             AvailableVoxels = tree.GetInt("availableVoxels");
             selectedRecipeId = tree.GetInt("selectedRecipeId", -1);
 
-            if (api != null && workItemStack != null)
+            if (Api != null && workItemStack != null)
             {
-                workItemStack.ResolveBlockOrItem(api.World);
-                baseMaterial = new ItemStack(api.World.GetItem(new AssetLocation("clay-" + workItemStack.Collectible.LastCodePart())));
+                workItemStack.ResolveBlockOrItem(Api.World);
+                baseMaterial = new ItemStack(Api.World.GetItem(new AssetLocation("clay-" + workItemStack.Collectible.LastCodePart())));
             }
 
             RegenMeshAndSelectionBoxes();
@@ -594,8 +594,8 @@ namespace Vintagestory.GameContent
                 data = ms.ToArray();
             }
 
-            ((ICoreClientAPI)api).Network.SendBlockEntityPacket(
-                pos.X, pos.Y, pos.Z,
+            ((ICoreClientAPI)Api).Network.SendBlockEntityPacket(
+                Pos.X, Pos.Y, Pos.Z,
                 (int)EnumClayFormingPacket.OnUserOver,
                 data
             );
@@ -608,26 +608,26 @@ namespace Vintagestory.GameContent
             {
                 if (baseMaterial != null)
                 {
-                    api.World.SpawnItemEntity(baseMaterial, pos.ToVec3d().Add(0.5));
+                    Api.World.SpawnItemEntity(baseMaterial, Pos.ToVec3d().Add(0.5));
                 }
-                api.World.BlockAccessor.SetBlock(0, pos);
+                Api.World.BlockAccessor.SetBlock(0, Pos);
             }
 
             if (packetid == (int)EnumClayFormingPacket.SelectRecipe)
             {
                 int recipeid = SerializerUtil.Deserialize<int>(data);
-                ClayFormingRecipe recipe = api.World.ClayFormingRecipes.FirstOrDefault(r => r.RecipeId == recipeid);
+                ClayFormingRecipe recipe = Api.World.ClayFormingRecipes.FirstOrDefault(r => r.RecipeId == recipeid);
 
                 if (recipe == null)
                 {
-                    api.World.Logger.Error("Client tried to selected clayforming recipe with id {0}, but no such recipe exists!");
+                    Api.World.Logger.Error("Client tried to selected clayforming recipe with id {0}, but no such recipe exists!");
                     return;
                 }
 
                 selectedRecipeId = recipe.RecipeId;
                 // Tell server to save this chunk to disk again
                 MarkDirty();
-                api.World.BlockAccessor.GetChunkAtBlockPos(pos.X, pos.Y, pos.Z).MarkModified();
+                Api.World.BlockAccessor.GetChunkAtBlockPos(Pos.X, Pos.Y, Pos.Z).MarkModified();
             }
 
             if (packetid == (int)EnumClayFormingPacket.OnUserOver)
@@ -671,7 +671,7 @@ namespace Vintagestory.GameContent
                 .ToList()
             ;
 
-            ICoreClientAPI capi = api as ICoreClientAPI;
+            ICoreClientAPI capi = Api as ICoreClientAPI;
             
             GuiDialog dlg = new GuiDialogBlockEntityRecipeSelector(
                 Lang.Get("Select recipe"), 
@@ -686,29 +686,26 @@ namespace Vintagestory.GameContent
                     capi.Network.SendBlockEntityPacket(pos.X, pos.Y, pos.Z, (int)EnumClayFormingPacket.CancelSelect);
                 },
                 pos, 
-                api as ICoreClientAPI
+                Api as ICoreClientAPI
             );
 
             dlg.TryOpen();
         }
 
 
-        
 
-        public override string GetBlockInfo(IPlayer forPlayer)
+
+        public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
         {
             if (workItemStack == null || SelectedRecipe == null)
             {
-                return "";
+                return;
             }
 
-            float temperature = workItemStack.Collectible.GetTemperature(api.World, workItemStack);
-            StringBuilder sb = new StringBuilder();
-            sb.AppendLine(Lang.Get("Output: {0}", SelectedRecipe?.Output?.ResolvedItemstack?.GetName()));
-            sb.AppendLine(Lang.Get("Available Voxels: {0}", AvailableVoxels));
+            float temperature = workItemStack.Collectible.GetTemperature(Api.World, workItemStack);
             
-
-            return sb.ToString();
+            dsc.AppendLine(Lang.Get("Output: {0}", SelectedRecipe?.Output?.ResolvedItemstack?.GetName()));
+            dsc.AppendLine(Lang.Get("Available Voxels: {0}", AvailableVoxels));
         }
 
 
@@ -724,8 +721,8 @@ namespace Vintagestory.GameContent
 
         public override void OnStoreCollectibleMappings(Dictionary<int, AssetLocation> blockIdMapping, Dictionary<int, AssetLocation> itemIdMapping)
         {
-            workItemStack?.Collectible.OnStoreCollectibleMappings(api.World, new DummySlot(workItemStack), blockIdMapping, itemIdMapping);
-            baseMaterial?.Collectible.OnStoreCollectibleMappings(api.World, new DummySlot(baseMaterial), blockIdMapping, itemIdMapping);
+            workItemStack?.Collectible.OnStoreCollectibleMappings(Api.World, new DummySlot(workItemStack), blockIdMapping, itemIdMapping);
+            baseMaterial?.Collectible.OnStoreCollectibleMappings(Api.World, new DummySlot(baseMaterial), blockIdMapping, itemIdMapping);
         }
 
         public override void OnLoadCollectibleMappings(IWorldAccessor worldForResolve, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping)

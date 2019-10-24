@@ -79,10 +79,6 @@ namespace Vintagestory.GameContent
             return base.GetSelectionBoxes(blockAccessor, pos);
         }
 
-        public override Cuboidf[] GetCollisionBoxes(IBlockAccessor blockAccessor, BlockPos pos)
-        {
-            return GetSelectionBoxes(blockAccessor, pos);
-        }
 
         public override bool DoParticalSelection(IWorldAccessor world, BlockPos pos)
         {

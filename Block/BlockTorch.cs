@@ -38,15 +38,8 @@ namespace Vintagestory.GameContent
                 return false;
             }
 
-            if (!IsSuitablePosition(world, blockSel.Position, ref failureCode))
+            if (!CanPlaceBlock(world, byPlayer, blockSel, ref failureCode))
             {
-                return false;
-            }
-
-            if (!world.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
-            {
-                byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
-                failureCode = "claimed";
                 return false;
             }
 

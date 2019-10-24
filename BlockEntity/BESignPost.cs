@@ -13,7 +13,7 @@ using Vintagestory.API.Server;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockEntitySignPost : BlockEntity, IBlockShapeSupplier
+    public class BlockEntitySignPost : BlockEntity
     {
         public string[] textByCardinalDirection = new string[8];
 
@@ -37,23 +37,22 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override void Initialize(ICoreAPI coreapi)
+        public override void Initialize(ICoreAPI api)
         {
-            base.Initialize(coreapi);
+            base.Initialize(api);
 
-            if (coreapi is ICoreClientAPI)
+            if (api is ICoreClientAPI)
             {
                 CairoFont font = new CairoFont(20, GuiStyle.StandardFontName, new double[] { 0, 0, 0, 0.8 });
 
-                signRenderer = new BlockEntitySignPostRenderer(pos, (ICoreClientAPI)coreapi, font);
+                signRenderer = new BlockEntitySignPostRenderer(Pos, (ICoreClientAPI)api, font);
 
                 if (textByCardinalDirection.Length > 0) signRenderer.SetNewText(textByCardinalDirection, color);
 
-                Block block = api.World.BlockAccessor.GetBlock(pos);
-                Shape shape = coreapi.Assets.TryGet(AssetLocation.Create("shapes/block/wood/signpost/sign.json")).ToObject<Shape>();
+                Shape shape = api.Assets.TryGet(AssetLocation.Create("shapes/block/wood/signpost/sign.json")).ToObject<Shape>();
                 if (shape != null)
                 {
-                    (coreapi as ICoreClientAPI).Tesselator.TesselateShape(block, shape, out signMesh);
+                    (api as ICoreClientAPI).Tesselator.TesselateShape(Block, shape, out signMesh);
                 }
             }
         }
@@ -112,10 +111,10 @@ namespace Vintagestory.GameContent
                 MarkDirty(true);
 
                 // Tell server to save this chunk to disk again
-                api.World.BlockAccessor.GetChunkAtBlockPos(pos.X, pos.Y, pos.Z).MarkModified();
+                Api.World.BlockAccessor.GetChunkAtBlockPos(Pos.X, Pos.Y, Pos.Z).MarkModified();
 
                 // 85% chance to get back the item
-                if (api.World.Rand.NextDouble() < 0.85)
+                if (Api.World.Rand.NextDouble() < 0.85)
                 {
                     player.InventoryManager.TryGiveItemstack(tempStack);
                 }
@@ -145,16 +144,16 @@ namespace Vintagestory.GameContent
                         if (textByCardinalDirection[i] == null) textByCardinalDirection[i] = "";
                     }
 
-                    IClientWorldAccessor clientWorld = (IClientWorldAccessor)api.World;
+                    IClientWorldAccessor clientWorld = (IClientWorldAccessor)Api.World;
 
                     CairoFont font = new CairoFont(20, GuiStyle.StandardFontName, new double[] { 0, 0, 0, 0.8 });
 
-                    GuiDialogSignPost dlg = new GuiDialogSignPost(dialogTitle, pos, textByCardinalDirection, api as ICoreClientAPI, font);
+                    GuiDialogSignPost dlg = new GuiDialogSignPost(dialogTitle, Pos, textByCardinalDirection, Api as ICoreClientAPI, font);
                     dlg.OnTextChanged = DidChangeTextClientSide;
                     dlg.OnCloseCancel = () =>
                     {
                         signRenderer.SetNewText(textByCardinalDirection, color);
-                        (api as ICoreClientAPI).Network.SendBlockEntityPacket(pos.X, pos.Y, pos.Z, (int)EnumSignPacketId.CancelEdit, null);
+                        (Api as ICoreClientAPI).Network.SendBlockEntityPacket(Pos.X, Pos.Y, Pos.Z, (int)EnumSignPacketId.CancelEdit, null);
                     };
                     dlg.TryOpen();
                 }
@@ -205,7 +204,7 @@ namespace Vintagestory.GameContent
                     tempStack = hotbarSlot.TakeOut(1);
 
 
-                    if (api.World is IServerWorldAccessor)
+                    if (Api.World is IServerWorldAccessor)
                     {
                         byte[] data;
 
@@ -222,9 +221,9 @@ namespace Vintagestory.GameContent
                             data = ms.ToArray();
                         }
 
-                        ((ICoreServerAPI)api).Network.SendBlockEntityPacket(
+                        ((ICoreServerAPI)Api).Network.SendBlockEntityPacket(
                             (IServerPlayer)byPlayer,
-                            pos.X, pos.Y, pos.Z,
+                            Pos.X, Pos.Y, Pos.Z,
                             (int)EnumSignPacketId.OpenDialog,
                             data
                         );
@@ -240,7 +239,7 @@ namespace Vintagestory.GameContent
             signRenderer?.Unregister();
         }
 
-        public bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
+        public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
         {
             for (int i = 0; i < 8; i++)
             {

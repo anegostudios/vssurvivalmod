@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -9,7 +10,7 @@ using Vintagestory.API.Server;
 
 namespace Vintagestory.GameContent
 {
-    public abstract class BlockEntityItemPile : BlockEntity, IBlockShapeSupplier
+    public abstract class BlockEntityItemPile : BlockEntity
     {
         public InventoryGeneric inventory;
         public object inventoryLock = new object(); // Because OnTesselation runs in another thread
@@ -21,7 +22,8 @@ namespace Vintagestory.GameContent
 
         
 
-        public virtual int TakeQuantity { get { return 1; } }
+        public virtual int DefaultTakeQuantity { get { return 1; } }
+        public virtual int BulkTakeQuantity { get { return 4; } }
 
         public int OwnStackSize
         {
@@ -30,7 +32,7 @@ namespace Vintagestory.GameContent
 
         public int AtlasSize
         {
-            get { return ((ICoreClientAPI)api).BlockTextureAtlas.Size; }
+            get { return ((ICoreClientAPI)Api).BlockTextureAtlas.Size; }
         }
 
         public BlockEntityItemPile()
@@ -42,19 +44,19 @@ namespace Vintagestory.GameContent
         {
             base.Initialize(api);
 
-            inventory.LateInitialize(BlockCode + "-" + pos.ToString(), api);
+            inventory.LateInitialize(BlockCode + "-" + Pos.ToString(), api);
             inventory.ResolveBlocksOrItems();
         }
 
         public override void OnBlockBroken()
         {
-            if (api.World is IServerWorldAccessor)
+            if (Api.World is IServerWorldAccessor)
             {
                 ItemSlot slot = inventory[0];
                 while (slot.StackSize > 0)
                 {
                     ItemStack split = slot.TakeOut(GameMath.Clamp(slot.StackSize, 1, System.Math.Max(1, slot.Itemstack.Collectible.MaxStackSize / 4)));
-                    api.World.SpawnItemEntity(split, pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                    Api.World.SpawnItemEntity(split, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
                 }
             }
         }
@@ -64,15 +66,15 @@ namespace Vintagestory.GameContent
         {
             base.FromTreeAtributes(tree, worldForResolving);
             inventory.FromTreeAttributes(tree.GetTreeAttribute("inventory"));
-            if (api != null)
+            if (Api != null)
             {
-                inventory.Api = api;
+                inventory.Api = Api;
                 inventory.ResolveBlocksOrItems();
             }
 
-            if (api is ICoreClientAPI)
+            if (Api is ICoreClientAPI)
             {
-                api.World.BlockAccessor.MarkBlockDirty(pos);
+                Api.World.BlockAccessor.MarkBlockDirty(Pos);
             }
         }
 
@@ -88,9 +90,9 @@ namespace Vintagestory.GameContent
 
         public virtual bool OnPlayerInteract(IPlayer byPlayer)
         {
-            BlockPos abovePos = pos.UpCopy();
+            BlockPos abovePos = Pos.UpCopy();
 
-            BlockEntity be = api.World.BlockAccessor.GetBlockEntity(abovePos);
+            BlockEntity be = Api.World.BlockAccessor.GetBlockEntity(abovePos);
             if (be is BlockEntityItemPile)
             {
                 return ((BlockEntityItemPile)be).OnPlayerInteract(byPlayer);
@@ -101,7 +103,7 @@ namespace Vintagestory.GameContent
           
             ItemSlot hotbarSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
 
-            bool equalStack = hotbarSlot.Itemstack != null && hotbarSlot.Itemstack.Equals(api.World, inventory[0].Itemstack, GlobalConstants.IgnoredStackAttributes);
+            bool equalStack = hotbarSlot.Itemstack != null && hotbarSlot.Itemstack.Equals(Api.World, inventory[0].Itemstack, GlobalConstants.IgnoredStackAttributes);
 
             if (sneaking && !equalStack)
             {
@@ -110,15 +112,15 @@ namespace Vintagestory.GameContent
 
             if (sneaking && equalStack && OwnStackSize >= MaxStackSize)
             {
-                Block pileblock = api.World.BlockAccessor.GetBlock(pos);
-                Block aboveblock = api.World.BlockAccessor.GetBlock(abovePos);
+                Block pileblock = Api.World.BlockAccessor.GetBlock(Pos);
+                Block aboveblock = Api.World.BlockAccessor.GetBlock(abovePos);
 
                 if (aboveblock.IsReplacableBy(pileblock))
                 {
-                    if (api.World is IServerWorldAccessor)
+                    if (Api.World is IServerWorldAccessor)
                     {
-                        api.World.BlockAccessor.SetBlock((ushort)pileblock.Id, abovePos);
-                        BlockEntityItemPile bep = api.World.BlockAccessor.GetBlockEntity(abovePos) as BlockEntityItemPile;
+                        Api.World.BlockAccessor.SetBlock((ushort)pileblock.Id, abovePos);
+                        BlockEntityItemPile bep = Api.World.BlockAccessor.GetBlockEntity(abovePos) as BlockEntityItemPile;
                         if (bep != null) bep.TryPutItem(byPlayer);
                     }
                     return true;
@@ -155,12 +157,14 @@ namespace Vintagestory.GameContent
             {
                 invSlot.Itemstack = hotbarSlot.Itemstack.Clone();
                 invSlot.Itemstack.StackSize = 0;
-                api.World.PlaySoundAt(SoundLocation, pos.X, pos.Y, pos.Z, null, RandomizeSoundPitch);
+                Api.World.PlaySoundAt(SoundLocation, Pos.X, Pos.Y, Pos.Z, null, RandomizeSoundPitch);
             }
 
-            if (invSlot.Itemstack.Equals(api.World, hotbarSlot.Itemstack, GlobalConstants.IgnoredStackAttributes))
+            if (invSlot.Itemstack.Equals(Api.World, hotbarSlot.Itemstack, GlobalConstants.IgnoredStackAttributes))
             {
-                int q = GameMath.Min(hotbarSlot.StackSize, TakeQuantity, MaxStackSize - OwnStackSize);
+                bool putBulk = player.Entity.Controls.Sprint;
+
+                int q = GameMath.Min(hotbarSlot.StackSize, putBulk ? BulkTakeQuantity : DefaultTakeQuantity, MaxStackSize - OwnStackSize);
 
                 invSlot.Itemstack.StackSize += q;
                 if (player.WorldData.CurrentGameMode != EnumGameMode.Creative)
@@ -169,12 +173,12 @@ namespace Vintagestory.GameContent
                     hotbarSlot.OnItemSlotModified(null);
                 }
 
-                api.World.PlaySoundAt(SoundLocation, pos.X, pos.Y, pos.Z, player, RandomizeSoundPitch);
+                Api.World.PlaySoundAt(SoundLocation, Pos.X, Pos.Y, Pos.Z, player, RandomizeSoundPitch);
 
                 MarkDirty();
 
-                Cuboidf[] collBoxes = api.World.BlockAccessor.GetBlock(pos).GetCollisionBoxes(api.World.BlockAccessor, pos);
-                if (collBoxes != null && collBoxes.Length > 0 && CollisionTester.AabbIntersect(collBoxes[0], pos.X, pos.Y, pos.Z, player.Entity.CollisionBox, player.Entity.LocalPos.XYZ))
+                Cuboidf[] collBoxes = Api.World.BlockAccessor.GetBlock(Pos).GetCollisionBoxes(Api.World.BlockAccessor, Pos);
+                if (collBoxes != null && collBoxes.Length > 0 && CollisionTester.AabbIntersect(collBoxes[0], Pos.X, Pos.Y, Pos.Z, player.Entity.CollisionBox, player.Entity.LocalPos.XYZ))
                 {
                     player.Entity.LocalPos.Y += collBoxes[0].Y2 - (player.Entity.LocalPos.Y - (int)player.Entity.LocalPos.Y);
                 }
@@ -189,7 +193,8 @@ namespace Vintagestory.GameContent
 
         public bool TryTakeItem(IPlayer player)
         {
-            int q = GameMath.Min(TakeQuantity, OwnStackSize);
+            bool takeBulk = player.Entity.Controls.Sprint;
+            int q = GameMath.Min(takeBulk ? BulkTakeQuantity : DefaultTakeQuantity, OwnStackSize);
 
             if (inventory[0]?.Itemstack != null)
             {
@@ -198,16 +203,16 @@ namespace Vintagestory.GameContent
 
                 if (stack.StackSize > 0)
                 {
-                    api.World.SpawnItemEntity(stack, pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                    Api.World.SpawnItemEntity(stack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
                 }
             }
 
             if (OwnStackSize == 0)
             {
-                api.World.BlockAccessor.SetBlock(0, pos);
+                Api.World.BlockAccessor.SetBlock(0, Pos);
             }
 
-            api.World.PlaySoundAt(SoundLocation, pos.X, pos.Y, pos.Z, player, RandomizeSoundPitch);
+            Api.World.PlaySoundAt(SoundLocation, Pos.X, Pos.Y, Pos.Z, player, RandomizeSoundPitch);
 
             MarkDirty();
 
@@ -217,15 +222,13 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override string GetBlockInfo(IPlayer forPlayer)
+        public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
         {
             ItemStack stack = inventory[0].Itemstack;
-            if (stack == null) return null;
+            if (stack == null) return;
 
-            return stack.StackSize + "x " + stack.GetName();
+            dsc.AppendLine(stack.StackSize + "x " + stack.GetName());
         }
-
-        public abstract bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator);
 
 
         public override void OnLoadCollectibleMappings(IWorldAccessor worldForResolve, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping)
@@ -242,7 +245,7 @@ namespace Vintagestory.GameContent
             ItemStack stack = inventory?[0]?.Itemstack;
             if (stack != null)
             {
-                stack.Collectible.OnStoreCollectibleMappings(api.World, inventory[0], blockIdMapping, itemIdMapping);
+                stack.Collectible.OnStoreCollectibleMappings(Api.World, inventory[0], blockIdMapping, itemIdMapping);
             }
         }
     }

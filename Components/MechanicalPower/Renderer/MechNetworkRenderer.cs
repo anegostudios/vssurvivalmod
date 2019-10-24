@@ -55,28 +55,36 @@ namespace Vintagestory.GameContent.Mechanics
 
         public void AddDevice(IMechanicalPowerNode device)
         {
-            int index = -1;
-            if (!MechBlockRendererByShape.TryGetValue(device.Shape.GetHashCode(), out index))
-            {
-                string rendererCode = "generic";
-                if (device.Block.Attributes?["mechanicalPower"]?["renderer"].Exists == true) {
-                    rendererCode = device.Block.Attributes?["mechanicalPower"]?["renderer"].AsString("generic");
-                }
+            if (device.Shape == null) return;
 
+            int index = -1;
+            string rendererCode = "generic";
+            if (device.Block.Attributes?["mechanicalPower"]?["renderer"].Exists == true)
+            {
+                rendererCode = device.Block.Attributes?["mechanicalPower"]?["renderer"].AsString("generic");
+            }
+
+            int hashCode = device.Shape.GetHashCode() + rendererCode.GetHashCode();
+
+            if (!MechBlockRendererByShape.TryGetValue(hashCode, out index))
+            {
                 object obj = Activator.CreateInstance(RendererByCode[rendererCode], capi, mechanicalPowerMod, device.Block, device.Shape);
                 MechBlockRenderer.Add((MechBlockRenderer)obj);                
-                MechBlockRendererByShape[device.Shape.GetHashCode()] = index = MechBlockRenderer.Count - 1;
+                MechBlockRendererByShape[hashCode] = index = MechBlockRenderer.Count - 1;
             }
 
             MechBlockRenderer[index].AddDevice(device);
         }
 
+        
+
         public void RemoveDevice(IMechanicalPowerNode device)
         {
-            int index = 0;
-            if (MechBlockRendererByShape.TryGetValue(device.Shape.GetHashCode(), out index))
+            if (device.Shape == null) return;
+
+            foreach (var val in MechBlockRenderer)
             {
-                MechBlockRenderer[index].RemoveDevice(device);
+                if (val.RemoveDevice(device)) return;
             }
         }
 

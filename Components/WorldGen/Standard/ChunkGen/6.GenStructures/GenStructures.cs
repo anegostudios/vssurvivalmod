@@ -223,7 +223,7 @@ namespace Vintagestory.ServerMods
                                 Description = struc.BuildProtectionDesc,
                                 ProtectionLevel = 10,
                                 LastKnownOwnerName = struc.BuildProtectionName,
-                                AllowUse = true
+                                AllowUseEveryone = true
                             });
                         }
 
@@ -275,7 +275,7 @@ namespace Vintagestory.ServerMods
                                 Description = struc.BuildProtectionDesc,
                                 ProtectionLevel = 10,
                                 LastKnownOwnerName = struc.BuildProtectionName,
-                                AllowUse = true
+                                AllowUseEveryone = true
                             });
                         }
                     });

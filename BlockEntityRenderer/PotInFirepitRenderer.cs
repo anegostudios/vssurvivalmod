@@ -16,6 +16,7 @@ namespace Vintagestory.GameContent
 
         ICoreClientAPI capi;
         ItemStack stack;
+        MeshRef potWithFoodRef;
         MeshRef potRef;
         MeshRef lidRef;
         BlockPos pos;
@@ -39,8 +40,7 @@ namespace Vintagestory.GameContent
             {
                 MealMeshCache meshcache = capi.ModLoader.GetModSystem<MealMeshCache>();
 
-                MeshData potMesh = meshcache.CreateMealMesh(potBlock.Shape, potBlock.GetCookingRecipe(capi.World, stack), potBlock.GetContents(capi.World, stack), new Vec3f(0, 2.5f/16f, 0)); 
-                potRef = capi.Render.UploadMesh(potMesh);
+                potWithFoodRef = meshcache.GetOrCreateMealInContainerMeshRef(potBlock, potBlock.GetCookingRecipe(capi.World, stack), potBlock.GetNonEmptyContents(capi.World, stack), new Vec3f(0, 2.5f/16f, 0));
             }
             else
             {
@@ -87,7 +87,7 @@ namespace Vintagestory.GameContent
             prog.ViewMatrix = rpi.CameraMatrixOriginf;
             prog.ProjectionMatrix = rpi.CurrentProjectionMatrix;
 
-            rpi.RenderMesh(potRef);
+            rpi.RenderMesh(potRef == null ? potWithFoodRef : potRef);
 
             if (!isInOutputSlot)
             {

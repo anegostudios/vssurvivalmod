@@ -47,16 +47,13 @@ namespace Vintagestory.GameContent
 
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
         {
-            Block block = world.BlockAccessor.GetBlock(blockSel.Position);
-
-            Block blockToPlace = this;
-
-            if (!world.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            if (!CanPlaceBlock(world, byPlayer, blockSel, ref failureCode))
             {
-                byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
-                failureCode = "claimed";
                 return false;
             }
+
+            Block block = world.BlockAccessor.GetBlock(blockSel.Position);
+            Block blockToPlace = this;
 
             bool inWater = block.IsLiquid() && block.LiquidLevel == 7 && block.LiquidCode.Contains("water");
 
@@ -75,7 +72,7 @@ namespace Vintagestory.GameContent
             }
 
             
-            if (blockToPlace != null && blockToPlace.IsSuitablePosition(world, blockSel.Position, ref failureCode))
+            if (blockToPlace != null)
             {
                 if (CanPlantStay(world.BlockAccessor, blockSel.Position))
                 {

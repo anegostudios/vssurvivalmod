@@ -59,7 +59,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        private void Event_ChunkDirty(Vec3i chunkCoord, IWorldChunk chunk, bool isNewChunk)
+        private void Event_ChunkDirty(Vec3i chunkCoord, IWorldChunk chunk, EnumChunkDirtyReason reason)
         {
             long index3d = MapUtil.Index3dL(chunkCoord.X, chunkCoord.Y, chunkCoord.Z, chunkMapSizeX, chunkMapSizeZ);
             CellarsByChunkIndex.Remove(index3d);

@@ -57,7 +57,7 @@ namespace Vintagestory.GameContent
             if (api is ICoreClientAPI)
             {
                 ICoreClientAPI capi = (ICoreClientAPI)api;
-                capi.Event.RegisterRenderer(renderer = new ForgeContentsRenderer(pos, capi), EnumRenderStage.Opaque);  
+                capi.Event.RegisterRenderer(renderer = new ForgeContentsRenderer(Pos, capi), EnumRenderStage.Opaque);  
                 renderer.SetContents(contents, fuelLevel, burning, true);
             }
 
@@ -70,12 +70,12 @@ namespace Vintagestory.GameContent
         {
             if (burning)
             {
-                if (api.Side == EnumAppSide.Client && api.World.Rand.NextDouble() < 0.1) 
+                if (Api.Side == EnumAppSide.Client && Api.World.Rand.NextDouble() < 0.1) 
                 {
-                    smokeParticles.minPos.Set(pos.X + 4/16f, pos.Y + 14/16f, pos.Z + 4 / 16f);
-                    int g = 50 + api.World.Rand.Next(50);
+                    smokeParticles.minPos.Set(Pos.X + 4/16f, Pos.Y + 14/16f, Pos.Z + 4 / 16f);
+                    int g = 50 + Api.World.Rand.Next(50);
                     smokeParticles.color = ColorUtil.ToRgba(150, g, g, g);
-                    api.World.SpawnParticles(smokeParticles);
+                    Api.World.SpawnParticles(smokeParticles);
                 }
 
                 if (fuelLevel > 0) fuelLevel = Math.Max(0, fuelLevel - 0.0001f);
@@ -87,12 +87,12 @@ namespace Vintagestory.GameContent
 
                 if (contents != null)
                 {
-                    float temp = contents.Collectible.GetTemperature(api.World, contents);
+                    float temp = contents.Collectible.GetTemperature(Api.World, contents);
                     if (temp < 1100)
                     {
-                        float tempGain = (float)(api.World.Calendar.TotalHours - lastHeatTotalHours) * 1500;
+                        float tempGain = (float)(Api.World.Calendar.TotalHours - lastHeatTotalHours) * 1500;
 
-                        contents.Collectible.SetTemperature(api.World, contents, temp + tempGain);
+                        contents.Collectible.SetTemperature(Api.World, contents, temp + tempGain);
                     }
                 }
             }
@@ -102,7 +102,7 @@ namespace Vintagestory.GameContent
                 renderer.SetContents(contents, fuelLevel, burning, false);
             }
 
-            lastHeatTotalHours = api.World.Calendar.TotalHours;
+            lastHeatTotalHours = Api.World.Calendar.TotalHours;
         }
 
         public bool IsBurning
@@ -139,12 +139,12 @@ namespace Vintagestory.GameContent
 
                 if (!byPlayer.InventoryManager.TryGiveItemstack(split))
                 {
-                    world.SpawnItemEntity(split, pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                    world.SpawnItemEntity(split, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
                 }
 
                 renderer?.SetContents(contents, fuelLevel, burning, true);
                 MarkDirty();
-                api.World.PlaySoundAt(new AssetLocation("sounds/block/ingot"), pos.X, pos.Y, pos.Z, byPlayer, false);
+                Api.World.PlaySoundAt(new AssetLocation("sounds/block/ingot"), Pos.X, Pos.Y, Pos.Z, byPlayer, false);
 
                 return true;
 
@@ -183,16 +183,16 @@ namespace Vintagestory.GameContent
 
                     renderer?.SetContents(contents, fuelLevel, burning, true);
                     MarkDirty();
-                    api.World.PlaySoundAt(new AssetLocation("sounds/block/ingot"), pos.X, pos.Y, pos.Z, byPlayer, false);
+                    Api.World.PlaySoundAt(new AssetLocation("sounds/block/ingot"), Pos.X, Pos.Y, Pos.Z, byPlayer, false);
 
                     return true;
                 }
 
                 // Merge heatable item
-                if (contents != null && contents.Equals(api.World, slot.Itemstack, GlobalConstants.IgnoredStackAttributes) && contents.StackSize < 4 && contents.StackSize < contents.Collectible.MaxStackSize)
+                if (contents != null && contents.Equals(Api.World, slot.Itemstack, GlobalConstants.IgnoredStackAttributes) && contents.StackSize < 4 && contents.StackSize < contents.Collectible.MaxStackSize)
                 {
-                    float myTemp = contents.Collectible.GetTemperature(api.World, contents);
-                    float histemp = slot.Itemstack.Collectible.GetTemperature(api.World, slot.Itemstack);
+                    float myTemp = contents.Collectible.GetTemperature(Api.World, contents);
+                    float histemp = slot.Itemstack.Collectible.GetTemperature(Api.World, slot.Itemstack);
 
                     contents.Collectible.SetTemperature(world, contents, (myTemp * contents.StackSize + histemp * 1) / (contents.StackSize + 1));
                     contents.StackSize++;
@@ -201,7 +201,7 @@ namespace Vintagestory.GameContent
                     slot.MarkDirty();
 
                     renderer?.SetContents(contents, fuelLevel, burning, true);
-                    api.World.PlaySoundAt(new AssetLocation("sounds/block/ingot"), pos.X, pos.Y, pos.Z, byPlayer, false);
+                    Api.World.PlaySoundAt(new AssetLocation("sounds/block/ingot"), Pos.X, Pos.Y, Pos.Z, byPlayer, false);
 
                     MarkDirty();
                     return true;
@@ -229,7 +229,7 @@ namespace Vintagestory.GameContent
 
             if (contents != null)
             {
-                api.World.SpawnItemEntity(contents, pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                Api.World.SpawnItemEntity(contents, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
             }
         }
 
@@ -241,9 +241,9 @@ namespace Vintagestory.GameContent
             fuelLevel = tree.GetFloat("fuelLevel");
             burning = tree.GetInt("burning") > 0;
 
-            if (api != null)
+            if (Api != null)
             {
-                contents?.ResolveBlockOrItem(api.World);
+                contents?.ResolveBlockOrItem(Api.World);
             }
             if (renderer != null)
             {
@@ -260,14 +260,12 @@ namespace Vintagestory.GameContent
             tree.SetInt("burning", burning ? 1 : 0);
         }
 
-        public override string GetBlockInfo(IPlayer forPlayer)
+        public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
         {
             if (contents != null)
             {
-                return string.Format("Contents: {0}x {1}\nTemperature: {2}°C", contents.StackSize, contents.GetName(), (int)contents.Collectible.GetTemperature(api.World, contents));
+                dsc.AppendLine(string.Format("Contents: {0}x {1}\nTemperature: {2}°C", contents.StackSize, contents.GetName(), (int)contents.Collectible.GetTemperature(Api.World, contents)));
             }
-
-            return null;
         }
 
 

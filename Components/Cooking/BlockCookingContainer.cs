@@ -42,15 +42,9 @@ namespace Vintagestory.GameContent
         {
             if (!byPlayer.Entity.Controls.Sneak) return false;
 
-            if (!world.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            if (CanPlaceBlock(world, byPlayer, blockSel, ref failureCode) && world.BlockAccessor.GetBlock(blockSel.Position.DownCopy()).SideSolid[BlockFacing.UP.Index])
             {
-                byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
-                return false;
-            }
-
-            if (IsSuitablePosition(world, blockSel.Position, ref failureCode) && world.BlockAccessor.GetBlock(blockSel.Position.DownCopy()).SideSolid[BlockFacing.UP.Index])
-            {
-                DoPlaceBlock(world, blockSel.Position, blockSel.Face, itemstack);
+                DoPlaceBlock(world, byPlayer, blockSel, itemstack);
                 return true;
             }
 
@@ -182,52 +176,6 @@ namespace Vintagestory.GameContent
             return servingsToTransfer;
         }
 
-        public static void CarryOverFreshness(ICoreAPI api, ItemSlot[] inputSlots, ItemStack[] outStacks, TransitionableProperties perishProps)
-        {
-            float transitionedHoursRelative = 0;
-
-            float spoilageRelMax = 0;
-            int quantity=0;
-
-            for (int i = 0; i < inputSlots.Length; i++)
-            {
-                ItemSlot slot = inputSlots[i];
-                if (slot.Empty) continue;
-                TransitionState state = slot.Itemstack.Collectible.UpdateAndGetTransitionState(api.World, slot, EnumTransitionType.Perish);
-                if (state == null) continue;
-
-                quantity++;
-                float val = state.TransitionedHours / (state.TransitionHours + state.FreshHours);
-
-                float spoilageRel = Math.Max(0, (state.TransitionedHours - state.FreshHours) / state.TransitionHours);
-                spoilageRelMax = Math.Max(spoilageRel, spoilageRelMax);
-
-                transitionedHoursRelative += val;
-            }
-
-            transitionedHoursRelative /= Math.Max(1, quantity);
-
-
-            for (int i = 0; i < outStacks.Length; i++)
-            {
-                if (!(outStacks[i].Attributes["transitionstate"] is ITreeAttribute))
-                {
-                    outStacks[i].Attributes["transitionstate"] = new TreeAttribute();
-                }
-
-                float transitionHours = perishProps.TransitionHours.nextFloat(1, api.World.Rand);
-                float freshHours = perishProps.FreshHours.nextFloat(1, api.World.Rand);
-
-                ITreeAttribute attr = (ITreeAttribute)outStacks[i].Attributes["transitionstate"];
-                attr.SetDouble("createdTotalHours", api.World.Calendar.TotalHours);
-                attr.SetDouble("lastUpdatedTotalHours", api.World.Calendar.TotalHours);
-
-                attr["freshHours"] = new FloatArrayAttribute(new float[] { freshHours });
-                attr["transitionHours"] = new FloatArrayAttribute(new float[] { transitionHours });
-
-                attr["transitionedHours"] = new FloatArrayAttribute(new float[] { Math.Max(0, transitionedHoursRelative * (0.2f + (2 + quantity) * spoilageRelMax) * (transitionHours + freshHours)) });
-            }
-        }
 
         private void CookStacks(ItemStack[] stacks)
         {
@@ -329,7 +277,7 @@ namespace Vintagestory.GameContent
 
         public IInFirepitRenderer GetRendererWhenInFirepit(ItemStack stack, BlockEntityFirepit firepit, bool forOutputSlot)
         {
-            return new PotInFirepitRenderer(api as ICoreClientAPI, stack, firepit.pos, forOutputSlot);
+            return new PotInFirepitRenderer(api as ICoreClientAPI, stack, firepit.Pos, forOutputSlot);
         }
 
         public EnumFirepitModel GetDesiredFirepitModel(ItemStack stack, BlockEntityFirepit firepit, bool forOutputSlot)

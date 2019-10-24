@@ -7,6 +7,7 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.Essentials;
 
 namespace Vintagestory.GameContent
 {
@@ -49,7 +50,7 @@ namespace Vintagestory.GameContent
 
         public void Start()
         {
-            entity.pathTraverser.GoTo(Target, 0.02f, OnDone, OnDone);
+            entity.pathTraverser.NavigateTo(Target, 0.02f, OnDone, OnDone);
             if (!entity.AnimManager.StartAnimation(AnimCode))
             {
                 entity.AnimManager.StartAnimation(new AnimationMetaData() { Animation = AnimCode, Code = AnimCode, AnimationSpeed = AnimSpeed });
@@ -313,7 +314,7 @@ namespace Vintagestory.GameContent
         {
             base.Initialize(properties, api, InChunkIndex3d);
 
-            pathTraverser = new StraightLinePathTraverser(this);
+            pathTraverser = new StraightLineTraverser(this);
         }
 
         public void StartExecuteCommands(bool enqueue = true)

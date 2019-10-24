@@ -10,6 +10,9 @@ namespace Vintagestory.ServerMods
 {
     public abstract class NoiseClimate : NoiseBase
     {
+        public float tempMul = 1f;
+        public float rainMul = 1f;
+
         public NoiseClimate(long worldSeed) : base(worldSeed)
         {
         }
@@ -86,13 +89,12 @@ namespace Vintagestory.ServerMods
             int humidity = 0;
             int temperature;
             int rain;
-
             
             // Low chance for very cold areas
             if (rnd < 20)
             {
-                temperature = gaussRnd3(60);
-                rain = gaussRnd3(130);
+                temperature = Math.Min(255, (int)(gaussRnd3(60) * tempMul));
+                rain = Math.Min(255, (int)(gaussRnd3(130) * rainMul));
 
                 return (temperature << 16) + (rain << 8) + (humidity);
             }
@@ -100,32 +102,33 @@ namespace Vintagestory.ServerMods
             // Low chance for very hot and dry areas
             if (rnd < 40)
             {
-                temperature = Math.Min(255, 220 + gaussRnd3(75));
-                rain = gaussRnd3(20);
+                temperature = Math.Min(255, (int)((220 + gaussRnd3(75)) * tempMul));
+                rain = Math.Min(255, (int)(gaussRnd3(20) * rainMul));
                 return (temperature << 16) + (rain << 8) + (humidity);
             }
 
             // Low chance for very hot and very wet areas
             if (rnd < 50)
             {
-                temperature = Math.Min(255, 220 + gaussRnd3(75));
-                rain = 220 + NextInt(35);
+                temperature = Math.Min(255, (int)((220 + gaussRnd3(75)) * tempMul));
+                rain = Math.Min(255, (int)((220 + NextInt(35)) * rainMul));
+
                 return (temperature << 16) + (rain << 8) + (humidity);
             }
 
             // Very low chance for temperate very wet
             if (rnd < 55)
             {
-                temperature = 120 + NextInt(60);
-                rain = 200 + NextInt(50);
+                temperature = Math.Min(255, (int)((120 + NextInt(60)) * tempMul));
+                rain = Math.Min(255, (int)((200 + NextInt(50)) * rainMul));
+
                 return (temperature << 16) + (rain << 8) + (humidity);
             }
 
 
-
             // Otherwise Temperate
-            temperature = Math.Min(255, 100 + gaussRnd2(165));
-            rain = gaussRnd3(210 - (150 - temperature));
+            temperature = Math.Min(255, (int)((100 + gaussRnd2(165)) * tempMul));
+            rain = Math.Min(255, (int)(gaussRnd3(210 - (150 - temperature)) * rainMul));
 
             return (temperature << 16) + (rain << 8) + (humidity);
         }

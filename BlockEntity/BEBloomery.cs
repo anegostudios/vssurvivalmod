@@ -97,7 +97,7 @@ namespace Vintagestory.GameContent
                 {
                     Location = new AssetLocation("sounds/environment/fire.ogg"),
                     ShouldLoop = true,
-                    Position = pos.ToVec3f().Add(0.5f, 0.25f, 0.5f),
+                    Position = Pos.ToVec3f().Add(0.5f, 0.25f, 0.5f),
                     DisposeOnFinish = false,
                     Volume = 0.3f,
                     Range = 8
@@ -108,12 +108,12 @@ namespace Vintagestory.GameContent
             if (api.Side == EnumAppSide.Client)
             {
                 ICoreClientAPI capi = (ICoreClientAPI)api;
-                capi.Event.RegisterRenderer(renderer = new BloomeryContentsRenderer(pos, capi), EnumRenderStage.Opaque);
+                capi.Event.RegisterRenderer(renderer = new BloomeryContentsRenderer(Pos, capi), EnumRenderStage.Opaque);
 
                 UpdateRenderer();
             }
 
-            ownFacing = BlockFacing.FromCode(api.World.BlockAccessor.GetBlock(pos).LastCodePart());
+            ownFacing = BlockFacing.FromCode(api.World.BlockAccessor.GetBlock(Pos).LastCodePart());
         }
 
         private void UpdateRenderer()
@@ -123,8 +123,8 @@ namespace Vintagestory.GameContent
             renderer.SetFillLevel(fillLevel);
 
             // Ease in in beginning and ease out on end
-            double easinLevel = Math.Min(1, 24 * (api.World.Calendar.TotalDays - burningStartTotalDays));
-            double easeoutLevel = Math.Min(1, 24 * (burningUntilTotalDays - api.World.Calendar.TotalDays));
+            double easinLevel = Math.Min(1, 24 * (Api.World.Calendar.TotalDays - burningStartTotalDays));
+            double easeoutLevel = Math.Min(1, 24 * (burningUntilTotalDays - Api.World.Calendar.TotalDays));
 
             double glowLevel = Math.Max(0, Math.Min(easinLevel, easeoutLevel) * 128);
 
@@ -133,7 +133,7 @@ namespace Vintagestory.GameContent
 
         private void OnGameTick(float dt)
         {
-            if (api.Side == EnumAppSide.Client)
+            if (Api.Side == EnumAppSide.Client)
             {
                 UpdateRenderer();
 
@@ -143,7 +143,7 @@ namespace Vintagestory.GameContent
             if (!burning) return;
 
 
-            if (api.Side == EnumAppSide.Server && burningUntilTotalDays < api.World.Calendar.TotalDays)
+            if (Api.Side == EnumAppSide.Server && burningUntilTotalDays < Api.World.Calendar.TotalDays)
             {
                 FuelSlot.Itemstack = null;
                 int q = OreStack.StackSize / OreStack.Collectible.CombustibleProps.SmeltedRatio;
@@ -163,18 +163,18 @@ namespace Vintagestory.GameContent
 
         private void EmitParticles()
         {
-            if (api.World.Rand.Next(5) > 0)
+            if (Api.World.Rand.Next(5) > 0)
             {
-                smoke.minPos.Set(pos.X + 0.5 - 2 / 16.0, pos.Y + 1 + 10 / 16f, pos.Z + 0.5 - 2 / 16.0);
+                smoke.minPos.Set(Pos.X + 0.5 - 2 / 16.0, Pos.Y + 1 + 10 / 16f, Pos.Z + 0.5 - 2 / 16.0);
                 smoke.addPos.Set(4 / 16.0, 0, 4 / 16.0);
-                api.World.SpawnParticles(smoke, null);
+                Api.World.SpawnParticles(smoke, null);
             }
 
-            if (renderer.glowLevel > 80 && api.World.Rand.Next(3) == 0)
+            if (renderer.glowLevel > 80 && Api.World.Rand.Next(3) == 0)
             {
                 Vec3f dir = ownFacing.Normalf;
                 Vec3d particlePos = smallMetalSparks.minPos;
-                particlePos.Set(pos.X + 0.5, pos.Y, pos.Z + 0.5);
+                particlePos.Set(Pos.X + 0.5, Pos.Y, Pos.Z + 0.5);
                 particlePos.Sub(dir.X * (6/16.0) + 2/16f, 0, dir.Z * (6 / 16.0) + 2/16f);
                 
                 smallMetalSparks.minPos = particlePos;
@@ -191,7 +191,7 @@ namespace Vintagestory.GameContent
                 smallMetalSparks.gravityEffect = 0f;
                 
                 smallMetalSparks.SizeEvolve = new EvolvingNatFloat(EnumTransformFunction.QUADRATIC, -0.5f);
-                api.World.SpawnParticles(smallMetalSparks, null);
+                Api.World.SpawnParticles(smallMetalSparks, null);
             }
         }
 
@@ -208,7 +208,7 @@ namespace Vintagestory.GameContent
                 int prevsize = stack.StackSize;
                 
                 if (OreSlot.StackSize + quantity > OreCapacity) return false;
-                if (!OreSlot.Empty && !OreSlot.Itemstack.Equals(api.World, stack, GlobalConstants.IgnoredStackAttributes)) return false;
+                if (!OreSlot.Empty && !OreSlot.Itemstack.Equals(Api.World, stack, GlobalConstants.IgnoredStackAttributes)) return false;
                 return true;
             }
 
@@ -216,7 +216,7 @@ namespace Vintagestory.GameContent
             {
                 int prevsize = stack.StackSize;
                 if (FuelSlot.StackSize + quantity > 6) return false;
-                if (!FuelSlot.Empty && !FuelSlot.Itemstack.Equals(api.World, stack, GlobalConstants.IgnoredStackAttributes)) return false;
+                if (!FuelSlot.Empty && !FuelSlot.Itemstack.Equals(Api.World, stack, GlobalConstants.IgnoredStackAttributes)) return false;
 
                 return true;
             }
@@ -240,7 +240,7 @@ namespace Vintagestory.GameContent
 
                 int moveableq = Math.Min(OreCapacity - OreSlot.StackSize, quantity);
 
-                sourceSlot.TryPutInto(api.World, OreSlot, moveableq);
+                sourceSlot.TryPutInto(Api.World, OreSlot, moveableq);
                 MarkDirty();
                 return prevsize != sourceSlot.StackSize;
             }
@@ -252,7 +252,7 @@ namespace Vintagestory.GameContent
 
                 int moveableq = Math.Min(20 - FuelSlot.StackSize, quantity);
 
-                sourceSlot.TryPutInto(api.World, FuelSlot, moveableq);
+                sourceSlot.TryPutInto(Api.World, FuelSlot, moveableq);
                 MarkDirty();
                 return prevsize != sourceSlot.StackSize;
             }
@@ -264,11 +264,11 @@ namespace Vintagestory.GameContent
         public bool TryIgnite()
         {
             if (!CanIgnite() || burning) return false;
-            if (!api.World.BlockAccessor.GetBlock(pos.UpCopy()).Code.Path.Contains("bloomerychimney")) return false;
+            if (!Api.World.BlockAccessor.GetBlock(Pos.UpCopy()).Code.Path.Contains("bloomerychimney")) return false;
 
             burning = true;
-            burningUntilTotalDays = api.World.Calendar.TotalDays + 10 / 24.0;
-            burningStartTotalDays = api.World.Calendar.TotalDays;
+            burningUntilTotalDays = Api.World.Calendar.TotalDays + 10 / 24.0;
+            burningStartTotalDays = Api.World.Calendar.TotalDays;
             MarkDirty();
             ambientSound?.Start();
             return true;
@@ -285,16 +285,16 @@ namespace Vintagestory.GameContent
         {
             if (burning)
             {
-                Vec3d dpos = pos.ToVec3d().Add(0.5, 0.5, 0.5);
+                Vec3d dpos = Pos.ToVec3d().Add(0.5, 0.5, 0.5);
                 bloomeryInv.DropSlots(dpos, new int[] { 0, 2 });
 
 
-                breakSparks.minPos = pos.ToVec3d().AddCopy(dpos.X - 4 / 16f, dpos.Y - 4 / 16f, dpos.Z - 4 / 16f);
-                api.World.SpawnParticles(breakSparks, null);
+                breakSparks.minPos = Pos.ToVec3d().AddCopy(dpos.X - 4 / 16f, dpos.Y - 4 / 16f, dpos.Z - 4 / 16f);
+                Api.World.SpawnParticles(breakSparks, null);
             }
             else
             {
-                bloomeryInv.DropAll(pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                bloomeryInv.DropAll(Pos.ToVec3d().Add(0.5, 0.5, 0.5));
             }
         }
 
@@ -333,19 +333,17 @@ namespace Vintagestory.GameContent
             tree.SetDouble("burningStartTotalDays", burningStartTotalDays);
         }
 
-        public override string GetBlockInfo(IPlayer forPlayer)
+        public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
         {
-            StringBuilder str = new StringBuilder();
             for (int i = 0; i < 3; i++)
             {
                 ItemStack stack = bloomeryInv[i].Itemstack;
-                if (stack != null) str.AppendLine("  " + stack.StackSize + "x " + stack.GetName());
+                if (stack != null) dsc.AppendLine("  " + stack.StackSize + "x " + stack.GetName());
             }
 
-            if (str.Length > 0) return "Contents:\n" + str;
+            if (dsc.Length > 0) dsc.AppendLine("Contents:\n" + dsc);
 
-
-            return base.GetBlockInfo(forPlayer);
+            base.GetBlockInfo(forPlayer, dsc);
         }
 
 

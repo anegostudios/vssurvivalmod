@@ -67,6 +67,14 @@ namespace Vintagestory.GameContent
                 qsigns++;
             }
 
+            if (qsigns == 0)
+            {
+                quadModelRef?.Dispose();
+                quadModelRef = null;
+                return;
+            }
+
+
             int snum = 0;
             for (int i = 0; i < 8; i++)
             {
@@ -122,7 +130,7 @@ namespace Vintagestory.GameContent
                         break;
                 }
 
-                modeldata.Translate(1.6f, 0, 0.365f);
+                modeldata.Translate(1.6f, 0, 0.375f);
 
                 MeshData front = modeldata.Clone();
 
@@ -165,6 +173,13 @@ namespace Vintagestory.GameContent
                 {
                     lines++;
                 }
+            }
+
+            if (lines == 0)
+            {
+                loadedTexture?.Dispose();
+                loadedTexture = null;
+                return;
             }
 
             ImageSurface surface = new ImageSurface(Format.Argb32, TextWidth, TextHeight * lines);

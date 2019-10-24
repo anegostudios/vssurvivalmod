@@ -18,7 +18,7 @@ namespace Vintagestory.GameContent
         {
             base.Initialize(api);
 
-            ownBlock = api.World.BlockAccessor.GetBlock(this.pos) as BlockWateringCan;
+            ownBlock = api.World.BlockAccessor.GetBlock(this.Pos) as BlockWateringCan;
         }
 
         public override void OnBlockPlaced(ItemStack byItemStack = null)
@@ -45,16 +45,16 @@ namespace Vintagestory.GameContent
             tree.SetFloat("secondsWateringLeft", SecondsWateringLeft);
         }
 
-        public override string GetBlockInfo(IPlayer forPlayer)
+        public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
         {
             double perc = Math.Round(100 * SecondsWateringLeft / ownBlock.CapacitySeconds);
             if (perc < 1)
             {
-                return Lang.Get("Empty");
+                dsc.AppendLine(Lang.Get("Empty"));
             }
             else
             {
-                return Lang.Get("{0}% full", perc);
+                dsc.AppendLine(Lang.Get("{0}% full", perc));
             }
         }
 

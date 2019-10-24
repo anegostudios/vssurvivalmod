@@ -57,12 +57,6 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
-        {
-            return base.TryPlaceBlock(world, byPlayer, itemstack, blockSel, ref failureCode);
-            //return TryPlaceBlockForWorldGen(world.BlockAccessor, blockSel.Position, blockSel.Face);
-        }
-
 
         public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, LCGRandom worldGenRand)
         {

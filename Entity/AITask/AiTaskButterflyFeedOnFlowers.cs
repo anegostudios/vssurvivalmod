@@ -106,7 +106,7 @@ namespace Vintagestory.GameContent
             base.StartExecute();
 
             taskState = 0;
-            pathTraverser.GoTo(MainTarget, moveSpeed, targetDistance, OnGoalReached, OnStuck);
+            pathTraverser.WalkTowards(MainTarget, moveSpeed, targetDistance, OnGoalReached, OnStuck);
 
             feedTime = 3 + rand.NextDouble() * 10;
         }

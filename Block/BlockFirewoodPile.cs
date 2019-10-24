@@ -82,7 +82,7 @@ namespace Vintagestory.GameContent
                 BlockEntityFirewoodPile pile = (BlockEntityFirewoodPile)be;
                 if (player == null || player.WorldData.CurrentGameMode != EnumGameMode.Creative)
                 {
-                    pile.inventory[0].Itemstack = (ItemStack)slot.TakeOut(2);
+                    pile.inventory[0].Itemstack = (ItemStack)slot.TakeOut(player.Entity.Controls.Sprint ? pile.BulkTakeQuantity : pile.DefaultTakeQuantity);
                     slot.MarkDirty();
                 } else
                 {
@@ -128,14 +128,29 @@ namespace Vintagestory.GameContent
                     ActionLangCode = "blockhelp-firewoodpile-addlog",
                     MouseButton = EnumMouseButton.Right,
                     HotKeyCode = "sneak",
-                    Itemstacks = new ItemStack[] { new ItemStack(world.GetItem(new AssetLocation("firewood"))) }
+                    Itemstacks = new ItemStack[] { new ItemStack(world.GetItem(new AssetLocation("firewood")), 2) }
                 },
                 new WorldInteraction()
                 {
                     ActionLangCode = "blockhelp-firewoodpile-removelog",
                     MouseButton = EnumMouseButton.Right,
                     HotKeyCode = null
+                },
+
+                new WorldInteraction()
+                {
+                    ActionLangCode = "blockhelp-firewoodpile-8addlog",
+                    MouseButton = EnumMouseButton.Right,
+                    HotKeyCodes = new string[] {"sprint", "sneak" },
+                    Itemstacks = new ItemStack[] { new ItemStack(world.GetItem(new AssetLocation("firewood")), 8) }
+                },
+                new WorldInteraction()
+                {
+                    ActionLangCode = "blockhelp-firewoodpile-8removelog",
+                    HotKeyCode = "sprint",
+                    MouseButton = EnumMouseButton.Right
                 }
+
             }.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
         }
     }

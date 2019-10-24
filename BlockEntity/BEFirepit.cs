@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using System.IO;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -74,7 +74,7 @@ namespace Vintagestory.GameContent
 
 
 
-    public class BlockEntityFirepit : BlockEntityOpenableContainer, IBlockShapeSupplier
+    public class BlockEntityFirepit : BlockEntityOpenableContainer
     {
         ILoadedSound ambientSound;
 
@@ -99,24 +99,51 @@ namespace Vintagestory.GameContent
         // How much smoke the current fuel burns?
         public float smokeLevel;
 
+        public double extinguishedTotalHours;
+
 
         GuiDialogBlockEntityFirepit clientDialog;
         bool clientSidePrevBurning;
         
-        Block ownBlock;
         FirepitContentsRenderer renderer;
-        
 
 
         MeshData[] meshes
         {
             get
             {
-                object value = null;
-                api.ObjectCache.TryGetValue("firepit-meshes", out value);
-                return (MeshData[])value;
+                return ObjectCacheUtil.GetOrCreate(Api, "firepit-meshes", () =>
+                {
+                    Block block = Api.World.BlockAccessor.GetBlock(Pos);
+                    if (block.BlockId == 0) return null;
+
+                    MeshData[] meshes = new MeshData[17];
+                    ITesselatorAPI mesher = ((ICoreClientAPI)Api).Tesselator;
+
+                    // 0: Extinct
+                    // 1: Extinct-cooking
+                    // 2: Extinct-small-crucible
+                    // 3: Lit
+                    // 4: Lit-cooking
+                    // 5: Lit-small-crucible
+                    meshes = new MeshData[6];
+                    mesher.TesselateShape(block, Api.Assets.TryGet("shapes/block/wood/firepit/extinct.json").ToObject<Shape>(), out meshes[0]);
+                    mesher.TesselateShape(block, Api.Assets.TryGet("shapes/block/wood/firepit/extinct-cooking.json").ToObject<Shape>(), out meshes[1]);
+                    mesher.TesselateShape(block, Api.Assets.TryGet("shapes/block/wood/firepit/extinct-wide.json").ToObject<Shape>(), out meshes[2]);
+                    mesher.TesselateShape(block, Api.Assets.TryGet("shapes/block/wood/firepit/lit.json").ToObject<Shape>(), out meshes[3]);
+                    mesher.TesselateShape(block, Api.Assets.TryGet("shapes/block/wood/firepit/lit-cooking.json").ToObject<Shape>(), out meshes[4]);
+                    mesher.TesselateShape(block, Api.Assets.TryGet("shapes/block/wood/firepit/lit-wide.json").ToObject<Shape>(), out meshes[5]);
+
+                    meshes[0].Tints = null;
+                    meshes[1].Tints = null;
+                    meshes[2].Tints = null;
+                    meshes[3].Tints = null;
+                    meshes[4].Tints = null;
+                    meshes[5].Tints = null;
+
+                    return meshes;
+                });
             }
-            set { api.ObjectCache["firepit-meshes"] = value; }
         }
 
 
@@ -150,7 +177,7 @@ namespace Vintagestory.GameContent
         // seconds it requires to melt the ore once beyond melting point
         public virtual float maxCookingTime()
         {
-            return inputSlot.Itemstack == null ? 30f : inputSlot.Itemstack.Collectible.GetMeltingDuration(api.World, inventory, inputSlot);
+            return inputSlot.Itemstack == null ? 30f : inputSlot.Itemstack.Collectible.GetMeltingDuration(Api.World, inventory, inputSlot);
         }
 
         public override string InventoryClassName
@@ -178,13 +205,13 @@ namespace Vintagestory.GameContent
             inventory.SlotModified += OnSlotModifid;
         }
 
-        
+
 
         public override void Initialize(ICoreAPI api)
         {
             base.Initialize(api);
 
-            inventory.pos = pos;
+            inventory.pos = Pos;
             inventory.LateInitialize("smelting-1", api);
             
 
@@ -193,30 +220,26 @@ namespace Vintagestory.GameContent
             
             if (api is ICoreClientAPI)
             {
-                renderer = new FirepitContentsRenderer(api as ICoreClientAPI, pos);
+                renderer = new FirepitContentsRenderer(api as ICoreClientAPI, Pos);
 
                 (api as ICoreClientAPI).Event.RegisterRenderer(renderer, EnumRenderStage.Opaque);
 
-                if (meshes == null) GenFirepitMeshes();
-
                 UpdateRenderer();
             }
-
-            ownBlock = api.World.BlockAccessor.GetBlock(pos);
         }
 
 
         public void ToggleAmbientSounds(bool on)
         {
-            if (api.Side != EnumAppSide.Client) return;
+            if (Api.Side != EnumAppSide.Client) return;
 
             if (on)
             {
-                ambientSound = ((IClientWorldAccessor)api.World).LoadSound(new SoundParams()
+                ambientSound = ((IClientWorldAccessor)Api.World).LoadSound(new SoundParams()
                 {
                     Location = new AssetLocation("sounds/environment/fireplace.ogg"),
                     ShouldLoop = true,
-                    Position = pos.ToVec3f().Add(0.5f, 0.25f, 0.5f),
+                    Position = Pos.ToVec3f().Add(0.5f, 0.25f, 0.5f),
                     DisposeOnFinish = false,
                     Volume = SoundLevel
                 });
@@ -235,53 +258,22 @@ namespace Vintagestory.GameContent
 
         private void OnSlotModifid(int slotid)
         {
-            ownBlock = api.World.BlockAccessor.GetBlock(pos);
+            Block = Api.World.BlockAccessor.GetBlock(Pos);
 
             if (slotid == 1 || slotid == 2)
             {
                 UpdateRenderer();
-                MarkDirty(api.Side == EnumAppSide.Server); // Save useless triple-remesh by only letting the server decide when to redraw
+                MarkDirty(Api.Side == EnumAppSide.Server); // Save useless triple-remesh by only letting the server decide when to redraw
             }
 
-            if (api is ICoreClientAPI && clientDialog != null)
+            if (Api is ICoreClientAPI && clientDialog != null)
             {
                 SetDialogValues(clientDialog.Attributes);
             }
 
-            api.World.BlockAccessor.GetChunkAtBlockPos(pos)?.MarkModified();
+            Api.World.BlockAccessor.GetChunkAtBlockPos(Pos)?.MarkModified();
         }
-
-        internal void GenFirepitMeshes()
-        {
-            Block block = api.World.BlockAccessor.GetBlock(pos);
-            if (block.BlockId == 0) return;
-
-            MeshData[] meshes = new MeshData[17];
-            ITesselatorAPI mesher = ((ICoreClientAPI)api).Tesselator;
-
-            // 0: Extinct
-            // 1: Extinct-cooking
-            // 2: Extinct-small-crucible
-            // 3: Lit
-            // 4: Lit-cooking
-            // 5: Lit-small-crucible
-            meshes = new MeshData[6];
-            mesher.TesselateShape(block, api.Assets.TryGet("shapes/block/wood/firepit/extinct.json").ToObject<Shape>(), out meshes[0]);
-            mesher.TesselateShape(block, api.Assets.TryGet("shapes/block/wood/firepit/extinct-cooking.json").ToObject<Shape>(), out meshes[1]);
-            mesher.TesselateShape(block, api.Assets.TryGet("shapes/block/wood/firepit/extinct-wide.json").ToObject<Shape>(), out meshes[2]);
-            mesher.TesselateShape(block, api.Assets.TryGet("shapes/block/wood/firepit/lit.json").ToObject<Shape>(), out meshes[3]);
-            mesher.TesselateShape(block, api.Assets.TryGet("shapes/block/wood/firepit/lit-cooking.json").ToObject<Shape>(), out meshes[4]);
-            mesher.TesselateShape(block, api.Assets.TryGet("shapes/block/wood/firepit/lit-wide.json").ToObject<Shape>(), out meshes[5]);
-
-            meshes[0].Tints = null;
-            meshes[1].Tints = null;
-            meshes[2].Tints = null;
-            meshes[3].Tints = null;
-            meshes[4].Tints = null;
-            meshes[5].Tints = null;
-
-            this.meshes = meshes;
-        }
+        
 
 
         public bool IsBurning
@@ -299,7 +291,7 @@ namespace Vintagestory.GameContent
         private void OnBurnTick(float dt)
         {
             // Only tick on the server and merely sync to client
-            if (api is ICoreClientAPI)
+            if (Api is ICoreClientAPI)
             {
                 renderer?.contentStackRenderer?.OnUpdate(InputStackTemp);
                 return;
@@ -317,6 +309,7 @@ namespace Vintagestory.GameContent
                     if (!canSmelt()) // This check avoids light flicker when a piece of fuel is consumed and more is available
                     {
                         setStoveBurning(false);
+                        extinguishedTotalHours = Api.World.Calendar.TotalHours;
                     }
                 }
             }
@@ -368,7 +361,7 @@ namespace Vintagestory.GameContent
         // Sync to client every 500ms
         private void OnSyncTick(float dt)
         {
-            if (api is ICoreServerAPI && (IsBurning || prevFurnaceTemperature != furnaceTemperature))
+            if (Api is ICoreServerAPI && (IsBurning || prevFurnaceTemperature != furnaceTemperature))
             {
                 MarkDirty();
             }
@@ -449,7 +442,7 @@ namespace Vintagestory.GameContent
             }
 
             // Begin smelting when hot enough
-            float meltingPoint = inputSlot.Itemstack.Collectible.GetMeltingPoint(api.World, inventory, inputSlot);
+            float meltingPoint = inputSlot.Itemstack.Collectible.GetMeltingPoint(Api.World, inventory, inputSlot);
             if (nowTemp >= meltingPoint)
             {
                 float diff = nowTemp / meltingPoint;
@@ -531,7 +524,7 @@ namespace Vintagestory.GameContent
                     ItemStack cookingStack = inventory.CookingSlots[i].Itemstack;
                     if (cookingStack != null)
                     {
-                        float stackTemp = cookingStack.Collectible.GetTemperature(api.World, cookingStack);
+                        float stackTemp = cookingStack.Collectible.GetTemperature(Api.World, cookingStack);
                         lowestTemp = haveStack ? Math.Min(lowestTemp, stackTemp) : stackTemp;
                         haveStack = true;
                     }
@@ -543,7 +536,7 @@ namespace Vintagestory.GameContent
             }
             else
             {
-                return stack.Collectible.GetTemperature(api.World, stack);
+                return stack.Collectible.GetTemperature(Api.World, stack);
             }
         }
 
@@ -554,12 +547,12 @@ namespace Vintagestory.GameContent
             {
                 for (int i = 0; i < inventory.CookingSlots.Length; i++)
                 {
-                    inventory.CookingSlots[i].Itemstack?.Collectible.SetTemperature(api.World, inventory.CookingSlots[i].Itemstack, value);
+                    inventory.CookingSlots[i].Itemstack?.Collectible.SetTemperature(Api.World, inventory.CookingSlots[i].Itemstack, value);
                 }
             }
             else
             {
-                stack.Collectible.SetTemperature(api.World, stack, value);
+                stack.Collectible.SetTemperature(Api.World, stack, value);
             }
         }
 
@@ -602,15 +595,15 @@ namespace Vintagestory.GameContent
 
         public void setStoveBurning(bool burning)
         {
-            BlockFirepit block = api.World.BlockAccessor.GetBlock(pos) as BlockFirepit;
+            BlockFirepit block = Api.World.BlockAccessor.GetBlock(Pos) as BlockFirepit;
             if (block == null) return;
             
             if (burning)
             {
-                if (block.Ignite(api.World, pos)) MarkDirty(true);
+                if (block.Ignite(Api.World, Pos)) MarkDirty(true);
             } else
             {
-                if (block.Extinguish(api.World, pos)) MarkDirty(true);
+                if (block.Extinguish(Api.World, Pos)) MarkDirty(true);
             }
         }
 
@@ -634,7 +627,7 @@ namespace Vintagestory.GameContent
         {
             return
                 inputStack != null
-                && inputStack.Collectible.CanSmelt(api.World, inventory, inputSlot.Itemstack, outputSlot.Itemstack)
+                && inputStack.Collectible.CanSmelt(Api.World, inventory, inputSlot.Itemstack, outputSlot.Itemstack)
                 && (inputStack.Collectible.CombustibleProps == null || !inputStack.Collectible.CombustibleProps.RequiresContainer)
             ;
         }
@@ -642,7 +635,7 @@ namespace Vintagestory.GameContent
 
         public void smeltItems()
         {
-            inputStack.Collectible.DoSmelt(api.World, inventory, inputSlot, outputSlot);
+            inputStack.Collectible.DoSmelt(Api.World, inventory, inputSlot, outputSlot);
             InputStackTemp = enviromentTemperature();
             inputStackCookingTime = 0;
             MarkDirty(true);
@@ -654,7 +647,7 @@ namespace Vintagestory.GameContent
 
         public override bool OnPlayerRightClick(IPlayer byPlayer, BlockSelection blockSel)
         {
-            if (api.World is IServerWorldAccessor)
+            if (Api.World is IServerWorldAccessor)
             {
                 byte[] data;
 
@@ -669,9 +662,9 @@ namespace Vintagestory.GameContent
                     data = ms.ToArray();
                 }
 
-                ((ICoreServerAPI)api).Network.SendBlockEntityPacket(
+                ((ICoreServerAPI)Api).Network.SendBlockEntityPacket(
                     (IServerPlayer)byPlayer,
-                    pos.X, pos.Y, pos.Z,
+                    Pos.X, Pos.Y, Pos.Z,
                     (int)EnumBlockStovePacket.OpenGUI,
                     data
                 );
@@ -688,9 +681,9 @@ namespace Vintagestory.GameContent
             base.FromTreeAtributes(tree, worldForResolving);
             Inventory.FromTreeAttributes(tree.GetTreeAttribute("inventory"));
 
-            if (api != null)
+            if (Api != null)
             {
-                Inventory.AfterBlocksLoaded(api.World);
+                Inventory.AfterBlocksLoaded(Api.World);
             }
             
 
@@ -699,8 +692,9 @@ namespace Vintagestory.GameContent
             inputStackCookingTime = tree.GetFloat("oreCookingTime");
             fuelBurnTime = tree.GetFloat("fuelBurnTime");
             maxFuelBurnTime = tree.GetFloat("maxFuelBurnTime");
+            extinguishedTotalHours = tree.GetDouble("extinguishedTotalHours");
 
-            if (api?.Side == EnumAppSide.Client)
+            if (Api?.Side == EnumAppSide.Client)
             {
                 UpdateRenderer();
 
@@ -708,7 +702,7 @@ namespace Vintagestory.GameContent
             }
 
 
-            if (api?.Side == EnumAppSide.Client && clientSidePrevBurning != IsBurning)
+            if (Api?.Side == EnumAppSide.Client && clientSidePrevBurning != IsBurning)
             {
                 ToggleAmbientSounds(IsBurning);
                 clientSidePrevBurning = IsBurning;
@@ -728,7 +722,7 @@ namespace Vintagestory.GameContent
                 renderer.ContentStack != null && 
                 renderer.contentStackRenderer != null &&
                 contentStack?.Collectible is IInFirepitRendererSupplier &&
-                renderer.ContentStack.Equals(api.World, contentStack, GlobalConstants.IgnoredStackAttributes)
+                renderer.ContentStack.Equals(Api.World, contentStack, GlobalConstants.IgnoredStackAttributes)
             ;
 
             if (useOldRenderer) return; // Otherwise the cooking sounds restarts all the time
@@ -769,7 +763,7 @@ namespace Vintagestory.GameContent
 
             if (inputSlot.Itemstack != null)
             {
-                float meltingDuration = inputSlot.Itemstack.Collectible.GetMeltingDuration(api.World, inventory, inputSlot);
+                float meltingDuration = inputSlot.Itemstack.Collectible.GetMeltingDuration(Api.World, inventory, inputSlot);
 
                 dialogTree.SetFloat("oreTemperature", InputStackTemp);
                 dialogTree.SetFloat("maxOreCookingTime", meltingDuration);
@@ -799,6 +793,7 @@ namespace Vintagestory.GameContent
             tree.SetFloat("oreCookingTime", inputStackCookingTime);
             tree.SetFloat("fuelBurnTime", fuelBurnTime);
             tree.SetFloat("maxFuelBurnTime", maxFuelBurnTime);
+            tree.SetDouble("extinguishedTotalHours", extinguishedTotalHours);
         }
 
 
@@ -823,7 +818,7 @@ namespace Vintagestory.GameContent
             if (clientDialog != null)
             {
                 clientDialog.TryClose();
-                clientDialog.Dispose();
+                clientDialog?.Dispose();
                 clientDialog = null;
             }
         }
@@ -845,7 +840,7 @@ namespace Vintagestory.GameContent
                 Inventory.InvNetworkUtil.HandleClientPacket(player, packetid, data);
 
                 // Tell server to save this chunk to disk again
-                api.World.BlockAccessor.GetChunkAtBlockPos(pos.X, pos.Y, pos.Z).MarkModified();
+                Api.World.BlockAccessor.GetChunkAtBlockPos(Pos.X, Pos.Y, Pos.Z).MarkModified();
 
                 return;
             }
@@ -875,7 +870,7 @@ namespace Vintagestory.GameContent
                     Inventory.FromTreeAttributes(tree);
                     Inventory.ResolveBlocksOrItems();
 
-                    IClientWorldAccessor clientWorld = (IClientWorldAccessor)api.World;
+                    IClientWorldAccessor clientWorld = (IClientWorldAccessor)Api.World;
 
                     SyncedTreeAttribute dtree = new SyncedTreeAttribute();
                     SetDialogValues(dtree);
@@ -883,11 +878,10 @@ namespace Vintagestory.GameContent
                     if (clientDialog != null)
                     {
                         clientDialog.TryClose();
-                        clientDialog?.Dispose();
                         clientDialog = null;
                     } else
                     {
-                        clientDialog = new GuiDialogBlockEntityFirepit(dialogTitle, Inventory, pos, dtree, api as ICoreClientAPI);
+                        clientDialog = new GuiDialogBlockEntityFirepit(dialogTitle, Inventory, Pos, dtree, Api as ICoreClientAPI);
                         clientDialog.OnClosed += () => { clientDialog.Dispose(); clientDialog = null; };
                         clientDialog.TryOpen();
                         
@@ -898,7 +892,7 @@ namespace Vintagestory.GameContent
 
             if (packetid == (int)EnumBlockContainerPacketId.CloseInventory)
             {
-                IClientWorldAccessor clientWorld = (IClientWorldAccessor)api.World;
+                IClientWorldAccessor clientWorld = (IClientWorldAccessor)Api.World;
                 clientWorld.Player.InventoryManager.CloseInventory(Inventory);
             }
         }
@@ -977,7 +971,7 @@ namespace Vintagestory.GameContent
                     blockIdMapping[slot.Itemstack.Block.BlockId] = slot.Itemstack.Block.Code;
                 }
 
-                slot.Itemstack.Collectible.OnStoreCollectibleMappings(api.World, slot, blockIdMapping, itemIdMapping);
+                slot.Itemstack.Collectible.OnStoreCollectibleMappings(Api.World, slot, blockIdMapping, itemIdMapping);
             }
 
             foreach (ItemSlot slot in inventory.CookingSlots)
@@ -993,7 +987,7 @@ namespace Vintagestory.GameContent
                     blockIdMapping[slot.Itemstack.Block.BlockId] = slot.Itemstack.Block.Code;
                 }
 
-                slot.Itemstack.Collectible.OnStoreCollectibleMappings(api.World, slot, blockIdMapping, itemIdMapping);
+                slot.Itemstack.Collectible.OnStoreCollectibleMappings(Api.World, slot, blockIdMapping, itemIdMapping);
             }
         }
 
@@ -1014,7 +1008,7 @@ namespace Vintagestory.GameContent
             foreach (ItemSlot slot in inventory.CookingSlots)
             {
                 if (slot.Itemstack == null) continue;
-                if (!slot.Itemstack.FixMapping(oldBlockIdMapping, oldItemIdMapping, api.World))
+                if (!slot.Itemstack.FixMapping(oldBlockIdMapping, oldItemIdMapping, Api.World))
                 {
                     slot.Itemstack = null;
                 }
@@ -1027,9 +1021,9 @@ namespace Vintagestory.GameContent
 
 
 
-        public bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
+        public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
         {
-            if (ownBlock == null || ownBlock.Code.Path.Contains("construct")) return false;
+            if (Block == null || Block.Code.Path.Contains("construct")) return false;
 
             // 0: Extinct
             // 1: Extinct-cooking
@@ -1058,7 +1052,7 @@ namespace Vintagestory.GameContent
             if (contentStack.Collectible is IInFirepitMeshSupplier)
             {
                 EnumFirepitModel model = EnumFirepitModel.Normal;
-                MeshData mesh = (contentStack.Collectible as IInFirepitMeshSupplier).GetMeshWhenInFirepit(contentStack, api.World, pos, ref model);
+                MeshData mesh = (contentStack.Collectible as IInFirepitMeshSupplier).GetMeshWhenInFirepit(contentStack, Api.World, Pos, ref model);
 
                 if (mesh != null)
                 {

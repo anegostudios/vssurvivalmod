@@ -30,6 +30,7 @@ namespace Vintagestory.GameContent
         // Server
         ICoreServerAPI sapi;
         IServerNetworkChannel serverChannel;
+        double lastTickTotalDays;
 
         // Client
         ICoreClientAPI capi;
@@ -98,6 +99,21 @@ namespace Vintagestory.GameContent
         private void ServerSlowTick(float dt)
         {
             bool nowAllSleeping = AreAllPlayersSleeping();
+
+            if (nowAllSleeping)
+            {
+                if (AllSleeping) // We drain hunger only after the second tick
+                {
+                    foreach (IPlayer player in sapi.World.AllOnlinePlayers)
+                    {
+                        IServerPlayer splr = player as IServerPlayer;
+                        splr.Entity.GetBehavior<EntityBehaviorHunger>()?.ConsumeSaturation((float)(api.World.Calendar.TotalDays - lastTickTotalDays) * 600);
+                    }
+                }
+
+                lastTickTotalDays = api.World.Calendar.TotalDays;
+            }
+
             if (nowAllSleeping == AllSleeping) return;
 
             // Start

@@ -8,25 +8,20 @@ namespace Vintagestory.GameContent
     {
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
         {
-            if (!world.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
-            {
-                byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
-                failureCode = "claimed";
-                return false;
-            }
-
-            if ((blockSel.HitPosition.Y > 0.5 && blockSel.Face.IsHorizontal) || blockSel.Face == BlockFacing.DOWN)
+            /*if ((blockSel.HitPosition.Y > 0.5 && blockSel.Face.IsHorizontal) || blockSel.Face == BlockFacing.DOWN)
             {
                 Block block = world.BlockAccessor.GetBlock(CodeWithParts("up"));
 
-                if (!IsSuitablePosition(world, blockSel.Position, ref failureCode))
+                return block.TryPlaceBlock(block);
+
+                if (!CanPlaceBlock(world, blockSel.Position, ref failureCode))
                 {
                     block.DoPlaceBlock(world, blockSel.Position, blockSel.Face, itemstack);
                     return true;
                 }
 
                 return false;
-            }
+            }*/
 
             return base.TryPlaceBlock(world, byPlayer, itemstack, blockSel, ref failureCode); 
         }

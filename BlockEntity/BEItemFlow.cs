@@ -21,11 +21,10 @@ namespace Vintagestory.GameContent
         public BlockFacing InputFace = BlockFacing.UP;
         public BlockFacing OutputFace = BlockFacing.DOWN;
         public string inventoryClassName = "hopper";
-        public string ItemFlowObjectLangCode = "hoppin-contents";
+        public string ItemFlowObjectLangCode = "hopper-contents";
         public int QuantitySlots = 4;
         public int FlowAmount = 1;
 
-        Block myBlock;
 
         public override AssetLocation OpenSound => new AssetLocation("sounds/block/hopperopen");
         public override AssetLocation CloseSound => null;
@@ -41,18 +40,16 @@ namespace Vintagestory.GameContent
             get { return inventory; }
         }
 
-        private void InitInventory(Block block)
+        private void InitInventory()
         {
-            myBlock = block;
-
-            if(block?.Attributes != null)
+            if(Block?.Attributes != null)
             {
-                InputFace = BlockFacing.FromCode(block.Attributes["input-face"].AsString(InputFace.Code));
-                OutputFace = BlockFacing.FromCode(block.Attributes["output-face"].AsString(OutputFace.Code));
-                FlowAmount = block.Attributes["item-flowrate"].AsInt(FlowAmount);
-                inventoryClassName = block.Attributes["inventoryClassName"].AsString(inventoryClassName);
-                ItemFlowObjectLangCode = block.Attributes["itemFlowObjectLangCode"].AsString(ItemFlowObjectLangCode);
-                QuantitySlots = block.Attributes["quantitySlots"].AsInt(QuantitySlots);
+                InputFace = BlockFacing.FromCode(Block.Attributes["input-face"].AsString(InputFace.Code));
+                OutputFace = BlockFacing.FromCode(Block.Attributes["output-face"].AsString(OutputFace.Code));
+                FlowAmount = Block.Attributes["item-flowrate"].AsInt(FlowAmount);
+                inventoryClassName = Block.Attributes["inventoryClassName"].AsString(inventoryClassName);
+                ItemFlowObjectLangCode = Block.Attributes["itemFlowObjectLangCode"].AsString(ItemFlowObjectLangCode);
+                QuantitySlots = Block.Attributes["quantitySlots"].AsInt(QuantitySlots);
             }
 
             if (inventory == null)
@@ -72,12 +69,12 @@ namespace Vintagestory.GameContent
 
         private void OnSlotModifid(int slot)
         {
-            api.World.BlockAccessor.GetChunkAtBlockPos(pos)?.MarkModified();
+            Api.World.BlockAccessor.GetChunkAtBlockPos(Pos)?.MarkModified();
         }
 
         protected virtual void OnInvOpened(IPlayer player)
         {
-            inventory.PutLocked = player.WorldData.CurrentGameMode != EnumGameMode.Creative;
+            inventory.PutLocked = false;// player.WorldData.CurrentGameMode != EnumGameMode.Creative;
         }
 
         protected virtual void OnInvClosed(IPlayer player)
@@ -88,8 +85,7 @@ namespace Vintagestory.GameContent
 
         public override void Initialize(ICoreAPI api)
         {
-            myBlock = api.World.BlockAccessor.GetBlock(pos);
-            InitInventory(myBlock);
+            InitInventory();
 
             base.Initialize(api);
 
@@ -106,15 +102,15 @@ namespace Vintagestory.GameContent
         public void MoveItem(float dt)
         {
             //check above.  Then check below.  
-            BlockPos InputPosition = pos.AddCopy(InputFace);
-            BlockPos OutputPosition = pos.AddCopy(OutputFace);
+            BlockPos InputPosition = Pos.AddCopy(InputFace);
+            BlockPos OutputPosition = Pos.AddCopy(OutputFace);
 
             // If inventory below, attempt to move item in me to below
             if (!inventory.IsEmpty)
             {
-                if (api.World.BlockAccessor.GetBlockEntity(OutputPosition) is BlockEntityContainer)
+                if (Api.World.BlockAccessor.GetBlockEntity(OutputPosition) is BlockEntityContainer)
                 {
-                    BlockEntityContainer outputBox = (BlockEntityContainer)api.World.BlockAccessor.GetBlockEntity(OutputPosition);
+                    BlockEntityContainer outputBox = (BlockEntityContainer)Api.World.BlockAccessor.GetBlockEntity(OutputPosition);
                     ItemSlot transferSlot = null;
                     foreach (ItemSlot slot in inventory)
                     {
@@ -130,12 +126,12 @@ namespace Vintagestory.GameContent
                         WeightedSlot ws = outputBox.Inventory.GetBestSuitedSlot(transferSlot);
                         if (ws.slot != null)
                         {
-                            ItemStackMoveOperation op = new ItemStackMoveOperation(api.World, EnumMouseButton.Left, 0, EnumMergePriority.DirectMerge, FlowAmount);
+                            ItemStackMoveOperation op = new ItemStackMoveOperation(Api.World, EnumMouseButton.Left, 0, EnumMergePriority.DirectMerge, FlowAmount);
                             if (transferSlot.TryPutInto(ws.slot, ref op) > 0)
                             {
-                                if (api.World.Rand.NextDouble() < 0.2)
+                                if (Api.World.Rand.NextDouble() < 0.2)
                                 {
-                                    api.World.PlaySoundAt(new AssetLocation("sounds/block/hoppertumble"), pos.X + 0.5, pos.Y + 0.5, pos.Z + 0.5, null, true, 8, 0.5f);
+                                    Api.World.PlaySoundAt(new AssetLocation("sounds/block/hoppertumble"), Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5, null, true, 8, 0.5f);
                                 }
                             }
                         }
@@ -153,9 +149,9 @@ namespace Vintagestory.GameContent
 
 
             // If inventory above, attempt to move item from above into me.  (LATER ON: CHECK FILTER)
-            if(api.World.BlockAccessor.GetBlockEntity(InputPosition) is BlockEntityContainer)
+            if(Api.World.BlockAccessor.GetBlockEntity(InputPosition) is BlockEntityContainer)
             {
-                BlockEntityContainer inputBox = (BlockEntityContainer)api.World.BlockAccessor.GetBlockEntity(InputPosition);
+                BlockEntityContainer inputBox = (BlockEntityContainer)Api.World.BlockAccessor.GetBlockEntity(InputPosition);
                 if(inputBox.Inventory is InventoryGeneric)
                 {
                     InventoryGeneric inputInventory = (InventoryGeneric)inputBox.Inventory;
@@ -175,13 +171,13 @@ namespace Vintagestory.GameContent
                             WeightedSlot ws = inventory.GetBestSuitedSlot(transferSlot);
                             if (ws.slot != null)
                             {
-                                ItemStackMoveOperation op = new ItemStackMoveOperation(api.World, EnumMouseButton.Left, 0, EnumMergePriority.DirectMerge, FlowAmount);
+                                ItemStackMoveOperation op = new ItemStackMoveOperation(Api.World, EnumMouseButton.Left, 0, EnumMergePriority.DirectMerge, FlowAmount);
 
                                 if (transferSlot.TryPutInto(ws.slot, ref op) > 0)
                                 {
-                                    if (api.World.Rand.NextDouble() < 0.2)
+                                    if (Api.World.Rand.NextDouble() < 0.2)
                                     {
-                                        api.World.PlaySoundAt(new AssetLocation("sounds/block/hoppertumble"), pos.X + 0.5, pos.Y + 0.5, pos.Z + 0.5, null, true, 8, 0.5f);
+                                        Api.World.PlaySoundAt(new AssetLocation("sounds/block/hoppertumble"), Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5, null, true, 8, 0.5f);
                                     }
                                 }
                             }
@@ -197,7 +193,7 @@ namespace Vintagestory.GameContent
 
         public override bool OnPlayerRightClick(IPlayer byPlayer, BlockSelection blockSel)
         {
-            if(api.World is IServerWorldAccessor)
+            if(Api.World is IServerWorldAccessor)
             {
                 byte[] data;
 
@@ -213,9 +209,9 @@ namespace Vintagestory.GameContent
                     data = ms.ToArray();
                 }
 
-                    ((ICoreServerAPI)api).Network.SendBlockEntityPacket(
+                    ((ICoreServerAPI)Api).Network.SendBlockEntityPacket(
                     (IServerPlayer)byPlayer,
-                    pos.X, pos.Y, pos.Z,
+                    Pos.X, Pos.Y, Pos.Z,
                     (int)EnumBlockContainerPacketId.OpenInventory,
                     data
                 );
@@ -235,7 +231,7 @@ namespace Vintagestory.GameContent
 
         public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
-            InitInventory(null);
+            InitInventory();
 
             base.FromTreeAtributes(tree, worldForResolving);
         }

@@ -25,8 +25,6 @@ namespace Vintagestory.GameContent
         // 1 = burning
         int state;
 
-        Block charcoalPitBlock;
-
         string startedByPlayerUid;
 
 
@@ -34,7 +32,7 @@ namespace Vintagestory.GameContent
         {
             base.Initialize(api);
 
-            
+
             if (api.Side == EnumAppSide.Client)
             {
                 RegisterGameTickListener(OnClientTick, 150);
@@ -45,8 +43,6 @@ namespace Vintagestory.GameContent
 
             startingAfterTotalHours = api.World.Calendar.TotalHours + 0.5f;
 
-            charcoalPitBlock = api.World.BlockAccessor.GetBlock(pos);
-
             // To popuplate the smokeLocations
             FindHoleInPit();
         }
@@ -56,16 +52,16 @@ namespace Vintagestory.GameContent
             BlockPos pos = new BlockPos();
             foreach (var val in smokeLocations)
             {
-                if (api.World.Rand.NextDouble() < 0.2f && charcoalPitBlock.ParticleProperties.Length > 0)
+                if (Api.World.Rand.NextDouble() < 0.2f && Block.ParticleProperties.Length > 0)
                 {
                     pos.Set(val.Key.X, val.Value + 1, val.Key.Z);
 
-                    Block upblock = api.World.BlockAccessor.GetBlock(pos);
-                    AdvancedParticleProperties particles = charcoalPitBlock.ParticleProperties[0];
-                    particles.basePos = BlockEntityFire.RandomBlockPos(api.World.BlockAccessor, pos, upblock, BlockFacing.UP);
+                    Block upblock = Api.World.BlockAccessor.GetBlock(pos);
+                    AdvancedParticleProperties particles = Block.ParticleProperties[0];
+                    particles.basePos = BlockEntityFire.RandomBlockPos(Api.World.BlockAccessor, pos, upblock, BlockFacing.UP);
 
                     particles.Quantity.avg = 1;
-                    api.World.SpawnParticles(particles);
+                    Api.World.SpawnParticles(particles);
                     particles.Quantity.avg = 0;
                 }
             }
@@ -73,9 +69,9 @@ namespace Vintagestory.GameContent
 
         private void OnServerTick(float dt)
         {
-            if (startingAfterTotalHours <= api.World.Calendar.TotalHours && state == 0)
+            if (startingAfterTotalHours <= Api.World.Calendar.TotalHours && state == 0)
             {
-                finishedAfterTotalHours = api.World.Calendar.TotalHours + BurnHours;
+                finishedAfterTotalHours = Api.World.Calendar.TotalHours + BurnHours;
                 state = 1;
                 MarkDirty(false);
             }
@@ -87,18 +83,18 @@ namespace Vintagestory.GameContent
 
             if (holePos != null)
             {
-                finishedAfterTotalHours = api.World.Calendar.TotalHours + BurnHours;
+                finishedAfterTotalHours = Api.World.Calendar.TotalHours + BurnHours;
 
                 BlockPos tmpPos = new BlockPos();
                 BlockFacing firefacing = BlockFacing.UP;
 
-                Block block = api.World.BlockAccessor.GetBlock(holePos);
-                if (block.BlockId != 0 && block.BlockId != charcoalPitBlock.BlockId)
+                Block block = Api.World.BlockAccessor.GetBlock(holePos);
+                if (block.BlockId != 0 && block.BlockId != Block.BlockId)
                 {
                     foreach (BlockFacing facing in BlockFacing.ALLFACES)
                     {
                         tmpPos.Set(holePos).Add(facing);
-                        if (api.World.BlockAccessor.GetBlock(tmpPos).BlockId == 0)
+                        if (Api.World.BlockAccessor.GetBlock(tmpPos).BlockId == 0)
                         {
                             holePos.Set(tmpPos);
                             firefacing = facing;
@@ -107,16 +103,16 @@ namespace Vintagestory.GameContent
                     }
                 }
 
-                Block fireblock = api.World.GetBlock(new AssetLocation("fire"));
-                api.World.BlockAccessor.SetBlock(fireblock.BlockId, holePos);
+                Block fireblock = Api.World.GetBlock(new AssetLocation("fire"));
+                Api.World.BlockAccessor.SetBlock(fireblock.BlockId, holePos);
 
-                BlockEntityFire befire = api.World.BlockAccessor.GetBlockEntity(holePos) as BlockEntityFire;
+                BlockEntityFire befire = Api.World.BlockAccessor.GetBlockEntity(holePos) as BlockEntityFire;
                 befire?.Init(firefacing, startedByPlayerUid);
 
                 return;
             }
 
-            if (finishedAfterTotalHours <= api.World.Calendar.TotalHours)
+            if (finishedAfterTotalHours <= Api.World.Calendar.TotalHours)
             {
                 ConvertPit();
             }
@@ -129,10 +125,10 @@ namespace Vintagestory.GameContent
 
             HashSet<BlockPos> visitedPositions = new HashSet<BlockPos>();
             Queue<BlockPos> bfsQueue = new Queue<BlockPos>();
-            bfsQueue.Enqueue(pos);
+            bfsQueue.Enqueue(Pos);
 
             int maxHalfSize = 6;
-            int firewoodBlockId = api.World.GetBlock(new AssetLocation("firewoodpile")).BlockId;
+            int firewoodBlockId = Api.World.GetBlock(new AssetLocation("firewoodpile")).BlockId;
 
             Vec2i curQuantityAndYPos = new Vec2i();
 
@@ -151,23 +147,23 @@ namespace Vintagestory.GameContent
                     curQuantityAndYPos = quantityPerColumn[bposGround] = new Vec2i(0, bpos.Y);
                 }
 
-                BlockEntityFirewoodPile be = api.World.BlockAccessor.GetBlockEntity(bpos) as BlockEntityFirewoodPile;
+                BlockEntityFirewoodPile be = Api.World.BlockAccessor.GetBlockEntity(bpos) as BlockEntityFirewoodPile;
                 if (be != null)
                 {
                     curQuantityAndYPos.X += be.OwnStackSize;
                 }
-                api.World.BlockAccessor.SetBlock(0, bpos);
+                Api.World.BlockAccessor.SetBlock(0, bpos);
 
                 foreach (BlockFacing facing in BlockFacing.ALLFACES)
                 {
                     BlockPos npos = bpos.AddCopy(facing);
-                    Block nBlock = api.World.BlockAccessor.GetBlock(npos);
+                    Block nBlock = Api.World.BlockAccessor.GetBlock(npos);
 
                     // Only traverse inside the firewood pile
                     if (nBlock.BlockId != firewoodBlockId) continue;
 
                     // Only traverse within a 12x12x12 block cube
-                    bool inCube = Math.Abs(npos.X - pos.X) <= maxHalfSize && Math.Abs(npos.Y - pos.Y) <= maxHalfSize && Math.Abs(npos.Z - pos.Z) <= maxHalfSize;
+                    bool inCube = Math.Abs(npos.X - Pos.X) <= maxHalfSize && Math.Abs(npos.Y - Pos.Y) <= maxHalfSize && Math.Abs(npos.Z - Pos.Z) <= maxHalfSize;
 
                     if (inCube && !visitedPositions.Contains(npos))
                     {
@@ -183,18 +179,18 @@ namespace Vintagestory.GameContent
             {
                 lpos.Set(val.Key.X, val.Value.Y, val.Key.Z);
                 int logQuantity = val.Value.X;
-                int charCoalQuantity = (int)(logQuantity * (0.125f + (float)api.World.Rand.NextDouble() / 8));
+                int charCoalQuantity = (int)(logQuantity * (0.125f + (float)Api.World.Rand.NextDouble() / 8));
 
                 while (charCoalQuantity > 0)
                 {
-                    Block charcoalBlock = api.World.GetBlock(new AssetLocation("charcoalpile-" + GameMath.Clamp(charCoalQuantity, 1, 8)));
-                    api.World.BlockAccessor.SetBlock(charcoalBlock.BlockId, lpos);
+                    Block charcoalBlock = Api.World.GetBlock(new AssetLocation("charcoalpile-" + GameMath.Clamp(charCoalQuantity, 1, 8)));
+                    Api.World.BlockAccessor.SetBlock(charcoalBlock.BlockId, lpos);
                     charCoalQuantity -= 8;
                     lpos.Up();
                 }
             }
 
-            api.World.BlockAccessor.SetBlock(0, pos);
+            Api.World.BlockAccessor.SetBlock(0, Pos);
         }
 
         internal void Init(IPlayer player)
@@ -210,10 +206,10 @@ namespace Vintagestory.GameContent
 
             HashSet<BlockPos> visitedPositions = new HashSet<BlockPos>();
             Queue<BlockPos> bfsQueue = new Queue<BlockPos>();
-            bfsQueue.Enqueue(pos);
+            bfsQueue.Enqueue(Pos);
 
-            int firewoodBlockId = api.World.GetBlock(new AssetLocation("firewoodpile")).BlockId;
-            int charcoalPitBlockId = api.World.GetBlock(new AssetLocation("charcoalpit")).BlockId;
+            int firewoodBlockId = Api.World.GetBlock(new AssetLocation("firewoodpile")).BlockId;
+            int charcoalPitBlockId = Api.World.GetBlock(new AssetLocation("charcoalpit")).BlockId;
 
             int maxHalfSize = 6;
             
@@ -232,7 +228,7 @@ namespace Vintagestory.GameContent
                 foreach (BlockFacing facing in BlockFacing.ALLFACES)
                 {
                     BlockPos npos = bpos.AddCopy(facing);
-                    Block nBlock = api.World.BlockAccessor.GetBlock(npos);
+                    Block nBlock = Api.World.BlockAccessor.GetBlock(npos);
 
                     if (!nBlock.SideSolid[facing.GetOpposite().Index] && nBlock.BlockId != firewoodBlockId && nBlock.BlockId != charcoalPitBlockId)
                     {
@@ -243,7 +239,7 @@ namespace Vintagestory.GameContent
                     if (nBlock.BlockId != firewoodBlockId) continue;
 
                     // Only traverse within a 12x12x12 block cube
-                    bool inCube = Math.Abs(npos.X - pos.X) <= maxHalfSize && Math.Abs(npos.Y - pos.Y) <= maxHalfSize && Math.Abs(npos.Z - pos.Z) <= maxHalfSize;
+                    bool inCube = Math.Abs(npos.X - Pos.X) <= maxHalfSize && Math.Abs(npos.Y - Pos.Y) <= maxHalfSize && Math.Abs(npos.Z - Pos.Z) <= maxHalfSize;
                     
                     if (inCube && !visitedPositions.Contains(npos))
                     {
@@ -265,7 +261,7 @@ namespace Vintagestory.GameContent
             finishedAfterTotalHours = tree.GetDouble("finishedAfterTotalHours");
             state = tree.GetInt("state");
 
-            if (beforeState != state && api?.Side == EnumAppSide.Client) FindHoleInPit();
+            if (beforeState != state && Api?.Side == EnumAppSide.Client) FindHoleInPit();
 
             startedByPlayerUid = tree.GetString("startedByPlayerUid");
         }
@@ -283,12 +279,12 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override string GetBlockInfo(IPlayer forPlayer)
+        public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
         {
-            double minutesLeft = 60 * (startingAfterTotalHours - api.World.Calendar.TotalHours);
-            if (minutesLeft <= 0) return null;
+            double minutesLeft = 60 * (startingAfterTotalHours - Api.World.Calendar.TotalHours);
+            if (minutesLeft <= 0) return;
 
-            return Lang.Get("{0} ingame minutes before the pile ignites,\nmake sure it's not exposed to air!", (int)minutesLeft); 
+            dsc.AppendLine(Lang.Get("{0} ingame minutes before the pile ignites,\nmake sure it's not exposed to air!", (int)minutesLeft)); 
         }
 
     }

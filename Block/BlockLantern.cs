@@ -68,6 +68,8 @@ namespace Vintagestory.GameContent
                 string lining = stack.Attributes.GetString("lining");
 
                 byte[] lightHsv = new byte[] { this.LightHsv[0], this.LightHsv[1], (byte)(this.LightHsv[2] + (lining != "plain" ? 2 : 0)) };
+                BELantern.setLightColor(this.LightHsv, lightHsv, stack.Attributes.GetString("glass"));
+
                 return lightHsv;
             }
 
@@ -143,19 +145,21 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void DoPlaceBlock(IWorldAccessor world, BlockPos pos, BlockFacing onBlockFace, ItemStack byItemStack)
+        public override bool DoPlaceBlock(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ItemStack byItemStack)
         {
-            base.DoPlaceBlock(world, pos, onBlockFace, byItemStack);
+            bool ok = base.DoPlaceBlock(world, byPlayer, blockSel, byItemStack);
+            if (!ok) return false;
 
-            //string sdf = this.Code.Path;
-
-            BELantern be = world.BlockAccessor.GetBlockEntity(pos) as BELantern;
+            BELantern be = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BELantern;
             if (be != null)
             {
                 string material = byItemStack.Attributes.GetString("material");
                 string lining = byItemStack.Attributes.GetString("lining");
-                be.DidPlace(material, lining);
+                string glass = byItemStack.Attributes.GetString("glass");
+                be.DidPlace(material, lining, glass);
             }
+
+            return true;
         }
 
 
@@ -168,10 +172,12 @@ namespace Vintagestory.GameContent
             {
                 stack.Attributes.SetString("material", be.material);
                 stack.Attributes.SetString("lining", be.lining);
+                stack.Attributes.SetString("glass", be.glass);
             } else
             {
                 stack.Attributes.SetString("material", "copper");
                 stack.Attributes.SetString("lining", "plain");
+                stack.Attributes.SetString("glass", "glass");
             }
 
             return stack;
@@ -238,9 +244,11 @@ namespace Vintagestory.GameContent
 
             string material = inSlot.Itemstack.Attributes.GetString("material");
             string lining = inSlot.Itemstack.Attributes.GetString("lining");
+            string glass = inSlot.Itemstack.Attributes.GetString("glass");
 
             dsc.AppendLine(Lang.Get("Material: {0}", Lang.Get("material-" + material)));
             dsc.AppendLine(Lang.Get("Lining: {0}", lining == "plain" ? "-" : Lang.Get("material-" + lining)));
+            dsc.AppendLine(Lang.Get("Glass: {0}", Lang.Get("glass-" + glass)));
         }
 
 

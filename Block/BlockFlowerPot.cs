@@ -113,7 +113,6 @@ namespace Vintagestory.GameContent
         }
 
 
-
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
             Block block = GetPottedPlant(world);
@@ -141,17 +140,23 @@ namespace Vintagestory.GameContent
         private Block GetBlockToPlant(IWorldAccessor world, IItemStack heldItem)
         {
             string type = heldItem.Block.LastCodePart(0);
-            Block block = world.BlockAccessor.GetBlock(CodeWithParts(type));
+            Block block = world.BlockAccessor.GetBlock(CodeWithVariant("contents", type));
             if (block == null)
             {
                 type = heldItem.Block.LastCodePart(1);
-                block = world.BlockAccessor.GetBlock(CodeWithParts(type));
+                block = world.BlockAccessor.GetBlock(CodeWithVariant("contents", type));
             }
 
             if (block == null)
             {
                 type = heldItem.Block.LastCodePart(1) + "-" + heldItem.Block.LastCodePart(0);
-                block = world.BlockAccessor.GetBlock(CodeWithParts(type));
+                block = world.BlockAccessor.GetBlock(CodeWithVariant("contents", type));
+            }
+
+            if (block != null)
+            {
+                string firstcode = heldItem.Block.FirstCodePart();
+                if (firstcode != "sapling" && firstcode != "mushroom" && firstcode != "flower") return null;
             }
 
             return block;

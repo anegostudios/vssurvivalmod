@@ -18,17 +18,12 @@ namespace Vintagestory.GameContent
             facingPos = properties["facingPos"].AsInt(1);
         }
 
-        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref EnumHandling handled, ref string failureCode)
+        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref EnumHandling handling, ref string failureCode)
         {
-            handled = EnumHandling.PreventDefault;
-
-            if (!block.IsSuitablePosition(world, blockSel.Position, ref failureCode))
-            {
-                return false;
-            }
+            handling = EnumHandling.PreventDefault;
 
             // Prefer selected block face
-            if (TryAttachTo(world, blockSel.Position, blockSel.Face, itemstack)) return true;
+            if (TryAttachTo(world, byPlayer, blockSel.Position, blockSel.Face, itemstack)) return true;
 
 
             // Otherwise attach to any possible face
@@ -37,7 +32,7 @@ namespace Vintagestory.GameContent
             {
                 if (faces[i] == BlockFacing.DOWN) continue;
 
-                if (TryAttachTo(world, blockSel.Position, faces[i], itemstack)) return true;
+                if (TryAttachTo(world, byPlayer, blockSel.Position, faces[i], itemstack)) return true;
             }
 
             failureCode = "requireattachable";
@@ -73,7 +68,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        bool TryAttachTo(IWorldAccessor world, BlockPos blockpos, BlockFacing onBlockFace, ItemStack itemstack)
+        bool TryAttachTo(IWorldAccessor world, IPlayer byPlayer, BlockPos blockpos, BlockFacing onBlockFace, ItemStack itemstack)
         {
             BlockPos attachingBlockPos = blockpos.AddCopy(onBlockFace.GetOpposite());
             Block attachingBlock = world.BlockAccessor.GetBlock(world.BlockAccessor.GetBlockId(attachingBlockPos));
@@ -84,7 +79,7 @@ namespace Vintagestory.GameContent
             if (attachingBlock.CanAttachBlockAt(world.BlockAccessor, block, attachingBlockPos, onFace))
             {
                 Block orientedBlock = world.BlockAccessor.GetBlock(block.CodeWithPart(onBlockFace.Code, facingPos));
-                orientedBlock.DoPlaceBlock(world, blockpos, onBlockFace, itemstack);
+                orientedBlock.DoPlaceBlock(world, byPlayer, new BlockSelection() { Position = blockpos, Face = onFace }, itemstack);
                 return true;
             }
 

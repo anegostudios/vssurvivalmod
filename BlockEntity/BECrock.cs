@@ -11,7 +11,7 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockEntityCrock : BlockEntityContainer, IBlockEntityMealContainer, IBlockShapeSupplier
+    public class BlockEntityCrock : BlockEntityContainer, IBlockEntityMealContainer
     {
         InventoryGeneric inv;
         public override InventoryBase Inventory => inv;
@@ -24,7 +24,7 @@ namespace Vintagestory.GameContent
         public bool Sealed { get; set; }
 
         MeshData currentMesh;
-        BlockCrock block;
+        BlockCrock ownBlock;
 
 
         public BlockEntityCrock()
@@ -36,7 +36,7 @@ namespace Vintagestory.GameContent
         {
             base.Initialize(api);
 
-            block = api.World.BlockAccessor.GetBlock(pos) as BlockCrock;
+            this.ownBlock = Block as BlockCrock;
         }
 
 
@@ -56,7 +56,7 @@ namespace Vintagestory.GameContent
         protected override float Inventory_OnAcquireTransitionSpeed(EnumTransitionType transType, ItemStack stack, float baseMul)
         {
             float mul = base.Inventory_OnAcquireTransitionSpeed(transType, stack, baseMul);
-            mul *= block.GetContainingTransitionModifierPlaced(api.World, pos, transType);
+            mul *= ownBlock.GetContainingTransitionModifierPlaced(Api.World, Pos, transType);
             return mul;
         }
 
@@ -67,14 +67,14 @@ namespace Vintagestory.GameContent
 
         private MeshData getMesh(ITesselatorAPI tesselator)
         {
-            BlockCrock block = api.World.BlockAccessor.GetBlock(pos) as BlockCrock;
+            BlockCrock block = Api.World.BlockAccessor.GetBlock(Pos) as BlockCrock;
             if (block == null) return null;
 
             ItemStack[] stacks = inventory.Where(slot => !slot.Empty).Select(slot => slot.Itemstack).ToArray();
 
             Vec3f rot = new Vec3f(0, block.Shape.rotateY, 0);
 
-            return GetMesh(tesselator, api, block, stacks, RecipeCode, rot);
+            return GetMesh(tesselator, Api, block, stacks, RecipeCode, rot);
         }
 
 
@@ -110,7 +110,7 @@ namespace Vintagestory.GameContent
             RecipeCode = tree.GetString("recipeCode", "");
             Sealed = tree.GetBool("sealed");
 
-            if (api != null && api.Side == EnumAppSide.Client)
+            if (Api != null && Api.Side == EnumAppSide.Client)
             {
                 currentMesh = null;
                 MarkDirty(true);
@@ -121,17 +121,18 @@ namespace Vintagestory.GameContent
         {
             base.ToTreeAttributes(tree);
 
+            tree.SetFloat("quantityServings", QuantityServings);
+            tree.SetBool("sealed", Sealed);
+
             if (RecipeCode != null && RecipeCode != "")
             {
-                tree.SetFloat("quantityServings", QuantityServings);
                 tree.SetString("recipeCode", RecipeCode);
-                tree.SetBool("sealed", Sealed);
             }
         }
 
 
 
-        public bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
+        public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
         {
             if (currentMesh == null)
             {
@@ -151,7 +152,7 @@ namespace Vintagestory.GameContent
 
             if (inv[0].Empty && inv[1].Empty && inv[2].Empty && inv[3].Empty) return; // Crock is empty
 
-            Block block = api.World.GetBlock(AssetLocation.Create(slot.Itemstack.Collectible.Attributes["mealBlockCode"].AsString(), slot.Itemstack.Collectible.Code.Domain));
+            Block block = Api.World.GetBlock(AssetLocation.Create(slot.Itemstack.Collectible.Attributes["mealBlockCode"].AsString(), slot.Itemstack.Collectible.Code.Domain));
             ItemStack mealstack = new ItemStack(block);
             mealstack.StackSize = 1;
 
@@ -166,7 +167,7 @@ namespace Vintagestory.GameContent
                 slot.TakeOut(1);
                 if (!player.InventoryManager.TryGiveItemstack(mealstack, true))
                 {
-                    api.World.SpawnItemEntity(mealstack, pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                    Api.World.SpawnItemEntity(mealstack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
                 }
                 slot.MarkDirty();
             }

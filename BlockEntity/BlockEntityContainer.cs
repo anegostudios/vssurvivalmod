@@ -24,7 +24,7 @@ namespace Vintagestory.GameContent
         {
             base.Initialize(api);
 
-            Inventory.LateInitialize(InventoryClassName + "-" + pos.X + "/" + pos.Y + "/" + pos.Z, api);
+            Inventory.LateInitialize(InventoryClassName + "-" + Pos.X + "/" + Pos.Y + "/" + Pos.Z, api);
             Inventory.ResolveBlocksOrItems();
             Inventory.OnAcquireTransitionSpeed = Inventory_OnAcquireTransitionSpeed;
 
@@ -38,7 +38,7 @@ namespace Vintagestory.GameContent
                 if (slot.Itemstack == null) continue;
 
                 AssetLocation codeBefore = slot.Itemstack.Collectible.Code;
-                slot.Itemstack.Collectible.UpdateAndGetTransitionStates(api.World, slot);
+                slot.Itemstack.Collectible.UpdateAndGetTransitionStates(Api.World, slot);
 
                 if (slot.Itemstack?.Collectible.Code != codeBefore)
                 {
@@ -51,7 +51,7 @@ namespace Vintagestory.GameContent
 
         protected virtual float Inventory_OnAcquireTransitionSpeed(EnumTransitionType transType, ItemStack stack, float baseMul)
         {
-            float positionAwarePerishRate = api != null && transType == EnumTransitionType.Perish ? GetPerishRate() : 1;
+            float positionAwarePerishRate = Api != null && transType == EnumTransitionType.Perish ? GetPerishRate() : 1;
 
             return baseMul * positionAwarePerishRate;
         }
@@ -59,13 +59,13 @@ namespace Vintagestory.GameContent
 
         public virtual float GetPerishRate()
         {
-            BlockPos sealevelpos = pos.Copy();
-            sealevelpos.Y = api.World.SeaLevel;
+            BlockPos sealevelpos = Pos.Copy();
+            sealevelpos.Y = Api.World.SeaLevel;
 
-            ClimateCondition cond = api.World.BlockAccessor.GetClimateAt(sealevelpos);
+            ClimateCondition cond = Api.World.BlockAccessor.GetClimateAt(sealevelpos);
             if (cond == null) return 1;
 
-            Cellar cellar = api.ModLoader.GetModSystem<CellarRegistry>().GetCellarForPosition(pos);
+            Cellar cellar = Api.ModLoader.GetModSystem<CellarRegistry>().GetCellarForPosition(Pos);
 
             float soilTempWeight = 0f;
 
@@ -74,7 +74,7 @@ namespace Vintagestory.GameContent
                 soilTempWeight = 0.5f + 0.5f * (1 - GameMath.Clamp((float)cellar.NonCoolingWallCount / Math.Max(1, cellar.CoolingWallCount), 0, 1));
             }
 
-            int lightlevel = api.World.BlockAccessor.GetLightLevel(pos, EnumLightLevelType.OnlySunLight);
+            int lightlevel = Api.World.BlockAccessor.GetLightLevel(Pos, EnumLightLevelType.OnlySunLight);
 
             // light level above 12 makes it additionally warmer, especially when part of a cellar
             float airTemp = cond.Temperature + GameMath.Clamp(lightlevel - 11, 0, 10) * (1f + 5 * soilTempWeight);
@@ -102,7 +102,7 @@ namespace Vintagestory.GameContent
             BlockContainer container = byItemStack?.Block as BlockContainer;
             if (container != null)
             {
-                ItemStack[] stacks = container.GetContents(api.World, byItemStack);
+                ItemStack[] stacks = container.GetContents(Api.World, byItemStack);
                 for (int i = 0; stacks != null && i < stacks.Length; i++)
                 {
                     Inventory[i].Itemstack = stacks[i]?.Clone();
@@ -113,9 +113,9 @@ namespace Vintagestory.GameContent
 
         public override void OnBlockBroken()
         {
-            if (api.World is IServerWorldAccessor)
+            if (Api.World is IServerWorldAccessor)
             {
-                Inventory.DropAll(pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                Inventory.DropAll(Pos.ToVec3d().Add(0.5, 0.5, 0.5));
             }
 
             base.OnBlockBroken();
@@ -166,7 +166,7 @@ namespace Vintagestory.GameContent
         {
             foreach (var slot in Inventory)
             {
-                slot.Itemstack?.Collectible.OnStoreCollectibleMappings(api.World, slot, blockIdMapping, itemIdMapping);
+                slot.Itemstack?.Collectible.OnStoreCollectibleMappings(Api.World, slot, blockIdMapping, itemIdMapping);
             }
         }
 
@@ -203,8 +203,10 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override string GetBlockInfo(IPlayer forPlayer)
+        public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
         {
+            base.GetBlockInfo(forPlayer, dsc);
+
             float rate = GetPerishRate();
 
             if (Inventory is InventoryGeneric)
@@ -219,25 +221,24 @@ namespace Vintagestory.GameContent
 
                 if (inv.PerishableFactorByFoodCategory != null)
                 {
-                    StringBuilder sb = new StringBuilder();
-                    sb.AppendLine(Lang.Get("Stored food perish speed:"));
+                    dsc.AppendLine(Lang.Get("Stored food perish speed:"));
 
                     foreach (var val in inv.PerishableFactorByFoodCategory)
                     {
-                        sb.AppendLine(Lang.Get("- {0}: {1}x", Lang.Get(val.Key.ToString()), Math.Round(rate * val.Value, 2)));
+                        dsc.AppendLine(Lang.Get("- {0}: {1}x", Lang.Get(val.Key.ToString()), Math.Round(rate * val.Value, 2)));
                     }
 
                     if (inv.PerishableFactorByFoodCategory.Count != Enum.GetValues(typeof(EnumFoodCategory)).Length)
                     {
-                        sb.AppendLine(Lang.Get("- {0}: {1}x", Lang.Get("food_perish_speed_other"), Math.Round(rate, 2)));
+                        dsc.AppendLine(Lang.Get("- {0}: {1}x", Lang.Get("food_perish_speed_other"), Math.Round(rate, 2)));
                     }
                     
-                    return sb.ToString();
+                    return;
                 }
             }
 
             
-            return Lang.Get("Stored food perish speed: {0}x", Math.Round(rate, 2));
+            dsc.AppendLine(Lang.Get("Stored food perish speed: {0}x", Math.Round(rate, 2)));
         }
 
     }

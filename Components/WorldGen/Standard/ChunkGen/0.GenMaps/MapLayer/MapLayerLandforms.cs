@@ -1,4 +1,6 @@
-﻿using Vintagestory.API.MathTools;
+﻿using System;
+using Vintagestory.API.Config;
+using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
 namespace Vintagestory.ServerMods
@@ -12,11 +14,20 @@ namespace Vintagestory.ServerMods
         NormalizedSimplexNoise noisegenY;
         float wobbleIntensity;
 
+        public float landFormHorizontalScale = 1f;
 
         public MapLayerLandforms(long seed, NoiseClimate climateNoise, ICoreServerAPI api) : base(seed)
         {
             this.climateNoise = climateNoise;
-            noiseLandforms = new NoiseLandforms(seed, api);
+
+            float scale = TerraGenConfig.landformMapScale;
+
+            if (GameVersion.IsAtLeastVersion(api.WorldManager.SaveGame.CreatedGameVersion, "1.11.0-dev.1"))
+            {
+                scale *= Math.Max(1, api.WorldManager.MapSizeY / 256f);
+            }
+
+            noiseLandforms = new NoiseLandforms(seed, api, scale);
 
             int woctaves = 2;
             float wscale = 2f * TerraGenConfig.landformMapScale;

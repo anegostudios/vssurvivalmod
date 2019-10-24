@@ -10,7 +10,7 @@ using Vintagestory.API.Datastructures;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockEntityBucket : BlockEntityContainer, IBlockShapeSupplier
+    public class BlockEntityBucket : BlockEntityContainer
     {
         internal InventoryGeneric inventory;
         public override InventoryBase Inventory => inventory;
@@ -28,7 +28,7 @@ namespace Vintagestory.GameContent
         {
             base.Initialize(api);
 
-            ownBlock = api.World.BlockAccessor.GetBlock(pos) as BlockBucket;
+            ownBlock = Block as BlockBucket;
 
             if (api.Side == EnumAppSide.Client && currentMesh == null)
             {
@@ -48,7 +48,7 @@ namespace Vintagestory.GameContent
         {
             base.OnBlockPlaced(byItemStack);
 
-            if (api.Side == EnumAppSide.Client)
+            if (Api.Side == EnumAppSide.Client)
             {
                 currentMesh = GenMesh();
                 MarkDirty(true);
@@ -73,10 +73,10 @@ namespace Vintagestory.GameContent
         {
             if (ownBlock == null) return null;
             
-            return ownBlock.GenMesh(api as ICoreClientAPI, GetContent(), pos);
+            return ownBlock.GenMesh(Api as ICoreClientAPI, GetContent(), Pos);
         }
 
-        public bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
+        public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
         {
             mesher.AddMeshData(currentMesh);
             return true;
@@ -86,7 +86,7 @@ namespace Vintagestory.GameContent
         {
             base.FromTreeAtributes(tree, worldForResolving);
 
-            if (api?.Side == EnumAppSide.Client)
+            if (Api?.Side == EnumAppSide.Client)
             {
                 currentMesh = GenMesh();
                 MarkDirty(true);
@@ -99,13 +99,19 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override string GetBlockInfo(IPlayer forPlayer)
+        public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
         {
             ItemSlot slot = inventory[0];
 
-            if (slot.Empty) return Lang.Get("Empty");
+            if (slot.Empty)
+            {
+                dsc.AppendLine(Lang.Get("Empty"));
+            } else 
+            {
+                dsc.AppendLine(Lang.Get("Contents: {0}x{1}", slot.Itemstack.StackSize, slot.Itemstack.GetName()));
+            }
 
-            return Lang.Get("Contents: {0}x{1}", slot.Itemstack.StackSize, slot.Itemstack.GetName());
+            
         }
 
     }

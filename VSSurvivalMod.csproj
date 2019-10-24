@@ -109,6 +109,7 @@
     <Compile Include="BlockEntityRenderer\QuernTopRenderer.cs" />
     <Compile Include="BlockEntity\BEBarrel.cs" />
     <Compile Include="BlockEntity\BEEchoChamber.cs" />
+    <Compile Include="BlockEntity\BEPeatPile.cs" />
     <Compile Include="BlockEntity\BEItemFlow.cs" />
     <Compile Include="BlockEntity\BELabeledChest.cs" />
     <Compile Include="BlockEntity\BELocustNest.cs" />
@@ -128,6 +129,8 @@
     <Compile Include="Block\BlockCrystal.cs" />
     <Compile Include="Block\BlockEchoChamber.cs" />
     <Compile Include="Block\BlockHopper.cs" />
+    <Compile Include="Block\BlockPeatbrick.cs" />
+    <Compile Include="Block\BlockPeatPile.cs" />
     <Compile Include="Block\BlockLabeledChest.cs" />
     <Compile Include="Block\BlockLocustNest.cs" />
     <Compile Include="Block\BlockLog.cs" />
@@ -142,12 +145,13 @@
     <Compile Include="Block\BlockStalagSection.cs" />
     <Compile Include="Block\BlockSoilDeposit.cs" />
     <Compile Include="Block\BlockStaticTranslocator.cs" />
+    <Compile Include="Block\BlockThermalDifference.cs" />
     <Compile Include="Block\BlockWaterfall.cs" />
     <Compile Include="Block\BlockWaterFlowing.cs" />
     <Compile Include="Components\LiquidContainer.cs" />
-    <Compile Include="Components\MechanicalPower\BlockEntity\BEAngledGears.cs" />
+    <Compile Include="Components\MechanicalPower\BlockEntityBehavior\BEBehaviorAngledGears.cs" />
     <Compile Include="BlockEntity\BEAnvil.cs" />
-    <Compile Include="Components\MechanicalPower\BlockEntity\BEAxle.cs" />
+    <Compile Include="Components\MechanicalPower\BlockEntityBehavior\BEBehaviorAxle.cs" />
     <Compile Include="BlockEntity\BEGenericContainer.cs" />
     <Compile Include="BlockEntity\BEBed.cs" />
     <Compile Include="BlockEntity\BEBellows.cs" />
@@ -176,8 +180,9 @@
     <Compile Include="BlockEntity\BEToolMold.cs" />
     <Compile Include="BlockEntity\BEToolrack.cs" />
     <Compile Include="BlockEntity\BEWateringCan.cs" />
-    <Compile Include="Components\MechanicalPower\BlockEntity\BEMPBase.cs" />
-    <Compile Include="Components\MechanicalPower\BlockEntity\BEWindmillRotor.cs" />
+    <Compile Include="Components\MechanicalPower\BlockEntityBehavior\BEBehaviorMPBase.cs" />
+    <Compile Include="Components\MechanicalPower\BlockEntityBehavior\BEBehaviorMPConsumer.cs" />
+    <Compile Include="Components\MechanicalPower\BlockEntityBehavior\BEBehaviorWindmillRotor.cs" />
     <Compile Include="BlockEntity\BEChisel.cs" />
     <Compile Include="BlockEntity\BEBucket.cs" />
     <Compile Include="BlockEntity\BlockEntityContainer.cs" />
@@ -287,7 +292,6 @@
     <Compile Include="Components\MechanicalPower\Block\BlockMPBase.cs" />
     <Compile Include="Components\MechanicalPower\Block\BlockWindmillRotor.cs" />
     <Compile Include="Components\MechanicalPower\MechanicalPowerMod.cs" />
-    <Content Include="Components\MechanicalPower\NetworkOldUnused\EnunMechDeviceType.cs" />
     <Compile Include="Components\MechanicalPower\Network\IMechanicalPowerBlock.cs" />
     <Compile Include="Components\MechanicalPower\Network\MechanicalNetwork.cs" />
     <Compile Include="Components\MechanicalPower\Renderer\AngledGearBlockRenderer.cs" />
@@ -326,10 +330,10 @@
     <Compile Include="Entity\AITask\AiTaskButterflyWander.cs" />
     <Compile Include="Gui\GuiDialogBarrel.cs" />
     <Compile Include="Gui\GuiDialogSignPost.cs" />
-    <Compile Include="Inventory\DummyInventory.cs" />
     <Compile Include="Inventory\ItemSlotBarrelInput.cs" />
     <Compile Include="Inventory\ItemSlotBuying.cs" />
     <Compile Include="Inventory\ItemSlotLiquidOnly.cs" />
+    <Compile Include="Inventory\ItemslotTrough.cs" />
     <Compile Include="Inventory\ItemSlotWatertight.cs" />
     <Compile Include="Item\ItemGem.cs" />
     <Compile Include="Item\ItemJournalEntry.cs" />
@@ -404,12 +408,7 @@
     <Compile Include="Systems\GameEffects.cs" />
     <Compile Include="Systems\Journal.cs" />
     <Compile Include="Systems\LootRandomizer.cs" />
-    <Content Include="Components\MechanicalPower\NetworkOldUnused\BlockEntityMechNetworkDeviceBase.cs" />
     <Compile Include="Components\MechanicalPower\Network\IMechanicalPowerDevice.cs" />
-    <Content Include="Components\MechanicalPower\NetworkOldUnused\IMechanicalPowerNetworkNode.cs" />
-    <Content Include="Components\MechanicalPower\NetworkOldUnused\IMechanicalPowerNetworkRelay.cs" />
-    <Content Include="Components\MechanicalPower\NetworkOldUnused\MechanicalNetworkOld.cs" />
-    <Content Include="Components\MechanicalPower\NetworkOldUnused\MechNetworkManager.cs" />
     <Compile Include="Components\MechanicalPower\Renderer\MechNetworkRenderer.cs" />
     <Compile Include="Systems\NpcControl.cs" />
     <Compile Include="Systems\CellarRegistry.cs" />
@@ -443,7 +442,7 @@
     <Compile Include="Components\WorldGen\Standard\ChunkGen\4.GenBlockLayers\GenBlockLayers.cs" />
     <Compile Include="Components\WorldGen\Standard\ChunkGen\3.GenCaves\GenCaves.cs" />
     <Compile Include="Components\WorldGen\Standard\ChunkGen\5.GenDeposits\GenDeposits.cs" />
-    <Compile Include="Components\WorldGen\Standard\ChunkGen\7.GenLakes\GenLakes.cs" />
+    <Compile Include="Components\WorldGen\Standard\ChunkGen\7.GenPonds\GenPonds.cs" />
     <Compile Include="Components\WorldGen\Standard\ChunkGen\91.GenLight.cs" />
     <Compile Include="Components\WorldGen\Standard\ChunkGen\0.GenMaps\GenMaps.cs" />
     <Compile Include="Components\WorldGen\Standard\GenPartial.cs" />

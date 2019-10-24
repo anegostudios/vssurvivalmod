@@ -19,7 +19,7 @@ namespace Vintagestory.GameContent
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ref EnumHandling handling)
         {
             ModSystemBlockReinforcement bre = world.Api.ModLoader.GetModSystem<ModSystemBlockReinforcement>();
-            if (bre.IsLocked(blockSel.Position, byPlayer))
+            if (bre.IsLockedForInteract(blockSel.Position, byPlayer))
             {
                 if (world.Side == EnumAppSide.Client)
                 {

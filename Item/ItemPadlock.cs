@@ -27,7 +27,7 @@ namespace Vintagestory.GameContent
                 {
                     if (block.Code == null) continue;
 
-                    if (block.HasBehavior<BlockBehaviorLockable>() && block.CreativeInventoryTabs != null && block.CreativeInventoryTabs.Length > 0)
+                    if (block.HasBehavior<BlockBehaviorLockable>(true) && block.CreativeInventoryTabs != null && block.CreativeInventoryTabs.Length > 0)
                     {
                         stacks.Add(new ItemStack(block));
                     }
@@ -49,7 +49,7 @@ namespace Vintagestory.GameContent
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
 
-            if (blockSel != null && byEntity.World.BlockAccessor.GetBlock(blockSel.Position).HasBehavior<BlockBehaviorLockable>())
+            if (blockSel != null && byEntity.World.BlockAccessor.GetBlock(blockSel.Position).HasBehavior<BlockBehaviorLockable>(true))
             {
                 ModSystemBlockReinforcement modBre = byEntity.World.Api.ModLoader.GetModSystem<ModSystemBlockReinforcement>();
 

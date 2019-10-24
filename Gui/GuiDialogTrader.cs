@@ -69,7 +69,7 @@ namespace Vintagestory.GameContent
 
             string traderName = owningEntity.GetBehavior<EntityBehaviorNameTag>().DisplayName;
 
-            double daysLeft = 14 - (capi.World.Calendar.TotalDays - owningEntity.WatchedAttributes.GetDouble("lastRefreshTotalDays", 0));
+            double daysLeft = (owningEntity as EntityTrader).NextRefreshTotalDays();
             string daysLeftString = daysLeft < 1 ? Lang.Get("Delievery of new goods in less than 1 day") : Lang.Get("Delievery of new goods in {0} days", (int)daysLeft);
 
             CairoFont deliveryTextFont = CairoFont.WhiteDetailText();

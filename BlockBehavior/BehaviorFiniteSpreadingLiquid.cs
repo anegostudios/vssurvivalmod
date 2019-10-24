@@ -48,13 +48,14 @@ namespace Vintagestory.GameContent
             collidesWith = properties["collidesWith"]?.AsString();
         }
 
-        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref EnumHandling handled, ref string failureCode)
+        public override bool DoPlaceBlock(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ItemStack byItemStack, ref EnumHandling handling)
         {
             if (world is IServerWorldAccessor)
             {
                 world.RegisterCallbackUnique(OnDelayedWaterUpdateCheck, blockSel.Position, spreadDelay);
             }
-            return base.TryPlaceBlock(world, byPlayer, itemstack, blockSel, ref handled, ref failureCode);
+
+            return base.DoPlaceBlock(world, byPlayer, blockSel, byItemStack, ref handling);
         }
 
         public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos, ref EnumHandling handled)
@@ -376,12 +377,16 @@ namespace Vintagestory.GameContent
             if (liquidLevel < 1) return 0;
 
             Vec3i dir = new Vec3i();
+            bool anySideFree = false;
+
             foreach (var val in Cardinal.ALL)
             {
                 Block nblock = world.BlockAccessor.GetBlock(pos.X + val.Normali.X, pos.Y, pos.Z + val.Normali.Z);
                 if (nblock.LiquidLevel == liquidLevel || nblock.Replaceable < 6000 || !nblock.IsLiquid()) continue;
 
                 Vec3i normal = nblock.LiquidLevel < liquidLevel ? val.Normali : val.Opposite.Normali;
+
+                anySideFree |= !val.IsDiagnoal && nblock.Replaceable >= 6000;
 
                 dir.X += normal.X;
                 dir.Z += normal.Z;
@@ -394,7 +399,17 @@ namespace Vintagestory.GameContent
 
             if (flowDir == null)
             {
-                if (IsSameLiquid(world.BlockAccessor.GetBlock(pos.X, pos.Y - 1, pos.Z), block) || IsSameLiquid(world.BlockAccessor.GetBlock(pos.X, pos.Y + 1, pos.Z), block))
+                Block downBlock = world.BlockAccessor.GetBlock(pos.X, pos.Y - 1, pos.Z);
+                Block upBlock = world.BlockAccessor.GetBlock(pos.X, pos.Y + 1, pos.Z);
+                bool downLiquid = IsSameLiquid(downBlock, block);
+                bool upLiquid = IsSameLiquid(upBlock, block);
+
+                if ((downLiquid && downBlock.Variant["flow"] == "d") || (upLiquid && upBlock.Variant["flow"] == "d"))
+                {
+                    return world.GetBlock(block.CodeWithParts("d", "" + liquidLevel)).BlockId;
+                }
+
+                if (anySideFree)
                 {
                     return world.GetBlock(block.CodeWithParts("d", "" + liquidLevel)).BlockId;
                 }

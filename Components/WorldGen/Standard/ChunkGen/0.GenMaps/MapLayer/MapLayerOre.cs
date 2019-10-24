@@ -5,16 +5,22 @@ namespace Vintagestory.ServerMods
     class MapLayerOre : MapLayerBase
     {
         private NoiseOre map;
-        
-        public MapLayerOre(long seed, NoiseOre map) : base(seed)
+        float zoomMul;
+        float contrastMul;
+        float sub;
+
+        public MapLayerOre(long seed, NoiseOre map, float zoomMul, float contrastMul, float sub) : base(seed)
         {
             this.map = map;
+            this.zoomMul = zoomMul;
+            this.contrastMul = contrastMul;
+            this.sub = sub;
         }
 
         public override int[] GenLayer(int xCoord, int zCoord, int sizeX, int sizeZ)
         {
             int[] result = new int[sizeX * sizeZ];
-            TerraGenConfig.oreMapSubScale = 12;
+            
             int cacheSizeX = (int)Math.Ceiling((float)sizeX / TerraGenConfig.oreMapSubScale) + 1;
             int cacheSizeZ = (int)Math.Ceiling((float)sizeZ / TerraGenConfig.oreMapSubScale) + 1;
 
@@ -24,11 +30,13 @@ namespace Vintagestory.ServerMods
             {
                 for (int z = 0; z < sizeZ; z++)
                 {
-                    result[z * sizeX + x] = map.GetLerpedClimateAt(
-                        x / (double)TerraGenConfig.oreMapSubScale,
-                        z / (double)TerraGenConfig.oreMapSubScale,
+                    result[z * sizeX + x] = map.GetLerpedOreValueAt(
+                        x / (double)TerraGenConfig.oreMapSubScale / zoomMul,
+                        z / (double)TerraGenConfig.oreMapSubScale / zoomMul,
                         oreCache,
-                        cacheSizeX
+                        cacheSizeX,
+                        contrastMul,
+                        sub
                     );
                 }
             }

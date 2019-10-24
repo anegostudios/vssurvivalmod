@@ -9,6 +9,11 @@ namespace Vintagestory.GameContent
 
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
         {
+            if (!CanPlaceBlock(world, byPlayer, blockSel, ref failureCode))
+            {
+                return false;
+            }
+
             // Place by looking direction
             BlockFacing targetFacing = SuggestedHVOrientation(byPlayer, blockSel)[0];
             Block blockToPlace = null;
@@ -35,13 +40,8 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            if (blockToPlace.IsSuitablePosition(world, blockSel.Position, ref failureCode))
-            {
-                blockToPlace.DoPlaceBlock(world, blockSel.Position, blockSel.Face, itemstack);
-                return true;
-            }
-
-            return false;
+            blockToPlace.DoPlaceBlock(world, byPlayer, blockSel, itemstack);
+            return true;
         }
 
 
@@ -63,7 +63,7 @@ namespace Vintagestory.GameContent
 
             if (blockToPlace != null)
             {
-                if (!placeIfSuitable(blockToPlace, world, position))
+                if (!placeIfSuitable(world, byPlayer, blockToPlace, position))
                 {
                     return false;
                 }
@@ -72,18 +72,19 @@ namespace Vintagestory.GameContent
             string dirs = neibBlock.Variant["type"].Split('_')[1];
             BlockFacing neibKeepFace = (dirs[0] == neibFreeFace.Code[0]) ? BlockFacing.FromFirstLetter(dirs[1]) : BlockFacing.FromFirstLetter(dirs[0]);
             Block block = getRailBlock(world, "curved_", neibKeepFace, fromFacing);
-            block.DoPlaceBlock(world, position.AddCopy(toFacing), BlockFacing.UP, null);
+            block.DoPlaceBlock(world, byPlayer, new BlockSelection() { Position = position.AddCopy(toFacing), Face = BlockFacing.UP }, null);
 
             return false;
         }
 
 
-        bool placeIfSuitable(Block block, IWorldAccessor world, BlockPos pos)
+        bool placeIfSuitable(IWorldAccessor world, IPlayer byPlayer, Block block, BlockPos pos)
         {
             string failureCode = "";
-            if (block.IsSuitablePosition(world, pos, ref failureCode))
+            BlockSelection blockSel = new BlockSelection() { Position = pos, Face = BlockFacing.UP };
+            if (block.CanPlaceBlock(world, byPlayer, blockSel, ref failureCode))
             {
-                block.DoPlaceBlock(world, pos, BlockFacing.UP, null);
+                block.DoPlaceBlock(world, byPlayer, blockSel, null);
                 return true;
             }
             return false;

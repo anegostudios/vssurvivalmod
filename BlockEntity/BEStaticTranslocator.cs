@@ -14,15 +14,15 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockEntityStaticTranslocator : BlockEntityAnimatable
+    public class BlockEntityStaticTranslocator : BlockEntity
     {
         public int MinTeleporterRangeInBlocks = 400;
-        public int MaxTeleporterRangeInBlocks = 6000;
+        public int MaxTeleporterRangeInBlocks = 8000;
 
         public BlockPos tpLocation;
         Dictionary<long, TeleportingEntity> tpingEntities = new Dictionary<long, TeleportingEntity>();
 
-        BlockStaticTranslocator block;
+        BlockStaticTranslocator ownBlock;
         Vec3d posvec;
         long lastCollideMsOwnPlayer;
 
@@ -53,6 +53,11 @@ namespace Vintagestory.GameContent
             get { return repairState >= 4; }
         }
 
+        BlockEntityAnimationUtil animUtil
+        {
+            get { return GetBehavior<BEBehaviorAnimatable>().animUtil; }
+        }
+
         public BlockEntityStaticTranslocator()
         {
         }
@@ -64,12 +69,12 @@ namespace Vintagestory.GameContent
 
             if (FullyRepaired) setupGameTickers();
 
-            block = api.World.BlockAccessor.GetBlock(pos) as BlockStaticTranslocator;
-            posvec = new Vec3d(pos.X + 0.5, pos.Y, pos.Z + 0.5);
+            ownBlock = Block as BlockStaticTranslocator;
+            posvec = new Vec3d(Pos.X + 0.5, Pos.Y, Pos.Z + 0.5);
 
             if (api.World.Side == EnumAppSide.Client)
             {
-                float rotY = block.Shape.rotateY;
+                float rotY = Block.Shape.rotateY;
                 animUtil.InitializeAnimator("translocator", new Vec3f(0, rotY, 0));
 
                 temporalGearStack = new ItemStack(api.World.GetItem(new AssetLocation("gear-temporal")));
@@ -98,9 +103,9 @@ namespace Vintagestory.GameContent
         
         public void setupGameTickers()
         {
-            if (api.Side == EnumAppSide.Server)
+            if (Api.Side == EnumAppSide.Server)
             {
-                sapi = api as ICoreServerAPI;
+                sapi = Api as ICoreServerAPI;
                 RegisterGameTickListener(OnServerGameTick, 250);
             }
             else
@@ -122,14 +127,14 @@ namespace Vintagestory.GameContent
                 };
             }
 
-            tpe.LastCollideMs = api.World.ElapsedMilliseconds;
+            tpe.LastCollideMs = Api.World.ElapsedMilliseconds;
             
             
-            if (api.Side == EnumAppSide.Client)
+            if (Api.Side == EnumAppSide.Client)
             {
-                if ((api as ICoreClientAPI).World.Player.Entity == entity)
+                if ((Api as ICoreClientAPI).World.Player.Entity == entity)
                 {
-                    lastCollideMsOwnPlayer = api.World.ElapsedMilliseconds;
+                    lastCollideMsOwnPlayer = Api.World.ElapsedMilliseconds;
                     manager.lastTranslocateCollideMsOwnPlayer = lastCollideMsOwnPlayer;
                 }
             }
@@ -138,13 +143,13 @@ namespace Vintagestory.GameContent
         
         private void OnClientGameTick(float dt)
         {
-            if (block == null || api?.World == null || !canTeleport || !Activated) return;
+            if (ownBlock == null || Api?.World == null || !canTeleport || !Activated) return;
 
-            bool playerInside = (api.World.ElapsedMilliseconds > 100 && api.World.ElapsedMilliseconds - lastCollideMsOwnPlayer < 100);
+            bool playerInside = (Api.World.ElapsedMilliseconds > 100 && Api.World.ElapsedMilliseconds - lastCollideMsOwnPlayer < 100);
 
             SimpleParticleProperties currentParticles = playerInside ? 
-                block.insideParticles : 
-                block.idleParticles
+                ownBlock.insideParticles : 
+                ownBlock.idleParticles
             ;
 
             if (playerInside)
@@ -157,7 +162,7 @@ namespace Vintagestory.GameContent
                 animUtil.StopAnimation("teleport");
             }
 
-            if (api.World.ElapsedMilliseconds - lastCollideMsOwnPlayer > 3000)
+            if (Api.World.ElapsedMilliseconds - lastCollideMsOwnPlayer > 3000)
             {
                 animUtil.StopAnimation("idle");
             }
@@ -179,16 +184,16 @@ namespace Vintagestory.GameContent
             currentParticles.OpacityEvolve = EvolvingNatFloat.create(EnumTransformFunction.LINEAR, 100f);
 
             double xpos = rndPos.nextFloat();
-            double ypos = 1.9 + api.World.Rand.NextDouble() * 0.2;
+            double ypos = 1.9 + Api.World.Rand.NextDouble() * 0.2;
             double zpos = rndPos.nextFloat();
 
             currentParticles.lifeLength = GameMath.Sqrt(xpos*xpos + zpos*zpos) / 10;
             currentParticles.minPos.Set(posvec.X + xpos, posvec.Y + ypos, posvec.Z + zpos);
-            currentParticles.minVelocity.Set(-(float)xpos, -1 - (float)api.World.Rand.NextDouble()/2, -(float)zpos);
+            currentParticles.minVelocity.Set(-(float)xpos, -1 - (float)Api.World.Rand.NextDouble()/2, -(float)zpos);
             currentParticles.minQuantity = playerInside ? 2 : 0.25f;
             currentParticles.addQuantity = 0;
             
-            api.World.SpawnParticles(currentParticles);
+            Api.World.SpawnParticles(currentParticles);
         }
 
 
@@ -198,11 +203,13 @@ namespace Vintagestory.GameContent
             {
                 findNextChunk = false;
 
-                int dx = (int)(MinTeleporterRangeInBlocks + sapi.World.Rand.NextDouble() * (MaxTeleporterRangeInBlocks - MinTeleporterRangeInBlocks));
-                int dz = (int)(MinTeleporterRangeInBlocks + sapi.World.Rand.NextDouble() * (MaxTeleporterRangeInBlocks - MinTeleporterRangeInBlocks));
+                int addrange = MaxTeleporterRangeInBlocks - MinTeleporterRangeInBlocks;
 
-                int chunkX = (pos.X + dx) / sapi.World.BlockAccessor.ChunkSize;
-                int chunkZ = (pos.Z + dz) / sapi.World.BlockAccessor.ChunkSize;
+                int dx = (int)(MinTeleporterRangeInBlocks + sapi.World.Rand.NextDouble() * addrange) * (2 * sapi.World.Rand.Next(2) - 1);
+                int dz = (int)(MinTeleporterRangeInBlocks + sapi.World.Rand.NextDouble() * addrange) * (2 * sapi.World.Rand.Next(2) - 1);
+
+                int chunkX = (Pos.X + dx) / sapi.World.BlockAccessor.ChunkSize;
+                int chunkZ = (Pos.Z + dz) / sapi.World.BlockAccessor.ChunkSize;
                 
                 ChunkPeekOptions opts = new ChunkPeekOptions()
                 {
@@ -254,7 +261,7 @@ namespace Vintagestory.GameContent
 
         private void exitChunkLoaded(BlockPos exitPos)
         {
-            BlockStaticTranslocator exitBlock = api.World.BlockAccessor.GetBlock(exitPos) as BlockStaticTranslocator;
+            BlockStaticTranslocator exitBlock = Api.World.BlockAccessor.GetBlock(exitPos) as BlockStaticTranslocator;
 
             if (exitBlock == null)
             {
@@ -263,18 +270,18 @@ namespace Vintagestory.GameContent
                 exitPos = HasExitPoint(exitPos);
                 if (exitPos != null)
                 {
-                    exitBlock = api.World.BlockAccessor.GetBlock(exitPos) as BlockStaticTranslocator;
+                    exitBlock = Api.World.BlockAccessor.GetBlock(exitPos) as BlockStaticTranslocator;
                 }
             }
             
             if (exitBlock != null && !exitBlock.Repaired)
             {
                 // Repair it
-                api.World.BlockAccessor.SetBlock(block.Id, exitPos);
-                BlockEntityStaticTranslocator beExit = api.World.BlockAccessor.GetBlockEntity(exitPos) as BlockEntityStaticTranslocator;
+                Api.World.BlockAccessor.SetBlock(ownBlock.Id, exitPos);
+                BlockEntityStaticTranslocator beExit = Api.World.BlockAccessor.GetBlockEntity(exitPos) as BlockEntityStaticTranslocator;
 
                 // Connect remote
-                beExit.tpLocation = pos.Copy();
+                beExit.tpLocation = Pos.Copy();
                 beExit.canTeleport = true;
                 beExit.findNextChunk = false;
                 beExit.activated = true;
@@ -283,8 +290,8 @@ namespace Vintagestory.GameContent
                     beExit.repairState = 4;
                     beExit.setupGameTickers();
                 }
-                api.World.BlockAccessor.MarkBlockEntityDirty(exitPos);
-                api.World.BlockAccessor.MarkBlockDirty(exitPos);
+                Api.World.BlockAccessor.MarkBlockEntityDirty(exitPos);
+                Api.World.BlockAccessor.MarkBlockDirty(exitPos);
 
                 //api.World.Logger.Debug("Connected translocator at {0} (chunkpos: {2}) to my location: {1}", exitPos, pos, exitPos / 32);
 
@@ -294,14 +301,14 @@ namespace Vintagestory.GameContent
                 canTeleport = true;
             } else
             {
-                api.World.Logger.Warning("Translocator: Regen chunk but broken translocator is gone. Structure generation perhaps seed not consistent? May also just be pre-v1.10 chunk, so probably nothing to worry about. Searching again...");
+                Api.World.Logger.Warning("Translocator: Regen chunk but broken translocator is gone. Structure generation perhaps seed not consistent? May also just be pre-v1.10 chunk, so probably nothing to worry about. Searching again...");
                 findNextChunk = true;
             }
         }
 
         private BlockPos HasExitPoint(BlockPos nearpos)
         {
-            IServerChunk chunk = api.World.BlockAccessor.GetChunkAtBlockPos(nearpos) as IServerChunk;          
+            IServerChunk chunk = Api.World.BlockAccessor.GetChunkAtBlockPos(nearpos) as IServerChunk;          
             List<GeneratedStructure> structures = chunk?.MapChunk?.MapRegion?.GeneratedStructures;
 
             if (structures == null) return null;
@@ -312,14 +319,17 @@ namespace Vintagestory.GameContent
                 {
                     Cuboidi loc = structure.Location;
                     BlockPos foundPos = null;
-                    api.World.BlockAccessor.WalkBlocks(loc.Start.AsBlockPos, loc.End.AsBlockPos, (block, pos) =>
+                    Api.World.BlockAccessor.SearchBlocks(loc.Start.AsBlockPos, loc.End.AsBlockPos, (block, pos) =>
                     {
                         BlockStaticTranslocator transBlock = block as BlockStaticTranslocator;
                         
                         if (transBlock != null && !transBlock.Repaired)
                         {
                             foundPos = pos.Copy();
+                            return false;
                         }
+
+                        return true;
                     });
 
                     if (foundPos != null) return foundPos;
@@ -348,7 +358,7 @@ namespace Vintagestory.GameContent
 
         private BlockPos FindTranslocator(Cuboidi location, Dictionary<Vec2i, IServerChunk[]> columnsByChunkCoordinate, int centerCx, int centerCz)
         {
-            int chunksize = api.World.BlockAccessor.ChunkSize;
+            int chunksize = Api.World.BlockAccessor.ChunkSize;
             
             for (int x = location.X1; x < location.X2; x++)
             {
@@ -373,7 +383,7 @@ namespace Vintagestory.GameContent
                         int lz = z % chunksize;
 
                         int index3d = (ly * chunksize + lz) * chunksize + lx;
-                        Block block = api.World.Blocks[chunk.Blocks[index3d]];
+                        Block block = Api.World.Blocks[chunk.Blocks[index3d]];
 
                         BlockStaticTranslocator transBlock = block as BlockStaticTranslocator;
                         if (transBlock != null && !transBlock.Repaired)
@@ -405,7 +415,7 @@ namespace Vintagestory.GameContent
 
                 val.Value.SecondsPassed += Math.Min(0.5f, dt);
 
-                if (api.World.ElapsedMilliseconds - val.Value.LastCollideMs > 100)
+                if (Api.World.ElapsedMilliseconds - val.Value.LastCollideMs > 100)
                 {
                     toremove.Add(val.Key);
                     continue;
@@ -421,7 +431,7 @@ namespace Vintagestory.GameContent
                     }
                     else
                     {
-                        sapi.WorldManager.LoadChunkColumnFast((int)tpLocation.X / api.World.BlockAccessor.ChunkSize, (int)tpLocation.Z / api.World.BlockAccessor.ChunkSize, new ChunkLoadOptions()
+                        sapi.WorldManager.LoadChunkColumnFast((int)tpLocation.X / Api.World.BlockAccessor.ChunkSize, (int)tpLocation.Z / Api.World.BlockAccessor.ChunkSize, new ChunkLoadOptions()
                         {
                             KeepLoaded = false
                         });
@@ -435,11 +445,11 @@ namespace Vintagestory.GameContent
                     Entity e = val.Value.Entity;
                     if (e is EntityPlayer)
                     {
-                        api.World.Logger.Debug("Teleporting player {0} to {1}", (e as EntityPlayer).GetBehavior<EntityBehaviorNameTag>().DisplayName, tpLocation);
+                        Api.World.Logger.Debug("Teleporting player {0} to {1}", (e as EntityPlayer).GetBehavior<EntityBehaviorNameTag>().DisplayName, tpLocation);
                         manager.DidTranslocateServer((e as EntityPlayer).Player as IServerPlayer);
                     } else
                     {
-                        api.World.Logger.Debug("Teleporting entity {0} to {1}", e.Code, tpLocation);
+                        Api.World.Logger.Debug("Teleporting entity {0} to {1}", e.Code, tpLocation);
                     }
 
                     toremove.Add(val.Key);
@@ -461,10 +471,10 @@ namespace Vintagestory.GameContent
         {
             base.OnBlockRemoved();
 
-            if (api.Side == EnumAppSide.Server)
+            if (Api.Side == EnumAppSide.Server)
             {
-                ICoreServerAPI sapi = api as ICoreServerAPI;
-                sapi.ModLoader.GetModSystem<TeleporterManager>().DeleteLocation(pos);
+                ICoreServerAPI sapi = Api as ICoreServerAPI;
+                sapi.ModLoader.GetModSystem<TeleporterManager>().DeleteLocation(Pos);
             }
         }
 
@@ -520,11 +530,11 @@ namespace Vintagestory.GameContent
 
             if (!FullyRepaired)
             {
-                MeshData mesh = ObjectCacheUtil.GetOrCreate(api, "statictranslocator-" + repairState + "-" + block.Shape.rotateY, () =>
+                MeshData mesh = ObjectCacheUtil.GetOrCreate(Api, "statictranslocator-" + repairState + "-" + ownBlock.Shape.rotateY, () =>
                 {
-                    float rotY = block.Shape.rotateY;
+                    float rotY = ownBlock.Shape.rotateY;
 
-                    ICoreClientAPI capi = api as ICoreClientAPI;
+                    ICoreClientAPI capi = Api as ICoreClientAPI;
 
                     string shapeCode = "normal";
                     switch (repairState)
@@ -536,10 +546,10 @@ namespace Vintagestory.GameContent
                     }
 
                     MeshData meshdata;
-                    IAsset asset = api.Assets.TryGet(new AssetLocation("shapes/block/machine/statictranslocator/" + shapeCode + ".json"));
+                    IAsset asset = Api.Assets.TryGet(new AssetLocation("shapes/block/machine/statictranslocator/" + shapeCode + ".json"));
                     Shape shape = asset.ToObject<Shape>();
 
-                    tessThreadTesselator.TesselateShape(block, shape, out meshdata, new Vec3f(0, rotY, 0));
+                    tessThreadTesselator.TesselateShape(ownBlock, shape, out meshdata, new Vec3f(0, rotY, 0));
 
                     return meshdata;
                 });
@@ -554,11 +564,12 @@ namespace Vintagestory.GameContent
 
 
 
-        public override string GetBlockInfo(IPlayer forPlayer)
+        public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
         {
             if (!FullyRepaired)
             {
-                return Lang.Get("Seems to be missing a couple of gears. I think I've seen such gears before.");
+                dsc.AppendLine(Lang.Get("Seems to be missing a couple of gears. I think I've seen such gears before."));
+                return;
             }
             else
             {
@@ -566,18 +577,19 @@ namespace Vintagestory.GameContent
                 {
                     string[] lines = new string[] { Lang.Get("Warping spacetime."), Lang.Get("Warping spacetime.."), Lang.Get("Warping spacetime...") };
 
-                    return lines[(int)(api.World.ElapsedMilliseconds / 1000f) % 3];
+                    dsc.AppendLine(lines[(int)(Api.World.ElapsedMilliseconds / 1000f) % 3]);
+                    return;
                 }
             }
 
             if (forPlayer.WorldData.CurrentGameMode == EnumGameMode.Creative)
             {
-                BlockPos pos = api.World.DefaultSpawnPosition.AsBlockPos;
-                return Lang.Get("Teleports to {0}", tpLocation.Copy().Sub(pos.X, 0, pos.Z));
+                BlockPos pos = Api.World.DefaultSpawnPosition.AsBlockPos;
+                dsc.AppendLine(Lang.Get("Teleports to {0}", tpLocation.Copy().Sub(pos.X, 0, pos.Z)));
             }
             else
             {
-                return Lang.Get("Spacetime subduction completed.");
+                dsc.AppendLine(Lang.Get("Spacetime subduction completed."));
             }
         }
     }

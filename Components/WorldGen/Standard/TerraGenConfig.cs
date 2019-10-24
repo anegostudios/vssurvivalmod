@@ -41,13 +41,16 @@ namespace Vintagestory.ServerMods
         public static int forestMapScale = 32;
         public static int forestMapPadding = 0;
 
+        public static int beachMapScale = 16;
+        public static int beachMapPadding = 0;
+
         public static int climateMapWobbleScale = 192;
         public static int climateMapScale = 32;
         public static int climateMapSubScale = 16;
 
-        public static int oreMapWobbleScale = 96;
+        public static int oreMapWobbleScale = 110;
         public static int oreMapScale = 16;
-        public static int oreMapSubScale = 8;
+        public static int oreMapSubScale = 12;
 
         public static int depositVerticalDistortScale = 8;
 
@@ -61,6 +64,8 @@ namespace Vintagestory.ServerMods
         public static int landformMapPadding = 4;
         public static int landformMapScale = 16;
         public static int landFormSmoothingRadius = 3;
+
+        
 
         public static int seaLevel = 110;
 

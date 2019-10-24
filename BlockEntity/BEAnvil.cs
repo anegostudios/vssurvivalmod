@@ -73,7 +73,7 @@ namespace Vintagestory.GameContent
 
         public SmithingRecipe SelectedRecipe
         {
-            get { return api.World.SmithingRecipes.FirstOrDefault(r => r.RecipeId == selectedRecipeId); }
+            get { return Api.World.SmithingRecipes.FirstOrDefault(r => r.RecipeId == selectedRecipeId); }
         }
 
         public bool CanWorkCurrent
@@ -92,7 +92,7 @@ namespace Vintagestory.GameContent
         }
 
         public BlockEntityAnvil() : base() { }
-        
+
 
         public override void Initialize(ICoreAPI api)
         {
@@ -116,22 +116,21 @@ namespace Vintagestory.GameContent
             if (api is ICoreClientAPI)
             {
                 ICoreClientAPI capi = (ICoreClientAPI)api;
-                capi.Event.RegisterRenderer(workitemRenderer = new AnvilWorkItemRenderer(pos, capi), EnumRenderStage.Opaque);
+                capi.Event.RegisterRenderer(workitemRenderer = new AnvilWorkItemRenderer(Pos, capi), EnumRenderStage.Opaque);
                 capi.Event.RegisterRenderer(workitemRenderer, EnumRenderStage.AfterFinalComposition);
 
                 RegenMeshAndSelectionBoxes();
             }
 
-            Block block = api.World.BlockAccessor.GetBlock(pos);
-            string metalType = block.LastCodePart();
+            string metalType = Block.LastCodePart();
             if (metalsByCode.ContainsKey(metalType)) OwnMetalTier = metalsByCode[metalType].Tier;
         }
 
 
         public bool CanWork(ItemStack stack)
         {
-            float temperature = stack.Collectible.GetTemperature(api.World, stack);
-            float meltingpoint = stack.Collectible.GetMeltingPoint(api.World, null, new DummySlot(baseMaterial));
+            float temperature = stack.Collectible.GetTemperature(Api.World, stack);
+            float meltingpoint = stack.Collectible.GetMeltingPoint(Api.World, null, new DummySlot(baseMaterial));
 
             if (stack.Collectible.Attributes?["workableTemperature"].Exists == true)
             {
@@ -168,7 +167,7 @@ namespace Vintagestory.GameContent
 
             if (!byPlayer.InventoryManager.TryGiveItemstack(workItemStack))
             {
-                api.World.SpawnItemEntity(workItemStack, pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                Api.World.SpawnItemEntity(workItemStack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
             }
 
             workItemStack = null;
@@ -205,12 +204,12 @@ namespace Vintagestory.GameContent
 
                     CreateInitialWorkItem();
 
-                    workItemStack = new ItemStack(api.World.GetItem(new AssetLocation("workitem-" + stack.Collectible.LastCodePart())));
-                    workItemStack.Collectible.SetTemperature(api.World, workItemStack, stack.Collectible.GetTemperature(api.World, stack));
+                    workItemStack = new ItemStack(Api.World.GetItem(new AssetLocation("workitem-" + stack.Collectible.LastCodePart())));
+                    workItemStack.Collectible.SetTemperature(Api.World, workItemStack, stack.Collectible.GetTemperature(Api.World, stack));
 
-                    baseMaterial = new ItemStack(api.World.GetItem(new AssetLocation("ingot-" + stack.Collectible.LastCodePart())));
+                    baseMaterial = new ItemStack(Api.World.GetItem(new AssetLocation("ingot-" + stack.Collectible.LastCodePart())));
 
-                    List<SmithingRecipe> recipes = api.World.SmithingRecipes
+                    List<SmithingRecipe> recipes = Api.World.SmithingRecipes
                         .Where(r => r.Ingredient.SatisfiesAsIngredient(baseMaterial))
                         .OrderBy(r => r.Output.ResolvedItemstack.Collectible.Code)
                         .ToList()
@@ -283,7 +282,7 @@ namespace Vintagestory.GameContent
 
             Vec3i voxelPos = new Vec3i((int)(16 * box.X1), (int)(16 * box.Y1), (int)(16 * box.Z1));
 
-            OnUseOver(byPlayer, voxelPos, new BlockSelection() { Position = pos, SelectionBoxIndex = selectionBoxIndex });
+            OnUseOver(byPlayer, voxelPos, new BlockSelection() { Position = Pos, SelectionBoxIndex = selectionBoxIndex });
         }
 
 
@@ -296,7 +295,7 @@ namespace Vintagestory.GameContent
 
             // Send a custom network packet for server side, because
             // serverside blockselection index is inaccurate
-            if (api.Side == EnumAppSide.Client)
+            if (Api.Side == EnumAppSide.Client)
             {
                 SendUseOverPacket(byPlayer, voxelPos);
             }
@@ -313,17 +312,17 @@ namespace Vintagestory.GameContent
             BlockFacing towardsFace = BlockFacing.HorizontalFromAngle(yaw);
 
 
-            float temp = workItemStack.Collectible.GetTemperature(api.World, workItemStack);
+            float temp = workItemStack.Collectible.GetTemperature(Api.World, workItemStack);
             
             if (Voxels[voxelPos.X, voxelPos.Y, voxelPos.Z])
             {
                 if (temp > 800)
                 {
-                    bigMetalSparks.minPos = pos.ToVec3d().AddCopy(voxelPos.X / 16f, voxelPos.Y / 16f + 0.0625f, voxelPos.Z / 16f);
+                    bigMetalSparks.minPos = Pos.ToVec3d().AddCopy(voxelPos.X / 16f, voxelPos.Y / 16f + 0.0625f, voxelPos.Z / 16f);
                     bigMetalSparks.glowLevel = (byte)GameMath.Clamp((int)(temp - 770) / 3, 32, 128);
                     byPlayer.Entity.World.SpawnParticles(bigMetalSparks, byPlayer);
 
-                    smallMetalSparks.minPos = pos.ToVec3d().AddCopy(voxelPos.X / 16f, voxelPos.Y / 16f + 0.0625f, voxelPos.Z / 16f);
+                    smallMetalSparks.minPos = Pos.ToVec3d().AddCopy(voxelPos.X / 16f, voxelPos.Y / 16f + 0.0625f, voxelPos.Z / 16f);
                     smallMetalSparks.glowLevel = (byte)GameMath.Clamp((int)(temp - 770) / 3, 32, 128);
                     smallMetalSparks.model = EnumParticleModel.Quad;
                     smallMetalSparks.lifeLength = 0.03f;
@@ -349,9 +348,9 @@ namespace Vintagestory.GameContent
                 }
 
                 RegenMeshAndSelectionBoxes();
-                api.World.BlockAccessor.MarkBlockDirty(pos);
-                api.World.BlockAccessor.MarkBlockEntityDirty(pos);
-                slot.Itemstack.Collectible.DamageItem(api.World, byPlayer.Entity, slot);
+                Api.World.BlockAccessor.MarkBlockDirty(Pos);
+                Api.World.BlockAccessor.MarkBlockEntityDirty(Pos);
+                slot.Itemstack.Collectible.DamageItem(Api.World, byPlayer.Entity, slot);
 
                 if (!HasAnyVoxel())
                 {
@@ -368,7 +367,7 @@ namespace Vintagestory.GameContent
 
         public void CheckIfFinished(IPlayer byPlayer)
         {
-            if (MatchesRecipe() && api.World is IServerWorldAccessor)
+            if (MatchesRecipe() && Api.World is IServerWorldAccessor)
             {
                 workItemStack = null;
                 Voxels = new bool[16, 16, 16];
@@ -378,12 +377,12 @@ namespace Vintagestory.GameContent
 
                 if (!byPlayer.InventoryManager.TryGiveItemstack(outstack))
                 {
-                    api.World.SpawnItemEntity(outstack, pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                    Api.World.SpawnItemEntity(outstack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
                 }
 
                 RegenMeshAndSelectionBoxes();
                 MarkDirty();
-                api.World.BlockAccessor.MarkBlockDirty(pos);
+                Api.World.BlockAccessor.MarkBlockDirty(Pos);
             }
         }
 
@@ -526,7 +525,7 @@ namespace Vintagestory.GameContent
                 workItemStack.Attributes.SetInt("availableVoxels", AvailableVoxels);
                 workItemStack.Attributes.SetInt("selectedRecipeId", selectedRecipeId);
 
-                api.World.SpawnItemEntity(workItemStack, pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                Api.World.SpawnItemEntity(workItemStack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
             }
         }
 
@@ -539,10 +538,10 @@ namespace Vintagestory.GameContent
             AvailableVoxels = tree.GetInt("availableVoxels");
             selectedRecipeId = tree.GetInt("selectedRecipeId", -1);
 
-            if (api != null && workItemStack != null)
+            if (Api != null && workItemStack != null)
             {
-                workItemStack.ResolveBlockOrItem(api.World);
-                baseMaterial = new ItemStack(api.World.GetItem(new AssetLocation("ingot-" + workItemStack.Collectible.LastCodePart())));
+                workItemStack.ResolveBlockOrItem(Api.World);
+                baseMaterial = new ItemStack(Api.World.GetItem(new AssetLocation("ingot-" + workItemStack.Collectible.LastCodePart())));
             }
 
             RegenMeshAndSelectionBoxes();
@@ -616,8 +615,8 @@ namespace Vintagestory.GameContent
                 data = ms.ToArray();
             }
 
-            ((ICoreClientAPI)api).Network.SendBlockEntityPacket(
-                pos.X, pos.Y, pos.Z,
+            ((ICoreClientAPI)Api).Network.SendBlockEntityPacket(
+                Pos.X, Pos.Y, Pos.Z,
                 (int)EnumAnvilPacket.OnUserOver,
                 data
             );
@@ -629,11 +628,11 @@ namespace Vintagestory.GameContent
             if (packetid == (int)EnumAnvilPacket.SelectRecipe)
             {
                 int recipeid = SerializerUtil.Deserialize<int>(data);
-                SmithingRecipe recipe = api.World.SmithingRecipes.FirstOrDefault(r => r.RecipeId == recipeid);
+                SmithingRecipe recipe = Api.World.SmithingRecipes.FirstOrDefault(r => r.RecipeId == recipeid);
 
                 if (recipe == null)
                 {
-                    api.World.Logger.Error("Client tried to selected smithing recipe with id {0}, but no such recipe exists!");
+                    Api.World.Logger.Error("Client tried to selected smithing recipe with id {0}, but no such recipe exists!");
                     return;
                 }
 
@@ -641,7 +640,7 @@ namespace Vintagestory.GameContent
 
                 // Tell server to save this chunk to disk again
                 MarkDirty();
-                api.World.BlockAccessor.GetChunkAtBlockPos(pos.X, pos.Y, pos.Z).MarkModified();
+                Api.World.BlockAccessor.GetChunkAtBlockPos(Pos.X, Pos.Y, Pos.Z).MarkModified();
             }
 
             if (packetid == (int)EnumAnvilPacket.OnUserOver)
@@ -653,7 +652,7 @@ namespace Vintagestory.GameContent
                     voxelPos = new Vec3i(reader.ReadInt32(), reader.ReadInt32(), reader.ReadInt32());
                 }
 
-                OnUseOver(player, voxelPos, new BlockSelection() { Position = pos });
+                OnUseOver(player, voxelPos, new BlockSelection() { Position = Pos });
             }
         }
 
@@ -663,10 +662,10 @@ namespace Vintagestory.GameContent
         {
             if (ingredient.Collectible is ItemWorkItem)
             {
-                ingredient = new ItemStack(api.World.GetItem(new AssetLocation("ingot-" + ingredient.Collectible.LastCodePart())));
+                ingredient = new ItemStack(Api.World.GetItem(new AssetLocation("ingot-" + ingredient.Collectible.LastCodePart())));
             }
 
-            List<SmithingRecipe> recipes = api.World.SmithingRecipes
+            List<SmithingRecipe> recipes = Api.World.SmithingRecipes
                 .Where(r => r.Ingredient.SatisfiesAsIngredient(ingredient))
                 .OrderBy(r => r.Output.ResolvedItemstack.Collectible.Code) // Cannot sort by name, thats language dependent!
                 .ToList()
@@ -677,51 +676,48 @@ namespace Vintagestory.GameContent
                 .ToList()
             ;
 
-            IClientWorldAccessor clientWorld = (IClientWorldAccessor)api.World;
-            ICoreClientAPI capi = api as ICoreClientAPI;
+            IClientWorldAccessor clientWorld = (IClientWorldAccessor)Api.World;
+            ICoreClientAPI capi = Api as ICoreClientAPI;
             
             GuiDialog dlg = new GuiDialogBlockEntityRecipeSelector(
                 Lang.Get("Select smithing recipe"),
                 stacks.ToArray(),
                 (selectedIndex) => {
                     selectedRecipeId = recipes[selectedIndex].RecipeId;
-                    capi.Network.SendBlockEntityPacket(pos.X, pos.Y, pos.Z, (int)EnumClayFormingPacket.SelectRecipe, SerializerUtil.Serialize(recipes[selectedIndex].RecipeId));
+                    capi.Network.SendBlockEntityPacket(Pos.X, Pos.Y, Pos.Z, (int)EnumClayFormingPacket.SelectRecipe, SerializerUtil.Serialize(recipes[selectedIndex].RecipeId));
                 },
                 () => {
-                    capi.Network.SendBlockEntityPacket(pos.X, pos.Y, pos.Z, (int)EnumClayFormingPacket.CancelSelect);
+                    capi.Network.SendBlockEntityPacket(Pos.X, Pos.Y, Pos.Z, (int)EnumClayFormingPacket.CancelSelect);
                 },
-                pos,
-                api as ICoreClientAPI
+                Pos,
+                Api as ICoreClientAPI
             );
 
             dlg.TryOpen();
         }
 
 
-        public override string GetBlockInfo(IPlayer forPlayer)
+        public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
         {
             if (workItemStack == null || SelectedRecipe == null)
             {
-                return "";
+                return;
             }
 
-            float temperature = workItemStack.Collectible.GetTemperature(api.World, workItemStack);
+            float temperature = workItemStack.Collectible.GetTemperature(Api.World, workItemStack);
 
-            StringBuilder sb = new StringBuilder();
 
-            sb.AppendLine(Lang.Get("Output: {0}", SelectedRecipe.Output?.ResolvedItemstack?.GetName()));
-            sb.AppendLine(Lang.Get("Available Voxels: {0}", AvailableVoxels));
-            sb.AppendLine(Lang.Get("Temperature: {0}°C", (int)temperature));
+            dsc.AppendLine(Lang.Get("Output: {0}", SelectedRecipe.Output?.ResolvedItemstack?.GetName()));
+            dsc.AppendLine(Lang.Get("Available Voxels: {0}", AvailableVoxels));
+            dsc.AppendLine(Lang.Get("Temperature: {0}°C", (int)temperature));
             if (!CanWorkCurrent)
             {
-                sb.AppendLine(Lang.Get("Too cold to work"));
+                dsc.AppendLine(Lang.Get("Too cold to work"));
             }
             if (AvailableVoxels <= 0)
-            { 
-                sb.AppendLine(Lang.Get("Add another hot ingot to continue smithing"));
+            {
+                dsc.AppendLine(Lang.Get("Add another hot ingot to continue smithing"));
             }
-
-            return sb.ToString();
         }
 
 

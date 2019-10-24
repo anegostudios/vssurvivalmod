@@ -13,11 +13,13 @@ namespace Vintagestory.ServerMods
         MapLayerBase flowerGen;
         MapLayerBase bushGen;
         MapLayerBase forestGen;
+        MapLayerBase beachGen;
         MapLayerBase geologicprovinceGen;
         MapLayerBase landformsGen;
 
         int noiseSizeClimate;
         int noiseSizeForest;
+        int noiseSizeBeach;
         int noiseSizeShrubs;
         int noiseSizeGeoProv;
         int noiseSizeLandform;
@@ -46,10 +48,17 @@ namespace Vintagestory.ServerMods
             noiseSizeShrubs = api.WorldManager.RegionSize / TerraGenConfig.shrubMapScale;
             noiseSizeGeoProv = api.WorldManager.RegionSize / TerraGenConfig.geoProvMapScale;
             noiseSizeLandform = api.WorldManager.RegionSize / TerraGenConfig.landformMapScale;
+            noiseSizeBeach = api.WorldManager.RegionSize / TerraGenConfig.beachMapScale;
 
-            ITreeAttribute tree = api.WorldManager.SaveGame.WorldConfiguration;
-            string climate = tree.GetString("worldClimate");
+            ITreeAttribute worldConfig = api.WorldManager.SaveGame.WorldConfiguration;
+            string climate = worldConfig.GetString("worldClimate");
             NoiseClimate noiseClimate;
+
+            float tempModifier = 1;
+            float.TryParse(worldConfig.GetString("globalTemperature", "1"), out tempModifier);
+            float rainModifier = 1;
+            float.TryParse(worldConfig.GetString("globalPrecipitation", "1"), out rainModifier);
+
             switch (climate)
             {
                 case "realistic":
@@ -61,12 +70,15 @@ namespace Vintagestory.ServerMods
                     break;
             }
 
+            noiseClimate.rainMul = rainModifier;
+            noiseClimate.tempMul = tempModifier;
+
 
             climateGen = GetClimateMapGen(seed + 1, noiseClimate);
             forestGen = GetForestMapGen(seed + 2, TerraGenConfig.forestMapScale);
             bushGen = GetForestMapGen(seed + 109, TerraGenConfig.shrubMapScale);
             flowerGen = GetForestMapGen(seed + 223, TerraGenConfig.forestMapScale);
-
+            beachGen = GetBeachMapGen(seed + 2273, TerraGenConfig.beachMapScale);
 
             geologicprovinceGen = GetGeologicProvinceMapGen(seed + 3, api);
             landformsGen = GetLandformMapGen(seed + 4, noiseClimate, api);
@@ -103,6 +115,9 @@ namespace Vintagestory.ServerMods
             mapRegion.ForestMap.Data = forestGen.GenLayer(regionX * noiseSizeForest, regionZ * noiseSizeForest, noiseSizeForest+1, noiseSizeForest+1);
 
 
+            mapRegion.BeachMap.Size = noiseSizeBeach + 1;
+            mapRegion.BeachMap.BottomRightPadding = 1;
+            mapRegion.BeachMap.Data = beachGen.GenLayer(regionX * noiseSizeBeach, regionZ * noiseSizeBeach, noiseSizeBeach + 1, noiseSizeBeach + 1);
 
             mapRegion.ShrubMap.Size = noiseSizeShrubs + 1;
             mapRegion.ShrubMap.BottomRightPadding = 1;
@@ -159,13 +174,13 @@ namespace Vintagestory.ServerMods
             return climate;
         }
 
-        public static MapLayerBase GetOreMap(long seed, NoiseOre oreNoise)
+        public static MapLayerBase GetOreMap(long seed, NoiseOre oreNoise, float scaleMul, float contrast, float sub)
         {
-            MapLayerBase ore = new MapLayerOre(seed + 1, oreNoise);
-            ore.DebugDrawBitmap(0, 0, 0, "Ore 1 - Noise");
+            MapLayerBase ore = new MapLayerOre(seed + 1, oreNoise, scaleMul, contrast, sub);
+            ore.DebugDrawBitmap(DebugDrawMode.RGB, 0, 0, 512, "Ore 1 - Noise");
 
-            ore = new MapLayerPerlinWobble(seed + 2, ore, 6, 0.7f, TerraGenConfig.oreMapWobbleScale, TerraGenConfig.oreMapWobbleScale * 0.15f);
-            ore.DebugDrawBitmap(0, 0, 0, "Ore 1 - Perlin Wobble");
+            ore = new MapLayerPerlinWobble(seed + 2, ore, 5, 0.85f, TerraGenConfig.oreMapWobbleScale, TerraGenConfig.oreMapWobbleScale * 0.15f);
+            ore.DebugDrawBitmap(DebugDrawMode.RGB, 0, 0, 512, "Ore 1 - Perlin Wobble");
 
             return ore;
         }
@@ -189,6 +204,16 @@ namespace Vintagestory.ServerMods
 
 
             return forest;
+        }
+
+        public static MapLayerBase GetBeachMapGen(long seed, int scale)
+        {
+            MapLayerPerlin layer = new MapLayerPerlin(seed + 1, 6, 0.9f, scale/3, 255, new double[] { 0.2f, 0.2f, 0.2f, 0.2f, 0.2f, 0.2f });
+
+            MapLayerBase beach = new MapLayerPerlinWobble(seed + 986876, layer, 4, 0.9f, scale / 2);
+            //forest.DebugDrawBitmap(1, 0, 0, "Forest 1 - PerlinWobbleClimate"); - Requires climate  map
+
+            return beach;
         }
 
 

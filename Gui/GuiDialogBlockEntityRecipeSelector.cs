@@ -22,6 +22,8 @@ namespace Vintagestory.GameContent
         API.Common.Action<int> onSelectedRecipe;
         API.Common.Action onCancelSelect;
 
+        
+
         public GuiDialogBlockEntityRecipeSelector(string DialogTitle, ItemStack[] recipeOutputs, API.Common.Action<int> onSelectedRecipe, API.Common.Action onCancelSelect, BlockPos blockEntityPos, ICoreClientAPI capi) : base(DialogTitle, capi)
         {
             this.blockEntityPos = blockEntityPos;
@@ -35,6 +37,7 @@ namespace Vintagestory.GameContent
             for (int i = 0; i < recipeOutputs.Length; i++)
             {
                 ItemStack stack = recipeOutputs[i];
+                ItemSlot dummySlot = new DummySlot(stack);
 
                 string key = GetCraftDescKey(stack);
                 string desc = Lang.GetMatching(key);
@@ -49,7 +52,7 @@ namespace Vintagestory.GameContent
                         // No idea why the weird offset and size multiplier
                         double scsize = GuiElement.scaled(size - 5);
 
-                        capi.Render.RenderItemstackToGui(stack, posX + scsize/2, posY + scsize / 2, 100, (float)GuiElement.scaled(GuiElementPassiveItemSlot.unscaledItemSize), ColorUtil.WhiteArgb);
+                        capi.Render.RenderItemstackToGui(dummySlot, posX + scsize/2, posY + scsize / 2, 100, (float)GuiElement.scaled(GuiElementPassiveItemSlot.unscaledItemSize), ColorUtil.WhiteArgb);
                     }
                 });
             }

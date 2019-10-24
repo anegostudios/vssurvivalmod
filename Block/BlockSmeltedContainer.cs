@@ -66,24 +66,17 @@ namespace Vintagestory.GameContent
 
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
         {
-            if (!world.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
-            {
-                byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
-                failureCode = "claimed";
-                return false;
-            }
-
             if (!byPlayer.Entity.Controls.Sneak || world.BlockAccessor.GetBlockEntity(blockSel.Position.DownCopy()) is ILiquidMetalSink)
             {
                 failureCode = "__ignore__";
                 return false;
             }
 
-            if (!IsSuitablePosition(world, blockSel.Position, ref failureCode)) return false;
+            if (!CanPlaceBlock(world, byPlayer, blockSel, ref failureCode)) return false;
 
             if (world.BlockAccessor.GetBlock(blockSel.Position.DownCopy()).SideSolid[BlockFacing.UP.Index])
             {
-                DoPlaceBlock(world, blockSel.Position, blockSel.Face, itemstack);
+                DoPlaceBlock(world, byPlayer, blockSel, itemstack);
 
                 BlockEntity be = world.BlockAccessor.GetBlockEntity(blockSel.Position);
                 if (be is BlockEntitySmeltedContainer)

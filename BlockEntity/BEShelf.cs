@@ -29,7 +29,7 @@ namespace Vintagestory.GameContent
         {
             base.Initialize(api);
 
-            block = api.World.BlockAccessor.GetBlock(pos);
+            block = Api.World.BlockAccessor.GetBlock(Pos);
         }
 
         internal bool OnInteract(IPlayer byPlayer, BlockSelection blockSel)
@@ -40,7 +40,7 @@ namespace Vintagestory.GameContent
                 if (TryTake(byPlayer, blockSel))
                 {
                     AssetLocation sound = slot.Itemstack?.Block?.Sounds?.Place;
-                    if (sound != null) api.World.PlaySoundAt(sound, byPlayer.Entity, byPlayer, true, 16);
+                    if (sound != null) Api.World.PlaySoundAt(sound, byPlayer.Entity, byPlayer, true, 16);
                     byPlayer.InventoryManager.BroadcastHotbarSlot();
                     return true;
                 }
@@ -53,7 +53,7 @@ namespace Vintagestory.GameContent
                     
                     if (TryPut(slot, blockSel))
                     {
-                        if (sound != null) api.World.PlaySoundAt(sound, byPlayer.Entity, byPlayer, true, 16);
+                        if (sound != null) Api.World.PlaySoundAt(sound, byPlayer.Entity, byPlayer, true, 16);
                         byPlayer.InventoryManager.BroadcastHotbarSlot();
                         return true;
                     }
@@ -76,7 +76,7 @@ namespace Vintagestory.GameContent
             {
                 if (inv[i].Empty)
                 {
-                    slot.TryPutInto(api.World, inv[i]);
+                    slot.TryPutInto(Api.World, inv[i]);
                     MarkDirty(true);
                     return true;
                 }
@@ -93,7 +93,7 @@ namespace Vintagestory.GameContent
             {
                 if (!inv[i].Empty)
                 {
-                    inv[i].TryPutInto(api.World, byPlayer.InventoryManager.ActiveHotbarSlot);
+                    inv[i].TryPutInto(Api.World, byPlayer.InventoryManager.ActiveHotbarSlot);
                     MarkDirty(true);
                     return true;
                 }
@@ -106,7 +106,7 @@ namespace Vintagestory.GameContent
 
         public bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
         {
-            ICoreClientAPI capi = api as ICoreClientAPI;
+            ICoreClientAPI capi = Api as ICoreClientAPI;
 
             Matrixf mat = new Matrixf();
             mat.RotateYDeg(block.Shape.rotateY);
@@ -119,7 +119,7 @@ namespace Vintagestory.GameContent
                 BlockCrock crockblock = stack.Collectible as BlockCrock;
                 Vec3f rot = new Vec3f(0, block.Shape.rotateY, 0);
 
-                MeshData mesh = BlockEntityCrock.GetMesh(tessThreadTesselator, api, crockblock, crockblock.GetContents(api.World, stack), crockblock.GetRecipeCode(api.World, stack), rot).Clone();
+                MeshData mesh = BlockEntityCrock.GetMesh(tessThreadTesselator, Api, crockblock, crockblock.GetContents(Api.World, stack), crockblock.GetRecipeCode(Api.World, stack), rot).Clone();
 
                 float y = i >= 4 ? 10 / 16f : 2 / 16f;
                 float x = (i % 2 == 0) ? 4 / 16f : 12 / 16f;
@@ -134,11 +134,10 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override string GetBlockInfo(IPlayer forPlayer)
+        public override void GetBlockInfo(IPlayer forPlayer, StringBuilder sb)
         {
-            string str = base.GetBlockInfo(forPlayer);
+            base.GetBlockInfo(forPlayer, sb);
 
-            StringBuilder sb = new StringBuilder(str);
             sb.AppendLine();
 
             foreach (var slot in inv)
@@ -150,16 +149,14 @@ namespace Vintagestory.GameContent
                 sb.Append("- ");
                 sb.Append(CrockInfoCompact(slot));
             }
-
-            return sb.ToString();
         }
 
 
         public string CrockInfoCompact(ItemSlot inSlot)
         {
-            BlockMeal mealblock = api.World.GetBlock(new AssetLocation("bowl-meal")) as BlockMeal;
+            BlockMeal mealblock = Api.World.GetBlock(new AssetLocation("bowl-meal")) as BlockMeal;
             BlockCrock crock = inSlot.Itemstack.Collectible as BlockCrock;
-            IWorldAccessor world = api.World;
+            IWorldAccessor world = Api.World;
 
             CookingRecipe recipe = crock.GetCookingRecipe(world, inSlot.Itemstack);
             ItemStack[] stacks = crock.GetNonEmptyContents(world, inSlot.Itemstack);
@@ -198,16 +195,16 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            DummyInventory dummyInv = new DummyInventory(api);
+            DummyInventory dummyInv = new DummyInventory(Api);
 
-            ItemSlot contentSlot = BlockCrock.GetDummySlotForFirstPerishableStack(api.World, stacks, null, dummyInv);
+            ItemSlot contentSlot = BlockCrock.GetDummySlotForFirstPerishableStack(Api.World, stacks, null, dummyInv);
             dummyInv.OnAcquireTransitionSpeed = (transType, stack, mul) =>
             {
                 return mul * crock.GetContainingTransitionModifierContained(world, inSlot, transType) * inv.GetTransitionSpeedMul(transType, stack);
             };
 
             float spoilState = 0;
-            TransitionState[] transitionStates = contentSlot.Itemstack.Collectible.UpdateAndGetTransitionStates(api.World, contentSlot);
+            TransitionState[] transitionStates = contentSlot.Itemstack?.Collectible.UpdateAndGetTransitionStates(Api.World, contentSlot);
             if (transitionStates != null)
             {
                 for (int i = 0; i < transitionStates.Length; i++)
@@ -233,15 +230,15 @@ namespace Vintagestory.GameContent
                             }
                             else
                             {
-                                double hoursPerday = api.World.Calendar.HoursPerDay;
+                                double hoursPerday = Api.World.Calendar.HoursPerDay;
 
-                                if (freshHoursLeft / hoursPerday >= api.World.Calendar.DaysPerYear)
+                                if (freshHoursLeft / hoursPerday >= Api.World.Calendar.DaysPerYear)
                                 {
-                                    dsc.AppendLine(" " + Lang.Get("Fresh for {0} years", Math.Round(freshHoursLeft / hoursPerday / api.World.Calendar.DaysPerYear, 1)));
+                                    dsc.AppendLine(" " + Lang.Get("Fresh for {0} years", Math.Round(freshHoursLeft / hoursPerday / Api.World.Calendar.DaysPerYear, 1)));
                                 }
-                                /*else if (freshHoursLeft / hoursPerday >= api.World.Calendar.DaysPerMonth)  - confusing. 12 days per months and stuff..
+                                /*else if (freshHoursLeft / hoursPerday >= Api.World.Calendar.DaysPerMonth)  - confusing. 12 days per months and stuff..
                                 {
-                                    dsc.AppendLine(Lang.Get("<font color=\"orange\">Perishable.</font> Fresh for {0} months", Math.Round(freshHoursLeft / hoursPerday / api.World.Calendar.DaysPerMonth, 1)));
+                                    dsc.AppendLine(Lang.Get("<font color=\"orange\">Perishable.</font> Fresh for {0} months", Math.Round(freshHoursLeft / hoursPerday / Api.World.Calendar.DaysPerMonth, 1)));
                                 }*/
                                 else if (freshHoursLeft > hoursPerday)
                                 {

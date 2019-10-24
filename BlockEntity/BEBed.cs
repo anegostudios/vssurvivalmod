@@ -16,7 +16,7 @@ namespace Vintagestory.GameContent
         float sleepEfficiency = 0.5f;
         Dictionary<string, long> playerSittingMs = new Dictionary<string, long>();
         BlockFacing facing;
-        Block block;
+        
         float y2 = 0.5f;
 
         double hoursTotal;
@@ -28,10 +28,10 @@ namespace Vintagestory.GameContent
             get {
                 BlockFacing facing = this.facing.GetOpposite();
 
-                if (facing == BlockFacing.NORTH) return pos.ToVec3d().Add(0.5, y2, 1);
-                if (facing == BlockFacing.EAST) return pos.ToVec3d().Add(0, y2, 0.5);
-                if (facing == BlockFacing.SOUTH) return pos.ToVec3d().Add(0.5, y2, 0);
-                if (facing == BlockFacing.WEST) return pos.ToVec3d().Add(1, y2, 0.5);
+                if (facing == BlockFacing.NORTH) return Pos.ToVec3d().Add(0.5, y2, 1);
+                if (facing == BlockFacing.EAST) return Pos.ToVec3d().Add(0, y2, 0.5);
+                if (facing == BlockFacing.SOUTH) return Pos.ToVec3d().Add(0.5, y2, 0);
+                if (facing == BlockFacing.WEST) return Pos.ToVec3d().Add(1, y2, 0.5);
 
                 return null;
             }
@@ -60,15 +60,14 @@ namespace Vintagestory.GameContent
         {
             base.Initialize(api);
 
-            block = api.World.BlockAccessor.GetBlock(pos);
-            if (block.Attributes != null) sleepEfficiency = block.Attributes["sleepEfficiency"].AsFloat(0.5f);
+            if (Block.Attributes != null) sleepEfficiency = Block.Attributes["sleepEfficiency"].AsFloat(0.5f);
 
             
 
-            Cuboidf[] collboxes = block.GetCollisionBoxes(api.World.BlockAccessor, pos);
+            Cuboidf[] collboxes = Block.GetCollisionBoxes(api.World.BlockAccessor, Pos);
             if (collboxes!=null && collboxes.Length > 0) y2 = collboxes[0].Y2;
 
-            facing = BlockFacing.FromCode(block.LastCodePart());
+            facing = BlockFacing.FromCode(Block.LastCodePart());
             
             if (api.Side == EnumAppSide.Client)
             {
@@ -79,7 +78,7 @@ namespace Vintagestory.GameContent
 
         private void RestPlayer(float dt)
         {
-            double hoursPassed = api.World.Calendar.TotalHours - hoursTotal;
+            double hoursPassed = Api.World.Calendar.TotalHours - hoursTotal;
 
             // Since waking up takes an hour, we take away one hour from the sleepEfficiency
             float sleepEff = sleepEfficiency - 1f / 12;
@@ -97,7 +96,7 @@ namespace Vintagestory.GameContent
                     }
                 }
 
-                hoursTotal = api.World.Calendar.TotalHours;
+                hoursTotal = Api.World.Calendar.TotalHours;
             }
         }
 
@@ -120,9 +119,9 @@ namespace Vintagestory.GameContent
         public void MountableToTreeAttributes(TreeAttribute tree)
         {
             tree.SetString("className", "bed");
-            tree.SetInt("posx", pos.X);
-            tree.SetInt("posy", pos.Y);
-            tree.SetInt("posz", pos.Z);
+            tree.SetInt("posx", Pos.X);
+            tree.SetInt("posy", Pos.Y);
+            tree.SetInt("posz", Pos.Z);
         }
 
         public void DidUnmount(EntityAgent entityAgent)
@@ -133,8 +132,8 @@ namespace Vintagestory.GameContent
             
             foreach (BlockFacing facing in BlockFacing.HORIZONTALS)
             {
-                Vec3d placepos = pos.ToVec3d().AddCopy(facing).Add(0.5, 0.001, 0.5);
-                if (!api.World.CollisionTester.IsColliding(api.World.BlockAccessor, entityAgent.CollisionBox, placepos, false))
+                Vec3d placepos = Pos.ToVec3d().AddCopy(facing).Add(0.5, 0.001, 0.5);
+                if (!Api.World.CollisionTester.IsColliding(Api.World.BlockAccessor, entityAgent.CollisionBox, placepos, false))
                 {
                     entityAgent.TeleportTo(placepos);
                     break;
@@ -149,10 +148,10 @@ namespace Vintagestory.GameContent
             if (MountedBy != null) return;
 
             MountedBy = entityAgent;
-            if (api.Side == EnumAppSide.Server)
+            if (Api.Side == EnumAppSide.Server)
             {
                 RegisterGameTickListener(RestPlayer, 200);
-                hoursTotal = api.World.Calendar.TotalHours;
+                hoursTotal = Api.World.Calendar.TotalHours;
             }
 
             EntityBehaviorTiredness ebt = MountedBy?.GetBehavior("tiredness") as EntityBehaviorTiredness;

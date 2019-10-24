@@ -4,7 +4,7 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
-    class BlockDoor : BlockBaseDoor
+    public class BlockDoor : BlockBaseDoor
     {
         public override string GetKnobOrientation()
         {
@@ -33,17 +33,10 @@ namespace Vintagestory.GameContent
 
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
         {
-            if (!world.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
-            {
-                byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
-                failureCode = "claimed";
-                return false;
-            }
-
             BlockPos abovePos = blockSel.Position.AddCopy(0, 1, 0);
             IBlockAccessor ba = world.BlockAccessor;
 
-            if (ba.GetBlockId(abovePos) == 0 && IsSuitablePosition(world, blockSel.Position, ref failureCode))
+            if (ba.GetBlockId(abovePos) == 0 && CanPlaceBlock(world, byPlayer, blockSel, ref failureCode))
             {
                 BlockFacing[] horVer = SuggestedHVOrientation(byPlayer, blockSel);
 
@@ -145,6 +138,7 @@ namespace Vintagestory.GameContent
             AssetLocation otherNewCode = newBlock.CodeWithVariant("part", IsUpperHalf() ? "down" : "up");
 
             world.BlockAccessor.ExchangeBlock(newBlock.BlockId, position);
+            world.BlockAccessor.MarkBlockDirty(position);
 
             BlockPos otherPos = position.AddCopy(0, IsUpperHalf() ? -1 : 1, 0);
             Block otherPart = world.BlockAccessor.GetBlock(otherPos);
@@ -153,6 +147,7 @@ namespace Vintagestory.GameContent
             if (otherPart is BlockDoor && ((BlockDoor)otherPart).IsUpperHalf() != IsUpperHalf())
             {
                 world.BlockAccessor.ExchangeBlock(world.BlockAccessor.GetBlock(otherNewCode).BlockId, otherPos);
+                world.BlockAccessor.MarkBlockDirty(otherPos);
             }
         }
 

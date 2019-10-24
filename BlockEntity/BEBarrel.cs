@@ -13,7 +13,7 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockEntityBarrel : BlockEntityContainer, IBlockShapeSupplier
+    public class BlockEntityBarrel : BlockEntityContainer
     {
         public int CapacityLitres
         {
@@ -77,7 +77,7 @@ namespace Vintagestory.GameContent
         {
             base.Initialize(api);
 
-            ownBlock = api.World.BlockAccessor.GetBlock(pos) as BlockBarrel;
+            ownBlock = Block as BlockBarrel;
 
             if (api.Side == EnumAppSide.Client && currentMesh == null)
             {
@@ -101,7 +101,7 @@ namespace Vintagestory.GameContent
             if (slotId == 0 || slotId == 1)
             {
                 invDialog?.UpdateContents();
-                if (api?.Side == EnumAppSide.Client)
+                if (Api?.Side == EnumAppSide.Client)
                 {
                     currentMesh = GenMesh();
                     MarkDirty(true);
@@ -115,15 +115,14 @@ namespace Vintagestory.GameContent
 
         private void FindMatchingRecipe()
         {
-            ItemStack[] inputstacks = new ItemStack[] { inventory[0].Itemstack, inventory[1].Itemstack };
+            ItemSlot[] inputSlots = new ItemSlot[] { inventory[0], inventory[1] };
             CurrentRecipe = null;
 
-            foreach (var recipe in api.World.BarrelRecipes)
+            foreach (var recipe in Api.World.BarrelRecipes)
             {
                 int outsize;
 
-
-                if (recipe.Matches(api.World, inputstacks, out outsize))
+                if (recipe.Matches(Api.World, inputSlots, out outsize))
                 {
                     ignoreChange = true;
 
@@ -134,29 +133,14 @@ namespace Vintagestory.GameContent
 
                     } else
                     {
-                        ItemStack mixedStack = recipe.Output.ResolvedItemstack.Clone();
-                        mixedStack.StackSize = outsize;
-
-                        if (BlockLiquidContainerBase.GetStackProps(mixedStack) != null)
-                        {
-                            inventory[0].Itemstack = null;
-                            inventory[1].Itemstack = mixedStack;
-                        } else
-                        {
-                            inventory[1].Itemstack = null;
-                            inventory[0].Itemstack = mixedStack;
-                        }
-                        
-
-                        inventory[0].MarkDirty();
-                        inventory[1].MarkDirty();
+                        recipe.TryCraftNow(Api, 0, inputSlots);
                         MarkDirty(true);
-                        api.World.BlockAccessor.MarkBlockEntityDirty(pos);
+                        Api.World.BlockAccessor.MarkBlockEntityDirty(Pos);
                     }
                     
 
                     invDialog?.UpdateContents();
-                    if (api?.Side == EnumAppSide.Client)
+                    if (Api?.Side == EnumAppSide.Client)
                     {
                         currentMesh = GenMesh();
                         MarkDirty(true);
@@ -176,43 +160,15 @@ namespace Vintagestory.GameContent
                 FindMatchingRecipe();
             }
 
-            if (CurrentRecipe != null && Sealed && CurrentRecipe.SealHours > 0)
+            if (CurrentRecipe != null)
             {
-                if (api.World.Calendar.TotalHours - SealedSinceTotalHours > CurrentRecipe.SealHours)
+                if (Sealed && CurrentRecipe.TryCraftNow(Api, Api.World.Calendar.TotalHours - SealedSinceTotalHours, new ItemSlot[] { inventory[0], inventory[1] }) == true)
                 {
-                    ItemStack mixedStack = CurrentRecipe.Output.ResolvedItemstack.Clone();
-                    mixedStack.StackSize = CurrentOutSize;
-
-                    // Carry over freshness
-                    TransitionableProperties perishProps = mixedStack.Collectible.GetTransitionableProperties(api.World, mixedStack, null)?[0];
-
-                    if (perishProps != null)
-                    {
-                        ItemSlot[] slots = new ItemSlot[inventory.Count];
-                        for (int i = 0; i < inventory.Count; i++) slots[i] = inventory[i];
-                        BlockCookingContainer.CarryOverFreshness(api, slots, new ItemStack[] { mixedStack }, perishProps);
-                    }
-
-                    if (BlockLiquidContainerBase.GetStackProps(mixedStack) != null)
-                    {
-                        inventory[0].Itemstack = null;
-                        inventory[1].Itemstack = mixedStack;
-                    }
-                    else
-                    {
-                        inventory[1].Itemstack = null;
-                        inventory[0].Itemstack = mixedStack;
-                    }
-
-                    
-
-                    inventory[0].MarkDirty();
-                    inventory[1].MarkDirty();
-
                     MarkDirty(true);
-                    api.World.BlockAccessor.MarkBlockEntityDirty(pos);
+                    Api.World.BlockAccessor.MarkBlockEntityDirty(Pos);
                     Sealed = false;
                 }
+
             } else
             {
                 if (Sealed)
@@ -264,7 +220,7 @@ namespace Vintagestory.GameContent
 
             if (packetid == (int)EnumBlockContainerPacketId.CloseInventory)
             {
-                (api.World as IClientWorldAccessor).Player.InventoryManager.CloseInventory(Inventory);
+                (Api.World as IClientWorldAccessor).Player.InventoryManager.CloseInventory(Inventory);
                 invDialog?.TryClose();
                 invDialog?.Dispose();
                 invDialog = null;
@@ -276,7 +232,7 @@ namespace Vintagestory.GameContent
             if (Sealed) return;
 
             Sealed = true;
-            SealedSinceTotalHours = api.World.Calendar.TotalHours;
+            SealedSinceTotalHours = Api.World.Calendar.TotalHours;
             MarkDirty(true);
         }
 
@@ -287,22 +243,22 @@ namespace Vintagestory.GameContent
 
             FindMatchingRecipe();
 
-            if (api.Side == EnumAppSide.Client)
+            if (Api.Side == EnumAppSide.Client)
             {
                 if (invDialog == null)
                 {
-                    invDialog = new GuiDialogBarrel("Barrel", Inventory, pos, api as ICoreClientAPI);
+                    invDialog = new GuiDialogBarrel("Barrel", Inventory, Pos, Api as ICoreClientAPI);
                     invDialog.OnClosed += () =>
                     {
                         invDialog = null;
-                        (api as ICoreClientAPI).Network.SendBlockEntityPacket(pos.X, pos.Y, pos.Z, (int)EnumBlockContainerPacketId.CloseInventory, null);
+                        (Api as ICoreClientAPI).Network.SendBlockEntityPacket(Pos.X, Pos.Y, Pos.Z, (int)EnumBlockContainerPacketId.CloseInventory, null);
                         byPlayer.InventoryManager.CloseInventory(inventory);
                     };
                 }
 
                 invDialog.TryOpen();
                 
-                (api as ICoreClientAPI).Network.SendPacketClient(inventory.Open(byPlayer));
+                (Api as ICoreClientAPI).Network.SendPacketClient(inventory.Open(byPlayer));
             } else
             {
                 byPlayer.InventoryManager.OpenInventory(inventory);
@@ -313,7 +269,7 @@ namespace Vintagestory.GameContent
         {
             base.FromTreeAtributes(tree, worldForResolving);
 
-            if (api?.Side == EnumAppSide.Client)
+            if (Api?.Side == EnumAppSide.Client)
             {
                 currentMesh = GenMesh();
                 MarkDirty(true);
@@ -323,7 +279,7 @@ namespace Vintagestory.GameContent
             Sealed = tree.GetBool("sealed");
             SealedSinceTotalHours = tree.GetDouble("sealedSinceTotalHours");
 
-            if (api != null)
+            if (Api != null)
             {
                 FindMatchingRecipe();
             }
@@ -343,7 +299,7 @@ namespace Vintagestory.GameContent
         {
             if (ownBlock == null) return null;
 
-            return ownBlock.GenMesh(inventory[0].Itemstack, inventory[1].Itemstack, Sealed, pos);
+            return ownBlock.GenMesh(inventory[0].Itemstack, inventory[1].Itemstack, Sealed, Pos);
         }
 
 
@@ -355,7 +311,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
+        public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
         {
             mesher.AddMeshData(currentMesh);
             return true;

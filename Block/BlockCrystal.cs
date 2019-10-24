@@ -35,12 +35,12 @@ namespace Vintagestory.GameContent
         public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, LCGRandom worldgenRand)
         {
             return false;
-            Block block = blockAccessor.GetBlock(pos);
+            /*Block block = blockAccessor.GetBlock(pos);
             if (block.LastCodePart(1) == "quartz" && blockAccessor.GetBlock(pos.X, pos.Y + 1, pos.Z).LastCodePart(1) == "quartz")
             {
                 GenerateGeode(block, blockAccessor, pos);
             }            
-            return true;
+            return true;*/
         }
 
         private void GenerateGeode(Block quartzblock, IBlockAccessor blockAccessor, BlockPos pos)

@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -15,11 +16,8 @@ namespace Vintagestory.GameContent
         {
             get
             {
-                object value = null;
-                api.ObjectCache.TryGetValue("platepile-meshes", out value);
-                return (Dictionary<AssetLocation, MeshData[]>)value;
+                return ObjectCacheUtil.GetOrCreate(Api, "platepile-meshes", () => GenMeshes());
             }
-            set { api.ObjectCache["platepile-meshes"] = value; }
         }
 
 
@@ -33,18 +31,18 @@ namespace Vintagestory.GameContent
         public override string BlockCode { get { return "platepile"; } }
         public override int MaxStackSize { get { return 16; } }
 
-        internal void GenMeshes()
+        Dictionary<AssetLocation, MeshData[]> GenMeshes()
         {
-            meshesByType = new Dictionary<AssetLocation, MeshData[]>();
+            Dictionary<AssetLocation, MeshData[]> meshesByType = new Dictionary<AssetLocation, MeshData[]>();
 
-            tmpBlock = api.World.BlockAccessor.GetBlock(pos);
-            tmpTextureSource = ((ICoreClientAPI)api).Tesselator.GetTexSource(tmpBlock);
-            Shape shape = api.Assets.TryGet("shapes/block/metal/platepile.json").ToObject<Shape>();
-            MetalProperty metals = api.Assets.TryGet("worldproperties/block/metal.json").ToObject<MetalProperty>();
+            tmpBlock = Api.World.BlockAccessor.GetBlock(Pos);
+            tmpTextureSource = ((ICoreClientAPI)Api).Tesselator.GetTexSource(tmpBlock);
+            Shape shape = Api.Assets.TryGet("shapes/block/metal/platepile.json").ToObject<Shape>();
+            MetalProperty metals = Api.Assets.TryGet("worldproperties/block/metal.json").ToObject<MetalProperty>();
 
             for (int i = 0; i < metals.Variants.Length; i++)
             {
-                ITesselatorAPI mesher = ((ICoreClientAPI)api).Tesselator;
+                ITesselatorAPI mesher = ((ICoreClientAPI)Api).Tesselator;
                 MeshData[] meshes = new MeshData[17];
 
                 tmpMetal = metals.Variants[i].Code;
@@ -60,6 +58,8 @@ namespace Vintagestory.GameContent
             tmpTextureSource = null;
             tmpMetal = null;
             tmpBlock = null;
+
+            return meshesByType;
         }
 
 
@@ -77,12 +77,6 @@ namespace Vintagestory.GameContent
         public override void Initialize(ICoreAPI api)
         {
             base.Initialize(api);
-
-            if (api is ICoreClientAPI && meshesByType == null)
-            {
-                GenMeshes();
-            }
-
             inventory.ResolveBlocksOrItems();
         }
 

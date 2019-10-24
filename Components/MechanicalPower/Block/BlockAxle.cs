@@ -22,9 +22,16 @@ namespace Vintagestory.GameContent.Mechanics
 
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
         {
+            if (!CanPlaceBlock(world, byPlayer, blockSel, ref failureCode))
+            {
+                return false;
+            }
+
             foreach (BlockFacing face in BlockFacing.ALLFACES)
             {
                 BlockPos pos = blockSel.Position.AddCopy(face);
+
+
                 IMechanicalPowerBlock block = world.BlockAccessor.GetBlock(pos) as IMechanicalPowerBlock;
                 if (block != null)
                 {
@@ -38,23 +45,23 @@ namespace Vintagestory.GameContent.Mechanics
                             toPlaceBlock = world.GetBlock(loc);
                         }
 
-                        world.BlockAccessor.SetBlock(toPlaceBlock.BlockId, blockSel.Position);
-
-                        block.DidConnectAt(world, pos, face.GetOpposite());
-                        WasPlaced(world, blockSel.Position, face, block);
-
-                        return true;
+                        if (toPlaceBlock.DoPlaceBlock(world, byPlayer, blockSel, itemstack))
+                        {
+                            block.DidConnectAt(world, pos, face.GetOpposite());
+                            WasPlaced(world, blockSel.Position, face, block);
+                            return true;
+                        }
                     }
                 }
             }
 
 
-            bool ok = base.TryPlaceBlock(world, byPlayer, itemstack, blockSel, ref failureCode);
-            if (ok)
+            if (base.TryPlaceBlock(world, byPlayer, itemstack, blockSel, ref failureCode))
             {
                 WasPlaced(world, blockSel.Position);
+                return true;
             }
-            return ok;
+            return false;
         }
 
 

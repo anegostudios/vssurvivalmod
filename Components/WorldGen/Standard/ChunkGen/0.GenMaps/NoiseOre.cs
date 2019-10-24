@@ -20,30 +20,9 @@ namespace Vintagestory.ServerMods
             return GetRandomOre();
         }
 
-        // Calculates interpolated climate value from anew
-        public int GetLerpedClimateAt(double posX, double posZ)
-        {
-            int posXInt = (int)posX;
-            int posZInt = (int)posZ;
-
-            InitPositionSeed(posXInt, posZInt);
-            int leftTop = GetRandomOre();
-
-            InitPositionSeed(posXInt + 1, posZInt);
-            int rightTop = GetRandomOre();
-
-            InitPositionSeed(posXInt, posZInt + 1);
-            int leftBottom = GetRandomOre();
-
-            InitPositionSeed(posXInt + 1, posZInt + 1);
-            int rightBottom = GetRandomOre();
-
-            return GameMath.BiSerpRgbColor((float)(posX - posXInt), (float)(posZ - posZInt), leftTop, rightTop, leftBottom, rightBottom);
-        }
-
         // Calculates climate value from 4 cached values
         // Use relative positions here
-        public int GetLerpedClimateAt(double posX, double posZ, int[] oreCache, int sizeX)
+        public int GetLerpedOreValueAt(double posX, double posZ, int[] oreCache, int sizeX, float contrastMul, float sub)
         {
             int posXInt = (int)(posX);
             int posZInt = (int)(posZ);
@@ -58,8 +37,18 @@ namespace Vintagestory.ServerMods
                 oreCache[(posZInt + 1) * sizeX + posXInt + 1]
             );
 
-            int richness = Math.Max(oreCache[(posZInt + 1) * sizeX + posXInt + 1] & 0xff0000, Math.Max(oreCache[(posZInt + 1) * sizeX + posXInt] & 0xff0000, Math.Max(oreCache[posZInt * sizeX + posXInt] & 0xff0000, oreCache[posZInt * sizeX + posXInt + 1] & 0xff0000)));
-            int hypercommon = Math.Max(oreCache[(posZInt + 1) * sizeX + posXInt + 1] & 0x00ff00, Math.Max(oreCache[(posZInt + 1) * sizeX + posXInt] & 0x00ff00, Math.Max(oreCache[posZInt * sizeX + posXInt] & 0x00ff00, oreCache[posZInt * sizeX + posXInt + 1] & 0x00ff00)));
+            val = (byte)GameMath.Clamp((val - 128f) * contrastMul + 128 - sub, 0, 255);
+
+            int richness = Math.Max(
+                oreCache[(posZInt + 1) * sizeX + posXInt + 1] & 0xff0000, 
+                Math.Max(oreCache[(posZInt + 1) * sizeX + posXInt] & 0xff0000, 
+                Math.Max(oreCache[posZInt * sizeX + posXInt] & 0xff0000, oreCache[posZInt * sizeX + posXInt + 1] & 0xff0000))
+            );
+            int hypercommon = Math.Max(
+                oreCache[(posZInt + 1) * sizeX + posXInt + 1] & 0x00ff00, 
+                Math.Max(oreCache[(posZInt + 1) * sizeX + posXInt] & 0x00ff00, 
+                Math.Max(oreCache[posZInt * sizeX + posXInt] & 0x00ff00, oreCache[posZInt * sizeX + posXInt + 1] & 0x00ff00))
+            );
 
             return val == 0 ? 0 : val | richness | hypercommon;
         }

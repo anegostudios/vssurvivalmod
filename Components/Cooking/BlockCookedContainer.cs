@@ -102,11 +102,39 @@ namespace Vintagestory.GameContent
 
             float yoff = 2.5f;
 
-            MeshRef meshref = meshCache.GetOrCreateMealMeshRef(this, this.Shape, recipe, contents, new Vec3f(0, yoff/16f, 0));
+            MeshRef meshref = meshCache.GetOrCreateMealInContainerMeshRef(this, recipe, contents, new Vec3f(0, yoff/16f, 0));
             if (meshref != null) renderinfo.ModelRef = meshref;
         }
-        
 
+        public override TransitionState[] UpdateAndGetTransitionStates(IWorldAccessor world, ItemSlot inslot)
+        {
+            TransitionState[] states = base.UpdateAndGetTransitionStates(world, inslot);
+
+            ItemStack[] stacks = GetNonEmptyContents(world, inslot.Itemstack);
+            if (MealMeshCache.ContentsRotten(stacks)) {
+                inslot.Itemstack.Attributes.RemoveAttribute("recipeCode");
+            }
+            if (!stacks.Any(stack => stack != null))
+            {
+                inslot.Itemstack.Attributes.RemoveAttribute("recipeCode");
+            }
+
+
+            if ((stacks == null || stacks.Length == 0) && Attributes?["emptiedBlockCode"] != null)
+            {
+                Block block = world.GetBlock(new AssetLocation(Attributes["emptiedBlockCode"].AsString()));
+
+                if (block != null)
+                {
+                    inslot.Itemstack = new ItemStack(block);
+                    inslot.MarkDirty();
+                }
+            }
+
+
+
+            return states;
+        }
 
         public void SetContents(string recipeCode, float servings, ItemStack containerStack, ItemStack[] stacks)
         {
@@ -116,6 +144,17 @@ namespace Vintagestory.GameContent
             containerStack.Attributes.SetString("recipeCode", recipeCode);
         }
 
+
+        public override string GetHeldItemName(ItemStack itemStack)
+        {
+            ItemStack[] contentStacks = GetContents(api.World, itemStack);
+            if (MealMeshCache.ContentsRotten(contentStacks))
+            {
+                return Lang.Get("Pot of rotten food");
+            }
+
+            return base.GetHeldItemName(itemStack);
+        }
 
         public override void OnHeldIdle(ItemSlot slot, EntityAgent byEntity)
         {
@@ -241,7 +280,12 @@ namespace Vintagestory.GameContent
 
         public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
         {
-            base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
+            //base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
+            float temp = GetTemperature(world, inSlot.Itemstack);
+            if (temp > 20)
+            {
+                dsc.AppendLine(Lang.Get("Temperature: {0}°C", (int)temp));
+            }
 
             CookingRecipe recipe = GetMealRecipe(world, inSlot.Itemstack);
             float servings = inSlot.Itemstack.Attributes.GetFloat("quantityServings");
@@ -264,7 +308,7 @@ namespace Vintagestory.GameContent
             if (nutriFacts != null) dsc.AppendLine(nutriFacts);
 
             ItemSlot slot = BlockCrock.GetDummySlotForFirstPerishableStack(api.World, stacks, null, inSlot.Inventory);
-            slot.Itemstack.Collectible.AppendPerishableInfoText(slot, dsc, world);
+            slot.Itemstack?.Collectible.AppendPerishableInfoText(slot, dsc, world);
         }
 
         
@@ -399,6 +443,8 @@ namespace Vintagestory.GameContent
             if (bem == null) return base.GetRandomColor(capi, pos, facing);
 
             ItemStack[] stacks = bem.GetNonEmptyContentStacks();
+            if (stacks == null || stacks.Length == 0) return base.GetRandomColor(capi, pos, facing);
+
             ItemStack rndStack = stacks[capi.World.Rand.Next(stacks.Length)];
 
             if (capi.World.Rand.NextDouble() < 0.4)
@@ -435,7 +481,7 @@ namespace Vintagestory.GameContent
 
         public IInFirepitRenderer GetRendererWhenInFirepit(ItemStack stack, BlockEntityFirepit firepit, bool forOutputSlot)
         {
-            return new PotInFirepitRenderer(api as ICoreClientAPI, stack, firepit.pos, forOutputSlot);
+            return new PotInFirepitRenderer(api as ICoreClientAPI, stack, firepit.Pos, forOutputSlot);
         }
 
         public EnumFirepitModel GetDesiredFirepitModel(ItemStack stack, BlockEntityFirepit firepit, bool forOutputSlot)

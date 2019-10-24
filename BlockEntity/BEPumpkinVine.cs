@@ -129,7 +129,7 @@ namespace Vintagestory.GameContent
         {
             if (DieIfParentDead()) return;
 
-            while (api.World.Calendar.TotalHours > totalHoursForNextStage)
+            while (Api.World.Calendar.TotalHours > totalHoursForNextStage)
             {
                 GrowVine();
                 totalHoursForNextStage += vineHoursToGrow;
@@ -144,10 +144,10 @@ namespace Vintagestory.GameContent
             foreach (BlockFacing facing in BlockFacing.HORIZONTALS)
             {
                 double pumpkinTotalHours = pumpkinTotalHoursForNextStage[facing];
-                while (pumpkinTotalHours > 0 && api.World.Calendar.TotalHours > pumpkinTotalHours)
+                while (pumpkinTotalHours > 0 && Api.World.Calendar.TotalHours > pumpkinTotalHours)
                 {
-                    BlockPos pumpkinPos = pos.AddCopy(facing);
-                    Block pumpkin = api.World.BlockAccessor.GetBlock(pumpkinPos);
+                    BlockPos pumpkinPos = Pos.AddCopy(facing);
+                    Block pumpkin = Api.World.BlockAccessor.GetBlock(pumpkinPos);
 
                     if (IsPumpkin(pumpkin))
                     {
@@ -176,7 +176,7 @@ namespace Vintagestory.GameContent
         {
             internalStage++;
 
-            Block block = api.World.BlockAccessor.GetBlock(pos);
+            Block block = Api.World.BlockAccessor.GetBlock(Pos);
 
             int currentStage = CurrentVineStage(block);
 
@@ -187,7 +187,7 @@ namespace Vintagestory.GameContent
 
             if (IsBlooming())
             {
-                if (pumpkinGrowthTries >= maxAllowedPumpkinGrowthTries || api.World.Rand.NextDouble() < debloomProbability)
+                if (pumpkinGrowthTries >= maxAllowedPumpkinGrowthTries || Api.World.Rand.NextDouble() < debloomProbability)
                 {
                     pumpkinGrowthTries = 0;
 
@@ -203,7 +203,7 @@ namespace Vintagestory.GameContent
 
             if (currentStage == 3)
             {
-                if(canBloom && api.World.Rand.NextDouble() < bloomProbability)
+                if(canBloom && Api.World.Rand.NextDouble() < bloomProbability)
                 {
                     SetBloomingStage(block);
                 }
@@ -212,7 +212,7 @@ namespace Vintagestory.GameContent
 
             if (currentStage == 2)
             {
-                if (api.World.Rand.NextDouble() < vineSpawnProbability)
+                if (Api.World.Rand.NextDouble() < vineSpawnProbability)
                 {
                     TrySpawnNewVine();
                 }
@@ -232,14 +232,14 @@ namespace Vintagestory.GameContent
         {
             foreach (BlockFacing facing in BlockFacing.HORIZONTALS)
             {
-                BlockPos candidatePos = pos.AddCopy(facing);
-                Block block = api.World.BlockAccessor.GetBlock(candidatePos);
+                BlockPos candidatePos = Pos.AddCopy(facing);
+                Block block = Api.World.BlockAccessor.GetBlock(candidatePos);
                 if (!CanReplace(block)) continue;
                 
-                Block supportBlock = api.World.BlockAccessor.GetBlock(candidatePos.DownCopy());
+                Block supportBlock = Api.World.BlockAccessor.GetBlock(candidatePos.DownCopy());
                 if (CanSupportPumpkin(supportBlock))
                 {
-                    api.World.BlockAccessor.SetBlock(pumpkinBlock.BlockId, candidatePos);
+                    Api.World.BlockAccessor.SetBlock(pumpkinBlock.BlockId, candidatePos);
                     pumpkinTotalHoursForNextStage[facing] = curTotalHours + pumpkinHoursToGrow;
                     return;
                 }
@@ -266,8 +266,8 @@ namespace Vintagestory.GameContent
             }
             else
             {
-                Block parentBlock = api.World.BlockAccessor.GetBlock(parentPlantPos);
-                if (!IsValidParentBlock(parentBlock) && api.World.BlockAccessor.GetChunkAtBlockPos(parentPlantPos.X, parentPlantPos.Y, parentPlantPos.Z) != null)
+                Block parentBlock = Api.World.BlockAccessor.GetBlock(parentPlantPos);
+                if (!IsValidParentBlock(parentBlock) && Api.World.BlockAccessor.GetChunkAtBlockPos(parentPlantPos.X, parentPlantPos.Y, parentPlantPos.Z) != null)
                 {
                     Die();
                     return true;
@@ -278,9 +278,9 @@ namespace Vintagestory.GameContent
 
         private void Die()
         {
-            api.Event.UnregisterGameTickListener(growListenerId);
+            Api.Event.UnregisterGameTickListener(growListenerId);
             growListenerId = 0;
-            api.World.BlockAccessor.SetBlock(0, pos);
+            Api.World.BlockAccessor.SetBlock(0, Pos);
         }
 
         private bool IsValidParentBlock(Block parentBlock)
@@ -299,7 +299,7 @@ namespace Vintagestory.GameContent
 
         public bool IsBlooming()
         {
-            Block block = api.World.BlockAccessor.GetBlock(pos);
+            Block block = Api.World.BlockAccessor.GetBlock(Pos);
             string lastCodePart = block.LastCodePart();
             return block.LastCodePart() == "blooming";
         }
@@ -321,16 +321,16 @@ namespace Vintagestory.GameContent
                 ReplaceSelf(block.CodeWithParts("" + toStage, toStage == 4 ? "withered" : "normal"));
             } catch (Exception)
             {
-                api.World.BlockAccessor.SetBlock(0, pos);
+                Api.World.BlockAccessor.SetBlock(0, Pos);
             }
             
         }
 
         private void SetPumpkinStage(Block pumpkinBlock, BlockPos pumpkinPos, int toStage)
         {
-            Block nextBlock = api.World.GetBlock(pumpkinBlock.CodeWithParts("" + toStage));
+            Block nextBlock = Api.World.GetBlock(pumpkinBlock.CodeWithParts("" + toStage));
             if (nextBlock == null) return;
-            api.World.BlockAccessor.ExchangeBlock(nextBlock.BlockId, pumpkinPos);
+            Api.World.BlockAccessor.ExchangeBlock(nextBlock.BlockId, pumpkinPos);
         }
 
         private void SetBloomingStage(Block block)
@@ -341,28 +341,28 @@ namespace Vintagestory.GameContent
 
         private void ReplaceSelf(AssetLocation blockCode)
         {
-            Block nextBlock = api.World.GetBlock(blockCode);
+            Block nextBlock = Api.World.GetBlock(blockCode);
             if (nextBlock == null) return;
-            api.World.BlockAccessor.ExchangeBlock(nextBlock.BlockId, pos);
+            Api.World.BlockAccessor.ExchangeBlock(nextBlock.BlockId, Pos);
         }
 
         private void TrySpawnNewVine()
         {
             BlockFacing spawnDir = GetVineSpawnDirection();
-            BlockPos newVinePos = pos.AddCopy(spawnDir);
-            Block blockToReplace = api.World.BlockAccessor.GetBlock(newVinePos);
+            BlockPos newVinePos = Pos.AddCopy(spawnDir);
+            Block blockToReplace = Api.World.BlockAccessor.GetBlock(newVinePos);
 
             if (!IsReplaceable(blockToReplace)) return;
             
-            Block supportBlock = api.World.BlockAccessor.GetBlock(newVinePos.DownCopy());
+            Block supportBlock = Api.World.BlockAccessor.GetBlock(newVinePos.DownCopy());
             if (!CanGrowOn(supportBlock)) return;
 
-            api.World.BlockAccessor.SetBlock(stage1VineBlock.BlockId, newVinePos);
+            Api.World.BlockAccessor.SetBlock(stage1VineBlock.BlockId, newVinePos);
 
-            BlockEntityPumpkinVine be = api.World.BlockAccessor.GetBlockEntity(newVinePos) as BlockEntityPumpkinVine;
+            BlockEntityPumpkinVine be = Api.World.BlockAccessor.GetBlockEntity(newVinePos) as BlockEntityPumpkinVine;
             if (be != null)
             {
-                be.CreatedFromParent(pos, spawnDir, totalHoursForNextStage);
+                be.CreatedFromParent(Pos, spawnDir, totalHoursForNextStage);
             }
         }
         
@@ -379,7 +379,7 @@ namespace Vintagestory.GameContent
 
         private BlockFacing GetVineSpawnDirection()
         {
-            if(api.World.Rand.NextDouble() < preferredGrowthDirProbability)
+            if(Api.World.Rand.NextDouble() < preferredGrowthDirProbability)
             {
                 return preferredGrowthDir;
             }
@@ -393,11 +393,11 @@ namespace Vintagestory.GameContent
         {
             if (BlockFacing.NORTH == preferredGrowthDir || BlockFacing.SOUTH == preferredGrowthDir)
             {
-                return api.World.Rand.NextDouble() < 0.5 ? BlockFacing.EAST : BlockFacing.WEST;
+                return Api.World.Rand.NextDouble() < 0.5 ? BlockFacing.EAST : BlockFacing.WEST;
             }
             else
             {
-                return api.World.Rand.NextDouble() < 0.5 ? BlockFacing.NORTH : BlockFacing.SOUTH;
+                return Api.World.Rand.NextDouble() < 0.5 ? BlockFacing.NORTH : BlockFacing.SOUTH;
             }
         }
 

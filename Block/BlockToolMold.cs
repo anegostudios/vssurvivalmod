@@ -118,19 +118,16 @@ namespace Vintagestory.GameContent
                 return false;
             }
 
-            if (!world.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            if (!CanPlaceBlock(world, byPlayer, blockSel, ref failureCode))
             {
-                byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
-                failureCode = "claimed";
                 return false;
             }
 
-            Block block = world.BlockAccessor.GetBlock(blockSel.Position);
             Block belowBlock = world.BlockAccessor.GetBlock(blockSel.Position.DownCopy());
 
-            if (block.IsReplacableBy(this) && belowBlock.SideSolid[BlockFacing.UP.Index])
+            if (belowBlock.SideSolid[BlockFacing.UP.Index])
             {
-                DoPlaceBlock(world, blockSel.Position, blockSel.Face, itemstack);
+                DoPlaceBlock(world, byPlayer, blockSel, itemstack);
                 return true;
             }
 

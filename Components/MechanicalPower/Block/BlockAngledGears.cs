@@ -6,14 +6,31 @@ namespace Vintagestory.GameContent.Mechanics
 {
     public class BlockAngledGears : BlockMPBase
     {
+        public string Orientation => Variant["orientation"];
+
+        public BlockFacing[] Facings
+        {
+            get
+            {
+                string dirs = Orientation;
+                BlockFacing[] facings = new BlockFacing[dirs.Length];
+                for (int i = 0; i < dirs.Length; i++)
+                {
+                    facings[i] = BlockFacing.FromFirstLetter(dirs[i]);
+                }
+
+                return facings;
+            }
+        }
+
         public bool IsDeadEnd()
         {
-            return LastCodePart().Length == 1;
+            return Orientation.Length == 1;
         }
 
         public bool IsOrientedTo(BlockFacing facing)
         {
-            string dirs = LastCodePart();
+            string dirs = Orientation;
 
             return dirs[0] == facing.Code[0] || (dirs.Length > 1 && dirs[1] == facing.Code[0]);
         }
@@ -22,7 +39,7 @@ namespace Vintagestory.GameContent.Mechanics
         {
             if (IsDeadEnd())
             {
-                BlockFacing nowFace = BlockFacing.FromFirstLetter(LastCodePart()[0]);
+                BlockFacing nowFace = BlockFacing.FromFirstLetter(Orientation[0]);
                 if (nowFace.IsAdjacent(face))
                 {
                     return true;
@@ -32,28 +49,39 @@ namespace Vintagestory.GameContent.Mechanics
             return IsOrientedTo(face);
         }
 
+
+        public Block getGearBlock(IWorldAccessor world, BlockFacing facing, BlockFacing adjFacing = null)
+        {
+            if (adjFacing == null)
+            {
+                return world.GetBlock(new AssetLocation(FirstCodePart() + "-" + facing.Code[0]));
+            }
+
+            AssetLocation loc = new AssetLocation(FirstCodePart() + "-" + adjFacing.Code[0] + facing.Code[0]);
+            Block toPlaceBlock = world.GetBlock(loc);
+
+            if (toPlaceBlock == null)
+            {
+                loc = new AssetLocation(FirstCodePart() + "-" + facing.Code[0] + adjFacing.Code[0]);
+                toPlaceBlock = world.GetBlock(loc);
+            }
+
+            return toPlaceBlock;
+        }
+
         public override void DidConnectAt(IWorldAccessor world, BlockPos pos, BlockFacing face)
         {
             if (IsDeadEnd())
             {
-                BlockFacing nowFace = BlockFacing.FromFirstLetter(LastCodePart()[0]);
+                BlockFacing nowFace = BlockFacing.FromFirstLetter(Orientation[0]);
                 if (nowFace.IsAdjacent(face))
                 {
-                    AssetLocation loc = new AssetLocation(FirstCodePart() + "-" + LastCodePart() + face.Code[0]);
-                    Block toPlaceBlock = world.GetBlock(loc);
-
-                    if (toPlaceBlock == null)
-                    {
-                        loc = new AssetLocation(FirstCodePart() + "-" + face.Code[0] + LastCodePart());
-                        toPlaceBlock = world.GetBlock(loc);
-                    }
-
-
+                    Block toPlaceBlock = getGearBlock(world, Facings[0], face);
                     MechanicalNetwork nw = GetNetwork(world, pos);
 
-                    world.BlockAccessor.SetBlock(toPlaceBlock.BlockId, pos);
+                    (toPlaceBlock as BlockMPBase).ExchangeBlockAt(world, pos);
 
-                    BEMPBase be = (world.BlockAccessor.GetBlockEntity(pos) as BEMPBase);
+                    BEBehaviorMPBase be = world.BlockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorMPBase>();
                     be.JoinNetwork(nw);
                 }
             }
@@ -61,23 +89,53 @@ namespace Vintagestory.GameContent.Mechanics
 
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
         {
+            if (!CanPlaceBlock(world, byPlayer, blockSel, ref failureCode))
+            {
+                return false;
+            }
+
+            BlockFacing firstFace = null;
+            BlockFacing secondFace = null;
+
             foreach (BlockFacing face in BlockFacing.ALLFACES)
             {
                 BlockPos pos = blockSel.Position.AddCopy(face);
                 IMechanicalPowerBlock block = world.BlockAccessor.GetBlock(pos) as IMechanicalPowerBlock;
-                if (block != null)
+                if (block != null && block.HasConnectorAt(world, pos, face.GetOpposite()))
                 {
-                    if (block.HasConnectorAt(world, pos, face.GetOpposite())) {
-
-                        Block toPlaceBlock = world.GetBlock(new AssetLocation(FirstCodePart() + "-" + face.Code[0]));
-                        world.BlockAccessor.SetBlock(toPlaceBlock.BlockId, blockSel.Position);
-
-                        block.DidConnectAt(world, pos, face.GetOpposite());
-                        WasPlaced(world, blockSel.Position, face, block);
-
-                        return true;
+                    if (firstFace == null)
+                    {
+                        firstFace = face;
+                    } else
+                    {
+                        if (face.IsAdjacent(firstFace))
+                        {
+                            secondFace = face;
+                            break;
+                        }
                     }
                 }
+            }
+
+
+            if (firstFace != null)
+            {
+                Block toPlaceBlock = getGearBlock(world, firstFace, secondFace);
+                world.BlockAccessor.SetBlock(toPlaceBlock.BlockId, blockSel.Position);
+
+                BlockPos firstPos = blockSel.Position.AddCopy(firstFace);
+                IMechanicalPowerBlock block = world.BlockAccessor.GetBlock(firstPos) as IMechanicalPowerBlock;
+                block.DidConnectAt(world, firstPos, firstFace.GetOpposite());
+
+                if (secondFace != null)
+                {
+                    BlockPos secondPos = blockSel.Position.AddCopy(secondFace);
+                    block = world.BlockAccessor.GetBlock(secondPos) as IMechanicalPowerBlock;
+                    block.DidConnectAt(world, secondPos, secondFace.GetOpposite());
+                }
+
+                WasPlaced(world, blockSel.Position, firstFace, block);
+                return true;
             }
 
             failureCode = "requiresaxle";
@@ -88,7 +146,7 @@ namespace Vintagestory.GameContent.Mechanics
 
         public override void OnNeighourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
         {
-            string orients = LastCodePart();
+            string orients = Orientation;
 
             BlockFacing[] facings;
             facings = orients.Length == 1 ? new BlockFacing[] { BlockFacing.FromFirstLetter(orients[0]) } : new BlockFacing[] { BlockFacing.FromFirstLetter(orients[0]), BlockFacing.FromFirstLetter(orients[1]) };
@@ -120,7 +178,7 @@ namespace Vintagestory.GameContent.Mechanics
                 Block toPlaceBlock = world.GetBlock(new AssetLocation(FirstCodePart() + "-" + orients));
                 world.BlockAccessor.SetBlock(toPlaceBlock.BlockId, pos);
 
-                BEMPBase be = (world.BlockAccessor.GetBlockEntity(pos) as BEMPBase);
+                BEBehaviorMPBase be = world.BlockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorMPBase>(); 
                 be.JoinNetwork(nw);
             }
 

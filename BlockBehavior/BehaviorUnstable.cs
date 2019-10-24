@@ -30,11 +30,11 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref EnumHandling handled, ref string failureCode)
+        public override bool CanPlaceBlock(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ref EnumHandling handling, ref string failureCode)
         {
             if (!IsAttached(world.BlockAccessor, blockSel.Position))
             {
-                handled = EnumHandling.PreventSubsequent;
+                handling = EnumHandling.PreventSubsequent;
                 failureCode = "requiresolidground";
                 return false;
             }

@@ -11,22 +11,19 @@ namespace Vintagestory.GameContent
         }
 
 
-
-
-        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref EnumHandling handled, ref string failureCode)
+        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref EnumHandling handling, ref string failureCode)
         {
-            handled = EnumHandling.PreventDefault;
+            handling = EnumHandling.PreventDefault;
             BlockFacing[] horVer = Block.SuggestedHVOrientation(byPlayer, blockSel);
             if (horVer[1] == null) horVer[1] = BlockFacing.UP;
             AssetLocation blockCode = block.CodeWithParts(horVer[1].Code, horVer[0].Code);
             Block orientedBlock = world.BlockAccessor.GetBlock(blockCode);
 
-            if (orientedBlock.IsSuitablePosition(world, blockSel.Position, ref failureCode))
+            if (orientedBlock.CanPlaceBlock(world, byPlayer, blockSel, ref failureCode))
             {
-                orientedBlock.DoPlaceBlock(world, blockSel.Position, blockSel.Face, itemstack);
+                orientedBlock.DoPlaceBlock(world, byPlayer, blockSel, null);
                 return true;
             }
-
 
             return false;
         }

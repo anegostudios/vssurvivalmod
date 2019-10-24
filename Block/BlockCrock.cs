@@ -249,7 +249,7 @@ namespace Vintagestory.GameContent
                 {
                     if (stack != null && stack.Collectible.Attributes["crockable"].AsBool() == true)
                     {
-                        SetContents(slot.Itemstack, new ItemStack[] { bebarrel.inventory[0].TakeOut(4) });
+                        SetContents(null, slot.Itemstack, new ItemStack[] { bebarrel.inventory[0].TakeOut(4) }, 1);
                         bebarrel.MarkDirty(true);
                     }
                 } else
@@ -437,7 +437,7 @@ namespace Vintagestory.GameContent
                     dsc.AppendLine(stack.StackSize + "x  " + stack.GetName());
                 }
 
-                becrock.inventory[0].Itemstack.Collectible.AppendPerishableInfoText(becrock.inventory[0], dsc, api.World);
+                becrock.inventory[0].Itemstack?.Collectible.AppendPerishableInfoText(becrock.inventory[0], dsc, api.World);
             }
 
             if (becrock.Sealed)
@@ -480,7 +480,15 @@ namespace Vintagestory.GameContent
         {
             base.SetContents(containerStack, stacks);
 
-            containerStack.Attributes.SetString("recipeCode", recipeCode);
+            if (recipeCode == null)
+            {
+                containerStack.Attributes.RemoveAttribute("recipeCode");
+            }
+            else
+            {
+                containerStack.Attributes.SetString("recipeCode", recipeCode);
+            }
+
             containerStack.Attributes.SetFloat("quantityServings", quantityServings);
         }
 
@@ -552,7 +560,19 @@ namespace Vintagestory.GameContent
 
         public override TransitionState[] UpdateAndGetTransitionStates(IWorldAccessor world, ItemSlot inslot)
         {
-            return base.UpdateAndGetTransitionStates(world, inslot);
+            TransitionState[] states = base.UpdateAndGetTransitionStates(world, inslot);
+
+            ItemStack[] stacks = GetNonEmptyContents(world, inslot.Itemstack);
+            if (MealMeshCache.ContentsRotten(stacks))
+            {
+                inslot.Itemstack.Attributes.RemoveAttribute("recipeCode");
+            }
+            if (!stacks.Any(stack => stack != null))
+            {
+                inslot.Itemstack.Attributes.RemoveAttribute("recipeCode");
+            }
+
+            return states;
         }
 
 

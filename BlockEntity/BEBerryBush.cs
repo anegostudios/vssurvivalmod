@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Text;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
@@ -39,9 +40,9 @@ namespace Vintagestory.GameContent
 
         private void CheckGrow(float dt)
         {
-            bool didGrow = api.World.Calendar.TotalDays > totalDaysForNextStage;
+            bool didGrow = Api.World.Calendar.TotalDays > totalDaysForNextStage;
 
-            while (api.World.Calendar.TotalDays > totalDaysForNextStage)
+            while (Api.World.Calendar.TotalDays > totalDaysForNextStage)
             {
                 DoGrow();
                 totalDaysForNextStage += GetDaysForNextStage();
@@ -57,13 +58,13 @@ namespace Vintagestory.GameContent
 
         public bool IsRipe()
         {
-            Block block = api.World.BlockAccessor.GetBlock(pos);
+            Block block = Api.World.BlockAccessor.GetBlock(Pos);
             return block.LastCodePart() == "ripe";
         }
 
         void DoGrow()
         { 
-            Block block = api.World.BlockAccessor.GetBlock(pos);
+            Block block = Api.World.BlockAccessor.GetBlock(Pos);
             string nowCodePart = block.LastCodePart();
             string nextCodePart = (nowCodePart == "empty") ? "flowering" : ((nowCodePart == "flowering") ? "ripe" : "empty");
 
@@ -71,14 +72,14 @@ namespace Vintagestory.GameContent
             AssetLocation loc = block.CodeWithParts(nextCodePart);
             if (!loc.Valid)
             {
-                api.World.BlockAccessor.RemoveBlockEntity(pos);
+                Api.World.BlockAccessor.RemoveBlockEntity(Pos);
                 return;
             }
 
-            Block nextBlock = api.World.GetBlock(loc);
+            Block nextBlock = Api.World.GetBlock(loc);
             if (nextBlock?.Code == null) return;
 
-            api.World.BlockAccessor.ExchangeBlock(nextBlock.BlockId, pos);
+            Api.World.BlockAccessor.ExchangeBlock(nextBlock.BlockId, Pos);
             MarkDirty(true);
         }
 
@@ -96,10 +97,10 @@ namespace Vintagestory.GameContent
             tree.SetDouble("totalDaysForNextStage", totalDaysForNextStage);
         }
 
-        public override string GetBlockInfo(IPlayer forPlayer)
+        public override void GetBlockInfo(IPlayer forPlayer, StringBuilder sb)
         {
-            Block block = api.World.BlockAccessor.GetBlock(pos);
-            double daysleft = totalDaysForNextStage - api.World.Calendar.TotalDays;
+            Block block = Api.World.BlockAccessor.GetBlock(Pos);
+            double daysleft = totalDaysForNextStage - Api.World.Calendar.TotalDays;
 
             /*if (forPlayer.WorldData.CurrentGameMode == EnumGameMode.Creative)
             {
@@ -108,18 +109,18 @@ namespace Vintagestory.GameContent
 
             if (block.LastCodePart() == "ripe")
             {
-                return base.GetBlockInfo(forPlayer);
+                return;
             }
 
             string code = (block.LastCodePart() == "empty") ? "flowering" : "ripen";
 
             if (daysleft < 1)
             {
-                return Lang.Get("berrybush-"+ code + "-1day");
+                sb.AppendLine(Lang.Get("berrybush-"+ code + "-1day"));
             }
             else
             {
-                return Lang.Get("berrybush-" + code + "-xdays", (int)daysleft);
+                sb.AppendLine(Lang.Get("berrybush-" + code + "-xdays", (int)daysleft));
             }
 
         }

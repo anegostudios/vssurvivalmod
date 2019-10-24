@@ -26,6 +26,7 @@ namespace Vintagestory.ServerMods
         private bool rotateV4 = false;
         private string facing = "player";
         private bool rotateSides = false;
+        private float dropChance = 1f;
 
         public BlockBehaviorOmniRotatable(Block block) : base(block)
         {
@@ -178,7 +179,7 @@ namespace Vintagestory.ServerMods
             }
 
             Block orientedBlock = world.BlockAccessor.GetBlock(blockCode);
-            if (orientedBlock.IsSuitablePosition(world, blockSel.Position, ref failureCode))
+            if (orientedBlock.CanPlaceBlock(world, byPlayer, blockSel, ref failureCode))
             {
                 world.BlockAccessor.SetBlock(orientedBlock.BlockId, blockSel.Position);
                 return true;
@@ -195,6 +196,20 @@ namespace Vintagestory.ServerMods
             return drops != null && drops.Length > 0 ? drops[0] : new ItemStack(block);
         }
 
+
+        public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropChanceMultiplier, ref EnumHandling handling)
+        {
+            if (dropChance < 1)
+            {
+                if (world.Rand.NextDouble() > dropChance)
+                {
+                    handling = EnumHandling.PreventDefault;
+                    return new ItemStack[0];
+                }
+            }
+
+            return base.GetDrops(world, pos, byPlayer, dropChanceMultiplier, ref handling);
+        }
 
         public override AssetLocation GetRotatedBlockCode(int angle, ref EnumHandling handling)
         {
@@ -240,6 +255,8 @@ namespace Vintagestory.ServerMods
             rotateV4 = properties["rotateV4"].AsBool(rotateV4);
             rotateSides = properties["rotateSides"].AsBool(rotateSides);
             facing = properties["facing"].AsString(facing);
+
+            dropChance = properties["dropChance"].AsFloat(1);
         }
     }
 }

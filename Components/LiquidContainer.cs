@@ -229,10 +229,10 @@ namespace Vintagestory.GameContent
         public WaterTightContainableProps GetContentProps(IWorldAccessor world, ItemStack containerStack)
         {
             ItemStack stack = GetContent(world, containerStack);
-            return GetStackProps(stack);
+            return GetInContainerProps(stack);
         }
 
-        public static WaterTightContainableProps GetStackProps(ItemStack stack)
+        public static WaterTightContainableProps GetInContainerProps(ItemStack stack)
         {
             try
             {
@@ -263,7 +263,7 @@ namespace Vintagestory.GameContent
             ItemStack stack = becontainer.Inventory[slotid]?.Itemstack;
             if (stack == null) return null;
 
-            return GetStackProps(stack);
+            return GetInContainerProps(stack);
         }
 
         /// <summary>
@@ -399,7 +399,7 @@ namespace Vintagestory.GameContent
 
             if (stack == null)
             {
-                WaterTightContainableProps props = GetStackProps(contentStack);
+                WaterTightContainableProps props = GetInContainerProps(contentStack);
                 if (props == null || !props.Containable) return 0;
 
 
@@ -441,7 +441,7 @@ namespace Vintagestory.GameContent
             ItemStack stack = GetContent(world, pos);
             if (stack == null)
             {
-                WaterTightContainableProps props = GetStackProps(contentStack);
+                WaterTightContainableProps props = GetInContainerProps(contentStack);
                 if (props == null || !props.Containable) return 0;
 
 
@@ -841,7 +841,7 @@ namespace Vintagestory.GameContent
 
             if (!sinkContent.Equals(op.World, sourceContent, GlobalConstants.IgnoredStackAttributes)) { op.MovableQuantity = 0; return; }
 
-            WaterTightContainableProps props = GetStackProps(sourceContent);
+            WaterTightContainableProps props = GetInContainerProps(sourceContent);
             float maxItems = CapacityLitres * props.ItemsPerLitre;
             int sourceEmptySpace = (int)(maxItems - (float)sourceContent.StackSize / props.ItemsPerLitre);
             int sinkEmptySpace = (int)(maxItems - (float)sinkContent.StackSize / props.ItemsPerLitre);

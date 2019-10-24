@@ -43,6 +43,15 @@ namespace Vintagestory.GameContent
         }
 
 
+        public bool IsExtinct;
+
+        public override void OnLoaded(ICoreAPI api)
+        {
+            base.OnLoaded(api);
+
+            IsExtinct = LastCodePart() != "lit";
+        }
+
         public virtual bool Ignite(IWorldAccessor world, BlockPos pos)
         {
             if (LastCodePart() == "lit") return false;
@@ -67,6 +76,16 @@ namespace Vintagestory.GameContent
             return true;
         }
 
+        public override bool ShouldReceiveClientGameTicks(IWorldAccessor world, IPlayer player, BlockPos pos)
+        {
+            if (IsExtinct)
+            {
+                BlockEntityFirepit bef = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityFirepit;
+                if (bef != null && world.Calendar.TotalHours - bef.extinguishedTotalHours > 30) return false;
+            }
+
+            return base.ShouldReceiveClientGameTicks(world, player, pos);
+        }
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {

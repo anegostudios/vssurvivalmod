@@ -84,30 +84,18 @@ namespace Vintagestory.GameContent
             EntityPos plrPos = worldAccess.Player.Entity.Pos;
             Vec3d camPos = worldAccess.Player.Entity.CameraPos;
 
-            IShaderProgram prog = rpi.GetEngineShader(EnumShaderProgram.Wireframe);
-            prog.Use();
-            rpi.GlMatrixModeModelView();
+            outLineColorMul.A = 1 - GameMath.Clamp((float)Math.Sqrt(plrPos.SquareDistanceTo(pos.X, pos.Y, pos.Z)) / 5 - 1f, 0, 1);
+            ModelMat.Set(rpi.CameraMatrixOriginf).Translate(pos.X - camPos.X, pos.Y - camPos.Y, pos.Z - camPos.Z);
 
             rpi.GLEnableDepthTest();
             rpi.GlToggleBlend(true);
 
-
-
-            rpi.GlPushMatrix();
-            rpi.GlLoadMatrix(rpi.CameraMatrixOrigin);
-
-            rpi.GlTranslate(pos.X - camPos.X, pos.Y - camPos.Y, pos.Z - camPos.Z);
-
-            outLineColorMul.A = 1 - GameMath.Clamp((float)Math.Sqrt(plrPos.SquareDistanceTo(pos.X, pos.Y, pos.Z))/5 - 1f, 0, 1);
-
+            IShaderProgram prog = rpi.GetEngineShader(EnumShaderProgram.Wireframe);
+            prog.Use();
             prog.Uniform("colorIn", outLineColorMul);
             prog.UniformMatrix("projectionMatrix", rpi.CurrentProjectionMatrix);
-            prog.UniformMatrix("modelViewMatrix", rpi.CurrentModelviewMatrix);
-
+            prog.UniformMatrix("modelViewMatrix", ModelMat.Values);
             rpi.RenderMesh(recipeOutlineMeshRef);
-
-            rpi.GlPopMatrix();
-
             prog.Stop();
         }
 

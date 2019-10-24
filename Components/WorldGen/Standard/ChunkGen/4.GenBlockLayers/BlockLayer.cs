@@ -24,8 +24,10 @@ namespace Vintagestory.ServerMods
         public float MinFertility = 0;
         [JsonProperty]
         public float MaxFertility = 1;
-        [JsonProperty]
-        public float MaxY = 1;
+        //[JsonProperty]
+        //public float MinY = 1;
+        //[JsonProperty]
+        //public float MaxY = 1;
 
         public int BlockId;
 
@@ -67,11 +69,10 @@ namespace Vintagestory.ServerMods
 
         public int BlockId;
        
-
         ClampedSimplexNoise noise;
 
         public Dictionary<int, int> BlockIdMapping;
-        
+
         public void Init(ICoreServerAPI api, RockStrataConfig rockstrata, Random rnd)
         {
             if (NoiseAmplitudes != null && NoiseFrequencies != null)

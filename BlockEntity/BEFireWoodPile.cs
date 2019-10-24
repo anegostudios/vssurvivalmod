@@ -1,6 +1,7 @@
 ﻿using System;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -15,9 +16,14 @@ namespace Vintagestory.GameContent
             get { return "firewoodpile"; }
         }
 
-        public override int TakeQuantity
+        public override int DefaultTakeQuantity
         {
             get { return 2; }
+        }
+
+        public override int BulkTakeQuantity
+        {
+            get { return 8; }
         }
 
         public override int MaxStackSize { get { return 32; } }
@@ -25,12 +31,26 @@ namespace Vintagestory.GameContent
 
         MeshData[] meshes
         {
-            get {
-                object value = null;
-                api.ObjectCache.TryGetValue("firewoodpile-meshes", out value);
-                return (MeshData[])value;
+            get
+            {
+                return ObjectCacheUtil.GetOrCreate(Api, "firewoodpile-meshes", () =>
+                {
+                    MeshData[] meshes = new MeshData[17];
+
+                    Block block = Api.World.BlockAccessor.GetBlock(Pos);
+
+                    Shape shape = Api.Assets.TryGet("shapes/block/wood/firewoodpile.json").ToObject<Shape>();
+
+                    ITesselatorAPI mesher = ((ICoreClientAPI)Api).Tesselator;
+
+                    for (int j = 0; j <= 16; j++)
+                    {
+                        mesher.TesselateShape(block, shape, out meshes[j], null, j);
+                    }
+
+                    return meshes;
+                });
             }
-            set { api.ObjectCache["firewoodpile-meshes"] = value; }
         }
 
 
@@ -39,29 +59,6 @@ namespace Vintagestory.GameContent
         {
             base.Initialize(api);
             RandomizeSoundPitch = true;
-
-            if (api is ICoreClientAPI && meshes == null)
-            {
-                GenMeshes();
-            }
-        }
-
-        internal void GenMeshes()
-        {
-            MeshData[] meshes = new MeshData[17];
-
-            Block block = api.World.BlockAccessor.GetBlock(pos);
-            
-            Shape shape = api.Assets.TryGet("shapes/block/wood/firewoodpile.json").ToObject<Shape>();
-        
-            ITesselatorAPI mesher = ((ICoreClientAPI)api).Tesselator;
-            
-            for (int j = 0; j <= 16; j++)
-            {
-                mesher.TesselateShape(block, shape, out meshes[j], null, j);
-            }
-
-            this.meshes = meshes;
         }
 
 

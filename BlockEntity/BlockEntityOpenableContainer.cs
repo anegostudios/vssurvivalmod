@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.IO;
+using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -28,7 +29,7 @@ namespace Vintagestory.GameContent
         {
             base.Initialize(api);
 
-            Inventory.LateInitialize(InventoryClassName + "-" + pos.X + "/" + pos.Y + "/" + pos.Z, api);
+            Inventory.LateInitialize(InventoryClassName + "-" + Pos.X + "/" + Pos.Y + "/" + Pos.Z, api);
             Inventory.ResolveBlocksOrItems();
         }
         
@@ -40,7 +41,7 @@ namespace Vintagestory.GameContent
                 Inventory.InvNetworkUtil.HandleClientPacket(player, packetid, data);
 
                 // Tell server to save this chunk to disk again
-                api.World.BlockAccessor.GetChunkAtBlockPos(pos.X, pos.Y, pos.Z).MarkModified();
+                Api.World.BlockAccessor.GetChunkAtBlockPos(Pos.X, Pos.Y, Pos.Z).MarkModified();
 
                 return;
             }
@@ -56,7 +57,7 @@ namespace Vintagestory.GameContent
 
         public override void OnReceivedServerPacket(int packetid, byte[] data)
         {
-            IClientWorldAccessor clientWorld = (IClientWorldAccessor)api.World;
+            IClientWorldAccessor clientWorld = (IClientWorldAccessor)Api.World;
 
             if (packetid == (int)EnumBlockContainerPacketId.OpenInventory)
             {
@@ -81,9 +82,9 @@ namespace Vintagestory.GameContent
                     Inventory.FromTreeAttributes(tree);
                     Inventory.ResolveBlocksOrItems();
                     
-                    invDialog = new GuiDialogBlockEntityInventory(dialogTitle, Inventory, pos, cols, api as ICoreClientAPI);
+                    invDialog = new GuiDialogBlockEntityInventory(dialogTitle, Inventory, Pos, cols, Api as ICoreClientAPI);
 
-                    Block block = api.World.BlockAccessor.GetBlock(pos);
+                    Block block = Api.World.BlockAccessor.GetBlock(Pos);
                     string os = block.Attributes?["openSound"]?.AsString();
                     string cs = block.Attributes?["closeSound"]?.AsString();
                     AssetLocation opensound = os == null ? null : AssetLocation.Create(os, block.Code.Domain);
@@ -114,9 +115,9 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override string GetBlockInfo(IPlayer forPlayer)
+        public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
         {
-            return base.GetBlockInfo(forPlayer);
+            base.GetBlockInfo(forPlayer, dsc);
         }
 
     }

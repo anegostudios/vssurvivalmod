@@ -36,20 +36,15 @@ namespace Vintagestory.GameContent
             drop?.Resolve(api.World, "HorizontalOrientable drop for " + block.Code);
         }
 
-        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref EnumHandling handled, ref string failureCode)
+        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref EnumHandling handling, ref string failureCode)
         {
-            handled = EnumHandling.PreventDefault;
+            handling = EnumHandling.PreventDefault;
             BlockFacing[] horVer = Block.SuggestedHVOrientation(byPlayer, blockSel);
             AssetLocation blockCode = block.CodeWithParts(horVer[0].Code);
             Block orientedBlock = world.BlockAccessor.GetBlock(blockCode);
 
-            if (orientedBlock.IsSuitablePosition(world, blockSel.Position, ref failureCode))
-            {
-                orientedBlock.DoPlaceBlock(world, blockSel.Position, blockSel.Face, itemstack);
-                return true;
-            }
-
-            return false;
+            orientedBlock.DoPlaceBlock(world, byPlayer, blockSel, itemstack);
+            return true;
         }
 
 

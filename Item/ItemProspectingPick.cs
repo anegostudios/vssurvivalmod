@@ -51,12 +51,22 @@ namespace Vintagestory.GameContent
                     {
                         pageCodes[variant.Code] = variant.HandbookPageCode;
                         depositsByCode[variant.Code] = variant;
+                        if (variant.HandbookPageCode == null)
+                        {
+                            api.World.Logger.Warning("Deposit " + variant.Code + " has no handbook page code. Links created by the prospecting pick will not work without it.");
+                        }
+
                     }
 
                     for (int k = 0; variant.ChildDeposits != null && k < variant.ChildDeposits.Length; k++)
                     {
                         DepositVariant childVariant = variant.ChildDeposits[k];
                         if (!childVariant.WithOreMap) continue;
+
+                        if (childVariant.HandbookPageCode == null)
+                        {
+                            api.World.Logger.Warning("Child Deposit " + childVariant.Code + " of deposit " + variant.Code + " has no handbook page code. Links created by the prospecting pick will not work without it.");
+                        }
 
                         pageCodes[childVariant.Code] = childVariant.HandbookPageCode;
                         depositsByCode[childVariant.Code] = childVariant;
@@ -150,6 +160,8 @@ namespace Vintagestory.GameContent
 
             public string GameVersionCreated => throw new NotImplementedException();
 
+            public bool Disposed => throw new NotImplementedException();
+
             public void AddEntity(Entity entity)
             {
                 throw new NotImplementedException();
@@ -183,6 +195,21 @@ namespace Vintagestory.GameContent
                 throw new NotImplementedException();
             }
             public void Unpack()
+            {
+                throw new NotImplementedException();
+            }
+
+            public Block GetLocalBlockAtBlockPos(IWorldAccessor world, BlockPos position)
+            {
+                throw new NotImplementedException();
+            }
+
+            public void MarkFresh()
+            {
+                throw new NotImplementedException();
+            }
+
+            public BlockEntity GetLocalBlockEntityAtBlockPos(BlockPos pos)
             {
                 throw new NotImplementedException();
             }

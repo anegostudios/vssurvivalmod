@@ -30,6 +30,15 @@ namespace Vintagestory.ServerMods
         public bool WithOreMap;
 
         [JsonProperty]
+        public float OreMapScale = 1f;
+
+        [JsonProperty]
+        public float OreMapContrast = 1f;
+
+        [JsonProperty]
+        public float OreMapSub = 0f;
+
+        [JsonProperty]
         public string HandbookPageCode;
 
         [JsonProperty]

@@ -41,31 +41,28 @@ namespace Vintagestory.GameContent
 
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection bs, ref string failureCode)
         {
-            if (!world.Claims.TryAccess(byPlayer, bs.Position, EnumBlockAccessFlags.BuildOrBreak))
-            {
-                failureCode = "claimed";
-                byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
-                return false;
-            }
-
             BlockPos supportingPos = bs.Position.AddCopy(bs.Face.GetOpposite());
             Block supportingBlock = world.BlockAccessor.GetBlock(supportingPos);
-
-            if (!world.BlockAccessor.GetBlock(bs.Position).IsReplacableBy(this))
-            {
-                failureCode = "notreplaceable";
-                return false;
-            }
-
 
             if (bs.Face.IsHorizontal && (supportingBlock.CanAttachBlockAt(world.BlockAccessor, this, bs.Position, bs.Face) || supportingBlock.Attributes?["partialAttachable"].AsBool() == true))
             {
                 Block wallblock = world.BlockAccessor.GetBlock(CodeWithParts("wall", bs.Face.GetOpposite().Code));
 
+                if (!wallblock.CanPlaceBlock(world, byPlayer, bs, ref failureCode))
+                {
+                    return false;
+                }
+
                 world.BlockAccessor.SetBlock(wallblock.BlockId, bs.Position);
                 return true;
             }
 
+
+
+            if (!CanPlaceBlock(world, byPlayer, bs, ref failureCode))
+            {
+                return false;
+            }
 
             BlockFacing[] horVer = SuggestedHVOrientation(byPlayer, bs);
 

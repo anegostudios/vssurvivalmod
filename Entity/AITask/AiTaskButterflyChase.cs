@@ -85,7 +85,7 @@ namespace Vintagestory.GameContent
         {
             base.StartExecute();
 
-            pathTraverser.GoTo(targetPos, moveSpeed, 0.0001f, OnGoalReached, OnStuck);
+            pathTraverser.WalkTowards(targetPos, moveSpeed, 0.0001f, OnGoalReached, OnStuck);
         }
 
         private void OnStuck()
@@ -98,10 +98,10 @@ namespace Vintagestory.GameContent
             fleeState = !fleeState;
             if (fleeState)
             {
-                pathTraverser.GoTo(targetPos.Add(0, 1, 0), moveSpeed, 1f, OnGoalReached, OnStuck);
+                pathTraverser.WalkTowards(targetPos.Add(0, 1, 0), moveSpeed, 1f, OnGoalReached, OnStuck);
             } else
             {
-                pathTraverser.GoTo(targetPos, moveSpeed, 1f, OnGoalReached, OnStuck);
+                pathTraverser.WalkTowards(targetPos, moveSpeed, 1f, OnGoalReached, OnStuck);
             }
         }
 

@@ -8,17 +8,18 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.GameContent.Mechanics;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockEntityQuern : BlockEntityOpenableContainer, IBlockShapeSupplier
+    public class BlockEntityQuern : BlockEntityOpenableContainer
     {
         static SimpleParticleProperties FlourParticles;
-
         static SimpleParticleProperties FlourDustParticles;
 
         static BlockEntityQuern()
         {
+            // 1..20 per tick
             FlourParticles = new SimpleParticleProperties(1, 3, ColorUtil.ToRgba(40, 220, 220, 220), new Vec3d(), new Vec3d(), new Vec3f(-0.25f, -0.25f, -0.25f), new Vec3f(0.25f, 0.25f, 0.25f), 1, 1, 0.1f, 0.3f, EnumParticleModel.Quad);
             FlourParticles.addPos.Set(1 + 2 / 32f, 0, 1 + 2 / 32f);
             FlourParticles.addQuantity = 20;
@@ -29,7 +30,7 @@ namespace Vintagestory.GameContent
             FlourParticles.lifeLength = 1.5f;
             FlourParticles.SizeEvolve = EvolvingNatFloat.create(EnumTransformFunction.QUADRATIC, -0.4f);
 
-
+            // 1..5 per tick
             FlourDustParticles = new SimpleParticleProperties(1, 3, ColorUtil.ToRgba(40, 220, 220, 220), new Vec3d(), new Vec3d(), new Vec3f(-0.25f, -0.25f, -0.25f), new Vec3f(0.25f, 0.25f, 0.25f), 1, 1, 0.1f, 0.3f, EnumParticleModel.Quad);
             FlourDustParticles.addPos.Set(1 + 2 / 32f, 0, 1 + 2 / 32f);
             FlourDustParticles.addQuantity = 5;
@@ -54,78 +55,33 @@ namespace Vintagestory.GameContent
 
 
         GuiDialogBlockEntityQuern clientDialog;
-        
-        Block ownBlock;
         QuernTopRenderer renderer;
-
-        public string Material
-        {
-            get { return ownBlock.LastCodePart(); }
-        }
+        bool automated;
+        BEBehaviorMPConsumer mpc;
+        
 
         // Server side only
         List<IPlayer> playersGrinding = new List<IPlayer>();
         // Client and serverside
         int quantityPlayersGrinding;
 
-        public bool IsGrinding
+        #region Getters
+
+        public string Material
         {
-            get { return quantityPlayersGrinding > 0; }
+            get { return Block.LastCodePart(); }
         }
 
-        public void SetPlayerGrinding(IPlayer player, bool playerGrinding)
+        public float GrindSpeed
         {
-            bool beforeGrinding = IsGrinding;
+            get {
+                if (quantityPlayersGrinding > 0) return 1;
 
-            if (playerGrinding)
-            {
-                if (!playersGrinding.Contains(player))
-                {
-                    playersGrinding.Add(player);
-                }
-            }
-            else
-            {
-                playersGrinding.Remove(player);
-            }
+                if (automated && mpc.Network != null) return mpc.Network.Speed;
 
-            quantityPlayersGrinding = playersGrinding.Count;
-
-            updateGrindingState(beforeGrinding);
-        }
-
-
-        void updateGrindingState(bool beforeGrinding)
-        {
-            if (api?.World == null) return;
-
-            bool nowGrinding = IsGrinding;
-
-            if (nowGrinding != beforeGrinding)
-            {
-                if (renderer != null)
-                {
-                    renderer.ShouldRotate = nowGrinding;
-                }
-
-                api.World.BlockAccessor.MarkBlockDirty(pos, OnRetesselated);
-
-                if (nowGrinding)
-                {
-                    ambientSound?.Start();
-                }
-                else
-                {
-                    ambientSound?.Stop();
-                }
-
-                if (api.Side == EnumAppSide.Server)
-                {
-                    MarkDirty();
-                }
+                return 0;
             }
         }
-
 
 
         MeshData quernBaseMesh
@@ -133,10 +89,10 @@ namespace Vintagestory.GameContent
             get
             {
                 object value = null;
-                api.ObjectCache.TryGetValue("quernbasemesh-" + Material, out value);
+                Api.ObjectCache.TryGetValue("quernbasemesh-" + Material, out value);
                 return (MeshData)value;
             }
-            set { api.ObjectCache["quernbasemesh-" + Material] = value; }
+            set { Api.ObjectCache["quernbasemesh-" + Material] = value; }
         }
 
         MeshData quernTopMesh
@@ -144,20 +100,15 @@ namespace Vintagestory.GameContent
             get
             {
                 object value = null;
-                api.ObjectCache.TryGetValue("querntopmesh-" + Material, out value);
+                Api.ObjectCache.TryGetValue("querntopmesh-" + Material, out value);
                 return (MeshData)value;
             }
-            set { api.ObjectCache["querntopmesh-" + Material] = value; }
+            set { Api.ObjectCache["querntopmesh-" + Material] = value; }
         }
 
-
+        #endregion
 
         #region Config
-
-        public virtual float SoundLevel
-        {
-            get { return 0.5f; }
-        }        
 
         // seconds it requires to melt the ore once beyond melting point
         public virtual float maxGrindingTime()
@@ -183,15 +134,6 @@ namespace Vintagestory.GameContent
         #endregion
 
 
-        private void OnRetesselated()
-        {
-            if (renderer == null) return; // Maybe already disposed
-
-            renderer.ShouldRender = IsGrinding;
-        }
-
-
-
         public BlockEntityQuern()
         {
             inventory = new InventoryQuern(null, null);
@@ -204,10 +146,7 @@ namespace Vintagestory.GameContent
         {
             base.Initialize(api);
 
-            ownBlock = api.World.BlockAccessor.GetBlock(pos);
-
-            inventory.LateInitialize("quern-1", api);
-            
+            inventory.LateInitialize("quern-1", api);            
 
             RegisterGameTickListener(Every100ms, 100);
             RegisterGameTickListener(Every500ms, 500);
@@ -218,15 +157,21 @@ namespace Vintagestory.GameContent
                 {
                     Location = new AssetLocation("sounds/block/quern.ogg"),
                     ShouldLoop = true,
-                    Position = pos.ToVec3f().Add(0.5f, 0.25f, 0.5f),
+                    Position = Pos.ToVec3f().Add(0.5f, 0.25f, 0.5f),
                     DisposeOnFinish = false,
-                    Volume = SoundLevel
+                    Volume = 0.5f
                 });
             }
 
             if (api is ICoreClientAPI)
             {
-                renderer = new QuernTopRenderer(api as ICoreClientAPI, pos, GenMesh("top"));
+                renderer = new QuernTopRenderer(api as ICoreClientAPI, Pos, GenMesh("top"));
+                renderer.mechPowerPart = this.mpc;
+                if (automated)
+                {
+                    renderer.ShouldRender = true;
+                    renderer.ShouldRotateAutomated = true;
+                }
 
                 (api as ICoreClientAPI).Event.RegisterRenderer(renderer, EnumRenderStage.Opaque);
 
@@ -239,62 +184,73 @@ namespace Vintagestory.GameContent
                     quernTopMesh = GenMesh("top");
                 }
             }
-
         }
 
 
-        private void OnSlotModifid(int slotid)
+        public override void CreateBehaviors(Block block, IWorldAccessor worldForResolve)
         {
-            if (api is ICoreClientAPI && clientDialog?.Attributes != null)
+            base.CreateBehaviors(block, worldForResolve);
+
+            mpc = GetBehavior<BEBehaviorMPConsumer>();
+            if (mpc != null)
             {
-                SetDialogValues(clientDialog.Attributes);
+                mpc.OnConnected = () => {
+                    automated = true;
+                    quantityPlayersGrinding = 0;
+                    if (renderer != null)
+                    {
+                        renderer.ShouldRender = true;
+                        renderer.ShouldRotateAutomated = true;
+                    }
+                };
+
+                mpc.OnDisconnected = () =>  {
+                    automated = false;
+                    if (renderer != null)
+                    {
+                        renderer.ShouldRender = false;
+                        renderer.ShouldRotateAutomated = false;
+                    }
+                };
             }
-
-            if (slotid == 0)
-            {
-                inputGrindTime = 0.0f; //reset the progress to 0 if the item is removed.
-                MarkDirty();
-
-                if (clientDialog != null && clientDialog.IsOpened())
-                {
-                    clientDialog.SingleComposer.ReCompose();
-                }
-            }
-
         }
 
-        internal MeshData GenMesh(string type = "base")
-        {
-            Block block = api.World.BlockAccessor.GetBlock(pos);
-            if (block.BlockId == 0) return null;
 
-            MeshData mesh;
-            ITesselatorAPI mesher = ((ICoreClientAPI)api).Tesselator;
-
-            mesher.TesselateShape(block, api.Assets.TryGet("shapes/block/stone/quern/"+type+".json").ToObject<Shape>(), out mesh);
-
-            return mesh;
-        }
-
-        
         private void Every100ms(float dt)
         {
-            if (api.Side == EnumAppSide.Client)
+            float grindSpeed = GrindSpeed;
+
+            if (Api.Side == EnumAppSide.Client)
             {
-                if (!IsGrinding || InputStack == null) return;
+                if (InputStack != null)
+                {
+                    float dustMinQ = 1 * grindSpeed;
+                    float dustAddQ = 5 * grindSpeed;
+                    float flourPartMinQ = 1 * grindSpeed;
+                    float flourPartAddQ = 20 * grindSpeed;
 
-                FlourDustParticles.color = FlourParticles.color = InputStack.Collectible.GetRandomColor(api as ICoreClientAPI, InputStack);
-                FlourDustParticles.color &= 0xffffff;
-                FlourDustParticles.color |= (200 << 24);
+                    FlourDustParticles.color = FlourParticles.color = InputStack.Collectible.GetRandomColor(Api as ICoreClientAPI, InputStack);
+                    FlourDustParticles.color &= 0xffffff;
+                    FlourDustParticles.color |= (200 << 24);
+                    FlourDustParticles.minQuantity = dustMinQ;
+                    FlourDustParticles.addQuantity = dustAddQ;
+                    FlourDustParticles.minPos.Set(Pos.X - 1 / 32f, Pos.Y + 11 / 16f, Pos.Z - 1 / 32f);
+                    FlourDustParticles.minVelocity.Set(-0.1f, 0, -0.1f);
+                    FlourDustParticles.addVelocity.Set(0.2f, 0.2f, 0.2f);
 
-                FlourParticles.minPos.Set(pos.X - 1/32f, pos.Y + 11 / 16f, pos.Z - 1 / 32f);
-                FlourDustParticles.minPos.Set(pos.X - 1 / 32f, pos.Y + 11 / 16f, pos.Z - 1 / 32f);
+                    FlourParticles.minPos.Set(Pos.X - 1 / 32f, Pos.Y + 11 / 16f, Pos.Z - 1 / 32f);
+                    FlourParticles.addQuantity = flourPartAddQ;
+                    FlourParticles.minQuantity = flourPartMinQ;
 
-                FlourDustParticles.minVelocity.Set(-0.1f, 0, -0.1f);
-                FlourDustParticles.addVelocity.Set(0.2f, 0.2f, 0.2f);
+                    Api.World.SpawnParticles(FlourParticles);
+                    Api.World.SpawnParticles(FlourDustParticles);
+                }
 
-                api.World.SpawnParticles(FlourParticles);
-                api.World.SpawnParticles(FlourDustParticles);
+                if (ambientSound != null && automated)
+                {
+                    ambientSound.SetPitch((0.5f + mpc.Network.Speed) * 0.9f);
+                    ambientSound.SetVolume(mpc.Network.Speed * 0.75f);
+                }
 
                 return;
             }
@@ -303,9 +259,9 @@ namespace Vintagestory.GameContent
             // Only tick on the server and merely sync to client
 
             // Use up fuel
-            if (CanGrind() && IsGrinding)
+            if (CanGrind() && grindSpeed > 0)
             {
-                inputGrindTime += dt;
+                inputGrindTime += dt * grindSpeed;
 
                 if (inputGrindTime >= maxGrindingTime())
                 {
@@ -339,15 +295,122 @@ namespace Vintagestory.GameContent
         // Sync to client every 500ms
         private void Every500ms(float dt)
         {
-            if (api is ICoreServerAPI && (IsGrinding || prevInputGrindTime != inputGrindTime))
+            if (Api.Side == EnumAppSide.Server && (GrindSpeed > 0  || prevInputGrindTime != inputGrindTime))
             {
                 MarkDirty();
             }
 
             prevInputGrindTime = inputGrindTime;
-        }        
+        }
 
-        
+
+
+
+
+        public void SetPlayerGrinding(IPlayer player, bool playerGrinding)
+        {
+            if (!automated)
+            {
+                if (playerGrinding)
+                {
+                    if (!playersGrinding.Contains(player))
+                    {
+                        playersGrinding.Add(player);
+                    }
+                }
+                else
+                {
+                    playersGrinding.Remove(player);
+                }
+
+                quantityPlayersGrinding = playersGrinding.Count;
+            }
+
+            updateGrindingState();
+        }
+
+        bool beforeGrinding;
+        void updateGrindingState()
+        {
+            if (Api?.World == null) return;
+
+            bool nowGrinding = quantityPlayersGrinding > 0 || (automated && mpc.Network?.Speed > 0);
+
+            if (nowGrinding != beforeGrinding)
+            {
+                if (renderer != null)
+                {
+                    renderer.ShouldRotateManual = quantityPlayersGrinding > 0;
+                }
+
+                Api.World.BlockAccessor.MarkBlockDirty(Pos, OnRetesselated);
+
+                if (nowGrinding)
+                {
+                    ambientSound?.Start();
+                }
+                else
+                {
+                    ambientSound?.Stop();
+                }
+
+                if (Api.Side == EnumAppSide.Server)
+                {
+                    MarkDirty();
+                }
+            }
+
+            beforeGrinding = nowGrinding;
+        }
+
+
+
+
+        private void OnSlotModifid(int slotid)
+        {
+            if (Api is ICoreClientAPI && clientDialog?.Attributes != null)
+            {
+                SetDialogValues(clientDialog.Attributes);
+            }
+
+            if (slotid == 0)
+            {
+                inputGrindTime = 0.0f; //reset the progress to 0 if the item is removed.
+                MarkDirty();
+
+                if (clientDialog != null && clientDialog.IsOpened())
+                {
+                    clientDialog.SingleComposer.ReCompose();
+                }
+            }
+        }
+
+
+        private void OnRetesselated()
+        {
+            if (renderer == null) return; // Maybe already disposed
+
+            renderer.ShouldRender = quantityPlayersGrinding > 0 || automated;
+        }
+
+
+
+
+        internal MeshData GenMesh(string type = "base")
+        {
+            Block block = Api.World.BlockAccessor.GetBlock(Pos);
+            if (block.BlockId == 0) return null;
+
+            MeshData mesh;
+            ITesselatorAPI mesher = ((ICoreClientAPI)Api).Tesselator;
+
+            mesher.TesselateShape(block, Api.Assets.TryGet("shapes/block/stone/quern/" + type + ".json").ToObject<Shape>(), out mesh);
+
+            return mesh;
+        }
+
+
+
 
         public bool CanGrind()
         {
@@ -369,7 +432,7 @@ namespace Vintagestory.GameContent
         {
             if (blockSel.SelectionBoxIndex == 1) return false;
 
-            if (api.World is IServerWorldAccessor)
+            if (Api.World is IServerWorldAccessor)
             {
                 byte[] data;
 
@@ -384,9 +447,9 @@ namespace Vintagestory.GameContent
                     data = ms.ToArray();
                 }
 
-                ((ICoreServerAPI)api).Network.SendBlockEntityPacket(
+                ((ICoreServerAPI)Api).Network.SendBlockEntityPacket(
                     (IServerPlayer)byPlayer,
-                    pos.X, pos.Y, pos.Z,
+                    Pos.X, Pos.Y, Pos.Z,
                     (int)EnumBlockStovePacket.OpenGUI,
                     data
                 );
@@ -403,9 +466,9 @@ namespace Vintagestory.GameContent
             base.FromTreeAtributes(tree, worldForResolving);
             Inventory.FromTreeAttributes(tree.GetTreeAttribute("inventory"));
 
-            if (api != null)
+            if (Api != null)
             {
-                Inventory.AfterBlocksLoaded(api.World);
+                Inventory.AfterBlocksLoaded(Api.World);
             }
 
 
@@ -414,7 +477,6 @@ namespace Vintagestory.GameContent
             if (worldForResolving.Side == EnumAppSide.Client)
             {
                 List<int> clientIds = new List<int>((tree["clientIdsGrinding"] as IntArrayAttribute).value);
-                bool wasGrinding = quantityPlayersGrinding > 0;
 
                 quantityPlayersGrinding = clientIds.Count;
 
@@ -437,12 +499,12 @@ namespace Vintagestory.GameContent
                     if (plr != null) playersGrinding.Add(plr);
                 }
                 
-                updateGrindingState(wasGrinding);
+                updateGrindingState();
             }
             
 
 
-            if (api?.Side == EnumAppSide.Client && clientDialog?.Attributes != null && clientDialog.IsOpened())
+            if (Api?.Side == EnumAppSide.Client && clientDialog?.Attributes != null && clientDialog.IsOpened())
             {
                 SetDialogValues(clientDialog.Attributes);
             }
@@ -506,7 +568,7 @@ namespace Vintagestory.GameContent
                 Inventory.InvNetworkUtil.HandleClientPacket(player, packetid, data);
 
                 // Tell server to save this chunk to disk again
-                api.World.BlockAccessor.GetChunkAtBlockPos(pos.X, pos.Y, pos.Z).MarkModified();
+                Api.World.BlockAccessor.GetChunkAtBlockPos(Pos.X, Pos.Y, Pos.Z).MarkModified();
 
                 return;
             }
@@ -536,20 +598,23 @@ namespace Vintagestory.GameContent
                     Inventory.FromTreeAttributes(tree);
                     Inventory.ResolveBlocksOrItems();
 
-                    IClientWorldAccessor clientWorld = (IClientWorldAccessor)api.World;
+                    IClientWorldAccessor clientWorld = (IClientWorldAccessor)Api.World;
 
                     SyncedTreeAttribute dtree = new SyncedTreeAttribute();
                     SetDialogValues(dtree);
 
-                    clientDialog = new GuiDialogBlockEntityQuern(dialogTitle, Inventory, pos, dtree, api as ICoreClientAPI);
-                    clientDialog.TryOpen();
-                    clientDialog.OnClosed += () => clientDialog = null;
+                    if (clientDialog == null || !clientDialog.IsOpened())
+                    {
+                        clientDialog = new GuiDialogBlockEntityQuern(dialogTitle, Inventory, Pos, dtree, Api as ICoreClientAPI);
+                        clientDialog.TryOpen();
+                        clientDialog.OnClosed += () => clientDialog = null;
+                    }
                 }
             }
 
             if (packetid == (int)EnumBlockContainerPacketId.CloseInventory)
             {
-                IClientWorldAccessor clientWorld = (IClientWorldAccessor)api.World;
+                IClientWorldAccessor clientWorld = (IClientWorldAccessor)Api.World;
                 clientWorld.Player.InventoryManager.CloseInventory(Inventory);
             }
         }
@@ -625,12 +690,12 @@ namespace Vintagestory.GameContent
 
 
 
-        public bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
+        public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
         {
-            if (ownBlock == null) return false;
+            if (Block == null) return false;
             
             mesher.AddMeshData(this.quernBaseMesh);
-            if (!IsGrinding)
+            if (quantityPlayersGrinding == 0 && !automated)
             {
                 mesher.AddMeshData(
                     this.quernTopMesh.Clone()

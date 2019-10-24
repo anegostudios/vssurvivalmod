@@ -17,7 +17,7 @@ namespace Vintagestory.GameContent
     {
         public AssetLocation Code;
         public float Chance;
-    } 
+    }
 
     // Definitions:
     // Farmland has 3 nutrient levels N, P and K
@@ -27,7 +27,7 @@ namespace Vintagestory.GameContent
     // - Each crop has different total growth speed
     // - Each crop can have any amounts of growth stages
     // - Some crops can be harvested with right click, without destroying the crop
-    public class BlockEntityFarmland : BlockEntity, IFarmlandBlockEntity, IAnimalFoodSource, IBlockShapeSupplier
+    public class BlockEntityFarmland : BlockEntity, IFarmlandBlockEntity, IAnimalFoodSource
     {
         protected static Random rand = new Random();
         protected static CodeAndChance[] weedNames;
@@ -74,7 +74,7 @@ namespace Vintagestory.GameContent
         public override void Initialize(ICoreAPI api)
         {
             base.Initialize(api);
-            upPos = base.pos.UpCopy();
+            upPos = base.Pos.UpCopy();
 
             if (api is ICoreServerAPI)
             {
@@ -83,15 +83,15 @@ namespace Vintagestory.GameContent
                 api.ModLoader.GetModSystem<POIRegistry>().AddPOI(this);
             }
 
-            Block block = api.World.BlockAccessor.GetBlock(base.pos);
-            if (block.Attributes != null)
+            
+            if (Block.Attributes != null)
             {
-                delayGrowthBelowSunLight = block.Attributes["delayGrowthBelowSunLight"].AsInt(19);
-                lossPerLevel = block.Attributes["lossPerLevel"].AsFloat(0.1f);
+                delayGrowthBelowSunLight = Block.Attributes["delayGrowthBelowSunLight"].AsInt(19);
+                lossPerLevel = Block.Attributes["lossPerLevel"].AsFloat(0.1f);
 
                 if (weedNames == null)
                 {
-                    weedNames = block.Attributes["weedBlockCodes"].AsObject<CodeAndChance[]>();
+                    weedNames = Block.Attributes["weedBlockCodes"].AsObject<CodeAndChance[]>();
                     for (int i = 0; weedNames != null && i < weedNames.Length; i++)
                     {
                         totalWeedChance += weedNames[i].Chance;
@@ -120,7 +120,7 @@ namespace Vintagestory.GameContent
             nutrients[1] = originalFertility;
             nutrients[2] = originalFertility;
 
-            totalHoursLastUpdate = api.World.Calendar.TotalHours;
+            totalHoursLastUpdate = Api.World.Calendar.TotalHours;
         }
 
         public bool OnBlockInteract(IPlayer byPlayer)
@@ -138,26 +138,47 @@ namespace Vintagestory.GameContent
             byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
 
             (byPlayer as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
-            api.World.PlaySoundAt(api.World.BlockAccessor.GetBlock(pos).Sounds.Hit, pos.X + 0.5, pos.Y + 0.75, pos.Z + 0.5, byPlayer, true, 12);
+            Api.World.PlaySoundAt(Api.World.BlockAccessor.GetBlock(base.Pos).Sounds.Hit, base.Pos.X + 0.5, base.Pos.Y + 0.75, base.Pos.Z + 0.5, byPlayer, true, 12);
 
             MarkDirty(false);
             return true;
         }
 
 
-        protected bool FindNearbyWater()
-        {
-            lastWaterSearchedTotalHours = api.World.Calendar.TotalHours;
+        bool farmlandIsAtChunkEdge = false;
 
+        protected EnumWaterSearchResult FindNearbyWater()
+        {
             // 1. Watered check
             bool waterNearby = false;
+            farmlandIsAtChunkEdge = false;
+
+            Api.World.BlockAccessor.SearchBlocks(
+                new BlockPos(Pos.X - 3, Pos.Y, Pos.Z - 3),
+                new BlockPos(Pos.X + 3, Pos.Y, Pos.Z + 3),
+                (block, pos) =>
+                {
+                    if (block.LiquidCode == "water")
+                    {
+                        waterNearby = true;
+                        return false;
+                    }
+                    return true;
+                },
+                (cx, cy, cz) => farmlandIsAtChunkEdge = true
+            );
+
+            if (farmlandIsAtChunkEdge) return EnumWaterSearchResult.Deferred;
+
+            lastWaterSearchedTotalHours = Api.World.Calendar.TotalHours;
+
 
             for (int dx = -3; dx <= 3 && !waterNearby; dx++)
             {
                 for (int dz = -3; dz <= 3; dz++)
                 {
                     if (dx == 0 && dz == 0) continue;
-                    if (api.World.BlockAccessor.GetBlock(base.pos.X + dx, base.pos.Y, base.pos.Z + dz).LiquidCode == "water")
+                    if (Api.World.BlockAccessor.GetBlock(base.Pos.X + dx, base.Pos.Y, base.Pos.Z + dz).LiquidCode == "water")
                     {
                         waterNearby = true;
                         break;
@@ -168,11 +189,11 @@ namespace Vintagestory.GameContent
             if (waterNearby)
             {
                 if (!IsWatered) MarkDirty(true);
-                lastWateredTotalHours = api.World.Calendar.TotalHours;
-                return true;
+                lastWateredTotalHours = Api.World.Calendar.TotalHours;
+                return EnumWaterSearchResult.Found;
             }
 
-            return false;
+            return EnumWaterSearchResult.NotFound;
         }
 
 
@@ -189,9 +210,9 @@ namespace Vintagestory.GameContent
             bool nearbyWaterTested = false;
             bool nearbyWaterFound = false;
 
-            double nowTotalHours = api.World.Calendar.TotalHours;
+            double nowTotalHours = Api.World.Calendar.TotalHours;
 
-            if (api.World.ElapsedMilliseconds - lastWateredMs > 10000)
+            if (Api.World.ElapsedMilliseconds - lastWateredMs > 10000)
             {
                 currentlyWateredSeconds = Math.Max(0, currentlyWateredSeconds - dt);
             }
@@ -199,17 +220,20 @@ namespace Vintagestory.GameContent
             if (!IsWatered && nowTotalHours - lastWateredTotalHours >= totalHoursWaterRetention - 1 && (nowTotalHours - lastWaterSearchedTotalHours) >= 0.5f)
             {
                 nearbyWaterTested = true;
-                nearbyWaterFound = FindNearbyWater();
+                EnumWaterSearchResult res = FindNearbyWater();
+                if (res == EnumWaterSearchResult.Deferred) return; // Wait with updating until neighbouring chunks are loaded
+
+                nearbyWaterFound = res == EnumWaterSearchResult.Found;
             }
 
             double hoursPassed = nowTotalHours - totalHoursLastUpdate;
             if (hoursPassed < 1) return;
 
             // Slow down growth on bad light levels
-            int sunlight = api.World.BlockAccessor.GetLightLevel(pos.UpCopy(), EnumLightLevelType.MaxLight);
+            int sunlight = Api.World.BlockAccessor.GetLightLevel(base.Pos.UpCopy(), EnumLightLevelType.MaxLight);
             double lightGrowthSpeedFactor = GameMath.Clamp(1 - (delayGrowthBelowSunLight - sunlight) * lossPerLevel, 0, 1);
 
-            Block upblock = api.World.BlockAccessor.GetBlock(upPos);
+            Block upblock = Api.World.BlockAccessor.GetBlock(upPos);
             bool cropCanGrow = lightGrowthSpeedFactor > 0 && upblock != null && upblock.CropProps != null;
             double lightHoursPenalty = hoursNextStage / lightGrowthSpeedFactor - hoursNextStage;
             double totalHoursNextGrowthState = totalHoursForNextStage + lightHoursPenalty;
@@ -277,17 +301,23 @@ namespace Vintagestory.GameContent
                     lastWateredTotalHours = totalHoursLastUpdate;
                 } else
                 {
-                    if (!nearbyWaterTested && !IsWatered && api.World.Calendar.TotalHours - lastWateredTotalHours >= totalHoursWaterRetention - 1 && (totalHoursLastUpdate - lastWaterSearchedTotalHours) >= 0.5f)
+                    if (!nearbyWaterTested && !IsWatered && Api.World.Calendar.TotalHours - lastWateredTotalHours >= totalHoursWaterRetention - 1 && (totalHoursLastUpdate - lastWaterSearchedTotalHours) >= 0.5f)
                     {
                         nearbyWaterTested = true;
-                        nearbyWaterFound = FindNearbyWater();
+                        EnumWaterSearchResult res = FindNearbyWater();
+                        if (res == EnumWaterSearchResult.Deferred)
+                        {
+                            totalHoursLastUpdate -= hourIntervall;
+                            return; // Wait with updating until neighbouring chunks are loaded
+                        }
+                        nearbyWaterFound = res == EnumWaterSearchResult.Found;
                     }
                 }
 
                 // Did the farmland run out of water at this time?
                 if (lastWateredTotalHours - totalHoursNextGrowthState < -totalHoursWaterRetention)
                 {
-                    totalHoursForNextStage = api.World.Calendar.TotalHours + hoursNextStage;
+                    totalHoursForNextStage = Api.World.Calendar.TotalHours + hoursNextStage;
                     continue;
                 }
 
@@ -309,10 +339,10 @@ namespace Vintagestory.GameContent
                     rnd -= weedNames[i].Chance;
                     if (rnd <= 0)
                     {
-                        Block weedsBlock = api.World.GetBlock(weedNames[i].Code);
+                        Block weedsBlock = Api.World.GetBlock(weedNames[i].Code);
                         if (weedsBlock != null)
                         {
-                            api.World.BlockAccessor.SetBlock(weedsBlock.BlockId, upPos);
+                            Api.World.BlockAccessor.SetBlock(weedsBlock.BlockId, upPos);
                         }
                         break;
                     }
@@ -321,7 +351,7 @@ namespace Vintagestory.GameContent
 
 
             UpdateFarmlandBlock();
-            api.World.BlockAccessor.MarkBlockEntityDirty(pos);
+            Api.World.BlockAccessor.MarkBlockEntityDirty(base.Pos);
         }
 
         public double GetHoursForNextStage()
@@ -360,12 +390,12 @@ namespace Vintagestory.GameContent
         {
             if (CanPlant() && block.CropProps != null)
             {
-                api.World.BlockAccessor.SetBlock(block.BlockId, upPos);
-                totalHoursForNextStage = api.World.Calendar.TotalHours + GetHoursForNextStage();
+                Api.World.BlockAccessor.SetBlock(block.BlockId, upPos);
+                totalHoursForNextStage = Api.World.Calendar.TotalHours + GetHoursForNextStage();
 
                 foreach (CropBehavior behavior in block.CropProps.Behaviors)
                 {
-                    behavior.OnPlanted(api);
+                    behavior.OnPlanted(Api);
                 }
 
                 return true;
@@ -376,7 +406,7 @@ namespace Vintagestory.GameContent
 
         internal bool CanPlant()
         {
-            Block block = api.World.BlockAccessor.GetBlock(upPos);
+            Block block = Api.World.BlockAccessor.GetBlock(upPos);
             return block == null || block.BlockMaterial == EnumBlockMaterial.Air;
         }
         
@@ -403,7 +433,7 @@ namespace Vintagestory.GameContent
             {
                 int newGrowthStage = currentGrowthStage + 1;
 
-                Block nextBlock = api.World.GetBlock(block.CodeWithParts("" + newGrowthStage));
+                Block nextBlock = Api.World.GetBlock(block.CodeWithParts("" + newGrowthStage));
                 if (nextBlock == null) return false;
 
                 if (block.CropProps.Behaviors != null)
@@ -412,13 +442,13 @@ namespace Vintagestory.GameContent
                     bool result = false;
                     foreach (CropBehavior behavior in block.CropProps.Behaviors)
                     {
-                        result = behavior.TryGrowCrop(api, this, currentTotalHours, newGrowthStage, ref handled);
+                        result = behavior.TryGrowCrop(Api, this, currentTotalHours, newGrowthStage, ref handled);
                         if (handled == EnumHandling.PreventSubsequent) return result;
                     }
                     if (handled == EnumHandling.PreventDefault) return result;
                 }
 
-                api.World.BlockAccessor.SetBlock(nextBlock.BlockId, upPos);
+                Api.World.BlockAccessor.SetBlock(nextBlock.BlockId, upPos);
                 ConsumeNutrients(block);
                 return true;
             }
@@ -441,20 +471,20 @@ namespace Vintagestory.GameContent
 
 
             int nowLevel = FertilityLevel(originalFertility);// FertilityLevel((nutrients[0] + nutrients[1] + nutrients[2]) / 3);
-            Block farmlandBlock = api.World.BlockAccessor.GetBlock(pos);
-            Block nextFarmlandBlock = api.World.GetBlock(farmlandBlock.CodeWithParts(IsWatered ? "moist" : "dry", Fertilities.GetKeyAtIndex(nowLevel)));
+            Block farmlandBlock = Api.World.BlockAccessor.GetBlock(base.Pos);
+            Block nextFarmlandBlock = Api.World.GetBlock(farmlandBlock.CodeWithParts(IsWatered ? "moist" : "dry", Fertilities.GetKeyAtIndex(nowLevel)));
 
             if (nextFarmlandBlock == null)
             {
-                api.World.BlockAccessor.RemoveBlockEntity(pos);
+                Api.World.BlockAccessor.RemoveBlockEntity(base.Pos);
                 return;
             }
 
             if (farmlandBlock.BlockId != nextFarmlandBlock.BlockId)
             {
-                api.World.BlockAccessor.ExchangeBlock(nextFarmlandBlock.BlockId, pos);
-                api.World.BlockAccessor.MarkBlockEntityDirty(pos);
-                api.World.BlockAccessor.MarkBlockDirty(pos);
+                Api.World.BlockAccessor.ExchangeBlock(nextFarmlandBlock.BlockId, base.Pos);
+                Api.World.BlockAccessor.MarkBlockEntityDirty(base.Pos);
+                Api.World.BlockAccessor.MarkBlockDirty(base.Pos);
             }
         }
 
@@ -471,7 +501,7 @@ namespace Vintagestory.GameContent
 
         internal Block GetCrop()
         {
-            Block block = api.World.BlockAccessor.GetBlock(upPos);
+            Block block = Api.World.BlockAccessor.GetBlock(upPos);
             if (block == null || block.CropProps == null) return null;
             return block;
         }
@@ -535,42 +565,40 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override string GetBlockInfo(IPlayer forPlayer)
+        public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
         {
-            StringBuilder sb = new StringBuilder();
-
-            sb.AppendLine(Lang.Get("Nutrient Levels: N {0}%, P {1}%, K {2}%", Math.Round(nutrients[0],1), Math.Round(nutrients[1],1), Math.Round(nutrients[2],1)));
+            dsc.AppendLine(Lang.Get("Nutrient Levels: N {0}%, P {1}%, K {2}%", Math.Round(nutrients[0],1), Math.Round(nutrients[1],1), Math.Round(nutrients[2],1)));
             float snn = (float)Math.Round(slowReleaseNutrients[0],1);
             float snp = (float)Math.Round(slowReleaseNutrients[1],1);
             float snk = (float)Math.Round(slowReleaseNutrients[2],1);
             if (snn > 0 || snp > 0 || snk > 0)
             {
-                sb.AppendLine(Lang.Get("Slow Release Nutrients: N {0}%, P {1}%, K {2}%", snn, snp, snk));
+                dsc.AppendLine(Lang.Get("Slow Release Nutrients: N {0}%, P {1}%, K {2}%", snn, snp, snk));
             }
 
-            sb.AppendLine(Lang.Get("Growth speeds: N Crop: {0}%, P Crop: {1}%, K Crop: {2}%", Math.Round(100 * 1 / LowNutrientPenalty(EnumSoilNutrient.N), 0), Math.Round(100 * 1 / LowNutrientPenalty(EnumSoilNutrient.P), 0), Math.Round(100 * 1 / LowNutrientPenalty(EnumSoilNutrient.K), 0)));
+            dsc.AppendLine(Lang.Get("Growth speeds: N Crop: {0}%, P Crop: {1}%, K Crop: {2}%", Math.Round(100 * 1 / LowNutrientPenalty(EnumSoilNutrient.N), 0), Math.Round(100 * 1 / LowNutrientPenalty(EnumSoilNutrient.P), 0), Math.Round(100 * 1 / LowNutrientPenalty(EnumSoilNutrient.K), 0)));
 
-            return sb.ToString();
+            dsc.ToString();
         }
 
 
         public void WaterFarmland(float dt, bool waterNeightbours = true)
         {
             currentlyWateredSeconds += dt;
-            lastWateredMs = api.World.ElapsedMilliseconds;
+            lastWateredMs = Api.World.ElapsedMilliseconds;
 
             if (currentlyWateredSeconds > 1f)
             {
                 if (IsWatered && waterNeightbours)
                 {
                     foreach (BlockFacing neib in BlockFacing.HORIZONTALS) {
-                        BlockPos npos = pos.AddCopy(neib);
-                        BlockEntityFarmland bef = api.World.BlockAccessor.GetBlockEntity(npos) as BlockEntityFarmland;
+                        BlockPos npos = base.Pos.AddCopy(neib);
+                        BlockEntityFarmland bef = Api.World.BlockAccessor.GetBlockEntity(npos) as BlockEntityFarmland;
                         if (bef != null) bef.WaterFarmland(1.01f, false);
                     }
                 }
 
-                lastWateredTotalHours = api.World.Calendar.TotalHours;
+                lastWateredTotalHours = Api.World.Calendar.TotalHours;
                 UpdateFarmlandBlock();
                 currentlyWateredSeconds--;
             }
@@ -605,7 +633,7 @@ namespace Vintagestory.GameContent
         {
             get
             {
-                return lastWateredTotalHours > 0 && (api.World.Calendar.TotalHours - lastWateredTotalHours) < totalHoursWaterRetention;
+                return lastWateredTotalHours > 0 && (Api.World.Calendar.TotalHours - lastWateredTotalHours) < totalHoursWaterRetention;
             }
         }
 
@@ -617,13 +645,6 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public BlockPos Pos
-        {
-            get
-            {
-                return base.pos;
-            }
-        }
 
         public BlockPos UpPos
         {
@@ -647,10 +668,16 @@ namespace Vintagestory.GameContent
         {
             Block cropBlock = GetCrop();
             if (cropBlock == null) return false;
-            if (cropBlock.Code.Path.Contains("pumpkin")) return false;
 
-            string[] diet = entity.Properties.Attributes?["diet"]?.AsArray<string>();
-            return diet != null && diet.Contains("crops");
+            AssetLocation[] diet = entity.Properties.Attributes?["blockDiet"]?.AsArray<AssetLocation>();
+            if (diet == null) return false;
+
+            for (int i = 0; i < diet.Length; i++)
+            {
+                if (cropBlock.WildCardMatch(diet[i])) return true;
+            }
+
+            return false;
         }
 
         public float ConsumeOnePortion()
@@ -658,12 +685,12 @@ namespace Vintagestory.GameContent
             Block cropBlock = GetCrop();
             if (cropBlock == null) return 0;
 
-            api.World.BlockAccessor.BreakBlock(upPos, null);
+            Api.World.BlockAccessor.BreakBlock(upPos, null);
 
-            return 0.5f;
+            return 1f;
         }
 
-        public bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
+        public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
         {
             return false;
 
@@ -679,8 +706,18 @@ namespace Vintagestory.GameContent
             return true;*/
         }
 
-        public Vec3d Position => pos.ToVec3d().Add(0.5, 1, 0.5);
+        public Vec3d Position => base.Pos.ToVec3d().Add(0.5, 1, 0.5);
         public string Type => "food";
+
+        BlockPos IFarmlandBlockEntity.Pos => this.Pos;
         #endregion
+
+
+        protected enum EnumWaterSearchResult
+        {
+            Found, 
+            NotFound,
+            Deferred
+        }
     }
 }

@@ -14,10 +14,10 @@ namespace Vintagestory.GameContent
             get
             {
                 object value = null;
-                api.ObjectCache.TryGetValue("ingotpile-meshes", out value);
+                Api.ObjectCache.TryGetValue("ingotpile-meshes", out value);
                 return (Dictionary<AssetLocation, MeshData[]>)value;
             }
-            set { api.ObjectCache["ingotpile-meshes"] = value; }
+            set { Api.ObjectCache["ingotpile-meshes"] = value; }
         }
         
 
@@ -35,18 +35,18 @@ namespace Vintagestory.GameContent
         {
             if (meshesByType == null) meshesByType = new Dictionary<AssetLocation, MeshData[]>();
             if (MetalType == null || meshesByType.ContainsKey(new AssetLocation(MetalType))) return;
-            if (api.Side != EnumAppSide.Client) return;
+            if (Api.Side != EnumAppSide.Client) return;
 
-            tmpBlock = api.World.BlockAccessor.GetBlock(pos);
-            tmpTextureSource = ((ICoreClientAPI)api).Tesselator.GetTexSource(tmpBlock);
-            Shape shape = api.Assets.TryGet("shapes/block/metal/ingotpile.json").ToObject<Shape>();
-            MetalProperty metals = api.Assets.TryGet("worldproperties/block/metal.json").ToObject<MetalProperty>();
+            tmpBlock = Api.World.BlockAccessor.GetBlock(Pos);
+            tmpTextureSource = ((ICoreClientAPI)Api).Tesselator.GetTexSource(tmpBlock);
+            Shape shape = Api.Assets.TryGet("shapes/block/metal/ingotpile.json").ToObject<Shape>();
+            MetalProperty metals = Api.Assets.TryGet("worldproperties/block/metal.json").ToObject<MetalProperty>();
 
             for (int i = 0; i < metals.Variants.Length; i++)
             {
                 if (!metals.Variants[i].Code.Path.Equals(MetalType)) continue;
 
-                ITesselatorAPI mesher = ((ICoreClientAPI)api).Tesselator;
+                ITesselatorAPI mesher = ((ICoreClientAPI)Api).Tesselator;
                 MeshData[] meshes = new MeshData[65];
 
                 tmpMetal = metals.Variants[i].Code;
@@ -67,7 +67,6 @@ namespace Vintagestory.GameContent
         public override bool TryPutItem(IPlayer player)
         {
             bool result = base.TryPutItem(player);
-            EnsureMeshExists();
             return result;
         }
 
@@ -89,18 +88,12 @@ namespace Vintagestory.GameContent
             base.Initialize(api);
 
             inventory.ResolveBlocksOrItems();
-            EnsureMeshExists();
         }
 
 
         public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
             base.FromTreeAtributes(tree, worldForResolving);
-
-            if (api?.Side == EnumAppSide.Client)
-            {
-                EnsureMeshExists();
-            }
         }
 
         public string MetalType
@@ -114,6 +107,7 @@ namespace Vintagestory.GameContent
             {
                 if (inventory[0].Itemstack == null) return true;
 
+                EnsureMeshExists();
                 MeshData[] mesh = null;
                 if (MetalType != null && meshesByType.TryGetValue(new AssetLocation(MetalType), out mesh))
                 {

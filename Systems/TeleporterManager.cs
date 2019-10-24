@@ -180,9 +180,17 @@ namespace Vintagestory.GameContent
                .SetMessageHandler<DidTeleport>(OnTranslocateClient)
             ;
 
+
+            api.Event.BlockTexturesLoaded += Event_BlockTexturesLoaded;
+            api.Event.RegisterGameTickListener(OnClientTick, 50);
+            api.Event.LeaveWorld += () => teleportingSound?.Dispose();
+        }
+
+        private void Event_BlockTexturesLoaded()
+        {
             if (teleportingSound == null)
             {
-                teleportingSound = api.World.LoadSound(new SoundParams()
+                teleportingSound = capi.World.LoadSound(new SoundParams()
                 {
                     Location = new AssetLocation("sounds/block/teleporter.ogg"),
                     ShouldLoop = true,
@@ -195,7 +203,7 @@ namespace Vintagestory.GameContent
 
             if (translocatingSound == null)
             {
-                translocatingSound = api.World.LoadSound(new SoundParams()
+                translocatingSound = capi.World.LoadSound(new SoundParams()
                 {
                     Location = new AssetLocation("sounds/effect/translocate-active.ogg"),
                     ShouldLoop = true,
@@ -205,11 +213,7 @@ namespace Vintagestory.GameContent
                     Volume = 0.5f
                 });
             }
-
-            api.Event.RegisterGameTickListener(OnClientTick, 50);
-            api.Event.LeaveWorld += () => teleportingSound?.Dispose();
         }
-
 
         private void OnClientTick(float dt)
         {

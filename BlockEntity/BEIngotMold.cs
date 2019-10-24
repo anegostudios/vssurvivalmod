@@ -22,7 +22,7 @@ namespace Vintagestory.GameContent
         void OnPourOver();
     }
 
-    public class BlockEntityIngotMold : BlockEntity, IBlockShapeSupplier, ILiquidMetalSink
+    public class BlockEntityIngotMold : BlockEntity, ILiquidMetalSink
     {
         internal MeshData[] meshesByQuantity;
 
@@ -37,22 +37,21 @@ namespace Vintagestory.GameContent
         public int quantityMolds = 1;
         public bool fillSide;
 
-        Block block;
         long lastPouringMarkdirtyMs;
 
         public float TemperatureLeft
         {
-            get { return contentsLeft.Collectible.GetTemperature(api.World, contentsLeft); }
+            get { return contentsLeft.Collectible.GetTemperature(Api.World, contentsLeft); }
         }
         public float TemperatureRight
         {
-            get { return contentsRight.Collectible.GetTemperature(api.World, contentsRight); }
+            get { return contentsRight.Collectible.GetTemperature(Api.World, contentsRight); }
         }
 
         public bool IsHardenedLeft
         {
             get {
-                return TemperatureLeft < 0.2f * contentsLeft?.Collectible.GetMeltingPoint(api.World, null, new DummySlot(contentsLeft));
+                return TemperatureLeft < 0.2f * contentsLeft?.Collectible.GetMeltingPoint(Api.World, null, new DummySlot(contentsLeft));
             }
         }
 
@@ -60,7 +59,7 @@ namespace Vintagestory.GameContent
         {
             get
             {
-                return TemperatureRight < 0.2f * contentsRight?.Collectible.GetMeltingPoint(api.World, null, new DummySlot(contentsRight));
+                return TemperatureRight < 0.2f * contentsRight?.Collectible.GetMeltingPoint(Api.World, null, new DummySlot(contentsRight));
             }
         }
 
@@ -68,7 +67,7 @@ namespace Vintagestory.GameContent
         public bool IsLiquidLeft
         {
             get {
-                return TemperatureLeft > 0.8f * contentsLeft?.Collectible.GetMeltingPoint(api.World, null, new DummySlot(contentsLeft));
+                return TemperatureLeft > 0.8f * contentsLeft?.Collectible.GetMeltingPoint(Api.World, null, new DummySlot(contentsLeft));
             }
         }
 
@@ -76,7 +75,7 @@ namespace Vintagestory.GameContent
         {
             get
             {
-                return TemperatureRight > 0.8f * contentsRight?.Collectible.GetMeltingPoint(api.World, null, new DummySlot(contentsRight));
+                return TemperatureRight > 0.8f * contentsRight?.Collectible.GetMeltingPoint(Api.World, null, new DummySlot(contentsRight));
             }
         }
 
@@ -99,7 +98,7 @@ namespace Vintagestory.GameContent
 
         public bool CanReceiveAny
         {
-            get { return block.Code.Path.Contains("burned"); }
+            get { return Block.Code.Path.Contains("burned"); }
         }
 
         public bool CanReceive(ItemStack metal)
@@ -130,12 +129,10 @@ namespace Vintagestory.GameContent
                 contentsRight.ResolveBlockOrItem(api.World);
             }
 
-            block = api.World.BlockAccessor.GetBlock(pos);
-
             if (api is ICoreClientAPI)
             {
                 ICoreClientAPI capi = (ICoreClientAPI)api;
-                capi.Event.RegisterRenderer(ingotRenderer = new IngotMoldRenderer(pos, capi), EnumRenderStage.Opaque);
+                capi.Event.RegisterRenderer(ingotRenderer = new IngotMoldRenderer(Pos, capi), EnumRenderStage.Opaque);
 
                 UpdateIngotRenderer();
 
@@ -154,13 +151,13 @@ namespace Vintagestory.GameContent
         {
             meshesByQuantity = new MeshData[2];
             
-            ITexPositionSource tmpTextureSource = ((ICoreClientAPI)api).Tesselator.GetTexSource(block);
-            ITesselatorAPI mesher = ((ICoreClientAPI)api).Tesselator;
+            ITexPositionSource tmpTextureSource = ((ICoreClientAPI)Api).Tesselator.GetTexSource(Block);
+            ITesselatorAPI mesher = ((ICoreClientAPI)Api).Tesselator;
 
-            Shape shape = api.Assets.TryGet("shapes/block/clay/mold/ingot-1middle.json").ToObject<Shape>();
+            Shape shape = Api.Assets.TryGet("shapes/block/clay/mold/ingot-1middle.json").ToObject<Shape>();
             mesher.TesselateShape("ingotPile", shape, out meshesByQuantity[0], tmpTextureSource);
 
-            shape = api.Assets.TryGet("shapes/block/clay/mold/ingot-2.json").ToObject<Shape>();
+            shape = Api.Assets.TryGet("shapes/block/clay/mold/ingot-2.json").ToObject<Shape>();
             mesher.TesselateShape("ingotPile", shape, out meshesByQuantity[1], tmpTextureSource);
         }
 
@@ -176,12 +173,12 @@ namespace Vintagestory.GameContent
 
             if (contentsLeft != null && ingotRenderer != null)
             {
-                ingotRenderer.TemperatureLeft = Math.Min(1300, contentsLeft.Collectible.GetTemperature(api.World, contentsLeft));
+                ingotRenderer.TemperatureLeft = Math.Min(1300, contentsLeft.Collectible.GetTemperature(Api.World, contentsLeft));
             }
 
             if (contentsRight != null && ingotRenderer != null)
             {
-                ingotRenderer.TemperatureRight = Math.Min(1300, contentsRight.Collectible.GetTemperature(api.World, contentsRight));
+                ingotRenderer.TemperatureRight = Math.Min(1300, contentsRight.Collectible.GetTemperature(Api.World, contentsRight));
             }
         }
 
@@ -249,17 +246,17 @@ namespace Vintagestory.GameContent
 
         private bool TryTakeIngot(IPlayer byPlayer, Vec3d hitPosition)
         {
-            if (api is ICoreServerAPI) MarkDirty();
+            if (Api is ICoreServerAPI) MarkDirty();
             
             ItemStack leftStack = GetLeftContents();
             if (leftStack != null && (hitPosition.X < 0.5f || quantityMolds == 1))
             {
-                api.World.PlaySoundAt(new AssetLocation("sounds/block/ingot"), pos.X, pos.Y, pos.Z, byPlayer, false);
-                if (api is ICoreServerAPI)
+                Api.World.PlaySoundAt(new AssetLocation("sounds/block/ingot"), Pos.X, Pos.Y, Pos.Z, byPlayer, false);
+                if (Api is ICoreServerAPI)
                 {
                     if (!byPlayer.InventoryManager.TryGiveItemstack(leftStack))
                     {
-                        api.World.SpawnItemEntity(leftStack, pos.ToVec3d().Add(0.5, 0.2, 0.5));
+                        Api.World.SpawnItemEntity(leftStack, Pos.ToVec3d().Add(0.5, 0.2, 0.5));
                     }
 
                     contentsLeft = null;
@@ -272,12 +269,12 @@ namespace Vintagestory.GameContent
             ItemStack rightStack = GetRightContents();
             if (rightStack != null && hitPosition.X >= 0.5f)
             {
-                api.World.PlaySoundAt(new AssetLocation("sounds/block/ingot"), pos.X, pos.Y, pos.Z, byPlayer, false);
-                if (api is ICoreServerAPI)
+                Api.World.PlaySoundAt(new AssetLocation("sounds/block/ingot"), Pos.X, Pos.Y, Pos.Z, byPlayer, false);
+                if (Api is ICoreServerAPI)
                 {
                     if (!byPlayer.InventoryManager.TryGiveItemstack(rightStack))
                     {
-                        api.World.SpawnItemEntity(rightStack, pos.ToVec3d().Add(0.5, 0.2, 0.5));
+                        Api.World.SpawnItemEntity(rightStack, Pos.ToVec3d().Add(0.5, 0.2, 0.5));
                     }
 
                     contentsRight = null;
@@ -306,21 +303,21 @@ namespace Vintagestory.GameContent
 
                 
 
-                if (!byPlayer.InventoryManager.TryGiveItemstack(new ItemStack(this.block)))
+                if (!byPlayer.InventoryManager.TryGiveItemstack(new ItemStack(this.Block)))
                 {
-                    api.World.SpawnItemEntity(new ItemStack(block), pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                    Api.World.SpawnItemEntity(new ItemStack(Block), Pos.ToVec3d().Add(0.5, 0.5, 0.5));
                 }
                 if (quantityMolds == 0)
                 {
-                    api.World.BlockAccessor.SetBlock(0, pos);
+                    Api.World.BlockAccessor.SetBlock(0, Pos);
                 } else
                 {
                     MarkDirty(true);
                 }
                 
-                if (block.Sounds?.Place != null)
+                if (Block.Sounds?.Place != null)
                 {
-                    api.World.PlaySoundAt(block.Sounds.Place, pos.X, pos.Y, pos.Z, byPlayer, false);
+                    Api.World.PlaySoundAt(Block.Sounds.Place, Pos.X, Pos.Y, Pos.Z, byPlayer, false);
                 }
 
                 return true;
@@ -331,21 +328,21 @@ namespace Vintagestory.GameContent
                 quantityMolds--;
                 if (ingotRenderer != null) ingotRenderer.QuantityMolds = quantityMolds;
 
-                if (!byPlayer.InventoryManager.TryGiveItemstack(new ItemStack(block)))
+                if (!byPlayer.InventoryManager.TryGiveItemstack(new ItemStack(Block)))
                 {
-                    api.World.SpawnItemEntity(new ItemStack(block), pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                    Api.World.SpawnItemEntity(new ItemStack(Block), Pos.ToVec3d().Add(0.5, 0.5, 0.5));
                 }
                 if (quantityMolds == 0)
                 {
-                    api.World.BlockAccessor.SetBlock(0, pos);
+                    Api.World.BlockAccessor.SetBlock(0, Pos);
                 } else
                 {
                     MarkDirty(true);
                 }
 
-                if (block.Sounds?.Place != null)
+                if (Block.Sounds?.Place != null)
                 {
-                    api.World.PlaySoundAt(block.Sounds.Place, pos.X, pos.Y, pos.Z, byPlayer, false);
+                    Api.World.PlaySoundAt(Block.Sounds.Place, Pos.X, Pos.Y, Pos.Z, byPlayer, false);
                 }
 
                 
@@ -374,9 +371,9 @@ namespace Vintagestory.GameContent
                 byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
             }
 
-            if (block.Sounds?.Place != null)
+            if (Block.Sounds?.Place != null)
             {
-                api.World.PlaySoundAt(block.Sounds.Place, pos.X, pos.Y, pos.Z, byPlayer, false);
+                Api.World.PlaySoundAt(Block.Sounds.Place, Pos.X, Pos.Y, Pos.Z, byPlayer, false);
             }
 
             MarkDirty(true);
@@ -388,7 +385,7 @@ namespace Vintagestory.GameContent
         {
             return
                 byPlayer.InventoryManager.ActiveHotbarSlot.Itemstack != null &&
-                byPlayer.InventoryManager.ActiveHotbarSlot.Itemstack.Collectible == block
+                byPlayer.InventoryManager.ActiveHotbarSlot.Itemstack.Collectible == Block
             ;
         }
 
@@ -419,10 +416,10 @@ namespace Vintagestory.GameContent
 
         public void ReceiveLiquidMetal(ItemStack metal, ref int amount, float temperature)
         {
-            if (lastPouringMarkdirtyMs + 500 < api.World.ElapsedMilliseconds)
+            if (lastPouringMarkdirtyMs + 500 < Api.World.ElapsedMilliseconds)
             {
                 MarkDirty(true);
-                lastPouringMarkdirtyMs = api.World.ElapsedMilliseconds + 500;
+                lastPouringMarkdirtyMs = Api.World.ElapsedMilliseconds + 500;
             }
 
             if ((quantityMolds == 1 || !fillSide) && fillLevelLeft < 100 && (contentsLeft == null || metal.Collectible.Equals(contentsLeft, metal, GlobalConstants.IgnoredStackAttributes)))
@@ -430,13 +427,13 @@ namespace Vintagestory.GameContent
                 if (contentsLeft == null)
                 {
                     contentsLeft = metal.Clone();
-                    contentsLeft.ResolveBlockOrItem(api.World);
-                    contentsLeft.Collectible.SetTemperature(api.World, contentsLeft, temperature, false);
+                    contentsLeft.ResolveBlockOrItem(Api.World);
+                    contentsLeft.Collectible.SetTemperature(Api.World, contentsLeft, temperature, false);
                     contentsLeft.StackSize = 1;
                     (contentsLeft.Attributes["temperature"] as ITreeAttribute)?.SetFloat("cooldownSpeed", 300);
                 } else
                 {
-                    contentsLeft.Collectible.SetTemperature(api.World, contentsLeft, temperature, false);
+                    contentsLeft.Collectible.SetTemperature(Api.World, contentsLeft, temperature, false);
                 }
 
                 int amountToFill = Math.Min(amount, 100 - fillLevelLeft);
@@ -451,13 +448,13 @@ namespace Vintagestory.GameContent
                 if (contentsRight == null)
                 {
                     contentsRight = metal.Clone();
-                    contentsRight.ResolveBlockOrItem(api.World);
-                    contentsRight.Collectible.SetTemperature(api.World, contentsRight, temperature, false);
+                    contentsRight.ResolveBlockOrItem(Api.World);
+                    contentsRight.Collectible.SetTemperature(Api.World, contentsRight, temperature, false);
                     contentsRight.StackSize = 1;
                     (contentsRight.Attributes["temperature"] as ITreeAttribute)?.SetFloat("cooldownSpeed", 300);
                 } else
                 {
-                    contentsRight.Collectible.SetTemperature(api.World, contentsRight, temperature, false);
+                    contentsRight.Collectible.SetTemperature(Api.World, contentsRight, temperature, false);
                 }
 
                 int amountToFill = Math.Min(amount, 100 - fillLevelRight);
@@ -489,7 +486,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
+        public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
         {
             if (quantityMolds == 0) return true;
 
@@ -505,19 +502,19 @@ namespace Vintagestory.GameContent
 
             contentsLeft = tree.GetItemstack("contentsLeft");
             fillLevelLeft = tree.GetInt("fillLevelLeft");
-            if (api?.World != null && contentsLeft != null) contentsLeft.ResolveBlockOrItem(api.World);
+            if (Api?.World != null && contentsLeft != null) contentsLeft.ResolveBlockOrItem(Api.World);
 
             contentsRight = tree.GetItemstack("contentsRight");
             fillLevelRight = tree.GetInt("fillLevelRight");
-            if (api?.World != null && contentsRight != null) contentsRight.ResolveBlockOrItem(api.World);
+            if (Api?.World != null && contentsRight != null) contentsRight.ResolveBlockOrItem(Api.World);
 
             quantityMolds = tree.GetInt("quantityMolds");
 
             UpdateIngotRenderer();
 
-            if (api?.Side == EnumAppSide.Client)
+            if (Api?.Side == EnumAppSide.Client)
             {
-                api.World.BlockAccessor.MarkBlockDirty(pos);
+                Api.World.BlockAccessor.MarkBlockDirty(Pos);
             }
         }
 
@@ -536,7 +533,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override string GetBlockInfo(IPlayer forPlayer)
+        public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
         {
             string contents = "";
 
@@ -555,7 +552,7 @@ namespace Vintagestory.GameContent
                 contents += Lang.Get("{0} units of {1} {2} ({3})", fillLevelRight, state, contentsRight.GetName(), temp) + "\n";
             }
 
-            return contents.Length == 0 ? "Empty" : contents;
+            dsc.AppendLine(contents.Length == 0 ? "Empty" : contents);
         }
 
         public override void OnBlockUnloaded()
@@ -569,8 +566,8 @@ namespace Vintagestory.GameContent
 
         public override void OnStoreCollectibleMappings(Dictionary<int, AssetLocation> blockIdMapping, Dictionary<int, AssetLocation> itemIdMapping)
         {
-            contentsLeft?.Collectible.OnStoreCollectibleMappings(api.World, new DummySlot(contentsLeft), blockIdMapping, itemIdMapping);
-            contentsRight?.Collectible.OnStoreCollectibleMappings(api.World, new DummySlot(contentsRight), blockIdMapping, itemIdMapping);
+            contentsLeft?.Collectible.OnStoreCollectibleMappings(Api.World, new DummySlot(contentsLeft), blockIdMapping, itemIdMapping);
+            contentsRight?.Collectible.OnStoreCollectibleMappings(Api.World, new DummySlot(contentsRight), blockIdMapping, itemIdMapping);
         }
 
         public override void OnLoadCollectibleMappings(IWorldAccessor worldForResolve, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping)

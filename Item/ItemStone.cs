@@ -55,7 +55,7 @@ namespace Vintagestory.GameContent
                 string failCode = "";
 
                 BlockPos pos = blockSel.Position;
-                knappingBlock.IsSuitablePosition(world, pos, ref failCode);
+                knappingBlock.CanPlaceBlock(world, byPlayer, blockSel, ref failCode);
 
                 if (failCode == "entityintersecting")
                 {
@@ -116,10 +116,14 @@ namespace Vintagestory.GameContent
                 BlockSelection placeSel = blockSel.Clone();
                 placeSel.Position = targetpos;
                 placeSel.DidOffset = true;
-                string useless = "";
+                string error = "";
 
-                if (!block.TryPlaceBlock(world, byPlayer, itemslot.Itemstack, placeSel, ref useless))
-                { 
+                if (!block.TryPlaceBlock(world, byPlayer, itemslot.Itemstack, placeSel, ref error))
+                {
+                    if (api.Side == EnumAppSide.Client)
+                    {
+                        (api as ICoreClientAPI).TriggerIngameError(this, "cantplace", error);
+                    }
                     return;
                 }
 

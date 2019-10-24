@@ -54,7 +54,7 @@ namespace Vintagestory.GameContent.Mechanics
             float rotY = rotation[dev.AxisMapping[1]] * dev.AxisSign[1];
             float rotZ = rotation[dev.AxisMapping[2]] * dev.AxisSign[2];
 
-            UpdateLightAndTransformMatrix(floatsPeg.Values, index, distToCamera, dev.LightRgba, rotX, rotY, rotZ - 0.08f);
+            UpdateLightAndTransformMatrix(floatsPeg.Values, index, distToCamera, dev.LightRgba, rotX, rotY, rotZ);// - 0.08f);
 
             rotX = rotation[dev.AxisMapping[3]] * dev.AxisSign[3];
             rotY = rotation[dev.AxisMapping[4]] * dev.AxisSign[4];

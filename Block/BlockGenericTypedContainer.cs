@@ -212,12 +212,6 @@ namespace Vintagestory.GameContent
             base.GetDecal(world, pos, decalTexSource, ref decalModelData, ref blockModelData);
         }
 
-        public override void DoPlaceBlock(IWorldAccessor world, BlockPos pos, BlockFacing onBlockFace, ItemStack byItemStack)
-        {
-            base.DoPlaceBlock(world, pos, onBlockFace, byItemStack);
-            
-        }
-
 
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
         {

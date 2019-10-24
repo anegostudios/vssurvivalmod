@@ -45,19 +45,12 @@ namespace Vintagestory.GameContent
 
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
         {
-            if (!world.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
-            {
-                byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
-                failureCode = "claimed";
-                return false;
-            }
-
             string orientations = GetOrientations(world, blockSel.Position);
             Block block = world.BlockAccessor.GetBlock(CodeWithParts(orientations));
 
             if (block == null) block = this;
 
-            if (block.IsSuitablePosition(world, blockSel.Position, ref failureCode))
+            if (block.CanPlaceBlock(world, byPlayer, blockSel, ref failureCode))
             {
                 world.BlockAccessor.SetBlock(block.BlockId, blockSel.Position);
                 return true;

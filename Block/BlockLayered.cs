@@ -44,8 +44,7 @@ namespace Vintagestory.GameContent
                 return false;
             }
 
-            base.TryPlaceBlock(world, byPlayer, itemstack, blockSel, ref failureCode);
-            return true;
+            return base.DoPlaceBlock(world, byPlayer, blockSel, itemstack);
         }
 
    

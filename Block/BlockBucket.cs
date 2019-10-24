@@ -99,7 +99,7 @@ namespace Vintagestory.GameContent
 
             if (contentStack != null)
             {
-                WaterTightContainableProps props = GetStackProps(contentStack);
+                WaterTightContainableProps props = GetInContainerProps(contentStack);
 
                 ContainerTextureSource contentSource = new ContainerTextureSource(capi, contentStack, props.Texture);
                 shape = capi.Assets.TryGet("shapes/block/wood/bucket/contents.json").ToObject<Shape>();

@@ -85,7 +85,7 @@ namespace Vintagestory.GameContent
                 if (!Inventory[1].Empty)
                 {
                     ItemStack stack = Inventory[1].Itemstack;
-                    WaterTightContainableProps props = BlockLiquidContainerBase.GetStackProps(stack);
+                    WaterTightContainableProps props = BlockLiquidContainerBase.GetInContainerProps(stack);
 
                     if (props != null)
                     {
@@ -108,7 +108,7 @@ namespace Vintagestory.GameContent
                 if (bebarrel.CurrentRecipe != null)
                 {
                     ItemStack outStack = bebarrel.CurrentRecipe.Output.ResolvedItemstack;
-                    WaterTightContainableProps props = BlockLiquidContainerBase.GetStackProps(outStack);
+                    WaterTightContainableProps props = BlockLiquidContainerBase.GetInContainerProps(outStack);
 
                     string timeText = bebarrel.CurrentRecipe.SealHours > 24 ? Lang.Get("{0} days", Math.Round(bebarrel.CurrentRecipe.SealHours / capi.World.Calendar.HoursPerDay, 1)) : Lang.Get("{0} hours", bebarrel.CurrentRecipe.SealHours);
 
@@ -120,7 +120,7 @@ namespace Vintagestory.GameContent
                     }
                     else
                     {
-                        contents += "\n\n" + Lang.Get("Will turn into {0}x of {1} after {2} of sealing.", bebarrel.CurrentOutSize, outStack.GetName(), timeText);
+                        contents += "\n\n" + Lang.Get("Will turn into {0}x {1} after {2} of sealing.", bebarrel.CurrentOutSize, outStack.GetName(), timeText);
                     }
 
                     
@@ -140,28 +140,7 @@ namespace Vintagestory.GameContent
         {
             ItemSlot liquidSlot = Inventory[1];
             if (liquidSlot.Empty) return;
-
-            int ravg=0, gavg=0, bavg=0, aavg = 0;
-            for (int i = 0; i < 10; i++)
-            {
-                int col = liquidSlot.Itemstack.Collectible.GetRandomColor(capi, liquidSlot.Itemstack);
-                int r = (col >> 16) & 0xff;
-                int g = (col >> 8) & 0xff;
-                int b = col & 0xff;
-                int a = (col >> 24) & 0xff;
-
-                ravg += r;
-                gavg += g;
-                bavg += b;
-                aavg += a;
-            }
-
-            ravg /= 10;
-            gavg /= 10;
-            bavg /= 10;
-            aavg /= 10;
-            
-
+                       
             int itemsPerLitre = 1;
 
             if (liquidSlot.Itemstack.ItemAttributes?["waterTightContainerProps"].Exists == true)
@@ -175,8 +154,15 @@ namespace Vintagestory.GameContent
             double offY = (1 - fullnessRelative) * currentBounds.InnerHeight;
 
             ctx.Rectangle(0, offY, currentBounds.InnerWidth, currentBounds.InnerHeight - offY);
-            ctx.SetSourceRGBA(ravg/255.0, gavg / 255.0, bavg / 255.0, aavg / 255.0);
-            ctx.Fill();
+            //ctx.SetSourceRGBA(ravg/255.0, gavg / 255.0, bavg / 255.0, aavg / 255.0);
+            //ctx.Fill();
+
+            CompositeTexture tex = liquidSlot.Itemstack.Collectible.Attributes?["waterTightContainerProps"]?["texture"]?.AsObject<CompositeTexture>();
+            if (tex != null)
+            {
+                AssetLocation loc = tex.Base.Clone().WithPathAppendixOnce(".png");
+                GuiElement.fillWithPattern(capi, ctx, loc.Path, false);
+            }
         }
 
 

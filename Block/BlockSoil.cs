@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.ServerMods;
@@ -278,6 +280,19 @@ namespace Vintagestory.GameContent
                 return capi.ApplyColorTintOnRgba(1, capi.BlockTextureAtlas.GetRandomPixel(Textures["specialSecondTexture"].Baked.TextureSubId), pos.X, pos.Y, pos.Z);
             }
             return base.GetRandomColor(capi, pos, facing);
+        }
+
+
+        public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
+        {
+            base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
+
+            var fertility = inSlot.Itemstack.Block.LastCodePart(1);
+            var farmland = world.GetBlock(new AssetLocation("farmland-dry-" + fertility));
+            if (farmland == null) return;
+            var fert_value = farmland.Fertility;
+            if (fert_value <= 0) return;
+            dsc.Append(Lang.Get("Fertility (tilled): ") + fert_value + "%\n");
         }
 
     }

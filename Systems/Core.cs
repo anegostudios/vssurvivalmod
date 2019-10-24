@@ -28,6 +28,10 @@ namespace Vintagestory.GameContent
         public float[] BlockLightLevels = new float[] { 0.0175f, 0.06f, 0.12f, 0.18f, 0.254f, 0.289f, 0.324f, 0.359f, 0.394f, 0.429f, 0.464f, 0.499f, 0.534f, 0.569f, 0.604f, 0.639f, 0.674f, 0.709f, 0.744f, 0.779f, 0.814f, 0.849f, 0.884f, 0.919f, 0.954f, 0.989f, 1f, 1f, 1f, 1f, 1f, 1f };
 
         public float PerishSpeedModifier = 1f;
+        public float CreatureDamageModifier = 1;
+        public float ToolDurabilityModifier = 1;
+        public float ToolMiningSpeedModifier = 1;
+        public float HungerSpeedModifier = 1;
 
         public int SunBrightness = 22;
 
@@ -85,7 +89,7 @@ namespace Vintagestory.GameContent
 
         public override void StartClientSide(ICoreClientAPI api)
         {
-            api.Event.BlockTexturesLoaded += loadConfig;
+            api.Event.BlockTexturesLoaded += () => { loadConfig(); applyConfig(); };
         }
 
 
@@ -106,7 +110,10 @@ namespace Vintagestory.GameContent
 
             api.Event.PlayerCreate += Event_PlayerCreate;
             api.Event.PlayerNowPlaying += Event_PlayerPlaying;
-            api.Event.ServerRunPhase(EnumServerRunPhase.LoadGame, () => config.ResolveStartItems(api.World));
+            api.Event.ServerRunPhase(EnumServerRunPhase.LoadGame, () => {
+                applyConfig();
+                config.ResolveStartItems(api.World);
+            });
 
             api.Event.ServerRunPhase(EnumServerRunPhase.LoadGamePre, loadConfig);
         }
@@ -152,11 +159,29 @@ namespace Vintagestory.GameContent
             }
 
 
-
             // Called on both sides
-            GlobalConstants.PerishSpeedModifier = config.PerishSpeedModifier;
         }
 
+
+        private void applyConfig()
+        {
+            GlobalConstants.PerishSpeedModifier = config.PerishSpeedModifier;
+            GlobalConstants.ToolMiningSpeedModifier = config.ToolMiningSpeedModifier;
+            GlobalConstants.HungerSpeedModifier = config.HungerSpeedModifier;
+
+            if (api.Side == EnumAppSide.Server)
+            {
+                GlobalConstants.CreatureDamageModifier = config.CreatureDamageModifier;
+
+                foreach (var obj in api.World.Collectibles)
+                {
+                    if (obj.Tool != null)
+                    {
+                        obj.Durability = (int)(obj.Durability * config.ToolDurabilityModifier);
+                    }
+                }
+            }
+        }
 
         public override void Start(ICoreAPI api)
         {
@@ -164,6 +189,7 @@ namespace Vintagestory.GameContent
             
             RegisterDefaultBlocks();
             RegisterDefaultBlockBehaviors();
+            RegisterDefaultBlockEntityBehaviors();
             RegisterDefaultCropBehaviors();
             RegisterDefaultItems();
             RegisterDefaultEntities();
@@ -197,11 +223,13 @@ namespace Vintagestory.GameContent
             api.RegisterBlockClass("BlockWaterLily", typeof(BlockWaterLily));
             api.RegisterBlockClass("BlockLooseStones", typeof(BlockLooseStones));
             api.RegisterBlockClass("BlockIngotPile", typeof(BlockIngotPile));
+            api.RegisterBlockClass("BlockPeatPile", typeof(BlockPeatPile));
+
             api.RegisterBlockClass("BlockBucket", typeof(BlockBucket));
             api.RegisterBlockClass("BlockCrop", typeof(BlockCrop));
             api.RegisterBlockClass("BlockWaterPlant", typeof(BlockWaterPlant));
             api.RegisterBlockClass("BlockSeaweed", typeof(BlockSeaweed));
-            api.RegisterBlockClass("BlockIngotPile", typeof(BlockIngotPile));
+            
             api.RegisterBlockClass("BlockFirewoodPile", typeof(BlockFirewoodPile));
             api.RegisterBlockClass("BlockToolRack", typeof(BlockToolRack));
             api.RegisterBlockClass("BlockSmeltingContainer", typeof(BlockSmeltingContainer));
@@ -281,7 +309,10 @@ namespace Vintagestory.GameContent
             api.RegisterBlockClass("BlockWaterflowing", typeof(BlockWaterflowing));
             api.RegisterBlockClass("BlockShelf", typeof(BlockShelf));
             api.RegisterBlockClass("BlockCrock", typeof(BlockCrock));
+            api.RegisterBlockClass("BlockThermalDiff", typeof(BlockThermalDifference));
             api.RegisterBlockClass("BlockSignPost", typeof(BlockSignPost));
+
+            api.RegisterBlockClass("BlockPeatbrick", typeof(BlockPeatbrick));
         }
         
         private void RegisterDefaultBlockBehaviors()
@@ -313,6 +344,16 @@ namespace Vintagestory.GameContent
             api.RegisterBlockBehaviorClass("Lockable", typeof(BlockBehaviorLockable));
         }
 
+        private void RegisterDefaultBlockEntityBehaviors()
+        {
+            api.RegisterBlockEntityBehaviorClass("Animatable", typeof(BEBehaviorAnimatable));
+            api.RegisterBlockEntityBehaviorClass("MPAxle", typeof(BEBehaviorMPAxle));
+
+            api.RegisterBlockEntityBehaviorClass("MPAngledGears", typeof(BEBehaviorMPAngledGears));
+            api.RegisterBlockEntityBehaviorClass("MPWindmillRotor", typeof(BEBehaviorWindmillRotor));
+            api.RegisterBlockEntityBehaviorClass("MPConsumer", typeof(BEBehaviorMPConsumer));
+
+        }
 
 
         private void RegisterDefaultBlockEntities()
@@ -323,6 +364,7 @@ namespace Vintagestory.GameContent
 
             api.RegisterBlockEntityClass("BerryBush", typeof(BlockEntityBerryBush));
             api.RegisterBlockEntityClass("IngotPile", typeof(BlockEntityIngotPile));
+            api.RegisterBlockEntityClass("PeatPile", typeof(BlockEntityPeatPile));
             api.RegisterBlockEntityClass("PlatePile", typeof(BlockEntityPlatePile));
             api.RegisterBlockEntityClass("Farmland", typeof(BlockEntityFarmland));
             api.RegisterBlockEntityClass("FirewoodPile", typeof(BlockEntityFirewoodPile));
@@ -356,10 +398,6 @@ namespace Vintagestory.GameContent
             api.RegisterBlockEntityClass("WateringCan", typeof(BlockEntityWateringCan));
             api.RegisterBlockEntityClass("Bucket", typeof(BlockEntityBucket));
             api.RegisterBlockEntityClass("Trough", typeof(BlockEntityTrough));
-
-            api.RegisterBlockEntityClass("AngledGears", typeof(BlockEntityAngledGears));
-            api.RegisterBlockEntityClass("Axle", typeof(BlockEntityAxle));
-            api.RegisterBlockEntityClass("WindmillRotor", typeof(BlockEntityWindmillRotor));
 
             api.RegisterBlockEntityClass("StaticTranslocator", typeof(BlockEntityStaticTranslocator));
             api.RegisterBlockEntityClass("EchoChamber", typeof(BlockEntityEchoChamber));

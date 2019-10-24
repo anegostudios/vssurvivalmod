@@ -1,4 +1,5 @@
-﻿using Vintagestory.API.Common;
+﻿using Vintagestory.API;
+using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 
@@ -6,30 +7,49 @@ namespace Vintagestory.GameContent
 {
     public class BlockBehaviorPillar : BlockBehavior
     {
+        bool invertedPlacement;
+
         public BlockBehaviorPillar(Block block) : base(block)
         {
         }
 
-        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref EnumHandling handled, ref string failureCode)
+        public override void Initialize(JsonObject properties)
         {
-            handled = EnumHandling.PreventDefault;
-            //BlockFacing[] horVer = Block.SuggestedHVOrientation(byPlayer, blockSel);
+            base.Initialize(properties);
 
-            string rotation = "ud";
-            //if (horVer[1] == null)
+            invertedPlacement = properties["invertedPlacement"].AsBool(false);
+        }
+
+        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref EnumHandling handling, ref string failureCode)
+        {
+            handling = EnumHandling.PreventDefault;
+
+            string rotation = null;
+            switch (blockSel.Face.Axis)
             {
-                switch (blockSel.Face.Axis/* horVer[0].Axis*/)
+                case EnumAxis.X: rotation = "we"; break;
+                case EnumAxis.Y: rotation = "ud"; break;
+                case EnumAxis.Z: rotation = "ns"; break;
+            }
+
+            if (invertedPlacement)
+            {
+                BlockFacing[] horVer = Block.SuggestedHVOrientation(byPlayer, blockSel);
+
+                if (blockSel.Face.IsVertical)
                 {
-                    case EnumAxis.X: rotation = "we"; break;
-                    case EnumAxis.Z: rotation = "ns"; break;
+                    rotation = horVer[0].Axis == EnumAxis.X ? "we" : "ns";
+                } else
+                {
+                    rotation = "ud";
                 }
             }
 
             Block orientedBlock = world.BlockAccessor.GetBlock(block.CodeWithParts(rotation));
 
-            if (orientedBlock.IsSuitablePosition(world, blockSel.Position, ref failureCode))
+            if (orientedBlock.CanPlaceBlock(world, byPlayer, blockSel, ref failureCode))
             {
-                orientedBlock.DoPlaceBlock(world, blockSel.Position, blockSel.Face, itemstack);
+                orientedBlock.DoPlaceBlock(world, byPlayer, blockSel, itemstack);
                 return true;
             }
 

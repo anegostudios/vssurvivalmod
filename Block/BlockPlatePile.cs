@@ -108,7 +108,7 @@ namespace Vintagestory.GameContent
                 pile.inventory[0].Itemstack = (ItemStack)slot.Itemstack.Clone();
                 pile.inventory[0].Itemstack.StackSize = 1;
 
-                if (player.WorldData.CurrentGameMode != EnumGameMode.Creative) slot.TakeOut(1);
+                if (player.WorldData.CurrentGameMode != EnumGameMode.Creative) slot.TakeOut(player.Entity.Controls.Sprint ? 5 : 1);
                 
                 pile.MarkDirty(true);
                 
@@ -149,6 +149,25 @@ namespace Vintagestory.GameContent
                 new WorldInteraction()
                 {
                     ActionLangCode = "blockhelp-platepile-remove",
+                    MouseButton = EnumMouseButton.Right
+                },
+
+                new WorldInteraction()
+                {
+                    ActionLangCode = "blockhelp-platepile-4add",
+                    MouseButton = EnumMouseButton.Right,
+                    HotKeyCodes = new string[] {"sprint", "sneak" },
+                    Itemstacks = new ItemStack[] { new ItemStack(this) },
+                    GetMatchingStacks = (wi, bs, es) =>
+                    {
+                        BlockEntityPlatePile pile = world.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityPlatePile;
+                        return pile != null && pile.MaxStackSize > pile.inventory[0].StackSize ? new ItemStack[] { pile.inventory[0].Itemstack } : null;
+                    }
+                },
+                new WorldInteraction()
+                {
+                    ActionLangCode = "blockhelp-platepile-4remove",
+                    HotKeyCode = "sprint",
                     MouseButton = EnumMouseButton.Right
                 }
             };
