@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Globalization;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.ServerMods.WorldEdit;
 
@@ -65,7 +67,7 @@ namespace Vintagestory.ServerMods
                 case "tsizemin":
                     {
                         float size = 0.7f;
-                        if (args.Length > 0) float.TryParse(args[0], out size);
+                        if (args.Length > 0) float.TryParse(args[0], NumberStyles.Any, GlobalConstants.DefaultCultureInfo, out size);
                         MinTreeSize = size;
 
                         worldEdit.Good("Tree Min Size=" + size + " set.");
@@ -76,7 +78,7 @@ namespace Vintagestory.ServerMods
                 case "tsizemax":
                     {
                         float size = 0.7f;
-                        if (args.Length > 0) float.TryParse(args[0], out size);
+                        if (args.Length > 0) float.TryParse(args[0], NumberStyles.Any, GlobalConstants.DefaultCultureInfo, out size);
                         MaxTreeSize = size;
 
                         worldEdit.Good("Tree Max Size=" + size + " set.");
@@ -87,11 +89,11 @@ namespace Vintagestory.ServerMods
                 case "tsize":
                     {
                         float min = 0.7f;
-                        if (args.Length > 0) float.TryParse(args[0], out min);
+                        if (args.Length > 0) float.TryParse(args[0], NumberStyles.Any, GlobalConstants.DefaultCultureInfo, out min);
                         MinTreeSize = min;
 
                         float max = 1.3f;
-                        if (args.Length > 1) float.TryParse(args[1], out max);
+                        if (args.Length > 1) float.TryParse(args[1], NumberStyles.Any, GlobalConstants.DefaultCultureInfo, out max);
                         MaxTreeSize = max;
 
                         worldEdit.Good("Tree Min Size=" + min + ", max size =" + MaxTreeSize + " set.");
@@ -107,7 +109,7 @@ namespace Vintagestory.ServerMods
 
                     string variant = args.PopWord();
 
-                    bool numeric = int.TryParse(variant, out index);
+                    bool numeric = int.TryParse(variant, NumberStyles.Any, GlobalConstants.DefaultCultureInfo, out index);
 
                     treeGenerators.LoadTreeGenerators();
 

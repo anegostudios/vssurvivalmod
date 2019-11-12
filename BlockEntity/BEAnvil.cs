@@ -234,7 +234,7 @@ namespace Vintagestory.GameContent
 
             // Place workitem
             bool viableWorkItem = stack.Collectible.FirstCodePart().Equals("workitem") && viableTier;
-            if (viableWorkItem)
+            if (viableWorkItem && workItemStack == null)
             {
                 try
                 {

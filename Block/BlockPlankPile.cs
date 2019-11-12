@@ -6,26 +6,26 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockPlatePile : Block
+    public class BlockPlankPile : Block
     {
         Cuboidf[][] CollisionBoxesByFillLevel;
 
-        public BlockPlatePile()
+        public BlockPlankPile()
         {
             CollisionBoxesByFillLevel = new Cuboidf[17][];
 
             for (int i = 0; i <= 16; i++)
             {
-                CollisionBoxesByFillLevel[i] = new Cuboidf[] { new Cuboidf(0.1875f, 0, 0.1875f, 0.8125f, i * 0.125f / 2, 0.8125f) };
+                CollisionBoxesByFillLevel[i] = new Cuboidf[] { new Cuboidf(0, 0, 0, 1, i * 0.125f / 2, 1) };
             }
         }
 
         public int FillLevel(IBlockAccessor blockAccessor, BlockPos pos)
         {
             BlockEntity be = blockAccessor.GetBlockEntity(pos);
-            if (be is BlockEntityPlatePile)
+            if (be is BlockEntityPlankPile)
             {
-                return ((BlockEntityPlatePile)be).OwnStackSize;
+                return ((BlockEntityPlankPile)be).OwnStackSize/3;
             }
 
             return 1;
@@ -45,14 +45,15 @@ namespace Vintagestory.GameContent
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
             BlockEntity be = world.BlockAccessor.GetBlockEntity(blockSel.Position);
-            if (be is BlockEntityPlatePile)
+            if (be is BlockEntityPlankPile)
             {
-                BlockEntityPlatePile pile = (BlockEntityPlatePile)be;
+                BlockEntityPlankPile pile = (BlockEntityPlankPile)be;
                 return pile.OnPlayerInteract(byPlayer);
             }
 
             return false;
         }
+
 
         public override void OnBlockBroken(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)
         {
@@ -76,9 +77,9 @@ namespace Vintagestory.GameContent
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
         {
             BlockEntity be = world.BlockAccessor.GetBlockEntity(pos);
-            if (be is BlockEntityPlatePile)
+            if (be is BlockEntityPlankPile)
             {
-                BlockEntityPlatePile pile = (BlockEntityPlatePile)be;
+                BlockEntityPlankPile pile = (BlockEntityPlankPile)be;
                 ItemStack stack = pile.inventory[0].Itemstack;
                 if (stack != null)
                 {
@@ -95,16 +96,16 @@ namespace Vintagestory.GameContent
         internal bool Construct(ItemSlot slot, IWorldAccessor world, BlockPos pos, IPlayer player)
         {
             Block belowBlock = world.BlockAccessor.GetBlock(pos.DownCopy());
-            if (!belowBlock.SideSolid[BlockFacing.UP.Index] && (belowBlock != this || FillLevel(world.BlockAccessor, pos.DownCopy()) != 16)) return false;
+            if (!belowBlock.SideSolid[BlockFacing.UP.Index] && (belowBlock != this || FillLevel(world.BlockAccessor, pos.DownCopy()) != 48)) return false;
 
             if (!world.BlockAccessor.GetBlock(pos).IsReplacableBy(this)) return false;
 
             world.BlockAccessor.SetBlock(BlockId, pos);
 
             BlockEntity be = world.BlockAccessor.GetBlockEntity(pos);
-            if (be is BlockEntityPlatePile)
+            if (be is BlockEntityPlankPile)
             {
-                BlockEntityPlatePile pile = (BlockEntityPlatePile)be;
+                BlockEntityPlankPile pile = (BlockEntityPlankPile)be;
                 pile.inventory[0].Itemstack = (ItemStack)slot.Itemstack.Clone();
                 pile.inventory[0].Itemstack.StackSize = 1;
 
@@ -112,7 +113,7 @@ namespace Vintagestory.GameContent
                 
                 pile.MarkDirty(true);
                 
-                world.PlaySoundAt(new AssetLocation("sounds/block/ingot"), pos.X, pos.Y, pos.Z, player, false);
+                world.PlaySoundAt(new AssetLocation("sounds/block/planks"), pos.X, pos.Y, pos.Z, player, false);
             }
 
             return true;
@@ -122,7 +123,7 @@ namespace Vintagestory.GameContent
         public override void OnNeighourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
         {
             Block belowBlock = world.BlockAccessor.GetBlock(pos.DownCopy());
-            if (!belowBlock.SideSolid[BlockFacing.UP.Index] && (belowBlock != this || FillLevel(world.BlockAccessor, pos.DownCopy()) < 8))
+            if (!belowBlock.SideSolid[BlockFacing.UP.Index] && (belowBlock != this || FillLevel(world.BlockAccessor, pos.DownCopy()) < 48))
             {
                 world.BlockAccessor.BreakBlock(pos, null);
                 //world.PlaySoundAt(new AssetLocation("sounds/block/ingot"), pos.X, pos.Y, pos.Z, null, false);
@@ -136,37 +137,37 @@ namespace Vintagestory.GameContent
             {
                 new WorldInteraction()
                 {
-                    ActionLangCode = "blockhelp-platepile-add",
+                    ActionLangCode = "blockhelp-plankpile-add",
                     MouseButton = EnumMouseButton.Right,
                     HotKeyCode = "sneak",
                     Itemstacks = new ItemStack[] { new ItemStack(this) },
                     GetMatchingStacks = (wi, bs, es) =>
                     {
-                        BlockEntityPlatePile pile = world.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityPlatePile;
+                        BlockEntityPlankPile pile = world.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityPlankPile;
                         return pile != null && pile.MaxStackSize > pile.inventory[0].StackSize ? new ItemStack[] { pile.inventory[0].Itemstack } : null;
                     }
                 },
                 new WorldInteraction()
                 {
-                    ActionLangCode = "blockhelp-platepile-remove",
+                    ActionLangCode = "blockhelp-plankpile-remove",
                     MouseButton = EnumMouseButton.Right
                 },
 
                 new WorldInteraction()
                 {
-                    ActionLangCode = "blockhelp-platepile-4add",
+                    ActionLangCode = "blockhelp-plankpile-4add",
                     MouseButton = EnumMouseButton.Right,
                     HotKeyCodes = new string[] {"sprint", "sneak" },
                     Itemstacks = new ItemStack[] { new ItemStack(this) },
                     GetMatchingStacks = (wi, bs, es) =>
                     {
-                        BlockEntityPlatePile pile = world.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityPlatePile;
+                        BlockEntityPlankPile pile = world.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityPlankPile;
                         return pile != null && pile.MaxStackSize > pile.inventory[0].StackSize ? new ItemStack[] { pile.inventory[0].Itemstack } : null;
                     }
                 },
                 new WorldInteraction()
                 {
-                    ActionLangCode = "blockhelp-platepile-4remove",
+                    ActionLangCode = "blockhelp-plankpile-4remove",
                     HotKeyCode = "sprint",
                     MouseButton = EnumMouseButton.Right
                 }

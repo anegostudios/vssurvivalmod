@@ -5,15 +5,15 @@ using System.Text;
 using System.Threading.Tasks;
 using Vintagestory.API;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
+using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
 namespace Vintagestory.ServerMods
 {
     public class BlockEntitySapling : BlockEntity
     {
-        static Random rand = new Random();
-        
         double totalHoursTillGrowth;
         long growListenerId;
 
@@ -35,16 +35,14 @@ namespace Vintagestory.ServerMods
         {
             Block block = Api.World.BlockAccessor.GetBlock(Pos);
 
-            double minDays = 5;
-            double maxDays = 8;
+            NatFloat growthDays = NatFloat.create(EnumDistribution.UNIFORM, 6.5f, 1.5f);
 
             if (block?.Attributes != null)
             {
-                minDays = block.Attributes["minGrowthDays"].AsDouble(5);
-                maxDays = block.Attributes["maxGrowthDays"].AsDouble(8);
+                growthDays = block.Attributes["growthDays"].AsObject(growthDays);
             }
 
-            totalHoursTillGrowth = Api.World.Calendar.TotalHours + (minDays + (maxDays - minDays) * rand.NextDouble()) * 24;
+            totalHoursTillGrowth = Api.World.Calendar.TotalHours + growthDays.nextFloat(1, Api.World.Rand) * 24;
         }
 
         
@@ -74,7 +72,7 @@ namespace Vintagestory.ServerMods
             Api.World.BlockAccessor.SetBlock(0, Pos);
             Api.World.BulkBlockAccessor.ReadFromStagedByDefault = true;
             float size = 0.6f + (float)Api.World.Rand.NextDouble() * 0.5f;
-            sapi.World.TreeGenerators[code].GrowTree(Api.World.BulkBlockAccessor, Pos.DownCopy(), size);
+            sapi.World.TreeGenerators[code].GrowTree(Api.World.BulkBlockAccessor, Pos.DownCopy(), size, 0, 0);
 
             Api.World.BulkBlockAccessor.Commit();
         }
@@ -93,6 +91,22 @@ namespace Vintagestory.ServerMods
 
             totalHoursTillGrowth = tree.GetDouble("totalHoursTillGrowth", 0);
         }
-        
+
+
+        public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
+        {
+            base.GetBlockInfo(forPlayer, dsc);
+
+            double hoursleft = totalHoursTillGrowth - Api.World.Calendar.TotalHours;
+            double daysleft = hoursleft / Api.World.Calendar.HoursPerDay;
+
+            if (daysleft <= 1) {
+                dsc.AppendLine(Lang.Get("Will grow in less than a day"));
+            } else
+            {
+                dsc.AppendLine(Lang.Get("Will grow in about {0} days", (int)daysleft));
+            }
+        }
+
     }
 }

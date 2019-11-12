@@ -14,7 +14,7 @@ namespace Vintagestory.GameContent
 {
     public class BlockLantern : Block, ITexPositionSource
     {
-        public int AtlasSize { get; set; }
+        public Size2i AtlasSize { get; set; }
 
         string curMat, curLining;
         ITexPositionSource glassTextureSource;
@@ -258,7 +258,7 @@ namespace Vintagestory.GameContent
             if (be != null)
             {
                 CompositeTexture tex = null;
-                if (Textures.TryGetValue(be.material, out tex)) return capi.BlockTextureAtlas.GetRandomPixel(tex.Baked.TextureSubId);
+                if (Textures.TryGetValue(be.material, out tex)) return capi.BlockTextureAtlas.GetRandomColor(tex.Baked.TextureSubId);
             }
 
             return base.GetRandomColor(capi, pos, facing);

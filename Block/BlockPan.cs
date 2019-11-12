@@ -22,7 +22,7 @@ namespace Vintagestory.GameContent
 
     public class BlockPan : Block, ITexPositionSource
     {
-        public int AtlasSize { get; set; }
+        public Size2i AtlasSize { get; set; }
 
         ITexPositionSource ownTextureSource;
         TextureAtlasPosition matTexPosition;

@@ -98,7 +98,7 @@ namespace Vintagestory.GameContent
 
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)
         {
-            Block block = world.BlockAccessor.GetBlock(CodeWithParts("empty"));
+            Block block = world.BlockAccessor.GetBlock(CodeWithVariant("contents", "empty"));
             if (block == null)
             {
                 block = world.BlockAccessor.GetBlock(new AssetLocation(Code.Domain, FirstCodePart() + "-empty"));

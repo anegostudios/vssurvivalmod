@@ -16,7 +16,7 @@ namespace Vintagestory.ServerMods.NoObf
         [JsonProperty]
         public TreeGenBranch[] branches;
         [JsonProperty]
-        internal TreeGenBlocks treeBlocks = null;
+        public TreeGenBlocks treeBlocks = null;
 
         internal void Init(AssetLocation location, ILogger logger)
         {

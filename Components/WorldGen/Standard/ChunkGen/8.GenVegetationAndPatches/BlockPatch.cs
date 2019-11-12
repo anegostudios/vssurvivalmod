@@ -94,7 +94,8 @@ namespace Vintagestory.ServerMods.NoObf
             int chunkSize = blockAccessor.ChunkSize;
 
             Block[] blocks = getBlocks(firstBlockId);
-            
+            if (blocks.Length == 0) return;
+
             while (quantity-- > 0)
             {
                 if (quantity < 1 && rnd.NextDouble() > quantity) break;

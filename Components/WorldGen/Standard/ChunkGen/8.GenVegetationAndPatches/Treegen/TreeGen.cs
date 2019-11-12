@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
@@ -14,7 +15,10 @@ namespace Vintagestory.ServerMods
         BlockPos pos;
         float size;
         float vineGrowthChance; // 0..1
-        Random rand;
+        float otherBlockChance; // 0..1
+
+        static ThreadLocal<Random> rand = new ThreadLocal<Random>(() => new Random(Environment.TickCount));
+
         List<TreeGenBranch> branchesByDepth = new List<TreeGenBranch>();
         LCGRandom lcgrand;
 
@@ -26,16 +30,16 @@ namespace Vintagestory.ServerMods
         public TreeGen(TreeGenConfig config, int seed)
         {
             this.config = config;
-            rand = new Random(seed);
             lcgrand = new LCGRandom(seed);
         }
 
-        public void GrowTree(IBlockAccessor api, BlockPos pos, float sizeModifier = 1f, float vineGrowthChance = 0, float forestDensity = 0)
+        public void GrowTree(IBlockAccessor api, BlockPos pos, float sizeModifier = 1f, float vineGrowthChance = 0, float otherBlockChance = 1f)
         {
             this.pos = pos;
             this.api = api;
             this.size = sizeModifier * config.sizeMultiplier;
             this.vineGrowthChance = vineGrowthChance;
+            this.otherBlockChance = otherBlockChance;
 
             pos.Up(config.yOffset);
             
@@ -45,20 +49,23 @@ namespace Vintagestory.ServerMods
             branchesByDepth.Add(null);
             branchesByDepth.AddRange(config.branches);
 
+            Random rnd = rand.Value;
+
             for (int i = 0; i < trunks.Length; i++)
             {
                 TreeGenTrunk trunk = config.trunks[i];
 
-                if (rand.NextDouble() <= trunk.probability)
+                if (rnd.NextDouble() <= trunk.probability)
                 {
                     branchesByDepth[0] = trunk;
 
                     growBranch(
+                        rnd,
                         0, pos, trunk.dx, 0f, trunk.dz,
-                        trunk.angleVert.nextFloat(1, rand),
-                        trunk.angleHori.nextFloat(1, rand),
+                        trunk.angleVert.nextFloat(1, rnd),
+                        trunk.angleHori.nextFloat(1, rnd),
                         size * trunk.widthMultiplier,
-                        Math.Max(0, trunk.dieAt.nextFloat(1, rand))
+                        Math.Max(0, trunk.dieAt.nextFloat(1, rnd))
                     );
                 }
             }
@@ -70,7 +77,7 @@ namespace Vintagestory.ServerMods
 
         
 
-        private void growBranch(int depth, BlockPos pos, float dx, float dy, float dz, float angleVerStart, float angleHorStart, float curWidth, float dieAt)
+        private void growBranch(Random rand, int depth, BlockPos pos, float dx, float dy, float dz, float angleVerStart, float angleHorStart, float curWidth, float dieAt)
         {
             if (depth > 30) { Console.WriteLine("TreeGen.growBranch() aborted, too many branches!"); return; }
 
@@ -213,6 +220,7 @@ namespace Vintagestory.ServerMods
                         }
 
                         growBranch(
+                            rand,
                             depth + 1, 
                             pos, dx + trunkOffsetX, dy, dz + trunkOffsetZ, 
                             branch.branchVerticalAngle.nextFloat(1, rand), 
@@ -232,9 +240,11 @@ namespace Vintagestory.ServerMods
         
         public int getBlockId(float width)
         {
+            TreeGenBlocks blocks = config.treeBlocks;
             return
-                width < 0.1f ? config.treeBlocks.leavesBlockId : (
-                    width < 0.3f ? config.treeBlocks.leavesBranchyBlockId : config.treeBlocks.logBlockId
+                width < 0.1f ? blocks.leavesBlockId : (
+                    width < 0.3f ? blocks.leavesBranchyBlockId : 
+                        (blocks.otherLogBlockCode != null && rand.Value.NextDouble() < otherBlockChance * blocks.otherLogChance ? config.treeBlocks.otherLogBlockId : config.treeBlocks.logBlockId)
                 )
             ;
         }

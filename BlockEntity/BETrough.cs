@@ -31,7 +31,7 @@ namespace Vintagestory.GameContent
         public override string InventoryClassName => "trough";
 
         ITexPositionSource blockTexPosSource;
-        public int AtlasSize => (Api as ICoreClientAPI).BlockTextureAtlas.Size;
+        public Size2i AtlasSize => (Api as ICoreClientAPI).BlockTextureAtlas.Size;
 
         public Vec3d Position => Pos.ToVec3d().Add(0.5, 0.5, 0.5);
         public string Type => "food";

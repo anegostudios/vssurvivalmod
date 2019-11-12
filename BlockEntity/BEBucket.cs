@@ -29,8 +29,7 @@ namespace Vintagestory.GameContent
             base.Initialize(api);
 
             ownBlock = Block as BlockBucket;
-
-            if (api.Side == EnumAppSide.Client && currentMesh == null)
+            if (Api.Side == EnumAppSide.Client)
             {
                 currentMesh = GenMesh();
                 MarkDirty(true);
@@ -110,8 +109,6 @@ namespace Vintagestory.GameContent
             {
                 dsc.AppendLine(Lang.Get("Contents: {0}x{1}", slot.Itemstack.StackSize, slot.Itemstack.GetName()));
             }
-
-            
         }
 
     }

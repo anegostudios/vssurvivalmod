@@ -24,7 +24,7 @@ namespace Vintagestory.GameContent
             this.block = block;
         }
 
-        public int AtlasSize => capi.BlockTextureAtlas.Size;
+        public Size2i AtlasSize => capi.BlockTextureAtlas.Size;
         public TextureAtlasPosition this[string textureCode]
         {
             get
@@ -82,7 +82,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public int AtlasSize => capi.BlockTextureAtlas.Size;
+        public Size2i AtlasSize => capi.BlockTextureAtlas.Size;
     }
 
 

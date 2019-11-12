@@ -24,7 +24,7 @@ namespace Vintagestory.ServerMods
 
         float chanceMultiplier;
 
-        IBlockAccessor blockAccessor;
+        IWorldGenBlockAccessor blockAccessor;
 
         public LCGRandom depositRand;
         Random rand = new Random();
@@ -243,19 +243,16 @@ namespace Vintagestory.ServerMods
             int lx = GameMath.Mod(depoCenterPos.X, chunksize);
             int lz = GameMath.Mod(depoCenterPos.Z, chunksize);
 
-            IMapChunk heremapchunk = chunks[0].MapChunk;
-
             // Check if suited for this area, climate wise
             if (variant.Climate != null)
             {
-                IMapChunk originMapchunk = null;
+                IMapChunk originMapchunk = api.WorldManager.GetMapChunk(depoCenterPos.X / chunksize, depoCenterPos.Z / chunksize);
 
-                originMapchunk = api.WorldManager.GetMapChunk(depoCenterPos.X / chunksize, depoCenterPos.Z / chunksize); 
                 if (originMapchunk == null) return; // Definition: Climate dependent deposits are limited to size 32x32x32 
 
                 depoCenterPos.Y = originMapchunk.RainHeightMap[lz * chunksize + lx];
 
-                IntMap climateMap = api.World.BlockAccessor.GetMapRegion(depoCenterPos.X / regionSize, depoCenterPos.Z / regionSize).ClimateMap;
+                IntMap climateMap = blockAccessor.GetMapRegion(depoCenterPos.X / regionSize, depoCenterPos.Z / regionSize).ClimateMap;
 
                 float posXInRegionClimate = ((float)lx / regionSize - (float)lx / regionSize) * noiseSizeClimate;
                 float posZInRegionClimate = ((float)lz / regionSize - (float)lz / regionSize) * noiseSizeClimate;

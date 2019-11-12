@@ -34,7 +34,7 @@ namespace Vintagestory.GameContent
 
                 if (world.Rand.NextDouble() > 0.05) 
                 {
-                    entity.ReceiveDamage(new DamageSource() { Source = EnumDamageSource.Block, sourceBlock = this, Type = EnumDamageType.PiercingAttack, sourcePos = pos.ToVec3d() }, sprintIntoDamage);
+                    entity.ReceiveDamage(new DamageSource() { Source = EnumDamageSource.Block, SourceBlock = this, Type = EnumDamageType.PiercingAttack, SourcePos = pos.ToVec3d() }, sprintIntoDamage);
                     entity.ServerPos.Motion.Set(0, 0, 0);
                 }
             }
@@ -48,7 +48,7 @@ namespace Vintagestory.GameContent
                 if (immuneCreatures.Contains(entity.Code)) return;
 
                 entity.ReceiveDamage(
-                    new DamageSource() { Source = EnumDamageSource.Block, sourceBlock = this, Type = EnumDamageType.PiercingAttack, sourcePos = pos.ToVec3d() },
+                    new DamageSource() { Source = EnumDamageSource.Block, SourceBlock = this, Type = EnumDamageType.PiercingAttack, SourcePos = pos.ToVec3d() },
                     (float)Math.Abs(collideSpeed.Y * fallIntoDamageMul)
                 );
             }

@@ -133,5 +133,19 @@ namespace Vintagestory.GameContent
                 }
             }
         }
+
+        public override WorldInteraction[] GetHeldInteractionHelp(ItemSlot inSlot, ref EnumHandling handling)
+        {
+            return new WorldInteraction[]
+            {
+                new WorldInteraction
+                {
+                    HotKeyCode = "sneak",
+                    ActionLangCode = "heldhelp-igniteblock",
+                    MouseButton = EnumMouseButton.Right
+                }
+            };
+        }
+
     }
 }

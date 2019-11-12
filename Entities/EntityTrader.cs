@@ -25,15 +25,12 @@ namespace Vintagestory.GameContent
 
         public override bool StartAnimation(string configCode)
         {
-            if (ActiveAnimationsByAnimCode.ContainsKey(Personality + "nod")) return false;
-
             if (PersonalizedAnimations.Contains(configCode.ToLowerInvariant()))
             {
-                if (configCode == "laugh" && ActiveAnimationsByAnimCode.ContainsKey(Personality + "welcome")) return false;
-
-                if (configCode != "idle")
+                if (Personality == "formal" || Personality == "rowdy" || Personality == "lazy")
                 {
                     StopAnimation(Personality + "idle");
+                    StopAnimation(Personality + "idle2");
                 }
 
                 return StartAnimation(new AnimationMetaData()
@@ -43,7 +40,7 @@ namespace Vintagestory.GameContent
                     BlendMode = EnumAnimationBlendMode.Average,
                     EaseOutSpeed = 10000,
                     EaseInSpeed = 10000
-                });
+                }.Init());
             }
 
             return base.StartAnimation(configCode);
@@ -51,21 +48,18 @@ namespace Vintagestory.GameContent
 
         public override bool StartAnimation(AnimationMetaData animdata)
         {
-            if (ActiveAnimationsByAnimCode.ContainsKey(Personality + "nod")) return false;
+            if (Personality == "formal" || Personality == "rowdy" || Personality == "lazy")
+            {
+                StopAnimation(Personality + "idle");
+                StopAnimation(Personality + "idle2");
+            }
 
             if (PersonalizedAnimations.Contains(animdata.Animation.ToLowerInvariant()))
             {
-                if (animdata.Animation == "laugh" && ActiveAnimationsByAnimCode.ContainsKey(Personality + "welcome")) return false;
-
                 animdata = animdata.Clone();
                 animdata.Animation = Personality + animdata.Animation;
                 animdata.Code = animdata.Animation;
                 animdata.CodeCrc32 = AnimationMetaData.GetCrc32(animdata.Code);
-
-                if (animdata.Animation != Personality + "idle")
-                {
-                    StopAnimation(Personality + "idle");
-                }
 
             }
 
@@ -201,11 +195,15 @@ namespace Vintagestory.GameContent
                 taskAi.taskManager.ShouldExecuteTask =
                     (task) => tradingWith == null || (task is AiTaskIdle || task is AiTaskSeekEntity || task is AiTaskGotoEntity);
 
-                RefreshBuyingSellingInventory();
-
-                WatchedAttributes.SetDouble("lastRefreshTotalDays", World.Calendar.TotalDays - World.Rand.NextDouble() * 6);
-
-                Inventory.GiveToTrader((int)TradeProps.Money.nextFloat(1f, World.Rand));
+                if (TradeProps != null)
+                {
+                    RefreshBuyingSellingInventory();
+                    WatchedAttributes.SetDouble("lastRefreshTotalDays", World.Calendar.TotalDays - World.Rand.NextDouble() * 6);
+                    Inventory.GiveToTrader((int)TradeProps.Money.nextFloat(1f, World.Rand));
+                } else
+                {
+                    World.Logger.Warning("Trader TradeProps not set during trader entity spawn. Won't have any items for sale/purchase.");
+                }
 
                 Personality = Personalities.GetKeyAtIndex(World.Rand.Next(Personalities.Count));
                 (AnimManager as TraderAnimationManager).Personality = this.Personality;

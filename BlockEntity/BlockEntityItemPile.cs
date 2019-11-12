@@ -30,7 +30,7 @@ namespace Vintagestory.GameContent
             get { return inventory[0]?.StackSize ?? 0; }
         }
 
-        public int AtlasSize
+        public Size2i AtlasSize
         {
             get { return ((ICoreClientAPI)Api).BlockTextureAtlas.Size; }
         }

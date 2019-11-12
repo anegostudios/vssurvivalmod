@@ -105,7 +105,7 @@ namespace Vintagestory.GameContent
                 if (textByCardinal[i] == null) textByCardinal[i] = "";
 
                 int j = 0;
-                while (ctx.TextExtents(textByCardinal[i]).Width > 190 && j++ < 100)
+                while (ctx.TextExtents(textByCardinal[i]).Width > 185 && j++ < 100)
                 {
                     textByCardinal[i] = textByCardinal[i].Substring(0, textByCardinal[i].Length-1);
                 }
@@ -116,6 +116,9 @@ namespace Vintagestory.GameContent
             OnTextChanged?.Invoke(textByCardinal);
 
             ignorechange = false;
+
+            surface.Dispose();
+            ctx.Dispose();
         }
         
 

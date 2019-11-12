@@ -95,6 +95,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BlockBehavior\BehaviorCollectFrom.cs" />
     <Compile Include="BlockBehavior\BehaviorOmniRotatable.cs" />
     <Compile Include="BlockBehavior\BehaviorPushEventOnBlockBroken.cs" />
     <Compile Include="BlockBehavior\BehaviorRightClickPickup.cs" />
@@ -108,11 +109,13 @@
     <Compile Include="BlockEntityRenderer\PotInFirepitRenderer.cs" />
     <Compile Include="BlockEntityRenderer\QuernTopRenderer.cs" />
     <Compile Include="BlockEntity\BEBarrel.cs" />
+    <Compile Include="BlockEntity\BEChute.cs" />
     <Compile Include="BlockEntity\BEEchoChamber.cs" />
     <Compile Include="BlockEntity\BEPeatPile.cs" />
     <Compile Include="BlockEntity\BEItemFlow.cs" />
     <Compile Include="BlockEntity\BELabeledChest.cs" />
     <Compile Include="BlockEntity\BELocustNest.cs" />
+    <Compile Include="BlockEntity\BEPlankPile.cs" />
     <Compile Include="BlockEntity\BEShelf.cs" />
     <Compile Include="BlockEntity\BESignPost.cs" />
     <Compile Include="BlockEntity\BEStaticTranslocator.cs" />
@@ -139,6 +142,7 @@
     <Compile Include="Block\BlockMetalPartPile.cs" />
     <Compile Include="Block\BlockMetalSpikes.cs" />
     <Compile Include="Block\BlockMeteorite.cs" />
+    <Compile Include="Block\BlockPlankPile.cs" />
     <Compile Include="Block\BlockRequireSolidGround.cs" />
     <Compile Include="Block\BlockShelf.cs" />
     <Compile Include="Block\BlockSignPost.cs" />
@@ -335,6 +339,7 @@
     <Compile Include="Inventory\ItemSlotLiquidOnly.cs" />
     <Compile Include="Inventory\ItemslotTrough.cs" />
     <Compile Include="Inventory\ItemSlotWatertight.cs" />
+    <Compile Include="Item\ItemPlank.cs" />
     <Compile Include="Item\ItemGem.cs" />
     <Compile Include="Item\ItemJournalEntry.cs" />
     <Compile Include="Item\ItemKnife.cs" />
@@ -363,6 +368,7 @@
     <Compile Include="Inventory\InventoryTrader.cs" />
     <Compile Include="Inventory\ItemSlotFirepitInput.cs" />
     <Compile Include="Inventory\ItemSlotTrade.cs" />
+    <Compile Include="Systems\WearableStats.cs" />
     <Compile Include="Systems\BlockReinforcement.cs" />
     <Compile Include="Systems\ChiselBlockModelCache.cs" />
     <Compile Include="Entities\EntityBeeMob.cs" />
@@ -382,7 +388,7 @@
     <Compile Include="Item\ItemCattailRoots.cs" />
     <Compile Include="Item\ItemClay.cs" />
     <Compile Include="Item\ItemCreature.cs" />
-    <Compile Include="Item\ItemDress.cs" />
+    <Compile Include="Item\ItemWearable.cs" />
     <Compile Include="Item\ItemDryGrass.cs" />
     <Compile Include="Item\ItemFirewood.cs" />
     <Compile Include="Item\ItemFlint.cs" />

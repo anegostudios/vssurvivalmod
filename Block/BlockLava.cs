@@ -174,7 +174,7 @@ namespace Vintagestory.GameContent
         {
             if (world.Side == EnumAppSide.Server)
             {
-                entity.ReceiveDamage(new DamageSource() { Type = EnumDamageType.Fire, Source = EnumDamageSource.Block, sourceBlock = this, sourcePos = pos.ToVec3d() }, 3f);
+                entity.ReceiveDamage(new DamageSource() { Type = EnumDamageType.Fire, Source = EnumDamageSource.Block, SourceBlock = this, SourcePos = pos.ToVec3d() }, 3f);
             }   
         }
 

@@ -668,14 +668,16 @@ namespace Vintagestory.GameContent
                 Block block = coreClientAPI.World.GetBlock(materials[tmpCuboid.Material]);
 
                 //TextureAtlasPosition tpos = coreClientAPI.BlockTextureAtlas.GetPosition(block, BlockFacing.ALLFACES[0].Code);
-                float subPixelPadding = coreClientAPI.BlockTextureAtlas.SubPixelPadding;
+                float subPixelPaddingx = coreClientAPI.BlockTextureAtlas.SubPixelPaddingX;
+                float subPixelPaddingy = coreClientAPI.BlockTextureAtlas.SubPixelPaddingY;
 
                 MeshData cuboidmesh = genCube(
                     tmpCuboid.X1, tmpCuboid.Y1, tmpCuboid.Z1, 
                     tmpCuboid.X2 - tmpCuboid.X1, tmpCuboid.Y2 - tmpCuboid.Y1, tmpCuboid.Z2 - tmpCuboid.Z1, 
                     coreClientAPI, 
                     coreClientAPI.Tesselator.GetTexSource(block, 0, true),
-                    subPixelPadding,
+                    subPixelPaddingx,
+                    subPixelPaddingy,
                     (int)block.RenderPass,
                     block.VertexFlags.All
                 );
@@ -706,6 +708,7 @@ namespace Vintagestory.GameContent
                     decalTexSource,
                     0,
                     0,
+                    0,
                     0
                 );
 
@@ -717,7 +720,7 @@ namespace Vintagestory.GameContent
 
 
 
-        static MeshData genCube(int voxelX, int voxelY, int voxelZ, int width, int height, int length, ICoreClientAPI capi, ITexPositionSource texSource, float subPixelPadding, int renderpass, int renderFlags)
+        static MeshData genCube(int voxelX, int voxelY, int voxelZ, int width, int height, int length, ICoreClientAPI capi, ITexPositionSource texSource, float subPixelPaddingx, float subPixelPaddingy, int renderpass, int renderFlags)
         {
              MeshData mesh = CubeMeshUtil.GetCube(
                  width / 32f, height / 32f, length / 32f, 
@@ -776,7 +779,14 @@ namespace Vintagestory.GameContent
 
                 for (int j = 0; j < 2*4; j++)
                 {
-                    mesh.Uv[k] = (j % 2 > 0 ? tpos.y1 : tpos.x1) + mesh.Uv[k] * 32f / texSource.AtlasSize - subPixelPadding;
+                    if (j % 2 > 0)
+                    {
+                        mesh.Uv[k] = tpos.y1 + mesh.Uv[k] * 32f / texSource.AtlasSize.Height - subPixelPaddingy;
+                    } else
+                    {
+                        mesh.Uv[k] = tpos.x1 + mesh.Uv[k] * 32f / texSource.AtlasSize.Width - subPixelPaddingx;
+                    }
+                    
                     k++;
                 }
 

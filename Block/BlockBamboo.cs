@@ -178,7 +178,7 @@ namespace Vintagestory.GameContent
             }
             if (tex?.Baked == null) return 0;
 
-            int color = capi.BlockTextureAtlas.GetRandomPixel(tex.Baked.TextureSubId);
+            int color = capi.BlockTextureAtlas.GetRandomColor(tex.Baked.TextureSubId);
            
             return capi.ApplyColorTintOnRgba(1, color, pos.X, pos.Y, pos.Z);
         }

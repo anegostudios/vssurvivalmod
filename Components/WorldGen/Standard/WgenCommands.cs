@@ -906,6 +906,9 @@ namespace Vintagestory.ServerMods
 
             switch (subcmd)
             {
+                case "ymax":
+                    player.SendMessage(groupId, string.Format("YMax: {0}", serverchunk.MapChunk.YMax), EnumChatType.CommandSuccess);
+                    break;
                 case "coords":
                     player.SendMessage(groupId, string.Format("Chunk X/Z: {0}/{1}, Region X/Z: {2},{3}", chunkX, chunkZ, regionX, regionZ), EnumChatType.CommandSuccess);
                     break;

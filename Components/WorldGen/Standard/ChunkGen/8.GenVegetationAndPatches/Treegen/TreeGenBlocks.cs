@@ -10,19 +10,26 @@ namespace Vintagestory.ServerMods.NoObf
     public class TreeGenBlocks
     {
         [JsonProperty]
-        AssetLocation logBlockCode = null;
+        public AssetLocation logBlockCode = null;
+
         [JsonProperty]
-        AssetLocation leavesBlockCode = null;
+        public AssetLocation otherLogBlockCode = null;
         [JsonProperty]
-        AssetLocation leavesBranchyBlockCode = null;
+        public double otherLogChance = 0.01;
+
         [JsonProperty]
-        AssetLocation vinesBlockCode = null;
+        public AssetLocation leavesBlockCode = null;
         [JsonProperty]
-        AssetLocation vinesEndBlockCode = null;
+        public AssetLocation leavesBranchyBlockCode = null;
+        [JsonProperty]
+        public AssetLocation vinesBlockCode = null;
+        [JsonProperty]
+        public AssetLocation vinesEndBlockCode = null;
 
         public Block vinesBlock;
         public Block vinesEndBlock;
         public int logBlockId;
+        public int otherLogBlockId;
         public int leavesBlockId;
         public int leavesBranchyBlockId;
         public int leavesBranchyDeadBlockId;
@@ -40,6 +47,17 @@ namespace Vintagestory.ServerMods.NoObf
             }
             this.logBlockId = logBlockId;
 
+
+            if (otherLogBlockCode != null)
+            {
+                int otherLogBlockId = api.WorldManager.GetBlockId(otherLogBlockCode);
+                if (otherLogBlockId == -1)
+                {
+                    api.Server.LogWarning("Tree gen tree: No block found with the blockcode " + otherLogBlockCode);
+                    otherLogBlockId = 0;
+                }
+                this.otherLogBlockId = otherLogBlockId;
+            }
 
 
             int leavesBlockId = api.WorldManager.GetBlockId(leavesBlockCode);
@@ -84,6 +102,7 @@ namespace Vintagestory.ServerMods.NoObf
             blockIds.Add(leavesBlockId);
             blockIds.Add(leavesBranchyBlockId);
             blockIds.Add(logBlockId);
+            blockIds.Add(otherLogBlockId);
         }
     }
 }

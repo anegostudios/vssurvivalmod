@@ -14,7 +14,7 @@ namespace Vintagestory.GameContent
 {
     public class BlockGenericTypedContainer : Block, ITexPositionSource
     {
-        public int AtlasSize { get { return tmpTextureSource.AtlasSize; } }
+        public Size2i AtlasSize { get { return tmpTextureSource.AtlasSize; } }
 
         string curType;
         string defaultType;
@@ -308,7 +308,7 @@ namespace Vintagestory.GameContent
                 if (!Textures.TryGetValue(be.type + "-lid", out tex)) {
                     Textures.TryGetValue(be.type + "-top", out tex);
                 }
-                return capi.BlockTextureAtlas.GetRandomPixel(tex?.Baked == null ? 0 : tex.Baked.TextureSubId);
+                return capi.BlockTextureAtlas.GetRandomColor(tex?.Baked == null ? 0 : tex.Baked.TextureSubId);
             }
 
             return base.GetRandomColor(capi, pos, facing);

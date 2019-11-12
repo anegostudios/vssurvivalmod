@@ -235,16 +235,19 @@ namespace Vintagestory.GameContent
 
             if (on)
             {
-                ambientSound = ((IClientWorldAccessor)Api.World).LoadSound(new SoundParams()
+                if (ambientSound == null || !ambientSound.IsPlaying)
                 {
-                    Location = new AssetLocation("sounds/environment/fireplace.ogg"),
-                    ShouldLoop = true,
-                    Position = Pos.ToVec3f().Add(0.5f, 0.25f, 0.5f),
-                    DisposeOnFinish = false,
-                    Volume = SoundLevel
-                });
-                ambientSound.Start();
-                
+                    ambientSound = ((IClientWorldAccessor)Api.World).LoadSound(new SoundParams()
+                    {
+                        Location = new AssetLocation("sounds/environment/fireplace.ogg"),
+                        ShouldLoop = true,
+                        Position = Pos.ToVec3f().Add(0.5f, 0.25f, 0.5f),
+                        DisposeOnFinish = false,
+                        Volume = SoundLevel
+                    });
+
+                    ambientSound.Start();
+                }
             }
             else
             {
@@ -830,7 +833,10 @@ namespace Vintagestory.GameContent
 
         ~BlockEntityFirepit()
         {
-            if (ambientSound != null) ambientSound.Dispose();
+            if (ambientSound != null)
+            {
+                ambientSound.Dispose();
+            }
         }
 
         public override void OnReceivedClientPacket(IPlayer player, int packetid, byte[] data)

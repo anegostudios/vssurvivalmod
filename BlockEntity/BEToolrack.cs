@@ -17,7 +17,7 @@ namespace Vintagestory.GameContent
         MeshData[] toolMeshes = new MeshData[4];
         
 
-        public int AtlasSize
+        public Size2i AtlasSize
         {
             get { return ((ICoreClientAPI)Api).BlockTextureAtlas.Size; }
         }

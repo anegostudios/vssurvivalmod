@@ -152,21 +152,5 @@ namespace Vintagestory.GameContent
             return CanTorchStay(blockAccessor, pos) && base.TryPlaceBlockForWorldGen(blockAccessor, pos, onBlockFace, worldGenRand);
         }
 
-
-
-        public override WorldInteraction[] GetHeldInteractionHelp(ItemSlot inSlot)
-        {
-            return new WorldInteraction[]
-            {
-                new WorldInteraction
-                {
-                    HotKeyCode = "sneak",
-                    ActionLangCode = "heldhelp-igniteblock",
-                    MouseButton = EnumMouseButton.Right
-                }
-            }.Append(base.GetHeldInteractionHelp(inSlot));
-        }
-
-
     }
 }

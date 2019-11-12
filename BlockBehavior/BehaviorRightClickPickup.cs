@@ -10,9 +10,9 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
-    public class BehaviorRightClickPickup : BlockBehavior
+    public class BlockBehaviorRightClickPickup : BlockBehavior
     {
-        public BehaviorRightClickPickup(Block block) : base(block)
+        public BlockBehaviorRightClickPickup(Block block) : base(block)
         {
         }
 

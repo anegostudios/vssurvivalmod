@@ -7,7 +7,7 @@ namespace Vintagestory.GameContent
 {
     public class BlockBehaviorOmniAttachable : BlockBehavior
     {
-        public int facingPos = 1;
+        public string facingCode = "orientation";
 
         public BlockBehaviorOmniAttachable(Block block) : base(block)
         {
@@ -15,7 +15,7 @@ namespace Vintagestory.GameContent
 
         public override void Initialize(JsonObject properties)
         {
-            facingPos = properties["facingPos"].AsInt(1);
+            facingCode = properties["facingCode"].AsString("orientation");
         }
 
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref EnumHandling handling, ref string failureCode)
@@ -30,7 +30,7 @@ namespace Vintagestory.GameContent
             BlockFacing[] faces = BlockFacing.ALLFACES;
             for (int i = 0; i < faces.Length; i++)
             {
-                if (faces[i] == BlockFacing.DOWN) continue;
+                //if (faces[i] == BlockFacing.DOWN) continue; - what for? o.O
 
                 if (TryAttachTo(world, byPlayer, blockSel.Position, faces[i], itemstack)) return true;
             }
@@ -45,7 +45,7 @@ namespace Vintagestory.GameContent
         {
             handled = EnumHandling.PreventDefault;
 
-            Block droppedblock = world.BlockAccessor.GetBlock(block.CodeWithPart("up", facingPos));
+            Block droppedblock = world.BlockAccessor.GetBlock(block.CodeWithVariant(facingCode, "up"));
             return new ItemStack[] { new ItemStack(droppedblock) };
         }
 
@@ -53,7 +53,7 @@ namespace Vintagestory.GameContent
         {
             handled = EnumHandling.PreventDefault;
 
-            Block pickedblock = world.BlockAccessor.GetBlock(block.CodeWithPart("up", facingPos));
+            Block pickedblock = world.BlockAccessor.GetBlock(block.CodeWithVariant(facingCode, "up"));
             return new ItemStack(pickedblock);
         }
 
@@ -74,11 +74,10 @@ namespace Vintagestory.GameContent
             Block attachingBlock = world.BlockAccessor.GetBlock(world.BlockAccessor.GetBlockId(attachingBlockPos));
 
             BlockFacing onFace = onBlockFace;
-            ///if (onFace.IsHorizontal) onFace = onFace.GetOpposite(); - why is this here? Breaks attachment
 
             if (attachingBlock.CanAttachBlockAt(world.BlockAccessor, block, attachingBlockPos, onFace))
             {
-                Block orientedBlock = world.BlockAccessor.GetBlock(block.CodeWithPart(onBlockFace.Code, facingPos));
+                Block orientedBlock = world.BlockAccessor.GetBlock(block.CodeWithVariant(facingCode, onBlockFace.Code));
                 orientedBlock.DoPlaceBlock(world, byPlayer, new BlockSelection() { Position = blockpos, Face = onFace }, itemstack);
                 return true;
             }
@@ -88,11 +87,10 @@ namespace Vintagestory.GameContent
 
         bool CanStay(IWorldAccessor world, BlockPos pos)
         {
-            BlockFacing facing = BlockFacing.FromCode(block.FirstCodePart(facingPos));
+            BlockFacing facing = BlockFacing.FromCode(block.Variant[facingCode]);
             Block attachedblock = world.BlockAccessor.GetBlock(world.BlockAccessor.GetBlockId(pos.AddCopy(facing.GetOpposite())));
 
             BlockFacing onFace = facing;
-            //if (onFace.IsHorizontal) onFace = onFace.GetOpposite(); - why is this here? Breaks attachment
 
             return attachedblock.CanAttachBlockAt(world.BlockAccessor, block, pos, onFace);
         }
@@ -108,9 +106,9 @@ namespace Vintagestory.GameContent
         {
             handled = EnumHandling.PreventDefault;
 
-            if (block.FirstCodePart(facingPos) == "up" || block.FirstCodePart(facingPos) == "down") return block.Code;
+            if (block.Variant[facingCode] == "up" || block.Variant[facingCode] == "down") return block.Code;
 
-            BlockFacing newFacing = BlockFacing.HORIZONTALS_ANGLEORDER[((360 - angle) / 90 + BlockFacing.FromCode(block.FirstCodePart(facingPos)).HorizontalAngleIndex) % 4];
+            BlockFacing newFacing = BlockFacing.HORIZONTALS_ANGLEORDER[((360 - angle) / 90 + BlockFacing.FromCode(block.Variant[facingCode]).HorizontalAngleIndex) % 4];
             return block.CodeWithParts(newFacing.Code);
         }
 
@@ -118,17 +116,17 @@ namespace Vintagestory.GameContent
         {
             handling = EnumHandling.PreventDefault;
             
-            return block.FirstCodePart(facingPos) == "up" ? block.CodeWithPart("down", facingPos) : block.CodeWithPart("up", facingPos);
+            return block.Variant[facingCode] == "up" ? block.CodeWithVariant(facingCode, "down") : block.CodeWithVariant(facingCode, "up");
         }
 
         public override AssetLocation GetHorizontallyFlippedBlockCode(EnumAxis axis, ref EnumHandling handling)
         {
             handling = EnumHandling.PreventDefault;
 
-            BlockFacing facing = BlockFacing.FromCode(block.FirstCodePart(facingPos));
+            BlockFacing facing = BlockFacing.FromCode(block.Variant[facingCode]);
             if (facing.Axis == axis)
             {
-                return block.CodeWithPart(facing.GetOpposite().Code, facingPos);
+                return block.CodeWithVariant(facingCode, facing.GetOpposite().Code);
             }
             return block.Code;
         }

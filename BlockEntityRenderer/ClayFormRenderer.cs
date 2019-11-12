@@ -111,7 +111,8 @@ namespace Vintagestory.GameContent
             workItemMesh.Flags = null;
             workItemMesh.Rgba2 = null;
 
-            float subPixelPadding = api.BlockTextureAtlas.SubPixelPadding;
+            float subPixelPaddingx = api.BlockTextureAtlas.SubPixelPaddingX;
+            float subPixelPaddingy = api.BlockTextureAtlas.SubPixelPaddingY;
 
             TextureAtlasPosition tpos = api.BlockTextureAtlas.GetPosition(api.World.GetBlock(new AssetLocation("clayform")), workitem.Collectible.Code.ToShortString());
             MeshData singleVoxelMesh = CubeMeshUtil.GetCubeOnlyScaleXyz(1 / 32f, 1 / 32f, new Vec3f(1 / 32f, 1 / 32f, 1 / 32f));
@@ -121,7 +122,14 @@ namespace Vintagestory.GameContent
 
             for (int i = 0; i < singleVoxelMesh.Uv.Length; i++)
             {
-                singleVoxelMesh.Uv[i] = (i % 2 > 0 ? tpos.y1 : tpos.x1) + singleVoxelMesh.Uv[i] * 2f / api.BlockTextureAtlas.Size - subPixelPadding;
+                if (i % 2 > 0)
+                {
+                    singleVoxelMesh.Uv[i] = tpos.y1 + singleVoxelMesh.Uv[i] * 2f / api.BlockTextureAtlas.Size.Height - subPixelPaddingy;
+                } else
+                {
+                    singleVoxelMesh.Uv[i] = tpos.x1 + singleVoxelMesh.Uv[i] * 2f / api.BlockTextureAtlas.Size.Width - subPixelPaddingx;
+                }
+                
             }
 
             singleVoxelMesh.XyzFaces = (int[])CubeMeshUtil.CubeFaceIndices.Clone();
@@ -152,13 +160,13 @@ namespace Vintagestory.GameContent
                             voxelMeshOffset.xyz[i + 2] = pz + singleVoxelMesh.xyz[i + 2];
                         }
 
-                        float offsetX = ((((x+4*y) % 16f / 16f)) * 32f) / api.BlockTextureAtlas.Size;
-                        float offsetZ = (pz * 32f) / api.BlockTextureAtlas.Size;
+                        float offsetX = ((((x+4*y) % 16f / 16f)) * 32f) / api.BlockTextureAtlas.Size.Width;
+                        float offsetY = (pz * 32f) / api.BlockTextureAtlas.Size.Height;
 
                         for (int i = 0; i < singleVoxelMesh.Uv.Length; i += 2)
                         {
                             voxelMeshOffset.Uv[i] = singleVoxelMesh.Uv[i] + offsetX;
-                            voxelMeshOffset.Uv[i + 1] = singleVoxelMesh.Uv[i + 1] + offsetZ;
+                            voxelMeshOffset.Uv[i + 1] = singleVoxelMesh.Uv[i + 1] + offsetY;
                         }
 
                         workItemMesh.AddMeshData(voxelMeshOffset);

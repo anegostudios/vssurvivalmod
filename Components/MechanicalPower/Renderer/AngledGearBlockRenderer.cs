@@ -82,5 +82,13 @@ namespace Vintagestory.GameContent.Mechanics
                 capi.Render.RenderMeshInstanced(gearboxCage, quantityBlocks);
             }
         }
+
+        public override void Dispose()
+        {
+            base.Dispose();
+
+            gearboxCage?.Dispose();
+            gearboxPeg?.Dispose();
+        }
     }
 }

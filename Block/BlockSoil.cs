@@ -277,7 +277,7 @@ namespace Vintagestory.GameContent
         {
             if (facing == BlockFacing.UP && LastCodePart() != "none")
             {
-                return capi.ApplyColorTintOnRgba(1, capi.BlockTextureAtlas.GetRandomPixel(Textures["specialSecondTexture"].Baked.TextureSubId), pos.X, pos.Y, pos.Z);
+                return capi.ApplyColorTintOnRgba(1, capi.BlockTextureAtlas.GetRandomColor(Textures["specialSecondTexture"].Baked.TextureSubId), pos.X, pos.Y, pos.Z);
             }
             return base.GetRandomColor(capi, pos, facing);
         }
@@ -292,7 +292,7 @@ namespace Vintagestory.GameContent
             if (farmland == null) return;
             var fert_value = farmland.Fertility;
             if (fert_value <= 0) return;
-            dsc.Append(Lang.Get("Fertility (tilled): ") + fert_value + "%\n");
+            dsc.Append(Lang.Get("Fertility when tilled: ") + fert_value + "%\n");
         }
 
     }

@@ -56,7 +56,8 @@ using Vintagestory.API.Config;
 			    worldType: ""standard"",
 			    worldConfig: {
 				    worldClimate: ""realistic"",
-				    gameMode: ""survival""
+				    gameMode: ""survival"",
+                    saplingGrowthDays: ""8""
 			    }
 		    },
 		    {
@@ -74,7 +75,8 @@ using Vintagestory.API.Config;
                     playerHealthPoints: ""20"",
                     playerHungerSpeed: ""0.5"",
                     foodSpoilSpeed: ""0.5"",
-                    toolDurability: ""2""
+                    toolDurability: ""2"",
+                    saplingGrowthDays: ""5""
                 }
 			},
             {
@@ -99,6 +101,7 @@ using Vintagestory.API.Config;
                     allowMap: ""false"",
                     surfaceCopperDeposits: ""0.015"",
                     surfaceTinDeposits: ""0"",
+                    saplingGrowthDays: ""24""
 			    }
 		    }
 	    ],
@@ -120,6 +123,7 @@ using Vintagestory.API.Config;
             { code: ""blockGravity"", dataType: ""dropdown"", values: [""sandgravel"", ""sandgravelsoil""], names: [""Sand and gravel"", ""Sand, gravel and soil""], default: ""sandgravel"" },
 
             { code: ""foodSpoilSpeed"", dataType: ""dropdown"", values: [""4"", ""3"", ""2"", ""1.5"", ""1.25"", ""1"", ""0.75"", ""0.5"", ""0.25""], names: [""400%"", ""300%"", ""200%"", ""150%"", ""125%"", ""100%"", ""75%"", ""50%"", ""25%""], default: ""1"" },
+            { code: ""saplingGrowthDays"", dataType: ""dropdown"", values: [""1.5"", ""3"", ""5"", ""6.5"", ""8"", ""10"", ""12"", ""24"", ""48"", ""96""], names: [""1.5 days"", ""3 days"", ""5 days"", ""6.5 days"", ""8 days"", ""10 days"", ""12 days"", ""24 days"", ""48 days"", ""96 days""], default: ""8"" },
             { code: ""toolDurability"", dataType: ""dropdown"", values: [""4"", ""3"", ""2"", ""1.5"", ""1.25"", ""1"", ""0.75"", ""0.5""], names: [""400%"", ""300%"", ""200%"", ""150%"", ""125%"", ""100%"", ""75%"", ""50%""], default: ""1"" },
             { code: ""toolMiningSpeed"", dataType: ""dropdown"", values: [""3"", ""2"", ""1.5"", ""1.25"", ""1"", ""0.75"", ""0.5"", ""0.25""], names: [""300%"", ""200%"", ""150%"", ""125%"", ""100%"", ""75%"", ""50%"", ""25%""], default: ""1"" },
 

@@ -11,7 +11,7 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockEntityShelf : BlockEntityContainer, IBlockShapeSupplier
+    public class BlockEntityShelf : BlockEntityContainer
     {
         InventoryGeneric inv;
         public override InventoryBase Inventory => inv;
@@ -104,7 +104,7 @@ namespace Vintagestory.GameContent
 
 
 
-        public bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
+        public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
         {
             ICoreClientAPI capi = Api as ICoreClientAPI;
 

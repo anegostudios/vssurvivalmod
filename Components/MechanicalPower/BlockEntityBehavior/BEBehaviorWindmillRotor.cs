@@ -238,7 +238,7 @@ namespace Vintagestory.GameContent.Mechanics
         {
             base.GetBlockInfo(forPlayer, sb);
 
-            sb.AppendLine(string.Format("Wind speed: {0}", windSpeed));
+            sb.AppendLine(string.Format("Wind speed: {0:0.00#}", windSpeed));
         }
     }
 }

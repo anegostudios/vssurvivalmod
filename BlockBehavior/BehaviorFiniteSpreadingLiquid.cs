@@ -74,7 +74,7 @@ namespace Vintagestory.GameContent
             world.BulkBlockAccessor.Commit();
 
             Block block = world.BlockAccessor.GetBlock(pos);
-            if (block.LiquidLevel > 0) updateOwnFlowDir(block, world, pos);
+            if (block.HasBehavior<BlockBehaviorFiniteSpreadingLiquid>()) updateOwnFlowDir(block, world, pos);
         }
 
         private void SpreadAndUpdateLiquidLevels(IWorldAccessor world, BlockPos pos)

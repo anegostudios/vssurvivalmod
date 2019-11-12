@@ -24,7 +24,7 @@ namespace Vintagestory.GameContent
             BakedCompositeTexture tex = Textures?.First().Value?.Baked;
             if (tex == null) return 0;
 
-            int color = capi.BlockTextureAtlas.GetRandomPixel(tex.TextureSubId);
+            int color = capi.BlockTextureAtlas.GetRandomColor(tex.TextureSubId);
             color = capi.ApplyColorTintOnRgba(1, color, pos.X, pos.Y, pos.Z);
             return color;
         }

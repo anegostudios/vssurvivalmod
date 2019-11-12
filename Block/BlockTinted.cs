@@ -13,7 +13,7 @@ namespace Vintagestory.GameContent
         public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing)
         {
             BakedCompositeTexture tex = Textures?.First().Value?.Baked;
-            int color = capi.BlockTextureAtlas.GetRandomPixel(tex.TextureSubId);
+            int color = capi.BlockTextureAtlas.GetRandomColor(tex.TextureSubId);
             color = capi.ApplyColorTintOnRgba(1, color, pos.X, pos.Y, pos.Z);
 
             return color;

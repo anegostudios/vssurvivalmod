@@ -9,6 +9,13 @@ namespace Vintagestory.GameContent
     public class BlockBehaviorHarvestable : BlockBehavior
     {
         float harvestTime;
+        BlockDropItemStack harvestedStack;
+
+        AssetLocation harvestingSound;
+
+        AssetLocation harvestedBlockCode;
+        Block harvestedBlock;
+        string interactionHelpCode;
 
         public BlockBehaviorHarvestable(Block block) : base(block)
         {
@@ -18,7 +25,34 @@ namespace Vintagestory.GameContent
         {
             base.Initialize(properties);
 
+            interactionHelpCode = properties["harvestTime"].AsString("blockhelp-harvetable-harvest");
             harvestTime = properties["harvestTime"].AsFloat(0);
+            harvestedStack = properties["harvestedStack"].AsObject<BlockDropItemStack>(null);
+
+            string code = properties["harvestingSound"].AsString("sounds/block/plant");
+            if (code != null) {
+                harvestingSound = AssetLocation.Create(code, block.Code.Domain);
+            }
+
+            code = properties["harvestedBlockCode"].AsString();
+            if (code != null)
+            {
+                harvestedBlockCode = AssetLocation.Create(code, block.Code.Domain);
+            }
+            
+        }
+
+        public override void OnLoaded(ICoreAPI api)
+        {
+            base.OnLoaded(api);
+
+            harvestedStack?.Resolve(api.World, string.Format("harvestedStack of block {0}", block.Code));
+
+            harvestedBlock = api.World.GetBlock(harvestedBlockCode);
+            if (harvestedBlock == null)
+            {
+                api.World.Logger.Warning("Unable to resolve harvested block code '{0}' for block {1}. Will ignore.", harvestedBlockCode, block.Code);
+            }
         }
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ref EnumHandling handling)
@@ -30,9 +64,9 @@ namespace Vintagestory.GameContent
             
             handling = EnumHandling.PreventDefault;
 
-            if (block.Code.Path.Contains("ripe") && block.Drops != null && block.Drops.Length >= 1)
+            if (harvestedStack != null)
             {
-                world.PlaySoundAt(new AssetLocation("sounds/block/plant"), blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z, byPlayer);
+                world.PlaySoundAt(harvestingSound, blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z, byPlayer);
                 return true;
             }
 
@@ -49,7 +83,7 @@ namespace Vintagestory.GameContent
 
             if (world.Rand.NextDouble() < 0.1)
             {
-                world.PlaySoundAt(new AssetLocation("sounds/block/plant"), blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z, byPlayer);
+                world.PlaySoundAt(harvestingSound, blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z, byPlayer);
             }
 
             return secondsUsed < harvestTime;
@@ -59,37 +93,34 @@ namespace Vintagestory.GameContent
         {
             handled = EnumHandling.PreventDefault;
 
-            world.Logger.VerboseDebug("BHH for {1}: Stop @{0}", blockSel?.Position, block?.Code);
-
-            if (secondsUsed > harvestTime - 0.05f && block.Code.Path.Contains("ripe") && block.Drops != null && block.Drops.Length >= 1)
+            if (secondsUsed > harvestTime - 0.05f && harvestedStack != null)
             {
-                BlockDropItemStack drop = block.Drops.Length == 1 ? block.Drops[0] : block.Drops[1];
-
-                ItemStack stack = drop.GetNextItemStack();
+                ItemStack stack = harvestedStack.GetNextItemStack();
 
                 if (!byPlayer.InventoryManager.TryGiveItemstack(stack))
                 {
-                    world.SpawnItemEntity(drop.GetNextItemStack(), blockSel.Position.ToVec3d().Add(0.5, 0.5, 0.5));
+                    world.SpawnItemEntity(stack, blockSel.Position.ToVec3d().Add(0.5, 0.5, 0.5));
                 }
 
-                AssetLocation loc = block.Code.CopyWithPath(block.Code.Path.Replace("ripe", "empty"));
+                if (harvestedBlock != null)
+                {
+                    world.BlockAccessor.SetBlock(harvestedBlock.BlockId, blockSel.Position);
+                }
 
-                world.BlockAccessor.SetBlock(world.GetBlock(loc).BlockId, blockSel.Position);
-
-                world.PlaySoundAt(new AssetLocation("sounds/block/plant"), blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z, byPlayer);
+                world.PlaySoundAt(harvestingSound, blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z, byPlayer);
             }
         }
 
 
         public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer, ref EnumHandling handled)
         {
-            if (block.Code.Path.Contains("ripe") && block.Drops != null && block.Drops.Length >= 1)
+            if (harvestedStack != null)
             {
                 return new WorldInteraction[]
                 {
                     new WorldInteraction()
                     {
-                        ActionLangCode = "blockhelp-harvetable-harvest",
+                        ActionLangCode = interactionHelpCode,
                         MouseButton = EnumMouseButton.Right
                     }
                 };

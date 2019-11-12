@@ -128,7 +128,7 @@ namespace Vintagestory.GameContent
             string metalType = be.MetalType;
             if (metalType == null) return base.GetRandomColor(capi, pos, facing);
 
-            return capi.BlockTextureAtlas.GetRandomPixel(Textures[be.MetalType].Baked.TextureSubId);
+            return capi.BlockTextureAtlas.GetRandomColor(Textures[be.MetalType].Baked.TextureSubId);
         }
 
 

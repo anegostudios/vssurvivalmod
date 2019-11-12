@@ -173,20 +173,23 @@ namespace Vintagestory.ServerMods
                     }
 
                     // Host rock for
-                    if (block.Attributes == null) block.Attributes = new JsonObject(JToken.Parse("{}"));
-                    int[] oreIds = block.Attributes["hostRockFor"].AsArray<int>(new int[0]);
-                    oreIds = oreIds.Append(placeBlockByInBlockId[block.BlockId].Blocks.Select(b => b.BlockId).ToArray());
-                    block.Attributes.Token["hostRockFor"] = JToken.FromObject(oreIds);
-
-                    // In host rock
-                    Block[] placeBlocks = placeBlockByInBlockId[block.BlockId].Blocks;
-                    for (int i = 0; i < placeBlocks.Length; i++)
+                    if (block.Id != 0)
                     {
-                        Block pblock = placeBlocks[i];
-                        if (pblock.Attributes == null) pblock.Attributes = new JsonObject(JToken.Parse("{}"));
-                        oreIds = pblock.Attributes["hostRock"].AsArray<int>(new int[0]);
-                        oreIds = oreIds.Append(block.BlockId);
-                        pblock.Attributes.Token["hostRock"] = JToken.FromObject(oreIds);
+                        if (block.Attributes == null) block.Attributes = new JsonObject(JToken.Parse("{}"));
+                        int[] oreIds = block.Attributes["hostRockFor"].AsArray<int>(new int[0]);
+                        oreIds = oreIds.Append(placeBlockByInBlockId[block.BlockId].Blocks.Select(b => b.BlockId).ToArray());
+                        block.Attributes.Token["hostRockFor"] = JToken.FromObject(oreIds);
+
+                        // In host rock
+                        Block[] placeBlocks = placeBlockByInBlockId[block.BlockId].Blocks;
+                        for (int i = 0; i < placeBlocks.Length; i++)
+                        {
+                            Block pblock = placeBlocks[i];
+                            if (pblock.Attributes == null) pblock.Attributes = new JsonObject(JToken.Parse("{}"));
+                            oreIds = pblock.Attributes["hostRock"].AsArray<int>(new int[0]);
+                            oreIds = oreIds.Append(block.BlockId);
+                            pblock.Attributes.Token["hostRock"] = JToken.FromObject(oreIds);
+                        }
                     }
 
                 }

@@ -120,9 +120,9 @@ namespace Vintagestory.ServerMods
             landforms = NoiseLandforms.landforms;
             IMapChunk mapchunk = chunks[0].MapChunk;
 
-            IntMap regionMap = mapchunk.MapRegion.LandformMap;
-            // Amount of pixels for each chunk (probably 1, 2, or 4)
-            float chunkPixelSize = regionMap.InnerSize / regionChunkSize;
+            IntMap landformMap = mapchunk.MapRegion.LandformMap;
+            // Amount of pixels for each chunk (probably 1, 2, or 4) in the land form map
+            float chunkPixelSize = landformMap.InnerSize / regionChunkSize;
             // Adjusted lerp for the noiseWidth
             float chunkPixelStep = chunkPixelSize / noiseWidth;
             // Start coordinates for the chunk in the region map
@@ -136,8 +136,15 @@ namespace Vintagestory.ServerMods
             double[] octNoiseX0, octNoiseX1, octNoiseX2, octNoiseX3;
             double[] octThX0, octThX1, octThX2, octThX3;
 
+            // So it seems we have some kind of off-by-one error here? 
+            // When the slope of a mountain goes up (in positive z or x direction), particularly at large word heights (512+)
+            // then the last blocks (again in postive x/z dir) are below of where they should be?
+            // I have no idea why, but this offset seems to greatly mitigate the issue
+            float weirdOffset = 0.25f;
+            chunkPixelSize += weirdOffset;
+
             GetInterpolatedOctaves(landLerpMap[baseX, baseZ], out octNoiseX0, out octThX0);
-            GetInterpolatedOctaves(landLerpMap[baseX + chunkPixelSize , baseZ], out octNoiseX1, out octThX1);
+            GetInterpolatedOctaves(landLerpMap[baseX + chunkPixelSize, baseZ], out octNoiseX1, out octThX1);
             GetInterpolatedOctaves(landLerpMap[baseX, baseZ + chunkPixelSize], out octNoiseX2, out octThX2);
             GetInterpolatedOctaves(landLerpMap[baseX + chunkPixelSize, baseZ + chunkPixelSize], out octNoiseX3, out octThX3);
 

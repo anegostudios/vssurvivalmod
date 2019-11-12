@@ -82,20 +82,13 @@ namespace Vintagestory.GameContent
 
         public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing)
         {
-            return capi.BlockTextureAtlas.GetRandomPixel(Textures["wood"].Baked.TextureSubId);
+            return capi.BlockTextureAtlas.GetRandomColor(Textures["wood"].Baked.TextureSubId);
         }
 
         public override int GetColorWithoutTint(ICoreClientAPI capi, BlockPos pos)
         {
             int texSubId = Textures["wood"].Baked.TextureSubId;
-
-            return ColorUtil.ReverseColorBytes(
-                ColorUtil.ColorOverlay(
-                    capi.BlockTextureAtlas.GetPixelAt(texSubId, 0.4f, 0.4f),
-                    capi.BlockTextureAtlas.GetPixelAt(texSubId, 0.6f, 0.6f),
-                    0.5f
-                )
-            );
+            return capi.BlockTextureAtlas.GetAverageColor(texSubId);
         }
 
         public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)

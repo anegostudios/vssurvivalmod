@@ -39,6 +39,11 @@ namespace Vintagestory.GameContent
                 pile.OnPlayerInteract(byPlayer);
                 return;
             }
+            if (be is BlockEntityFirepit)
+            {
+                handHandling = EnumHandHandling.NotHandled;
+                return;
+            }
 
             if (be is BlockEntityAnvil)
             {

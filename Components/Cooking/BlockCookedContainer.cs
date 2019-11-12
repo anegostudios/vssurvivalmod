@@ -449,7 +449,7 @@ namespace Vintagestory.GameContent
 
             if (capi.World.Rand.NextDouble() < 0.4)
             {
-                return capi.BlockTextureAtlas.GetRandomPixel(Textures["ceramic"].Baked.TextureSubId);
+                return capi.BlockTextureAtlas.GetRandomColor(Textures["ceramic"].Baked.TextureSubId);
             }
 
             if (rndStack.Class == EnumItemClass.Block)
@@ -458,7 +458,7 @@ namespace Vintagestory.GameContent
             }
             else
             {
-                return capi.ItemTextureAtlas.GetRandomPixel(rndStack.Item.FirstTexture.Baked.TextureSubId);
+                return capi.ItemTextureAtlas.GetRandomColor(rndStack.Item.FirstTexture.Baked.TextureSubId);
             }
         }
 
@@ -472,7 +472,7 @@ namespace Vintagestory.GameContent
 
             if (capi.World.Rand.NextDouble() < 0.4)
             {
-                return capi.BlockTextureAtlas.GetRandomPixel(Textures["ceramic"].Baked.TextureSubId);
+                return capi.BlockTextureAtlas.GetRandomColor(Textures["ceramic"].Baked.TextureSubId);
             }
 
             return rndStack.Collectible.GetRandomColor(capi, stack);

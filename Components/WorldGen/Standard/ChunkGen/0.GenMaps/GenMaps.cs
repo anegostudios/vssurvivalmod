@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Globalization;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.Server;
 
@@ -55,9 +57,9 @@ namespace Vintagestory.ServerMods
             NoiseClimate noiseClimate;
 
             float tempModifier = 1;
-            float.TryParse(worldConfig.GetString("globalTemperature", "1"), out tempModifier);
+            float.TryParse(worldConfig.GetString("globalTemperature", "1"), NumberStyles.Any, GlobalConstants.DefaultCultureInfo, out tempModifier);
             float rainModifier = 1;
-            float.TryParse(worldConfig.GetString("globalPrecipitation", "1"), out rainModifier);
+            float.TryParse(worldConfig.GetString("globalPrecipitation", "1"), NumberStyles.Any, GlobalConstants.DefaultCultureInfo, out rainModifier);
 
             switch (climate)
             {

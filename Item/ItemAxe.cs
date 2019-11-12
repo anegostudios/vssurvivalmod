@@ -73,7 +73,7 @@ namespace Vintagestory.GameContent
                 BlockPos pos = foundPositions.Pop();
                 Block block = world.BlockAccessor.GetBlock(pos);
 
-                bool isLog = block.Code.Path.StartsWith("beehive-inlog-" + treeType) || block.Code.Path.StartsWith("log-grown-"+treeType) || block.Code.Path.StartsWith("bamboo-grown-brown-segment") || block.Code.Path.StartsWith("bamboo-grown-green-segment");
+                bool isLog = block.Code.Path.StartsWith("beehive-inlog-" + treeType) || block.Code.Path.StartsWith("log-resinharvested-" + treeType) || block.Code.Path.StartsWith("log-resin-" + treeType) || block.Code.Path.StartsWith("log-grown-"+treeType) || block.Code.Path.StartsWith("bamboo-grown-brown-segment") || block.Code.Path.StartsWith("bamboo-grown-green-segment");
                 bool isBranchy = block == leavesBranchyBlock;
                 bool isLeaves = block == leavesBlock || block.Code.Path == "bambooleaves-grown";
 

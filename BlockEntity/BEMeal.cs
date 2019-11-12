@@ -11,7 +11,7 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockEntityMeal : BlockEntityContainer, IBlockShapeSupplier, IBlockEntityMealContainer
+    public class BlockEntityMeal : BlockEntityContainer, IBlockEntityMealContainer
     {
         InventoryBase IBlockEntityMealContainer.inventory => inventory;
         public override InventoryBase Inventory => inventory;
@@ -62,12 +62,6 @@ namespace Vintagestory.GameContent
             if (Api.Side == EnumAppSide.Client)
             {
                 RegisterGameTickListener(Every100ms, 200);
-            }
-
-            if (Api.Side == EnumAppSide.Client && currentMesh == null)
-            {
-                currentMesh = GenMesh();
-                MarkDirty(true);
             }
         }
 
@@ -140,8 +134,13 @@ namespace Vintagestory.GameContent
             return capi.ModLoader.GetModSystem<MealMeshCache>().GenMealInContainerMesh(ownBlock, FromRecipe, stacks);
         }
 
-        public bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
+        public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
         {
+            if (currentMesh == null)
+            {
+                currentMesh = GenMesh();
+            }
+
             mesher.AddMeshData(currentMesh);
             return true;
         }

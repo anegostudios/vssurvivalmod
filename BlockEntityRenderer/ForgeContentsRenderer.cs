@@ -48,7 +48,7 @@ namespace Vintagestory.GameContent
             get { return 24; }
         }
 
-        public int AtlasSize
+        public Size2i AtlasSize
         {
             get { return capi.BlockTextureAtlas.Size; }
         }
@@ -77,8 +77,8 @@ namespace Vintagestory.GameContent
 
             for (int i = 0; i < emberMesh.Uv.Length; i+=2)
             {
-                emberMesh.Uv[i + 0] = embertexpos.x1 + emberMesh.Uv[i + 0] * 32f / AtlasSize;
-                emberMesh.Uv[i + 1] = embertexpos.y1 + emberMesh.Uv[i + 1] * 32f / AtlasSize;
+                emberMesh.Uv[i + 0] = embertexpos.x1 + emberMesh.Uv[i + 0] * 32f / AtlasSize.Width;
+                emberMesh.Uv[i + 1] = embertexpos.y1 + emberMesh.Uv[i + 1] * 32f / AtlasSize.Height;
             }
             emberMesh.Flags = new int[] { 128, 128, 128, 128 };
 
@@ -86,8 +86,8 @@ namespace Vintagestory.GameContent
 
             for (int i = 0; i < coalMesh.Uv.Length; i += 2)
             {
-                coalMesh.Uv[i + 0] = coaltexpos.x1 + coalMesh.Uv[i + 0] * 32f / AtlasSize; ;
-                coalMesh.Uv[i + 1] = coaltexpos.y1 + coalMesh.Uv[i + 1] * 32f / AtlasSize; ;
+                coalMesh.Uv[i + 0] = coaltexpos.x1 + coalMesh.Uv[i + 0] * 32f / AtlasSize.Width;
+                coalMesh.Uv[i + 1] = coaltexpos.y1 + coalMesh.Uv[i + 1] * 32f / AtlasSize.Height;
             }
 
 

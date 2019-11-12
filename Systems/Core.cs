@@ -1,13 +1,10 @@
-﻿
-using Newtonsoft.Json;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Server;
-using Vintagestory.GameContent;
 using Vintagestory.GameContent.Mechanics;
 using Vintagestory.ServerMods;
 
@@ -77,7 +74,6 @@ namespace Vintagestory.GameContent
 
         public override bool ShouldLoad(EnumAppSide side)
         {
-            
             return true;
         }
 
@@ -240,6 +236,8 @@ namespace Vintagestory.GameContent
 
             api.RegisterBlockClass("BlockIngotMold", typeof(BlockIngotMold));
             api.RegisterBlockClass("BlockPlatePile", typeof(BlockPlatePile));
+            api.RegisterBlockClass("BlockPlankPile", typeof(BlockPlankPile));
+
             api.RegisterBlockClass("BlockAnvil", typeof(BlockAnvil));
             api.RegisterBlockClass("BlockForge", typeof(BlockForge));
             api.RegisterBlockClass("BlockLootVessel", typeof(BlockLootVessel));
@@ -338,8 +336,9 @@ namespace Vintagestory.GameContent
             api.RegisterBlockBehaviorClass("Ladder", typeof(BlockBehaviorLadder));
             api.RegisterBlockBehaviorClass("OmniRotatable", typeof(BlockBehaviorOmniRotatable));
             api.RegisterBlockBehaviorClass("PushEventOnBlockBroken", typeof(BlockBehaviorPushEventOnBlockBroken));
-            api.RegisterBlockBehaviorClass("RightClickPickup", typeof(BehaviorRightClickPickup));
-            api.RegisterBlockBehaviorClass("SneakPlacing", typeof(BehaviorSneakPlacing));
+            api.RegisterBlockBehaviorClass("RightClickPickup", typeof(BlockBehaviorRightClickPickup));
+            api.RegisterBlockBehaviorClass("SneakPlacing", typeof(BlockBehaviorSneakPlacing));
+            api.RegisterBlockBehaviorClass("CollectFrom", typeof(BehaviorCollectFrom));
 
             api.RegisterBlockBehaviorClass("Lockable", typeof(BlockBehaviorLockable));
         }
@@ -366,6 +365,7 @@ namespace Vintagestory.GameContent
             api.RegisterBlockEntityClass("IngotPile", typeof(BlockEntityIngotPile));
             api.RegisterBlockEntityClass("PeatPile", typeof(BlockEntityPeatPile));
             api.RegisterBlockEntityClass("PlatePile", typeof(BlockEntityPlatePile));
+            api.RegisterBlockEntityClass("PlankPile", typeof(BlockEntityPlankPile));
             api.RegisterBlockEntityClass("Farmland", typeof(BlockEntityFarmland));
             api.RegisterBlockEntityClass("FirewoodPile", typeof(BlockEntityFirewoodPile));
             api.RegisterBlockEntityClass("ToolRack", typeof(BlockEntityToolrack));
@@ -425,6 +425,7 @@ namespace Vintagestory.GameContent
             api.RegisterItemClass("ItemStone", typeof(ItemStone));
             api.RegisterItemClass("ItemDryGrass", typeof(ItemDryGrass));
             api.RegisterItemClass("ItemFirewood", typeof(ItemFirewood));
+            api.RegisterItemClass("ItemPlank", typeof(ItemPlank));
             api.RegisterItemClass("ItemHoe", typeof(ItemHoe));
             api.RegisterItemClass("ItemPlantableSeed", typeof(ItemPlantableSeed));
             api.RegisterItemClass("ItemIngot", typeof(ItemIngot));
@@ -450,7 +451,7 @@ namespace Vintagestory.GameContent
             api.RegisterItemClass("ItemOpenedBeenade", typeof(ItemOpenedBeenade));
             api.RegisterItemClass("ItemClosedBeenade", typeof(ItemClosedBeenade));
             api.RegisterItemClass("ItemCandle", typeof(ItemCandle));
-            api.RegisterItemClass("ItemDress", typeof(ItemDress));
+            api.RegisterItemClass("ItemWearable", typeof(ItemWearable));
             api.RegisterItemClass("ItemStackRandomizer", typeof(ItemStackRandomizer));
             api.RegisterItemClass("ItemChisel", typeof(ItemChisel));
             api.RegisterItemClass("ItemLiquidPortion", typeof(ItemLiquidPortion));

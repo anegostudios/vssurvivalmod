@@ -282,7 +282,12 @@ namespace Vintagestory.ServerMods
 
         void genTrees(int chunkX, int chunkZ)
         {
-            int triesTrees = (int)treeSupplier.treeGenProps.treesPerChunk.nextFloat();
+            int climate = GameMath.BiLerpRgbColor((float)0.5f, (float)0.5f, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight);
+            float dryrel = 1 - TerraGenConfig.GetRainFall((climate >> 8) & 0xff, heightmap[(chunksize / 2) * chunksize + chunksize/2]) / 255f;
+
+            float drypenalty = 1 - GameMath.Clamp(2f * (dryrel - 0.5f), 0, 0.8f); // Reduce tree generation by up to 70% in low rain places
+
+            int triesTrees = (int)(treeSupplier.treeGenProps.treesPerChunk.nextFloat() * drypenalty);
             int dx, dz, x, z;
             Block block;
 
@@ -304,8 +309,8 @@ namespace Vintagestory.ServerMods
 
                 // Place according to forest value
                 float treeDensity = GameMath.BiLerp(forestUpLeft, forestUpRight, forestBotLeft, forestBotRight, (float)dx / chunksize, (float)dz / chunksize);
-                int climate = GameMath.BiLerpRgbColor((float)dx / chunksize, (float)dz / chunksize, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight);
-                float shrubChance = GameMath.BiLerp(shrubUpLeft, shrubUpRight, shrubBotLeft, shrubBotRight, (float)dx / chunksize, (float)dz / chunksize);
+                climate = GameMath.BiLerpRgbColor((float)dx / chunksize, (float)dz / chunksize, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight);
+                //float shrubChance = GameMath.BiLerp(shrubUpLeft, shrubUpRight, shrubBotLeft, shrubBotRight, (float)dx / chunksize, (float)dz / chunksize);
 
                 float treeDensityNormalized = treeDensity / 255f;
                 
@@ -333,8 +338,7 @@ namespace Vintagestory.ServerMods
                         blockAccessor,
                         tmpPos,
                         treegenParams.size,
-                        treegenParams.vinesGrowthChance,
-                        treeDensityNormalized
+                        treegenParams.vinesGrowthChance
                     );
                 }
             }

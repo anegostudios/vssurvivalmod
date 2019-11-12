@@ -59,12 +59,12 @@ namespace Vintagestory.GameContent
 
             if (inWater)
             {
-                blockToPlace = world.GetBlock(CodeWithParts("water", LastCodePart()));
+                blockToPlace = world.GetBlock(CodeWithVariant("habitat", "water"));
                 if (blockToPlace == null) blockToPlace = this;
             }
             else
             {
-                if (LastCodePart(1) != "free")
+                if (Variant["habitat"] != "free")
                 {
                     failureCode = "requirefullwater";
                     return false;
@@ -90,7 +90,7 @@ namespace Vintagestory.GameContent
 
         public override float OnGettingBroken(IPlayer player, BlockSelection blockSel, ItemSlot itemslot, float remainingResistance, float dt, int counter)
         {
-            if (LastCodePart() == "harvested") dt /= 2;
+            if (Variant["state"] == "harvested") dt /= 2;
             else if (player.InventoryManager.ActiveTool != EnumTool.Knife)
             {
                 dt /= 3;
@@ -125,12 +125,15 @@ namespace Vintagestory.GameContent
             if (world.Side == EnumAppSide.Server && (byPlayer == null || byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative))
             {
                 ItemStack drop = null;
-                if (LastCodePart() == "normal")
+                if (Variant["state"] == "normal")
                 {
                     drop = new ItemStack(world.GetItem(new AssetLocation("cattailtops")));
                 } else
                 {
-                    drop = new ItemStack(world.GetItem(new AssetLocation("cattailroot")));
+                    if (Variant["type"] == "coopersreed")
+                    {
+                        drop = new ItemStack(world.GetItem(new AssetLocation("cattailroot")));
+                    }
                 }
 
                 if (drop != null)
@@ -141,13 +144,13 @@ namespace Vintagestory.GameContent
                 world.PlaySoundAt(Sounds.GetBreakSound(byPlayer), pos.X, pos.Y, pos.Z, byPlayer);
             }
 
-            if (byPlayer != null && LastCodePart() == "normal" && byPlayer.InventoryManager.ActiveTool == EnumTool.Knife)
+            if (byPlayer != null && Variant["state"] == "normal" && byPlayer.InventoryManager.ActiveTool == EnumTool.Knife)
             {
-                world.BlockAccessor.SetBlock(world.GetBlock(CodeWithParts("harvested")).BlockId, pos);
+                world.BlockAccessor.SetBlock(world.GetBlock(CodeWithVariant("state", "harvested")).BlockId, pos);
                 return;
             }
 
-            if (LastCodePart(1) != "free")
+            if (Variant["habitat"] != "free")
             {
                 world.BlockAccessor.SetBlock(world.GetBlock(new AssetLocation("water-still-7")).BlockId, pos);
                 world.BlockAccessor.GetBlock(pos).OnNeighourBlockChange(world, pos, pos);
@@ -202,7 +205,7 @@ namespace Vintagestory.GameContent
 
         public override int GetRandomColor(ICoreClientAPI capi , BlockPos pos, BlockFacing facing)
         {
-            return capi.ApplyColorTintOnRgba(1, capi.BlockTextureAtlas.GetRandomPixel(Textures.Last().Value.Baked.TextureSubId), pos.X, pos.Y, pos.Z);
+            return capi.ApplyColorTintOnRgba(1, capi.BlockTextureAtlas.GetRandomColor(Textures.Last().Value.Baked.TextureSubId), pos.X, pos.Y, pos.Z);
         }
 
         public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)

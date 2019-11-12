@@ -127,6 +127,7 @@ namespace Vintagestory.GameContent
             }
         }
 
+        GuiDialogSignPost dlg;
         public override void OnReceivedServerPacket(int packetid, byte[] data)
         {
             if (packetid == (int)EnumSignPacketId.OpenDialog)
@@ -148,13 +149,19 @@ namespace Vintagestory.GameContent
 
                     CairoFont font = new CairoFont(20, GuiStyle.StandardFontName, new double[] { 0, 0, 0, 0.8 });
 
-                    GuiDialogSignPost dlg = new GuiDialogSignPost(dialogTitle, Pos, textByCardinalDirection, Api as ICoreClientAPI, font);
+                    if (dlg != null && dlg.IsOpened())
+                    {
+                        return;
+                    }
+
+                    dlg = new GuiDialogSignPost(dialogTitle, Pos, textByCardinalDirection, Api as ICoreClientAPI, font);
                     dlg.OnTextChanged = DidChangeTextClientSide;
                     dlg.OnCloseCancel = () =>
                     {
                         signRenderer.SetNewText(textByCardinalDirection, color);
                         (Api as ICoreClientAPI).Network.SendBlockEntityPacket(Pos.X, Pos.Y, Pos.Z, (int)EnumSignPacketId.CancelEdit, null);
                     };
+                    dlg.OnClosed += () => { dlg.Dispose(); dlg = null; };
                     dlg.TryOpen();
                 }
             }

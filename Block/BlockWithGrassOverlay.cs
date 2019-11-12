@@ -27,7 +27,7 @@ namespace Vintagestory.GameContent
                 return ColorUtil.WhiteArgb;
             }
 
-            int grassColor = ColorUtil.ReverseColorBytes(capi.BlockTextureAtlas.GetPixelAt((int)textureSubId, 0.5f, 0.5f));
+            int grassColor = capi.BlockTextureAtlas.GetRandomColor((int)textureSubId);
             
             if (grasscover == "normal")
             {
@@ -36,8 +36,7 @@ namespace Vintagestory.GameContent
             }
             else
             {
-                int soilColor = ColorUtil.ReverseColorBytes(capi.BlockTextureAtlas.GetPixelAt((int)Textures["up"].Baked.TextureSubId, 0.5f, 0.5f));
-
+                int soilColor = capi.BlockTextureAtlas.GetRandomColor((int)Textures["up"].Baked.TextureSubId);
                 return ColorUtil.ColorOverlay(soilColor, grassColor, grasscover == "verysparse" ? 0.5f : 0.75f);
             }
         }
@@ -61,7 +60,7 @@ namespace Vintagestory.GameContent
                 return ColorUtil.WhiteArgb;
             }
 
-            int grassColor = ColorUtil.ReverseColorBytes(capi.BlockTextureAtlas.GetPixelAt((int)textureSubId, 0.5f, 0.5f));
+            int grassColor = capi.BlockTextureAtlas.GetAverageColor((int)textureSubId);
 
             if (TintIndex > 0)
             {
@@ -74,7 +73,7 @@ namespace Vintagestory.GameContent
                 
             } else
             {
-                int soilColor = ColorUtil.ReverseColorBytes(capi.BlockTextureAtlas.GetPixelAt((int)Textures["up"].Baked.TextureSubId, 0.5f, 0.5f));
+                int soilColor = capi.BlockTextureAtlas.GetAverageColor((int)Textures["up"].Baked.TextureSubId);
 
                 return ColorUtil.ColorOverlay(soilColor, grassColor, grasscover == "verysparse" ? 0.5f : 0.75f);
             }

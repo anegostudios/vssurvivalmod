@@ -92,7 +92,7 @@ namespace Vintagestory.GameContent
                     {
                         float tempGain = (float)(Api.World.Calendar.TotalHours - lastHeatTotalHours) * 1500;
 
-                        contents.Collectible.SetTemperature(Api.World, contents, temp + tempGain);
+                        contents.Collectible.SetTemperature(Api.World, contents, Math.Min(1100, temp + tempGain));
                     }
                 }
             }

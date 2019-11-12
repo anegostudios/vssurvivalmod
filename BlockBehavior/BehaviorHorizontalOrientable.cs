@@ -43,8 +43,12 @@ namespace Vintagestory.GameContent
             AssetLocation blockCode = block.CodeWithParts(horVer[0].Code);
             Block orientedBlock = world.BlockAccessor.GetBlock(blockCode);
 
-            orientedBlock.DoPlaceBlock(world, byPlayer, blockSel, itemstack);
-            return true;
+            if (orientedBlock.CanPlaceBlock(world, byPlayer, blockSel, ref failureCode))
+            {
+                orientedBlock.DoPlaceBlock(world, byPlayer, blockSel, itemstack);
+                return true;
+            }
+            return false;
         }
 
 

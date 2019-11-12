@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Linq;
+using System.Text;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
@@ -12,16 +13,16 @@ namespace Vintagestory.GameContent
         {
             base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
 
-            int selectedRecipeNumber = inSlot.Itemstack.Attributes.GetInt("selectedRecipeNumber");
+            int recipeId = inSlot.Itemstack.Attributes.GetInt("selectedRecipeId");
+            SmithingRecipe recipe = api.World.SmithingRecipes.FirstOrDefault(r => r.RecipeId == recipeId);
 
-            if (selectedRecipeNumber < 0 || selectedRecipeNumber >= world.SmithingRecipes.Count)
+            if (recipe == null)
             {
                 dsc.AppendLine("Unknown work item");
                 return;
             }
 
-            SmithingRecipe smithRecipe = world.SmithingRecipes[selectedRecipeNumber];
-            dsc.AppendLine(Lang.Get("Unfinished {0}", smithRecipe.Output.ResolvedItemstack.GetName()));
+            dsc.AppendLine(Lang.Get("Unfinished {0}", recipe.Output.ResolvedItemstack.GetName()));
         }
     }
 }

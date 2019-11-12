@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
@@ -71,6 +72,6 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public int AtlasSize => capi.BlockTextureAtlas.Size;
+        public Size2i AtlasSize => capi.BlockTextureAtlas.Size;
     }
 }

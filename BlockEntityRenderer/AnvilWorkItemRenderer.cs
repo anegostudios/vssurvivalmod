@@ -129,7 +129,7 @@ namespace Vintagestory.GameContent
 
             if (recipeToOutline != null)
             {
-                RegenOutlineMesh(recipeToOutline);
+                RegenOutlineMesh(recipeToOutline, Voxels);
             }
 
             this.ingot = ingot;
@@ -141,7 +141,14 @@ namespace Vintagestory.GameContent
 
             for (int i = 0; i < voxelMesh.Uv.Length; i++)
             {
-                voxelMesh.Uv[i] = (i % 2 > 0 ? tpos.y1 : tpos.x1) + voxelMesh.Uv[i] * 2f / api.BlockTextureAtlas.Size;
+                if (i % 2 > 0)
+                {
+                    voxelMesh.Uv[i] = tpos.y1 + voxelMesh.Uv[i] * 2f / api.BlockTextureAtlas.Size.Height;
+                } else
+                {
+                    voxelMesh.Uv[i] = tpos.x1 + voxelMesh.Uv[i] * 2f / api.BlockTextureAtlas.Size.Width;
+                }
+                
             }
 
             voxelMesh.XyzFaces = (int[])CubeMeshUtil.CubeFaceIndices.Clone();
@@ -174,8 +181,8 @@ namespace Vintagestory.GameContent
                             voxelMeshOffset.xyz[i + 2] = pz + voxelMesh.xyz[i + 2];
                         }
 
-                        float offsetX = (px * 32f) / api.BlockTextureAtlas.Size;
-                        float offsetZ = (pz * 32f) / api.BlockTextureAtlas.Size;
+                        float offsetX = (px * 32f) / api.BlockTextureAtlas.Size.Width;
+                        float offsetZ = (pz * 32f) / api.BlockTextureAtlas.Size.Height;
 
                         for (int i = 0; i < voxelMesh.Uv.Length; i += 2)
                         {
@@ -192,37 +199,46 @@ namespace Vintagestory.GameContent
         }
 
 
-        private void RegenOutlineMesh(SmithingRecipe recipeToOutline)
+        private void RegenOutlineMesh(SmithingRecipe recipeToOutline, bool[,,] voxels)
         {
             recipeOutlineMeshRef?.Dispose();
 
             MeshData recipeOutlineMesh = new MeshData(24, 36, false, false, true, false, false);
             recipeOutlineMesh.SetMode(EnumDrawMode.Lines);
 
-            MeshData voxelMesh = LineMeshUtil.GetCube((180 << 24) | (100 << 16) | (200 << 8) | (200));
-            for (int i = 0; i < voxelMesh.xyz.Length; i++)
+            int greenCol = (156 << 24) | (100 << 16) | (200 << 8) | (100);
+            int orangeCol = (156 << 24) | (219 << 16) | (92 << 8) | (92);
+            MeshData greenVoxelMesh = LineMeshUtil.GetCube(greenCol);
+            MeshData orangeVoxelMesh = LineMeshUtil.GetCube(orangeCol);
+            for (int i = 0; i < greenVoxelMesh.xyz.Length; i++)
             {
-                voxelMesh.xyz[i] = voxelMesh.xyz[i] / 32f + 1 / 32f;
+                greenVoxelMesh.xyz[i] = greenVoxelMesh.xyz[i] / 32f + 1 / 32f;
+                orangeVoxelMesh.xyz[i] = orangeVoxelMesh.xyz[i] / 32f + 1 / 32f;
             }
-            MeshData voxelMeshOffset = voxelMesh.Clone();
+            MeshData voxelMeshOffset = greenVoxelMesh.Clone();
+
 
             for (int x = 0; x < 16; x++)
             {
                 int y = 10;
                 for (int z = 0; z < 16; z++)
                 {
-                    if (!recipeToOutline.Voxels[x, z]) continue;
+                    bool shouldFill = recipeToOutline.Voxels[x, z];
+                    bool didFill = voxels[x, y, z];
+                    if (shouldFill == didFill) continue;
 
                     float px = x / 16f;
                     float py = y / 16f;
                     float pz = z / 16f;
 
-                    for (int i = 0; i < voxelMesh.xyz.Length; i += 3)
+                    for (int i = 0; i < greenVoxelMesh.xyz.Length; i += 3)
                     {
-                        voxelMeshOffset.xyz[i] = px + voxelMesh.xyz[i];
-                        voxelMeshOffset.xyz[i + 1] = py + voxelMesh.xyz[i + 1];
-                        voxelMeshOffset.xyz[i + 2] = pz + voxelMesh.xyz[i + 2];
+                        voxelMeshOffset.xyz[i] = px + greenVoxelMesh.xyz[i];
+                        voxelMeshOffset.xyz[i + 1] = py + greenVoxelMesh.xyz[i + 1];
+                        voxelMeshOffset.xyz[i + 2] = pz + greenVoxelMesh.xyz[i + 2];
                     }
+
+                    voxelMeshOffset.Rgba = (shouldFill && !didFill) ? greenVoxelMesh.Rgba : orangeVoxelMesh.Rgba;
 
                     recipeOutlineMesh.AddMeshData(voxelMeshOffset);
                 }

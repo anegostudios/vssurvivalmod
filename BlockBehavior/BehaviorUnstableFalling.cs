@@ -1,4 +1,5 @@
-﻿using Vintagestory.API.Common;
+﻿using Vintagestory.API;
+using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
@@ -11,13 +12,24 @@ namespace Vintagestory.GameContent
     /// </summary>
     public class BlockBehaviorUnstableFalling : BlockBehavior
     {
+        bool ingorePlaceTest;
+
         public BlockBehaviorUnstableFalling(Block block) : base(block)
         {
+        }
+
+        public override void Initialize(JsonObject properties)
+        {
+            base.Initialize(properties);
+
+            ingorePlaceTest = properties["ingorePlaceTest"].AsBool(false);
         }
 
         public override bool CanPlaceBlock(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ref EnumHandling handling, ref string failureCode)
         {
             handling = EnumHandling.PassThrough;
+            if (ingorePlaceTest) return true;
+
             
             if (blockSel != null && !world.BlockAccessor.GetBlock(blockSel.Position.DownCopy()).SideSolid[BlockFacing.UP.Index] && block.Attributes?["allowUnstablePlacement"].AsBool() != true)
             {

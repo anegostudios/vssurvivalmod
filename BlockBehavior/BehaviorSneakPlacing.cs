@@ -9,9 +9,9 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
-    public class BehaviorSneakPlacing : BlockBehavior
+    public class BlockBehaviorSneakPlacing : BlockBehavior
     {
-        public BehaviorSneakPlacing(Block block) : base(block)
+        public BlockBehaviorSneakPlacing(Block block) : base(block)
         {
         }
 
