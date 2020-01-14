@@ -13,10 +13,14 @@ namespace Vintagestory.GameContent
     public class EntityButterfly : EntityAgent
     {
         //double sitHeight = 1;
+        public double windMotion;
+        int cnt = 0;
 
         static EntityButterfly() {
             AiTaskRegistry.Register<AiTaskButterflyWander>("butterflywander");
+            AiTaskRegistry.Register<AiTaskButterflyRest>("butterflyrest");
             AiTaskRegistry.Register<AiTaskButterflyChase>("butterflychase");
+            AiTaskRegistry.Register<AiTaskButterflyFlee>("butterflyflee");
             AiTaskRegistry.Register<AiTaskButterflyFeedOnFlowers>("butterflyfeedonflowers");
         }
 
@@ -33,7 +37,14 @@ namespace Vintagestory.GameContent
                     (Properties.Client.Renderer as EntityShapeRenderer).WindWaveIntensity = WatchedAttributes.GetDouble("sitHeight");
                 });
             }
+
+            wsys = api.ModLoader.GetModSystem<WeatherSystemBase>();
+            roomReg = api.ModLoader.GetModSystem<RoomRegistry>();
         }
+
+        WeatherSystemBase wsys;
+        RoomRegistry roomReg;
+        BlockPos tmpPos = new BlockPos();
 
         public override void OnGameTick(float dt)
         {
@@ -43,7 +54,7 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            if (!AnimManager.ActiveAnimationsByAnimCode.ContainsKey("feed"))
+            if (!AnimManager.ActiveAnimationsByAnimCode.ContainsKey("feed") && !AnimManager.ActiveAnimationsByAnimCode.ContainsKey("rest"))
             {
                 if (ServerPos.Y < Pos.Y - 0.25 && !Collided)
                 {
@@ -57,6 +68,20 @@ namespace Vintagestory.GameContent
 
             
             base.OnGameTick(dt);
+
+            if (cnt++ > 30)
+            {
+                cnt = 0;
+                tmpPos.Set((int)LocalPos.X, (int)LocalPos.Y, (int)LocalPos.Z);
+                Room room = roomReg.GetRoomForPosition(tmpPos);
+                float affectedness = room.NonSkylightCount == 0 ? 1 : ((float)room.SkylightCount / room.NonSkylightCount);
+                windMotion = Api.ModLoader.GetModSystem<WeatherSystemBase>().GetWindSpeed(LocalPos.XYZ * affectedness); 
+            }
+
+            if (AnimManager.ActiveAnimationsByAnimCode.ContainsKey("fly"))
+            {
+                LocalPos.X += Math.Max(0, (windMotion - 0.2) / 20.0);
+            }
 
             if (ServerPos.SquareDistanceTo(Pos.XYZ) > 0.01)
             {
@@ -145,7 +170,8 @@ namespace Vintagestory.GameContent
                 AnimManager.StopAnimation("fly");
                 AnimManager.StopAnimation("glide");
 
-                (Properties.Client.Renderer as EntityShapeRenderer).AddRenderFlags = VertexFlags.GrassWindWaveBitMask;
+                (Properties.Client.Renderer as EntityShapeRenderer).AddRenderFlags = VertexFlags.FoliageWindWaveBitMask;
+                (Properties.Client.Renderer as EntityShapeRenderer).WindWaveIntensity = WatchedAttributes.GetDouble("sitHeight");
             } else
             {
                 (Properties.Client.Renderer as EntityShapeRenderer).AddRenderFlags = 0;

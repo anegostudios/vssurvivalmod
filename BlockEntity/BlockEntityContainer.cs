@@ -20,6 +20,7 @@ namespace Vintagestory.GameContent
 
         IInventory IBlockEntityContainer.Inventory { get { return Inventory; } }
 
+
         public override void Initialize(ICoreAPI api)
         {
             base.Initialize(api);
@@ -65,13 +66,13 @@ namespace Vintagestory.GameContent
             ClimateCondition cond = Api.World.BlockAccessor.GetClimateAt(sealevelpos);
             if (cond == null) return 1;
 
-            Cellar cellar = Api.ModLoader.GetModSystem<CellarRegistry>().GetCellarForPosition(Pos);
+            Room room = Api.ModLoader.GetModSystem<RoomRegistry>().GetRoomForPosition(Pos);
 
             float soilTempWeight = 0f;
 
-            if (cellar != null)
+            if (room.ExitCount == 0)
             {
-                soilTempWeight = 0.5f + 0.5f * (1 - GameMath.Clamp((float)cellar.NonCoolingWallCount / Math.Max(1, cellar.CoolingWallCount), 0, 1));
+                soilTempWeight = 0.5f + 0.5f * (1 - GameMath.Clamp((float)room.NonCoolingWallCount / Math.Max(1, room.CoolingWallCount), 0, 1));
             }
 
             int lightlevel = Api.World.BlockAccessor.GetLightLevel(Pos, EnumLightLevelType.OnlySunLight);
@@ -188,12 +189,7 @@ namespace Vintagestory.GameContent
 
                 if (slot.Itemstack?.Collectible is ItemLootRandomizer)
                 {
-                    (slot.Itemstack.Collectible as ItemLootRandomizer).ResolveLoot(slot, Inventory, worldForResolve);
-
-                    if (slot.Itemstack?.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve) == false)
-                    {
-                        slot.Itemstack = null;
-                    }
+                    (slot.Itemstack.Collectible as ItemLootRandomizer).ResolveLoot(slot, worldForResolve);
                 }
 
                 if (slot.Itemstack?.Collectible is ItemStackRandomizer)

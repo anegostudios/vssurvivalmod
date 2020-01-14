@@ -36,56 +36,122 @@ namespace Vintagestory.GameContent
                     case "construct3":
                         return "construct4";
                     case "construct4":
-                        return "lit";
+                        return "cold";
                 }
-                return "lit";
+                return "cold";
             }
         }
 
 
         public bool IsExtinct;
 
+        AdvancedParticleProperties[] ringParticles;
+        Vec3f[] basePos;
+
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
 
             IsExtinct = LastCodePart() != "lit";
+
+            if (!IsExtinct && api.Side == EnumAppSide.Client)
+            {
+                ringParticles = new AdvancedParticleProperties[this.ParticleProperties.Length*4];
+                basePos = new Vec3f[ringParticles.Length];
+
+                Cuboidf[] spawnBoxes = new Cuboidf[]
+                {
+                    new Cuboidf(x1: 0.125f, y1: 0, z1: 0.125f, x2: 0.3125f, y2: 0.5f, z2: 0.875f),
+                    new Cuboidf(x1: 0.7125f, y1: 0, z1: 0.125f, x2: 0.875f, y2: 0.5f, z2: 0.875f),
+                    new Cuboidf(x1: 0.125f, y1: 0, z1: 0.125f, x2: 0.875f, y2: 0.5f, z2: 0.3125f),
+                    new Cuboidf(x1: 0.125f, y1: 0, z1: 0.7125f, x2: 0.875f, y2: 0.5f, z2: 0.875f)
+                };
+               
+                for (int i = 0; i < ParticleProperties.Length; i++)
+                {
+                    for (int j = 0; j < 4; j++)
+                    {
+                        AdvancedParticleProperties props = ParticleProperties[i].Clone();
+
+                        Cuboidf box = spawnBoxes[j];
+                        basePos[i * 4 + j] = new Vec3f(0,0,0);
+
+                        props.PosOffset[0].avg = box.MidX;
+                        props.PosOffset[0].var = box.Width/2;
+
+                        props.PosOffset[1].avg = 0.1f;
+                        props.PosOffset[1].var = 0.05f;
+
+                        props.PosOffset[2].avg = box.MidZ;
+                        props.PosOffset[2].var = box.Length / 2;
+
+                        props.Quantity.avg /= 4f;
+                        props.Quantity.var /= 4f;
+
+                        ringParticles[i * 4 + j] = props;
+                    }   
+                }
+            }
         }
 
-        public virtual bool Ignite(IWorldAccessor world, BlockPos pos)
+
+        public override EnumIgniteState OnTryIgniteBlock(EntityAgent byEntity, BlockPos pos, float secondsIgniting)
         {
-            if (LastCodePart() == "lit") return false;
-            Block litblock = world.GetBlock(CodeWithParts("lit"));
-            if (litblock == null) return false;
+            BlockEntityFirepit bef = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityFirepit;
+            if (bef != null && bef.fuelSlot.Empty) return EnumIgniteState.NotIgnitablePreventDefault;
 
-            world.BlockAccessor.ExchangeBlock(litblock.BlockId, pos);
-            // world.Logger.Notification("light");
-            return true;
+            return secondsIgniting > 3 ? EnumIgniteState.IgniteNow : EnumIgniteState.Ignitable;
         }
 
-
-        public virtual bool Extinguish(IWorldAccessor world, BlockPos pos)
+        public override void OnTryIgniteBlockOver(EntityAgent byEntity, BlockPos pos, float secondsIgniting, ref EnumHandling handling)
         {
-            if (LastCodePart() == "extinct") return false;
-            Block litblock = world.GetBlock(CodeWithParts("extinct"));
-            if (litblock == null) return false;
+            BlockEntityFirepit bef = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityFirepit;
+            if (bef != null && !bef.canIgniteFuel)
+            {
+                bef.canIgniteFuel = true;
+                bef.extinguishedTotalHours = api.World.Calendar.TotalHours;
+            }
 
-            world.BlockAccessor.ExchangeBlock(litblock.BlockId, pos);
-            //world.Logger.Notification("exti");
-
-            return true;
+            handling = EnumHandling.PreventDefault;
         }
 
-        public override bool ShouldReceiveClientGameTicks(IWorldAccessor world, IPlayer player, BlockPos pos)
+
+        public override bool ShouldReceiveClientParticleTicks(IWorldAccessor world, IPlayer player, BlockPos pos, out bool isWindAffected)
+        {
+            bool val = base.ShouldReceiveClientParticleTicks(world, player, pos, out _);
+            isWindAffected = true;
+
+            return val;
+        }
+
+        public override void OnAsyncClientParticleTick(IAsyncParticleManager manager, BlockPos pos, float windAffectednessAtPos, float secondsTicking)
         {
             if (IsExtinct)
             {
-                BlockEntityFirepit bef = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityFirepit;
-                if (bef != null && world.Calendar.TotalHours - bef.extinguishedTotalHours > 30) return false;
+                base.OnAsyncClientParticleTick(manager, pos, windAffectednessAtPos, secondsTicking);
+                return;
             }
 
-            return base.ShouldReceiveClientGameTicks(world, player, pos);
+            BlockEntityFirepit bef = manager.BlockAccess.GetBlockEntity(pos) as BlockEntityFirepit;
+            if (bef.CurrentModel == EnumFirepitModel.Wide)
+            {
+                for (int i = 0; i < ringParticles.Length; i++)
+                {
+                    AdvancedParticleProperties bps = ringParticles[i];
+                    bps.WindAffectednesAtPos = windAffectednessAtPos;
+                    bps.basePos.X = pos.X + basePos[i].X;
+                    bps.basePos.Y = pos.Y + basePos[i].Y;
+                    bps.basePos.Z = pos.Z + basePos[i].Z;
+
+                    manager.Spawn(bps);
+                }
+
+                return;
+            }
+
+            base.OnAsyncClientParticleTick(manager, pos, windAffectednessAtPos, secondsTicking);
         }
+
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
@@ -96,6 +162,11 @@ namespace Vintagestory.GameContent
             {
                 BlockEntityFirepit bef = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityFirepit;
                 
+                if (bef!=null && stack?.Block != null && stack.Block.HasBehavior<BlockBehaviorCanIgnite>())
+                {
+                    return false;
+                }
+
                 if (bef != null && stack != null && byPlayer.Entity.Controls.Sneak)
                 {
                     if (stack.Collectible.CombustibleProps != null && stack.Collectible.CombustibleProps.MeltingPoint > 0)
@@ -200,7 +271,7 @@ namespace Vintagestory.GameContent
                 BlockEntity be = world.BlockAccessor.GetBlockEntity(pos);
                 if (be is BlockEntityFirepit)
                 {
-                    ((BlockEntityFirepit)be).igniteWithFuel(combprops, 4);
+                    ((BlockEntityFirepit)be).inventory[0].Itemstack = new ItemStack(obj, 4);
                 }
             }
 

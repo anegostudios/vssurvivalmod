@@ -28,23 +28,17 @@ namespace Vintagestory.GameContent
             }
 
 
-            if (!byEntity.Controls.Sneak)
+            EnumIgniteState state = block.OnTryIgniteBlock(byEntity, blockSel.Position, 0);
+            if (state == EnumIgniteState.NotIgnitablePreventDefault) return;
+
+            if (!byEntity.Controls.Sneak && state != EnumIgniteState.Ignitable)
             {
-                EnumHandling igniteHandled = EnumHandling.PassThrough;
-                bool handledResult = block.OnTryIgniteBlock(byEntity, blockSel.Position, 0, ref igniteHandled);
-
-                if (igniteHandled == EnumHandling.PassThrough) return;
-            }
-            
-
-            // why the eff is this here?
-           // Block freeBlock = byEntity.World.BlockAccessor.GetBlock(blockSel.Position.AddCopy(blockSel.Face));
-           // if (freeBlock.BlockId != 0) return;
+                return;
+            }           
 
             blockHandling = EnumHandling.PreventDefault;
             handHandling = EnumHandHandling.PreventDefault;
 
-            
             byEntity.World.PlaySoundAt(new AssetLocation("sounds/torch-ignite"), byEntity, byPlayer, false, 16);
         }
 
@@ -60,11 +54,8 @@ namespace Vintagestory.GameContent
 
 
             Block block = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
-
-            EnumHandling igniteHandled = EnumHandling.PassThrough;
-            bool handledResult = block.OnTryIgniteBlock(byEntity, blockSel.Position, secondsUsed, ref igniteHandled);
-
-            if (igniteHandled == EnumHandling.PassThrough && !byEntity.Controls.Sneak) return false;
+            EnumIgniteState igniteState = block.OnTryIgniteBlock(byEntity, blockSel.Position, secondsUsed);
+            if (igniteState == EnumIgniteState.NotIgnitablePreventDefault) return false;
 
             handling = EnumHandling.PreventDefault;
 
@@ -78,15 +69,16 @@ namespace Vintagestory.GameContent
                 byEntity.Controls.UsingHeldItemTransformBefore = tf;
 
 
-                if (igniteHandled == EnumHandling.PassThrough && secondsUsed > 0.25f && (int)(30 * secondsUsed) % 2 == 1)
-                { 
-                    Vec3d pos = BlockEntityFire.RandomBlockPos(byEntity.World.BlockAccessor, blockSel.Position, block, blockSel.Face);
+                if (secondsUsed > 0.25f && (int)(30 * secondsUsed) % 2 == 1)
+                {
+                    Random rand = byEntity.World.Rand;
+                    Vec3d pos = blockSel.Position.ToVec3d().Add(blockSel.HitPosition).Add(rand.NextDouble()*0.25 - 0.125, rand.NextDouble() * 0.25 - 0.125, rand.NextDouble() * 0.25 - 0.125);
 
                     Block blockFire = byEntity.World.GetBlock(new AssetLocation("fire"));
 
-                    AdvancedParticleProperties props = blockFire.ParticleProperties[blockFire.ParticleProperties.Length - 1];
+                    AdvancedParticleProperties props = blockFire.ParticleProperties[blockFire.ParticleProperties.Length - 1].Clone();
                     props.basePos = pos;
-                    props.Quantity.avg = 1;
+                    props.Quantity.avg = 0.5f;
 
                     byEntity.World.SpawnParticles(props, byPlayer);
 
@@ -94,12 +86,16 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            return igniteHandled != EnumHandling.PassThrough ? handledResult : secondsUsed <= 3.1;
+
+            // Crappy fix to make igniting not buggy T_T
+            if (byEntity.World.Side == EnumAppSide.Server) return true;
+
+            return secondsUsed <= 3.1;
         }
 
         public override void OnHeldInteractStop(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandling handling)
         {
-            if (blockSel == null) return;
+            if (blockSel == null || secondsUsed < 3) return;
 
             IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
             if (!byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
@@ -119,7 +115,7 @@ namespace Vintagestory.GameContent
 
             handling = EnumHandling.PreventDefault;
 
-            if (secondsUsed >= 3 && blockSel != null && byEntity.World.Side == EnumAppSide.Server)
+            if (blockSel != null && byEntity.World.Side == EnumAppSide.Server)
             {
                 BlockPos bpos = blockSel.Position.AddCopy(blockSel.Face);
                 block = byEntity.World.BlockAccessor.GetBlock(bpos);

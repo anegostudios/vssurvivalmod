@@ -237,7 +237,7 @@ void main () {
         {
             AllSleeping = networkMessage.On;
 
-            if (!AllSleeping && GameSpeedBoost <= 0)
+            if (!AllSleeping && GameSpeedBoost <= 0 && api.World.Calendar != null)
             {
                 api.World.Calendar.SetTimeSpeedModifier("sleeping", 0);
             }

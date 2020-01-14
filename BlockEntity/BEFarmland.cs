@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Linq;
 using System.Text;
 using Vintagestory.API;
 using Vintagestory.API.Client;
@@ -9,7 +8,6 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
-using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -81,6 +79,7 @@ namespace Vintagestory.GameContent
                 RegisterGameTickListener(Update, 3500);
 
                 api.ModLoader.GetModSystem<POIRegistry>().AddPOI(this);
+                wsys = api.ModLoader.GetModSystem<WeatherSystemBase>();
             }
 
             
@@ -201,7 +200,8 @@ namespace Vintagestory.GameContent
 
 
 
-
+        WeatherSystemBase wsys;
+        Vec3d tmpPos = new Vec3d();
 
 
         private void Update(float dt)
@@ -211,6 +211,29 @@ namespace Vintagestory.GameContent
             bool nearbyWaterFound = false;
 
             double nowTotalHours = Api.World.Calendar.TotalHours;
+
+
+
+            tmpPos.Set(Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5);
+            double rainLevel = wsys.GetRainFall(tmpPos);
+
+            bool hasRain = rainLevel > 0.01 && Api.World.BlockAccessor.GetRainMapHeightAt(Pos.X, Pos.Z) <= Pos.Y;
+
+            if (hasRain)
+            {
+                currentlyWateredSeconds += (float)rainLevel / 3f;
+                lastWateredMs = Api.World.ElapsedMilliseconds;
+
+                if (currentlyWateredSeconds > 1f)
+                {
+                    lastWateredTotalHours = Api.World.Calendar.TotalHours + 12;
+                    UpdateFarmlandBlock();
+                    currentlyWateredSeconds--;
+                }
+
+            }
+
+            
 
             if (Api.World.ElapsedMilliseconds - lastWateredMs > 10000)
             {
@@ -234,7 +257,7 @@ namespace Vintagestory.GameContent
             double lightGrowthSpeedFactor = GameMath.Clamp(1 - (delayGrowthBelowSunLight - sunlight) * lossPerLevel, 0, 1);
 
             Block upblock = Api.World.BlockAccessor.GetBlock(upPos);
-            bool cropCanGrow = lightGrowthSpeedFactor > 0 && upblock != null && upblock.CropProps != null;
+            
             double lightHoursPenalty = hoursNextStage / lightGrowthSpeedFactor - hoursNextStage;
             double totalHoursNextGrowthState = totalHoursForNextStage + lightHoursPenalty;
 
@@ -255,7 +278,6 @@ namespace Vintagestory.GameContent
             {
                 totalHoursLastUpdate += hourIntervall;
 
-                hourIntervall = (2 + rand.NextDouble());
                 growTallGrass |= rand.NextDouble() < 0.006;
 
                 hourIntervall = (3 + rand.NextDouble());
@@ -452,6 +474,7 @@ namespace Vintagestory.GameContent
                 ConsumeNutrients(block);
                 return true;
             }
+
             return false;
         }
 

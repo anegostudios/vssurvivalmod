@@ -99,8 +99,19 @@ namespace Vintagestory.GameContent
 
                     /*transform.Rotation.Y = 180;
                     transform.Rotation.Z = -1;
-                    transform.Scale = 1.25f;
-                    transform.Translation.X = -0.2f;*/
+                    transform.Scale = 1.25f;*/
+                    //transform.Translation.X = -0.2f;
+                    /*
+                    transform.Translation.X = -0.9f;
+                    transform.Translation.Y = 0.55f;
+                    //transform.Rotation.Y = 90;
+                    //transform.Rotation.Z = 0;
+                    transform.Rotation.X = 1;
+                    */
+
+                    //transform.Translation.X = -0.35f;
+                    //transform.Translation.Y = 0.6f;
+                    //transform.Scale = 1f;
 
                     toolMeshes[i].ModelTransform(transform);
                 }
@@ -155,7 +166,7 @@ namespace Vintagestory.GameContent
         bool PutInSlot(IPlayer player, int slot)
         {
             IItemStack stack = player.InventoryManager.ActiveHotbarSlot.Itemstack;
-            if (stack == null || stack.Collectible.Tool == null) return false;
+            if (stack == null || (stack.Collectible.Tool == null && stack.Collectible.Attributes?["rackable"].AsBool() != true)) return false;
 
             player.InventoryManager.ActiveHotbarSlot.TryPutInto(Api.World, inventory[slot]);
 

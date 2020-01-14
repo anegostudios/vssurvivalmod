@@ -1,4 +1,6 @@
 ﻿using System;
+using Vintagestory.API.Client;
+using Vintagestory.API.Client.Tesselation;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
@@ -12,6 +14,79 @@ namespace Vintagestory.GameContent
             string[] parts = Code.Path.Split('-');
             return BlockFacing.FromCode(parts[parts.Length - 1]);
         }
+
+        bool[] leavesWaveTileSide = new bool[6];
+        RoomRegistry roomreg;
+
+        public override void OnLoaded(ICoreAPI api)
+        {
+            base.OnLoaded(api);
+            roomreg = api.ModLoader.GetModSystem<RoomRegistry>();
+        }
+
+        public override void OnJsonTesselation(MeshData sourceMesh, BlockPos pos, int[] chunkExtIds, int extIndex3d)
+        {
+            if (VertexFlags.LeavesWindWave)
+            {
+                for (int tileSide = 0; tileSide < TileSideEnum.SideCount; tileSide++)
+                {
+                    int nBlockId = chunkExtIds[extIndex3d + TileSideEnum.MoveIndex[tileSide]];
+                    Block nblock = api.World.Blocks[nBlockId];
+                    leavesWaveTileSide[tileSide] = !nblock.SideSolid[BlockFacing.ALLFACES[tileSide].GetOpposite().Index] || nblock.BlockMaterial == EnumBlockMaterial.Leaves;
+                }
+
+                bool waveoff = false;
+                int groundOffset = 0;
+                if (roomreg != null)
+                {
+                    Room room = roomreg.GetRoomForPosition(pos);
+
+                    waveoff = ((float)room.SkylightCount / room.NonSkylightCount) < 0.1f;
+                }
+
+                if (!waveoff)
+                {
+                    groundOffset = 1;
+                }
+
+                setLeaveWaveFlags(sourceMesh, leavesWaveTileSide, waveoff, groundOffset);
+            }
+        }
+
+
+
+        void setLeaveWaveFlags(MeshData sourceMesh, bool[] leavesWaveTileSide, bool off, int groundOffset)
+        {
+            int leaveWave = VertexFlags.LeavesWindWaveBitMask;
+            int clearFlags = (~VertexFlags.LeavesWindWaveBitMask) & (~VertexFlags.GroundDistanceBitMask);
+
+            // Iterate over each element face
+            for (int vertexNum = 0; vertexNum < sourceMesh.GetVerticesCount(); vertexNum++)
+            {
+                float x = sourceMesh.xyz[vertexNum * 3 + 0];
+                float y = sourceMesh.xyz[vertexNum * 3 + 1];
+                float z = sourceMesh.xyz[vertexNum * 3 + 2];
+
+                // Is there some pretty math formula for this? :<
+                bool notwaving =
+                    off ||
+                    (y > 0.5 && !leavesWaveTileSide[BlockFacing.UP.Index]) ||
+                    (y < 0.5 && !leavesWaveTileSide[BlockFacing.DOWN.Index]) ||
+                    (z < 0.5 && !leavesWaveTileSide[BlockFacing.NORTH.Index]) ||
+                    (z > 0.5 && !leavesWaveTileSide[BlockFacing.SOUTH.Index]) ||
+                    (x > 0.5 && !leavesWaveTileSide[BlockFacing.EAST.Index]) ||
+                    (x < 0.5 && !leavesWaveTileSide[BlockFacing.WEST.Index])
+                ;
+
+                sourceMesh.Flags[vertexNum] &= clearFlags;
+
+                if (!notwaving)
+                {
+                    sourceMesh.Flags[vertexNum] |= leaveWave | (groundOffset << 28);
+                }
+            }
+        }
+
 
         public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, LCGRandom worldGenRand)
         {

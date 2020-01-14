@@ -228,7 +228,10 @@ namespace Vintagestory.GameContent
                 foreach (BlockFacing facing in BlockFacing.ALLFACES)
                 {
                     BlockPos npos = bpos.AddCopy(facing);
-                    Block nBlock = Api.World.BlockAccessor.GetBlock(npos);
+                    IWorldChunk chunk = Api.World.BlockAccessor.GetChunkAtBlockPos(npos);
+                    if (chunk == null) continue; // Maybe at the endge of the loaded chunk
+
+                    Block nBlock = chunk.GetLocalBlockAtBlockPos(Api.World, npos);
 
                     if (!nBlock.SideSolid[facing.GetOpposite().Index] && nBlock.BlockId != firewoodBlockId && nBlock.BlockId != charcoalPitBlockId)
                     {

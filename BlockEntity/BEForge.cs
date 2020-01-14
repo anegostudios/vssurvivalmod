@@ -1,11 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -19,7 +16,9 @@ namespace Vintagestory.GameContent
         float fuelLevel;
         bool burning;
 
-        double lastHeatTotalHours;
+        double lastTickTotalHours;
+        ILoadedSound ambientSound;
+
 
         public ItemStack Contents => contents;
         public float FuelLevel => fuelLevel;
@@ -35,7 +34,7 @@ namespace Vintagestory.GameContent
                    new Vec3d(0.75, 0, 0.75),
                    new Vec3f(-1 / 32f, 0.1f, -1 / 32f),
                    new Vec3f(1 / 32f, 0.1f, 1 / 32f),
-                   1.5f,
+                   2f,
                    -0.025f / 4,
                    0.2f,
                    0.4f,
@@ -44,7 +43,7 @@ namespace Vintagestory.GameContent
 
             smokeParticles.SizeEvolve = new EvolvingNatFloat(EnumTransformFunction.LINEAR, -0.25f);
             smokeParticles.SelfPropelled = true;
-            smokeParticles.addPos.Set(8 / 16.0, 0, 8 / 16.0);
+            smokeParticles.AddPos.Set(8 / 16.0, 0, 8 / 16.0);
         }
 
 
@@ -59,26 +58,80 @@ namespace Vintagestory.GameContent
                 ICoreClientAPI capi = (ICoreClientAPI)api;
                 capi.Event.RegisterRenderer(renderer = new ForgeContentsRenderer(Pos, capi), EnumRenderStage.Opaque);  
                 renderer.SetContents(contents, fuelLevel, burning, true);
+
+                RegisterGameTickListener(OnClientTick, 50);
             }
 
-            lastHeatTotalHours = api.World.Calendar.TotalHours;
+            lastTickTotalHours = api.World.Calendar.TotalHours;
+            wsys = api.ModLoader.GetModSystem<WeatherSystemBase>();
 
-            RegisterGameTickListener(OnGameTick, 50);
+            RegisterGameTickListener(OnCommonTick, 200);
         }
 
-        private void OnGameTick(float dt)
+        public void ToggleAmbientSounds(bool on)
         {
+            if (Api.Side != EnumAppSide.Client) return;
+
+            if (on)
+            {
+                if (ambientSound == null || !ambientSound.IsPlaying)
+                {
+                    ambientSound = ((IClientWorldAccessor)Api.World).LoadSound(new SoundParams()
+                    {
+                        Location = new AssetLocation("sounds/effect/embers.ogg"),
+                        ShouldLoop = true,
+                        Position = Pos.ToVec3f().Add(0.5f, 0.25f, 0.5f),
+                        DisposeOnFinish = false,
+                        Volume = 1
+                    });
+
+                    ambientSound.Start();
+                }
+            }
+            else
+            {
+                ambientSound.Stop();
+                ambientSound.Dispose();
+                ambientSound = null;
+            }
+
+        }
+
+
+        bool clientSidePrevBurning;
+        private void OnClientTick(float dt)
+        {
+            if (Api?.Side == EnumAppSide.Client && clientSidePrevBurning != burning)
+            {
+                ToggleAmbientSounds(IsBurning);
+                clientSidePrevBurning = IsBurning;
+            }
+
+            if (burning && Api.World.Rand.NextDouble() < 0.13)
+            {
+                smokeParticles.MinPos.Set(Pos.X + 4 / 16f, Pos.Y + 14 / 16f, Pos.Z + 4 / 16f);
+                int g = 50 + Api.World.Rand.Next(50);
+                smokeParticles.Color = ColorUtil.ToRgba(150, g, g, g);
+                Api.World.SpawnParticles(smokeParticles);
+            }
+            if (renderer != null)
+            {
+                renderer.SetContents(contents, fuelLevel, burning, false);
+            }
+        }
+
+
+        WeatherSystemBase wsys;
+        Vec3d tmpPos = new Vec3d();
+        private void OnCommonTick(float dt)
+        {
+            
+
             if (burning)
             {
-                if (Api.Side == EnumAppSide.Client && Api.World.Rand.NextDouble() < 0.1) 
-                {
-                    smokeParticles.minPos.Set(Pos.X + 4/16f, Pos.Y + 14/16f, Pos.Z + 4 / 16f);
-                    int g = 50 + Api.World.Rand.Next(50);
-                    smokeParticles.color = ColorUtil.ToRgba(150, g, g, g);
-                    Api.World.SpawnParticles(smokeParticles);
-                }
+                double hoursPassed = Api.World.Calendar.TotalHours - lastTickTotalHours;
 
-                if (fuelLevel > 0) fuelLevel = Math.Max(0, fuelLevel - 0.0001f);
+                if (fuelLevel > 0) fuelLevel = Math.Max(0, fuelLevel - (float)(2.5 / 16 * hoursPassed));
 
                 if (fuelLevel <= 0)
                 {
@@ -90,19 +143,53 @@ namespace Vintagestory.GameContent
                     float temp = contents.Collectible.GetTemperature(Api.World, contents);
                     if (temp < 1100)
                     {
-                        float tempGain = (float)(Api.World.Calendar.TotalHours - lastHeatTotalHours) * 1500;
+                        float tempGain = (float)(hoursPassed * 1500);
 
                         contents.Collectible.SetTemperature(Api.World, contents, Math.Min(1100, temp + tempGain));
                     }
                 }
             }
 
-            if (renderer != null)
+
+            tmpPos.Set(Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5);
+            double rainLevel = 0;
+            bool rainCheck =
+                Api.Side == EnumAppSide.Server
+                && Api.World.Rand.NextDouble() < 0.15
+                && (rainLevel = wsys.GetRainFall(tmpPos)) > 0.1
+                && Api.World.BlockAccessor.GetRainMapHeightAt(Pos.X, Pos.Z) <= Pos.Y
+            ;
+
+            if (rainCheck && Api.World.Rand.NextDouble() < rainLevel * 5)
             {
-                renderer.SetContents(contents, fuelLevel, burning, false);
+                bool playsound = false;
+                if (burning)
+                {
+                    playsound = true;
+                    fuelLevel -= (float)rainLevel / 250f;
+                    if (Api.World.Rand.NextDouble() < rainLevel / 30f || fuelLevel <= 0)
+                    {
+                        burning = false;
+                    }
+                    MarkDirty(true);
+                }
+
+
+                float temp = contents == null ? 0 : contents.Collectible.GetTemperature(Api.World, contents);
+                if (temp > 20)
+                {
+                    playsound = temp > 100;
+                    contents.Collectible.SetTemperature(Api.World, contents, Math.Min(1100, temp - 8), false);
+                    MarkDirty(true);
+                }
+                
+                if (playsound)
+                {
+                    Api.World.PlaySoundAt(new AssetLocation("sounds/effect/extinguish"), Pos.X + 0.5, Pos.Y + 0.75, Pos.Z + 0.5, null, false, 16);
+                }
             }
 
-            lastHeatTotalHours = Api.World.Calendar.TotalHours;
+            lastTickTotalHours = Api.World.Calendar.TotalHours;
         }
 
         public bool IsBurning
@@ -264,7 +351,15 @@ namespace Vintagestory.GameContent
         {
             if (contents != null)
             {
-                dsc.AppendLine(string.Format("Contents: {0}x {1}\nTemperature: {2}°C", contents.StackSize, contents.GetName(), (int)contents.Collectible.GetTemperature(Api.World, contents)));
+                int temp = (int)contents.Collectible.GetTemperature(Api.World, contents);
+                if (temp <= 25)
+                {
+                    dsc.AppendLine(string.Format("Contents: {0}x {1}\nTemperature: {2}", contents.StackSize, contents.GetName(), Lang.Get("Cold")));
+                } else
+                {
+                    dsc.AppendLine(string.Format("Contents: {0}x {1}\nTemperature: {2}°C", contents.StackSize, contents.GetName(), temp));
+                }
+                
             }
         }
 

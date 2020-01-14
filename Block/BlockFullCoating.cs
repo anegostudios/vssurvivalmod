@@ -21,7 +21,7 @@ namespace Vintagestory.GameContent
 
         public override void OnLoaded(ICoreAPI api)
         {
-            string facingletters = FirstCodePart(1);
+            string facingletters = Variant["coating"];
 
             ownFacings = new BlockFacing[facingletters.Length];
             selectionBoxes = new Cuboidf[ownFacings.Length];
@@ -84,7 +84,7 @@ namespace Vintagestory.GameContent
 
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
         {
-            Block block = world.BlockAccessor.GetBlock(CodeWithParts("d"));
+            Block block = world.BlockAccessor.GetBlock(CodeWithVariant("coating", "d"));
             return new ItemStack(block);
         }
 
@@ -115,7 +115,7 @@ namespace Vintagestory.GameContent
                 world.SpawnItemEntity(Drops[0].GetNextItemStack(), pos.ToVec3d().AddCopy(0.5, 0.5, 0.5));
             }
 
-            Block newblock = world.GetBlock(CodeWithPath(FirstCodePart() + "-" + newFacingLetters));
+            Block newblock = world.GetBlock(CodeWithVariant("coating", newFacingLetters));
             world.BlockAccessor.SetBlock(newblock.BlockId, pos);
         }
 
@@ -155,17 +155,17 @@ namespace Vintagestory.GameContent
         {
             if (pos.Y < 16) return false;
 
+            if (blockAccessor.GetBlock(pos).Replaceable < 6000) return false; // Don't place where there's solid blocks
+
             string facings = getSolidFacesAtPos(blockAccessor, pos);
 
             if (facings.Length > 0)
             {
-                Block block = blockAccessor.GetBlock(CodeWithPath(FirstCodePart() + "-" + facings));
+                Block block = blockAccessor.GetBlock(CodeWithVariant("coating", facings));
                 blockAccessor.SetBlock(block.BlockId, pos);
             }
 
             return true;
         }
-
-
     }
 }

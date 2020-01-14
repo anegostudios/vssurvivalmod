@@ -267,8 +267,8 @@ namespace Vintagestory.GameContent
                 minSize, maxSize,
                 EnumParticleModel.Quad
             );
-            steamParticles.minPos.Set(pos.ToVec3d().AddCopy(0.5, 1.1, 0.5));
-            steamParticles.addPos.Set(new Vec3d(0.5, 1.0, 0.5));
+            steamParticles.MinPos.Set(pos.ToVec3d().AddCopy(0.5, 1.1, 0.5));
+            steamParticles.AddPos.Set(new Vec3d(0.5, 1.0, 0.5));
             steamParticles.SizeEvolve = new EvolvingNatFloat(EnumTransformFunction.LINEARINCREASE, 1.0f);
             world.SpawnParticles(steamParticles);
         }

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Text;
 using Vintagestory.API.Client;
+using Vintagestory.API.Client.Tesselation;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
@@ -25,6 +26,51 @@ namespace Vintagestory.GameContent
             }
         }
 
+
+        RoomRegistry roomreg;
+
+        public override void OnLoaded(ICoreAPI api)
+        {
+            base.OnLoaded(api);
+
+            tickGrowthProbability = Attributes?["tickGrowthProbability"] != null ? Attributes["tickGrowthProbability"].AsFloat(defaultGrowthProbability) : defaultGrowthProbability;
+            roomreg = api.ModLoader.GetModSystem<RoomRegistry>();
+        }
+
+        public override void OnJsonTesselation(MeshData sourceMesh, BlockPos pos, int[] chunkExtIds, int extIndex3d)
+        {
+            bool waveoff = false;
+            if (roomreg != null)
+            {
+                Room room = roomreg.GetRoomForPosition(pos);
+
+                waveoff = ((float)room.SkylightCount / room.NonSkylightCount) < 0.1f;
+            }
+
+            setLeaveWaveFlags(sourceMesh, waveoff);
+        }
+
+
+        void setLeaveWaveFlags(MeshData sourceMesh, bool off)
+        {
+            int leaveWave = VertexFlags.LeavesWindWaveBitMask;
+            int clearFlags = (~VertexFlags.LeavesWindWaveBitMask);
+
+            // Iterate over each element face
+            for (int vertexNum = 0; vertexNum < sourceMesh.GetVerticesCount(); vertexNum++)
+            {
+                float y = sourceMesh.xyz[vertexNum * 3 + 1];
+
+                sourceMesh.Flags[vertexNum] &= clearFlags;
+
+                if (!off && y > 0.5)
+                {
+                    sourceMesh.Flags[vertexNum] |= leaveWave;
+                }
+            }
+        }
+
+
         public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
         {
             base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
@@ -32,12 +78,6 @@ namespace Vintagestory.GameContent
             dsc.AppendLine(Lang.Get("Stage: {0}/{1}", CurrentCropStage, CropProps.GrowthStages)); 
         }
 
-        public override void OnLoaded(ICoreAPI api)
-        {
-            base.OnLoaded(api);
-
-            tickGrowthProbability = Attributes?["tickGrowthProbability"] != null ? Attributes["tickGrowthProbability"].AsFloat(defaultGrowthProbability) : defaultGrowthProbability;
-        }
 
         public override bool ShouldReceiveServerGameTicks(IWorldAccessor world, BlockPos pos, Random offThreadRandom, out object extra)
         {

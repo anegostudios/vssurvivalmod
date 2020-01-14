@@ -92,7 +92,7 @@ namespace Vintagestory.GameContent
                 ownBlock.idleParticles
             ;
             
-            currentParticles.minPos = posvec;
+            currentParticles.MinPos = posvec;
             Api.World.SpawnParticles(currentParticles);
 
         }

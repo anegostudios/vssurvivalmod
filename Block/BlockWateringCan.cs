@@ -10,7 +10,7 @@ namespace Vintagestory.GameContent
 {
     public class BlockWateringCan : Block
     {
-        public float CapacitySeconds = 16;
+        public float CapacitySeconds = 48;
 
 
         public static SimpleParticleProperties WaterParticles;
@@ -26,10 +26,10 @@ namespace Vintagestory.GameContent
                 new Vec3f(-1.5f, 0, -1.5f), new Vec3f(1.5f, 3f, 1.5f), 1f, 1f, 0.33f, 0.75f, EnumParticleModel.Cube
             );
 
-            WaterParticles.addPos = new Vec3d(0.125 / 2, 2 / 16f, 0.125 / 2);
+            WaterParticles.AddPos = new Vec3d(0.125 / 2, 2 / 16f, 0.125 / 2);
             WaterParticles.SizeEvolve = new EvolvingNatFloat(EnumTransformFunction.LINEAR, -1f);
             WaterParticles.TintIndex = 2;
-            WaterParticles.addQuantity = 1;
+            WaterParticles.AddQuantity = 1;
         }
         
 
@@ -214,7 +214,7 @@ namespace Vintagestory.GameContent
             {
                 Vec3d pos = blockSel.Position.ToVec3d().Add(blockSel.HitPosition);
                 if (notOnSolidblock) pos.Y = (int)pos.Y + 0.05;
-                WaterParticles.minPos = pos.Add(-0.125 / 2, 1 / 16f, -0.125 / 2);
+                WaterParticles.MinPos = pos.Add(-0.125 / 2, 1 / 16f, -0.125 / 2);
                 byEntity.World.SpawnParticles(WaterParticles, byPlayer);
             }
 

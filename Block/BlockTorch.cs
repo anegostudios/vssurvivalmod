@@ -9,6 +9,35 @@ namespace Vintagestory.GameContent
 {
     public class BlockTorch : Block
     {
+        bool IsExtinct => Variant["variant"] == "extinct";
+
+        public override EnumIgniteState OnTryIgniteBlock(EntityAgent byEntity, BlockPos pos, float secondsIgniting)
+        {
+            if (IsExtinct)
+            {
+                return secondsIgniting > 1 ? EnumIgniteState.IgniteNow : EnumIgniteState.Ignitable;
+            }
+
+            return EnumIgniteState.NotIgnitablePreventDefault;
+        }
+
+        public override void OnTryIgniteBlockOver(EntityAgent byEntity, BlockPos pos, float secondsIgniting, ref EnumHandling handling)
+        {
+            if (IsExtinct)
+            {
+                handling = EnumHandling.PreventDefault;
+                AssetLocation loc = new AssetLocation(FirstCodePart() + "-" + Variant["orientation"]);
+                Block block = api.World.BlockAccessor.GetBlock(loc);
+                if (block != null)
+                {
+                    api.World.BlockAccessor.SetBlock(block.Id, pos);
+                }
+
+                return;
+            }
+        }
+
+
         public override string GetHeldTpIdleAnimation(ItemSlot activeHotbarSlot, Entity forEntity, EnumHand hand)
         {
             IPlayer player = (forEntity as EntityPlayer)?.Player;
@@ -71,7 +100,7 @@ namespace Vintagestory.GameContent
 
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)
         {
-            if (FirstCodePart(1) == "extinct") return new ItemStack[0];
+            if (FirstCodePart(1) == "burnedout") return new ItemStack[0];
 
             Block block = world.BlockAccessor.GetBlock(CodeWithParts("up"));
             return new ItemStack[] { new ItemStack(block) };

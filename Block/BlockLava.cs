@@ -179,8 +179,9 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override bool ShouldReceiveClientGameTicks(IWorldAccessor world, IPlayer player, BlockPos pos)
+        public override bool ShouldReceiveClientParticleTicks(IWorldAccessor world, IPlayer player, BlockPos pos, out bool isWindAffected)
         {
+            isWindAffected = false;
             Block block = world.BlockAccessor.GetBlock(pos.X, pos.Y + 1, pos.Z);
             return !block.IsLiquid() && (block.CollisionBoxes == null || block.CollisionBoxes.Length == 0);
         }

@@ -15,6 +15,40 @@ namespace Vintagestory.GameContent
 {
     public class ItemAxe : Item
     {
+        static SimpleParticleProperties dustParticles = new SimpleParticleProperties()
+        {
+            MinPos = new Vec3d(),
+            AddPos = new Vec3d(),
+            MinQuantity = 0,
+            AddQuantity = 3,
+            Color = ColorUtil.ToRgba(100, 200, 200, 200),
+            GravityEffect = 1f,
+            WithTerrainCollision = true,
+            ParticleModel = EnumParticleModel.Quad,
+            LifeLength = 0.5f,
+            MinVelocity = new Vec3f(-1, 2, -1),
+            AddVelocity = new Vec3f(2, 0, 2),
+            MinSize = 0.07f,
+            MaxSize = 0.1f,
+            WindAffected = true
+        };
+
+        static ItemAxe()
+        {
+
+            dustParticles.ParticleModel = EnumParticleModel.Quad;
+            dustParticles.AddPos.Set(1, 1, 1);
+            dustParticles.MinQuantity = 2;
+            dustParticles.AddQuantity = 12;
+            dustParticles.LifeLength = 4f;
+            dustParticles.MinSize = 0.2f;
+            dustParticles.MaxSize = 0.5f;
+            dustParticles.MinVelocity.Set(-0.4f, -0.4f, -0.4f);
+            dustParticles.AddVelocity.Set(0.8f, 1.2f, 0.8f);
+            dustParticles.DieOnRainHeightmap = false;
+            dustParticles.WindAffectednes = 0.5f;
+        }
+
         public override float OnBlockBreaking(IPlayer player, BlockSelection blockSel, ItemSlot itemslot, float remainingResistance, float dt, int counter)
         {
             ITreeAttribute tempAttr = itemslot.Itemstack.TempAttributes;
@@ -52,6 +86,9 @@ namespace Vintagestory.GameContent
             ITreeAttribute tempAttr = itemslot.Itemstack.TempAttributes;
             //tempAttr.SetInt("breakCounter", 0);
 
+            double windspeed = api.ModLoader.GetModSystem<WeatherSystemBase>()?.GetWindSpeed(byEntity.LocalPos.XYZ) ?? 0;
+            
+
             string treeType;
             Stack<BlockPos> foundPositions = FindTree(world, blockSel.Position, out treeType);
             
@@ -67,10 +104,12 @@ namespace Vintagestory.GameContent
 
             float leavesMul = 1;
             float leavesBranchyMul = 0.8f;
-
+            int blocksbroken = 0;
 
             while (foundPositions.Count > 0) {
                 BlockPos pos = foundPositions.Pop();
+                blocksbroken++;
+
                 Block block = world.BlockAccessor.GetBlock(pos);
 
                 bool isLog = block.Code.Path.StartsWith("beehive-inlog-" + treeType) || block.Code.Path.StartsWith("log-resinharvested-" + treeType) || block.Code.Path.StartsWith("log-resin-" + treeType) || block.Code.Path.StartsWith("log-grown-"+treeType) || block.Code.Path.StartsWith("bamboo-grown-brown-segment") || block.Code.Path.StartsWith("bamboo-grown-green-segment");
@@ -78,6 +117,32 @@ namespace Vintagestory.GameContent
                 bool isLeaves = block == leavesBlock || block.Code.Path == "bambooleaves-grown";
 
                 world.BlockAccessor.BreakBlock(pos, byPlayer, isLeaves ? leavesMul : (isBranchy ? leavesBranchyMul : 1));
+
+                if (world.Side == EnumAppSide.Client)
+                {
+                    dustParticles.Color = block.GetRandomColor(world.Api as ICoreClientAPI, pos, BlockFacing.UP);
+                    dustParticles.Color |= 255 << 24;
+                    dustParticles.MinPos.Set(pos.X, pos.Y, pos.Z);
+
+                    if (block.BlockMaterial == EnumBlockMaterial.Leaves)
+                    {
+                        dustParticles.GravityEffect = (float)world.Rand.NextDouble() * 0.1f + 0.01f;
+                        dustParticles.ParticleModel = EnumParticleModel.Quad;
+                        dustParticles.MinVelocity.Set(-0.4f + 4 * (float)windspeed, -0.4f, -0.4f);
+                        dustParticles.AddVelocity.Set(0.8f + 4 * (float)windspeed, 1.2f, 0.8f);
+
+                    } else
+                    {
+                        dustParticles.GravityEffect = 0.8f;
+                        dustParticles.ParticleModel = EnumParticleModel.Cube;
+                        dustParticles.MinVelocity.Set(-0.4f + (float)windspeed, -0.4f, -0.4f);
+                        dustParticles.AddVelocity.Set(0.8f + (float)windspeed, 1.2f, 0.8f);
+                    }
+                    
+
+                    world.SpawnParticles(dustParticles);
+                }
+
 
                 if (damageable && isLog)
                 {
@@ -89,6 +154,13 @@ namespace Vintagestory.GameContent
                 if (isLeaves && leavesMul > 0.03f) leavesMul *= 0.85f;
                 if (isBranchy && leavesBranchyMul > 0.015f) leavesBranchyMul *= 0.6f;
             }
+
+            if (blocksbroken > 35)
+            {
+                Vec3d pos = blockSel.Position.ToVec3d().Add(0.5, 0.5, 0.5);
+                api.World.PlaySoundAt(new AssetLocation("sounds/effect/treefell"), pos.X, pos.Y, pos.Z, byPlayer, false, 32, GameMath.Clamp(blocksbroken / 100f, 0.25f, 1));
+            }
+            
 
             //`byPlayer.Entity.GetBehavior<EntityBehaviorHunger>()?.ConsumeSaturation(GameMath.Sqrt(foundPositions.Count));
             
@@ -109,7 +181,7 @@ namespace Vintagestory.GameContent
             Block block = world.BlockAccessor.GetBlock(startPos);
             if (block.Code == null) return foundPositions;
 
-            if (block.Code.Path.StartsWith("beehive-inlog-" + treeType) || block.Code.Path.StartsWith("log-grown") || block.Code.Path.StartsWith("bamboo-grown-brown-segment") || block.Code.Path.StartsWith("bamboo-grown-green-segment"))
+            if (block.Code.Path.StartsWith("beehive-inlog-" + treeType) || block.Code.Path.StartsWith("log-resin")|| block.Code.Path.StartsWith("log-grown") || block.Code.Path.StartsWith("bamboo-grown-brown-segment") || block.Code.Path.StartsWith("bamboo-grown-green-segment"))
             {
                 treeType = block.FirstCodePart(2);
 
@@ -119,6 +191,7 @@ namespace Vintagestory.GameContent
             }
 
             string logcode = "log-grown-" + treeType;
+            string logcode2 = "log-resin-" + treeType;
             string leavescode = "leaves-grown-" + treeType;
             string leavesbranchycode = "leavesbranchy-grown-" + treeType;
 
@@ -147,7 +220,7 @@ namespace Vintagestory.GameContent
                     block = world.BlockAccessor.GetBlock(neibPos);
                     if (block.Code == null) continue;
 
-                    if (block.Code.Path.StartsWith(logcode) || block.Code.Path.StartsWith("bamboo-grown-brown-segment") || block.Code.Path.StartsWith("bamboo-grown-green-segment"))
+                    if (block.Code.Path.StartsWith(logcode) || block.Code.Path.StartsWith(logcode2) || block.Code.Path.StartsWith("bamboo-grown-brown-segment") || block.Code.Path.StartsWith("bamboo-grown-green-segment"))
                     {
                         if (pos.W < 2) continue;
 

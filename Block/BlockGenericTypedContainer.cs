@@ -73,6 +73,52 @@ namespace Vintagestory.GameContent
             return base.GetHandBookStacks(capi);
         }
 
+
+        public override bool DoPlaceBlock(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ItemStack byItemStack)
+        {
+            bool val = base.DoPlaceBlock(world, byPlayer, blockSel, byItemStack);
+
+            if (val) {
+                BlockEntityGenericTypedContainer bect = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityGenericTypedContainer;
+                if (bect != null)
+                {
+                    BlockPos targetPos = blockSel.DidOffset ? blockSel.Position.AddCopy(blockSel.Face.GetOpposite()) : blockSel.Position;
+                    double dx = byPlayer.Entity.Pos.X - (targetPos.X + blockSel.HitPosition.X);
+                    double dz = (float)byPlayer.Entity.Pos.Z - (targetPos.Z + blockSel.HitPosition.Z);
+                    float angleHor = (float)Math.Atan2(dx, dz);
+
+
+                    string type = bect.type;
+                    string rotatatableInterval = Attributes?["rotatatableInterval"][type]?.AsString("22.5deg") ?? "22.5deg";
+
+                    if (rotatatableInterval == "22.5degnot45deg")
+                    {
+                        float rounded90degRad = ((int)Math.Round(angleHor / GameMath.PIHALF)) * GameMath.PIHALF;
+                        float deg45rad = GameMath.PIHALF / 4;
+
+
+                        if (Math.Abs(angleHor - rounded90degRad) >= deg45rad)
+                        {
+                            bect.MeshAngle = rounded90degRad + 22.5f * GameMath.DEG2RAD * Math.Sign(angleHor - rounded90degRad);
+                        }
+                        else
+                        {
+                            bect.MeshAngle = rounded90degRad;
+                        }
+                    }
+                    if (rotatatableInterval == "22.5deg")
+                    {
+                        float deg22dot5rad = GameMath.PIHALF / 4;
+                        float roundRad = ((int)Math.Round(angleHor / deg22dot5rad)) * deg22dot5rad;
+                        bect.MeshAngle = roundRad;
+                    }
+                }
+            }
+
+            return val;
+        }
+
+
         public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
         {
             Dictionary<string, MeshRef> meshrefs = new Dictionary<string, MeshRef>();
@@ -215,7 +261,7 @@ namespace Vintagestory.GameContent
 
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
         {
-            ItemStack stack = base.OnPickBlock(world, pos);
+            ItemStack stack = new ItemStack(world.GetBlock(CodeWithVariant("side", "east")));
 
             BlockEntityGenericTypedContainer be = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityGenericTypedContainer;
             if (be != null)
@@ -273,6 +319,25 @@ namespace Vintagestory.GameContent
         }
 
 
+
+        public override BlockDropItemStack[] GetDropsForHandbook(ItemStack handbookStack, IPlayer forPlayer)
+        {
+            string type = handbookStack.Attributes.GetString("type");
+            if (this.Attributes["drop"]?[type]?.AsBool() == false)
+            {
+                return new BlockDropItemStack[0]; 
+            } else
+            {
+                return base.GetDropsForHandbook(handbookStack, forPlayer);
+            }
+        }
+
+        
+
+        public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1)
+        {
+            return new ItemStack[] { new ItemStack(world.GetBlock(CodeWithVariant("side", "east"))) };
+        }
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {

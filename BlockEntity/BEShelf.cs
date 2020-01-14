@@ -11,7 +11,7 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockEntityShelf : BlockEntityContainer
+    public class BlockEntityShelf : BlockEntityDisplay
     {
         InventoryGeneric inv;
         public override InventoryBase Inventory => inv;
@@ -20,17 +20,19 @@ namespace Vintagestory.GameContent
 
         Block block;
 
+
         public BlockEntityShelf()
         {
             inv = new InventoryGeneric(8, "shelf-0", null, null);
+            meshes = new MeshData[8];
         }
 
         public override void Initialize(ICoreAPI api)
         {
+            block = api.World.BlockAccessor.GetBlock(Pos);
             base.Initialize(api);
-
-            block = Api.World.BlockAccessor.GetBlock(Pos);
         }
+
 
         internal bool OnInteract(IPlayer byPlayer, BlockSelection blockSel)
         {
@@ -39,21 +41,20 @@ namespace Vintagestory.GameContent
             if (slot.Empty) {
                 if (TryTake(byPlayer, blockSel))
                 {
-                    AssetLocation sound = slot.Itemstack?.Block?.Sounds?.Place;
-                    if (sound != null) Api.World.PlaySoundAt(sound, byPlayer.Entity, byPlayer, true, 16);
                     byPlayer.InventoryManager.BroadcastHotbarSlot();
                     return true;
                 }
                 return false;
             } else
             {
-                if (slot.Itemstack.Collectible is BlockCrock)
+                CollectibleObject colObj = slot.Itemstack.Collectible;
+                if (colObj.Attributes != null && colObj.Attributes["shelvable"].AsBool(false) == true)
                 {
                     AssetLocation sound = slot.Itemstack?.Block?.Sounds?.Place;
                     
                     if (TryPut(slot, blockSel))
                     {
-                        if (sound != null) Api.World.PlaySoundAt(sound, byPlayer.Entity, byPlayer, true, 16);
+                        Api.World.PlaySoundAt(sound != null ? sound : new AssetLocation("sounds/player/build"), byPlayer.Entity, byPlayer, true, 16);
                         byPlayer.InventoryManager.BroadcastHotbarSlot();
                         return true;
                     }
@@ -70,30 +71,48 @@ namespace Vintagestory.GameContent
 
         private bool TryPut(ItemSlot slot, BlockSelection blockSel)
         {
-            bool up = blockSel.SelectionBoxIndex > 0;
+            bool up = blockSel.SelectionBoxIndex > 1;
+            bool left = (blockSel.SelectionBoxIndex % 2) == 0;
 
-            for (int i = up ? 4 : 0; i < (up ? 8 : 4); i++)
+            int start = (up ? 4 : 0) + (left ? 0 : 2);
+            int end = start + 2;
+
+            for (int i = start; i < end; i++)
             {
                 if (inv[i].Empty)
                 {
-                    slot.TryPutInto(Api.World, inv[i]);
+                    int moved = slot.TryPutInto(Api.World, inv[i]);
                     MarkDirty(true);
-                    return true;
+                    return moved > 0;
                 }
             }
 
-            return true;
+            return false;
         }
 
         private bool TryTake(IPlayer byPlayer, BlockSelection blockSel)
         {
-            bool up = blockSel.SelectionBoxIndex > 0;
+            bool up = blockSel.SelectionBoxIndex > 1;
+            bool left = (blockSel.SelectionBoxIndex % 2) == 0;
 
-            for (int i = up ? 7 : 3; i >= (up ? 4 : 0); i--)
+            int start = (up ? 4 : 0) + (left ? 0 : 2);
+            int end = start + 2;
+
+            for (int i = end - 1; i >= start; i--)
             {
                 if (!inv[i].Empty)
                 {
-                    inv[i].TryPutInto(Api.World, byPlayer.InventoryManager.ActiveHotbarSlot);
+                    ItemStack stack = inv[i].TakeOut(1);
+                    if (byPlayer.InventoryManager.TryGiveItemstack(stack))
+                    {
+                        AssetLocation sound = stack.Block?.Sounds?.Place;
+                        Api.World.PlaySoundAt(sound != null ? sound : new AssetLocation("sounds/player/build"), byPlayer.Entity, byPlayer, true, 16);
+                    }
+
+                    if (stack.StackSize > 0)
+                    {
+                        Api.World.SpawnItemEntity(stack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                    }
                     MarkDirty(true);
                     return true;
                 }
@@ -103,36 +122,58 @@ namespace Vintagestory.GameContent
         }
 
 
+        Matrixf mat = new Matrixf();
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
         {
-            ICoreClientAPI capi = Api as ICoreClientAPI;
-
-            Matrixf mat = new Matrixf();
+            mat.Identity();
             mat.RotateYDeg(block.Shape.rotateY);
 
-            for (int i = 0; i < 8; i++)
-            {
-                if (inv[i].Empty) continue;
-
-                ItemStack stack = inv[i].Itemstack;
-                BlockCrock crockblock = stack.Collectible as BlockCrock;
-                Vec3f rot = new Vec3f(0, block.Shape.rotateY, 0);
-
-                MeshData mesh = BlockEntityCrock.GetMesh(tessThreadTesselator, Api, crockblock, crockblock.GetContents(Api.World, stack), crockblock.GetRecipeCode(Api.World, stack), rot).Clone();
-
-                float y = i >= 4 ? 10 / 16f : 2 / 16f;
-                float x = (i % 2 == 0) ? 4 / 16f : 12 / 16f;
-                float z = ((i % 4) >= 2) ? 10 / 16f : 4 / 16f;
-
-                Vec4f offset = mat.TransformVector(new Vec4f(x - 0.5f, y, z - 0.5f, 0));
-                mesh.Translate(offset.XYZ);
-                mesher.AddMeshData(mesh);
-            }
-
-            return false;
+            return base.OnTesselation(mesher, tessThreadTesselator);
         }
 
+
+        protected override MeshData genMesh(ItemStack stack, int index)
+        {
+            BlockCrock crockblock = stack.Collectible as BlockCrock;
+            BlockMeal mealblock = stack.Collectible as BlockMeal;
+            MeshData mesh;
+
+            if (crockblock != null)
+            {
+                Vec3f rot = new Vec3f(0, block.Shape.rotateY, 0);
+                mesh = BlockEntityCrock.GetMesh(capi.Tesselator, Api, crockblock, crockblock.GetContents(Api.World, stack), crockblock.GetRecipeCode(Api.World, stack), rot).Clone();
+            }
+            else if (mealblock != null)
+            {
+                ICoreClientAPI capi = Api as ICoreClientAPI;
+                MealMeshCache meshCache = capi.ModLoader.GetModSystem<MealMeshCache>();
+                mesh = meshCache.GenMealInContainerMesh(mealblock, mealblock.GetCookingRecipe(capi.World, stack), mealblock.GetNonEmptyContents(capi.World, stack));
+            }
+            else
+            {
+                ICoreClientAPI capi = Api as ICoreClientAPI;
+                if (stack.Class == EnumItemClass.Block)
+                {
+                    mesh = capi.TesselatorManager.GetDefaultBlockMesh(stack.Block).Clone();
+                }
+                else
+                {
+                    nowTesselatingItem = stack.Item;
+                    nowTesselatingShape = capi.TesselatorManager.GetCachedShape(stack.Item.Shape.Base);
+                    capi.Tesselator.TesselateItem(stack.Item, out mesh, this);
+                }
+            }
+
+            float x = ((index % 4) >= 2) ? 12 / 16f : 4 / 16f;
+            float y = index >= 4 ? 10 / 16f : 2 / 16f;
+            float z = (index % 2 == 0) ? 4 / 16f : 10 / 16f;
+
+            Vec4f offset = mat.TransformVector(new Vec4f(x - 0.5f, y, z - 0.5f, 0));
+            mesh.Translate(offset.XYZ);
+
+            return mesh;
+        }
 
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder sb)
         {
@@ -140,14 +181,19 @@ namespace Vintagestory.GameContent
 
             sb.AppendLine();
 
-            foreach (var slot in inv)
+            bool up = forPlayer.CurrentBlockSelection != null && forPlayer.CurrentBlockSelection.SelectionBoxIndex > 1;
+
+            for (int i = up ? 7 : 3; i >= (up ? 4 : 0); i--)
             {
-                if (slot.Empty) continue;
+                if (inv[i].Empty) continue;
 
-                ItemStack stack = slot.Itemstack;
-
-                sb.Append("- ");
-                sb.Append(CrockInfoCompact(slot));
+                if (inv[i].Itemstack.Collectible is BlockCrock)
+                {
+                    sb.Append(CrockInfoCompact(inv[i]));
+                } else
+                {
+                    sb.AppendLine(inv[i].Itemstack.GetName());
+                }
             }
         }
 
@@ -176,11 +222,11 @@ namespace Vintagestory.GameContent
                 {
                     if (servings == 1)
                     {
-                        dsc.Append(Lang.Get("{0} serving of {1}.", servings, recipe.GetOutputName(world, stacks)));
+                        dsc.Append(Lang.Get("{0}x {1}.", servings, recipe.GetOutputName(world, stacks)));
                     }
                     else
                     {
-                        dsc.Append(Lang.Get("{0} servings of {1}.", servings, recipe.GetOutputName(world, stacks)));
+                        dsc.Append(Lang.Get("{0}x {1}.", servings, recipe.GetOutputName(world, stacks)));
                     }
                 }
             }
@@ -193,6 +239,8 @@ namespace Vintagestory.GameContent
                     if (i++ > 0) dsc.Append(", ");
                     dsc.Append(stack.StackSize + "x " + stack.GetName());
                 }
+
+                dsc.Append(".");
             }
 
             DummyInventory dummyInv = new DummyInventory(Api);
@@ -205,8 +253,10 @@ namespace Vintagestory.GameContent
 
             float spoilState = 0;
             TransitionState[] transitionStates = contentSlot.Itemstack?.Collectible.UpdateAndGetTransitionStates(Api.World, contentSlot);
+            bool addNewLine = true;
             if (transitionStates != null)
             {
+
                 for (int i = 0; i < transitionStates.Length; i++)
                 {
                     TransitionState state = transitionStates[i];
@@ -216,6 +266,7 @@ namespace Vintagestory.GameContent
 
                     if (perishRate <= 0) continue;
 
+                    addNewLine = false;
                     float transitionLevel = state.TransitionLevel;
                     float freshHoursLeft = state.FreshHoursLeft / perishRate;
 
@@ -252,7 +303,10 @@ namespace Vintagestory.GameContent
                             break;
                     }
                 }
-            } else
+            }
+            
+            
+            if (addNewLine)
             {
                 dsc.AppendLine("");
             }

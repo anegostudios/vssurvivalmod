@@ -38,14 +38,14 @@ namespace Vintagestory.GameContent
             return block.Replaceable >= 6000 && !block.IsLiquid();
         }
 
-        public override bool ShouldReceiveClientGameTicks(IWorldAccessor world, IPlayer player, BlockPos pos)
+        public override bool ShouldReceiveClientParticleTicks(IWorldAccessor world, IPlayer player, BlockPos pos, out bool isWindAffected)
         {
-            return base.ShouldReceiveClientGameTicks(world, player, pos);
+            return base.ShouldReceiveClientParticleTicks(world, player, pos, out isWindAffected);
         }
 
-        public override void OnClientGameTick(IWorldAccessor world, BlockPos pos, float secondsTicking)
+        public override void OnAsyncClientParticleTick(IAsyncParticleManager manager, BlockPos pos, float windAffectednessAtPos, float secondsTicking)
         {
-            if (world.Rand.NextDouble() > particleQuantity) return;
+            if (api.World.Rand.NextDouble() > particleQuantity) return;
 
             AdvancedParticleProperties bps = ParticleProperties[0];
 
@@ -53,9 +53,9 @@ namespace Vintagestory.GameContent
             bps.basePos.Y = pos.Y;
             bps.basePos.Z = pos.Z;
 
-            bps.Velocity[0].avg = (float)PushVector.X * 250;
-            bps.Velocity[1].avg = (float)PushVector.Y * 250;
-            bps.Velocity[2].avg = (float)PushVector.Z * 250;
+            bps.Velocity[0].avg = (float)PushVector.X * 500;
+            bps.Velocity[1].avg = (float)PushVector.Y * 500;
+            bps.Velocity[2].avg = (float)PushVector.Z * 500;
 
             bps.GravityEffect.avg = 0.5f;
 
@@ -66,7 +66,7 @@ namespace Vintagestory.GameContent
             bps.PosOffset[1].var = LiquidLevel / 8f * 0.75f;
             bps.SwimOnLiquid = true;
 
-            world.SpawnParticles(bps);
+            manager.Spawn(bps);
         }
 
     }

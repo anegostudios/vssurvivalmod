@@ -106,20 +106,16 @@ namespace Vintagestory.GameContent
             return matchStacks.ToArray();
         }
 
-        public override bool OnTryIgniteBlock(EntityAgent byEntity, BlockPos pos, float secondsIgniting, ref EnumHandling handling)
+        public override EnumIgniteState OnTryIgniteBlock(EntityAgent byEntity, BlockPos pos, float secondsIgniting)
         {
             BlockEntityBloomery beb = byEntity.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityBloomery;
-            
-            bool ok = (beb == null || beb.IsBurning || !beb.CanIgnite()) ? false : secondsIgniting < 2f;
-            handling = EnumHandling.PreventDefault;
+            if (!beb.CanIgnite()) return EnumIgniteState.NotIgnitablePreventDefault;
 
-            return ok;
+            return secondsIgniting > 4 ? EnumIgniteState.IgniteNow : EnumIgniteState.Ignitable;
         }
 
         public override void OnTryIgniteBlockOver(EntityAgent byEntity, BlockPos pos, float secondsIgniting, ref EnumHandling handling)
         {
-            if (secondsIgniting < 1.95f) return;
-
             handling = EnumHandling.PreventDefault;
 
             BlockEntityBloomery beb = byEntity.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityBloomery;

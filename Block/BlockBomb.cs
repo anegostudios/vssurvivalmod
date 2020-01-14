@@ -49,12 +49,17 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override bool OnTryIgniteBlock(EntityAgent byEntity, BlockPos pos, float secondsIgniting, ref EnumHandling handling)
+        public override EnumIgniteState OnTryIgniteBlock(EntityAgent byEntity, BlockPos pos, float secondsIgniting)
         {
             BlockEntityBomb bebomb = byEntity.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityBomb;
-            handling = EnumHandling.PreventDefault;
+            if (bebomb == null || bebomb.IsLit) return EnumIgniteState.NotIgnitablePreventDefault;
 
-            return (bebomb == null || bebomb.IsLit) ? false : secondsIgniting < 0.75f;
+            if (secondsIgniting > 0.75f)
+            {
+                return EnumIgniteState.IgniteNow;
+            }
+
+            return EnumIgniteState.Ignitable;
         }
 
         public override void OnTryIgniteBlockOver(EntityAgent byEntity, BlockPos pos, float secondsIgniting, ref EnumHandling handling)

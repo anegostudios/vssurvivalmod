@@ -45,6 +45,7 @@ namespace Vintagestory.GameContent
         private void Event_LevelFinalize()
         {
             capi.World.Player.Entity.OnFootStep = () => onFootStep(capi.World.Player.Entity);
+            capi.World.Player.Entity.OnImpact = () => onFallToGround(capi.World.Player.Entity);
         }
 
         public override void StartServerSide(ICoreServerAPI api)
@@ -63,9 +64,17 @@ namespace Vintagestory.GameContent
             if (bh != null) bh.onDamaged = (dmg, dmgSource) => handleDamaged(byPlayer, dmg, dmgSource);
 
             byPlayer.Entity.OnFootStep = () => onFootStep(byPlayer.Entity);
+            byPlayer.Entity.OnImpact = () => onFallToGround(byPlayer.Entity);
 
             updateWearableStats(inv, byPlayer);
         }
+
+
+        private void onFallToGround(EntityPlayer entity)
+        {
+            onFootStep(entity);
+        }
+
 
         private void onFootStep(EntityPlayer entity)
         {
@@ -81,8 +90,9 @@ namespace Vintagestory.GameContent
 
                 AssetLocation loc = soundlocs[api.World.Rand.Next(soundlocs.Length)];
 
-                float pitch = (float)api.World.Rand.NextDouble() * 0.4f + 0.8f;
-                api.World.PlaySoundAt(loc, entity, api.Side == EnumAppSide.Server ? entity.Player : null, pitch, 16f, 1f);
+                float pitch = (float)api.World.Rand.NextDouble() * 0.5f + 0.7f;
+                float volume = (float)api.World.Rand.NextDouble() * 0.3f + 0.7f;
+                api.World.PlaySoundAt(loc, entity, api.Side == EnumAppSide.Server ? entity.Player : null, pitch, 16f, volume);
             }
         }
 
@@ -91,6 +101,7 @@ namespace Vintagestory.GameContent
             // Does not protect against non-attack damages
             EnumDamageType type = dmgSource.Type;
             if (type != EnumDamageType.BluntAttack && type != EnumDamageType.PiercingAttack && type != EnumDamageType.SlashingAttack) return damage;
+            if (dmgSource.Source == EnumDamageSource.Internal || dmgSource.Source == EnumDamageSource.Suicide) return damage;
 
             ItemSlot armorSlot;
             IInventory inv = player.InventoryManager.GetOwnInventory(GlobalConstants.characterInvClassName);
@@ -121,21 +132,33 @@ namespace Vintagestory.GameContent
             int weaponTier = dmgSource.DamageTier;
             float flatDmgProt = protMods.FlatDamageReduction;
             float percentProt = protMods.RelativeProtection;
-            bool aboveTier = weaponTier > protMods.ProtectionTier;
 
-            for (int i = 0; i < weaponTier; i++)
+            for (int tier = 1; tier <= weaponTier; tier++)
             {
+                bool aboveTier = tier > protMods.ProtectionTier;
+
                 float flatLoss = aboveTier ? protMods.PerTierFlatDamageReductionLoss[1] : protMods.PerTierFlatDamageReductionLoss[0];
                 float percLoss = aboveTier ? protMods.PerTierRelativeProtectionLoss[1] : protMods.PerTierRelativeProtectionLoss[0];
 
+                if (aboveTier && protMods.HighDamageTierResistant)
+                {
+                    flatLoss /= 2;
+                    percLoss /= 2;
+                }
+
                 flatDmgProt -= flatLoss;
-                percentProt -= percLoss;
+                percentProt *= 1 - percLoss;
             }
 
-            damage -= Math.Max(0, flatDmgProt);
-            damage *= 1 - Math.Max(0, percentProt);
+            // Durability loss is the one before the damage reductions
+            float durabilityLoss = 0.5f + damage * Math.Max(0.5f, (weaponTier - protMods.ProtectionTier) * 0.75f);
+            int durabilityLossInt = GameMath.RoundRandom(api.World.Rand, durabilityLoss);
 
-            armorSlot.Itemstack.Collectible.DamageItem(api.World, player.Entity, armorSlot, 1 + (api.World.Rand.NextDouble() > 0.5 ? Math.Max(0, weaponTier - protMods.ProtectionTier) : 0));
+            // Now reduce the damage
+            damage = Math.Max(0, damage - flatDmgProt);
+            damage *= 1 - Math.Max(0, percentProt);
+            
+            armorSlot.Itemstack.Collectible.DamageItem(api.World, player.Entity, armorSlot, durabilityLossInt);
 
             return damage;
         }

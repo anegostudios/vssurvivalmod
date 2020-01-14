@@ -14,7 +14,7 @@ namespace Vintagestory.GameContent
 
         bool didSave;
 
-        public GuiDialogBlockEntityTextInput(string DialogTitle, BlockPos blockEntityPos, string text, ICoreClientAPI capi, int maxLines = 4) : base(DialogTitle, capi)
+        public GuiDialogBlockEntityTextInput(string DialogTitle, BlockPos blockEntityPos, string text, ICoreClientAPI capi, int maxwidth = 130, int maxLines = 4) : base(DialogTitle, capi)
         {
             this.blockEntityPos = blockEntityPos;
 
@@ -56,6 +56,7 @@ namespace Vintagestory.GameContent
             ;
 
             SingleComposer.GetTextArea("text").SetMaxLines(maxLines);
+            SingleComposer.GetTextArea("text").SetMaxWidth(maxwidth);
 
             SingleComposer.GetScrollbar("scrollbar").SetHeights(
                 (float)textAreaBounds.fixedHeight, (float)textAreaBounds.fixedHeight

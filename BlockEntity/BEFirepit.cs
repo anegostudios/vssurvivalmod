@@ -14,7 +14,7 @@ namespace Vintagestory.GameContent
     public enum EnumFirepitModel
     {
         Normal = 0,
-        Cooking = 1,
+        Spit = 1,
         Wide = 2
     }
 
@@ -80,7 +80,7 @@ namespace Vintagestory.GameContent
 
         internal InventorySmelting inventory;
 
-        
+
         // Temperature before the half second tick
         public float prevFurnaceTemperature = 20;
 
@@ -98,53 +98,21 @@ namespace Vintagestory.GameContent
         public float maxFuelBurnTime;
         // How much smoke the current fuel burns?
         public float smokeLevel;
+        /// <summary>
+        /// If true, then the fire pit is currently hot enough to ignite fuel
+        /// </summary>
+        public bool canIgniteFuel;
+
+        public float cachedFuel;
 
         public double extinguishedTotalHours;
 
 
         GuiDialogBlockEntityFirepit clientDialog;
         bool clientSidePrevBurning;
-        
+
         FirepitContentsRenderer renderer;
 
-
-        MeshData[] meshes
-        {
-            get
-            {
-                return ObjectCacheUtil.GetOrCreate(Api, "firepit-meshes", () =>
-                {
-                    Block block = Api.World.BlockAccessor.GetBlock(Pos);
-                    if (block.BlockId == 0) return null;
-
-                    MeshData[] meshes = new MeshData[17];
-                    ITesselatorAPI mesher = ((ICoreClientAPI)Api).Tesselator;
-
-                    // 0: Extinct
-                    // 1: Extinct-cooking
-                    // 2: Extinct-small-crucible
-                    // 3: Lit
-                    // 4: Lit-cooking
-                    // 5: Lit-small-crucible
-                    meshes = new MeshData[6];
-                    mesher.TesselateShape(block, Api.Assets.TryGet("shapes/block/wood/firepit/extinct.json").ToObject<Shape>(), out meshes[0]);
-                    mesher.TesselateShape(block, Api.Assets.TryGet("shapes/block/wood/firepit/extinct-cooking.json").ToObject<Shape>(), out meshes[1]);
-                    mesher.TesselateShape(block, Api.Assets.TryGet("shapes/block/wood/firepit/extinct-wide.json").ToObject<Shape>(), out meshes[2]);
-                    mesher.TesselateShape(block, Api.Assets.TryGet("shapes/block/wood/firepit/lit.json").ToObject<Shape>(), out meshes[3]);
-                    mesher.TesselateShape(block, Api.Assets.TryGet("shapes/block/wood/firepit/lit-cooking.json").ToObject<Shape>(), out meshes[4]);
-                    mesher.TesselateShape(block, Api.Assets.TryGet("shapes/block/wood/firepit/lit-wide.json").ToObject<Shape>(), out meshes[5]);
-
-                    meshes[0].Tints = null;
-                    meshes[1].Tints = null;
-                    meshes[2].Tints = null;
-                    meshes[3].Tints = null;
-                    meshes[4].Tints = null;
-                    meshes[5].Tints = null;
-
-                    return meshes;
-                });
-            }
-        }
 
 
 
@@ -213,11 +181,11 @@ namespace Vintagestory.GameContent
 
             inventory.pos = Pos;
             inventory.LateInitialize("smelting-1", api);
-            
+            wsys = api.ModLoader.GetModSystem<WeatherSystemBase>();
 
             RegisterGameTickListener(OnBurnTick, 100);
-            RegisterGameTickListener(OnSyncTick, 500);
-            
+            RegisterGameTickListener(On500msTick, 500);
+
             if (api is ICoreClientAPI)
             {
                 renderer = new FirepitContentsRenderer(api as ICoreClientAPI, Pos);
@@ -255,7 +223,7 @@ namespace Vintagestory.GameContent
                 ambientSound.Dispose();
                 ambientSound = null;
             }
-            
+
         }
 
 
@@ -263,11 +231,8 @@ namespace Vintagestory.GameContent
         {
             Block = Api.World.BlockAccessor.GetBlock(Pos);
 
-            if (slotid == 1 || slotid == 2)
-            {
-                UpdateRenderer();
-                MarkDirty(Api.Side == EnumAppSide.Server); // Save useless triple-remesh by only letting the server decide when to redraw
-            }
+            UpdateRenderer();
+            MarkDirty(Api.Side == EnumAppSide.Server); // Save useless triple-remesh by only letting the server decide when to redraw
 
             if (Api is ICoreClientAPI && clientDialog != null)
             {
@@ -276,7 +241,7 @@ namespace Vintagestory.GameContent
 
             Api.World.BlockAccessor.GetChunkAtBlockPos(Pos)?.MarkModified();
         }
-        
+
 
 
         public bool IsBurning
@@ -293,6 +258,8 @@ namespace Vintagestory.GameContent
 
         private void OnBurnTick(float dt)
         {
+            if (Block.Code.Path.Contains("construct")) return;
+
             // Only tick on the server and merely sync to client
             if (Api is ICoreClientAPI)
             {
@@ -303,7 +270,9 @@ namespace Vintagestory.GameContent
             // Use up fuel
             if (fuelBurnTime > 0)
             {
-                fuelBurnTime -= dt;
+                bool lowFuelConsumption = Math.Abs(furnaceTemperature - maxTemperature) < 50 && inputSlot.Empty;
+
+                fuelBurnTime -= dt / (lowFuelConsumption ? 3 : 1);
 
                 if (fuelBurnTime <= 0)
                 {
@@ -311,10 +280,17 @@ namespace Vintagestory.GameContent
                     maxFuelBurnTime = 0;
                     if (!canSmelt()) // This check avoids light flicker when a piece of fuel is consumed and more is available
                     {
-                        setStoveBurning(false);
+                        setBlockState("extinct");
                         extinguishedTotalHours = Api.World.Calendar.TotalHours;
                     }
                 }
+            }
+
+            // Too cold to ignite fuel after 2 hours
+            if (!IsBurning && Block.Variant["burnstate"] == "extinct" && Api.World.Calendar.TotalHours - extinguishedTotalHours > 2)
+            {
+                canIgniteFuel = false;
+                setBlockState("cold");
             }
 
             // Furnace is burning: Heat furnace
@@ -346,7 +322,7 @@ namespace Vintagestory.GameContent
 
 
             // Furnace is not burning and can burn: Ignite the fuel
-            if (!IsBurning && canSmelt())
+            if (!IsBurning && canIgniteFuel && canSmelt())
             {
                 igniteFuel();
             }
@@ -361,8 +337,10 @@ namespace Vintagestory.GameContent
         }
 
 
+        WeatherSystemBase wsys;
+        Vec3d tmpPos = new Vec3d();
         // Sync to client every 500ms
-        private void OnSyncTick(float dt)
+        private void On500msTick(float dt)
         {
             if (Api is ICoreServerAPI && (IsBurning || prevFurnaceTemperature != furnaceTemperature))
             {
@@ -370,9 +348,35 @@ namespace Vintagestory.GameContent
             }
 
             prevFurnaceTemperature = furnaceTemperature;
+
+            if (Api.Side == EnumAppSide.Server && IsBurning && Api.World.Rand.NextDouble() > 0.5)
+            {
+                // Die on rainfall
+                tmpPos.Set(Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5);
+                double rainLevel = wsys.GetRainFall(tmpPos);
+                if (rainLevel > 0.04 && Api.World.Rand.NextDouble() < rainLevel * 5)
+                {
+                    if (Api.World.BlockAccessor.GetRainMapHeightAt(Pos.X, Pos.Z) > Pos.Y) return;
+
+                    Api.World.PlaySoundAt(new AssetLocation("sounds/effect/extinguish"), Pos.X + 0.5, Pos.Y, Pos.Z + 0.5, null, false, 16);
+
+                    fuelBurnTime -= (float)rainLevel / 10f;
+
+                    if (Api.World.Rand.NextDouble() < rainLevel / 5f || fuelBurnTime <= 0)
+                    {
+                        setBlockState("cold");
+                        extinguishedTotalHours = -99;
+                        canIgniteFuel = false;
+                        fuelBurnTime = 0;
+                        maxFuelBurnTime = 0;
+                    }
+
+                    MarkDirty(true);
+                }
+            }
         }
 
-        
+
         public float changeTemperature(float fromTemp, float toTemp, float dt)
         {
             float diff = Math.Abs(fromTemp - toTemp);
@@ -400,7 +404,7 @@ namespace Vintagestory.GameContent
 
 
 
-     
+
 
 
 
@@ -583,38 +587,27 @@ namespace Vintagestory.GameContent
             maxFuelBurnTime = fuelBurnTime = fuelCopts.BurnDuration * BurnDurationModifier;
             maxTemperature = (int)(fuelCopts.BurnTemperature * HeatModifier);
             smokeLevel = fuelCopts.SmokeLevel;
-            setStoveBurning(true);
+            setBlockState("lit");
         }
 
 
-        public void igniteWithFuel(CombustibleProperties fuelCopts, float durationMultiplier)
-        {
-            maxFuelBurnTime = fuelBurnTime = fuelCopts.BurnDuration * BurnDurationModifier * durationMultiplier;
-            maxTemperature = (int)(fuelCopts.BurnTemperature * HeatModifier);
-            smokeLevel = fuelCopts.SmokeLevel;
-            setStoveBurning(true);
-        }
 
 
-        public void setStoveBurning(bool burning)
+        public void setBlockState(string state)
         {
-            BlockFirepit block = Api.World.BlockAccessor.GetBlock(Pos) as BlockFirepit;
+            AssetLocation loc = Block.CodeWithVariant("burnstate", state);
+            Block block = Api.World.GetBlock(loc);
             if (block == null) return;
-            
-            if (burning)
-            {
-                if (block.Ignite(Api.World, Pos)) MarkDirty(true);
-            } else
-            {
-                if (block.Extinguish(Api.World, Pos)) MarkDirty(true);
-            }
+
+            Api.World.BlockAccessor.ExchangeBlock(block.Id, Pos);
+            this.Block = block;
         }
 
 
-        
+
         public bool canHeatInput()
         {
-            return 
+            return
                 canSmeltInput() || (inputStack?.ItemAttributes?["allowHeating"] != null && inputStack.ItemAttributes["allowHeating"].AsBool())
             ;
         }
@@ -688,7 +681,7 @@ namespace Vintagestory.GameContent
             {
                 Inventory.AfterBlocksLoaded(Api.World);
             }
-            
+
 
             furnaceTemperature = tree.GetFloat("furnaceTemperature");
             maxTemperature = tree.GetInt("maxTemperature");
@@ -696,6 +689,8 @@ namespace Vintagestory.GameContent
             fuelBurnTime = tree.GetFloat("fuelBurnTime");
             maxFuelBurnTime = tree.GetFloat("maxFuelBurnTime");
             extinguishedTotalHours = tree.GetDouble("extinguishedTotalHours");
+            canIgniteFuel = tree.GetBool("canIgniteFuel", true);
+            cachedFuel = tree.GetFloat("cachedFuel", 0);
 
             if (Api?.Side == EnumAppSide.Client)
             {
@@ -721,8 +716,8 @@ namespace Vintagestory.GameContent
             ItemStack contentStack = inputStack == null ? outputStack : inputStack;
             ItemStack prevStack = renderer.ContentStack;
 
-            bool useOldRenderer = 
-                renderer.ContentStack != null && 
+            bool useOldRenderer =
+                renderer.ContentStack != null &&
                 renderer.contentStackRenderer != null &&
                 contentStack?.Collectible is IInFirepitRendererSupplier &&
                 renderer.ContentStack.Equals(Api.World, contentStack, GlobalConstants.IgnoredStackAttributes)
@@ -797,6 +792,8 @@ namespace Vintagestory.GameContent
             tree.SetFloat("fuelBurnTime", fuelBurnTime);
             tree.SetFloat("maxFuelBurnTime", maxFuelBurnTime);
             tree.SetDouble("extinguishedTotalHours", extinguishedTotalHours);
+            tree.SetBool("canIgniteFuel", canIgniteFuel);
+            tree.SetFloat("cachedFuel", cachedFuel);
         }
 
 
@@ -890,9 +887,9 @@ namespace Vintagestory.GameContent
                         clientDialog = new GuiDialogBlockEntityFirepit(dialogTitle, Inventory, Pos, dtree, Api as ICoreClientAPI);
                         clientDialog.OnClosed += () => { clientDialog.Dispose(); clientDialog = null; };
                         clientDialog.TryOpen();
-                        
+
                     }
-                    
+
                 }
             }
 
@@ -981,7 +978,7 @@ namespace Vintagestory.GameContent
             }
 
             foreach (ItemSlot slot in inventory.CookingSlots)
-            { 
+            {
                 if (slot.Itemstack == null) continue;
 
                 if (slot.Itemstack.Class == EnumItemClass.Item)
@@ -1025,52 +1022,52 @@ namespace Vintagestory.GameContent
             }
         }
 
-
+        public EnumFirepitModel CurrentModel { get; private set; }
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
         {
             if (Block == null || Block.Code.Path.Contains("construct")) return false;
 
-            // 0: Extinct
-            // 1: Extinct-cooking
-            // 2: Extinct-wide
-            // 3: Lit
-            // 4: Lit-cooking
-            // 5: Lit-wide
-            int index = IsBurning ? 3 : 0;
-
+            
             ItemStack contentStack = inputStack == null ? outputStack : inputStack;
-            MeshData contentmesh = getContentMesh(contentStack, ref index, tesselator);
+            MeshData contentmesh = getContentMesh(contentStack, tesselator);
             if (contentmesh != null)
             {
                 mesher.AddMeshData(contentmesh);
             }
 
-            mesher.AddMeshData(meshes[index]);
+            string burnState = Block.Variant["burnstate"];
+            string contentState = CurrentModel.ToString().ToLowerInvariant();
+            if (burnState == "cold" && fuelSlot.Empty) burnState = "extinct";
+
+            mesher.AddMeshData(getOrCreateMesh(burnState, contentState));
 
             return true;
         }
 
-        private MeshData getContentMesh(ItemStack contentStack, ref int index, ITesselatorAPI tesselator)
+        private MeshData getContentMesh(ItemStack contentStack, ITesselatorAPI tesselator)
         {
+            CurrentModel = EnumFirepitModel.Normal;
+
             if (contentStack == null) return null;
 
             if (contentStack.Collectible is IInFirepitMeshSupplier)
             {
                 EnumFirepitModel model = EnumFirepitModel.Normal;
                 MeshData mesh = (contentStack.Collectible as IInFirepitMeshSupplier).GetMeshWhenInFirepit(contentStack, Api.World, Pos, ref model);
+                this.CurrentModel = model;
 
                 if (mesh != null)
                 {
-                    index += (int)model;
                     return mesh;
                 }
+
             }
             
             if (contentStack.Collectible is IInFirepitRendererSupplier)
             {
                 EnumFirepitModel model = (contentStack.Collectible as IInFirepitRendererSupplier).GetDesiredFirepitModel(contentStack, this, contentStack == outputStack);
-                index += (int)model;
+                this.CurrentModel = model;
                 return null;
             }
 
@@ -1078,7 +1075,7 @@ namespace Vintagestory.GameContent
             
             if (renderProps != null)
             {
-                index += (int)renderProps.UseFirepitModel;
+                this.CurrentModel = renderProps.UseFirepitModel;
 
                 if (contentStack.Class != EnumItemClass.Item)
                 {
@@ -1088,7 +1085,7 @@ namespace Vintagestory.GameContent
                     ingredientMesh.ModelTransform(renderProps.Transform);
 
                     // Lower by 1 voxel if extinct
-                    if (!IsBurning && renderProps.UseFirepitModel != EnumFirepitModel.Cooking) ingredientMesh.Translate(0, -1 / 16f, 0);
+                    if (!IsBurning && renderProps.UseFirepitModel != EnumFirepitModel.Spit) ingredientMesh.Translate(0, -1 / 16f, 0);
 
                     return ingredientMesh;
                 }
@@ -1097,7 +1094,10 @@ namespace Vintagestory.GameContent
             }
             else
             {
-                if (renderer.RequireSpit) index += 1;
+                if (renderer.RequireSpit)
+                {
+                    this.CurrentModel = EnumFirepitModel.Spit;
+                }
                 return null; // Mesh drawing is handled by the FirepitContentsRenderer
             }
             
@@ -1120,5 +1120,28 @@ namespace Vintagestory.GameContent
             }
             return null;
         }
+
+
+        public MeshData getOrCreateMesh(string burnstate, string contentstate)
+        {
+            Dictionary<string, MeshData> Meshes = ObjectCacheUtil.GetOrCreate(Api, "firepit-meshes", () => new Dictionary<string, MeshData>());
+
+            string key = burnstate + "-" + contentstate;
+            MeshData meshdata;
+            if (!Meshes.TryGetValue(key, out meshdata))
+            {
+                Block block = Api.World.BlockAccessor.GetBlock(Pos);
+                if (block.BlockId == 0) return null;
+
+                MeshData[] meshes = new MeshData[17];
+                ITesselatorAPI mesher = ((ICoreClientAPI)Api).Tesselator;
+
+                mesher.TesselateShape(block, Api.Assets.TryGet("shapes/block/wood/firepit/" + key + ".json").ToObject<Shape>(), out meshdata);
+                meshdata.Tints = null;
+            }
+
+            return meshdata;
+        }
+
     }
 }

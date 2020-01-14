@@ -31,7 +31,7 @@ namespace Vintagestory.GameContent
             );
 
             idleParticles.SizeEvolve = EvolvingNatFloat.create(EnumTransformFunction.QUADRATIC, -0.6f);
-            idleParticles.addPos.Set(1, 2, 1);
+            idleParticles.AddPos.Set(1, 2, 1);
             idleParticles.addLifeLength = 0.5f;
 
 
@@ -50,7 +50,7 @@ namespace Vintagestory.GameContent
             );
 
             insideParticles.SizeEvolve = EvolvingNatFloat.create(EnumTransformFunction.QUADRATIC, -0.6f);
-            insideParticles.addPos.Set(1, 2, 1);
+            insideParticles.AddPos.Set(1, 2, 1);
             insideParticles.addLifeLength = 0.5f;
 
 

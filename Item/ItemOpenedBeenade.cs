@@ -94,8 +94,8 @@ namespace Vintagestory.GameContent
             minVelo.Normalize();
             minVelo *= 2;
 
-            bees.minPos = startPos;
-            bees.minVelocity = minVelo;
+            bees.MinPos = startPos;
+            bees.MinVelocity = minVelo;
             bees.WithTerrainCollision = true;
 
             IPlayer byPlayer = null;

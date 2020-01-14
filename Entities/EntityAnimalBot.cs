@@ -50,7 +50,7 @@ namespace Vintagestory.GameContent
 
         public void Start()
         {
-            entity.pathTraverser.NavigateTo(Target, 0.02f, OnDone, OnDone);
+            entity.pathTraverser.NavigateTo(Target, GotoSpeed, OnDone, OnDone);
             if (!entity.AnimManager.StartAnimation(AnimCode))
             {
                 entity.AnimManager.StartAnimation(new AnimationMetaData() { Animation = AnimCode, Code = AnimCode, AnimationSpeed = AnimSpeed });
@@ -327,7 +327,10 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            if (ExecutingCommands.Count > 0) ExecutingCommands.Peek().Start();
+            if (ExecutingCommands.Count > 0)
+            {
+                ExecutingCommands.Peek().Start();
+            }
             commandQueueActive = true;
         }
 
@@ -342,6 +345,8 @@ namespace Vintagestory.GameContent
         {
             base.OnGameTick(dt);
 
+            pathTraverser.OnGameTick(dt);
+
             if (commandQueueActive)
             {
                 if (ExecutingCommands.Count > 0)
@@ -354,7 +359,7 @@ namespace Vintagestory.GameContent
                         else
                         {
                             if (LoopCommands) StartExecuteCommands();
-                            commandQueueActive = false;
+                            else commandQueueActive = false;
                         }
                     }
                 }

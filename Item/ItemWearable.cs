@@ -30,6 +30,7 @@ namespace Vintagestory.GameContent
         public float FlatDamageReduction;
         public float[] PerTierFlatDamageReductionLoss;
         public int ProtectionTier;
+        public bool HighDamageTierResistant;
     }
 
     public class ItemWearable : Item
@@ -37,6 +38,7 @@ namespace Vintagestory.GameContent
         public StatModifiers StatModifers;
         public ProtectionModifiers ProtectionModifiers;
         public AssetLocation[] FootStepSounds;
+
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
@@ -102,6 +104,7 @@ namespace Vintagestory.GameContent
                     ProtectionModifiers = null;
                 }
             }
+
 
             if (ProtectionModifiers != null && ProtectionModifiers.PerTierFlatDamageReductionLoss == null)
             {
@@ -238,6 +241,8 @@ namespace Vintagestory.GameContent
 
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handHandling)
         {
+            if (byEntity.Controls.Sneak) return;
+
             IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
             if (byPlayer == null) return;
 
@@ -311,6 +316,11 @@ namespace Vintagestory.GameContent
                 if (StatModifers.walkSpeed != 0)
                 {
                     dsc.AppendLine(Lang.Get("Walk speed: {1}{0}%", (int)(100 * StatModifers.walkSpeed), StatModifers.walkSpeed > 0 ? "+" : ""));
+                }
+
+                if (ProtectionModifiers?.HighDamageTierResistant == true)
+                {
+                    dsc.AppendLine(Lang.Get("<font color=\"#86aad0\">High damage tier resistant.</font> When damaged by a higher tier attack, the loss of protection is only half as much."));
                 }
             }
 

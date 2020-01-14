@@ -52,8 +52,12 @@ namespace Vintagestory.GameContent
                 entity.ServerPos.Yaw = (float)byEntity.World.Rand.NextDouble() * 2 * GameMath.PI;
 
                 entity.Pos.SetFrom(entity.ServerPos);
+                entity.PositionBeforeFalling.Set(entity.ServerPos.X, entity.ServerPos.Y, entity.ServerPos.Z);
 
                 entity.Attributes.SetString("origin", "playerplaced");
+
+                //entity.WatchedAttributes.SetInt("generation", 10);
+
                 byEntity.World.SpawnEntity(entity);
                 handHandling = EnumHandHandling.PreventDefaultAction;
             }

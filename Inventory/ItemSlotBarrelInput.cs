@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Vintagestory.API.Config;
+using Vintagestory.API.MathTools;
 using Vintagestory.GameContent;
 
 namespace Vintagestory.API.Common
@@ -30,9 +31,14 @@ namespace Vintagestory.API.Common
 
             bool stackable = !liquidSlot.Empty && liquidSlot.Itemstack.Equals(inventory.Api.World, itemstack, GlobalConstants.IgnoredStackAttributes);
             if (stackable)
-            {                
-                liquidSlot.Itemstack.StackSize += itemstack.StackSize;
-                itemstack = null;
+            {
+                int remaining = liquidSlot.Itemstack.Collectible.MaxStackSize - liquidSlot.Itemstack.StackSize;
+
+                int moved = GameMath.Clamp(itemstack.StackSize, 0, remaining);
+                liquidSlot.Itemstack.StackSize += moved;
+
+                itemstack.StackSize -= moved;
+                if (itemstack.StackSize <= 0) itemstack = null;
 
                 liquidSlot.MarkDirty();
                 MarkDirty();

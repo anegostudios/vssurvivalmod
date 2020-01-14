@@ -23,6 +23,8 @@ namespace Vintagestory.GameContent
         public string dialogTitleLangCode = "chestcontents";
         public bool retrieveOnly = false;
 
+        public virtual float MeshAngle { get; set; }
+
         MeshData ownMesh;
 
         public virtual string DialogTitle
@@ -74,8 +76,6 @@ namespace Vintagestory.GameContent
                     Inventory.OnAcquireTransitionSpeed = Inventory_OnAcquireTransitionSpeed;
                     MarkDirty();
                 }
-
-                
             }
 
             base.OnBlockPlaced();
@@ -88,6 +88,7 @@ namespace Vintagestory.GameContent
         public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
             type = tree.GetString("type", defaultType);
+            MeshAngle = tree.GetFloat("meshAngle", MeshAngle);
 
             if (inventory == null)
             {
@@ -134,11 +135,13 @@ namespace Vintagestory.GameContent
             if (type == null) type = defaultType; // No idea why. Somewhere something has no type. Probably some worldgen ruins
 
             tree.SetString("type", type);
+            tree.SetFloat("meshAngle", MeshAngle);
         }
 
         protected virtual void InitInventory(Block block)
         {
-            this.Block = block;
+            //this.Block = block; - whats this good for? o.O
+            block = this.Block;
 
             if (block?.Attributes != null)
             {
@@ -252,7 +255,7 @@ namespace Vintagestory.GameContent
                 return null;
             }
             
-            return meshes[type + block.Subtype] = block.GenMesh(Api as ICoreClientAPI, type, shapename, tesselator);
+            return meshes[type + block.Subtype] = block.GenMesh(Api as ICoreClientAPI, type, shapename, tesselator, new Vec3f());
         }
 
 
@@ -265,7 +268,7 @@ namespace Vintagestory.GameContent
                 if (ownMesh == null) return false;
             }
 
-            mesher.AddMeshData(ownMesh);
+            mesher.AddMeshData(ownMesh.Clone().Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 0, MeshAngle, 0));
 
             /*string facing = ownBlock.LastCodePart();
             if (facing == "north") { mesher.AddMeshData(ownMesh.Clone().Rotate(new API.MathTools.Vec3f(0.5f, 0.5f, 0.5f), 0, 1 * GameMath.PIHALF, 0)); }

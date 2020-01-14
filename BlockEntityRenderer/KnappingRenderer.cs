@@ -13,19 +13,19 @@ namespace Vintagestory.GameContent
 {
     public class KnappingRenderer : IRenderer
     {
-        private ICoreClientAPI api;
-        private BlockPos pos;
+        protected ICoreClientAPI api;
+        protected BlockPos pos;
 
-        MeshRef workItemMeshRef;
-        MeshRef recipeOutlineMeshRef;
+        protected MeshRef workItemMeshRef;
+        protected MeshRef recipeOutlineMeshRef;
 
-        ItemStack workItem;
-        int texId;
-        internal string Material;
+        protected ItemStack workItem;
+        protected int texId;
+        public string Material;
 
-        Matrixf ModelMat = new Matrixf();
+        protected Matrixf ModelMat = new Matrixf();
 
-        Vec4f outLineColorMul = new Vec4f(1, 1, 1, 1);
+        protected Vec4f outLineColorMul = new Vec4f(1, 1, 1, 1);
 
         public KnappingRenderer(BlockPos pos, ICoreClientAPI capi)
         {

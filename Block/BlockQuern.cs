@@ -21,7 +21,10 @@ namespace Vintagestory.GameContent
 
             if (ok)
             {
-                tryConnect(world, byPlayer, blockSel.Position, BlockFacing.UP);
+                if (!tryConnect(world, byPlayer, blockSel.Position, BlockFacing.UP))
+                {
+                    tryConnect(world, byPlayer, blockSel.Position, BlockFacing.DOWN);
+                }
             }
 
             return ok;
@@ -52,6 +55,7 @@ namespace Vintagestory.GameContent
             BlockEntityQuern beQuern = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityQuern;
             if (beQuern != null)
             {
+                beQuern.IsGrinding(byPlayer);
                 return beQuern.CanGrind();
             }
 
@@ -115,7 +119,7 @@ namespace Vintagestory.GameContent
 
         public override bool HasConnectorAt(IWorldAccessor world, BlockPos pos, BlockFacing face)
         {
-            return face == BlockFacing.UP;
+            return face == BlockFacing.UP || face == BlockFacing.DOWN;
         }
     }
 }

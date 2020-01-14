@@ -111,9 +111,9 @@ namespace Vintagestory.GameContent
                 startPos.Set(Pos.X + 0.5f, Pos.Y + 0.5f, Pos.Z + 0.5f);
                 minVelo.Set((float)rand.NextDouble() * 3 - 1.5f, (float)rand.NextDouble() * 1 - 0.5f, (float)rand.NextDouble() * 3 - 1.5f);
 
-                Bees.minPos = startPos;
-                Bees.minVelocity = minVelo;
-                Bees.lifeLength = 1f;
+                Bees.MinPos = startPos;
+                Bees.MinVelocity = minVelo;
+                Bees.LifeLength = 1f;
                 Bees.WithTerrainCollision = false;
             }
 
@@ -126,8 +126,8 @@ namespace Vintagestory.GameContent
                 minVelo.Set((float)(endPos.X - startPos.X), (float)(endPos.Y - startPos.Y), (float)(endPos.Z - startPos.Z));
                 minVelo /= 2;
 
-                Bees.minPos = startPos;
-                Bees.minVelocity = minVelo;
+                Bees.MinPos = startPos;
+                Bees.MinVelocity = minVelo;
                 Bees.WithTerrainCollision = true;
             }
 

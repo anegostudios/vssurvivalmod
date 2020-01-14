@@ -98,7 +98,7 @@ namespace Vintagestory.GameContent
             float temp = GetTemperature();
             if (Api.World.Rand.NextDouble() < (temp - 50) / 320)
             {
-                BlockCookedContainer.smokeHeld.minPos = Pos.ToVec3d().AddCopy(0.5 - 0.05, 0.125, 0.5 - 0.05);
+                BlockCookedContainer.smokeHeld.MinPos = Pos.ToVec3d().AddCopy(0.5 - 0.05, 0.125, 0.5 - 0.05);
                 Api.World.SpawnParticles(BlockCookedContainer.smokeHeld);
             }
 

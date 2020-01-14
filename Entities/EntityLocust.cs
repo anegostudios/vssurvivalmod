@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
+using Vintagestory.API.MathTools;
 using Vintagestory.GameContent;
 
 namespace Vintagestory.GameContent
@@ -26,20 +27,13 @@ namespace Vintagestory.GameContent
 
             if (FeetInLiquid) multiplier /= 2.5;
 
-            double mul1 = belowBlock.Code.Path.Contains("metalspike") ? 1 : belowBlock.WalkSpeedMultiplier;
-            double mul2 = insideblock.Code.Path.Contains("metalspike") ? 1 : insideblock.WalkSpeedMultiplier;
+            double mul1 = belowBlock.Code == null || belowBlock.Code.Path.Contains("metalspike") ? 1 : belowBlock.WalkSpeedMultiplier;
+            double mul2 = insideblock.Code == null || insideblock.Code.Path.Contains("metalspike") ? 1 : insideblock.WalkSpeedMultiplier;
 
             multiplier *= mul1 * mul2;
-            
+
             // Apply walk speed modifiers.
-            var attribute = WatchedAttributes.GetTreeAttribute("walkSpeedModifiers");
-            if (attribute?.Count > 0)
-            {
-                // Enumerate over all values in this attribute as tree attributes, then
-                // multiply their "Value" properties together with the current multiplier.
-                multiplier *= attribute.Values.Cast<ITreeAttribute>()
-                    .Aggregate(1.0F, (current, modifier) => current * modifier.GetFloat("Value"));
-            }
+            multiplier *= GameMath.Clamp(Stats.GetBlended("walkspeed"), 0, 999);
 
             return multiplier;
         }

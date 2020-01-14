@@ -319,7 +319,7 @@ namespace Vintagestory.GameContent
             BlockMeal mealblock = world.GetBlock(new AssetLocation("bowl-meal")) as BlockMeal;
 
             CookingRecipe recipe = GetCookingRecipe(world, inSlot.Itemstack);
-            ItemStack[] stacks = GetContents(world, inSlot.Itemstack);
+            ItemStack[] stacks = GetNonEmptyContents(world, inSlot.Itemstack);
 
             if (stacks == null || stacks.Length == 0)
             {
@@ -566,10 +566,12 @@ namespace Vintagestory.GameContent
             if (MealMeshCache.ContentsRotten(stacks))
             {
                 inslot.Itemstack.Attributes.RemoveAttribute("recipeCode");
+                inslot.Itemstack.Attributes?.RemoveAttribute("quantityServings");
             }
-            if (!stacks.Any(stack => stack != null))
+            if (stacks == null || stacks.Length == 0)
             {
                 inslot.Itemstack.Attributes.RemoveAttribute("recipeCode");
+                inslot.Itemstack.Attributes?.RemoveAttribute("quantityServings");
             }
 
             return states;

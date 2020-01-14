@@ -22,6 +22,13 @@ namespace Vintagestory.GameContent
         int tempColor;
         ItemStack tempStack;
 
+        public override float MeshAngle { 
+            get => base.MeshAngle; 
+            set {
+                labelrenderer?.SetRotation(value);
+                base.MeshAngle = value;
+            }
+        }
 
         public override string DialogTitle {
             get
@@ -42,6 +49,7 @@ namespace Vintagestory.GameContent
             if (api is ICoreClientAPI)
             {
                 labelrenderer = new ChestLabelRenderer(Pos, api as ICoreClientAPI);
+                labelrenderer.SetRotation(MeshAngle);
                 labelrenderer.SetNewText(text, color);
             }
         }
@@ -145,7 +153,7 @@ namespace Vintagestory.GameContent
 
                     IClientWorldAccessor clientWorld = (IClientWorldAccessor)Api.World;
 
-                    GuiDialogBlockEntityTextInput dlg = new GuiDialogBlockEntityTextInput(dialogTitle, Pos, text, Api as ICoreClientAPI, 3);
+                    GuiDialogBlockEntityTextInput dlg = new GuiDialogBlockEntityTextInput(dialogTitle, Pos, text, Api as ICoreClientAPI, 132, 4);
                     dlg.OnTextChanged = DidChangeTextClientSide;
                     dlg.OnCloseCancel = () =>
                     {

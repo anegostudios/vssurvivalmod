@@ -97,8 +97,6 @@ namespace Vintagestory.GameContent
 
         public void SetContents(ItemStack stack, float fuelLevel, bool burning, bool regen)
         {
-            ItemStack beforeStack = stack;
-
             this.stack = stack;
             this.fuelLevel = fuelLevel;
             this.burning = burning;
@@ -194,9 +192,17 @@ namespace Vintagestory.GameContent
             {
                 Vec4f lightrgbs = capi.World.BlockAccessor.GetLightRGBs(pos.X, pos.Y, pos.Z);
 
+                if (burning)
+                {
+                    float[] glowColor = ColorUtil.GetIncandescenceColorAsColor4f(1200);
+                    lightrgbs[0] += glowColor[0];
+                    lightrgbs[1] += glowColor[1];
+                    lightrgbs[2] += glowColor[2];
+                }
+
                 prog.RgbaLightIn = lightrgbs;
                 prog.RgbaBlockIn = ColorUtil.WhiteArgbVec;
-                prog.ExtraGlow = 0;
+                prog.ExtraGlow = burning ? 255 : 0;
 
                 // The coal or embers
                 rpi.BindTexture2d(burning ? embertexpos.atlasTextureId : coaltexpos.atlasTextureId);

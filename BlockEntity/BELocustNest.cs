@@ -21,6 +21,7 @@ namespace Vintagestory.GameContent
         public override void Initialize(ICoreAPI api)
         {
             base.Initialize(api);
+            requireSpawnOnWallSide = true;
         }
 
         // Remember the herdid forever
@@ -55,7 +56,7 @@ namespace Vintagestory.GameContent
                 EntityCodes = new string[] { entityCode },
                 InGameHourInterval = 1,
                 MaxCount = Api.World.Rand.Next(7) + 3,
-                SpawnArea = new Cuboidi(-5, -5, -5, 5, 0, 5),
+                SpawnArea = new Cuboidi(-5, -5, -5, 5, 2, 5),
                 GroupSize = 2 + Api.World.Rand.Next(2),
                 SpawnOnlyAfterImport = false,
                 InitialSpawnQuantity = 4 + Api.World.Rand.Next(7)
@@ -83,6 +84,7 @@ namespace Vintagestory.GameContent
                     ICoreServerAPI sapi = Api as ICoreServerAPI;
                     int rnd = sapi.World.Rand.Next(Data.EntityCodes.Length);
                     EntityProperties type = Api.World.GetEntityType(new AssetLocation(Data.EntityCodes[rnd]));
+                    
 
                     Cuboidf collisionBox = new Cuboidf()
                     {
@@ -128,14 +130,7 @@ namespace Vintagestory.GameContent
 
         protected override void DoSpawn(EntityProperties entityType, Vec3d spawnPosition, long herdId)
         {
-            int dy = 0;
-            while (dy < 15 && !Api.World.BlockAccessor.GetBlock((int)spawnPosition.X, (int)spawnPosition.Y + dy, (int)spawnPosition.Z).SideSolid[BlockFacing.DOWN.Index])
-            {
-                dy++;
-            }
-            if (dy >= 15) return;
-
-            spawnPosition.Y += dy - 1;
+            
 
             base.DoSpawn(entityType, spawnPosition, herdId);
         }
@@ -147,6 +142,12 @@ namespace Vintagestory.GameContent
 
             herdId = tree.GetLong("herdId");
             insideLocustCount = tree.GetInt("insideLocustCount");
+
+            // Maybe an old nest
+            if (Data.EntityCodes != null && Data.EntityCodes.Length > 0 && Data.EntityCodes[0] == "locust")
+            {
+                Data.EntityCodes[0] = "locust-bronze";
+            }
         }
 
         public override void ToTreeAttributes(ITreeAttribute tree)

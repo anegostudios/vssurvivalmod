@@ -36,8 +36,8 @@ namespace Vintagestory.GameContent
                 EnumParticleModel.Quad
             );
             smallMetalSparks.WithTerrainCollision = false;
-            smallMetalSparks.glowLevel = 128;
-            smallMetalSparks.addPos.Set(1 / 16f, 0, 1 / 16f);
+            smallMetalSparks.VertexFlags = 128;
+            smallMetalSparks.AddPos.Set(1 / 16f, 0, 1 / 16f);
             smallMetalSparks.SizeEvolve = new EvolvingNatFloat(EnumTransformFunction.LINEAR, -0.05f);
 
             breakSparks = new SimpleParticleProperties(
@@ -50,8 +50,8 @@ namespace Vintagestory.GameContent
                 1f,
                 0.25f, 0.25f
             );
-            breakSparks.glowLevel = 128;
-            breakSparks.addPos.Set(4 / 16f, 4 / 16f, 4 / 16f);
+            breakSparks.VertexFlags = 128;
+            breakSparks.AddPos.Set(4 / 16f, 4 / 16f, 4 / 16f);
             breakSparks.SizeEvolve = new EvolvingNatFloat(EnumTransformFunction.LINEAR, -0.25f);
 
             smoke = new SimpleParticleProperties(
@@ -165,30 +165,30 @@ namespace Vintagestory.GameContent
         {
             if (Api.World.Rand.Next(5) > 0)
             {
-                smoke.minPos.Set(Pos.X + 0.5 - 2 / 16.0, Pos.Y + 1 + 10 / 16f, Pos.Z + 0.5 - 2 / 16.0);
-                smoke.addPos.Set(4 / 16.0, 0, 4 / 16.0);
+                smoke.MinPos.Set(Pos.X + 0.5 - 2 / 16.0, Pos.Y + 1 + 10 / 16f, Pos.Z + 0.5 - 2 / 16.0);
+                smoke.AddPos.Set(4 / 16.0, 0, 4 / 16.0);
                 Api.World.SpawnParticles(smoke, null);
             }
 
             if (renderer.glowLevel > 80 && Api.World.Rand.Next(3) == 0)
             {
                 Vec3f dir = ownFacing.Normalf;
-                Vec3d particlePos = smallMetalSparks.minPos;
+                Vec3d particlePos = smallMetalSparks.MinPos;
                 particlePos.Set(Pos.X + 0.5, Pos.Y, Pos.Z + 0.5);
                 particlePos.Sub(dir.X * (6/16.0) + 2/16f, 0, dir.Z * (6 / 16.0) + 2/16f);
                 
-                smallMetalSparks.minPos = particlePos;
-                smallMetalSparks.addPos.Set(4 / 16.0, 3 / 16.0, 4 / 16.0);
-                smallMetalSparks.glowLevel = (byte)renderer.glowLevel;
-                smallMetalSparks.model = EnumParticleModel.Cube;
-                smallMetalSparks.lifeLength = 0.04f;
-                smallMetalSparks.minVelocity = new Vec3f(-0.5f - dir.X, -0.3f, -0.5f - dir.Z);
-                smallMetalSparks.addVelocity = new Vec3f(1f - dir.X, 0.6f, 1f - dir.Z);
-                smallMetalSparks.minQuantity = 1;
-                smallMetalSparks.addQuantity = 1;
-                smallMetalSparks.minSize = 0.2f;
-                smallMetalSparks.maxSize = 0.2f;
-                smallMetalSparks.gravityEffect = 0f;
+                smallMetalSparks.MinPos = particlePos;
+                smallMetalSparks.AddPos.Set(4 / 16.0, 3 / 16.0, 4 / 16.0);
+                smallMetalSparks.VertexFlags = (byte)renderer.glowLevel;
+                smallMetalSparks.ParticleModel = EnumParticleModel.Cube;
+                smallMetalSparks.LifeLength = 0.04f;
+                smallMetalSparks.MinVelocity = new Vec3f(-0.5f - dir.X, -0.3f, -0.5f - dir.Z);
+                smallMetalSparks.AddVelocity = new Vec3f(1f - dir.X, 0.6f, 1f - dir.Z);
+                smallMetalSparks.MinQuantity = 1;
+                smallMetalSparks.AddQuantity = 1;
+                smallMetalSparks.MinSize = 0.2f;
+                smallMetalSparks.MaxSize = 0.2f;
+                smallMetalSparks.GravityEffect = 0f;
                 
                 smallMetalSparks.SizeEvolve = new EvolvingNatFloat(EnumTransformFunction.QUADRATIC, -0.5f);
                 Api.World.SpawnParticles(smallMetalSparks, null);
@@ -289,7 +289,7 @@ namespace Vintagestory.GameContent
                 bloomeryInv.DropSlots(dpos, new int[] { 0, 2 });
 
 
-                breakSparks.minPos = Pos.ToVec3d().AddCopy(dpos.X - 4 / 16f, dpos.Y - 4 / 16f, dpos.Z - 4 / 16f);
+                breakSparks.MinPos = Pos.ToVec3d().AddCopy(dpos.X - 4 / 16f, dpos.Y - 4 / 16f, dpos.Z - 4 / 16f);
                 Api.World.SpawnParticles(breakSparks, null);
             }
             else
@@ -338,10 +338,12 @@ namespace Vintagestory.GameContent
             for (int i = 0; i < 3; i++)
             {
                 ItemStack stack = bloomeryInv[i].Itemstack;
-                if (stack != null) dsc.AppendLine("  " + stack.StackSize + "x " + stack.GetName());
+                if (stack != null)
+                {
+                    if (dsc.Length == 0) dsc.AppendLine("Contents:");
+                    dsc.AppendLine("  " + stack.StackSize + "x " + stack.GetName());
+                }
             }
-
-            if (dsc.Length > 0) dsc.AppendLine("Contents:\n" + dsc);
 
             base.GetBlockInfo(forPlayer, dsc);
         }

@@ -242,6 +242,7 @@ namespace Vintagestory.GameContent
                 ItemSlotTrade tradeSlot = (slots[slotId] as ItemSlotTrade);
 
                 tradeSlot.TradeItem = new ResolvedTradeItem(tradeItems.GetTreeAttribute(slotId + ""));
+                
             }
         }
 
@@ -279,7 +280,7 @@ namespace Vintagestory.GameContent
                 return EnumTransactionResult.Success;
             }
 
-            // Take care of they moneys first
+            // Take care of the money first
             if (!HandleMoneyTransaction(buyingPlayer)) return EnumTransactionResult.Failure;
 
             // Now hand over buying cart contents
@@ -304,8 +305,10 @@ namespace Vintagestory.GameContent
                 ResolvedTradeItem tradeItem = GetBuyingConditionsSlot(slot.Itemstack).TradeItem;
                 if (tradeItem == null) continue;
 
-                tradeItem.Stock -= slot.Itemstack.StackSize / tradeItem.Stack.StackSize;
-                slot.Itemstack = null;
+                int q = slot.Itemstack.StackSize / tradeItem.Stack.StackSize;
+
+                tradeItem.Stock -= q;
+                slot.TakeOut(q * tradeItem.Stack.StackSize);
                 slot.MarkDirty();
             }
 

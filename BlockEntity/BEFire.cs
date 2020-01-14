@@ -24,7 +24,10 @@ namespace Vintagestory.GameContent
         string startedByPlayerUid;
 
         ILoadedSound ambientSound;
-
+        CollisionTester collTester = new CollisionTester();
+        Cuboidf fireCuboid = new Cuboidf(0, 0, 0, 1, 1, 1);
+        WeatherSystemBase wsys;
+        Vec3d tmpPos = new Vec3d();
 
         public float TimePassed
         {
@@ -42,7 +45,7 @@ namespace Vintagestory.GameContent
             if (fireBlock == null) fireBlock = new Block();
 
             neibBlock = api.World.BlockAccessor.GetBlock(Pos.AddCopy(fromFacing.GetOpposite()));
-
+            wsys = api.ModLoader.GetModSystem<WeatherSystemBase>();
 
             if (ambientSound == null && api.Side == EnumAppSide.Client)
             {
@@ -64,9 +67,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        CollisionTester collTester = new CollisionTester();
-        Cuboidf fireCuboid = new Cuboidf(0, 0, 0, 1, 1, 1);
-
+        
         private void OnSlowTick(float dt)
         {
             if (Api.Side == EnumAppSide.Client) return;
@@ -76,7 +77,6 @@ namespace Vintagestory.GameContent
             if (!canBurn(neibBlock, neibPos))
             {
                 Api.World.BlockAccessor.SetBlock(0, Pos);
-                Api.World.BlockAccessor.RemoveBlockEntity(Pos); // Sometimes block entities don't get removed properly o.O
                 Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(Pos);
                 return;
             }
@@ -89,6 +89,24 @@ namespace Vintagestory.GameContent
                 if (CollisionTester.AabbIntersect(entity.CollisionBox, entity.ServerPos.X, entity.ServerPos.Y, entity.ServerPos.Z, fireCuboid, ownPos))
                 {
                     entity.ReceiveDamage(new DamageSource() { Source = EnumDamageSource.Block, SourceBlock = fireBlock, SourcePos = ownPos, Type = EnumDamageType.Fire }, 2f);
+                }
+            }
+
+
+            // Die on rainfall
+            tmpPos.Set(Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5);
+            double rain = wsys.GetRainFall(tmpPos);
+            if (rain > 0.1)
+            {
+                if (Api.World.BlockAccessor.GetRainMapHeightAt(Pos.X, Pos.Y) > Pos.Y) return;
+
+                Api.World.PlaySoundAt(new AssetLocation("sounds/effect/extinguish"), Pos.X + 0.5, Pos.Y, Pos.Z + 0.5, null, false, 16);
+
+                if (rand.NextDouble() < rain/2)
+                {
+                    Api.World.BlockAccessor.SetBlock(0, Pos);
+                    Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(Pos);
+                    return;
                 }
             }
         }

@@ -114,8 +114,8 @@ namespace Vintagestory.ServerMods
                     break;
 
                 case "loop":
-                    entityNpc.LoopCommands = (bool)args.PopBool();
-                    player.SendMessage(groupId, "Command list set to looping", EnumChatType.Notification);
+                    entityNpc.LoopCommands = (bool)args.PopBool(!entityNpc.LoopCommands);
+                    player.SendMessage(groupId, "Command list looping is now " + (entityNpc.LoopCommands ? "on" : "off"), EnumChatType.Notification);
                     break;
 
                 case "clear":

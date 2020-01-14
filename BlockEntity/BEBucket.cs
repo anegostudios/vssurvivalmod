@@ -7,6 +7,7 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
+using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
@@ -18,6 +19,8 @@ namespace Vintagestory.GameContent
 
         MeshData currentMesh;
         BlockBucket ownBlock;
+
+        public float MeshAngle;
 
         public BlockEntityBucket()
         {
@@ -77,13 +80,15 @@ namespace Vintagestory.GameContent
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
         {
-            mesher.AddMeshData(currentMesh);
+            mesher.AddMeshData(currentMesh.Clone().Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 0, MeshAngle, 0));
             return true;
         }
 
         public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
             base.FromTreeAtributes(tree, worldForResolving);
+
+            MeshAngle = tree.GetFloat("meshAngle", MeshAngle);
 
             if (Api?.Side == EnumAppSide.Client)
             {
@@ -95,6 +100,8 @@ namespace Vintagestory.GameContent
         public override void ToTreeAttributes(ITreeAttribute tree)
         {
             base.ToTreeAttributes(tree);
+
+            tree.SetFloat("meshAngle", MeshAngle);
         }
 
 

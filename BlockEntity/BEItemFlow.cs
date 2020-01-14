@@ -44,7 +44,10 @@ namespace Vintagestory.GameContent
         {
             if(Block?.Attributes != null)
             {
-                InputFace = BlockFacing.FromCode(Block.Attributes["input-face"].AsString(InputFace.Code));
+                if (Block.Attributes["input-face"].Exists)
+                {
+                    InputFace = BlockFacing.FromCode(Block.Attributes["input-face"].AsString(null));
+                }
                 OutputFace = BlockFacing.FromCode(Block.Attributes["output-face"].AsString(OutputFace.Code));
                 FlowAmount = Block.Attributes["item-flowrate"].AsInt(FlowAmount);
                 inventoryClassName = Block.Attributes["inventoryClassName"].AsString(inventoryClassName);
@@ -102,7 +105,6 @@ namespace Vintagestory.GameContent
         public void MoveItem(float dt)
         {
             //check above.  Then check below.  
-            BlockPos InputPosition = Pos.AddCopy(InputFace);
             BlockPos OutputPosition = Pos.AddCopy(OutputFace);
 
             // If inventory below, attempt to move item in me to below
@@ -149,44 +151,48 @@ namespace Vintagestory.GameContent
 
 
             // If inventory above, attempt to move item from above into me.  (LATER ON: CHECK FILTER)
-            if(Api.World.BlockAccessor.GetBlockEntity(InputPosition) is BlockEntityContainer)
+            if (InputFace != null)
             {
-                BlockEntityContainer inputBox = (BlockEntityContainer)Api.World.BlockAccessor.GetBlockEntity(InputPosition);
-                if(inputBox.Inventory is InventoryGeneric)
+                BlockPos InputPosition = Pos.AddCopy(InputFace);
+                if (Api.World.BlockAccessor.GetBlockEntity(InputPosition) is BlockEntityContainer)
                 {
-                    InventoryGeneric inputInventory = (InventoryGeneric)inputBox.Inventory;
-                    if(!inputInventory.IsEmpty)
+                    BlockEntityContainer inputBox = (BlockEntityContainer)Api.World.BlockAccessor.GetBlockEntity(InputPosition);
+                    if (inputBox.Inventory is InventoryGeneric)
                     {
-                        ItemSlot transferSlot = null;
-                        foreach (ItemSlot slot in inputInventory)
+                        InventoryGeneric inputInventory = (InventoryGeneric)inputBox.Inventory;
+                        if (!inputInventory.IsEmpty)
                         {
-                            if(!slot.Empty)
+                            ItemSlot transferSlot = null;
+                            foreach (ItemSlot slot in inputInventory)
                             {
-                                transferSlot = slot;
-                            }
-                        }
-
-                        if(transferSlot != null)
-                        {
-                            WeightedSlot ws = inventory.GetBestSuitedSlot(transferSlot);
-                            if (ws.slot != null)
-                            {
-                                ItemStackMoveOperation op = new ItemStackMoveOperation(Api.World, EnumMouseButton.Left, 0, EnumMergePriority.DirectMerge, FlowAmount);
-
-                                if (transferSlot.TryPutInto(ws.slot, ref op) > 0)
+                                if (!slot.Empty)
                                 {
-                                    if (Api.World.Rand.NextDouble() < 0.2)
-                                    {
-                                        Api.World.PlaySoundAt(new AssetLocation("sounds/block/hoppertumble"), Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5, null, true, 8, 0.5f);
-                                    }
+                                    transferSlot = slot;
                                 }
                             }
-                        } //transfer slot
 
-                    }//Inventory empty check
+                            if (transferSlot != null)
+                            {
+                                WeightedSlot ws = inventory.GetBestSuitedSlot(transferSlot);
+                                if (ws.slot != null)
+                                {
+                                    ItemStackMoveOperation op = new ItemStackMoveOperation(Api.World, EnumMouseButton.Left, 0, EnumMergePriority.DirectMerge, FlowAmount);
 
-                }//Inventory Generic check.
-            }//Check for Block entity container.       
+                                    if (transferSlot.TryPutInto(ws.slot, ref op) > 0)
+                                    {
+                                        if (Api.World.Rand.NextDouble() < 0.2)
+                                        {
+                                            Api.World.PlaySoundAt(new AssetLocation("sounds/block/hoppertumble"), Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5, null, true, 8, 0.5f);
+                                        }
+                                    }
+                                }
+                            } //transfer slot
+
+                        }//Inventory empty check
+
+                    }//Inventory Generic check.
+                }//Check for Block entity container.       
+            }
         }
 
 

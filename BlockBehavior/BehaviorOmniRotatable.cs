@@ -9,17 +9,26 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.RegularExpressions;
 
 using Vintagestory.API;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
 namespace Vintagestory.ServerMods
 {
+    public enum EnumSlabPlaceMode
+    {
+        Auto,
+        Horizontal,
+        Vertical
+    }
 
-    class BlockBehaviorOmniRotatable : BlockBehavior
+    public class BlockBehaviorOmniRotatable : BlockBehavior
     {
         private bool rotateH = false;
         private bool rotateV = false;
@@ -33,11 +42,49 @@ namespace Vintagestory.ServerMods
             
         }
 
+
+        
+
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref EnumHandling handling, ref string failureCode)
         {
             handling = EnumHandling.PreventDefault;
-
             AssetLocation blockCode = null;
+            Block orientedBlock;
+
+            EnumSlabPlaceMode mode = itemstack.Attributes == null ? EnumSlabPlaceMode.Auto : (EnumSlabPlaceMode)itemstack.Attributes.GetInt("slabPlaceMode", 0);
+            if (mode == EnumSlabPlaceMode.Horizontal)
+            {
+                string side = blockSel.HitPosition.Y < 0.5 ? "down" : "up";
+                if (blockSel.Face.IsVertical) side = blockSel.Face.GetOpposite().Code;
+
+                blockCode = block.CodeWithParts(side);
+                orientedBlock = world.BlockAccessor.GetBlock(blockCode);
+                if (orientedBlock.CanPlaceBlock(world, byPlayer, blockSel, ref failureCode))
+                {
+                    world.BlockAccessor.SetBlock(orientedBlock.BlockId, blockSel.Position);
+                    return true;
+                }
+                return false;
+            }
+
+            if (mode == EnumSlabPlaceMode.Vertical)
+            {
+                BlockFacing[] hv = Block.SuggestedHVOrientation(byPlayer, blockSel);
+                string side = hv[0].Code;
+                if (blockSel.Face.IsHorizontal) side = blockSel.Face.GetOpposite().Code;
+
+                blockCode = block.CodeWithParts(side);
+
+                orientedBlock = world.BlockAccessor.GetBlock(blockCode);
+                if (orientedBlock.CanPlaceBlock(world, byPlayer, blockSel, ref failureCode))
+                {
+                    world.BlockAccessor.SetBlock(orientedBlock.BlockId, blockSel.Position);
+                    return true;
+                }
+                return false;
+            }
+
+
             if (rotateSides)
             {
                 // Simple 6 state rotator.
@@ -178,7 +225,7 @@ namespace Vintagestory.ServerMods
                 blockCode = this.block.Code;
             }
 
-            Block orientedBlock = world.BlockAccessor.GetBlock(blockCode);
+            orientedBlock = world.BlockAccessor.GetBlock(blockCode);
             if (orientedBlock.CanPlaceBlock(world, byPlayer, blockSel, ref failureCode))
             {
                 world.BlockAccessor.SetBlock(orientedBlock.BlockId, blockSel.Position);
@@ -186,6 +233,24 @@ namespace Vintagestory.ServerMods
             }
 
             return false;
+        }
+
+        public override void OnCreatedByCrafting(ItemSlot[] allInputslots, ItemSlot outputSlot, GridRecipe byRecipe, ref EnumHandling handled)
+        {
+            ItemSlot inputSlot = allInputslots.FirstOrDefault(s => !s.Empty);
+
+            Block inBlock = inputSlot.Itemstack.Block;
+
+            if (inBlock == null || inBlock.GetType() != block.GetType())
+            {
+                base.OnCreatedByCrafting(allInputslots, outputSlot, byRecipe, ref handled);
+                return;
+            }
+
+            int mode = inputSlot.Itemstack.Attributes.GetInt("slabPlaceMode", 0);
+            outputSlot.Itemstack.Attributes.SetInt("slabPlaceMode", (mode + 1) % 3);
+
+            base.OnCreatedByCrafting(allInputslots, outputSlot, byRecipe, ref handled);
         }
 
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos, ref EnumHandling handling)
@@ -257,6 +322,42 @@ namespace Vintagestory.ServerMods
             facing = properties["facing"].AsString(facing);
 
             dropChance = properties["dropChance"].AsFloat(1);
+        }
+
+        public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
+        {
+            EnumSlabPlaceMode mode = (EnumSlabPlaceMode)itemstack.Attributes.GetInt("slabPlaceMode", 0);
+            if (mode == EnumSlabPlaceMode.Vertical)
+            {
+                renderinfo.Transform = renderinfo.Transform.Clone();
+                renderinfo.Transform.Rotation.X = -80;
+                renderinfo.Transform.Rotation.Y = 0;
+                renderinfo.Transform.Rotation.Z = -22.5f;
+            }
+            if (mode == EnumSlabPlaceMode.Horizontal)
+            {
+                renderinfo.Transform = renderinfo.Transform.Clone();
+                renderinfo.Transform.Rotation.X = 5;
+            }
+
+            base.OnBeforeRender(capi, itemstack, target, ref renderinfo);
+        }
+
+        public override string GetHeldBlockInfo(IWorldAccessor world, ItemSlot inSlot)
+        {
+            EnumSlabPlaceMode mode = (EnumSlabPlaceMode)inSlot.Itemstack.Attributes.GetInt("slabPlaceMode", 0);
+            switch (mode)
+            {
+                case EnumSlabPlaceMode.Auto:
+                    return Lang.Get("Placement mode: <font color=\"#648cd5\">Auto</font>") + "\n";
+                case EnumSlabPlaceMode.Horizontal:
+                    return Lang.Get("Placement mode: <font color=\"#648cd5\">Only horizontal</font>") + "\n";
+                case EnumSlabPlaceMode.Vertical:
+                    return Lang.Get("Placement mode: <font color=\"#648cd5\">Only vertical</font>") + "\n";
+
+            }
+
+            return base.GetHeldBlockInfo(world, inSlot);
         }
     }
 }

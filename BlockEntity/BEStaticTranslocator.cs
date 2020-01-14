@@ -140,14 +140,29 @@ namespace Vintagestory.GameContent
             }
         }
 
-        
+
+        float particleAngle = 0;
+
         private void OnClientGameTick(float dt)
         {
             if (ownBlock == null || Api?.World == null || !canTeleport || !Activated) return;
 
-            bool playerInside = (Api.World.ElapsedMilliseconds > 100 && Api.World.ElapsedMilliseconds - lastCollideMsOwnPlayer < 100);
+            if (Api.World.ElapsedMilliseconds - somebodyIsTeleportingReceivedTotalMs > 6000)
+            {
+                somebodyIsTeleporting = false;
+            }
 
-            SimpleParticleProperties currentParticles = playerInside ? 
+
+            bool selfInside = (Api.World.ElapsedMilliseconds > 100 && Api.World.ElapsedMilliseconds - lastCollideMsOwnPlayer < 100);
+            bool playerInside = selfInside || somebodyIsTeleporting;
+            bool active = animUtil.activeAnimationsByAnimCode.Count > 0;
+
+            if (!selfInside && playerInside)
+            {
+                manager.lastTranslocateCollideMsOtherPlayer = Api.World.ElapsedMilliseconds;
+            }
+
+            SimpleParticleProperties currentParticles = active ? 
                 ownBlock.insideParticles : 
                 ownBlock.idleParticles
             ;
@@ -172,27 +187,35 @@ namespace Vintagestory.GameContent
             int r = 53;
             int g = 221;
             int b = 172;
-            currentParticles.color = (r << 16) | (g << 8) | (b << 0) | (50 << 24);
+            currentParticles.Color = (r << 16) | (g << 8) | (b << 0) | (50 << 24);
             
-            currentParticles.addPos.Set(0, 0, 0);
+            currentParticles.AddPos.Set(0, 0, 0);
             currentParticles.BlueEvolve = null;
             currentParticles.RedEvolve = null;
             currentParticles.GreenEvolve = null;
-            currentParticles.minSize = 0.1f;
-            currentParticles.maxSize = 0.2f;
+            currentParticles.MinSize = 0.1f;
+            currentParticles.MaxSize = 0.2f;
             currentParticles.SizeEvolve = null;
             currentParticles.OpacityEvolve = EvolvingNatFloat.create(EnumTransformFunction.LINEAR, 100f);
 
-            double xpos = rndPos.nextFloat();
-            double ypos = 1.9 + Api.World.Rand.NextDouble() * 0.2;
-            double zpos = rndPos.nextFloat();
-
-            currentParticles.lifeLength = GameMath.Sqrt(xpos*xpos + zpos*zpos) / 10;
-            currentParticles.minPos.Set(posvec.X + xpos, posvec.Y + ypos, posvec.Z + zpos);
-            currentParticles.minVelocity.Set(-(float)xpos, -1 - (float)Api.World.Rand.NextDouble()/2, -(float)zpos);
-            currentParticles.minQuantity = playerInside ? 2 : 0.25f;
-            currentParticles.addQuantity = 0;
             
+            particleAngle = active ? particleAngle+5*dt : 0;
+
+            double dx = GameMath.Cos(particleAngle) * 0.35f;
+            double dy = 1.9 + Api.World.Rand.NextDouble() * 0.2;
+            double dz = GameMath.Sin(particleAngle) * 0.35f;
+
+            currentParticles.LifeLength = GameMath.Sqrt(dx*dx + dz*dz) / 10;
+            currentParticles.MinPos.Set(posvec.X + dx, posvec.Y + dy, posvec.Z + dz);
+            currentParticles.MinVelocity.Set(-(float)dx/2, -1 - (float)Api.World.Rand.NextDouble()/2, -(float)dz/2);
+            currentParticles.MinQuantity = active ? 3 : 0.25f;
+            currentParticles.AddVelocity.Set(0, 0, 0);
+            currentParticles.AddQuantity = 0.5f;
+
+            Api.World.SpawnParticles(currentParticles);
+
+            currentParticles.MinPos.Set(posvec.X - dx, posvec.Y + dy, posvec.Z - dz);
+            currentParticles.MinVelocity.Set((float)dx / 2, -1 - (float)Api.World.Rand.NextDouble() / 2, (float)dz / 2);
             Api.World.SpawnParticles(currentParticles);
         }
 
@@ -211,6 +234,12 @@ namespace Vintagestory.GameContent
                 int chunkX = (Pos.X + dx) / sapi.World.BlockAccessor.ChunkSize;
                 int chunkZ = (Pos.Z + dz) / sapi.World.BlockAccessor.ChunkSize;
                 
+                if (!sapi.World.BlockAccessor.IsValidPos(Pos.X + dx, 1, Pos.Z + dz))
+                {
+                    findNextChunk = true;
+                    return;
+                }
+
                 ChunkPeekOptions opts = new ChunkPeekOptions()
                 {
                     OnGenerated = (chunks) => TestForExitPoint(chunks, chunkX, chunkZ),
@@ -405,9 +434,16 @@ namespace Vintagestory.GameContent
 
 
         List<long> toremove = new List<long>();
+        bool somebodyIsTeleporting;
+        bool somebodyDidTeleport;
+
         void HandleTeleporting(float dt)
         { 
             toremove.Clear();
+
+            bool wasTeleporting = somebodyIsTeleporting;
+
+            somebodyIsTeleporting &= tpingEntities.Count > 0;
 
             foreach (var val in tpingEntities)
             {
@@ -419,6 +455,12 @@ namespace Vintagestory.GameContent
                 {
                     toremove.Add(val.Key);
                     continue;
+                }
+
+                if (val.Value.SecondsPassed > 0.1 && !somebodyIsTeleporting)
+                {
+                    somebodyIsTeleporting = true;
+                    MarkDirty();
                 }
 
                 if (val.Value.SecondsPassed > 1.5 && tpLocation != null)
@@ -438,7 +480,7 @@ namespace Vintagestory.GameContent
                     }
                 }
 
-                if (val.Value.SecondsPassed > 5 && tpLocation != null)
+                if (val.Value.SecondsPassed > 2.9 && tpLocation != null)
                 {
                     val.Value.Entity.TeleportTo(tpLocation.ToVec3d().Add(-0.3, 1, -0.3)); // Fugly, need some better exit pos thing
 
@@ -455,7 +497,10 @@ namespace Vintagestory.GameContent
                     toremove.Add(val.Key);
 
                     activated = false;
+                    somebodyIsTeleporting = false;
+                    somebodyDidTeleport = true;
                     
+
                     MarkDirty();
                 }
             }
@@ -463,6 +508,11 @@ namespace Vintagestory.GameContent
             foreach(long entityid in toremove)
             {
                 tpingEntities.Remove(entityid);
+            }
+
+            if (wasTeleporting && !somebodyIsTeleporting)
+            {
+                MarkDirty();
             }
         }
 
@@ -478,6 +528,7 @@ namespace Vintagestory.GameContent
             }
         }
 
+        long somebodyIsTeleportingReceivedTotalMs;
 
         public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
         {
@@ -488,10 +539,24 @@ namespace Vintagestory.GameContent
             findNextChunk = tree.GetBool("findNextChunk", true);
             activated = tree.GetBool("activated");
 
+            somebodyIsTeleporting = tree.GetBool("somebodyIsTeleporting");
+
+            
+
             if (canTeleport) {
                 tpLocation = new BlockPos(tree.GetInt("teleX"), tree.GetInt("teleY"), tree.GetInt("teleZ"));
 
                 if (tpLocation.X == 0 && tpLocation.Z == 0) tpLocation = null; // For safety
+            }
+
+            if (worldAccessForResolve != null && worldAccessForResolve.Side == EnumAppSide.Client)
+            {
+                somebodyIsTeleportingReceivedTotalMs = worldAccessForResolve.ElapsedMilliseconds;
+
+                if (tree.GetBool("somebodyDidTeleport"))
+                {
+                    worldAccessForResolve.PlaySoundAt(new AssetLocation("sounds/effect/translocate-breakdimension"), Pos.X + 0.5f, Pos.Y + 0.5f, Pos.Z + 0.5f, null, false, 16);
+                }
             }
 
             /*if (worldAccessForResolve.Side == EnumAppSide.Server)
@@ -509,6 +574,10 @@ namespace Vintagestory.GameContent
             tree.SetInt("repairState", repairState);
             tree.SetBool("findNextChunk", findNextChunk);
             tree.SetBool("activated", activated);
+            tree.SetBool("somebodyIsTeleporting", somebodyIsTeleporting);
+            tree.SetBool("somebodyDidTeleport", somebodyDidTeleport);
+            somebodyDidTeleport = false;
+                
 
             if (tpLocation != null)
             {

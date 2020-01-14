@@ -25,7 +25,7 @@ namespace Vintagestory.GameContent
         AssetLocation tmpMetal;
         ITexPositionSource tmpTextureSource;
 
-        internal AssetLocation soundLocation = new AssetLocation("sounds/block/ingot");
+        internal AssetLocation soundLocation = new AssetLocation("sounds/block/plate");
 
         public override AssetLocation SoundLocation { get { return soundLocation; } }
         public override string BlockCode { get { return "platepile"; } }

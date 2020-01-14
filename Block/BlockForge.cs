@@ -121,14 +121,13 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override bool OnTryIgniteBlock(EntityAgent byEntity, BlockPos pos, float secondsIgniting, ref EnumHandling handling)
+        public override EnumIgniteState OnTryIgniteBlock(EntityAgent byEntity, BlockPos pos, float secondsIgniting)
         {
             BlockEntityForge bea = byEntity.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityForge;
-            handling = EnumHandling.PreventDefault;
 
             if (bea==null || !bea.CanIgnite)
             {
-                return false;
+                return EnumIgniteState.NotIgnitablePreventDefault;
             }
 
             if (secondsIgniting > 0.25f && (int)(30 * secondsIgniting) % 9 == 1)
@@ -150,7 +149,12 @@ namespace Vintagestory.GameContent
                 props.Quantity.avg = 0;
             }
 
-            return secondsIgniting < 2f;
+            if (secondsIgniting >= 2f)
+            {
+                return EnumIgniteState.IgniteNow;
+            }
+
+            return EnumIgniteState.Ignitable;
         }
 
         public override void OnTryIgniteBlockOver(EntityAgent byEntity, BlockPos pos, float secondsIgniting, ref EnumHandling handling)

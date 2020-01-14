@@ -33,7 +33,7 @@ namespace Vintagestory.GameContent
                 0.25f,
                 EnumParticleModel.Quad
             );
-            smokeHeld.addPos.Set(0.1, 0.1, 0.1);
+            smokeHeld.AddPos.Set(0.1, 0.1, 0.1);
 
             smokePouring = new SimpleParticleProperties(
                 1, 2,
@@ -48,7 +48,7 @@ namespace Vintagestory.GameContent
                 0.75f,
                 EnumParticleModel.Quad
             );
-            smokePouring.addPos.Set(0.3, 0.3, 0.3);
+            smokePouring.AddPos.Set(0.3, 0.3, 0.3);
 
             bigMetalSparks = new SimpleParticleProperties(
                 1, 1,
@@ -60,7 +60,7 @@ namespace Vintagestory.GameContent
                 1f,
                 0.25f, 0.25f
             );
-            bigMetalSparks.glowLevel = 128;
+            bigMetalSparks.VertexFlags = 128;
         }
 
 
@@ -110,7 +110,7 @@ namespace Vintagestory.GameContent
                         .Ahead(0.47f, 0, byEntity.Pos.Yaw + GameMath.PIHALF)
                     ;
 
-                    smokeHeld.minPos = pos.AddCopy(-0.05, -0.05, -0.05);
+                    smokeHeld.MinPos = pos.AddCopy(-0.05, -0.05, -0.05);
                     byEntity.World.SpawnParticles(smokeHeld);
                 } 
             }
@@ -209,17 +209,17 @@ namespace Vintagestory.GameContent
                     ;
                     pos.Y += byEntity.EyeHeight - 0.4f;
 
-                    smokePouring.minPos = pos.AddCopy(-0.15, -0.15, -0.15);
+                    smokePouring.MinPos = pos.AddCopy(-0.15, -0.15, -0.15);
 
                     Vec3d blockpos = blockSel.Position.ToVec3d().Add(0.5, 0.2, 0.5);
 
-                    bigMetalSparks.minQuantity = Math.Max(0.2f, 1 - (secondsUsed - 1) / 4);
+                    bigMetalSparks.MinQuantity = Math.Max(0.2f, 1 - (secondsUsed - 1) / 4);
 
                     if ((int)(30 * secondsUsed) % 7 == 1)
                     {
-                        bigMetalSparks.minPos = pos;
-                        bigMetalSparks.minVelocity.Set(-2, -1, -2);
-                        bigMetalSparks.addVelocity.Set(4, 1, 4);
+                        bigMetalSparks.MinPos = pos;
+                        bigMetalSparks.MinVelocity.Set(-2, -1, -2);
+                        bigMetalSparks.AddVelocity.Set(4, 1, 4);
                         byEntity.World.SpawnParticles(bigMetalSparks, byPlayer);
 
                         byEntity.World.SpawnParticles(smokePouring, byPlayer);
@@ -234,11 +234,11 @@ namespace Vintagestory.GameContent
                     }
 
                     // Metal Spark on the mold
-                    bigMetalSparks.minVelocity.Set(-2, 1, -2);
-                    bigMetalSparks.addVelocity.Set(4, 5, 4);
-                    bigMetalSparks.minPos = blockpos.AddCopy(-0.25, y2 - 2/16f, -0.25);
-                    bigMetalSparks.addPos.Set(0.5, 0, 0.5);
-                    bigMetalSparks.glowLevel = (byte)GameMath.Clamp((int)temp - 770, 48, 128);
+                    bigMetalSparks.MinVelocity.Set(-2, 1, -2);
+                    bigMetalSparks.AddVelocity.Set(4, 5, 4);
+                    bigMetalSparks.MinPos = blockpos.AddCopy(-0.25, y2 - 2/16f, -0.25);
+                    bigMetalSparks.AddPos.Set(0.5, 0, 0.5);
+                    bigMetalSparks.VertexFlags = (byte)GameMath.Clamp((int)temp - 770, 48, 128);
                     byEntity.World.SpawnParticles(bigMetalSparks, byPlayer);
 
                     // Smoke on the mold

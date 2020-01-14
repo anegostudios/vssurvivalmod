@@ -157,7 +157,7 @@ namespace Vintagestory.GameContent
             {
                 invSlot.Itemstack = hotbarSlot.Itemstack.Clone();
                 invSlot.Itemstack.StackSize = 0;
-                Api.World.PlaySoundAt(SoundLocation, Pos.X, Pos.Y, Pos.Z, null, RandomizeSoundPitch);
+                Api.World.PlaySoundAt(SoundLocation, Pos.X, Pos.Y, Pos.Z, null, 0.88f + (float)Api.World.Rand.NextDouble() * 0.24f, 16);
             }
 
             if (invSlot.Itemstack.Equals(Api.World, hotbarSlot.Itemstack, GlobalConstants.IgnoredStackAttributes))
@@ -173,7 +173,7 @@ namespace Vintagestory.GameContent
                     hotbarSlot.OnItemSlotModified(null);
                 }
 
-                Api.World.PlaySoundAt(SoundLocation, Pos.X, Pos.Y, Pos.Z, player, RandomizeSoundPitch);
+                Api.World.PlaySoundAt(SoundLocation, Pos.X, Pos.Y, Pos.Z, player, 0.88f + (float)Api.World.Rand.NextDouble() * 0.24f, 16);
 
                 MarkDirty();
 
@@ -212,7 +212,7 @@ namespace Vintagestory.GameContent
                 Api.World.BlockAccessor.SetBlock(0, Pos);
             }
 
-            Api.World.PlaySoundAt(SoundLocation, Pos.X, Pos.Y, Pos.Z, player, RandomizeSoundPitch);
+            Api.World.PlaySoundAt(SoundLocation, Pos.X, Pos.Y, Pos.Z, player, 0.88f + (float)Api.World.Rand.NextDouble() * 0.24f, 16);
 
             MarkDirty();
 

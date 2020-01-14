@@ -61,6 +61,7 @@ namespace Vintagestory.GameContent
         public ILoadedSound translocatingSound;
         public long lastTeleCollideMsOwnPlayer = 0;
         public long lastTranslocateCollideMsOwnPlayer = 0;
+        public long lastTranslocateCollideMsOtherPlayer = 0;
 
         public override bool ShouldLoad(EnumAppSide side)
         {
@@ -236,18 +237,20 @@ namespace Vintagestory.GameContent
                 if (teleVolume > 0) teleportingSound.Start();
             }
 
-
-
-            if (capi.World.ElapsedMilliseconds - lastTranslocateCollideMsOwnPlayer > 200)
-            {
-                translocVolume = Math.Max(0, translocVolume - 2 * dt);
-                translocPitch = Math.Max(translocPitch - dt, 0.5f);
-            }
-            else
+            
+            bool ownTranslocate = !(capi.World.ElapsedMilliseconds - lastTranslocateCollideMsOwnPlayer > 200);
+            bool otherTranslocate = !(capi.World.ElapsedMilliseconds - lastTranslocateCollideMsOtherPlayer > 200);
+            
+            if (ownTranslocate || otherTranslocate)
             {
                 translocVolume = Math.Min(0.5f, translocVolume + dt / 3);
                 translocPitch = Math.Min(translocPitch + dt / 3, 2.5f);
-                capi.World.ShakeCamera(0.0575f);
+                if (ownTranslocate) capi.World.AddCameraShake(0.0575f);
+            }
+            else
+            {
+                translocVolume = Math.Max(0, translocVolume - 2 * dt);
+                translocPitch = Math.Max(translocPitch - dt, 0.5f);
             }
 
             translocatingSound.SetVolume(translocVolume);
@@ -361,7 +364,7 @@ namespace Vintagestory.GameContent
         private void OnTranslocateClient(DidTeleport networkMessage)
         {
             capi.World.PlaySoundAt(new AssetLocation("sounds/effect/translocate-breakdimension"), 0, 0, 0, null, false);
-            capi.World.ShakeCamera(0.9f);
+            capi.World.AddCameraShake(0.9f);
         }
 
     }

@@ -73,7 +73,7 @@ namespace Vintagestory.GameContent
         IServerNetworkChannel serverChannel;
 
         // Client side data
-        Dictionary<long, Dictionary<int, BlockReinforcement>> reinforcementsByChunk = new Dictionary<long, Dictionary<int, BlockReinforcement>>();
+        //Dictionary<long, Dictionary<int, BlockReinforcement>> reinforcementsByChunk = new Dictionary<long, Dictionary<int, BlockReinforcement>>();
 
         // Both sided data
         Dictionary<string, ReinforcedPrivilegeGrants> privGrantsByOwningPlayerUid = new Dictionary<string, ReinforcedPrivilegeGrants>();
@@ -109,6 +109,7 @@ namespace Vintagestory.GameContent
             api.Event.ServerRunPhase(EnumServerRunPhase.LoadGamePre, addReinforcementBehavior);
             api.Event.SaveGameLoaded += Event_SaveGameLoaded;
             api.Event.GameWorldSave += Event_GameWorldSave;
+            api.Event.PlayerJoin += Event_PlayerJoin;
 
             serverChannel = api.Network
                 .RegisterChannel("blockreinforcement")
@@ -117,6 +118,11 @@ namespace Vintagestory.GameContent
             ;
 
             api.RegisterCommand("bre", "Block reinforcement privilege management", "[grant|revoke|grantgroup|revokegroup] [playername/groupname] [use or all]", onCmd, Privilege.chat);
+        }
+
+        private void Event_PlayerJoin(IServerPlayer byPlayer)
+        {
+            serverChannel?.SendPacket(new PrivGrantsData() { privGrantsByOwningPlayerUid = privGrantsByOwningPlayerUid }, byPlayer);
         }
 
         private void onCmd(IServerPlayer player, int groupId, CmdArgs args)
@@ -198,22 +204,23 @@ namespace Vintagestory.GameContent
 
         private void Event_GameWorldSave()
         {
+            (api as ICoreServerAPI).WorldManager.SaveGame.StoreData("blockreinforcementprivileges", SerializerUtil.Serialize(privGrantsByOwningPlayerUid));
+        }
+
+        private void Event_SaveGameLoaded()
+        {
             byte[] data = (api as ICoreServerAPI).WorldManager.SaveGame.GetData("blockreinforcementprivileges");
             if (data != null)
             {
                 try
                 {
                     privGrantsByOwningPlayerUid = SerializerUtil.Deserialize<Dictionary<string, ReinforcedPrivilegeGrants>>(data);
-                } catch
+                }
+                catch
                 {
                     api.World.Logger.Notification("Unable to load group privileges for the block reinforcement system. Exception thrown when trying to deserialize it. Will be discarded.");
                 }
             }
-        }
-
-        private void Event_SaveGameLoaded()
-        {
-            (api as ICoreServerAPI).WorldManager.SaveGame.StoreData("blockreinforcementprivileges", SerializerUtil.Serialize(privGrantsByOwningPlayerUid));
         }
 
 
@@ -522,6 +529,8 @@ namespace Vintagestory.GameContent
                 grants.PlayerGrants[forPlayerUid] = access;
                 owningPlayer.SendMessage(chatGroupId, Lang.Get("Ok, Privilege for player set."), EnumChatType.CommandSuccess);
             }
+
+            SyncPrivData();
         }
 
         public void SetGroupPrivilege(IServerPlayer owningPlayer, int chatGroupId, string forGroupName, EnumBlockAccessFlags access)
@@ -556,6 +565,8 @@ namespace Vintagestory.GameContent
                 grants.GroupGrants[group.Uid] = access;
                 owningPlayer.SendMessage(chatGroupId, Lang.Get("Ok, Privilege for group set."), EnumChatType.CommandSuccess);
             }
+
+            SyncPrivData();
         }
 
 

@@ -24,7 +24,7 @@ namespace Vintagestory.GameContent
         MeshRef meshref;
         public Matrixf ModelMat = new Matrixf();
 
-        public float Angle;
+        public float AngleRad;
 
         public QuernTopRenderer(ICoreClientAPI coreClientAPI, BlockPos pos, MeshData mesh)
         {
@@ -62,7 +62,7 @@ namespace Vintagestory.GameContent
                 .Identity()
                 .Translate(pos.X - camPos.X, pos.Y - camPos.Y, pos.Z - camPos.Z)
                 .Translate(0.5f, 11f / 16f, 0.5f)
-                .RotateY(Angle * GameMath.DEG2RAD)
+                .RotateY(AngleRad)
                 .Translate(-0.5f, 0, -0.5f)
                 .Values
             ;
@@ -76,12 +76,12 @@ namespace Vintagestory.GameContent
 
             if (ShouldRotateManual)
             {
-                Angle += deltaTime * 40;
+                AngleRad += deltaTime * 40 * GameMath.DEG2RAD;
             } 
 
             if (ShouldRotateAutomated)
             {
-                Angle = GameMath.RAD2DEG * -(mechPowerPart.Angle * (1 - (int)mechPowerPart.GetBaseTurnDirection() * 2));
+                AngleRad = (mechPowerPart.AngleRad * (1 - (int)mechPowerPart.GetInTurnDirection().Rot * 2));
             }
         }
 

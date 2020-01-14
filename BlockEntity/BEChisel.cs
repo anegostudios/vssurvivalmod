@@ -174,7 +174,7 @@ namespace Vintagestory.GameContent
                 IClientWorldAccessor clientWorld = (IClientWorldAccessor)Api.World;
 
                 string prevName = blockName;
-                GuiDialogBlockEntityTextInput dlg = new GuiDialogBlockEntityTextInput(Lang.Get("Block name"), Pos, blockName, Api as ICoreClientAPI);
+                GuiDialogBlockEntityTextInput dlg = new GuiDialogBlockEntityTextInput(Lang.Get("Block name"), Pos, blockName, Api as ICoreClientAPI, 500);
                 dlg.OnTextChanged = (text) => blockName = text;
                 dlg.OnCloseCancel = () => blockName = prevName;
                 dlg.TryOpen();
@@ -227,7 +227,7 @@ namespace Vintagestory.GameContent
             double posz = Pos.Z + voxelPos.Z / 16f;
             Api.World.PlaySoundAt(new AssetLocation("sounds/player/knap" + (Api.World.Rand.Next(2) > 0 ? 1 : 2)), posx, posy, posz, byPlayer, true, 12, 1);
 
-            if (byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
+            if (byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative && Api.World.Rand.Next(2) > 0)
             {
                 itemslot.Itemstack?.Collectible.DamageItem(Api.World, byPlayer.Entity, itemslot);
             }

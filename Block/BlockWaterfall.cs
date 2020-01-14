@@ -46,8 +46,10 @@ namespace Vintagestory.GameContent
         }
 
         public static int ReplacableThreshold = 5000;
-        public override bool ShouldReceiveClientGameTicks(IWorldAccessor world, IPlayer player, BlockPos pos)
+        public override bool ShouldReceiveClientParticleTicks(IWorldAccessor world, IPlayer player, BlockPos pos, out bool isWindAffected)
         {
+            isWindAffected = true;
+
             return
                     pos.Y >= 2 &&
                     world.BlockAccessor.GetBlock(pos.X, pos.Y - 1, pos.Z).Replaceable >= ReplacableThreshold/* &&
@@ -55,28 +57,29 @@ namespace Vintagestory.GameContent
                 ;
         }
 
-        public override void OnClientGameTick(IWorldAccessor world, BlockPos pos, float secondsTicking)
+        public override void OnAsyncClientParticleTick(IAsyncParticleManager manager, BlockPos pos, float windAffectednessAtPos, float secondsTicking)
         {
             if (ParticleProperties != null && ParticleProperties.Length > 0)
             {
                 for (int i = 0; i < 4; i++)
                 {
-                    if (world.Rand.NextDouble() > particleQuantity) continue;
+                    if (api.World.Rand.NextDouble() > particleQuantity) continue;
 
                     BlockFacing facing = BlockFacing.HORIZONTALS[i];
-                    Block block = world.BlockAccessor.GetBlock(pos.X + facing.Normali.X, pos.Y, pos.Z + facing.Normali.Z);
+                    Block block = manager.BlockAccess.GetBlock(pos.X + facing.Normali.X, pos.Y, pos.Z + facing.Normali.Z);
                     if (block.IsLiquid() || block.SideSolid[facing.GetOpposite().Index]) continue;
 
                     AdvancedParticleProperties bps = ParticleProperties[i];
                     bps.basePos.X = pos.X + TopMiddlePos.X;
                     bps.basePos.Y = pos.Y;
                     bps.basePos.Z = pos.Z + TopMiddlePos.Z;
+                    bps.WindAffectednes = windAffectednessAtPos * 0.25f;
 
                     bps.HsvaColor[3].avg = 180 * Math.Min(1, secondsTicking / 7f);
                     bps.Quantity.avg = 1;
                     bps.Velocity[1].avg = -0.4f;
 
-                    world.SpawnParticles(bps);
+                    manager.Spawn(bps);
                 }
             }
         }

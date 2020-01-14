@@ -12,6 +12,7 @@ using Vintagestory.GameContent.Mechanics;
 
 namespace Vintagestory.GameContent
 {
+    
     public class BlockEntityQuern : BlockEntityOpenableContainer
     {
         static SimpleParticleProperties FlourParticles;
@@ -21,29 +22,30 @@ namespace Vintagestory.GameContent
         {
             // 1..20 per tick
             FlourParticles = new SimpleParticleProperties(1, 3, ColorUtil.ToRgba(40, 220, 220, 220), new Vec3d(), new Vec3d(), new Vec3f(-0.25f, -0.25f, -0.25f), new Vec3f(0.25f, 0.25f, 0.25f), 1, 1, 0.1f, 0.3f, EnumParticleModel.Quad);
-            FlourParticles.addPos.Set(1 + 2 / 32f, 0, 1 + 2 / 32f);
-            FlourParticles.addQuantity = 20;
-            FlourParticles.minVelocity.Set(-0.25f, 0, -0.25f);
-            FlourParticles.addVelocity.Set(0.5f, 1, 0.5f);
+            FlourParticles.AddPos.Set(1 + 2 / 32f, 0, 1 + 2 / 32f);
+            FlourParticles.AddQuantity = 20;
+            FlourParticles.MinVelocity.Set(-0.25f, 0, -0.25f);
+            FlourParticles.AddVelocity.Set(0.5f, 1, 0.5f);
             FlourParticles.WithTerrainCollision = true;
-            FlourParticles.model = EnumParticleModel.Cube;
-            FlourParticles.lifeLength = 1.5f;
+            FlourParticles.ParticleModel = EnumParticleModel.Cube;
+            FlourParticles.LifeLength = 1.5f;
             FlourParticles.SizeEvolve = EvolvingNatFloat.create(EnumTransformFunction.QUADRATIC, -0.4f);
 
             // 1..5 per tick
             FlourDustParticles = new SimpleParticleProperties(1, 3, ColorUtil.ToRgba(40, 220, 220, 220), new Vec3d(), new Vec3d(), new Vec3f(-0.25f, -0.25f, -0.25f), new Vec3f(0.25f, 0.25f, 0.25f), 1, 1, 0.1f, 0.3f, EnumParticleModel.Quad);
-            FlourDustParticles.addPos.Set(1 + 2 / 32f, 0, 1 + 2 / 32f);
-            FlourDustParticles.addQuantity = 5;
-            FlourDustParticles.minVelocity.Set(-0.05f, 0, -0.05f);
-            FlourDustParticles.addVelocity.Set(0.1f, 0.2f, 0.1f);
+            FlourDustParticles.AddPos.Set(1 + 2 / 32f, 0, 1 + 2 / 32f);
+            FlourDustParticles.AddQuantity = 5;
+            FlourDustParticles.MinVelocity.Set(-0.05f, 0, -0.05f);
+            FlourDustParticles.AddVelocity.Set(0.1f, 0.2f, 0.1f);
             FlourDustParticles.WithTerrainCollision = false;
-            FlourDustParticles.model = EnumParticleModel.Quad;
-            FlourDustParticles.lifeLength = 1.5f;
+            FlourDustParticles.ParticleModel = EnumParticleModel.Quad;
+            FlourDustParticles.LifeLength = 1.5f;
             FlourDustParticles.SelfPropelled = true;
-            FlourDustParticles.gravityEffect = 0;
+            FlourDustParticles.GravityEffect = 0;
             FlourDustParticles.SizeEvolve = EvolvingNatFloat.create(EnumTransformFunction.QUADRATIC, 0.4f);
             FlourDustParticles.OpacityEvolve = EvolvingNatFloat.create(EnumTransformFunction.QUADRATIC, -16f);
         }
+
 
         ILoadedSound ambientSound;
 
@@ -61,9 +63,11 @@ namespace Vintagestory.GameContent
         
 
         // Server side only
-        List<IPlayer> playersGrinding = new List<IPlayer>();
+        Dictionary<string, long> playersGrinding = new Dictionary<string, long>();
         // Client and serverside
         int quantityPlayersGrinding;
+
+        int nowOutputFace;
 
         #region Getters
 
@@ -88,7 +92,7 @@ namespace Vintagestory.GameContent
         {
             get
             {
-                object value = null;
+                object value;
                 Api.ObjectCache.TryGetValue("quernbasemesh-" + Material, out value);
                 return (MeshData)value;
             }
@@ -163,7 +167,7 @@ namespace Vintagestory.GameContent
                 });
             }
 
-            if (api is ICoreClientAPI)
+            if (api.Side == EnumAppSide.Client)
             {
                 renderer = new QuernTopRenderer(api as ICoreClientAPI, Pos, GenMesh("top"));
                 renderer.mechPowerPart = this.mpc;
@@ -216,6 +220,11 @@ namespace Vintagestory.GameContent
         }
 
 
+        public void IsGrinding(IPlayer byPlayer)
+        {
+            SetPlayerGrinding(byPlayer, true);
+        }
+
         private void Every100ms(float dt)
         {
             float grindSpeed = GrindSpeed;
@@ -229,18 +238,18 @@ namespace Vintagestory.GameContent
                     float flourPartMinQ = 1 * grindSpeed;
                     float flourPartAddQ = 20 * grindSpeed;
 
-                    FlourDustParticles.color = FlourParticles.color = InputStack.Collectible.GetRandomColor(Api as ICoreClientAPI, InputStack);
-                    FlourDustParticles.color &= 0xffffff;
-                    FlourDustParticles.color |= (200 << 24);
-                    FlourDustParticles.minQuantity = dustMinQ;
-                    FlourDustParticles.addQuantity = dustAddQ;
-                    FlourDustParticles.minPos.Set(Pos.X - 1 / 32f, Pos.Y + 11 / 16f, Pos.Z - 1 / 32f);
-                    FlourDustParticles.minVelocity.Set(-0.1f, 0, -0.1f);
-                    FlourDustParticles.addVelocity.Set(0.2f, 0.2f, 0.2f);
+                    FlourDustParticles.Color = FlourParticles.Color = InputStack.Collectible.GetRandomColor(Api as ICoreClientAPI, InputStack);
+                    FlourDustParticles.Color &= 0xffffff;
+                    FlourDustParticles.Color |= (200 << 24);
+                    FlourDustParticles.MinQuantity = dustMinQ;
+                    FlourDustParticles.AddQuantity = dustAddQ;
+                    FlourDustParticles.MinPos.Set(Pos.X - 1 / 32f, Pos.Y + 11 / 16f, Pos.Z - 1 / 32f);
+                    FlourDustParticles.MinVelocity.Set(-0.1f, 0, -0.1f);
+                    FlourDustParticles.AddVelocity.Set(0.2f, 0.2f, 0.2f);
 
-                    FlourParticles.minPos.Set(Pos.X - 1 / 32f, Pos.Y + 11 / 16f, Pos.Z - 1 / 32f);
-                    FlourParticles.addQuantity = flourPartAddQ;
-                    FlourParticles.minQuantity = flourPartMinQ;
+                    FlourParticles.MinPos.Set(Pos.X - 1 / 32f, Pos.Y + 11 / 16f, Pos.Z - 1 / 32f);
+                    FlourParticles.AddQuantity = flourPartAddQ;
+                    FlourParticles.MinQuantity = flourPartMinQ;
 
                     Api.World.SpawnParticles(FlourParticles);
                     Api.World.SpawnParticles(FlourDustParticles);
@@ -275,15 +284,28 @@ namespace Vintagestory.GameContent
 
         private void grindInput()
         {
-            ItemStack grindedStack = InputGrindProps.GrindedStack.ResolvedItemstack;
+            ItemStack grindedStack = InputGrindProps.GroundStack.ResolvedItemstack.Clone();
 
             if (OutputSlot.Itemstack == null)
             {
-                OutputSlot.Itemstack = grindedStack.Clone();
+                OutputSlot.Itemstack = grindedStack;
             }
             else
             {
-                OutputSlot.Itemstack.StackSize += grindedStack.StackSize;
+                int mergableQuantity = OutputSlot.Itemstack.Collectible.GetMergableQuantity(OutputSlot.Itemstack, grindedStack);
+
+                if (mergableQuantity > 0)
+                {
+                    OutputSlot.Itemstack.StackSize += grindedStack.StackSize;
+                } else
+                {
+                    BlockFacing face = BlockFacing.HORIZONTALS[nowOutputFace];
+                    nowOutputFace = (nowOutputFace+1) % 4;
+
+                    Block block = Api.World.BlockAccessor.GetBlock(this.Pos.AddCopy(face));
+                    if (block.Replaceable < 6000) return;
+                    Api.World.SpawnItemEntity(grindedStack, this.Pos.ToVec3d().Add(0.5 + face.Normalf.X * 0.7, 0.75, 0.5 + face.Normalf.Z * 0.7), new Vec3d(face.Normalf.X * 0.02f, 0, face.Normalf.Z * 0.02f));
+                }
             }
 
             InputSlot.TakeOut(1);
@@ -301,6 +323,17 @@ namespace Vintagestory.GameContent
             }
 
             prevInputGrindTime = inputGrindTime;
+
+            
+            foreach (var val in playersGrinding)
+            {
+                long ellapsedMs = Api.World.ElapsedMilliseconds;
+                if (ellapsedMs - val.Value > 1000)
+                {
+                    playersGrinding.Remove(val.Key);
+                    break;
+                }
+            }
         }
 
 
@@ -313,14 +346,11 @@ namespace Vintagestory.GameContent
             {
                 if (playerGrinding)
                 {
-                    if (!playersGrinding.Contains(player))
-                    {
-                        playersGrinding.Add(player);
-                    }
+                    playersGrinding[player.PlayerUID] = Api.World.ElapsedMilliseconds;
                 }
                 else
                 {
-                    playersGrinding.Remove(player);
+                    playersGrinding.Remove(player.PlayerUID);
                 }
 
                 quantityPlayersGrinding = playersGrinding.Count;
@@ -416,11 +446,7 @@ namespace Vintagestory.GameContent
         {
             GrindingProperties grindProps = InputGrindProps;
             if (grindProps == null) return false;
-            if (OutputSlot.Itemstack == null) return true;
-
-            int mergableQuantity = OutputSlot.Itemstack.Collectible.GetMergableQuantity(OutputSlot.Itemstack, grindProps.GrindedStack.ResolvedItemstack);
-
-            return mergableQuantity >= grindProps.GrindedStack.ResolvedItemstack.StackSize;
+            return true;
         }
         
         
@@ -473,6 +499,7 @@ namespace Vintagestory.GameContent
 
 
             inputGrindTime = tree.GetFloat("inputGrindTime");
+            nowOutputFace = tree.GetInt("nowOutputFace");
 
             if (worldForResolving.Side == EnumAppSide.Client)
             {
@@ -480,13 +507,15 @@ namespace Vintagestory.GameContent
 
                 quantityPlayersGrinding = clientIds.Count;
 
-                for (int i = 0; i < playersGrinding.Count; i++)
+                string[] playeruids = playersGrinding.Keys.ToArray();
+
+                foreach (var uid in playeruids)
                 {
-                    IPlayer plr = playersGrinding[i];
+                    IPlayer plr = Api.World.PlayerByUid(uid);
+
                     if (!clientIds.Contains(plr.ClientId))
                     {
-                        playersGrinding.Remove(plr);
-                        i--;
+                        playersGrinding.Remove(uid);
                     } else
                     {
                         clientIds.Remove(plr.ClientId);
@@ -496,12 +525,11 @@ namespace Vintagestory.GameContent
                 for (int i = 0; i < clientIds.Count; i++)
                 {
                     IPlayer plr = worldForResolving.AllPlayers.FirstOrDefault(p => p.ClientId == clientIds[i]);
-                    if (plr != null) playersGrinding.Add(plr);
+                    if (plr != null) playersGrinding.Add(plr.PlayerUID, Api.World.ElapsedMilliseconds);
                 }
                 
                 updateGrindingState();
             }
-            
 
 
             if (Api?.Side == EnumAppSide.Client && clientDialog?.Attributes != null && clientDialog.IsOpened())
@@ -528,7 +556,16 @@ namespace Vintagestory.GameContent
             tree["inventory"] = invtree;
 
             tree.SetFloat("inputGrindTime", inputGrindTime);
-            tree["clientIdsGrinding"] = new IntArrayAttribute(playersGrinding.Select(p => p.ClientId).ToArray());
+			tree.SetInt("nowOutputFace", nowOutputFace);
+            List<int> vals = new List<int>();
+            foreach (var val in playersGrinding)
+            {
+                IPlayer plr = Api.World.PlayerByUid(val.Key);
+                if (plr == null) continue;
+                vals.Add(plr.ClientId);
+            }
+
+            tree["clientIdsGrinding"] = new IntArrayAttribute(vals.ToArray());
         }
 
 
@@ -699,7 +736,7 @@ namespace Vintagestory.GameContent
             {
                 mesher.AddMeshData(
                     this.quernTopMesh.Clone()
-                    .Rotate(new API.MathTools.Vec3f(0.5f, 0.5f, 0.5f), 0, renderer.Angle * GameMath.DEG2RAD, 0)
+                    .Rotate(new API.MathTools.Vec3f(0.5f, 0.5f, 0.5f), 0, renderer.AngleRad * GameMath.DEG2RAD, 0)
                     .Translate(0 / 16f, 11 / 16f, 0 / 16f)
                 );
             }

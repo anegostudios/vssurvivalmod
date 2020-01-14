@@ -133,9 +133,12 @@ namespace Vintagestory.GameContent
 
                     } else
                     {
-                        recipe.TryCraftNow(Api, 0, inputSlots);
-                        MarkDirty(true);
-                        Api.World.BlockAccessor.MarkBlockEntityDirty(Pos);
+                        if (Api?.Side == EnumAppSide.Server)
+                        {
+                            recipe.TryCraftNow(Api, 0, inputSlots);
+                            MarkDirty(true);
+                            Api.World.BlockAccessor.MarkBlockEntityDirty(Pos);
+                        }
                     }
                     
 

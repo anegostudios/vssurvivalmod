@@ -16,7 +16,8 @@ namespace Vintagestory.GameContent
     {
         float remainingSeconds = 0;
         bool lit;
-        
+        string ignitedByPlayerUid;
+
         float blastRadius;
         float injureRadius;
 
@@ -35,11 +36,11 @@ namespace Vintagestory.GameContent
                 new Vec3f(3f, 8f, 3f),
                 0.03f,
                 1f,
-                0.25f, 0.25f,
+                0.05f, 0.15f,
                 EnumParticleModel.Quad
             );
-            smallSparks.glowLevel = 64;
-            smallSparks.addPos.Set(1 / 16f, 0, 1 / 16f);
+            smallSparks.VertexFlags = 255;
+            smallSparks.AddPos.Set(1 / 16f, 0, 1 / 16f);
             smallSparks.SizeEvolve = new EvolvingNatFloat(EnumTransformFunction.LINEAR, -0.05f);
         }
 
@@ -104,7 +105,7 @@ namespace Vintagestory.GameContent
 
                 if (Api.Side == EnumAppSide.Client)
                 {
-                    smallSparks.minPos.Set(Pos.X + 0.45, Pos.Y + 0.5, Pos.Z + 0.45);
+                    smallSparks.MinPos.Set(Pos.X + 0.45, Pos.Y + 0.5, Pos.Z + 0.45);
                     Api.World.SpawnParticles(smallSparks);
                 }
             }
@@ -112,15 +113,35 @@ namespace Vintagestory.GameContent
 
         void Combust(float dt)
         {
+            if (nearToClaimedLand())
+            {
+                Api.World.PlaySoundAt(new AssetLocation("sounds/effect/extinguish"), Pos.X + 0.5, Pos.Y, Pos.Z + 0.5, null, false, 16);
+                lit = false;
+                MarkDirty(true);
+                return;
+            }
+
             Api.World.BlockAccessor.SetBlock(0, Pos);
             ((IServerWorldAccessor)Api.World).CreateExplosion(Pos, BlastType, BlastRadius, InjureRadius);
+        }
+
+        public bool nearToClaimedLand()
+        {
+            int rad = (int)Math.Ceiling(BlastRadius);
+            Cuboidi exploArea = new Cuboidi(Pos.AddCopy(-rad, -rad, -rad), Pos.AddCopy(rad, rad, rad));
+            List<LandClaim> claims = (Api as ICoreServerAPI).WorldManager.SaveGame.LandClaims;
+            for (int i = 0; i < claims.Count; i++)
+            {
+                if (claims[i].Intersects(exploArea)) return true;
+            }
+            return false;
         }
 
         internal void OnBlockExploded(BlockPos pos)
         {
             if (Api.Side == EnumAppSide.Server)
             {
-                if (!lit || remainingSeconds > 0.3)
+                if ((!lit || remainingSeconds > 0.3) && !nearToClaimedLand())
                 {
                     Api.World.RegisterCallback(Combust, 250);
                 }
@@ -140,6 +161,7 @@ namespace Vintagestory.GameContent
             if (Api.Side == EnumAppSide.Client) fuseSound.Start();
             lit = true;
             remainingSeconds = FuseTimeSeconds;
+            ignitedByPlayerUid = byPlayer?.PlayerUID;
             MarkDirty();
         }
 
@@ -148,6 +170,12 @@ namespace Vintagestory.GameContent
             base.FromTreeAtributes(tree, worldForResolving);
             remainingSeconds = tree.GetFloat("remainingSeconds", 0);
             lit = tree.GetInt("lit") > 0;
+            ignitedByPlayerUid = tree.GetString("ignitedByPlayerUid");
+
+            if (!lit && Api?.Side == EnumAppSide.Client)
+            {
+                fuseSound.Stop();
+            }
         }
 
         public override void ToTreeAttributes(ITreeAttribute tree)
@@ -155,6 +183,7 @@ namespace Vintagestory.GameContent
             base.ToTreeAttributes(tree);
             tree.SetFloat("remainingSeconds", remainingSeconds);
             tree.SetInt("lit", lit ? 1 : 0);
+            tree.SetString("ignitedByPlayerUid", ignitedByPlayerUid);
         }
 
 

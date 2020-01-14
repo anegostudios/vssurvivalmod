@@ -71,19 +71,19 @@ namespace VSSurvivalMod.Systems
 
             blackAirParticles = new SimpleParticleProperties()
             {
-                color = ColorUtil.ToRgba(150, 50, 25, 15),
-                model = EnumParticleModel.Quad,
-                minSize = 0.1f,
-                maxSize = 1f,
-                gravityEffect = 0,
-                lifeLength = 1.2f,
+                Color = ColorUtil.ToRgba(150, 50, 25, 15),
+                ParticleModel = EnumParticleModel.Quad,
+                MinSize = 0.1f,
+                MaxSize = 1f,
+                GravityEffect = 0,
+                LifeLength = 1.2f,
                 WithTerrainCollision = false,
                 ShouldDieInLiquid = true,
-                minVelocity = new Vec3f(-5f, 10f, -3f),
-                minQuantity = 1,
-                addQuantity = 0,
+                MinVelocity = new Vec3f(-5f, 10f, -3f),
+                MinQuantity = 1,
+                AddQuantity = 0,
             };
-            blackAirParticles.addVelocity = new Vec3f(0f, 30f, 0);
+            blackAirParticles.AddVelocity = new Vec3f(0f, 30f, 0);
             blackAirParticles.OpacityEvolve = EvolvingNatFloat.create(EnumTransformFunction.QUADRATIC, -8);
 
             api.Event.RegisterRenderer(this, EnumRenderStage.Before, "gameeffects");
@@ -106,9 +106,9 @@ namespace VSSurvivalMod.Systems
 
             api.Event.RegisterGameTickListener(OnServerTick, 20);
 
-            api.RegisterCommand("slomo", "", "", OnCmdSlomoToggleServer, Privilege.controlserver);
-            api.RegisterCommand("glitch", "", "", OnCmdGlitchToggle, Privilege.controlserver);
-            api.RegisterCommand("rain", "", "", OnCmdRainToggle, Privilege.controlserver);
+            //api.RegisterCommand("slomo", "", "", OnCmdSlomoToggleServer, Privilege.controlserver);
+            //api.RegisterCommand("glitch", "", "", OnCmdGlitchToggle, Privilege.controlserver);
+            //api.RegisterCommand("rain", "", "", OnCmdRainToggle, Privilege.controlserver);
 
 
             serverChannel =
@@ -155,10 +155,11 @@ namespace VSSurvivalMod.Systems
         {
             if (capi != null)
             {
+                float b = 0.5f;
                 capi.Ambient.CurrentModifiers["brownrainandfog"] = rainfogAmbient = new AmbientModifier()
                 {
-                    AmbientColor = new WeightedFloatArray(new float[] { 132 / 255f, 115 / 255f, 112f / 255f, 1 }, 0),
-                    FogColor = new WeightedFloatArray(new float[] {132/255f, 115/255f, 112f/255f, 1 }, 0),
+                    AmbientColor = new WeightedFloatArray(new float[] { b*132 / 255f, b * 115 / 255f, b * 112f / 255f, 1 }, 0),
+                    FogColor = new WeightedFloatArray(new float[] { b*132/255f, b * 115 /255f, b * 112f /255f, 1 }, 0),
                     FogDensity = new WeightedFloat(0.035f, 0),
                 }.EnsurePopulated();
             }
@@ -238,9 +239,9 @@ namespace VSSurvivalMod.Systems
                     if (!capi.World.BlockAccessor.IsValidPos(pos)) continue;
 
                     IMapChunk mapchunk = capi.World.BlockAccessor.GetMapChunkAtBlockPos(pos);
-                    position.Y = 0.85 + mapchunk.WorldGenTerrainHeightMap[(pos.Z % chunksize) * chunksize + (pos.X % chunksize)];
 
-                    blackAirParticles.minPos = position;
+                    blackAirParticles.WithTerrainCollision = false;
+                    blackAirParticles.MinPos = position;
                     capi.World.SpawnParticles(blackAirParticles);
                 }
                 
@@ -251,10 +252,12 @@ namespace VSSurvivalMod.Systems
                 warp = 0;
                 secondsPassedSlowGlitchMode += deltaTime;
 
-                if (capi.World.Rand.NextDouble() < 0.02 + secondsPassedSlowGlitchMode / 700)
+                bool wasActive = glitchActive > 0;
+
+                if (capi.World.Rand.NextDouble() < 0.0001 + secondsPassedSlowGlitchMode / 10000.0 && glitchActive <= 0)
                 {
-                    glitchActive = 0.04f + (float)capi.World.Rand.NextDouble() / 4.5f;
-                    capi.World.ShakeCamera(glitchActive * 2.3f * 2);
+                    glitchActive = 0.1f + (float)capi.World.Rand.NextDouble() / 3.5f;
+                    capi.World.AddCameraShake(glitchActive * 1.2f);
                 }
 
                 if (glitchActive > 0)
@@ -268,12 +271,14 @@ namespace VSSurvivalMod.Systems
                     }.EnsurePopulated();
 
                     glitchActive -= deltaTime;
-                    warp = 100;
+                    warp = 100;// + GameMath.Sin(glitchActive/2 % GameMath.TWOPI) * 5;
+                    
                 } else
                 {
                     capi.Ambient.CurrentModifiers.Remove("glitch");
+                    if (wasActive) capi.World.ReduceCameraShake(0.2f);
                 }
-                
+
                 capi.Render.ShaderUniforms.GlobalWorldWarp = warp;
             }
 

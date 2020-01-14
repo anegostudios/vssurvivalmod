@@ -24,6 +24,7 @@ namespace Vintagestory.GameContent
         public Dictionary<string, DepositVariant> depositsByCode = new Dictionary<string, DepositVariant>();
 
         GenRockStrataNew rockStrataGen;
+        GenDeposits depositGen;
         ICoreServerAPI sapi;
         
 
@@ -37,6 +38,11 @@ namespace Vintagestory.GameContent
             rockStrataGen = new GenRockStrataNew();
             rockStrataGen.setApi(sapi);
             rockStrataGen.initWorldGen();
+
+            depositGen = new GenDeposits();
+            depositGen.setApi(sapi);
+            depositGen.initWorldGen();
+
 
             sapi.Event.ServerRunPhase(EnumServerRunPhase.RunGame, () =>
             {
@@ -107,6 +113,9 @@ namespace Vintagestory.GameContent
             rockStrataGen.preLoad(chunks, chunkX, chunkZ);
             rockStrataGen.genBlockColumn(chunks, chunkX, chunkZ, lx, lz);
 
+            depositGen.GeneratePartial(chunks, chunkX, chunkZ, 0, 0);
+
+
             int[] rockColumn = new int[surfaceY];
 
             for (int y = 0; y < surfaceY; y++)
@@ -161,6 +170,8 @@ namespace Vintagestory.GameContent
             public string GameVersionCreated => throw new NotImplementedException();
 
             public bool Disposed => throw new NotImplementedException();
+
+            public bool Empty { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
 
             public void AddEntity(Entity entity)
             {
@@ -354,6 +365,8 @@ namespace Vintagestory.GameContent
 
             List<KeyValuePair<double, string>> readouts = new List<KeyValuePair<double, string>>();
 
+            List<string> traceamounts = new List<string>();
+
             foreach (var val in reg.OreMaps)
             {
                 IntMap map = val.Value;
@@ -375,23 +388,43 @@ namespace Vintagestory.GameContent
                     string pageCode = ppws.pageCodes[val.Key];
                     string text = Lang.Get("propick-reading", Lang.Get(names[(int)GameMath.Clamp(totalFactor * 7.5f, 0, 5)]), pageCode, Lang.Get("ore-"+val.Key), ppt.ToString("0.#"));
                     readouts.Add(new KeyValuePair<double, string>(totalFactor, text));
+                } else if (totalFactor > 0.002)
+                {
+                    traceamounts.Add(val.Key);
                 }
             }
 
-            string outtext;
+            StringBuilder sb = new StringBuilder();
+
             IServerPlayer splr = byPlayer as IServerPlayer;
-            if (readouts.Count == 0) outtext = Lang.Get("propick-noreading");
-            else
+            if (readouts.Count >= 0 || traceamounts.Count > 0)
             {
                 var elems = readouts.OrderByDescending(val => val.Key);
-                StringBuilder sb = new StringBuilder();
+                
                 sb.AppendLine(Lang.Get("propick-reading-title", readouts.Count));
                 foreach (var elem in elems) sb.AppendLine(elem.Value);
 
-                outtext = sb.ToString();
-                
+                if (traceamounts.Count > 0)
+                {
+                    sb.Append(Lang.Get("Miniscule amounts of "));
+                    int i = 0;
+                    foreach (var val in traceamounts)
+                    {
+                        if (i > 0) sb.Append(", ");
+                        string pageCode = ppws.pageCodes[val];
+                        string text = Lang.Get("<a href=\"handbook://{0}\">{1}</a>", pageCode, Lang.Get("ore-" + val));
+                        sb.Append(text);
+                        i++;
+                    }
+                    sb.AppendLine();
+                }
             }
-            splr.SendMessage(GlobalConstants.InfoLogChatGroup, outtext.ToString(), EnumChatType.Notification);
+            else
+            {
+                sb.Append(Lang.Get("propick-noreading"));
+            }
+
+            splr.SendMessage(GlobalConstants.InfoLogChatGroup, sb.ToString(), EnumChatType.Notification);
         }
 
 

@@ -43,7 +43,7 @@ namespace Vintagestory.GameContent
             if (Api.World.Rand.NextDouble() > 0.5)
             {
                 Vec3d pos = this.Pos.ToVec3d().Add(0.45, 0.44, 0.45);
-                BlockSmeltedContainer.smokeHeld.minPos = pos;
+                BlockSmeltedContainer.smokeHeld.MinPos = pos;
                 Api.World.SpawnParticles(BlockSmeltedContainer.smokeHeld);
             }
         }

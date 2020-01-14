@@ -148,22 +148,22 @@ namespace Vintagestory.GameContent
                     {
                         Api.World.SpawnParticles(new SimpleParticleProperties()
                         {
-                            minQuantity = 1,
-                            addQuantity = 2,
-                            color = BaseMaterial.Collectible.GetRandomColor(Api as ICoreClientAPI, BaseMaterial),
-                            minPos = new Vec3d(lastRemovedLocalPos.X, lastRemovedLocalPos.Y + 1 / 16f + 0.01f, lastRemovedLocalPos.Z),
-                            addPos = new Vec3d(1 / 16f, 0.01f, 1 / 16f),
-                            minVelocity = new Vec3f(0, 1, 0),
-                            addVelocity = new Vec3f(
+                            MinQuantity = 1,
+                            AddQuantity = 2,
+                            Color = BaseMaterial.Collectible.GetRandomColor(Api as ICoreClientAPI, BaseMaterial),
+                            MinPos = new Vec3d(lastRemovedLocalPos.X, lastRemovedLocalPos.Y + 1 / 16f + 0.01f, lastRemovedLocalPos.Z),
+                            AddPos = new Vec3d(1 / 16f, 0.01f, 1 / 16f),
+                            MinVelocity = new Vec3f(0, 1, 0),
+                            AddVelocity = new Vec3f(
                                 4 * ((float)rnd.NextDouble() - 0.5f),
                                 1 * ((float)rnd.NextDouble() - 0.5f),
                                 4 * ((float)rnd.NextDouble() - 0.5f)
                             ),
-                            lifeLength = 0.2f,
-                            gravityEffect = 1f,
-                            minSize = 0.1f,
-                            maxSize = 0.4f,
-                            model = EnumParticleModel.Cube,
+                            LifeLength = 0.2f,
+                            GravityEffect = 1f,
+                            MinSize = 0.1f,
+                            MaxSize = 0.4f,
+                            ParticleModel = EnumParticleModel.Cube,
                             SizeEvolve = new EvolvingNatFloat(EnumTransformFunction.LINEAR, -0.15f)
                         });
                     }
@@ -315,7 +315,7 @@ namespace Vintagestory.GameContent
 
 
 
-        void RegenMeshAndSelectionBoxes()
+        public void RegenMeshAndSelectionBoxes()
         {
             if (workitemRenderer != null && BaseMaterial != null)
             {

@@ -8,6 +8,11 @@ namespace Vintagestory.GameContent
 {
     public class BlockShelf : Block
     {
+        public override void OnLoaded(ICoreAPI api)
+        {
+            base.OnLoaded(api);
+            // Todo: Add interaction help
+        }
 
         public override bool DoParticalSelection(IWorldAccessor world, BlockPos pos)
         {

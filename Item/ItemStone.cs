@@ -122,7 +122,7 @@ namespace Vintagestory.GameContent
                 {
                     if (api.Side == EnumAppSide.Client)
                     {
-                        (api as ICoreClientAPI).TriggerIngameError(this, "cantplace", error);
+                        (api as ICoreClientAPI).TriggerIngameError(this, "cantplace", Lang.Get("placefailure-" + error));
                     }
                     return;
                 }

@@ -32,8 +32,8 @@ namespace Vintagestory.GameContent
                 0.25f, 0.25f,
                 EnumParticleModel.Quad
             );
-            smallMetalSparks.glowLevel = 128;
-            smallMetalSparks.addPos.Set(1 / 16f, 0, 1 / 16f);
+            smallMetalSparks.VertexFlags = 128;
+            smallMetalSparks.AddPos.Set(1 / 16f, 0, 1 / 16f);
             smallMetalSparks.SizeEvolve = new EvolvingNatFloat(EnumTransformFunction.LINEAR, -0.05f);
 
 
@@ -47,8 +47,8 @@ namespace Vintagestory.GameContent
                 1f,
                 0.25f, 0.25f
             );
-            bigMetalSparks.glowLevel = 128;
-            bigMetalSparks.addPos.Set(1 / 16f, 0, 1 / 16f);
+            bigMetalSparks.VertexFlags = 128;
+            bigMetalSparks.AddPos.Set(1 / 16f, 0, 1 / 16f);
             bigMetalSparks.SizeEvolve = new EvolvingNatFloat(EnumTransformFunction.LINEAR, -0.25f);
         }
 
@@ -318,20 +318,20 @@ namespace Vintagestory.GameContent
             {
                 if (temp > 800)
                 {
-                    bigMetalSparks.minPos = Pos.ToVec3d().AddCopy(voxelPos.X / 16f, voxelPos.Y / 16f + 0.0625f, voxelPos.Z / 16f);
-                    bigMetalSparks.glowLevel = (byte)GameMath.Clamp((int)(temp - 770) / 3, 32, 128);
+                    bigMetalSparks.MinPos = Pos.ToVec3d().AddCopy(voxelPos.X / 16f, voxelPos.Y / 16f + 0.0625f, voxelPos.Z / 16f);
+                    bigMetalSparks.VertexFlags = (byte)GameMath.Clamp((int)(temp - 770) / 3, 32, 128);
                     byPlayer.Entity.World.SpawnParticles(bigMetalSparks, byPlayer);
 
-                    smallMetalSparks.minPos = Pos.ToVec3d().AddCopy(voxelPos.X / 16f, voxelPos.Y / 16f + 0.0625f, voxelPos.Z / 16f);
-                    smallMetalSparks.glowLevel = (byte)GameMath.Clamp((int)(temp - 770) / 3, 32, 128);
-                    smallMetalSparks.model = EnumParticleModel.Quad;
-                    smallMetalSparks.lifeLength = 0.03f;
-                    smallMetalSparks.minVelocity = new Vec3f(-1f, 1f, -1f);
-                    smallMetalSparks.addVelocity = new Vec3f(2f, 2f, 2f);
-                    smallMetalSparks.minQuantity = 4;
-                    smallMetalSparks.addQuantity = 6;
-                    smallMetalSparks.minSize = 0.1f;
-                    smallMetalSparks.maxSize = 0.1f;
+                    smallMetalSparks.MinPos = Pos.ToVec3d().AddCopy(voxelPos.X / 16f, voxelPos.Y / 16f + 0.0625f, voxelPos.Z / 16f);
+                    smallMetalSparks.VertexFlags = (byte)GameMath.Clamp((int)(temp - 770) / 3, 32, 128);
+                    smallMetalSparks.ParticleModel = EnumParticleModel.Quad;
+                    smallMetalSparks.LifeLength = 0.03f;
+                    smallMetalSparks.MinVelocity = new Vec3f(-1f, 1f, -1f);
+                    smallMetalSparks.AddVelocity = new Vec3f(2f, 2f, 2f);
+                    smallMetalSparks.MinQuantity = 4;
+                    smallMetalSparks.AddQuantity = 6;
+                    smallMetalSparks.MinSize = 0.1f;
+                    smallMetalSparks.MaxSize = 0.1f;
                     smallMetalSparks.SizeEvolve = new EvolvingNatFloat(EnumTransformFunction.LINEAR, -0.1f);
                     byPlayer.Entity.World.SpawnParticles(smallMetalSparks, byPlayer);
                 }

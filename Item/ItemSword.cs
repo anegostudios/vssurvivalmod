@@ -71,7 +71,7 @@ namespace Vintagestory.GameContent
                 {
                     world.TryAttackEntity(entitySel);
                     byEntity.Attributes.SetInt("didattack", 1);
-                    world.ShakeCamera(0.25f);
+                    world.AddCameraShake(0.25f);
                 }
             }
 

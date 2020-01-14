@@ -105,14 +105,16 @@ namespace Vintagestory.GameContent
             if (be is BlockEntityPlatePile)
             {
                 BlockEntityPlatePile pile = (BlockEntityPlatePile)be;
-                pile.inventory[0].Itemstack = (ItemStack)slot.Itemstack.Clone();
-                pile.inventory[0].Itemstack.StackSize = 1;
+                int q = player.Entity.Controls.Sprint ? pile.BulkTakeQuantity : pile.DefaultTakeQuantity;
 
-                if (player.WorldData.CurrentGameMode != EnumGameMode.Creative) slot.TakeOut(player.Entity.Controls.Sprint ? pile.BulkTakeQuantity : pile.DefaultTakeQuantity);
+                pile.inventory[0].Itemstack = (ItemStack)slot.Itemstack.Clone();
+                pile.inventory[0].Itemstack.StackSize = Math.Min(slot.StackSize, q);
+
+                if (player.WorldData.CurrentGameMode != EnumGameMode.Creative) slot.TakeOut(q);
                 
                 pile.MarkDirty(true);
                 
-                world.PlaySoundAt(new AssetLocation("sounds/block/ingot"), pos.X, pos.Y, pos.Z, player, false);
+                world.PlaySoundAt(new AssetLocation("sounds/block/plate"), pos.X, pos.Y, pos.Z, player, false);
             }
 
             return true;
@@ -125,7 +127,7 @@ namespace Vintagestory.GameContent
             if (!belowBlock.SideSolid[BlockFacing.UP.Index] && (belowBlock != this || FillLevel(world.BlockAccessor, pos.DownCopy()) < 8))
             {
                 world.BlockAccessor.BreakBlock(pos, null);
-                //world.PlaySoundAt(new AssetLocation("sounds/block/ingot"), pos.X, pos.Y, pos.Z, null, false);
+                //world.PlaySoundAt(new AssetLocation("sounds/block/plate"), pos.X, pos.Y, pos.Z, null, false);
             }
         }
 
@@ -143,7 +145,14 @@ namespace Vintagestory.GameContent
                     GetMatchingStacks = (wi, bs, es) =>
                     {
                         BlockEntityPlatePile pile = world.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityPlatePile;
-                        return pile != null && pile.MaxStackSize > pile.inventory[0].StackSize ? new ItemStack[] { pile.inventory[0].Itemstack } : null;
+                        if (pile != null && !pile.inventory[0].Empty && pile.MaxStackSize > pile.inventory[0].StackSize)
+                        {
+                            ItemStack stack = pile.inventory[0].Itemstack.Clone();
+                            
+                            stack.StackSize = 1;
+                            return new ItemStack[] { stack };
+                        }
+                        return  null;
                     }
                 },
                 new WorldInteraction()
@@ -161,7 +170,15 @@ namespace Vintagestory.GameContent
                     GetMatchingStacks = (wi, bs, es) =>
                     {
                         BlockEntityPlatePile pile = world.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityPlatePile;
-                        return pile != null && pile.MaxStackSize > pile.inventory[0].StackSize ? new ItemStack[] { pile.inventory[0].Itemstack } : null;
+
+                        if (pile != null && !pile.inventory[0].Empty && pile.MaxStackSize > pile.inventory[0].StackSize)
+                        {
+                            ItemStack stack = pile.inventory[0].Itemstack.Clone();
+                            
+                            stack.StackSize = pile.BulkTakeQuantity;
+                            return new ItemStack[] { stack };
+                        }
+                        return  null;
                     }
                 },
                 new WorldInteraction()

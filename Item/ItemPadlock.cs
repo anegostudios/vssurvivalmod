@@ -55,12 +55,21 @@ namespace Vintagestory.GameContent
 
                 IPlayer player = (byEntity as EntityPlayer).Player;
 
+                if (!modBre.IsReinforced(blockSel.Position))
+                {
+                    (byEntity.World.Api as ICoreClientAPI)?.TriggerIngameError(this, "cannotlock", Lang.Get("ingameerror-cannotlock-notreinforced"));
+                    return;
+                }
+
                 if (!modBre.TryLock(blockSel.Position, player, this.Code.ToString()))
                 {
                     (byEntity.World.Api as ICoreClientAPI)?.TriggerIngameError(this, "cannotlock", Lang.Get("ingameerror-cannotlock"));
                 } else
                 {
-                    (byEntity.World.Api as ICoreClientAPI)?.ShowChatMessage(Lang.Get("lockapplied"));
+                    //(byEntity.World.Api as ICoreClientAPI)?.ShowChatMessage(Lang.Get("lockapplied"));
+                    api.World.PlaySoundAt(new AssetLocation("sounds/tool/padlock.ogg"), player, player, false, 12);
+
+
                     slot.TakeOut(1);
                     slot.MarkDirty();
                 }

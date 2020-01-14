@@ -96,7 +96,7 @@ namespace Vintagestory.GameContent
         internal bool Construct(ItemSlot slot, IWorldAccessor world, BlockPos pos, IPlayer player)
         {
             Block belowBlock = world.BlockAccessor.GetBlock(pos.DownCopy());
-            if (!belowBlock.SideSolid[BlockFacing.UP.Index] && (belowBlock != this || FillLevel(world.BlockAccessor, pos.DownCopy()) != 48)) return false;
+            if (!belowBlock.SideSolid[BlockFacing.UP.Index] && (belowBlock != this || FillLevel(world.BlockAccessor, pos.DownCopy()) != 16)) return false;
 
             if (!world.BlockAccessor.GetBlock(pos).IsReplacableBy(this)) return false;
 
@@ -123,9 +123,13 @@ namespace Vintagestory.GameContent
         public override void OnNeighourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
         {
             Block belowBlock = world.BlockAccessor.GetBlock(pos.DownCopy());
-            if (!belowBlock.SideSolid[BlockFacing.UP.Index] && (belowBlock != this || FillLevel(world.BlockAccessor, pos.DownCopy()) < 48))
+            if (!belowBlock.SideSolid[BlockFacing.UP.Index])
             {
-                world.BlockAccessor.BreakBlock(pos, null);
+                int level = FillLevel(world.BlockAccessor, pos.DownCopy());
+                if (belowBlock != this || level < 16)
+                {
+                    world.BlockAccessor.BreakBlock(pos, null);
+                }
                 //world.PlaySoundAt(new AssetLocation("sounds/block/ingot"), pos.X, pos.Y, pos.Z, null, false);
             }
         }
@@ -144,7 +148,11 @@ namespace Vintagestory.GameContent
                     GetMatchingStacks = (wi, bs, es) =>
                     {
                         BlockEntityPlankPile pile = world.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityPlankPile;
-                        return pile != null && pile.MaxStackSize > pile.inventory[0].StackSize ? new ItemStack[] { pile.inventory[0].Itemstack } : null;
+                        ItemStack stack = pile?.inventory[0].Itemstack?.Clone();
+                        if (stack == null) return null;
+
+                        stack.StackSize = pile.BulkTakeQuantity;
+                        return pile != null && pile.MaxStackSize > pile.inventory[0].StackSize ? new ItemStack[] { stack } : null;
                     }
                 },
                 new WorldInteraction()
@@ -162,7 +170,12 @@ namespace Vintagestory.GameContent
                     GetMatchingStacks = (wi, bs, es) =>
                     {
                         BlockEntityPlankPile pile = world.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityPlankPile;
-                        return pile != null && pile.MaxStackSize > pile.inventory[0].StackSize ? new ItemStack[] { pile.inventory[0].Itemstack } : null;
+                        ItemStack stack = pile?.inventory[0].Itemstack?.Clone();
+                        if (stack == null) return null;
+
+                        stack.StackSize = pile.BulkTakeQuantity;
+
+                        return pile != null && pile.MaxStackSize > pile.inventory[0].StackSize ? new ItemStack[] { stack } : null;
                     }
                 },
                 new WorldInteraction()

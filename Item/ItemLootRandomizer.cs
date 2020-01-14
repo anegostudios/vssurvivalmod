@@ -36,8 +36,6 @@ namespace Vintagestory.GameContent
         {
             base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
 
-            float[] chances = new float[10];
-            ItemStack[] stacks = new ItemStack[10];
             int i = 0;
 
             foreach (var val in inSlot.Itemstack.Attributes)
@@ -57,9 +55,9 @@ namespace Vintagestory.GameContent
 
         }
 
-        internal void ResolveLoot(ItemSlot slot, InventoryBase inventory, IWorldAccessor worldForResolve)
+        internal void ResolveLoot(ItemSlot slot, IWorldAccessor worldForResolve)
         {
-            object dval = null;
+            object dval;
             worldForResolve.Api.ObjectCache.TryGetValue("donotResolveImports", out dval);
             if (dval is bool && (bool)dval) return;
 
@@ -80,9 +78,17 @@ namespace Vintagestory.GameContent
 
                 if (chance > diceRoll)
                 {
-                    ItemStack cstack = subtree.GetItemstack("stack");
-                    cstack.ResolveBlockOrItem(worldForResolve);
-                    slot.Itemstack = cstack;
+                    ItemStack cstack = subtree.GetItemstack("stack").Clone();
+
+                    // A items and blocks ItemStackAttributes already has the FixMapping applied to them during Collectible.OnLoadCollectibleMappings(), so we only need to check if the collectible is set or not
+                    if (cstack.Collectible != null)
+                    {
+                        cstack.ResolveBlockOrItem(worldForResolve);
+                        slot.Itemstack = cstack;
+                    } else
+                    {
+                        slot.Itemstack = null;
+                    }
                     return;
                 }
 

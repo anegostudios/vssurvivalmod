@@ -80,6 +80,7 @@ namespace Vintagestory.GameContent
         protected GuiDialogSpawner dlg;
         protected CollisionTester collisionTester = new CollisionTester();
 
+        protected bool requireSpawnOnWallSide;
         public BlockEntitySpawner()
         {
 
@@ -143,13 +144,22 @@ namespace Vintagestory.GameContent
                 Y2 = type.HitBoxSize.Y
             }.OmniNotDownGrowBy(0.1f);
 
+            Cuboidf collisionBox2 = new Cuboidf()
+            {
+                X1 = -type.HitBoxSize.X / 2,
+                Z1 = -type.HitBoxSize.X / 2,
+                X2 = type.HitBoxSize.X / 2,
+                Z2 = type.HitBoxSize.X / 2,
+                Y2 = type.HitBoxSize.Y
+            };
+
             int q = Data.GroupSize;
             long herdId = 0;
+            Vec3d spawnPos = new Vec3d();
+            BlockPos spawnBlockPos = new BlockPos();
 
             while (q-- > 0)
             {
-
-                Vec3d spawnPos = new Vec3d();
                 for (int tries = 0; tries < 15; tries++)
                 {
                     spawnPos.Set(Pos).Add(
@@ -160,6 +170,52 @@ namespace Vintagestory.GameContent
 
                     if (!collisionTester.IsColliding(Api.World.BlockAccessor, collisionBox, spawnPos, false))
                     {
+                        if (requireSpawnOnWallSide)
+                        {
+                            bool haveWall = false;
+                            for (int i = 0; !haveWall && i < BlockFacing.ALLFACES.Length; i++)
+                            {
+                                BlockFacing face = BlockFacing.ALLFACES[i];
+
+                                spawnBlockPos.Set(spawnPos).Add(face.Normali);
+                                haveWall = Api.World.BlockAccessor.GetBlock(spawnBlockPos).SideSolid[face.GetOpposite().Index];
+                                if (haveWall)
+                                {
+                                    Cuboidd entityPos = collisionBox2.ToDouble().Translate(spawnPos);
+                                    Cuboidd blockPos = Cuboidf.Default().ToDouble().Translate(spawnBlockPos);
+                                    /// North: Negative Z
+                                    /// East: Positive X
+                                    /// South: Positive Z
+                                    /// West: Negative X
+                                    /// Up: Positive Y
+                                    /// Down: Negative Y
+                                    
+                                    switch (face.Index)
+                                    {
+                                        case 0:// BlockFacing.NORTH.Index:
+                                            spawnPos.Z -= blockPos.Z2 - entityPos.Z1 + 0.01f;
+                                            break;
+                                        case 1: // BlockFacing.EAST.Index:
+                                            spawnPos.X += blockPos.X1 - entityPos.X2 - 0.01f;
+                                            break;
+                                        case 2: // BlockFacing.SOUTH.Index:
+                                            spawnPos.Z += blockPos.Z1 - entityPos.Z2 - 0.01f;
+                                            break;
+                                        case 3: // BlockFacing.WEST.Index:
+                                            spawnPos.X -= blockPos.X2 - entityPos.X1 + 0.01f;
+                                            break;
+                                        case 4: // BlockFacing.UP.Index:
+                                            spawnPos.Y += blockPos.Y1 - entityPos.Y2 - 0.01f;
+                                            break;
+                                        case 5: // BlockFacing.DOWN.Index:
+                                            spawnPos.Y -= blockPos.Y2 - entityPos.Y1 + 0.01f;
+                                            break;
+                                    }
+                                }
+                            }
+                            if (!haveWall) continue;
+                        }
+
                         if (herdId == 0) herdId = GetNextHerdId();
 
                         DoSpawn(type, spawnPos, herdId);

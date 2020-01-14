@@ -15,6 +15,15 @@ namespace Vintagestory.GameContent
 
         bool isBuyingSlot;
 
+        public override bool DrawUnavailable
+        {
+            get
+            {
+                return TradeItem?.Stock == 0;
+            }
+            set { }
+        }
+
         public void SetTradeItem(ResolvedTradeItem tradeItem)
         {
             this.TradeItem = tradeItem;

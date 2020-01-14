@@ -63,8 +63,7 @@ namespace Vintagestory.GameContent
 
         protected override ItemSlot NewSlot(int i)
         {
-            if (i == 0) return new ItemSlotSurvival(this);
-            return new ItemSlotOutput(this);
+            return new ItemSlotSurvival(this);
         }
     }
 }
