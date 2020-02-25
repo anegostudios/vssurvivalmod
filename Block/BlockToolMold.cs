@@ -1,11 +1,14 @@
-﻿using System;
+﻿using Newtonsoft.Json.Linq;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
@@ -19,6 +22,57 @@ namespace Vintagestory.GameContent
         {
             if (api.Side != EnumAppSide.Client) return;
             ICoreClientAPI capi = api as ICoreClientAPI;
+
+            string createdByText = "metalmolding";
+            if (Attributes?["createdByText"].Exists == true)
+            {
+                createdByText = Attributes["createdByText"].AsString();
+            }
+
+            if (Attributes?["drop"].Exists == true)
+            {
+                JsonItemStack ojstack = Attributes["drop"].AsObject<JsonItemStack>();
+                if (ojstack != null)
+                {
+                    MetalProperty metals = api.Assets.TryGet("worldproperties/block/metal.json").ToObject<MetalProperty>();
+                    for (int i = 0; i < metals.Variants.Length; i++)
+                    {
+                        string metaltype = metals.Variants[i].Code.Path;
+                        string tooltype = LastCodePart();
+                        JsonItemStack jstack = ojstack.Clone();
+                        jstack.Code.Path = jstack.Code.Path.Replace("{tooltype}", tooltype).Replace("{metal}", metaltype);
+
+                        CollectibleObject collObj;
+
+                        if (jstack.Type == EnumItemClass.Block)
+                        {
+                            collObj = api.World.GetBlock(jstack.Code);
+                        }
+                        else
+                        {
+                            collObj = api.World.GetItem(jstack.Code);
+                        }
+
+                        if (collObj == null) continue;
+
+                        JToken token;
+
+                        if (collObj.Attributes?["handbook"].Exists != true)
+                        {
+                            if (collObj.Attributes == null) collObj.Attributes = new JsonObject(JToken.Parse("{ handbook: {} }"));
+                            else
+                            {
+                                token = collObj.Attributes.Token;
+                                token["handbook"] = JToken.Parse("{ }");
+                            }
+                        }
+
+                        token = collObj.Attributes["handbook"].Token;
+                        token["createdBy"] = JToken.FromObject(createdByText);
+                    }
+                }
+            }
+
 
             interactions = ObjectCacheUtil.GetOrCreate(api, "toolmoldBlockInteractions", () =>
             {
@@ -125,7 +179,7 @@ namespace Vintagestory.GameContent
 
             Block belowBlock = world.BlockAccessor.GetBlock(blockSel.Position.DownCopy());
 
-            if (belowBlock.SideSolid[BlockFacing.UP.Index])
+            if (belowBlock.CanAttachBlockAt(world.BlockAccessor, this, blockSel.Position, BlockFacing.UP))
             {
                 DoPlaceBlock(world, byPlayer, blockSel, itemstack);
                 return true;

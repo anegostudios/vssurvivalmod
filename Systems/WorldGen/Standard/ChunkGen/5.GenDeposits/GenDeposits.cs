@@ -68,6 +68,10 @@ namespace Vintagestory.ServerMods
 
         public override void initWorldGen()
         {
+            this.initWorldGen(true);
+        }
+
+        public void initWorldGen(bool blockCallbacks) {
             base.initWorldGen();
 
             chanceMultiplier = api.Assets.Get("worldgen/deposits.json").ToObject<Deposits>().ChanceMultiplier;
@@ -81,6 +85,8 @@ namespace Vintagestory.ServerMods
                 foreach (var depo in val.Value)
                 {
                     depo.fromFile = val.Key.ToString();
+                    depo.WithBlockCallback &= blockCallbacks;
+
                     variants.Add(depo);
 
                     if (depo.ChildDeposits != null)
@@ -89,6 +95,7 @@ namespace Vintagestory.ServerMods
                         {
                             childdepo.fromFile = val.Key.ToString();
                             childdepo.parentDeposit = depo;
+                            childdepo.WithBlockCallback &= blockCallbacks;
                         }
                     }
                 }
@@ -191,6 +198,8 @@ namespace Vintagestory.ServerMods
 
             subDepositsToPlace.Clear();
 
+            float qfac = chunks.Length / 8f;
+
             for (int i = 0; i < Deposits.Length; i++)
             {
                 DepositVariant variant = Deposits[i];
@@ -202,7 +211,7 @@ namespace Vintagestory.ServerMods
 
                 float quantityFactor = variant.WithOreMap ? variant.GetOreMapFactor(fromChunkx, fromChunkz) : 1;
 
-                float qModified = variant.TriesPerChunk * quantityFactor * chanceMultiplier;
+                float qModified = qfac * variant.TriesPerChunk * quantityFactor * chanceMultiplier;
                 int quantity = (int)qModified;
                 quantity += chunkRand.NextInt(100) < 100 * (qModified - quantity) ? 1 : 0;
                 

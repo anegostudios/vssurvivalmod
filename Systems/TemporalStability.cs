@@ -85,39 +85,39 @@ namespace Vintagestory.GameContent
 
             texts = new Dictionary<EnumTempStormStrength, TemporalStormText>()
             {
-                { EnumTempStormStrength.Light, new TemporalStormText() { Approaching = Lang.Get("A light temporal storm is approaching"), Imminent = Lang.Get("A light temporal storm is imminent"), Waning = Lang.Get("The storm seems to be waning") } },
-                { EnumTempStormStrength.Medium, new TemporalStormText() { Approaching = Lang.Get("A medium temporal storm is approaching"), Imminent = Lang.Get("A medium temporal storm is imminent"), Waning = Lang.Get("The storm seems to be waning") } },
-                { EnumTempStormStrength.Heavy, new TemporalStormText() { Approaching = Lang.Get("A heavy temporal storm is approaching"), Imminent = Lang.Get("A heavy temporal storm is imminent"), Waning = Lang.Get("The storm seems to be waning") } },
+                { EnumTempStormStrength.Light, new TemporalStormText() { Approaching = Lang.Get("A light temporal storm is approaching"), Imminent = Lang.Get("A light temporal storm is imminent"), Waning = Lang.Get("The temporal storm seems to be waning") } },
+                { EnumTempStormStrength.Medium, new TemporalStormText() { Approaching = Lang.Get("A medium temporal storm is approaching"), Imminent = Lang.Get("A medium temporal storm is imminent"), Waning = Lang.Get("The temporal storm seems to be waning") } },
+                { EnumTempStormStrength.Heavy, new TemporalStormText() { Approaching = Lang.Get("A heavy temporal storm is approaching"), Imminent = Lang.Get("A heavy temporal storm is imminent"), Waning = Lang.Get("The temporal storm seems to be waning") } },
             };
 
             configs = new Dictionary<string, TemporalStormConfig>()
             {
                 {  "veryrare", new TemporalStormConfig() {
-                    Frequency = NatFloat.create(EnumDistribution.UNIFORM, 45, 15),
+                    Frequency = NatFloat.create(EnumDistribution.UNIFORM, 30, 5),
                     StrengthIncrease = 2.5f/100,
                     StrengthIncreaseCap = 25f/100
                 } },
 
                 {  "rare", new TemporalStormConfig() {
-                    Frequency = NatFloat.create(EnumDistribution.UNIFORM, 30, 5),
+                    Frequency = NatFloat.create(EnumDistribution.UNIFORM, 25, 5),
                     StrengthIncrease = 5f/100,
                     StrengthIncreaseCap = 50f/100
                 } },
 
                 {  "sometimes", new TemporalStormConfig() {
-                    Frequency = NatFloat.create(EnumDistribution.UNIFORM, 25, 5),
+                    Frequency = NatFloat.create(EnumDistribution.UNIFORM, 15, 5),
                     StrengthIncrease = 10f/100,
                     StrengthIncreaseCap = 100f/100
                 } },
 
                 {  "often", new TemporalStormConfig() {
-                    Frequency = NatFloat.create(EnumDistribution.UNIFORM, 15f, 5f),
+                    Frequency = NatFloat.create(EnumDistribution.UNIFORM, 7.5f, 2.5f),
                     StrengthIncrease = 15f/100,
                     StrengthIncreaseCap = 150f/100
                 } },
 
                 {  "veryoften", new TemporalStormConfig() {
-                    Frequency = NatFloat.create(EnumDistribution.UNIFORM, 7.5f, 2.5f),
+                    Frequency = NatFloat.create(EnumDistribution.UNIFORM, 4.5f, 1.5f),
                     StrengthIncrease = 20f/100,
                     StrengthIncreaseCap = 200f/100
                 } }
@@ -163,7 +163,15 @@ namespace Vintagestory.GameContent
                     if (playstyle == "surviveandbuild" || playstyle == "wildernesssurvival")
                     {
                         sapi.WorldManager.SaveGame.WorldConfiguration.SetBool("temmporalStability", true);
-                        sapi.WorldManager.SaveGame.WorldConfiguration.SetString("temporalStorms", playstyle == "surviveandbuild" ? "rare" : "often");
+                    }
+                }
+
+                if (!sapi.World.Config.HasAttribute("temporalStorms"))
+                {
+                    string playstyle = sapi.WorldManager.SaveGame.PlayStyle;
+                    if (playstyle == "surviveandbuild" || playstyle == "wildernesssurvival")
+                    {
+                        sapi.WorldManager.SaveGame.WorldConfiguration.SetString("temporalStorms", playstyle == "surviveandbuild" ? "sometimes" : "often");
                     }
                 }
 
@@ -197,7 +205,17 @@ namespace Vintagestory.GameContent
 
             api.Event.GameWorldSave += Event_GameWorldSave;
             api.Event.PlayerJoin += Event_PlayerJoin;
+            api.Event.PlayerNowPlaying += Event_PlayerNowPlaying;
             api.Event.RegisterGameTickListener(onTempStormTick, 2000);
+        }
+
+        private void Event_PlayerNowPlaying(IServerPlayer byPlayer)
+        {
+            if (sapi.WorldManager.SaveGame.IsNew)
+            {
+                double nextStormDaysLeft = data.nextStormTotalDays - api.World.Calendar.TotalDays;
+                byPlayer.SendMessage(GlobalConstants.GeneralChatGroup, Lang.Get("{0} days until the first temporal storm.", (int)nextStormDaysLeft), EnumChatType.Notification);
+            }
         }
 
         private void Event_PlayerJoin(IServerPlayer byPlayer)
@@ -227,7 +245,7 @@ namespace Vintagestory.GameContent
                 sapi.BroadcastMessageToAllGroups(texts[data.nextStormStrength].Approaching, EnumChatType.Notification);
             }
 
-            if (nextStormDaysLeft <= 0.03 && data.stormDayNotify > 0)
+            if (nextStormDaysLeft <= 0.02 && data.stormDayNotify > 0)
             {
                 data.stormDayNotify = 0;
                 sapi.BroadcastMessageToAllGroups(texts[data.nextStormStrength].Imminent, EnumChatType.Notification);
@@ -248,8 +266,8 @@ namespace Vintagestory.GameContent
                 if (!data.nowStormActive)
                 {
                     data.stormActiveTotalDays = api.World.Calendar.TotalDays + stormActiveDays;
-                    data.stormGlitchStrength = 0.3f;
-                    if (data.nextStormStrength == EnumTempStormStrength.Medium) data.stormGlitchStrength = 0.6f;
+                    data.stormGlitchStrength = 0.58f;
+                    if (data.nextStormStrength == EnumTempStormStrength.Medium) data.stormGlitchStrength = 0.7f;
                     if (data.nextStormStrength == EnumTempStormStrength.Heavy) data.stormGlitchStrength = 1f;
                     data.nowStormActive = true;
 
@@ -280,17 +298,19 @@ namespace Vintagestory.GameContent
         {
             if (config == null) return;
 
-            data.nextStormTotalDays = api.World.Calendar.TotalDays + config.Frequency.nextFloat(1, api.World.Rand);
-
             double addStrength = Math.Min(config.StrengthIncreaseCap, config.StrengthIncrease * api.World.Calendar.TotalDays / config.Frequency.avg);
+
+            data.nextStormTotalDays = api.World.Calendar.TotalDays + config.Frequency.nextFloat(1, api.World.Rand) / (1 + addStrength/3);
 
             double stormStrength = addStrength + (api.World.Rand.NextDouble() * api.World.Rand.NextDouble()) * (float)addStrength * 5f;
 
-            int index = (int)stormStrength;
+            int index = (int)Math.Min(2, stormStrength);
             data.nextStormStrength = (EnumTempStormStrength)index;
+
+            data.nextStormStrDouble = Math.Max(0, addStrength);
         }
 
-        private bool Event_OnTrySpawnEntity(ref API.Common.Entities.EntityProperties properties, Vec3d spawnPosition, long herdId)
+        private bool Event_OnTrySpawnEntity(ref EntityProperties properties, Vec3d spawnPosition, long herdId)
         {
             if (!properties.Code.Path.StartsWithFast("drifter")) return true;
 
@@ -337,9 +357,19 @@ namespace Vintagestory.GameContent
             {
                 worldConfigStorminess = api.World.Config.GetString("temporalStorms");
 
-                if (configs.ContainsKey(worldConfigStorminess))
+                if (worldConfigStorminess != null && configs.ContainsKey(worldConfigStorminess))
                 {
                     config = configs[worldConfigStorminess];
+                } else 
+                {
+                    string playstyle = sapi.WorldManager.SaveGame.PlayStyle;
+                    if (playstyle == "surviveandbuild" || playstyle == "wildernesssurvival")
+                    {
+                        config = configs["rare"];
+                    } else
+                    {
+                        config = null;
+                    }
                 }
 
                 sapi.Event.OnTrySpawnEntity += Event_OnTrySpawnEntity;
@@ -357,6 +387,8 @@ namespace Vintagestory.GameContent
             }
         }
 
+
+        float curStormGlitchStrength;
 
         internal float GetGlitchEffectExtraStrength()
         {

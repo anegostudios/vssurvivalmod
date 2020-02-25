@@ -132,7 +132,7 @@ namespace Vintagestory.GameContent
             if (api is ICoreClientAPI)
             {
                 ICoreClientAPI capi = (ICoreClientAPI)api;
-                capi.Event.RegisterRenderer(ingotRenderer = new IngotMoldRenderer(Pos, capi), EnumRenderStage.Opaque);
+                capi.Event.RegisterRenderer(ingotRenderer = new IngotMoldRenderer(Pos, capi), EnumRenderStage.Opaque, "ingotmold");
 
                 UpdateIngotRenderer();
 
@@ -479,7 +479,7 @@ namespace Vintagestory.GameContent
 
             if (ingotRenderer != null)
             {
-                ingotRenderer.Unregister();
+                ingotRenderer.Dispose();
                 ingotRenderer = null;
             }
 
@@ -559,7 +559,7 @@ namespace Vintagestory.GameContent
         {
             base.OnBlockUnloaded();
 
-            ingotRenderer?.Unregister();
+            ingotRenderer?.Dispose();
         }
 
 
@@ -570,7 +570,7 @@ namespace Vintagestory.GameContent
             contentsRight?.Collectible.OnStoreCollectibleMappings(Api.World, new DummySlot(contentsRight), blockIdMapping, itemIdMapping);
         }
 
-        public override void OnLoadCollectibleMappings(IWorldAccessor worldForResolve, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping)
+        public override void OnLoadCollectibleMappings(IWorldAccessor worldForResolve, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, int schematicSeed)
         {
             if (contentsLeft?.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve) == false)
             {

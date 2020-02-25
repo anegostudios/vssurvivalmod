@@ -36,10 +36,13 @@ namespace Vintagestory.GameContent
                 bool waveoff = false;
                 int groundOffset = 0;
 
-                int yrain = api.World.BlockAccessor.GetRainMapHeightAt(pos);
+                waveoff = api.World.BlockAccessor.GetLightLevel(pos, EnumLightLevelType.OnlySunLight) < 14;
 
+                //int yrain = api.World.BlockAccessor.GetRainMapHeightAt(pos);
+
+                // This is too expensive. We need more efficient system for this
                 // Small optimization: Don't need to do a room search when exposed to the rain map
-                if (pos.Y == yrain || (pos.Y + 1 == yrain && api.World.BlockAccessor.GetBlock(pos.UpCopy()).BlockMaterial == EnumBlockMaterial.Leaves))
+                /*if (pos.Y == yrain || (pos.Y + 1 == yrain && api.World.BlockAccessor.GetBlock(pos.UpCopy()).BlockMaterial == EnumBlockMaterial.Leaves))
                 {
                     waveoff = false;
                 }
@@ -52,7 +55,7 @@ namespace Vintagestory.GameContent
 
                         waveoff = ((float)room.SkylightCount / room.NonSkylightCount) < 0.1f;
                     }
-                }
+                }*/
 
                 if (!waveoff)
                 {
@@ -71,7 +74,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override void OnJsonTesselation(MeshData sourceMesh, BlockPos pos, int[] chunkExtIds, int extIndex3d)
+        public override void OnJsonTesselation(ref MeshData sourceMesh, BlockPos pos, int[] chunkExtIds, ushort[] chunkLightExt, int extIndex3d)
         {
             if (VertexFlags.LeavesWindWave)
             {
@@ -82,10 +85,15 @@ namespace Vintagestory.GameContent
                     leavesWaveTileSide[tileSide] = !nblock.SideSolid[BlockFacing.ALLFACES[tileSide].GetOpposite().Index] || nblock.BlockMaterial == EnumBlockMaterial.Leaves;
                 }
 
-                bool waveoff = false;
+                int sunLightLevel = chunkLightExt[extIndex3d] & 31; 
+                bool waveoff = sunLightLevel < 14;
                 int groundOffset = 0;
 
-                int yrain = api.World.BlockAccessor.GetRainMapHeightAt(pos);
+
+                // This is too expensive. We need more efficient system for this
+                
+
+                /*int yrain = api.World.BlockAccessor.GetRainMapHeightAt(pos);
 
                 // Small optimization: Don't need to do a room search when exposed to the rain map
                 if (pos.Y == yrain || (pos.Y + 1 == yrain && api.World.Blocks[chunkExtIds[extIndex3d + TileSideEnum.MoveIndex[5]]].BlockMaterial == EnumBlockMaterial.Leaves))
@@ -101,7 +109,7 @@ namespace Vintagestory.GameContent
 
                         waveoff = ((float)room.SkylightCount / room.NonSkylightCount) < 0.1f;
                     }
-                }
+                }*/
 
                 if (!waveoff)
                 {

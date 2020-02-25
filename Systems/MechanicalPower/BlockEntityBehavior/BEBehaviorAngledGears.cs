@@ -17,7 +17,7 @@ namespace Vintagestory.GameContent.Mechanics
             {
                 float angle = base.AngleRad;
 
-                if (inTurnDir.Facing == BlockFacing.DOWN || inTurnDir.Facing == BlockFacing.WEST) return lastKnownAngleRad = 360 - angle;
+                if (inTurnDir.Facing == BlockFacing.DOWN || inTurnDir.Facing == BlockFacing.WEST) return /*lastKnownAngleRad = - why do i do this? it creates massive jitter*/ GameMath.TWOPI - angle;
 
                 return angle;
             }
@@ -95,7 +95,7 @@ namespace Vintagestory.GameContent.Mechanics
                 case "nw":
                     AxisMapping = new int[6] { 2, 1, 0, 0, 1, 2 };
                     //AxisSign = new int[6] { 1, -1, -1, -1, -1, -1 };
-                    AxisSign = new int[6] { -1, -1, -1, 1, 1, 1 };
+                    AxisSign = new int[6] { 1, 1, 1, -1, -1, -1 };
                     break;
 
                 case "sd":
@@ -130,7 +130,7 @@ namespace Vintagestory.GameContent.Mechanics
 
                 case "su":
                     AxisMapping = new int[6] { 1, 2, 0, 0, 1, 2 };
-                    AxisSign = new int[6] { -1, -1, -1, 1, 1, 1 };
+                    AxisSign = new int[6] { 1, 1, 1, -1, -1, -1 };
                     break;
 
                 case "wu":
@@ -176,7 +176,7 @@ namespace Vintagestory.GameContent.Mechanics
 
         public override void ToTreeAttributes(ITreeAttribute tree)
         {
-            base.ToTreeAttributes(tree);
+                base.ToTreeAttributes(tree);
         }
 
 

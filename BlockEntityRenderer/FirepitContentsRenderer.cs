@@ -131,6 +131,7 @@ namespace Vintagestory.GameContent
             prog.FogMinIn = rpi.FogMin;
             prog.FogDensityIn = rpi.FogDensity;
             prog.RgbaTint = ColorUtil.WhiteArgbVec;
+            prog.NormalShaded = 1;
             prog.ExtraGodray = 0;
 
             api.Render.BindTexture2d(api.ItemTextureAtlas.AtlasTextureIds[0]);
@@ -167,14 +168,10 @@ namespace Vintagestory.GameContent
             prog.Stop();
         }
 
-        public void Unregister()
-        {
-            api.Event.UnregisterRenderer(this, EnumRenderStage.Opaque);
-        }
-
-        // Called by UnregisterRenderer
         public void Dispose()
         {
+            api.Event.UnregisterRenderer(this, EnumRenderStage.Opaque);
+
             meshref?.Dispose();
             contentStackRenderer?.Dispose();
         }

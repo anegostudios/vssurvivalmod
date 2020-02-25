@@ -62,11 +62,13 @@ namespace Vintagestory.GameContent
     /// <summary>
     /// This class contains core settings for the Vintagestory server
     /// </summary>
-    public class Core : ModSystem
+    public class CoreSystem : ModSystem
 	{
-        ICoreServerAPI sapi;
         ICoreAPI api;
+        ICoreClientAPI capi;
         SurvivalConfig config = new SurvivalConfig();
+
+        public IShaderProgram anvilShaderProg;
 
         public override double ExecuteOrder()
         {
@@ -86,13 +88,27 @@ namespace Vintagestory.GameContent
 
         public override void StartClientSide(ICoreClientAPI api)
         {
+            capi = api;
             api.Event.BlockTexturesLoaded += () => { loadConfig(); applyConfig(); };
+
+            api.Event.ReloadShader += LoadShader;
+            LoadShader();
         }
 
+        private bool LoadShader()
+        {
+            anvilShaderProg = capi.Shader.NewShaderProgram();
+
+            anvilShaderProg.VertexShader = capi.Shader.NewShader(EnumShaderType.VertexShader);
+            anvilShaderProg.FragmentShader = capi.Shader.NewShader(EnumShaderType.FragmentShader);
+
+            capi.Shader.RegisterFileShaderProgram("anvilworkitem", anvilShaderProg);
+
+            return anvilShaderProg.Compile();
+        }
 
         public override void StartServerSide(ICoreServerAPI api)
         {
-            this.sapi = api;
 
             if (api.ModLoader.IsModSystemEnabled("Vintagestory.ServerMods.WorldEdit.WorldEdit"))
             {
@@ -259,7 +275,7 @@ namespace Vintagestory.GameContent
             api.RegisterBlockClass("BlockBeehive", typeof(BlockBeehive));
             api.RegisterBlockClass("BlockLantern", typeof(BlockLantern));
             api.RegisterBlockClass("BlockChisel", typeof(BlockChisel));
-            api.RegisterBlockClass("BlockEmptyTorchHolder", typeof(BlockEmptyTorchHolder));
+            api.RegisterBlockClass("BlockTorchHolder", typeof(BlockTorchHolder));
             api.RegisterBlockClass("BlockGenericTypedContainer", typeof(BlockGenericTypedContainer));
             api.RegisterBlockClass("BlockTeleporter", typeof(BlockTeleporter));
             api.RegisterBlockClass("BlockQuern", typeof(BlockQuern));
@@ -326,6 +342,7 @@ namespace Vintagestory.GameContent
             api.RegisterBlockClass("BlockTransmission", typeof(BlockTransmission));
             api.RegisterBlockClass("BlockBrake", typeof(BlockBrake));
             api.RegisterBlockClass("BlockDisplayCase", typeof(BlockDisplayCase));
+            api.RegisterBlockClass("BlockTapestry", typeof(BlockTapestry));
         }
 
         
@@ -440,6 +457,7 @@ namespace Vintagestory.GameContent
             api.RegisterBlockEntityClass("Brake", typeof(BEBrake));
 
             api.RegisterBlockEntityClass("DisplayCase", typeof(BlockEntityDisplayCase));
+            api.RegisterBlockEntityClass("Tapestry", typeof(BlockEntityTapestry));
         }
 
 
@@ -500,6 +518,7 @@ namespace Vintagestory.GameContent
             api.RegisterItemClass("ItemGem", typeof(ItemGem));
             api.RegisterItemClass("ItemPadlock", typeof(ItemPadlock));
             api.RegisterItemClass("ItemFirestarter", typeof(ItemFirestarter));
+            api.RegisterItemClass("ItemIronBloom", typeof(ItemIronBloom));
         }
 
 

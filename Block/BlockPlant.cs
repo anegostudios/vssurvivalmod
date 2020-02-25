@@ -8,6 +8,40 @@ namespace Vintagestory.GameContent
 {
     public class BlockPlant : Block
     {
+        public override void OnJsonTesselation(ref MeshData sourceMesh, BlockPos pos, int[] chunkExtIds, ushort[] chunkLightExt, int extIndex3d)
+        {
+            int sunLightLevel = chunkLightExt[extIndex3d] & 31;
+            bool waveOff = sunLightLevel < 14;
+
+            if (VertexFlags.GrassWindWave)
+            {
+                setLeaveWaveFlags(sourceMesh, waveOff);
+            }
+        }
+
+
+        void setLeaveWaveFlags(MeshData sourceMesh, bool off)
+        {
+            int grassWave = VertexFlags.FoliageWindWaveBitMask;
+            int clearFlags = (~VertexFlags.FoliageWindWaveBitMask) & (~VertexFlags.GroundDistanceBitMask);
+
+            // Iterate over each element face
+            for (int vertexNum = 0; vertexNum < sourceMesh.GetVerticesCount(); vertexNum++)
+            {
+                float y = sourceMesh.xyz[vertexNum * 3 + 1];
+
+                bool notwaving = off || y < 0.5;
+
+                sourceMesh.Flags[vertexNum] &= clearFlags;
+
+                if (!notwaving)
+                {
+                    sourceMesh.Flags[vertexNum] |= grassWave;
+                }
+            }
+        }
+
+
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
         {
             if (CanPlantStay(world.BlockAccessor, blockSel.Position))

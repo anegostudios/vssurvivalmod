@@ -107,7 +107,7 @@ namespace Vintagestory.GameContent
             if (api is ICoreClientAPI)
             {
                 ICoreClientAPI capi = (ICoreClientAPI)api;
-                capi.Event.RegisterRenderer(renderer = new ToolMoldRenderer(Pos, capi, fillQuadsByLevel), EnumRenderStage.Opaque);
+                capi.Event.RegisterRenderer(renderer = new ToolMoldRenderer(Pos, capi, fillQuadsByLevel), EnumRenderStage.Opaque, "toolmoldrenderer");
                 
                 UpdateRenderer();
             }
@@ -277,17 +277,15 @@ namespace Vintagestory.GameContent
         {
             base.OnBlockRemoved();
 
-            if (renderer != null)
-            {
-                renderer.Unregister();
-                renderer = null;
-            }
+            renderer?.Dispose();
+            renderer = null;
         }
 
         public override void OnBlockUnloaded()
         {
             base.OnBlockUnloaded();
-            renderer?.Unregister();
+            renderer?.Dispose();
+            renderer = null;
         }
 
 
@@ -340,7 +338,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        ItemStack stackFromCode(JsonItemStack jstack, ItemStack fromMetal)
+        public ItemStack stackFromCode(JsonItemStack jstack, ItemStack fromMetal)
         {
             string metaltype = fromMetal.Collectible.LastCodePart();
             string tooltype = Block.LastCodePart();
@@ -402,7 +400,7 @@ namespace Vintagestory.GameContent
             metalContent?.Collectible.OnStoreCollectibleMappings(Api.World, new DummySlot(metalContent), blockIdMapping, itemIdMapping);
         }
 
-        public override void OnLoadCollectibleMappings(IWorldAccessor worldForResolve, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping)
+        public override void OnLoadCollectibleMappings(IWorldAccessor worldForResolve, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, int schematicSeed)
         {
             if (metalContent?.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve) == null)
             {

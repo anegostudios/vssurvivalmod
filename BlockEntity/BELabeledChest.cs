@@ -22,6 +22,8 @@ namespace Vintagestory.GameContent
         int tempColor;
         ItemStack tempStack;
 
+        GuiDialogBlockEntityTextInput textdialog;
+
         public override float MeshAngle { 
             get => base.MeshAngle; 
             set {
@@ -69,7 +71,7 @@ namespace Vintagestory.GameContent
 
                     tempColor = ColorUtil.ToRgba(255, r, g, b);
                     tempStack = hotbarSlot.TakeOut(1);
-
+                    hotbarSlot.MarkDirty();
 
                     if (Api.World is IServerWorldAccessor)
                     {
@@ -153,14 +155,14 @@ namespace Vintagestory.GameContent
 
                     IClientWorldAccessor clientWorld = (IClientWorldAccessor)Api.World;
 
-                    GuiDialogBlockEntityTextInput dlg = new GuiDialogBlockEntityTextInput(dialogTitle, Pos, text, Api as ICoreClientAPI, 132, 4);
-                    dlg.OnTextChanged = DidChangeTextClientSide;
-                    dlg.OnCloseCancel = () =>
+                    textdialog = new GuiDialogBlockEntityTextInput(dialogTitle, Pos, text, Api as ICoreClientAPI, 115, 4);
+                    textdialog.OnTextChanged = DidChangeTextClientSide;
+                    textdialog.OnCloseCancel = () =>
                     {
                         labelrenderer.SetNewText(text, color);
                         (Api as ICoreClientAPI).Network.SendBlockEntityPacket(Pos.X, Pos.Y, Pos.Z, (int)EnumSignPacketId.CancelEdit, null);
                     };
-                    dlg.TryOpen();
+                    textdialog.TryOpen();
                 }
             }
 
@@ -215,22 +217,28 @@ namespace Vintagestory.GameContent
 
             if (labelrenderer != null)
             {
-                labelrenderer.Unregister();
+                labelrenderer.Dispose();
                 labelrenderer = null;
             }
+
+            textdialog?.TryClose();
+            textdialog?.Dispose();
         }
 
         public override void OnBlockBroken()
         {
             base.OnBlockBroken();
-            labelrenderer?.Unregister();
+            labelrenderer?.Dispose();
         }
 
         public override void OnBlockUnloaded()
         {
             base.OnBlockUnloaded();
 
-            labelrenderer?.Unregister();
+            labelrenderer?.Dispose();
+
+            textdialog?.TryClose();
+            textdialog?.Dispose();
         }
 
 

@@ -22,7 +22,8 @@ namespace Vintagestory.GameContent
                 blockId = blockAccessor.GetBlock(CodeWithPath("looseflints-" + LastCodePart())).BlockId;
             }
 
-            if (blockAccessor.GetBlock(pos).IsReplacableBy(this))
+            Block block = blockAccessor.GetBlock(pos);
+            if (block.IsReplacableBy(this) && !block.IsLiquid())
             {
                 blockAccessor.SetBlock(blockId, pos);
                 return true;

@@ -20,6 +20,7 @@ namespace Vintagestory.GameContent
         ITexPositionSource glassTextureSource;
         ITexPositionSource tmpTextureSource;
 
+
         public TextureAtlasPosition this[string textureCode]
         {
             get
@@ -157,10 +158,20 @@ namespace Vintagestory.GameContent
                 string lining = byItemStack.Attributes.GetString("lining");
                 string glass = byItemStack.Attributes.GetString("glass");
                 be.DidPlace(material, lining, glass);
+
+                BlockPos targetPos = blockSel.DidOffset ? blockSel.Position.AddCopy(blockSel.Face.GetOpposite()) : blockSel.Position;
+                double dx = byPlayer.Entity.Pos.X - (targetPos.X + blockSel.HitPosition.X);
+                double dz = byPlayer.Entity.Pos.Z - (targetPos.Z + blockSel.HitPosition.Z);
+                float angleHor = (float)Math.Atan2(dx, dz);
+
+                float deg22dot5rad = GameMath.PIHALF / 4;
+                float roundRad = ((int)Math.Round(angleHor / deg22dot5rad)) * deg22dot5rad;
+                be.MeshAngle = roundRad;
             }
 
             return true;
         }
+
 
 
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)

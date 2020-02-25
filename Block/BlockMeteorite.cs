@@ -110,7 +110,12 @@ namespace Vintagestory.GameContent
                     {
                         tmpPos.Y = surfaceY - i;
                         int id = i == (int)q ? surfaceblock.BlockId : 0;
-                        blAcc.SetBlock(id, tmpPos);
+
+                        Block bblock = blAcc.GetBlock(tmpPos);
+                        if (!bblock.IsLiquid())
+                        {
+                            blAcc.SetBlock(id, tmpPos);
+                        }
                     }
 
                     mapchunk.WorldGenTerrainHeightMap[(tmpPos.Z % chunksize) * chunksize + (tmpPos.X % chunksize)] -= (ushort)q;

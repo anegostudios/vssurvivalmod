@@ -15,7 +15,7 @@ using Vintagestory.API.Util;
 namespace Vintagestory.GameContent
 {
     [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
-    public class JournalPiecce
+    public class JournalPiece
     {
         public int EntryId;
         public string Text;
@@ -29,7 +29,7 @@ namespace Vintagestory.GameContent
 
         public string Title;
         public bool Editable;
-        public List<JournalPiecce> Chapters = new List<JournalPiecce>();
+        public List<JournalPiece> Chapters = new List<JournalPiece>();
     }
     
 
@@ -101,10 +101,10 @@ namespace Vintagestory.GameContent
                 api.Network.RegisterChannel("journal")
                .RegisterMessageType(typeof(JournalEntry))
                .RegisterMessageType(typeof(Journal))
-               .RegisterMessageType(typeof(JournalPiecce))
+               .RegisterMessageType(typeof(JournalPiece))
                .SetMessageHandler<Journal>(OnJournalItemsReceived)
                .SetMessageHandler<JournalEntry>(OnJournalItemReceived)
-               .SetMessageHandler<JournalPiecce>(OnJournalPieceReceived)
+               .SetMessageHandler<JournalPiece>(OnJournalPieceReceived)
             ;
         }
 
@@ -126,8 +126,8 @@ namespace Vintagestory.GameContent
         }
 
 
-        private void OnJournalPieceReceived(JournalPiecce entryPiece)
-        {
+        private void OnJournalPieceReceived(JournalPiece entryPiece)
+        {   
             ownJournal.Entries[entryPiece.EntryId].Chapters.Add(entryPiece);
         }
 
@@ -162,7 +162,7 @@ namespace Vintagestory.GameContent
                api.Network.RegisterChannel("journal")
                .RegisterMessageType(typeof(JournalEntry))
                .RegisterMessageType(typeof(Journal))
-               .RegisterMessageType(typeof(JournalPiecce))
+               .RegisterMessageType(typeof(JournalPiece))
             ;
 
             api.Event.RegisterEventBusListener(OnLoreDiscovery, 0.5, "loreDiscovery");
@@ -289,7 +289,7 @@ namespace Vintagestory.GameContent
 
             for (int i = 0; i < discovery.PieceIds.Count; i++)
             {
-                JournalPiecce piece = new JournalPiecce() { Text = asset.Pieces[discovery.PieceIds[i]], EntryId = entry.EntryId };
+                JournalPiece piece = new JournalPiece() { Text = asset.Pieces[discovery.PieceIds[i]], EntryId = entry.EntryId };
                 entry.Chapters.Add(piece);
                 if (!isNew) serverChannel.SendPacket(piece, plr);
             }

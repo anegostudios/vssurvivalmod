@@ -32,7 +32,7 @@ namespace Vintagestory.GameContent
         public override ItemSlot RightHandItemSlot {
             get
             {
-                return inv[12];
+                return inv[15];
             }
         }
 
@@ -62,26 +62,7 @@ namespace Vintagestory.GameContent
         }
         
 
-        public override bool TryGiveItemStack(ItemStack itemstack)
-        {
-            if (itemstack == null || itemstack.StackSize == 0) return false;
 
-            ItemSlot dummySlot = new DummySlot(null);
-            dummySlot.Itemstack = itemstack.Clone();
-
-            ItemStackMoveOperation op = new ItemStackMoveOperation(World, EnumMouseButton.Left, 0, EnumMergePriority.AutoMerge, itemstack.StackSize);
-
-            WeightedSlot wslot = inv.GetBestSuitedSlot(dummySlot, new List<ItemSlot>());
-            if (wslot.weight > 0)
-            {
-                dummySlot.TryPutInto(wslot.slot, ref op);
-                itemstack.StackSize -= op.MovedQuantity;
-                WatchedAttributes.MarkAllDirty();
-                return op.MovedQuantity > 0;
-            }
-
-            return false;
-        }
 
 
         /*public override void SetName(string playername)
@@ -131,13 +112,13 @@ namespace Vintagestory.GameContent
 
         public InventoryGear(string className, string id, ICoreAPI api) : base(className, id, api)
         {
-            slots = GenEmptySlots(13);
+            slots = GenEmptySlots(16);
             baseWeight = 2.5f;
         }
 
         public InventoryGear(string inventoryId, ICoreAPI api) : base(inventoryId, api)
         {
-            slots = GenEmptySlots(13);
+            slots = GenEmptySlots(16);
             baseWeight = 2.5f;
         }
 
@@ -186,7 +167,7 @@ namespace Vintagestory.GameContent
 
         protected override ItemSlot NewSlot(int slotId)
         {
-            if (slotId == 12) return new ItemSlotSurvival(this);
+            if (slotId == 15) return new ItemSlotSurvival(this);
 
             EnumCharacterDressType type = (EnumCharacterDressType)slotId;
             ItemSlotCharacter slot = new ItemSlotCharacter(type, this);

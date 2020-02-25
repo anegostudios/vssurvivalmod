@@ -74,7 +74,7 @@ namespace Vintagestory.GameContent
 
             if (!CanPlaceBlock(world, byPlayer, blockSel, ref failureCode)) return false;
 
-            if (world.BlockAccessor.GetBlock(blockSel.Position.DownCopy()).SideSolid[BlockFacing.UP.Index])
+            if (world.BlockAccessor.GetBlock(blockSel.Position.DownCopy()).CanAttachBlockAt(world.BlockAccessor, this, blockSel.Position, BlockFacing.UP))
             {
                 DoPlaceBlock(world, byPlayer, blockSel, itemstack);
 
@@ -159,7 +159,7 @@ namespace Vintagestory.GameContent
                         IPlayer byPlayer = null;
                         if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
 
-                        world.PlaySoundAt(new AssetLocation("sounds/hotmetal"), byEntity, byPlayer);
+                        world.PlaySoundAt(new AssetLocation("sounds/pourmetal"), byEntity, byPlayer);
                     }
                 }, blockSel.Position, 666);
 

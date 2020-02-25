@@ -501,7 +501,7 @@ namespace Vintagestory.GameContent
         {
             if (workitemRenderer != null)
             {
-                workitemRenderer.Unregister();
+                workitemRenderer.Dispose();
                 workitemRenderer = null;
             }
         }
@@ -714,7 +714,7 @@ namespace Vintagestory.GameContent
         {
             base.OnBlockUnloaded();
 
-            workitemRenderer?.Unregister();
+            workitemRenderer?.Dispose();
         }
 
 
@@ -725,7 +725,7 @@ namespace Vintagestory.GameContent
             baseMaterial?.Collectible.OnStoreCollectibleMappings(Api.World, new DummySlot(baseMaterial), blockIdMapping, itemIdMapping);
         }
 
-        public override void OnLoadCollectibleMappings(IWorldAccessor worldForResolve, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping)
+        public override void OnLoadCollectibleMappings(IWorldAccessor worldForResolve, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, int schematicSeed)
         {
             if (workItemStack?.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve) == false)
             {

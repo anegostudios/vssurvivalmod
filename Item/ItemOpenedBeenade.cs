@@ -130,6 +130,7 @@ namespace Vintagestory.GameContent
 
 
             slot.TakeOut(1);
+            slot.MarkDirty();
 
             IPlayer byPlayer = null;
             if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);

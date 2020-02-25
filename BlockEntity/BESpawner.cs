@@ -413,9 +413,9 @@ namespace Vintagestory.GameContent
             this.spawnedEntities = new List<long>(values == null ? new long[0] : values);
         }
 
-        public override void OnLoadCollectibleMappings(IWorldAccessor worldForNewMappings, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping)
+        public override void OnLoadCollectibleMappings(IWorldAccessor worldForNewMappings, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, int schematicSeed)
         {
-            base.OnLoadCollectibleMappings(worldForNewMappings, oldBlockIdMapping, oldItemIdMapping);
+            base.OnLoadCollectibleMappings(worldForNewMappings, oldBlockIdMapping, oldItemIdMapping, schematicSeed);
 
             object dval = null;
             worldForNewMappings.Api.ObjectCache.TryGetValue("donotResolveImports", out dval);

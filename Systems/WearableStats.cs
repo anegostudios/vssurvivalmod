@@ -61,7 +61,7 @@ namespace Vintagestory.GameContent
             inv.SlotModified += (slotid) => updateWearableStats(inv, byPlayer);
 
             var bh = byPlayer.Entity.GetBehavior<EntityBehaviorHealth>();
-            if (bh != null) bh.onDamaged = (dmg, dmgSource) => handleDamaged(byPlayer, dmg, dmgSource);
+            if (bh != null) bh.onDamaged += (dmg, dmgSource) => handleDamaged(byPlayer, dmg, dmgSource);
 
             byPlayer.Entity.OnFootStep = () => onFootStep(byPlayer.Entity);
             byPlayer.Entity.OnImpact = () => onFallToGround(byPlayer.Entity);

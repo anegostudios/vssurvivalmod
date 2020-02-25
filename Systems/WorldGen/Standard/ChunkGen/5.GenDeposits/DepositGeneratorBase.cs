@@ -18,6 +18,8 @@ namespace Vintagestory.ServerMods
 
         protected Random rand;
 
+        public bool blockCallBacks = true;
+
         public DepositGeneratorBase(ICoreServerAPI api, DepositVariant variant, LCGRandom depositRand, NormalizedSimplexNoise noiseGen)
         {
             this.variant = variant;

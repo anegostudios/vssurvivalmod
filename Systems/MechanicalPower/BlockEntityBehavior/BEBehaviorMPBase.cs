@@ -155,35 +155,56 @@ namespace Vintagestory.GameContent.Mechanics
 
         }
 
-        public virtual void WasPlaced(BlockFacing connectedOnFacing, IMechanicalPowerBlock connectedToBlock)
+        public virtual void WasPlaced(BlockFacing connectedOnFacing)
         {
-            MechanicalNetwork network;
-
             if (connectedOnFacing != null)
             {
-                network = connectedToBlock.GetNetwork(Api.World, Position.AddCopy(connectedOnFacing));
-                if (network != null)
+                if (!tryConnect(connectedOnFacing))
                 {
-                    IMechanicalPowerNode node = Api.World.BlockAccessor.GetBlockEntity(Position.AddCopy(connectedOnFacing)).GetBehavior<BEBehaviorMPBase>() as IMechanicalPowerNode;
-
-                    SetInTurnDirection(node.GetTurnDirection(connectedOnFacing.GetOpposite()));
-                    JoinNetwork(network);
-
-                    MechPowerPath[] paths = GetMechPowerExits(inTurnDir);
-                    for (int i = 0; i < paths.Length; i++)
-                    {
-                        BlockPos exitPos = Position.AddCopy(paths[i].OutFacing);
-
-                        Vec3i missingChunkPos;
-                        bool chunkLoaded = spreadTo(Api, manager.GetNextPropagationId(), network, exitPos, new TurnDirection(paths[i].OutFacing, paths[i].OutRot), out missingChunkPos);
-                        if (!chunkLoaded)
-                        {
-                            LeaveNetwork();
-                            return;
-                        }
+                    MechPowerPath[] paths = GetMechPowerExits(new TurnDirection() { Facing = connectedOnFacing.GetOpposite() });
+                    if (paths.Length > 0) {
+                        tryConnect(paths[0].OutFacing);
                     }
                 }
             }
+        }
+
+        bool tryConnect(BlockFacing toFacing)
+        {
+            MechanicalNetwork network;
+
+            BlockPos pos = Position.AddCopy(toFacing);
+            IMechanicalPowerBlock connectedToBlock = Api.World.BlockAccessor.GetBlock(pos) as IMechanicalPowerBlock;
+
+            if (connectedToBlock == null) return false;
+
+            network = connectedToBlock.GetNetwork(Api.World, pos);
+            if (network != null)
+            {
+                IMechanicalPowerNode node = Api.World.BlockAccessor.GetBlockEntity(pos).GetBehavior<BEBehaviorMPBase>() as IMechanicalPowerNode;
+
+                SetInTurnDirection(node.GetTurnDirection(toFacing.GetOpposite()));
+                JoinNetwork(network);
+
+                MechPowerPath[] paths = GetMechPowerExits(inTurnDir);
+                for (int i = 0; i < paths.Length; i++)
+                {
+                    BlockPos exitPos = Position.AddCopy(paths[i].OutFacing);
+
+                    Vec3i missingChunkPos;
+                    bool chunkLoaded = spreadTo(Api, manager.GetNextPropagationId(), network, exitPos, new TurnDirection(paths[i].OutFacing, paths[i].OutRot), out missingChunkPos);
+                    if (!chunkLoaded)
+                    {
+                        LeaveNetwork();
+                        return true;
+                    }
+                }
+
+                return true;
+            }
+
+
+            return false;
         }
 
         public virtual void JoinNetwork(MechanicalNetwork network)

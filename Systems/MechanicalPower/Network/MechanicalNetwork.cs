@@ -132,13 +132,17 @@ namespace Vintagestory.GameContent.Mechanics
 
 
         // Tick Events are called by the Network Managers
-        public void ClientTick()
+        public void ClientTick(float dt)
         {
             if (speed < 0.001) return;
 
-            clientSpeed += GameMath.Clamp(speed - clientSpeed, -0.01f, 0.01f);
+            // 50fps is baseline speed for client and server (1000/50 = 20ms)
+            //float weirdOffset = 5f; // Server seems to complete a work item quicker than on the client, does it update the angle more quickly or something? o.O
+            float f = dt * (50f);// + weirdOffset);
 
-            UpdateAngle(clientSpeed);
+            clientSpeed += GameMath.Clamp(speed - clientSpeed, f * -0.01f, f * 0.01f); 
+
+            UpdateAngle(f * clientSpeed);
 
             // Since the server may be running at different tick speeds,
             // we slowly sync angle updates from server to reduce 
@@ -146,14 +150,14 @@ namespace Vintagestory.GameContent.Mechanics
 
             // Each tick, add 5% of server<->client angle difference
 
-            float diff = GameMath.AngleRadDistance(angle, serverSideAngle);
+            float diff = f * GameMath.AngleRadDistance(angle, serverSideAngle);
             angle += GameMath.Clamp(diff, -0.002f * Math.Abs(diff), 0.002f * Math.Abs(diff));
         }
 
 
-        public void ServerTick(long tickNumber)
+        public void ServerTick(float dt, long tickNumber)
         {
-            UpdateAngle(speed);
+            UpdateAngle(speed * dt * 50f);
 
             if (tickNumber % 5 == 0)
             {

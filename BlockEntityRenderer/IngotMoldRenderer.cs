@@ -92,13 +92,13 @@ namespace Vintagestory.GameContent
             {
                 Vec4f lightrgbs = api.World.BlockAccessor.GetLightRGBs(pos.X, pos.Y, pos.Z);
                 float[] glowColor = ColorUtil.GetIncandescenceColorAsColor4f((int)TemperatureLeft);
-                lightrgbs[0] += glowColor[0];
-                lightrgbs[1] += glowColor[1];
-                lightrgbs[2] += glowColor[2];
+                int extraGlow = (int)GameMath.Clamp((TemperatureLeft - 550) / 1.5f, 0, 255);
 
                 prog.RgbaLightIn = lightrgbs;
+                prog.RgbaGlowIn = new Vec4f(glowColor[0], glowColor[1], glowColor[2], extraGlow / 255f);
                 prog.RgbaBlockIn = ColorUtil.WhiteArgbVec;
-                prog.ExtraGlow = (int)GameMath.Clamp((TemperatureLeft - 500) / 3, 0, 255);
+                prog.ExtraGlow = extraGlow;
+                prog.NormalShaded = 0;
 
                 int texid = api.Render.GetOrLoadTexture(TextureNameLeft);
                 rpi.BindTexture2d(texid);
@@ -124,14 +124,13 @@ namespace Vintagestory.GameContent
             {
                 Vec4f lightrgbs = api.World.BlockAccessor.GetLightRGBs(pos.X, pos.Y, pos.Z);
                 float[] glowColor = ColorUtil.GetIncandescenceColorAsColor4f((int)TemperatureRight);
-                lightrgbs[0] += 2 * glowColor[0];
-                lightrgbs[1] += 2 * glowColor[1];
-                lightrgbs[2] += 2 * glowColor[2];
+                int extraGlow = (int)GameMath.Clamp((TemperatureRight - 550) / 1.5f, 0, 255);
 
                 prog.RgbaLightIn = lightrgbs;
+                prog.RgbaGlowIn = new Vec4f(glowColor[0], glowColor[1], glowColor[2], extraGlow / 255f);
                 prog.RgbaBlockIn = ColorUtil.WhiteArgbVec;
-                prog.ExtraGlow = (int)GameMath.Clamp((TemperatureRight - 500) / 4, 0, 255);
-
+                prog.ExtraGlow = extraGlow;
+                prog.NormalShaded = 0;
 
                 int texid = api.Render.GetOrLoadTexture(TextureNameRight);
                 rpi.BindTexture2d(texid);
@@ -169,14 +168,10 @@ namespace Vintagestory.GameContent
             rpi.GlEnableCullFace();
         }
 
-        public void Unregister()
-        {
-            api.Event.UnregisterRenderer(this, EnumRenderStage.Opaque);
-        }
-
-        // Called by UnregisterRenderer
         public void Dispose()
         {
+            api.Event.UnregisterRenderer(this, EnumRenderStage.Opaque);
+
             quadModelRef?.Dispose();
         }
     }

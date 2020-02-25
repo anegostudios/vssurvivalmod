@@ -75,9 +75,11 @@ namespace Vintagestory.GameContent
 
         void SetupDialog()
         {
-            int cols = Math.Min(skillItems.Count, 7);
+            int cnt = Math.Max(1, skillItems.Count);
 
-            int rows = (int)Math.Ceiling(skillItems.Count / (float)cols);
+            int cols = Math.Min(cnt, 7);
+
+            int rows = (int)Math.Ceiling(cnt / (float)cols);
             
             double size = GuiElementPassiveItemSlot.unscaledSlotSize + GuiElementItemSlotGrid.unscaledSlotPadding;
             double innerWidth = Math.Max(300, cols * size);
@@ -87,6 +89,7 @@ namespace Vintagestory.GameContent
 
             ElementBounds bgBounds = ElementBounds.Fill.WithFixedPadding(GuiStyle.ElementToDialogPadding);
             bgBounds.BothSizing = ElementSizing.FitToChildren;
+
 
             SingleComposer =
                 capi.Gui

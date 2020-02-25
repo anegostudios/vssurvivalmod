@@ -58,7 +58,8 @@ using Vintagestory.API.Config;
 				    worldClimate: ""realistic"",
 				    gameMode: ""survival"",
                     temporalStability: ""true"",
-                    temporalStorms: ""rare""
+                    temporalStorms: ""sometimes"",
+                    graceTimer: ""0"",
 			    }
 		    },
 		    {
@@ -72,6 +73,7 @@ using Vintagestory.API.Config;
 				    gameMode: ""survival"",
                     microblockChiseling: ""true"",
                     deathPunishment: ""keep"",
+                    graceTimer: ""5"",
                     creatureHostility: ""passive"",
                     playerHealthPoints: ""20"",
                     playerHungerSpeed: ""0.5"",
@@ -80,7 +82,9 @@ using Vintagestory.API.Config;
                     saplingGrowthDays: ""5"",
                     playerMoveSpeed: ""1.25"",
                     temporalStability: ""false"",
-                    temporalStorms: ""off""
+                    temporalStorms: ""off"",
+                    surfaceCopperDeposits: ""0.2"",
+                    surfaceTinDeposits: ""0.03"",
                 }
 			},
             {
@@ -104,10 +108,9 @@ using Vintagestory.API.Config;
                     allowCoordinateHud: ""false"",
                     allowMap: ""false"",
                     allowLandClaiming: ""false"",
-                    surfaceCopperDeposits: ""0.015"",
+                    surfaceCopperDeposits: ""0.05"",
                     surfaceTinDeposits: ""0"",
                     saplingGrowthDays: ""24"",
-					cloudypos: ""0.5"",
                     temporalStorms: ""often""
 			    }
 		    }
@@ -124,7 +127,8 @@ using Vintagestory.API.Config;
             
             { code: ""microblockChiseling"", dataType: ""bool"", default: ""false"" },
             { code: ""deathPunishment"", dataType: ""dropdown"", values: [""drop"", ""keep""], names: [""Drop inventory contents"", ""Keep inventory contents""], default: ""drop"" },
-            { code: ""graceTimer"", dataType: ""dropdown"", values: [""10"", ""5"", ""4"", ""3"", ""2"", ""1"", ""0""], names: [""10 days before monsters appear"", ""5 days before monsters appear"", ""4 days before monsters appear"", ""3 days before monsters appear"", ""2 days before monsters appear"", ""1 day before monsters appear"", ""No timer. Monsters spawn right away.""], default: ""5"" },
+            { code: ""spawnRadius"", onCustomizeScreen: false, dataType: ""dropdown"", values: [""10000"", ""5000"", ""2500"", ""1000"", ""500"", ""250"", ""100"", ""50"", ""25"", ""0""], names: [""10000 blocks"", ""5000 blocks"", ""2500 blocks"", ""1000 blocks"", ""500 blocks"", ""250 blocks"", ""100 blocks"", ""50 blocks"", ""25 blocks"",""0 blocks""], default: ""50"" },
+            { code: ""graceTimer"", dataType: ""dropdown"", values: [""10"", ""5"", ""4"", ""3"", ""2"", ""1"", ""0""], names: [""10 days before monsters appear"", ""5 days before monsters appear"", ""4 days before monsters appear"", ""3 days before monsters appear"", ""2 days before monsters appear"", ""1 day before monsters appear"", ""No timer. Monsters spawn right away.""], default: ""0"" },
             { code: ""creatureHostility"", dataType: ""dropdown"", values: [""aggressive"", ""passive"", ""off""], names: [""Aggressive"", ""Passive"", ""Never hostile""], default: ""aggressive"" },
             { code: ""creatureStrength"", dataType: ""dropdown"", values: [""4"", ""2"", ""1.5"", ""1"", ""0.5"", ""0.25""], names: [""Deadly (400%)"", ""Very Strong (200%)"", ""Strong (150%)"", ""Normal (100%)"", ""Weak (50%)"", ""Very weak (25%)""], default: ""1"" },
             { code: ""playerHealthPoints"", dataType: ""dropdown"", values: [""5"", ""10"", ""15"", ""20"", ""25"", ""30"", ""35""], names: [""5 hp"", ""10 hp"", ""15 hp"", ""20 hp"", ""25 hp"", ""30 hp"", ""35 hp""], default: ""15"" },
@@ -142,10 +146,10 @@ using Vintagestory.API.Config;
             { code: ""allowMap"", dataType: ""bool"", default: ""true"" },
             { code: ""allowLandClaiming"", dataType: ""bool"", default: ""true"" },
             { code: ""temporalStability"", dataType: ""bool"", default: ""true"" },
-            { code: ""temporalStorms"", dataType: ""dropdown"", values: [""off"", ""veryrare"", ""rare"", ""sometimes"", ""often"", ""veryoften""], names: [""Off"", ""Every 40-60 days, increase strength/frequency by 2.5% each time, capped at +25%"", ""Approx. every 30-40 days, increase strength/frequency by 5% each time, capped at +50%"", ""Approx. every 20-30 days, increase strength/frequency by +10% each time, capped at 100%"", ""Approx. every 10-20 days, increase strength/frequency by 15% each time, capped at +150%"", ""Approx. every 5-10 days, increase strength/frequency by 20% each time, capped at +200%""], default: ""sometimes"" },
+            { code: ""temporalStorms"", dataType: ""dropdown"", values: [""off"", ""veryrare"", ""rare"", ""sometimes"", ""often"", ""veryoften""], names: [""Off"", ""Every 30-40 days, increase strength/frequency by 2.5% each time, capped at +25%"", ""Approx. every 20-30 days, increase strength/frequency by 5% each time, capped at +50%"", ""Approx. every 10-20 days, increase strength/frequency by +10% each time, capped at 100%"", ""Approx. every 5-10 days, increase strength/frequency by 15% each time, capped at +150%"", ""Approx. every 3-6 days, increase strength/frequency by 20% each time, capped at +200%""], default: ""sometimes"" },
             
 
-            { code: ""surfaceCopperDeposits"", dataType: ""dropdown"", values: [""1"", ""0.5"", ""0.2"", ""0.1"", ""0.05"", ""0.015"", ""0""], names: [""Very common"", ""Common"", ""Uncommon"", ""Rare"", ""Very Rare"", ""Extremly rare"", ""Never""], default: ""0.1"" },
+            { code: ""surfaceCopperDeposits"", dataType: ""dropdown"", values: [""1"", ""0.5"", ""0.2"", ""0.12"", ""0.05"", ""0.015"", ""0""], names: [""Very common"", ""Common"", ""Uncommon"", ""Rare"", ""Very Rare"", ""Extremly rare"", ""Never""], default: ""0.12"" },
             { code: ""surfaceTinDeposits"", dataType: ""dropdown"", values: [""0.5"", ""0.25"", ""0.12"", ""0.03"", ""0.014"", ""0.007"", ""0""], names: [""Very common"", ""Common"", ""Uncommon"", ""Rare"", ""Very Rare"", ""Extremly rare"", ""Never""], default: ""0.007"" },
 
 	    ]

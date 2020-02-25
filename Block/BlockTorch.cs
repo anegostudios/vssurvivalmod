@@ -37,6 +37,22 @@ namespace Vintagestory.GameContent
             }
         }
 
+        public override void OnAttackingWith(IWorldAccessor world, Entity byEntity, Entity attackedEntity, ItemSlot itemslot)
+        {
+            base.OnAttackingWith(world, byEntity, attackedEntity, itemslot);
+
+            if (attackedEntity != null && byEntity.World.Side == EnumAppSide.Server && api.World.Rand.NextDouble() < 0.1)
+            {
+                attackedEntity.Ignite();
+            }
+        }
+
+        public override void OnHeldAttackStop(float secondsPassed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSelection, EntitySelection entitySel)
+        {
+            base.OnHeldAttackStop(secondsPassed, slot, byEntity, blockSelection, entitySel);
+
+        }
+
 
         public override string GetHeldTpIdleAnimation(ItemSlot activeHotbarSlot, Entity forEntity, EnumHand hand)
         {

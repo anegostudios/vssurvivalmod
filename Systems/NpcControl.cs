@@ -193,7 +193,7 @@ namespace Vintagestory.ServerMods
                         }
                         if (subcmd == "goto")
                         {
-                            if (args.Length <= 2)
+                            if (args.Length < 2)
                             {
                                 player.SendMessage(groupId, "Syntax: /npc exec goto x y z animcode speed [animspeed]", EnumChatType.Notification);
                                 return;

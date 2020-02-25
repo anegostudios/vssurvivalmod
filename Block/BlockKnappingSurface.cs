@@ -47,7 +47,7 @@ namespace Vintagestory.GameContent
         internal virtual bool HasSolidGround(IBlockAccessor blockAccessor, BlockPos pos)
         {
             Block block = blockAccessor.GetBlock(pos.DownCopy());
-            return block.SideSolid[BlockFacing.UP.Index];
+            return block.CanAttachBlockAt(blockAccessor, this, pos, BlockFacing.UP);
         }
 
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)

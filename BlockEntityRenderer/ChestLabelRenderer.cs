@@ -14,7 +14,7 @@ namespace Vintagestory.GameContent
         
         public ChestLabelRenderer(BlockPos pos, ICoreClientAPI api) : base(pos, api)
         {
-            
+            TextWidth = 160;
         }
 
         public void SetRotation(float radY)
@@ -29,6 +29,8 @@ namespace Vintagestory.GameContent
 
             IRenderAPI rpi = api.Render;
             Vec3d camPos = api.World.Player.Entity.CameraPos;
+
+            if (camPos.SquareDistanceTo(pos.X, pos.Y, pos.Z) > 20 * 20) return;
 
             rpi.GlDisableCullFace();
             rpi.GlToggleBlend(true);

@@ -25,7 +25,7 @@ namespace Vintagestory.GameContent
                 return false;
             }
 
-            if (world.BlockAccessor.GetBlock(blockSel.Position.DownCopy()).SideSolid[BlockFacing.UP.Index])
+            if (world.BlockAccessor.GetBlock(blockSel.Position.DownCopy()).CanAttachBlockAt(world.BlockAccessor, this, blockSel.Position.DownCopy(), BlockFacing.UP))
             {
                 DoPlaceBlock(world, byPlayer, blockSel, itemstack);
                 return true;
@@ -104,7 +104,7 @@ namespace Vintagestory.GameContent
             if (alloy != null)
             {
                 ItemStack smeltedStack = alloy.Output.ResolvedItemstack.Clone();
-                int units = (int)Math.Round(alloy.GetTotalOutputQuantity(stacks) * 100, 4);
+                int units = (int)Math.Round(alloy.GetTotalOutputQuantity(stacks) * 100, 0);
 
                 ((BlockSmeltedContainer)block).SetContents(outputStack, smeltedStack, units);
                 outputStack.Collectible.SetTemperature(world, outputStack, GetIngredientsTemperature(world, stacks));

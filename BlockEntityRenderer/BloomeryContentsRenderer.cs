@@ -81,14 +81,9 @@ namespace Vintagestory.GameContent
         }
 
 
-        public void Unregister()
-        {
-            api.Event.UnregisterRenderer(this, EnumRenderStage.Opaque);
-        }
-
-        // Called by UnregisterRenderer
         public void Dispose()
         {
+            api.Event.UnregisterRenderer(this, EnumRenderStage.Opaque);
             cubeModelRef?.Dispose();
         }
     }

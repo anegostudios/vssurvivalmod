@@ -64,7 +64,7 @@ namespace Vintagestory.GameContent
                         Itemstacks = workableStacklist.ToArray(),
                         GetMatchingStacks = (wi, bs, es) => {
                             BlockEntityAnvil bea = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityAnvil;
-                            return bea?.WorkItem == null ? wi.Itemstacks : null;
+                            return bea?.WorkItemStack == null ? wi.Itemstacks : null;
                         }
                     },
                     new WorldInteraction()
@@ -74,7 +74,7 @@ namespace Vintagestory.GameContent
                         Itemstacks = hammerStacklist.ToArray(),
                         GetMatchingStacks = (wi, bs, es) => {
                             BlockEntityAnvil bea = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityAnvil;
-                            return bea?.WorkItem == null ? null : wi.Itemstacks;
+                            return bea?.WorkItemStack == null ? null : wi.Itemstacks;
                         }
                     },
                     new WorldInteraction()
@@ -85,7 +85,7 @@ namespace Vintagestory.GameContent
                         Itemstacks = workableStacklist.ToArray(),
                         GetMatchingStacks = (wi, bs, es) => {
                             BlockEntityAnvil bea = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityAnvil;
-                            return bea?.WorkItem == null ? null : new ItemStack[] { bea.BaseMaterial };
+                            return bea?.WorkItemStack == null ? null : new ItemStack[] { bea.BaseMaterial };
                         }
                     },
                     new WorldInteraction()
@@ -95,7 +95,7 @@ namespace Vintagestory.GameContent
                         MouseButton = EnumMouseButton.Right,
                         ShouldApply = (wi, bs, es) => {
                             BlockEntityAnvil bea = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityAnvil;
-                            return bea?.WorkItem != null;
+                            return bea?.WorkItemStack != null;
                         }
                     },
                     new WorldInteraction()
@@ -106,7 +106,7 @@ namespace Vintagestory.GameContent
                         Itemstacks = hammerStacklist.ToArray(),
                         GetMatchingStacks = (wi, bs, es) => {
                             BlockEntityAnvil bea = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityAnvil;
-                            return bea?.WorkItem == null ? null : wi.Itemstacks;
+                            return bea?.WorkItemStack == null ? null : wi.Itemstacks;
                         }
                     }
                 };
@@ -141,7 +141,13 @@ namespace Vintagestory.GameContent
             BlockEntityAnvil bea = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityAnvil;
             if (bea != null)
             {
-                return bea.OnPlayerInteract(world, byPlayer, blockSel);
+                if (bea.OnPlayerInteract(world, byPlayer, blockSel))
+                {
+                    byPlayer.InventoryManager.BroadcastHotbarSlot();
+                    return true;
+                }
+
+                return false;
             }
 
             return base.OnBlockInteractStart(world, byPlayer, blockSel);

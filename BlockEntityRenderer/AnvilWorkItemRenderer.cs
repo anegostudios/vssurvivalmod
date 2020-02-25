@@ -25,10 +25,18 @@ namespace Vintagestory.GameContent
         Vec4f outLineColorMul = new Vec4f(1, 1, 1, 1);
         protected Matrixf ModelMat = new Matrixf();
 
-        public AnvilWorkItemRenderer(BlockPos pos, ICoreClientAPI capi)
+        CoreSystem coreMod;
+
+        BlockEntityAnvil beAnvil;
+        Vec4f glowRgb = new Vec4f();
+
+        public AnvilWorkItemRenderer(BlockEntityAnvil beAnvil, BlockPos pos, ICoreClientAPI capi)
         {
             this.pos = pos;
             this.api = capi;
+            this.beAnvil = beAnvil;
+
+            coreMod = capi.ModLoader.GetModSystem<CoreSystem>();
         }
 
         public double RenderOrder
@@ -46,50 +54,55 @@ namespace Vintagestory.GameContent
             if (workItemMeshRef == null) return;
             if (stage == EnumRenderStage.AfterFinalComposition)
             {
-                RenderRecipeOutLine();
+                if (api.World.Player?.InventoryManager?.ActiveHotbarSlot?.Itemstack?.Collectible is ItemHammer)
+                {
+                    RenderRecipeOutLine();
+                }
                 return;
             }
 
             IRenderAPI rpi = api.Render;
             IClientWorldAccessor worldAccess = api.World;
             Vec3d camPos = worldAccess.Player.Entity.CameraPos;
-            EntityPos plrPos = worldAccess.Player.Entity.Pos;
             int temp = (int)ingot.Collectible.GetTemperature(api.World, ingot);
 
             Vec4f lightrgbs = worldAccess.BlockAccessor.GetLightRGBs(pos.X, pos.Y, pos.Z);
+            int extraGlow = GameMath.Clamp((temp - 550) / 2, 0, 255);
             float[] glowColor = ColorUtil.GetIncandescenceColorAsColor4f(temp);
-            lightrgbs[0] += glowColor[0];
-            lightrgbs[1] += glowColor[1];
-            lightrgbs[2] += glowColor[2];
-
-
+            glowRgb.R = glowColor[0];
+            glowRgb.G = glowColor[1];
+            glowRgb.B = glowColor[2];
+            glowRgb.A = extraGlow / 255f;
 
             rpi.GlDisableCullFace();
 
-            IStandardShaderProgram prog = rpi.StandardShader;
+            IShaderProgram prog = coreMod.anvilShaderProg;
             prog.Use();
             rpi.BindTexture2d(texId);
-            prog.RgbaAmbientIn = rpi.AmbientColor;
-            prog.RgbaFogIn = rpi.FogColor;
-            prog.FogMinIn = rpi.FogMin;
-            prog.DontWarpVertices = 0;
-            prog.AddRenderFlags = 0;
-            prog.FogDensityIn = rpi.FogDensity;
-            prog.RgbaTint = ColorUtil.WhiteArgbVec;
-            prog.RgbaLightIn = lightrgbs;
-            prog.RgbaBlockIn = ColorUtil.WhiteArgbVec;
-            prog.ExtraGlow = GameMath.Clamp((temp - 700) / 2, 0, 255);
-            prog.ExtraGodray = 0;
-            prog.ModelMatrix = ModelMat
+            prog.Uniform("rgbaAmbientIn", rpi.AmbientColor);
+
+            prog.Uniform("rgbaFogIn", rpi.FogColor);
+            prog.Uniform("fogMinIn", rpi.FogMin);
+            prog.Uniform("dontWarpVertices", (int)0);
+            prog.Uniform("addRenderFlags", (int)0);
+            prog.Uniform("fogDensityIn", rpi.FogDensity);
+            prog.Uniform("rgbaTint", ColorUtil.WhiteArgbVec);
+            prog.Uniform("rgbaLightIn", lightrgbs);
+            prog.Uniform("rgbaGlowIn", glowRgb);
+            prog.Uniform("rgbaBlockIn", ColorUtil.WhiteArgbVec);
+            prog.Uniform("extraGlow", extraGlow);
+            
+            prog.UniformMatrix("modelMatrix", ModelMat
                 .Identity()
                 .Translate(pos.X - camPos.X, pos.Y - camPos.Y, pos.Z - camPos.Z)
                 .Values
-            ;
-            
+            );
+            prog.UniformMatrix("viewMatrix", rpi.CameraMatrixOriginf);
+            prog.UniformMatrix("projectionMatrix", rpi.CurrentProjectionMatrix);
 
-            prog.ViewMatrix = rpi.CameraMatrixOriginf;
-            prog.ProjectionMatrix = rpi.CurrentProjectionMatrix;
+
             rpi.RenderMesh(workItemMeshRef);
+
             prog.Stop();
         }
 
@@ -120,86 +133,141 @@ namespace Vintagestory.GameContent
 
 
 
-        public void RegenMesh(ItemStack ingot, bool[,,] Voxels, SmithingRecipe recipeToOutline)
+        public void RegenMesh(ItemStack ingot, byte[,,] voxels, bool[,,] recipeToOutlineVoxels)
         {
             workItemMeshRef?.Dispose();
             workItemMeshRef = null;
             
             if (ingot == null) return;
 
-            if (recipeToOutline != null)
+            if (recipeToOutlineVoxels != null)
             {
-                RegenOutlineMesh(recipeToOutline, Voxels);
+                RegenOutlineMesh(recipeToOutlineVoxels, voxels);
             }
 
             this.ingot = ingot;
             MeshData workItemMesh = new MeshData(24, 36, false);
+            workItemMesh.CustomBytes = new CustomMeshDataPartByte()
+            {
+                Conversion = DataConversion.NormalizedFloat,
+                Count = workItemMesh.VerticesCount,
+                InterleaveSizes = new int[] { 1 },
+                Instanced = false,
+                InterleaveOffsets = new int[] { 0 },
+                InterleaveStride = 1,
+                Values = new byte[workItemMesh.VerticesCount]
+            };
 
-            TextureAtlasPosition tpos = api.BlockTextureAtlas.GetPosition(api.World.GetBlock(new AssetLocation("ingotpile")), ingot.Collectible.LastCodePart());
-            MeshData voxelMesh = CubeMeshUtil.GetCubeOnlyScaleXyz(1 / 32f, 1 / 32f, new Vec3f(1 / 32f, 1 / 32f, 1 / 32f));
-            texId = tpos.atlasTextureId;
+            //float thickness = 0.33f + 0.66f * beAnvil.AvailableMetalVoxels / 32f;
+            TextureAtlasPosition tposMetal;
+            TextureAtlasPosition tposSlag;
 
-            for (int i = 0; i < voxelMesh.Uv.Length; i++)
+            if (beAnvil.IsIronBloom)
+            {
+                tposSlag = api.BlockTextureAtlas.GetPosition(beAnvil.Block, "ironbloom");
+                tposMetal = api.BlockTextureAtlas.GetPosition(api.World.GetBlock(new AssetLocation("ingotpile")), "iron");
+            } else
+            {
+                tposMetal = api.BlockTextureAtlas.GetPosition(api.World.GetBlock(new AssetLocation("ingotpile")), ingot.Collectible.LastCodePart());
+                tposSlag = tposMetal;
+            }
+            
+            MeshData metalVoxelMesh = CubeMeshUtil.GetCubeOnlyScaleXyz(1 / 32f, 1 / 32f, new Vec3f(1 / 32f, 1 / 32f, 1 / 32f));
+            CubeMeshUtil.SetXyzFacesAndPacketNormals(metalVoxelMesh);
+            metalVoxelMesh.CustomBytes = new CustomMeshDataPartByte()
+            {
+                Conversion = DataConversion.NormalizedFloat,
+                Count = metalVoxelMesh.VerticesCount,
+                Values = new byte[metalVoxelMesh.VerticesCount]
+            };
+
+            texId = tposMetal.atlasTextureId;
+
+            metalVoxelMesh.XyzFaces = (int[])CubeMeshUtil.CubeFaceIndices.Clone();
+            metalVoxelMesh.XyzFacesCount = 6;
+            metalVoxelMesh.Tints = new int[6];
+            
+            metalVoxelMesh.TintsCount = 6;
+            for (int i = 0; i < metalVoxelMesh.Rgba.Length; i++) metalVoxelMesh.Rgba[i] = 255;
+            metalVoxelMesh.Rgba2 = null;
+
+
+            MeshData slagVoxelMesh = metalVoxelMesh.Clone();
+
+            for (int i = 0; i < metalVoxelMesh.Uv.Length; i++)
             {
                 if (i % 2 > 0)
                 {
-                    voxelMesh.Uv[i] = tpos.y1 + voxelMesh.Uv[i] * 2f / api.BlockTextureAtlas.Size.Height;
-                } else
-                {
-                    voxelMesh.Uv[i] = tpos.x1 + voxelMesh.Uv[i] * 2f / api.BlockTextureAtlas.Size.Width;
+                    metalVoxelMesh.Uv[i] = tposMetal.y1 + metalVoxelMesh.Uv[i] * 2f / api.BlockTextureAtlas.Size.Height;
+
+                    slagVoxelMesh.Uv[i] = tposSlag.y1 + slagVoxelMesh.Uv[i] * 2f / api.BlockTextureAtlas.Size.Height;
                 }
-                
+                else
+                {
+                    metalVoxelMesh.Uv[i] = tposMetal.x1 + metalVoxelMesh.Uv[i] * 2f / api.BlockTextureAtlas.Size.Width;
+
+                    slagVoxelMesh.Uv[i] = tposSlag.x1 + slagVoxelMesh.Uv[i] * 2f / api.BlockTextureAtlas.Size.Width;
+                }
             }
 
-            voxelMesh.XyzFaces = (int[])CubeMeshUtil.CubeFaceIndices.Clone();
-            voxelMesh.XyzFacesCount = 6;
-            voxelMesh.Tints = new int[6];
-            voxelMesh.Flags = new int[24];
-            voxelMesh.TintsCount = 6;
-            for (int i = 0; i < voxelMesh.Rgba.Length; i++) voxelMesh.Rgba[i] = 255;
-            voxelMesh.Rgba2 = null;// voxelMesh.Rgba;
 
 
-            MeshData voxelMeshOffset = voxelMesh.Clone();
+
+            MeshData metVoxOffset = metalVoxelMesh.Clone();
+            MeshData slagVoxOffset = slagVoxelMesh.Clone();
 
             for (int x = 0; x < 16; x++)
             {
-                for (int y = 10; y < 16; y++)
+                for (int y = 0; y < 6; y++)
                 {
                     for (int z = 0; z < 16; z++)
                     {
-                        if (!Voxels[x, y, z]) continue;
+                        EnumVoxelMaterial mat = (EnumVoxelMaterial)voxels[x, y, z];
+                        if (mat == EnumVoxelMaterial.Empty) continue;
 
                         float px = x / 16f;
-                        float py = y / 16f;
+                        float py = 10/16f + y / 16f;
                         float pz = z / 16f;
 
-                        for (int i = 0; i < voxelMesh.xyz.Length; i += 3)
+                        MeshData mesh = mat == EnumVoxelMaterial.Metal ? metalVoxelMesh : slagVoxelMesh;
+                        MeshData meshVoxOffset = mat == EnumVoxelMaterial.Metal ? metVoxOffset : slagVoxOffset;
+
+                        for (int i = 0; i < mesh.xyz.Length; i += 3)
                         {
-                            voxelMeshOffset.xyz[i] = px + voxelMesh.xyz[i];
-                            voxelMeshOffset.xyz[i + 1] = py + voxelMesh.xyz[i + 1];
-                            voxelMeshOffset.xyz[i + 2] = pz + voxelMesh.xyz[i + 2];
+                            meshVoxOffset.xyz[i] = px + mesh.xyz[i];
+                            meshVoxOffset.xyz[i + 1] = py + mesh.xyz[i + 1];
+                            meshVoxOffset.xyz[i + 2] = pz + mesh.xyz[i + 2];
                         }
 
-                        float offsetX = (px * 32f) / api.BlockTextureAtlas.Size.Width;
-                        float offsetZ = (pz * 32f) / api.BlockTextureAtlas.Size.Height;
+                        float textureSize = 32f / api.BlockTextureAtlas.Size.Width;
 
-                        for (int i = 0; i < voxelMesh.Uv.Length; i += 2)
+                        float offsetX = px * textureSize;
+                        float offsetY = (py * 32f) / api.BlockTextureAtlas.Size.Width;
+                        float offsetZ = pz * textureSize;
+
+                        for (int i = 0; i < mesh.Uv.Length; i += 2)
                         {
-                            voxelMeshOffset.Uv[i] = voxelMesh.Uv[i] + offsetX;
-                            voxelMeshOffset.Uv[i + 1] = voxelMesh.Uv[i + 1] + offsetZ;
+                            meshVoxOffset.Uv[i] = mesh.Uv[i] + GameMath.Mod(offsetX + offsetY, textureSize);
+                            meshVoxOffset.Uv[i + 1] = mesh.Uv[i + 1] + GameMath.Mod(offsetZ + offsetY, textureSize);
                         }
 
-                        workItemMesh.AddMeshData(voxelMeshOffset);
+                        for (int i = 0; i < meshVoxOffset.CustomBytes.Values.Length; i++)
+                        {
+                            byte glowSub = (byte)GameMath.Clamp(10 * (Math.Abs(x - 8) + Math.Abs(z - 8) + Math.Abs(y - 2)), 100, 250);
+                            meshVoxOffset.CustomBytes.Values[i] = (mat == EnumVoxelMaterial.Metal) ? (byte)0 : glowSub;
+                        }
+
+                        workItemMesh.AddMeshData(meshVoxOffset);
                     }
                 }
             }
 
+            workItemMesh.Rgba2 = null;
             workItemMeshRef = api.Render.UploadMesh(workItemMesh);
         }
 
 
-        private void RegenOutlineMesh(SmithingRecipe recipeToOutline, bool[,,] voxels)
+        private void RegenOutlineMesh(bool[,,] recipeToOutlineVoxels, byte[,,] voxels)
         {
             recipeOutlineMeshRef?.Dispose();
 
@@ -207,7 +275,7 @@ namespace Vintagestory.GameContent
             recipeOutlineMesh.SetMode(EnumDrawMode.Lines);
 
             int greenCol = (156 << 24) | (100 << 16) | (200 << 8) | (100);
-            int orangeCol = (156 << 24) | (219 << 16) | (92 << 8) | (92);
+            int orangeCol = (156 << 24) | (219 << 16) | (92 << 8) | (192);
             MeshData greenVoxelMesh = LineMeshUtil.GetCube(greenCol);
             MeshData orangeVoxelMesh = LineMeshUtil.GetCube(orangeCol);
             for (int i = 0; i < greenVoxelMesh.xyz.Length; i++)
@@ -218,44 +286,48 @@ namespace Vintagestory.GameContent
             MeshData voxelMeshOffset = greenVoxelMesh.Clone();
 
 
+            int yMax = recipeToOutlineVoxels.GetLength(1);
+
             for (int x = 0; x < 16; x++)
             {
-                int y = 10;
-                for (int z = 0; z < 16; z++)
+                for (int y = 0; y < 6; y++)
                 {
-                    bool shouldFill = recipeToOutline.Voxels[x, z];
-                    bool didFill = voxels[x, y, z];
-                    if (shouldFill == didFill) continue;
-
-                    float px = x / 16f;
-                    float py = y / 16f;
-                    float pz = z / 16f;
-
-                    for (int i = 0; i < greenVoxelMesh.xyz.Length; i += 3)
+                    for (int z = 0; z < 16; z++)
                     {
-                        voxelMeshOffset.xyz[i] = px + greenVoxelMesh.xyz[i];
-                        voxelMeshOffset.xyz[i + 1] = py + greenVoxelMesh.xyz[i + 1];
-                        voxelMeshOffset.xyz[i + 2] = pz + greenVoxelMesh.xyz[i + 2];
+                        bool requireMetalHere = y >= yMax ? false : recipeToOutlineVoxels[x, y, z];
+
+                        EnumVoxelMaterial mat = (EnumVoxelMaterial)voxels[x, y, z];
+
+                        if (requireMetalHere && mat == EnumVoxelMaterial.Metal) continue;
+                        if (!requireMetalHere && mat == EnumVoxelMaterial.Empty) continue;
+
+                        float px = x / 16f;
+                        float py = 10/16f + y / 16f;
+                        float pz = z / 16f;
+
+                        for (int i = 0; i < greenVoxelMesh.xyz.Length; i += 3)
+                        {
+                            voxelMeshOffset.xyz[i] = px + greenVoxelMesh.xyz[i];
+                            voxelMeshOffset.xyz[i + 1] = py + greenVoxelMesh.xyz[i + 1];
+                            voxelMeshOffset.xyz[i + 2] = pz + greenVoxelMesh.xyz[i + 2];
+                        }
+
+                        voxelMeshOffset.Rgba = (requireMetalHere && mat == EnumVoxelMaterial.Empty) ? greenVoxelMesh.Rgba : orangeVoxelMesh.Rgba;
+
+                        recipeOutlineMesh.AddMeshData(voxelMeshOffset);
                     }
-
-                    voxelMeshOffset.Rgba = (shouldFill && !didFill) ? greenVoxelMesh.Rgba : orangeVoxelMesh.Rgba;
-
-                    recipeOutlineMesh.AddMeshData(voxelMeshOffset);
                 }
             }
 
             recipeOutlineMeshRef = api.Render.UploadMesh(recipeOutlineMesh);
         }
 
-        public void Unregister()
+
+        public void Dispose()
         {
             api.Event.UnregisterRenderer(this, EnumRenderStage.Opaque);
             api.Event.UnregisterRenderer(this, EnumRenderStage.AfterFinalComposition);
-        }
 
-        // Called by UnregisterRenderer
-        public void Dispose()
-        {
             recipeOutlineMeshRef?.Dispose();
             workItemMeshRef?.Dispose();
         }

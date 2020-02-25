@@ -322,8 +322,15 @@ namespace Vintagestory.GameContent
 
         public override BlockDropItemStack[] GetDropsForHandbook(ItemStack handbookStack, IPlayer forPlayer)
         {
-            string type = handbookStack.Attributes.GetString("type");
-            if (this.Attributes["drop"]?[type]?.AsBool() == false)
+            string type = handbookStack.Attributes?.GetString("type");
+
+            if (type == null)
+            {
+                api.World.Logger.Warning("BlockGenericTypedContainer.GetDropsForHandbook(): type not set for block " + handbookStack.Collectible?.Code);
+                return new BlockDropItemStack[0];
+            }
+
+            if (Attributes?["drop"]?[type]?.AsBool() == false)
             {
                 return new BlockDropItemStack[0]; 
             } else

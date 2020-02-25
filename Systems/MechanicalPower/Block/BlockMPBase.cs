@@ -15,10 +15,10 @@ namespace Vintagestory.GameContent.Mechanics
 
 
 
-        public void WasPlaced(IWorldAccessor world, BlockPos ownPos, BlockFacing connectedOnFacing = null, IMechanicalPowerBlock connectedToBlock = null)
+        public void WasPlaced(IWorldAccessor world, BlockPos ownPos, BlockFacing connectedOnFacing)
         {
             BEBehaviorMPBase beMechBase = world.BlockAccessor.GetBlockEntity(ownPos)?.GetBehavior<BEBehaviorMPBase>();
-            beMechBase?.WasPlaced(connectedOnFacing, connectedToBlock);
+            beMechBase?.WasPlaced(connectedOnFacing);
         }
 
 
@@ -28,7 +28,7 @@ namespace Vintagestory.GameContent.Mechanics
             if (block != null && block.HasConnectorAt(world, pos, face.GetOpposite()))
             {
                 block.DidConnectAt(world, pos.AddCopy(face), face.GetOpposite());
-                WasPlaced(world, pos, face, block);
+                WasPlaced(world, pos, face);
                 return true;
             }
 

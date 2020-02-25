@@ -8,6 +8,7 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -53,7 +54,6 @@ namespace Vintagestory.GameContent
             IRenderAPI rpi = api.Render;
             IClientWorldAccessor worldAccess = api.World;
             Vec3d camPos = worldAccess.Player.Entity.CameraPos;
-            EntityPos plrPos = worldAccess.Player.Entity.Pos;
 
             rpi.GlDisableCullFace();
             IStandardShaderProgram prog = rpi.PreparedStandardShader(pos.X, pos.Y, pos.Z);
@@ -73,6 +73,9 @@ namespace Vintagestory.GameContent
         private void RenderRecipeOutLine()
         {
             if (recipeOutlineMeshRef == null || api.HideGuis) return;
+            bool isClay = api.World.Player?.InventoryManager?.ActiveHotbarSlot?.Itemstack?.Collectible is ItemClay;
+            if (!isClay) return;
+
             IRenderAPI rpi = api.Render;
             IClientWorldAccessor worldAccess = api.World;
             EntityPos plrPos = worldAccess.Player.Entity.Pos;
@@ -108,7 +111,7 @@ namespace Vintagestory.GameContent
 
             this.workItem = workitem;
             MeshData workItemMesh = new MeshData(24, 36, false);
-            workItemMesh.Flags = null;
+            
             workItemMesh.Rgba2 = null;
 
             float subPixelPaddingx = api.BlockTextureAtlas.SubPixelPaddingX;
@@ -116,7 +119,8 @@ namespace Vintagestory.GameContent
 
             TextureAtlasPosition tpos = api.BlockTextureAtlas.GetPosition(api.World.GetBlock(new AssetLocation("clayform")), workitem.Collectible.Code.ToShortString());
             MeshData singleVoxelMesh = CubeMeshUtil.GetCubeOnlyScaleXyz(1 / 32f, 1 / 32f, new Vec3f(1 / 32f, 1 / 32f, 1 / 32f));
-            singleVoxelMesh.Rgba = CubeMeshUtil.GetShadedCubeRGBA(ColorUtil.WhiteArgb, CubeMeshUtil.DefaultBlockSideShadings, false);
+            singleVoxelMesh.Rgba = new byte[6 * 4 * 4].Fill((byte)255);
+            CubeMeshUtil.SetXyzFacesAndPacketNormals(singleVoxelMesh);
 
             texId = tpos.atlasTextureId;
 
@@ -135,7 +139,7 @@ namespace Vintagestory.GameContent
             singleVoxelMesh.XyzFaces = (int[])CubeMeshUtil.CubeFaceIndices.Clone();
             singleVoxelMesh.XyzFacesCount = 6;
             singleVoxelMesh.Tints = new int[6];
-            singleVoxelMesh.Flags = null;
+            
             singleVoxelMesh.TintsCount = 6;
 
 
@@ -226,15 +230,10 @@ namespace Vintagestory.GameContent
             recipeOutlineMeshRef = api.Render.UploadMesh(recipeOutlineMesh);
         }
 
-        public void Unregister()
+        public void Dispose()
         {
             api.Event.UnregisterRenderer(this, EnumRenderStage.Opaque);
             api.Event.UnregisterRenderer(this, EnumRenderStage.AfterFinalComposition);
-        }
-
-        // Called by UnregisterRenderer
-        public void Dispose()
-        {
             recipeOutlineMeshRef?.Dispose();
             workItemMeshRef?.Dispose();
         }

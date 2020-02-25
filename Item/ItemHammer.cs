@@ -7,12 +7,46 @@ using Cairo;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
     public class ItemHammer : Item
     {
+        SkillItem[] toolModes;
+        public override void OnLoaded(ICoreAPI api)
+        {
+            base.OnLoaded(api);
+
+            if (api is ICoreClientAPI capi) {
+                toolModes = ObjectCacheUtil.GetOrCreate(api, "hammerToolModes", () =>
+                {
+                    SkillItem[] modes = new SkillItem[6];
+
+                    modes[0] = new SkillItem() { Code = new AssetLocation("hit"), Name = Lang.Get("Heavy Hit") }.WithIcon(capi, DrawHit);
+                    modes[1] = new SkillItem() { Code = new AssetLocation("upsetup"), Name = Lang.Get("Upset Up") }.WithIcon(capi, (cr, x, y, w, h, c) => DrawUpset(cr, x, y, w, h, c, 0));
+                    modes[2] = new SkillItem() { Code = new AssetLocation("upsetright"), Name = Lang.Get("Upset Right") }.WithIcon(capi, (cr, x, y, w, h, c) => DrawUpset(cr, x, y, w, h, c, GameMath.PI / 2));
+                    modes[3] = new SkillItem() { Code = new AssetLocation("upsetdown"), Name = Lang.Get("Upset Down") }.WithIcon(capi, (cr, x, y, w, h, c) => DrawUpset(cr, x, y, w, h, c, GameMath.PI));
+                    modes[4] = new SkillItem() { Code = new AssetLocation("upsetleft"), Name = Lang.Get("Upset Left") }.WithIcon(capi, (cr, x, y, w, h, c) => DrawUpset(cr, x, y, w, h, c, 3 * GameMath.PI / 2));
+                    modes[5] = new SkillItem() { Code = new AssetLocation("split"), Name = Lang.Get("Split") }.WithIcon(capi, DrawSplit);
+
+                    return modes;
+                });
+            }
+        }
+
+        public override void OnUnloaded(ICoreAPI api)
+        {
+            for (int i = 0; toolModes != null && i < toolModes.Length; i++)
+            {
+                toolModes[i]?.Dispose();
+            }
+        }
+
+        
+
         public override void OnHeldAttackStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
         {
             if (blockSel == null) return;
@@ -85,55 +119,30 @@ namespace Vintagestory.GameContent
             if (byPlayer == null) return;
 
 
-            if (bea.AvailableVoxels <= 0 && GetToolMode(slot, byPlayer, blockSel) != 5)
+            /*if (bea.AvailableMetalVoxels <= 0 && GetToolMode(slot, byPlayer, blockSel) != 5)
             {
                 return;
-            }
+            }*/
 
             // The server side call is made using a custom network packet
-            if (byEntity.World is IClientWorldAccessor)
+            if (byEntity.World is IClientWorldAccessor cWorld)
             {
+                
                 bea.OnUseOver(byPlayer, blockSel.SelectionBoxIndex);
             }
             
         }
 
 
-        public override int GetQuantityToolModes(ItemSlot slot, IPlayer byPlayer, BlockSelection blockSelection)
+        public override SkillItem[] GetToolModes(ItemSlot slot, IClientPlayer forPlayer, BlockSelection blockSel)
         {
-            if (blockSelection == null) return 0;
-            Block block = byPlayer.Entity.World.BlockAccessor.GetBlock(blockSelection.Position);
-            return block is BlockAnvil ? 6 : 0;
+            if (blockSel == null) return null;
+            Block block = forPlayer.Entity.World.BlockAccessor.GetBlock(blockSel.Position);
+            return block is BlockAnvil ? toolModes : null;
         }
 
-        public override void DrawToolModeIcon(ItemSlot slot, IPlayer byPlayer, BlockSelection blockSelection, Context cr, int x, int y, int width, int height, int toolMode, int color)
-        {
-            float[] colordoubles = ColorUtil.ToRGBAFloats(color);
-            
-            switch (toolMode)
-            {
-                case 0:
-                    DrawHit(cr, x, y, width, height, colordoubles);
-                    break;
-                case 1:
-                    DrawUpset(cr, x, y, width, height, colordoubles, 0);
-                    break;
-                case 2:
-                    DrawUpset(cr, x, y, width, height, colordoubles, GameMath.PI / 2);
-                    break;
-                case 3:
-                    DrawUpset(cr, x, y, width, height, colordoubles, GameMath.PI);
-                    break;
-                case 4:
-                    DrawUpset(cr, x, y, width, height, colordoubles, 3 * GameMath.PI / 2);
-                    break;
-                case 5:
-                    DrawSplit(cr, x, y, width, height, colordoubles);
-                    break;
-            }
-        }
 
-        private void DrawSplit(Context cr, int x, int y, float width, float height, float[] colordoubles)
+        private void DrawSplit(Context cr, int x, int y, float width, float height, double[] colordoubles)
         {
             Pattern pattern = null;
             Matrix matrix = cr.Matrix;
@@ -290,7 +299,7 @@ namespace Vintagestory.GameContent
             cr.Restore();
         }
 
-        private void DrawUpset(Context cr, int x, int y, float width, float height, float[] colordoubles, double rot)
+        private void DrawUpset(Context cr, int x, int y, float width, float height, double[] colordoubles, double rot)
         {
             Pattern pattern = null;
             Matrix matrix = cr.Matrix;
@@ -369,7 +378,7 @@ namespace Vintagestory.GameContent
             cr.Restore();
         }
 
-        private void DrawHit(Context cr, int x, int y, float width, float height, float[] colordoubles)
+        private void DrawHit(Context cr, int x, int y, float width, float height, double[] colordoubles)
         {
             Pattern pattern = null;
             Matrix matrix = cr.Matrix;

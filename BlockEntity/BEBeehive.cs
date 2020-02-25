@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -18,7 +19,7 @@ namespace Vintagestory.GameContent
         Large = 2
     }
 
-    public class BlockEntityBeehive : BlockEntity
+    public class BlockEntityBeehive : BlockEntity, IAnimalFoodSource
     {        
         // Stored values
         int scanIteration;
@@ -59,6 +60,8 @@ namespace Vintagestory.GameContent
             );
         }
 
+
+        
         public override void Initialize(ICoreAPI api)
         {
             base.Initialize(api);
@@ -91,6 +94,11 @@ namespace Vintagestory.GameContent
                     new Vec3f(0, BlockFacing.FromCode(orientation).HorizontalAngleIndex * 90 - 90, 0)
                 );
                 api.ObjectCache["beehive-harvestablemesh-" + orientation] = mesh;
+            }
+
+            if (!isWildHive && api.Side == EnumAppSide.Server)
+            {
+                api.ModLoader.GetModSystem<POIRegistry>().AddPOI(this);
             }
             
         }
@@ -463,6 +471,42 @@ namespace Vintagestory.GameContent
             }
 
             dsc.AppendLine(str);
+        }
+
+
+
+
+
+        #region IAnimalFoodSource impl
+        public bool IsSuitableFor(Entity entity)
+        {
+            if (isWildHive || !Harvestable) return false;
+
+            string[] diet = entity.Properties.Attributes?["blockDiet"]?.AsArray<string>();
+            if (diet == null) return false;
+
+            return diet.Contains("Honey");
+        }
+
+        public float ConsumeOnePortion()
+        {
+            Api.World.BlockAccessor.BreakBlock(Pos, null, 1f);
+            return 1f;
+        }
+
+        public Vec3d Position => base.Pos.ToVec3d().Add(0.5, 0.5, 0.5);
+        public string Type => "food";
+        #endregion
+
+
+        public override void OnBlockRemoved()
+        {
+            base.OnBlockRemoved();
+
+            if (!isWildHive && Api.Side == EnumAppSide.Server)
+            {
+                Api.ModLoader.GetModSystem<POIRegistry>().RemovePOI(this);
+            }
         }
     }
 }

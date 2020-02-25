@@ -51,11 +51,20 @@ namespace Vintagestory.GameContent
         public void Start()
         {
             entity.pathTraverser.NavigateTo(Target, GotoSpeed, OnDone, OnDone);
-            if (!entity.AnimManager.StartAnimation(AnimCode))
-            {
-                entity.AnimManager.StartAnimation(new AnimationMetaData() { Animation = AnimCode, Code = AnimCode, AnimationSpeed = AnimSpeed });
-            }
 
+            if (AnimSpeed != 0.02f)
+            {
+                entity.AnimManager.StartAnimation(new AnimationMetaData() { Animation = AnimCode, Code = AnimCode, AnimationSpeed = AnimSpeed }.Init());
+            }
+            else
+            {
+
+                if (!entity.AnimManager.StartAnimation(AnimCode))
+                {
+                    entity.AnimManager.StartAnimation(new AnimationMetaData() { Animation = AnimCode, Code = AnimCode, AnimationSpeed = AnimSpeed }.Init());
+                }
+
+            }
             entity.Controls.Sprint = AnimCode == "run" || AnimCode == "sprint";
         }
 
@@ -109,12 +118,12 @@ namespace Vintagestory.GameContent
             {
                 case "gs":
                     GotoSpeed = (float)args.PopFloat(0);
-                    player.SendMessage(GlobalConstants.CurrentChatGroup, "Ok goto speed upated to " + GotoSpeed, EnumChatType.Notification);
+                    player.SendMessage(GlobalConstants.CurrentChatGroup, "Ok goto speed updated to " + GotoSpeed, EnumChatType.Notification);
                     return;
 
                 case "as":
                     AnimSpeed = (float)args.PopFloat(0);
-                    player.SendMessage(GlobalConstants.CurrentChatGroup, "Ok goto speed upated to " + AnimSpeed, EnumChatType.Notification);
+                    player.SendMessage(GlobalConstants.CurrentChatGroup, "Ok animation speed updated to " + AnimSpeed, EnumChatType.Notification);
                     return;
             }
 

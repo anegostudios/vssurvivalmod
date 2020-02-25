@@ -41,7 +41,7 @@ namespace Vintagestory.GameContent
 
             depositGen = new GenDeposits();
             depositGen.setApi(sapi);
-            depositGen.initWorldGen();
+            depositGen.initWorldGen(false);
 
 
             sapi.Event.ServerRunPhase(EnumServerRunPhase.RunGame, () =>

@@ -94,7 +94,7 @@ namespace Vintagestory.GameContent
                 ItemSlot handslot = byEntity.RightHandItemSlot;
                 if (handslot.Empty)
                 {
-                    
+                    // Start from armor slot because it can't wear clothes atm
                     for (int i = 0; i < GearInventory.Count; i++)
                     {
                         ItemSlot gslot = GearInventory[i];
@@ -105,8 +105,17 @@ namespace Vintagestory.GameContent
                             return;
                         }   
                     }
+                } else
+                {
+                    if (!ItemSlotCharacter.IsDressType(slot.Itemstack, EnumCharacterDressType.ArmorBody) && !ItemSlotCharacter.IsDressType(slot.Itemstack, EnumCharacterDressType.ArmorHead) && !ItemSlotCharacter.IsDressType(slot.Itemstack, EnumCharacterDressType.ArmorLegs)) {
+
+                        (byEntity.World.Api as ICoreClientAPI)?.TriggerIngameError(this, "cantplace", "Cannot place dresses on armor stands");
+
+                        return;
+                    }
                 }
 
+                
                 WeightedSlot sinkslot = GearInventory.GetBestSuitedSlot(handslot);
                 if (sinkslot.weight > 0 && sinkslot.slot != null)
                 {
@@ -146,6 +155,16 @@ namespace Vintagestory.GameContent
             base.OnInteract(byEntity, slot, hitPosition, mode);
         }
 
+
+        float fireDamage;
+
+        public override bool ReceiveDamage(DamageSource damageSource, float damage)
+        {
+            if (damageSource.Source == EnumDamageSource.Internal && damageSource.Type == EnumDamageType.Fire) fireDamage += damage;
+            if (fireDamage > 4) Die();
+
+            return base.ReceiveDamage(damageSource, damage);
+        }
 
     }
 }

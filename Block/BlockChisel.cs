@@ -14,7 +14,11 @@ namespace Vintagestory.GameContent
 {
     public class BlockChisel : Block
     {
-        
+        public override void OnLoaded(ICoreAPI api)
+        {
+            base.OnLoaded(api);
+        }
+
         public override bool DoParticalSelection(IWorldAccessor world, BlockPos pos)
         {
             return true;
@@ -36,26 +40,41 @@ namespace Vintagestory.GameContent
 
             return base.GetLightHsv(blockAccessor, pos, stack);
         }
+        */
 
         public override int GetLightAbsorption(IBlockAccessor blockAccessor, BlockPos pos)
         {
+            return GetLightAbsorption(blockAccessor.GetChunkAtBlockPos(pos), pos);
+        }
+
+        public override int GetLightAbsorption(IWorldChunk chunk, BlockPos pos)
+        {
+            BlockEntityChisel bec = chunk?.GetLocalBlockEntityAtBlockPos(pos) as BlockEntityChisel;
+            return bec?.GetLightAbsorption() ?? 0;
+        }
+
+
+        public override bool DoEmitSideAo(IBlockAccessor blockAccessor, BlockPos pos, int facing)
+        { 
             BlockEntityChisel bec = blockAccessor.GetBlockEntity(pos) as BlockEntityChisel;
-            if (bec?.Materials == null)
+            if (bec == null)
             {
-                return base.GetLightAbsorption(blockAccessor, pos);
+                return base.DoEmitSideAo(blockAccessor, pos, facing);
             }
 
-            int absorb = 99;
+            return bec.DoEmitSideAo(facing);
+        }
 
-            for (int i = 0; i < bec.Materials.Length; i++)
+        public override bool DoEmitSideAoByFlag(IBlockAccessor blockAccessor, BlockPos pos, int flag)
+        {
+            BlockEntityChisel bec = blockAccessor.GetBlockEntity(pos) as BlockEntityChisel;
+            if (bec == null)
             {
-                Block block = blockAccessor.GetBlock(bec.Materials[i]);
-                absorb = Math.Min(absorb, block.LightAbsorption);
+                return base.DoEmitSideAoByFlag(blockAccessor, pos, flag);
             }
 
-            return base.GetLightAbsorption(blockAccessor, pos);
-        }*/
-
+            return bec.DoEmitSideAoByFlag(flag);
+        }
 
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
         {
@@ -77,6 +96,17 @@ namespace Vintagestory.GameContent
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1)
         {
             return new ItemStack[] { OnPickBlock(world, pos) };
+        }
+
+        public override bool CanAttachBlockAt(IBlockAccessor world, Block block, BlockPos pos, BlockFacing blockFace)
+        {
+            BlockEntityChisel be = world.GetBlockEntity(pos) as BlockEntityChisel;
+            if (be != null)
+            {
+                return be.CanAttachBlockAt(blockFace);
+            }
+
+            return base.CanAttachBlockAt(world, block, pos, blockFace);
         }
 
         public override void OnBlockPlaced(IWorldAccessor world, BlockPos blockPos, ItemStack byItemStack)

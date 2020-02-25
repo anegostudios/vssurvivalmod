@@ -6,6 +6,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Config;
+using System.Linq;
 
 namespace Vintagestory.GameContent
 {
@@ -71,10 +72,18 @@ namespace Vintagestory.GameContent
             {
                 string orename = LastCodePart(1);
                 string rockname = LastCodePart(0);
+
+                if (FirstCodePart() == "crystalizedore")
+                {
+                    return Lang.Get(LastCodePart(2) + "-crystallizedore-chunk", Lang.Get("ore-" + orename));
+
+                }
                 return Lang.Get(LastCodePart(2) + "-ore-chunk", Lang.Get("ore-" + orename));
+
             }
 
             return base.GetHeldItemName(itemStack);
         }
+
     }
 }

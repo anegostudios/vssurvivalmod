@@ -18,10 +18,12 @@ namespace Vintagestory.GameContent
         public string lining = "plain";
         public string glass = "quartz";
 
-        MeshData currentMesh;
+        
+        public float MeshAngle;
 
         byte[] origlightHsv = new byte[] { 7, 4, 18 };
         byte[] lightHsv = new byte[] { 7, 4, 18 };
+        
 
         public override void Initialize(ICoreAPI api)
         {
@@ -49,9 +51,10 @@ namespace Vintagestory.GameContent
             glass = tree.GetString("glass", "quartz");
             setLightColor(origlightHsv, lightHsv, glass);
 
+            MeshAngle = tree.GetFloat("meshAngle");
+
             if (Api != null && Api.Side == EnumAppSide.Client)
             {
-                currentMesh = null;
                 MarkDirty(true);
             }
         }
@@ -87,18 +90,24 @@ namespace Vintagestory.GameContent
             tree.SetString("material", material);
             tree.SetString("lining", lining);
             tree.SetString("glass", glass);
+            tree.SetFloat("meshAngle", MeshAngle);
         }
 
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
         {
-            if (currentMesh == null)
+            MeshData mesh = getMesh(tesselator);
+
+            if (mesh == null) return false;
+
+            string part = Block.LastCodePart();
+            if (part == "up" || part == "down")
             {
-                currentMesh = getMesh(tesselator);
-                if (currentMesh == null) return false;
+                mesh = mesh.Clone().Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 0, MeshAngle, 0);
             }
 
-            mesher.AddMeshData(currentMesh);
+            mesher.AddMeshData(mesh);
+
             return true;
         }
 

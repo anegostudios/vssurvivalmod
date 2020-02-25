@@ -12,6 +12,14 @@ namespace Vintagestory.GameContent
 {
     public class BlockTroughDoubleBlock : Block
     {
+
+        public override void OnLoaded(ICoreAPI api)
+        {
+            base.OnLoaded(api);
+            CanStep = false;
+        }
+
+
         public BlockFacing OtherPartPos()
         {
             BlockFacing facing = BlockFacing.FromCode(LastCodePart());
@@ -63,7 +71,16 @@ namespace Vintagestory.GameContent
                 }
 
                 BlockEntityTrough betr = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityTrough;
-                if (betr != null) return betr.OnInteract(byPlayer, blockSel);
+                
+                bool ok = betr?.OnInteract(byPlayer, blockSel) == true;
+                if (ok && world.Side == EnumAppSide.Client)
+                {
+                    (byPlayer as IClientPlayer).TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
+                    return true;
+                }
+
+                return ok;
+
             }
 
             return base.OnBlockInteractStart(world, byPlayer, blockSel);

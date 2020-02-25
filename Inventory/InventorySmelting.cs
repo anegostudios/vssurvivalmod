@@ -48,12 +48,14 @@ namespace Vintagestory.GameContent
             // slot 3,4,5,6 = extra input slots with crucible in input
             slots = GenEmptySlots(7);
             cookingSlots = new ItemSlot[] { slots[3], slots[4], slots[5], slots[6] };
+            
         }
 
         public InventorySmelting(string className, string instanceID, ICoreAPI api) : base(className, instanceID, api)
         {
             slots = GenEmptySlots(7);
             cookingSlots = new ItemSlot[] { slots[3], slots[4], slots[5], slots[6] };
+            
         }
 
         public override void LateInitialize(string inventoryID, ICoreAPI api)
@@ -64,6 +66,8 @@ namespace Vintagestory.GameContent
             {
                 cookingSlots[i].MaxSlotStackSize = CookingContainerMaxSlotStackSize;
             }
+
+            updateStorageTypeFromContainer(slots[1].Itemstack);
         }
 
         public override int Count
@@ -98,19 +102,24 @@ namespace Vintagestory.GameContent
                     discardCookingSlots();
                 } else
                 {
-                    int storageType = defaultStorageType;
-                    if (slot.Itemstack.ItemAttributes?["storageType"] != null)
-                    {
-                        storageType = slot.Itemstack.ItemAttributes["storageType"].AsInt(defaultStorageType);
-                    }
-
-                    for (int i = 0; i < cookingSlots.Length; i++)
-                    {
-                        cookingSlots[i].StorageType = (EnumItemStorageFlags)storageType;
-                        cookingSlots[i].MaxSlotStackSize = CookingContainerMaxSlotStackSize;
-                    }
+                    updateStorageTypeFromContainer(slot.Itemstack);
                 }
                 
+            }
+        }
+
+        void updateStorageTypeFromContainer(ItemStack stack)
+        {
+            int storageType = defaultStorageType;
+            if (stack?.ItemAttributes?["storageType"] != null)
+            {
+                storageType = stack.ItemAttributes["storageType"].AsInt(defaultStorageType);
+            }
+
+            for (int i = 0; i < cookingSlots.Length; i++)
+            {
+                cookingSlots[i].StorageType = (EnumItemStorageFlags)storageType;
+                cookingSlots[i].MaxSlotStackSize = CookingContainerMaxSlotStackSize;
             }
         }
 

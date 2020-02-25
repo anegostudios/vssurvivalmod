@@ -149,7 +149,7 @@ namespace Vintagestory.GameContent
                 props.Quantity.avg = 0;
             }
 
-            if (secondsIgniting >= 2f)
+            if (secondsIgniting >= 1.5f)
             {
                 return EnumIgniteState.IgniteNow;
             }
@@ -159,7 +159,7 @@ namespace Vintagestory.GameContent
 
         public override void OnTryIgniteBlockOver(EntityAgent byEntity, BlockPos pos, float secondsIgniting, ref EnumHandling handling)
         {
-            if (secondsIgniting < 1.95f) return;
+            if (secondsIgniting < 1.45f) return;
 
             handling = EnumHandling.PreventDefault;
 

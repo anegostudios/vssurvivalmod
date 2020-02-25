@@ -72,29 +72,22 @@ namespace Vintagestory.GameContent
 
         public string BlockName => blockName;
 
+        bool[] emitSideAo = new bool[6] { true, true, true, true, true, true };
+        bool[] emitSideAoByFlags = new bool[63];
+        bool absorbAnyLight;
+        bool[] sideSolid = new bool[6];
+
         public bool DetailingMode
         {
-            get { return Api.Side == EnumAppSide.Client && (Api.World as IClientWorldAccessor).Player?.InventoryManager?.ActiveHotbarSlot?.Itemstack?.Collectible?.Tool == EnumTool.Chisel; }
+            get {
+                IPlayer player = (Api.World as IClientWorldAccessor).Player;
+                ItemSlot slot = player?.InventoryManager?.ActiveHotbarSlot;
+                ItemStack stack = slot?.Itemstack;
+
+                return Api.Side == EnumAppSide.Client && stack?.Collectible?.Tool == EnumTool.Chisel; 
+            }
         }
 
-        public int ChiselMode(IPlayer player)
-        {
-            ItemSlot slot = player?.InventoryManager?.ActiveHotbarSlot;
-            int? mode = slot?.Itemstack?.Collectible.GetToolMode(slot, player, new BlockSelection() { Position = Pos });
-
-            return mode == null ? 0 : (int)mode;
-        }
-
-        public int ChiselSize(IPlayer player)
-        {
-            int mode = ChiselMode(player);
-            if (mode == 0) return 1;
-            if (mode == 1) return 2;
-            if (mode == 2) return 4;
-            if (mode == 3) return 8;
-            if (mode == 4) return 16;
-            return 0;
-        }
 
         public override void Initialize(ICoreAPI api)
         {
@@ -107,51 +100,84 @@ namespace Vintagestory.GameContent
             }
         }
 
+        internal int GetLightAbsorption()
+        {
+            if (MaterialIds == null || !absorbAnyLight)
+            {
+                return 0;
+            }
+
+            int absorb = 99;
+
+            for (int i = 0; i < MaterialIds.Length; i++)
+            {
+                Block block = Api.World.GetBlock(MaterialIds[i]);
+                absorb = Math.Min(absorb, block.LightAbsorption);
+            }
+
+            return absorb;
+        }
+
+        public EnumChiselMode ChiselMode(IPlayer player)
+        {
+            ItemSlot slot = player?.InventoryManager?.ActiveHotbarSlot;
+            int? mode = slot?.Itemstack?.Collectible.GetToolMode(slot, player, new BlockSelection() { Position = Pos });
+
+            return mode == null ? 0 : (EnumChiselMode)mode;
+        }
+
+        public int ChiselSize(IPlayer player)
+        {
+            int mode = (int)ChiselMode(player);
+            if (mode == 0) return 1;
+            if (mode == 1) return 2;
+            if (mode == 2) return 4;
+            if (mode == 3) return 8;
+
+            if (mode == 4) return 1;
+            if (mode == 5) return 1;
+            if (mode == 6) return 1;
+
+            return 0;
+        }
+
+
+        public bool CanAttachBlockAt(BlockFacing blockFace)
+        {
+            return sideSolid[blockFace.Index];
+        }
 
         public void WasPlaced(Block block, string blockName)
         {
+            bool collBoxCuboid = block.Attributes?["chiselShapeFromCollisionBox"].AsBool(false) == true;
+
             MaterialIds = new int[] { block.BlockId };
-            VoxelCuboids.Add(ToCuboid(0, 0, 0, 16, 16, 16, 0));
+
+            if (!collBoxCuboid)
+            {
+                VoxelCuboids.Add(ToCuboid(0, 0, 0, 16, 16, 16, 0));
+            } else
+            {
+                Cuboidf[] collboxes = block.GetCollisionBoxes(Api.World.BlockAccessor, Pos);
+                for (int i = 0; i < collboxes.Length; i++)
+                {
+                    Cuboidf box = collboxes[i];
+                    VoxelCuboids.Add(ToCuboid((int)(16*box.X1), (int)(16 * box.Y1), (int)(16 * box.Z1), (int)(16 * box.X2), (int)(16 * box.Y2), (int)(16 * box.Z2), 0));
+                }
+            }
+
             this.blockName = blockName;
 
+            updateSideSolidSideAo();
+            RegenSelectionBoxes(null);
             if (Api.Side == EnumAppSide.Client && Mesh == null)
             {
                 RegenMesh();
             }
-
-            RegenSelectionBoxes(null);
         }
 
 
-        public static uint ToCuboid(int minx, int miny, int minz, int maxx, int maxy, int maxz, int material)
-        {
-            Debug.Assert(maxx > 0 && maxx > minx);
-            Debug.Assert(maxy > 0 && maxy > miny);
-            Debug.Assert(maxz > 0 && maxz > minz);
-            Debug.Assert(minx < 16);
-            Debug.Assert(miny < 16);
-            Debug.Assert(minz < 16);
 
-            return (uint)(minx | (miny << 4) | (minz << 8) | ((maxx-1) << 12) | ((maxy-1) << 16) | ((maxz-1) << 20) | (material << 24));
-        }
-
-        private uint ToCuboid(CuboidWithMaterial cub)
-        {
-            return (uint)(cub.X1 | (cub.Y1 << 4) | (cub.Z1 << 8) | ((cub.X2 - 1) << 12) | ((cub.Y2 - 1) << 16) | ((cub.Z2 - 1) << 20) | (cub.Material << 24));
-        }
-
-
-        public static void FromUint(uint val, ref CuboidWithMaterial tocuboid)
-        {
-            tocuboid.X1 = (int)((val) & 15);
-            tocuboid.Y1 = (int)((val >> 4) & 15);
-            tocuboid.Z1 = (int)((val >> 8) & 15);
-            tocuboid.X2 = (int)(((val) >> 12) & 15) + 1;
-            tocuboid.Y2 = (int)(((val) >> 16) & 15) + 1;
-            tocuboid.Z2 = (int)(((val) >> 20) & 15) + 1;
-            tocuboid.Material = (byte)((val >> 24) & 15);
-        }
-        
 
         internal void OnBlockInteract(IPlayer byPlayer, BlockSelection blockSel, bool isBreak)
         {
@@ -165,43 +191,53 @@ namespace Vintagestory.GameContent
         }
 
 
+        
+
         internal void UpdateVoxel(IPlayer byPlayer, ItemSlot itemslot, Vec3i voxelPos, BlockFacing facing, bool isBreak)
         {
-            int mode = ChiselMode(byPlayer);
-
-            if (mode == 5)
-            {
-                IClientWorldAccessor clientWorld = (IClientWorldAccessor)Api.World;
-
-                string prevName = blockName;
-                GuiDialogBlockEntityTextInput dlg = new GuiDialogBlockEntityTextInput(Lang.Get("Block name"), Pos, blockName, Api as ICoreClientAPI, 500);
-                dlg.OnTextChanged = (text) => blockName = text;
-                dlg.OnCloseCancel = () => blockName = prevName;
-                dlg.TryOpen();
-            }
+            EnumChiselMode mode = ChiselMode(byPlayer);
 
             bool wasChanged = false;
 
-            if (mode == 4)
+            switch (mode)
             {
-                RotateModel(byPlayer, isBreak);
-                wasChanged = true;
-            } else
-            {
-                int size = ChiselSize(byPlayer);
-                Vec3i addAtPos = voxelPos.Clone().Add(size * facing.Normali.X, size * facing.Normali.Y, size * facing.Normali.Z);
+                case EnumChiselMode.Rename:
+                    IClientWorldAccessor clientWorld = (IClientWorldAccessor)Api.World;
 
-                if (isBreak)
-                {
-                    wasChanged = SetVoxel(voxelPos, false, byPlayer);
-                }
-                else
-                {
-                    if (addAtPos.X >= 0 && addAtPos.X < 16 && addAtPos.Y >= 0 && addAtPos.Y < 16 && addAtPos.Z >= 0 && addAtPos.Z < 16)
+                    string prevName = blockName;
+                    GuiDialogBlockEntityTextInput dlg = new GuiDialogBlockEntityTextInput(Lang.Get("Block name"), Pos, blockName, Api as ICoreClientAPI, 500);
+                    dlg.OnTextChanged = (text) => blockName = text;
+                    dlg.OnCloseCancel = () => blockName = prevName;
+                    dlg.TryOpen();
+                    break;
+
+                case EnumChiselMode.Flip:
+                    FlipVoxels(Block.SuggestedHVOrientation(byPlayer, new BlockSelection() { Position = Pos.Copy(), HitPosition = new Vec3d(voxelPos.X/16.0, voxelPos.Y/16.0, voxelPos.Z/16.0) })[0]);
+                    wasChanged = true;
+                    break;
+
+                case EnumChiselMode.Rotate:
+                    RotateModel(byPlayer, isBreak);
+                    wasChanged = true;
+                    break;
+
+
+                default:
+                    int size = ChiselSize(byPlayer);
+                    Vec3i addAtPos = voxelPos.Clone().Add(size * facing.Normali.X, size * facing.Normali.Y, size * facing.Normali.Z);
+
+                    if (isBreak)
                     {
-                        wasChanged = SetVoxel(addAtPos, true, byPlayer);
+                        wasChanged = SetVoxel(voxelPos, false, byPlayer);
                     }
-                }
+                    else
+                    {
+                        if (addAtPos.X >= 0 && addAtPos.X < 16 && addAtPos.Y >= 0 && addAtPos.Y < 16 && addAtPos.Z >= 0 && addAtPos.Z < 16)
+                        {
+                            wasChanged = SetVoxel(addAtPos, true, byPlayer);
+                        }
+                    }
+                    break;
             }
 
 
@@ -239,61 +275,6 @@ namespace Vintagestory.GameContent
                 return;
             }
         }
-
-
-        private void RotateModel(IPlayer byPlayer, bool clockwise)
-        {
-            List<uint> rotatedCuboids = new List<uint>();
-
-            foreach (var val in this.VoxelCuboids)
-            {
-                FromUint(val, ref tmpCuboid);
-                Cuboidi rotated = tmpCuboid.RotatedCopy(0, clockwise ? 90 : -90, 0, new Vec3d(8,8,8));
-                tmpCuboid.Set(rotated.X1, rotated.Y1, rotated.Z1, rotated.X2, rotated.Y2, rotated.Z2);
-                rotatedCuboids.Add(ToCuboid(tmpCuboid));
-            }
-
-            VoxelCuboids = rotatedCuboids;
-        }
-
-
-        public void OnTransformed(ITreeAttribute tree, int byDegrees, EnumAxis? aroundAxis)
-        {
-            List<uint> rotatedCuboids = new List<uint>();
-
-            VoxelCuboids = new List<uint>((tree["cuboids"] as IntArrayAttribute).AsUint);
-
-            foreach (var val in this.VoxelCuboids)
-            {
-                FromUint(val, ref tmpCuboid);
-                Cuboidi rotated = tmpCuboid.Clone();
-
-                if (aroundAxis == EnumAxis.X)
-                {
-                    rotated.Y1 = 16 - rotated.Y1;
-                    rotated.Y2 = 16 - rotated.Y2;
-                }
-                if (aroundAxis == EnumAxis.Y)
-                {
-                    rotated.X1 = 16 - rotated.X1;
-                    rotated.X2 = 16 - rotated.X2;
-                }
-                if (aroundAxis == EnumAxis.Z)
-                {
-                    rotated.Z1 = 16 - rotated.Z1;
-                    rotated.Z2 = 16 - rotated.Z2;
-                }
-
-                rotated = rotated.RotatedCopy(0, byDegrees, 0, new Vec3d(8, 8, 8));
-                
-
-                tmpCuboid.Set(rotated.X1, rotated.Y1, rotated.Z1, rotated.X2, rotated.Y2, rotated.Z2);
-                rotatedCuboids.Add(ToCuboid(tmpCuboid));
-            }
-
-            tree["cuboids"] = new IntArrayAttribute(rotatedCuboids.ToArray());
-        }
-
 
 
         public void SendUseOverPacket(IPlayer byPlayer, Vec3i voxelPos, BlockFacing facing, bool isBreak)
@@ -395,10 +376,11 @@ namespace Vintagestory.GameContent
 
         #region Voxel math
 
-        public bool SetVoxel(Vec3i voxelPos, bool state, IPlayer byPlayer)
+
+        void convertToVoxels(out bool[,,] voxels, out byte[,,] materials)
         {
-            bool[,,] Voxels = new bool[16, 16, 16];
-            byte[,,] VoxelMaterial = new byte[16, 16, 16];
+            voxels = new bool[16, 16, 16];
+            materials = new byte[16, 16, 16];
 
             for (int i = 0; i < VoxelCuboids.Count; i++)
             {
@@ -410,13 +392,111 @@ namespace Vintagestory.GameContent
                     {
                         for (int dz = tmpCuboid.Z1; dz < tmpCuboid.Z2; dz++)
                         {
-                            Voxels[dx, dy, dz] = true;
-                            VoxelMaterial[dx, dy, dz] = tmpCuboid.Material;
+                            voxels[dx, dy, dz] = true;
+                            materials[dx, dy, dz] = tmpCuboid.Material;
                         }
                     }
                 }
             }
+        }
 
+        void updateSideSolidSideAo()
+        {
+            bool[,,] Voxels;
+            byte[,,] VoxelMaterial;
+
+            convertToVoxels(out Voxels, out VoxelMaterial);
+            RebuildCuboidList(Voxels, VoxelMaterial);
+        }
+
+
+        private void FlipVoxels(BlockFacing frontFacing)
+        {
+            bool[,,] Voxels;
+            byte[,,] VoxelMaterial;
+
+            convertToVoxels(out Voxels, out VoxelMaterial);
+
+            bool[,,] outVoxels = new bool[16, 16, 16];
+            byte[,,] outVoxelMaterial = new byte[16, 16, 16];
+
+            // Ok, now we can actually modify the voxel
+            for (int dx = 0; dx < 16; dx++)
+            {
+                for (int dy = 0; dy < 16; dy++)
+                {
+                    for (int dz = 0; dz < 16; dz++)
+                    {
+                        outVoxels[dx, dy, dz] = Voxels[frontFacing.Axis == EnumAxis.Z ? 15 - dx : dx, dy, frontFacing.Axis == EnumAxis.X ? 15 - dz : dz];
+                        outVoxelMaterial[dx, dy, dz] = VoxelMaterial[frontFacing.Axis == EnumAxis.Z ? 15 - dx : dx, dy, frontFacing.Axis == EnumAxis.X ? 15 - dz : dz];
+                    }
+                }
+            }
+
+            RebuildCuboidList(outVoxels, outVoxelMaterial);
+        }
+
+        private void RotateModel(IPlayer byPlayer, bool clockwise)
+        {
+            List<uint> rotatedCuboids = new List<uint>();
+
+            foreach (var val in this.VoxelCuboids)
+            {
+                FromUint(val, ref tmpCuboid);
+                Cuboidi rotated = tmpCuboid.RotatedCopy(0, clockwise ? 90 : -90, 0, new Vec3d(8, 8, 8));
+                tmpCuboid.Set(rotated.X1, rotated.Y1, rotated.Z1, rotated.X2, rotated.Y2, rotated.Z2);
+                rotatedCuboids.Add(ToCuboid(tmpCuboid));
+            }
+
+            VoxelCuboids = rotatedCuboids;
+        }
+
+
+        public void OnTransformed(ITreeAttribute tree, int byDegrees, EnumAxis? aroundAxis)
+        {
+            List<uint> rotatedCuboids = new List<uint>();
+
+            VoxelCuboids = new List<uint>((tree["cuboids"] as IntArrayAttribute).AsUint);
+
+            foreach (var val in this.VoxelCuboids)
+            {
+                FromUint(val, ref tmpCuboid);
+                Cuboidi rotated = tmpCuboid.Clone();
+
+                if (aroundAxis == EnumAxis.X)
+                {
+                    rotated.Y1 = 16 - rotated.Y1;
+                    rotated.Y2 = 16 - rotated.Y2;
+                }
+                if (aroundAxis == EnumAxis.Y)
+                {
+                    rotated.X1 = 16 - rotated.X1;
+                    rotated.X2 = 16 - rotated.X2;
+                }
+                if (aroundAxis == EnumAxis.Z)
+                {
+                    rotated.Z1 = 16 - rotated.Z1;
+                    rotated.Z2 = 16 - rotated.Z2;
+                }
+
+                rotated = rotated.RotatedCopy(0, byDegrees, 0, new Vec3d(8, 8, 8));
+
+
+                tmpCuboid.Set(rotated.X1, rotated.Y1, rotated.Z1, rotated.X2, rotated.Y2, rotated.Z2);
+                rotatedCuboids.Add(ToCuboid(tmpCuboid));
+            }
+
+            tree["cuboids"] = new IntArrayAttribute(rotatedCuboids.ToArray());
+        }
+
+
+
+        public bool SetVoxel(Vec3i voxelPos, bool state, IPlayer byPlayer)
+        {
+            bool[,,] Voxels;
+            byte[,,] VoxelMaterial;
+
+            convertToVoxels(out Voxels, out VoxelMaterial);
 
             // Ok, now we can actually modify the voxel
             int size = ChiselSize(byPlayer);
@@ -465,13 +545,33 @@ namespace Vintagestory.GameContent
         }
 
 
+        #region Side AO 
+
+
+        public bool DoEmitSideAo(int facing)
+        {
+            return emitSideAo[facing];
+        }
+
+        public bool DoEmitSideAoByFlag(int flag)
+        {
+            return emitSideAoByFlags[flag];
+        }
+
+        #endregion
+
 
         private void RebuildCuboidList(bool[,,] Voxels, byte[,,] VoxelMaterial)
         {
             bool[,,] VoxelVisited = new bool[16, 16, 16];
+            emitSideAo = new bool[] { true, true, true, true, true, true };
+            sideSolid = new bool[] { true, true, true, true, true, true };
 
             // And now let's rebuild the cuboids with some greedy search algo thing
             VoxelCuboids.Clear();
+
+            int[] edgeVoxelsMissing = new int[6];
+            int[] edgeCenterVoxelsMissing = new int[6];
 
             for (int dx = 0; dx < 16; dx++)
             {
@@ -479,7 +579,52 @@ namespace Vintagestory.GameContent
                 {
                     for (int dz = 0; dz < 16; dz++)
                     {
-                        if (VoxelVisited[dx, dy, dz] || !Voxels[dx, dy, dz]) continue;
+                        bool isVoxel = Voxels[dx, dy, dz];
+
+                        // North: Negative Z
+                        // East: Positive X
+                        // South: Positive Z
+                        // West: Negative X
+                        // Up: Positive Y
+                        // Down: Negative Y
+                        if (!isVoxel)
+                        {
+                            if (dz == 0)
+                            {
+                                edgeVoxelsMissing[BlockFacing.NORTH.Index]++;
+                                if (Math.Abs(dy - 8) < 5 && Math.Abs(dx - 8) < 5) edgeCenterVoxelsMissing[BlockFacing.NORTH.Index]++;
+                            }
+                            if (dx == 15)
+                            {
+                                edgeVoxelsMissing[BlockFacing.EAST.Index]++;
+                                if (Math.Abs(dy - 8) < 5 && Math.Abs(dz - 8) < 5) edgeCenterVoxelsMissing[BlockFacing.EAST.Index]++;
+                            }
+                            if (dz == 15)
+                            {
+                                edgeVoxelsMissing[BlockFacing.SOUTH.Index]++;
+                                if (Math.Abs(dy - 8) < 5 && Math.Abs(dx - 8) < 5) edgeCenterVoxelsMissing[BlockFacing.SOUTH.Index]++;
+                            }
+                            if (dx == 0)
+                            {
+                                edgeVoxelsMissing[BlockFacing.WEST.Index]++;
+                                if (Math.Abs(dy - 8) < 5 && Math.Abs(dz - 8) < 5) edgeCenterVoxelsMissing[BlockFacing.WEST.Index]++;
+                            }
+                            if (dy == 15)
+                            {
+                                edgeVoxelsMissing[BlockFacing.UP.Index]++;
+                                if (Math.Abs(dz - 8) < 5 && Math.Abs(dx - 8) < 5) edgeCenterVoxelsMissing[BlockFacing.UP.Index]++;
+                            }
+                            if (dy == 0)
+                            {
+                                edgeVoxelsMissing[BlockFacing.DOWN.Index]++;
+                                if (Math.Abs(dz - 8) < 5 && Math.Abs(dx - 8) < 5) edgeCenterVoxelsMissing[BlockFacing.DOWN.Index]++;
+                            }
+
+                            
+                            continue;
+                        }
+
+                        if (VoxelVisited[dx, dy, dz]) continue;
 
                         CuboidWithMaterial cub = new CuboidWithMaterial()
                         {
@@ -503,6 +648,27 @@ namespace Vintagestory.GameContent
                     }
                 }
             }
+
+            bool doEmitSideAo = edgeVoxelsMissing[0] < 64 || edgeVoxelsMissing[1] < 64 || edgeVoxelsMissing[2] < 64 || edgeVoxelsMissing[3] < 64;
+
+            if (absorbAnyLight != doEmitSideAo)
+            {
+                int preva = GetLightAbsorption();
+                absorbAnyLight = doEmitSideAo;
+                int nowa = GetLightAbsorption();
+                if (preva != nowa)
+                {
+                    Api.World.BlockAccessor.MarkAbsorptionChanged(preva, nowa, Pos);
+                }
+            }
+
+            for (int i = 0; i < 6; i++)
+            {
+                emitSideAo[i] = doEmitSideAo;
+                sideSolid[i] = edgeCenterVoxelsMissing[i] < 5;
+            }
+
+            this.emitSideAoByFlags = Block.ResolveAoFlags(this.Block, emitSideAo);
         }
 
 
@@ -753,7 +919,7 @@ namespace Vintagestory.GameContent
 
                 mesh.XyzFaces[i] = i;
 
-                int normal = (VertexFlags.NormalToPackedInt(facing.Normalf.X, facing.Normalf.Y, facing.Normalf.Z) << 15) | (1 << 14);
+                int normal = (VertexFlags.NormalToPackedInt(facing.Normalf.X, facing.Normalf.Y, facing.Normalf.Z) << 15);
                 mesh.Flags[i * 4 + 0] |= normal;
                 mesh.Flags[i * 4 + 1] |= normal;
                 mesh.Flags[i * 4 + 2] |= normal;
@@ -812,7 +978,7 @@ namespace Vintagestory.GameContent
             for (int j = 3; j < mesh.Rgba2.Length; j += 4) mesh.Rgba2[j] = (byte)255; // Alpha value
 
             mesh.Flags = new int[4];
-            mesh.Flags.Fill(block.VertexFlags.All | face.NormalPackedFlags | (1 << 14));
+            mesh.Flags.Fill(block.VertexFlags.All | face.NormalPackedFlags);
             mesh.RenderPasses = new int[1];
             mesh.RenderPassCount = 1;
             mesh.RenderPasses[0] = (int)block.RenderPass;
@@ -836,6 +1002,33 @@ namespace Vintagestory.GameContent
             blockName = tree.GetString("blockName", "");
 
             VoxelCuboids = new List<uint>((tree["cuboids"] as IntArrayAttribute).AsUint);
+
+            byte[] sideAo = tree.GetBytes("emitSideAo", new byte[] { 255 });
+            if (sideAo.Length > 0)
+            {
+                emitSideAo[0] = (sideAo[0] & 1) > 0;
+                emitSideAo[1] = (sideAo[0] & 2) > 0;
+                emitSideAo[2] = (sideAo[0] & 4) > 0;
+                emitSideAo[3] = (sideAo[0] & 8) > 0;
+                emitSideAo[4] = (sideAo[0] & 16) > 0;
+                emitSideAo[5] = (sideAo[0] & 32) > 0;
+
+                absorbAnyLight = emitSideAo[0];
+                emitSideAoByFlags = Block.ResolveAoFlags(this.Block, emitSideAo);
+            }
+
+            byte[] sideSolid = tree.GetBytes("sideSolid", new byte[] { 255 });
+            if (sideSolid.Length > 0)
+            {
+                this.sideSolid[0] = (sideSolid[0] & 1) > 0;
+                this.sideSolid[1] = (sideSolid[0] & 2) > 0;
+                this.sideSolid[2] = (sideSolid[0] & 4) > 0;
+                this.sideSolid[3] = (sideSolid[0] & 8) > 0;
+                this.sideSolid[4] = (sideSolid[0] & 16) > 0;
+                this.sideSolid[5] = (sideSolid[0] & 32) > 0;
+            }
+
+
 
             if (Api is ICoreClientAPI)
             {
@@ -889,6 +1082,12 @@ namespace Vintagestory.GameContent
             tree["materials"] = attr;
             tree["cuboids"] = new IntArrayAttribute(VoxelCuboids.ToArray());
 
+            tree.SetBytes("emitSideAo", new byte[] { (byte)((emitSideAo[0] ? 1 : 0) | (emitSideAo[1] ? 2 : 0) | (emitSideAo[2] ? 4 : 0) | (emitSideAo[3] ? 8 : 0) | (emitSideAo[4] ? 16 : 0) | (emitSideAo[5] ? 32 : 0)) });
+
+            tree.SetBytes("sideSolid", new byte[] { (byte)((sideSolid[0] ? 1 : 0) | (sideSolid[1] ? 2 : 0) | (sideSolid[2] ? 4 : 0) | (sideSolid[3] ? 8 : 0) | (sideSolid[4] ? 16 : 0) | (sideSolid[5] ? 32 : 0)) });
+
+            
+
             tree.SetString("blockName", blockName);
         }
 
@@ -900,6 +1099,36 @@ namespace Vintagestory.GameContent
 
             mesher.AddMeshData(Mesh);
             return true;
+        }
+
+
+        public static uint ToCuboid(int minx, int miny, int minz, int maxx, int maxy, int maxz, int material)
+        {
+            Debug.Assert(maxx > 0 && maxx > minx);
+            Debug.Assert(maxy > 0 && maxy > miny);
+            Debug.Assert(maxz > 0 && maxz > minz);
+            Debug.Assert(minx < 16);
+            Debug.Assert(miny < 16);
+            Debug.Assert(minz < 16);
+
+            return (uint)(minx | (miny << 4) | (minz << 8) | ((maxx - 1) << 12) | ((maxy - 1) << 16) | ((maxz - 1) << 20) | (material << 24));
+        }
+
+        private uint ToCuboid(CuboidWithMaterial cub)
+        {
+            return (uint)(cub.X1 | (cub.Y1 << 4) | (cub.Z1 << 8) | ((cub.X2 - 1) << 12) | ((cub.Y2 - 1) << 16) | ((cub.Z2 - 1) << 20) | (cub.Material << 24));
+        }
+
+
+        public static void FromUint(uint val, ref CuboidWithMaterial tocuboid)
+        {
+            tocuboid.X1 = (int)((val) & 15);
+            tocuboid.Y1 = (int)((val >> 4) & 15);
+            tocuboid.Z1 = (int)((val >> 8) & 15);
+            tocuboid.X2 = (int)(((val) >> 12) & 15) + 1;
+            tocuboid.Y2 = (int)(((val) >> 16) & 15) + 1;
+            tocuboid.Z2 = (int)(((val) >> 20) & 15) + 1;
+            tocuboid.Material = (byte)((val >> 24) & 15);
         }
     }
 }

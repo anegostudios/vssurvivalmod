@@ -41,7 +41,7 @@ namespace Vintagestory.GameContent
 
             if (api.Side == EnumAppSide.Client)
             {
-                (api as ICoreClientAPI).Event.RegisterRenderer(renderer = new EchoChamberRenderer(Pos, api as ICoreClientAPI, getRotation()), EnumRenderStage.Opaque);
+                (api as ICoreClientAPI).Event.RegisterRenderer(renderer = new EchoChamberRenderer(Pos, api as ICoreClientAPI, getRotation()), EnumRenderStage.Opaque, "echochamber");
                 updateMeshesAndRenderer(api as ICoreClientAPI);
 
                 RegisterGameTickListener(OnClientTick, 50);
@@ -144,6 +144,7 @@ namespace Vintagestory.GameContent
                 sound?.Dispose();
                 return;
             }
+            if (sound == null) return;
 
             track.Sound = sound;
 
@@ -274,7 +275,7 @@ namespace Vintagestory.GameContent
         public override void OnBlockUnloaded()
         {
             base.OnBlockUnloaded();
-            renderer?.Unregister();
+            renderer?.Dispose();
             track?.Stop();
             track = null;
             Api.Event.UnregisterCallback(handlerId);
@@ -283,7 +284,7 @@ namespace Vintagestory.GameContent
         public override void OnBlockRemoved()
         {
             base.OnBlockRemoved();
-            renderer?.Unregister();
+            renderer?.Dispose();
             track?.Stop();
             track = null;
             Api.Event.UnregisterCallback(handlerId);

@@ -32,7 +32,7 @@ namespace Vintagestory.GameContent
             base.Initialize(properties);
 
             ignorePlaceTest = properties["ingorePlaceTest"].AsBool(false);
-            exceptions = properties["exceptions"].AsObject<AssetLocation[]>(new AssetLocation[0], block.Code.Domain);
+            exceptions = properties["exceptions"].AsObject(new AssetLocation[0], block.Code.Domain);
             fallSideways = properties["fallSideways"].AsBool(false);
             dustyFall = properties["dustyFall"].AsBool(false);
 
@@ -50,8 +50,9 @@ namespace Vintagestory.GameContent
             handling = EnumHandling.PassThrough;
             if (ignorePlaceTest) return true;
 
-            Block onBlock = world.BlockAccessor.GetBlock(blockSel.Position.DownCopy());
-            if (blockSel != null && !onBlock.SideSolid[BlockFacing.UP.Index] && block.Attributes?["allowUnstablePlacement"].AsBool() != true && !exceptions.Contains(onBlock.Code))
+            BlockPos pos = blockSel.Position.DownCopy();
+            Block onBlock = world.BlockAccessor.GetBlock(pos);
+            if (blockSel != null && !onBlock.CanAttachBlockAt(world.BlockAccessor, block, pos, BlockFacing.UP) && block.Attributes?["allowUnstablePlacement"].AsBool() != true && !exceptions.Contains(onBlock.Code))
             {
                 handling = EnumHandling.PreventSubsequent;
                 failureCode = "requiresolidground";
@@ -101,8 +102,8 @@ namespace Vintagestory.GameContent
                 return true;
             }
 
-            handling = EnumHandling.PreventSubsequent;
-            return true;
+            handling = EnumHandling.PassThrough;
+            return false;
         }
 
         private bool IsReplacableBeneathAndSideways(IWorldAccessor world, BlockPos pos)

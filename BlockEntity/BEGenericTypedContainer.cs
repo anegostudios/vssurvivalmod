@@ -181,8 +181,10 @@ namespace Vintagestory.GameContent
         protected virtual void OnInvClosed(IPlayer player)
         {
             inventory.PutLocked = retrieveOnly;
-            invDialog?.Dispose();
-            invDialog = null;
+            //This is already handled elsewhere and also causes a stackoverflowexception
+            //invDialog?.TryClose();
+            //invDialog?.Dispose();
+            //invDialog = null;
         }
 
         public override bool OnPlayerRightClick(IPlayer byPlayer, BlockSelection blockSel)

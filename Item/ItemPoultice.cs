@@ -74,6 +74,7 @@ namespace Vintagestory.GameContent
                 }, Math.Abs(health));
 
                 slot.TakeOut(1);
+                slot.MarkDirty();
             }
         }
 

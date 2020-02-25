@@ -56,13 +56,13 @@ namespace Vintagestory.GameContent
             if (api is ICoreClientAPI)
             {
                 ICoreClientAPI capi = (ICoreClientAPI)api;
-                capi.Event.RegisterRenderer(renderer = new ForgeContentsRenderer(Pos, capi), EnumRenderStage.Opaque);  
+                capi.Event.RegisterRenderer(renderer = new ForgeContentsRenderer(Pos, capi), EnumRenderStage.Opaque, "forge");  
                 renderer.SetContents(contents, fuelLevel, burning, true);
 
                 RegisterGameTickListener(OnClientTick, 50);
             }
 
-            lastTickTotalHours = api.World.Calendar.TotalHours;
+            
             wsys = api.ModLoader.GetModSystem<WeatherSystemBase>();
 
             RegisterGameTickListener(OnCommonTick, 200);
@@ -125,13 +125,11 @@ namespace Vintagestory.GameContent
         Vec3d tmpPos = new Vec3d();
         private void OnCommonTick(float dt)
         {
-            
-
             if (burning)
             {
                 double hoursPassed = Api.World.Calendar.TotalHours - lastTickTotalHours;
 
-                if (fuelLevel > 0) fuelLevel = Math.Max(0, fuelLevel - (float)(2.5 / 16 * hoursPassed));
+                if (fuelLevel > 0) fuelLevel = Math.Max(0, fuelLevel - (float)(2.5 / 24 * hoursPassed));
 
                 if (fuelLevel <= 0)
                 {
@@ -208,6 +206,7 @@ namespace Vintagestory.GameContent
 
             burning = true;
             renderer?.SetContents(contents, fuelLevel, burning, false);
+            lastTickTotalHours = Api.World.Calendar.TotalHours;
             MarkDirty();
         }
 
@@ -249,8 +248,11 @@ namespace Vintagestory.GameContent
                     renderer?.SetContents(contents, fuelLevel, burning, false);
                     MarkDirty();
 
-                    slot.TakeOut(1);
-                    slot.MarkDirty();
+                    if (byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
+                    {
+                        slot.TakeOut(1);
+                        slot.MarkDirty();
+                    }
 
 
                     return true;
@@ -258,9 +260,10 @@ namespace Vintagestory.GameContent
 
 
                 string firstCodePart = slot.Itemstack.Collectible.FirstCodePart();
+                bool forgableGeneric = slot.Itemstack.Collectible.Attributes?["forgable"].AsBool() == true;
 
                 // Add heatable item
-                if (contents == null && (firstCodePart == "ingot" || firstCodePart == "metalplate" || firstCodePart == "workitem"))
+                if (contents == null && (firstCodePart == "ingot" || firstCodePart == "metalplate" || firstCodePart == "workitem" || forgableGeneric))
                 {
                     contents = slot.Itemstack.Clone();
                     contents.StackSize = 1;
@@ -276,7 +279,7 @@ namespace Vintagestory.GameContent
                 }
 
                 // Merge heatable item
-                if (contents != null && contents.Equals(Api.World, slot.Itemstack, GlobalConstants.IgnoredStackAttributes) && contents.StackSize < 4 && contents.StackSize < contents.Collectible.MaxStackSize)
+                if (!forgableGeneric && contents != null && contents.Equals(Api.World, slot.Itemstack, GlobalConstants.IgnoredStackAttributes) && contents.StackSize < 4 && contents.StackSize < contents.Collectible.MaxStackSize)
                 {
                     float myTemp = contents.Collectible.GetTemperature(Api.World, contents);
                     float histemp = slot.Itemstack.Collectible.GetTemperature(Api.World, slot.Itemstack);
@@ -304,7 +307,7 @@ namespace Vintagestory.GameContent
             base.OnBlockRemoved();
             if (renderer != null)
             {
-                renderer.Unregister();
+                renderer.Dispose();
                 renderer = null;
             }
             
@@ -327,6 +330,7 @@ namespace Vintagestory.GameContent
             contents = tree.GetItemstack("contents");
             fuelLevel = tree.GetFloat("fuelLevel");
             burning = tree.GetInt("burning") > 0;
+            lastTickTotalHours = tree.GetDouble("lastTickTotalHours");
 
             if (Api != null)
             {
@@ -345,6 +349,7 @@ namespace Vintagestory.GameContent
             tree.SetItemstack("contents", contents);
             tree.SetFloat("fuelLevel", fuelLevel);
             tree.SetInt("burning", burning ? 1 : 0);
+            tree.SetDouble("lastTickTotalHours", lastTickTotalHours);
         }
 
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
@@ -364,7 +369,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void OnLoadCollectibleMappings(IWorldAccessor worldForResolve, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping)
+        public override void OnLoadCollectibleMappings(IWorldAccessor worldForResolve, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, int schematicSeed)
         {
             if (contents?.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve) == false)
             {
@@ -392,7 +397,7 @@ namespace Vintagestory.GameContent
         {
             base.OnBlockUnloaded();
 
-            renderer?.Unregister();
+            renderer?.Dispose();
         }
 
     }

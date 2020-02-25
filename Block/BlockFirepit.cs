@@ -1,6 +1,6 @@
-﻿using Vintagestory.API.Client;
+﻿using System.Collections.Generic;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
@@ -47,6 +47,7 @@ namespace Vintagestory.GameContent
 
         AdvancedParticleProperties[] ringParticles;
         Vec3f[] basePos;
+        WorldInteraction[] interactions;
 
         public override void OnLoaded(ICoreAPI api)
         {
@@ -92,6 +93,53 @@ namespace Vintagestory.GameContent
                     }   
                 }
             }
+
+
+            interactions = ObjectCacheUtil.GetOrCreate(api, "firepitInteractions", () =>
+            {
+                List<ItemStack> canIgniteStacks = new List<ItemStack>();
+
+                foreach (CollectibleObject obj in api.World.Collectibles)
+                {
+                    string firstCodePart = obj.FirstCodePart();
+
+                    if (obj is Block && (obj as Block).HasBehavior<BlockBehaviorCanIgnite>() || obj is ItemFirestarter)
+                    {
+                        List<ItemStack> stacks = obj.GetHandBookStacks(api as ICoreClientAPI);
+                        if (stacks != null) canIgniteStacks.AddRange(stacks);
+                    }
+                }
+
+                return new WorldInteraction[]
+                {
+                    new WorldInteraction()
+                    {
+                        ActionLangCode = "blockhelp-firepit-open",
+                        MouseButton = EnumMouseButton.Right
+                    },
+                    new WorldInteraction()
+                    {
+                        ActionLangCode = "blockhelp-firepit-ignite",
+                        MouseButton = EnumMouseButton.Right,
+                        HotKeyCode = "sneak",
+                        Itemstacks = canIgniteStacks.ToArray(),
+                        GetMatchingStacks = (wi, bs, es) => {
+                            BlockEntityFirepit bef = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityFirepit;
+                            if (bef?.fuelSlot != null && !bef.fuelSlot.Empty && !bef.IsBurning)
+                            {
+                                return wi.Itemstacks;
+                            }
+                            return null;
+                        }
+                    },
+                    new WorldInteraction()
+                    {
+                        ActionLangCode = "blockhelp-firepit-refuel",
+                        MouseButton = EnumMouseButton.Right,
+                        HotKeyCode = "sneak"
+                    }
+                };
+            });
         }
 
 
@@ -133,7 +181,7 @@ namespace Vintagestory.GameContent
             }
 
             BlockEntityFirepit bef = manager.BlockAccess.GetBlockEntity(pos) as BlockEntityFirepit;
-            if (bef.CurrentModel == EnumFirepitModel.Wide)
+            if (bef != null && bef.CurrentModel == EnumFirepitModel.Wide)
             {
                 for (int i = 0; i < ringParticles.Length; i++)
                 {
@@ -173,14 +221,22 @@ namespace Vintagestory.GameContent
                     {
                         ItemStackMoveOperation op = new ItemStackMoveOperation(world, EnumMouseButton.Button1, 0, EnumMergePriority.DirectMerge, 1);
                         byPlayer.InventoryManager.ActiveHotbarSlot.TryPutInto(bef.inputSlot, ref op);
-                        if (op.MovedQuantity > 0) return true;
+                        if (op.MovedQuantity > 0)
+                        {
+                            (byPlayer as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
+                            return true;
+                        }
                     }
 
                     if (stack.Collectible.CombustibleProps != null && stack.Collectible.CombustibleProps.BurnTemperature > 0)
                     {
                         ItemStackMoveOperation op = new ItemStackMoveOperation(world, EnumMouseButton.Button1, 0, EnumMergePriority.DirectMerge, 1);
                         byPlayer.InventoryManager.ActiveHotbarSlot.TryPutInto(bef.fuelSlot, ref op);
-                        if (op.MovedQuantity > 0) return true;
+                        if (op.MovedQuantity > 0)
+                        {
+                            (byPlayer as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
+                            return true;
+                        }
                     }
                 }
 
@@ -257,6 +313,8 @@ namespace Vintagestory.GameContent
                     BlockEntityCharcoalPit be = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityCharcoalPit;
                     be?.Init(player);
 
+                    (player as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
+
                     return true;
                 }
             }
@@ -275,26 +333,15 @@ namespace Vintagestory.GameContent
                 }
             }
 
+            (player as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
+
             return true;
         }
 
 
         public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
         {
-            return new WorldInteraction[]
-            {
-                new WorldInteraction()
-                {
-                    ActionLangCode = "blockhelp-firepit-open",
-                    MouseButton = EnumMouseButton.Right
-                }, 
-                new WorldInteraction()
-                {
-                    ActionLangCode = "blockhelp-firepit-refuel",
-                    MouseButton = EnumMouseButton.Right,
-                    HotKeyCode = "sneak"
-                }
-            }.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
+            return interactions.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
         }
     }
 }

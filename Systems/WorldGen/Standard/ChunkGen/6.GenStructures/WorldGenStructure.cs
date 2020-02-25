@@ -77,10 +77,19 @@ namespace Vintagestory.ServerMods
         public string BuildProtectionDesc = null;
         [JsonProperty]
         public string BuildProtectionName = null;
+        [JsonProperty]
+        public Dictionary<AssetLocation, AssetLocation> ReplaceWithRockType = null;
+        [JsonProperty]
+        public AssetLocation[] InsideBlockCodes;
+        [JsonProperty]
+        public EnumOrigin Origin = EnumOrigin.StartPos;
 
 
         internal BlockSchematicStructure[][] schematicDatas;
-        internal ushort[] replaceblockids = new ushort[0];
+        internal int[] replaceblockids = new int[0];
+        internal HashSet<int> insideblockids = new HashSet<int>();
+
+        internal Dictionary<int, Dictionary<int, int>> resolvedReplaceWithRocktype = null;
 
         TryGenerateHandler[] Generators;
 
@@ -98,7 +107,7 @@ namespace Vintagestory.ServerMods
         LCGRandom rand;
 
 
-        public void Init(ICoreServerAPI api, BlockLayerConfig config, LCGRandom rand)
+        public void Init(ICoreServerAPI api, BlockLayerConfig config, RockStrataConfig rockstrata, LCGRandom rand)
         {
             this.rand = rand;
 
@@ -156,7 +165,7 @@ namespace Vintagestory.ServerMods
 
             if (ReplaceWithBlocklayers != null)
             {
-                replaceblockids = new ushort[ReplaceWithBlocklayers.Length];
+                replaceblockids = new int[ReplaceWithBlocklayers.Length];
                 for (int i = 0; i < replaceblockids.Length; i++)
                 {
                     Block block = api.World.GetBlock(ReplaceWithBlocklayers[i]);
@@ -165,9 +174,61 @@ namespace Vintagestory.ServerMods
                         throw new Exception(string.Format("Schematic with code {0} has replace block layer {1} defined, but no such block found!", Code, ReplaceWithBlocklayers[i]));
                     } else
                     {
-                        replaceblockids[i] = (ushort)block.Id;
+                        replaceblockids[i] = block.Id;
                     }
                     
+                }
+            }
+
+            if (InsideBlockCodes != null)
+            {
+                for (int i = 0; i < InsideBlockCodes.Length; i++)
+                {
+                    Block block = api.World.GetBlock(InsideBlockCodes[i]);
+                    if (block == null)
+                    {
+                        throw new Exception(string.Format("Schematic with code {0} has inside block {1} defined, but no such block found!", Code, InsideBlockCodes[i]));
+                    }
+                    else
+                    {
+                        insideblockids.Add(block.Id);
+                    }
+
+                }
+            }
+
+            if (ReplaceWithRockType != null)
+            {
+                resolvedReplaceWithRocktype = new Dictionary<int, Dictionary<int, int>>();
+
+                foreach (var val in ReplaceWithRockType)
+                {
+                    int sourceBlockId = api.World.GetBlock(val.Key).Id;
+
+                    Dictionary<int, int> blockIdByRockId = new Dictionary<int, int>();
+
+                    foreach (var strat in rockstrata.Variants)
+                    {
+                        Block rockBlock = api.World.GetBlock(strat.BlockCode);
+                        AssetLocation resolvedLoc = val.Value.Clone();
+                        resolvedLoc.Path = resolvedLoc.Path.Replace("{rock}", rockBlock.LastCodePart());
+
+                        Block resolvedBlock = api.World.GetBlock(resolvedLoc);
+                        if (resolvedBlock != null)
+                        {
+                            blockIdByRockId[rockBlock.Id] = resolvedBlock.Id;
+
+                            Block quartzBlock = api.World.GetBlock(new AssetLocation("ore-quartz-" + rockBlock.LastCodePart()));
+                            if (quartzBlock != null)
+                            {
+                                blockIdByRockId[quartzBlock.Id] = resolvedBlock.Id;
+                            }
+                        }
+
+
+                    }
+
+                    resolvedReplaceWithRocktype[sourceBlockId] = blockIdByRockId;
                 }
             }
 
@@ -196,9 +257,6 @@ namespace Vintagestory.ServerMods
 
         internal bool TryGenerateRuinAtSurface(IBlockAccessor blockAccessor, IWorldAccessor worldForCollectibleResolve, BlockPos pos)
         {
-            int chunksize = blockAccessor.ChunkSize;
-            int climate = GameMath.BiLerpRgbColor((float)(pos.X % chunksize) / chunksize, (float)(pos.Z % chunksize) / chunksize, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight);
-
             int num = rand.NextInt(schematicDatas.Length);
             int orient = rand.NextInt(4);
             BlockSchematicStructure schematic = schematicDatas[num][orient];
@@ -368,6 +426,7 @@ namespace Vintagestory.ServerMods
             BlockPos targetPos = pos.Copy();
             BlockSchematicStructure schematic;
 
+
             if (schematicStruc[0].PathwayStarts.Length > 0)
             {
                 // 1. Give up if non air block or mapheight is not at least 4 blocks higher
@@ -434,6 +493,7 @@ namespace Vintagestory.ServerMods
                 );
 
                 if (!TestUndergroundCheckPositions(blockAccessor, targetPos, schematicStruc[targetOrientation].UndergroundCheckPositions)) return false;
+                if (isStructureAt(targetPos, worldForCollectibleResolve)) return false;
 
                 schematic = schematicStruc[targetOrientation];
                 LastPlacedSchematicLocation.Set(targetPos.X, targetPos.Y, targetPos.Z, targetPos.X + schematic.SizeX, targetPos.Y + schematic.SizeY, targetPos.Z + schematic.SizeZ);
@@ -455,19 +515,33 @@ namespace Vintagestory.ServerMods
                     }
                 }
 
-                
-
                 return true;
             }
 
             schematic = schematicStruc[rand.NextInt(4)];
-            LastPlacedSchematicLocation.Set(targetPos.X, targetPos.Y, targetPos.Z, targetPos.X + schematic.SizeX, targetPos.Y + schematic.SizeY, targetPos.Z + schematic.SizeZ);
+
+            BlockPos placePos = schematic.AdjustStartPos(targetPos.Copy(), Origin);
+
+            LastPlacedSchematicLocation.Set(placePos.X, placePos.Y, placePos.Z, placePos.X + schematic.SizeX, placePos.Y + schematic.SizeY, placePos.Z + schematic.SizeZ);
             LastPlacedSchematic = schematic;
-            if (!TestUndergroundCheckPositions(blockAccessor, targetPos, schematic.UndergroundCheckPositions)) return false;
+
+            if (insideblockids.Count > 0 && !insideblockids.Contains(blockAccessor.GetBlock(targetPos).Id)) return false;
+            if (!TestUndergroundCheckPositions(blockAccessor, placePos, schematic.UndergroundCheckPositions)) return false;
             if (!satisfiesMinDistance(pos, worldForCollectibleResolve)) return false;
             if (isStructureAt(pos, worldForCollectibleResolve)) return false;
 
-            schematic.Place(blockAccessor, worldForCollectibleResolve, targetPos);
+            if (resolvedReplaceWithRocktype != null)
+            {
+                //Console.WriteLine(schematic.FromFileName + " place at " + targetPos +", offseted to " + placePos);
+
+                schematic.PlaceReplacingBlocks(blockAccessor, worldForCollectibleResolve, placePos, schematic.ReplaceMode, resolvedReplaceWithRocktype);
+                
+            } else
+            {
+                schematic.Place(blockAccessor, worldForCollectibleResolve, targetPos);
+            }
+
+            
 
             return false;
         }

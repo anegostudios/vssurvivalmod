@@ -108,6 +108,53 @@ namespace Vintagestory.GameContent
         }
 
 
+        public override void OnBlockExploded(IWorldAccessor world, BlockPos pos, BlockPos explosionCenter, EnumBlastType blastType)
+        {
+            EnumHandling handled = EnumHandling.PassThrough;
 
+            foreach (BlockBehavior behavior in BlockBehaviors)
+            {
+                behavior.OnBlockExploded(world, pos, explosionCenter, blastType, ref handled);
+                if (handled == EnumHandling.PreventSubsequent) break;
+            }
+
+            if (handled == EnumHandling.PreventDefault) return;
+
+
+
+            double dropChancce = ExplosionDropChance(world, pos, blastType);
+
+            if (world.Rand.NextDouble() < dropChancce)
+            {
+                ItemStack[] drops = GetDrops(world, pos, null);
+
+                if (drops == null) return;
+
+                for (int i = 0; i < drops.Length; i++)
+                {
+                    if (SplitDropStacks)
+                    {
+                        for (int k = 0; k < drops[i].StackSize; k++)
+                        {
+                            ItemStack stack = drops[i].Clone();
+
+                            if (stack.Collectible.Code.Path.Contains("crystal")) continue; // Do not drop crystalized ores when the ore is being blown up
+
+                            stack.StackSize = 1;
+                            world.SpawnItemEntity(stack, new Vec3d(pos.X + 0.5, pos.Y + 0.5, pos.Z + 0.5), null);
+                        }
+                    }
+                }
+            }
+
+            if (EntityClass != null)
+            {
+                BlockEntity entity = world.BlockAccessor.GetBlockEntity(pos);
+                if (entity != null)
+                {
+                    entity.OnBlockBroken();
+                }
+            }
+        }
     }
 }

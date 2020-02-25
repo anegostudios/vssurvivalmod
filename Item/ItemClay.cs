@@ -4,6 +4,7 @@ using Cairo;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
@@ -11,6 +12,36 @@ namespace Vintagestory.GameContent
 {
     public class ItemClay : Item
     {
+        SkillItem[] toolModes;
+
+        public override void OnLoaded(ICoreAPI api)
+        {
+            base.OnLoaded(api);
+
+            if (api is ICoreClientAPI capi)
+            {
+                toolModes = ObjectCacheUtil.GetOrCreate(api, "clayToolModes", () =>
+                {
+                    SkillItem[] modes = new SkillItem[4];
+
+                    modes[0] = new SkillItem() { Code = new AssetLocation("1size"), Name = Lang.Get("1x1") }.WithIcon(capi, Drawcreate1_svg);
+                    modes[1] = new SkillItem() { Code = new AssetLocation("2size"), Name = Lang.Get("2x2") }.WithIcon(capi, Drawcreate4_svg);
+                    modes[2] = new SkillItem() { Code = new AssetLocation("3size"), Name = Lang.Get("3x3") }.WithIcon(capi, Drawcreate9_svg);
+                    modes[3] = new SkillItem() { Code = new AssetLocation("duplicate"), Name = Lang.Get("Duplicate layer") }.WithIcon(capi, Drawduplicate_svg);
+
+                    return modes;
+                });
+            }
+        }
+
+        public override void OnUnloaded(ICoreAPI api)
+        {
+            for (int i = 0; toolModes != null && i < toolModes.Length; i++)
+            {
+                toolModes[i]?.Dispose();
+            }
+        }
+
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
             if (blockSel == null) return;
@@ -161,25 +192,11 @@ namespace Vintagestory.GameContent
             }
         }
 
-
-        public override int GetQuantityToolModes(ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
+        public override SkillItem[] GetToolModes(ItemSlot slot, IClientPlayer forPlayer, BlockSelection blockSel)
         {
-            if (blockSel == null) return 0;
-            Block block = byPlayer.Entity.World.BlockAccessor.GetBlock(blockSel.Position);
-            return block is BlockClayForm ? 4 : 0;
-        }
-
-        public override void DrawToolModeIcon(ItemSlot slot, IPlayer byPlayer, BlockSelection blockSelection, Context cr, int x, int y, int width, int height, int toolMode, int color)
-        {
-            double[] colordoubles = ColorUtil.ToRGBADoubles(color);
-
-            switch (toolMode)
-            {
-                case 0: Drawcreate1_svg(cr, x, y, width, height, colordoubles); break;
-                case 1: Drawcreate4_svg(cr, x, y, width, height, colordoubles); break;
-                case 2: Drawcreate9_svg(cr, x, y, width, height, colordoubles); break;
-                case 3: Drawduplicate_svg(cr, x, y, width, height, colordoubles); break;
-            }
+            if (blockSel == null) return null;
+            Block block = forPlayer.Entity.World.BlockAccessor.GetBlock(blockSel.Position);
+            return block is BlockClayForm ? toolModes : null;
         }
 
 

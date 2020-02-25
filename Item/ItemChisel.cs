@@ -4,12 +4,26 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
+    public enum EnumChiselMode
+    {
+        Size1 = 0,
+        Size2 = 1,
+        Size4 = 2,
+        Size8 = 3,
+        Rotate = 4,
+        Flip = 5,
+        Rename = 6
+    }
+
     /// <summary>
     /// When right clicked on a block, this chisel tool will exchange given block into a chiseledblock which 
     /// takes on the model of the block the player interacted with in the first place, but with each voxel being selectable and removable
@@ -17,12 +31,40 @@ namespace Vintagestory.GameContent
     public class ItemChisel : Item
     {
         public bool canMicroChisel;
+        SkillItem[] toolModes;
 
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
 
             canMicroChisel = Attributes?["microBlockChiseling"].AsBool() == true;
+
+            if (api is ICoreClientAPI capi)
+            {
+                toolModes = ObjectCacheUtil.GetOrCreate(api, "chiselToolModes", () =>
+                {
+                    SkillItem[] modes = new SkillItem[7];
+
+                    modes[0] = new SkillItem() { Code = new AssetLocation("1size"), Name = Lang.Get("1x1x1") }.WithIcon(capi, ItemClay.Drawcreate1_svg);
+                    modes[1] = new SkillItem() { Code = new AssetLocation("2size"), Name = Lang.Get("2x2x2") }.WithIcon(capi, ItemClay.Drawcreate4_svg);
+                    modes[2] = new SkillItem() { Code = new AssetLocation("4size"), Name = Lang.Get("4x4x4") }.WithIcon(capi, Drawcreate16_svg);
+                    modes[3] = new SkillItem() { Code = new AssetLocation("8size"), Name = Lang.Get("8x8x8") }.WithIcon(capi, Drawcreate64_svg);
+                    modes[4] = new SkillItem() { Code = new AssetLocation("rotate"), Name = Lang.Get("Rotate") }.WithIcon(capi, Drawrotate_svg);
+                    modes[5] = new SkillItem() { Code = new AssetLocation("flip"), Name = Lang.Get("Flip") }.WithIcon(capi, capi.Gui.Icons.Drawrepeat_svg);
+                    modes[6] = new SkillItem() { Code = new AssetLocation("rename"), Name = Lang.Get("Set name") }.WithIcon(capi, Drawedit_svg);
+
+                    return modes;
+                });
+            }
+        }
+
+
+        public override void OnUnloaded(ICoreAPI api)
+        {
+            for (int i = 0; toolModes != null && i < toolModes.Length; i++)
+            {
+                toolModes[i]?.Dispose();
+            }
         }
 
         public override void OnHeldAttackStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
@@ -109,7 +151,7 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            if (block.DrawType != API.Client.EnumDrawType.Cube) return;
+            if (block.DrawType != EnumDrawType.Cube && block.Attributes?["canChisel"].AsBool(false) != true) return;
             
 
             byEntity.World.BlockAccessor.SetBlock(chiseledblock.BlockId, blockSel.Position);
@@ -133,27 +175,11 @@ namespace Vintagestory.GameContent
         }
 
 
-
-        public override int GetQuantityToolModes(ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
+        public override SkillItem[] GetToolModes(ItemSlot slot, IClientPlayer forPlayer, BlockSelection blockSel)
         {
-            if (blockSel == null) return 0;
-            Block block = byPlayer.Entity.World.BlockAccessor.GetBlock(blockSel.Position);
-            return block is BlockChisel ? 6 : 0;
-        }
-
-        public override void DrawToolModeIcon(ItemSlot slot, IPlayer byPlayer, BlockSelection blockSelection, Context cr, int x, int y, int width, int height, int toolMode, int color)
-        {
-            double[] colordoubles = ColorUtil.ToRGBADoubles(color);
-
-            switch (toolMode)
-            {
-                case 0: ItemClay.Drawcreate1_svg(cr, x, y, width, height, colordoubles); break;
-                case 1: ItemClay.Drawcreate4_svg(cr, x, y, width, height, colordoubles); break;
-                case 2: Drawcreate16_svg(cr, x, y, width, height, colordoubles); break;
-                case 3: Drawcreate64_svg(cr, x, y, width, height, colordoubles); break;
-                case 4: Drawrotate_svg(cr, x, y, width, height, colordoubles); break;
-                case 5: Drawedit_svg(cr, x, y, width, height, colordoubles); break;
-            }
+            if (blockSel == null) return null;
+            Block block = forPlayer.Entity.World.BlockAccessor.GetBlock(blockSel.Position);
+            return block is BlockChisel ? toolModes : null;
         }
 
         public override int GetToolMode(ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)

@@ -96,16 +96,16 @@ namespace Vintagestory.GameContent
             prog.DontWarpVertices = 0;
             prog.AddRenderFlags = 0;
             prog.ExtraGodray = 0;
+            prog.NormalShaded = 0;
 
             Vec4f lightrgbs = api.World.BlockAccessor.GetLightRGBs(pos.X, pos.Y, pos.Z);
             float[] glowColor = ColorUtil.GetIncandescenceColorAsColor4f((int)Temperature);
-            lightrgbs.R += glowColor[0];
-            lightrgbs.G += glowColor[1];
-            lightrgbs.B += glowColor[2];
+            int extraGlow = (int)GameMath.Clamp((Temperature - 550) / 2, 0, 255);
 
             prog.RgbaLightIn = lightrgbs;
+            prog.RgbaGlowIn = new Vec4f(glowColor[0], glowColor[1], glowColor[2], extraGlow / 255f);
             prog.RgbaBlockIn = ColorUtil.WhiteArgbVec;
-            prog.ExtraGlow = (int)GameMath.Clamp((Temperature - 500) / 4, 0, 255);
+            prog.ExtraGlow = extraGlow;
 
             int texid = api.Render.GetOrLoadTexture(TextureName);
             Cuboidf rect = fillQuadsByLevel[voxelY];
@@ -133,14 +133,10 @@ namespace Vintagestory.GameContent
         }
 
 
-        public void Unregister()
-        {
-            api.Event.UnregisterRenderer(this, EnumRenderStage.Opaque);
-        }
-
-        // Called by UnregisterRenderer
         public void Dispose()
         {
+            api.Event.UnregisterRenderer(this, EnumRenderStage.Opaque);
+
             for (int i = 0; i < quadModelRefs.Length; i++)
             {
                 quadModelRefs[i]?.Dispose();

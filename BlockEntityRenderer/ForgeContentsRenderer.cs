@@ -30,13 +30,16 @@ namespace Vintagestory.GameContent
 
         TextureAtlasPosition coaltexpos;
         TextureAtlasPosition embertexpos;
-        TextureAtlasPosition workItemTexPos;
+
+        int textureId;
 
 
         string tmpMetal;
         ITexPositionSource tmpTextureSource;
 
         Matrixf ModelMat = new Matrixf();
+
+        
 
         public double RenderOrder
         {
@@ -90,7 +93,6 @@ namespace Vintagestory.GameContent
                 coalMesh.Uv[i + 1] = coaltexpos.y1 + coalMesh.Uv[i + 1] * 32f / AtlasSize.Height;
             }
 
-
             emberQuadRef = capi.Render.UploadMesh(emberMesh);
             coalQuadRef = capi.Render.UploadMesh(coalMesh);
         }
@@ -114,25 +116,42 @@ namespace Vintagestory.GameContent
             Shape shape;
 
             tmpMetal = stack.Collectible.LastCodePart();
+            MeshData mesh=null;
 
-            if (stack.Collectible.FirstCodePart() == "metalplate")
+            string firstCodePart = stack.Collectible.FirstCodePart();
+            if (firstCodePart == "metalplate")
             {
                 tmpTextureSource = capi.Tesselator.GetTexSource(capi.World.GetBlock(new AssetLocation("platepile")));
                 shape = capi.Assets.TryGet("shapes/block/stone/forge/platepile.json").ToObject<Shape>();
-            } else
+                textureId = tmpTextureSource[tmpMetal].atlasTextureId;
+                capi.Tesselator.TesselateShape("block-fcr", shape, out mesh, this, null, 0, 0, stack.StackSize);
+
+            }
+            else if (firstCodePart == "workitem" || firstCodePart == "ingot")
             {
                 tmpTextureSource = capi.Tesselator.GetTexSource(capi.World.GetBlock(new AssetLocation("ingotpile")));
                 shape = capi.Assets.TryGet("shapes/block/stone/forge/ingotpile.json").ToObject<Shape>();
+                textureId = tmpTextureSource[tmpMetal].atlasTextureId;
+                capi.Tesselator.TesselateShape("block-fcr", shape, out mesh, this, null, 0, 0, stack.StackSize);
+            }
+            else if (stack.Collectible.Attributes?["forgable"].AsBool() == true)
+            {
+                if (stack.Class == EnumItemClass.Block)
+                {
+                    mesh = capi.TesselatorManager.GetDefaultBlockMesh(stack.Block).Clone();
+                    textureId = capi.BlockTextureAtlas.AtlasTextureIds[0];
+                } else
+                {
+                    capi.Tesselator.TesselateItem(stack.Item, out mesh);
+                    textureId = capi.ItemTextureAtlas.AtlasTextureIds[0];
+                }
             }
 
-            workItemTexPos = tmpTextureSource[tmpMetal];
-
-
-            MeshData mesh;
-            capi.Tesselator.TesselateShape("block-fcr", shape, out mesh, this, null, 0, 0, stack.StackSize);
-            mesh.Rgba2 = null;
-
-            workItemMeshRef = capi.Render.UploadMesh(mesh);
+            if (mesh != null)
+            {
+                mesh.Rgba2 = null;
+                workItemMeshRef = capi.Render.UploadMesh(mesh);
+            }
         }
 
 
@@ -143,7 +162,6 @@ namespace Vintagestory.GameContent
 
             IRenderAPI rpi = capi.Render;
             IClientWorldAccessor worldAccess = capi.World;
-            EntityPos plrPos = worldAccess.Player.Entity.Pos;
             Vec3d camPos = worldAccess.Player.Entity.CameraPos;
 
             rpi.GlDisableCullFace();
@@ -157,35 +175,27 @@ namespace Vintagestory.GameContent
             prog.DontWarpVertices = 0;
             prog.AddRenderFlags = 0;
             prog.ExtraGodray = 0;
-            //rpi.GlMatrixModeModelView();
-
+            
 
             if (stack != null && workItemMeshRef != null)
             {
                 int temp = (int)stack.Collectible.GetTemperature(capi.World, stack);
 
-                prog.ExtraGlow = GameMath.Clamp((temp - 500) / 3, 0, 255);
-
                 Vec4f lightrgbs = capi.World.BlockAccessor.GetLightRGBs(pos.X, pos.Y, pos.Z);
-                
                 float[] glowColor = ColorUtil.GetIncandescenceColorAsColor4f(temp);
-                lightrgbs[0] += glowColor[0];
-                lightrgbs[1] += glowColor[1];
-                lightrgbs[2] += glowColor[2];
+                int extraGlow = GameMath.Clamp((temp - 550) / 2, 0, 255);
 
+                prog.NormalShaded = 1;
                 prog.RgbaLightIn = lightrgbs;
+                prog.RgbaGlowIn = new Vec4f(glowColor[0], glowColor[1], glowColor[2], extraGlow / 255f);
                 prog.RgbaBlockIn = ColorUtil.WhiteArgbVec;
-
-                // The work item
-                rpi.BindTexture2d(workItemTexPos.atlasTextureId);
-
+                prog.ExtraGlow = extraGlow;
+                prog.Tex2D = textureId;
                 prog.ModelMatrix = ModelMat.Identity().Translate(pos.X - camPos.X, pos.Y - camPos.Y + 10 / 16f + fuelLevel * 0.65f, pos.Z - camPos.Z).Values;
                 prog.ViewMatrix = rpi.CameraMatrixOriginf;
                 prog.ProjectionMatrix = rpi.CurrentProjectionMatrix;
                 
                 rpi.RenderMesh(workItemMeshRef);
-
-                
             }
 
             if (fuelLevel > 0)
@@ -195,11 +205,13 @@ namespace Vintagestory.GameContent
                 if (burning)
                 {
                     float[] glowColor = ColorUtil.GetIncandescenceColorAsColor4f(1200);
-                    lightrgbs[0] += glowColor[0];
-                    lightrgbs[1] += glowColor[1];
-                    lightrgbs[2] += glowColor[2];
+                    prog.RgbaGlowIn = new Vec4f(glowColor[0], glowColor[1], glowColor[2], 1);
+                } else
+                {
+                    prog.RgbaGlowIn = new Vec4f(0,0,0,0);
                 }
 
+                prog.NormalShaded = 0;
                 prog.RgbaLightIn = lightrgbs;
                 prog.RgbaBlockIn = ColorUtil.WhiteArgbVec;
                 prog.ExtraGlow = burning ? 255 : 0;
@@ -219,14 +231,11 @@ namespace Vintagestory.GameContent
             prog.Stop();
         }
 
-        public void Unregister()
-        {
-            capi.Event.UnregisterRenderer(this, EnumRenderStage.Opaque);
-        }
 
-        // Called by UnregisterRenderer
+
         public void Dispose()
         {
+            capi.Event.UnregisterRenderer(this, EnumRenderStage.Opaque);
             emberQuadRef?.Dispose();
             coalQuadRef?.Dispose();
             workItemMeshRef?.Dispose();

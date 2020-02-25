@@ -157,7 +157,7 @@ namespace Vintagestory.GameContent
                 {
                     // Water flags
                     barrelMesh.CustomInts = new CustomMeshDataPartInt(barrelMesh.FlagsCount);
-                    barrelMesh.CustomInts.Values.Fill(1 << 26);
+                    barrelMesh.CustomInts.Values.Fill(0x4000000); // light foam only
                     barrelMesh.CustomInts.Count = barrelMesh.FlagsCount;
 
                     barrelMesh.CustomFloats = new CustomMeshDataPartFloat(barrelMesh.FlagsCount * 2);

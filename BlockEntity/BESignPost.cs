@@ -59,11 +59,8 @@ namespace Vintagestory.GameContent
 
         public override void OnBlockRemoved()
         {
-            if (signRenderer != null)
-            {
-                signRenderer.Unregister();
-                signRenderer = null;
-            }
+            signRenderer?.Dispose();
+            signRenderer = null;
         }
 
 
@@ -209,6 +206,7 @@ namespace Vintagestory.GameContent
 
                     tempColor = ColorUtil.ToRgba(255, r, g, b);
                     tempStack = hotbarSlot.TakeOut(1);
+                    hotbarSlot.MarkDirty();
 
 
                     if (Api.World is IServerWorldAccessor)
@@ -243,7 +241,7 @@ namespace Vintagestory.GameContent
         {
             base.OnBlockUnloaded();
 
-            signRenderer?.Unregister();
+            signRenderer?.Dispose();
         }
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)

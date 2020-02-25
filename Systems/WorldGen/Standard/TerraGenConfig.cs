@@ -9,6 +9,7 @@ using Vintagestory.ServerMods.NoObf;
 
 namespace Vintagestory.ServerMods
 {
+
     public class TerraGenConfig
     {
         #region WorldGen

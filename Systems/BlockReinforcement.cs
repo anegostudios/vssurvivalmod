@@ -118,6 +118,8 @@ namespace Vintagestory.GameContent
             ;
 
             api.RegisterCommand("bre", "Block reinforcement privilege management", "[grant|revoke|grantgroup|revokegroup] [playername/groupname] [use or all]", onCmd, Privilege.chat);
+
+            api.Permissions.RegisterPrivilege("denybreakreinforced", "Deny the ability to break reinforced blocks");
         }
 
         private void Event_PlayerJoin(IServerPlayer byPlayer)

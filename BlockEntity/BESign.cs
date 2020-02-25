@@ -32,11 +32,8 @@ namespace Vintagestory.GameContent
 
         public override void OnBlockRemoved()
         {
-            if (signRenderer != null)
-            {
-                signRenderer.Unregister();
-                signRenderer = null;
-            }
+            signRenderer?.Dispose();
+            signRenderer = null;
         }
         
 
@@ -111,7 +108,7 @@ namespace Vintagestory.GameContent
 
                     IClientWorldAccessor clientWorld = (IClientWorldAccessor)Api.World;
 
-                    GuiDialogBlockEntityTextInput dlg = new GuiDialogBlockEntityTextInput(dialogTitle, Pos, text, Api as ICoreClientAPI, 180);
+                    GuiDialogBlockEntityTextInput dlg = new GuiDialogBlockEntityTextInput(dialogTitle, Pos, text, Api as ICoreClientAPI, 160);
                     dlg.OnTextChanged = DidChangeTextClientSide;
                     dlg.OnCloseCancel = () =>
                     {
@@ -160,7 +157,8 @@ namespace Vintagestory.GameContent
 
                     tempColor = ColorUtil.ToRgba(255, r, g, b);
                     tempStack = hotbarSlot.TakeOut(1);
-                    
+                    hotbarSlot.MarkDirty();
+
 
                     if (Api.World is IServerWorldAccessor)
                     {
@@ -190,7 +188,7 @@ namespace Vintagestory.GameContent
         {
             base.OnBlockUnloaded();
 
-            signRenderer?.Unregister();
+            signRenderer?.Dispose();
         }
 
     }

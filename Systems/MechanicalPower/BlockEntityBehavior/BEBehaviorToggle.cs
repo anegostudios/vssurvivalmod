@@ -63,13 +63,13 @@ namespace Vintagestory.GameContent.Mechanics
         public override float GetResistance()
         {
             BEHelveHammer behh = Api.World.BlockAccessor.GetBlockEntity(Position.AddCopy(sides[0])) as BEHelveHammer;
-            if (behh != null && behh.HasHammer)
+            if (behh != null && behh.HammerStack != null)
             {
                 return 0.2f;
             }
 
             behh = Api.World.BlockAccessor.GetBlockEntity(Position.AddCopy(sides[1])) as BEHelveHammer;
-            if (behh != null && behh.HasHammer)
+            if (behh != null && behh.HammerStack != null)
             {
                 return 0.2f;
             }

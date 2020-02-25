@@ -75,6 +75,7 @@ namespace Vintagestory.GameContent
             prog.DontWarpVertices = 0;
             prog.AddRenderFlags = 0;
             prog.ExtraGodray = 0;
+            prog.NormalShaded = 1;
 
             rpi.BindTexture2d(api.BlockTextureAtlas.AtlasTextureIds[0]);
 
@@ -159,15 +160,10 @@ namespace Vintagestory.GameContent
             updatedTotalMs = api.World.ElapsedMilliseconds;
         }
 
-        public void Unregister()
+        public void Dispose()
         {
             api.Event.UnregisterRenderer(this, EnumRenderStage.Opaque);
             api.Event.UnregisterRenderer(this, EnumRenderStage.AfterFinalComposition);
-        }
-
-        // Called by UnregisterRenderer
-        public void Dispose()
-        {
             needleMeshRef?.Dispose();
             discMeshRef?.Dispose();
         }

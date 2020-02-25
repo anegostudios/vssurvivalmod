@@ -12,7 +12,6 @@ namespace Vintagestory.ServerMods
     {
         // "Temporary Values" linked to currently generated tree
         IBlockAccessor api;
-        BlockPos pos;
         float size;
         float vineGrowthChance; // 0..1
         float otherBlockChance; // 0..1
@@ -20,7 +19,7 @@ namespace Vintagestory.ServerMods
         static ThreadLocal<Random> rand = new ThreadLocal<Random>(() => new Random(Environment.TickCount));
 
         List<TreeGenBranch> branchesByDepth = new List<TreeGenBranch>();
-        LCGRandom lcgrand;
+        ThreadLocal<LCGRandom> lcgrandTL;
 
         // Tree config
         TreeGenConfig config;
@@ -30,12 +29,11 @@ namespace Vintagestory.ServerMods
         public TreeGen(TreeGenConfig config, int seed)
         {
             this.config = config;
-            lcgrand = new LCGRandom(seed);
+            lcgrandTL = new ThreadLocal<LCGRandom>(() => new LCGRandom(seed));
         }
 
         public void GrowTree(IBlockAccessor api, BlockPos pos, float sizeModifier = 1f, float vineGrowthChance = 0, float otherBlockChance = 1f)
         {
-            this.pos = pos;
             this.api = api;
             this.size = sizeModifier * config.sizeMultiplier;
             this.vineGrowthChance = vineGrowthChance;
@@ -107,6 +105,8 @@ namespace Vintagestory.ServerMods
             float sinAngleVer, cosAnglerHor, sinAngleHor;
 
             float currentSequence;
+
+            LCGRandom lcgrand = lcgrandTL.Value;
 
             while (curWidth > 0 && iteration++ < 5000)
             {

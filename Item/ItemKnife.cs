@@ -6,6 +6,7 @@ using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Server;
 
 namespace Vintagestory.GameContent
 {
@@ -143,9 +144,12 @@ namespace Vintagestory.GameContent
                     {
                         api.World.Logger.Notification("Server did stab played");
 
-                        byEntity.GetBehavior<EntityBehaviorTemporalStabilityAffected>().AddStability(0.33);
+                        byEntity.GetBehavior<EntityBehaviorTemporalStabilityAffected>().AddStability(0.30);
                         
                         byEntity.LeftHandItemSlot.TakeOut(1);
+                        byEntity.LeftHandItemSlot.MarkDirty();
+
+                        ((byEntity as EntityPlayer)?.Player as IServerPlayer)?.BroadcastPlayerData();
 
                         int h = 110 + api.World.Rand.Next(15);
                         int v = 100 + api.World.Rand.Next(50);

@@ -174,8 +174,13 @@ namespace Vintagestory.GameContent
 
             float glitchEffectExtraStrength = tempStabilitySystem.GetGlitchEffectExtraStrength();
 
-            glitchEffectStrength += (Math.Max(0, Math.Max(0, (0.2f - ownStability)*1/0.2f) + glitchEffectExtraStrength) - glitchEffectStrength) * deltaTime;
-            fogEffectStrength = (Math.Max(0, Math.Max(0, (0.3f - ownStability) * 1 / 0.3f) + glitchEffectExtraStrength) - fogEffectStrength) * deltaTime;
+            double targetGlitchEffectStrength = Math.Max(0, Math.Max(0, (0.2f - ownStability) * 1 / 0.2f) + glitchEffectExtraStrength);
+            glitchEffectStrength += (targetGlitchEffectStrength - glitchEffectStrength) * deltaTime;
+            glitchEffectStrength = GameMath.Clamp(glitchEffectStrength, 0, 1.1f);
+
+            double targetFogEffectStrength = Math.Max(0, Math.Max(0, (0.3f - ownStability) * 1 / 0.3f) + glitchEffectExtraStrength);
+            fogEffectStrength += (targetFogEffectStrength - fogEffectStrength) * deltaTime;
+            fogEffectStrength = GameMath.Clamp(fogEffectStrength, 0, 1.1f);
 
             hereTempStabChangeVelocity = hereStability - 1;
 

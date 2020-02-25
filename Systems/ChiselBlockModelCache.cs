@@ -81,6 +81,7 @@ namespace Vintagestory.ServerMods
         private MeshRef CreateModel(ItemStack forStack)
         {
             ITreeAttribute tree = forStack.Attributes;
+            if (tree == null) tree = new TreeAttribute();
             int[] materials = BlockEntityChisel.MaterialIdsFromAttributes(tree, capi.World);
             uint[] cuboids = (tree["cuboids"] as IntArrayAttribute)?.AsUint;
             List<uint> voxelCuboids = cuboids == null ? new List<uint>() : new List<uint>(cuboids);

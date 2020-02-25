@@ -208,7 +208,7 @@ namespace Vintagestory.GameContent
 
             Block block = api.World.BlockAccessor.GetBlock(blockSel.Position);
 
-            if (block?.Attributes?["mealcontainer"]?.AsBool() == true)
+            if (block?.Attributes?["mealContainer"]?.AsBool() == true)
             {
                 ServeIntoBowl(block, blockSel.Position, slot, byEntity.World);
                 handHandling = EnumHandHandling.PreventDefault;
@@ -509,10 +509,11 @@ namespace Vintagestory.GameContent
 
             bemeal.RecipeCode = GetRecipeCode(world, potslot.Itemstack);
 
-            ItemStack[] stacks = GetContents(api.World, potslot.Itemstack);
+            ItemStack[] stacks = GetNonEmptyContents(api.World, potslot.Itemstack);
             for (int i = 0; i < stacks.Length; i++)
             {
                 bemeal.inventory[i].Itemstack = stacks[i].Clone();
+                bemeal.inventory[i].Itemstack.StackSize = 1;
             }
 
 

@@ -35,9 +35,9 @@ namespace Vintagestory.GameContent.Mechanics
             this.mechanicalPowerMod = mechanicalPowerMod;
             this.capi = capi;
 
-            capi.Event.RegisterRenderer(this, EnumRenderStage.Opaque);
-            capi.Event.RegisterRenderer(this, EnumRenderStage.ShadowFar);
-            capi.Event.RegisterRenderer(this, EnumRenderStage.ShadowNear);
+            capi.Event.RegisterRenderer(this, EnumRenderStage.Opaque, "mechnetwork");
+            capi.Event.RegisterRenderer(this, EnumRenderStage.ShadowFar, "mechnetwork");
+            capi.Event.RegisterRenderer(this, EnumRenderStage.ShadowNear, "mechnetwork");
 
             capi.Event.ReloadShader += LoadShader;
             LoadShader();

@@ -9,6 +9,7 @@ using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -20,7 +21,7 @@ namespace Vintagestory.GameContent
         {
             get
             {
-                AssetLocation texturePath;
+                AssetLocation texturePath=null;
                 CompositeTexture tex;
                 if (nowTesselatingItem.Textures.TryGetValue(textureCode, out tex))
                 {
@@ -28,10 +29,17 @@ namespace Vintagestory.GameContent
                 }
                 else
                 {
-                    nowTesselatingShape.Textures.TryGetValue(textureCode, out texturePath);
+                    nowTesselatingShape?.Textures.TryGetValue(textureCode, out texturePath);
+                }
+
+                if (texturePath == null)
+                {
+                    texturePath = new AssetLocation(textureCode);
                 }
 
                 TextureAtlasPosition texpos = capi.BlockTextureAtlas[texturePath];
+
+                
 
                 if (texpos == null)
                 {
@@ -136,6 +144,16 @@ namespace Vintagestory.GameContent
                 nowTesselatingItem = stack.Item;
                 nowTesselatingShape = capi.TesselatorManager.GetCachedShape(stack.Item.Shape.Base);
                 capi.Tesselator.TesselateItem(stack.Item, out mesh, this);
+
+                if (stack.Item.Shape.VoxelizeTexture)
+                {
+                    mesh.Rotate(new Vec3f(0.5f, 0.5f, 0.5f), GameMath.PIHALF, 0, 0);
+                    mesh.Scale(new Vec3f(0.5f, 0.5f, 0.5f), 0.33f, 0.5f, 0.33f);
+                    mesh.Translate(0, -7.5f / 16f, 0f);
+                }
+
+                mesh.RenderPasses.Fill((int)EnumChunkRenderPass.BlendNoCull);
+
             }
 
             return mesh;

@@ -71,11 +71,17 @@ namespace Vintagestory.GameContent
 
             if (cnt++ > 30)
             {
+                bool waveoff = false;
+                int groundOffset = 0;
+
+                float affectedness = World.BlockAccessor.GetLightLevel(LocalPos.XYZ.AsBlockPos, EnumLightLevelType.OnlySunLight) < 14 ? 1 : 0;
+                windMotion = Api.ModLoader.GetModSystem<WeatherSystemBase>().GetWindSpeed(LocalPos.XYZ * affectedness);
+
                 cnt = 0;
-                tmpPos.Set((int)LocalPos.X, (int)LocalPos.Y, (int)LocalPos.Z);
+                /*tmpPos.Set((int)LocalPos.X, (int)LocalPos.Y, (int)LocalPos.Z);
                 Room room = roomReg.GetRoomForPosition(tmpPos);
                 float affectedness = room.NonSkylightCount == 0 ? 1 : ((float)room.SkylightCount / room.NonSkylightCount);
-                windMotion = Api.ModLoader.GetModSystem<WeatherSystemBase>().GetWindSpeed(LocalPos.XYZ * affectedness); 
+                windMotion = Api.ModLoader.GetModSystem<WeatherSystemBase>().GetWindSpeed(LocalPos.XYZ * affectedness); */
             }
 
             if (AnimManager.ActiveAnimationsByAnimCode.ContainsKey("fly"))

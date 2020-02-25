@@ -201,7 +201,7 @@ void main () {
             LoadShader();
             
             renderer = new EyesOverlayRenderer(api, eyeShaderProg);
-            api.Event.RegisterRenderer(renderer, EnumRenderStage.Ortho);
+            api.Event.RegisterRenderer(renderer, EnumRenderStage.Ortho, "sleeping");
             api.Event.LeaveWorld += () =>
             {
                 renderer?.Dispose();

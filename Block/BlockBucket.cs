@@ -161,6 +161,7 @@ namespace Vintagestory.GameContent
                 {
                     bucketmesh.CustomInts = new CustomMeshDataPartInt(bucketmesh.FlagsCount);
                     bucketmesh.CustomInts.Count = bucketmesh.FlagsCount;
+                    bucketmesh.CustomInts.Values.Fill(0x4000000); // light foam only
 
                     bucketmesh.CustomFloats = new CustomMeshDataPartFloat(bucketmesh.FlagsCount * 2);
                     bucketmesh.CustomFloats.Count = bucketmesh.FlagsCount * 2;

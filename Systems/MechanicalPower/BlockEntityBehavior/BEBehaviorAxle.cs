@@ -89,11 +89,21 @@ namespace Vintagestory.GameContent.Mechanics
         {
             if (orientations == "ns" || orientations == "we")
             {
-                return 
+                // Up or down
+                if (
                     Api.World.BlockAccessor.GetBlock(Position.X, Position.Y - 1, Position.Z).SideSolid[BlockFacing.UP.Index] ||
                     Api.World.BlockAccessor.GetBlock(Position.X, Position.Y + 1, Position.Z).SideSolid[BlockFacing.DOWN.Index]
+                ) return true;
+
+                // Front or back
+                BlockFacing frontFacing = Block.Variant["rotation"] == "ns" ? BlockFacing.WEST : BlockFacing.NORTH;
+                return
+                    Api.World.BlockAccessor.GetBlock(Position.AddCopy(frontFacing)).SideSolid[frontFacing.GetOpposite().Index] ||
+                    Api.World.BlockAccessor.GetBlock(Position.AddCopy(frontFacing.GetOpposite())).SideSolid[frontFacing.Index]
                 ;
             }
+
+
 
             if (orientations == "ud")
             {

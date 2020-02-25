@@ -30,8 +30,6 @@ namespace Vintagestory.API.Common
             return CanBeStackedWithOutputSlotItem(sourceSlot as ItemSlot) && base.CanTakeFrom(sourceSlot);
         }
 
-       
-
 
         public bool CanBeStackedWithOutputSlotItem(ItemSlot sourceSlot, bool notifySlot = true)
         {
@@ -49,5 +47,7 @@ namespace Vintagestory.API.Common
 
             return true;
         }
+
+
     }
 }

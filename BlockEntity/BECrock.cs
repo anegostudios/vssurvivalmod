@@ -56,7 +56,7 @@ namespace Vintagestory.GameContent
         protected override float Inventory_OnAcquireTransitionSpeed(EnumTransitionType transType, ItemStack stack, float baseMul)
         {
             float mul = base.Inventory_OnAcquireTransitionSpeed(transType, stack, baseMul);
-            mul *= ownBlock.GetContainingTransitionModifierPlaced(Api.World, Pos, transType);
+            mul *= ownBlock?.GetContainingTransitionModifierPlaced(Api.World, Pos, transType) ?? 1;
             return mul;
         }
 

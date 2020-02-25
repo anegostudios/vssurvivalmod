@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -10,10 +11,31 @@ namespace Vintagestory.GameContent.Mechanics
 {
     public class BEBehaviorMPBrake : BEBehaviorMPAxle
     {
-        protected bool engaged;
+        BEBrake bebrake;
+        float resistance;
+        ILoadedSound brakeSound;
+
+        public override CompositeShape Shape { 
+            get {
+                string side = Block.Variant["side"];
+
+                CompositeShape shape = new CompositeShape() { Base = new AssetLocation("shapes/block/wood/mechanics/axle.json") };
+
+                if (side == "east" || side == "west")
+                {
+                    shape.rotateY = 90;
+                }
+
+                return shape;
+            }
+            set {
+
+            }
+        }
 
         public BEBehaviorMPBrake(BlockEntity blockentity) : base(blockentity)
         {
+            bebrake = blockentity as BEBrake;
             
         }
 
@@ -21,32 +43,103 @@ namespace Vintagestory.GameContent.Mechanics
         {
             base.Initialize(api, properties);
 
-            Shape = new CompositeShape() { Base = new AssetLocation("shapes/block/wood/mechanics/axle.json") };
+            bebrake.RegisterGameTickListener(OnEvery50Ms, 100);
+
+            string side = Block.Variant["side"];
+            switch (side)
+            {
+                case "north":
+                    AxisMapping = new int[] { 2, 1, 0 };
+                    AxisSign = new int[] { -1, -1, -1 };
+                    break;
+
+                case "east":
+                    AxisMapping = new int[] { 0, 1, 2 };
+                    AxisSign = new int[] { -1, -1, -1 };
+                    break;
+
+                case "south":
+                    AxisMapping = new int[] { 2, 1, 0 };
+                    AxisSign = new int[] { -1, -1, -1 };
+                    break;
+
+                case "west":
+                    AxisMapping = new int[] { 0, 1, 2 };
+                    AxisSign = new int[] { -1, -1, -1 };
+                    break;
+            }
+
         }
 
         protected override bool AddStands => false;
 
 
+
+
+        private void OnEvery50Ms(float dt)
+        {
+            resistance = GameMath.Clamp(resistance + dt / (bebrake.Engaged ? 20 : -10), 0, 3);
+
+            if (bebrake.Engaged && network != null && network.Speed > 0.1)
+            {
+                Api.World.SpawnParticles(
+                    network.Speed * 1.7f, 
+                    ColorUtil.ColorFromRgba(60, 60, 60, 100),
+                    Position.ToVec3d().Add(0.1f, 0.5f, 0.1f), 
+                    Position.ToVec3d().Add(0.8f, 0.3f, 0.8f), 
+                    new Vec3f(-0.1f, 0.1f, -0.1f), 
+                    new Vec3f(0.2f, 0.2f, 0.2f), 
+                    2, 0, 0.3f);
+            }
+
+            UpdateBreakSounds();
+        }
+
+        public void UpdateBreakSounds()
+        {
+            if (Api.Side != EnumAppSide.Client) return;
+
+            if (resistance > 0 && bebrake.Engaged && network != null && network.Speed > 0.1)
+            {
+                if (brakeSound == null || !brakeSound.IsPlaying)
+                {
+                    brakeSound = ((IClientWorldAccessor)Api.World).LoadSound(new SoundParams()
+                    {
+                        Location = new AssetLocation("sounds/effect/woodgrind.ogg"),
+                        ShouldLoop = true,
+                        Position = Position.ToVec3f().Add(0.5f, 0.25f, 0.5f),
+                        DisposeOnFinish = false,
+                        Volume = 1
+                    });
+
+                    brakeSound.Start();
+                }
+
+                brakeSound.SetPitch(GameMath.Clamp(network.Speed * 1.5f + 0.2f, 0.5f, 1));
+            }
+            else
+            {
+                brakeSound?.FadeOut(1, (s) => { brakeSound.Stop(); });
+            }
+
+        }
+
+
+
+
         public override float GetResistance()
         {
-            if (engaged) return 10;
-
-            return base.GetResistance();
+            return resistance;
         }
 
 
-        public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
+        protected override MechPowerPath[] GetMechPowerExits(TurnDirection fromExitTurnDir)
         {
-            base.FromTreeAtributes(tree, worldAccessForResolve);
-
-            engaged = tree.GetBool("engaged");
+            return base.GetMechPowerExits(fromExitTurnDir);
         }
 
-        public override void ToTreeAttributes(ITreeAttribute tree)
-        {
-            base.ToTreeAttributes(tree);
 
-            tree.SetBool("engaged", engaged);
-        }
+
+        
     }
 }

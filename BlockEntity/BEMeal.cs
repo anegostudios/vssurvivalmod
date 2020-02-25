@@ -62,8 +62,220 @@ namespace Vintagestory.GameContent
             if (Api.Side == EnumAppSide.Client)
             {
                 RegisterGameTickListener(Every100ms, 200);
+
+                /*RegisterGameTickListener(Every50ms, 150);
+
+                IWorldAccessor w = Api.World;
+                rndMeals = new RndMeal[]
+                {
+                    new RndMeal()
+                    {
+                        recipeCode = "jam",
+                        stacks = new ItemStack[][] {
+                            gs("honeyportion"),
+                            gs("honeyportion"),
+                            anyFruit(),
+                            anyFruitOrNothing(),
+                        }
+                    },
+                    new RndMeal()
+                    {
+                        recipeCode = "porridge",
+                        stacks = new ItemStack[][] {
+                            gs("grain-spelt"),
+                            gs("grain-spelt"),
+                            anyFruitOrNothing(),
+                            anyFruitOrNothing(), 
+                            anyVegetableOrNothing(),
+                            anyVegetableOrNothing(),
+                            honeyOrNothing()
+                        }
+                    },
+                    new RndMeal()
+                    {
+                        recipeCode = "porridge",
+                        stacks = new ItemStack[][] {
+                            gs("grain-flax"),
+                            gs("grain-flax"),
+                            anyFruitOrNothing(),
+                            anyFruitOrNothing(),
+                            anyVegetableOrNothing(),
+                            anyVegetableOrNothing(),
+                            honeyOrNothing()
+                        }
+                    },
+                    new RndMeal()
+                    {
+                        recipeCode = "porridge",
+                        stacks = new ItemStack[][] {
+                            gs("grain-rice"),
+                            gs("grain-rice"),
+                            anyFruitOrNothing(),
+                            anyFruitOrNothing(),
+                            anyVegetableOrNothing(),
+                            anyVegetableOrNothing(),
+                            honeyOrNothing()
+                        }
+                    },
+                    new RndMeal()
+                    {
+                        recipeCode = "soup",
+                        stacks = new ItemStack[][]
+                        {
+                            gs("waterportion"),
+                            anyVegetable(),
+                            anyVegetableOrNothing(),
+                            anyVegetableOrNothing(),
+                            anyMeatOrEggOrNothing()
+                        }
+                    },
+                    new RndMeal()
+                    {
+                        recipeCode = "vegetablestew",
+                        stacks = new ItemStack[][]
+                        {
+                            anyVegetable(),
+                            anyVegetable(),
+                            anyVegetableOrNothing(),
+                            anyVegetableOrNothing(),
+                            anyMeatOrEggOrNothing()
+                        }
+                    },
+                    new RndMeal()
+                    {
+                        recipeCode = "meatystew",
+                        stacks = new ItemStack[][]
+                        {
+                            gs("redmeat-raw"),
+                            gs("redmeat-raw"),
+                            eggOrNothing(),
+                            anyMeatOrEggOrNothing(),
+                            anyVegetableOrNothing(),
+                            anyVegetableOrNothing(),
+                            anyFruitOrNothing(),
+                            honeyOrNothing()
+                        }
+                    },
+                    new RndMeal()
+                    {
+                        recipeCode = "meatystew",
+                        stacks = new ItemStack[][]
+                        {
+                            gs("poultry-raw"),
+                            gs("poultry-raw"),
+                            eggOrNothing(),
+                            anyMeatOrEggOrNothing(),
+                            anyVegetableOrNothing(),
+                            anyVegetableOrNothing(),
+                            anyFruitOrNothing(),
+                            honeyOrNothing()
+                        }
+                    },
+                };*/
             }
         }
+
+        /*ItemStack[] anyFruitOrNothing()
+        {
+            return gs(null, "fruit-blueberry", "fruit-cranberry", "fruit-redcurrant", "fruit-whitecurrant", "fruit-blackcurrant", "fruit-saguaro");
+        }
+
+        ItemStack[] anyFruit()
+        {
+            return gs("fruit-blueberry", "fruit-cranberry", "fruit-redcurrant", "fruit-whitecurrant", "fruit-blackcurrant", "fruit-saguaro");
+        }
+
+        ItemStack[] anyVegetableOrNothing()
+        {
+            return gs(null, "vegetable-carrot", "vegetable-cabbage", "vegetable-onion", "vegetable-turnip", "vegetable-parsnip", "vegetable-pumpkin", "mushroom-bolete-normal", "mushroom-fieldmushroom-normal");
+        }
+
+        ItemStack[] anyVegetable()
+        {
+            return gs("vegetable-carrot", "vegetable-cabbage", "vegetable-onion", "vegetable-turnip", "vegetable-parsnip", "vegetable-pumpkin", "mushroom-bolete-normal", "mushroom-fieldmushroom-normal");
+        }
+
+        ItemStack[] anyMeatOrEggOrNothing()
+        {
+            return gs(null, "redmeat-raw", "poultry-raw", "egg-chicken-raw");
+        }
+
+        ItemStack[] eggOrNothing()
+        {
+            return gs(null, "egg-chicken-raw");
+        }
+
+
+        ItemStack[] honeyOrNothing()
+        {
+            return gs(null, "honeyportion");
+        }
+
+        ItemStack[] gs(params string[] codes)
+        {
+            int index = 0;
+            ItemStack[] stacks = new ItemStack[codes.Length];
+            for (int i= 0; i < stacks.Length; i++)
+            {
+                if (codes[i] == null) {
+                    continue;
+                }
+
+                Item item = Api.World.GetItem(new AssetLocation(codes[i]));
+                if (item == null)
+                {
+                    Block block = Api.World.GetBlock(new AssetLocation(codes[i]));
+                    if (block == null)
+                    {
+                        
+                        int a = 1;
+                        continue;
+                    }
+
+                    stacks[index++] = new ItemStack(block);
+                }
+                else
+                {
+                    stacks[index++] = new ItemStack(item);
+                }
+            }
+            
+            return stacks;
+        }
+
+        class RndMeal
+        {
+            public string recipeCode;
+            public ItemStack[][] stacks;
+        }
+
+        RndMeal[] rndMeals;
+        
+        private void Every50ms(float t1)
+        {
+            RndMeal rndMeal = rndMeals[Api.World.Rand.Next(rndMeals.Length)];
+            this.RecipeCode = rndMeal.recipeCode;
+
+            for (int i = 0; i < inventory.Count; i++)
+            {
+                inventory[i].Itemstack = null;
+            }
+
+            int index = 0;
+            for (int i = 0; i < rndMeal.stacks.Length; i++)
+            {
+                ItemStack[] stacks = rndMeal.stacks[i];
+                ItemStack stack = stacks[Api.World.Rand.Next(stacks.Length)];
+
+                if (stack == null) continue;
+                inventory[index++].Itemstack = stack;
+
+                if (index == 4) break;
+            }
+
+            currentMesh = GenMesh();
+            MarkDirty(true);
+        }*/
 
         public override void OnBlockBroken()
         {

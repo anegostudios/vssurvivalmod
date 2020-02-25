@@ -190,7 +190,7 @@ namespace Vintagestory.GameContent
             {
                 renderer = new FirepitContentsRenderer(api as ICoreClientAPI, Pos);
 
-                (api as ICoreClientAPI).Event.RegisterRenderer(renderer, EnumRenderStage.Opaque);
+                (api as ICoreClientAPI).Event.RegisterRenderer(renderer, EnumRenderStage.Opaque, "firepit");
 
                 UpdateRenderer();
             }
@@ -381,7 +381,7 @@ namespace Vintagestory.GameContent
         {
             float diff = Math.Abs(fromTemp - toTemp);
 
-            dt = dt + dt * (diff / 35);
+            dt = dt + dt * (diff / 28);
 
 
             if (diff < dt)
@@ -426,15 +426,17 @@ namespace Vintagestory.GameContent
 
         public void heatInput(float dt)
         {
-            //dt *= 20;
-
             float oldTemp = InputStackTemp;
             float nowTemp = oldTemp;
+            float meltingPoint = inputSlot.Itemstack.Collectible.GetMeltingPoint(Api.World, inventory, inputSlot);
 
             // Only Heat ore. Cooling happens already in the itemstack
             if (oldTemp < furnaceTemperature)
             {
-                float newTemp = changeTemperature(oldTemp, furnaceTemperature, 2 * dt);
+                float f = (1 + GameMath.Clamp((furnaceTemperature - oldTemp)/30, 0, 1.6f)) * dt;
+                if (nowTemp >= meltingPoint) f /= 11;
+
+                float newTemp = changeTemperature(oldTemp, furnaceTemperature, f);
                 int maxTemp = Math.Max(inputStack.Collectible.CombustibleProps == null ? 0 : inputStack.Collectible.CombustibleProps.MaxTemperature, inputStack.ItemAttributes?["maxTemperature"] == null ? 0 : inputStack.ItemAttributes["maxTemperature"].AsInt(0));
                 if (maxTemp > 0)
                 {
@@ -449,7 +451,6 @@ namespace Vintagestory.GameContent
             }
 
             // Begin smelting when hot enough
-            float meltingPoint = inputSlot.Itemstack.Collectible.GetMeltingPoint(Api.World, inventory, inputSlot);
             if (nowTemp >= meltingPoint)
             {
                 float diff = nowTemp / meltingPoint;
@@ -809,11 +810,8 @@ namespace Vintagestory.GameContent
                 ambientSound.Dispose();
             }
 
-            if (renderer != null)
-            {
-                renderer.Unregister();
-                renderer = null;
-            }
+            renderer?.Dispose();
+            renderer = null;
 
             if (clientDialog != null)
             {
@@ -994,7 +992,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override void OnLoadCollectibleMappings(IWorldAccessor worldForResolve, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping)
+        public override void OnLoadCollectibleMappings(IWorldAccessor worldForResolve, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, int schematicSeed)
         {
             foreach (var slot in Inventory)
             {
@@ -1107,7 +1105,7 @@ namespace Vintagestory.GameContent
         {
             base.OnBlockUnloaded();
 
-            renderer?.Unregister();
+            renderer?.Dispose();
         }
 
         InFirePitProps GetRenderProps(ItemStack contentStack)
@@ -1136,7 +1134,7 @@ namespace Vintagestory.GameContent
                 MeshData[] meshes = new MeshData[17];
                 ITesselatorAPI mesher = ((ICoreClientAPI)Api).Tesselator;
 
-                mesher.TesselateShape(block, Api.Assets.TryGet("shapes/block/wood/firepit/" + key + ".json").ToObject<Shape>(), out meshdata);
+                mesher.TesselateShape(block, Api.Assets.TryGet("shapes/block/wood/firepit/" + key + ".json")?.ToObject<Shape>(), out meshdata);
                 meshdata.Tints = null;
             }
 

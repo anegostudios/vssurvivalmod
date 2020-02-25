@@ -138,7 +138,7 @@ namespace Vintagestory.GameContent.Mechanics
             {
                 if (network.fullyLoaded)
                 {
-                    network.ServerTick(data.tickNumber);
+                    network.ServerTick(dt, data.tickNumber);
                 }
             }   
         }
@@ -198,14 +198,21 @@ namespace Vintagestory.GameContent.Mechanics
 
             if (device.Network != null)
             {
-                RebuildNetwork(device.Network);
+                RebuildNetwork(device.Network, device);
             }
         }
 
-        public void RebuildNetwork(MechanicalNetwork network)
+        public void RebuildNetwork(MechanicalNetwork network, IMechanicalPowerNode nowRemovedNode = null)
         {
             network.Valid = false;
+
             DeleteNetwork(network);
+
+            if (network.nodes.Values.Count == 0)
+            {
+                Api.World.Logger.Notification("Network with id " + network.networkId + " has zero nodes?");
+                return;
+            }
 
             var nnodes = network.nodes.Values.ToArray();
 
@@ -216,9 +223,24 @@ namespace Vintagestory.GameContent.Mechanics
 
             foreach (var nnode in nnodes)
             {
-                if (nnode.OutFacingForNetworkDiscovery != null)
+                BlockEntity be = Api.World.BlockAccessor.GetBlockEntity(nnode.Position);
+                var behaviors = be?.Behaviors;
+                if (behaviors == null) continue;
+                IMechanicalPowerNode newnode = null;
+                for (int i = 0; i < behaviors.Count; i++)
                 {
-                    MechanicalNetwork newnetwork = nnode.CreateJoinAndDiscoverNetwork(nnode.OutFacingForNetworkDiscovery);
+                    newnode = behaviors[i] as IMechanicalPowerNode;
+                    if (newnode != null)
+                    {
+                        break;
+                    }
+                }
+                
+                if (newnode == null) continue;
+
+                if (newnode.OutFacingForNetworkDiscovery != null && (nowRemovedNode == null || newnode.Position != nowRemovedNode.Position))
+                {
+                    MechanicalNetwork newnetwork = newnode.CreateJoinAndDiscoverNetwork(newnode.OutFacingForNetworkDiscovery);
                     newnetwork.Speed = network.Speed;
                     newnetwork.AngleRad = network.AngleRad;
                     newnetwork.TotalAvailableTorque = network.TotalAvailableTorque;
@@ -247,6 +269,7 @@ namespace Vintagestory.GameContent.Mechanics
         public MechanicalNetwork GetOrCreateNetwork(long networkId)
         {
             MechanicalNetwork mw;
+            
             if (!data.networksById.TryGetValue(networkId, out mw))
             {
                 data.networksById[networkId] = mw = new MechanicalNetwork(this, networkId);
@@ -277,6 +300,8 @@ namespace Vintagestory.GameContent.Mechanics
             if (allNetworksFullyLoaded || reason == EnumChunkDirtyReason.MarkedDirty) return;
 
             allNetworksFullyLoaded = true;
+            nowFullyLoaded.Clear();
+
             foreach (var network in data.networksById.Values)
             {
                 if (network.fullyLoaded) continue;
@@ -302,6 +327,7 @@ namespace Vintagestory.GameContent.Mechanics
         {
             MechanicalNetwork nw = new MechanicalNetwork(this, data.nextNetworkId);
             nw.fullyLoaded = true;
+
             data.networksById[data.nextNetworkId] = nw;
             data.nextNetworkId++;
 
@@ -320,7 +346,7 @@ namespace Vintagestory.GameContent.Mechanics
 
             foreach (MechanicalNetwork network in data.networksById.Values)
             {
-                network.ClientTick();
+                network.ClientTick(deltaTime);
             }
         }
 

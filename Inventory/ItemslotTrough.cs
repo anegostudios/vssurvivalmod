@@ -9,7 +9,6 @@ using Vintagestory.API.Config;
 
 namespace Vintagestory.GameContent
 {
-    // The 4 trader slots for selling stuff to the trader
     public class ItemSlotTrough : ItemSlotSurvival
     {
         BlockEntityTrough be;

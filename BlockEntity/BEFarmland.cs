@@ -217,7 +217,7 @@ namespace Vintagestory.GameContent
             tmpPos.Set(Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5);
             double rainLevel = wsys.GetRainFall(tmpPos);
 
-            bool hasRain = rainLevel > 0.01 && Api.World.BlockAccessor.GetRainMapHeightAt(Pos.X, Pos.Z) <= Pos.Y;
+            bool hasRain = rainLevel > 0.01 && Api.World.BlockAccessor.GetRainMapHeightAt(Pos.X, Pos.Z) <= Pos.Y + 1;
 
             if (hasRain)
             {
@@ -713,6 +713,12 @@ namespace Vintagestory.GameContent
             return 1f;
         }
 
+        public Vec3d Position => base.Pos.ToVec3d().Add(0.5, 1, 0.5);
+        public string Type => "food";
+        #endregion
+
+        BlockPos IFarmlandBlockEntity.Pos => this.Pos;
+
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
         {
             return false;
@@ -728,12 +734,7 @@ namespace Vintagestory.GameContent
 
             return true;*/
         }
-
-        public Vec3d Position => base.Pos.ToVec3d().Add(0.5, 1, 0.5);
-        public string Type => "food";
-
-        BlockPos IFarmlandBlockEntity.Pos => this.Pos;
-        #endregion
+        
 
 
         protected enum EnumWaterSearchResult

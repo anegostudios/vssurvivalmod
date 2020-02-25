@@ -105,7 +105,7 @@ namespace Vintagestory.GameContent
 
                 if (Api.Side == EnumAppSide.Client)
                 {
-                    smallSparks.MinPos.Set(Pos.X + 0.45, Pos.Y + 0.5, Pos.Z + 0.45);
+                    smallSparks.MinPos.Set(Pos.X + 0.45, Pos.Y + 0.53, Pos.Z + 0.45);
                     Api.World.SpawnParticles(smallSparks);
                 }
             }

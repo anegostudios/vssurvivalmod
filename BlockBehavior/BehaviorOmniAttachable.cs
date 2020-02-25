@@ -23,7 +23,7 @@ namespace Vintagestory.GameContent
             handling = EnumHandling.PreventDefault;
 
             // Prefer selected block face
-            if (TryAttachTo(world, byPlayer, blockSel.Position, blockSel.Face, itemstack)) return true;
+            if (TryAttachTo(world, byPlayer, blockSel.Position, blockSel.HitPosition, blockSel.Face, itemstack)) return true;
 
 
             // Otherwise attach to any possible face
@@ -32,7 +32,7 @@ namespace Vintagestory.GameContent
             {
                 //if (faces[i] == BlockFacing.DOWN) continue; - what for? o.O
 
-                if (TryAttachTo(world, byPlayer, blockSel.Position, faces[i], itemstack)) return true;
+                if (TryAttachTo(world, byPlayer, blockSel.Position, blockSel.HitPosition, faces[i], itemstack)) return true;
             }
 
             failureCode = "requireattachable";
@@ -68,7 +68,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        bool TryAttachTo(IWorldAccessor world, IPlayer byPlayer, BlockPos blockpos, BlockFacing onBlockFace, ItemStack itemstack)
+        bool TryAttachTo(IWorldAccessor world, IPlayer byPlayer, BlockPos blockpos, Vec3d hitPosition, BlockFacing onBlockFace, ItemStack itemstack)
         {
             BlockPos attachingBlockPos = blockpos.AddCopy(onBlockFace.GetOpposite());
             Block attachingBlock = world.BlockAccessor.GetBlock(world.BlockAccessor.GetBlockId(attachingBlockPos));
@@ -78,7 +78,7 @@ namespace Vintagestory.GameContent
             if (attachingBlock.CanAttachBlockAt(world.BlockAccessor, block, attachingBlockPos, onFace))
             {
                 Block orientedBlock = world.BlockAccessor.GetBlock(block.CodeWithVariant(facingCode, onBlockFace.Code));
-                orientedBlock.DoPlaceBlock(world, byPlayer, new BlockSelection() { Position = blockpos, Face = onFace }, itemstack);
+                orientedBlock.DoPlaceBlock(world, byPlayer, new BlockSelection() { Position = blockpos, HitPosition = hitPosition, Face = onFace }, itemstack);
                 return true;
             }
 

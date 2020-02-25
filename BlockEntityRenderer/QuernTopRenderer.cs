@@ -86,13 +86,11 @@ namespace Vintagestory.GameContent
         }
 
 
-        internal void Unregister()
-        {
-            api.Event.UnregisterRenderer(this, EnumRenderStage.Opaque);
-        }
 
         public void Dispose()
         {
+            api.Event.UnregisterRenderer(this, EnumRenderStage.Opaque);
+
             meshref.Dispose();
         }
 

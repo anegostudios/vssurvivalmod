@@ -46,7 +46,7 @@ namespace Vintagestory.GameContent
                 .AddDialogTitleBar(DialogTitle, OnTitleBarClose)
                 .BeginChildElements(bgBounds)
                     .BeginClip(clippingBounds)
-                    .AddTextArea(textAreaBounds, OnTextAreaChanged, CairoFont.TextInput(), "text")
+                    .AddTextArea(textAreaBounds, OnTextAreaChanged, CairoFont.TextInput().WithFontSize(20), "text")
                     .EndClip()
                     .AddVerticalScrollbar(OnNewScrollbarvalue, scrollbarBounds, "scrollbar")
                     .AddSmallButton(Lang.Get("Cancel"), OnButtonCancel, cancelButtonBounds)
@@ -56,7 +56,7 @@ namespace Vintagestory.GameContent
             ;
 
             SingleComposer.GetTextArea("text").SetMaxLines(maxLines);
-            SingleComposer.GetTextArea("text").SetMaxWidth(maxwidth);
+            SingleComposer.GetTextArea("text").SetMaxWidth((int)(maxwidth * RuntimeEnv.GUIScale));
 
             SingleComposer.GetScrollbar("scrollbar").SetHeights(
                 (float)textAreaBounds.fixedHeight, (float)textAreaBounds.fixedHeight

@@ -52,6 +52,7 @@ namespace Vintagestory.ServerMods
             Block orientedBlock;
 
             EnumSlabPlaceMode mode = itemstack.Attributes == null ? EnumSlabPlaceMode.Auto : (EnumSlabPlaceMode)itemstack.Attributes.GetInt("slabPlaceMode", 0);
+
             if (mode == EnumSlabPlaceMode.Horizontal)
             {
                 string side = blockSel.HitPosition.Y < 0.5 ? "down" : "up";

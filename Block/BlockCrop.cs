@@ -37,15 +37,19 @@ namespace Vintagestory.GameContent
             roomreg = api.ModLoader.GetModSystem<RoomRegistry>();
         }
 
-        public override void OnJsonTesselation(MeshData sourceMesh, BlockPos pos, int[] chunkExtIds, int extIndex3d)
+        public override void OnJsonTesselation(ref MeshData sourceMesh, BlockPos pos, int[] chunkExtIds, ushort[] chunkLightExt, int extIndex3d)
         {
-            bool waveoff = false;
-            if (roomreg != null)
+
+            // Too expensive
+            /*if (roomreg != null)
             {
                 Room room = roomreg.GetRoomForPosition(pos);
 
                 waveoff = ((float)room.SkylightCount / room.NonSkylightCount) < 0.1f;
-            }
+            }*/
+
+            int sunLightLevel = chunkLightExt[extIndex3d] & 31;
+            bool waveoff = sunLightLevel < 14;
 
             setLeaveWaveFlags(sourceMesh, waveoff);
         }

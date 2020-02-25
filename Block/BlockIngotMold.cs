@@ -1,12 +1,16 @@
 ﻿
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
@@ -23,6 +27,39 @@ namespace Vintagestory.GameContent
             ICoreClientAPI capi = api as ICoreClientAPI;
 
             if (LastCodePart() == "raw") return;
+
+            /*if (Attributes?["drop"].Exists == true)
+            {
+                JsonItemStack jstack = Attributes["drop"].AsObject<JsonItemStack>();
+                if (jstack != null)
+                {
+                    MetalProperty metals = api.Assets.TryGet("worldproperties/block/metal.json").ToObject<MetalProperty>();
+                    for (int i = 0; i < metals.Variants.Length; i++)
+                    {
+                        string metaltype = metals.Variants[i].Code.Path;
+                        string tooltype = LastCodePart();
+                        jstack.Code.Path = jstack.Code.Path.Replace("{tooltype}", tooltype).Replace("{metal}", metaltype);
+                        jstack.Resolve(api.World, "tool mold drop for " + Code);
+                        ItemStack stack = jstack.ResolvedItemstack;
+                        if (stack == null) continue;
+
+                        JToken token;
+
+                        if (stack.Collectible.Attributes?["handbook"].Exists != true)
+                        {
+                            if (stack.Collectible.Attributes == null) stack.Collectible.Attributes = new JsonObject(JToken.Parse("{ handbook: {} }"));
+                            else
+                            {
+                                token = stack.Collectible.Attributes.Token;
+                                token["handbook"] = JToken.Parse("{ }");
+                            }
+                        }
+
+                        token = stack.Collectible.Attributes["handbook"].Token;
+                        token["createdBy"] = JToken.FromObject(Lang.Get("Metal molding"));
+                    }
+                }
+            }*/
 
             interactionsLeft = ObjectCacheUtil.GetOrCreate(api, "ingotmoldBlockInteractionsLeft", () =>
             {
@@ -207,7 +244,7 @@ namespace Vintagestory.GameContent
                 return false;
             }
 
-            if (!world.BlockAccessor.GetBlock(blockSel.Position.DownCopy()).SideSolid[BlockFacing.UP.Index])
+            if (!world.BlockAccessor.GetBlock(blockSel.Position.DownCopy()).CanAttachBlockAt(world.BlockAccessor, this, blockSel.Position, BlockFacing.UP))
             {
                 failureCode = "requiresolidground";
                 return false;

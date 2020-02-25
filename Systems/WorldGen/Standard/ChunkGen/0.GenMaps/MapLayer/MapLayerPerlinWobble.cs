@@ -8,13 +8,13 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.ServerMods
 {
-    class MapLayerPerlinWobble : MapLayerTransformBase
+    public class MapLayerPerlinWobble : MapLayerTransformBase
     {
-        NormalizedSimplexNoise noisegenX;
-        NormalizedSimplexNoise noisegenY;
+        protected NormalizedSimplexNoise noisegenX;
+        protected NormalizedSimplexNoise noisegenY;
 
-        float scale;
-        float intensity;
+        protected float scale;
+        protected float intensity;
 
         public MapLayerPerlinWobble(long seed, MapLayerBase parent, int octaves, float persistence, float scale, float intensity = 1) : base(seed, parent)
         {

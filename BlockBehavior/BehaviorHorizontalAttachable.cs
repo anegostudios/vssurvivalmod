@@ -38,7 +38,7 @@ namespace Vintagestory.GameContent
             // Prefer selected block face
             if (blockSel.Face.IsHorizontal)
             {
-                if (TryAttachTo(world, byPlayer, blockSel, ref failureCode)) return true;
+                if (TryAttachTo(world, byPlayer, blockSel, itemstack, ref failureCode)) return true;
             }
 
             // Otherwise attach to any possible face
@@ -47,7 +47,7 @@ namespace Vintagestory.GameContent
             for (int i = 0; i < faces.Length; i++)
             {
                 blockSel.Face = faces[i];
-                if (TryAttachTo(world, byPlayer, blockSel, ref failureCode)) return true;
+                if (TryAttachTo(world, byPlayer, blockSel, itemstack, ref failureCode)) return true;
             }
 
             failureCode = "requirehorizontalattachable";
@@ -98,7 +98,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        bool TryAttachTo(IWorldAccessor world, IPlayer player, BlockSelection blockSel, ref string failureCode)
+        bool TryAttachTo(IWorldAccessor world, IPlayer player, BlockSelection blockSel, ItemStack itemstack, ref string failureCode)
         {
             BlockFacing oppositeFace = blockSel.Face.GetOpposite();
 
@@ -108,7 +108,7 @@ namespace Vintagestory.GameContent
 
             if (attachingBlock.CanAttachBlockAt(world.BlockAccessor, block, attachingBlockPos, blockSel.Face) && orientedBlock.CanPlaceBlock(world, player, blockSel, ref failureCode))
             {
-                orientedBlock.DoPlaceBlock(world, player, blockSel, null);
+                orientedBlock.DoPlaceBlock(world, player, blockSel, itemstack);
                 return true;
             }
 

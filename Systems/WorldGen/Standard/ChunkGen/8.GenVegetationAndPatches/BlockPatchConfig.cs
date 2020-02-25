@@ -82,6 +82,7 @@ namespace Vintagestory.ServerMods.NoObf
         internal bool IsPatchSuitableAt(BlockPatch patch, Block onBlock, IWorldManagerAPI world, int climate, int y, float forestRel)
         {
             if ((patch.Placement == EnumBlockPatchPlacement.NearWater || patch.Placement == EnumBlockPatchPlacement.UnderWater) && onBlock.LiquidCode != "water") return false;
+            if ((patch.Placement == EnumBlockPatchPlacement.NearSaltWater || patch.Placement == EnumBlockPatchPlacement.UnderSaltWater) && onBlock.LiquidCode != "saltwater") return false;
 
             rain = TerraGenConfig.GetRainFall((climate >> 8) & 0xff, y);
             rainRel = rain / 255f;

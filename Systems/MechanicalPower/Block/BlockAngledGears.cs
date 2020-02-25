@@ -49,6 +49,11 @@ namespace Vintagestory.GameContent.Mechanics
             return IsOrientedTo(face);
         }
 
+        public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
+        {
+            return new ItemStack(world.GetBlock(new AssetLocation("angledgears-s")));  
+        }
+
 
         public Block getGearBlock(IWorldAccessor world, BlockFacing facing, BlockFacing adjFacing = null)
         {
@@ -144,7 +149,7 @@ namespace Vintagestory.GameContent.Mechanics
                     block.DidConnectAt(world, secondPos, secondFace.GetOpposite());
                 }
 
-                WasPlaced(world, blockSel.Position, firstFace, block);
+                WasPlaced(world, blockSel.Position, firstFace);
                 return true;
             }
 

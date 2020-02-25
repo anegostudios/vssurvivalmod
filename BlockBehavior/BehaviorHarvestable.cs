@@ -9,9 +9,9 @@ namespace Vintagestory.GameContent
     public class BlockBehaviorHarvestable : BlockBehavior
     {
         float harvestTime;
-        BlockDropItemStack harvestedStack;
+        public BlockDropItemStack harvestedStack;
 
-        AssetLocation harvestingSound;
+        public AssetLocation harvestingSound;
 
         AssetLocation harvestedBlockCode;
         Block harvestedBlock;
@@ -29,7 +29,7 @@ namespace Vintagestory.GameContent
             harvestTime = properties["harvestTime"].AsFloat(0);
             harvestedStack = properties["harvestedStack"].AsObject<BlockDropItemStack>(null);
 
-            string code = properties["harvestingSound"].AsString("sounds/block/plant");
+            string code = properties["harvestingSound"].AsString("game:sounds/block/plant");
             if (code != null) {
                 harvestingSound = AssetLocation.Create(code, block.Code.Domain);
             }

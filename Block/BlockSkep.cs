@@ -20,6 +20,19 @@ namespace Vintagestory.GameContent
             string collectibleCode = byPlayer.InventoryManager.ActiveHotbarSlot?.Itemstack?.Collectible.Code.Path;
             if (collectibleCode == "beenade-opened" || collectibleCode == "beenade-closed") return false;
 
+
+
+            if (byPlayer.WorldData.CurrentGameMode == EnumGameMode.Creative && byPlayer.InventoryManager.ActiveHotbarSlot.Itemstack?.Collectible.Code.Path.Contains("honeycomb") == true)
+            {
+                BlockEntityBeehive beh = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityBeehive;
+                if (beh != null && !beh.Harvestable)
+                {
+                    beh.Harvestable = true;
+                    beh.MarkDirty(true);
+                }
+                return true;
+            }
+
             if (byPlayer.InventoryManager.TryGiveItemstack(new ItemStack(this)))
             {
                 world.BlockAccessor.SetBlock(0, blockSel.Position);

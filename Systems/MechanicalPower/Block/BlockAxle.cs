@@ -47,7 +47,7 @@ namespace Vintagestory.GameContent.Mechanics
                         if (toPlaceBlock.DoPlaceBlock(world, byPlayer, blockSel, itemstack))
                         {
                             block.DidConnectAt(world, pos, face.GetOpposite());
-                            WasPlaced(world, blockSel.Position, face, block);
+                            WasPlaced(world, blockSel.Position, face);
                             return true;
                         }
                     }
@@ -57,7 +57,7 @@ namespace Vintagestory.GameContent.Mechanics
 
             if (base.TryPlaceBlock(world, byPlayer, itemstack, blockSel, ref failureCode))
             {
-                WasPlaced(world, blockSel.Position);
+                WasPlaced(world, blockSel.Position, null);
                 return true;
             }
             return false;

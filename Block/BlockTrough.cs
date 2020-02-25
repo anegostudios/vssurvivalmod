@@ -13,14 +13,29 @@ namespace Vintagestory.GameContent
 {
     public class BlockTrough : Block
     {
-        
+
+        public override void OnLoaded(ICoreAPI api)
+        {
+            base.OnLoaded(api);
+
+            CanStep = false;
+        }
+
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
             if (blockSel != null) {
                 BlockPos pos = blockSel.Position;
                 
                 BlockEntityTrough betr = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityTrough;
-                if (betr != null) return betr.OnInteract(byPlayer, blockSel);
+                if (betr != null)
+                {
+                    bool ok = betr.OnInteract(byPlayer, blockSel);
+                    if (ok && world.Side == EnumAppSide.Client)
+                    {
+                        (byPlayer as IClientPlayer).TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
+                    }
+                    return ok;
+                }
             }
 
             return base.OnBlockInteractStart(world, byPlayer, blockSel);

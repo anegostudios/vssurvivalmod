@@ -122,6 +122,7 @@
     <Compile Include="BlockEntity\BEShelf.cs" />
     <Compile Include="BlockEntity\BESignPost.cs" />
     <Compile Include="BlockEntity\BEStaticTranslocator.cs" />
+    <Compile Include="BlockEntity\BETapestry.cs" />
     <Compile Include="BlockEntity\BETorch.cs" />
     <Compile Include="BlockEntity\BETrough.cs" />
     <Compile Include="BlockEntity\BEBeehive.cs" />
@@ -136,6 +137,7 @@
     <Compile Include="Block\BlockChandelier.cs" />
     <Compile Include="Block\BlockCrock.cs" />
     <Compile Include="Block\BlockCrystal.cs" />
+    <Compile Include="Block\BlockTapestry.cs" />
     <Compile Include="Block\BlockDisplayCase.cs" />
     <Compile Include="Block\BlockEchoChamber.cs" />
     <Compile Include="Block\BlockGlowworms.cs" />
@@ -170,6 +172,7 @@
     <Compile Include="Item\ItemCleaver.cs" />
     <Compile Include="Item\ItemFirestarter.cs" />
     <Compile Include="Item\ItemArmorStand.cs" />
+    <Compile Include="Item\ItemIronBloom.cs" />
     <Compile Include="Systems\LiquidContainer.cs" />
     <Compile Include="Systems\MechanicalPower\BlockEntity\BEBrake.cs" />
     <Compile Include="Systems\MechanicalPower\BlockEntity\BEClutch.cs" />
@@ -308,7 +311,7 @@
     <Compile Include="Block\BlockToolMold.cs" />
     <Compile Include="Block\BlockToolRack.cs" />
     <Compile Include="Block\BlockTorch.cs" />
-    <Compile Include="Block\BlockEmptyTorchHolder.cs" />
+    <Compile Include="Block\BlockTorchHolder.cs" />
     <Compile Include="Block\BlockVines.cs" />
     <Compile Include="Block\BlockWateringCan.cs" />
     <Compile Include="Block\BlockWaterLily.cs" />
@@ -330,6 +333,7 @@
     <Compile Include="Systems\MechanicalPower\Renderer\AngledGearBlockRenderer.cs" />
     <Compile Include="Systems\MechanicalPower\Renderer\GenericMechBlockRenderer.cs" />
     <Compile Include="Systems\MechanicalPower\Renderer\MechBlockRenderer.cs" />
+    <Compile Include="Systems\RaccoonSpawnCondition.cs" />
     <Compile Include="Systems\TemporalStability.cs" />
     <Compile Include="Systems\Trading\ResolvedTradeItem.cs" />
     <Compile Include="Systems\Trading\TalkUtil.cs" />

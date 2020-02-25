@@ -35,7 +35,7 @@ namespace Vintagestory.GameContent
                 ModelTransform tf = new ModelTransform();
                 tf.EnsureDefaultValues();
 
-                float offset = GameMath.Clamp(secondsUsed * 5, 0, 2f);
+                float offset = GameMath.Clamp(secondsUsed * 4f, 0, 2f);
 
                 //tf.Translation.Set(-offset/4, 0, offset/3);
                 tf.Translation.Set(-offset/3, 0, offset / 3);
@@ -77,9 +77,10 @@ namespace Vintagestory.GameContent
                 damage = slot.Itemstack.Collectible.Attributes["damage"].AsFloat(0);
             }
 
-            string spearMaterial = slot.Itemstack.Collectible.FirstCodePart(1);
+            (api as ICoreClientAPI)?.World.AddCameraShake(0.17f);
 
             ItemStack stack = slot.TakeOut(1);
+            slot.MarkDirty();
             stack.Collectible.DamageItem(byEntity.World, byEntity, new DummySlot(stack));
 
             IPlayer byPlayer = null;
@@ -94,8 +95,6 @@ namespace Vintagestory.GameContent
             ((EntityProjectile)entity).DropOnImpactChance = 1.1f;
             ((EntityProjectile)entity).Weight = 0.3f;
 
-            int? texIndex = type.Attributes?["texturealternateMapping"]?[spearMaterial].AsInt(0);
-            entity.WatchedAttributes.SetInt("textureIndex", texIndex == null ? 0 : (int)texIndex);
 
             float acc = (1 - byEntity.Attributes.GetFloat("aimingAccuracy", 0));
             double rndpitch = byEntity.WatchedAttributes.GetDouble("aimingRandPitch", 1) * acc * 0.75;
@@ -116,6 +115,9 @@ namespace Vintagestory.GameContent
             byEntity.StartAnimation("throw");
 
             RefillSlotIfEmpty(slot, byEntity);
+            byPlayer?.InventoryManager.BroadcastHotbarSlot();
+
+            byPlayer.Entity.World.PlaySoundAt(new AssetLocation("sounds/player/strike"), byPlayer.Entity, byPlayer, 0.9f + (float)api.World.Rand.NextDouble() * 0.2f, 16, 0.5f);
         }
 
 
@@ -132,7 +134,7 @@ namespace Vintagestory.GameContent
 
                 if (byEntity.Controls.HandUse == EnumHandInteract.HeldItemAttack)
                 {
-                    byPlayer.Entity.World.PlaySoundAt(new AssetLocation("sounds/player/strike"), byPlayer, byPlayer, true, 16, 0.5f);
+                    byPlayer.Entity.World.PlaySoundAt(new AssetLocation("sounds/player/strike"), byPlayer.Entity, byPlayer, 0.9f + (float)api.World.Rand.NextDouble() * 0.2f, 16, 0.5f);
                 }
             }, 464);
 

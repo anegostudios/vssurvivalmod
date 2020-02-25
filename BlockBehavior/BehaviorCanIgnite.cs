@@ -29,7 +29,11 @@ namespace Vintagestory.GameContent
 
 
             EnumIgniteState state = block.OnTryIgniteBlock(byEntity, blockSel.Position, 0);
-            if (state == EnumIgniteState.NotIgnitablePreventDefault) return;
+            if (state == EnumIgniteState.NotIgnitablePreventDefault)
+            {
+                blockHandling = EnumHandling.PreventDefault;
+                handHandling = EnumHandHandling.PreventDefault;
+            }
 
             if (!byEntity.Controls.Sneak && state != EnumIgniteState.Ignitable)
             {

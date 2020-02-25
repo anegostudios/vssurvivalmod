@@ -145,7 +145,7 @@ namespace Vintagestory.GameContent
 
             if (liquidSlot.Itemstack.ItemAttributes?["waterTightContainerProps"].Exists == true)
             {
-                itemsPerLitre = liquidSlot.Itemstack.ItemAttributes["waterTightContainerProps"].AsInt(1);
+                itemsPerLitre = liquidSlot.Itemstack.ItemAttributes["waterTightContainerProps"]["itemsPerLitre"].AsInt(1);
             }
 
             BlockEntityBarrel bebarrel = capi.World.BlockAccessor.GetBlockEntity(BlockEntityPosition) as BlockEntityBarrel;

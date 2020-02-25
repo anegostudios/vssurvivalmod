@@ -5,6 +5,7 @@ using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
@@ -44,15 +45,19 @@ namespace Vintagestory.GameContent
             get { return 48; }
         }
 
+        double fontSize;
+
 
         public BlockEntitySignPostRenderer(BlockPos pos, ICoreClientAPI api, CairoFont font)
         {
             this.api = api;
             this.pos = pos;
             this.font = font;
-            
 
-            api.Event.RegisterRenderer(this, EnumRenderStage.Opaque);
+            fontSize = font.UnscaledFontsize;
+
+
+            api.Event.RegisterRenderer(this, EnumRenderStage.Opaque, "signpost");
         }
 
 
@@ -165,6 +170,7 @@ namespace Vintagestory.GameContent
         {
             this.textByCardinal = textByCardinal;
             font.WithColor(ColorUtil.ToRGBADoubles(color));
+            font.UnscaledFontsize = fontSize / RuntimeEnv.GUIScale;
 
             int lines = 0;
             for (int i = 0; i < textByCardinal.Length; i++)
@@ -241,14 +247,9 @@ namespace Vintagestory.GameContent
             prog.Stop();
         }
 
-        public void Unregister()
-        {
-            api.Event.UnregisterRenderer(this, EnumRenderStage.Opaque);
-        }
-
-        // Called by UnregisterRenderer
         public void Dispose()
         {
+            api.Event.UnregisterRenderer(this, EnumRenderStage.Opaque);
             loadedTexture?.Dispose();
             quadModelRef?.Dispose();
         }

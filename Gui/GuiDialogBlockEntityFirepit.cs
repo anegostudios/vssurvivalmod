@@ -68,7 +68,7 @@ namespace Vintagestory.GameContent
 
                 if (outputTextElem.QuantityTextLines > 2)
                 {
-                    outputTextElem.Bounds.fixedOffsetY = -outputTextElem.Font.GetFontExtents().Height * 0.6;
+                    outputTextElem.Bounds.fixedOffsetY = -outputTextElem.Font.GetFontExtents().Height / RuntimeEnv.GUIScale * 0.65;
                 }
 
                 outputTextElem.Bounds.CalcWorldBounds();
@@ -146,7 +146,7 @@ namespace Vintagestory.GameContent
             
             if (outputTextElem.QuantityTextLines > 2)
             {
-                outputTextElem.Bounds.fixedOffsetY = -outputTextElem.Font.GetFontExtents().Height * 0.6;
+                outputTextElem.Bounds.fixedOffsetY = -outputTextElem.Font.GetFontExtents().Height / RuntimeEnv.GUIScale * 0.65;
             }
             outputTextElem.Bounds.CalcWorldBounds();
 

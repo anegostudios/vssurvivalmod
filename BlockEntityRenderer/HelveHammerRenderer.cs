@@ -26,7 +26,7 @@ namespace Vintagestory.GameContent
         public Matrixf ModelMat = new Matrixf();
 
         public float AngleRad;
-        internal bool Obstruced;
+        internal bool Obstructed;
 
         
 
@@ -52,15 +52,15 @@ namespace Vintagestory.GameContent
         Matrixf shadowMvpMat = new Matrixf();
         public void OnRenderFrame(float deltaTime, EnumRenderStage stage)
         {
-            if (meshref == null || !be.HasHammer) return;
+            if (meshref == null || be.HammerStack == null) return;
 
             IRenderAPI rpi = api.Render;
             Vec3d camPos = api.World.Player.Entity.CameraPos;
 
             rpi.GlDisableCullFace();
-
+            
             float rotY = be.facing.HorizontalAngleIndex * 90;
-            float offx = be.facing == BlockFacing.NORTH || be.facing == BlockFacing.WEST ? 1 / 16f : 15 / 16f;
+            float offx = be.facing == BlockFacing.NORTH || be.facing == BlockFacing.WEST ? -1 / 16f : 17 / 16f;
             ModelMat
                     .Identity()
                     .Translate(pos.X - camPos.X, pos.Y - camPos.Y, pos.Z - camPos.Z)
@@ -99,13 +99,12 @@ namespace Vintagestory.GameContent
         }
 
 
-        internal void Unregister()
-        {
-            api.Event.UnregisterRenderer(this, EnumRenderStage.Opaque);
-        }
-
         public void Dispose()
         {
+            api.Event.UnregisterRenderer(this, EnumRenderStage.Opaque);
+            api.Event.UnregisterRenderer(this, EnumRenderStage.ShadowFar);
+            api.Event.UnregisterRenderer(this, EnumRenderStage.ShadowNear);
+
             meshref.Dispose();
         }
 

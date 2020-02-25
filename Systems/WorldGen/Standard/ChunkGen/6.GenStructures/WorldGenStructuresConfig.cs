@@ -32,7 +32,7 @@ namespace Vintagestory.ServerMods
             for (int i = 0; i < Structures.Length; i++)
             {
                 LCGRandom rand = new LCGRandom(api.World.Seed + i + 512);
-                Structures[i].Init(api, blockLayerConfig, rand);
+                Structures[i].Init(api, blockLayerConfig, rockstrata, rand);
             }
         }
     }

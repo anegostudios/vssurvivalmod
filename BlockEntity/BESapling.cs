@@ -50,6 +50,17 @@ namespace Vintagestory.ServerMods
         {
             if (Api.World.Calendar.TotalHours < totalHoursTillGrowth) return;
 
+            int chunksize = Api.World.BlockAccessor.ChunkSize;
+            foreach (BlockFacing facing in BlockFacing.HORIZONTALS)
+            {
+                Vec3i dir = facing.Normali;
+                int x = Pos.X + dir.X * chunksize;
+                int z = Pos.Z + dir.Z * chunksize;
+
+                // Not at world edge and chunk is not loaded? We must be at the edge of loaded chunks. Wait until more chunks are generated
+                if (Api.World.BlockAccessor.IsValidPos(x, Pos.Y, z) && Api.World.BlockAccessor.GetChunkAtBlockPos(x, Pos.Y, z) == null) return;
+            }
+
             Block block = Api.World.BlockAccessor.GetBlock(Pos);
             string treeGenCode = block.Attributes?["treeGen"].AsString(null);
 
@@ -62,7 +73,7 @@ namespace Vintagestory.ServerMods
             AssetLocation code = new AssetLocation(treeGenCode);
             ICoreServerAPI sapi = Api as ICoreServerAPI;
 
-            ITreeGenerator gen = null;
+            ITreeGenerator gen;
             if (!sapi.World.TreeGenerators.TryGetValue(code, out gen))
             {
                 Api.Event.UnregisterGameTickListener(growListenerId);

@@ -8,6 +8,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -132,6 +133,13 @@ namespace Vintagestory.GameContent
             return base.OnTesselation(mesher, tessThreadTesselator);
         }
 
+        protected override void updateMeshes()
+        {
+            mat.Identity();
+            mat.RotateYDeg(block.Shape.rotateY);
+
+            base.updateMeshes();
+        }
 
         protected override MeshData genMesh(ItemStack stack, int index)
         {
@@ -162,6 +170,8 @@ namespace Vintagestory.GameContent
                     nowTesselatingItem = stack.Item;
                     nowTesselatingShape = capi.TesselatorManager.GetCachedShape(stack.Item.Shape.Base);
                     capi.Tesselator.TesselateItem(stack.Item, out mesh, this);
+
+                    mesh.RenderPasses.Fill((int)EnumChunkRenderPass.BlendNoCull);
                 }
             }
 

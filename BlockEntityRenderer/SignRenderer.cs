@@ -2,6 +2,7 @@
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
@@ -29,6 +30,8 @@ namespace Vintagestory.GameContent
         protected float translateY = 0.5625f;
         protected float translateZ = 0;
 
+        float fontSize=20;
+
         public double RenderOrder
         {
             get { return 0.5; }
@@ -36,17 +39,17 @@ namespace Vintagestory.GameContent
 
         public int RenderRange
         {
-            get { return 48; }
+            get { return 24; }
         }
 
         public BlockEntitySignRenderer(BlockPos pos, ICoreClientAPI api)
         {
             this.api = api;
             this.pos = pos;
-            font = new CairoFont(20, GuiStyle.StandardFontName, new double[] { 0, 0, 0, 0.8 });
+            font = new CairoFont(fontSize, GuiStyle.StandardFontName, new double[] { 0, 0, 0, 0.8 });
             font.LineHeightMultiplier = 0.9f;
 
-            api.Event.RegisterRenderer(this, EnumRenderStage.Opaque);
+            api.Event.RegisterRenderer(this, EnumRenderStage.Opaque, "sign");
 
             MeshData modeldata = QuadMeshUtil.GetQuad();
             modeldata.Uv = new float[]
@@ -100,6 +103,9 @@ namespace Vintagestory.GameContent
         {
             font.WithColor(ColorUtil.ToRGBADoubles(color));
             loadedTexture?.Dispose();
+
+            font.UnscaledFontsize = fontSize / RuntimeEnv.GUIScale;
+
             loadedTexture = api.Gui.TextTexture.GenTextTexture(text, font, TextWidth, TextHeight, null, EnumTextOrientation.Center);
         }
 
@@ -119,7 +125,7 @@ namespace Vintagestory.GameContent
             IStandardShaderProgram prog = rpi.PreparedStandardShader(pos.X, pos.Y, pos.Z);
 
             prog.Tex2D = loadedTexture.TextureId;
-
+            prog.NormalShaded = 0;
             prog.ModelMatrix = ModelMat
                 .Identity()
                 .Translate(pos.X - camPos.X, pos.Y - camPos.Y, pos.Z - camPos.Z)
@@ -137,14 +143,10 @@ namespace Vintagestory.GameContent
             prog.Stop();
         }
 
-        public void Unregister()
-        {
-            api.Event.UnregisterRenderer(this, EnumRenderStage.Opaque);
-        }
-
-        // Called by UnregisterRenderer
         public void Dispose()
         {
+            api.Event.UnregisterRenderer(this, EnumRenderStage.Opaque);
+
             loadedTexture?.Dispose();
             quadModelRef?.Dispose();
         }

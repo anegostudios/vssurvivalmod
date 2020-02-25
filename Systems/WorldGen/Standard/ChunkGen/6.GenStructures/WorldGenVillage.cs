@@ -73,7 +73,7 @@ namespace Vintagestory.ServerMods
         public string BuildProtectionName = null;
 
 
-        internal ushort[] replaceblockids = new ushort[0];
+        internal int[] replaceblockids = new int[0];
         LCGRandom rand;
         double totalWeight;
 
@@ -141,7 +141,7 @@ namespace Vintagestory.ServerMods
 
             if (ReplaceWithBlocklayers != null)
             {
-                replaceblockids = new ushort[ReplaceWithBlocklayers.Length];
+                replaceblockids = new int[ReplaceWithBlocklayers.Length];
                 for (int i = 0; i < replaceblockids.Length; i++)
                 {
                     Block block = api.World.GetBlock(ReplaceWithBlocklayers[i]);

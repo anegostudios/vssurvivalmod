@@ -177,7 +177,7 @@ namespace Vintagestory.GameContent
                     renderer.ShouldRotateAutomated = true;
                 }
 
-                (api as ICoreClientAPI).Event.RegisterRenderer(renderer, EnumRenderStage.Opaque);
+                (api as ICoreClientAPI).Event.RegisterRenderer(renderer, EnumRenderStage.Opaque, "quern");
 
                 if (quernBaseMesh == null)
                 {
@@ -581,11 +581,8 @@ namespace Vintagestory.GameContent
                 ambientSound.Dispose();
             }
 
-            if (renderer != null)
-            {
-                renderer.Unregister();
-                renderer = null;
-            }
+            renderer?.Dispose();
+            renderer = null;
         }
 
         public override void OnBlockBroken()
@@ -713,7 +710,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override void OnLoadCollectibleMappings(IWorldAccessor worldForResolve, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping)
+        public override void OnLoadCollectibleMappings(IWorldAccessor worldForResolve, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, int schematicSeed)
         {
             foreach (var slot in Inventory)
             {
@@ -736,7 +733,7 @@ namespace Vintagestory.GameContent
             {
                 mesher.AddMeshData(
                     this.quernTopMesh.Clone()
-                    .Rotate(new API.MathTools.Vec3f(0.5f, 0.5f, 0.5f), 0, renderer.AngleRad * GameMath.DEG2RAD, 0)
+                    .Rotate(new API.MathTools.Vec3f(0.5f, 0.5f, 0.5f), 0, renderer.AngleRad, 0)
                     .Translate(0 / 16f, 11 / 16f, 0 / 16f)
                 );
             }
@@ -750,7 +747,7 @@ namespace Vintagestory.GameContent
         {
             base.OnBlockUnloaded();
 
-            renderer?.Unregister();
+            renderer?.Dispose();
         }
 
     }

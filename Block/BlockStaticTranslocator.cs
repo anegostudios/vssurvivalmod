@@ -12,6 +12,7 @@ namespace Vintagestory.GameContent
     {
         public SimpleParticleProperties idleParticles;
         public SimpleParticleProperties insideParticles;
+        public SimpleParticleProperties teleportParticles;
 
         public bool Repaired => Variant["state"] != "broken";
 
@@ -57,6 +58,26 @@ namespace Vintagestory.GameContent
             insideParticles.SizeEvolve = EvolvingNatFloat.create(EnumTransformFunction.QUADRATIC, -0.6f);
             insideParticles.AddPos.Set(1, 2, 1);
             insideParticles.addLifeLength = 0.5f;
+
+
+
+            teleportParticles = new SimpleParticleProperties(
+                0.5f, 1,
+                ColorUtil.ToRgba(150, 92, 111, 107),
+                new Vec3d(),
+                new Vec3d(),
+                new Vec3f(-0.2f, -0.2f, -0.2f),
+                new Vec3f(0.2f, 0.2f, 0.2f),
+                4.5f,
+                0,
+                0.5f,
+                0.75f,
+                EnumParticleModel.Quad
+            );
+
+            teleportParticles.OpacityEvolve = EvolvingNatFloat.create(EnumTransformFunction.QUADRATIC, -1f);
+            teleportParticles.AddPos.Set(1, 2, 1);
+            teleportParticles.addLifeLength = 0.5f;
         }
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
@@ -167,7 +188,7 @@ namespace Vintagestory.GameContent
                         new WorldInteraction()
                         {
                             ActionLangCode = "blockhelp-translocator-repair-2",
-                            Itemstacks = new ItemStack[] { new ItemStack(world.GetItem(new AssetLocation("gear-temporal"))) },
+                            Itemstacks = new ItemStack[] { new ItemStack(world.GetItem(new AssetLocation("gear-temporal")), 3) },
                             MouseButton = EnumMouseButton.Right
                         }
                     };

@@ -29,7 +29,7 @@ namespace Vintagestory.GameContent.Mechanics
             {
                 if (network?.Speed > 0 && Api.World.ElapsedMilliseconds - lastMsAngle > 500 / network.Speed)
                 {
-                    Api.World.PlaySoundAt(new AssetLocation("sounds/effect/swoosh"), Position.X + 0.5, Position.Y + 0.5, Position.Z + 0.5, null, false, 20, (0.5f + 0.5f * (float)windSpeed) * sailLength / 3f);
+                    Api.World.PlaySoundAt(new AssetLocation("sounds/effect/swoosh"), Position.X + 0.5, Position.Y + 0.5, Position.Z + 0.5, null, false, 18, (0.5f + 0.5f * (float)windSpeed) * sailLength / 3f);
                     lastMsAngle = Api.World.ElapsedMilliseconds;
                 }
 
@@ -91,19 +91,31 @@ namespace Vintagestory.GameContent.Mechanics
         {
             windSpeed = weatherSystem.GetWindSpeed(Blockentity.Pos.ToVec3d());
 
-            if (Api.Side == EnumAppSide.Server && sailLength > 0 && Api.World.Rand.NextDouble() < 0.1)
+            if (Api.Side == EnumAppSide.Server && sailLength > 0 && Api.World.Rand.NextDouble() < 0.2)
             {
-                // TODO: Entity fling thing
+                // Todo: Entity Fling and Damage thing
                 /*Cuboidd cuboid = new Cuboidd(-sailLength + 0.1, -sailLength + 0.1, 0.2, sailLength - 0.2, sailLength - 0.2, 0.8);
-                float rot = ownFacing.HorizontalAngleIndex * 90;
-                cuboid = cuboid.RotatedCopy(0, rot, 0, new Vec3d(0, 0.5, 0));
+                float rot = (ownFacing.HorizontalAngleIndex+1) * 90;
 
-                partitionUtil.WalkEntityPartitions(Position.ToVec3d().Add(0.5, 0.5, 0.5), SailLength + 1, (e) =>
+                cuboid = cuboid.RotatedCopy(0, rot, 0, new Vec3d(0.5, 0.5, 0.5));
+                cuboid = cuboid.OffsetCopy(Position.X, Position.Y, Position.Z);
+
+                Api.World.SpawnParticles(100, ColorUtil.WhiteArgb, cuboid.Start, cuboid.End, new Vec3f(), new Vec3f(), 2f, 0);
+
+                Vec3d centerPos = Position.ToVec3d().Add(0.5, 0.5, 0.5);
+
+                partitionUtil.WalkEntityPartitions(centerPos, SailLength + 1, (e) =>
                 {
                     if (!e.IsInteractable) return;
                     if (cuboid.IntersectsOrTouches(e.CollisionBox, e.ServerPos.X, e.ServerPos.Y, e.ServerPos.Z))
                     {
+                        e.ReceiveDamage(new DamageSource() { SourceBlock = Block, SourcePos = Position.ToVec3d().Add(0.5, 0.5, 0.5), Type = EnumDamageType.BluntAttack, Source = EnumDamageSource.Block }, 0.5f);
 
+                        float dx = (float)(centerPos.X - e.ServerPos.X);
+                        float dy = (float)(centerPos.Y - e.ServerPos.Y);
+                        float dz = (float)(centerPos.Y - e.ServerPos.Z);
+
+                        e.ServerPos.Motion.Add(dx, dy, dz);
                     }
                 });*/
 
@@ -149,7 +161,7 @@ namespace Vintagestory.GameContent.Mechanics
         }
 
 
-        public override void WasPlaced(BlockFacing connectedOnFacing, IMechanicalPowerBlock connectedToBlock)
+        public override void WasPlaced(BlockFacing connectedOnFacing)
         {
             // Don't run this behavior for power producers. Its done in initialize instead
         }
@@ -161,7 +173,7 @@ namespace Vintagestory.GameContent.Mechanics
 
             ItemSlot slot = byPlayer.InventoryManager.ActiveHotbarSlot;
             ItemStack sailStack = new ItemStack(Api.World.GetItem(new AssetLocation("sail")));
-            if (slot.Empty || !slot.Itemstack.Equals(Api.World, sailStack)) return false;
+            if (slot.Empty || !slot.Itemstack.Equals(Api.World, sailStack, GlobalConstants.IgnoredStackAttributes)) return false;
 
             if (slot.StackSize < 4) return false;
 
@@ -179,9 +191,13 @@ namespace Vintagestory.GameContent.Mechanics
             if (byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
             {
                 slot.TakeOut(4);
+                slot.MarkDirty();
             }
             sailLength++;
             updateShape();
+
+            Blockentity.MarkDirty(true);
+
             return true;
         }
 
@@ -216,7 +232,7 @@ namespace Vintagestory.GameContent.Mechanics
         public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
         {
             sailLength = tree.GetInt("sailLength");
-            
+
             if (worldAccessForResolve.Side == EnumAppSide.Client && Block != null)
             {
                 updateShape();
@@ -262,7 +278,8 @@ namespace Vintagestory.GameContent.Mechanics
         {
             base.GetBlockInfo(forPlayer, sb);
 
-            sb.AppendLine(string.Format("Wind speed: {0:0.00#}", windSpeed));
+            sb.AppendLine(string.Format(Lang.Get("Wind speed: {0}%", (int)(100*windSpeed))));
+            sb.AppendLine(Lang.Get("Sails power output: {0}%", (int)(sailLength / 0.04f)));
         }
     }
 }

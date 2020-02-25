@@ -14,6 +14,8 @@ namespace Vintagestory.GameContent
 {
     public class BlockEntityFire : BlockEntity
     {
+
+
         public float startDuration;
         public float remainingBurnDuration;
         public BlockFacing fromFacing = BlockFacing.NORTH;
@@ -24,7 +26,6 @@ namespace Vintagestory.GameContent
         string startedByPlayerUid;
 
         ILoadedSound ambientSound;
-        CollisionTester collTester = new CollisionTester();
         Cuboidf fireCuboid = new Cuboidf(0, 0, 0, 1, 1, 1);
         WeatherSystemBase wsys;
         Vec3d tmpPos = new Vec3d();

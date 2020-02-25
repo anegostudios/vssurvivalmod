@@ -236,6 +236,34 @@ namespace Vintagestory.GameContent
             slot.MarkDirty();
         }
 
+
+        public override bool DoPlaceBlock(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ItemStack byItemStack)
+        {
+            bool val = base.DoPlaceBlock(world, byPlayer, blockSel, byItemStack);
+
+            if (val)
+            {
+                BlockEntityWateringCan bect = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityWateringCan;
+                if (bect != null)
+                {
+                    BlockPos targetPos = blockSel.DidOffset ? blockSel.Position.AddCopy(blockSel.Face.GetOpposite()) : blockSel.Position;
+                    double dx = byPlayer.Entity.Pos.X - (targetPos.X + blockSel.HitPosition.X);
+                    double dz = byPlayer.Entity.Pos.Z - (targetPos.Z + blockSel.HitPosition.Z);
+                    float angleHor = (float)Math.Atan2(dx, dz);
+
+                    float deg22dot5rad = GameMath.PIHALF / 4;
+                    float roundRad = ((int)Math.Round(angleHor / deg22dot5rad)) * deg22dot5rad;
+                    bect.MeshAngle = roundRad;
+                }
+            }
+
+            return val;
+        }
+
+
+
+
+
         public float GetRemainingWateringSeconds(ItemStack stack)
         {
             return stack.Attributes.GetFloat("wateringSeconds", 0);

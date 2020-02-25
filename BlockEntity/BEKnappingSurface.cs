@@ -123,55 +123,37 @@ namespace Vintagestory.GameContent
 
             int toolMode = slot.Itemstack.Collectible.GetToolMode(slot, byPlayer, new BlockSelection() { Position = Pos });
 
-            float yaw = GameMath.Mod(byPlayer.Entity.Pos.Yaw, 2 * GameMath.PI);
-            BlockFacing towardsFace = BlockFacing.HorizontalFromAngle(yaw);
+            //float yaw = GameMath.Mod(byPlayer.Entity.Pos.Yaw, 2 * GameMath.PI);
+            //BlockFacing towardsFace = BlockFacing.HorizontalFromAngle(yaw);
             
 
             //if (DidBeginUse > 0)
             {
-                bool didRemove = mouseMode && OnRemove(voxelPos, facing, toolMode, byPlayer);
+                bool didRemove = mouseMode && OnRemove(voxelPos, toolMode);
                 
+                if (didRemove)
+                {
+                    for (int i = 0; i < BlockFacing.HORIZONTALS.Length; i++)
+                    {
+                        BlockFacing face = BlockFacing.HORIZONTALS[i];
+                        Vec3i nnode = voxelPos.AddCopy(face);
+
+                        if (!Voxels[nnode.X, nnode.Z]) continue;
+                        if (SelectedRecipe.Voxels[nnode.X, 0, nnode.Z]) continue;
+
+                        tryBfsRemove(nnode.X, nnode.Z);
+                    }
+                }
+
                 if (mouseMode && (didRemove || Voxels[voxelPos.X, voxelPos.Z]))
                 {
                     Api.World.PlaySoundAt(new AssetLocation("sounds/player/knap" + (Api.World.Rand.Next(2) > 0 ? 1 : 2)), lastRemovedLocalPos.X, lastRemovedLocalPos.Y, lastRemovedLocalPos.Z, byPlayer, true, 12, 1);
                 }
 
-                if (didRemove)
-                {
-                    //byPlayer.Entity.GetBehavior<EntityBehaviorHunger>()?.ConsumeSaturation(1f);
-                }
-
                 if (didRemove && Api.Side == EnumAppSide.Client)
                 {
-                    Random rnd = Api.World.Rand;
-                    for (int i = 0; i < 3; i++)
-                    {
-                        Api.World.SpawnParticles(new SimpleParticleProperties()
-                        {
-                            MinQuantity = 1,
-                            AddQuantity = 2,
-                            Color = BaseMaterial.Collectible.GetRandomColor(Api as ICoreClientAPI, BaseMaterial),
-                            MinPos = new Vec3d(lastRemovedLocalPos.X, lastRemovedLocalPos.Y + 1 / 16f + 0.01f, lastRemovedLocalPos.Z),
-                            AddPos = new Vec3d(1 / 16f, 0.01f, 1 / 16f),
-                            MinVelocity = new Vec3f(0, 1, 0),
-                            AddVelocity = new Vec3f(
-                                4 * ((float)rnd.NextDouble() - 0.5f),
-                                1 * ((float)rnd.NextDouble() - 0.5f),
-                                4 * ((float)rnd.NextDouble() - 0.5f)
-                            ),
-                            LifeLength = 0.2f,
-                            GravityEffect = 1f,
-                            MinSize = 0.1f,
-                            MaxSize = 0.4f,
-                            ParticleModel = EnumParticleModel.Cube,
-                            SizeEvolve = new EvolvingNatFloat(EnumTransformFunction.LINEAR, -0.15f)
-                        });
-                    }
-
+                    spawnParticles(lastRemovedLocalPos);
                 }
-
-
-
 
                 RegenMeshAndSelectionBoxes();
                 Api.World.BlockAccessor.MarkBlockDirty(Pos);
@@ -184,7 +166,6 @@ namespace Vintagestory.GameContent
                 }
             }
 
-           // DidBeginUse = Math.Max(0, DidBeginUse - 1);
             CheckIfFinished(byPlayer);
             MarkDirty();
         }
@@ -231,6 +212,34 @@ namespace Vintagestory.GameContent
         }
 
 
+        void spawnParticles(Vec3d pos)
+        {
+            Random rnd = Api.World.Rand;
+            for (int i = 0; i < 3; i++)
+            {
+                Api.World.SpawnParticles(new SimpleParticleProperties()
+                {
+                    MinQuantity = 1,
+                    AddQuantity = 2,
+                    Color = BaseMaterial.Collectible.GetRandomColor(Api as ICoreClientAPI, BaseMaterial),
+                    MinPos = new Vec3d(pos.X, pos.Y + 1 / 16f + 0.01f, pos.Z),
+                    AddPos = new Vec3d(1 / 16f, 0.01f, 1 / 16f),
+                    MinVelocity = new Vec3f(0, 1, 0),
+                    AddVelocity = new Vec3f(
+                        4 * ((float)rnd.NextDouble() - 0.5f),
+                        1 * ((float)rnd.NextDouble() - 0.5f),
+                        4 * ((float)rnd.NextDouble() - 0.5f)
+                    ),
+                    LifeLength = 0.2f,
+                    GravityEffect = 1f,
+                    MinSize = 0.1f,
+                    MaxSize = 0.4f,
+                    ParticleModel = EnumParticleModel.Cube,
+                    SizeEvolve = new EvolvingNatFloat(EnumTransformFunction.LINEAR, -0.15f)
+                });
+            }
+        }
+
         private bool MatchesRecipe()
         {
             if (SelectedRecipe == null) return false;
@@ -239,7 +248,7 @@ namespace Vintagestory.GameContent
             {
                 for (int z = 0; z < 16; z++)
                 {
-                    if (Voxels[x, z] != SelectedRecipe.Voxels[x, z])
+                    if (Voxels[x, z] != SelectedRecipe.Voxels[x, 0, z])
                     {
                         return false;
                     }
@@ -257,7 +266,7 @@ namespace Vintagestory.GameContent
             {
                 for (int z = 0; z < 16; z++)
                 {
-                    if (SelectedRecipe.Voxels[x, z])
+                    if (SelectedRecipe.Voxels[x, 0, z])
                     {
                         bounds.X1 = Math.Min(bounds.X1, x);
                         bounds.X2 = Math.Max(bounds.X2, x);
@@ -289,10 +298,10 @@ namespace Vintagestory.GameContent
         }
 
         Vec3d lastRemovedLocalPos = new Vec3d();
-        private bool OnRemove(Vec3i voxelPos, BlockFacing facing, int radius, IPlayer byPlayer)
+        private bool OnRemove(Vec3i voxelPos, int radius)
         {
             // Required voxel, don't let the player break it
-            if (SelectedRecipe == null || SelectedRecipe.Voxels[voxelPos.X, voxelPos.Z]) return false;
+            if (SelectedRecipe == null || SelectedRecipe.Voxels[voxelPos.X, 0, voxelPos.Z]) return false;
 
             for (int dx = -(int)Math.Ceiling(radius/2f); dx <= radius /2; dx++)
             {
@@ -310,9 +319,58 @@ namespace Vintagestory.GameContent
                 }
             }
 
+
+
             return false;
         }
 
+        private void tryBfsRemove(int x, int z)
+        {
+            Queue<Vec2i> nodesToVisit = new Queue<Vec2i>();
+            HashSet<Vec2i> nodesVisited = new HashSet<Vec2i>();
+
+            nodesToVisit.Enqueue(new Vec2i(x, z));
+
+            List<Vec2i> foundPieces = new List<Vec2i>();
+
+            while (nodesToVisit.Count > 0)
+            {
+                Vec2i node = nodesToVisit.Dequeue();
+
+                for (int i = 0; i < BlockFacing.HORIZONTALS.Length; i++)
+                {
+                    BlockFacing face = BlockFacing.HORIZONTALS[i];
+                    Vec2i nnode = node.Copy().Add(face.Normali.X, face.Normali.Z);
+
+                    if (nnode.X < 0 || nnode.X >= 16 || nnode.Y < 0 || nnode.Y >= 16) continue;
+                    if (!Voxels[nnode.X, nnode.Y]) continue;
+
+                    if (nodesVisited.Contains(nnode)) continue;
+                    nodesVisited.Add(nnode);
+
+                    foundPieces.Add(nnode);
+
+                    if (SelectedRecipe.Voxels[nnode.X, 0, nnode.Y])
+                    {
+                        return;
+                    }
+
+                    nodesToVisit.Enqueue(nnode);
+                }
+            }
+
+            Vec3d tmp = new Vec3d();
+            foreach (var val in foundPieces)
+            {
+                Voxels[val.X, val.Y] = false;
+
+                if (Api.Side == EnumAppSide.Client)
+                {
+                    tmp.Set(Pos.X + val.X / 16f, Pos.Y, Pos.Z + val.Y / 16f);
+                    spawnParticles(tmp);
+                }
+            }
+        }
 
 
         public void RegenMeshAndSelectionBoxes()
@@ -359,11 +417,8 @@ namespace Vintagestory.GameContent
 
         public override void OnBlockRemoved()
         {
-            if (workitemRenderer != null)
-            {
-                workitemRenderer.Unregister();
-                workitemRenderer = null;
-            }
+            workitemRenderer?.Dispose();
+            workitemRenderer = null;
 
             dlg?.TryClose();
             dlg?.Dispose();
@@ -557,7 +612,7 @@ namespace Vintagestory.GameContent
         {
             base.OnBlockUnloaded();
 
-            workitemRenderer?.Unregister();
+            workitemRenderer?.Dispose();
         }
 
 

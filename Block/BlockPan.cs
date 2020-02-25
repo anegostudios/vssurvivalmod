@@ -197,6 +197,8 @@ namespace Vintagestory.GameContent
 
         public override bool OnHeldInteractStep(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
+            if ((byEntity.Controls.TriesToMove || byEntity.Controls.Jump) && !byEntity.Controls.Sneak) return false; // Cancel if the player begins walking
+
             string blockMaterialCode = GetBlockMaterialCode(slot.Itemstack);
             if (blockMaterialCode == null || !slot.Itemstack.TempAttributes.GetBool("canpan")) return false;
             
@@ -260,6 +262,11 @@ namespace Vintagestory.GameContent
 
         public override bool OnHeldInteractCancel(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)
         {
+            if (cancelReason == EnumItemUseCancelReason.ReleasedMouse)
+            {
+                return false;
+            }
+
             if (api.Side == EnumAppSide.Client)
             {
                 sound?.Stop();

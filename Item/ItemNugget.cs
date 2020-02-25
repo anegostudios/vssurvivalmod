@@ -6,11 +6,30 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Config;
+using System.Linq;
 
 namespace Vintagestory.GameContent
 {
     public class ItemNugget : Item
     {
+
+
+        public override void OnCreatedByCrafting(ItemSlot[] allInputslots, ItemSlot outputSlot, GridRecipe byRecipe)
+        {
+            ItemSlot oreSlot = allInputslots.FirstOrDefault(slot => slot.Itemstack?.Collectible is ItemOre);
+            if (oreSlot != null)
+            {
+                int units = oreSlot.Itemstack.ItemAttributes["metalUnits"].AsInt(5);
+                string type = oreSlot.Itemstack.Collectible.Variant["ore"].Replace("quartz_", "");
+
+                Item item = api.World.GetItem(new AssetLocation("nugget-" + type));
+                ItemStack outStack = new ItemStack(item);
+                outStack.StackSize = Math.Max(1, units / 5);
+                outputSlot.Itemstack = outStack;
+            }
+
+            base.OnCreatedByCrafting(allInputslots, outputSlot, byRecipe);
+        }
 
         public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
         {

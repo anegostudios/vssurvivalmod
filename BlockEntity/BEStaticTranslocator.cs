@@ -155,7 +155,7 @@ namespace Vintagestory.GameContent
 
             bool selfInside = (Api.World.ElapsedMilliseconds > 100 && Api.World.ElapsedMilliseconds - lastCollideMsOwnPlayer < 100);
             bool playerInside = selfInside || somebodyIsTeleporting;
-            bool active = animUtil.activeAnimationsByAnimCode.Count > 0;
+            bool active = animUtil.activeAnimationsByAnimCode.ContainsKey("teleport");
 
             if (!selfInside && playerInside)
             {
@@ -169,18 +169,22 @@ namespace Vintagestory.GameContent
 
             if (playerInside)
             {
-                animUtil.StartAnimation(new AnimationMetaData() { Animation = "idle", Code = "idle", AnimationSpeed = 1, EaseInSpeed = 100, EaseOutSpeed = 100, BlendMode = EnumAnimationBlendMode.Average });
-                animUtil.StartAnimation(new AnimationMetaData() { Animation = "teleport", Code = "teleport", AnimationSpeed = 1, EaseInSpeed = 8, EaseOutSpeed = 8, BlendMode = EnumAnimationBlendMode.Add });
+                var meta = new AnimationMetaData() { Animation = "teleport", Code = "teleport", AnimationSpeed = 1, EaseInSpeed = 1, EaseOutSpeed = 2, Weight = 1, BlendMode = EnumAnimationBlendMode.Add };
+                animUtil.StartAnimation(meta);
+                animUtil.StartAnimation(new AnimationMetaData() { Animation = "idle", Code = "idle", AnimationSpeed = 1, EaseInSpeed = 1, EaseOutSpeed = 1, Weight = 1, BlendMode = EnumAnimationBlendMode.Average });
             }
             else
             {
                 animUtil.StopAnimation("teleport");
+                
             }
 
-            if (Api.World.ElapsedMilliseconds - lastCollideMsOwnPlayer > 3000)
+
+            if (animUtil.activeAnimationsByAnimCode.Count > 0 && Api.World.ElapsedMilliseconds - lastCollideMsOwnPlayer > 10000 && Api.World.ElapsedMilliseconds - manager.lastTranslocateCollideMsOtherPlayer > 10000)
             {
                 animUtil.StopAnimation("idle");
             }
+
 
             //int color = temporalGearStack.Collectible.GetRandomColor(api as ICoreClientAPI, temporalGearStack); - not working o.O
 
@@ -198,12 +202,15 @@ namespace Vintagestory.GameContent
             currentParticles.SizeEvolve = null;
             currentParticles.OpacityEvolve = EvolvingNatFloat.create(EnumTransformFunction.LINEAR, 100f);
 
-            
-            particleAngle = active ? particleAngle+5*dt : 0;
 
-            double dx = GameMath.Cos(particleAngle) * 0.35f;
+            bool rot = Block.Variant["side"] == "east" || Block.Variant["side"] == "west";
+
+            particleAngle = active ? particleAngle + 5 * dt : 0;
+
+
+            double dx = GameMath.Cos(particleAngle + (rot ? GameMath.PIHALF : 0)) * 0.35f;
             double dy = 1.9 + Api.World.Rand.NextDouble() * 0.2;
-            double dz = GameMath.Sin(particleAngle) * 0.35f;
+            double dz = GameMath.Sin(particleAngle + (rot ? GameMath.PIHALF : 0)) * 0.35f;
 
             currentParticles.LifeLength = GameMath.Sqrt(dx*dx + dz*dz) / 10;
             currentParticles.MinPos.Set(posvec.X + dx, posvec.Y + dy, posvec.Z + dz);
@@ -480,7 +487,7 @@ namespace Vintagestory.GameContent
                     }
                 }
 
-                if (val.Value.SecondsPassed > 2.9 && tpLocation != null)
+                if (val.Value.SecondsPassed > 4.4 && tpLocation != null)
                 {
                     val.Value.Entity.TeleportTo(tpLocation.ToVec3d().Add(-0.3, 1, -0.3)); // Fugly, need some better exit pos thing
 
@@ -499,7 +506,31 @@ namespace Vintagestory.GameContent
                     activated = false;
                     somebodyIsTeleporting = false;
                     somebodyDidTeleport = true;
+
+                    ownBlock.teleportParticles.MinPos.Set(Pos.X, Pos.Y, Pos.Z);
+                    ownBlock.teleportParticles.AddPos.Set(1, 1.8, 1);
+                    ownBlock.teleportParticles.MinVelocity.Set(-1, -1, -1);
+                    ownBlock.teleportParticles.AddVelocity.Set(2, 2, 2);
+                    ownBlock.teleportParticles.MinQuantity = 150;
+                    ownBlock.teleportParticles.AddQuantity = 0.5f;
                     
+
+                    int r = 53;
+                    int g = 221;
+                    int b = 172;
+                    ownBlock.teleportParticles.Color = (r << 16) | (g << 8) | (b << 0) | (100 << 24);
+
+                    ownBlock.teleportParticles.BlueEvolve = null;
+                    ownBlock.teleportParticles.RedEvolve = null;
+                    ownBlock.teleportParticles.GreenEvolve = null;
+                    ownBlock.teleportParticles.MinSize = 0.1f;
+                    ownBlock.teleportParticles.MaxSize = 0.2f;
+                    ownBlock.teleportParticles.SizeEvolve = null;
+                    ownBlock.teleportParticles.OpacityEvolve = EvolvingNatFloat.create(EnumTransformFunction.QUADRATIC, -10f);
+
+
+                    Api.World.SpawnParticles(ownBlock.teleportParticles);
+
 
                     MarkDirty();
                 }

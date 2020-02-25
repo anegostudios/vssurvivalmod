@@ -15,76 +15,112 @@ namespace Vintagestory.GameContent.Mechanics
     // - Hammer itself is rendered using 1 draw call
     // - Check every 0.25 seconds if its receiving power from the toggle, if so, stop animating the hammer
     // - Helve hammer helps with iron bloom refining and plate making
-    public class BEHelveHammer : BlockEntity
+    public class BEHelveHammer : BlockEntity, ITexPositionSource
     {
-        int count = 0;
+        int count = 40;
         bool hasPower;
         bool obstructed;
 
         BEBehaviorMPToggle mptoggle;
+        ITexPositionSource blockTexSource;
 
-        bool hasHammer;
-        public bool HasHammer { 
+        ItemStack hammerStack;
+        public ItemStack HammerStack
+        { 
             get
             {
-                return hasHammer;
+                return hammerStack;
             }
             set
             {
-                hasHammer = value;
+                hammerStack = value;
                 MarkDirty(false);
                 setRenderer();
             }
         }
 
-        long ellapsedMsGrow;
-        double lastGrowAngle;
-        long lastImpactMs;
+        double ellapsedInameSecGrow;
+        
         float rnd;
         public BlockFacing facing;
-        bool hasAnvil;
+        BlockEntityAnvil targetAnvil;
 
         double angleBefore;
+        bool didHit;
+        float vibrate;
+
+        ICoreClientAPI capi;
 
         public float Angle
         {
             get {
                 if (mptoggle == null) return 0;
+                if (obstructed) return (float)angleBefore;
 
-                long totalMs = Api.World.ElapsedMilliseconds;
+                double totalIngameSeconds = Api.World.Calendar.TotalHours * 60 * 2;
                 
-                double x = GameMath.Mod(mptoggle.AngleRad * 2 - 0.7, GameMath.TWOPI * 10);
+                double x = GameMath.Mod(mptoggle.AngleRad * 2 - 1.2 - rnd, GameMath.TWOPI * 10);
                 double angle = Math.Abs(Math.Sin(x) / 4.5);
                 float outAngle = (float)angle;
 
                 if (angleBefore > outAngle)
                 {
-                    outAngle -= (float)(((totalMs - ellapsedMsGrow) / 1000.0)) * 1.5f;
-                    
+                    outAngle -= (float)(totalIngameSeconds - ellapsedInameSecGrow) * 1.5f;
                 } else
                 {
-                    ellapsedMsGrow = totalMs;
+                    ellapsedInameSecGrow = totalIngameSeconds;
                 }
 
                 outAngle = Math.Max(0f, outAngle);
 
+                vibrate *= 0.5f;
 
-                if (outAngle <= 0.01 && angleBefore >= 0.01 && totalMs - lastImpactMs > 300 && mptoggle.Network != null && mptoggle.Network.Speed > 0)
+                if (outAngle <= 0.01 && !didHit)
                 {
-                    //outAngle += 0.04f;
-                    if (Api.Side == EnumAppSide.Client && hasAnvil)
+                    didHit = true;
+                    vibrate = 0.02f;
+
+                    if (Api.Side == EnumAppSide.Client && targetAnvil != null)
                     {
                         Api.World.PlaySoundAt(new AssetLocation("sounds/effect/anvilhit"), Pos.X + facing.Normali.X * 3 + 0.5f, Pos.Y + 0.5f, Pos.Z + facing.Normali.Z * 3 + 0.5f, null, 0.3f + (float)Api.World.Rand.NextDouble() * 0.2f, 8, 1);
+                        targetAnvil.OnHelveHammerHit();
                     }
+                }
 
-                    lastImpactMs = totalMs;
+                if (outAngle > 0.2)
+                {
+                    didHit = false;
                 }
 
                 angleBefore = angle;
 
-                return outAngle;
+                float finalAngle = outAngle + (float)Math.Sin(totalIngameSeconds) * vibrate;
+
+                if (targetAnvil?.WorkItemStack != null)
+                {
+                    finalAngle = Math.Max(1.5f / 32f, finalAngle);
+                }
+
+                return finalAngle;
             }
         }
+
+        public Size2i AtlasSize => capi.BlockTextureAtlas.Size;
+
+        public TextureAtlasPosition this[string textureCode]
+        {
+            get
+            {
+                if (textureCode == "metal")
+                {
+                    AssetLocation texturePath = hammerStack.Item.Textures[textureCode].Base;
+                    return capi.BlockTextureAtlas[texturePath];
+                }
+
+                return blockTexSource[textureCode];
+            }
+        }
+
 
         HelveHammerRenderer renderer;
 
@@ -94,32 +130,50 @@ namespace Vintagestory.GameContent.Mechanics
             facing = BlockFacing.FromCode(Block.Variant["side"]);
             if (facing == null) { Api.World.BlockAccessor.SetBlock(0, Pos); return; }
 
-            RegisterGameTickListener(onEvery250ms, 250);
+            RegisterGameTickListener(onEvery25ms, 25);
 
 
-            rnd = (float)Api.World.Rand.NextDouble() / 20;
+            
+
+            capi = api as ICoreClientAPI;
+
+            if (capi != null)
+            {
+                blockTexSource = capi.Tesselator.GetTexSource(Block);
+            }
 
             setRenderer();
+        }
+
+
+        public override void OnBlockPlaced(ItemStack byItemStack = null)
+        {
+            base.OnBlockPlaced(byItemStack);
+
+            rnd = (float)Api.World.Rand.NextDouble() / 10;
+        }
+
+        public void updateAngle()
+        {
 
         }
 
         void setRenderer()
         {
-            if (hasHammer && renderer == null && Api.Side == EnumAppSide.Client)
+            if (HammerStack != null && renderer == null && Api.Side == EnumAppSide.Client)
             {
                 renderer = new HelveHammerRenderer(Api as ICoreClientAPI, this, Pos, GenHammerMesh());
-                (Api as ICoreClientAPI).Event.RegisterRenderer(renderer, EnumRenderStage.Opaque);
-                (Api as ICoreClientAPI).Event.RegisterRenderer(renderer, EnumRenderStage.ShadowFar);
-                (Api as ICoreClientAPI).Event.RegisterRenderer(renderer, EnumRenderStage.ShadowNear);
+                (Api as ICoreClientAPI).Event.RegisterRenderer(renderer, EnumRenderStage.Opaque, "helvehammer");
+                (Api as ICoreClientAPI).Event.RegisterRenderer(renderer, EnumRenderStage.ShadowFar, "helvehammer");
+                (Api as ICoreClientAPI).Event.RegisterRenderer(renderer, EnumRenderStage.ShadowNear, "helvehammer");
             }
         }
 
         public override void OnBlockBroken()
         {
-            if (HasHammer)
+            if (HammerStack != null)
             {
-                ItemStack stack = new ItemStack(Api.World.GetItem(new AssetLocation("helvehammer")));
-                Api.World.SpawnItemEntity(stack, Pos.ToVec3d().Add(0.5, 0.5, 05));
+                Api.World.SpawnItemEntity(HammerStack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
             }
             base.OnBlockBroken();
         }
@@ -130,27 +184,30 @@ namespace Vintagestory.GameContent.Mechanics
             if (block.BlockId == 0) return null;
             MeshData mesh;
             ITesselatorAPI mesher = ((ICoreClientAPI)Api).Tesselator;
-            mesher.TesselateShape(block, Api.Assets.TryGet("shapes/block/wood/mechanics/helvehammer.json").ToObject<Shape>(), out mesh);
-
-            mesh.Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 0, block.Shape.rotateY * GameMath.DEG2RAD, 0);
+            Shape shape = Api.Assets.TryGet("shapes/block/wood/mechanics/helvehammer.json").ToObject<Shape>();
+            mesher.TesselateShape("helvehammerhead", shape, out mesh, this, new Vec3f(0, block.Shape.rotateY, 0));
 
             return mesh;
         }
 
-        private void onEvery250ms(float dt)
+        float accumHits;
+
+        private void onEvery25ms(float dt)
         {
-            if (count % 4 == 0)
+            if (count >= 40)
             {
+                count = 0;
+
                 Vec3i dir = facing.Normali;
                 BlockPos npos = Pos.AddCopy(0, 1, 0);
-                obstructed = false;
                 hasPower = false;
 
-                hasAnvil = Api.World.BlockAccessor.GetBlock(Pos.AddCopy(dir.X * 3, 0, dir.Z * 3)) is BlockAnvil;
+                targetAnvil = Api.World.BlockAccessor.GetBlockEntity(Pos.AddCopy(dir.X * 3, 0, dir.Z * 3)) as BlockEntityAnvil;
 
+                obstructed = false;
                 if (renderer != null)
                 {
-                    renderer.Obstruced = false;
+                    renderer.Obstructed = false;
                 }
 
                 mptoggle = Api.World.BlockAccessor.GetBlockEntity(Pos.AddCopy(dir))?.GetBehavior<BEBehaviorMPToggle>();
@@ -164,12 +221,34 @@ namespace Vintagestory.GameContent.Mechanics
                         obstructed = true;
                         if (renderer != null)
                         {
-                            renderer.Obstruced = true;
+                            renderer.Obstructed = true;
                         }
                         break;
                     }
 
                     npos.Add(dir);
+                }
+            }
+
+            if (targetAnvil != null && mptoggle?.Network != null && HammerStack != null && !obstructed && Api.World.Side == EnumAppSide.Server)
+            {
+                //double x = GameMath.Mod(mptoggle.AngleRad * 2 - 1.2, GameMath.TWOPI * 10);
+                //double angle = Math.Abs(Math.Sin(x) / 4.5);
+
+                // mptoggle.AngleRad changes by a speed of networkspeed/10   (MechanicalNetwork.cs)
+                // double x changes by a speed of AngleRad*2
+
+                float weirdOffset = 0.62f;
+
+                accumHits += mptoggle.Network.Speed * 2 / 10f * weirdOffset * dt * 40f;
+
+                // Math.Abs(Math.Sin(x)) has a periodicity of Math.PI
+                // -> every accum >= Math.PI times we have a hit
+
+                if (accumHits > GameMath.PIHALF)
+                {
+                    targetAnvil.OnHelveHammerHit();
+                    accumHits -= GameMath.PIHALF;
                 }
             }
 
@@ -181,13 +260,19 @@ namespace Vintagestory.GameContent.Mechanics
         public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
         {
             base.FromTreeAtributes(tree, worldAccessForResolve);
-            hasHammer = tree.GetBool("hasHammer");
+
+            hammerStack = tree.GetItemstack("hammerStack");
+            hammerStack?.ResolveBlockOrItem(worldAccessForResolve);
+
+            rnd = tree.GetFloat("rnd");
         }
 
         public override void ToTreeAttributes(ITreeAttribute tree)
         {
             base.ToTreeAttributes(tree);
-            tree.SetBool("hasHammer", hasHammer);
+            tree.SetItemstack("hammerStack", HammerStack);
+
+            tree.SetFloat("rnd", rnd);
         }
 
 
@@ -195,14 +280,14 @@ namespace Vintagestory.GameContent.Mechanics
         {
             base.OnBlockUnloaded();
 
-            renderer?.Unregister();
+            renderer?.Dispose();
         }
 
         public override void OnBlockRemoved()
         {
             base.OnBlockRemoved();
 
-            renderer?.Unregister();
+            renderer?.Dispose();
         }
     }
 }

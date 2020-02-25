@@ -111,6 +111,13 @@ namespace Vintagestory.GameContent
         {
             base.OnBlockUnloaded();
 
+            invDialog?.TryClose();
+            invDialog?.Dispose();
+        }
+
+        public override void OnBlockRemoved()
+        {
+            invDialog?.TryClose();
             invDialog?.Dispose();
         }
 
