@@ -20,7 +20,7 @@ namespace Vintagestory.GameContent
             return false;
         }
 
-        internal override bool CanPlantStay(IBlockAccessor blockAccessor, BlockPos pos)
+        public override bool CanPlantStay(IBlockAccessor blockAccessor, BlockPos pos)
         {
             Block block = blockAccessor.GetBlock(pos.DownCopy());
             return block.IsLiquid() && block.LiquidLevel == 7 && block.LiquidCode.Contains("water");

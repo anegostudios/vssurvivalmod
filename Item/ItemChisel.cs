@@ -8,6 +8,7 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
@@ -30,14 +31,11 @@ namespace Vintagestory.GameContent
     /// </summary>
     public class ItemChisel : Item
     {
-        public bool canMicroChisel;
         SkillItem[] toolModes;
 
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
-
-            canMicroChisel = Attributes?["microBlockChiseling"].AsBool() == true;
 
             if (api is ICoreClientAPI capi)
             {
@@ -72,6 +70,7 @@ namespace Vintagestory.GameContent
             IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
 
             if (blockSel?.Position == null) return;
+            Block block = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
 
             if (api.ModLoader.GetModSystem<ModSystemBlockReinforcement>()?.IsReinforced(blockSel.Position) == true)
             {
@@ -85,7 +84,7 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            if (!canMicroChisel && byPlayer?.WorldData.CurrentGameMode != EnumGameMode.Creative)
+            if (!IsChiselingAllowedFor(block, byPlayer))
             {
                 base.OnHeldAttackStart(slot, byEntity, blockSel, entitySel, ref handling);
                 return;
@@ -97,14 +96,11 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-
-
-            Block block = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
+            
             Block chiseledblock = byEntity.World.GetBlock(new AssetLocation("chiseledblock"));
 
             if (block == chiseledblock)
-            {
-                
+            {   
                 OnBlockInteract(byEntity.World, byPlayer, blockSel, true, ref handling);
                 return;
             }
@@ -115,6 +111,7 @@ namespace Vintagestory.GameContent
             IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
 
             if (blockSel?.Position == null) return;
+            Block block = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
 
             if (api.ModLoader.GetModSystem<ModSystemBlockReinforcement>()?.IsReinforced(blockSel.Position) == true)
             {
@@ -128,7 +125,7 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            if (!canMicroChisel && byPlayer?.WorldData.CurrentGameMode != EnumGameMode.Creative)
+            if (!IsChiselingAllowedFor(block, byPlayer))
             {
                 base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handling);
                 return;
@@ -140,7 +137,7 @@ namespace Vintagestory.GameContent
                 return;
             }
             
-            Block block = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
+            
             string blockName = block.GetPlacedBlockName(byEntity.World, blockSel.Position);
 
             Block chiseledblock = byEntity.World.GetBlock(new AssetLocation("chiseledblock"));
@@ -151,7 +148,7 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            if (block.DrawType != EnumDrawType.Cube && block.Attributes?["canChisel"].AsBool(false) != true) return;
+            
             
 
             byEntity.World.BlockAccessor.SetBlock(chiseledblock.BlockId, blockSel.Position);
@@ -164,8 +161,34 @@ namespace Vintagestory.GameContent
         }
 
 
+        public bool IsChiselingAllowedFor(Block block, IPlayer player)
+        {
+            if (block is BlockChisel) return true;
+
+            // Never non cubic blocks or blocks that have chiseling explicitly disallowed
+            if (block.DrawType != EnumDrawType.Cube && block.Attributes?["canChisel"].AsBool(false) != true) return false;
+            
+            // Otherwise if in creative mode, sure go ahead
+            if (player?.WorldData.CurrentGameMode == EnumGameMode.Creative) return true;
+
+            // Lastly the config depends
+            ITreeAttribute worldConfig = api.World.Config;
+            string mode = worldConfig.GetString("microblockChiseling");
+
+            if (mode == "off") return false;
+            if (mode == "stonewood") return block.BlockMaterial == EnumBlockMaterial.Wood || block.BlockMaterial == EnumBlockMaterial.Stone;
+
+            return true;
+        }
+
         public void OnBlockInteract(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, bool isBreak, ref EnumHandHandling handling)
         {
+            if (!world.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            {
+                byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
+                return;
+            }
+
             BlockEntityChisel bec = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityChisel;
             if (bec != null)
             {
@@ -337,11 +360,6 @@ namespace Vintagestory.GameContent
 
             cr.Restore();
         }
-
-
-
-
-
 
         public void Drawcreate16_svg(Context cr, int x, int y, float width, float height, double[] rgba)
         {

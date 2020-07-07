@@ -166,10 +166,14 @@ namespace Vintagestory.GameContent
             ;
 
             api.Event.RegisterEventBusListener(OnLoreDiscovery, 0.5, "loreDiscovery");
+
+            //api.RegisterCommand("alllore", "", "", onCmdAllLore, Privilege.controlserver);
         }
 
-
-
+        private void onCmdAllLore(IServerPlayer player, int groupId, CmdArgs args)
+        {
+            DiscoverEverything(player);
+        }
 
         private void OnGameGettingSaved()
         {
@@ -207,7 +211,7 @@ namespace Vintagestory.GameContent
 
         private void OnPlayerJoin(IServerPlayer byPlayer)
         {
-            Journal journal = null;
+            Journal journal;
             if (journalsByPlayerUid.TryGetValue(byPlayer.PlayerUID, out journal))
             {
                 serverChannel.SendPacket(journal, byPlayer);
@@ -258,10 +262,9 @@ namespace Vintagestory.GameContent
             }
 
 
-
             handling = EnumHandling.PreventDefault;
 
-            Journal journal = null;
+            Journal journal;
             if (!journalsByPlayerUid.TryGetValue(playerUid, out journal))
             {
                 journalsByPlayerUid[playerUid] = journal = new Journal();
@@ -287,11 +290,16 @@ namespace Vintagestory.GameContent
                 isNew = true;
             }
 
+            int partnum = 0;
+            int partcount = asset.Pieces.Length;
+
             for (int i = 0; i < discovery.PieceIds.Count; i++)
             {
                 JournalPiece piece = new JournalPiece() { Text = asset.Pieces[discovery.PieceIds[i]], EntryId = entry.EntryId };
                 entry.Chapters.Add(piece);
                 if (!isNew) serverChannel.SendPacket(piece, plr);
+
+                partnum = discovery.PieceIds[i];
             }
 
             if (isNew)
@@ -299,14 +307,45 @@ namespace Vintagestory.GameContent
                 serverChannel.SendPacket(entry, plr);
             }
 
-            plr.SendMessage(GlobalConstants.GeneralChatGroup, Lang.Get("lorediscovery", entry.Title), EnumChatType.Notification);
+            //plr.SendMessage(GlobalConstants.GeneralChatGroup, Lang.Get("lorediscovery", entry.Title), EnumChatType.Notification);
+            
+            sapi.SendIngameDiscovery(plr, "lore-" + discovery.Code, null, partnum, partcount);
+
+            sapi.World.PlaySoundAt(new AssetLocation("sounds/effect/deepbell"), plr.Entity, null, false, 32, 0.5f);
         }
 
+
+        protected void DiscoverEverything(IServerPlayer plr)
+        {
+            JournalAsset[] journalAssets = sapi.World.AssetManager.GetMany<JournalAsset>(sapi.World.Logger, "config/lore/").Values.ToArray();
+
+            Journal journal;
+            if (!journalsByPlayerUid.TryGetValue(plr.PlayerUID, out journal))
+            {
+                journalsByPlayerUid[plr.PlayerUID] = journal = new Journal();
+            }
+
+            journal.Entries.Clear();
+
+            foreach (var val in journalAssets)
+            {
+                JournalEntry entry = null;
+                journal.Entries.Add(entry = new JournalEntry() { Editable = false, Title = val.Title, LoreCode = val.Code, EntryId = journal.Entries.Count });
+                serverChannel.SendPacket(entry, plr);
+
+                foreach (var part in val.Pieces)
+                {
+                    JournalPiece piece = new JournalPiece() { Text = part, EntryId = entry.EntryId };
+                    entry.Chapters.Add(piece);
+                    serverChannel.SendPacket(piece, plr);
+                }
+            }
+        }
 
 
         LoreDiscovery TryGetRandomLoreDiscovery(IWorldAccessor world, IPlayer serverplayer, string category)
         {
-            Dictionary<string, LoreDiscovery> discoveredLore = null;
+            Dictionary<string, LoreDiscovery> discoveredLore;
             loreDiscoveryiesByPlayerUid.TryGetValue(serverplayer.PlayerUID, out discoveredLore);
 
             if (discoveredLore == null)
@@ -320,7 +359,8 @@ namespace Vintagestory.GameContent
             {
                 journalAssetsByCode = new Dictionary<string, JournalAsset>();
 
-                journalAssets = world.AssetManager.GetMany<JournalAsset>(world.Logger, "journal/").Values.ToArray();
+                journalAssets = world.AssetManager.GetMany<JournalAsset>(world.Logger, "config/lore/").Values.ToArray();
+
                 foreach (JournalAsset asset in journalAssets)
                 {
                     journalAssetsByCode[asset.Code] = asset;

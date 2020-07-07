@@ -8,6 +8,7 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
 using Vintagestory.ServerMods.NoObf;
 
 namespace Vintagestory.ServerMods
@@ -301,7 +302,7 @@ namespace Vintagestory.ServerMods
                     int cx = coord.X;
                     int cz = coord.Y;
 
-                    api.WorldManager.LoadChunkColumnFast(coord.X, coord.Y, new ChunkLoadOptions()
+                    api.WorldManager.LoadChunkColumnPriority(coord.X, coord.Y, new ChunkLoadOptions()
                     {
                         OnLoaded = () => {
                             for (int cy = 0; cy < api.WorldManager.MapSizeY / api.WorldManager.ChunkSize; cy++)
@@ -455,6 +456,7 @@ namespace Vintagestory.ServerMods
             long seed = 1239123912;// rnd.Next();
 
             string subcmd = arguments.PopWord();
+            ITreeAttribute worldConfig = api.WorldManager.SaveGame.WorldConfiguration;
 
             switch (subcmd)
             {
@@ -469,8 +471,34 @@ namespace Vintagestory.ServerMods
 
                 case "climater":
                     {
+                        int polarEquatorDistance = worldConfig.GetString("polarEquatorDistance", "50000").ToInt(50000);
+
+                        int spawnMinTemp = 6;
+                        int spawnMaxTemp = 14;
+
+                        string startingClimate = worldConfig.GetString("worldClimate");
+                        switch (startingClimate)
+                        {
+                            case "hot":
+                                spawnMinTemp = 28;
+                                spawnMaxTemp = 32;
+                                break;
+                            case "warm":
+                                spawnMinTemp = 19;
+                                spawnMaxTemp = 23;
+                                break;
+                            case "cool":
+                                spawnMinTemp = -5;
+                                spawnMaxTemp = 1;
+                                break;
+                            case "icy":
+                                spawnMinTemp = -15;
+                                spawnMaxTemp = -10;
+                                break;
+                        }
+
                         NoiseBase.Debug = false;
-                        NoiseClimateRealistic noiseClimate = new NoiseClimateRealistic(seed, api.World.BlockAccessor.MapSizeZ / TerraGenConfig.climateMapScale / TerraGenConfig.climateMapSubScale);
+                        NoiseClimateRealistic noiseClimate = new NoiseClimateRealistic(seed, api.World.BlockAccessor.MapSizeZ / TerraGenConfig.climateMapScale / TerraGenConfig.climateMapSubScale, polarEquatorDistance, spawnMinTemp, spawnMaxTemp);
                         MapLayerBase climate = GenMaps.GetClimateMapGen(seed, noiseClimate);
 
                         NoiseBase.DebugDrawBitmap(DebugDrawMode.RGB, climate.GenLayer(0, 0, 128, 2048), 128, 2048, "realisticlimate");
@@ -487,9 +515,9 @@ namespace Vintagestory.ServerMods
                         MapLayerBase climate = GenMaps.GetClimateMapGen(seed, noiseClimate);
                         MapLayerBase forest = GenMaps.GetForestMapGen(seed + 1, TerraGenConfig.forestMapScale);
 
-                        IntMap climateMap = new IntMap() { Data = climate.GenLayer(0, 0, 512, 512), Size = 512 };
+                        IntDataMap2D climateMap = new IntDataMap2D() { Data = climate.GenLayer(0, 0, 512, 512), Size = 512 };
 
-                        forest.SetInputMap(climateMap, new IntMap() { Size = 512 });
+                        forest.SetInputMap(climateMap, new IntDataMap2D() { Size = 512 });
 
                         NoiseBase.Debug = true;
                         forest.DebugDrawBitmap(DebugDrawMode.FirstByteGrayscale, 0, 0, "Forest 1 - Forest");
@@ -850,7 +878,7 @@ namespace Vintagestory.ServerMods
         }
 
 
-        void DrawMapRegion(DebugDrawMode mode, IServerPlayer player, IntMap map, string prefix, bool lerp, int regionX, int regionZ, int scale)
+        void DrawMapRegion(DebugDrawMode mode, IServerPlayer player, IntDataMap2D map, string prefix, bool lerp, int regionX, int regionZ, int scale)
         {
 
             if (lerp)
@@ -958,7 +986,7 @@ namespace Vintagestory.ServerMods
                         float posXInRegion = ((float)pos.X / regionSize - regionX) * noiseSizeGeoProv;
                         float posZInRegion = ((float)pos.Z / regionSize - regionZ) * noiseSizeGeoProv;
                         GeologicProvinceVariant[] provincesByIndex = NoiseGeoProvince.provinces.Variants;
-                        IntMap intmap = mapRegion.GeologicProvinceMap;
+                        IntDataMap2D intmap = mapRegion.GeologicProvinceMap;
                         LerpedWeightedIndex2DMap map = new LerpedWeightedIndex2DMap(intmap.Data, mapRegion.GeologicProvinceMap.Size, TerraGenConfig.geoProvSmoothingRadius, mapRegion.GeologicProvinceMap.TopLeftPadding, mapRegion.GeologicProvinceMap.BottomRightPadding);
                         WeightedIndex[] indices = map[posXInRegion, posZInRegion];
 
@@ -985,7 +1013,7 @@ namespace Vintagestory.ServerMods
                         float posXInRegion = ((float)pos.X / regionSize - pos.X / regionSize) * noiseSizeGeoProv;
                         float posZInRegion = ((float)pos.Z / regionSize - pos.Z / regionSize) * noiseSizeGeoProv;
                         GeologicProvinceVariant[] provincesByIndex = NoiseGeoProvince.provinces.Variants;
-                        IntMap intmap = mapRegion.GeologicProvinceMap;
+                        IntDataMap2D intmap = mapRegion.GeologicProvinceMap;
                         LerpedWeightedIndex2DMap map = new LerpedWeightedIndex2DMap(intmap.Data, mapRegion.GeologicProvinceMap.Size, TerraGenConfig.geoProvSmoothingRadius, mapRegion.GeologicProvinceMap.TopLeftPadding, mapRegion.GeologicProvinceMap.BottomRightPadding);
                         WeightedIndex[] indices = map[posXInRegion, posZInRegion];
 
@@ -995,7 +1023,7 @@ namespace Vintagestory.ServerMods
 
                         int rdx = chunkX % regionChunkSize;
                         int rdz = chunkZ % regionChunkSize;
-                        IntMap rockMap;
+                        IntDataMap2D rockMap;
                         float step = 0;
                         float distx = (float)rockstratagen.distort2dx.Noise(pos.X, pos.Z);
                         float distz = (float)rockstratagen.distort2dz.Noise(pos.X, pos.Z);
@@ -1106,7 +1134,7 @@ namespace Vintagestory.ServerMods
 
                         LandformVariant[] landforms = NoiseLandforms.landforms.LandFormsByIndex;
 
-                        IntMap intmap = mapRegion.LandformMap;
+                        IntDataMap2D intmap = mapRegion.LandformMap;
 
                         LerpedWeightedIndex2DMap map = new LerpedWeightedIndex2DMap(intmap.Data, mapRegion.LandformMap.Size, TerraGenConfig.landFormSmoothingRadius, intmap.TopLeftPadding, intmap.BottomRightPadding);
 
@@ -1129,8 +1157,14 @@ namespace Vintagestory.ServerMods
                 case "climate":
                     {
                         ClimateCondition climate = api.World.BlockAccessor.GetClimateAt(pos);
+                        ClimateCondition climate2 = api.World.BlockAccessor.GetClimateAt(pos, EnumGetClimateMode.NowValues);
 
-                        string text = string.Format("Temperature: {0}°, Rainfall: {1}%, Fertility: {2}%, Forest: {3}%, Shrub: {4}%, Sealevel dist: {5}%", climate.Temperature.ToString("0.#"), (int)(climate.Rainfall * 100f), (int)(climate.Fertility * 100f), (int)(climate.ForestDensity * 100f), (int)(climate.ShrubDensity * 100f), (int)(100f * pos.Y / 255f));
+                        string text = string.Format(
+                            "Temperature: {0}°, Rainfall: {1}%, Fertility: {2}%, Forest: {3}%, Shrub: {4}%, Sealevel dist: {5}%, Now temp: {6}, Season: {7}", 
+                            climate.Temperature.ToString("0.#"), (int)(climate.Rainfall * 100f), (int)(climate.Fertility * 100f), 
+                            (int)(climate.ForestDensity * 100f), (int)(climate.ShrubDensity * 100f), (int)(100f * pos.Y / 255f), climate2.Temperature.ToString("0.#"),
+                            api.World.Calendar.GetSeason(pos)
+                        );
 
                         player.SendMessage(groupId, text, EnumChatType.CommandSuccess);
 

@@ -231,7 +231,7 @@ namespace Vintagestory.GameContent
                 DisposeOnFinish = true,
                 Pitch = startPitch,
                 Volume = volume,
-                Position = entity.Pos.XYZ.ToVec3f().Add(0, (float)entity.EyeHeight, 0),
+                Position = entity.Pos.XYZ.ToVec3f().Add(0, (float)entity.LocalEyePos.Y, 0),
                 ShouldLoop = false,
                 Range = 8,
             };

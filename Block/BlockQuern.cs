@@ -117,7 +117,7 @@ namespace Vintagestory.GameContent
             
         }
 
-        public override bool HasConnectorAt(IWorldAccessor world, BlockPos pos, BlockFacing face)
+        public override bool HasMechPowerConnectorAt(IWorldAccessor world, BlockPos pos, BlockFacing face)
         {
             return face == BlockFacing.UP || face == BlockFacing.DOWN;
         }

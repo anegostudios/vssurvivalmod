@@ -34,19 +34,19 @@ namespace Vintagestory.GameContent
 
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)
         {
-            Block block = world.BlockAccessor.GetBlock(CodeWithParts("down"));
+            Block block = world.BlockAccessor.GetBlock(CodeWithVariants(new string[] { "rot", "cover" }, new string[] { "down", "free" }));
             return new ItemStack[] { new ItemStack(block) };
         }
 
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
         {
-            Block block = world.BlockAccessor.GetBlock(CodeWithParts("down"));
+            Block block = world.BlockAccessor.GetBlock(CodeWithVariants(new string[] { "rot", "cover" }, new string[] { "down", "free" }));
             return new ItemStack(block);
         }
 
         public override AssetLocation GetVerticallyFlippedBlockCode()
         {
-            return LastCodePart() == "up" ? CodeWithParts("down") : CodeWithParts("up");
+            return Variant["rot"] == "up" ? CodeWithVariant("rot", "down") : CodeWithVariant("rot", "up");
         }
 
     }

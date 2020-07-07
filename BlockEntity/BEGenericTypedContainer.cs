@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -153,6 +154,9 @@ namespace Vintagestory.GameContent
             }
 
             inventory = new InventoryGeneric(quantitySlots, null, null, null);
+            inventory.BaseWeight = 1f;
+            inventory.OnGetSuitability = (sourceSlot, targetSlot, isMerge) => (isMerge ? (inventory.BaseWeight + 3) : (inventory.BaseWeight + 1)) + (sourceSlot.Inventory is InventoryBasePlayer ? 1 : 0);
+            inventory.OnGetAutoPullFromSlot = GetAutoPullFromSlot;
 
 
             if (block?.Attributes != null)
@@ -173,6 +177,16 @@ namespace Vintagestory.GameContent
             inventory.OnInventoryOpened += OnInvOpened;
         }
 
+        private ItemSlot GetAutoPullFromSlot(BlockFacing atBlockFace)
+        {
+            if (atBlockFace == BlockFacing.DOWN)
+            {
+                return inventory.FirstOrDefault(slot => !slot.Empty);
+            }
+
+            return null;
+        }
+
         protected virtual void OnInvOpened(IPlayer player)
         {
             inventory.PutLocked = retrieveOnly && player.WorldData.CurrentGameMode != EnumGameMode.Creative; 
@@ -181,10 +195,12 @@ namespace Vintagestory.GameContent
         protected virtual void OnInvClosed(IPlayer player)
         {
             inventory.PutLocked = retrieveOnly;
-            //This is already handled elsewhere and also causes a stackoverflowexception
-            //invDialog?.TryClose();
-            //invDialog?.Dispose();
-            //invDialog = null;
+
+            // This is already handled elsewhere and also causes a stackoverflowexception, but seems needed somehow?
+            var inv = invDialog;
+            invDialog = null; // Weird handling because to prevent endless recursion
+            if (invDialog?.IsOpened() == true) inv?.TryClose();
+            inv?.Dispose();
         }
 
         public override bool OnPlayerRightClick(IPlayer byPlayer, BlockSelection blockSel)

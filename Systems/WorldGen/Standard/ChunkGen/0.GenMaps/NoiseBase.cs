@@ -91,64 +91,6 @@ namespace Vintagestory.ServerMods
         }
         #endregion
 
-        #region Probably useless?
-
-        public int[] CutMargins(int[] inInts, int sizeX, int sizeZ, int margin)
-        {
-            int[] resultInts = new int[(sizeX - 2 * margin) * (sizeZ - 2 * margin)];
-            int j = 0;
-
-            for (int i = 0; i < inInts.Length; i++)
-            {
-                int xpos = i % sizeX;
-                int zpos = i / sizeX;
-
-
-                if (xpos >= margin && xpos < sizeX - margin && zpos >= margin && zpos < sizeZ - margin)
-                {
-                    resultInts[j++] = inInts[i];
-                }
-            }
-
-            return resultInts;
-        }
-
-
-        public int[] CutRightAndBottom(int[] inInts, int sizeX, int sizeZ, int margin)
-        {
-            int[] resultInts = new int[(sizeX - margin) * (sizeZ - margin)];
-            int j = 0;
-
-            for (int i = 0; i < inInts.Length; i++)
-            {
-                int xpos = i % sizeX;
-                int zpos = i / sizeX;
-
-
-                if (xpos < sizeX - margin && zpos < sizeZ - margin)
-                {
-                    resultInts[j++] = inInts[i];
-                }
-            }
-
-            return resultInts;
-        }
-
-        #endregion
-
-
-
-
-
-        // C# modulo doesn't work on negative numbers
-        /*public static int mod(int a, int n)
-        {
-            int result = a % n;
-            if ((a < 0 && n > 0) || (a > 0 && n < 0))
-                result += n;
-            return result;
-        }*/
-
 
 
 
@@ -211,5 +153,46 @@ namespace Vintagestory.ServerMods
 
 
 
+
+        public int[] CutMargins(int[] inInts, int sizeX, int sizeZ, int margin)
+        {
+            int[] resultInts = new int[(sizeX - 2 * margin) * (sizeZ - 2 * margin)];
+            int j = 0;
+
+            for (int i = 0; i < inInts.Length; i++)
+            {
+                int xpos = i % sizeX;
+                int zpos = i / sizeX;
+
+
+                if (xpos >= margin && xpos < sizeX - margin && zpos >= margin && zpos < sizeZ - margin)
+                {
+                    resultInts[j++] = inInts[i];
+                }
+            }
+
+            return resultInts;
+        }
+
+
+        public int[] CutRightAndBottom(int[] inInts, int sizeX, int sizeZ, int margin)
+        {
+            int[] resultInts = new int[(sizeX - margin) * (sizeZ - margin)];
+            int j = 0;
+
+            for (int i = 0; i < inInts.Length; i++)
+            {
+                int xpos = i % sizeX;
+                int zpos = i / sizeX;
+
+
+                if (xpos < sizeX - margin && zpos < sizeZ - margin)
+                {
+                    resultInts[j++] = inInts[i];
+                }
+            }
+
+            return resultInts;
+        }
     }
 }

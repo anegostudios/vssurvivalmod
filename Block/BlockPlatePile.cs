@@ -121,7 +121,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void OnNeighourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
+        public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
         {
             Block belowBlock = world.BlockAccessor.GetBlock(pos.DownCopy());
             if (!belowBlock.SideSolid[BlockFacing.UP.Index] && (belowBlock != this || FillLevel(world.BlockAccessor, pos.DownCopy()) < 8))

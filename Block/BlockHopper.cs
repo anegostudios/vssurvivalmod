@@ -9,8 +9,18 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockHopper : Block
+    public interface IBlockItemFlow
     {
+        bool HasItemFlowConnectorAt(BlockFacing facing);
+    }
+
+    public class BlockHopper : Block, IBlockItemFlow
+    {
+        public bool HasItemFlowConnectorAt(BlockFacing facing)
+        {
+            return facing == BlockFacing.DOWN;
+        }
+
         //On contact with entity, if the entity is on the top and the entity is an item entity, pull the entity into the hopper's inventory.
 
         public override void OnEntityCollide(IWorldAccessor world, Entity entity, BlockPos pos, BlockFacing facing, Vec3d collideSpeed, bool isImpact)

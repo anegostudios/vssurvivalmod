@@ -159,7 +159,7 @@ namespace Vintagestory.GameContent
                     textdialog.OnTextChanged = DidChangeTextClientSide;
                     textdialog.OnCloseCancel = () =>
                     {
-                        labelrenderer.SetNewText(text, color);
+                        labelrenderer?.SetNewText(text, color);
                         (Api as ICoreClientAPI).Network.SendBlockEntityPacket(Pos.X, Pos.Y, Pos.Z, (int)EnumSignPacketId.CancelEdit, null);
                     };
                     textdialog.TryOpen();

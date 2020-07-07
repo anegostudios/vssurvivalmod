@@ -33,8 +33,7 @@ namespace Vintagestory.GameContent.Mechanics
             switch (orientations)
             {
                 case "ns":
-                    AxisMapping = new int[] { 0, 1, 2 };
-                    AxisSign = new int[] { -1, -1, -1 };
+                    AxisSign = new int[] { 0, 0, -1 };
                     orients[0] = BlockFacing.NORTH;
                     orients[1] = BlockFacing.SOUTH;
 
@@ -43,9 +42,7 @@ namespace Vintagestory.GameContent.Mechanics
                     break;
 
                 case "we":
-                    AxisMapping = new int[] { 2, 1, 0 };
-                    AxisSign = new int[] { -1, -1, -1 };
-
+                    AxisSign = new int[] { -1, 0, 0 };
                     orients[0] = BlockFacing.WEST;
                     orients[1] = BlockFacing.EAST;
 

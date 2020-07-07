@@ -84,10 +84,17 @@ namespace Vintagestory.ServerMods
             if (tree == null) tree = new TreeAttribute();
             int[] materials = BlockEntityChisel.MaterialIdsFromAttributes(tree, capi.World);
             uint[] cuboids = (tree["cuboids"] as IntArrayAttribute)?.AsUint;
+
+            // When loaded from json
+            if (cuboids == null)
+            {
+                cuboids = (tree["cuboids"] as LongArrayAttribute)?.AsUint;
+            }
+
             List<uint> voxelCuboids = cuboids == null ? new List<uint>() : new List<uint>(cuboids);
             
             MeshData mesh = BlockEntityChisel.CreateMesh(capi, voxelCuboids, materials);
-            mesh.Rgba2 = null;
+            //mesh.Rgba2 = null;
 
             return capi.Render.UploadMesh(mesh);
         }

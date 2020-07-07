@@ -94,7 +94,7 @@ namespace Vintagestory.GameContent
             // Crappy fix to make igniting not buggy T_T
             if (byEntity.World.Side == EnumAppSide.Server) return true;
 
-            return secondsUsed <= 3.1;
+            return secondsUsed <= 3.2;
         }
 
         public override void OnHeldInteractStop(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandling handling)

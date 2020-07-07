@@ -77,7 +77,6 @@ namespace Vintagestory.GameContent.Mechanics
             }
         }
 
-        public virtual int[] AxisMapping { get; protected set; }
         public virtual int[] AxisSign { get; protected set; }
 
         public long NetworkId { get; set; }
@@ -91,6 +90,7 @@ namespace Vintagestory.GameContent.Mechanics
         protected TurnDirection inTurnDir = new TurnDirection();
 
         protected float lastKnownAngleRad = 0;
+        public bool disconnected = false;
 
         public virtual float AngleRad
         {
@@ -99,6 +99,10 @@ namespace Vintagestory.GameContent.Mechanics
                 if (network == null) return lastKnownAngleRad;
 
                 bool invert = inTurnDir.Facing != network.TurnDir.Facing;
+                if (network.TurnDir.Rot == EnumRotDirection.Counterclockwise)
+                {
+                    invert = !invert;
+                }
 
                 if (inTurnDir.Facing == BlockFacing.UP || inTurnDir.Facing == BlockFacing.WEST) invert = !invert;
 
@@ -122,7 +126,7 @@ namespace Vintagestory.GameContent.Mechanics
         {
             base.Initialize(api, properties);
 
-            Shape = Block.Shape;
+            Shape = GetShape();
 
             manager = Api.ModLoader.GetModSystem<MechanicalPowerMod>();
 
@@ -138,8 +142,7 @@ namespace Vintagestory.GameContent.Mechanics
 
             manager.AddDeviceForRender(this);
 
-            AxisMapping = new int[3] { 0, 1, 2 };
-            AxisSign = new int[3] { 1, 1, 1 };
+            AxisSign = new int[3] { 0, 0, 1 };
             SetOrientations();
 
             if (api.Side == EnumAppSide.Server && OutFacingForNetworkDiscovery != null)
@@ -148,7 +151,10 @@ namespace Vintagestory.GameContent.Mechanics
             }
         }
 
-
+        protected virtual CompositeShape GetShape()
+        {
+            return Block.Shape;
+        }
 
         public virtual void SetOrientations()
         {
@@ -161,30 +167,42 @@ namespace Vintagestory.GameContent.Mechanics
             {
                 if (!tryConnect(connectedOnFacing))
                 {
+                    //## What is this code doing?  Why test opposite connection, only makes sense for axle
                     MechPowerPath[] paths = GetMechPowerExits(new TurnDirection() { Facing = connectedOnFacing.GetOpposite() });
                     if (paths.Length > 0) {
+                        //Api.World.Logger.Notification("Was placed try connect 2nd: " + paths[0].OutFacing + " at " + Position);
                         tryConnect(paths[0].OutFacing);
                     }
+                    //else Api.World.Logger.Notification("Was placed fail connect 2nd: " + connectedOnFacing.GetOpposite() + " at " + Position);
                 }
+                //else Api.World.Logger.Notification("Was placed connected 1st: " + connectedOnFacing + " at " + Position);
             }
         }
 
-        bool tryConnect(BlockFacing toFacing)
+        protected bool tryConnect(BlockFacing toFacing)
         {
             MechanicalNetwork network;
 
             BlockPos pos = Position.AddCopy(toFacing);
             IMechanicalPowerBlock connectedToBlock = Api.World.BlockAccessor.GetBlock(pos) as IMechanicalPowerBlock;
 
-            if (connectedToBlock == null) return false;
-
+            if (connectedToBlock == null || !connectedToBlock.HasMechPowerConnectorAt(Api.World, pos, toFacing.GetOpposite())) return false;
             network = connectedToBlock.GetNetwork(Api.World, pos);
             if (network != null)
             {
                 IMechanicalPowerNode node = Api.World.BlockAccessor.GetBlockEntity(pos).GetBehavior<BEBehaviorMPBase>() as IMechanicalPowerNode;
 
-                SetInTurnDirection(node.GetTurnDirection(toFacing.GetOpposite()));
+                //Don't override turn direction of an existing network; if two existing networks, the one with higher torque should win
+                TurnDirection newTurnDir = inTurnDir;
+                if (this.inTurnDir == null) newTurnDir = this.GetTurnDirection(toFacing);
+                if (network.TurnDir != null && (this.network == null || Math.Abs(network.NetworkTorque) > Math.Abs(this.network.NetworkTorque)))
+                {
+                    TurnDirection toCopy = node.GetTurnDirection(toFacing.GetOpposite());
+                    newTurnDir = new TurnDirection(toCopy.Facing, toCopy.Rot);
+                }
+                SetInTurnDirection(newTurnDir);
                 JoinNetwork(network);
+                connectedToBlock.DidConnectAt(Api.World, pos, toFacing.GetOpposite());
 
                 MechPowerPath[] paths = GetMechPowerExits(inTurnDir);
                 for (int i = 0; i < paths.Length; i++)
@@ -202,7 +220,6 @@ namespace Vintagestory.GameContent.Mechanics
 
                 return true;
             }
-
 
             return false;
         }
@@ -235,6 +252,11 @@ namespace Vintagestory.GameContent.Mechanics
             network = null;
             NetworkId = 0;
             Blockentity.MarkDirty();
+        }
+
+        public override void OnBlockBroken()
+        {
+            this.disconnected = true;
         }
 
         public override void OnBlockRemoved()
@@ -278,6 +300,8 @@ namespace Vintagestory.GameContent.Mechanics
             base.FromTreeAtributes(tree, worldAccessForResolve);
 
             long nowNetworkId = tree.GetLong("networkid");
+            inTurnDir.Facing = BlockFacing.ALLFACES[tree.GetInt("turnDirFromFacing")];
+            inTurnDir.Rot = (EnumRotDirection)tree.GetInt("turnDir");
 
             if (NetworkId != nowNetworkId)
             {
@@ -299,9 +323,6 @@ namespace Vintagestory.GameContent.Mechanics
                     }
                 }
             }
-
-            inTurnDir.Facing = BlockFacing.ALLFACES[tree.GetInt("turnDirFromFacing")];
-            inTurnDir.Rot = (EnumRotDirection)tree.GetInt("turnDir");
         }
 
         public override void ToTreeAttributes(ITreeAttribute tree)
@@ -428,7 +449,7 @@ namespace Vintagestory.GameContent.Mechanics
                 return false;
             }
 
-            if (beMechBase != null && mechBlock.HasConnectorAt(api.World, exitPos, exitTurnDir.Facing.GetOpposite()))
+            if (beMechBase != null && mechBlock.HasMechPowerConnectorAt(api.World, exitPos, exitTurnDir.Facing.GetOpposite()))
             {
                 beMechBase.Api = api;
                 if (!beMechBase.JoinAndSpreadNetworkToNeighbours(api, propagationId, network, exitTurnDir, out missingChunkPos))

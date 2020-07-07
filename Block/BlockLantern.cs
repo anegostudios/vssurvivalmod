@@ -37,7 +37,7 @@ namespace Vintagestory.GameContent
         {
             IPlayer player = (forEntity as EntityPlayer)?.Player;
 
-            if (forEntity.AnimManager.IsAnimationActive("sleep", "wave", "cheer", "shrug", "cry", "nod", "facepalm", "bow", "laugh", "rage", "scythe"))
+            if (forEntity.AnimManager.IsAnimationActive("sleep", "wave", "cheer", "shrug", "cry", "nod", "facepalm", "bow", "laugh", "rage", "scythe", "bowaim", "bowhit"))
             {
                 return null;
             }
@@ -67,8 +67,11 @@ namespace Vintagestory.GameContent
             if (stack != null)
             {
                 string lining = stack.Attributes.GetString("lining");
+                string material = stack.Attributes.GetString("material");
 
-                byte[] lightHsv = new byte[] { this.LightHsv[0], this.LightHsv[1], (byte)(this.LightHsv[2] + (lining != "plain" ? 2 : 0)) };
+                int v = this.LightHsv[2] + (lining != "plain" ? 2 : 0);
+
+                byte[] lightHsv = new byte[] { this.LightHsv[0], this.LightHsv[1], (byte)v };
                 BELantern.setLightColor(this.LightHsv, lightHsv, stack.Attributes.GetString("glass"));
 
                 return lightHsv;
@@ -96,7 +99,7 @@ namespace Vintagestory.GameContent
                 Shape shape = capi.Assets.TryGet(shapeloc).ToObject<Shape>();
 
                 MeshData mesh = GenMesh(capi, material, lining, glass, shape);
-                mesh.Rgba2 = null;
+                //mesh.Rgba2 = null;
                 meshrefs[key] = meshref = capi.Render.UploadMesh(mesh);
             }
             
@@ -201,6 +204,19 @@ namespace Vintagestory.GameContent
 
         public override void OnBlockBroken(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1)
         {
+            bool preventDefault = false;
+            foreach (BlockBehavior behavior in BlockBehaviors)
+            {
+                EnumHandling handled = EnumHandling.PassThrough;
+
+                behavior.OnBlockBroken(world, pos, byPlayer, ref handled);
+                if (handled == EnumHandling.PreventDefault) preventDefault = true;
+                if (handled == EnumHandling.PreventSubsequent) return;
+            }
+
+            if (preventDefault) return;
+
+
             if (world.Side == EnumAppSide.Server && (byPlayer == null || byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative))
             {
                 ItemStack[] drops = new ItemStack[] { OnPickBlock(world, pos) };

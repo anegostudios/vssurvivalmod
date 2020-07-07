@@ -131,7 +131,7 @@ namespace Vintagestory.GameContent
 
                 foreach (var val in meshes)
                 {
-                    val.Value.Rgba2 = null;
+                    //val.Value.Rgba2 = null;
                     meshrefs[val.Key] = capi.Render.UploadMesh(val.Value);
                 }
 

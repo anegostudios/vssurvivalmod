@@ -97,44 +97,44 @@ namespace Vintagestory.GameContent
         private void UpdateTube(float dt)
         {
             //setup the north mask
-            if(Api.World.BlockAccessor.GetBlockEntity(Pos.NorthCopy()) is BlockEntityContainer)
+            BlockEntityContainer check = Api.World.BlockAccessor.GetBlockEntity(Pos.NorthCopy()) as BlockEntityContainer;
+            if (check != null)
             {
-                BlockEntityContainer check = (BlockEntityContainer)Api.World.BlockAccessor.GetBlockEntity(Pos.NorthCopy());
                 AttachmentMask[0] = check.Inventory is InventoryGeneric;
             }
 
             //setup the attachment mask
-            if (Api.World.BlockAccessor.GetBlockEntity(Pos.SouthCopy()) is BlockEntityContainer)
+            check = Api.World.BlockAccessor.GetBlockEntity(Pos.SouthCopy()) as BlockEntityContainer;
+            if (check != null)
             {
-                BlockEntityContainer check = (BlockEntityContainer)Api.World.BlockAccessor.GetBlockEntity(Pos.NorthCopy());
                 AttachmentMask[1] = check.Inventory is InventoryGeneric;
             }
 
             //setup the attachment mask
-            if (Api.World.BlockAccessor.GetBlockEntity(Pos.EastCopy()) is BlockEntityContainer)
+            check = Api.World.BlockAccessor.GetBlockEntity(Pos.EastCopy()) as BlockEntityContainer;
+            if (check != null)
             {
-                BlockEntityContainer check = (BlockEntityContainer)Api.World.BlockAccessor.GetBlockEntity(Pos.NorthCopy());
                 AttachmentMask[2] = check.Inventory is InventoryGeneric;
             }
 
             //setup the attachment mask
-            if (Api.World.BlockAccessor.GetBlockEntity(Pos.WestCopy()) is BlockEntityContainer)
+            check = Api.World.BlockAccessor.GetBlockEntity(Pos.WestCopy()) as BlockEntityContainer;
+            if (check != null)
             {
-                BlockEntityContainer check = (BlockEntityContainer)Api.World.BlockAccessor.GetBlockEntity(Pos.NorthCopy());
                 AttachmentMask[3] = check.Inventory is InventoryGeneric;
             }
 
             //setup the attachment mask
-            if (Api.World.BlockAccessor.GetBlockEntity(Pos.UpCopy()) is BlockEntityContainer)
+            check = Api.World.BlockAccessor.GetBlockEntity(Pos.UpCopy()) as BlockEntityContainer;
+            if (check != null)
             {
-                BlockEntityContainer check = (BlockEntityContainer)Api.World.BlockAccessor.GetBlockEntity(Pos.NorthCopy());
                 AttachmentMask[4] = check.Inventory is InventoryGeneric;
             }
 
             //setup the attachment mask
-            if (Api.World.BlockAccessor.GetBlockEntity(Pos.DownCopy()) is BlockEntityContainer)
+            check = Api.World.BlockAccessor.GetBlockEntity(Pos.DownCopy()) as BlockEntityContainer;
+            if (check != null)
             {
-                BlockEntityContainer check = (BlockEntityContainer)Api.World.BlockAccessor.GetBlockEntity(Pos.NorthCopy());
                 AttachmentMask[5] = check.Inventory is InventoryGeneric;
             }
 

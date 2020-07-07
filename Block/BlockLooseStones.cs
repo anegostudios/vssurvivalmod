@@ -19,7 +19,7 @@ namespace Vintagestory.GameContent
 
             if (worldGenRand.NextDouble() <= 0.20)
             {
-                blockId = blockAccessor.GetBlock(CodeWithPath("looseflints-" + LastCodePart())).BlockId;
+                blockId = blockAccessor.GetBlock(CodeWithPath("looseflints-" + Variant["rock"] + "-free")).BlockId;
             }
 
             Block block = blockAccessor.GetBlock(pos);

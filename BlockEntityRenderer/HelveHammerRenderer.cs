@@ -36,7 +36,7 @@ namespace Vintagestory.GameContent
             this.pos = pos;
             this.be = be;
 
-            mesh.Rgba2 = null;
+            //mesh.Rgba2 = null;
             meshref = coreClientAPI.Render.UploadMesh(mesh);
         }
 
@@ -111,3 +111,4 @@ namespace Vintagestory.GameContent
 
     }
 }
+﻿

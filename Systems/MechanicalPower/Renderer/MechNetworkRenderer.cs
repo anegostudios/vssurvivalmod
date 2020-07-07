@@ -27,7 +27,11 @@ namespace Vintagestory.GameContent.Mechanics
         public static Dictionary<string, Type> RendererByCode = new Dictionary<string, Type>()
         {
             { "generic", typeof(GenericMechBlockRenderer) },
-            { "angledgears", typeof(AngledGearsBlockRenderer) }
+            { "angledgears", typeof(AngledGearsBlockRenderer) },
+            { "angledgearcage", typeof(AngledCageGearRenderer) },
+            { "transmission", typeof(TransmissionBlockRenderer) },
+            { "clutch", typeof(ClutchBlockRenderer) },
+            { "autorotor", typeof(CreativeRotorRenderer) }
         };
         
         public MechNetworkRenderer(ICoreClientAPI capi, MechanicalPowerMod mechanicalPowerMod)
@@ -56,7 +60,7 @@ namespace Vintagestory.GameContent.Mechanics
         }
 
 
-        public void AddDevice(IMechanicalPowerNode device)
+        public void AddDevice(IMechanicalPowerRenderable device)
         {
             if (device.Shape == null) return;
 
@@ -81,7 +85,7 @@ namespace Vintagestory.GameContent.Mechanics
 
         
 
-        public void RemoveDevice(IMechanicalPowerNode device)
+        public void RemoveDevice(IMechanicalPowerRenderable device)
         {
             if (device.Shape == null) return;
 

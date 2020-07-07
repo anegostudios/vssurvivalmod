@@ -119,7 +119,7 @@ namespace Vintagestory.GameContent
             ItemStack stack = new ItemStack(world.GetItem(new AssetLocation("beeswax")));
             if (byPlayer?.InventoryManager.TryGiveItemstack(stack) == false)
             {
-                byEntity.World.SpawnItemEntity(stack, byEntity.LocalPos.XYZ);
+                byEntity.World.SpawnItemEntity(stack, byEntity.SidedPos.XYZ);
             }
         }
 

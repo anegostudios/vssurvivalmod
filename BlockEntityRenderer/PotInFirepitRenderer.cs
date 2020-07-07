@@ -46,12 +46,12 @@ namespace Vintagestory.GameContent
             {
                 MeshData potMesh;
                 capi.Tesselator.TesselateShape(potBlock, capi.Assets.TryGet("shapes/block/clay/pot-opened-empty.json").ToObject<Shape>(), out potMesh);
-                potMesh.Rgba2 = null;
+                //potMesh.Rgba2 = null;
                 potRef = capi.Render.UploadMesh(potMesh);
 
                 MeshData lidMesh;
                 capi.Tesselator.TesselateShape(potBlock, capi.Assets.TryGet("shapes/block/clay/pot-part-lid.json").ToObject<Shape>(), out lidMesh);
-                lidMesh.Rgba2 = null;
+                //lidMesh.Rgba2 = null;
                 lidRef = capi.Render.UploadMesh(lidMesh);
             }
         }

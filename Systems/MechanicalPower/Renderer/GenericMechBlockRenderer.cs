@@ -24,7 +24,7 @@ namespace Vintagestory.GameContent.Mechanics
             Vec3f rot = new Vec3f(shapeLoc.rotateX, shapeLoc.rotateY, shapeLoc.rotateZ);
 
             capi.Tesselator.TesselateShape(textureSoureBlock, shape, out blockMesh, rot);
-
+            
             if (shapeLoc.Overlays != null)
             {
                 for (int i = 0; i < shapeLoc.Overlays.Length; i++)
@@ -39,7 +39,7 @@ namespace Vintagestory.GameContent.Mechanics
                 }
             }
 
-            blockMesh.Rgba2 = null;
+            //blockMesh.Rgba2 = null;
 
             // 16 floats matrix, 4 floats light rgbs
             blockMesh.CustomFloats = matrixAndLightFloats = new CustomMeshDataPartFloat((16 + 4) * 10100)
@@ -56,11 +56,11 @@ namespace Vintagestory.GameContent.Mechanics
         }
 
         
-        protected override void UpdateLightAndTransformMatrix(int index, Vec3f distToCamera, float[] rotation, IMechanicalPowerNode dev)
+        protected override void UpdateLightAndTransformMatrix(int index, Vec3f distToCamera, float rotation, IMechanicalPowerRenderable dev)
         {
-            float rotX = rotation[dev.AxisMapping[0]] * dev.AxisSign[0];
-            float rotY = rotation[dev.AxisMapping[1]] * dev.AxisSign[1];
-            float rotZ = rotation[dev.AxisMapping[2]] * dev.AxisSign[2];
+            float rotX = rotation * dev.AxisSign[0];
+            float rotY = rotation * dev.AxisSign[1];
+            float rotZ = rotation * dev.AxisSign[2];
 
             UpdateLightAndTransformMatrix(matrixAndLightFloats.Values, index, distToCamera, dev.LightRgba, rotX, rotY, rotZ);
         }

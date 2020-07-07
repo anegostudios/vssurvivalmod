@@ -306,7 +306,7 @@ namespace Vintagestory.GameContent
             {
                 if (Block.Attributes["drop"].Exists)
                 {
-                    JsonItemStack jstack = Block.Attributes["drop"].AsObject<JsonItemStack>();
+                    JsonItemStack jstack = Block.Attributes["drop"].AsObject<JsonItemStack>(null, Block.Code.Domain);
                     if (jstack == null) return null;
 
                     ItemStack stack = stackFromCode(jstack, fromMetal);
@@ -316,7 +316,7 @@ namespace Vintagestory.GameContent
                 }
                 else
                 {
-                    JsonItemStack[] jstacks = Block.Attributes["drops"].AsObject<JsonItemStack[]>();
+                    JsonItemStack[] jstacks = Block.Attributes["drops"].AsObject<JsonItemStack[]>(null, Block.Code.Domain);
                     List<ItemStack> stacks = new List<ItemStack>();
 
                     foreach (var jstack in jstacks)

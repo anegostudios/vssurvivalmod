@@ -180,27 +180,23 @@ namespace Vintagestory.GameContent
             float breakChance = 0.5f;
             if (stack.ItemAttributes != null) breakChance = stack.ItemAttributes["breakChanceOnImpact"].AsFloat(0.5f);
 
-            EntityProperties type = byEntity.World.GetEntityType(new AssetLocation("arrow"));
+            EntityProperties type = byEntity.World.GetEntityType(new AssetLocation("arrow-" + stack.Collectible.Variant["material"]));
             Entity entity = byEntity.World.ClassRegistry.CreateEntity(type);
             ((EntityProjectile)entity).FiredBy = byEntity;
             ((EntityProjectile)entity).Damage = damage;
             ((EntityProjectile)entity).ProjectileStack = stack;
             ((EntityProjectile)entity).DropOnImpactChance = 1 - breakChance;
 
-
-            int? texIndex = type.Attributes?["texturealternateMapping"]?[arrowMaterial].AsInt(0);
-            entity.WatchedAttributes.SetInt("textureIndex", texIndex == null ? 0 : (int)texIndex);
-
             float acc = (1 - byEntity.Attributes.GetFloat("aimingAccuracy", 0));
             double rndpitch = byEntity.WatchedAttributes.GetDouble("aimingRandPitch", 1) * acc * 0.75;
             double rndyaw = byEntity.WatchedAttributes.GetDouble("aimingRandYaw", 1) * acc * 0.75;
             
-            Vec3d pos = byEntity.ServerPos.XYZ.Add(0, byEntity.EyeHeight - 0.2, 0);
-            Vec3d aheadPos = pos.AheadCopy(1, byEntity.LocalPos.Pitch + rndpitch, byEntity.LocalPos.Yaw + rndyaw);
+            Vec3d pos = byEntity.ServerPos.XYZ.Add(0, byEntity.LocalEyePos.Y - 0.2, 0);
+            Vec3d aheadPos = pos.AheadCopy(1, byEntity.SidedPos.Pitch + rndpitch, byEntity.SidedPos.Yaw + rndyaw);
             Vec3d velocity = (aheadPos - pos) * 0.95;
 
             
-            entity.ServerPos.SetPos(byEntity.LocalPos.BehindCopy(0.21).XYZ.Add(0, byEntity.EyeHeight - 0.2, 0));
+            entity.ServerPos.SetPos(byEntity.SidedPos.BehindCopy(0.21).XYZ.Add(0, byEntity.LocalEyePos.Y - 0.2, 0));
             entity.ServerPos.Motion.Set(velocity);
 
             entity.Pos.SetFrom(entity.ServerPos);

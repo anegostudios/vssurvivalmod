@@ -26,6 +26,13 @@ namespace Vintagestory.GameContent
             return api.World.GetBlock(new AssetLocation(Attributes["contentItem2BlockCodes"][contents].AsString()));
         }
 
+        public override string GetHeldTpUseAnimation(ItemSlot activeHotbarSlot, Entity forEntity)
+        {
+            if ((forEntity as EntityAgent)?.Controls.Sneak != true) return null;
+
+            return base.GetHeldTpUseAnimation(activeHotbarSlot, forEntity);
+        }
+
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handHandling)
         {
             if (blockSel == null)
@@ -132,7 +139,7 @@ namespace Vintagestory.GameContent
                 itemslot.TakeOut(1);
                 if (!player.InventoryManager.TryGiveItemstack(emptyStack, true))
                 {
-                    byEntity.World.SpawnItemEntity(emptyStack, byEntity.LocalPos.XYZ);
+                    byEntity.World.SpawnItemEntity(emptyStack, byEntity.SidedPos.XYZ);
                 }
             }
 
@@ -156,7 +163,7 @@ namespace Vintagestory.GameContent
                 itemslot.TakeOut(1);
                 if (!player.InventoryManager.TryGiveItemstack(stack, true))
                 {
-                    byEntity.World.SpawnItemEntity(stack, byEntity.LocalPos.XYZ);
+                    byEntity.World.SpawnItemEntity(stack, byEntity.SidedPos.XYZ);
                 }
             }
 

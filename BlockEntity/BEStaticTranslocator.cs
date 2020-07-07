@@ -288,7 +288,7 @@ namespace Vintagestory.GameContent
             }
             else
             {
-                sapi.WorldManager.LoadChunkColumnFast(centerCx, centerCz, new ChunkLoadOptions() {
+                sapi.WorldManager.LoadChunkColumnPriority(centerCx, centerCz, new ChunkLoadOptions() {
                     ChunkGenParams = chunkGenParams(),
                     OnLoaded = () => exitChunkLoaded(pos)
                 });
@@ -480,7 +480,7 @@ namespace Vintagestory.GameContent
                     }
                     else
                     {
-                        sapi.WorldManager.LoadChunkColumnFast((int)tpLocation.X / Api.World.BlockAccessor.ChunkSize, (int)tpLocation.Z / Api.World.BlockAccessor.ChunkSize, new ChunkLoadOptions()
+                        sapi.WorldManager.LoadChunkColumnPriority((int)tpLocation.X / Api.World.BlockAccessor.ChunkSize, (int)tpLocation.Z / Api.World.BlockAccessor.ChunkSize, new ChunkLoadOptions()
                         {
                             KeepLoaded = false
                         });

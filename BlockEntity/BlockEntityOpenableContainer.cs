@@ -11,8 +11,7 @@ namespace Vintagestory.GameContent
 {
     public enum EnumBlockContainerPacketId
     {
-        OpenInventory = 5000,
-        CloseInventory = 5001
+        OpenInventory = 5000
     }
 
 
@@ -46,13 +45,14 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            if (packetid == (int)EnumBlockContainerPacketId.CloseInventory)
+            if (packetid == (int)EnumBlockEntityPacketId.Close)
             {
                 if (player.InventoryManager != null)
                 {
                     player.InventoryManager.CloseInventory(Inventory);
                 }
             }
+
         }
 
         public override void OnReceivedServerPacket(int packetid, byte[] data)
@@ -63,7 +63,7 @@ namespace Vintagestory.GameContent
             {
                 if (invDialog != null)
                 {
-                    invDialog.TryClose();
+                    if (invDialog?.IsOpened() == true) invDialog.TryClose();
                     invDialog?.Dispose();
                     invDialog = null;
                     return;
@@ -97,10 +97,10 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            if (packetid == (int)EnumBlockContainerPacketId.CloseInventory)
+            if (packetid == (int)EnumBlockEntityPacketId.Close)
             {
                 clientWorld.Player.InventoryManager.CloseInventory(Inventory);
-                invDialog?.TryClose();
+                if (invDialog?.IsOpened() == true) invDialog?.TryClose();
                 invDialog?.Dispose();
                 invDialog = null;
             }
@@ -111,13 +111,15 @@ namespace Vintagestory.GameContent
         {
             base.OnBlockUnloaded();
 
-            invDialog?.TryClose();
+            if (invDialog?.IsOpened() == true) invDialog?.TryClose();
             invDialog?.Dispose();
         }
 
         public override void OnBlockRemoved()
         {
-            invDialog?.TryClose();
+            base.OnBlockRemoved();
+
+            if (invDialog?.IsOpened() == true) invDialog?.TryClose();
             invDialog?.Dispose();
         }
 

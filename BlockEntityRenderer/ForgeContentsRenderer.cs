@@ -124,7 +124,7 @@ namespace Vintagestory.GameContent
                 tmpTextureSource = capi.Tesselator.GetTexSource(capi.World.GetBlock(new AssetLocation("platepile")));
                 shape = capi.Assets.TryGet("shapes/block/stone/forge/platepile.json").ToObject<Shape>();
                 textureId = tmpTextureSource[tmpMetal].atlasTextureId;
-                capi.Tesselator.TesselateShape("block-fcr", shape, out mesh, this, null, 0, 0, stack.StackSize);
+                capi.Tesselator.TesselateShape("block-fcr", shape, out mesh, this, null, 0, 0, 0, stack.StackSize);
 
             }
             else if (firstCodePart == "workitem" || firstCodePart == "ingot")
@@ -132,7 +132,7 @@ namespace Vintagestory.GameContent
                 tmpTextureSource = capi.Tesselator.GetTexSource(capi.World.GetBlock(new AssetLocation("ingotpile")));
                 shape = capi.Assets.TryGet("shapes/block/stone/forge/ingotpile.json").ToObject<Shape>();
                 textureId = tmpTextureSource[tmpMetal].atlasTextureId;
-                capi.Tesselator.TesselateShape("block-fcr", shape, out mesh, this, null, 0, 0, stack.StackSize);
+                capi.Tesselator.TesselateShape("block-fcr", shape, out mesh, this, null, 0, 0, 0, stack.StackSize);
             }
             else if (stack.Collectible.Attributes?["forgable"].AsBool() == true)
             {
@@ -149,7 +149,7 @@ namespace Vintagestory.GameContent
 
             if (mesh != null)
             {
-                mesh.Rgba2 = null;
+                //mesh.Rgba2 = null;
                 workItemMeshRef = capi.Render.UploadMesh(mesh);
             }
         }
@@ -188,7 +188,7 @@ namespace Vintagestory.GameContent
                 prog.NormalShaded = 1;
                 prog.RgbaLightIn = lightrgbs;
                 prog.RgbaGlowIn = new Vec4f(glowColor[0], glowColor[1], glowColor[2], extraGlow / 255f);
-                prog.RgbaBlockIn = ColorUtil.WhiteArgbVec;
+                
                 prog.ExtraGlow = extraGlow;
                 prog.Tex2D = textureId;
                 prog.ModelMatrix = ModelMat.Identity().Translate(pos.X - camPos.X, pos.Y - camPos.Y + 10 / 16f + fuelLevel * 0.65f, pos.Z - camPos.Z).Values;
@@ -213,7 +213,7 @@ namespace Vintagestory.GameContent
 
                 prog.NormalShaded = 0;
                 prog.RgbaLightIn = lightrgbs;
-                prog.RgbaBlockIn = ColorUtil.WhiteArgbVec;
+                
                 prog.ExtraGlow = burning ? 255 : 0;
 
                 // The coal or embers

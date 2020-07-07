@@ -263,7 +263,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            if (packetid == (int)EnumBlockContainerPacketId.CloseInventory)
+            if (packetid == (int)EnumBlockEntityPacketId.Close)
             {
                 IClientWorldAccessor clientWorld = (IClientWorldAccessor)Api.World;
                 clientWorld.Player.InventoryManager.CloseInventory(Inventory);

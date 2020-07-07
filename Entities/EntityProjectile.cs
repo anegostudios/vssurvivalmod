@@ -59,7 +59,7 @@ namespace Vintagestory.GameContent
             base.OnGameTick(dt);
             if (ShouldDespawn) return;
 
-            EntityPos pos = LocalPos;
+            EntityPos pos = SidedPos;
 
             stuck = Collided || collTester.IsColliding(World.BlockAccessor, collisionTestBox, pos.XYZ);
 
@@ -84,9 +84,9 @@ namespace Vintagestory.GameContent
 
         public override void OnCollided()
         {
-            EntityPos pos = LocalPos;
+            EntityPos pos = SidedPos;
 
-            IsColliding(LocalPos, Math.Max(motionBeforeCollide.Length(), pos.Motion.Length()));
+            IsColliding(SidedPos, Math.Max(motionBeforeCollide.Length(), pos.Motion.Length()));
             motionBeforeCollide.Set(pos.Motion.X, pos.Motion.Y, pos.Motion.Z);
         }
 
@@ -131,7 +131,7 @@ namespace Vintagestory.GameContent
             if (World is IClientWorldAccessor || World.ElapsedMilliseconds <= msCollide + 250) return false;
             if (impactSpeed <= 0.01) return false;
 
-            EntityPos pos = LocalPos;
+            EntityPos pos = SidedPos;
 
             Cuboidd projectileBox = CollisionBox.ToDouble().Translate(ServerPos.X, ServerPos.Y, ServerPos.Z);
 
@@ -187,7 +187,7 @@ namespace Vintagestory.GameContent
                     }, Damage);
 
                     float kbresist = entity.Properties.KnockbackResistance;
-                    entity.LocalPos.Motion.Add(kbresist * pos.Motion.X * Weight, kbresist * pos.Motion.Y * Weight, kbresist * pos.Motion.Z * Weight);
+                    entity.SidedPos.Motion.Add(kbresist * pos.Motion.X * Weight, kbresist * pos.Motion.Y * Weight, kbresist * pos.Motion.Z * Weight);
 
                     int leftDurability = ProjectileStack == null ? 1 : ProjectileStack.Attributes.GetInt("durability", 1);
 

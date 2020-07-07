@@ -93,36 +93,40 @@ namespace Vintagestory.GameContent
                 if (tmpItem.Attributes?["toolrackTransform"].Exists == true)
                 {
                     ModelTransform transform = tmpItem.Attributes["toolrackTransform"].AsObject<ModelTransform>();
-
-                    //ModelTransform transform = new ModelTransform();
                     transform.EnsureDefaultValues();
 
-                    /*transform.Rotation.Y = 180;
-                    transform.Rotation.Z = -1;
-                    transform.Scale = 1.25f;*/
-                    //transform.Translation.X = -0.2f;
-                    /*
-                    transform.Translation.X = -0.9f;
-                    transform.Translation.Y = 0.55f;
-                    //transform.Rotation.Y = 90;
-                    //transform.Rotation.Z = 0;
-                    transform.Rotation.X = 1;
-                    */
+                    /*transform.Rotation.Z = -1;
+                    transform.Rotation.Y = 2.5f;
+                    transform.Translation.Y = 0.59f;*/
+                    /*transform = new ModelTransform();
+                    
 
-                    //transform.Translation.X = -0.35f;
-                    //transform.Translation.Y = 0.6f;
-                    //transform.Scale = 1f;
+                    transform.Rotation.X = 2;
+                    transform.Rotation.Y = 5;
+                    transform.Rotation.Z = 0;
+
+                    transform.Translation.X = 0;
+                    transform.Translation.Y = 0.5f;
+                    transform.Translation.Z = 0f;*/
+
+                    //transform.Translation.Y = 0.63f;
 
                     toolMeshes[i].ModelTransform(transform);
                 }
 
+
+                float zOff = i > 1 ? (-1.8f / 16f) : 0;
+
                 if (stack.Class == EnumItemClass.Item && stack.Item.Shape?.VoxelizeTexture == true)
                 {
                     toolMeshes[i].Scale(origin, 0.33f, 0.33f, 0.33f);
-                    toolMeshes[i].Translate(((i % 2) == 0) ? 0.23f : -0.3f, (i > 1) ? 0.2f : -0.3f, 0.433f * ((facing.Axis == EnumAxis.X) ? -1 : 1));
+                    toolMeshes[i].Translate(
+                        (((i % 2) == 0) ? 0.23f : -0.3f), 
+                        ((i > 1) ? 0.2f : -0.3f) + zOff, 
+                        0.433f * ((facing.Axis == EnumAxis.X) ? -1 : 1)
+                    );
                     toolMeshes[i].Rotate(origin, 0, facing.HorizontalAngleIndex * 90 * GameMath.DEG2RAD, 0);
                     toolMeshes[i].Rotate(origin, 180 * GameMath.DEG2RAD, 0, 0);
-
                 }
                 else
                 {
@@ -131,7 +135,7 @@ namespace Vintagestory.GameContent
                     float x = ((i > 1) ? -0.2f : 0.3f);
                     float z = ((i % 2 == 0) ? 0.23f : -0.2f) * (facing.Axis == EnumAxis.X ? 1f : -1f);
 
-                    toolMeshes[i].Translate(x, 0.433f, z);
+                    toolMeshes[i].Translate(x, 0.433f + zOff, z);
                     toolMeshes[i].Rotate(origin, 0, facing.HorizontalAngleIndex * 90 * GameMath.DEG2RAD, GameMath.PIHALF);
                     toolMeshes[i].Rotate(origin, 0, GameMath.PIHALF, 0);
                 }
@@ -194,7 +198,7 @@ namespace Vintagestory.GameContent
             Api.World.PlaySoundAt(new AssetLocation("sounds/player/buildhigh"), Pos.X, Pos.Y, Pos.Z, player, false);
             if (Api is ICoreClientAPI) loadToolMeshes();
             MarkDirty(true);
-            player.InventoryManager.BroadcastHotbarSlot();
+            //player.InventoryManager.BroadcastHotbarSlot();
         }
 
 

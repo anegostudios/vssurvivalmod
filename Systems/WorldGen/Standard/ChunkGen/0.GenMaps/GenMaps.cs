@@ -1,12 +1,25 @@
-﻿using System;
+﻿using ProtoBuf;
+using System;
 using System.Globalization;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
+using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
+using Vintagestory.GameContent;
 
 namespace Vintagestory.ServerMods
 {
+    [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
+    public class LatitudeData
+    {
+        public double ZOffset = 0;
+        public bool isRealisticClimate = false;
+        public int polarEquatorDistance;
+    }
+
     public class GenMaps : ModSystem
     {
         ICoreServerAPI api;
@@ -26,9 +39,33 @@ namespace Vintagestory.ServerMods
         int noiseSizeGeoProv;
         int noiseSizeLandform;
 
+        LatitudeData latdata = new LatitudeData();
+
         public override bool ShouldLoad(EnumAppSide side)
         {
-            return side == EnumAppSide.Server;
+            return true;
+        }
+
+        public override void Start(ICoreAPI api)
+        {
+            api.Network.RegisterChannel("latitudedata")
+               .RegisterMessageType(typeof(LatitudeData))
+            ;
+        }
+
+        public override void StartClientSide(ICoreClientAPI api)
+        {
+            api.Network.GetChannel("latitudedata").SetMessageHandler<LatitudeData>(onLatitudeDataReceived);
+
+            api.ModLoader.GetModSystem<SurvivalCoreSystem>().onGetLatitude = getLatitude;
+            
+        }
+
+        
+
+        private void onLatitudeDataReceived(LatitudeData latdata)
+        {
+            this.latdata = latdata;
         }
 
         public override void StartServerSide(ICoreServerAPI api)
@@ -40,7 +77,15 @@ namespace Vintagestory.ServerMods
 
             api.Event.MapRegionGeneration(OnMapRegionGen, "standard");
             api.Event.MapRegionGeneration(OnMapRegionGen, "superflat");
+
+            
+
+            api.Event.PlayerJoin += (plr) =>
+            {
+                api.Network.GetChannel("latitudedata").SendPacket(latdata, plr);
+            };
         }
+
 
         public void initWorldGen()
         {
@@ -56,15 +101,40 @@ namespace Vintagestory.ServerMods
             string climate = worldConfig.GetString("worldClimate");
             NoiseClimate noiseClimate;
 
-            float tempModifier = 1;
-            float.TryParse(worldConfig.GetString("globalTemperature", "1"), NumberStyles.Any, GlobalConstants.DefaultCultureInfo, out tempModifier);
-            float rainModifier = 1;
-            float.TryParse(worldConfig.GetString("globalPrecipitation", "1"), NumberStyles.Any, GlobalConstants.DefaultCultureInfo, out rainModifier);
+            float tempModifier = worldConfig.GetString("globalTemperature", "1").ToFloat(1);
+            float rainModifier = worldConfig.GetString("globalPrecipitation", "1").ToFloat(1);
+            latdata.polarEquatorDistance = worldConfig.GetString("polarEquatorDistance", "50000").ToInt(50000);
 
             switch (climate)
             {
                 case "realistic":
-                    noiseClimate = new NoiseClimateRealistic(seed, (double)api.WorldManager.MapSizeZ / TerraGenConfig.climateMapScale / TerraGenConfig.climateMapSubScale);
+                    int spawnMinTemp = 6;
+                    int spawnMaxTemp = 14;
+
+                    string startingClimate = worldConfig.GetString("startingClimate");
+                    switch (startingClimate)
+                    {
+                        case "hot":
+                            spawnMinTemp = 28;
+                            spawnMaxTemp = 32;
+                            break;
+                        case "warm":
+                            spawnMinTemp = 19;
+                            spawnMaxTemp = 23;
+                            break;
+                        case "cool":
+                            spawnMinTemp = -5;
+                            spawnMaxTemp = 1;
+                            break;
+                        case "icy":
+                            spawnMinTemp = -15;
+                            spawnMaxTemp = -10;
+                            break;
+                    }
+
+                    noiseClimate = new NoiseClimateRealistic(seed, (double)api.WorldManager.MapSizeZ / TerraGenConfig.climateMapScale / TerraGenConfig.climateMapSubScale, latdata.polarEquatorDistance, spawnMinTemp, spawnMaxTemp);
+                    latdata.isRealisticClimate = true;
+                    latdata.ZOffset = (noiseClimate as NoiseClimateRealistic).ZOffset;
                     break;
 
                 default:
@@ -84,9 +154,32 @@ namespace Vintagestory.ServerMods
 
             geologicprovinceGen = GetGeologicProvinceMapGen(seed + 3, api);
             landformsGen = GetLandformMapGen(seed + 4, noiseClimate, api);
+
+            api.ModLoader.GetModSystem<SurvivalCoreSystem>().onGetLatitude = getLatitude;
         }
 
         
+
+        private double getLatitude(double posZ)
+        {
+            if (!latdata.isRealisticClimate)
+            {
+                return 0.15;
+            }
+
+            double halfRange = (double)latdata.polarEquatorDistance / TerraGenConfig.climateMapScale / TerraGenConfig.climateMapSubScale;
+
+            double A = 2;
+            double P = halfRange;
+            double z = posZ / TerraGenConfig.climateMapScale / TerraGenConfig.climateMapSubScale + latdata.ZOffset;
+
+            // Shifted and normalized sawtooth so we have -1 for south pole, 1 for north pole and 0 for equator
+            // Due to the shift on the Y-Axis we also had to half the frequency
+            // http://fooplot.com/#W3sidHlwZSI6MCwiZXEiOiIyLzk3LjY1NjI1Kig5Ny42NTYyNS1hYnMoYWJzKHgrOTcuNjUyNS8yKSUoMio5Ny42NTYyNSktOTcuNjU2MjUpKS0xIiwiY29sb3IiOiIjMDAwMDAwIn0seyJ0eXBlIjoxMDAwLCJ3aW5kb3ciOlsiLTc5Ni4xNTM4NDYxNTM4NDYxIiwiNzAzLjg0NjE1Mzg0NjE1MzkiLCItMS4yMDEyNSIsIjEuMjk4NzUiXX1d
+            double latitude = (A / P) * (P - Math.Abs(Math.Abs(z / 2 - P) % (2 * P) - P)) - 1;
+
+            return latitude;
+        }
 
         private void OnMapRegionGen(IMapRegion mapRegion, int regionX, int regionZ)
         {

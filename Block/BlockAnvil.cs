@@ -119,7 +119,8 @@ namespace Vintagestory.GameContent
             if (bea != null)
             {
                 Cuboidf[] selectionBoxes = bea.GetSelectionBoxes(blockAccessor, pos);
-                selectionBoxes[0] = this.SelectionBoxes[0];
+                float angledeg = Math.Abs(bea.MeshAngle * GameMath.RAD2DEG);
+                selectionBoxes[0] = angledeg == 0  || angledeg == 180 ? SelectionBoxes[0] : SelectionBoxes[1];
                 return selectionBoxes;
             }
 
@@ -143,7 +144,7 @@ namespace Vintagestory.GameContent
             {
                 if (bea.OnPlayerInteract(world, byPlayer, blockSel))
                 {
-                    byPlayer.InventoryManager.BroadcastHotbarSlot();
+                    //byPlayer.InventoryManager.BroadcastHotbarSlot();
                     return true;
                 }
 
@@ -157,6 +158,29 @@ namespace Vintagestory.GameContent
         public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
         {
             return interactions.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
+        }
+
+        public override bool DoPlaceBlock(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ItemStack byItemStack)
+        {
+            bool val = base.DoPlaceBlock(world, byPlayer, blockSel, byItemStack);
+
+            if (val)
+            {
+                BlockEntityAnvil bect = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityAnvil;
+                if (bect != null)
+                {
+                    BlockPos targetPos = blockSel.DidOffset ? blockSel.Position.AddCopy(blockSel.Face.GetOpposite()) : blockSel.Position;
+                    double dx = byPlayer.Entity.Pos.X - (targetPos.X + blockSel.HitPosition.X);
+                    double dz = byPlayer.Entity.Pos.Z - (targetPos.Z + blockSel.HitPosition.Z);
+                    float angleHor = (float)Math.Atan2(dx, dz);
+
+                    float deg22dot5rad = GameMath.PIHALF / 4;
+                    float roundRad = ((int)Math.Round(angleHor / deg22dot5rad)) * deg22dot5rad;
+                    bect.MeshAngle = roundRad;
+                }
+            }
+
+            return val;
         }
     }
 }

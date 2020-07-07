@@ -98,11 +98,11 @@ namespace Vintagestory.ServerMods
 
         public void OnMapRegionGen(IMapRegion mapRegion, int regionX, int regionZ)
         {
-            IntMap map;
+            IntDataMap2D map;
 
             if (OreMapLayer != null && !mapRegion.OreMaps.ContainsKey(Code))
             {
-                map = new IntMap();
+                map = new IntDataMap2D();
                 map.Size = noiseSizeOre + 1;
                 map.BottomRightPadding = 1;
                 map.Data = OreMapLayer.GenLayer(regionX * noiseSizeOre, regionZ * noiseSizeOre, noiseSizeOre + 1, noiseSizeOre + 1);
@@ -116,7 +116,7 @@ namespace Vintagestory.ServerMods
                     DepositVariant childVariant = ChildDeposits[k];
                     if (childVariant.OreMapLayer != null && !mapRegion.OreMaps.ContainsKey(childVariant.Code))
                     {
-                        map = new IntMap();
+                        map = new IntDataMap2D();
                         map.Size = noiseSizeOre + 1;
                         map.BottomRightPadding = 1;
                         map.Data = childVariant.OreMapLayer.GenLayer(regionX * noiseSizeOre, regionZ * noiseSizeOre, noiseSizeOre + 1, noiseSizeOre + 1);
@@ -133,7 +133,7 @@ namespace Vintagestory.ServerMods
             int lx = (chunkx * chunksize + chunksize / 2) % regionSize;
             int lz = (chunkz * chunksize + chunksize / 2) % regionSize;
 
-            IntMap map = null;
+            IntDataMap2D map = null;
             originMapRegion.OreMaps.TryGetValue(Code, out map);
             if (map != null)
             {

@@ -49,7 +49,7 @@ namespace Vintagestory.GameContent
 
                 for (int j = 0; j <= 16; j++)
                 {
-                    mesher.TesselateShape("platePile", shape, out meshes[j], this, null, 0, 0, j);
+                    mesher.TesselateShape("platePile", shape, out meshes[j], this, null, 0, 0, 0, j);
                 }
 
                 meshesByType[tmpMetal] = meshes;

@@ -15,10 +15,7 @@ namespace Vintagestory.GameContent
 {
     public class BlockEntityBarrel : BlockEntityContainer
     {
-        public int CapacityLitres
-        {
-            get { return 50; }
-        }
+        public int CapacityLitres { get; set; } = 50;
 
         GuiDialogBarrel invDialog;
         
@@ -56,7 +53,9 @@ namespace Vintagestory.GameContent
                 if (id == 0) return new ItemSlotBarrelInput(self);
                 else return new ItemSlotLiquidOnly(self);
             });
-            
+            inventory.BaseWeight = 1;
+            inventory.OnGetSuitability = (sourceSlot, targetSlot, isMerge) => (isMerge ? (inventory.BaseWeight + 3) : (inventory.BaseWeight + 1)) + (sourceSlot.Inventory is InventoryBasePlayer ? 1 : 0);
+
 
             inventory.SlotModified += Inventory_SlotModified;
 
@@ -78,6 +77,11 @@ namespace Vintagestory.GameContent
             base.Initialize(api);
 
             ownBlock = Block as BlockBarrel;
+
+            if (ownBlock?.Attributes?["capacityLitres"].Exists == true)
+            {
+                CapacityLitres = ownBlock.Attributes["capacityLitres"].AsInt(50);
+            }
 
             if (api.Side == EnumAppSide.Client && currentMesh == null)
             {
@@ -203,7 +207,7 @@ namespace Vintagestory.GameContent
                 inventory.InvNetworkUtil.HandleClientPacket(fromPlayer, packetid, data);
             }
 
-            if (packetid == (int)EnumBlockContainerPacketId.CloseInventory)
+            if (packetid == (int)EnumBlockEntityPacketId.Close)
             {
                 if (fromPlayer.InventoryManager != null)
                 {
@@ -221,7 +225,7 @@ namespace Vintagestory.GameContent
         {
             base.OnReceivedServerPacket(packetid, data);
 
-            if (packetid == (int)EnumBlockContainerPacketId.CloseInventory)
+            if (packetid == (int)EnumBlockEntityPacketId.Close)
             {
                 (Api.World as IClientWorldAccessor).Player.InventoryManager.CloseInventory(Inventory);
                 invDialog?.TryClose();
@@ -254,7 +258,7 @@ namespace Vintagestory.GameContent
                     invDialog.OnClosed += () =>
                     {
                         invDialog = null;
-                        (Api as ICoreClientAPI).Network.SendBlockEntityPacket(Pos.X, Pos.Y, Pos.Z, (int)EnumBlockContainerPacketId.CloseInventory, null);
+                        (Api as ICoreClientAPI).Network.SendBlockEntityPacket(Pos.X, Pos.Y, Pos.Z, (int)EnumBlockEntityPacketId.Close, null);
                         byPlayer.InventoryManager.CloseInventory(inventory);
                     };
                 }
@@ -302,7 +306,18 @@ namespace Vintagestory.GameContent
         {
             if (ownBlock == null) return null;
 
-            return ownBlock.GenMesh(inventory[0].Itemstack, inventory[1].Itemstack, Sealed, Pos);
+            MeshData mesh = ownBlock.GenMesh(inventory[0].Itemstack, inventory[1].Itemstack, Sealed, Pos);
+
+            if (mesh.CustomInts != null)
+            {
+                for (int i = 0; i < mesh.CustomInts.Count; i++)
+                {
+                    mesh.CustomInts.Values[i] |= 1 << 27; // Enable weak water wavy
+                    mesh.CustomInts.Values[i] |= 1 << 26; // Enabled weak foam
+                }
+            }
+
+            return mesh;
         }
 
 

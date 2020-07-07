@@ -9,8 +9,8 @@ namespace Vintagestory.ServerMods
 {
     public abstract class MapLayerBase : NoiseBase
     {
-        internal IntMap inputMap;
-        internal IntMap outputMap;
+        internal IntDataMap2D inputMap;
+        internal IntDataMap2D outputMap;
 
         public MapLayerBase(long seed) : base(seed)
         {
@@ -19,7 +19,7 @@ namespace Vintagestory.ServerMods
 
         public abstract int[] GenLayer(int xCoord, int zCoord, int sizeX, int sizeZ);
 
-        public void SetInputMap(IntMap inputMap, IntMap outputMap)
+        public void SetInputMap(IntDataMap2D inputMap, IntDataMap2D outputMap)
         {
             this.inputMap = inputMap;
             this.outputMap = outputMap;

@@ -71,8 +71,14 @@ namespace Vintagestory.ServerMods
             // Unpadded region noise size in chunks
             regionChunkSize = api.WorldManager.RegionSize / chunksize;
             // Amount of landform regions in all of the map 
-            regionMapSize = api.WorldManager.MapSizeX / api.WorldManager.RegionSize;
-
+            if (GameVersion.IsAtLeastVersion(api.WorldManager.SaveGame.CreatedGameVersion, "1.12.9"))
+            {
+                regionMapSize = (int)Math.Ceiling((double)api.WorldManager.MapSizeX / api.WorldManager.RegionSize);
+            }
+            else
+            {
+                regionMapSize = api.WorldManager.MapSizeX / api.WorldManager.RegionSize;
+            }
 
 
             horizontalScale = 1f;
@@ -132,7 +138,7 @@ namespace Vintagestory.ServerMods
             int climateBotLeft;
             int climateBotRight;
 
-            IntMap climateMap = chunks[0].MapChunk.MapRegion.ClimateMap;
+            IntDataMap2D climateMap = chunks[0].MapChunk.MapRegion.ClimateMap;
             int regionChunkSize = api.WorldManager.RegionSize / chunksize;
             float fac = (float)climateMap.InnerSize / regionChunkSize;
             int rlX = chunkX % regionChunkSize;
@@ -146,7 +152,7 @@ namespace Vintagestory.ServerMods
             int freezingTemp = TerraGenConfig.DescaleTemperature(-17);
 
 
-            IntMap landformMap = mapchunk.MapRegion.LandformMap;
+            IntDataMap2D landformMap = mapchunk.MapRegion.LandformMap;
             // Amount of pixels for each chunk (probably 1, 2, or 4) in the land form map
             float chunkPixelSize = landformMap.InnerSize / regionChunkSize;
             // Adjusted lerp for the noiseWidth
@@ -348,7 +354,7 @@ namespace Vintagestory.ServerMods
             LandformMapByRegion.TryGetValue(regionZ * regionMapSize + regionX, out map);
             if (map != null) return map;
 
-            IntMap lmap = mapchunk.MapRegion.LandformMap;
+            IntDataMap2D lmap = mapchunk.MapRegion.LandformMap;
             // 2. Create
             map = LandformMapByRegion[regionZ * regionMapSize + regionX] 
                 = new LerpedWeightedIndex2DMap(lmap.Data, lmap.Size, TerraGenConfig.landFormSmoothingRadius, lmap.TopLeftPadding, lmap.BottomRightPadding);

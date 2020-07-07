@@ -42,8 +42,19 @@ namespace Vintagestory.ServerMods
             
         }
 
+        public override void Initialize(JsonObject properties)
+        {
+            base.Initialize(properties);
+            rotateH = properties["rotateH"].AsBool(rotateH);
+            rotateV = properties["rotateV"].AsBool(rotateV);
+            rotateV4 = properties["rotateV4"].AsBool(rotateV4);
+            rotateSides = properties["rotateSides"].AsBool(rotateSides);
+            facing = properties["facing"].AsString(facing);
 
-        
+            dropChance = properties["dropChance"].AsFloat(1);
+        }
+
+
 
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref EnumHandling handling, ref string failureCode)
         {
@@ -58,7 +69,7 @@ namespace Vintagestory.ServerMods
                 string side = blockSel.HitPosition.Y < 0.5 ? "down" : "up";
                 if (blockSel.Face.IsVertical) side = blockSel.Face.GetOpposite().Code;
 
-                blockCode = block.CodeWithParts(side);
+                blockCode = block.CodeWithVariant("rot", side);
                 orientedBlock = world.BlockAccessor.GetBlock(blockCode);
                 if (orientedBlock.CanPlaceBlock(world, byPlayer, blockSel, ref failureCode))
                 {
@@ -74,7 +85,7 @@ namespace Vintagestory.ServerMods
                 string side = hv[0].Code;
                 if (blockSel.Face.IsHorizontal) side = blockSel.Face.GetOpposite().Code;
 
-                blockCode = block.CodeWithParts(side);
+                blockCode = block.CodeWithVariant("rot", side);
 
                 orientedBlock = world.BlockAccessor.GetBlock(blockCode);
                 if (orientedBlock.CanPlaceBlock(world, byPlayer, blockSel, ref failureCode))
@@ -100,45 +111,45 @@ namespace Vintagestory.ServerMods
                         case EnumAxis.X:
                             if (z < 0.3 && y < 0.3)
                             {
-                                blockCode = block.CodeWithParts(blockSel.Face.GetOpposite().Code);
+                                blockCode = block.CodeWithVariant("rot", blockSel.Face.GetOpposite().Code);
                             }
                             else if (z > y)
                             {
-                                blockCode = block.CodeWithParts(blockSel.HitPosition.Z < 0.5 ? "north" : "south");
+                                blockCode = block.CodeWithVariant("rot", blockSel.HitPosition.Z < 0.5 ? "north" : "south");
                             }
                             else
                             {
-                                blockCode = block.CodeWithParts(blockSel.HitPosition.Y < 0.5 ? "down" : "up");
+                                blockCode = block.CodeWithVariant("rot", blockSel.HitPosition.Y < 0.5 ? "down" : "up");
                             }
                             break;
 
                         case EnumAxis.Y:
                             if (z < 0.3 && x < 0.3)
                             {
-                                blockCode = block.CodeWithParts(blockSel.Face.GetOpposite().Code);
+                                blockCode = block.CodeWithVariant("rot", blockSel.Face.GetOpposite().Code);
                             }
                             else if (z > x)
                             {
-                                blockCode = block.CodeWithParts(blockSel.HitPosition.Z < 0.5 ? "north" : "south");
+                                blockCode = block.CodeWithVariant("rot", blockSel.HitPosition.Z < 0.5 ? "north" : "south");
                             }
                             else
                             {
-                                blockCode = block.CodeWithParts(blockSel.HitPosition.X < 0.5 ? "west" : "east");
+                                blockCode = block.CodeWithVariant("rot", blockSel.HitPosition.X < 0.5 ? "west" : "east");
                             }
                             break;
 
                         case EnumAxis.Z:
                             if (x < 0.3 && y < 0.3)
                             {
-                                blockCode = block.CodeWithParts(blockSel.Face.GetOpposite().Code);
+                                blockCode = block.CodeWithVariant("rot", blockSel.Face.GetOpposite().Code);
                             }
                             else if (x > y)
                             {
-                                blockCode = block.CodeWithParts(blockSel.HitPosition.X < 0.5 ? "west" : "east");
+                                blockCode = block.CodeWithVariant("rot", blockSel.HitPosition.X < 0.5 ? "west" : "east");
                             }
                             else
                             {
-                                blockCode = block.CodeWithParts(blockSel.HitPosition.Y < 0.5 ? "down" : "up");
+                                blockCode = block.CodeWithVariant("rot", blockSel.HitPosition.Y < 0.5 ? "down" : "up");
                             }
                             break;
                     }
@@ -147,11 +158,11 @@ namespace Vintagestory.ServerMods
                 {
                     if (blockSel.Face.IsVertical)
                     {
-                        blockCode = block.CodeWithParts(blockSel.Face.GetOpposite().Code);
+                        blockCode = block.CodeWithVariant("rot", blockSel.Face.GetOpposite().Code);
                     }
                     else
                     {
-                        blockCode = block.CodeWithParts(BlockFacing.HorizontalFromAngle(byPlayer.Entity.Pos.Yaw).Code);
+                        blockCode = block.CodeWithVariant("rot", BlockFacing.HorizontalFromAngle(byPlayer.Entity.Pos.Yaw).Code);
                     }
                 }
             }
@@ -209,15 +220,15 @@ namespace Vintagestory.ServerMods
 
                 if (rotateH && rotateV)
                 {
-                    blockCode = block.CodeWithParts(v, h);
+                    blockCode = block.CodeWithVariants(new string[] { "v", "rot" }, new string[] { v, h });
                 }
                 else if (rotateH)
                 {
-                    blockCode = block.CodeWithParts(h);
+                    blockCode = block.CodeWithVariant("rot", h);
                 }
                 else if (rotateV)
                 {
-                    blockCode = block.CodeWithParts(v);
+                    blockCode = block.CodeWithVariant("rot", v);
                 }
             }
 
@@ -249,7 +260,15 @@ namespace Vintagestory.ServerMods
             }
 
             int mode = inputSlot.Itemstack.Attributes.GetInt("slabPlaceMode", 0);
-            outputSlot.Itemstack.Attributes.SetInt("slabPlaceMode", (mode + 1) % 3);
+            int nowMode = (mode + 1) % 3;
+            if (nowMode == 0)
+            {
+                outputSlot.Itemstack.Attributes.RemoveAttribute("slabPlaceMode");
+            } else
+            {
+                outputSlot.Itemstack.Attributes.SetInt("slabPlaceMode", nowMode);
+            }
+            
 
             base.OnCreatedByCrafting(allInputslots, outputSlot, byRecipe, ref handled);
         }
@@ -279,23 +298,20 @@ namespace Vintagestory.ServerMods
 
         public override AssetLocation GetRotatedBlockCode(int angle, ref EnumHandling handling)
         {
-            BlockFacing curFacing = BlockFacing.FromCode(block.LastCodePart());
+            BlockFacing curFacing = BlockFacing.FromCode(block.Variant["rot"]);
             if (curFacing.IsVertical) return block.Code;
 
             handling = EnumHandling.PreventDefault;
             BlockFacing newFacing = BlockFacing.HORIZONTALS_ANGLEORDER[((360 - angle) / 90 + curFacing.HorizontalAngleIndex) % 4];
-            return block.CodeWithParts(newFacing.Code);
+            return block.CodeWithVariant("rot", newFacing.Code);
         }
 
         public override AssetLocation GetHorizontallyFlippedBlockCode(EnumAxis axis, ref EnumHandling handling)
         {
             handling = EnumHandling.PreventDefault;
 
-            BlockFacing curFacing = BlockFacing.FromCode(block.LastCodePart());
-            if (curFacing.Axis == axis) return block.CodeWithParts(curFacing.GetOpposite().Code);
-
-            curFacing = BlockFacing.FromCode(block.LastCodePart(1));
-            if (curFacing != null && curFacing.Axis == axis) return block.CodeWithParts(curFacing.GetOpposite().Code, block.LastCodePart());
+            BlockFacing curFacing = BlockFacing.FromCode(block.Variant["rot"]);
+            if (curFacing.Axis == axis) return block.CodeWithVariant("rot", curFacing.GetOpposite().Code);
 
             return block.Code;
         }
@@ -304,25 +320,14 @@ namespace Vintagestory.ServerMods
         {
             handling = EnumHandling.PreventDefault;
 
-            BlockFacing curFacing = BlockFacing.FromCode(block.LastCodePart());
-            if (curFacing.IsVertical) return block.CodeWithParts(curFacing.GetOpposite().Code);
+            BlockFacing curFacing = BlockFacing.FromCode(block.Variant["rot"]);
+            if (curFacing.IsVertical) return block.CodeWithVariant("rot", curFacing.GetOpposite().Code);
 
-            curFacing = BlockFacing.FromCode(block.LastCodePart(1));
+            curFacing = BlockFacing.FromCode(block.Variant["v"]);
             if (curFacing != null && curFacing.IsVertical) return block.CodeWithParts(curFacing.GetOpposite().Code, block.LastCodePart());
 
+
             return block.Code;
-        }
-
-        public override void Initialize(JsonObject properties)
-        {
-            base.Initialize(properties);
-            rotateH = properties["rotateH"].AsBool(rotateH);
-            rotateV = properties["rotateV"].AsBool(rotateV);
-            rotateV4 = properties["rotateV4"].AsBool(rotateV4);
-            rotateSides = properties["rotateSides"].AsBool(rotateSides);
-            facing = properties["facing"].AsString(facing);
-
-            dropChance = properties["dropChance"].AsFloat(1);
         }
 
         public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
@@ -350,11 +355,11 @@ namespace Vintagestory.ServerMods
             switch (mode)
             {
                 case EnumSlabPlaceMode.Auto:
-                    return Lang.Get("Placement mode: <font color=\"#648cd5\">Auto</font>") + "\n";
+                    return Lang.Get("slab-placemode-auto") + "\n";
                 case EnumSlabPlaceMode.Horizontal:
-                    return Lang.Get("Placement mode: <font color=\"#648cd5\">Only horizontal</font>") + "\n";
+                    return Lang.Get("slab-placemode-horizontal") + "\n";
                 case EnumSlabPlaceMode.Vertical:
-                    return Lang.Get("Placement mode: <font color=\"#648cd5\">Only vertical</font>") + "\n";
+                    return Lang.Get("slab-placemode-vertical") + "\n";
 
             }
 

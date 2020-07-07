@@ -58,7 +58,7 @@ namespace Vintagestory.GameContent
         {
             IPlayer player = (forEntity as EntityPlayer)?.Player;
 
-            if (forEntity.AnimManager.IsAnimationActive("sleep", "wave", "cheer", "shrug", "cry", "nod", "facepalm", "bow", "laugh", "rage"))
+            if (forEntity.AnimManager.IsAnimationActive("sleep", "wave", "cheer", "shrug", "cry", "nod", "facepalm", "bow", "laugh", "rage", "scythe", "bowaim", "bowhit"))
             {
                 return null;
             }
@@ -129,11 +129,11 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void OnNeighourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
+        public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
         {
             if (HasBehavior<BlockBehaviorUnstableFalling>())
             {
-                base.OnNeighourBlockChange(world, pos, neibpos);
+                base.OnNeighbourBlockChange(world, pos, neibpos);
                 return;
             }
 

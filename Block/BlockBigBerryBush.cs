@@ -7,7 +7,7 @@ namespace Vintagestory.GameContent
 {
     public class BlockBerryBush : BlockPlant
     {
-        internal override bool CanPlantStay(IBlockAccessor blockAccessor, BlockPos pos)
+        public override bool CanPlantStay(IBlockAccessor blockAccessor, BlockPos pos)
         {
             Block belowBlock = blockAccessor.GetBlock(pos.DownCopy());
             Block belowbelowBlock = blockAccessor.GetBlock(pos.DownCopy(2));
@@ -25,7 +25,7 @@ namespace Vintagestory.GameContent
             if (tex == null) return 0;
 
             int color = capi.BlockTextureAtlas.GetRandomColor(tex.TextureSubId);
-            color = capi.ApplyColorTintOnRgba(1, color, pos.X, pos.Y, pos.Z);
+            color = capi.World.ApplyColorMapOnRgba("climatePlantTint", SeasonColorMap, color, pos.X, pos.Y, pos.Z);
             return color;
         }
 
@@ -34,7 +34,7 @@ namespace Vintagestory.GameContent
         {
             int color = base.GetColorWithoutTint(capi, pos);
 
-            return capi.ApplyColorTintOnRgba(1, color, pos.X, pos.Y, pos.Z, false);
+            return capi.World.ApplyColorMapOnRgba("climatePlantTint", SeasonColorMap, color, pos.X, pos.Y, pos.Z, false);
         }
     }
 }

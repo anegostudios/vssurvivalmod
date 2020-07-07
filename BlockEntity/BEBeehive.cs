@@ -109,7 +109,8 @@ namespace Vintagestory.GameContent
         Vec3f maxVelo = new Vec3f();
         private void SpawnBeeParticles(float dt)
         {
-            if (Api.World.Rand.NextDouble() > 2 * Api.World.Calendar.DayLightStrength - 0.5) return;
+            float dayLightStrength = Api.World.Calendar.GetDayLightStrength(Pos.X, Pos.Z);
+            if (Api.World.Rand.NextDouble() > 2 * dayLightStrength - 0.5) return;
 
             Random rand = Api.World.Rand;
             
@@ -260,14 +261,26 @@ namespace Vintagestory.GameContent
                 return;
             }
 
+
+
+
             // Default Spread speed: Once every 4 in game days * factor
             // Don't spread at all if 3 * livinghives + 3 > flowers
 
             // factor = Clamped(livinghives / Math.Sqrt(flowers - 3 * livinghives - 3), 1, 1000)
             // After spreading: 4 extra days cooldown
+
+            float swarmability = GameMath.Clamp(quantityNearbyFlowers - 3 - 3 * quantityNearbyHives, 0, 20) / 5f;
+            // We want to translate the swarmability value 0..4
+            // into swarm days 12..0
+            float swarmInDays = (4 - swarmability) * 2.5f;
+
+            if (swarmability <= 0) skepToPop = null;
+
+
             if (skepToPop != null)
             {
-                float newPopHours = 4 * 24 / 2 * GameMath.Clamp(quantityNearbyHives / GameMath.Sqrt(quantityNearbyFlowers - 3 * quantityNearbyHives - 3), 1, 1000);
+                float newPopHours = 24 * swarmInDays;
                 this.popHiveAfterHours = (float)(0.75 * popHiveAfterHours + 0.25 * newPopHours);
 
                 if (!emptySkeps.Contains(skepToPop))
@@ -279,7 +292,7 @@ namespace Vintagestory.GameContent
 
             } else
             {
-                popHiveAfterHours = 4 * 24 / 2 * GameMath.Clamp(quantityNearbyHives / GameMath.Sqrt(quantityNearbyFlowers - 3 * quantityNearbyHives - 3), 1, 1000);
+                popHiveAfterHours = 24 * swarmInDays;
 
                 beginPopStartTotalHours = Api.World.Calendar.TotalHours;
 
@@ -504,6 +517,16 @@ namespace Vintagestory.GameContent
             base.OnBlockRemoved();
 
             if (!isWildHive && Api.Side == EnumAppSide.Server)
+            {
+                Api.ModLoader.GetModSystem<POIRegistry>().RemovePOI(this);
+            }
+        }
+
+        public override void OnBlockUnloaded()
+        {
+            base.OnBlockUnloaded();
+
+            if (Api.Side == EnumAppSide.Server)
             {
                 Api.ModLoader.GetModSystem<POIRegistry>().RemovePOI(this);
             }

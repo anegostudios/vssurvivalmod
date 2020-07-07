@@ -14,19 +14,17 @@ namespace Vintagestory.GameContent
 
         public override BlockFacing GetDirection()
         {
-            string[] parts = Code.Path.Split('-');
-            return BlockFacing.FromFirstLetter(parts[2]);
+            return BlockFacing.FromFirstLetter(Variant["type"]);
         }
 
         public string GetKnobOrientation(Block block)
         {
-            string[] parts = block.Code.Path.Split('-');
-            return parts[parts.Length - 1];
+            return Variant["knobOrientation"];
         }
 
         public bool IsOpened()
         {
-            return LastCodePart(1) == "opened";
+            return Variant["state"] == "opened";
         }
 
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
@@ -38,7 +36,7 @@ namespace Vintagestory.GameContent
                 string face = (horVer[0] == BlockFacing.NORTH || horVer[0] == BlockFacing.SOUTH) ? "n" : "w";
 
                 string knobOrientation = GetSuggestedKnobOrientation(world.BlockAccessor, blockSel.Position, horVer[0]);
-                AssetLocation newCode = CodeWithParts(face, "closed", knobOrientation);
+                AssetLocation newCode = CodeWithVariants(new string[] { "type", "state", "knobOrientation" }, new string[] { face, "closed", knobOrientation });
 
                 world.BlockAccessor.SetBlock(world.BlockAccessor.GetBlock(newCode).BlockId, blockSel.Position);
                 return true;
@@ -76,7 +74,7 @@ namespace Vintagestory.GameContent
 
         protected override void Open(IWorldAccessor world, IPlayer byPlayer, BlockPos pos)
         {
-            AssetLocation newCode = CodeWithParts(IsOpened() ? "closed" : "opened", GetKnobOrientation());
+            AssetLocation newCode = CodeWithVariant("state", IsOpened() ? "closed" : "opened");
 
             world.BlockAccessor.SetBlock(world.BlockAccessor.GetBlock(newCode).BlockId, pos);
         }
@@ -95,29 +93,29 @@ namespace Vintagestory.GameContent
 
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)
         {
-            Block block = world.BlockAccessor.GetBlock(CodeWithPath(CodeWithoutParts(3) + "-n-closed-left"));
+            Block block = world.BlockAccessor.GetBlock(CodeWithVariants(new string[] { "type", "state", "knobOrientation", "cover" }, new string[] { "n", "closed", "left", "free" }));
             return new ItemStack[] { new ItemStack(block) };
         }
 
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
         {
-            Block block = world.BlockAccessor.GetBlock(CodeWithPath(CodeWithoutParts(3) + "-n-closed-left"));
+            Block block = world.BlockAccessor.GetBlock(CodeWithVariants(new string[] { "type", "state", "knobOrientation", "cover" }, new string[] { "n", "closed", "left", "free" }));
             return new ItemStack(block);
         }
 
         public override AssetLocation GetRotatedBlockCode(int angle)
         {
-            BlockFacing nowFacing = BlockFacing.FromFirstLetter(LastCodePart(2));
+            BlockFacing nowFacing = BlockFacing.FromFirstLetter(Variant["type"]);
             BlockFacing rotatedFacing = BlockFacing.HORIZONTALS_ANGLEORDER[(nowFacing.HorizontalAngleIndex + angle / 90) % 4];
 
-            string part = LastCodePart(2);
+            string type = Variant["type"];
 
             if (nowFacing.Axis != rotatedFacing.Axis)
             {
-                part = (part == "n" ? "w" : "n");
+                type = (type == "n" ? "w" : "n");
             }
 
-            return CodeWithParts(part, IsOpened() ? "opened" : "closed", GetKnobOrientation());
+            return CodeWithVariant("type", type);
         }
 
         public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)

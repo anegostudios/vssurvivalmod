@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
+using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
@@ -64,6 +65,18 @@ namespace Vintagestory.GameContent
         protected override ItemSlot NewSlot(int i)
         {
             return new ItemSlotSurvival(this);
+        }
+
+        public override float GetSuitability(ItemSlot sourceSlot, ItemSlot targetSlot, bool isMerge)
+        {
+            if (targetSlot == slots[0] && sourceSlot.Itemstack.Collectible.GrindingProps != null) return 4f;
+
+            return base.GetSuitability(sourceSlot, targetSlot, isMerge);
+        }
+
+        public override ItemSlot GetAutoPushIntoSlot(BlockFacing atBlockFace, ItemSlot fromSlot)
+        {
+            return slots[0];
         }
     }
 }

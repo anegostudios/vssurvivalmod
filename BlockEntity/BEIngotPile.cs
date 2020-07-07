@@ -39,7 +39,9 @@ namespace Vintagestory.GameContent
 
             tmpBlock = Api.World.BlockAccessor.GetBlock(Pos);
             tmpTextureSource = ((ICoreClientAPI)Api).Tesselator.GetTexSource(tmpBlock);
-            Shape shape = Api.Assets.TryGet("shapes/block/metal/ingotpile.json").ToObject<Shape>();
+            Shape shape = Api.Assets.TryGet("shapes/block/metal/ingotpile.json")?.ToObject<Shape>();
+            if (shape == null) return;
+
             MetalProperty metals = Api.Assets.TryGet("worldproperties/block/metal.json").ToObject<MetalProperty>();
 
             for (int i = 0; i < metals.Variants.Length; i++)
@@ -53,7 +55,7 @@ namespace Vintagestory.GameContent
 
                 for (int j = 0; j <= 64; j++)
                 {
-                    mesher.TesselateShape("ingotPile", shape, out meshes[j], this, null, 0, 0, j);
+                    mesher.TesselateShape("ingotPile", shape, out meshes[j], this, null, 0, 0, 0, j);
                 }
 
                 meshesByType[tmpMetal] = meshes;

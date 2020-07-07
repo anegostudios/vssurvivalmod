@@ -61,7 +61,7 @@ namespace Vintagestory.GameContent
             };
             modeldata.Rgba = new byte[4 * 4];
             modeldata.Rgba.Fill((byte)255);
-            modeldata.Rgba2 = null; //= new byte[4 * 4];
+            //modeldata.Rgba2 = null; //= new byte[4 * 4];
             //modeldata.Rgba2.Fill((byte)255);
 
             quadModelRef = api.Render.UploadMesh(modeldata);
@@ -137,7 +137,7 @@ namespace Vintagestory.GameContent
 
             prog.ViewMatrix = rpi.CameraMatrixOriginf;
             prog.ProjectionMatrix = rpi.CurrentProjectionMatrix;
-            
+            prog.NormalShaded = 0;
 
             rpi.RenderMesh(quadModelRef);
             prog.Stop();

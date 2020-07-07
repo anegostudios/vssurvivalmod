@@ -126,10 +126,10 @@ namespace Vintagestory.ServerMods
             int noiseSize = api.WorldManager.RegionSize / TerraGenConfig.rockStrataScale;
             int pad = 2;
             
-            mapRegion.RockStrata = new IntMap[strata.Variants.Length];
+            mapRegion.RockStrata = new IntDataMap2D[strata.Variants.Length];
             for (int i = 0; i < strata.Variants.Length; i++)
             {
-                IntMap intmap = new IntMap();
+                IntDataMap2D intmap = new IntDataMap2D();
                 mapRegion.RockStrata[i] = intmap;
                 intmap.Data = strataNoises[i].GenLayer(
                     regionX * noiseSize - pad,
@@ -156,7 +156,7 @@ namespace Vintagestory.ServerMods
 
         int rockStrataId;
         RockStratum stratum = null;
-        IntMap rockMap;
+        IntDataMap2D rockMap;
         float step = 0;
         float strataThickness = 0;
 
@@ -310,7 +310,7 @@ namespace Vintagestory.ServerMods
             return CreateLerpedProvinceMap(mapchunk.MapRegion.GeologicProvinceMap, chunkX / regionChunkSize, chunkZ / regionChunkSize);
         }
 
-        LerpedWeightedIndex2DMap CreateLerpedProvinceMap(IntMap geoMap, int regionX, int regionZ)
+        LerpedWeightedIndex2DMap CreateLerpedProvinceMap(IntDataMap2D geoMap, int regionX, int regionZ)
         {
             int index2d = regionZ * regionMapSize + regionX;
 

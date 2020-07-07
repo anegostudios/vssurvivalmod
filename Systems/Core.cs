@@ -4,6 +4,8 @@ using System.IO;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
+using Vintagestory.API.Datastructures;
+using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.GameContent.Mechanics;
 using Vintagestory.ServerMods;
@@ -32,6 +34,7 @@ namespace Vintagestory.GameContent
         public float BaseMoveSpeed = 1.5f;
 
         public int SunBrightness = 22;
+        public int PolarEquatorDistance = 50000;
 
 
         public ItemStack[] ResolvedStartStacks;
@@ -58,17 +61,26 @@ namespace Vintagestory.GameContent
             this.ResolvedStartStacks = resolvedStacks.ToArray();
         }
     }
+
+    public delegate double GetLatitudeDelegate(double posZ);
     
     /// <summary>
     /// This class contains core settings for the Vintagestory server
     /// </summary>
-    public class CoreSystem : ModSystem
+    public class SurvivalCoreSystem : ModSystem
 	{
         ICoreAPI api;
         ICoreClientAPI capi;
         SurvivalConfig config = new SurvivalConfig();
 
         public IShaderProgram anvilShaderProg;
+
+        
+
+        /// <summary>
+        /// -1 for south pole, 0 for equater, 1 for north pole
+        /// </summary>
+        public GetLatitudeDelegate onGetLatitude; // set by GenMaps.cs
 
         public override double ExecuteOrder()
         {
@@ -89,10 +101,24 @@ namespace Vintagestory.GameContent
         public override void StartClientSide(ICoreClientAPI api)
         {
             capi = api;
-            api.Event.BlockTexturesLoaded += () => { loadConfig(); applyConfig(); };
+            api.Event.BlockTexturesLoaded += () => { 
+                loadConfig(); 
+                applyConfig();
+            };
+
+            api.Event.LevelFinalize += () =>
+            {
+                api.World.Calendar.OnGetSolarAltitude = GetSolarAltitude;
+                api.World.Calendar.OnGetHemisphere = GetHemisphere;
+            };
 
             api.Event.ReloadShader += LoadShader;
-            LoadShader();
+            LoadShader();            
+        }
+
+        private EnumHemisphere GetHemisphere(double posX, double posZ)
+        {
+            return onGetLatitude(posZ) > 0 ? EnumHemisphere.North : EnumHemisphere.South;
         }
 
         private bool LoadShader()
@@ -109,7 +135,6 @@ namespace Vintagestory.GameContent
 
         public override void StartServerSide(ICoreServerAPI api)
         {
-
             if (api.ModLoader.IsModSystemEnabled("Vintagestory.ServerMods.WorldEdit.WorldEdit"))
             {
                 RegisterUtil.RegisterTool(api.ModLoader.GetModSystem("Vintagestory.ServerMods.WorldEdit.WorldEdit"));
@@ -119,20 +144,82 @@ namespace Vintagestory.GameContent
             api.WorldManager.SetBlockLightLevels(config.BlockLightLevels);
             api.WorldManager.SetSunLightLevels(config.SunLightLevels);
             api.WorldManager.SetSunBrightness(config.SunBrightness);
-            
 
             api.Event.PlayerCreate += Event_PlayerCreate;
             api.Event.PlayerNowPlaying += Event_PlayerPlaying;
-            api.Event.ServerRunPhase(EnumServerRunPhase.LoadGame, () => {
+            
+            api.Event.ServerRunPhase(EnumServerRunPhase.ModsAndConfigReady, loadConfig);
+
+            api.Event.ServerRunPhase(EnumServerRunPhase.GameReady, () => {
                 applyConfig();
                 config.ResolveStartItems(api.World);
+                api.World.Calendar.OnGetSolarAltitude = GetSolarAltitude;
+                api.World.Calendar.OnGetHemisphere = GetHemisphere;
             });
-
-            api.Event.ServerRunPhase(EnumServerRunPhase.LoadGamePre, loadConfig);
         }
 
 
         HashSet<string> createdPlayers = new HashSet<string>();
+        public float EarthAxialTilt = 23.44f * GameMath.DEG2RAD;
+
+
+
+        /// <summary>
+        /// Returns the solar altitude from -1 to 1 for given latitude
+        /// </summary>
+        /// <param name="latitude">Must be between -1 and 1. -1 is the south pole, 0 is the equater, and 1 is the north pole</param>
+        /// <returns></returns>
+        public float GetSolarAltitude(double posX, double posZ, float yearRel, float dayRel)
+        {
+            float latitude = (float)onGetLatitude(posZ);
+
+            // https://en.wikipedia.org/wiki/Solar_zenith_angle
+            // theta = sin(phi) * sin(delta) + cos(phi) * cos(delta) * cos(h)
+            // theta: the solar zenith angle
+
+            // phi: the local latitude
+            // h: the hour angle, in the local solar time.
+            // delta: is the current declination of the Sun
+
+            //  the solar hour angle is an expression of time, expressed in angular measurement, usually degrees, from solar noon
+            float h = GameMath.TWOPI * (dayRel - 0.5f);
+
+            float dayOfYear = api.World.Calendar.DayOfYear;
+            float daysPerYear = api.World.Calendar.DaysPerYear;
+
+            // The Sun's declination at any given moment is calculated by: 
+            // delta = arcsin(sin(-23.44°) * sin(EL))
+            // EL is the ecliptic longitude (essentially, the Earth's position in its orbit). Since the Earth's orbital eccentricity is small, its orbit can be approximated as a circle which causes up to 1° of error. 
+            // delta = -23.44° * cos(360° / 365 * (ye   arRel +10))
+            // The number 10, in (N+10), is the approximate number of days after the December solstice to January 1
+            float delta = -EarthAxialTilt * GameMath.Cos(GameMath.TWOPI * (dayOfYear + 10) / daysPerYear);
+
+            // sample 1
+            // latitude = 0.5 (equator)
+            // day of year = 0.5 (summer)
+            // sin(0.5) * sin(0.5 * -0.4) + cos(0.5) * cos(0.5 * -0.4) * cos((x / 24 - 0.5) * 3.14159 * 2)
+            // http://fooplot.com/#W3sidHlwZSI6MCwiZXEiOiJzaW4oMC41KSpzaW4oMC41Ki0wLjQpK2NvcygwLjUpKmNvcygwLjUqLTAuNCkqY29zKCh4LzI0LTAuNSkqMy4xNDE1OSoyKSIsImNvbG9yIjoiIzAwMDAwMCJ9LHsidHlwZSI6MTAwMCwid2luZG93IjpbIjAiLCIyNCIsIi0xIiwiMSJdfV0-
+
+            // sample 2
+            // latitude = 0.5 (~austria, europe)
+            // day of year = 1 (winter)
+            // sin(3.14159/2 * 0.5) * sin(1 * -0.4) + cos(3.14159/2 * 0.5) * cos(1 * -0.4) * cos((x / 24 - 0.5) * 3.14159 * 2)
+            // http://fooplot.com/#W3sidHlwZSI6MCwiZXEiOiJzaW4oMy4xNDE1OS80KSpzaW4oMSotMC40KStjb3MoMy4xNDE1OS80KSpjb3MoMSotMC40KSpjb3MoKHgvMjQtMC41KSozLjE0MTU5KjIpIiwiY29sb3IiOiIjMDAwMDAwIn0seyJ0eXBlIjoxMDAwLCJ3aW5kb3ciOlsiMCIsIjI0IiwiLTEiLCIxIl19XQ--
+
+            // sample 3
+            // latitude = -1 (south pole)
+            // day of year = 1 (winter)
+            // sin(3.14159/2 * -1) * sin(1 * -0.4) + cos(3.14159/2 * -1) * cos(1 * -0.4) * cos((x / 24 - 0.5) * 3.14159 * 2)
+            // http://fooplot.com/#W3sidHlwZSI6MCwiZXEiOiJzaW4oMy4xNDE1OS8yKi0xKSpzaW4oMSotMC40KStjb3MoMy4xNDE1OS8yKi0xKSpjb3MoMSotMC40KSpjb3MoKHgvMjQtMC41KSozLjE0MTU5KjIpIiwiY29sb3IiOiIjMDAwMDAwIn0seyJ0eXBlIjoxMDAwLCJ3aW5kb3ciOlsiMCIsIjI0IiwiLTEiLCIxIl19XQ--
+
+
+            // So this method is supposed to return the solar zenith or 90 - SolartAltitude, but apparently its inverted, dunno why
+            return GameMath.Sin(latitude * GameMath.PIHALF) * GameMath.Sin(delta) + GameMath.Cos(latitude * GameMath.PIHALF) * GameMath.Cos(delta) * GameMath.Cos(h);
+        }
+
+
+
+
 
         private void Event_PlayerPlaying(IServerPlayer byPlayer)
         {
@@ -195,6 +282,13 @@ namespace Vintagestory.GameContent
                     }
                 }
             }
+
+            ITreeAttribute worldConfig = api.World.Config;
+            string seasons = worldConfig.GetString("seasons");
+            if (seasons == "spring")
+            {
+                api.World.Calendar.SetSeasonOverride(0.33f);
+            }
         }
 
         public override void Start(ICoreAPI api)
@@ -217,6 +311,7 @@ namespace Vintagestory.GameContent
         private void RegisterDefaultBlocks()
         {
             api.RegisterBlockClass("BlockFirepit", typeof(BlockFirepit));
+            api.RegisterBlockClass("BlockCharcoalPit", typeof(BlockCharcoalPit));
             api.RegisterBlockClass("BlockTorch", typeof(BlockTorch));
             api.RegisterBlockClass("BlockStairs", typeof(BlockStairs));
             api.RegisterBlockClass("BlockFence", typeof(BlockFence));
@@ -228,7 +323,7 @@ namespace Vintagestory.GameContent
             api.RegisterBlockClass("BlockRails", typeof(BlockRails));
             api.RegisterBlockClass("BlockCactus", typeof(BlockCactus));
             api.RegisterBlockClass("BlockSlab", typeof(BlockSlab));
-            api.RegisterBlockClass("BlockFlowerPot", typeof(BlockFlowerPot));
+            api.RegisterBlockClass("BlockPlantContainer", typeof(BlockPlantContainer));
             api.RegisterBlockClass("BlockSign", typeof(BlockSign));
             api.RegisterBlockClass("BlockSimpleCoating", typeof(BlockSimpleCoating));
             api.RegisterBlockClass("BlockFullCoating", typeof(BlockFullCoating));
@@ -341,8 +436,19 @@ namespace Vintagestory.GameContent
             api.RegisterBlockClass("BlockClutch", typeof(BlockClutch));
             api.RegisterBlockClass("BlockTransmission", typeof(BlockTransmission));
             api.RegisterBlockClass("BlockBrake", typeof(BlockBrake));
+            api.RegisterBlockClass("BlockCreativeRotor", typeof(BlockCreativeRotor));
+            api.RegisterBlockClass("BlockLargeGear3m", typeof(BlockLargeGear3m));
+            api.RegisterBlockClass("BlockMPMultiblockWood", typeof(BlockMPMultiblockWood));
+
             api.RegisterBlockClass("BlockDisplayCase", typeof(BlockDisplayCase));
             api.RegisterBlockClass("BlockTapestry", typeof(BlockTapestry));
+
+            api.RegisterBlockClass("BlockBunchOCandles", typeof(BlockBunchOCandles));
+            api.RegisterBlockClass("BlockChute", typeof(BlockChute));
+
+            api.RegisterBlockClass("BlockArchimedesScrew", typeof(BlockArchimedesScrew));
+            api.RegisterBlockClass("BlockFernTree", typeof(BlockFernTree));
+            
         }
 
         
@@ -372,25 +478,25 @@ namespace Vintagestory.GameContent
             api.RegisterBlockBehaviorClass("RightClickPickup", typeof(BlockBehaviorRightClickPickup));
             api.RegisterBlockBehaviorClass("SneakPlacing", typeof(BlockBehaviorSneakPlacing));
             api.RegisterBlockBehaviorClass("CollectFrom", typeof(BehaviorCollectFrom));
-
             api.RegisterBlockBehaviorClass("Lockable", typeof(BlockBehaviorLockable));
-
+            api.RegisterBlockBehaviorClass("DropNotSnowCovered", typeof(BlockBehaviorDropNotSnowCovered));
+            api.RegisterBlockBehaviorClass("CanAttach", typeof(BlockBehaviorCanAttach));
             
         }
 
         private void RegisterDefaultBlockEntityBehaviors()
         {
             api.RegisterBlockEntityBehaviorClass("Animatable", typeof(BEBehaviorAnimatable));
+
             api.RegisterBlockEntityBehaviorClass("MPAxle", typeof(BEBehaviorMPAxle));
             api.RegisterBlockEntityBehaviorClass("MPToggle", typeof(BEBehaviorMPToggle));
-
             api.RegisterBlockEntityBehaviorClass("MPAngledGears", typeof(BEBehaviorMPAngledGears));
-            api.RegisterBlockEntityBehaviorClass("MPWindmillRotor", typeof(BEBehaviorWindmillRotor));
             api.RegisterBlockEntityBehaviorClass("MPConsumer", typeof(BEBehaviorMPConsumer));
-
             api.RegisterBlockEntityBehaviorClass("MPBrake", typeof(BEBehaviorMPBrake));
             api.RegisterBlockEntityBehaviorClass("MPTransmission", typeof(BEBehaviorMPTransmission));
-
+            api.RegisterBlockEntityBehaviorClass("MPWindmillRotor", typeof(BEBehaviorWindmillRotor));
+            api.RegisterBlockEntityBehaviorClass("MPCreativeRotor", typeof(BEBehaviorMPCreativeRotor));
+            api.RegisterBlockEntityBehaviorClass("MPLargeGear3m", typeof(BEBehaviorMPLargeGear3m));
         }
 
 
@@ -452,12 +558,18 @@ namespace Vintagestory.GameContent
             api.RegisterBlockEntityClass("Canvas", typeof(BlockEntityCanvas));
 
             api.RegisterBlockEntityClass("HelveHammer", typeof(BEHelveHammer));
-
             api.RegisterBlockEntityClass("Clutch", typeof(BEClutch));
             api.RegisterBlockEntityClass("Brake", typeof(BEBrake));
+            api.RegisterBlockEntityClass("LargeGear3m", typeof(BELargeGear3m));
+            api.RegisterBlockEntityClass("MPMultiblock", typeof(BEMPMultiblock));
 
             api.RegisterBlockEntityClass("DisplayCase", typeof(BlockEntityDisplayCase));
             api.RegisterBlockEntityClass("Tapestry", typeof(BlockEntityTapestry));
+            api.RegisterBlockEntityClass("PlantContainer", typeof(BlockEntityPlantContainer));
+
+            api.RegisterBlockEntityClass("ArchimedesScrew", typeof(BlockEntityArchimedesScrew));
+
+            
         }
 
 

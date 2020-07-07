@@ -27,8 +27,8 @@ namespace Vintagestory.GameContent.Mechanics
             capi.Tesselator.TesselateShape(textureSoureBlock, capi.Assets.TryGet("shapes/block/wood/mechanics/angledgearbox-cage.json").ToObject<Shape>(), out gearboxCageMesh, rot);
             capi.Tesselator.TesselateShape(textureSoureBlock, capi.Assets.TryGet("shapes/block/wood/mechanics/angledgearbox-peg.json").ToObject<Shape>(), out gearboxPegMesh, rot);
 
-            gearboxPegMesh.Rgba2 = null;
-            gearboxCageMesh.Rgba2 = null;
+            //gearboxPegMesh.Rgba2 = null;
+            //gearboxCageMesh.Rgba2 = null;
 
             // 16 floats matrix, 4 floats light rgbs
             gearboxPegMesh.CustomFloats = floatsPeg = new CustomMeshDataPartFloat((16 + 4) * 10100)
@@ -47,19 +47,30 @@ namespace Vintagestory.GameContent.Mechanics
             this.gearboxCage = capi.Render.UploadMesh(gearboxCageMesh);
         }
 
-
-        protected override void UpdateLightAndTransformMatrix(int index, Vec3f distToCamera, float[] rotationRad, IMechanicalPowerNode dev)
+        protected override void UpdateLightAndTransformMatrix(int index, Vec3f distToCamera, float rotationRad, IMechanicalPowerRenderable dev)
         {
-            float rotX = rotationRad[dev.AxisMapping[0]] * dev.AxisSign[0];
-            float rotY = rotationRad[dev.AxisMapping[1]] * dev.AxisSign[1];
-            float rotZ = rotationRad[dev.AxisMapping[2]] * dev.AxisSign[2];
-
+            BEBehaviorMPAngledGears gear = dev as BEBehaviorMPAngledGears;
+            if (gear != null)
+            {
+                BlockFacing inTurn = gear.GetInTurnDirection().Facing;
+                if (inTurn == gear.axis1 || inTurn == gear.axis2)
+                {
+                    rotationRad = -rotationRad;
+                }
+            }
+            float rotX = rotationRad * dev.AxisSign[0];
+            float rotY = rotationRad * dev.AxisSign[1];
+            float rotZ = rotationRad * dev.AxisSign[2];
             UpdateLightAndTransformMatrix(floatsPeg.Values, index, distToCamera, dev.LightRgba, rotX, rotY, rotZ);// - 0.08f);
 
-            rotX = rotationRad[dev.AxisMapping[3]] * dev.AxisSign[3];
-            rotY = rotationRad[dev.AxisMapping[4]] * dev.AxisSign[4];
-            rotZ = rotationRad[dev.AxisMapping[5]] * dev.AxisSign[5];
-
+            //if (dev.AxisSign.Length < 4)
+            //{
+            //    System.Diagnostics.Debug.WriteLine("3 length AxisSign");
+            //    return;
+            //}
+            rotX = rotationRad * dev.AxisSign[3];
+            rotY = rotationRad * dev.AxisSign[4];
+            rotZ = rotationRad * dev.AxisSign[5];
             UpdateLightAndTransformMatrix(floatsCage.Values, index, distToCamera, dev.LightRgba, rotX, rotY, rotZ);
         }
 

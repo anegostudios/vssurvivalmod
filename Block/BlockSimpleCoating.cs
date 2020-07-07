@@ -45,7 +45,7 @@ namespace Vintagestory.GameContent
             return new ItemStack(block);
         }
 
-        public override void OnNeighourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
+        public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
         {
             if (!CanBlockStay(world, pos))
             {
@@ -78,7 +78,7 @@ namespace Vintagestory.GameContent
 
             Block block = world.BlockAccessor.GetBlock(blockId);
 
-            return block.CanAttachBlockAt(world.BlockAccessor, this, pos, facing.GetOpposite());
+            return block.CanAttachBlockAt(world.BlockAccessor, this, pos.AddCopy(facing), facing.GetOpposite());
         }
 
         public override bool CanAttachBlockAt(IBlockAccessor world, Block block, BlockPos pos, BlockFacing blockFace)

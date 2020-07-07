@@ -52,7 +52,8 @@ namespace Vintagestory.GameContent
         public bool WasImported = false;
         [ProtoMember(10), DefaultValue(0)]
         public int InitialQuantitySpawned = 0;
-
+        [ProtoMember(11)]
+        public int MinPlayerRange = -1;
 
         [ProtoAfterDeserialization]
         void afterDeserialization()
@@ -118,6 +119,11 @@ namespace Vintagestory.GameContent
             if (lastSpawnTotalHours + Data.InGameHourInterval > Api.World.Calendar.TotalHours && Data.InitialSpawnQuantity <= 0) return;
             if (!IsAreaLoaded()) return;
             if (Data.SpawnOnlyAfterImport && !Data.WasImported) return;
+            if (Data.MinPlayerRange > 0) {
+                IPlayer player = Api.World.NearestPlayer(Pos.X, Pos.Y, Pos.Z);
+                if (player?.Entity?.ServerPos == null) return;
+                if (player.Entity.ServerPos.SquareDistanceTo(Pos.ToVec3d()) > Data.MinPlayerRange* Data.MinPlayerRange) return;
+            }
            
             if (type == null) return;
 

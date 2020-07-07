@@ -59,7 +59,8 @@ namespace Vintagestory.GameContent
                 SpawnArea = new Cuboidi(-5, -5, -5, 5, 2, 5),
                 GroupSize = 2 + Api.World.Rand.Next(2),
                 SpawnOnlyAfterImport = false,
-                InitialSpawnQuantity = 4 + Api.World.Rand.Next(7)
+                InitialSpawnQuantity = 4 + Api.World.Rand.Next(7),
+                MinPlayerRange = 36
             };
         }
 
@@ -79,12 +80,13 @@ namespace Vintagestory.GameContent
 
             if (packetid == 123)
             {
-                if (Api.World.Rand.NextDouble() < 0.2 && insideLocustCount > 0)
+                if (Api.World.Rand.NextDouble() < 0.25 && insideLocustCount > 0)
                 {
                     ICoreServerAPI sapi = Api as ICoreServerAPI;
                     int rnd = sapi.World.Rand.Next(Data.EntityCodes.Length);
                     EntityProperties type = Api.World.GetEntityType(new AssetLocation(Data.EntityCodes[rnd]));
-                    
+
+                    if (type == null) return;
 
                     Cuboidf collisionBox = new Cuboidf()
                     {
@@ -124,7 +126,7 @@ namespace Vintagestory.GameContent
 
             if (Api.World.Rand.NextDouble() < 0.1)
             {
-                insideLocustCount = Math.Min(insideLocustCount + 1, 5);
+                insideLocustCount = Math.Min(insideLocustCount + 1, 15);
             }
         }
 
@@ -148,6 +150,8 @@ namespace Vintagestory.GameContent
             {
                 Data.EntityCodes[0] = "locust-bronze";
             }
+
+            Data.MinPlayerRange = 36;
         }
 
         public override void ToTreeAttributes(ITreeAttribute tree)

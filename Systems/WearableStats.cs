@@ -45,7 +45,7 @@ namespace Vintagestory.GameContent
         private void Event_LevelFinalize()
         {
             capi.World.Player.Entity.OnFootStep = () => onFootStep(capi.World.Player.Entity);
-            capi.World.Player.Entity.OnImpact = () => onFallToGround(capi.World.Player.Entity);
+            capi.World.Player.Entity.OnImpact = (motionY) => onFallToGround(capi.World.Player.Entity, motionY);
         }
 
         public override void StartServerSide(ICoreServerAPI api)
@@ -64,26 +64,29 @@ namespace Vintagestory.GameContent
             if (bh != null) bh.onDamaged += (dmg, dmgSource) => handleDamaged(byPlayer, dmg, dmgSource);
 
             byPlayer.Entity.OnFootStep = () => onFootStep(byPlayer.Entity);
-            byPlayer.Entity.OnImpact = () => onFallToGround(byPlayer.Entity);
+            byPlayer.Entity.OnImpact = (motionY) => onFallToGround(byPlayer.Entity, motionY);
 
             updateWearableStats(inv, byPlayer);
         }
 
 
-        private void onFallToGround(EntityPlayer entity)
+        private void onFallToGround(EntityPlayer entity, double motionY)
         {
-            onFootStep(entity);
+            if (Math.Abs(motionY) > 0.1)
+            {
+                onFootStep(entity);
+            }
         }
 
 
         private void onFootStep(EntityPlayer entity)
         {
             IInventory gearInv = entity.GearInventory;
-
+            
             foreach (var slot in gearInv)
             {
                 ItemWearable item;
-                if (slot.Empty || (item = slot.Itemstack.Collectible as ItemWearable)==null) continue;
+                if (slot.Empty || (item = slot.Itemstack.Collectible as ItemWearable) == null) continue;
 
                 AssetLocation[] soundlocs = item.FootStepSounds;
                 if (soundlocs == null || soundlocs.Length == 0) continue;

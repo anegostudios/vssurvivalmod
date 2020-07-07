@@ -49,7 +49,7 @@ namespace Vintagestory.ServerMods
 
         private void OnChunkColumnGen(IServerChunk[] chunks, int chunkX, int chunkZ, ITreeAttribute chunkGenParams = null)
         {
-            IntMap climateMap = chunks[0].MapChunk.MapRegion.ClimateMap;
+            IntDataMap2D climateMap = chunks[0].MapChunk.MapRegion.ClimateMap;
             int regionChunkSize = api.WorldManager.RegionSize / chunksize;
             float fac = (float)climateMap.InnerSize / regionChunkSize;
             int rlX = chunkX % regionChunkSize;

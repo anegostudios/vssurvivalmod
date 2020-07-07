@@ -96,7 +96,7 @@ namespace Vintagestory.GameContent
 
                 prog.RgbaLightIn = lightrgbs;
                 prog.RgbaGlowIn = new Vec4f(glowColor[0], glowColor[1], glowColor[2], extraGlow / 255f);
-                prog.RgbaBlockIn = ColorUtil.WhiteArgbVec;
+                
                 prog.ExtraGlow = extraGlow;
                 prog.NormalShaded = 0;
 
@@ -128,7 +128,7 @@ namespace Vintagestory.GameContent
 
                 prog.RgbaLightIn = lightrgbs;
                 prog.RgbaGlowIn = new Vec4f(glowColor[0], glowColor[1], glowColor[2], extraGlow / 255f);
-                prog.RgbaBlockIn = ColorUtil.WhiteArgbVec;
+                
                 prog.ExtraGlow = extraGlow;
                 prog.NormalShaded = 0;
 

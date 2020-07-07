@@ -13,7 +13,7 @@ namespace Vintagestory.GameContent.Mechanics
         }
 
 
-        public override bool HasConnectorAt(IWorldAccessor world, BlockPos pos, BlockFacing face)
+        public override bool HasMechPowerConnectorAt(IWorldAccessor world, BlockPos pos, BlockFacing face)
         {
             BlockFacing ownFacing = BlockFacing.FromCode(Variant["side"]);
             BlockFacing leftFacing = BlockFacing.HORIZONTALS_ANGLEORDER[GameMath.Mod(ownFacing.HorizontalAngleIndex - 1, 4)];
@@ -77,7 +77,7 @@ namespace Vintagestory.GameContent.Mechanics
             return false;
         }
 
-        public override void OnNeighourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
+        public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
         {
             BEBehaviorMPAxle bempaxle = world.BlockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorMPAxle>();
             if (bempaxle != null && !bempaxle.IsAttachedToBlock())
@@ -93,7 +93,7 @@ namespace Vintagestory.GameContent.Mechanics
                 }
             }
 
-            base.OnNeighourBlockChange(world, pos, neibpos);
+            base.OnNeighbourBlockChange(world, pos, neibpos);
         }
 
 

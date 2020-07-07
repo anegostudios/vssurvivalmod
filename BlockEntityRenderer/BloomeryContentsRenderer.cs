@@ -60,9 +60,8 @@ namespace Vintagestory.GameContent
         {
             if (voxelHeight == 0) return;
 
-            IStandardShaderProgram prog = api.Render.PreparedStandardShader(pos.X, pos.Y, pos.Z);
+            IStandardShaderProgram prog = api.Render.PreparedStandardShader(pos.X, pos.Y, pos.Z, new Vec4f(1 + glowLevel / 128f, 1 + glowLevel / 128f, 1 + glowLevel / 512f, 1));
             prog.ExtraGlow = glowLevel;
-            prog.RgbaBlockIn = new Vec4f(1 + glowLevel/128f, 1 + glowLevel / 128f, 1 + glowLevel / 512f, 1);
 
             IRenderAPI rpi = api.Render;
             Vec3d camPos = api.World.Player.Entity.CameraPos;

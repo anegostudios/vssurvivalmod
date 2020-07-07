@@ -85,7 +85,7 @@ namespace Vintagestory.GameContent
         }
 
         // We need the tool item textures also in the block atlas
-        public override void OnCollectTextures(ICoreAPI api, IBlockTextureLocationDictionary textureDict)
+        public override void OnCollectTextures(ICoreAPI api, ITextureLocationDictionary textureDict)
         {
             base.OnCollectTextures(api, textureDict);
 

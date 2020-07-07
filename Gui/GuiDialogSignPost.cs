@@ -166,7 +166,5 @@ namespace Vintagestory.GameContent
             base.OnGuiClosed();
         }
 
-        public override bool PrefersUngrabbedMouse => false;
-
     }
 }

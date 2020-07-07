@@ -75,7 +75,9 @@ namespace Vintagestory.GameContent
 
             BlockFacing onFace = onBlockFace;
 
-            if (attachingBlock.CanAttachBlockAt(world.BlockAccessor, block, attachingBlockPos, onFace))
+            Block hereBlock = world.BlockAccessor.GetBlock(blockpos);
+
+            if (hereBlock.Replaceable >= 6000 && attachingBlock.CanAttachBlockAt(world.BlockAccessor, block, attachingBlockPos, onFace))
             {
                 Block orientedBlock = world.BlockAccessor.GetBlock(block.CodeWithVariant(facingCode, onBlockFace.Code));
                 orientedBlock.DoPlaceBlock(world, byPlayer, new BlockSelection() { Position = blockpos, HitPosition = hitPosition, Face = onFace }, itemstack);

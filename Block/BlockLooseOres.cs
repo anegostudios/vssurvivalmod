@@ -12,7 +12,7 @@ namespace Vintagestory.GameContent
         {
             get
             {
-                return LastCodePart();
+                return Variant["rock"];
             }
         }
 
@@ -21,7 +21,7 @@ namespace Vintagestory.GameContent
         {
             get
             {
-                return LastCodePart(1);
+                return Variant["ore"];
             }
         }
 

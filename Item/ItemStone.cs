@@ -15,6 +15,17 @@ namespace Vintagestory.GameContent
             return null;
         }
 
+        public override string GetHeldTpHitAnimation(ItemSlot slot, Entity byEntity)
+        {
+            if (slot.Itemstack?.Collectible == this)
+            {
+                if ((byEntity as EntityAgent)?.Controls.FloorSitting == true) return "knapsitting";
+                return "knap";
+            }
+
+            return base.GetHeldTpHitAnimation(slot, byEntity);
+        }
+
         public override void OnHeldInteractStart(ItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
             if (blockSel != null && byEntity.World.BlockAccessor.GetBlock(blockSel.Position) is BlockDisplayCase)
@@ -109,10 +120,10 @@ namespace Vintagestory.GameContent
             if (blockSel != null && byEntity?.World != null && byEntity.Controls.Sneak)
             {
                 IWorldAccessor world = byEntity.World;
-                Block block = world.GetBlock(CodeWithPath("loosestones-" + LastCodePart()));
+                Block block = world.GetBlock(CodeWithPath("loosestones-" + LastCodePart() + "-free"));
                 if (block == null)
                 {
-                    block = world.GetBlock(CodeWithPath("loosestones-" + LastCodePart(1) + "-" + LastCodePart(0)));
+                    block = world.GetBlock(CodeWithPath("loosestones-" + LastCodePart(1) + "-" + LastCodePart(0) + "-free"));
                 }
                 if (block == null) return;
 
@@ -223,12 +234,12 @@ namespace Vintagestory.GameContent
             double rndpitch = byEntity.WatchedAttributes.GetDouble("aimingRandPitch", 1) * acc * 0.75;
             double rndyaw = byEntity.WatchedAttributes.GetDouble("aimingRandYaw", 1) * acc * 0.75;
 
-            Vec3d pos = byEntity.ServerPos.XYZ.Add(0, byEntity.EyeHeight - 0.2, 0);
+            Vec3d pos = byEntity.ServerPos.XYZ.Add(0, byEntity.LocalEyePos.Y - 0.2, 0);
             Vec3d aheadPos = pos.AheadCopy(1, byEntity.ServerPos.Pitch + rndpitch, byEntity.ServerPos.Yaw + rndyaw);
             Vec3d velocity = (aheadPos - pos) * 0.5;
 
             entity.ServerPos.SetPos(
-                byEntity.ServerPos.BehindCopy(0.21).XYZ.Add(0, byEntity.EyeHeight - 0.2, 0)
+                byEntity.ServerPos.BehindCopy(0.21).XYZ.Add(0, byEntity.LocalEyePos.Y - 0.2, 0)
             );
 
             //.Ahead(0.25, 0, byEntity.ServerPos.Yaw + GameMath.PIHALF)

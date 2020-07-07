@@ -15,7 +15,7 @@ namespace Vintagestory.GameContent.Mechanics
         }
 
 
-        public override bool HasConnectorAt(IWorldAccessor world, BlockPos pos, BlockFacing face)
+        public override bool HasMechPowerConnectorAt(IWorldAccessor world, BlockPos pos, BlockFacing face)
         {
             return IsOrientedTo(face);
         }
@@ -34,7 +34,7 @@ namespace Vintagestory.GameContent.Mechanics
                 IMechanicalPowerBlock block = world.BlockAccessor.GetBlock(pos) as IMechanicalPowerBlock;
                 if (block != null)
                 {
-                    if (block.HasConnectorAt(world, pos, face.GetOpposite()))
+                    if (block.HasMechPowerConnectorAt(world, pos, face.GetOpposite()))
                     {
                         AssetLocation loc = new AssetLocation(FirstCodePart() + "-" + face.GetOpposite().Code[0] + face.Code[0]);
                         Block toPlaceBlock = world.GetBlock(loc);
@@ -64,7 +64,7 @@ namespace Vintagestory.GameContent.Mechanics
         }
 
 
-        public override void OnNeighourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
+        public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
         {
             BEBehaviorMPToggle bemptoggle = world.BlockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorMPToggle>();
             if (bemptoggle != null && !bemptoggle.IsAttachedToBlock())
@@ -80,7 +80,7 @@ namespace Vintagestory.GameContent.Mechanics
                 }
             }
 
-            base.OnNeighourBlockChange(world, pos, neibpos);
+            base.OnNeighbourBlockChange(world, pos, neibpos);
         }
 
 

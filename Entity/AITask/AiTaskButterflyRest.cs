@@ -86,16 +86,18 @@ namespace Vintagestory.GameContent
 
             reason = EnumRestReason.NoReason;
 
+            float dayLightStrength = entity.World.Calendar.GetDayLightStrength(entity.Pos.X, entity.Pos.Z);
+
             if (cooldownUntilTotalHours < entity.World.Calendar.TotalHours)
             {
                 reason = EnumRestReason.TakingABreak;
             }
-            else if (entity.World.Calendar.DayLightStrength < 0.6)
+            else if (dayLightStrength < 0.6)
             {
                 // Hardcoded: Rest at night 
                 reason = EnumRestReason.Night;
             }
-            else if (wsys?.GetWindSpeed(entity.ServerPos.XYZ) > 0.75 || wsys?.GetRainFall(entity.ServerPos.XYZ) > 0.1)
+            else if (wsys?.WeatherDataSlowAccess.GetWindSpeed(entity.ServerPos.XYZ) > 0.75 || wsys?.GetPrecipitation(entity.ServerPos.XYZ) > 0.1)
             {
                 // Hardcoded: Rest during heavy winds or during rain
                 reason = EnumRestReason.Wind;
@@ -123,7 +125,7 @@ namespace Vintagestory.GameContent
                 {
                     double topPos = block.Attributes["sitHeight"].AsDouble(block.TopMiddlePos.Y);
 
-                    entity.WatchedAttributes.SetDouble("sitHeight", block.VertexFlags.GrassWindWave ? topPos : 0);
+                    entity.WatchedAttributes.SetDouble("windWaveIntensity", block.VertexFlags.GrassWindWave ? (block.VertexFlags.WeakWave ? topPos / 2 : topPos) : 0);
 
                     MainTarget = tmpPos.ToVec3d().Add(block.TopMiddlePos.X, topPos, block.TopMiddlePos.Z);
                     return true;
@@ -132,7 +134,7 @@ namespace Vintagestory.GameContent
                 if (block.SideSolid[BlockFacing.UP.Index])
                 {
                     double topPos = block.TopMiddlePos.Y;
-                    entity.WatchedAttributes.SetDouble("sitHeight", block.VertexFlags.GrassWindWave ? topPos : 0);
+                    entity.WatchedAttributes.SetDouble("windWaveIntensity", block.VertexFlags?.GrassWindWave == true ? (block.VertexFlags.WeakWave ? topPos / 2 : topPos) : 0);
                     MainTarget = tmpPos.ToVec3d().Add(block.TopMiddlePos.X, topPos, block.TopMiddlePos.Z);
                     return true;
                 }
@@ -163,14 +165,16 @@ namespace Vintagestory.GameContent
 
             if (entity.World.Rand.NextDouble() > 0.05) return true;
 
+
             switch (reason)
             {
                 case EnumRestReason.Night:
-                    return entity.World.Calendar.DayLightStrength < 0.8;
+                    float dayLightStrength = entity.World.Calendar.GetDayLightStrength(entity.Pos.X, entity.Pos.Z);
+                    return dayLightStrength < 0.8;
                 case EnumRestReason.TakingABreak:
                     return taskState == 0 || entity.World.Calendar.TotalHours < restUntilTotalHours;
                 case EnumRestReason.Wind:
-                    return wsys?.GetWindSpeed(entity.ServerPos.XYZ) > 0.2 || wsys?.GetRainFall(entity.ServerPos.XYZ) > 0.05;
+                    return wsys?.WeatherDataSlowAccess.GetWindSpeed(entity.ServerPos.XYZ) > 0.2 || wsys?.GetPrecipitation(entity.ServerPos.XYZ) > 0.05;
                 default:
                     return false;
             }

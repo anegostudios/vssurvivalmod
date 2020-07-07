@@ -16,8 +16,8 @@ namespace Vintagestory.ServerMods.NoObf
         Anywhere,
         Underground,
         UnderWater,
-        NearSaltWater,
-        UnderSaltWater
+        NearSeaWater,
+        UnderSeaWater
     }
 
     [JsonObject(MemberSerialization.OptIn)]

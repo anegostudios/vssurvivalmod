@@ -161,6 +161,35 @@ namespace Vintagestory.GameContent
         {
             TryClose();
         }
-        
+
+
+        // Begin floaty dialog code, activated by Immersive Mouse Mode.
+        // Makes the tool mode selection dialog float above its block.
+        // See GuiDialogBlockEntity for documentation.
+
+        private readonly double floatyDialogPosition = 0.5;
+        private readonly double floatyDialogAlign = 0.75;
+
+        public override bool PrefersUngrabbedMouse => false;
+
+        public override void OnRenderGUI(float deltaTime)
+        {
+            if (capi.Settings.Bool["immersiveMouseMode"])
+            {
+                Vec3d aboveHeadPos = new Vec3d(blockEntityPos.X + 0.5, blockEntityPos.Y + floatyDialogPosition, blockEntityPos.Z + 0.5);
+                Vec3d pos = MatrixToolsd.Project(aboveHeadPos, capi.Render.PerspectiveProjectionMat, capi.Render.PerspectiveViewMat, capi.Render.FrameWidth, capi.Render.FrameHeight);
+                if (pos.Z < 0) return;
+
+                SingleComposer.Bounds.Alignment = EnumDialogArea.None;
+                SingleComposer.Bounds.fixedOffsetX = 0;
+                SingleComposer.Bounds.fixedOffsetY = 0;
+                SingleComposer.Bounds.absFixedX = pos.X - SingleComposer.Bounds.OuterWidth / 2;
+                SingleComposer.Bounds.absFixedY = capi.Render.FrameHeight - pos.Y - SingleComposer.Bounds.OuterHeight * floatyDialogAlign;
+                SingleComposer.Bounds.absMarginX = 0;
+                SingleComposer.Bounds.absMarginY = 0;
+            }
+
+            base.OnRenderGUI(deltaTime);
+        }
     }
 }

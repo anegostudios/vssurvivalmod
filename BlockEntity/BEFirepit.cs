@@ -353,7 +353,7 @@ namespace Vintagestory.GameContent
             {
                 // Die on rainfall
                 tmpPos.Set(Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5);
-                double rainLevel = wsys.GetRainFall(tmpPos);
+                double rainLevel = wsys.GetPrecipitation(tmpPos);
                 if (rainLevel > 0.04 && Api.World.Rand.NextDouble() < rainLevel * 5)
                 {
                     if (Api.World.BlockAccessor.GetRainMapHeightAt(Pos.X, Pos.Z) > Pos.Y) return;
@@ -883,7 +883,7 @@ namespace Vintagestory.GameContent
                     } else
                     {
                         clientDialog = new GuiDialogBlockEntityFirepit(dialogTitle, Inventory, Pos, dtree, Api as ICoreClientAPI);
-                        clientDialog.OnClosed += () => { clientDialog.Dispose(); clientDialog = null; };
+                        clientDialog.OnClosed += () => { clientDialog?.Dispose(); clientDialog = null; };
                         clientDialog.TryOpen();
 
                     }
@@ -891,7 +891,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            if (packetid == (int)EnumBlockContainerPacketId.CloseInventory)
+            if (packetid == (int)EnumBlockEntityPacketId.Close)
             {
                 IClientWorldAccessor clientWorld = (IClientWorldAccessor)Api.World;
                 clientWorld.Player.InventoryManager.CloseInventory(Inventory);
@@ -1135,7 +1135,6 @@ namespace Vintagestory.GameContent
                 ITesselatorAPI mesher = ((ICoreClientAPI)Api).Tesselator;
 
                 mesher.TesselateShape(block, Api.Assets.TryGet("shapes/block/wood/firepit/" + key + ".json")?.ToObject<Shape>(), out meshdata);
-                meshdata.Tints = null;
             }
 
             return meshdata;

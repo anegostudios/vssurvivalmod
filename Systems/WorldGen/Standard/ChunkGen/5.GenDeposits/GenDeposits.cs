@@ -164,7 +164,7 @@ namespace Vintagestory.ServerMods
             TerraGenConfig.depositVerticalDistortScale = 2;
             int noiseSize = api.WorldManager.RegionSize / TerraGenConfig.depositVerticalDistortScale;
 
-            IntMap map = mapRegion.OreMapVerticalDistortBottom;
+            IntDataMap2D map = mapRegion.OreMapVerticalDistortBottom;
             map.Size = noiseSize + 2*pad;
             map.BottomRightPadding = map.TopLeftPadding = pad;
             map.Data = verticalDistortBottom.GenLayer(regionX * noiseSize - pad, regionZ * noiseSize - pad, noiseSize + 2*pad, noiseSize + 2 * pad);
@@ -198,7 +198,7 @@ namespace Vintagestory.ServerMods
 
             subDepositsToPlace.Clear();
 
-            float qfac = chunks.Length / 8f;
+            float qfac = 1f;// chunks.Length / 8f;
 
             for (int i = 0; i < Deposits.Length; i++)
             {
@@ -263,7 +263,7 @@ namespace Vintagestory.ServerMods
 
                 depoCenterPos.Y = originMapchunk.RainHeightMap[lz * chunksize + lx];
 
-                IntMap climateMap = blockAccessor.GetMapRegion(depoCenterPos.X / regionSize, depoCenterPos.Z / regionSize).ClimateMap;
+                IntDataMap2D climateMap = blockAccessor.GetMapRegion(depoCenterPos.X / regionSize, depoCenterPos.Z / regionSize).ClimateMap;
 
                 float posXInRegionClimate = ((float)lx / regionSize - (float)lx / regionSize) * noiseSizeClimate;
                 float posZInRegionClimate = ((float)lz / regionSize - (float)lz / regionSize) * noiseSizeClimate;

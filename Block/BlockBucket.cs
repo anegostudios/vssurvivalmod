@@ -79,7 +79,9 @@ namespace Vintagestory.GameContent
             if (!meshrefs.TryGetValue(hashcode, out meshRef))
             {
                 MeshData meshdata = GenMesh(capi, contentStack);
-                meshdata.Rgba2 = null;
+                //meshdata.Rgba2 = null;
+                
+
                 meshrefs[hashcode] = meshRef = capi.Render.UploadMesh(meshdata);
 
             }
@@ -133,12 +135,12 @@ namespace Vintagestory.GameContent
                 
                 contentMesh.Translate(0, GameMath.Min(7 / 16f, contentStack.StackSize / props.ItemsPerLitre * 0.7f / 16f), 0);
 
-                if (props.TintIndex > 0)
+                if (props.ClimateColorMap != null)
                 {
-                    int col = capi.ApplyColorTintOnRgba(props.TintIndex, ColorUtil.WhiteArgb, 196, 128, false);
+                    int col = capi.World.ApplyColorMapOnRgba(props.ClimateColorMap, null, ColorUtil.WhiteArgb, 196, 128, false);
                     if (forBlockPos != null)
                     {
-                        col = capi.ApplyColorTintOnRgba(props.TintIndex, ColorUtil.WhiteArgb, forBlockPos.X, forBlockPos.Y, forBlockPos.Z, false);
+                        col = capi.World.ApplyColorMapOnRgba(props.ClimateColorMap, null, ColorUtil.WhiteArgb, forBlockPos.X, forBlockPos.Y, forBlockPos.Z, false);
                     }
 
                     byte[] rgba = ColorUtil.ToBGRABytes(col);

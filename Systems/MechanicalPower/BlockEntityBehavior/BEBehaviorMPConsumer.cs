@@ -6,7 +6,7 @@ namespace Vintagestory.GameContent.Mechanics
 {
     public class BEBehaviorMPConsumer : BEBehaviorMPBase
     {
-        float resistance = 0.1f;
+        protected float resistance = 0.1f;
 
         public API.Common.Action OnConnected;
         public API.Common.Action OnDisconnected;

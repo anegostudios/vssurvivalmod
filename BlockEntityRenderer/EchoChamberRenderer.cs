@@ -57,7 +57,6 @@ namespace Vintagestory.GameContent
             IRenderAPI rpi = api.Render;
             IClientWorldAccessor worldAccess = api.World;
             Vec3d camPos = worldAccess.Player.Entity.CameraPos;
-            EntityPos plrPos = worldAccess.Player.Entity.Pos;
             Vec4f lightrgbs = api.World.BlockAccessor.GetLightRGBs(pos.X, pos.Y, pos.Z);
 
             rpi.GlDisableCullFace();
@@ -71,7 +70,7 @@ namespace Vintagestory.GameContent
             prog.FogDensityIn = rpi.FogDensity;
             prog.RgbaTint = ColorUtil.WhiteArgbVec;
             prog.RgbaLightIn = lightrgbs;
-            prog.RgbaBlockIn = ColorUtil.WhiteArgbVec;
+            
             prog.DontWarpVertices = 0;
             prog.AddRenderFlags = 0;
             prog.ExtraGodray = 0;
@@ -128,6 +127,7 @@ namespace Vintagestory.GameContent
             discRotRad.X = GameMath.PIHALF;
             discRotRad.Z = -Math.Max(0, (ellapsedMs - updatedTotalMs) / 500f - 0.5f);
 
+            prog.NormalShaded = 0;
             prog.ModelMatrix = ModelMat
                 .Identity()
                 .Translate(pos.X - camPos.X + discPos.X, pos.Y - camPos.Y + discPos.Y, pos.Z - camPos.Z + discPos.Z)
@@ -144,17 +144,22 @@ namespace Vintagestory.GameContent
 
         internal void UpdateMeshes(MeshData needleMesh, MeshData discMesh)
         {
-            Dispose();
+            needleMeshRef?.Dispose();
+            discMeshRef?.Dispose();
+
             needleMeshRef = null;
             discMeshRef = null;
 
             if (needleMesh != null)
             {
+                //needleMesh.Rgba2 = null;
                 needleMeshRef = api.Render.UploadMesh(needleMesh);
-            } 
+            }
+
             if (discMesh != null)
             {
-                discMeshRef = api.Render.UploadMesh(discMesh);
+                //discMesh.Rgba2 = null;
+                discMeshRef = api.Render.UploadMesh(discMesh);                
             }
 
             updatedTotalMs = api.World.ElapsedMilliseconds;

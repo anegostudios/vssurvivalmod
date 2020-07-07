@@ -159,7 +159,7 @@ namespace Vintagestory.GameContent
             if (!meshrefs.TryGetValue(key, out meshref))
             {
                 MeshData mesh = GenMesh(capi, loc, new Vec3f(0, 270, 0));
-                mesh.Rgba2 = null;
+                //mesh.Rgba2 = null;
                 meshrefs[key] = meshref = capi.Render.UploadMesh(mesh);
             }
 

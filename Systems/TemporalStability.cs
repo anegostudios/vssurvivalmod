@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -59,6 +60,7 @@ namespace Vintagestory.GameContent
 
         EntityProperties[] drifterTypes;
         bool temporalStabilityEnabled;
+        bool stormsEnabled;
 
         Dictionary<string, TemporalStormConfig> configs;
         Dictionary<EnumTempStormStrength, TemporalStormText> texts;
@@ -69,6 +71,7 @@ namespace Vintagestory.GameContent
 
 
 
+        Dictionary<AssetLocation, int> creatureOriginalMaxSpawnQuantity = new Dictionary<AssetLocation, int>();
 
 
         string worldConfigStorminess;
@@ -147,6 +150,8 @@ namespace Vintagestory.GameContent
             base.StartServerSide(api);
             this.sapi = api;
 
+            api.RegisterCommand("nexttempstorm", "", "Tells you the amount of days until the next storm", onCmdNextStorm, Privilege.controlserver);
+
             serverChannel =
                api.Network.RegisterChannel("temporalstability")
                .RegisterMessageType(typeof(TemporalStormRunTimeData))
@@ -182,7 +187,7 @@ namespace Vintagestory.GameContent
                     {
                         data = SerializerUtil.Deserialize<TemporalStormRunTimeData>(bytedata);
                     }
-                    catch (Exception e)
+                    catch (Exception)
                     {
                         api.World.Logger.Notification("Failed loading temporal storm data, will initialize new data set");
                         data = new TemporalStormRunTimeData();
@@ -196,6 +201,15 @@ namespace Vintagestory.GameContent
 
                 LoadNoise();
 
+
+                foreach (var val in sapi.World.EntityTypes.Where(tp => tp.Code.Path.Contains("drifter")))
+                {
+                    if (val.Server.SpawnConditions != null)
+                    {
+                        creatureOriginalMaxSpawnQuantity[val.Code] = val.Server.SpawnConditions.Runtime.MaxQuantity;
+                    }
+                }
+
                 if (prepNextStorm)
                 {
                     prepareNextStorm();
@@ -207,6 +221,12 @@ namespace Vintagestory.GameContent
             api.Event.PlayerJoin += Event_PlayerJoin;
             api.Event.PlayerNowPlaying += Event_PlayerNowPlaying;
             api.Event.RegisterGameTickListener(onTempStormTick, 2000);
+        }
+
+        private void onCmdNextStorm(IServerPlayer player, int groupId, CmdArgs args)
+        {
+            double nextStormDaysLeft = data.nextStormTotalDays - api.World.Calendar.TotalDays;
+            player.SendMessage(groupId, Lang.Get("temporalstorm-cmd-daysleft", nextStormDaysLeft), EnumChatType.Notification);
         }
 
         private void Event_PlayerNowPlaying(IServerPlayer byPlayer)
@@ -236,6 +256,12 @@ namespace Vintagestory.GameContent
         private void onTempStormTick(float dt)
         {
             if (config == null) return;
+            if (!stormsEnabled)
+            {
+                data.stormGlitchStrength = 0;
+                data.nowStormActive = false;
+                return;
+            }
 
             double nextStormDaysLeft = data.nextStormTotalDays - api.World.Calendar.TotalDays;
 
@@ -266,16 +292,24 @@ namespace Vintagestory.GameContent
                 if (!data.nowStormActive)
                 {
                     data.stormActiveTotalDays = api.World.Calendar.TotalDays + stormActiveDays;
-                    data.stormGlitchStrength = 0.58f;
-                    if (data.nextStormStrength == EnumTempStormStrength.Medium) data.stormGlitchStrength = 0.7f;
-                    if (data.nextStormStrength == EnumTempStormStrength.Heavy) data.stormGlitchStrength = 1f;
+                    data.stormGlitchStrength = 0.53f + (float)api.World.Rand.NextDouble() / 10;
+                    if (data.nextStormStrength == EnumTempStormStrength.Medium) data.stormGlitchStrength = 0.67f + (float)api.World.Rand.NextDouble() / 10;
+                    if (data.nextStormStrength == EnumTempStormStrength.Heavy) data.stormGlitchStrength = 0.9f + (float)api.World.Rand.NextDouble() / 10;
                     data.nowStormActive = true;
+
+                    foreach (var val in sapi.World.EntityTypes.Where(tp => tp.Code.Path.Contains("drifter")))
+                    {
+                        if (val.Server.SpawnConditions != null)
+                        {
+                            val.Server.SpawnConditions.Runtime.MaxQuantity = (int)(creatureOriginalMaxSpawnQuantity[val.Code] * (1 + data.stormGlitchStrength / 2f));
+                        }
+                    }
 
                     serverChannel.BroadcastPacket(data);
                 }
 
                 double activeDaysLeft = data.stormActiveTotalDays - api.World.Calendar.TotalDays;
-                if (activeDaysLeft < 0.03 && data.stormDayNotify == 0)
+                if (activeDaysLeft < 0.02 && data.stormDayNotify == 0)
                 {
                     data.stormDayNotify = -1;
                     sapi.BroadcastMessageToAllGroups(texts[data.nextStormStrength].Waning, EnumChatType.Notification);
@@ -289,6 +323,14 @@ namespace Vintagestory.GameContent
                     prepareNextStorm();
 
                     serverChannel.BroadcastPacket(data);
+
+                    foreach (var val in sapi.World.EntityTypes.Where(tp => tp.Code.Path.Contains("drifter")))
+                    {
+                        if (val.Server.SpawnConditions != null)
+                        {
+                            val.Server.SpawnConditions.Runtime.MaxQuantity = creatureOriginalMaxSpawnQuantity[val.Code];
+                        }
+                    }
                 }
             }
         }
@@ -317,7 +359,7 @@ namespace Vintagestory.GameContent
             IPlayer plr = api.World.NearestPlayer(spawnPosition.X, spawnPosition.Y, spawnPosition.Z);
             double stab = plr.Entity.WatchedAttributes.GetDouble("temporalStability", 1);
 
-            stab = Math.Min(stab, 1 - data.stormGlitchStrength);
+            stab = Math.Min(stab, 1 - 1f * data.stormGlitchStrength);
 
             if (stab < 0.25f)
             {
@@ -333,7 +375,7 @@ namespace Vintagestory.GameContent
 
                 if (index == -1) return true;
 
-                int hardnessIncrease = (int)Math.Round((0.25f - stab) * 13);
+                int hardnessIncrease = (int)Math.Round((0.25f - stab) * 15);
 
                 int newIndex = Math.Min(index + hardnessIncrease, drifterTypes.Length - 1);
                 properties = drifterTypes[newIndex];
@@ -356,6 +398,8 @@ namespace Vintagestory.GameContent
             if (api.Side == EnumAppSide.Server)
             {
                 worldConfigStorminess = api.World.Config.GetString("temporalStorms");
+
+                stormsEnabled = worldConfigStorminess != "off";
 
                 if (worldConfigStorminess != null && configs.ContainsKey(worldConfigStorminess))
                 {
@@ -388,7 +432,6 @@ namespace Vintagestory.GameContent
         }
 
 
-        float curStormGlitchStrength;
 
         internal float GetGlitchEffectExtraStrength()
         {

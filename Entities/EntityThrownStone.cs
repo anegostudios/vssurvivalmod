@@ -47,7 +47,7 @@ namespace Vintagestory.GameContent
             base.OnGameTick(dt);
             if (ShouldDespawn) return;
 
-            EntityPos pos = LocalPos;
+            EntityPos pos = SidedPos;
 
             stuck = Collided;
             if (stuck)
@@ -75,7 +75,7 @@ namespace Vintagestory.GameContent
 
                         if (strength > 0.08f && World.Rand.NextDouble() > 0.2f)
                         {
-                            World.SpawnCubeParticles(LocalPos.XYZ.OffsetCopy(0, 0.2, 0), ProjectileStack, 0.2f, 20);
+                            World.SpawnCubeParticles(SidedPos.XYZ.OffsetCopy(0, 0.2, 0), ProjectileStack, 0.2f, 20);
                             Die();
                         }
                     }
@@ -118,7 +118,7 @@ namespace Vintagestory.GameContent
                 {
                     bool didDamage = entity.ReceiveDamage(new DamageSource() { Source = EnumDamageSource.Entity, SourceEntity = FiredBy == null ? this : FiredBy, Type = EnumDamageType.BluntAttack }, Damage);
                     World.PlaySoundAt(new AssetLocation("sounds/thud"), this, null, false, 32);
-                    World.SpawnCubeParticles(entity.LocalPos.XYZ.OffsetCopy(0, 0.2, 0), ProjectileStack, 0.2f, 20);
+                    World.SpawnCubeParticles(entity.SidedPos.XYZ.OffsetCopy(0, 0.2, 0), ProjectileStack, 0.2f, 20);
 
                     if (FiredBy is EntityPlayer && didDamage)
                     {
@@ -191,7 +191,7 @@ namespace Vintagestory.GameContent
         {
             if (motionBeforeCollide.Y <= 0)
             {
-                LocalPos.Motion.Y = GameMath.Clamp(motionBeforeCollide.Y * -0.5f, -0.1f, 0.1f);
+                SidedPos.Motion.Y = GameMath.Clamp(motionBeforeCollide.Y * -0.5f, -0.1f, 0.1f);
                 PositionBeforeFalling.Y = Pos.Y + 1;
             }
 

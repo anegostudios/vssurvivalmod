@@ -16,13 +16,16 @@ namespace Vintagestory.GameContent
             Block firepitBlock = world.GetBlock(new AssetLocation("firepit-construct1"));
             if (firepitBlock == null) return;
 
+
+            BlockPos onPos = blockSel.DidOffset ? blockSel.Position : blockSel.Position.AddCopy(blockSel.Face);
+
             IPlayer byPlayer = byEntity.World.PlayerByUid((byEntity as EntityPlayer)?.PlayerUID);
-            if (!byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            if (!byEntity.World.Claims.TryAccess(byPlayer, onPos, EnumBlockAccessFlags.BuildOrBreak))
             {
                 return;
             }
 
-            BlockPos onPos = blockSel.DidOffset ? blockSel.Position : blockSel.Position.AddCopy(blockSel.Face);
+            
 
             Block block = world.BlockAccessor.GetBlock(onPos.DownCopy());
             Block atBlock = world.BlockAccessor.GetBlock(onPos);

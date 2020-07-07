@@ -27,7 +27,7 @@ namespace Vintagestory.GameContent
         EchoChamberRenderer renderer;
 
         public bool IsPlaying;
-             
+        //float prevPitch;
 
         public BlockEntityEchoChamber()
         {
@@ -52,7 +52,8 @@ namespace Vintagestory.GameContent
         {
             if (track?.Sound != null && track.Sound.IsPlaying)
             {
-                Vec3d plrpos = (Api as ICoreClientAPI).World.Player.Entity?.Pos?.XYZ;
+                ICoreClientAPI capi = Api as ICoreClientAPI;
+                Vec3d plrpos = capi.World.Player.Entity?.Pos?.XYZ;
                 if (plrpos == null) return;
 
                 float dist = GameMath.Sqrt(plrpos.SquareDistanceTo(Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5));
@@ -60,9 +61,10 @@ namespace Vintagestory.GameContent
                 // 1/log(x + 2) - 0.7
                 //http://fooplot.com/#W3sidHlwZSI6MCwiZXEiOiIxL2xvZyh4KzIpLTAuNyIsImNvbG9yIjoiIzAwMDAwMCJ9LHsidHlwZSI6MTAwMCwid2luZG93IjpbIi0yMi4zOTkzMzg5NDIzMDc2NTgiLCIzOC42MzU4MTczMDc2OTIyNyIsIi0xLjAwMzI5NTg5ODQzNzQ5OSIsIjIuMDQ4NDYxOTE0MDYyNDk4MiJdfV0-
 
-                float volume = GameMath.Clamp(1 / (float)Math.Log10(Math.Max(1, dist - 1)) - 0.7f, 0, 1);
+                float volume = GameMath.Clamp(1 / (float)Math.Log10(Math.Max(1, dist - 5)) - 0.7f, 0, 1);
 
                 track.Sound.SetVolume(volume);
+                track.Sound.SetPitch(GameMath.Clamp(1 - capi.Render.ShaderUniforms.GlitchStrength, 0.1f, 1));
             }
         }
 
@@ -116,11 +118,11 @@ namespace Vintagestory.GameContent
             string trackstring = inventory[0].Itemstack.ItemAttributes["musicTrack"].AsString(null);
             if (trackstring == null) return;
             startLoadingMs = Api.World.ElapsedMilliseconds;
-            track = (Api as ICoreClientAPI)?.StartTrack(new AssetLocation(trackstring), 99f, EnumSoundType.Sound, onTrackLoaded);
+            track = (Api as ICoreClientAPI)?.StartTrack(new AssetLocation(trackstring), 99f, EnumSoundType.AmbientGlitchunaffected, onTrackLoaded);
 
+            wasStopped = false;
             Api.World.PlaySoundAt(new AssetLocation("sounds/block/vinyl"), Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5, null, false, 16);
             updateMeshesAndRenderer(Api as ICoreClientAPI);
-            wasStopped = false;
         }
 
         void StopMusic()
@@ -147,10 +149,23 @@ namespace Vintagestory.GameContent
             if (sound == null) return;
 
             track.Sound = sound;
+            // Needed so that the music engine does not dispose the sound
+            Api.Event.EnqueueMainThreadTask(() => track.loading = true, "settrackloading");
 
             long longMsPassed = Api.World.ElapsedMilliseconds - startLoadingMs;
             handlerId = RegisterDelayedCallback((dt) => {
-                if (!wasStopped) sound.Start();    
+                if (sound.IsDisposed)
+                {
+                    Api.World.Logger.Notification("Echo chamber track is diposed? o.O");
+                }
+
+                if (!wasStopped)
+                {
+                    sound.Start();
+                }
+
+                track.loading = false;
+
             }, (int)Math.Max(0, 500 - longMsPassed));
         }
 

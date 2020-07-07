@@ -16,6 +16,7 @@ namespace Vintagestory.GameContent.Mechanics
                 if (byPlayer.InventoryManager.ActiveHotbarSlot.Itemstack.Collectible.FirstCodePart().Equals("helvehammer"))
                 {
                     beh.HammerStack = byPlayer.InventoryManager.ActiveHotbarSlot.Itemstack.Clone();
+                    beh.MarkDirty();
                     if (byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
                     {
                         byPlayer.InventoryManager.ActiveHotbarSlot.TakeOut(1);

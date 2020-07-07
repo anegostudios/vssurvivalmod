@@ -37,6 +37,11 @@ namespace Vintagestory.GameContent
 
     public class BlockMeal : BlockContainer, IBlockMealContainer
     {
+        public override string GetHeldTpUseAnimation(ItemSlot activeHotbarSlot, Entity forEntity)
+        {
+            return "eat";
+        }
+
         public override void OnHeldIdle(ItemSlot slot, EntityAgent byEntity)
         {
             if (byEntity.World.Side == EnumAppSide.Client && GetTemperature(byEntity.World, slot.Itemstack) > 50 && byEntity.World.Rand.NextDouble() < 0.07)
@@ -50,7 +55,7 @@ namespace Vintagestory.GameContent
                 }
 
                 Vec3d pos =
-                    byEntity.Pos.XYZ.Add(0, byEntity.EyeHeight - 0.5f, 0)
+                    byEntity.Pos.XYZ.Add(0, byEntity.LocalEyePos.Y - 0.5f, 0)
                     .Ahead(0.33f, byEntity.Pos.Pitch, byEntity.Pos.Yaw)
                     .Ahead(sideWays, 0, byEntity.Pos.Yaw + GameMath.PIHALF)
                 ;
@@ -73,8 +78,6 @@ namespace Vintagestory.GameContent
                     }
                 }, 500);
 
-                byEntity.AnimManager.StartAnimation("eat");
-
                 handHandling = EnumHandHandling.PreventDefault;
                 return;
             }
@@ -95,8 +98,8 @@ namespace Vintagestory.GameContent
         {
             if (GetContentNutritionProperties(byEntity.World, slot, byEntity) == null) return false;
 
-            Vec3d pos = byEntity.Pos.AheadCopy(0.4f).XYZ;
-            pos.Y += byEntity.EyeHeight - 0.4f;
+            Vec3d pos = byEntity.Pos.AheadCopy(0.4f).XYZ.Add(byEntity.LocalEyePos);
+            pos.Y -= 0.4f;
 
             IPlayer player = (byEntity as EntityPlayer).Player;
 
@@ -175,17 +178,34 @@ namespace Vintagestory.GameContent
                 if (servingsLeft <= 0)
                 {
                     Block block = byEntity.World.GetBlock(new AssetLocation(Attributes["eatenBlock"].AsString()));
-                    if (player == null || !player.InventoryManager.TryGiveItemstack(new ItemStack(block), true))
+
+                    if (slot.Empty)
                     {
-                        byEntity.World.SpawnItemEntity(new ItemStack(block), byEntity.LocalPos.XYZ);
+                        slot.Itemstack = new ItemStack(block);
+                    }
+                    else
+                    {
+                        if (player == null || !player.InventoryManager.TryGiveItemstack(new ItemStack(block), true))
+                        {
+                            byEntity.World.SpawnItemEntity(new ItemStack(block), byEntity.SidedPos.XYZ);
+                        }
                     }
                 }
                 else
                 {
                     (eatenFromBowlStack.Collectible as BlockMeal).SetQuantityServings(byEntity.World, eatenFromBowlStack, servingsLeft);
-                    if (player == null || !player.InventoryManager.TryGiveItemstack(eatenFromBowlStack, true))
+
+                    if (slot.Empty)
                     {
-                        byEntity.World.SpawnItemEntity(eatenFromBowlStack, byEntity.LocalPos.XYZ);
+                        slot.Itemstack = eatenFromBowlStack;
+                    }
+                    else
+                    {
+
+                        if (player == null || !player.InventoryManager.TryGiveItemstack(eatenFromBowlStack, true))
+                        {
+                            byEntity.World.SpawnItemEntity(eatenFromBowlStack, byEntity.SidedPos.XYZ);
+                        }
                     }
                 }
             }
@@ -376,7 +396,7 @@ namespace Vintagestory.GameContent
                 {
                     if (eatingPlayer == null || !eatingPlayer.InventoryManager.TryGiveItemstack(nutriProps.EatenStack.ResolvedItemstack.Clone(), true))
                     {
-                        world.SpawnItemEntity(nutriProps.EatenStack.ResolvedItemstack.Clone(), eatingPlayer.Entity.LocalPos.XYZ);
+                        world.SpawnItemEntity(nutriProps.EatenStack.ResolvedItemstack.Clone(), eatingPlayer.Entity.SidedPos.XYZ);
                     }
                 }
 
@@ -486,7 +506,7 @@ namespace Vintagestory.GameContent
             }
 
             StringBuilder sb = new StringBuilder();
-            sb.AppendLine("Nutrition Facts");
+            sb.AppendLine(Lang.Get("Nutrition Facts"));
 
             foreach (var val in totalSaturation)
             {

@@ -3,10 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -27,6 +29,10 @@ namespace Vintagestory.GameContent
 
         string startedByPlayerUid;
 
+        bool lit;
+
+        public bool Lit => lit;
+
 
         public override void Initialize(ICoreAPI api)
         {
@@ -41,14 +47,16 @@ namespace Vintagestory.GameContent
                 RegisterGameTickListener(OnServerTick, 3000);
             }
 
-            startingAfterTotalHours = api.World.Calendar.TotalHours + 0.5f;
-
-            // To popuplate the smokeLocations
-            FindHoleInPit();
+            if (Lit)
+            {
+                FindHoleInPit();
+            }
         }
 
         private void OnClientTick(float dt)
         {
+            if (!lit) return;
+
             BlockPos pos = new BlockPos();
             foreach (var val in smokeLocations)
             {
@@ -69,6 +77,8 @@ namespace Vintagestory.GameContent
 
         private void OnServerTick(float dt)
         {
+            if (!lit) return;
+
             if (startingAfterTotalHours <= Api.World.Calendar.TotalHours && state == 0)
             {
                 finishedAfterTotalHours = Api.World.Calendar.TotalHours + BurnHours;
@@ -118,6 +128,19 @@ namespace Vintagestory.GameContent
             }
         }
 
+        public void IgniteNow()
+        {
+            if (lit) return;
+
+            lit = true;
+
+            startingAfterTotalHours = this.Api.World.Calendar.TotalHours + 0.5f;
+            MarkDirty(true);
+
+            // To popuplate the smokeLocations
+            FindHoleInPit();
+
+        }
 
         void ConvertPit()
         {
@@ -130,7 +153,7 @@ namespace Vintagestory.GameContent
             int maxHalfSize = 6;
             int firewoodBlockId = Api.World.GetBlock(new AssetLocation("firewoodpile")).BlockId;
 
-            Vec2i curQuantityAndYPos = new Vec2i();
+            Vec2i curQuantityAndYPos;
 
             while (bfsQueue.Count > 0)
             {
@@ -259,21 +282,30 @@ namespace Vintagestory.GameContent
         public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
             int beforeState = state;
+            bool beforeLit = lit;
             base.FromTreeAtributes(tree, worldForResolving);
 
             finishedAfterTotalHours = tree.GetDouble("finishedAfterTotalHours");
+            startingAfterTotalHours = tree.GetDouble("startingAfterTotalHours");
+
             state = tree.GetInt("state");
 
-            if (beforeState != state && Api?.Side == EnumAppSide.Client) FindHoleInPit();
-
             startedByPlayerUid = tree.GetString("startedByPlayerUid");
+            lit = tree.GetBool("lit", true);
+
+            if ((beforeState != state || beforeLit != lit) && Api?.Side == EnumAppSide.Client)
+            {
+                FindHoleInPit();
+            }
         }
 
         public override void ToTreeAttributes(ITreeAttribute tree)
         {
             base.ToTreeAttributes(tree);
             tree.SetDouble("finishedAfterTotalHours", finishedAfterTotalHours);
+            tree.SetDouble("startingAfterTotalHours", startingAfterTotalHours);
             tree.SetInt("state", state);
+            tree.SetBool("lit", lit);
 
             if (startedByPlayerUid != null)
             {
@@ -285,9 +317,41 @@ namespace Vintagestory.GameContent
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
         {
             double minutesLeft = 60 * (startingAfterTotalHours - Api.World.Calendar.TotalHours);
-            if (minutesLeft <= 0) return;
 
-            dsc.AppendLine(Lang.Get("{0} ingame minutes before the pile ignites,\nmake sure it's not exposed to air!", (int)minutesLeft)); 
+            if (lit)
+            {
+                if (minutesLeft <= 0)
+                {
+                    dsc.AppendLine(Lang.Get("Lit.")); 
+                } else
+                {
+                    dsc.AppendLine(Lang.Get("lit-starting", (int)minutesLeft));
+                }
+            } else
+            {
+                dsc.AppendLine(Lang.Get("Unlit."));
+            }
+        }
+
+        public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
+        {
+            if (!lit)
+            {
+                MeshData litCharcoalMesh = ObjectCacheUtil.GetOrCreate(Api, "litCharcoalMesh", () =>
+                {
+                    MeshData mesh;
+
+                    ITesselatorAPI tess = ((ICoreClientAPI)Api).Tesselator;
+                    tess.TesselateShape(Block, Api.Assets.TryGet("shapes/block/wood/firepit/cold-normal.json")?.ToObject<Shape>(), out mesh);
+
+                    return mesh;
+                });
+
+                mesher.AddMeshData(litCharcoalMesh);
+                return true;
+            }
+
+            return false;
         }
 
     }

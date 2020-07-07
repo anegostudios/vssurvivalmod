@@ -49,7 +49,7 @@ namespace Vintagestory.GameContent
             if (LastCodePart() != "free")
             {
                 world.BlockAccessor.SetBlock(world.GetBlock(new AssetLocation("water-still-7")).BlockId, pos);
-                world.BlockAccessor.GetBlock(pos).OnNeighourBlockChange(world, pos, pos);
+                world.BlockAccessor.GetBlock(pos).OnNeighbourBlockChange(world, pos, pos);
             }
         }
 

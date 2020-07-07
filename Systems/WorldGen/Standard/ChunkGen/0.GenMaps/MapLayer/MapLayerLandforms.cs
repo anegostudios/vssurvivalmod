@@ -62,17 +62,6 @@ namespace Vintagestory.ServerMods
                         temp,
                         rain
                     );
-
-                    /*float baseX = (float)finalX / TerraGenConfig.landformMapScale;
-                    float baseY = (float)finalZ / TerraGenConfig.landformMapScale;
-
-                    result[z * sizeX + x] = noiseLandforms.GetParentLandformIndexAt(
-                        (int)baseX,
-                        (int)baseY,
-                        climateNoise.GetLerpedClimateAt(finalX / TerraGenConfig.climateMapScale, finalZ / TerraGenConfig.climateMapScale),
-                        baseX - (int)baseX,
-                        baseY - (int)baseY
-                    );*/
                 }
             }
 

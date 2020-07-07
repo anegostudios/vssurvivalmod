@@ -55,7 +55,7 @@ namespace Vintagestory.GameContent
             int posx = tempAttr.GetInt("lastposX", -1);
             int posy = tempAttr.GetInt("lastposY", -1);
             int posz = tempAttr.GetInt("lastposZ", -1);
-            float treeTesistance = tempAttr.GetFloat("treeTesistance", 1);
+            float treeResistance = tempAttr.GetFloat("treeResistance", 1);
             //int counter = tempAttr.GetInt("breakCounter", 0);
 
             BlockPos pos = blockSel.Position;
@@ -64,9 +64,9 @@ namespace Vintagestory.GameContent
             {
                 string bla;
                 Stack<BlockPos> foundPositions = FindTree(player.Entity.World, pos, out bla);
-                treeTesistance = (float)Math.Max(1, Math.Sqrt(foundPositions.Count));
+                treeResistance = (float)Math.Max(1, Math.Sqrt(foundPositions.Count));
 
-                tempAttr.SetFloat("treeTesistance", treeTesistance);
+                tempAttr.SetFloat("treeResistance", treeResistance);
             }
 
             //tempAttr.SetInt("breakCounter", counter + 1);
@@ -75,7 +75,7 @@ namespace Vintagestory.GameContent
             tempAttr.SetInt("lastposZ", pos.Z);
 
 
-            return base.OnBlockBreaking(player, blockSel, itemslot, remainingResistance, dt / treeTesistance, counter);
+            return base.OnBlockBreaking(player, blockSel, itemslot, remainingResistance, dt / treeResistance, counter);
         }
 
         public override bool OnBlockBrokenWith(IWorldAccessor world, Entity byEntity, ItemSlot itemslot, BlockSelection blockSel)
@@ -86,7 +86,7 @@ namespace Vintagestory.GameContent
             ITreeAttribute tempAttr = itemslot.Itemstack.TempAttributes;
             //tempAttr.SetInt("breakCounter", 0);
 
-            double windspeed = api.ModLoader.GetModSystem<WeatherSystemBase>()?.GetWindSpeed(byEntity.LocalPos.XYZ) ?? 0;
+            double windspeed = api.ModLoader.GetModSystem<WeatherSystemBase>()?.WeatherDataSlowAccess.GetWindSpeed(byEntity.SidedPos.XYZ) ?? 0;
             
 
             string treeType;
@@ -94,6 +94,7 @@ namespace Vintagestory.GameContent
             
             Block leavesBranchyBlock = world.GetBlock(new AssetLocation("leavesbranchy-grown-" + treeType));
             Block leavesBlock = world.GetBlock(new AssetLocation("leaves-grown-" + treeType));
+            
 
             if (foundPositions.Count == 0)
             {
@@ -178,7 +179,9 @@ namespace Vintagestory.GameContent
 
             treeType = "";
 
+            
             Block block = world.BlockAccessor.GetBlock(startPos);
+
             if (block.Code == null) return foundPositions;
 
             if (block.Code.Path.StartsWith("beehive-inlog-" + treeType) || block.Code.Path.StartsWith("log-resin")|| block.Code.Path.StartsWith("log-grown") || block.Code.Path.StartsWith("bamboo-grown-brown-segment") || block.Code.Path.StartsWith("bamboo-grown-green-segment"))
@@ -190,15 +193,24 @@ namespace Vintagestory.GameContent
                 checkedPositions.Add(startPos);
             }
 
+            if (block is BlockFernTree)
+            {
+                treeType = "fern";
+                queue.Enqueue(new Vec4i(startPos.X, startPos.Y, startPos.Z, 2));
+                foundPositions.Push(startPos);
+                checkedPositions.Add(startPos);
+            }
+
             string logcode = "log-grown-" + treeType;
             string logcode2 = "log-resin-" + treeType;
             string leavescode = "leaves-grown-" + treeType;
             string leavesbranchycode = "leavesbranchy-grown-" + treeType;
 
+            
 
             while (queue.Count > 0)
             {
-                if (foundPositions.Count > 1000)
+                if (foundPositions.Count > 2000)
                 {
                     break;
                 }
@@ -220,7 +232,7 @@ namespace Vintagestory.GameContent
                     block = world.BlockAccessor.GetBlock(neibPos);
                     if (block.Code == null) continue;
 
-                    if (block.Code.Path.StartsWith(logcode) || block.Code.Path.StartsWith(logcode2) || block.Code.Path.StartsWith("bamboo-grown-brown-segment") || block.Code.Path.StartsWith("bamboo-grown-green-segment"))
+                    if ((treeType == "fern" && block is BlockFernTree) || block.Code.Path.StartsWith(logcode) || block.Code.Path.StartsWith(logcode2) || block.Code.Path.StartsWith("bamboo-grown-brown-segment") || block.Code.Path.StartsWith("bamboo-grown-green-segment"))
                     {
                         if (pos.W < 2) continue;
 

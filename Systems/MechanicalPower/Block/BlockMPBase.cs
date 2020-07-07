@@ -11,7 +11,7 @@ namespace Vintagestory.GameContent.Mechanics
     public abstract class BlockMPBase : Block, IMechanicalPowerBlock
     {
         public abstract void DidConnectAt(IWorldAccessor world, BlockPos pos, BlockFacing face);
-        public abstract bool HasConnectorAt(IWorldAccessor world, BlockPos pos, BlockFacing face);
+        public abstract bool HasMechPowerConnectorAt(IWorldAccessor world, BlockPos pos, BlockFacing face);
 
 
 
@@ -25,7 +25,7 @@ namespace Vintagestory.GameContent.Mechanics
         public virtual bool tryConnect(IWorldAccessor world, IPlayer byPlayer, BlockPos pos, BlockFacing face)
         {
             IMechanicalPowerBlock block = world.BlockAccessor.GetBlock(pos.AddCopy(face)) as IMechanicalPowerBlock;
-            if (block != null && block.HasConnectorAt(world, pos, face.GetOpposite()))
+            if (block != null && block.HasMechPowerConnectorAt(world, pos, face.GetOpposite()))
             {
                 block.DidConnectAt(world, pos.AddCopy(face), face.GetOpposite());
                 WasPlaced(world, pos, face);
@@ -36,7 +36,7 @@ namespace Vintagestory.GameContent.Mechanics
         }
 
 
-        public MechanicalNetwork GetNetwork(IWorldAccessor world, BlockPos pos)
+        public virtual MechanicalNetwork GetNetwork(IWorldAccessor world, BlockPos pos)
         {
             IMechanicalPowerNode be = world.BlockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorMPBase>() as IMechanicalPowerNode;
             return be?.Network;
@@ -52,7 +52,7 @@ namespace Vintagestory.GameContent.Mechanics
 
             world.BlockAccessor.ExchangeBlock(BlockId, pos);
 
-            
+
         }
     }
 }

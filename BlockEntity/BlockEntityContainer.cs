@@ -45,7 +45,6 @@ namespace Vintagestory.GameContent
                 {
                     MarkDirty(true);
                 }
-                    
             }
         }
         
@@ -208,7 +207,7 @@ namespace Vintagestory.GameContent
             if (Inventory is InventoryGeneric)
             {
                 InventoryGeneric inv = Inventory as InventoryGeneric;
-                float rateMul = 1;
+                float rateMul;
                 if (inv.TransitionableSpeedMulByType != null && inv.TransitionableSpeedMulByType.TryGetValue(EnumTransitionType.Perish, out rateMul))
                 {
                     rate *= rateMul;
@@ -221,7 +220,8 @@ namespace Vintagestory.GameContent
 
                     foreach (var val in inv.PerishableFactorByFoodCategory)
                     {
-                        dsc.AppendLine(Lang.Get("- {0}: {1}x", Lang.Get(val.Key.ToString()), Math.Round(rate * val.Value, 2)));
+                        string type = Lang.Get("foodcategory-" + val.Key.ToString().ToLowerInvariant());
+                        dsc.AppendLine(Lang.Get("- {0}: {1}x", type, Math.Round(rate * val.Value, 2)));
                     }
 
                     if (inv.PerishableFactorByFoodCategory.Count != Enum.GetValues(typeof(EnumFoodCategory)).Length)

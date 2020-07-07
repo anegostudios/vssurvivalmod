@@ -117,7 +117,7 @@ namespace Vintagestory.GameContent
             if (!tapestryMeshes.TryGetValue(type, out meshref))
             {
                 MeshData mesh = genMesh(false, type, 0);
-                mesh.Rgba2 = null;
+                //mesh.Rgba2 = null;
                 meshref = capi.Render.UploadMesh(mesh);
                 tapestryMeshes[type] = meshref;
             }

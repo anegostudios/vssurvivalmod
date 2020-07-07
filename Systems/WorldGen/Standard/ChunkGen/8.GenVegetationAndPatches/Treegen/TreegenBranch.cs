@@ -59,7 +59,7 @@ namespace Vintagestory.ServerMods.NoObf
         /// <summary>
         /// Modification of vertical angle over distance
         /// </summary>
-        public EvolvingNatFloat angleVertEvolve = EvolvingNatFloat.createIdentical(GameMath.PI / 2);
+        public EvolvingNatFloat angleVertEvolve = EvolvingNatFloat.createIdentical(0f);
 
         /// <summary>
         /// Modification of horizontal angle over distance

@@ -116,7 +116,7 @@ namespace Vintagestory.ServerMods
 
         private void OnChunkColumnGen(IServerChunk[] chunks, int chunkX, int chunkZ, ITreeAttribute chunkGenParams = null)
         {
-            IntMap climateMap = chunks[0].MapChunk.MapRegion.ClimateMap;
+            IntDataMap2D climateMap = chunks[0].MapChunk.MapRegion.ClimateMap;
             ushort[] heightMap = chunks[0].MapChunk.WorldGenTerrainHeightMap;
 
             int regionChunkSize = api.WorldManager.RegionSize / chunksize;
@@ -129,14 +129,14 @@ namespace Vintagestory.ServerMods
             climateBotLeft = climateMap.GetUnpaddedInt((int)(rlX * facC), (int)(rlZ * facC + facC));
             climateBotRight = climateMap.GetUnpaddedInt((int)(rlX * facC + facC), (int)(rlZ * facC + facC));
 
-            IntMap forestMap = chunks[0].MapChunk.MapRegion.ForestMap;
+            IntDataMap2D forestMap = chunks[0].MapChunk.MapRegion.ForestMap;
             float facF = (float)forestMap.InnerSize / regionChunkSize;
             forestUpLeft = forestMap.GetUnpaddedInt((int)(rlX * facF), (int)(rlZ * facF));
             forestUpRight = forestMap.GetUnpaddedInt((int)(rlX * facF + facF), (int)(rlZ * facF));
             forestBotLeft = forestMap.GetUnpaddedInt((int)(rlX * facF), (int)(rlZ * facF + facF));
             forestBotRight = forestMap.GetUnpaddedInt((int)(rlX * facF + facF), (int)(rlZ * facF + facF));
 
-            IntMap shrubMap = chunks[0].MapChunk.MapRegion.ShrubMap;
+            IntDataMap2D shrubMap = chunks[0].MapChunk.MapRegion.ShrubMap;
             float facS = (float)shrubMap.InnerSize / regionChunkSize;
             shrubsUpLeft = shrubMap.GetUnpaddedInt((int)(rlX * facS), (int)(rlZ * facS));
             shrubsUpRight = shrubMap.GetUnpaddedInt((int)(rlX * facS + facS), (int)(rlZ * facS));
@@ -198,7 +198,7 @@ namespace Vintagestory.ServerMods
             int tries = 10;
             while (nextGroupSize <= 0 && tries-- > 0)
             {
-                float val = sc.GroupSize.nextFloat();
+                float val = sc.HerdSize.nextFloat();
                 nextGroupSize = (int)val + ((val - (int)val) > rnd.NextDouble() ? 1 : 0);
             }
 

@@ -127,7 +127,7 @@ namespace Vintagestory.GameContent
 
         public string GetBlockMaterialCode(ItemStack stack)
         {
-            return stack.Attributes.GetString("materialBlockCode", null);
+            return stack?.Attributes?.GetString("materialBlockCode", null);
         }
 
         public void SetMaterial(ItemSlot slot, Block block)
@@ -146,7 +146,7 @@ namespace Vintagestory.GameContent
 
             if (blockMaterialCode == null) return;
 
-            string key = "pan-filled-" + blockMaterialCode;
+            string key = "pan-filled-" + blockMaterialCode + target;
 
             renderinfo.ModelRef = ObjectCacheUtil.GetOrCreate<MeshRef>(capi, key, () =>
             {
@@ -160,6 +160,11 @@ namespace Vintagestory.GameContent
                 ownTextureSource = capi.Tesselator.GetTexSource(this);
 
                 capi.Tesselator.TesselateShape("filledpan", shape, out meshdata, this);
+
+                /*if (target == EnumItemRenderTarget.Gui || target == EnumItemRenderTarget.HandFp || target == EnumItemRenderTarget.HandTp)
+                {
+                    meshdata.Rgba2 = null;
+                }*/
 
                 return capi.Render.UploadMesh(meshdata);
             });
@@ -203,13 +208,18 @@ namespace Vintagestory.GameContent
             if (blockMaterialCode == null || !slot.Itemstack.TempAttributes.GetBool("canpan")) return false;
             
             Vec3d pos = byEntity.Pos.AheadCopy(0.4f).XYZ;
-            pos.Y += byEntity.EyeHeight - 0.4f;
+            pos.Y += byEntity.LocalEyePos.Y - 0.4f;
 
-            if (secondsUsed > 0.5f && (int)(30 * secondsUsed) % 7 == 1)
+            if (secondsUsed > 0.5f && (int)(30 * secondsUsed) % 2 == 1)
             {
                 Block block = api.World.GetBlock(new AssetLocation(blockMaterialCode));
-                byEntity.World.SpawnCubeParticles(pos, new ItemStack(block), 0.3f, 4, 0.35f, (byEntity as EntityPlayer)?.Player);
+                Vec3d particlePos = pos.Clone();
 
+                particlePos.X += GameMath.Sin(-secondsUsed * 20) / 5f;
+                particlePos.Z += GameMath.Cos(-secondsUsed * 20) / 5f;
+                particlePos.Y -= 0.05f;
+
+                byEntity.World.SpawnCubeParticles(particlePos, new ItemStack(block), 0.3f, (int)(1.5f + (float)api.World.Rand.NextDouble()), 0.35f + (float)api.World.Rand.NextDouble()/9f, (byEntity as EntityPlayer)?.Player);
             }
 
 
@@ -292,7 +302,7 @@ namespace Vintagestory.GameContent
 
                 RemoveMaterial(slot);
                 slot.MarkDirty();
-                (byEntity as EntityPlayer)?.Player?.InventoryManager.BroadcastHotbarSlot();
+                //(byEntity as EntityPlayer)?.Player?.InventoryManager.BroadcastHotbarSlot();
 
                 byEntity.GetBehavior<EntityBehaviorHunger>()?.ConsumeSaturation(4f);
             }
@@ -385,7 +395,7 @@ namespace Vintagestory.GameContent
                 }
 
                 slot.MarkDirty();
-                (byEntity as EntityPlayer)?.Player?.InventoryManager.BroadcastHotbarSlot();
+                //(byEntity as EntityPlayer)?.Player?.InventoryManager.BroadcastHotbarSlot();
             }
         }
 

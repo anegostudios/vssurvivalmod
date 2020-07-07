@@ -132,7 +132,7 @@ namespace Vintagestory.GameContent
 
         protected void ReadjustFlyHeight()
         {
-            int terrainYPos = entity.World.BlockAccessor.GetTerrainMapheightAt(entity.LocalPos.AsBlockPos);
+            int terrainYPos = entity.World.BlockAccessor.GetTerrainMapheightAt(entity.SidedPos.AsBlockPos);
             desiredYPos = terrainYPos + desiredflyHeightAboveGround;
         }
 

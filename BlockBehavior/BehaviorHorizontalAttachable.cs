@@ -123,7 +123,7 @@ namespace Vintagestory.GameContent
 
             Block attachingblock = world.BlockAccessor.GetBlock(blockId);
 
-            return attachingblock.CanAttachBlockAt(world.BlockAccessor, block, pos, facing.GetOpposite());
+            return attachingblock.CanAttachBlockAt(world.BlockAccessor, block, pos.AddCopy(facing), facing.GetOpposite());
         }
 
 

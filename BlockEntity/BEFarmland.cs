@@ -53,13 +53,9 @@ namespace Vintagestory.GameContent
         // Stored values
         protected float[] nutrients = new float[3];
         protected float[] slowReleaseNutrients = new float[3];
-        protected double lastWateredTotalHours = 0;
-        protected double lastWaterSearchedTotalHours = 0;
-
-        // When watering with a watering can, not stored values
-        protected float currentlyWateredSeconds;
-        protected long lastWateredMs;
-
+        // 0 = bone dry, 1 = completely soggy
+        protected float moistureLevel = 0;
+        protected double lastWaterSearchedTotalHours;
 
         public int originalFertility; // The fertility the soil will recover to (the soil from which the farmland was made of)
         protected TreeAttribute cropAttrs = new TreeAttribute();
@@ -146,20 +142,20 @@ namespace Vintagestory.GameContent
 
         bool farmlandIsAtChunkEdge = false;
 
-        protected EnumWaterSearchResult FindNearbyWater()
+        protected float GetNearbyWaterDistance(out EnumWaterSearchResult result)
         {
             // 1. Watered check
-            bool waterNearby = false;
+            float waterDistance = 99;
             farmlandIsAtChunkEdge = false;
 
             Api.World.BlockAccessor.SearchBlocks(
-                new BlockPos(Pos.X - 3, Pos.Y, Pos.Z - 3),
-                new BlockPos(Pos.X + 3, Pos.Y, Pos.Z + 3),
+                new BlockPos(Pos.X - 4, Pos.Y, Pos.Z - 4),
+                new BlockPos(Pos.X + 4, Pos.Y, Pos.Z + 4),
                 (block, pos) =>
                 {
                     if (block.LiquidCode == "water")
                     {
-                        waterNearby = true;
+                        waterDistance = Pos.DistanceTo(pos);
                         return false;
                     }
                     return true;
@@ -167,32 +163,21 @@ namespace Vintagestory.GameContent
                 (cx, cy, cz) => farmlandIsAtChunkEdge = true
             );
 
-            if (farmlandIsAtChunkEdge) return EnumWaterSearchResult.Deferred;
+            result = EnumWaterSearchResult.Deferred;
+            if (farmlandIsAtChunkEdge) return 99;
 
             lastWaterSearchedTotalHours = Api.World.Calendar.TotalHours;
 
-
-            for (int dx = -3; dx <= 3 && !waterNearby; dx++)
+            if (waterDistance < 3.5f)
             {
-                for (int dz = -3; dz <= 3; dz++)
-                {
-                    if (dx == 0 && dz == 0) continue;
-                    if (Api.World.BlockAccessor.GetBlock(base.Pos.X + dx, base.Pos.Y, base.Pos.Z + dz).LiquidCode == "water")
-                    {
-                        waterNearby = true;
-                        break;
-                    }
-                }
+                //if (!IsWatered) MarkDirty(true);
+                //lastWateredTotalHours = Api.World.Calendar.TotalHours;
+                result = EnumWaterSearchResult.Found;
+                return waterDistance;
             }
 
-            if (waterNearby)
-            {
-                if (!IsWatered) MarkDirty(true);
-                lastWateredTotalHours = Api.World.Calendar.TotalHours;
-                return EnumWaterSearchResult.Found;
-            }
-
-            return EnumWaterSearchResult.NotFound;
+            result = EnumWaterSearchResult.NotFound;
+            return 99;
         }
 
 
@@ -202,55 +187,51 @@ namespace Vintagestory.GameContent
 
         WeatherSystemBase wsys;
         Vec3d tmpPos = new Vec3d();
-
-
-        private void Update(float dt)
+        
+        bool tryUpdateWateredStateForDate(double totalDays, bool searchNearbyWater)
         {
-            double hoursNextStage = GetHoursForNextStage();
-            bool nearbyWaterTested = false;
-            bool nearbyWaterFound = false;
-
-            double nowTotalHours = Api.World.Calendar.TotalHours;
-
-
-
             tmpPos.Set(Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5);
-            double rainLevel = wsys.GetRainFall(tmpPos);
+            
+            double rainLevel = wsys.GetPrecipitation(tmpPos.X, tmpPos.Y, tmpPos.Z, totalDays);
 
             bool hasRain = rainLevel > 0.01 && Api.World.BlockAccessor.GetRainMapHeightAt(Pos.X, Pos.Z) <= Pos.Y + 1;
 
             if (hasRain)
             {
-                currentlyWateredSeconds += (float)rainLevel / 3f;
-                lastWateredMs = Api.World.ElapsedMilliseconds;
+                moistureLevel = GameMath.Clamp(moistureLevel + (float)rainLevel / 3f, 0, 1);
+                UpdateFarmlandBlock();
+            }
 
-                if (currentlyWateredSeconds > 1f)
+            //if (!IsWatered && nowTotalHours - lastWateredTotalHours >= totalHoursWaterRetention - 1 && (nowTotalHours - lastWaterSearchedTotalHours) >= 0.5f)
+            if (searchNearbyWater)
+            {
+                EnumWaterSearchResult res;
+                float dist = GetNearbyWaterDistance(out res);
+                if (res == EnumWaterSearchResult.Deferred) return false; // Wait with updating until neighbouring chunks are loaded
+                if (res == EnumWaterSearchResult.Found)
                 {
-                    lastWateredTotalHours = Api.World.Calendar.TotalHours + 12;
+                    moistureLevel = Math.Min(moistureLevel, Math.Max(0.33f, dist / 3.5f));
                     UpdateFarmlandBlock();
-                    currentlyWateredSeconds--;
                 }
-
             }
 
-            
+            return true;
+        }
 
-            if (Api.World.ElapsedMilliseconds - lastWateredMs > 10000)
-            {
-                currentlyWateredSeconds = Math.Max(0, currentlyWateredSeconds - dt);
-            }
+        private void Update(float dt)
+        {
+            double hoursNextStage = GetHoursForNextStage();
+            bool nearbyWaterTested = false;
 
-            if (!IsWatered && nowTotalHours - lastWateredTotalHours >= totalHoursWaterRetention - 1 && (nowTotalHours - lastWaterSearchedTotalHours) >= 0.5f)
-            {
-                nearbyWaterTested = true;
-                EnumWaterSearchResult res = FindNearbyWater();
-                if (res == EnumWaterSearchResult.Deferred) return; // Wait with updating until neighbouring chunks are loaded
-
-                nearbyWaterFound = res == EnumWaterSearchResult.Found;
-            }
-
+            double nowTotalHours = Api.World.Calendar.TotalHours;
             double hoursPassed = nowTotalHours - totalHoursLastUpdate;
-            if (hoursPassed < 1) return;
+
+            if (hoursPassed < 1)
+            {
+                tryUpdateWateredStateForDate(Api.World.Calendar.TotalDays, false);
+                return;
+            }
+
 
             // Slow down growth on bad light levels
             int sunlight = Api.World.BlockAccessor.GetLightLevel(base.Pos.UpCopy(), EnumLightLevelType.MaxLight);
@@ -259,6 +240,7 @@ namespace Vintagestory.GameContent
             Block upblock = Api.World.BlockAccessor.GetBlock(upPos);
             
             double lightHoursPenalty = hoursNextStage / lightGrowthSpeedFactor - hoursNextStage;
+
             double totalHoursNextGrowthState = totalHoursForNextStage + lightHoursPenalty;
 
             EnumSoilNutrient? currentlyConsumedNutrient = null;
@@ -277,10 +259,20 @@ namespace Vintagestory.GameContent
             while ((nowTotalHours - totalHoursLastUpdate) > hourIntervall)
             {
                 totalHoursLastUpdate += hourIntervall;
+                hourIntervall = (3 + rand.NextDouble());
+
+                ClimateCondition conds = Api.World.BlockAccessor.GetClimateAt(Pos, EnumGetClimateMode.ForSuppliedDateValues, totalHoursLastUpdate / Api.World.Calendar.HoursPerDay);
+
+                // Stop growth and fertility recovery below zero degrees
+                // 10% growth speed at 1°C
+                // 20% growth speed at 2°C and so on
+                float growthChance = GameMath.Clamp(conds.Temperature / 10f, 0, 10);
+                if (rand.NextDouble() > growthChance)
+                {
+                    continue;
+                }
 
                 growTallGrass |= rand.NextDouble() < 0.006;
-
-                hourIntervall = (3 + rand.NextDouble());
 
                 bool ripe = HasRipeCrop();
 
@@ -317,29 +309,17 @@ namespace Vintagestory.GameContent
                     }
                 }
 
+                moistureLevel = Math.Max(0, moistureLevel -(float)hourIntervall / 48f);
 
-                if (nearbyWaterTested && nearbyWaterFound)
+                if (!tryUpdateWateredStateForDate(Api.World.Calendar.TotalDays, !nearbyWaterTested))
                 {
-                    lastWateredTotalHours = totalHoursLastUpdate;
-                } else
-                {
-                    if (!nearbyWaterTested && !IsWatered && Api.World.Calendar.TotalHours - lastWateredTotalHours >= totalHoursWaterRetention - 1 && (totalHoursLastUpdate - lastWaterSearchedTotalHours) >= 0.5f)
-                    {
-                        nearbyWaterTested = true;
-                        EnumWaterSearchResult res = FindNearbyWater();
-                        if (res == EnumWaterSearchResult.Deferred)
-                        {
-                            totalHoursLastUpdate -= hourIntervall;
-                            return; // Wait with updating until neighbouring chunks are loaded
-                        }
-                        nearbyWaterFound = res == EnumWaterSearchResult.Found;
-                    }
+                    return; // Wait with updating until neighbouring chunks are loaded
                 }
+                nearbyWaterTested = true;
 
-                // Did the farmland run out of water at this time?
-                if (lastWateredTotalHours - totalHoursNextGrowthState < -totalHoursWaterRetention)
+                if (moistureLevel < 0.1)
                 {
-                    totalHoursForNextStage = Api.World.Calendar.TotalHours + hoursNextStage;
+                    // Too dry to grow. Todo: Make it dependent on crop
                     continue;
                 }
 
@@ -486,6 +466,11 @@ namespace Vintagestory.GameContent
         }
 
 
+        public bool IsVisiblyMoist
+        {
+            get { return moistureLevel > 0.33; }
+        }
+
         void UpdateFarmlandBlock()
         {
             // v1.10: Let's get rid of the mechanic that the farmland exchanges blocks
@@ -495,7 +480,7 @@ namespace Vintagestory.GameContent
 
             int nowLevel = FertilityLevel(originalFertility);// FertilityLevel((nutrients[0] + nutrients[1] + nutrients[2]) / 3);
             Block farmlandBlock = Api.World.BlockAccessor.GetBlock(base.Pos);
-            Block nextFarmlandBlock = Api.World.GetBlock(farmlandBlock.CodeWithParts(IsWatered ? "moist" : "dry", Fertilities.GetKeyAtIndex(nowLevel)));
+            Block nextFarmlandBlock = Api.World.GetBlock(farmlandBlock.CodeWithParts(IsVisiblyMoist ? "moist" : "dry", Fertilities.GetKeyAtIndex(nowLevel)));
 
             if (nextFarmlandBlock == null)
             {
@@ -549,7 +534,7 @@ namespace Vintagestory.GameContent
             slowReleaseNutrients[1] = tree.GetFloat("slowP");
             slowReleaseNutrients[2] = tree.GetFloat("slowK");
 
-            lastWateredTotalHours = tree.GetDouble("lastWateredTotalHours");
+            moistureLevel = tree.GetFloat("moistureLevel");
             lastWaterSearchedTotalHours = tree.GetDouble("lastWaterSearchedTotalHours");
             originalFertility = tree.GetInt("originalFertility");
 
@@ -579,7 +564,7 @@ namespace Vintagestory.GameContent
             tree.SetFloat("slowP", slowReleaseNutrients[1]);
             tree.SetFloat("slowK", slowReleaseNutrients[2]);
 
-            tree.SetDouble("lastWateredTotalHours", lastWateredTotalHours);
+            tree.SetFloat("moistureLevel", moistureLevel);
             tree.SetDouble("lastWaterSearchedTotalHours", lastWaterSearchedTotalHours);
             tree.SetInt("originalFertility", originalFertility);
             tree.SetDouble("totalHoursForNextStage", totalHoursForNextStage);
@@ -607,25 +592,18 @@ namespace Vintagestory.GameContent
 
         public void WaterFarmland(float dt, bool waterNeightbours = true)
         {
-            currentlyWateredSeconds += dt;
-            lastWateredMs = Api.World.ElapsedMilliseconds;
+            moistureLevel += dt;
 
-            if (currentlyWateredSeconds > 1f)
+            if (waterNeightbours)
             {
-                if (IsWatered && waterNeightbours)
-                {
-                    foreach (BlockFacing neib in BlockFacing.HORIZONTALS) {
-                        BlockPos npos = base.Pos.AddCopy(neib);
-                        BlockEntityFarmland bef = Api.World.BlockAccessor.GetBlockEntity(npos) as BlockEntityFarmland;
-                        if (bef != null) bef.WaterFarmland(1.01f, false);
-                    }
+                foreach (BlockFacing neib in BlockFacing.HORIZONTALS) {
+                    BlockPos npos = base.Pos.AddCopy(neib);
+                    BlockEntityFarmland bef = Api.World.BlockAccessor.GetBlockEntity(npos) as BlockEntityFarmland;
+                    if (bef != null) bef.WaterFarmland(dt / 3, false);
                 }
-
-                lastWateredTotalHours = Api.World.Calendar.TotalHours;
-                UpdateFarmlandBlock();
-                currentlyWateredSeconds--;
             }
 
+            UpdateFarmlandBlock();
         }
 
         public double TotalHoursForNextStage
@@ -652,11 +630,11 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public bool IsWatered
+        public float MoistureLevel
         {
             get
             {
-                return lastWateredTotalHours > 0 && (Api.World.Calendar.TotalHours - lastWateredTotalHours) < totalHoursWaterRetention;
+                return moistureLevel;
             }
         }
 
@@ -734,7 +712,27 @@ namespace Vintagestory.GameContent
 
             return true;*/
         }
-        
+
+        public override void OnBlockRemoved()
+        {
+            base.OnBlockRemoved();
+
+            if (Api.Side == EnumAppSide.Server)
+            {
+                Api.ModLoader.GetModSystem<POIRegistry>().RemovePOI(this);
+            }
+        }
+
+        public override void OnBlockUnloaded()
+        {
+            base.OnBlockUnloaded();
+
+            if (Api.Side == EnumAppSide.Server)
+            {
+                Api.ModLoader.GetModSystem<POIRegistry>().RemovePOI(this);
+            }
+        }
+
 
 
         protected enum EnumWaterSearchResult

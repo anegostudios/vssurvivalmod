@@ -44,7 +44,6 @@ using Vintagestory.API.Config;
     NetworkVersion = GameVersion.NetworkVersion,
     Description = "The Vintage Story Survival experience. Contains all standard Blocks, Items, Creatures and pretty world generation",
     Authors = new[] { "Tyron" },
-    RequiredOnClient = true,
     WorldConfig = @"
     {
 	    playstyles: [
@@ -85,6 +84,8 @@ using Vintagestory.API.Config;
                     temporalStorms: ""off"",
                     surfaceCopperDeposits: ""0.2"",
                     surfaceTinDeposits: ""0.03"",
+                    globalDepositSpawnRate: ""1.6"",
+                    propickNodeSearchRadius: ""8""
                 }
 			},
             {
@@ -122,10 +123,15 @@ using Vintagestory.API.Config;
             { code: ""worldLength"", dataType: ""dropdown"", values: [""1024000"", ""600000"", ""512000"", ""102400"", ""51200"", ""10240"", ""5120"", ""1024"", ""512"", ""384"", ""256"", ""128"", ""64"", ""32"" ], names: [""1 mil blocks"", ""600k blocks"", ""512k blocks"", ""102k blocks"", ""51k blocks"", ""10k blocks"", ""5120 blocks"", ""1024 blocks"", ""512 blocks"", ""384 blocks"", ""256 blocks"", ""128 blocks"", ""64 blocks"", ""32 blocks""], default: ""1024000"" },
             { code: ""worldEdge"", dataType: ""dropdown"", values: [""blocked"", ""traversable"" ], names: [""Blocked"", ""Traversable (Can fall down)""], default: ""traversable"" },
 
+            { code: ""polarEquatorDistance"", dataType: ""dropdown"", values: [""800000"", ""400000"", ""200000"", ""100000"", ""50000"", ""25000"", ""15000"", ""10000"", ""5000""], names: [""800k blocks"", ""400k blocks"", ""200k blocks"", ""100k blocks"", ""50k blocks"", ""25k blocks"", ""15k blocks"", ""10k blocks"", ""5000 blocks""], default: ""50000"" },
+            { code: ""startingClimate"", dataType: ""dropdown"", values: [""hot"", ""warm"", ""temperate"", ""cool"", ""icy""], names: [""Hot (28-32°C)"", ""Warm (19-23 °C)"", ""Temperate (6-14 °C)"", ""Cool (-5 to 1 °C)"", ""Icy (-15 to -10°C)""], default: ""temperate"" },
+            { code: ""seasons"", dataType: ""dropdown"", values: [""enabled"", ""spring""], names: [""Enabled"", ""Off, always spring""], default: ""enabled"" },
+
             { code: ""globalTemperature"", dataType: ""dropdown"", values: [""4"", ""2"", ""1.5"", ""1"", ""0.5"", ""0.25"", ""0.15""], names: [""Scorching hot"", ""Very hot"", ""Hot"", ""Normal"", ""Cold"", ""Very Cold"", ""Snowball earth""], default: ""1"" },
             { code: ""globalPrecipitation"", dataType: ""dropdown"", values: [""4"", ""2"", ""1.5"", ""1"", ""0.5"", ""0.25"", ""0.1""], names: [""Super humid"", ""Very humid"", ""Humid"", ""Normal"", ""Semi-Arid"", ""Arid"", ""Hyperarid""], default: ""1"" },
+            { code: ""globalForestation"", dataType: ""dropdown"", values: [""1"", ""0.9"", ""0.75"", ""0.5"", ""0.25"", ""0"", ""-0.25"", ""-0.5"", ""-0.75"", ""-0.9"", ""-1""], names: [""Forest World (+100%)"", ""Extremely forested (+90%)"", ""Very highly forested (+75%)"", ""Highly forested (+50%)"", ""Somewhat more forest (+25%)"", ""Normal"", ""Somewhat less forest (-25%)"", ""Significantly less forested (-50%)"", ""Much less forested (-75%)"", ""Near Tree-less (-90%)"", ""Tree-less World (-100%)""], default: ""0"" },
             
-            { code: ""microblockChiseling"", dataType: ""bool"", default: ""false"" },
+            { code: ""microblockChiseling"", dataType: ""dropdown"", values: [""off"", ""stonewood"", ""all""], names: [""Off"", ""Stone and Wood"", ""Most cubic blocks""], default: ""stonewood"" },
             { code: ""deathPunishment"", dataType: ""dropdown"", values: [""drop"", ""keep""], names: [""Drop inventory contents"", ""Keep inventory contents""], default: ""drop"" },
             { code: ""spawnRadius"", onCustomizeScreen: false, dataType: ""dropdown"", values: [""10000"", ""5000"", ""2500"", ""1000"", ""500"", ""250"", ""100"", ""50"", ""25"", ""0""], names: [""10000 blocks"", ""5000 blocks"", ""2500 blocks"", ""1000 blocks"", ""500 blocks"", ""250 blocks"", ""100 blocks"", ""50 blocks"", ""25 blocks"",""0 blocks""], default: ""50"" },
             { code: ""graceTimer"", dataType: ""dropdown"", values: [""10"", ""5"", ""4"", ""3"", ""2"", ""1"", ""0""], names: [""10 days before monsters appear"", ""5 days before monsters appear"", ""4 days before monsters appear"", ""3 days before monsters appear"", ""2 days before monsters appear"", ""1 day before monsters appear"", ""No timer. Monsters spawn right away.""], default: ""0"" },
@@ -142,15 +148,17 @@ using Vintagestory.API.Config;
             { code: ""toolDurability"", dataType: ""dropdown"", values: [""4"", ""3"", ""2"", ""1.5"", ""1.25"", ""1"", ""0.75"", ""0.5""], names: [""400%"", ""300%"", ""200%"", ""150%"", ""125%"", ""100%"", ""75%"", ""50%""], default: ""1"" },
             { code: ""toolMiningSpeed"", dataType: ""dropdown"", values: [""3"", ""2"", ""1.5"", ""1.25"", ""1"", ""0.75"", ""0.5"", ""0.25""], names: [""300%"", ""200%"", ""150%"", ""125%"", ""100%"", ""75%"", ""50%"", ""25%""], default: ""1"" },
 
+            
+            { code: ""propickNodeSearchRadius"", dataType: ""dropdown"", values: [""0"", ""2"", ""4"", ""6"", ""8""], names: [""Disabled"", ""2 blocks"", ""4 blocks"", ""6 blocks"", ""8 blocks""], default: ""0"" },
+            { code: ""surfaceCopperDeposits"", dataType: ""dropdown"", values: [""1"", ""0.5"", ""0.2"", ""0.12"", ""0.05"", ""0.015"", ""0""], names: [""Very common"", ""Common"", ""Uncommon"", ""Rare"", ""Very Rare"", ""Extremly rare"", ""Never""], default: ""0.12"" },
+            { code: ""surfaceTinDeposits"", dataType: ""dropdown"", values: [""0.5"", ""0.25"", ""0.12"", ""0.03"", ""0.014"", ""0.007"", ""0""], names: [""Very common"", ""Common"", ""Uncommon"", ""Rare"", ""Very Rare"", ""Extremly rare"", ""Never""], default: ""0.007"" },
+            { code: ""globalDepositSpawnRate"", dataType: ""dropdown"", values: [""3"", ""2"", ""1.8"", ""1.6"", ""1.4"", ""1.2"", ""1"", ""0.8"", ""0.6"", ""0.4"", ""0.2""], names: [""300%"", ""200%"", ""180%"", ""160%"", ""140%"", ""120%"", ""100%"", ""80%"", ""60%"", ""40%"", ""20%""], default: ""1"" },
+
+            { code: ""temporalStorms"", dataType: ""dropdown"", values: [""off"", ""veryrare"", ""rare"", ""sometimes"", ""often"", ""veryoften""], names: [""Off"", ""Every 30-40 days, increase strength/frequency by 2.5% each time, capped at +25%"", ""Approx. every 20-30 days, increase strength/frequency by 5% each time, capped at +50%"", ""Approx. every 10-20 days, increase strength/frequency by +10% each time, capped at 100%"", ""Approx. every 5-10 days, increase strength/frequency by 15% each time, capped at +150%"", ""Approx. every 3-6 days, increase strength/frequency by 20% each time, capped at +200%""], default: ""sometimes"" },
+            { code: ""temporalStability"", dataType: ""bool"", default: ""true"" },
             { code: ""allowCoordinateHud"", dataType: ""bool"", default: ""true"" },
             { code: ""allowMap"", dataType: ""bool"", default: ""true"" },
             { code: ""allowLandClaiming"", dataType: ""bool"", default: ""true"" },
-            { code: ""temporalStability"", dataType: ""bool"", default: ""true"" },
-            { code: ""temporalStorms"", dataType: ""dropdown"", values: [""off"", ""veryrare"", ""rare"", ""sometimes"", ""often"", ""veryoften""], names: [""Off"", ""Every 30-40 days, increase strength/frequency by 2.5% each time, capped at +25%"", ""Approx. every 20-30 days, increase strength/frequency by 5% each time, capped at +50%"", ""Approx. every 10-20 days, increase strength/frequency by +10% each time, capped at 100%"", ""Approx. every 5-10 days, increase strength/frequency by 15% each time, capped at +150%"", ""Approx. every 3-6 days, increase strength/frequency by 20% each time, capped at +200%""], default: ""sometimes"" },
-            
-
-            { code: ""surfaceCopperDeposits"", dataType: ""dropdown"", values: [""1"", ""0.5"", ""0.2"", ""0.12"", ""0.05"", ""0.015"", ""0""], names: [""Very common"", ""Common"", ""Uncommon"", ""Rare"", ""Very Rare"", ""Extremly rare"", ""Never""], default: ""0.12"" },
-            { code: ""surfaceTinDeposits"", dataType: ""dropdown"", values: [""0.5"", ""0.25"", ""0.12"", ""0.03"", ""0.014"", ""0.007"", ""0""], names: [""Very common"", ""Common"", ""Uncommon"", ""Rare"", ""Very Rare"", ""Extremly rare"", ""Never""], default: ""0.007"" },
 
 	    ]
     }"

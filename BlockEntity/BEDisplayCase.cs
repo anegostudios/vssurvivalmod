@@ -32,7 +32,6 @@ namespace Vintagestory.GameContent
             {
                 if (TryTake(byPlayer, blockSel))
                 {
-                    byPlayer.InventoryManager.BroadcastHotbarSlot();
                     return true;
                 }
                 return false;
@@ -47,7 +46,6 @@ namespace Vintagestory.GameContent
                     if (TryPut(slot, blockSel))
                     {
                         Api.World.PlaySoundAt(sound != null ? sound : new AssetLocation("sounds/player/build"), byPlayer.Entity, byPlayer, true, 16);
-                        byPlayer.InventoryManager.BroadcastHotbarSlot();
                         return true;
                     }
 

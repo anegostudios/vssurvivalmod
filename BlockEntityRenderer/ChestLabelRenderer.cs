@@ -14,7 +14,7 @@ namespace Vintagestory.GameContent
         
         public ChestLabelRenderer(BlockPos pos, ICoreClientAPI api) : base(pos, api)
         {
-            TextWidth = 160;
+            TextWidth = 200;
         }
 
         public void SetRotation(float radY)
@@ -52,7 +52,7 @@ namespace Vintagestory.GameContent
 
             prog.ViewMatrix = rpi.CameraMatrixOriginf;
             prog.ProjectionMatrix = rpi.CurrentProjectionMatrix;
-
+            prog.NormalShaded = 0;
 
             rpi.RenderMesh(quadModelRef);
             prog.Stop();

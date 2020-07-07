@@ -114,6 +114,8 @@ namespace Vintagestory.GameContent
         public int OwnMetalTier;
         AnvilWorkItemRenderer workitemRenderer;
         public int rotation = 0;
+        public float MeshAngle;
+        MeshData currentMesh;
 
         public bool [,,] recipeVoxels
         {
@@ -207,6 +209,7 @@ namespace Vintagestory.GameContent
                 capi.Event.RegisterRenderer(workitemRenderer, EnumRenderStage.AfterFinalComposition);
 
                 RegenMeshAndSelectionBoxes();
+                capi.Tesselator.TesselateBlock(Block, out currentMesh);
             }
 
             string metalType = Block.LastCodePart();
@@ -542,7 +545,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public void OnHelveHammerHit()
+        public virtual void OnHelveHammerHit()
         {
             if (workItemStack == null || !CanWorkCurrent) return;
 
@@ -551,6 +554,7 @@ namespace Vintagestory.GameContent
             // Helve hammer can only work plates and iron bloom
             if (!recipe.Output.Code.Path.Contains("plate") && !IsIronBloom) return;
 
+            rotation = 0;
             int ymax = recipe.QuantityLayers;
             Vec3i usableMetalVoxel;
             if (!IsIronBloom)
@@ -662,7 +666,7 @@ namespace Vintagestory.GameContent
             return null;
         }
 
-        public void CheckIfFinished(IPlayer byPlayer)
+        public virtual void CheckIfFinished(IPlayer byPlayer)
         {
             if (MatchesRecipe() && Api.World is IServerWorldAccessor)
             {
@@ -731,7 +735,7 @@ namespace Vintagestory.GameContent
 
 
 
-        private void OnSplit(Vec3i voxelPos)
+        public virtual void OnSplit(Vec3i voxelPos)
         {
             if (Voxels[voxelPos.X, voxelPos.Y, voxelPos.Z] == (byte)EnumVoxelMaterial.Slag)
             {
@@ -759,7 +763,7 @@ namespace Vintagestory.GameContent
 
         }
 
-        private void OnUpset(Vec3i voxelPos, BlockFacing towardsFace)
+        public virtual void OnUpset(Vec3i voxelPos, BlockFacing towardsFace)
         {
             if (Voxels[voxelPos.X, voxelPos.Y, voxelPos.Z] != (byte)EnumVoxelMaterial.Metal) return;
 
@@ -870,7 +874,7 @@ namespace Vintagestory.GameContent
             return null;
         }
 
-        private void OnHit(Vec3i voxelPos)
+        public virtual void OnHit(Vec3i voxelPos)
         {
             if (Voxels[voxelPos.X, voxelPos.Y, voxelPos.Z] != (byte)EnumVoxelMaterial.Metal) return;
 
@@ -883,6 +887,7 @@ namespace Vintagestory.GameContent
                     for (int dz = -1; dz <=1; dz++)
                     {
                         if (dx == 0 && dz == 0) continue;
+                        if (voxelPos.X + dx < 0 || voxelPos.X + dx >= 16 || voxelPos.Z + dz < 0 || voxelPos.Z + dz >= 16) continue;
 
                         if (Voxels[voxelPos.X + dx, voxelPos.Y, voxelPos.Z + dz] == (byte)EnumVoxelMaterial.Metal)
                         {
@@ -906,13 +911,22 @@ namespace Vintagestory.GameContent
                         for (int dz = -1; dz <= 1; dz++)
                         {
                             if (dx == 0 && dz == 0) continue;
+                            if (voxelPos.X + 2*dx < 0 || voxelPos.X + 2*dx >= 16 || voxelPos.Z + 2*dz < 0 || voxelPos.Z + 2*dz >= 16) continue;
 
                             bool spotEmpty = Voxels[voxelPos.X + 2 * dx, voxelPos.Y, voxelPos.Z + 2 * dz] == (byte)EnumVoxelMaterial.Empty;
 
                             if (Voxels[voxelPos.X + dx, voxelPos.Y, voxelPos.Z + dz] == (byte)EnumVoxelMaterial.Metal && spotEmpty)
                             {
                                 Voxels[voxelPos.X + dx, voxelPos.Y, voxelPos.Z + dz] = (byte)EnumVoxelMaterial.Empty;
-                                Voxels[voxelPos.X + 2 * dx, voxelPos.Y, voxelPos.Z + 2 * dz] = (byte)EnumVoxelMaterial.Metal;
+
+                                if (Voxels[voxelPos.X + 2 * dx, voxelPos.Y - 1, voxelPos.Z + 2 * dz] == (byte)EnumVoxelMaterial.Empty)
+                                {
+                                    Voxels[voxelPos.X + 2 * dx, voxelPos.Y - 1, voxelPos.Z + 2 * dz] = (byte)EnumVoxelMaterial.Metal;
+                                } else
+                                {
+                                    Voxels[voxelPos.X + 2 * dx, voxelPos.Y, voxelPos.Z + 2 * dz] = (byte)EnumVoxelMaterial.Metal;
+                                }
+                                
                             } else
                             {
                                 if (spotEmpty) emptySpot = voxelPos.Clone().Add(dx, 0, dz);
@@ -923,32 +937,19 @@ namespace Vintagestory.GameContent
                     if (emptySpot != null && Voxels[voxelPos.X, voxelPos.Y, voxelPos.Z] == (byte)EnumVoxelMaterial.Metal) 
                     {
                         Voxels[voxelPos.X, voxelPos.Y, voxelPos.Z] = (byte)EnumVoxelMaterial.Empty;
-                        Voxels[emptySpot.X, emptySpot.Y, emptySpot.Z] = (byte)EnumVoxelMaterial.Metal;
+
+                        if (Voxels[emptySpot.X, emptySpot.Y - 1, emptySpot.Z] == (byte)EnumVoxelMaterial.Empty)
+                        {
+                            Voxels[emptySpot.X, emptySpot.Y - 1, emptySpot.Z] = (byte)EnumVoxelMaterial.Metal;
+                        } else
+                        {
+                            Voxels[emptySpot.X, emptySpot.Y, emptySpot.Z] = (byte)EnumVoxelMaterial.Metal;
+                        }
+
+                        
                     }
-
-
                 }
             }
-
-
-
-            /*for (int dx = -1; dx <= 1; dx++)
-            {
-                for (int dz = -1; dz <= 1; dz++)
-                {
-                    Vec3i npos = voxelPos.AddCopy(dx, 0, dz);
-
-                    if (npos.X >= 0 && npos.X < 16 && npos.Y >= 0 && npos.Y < 6 && npos.Z >= 0 && npos.Z < 16 && Voxels[npos.X, npos.Y, npos.Z] == (byte)EnumVoxelMaterial.Empty)
-                    {
-                        Voxels[npos.X, npos.Y, npos.Z] = (byte)EnumVoxelMaterial.Metal;
-                        AvailableMetalVoxels--;
-                        if (AvailableMetalVoxels <= 0)
-                        {
-                            return;
-                        }
-                    }
-                }
-            }*/
         }
 
 
@@ -1129,6 +1130,18 @@ namespace Vintagestory.GameContent
             }
 
             RegenMeshAndSelectionBoxes();
+
+            MeshAngle = tree.GetFloat("meshAngle", MeshAngle);
+
+            if (Api?.Side == EnumAppSide.Client)
+            {
+                MeshData newMesh;
+                ((ICoreClientAPI)Api).Tesselator.TesselateBlock(Block, out newMesh);
+
+                currentMesh = newMesh; // Needed so we don't get race conditions
+
+                MarkDirty(true);
+            }
         }
 
         public override void ToTreeAttributes(ITreeAttribute tree)
@@ -1139,6 +1152,8 @@ namespace Vintagestory.GameContent
             //tree.SetInt("availableVoxels", AvailableMetalVoxels);
             tree.SetInt("selectedRecipeId", selectedRecipeId);
             tree.SetInt("rotation", rotation);
+
+            tree.SetFloat("meshAngle", MeshAngle);
         }
 
 
@@ -1193,7 +1208,7 @@ namespace Vintagestory.GameContent
 
 
 
-        public void SendUseOverPacket(IPlayer byPlayer, Vec3i voxelPos)
+        protected void SendUseOverPacket(IPlayer byPlayer, Vec3i voxelPos)
         {
             byte[] data;
 
@@ -1342,6 +1357,12 @@ namespace Vintagestory.GameContent
         public override void OnBlockUnloaded()
         {
             workitemRenderer?.Dispose();
+        }
+
+        public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
+        {
+            mesher.AddMeshData(currentMesh.Clone().Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 0, MeshAngle, 0));
+            return true;
         }
 
     }

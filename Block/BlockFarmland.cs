@@ -41,7 +41,7 @@ namespace Vintagestory.GameContent
 
             if (befarmland != null)
             {
-                Block farmlandBlock = api.World.GetBlock(CodeWithVariant("state", befarmland.IsWatered ? "moist" : "dry"));
+                Block farmlandBlock = api.World.GetBlock(CodeWithVariant("state", befarmland.IsVisiblyMoist ? "moist" : "dry"));
                 return new ItemStack(farmlandBlock).GetName();
 
             }

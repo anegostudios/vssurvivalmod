@@ -55,7 +55,7 @@ namespace Vintagestory.GameContent
         }
 
         
-        public override void OnNeighourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
+        public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
         {
             if (!CanPlantStay(world.BlockAccessor, pos))
             {
@@ -64,7 +64,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        internal virtual bool CanPlantStay(IBlockAccessor blockAccessor, BlockPos pos)
+        public virtual bool CanPlantStay(IBlockAccessor blockAccessor, BlockPos pos)
         {
             Block block = blockAccessor.GetBlock(pos.X, pos.Y - 1, pos.Z);
             return block.Fertility > 0;
@@ -83,7 +83,7 @@ namespace Vintagestory.GameContent
 
             if (EntityClass == "Sapling")
             {
-                color = capi.ApplyColorTintOnRgba(1, color, pos.X, pos.Y, pos.Z);
+                color = capi.World.ApplyColorMapOnRgba(ClimateColorMap, SeasonColorMap, color, pos.X, pos.Y, pos.Z);
             }
 
             return color;

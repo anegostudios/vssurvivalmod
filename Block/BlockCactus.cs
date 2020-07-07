@@ -7,7 +7,7 @@ namespace Vintagestory.GameContent
     public class BlockCactus : BlockPlant
     {
 
-        internal override bool CanPlantStay(IBlockAccessor blockAccessor, BlockPos pos)
+        public override bool CanPlantStay(IBlockAccessor blockAccessor, BlockPos pos)
         {
             Block block = blockAccessor.GetBlock(pos.DownCopy());
             return block.Fertility > 0 || block is BlockCactus;

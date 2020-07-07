@@ -30,7 +30,7 @@ namespace Vintagestory.GameContent
         {
             this.api = coreClientAPI;
             this.pos = pos;
-            mesh.Rgba2 = null;
+            //mesh.Rgba2 = null;
             meshref = coreClientAPI.Render.UploadMesh(mesh);
         }
 

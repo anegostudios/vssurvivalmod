@@ -106,7 +106,7 @@ namespace Vintagestory.GameContent
 
         public override void StartServerSide(ICoreServerAPI api)
         {
-            api.Event.ServerRunPhase(EnumServerRunPhase.LoadGamePre, addReinforcementBehavior);
+            api.Event.ServerRunPhase(EnumServerRunPhase.ModsAndConfigReady, addReinforcementBehavior);
             api.Event.SaveGameLoaded += Event_SaveGameLoaded;
             api.Event.GameWorldSave += Event_GameWorldSave;
             api.Event.PlayerJoin += Event_PlayerJoin;
@@ -119,7 +119,7 @@ namespace Vintagestory.GameContent
 
             api.RegisterCommand("bre", "Block reinforcement privilege management", "[grant|revoke|grantgroup|revokegroup] [playername/groupname] [use or all]", onCmd, Privilege.chat);
 
-            api.Permissions.RegisterPrivilege("denybreakreinforced", "Deny the ability to break reinforced blocks");
+            api.Permissions.RegisterPrivilege("denybreakreinforced", "Deny the ability to break reinforced blocks", false);
         }
 
         private void Event_PlayerJoin(IServerPlayer byPlayer)
@@ -392,7 +392,8 @@ namespace Vintagestory.GameContent
             int index3d = toLocalIndex(pos);
             if (!reinforcmentsOfChunk.ContainsKey(index3d)) return;
 
-            reinforcmentsOfChunk[index3d].Strength--;
+            reinforcmentsOfChunk[index3d].Strength -= byAmount;
+
             if (reinforcmentsOfChunk[index3d].Strength <= 0)
             {
                 reinforcmentsOfChunk.Remove(index3d);

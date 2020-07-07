@@ -12,23 +12,30 @@ using Vintagestory.API.Server;
 
 namespace Vintagestory.GameContent
 {
-    class BlockEntityItemFlow : BlockEntityOpenableContainer
+    public class BlockEntityItemFlow : BlockEntityOpenableContainer
     {
 
         
         internal InventoryGeneric inventory;
 
-        public BlockFacing InputFace = BlockFacing.UP;
-        public BlockFacing OutputFace = BlockFacing.DOWN;
+        public BlockFacing[] PullFaces = new BlockFacing[0];
+        public BlockFacing[] PushFaces = new BlockFacing[0];
+        public BlockFacing[] AcceptFromFaces = new BlockFacing[0];
+
         public string inventoryClassName = "hopper";
         public string ItemFlowObjectLangCode = "hopper-contents";
         public int QuantitySlots = 4;
-        public int FlowAmount = 1;
+        protected float itemFlowRate = 1;
 
+        public BlockFacing LastReceivedFromDir;
+
+        int checkRateMs;
+        float itemFlowAccum;
 
         public override AssetLocation OpenSound => new AssetLocation("sounds/block/hopperopen");
         public override AssetLocation CloseSound => null;
 
+        public virtual float ItemFlowRate => itemFlowRate;
 
         public BlockEntityItemFlow() : base()
         {
@@ -44,12 +51,38 @@ namespace Vintagestory.GameContent
         {
             if(Block?.Attributes != null)
             {
-                if (Block.Attributes["input-face"].Exists)
+                if (Block.Attributes["pullFaces"].Exists)
                 {
-                    InputFace = BlockFacing.FromCode(Block.Attributes["input-face"].AsString(null));
+                    string[] faces = Block.Attributes["pullFaces"].AsArray<string>(null);
+                    PullFaces = new BlockFacing[faces.Length];
+                    for (int i = 0; i < faces.Length; i++)
+                    {
+                        PullFaces[i] = BlockFacing.FromCode(faces[i]);
+                    }
                 }
-                OutputFace = BlockFacing.FromCode(Block.Attributes["output-face"].AsString(OutputFace.Code));
-                FlowAmount = Block.Attributes["item-flowrate"].AsInt(FlowAmount);
+
+                if (Block.Attributes["pushFaces"].Exists)
+                {
+                    string[] faces = Block.Attributes["pushFaces"].AsArray<string>(null);
+                    PushFaces = new BlockFacing[faces.Length];
+                    for (int i = 0; i < faces.Length; i++)
+                    {
+                        PushFaces[i] = BlockFacing.FromCode(faces[i]);
+                    }
+                }
+
+                if (Block.Attributes["acceptFromFaces"].Exists)
+                {
+                    string[] faces = Block.Attributes["acceptFromFaces"].AsArray<string>(null);
+                    AcceptFromFaces = new BlockFacing[faces.Length];
+                    for (int i = 0; i < faces.Length; i++)
+                    {
+                        AcceptFromFaces[i] = BlockFacing.FromCode(faces[i]);
+                    }
+                }
+
+                itemFlowRate = Block.Attributes["item-flowrate"].AsFloat(itemFlowRate);
+                checkRateMs = Block.Attributes["item-checkrateMs"].AsInt(200);
                 inventoryClassName = Block.Attributes["inventoryClassName"].AsString(inventoryClassName);
                 ItemFlowObjectLangCode = Block.Attributes["itemFlowObjectLangCode"].AsString(ItemFlowObjectLangCode);
                 QuantitySlots = Block.Attributes["quantitySlots"].AsInt(QuantitySlots);
@@ -62,8 +95,35 @@ namespace Vintagestory.GameContent
                 inventory.OnInventoryClosed += OnInvClosed;
                 inventory.OnInventoryOpened += OnInvOpened;
                 inventory.SlotModified += OnSlotModifid;
+
+                inventory.OnGetAutoPushIntoSlot = GetAutoPushIntoSlot;
+                inventory.OnGetAutoPullFromSlot = GetAutoPullFromSlot;
             }
         }
+
+        // Return the slot where a chute may pull items from. Return null if it is now allowed to pull any items from this inventory
+        private ItemSlot GetAutoPullFromSlot(BlockFacing atBlockFace)
+        {
+            if (PushFaces.Contains(atBlockFace))
+            {
+                return inventory[0];
+            }
+
+            return null;
+        }
+
+        // Return the slot where a chute may push items into. Return null if it shouldn't move items into this inventory.
+        private ItemSlot GetAutoPushIntoSlot(BlockFacing atBlockFace, ItemSlot fromSlot)
+        {
+            if (PullFaces.Contains(atBlockFace) || AcceptFromFaces.Contains(atBlockFace))
+            {
+                return inventory[0];
+            }
+
+            return null;
+        }
+
+
 
         public override string InventoryClassName
         {
@@ -77,7 +137,7 @@ namespace Vintagestory.GameContent
 
         protected virtual void OnInvOpened(IPlayer player)
         {
-            inventory.PutLocked = false;// player.WorldData.CurrentGameMode != EnumGameMode.Creative;
+            inventory.PutLocked = false;
         }
 
         protected virtual void OnInvClosed(IPlayer player)
@@ -94,9 +154,11 @@ namespace Vintagestory.GameContent
 
             if (api is ICoreServerAPI)
             {
-                RegisterGameTickListener(MoveItem, 200);
+                // Randomize movement a bit
+                RegisterDelayedCallback((dt) => RegisterGameTickListener(MoveItem, checkRateMs), 10 + api.World.Rand.Next(200));
             }
         }
+
 
         /// <summary>
         /// Attempts to move the item from slot to slot.
@@ -104,118 +166,204 @@ namespace Vintagestory.GameContent
         /// <param name="dt"></param>
         public void MoveItem(float dt)
         {
-            //check above.  Then check below.  
-            BlockPos OutputPosition = Pos.AddCopy(OutputFace);
+            itemFlowAccum = Math.Min(itemFlowAccum + ItemFlowRate, Math.Max(1, ItemFlowRate * 2));
+            if (itemFlowAccum < 1) return;
 
-            // If inventory below, attempt to move item in me to below
-            if (!inventory.IsEmpty)
+
+            if (PushFaces != null && PushFaces.Length > 0 && !inventory.IsEmpty)
             {
-                if (Api.World.BlockAccessor.GetBlockEntity(OutputPosition) is BlockEntityContainer)
+                ItemStack stack = inventory.First(slot => !slot.Empty).Itemstack;
+
+                BlockFacing outputFace = PushFaces[Api.World.Rand.Next(PushFaces.Length)];
+                int dir = stack.Attributes.GetInt("chuteDir", -1);
+                BlockFacing desiredDir = dir >= 0 ? BlockFacing.ALLFACES[dir] : null;
+                
+                // If we have a desired dir, try to go there
+                if (desiredDir != null)
                 {
-                    BlockEntityContainer outputBox = (BlockEntityContainer)Api.World.BlockAccessor.GetBlockEntity(OutputPosition);
-                    ItemSlot transferSlot = null;
-                    foreach (ItemSlot slot in inventory)
+                    // Try spit it out first
+                    if (!TrySpitOut(desiredDir))
                     {
-                        if (!slot.Empty)
+                        // Then try push it in there,
+                        if (!TryPushInto(desiredDir) && outputFace != desiredDir.GetOpposite())
                         {
-                            transferSlot = slot;
-                            break;
+                            // Otherwise try spit it out in a random face, but only if its not back where it came frome
+                            if (!TrySpitOut(outputFace))
+                            {
+                                TryPushInto(outputFace);
+                            }
                         }
                     }
-
-                    if (transferSlot != null)
-                    {
-                        WeightedSlot ws = outputBox.Inventory.GetBestSuitedSlot(transferSlot);
-                        if (ws.slot != null)
-                        {
-                            ItemStackMoveOperation op = new ItemStackMoveOperation(Api.World, EnumMouseButton.Left, 0, EnumMergePriority.DirectMerge, FlowAmount);
-                            if (transferSlot.TryPutInto(ws.slot, ref op) > 0)
-                            {
-                                if (Api.World.Rand.NextDouble() < 0.2)
-                                {
-                                    Api.World.PlaySoundAt(new AssetLocation("sounds/block/hoppertumble"), Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5, null, true, 8, 0.5f);
-                                }
-                            }
-                        }
-
-
-                    }//transfer slot
-
-                } else
-                {
-
-
-
                 }
-            }
-
-
-            // If inventory above, attempt to move item from above into me.  (LATER ON: CHECK FILTER)
-            if (InputFace != null)
-            {
-                BlockPos InputPosition = Pos.AddCopy(InputFace);
-                if (Api.World.BlockAccessor.GetBlockEntity(InputPosition) is BlockEntityContainer)
+                else
                 {
-                    BlockEntityContainer inputBox = (BlockEntityContainer)Api.World.BlockAccessor.GetBlockEntity(InputPosition);
-                    if (inputBox.Inventory is InventoryGeneric)
+                    // Without a desired dir, try to spit it out anywhere first
+                    if (!TrySpitOut(outputFace))
                     {
-                        InventoryGeneric inputInventory = (InventoryGeneric)inputBox.Inventory;
-                        if (!inputInventory.IsEmpty)
-                        {
-                            ItemSlot transferSlot = null;
-                            foreach (ItemSlot slot in inputInventory)
-                            {
-                                if (!slot.Empty)
-                                {
-                                    transferSlot = slot;
-                                }
-                            }
+                        // Then try push it anywhere next
+                        TryPushInto(outputFace);
+                    }
+                }
 
-                            if (transferSlot != null)
-                            {
-                                WeightedSlot ws = inventory.GetBestSuitedSlot(transferSlot);
-                                if (ws.slot != null)
-                                {
-                                    ItemStackMoveOperation op = new ItemStackMoveOperation(Api.World, EnumMouseButton.Left, 0, EnumMergePriority.DirectMerge, FlowAmount);
+            }
+            
+            if (PullFaces != null && PullFaces.Length > 0 && inventory.IsEmpty)
+            {
+                BlockFacing inputFace = PullFaces[Api.World.Rand.Next(PullFaces.Length)];
 
-                                    if (transferSlot.TryPutInto(ws.slot, ref op) > 0)
-                                    {
-                                        if (Api.World.Rand.NextDouble() < 0.2)
-                                        {
-                                            Api.World.PlaySoundAt(new AssetLocation("sounds/block/hoppertumble"), Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5, null, true, 8, 0.5f);
-                                        }
-                                    }
-                                }
-                            } //transfer slot
-
-                        }//Inventory empty check
-
-                    }//Inventory Generic check.
-                }//Check for Block entity container.       
+                TryPullFrom(inputFace);
             }
         }
 
 
 
+        private void TryPullFrom(BlockFacing inputFace)
+        {
+            BlockPos InputPosition = Pos.AddCopy(inputFace);
+
+            if (Api.World.BlockAccessor.GetBlockEntity(InputPosition) is BlockEntityContainer beContainer)
+            {
+                ItemSlot sourceSlot = beContainer.Inventory.GetAutoPullFromSlot(inputFace.GetOpposite());
+                ItemSlot targetSlot = sourceSlot == null ? null : inventory.GetBestSuitedSlot(sourceSlot).slot;
+                BlockEntityItemFlow beFlow = beContainer as BlockEntityItemFlow;
+
+                if (sourceSlot != null && targetSlot != null && (beFlow == null || targetSlot.Empty))
+                {
+                    ItemStackMoveOperation op = new ItemStackMoveOperation(Api.World, EnumMouseButton.Left, 0, EnumMergePriority.DirectMerge, (int)itemFlowAccum);
+
+                    int horTravelled = sourceSlot.Itemstack.Attributes.GetInt("chuteQHTravelled");
+                    if (horTravelled < 2)
+                    {
+                        int qmoved = sourceSlot.TryPutInto(targetSlot, ref op);
+                        if (qmoved > 0)
+                        {
+                            if (beFlow != null)
+                            {
+                                targetSlot.Itemstack.Attributes.SetInt("chuteQHTravelled", inputFace.IsHorizontal ? (horTravelled + 1): 0);
+                                targetSlot.Itemstack.Attributes.SetInt("chuteDir", inputFace.GetOpposite().Index);
+                            } else
+                            {
+                                targetSlot.Itemstack.Attributes.RemoveAttribute("chuteQHTravelled");
+                                targetSlot.Itemstack.Attributes.RemoveAttribute("chuteDir");
+                            }
+
+                            sourceSlot.MarkDirty();
+                            targetSlot.MarkDirty();
+                            MarkDirty(false);
+                            beFlow?.MarkDirty();
+                        }
+
+                        if (qmoved > 0 && Api.World.Rand.NextDouble() < 0.2)
+                        {
+                            Api.World.PlaySoundAt(new AssetLocation("sounds/block/hoppertumble"), Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5, null, true, 8, 0.5f);
+
+                            itemFlowAccum -= qmoved;
+                        }
+                    }
+                }
+            }
+        }
+
+
+        private bool TryPushInto(BlockFacing outputFace)
+        {
+            BlockPos OutputPosition = Pos.AddCopy(outputFace);
+            if (Api.World.BlockAccessor.GetBlockEntity(OutputPosition) is BlockEntityContainer beContainer)
+            {
+                ItemSlot sourceSlot = inventory.FirstOrDefault(slot => !slot.Empty);
+                ItemSlot targetSlot = sourceSlot == null ? null : beContainer.Inventory.GetAutoPushIntoSlot(outputFace.GetOpposite(), sourceSlot);
+                BlockEntityItemFlow beFlow = beContainer as BlockEntityItemFlow;
+
+                if (sourceSlot != null && targetSlot != null && (beFlow == null || targetSlot.Empty))
+                {
+                    ItemStackMoveOperation op = new ItemStackMoveOperation(Api.World, EnumMouseButton.Left, 0, EnumMergePriority.DirectMerge, (int)itemFlowAccum);
+
+                    int horTravelled = sourceSlot.Itemstack.Attributes.GetInt("chuteQHTravelled");
+                    if (horTravelled < 2)
+                    {
+                        int qmoved = sourceSlot.TryPutInto(targetSlot, ref op);
+
+                        if (qmoved > 0 && Api.World.Rand.NextDouble() < 0.2)
+                        {
+                            Api.World.PlaySoundAt(new AssetLocation("sounds/block/hoppertumble"), Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5, null, true, 8, 0.5f);
+                        }
+
+                        if (qmoved > 0)
+                        {
+                            if (beFlow != null)
+                            {
+                                targetSlot.Itemstack.Attributes.SetInt("chuteQHTravelled", outputFace.IsHorizontal ? (horTravelled + 1) : 0);
+                                targetSlot.Itemstack.Attributes.SetInt("chuteDir", outputFace.Index);
+                            }
+                            else
+                            {
+                                targetSlot.Itemstack.Attributes.RemoveAttribute("chuteQHTravelled");
+                                targetSlot.Itemstack.Attributes.RemoveAttribute("chuteDir");
+                            }
+
+                            sourceSlot.MarkDirty();
+                            targetSlot.MarkDirty();
+                            MarkDirty(false);
+                            beFlow?.MarkDirty(false);
+
+                            itemFlowAccum -= qmoved;
+
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        private bool TrySpitOut(BlockFacing outputFace)
+        {
+            if (!PushFaces.Contains(outputFace)) return false;
+
+            if (Api.World.BlockAccessor.GetBlock(Pos.AddCopy(outputFace)).Replaceable >= 6000)
+            {
+                ItemSlot sourceSlot = inventory.FirstOrDefault(slot => !slot.Empty);
+
+                ItemStack stack = sourceSlot.TakeOut((int)itemFlowAccum);
+                itemFlowAccum -= stack.StackSize;
+
+                stack.Attributes.RemoveAttribute("chuteQHTravelled");
+                stack.Attributes.RemoveAttribute("chuteDir");
+
+                float velox = outputFace.Normalf.X / 10f + ((float)Api.World.Rand.NextDouble() / 20f - 1 / 20f) * Math.Sign(outputFace.Normalf.X);
+                float veloy = outputFace.Normalf.Y / 10f + ((float)Api.World.Rand.NextDouble() / 20f - 1 / 20f) * Math.Sign(outputFace.Normalf.Y);
+                float veloz = outputFace.Normalf.Z / 10f + ((float)Api.World.Rand.NextDouble() / 20f - 1 / 20f) * Math.Sign(outputFace.Normalf.Z);
+
+                Api.World.SpawnItemEntity(stack, Pos.ToVec3d().Add(0.5 + outputFace.Normalf.X / 2, 0.5 + outputFace.Normalf.Y / 2, 0.5 + outputFace.Normalf.Z / 2), new Vec3d(velox, veloy, veloz));
+
+                sourceSlot.MarkDirty();
+                MarkDirty(false);
+                return true;
+            }
+
+            return false;
+        }
+
         public override bool OnPlayerRightClick(IPlayer byPlayer, BlockSelection blockSel)
         {
-            if(Api.World is IServerWorldAccessor)
+            if (Api.World is IServerWorldAccessor)
             {
                 byte[] data;
 
                 using (MemoryStream ms = new MemoryStream())
                 {
                     BinaryWriter writer = new BinaryWriter(ms);
-                    writer.Write("BlockEntityItemFlow");
+                    writer.Write("BlockEntityItemFlowDialog");
                     writer.Write(Lang.Get(ItemFlowObjectLangCode));
-                    writer.Write((byte)4); //No idea what this is for but it's on the generic container so...
+                    writer.Write((byte)4); // Quantity columns
                     TreeAttribute tree = new TreeAttribute();
                     inventory.ToTreeAttributes(tree);
                     tree.ToBytes(writer);
                     data = ms.ToArray();
                 }
 
-                    ((ICoreServerAPI)Api).Network.SendBlockEntityPacket(
+                ((ICoreServerAPI)Api).Network.SendBlockEntityPacket(
                     (IServerPlayer)byPlayer,
                     Pos.X, Pos.Y, Pos.Z,
                     (int)EnumBlockContainerPacketId.OpenInventory,
@@ -239,14 +387,49 @@ namespace Vintagestory.GameContent
         {
             InitInventory();
 
+            int index = tree.GetInt("lastReceivedFromDir");
+
+            if (index < 0) LastReceivedFromDir = null;
+            else LastReceivedFromDir = BlockFacing.ALLFACES[index];
+
             base.FromTreeAtributes(tree, worldForResolving);
         }
 
         public override void ToTreeAttributes(ITreeAttribute tree)
         {
             base.ToTreeAttributes(tree);
+
+            tree.SetInt("lastReceivedFromDir", LastReceivedFromDir?.Index ?? -1);
         }
 
+        public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
+        {
+            base.GetBlockInfo(forPlayer, dsc);
+
+            dsc.AppendLine(Lang.Get("Contents: {0}", inventory[0].Empty ? Lang.Get("Empty") : inventory[0].StackSize + "x " + inventory[0].GetStackName()));
+        }
+
+
+        public override void OnBlockBroken()
+        {
+            if (Api.World is IServerWorldAccessor)
+            {
+                Vec3d epos = Pos.ToVec3d().Add(0.5, 0.5, 0.5);
+                foreach (var slot in inventory)
+                {
+                    if (slot.Itemstack == null) continue;
+
+                    slot.Itemstack.Attributes.RemoveAttribute("chuteQHTravelled");
+                    slot.Itemstack.Attributes.RemoveAttribute("chuteDir");
+
+                    Api.World.SpawnItemEntity(slot.Itemstack, epos);
+                    slot.Itemstack = null;
+                    slot.MarkDirty();
+                }
+            }
+
+            base.OnBlockBroken();
+        }
 
     }
 }

@@ -25,7 +25,7 @@ namespace Vintagestory.GameContent
         Vec4f outLineColorMul = new Vec4f(1, 1, 1, 1);
         protected Matrixf ModelMat = new Matrixf();
 
-        CoreSystem coreMod;
+        SurvivalCoreSystem coreMod;
 
         BlockEntityAnvil beAnvil;
         Vec4f glowRgb = new Vec4f();
@@ -36,7 +36,7 @@ namespace Vintagestory.GameContent
             this.api = capi;
             this.beAnvil = beAnvil;
 
-            coreMod = capi.ModLoader.GetModSystem<CoreSystem>();
+            coreMod = capi.ModLoader.GetModSystem<SurvivalCoreSystem>();
         }
 
         public double RenderOrder
@@ -89,7 +89,6 @@ namespace Vintagestory.GameContent
             prog.Uniform("rgbaTint", ColorUtil.WhiteArgbVec);
             prog.Uniform("rgbaLightIn", lightrgbs);
             prog.Uniform("rgbaGlowIn", glowRgb);
-            prog.Uniform("rgbaBlockIn", ColorUtil.WhiteArgbVec);
             prog.Uniform("extraGlow", extraGlow);
             
             prog.UniformMatrix("modelMatrix", ModelMat
@@ -183,13 +182,14 @@ namespace Vintagestory.GameContent
 
             texId = tposMetal.atlasTextureId;
 
-            metalVoxelMesh.XyzFaces = (int[])CubeMeshUtil.CubeFaceIndices.Clone();
+            metalVoxelMesh.XyzFaces = (byte[])CubeMeshUtil.CubeFaceIndices.Clone();
             metalVoxelMesh.XyzFacesCount = 6;
-            metalVoxelMesh.Tints = new int[6];
             
-            metalVoxelMesh.TintsCount = 6;
+            //metalVoxelMesh.ColorMapIds = new int[6];
+            //metalVoxelMesh.TintsCount = 6;
+
             for (int i = 0; i < metalVoxelMesh.Rgba.Length; i++) metalVoxelMesh.Rgba[i] = 255;
-            metalVoxelMesh.Rgba2 = null;
+            //metalVoxelMesh.Rgba2 = null;
 
 
             MeshData slagVoxelMesh = metalVoxelMesh.Clone();
@@ -262,7 +262,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            workItemMesh.Rgba2 = null;
+            //workItemMesh.Rgba2 = null;
             workItemMeshRef = api.Render.UploadMesh(workItemMesh);
         }
 
@@ -271,7 +271,7 @@ namespace Vintagestory.GameContent
         {
             recipeOutlineMeshRef?.Dispose();
 
-            MeshData recipeOutlineMesh = new MeshData(24, 36, false, false, true, false, false);
+            MeshData recipeOutlineMesh = new MeshData(24, 36, false, false, true, false);
             recipeOutlineMesh.SetMode(EnumDrawMode.Lines);
 
             int greenCol = (156 << 24) | (100 << 16) | (200 << 8) | (100);

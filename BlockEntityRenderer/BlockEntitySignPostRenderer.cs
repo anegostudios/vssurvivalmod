@@ -103,7 +103,7 @@ namespace Vintagestory.GameContent
 
                 modeldata.Rgba = new byte[4 * 4];
                 modeldata.Rgba.Fill((byte)255);
-                modeldata.Rgba2 = null;
+                //modeldata.Rgba2 = null;
 
                 Vec3f orig = new Vec3f(0.5f, 0.5f, 0.5f);
 
@@ -241,7 +241,7 @@ namespace Vintagestory.GameContent
 
             prog.ViewMatrix = rpi.CameraMatrixOriginf;
             prog.ProjectionMatrix = rpi.CurrentProjectionMatrix;
-
+            prog.NormalShaded = 0;
 
             rpi.RenderMesh(quadModelRef);
             prog.Stop();

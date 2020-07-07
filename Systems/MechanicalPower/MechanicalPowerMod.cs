@@ -134,7 +134,8 @@ namespace Vintagestory.GameContent.Mechanics
         {
             data.tickNumber++;
 
-            foreach (MechanicalNetwork network in data.networksById.Values)
+            List<MechanicalNetwork> clone = data.networksById.Values.ToList();
+            foreach (MechanicalNetwork network in clone)
             {
                 if (network.fullyLoaded)
                 {
@@ -210,7 +211,7 @@ namespace Vintagestory.GameContent.Mechanics
 
             if (network.nodes.Values.Count == 0)
             {
-                Api.World.Logger.Notification("Network with id " + network.networkId + " has zero nodes?");
+                Api.World.Logger.Notification("Network with id " + network.networkId + " had zero nodes?");
                 return;
             }
 
@@ -223,19 +224,7 @@ namespace Vintagestory.GameContent.Mechanics
 
             foreach (var nnode in nnodes)
             {
-                BlockEntity be = Api.World.BlockAccessor.GetBlockEntity(nnode.Position);
-                var behaviors = be?.Behaviors;
-                if (behaviors == null) continue;
-                IMechanicalPowerNode newnode = null;
-                for (int i = 0; i < behaviors.Count; i++)
-                {
-                    newnode = behaviors[i] as IMechanicalPowerNode;
-                    if (newnode != null)
-                    {
-                        break;
-                    }
-                }
-                
+                IMechanicalPowerNode newnode = Api.World.BlockAccessor.GetBlockEntity(nnode.Position)?.GetBehavior<BEBehaviorMPBase>() as IMechanicalPowerNode;
                 if (newnode == null) continue;
 
                 if (newnode.OutFacingForNetworkDiscovery != null && (nowRemovedNode == null || newnode.Position != nowRemovedNode.Position))
@@ -250,12 +239,12 @@ namespace Vintagestory.GameContent.Mechanics
             }
         }
 
-        public void RemoveDeviceForRender(IMechanicalPowerNode device)
+        public void RemoveDeviceForRender(IMechanicalPowerRenderable device)
         {
             Renderer?.RemoveDevice(device);
         }
 
-        public void AddDeviceForRender(IMechanicalPowerNode device)
+        public void AddDeviceForRender(IMechanicalPowerRenderable device)
         {
             Renderer?.AddDevice(device);
         }

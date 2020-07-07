@@ -107,9 +107,9 @@ namespace Vintagestory.ServerMods
         {
             rnd.InitPositionSeed(chunkX, chunkZ);
 
-            IntMap forestMap = chunks[0].MapChunk.MapRegion.ForestMap;
-            IntMap climateMap = chunks[0].MapChunk.MapRegion.ClimateMap;
-            IntMap beachMap = chunks[0].MapChunk.MapRegion.BeachMap;
+            IntDataMap2D forestMap = chunks[0].MapChunk.MapRegion.ForestMap;
+            IntDataMap2D climateMap = chunks[0].MapChunk.MapRegion.ClimateMap;
+            IntDataMap2D beachMap = chunks[0].MapChunk.MapRegion.BeachMap;
 
             ushort[] heightMap = chunks[0].MapChunk.RainHeightMap;
 
@@ -161,6 +161,7 @@ namespace Vintagestory.ServerMods
                     int tempUnscaled = (climate >> 16) & 0xff;
                     int rnd = (int)(distx / 5);
                     float temp = TerraGenConfig.GetScaledAdjustedTemperatureFloat(tempUnscaled, posY - TerraGenConfig.seaLevel + rnd);
+                    float tempRel = TerraGenConfig.GetAdjustedTemperature(tempUnscaled, posY - TerraGenConfig.seaLevel + rnd) / 255f;
                     float rainRel = TerraGenConfig.GetRainFall((climate >> 8) & 0xff, posY + rnd) / 255f;
                     float forestRel = GameMath.BiLerp(forestUpLeft, forestUpRight, forestBotLeft, forestBotRight, (float)x / chunksize, (float)z / chunksize) / 255f;
                     float beachRel = GameMath.BiLerp(beachUpLeft, beachUpRight, beachBotLeft, beachBotRight, (float)x / chunksize, (float)z / chunksize) / 255f;
@@ -171,7 +172,7 @@ namespace Vintagestory.ServerMods
                     int blockID = chunks[0].MapChunk.TopRockIdMap[z * chunksize + x];
 
                     GenBeach(x, prevY, z, chunks, rainRel, temp, beachRel, blockID);
-                    PlaceTallGrass(x, prevY, z, chunks, rainRel, temp, forestRel);
+                    PlaceTallGrass(x, prevY, z, chunks, rainRel, tempRel, temp, forestRel);
 
                     
                     // Try again to put layers if above sealevel and we found over 10 air blocks
@@ -283,11 +284,13 @@ namespace Vintagestory.ServerMods
             }
         }
 
-        void PlaceTallGrass(int x, int posY, int z, IServerChunk[] chunks, float rainRel, float temp, float forestRel)
+        void PlaceTallGrass(int x, int posY, int z, IServerChunk[] chunks, float rainRel, float tempRel, float temp, float forestRel)
         {
             double rndVal = blockLayerConfig.Tallgrass.RndWeight * rnd.NextDouble() + blockLayerConfig.Tallgrass.PerlinWeight * grassDensity.Noise(x, z, -0.5f);
 
-            if (rndVal <= GameMath.Clamp(forestRel, 0.05, 0.99) || posY >= mapheight - 1 || posY < 1) return;
+            double extraGrass = Math.Max(0, rainRel * tempRel - 0.25);
+
+            if (rndVal <= GameMath.Clamp(forestRel - extraGrass, 0.05, 0.99) || posY >= mapheight - 1 || posY < 1) return;
             
             int blockId = chunks[posY / chunksize].Blocks[(chunksize * (posY % chunksize) + z) * chunksize + x];
 

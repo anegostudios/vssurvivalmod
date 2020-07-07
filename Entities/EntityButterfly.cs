@@ -32,9 +32,9 @@ namespace Vintagestory.GameContent
             
             if (api.Side == EnumAppSide.Client)
             {
-                WatchedAttributes.RegisterModifiedListener("sitHeight", () =>
+                WatchedAttributes.RegisterModifiedListener("windWaveIntensity", () =>
                 {
-                    (Properties.Client.Renderer as EntityShapeRenderer).WindWaveIntensity = WatchedAttributes.GetDouble("sitHeight");
+                    (Properties.Client.Renderer as EntityShapeRenderer).WindWaveIntensity = WatchedAttributes.GetDouble("windWaveIntensity");
                 });
             }
 
@@ -71,29 +71,21 @@ namespace Vintagestory.GameContent
 
             if (cnt++ > 30)
             {
-                bool waveoff = false;
-                int groundOffset = 0;
-
-                float affectedness = World.BlockAccessor.GetLightLevel(LocalPos.XYZ.AsBlockPos, EnumLightLevelType.OnlySunLight) < 14 ? 1 : 0;
-                windMotion = Api.ModLoader.GetModSystem<WeatherSystemBase>().GetWindSpeed(LocalPos.XYZ * affectedness);
-
+                float affectedness = World.BlockAccessor.GetLightLevel(SidedPos.XYZ.AsBlockPos, EnumLightLevelType.OnlySunLight) < 14 ? 1 : 0;
+                windMotion = Api.ModLoader.GetModSystem<WeatherSystemBase>().WeatherDataSlowAccess.GetWindSpeed(SidedPos.XYZ * affectedness);
                 cnt = 0;
-                /*tmpPos.Set((int)LocalPos.X, (int)LocalPos.Y, (int)LocalPos.Z);
-                Room room = roomReg.GetRoomForPosition(tmpPos);
-                float affectedness = room.NonSkylightCount == 0 ? 1 : ((float)room.SkylightCount / room.NonSkylightCount);
-                windMotion = Api.ModLoader.GetModSystem<WeatherSystemBase>().GetWindSpeed(LocalPos.XYZ * affectedness); */
             }
 
             if (AnimManager.ActiveAnimationsByAnimCode.ContainsKey("fly"))
             {
-                LocalPos.X += Math.Max(0, (windMotion - 0.2) / 20.0);
+                SidedPos.X += Math.Max(0, (windMotion - 0.2) / 20.0);
             }
 
             if (ServerPos.SquareDistanceTo(Pos.XYZ) > 0.01)
             {
                 float desiredYaw = (float)Math.Atan2(ServerPos.X - Pos.X, ServerPos.Z - Pos.Z);
 
-                float yawDist = GameMath.AngleRadDistance(LocalPos.Yaw, desiredYaw);
+                float yawDist = GameMath.AngleRadDistance(SidedPos.Yaw, desiredYaw);
                 Pos.Yaw += GameMath.Clamp(yawDist, -35 * dt, 35 * dt);
                 Pos.Yaw = Pos.Yaw % GameMath.TWOPI;
             }
@@ -102,7 +94,7 @@ namespace Vintagestory.GameContent
 
         private void SetAnimation(string animCode, float speed)
         {
-            AnimationMetaData animMeta = null;
+            AnimationMetaData animMeta;
             if (!AnimManager.ActiveAnimationsByAnimCode.TryGetValue(animCode, out animMeta))
             {
                 animMeta = new AnimationMetaData()
@@ -177,7 +169,7 @@ namespace Vintagestory.GameContent
                 AnimManager.StopAnimation("glide");
 
                 (Properties.Client.Renderer as EntityShapeRenderer).AddRenderFlags = VertexFlags.FoliageWindWaveBitMask;
-                (Properties.Client.Renderer as EntityShapeRenderer).WindWaveIntensity = WatchedAttributes.GetDouble("sitHeight");
+                (Properties.Client.Renderer as EntityShapeRenderer).WindWaveIntensity = WatchedAttributes.GetDouble("windWaveIntensity");
             } else
             {
                 (Properties.Client.Renderer as EntityShapeRenderer).AddRenderFlags = 0;

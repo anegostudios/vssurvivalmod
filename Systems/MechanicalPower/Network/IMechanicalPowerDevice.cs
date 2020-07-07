@@ -9,7 +9,10 @@ namespace Vintagestory.GameContent.Mechanics
         Counterclockwise = 1
     }
     
-    public interface IMechanicalPowerNode
+    /// <summary>
+    /// A mechanical power network component with axle connections
+    /// </summary>
+    public interface IMechanicalPowerNode : IMechanicalPowerRenderable
     {
         /// <summary>
         /// If set, then this node is the starting point for network discovery. In principal its fine for any single-connecter node to be starting point but it probably makes most sense if only power producers are
@@ -17,14 +20,6 @@ namespace Vintagestory.GameContent.Mechanics
         BlockFacing OutFacingForNetworkDiscovery { get; }
 
         MechanicalNetwork Network { get; }
-        float AngleRad { get; }
-
-        Block Block { get; }
-        BlockPos Position { get; }
-        Vec4f LightRgba { get; }
-
-        int[] AxisMapping { get; }
-        int[] AxisSign { get; }
 
         /// <summary>
         /// Amount of torque produced for given speed of the mechanical network it is in. 
@@ -39,14 +34,10 @@ namespace Vintagestory.GameContent.Mechanics
         /// <returns></returns>
         float GetResistance();
 
-        
         TurnDirection GetTurnDirection(BlockFacing forFacing);
 
         TurnDirection GetInTurnDirection();
         void SetInTurnDirection(TurnDirection turnDir);
-
-        CompositeShape Shape { get; }
-
 
         bool JoinAndSpreadNetworkToNeighbours(ICoreAPI api, long propagationId, MechanicalNetwork network, TurnDirection turnDir, out Vec3i missingChunkPos);
 

@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text;
 using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
@@ -11,15 +13,21 @@ namespace Vintagestory.GameContent.Mechanics
 {
     public class BEBehaviorMPAngledGears : BEBehaviorMPBase
     {
+        public BlockFacing axis1 = null;
+        public BlockFacing axis2 = null;
+        private BEBehaviorMPLargeGear3m largeGear;
+
         public override float AngleRad
         {
             get
             {
                 float angle = base.AngleRad;
 
-                if (inTurnDir.Facing == BlockFacing.DOWN || inTurnDir.Facing == BlockFacing.WEST) return /*lastKnownAngleRad = - why do i do this? it creates massive jitter*/ GameMath.TWOPI - angle;
+                bool flip = inTurnDir.Facing == BlockFacing.DOWN || inTurnDir.Facing == BlockFacing.WEST;
+                if (inTurnDir.Facing == this.orientation && (this.orientation == BlockFacing.WEST || this.orientation == BlockFacing.EAST)) flip = !flip;
+                //if (flip) return /*lastKnownAngleRad = - why do i do this? it creates massive jitter*/ GameMath.TWOPI - angle;
 
-                return angle;
+                return flip ? GameMath.TWOPI - angle : angle;
             }
         }
         public BEBehaviorMPAngledGears(BlockEntity blockentity) : base(blockentity)
@@ -49,123 +57,161 @@ namespace Vintagestory.GameContent.Mechanics
         }
 
         public override void SetOrientations()
-        { 
-            string orientations = Block.Variant["orientation"];
+        {
+            string orientations = (Block as BlockAngledGears).Orientation;
 
+            this.orientation = null;
             switch (orientations)
             {
                 case "n":
+                case "nn":   //"nn" "ss" "ee" "ww" variants are used for the single cage gear instead of the peg gear (e.g. on interaction with LargeGear3)
+                    this.orientation = BlockFacing.NORTH;
+                    AxisSign = new int[3] { 0, 0, -1 };   //for these "single direction" gears, the renderertype is generic, i.e. only one mesh, the peg gear, will be rendered
+                    break;
                 case "s":
-                    //AxisMapping = new int[6] { 2, 1, 0, 0, 1, 2 };
-                    AxisSign = new int[6] { -1, -1, -1, -1, -1, -1 };
+                case "ss":
+                    AxisSign = new int[3] { 0, 0, -1 };
+                    this.orientation = BlockFacing.SOUTH;
                     break;
 
                 case "e":
-                    AxisMapping = new int[6] { 2, 1, 0, 0, 1, 2 };
-                    AxisSign = new int[6] { 1, 1, 1, 1, 1, 1 };
+                case "ee":
+                    AxisSign = new int[3] { 1, 0, 0 };
+                    this.orientation = BlockFacing.EAST;
                     break;
 
                 case "w":
-                    AxisMapping = new int[6] { 2, 1, 0, 0, 1, 2 };
-                    AxisSign = new int[6] { -1, -1, -1, -1, -1, -1 };
+                case "ww":
+                    AxisSign = new int[3] { -1, 0, 0 };
+                    this.orientation = BlockFacing.WEST;
                     break;
 
                 case "u":
-                    AxisMapping = new int[6] { 1, 2, 0, 0, 2, 1 };
-                    AxisSign = new int[6] { -1, -1, -1, -1, -1, -1 }; 
+                    AxisSign = new int[3] { 0, -1, 0 }; 
                     break;
 
                 case "d":
-                    AxisMapping = new int[6] { 1, 2, 0, 0, 2, 1 };
-                    AxisSign = new int[6] { 1, 1, 1, 1, 1, 1 };
+                    AxisSign = new int[3] { 0, 1, 0 };
                     break;
 
                 case "es":
-                    AxisMapping = new int[6] { 2, 1, 0, 0, 1, 2 };
-                    AxisSign = new int[6] { 1, 1, 1, -1, -1, -1 };
-                    
+                    AxisSign = new int[6] { 1, 0, 0, 0, 0, -1 };  //for all these "2 directions" gears, the rendererByType is "angledgears" ie. AngledGearBlockRenderer and two meshes will be rendered, the renderer looks for a special 6 member AxisSign array
+                    axis1 = null;
+                    axis2 = null;
                     break;
 
-
                 case "ws":
-                    AxisMapping = new int[6] { 0, 1, 2, 2, 1, 0 };
-                    AxisSign = new int[6] { -1, -1, -1, -1, -1, -1 };
+                    AxisSign = new int[6] { 0, 0, -1, -1, 0, 0 };
+                    axis1 = null;
+                    axis2 = null;
                     break;
 
                 case "nw":
-                    AxisMapping = new int[6] { 2, 1, 0, 0, 1, 2 };
-                    //AxisSign = new int[6] { 1, -1, -1, -1, -1, -1 };
-                    AxisSign = new int[6] { 1, 1, 1, -1, -1, -1 };
+                    AxisSign = new int[6] { 1, 0, 0, 0, 0, -1 };
+                    axis1 = BlockFacing.EAST;    //tested    Rotation reverse for these two inTurnDir axes
+                    axis2 = BlockFacing.NORTH;    //tested
                     break;
 
                 case "sd":
-                    AxisMapping = new int[6] { 0, 1, 2, 1, 2, 0 };
-                    AxisSign = new int[6] { -1, -1, -1, -1, -1, -1 };
+                    AxisSign = new int[6] { 0, 0, -1, 0, -1, 0 };
+                    axis1 = BlockFacing.SOUTH;  //tested
+                    axis2 = BlockFacing.UP;  //tested
                     break;
 
                 case "ed":
-                    AxisMapping = new int[6] { 0, 2, 1, 2, 1, 0 };
-                    AxisSign = new int[6] { 1, 1, 1, 1, 1, 1 };
+                    AxisSign = new int[6] { 0, 1, 0, 1, 0, 0 };
+                    axis1 = BlockFacing.EAST;  //tested
+                    axis2 = BlockFacing.DOWN;  //tested
                     break;
 
                 case "wd":
-                    AxisMapping = new int[6] { 2, 1, 0, 0, 2, 1 };
-                    AxisSign = new int[6] { -1, -1, -1, 1, 1, 1 };
+                    AxisSign = new int[6] { -1, 0, 0, 0, 1, 0 };
+                    axis1 = null;
+                    axis2 = null;
                     break;
 
                 case "nd":
-                    AxisMapping = new int[6] { 0, 1, 2, 0, 2, 1 };
-                    AxisSign = new int[6] { -1, -1, -1, 1, 1, 1 };
+                    AxisSign = new int[6] { 0, 0, -1, 0, 1, 0 };
+                    axis1 = BlockFacing.DOWN;
+                    axis2 = null;
                     break;
 
                 case "nu":
-                    AxisMapping = new int[6] { 0, 2, 1, 0, 1, 2 };
-                    AxisSign = new int[6] { -1, -1, -1, -1, -1, -1 };
+                    AxisSign = new int[6] { 0, -1, 0, 0, 0, -1 };
+                    axis1 = null;
+                    axis2 = null;
                     break;
 
                 case "eu":
-                    AxisMapping = new int[6] { 0, 2, 1, 2, 1, 0 };
-                    AxisSign = new int[6] { -1, -1, -1, 1, 1, 1 };
+                    AxisSign = new int[6] { 0, -1, 0, 1, 0, 0 };
+                    axis1 = null;
+                    axis2 = null;
                     break;
 
                 case "su":
-                    AxisMapping = new int[6] { 1, 2, 0, 0, 1, 2 };
-                    AxisSign = new int[6] { 1, 1, 1, -1, -1, -1 };
+                    AxisSign = new int[6] { 0, 1, 0, 0, 0, -1 };
+                    axis1 = BlockFacing.DOWN;   //tested    Rotation reverse for these two inTurnDir axes
+                    axis2 = BlockFacing.SOUTH;
                     break;
 
                 case "wu":
-                    AxisMapping = new int[6] { 1, 2, 0, 2, 1, 0 };
-                    AxisSign = new int[6] { -1, -1, -1, -1, -1, -1 };
+                    AxisSign = new int[6] { 0, -1, 0, -1, 0, 0 };
+                    axis1 = null;
+                    axis2 = null;
                     break;
 
                 case "en":
-                    AxisMapping = new int[6] { 0, 1, 2, 2, 1, 0 };
-                    AxisSign = new int[6] { 1, 1, 1, 1, 1, 1 };
+                    AxisSign = new int[6] { 0, 0, 1, 1, 0, 0 };
+                    axis1 = BlockFacing.SOUTH;   //tested    Rotation reverse for these two inTurnDir axes
+                    axis2 = BlockFacing.EAST;   //tested
                     break;
 
                 default:
-                    AxisMapping = new int[6] { 0, 1, 2, 2, 1, 0 };
-                    AxisSign = new int[6] { 1, 1, 1, 1, 1, 1 };
+                    AxisSign = new int[6] { 0, 0, 1, 1, 0, 0 };
+                    axis1 = null;
+                    axis2 = null;
                     break;
+            }
+
+            if (orientations.Length == 2 && orientations[0] == orientations[1])
+            {
+                BlockPos largeGearPos = this.Position.AddCopy(this.orientation.GetOpposite());
+                BlockEntity be = this.Api.World?.BlockAccessor.GetBlockEntity(largeGearPos);
+                largeGear = be?.GetBehavior<BEBehaviorMPLargeGear3m>();
             }
         }
 
-
-        /*public override void OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer)
+        internal float LargeGearAngleRad(float unchanged)
         {
-            if (world.Side == EnumAppSide.Client) MarkDirty(true);
-        }*/
+            if (largeGear == null)
+            {
+                BlockPos largeGearPos = this.Position.AddCopy(this.orientation.GetOpposite());
+                BlockEntity be = this.Api.World?.BlockAccessor.GetBlockEntity(largeGearPos);
+                largeGear = be?.GetBehavior<BEBehaviorMPLargeGear3m>();
+                if (largeGear == null) return unchanged;
+            }
+            int dir = this.orientation == BlockFacing.SOUTH ? -1 : 1;
+            return dir * largeGear.GetSmallgearAngleRad() % GameMath.TWOPI;
+        }
+
+        internal void CreateNetworkFromHere()
+        {
+            OutFacingForNetworkDiscovery = this.orientation;
+            if (Api.Side == EnumAppSide.Server && OutFacingForNetworkDiscovery != null)
+            {
+                CreateJoinAndDiscoverNetwork(OutFacingForNetworkDiscovery);
+            }
+        }
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
         {
             return base.OnTesselation(mesher, tesselator);
         }
 
-
         public override TurnDirection GetTurnDirection(BlockFacing forFacing)
         {
             string orientations = Block.Variant["orientation"];
-            bool invert = false; // orientations.Contains("u");
+            bool invert = false;
 
             return forFacing == inTurnDir.Facing ?
                 inTurnDir :
@@ -173,23 +219,26 @@ namespace Vintagestory.GameContent.Mechanics
             ;
         }
 
-
         public override void ToTreeAttributes(ITreeAttribute tree)
         {
                 base.ToTreeAttributes(tree);
         }
-
 
         public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
         {
             base.FromTreeAtributes(tree, worldAccessForResolve);
         }
 
-
-
         public override float GetResistance()
         {
-            return 0.0005f;
+            if (largeGear == null) return 0.0005f;
+            //If meshed with a large gear, this variable resistance is the key to getting the two networks quickly in sync with (reasonably) realistic physics; and to slow this network down in sync with the large gear
+            float dSpeed = 1;
+            if (largeGear.Network != null)
+            {
+                dSpeed = (this.Network.Speed - largeGear.Network.Speed * largeGear.ratio) * 10f;
+            }
+            return dSpeed > 0 ? dSpeed * dSpeed * 2 : 0.0005f;
         }
 
         public override float GetTorque()
@@ -210,5 +259,18 @@ namespace Vintagestory.GameContent.Mechanics
 
             return paths;
         }
+
+        public override void GetBlockInfo(IPlayer forPlayer, StringBuilder sb)
+        {
+            base.GetBlockInfo(forPlayer, sb);
+            if (Api.World.EntityDebugMode)
+            {
+                string orientations = Block.Variant["orientation"];
+                sb.AppendLine(string.Format(Lang.Get("Orientation: {0}", orientations)));
+                bool rev = inTurnDir.Facing == axis1 || inTurnDir.Facing == axis2;
+                sb.AppendLine(string.Format(Lang.Get("Rotation: {0} - {1}", inTurnDir.Rot, (rev ? "-" : "") + inTurnDir.Facing)));
+            }
+        }
+
     }
 }

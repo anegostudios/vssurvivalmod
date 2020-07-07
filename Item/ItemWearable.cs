@@ -234,7 +234,7 @@ namespace Vintagestory.GameContent
             ITexPositionSource texSource = capi.Tesselator.GetTextureSource(itemstack.Item);
 
             capi.Tesselator.TesselateShapeWithJointIds("entity", newShape, out meshdata, texSource, new Vec3f()); //, compositeShape.QuantityElements, compositeShape.SelectiveElements
-            meshdata.Rgba2 = null;
+            //meshdata.Rgba2 = null;
             return capi.Render.UploadMesh(meshdata);
         }
 
@@ -310,7 +310,7 @@ namespace Vintagestory.GameContent
 
                 if (StatModifers.rangedWeaponsSpeed != 0)
                 {
-                    dsc.AppendLine(Lang.Get("Ranged Weapon Charge Time: {1}{0}%", (int)(100 * StatModifers.rangedWeaponsSpeed), StatModifers.rangedWeaponsSpeed > 0 ? "+" : ""));
+                    dsc.AppendLine(Lang.Get("Ranged Weapon Charge Time: {1}{0}%", -(int)(100 * StatModifers.rangedWeaponsSpeed), StatModifers.rangedWeaponsSpeed > 0 ? "+" : ""));
                 }
 
                 if (StatModifers.walkSpeed != 0)

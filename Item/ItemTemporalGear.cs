@@ -48,7 +48,7 @@ namespace Vintagestory.GameContent
             {
                 particlesHeld.MinQuantity = 1;
 
-                Vec3d pos = entityItem.LocalPos.XYZ;
+                Vec3d pos = entityItem.SidedPos.XYZ;
 
                 SpawnParticles(entityItem.World, pos, false);
             }
@@ -161,7 +161,7 @@ namespace Vintagestory.GameContent
 
             slot.TakeOut(1);
             slot.MarkDirty();
-            (byEntity as EntityPlayer)?.Player?.InventoryManager.BroadcastHotbarSlot();
+            //(byEntity as EntityPlayer)?.Player?.InventoryManager.BroadcastHotbarSlot();
 
             if (byEntity.World.Side == EnumAppSide.Client)
             {

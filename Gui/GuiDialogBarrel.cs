@@ -157,7 +157,7 @@ namespace Vintagestory.GameContent
             //ctx.SetSourceRGBA(ravg/255.0, gavg / 255.0, bavg / 255.0, aavg / 255.0);
             //ctx.Fill();
 
-            CompositeTexture tex = liquidSlot.Itemstack.Collectible.Attributes?["waterTightContainerProps"]?["texture"]?.AsObject<CompositeTexture>();
+            CompositeTexture tex = liquidSlot.Itemstack.Collectible.Attributes?["waterTightContainerProps"]?["texture"]?.AsObject<CompositeTexture>(null, liquidSlot.Itemstack.Collectible.Code.Domain);
             if (tex != null)
             {
                 AssetLocation loc = tex.Base.Clone().WithPathAppendixOnce(".png");

@@ -14,7 +14,7 @@ namespace Vintagestory.GameContent.Mechanics
     public class BEBrake : BlockEntity
     {
         public bool Engaged { get; protected set; }
-        
+
 
         BlockEntityAnimationUtil animUtil
         {
@@ -32,23 +32,23 @@ namespace Vintagestory.GameContent.Mechanics
                 
             }*/
 
-            
+
         }
 
 
         private void OnClientGameTick(float dt)
         {
-/*            if (ownBlock == null || Api?.World == null || !canTeleport || !Activated) return;
+            /*            if (ownBlock == null || Api?.World == null || !canTeleport || !Activated) return;
 
-            if (playerInside)
-            {
-                animUtil.StartAnimation(new AnimationMetaData() { Animation = "idle", Code = "idle", AnimationSpeed = 1, EaseInSpeed = 100, EaseOutSpeed = 100, BlendMode = EnumAnimationBlendMode.Average });
-                animUtil.StartAnimation(new AnimationMetaData() { Animation = "teleport", Code = "teleport", AnimationSpeed = 1, EaseInSpeed = 8, EaseOutSpeed = 8, BlendMode = EnumAnimationBlendMode.Add });
-            }
-            else
-            {
-                animUtil.StopAnimation("teleport");
-            }*/
+                        if (playerInside)
+                        {
+                            animUtil.StartAnimation(new AnimationMetaData() { Animation = "idle", Code = "idle", AnimationSpeed = 1, EaseInSpeed = 100, EaseOutSpeed = 100, BlendMode = EnumAnimationBlendMode.Average });
+                            animUtil.StartAnimation(new AnimationMetaData() { Animation = "teleport", Code = "teleport", AnimationSpeed = 1, EaseInSpeed = 8, EaseOutSpeed = 8, BlendMode = EnumAnimationBlendMode.Add });
+                        }
+                        else
+                        {
+                            animUtil.StopAnimation("teleport");
+                        }*/
         }
 
         MeshData ownMesh;
@@ -83,7 +83,7 @@ namespace Vintagestory.GameContent.Mechanics
 
             MeshData mesh;
 
-            if (meshes.TryGetValue(""+ rotY, out mesh))
+            if (meshes.TryGetValue("" + rotY, out mesh))
             {
                 return mesh;
             }
@@ -92,7 +92,7 @@ namespace Vintagestory.GameContent.Mechanics
             Shape shape = Api.Assets.TryGet(shapeloc)?.ToObject<Shape>();
             tesselator.TesselateShape(Block, shape, out mesh, new Vec3f(0, rotY, 0));
 
-            return meshes[""+rotY] = mesh;
+            return meshes["" + rotY] = mesh;
         }
 
 

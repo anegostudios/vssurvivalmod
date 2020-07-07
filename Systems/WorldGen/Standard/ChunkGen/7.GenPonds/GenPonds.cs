@@ -94,7 +94,7 @@ namespace Vintagestory.ServerMods
 
             ushort[] heightmap = chunks[0].MapChunk.RainHeightMap;
 
-            IntMap climateMap = chunks[0].MapChunk.MapRegion.ClimateMap;
+            IntDataMap2D climateMap = chunks[0].MapChunk.MapRegion.ClimateMap;
             int regionChunkSize = api.WorldManager.RegionSize / chunksize;
             float fac = (float)climateMap.InnerSize / regionChunkSize;
             int rlX = chunkX % regionChunkSize;
@@ -161,13 +161,11 @@ namespace Vintagestory.ServerMods
             int basePosZ = chunkZ * chunksize;
             Vec2i tmp = new Vec2i();
 
-            
 
             searchPositionsDeltas.Enqueue(new Vec2i(dx, dz));
             pondPositions.Enqueue(new Vec2i(basePosX + dx, basePosZ + dz));
             didCheckPosition[(dz + mapOffset) * searchSize + dx + mapOffset] = true;
 
-            
 
             while (searchPositionsDeltas.Count > 0)
             {
@@ -248,7 +246,7 @@ namespace Vintagestory.ServerMods
                     }
 
                     mapchunk = chunk.MapChunk;
-                    IntMap climateMap = mapchunk.MapRegion.ClimateMap;
+                    IntDataMap2D climateMap = mapchunk.MapRegion.ClimateMap;
                     
                     float fac = (float)climateMap.InnerSize / regionChunkSize;
                     int rlX = curChunkX % regionChunkSize;
@@ -261,6 +259,9 @@ namespace Vintagestory.ServerMods
 
                     prevChunkX = curChunkX;
                     prevChunkZ = curChunkZ;
+
+                    chunkOneBlockBelow.MarkModified();
+                    chunk.MarkModified();
                 }
 
 

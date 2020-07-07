@@ -106,13 +106,18 @@ namespace Vintagestory.GameContent
             if (be is BlockEntityPlankPile)
             {
                 BlockEntityPlankPile pile = (BlockEntityPlankPile)be;
-                pile.inventory[0].Itemstack = (ItemStack)slot.Itemstack.Clone();
-                pile.inventory[0].Itemstack.StackSize = 1;
-
-                if (player.WorldData.CurrentGameMode != EnumGameMode.Creative) slot.TakeOut(player.Entity.Controls.Sprint ? pile.BulkTakeQuantity : pile.DefaultTakeQuantity);
+                if (player.WorldData.CurrentGameMode == EnumGameMode.Creative)
+                {
+                    pile.inventory[0].Itemstack = slot.Itemstack.Clone();
+                    pile.inventory[0].Itemstack.StackSize = 1;
+                }
+                else
+                {
+                    pile.inventory[0].Itemstack = slot.TakeOut(player.Entity.Controls.Sprint ? pile.BulkTakeQuantity : pile.DefaultTakeQuantity);
+                }
                 
-                pile.MarkDirty(true);
-                
+                pile.MarkDirty();
+                world.BlockAccessor.MarkBlockDirty(pos);
                 world.PlaySoundAt(new AssetLocation("sounds/block/planks"), pos.X, pos.Y, pos.Z, player, false);
             }
 
@@ -120,7 +125,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void OnNeighourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
+        public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
         {
             Block belowBlock = world.BlockAccessor.GetBlock(pos.DownCopy());
             if (!belowBlock.SideSolid[BlockFacing.UP.Index])

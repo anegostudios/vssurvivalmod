@@ -96,7 +96,7 @@ namespace Vintagestory.GameContent
 
             // Die on rainfall
             tmpPos.Set(Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5);
-            double rain = wsys.GetRainFall(tmpPos);
+            double rain = wsys.GetPrecipitation(tmpPos);
             if (rain > 0.1)
             {
                 if (Api.World.BlockAccessor.GetRainMapHeightAt(Pos.X, Pos.Y) > Pos.Y) return;

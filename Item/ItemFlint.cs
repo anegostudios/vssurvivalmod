@@ -16,7 +16,8 @@ namespace Vintagestory.GameContent
         {
             if (slot.Itemstack?.Collectible == this)
             {
-                return (byEntity as EntityAgent).Controls.FloorSitting || (byEntity as EntityAgent).Controls.Sneak ? base.GetHeldTpHitAnimation(slot, byEntity) : "knapstanding";
+                if ((byEntity as EntityAgent)?.Controls.FloorSitting == true) return "knapsitting";
+                return "knap";
             }
 
             return base.GetHeldTpHitAnimation(slot, byEntity);
@@ -60,7 +61,7 @@ namespace Vintagestory.GameContent
 
                 if (!knappingBlock.TryPlaceBlock(world, byPlayer, slot.Itemstack, placeSel, ref error))
                 {
-                    (api as ICoreClientAPI).TriggerIngameError(this, "cantplace", error);
+                    (api as ICoreClientAPI)?.TriggerIngameError(this, "cantplace", error);
                     return;
                 }
 

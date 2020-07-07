@@ -154,7 +154,7 @@ namespace Vintagestory.GameContent
             bool rainCheck =
                 Api.Side == EnumAppSide.Server
                 && Api.World.Rand.NextDouble() < 0.15
-                && (rainLevel = wsys.GetRainFall(tmpPos)) > 0.1
+                && (rainLevel = wsys.GetPrecipitation(tmpPos)) > 0.1
                 && Api.World.BlockAccessor.GetRainMapHeightAt(Pos.X, Pos.Z) <= Pos.Y
             ;
 

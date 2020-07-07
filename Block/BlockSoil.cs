@@ -96,9 +96,9 @@ namespace Vintagestory.GameContent
 
             bool isGrowing = false;
 
-            Block grass = null;
+            Block grass;
             BlockPos upPos = pos.UpCopy();
-            string grasscoverage = LastCodePart();
+            
             bool lowLightLevel = world.BlockAccessor.GetLightLevel(pos, EnumLightLevelType.MaxLight) < growthLightLevel;
             if (lowLightLevel || isSmotheringBlock(world, upPos))
             {
@@ -131,7 +131,7 @@ namespace Vintagestory.GameContent
         {
             int targetStage = 0;
             int currentStage = CurrentStage();
-            if (currentStage != MaxStage && isGrassNearby(world, pos) && (targetStage = getClimateSuitedGrowthStage(world, pos, world.BlockAccessor.GetClimateAt(pos))) != CurrentStage())
+            if (currentStage != MaxStage && isGrassNearby(world, pos) && (targetStage = getClimateSuitedGrowthStage(world, pos, world.BlockAccessor.GetClimateAt(pos, EnumGetClimateMode.NowValues))) != CurrentStage())
             {
                 int nextStage = GameMath.Clamp(targetStage, currentStage - 1, currentStage + 1);
 
@@ -193,7 +193,7 @@ namespace Vintagestory.GameContent
                 world.BlockAccessor.GetLightLevel(pos, EnumLightLevelType.MaxLight) >= growthLightLevel &&
                 world.BlockAccessor.GetBlock(pos.UpCopy()).SideSolid[BlockFacing.DOWN.Index] == false)
             {
-                return getClimateSuitedGrowthStage(world, pos, world.BlockAccessor.GetClimateAt(pos)) != CurrentStage();
+                return getClimateSuitedGrowthStage(world, pos, world.BlockAccessor.GetClimateAt(pos, EnumGetClimateMode.NowValues)) != CurrentStage();
             }
             return false;
         }
@@ -277,7 +277,7 @@ namespace Vintagestory.GameContent
         {
             if (facing == BlockFacing.UP && LastCodePart() != "none")
             {
-                return capi.ApplyColorTintOnRgba(1, capi.BlockTextureAtlas.GetRandomColor(Textures["specialSecondTexture"].Baked.TextureSubId), pos.X, pos.Y, pos.Z);
+                return capi.World.ApplyColorMapOnRgba(ClimateColorMap, SeasonColorMap, capi.BlockTextureAtlas.GetRandomColor(Textures["specialSecondTexture"].Baked.TextureSubId), pos.X, pos.Y, pos.Z);
             }
             return base.GetRandomColor(capi, pos, facing);
         }

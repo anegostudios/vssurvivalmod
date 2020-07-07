@@ -117,7 +117,7 @@ namespace Vintagestory.GameContent
                 if (val.Value.SecondsPassed > 1.5 && tpLocation?.TargetPos != null)
                 {
                     // Preload the chunk
-                    (Api as ICoreServerAPI).WorldManager.LoadChunkColumnFast((int)tpLocation.TargetPos.X / Api.World.BlockAccessor.ChunkSize, (int)tpLocation.TargetPos.Z / Api.World.BlockAccessor.ChunkSize);
+                    (Api as ICoreServerAPI).WorldManager.LoadChunkColumnPriority((int)tpLocation.TargetPos.X / Api.World.BlockAccessor.ChunkSize, (int)tpLocation.TargetPos.Z / Api.World.BlockAccessor.ChunkSize);
                 }
 
                 if (val.Value.SecondsPassed > 3 && tpLocation?.TargetPos != null)

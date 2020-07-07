@@ -8,7 +8,7 @@ namespace Vintagestory.GameContent
     {
         public Block GetNextLayer(IWorldAccessor world)
         {
-            int layer = 0;
+            int layer;
             int.TryParse(Code.Path.Split('-')[1], out layer);
 
             string basecode = CodeWithoutParts(1);
@@ -36,8 +36,6 @@ namespace Vintagestory.GameContent
                 return true;
             }
 
-            block = world.BlockAccessor.GetBlock(blockSel.Position);
-
             if (!CanLayerStay(world, blockSel.Position))
             {
                 failureCode = "belowblockcannotsupport";
@@ -55,11 +53,11 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void OnNeighourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
+        public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
         {
             if (GetBehavior<BlockBehaviorUnstableFalling>() != null)
             {
-                base.OnNeighourBlockChange(world, pos, neibpos);
+                base.OnNeighbourBlockChange(world, pos, neibpos);
                 return;
             }
 

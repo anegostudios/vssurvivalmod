@@ -403,7 +403,7 @@ namespace Vintagestory.GameContent
 
             int temp = GetTemperature();
             string temppretty = Lang.Get("{0}°C", temp);
-            if (temp < 20) temppretty = "Cold";
+            if (temp < 20) temppretty = Lang.Get("Cold");
 
             dsc.AppendLine(Lang.Get("Temperature: {0}", temppretty));
 

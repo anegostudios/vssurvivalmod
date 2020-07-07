@@ -115,7 +115,11 @@ namespace Vintagestory.GameContent
                     new WorldInteraction()
                     {
                         ActionLangCode = "blockhelp-firepit-open",
-                        MouseButton = EnumMouseButton.Right
+                        MouseButton = EnumMouseButton.Right,
+                        ShouldApply = (WorldInteraction wi, BlockSelection blockSelection, EntitySelection entitySelection) =>
+                        {
+                            return Stage == 5;
+                        }
                     },
                     new WorldInteraction()
                     {
@@ -298,8 +302,6 @@ namespace Vintagestory.GameContent
             int stage = Stage;
 
             if (obj.Attributes?["firepitConstructable"]?.AsBool(false) != true) return false;
-
-            CombustibleProperties combprops = obj.CombustibleProps;
 
             if (stage == 5) return false;
 

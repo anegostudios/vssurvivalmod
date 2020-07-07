@@ -21,8 +21,15 @@ namespace Vintagestory.GameContent
             }
 
             bool waterBlock = byEntity.World.BlockAccessor.GetBlock(blockSel.Position.AddCopy(blockSel.Face)).LiquidCode == "water";
+            Block block;
 
-            Block block = byEntity.World.GetBlock(new AssetLocation(waterBlock ? "tallplant-coopersreed-water-harvested" : "tallplant-coopersreed-free-harvested"));
+            if (this.Code.Path.Contains("papyrus"))
+            {
+                block = byEntity.World.GetBlock(new AssetLocation(waterBlock ? "tallplant-papyrus-water-harvested" : "tallplant-papyrus-free-harvested"));
+            } else
+            {
+                block = byEntity.World.GetBlock(new AssetLocation(waterBlock ? "tallplant-coopersreed-water-harvested" : "tallplant-coopersreed-free-harvested"));
+            }
 
             if (block == null)
             {
@@ -42,6 +49,7 @@ namespace Vintagestory.GameContent
 
             if (ok)
             {
+                byEntity.World.PlaySoundAt(block.Sounds.GetBreakSound(byPlayer), blockSel.Position.X + 0.5, blockSel.Position.Y + 0.5, blockSel.Position.Z + 0.5, byPlayer);
                 itemslot.TakeOut(1);
                 itemslot.MarkDirty();
                 handHandling = EnumHandHandling.PreventDefaultAction;

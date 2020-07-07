@@ -228,5 +228,20 @@ namespace Vintagestory.GameContent
 
 
 
+        public override Block GetSnowCoveredVariant(BlockPos pos, float snowLevel)
+        {
+            return base.GetSnowCoveredVariant(pos, snowLevel);
+        }
+
+        public override float GetSnowLevel(BlockPos pos)
+        {
+            return base.GetSnowLevel(pos);
+        }
+
+        public override void PerformSnowLevelUpdate(IBulkBlockAccessor ba, BlockPos pos, Block newBlock, float snowLevel)
+        {
+            base.PerformSnowLevelUpdate(ba, pos, newBlock, snowLevel);
+        }
+
     }
 }

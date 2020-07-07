@@ -127,7 +127,7 @@ namespace Vintagestory.ServerMods
                 trunkOffsetY = Math.Max(-0.5f, Math.Min(0.5f, 0.7f * cosAnglerHor)) + 0.5f;
                 trunkOffsetZ = Math.Max(-0.5f, Math.Min(0.5f, 0.7f * sinAngleVer * sinAngleHor));
 
-                ddrag = branch.gravityDrag * GameMath.FastSqrt(dx * dx + dz * dz);
+                ddrag = branch.gravityDrag * (float)Math.Sqrt(dx * dx + dz * dz);
 
                 dx += sinAngleVer * cosAnglerHor / Math.Max(1, Math.Abs(ddrag));
                 dy += Math.Min(1, Math.Max(-1, GameMath.FastCos(angleVer) - ddrag));
@@ -172,7 +172,7 @@ namespace Vintagestory.ServerMods
                     }
                 }
 
-                reldistance = GameMath.FastSqrt(dx * dx + dy * dy + dz * dz) / totaldistance;               
+                reldistance = (float)Math.Sqrt(dx * dx + dy * dy + dz * dz) / totaldistance;               
 
                 
                 if (reldistance < branchstart) continue;

@@ -10,26 +10,28 @@ namespace Vintagestory.ServerMods
 {
     public class NoiseClimateRealistic : NoiseClimatePatchy
     {
-        double zOffset;
-        double mapsizeZ;
-
         double halfRange;
+
+        /// <summary>
+        /// Distance from the north pole
+        /// </summary>
+        public double ZOffset { get; private set; }
         
-        public NoiseClimateRealistic(long seed, double mapsizeZ) : base(seed+1)
+        public NoiseClimateRealistic(long seed, double mapsizeZ, int polarEquatorDistance, int spawnMinTemp, int spawnMaxTemp) : base(seed+1)
         {
             // We want the full range (from min temp to max temp) to pass every 50.000 blocks 
-            double climateBandWaveLength = 50000;
+            //double climateBandWaveLength = 100000 / 2;
             
             // range must be divided by the climate map scaling
-            halfRange = climateBandWaveLength / TerraGenConfig.climateMapScale / TerraGenConfig.climateMapSubScale;
+            halfRange = polarEquatorDistance / TerraGenConfig.climateMapScale / TerraGenConfig.climateMapSubScale;
 
             // We want the player to spawn in an area of temperature from 6 to 15 degrees
-            float minTemp = 6;
-            float maxTemp = 14;
+            //float minTemp = 6;
+            //float maxTemp = 14;
 
             // Our temperature values are stored in a range from 0..255, so lets descale them
-            int minTempDescaled = TerraGenConfig.DescaleTemperature(minTemp);
-            int maxTempDescaled = TerraGenConfig.DescaleTemperature(maxTemp);
+            int minTempDescaled = TerraGenConfig.DescaleTemperature(spawnMinTemp);
+            int maxTempDescaled = TerraGenConfig.DescaleTemperature(spawnMaxTemp);
 
             // Chose one random value between min and max temp
             double rndTemp = minTempDescaled + NextInt(maxTempDescaled - minTempDescaled + 1);
@@ -38,9 +40,9 @@ namespace Vintagestory.ServerMods
             double zPerDegDescaled = halfRange / 255;
            
             // We need to shift over z by this much to achieve 6-15 degrees
-            zOffset = rndTemp * zPerDegDescaled;  
+            ZOffset = rndTemp * zPerDegDescaled - mapsizeZ / 2;  
 
-            this.mapsizeZ = mapsizeZ;
+            //this.mapsizeZ = mapsizeZ;
         }
 
         public override int GetClimateAt(int posX, int posZ)
@@ -101,7 +103,7 @@ namespace Vintagestory.ServerMods
 
             double A = 255;
             double P = halfRange;
-            double z = posZ - mapsizeZ / 2 + zOffset;
+            double z = posZ + ZOffset;
 
             // http://fooplot.com/#W3sidHlwZSI6MCwiZXEiOiIyNTUvOTcuNjU2MjUqKDk3LjY1NjI1LWFicyhhYnMoeCklKDIqOTcuNjU2MjUpLTk3LjY1NjI1KSkiLCJjb2xvciI6IiMwMDAwMDAifSx7InR5cGUiOjEwMDAsIndpbmRvdyI6WyItMjAzMC43NjkyMzA3NjkyMzA3IiwiMTk2OS4yMzA3NjkyMzA3NjkzIiwiLTI1NSIsIjI1NSJdfV0-
             int preTemp = (int)((A / P) * (P - Math.Abs(Math.Abs(z) % (2 * P) - P))) + tempRnd;

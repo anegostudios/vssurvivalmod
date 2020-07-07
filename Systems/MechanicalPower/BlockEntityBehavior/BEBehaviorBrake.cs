@@ -36,7 +36,7 @@ namespace Vintagestory.GameContent.Mechanics
         public BEBehaviorMPBrake(BlockEntity blockentity) : base(blockentity)
         {
             bebrake = blockentity as BEBrake;
-            
+
         }
 
         public override void Initialize(ICoreAPI api, JsonObject properties)
@@ -49,23 +49,13 @@ namespace Vintagestory.GameContent.Mechanics
             switch (side)
             {
                 case "north":
-                    AxisMapping = new int[] { 2, 1, 0 };
-                    AxisSign = new int[] { -1, -1, -1 };
+                case "south":
+                    AxisSign = new int[] { -1, 0, 0 };
                     break;
 
                 case "east":
-                    AxisMapping = new int[] { 0, 1, 2 };
-                    AxisSign = new int[] { -1, -1, -1 };
-                    break;
-
-                case "south":
-                    AxisMapping = new int[] { 2, 1, 0 };
-                    AxisSign = new int[] { -1, -1, -1 };
-                    break;
-
                 case "west":
-                    AxisMapping = new int[] { 0, 1, 2 };
-                    AxisSign = new int[] { -1, -1, -1 };
+                    AxisSign = new int[] { 0, 0, -1 };
                     break;
             }
 

@@ -73,6 +73,7 @@ namespace Vintagestory.GameContent
 
         private bool TryFalling(IWorldAccessor world, BlockPos pos, ref EnumHandling handling, ref string failureCode)
         {
+
             if (world.Side == EnumAppSide.Server)
             {
                 ICoreServerAPI sapi = (world as IServerWorldAccessor).Api as ICoreServerAPI;
@@ -111,9 +112,11 @@ namespace Vintagestory.GameContent
             for (int i = 0; i < 4; i++)
             {
                 BlockFacing facing = BlockFacing.HORIZONTALS[i];
-                if (
-                    world.BlockAccessor.GetBlock(pos.X + facing.Normali.X, pos.Y + facing.Normali.Y, pos.Z + facing.Normali.Z).Replaceable >= 6000 &&
-                    world.BlockAccessor.GetBlock(pos.X + facing.Normali.X, pos.Y + facing.Normali.Y - 1, pos.Z + facing.Normali.Z).Replaceable >= 6000)
+
+                Block nBlock = world.BlockAccessor.GetBlockOrNull(pos.X + facing.Normali.X, pos.Y + facing.Normali.Y, pos.Z + facing.Normali.Z);
+                Block nBBlock = world.BlockAccessor.GetBlockOrNull(pos.X + facing.Normali.X, pos.Y + facing.Normali.Y - 1, pos.Z + facing.Normali.Z);
+
+                if (nBlock != null && nBBlock != null && nBlock.Replaceable >= 6000 && nBBlock.Replaceable >= 6000)
                 {
                     return true;
                 }

@@ -39,7 +39,7 @@ namespace Vintagestory.GameContent
             textureSourceBlock = capi.World.GetBlock(new AssetLocation("claypot-cooked"));
         }
 
-        public MeshRef GetOrCreateMealInContainerMeshRef(Block containerBlock, CookingRecipe forRecipe, ItemStack[] contentStacks, Vec3f foodTranslate = null, bool withRgba2 = false)
+        public MeshRef GetOrCreateMealInContainerMeshRef(Block containerBlock, CookingRecipe forRecipe, ItemStack[] contentStacks, Vec3f foodTranslate = null) //, bool withRgba2 = false)
         {
             Dictionary<int, MeshRef> meshrefs = null;
 
@@ -55,14 +55,14 @@ namespace Vintagestory.GameContent
 
             if (contentStacks == null) return null;
 
-            int mealhashcode = GetMealHashCode(capi.World, containerBlock, contentStacks, foodTranslate) + (withRgba2 ? 121298 : 0);
+            int mealhashcode = GetMealHashCode(capi.World, containerBlock, contentStacks, foodTranslate);// + (withRgba2 ? 121298 : 0);
 
             MeshRef mealMeshRef = null;
 
             if (!meshrefs.TryGetValue(mealhashcode, out mealMeshRef))
             {
                 MeshData mesh = GenMealInContainerMesh(containerBlock, forRecipe, contentStacks, foodTranslate);
-                if (!withRgba2) mesh.Rgba2 = null;
+                //if (!withRgba2) mesh.Rgba2 = null;
                 meshrefs[mealhashcode] = mealMeshRef = capi.Render.UploadMesh(mesh);
             }
 
@@ -169,7 +169,7 @@ namespace Vintagestory.GameContent
             {
                 capi.Tesselator.TesselateShape(
                     "mealpart", shape, out mergedmesh, texSource,
-                    new Vec3f(recipe.Shape.rotateX, recipe.Shape.rotateY, recipe.Shape.rotateZ), 0, 0, null, null
+                    new Vec3f(recipe.Shape.rotateX, recipe.Shape.rotateY, recipe.Shape.rotateZ)
                 );
             }
             else
@@ -212,7 +212,7 @@ namespace Vintagestory.GameContent
 
                     capi.Tesselator.TesselateShape(
                         "mealpart", shape, out meshpart, texSource,
-                        new Vec3f(recipe.Shape.rotateX, recipe.Shape.rotateY, recipe.Shape.rotateZ), 0, 0, null, selectiveElements
+                        new Vec3f(recipe.Shape.rotateX, recipe.Shape.rotateY, recipe.Shape.rotateZ), 0, 0, 0, null, selectiveElements
                     );
 
                     if (mergedmesh == null) mergedmesh = meshpart;

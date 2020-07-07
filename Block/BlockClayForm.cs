@@ -118,7 +118,7 @@ namespace Vintagestory.GameContent
             return new ItemStack[0];
         }
 
-        public override void OnNeighourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
+        public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
         {
             if (!world.BlockAccessor.GetBlock(pos.DownCopy()).SideSolid[BlockFacing.UP.Index])
             {

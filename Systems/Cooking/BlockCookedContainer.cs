@@ -171,7 +171,7 @@ namespace Vintagestory.GameContent
                 }
 
                 Vec3d pos =
-                    byEntity.Pos.XYZ.Add(0, byEntity.EyeHeight - 0.5f, 0)
+                    byEntity.Pos.XYZ.Add(0, byEntity.LocalEyePos.Y - 0.5f, 0)
                     .Ahead(0.33f, byEntity.Pos.Pitch, byEntity.Pos.Yaw)
                     .Ahead(sideWays, 0, byEntity.Pos.Yaw + GameMath.PIHALF)
                 ;

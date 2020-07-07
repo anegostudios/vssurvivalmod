@@ -22,7 +22,7 @@ namespace Vintagestory.ServerMods.NoObf
         [JsonProperty]
         public string HexColor;
         [JsonProperty]
-        public double Weight; // 0..1
+        public double Weight;
         [JsonProperty]
         public bool UseClimateMap;
         [JsonProperty]

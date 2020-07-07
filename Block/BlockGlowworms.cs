@@ -23,7 +23,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void OnNeighourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
+        public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
         {
             if (!IsAttached(world, pos))
             {

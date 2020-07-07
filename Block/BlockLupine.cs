@@ -19,9 +19,8 @@ namespace Vintagestory.GameContent
         {
             base.OnLoaded(api);
 
-
-            uncommonVariants = new Block[] { api.World.GetBlock(CodeWithParts("white")), api.World.GetBlock(CodeWithParts("red")) };
-            rareVariants = new Block[] { api.World.GetBlock(CodeWithParts("orange")) };
+            uncommonVariants = new Block[] { api.World.GetBlock(CodeWithVariant("color", "white")), api.World.GetBlock(CodeWithVariant("color", "red")) };
+            rareVariants = new Block[] { api.World.GetBlock(CodeWithVariant("color", "orange")) };
         }
 
         public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, LCGRandom worldGenRand)
@@ -32,7 +31,7 @@ namespace Vintagestory.GameContent
             double rnd = worldGenRand.NextDouble();
             if (rnd < 1/300.0)
             {
-                GenRareColorPatch(blockAccessor, pos, uncommonVariants[worldGenRand.NextInt(rareVariants.Length)], worldGenRand);
+                GenRareColorPatch(blockAccessor, pos, rareVariants[worldGenRand.NextInt(rareVariants.Length)], worldGenRand);
             } else if (rnd < 1/120.0)
             {
                 GenRareColorPatch(blockAccessor, pos, uncommonVariants[worldGenRand.NextInt(uncommonVariants.Length)], worldGenRand);

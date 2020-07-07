@@ -117,7 +117,7 @@ namespace Vintagestory.GameContent
             }
 
             MeshData workItemMesh = new MeshData(24, 36, false);
-            workItemMesh.Rgba2 = null;
+            //workItemMesh.Rgba2 = null;
 
             float subPixelPaddingx = api.BlockTextureAtlas.SubPixelPaddingX;
             float subPixelPaddingy = api.BlockTextureAtlas.SubPixelPaddingY;
@@ -136,10 +136,11 @@ namespace Vintagestory.GameContent
                 singleVoxelMesh.Uv[i+1] = tpos.y1 + singleVoxelMesh.Uv[i+1] * 2f / api.BlockTextureAtlas.Size.Height - subPixelPaddingy;
             }
 
-            singleVoxelMesh.XyzFaces = (int[])CubeMeshUtil.CubeFaceIndices.Clone();
+            singleVoxelMesh.XyzFaces = (byte[])CubeMeshUtil.CubeFaceIndices.Clone();
             singleVoxelMesh.XyzFacesCount = 6;
-            singleVoxelMesh.Tints = new int[6];
-            singleVoxelMesh.TintsCount = 6;
+            singleVoxelMesh.ClimateColorMapIds = new byte[6];
+            singleVoxelMesh.SeasonColorMapIds = new byte[6];
+            singleVoxelMesh.ColorMapIdsCount = 6;
 
 
             MeshData voxelMeshOffset = singleVoxelMesh.Clone();
@@ -182,7 +183,7 @@ namespace Vintagestory.GameContent
         {
             recipeOutlineMeshRef?.Dispose();
 
-            MeshData recipeOutlineMesh = new MeshData(24, 36, false, false, true, false, false);
+            MeshData recipeOutlineMesh = new MeshData(24, 36, false, false, true, false);
             recipeOutlineMesh.SetMode(EnumDrawMode.Lines);
 
             int greenCol = (156 << 24) | (100 << 16) | (200 << 8) | (100);

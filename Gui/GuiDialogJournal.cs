@@ -53,7 +53,7 @@ namespace Vintagestory.GameContent
             for (int i = 0; i < journalitems.Count; i++)
             {
                 int page = i;
-                Composers["loreList"].AddButton(journalitems[i].Title, () => { return onClickItem(page); }, button, CairoFont.WhiteSmallText(), EnumButtonStyle.None, EnumTextOrientation.Left, "button-"+i);
+                Composers["loreList"].AddButton(Lang.Get(journalitems[i].Title), () => { return onClickItem(page); }, button, CairoFont.WhiteSmallText(), EnumButtonStyle.None, EnumTextOrientation.Left, "button-"+i);
 
                 Composers["loreList"].GetButton("button-" + i).PlaySound = false;
 
@@ -76,7 +76,7 @@ namespace Vintagestory.GameContent
             for (int p = 0; p < journalitems[currentLoreItemIndex].Chapters.Count; p++)
             {
                 if (p > 0) fulltext.AppendLine();
-                fulltext.Append(journalitems[currentLoreItemIndex].Chapters[p].Text);
+                fulltext.Append(Lang.Get(journalitems[currentLoreItemIndex].Chapters[p].Text));
             }
 
             pages = Paginate(fulltext.ToString(), font, GuiElement.scaled(629), GuiElement.scaled(450));
@@ -93,7 +93,7 @@ namespace Vintagestory.GameContent
                 capi.Gui
                 .CreateCompo("loreItem", dialogBounds)
                 .AddShadedDialogBG(ElementBounds.Fill, true)
-                .AddDialogTitleBar(journalitems[i].Title, CloseIconPressedLoreItem)
+                .AddDialogTitleBar(Lang.Get(journalitems[i].Title), CloseIconPressedLoreItem)
                 .AddDynamicText(pages[0], font, EnumTextOrientation.Left, textBounds, "page")
                 .AddDynamicText("1 / " + pages.Length, CairoFont.WhiteSmallishText(), EnumTextOrientation.Center, ElementBounds.Fixed(250, 500, 100, 30), "currentpage") 
                 .AddButton(Lang.Get("Previous Page"), OnPrevPage, ElementBounds.Fixed(17, 500, 100, 23).WithFixedPadding(10, 4), CairoFont.WhiteSmallishText())

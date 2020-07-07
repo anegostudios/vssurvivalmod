@@ -37,7 +37,7 @@ namespace Vintagestory.GameContent
 
             for (int j = 0; j <= 32; j++)
             {
-                mesher.TesselateShape("peatPile", shape, out meshes[j], this, null, 0, 0, j);
+                mesher.TesselateShape("peatPile", shape, out meshes[j], this, null, 0, 0, 0, j);
             }
 
             tmpTextureSource = null;

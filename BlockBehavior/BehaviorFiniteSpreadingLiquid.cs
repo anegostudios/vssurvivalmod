@@ -184,6 +184,14 @@ namespace Vintagestory.GameContent
 
         private void SpreadLiquid(int blockId, BlockPos pos, IWorldAccessor world)
         {
+            Block block = world.BulkBlockAccessor.GetBlock(pos);
+            if (block.Id != 0 && block.LiquidCode == null)
+            {
+                world.SpawnCubeParticles(pos, new Vec3d(pos.X + 0.5, pos.Y + 0.5, pos.Z + 0.5), 0.7f, 25, 0.75f);
+
+                world.BulkBlockAccessor.BreakBlock(pos, null);
+            }
+
             world.BulkBlockAccessor.SetBlock(blockId, pos);
             world.RegisterCallbackUnique(OnDelayedWaterUpdateCheck, pos, spreadDelay);
 
@@ -279,7 +287,7 @@ namespace Vintagestory.GameContent
             {
                 BlockPos npos = pos.AddCopy(facing);
                 Block neib = world.BlockAccessor.GetBlock(npos);
-                neib.OnNeighourBlockChange(world, npos, pos);
+                neib.OnNeighbourBlockChange(world, npos, pos);
             }
         }
 
@@ -346,7 +354,7 @@ namespace Vintagestory.GameContent
             for (int i = 0; i < BlockFacing.ALLFACES.Length; i++)
             {
                 BlockPos npos = pos.AddCopy(BlockFacing.ALLFACES[i]);
-                world.BlockAccessor.GetBlock(npos).OnNeighourBlockChange(world, npos, pos);
+                world.BlockAccessor.GetBlock(npos).OnNeighbourBlockChange(world, npos, pos);
             }
         }
 

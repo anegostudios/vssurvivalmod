@@ -13,6 +13,9 @@ namespace Vintagestory.GameContent
             {
                 return false;
             }
+            BlockPos belowPos = blockSel.Position.DownCopy();
+            Block belowBlock = world.BlockAccessor.GetBlock(belowPos);
+            //if (!belowPos.CanAttachBlockAt(world,)
 
             // Place by looking direction
             BlockFacing targetFacing = SuggestedHVOrientation(byPlayer, blockSel)[0];

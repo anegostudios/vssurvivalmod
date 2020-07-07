@@ -1,11 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
@@ -64,24 +60,26 @@ namespace Vintagestory.GameContent
             }
             else
             {
-                if (Variant["habitat"] != "free")
+                if (Variant["habitat"] != "land")
                 {
                     failureCode = "requirefullwater";
                     return false;
                 }
             }
 
-            
+
             if (blockToPlace != null)
             {
                 if (CanPlantStay(world.BlockAccessor, blockSel.Position))
                 {
                     world.BlockAccessor.SetBlock(blockToPlace.BlockId, blockSel.Position);
-                } else {
+                }
+                else
+                {
                     failureCode = "requirefertileground";
                     return false;
                 }
-                
+
                 return true;
             }
 
@@ -94,9 +92,10 @@ namespace Vintagestory.GameContent
             else if (player.InventoryManager.ActiveTool != EnumTool.Knife)
             {
                 dt /= 3;
-            } else
+            }
+            else
             {
-                float mul = 1f;
+                float mul;
                 if (itemslot.Itemstack.Collectible.MiningSpeed.TryGetValue(EnumBlockMaterial.Plant, out mul)) dt *= mul;
             }
 
@@ -115,9 +114,19 @@ namespace Vintagestory.GameContent
 
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
         {
-            AssetLocation loc = CodeWithParts("free", "normal");
+            AssetLocation loc = CodeWithVariants(new string[] { "habitat", "cover" }, new string[] { "land", "free" });
             Block block = world.GetBlock(loc);
             return new ItemStack(block);
+        }
+
+
+        public override BlockDropItemStack[] GetDropsForHandbook(ItemStack handbookStack, IPlayer forPlayer)
+        {
+            return new BlockDropItemStack[]
+            {
+                new BlockDropItemStack(new ItemStack(api.World.GetItem(new AssetLocation("cattailtops")))),
+                new BlockDropItemStack(Variant["type"] == "coopersreed" ? new ItemStack(api.World.GetItem(new AssetLocation("cattailroot"))) : new ItemStack(api.World.GetItem(new AssetLocation("papyrusroot")))),
+            };
         }
 
         public override void OnBlockBroken(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)
@@ -128,11 +137,16 @@ namespace Vintagestory.GameContent
                 if (Variant["state"] == "normal")
                 {
                     drop = new ItemStack(world.GetItem(new AssetLocation("cattailtops")));
-                } else
+                }
+                else
                 {
                     if (Variant["type"] == "coopersreed")
                     {
                         drop = new ItemStack(world.GetItem(new AssetLocation("cattailroot")));
+                    }
+                    if (Variant["type"] == "papyrus")
+                    {
+                        drop = new ItemStack(world.GetItem(new AssetLocation("papyrusroot")));
                     }
                 }
 
@@ -144,17 +158,18 @@ namespace Vintagestory.GameContent
                 world.PlaySoundAt(Sounds.GetBreakSound(byPlayer), pos.X, pos.Y, pos.Z, byPlayer);
             }
 
-            if (byPlayer != null && Variant["state"] == "normal" && byPlayer.InventoryManager.ActiveTool == EnumTool.Knife)
+            if (byPlayer != null && Variant["state"] == "normal" && (byPlayer.InventoryManager.ActiveTool == EnumTool.Knife || byPlayer.InventoryManager.ActiveTool == EnumTool.Sickle))
             {
                 world.BlockAccessor.SetBlock(world.GetBlock(CodeWithVariant("state", "harvested")).BlockId, pos);
                 return;
             }
 
-            if (Variant["habitat"] != "free")
+            if (Variant["habitat"] != "land")
             {
                 world.BlockAccessor.SetBlock(world.GetBlock(new AssetLocation("water-still-7")).BlockId, pos);
-                world.BlockAccessor.GetBlock(pos).OnNeighourBlockChange(world, pos, pos);
-            } else
+                world.BlockAccessor.GetBlock(pos).OnNeighbourBlockChange(world, pos, pos);
+            }
+            else
             {
                 world.BlockAccessor.SetBlock(0, pos);
             }
@@ -178,7 +193,7 @@ namespace Vintagestory.GameContent
                     return TryPlaceBlockInWater(blockAccessor, pos.UpCopy());
                 }
 
-                Block placingBlock = blockAccessor.GetBlock(CodeWithParts("free", "normal"));
+                Block placingBlock = blockAccessor.GetBlock(CodeWithVariant("habitat", "land"));
                 if (placingBlock == null) return false;
                 blockAccessor.SetBlock(placingBlock.BlockId, pos);
                 return true;
@@ -197,15 +212,15 @@ namespace Vintagestory.GameContent
             Block belowBlock = blockAccessor.GetBlock(pos.X, pos.Y - 2, pos.Z);
             if (belowBlock.Fertility > 0)
             {
-                blockAccessor.SetBlock(blockAccessor.GetBlock(CodeWithParts("water", "normal")).BlockId, pos.AddCopy(0, -1, 0));
+                blockAccessor.SetBlock(blockAccessor.GetBlock(CodeWithVariant("habitat", "water")).BlockId, pos.AddCopy(0, -1, 0));
                 return true;
             }
             return false;
         }
 
-        public override int GetRandomColor(ICoreClientAPI capi , BlockPos pos, BlockFacing facing)
+        public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing)
         {
-            return capi.ApplyColorTintOnRgba(1, capi.BlockTextureAtlas.GetRandomColor(Textures.Last().Value.Baked.TextureSubId), pos.X, pos.Y, pos.Z);
+            return capi.World.ApplyColorMapOnRgba(ClimateColorMap, SeasonColorMap, capi.BlockTextureAtlas.GetRandomColor(Textures.Last().Value.Baked.TextureSubId), pos.X, pos.Y, pos.Z);
         }
 
         public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)

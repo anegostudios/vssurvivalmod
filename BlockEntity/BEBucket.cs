@@ -75,7 +75,18 @@ namespace Vintagestory.GameContent
         {
             if (ownBlock == null) return null;
             
-            return ownBlock.GenMesh(Api as ICoreClientAPI, GetContent(), Pos);
+            MeshData mesh = ownBlock.GenMesh(Api as ICoreClientAPI, GetContent(), Pos);
+
+            if (mesh.CustomInts != null)
+            {
+                for (int i = 0; i < mesh.CustomInts.Count; i++)
+                {
+                    mesh.CustomInts.Values[i] |= 1 << 27; // Disable water wavy
+                    mesh.CustomInts.Values[i] |= 1 << 26; // Enabled weak foam
+                }
+            }
+
+            return mesh;
         }
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)

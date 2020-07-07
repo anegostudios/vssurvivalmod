@@ -105,7 +105,7 @@ namespace Vintagestory.GameContent
                 if (contents.Key != null && !HasSolidifed(slot.Itemstack, contents.Key, byEntity.World))
                 {
                     Vec3d pos =
-                        byEntity.Pos.XYZ.Add(0, byEntity.EyeHeight - 0.5f, 0)
+                        byEntity.Pos.XYZ.Add(byEntity.LocalEyePos.X, byEntity.LocalEyePos.Y - 0.5f, byEntity.LocalEyePos.Z)
                         .Ahead(0.3f, byEntity.Pos.Pitch, byEntity.Pos.Yaw)
                         .Ahead(0.47f, 0, byEntity.Pos.Yaw + GameMath.PIHALF)
                     ;
@@ -207,7 +207,7 @@ namespace Vintagestory.GameContent
                         .Ahead(0.1f, byEntity.Pos.Pitch, byEntity.Pos.Yaw)
                         .Ahead(1.0f, byEntity.Pos.Pitch, byEntity.Pos.Yaw - GameMath.PIHALF)
                     ;
-                    pos.Y += byEntity.EyeHeight - 0.4f;
+                    pos.Y += byEntity.LocalEyePos.Y - 0.4f;
 
                     smokePouring.MinPos = pos.AddCopy(-0.15, -0.15, -0.15);
 

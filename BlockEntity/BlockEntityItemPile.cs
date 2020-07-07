@@ -178,9 +178,9 @@ namespace Vintagestory.GameContent
                 MarkDirty();
 
                 Cuboidf[] collBoxes = Api.World.BlockAccessor.GetBlock(Pos).GetCollisionBoxes(Api.World.BlockAccessor, Pos);
-                if (collBoxes != null && collBoxes.Length > 0 && CollisionTester.AabbIntersect(collBoxes[0], Pos.X, Pos.Y, Pos.Z, player.Entity.CollisionBox, player.Entity.LocalPos.XYZ))
+                if (collBoxes != null && collBoxes.Length > 0 && CollisionTester.AabbIntersect(collBoxes[0], Pos.X, Pos.Y, Pos.Z, player.Entity.CollisionBox, player.Entity.SidedPos.XYZ))
                 {
-                    player.Entity.LocalPos.Y += collBoxes[0].Y2 - (player.Entity.LocalPos.Y - (int)player.Entity.LocalPos.Y);
+                    player.Entity.SidedPos.Y += collBoxes[0].Y2 - (player.Entity.SidedPos.Y - (int)player.Entity.SidedPos.Y);
                 }
 
                 (player as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);

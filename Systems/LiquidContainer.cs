@@ -92,7 +92,7 @@ namespace Vintagestory.GameContent
         public float ItemsPerLitre;
         public AssetLocation FillSpillSound = new AssetLocation("sounds/block/water");
         public CompositeTexture Texture;
-        public int TintIndex = 0;
+        public string ClimateColorMap = null;
         public bool AllowSpill = true;
         public WhenSpilledProps WhenSpilled;
         public WhenFilledProps WhenFilled;
@@ -119,8 +119,18 @@ namespace Vintagestory.GameContent
 
     public abstract class BlockLiquidContainerBase : BlockContainer, ILiquidSource, ILiquidSink
     {
-        public virtual float CapacityLitres => 10;
+        protected float capacityLitresFromAttributes = 10;
+        public virtual float CapacityLitres => capacityLitresFromAttributes;
         public virtual int ContainerSlotId => 0;
+
+        
+
+
+        public override void OnLoadCollectibleMappings(IWorldAccessor worldForResolve, ItemSlot inSlot, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping)
+        {
+            base.OnLoadCollectibleMappings(worldForResolve, inSlot, oldBlockIdMapping, oldItemIdMapping);
+        }
+
 
         public virtual int GetContainerSlotId(IWorldAccessor world, BlockPos pos)
         {
@@ -136,6 +146,11 @@ namespace Vintagestory.GameContent
 
         public override void OnLoaded(ICoreAPI api)
         {
+            if (Attributes?["capacityLitres"].Exists == true)
+            {
+                capacityLitresFromAttributes = Attributes["capacityLitres"].AsInt(10);
+            }
+
             if (api.Side != EnumAppSide.Client) return;
             ICoreClientAPI capi = api as ICoreClientAPI;
 
@@ -530,7 +545,7 @@ namespace Vintagestory.GameContent
                         hotbarSlot.TakeOut(1);
                         if (!byPlayer.InventoryManager.TryGiveItemstack(containerStack, true))
                         {
-                            api.World.SpawnItemEntity(containerStack, byPlayer.Entity.LocalPos.XYZ);
+                            api.World.SpawnItemEntity(containerStack, byPlayer.Entity.SidedPos.XYZ);
                         }
                     }
                 }
@@ -638,7 +653,7 @@ namespace Vintagestory.GameContent
                 itemslot.TakeOut(1);
                 if (!byPlayer.InventoryManager.TryGiveItemstack(fullContainerStack, true))
                 {
-                    byEntity.World.SpawnItemEntity(fullContainerStack, byEntity.LocalPos.XYZ);
+                    byEntity.World.SpawnItemEntity(fullContainerStack, byEntity.SidedPos.XYZ);
                 }
             }
 
@@ -678,7 +693,7 @@ namespace Vintagestory.GameContent
             else
             {
                 byEntityItem.Itemstack.StackSize--;
-                world.SpawnItemEntity(fullContainerStack, byEntityItem.LocalPos.XYZ);
+                world.SpawnItemEntity(fullContainerStack, byEntityItem.SidedPos.XYZ);
             }
 
             world.PlaySoundAt(props.FillSpillSound, pos.X, pos.Y, pos.Z, null);
@@ -758,7 +773,7 @@ namespace Vintagestory.GameContent
                 containerSlot.TakeOut(1);
                 if (!byPlayer.InventoryManager.TryGiveItemstack(emptyContainerStack, true))
                 {
-                    byEntity.World.SpawnItemEntity(emptyContainerStack, byEntity.LocalPos.XYZ);
+                    byEntity.World.SpawnItemEntity(emptyContainerStack, byEntity.SidedPos.XYZ);
                 }
             }
 
@@ -784,7 +799,7 @@ namespace Vintagestory.GameContent
 
             if (entityItem.Swimming && world.Rand.NextDouble() < 0.03)
             {
-                TryFillFromBlock(entityItem, entityItem.LocalPos.AsBlockPos);
+                TryFillFromBlock(entityItem, entityItem.SidedPos.AsBlockPos);
             }
         }
 
@@ -861,7 +876,6 @@ namespace Vintagestory.GameContent
                 op.SinkSlot.MarkDirty();
             }
 
-
             op.MovableQuantity = 0;
             return;
         }
@@ -877,15 +891,20 @@ namespace Vintagestory.GameContent
             string contentType = gridRecipe.Attributes["liquidContainerProps"]["requiresContent"]["type"].AsString();
 
             ItemStack contentStack = GetContent(api.World, inputStack);
+
+            api.World.Logger.VerboseDebug("LiquidContainer.MatchesForCrafting: contentStack null? " + (contentStack==null));
+
             if (contentStack == null) return false;
 
             int q = gridRecipe.Attributes["liquidContainerProps"]["requiresQuantity"].AsInt();
 
-            return
-                contentStack.Class.ToString().ToLowerInvariant() == contentType.ToLowerInvariant()
-                && WildcardUtil.Match(contentStack.Collectible.Code, new AssetLocation(contentCode))
-                && contentStack.StackSize >= q
-            ;
+            bool a = contentStack.Class.ToString().ToLowerInvariant() == contentType.ToLowerInvariant();
+            bool b = WildcardUtil.Match(contentStack.Collectible.Code, new AssetLocation(contentCode));
+            bool c = contentStack.StackSize >= q;
+
+            api.World.Logger.VerboseDebug("LiquidContainer.MatchesForCrafting: {0} && {1} && {2}", a, b, c);
+
+            return a && b && c;
         }
 
         public override void OnConsumedByCrafting(ItemSlot[] allInputSlots, ItemSlot stackInSlot, GridRecipe gridRecipe, CraftingRecipeIngredient fromIngredient, IPlayer byPlayer, int quantity)

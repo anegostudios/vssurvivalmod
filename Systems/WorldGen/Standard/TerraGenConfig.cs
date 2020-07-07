@@ -90,6 +90,8 @@ namespace Vintagestory.ServerMods
             return Math.Min(255, rainfall + (y - seaLevel) / 2 + 5 * GameMath.Clamp(8 + seaLevel - y, 0, 8));
         }
 
+
+        // The 1.5f/4.25f is also hardcoded in shaderincluds/colormap.vsh
         public static int GetScaledAdjustedTemperature(int unscaledTemp, int distToSealevel)
         {
             return GameMath.Clamp((int)((unscaledTemp - distToSealevel / 1.5f) / 4.25f) - 20, -20, 40);
@@ -98,6 +100,11 @@ namespace Vintagestory.ServerMods
         public static float GetScaledAdjustedTemperatureFloat(int unscaledTemp, int distToSealevel)
         {
             return GameMath.Clamp(((unscaledTemp - distToSealevel / 1.5f) / 4.25f) - 20, -20, 40);
+        }
+
+        public static int GetAdjustedTemperature(int unscaledTemp, int distToSealevel)
+        {
+            return (int)GameMath.Clamp(unscaledTemp - distToSealevel / 1.5f, 0, 255);
         }
 
         public static int GetFertility(int rain, float scaledTemp, float posYRel)

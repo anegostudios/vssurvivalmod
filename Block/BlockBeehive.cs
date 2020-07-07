@@ -78,7 +78,9 @@ namespace Vintagestory.GameContent
                         blockAccessor.SpawnBlockEntity(EntityClass, atpos);
                     }
 
-                   // blockAccessor.SetBlock(blockAccessor.GetBlock(new AssetLocation("creativeblock-60")).BlockId, pos);
+                    //BlockPos test = pos.Copy();
+                    //test.Y = 160;
+                    //blockAccessor.SetBlock(blockAccessor.GetBlock(new AssetLocation("creativeblock-60")).BlockId, test);
 
                     return true;
                 }

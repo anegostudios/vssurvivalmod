@@ -9,87 +9,38 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent.Mechanics
 {
-    public class BEBehaviorWindmillRotor : BEBehaviorMPBase
+    public class BEBehaviorWindmillRotor : BEBehaviorMPRotor
     {
         WeatherSystemBase weatherSystem;
         double windSpeed;
-        double torqueNow;
 
         int sailLength = 0;
-        double lastMsAngle;
-
-        BlockFacing ownFacing;
-        EntityPartitioning partitionUtil;
-
         public int SailLength => sailLength;
 
-        public override float AngleRad
-        {
-            get
-            {
-                if (network?.Speed > 0 && Api.World.ElapsedMilliseconds - lastMsAngle > 500 / network.Speed)
-                {
-                    Api.World.PlaySoundAt(new AssetLocation("sounds/effect/swoosh"), Position.X + 0.5, Position.Y + 0.5, Position.Z + 0.5, null, false, 18, (0.5f + 0.5f * (float)windSpeed) * sailLength / 3f);
-                    lastMsAngle = Api.World.ElapsedMilliseconds;
-                }
+        private AssetLocation sound;
+        protected override AssetLocation Sound => sound;
+        protected override float GetSoundVolume() => (0.5f + 0.5f * (float)windSpeed) * sailLength / 3f;
 
-                return base.AngleRad;
-            }
-        }
+        protected override float Resistance => 0.003f;
+        protected override double AccelerationFactor => 0.05d;
+        protected override float TargetSpeed => (float)Math.Min(0.6f, windSpeed);
+        protected override float TorqueFactor => sailLength / 4f;    // Should stay at /4f (5 sails are supposed to have "125% power output")
 
         public BEBehaviorWindmillRotor(BlockEntity blockentity) : base(blockentity)
         {
-            string orientation = Blockentity.Block.Variant["side"];
-            ownFacing = BlockFacing.FromCode(orientation);
-            OutFacingForNetworkDiscovery = ownFacing.GetOpposite();
-
-            inTurnDir.Rot = ownFacing == BlockFacing.WEST || ownFacing == BlockFacing.NORTH ? EnumRotDirection.Counterclockwise : EnumRotDirection.Clockwise;
         }
 
         public override void Initialize(ICoreAPI api, JsonObject properties)
         {
             base.Initialize(api, properties);
-
-            switch (ownFacing.Code)
-            {
-                case "north":
-                    AxisMapping = new int[] { 0, 1, 2 };
-                    AxisSign = new int[] { -1, -1, -1 };
-                    break;
-
-                case "east":
-                    AxisMapping = new int[] { 2, 1, 0 };
-                    AxisSign = new int[] { -1, -1, -1 };
-                    break;
-
-                case "south":
-                    AxisMapping = new int[] { 0, 1, 2 };
-                    AxisSign = new int[] { -1, -1, -1 };
-                    break;
-
-                case "west":
-                    AxisMapping = new int[] { 2, 1, 0 };
-                    AxisSign = new int[] { -1, -1, -1 };
-                    break;
-            }
-
+            this.sound = new AssetLocation("sounds/effect/swoosh");
             weatherSystem = Api.ModLoader.GetModSystem<WeatherSystemBase>();
             Blockentity.RegisterGameTickListener(CheckWindSpeed, 1000);
-
-            if (api.Side == EnumAppSide.Server)
-            {
-                partitionUtil = Api.ModLoader.GetModSystem<EntityPartitioning>();
-            }
-
-            if (Api.Side == EnumAppSide.Client)
-            {
-                updateShape();
-            }
         }
 
         private void CheckWindSpeed(float dt)
         {
-            windSpeed = weatherSystem.GetWindSpeed(Blockentity.Pos.ToVec3d());
+            windSpeed = weatherSystem.WeatherDataSlowAccess.GetWindSpeed(Blockentity.Pos.ToVec3d());
 
             if (Api.Side == EnumAppSide.Server && sailLength > 0 && Api.World.Rand.NextDouble() < 0.2)
             {
@@ -129,24 +80,9 @@ namespace Vintagestory.GameContent.Mechanics
                     }
                     sailLength = 0;
                     Blockentity.MarkDirty(true);
+                    this.network.updateNetwork();
                 }
             }
-        }
-
-        public override float GetResistance()
-        {
-            return torqueNow - network.Speed <= 0 ? 0.003f : 0;
-        }
-
-        public override float GetTorque()
-        {
-            float ws = (float)Math.Min(0.6f, windSpeed);
-
-            torqueNow += (ws - torqueNow) / 20.0;
-
-            int dir = (2 * (int)GetTurnDirection(ownFacing).Rot - 1);
-
-            return Math.Max(0, (float)torqueNow - network.Speed) * sailLength / 4f * dir;
         }
 
         public override void OnBlockBroken()
@@ -160,22 +96,15 @@ namespace Vintagestory.GameContent.Mechanics
             base.OnBlockBroken();
         }
 
-
-        public override void WasPlaced(BlockFacing connectedOnFacing)
-        {
-            // Don't run this behavior for power producers. Its done in initialize instead
-        }
-
-
         internal bool OnInteract(IPlayer byPlayer)
         {
-            if (sailLength >= 4) return false;
+            if (sailLength >= 5) return false;
 
             ItemSlot slot = byPlayer.InventoryManager.ActiveHotbarSlot;
-            ItemStack sailStack = new ItemStack(Api.World.GetItem(new AssetLocation("sail")));
-            if (slot.Empty || !slot.Itemstack.Equals(Api.World, sailStack, GlobalConstants.IgnoredStackAttributes)) return false;
+            if (slot.Empty || slot.StackSize < 4) return false;
 
-            if (slot.StackSize < 4) return false;
+            ItemStack sailStack = new ItemStack(Api.World.GetItem(new AssetLocation("sail")));
+            if (!slot.Itemstack.Equals(Api.World, sailStack, GlobalConstants.IgnoredStackAttributes)) return false;
 
             int len = sailLength + 2;
 
@@ -197,10 +126,8 @@ namespace Vintagestory.GameContent.Mechanics
             updateShape();
 
             Blockentity.MarkDirty(true);
-
             return true;
         }
-
 
         bool obstructed(int len)
         {
@@ -211,6 +138,7 @@ namespace Vintagestory.GameContent.Mechanics
                 for (int dy = -len; dy <= len; dy++)
                 {
                     if (dxz == 0 && dy == 0) continue;
+                    if (len > 1 && Math.Abs(dxz) == len && Math.Abs(dy) == len) continue;
 
                     int dx = ownFacing.Axis == EnumAxis.Z ? dxz : 0;
                     int dz = ownFacing.Axis == EnumAxis.X ? dxz : 0;
@@ -247,8 +175,7 @@ namespace Vintagestory.GameContent.Mechanics
             base.ToTreeAttributes(tree);
         }
 
-
-        void updateShape()
+        protected override void updateShape()
         {
             if (sailLength == 0)
             {
@@ -268,18 +195,12 @@ namespace Vintagestory.GameContent.Mechanics
             }
         }
 
-        protected override MechPowerPath[] GetMechPowerExits(TurnDirection fromExitTurnDir)
-        {
-            // This is a one way road, baby
-            return new MechPowerPath[0];
-        }
-
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder sb)
         {
             base.GetBlockInfo(forPlayer, sb);
 
             sb.AppendLine(string.Format(Lang.Get("Wind speed: {0}%", (int)(100*windSpeed))));
-            sb.AppendLine(Lang.Get("Sails power output: {0}%", (int)(sailLength / 0.04f)));
+            sb.AppendLine(Lang.Get("Sails power output: {0} kN", (int)(sailLength / 5f * 100f)));
         }
     }
 }

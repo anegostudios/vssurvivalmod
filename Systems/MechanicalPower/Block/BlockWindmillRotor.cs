@@ -4,7 +4,7 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent.Mechanics
 {
-    public class BlockWindmillRotor : BlockMPBase
+    public class BlockWindmillRotor : BlockMPBase, IMPPowered
     {
         BlockFacing powerOutFacing;
 
@@ -20,7 +20,7 @@ namespace Vintagestory.GameContent.Mechanics
             
         }
 
-        public override bool HasConnectorAt(IWorldAccessor world, BlockPos pos, BlockFacing face)
+        public override bool HasMechPowerConnectorAt(IWorldAccessor world, BlockPos pos, BlockFacing face)
         {
             return face == powerOutFacing;
         }
@@ -31,17 +31,18 @@ namespace Vintagestory.GameContent.Mechanics
             {
                 return false;
             }
-
             foreach (BlockFacing face in BlockFacing.HORIZONTALS)
             {
                 BlockPos pos = blockSel.Position.AddCopy(face);
                 IMechanicalPowerBlock block = world.BlockAccessor.GetBlock(pos) as IMechanicalPowerBlock;
                 if (block != null)
                 {
-                    if (block.HasConnectorAt(world, pos, face.GetOpposite()))
+                    if (block.HasMechPowerConnectorAt(world, pos, face.GetOpposite()))
                     {
-                        Block toPlaceBlock = world.GetBlock(new AssetLocation(FirstCodePart() + "-" + face.GetOpposite().Code));
+                        //Prevent rotor back-to-back placement
+                        if (block is IMPPowered) return false;
 
+                        Block toPlaceBlock = world.GetBlock(new AssetLocation(FirstCodePart() + "-" + face.GetOpposite().Code));
                         world.BlockAccessor.SetBlock(toPlaceBlock.BlockId, blockSel.Position);
 
                         block.DidConnectAt(world, pos, face.GetOpposite());
@@ -52,7 +53,7 @@ namespace Vintagestory.GameContent.Mechanics
                 }
             }
 
-            bool ok = base.DoPlaceBlock(world, byPlayer, blockSel, itemstack);
+            bool ok = base.TryPlaceBlock(world, byPlayer, itemstack, blockSel, ref failureCode);
             if (ok)
             {
                 WasPlaced(world, blockSel.Position, null);

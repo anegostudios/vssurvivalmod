@@ -91,7 +91,7 @@ namespace Vintagestory.GameContent
             {
                 double topPos = block.Attributes["sitHeight"].AsDouble(block.TopMiddlePos.Y);
 
-                entity.WatchedAttributes.SetDouble("sitHeight", block.VertexFlags.GrassWindWave ? topPos : 0);
+                entity.WatchedAttributes.SetDouble("windWaveIntensity", block.VertexFlags.GrassWindWave ? (block.VertexFlags.WeakWave ? topPos / 2 : topPos) : 0);
 
                 MainTarget = tmpPos.ToVec3d().Add(block.TopMiddlePos.X, topPos, block.TopMiddlePos.Z);
                 return true;

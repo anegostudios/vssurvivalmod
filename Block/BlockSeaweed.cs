@@ -10,7 +10,7 @@ namespace Vintagestory.GameContent
         Random random = new Random();
         Block[] blocks;
 
-        internal override bool CanPlantStay(IBlockAccessor blockAccessor, BlockPos pos)
+        public override bool CanPlantStay(IBlockAccessor blockAccessor, BlockPos pos)
         {
             Block block = blockAccessor.GetBlock(pos.X, pos.Y - 1, pos.Z);
             return (block.Fertility > 0) || (block is BlockSeaweed && block.LastCodePart() == "section");

@@ -378,8 +378,6 @@ namespace Vintagestory.GameContent
             if (layer == 0) return false;
 
             bool didplace = false;
-            Vec3i voxelPos = new Vec3i();
-
             int quantity = 4;
 
             for (int x = 0; x < 16; x++)
@@ -689,6 +687,7 @@ namespace Vintagestory.GameContent
                 Api as ICoreClientAPI
             );
 
+            dlg.OnClosed += dlg.Dispose;
             dlg.TryOpen();
         }
 

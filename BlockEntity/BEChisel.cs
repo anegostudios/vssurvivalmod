@@ -195,6 +195,12 @@ namespace Vintagestory.GameContent
 
         internal void UpdateVoxel(IPlayer byPlayer, ItemSlot itemslot, Vec3i voxelPos, BlockFacing facing, bool isBreak)
         {
+            if (!Api.World.Claims.TryAccess(byPlayer, Pos, EnumBlockAccessFlags.Use))
+            {
+                MarkDirty(true);
+                return;
+            }
+
             EnumChiselMode mode = ChiselMode(byPlayer);
 
             bool wasChanged = false;
@@ -263,7 +269,7 @@ namespace Vintagestory.GameContent
             double posz = Pos.Z + voxelPos.Z / 16f;
             Api.World.PlaySoundAt(new AssetLocation("sounds/player/knap" + (Api.World.Rand.Next(2) > 0 ? 1 : 2)), posx, posy, posz, byPlayer, true, 12, 1);
 
-            if (byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative && Api.World.Rand.Next(2) > 0)
+            if (byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative && Api.World.Rand.Next(3) == 0)
             {
                 itemslot.Itemstack?.Collectible.DamageItem(Api.World, byPlayer.Entity, itemslot);
             }
@@ -752,13 +758,15 @@ namespace Vintagestory.GameContent
 
         public void RegenSelectionBoxes(IPlayer byPlayer)
         {
-            selectionBoxes = new Cuboidf[VoxelCuboids.Count];
-
+            // Create a temporary array first, because the offthread particle system might otherwise access a null collisionbox
+            Cuboidf[] selectionBoxesTmp = new Cuboidf[VoxelCuboids.Count];
             for (int i = 0; i < VoxelCuboids.Count; i++)
             {
                 FromUint(VoxelCuboids[i], ref tmpCuboid);
-                selectionBoxes[i] = tmpCuboid.ToCuboidf();
+                selectionBoxesTmp[i] = tmpCuboid.ToCuboidf();
             }
+            this.selectionBoxes = selectionBoxesTmp;
+
 
             if (byPlayer != null)
             {
@@ -824,7 +832,7 @@ namespace Vintagestory.GameContent
 
         public static MeshData CreateMesh(ICoreClientAPI coreClientAPI, List<uint> voxelCuboids, int[] materials)
         {
-            MeshData mesh = new MeshData(24, 36, false).WithTints().WithRenderpasses().WithXyzFaces();
+            MeshData mesh = new MeshData(24, 36, false).WithColorMaps().WithRenderpasses().WithXyzFaces();
             if (voxelCuboids == null || materials == null) return mesh;
 
             for (int i = 0; i < voxelCuboids.Count; i++)
@@ -844,8 +852,7 @@ namespace Vintagestory.GameContent
                     coreClientAPI.Tesselator.GetTexSource(block, 0, true),
                     subPixelPaddingx,
                     subPixelPaddingy,
-                    (int)block.RenderPass,
-                    block.VertexFlags.All
+                    block
                 );
 
                 mesh.AddMeshData(cuboidmesh);
@@ -861,21 +868,20 @@ namespace Vintagestory.GameContent
 
         public static MeshData CreateDecalMesh(ICoreClientAPI coreClientAPI, List<uint> voxelCuboids, ITexPositionSource decalTexSource)
         {
-            MeshData mesh = new MeshData(24, 36, false).WithTints().WithRenderpasses().WithXyzFaces();
+            MeshData mesh = new MeshData(24, 36, false).WithColorMaps().WithRenderpasses().WithXyzFaces();
 
             for (int i = 0; i < voxelCuboids.Count; i++)
             {
                 FromUint(voxelCuboids[i], ref tmpCuboid);
 
                 MeshData cuboidmesh = genCube(
-                    tmpCuboid.X1, tmpCuboid.Y1, tmpCuboid.Z1, 
-                    tmpCuboid.X2 - tmpCuboid.X1, tmpCuboid.Y2 - tmpCuboid.Y1, tmpCuboid.Z2 - tmpCuboid.Z1, 
-                    coreClientAPI, 
+                    tmpCuboid.X1, tmpCuboid.Y1, tmpCuboid.Z1,
+                    tmpCuboid.X2 - tmpCuboid.X1, tmpCuboid.Y2 - tmpCuboid.Y1, tmpCuboid.Z2 - tmpCuboid.Z1,
+                    coreClientAPI,
                     decalTexSource,
                     0,
                     0,
-                    0,
-                    0
+                    coreClientAPI.World.GetBlock(0)
                 );
 
                 mesh.AddMeshData(cuboidmesh);
@@ -886,29 +892,32 @@ namespace Vintagestory.GameContent
 
 
 
-        static MeshData genCube(int voxelX, int voxelY, int voxelZ, int width, int height, int length, ICoreClientAPI capi, ITexPositionSource texSource, float subPixelPaddingx, float subPixelPaddingy, int renderpass, int renderFlags)
+        static MeshData genCube(int voxelX, int voxelY, int voxelZ, int width, int height, int length, ICoreClientAPI capi, ITexPositionSource texSource, float subPixelPaddingx, float subPixelPaddingy, Block block)
         {
+            short renderpass = (short)block.RenderPass;
+            int renderFlags = block.VertexFlags.All;
+
              MeshData mesh = CubeMeshUtil.GetCube(
                  width / 32f, height / 32f, length / 32f, 
                  new Vec3f(voxelX / 16f, voxelY / 16f, voxelZ / 16f)
             );
 
             
-            float[] sideShadings = CubeMeshUtil.DefaultBlockSideShadingsByFacing;
-
             mesh.Rgba.Fill((byte)255);
-
             mesh.Flags = new int[mesh.VerticesCount];
             mesh.Flags.Fill(renderFlags);
-            mesh.RenderPasses = new int[mesh.VerticesCount / 4];
+            mesh.RenderPasses = new short[mesh.VerticesCount / 4];
             mesh.RenderPassCount = mesh.VerticesCount / 4;
             for (int i = 0; i < mesh.RenderPassCount; i++)
             {
                 mesh.RenderPasses[i] = renderpass;
             }
-            mesh.Tints = new int[mesh.VerticesCount / 4];
-            mesh.TintsCount = mesh.VerticesCount / 4;
-            mesh.XyzFaces = new int[mesh.VerticesCount / 4];
+
+            mesh.ColorMapIdsCount = mesh.VerticesCount / 4;
+            mesh.ClimateColorMapIds = new byte[mesh.VerticesCount / 4];
+            mesh.SeasonColorMapIds = new byte[mesh.VerticesCount / 4];
+
+            mesh.XyzFaces = new byte[mesh.VerticesCount / 4];
             mesh.XyzFacesCount = mesh.VerticesCount / 4;
             
 
@@ -917,7 +926,7 @@ namespace Vintagestory.GameContent
             {
                 BlockFacing facing = BlockFacing.ALLFACES[i];
 
-                mesh.XyzFaces[i] = i;
+                mesh.XyzFaces[i] = facing.MeshDataIndex;
 
                 int normal = (VertexFlags.NormalToPackedInt(facing.Normalf.X, facing.Normalf.Y, facing.Normalf.Z) << 15);
                 mesh.Flags[i * 4 + 0] |= normal;
@@ -942,15 +951,22 @@ namespace Vintagestory.GameContent
                 {
                     tpos = texSource[facing.Code];
                 }
+                if (tpos == null)
+                {
+                    tpos = texSource[block.Textures.First().Key];
+                }
+
+                float texWidth = tpos.x2 - tpos.x1;
+                float texHeight = tpos.y2 - tpos.y1;
 
                 for (int j = 0; j < 2*4; j++)
                 {
                     if (j % 2 > 0)
                     {
-                        mesh.Uv[k] = tpos.y1 + mesh.Uv[k] * 32f / texSource.AtlasSize.Height - subPixelPaddingy;
+                        mesh.Uv[k] = tpos.y1 + mesh.Uv[k] * texHeight - subPixelPaddingy;
                     } else
                     {
-                        mesh.Uv[k] = tpos.x1 + mesh.Uv[k] * 32f / texSource.AtlasSize.Width - subPixelPaddingx;
+                        mesh.Uv[k] = tpos.x1 + mesh.Uv[k] * texWidth - subPixelPaddingx;
                     }
                     
                     k++;
@@ -962,33 +978,6 @@ namespace Vintagestory.GameContent
         }
 
 
-        static MeshData genQuad(BlockFacing face, int voxelX, int voxelY, int voxelZ, int width, int height, ICoreClientAPI capi, Block block)
-        {
-            MeshData mesh = CubeMeshUtil.GetCubeFace(face, width / 32f, height / 32f, new Vec3f(voxelX / 16f, voxelY / 16f, voxelZ / 16f));
-
-            float[] sideShadings = CubeMeshUtil.DefaultBlockSideShadingsByFacing;
-            int faceIndex = face.Index;
-
-            mesh.Rgba = new byte[16];
-            mesh.Rgba.Fill((byte)(255 * sideShadings[faceIndex]));
-            for (int j = 3; j < mesh.Rgba.Length; j += 4) mesh.Rgba[j] = (byte)255; // Alpha value
-
-            mesh.Rgba2 = new byte[16];
-            mesh.Rgba2.Fill((byte)(255 * sideShadings[faceIndex]));
-            for (int j = 3; j < mesh.Rgba2.Length; j += 4) mesh.Rgba2[j] = (byte)255; // Alpha value
-
-            mesh.Flags = new int[4];
-            mesh.Flags.Fill(block.VertexFlags.All | face.NormalPackedFlags);
-            mesh.RenderPasses = new int[1];
-            mesh.RenderPassCount = 1;
-            mesh.RenderPasses[0] = (int)block.RenderPass;
-            mesh.Tints = new int[1];
-            mesh.TintsCount = 1;
-            mesh.XyzFaces = new int[] { faceIndex };
-            mesh.XyzFacesCount = 1;
-
-            return mesh;
-        }
 
 
         #endregion
@@ -1001,7 +990,14 @@ namespace Vintagestory.GameContent
             MaterialIds = MaterialIdsFromAttributes(tree, worldAccessForResolve);
             blockName = tree.GetString("blockName", "");
 
-            VoxelCuboids = new List<uint>((tree["cuboids"] as IntArrayAttribute).AsUint);
+            uint[] values = (tree["cuboids"] as IntArrayAttribute)?.AsUint;
+            // When loaded from json
+            if (values == null)
+            {
+                values = (tree["cuboids"] as LongArrayAttribute)?.AsUint;
+            }
+            VoxelCuboids = new List<uint>(values);
+
 
             byte[] sideAo = tree.GetBytes("emitSideAo", new byte[] { 255 });
             if (sideAo.Length > 0)
@@ -1072,8 +1068,8 @@ namespace Vintagestory.GameContent
             base.ToTreeAttributes(tree);
 
             StringArrayAttribute attr = new StringArrayAttribute();
-            string[] materialCodes = new string[MaterialIds.Length];
-            for (int i = 0; i < MaterialIds.Length; i++)
+            string[] materialCodes = new string[MaterialIds?.Length ?? 0];
+            for (int i = 0; i < materialCodes.Length; i++)
             {
                 materialCodes[i] = Api.World.Blocks[MaterialIds[i]].Code.ToString();
             }

@@ -30,7 +30,7 @@ namespace Vintagestory.GameContent.Mechanics
         [ProtoMember(7)]
         protected float serverSideAngle;
         [ProtoMember(8)]
-        protected float angle = 0; // In radiant
+        protected float angle = 0; // In radians
         [ProtoMember(9)]
         public Dictionary<Vec3i, int> inChunks = new Dictionary<Vec3i, int>();
         [ProtoMember(10)]
@@ -43,6 +43,7 @@ namespace Vintagestory.GameContent.Mechanics
         float clientSpeed;
         int chunksize;
         public bool fullyLoaded;
+        private float drivenTorque = 0f;
 
         /// <summary>
         /// Set to false when a block with more than one connection in the network has been broken
@@ -72,8 +73,6 @@ namespace Vintagestory.GameContent.Mechanics
             get { return totalAvailableTorque; }
             set { totalAvailableTorque = value; }
         }
-
-
 
         public MechanicalNetwork()
         {
@@ -192,16 +191,30 @@ namespace Vintagestory.GameContent.Mechanics
             serverSideAngle = serverSideAngle % GameMath.TWOPI;
         }
 
-
-
         public float NetworkTorque {
             get { return networkTorque; }
             set { networkTorque = value; }
         }
+
         public float NetworkResistance
         {
             get { return networkResistance; }
             set { networkResistance = value; }
+        }
+
+        /// <summary>
+        /// Allow a network to be driven by another network, instead of by a rotor
+        /// </summary>
+        public float Drive(float torqueIn, float targetSpeed, float accelerationFactor, int dir)
+        {
+            if ((targetSpeed >= speed || Math.Abs(networkTorque) < Math.Abs(torqueIn)) && Math.Abs(drivenTorque) < Math.Abs(torqueIn))
+            {
+                speed += (targetSpeed - speed) * accelerationFactor;
+                drivenTorque = torqueIn;
+                TurnDir.Rot = dir > 0 ? EnumRotDirection.Clockwise : EnumRotDirection.Counterclockwise;
+            }
+            return networkResistance;// - Math.Abs(networkTorque);
+            //System.Diagnostics.Debug.WriteLine("Drive " + dir + " " + TurnDir.Rot + " " + drivenTorque + " " + totalAvailableTorque);
         }
 
         // Should run every 5 ticks or so
@@ -209,7 +222,7 @@ namespace Vintagestory.GameContent.Mechanics
         {
             /* 2. Determine total available torque and total resistance of the network */
 
-            networkTorque = 0;
+            networkTorque = 0f;
             networkResistance = 0;
             
             foreach (IMechanicalPowerNode powerNode in nodes.Values)
@@ -217,7 +230,10 @@ namespace Vintagestory.GameContent.Mechanics
                 networkTorque += powerNode.GetTorque();
                 networkResistance += powerNode.GetResistance();
             }
-            
+
+            float totalTorque = networkTorque + drivenTorque;
+            drivenTorque *= 0.85f;  //this falls off quite fast if no longer driven
+
 
             /* 3. Unconsumed torque changes the network speed */
 
@@ -225,7 +241,7 @@ namespace Vintagestory.GameContent.Mechanics
             // Negative free torque => decrease speed until -maxSpeed
             // No free torque => lower speed until 0
 
-            float unusedTorque = Math.Abs(networkTorque) - networkResistance;
+            float unusedTorque = Math.Abs(totalTorque) - networkResistance;
 
 
             // http://fooplot.com/#W3sidHlwZSI6MCwiZXEiOiJtYXgoMSx4XjAuMjUpIiwiY29sb3IiOiIjMDAwMDAwIn0seyJ0eXBlIjoxMDAwLCJ3aW5kb3ciOlsiMCIsIjEwMCIsIjAiLCI1Il19XQ--
@@ -243,15 +259,17 @@ namespace Vintagestory.GameContent.Mechanics
 
             if (unusedTorque > Math.Abs(totalAvailableTorque))
             {
-                if (networkTorque > 0)
+                //System.Diagnostics.Debug.WriteLine("update " + TurnDir.Rot + " " + drivenTorque + " " + totalAvailableTorque + " " + totalTorque);
+                if (totalTorque > 0)
                 {
-                    totalAvailableTorque = Math.Min(networkTorque, totalAvailableTorque + step);
+                    totalAvailableTorque = Math.Min(totalTorque, totalAvailableTorque + step);
                 }
                 else
                 {
-                    totalAvailableTorque = Math.Max(0, totalAvailableTorque - step);
+                    totalAvailableTorque = Math.Max(Math.Min(totalTorque, -0.00000001f), totalAvailableTorque - step);
                 }
             }
+            else totalAvailableTorque *= 0.9f;  //allows for adjustments to happen if torque reduces or changes sign
 
             TurnDir.Rot = totalAvailableTorque >= 0 ? EnumRotDirection.Clockwise : EnumRotDirection.Counterclockwise;
         }

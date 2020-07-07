@@ -181,7 +181,7 @@ namespace Vintagestory.GameContent
         {
             BakedCompositeTexture tex = Textures?.First().Value?.Baked;
             int color = capi.BlockTextureAtlas.GetRandomColor(tex.TextureSubId);
-            color = capi.ApplyColorTintOnRgba(1, color, pos.X, pos.Y, pos.Z);
+            color = capi.World.ApplyColorMapOnRgba(ClimateColorMap, SeasonColorMap, color, pos.X, pos.Y, pos.Z);
 
             return color;
         }
@@ -193,7 +193,7 @@ namespace Vintagestory.GameContent
 
         public override int GetColor(ICoreClientAPI capi, BlockPos pos)
         {
-            return capi.ApplyColorTintOnRgba(1, base.GetColorWithoutTint(capi, pos), pos.X, pos.Y, pos.Z, false);
+            return capi.World.ApplyColorMapOnRgba(ClimateColorMap, SeasonColorMap, base.GetColorWithoutTint(capi, pos), pos.X, pos.Y, pos.Z, false);
         }
     }
 }

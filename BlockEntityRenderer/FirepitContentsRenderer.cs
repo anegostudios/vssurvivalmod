@@ -144,7 +144,7 @@ namespace Vintagestory.GameContent
             lightrgbs[2] += glowColor[2];
 
             prog.RgbaLightIn = lightrgbs;
-            prog.RgbaBlockIn = ColorUtil.WhiteArgbVec;
+            
             prog.ExtraGlow = (int)GameMath.Clamp((temp - 500) / 4, 0, 255);
 
             

@@ -16,88 +16,6 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class TraderAnimationManager : AnimationManager
-    {
-        public string Personality;
-        public HashSet<string> PersonalizedAnimations = new HashSet<string>(new string[] { "welcome", "idle", "walk", "run", "attack", "laugh", "hurt", "nod", "idle2" });
-
-        
-
-        public override bool StartAnimation(string configCode)
-        {
-            if (PersonalizedAnimations.Contains(configCode.ToLowerInvariant()))
-            {
-                if (Personality == "formal" || Personality == "rowdy" || Personality == "lazy")
-                {
-                    StopAnimation(Personality + "idle");
-                    StopAnimation(Personality + "idle2");
-                }
-
-                return StartAnimation(new AnimationMetaData()
-                {
-                    Animation = Personality + configCode,
-                    Code = Personality + configCode,
-                    BlendMode = EnumAnimationBlendMode.Average,
-                    EaseOutSpeed = 10000,
-                    EaseInSpeed = 10000
-                }.Init());
-            }
-
-            return base.StartAnimation(configCode);
-        }
-
-        public override bool StartAnimation(AnimationMetaData animdata)
-        {
-            if (Personality == "formal" || Personality == "rowdy" || Personality == "lazy")
-            {
-                StopAnimation(Personality + "idle");
-                StopAnimation(Personality + "idle2");
-            }
-
-            if (PersonalizedAnimations.Contains(animdata.Animation.ToLowerInvariant()))
-            {
-                animdata = animdata.Clone();
-                animdata.Animation = Personality + animdata.Animation;
-                animdata.Code = animdata.Animation;
-                animdata.CodeCrc32 = AnimationMetaData.GetCrc32(animdata.Code);
-
-            }
-
-            return base.StartAnimation(animdata);
-        }
-
-        public override void StopAnimation(string code)
-        {
-            base.StopAnimation(code);
-            base.StopAnimation(Personality + code);
-        }
-
-        public override void OnAnimationStopped(string code)
-        {
-            base.OnAnimationStopped(code);
-
-            if (entity.Alive && ActiveAnimationsByAnimCode.Count == 0)
-            {
-                StartAnimation(new AnimationMetaData() { Code = "idle", Animation = "idle", EaseOutSpeed = 10000, EaseInSpeed = 10000 });
-            }
-        }
-
-    }
-
-
-    public class TraderPersonality
-    {
-        public float TalkSpeedModifier = 1;
-        public float PitchModifier = 1;
-        public float VolumneModifier = 1;
-
-        public TraderPersonality(float talkSpeedModifier, float pitchModifier, float volumneModifier)
-        {
-            TalkSpeedModifier = talkSpeedModifier;
-            PitchModifier = pitchModifier;
-            VolumneModifier = volumneModifier;
-        }
-    }
 
     public class EntityTrader : EntityHumanoid
     {
@@ -124,6 +42,15 @@ namespace Vintagestory.GameContent
             set {
                 WatchedAttributes.SetString("personality", value);
                 talkUtil?.SetModifiers(Personalities[value].TalkSpeedModifier, Personalities[value].PitchModifier, Personalities[value].VolumneModifier);
+            }
+        }
+
+        public string[] OutfitCodes
+        {
+            get { return (WatchedAttributes["outfitcodes"] as StringArrayAttribute)?.value; }
+            set {
+                if (value == null) WatchedAttributes.RemoveAttribute("outfitcodes");
+                WatchedAttributes["outfitcodes"] = new StringArrayAttribute(value); 
             }
         }
 
@@ -156,6 +83,11 @@ namespace Vintagestory.GameContent
                     api.World.Logger.VerboseDebug("=================");
                     api.World.Logger.VerboseDebug("Tradeprops json:");
                     api.World.Logger.VerboseDebug("{0}", Properties.Server.Attributes["tradeProps"].ToJsonToken());
+                }
+
+                if (OutfitCodes == null)
+                {
+                    OutfitCodes = api.ModLoader.GetModSystem<TraderOutfits>().GetRandomOutfit();
                 }
                 
             } else
@@ -219,6 +151,27 @@ namespace Vintagestory.GameContent
                 EntityBehaviorTaskAI taskAi = GetBehavior<EntityBehaviorTaskAI>();
                 taskAi.taskManager.ShouldExecuteTask =
                     (task) => tradingWith == null || (task is AiTaskIdle || task is AiTaskSeekEntity || task is AiTaskGotoEntity);
+            }
+        }
+
+
+        public override void OnTesselation(ref Shape entityShape, string shapePathForLogging)
+        {
+            base.OnTesselation(ref entityShape, shapePathForLogging);
+
+            // Make a copy so we don't mess up the original
+            Shape newShape = entityShape.Clone();
+            newShape.ResolveAndLoadJoints("head");
+            entityShape = newShape;
+
+            string[] outfitCodes = OutfitCodes;
+            TexturedWeightedCompositeShape[] cshapes = Api.ModLoader.GetModSystem<TraderOutfits>().Outfit2Shapes(OutfitCodes);
+
+            for (int i = 0; i < outfitCodes.Length; i++)
+            {
+                if (cshapes[i].Base == null) continue;
+
+                addGearToShape(outfitCodes[i], cshapes[i], entityShape, shapePathForLogging, null, cshapes[i].Textures);
             }
         }
 

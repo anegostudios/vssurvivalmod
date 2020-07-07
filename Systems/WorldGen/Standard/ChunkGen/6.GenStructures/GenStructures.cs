@@ -114,8 +114,8 @@ namespace Vintagestory.ServerMods
 
             IMapRegion region = chunks[0].MapChunk.MapRegion;
 
-            IntMap forestMap = region.ForestMap;
-            IntMap climateMap = region.ClimateMap;
+            IntDataMap2D forestMap = region.ForestMap;
+            IntDataMap2D climateMap = region.ClimateMap;
             int rlX = chunkX % regionChunkSize;
             int rlZ = chunkZ % regionChunkSize;
 

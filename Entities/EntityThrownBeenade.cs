@@ -47,7 +47,7 @@ namespace Vintagestory.GameContent
             base.OnGameTick(dt);
             if (ShouldDespawn) return;
 
-            EntityPos pos = LocalPos;
+            EntityPos pos = SidedPos;
 
             stuck = Collided;
             pos.Pitch = GameMath.PIHALF;
@@ -104,7 +104,7 @@ namespace Vintagestory.GameContent
         public void OnImpact()
         {
             World.PlaySoundAt(new AssetLocation("sounds/effect/toolbreak"), this, null, false, 32);
-            World.SpawnCubeParticles(LocalPos.XYZ.OffsetCopy(0, 0.2, 0), ProjectileStack, 0.8f, 20);
+            World.SpawnCubeParticles(SidedPos.XYZ.OffsetCopy(0, 0.2, 0), ProjectileStack, 0.8f, 20);
             Die();
 
             EntityProperties type = World.GetEntityType(new AssetLocation("beemob"));
@@ -112,9 +112,9 @@ namespace Vintagestory.GameContent
 
             if (entity != null)
             {
-                entity.ServerPos.X = LocalPos.X + 0.5f;
-                entity.ServerPos.Y = LocalPos.Y + 0.5f;
-                entity.ServerPos.Z = LocalPos.Z + 0.5f;
+                entity.ServerPos.X = SidedPos.X + 0.5f;
+                entity.ServerPos.Y = SidedPos.Y + 0.5f;
+                entity.ServerPos.Z = SidedPos.Z + 0.5f;
                 entity.ServerPos.Yaw = (float)World.Rand.NextDouble() * 2 * GameMath.PI;
                 entity.Pos.SetFrom(entity.ServerPos);
 

@@ -57,8 +57,8 @@ namespace Vintagestory.GameContent
 
 
 
-            ElementBounds costTextBounds = ElementBounds.Fixed(pad, 85 + 2 * pad + leftTopSlotBounds.fixedHeight + leftBotSlotBounds.fixedHeight, 150, 25);
-            ElementBounds offerTextBounds = ElementBounds.Fixed(leftTopSlotBounds.fixedWidth + pad + 20, 85 + 2 * pad + leftTopSlotBounds.fixedHeight + leftBotSlotBounds.fixedHeight, 150, 25);
+            ElementBounds costTextBounds = ElementBounds.Fixed(pad, 85 + 2 * pad + leftTopSlotBounds.fixedHeight + leftBotSlotBounds.fixedHeight, 200, 25);
+            ElementBounds offerTextBounds = ElementBounds.Fixed(leftTopSlotBounds.fixedWidth + pad + 20, 85 + 2 * pad + leftTopSlotBounds.fixedHeight + leftBotSlotBounds.fixedHeight, 200, 25);
 
             ElementBounds traderMoneyBounds = offerTextBounds.FlatCopy().WithFixedOffset(0, offerTextBounds.fixedHeight);
             ElementBounds playerMoneyBounds = costTextBounds.FlatCopy().WithFixedOffset(0, costTextBounds.fixedHeight);
@@ -83,8 +83,8 @@ namespace Vintagestory.GameContent
                 .BeginChildElements(bgBounds)
                     .AddStaticText(daysLeftString, deliveryTextFont, ElementBounds.Fixed(pad, 20 + pad, 300, 25))
 
-                    .AddStaticText(Lang.Get("You can Buy"), CairoFont.WhiteDetailText(), ElementBounds.Fixed(pad, 50 + pad, 150, 25))
-                    .AddStaticText(Lang.Get("You can Sell"), CairoFont.WhiteDetailText(), ElementBounds.Fixed(leftTopSlotBounds.fixedWidth + pad + 20, 50 + pad, 150, 25))
+                    .AddStaticText(Lang.Get("You can Buy"), CairoFont.WhiteDetailText(), ElementBounds.Fixed(pad, 50 + pad, 200, 25))
+                    .AddStaticText(Lang.Get("You can Sell"), CairoFont.WhiteDetailText(), ElementBounds.Fixed(leftTopSlotBounds.fixedWidth + pad + 20, 50 + pad, 200, 25))
 
                     .AddItemSlotGrid(traderInventory, DoSendPacket, cols, (new int[rows*cols]).Fill(i => i), leftTopSlotBounds, "traderSellingSlots")
                     .AddItemSlotGrid(traderInventory, DoSendPacket, cols, (new int[cols]).Fill(i => rows * cols + i), leftBotSlotBounds, "playerBuyingSlots")

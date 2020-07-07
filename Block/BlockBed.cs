@@ -162,5 +162,17 @@ namespace Vintagestory.GameContent
                 }
             }.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
         }
+
+        public override void OnEntityCollide(IWorldAccessor world, Entity entity, BlockPos pos, BlockFacing facing, Vec3d collideSpeed, bool isImpact)
+        {
+            if (isImpact && facing.Axis == EnumAxis.Y)
+            {
+                if (Sounds?.Break != null && System.Math.Abs(collideSpeed.Y) > 0.2)
+                {
+                    world.PlaySoundAt(Sounds.Break, entity.Pos.X, entity.Pos.Y, entity.Pos.Z);
+                }
+                entity.Pos.Motion.Y = GameMath.Clamp(-entity.Pos.Motion.Y * 0.8, -0.5, 0.5);
+            }
+        }
     }
 }

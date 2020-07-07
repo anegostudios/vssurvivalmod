@@ -60,15 +60,30 @@ namespace Vintagestory.GameContent
 
         public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
         {
-            return new WorldInteraction[]
+            if (Empty)
             {
-                new WorldInteraction()
+                return new WorldInteraction[]
                 {
-                    ActionLangCode = "blockhelp-torchholder-addtorch",
-                    MouseButton = EnumMouseButton.Right,
-                    Itemstacks = new ItemStack[] { new ItemStack(world.GetBlock(new AssetLocation("torch-up"))) }
-                }
-            }.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
+                    new WorldInteraction()
+                    {
+                        ActionLangCode = "blockhelp-torchholder-addtorch",
+                        MouseButton = EnumMouseButton.Right,
+                        Itemstacks = new ItemStack[] { new ItemStack(world.GetBlock(new AssetLocation("torch-up"))) }
+                    }
+                }.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
+            } else
+            {
+                return new WorldInteraction[]
+                {
+                    new WorldInteraction()
+                    {
+                        ActionLangCode = "blockhelp-torchholder-removetorch",
+                        MouseButton = EnumMouseButton.Right,
+                        Itemstacks = null
+                    }
+                }.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
+            }
+            
         }
     }
 }

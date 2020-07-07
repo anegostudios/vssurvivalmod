@@ -85,7 +85,7 @@ namespace Vintagestory.ServerMods
             rnd.InitPositionSeed(chunkX, chunkZ);
             IMapChunk mapChunk = chunks[0].MapChunk;
 
-            IntMap climateMap = mapChunk.MapRegion.ClimateMap;
+            IntDataMap2D climateMap = mapChunk.MapRegion.ClimateMap;
             int rlX = chunkX % regionChunkSize;
             int rlZ = chunkZ % regionChunkSize;
 

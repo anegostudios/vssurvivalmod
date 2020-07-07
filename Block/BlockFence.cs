@@ -38,15 +38,12 @@ namespace Vintagestory.GameContent
             return "";
         }
 
-        private bool IsFenceGateAt(IWorldAccessor world, BlockPos blockPos)
-        {
-            return world.BlockAccessor.GetBlock(blockPos).Code.Path.Contains("fencegate");
-        }
+
 
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
         {
             string orientations = GetOrientations(world, blockSel.Position);
-            Block block = world.BlockAccessor.GetBlock(CodeWithParts(orientations));
+            Block block = world.BlockAccessor.GetBlock(CodeWithVariant("type", orientations));
 
             if (block == null) block = this;
 
@@ -59,11 +56,11 @@ namespace Vintagestory.GameContent
             return false;
         }
 
-        public override void OnNeighourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
+        public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
         {
             string orientations = GetOrientations(world, pos);
 
-            AssetLocation newBlockCode = CodeWithParts(orientations);
+            AssetLocation newBlockCode = CodeWithVariant("type", orientations);
 
             if (!Code.Equals(newBlockCode))
             {
@@ -82,13 +79,13 @@ namespace Vintagestory.GameContent
 
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)
         {
-            Block block = world.BlockAccessor.GetBlock(CodeWithParts("ew"));
+            Block block = world.BlockAccessor.GetBlock(CodeWithVariants(new string[] { "type", "cover" }, new string[] { "ew", "free" }));
             return new ItemStack[] { new ItemStack(block) };
         }
 
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
         {
-            Block block = world.BlockAccessor.GetBlock(CodeWithParts("ew"));
+            Block block = world.BlockAccessor.GetBlock(CodeWithVariants(new string[] { "type", "cover" }, new string[] { "ew", "free" }));
             return new ItemStack(block);
         }
 
@@ -150,17 +147,17 @@ namespace Vintagestory.GameContent
 
         public override AssetLocation GetRotatedBlockCode(int angle)
         {
-            string lastCodePart = LastCodePart();
+            string type = Variant["type"];
 
-            if (lastCodePart == "empty" || lastCodePart == "nesw") return Code;
+            if (type == "empty" || type == "nesw") return Code;
 
             int angleIndex = angle / 90;
 
-            var val = AngleGroups[lastCodePart];
+            var val = AngleGroups[type];
 
             string newFacing = val.Key[(angleIndex + val.Value) % val.Key.Length];
 
-            return CodeWithParts(newFacing);
+            return CodeWithVariant("type", newFacing);
         }
     }
 }

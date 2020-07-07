@@ -20,8 +20,8 @@ namespace Vintagestory.GameContent
         /// <param name="groundDragFactor">The amount of drag provided by the current ground. (Default: 0.3)</param>
         public override double GetWalkSpeedMultiplier(double groundDragFactor = 0.3)
         {
-            Block belowBlock = World.BlockAccessor.GetBlock((int)LocalPos.X, (int)(LocalPos.Y - 0.05f), (int)LocalPos.Z);
-            Block insideblock = World.BlockAccessor.GetBlock((int)LocalPos.X, (int)(LocalPos.Y + 0.01f), (int)LocalPos.Z);
+            Block belowBlock = World.BlockAccessor.GetBlock((int)SidedPos.X, (int)(SidedPos.Y - 0.05f), (int)SidedPos.Z);
+            Block insideblock = World.BlockAccessor.GetBlock((int)SidedPos.X, (int)(SidedPos.Y + 0.01f), (int)SidedPos.Z);
 
             double multiplier = (servercontrols.Sneak ? GlobalConstants.SneakSpeedMultiplier : 1.0) * (servercontrols.Sprint ? GlobalConstants.SprintSpeedMultiplier : 1.0);
 

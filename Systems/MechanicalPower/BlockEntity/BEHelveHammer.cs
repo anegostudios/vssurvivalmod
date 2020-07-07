@@ -18,7 +18,6 @@ namespace Vintagestory.GameContent.Mechanics
     public class BEHelveHammer : BlockEntity, ITexPositionSource
     {
         int count = 40;
-        bool hasPower;
         bool obstructed;
 
         BEBehaviorMPToggle mptoggle;
@@ -26,7 +25,7 @@ namespace Vintagestory.GameContent.Mechanics
 
         ItemStack hammerStack;
         public ItemStack HammerStack
-        { 
+        {
             get
             {
                 return hammerStack;
@@ -40,7 +39,7 @@ namespace Vintagestory.GameContent.Mechanics
         }
 
         double ellapsedInameSecGrow;
-        
+
         float rnd;
         public BlockFacing facing;
         BlockEntityAnvil targetAnvil;
@@ -53,12 +52,13 @@ namespace Vintagestory.GameContent.Mechanics
 
         public float Angle
         {
-            get {
+            get
+            {
                 if (mptoggle == null) return 0;
                 if (obstructed) return (float)angleBefore;
 
                 double totalIngameSeconds = Api.World.Calendar.TotalHours * 60 * 2;
-                
+
                 double x = GameMath.Mod(mptoggle.AngleRad * 2 - 1.2 - rnd, GameMath.TWOPI * 10);
                 double angle = Math.Abs(Math.Sin(x) / 4.5);
                 float outAngle = (float)angle;
@@ -66,7 +66,8 @@ namespace Vintagestory.GameContent.Mechanics
                 if (angleBefore > outAngle)
                 {
                     outAngle -= (float)(totalIngameSeconds - ellapsedInameSecGrow) * 1.5f;
-                } else
+                }
+                else
                 {
                     ellapsedInameSecGrow = totalIngameSeconds;
                 }
@@ -133,7 +134,7 @@ namespace Vintagestory.GameContent.Mechanics
             RegisterGameTickListener(onEvery25ms, 25);
 
 
-            
+
 
             capi = api as ICoreClientAPI;
 
@@ -200,7 +201,6 @@ namespace Vintagestory.GameContent.Mechanics
 
                 Vec3i dir = facing.Normali;
                 BlockPos npos = Pos.AddCopy(0, 1, 0);
-                hasPower = false;
 
                 targetAnvil = Api.World.BlockAccessor.GetBlockEntity(Pos.AddCopy(dir.X * 3, 0, dir.Z * 3)) as BlockEntityAnvil;
 

@@ -20,7 +20,7 @@ namespace Vintagestory.GameContent
             if (oreSlot != null)
             {
                 int units = oreSlot.Itemstack.ItemAttributes["metalUnits"].AsInt(5);
-                string type = oreSlot.Itemstack.Collectible.Variant["ore"].Replace("quartz_", "");
+                string type = oreSlot.Itemstack.Collectible.Variant["ore"].Replace("quartz_", "").Replace("galena_", "");
 
                 Item item = api.World.GetItem(new AssetLocation("nugget-" + type));
                 ItemStack outStack = new ItemStack(item);

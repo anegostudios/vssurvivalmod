@@ -95,13 +95,14 @@ namespace Vintagestory.ServerMods
             int xposInt = (int)xpos;
             int zposInt = (int)zpos;
 
-            int parentIndex = GetParentLandformIndexAt(xposInt, zposInt, temp, rain);//, xpos - xposInt, zpos - zposInt);
+            int parentIndex = GetParentLandformIndexAt(xposInt, zposInt, temp, rain);
 
             LandformVariant[] mutations = landforms.Variants[parentIndex].Mutations;
             if (mutations != null && mutations.Length > 0)
             {
                 InitPositionSeed(unscaledXpos, unscaledZpos);
                 float chance = NextInt(101) / 100f;
+
                 for (int i = 0; i < mutations.Length; i++)
                 {
                     LandformVariant variantMut = mutations[i];
@@ -126,12 +127,12 @@ namespace Vintagestory.ServerMods
         }
 
 
-        public int GetParentLandformIndexAt(int xpos, int zpos, int temp, int rain)//, float lerpx, float lerpz)
+        public int GetParentLandformIndexAt(int xpos, int zpos, int temp, int rain)
         {
             InitPositionSeed(xpos, zpos);
 
             double weightSum = 0;
-            int i = 0;
+            int i;
             for (i = 0; i < landforms.Variants.Length; i++)
             {
                 double weight = landforms.Variants[i].Weight;

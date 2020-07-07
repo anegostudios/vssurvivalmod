@@ -106,7 +106,10 @@ namespace Vintagestory.GameContent
         private void GrowStalk(IBlockAccessor blockAccessor, BlockPos upos, float sizeModifier, float vineGrowthChance)
         {
             Block block = this;
-            int height = 7 + rand.Next(4);
+            float heightf = 7 + rand.Next(4);
+            heightf = GameMath.Lerp(heightf, heightf * sizeModifier, 0.5f); // Size modifier affects the size only by half
+
+            int height = (int)heightf;
             int nextSegmentAtHeight = height / 3;
 
             BlockPos npos = upos.Copy();
@@ -179,8 +182,8 @@ namespace Vintagestory.GameContent
             if (tex?.Baked == null) return 0;
 
             int color = capi.BlockTextureAtlas.GetRandomColor(tex.Baked.TextureSubId);
-           
-            return capi.ApplyColorTintOnRgba(1, color, pos.X, pos.Y, pos.Z);
+
+            return capi.World.ApplyColorMapOnRgba(ClimateColorMap, SeasonColorMap, color, pos.X, pos.Y, pos.Z);
         }
 
     }

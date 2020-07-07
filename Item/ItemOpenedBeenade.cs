@@ -88,7 +88,7 @@ namespace Vintagestory.GameContent
             Random rand = byEntity.World.Rand;
 
             Vec3d startPos = new Vec3d(pos.X + rand.NextDouble(), pos.Y + rand.NextDouble() * 0.25f, pos.Z + rand.NextDouble());
-            Vec3d endPos = new Vec3d(byEntity.LocalPos.X, byEntity.LocalPos.Y + byEntity.EyeHeight - 0.2f, byEntity.LocalPos.Z);
+            Vec3d endPos = new Vec3d(byEntity.SidedPos.X, byEntity.SidedPos.Y + byEntity.LocalEyePos.Y - 0.2f, byEntity.SidedPos.Z);
 
             Vec3f minVelo = new Vec3f((float)(endPos.X - startPos.X), (float)(endPos.Y - startPos.Y), (float)(endPos.Z - startPos.Z));
             minVelo.Normalize();

@@ -73,6 +73,10 @@
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="0Harmony, Version=2.0.0.8, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Lib.Harmony.2.0.0.8\lib\net45\0Harmony.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="Newtonsoft.Json">
       <HintPath>..\Lib\Newtonsoft.Json.dll</HintPath>
       <Private>False</Private>
@@ -95,7 +99,9 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BlockBehavior\BehaviorCanAttach.cs" />
     <Compile Include="BlockBehavior\BehaviorCollectFrom.cs" />
+    <Compile Include="BlockBehavior\BlockBehaviorDropNotSnowCovered.cs" />
     <Compile Include="BlockBehavior\BehaviorOmniRotatable.cs" />
     <Compile Include="BlockBehavior\BehaviorPushEventOnBlockBroken.cs" />
     <Compile Include="BlockBehavior\BehaviorRightClickPickup.cs" />
@@ -119,6 +125,7 @@
     <Compile Include="BlockEntity\BELabeledChest.cs" />
     <Compile Include="BlockEntity\BELocustNest.cs" />
     <Compile Include="BlockEntity\BEPlankPile.cs" />
+    <Compile Include="BlockEntity\BlockEntityPlantContainer.cs" />
     <Compile Include="BlockEntity\BEShelf.cs" />
     <Compile Include="BlockEntity\BESignPost.cs" />
     <Compile Include="BlockEntity\BEStaticTranslocator.cs" />
@@ -132,11 +139,15 @@
     <Compile Include="BlockEntity\BESapling.cs" />
     <Compile Include="BlockEntity\BECrock.cs" />
     <Compile Include="BlockEntity\BlockEntityContainerDisplay.cs" />
+    <Compile Include="Block\BlockFernTree.cs" />
     <Compile Include="Block\BlockBarrel.cs" />
+    <Compile Include="Block\BlockBunchOCandles.cs" />
     <Compile Include="Block\BlockCanvas.cs" />
     <Compile Include="Block\BlockChandelier.cs" />
     <Compile Include="Block\BlockCrock.cs" />
     <Compile Include="Block\BlockCrystal.cs" />
+    <Compile Include="Block\BlockCharcoalPit.cs" />
+    <Compile Include="Block\BlockChute.cs" />
     <Compile Include="Block\BlockTapestry.cs" />
     <Compile Include="Block\BlockDisplayCase.cs" />
     <Compile Include="Block\BlockEchoChamber.cs" />
@@ -166,14 +177,27 @@
     <Compile Include="Block\BlockWaterfall.cs" />
     <Compile Include="Block\BlockWaterFlowing.cs" />
     <Compile Include="Entities\EntityArmorStand.cs" />
+    <Compile Include="Systems\Trading\TraderAnimationManager.cs" />
     <Compile Include="Entity\AITask\AiTaskButterflyFlee.cs" />
     <Compile Include="Entity\AITask\AiTaskButterflyRest.cs" />
     <Compile Include="Entity\Behavior\BehaviorTemporalStabilityAffected.cs" />
+    <Compile Include="Gui\HudSeason.cs" />
     <Compile Include="Item\ItemCleaver.cs" />
     <Compile Include="Item\ItemFirestarter.cs" />
     <Compile Include="Item\ItemArmorStand.cs" />
     <Compile Include="Item\ItemIronBloom.cs" />
+    <Compile Include="Systems\MechanicalPower\BlockEntityBehavior\BEBehaviorCreativeRotor.cs" />
+    <Compile Include="Systems\MechanicalPower\BlockEntityBehavior\BEBehaviorLargeGear3m.cs" />
+    <Compile Include="Systems\MechanicalPower\BlockEntityBehavior\BEBehaviorMPRotor.cs" />
+    <Compile Include="Systems\MechanicalPower\BlockEntity\BEMultiblock.cs" />
+    <Compile Include="Systems\MechanicalPower\BlockEntity\BELargeGear3m.cs" />
+    <Compile Include="Systems\MechanicalPower\BlockEntity\IGearAcceptor.cs" />
+    <Compile Include="Systems\MechanicalPower\Block\BlockArchimedesScrew.cs" />
+    <Compile Include="Systems\MechanicalPower\Block\IMPPowered.cs" />
+    <Compile Include="Systems\Temperature.cs" />
     <Compile Include="Systems\LiquidContainer.cs" />
+    <Compile Include="Systems\MechanicalPower\BlockEntityBehavior\BEBehaviorArchimedesScrew.cs" />
+    <Compile Include="Systems\MechanicalPower\BlockEntity\BEArchimedesScrew.cs" />
     <Compile Include="Systems\MechanicalPower\BlockEntity\BEBrake.cs" />
     <Compile Include="Systems\MechanicalPower\BlockEntity\BEClutch.cs" />
     <Compile Include="Systems\MechanicalPower\BlockEntity\BEHelveHammer.cs" />
@@ -274,7 +298,7 @@
     <Compile Include="Block\BlockFenceGate.cs" />
     <Compile Include="Block\BlockFirepit.cs" />
     <Compile Include="Block\BlockFirewoodPile.cs" />
-    <Compile Include="Block\BlockFlowerPot.cs" />
+    <Compile Include="Block\BlockPlantContainer.cs" />
     <Compile Include="Block\BlockForge.cs" />
     <Compile Include="Block\BlockFullCoating.cs" />
     <Compile Include="Block\BlockGenericTypedContainer.cs" />
@@ -319,26 +343,36 @@
     <Compile Include="Block\BlockChisel.cs" />
     <Compile Include="Block\BlockWithGrassOverlay.cs" />
     <Compile Include="Systems\MechanicalPower\Block\BlockAngledGears.cs" />
+    <Compile Include="Systems\MechanicalPower\Block\BlockAxle.cs" />
     <Compile Include="Systems\MechanicalPower\Block\BlockBrake.cs" />
     <Compile Include="Systems\MechanicalPower\Block\BlockClutch.cs" />
+    <Compile Include="Systems\MechanicalPower\Block\BlockCreativeRotor.cs" />
     <Compile Include="Systems\MechanicalPower\Block\BlockHelvehammer.cs" />
-    <Compile Include="Systems\MechanicalPower\Block\BlockToggle.cs" />
-    <Compile Include="Systems\MechanicalPower\Block\BlockAxle.cs" />
+    <Compile Include="Systems\MechanicalPower\Block\BlockLargeGear3m.cs" />
     <Compile Include="Systems\MechanicalPower\Block\BlockMPBase.cs" />
+    <Compile Include="Systems\MechanicalPower\Block\BlockMPMultiblockWood.cs" />
+    <Compile Include="Systems\MechanicalPower\Block\BlockToggle.cs" />
     <Compile Include="Systems\MechanicalPower\Block\BlockTransmission.cs" />
     <Compile Include="Systems\MechanicalPower\Block\BlockWindmillRotor.cs" />
     <Compile Include="Systems\MechanicalPower\MechanicalPowerMod.cs" />
     <Compile Include="Systems\MechanicalPower\Network\IMechanicalPowerBlock.cs" />
+    <Compile Include="Systems\MechanicalPower\Network\IMechanicalPowerRenderable.cs" />
+    <Compile Include="Systems\MechanicalPower\Network\IMechanicalPowerTransfer.cs" />
     <Compile Include="Systems\MechanicalPower\Network\MechanicalNetwork.cs" />
+    <Compile Include="Systems\MechanicalPower\Renderer\AngledCageGearRenderer.cs" />
     <Compile Include="Systems\MechanicalPower\Renderer\AngledGearBlockRenderer.cs" />
+    <Compile Include="Systems\MechanicalPower\Renderer\ClutchBlockRenderer.cs" />
+    <Compile Include="Systems\MechanicalPower\Renderer\CreativeRotorRenderer.cs" />
     <Compile Include="Systems\MechanicalPower\Renderer\GenericMechBlockRenderer.cs" />
     <Compile Include="Systems\MechanicalPower\Renderer\MechBlockRenderer.cs" />
+    <Compile Include="Systems\MechanicalPower\Renderer\TransmissionBlockRenderer.cs" />
     <Compile Include="Systems\RaccoonSpawnCondition.cs" />
     <Compile Include="Systems\TemporalStability.cs" />
     <Compile Include="Systems\Trading\ResolvedTradeItem.cs" />
     <Compile Include="Systems\Trading\TalkUtil.cs" />
     <Compile Include="Systems\Trading\TradeClasses.cs" />
     <Compile Include="Systems\Trading\TradeItem.cs" />
+    <Compile Include="Systems\Trading\TraderOutfits.cs" />
     <Compile Include="Systems\WorldGen\Heightmap\GenFromHeightmap.cs" />
     <Compile Include="Systems\WorldGen\Standard\ChunkGen\5.GenDeposits\DepositGeneratorBase.cs" />
     <Compile Include="Systems\WorldGen\Standard\ChunkGen\5.GenDeposits\DepositBlock.cs" />
@@ -390,7 +424,7 @@
     <Compile Include="Systems\Cooking\MealMeshCache.cs" />
     <Compile Include="Systems\Cooking\MealTextureSource.cs" />
     <Compile Include="Entities\EntityButterfly.cs" />
-    <Compile Include="Entities\EntityTrader.cs" />
+    <Compile Include="Systems\Trading\EntityTrader.cs" />
     <Compile Include="Gui\GuiDialogBlockEntityQuern.cs" />
     <Compile Include="Gui\GuiDialogBlockEntityRecipeSelector.cs" />
     <Compile Include="Gui\GuiDialogBlockEntityFirepit.cs" />
@@ -527,6 +561,7 @@
     <Compile Include="Systems\WorldGen\Standard\TerraGenConfig.cs" />
     <Compile Include="Systems\WorldGen\Standard\WgenCommands.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="UpgradeTasks.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Cairo\Cairo.csproj">
@@ -561,7 +596,6 @@
       <Install>false</Install>
     </BootstrapperPackage>
   </ItemGroup>
-  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PostBuildEvent>

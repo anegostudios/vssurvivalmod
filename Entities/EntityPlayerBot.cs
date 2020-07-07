@@ -10,7 +10,7 @@ namespace Vintagestory.GameContent
 {
     public class EntityPlayerBot : EntityAnimalBot
     {
-        public override double EyeHeight => base.Properties.EyeHeight - (controls.Sneak ? 0.1 : 0.0);
+        //public override double EyeHeight => base.Properties.EyeHeight - (controls.Sneak ? 0.1 : 0.0);
 
         protected InventoryBase inv;
        

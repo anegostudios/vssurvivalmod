@@ -88,7 +88,7 @@ namespace Vintagestory.GameContent
             return new ItemStack(block);
         }
 
-        public override void OnNeighourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
+        public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
         {
             string newFacingLetters = "";
             foreach (BlockFacing facing in ownFacings)

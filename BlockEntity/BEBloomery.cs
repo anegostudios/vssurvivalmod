@@ -119,7 +119,7 @@ namespace Vintagestory.GameContent
         private void UpdateRenderer()
         {
             // max = 8 voxels
-            float fillLevel = Math.Min(8, FuelSlot.StackSize / 5f + (float)4f * OreSlot.StackSize / OreCapacity + OutSlot.StackSize);
+            float fillLevel = Math.Min(14, FuelSlot.StackSize + (float)8f * OreSlot.StackSize / OreCapacity + OutSlot.StackSize);
             renderer.SetFillLevel(fillLevel);
 
             // Ease in in beginning and ease out on end
@@ -225,7 +225,6 @@ namespace Vintagestory.GameContent
 
             if (collectible.CombustibleProps?.SmeltedStack != null && collectible.CombustibleProps.MeltingPoint < 1500 && collectible.CombustibleProps.MeltingPoint >= 1000)
             {
-                int prevsize = stack.StackSize;
                 if (OreSlot.StackSize + quantity > OreCapacity) return false;
                 if (!OreSlot.Empty && !OreSlot.Itemstack.Equals(Api.World, stack, GlobalConstants.IgnoredStackAttributes)) return false;
                 return true;
@@ -246,15 +245,15 @@ namespace Vintagestory.GameContent
         public bool TryAdd(ItemSlot sourceSlot, int quantity = 1)
         {
             if (IsBurning) return false;
-            if (OutSlot.StackSize > 0) return true;
-            if (sourceSlot.Itemstack == null) return true;
+            if (OutSlot.StackSize > 0) return false;
+            if (sourceSlot.Itemstack == null) return false;
 
             CollectibleObject collectible = sourceSlot.Itemstack.Collectible;
 
             if (collectible.CombustibleProps?.SmeltedStack != null && collectible.CombustibleProps.MeltingPoint < 1500 && collectible.CombustibleProps.MeltingPoint >= 1000) 
             {
                 int prevsize = sourceSlot.StackSize;
-                if (OreSlot.StackSize >= OreCapacity) return true;
+                if (OreSlot.StackSize >= OreCapacity) return false;
 
                 int moveableq = Math.Min(OreCapacity - OreSlot.StackSize, quantity);
 
@@ -263,12 +262,15 @@ namespace Vintagestory.GameContent
                 return prevsize != sourceSlot.StackSize;
             }
 
-            if (collectible.CombustibleProps?.BurnTemperature >= 1200 && collectible.CombustibleProps.BurnDuration > 30)
+            if (collectible.CombustibleProps?.BurnTemperature >= 1200 && collectible.CombustibleProps.BurnDuration > 30 && (float)FuelSlot.StackSize / OreSlot.StackSize < Coal2OreRatio)
             {
-                int prevsize = sourceSlot.StackSize;
-                if (FuelSlot.StackSize + quantity > 20) return true;
+                int maxRequired = (int)Math.Ceiling(OreSlot.StackSize * Coal2OreRatio);
+                int qcoalMissing = maxRequired - FuelSlot.StackSize;
 
-                int moveableq = Math.Min(20 - FuelSlot.StackSize, quantity);
+                int prevsize = sourceSlot.StackSize;
+                if (FuelSlot.StackSize + quantity > 20) return false;
+
+                int moveableq = Math.Min(qcoalMissing, Math.Min(20 - FuelSlot.StackSize, quantity));
 
                 sourceSlot.TryPutInto(Api.World, FuelSlot, moveableq);
                 MarkDirty();
@@ -295,7 +297,7 @@ namespace Vintagestory.GameContent
 
         public bool CanIgnite()
         {
-            return FuelSlot.StackSize > 0 && OreSlot.StackSize > 0 && (float)FuelSlot.StackSize / OreSlot.StackSize >= Coal2OreRatio;
+            return !burning && FuelSlot.StackSize > 0 && OreSlot.StackSize > 0 && (float)FuelSlot.StackSize / OreSlot.StackSize >= Coal2OreRatio;
         }
 
 
@@ -353,6 +355,11 @@ namespace Vintagestory.GameContent
 
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
         {
+            if (Api.World.EntityDebugMode && forPlayer?.WorldData?.CurrentGameMode == EnumGameMode.Creative)
+            {
+                dsc.AppendLine(string.Format("Burning: {3}, Current total days: {0}, BurningStart total days: {1}, BurningUntil total days: {2}", Api.World.Calendar.TotalDays, burningStartTotalDays, burningUntilTotalDays, burning));
+            }
+
             for (int i = 0; i < 3; i++)
             {
                 ItemStack stack = bloomeryInv[i].Itemstack;
@@ -387,7 +394,7 @@ namespace Vintagestory.GameContent
         {
             get
             {
-                if (OreSlot.Itemstack?.Collectible.CombustibleProps == null || FuelSlot.Itemstack?.Collectible.CombustibleProps == null) return 8;
+                if (OreSlot.Itemstack?.Collectible.CombustibleProps == null || FuelSlot.Itemstack?.Collectible.CombustibleProps == null) return 1;
                 return 6f / OreCapacity;
             }
         }

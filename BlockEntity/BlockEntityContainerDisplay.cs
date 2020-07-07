@@ -142,17 +142,21 @@ namespace Vintagestory.GameContent
             else
             {
                 nowTesselatingItem = stack.Item;
-                nowTesselatingShape = capi.TesselatorManager.GetCachedShape(stack.Item.Shape.Base);
+                if (stack.Item.Shape != null)
+                {
+                    nowTesselatingShape = capi.TesselatorManager.GetCachedShape(stack.Item.Shape.Base);
+                }
+
                 capi.Tesselator.TesselateItem(stack.Item, out mesh, this);
 
-                if (stack.Item.Shape.VoxelizeTexture)
+                if (stack.Item.Shape == null || stack.Item.Shape.VoxelizeTexture)
                 {
                     mesh.Rotate(new Vec3f(0.5f, 0.5f, 0.5f), GameMath.PIHALF, 0, 0);
                     mesh.Scale(new Vec3f(0.5f, 0.5f, 0.5f), 0.33f, 0.5f, 0.33f);
                     mesh.Translate(0, -7.5f / 16f, 0f);
                 }
 
-                mesh.RenderPasses.Fill((int)EnumChunkRenderPass.BlendNoCull);
+                mesh.RenderPasses.Fill((byte)EnumChunkRenderPass.BlendNoCull);
 
             }
 

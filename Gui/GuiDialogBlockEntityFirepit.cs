@@ -39,11 +39,9 @@ namespace Vintagestory.GameContent
         void SetupDialog()
         {
             ItemSlot hoveredSlot = capi.World.Player.InventoryManager.CurrentHoveredSlot;
-            if (hoveredSlot != null && hoveredSlot.Inventory == Inventory)
+            if (hoveredSlot != null && hoveredSlot.Inventory?.InventoryID != Inventory?.InventoryID)
             {
                 capi.Input.TriggerOnMouseLeaveSlot(hoveredSlot);
-            } else
-            {
                 hoveredSlot = null;
             }
 
@@ -125,9 +123,9 @@ namespace Vintagestory.GameContent
                         .AddItemSlotGrid(Inventory, SendInvPacket, 4, cookingSlotIds, cookingSlotsSlotBounds, "ingredientSlots")
                     .EndIf()
                     .AddItemSlotGrid(Inventory, SendInvPacket, 1, new int[] { 0 }, fuelSlotBounds, "fuelslot")
-                    .AddDynamicText("", CairoFont.WhiteDetailText(), EnumTextOrientation.Left, fuelSlotBounds.RightCopy(17, 16).WithFixedHeight(30), "fueltemp")
+                    .AddDynamicText("", CairoFont.WhiteDetailText(), EnumTextOrientation.Left, fuelSlotBounds.RightCopy(17, 16).WithFixedSize(60, 30), "fueltemp")
                     .AddItemSlotGrid(Inventory, SendInvPacket, 1, new int[] { 1 }, inputSlotBounds, "oreslot")
-                    .AddDynamicText("", CairoFont.WhiteDetailText(), EnumTextOrientation.Left, inputSlotBounds.RightCopy(23, 16).WithFixedHeight(30), "oretemp")
+                    .AddDynamicText("", CairoFont.WhiteDetailText(), EnumTextOrientation.Left, inputSlotBounds.RightCopy(23, 16).WithFixedSize(60, 30), "oretemp")
 
                     .AddItemSlotGrid(Inventory, SendInvPacket, 1, new int[] { 2 }, outputSlotBounds, "outputslot")
                 .EndChildElements()
@@ -214,12 +212,12 @@ namespace Vintagestory.GameContent
             ctx.Matrix = m;
             capi.Gui.Icons.DrawArrowRight(ctx, 2);
 
-            double dx = Attributes.GetFloat("oreCookingTime") / Attributes.GetFloat("maxOreCookingTime", 1);
+            double cookingRel = Attributes.GetFloat("oreCookingTime") / Attributes.GetFloat("maxOreCookingTime", 1);
 
             
-            ctx.Rectangle(GuiElement.scaled(5), 0, GuiElement.scaled(125 * dx), GuiElement.scaled(100));
+            ctx.Rectangle(5, 0, 125 * cookingRel, 100);
             ctx.Clip();
-            gradient = new LinearGradient(0, 0, GuiElement.scaled(200), 0);
+            gradient = new LinearGradient(0, 0, 200, 0);
             gradient.AddColorStop(0, new Color(0, 0.4, 0, 1));
             gradient.AddColorStop(1, new Color(0.2, 0.6, 0.2, 1));
             ctx.SetSource(gradient);

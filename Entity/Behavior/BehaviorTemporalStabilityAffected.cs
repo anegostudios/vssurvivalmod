@@ -161,7 +161,7 @@ namespace Vintagestory.GameContent
             }
 
             deltaTime = GameMath.Min(0.5f, deltaTime);
-            double hereStability = tempStabilitySystem.GetTemporalStability(entity.LocalPos.X, entity.LocalPos.Y, entity.LocalPos.Z);
+            double hereStability = tempStabilitySystem.GetTemporalStability(entity.SidedPos.X, entity.SidedPos.Y, entity.SidedPos.Z);
 
             entity.Attributes.SetDouble("tempStabChangeVelocity", TempStabChangeVelocity);
 
@@ -202,6 +202,11 @@ namespace Vintagestory.GameContent
                         Type = EnumDamageType.Poison
                     }, (float)(0.15 - ownStability));
                 }
+            }
+
+            if (isSelf)
+            {
+                capi.Render.ShaderUniforms.GlitchStrength = 0;
             }
 
             if (isSelf && (fogEffectStrength > 0.05 || glitchEffectStrength > 0.05))

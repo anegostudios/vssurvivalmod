@@ -51,17 +51,18 @@ namespace Vintagestory.GameContent
             if (supportingBlock.CanAttachBlockAt(world.BlockAccessor, this, bs.Position, bs.Face) || supportingBlock.Attributes?["partialAttachable"].AsBool() == true)
             {
                 world.BlockAccessor.SetBlock(BlockId, bs.Position);
+                return true;
             }
 
-            return true;
+            return false;
         }
 
 
         
 
-        public override void OnNeighourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
+        public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
         {
-            base.OnNeighourBlockChange(world, pos, neibpos);
+            base.OnNeighbourBlockChange(world, pos, neibpos);
         }
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)

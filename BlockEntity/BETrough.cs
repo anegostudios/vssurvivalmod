@@ -121,7 +121,8 @@ namespace Vintagestory.GameContent
 
             if (contentConfigs == null)
             {
-                contentConfigs = Block.Attributes["contentConfig"].AsObject<ContentConfig[]>();
+                contentConfigs = Block.Attributes?["contentConfig"]?.AsObject<ContentConfig[]>();
+                if (contentConfigs == null) return;
 
                 foreach (var val in contentConfigs)
                 {
@@ -214,7 +215,7 @@ namespace Vintagestory.GameContent
 
             if (doubleblock != null)
             {
-                capi.Tesselator.TesselateShape("betroughcontents", Api.Assets.TryGet("shapes/" + shapeLoc + ".json").ToObject<Shape>(), out meshadd, this, rotation.Add(0, 180, 0), 0, 0, null, new string[] { "Origin point/contents/*" });
+                capi.Tesselator.TesselateShape("betroughcontents", Api.Assets.TryGet("shapes/" + shapeLoc + ".json").ToObject<Shape>(), out meshadd, this, rotation.Add(0, 180, 0), 0, 0, 0, null, new string[] { "Origin point/contents/*" });
                 BlockFacing facing = doubleblock.OtherPartPos();
                 meshadd.Translate(facing.Normalf);
                 meshbase.AddMeshData(meshadd);
@@ -297,6 +298,8 @@ namespace Vintagestory.GameContent
 
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
         {
+            if (contentConfigs == null) return;
+
             ContentConfig config = contentConfigs.FirstOrDefault(c => c.Code == contentCode);
             ItemStack firstStack = inventory[0].Itemstack;
 

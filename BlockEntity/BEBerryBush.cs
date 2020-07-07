@@ -14,11 +14,9 @@ namespace Vintagestory.GameContent
     {
         static Random rand = new Random();
 
-        // Total game hours from where on it can enter the next growth stage
-        double totalDaysForNextStage;
-
-        long growListenerId;
-
+        double lastCheckAtTotalDays = 0;
+        double transitionHoursLeft = -1;
+        double? totalDaysForNextStageOld = null; // old v1.13 data format, here for backwards compatibility
 
         public BlockEntityBerryBush() : base()
         {
@@ -31,32 +29,77 @@ namespace Vintagestory.GameContent
 
             if (api is ICoreServerAPI)
             {
-                if (totalDaysForNextStage == 0)
+                if (transitionHoursLeft <= 0)
                 {
-                    totalDaysForNextStage = api.World.Calendar.TotalDays + GetDaysForNextStage();
+                    transitionHoursLeft = GetHoursForNextStage();
+                    lastCheckAtTotalDays = api.World.Calendar.TotalDays;
                 }
 
-                growListenerId = RegisterGameTickListener(CheckGrow, 8000);
+                RegisterGameTickListener(CheckGrow, 8000);
 
                 api.ModLoader.GetModSystem<POIRegistry>().AddPOI(this);
+
+                if (totalDaysForNextStageOld != null)
+                {
+                    transitionHoursLeft = ((double)totalDaysForNextStageOld - Api.World.Calendar.TotalDays) * Api.World.Calendar.HoursPerDay;
+                }
             }
         }
 
 
         private void CheckGrow(float dt)
         {
-            while (Api.World.Calendar.TotalDays > totalDaysForNextStage)
+            // In case this block was imported from another older world. In that case lastCheckAtTotalDays would be a future date.
+            lastCheckAtTotalDays = Math.Min(lastCheckAtTotalDays, Api.World.Calendar.TotalDays);
+
+
+            // We don't need to check more than one year because it just begins to loop then
+            double daysToCheck = GameMath.Mod(Api.World.Calendar.TotalDays - lastCheckAtTotalDays, Api.World.Calendar.DaysPerYear);
+
+            bool changed = false;
+
+            while (daysToCheck > 1f / Api.World.Calendar.HoursPerDay)
             {
-                DoGrow();
-                totalDaysForNextStage += GetDaysForNextStage();
+                changed = true;
+
+                daysToCheck -= 1f / Api.World.Calendar.HoursPerDay;
+
+                lastCheckAtTotalDays += 1f / Api.World.Calendar.HoursPerDay;
+                transitionHoursLeft -= 1f;
+
+                ClimateCondition conds = Api.World.BlockAccessor.GetClimateAt(Pos, EnumGetClimateMode.ForSuppliedDateValues, lastCheckAtTotalDays);
+                if (conds == null) return;
+
+                bool reset = conds.Temperature < Block.Attributes["resetBelowTemperature"].AsFloat(-999);
+                bool stop = conds.Temperature < Block.Attributes["stopBelowTemperature"].AsFloat(-999);
+
+                if (stop || reset)
+                {
+                    transitionHoursLeft += 1f;
+                    
+                    if (reset)
+                    {
+                        transitionHoursLeft = GetHoursForNextStage();
+                    }
+
+                    continue;
+                }
+
+                if (transitionHoursLeft <= 0)
+                {
+                    if (!DoGrow()) return;
+                    transitionHoursLeft = GetHoursForNextStage();
+                }
             }
+
+            if (changed) MarkDirty(false);
         }
 
-        public double GetDaysForNextStage()
+        public double GetHoursForNextStage()
         {
-            if (IsRipe()) return 4 * (5 + rand.NextDouble()) * 0.8;
+            if (IsRipe()) return (4 * (5 + rand.NextDouble()) * 0.8) * Api.World.Calendar.HoursPerDay;
 
-            return (5 + rand.NextDouble()) * 0.8;
+            return ((5 + rand.NextDouble()) * 0.8) * Api.World.Calendar.HoursPerDay;
         }
 
         public bool IsRipe()
@@ -65,7 +108,7 @@ namespace Vintagestory.GameContent
             return block.LastCodePart() == "ripe";
         }
 
-        void DoGrow()
+        bool DoGrow()
         { 
             Block block = Api.World.BlockAccessor.GetBlock(Pos);
             string nowCodePart = block.LastCodePart();
@@ -76,34 +119,47 @@ namespace Vintagestory.GameContent
             if (!loc.Valid)
             {
                 Api.World.BlockAccessor.RemoveBlockEntity(Pos);
-                return;
+                return false;
             }
 
             Block nextBlock = Api.World.GetBlock(loc);
-            if (nextBlock?.Code == null) return;
+            if (nextBlock?.Code == null) return false;
 
             Api.World.BlockAccessor.ExchangeBlock(nextBlock.BlockId, Pos);
+
             MarkDirty(true);
+            return true;
         }
 
 
+        
 
         public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
             base.FromTreeAtributes(tree, worldForResolving);
-            totalDaysForNextStage = tree.GetDouble("totalDaysForNextStage");
+
+            transitionHoursLeft = tree.GetDouble("transitionHoursLeft");
+
+            if (tree.HasAttribute("totalDaysForNextStage")) // Pre 1.13 format
+            {
+                totalDaysForNextStageOld = tree.GetDouble("totalDaysForNextStage");
+            }
+
+            lastCheckAtTotalDays = tree.GetDouble("lastCheckAtTotalDays");
         }
 
         public override void ToTreeAttributes(ITreeAttribute tree)
         {
             base.ToTreeAttributes(tree);
-            tree.SetDouble("totalDaysForNextStage", totalDaysForNextStage);
+
+            tree.SetDouble("transitionHoursLeft", transitionHoursLeft);
+            tree.SetDouble("lastCheckAtTotalDays", lastCheckAtTotalDays);
         }
 
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder sb)
         {
             Block block = Api.World.BlockAccessor.GetBlock(Pos);
-            double daysleft = totalDaysForNextStage - Api.World.Calendar.TotalDays;
+            double daysleft = transitionHoursLeft / Api.World.Calendar.HoursPerDay;
 
             /*if (forPlayer.WorldData.CurrentGameMode == EnumGameMode.Creative)
             {
@@ -175,6 +231,16 @@ namespace Vintagestory.GameContent
         public override void OnBlockRemoved()
         {
             base.OnBlockRemoved();
+
+            if (Api.Side == EnumAppSide.Server)
+            {
+                Api.ModLoader.GetModSystem<POIRegistry>().RemovePOI(this);
+            }
+        }
+
+        public override void OnBlockUnloaded()
+        {
+            base.OnBlockUnloaded();
 
             if (Api.Side == EnumAppSide.Server)
             {

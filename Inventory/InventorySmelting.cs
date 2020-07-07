@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
@@ -48,6 +49,7 @@ namespace Vintagestory.GameContent
             // slot 3,4,5,6 = extra input slots with crucible in input
             slots = GenEmptySlots(7);
             cookingSlots = new ItemSlot[] { slots[3], slots[4], slots[5], slots[6] };
+            baseWeight = 4f;
             
         }
 
@@ -55,7 +57,7 @@ namespace Vintagestory.GameContent
         {
             slots = GenEmptySlots(7);
             cookingSlots = new ItemSlot[] { slots[3], slots[4], slots[5], slots[6] };
-            
+            baseWeight = 4f;
         }
 
         public override void LateInitialize(string inventoryID, ICoreAPI api)
@@ -146,7 +148,7 @@ namespace Vintagestory.GameContent
         {
             List<ItemSlot> modifiedSlots = new List<ItemSlot>();
             slots = SlotsFromTreeAttributes(tree, slots, modifiedSlots);
-            for (int i = 0; i < modifiedSlots.Count; i++) MarkSlotDirty(GetSlotId(modifiedSlots[i]));
+            for (int i = 0; i < modifiedSlots.Count; i++) DidModifyItemSlot(modifiedSlots[i]);
 
             if (Api != null)
             {
@@ -202,6 +204,7 @@ namespace Vintagestory.GameContent
             ItemStack stack = sourceSlot.Itemstack;
 
             if (targetSlot == slots[0] && (stack.Collectible.CombustibleProps == null || stack.Collectible.CombustibleProps.BurnTemperature <= 0)) return 0;
+            if (targetSlot == slots[1] && (stack.Collectible.CombustibleProps == null || stack.Collectible.CombustibleProps.SmeltedStack  == null)) return 0.5f;
 
             return base.GetSuitability(sourceSlot, targetSlot, isMerge);
         }
@@ -227,7 +230,7 @@ namespace Vintagestory.GameContent
             if (smeltedStack == null) return null;
             if (inputStack.Collectible.CombustibleProps.RequiresContainer) return "Can't smelt, requires smelting container (i.e. Crucible)";
 
-            return string.Format("Will create {0}x {1}", inputStack.StackSize / inputStack.Collectible.CombustibleProps.SmeltedRatio, smeltedStack.GetName());
+            return Lang.Get("firepit-gui-willcreate", inputStack.StackSize / inputStack.Collectible.CombustibleProps.SmeltedRatio, smeltedStack.GetName());
         }
 
 

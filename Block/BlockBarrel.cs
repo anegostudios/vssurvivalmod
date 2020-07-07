@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using Vintagestory.API;
 using Vintagestory.API.Client;
@@ -14,7 +15,6 @@ namespace Vintagestory.GameContent
 {
     public class BlockBarrel : BlockLiquidContainerBase
     {
-        public override float CapacityLitres => 50;
 
         public override int GetContainerSlotId(IWorldAccessor world, BlockPos pos)
         {
@@ -29,7 +29,7 @@ namespace Vintagestory.GameContent
         #region Render
         public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
         {
-            Dictionary<int, MeshRef> meshrefs = null;
+            Dictionary<int, MeshRef> meshrefs;
 
             object obj;
             if (capi.ObjectCache.TryGetValue("barrelMeshRefs", out obj))
@@ -48,12 +48,12 @@ namespace Vintagestory.GameContent
 
             int hashcode = GetBarrelHashCode(capi.World, contentStacks[0], contentStacks[1]);
 
-            MeshRef meshRef = null;
+            MeshRef meshRef;
 
             if (!meshrefs.TryGetValue(hashcode, out meshRef))
             {
                 MeshData meshdata = GenMesh(contentStacks[0], contentStacks[1], issealed);
-                meshdata.Rgba2 = null;
+                //meshdata.Rgba2 = null;
                 meshrefs[hashcode] = meshRef = capi.Render.UploadMesh(meshdata);
             }
 
@@ -186,6 +186,8 @@ namespace Vintagestory.GameContent
             {
                 contentSource = new ContainerTextureSource(capi, stack, props.Texture);
                 fillHeight = GameMath.Min(10 / 16f, 0.2f * stack.StackSize / props.ItemsPerLitre / 16f);
+
+                if (props.Texture == null) return null;
             }
             else
             {
@@ -200,9 +202,24 @@ namespace Vintagestory.GameContent
                     {
                         contentSource = new BlockTopTextureSource(capi, stack.Block);
                         fillHeight = GameMath.Min(10 / 16f, 0.7f * 1);
+                    } else if (stack != null)
+                    {
+                        // looks silly :D
+                        /*if (stack.Class == EnumItemClass.Block)
+                        {
+                            contentSource = new ContainerTextureSource(capi, stack, stack.Block.Textures.FirstOrDefault().Value);
+                        } else
+                        {
+                            contentSource = new ContainerTextureSource(capi, stack, stack.Item.FirstTexture);
+                        }
+                        
+
+                        fillHeight = GameMath.Min(10 / 16f, 0.7f * stack.StackSize / stack.Collectible.MaxStackSize);*/
                     }
                 }
             }
+
+
 
             if (stack != null && contentSource != null)
             {
@@ -212,12 +229,12 @@ namespace Vintagestory.GameContent
 
                 contentMesh.Translate(0, fillHeight, 0);
 
-                if (props != null && props.TintIndex > 0)
+                if (props?.ClimateColorMap != null)
                 {
-                    int col = capi.ApplyColorTintOnRgba(props.TintIndex, ColorUtil.WhiteArgb, 196, 128, false);
+                    int col = capi.World.ApplyColorMapOnRgba(props.ClimateColorMap, null, ColorUtil.WhiteArgb, 196, 128, false);
                     if (forBlockPos != null)
                     {
-                        col = capi.ApplyColorTintOnRgba(props.TintIndex, ColorUtil.WhiteArgb, forBlockPos.X, forBlockPos.Y, forBlockPos.Z, false);
+                        col = capi.World.ApplyColorMapOnRgba(props.ClimateColorMap, null, ColorUtil.WhiteArgb, forBlockPos.X, forBlockPos.Y, forBlockPos.Z, false);
                     }
 
                     byte[] rgba = ColorUtil.ToBGRABytes(col);
@@ -255,6 +272,12 @@ namespace Vintagestory.GameContent
 
         public override void OnLoaded(ICoreAPI api)
         {
+            if (Attributes?["capacityLitres"].Exists == true)
+            {
+                capacityLitresFromAttributes = Attributes["capacityLitres"].AsInt(50);
+            }
+
+
             if (api.Side != EnumAppSide.Client) return;
             ICoreClientAPI capi = api as ICoreClientAPI;
 
