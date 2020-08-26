@@ -15,11 +15,19 @@ namespace Vintagestory.GameContent
     public class BlockCookingContainer : Block, IInFirepitRendererSupplier
     {
         public int MaxServingSize = 6;
+        Cuboidi attachmentArea;
+
+        public override void OnLoaded(ICoreAPI api)
+        {
+            base.OnLoaded(api);
+
+            attachmentArea = Attributes?["attachmentArea"].AsObject<Cuboidi>(null);
+        }
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
             ItemSlot hotbarSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
-            if (!hotbarSlot.Empty && hotbarSlot.Itemstack.Collectible.Attributes?["handleCookingContainerInteract"].AsBool() == true)
+            if (!hotbarSlot.Empty && hotbarSlot.Itemstack.Collectible.Attributes?.IsTrue("handleCookingContainerInteract") == true)
             {
                 EnumHandHandling handling = EnumHandHandling.NotHandled;
                 hotbarSlot.Itemstack.Collectible.OnHeldInteractStart(hotbarSlot, byPlayer.Entity, blockSel, null, true, ref handling);
@@ -42,7 +50,7 @@ namespace Vintagestory.GameContent
         {
             if (!byPlayer.Entity.Controls.Sneak) return false;
 
-            if (CanPlaceBlock(world, byPlayer, blockSel, ref failureCode) && world.BlockAccessor.GetBlock(blockSel.Position.DownCopy()).SideSolid[BlockFacing.UP.Index])
+            if (CanPlaceBlock(world, byPlayer, blockSel, ref failureCode) && world.BlockAccessor.GetBlock(blockSel.Position.DownCopy()).CanAttachBlockAt(world.BlockAccessor, this, blockSel.Position.DownCopy(), BlockFacing.UP, attachmentArea))
             {
                 DoPlaceBlock(world, byPlayer, blockSel, itemstack);
                 return true;

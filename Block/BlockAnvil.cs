@@ -113,6 +113,17 @@ namespace Vintagestory.GameContent
             });
         }
 
+
+        public override void OnDecalTesselation(IWorldAccessor world, MeshData decalMesh, BlockPos pos)
+        {
+            base.OnDecalTesselation(world, decalMesh, pos);
+            BlockEntityAnvil bect = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityAnvil;
+            if (bect != null)
+            {
+                decalMesh.Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 0, bect.MeshAngle, 0);
+            }
+        }
+
         public override Cuboidf[] GetSelectionBoxes(IBlockAccessor blockAccessor, BlockPos pos)
         {
             BlockEntityAnvil bea = blockAccessor.GetBlockEntity(pos) as BlockEntityAnvil;
@@ -144,7 +155,6 @@ namespace Vintagestory.GameContent
             {
                 if (bea.OnPlayerInteract(world, byPlayer, blockSel))
                 {
-                    //byPlayer.InventoryManager.BroadcastHotbarSlot();
                     return true;
                 }
 

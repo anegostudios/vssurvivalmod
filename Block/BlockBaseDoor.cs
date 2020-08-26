@@ -1,4 +1,5 @@
-﻿using Vintagestory.API.Client;
+﻿using System;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
@@ -11,13 +12,20 @@ namespace Vintagestory.GameContent
         public abstract BlockFacing GetDirection();
         protected abstract BlockPos TryGetConnectedDoorPos(BlockPos pos);
         protected abstract void Open(IWorldAccessor world, IPlayer byPlayer, BlockPos position);
+        protected string type;
+
+        public override void OnLoaded(ICoreAPI api)
+        {
+            base.OnLoaded(api);
+            this.type = string.Intern(Code.Path.Substring(0, Code.Path.IndexOf('-')));
+        }
 
         public bool IsSameDoor(Block block)
         {
-            string[] parts = Code.Path.Split('-');
-            string[] otherParts = block.Code.Path.Split('-');
-            return parts[0] == otherParts[0];
+            return (block is BlockBaseDoor otherDoor) && otherDoor.type == this.type;
         }
+
+        public abstract bool IsOpened();
 
         public bool DoesBehaviorAllow(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
@@ -82,23 +90,12 @@ namespace Vintagestory.GameContent
             BlockPos door2Pos = TryGetConnectedDoorPos(pos);
             if (door2Pos != null)
             {
-                Block nBlock1 = world.BlockAccessor.GetBlock(pos);
-                Block nBlock2 = world.BlockAccessor.GetBlock(door2Pos);
-
-                bool isDoor1 = IsSameDoor(nBlock1);
-                bool isDoor2 = IsSameDoor(nBlock2);
-                if (isDoor1 && isDoor2)
+                if (world.BlockAccessor.GetBlock(door2Pos) is BlockBaseDoor door2 && IsSameDoor(door2) && pos == door2.TryGetConnectedDoorPos(door2Pos))
                 {
-                    if(nBlock2 is BlockBaseDoor)
-                    {
-                        BlockBaseDoor door2 = (BlockBaseDoor)nBlock2;
-                        door2.Open(world, byPlayer, door2Pos);
-                    }
+                    door2.Open(world, byPlayer, door2Pos);
                 }
             }
         }
-
-
 
         public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
         {

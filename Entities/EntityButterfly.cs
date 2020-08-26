@@ -40,6 +40,12 @@ namespace Vintagestory.GameContent
 
             wsys = api.ModLoader.GetModSystem<WeatherSystemBase>();
             roomReg = api.ModLoader.GetModSystem<RoomRegistry>();
+
+            ClimateCondition conds = api.World.BlockAccessor.GetClimateAt(Pos.AsBlockPos, EnumGetClimateMode.NowValues);
+            if (conds.Temperature < 0)
+            {
+                Die(EnumDespawnReason.Removed);
+            }
         }
 
         WeatherSystemBase wsys;

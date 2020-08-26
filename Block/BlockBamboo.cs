@@ -21,7 +21,8 @@ namespace Vintagestory.GameContent
         Block brownSeg2;
         Block brownSeg3;
 
-        Block leaves;
+        Block brownLeaves;
+        Block greenLeaves;
 
         static Random rand = new Random();
 
@@ -53,7 +54,8 @@ namespace Vintagestory.GameContent
                 brownSeg2 = blockAccess.GetBlock(new AssetLocation("bamboo-grown-brown-segment2"));
                 brownSeg3 = blockAccess.GetBlock(new AssetLocation("bamboo-grown-brown-segment3"));
 
-                leaves = blockAccess.GetBlock(new AssetLocation("bambooleaves-grown"));
+                brownLeaves = blockAccess.GetBlock(new AssetLocation("bambooleaves-brown-grown"));
+                greenLeaves = blockAccess.GetBlock(new AssetLocation("bambooleaves-green-grown"));
             }
 
         }
@@ -130,6 +132,8 @@ namespace Vintagestory.GameContent
 
                 if (block == greenSeg3 || block == brownSeg3)
                 {
+                    Block blockLeaves = block == greenSeg3 ? greenLeaves : brownLeaves;
+
                     foreach (BlockFacing facing in BlockFacing.ALLFACES)
                     {
                         float chanceFac = facing == BlockFacing.UP ? 0 : 0.25f;
@@ -138,9 +142,9 @@ namespace Vintagestory.GameContent
                         {
                             npos.Set(upos.X + facing.Normali.X, upos.Y + facing.Normali.Y, upos.Z + facing.Normali.Z);
 
-                            if (blockAccessor.GetBlock(npos).Replaceable >= leaves.Replaceable)
+                            if (blockAccessor.GetBlock(npos).Replaceable >= blockLeaves.Replaceable)
                             {
-                                blockAccessor.SetBlock(leaves.BlockId, npos);
+                                blockAccessor.SetBlock(blockLeaves.BlockId, npos);
                             }
                             else continue;
 
@@ -150,9 +154,9 @@ namespace Vintagestory.GameContent
                                 {
                                     npos.Set(upos.X + facing.Normali.X + facing2.Normali.X, upos.Y + facing.Normali.Y + facing2.Normali.Y, upos.Z + facing.Normali.Z + facing2.Normali.Z);
 
-                                    if (blockAccessor.GetBlock(npos).Replaceable >= leaves.Replaceable)
+                                    if (blockAccessor.GetBlock(npos).Replaceable >= blockLeaves.Replaceable)
                                     {
-                                        blockAccessor.SetBlock(leaves.BlockId, npos);
+                                        blockAccessor.SetBlock(blockLeaves.BlockId, npos);
                                     }
 
                                     break;

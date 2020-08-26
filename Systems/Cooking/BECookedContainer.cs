@@ -152,80 +152,96 @@ namespace Vintagestory.GameContent
 
         public bool ServeInto(IPlayer player, ItemSlot slot)
         {
-            int capacity = slot.Itemstack.Collectible.Attributes["servingCapacity"].AsInt();
-            float servings = Math.Min(QuantityServings, capacity);
-
-            ItemStack mealStack;
-            IBlockMealContainer ibm = (slot.Itemstack.Collectible as IBlockMealContainer);
-
-            if (ibm != null && ibm.GetQuantityServings(Api.World, slot.Itemstack) > 0)
+            // Lets try to catch #504
+            // https://github.com/anegostudios/VintageStory-Issues/issues/504
+            try
             {
-                float existingServings = ibm.GetQuantityServings(Api.World, slot.Itemstack);
-                //string recipeCode = ibm.GetRecipeCode(Api.World, slot.Itemstack);
-                ItemStack[] existingContent = ibm.GetNonEmptyContents(Api.World, slot.Itemstack);
 
-                servings = Math.Min(servings, capacity - existingServings);
-                ItemStack[] potStacks = GetNonEmptyContentStacks();
+                int capacity = slot.Itemstack.Collectible.Attributes["servingCapacity"].AsInt();
+                float servings = Math.Min(QuantityServings, capacity);
 
-                if (servings == 0) return false;
-                if (existingContent.Length != potStacks.Length) return false;
-                for (int i = 0; i < existingContent.Length; i++)
+                ItemStack mealStack;
+                IBlockMealContainer ibm = (slot.Itemstack.Collectible as IBlockMealContainer);
+
+                if (ibm != null && ibm.GetQuantityServings(Api.World, slot.Itemstack) > 0)
                 {
-                    if (!existingContent[i].Equals(Api.World, potStacks[i], GlobalConstants.IgnoredStackAttributes))
+                    float existingServings = ibm.GetQuantityServings(Api.World, slot.Itemstack);
+                    //string recipeCode = ibm.GetRecipeCode(Api.World, slot.Itemstack);
+                    ItemStack[] existingContent = ibm.GetNonEmptyContents(Api.World, slot.Itemstack);
+
+                    servings = Math.Min(servings, capacity - existingServings);
+                    ItemStack[] potStacks = GetNonEmptyContentStacks();
+
+                    if (servings == 0) return false;
+                    if (existingContent.Length != potStacks.Length) return false;
+                    for (int i = 0; i < existingContent.Length; i++)
                     {
-                        return false;
+                        if (!existingContent[i].Equals(Api.World, potStacks[i], GlobalConstants.IgnoredStackAttributes))
+                        {
+                            return false;
+                        }
+                    }
+
+                    if (slot.StackSize == 1)
+                    {
+                        mealStack = slot.Itemstack;
+                        ibm.SetContents(RecipeCode, slot.Itemstack, GetNonEmptyContentStacks(), existingServings + servings);
+                    }
+                    else
+                    {
+                        mealStack = slot.Itemstack.Clone();
+                        ibm.SetContents(RecipeCode, mealStack, GetNonEmptyContentStacks(), existingServings + servings);
                     }
                 }
+                else
+                {
+                    mealStack = new ItemStack(Api.World.GetBlock(AssetLocation.Create(slot.Itemstack.Collectible.Attributes["mealBlockCode"].AsString(), slot.Itemstack.Collectible.Code.Domain)));
+                    mealStack.StackSize = 1;
+                    (mealStack.Collectible as IBlockMealContainer).SetContents(RecipeCode, mealStack, GetNonEmptyContentStacks(), servings);
+                }
+
 
                 if (slot.StackSize == 1)
                 {
-                    mealStack = slot.Itemstack;
-                    ibm.SetContents(RecipeCode, slot.Itemstack, GetNonEmptyContentStacks(), existingServings + servings);
-                } else
-                {
-                    mealStack = slot.Itemstack.Clone();
-                    ibm.SetContents(RecipeCode, mealStack, GetNonEmptyContentStacks(), existingServings + servings);
+                    slot.Itemstack = mealStack;
+                    slot.MarkDirty();
                 }
-            }
-            else
-            {
-                mealStack = new ItemStack(Api.World.GetBlock(AssetLocation.Create(slot.Itemstack.Collectible.Attributes["mealBlockCode"].AsString(), slot.Itemstack.Collectible.Code.Domain)));
-                mealStack.StackSize = 1;
-                (mealStack.Collectible as IBlockMealContainer).SetContents(RecipeCode, mealStack, GetNonEmptyContentStacks(), servings);
-            }
-
-
-            if (slot.StackSize == 1)
-            {
-                slot.Itemstack = mealStack;
-                slot.MarkDirty();
-            }
-            else
-            {
-                slot.TakeOut(1);
-                if (!player.InventoryManager.TryGiveItemstack(mealStack, true))
+                else
                 {
-                    Api.World.SpawnItemEntity(mealStack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                    slot.TakeOut(1);
+                    if (!player.InventoryManager.TryGiveItemstack(mealStack, true))
+                    {
+                        Api.World.SpawnItemEntity(mealStack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                    }
+                    slot.MarkDirty();
                 }
-                slot.MarkDirty();
-            }
 
-            QuantityServings -= servings;
+                QuantityServings -= servings;
 
-            if (QuantityServings <= 0)
+                if (QuantityServings <= 0)
+                {
+                    Block block = Api.World.GetBlock(ownBlock.CodeWithPath(ownBlock.FirstCodePart() + "-burned"));
+                    Api.World.BlockAccessor.SetBlock(block.BlockId, Pos);
+                    return true;
+                }
+
+                if (Api.Side == EnumAppSide.Client)
+                {
+                    currentMesh = GenMesh();
+                    (player as IClientPlayer).TriggerFpAnimation(EnumHandInteract.HeldItemAttack);
+                }
+
+                MarkDirty(true);
+
+            } catch (NullReferenceException e)
             {
-                Block block = Api.World.GetBlock(ownBlock.CodeWithPath(ownBlock.FirstCodePart() + "-burned"));
-                Api.World.BlockAccessor.SetBlock(block.BlockId, Pos);
-                return true;
+                Api.World.Logger.Error("NRE in BECookedContainer.");
+                Api.World.Logger.Error("slot: " + slot?.Itemstack?.GetName());
+                Api.World.Logger.Error("slot cap: " + slot?.Itemstack?.Collectible?.Attributes?["servingCapacity"]);
+                
+                throw e;
             }
 
-            if (Api.Side == EnumAppSide.Client)
-            {
-                currentMesh = GenMesh();
-                (player as IClientPlayer).TriggerFpAnimation(EnumHandInteract.HeldItemAttack);
-            }
-            
-            MarkDirty(true);
             return true;
         }
 

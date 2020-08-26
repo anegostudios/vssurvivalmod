@@ -48,5 +48,12 @@ namespace Vintagestory.GameContent.Mechanics
 
             return base.OnBlockInteractStart(world, byPlayer, blockSel);
         }
+
+        public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
+        {
+            BEClutch be = world.BlockAccessor.GetBlockEntity(pos) as BEClutch;
+            be?.onNeighbourChange(neibpos);
+        }
+
     }
 }

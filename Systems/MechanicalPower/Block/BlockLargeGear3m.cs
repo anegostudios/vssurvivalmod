@@ -20,7 +20,8 @@ namespace Vintagestory.GameContent.Mechanics
 
         public override bool HasMechPowerConnectorAt(IWorldAccessor world, BlockPos pos, BlockFacing face)
         {
-            return face == BlockFacing.UP || face == BlockFacing.DOWN;
+            if (face == BlockFacing.UP || face == BlockFacing.DOWN) return true;
+            return (world.BlockAccessor.GetBlockEntity(pos) is BELargeGear3m beg) && beg.HasGearAt(world.Api, pos.AddCopy(face));
         }
 
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
@@ -34,9 +35,10 @@ namespace Vintagestory.GameContent.Mechanics
             bool ok = base.DoPlaceBlock(world, byPlayer, blockSel, itemstack);
             if (ok)
             {
-                int dx = 0;
-                int dz = 0;
+                int dx, dz;
                 BlockEntity beOwn = world.BlockAccessor.GetBlockEntity(blockSel.Position);
+                List<BlockFacing> connections = new List<BlockFacing>();
+
                 foreach(var smallGear in smallGears)
                 {
                     dx = smallGear.X - blockSel.Position.X;
@@ -45,21 +47,23 @@ namespace Vintagestory.GameContent.Mechanics
                     if (dx == 1) orient = 'e';
                     else if (dx == -1) orient = 'w';
                     else if (dz == 1) orient = 's';
-                    Block toPlaceBlock = world.GetBlock(new AssetLocation("angledgears-" + orient + orient));
-                    world.BlockAccessor.SetBlock(toPlaceBlock.BlockId, smallGear);
-                    IGearAcceptor beg = beOwn as IGearAcceptor;
-                    if (beg == null) world.Logger.Error("large gear wrong block entity type - not a gear acceptor");
-                    beg?.AddGear(smallGear);
+                    BlockMPBase toPlaceBlock = world.GetBlock(new AssetLocation("angledgears-" + orient + orient)) as BlockMPBase;
+                    BlockFacing bf = BlockFacing.FromFirstLetter(orient);
+                    toPlaceBlock.ExchangeBlockAt(world, smallGear);
+                    toPlaceBlock.DidConnectAt(world, smallGear, bf.GetOpposite());
+                    connections.Add(bf);
+                    //IGearAcceptor beg = beOwn as IGearAcceptor;
+                    //if (beg == null) world.Logger.Error("large gear wrong block entity type - not a gear acceptor");
+                    //beg?.AddGear(smallGear);
                 }
                 PlaceFakeBlocks(world, blockSel.Position, smallGears);
 
                 BEBehaviorMPBase beMechBase = beOwn?.GetBehavior<BEBehaviorMPBase>();
                 BlockPos pos = blockSel.Position.DownCopy();
-                IMechanicalPowerBlock block = world.BlockAccessor.GetBlock(pos) as IMechanicalPowerBlock;
-                if (block != null && block.HasMechPowerConnectorAt(world, pos, BlockFacing.UP))
+                if (world.BlockAccessor.GetBlock(pos) is IMechanicalPowerBlock block && block.HasMechPowerConnectorAt(world, pos, BlockFacing.UP))
                 {
                     block.DidConnectAt(world, pos, BlockFacing.UP);
-                    beMechBase?.WasPlaced(BlockFacing.DOWN);
+                    connections.Add(BlockFacing.DOWN);
                 }
                 else
                 {
@@ -68,8 +72,13 @@ namespace Vintagestory.GameContent.Mechanics
                     if (block != null && block.HasMechPowerConnectorAt(world, pos, BlockFacing.DOWN))
                     {
                         block.DidConnectAt(world, pos, BlockFacing.DOWN);
-                        beMechBase?.WasPlaced(BlockFacing.UP);
+                        connections.Add(BlockFacing.UP);
                     }
+                }
+
+                foreach (BlockFacing face in connections)
+                {
+                    beMechBase?.WasPlaced(face);
                 }
             }
             return ok;

@@ -59,7 +59,7 @@ namespace Vintagestory.GameContent
         internal bool Construct(ItemSlot slot, IWorldAccessor world, BlockPos pos, IPlayer player)
         {
             Block belowBlock = world.BlockAccessor.GetBlock(pos.DownCopy());
-            if (!belowBlock.SideSolid[BlockFacing.UP.Index] && (belowBlock != this || FillLevel(world.BlockAccessor, pos.DownCopy()) != 8)) return false;
+            if (!belowBlock.CanAttachBlockAt(world.BlockAccessor, this, pos.DownCopy(), BlockFacing.UP) && (belowBlock != this || FillLevel(world.BlockAccessor, pos.DownCopy()) != 8)) return false;
 
 
             world.BlockAccessor.SetBlock(BlockId, pos);
@@ -113,7 +113,7 @@ namespace Vintagestory.GameContent
         public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
         {
             Block belowBlock = world.BlockAccessor.GetBlock(pos.DownCopy());
-            if (!belowBlock.SideSolid[BlockFacing.UP.Index] && (belowBlock != this || FillLevel(world.BlockAccessor, pos.DownCopy()) < 8))
+            if (!belowBlock.CanAttachBlockAt(world.BlockAccessor, this, pos.DownCopy(), BlockFacing.UP) && (belowBlock != this || FillLevel(world.BlockAccessor, pos.DownCopy()) < 8))
             {
                 world.BlockAccessor.BreakBlock(pos, null);
                 //world.PlaySoundAt(new AssetLocation("sounds/block/ingot"), pos.X, pos.Y, pos.Z, null, false);

@@ -37,14 +37,12 @@ namespace Vintagestory.GameContent
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
-            if (blockSel.SelectionBoxIndex == 1)
+            BlockEntityQuern beQuern = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityQuern;
+
+            if (beQuern != null && beQuern.CanGrind() && (blockSel.SelectionBoxIndex == 1 || beQuern.Inventory.openedByPlayerGUIds.Contains(byPlayer.PlayerUID)))
             {
-                BlockEntityQuern beQuern = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityQuern;
-                if (beQuern != null && beQuern.CanGrind())
-                {
-                    beQuern.SetPlayerGrinding(byPlayer, true);
-                    return true;
-                }
+                beQuern.SetPlayerGrinding(byPlayer, true);
+                return true;
             }
             
             return base.OnBlockInteractStart(world, byPlayer, blockSel);
@@ -53,7 +51,8 @@ namespace Vintagestory.GameContent
         public override bool OnBlockInteractStep(float secondsUsed, IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
             BlockEntityQuern beQuern = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityQuern;
-            if (beQuern != null)
+
+            if (beQuern != null && (blockSel.SelectionBoxIndex == 1 || beQuern.Inventory.openedByPlayerGUIds.Contains(byPlayer.PlayerUID)))
             {
                 beQuern.IsGrinding(byPlayer);
                 return beQuern.CanGrind();

@@ -38,7 +38,7 @@ namespace Vintagestory.GameContent
         {
             get
             {
-                return Temperature < 0.2f * metalContent?.Collectible.GetMeltingPoint(Api.World, null, new DummySlot(metalContent));
+                return Temperature < 0.3f * metalContent?.Collectible.GetMeltingPoint(Api.World, null, new DummySlot(metalContent));
             }
         }
 

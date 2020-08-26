@@ -498,7 +498,7 @@ namespace Vintagestory.GameContent
         {
             ItemSlot hotbarSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
 
-            if (!hotbarSlot.Empty && hotbarSlot.Itemstack.Collectible.Attributes?["handleLiquidContainerInteract"].AsBool() == true)
+            if (!hotbarSlot.Empty && hotbarSlot.Itemstack.Collectible.Attributes?.IsTrue("handleLiquidContainerInteract") == true)
             {
                 EnumHandHandling handling = EnumHandHandling.NotHandled;
                 hotbarSlot.Itemstack.Collectible.OnHeldInteractStart(hotbarSlot, byPlayer.Entity, blockSel, null, true, ref handling);

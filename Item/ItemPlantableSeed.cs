@@ -91,6 +91,8 @@ namespace Vintagestory.GameContent
             dsc.AppendLine(Lang.Get("soil-nutrition-requirement") + cropBlock.CropProps.RequiredNutrient);
             dsc.AppendLine(Lang.Get("soil-nutrition-consumption") + cropBlock.CropProps.NutrientConsumption);
             dsc.AppendLine(Lang.Get("soil-growth-time") + Math.Round(cropBlock.CropProps.TotalGrowthDays, 1) + " days");
+            dsc.AppendLine(Lang.Get("crop-coldresistance", Math.Round(cropBlock.CropProps.ColdDamageBelow, 1)));
+            dsc.AppendLine(Lang.Get("crop-heatresistance", Math.Round(cropBlock.CropProps.HeatDamageAbove, 1)));
         }
 
 

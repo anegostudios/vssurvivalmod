@@ -17,12 +17,10 @@ namespace Vintagestory.GameContent
         BlockPos blockEntityPos;
 
         int prevSlotOver = -1;
-        Dictionary<int, SkillItem> skillItems;
+        List<SkillItem> skillItems;
         bool didSelect = false;
         API.Common.Action<int> onSelectedRecipe;
         API.Common.Action onCancelSelect;
-
-        
 
         public GuiDialogBlockEntityRecipeSelector(string DialogTitle, ItemStack[] recipeOutputs, API.Common.Action<int> onSelectedRecipe, API.Common.Action onCancelSelect, BlockPos blockEntityPos, ICoreClientAPI capi) : base(DialogTitle, capi)
         {
@@ -30,7 +28,7 @@ namespace Vintagestory.GameContent
             this.onSelectedRecipe = onSelectedRecipe;
             this.onCancelSelect = onCancelSelect;
 
-            skillItems = new Dictionary<int, SkillItem>();
+            skillItems = new List<SkillItem>();
 
             double size = GuiElementPassiveItemSlot.unscaledSlotSize + GuiElementItemSlotGrid.unscaledSlotPadding;
 
@@ -43,7 +41,7 @@ namespace Vintagestory.GameContent
                 string desc = Lang.GetMatching(key);
                 if (desc == key) desc = "";
 
-                skillItems.Add(i, new SkillItem()
+                skillItems.Add(new SkillItem()
                 {
                     Code = stack.Collectible.Code.Clone(),
                     Name = stack.GetName(),
@@ -93,7 +91,7 @@ namespace Vintagestory.GameContent
 
             SingleComposer =
                 capi.Gui
-                .CreateCompo("toolmodeselect", ElementStdBounds.AutosizedMainDialog)
+                .CreateCompo("toolmodeselect" + blockEntityPos, ElementStdBounds.AutosizedMainDialog)
                 .AddShadedDialogBG(bgBounds, true)
                 .AddDialogTitleBar(Lang.Get("Select Recipe"), OnTitleBarClose)
                 .BeginChildElements(bgBounds)

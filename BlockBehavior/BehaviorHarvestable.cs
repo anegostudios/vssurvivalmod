@@ -86,14 +86,15 @@ namespace Vintagestory.GameContent
                 world.PlaySoundAt(harvestingSound, blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z, byPlayer);
             }
 
-            return secondsUsed < harvestTime;
+            return world.Side == EnumAppSide.Client || secondsUsed < harvestTime;
         }
 
         public override void OnBlockInteractStop(float secondsUsed, IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ref EnumHandling handled)
         {
             handled = EnumHandling.PreventDefault;
 
-            if (secondsUsed > harvestTime - 0.05f && harvestedStack != null)
+
+            if (secondsUsed > harvestTime - 0.05f && harvestedStack != null && world.Side == EnumAppSide.Server)
             {
                 ItemStack stack = harvestedStack.GetNextItemStack();
 

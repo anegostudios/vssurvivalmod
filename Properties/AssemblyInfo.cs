@@ -59,6 +59,9 @@ using Vintagestory.API.Config;
                     temporalStability: ""true"",
                     temporalStorms: ""sometimes"",
                     graceTimer: ""0"",
+                    microblockChiseling: ""stonewood"",
+                    polarEquatorDistance: ""100000"",
+                    harshWinters: ""true""
 			    }
 		    },
 		    {
@@ -70,7 +73,7 @@ using Vintagestory.API.Config;
 			    worldConfig: {
 				    worldClimate: ""realistic"",
 				    gameMode: ""survival"",
-                    microblockChiseling: ""true"",
+                    microblockChiseling: ""all"",
                     deathPunishment: ""keep"",
                     graceTimer: ""5"",
                     creatureHostility: ""passive"",
@@ -85,7 +88,9 @@ using Vintagestory.API.Config;
                     surfaceCopperDeposits: ""0.2"",
                     surfaceTinDeposits: ""0.03"",
                     globalDepositSpawnRate: ""1.6"",
-                    propickNodeSearchRadius: ""8""
+                    propickNodeSearchRadius: ""8"",
+                    polarEquatorDistance: ""50000"",
+                    harshWinters: ""false""
                 }
 			},
             {
@@ -97,7 +102,7 @@ using Vintagestory.API.Config;
 			    worldConfig: {
 				    worldClimate: ""realistic"",
 				    gameMode: ""survival"",
-                    microblockChiseling: ""false"",
+                    microblockChiseling: ""off"",
                     deathPunishment: ""drop"",
                     blockGravity: ""sandgravelsoil"",
                     creatureHostility: ""aggressive"",
@@ -112,7 +117,9 @@ using Vintagestory.API.Config;
                     surfaceCopperDeposits: ""0.05"",
                     surfaceTinDeposits: ""0"",
                     saplingGrowthDays: ""24"",
-                    temporalStorms: ""often""
+                    temporalStorms: ""often"",
+                    polarEquatorDistance: ""100000"",
+                    harshWinters: ""true""
 			    }
 		    }
 	    ],
@@ -126,6 +133,9 @@ using Vintagestory.API.Config;
             { code: ""polarEquatorDistance"", dataType: ""dropdown"", values: [""800000"", ""400000"", ""200000"", ""100000"", ""50000"", ""25000"", ""15000"", ""10000"", ""5000""], names: [""800k blocks"", ""400k blocks"", ""200k blocks"", ""100k blocks"", ""50k blocks"", ""25k blocks"", ""15k blocks"", ""10k blocks"", ""5000 blocks""], default: ""50000"" },
             { code: ""startingClimate"", dataType: ""dropdown"", values: [""hot"", ""warm"", ""temperate"", ""cool"", ""icy""], names: [""Hot (28-32°C)"", ""Warm (19-23 °C)"", ""Temperate (6-14 °C)"", ""Cool (-5 to 1 °C)"", ""Icy (-15 to -10°C)""], default: ""temperate"" },
             { code: ""seasons"", dataType: ""dropdown"", values: [""enabled"", ""spring""], names: [""Enabled"", ""Off, always spring""], default: ""enabled"" },
+            { code: ""daysPerMonth"", dataType: ""dropdown"", values: [""30"", ""20"", ""12"", ""9"", ""6"", ""3""], names: [""30 days (24 real life hours)"", ""20 days (16 real life hours)"", ""12 days (9.6 real life hours)"", ""9 days (7.2 real life hours)"", ""6 days (4.8 real life hours)"", ""3 days (2.4 real life hours)""], default: ""12"" },
+            { code: ""snowAccum"", dataType: ""dropdown"", values: [""true"", ""false""], names: [""Enabled"", ""Disabled""], default: ""true"" },
+            { code: ""harshWinters"", dataType: ""dropdown"", values: [""true"", ""false""], names: [""Enabled"", ""Disabled""], default: ""true"" },
 
             { code: ""globalTemperature"", dataType: ""dropdown"", values: [""4"", ""2"", ""1.5"", ""1"", ""0.5"", ""0.25"", ""0.15""], names: [""Scorching hot"", ""Very hot"", ""Hot"", ""Normal"", ""Cold"", ""Very Cold"", ""Snowball earth""], default: ""1"" },
             { code: ""globalPrecipitation"", dataType: ""dropdown"", values: [""4"", ""2"", ""1.5"", ""1"", ""0.5"", ""0.25"", ""0.1""], names: [""Super humid"", ""Very humid"", ""Humid"", ""Normal"", ""Semi-Arid"", ""Arid"", ""Hyperarid""], default: ""1"" },

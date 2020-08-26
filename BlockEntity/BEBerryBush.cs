@@ -18,6 +18,9 @@ namespace Vintagestory.GameContent
         double transitionHoursLeft = -1;
         double? totalDaysForNextStageOld = null; // old v1.13 data format, here for backwards compatibility
 
+        RoomRegistry roomreg;
+        public int roomness;
+
         public BlockEntityBerryBush() : base()
         {
 
@@ -38,6 +41,7 @@ namespace Vintagestory.GameContent
                 RegisterGameTickListener(CheckGrow, 8000);
 
                 api.ModLoader.GetModSystem<POIRegistry>().AddPOI(this);
+                roomreg = Api.ModLoader.GetModSystem<RoomRegistry>();
 
                 if (totalDaysForNextStageOld != null)
                 {
@@ -49,6 +53,18 @@ namespace Vintagestory.GameContent
 
         private void CheckGrow(float dt)
         {
+            if (Block.Attributes == null)
+                {
+#if DEBUG
+                Api.World.Logger.Notification("Ghost berry bush block entity at {0}. Block.Attributes is null, will remove game tick listener", Pos);
+                foreach (long handlerId in TickHandlers)
+                {
+                    Api.Event.UnregisterGameTickListener(handlerId);
+                }
+#endif
+                return;
+            }
+
             // In case this block was imported from another older world. In that case lastCheckAtTotalDays would be a future date.
             lastCheckAtTotalDays = Math.Min(lastCheckAtTotalDays, Api.World.Calendar.TotalDays);
 
@@ -60,6 +76,19 @@ namespace Vintagestory.GameContent
 
             while (daysToCheck > 1f / Api.World.Calendar.HoursPerDay)
             {
+                if (!changed)
+                {
+                    if (Api.World.BlockAccessor.GetRainMapHeightAt(Pos) > Pos.Y) // Fast pre-check
+                    {
+                        Room room = roomreg?.GetRoomForPosition(Pos);
+                        roomness = (room != null && room.SkylightCount > room.NonSkylightCount && room.ExitCount == 0) ? 1 : 0;
+                    }
+                    else
+                    {
+                        roomness = 0;
+                    }
+                }
+
                 changed = true;
 
                 daysToCheck -= 1f / Api.World.Calendar.HoursPerDay;
@@ -69,9 +98,14 @@ namespace Vintagestory.GameContent
 
                 ClimateCondition conds = Api.World.BlockAccessor.GetClimateAt(Pos, EnumGetClimateMode.ForSuppliedDateValues, lastCheckAtTotalDays);
                 if (conds == null) return;
+                if (roomness > 0)
+                {
+                    conds.Temperature += 5;
+                }
 
                 bool reset = conds.Temperature < Block.Attributes["resetBelowTemperature"].AsFloat(-999);
                 bool stop = conds.Temperature < Block.Attributes["stopBelowTemperature"].AsFloat(-999);
+                bool revert = conds.Temperature < Block.Attributes["revertBlockBelowTemperature"].AsFloat(-999);
 
                 if (stop || reset)
                 {
@@ -80,6 +114,13 @@ namespace Vintagestory.GameContent
                     if (reset)
                     {
                         transitionHoursLeft = GetHoursForNextStage();
+                        if (Block.Variant["state"] != "empty" && revert)
+                        {
+                            Block nextBlock = Api.World.GetBlock(Block.CodeWithVariant("state", "empty"));
+                            Api.World.BlockAccessor.ExchangeBlock(nextBlock.BlockId, Pos);
+                        }
+                        
+
                     }
 
                     continue;
@@ -146,6 +187,8 @@ namespace Vintagestory.GameContent
             }
 
             lastCheckAtTotalDays = tree.GetDouble("lastCheckAtTotalDays");
+
+            roomness = tree.GetInt("roomness");
         }
 
         public override void ToTreeAttributes(ITreeAttribute tree)
@@ -154,6 +197,8 @@ namespace Vintagestory.GameContent
 
             tree.SetDouble("transitionHoursLeft", transitionHoursLeft);
             tree.SetDouble("lastCheckAtTotalDays", lastCheckAtTotalDays);
+
+            tree.SetInt("roomness", roomness);
         }
 
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder sb)
@@ -180,6 +225,11 @@ namespace Vintagestory.GameContent
             else
             {
                 sb.AppendLine(Lang.Get("berrybush-" + code + "-xdays", (int)daysleft));
+            }
+
+            if (roomness > 0)
+            {
+                sb.AppendLine(Lang.Get("+5°C from greenhouse"));
             }
         }
 

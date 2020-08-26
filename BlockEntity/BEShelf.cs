@@ -173,6 +173,14 @@ namespace Vintagestory.GameContent
                 }
             }
 
+            if (stack.Collectible.Attributes?["onDisplayTransform"].Exists == true)
+            {
+                ModelTransform transform = stack.Collectible.Attributes?["onDisplayTransform"].AsObject<ModelTransform>();
+                transform.EnsureDefaultValues();
+                mesh.ModelTransform(transform);
+            }
+
+
             float x = ((index % 4) >= 2) ? 12 / 16f : 4 / 16f;
             float y = index >= 4 ? 10 / 16f : 2 / 16f;
             float z = (index % 2 == 0) ? 4 / 16f : 10 / 16f;

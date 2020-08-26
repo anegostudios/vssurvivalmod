@@ -28,12 +28,26 @@ namespace Vintagestory.GameContent
             Inventory.LateInitialize(InventoryClassName + "-" + Pos.X + "/" + Pos.Y + "/" + Pos.Z, api);
             Inventory.ResolveBlocksOrItems();
             Inventory.OnAcquireTransitionSpeed = Inventory_OnAcquireTransitionSpeed;
+            if (api.Side == EnumAppSide.Client) {
+                Inventory.OnInventoryOpened += Inventory_OnInventoryOpenedClient;
+            }
 
             RegisterGameTickListener(OnTick, 10000);
         }
 
+        private void Inventory_OnInventoryOpenedClient(IPlayer player)
+        {
+            OnTick(1);
+        }
+
         protected virtual void OnTick(float dt)
         {
+            if (Api.Side == EnumAppSide.Client)
+            {
+                // We don't have to do this client side. The item stack renderer already updates those states for us
+                return;
+            }
+
             foreach (ItemSlot slot in Inventory)
             {
                 if (slot.Itemstack == null) continue;

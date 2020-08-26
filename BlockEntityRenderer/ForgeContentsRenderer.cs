@@ -134,7 +134,7 @@ namespace Vintagestory.GameContent
                 textureId = tmpTextureSource[tmpMetal].atlasTextureId;
                 capi.Tesselator.TesselateShape("block-fcr", shape, out mesh, this, null, 0, 0, 0, stack.StackSize);
             }
-            else if (stack.Collectible.Attributes?["forgable"].AsBool() == true)
+            else if (stack.Collectible.Attributes?.IsTrue("forgable") == true)
             {
                 if (stack.Class == EnumItemClass.Block)
                 {

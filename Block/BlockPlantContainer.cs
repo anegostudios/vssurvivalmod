@@ -78,6 +78,17 @@ namespace Vintagestory.GameContent
             return be?.GetContents();
         }
 
+
+        public override void OnDecalTesselation(IWorldAccessor world, MeshData decalMesh, BlockPos pos)
+        {
+            base.OnDecalTesselation(world, decalMesh, pos);
+            BlockEntityPlantContainer bept = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityPlantContainer;
+            if (bept != null)
+            {
+                decalMesh.Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 0, bept.MeshAngle, 0);
+            }
+        }
+
         public override bool DoPlaceBlock(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ItemStack byItemStack)
         {
             bool val = base.DoPlaceBlock(world, byPlayer, blockSel, byItemStack);

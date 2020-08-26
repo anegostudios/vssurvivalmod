@@ -90,18 +90,11 @@ namespace Vintagestory.GameContent.Mechanics
             }
         }
 
-        protected override MechPowerPath[] GetMechPowerExits(TurnDirection fromExitTurnDir)
+        protected override MechPowerPath[] GetMechPowerExits(MechPowerPath fromExitTurnDir)
         {
             if (!engaged) return new MechPowerPath[0];
 
-            // Axles just forward mechanical power in the same direction with the same turn direction
-            return new MechPowerPath[] { new MechPowerPath(fromExitTurnDir.Facing, fromExitTurnDir.Rot) };
-        }
-
-
-        public override TurnDirection GetTurnDirection(BlockFacing forFacing)
-        {
-            return GetInTurnDirection();
+            return base.GetMechPowerExits(fromExitTurnDir);
         }
 
         public override float GetResistance()
@@ -109,31 +102,22 @@ namespace Vintagestory.GameContent.Mechanics
             return 0.0005f;
         }
 
-        public override float GetTorque()
-        {
-            return 0;
-        }
-
         private void ChangeState(bool newEngaged)
         {
             if (newEngaged)
             {
-                BlockPos pos = Position.AddCopy(orients[0]);
-                IMechanicalPowerBlock block = Api.World.BlockAccessor.GetBlock(pos) as IMechanicalPowerBlock;
-                if (block != null)
-                {
-                    block.DidConnectAt(Api.World, pos, orients[1]);
-                    this.WasPlaced(orients[0]);
-                }
+                CreateJoinAndDiscoverNetwork(orients[0]);
+                CreateJoinAndDiscoverNetwork(orients[1]);
+                this.tryConnect(orients[0]);
 
-                //Test for connection on opposite side as well
-                pos = Position.AddCopy(orients[1]);
-                block = Api.World.BlockAccessor.GetBlock(pos) as IMechanicalPowerBlock;
-                if (block != null)
-                {
-                    block.DidConnectAt(Api.World, pos, orients[0]);
-                    this.WasPlaced(orients[1]);
-                }
+                ////Test for connection on opposite side as well
+                //pos = Position.AddCopy(orients[1]);
+                //block = Api.World.BlockAccessor.GetBlock(pos) as IMechanicalPowerBlock;
+                //if (block != null && this.network != block.GetNetwork(Api.World, pos))
+                //{
+                //    block.DidConnectAt(Api.World, pos, orients[0]);
+                //    this.WasPlaced(orients[1]);
+                //}
                 Blockentity.MarkDirty(true);
             }
             else
@@ -149,7 +133,7 @@ namespace Vintagestory.GameContent.Mechanics
         {
             BlockPos pos = Position.AddCopy(orients[side]);
             BlockEntity be = Api.World.BlockAccessor.GetBlockEntity(pos);
-            IMechanicalPowerNode node = be?.GetBehavior<BEBehaviorMPBase>() as IMechanicalPowerNode;
+            IMechanicalPowerDevice node = be?.GetBehavior<BEBehaviorMPBase>() as IMechanicalPowerDevice;
             float rot;
             if (node == null || node.Network == null)
             {
@@ -165,8 +149,8 @@ namespace Vintagestory.GameContent.Mechanics
             }
             else
             {
-                rot = node.Network.AngleRad;
-                bool invert = node.GetInTurnDirection().Facing == orients[side].GetOpposite();
+                rot = node.Network.AngleRad * node.GearedRatio;
+                bool invert = node.GetPropagationDirection() != orients[side];
                 if (side == 1) invert = !invert;
                 if (invert) rot = GameMath.TWOPI - rot;
                 rotPrev[side] = rot;
@@ -198,11 +182,6 @@ namespace Vintagestory.GameContent.Mechanics
             if (Api.World.EntityDebugMode)
             {
                 sb.AppendLine(string.Format(Lang.Get(engaged ? "Engaged" : "Disengaged")));
-                sb.AppendLine(string.Format(Lang.Get("Rotation: {0} - {1}", inTurnDir.Rot, inTurnDir.Facing)));
-                if (this.Network != null)
-                {
-                    sb.AppendLine(string.Format(Lang.Get("Network {0} - s {1} - t {2} - r {3}", this.Network.TurnDir.Rot.ToString(), (int)(this.Network.Speed * 100), (int)(this.Network.TotalAvailableTorque * 100), (int)(this.Network.NetworkResistance * 100))));
-                }
             }
         }
     }

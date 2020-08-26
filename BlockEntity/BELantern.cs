@@ -41,6 +41,13 @@ namespace Vintagestory.GameContent
             setLightColor(origlightHsv, lightHsv, glass);
         }
 
+        public override void OnBlockBroken()
+        {
+            base.OnBlockBroken();
+
+            Api.World.BlockAccessor.RemoveBlockLight(lightHsv, Pos);
+        }
+
 
         public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
@@ -142,6 +149,17 @@ namespace Vintagestory.GameContent
 
                 setLightColor(origlightHsv, lightHsv, glass);
 
+                MarkDirty(true);
+            }
+
+            if (lining == null || lining == "plain" && obj is ItemMetalPlate && (obj.Variant["metal"] == "gold" || obj.Variant["metal"] == "silver")) 
+            {
+                lining = obj.Variant["metal"];
+                if (Api.Side == EnumAppSide.Client) (byPlayer as IClientPlayer).TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
+                Vec3d soundpos = Pos.ToVec3d().Add(0.5, 0, 0.5);
+                Api.World.PlaySoundAt(new AssetLocation("sounds/block/plate"), soundpos.X, soundpos.Y, soundpos.Z, byPlayer);
+
+                slot.TakeOut(1);
                 MarkDirty(true);
             }
         }

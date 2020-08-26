@@ -26,7 +26,7 @@ namespace Vintagestory.API.Common
             base.OnItemSlotModified(stack);
 
             if (itemstack == null) return;
-
+            
             ItemSlot liquidSlot = inventory[1];
 
             bool stackable = !liquidSlot.Empty && liquidSlot.Itemstack.Equals(inventory.Api.World, itemstack, GlobalConstants.IgnoredStackAttributes);
@@ -45,11 +45,11 @@ namespace Vintagestory.API.Common
                 return;
             }
 
-            if (stack.Collectible.Attributes?["barrelMoveToLiquidSlot"].AsBool() == true)
+            if (itemstack.Collectible.Attributes?.IsTrue("barrelMoveToLiquidSlot") == true)
             {
                 if (stackable)
                 {
-                    int remainingspace = stack.Collectible.MaxStackSize - liquidSlot.StackSize;
+                    int remainingspace = itemstack.Collectible.MaxStackSize - liquidSlot.StackSize;
                     int movableq = Math.Min(itemstack.StackSize, remainingspace);
 
                     liquidSlot.Itemstack.StackSize += movableq;

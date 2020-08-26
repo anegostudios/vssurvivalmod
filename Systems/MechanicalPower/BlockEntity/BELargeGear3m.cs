@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Text;
+using Vintagestory.API;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
@@ -9,7 +10,23 @@ namespace Vintagestory.GameContent.Mechanics
 {
     public class BELargeGear3m : BlockEntity, IGearAcceptor
     {
-        public BlockPos[] gear = new BlockPos[4];
+        public BlockPos[] gear = null;  //if this is null it signifies this is not yet initialised - if this leads to a crash, we need to add code to check this is initialised (see the HasGearAt(api, pos) overload for an example)
+
+        public override void Initialize(ICoreAPI api)
+        {
+            this.gear = new BlockPos[4];
+            IBlockAccessor accessor = api.World.BlockAccessor;
+            TestGear(accessor, this.Pos.NorthCopy());
+            TestGear(accessor, this.Pos.SouthCopy());
+            TestGear(accessor, this.Pos.WestCopy());
+            TestGear(accessor, this.Pos.EastCopy());
+            base.Initialize(api);
+        }
+
+        private void TestGear(IBlockAccessor accessor, BlockPos pos)
+        {
+            if (accessor.GetBlock(pos) is BlockAngledGears) AddGear(pos);
+        }
 
         bool IGearAcceptor.CanAcceptGear(BlockPos pos)
         {
@@ -21,9 +38,51 @@ namespace Vintagestory.GameContent.Mechanics
             return dx + dz == 1 || dx + dz == -1;  //this should always be true if replacing a multiblock fake block with this gear as centre, but check just in case
         }
 
-        private bool HasGearAt(BlockPos pos)
+        public bool HasGears()
+        {
+            for (int i = 0; i < 4; i++)
+            {
+                if (gear[i] != null) return true;
+            }
+            return false;
+        }
+
+        public int CountGears()
+        {
+            int result = 0;
+            for (int i = 0; i < 4; i++)
+            {
+                if (gear[i] != null) result++;
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// This overload adds an api parameter - it is called from BlockLargeGear3m.HasMechPowerConnectorAt() which may be called before this BlockEntity has been initialised
+        /// </summary>
+        /// <param name="api"></param>
+        /// <returns></returns>
+        public int CountGears(ICoreAPI api)
+        {
+            if (gear == null) this.Initialize(api);
+            return CountGears();
+        }
+
+        public bool HasGearAt(BlockPos pos)
         {
             return pos.Equals(gear[0]) || pos.Equals(gear[1]) || pos.Equals(gear[2]) || pos.Equals(gear[3]);
+        }
+
+        /// <summary>
+        /// This overload adds an api parameter - it is called from BlockLargeGear3m.HasMechPowerConnectorAt() which may be called before this BlockEntity has been initialised
+        /// </summary>
+        /// <param name="api"></param>
+        /// <param name="pos"></param>
+        /// <returns></returns>
+        public bool HasGearAt(ICoreAPI api, BlockPos pos)
+        {
+            if (gear == null) this.Initialize(api);
+            return HasGearAt(pos);
         }
 
         public void AddGear(BlockPos pos)
@@ -53,39 +112,11 @@ namespace Vintagestory.GameContent.Mechanics
         public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
         {
             base.FromTreeAtributes(tree, worldAccessForResolve);
-            int gx = tree.GetInt("gx0");
-            int gy = tree.GetInt("gy0");
-            int gz = tree.GetInt("gz0");
-            gear[0] = gx == 0 && gy == 0 && gz == 0 ? null : new BlockPos(gx, gy, gz);
-            gx = tree.GetInt("gx1");
-            gy = tree.GetInt("gy1");
-            gz = tree.GetInt("gz1");
-            gear[1] = gx == 0 && gy == 0 && gz == 0 ? null : new BlockPos(gx, gy, gz);
-            gx = tree.GetInt("gx2");
-            gy = tree.GetInt("gy2");
-            gz = tree.GetInt("gz2");
-            gear[2] = gx == 0 && gy == 0 && gz == 0 ? null : new BlockPos(gx, gy, gz);
-            gx = tree.GetInt("gx3");
-            gy = tree.GetInt("gy3");
-            gz = tree.GetInt("gz3");
-            gear[3] = gx == 0 && gy == 0 && gz == 0 ? null : new BlockPos(gx, gy, gz);
         }
 
         public override void ToTreeAttributes(ITreeAttribute tree)
         {
             base.ToTreeAttributes(tree);
-            tree.SetInt("gx0", gear[0] == null ? 0 : gear[0].X);
-            tree.SetInt("gy0", gear[0] == null ? 0 : gear[0].Y);
-            tree.SetInt("gz0", gear[0] == null ? 0 : gear[0].Z);
-            tree.SetInt("gx1", gear[1] == null ? 0 : gear[1].X);
-            tree.SetInt("gy1", gear[1] == null ? 0 : gear[1].Y);
-            tree.SetInt("gz1", gear[1] == null ? 0 : gear[1].Z);
-            tree.SetInt("gx2", gear[2] == null ? 0 : gear[2].X);
-            tree.SetInt("gy2", gear[2] == null ? 0 : gear[2].Y);
-            tree.SetInt("gz2", gear[2] == null ? 0 : gear[2].Z);
-            tree.SetInt("gx3", gear[3] == null ? 0 : gear[3].X);
-            tree.SetInt("gy3", gear[3] == null ? 0 : gear[3].Y);
-            tree.SetInt("gz3", gear[3] == null ? 0 : gear[3].Z);
         }
 
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder sb)

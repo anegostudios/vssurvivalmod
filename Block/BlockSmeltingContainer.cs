@@ -229,14 +229,14 @@ namespace Vintagestory.GameContent
         {
             // Got only same stacks to smelt directly?
             ItemStack outputStack = null;
-            float quantity = 0;
+            double quantity = 0;
 
             for (int i = 0; i < stacks.Length; i++)
             {
                 if (stacks[i] == null) continue;
 
                 ItemStack stack = stacks[i];
-                float stackSize = stack.StackSize;
+                double stackSize = stack.StackSize;
 
                 if (stack.Collectible.CombustibleProps?.SmeltedStack != null && stack.Collectible.CombustibleProps.MeltingPoint > 0)
                 {

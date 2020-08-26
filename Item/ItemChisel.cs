@@ -90,6 +90,7 @@ namespace Vintagestory.GameContent
                 return;
             }
 
+
             if (blockSel == null)
             {
                 base.OnHeldAttackStart(slot, byEntity, blockSel, entitySel, ref handling);
@@ -130,6 +131,16 @@ namespace Vintagestory.GameContent
                 base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handling);
                 return;
             }
+
+            if (block.Resistance > 100)
+            {
+                if (api.Side == EnumAppSide.Client)
+                {
+                    (api as ICoreClientAPI).TriggerIngameError(this, "tootoughtochisel", Lang.Get("This material is too strong to chisel"));
+                }
+                return;
+            }
+
 
             if (blockSel == null)
             {
@@ -176,7 +187,13 @@ namespace Vintagestory.GameContent
             string mode = worldConfig.GetString("microblockChiseling");
 
             if (mode == "off") return false;
-            if (mode == "stonewood") return block.BlockMaterial == EnumBlockMaterial.Wood || block.BlockMaterial == EnumBlockMaterial.Stone;
+            if (mode == "stonewood")
+            {
+                // Saratys definitely required Exception to the rule #312
+                if (block.Code.Path.Contains("mudbrick")) return true;
+
+                return block.BlockMaterial == EnumBlockMaterial.Wood || block.BlockMaterial == EnumBlockMaterial.Stone || block.BlockMaterial == EnumBlockMaterial.Ore || block.BlockMaterial == EnumBlockMaterial.Ceramic;
+            }
 
             return true;
         }
@@ -192,6 +209,13 @@ namespace Vintagestory.GameContent
             BlockEntityChisel bec = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityChisel;
             if (bec != null)
             {
+                int matnum = byPlayer.InventoryManager.ActiveHotbarSlot.Itemstack.Attributes.GetInt("materialNum", -1);
+                if (matnum >= 0)
+                {
+                    byPlayer.InventoryManager.ActiveHotbarSlot.Itemstack.Attributes.RemoveAttribute("materialNum");
+                    bec.SetNowMaterial((byte)(matnum));
+                }
+
                 bec.OnBlockInteract(byPlayer, blockSel, isBreak);
                 handling = EnumHandHandling.PreventDefaultAction;
             }
@@ -201,8 +225,38 @@ namespace Vintagestory.GameContent
         public override SkillItem[] GetToolModes(ItemSlot slot, IClientPlayer forPlayer, BlockSelection blockSel)
         {
             if (blockSel == null) return null;
-            Block block = forPlayer.Entity.World.BlockAccessor.GetBlock(blockSel.Position);
-            return block is BlockChisel ? toolModes : null;
+            BlockEntityChisel be = forPlayer.Entity.World.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityChisel;
+            if (be != null)
+            {    
+                if (be.MaterialIds.Length <= 1)
+                {
+                    return toolModes;
+                }
+
+                SkillItem[] mats = new SkillItem[be.MaterialIds.Length];
+                for (int i = 0; i < mats.Length; i++)
+                {
+                    Block block = api.World.GetBlock(be.MaterialIds[i]);
+                    ItemStack stack = new ItemStack(block);
+                    mats[i] = new SkillItem()
+                    {
+                        Code = block.Code,
+                        Data = be.MaterialIds[i],
+                        Linebreak = i==0,
+                        Name = block.GetHeldItemName(stack),
+                        RenderHandler = (AssetLocation code, float dt, double atPosX, double atPosY) =>
+                        {
+                            float wdt = (float)GuiElement.scaled(GuiElementPassiveItemSlot.unscaledSlotSize);
+                            ICoreClientAPI capi = api as ICoreClientAPI;
+                            capi.Render.RenderItemstackToGui(stack, atPosX + wdt/2, atPosY + wdt/2, 50, wdt/2, ColorUtil.WhiteArgb, true, false, false);
+                        }
+                    };
+                }
+
+                return toolModes.Append(mats);
+            }
+
+            return null;
         }
 
         public override int GetToolMode(ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
@@ -212,6 +266,12 @@ namespace Vintagestory.GameContent
 
         public override void SetToolMode(ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel, int toolMode)
         {
+            if (toolMode > 6)
+            {
+                slot.Itemstack.Attributes.SetInt("materialNum", toolMode - 7);
+                return;
+            }
+
             slot.Itemstack.Attributes.SetInt("toolMode", toolMode);
         }
 
@@ -283,7 +343,7 @@ namespace Vintagestory.GameContent
             cr.Matrix = matrix;
 
             cr.Operator = Operator.Over;
-            cr.LineWidth = 6;
+            cr.LineWidth = 9;
             cr.MiterLimit = 4;
             cr.LineCap = LineCap.Butt;
             cr.LineJoin = LineJoin.Miter;
@@ -305,7 +365,7 @@ namespace Vintagestory.GameContent
             if (pattern != null) pattern.Dispose();
 
             cr.Operator = Operator.Over;
-            cr.LineWidth = 6;
+            cr.LineWidth = 9;
             cr.MiterLimit = 4;
             cr.LineCap = LineCap.Butt;
             cr.LineJoin = LineJoin.Miter;
@@ -323,7 +383,7 @@ namespace Vintagestory.GameContent
             if (pattern != null) pattern.Dispose();
 
             cr.Operator = Operator.Over;
-            cr.LineWidth = 6;
+            cr.LineWidth = 9;
             cr.MiterLimit = 4;
             cr.LineCap = LineCap.Butt;
             cr.LineJoin = LineJoin.Miter;
@@ -341,7 +401,7 @@ namespace Vintagestory.GameContent
             if (pattern != null) pattern.Dispose();
 
             cr.Operator = Operator.Over;
-            cr.LineWidth = 6;
+            cr.LineWidth = 9;
             cr.MiterLimit = 4;
             cr.LineCap = LineCap.Butt;
             cr.LineJoin = LineJoin.Miter;

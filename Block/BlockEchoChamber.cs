@@ -26,7 +26,7 @@ namespace Vintagestory.GameContent
 
                 foreach (CollectibleObject obj in api.World.Collectibles)
                 {
-                    if (obj.Attributes?["isPlayableDisc"].AsBool() == true)
+                    if (obj.Attributes?.IsTrue("isPlayableDisc") == true)
                     {
                         echochamberStacks.Add(new ItemStack(obj));
                     }

@@ -26,7 +26,7 @@ namespace Vintagestory.GameContent
             return Variant["part"] == "up";
         }
 
-        public bool IsOpened()
+        public override bool IsOpened()
         {
             return Variant["state"] == "opened";
         }
@@ -66,8 +66,8 @@ namespace Vintagestory.GameContent
         {
             string leftOrRight = "left";
 
-            Block nBlock1 = ba.GetBlock(pos.AddCopy(facing.GetCCW()));
-            Block nBlock2 = ba.GetBlock(pos.AddCopy(facing.GetCW()));
+            Block nBlock1 = ba.GetBlock(pos.AddCopy(facing.GetCW()));
+            Block nBlock2 = ba.GetBlock(pos.AddCopy(facing.GetCCW()));
 
             bool isDoor1 = IsSameDoor(nBlock1);
             bool isDoor2 = IsSameDoor(nBlock2);
@@ -155,7 +155,7 @@ namespace Vintagestory.GameContent
         {
             string knob = GetKnobOrientation();
             BlockFacing dir = GetDirection();
-            return knob == "left" ? pos.AddCopy(dir.GetCW()) : pos.AddCopy(dir.GetCCW());
+            return knob == "left" ? pos.AddCopy(dir.GetCCW()) : pos.AddCopy(dir.GetCW());
         }
 
         public override AssetLocation GetRotatedBlockCode(int angle)

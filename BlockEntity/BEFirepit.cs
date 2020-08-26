@@ -180,7 +180,7 @@ namespace Vintagestory.GameContent
             base.Initialize(api);
 
             inventory.pos = Pos;
-            inventory.LateInitialize("smelting-1", api);
+            inventory.LateInitialize("smelting-" + Pos.X + "/" + Pos.Y + "/" + Pos.Z, api);
             wsys = api.ModLoader.GetModSystem<WeatherSystemBase>();
 
             RegisterGameTickListener(OnBurnTick, 100);
@@ -715,7 +715,6 @@ namespace Vintagestory.GameContent
             if (renderer == null) return;
 
             ItemStack contentStack = inputStack == null ? outputStack : inputStack;
-            ItemStack prevStack = renderer.ContentStack;
 
             bool useOldRenderer =
                 renderer.ContentStack != null &&
@@ -731,7 +730,7 @@ namespace Vintagestory.GameContent
 
             if (contentStack?.Collectible is IInFirepitRendererSupplier)
             {
-                IInFirepitRenderer childrenderer = (contentStack.Collectible as IInFirepitRendererSupplier).GetRendererWhenInFirepit(contentStack, this, contentStack == outputStack);
+                IInFirepitRenderer childrenderer = (contentStack?.Collectible as IInFirepitRendererSupplier).GetRendererWhenInFirepit(contentStack, this, contentStack == outputStack);
                 if (childrenderer != null)
                 {
                     renderer.SetChildRenderer(contentStack, childrenderer);

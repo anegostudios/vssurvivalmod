@@ -150,6 +150,12 @@ namespace Vintagestory.GameContent
         }
 
 
+        public override void OnDecalTesselation(IWorldAccessor world, MeshData decalMesh, BlockPos pos)
+        {
+            base.OnDecalTesselation(world, decalMesh, pos);
+
+        }
+
 
 
         public override void OnUnloaded(ICoreAPI api)
@@ -242,15 +248,10 @@ namespace Vintagestory.GameContent
                 }
 
                 MeshData md;
-                capi.Tesselator.TesselateShape("typedcontainer-decal", shape, out md, decalTexSource, new Vec3f(Shape.rotateX, Shape.rotateY, Shape.rotateZ));
+                capi.Tesselator.TesselateShape("typedcontainer-decal", shape, out md, decalTexSource);
                 decalModelData = md;
 
-                string facing = LastCodePart();
-                if (facing == "north") { decalModelData.Rotate(new API.MathTools.Vec3f(0.5f, 0.5f, 0.5f), 0, 1 * GameMath.PIHALF, 0); }
-                if (facing == "east") { decalModelData.Rotate(new API.MathTools.Vec3f(0.5f, 0.5f, 0.5f), 0, 0 * GameMath.PIHALF, 0); }
-                if (facing == "south") { decalModelData.Rotate(new API.MathTools.Vec3f(0.5f, 0.5f, 0.5f), 0, 3 * GameMath.PIHALF, 0); }
-                if (facing == "west") { decalModelData.Rotate(new API.MathTools.Vec3f(0.5f, 0.5f, 0.5f), 0, 2 * GameMath.PIHALF, 0); }
-
+                decalModelData.Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 0, be.MeshAngle, 0);
 
                 return;
             }

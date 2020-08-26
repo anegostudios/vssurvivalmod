@@ -1,14 +1,10 @@
 ﻿using ProtoBuf;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
-using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent.Mechanics
 {
@@ -36,14 +32,14 @@ namespace Vintagestory.GameContent.Mechanics
         [ProtoMember(10)]
         float networkTorque;
         [ProtoMember(11)]
-        public TurnDirection TurnDir { get; set; } = new TurnDirection();
+        public EnumRotDirection TurnDir { get; set; } = EnumRotDirection.Clockwise;
 
 
 
         float clientSpeed;
         int chunksize;
         public bool fullyLoaded;
-        private float drivenTorque = 0f;
+        private bool firstTick = true;
 
         /// <summary>
         /// Set to false when a block with more than one connection in the network has been broken
@@ -54,7 +50,7 @@ namespace Vintagestory.GameContent.Mechanics
         } = true;
 
         /// <summary>
-        /// In radiant
+        /// In radians
         /// </summary>
         public float AngleRad
         {
@@ -68,6 +64,8 @@ namespace Vintagestory.GameContent.Mechanics
             set { speed = value; }
         }
 
+        public bool DirectionHasReversed { get; set; } = false;
+
         public float TotalAvailableTorque
         {
             get { return totalAvailableTorque; }
@@ -76,7 +74,6 @@ namespace Vintagestory.GameContent.Mechanics
 
         public MechanicalNetwork()
         {
-            
         }
 
         public MechanicalNetwork(MechanicalPowerMod mechanicalPowerMod, long networkId)
@@ -94,24 +91,26 @@ namespace Vintagestory.GameContent.Mechanics
 
         public void Join(IMechanicalPowerNode node)
         {
-            nodes[node.Position] = node;
+            BlockPos pos = node.GetPosition();
+            nodes[pos] = node;
 
-            Vec3i chunkpos = new Vec3i(node.Position.X / chunksize, node.Position.Y / chunksize, node.Position.Z / chunksize);
+            Vec3i chunkpos = new Vec3i(pos.X / chunksize, pos.Y / chunksize, pos.Z / chunksize);
             int q;
             inChunks.TryGetValue(chunkpos, out q);
             inChunks[chunkpos] = q + 1;
         }
 
-        public void DidUnload(IMechanicalPowerNode node)
+        public void DidUnload(IMechanicalPowerDevice node)
         {
             fullyLoaded = false;
         }
 
         public void Leave(IMechanicalPowerNode node)
         {
-            nodes.Remove(node.Position);
+            BlockPos pos = node.GetPosition();
+            nodes.Remove(pos);
 
-            Vec3i chunkpos = new Vec3i(node.Position.X / chunksize, node.Position.Y / chunksize, node.Position.Z / chunksize);
+            Vec3i chunkpos = new Vec3i(pos.X / chunksize, pos.Y / chunksize, pos.Z / chunksize);
             int q;
             inChunks.TryGetValue(chunkpos, out q);
             if (q <= 1)
@@ -133,7 +132,12 @@ namespace Vintagestory.GameContent.Mechanics
         // Tick Events are called by the Network Managers
         public void ClientTick(float dt)
         {
-            if (speed < 0.001) return;
+            if (firstTick)
+            {
+                firstTick = false;
+                mechanicalPowerMod.SendNetworkBlocksUpdateRequestToServer(this.networkId);
+            }
+            if (speed < 0.001f) return;
 
             // 50fps is baseline speed for client and server (1000/50 = 20ms)
             //float weirdOffset = 5f; // Server seems to complete a work item quicker than on the client, does it update the angle more quickly or something? o.O
@@ -141,7 +145,7 @@ namespace Vintagestory.GameContent.Mechanics
 
             clientSpeed += GameMath.Clamp(speed - clientSpeed, f * -0.01f, f * 0.01f); 
 
-            UpdateAngle(f * clientSpeed);
+            UpdateAngle(f * (TurnDir == EnumRotDirection.Clockwise ^ DirectionHasReversed ? clientSpeed : -clientSpeed));
 
             // Since the server may be running at different tick speeds,
             // we slowly sync angle updates from server to reduce 
@@ -160,7 +164,7 @@ namespace Vintagestory.GameContent.Mechanics
 
             if (tickNumber % 5 == 0)
             {
-                updateNetwork();
+                updateNetwork(tickNumber);
             }
 
             if (tickNumber % 40 == 0)
@@ -176,6 +180,7 @@ namespace Vintagestory.GameContent.Mechanics
                 angle = angle,
                 networkId = networkId,
                 speed = speed,
+                direction = (speed >= 0f ? 1 : -1),
                 totalAvailableTorque = totalAvailableTorque,
                 networkResistance = networkResistance,
                 networkTorque = networkTorque
@@ -185,10 +190,10 @@ namespace Vintagestory.GameContent.Mechanics
         public void UpdateAngle(float speed)
         {
             angle += speed / 10f;
-            angle = angle % GameMath.TWOPI;
+            //angle = angle % GameMath.TWOPI;
 
             serverSideAngle += speed / 10f;
-            serverSideAngle = serverSideAngle % GameMath.TWOPI;
+            //serverSideAngle = serverSideAngle % GameMath.TWOPI;
         }
 
         public float NetworkTorque {
@@ -202,64 +207,66 @@ namespace Vintagestory.GameContent.Mechanics
             set { networkResistance = value; }
         }
 
-        /// <summary>
-        /// Allow a network to be driven by another network, instead of by a rotor
-        /// </summary>
-        public float Drive(float torqueIn, float targetSpeed, float accelerationFactor, int dir)
-        {
-            if ((targetSpeed >= speed || Math.Abs(networkTorque) < Math.Abs(torqueIn)) && Math.Abs(drivenTorque) < Math.Abs(torqueIn))
-            {
-                speed += (targetSpeed - speed) * accelerationFactor;
-                drivenTorque = torqueIn;
-                TurnDir.Rot = dir > 0 ? EnumRotDirection.Clockwise : EnumRotDirection.Counterclockwise;
-            }
-            return networkResistance;// - Math.Abs(networkTorque);
-            //System.Diagnostics.Debug.WriteLine("Drive " + dir + " " + TurnDir.Rot + " " + drivenTorque + " " + totalAvailableTorque);
-        }
-
         // Should run every 5 ticks or so
-        public void updateNetwork()
+        public void updateNetwork(long tick)
         {
+            //ensure no speed discontinuities if whole network direction suddenly reverses (e.g. because a block was added or removed)
+            if (DirectionHasReversed)
+            {
+                speed = -speed;
+                DirectionHasReversed = false;
+                //TurnDir = TurnDir == EnumRotDirection.Clockwise ? EnumRotDirection.Counterclockwise : EnumRotDirection.Clockwise;
+            }
             /* 2. Determine total available torque and total resistance of the network */
 
-            networkTorque = 0f;
-            networkResistance = 0;
-            
+            float totalTorque = 0f;
+            float totalResistance = 0f;
+            float speedTmp = speed;
+
+            float resistance;
             foreach (IMechanicalPowerNode powerNode in nodes.Values)
             {
-                networkTorque += powerNode.GetTorque();
-                networkResistance += powerNode.GetResistance();
+                float r = powerNode.GearedRatio;
+                totalTorque += r * powerNode.GetTorque(tick, speedTmp * r, out resistance);
+                totalResistance += r * resistance;
+                totalResistance += speed * speed * r * r / 1000f;  //this creates an air resistance effect - very fast turning networks will quickly slow if torque is removed
             }
-
-            float totalTorque = networkTorque + drivenTorque;
-            drivenTorque *= 0.85f;  //this falls off quite fast if no longer driven
-
+            networkTorque = totalTorque;
+            networkResistance = totalResistance;
 
             /* 3. Unconsumed torque changes the network speed */
+            // Definition: Negative speed (produced by negative torque) signifies anti-clockwise rotation.  There can be negative torque depending on all the torque providers on the network and their senses.
 
             // Positive free torque => increase speed until maxSpeed
             // Negative free torque => decrease speed until -maxSpeed
             // No free torque => lower speed until 0
 
             float unusedTorque = Math.Abs(totalTorque) - networkResistance;
+            float torqueSign = totalTorque >= 0f ? 1f : -1f;
 
+            float drag = Math.Max(1f, (float) Math.Pow(nodes.Count, 0.25));
+            float step = 1f / (float)drag;
 
-            // http://fooplot.com/#W3sidHlwZSI6MCwiZXEiOiJtYXgoMSx4XjAuMjUpIiwiY29sb3IiOiIjMDAwMDAwIn0seyJ0eXBlIjoxMDAwLCJ3aW5kb3ciOlsiMCIsIjEwMCIsIjAiLCI1Il19XQ--
-            double drag = Math.Max(1, Math.Pow(nodes.Count, 0.25));
-            float step = 0.5f / (float)drag;
-
-            // Definition: There is no negative speed, but there can be negative torque
-            if (unusedTorque > 0)
+            bool wrongTurnSense = speed * torqueSign < 0f;
+            if (unusedTorque > 0f && !wrongTurnSense)
             {
-                speed += Math.Min(0.05f, step * unusedTorque);
-            } else
+                speed += Math.Min(0.05f, step * unusedTorque) * torqueSign;
+            }
+            else
             {
-                speed = Math.Max(0, speed + step * unusedTorque);
+                float change = unusedTorque;
+                if (wrongTurnSense) change = -networkResistance;
+                if (change < -Math.Abs(speed)) change = -Math.Abs(speed);  //this creates a momentum effect: the network will not stop suddenly, even if resistance suddenly goes sky high.  Momentum increases for more pieces in the network (1/drag).
+                if (change < -0.000001f)
+                {
+                    float speedSign = speed < 0f ? -1f : 1f;
+                    speed = Math.Max(0.000001f, Math.Abs(speed) + 4f * drag * change) * speedSign;  //the 4f * drag multiplier slows a network down fairly quickly when torque is removed
+                }
+                else if (Math.Abs(unusedTorque) > 0f) speed = torqueSign / 1000000f;   //a small speed in the correct direction, to start things off
             }
 
             if (unusedTorque > Math.Abs(totalAvailableTorque))
             {
-                //System.Diagnostics.Debug.WriteLine("update " + TurnDir.Rot + " " + drivenTorque + " " + totalAvailableTorque + " " + totalTorque);
                 if (totalTorque > 0)
                 {
                     totalAvailableTorque = Math.Min(totalTorque, totalAvailableTorque + step);
@@ -271,9 +278,8 @@ namespace Vintagestory.GameContent.Mechanics
             }
             else totalAvailableTorque *= 0.9f;  //allows for adjustments to happen if torque reduces or changes sign
 
-            TurnDir.Rot = totalAvailableTorque >= 0 ? EnumRotDirection.Clockwise : EnumRotDirection.Counterclockwise;
+            TurnDir = speed >= 0 ? EnumRotDirection.Clockwise : EnumRotDirection.Counterclockwise;
         }
-
 
         public void UpdateFromPacket(MechNetworkPacket packet, bool isNew)
         {
@@ -281,7 +287,7 @@ namespace Vintagestory.GameContent.Mechanics
             networkResistance = packet.networkResistance;
             networkTorque = packet.networkTorque;
 
-            speed = packet.speed;
+            speed = Math.Abs(packet.speed);  //ClientTick() expects speed to be positive always
             if (isNew)
             {
                 angle = packet.angle;
@@ -290,10 +296,11 @@ namespace Vintagestory.GameContent.Mechanics
 
             serverSideAngle = packet.angle;
 
-            TurnDir.Rot = totalAvailableTorque >= 0 ? EnumRotDirection.Clockwise : EnumRotDirection.Counterclockwise;
+            TurnDir = packet.direction >= 0 ? EnumRotDirection.Clockwise : EnumRotDirection.Counterclockwise;
+            DirectionHasReversed = false;
         }
 
-        
+
         public bool testFullyLoaded(ICoreAPI api)
         {
             foreach (var chunkpos in inChunks.Keys)
@@ -315,8 +322,7 @@ namespace Vintagestory.GameContent.Mechanics
             speed = tree.GetFloat("speed");
             angle = tree.GetFloat("angle");
             
-            TurnDir.Facing = BlockFacing.ALLFACES[tree.GetInt("turnDirectionFacing")];
-            TurnDir.Rot = (EnumRotDirection)tree.GetInt("rot");
+            TurnDir = (EnumRotDirection)tree.GetInt("rot");
         }
 
         public void WriteToTreeAttribute(ITreeAttribute tree)
@@ -327,11 +333,20 @@ namespace Vintagestory.GameContent.Mechanics
             tree.SetFloat("speed", speed);
             tree.SetFloat("angle", angle);
 
-            tree.SetInt("turnDirectionFacing", TurnDir.Facing.Index);
-            tree.SetInt("rot", (int)TurnDir.Rot);
+            tree.SetInt("rot", (int)TurnDir);
         }
 
-        
+        public void SendBlocksUpdateToClient(IServerPlayer player)
+        {
+            foreach (IMechanicalPowerNode powerNode in nodes.Values)
+            {
+                if (powerNode is BEBehaviorMPBase bemp)
+                {
+                    bemp.Blockentity.MarkDirty();
+                    //TODO: for efficiency in multiplayer it would be better to send the MarkDirty update only to the client who sent the MechClientRequestPacket message...
+                }
+            }
+        }
     }
 
 
@@ -353,4 +368,12 @@ namespace Vintagestory.GameContent.Mechanics
         public long networkId;
     }
 
+    /// <summary>
+    /// Used by clients to request that the server refresh (MarkDirty()) all blockEntities comprised in the serverside network, to ensure server-client networkID sync on all blockEntities
+    /// </summary>
+    [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
+    public class MechClientRequestPacket
+    {
+        public long networkId;
+    }
 }

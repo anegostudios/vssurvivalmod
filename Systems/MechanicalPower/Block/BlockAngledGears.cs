@@ -32,8 +32,10 @@ namespace Vintagestory.GameContent.Mechanics
         public bool IsOrientedTo(BlockFacing facing)
         {
             string dirs = Orientation;
-
-            return dirs[0] == facing.Code[0] || (dirs.Length > 1 && dirs[1] == facing.Code[0]);
+            if (dirs[0] == facing.Code[0]) return true;  //all configurations of angled gear have a power connection on the first side
+            if (dirs.Length == 1) return false;  //dead end
+            if (dirs[0] == dirs[1]) return dirs[0] == facing.GetOpposite().Code[0];   //small gears on large gear can accept power from large gear hub
+            return dirs[1] == facing.Code[0];  //angled gears - secondary direction
         }
 
         public override bool HasMechPowerConnectorAt(IWorldAccessor world, BlockPos pos, BlockFacing face)
@@ -87,9 +89,7 @@ namespace Vintagestory.GameContent.Mechanics
                     MechanicalNetwork nw = GetNetwork(world, pos);
 
                     (toPlaceBlock as BlockMPBase).ExchangeBlockAt(world, pos);
-
-                    BEBehaviorMPBase be = world.BlockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorMPBase>();
-                    be?.JoinNetwork(nw);
+                    BEBehaviorMPBase bemp = world.BlockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorMPBase>();
                 }
             }
         }
@@ -160,26 +160,36 @@ namespace Vintagestory.GameContent.Mechanics
                 if (validLargeGear) largeGearEdge.GearPlaced(world, blockSel.Position);
 
                 Block toPlaceBlock = getGearBlock(world, validLargeGear, firstFace, secondFace);
-                world.BlockAccessor.RemoveBlockEntity(blockSel.Position);  //## needed in 1.12, but not with new chunk BlockEntity Dictionary in 1.13
+                //world.BlockAccessor.RemoveBlockEntity(blockSel.Position);  //## needed in 1.12, but not with new chunk BlockEntity Dictionary in 1.13
                 world.BlockAccessor.SetBlock(toPlaceBlock.BlockId, blockSel.Position);
-                BlockEntity be1 = world.BlockAccessor.GetBlockEntity(blockSel.Position);
-                
-                neighbour.DidConnectAt(world, firstPos, firstFace.GetOpposite());
-
+    
                 if (secondFace != null)
                 {
                     BlockPos secondPos = blockSel.Position.AddCopy(secondFace);
-                    neighbour = world.BlockAccessor.GetBlock(secondPos) as IMechanicalPowerBlock;
-                    neighbour.DidConnectAt(world, secondPos, secondFace.GetOpposite());
+                    IMechanicalPowerBlock neighbour2 = world.BlockAccessor.GetBlock(secondPos) as IMechanicalPowerBlock;
+                    neighbour2?.DidConnectAt(world, secondPos, secondFace.GetOpposite());
                 }
 
-                WasPlaced(world, blockSel.Position, firstFace);
+                //do this last even for the first face so that both neighbours are correctly set
+                neighbour?.DidConnectAt(world, firstPos, firstFace.GetOpposite());
+                BEBehaviorMPAngledGears beMechBase = world.BlockAccessor.GetBlockEntity(blockSel.Position)?.GetBehavior<BEBehaviorMPAngledGears>();
+                beMechBase.newlyPlaced = true;
+                if (!beMechBase.tryConnect(firstFace) && secondFace != null) beMechBase.tryConnect(secondFace);
+                beMechBase.newlyPlaced = false;
+
                 return true;
             }
 
             failureCode = "requiresaxle";
 
             return false;
+        }
+
+        public override void WasPlaced(IWorldAccessor world, BlockPos ownPos, BlockFacing connectedOnFacing)
+        {
+            if (connectedOnFacing == null) return;
+            BEBehaviorMPAngledGears beMechBase = world.BlockAccessor.GetBlockEntity(ownPos)?.GetBehavior<BEBehaviorMPAngledGears>();
+            beMechBase?.tryConnect(connectedOnFacing);
         }
 
         public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
@@ -216,10 +226,23 @@ namespace Vintagestory.GameContent.Mechanics
                 orients = orients.Replace("" + lostFacings[0].Code[0], "");
                 Block toPlaceBlock = world.GetBlock(new AssetLocation(FirstCodePart() + "-" + orients));
                 (toPlaceBlock as BlockMPBase).ExchangeBlockAt(world, pos);
+                BlockEntity be = world.BlockAccessor.GetBlockEntity(pos);
+                BEBehaviorMPBase bemp = be.GetBehavior<BEBehaviorMPBase>();
+                bemp.LeaveNetwork();
 
-                //BEBehaviorMPBase be = world.BlockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorMPBase>(); 
-                //be.JoinNetwork(nw);
-                //## TODO  check for adjacent valid facings, similar to TryPlaceBlock
+                //check for connect to adjacent valid facings, similar to TryPlaceBlock
+                BlockFacing firstFace = BlockFacing.FromFirstLetter(orients[0]);
+                BlockPos firstPos = pos.AddCopy(firstFace);
+                BlockEntity beNeib = world.BlockAccessor.GetBlockEntity(firstPos);
+                IMechanicalPowerBlock neighbour = beNeib?.Block as IMechanicalPowerBlock;
+
+                BEBehaviorMPAxle bempaxle = beNeib?.GetBehavior<BEBehaviorMPAxle>();
+                if (bempaxle != null && !bempaxle.IsAttachedToBlock())
+                {
+                    return;
+                }
+                neighbour?.DidConnectAt(world, firstPos, firstFace.GetOpposite());
+                WasPlaced(world, pos, firstFace);
             }
 
         }
@@ -227,7 +250,6 @@ namespace Vintagestory.GameContent.Mechanics
         public override void OnBlockRemoved(IWorldAccessor world, BlockPos pos)
         {
             bool preventDefault = false;
-            //world.Logger.Notification("-- smallgear calling OBR");
 
             foreach (BlockBehavior behavior in BlockBehaviors)
             {
@@ -241,17 +263,12 @@ namespace Vintagestory.GameContent.Mechanics
             if (preventDefault) return;
 
             world.BlockAccessor.RemoveBlockEntity(pos);
-            //world.Logger.Notification("-- smallgear calling OBR 2");
 
-            if (world.Side == EnumAppSide.Server)
+            //For large gear usage, allow an angled gear when broken to be replaced by a dummy block if appropriate
+            string orient = Variant["orientation"];
+            if (orient.Length == 2 && orient[1] == orient[0])
             {
-                //For large gear usage, allow an angled gear when broken to be replaced by a dummy block if appropriate
-                string orient = Variant["orientation"];
-                if (orient.Length == 2 && orient[1] == orient[0])
-                {
-                    //world.Logger.Notification("-- smallgear calling OGD");
-                    BlockMPMultiblockWood.OnGearDestroyed(world, pos, orient[0]);
-                }
+                BlockMPMultiblockWood.OnGearDestroyed(world, pos, orient[0]);
             }
         }
 
@@ -261,8 +278,10 @@ namespace Vintagestory.GameContent.Mechanics
             if (orient.Length == 2 && orient[1] == orient[0])
             {
                 Block toPlaceBlock = world.GetBlock(new AssetLocation(FirstCodePart() + "-" + orient[0]));
-                world.BlockAccessor.SetBlock(toPlaceBlock.BlockId, pos);
-                //world.Logger.Notification("-- bepg " + world.BlockAccessor.GetBlockEntity(pos).GetType().FullName);
+                ((BlockMPBase)toPlaceBlock).ExchangeBlockAt(world, pos);
+                BEBehaviorMPAngledGears beg = world.BlockAccessor.GetBlockEntity(pos).GetBehavior<BEBehaviorMPAngledGears>();
+                beg?.ClearLargeGear();
+
                 //#TODO: do a firstface/second face axle check as in TryPlaceBlock()
             }
         }

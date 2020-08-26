@@ -39,23 +39,12 @@ namespace Vintagestory.GameContent.Mechanics
             OnDisconnected?.Invoke();
         }
 
-
-        public override TurnDirection GetTurnDirection(BlockFacing forFacing)
-        {
-            return GetInTurnDirection();
-        }
-
         public override float GetResistance()
         {
             return resistance;
         }
 
-        public override float GetTorque()
-        {
-            return 0;
-        }
-
-        protected override MechPowerPath[] GetMechPowerExits(TurnDirection fromExitTurnDir)
+        protected override MechPowerPath[] GetMechPowerExits(MechPowerPath fromExitTurnDir)
         {
             // This but' a dead end, baby!
             return new MechPowerPath[0];

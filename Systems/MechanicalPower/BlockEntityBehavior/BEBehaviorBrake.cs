@@ -115,21 +115,10 @@ namespace Vintagestory.GameContent.Mechanics
         }
 
 
-
-
         public override float GetResistance()
         {
             return resistance;
         }
-
-
-        protected override MechPowerPath[] GetMechPowerExits(TurnDirection fromExitTurnDir)
-        {
-            return base.GetMechPowerExits(fromExitTurnDir);
-        }
-
-
-
         
     }
 }

@@ -26,7 +26,7 @@ namespace Vintagestory.GameContent
 
                 foreach (CollectibleObject obj in api.World.Collectibles)
                 {
-                    if (obj.Attributes?["knappable"].AsBool() == true)
+                    if (obj.Attributes?.IsTrue("knappable") == true)
                     {
                         knappableStacklist.Add(new ItemStack(obj));
                     }

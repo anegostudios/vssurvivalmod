@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
@@ -43,28 +44,27 @@ namespace Vintagestory.GameContent.Mechanics
             switch (orient)
             {
                 case 's':
-                    posCentre = pos.SouthCopy();
+                    posCentre = pos.NorthCopy();
                     break;
                 case 'w':
-                    posCentre = pos.WestCopy();
+                    posCentre = pos.EastCopy();
                     break;
                 case 'e':
-                    posCentre = pos.EastCopy();
+                    posCentre = pos.WestCopy();
                     break;
                 case 'n':
                 default:
-                    posCentre = pos.NorthCopy();
+                    posCentre = pos.SouthCopy();
                     break;
             }
-            IGearAcceptor beg = world.BlockAccessor.GetBlockEntity(posCentre) as IGearAcceptor;
-            if (beg != null)
+            if (world.BlockAccessor.GetBlockEntity(posCentre) is IGearAcceptor beg)
             {
                 beg.RemoveGearAt(pos);
                 Block toPlaceBlock = world.GetBlock(new AssetLocation("mpmultiblockwood"));
                 world.BlockAccessor.SetBlock(toPlaceBlock.BlockId, pos);
-                BEMPMultiblock be = world.BlockAccessor.GetBlockEntity(pos) as BEMPMultiblock;
-                if (be != null) be.Centre = posCentre;
+                if (world.BlockAccessor.GetBlockEntity(pos) is BEMPMultiblock be) be.Centre = posCentre;
             }
+            else world.Logger.Notification("no LG found at " + posCentre + " from " + pos);
         }
 
         public override float OnGettingBroken(IPlayer player, BlockSelection blockSel, ItemSlot itemslot, float remainingResistance, float dt, int counter)
@@ -100,8 +100,19 @@ namespace Vintagestory.GameContent.Mechanics
                 return;
             }
             // being broken by player: break the centre block instead
-            Block centreBlock = world.BlockAccessor.GetBlock(be.Centre);
-            centreBlock.OnBlockBroken(world, be.Centre, byPlayer, dropQuantityMultiplier);
+            BlockPos centrePos = be.Centre;
+            Block centreBlock = world.BlockAccessor.GetBlock(centrePos);
+            centreBlock.OnBlockBroken(world, centrePos, byPlayer, dropQuantityMultiplier);
+
+            // Need to trigger neighbourchange on client side only (because it's normally in the player block breaking code)
+            if (api.Side == EnumAppSide.Client)
+            {
+                foreach (BlockFacing facing in BlockFacing.VERTICALS)
+                {
+                    BlockPos npos = centrePos.AddCopy(facing);
+                    world.BlockAccessor.GetBlock(npos).OnNeighbourBlockChange(world, npos, centrePos);
+                }
+            }
         }
 
         public override Cuboidf GetParticleBreakBox(IBlockAccessor blockAccess, BlockPos pos, BlockFacing facing)
@@ -115,6 +126,20 @@ namespace Vintagestory.GameContent.Mechanics
             Block centreBlock = blockAccess.GetBlock(be.Centre);
             return centreBlock.GetParticleBreakBox(blockAccess, be.Centre, facing);
         }
+
+        //Need to override because this fake block has no texture of its own (no texture gives black breaking particles)
+        public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing)
+        {
+            IBlockAccessor blockAccess = capi.World.BlockAccessor;
+            BEMPMultiblock be = blockAccess.GetBlockEntity(pos) as BEMPMultiblock;
+            if (be == null || be.Centre == null)
+            {
+                return 0;
+            }
+            Block centreBlock = blockAccess.GetBlock(be.Centre);
+            return centreBlock.GetRandomColor(capi, be.Centre, facing);
+        }
+
 
     }
 }

@@ -80,12 +80,12 @@ namespace Vintagestory.GameContent
             // 0 to -1 => july is coldest month
             if (latitude > 0)
             {
-                double distanceToJanuary = GameMath.Smootherstep(Math.Abs(GameMath.CyclicValueDistance(1.5f, yearRel * 12, 12) / 6f));
+                double distanceToJanuary = GameMath.Smootherstep(Math.Abs(GameMath.CyclicValueDistance(0.5f, yearRel * 12, 12) / 6f));
                 heretemp += seasonalVariationAmplitude * distanceToJanuary;
             }
             else
             {
-                double distanceToJuly = GameMath.Smootherstep(Math.Abs(GameMath.CyclicValueDistance(7.5f, yearRel * 12, 12) / 6f));
+                double distanceToJuly = GameMath.Smootherstep(Math.Abs(GameMath.CyclicValueDistance(6.5f, yearRel * 12, 12) / 6f));
                 heretemp += seasonalVariationAmplitude * distanceToJuly;
             }
 
@@ -100,7 +100,7 @@ namespace Vintagestory.GameContent
 
             // just before sunrise is the coldest time. We have no time zones in VS
             // lets just hardcode 6 am for this for now
-            double distanceTo6Am = GameMath.Smootherstep(Math.Abs(GameMath.CyclicValueDistance(6, hourOfDay, 24) / 12f));
+            double distanceTo6Am = GameMath.SmoothStep(Math.Abs(GameMath.CyclicValueDistance(6, hourOfDay, 24) / 12f));
 
             heretemp -= diurnalVariationAmplitude / 2;
             heretemp += distanceTo6Am * diurnalVariationAmplitude;

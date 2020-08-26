@@ -41,7 +41,13 @@ namespace Vintagestory.GameContent
             if (type == null)
             {
                 byEntity.World.Logger.Error("ItemCreature: No such entity - {0}", location);
+                if (api.World.Side == EnumAppSide.Client)
+                {
+                    (api as ICoreClientAPI).TriggerIngameError(this, "nosuchentity", "No such entity '{0}' loaded.");
+                }
+                return;
             }
+
             Entity entity = byEntity.World.ClassRegistry.CreateEntity(type);
 
             if (entity != null)

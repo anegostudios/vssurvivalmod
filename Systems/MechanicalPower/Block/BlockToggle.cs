@@ -71,11 +71,12 @@ namespace Vintagestory.GameContent.Mechanics
             {
                 foreach (BlockFacing face in BlockFacing.HORIZONTALS)
                 {
-                    BlockAngledGears blockagears = world.BlockAccessor.GetBlock(pos.AddCopy(face)) as BlockAngledGears;
+                    BlockPos npos = pos.AddCopy(face);
+                    BlockAngledGears blockagears = world.BlockAccessor.GetBlock(npos) as BlockAngledGears;
                     if (blockagears == null) continue;
                     if (blockagears.Facings.Contains(face.GetOpposite()) && blockagears.Facings.Length == 1)
                     {
-                        world.BlockAccessor.BreakBlock(pos.AddCopy(face), null);
+                        world.BlockAccessor.BreakBlock(npos, null);
                     }
                 }
             }

@@ -185,8 +185,6 @@ namespace Vintagestory.GameContent
             TradeProps.Selling.List.Shuffle(World.Rand);
             int sellingQuantity = Math.Min(TradeProps.Selling.List.Length, TradeProps.Selling.MaxItems);
 
-
-
             // Pick quantity items from the trade list that the trader doesn't already sell
             // Slots 0..15: Selling slots
             // Slots 16..19: Buying cart
@@ -238,6 +236,7 @@ namespace Vintagestory.GameContent
 
             ITreeAttribute tree = GetOrCreateTradeStore();
             Inventory.ToTreeAttributes(tree);
+            WatchedAttributes.MarkAllDirty();
         }
 
         private void replaceTradeItems(Stack<TradeItem> newItems, ItemSlotTrade[] slots, int quantity, float refreshChance)
@@ -402,10 +401,10 @@ namespace Vintagestory.GameContent
                 talkUtil.OnGameTick(dt);
             } else
             {
-                if (tickCount++ % 500 == 0)
+                if (tickCount++ > 200)
                 {
                     double lastRefreshTotalDays = WatchedAttributes.GetDouble("lastRefreshTotalDays", World.Calendar.TotalDays - 10);
-                    int maxRefreshes = 30;
+                    int maxRefreshes = 10;
 
                     while (World.Calendar.TotalDays - lastRefreshTotalDays > doubleRefreshIntervalDays && tradingWith == null && maxRefreshes-- > 0)
                     {
@@ -423,6 +422,11 @@ namespace Vintagestory.GameContent
                         WatchedAttributes.SetDouble("lastRefreshTotalDays", lastRefreshTotalDays);
 
                         tickCount = 1;
+                    }
+
+                    if (maxRefreshes <= 0)
+                    {
+                        WatchedAttributes.SetDouble("lastRefreshTotalDays", World.Calendar.TotalDays + 1 + World.Rand.NextDouble() * 5);
                     }
                 }
             }

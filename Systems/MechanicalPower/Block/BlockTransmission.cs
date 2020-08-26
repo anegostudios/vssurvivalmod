@@ -18,6 +18,64 @@ namespace Vintagestory.GameContent.Mechanics
             return IsOrientedTo(face);
         }
 
+        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
+        {
+            if (!CanPlaceBlock(world, byPlayer, blockSel, ref failureCode))
+            {
+                return false;
+            }
+
+            foreach (BlockFacing face in BlockFacing.HORIZONTALS)
+            {
+                BlockPos pos = blockSel.Position.AddCopy(face);
+
+                IMechanicalPowerBlock block = world.BlockAccessor.GetBlock(pos) as IMechanicalPowerBlock;
+                if (block != null)
+                {
+                    BlockFacing faceOpposite = face.GetOpposite();
+                    if (block.HasMechPowerConnectorAt(world, pos, faceOpposite))
+                    {
+                        AssetLocation loc;
+                        if (face == BlockFacing.EAST || face == BlockFacing.WEST)
+                        {
+                            loc = new AssetLocation(FirstCodePart() + "-we");
+                        }
+                        else
+                        {
+                            loc = new AssetLocation(FirstCodePart() + "-ns");
+                        }
+                        Block toPlaceBlock = world.GetBlock(loc);
+
+                        if (toPlaceBlock.DoPlaceBlock(world, byPlayer, blockSel, itemstack))
+                        {
+                            block.DidConnectAt(world, pos, faceOpposite);
+                            WasPlaced(world, blockSel.Position, face);
+
+                            //Test for connection on opposite side as well
+                            pos = blockSel.Position.AddCopy(faceOpposite);
+                            block = world.BlockAccessor.GetBlock(pos) as IMechanicalPowerBlock;
+                            if (block != null && block.HasMechPowerConnectorAt(world, pos, face))
+                            {
+                                block.DidConnectAt(world, pos, face);
+                                WasPlaced(world, blockSel.Position, faceOpposite);
+                            }
+
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            //no mech power connectors adjacent
+            if (base.TryPlaceBlock(world, byPlayer, itemstack, blockSel, ref failureCode))
+            {
+                WasPlaced(world, blockSel.Position, null);
+                return true;
+            }
+
+            return false;
+        }
+
         public override void DidConnectAt(IWorldAccessor world, BlockPos pos, BlockFacing face)
         {
 

@@ -19,12 +19,15 @@ namespace Vintagestory.GameContent
 
         ICoreClientAPI capi;
         SystemTemporalStability tempStabilitySystem;
+        WeatherSimulationParticles precipParticleSys;
+
         float oneSecAccum = 0;
         float threeSecAccum = 0;
         double hereTempStabChangeVelocity;
 
         double glitchEffectStrength;
         double fogEffectStrength;
+        double rustPrecipColorStrength;
 
         public double TempStabChangeVelocity { get; set; }
 
@@ -52,6 +55,7 @@ namespace Vintagestory.GameContent
             if (entity.Api.Side == EnumAppSide.Client)
             {
                 requireInitSounds = true;
+                precipParticleSys = entity.Api.ModLoader.GetModSystem<WeatherSystemClient>().simParticles;
             }
 
             enabled = entity.Api.World.Config.GetBool("temporalStability", false);
@@ -161,6 +165,10 @@ namespace Vintagestory.GameContent
             }
 
             deltaTime = GameMath.Min(0.5f, deltaTime);
+
+            float changeSpeed = deltaTime / 3;
+
+
             double hereStability = tempStabilitySystem.GetTemporalStability(entity.SidedPos.X, entity.SidedPos.Y, entity.SidedPos.Z);
 
             entity.Attributes.SetDouble("tempStabChangeVelocity", TempStabChangeVelocity);
@@ -175,12 +183,22 @@ namespace Vintagestory.GameContent
             float glitchEffectExtraStrength = tempStabilitySystem.GetGlitchEffectExtraStrength();
 
             double targetGlitchEffectStrength = Math.Max(0, Math.Max(0, (0.2f - ownStability) * 1 / 0.2f) + glitchEffectExtraStrength);
-            glitchEffectStrength += (targetGlitchEffectStrength - glitchEffectStrength) * deltaTime;
+            glitchEffectStrength += (targetGlitchEffectStrength - glitchEffectStrength) * changeSpeed;
             glitchEffectStrength = GameMath.Clamp(glitchEffectStrength, 0, 1.1f);
 
             double targetFogEffectStrength = Math.Max(0, Math.Max(0, (0.3f - ownStability) * 1 / 0.3f) + glitchEffectExtraStrength);
-            fogEffectStrength += (targetFogEffectStrength - fogEffectStrength) * deltaTime;
+            fogEffectStrength += (targetFogEffectStrength - fogEffectStrength) * changeSpeed;
             fogEffectStrength = GameMath.Clamp(fogEffectStrength, 0, 1.1f);
+
+            double targetRustPrecipStrength = Math.Max(0, Math.Max(0, (0.3f - ownStability) * 1 / 0.3f) + glitchEffectExtraStrength);
+            rustPrecipColorStrength += (targetRustPrecipStrength - rustPrecipColorStrength) * changeSpeed;
+            rustPrecipColorStrength = GameMath.Clamp(rustPrecipColorStrength, 0, 1f);
+
+            if (precipParticleSys != null)
+            {
+                precipParticleSys.particleColor = ColorUtil.ColorOverlay(WeatherSimulationParticles.waterColor, WeatherSimulationParticles.lowStabColor, (float)rustPrecipColorStrength);
+            }
+
 
             hereTempStabChangeVelocity = hereStability - 1;
 
@@ -283,6 +301,7 @@ namespace Vintagestory.GameContent
 
             // Effects            
 
+            float fadeSpeed = 3f;
 
             // Sounds
 
@@ -293,10 +312,10 @@ namespace Vintagestory.GameContent
                     tempStabSoundDrain.Start();
                 }
 
-                tempStabSoundDrain.FadeTo(Math.Min(1, 3 * ( 1 - hereStability)), 0.95f, (s) => {  });
+                tempStabSoundDrain.FadeTo(Math.Min(1, 3 * ( 1 - hereStability)), 0.95f * fadeSpeed, (s) => {  });
             } else
             {
-                tempStabSoundDrain.FadeTo(0, 0.95f, (s) => { tempStabSoundDrain.Stop(); });
+                tempStabSoundDrain.FadeTo(0, 0.95f * fadeSpeed, (s) => { tempStabSoundDrain.Stop(); });
             }
 
             SurfaceMusicTrack.ShouldPlayMusic = ownStability > 0.45f;
@@ -310,10 +329,10 @@ namespace Vintagestory.GameContent
                 }
 
                 float volume = (0.4f - (float)ownStability) * 1/0.4f;
-                tempStabSoundLow.FadeTo(Math.Min(1, volume), 0.95f, (s) => {  });
+                tempStabSoundLow.FadeTo(Math.Min(1, volume), 0.95f * fadeSpeed, (s) => {  });
             } else
             {
-                tempStabSoundLow.FadeTo(0, 0.95f, (s) => { tempStabSoundLow.Stop(); });
+                tempStabSoundLow.FadeTo(0, 0.95f * fadeSpeed, (s) => { tempStabSoundLow.Stop(); });
             }
 
             if (ownStability < 0.25f)
@@ -324,10 +343,10 @@ namespace Vintagestory.GameContent
                 }
 
                 float volume = (0.25f - (float)ownStability)*1/0.25f;
-                tempStabSoundVeryLow.FadeTo(Math.Min(1, volume)/5f, 0.95f, (s) => { });
+                tempStabSoundVeryLow.FadeTo(Math.Min(1, volume)/5f, 0.95f * fadeSpeed, (s) => { });
             } else
             {
-                tempStabSoundVeryLow.FadeTo(0, 0.95f, (s) => { tempStabSoundVeryLow.Stop(); });
+                tempStabSoundVeryLow.FadeTo(0, 0.95f * fadeSpeed, (s) => { tempStabSoundVeryLow.Stop(); });
             }
         }
 

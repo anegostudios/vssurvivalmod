@@ -35,6 +35,8 @@ namespace Vintagestory.GameContent
 
             tickGrowthProbability = Attributes?["tickGrowthProbability"] != null ? Attributes["tickGrowthProbability"].AsFloat(defaultGrowthProbability) : defaultGrowthProbability;
             roomreg = api.ModLoader.GetModSystem<RoomRegistry>();
+
+            WaveFlagMinY = 0.5f;
         }
 
         public override void OnJsonTesselation(ref MeshData sourceMesh, BlockPos pos, int[] chunkExtIds, ushort[] chunkLightExt, int extIndex3d)
@@ -50,15 +52,23 @@ namespace Vintagestory.GameContent
 
             int sunLightLevel = chunkLightExt[extIndex3d] & 31;
             bool waveoff = sunLightLevel < 14;
-
             setLeaveWaveFlags(sourceMesh, waveoff);
+        }
+
+        public override void OnDecalTesselation(IWorldAccessor world, MeshData decalMesh, BlockPos pos)
+        {
+            base.OnDecalTesselation(world, decalMesh, pos);
+
+            int sunLightLevel = world.BlockAccessor.GetLightLevel(pos, EnumLightLevelType.OnlySunLight);
+            bool waveoff = sunLightLevel < 14;
+            setLeaveWaveFlags(decalMesh, waveoff);
         }
 
 
         void setLeaveWaveFlags(MeshData sourceMesh, bool off)
         {
-            int leaveWave = VertexFlags.LeavesWindWaveBitMask;
-            int clearFlags = (~VertexFlags.LeavesWindWaveBitMask);
+            int leaveWave = VertexFlags.All;
+            int clearFlags = (~VertexFlags.LeavesWindWaveBitMask) & (~VertexFlags.FoliageWindWaveBitMask) & (~VertexFlags.GroundDistanceBitMask);
 
             // Iterate over each element face
             for (int vertexNum = 0; vertexNum < sourceMesh.GetVerticesCount(); vertexNum++)
@@ -131,6 +141,19 @@ namespace Vintagestory.GameContent
             return stage;
         }
 
+
+        public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1)
+        {
+            ItemStack[] drops = base.GetDrops(world, pos, byPlayer, dropQuantityMultiplier);
+
+            BlockEntityFarmland befarmland = world.BlockAccessor.GetBlockEntity(pos.DownCopy()) as BlockEntityFarmland;
+            if (befarmland != null)
+            {
+                drops = befarmland.GetDrops(drops);
+            }
+
+            return drops;
+        }
 
         public override string GetPlacedBlockInfo(IWorldAccessor world, BlockPos pos, IPlayer forPlayer)
         {

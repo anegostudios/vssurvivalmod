@@ -109,7 +109,7 @@ namespace Vintagestory.ServerMods
             noiseTemp = new double[paddedNoiseWidth * paddedNoiseWidth * paddedNoiseHeight];
 
             TerraGenConfig.seaLevel = (int)(0.4313725490196078 * api.WorldManager.MapSizeY);
-            api.WorldManager.SetSealLevel(TerraGenConfig.seaLevel);
+            api.WorldManager.SetSeaLevel(TerraGenConfig.seaLevel);
 
             if (GameVersion.IsAtLeastVersion(api.WorldManager.SaveGame.CreatedGameVersion, "1.12.0-dev.1"))
             {

@@ -154,7 +154,7 @@ namespace Vintagestory.GameContent
         {
             int q = OreStack.StackSize / OreStack.Collectible.CombustibleProps.SmeltedRatio;
 
-            if (OreStack.ItemAttributes?["mergeUnitsInBloomery"].AsBool() == true)
+            if (OreStack.Collectible.Attributes?.IsTrue("mergeUnitsInBloomery") == true)
             {
                 OutSlot.Itemstack = OreStack.Collectible.CombustibleProps.SmeltedStack.ResolvedItemstack.Clone();
                 OutSlot.Itemstack.StackSize = 1;

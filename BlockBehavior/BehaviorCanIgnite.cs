@@ -68,8 +68,9 @@ namespace Vintagestory.GameContent
                 ModelTransform tf = new ModelTransform();
                 tf.EnsureDefaultValues();
 
-                tf.Translation.Set(0, -Math.Min(1.1f / 3, secondsUsed * 4 / 3f), -Math.Min(1.1f, secondsUsed * 4));
-                tf.Rotation.X = -Math.Min(85, secondsUsed * 90 * 4f);
+                tf.Translation.Set(0, Math.Min(1.1f / 3, secondsUsed * 4 / 3f)/2, -Math.Min(1.1f, secondsUsed * 4));
+                tf.Rotation.X = -Math.Min(30, secondsUsed * 90 * 2f);
+                tf.Rotation.Z = -Math.Min(20, secondsUsed * 90 * 4f);
                 byEntity.Controls.UsingHeldItemTransformBefore = tf;
 
 

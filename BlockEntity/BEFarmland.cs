@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API;
 using Vintagestory.API.Client;
@@ -8,6 +9,7 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -64,18 +66,30 @@ namespace Vintagestory.GameContent
         protected float lossPerLevel = 0.1f;
 
 
+        bool unripeCropColdDamaged;
+        bool unripeHeatDamaged;
+        bool ripeCropColdDamaged;
+
+        WeatherSystemBase wsys;
+        Vec3d tmpPos = new Vec3d();
+        float lastWaterDistance = 99;
+        double lastMoistureLevelUpdateTotalDays;
+
+        RoomRegistry roomreg;
+        public int roomness;
+
 
         public override void Initialize(ICoreAPI api)
         {
             base.Initialize(api);
             upPos = base.Pos.UpCopy();
+            wsys = api.ModLoader.GetModSystem<WeatherSystemBase>();
 
             if (api is ICoreServerAPI)
             {
                 RegisterGameTickListener(Update, 3500);
-
                 api.ModLoader.GetModSystem<POIRegistry>().AddPOI(this);
-                wsys = api.ModLoader.GetModSystem<WeatherSystemBase>();
+                roomreg = Api.ModLoader.GetModSystem<RoomRegistry>();
             }
 
             
@@ -91,8 +105,7 @@ namespace Vintagestory.GameContent
                     {
                         totalWeedChance += weedNames[i].Chance;
                     }
-                }
-                
+                }   
             }
         }
 
@@ -101,6 +114,7 @@ namespace Vintagestory.GameContent
         {
             base.OnBlockPlaced(byItemStack);
         }
+
 
         public void CreatedFromSoil(Block block)
         {
@@ -116,6 +130,8 @@ namespace Vintagestory.GameContent
             nutrients[2] = originalFertility;
 
             totalHoursLastUpdate = Api.World.Calendar.TotalHours;
+
+            tryUpdateMoistureLevel(Api.World.Calendar.TotalDays, true);
         }
 
         public bool OnBlockInteract(IPlayer byPlayer)
@@ -139,6 +155,45 @@ namespace Vintagestory.GameContent
             return true;
         }
 
+        public ItemStack[] GetDrops(ItemStack[] drops)
+        {
+            if (!ripeCropColdDamaged && !unripeCropColdDamaged && !unripeHeatDamaged) return drops;
+            if (!Api.World.Config.GetString("harshWinters").ToBool(true)) return drops;
+
+            List<ItemStack> stacks = new List<ItemStack>();
+
+            var cropProps = GetCrop()?.CropProps;
+            if (cropProps == null) return drops;
+
+            float mul = 1f;
+            if (ripeCropColdDamaged) mul = cropProps.ColdDamageRipeMul;
+            if (unripeHeatDamaged || unripeCropColdDamaged) mul = cropProps.DamageGrowthStuntMul;
+
+            for (int i = 0; i < drops.Length; i++)
+            {
+                ItemStack stack = drops[i];
+                if (stack.Collectible.NutritionProps == null)
+                {
+                    stacks.Add(stack);
+                    continue;
+                }
+
+                float q = stack.StackSize * mul;
+                float frac = q - (int)q;
+                stack.StackSize = (int)q + (Api.World.Rand.NextDouble() > frac ? 1 : 0);
+
+                if (stack.StackSize > 0)
+                {
+                    stacks.Add(stack);
+                }
+            }
+
+            ripeCropColdDamaged = false;
+            unripeCropColdDamaged = false;
+            MarkDirty(true);
+
+            return stacks.ToArray();
+        }
 
         bool farmlandIsAtChunkEdge = false;
 
@@ -155,8 +210,7 @@ namespace Vintagestory.GameContent
                 {
                     if (block.LiquidCode == "water")
                     {
-                        waterDistance = Pos.DistanceTo(pos);
-                        return false;
+                        waterDistance = Math.Min(waterDistance, Math.Max(Math.Abs(pos.X - Pos.X), Math.Abs(pos.Z - Pos.Z)));
                     }
                     return true;
                 },
@@ -168,7 +222,7 @@ namespace Vintagestory.GameContent
 
             lastWaterSearchedTotalHours = Api.World.Calendar.TotalHours;
 
-            if (waterDistance < 3.5f)
+            if (waterDistance < 4f)
             {
                 //if (!IsWatered) MarkDirty(true);
                 //lastWateredTotalHours = Api.World.Calendar.TotalHours;
@@ -185,38 +239,61 @@ namespace Vintagestory.GameContent
 
 
 
-        WeatherSystemBase wsys;
-        Vec3d tmpPos = new Vec3d();
-        
-        bool tryUpdateWateredStateForDate(double totalDays, bool searchNearbyWater)
+        bool tryUpdateMoistureLevel(double totalDays, bool searchNearbyWater)
         {
-            tmpPos.Set(Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5);
-            
-            double rainLevel = wsys.GetPrecipitation(tmpPos.X, tmpPos.Y, tmpPos.Z, totalDays);
-
-            bool hasRain = rainLevel > 0.01 && Api.World.BlockAccessor.GetRainMapHeightAt(Pos.X, Pos.Z) <= Pos.Y + 1;
-
-            if (hasRain)
-            {
-                moistureLevel = GameMath.Clamp(moistureLevel + (float)rainLevel / 3f, 0, 1);
-                UpdateFarmlandBlock();
-            }
-
-            //if (!IsWatered && nowTotalHours - lastWateredTotalHours >= totalHoursWaterRetention - 1 && (nowTotalHours - lastWaterSearchedTotalHours) >= 0.5f)
+            float dist = 99;
             if (searchNearbyWater)
             {
                 EnumWaterSearchResult res;
-                float dist = GetNearbyWaterDistance(out res);
+                dist = GetNearbyWaterDistance(out res);
                 if (res == EnumWaterSearchResult.Deferred) return false; // Wait with updating until neighbouring chunks are loaded
-                if (res == EnumWaterSearchResult.Found)
-                {
-                    moistureLevel = Math.Min(moistureLevel, Math.Max(0.33f, dist / 3.5f));
-                    UpdateFarmlandBlock();
-                }
+                if (res != EnumWaterSearchResult.Found) dist = 99;
+
+                lastWaterDistance = dist;
             }
+
+            updateMoistureLevel(totalDays, dist);
 
             return true;
         }
+    
+
+        bool updateMoistureLevel(double totalDays, float waterDistance)
+        {
+            tmpPos.Set(Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5);
+
+            double hoursPassed = Math.Min((totalDays - lastMoistureLevelUpdateTotalDays) * Api.World.Calendar.HoursPerDay, 48);
+            if (hoursPassed < 0.03f)
+            {
+                // Get wet from a water source
+                moistureLevel = Math.Max(moistureLevel, GameMath.Clamp(1 - waterDistance / 4f, 0, 1));
+
+                return true;
+            }
+
+            // Dry out
+            moistureLevel = Math.Max(0, moistureLevel - (float)hoursPassed / 48f);
+            
+            // Get wet from a water source
+            moistureLevel = Math.Max(moistureLevel, GameMath.Clamp(1 - waterDistance / 4f, 0, 1));
+
+            // Get wet from all the rainfall since last update
+            if (Api.World.BlockAccessor.GetRainMapHeightAt(Pos.X, Pos.Z) <= Pos.Y + 1) {
+                while (hoursPassed > 0)
+                {
+                    double rainLevel = wsys.GetPrecipitation(tmpPos.X, tmpPos.Y, tmpPos.Z, totalDays - hoursPassed * Api.World.Calendar.HoursPerDay / 2f);
+                    moistureLevel = GameMath.Clamp(moistureLevel + (float)rainLevel / 3f, 0, 1);
+                    hoursPassed--;
+                }
+            }
+
+            UpdateFarmlandBlock();
+
+            lastMoistureLevelUpdateTotalDays = totalDays;
+
+            return true;
+        }
+
 
         private void Update(float dt)
         {
@@ -224,17 +301,16 @@ namespace Vintagestory.GameContent
             bool nearbyWaterTested = false;
 
             double nowTotalHours = Api.World.Calendar.TotalHours;
-            double hoursPassed = nowTotalHours - totalHoursLastUpdate;
+            double hourIntervall = 3 + rand.NextDouble();
 
-            if (hoursPassed < 1)
+            if ((nowTotalHours - totalHoursLastUpdate) < hourIntervall)
             {
-                tryUpdateWateredStateForDate(Api.World.Calendar.TotalDays, false);
+                updateMoistureLevel(Api.World.Calendar.TotalDays, lastWaterDistance);
                 return;
             }
 
-
             // Slow down growth on bad light levels
-            int sunlight = Api.World.BlockAccessor.GetLightLevel(base.Pos.UpCopy(), EnumLightLevelType.MaxLight);
+            int sunlight = Api.World.BlockAccessor.GetLightLevel(Pos.UpCopy(), EnumLightLevelType.MaxLight);
             double lightGrowthSpeedFactor = GameMath.Clamp(1 - (delayGrowthBelowSunLight - sunlight) * lossPerLevel, 0, 1);
 
             Block upblock = Api.World.BlockAccessor.GetBlock(upPos);
@@ -250,18 +326,79 @@ namespace Vintagestory.GameContent
             }
 
             // Let's increase fertility every 3-4 game hours
-            double hourIntervall = (3 + rand.NextDouble());            
+            
             bool growTallGrass = false;
             float[] npkRegain = new float[3];
 
-            
+            float waterDistance = 99;
+            float moistBonus = 0;
+
+            // Don't update more than a year
+            totalHoursLastUpdate = Math.Max(totalHoursLastUpdate, nowTotalHours - Api.World.Calendar.DaysPerYear * Api.World.Calendar.HoursPerDay);
+
+            Block cropBlock = GetCrop();
+            bool hasCrop = cropBlock != null;
+            bool hasRipeCrop = HasRipeCrop();
+
+            if (Api.World.BlockAccessor.GetRainMapHeightAt(Pos) > Pos.Y) // Fast pre-check
+            {
+                Room room = roomreg?.GetRoomForPosition(Pos);
+                roomness = (room != null && room.SkylightCount > room.NonSkylightCount && room.ExitCount == 0) ? 1 : 0;
+            } else
+            {
+                roomness = 0;
+            }
+
             // Fast forward in 3-4 hour intervalls
             while ((nowTotalHours - totalHoursLastUpdate) > hourIntervall)
             {
+                if (!nearbyWaterTested)
+                {
+                    EnumWaterSearchResult res;
+                    waterDistance = GetNearbyWaterDistance(out res);
+                    if (res == EnumWaterSearchResult.Deferred) return; // Wait with updating until neighbouring chunks are loaded
+                    if (res == EnumWaterSearchResult.NotFound) waterDistance = 99;
+                    nearbyWaterTested = true;
+
+                    lastWaterDistance = waterDistance;
+                }
+
+                updateMoistureLevel(totalHoursLastUpdate / Api.World.Calendar.HoursPerDay, waterDistance);
+
                 totalHoursLastUpdate += hourIntervall;
                 hourIntervall = (3 + rand.NextDouble());
 
                 ClimateCondition conds = Api.World.BlockAccessor.GetClimateAt(Pos, EnumGetClimateMode.ForSuppliedDateValues, totalHoursLastUpdate / Api.World.Calendar.HoursPerDay);
+                if (roomness > 0)
+                {
+                    conds.Temperature += 5;
+                }
+
+                if (cropBlock?.CropProps != null && conds.Temperature < cropBlock.CropProps.ColdDamageBelow)
+                {
+                    if (hasRipeCrop)
+                    {
+                        ripeCropColdDamaged = true;
+                    }
+                    else if (hasCrop)
+                    {
+                        unripeCropColdDamaged = true;
+                    }
+                } else if (!hasCrop)
+                {
+                    ripeCropColdDamaged = false;
+                    unripeCropColdDamaged = false;
+                }
+
+
+                if (cropBlock?.CropProps != null && conds.Temperature > cropBlock.CropProps.HeatDamageAbove && hasCrop)
+                {
+                    unripeHeatDamaged = true;
+                }
+                else if (!hasCrop)
+                {
+                    unripeHeatDamaged = false;
+                }
 
                 // Stop growth and fertility recovery below zero degrees
                 // 10% growth speed at 1°C
@@ -309,13 +446,8 @@ namespace Vintagestory.GameContent
                     }
                 }
 
-                moistureLevel = Math.Max(0, moistureLevel -(float)hourIntervall / 48f);
-
-                if (!tryUpdateWateredStateForDate(Api.World.Calendar.TotalDays, !nearbyWaterTested))
-                {
-                    return; // Wait with updating until neighbouring chunks are loaded
-                }
-                nearbyWaterTested = true;
+                
+                moistBonus += Math.Max(0, moistureLevel - 0.5f) * 2;
 
                 if (moistureLevel < 0.1)
                 {
@@ -326,8 +458,9 @@ namespace Vintagestory.GameContent
                 if (totalHoursNextGrowthState <= totalHoursLastUpdate)
                 {
                     TryGrowCrop(totalHoursForNextStage);
-                    totalHoursForNextStage += hoursNextStage;
-                    totalHoursNextGrowthState = totalHoursForNextStage + lightHoursPenalty;
+                    totalHoursForNextStage += hoursNextStage - moistBonus;
+                    totalHoursNextGrowthState = totalHoursForNextStage + lightHoursPenalty - moistBonus;
+                    moistBonus = 0;
                 }
             }
 
@@ -353,7 +486,7 @@ namespace Vintagestory.GameContent
 
 
             UpdateFarmlandBlock();
-            Api.World.BlockAccessor.MarkBlockEntityDirty(base.Pos);
+            Api.World.BlockAccessor.MarkBlockEntityDirty(Pos);
         }
 
         public double GetHoursForNextStage()
@@ -468,7 +601,7 @@ namespace Vintagestory.GameContent
 
         public bool IsVisiblyMoist
         {
-            get { return moistureLevel > 0.33; }
+            get { return moistureLevel > 0.1; }
         }
 
         void UpdateFarmlandBlock()
@@ -549,8 +682,17 @@ namespace Vintagestory.GameContent
                 totalHoursLastUpdate = tree.GetDouble("totalDaysFertilityCheck") * 24;
             }
 
-            TreeAttribute cropAttrs = tree["cropAttrs"] as TreeAttribute;
+            lastMoistureLevelUpdateTotalDays = tree.GetDouble("lastMoistureLevelUpdateTotalDays");
+
+            cropAttrs = tree["cropAttrs"] as TreeAttribute;
             if (cropAttrs == null) cropAttrs = new TreeAttribute();
+
+            lastWaterDistance = tree.GetFloat("lastWaterDistance");
+
+            unripeCropColdDamaged = tree.GetBool("unripeCropExposedToFrost");
+            ripeCropColdDamaged = tree.GetBool("ripeCropExposedToFrost");
+
+            roomness = tree.GetInt("roomness");
         }
 
         public override void ToTreeAttributes(ITreeAttribute tree)
@@ -569,6 +711,14 @@ namespace Vintagestory.GameContent
             tree.SetInt("originalFertility", originalFertility);
             tree.SetDouble("totalHoursForNextStage", totalHoursForNextStage);
             tree.SetDouble("totalHoursFertilityCheck", totalHoursLastUpdate);
+            tree.SetDouble("lastMoistureLevelUpdateTotalDays", lastMoistureLevelUpdateTotalDays);
+            tree.SetFloat("lastWaterDistance", lastWaterDistance);
+
+            tree.SetBool("ripeCropExposedToFrost", ripeCropColdDamaged);
+            tree.SetBool("unripeCropExposedToFrost", unripeCropColdDamaged);
+
+            tree.SetInt("roomness", roomness);
+
             tree["cropAttrs"] = cropAttrs;
         }
 
@@ -584,7 +734,34 @@ namespace Vintagestory.GameContent
                 dsc.AppendLine(Lang.Get("Slow Release Nutrients: N {0}%, P {1}%, K {2}%", snn, snp, snk));
             }
 
-            dsc.AppendLine(Lang.Get("Growth speeds: N Crop: {0}%, P Crop: {1}%, K Crop: {2}%", Math.Round(100 * 1 / LowNutrientPenalty(EnumSoilNutrient.N), 0), Math.Round(100 * 1 / LowNutrientPenalty(EnumSoilNutrient.P), 0), Math.Round(100 * 1 / LowNutrientPenalty(EnumSoilNutrient.K), 0)));
+            dsc.AppendLine(Lang.Get("Growth speeds: N Crop: {0}%, P Crop: {1}%, K Crop: {2}%\nMoisture: {3}%", 
+                Math.Round(100 * 1 / LowNutrientPenalty(EnumSoilNutrient.N), 0), 
+                Math.Round(100 * 1 / LowNutrientPenalty(EnumSoilNutrient.P), 0), 
+                Math.Round(100 * 1 / LowNutrientPenalty(EnumSoilNutrient.K), 0),
+                Math.Round(moistureLevel * 100, 0)
+            ));
+
+            var cropProps = GetCrop()?.CropProps;
+            if ((ripeCropColdDamaged || unripeCropColdDamaged) && cropProps != null)
+            {
+                if (ripeCropColdDamaged)
+                {
+                    dsc.AppendLine(Lang.Get("Cold damaged, will only yield {0}% of produce", (int)(cropProps.ColdDamageRipeMul * 100)));
+                }
+                else if (unripeCropColdDamaged)
+                {
+                    dsc.AppendLine(Lang.Get("Growth stunted due to cold, will only yield {0}% of produce", (int)(cropProps.DamageGrowthStuntMul * 100)));
+                } else if (unripeHeatDamaged)
+                {
+                    dsc.AppendLine(Lang.Get("Growth stunted due to heat, will only yield {0}% of produce", (int)(cropProps.DamageGrowthStuntMul * 100)));
+                }
+            }
+
+            if (roomness > 0)
+            {
+                dsc.AppendLine(Lang.Get("+5°C from greenhouse"));
+            }
+
 
             dsc.ToString();
         }
@@ -592,7 +769,7 @@ namespace Vintagestory.GameContent
 
         public void WaterFarmland(float dt, bool waterNeightbours = true)
         {
-            moistureLevel += dt;
+            moistureLevel = Math.Min(1, moistureLevel + dt / 2);
 
             if (waterNeightbours)
             {
@@ -603,7 +780,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            UpdateFarmlandBlock();
+            updateMoistureLevel(Api.World.Calendar.TotalDays, lastWaterDistance);
         }
 
         public double TotalHoursForNextStage

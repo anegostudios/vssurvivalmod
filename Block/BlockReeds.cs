@@ -10,6 +10,25 @@ namespace Vintagestory.GameContent
     public class BlockReeds : BlockPlant
     {
         WorldInteraction[] interactions = null;
+        string climateColorMapInt;
+        string seasonColorMapInt;
+
+        public override string ClimateColorMapForMap => climateColorMapInt;
+        public override string SeasonColorMapForMap => seasonColorMapInt;
+
+        public override void OnCollectTextures(ICoreAPI api, ITextureLocationDictionary textureDict)
+        {
+            base.OnCollectTextures(api, textureDict);
+
+            climateColorMapInt = ClimateColorMap;
+            seasonColorMapInt = SeasonColorMap;
+
+            if (api.Side == EnumAppSide.Client && SeasonColorMap == null)
+            {
+                climateColorMapInt = (api as ICoreClientAPI).TesselatorManager.GetCachedShape(Shape.Base)?.Elements[2].ClimateColorMap;
+                seasonColorMapInt = (api as ICoreClientAPI).TesselatorManager.GetCachedShape(Shape.Base)?.Elements[2].SeasonColorMap;
+            }
+        }
 
         public override void OnLoaded(ICoreAPI api)
         {
@@ -220,7 +239,8 @@ namespace Vintagestory.GameContent
 
         public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing)
         {
-            return capi.World.ApplyColorMapOnRgba(ClimateColorMap, SeasonColorMap, capi.BlockTextureAtlas.GetRandomColor(Textures.Last().Value.Baked.TextureSubId), pos.X, pos.Y, pos.Z);
+            return capi.World.ApplyColorMapOnRgba(ClimateColorMapForMap, SeasonColorMapForMap, capi.BlockTextureAtlas.GetRandomColor(Textures.Last().Value.Baked.TextureSubId), pos.X, pos.Y, pos.Z);
+            //return base.GetRandomColor(capi, pos, facing);
         }
 
         public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)

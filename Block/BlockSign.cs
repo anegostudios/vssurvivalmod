@@ -44,7 +44,7 @@ namespace Vintagestory.GameContent
             BlockPos supportingPos = bs.Position.AddCopy(bs.Face.GetOpposite());
             Block supportingBlock = world.BlockAccessor.GetBlock(supportingPos);
 
-            if (bs.Face.IsHorizontal && (supportingBlock.CanAttachBlockAt(world.BlockAccessor, this, bs.Position, bs.Face) || supportingBlock.Attributes?["partialAttachable"].AsBool() == true))
+            if (bs.Face.IsHorizontal && (supportingBlock.CanAttachBlockAt(world.BlockAccessor, this, bs.Position, bs.Face) || supportingBlock.Attributes?.IsTrue("partialAttachable") == true))
             {
                 Block wallblock = world.BlockAccessor.GetBlock(CodeWithParts("wall", bs.Face.GetOpposite().Code));
 

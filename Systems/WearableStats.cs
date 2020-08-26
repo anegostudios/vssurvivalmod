@@ -154,7 +154,7 @@ namespace Vintagestory.GameContent
             }
 
             // Durability loss is the one before the damage reductions
-            float durabilityLoss = 0.5f + damage * Math.Max(0.5f, (weaponTier - protMods.ProtectionTier) * 0.75f);
+            float durabilityLoss = 0.5f + damage * Math.Max(0.5f, (weaponTier - protMods.ProtectionTier) * 3);
             int durabilityLossInt = GameMath.RoundRandom(api.World.Rand, durabilityLoss);
 
             // Now reduce the damage
@@ -162,6 +162,11 @@ namespace Vintagestory.GameContent
             damage *= 1 - Math.Max(0, percentProt);
             
             armorSlot.Itemstack.Collectible.DamageItem(api.World, player.Entity, armorSlot, durabilityLossInt);
+
+            if (armorSlot.Empty)
+            {
+                api.World.PlaySoundAt(new AssetLocation("sounds/effect/toolbreak"), player);
+            }
 
             return damage;
         }

@@ -150,7 +150,7 @@ namespace Vintagestory.GameContent
         {
             base.Initialize(api);
 
-            inventory.LateInitialize("quern-1", api);            
+            inventory.LateInitialize("quern-" + Pos.X + "/" + Pos.Y + "/" + Pos.Z, api);
 
             RegisterGameTickListener(Every100ms, 100);
             RegisterGameTickListener(Every500ms, 500);
@@ -271,14 +271,14 @@ namespace Vintagestory.GameContent
             if (CanGrind() && grindSpeed > 0)
             {
                 inputGrindTime += dt * grindSpeed;
-
+                
                 if (inputGrindTime >= maxGrindingTime())
                 {
                     grindInput();
-                    inputGrindTime = 0;
-                    MarkDirty();
+                    inputGrindTime = 0;                    
                 }
 
+                MarkDirty();
             }
         }
 
@@ -317,7 +317,7 @@ namespace Vintagestory.GameContent
         // Sync to client every 500ms
         private void Every500ms(float dt)
         {
-            if (Api.Side == EnumAppSide.Server && (GrindSpeed > 0  || prevInputGrindTime != inputGrindTime))
+            if (Api.Side == EnumAppSide.Server && (GrindSpeed > 0  || prevInputGrindTime != inputGrindTime) && inventory[0].Itemstack?.Collectible.GrindingProps != null)  //don't spam update packets when empty, as inputGrindTime is irrelevant when empty
             {
                 MarkDirty();
             }
@@ -398,9 +398,9 @@ namespace Vintagestory.GameContent
 
         private void OnSlotModifid(int slotid)
         {
-            if (Api is ICoreClientAPI && clientDialog?.Attributes != null)
+            if (Api is ICoreClientAPI)
             {
-                SetDialogValues(clientDialog.Attributes);
+                clientDialog.Update(inputGrindTime, maxGrindingTime());
             }
 
             if (slotid == 0)
@@ -460,27 +460,15 @@ namespace Vintagestory.GameContent
 
             if (Api.World is IServerWorldAccessor)
             {
-                byte[] data;
-
-                using (MemoryStream ms = new MemoryStream())
-                {
-                    BinaryWriter writer = new BinaryWriter(ms);
-                    writer.Write("BlockEntityQuern");
-                    writer.Write(DialogTitle);
-                    TreeAttribute tree = new TreeAttribute();
-                    inventory.ToTreeAttributes(tree);
-                    tree.ToBytes(writer);
-                    data = ms.ToArray();
-                }
-
                 ((ICoreServerAPI)Api).Network.SendBlockEntityPacket(
                     (IServerPlayer)byPlayer,
                     Pos.X, Pos.Y, Pos.Z,
                     (int)EnumBlockStovePacket.OpenGUI,
-                    data
+                    null
                 );
 
                 byPlayer.InventoryManager.OpenInventory(inventory);
+                MarkDirty();
             }
 
             return true;
@@ -506,7 +494,7 @@ namespace Vintagestory.GameContent
                 List<int> clientIds = new List<int>((tree["clientIdsGrinding"] as IntArrayAttribute).value);
 
                 quantityPlayersGrinding = clientIds.Count;
-
+                
                 string[] playeruids = playersGrinding.Keys.ToArray();
 
                 foreach (var uid in playeruids)
@@ -525,26 +513,18 @@ namespace Vintagestory.GameContent
                 for (int i = 0; i < clientIds.Count; i++)
                 {
                     IPlayer plr = worldForResolving.AllPlayers.FirstOrDefault(p => p.ClientId == clientIds[i]);
-                    if (plr != null) playersGrinding.Add(plr.PlayerUID, Api.World.ElapsedMilliseconds);
+                    if (plr != null) playersGrinding.Add(plr.PlayerUID, worldForResolving.ElapsedMilliseconds);
                 }
                 
                 updateGrindingState();
             }
 
 
-            if (Api?.Side == EnumAppSide.Client && clientDialog?.Attributes != null && clientDialog.IsOpened())
+            if (Api?.Side == EnumAppSide.Client && clientDialog != null)
             {
-                SetDialogValues(clientDialog.Attributes);
+                clientDialog.Update(inputGrindTime, maxGrindingTime());
             }
         }
-
-
-        void SetDialogValues(ITreeAttribute dialogTree)
-        {
-            dialogTree.SetFloat("inputGrindTime", inputGrindTime);
-            dialogTree.SetFloat("maxGrindTime", maxGrindingTime());            
-        }
-
 
 
 
@@ -564,6 +544,7 @@ namespace Vintagestory.GameContent
                 if (plr == null) continue;
                 vals.Add(plr.ClientId);
             }
+
 
             tree["clientIdsGrinding"] = new IntArrayAttribute(vals.ToArray());
         }
@@ -607,43 +588,20 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            if (packetid == (int)EnumBlockStovePacket.CloseGUI)
+            if (packetid == (int)EnumBlockStovePacket.CloseGUI && player.InventoryManager != null)
             {
-                if (player.InventoryManager != null)
-                {
-                    player.InventoryManager.CloseInventory(Inventory);
-                }
+                player.InventoryManager.CloseInventory(Inventory);
             }
         }
 
         public override void OnReceivedServerPacket(int packetid, byte[] data)
         {
-            if (packetid == (int)EnumBlockStovePacket.OpenGUI)
+            if (packetid == (int)EnumBlockStovePacket.OpenGUI && (clientDialog == null || !clientDialog.IsOpened()))
             {
-                using (MemoryStream ms = new MemoryStream(data))
-                {
-                    BinaryReader reader = new BinaryReader(ms);
-
-                    string dialogClassName = reader.ReadString();
-                    string dialogTitle = reader.ReadString();
-
-                    TreeAttribute tree = new TreeAttribute();
-                    tree.FromBytes(reader);
-                    Inventory.FromTreeAttributes(tree);
-                    Inventory.ResolveBlocksOrItems();
-
-                    IClientWorldAccessor clientWorld = (IClientWorldAccessor)Api.World;
-
-                    SyncedTreeAttribute dtree = new SyncedTreeAttribute();
-                    SetDialogValues(dtree);
-
-                    if (clientDialog == null || !clientDialog.IsOpened())
-                    {
-                        clientDialog = new GuiDialogBlockEntityQuern(dialogTitle, Inventory, Pos, dtree, Api as ICoreClientAPI);
-                        clientDialog.TryOpen();
-                        clientDialog.OnClosed += () => clientDialog = null;
-                    }
-                }
+                clientDialog = new GuiDialogBlockEntityQuern(DialogTitle, Inventory, Pos, Api as ICoreClientAPI);
+                clientDialog.TryOpen();
+                clientDialog.OnClosed += () => clientDialog = null;
+                clientDialog.Update(inputGrindTime, maxGrindingTime());
             }
 
             if (packetid == (int)EnumBlockEntityPacketId.Close)

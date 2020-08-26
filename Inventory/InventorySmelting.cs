@@ -203,8 +203,11 @@ namespace Vintagestory.GameContent
         {
             ItemStack stack = sourceSlot.Itemstack;
 
+            if (targetSlot == slots[1] && (stack.Collectible is BlockSmeltingContainer || stack.Collectible is BlockCookingContainer)) return 2.2f;
+
             if (targetSlot == slots[0] && (stack.Collectible.CombustibleProps == null || stack.Collectible.CombustibleProps.BurnTemperature <= 0)) return 0;
             if (targetSlot == slots[1] && (stack.Collectible.CombustibleProps == null || stack.Collectible.CombustibleProps.SmeltedStack  == null)) return 0.5f;
+
 
             return base.GetSuitability(sourceSlot, targetSlot, isMerge);
         }

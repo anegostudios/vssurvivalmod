@@ -52,11 +52,6 @@ namespace Vintagestory.GameContent.Mechanics
             }
         }
 
-        public override TurnDirection GetTurnDirection(BlockFacing forFacing)
-        {
-            return GetInTurnDirection();
-        }
-
         public override float GetResistance()
         {
             BEHelveHammer behh = Api.World.BlockAccessor.GetBlockEntity(Position.AddCopy(sides[0])) as BEHelveHammer;
@@ -73,18 +68,6 @@ namespace Vintagestory.GameContent.Mechanics
 
             return 0.0005f;
         }
-
-        public override float GetTorque()
-        {
-            return 0;
-        }
-
-        protected override MechPowerPath[] GetMechPowerExits(TurnDirection fromExitTurnDir)
-        {
-            // Axles just forward mechanical power in the same direction with the same turn direction
-            return new MechPowerPath[] { new MechPowerPath(fromExitTurnDir.Facing, fromExitTurnDir.Rot) };
-        }
-
 
         public bool IsAttachedToBlock()
         {

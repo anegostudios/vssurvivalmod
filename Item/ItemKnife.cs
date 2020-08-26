@@ -14,6 +14,8 @@ namespace Vintagestory.GameContent
     {
         public static SimpleParticleProperties particlesStab;
 
+        string Material => Variant["material"];
+
         static ItemKnife()
         {
             particlesStab = new SimpleParticleProperties(
@@ -90,15 +92,19 @@ namespace Vintagestory.GameContent
                     ModelTransform tf = new ModelTransform();
                     tf.EnsureDefaultValues();
 
-                    tf.Translation.Set(0, -Math.Min(0.2f, secondsUsed), Math.Min(0.6f, secondsUsed * 4));
-                    tf.Rotation.Z = Math.Min(60, secondsUsed * 90 * 4f);
-                    tf.Rotation.X = -Math.Min(135, secondsUsed * 90 * 7f);
-                    
+
+                    tf.Translation.Set(0, -Math.Min(0.2f, secondsUsed * 0.8f), -Math.Min(0.6f, secondsUsed * 3 * 0.8f));
+                    //tf.Rotation.X = Math.Min(60, secondsUsed * 90 * 4f);
+                    tf.Origin.Set(0.3f, 0, 0.5f);
+                    tf.Rotation.X = Math.Min(135, secondsUsed * 90 * 7.5f * 0.8f);
+                    tf.Rotation.Z = -Math.Min(30, secondsUsed * 90 * 1.667f * 0.8f);
+
+
                     if (secondsUsed > 1f)
                     {
-                        tf.Translation.Y -= Math.Min(0.75f, (secondsUsed - 1f) * 20);
-                        tf.Translation.X += Math.Min(0.2f, secondsUsed - 1f);
-                        tf.Rotation.Z += Math.Min(60, (secondsUsed - 1f) * 90 * 20);
+                        tf.Translation.Y += Math.Min(0.75f, (secondsUsed - 1f) * 20);
+                        tf.Translation.X -= Math.Min(0.2f, secondsUsed - 1f);
+                        tf.Rotation.Z -= Math.Min(130, (secondsUsed - 1f) * 90 * 20);
                     }
 
                     if (secondsUsed > 1.1f && !byEntity.Attributes.GetBool("stabPlayed", false))
@@ -180,8 +186,9 @@ namespace Vintagestory.GameContent
                     ModelTransform tf = new ModelTransform();
                     tf.EnsureDefaultValues();
 
-                    tf.Translation.Set(0, 0, Math.Min(0.6f, secondsUsed * 2));
+                    tf.Translation.Set(0, 0, -Math.Min(0.6f, secondsUsed * 2));
                     tf.Rotation.Y = Math.Min(20, secondsUsed * 90 * 2f);
+
 
                     if (secondsUsed > 0.4f)
                     {

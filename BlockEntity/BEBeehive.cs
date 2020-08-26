@@ -209,7 +209,7 @@ namespace Vintagestory.GameContent
             {
                 if (block.Id == 0) return;
 
-                if (block.Attributes?["beeFeed"].AsBool() == true) scanQuantityNearbyFlowers++;
+                if (block.Attributes?.IsTrue("beeFeed") == true) scanQuantityNearbyFlowers++;
 
                 if (block == emptySkepN || block == emptySkepE || block == emptySkepS || block == emptySkepW)
                 {

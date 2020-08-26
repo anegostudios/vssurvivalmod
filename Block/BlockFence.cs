@@ -1,4 +1,6 @@
 ﻿using System.Collections.Generic;
+using Vintagestory.API.Client;
+using Vintagestory.API.Client.Tesselation;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
@@ -7,6 +9,34 @@ namespace Vintagestory.GameContent
 {
     public class BlockFence : Block
     {
+        ICoreClientAPI capi;
+        Block snowLayerBlock;
+
+        public override void OnLoaded(ICoreAPI api)
+        {
+            base.OnLoaded(api);
+
+            capi = api as ICoreClientAPI;
+
+            snowLayerBlock = api.World.GetBlock(new AssetLocation("snowlayer-1"));
+        }
+
+        public override void OnJsonTesselation(ref MeshData sourceMesh, BlockPos pos, int[] chunkExtIds, ushort[] chunkLightExt, int extIndex3d)
+        {
+            // Todo: make this work
+/*            int nBlockId = chunkExtIds[extIndex3d + TileSideEnum.MoveIndex[TileSideEnum.Up]];
+            Block upblock = api.World.Blocks[nBlockId];
+
+            if (upblock.snowLevel >= 1 && snowLayerBlock != null)
+            {
+                sourceMesh = sourceMesh.Clone();
+                sourceMesh.AddMeshData(capi.TesselatorManager.GetDefaultBlockMesh(snowLayerBlock));
+                return;
+            }*/
+
+            base.OnJsonTesselation(ref sourceMesh, pos, chunkExtIds, chunkLightExt, extIndex3d);
+        }
+
         public string GetOrientations(IWorldAccessor world, BlockPos pos)
         {
             string orientations =
@@ -17,27 +47,14 @@ namespace Vintagestory.GameContent
             ;
 
             if (orientations.Length == 0) orientations = "empty";
-
-            /*if (orientations != "ngs") orientations = orientations.Replace("gs", "ngs");
-            if (orientations != "gns") orientations = orientations.Replace("gn", "gns");
-            if (orientations != "gew") orientations = orientations.Replace("ge", "gew");
-            if (orientations != "egw") orientations = orientations.Replace("gw", "egw");*/
-
             return orientations;
         }
 
         private string GetFenceCode(IWorldAccessor world, BlockPos pos, BlockFacing facing)
         {
-            /*if (IsFenceGateAt(world, pos.AddCopy(facing)))
-            {
-                return "g" + facing.Code[0];
-            }*/
-
             if (ShouldConnectAt(world, pos, facing)) return ""+facing.Code[0];
-
             return "";
         }
-
 
 
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
@@ -69,6 +86,9 @@ namespace Vintagestory.GameContent
 
                 world.BlockAccessor.SetBlock(block.BlockId, pos);
                 world.BlockAccessor.TriggerNeighbourBlockUpdate(pos);
+            } else
+            {
+                base.OnNeighbourBlockChange(world, pos, neibpos);
             }
         }
 

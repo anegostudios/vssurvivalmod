@@ -118,7 +118,7 @@ namespace Vintagestory.ServerMods
             float invChunkAreaSize = 1f / (chunksize * chunksize);
             double val = 1;
 
-            List<Block> blocktypes = Api.World.Blocks;
+            IList<Block> blocktypes = Api.World.Blocks;
 
             bool doGravel = DepositRand.NextFloat() > 0.33;
 

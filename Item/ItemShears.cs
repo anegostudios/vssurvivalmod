@@ -46,7 +46,7 @@ namespace Vintagestory.GameContent
                 if (q == 0) break;
                 BlockFacing facing = BlockFacing.FromNormal(player.Entity.ServerPos.GetViewVector()).GetOpposite();
 
-                if (!player.Entity.World.Claims.TryAccess(player, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak)) continue;
+                if (!player.Entity.World.Claims.TryAccess(player, pos, EnumBlockAccessFlags.BuildOrBreak)) continue;
                 
                 player.Entity.World.BlockAccessor.DamageBlock(pos, facing, damage);
                 q--;
@@ -78,6 +78,8 @@ namespace Vintagestory.GameContent
             
             foreach (var val in orderedPositions)
             {
+                if (!plr.Entity.World.Claims.TryAccess(plr, val.Key, EnumBlockAccessFlags.BuildOrBreak)) continue;
+
                 world.BlockAccessor.BreakBlock(val.Key, plr);
                 world.BlockAccessor.MarkBlockDirty(val.Key);
                 DamageItem(world, byEntity, itemslot);
@@ -87,8 +89,6 @@ namespace Vintagestory.GameContent
 
                 if (q >= MultiBreakQuantity || itemslot.Itemstack == null) break;
             }
-
-            //`byEntity.GetBehavior<EntityBehaviorHunger>()?.ConsumeSaturation(GameMath.Sqrt(q));
 
             return true;
         }

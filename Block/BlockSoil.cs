@@ -48,7 +48,7 @@ namespace Vintagestory.GameContent
 
         int CurrentStage()
         {
-            return GrowthStage(LastCodePart());
+            return GrowthStage(Variant["grasscoverage"]);
         }
 
 
@@ -60,12 +60,12 @@ namespace Vintagestory.GameContent
             growthBlockLayer = Attributes?["growthBlockLayer"]?.AsString("l1soilwithgrass");
             tallGrassGrowthChance = Attributes?["tallGrassGrowthChance"] != null ? Attributes["tallGrassGrowthChance"].AsFloat(0.3f) : 0.3f;
 
-            tallGrassCodes.Add(new AssetLocation("tallgrass-veryshort"));
-            tallGrassCodes.Add(new AssetLocation("tallgrass-short"));
-            tallGrassCodes.Add(new AssetLocation("tallgrass-mediumshort"));
-            tallGrassCodes.Add(new AssetLocation("tallgrass-medium"));
-            tallGrassCodes.Add(new AssetLocation("tallgrass-tall"));
-            tallGrassCodes.Add(new AssetLocation("tallgrass-verytall"));
+            tallGrassCodes.Add(new AssetLocation("tallgrass-veryshort-free"));
+            tallGrassCodes.Add(new AssetLocation("tallgrass-short-free"));
+            tallGrassCodes.Add(new AssetLocation("tallgrass-mediumshort-free"));
+            tallGrassCodes.Add(new AssetLocation("tallgrass-medium-free"));
+            tallGrassCodes.Add(new AssetLocation("tallgrass-tall-free"));
+            tallGrassCodes.Add(new AssetLocation("tallgrass-verytall-free"));
             
             if (api.Side == EnumAppSide.Server)
             {
@@ -165,7 +165,7 @@ namespace Vintagestory.GameContent
             if (offthreadRandom.NextDouble() > tallGrassGrowthChance) return null;
             Block block = world.BlockAccessor.GetBlock(abovePos);
 
-            int curTallgrassStage = (block.FirstCodePart() == "tallgrass") ? Array.IndexOf(tallGrassGrowthStages, block.LastCodePart()) : 0;
+            int curTallgrassStage = (block.FirstCodePart() == "tallgrass") ? Array.IndexOf(tallGrassGrowthStages, block.Variant["tallgrass"]) : 0;
 
             int nextTallgrassStage = Math.Min(curTallgrassStage + 1 + offthreadRandom.Next(3), tallGrassGrowthStages.Length - 1);
 
@@ -186,7 +186,7 @@ namespace Vintagestory.GameContent
         /// <returns>true if grass can grow on this block at this location, false otherwise</returns>
         protected bool canGrassGrowHere(IWorldAccessor world, BlockPos pos)
         {
-            string grasscoverage = LastCodePart();
+            string grasscoverage = Variant["grasscoverage"];
             bool isFullyGrown = "normal".Equals(grasscoverage);
 
             if (!isFullyGrown &&
@@ -211,7 +211,7 @@ namespace Vintagestory.GameContent
                 BlockLayer bl = blocklayerconfig.Blocklayers[j];
 
                 float tempDist = Math.Abs(climate.Temperature - GameMath.Clamp(climate.Temperature, bl.MinTemp, bl.MaxTemp));
-                float rainDist = Math.Abs(climate.Rainfall - GameMath.Clamp(climate.Rainfall, bl.MinRain, bl.MaxRain));
+                float rainDist = Math.Abs(climate.WorldgenRainfall - GameMath.Clamp(climate.WorldgenRainfall, bl.MinRain, bl.MaxRain));
                 float fertDist = Math.Abs(climate.Fertility - GameMath.Clamp(climate.Fertility, bl.MinFertility, bl.MaxFertility));
                 float yDist = Math.Abs((float)pos.Y / mapheight - GameMath.Min((float)pos.Y / mapheight, bl.MaxY));
 
@@ -224,7 +224,7 @@ namespace Vintagestory.GameContent
                     if (mapchunk == null) return 0;
 
                     int topblockid = mapchunk.TopRockIdMap[(pos.Z % chunksize) * chunksize + (pos.X % chunksize)];
-                    int blockId = bl.GetBlockId(posRand, climate.Temperature, climate.Rainfall, climate.Fertility, topblockid);
+                    int blockId = bl.GetBlockId(posRand, climate.Temperature, climate.WorldgenRainfall, climate.Fertility, topblockid);
 
                     Block block = world.Blocks[blockId];
                     if (block is BlockSoil)
@@ -263,7 +263,7 @@ namespace Vintagestory.GameContent
         /// <returns>true if the neighbor block can spread grass, false otherwise</returns>
         protected bool grassCanSpreadFrom(Block block)
         {
-            return block.Attributes?["spreadsGrass"].AsBool(true) == true;
+            return block.Attributes?.IsTrue("spreadsGrass") == true;
         }
 
 
@@ -275,7 +275,7 @@ namespace Vintagestory.GameContent
 
         public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing)
         {
-            if (facing == BlockFacing.UP && LastCodePart() != "none")
+            if (facing == BlockFacing.UP && Variant["grasscoverage"] != "none")
             {
                 return capi.World.ApplyColorMapOnRgba(ClimateColorMap, SeasonColorMap, capi.BlockTextureAtlas.GetRandomColor(Textures["specialSecondTexture"].Baked.TextureSubId), pos.X, pos.Y, pos.Z);
             }
@@ -287,7 +287,7 @@ namespace Vintagestory.GameContent
         {
             base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
 
-            var fertility = inSlot.Itemstack.Block.LastCodePart(1);
+            var fertility = inSlot.Itemstack.Block.Variant["fertility"];
             var farmland = world.GetBlock(new AssetLocation("farmland-dry-" + fertility));
             if (farmland == null) return;
             var fert_value = farmland.Fertility;

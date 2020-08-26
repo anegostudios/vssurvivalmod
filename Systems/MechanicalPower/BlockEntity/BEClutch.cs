@@ -252,5 +252,13 @@ namespace Vintagestory.GameContent.Mechanics
             base.GetBlockInfo(forPlayer, sb);
             sb.AppendLine(string.Format(Lang.Get(Engaged ? "Engaged" : "Disengaged")));
         }
+
+        public void onNeighbourChange(BlockPos neibpos)
+        {
+            if (Engaged && neibpos.Equals(transmissionPos))
+            {
+                Engaged = false;
+            }
+        }
     }
 }

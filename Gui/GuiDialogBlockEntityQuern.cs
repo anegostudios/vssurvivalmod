@@ -17,12 +17,10 @@ namespace Vintagestory.GameContent
 
         protected override double FloatyDialogPosition => 0.75;
 
-        public GuiDialogBlockEntityQuern(string DialogTitle, InventoryBase Inventory, BlockPos BlockEntityPosition, SyncedTreeAttribute tree, ICoreClientAPI capi)
+        public GuiDialogBlockEntityQuern(string DialogTitle, InventoryBase Inventory, BlockPos BlockEntityPosition, ICoreClientAPI capi)
             : base(DialogTitle, Inventory, BlockEntityPosition, capi)
         {
             if (IsDuplicate) return;
-            tree.OnModified.Add(new TreeModifiedListener() { listener = OnAttributesModified });
-            Attributes = tree;
 
             capi.World.Player.InventoryManager.OpenInventory(Inventory);
 
@@ -81,9 +79,13 @@ namespace Vintagestory.GameContent
             }
         }
 
-
-        private void OnAttributesModified()
+        float inputGrindTime;
+        float maxGrindTime;
+        public void Update(float inputGrindTime, float maxGrindTime)
         {
+            this.inputGrindTime = inputGrindTime;
+            this.maxGrindTime = maxGrindTime;
+
             if (!IsOpened()) return;
 
             if (capi.ElapsedMilliseconds - lastRedrawMs > 500)
@@ -107,7 +109,7 @@ namespace Vintagestory.GameContent
             ctx.Matrix = m;
             capi.Gui.Icons.DrawArrowRight(ctx, 2);
 
-            double dx = Attributes.GetFloat("inputGrindTime") / Attributes.GetFloat("maxGrindTime", 1);
+            double dx = inputGrindTime / maxGrindTime;
 
 
             ctx.Rectangle(GuiElement.scaled(5), 0, GuiElement.scaled(125 * dx), GuiElement.scaled(100));

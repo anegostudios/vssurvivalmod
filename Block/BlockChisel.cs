@@ -21,6 +21,7 @@ namespace Vintagestory.GameContent
 
         public override bool DoParticalSelection(IWorldAccessor world, BlockPos pos)
         {
+            //return forPlayer?.InventoryManager.ActiveHotbarSlot?.Itemstack?.Item is ItemChisel;
             return true;
         }
 
@@ -41,6 +42,48 @@ namespace Vintagestory.GameContent
             return base.GetLightHsv(blockAccessor, pos, stack);
         }
         */
+
+        public override bool MatchesForCrafting(ItemStack inputStack, GridRecipe gridRecipe, CraftingRecipeIngredient ingredient)
+        {
+            int len = (inputStack.Attributes["materials"] as StringArrayAttribute)?.value?.Length ?? 0;
+
+            if (len > 2) return false;
+
+            return base.MatchesForCrafting(inputStack, gridRecipe, ingredient);
+        }
+
+        public override void OnCreatedByCrafting(ItemSlot[] allInputslots, ItemSlot outputSlot, GridRecipe byRecipe)
+        {
+            List<int> matids = new List<int>();
+            bool first = false;
+            foreach (var val in allInputslots)
+            {
+                if (val.Empty) continue;
+                if (!first)
+                {
+                    first = true;
+                    outputSlot.Itemstack.Attributes = val.Itemstack.Attributes.Clone();
+                }
+
+                int[] mats = (val.Itemstack.Attributes?["materials"] as IntArrayAttribute)?.value;
+                if (mats != null) matids.AddRange(mats);
+
+                string[] smats = (val.Itemstack.Attributes?["materials"] as StringArrayAttribute)?.value;
+                if (smats != null)
+                {
+                    foreach (var code in smats)
+                    {
+                        Block block = api.World.GetBlock(new AssetLocation(code));
+                        if (block != null) matids.Add(block.Id);
+                    }
+                }
+            }
+
+            IntArrayAttribute attr = new IntArrayAttribute(matids.ToArray());
+            outputSlot.Itemstack.Attributes["materials"] = attr;
+
+            base.OnCreatedByCrafting(allInputslots, outputSlot, byRecipe);
+        }
 
         public override int GetLightAbsorption(IBlockAccessor blockAccessor, BlockPos pos)
         {
@@ -98,12 +141,12 @@ namespace Vintagestory.GameContent
             return new ItemStack[] { OnPickBlock(world, pos) };
         }
 
-        public override bool CanAttachBlockAt(IBlockAccessor world, Block block, BlockPos pos, BlockFacing blockFace)
+        public override bool CanAttachBlockAt(IBlockAccessor world, Block block, BlockPos pos, BlockFacing blockFace, Cuboidi attachmentArea = null)
         {
             BlockEntityChisel be = world.GetBlockEntity(pos) as BlockEntityChisel;
             if (be != null)
             {
-                return be.CanAttachBlockAt(blockFace);
+                return be.CanAttachBlockAt(blockFace, attachmentArea);
             }
 
             return base.CanAttachBlockAt(world, block, pos, blockFace);
@@ -145,11 +188,8 @@ namespace Vintagestory.GameContent
             BlockEntityChisel be = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityChisel;
             if (be != null)
             {
-                ICoreClientAPI capi = api as ICoreClientAPI;
-
                 blockModelData = be.Mesh;
                 decalModelData = be.CreateDecalMesh(decalTexSource);
-
                 return;
             }
 
@@ -224,6 +264,16 @@ namespace Vintagestory.GameContent
             if (be != null) return be.BlockName;
 
             return base.GetPlacedBlockName(world, pos);
+        }
+
+        public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
+        {
+            base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
+
+            if ((inSlot.Itemstack.Attributes["materials"] as StringArrayAttribute)?.value.Length > 1 || (inSlot.Itemstack.Attributes["materials"] as IntArrayAttribute)?.value.Length > 1)
+            {
+                dsc.AppendLine(Lang.Get("<font color=\"lightblue\">Multimaterial chiseled block</a>"));
+            }
         }
 
 

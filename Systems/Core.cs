@@ -1,4 +1,5 @@
-﻿using System;
+﻿using ProtoBuf;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using Vintagestory.API.Client;
@@ -12,28 +13,34 @@ using Vintagestory.ServerMods;
 
 namespace Vintagestory.GameContent
 {
+    [ProtoContract]
     public class SurvivalConfig
     {
-        public AssetLocation CurrencyItemIcon = new AssetLocation("gear-rusty");
         public JsonItemStack[] StartStacks = new JsonItemStack[] {
             new JsonItemStack() { Type = EnumItemClass.Item, Code = new AssetLocation("bread-spelt"), StackSize = 8 },
             new JsonItemStack() { Type = EnumItemClass.Block, Code = new AssetLocation("torch-up"), StackSize = 1 }
         };
 
+        [ProtoMember(1)]
         public float[] SunLightLevels = new float[] { 0.015f, 0.176f, 0.206f, 0.236f, 0.266f, 0.296f, 0.326f, 0.356f, 0.386f, 0.416f, 0.446f, 0.476f, 0.506f, 0.536f, 0.566f, 0.596f, 0.626f, 0.656f, 0.686f, 0.716f, 0.746f, 0.776f, 0.806f, 0.836f, 0.866f, 0.896f, 0.926f, 0.956f, 0.986f, 1f, 1f, 1f};
 
-        //public float[] BlockLightLevels = new float[] { 0.0175f, 0.149f, 0.184f, 0.219f, 0.254f, 0.289f, 0.324f, 0.359f, 0.394f, 0.429f, 0.464f, 0.499f, 0.534f, 0.569f, 0.604f, 0.639f, 0.674f, 0.709f, 0.744f, 0.779f, 0.814f, 0.849f, 0.884f, 0.919f, 0.954f, 0.989f, 1f, 1f, 1f, 1f, 1f, 1f };
-
+        [ProtoMember(2)]
         public float[] BlockLightLevels = new float[] { 0.0175f, 0.06f, 0.12f, 0.18f, 0.254f, 0.289f, 0.324f, 0.359f, 0.394f, 0.429f, 0.464f, 0.499f, 0.534f, 0.569f, 0.604f, 0.639f, 0.674f, 0.709f, 0.744f, 0.779f, 0.814f, 0.849f, 0.884f, 0.919f, 0.954f, 0.989f, 1f, 1f, 1f, 1f, 1f, 1f };
-
+        [ProtoMember(3)]
         public float PerishSpeedModifier = 1f;
+        [ProtoMember(4)]
         public float CreatureDamageModifier = 1;
+        [ProtoMember(5)]
         public float ToolDurabilityModifier = 1;
+        [ProtoMember(6)]
         public float ToolMiningSpeedModifier = 1;
+        [ProtoMember(7)]
         public float HungerSpeedModifier = 1;
+        [ProtoMember(8)]
         public float BaseMoveSpeed = 1.5f;
-
+        [ProtoMember(9)]
         public int SunBrightness = 22;
+        [ProtoMember(10)]
         public int PolarEquatorDistance = 50000;
 
 
@@ -98,22 +105,80 @@ namespace Vintagestory.GameContent
             api.Assets.AddPathOrigin("game", Path.Combine(GamePaths.AssetsPath, "survival"));
         }
 
+        public override void Start(ICoreAPI api)
+        {
+            this.api = api;
+            api.Network.RegisterChannel("survivalCoreConfig").RegisterMessageType<SurvivalConfig>();
+
+            RegisterDefaultBlocks();
+            RegisterDefaultBlockBehaviors();
+            RegisterDefaultBlockEntityBehaviors();
+            RegisterDefaultCropBehaviors();
+            RegisterDefaultItems();
+            RegisterDefaultEntities();
+            RegisterDefaultEntityBehaviors();
+            RegisterDefaultBlockEntities();
+
+            api.RegisterMountable("bed", BlockBed.GetMountable);
+        }
+
         public override void StartClientSide(ICoreClientAPI api)
         {
             capi = api;
-            api.Event.BlockTexturesLoaded += () => { 
-                loadConfig(); 
-                applyConfig();
-            };
+            capi.Network.GetChannel("survivalCoreConfig").SetMessageHandler<SurvivalConfig>(onConfigFromServer);
 
             api.Event.LevelFinalize += () =>
             {
                 api.World.Calendar.OnGetSolarAltitude = GetSolarAltitude;
                 api.World.Calendar.OnGetHemisphere = GetHemisphere;
+                applySeasonConfig();
             };
 
             api.Event.ReloadShader += LoadShader;
             LoadShader();            
+        }
+
+
+        ICoreServerAPI sapi;
+
+
+        public override void StartServerSide(ICoreServerAPI api)
+        {
+            sapi = api;
+
+            if (api.ModLoader.IsModSystemEnabled("Vintagestory.ServerMods.WorldEdit.WorldEdit"))
+            {
+                RegisterUtil.RegisterTool(api.ModLoader.GetModSystem("Vintagestory.ServerMods.WorldEdit.WorldEdit"));
+            }
+
+            // Set up day/night cycle
+            api.WorldManager.SetBlockLightLevels(config.BlockLightLevels);
+            api.WorldManager.SetSunLightLevels(config.SunLightLevels);
+            api.WorldManager.SetSunBrightness(config.SunBrightness);
+
+            api.Event.PlayerCreate += Event_PlayerCreate;
+            api.Event.PlayerNowPlaying += Event_PlayerPlaying;
+            api.Event.PlayerJoin += Event_PlayerJoin;
+            
+            api.Event.ServerRunPhase(EnumServerRunPhase.ModsAndConfigReady, loadConfig);
+
+            api.Event.ServerRunPhase(EnumServerRunPhase.GameReady, () => {
+                applyConfig();
+                config.ResolveStartItems(api.World);
+                api.World.Calendar.OnGetSolarAltitude = GetSolarAltitude;
+                api.World.Calendar.OnGetHemisphere = GetHemisphere;
+            });
+        }
+
+        private void Event_PlayerJoin(IServerPlayer byPlayer)
+        {
+            sapi.Network.GetChannel("survivalCoreConfig").SendPacket(config, byPlayer);
+        }
+
+        private void onConfigFromServer(SurvivalConfig networkMessage)
+        {
+            this.config = networkMessage;
+            applyConfig();
         }
 
         private EnumHemisphere GetHemisphere(double posX, double posZ)
@@ -131,31 +196,6 @@ namespace Vintagestory.GameContent
             capi.Shader.RegisterFileShaderProgram("anvilworkitem", anvilShaderProg);
 
             return anvilShaderProg.Compile();
-        }
-
-        public override void StartServerSide(ICoreServerAPI api)
-        {
-            if (api.ModLoader.IsModSystemEnabled("Vintagestory.ServerMods.WorldEdit.WorldEdit"))
-            {
-                RegisterUtil.RegisterTool(api.ModLoader.GetModSystem("Vintagestory.ServerMods.WorldEdit.WorldEdit"));
-            }
-
-            // Set up day/night cycle
-            api.WorldManager.SetBlockLightLevels(config.BlockLightLevels);
-            api.WorldManager.SetSunLightLevels(config.SunLightLevels);
-            api.WorldManager.SetSunBrightness(config.SunBrightness);
-
-            api.Event.PlayerCreate += Event_PlayerCreate;
-            api.Event.PlayerNowPlaying += Event_PlayerPlaying;
-            
-            api.Event.ServerRunPhase(EnumServerRunPhase.ModsAndConfigReady, loadConfig);
-
-            api.Event.ServerRunPhase(EnumServerRunPhase.GameReady, () => {
-                applyConfig();
-                config.ResolveStartItems(api.World);
-                api.World.Calendar.OnGetSolarAltitude = GetSolarAltitude;
-                api.World.Calendar.OnGetHemisphere = GetHemisphere;
-            });
         }
 
 
@@ -269,11 +309,10 @@ namespace Vintagestory.GameContent
             GlobalConstants.ToolMiningSpeedModifier = config.ToolMiningSpeedModifier;
             GlobalConstants.HungerSpeedModifier = config.HungerSpeedModifier;
             GlobalConstants.BaseMoveSpeed = config.BaseMoveSpeed;
+            GlobalConstants.CreatureDamageModifier = config.CreatureDamageModifier;
 
-            if (api.Side == EnumAppSide.Server)
+            if (api.Side == EnumAppSide.Server) // Don't apply on the client because we already sent him the increased durabilities for each tool
             {
-                GlobalConstants.CreatureDamageModifier = config.CreatureDamageModifier;
-
                 foreach (var obj in api.World.Collectibles)
                 {
                     if (obj.Tool != null)
@@ -283,6 +322,11 @@ namespace Vintagestory.GameContent
                 }
             }
 
+            applySeasonConfig();
+        }
+
+        void applySeasonConfig()
+        {
             ITreeAttribute worldConfig = api.World.Config;
             string seasons = worldConfig.GetString("seasons");
             if (seasons == "spring")
@@ -291,21 +335,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override void Start(ICoreAPI api)
-        {
-            this.api = api;
-            
-            RegisterDefaultBlocks();
-            RegisterDefaultBlockBehaviors();
-            RegisterDefaultBlockEntityBehaviors();
-            RegisterDefaultCropBehaviors();
-            RegisterDefaultItems();
-            RegisterDefaultEntities();
-            RegisterDefaultEntityBehaviors();
-            RegisterDefaultBlockEntities();
 
-            api.RegisterMountable("bed", BlockBed.GetMountable);
-        }
         
 
         private void RegisterDefaultBlocks()
@@ -448,7 +478,10 @@ namespace Vintagestory.GameContent
 
             api.RegisterBlockClass("BlockArchimedesScrew", typeof(BlockArchimedesScrew));
             api.RegisterBlockClass("BlockFernTree", typeof(BlockFernTree));
-            
+            api.RegisterBlockClass("BlockSlabSnowRemove", typeof(BlockSlabSnowRemove));
+
+            api.RegisterBlockClass("BlockLakeIce", typeof(BlockLakeIce));
+            api.RegisterBlockClass("BlockSnowLayer", typeof(BlockSnowLayer));
         }
 
         
@@ -497,6 +530,7 @@ namespace Vintagestory.GameContent
             api.RegisterBlockEntityBehaviorClass("MPWindmillRotor", typeof(BEBehaviorWindmillRotor));
             api.RegisterBlockEntityBehaviorClass("MPCreativeRotor", typeof(BEBehaviorMPCreativeRotor));
             api.RegisterBlockEntityBehaviorClass("MPLargeGear3m", typeof(BEBehaviorMPLargeGear3m));
+            api.RegisterBlockEntityBehaviorClass("MPArchimedesScrew", typeof(BEBehaviorMPArchimedesScrew));
         }
 
 

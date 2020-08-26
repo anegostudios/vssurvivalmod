@@ -164,7 +164,7 @@ namespace Vintagestory.ServerMods
         {
             if (!latdata.isRealisticClimate)
             {
-                return 0.15;
+                return 0.5;
             }
 
             double halfRange = (double)latdata.polarEquatorDistance / TerraGenConfig.climateMapScale / TerraGenConfig.climateMapSubScale;

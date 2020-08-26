@@ -148,6 +148,9 @@
     <Compile Include="Block\BlockCrystal.cs" />
     <Compile Include="Block\BlockCharcoalPit.cs" />
     <Compile Include="Block\BlockChute.cs" />
+    <Compile Include="Block\BlockSnowLayer.cs" />
+    <Compile Include="Block\BlockLakeIce.cs" />
+    <Compile Include="Block\BlockSlabSnowRemove.cs" />
     <Compile Include="Block\BlockTapestry.cs" />
     <Compile Include="Block\BlockDisplayCase.cs" />
     <Compile Include="Block\BlockEchoChamber.cs" />
@@ -177,6 +180,7 @@
     <Compile Include="Block\BlockWaterfall.cs" />
     <Compile Include="Block\BlockWaterFlowing.cs" />
     <Compile Include="Entities\EntityArmorStand.cs" />
+    <Compile Include="Systems\ChiselBlockBulkSetMaterial.cs" />
     <Compile Include="Systems\Trading\TraderAnimationManager.cs" />
     <Compile Include="Entity\AITask\AiTaskButterflyFlee.cs" />
     <Compile Include="Entity\AITask\AiTaskButterflyRest.cs" />
@@ -194,6 +198,7 @@
     <Compile Include="Systems\MechanicalPower\BlockEntity\IGearAcceptor.cs" />
     <Compile Include="Systems\MechanicalPower\Block\BlockArchimedesScrew.cs" />
     <Compile Include="Systems\MechanicalPower\Block\IMPPowered.cs" />
+    <Compile Include="Systems\MechanicalPower\Network\IMechanicalPowerNode.cs" />
     <Compile Include="Systems\Temperature.cs" />
     <Compile Include="Systems\LiquidContainer.cs" />
     <Compile Include="Systems\MechanicalPower\BlockEntityBehavior\BEBehaviorArchimedesScrew.cs" />
@@ -366,7 +371,7 @@
     <Compile Include="Systems\MechanicalPower\Renderer\GenericMechBlockRenderer.cs" />
     <Compile Include="Systems\MechanicalPower\Renderer\MechBlockRenderer.cs" />
     <Compile Include="Systems\MechanicalPower\Renderer\TransmissionBlockRenderer.cs" />
-    <Compile Include="Systems\RaccoonSpawnCondition.cs" />
+    <Compile Include="Systems\CustomSpawnConditions.cs" />
     <Compile Include="Systems\TemporalStability.cs" />
     <Compile Include="Systems\Trading\ResolvedTradeItem.cs" />
     <Compile Include="Systems\Trading\TalkUtil.cs" />

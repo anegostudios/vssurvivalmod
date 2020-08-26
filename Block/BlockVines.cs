@@ -35,7 +35,7 @@ namespace Vintagestory.GameContent
                     leavesWaveTileSide[tileSide] = !nblock.SideSolid[BlockFacing.ALLFACES[tileSide].GetOpposite().Index] || nblock.BlockMaterial == EnumBlockMaterial.Leaves;
                 }
 
-                bool waveoff = false;
+                bool waveoff;
                 int groundOffset = 0;
 
                 waveoff = api.World.BlockAccessor.GetLightLevel(pos, EnumLightLevelType.OnlySunLight) < 14;

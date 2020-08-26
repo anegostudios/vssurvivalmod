@@ -30,7 +30,6 @@ namespace Vintagestory.GameContent
         {
             this.api = coreClientAPI;
             this.pos = pos;
-            //mesh.Rgba2 = null;
             meshref = coreClientAPI.Render.UploadMesh(mesh);
         }
 
@@ -81,7 +80,7 @@ namespace Vintagestory.GameContent
 
             if (ShouldRotateAutomated)
             {
-                AngleRad = (mechPowerPart.AngleRad * (1 - (int)mechPowerPart.GetInTurnDirection().Rot * 2));
+                AngleRad = mechPowerPart.AngleRad;
             }
         }
 

@@ -175,6 +175,8 @@ namespace Vintagestory.GameContent
             public bool Empty { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
 			Dictionary<BlockPos, BlockEntity> IWorldChunk.BlockEntities { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
 
+			public IChunkBlocks MaybeBlocks => throw new NotImplementedException();
+
 			public void AddEntity(Entity entity)
             {
                 throw new NotImplementedException();
@@ -408,7 +410,10 @@ namespace Vintagestory.GameContent
             if (byEntity is EntityPlayer) byPlayer = world.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
 
             Block block = world.BlockAccessor.GetBlock(blockSel.Position);
-            block.OnBlockBroken(world, blockSel.Position, byPlayer, 0);
+			float dropMul = 1f;
+			if (block.BlockMaterial == EnumBlockMaterial.Ore || block.BlockMaterial == EnumBlockMaterial.Stone) dropMul = 0;
+
+            block.OnBlockBroken(world, blockSel.Position, byPlayer, dropMul);
 
             if (!block.Code.Path.StartsWith("rock") && !block.Code.Path.StartsWith("ore")) return;
 
@@ -601,7 +606,7 @@ namespace Vintagestory.GameContent
 			cr.Matrix = matrix;
 
 			cr.Operator = Operator.Over;
-			cr.LineWidth = 8;
+			cr.LineWidth = 12;
 			cr.MiterLimit = 4;
 			cr.LineCap = LineCap.Butt;
 			cr.LineJoin = LineJoin.Miter;
@@ -774,7 +779,7 @@ namespace Vintagestory.GameContent
 			if (pattern != null) pattern.Dispose();
 
 			cr.Operator = Operator.Over;
-			cr.LineWidth = 8;
+			cr.LineWidth = 12;
 			cr.MiterLimit = 4;
 			cr.LineCap = LineCap.Butt;
 			cr.LineJoin = LineJoin.Miter;
@@ -1100,7 +1105,7 @@ namespace Vintagestory.GameContent
 			if (pattern != null) pattern.Dispose();
 
 			cr.Operator = Operator.Over;
-			cr.LineWidth = 8;
+			cr.LineWidth = 12;
 			cr.MiterLimit = 4;
 			cr.LineCap = LineCap.Butt;
 			cr.LineJoin = LineJoin.Miter;

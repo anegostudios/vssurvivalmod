@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -10,6 +12,24 @@ namespace Vintagestory.GameContent
     public class BlockTorch : Block
     {
         bool IsExtinct => Variant["variant"] == "extinct";
+
+        Dictionary<string, Cuboidi> attachmentAreas;
+
+        public override void OnLoaded(ICoreAPI api)
+        {
+            base.OnLoaded(api);
+
+            var areas = Attributes?["attachmentAreas"].AsObject<Dictionary<string, RotatableCube>>(null);
+            if (areas != null)
+            {
+                attachmentAreas = new Dictionary<string, Cuboidi>();
+                foreach (var val in areas)
+                {
+                    val.Value.Origin.Set(8, 8, 8);
+                    attachmentAreas[val.Key] = val.Value.RotatedCopy().ConvertToCuboidi();
+                }
+            }
+        }
 
         public override EnumIgniteState OnTryIgniteBlock(EntityAgent byEntity, BlockPos pos, float secondsIgniting)
         {
@@ -41,7 +61,9 @@ namespace Vintagestory.GameContent
         {
             base.OnAttackingWith(world, byEntity, attackedEntity, itemslot);
 
-            if (attackedEntity != null && byEntity.World.Side == EnumAppSide.Server && api.World.Rand.NextDouble() < 0.1)
+            float stormstr = api.ModLoader.GetModSystem<SystemTemporalStability>().StormStrength;
+
+            if (attackedEntity != null && byEntity.World.Side == EnumAppSide.Server && api.World.Rand.NextDouble() < 0.1 + stormstr)
             {
                 attackedEntity.Ignite();
             }
@@ -149,9 +171,12 @@ namespace Vintagestory.GameContent
             //if (onFace.IsHorizontal) onFace = onFace.GetOpposite(); - why is this here? Breaks attachment
 
             BlockPos attachingBlockPos = blockpos.AddCopy(onBlockFace.GetOpposite());
-            Block block = world.BlockAccessor.GetBlock(world.BlockAccessor.GetBlockId(attachingBlockPos));
+            Block block = world.BlockAccessor.GetBlock(attachingBlockPos);
 
-            if (block.CanAttachBlockAt(world.BlockAccessor, this, attachingBlockPos, onFace))
+            Cuboidi attachmentArea = null;
+            attachmentAreas?.TryGetValue(onBlockFace.GetOpposite().Code, out attachmentArea);
+
+            if (block.CanAttachBlockAt(world.BlockAccessor, this, attachingBlockPos, onFace, attachmentArea))
             {
                 int blockId = world.BlockAccessor.GetBlock(CodeWithParts(onBlockFace.Code)).BlockId;
                 world.BlockAccessor.SetBlock(blockId, blockpos);
@@ -164,11 +189,17 @@ namespace Vintagestory.GameContent
         bool CanTorchStay(IBlockAccessor blockAccessor, BlockPos pos)
         {
             BlockFacing facing = BlockFacing.FromCode(LastCodePart());
-            Block block = blockAccessor.GetBlock(blockAccessor.GetBlockId(pos.AddCopy(facing.GetOpposite())));
-            return block.CanAttachBlockAt(blockAccessor, this, pos, facing);
+            BlockPos attachingBlockPos = pos.AddCopy(facing.GetOpposite());
+
+            Block block = blockAccessor.GetBlock(attachingBlockPos);
+
+            Cuboidi attachmentArea = null;
+            attachmentAreas?.TryGetValue(facing.GetOpposite().Code, out attachmentArea);
+
+            return block.CanAttachBlockAt(blockAccessor, this, attachingBlockPos, facing, attachmentArea);
         }
 
-        public override bool CanAttachBlockAt(IBlockAccessor blockAccessor, Block block, BlockPos pos, BlockFacing blockFace)
+        public override bool CanAttachBlockAt(IBlockAccessor blockAccessor, Block block, BlockPos pos, BlockFacing blockFace, Cuboidi attachmentArea = null)
         {
             return false;
         }

@@ -14,7 +14,7 @@ namespace Vintagestory.GameContent
         {
             base.OnLoaded(api);
 
-            if (Attributes?["noDownVariant"].AsBool() == true)
+            if (this.Attributes?.IsTrue("noDownVariant") == true)
             {
                 hasDownVariant = false;
             }

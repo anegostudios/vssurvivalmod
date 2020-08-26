@@ -22,7 +22,7 @@ namespace Vintagestory.GameContent
             base.Initialize(properties);
         }
 
-        public override bool CanAttachBlockAt(IBlockAccessor world, Block block, BlockPos pos, BlockFacing blockFace, ref EnumHandling handling)
+        public override bool CanAttachBlockAt(IBlockAccessor world, Block block, BlockPos pos, BlockFacing blockFace, ref EnumHandling handling, Cuboidi attachmentArea = null)
         {
             if (sides.Contains(blockFace.Code))
             {

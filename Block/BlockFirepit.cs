@@ -244,7 +244,7 @@ namespace Vintagestory.GameContent
                     }
                 }
 
-                if (stack?.Collectible.Attributes?["mealContainer"].AsBool() == true)
+                if (stack?.Collectible.Attributes?.IsTrue("mealContainer") == true)
                 {
                     ItemSlot potSlot = null;
                     if (bef?.inputStack?.Collectible is BlockCookedContainer)
@@ -301,7 +301,7 @@ namespace Vintagestory.GameContent
         public bool TryConstruct(IWorldAccessor world, BlockPos pos, CollectibleObject obj, IPlayer player) {
             int stage = Stage;
 
-            if (obj.Attributes?["firepitConstructable"]?.AsBool(false) != true) return false;
+            if (obj.Attributes?.IsTrue("firepitConstructable") != true) return false;
 
             if (stage == 5) return false;
 

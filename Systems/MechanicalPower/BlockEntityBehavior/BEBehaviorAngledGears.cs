@@ -16,6 +16,10 @@ namespace Vintagestory.GameContent.Mechanics
         public BlockFacing axis1 = null;
         public BlockFacing axis2 = null;
         private BEBehaviorMPLargeGear3m largeGear;
+        public BlockFacing turnDir1 = null;
+        public BlockFacing turnDir2 = null;
+        public BlockFacing orientation = null;
+        public bool newlyPlaced = false;
 
         public override float AngleRad
         {
@@ -23,13 +27,14 @@ namespace Vintagestory.GameContent.Mechanics
             {
                 float angle = base.AngleRad;
 
-                bool flip = inTurnDir.Facing == BlockFacing.DOWN || inTurnDir.Facing == BlockFacing.WEST;
-                if (inTurnDir.Facing == this.orientation && (this.orientation == BlockFacing.WEST || this.orientation == BlockFacing.EAST)) flip = !flip;
+                bool flip = propagationDir == BlockFacing.DOWN || propagationDir == BlockFacing.WEST;
+                if (propagationDir == this.orientation && (this.orientation == BlockFacing.WEST || this.orientation == BlockFacing.EAST)) flip = !flip;
                 //if (flip) return /*lastKnownAngleRad = - why do i do this? it creates massive jitter*/ GameMath.TWOPI - angle;
 
                 return flip ? GameMath.TWOPI - angle : angle;
             }
         }
+
         public BEBehaviorMPAngledGears(BlockEntity blockentity) : base(blockentity)
         {
         }
@@ -37,13 +42,45 @@ namespace Vintagestory.GameContent.Mechanics
         public override void Initialize(ICoreAPI api, JsonObject properties)
         {
             base.Initialize(api, properties);
+            //this.Api = api;
+            //Shape = GetShape();
 
-            SetOrientations();
+            //manager = Api.ModLoader.GetModSystem<MechanicalPowerMod>();
+
+            //if (Api.World.Side == EnumAppSide.Client)
+            //{
+            //    lightRbs = Api.World.BlockAccessor.GetLightRGBs(Blockentity.Pos);
+            //    if (NetworkId > 0)
+            //    {
+            //        network = manager.GetOrCreateNetwork(NetworkId);
+            //        JoinNetwork(network);
+            //    }
+            //}
+
+            //manager.AddDeviceForRender(this);
+
+            //AxisSign = new int[3] { 0, 0, 1 };
+
+            //SetOrientations();
+            //if (api.Side == EnumAppSide.Server && OutFacingForNetworkDiscovery != null)
+            //{
+            //    CreateJoinAndDiscoverNetwork(OutFacingForNetworkDiscovery);
+            //}
 
             if (api.Side == EnumAppSide.Client)
             {
                 Blockentity.RegisterGameTickListener(onEverySecond, 1000);
             }
+
+            //if (largeGear != null)
+            //{
+            //    this.CreateNetworkFromHere();
+            //    if (largeGear.Api != null)   //if already initialised - otherwise it will initialise itself later if this was called during chunk loading (it's random whether the angled gear or the large gear gets initialised first)
+            //    {
+            //        if (largeGear.Network == null) largeGear.CreateJoinAndDiscoverNetwork(BlockFacing.DOWN);
+            //        if (largeGear.Network == null) largeGear.CreateJoinAndDiscoverNetwork(BlockFacing.UP);
+            //    }
+            //}
         }
 
         private void onEverySecond(float dt)
@@ -59,6 +96,17 @@ namespace Vintagestory.GameContent.Mechanics
         public override void SetOrientations()
         {
             string orientations = (Block as BlockAngledGears).Orientation;
+
+            //This applies only when the BE is being updated when the gear orientations change after a neighbour block breaks
+            if (this.turnDir1 != null)
+            {
+                if (propagationDir == turnDir1) propagationDir = turnDir2.GetOpposite();
+                else if (propagationDir == turnDir2) propagationDir = turnDir1.GetOpposite();
+                else if (propagationDir == turnDir2.GetOpposite()) propagationDir = turnDir1;
+                else if (propagationDir == turnDir1.GetOpposite()) propagationDir = turnDir2;
+                this.turnDir1 = null;
+                this.turnDir2 = null;
+            }
 
             this.orientation = null;
             switch (orientations)
@@ -87,7 +135,7 @@ namespace Vintagestory.GameContent.Mechanics
                     break;
 
                 case "u":
-                    AxisSign = new int[3] { 0, -1, 0 }; 
+                    AxisSign = new int[3] { 0, -1, 0 };
                     break;
 
                 case "d":
@@ -96,74 +144,98 @@ namespace Vintagestory.GameContent.Mechanics
 
                 case "es":
                     AxisSign = new int[6] { 1, 0, 0, 0, 0, -1 };  //for all these "2 directions" gears, the rendererByType is "angledgears" ie. AngledGearBlockRenderer and two meshes will be rendered, the renderer looks for a special 6 member AxisSign array
-                    axis1 = null;
+                    axis1 = BlockFacing.EAST;
                     axis2 = null;
+                    this.turnDir1 = BlockFacing.EAST;
+                    this.turnDir2 = BlockFacing.SOUTH;
                     break;
 
                 case "ws":
                     AxisSign = new int[6] { 0, 0, -1, -1, 0, 0 };
-                    axis1 = null;
+                    axis1 = BlockFacing.WEST;
                     axis2 = null;
+                    this.turnDir1 = BlockFacing.WEST;
+                    this.turnDir2 = BlockFacing.SOUTH;
                     break;
 
                 case "nw":
                     AxisSign = new int[6] { 1, 0, 0, 0, 0, -1 };
-                    axis1 = BlockFacing.EAST;    //tested    Rotation reverse for these two inTurnDir axes
-                    axis2 = BlockFacing.NORTH;    //tested
+                    axis1 = null;
+                    axis2 = BlockFacing.EAST;
+                    this.turnDir1 = BlockFacing.NORTH;
+                    this.turnDir2 = BlockFacing.WEST;
                     break;
 
-                case "sd":
+                case "sd":  //OK
                     AxisSign = new int[6] { 0, 0, -1, 0, -1, 0 };
-                    axis1 = BlockFacing.SOUTH;  //tested
-                    axis2 = BlockFacing.UP;  //tested
+                    axis1 = null;
+                    axis2 = null; // BlockFacing.NORTH;
+                    this.turnDir1 = BlockFacing.SOUTH;
+                    this.turnDir2 = BlockFacing.DOWN;
                     break;
 
-                case "ed":
+                case "ed":  //1
                     AxisSign = new int[6] { 0, 1, 0, 1, 0, 0 };
-                    axis1 = BlockFacing.EAST;  //tested
-                    axis2 = BlockFacing.DOWN;  //tested
+                    axis1 = BlockFacing.EAST;
+                    axis2 = BlockFacing.DOWN;
+                    this.turnDir1 = BlockFacing.EAST;
+                    this.turnDir2 = BlockFacing.DOWN;
                     break;
 
                 case "wd":
                     AxisSign = new int[6] { -1, 0, 0, 0, 1, 0 };
-                    axis1 = null;
-                    axis2 = null;
+                    axis1 = BlockFacing.DOWN;  //1
+                    axis2 = BlockFacing.WEST;  //1
+                    this.turnDir1 = BlockFacing.WEST;
+                    this.turnDir2 = BlockFacing.DOWN;
                     break;
 
-                case "nd":
+                case "nd":  //north checked
                     AxisSign = new int[6] { 0, 0, -1, 0, 1, 0 };
+                    axis1 = BlockFacing.DOWN;   //1
+                    axis2 = null;
+                    this.turnDir1 = BlockFacing.NORTH;
+                    this.turnDir2 = BlockFacing.DOWN;
+                    break;
+
+                case "nu": //1
+                    AxisSign = new int[6] { 0, -1, 0, 0, 0, -1 };
+                    axis1 = BlockFacing.UP;
+                    axis2 = null;
+                    this.turnDir1 = BlockFacing.NORTH;
+                    this.turnDir2 = BlockFacing.UP;
+                    break;
+
+                case "eu": //1
+                    AxisSign = new int[6] { 0, -1, 0, 1, 0, 0 };
+                    axis1 = BlockFacing.UP;   //1
+                    axis2 = BlockFacing.EAST;  //1
+                    this.turnDir1 = BlockFacing.EAST;
+                    this.turnDir2 = BlockFacing.UP;
+                    break;
+
+                case "su":   //south,up checked
+                    AxisSign = new int[6] { 0, 1, 0, 0, 0, -1 };
                     axis1 = BlockFacing.DOWN;
                     axis2 = null;
+                    this.turnDir1 = BlockFacing.SOUTH;
+                    this.turnDir2 = BlockFacing.UP;
                     break;
 
-                case "nu":
-                    AxisSign = new int[6] { 0, -1, 0, 0, 0, -1 };
-                    axis1 = null;
-                    axis2 = null;
-                    break;
-
-                case "eu":
-                    AxisSign = new int[6] { 0, -1, 0, 1, 0, 0 };
-                    axis1 = null;
-                    axis2 = null;
-                    break;
-
-                case "su":
-                    AxisSign = new int[6] { 0, 1, 0, 0, 0, -1 };
-                    axis1 = BlockFacing.DOWN;   //tested    Rotation reverse for these two inTurnDir axes
-                    axis2 = BlockFacing.SOUTH;
-                    break;
-
-                case "wu":
+                case "wu": //1
                     AxisSign = new int[6] { 0, -1, 0, -1, 0, 0 };
-                    axis1 = null;
-                    axis2 = null;
+                    axis1 = BlockFacing.WEST;  //1
+                    axis2 = BlockFacing.UP;   //1
+                    this.turnDir1 = BlockFacing.WEST;
+                    this.turnDir2 = BlockFacing.UP;
                     break;
 
                 case "en":
                     AxisSign = new int[6] { 0, 0, 1, 1, 0, 0 };
-                    axis1 = BlockFacing.SOUTH;   //tested    Rotation reverse for these two inTurnDir axes
-                    axis2 = BlockFacing.EAST;   //tested
+                    axis1 = BlockFacing.EAST;
+                    axis2 = BlockFacing.NORTH;
+                    this.turnDir1 = BlockFacing.EAST;
+                    this.turnDir2 = BlockFacing.NORTH;
                     break;
 
                 default:
@@ -173,6 +245,12 @@ namespace Vintagestory.GameContent.Mechanics
                     break;
             }
 
+            this.CheckLargeGearJoin();
+        }
+
+        protected void CheckLargeGearJoin()
+        {
+            string orientations = (Block as BlockAngledGears).Orientation;
             if (orientations.Length == 2 && orientations[0] == orientations[1])
             {
                 BlockPos largeGearPos = this.Position.AddCopy(this.orientation.GetOpposite());
@@ -181,7 +259,12 @@ namespace Vintagestory.GameContent.Mechanics
             }
         }
 
-        internal float LargeGearAngleRad(float unchanged)
+        public override bool isInvertedNetworkFor(BlockPos pos)
+        {
+            return this.orientation != null && this.orientation != propagationDir;
+        }
+
+        public float LargeGearAngleRad(float unchanged)
         {
             if (largeGear == null)
             {
@@ -208,20 +291,72 @@ namespace Vintagestory.GameContent.Mechanics
             return base.OnTesselation(mesher, tesselator);
         }
 
-        public override TurnDirection GetTurnDirection(BlockFacing forFacing)
+        public override void SetPropagationDirection(MechPowerPath path)
         {
-            string orientations = Block.Variant["orientation"];
-            bool invert = false;
+            BlockFacing turnDir = path.NetworkDir();
+            if (this.turnDir1 != null)
+            //rotate the input turn direction if it's an angled gear   (this helps later blocks to know which sense the network is turning)
+            {
+                if (turnDir == turnDir1) turnDir = turnDir2.GetOpposite();
+                else if (turnDir == turnDir2) turnDir = turnDir1.GetOpposite();
+                else if (turnDir == turnDir2.GetOpposite()) turnDir = turnDir1;
+                else if (turnDir == turnDir1.GetOpposite()) turnDir = turnDir2;
+                path = new MechPowerPath(turnDir, path.gearingRatio, false);
+            }
+            base.SetPropagationDirection(path);
+        }
 
-            return forFacing == inTurnDir.Facing ?
-                inTurnDir :
-                new TurnDirection(forFacing, invert ? 1 - inTurnDir.Rot : inTurnDir.Rot)
-            ;
+        public override BlockFacing GetPropagationDirectionInput()
+        {
+            if (this.turnDir1 != null)
+            {
+                if (propagationDir == turnDir1) return turnDir2.GetOpposite();
+                if (propagationDir == turnDir2) return turnDir1.GetOpposite();
+                if (propagationDir == turnDir1.GetOpposite()) return turnDir2;
+                if (propagationDir == turnDir2.GetOpposite()) return turnDir1;
+            }
+            return propagationDir;
+        }
+
+        public override bool IsPropagationDirection(BlockFacing test)
+        {
+            if (this.turnDir1 != null)
+            {
+                if (propagationDir == turnDir1) return propagationDir == test || propagationDir == turnDir2.GetOpposite();
+                if (propagationDir == turnDir2) return propagationDir == test || propagationDir == turnDir1.GetOpposite();
+                if (propagationDir == turnDir1.GetOpposite()) return propagationDir == test || propagationDir == turnDir2;
+                if (propagationDir == turnDir2.GetOpposite()) return propagationDir == test || propagationDir == turnDir1;
+            }
+            return propagationDir == test;
+        }
+
+        public override void WasPlaced(BlockFacing connectedOnFacing)
+        {
+            //Skip this if already called CreateJoinAndDiscoverNetwork in Initialize()
+            if ((Api.Side == EnumAppSide.Client || OutFacingForNetworkDiscovery == null) && connectedOnFacing != null)
+            {
+                if (connectedOnFacing.IsAxisWE)
+                {
+                    if (!tryConnect(BlockFacing.NORTH) && !tryConnect(BlockFacing.SOUTH))
+                    {
+                        Api.Logger.Notification("AG was placed fail connect 2nd: " + connectedOnFacing + " at " + Position);
+                    }
+                    return;
+                }
+                if (connectedOnFacing.IsAxisNS)
+                {
+                    if (!tryConnect(BlockFacing.WEST) && !tryConnect(BlockFacing.EAST))
+                    {
+                        Api.Logger.Notification("AG was placed fail connect 2nd: " + connectedOnFacing + " at " + Position);
+                    }
+                    return;
+                }
+            }
         }
 
         public override void ToTreeAttributes(ITreeAttribute tree)
         {
-                base.ToTreeAttributes(tree);
+            base.ToTreeAttributes(tree);
         }
 
         public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
@@ -231,33 +366,39 @@ namespace Vintagestory.GameContent.Mechanics
 
         public override float GetResistance()
         {
-            if (largeGear == null) return 0.0005f;
-            //If meshed with a large gear, this variable resistance is the key to getting the two networks quickly in sync with (reasonably) realistic physics; and to slow this network down in sync with the large gear
-            float dSpeed = 1;
-            if (largeGear.Network != null)
-            {
-                dSpeed = (this.Network.Speed - largeGear.Network.Speed * largeGear.ratio) * 10f;
-            }
-            return dSpeed > 0 ? dSpeed * dSpeed * 2 : 0.0005f;
+            return 0.0005f;
         }
 
-        public override float GetTorque()
+        protected override MechPowerPath[] GetMechPowerExits(MechPowerPath fromExitTurnDir)
         {
-            return 0;
-        }
-
-        protected override MechPowerPath[] GetMechPowerExits(TurnDirection fromExitTurnDir)
-        {
-            BlockFacing[] connectors = (Block as BlockAngledGears).Facings;
-            connectors = connectors.Remove(fromExitTurnDir.Facing.GetOpposite());
-
-            MechPowerPath[] paths = new MechPowerPath[connectors.Length];
-            for (int i = 0; i < paths.Length; i++)
+            if (this.orientation == null) this.SetOrientations();  //this method could be called from another (earlier in the loading chunk) block's Initialise() method, i.e. before this itself is initialised.
+            if (largeGear == null)
             {
-                paths[i] = new MechPowerPath(connectors[i], fromExitTurnDir.Rot);
+                if (newlyPlaced) fromExitTurnDir.invert = !fromExitTurnDir.invert;
+                BlockFacing[] connectors = (Block as BlockAngledGears).Facings;
+                BlockFacing inputSide = fromExitTurnDir.invert ? fromExitTurnDir.OutFacing : fromExitTurnDir.OutFacing.GetOpposite();
+                bool inputSideMatches = connectors.Contains(inputSide);
+                if (!newlyPlaced)   //the code for removing the inputSide from the MechPowerExits is unwanted for a newly placed AngledGears block - it needs to seek networks on both faces if newly placed
+                {
+                    if (inputSideMatches) connectors = connectors.Remove(inputSide);
+                    else connectors = connectors.Remove(fromExitTurnDir.OutFacing);
+                }
+                MechPowerPath[] paths = new MechPowerPath[connectors.Length];
+                for (int i = 0; i < paths.Length; i++)
+                {
+                    BlockFacing pathFacing = connectors[i];
+                    paths[i] = new MechPowerPath(pathFacing, this.GearedRatio, connectors.Length < 2 && fromExitTurnDir.OutFacing == pathFacing.GetOpposite() || inputSideMatches && pathFacing != inputSide || !inputSideMatches && pathFacing != inputSide.GetOpposite() ? fromExitTurnDir.invert : !fromExitTurnDir.invert);
+                }
+                return paths;
             }
-
-            return paths;
+            else
+            {
+                //alternative code for a small gear connected to a Large Gear - essentially pass through
+                MechPowerPath[] paths = new MechPowerPath[2];
+                paths[0] = new MechPowerPath(this.orientation.GetOpposite(), this.GearedRatio, this.orientation == fromExitTurnDir.OutFacing ? !fromExitTurnDir.invert : fromExitTurnDir.invert);
+                paths[1] = new MechPowerPath(this.orientation, this.GearedRatio, this.orientation == fromExitTurnDir.OutFacing ? fromExitTurnDir.invert : !fromExitTurnDir.invert);
+                return paths;
+            }
         }
 
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder sb)
@@ -266,11 +407,14 @@ namespace Vintagestory.GameContent.Mechanics
             if (Api.World.EntityDebugMode)
             {
                 string orientations = Block.Variant["orientation"];
-                sb.AppendLine(string.Format(Lang.Get("Orientation: {0}", orientations)));
-                bool rev = inTurnDir.Facing == axis1 || inTurnDir.Facing == axis2;
-                sb.AppendLine(string.Format(Lang.Get("Rotation: {0} - {1}", inTurnDir.Rot, (rev ? "-" : "") + inTurnDir.Facing)));
+                bool rev = propagationDir == axis1 || propagationDir == axis2;
+                sb.AppendLine(string.Format(Lang.Get("Orientation: {0} {1} {2}", orientations, this.orientation, rev ? "-" : "")));
             }
         }
 
+        public void ClearLargeGear()
+        {
+            this.largeGear = null;
+        }
     }
 }

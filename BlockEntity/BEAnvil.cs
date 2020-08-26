@@ -307,6 +307,7 @@ namespace Vintagestory.GameContent
 
             RegenMeshAndSelectionBoxes();
             MarkDirty();
+            rotation = 0;
 
             return true;
         }
@@ -669,8 +670,7 @@ namespace Vintagestory.GameContent
         public virtual void CheckIfFinished(IPlayer byPlayer)
         {
             if (MatchesRecipe() && Api.World is IServerWorldAccessor)
-            {
-                
+            {   
                 Voxels = new byte[16, 6, 16];
                 //AvailableMetalVoxels = 0;
                 ItemStack outstack = SelectedRecipe.Output.ResolvedItemstack.Clone();
@@ -687,6 +687,7 @@ namespace Vintagestory.GameContent
                 RegenMeshAndSelectionBoxes();
                 MarkDirty();
                 Api.World.BlockAccessor.MarkBlockDirty(Pos);
+                rotation = 0;
             }
         }
 
@@ -817,6 +818,7 @@ namespace Vintagestory.GameContent
             npos.Y++;
 
             if (npos.X < 0 || npos.X >= 16 || npos.Y < 0 || npos.Y >= 6 || npos.Z < 0 || npos.Z >= 16) return;
+            if (voxelPos.X + opFaceDir.X < 0 || voxelPos.X + opFaceDir.X >= 16 || voxelPos.Z + opFaceDir.Z < 0 || voxelPos.Z + opFaceDir.Z >= 16) return;
 
             if (npos.Y < 6 && Voxels[npos.X, npos.Y, npos.Z] == (byte)EnumVoxelMaterial.Empty && Voxels[npos.X, npos.Y - 1, npos.Z] != (byte)EnumVoxelMaterial.Empty && Voxels[voxelPos.X + opFaceDir.X, voxelPos.Y, voxelPos.Z + opFaceDir.Z] == (byte)EnumVoxelMaterial.Empty)
             {

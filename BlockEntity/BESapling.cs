@@ -50,6 +50,18 @@ namespace Vintagestory.ServerMods
         {
             if (Api.World.Calendar.TotalHours < totalHoursTillGrowth) return;
 
+            ClimateCondition conds = Api.World.BlockAccessor.GetClimateAt(Pos, EnumGetClimateMode.NowValues);
+            if (conds.Temperature < 5)
+            {
+                return;
+            }
+
+            if (conds.Temperature < 0)
+            {
+                totalHoursTillGrowth = Api.World.Calendar.TotalHours + (float)Api.World.Rand.NextDouble() * 72;
+                return;
+            }
+
             int chunksize = Api.World.BlockAccessor.ChunkSize;
             foreach (BlockFacing facing in BlockFacing.HORIZONTALS)
             {

@@ -73,7 +73,7 @@ namespace Vintagestory.GameContent
 
                 if (Type == "cross")
                 {
-                    string variant = facings[0].Axis == EnumAxis.X ? "ns" : "we";
+                    string variant = facings[0].Axis != EnumAxis.X ? "ns" : "we";
                     if (blockSel.Face.IsVertical)
                     {
                         variant = "ground";
@@ -84,6 +84,17 @@ namespace Vintagestory.GameContent
             }
 
             
+            if (blockToPlace != null && blockToPlace.CanPlaceBlock(world, byPlayer, blockSel, ref failureCode) && (blockToPlace as BlockChute).CanStay(world, blockSel.Position))
+            {
+                world.BlockAccessor.SetBlock(blockToPlace.BlockId, blockSel.Position);
+                return true;
+            }
+
+            if (Type == "cross")
+            {
+                blockToPlace = api.World.GetBlock(CodeWithVariant("side", "ground")) as BlockChute;
+            }
+
             if (blockToPlace != null && blockToPlace.CanPlaceBlock(world, byPlayer, blockSel, ref failureCode) && (blockToPlace as BlockChute).CanStay(world, blockSel.Position))
             {
                 world.BlockAccessor.SetBlock(blockToPlace.BlockId, blockSel.Position);
@@ -112,7 +123,7 @@ namespace Vintagestory.GameContent
                 {
                     BlockFacing face = BlockFacing.FromCode(val);
                     Block block = world.BlockAccessor.GetBlock(npos.Set(pos).Add(face));
-                    if (block.CanAttachBlockAt(world.BlockAccessor, this, pos, face) || (block as IBlockItemFlow)?.HasItemFlowConnectorAt(face.GetOpposite()) == true) return true;
+                    if (block.CanAttachBlockAt(world.BlockAccessor, this, pos, face) || (block as IBlockItemFlow)?.HasItemFlowConnectorAt(face.GetOpposite()) == true || world.BlockAccessor.GetBlockEntity(npos) is BlockEntityContainer) return true;
                 }
             }
 
@@ -122,7 +133,7 @@ namespace Vintagestory.GameContent
                 {
                     BlockFacing face = BlockFacing.FromCode(val);
                     Block block = world.BlockAccessor.GetBlock(npos.Set(pos).Add(face));
-                    if (block.CanAttachBlockAt(world.BlockAccessor, this, pos, face) || (block as IBlockItemFlow)?.HasItemFlowConnectorAt(face.GetOpposite()) == true) return true;
+                    if (block.CanAttachBlockAt(world.BlockAccessor, this, pos, face) || (block as IBlockItemFlow)?.HasItemFlowConnectorAt(face.GetOpposite()) == true || world.BlockAccessor.GetBlockEntity(npos) is BlockEntityContainer) return true;
                 }
             }
 

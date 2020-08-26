@@ -85,6 +85,7 @@ namespace Vintagestory.GameContent.Mechanics
                     ((ICoreClientAPI)api).Network.RegisterChannel("vsmechnetwork")
                     .RegisterMessageType(typeof(MechNetworkPacket))
                     .RegisterMessageType(typeof(NetworkRemovedPacket))
+                    .RegisterMessageType(typeof(MechClientRequestPacket))
                     .SetMessageHandler<MechNetworkPacket>(OnPacket)
                     .SetMessageHandler<NetworkRemovedPacket>(OnNetworkRemovePacket)
                 ;
@@ -97,10 +98,16 @@ namespace Vintagestory.GameContent.Mechanics
                     ((ICoreServerAPI)api).Network.RegisterChannel("vsmechnetwork")
                     .RegisterMessageType(typeof(MechNetworkPacket))
                     .RegisterMessageType(typeof(NetworkRemovedPacket))
+                    .RegisterMessageType(typeof(MechClientRequestPacket))
+                    .SetMessageHandler<MechClientRequestPacket>(OnClientRequestPacket)
                 ;
             }
         }
 
+        public long getTickNumber()
+        {
+            return data.tickNumber;
+        }
 
         public override void StartClientSide(ICoreClientAPI api)
         {
@@ -158,12 +165,18 @@ namespace Vintagestory.GameContent.Mechanics
             data.networksById.Remove(networkMessage.networkId);
         }
 
+        protected void OnClientRequestPacket(IServerPlayer player, MechClientRequestPacket networkMessage)
+        {
+            if (data.networksById.TryGetValue(networkMessage.networkId, out MechanicalNetwork nw))
+            {
+                nw.SendBlocksUpdateToClient(player);
+            }
+        }
 
         public void broadcastNetwork(MechNetworkPacket packet)
         {
             serverNwChannel.BroadcastPacket(packet);
         }
-
 
         private void Event_GameWorldSave()
         {
@@ -193,25 +206,23 @@ namespace Vintagestory.GameContent.Mechanics
             Renderer = new MechNetworkRenderer(capi, this);
         }
 
-        internal void OnNodeRemoved(IMechanicalPowerNode device)
+        internal void OnNodeRemoved(IMechanicalPowerDevice device)
         {
-            if (Api.Side == EnumAppSide.Client) return;
-
             if (device.Network != null)
             {
                 RebuildNetwork(device.Network, device);
             }
         }
 
-        public void RebuildNetwork(MechanicalNetwork network, IMechanicalPowerNode nowRemovedNode = null)
+        public void RebuildNetwork(MechanicalNetwork network, IMechanicalPowerDevice nowRemovedNode = null)
         {
             network.Valid = false;
 
-            DeleteNetwork(network);
+            if (Api.Side == EnumAppSide.Server) DeleteNetwork(network);
 
             if (network.nodes.Values.Count == 0)
             {
-                Api.World.Logger.Notification("Network with id " + network.networkId + " had zero nodes?");
+                if (Api.Side == EnumAppSide.Server) Api.Logger.Notification("Network with id " + network.networkId + " had zero nodes?");
                 return;
             }
 
@@ -224,17 +235,20 @@ namespace Vintagestory.GameContent.Mechanics
 
             foreach (var nnode in nnodes)
             {
-                IMechanicalPowerNode newnode = Api.World.BlockAccessor.GetBlockEntity(nnode.Position)?.GetBehavior<BEBehaviorMPBase>() as IMechanicalPowerNode;
+                if (!(nnode is IMechanicalPowerDevice)) continue;
+                IMechanicalPowerDevice newnode = Api.World.BlockAccessor.GetBlockEntity((nnode as IMechanicalPowerDevice).Position)?.GetBehavior<BEBehaviorMPBase>() as IMechanicalPowerDevice;
                 if (newnode == null) continue;
+                BlockFacing oldTurnDir = newnode.GetPropagationDirection();
 
                 if (newnode.OutFacingForNetworkDiscovery != null && (nowRemovedNode == null || newnode.Position != nowRemovedNode.Position))
                 {
                     MechanicalNetwork newnetwork = newnode.CreateJoinAndDiscoverNetwork(newnode.OutFacingForNetworkDiscovery);
-                    newnetwork.Speed = network.Speed;
+                    bool reversed = newnode.GetPropagationDirection() == oldTurnDir.GetOpposite();
+                    newnetwork.Speed = reversed ? -network.Speed : network.Speed;
                     newnetwork.AngleRad = network.AngleRad;
-                    newnetwork.TotalAvailableTorque = network.TotalAvailableTorque;
+                    newnetwork.TotalAvailableTorque = reversed ? -network.TotalAvailableTorque : network.TotalAvailableTorque;
                     newnetwork.NetworkResistance = network.NetworkResistance;
-                    newnetwork.broadcastData();
+                    if (Api.Side == EnumAppSide.Server) newnetwork.broadcastData();
                 }
             }
         }
@@ -312,7 +326,7 @@ namespace Vintagestory.GameContent.Mechanics
         }
 
 
-        public MechanicalNetwork CreateNetwork(IMechanicalPowerNode powerProducerNode)
+        public MechanicalNetwork CreateNetwork(IMechanicalPowerDevice powerProducerNode)
         {
             MechanicalNetwork nw = new MechanicalNetwork(this, data.nextNetworkId);
             nw.fullyLoaded = true;
@@ -327,6 +341,11 @@ namespace Vintagestory.GameContent.Mechanics
         {
             data.networksById.Remove(network.networkId);
             serverNwChannel.BroadcastPacket<NetworkRemovedPacket>(new NetworkRemovedPacket() { networkId = network.networkId });
+        }
+
+        public void SendNetworkBlocksUpdateRequestToServer(long networkId)
+        {
+            clientNwChannel.SendPacket<MechClientRequestPacket>(new MechClientRequestPacket() { networkId = networkId });
         }
 
         public void OnRenderFrame(float deltaTime, EnumRenderStage stage)

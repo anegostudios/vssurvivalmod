@@ -81,7 +81,7 @@ namespace Vintagestory.GameContent
             return block.CanAttachBlockAt(world.BlockAccessor, this, pos.AddCopy(facing), facing.GetOpposite());
         }
 
-        public override bool CanAttachBlockAt(IBlockAccessor world, Block block, BlockPos pos, BlockFacing blockFace)
+        public override bool CanAttachBlockAt(IBlockAccessor world, Block block, BlockPos pos, BlockFacing blockFace, Cuboidi attachmentArea = null)
         {
             return false;
         }

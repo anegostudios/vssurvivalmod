@@ -10,11 +10,11 @@ namespace Vintagestory.GameContent
         public override bool CanPlantStay(IBlockAccessor blockAccessor, BlockPos pos)
         {
             Block belowBlock = blockAccessor.GetBlock(pos.DownCopy());
-            Block belowbelowBlock = blockAccessor.GetBlock(pos.DownCopy(2));
+            if (belowBlock.Fertility > 0) return true;
+            if (!(belowBlock is BlockBerryBush)) return false;
 
-            return 
-                belowBlock.Fertility > 0 || 
-                (Attributes?["stackable"]?.AsBool() == true && belowBlock.Attributes?["stackable"]?.AsBool() == true && belowBlock is BlockBerryBush && belowbelowBlock.Fertility > 0);
+            Block belowbelowBlock = blockAccessor.GetBlock(pos.DownCopy(2));
+            return belowbelowBlock.Fertility > 0 && this.Attributes?.IsTrue("stackable") == true && belowBlock.Attributes?.IsTrue("stackable") == true;
         }
 
 

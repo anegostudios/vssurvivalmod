@@ -53,25 +53,9 @@ namespace Vintagestory.GameContent.Mechanics
             }
         }
 
-        public override TurnDirection GetTurnDirection(BlockFacing forFacing)
-        {
-            return GetInTurnDirection();
-        }
-
         public override float GetResistance()
         {
             return 0.0005f;
-        }
-
-        public override float GetTorque()
-        {
-            return 0;
-        }
-
-        protected override MechPowerPath[] GetMechPowerExits(TurnDirection fromExitTurnDir)
-        {
-            // Axles just forward mechanical power in the same direction with the same turn direction
-            return new MechPowerPath[] { new MechPowerPath(fromExitTurnDir.Facing, fromExitTurnDir.Rot) };
         }
 
         protected virtual MeshData getStandMesh(string orient)
@@ -149,11 +133,21 @@ namespace Vintagestory.GameContent.Mechanics
 
         private bool RequiresStand(BlockPos pos, Vec3i vector)
         {
-            Block block = Api.World.BlockAccessor.GetBlock(pos.X + vector.X, pos.Y + vector.Y, pos.Z + vector.Z);
-            if (block != Block) return true;
+            BlockMPBase block = Api.World.BlockAccessor.GetBlock(pos.X + vector.X, pos.Y + vector.Y, pos.Z + vector.Z) as BlockMPBase;
+            if (block == null) return true;
             BlockPos sidePos = new BlockPos(pos.X + vector.X, pos.Y + vector.Y, pos.Z + vector.Z);
-            BEBehaviorMPAxle bempaxle = Api.World.BlockAccessor.GetBlockEntity(sidePos)?.GetBehavior<BEBehaviorMPAxle>();
-            if (bempaxle == null) return true;
+            BEBehaviorMPBase bemp = Api.World.BlockAccessor.GetBlockEntity(sidePos)?.GetBehavior<BEBehaviorMPBase>();
+            if (bemp == null) return true;
+            BEBehaviorMPAxle bempaxle = bemp as BEBehaviorMPAxle;
+            if (bempaxle == null)
+            {
+                if (bemp is BEBehaviorMPBrake || bemp is BEBehaviorMPCreativeRotor)
+                {
+                    BlockFacing side = BlockFacing.FromNormal(vector);
+                    if (side != null && block.HasMechPowerConnectorAt(Api.World, sidePos, side.GetOpposite())) return false;
+                }
+                return true;
+            }
             if (bempaxle.IsAttachedToBlock()) return false;
             return bempaxle.RequiresStand(sidePos, vector);
         }
@@ -244,9 +238,6 @@ namespace Vintagestory.GameContent.Mechanics
             {
                 string orientations = Block.Variant["orientation"];
                 sb.AppendLine(string.Format(Lang.Get("Orientation: {0}", orientations)));
-                sb.AppendLine(string.Format(Lang.Get("Rotation: {0} - {1}", inTurnDir.Rot, inTurnDir.Facing)));
-                if (this.Network != null)
-                    sb.AppendLine(string.Format(Lang.Get("Network {0} - s {1} - t {2} - r {3}", this.Network.TurnDir.Rot.ToString(), (int)(this.Network.Speed * 100), (int)(this.Network.TotalAvailableTorque * 100), (int)(this.Network.NetworkResistance * 100))));
             }
         }
     }

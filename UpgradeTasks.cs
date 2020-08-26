@@ -54,6 +54,8 @@ namespace Vintagestory.ServerMods
                 if (bs == null) return;
 
                 Block block = api.World.BlockAccessor.GetBlock(bs.Position);
+                if (block.Code == null) return;
+
                 string[] parts = block.Code.Path.Split(new char[] { '-' }, 3);
 
                 if ((parts[0] == "clayplanter" || parts[0] == "flowerpot") && parts.Length >= 3)
@@ -69,6 +71,105 @@ namespace Vintagestory.ServerMods
             api.Network.GetChannel("upgradeTasks").SetMessageHandler<UpgradeHerePacket>(didUseBlock);
 
             api.Event.DidBreakBlock += Event_DidBreakBlock;
+
+            api.RegisterCommand("upgradearea", "Fixes chiseled blocks, pots and planters broken in v1.13", "", onUpgradeCmd, "worldedit");
+            api.RegisterCommand("setchiselblockmat", "Sets the material of a currently looked at chisel block to the material in the active hands", "", onSetChiselMat, "worldedit");
+        }
+
+        private void onSetChiselMat(IServerPlayer player, int groupId, CmdArgs args)
+        {
+            BlockPos pos = player.CurrentBlockSelection?.Position;
+            if (pos == null)
+            {
+                player.SendMessage(groupId, "Look at a block first", EnumChatType.CommandError);
+                return;
+            }
+
+            BlockEntityChisel bechisel = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityChisel;
+            if (bechisel == null)
+            {
+                player.SendMessage(groupId, "Not looking at a chiseled block", EnumChatType.CommandError);
+                return;
+            }
+
+            Block block = player.InventoryManager?.ActiveHotbarSlot?.Itemstack?.Block;
+
+            if (block == null)
+            {
+                player.SendMessage(groupId, "You need a block in your active hand", EnumChatType.CommandError);
+                return;
+            }
+
+            for (int i = 0; i < bechisel.MaterialIds.Length; i++)
+            {
+                bechisel.MaterialIds[i] = block.Id;
+            }
+
+            bechisel.MarkDirty(true);
+            player.SendMessage(groupId, "Ok material set", EnumChatType.CommandError);
+            return;
+        }
+
+        private void onUpgradeCmd(IServerPlayer player, int groupId, CmdArgs args)
+        {
+            var wmod = api.ModLoader.GetModSystem<WorldEdit.WorldEdit>();
+
+            var workspace = wmod.GetWorkSpace(player.PlayerUID);
+
+            if (workspace == null || workspace.StartMarker == null || workspace.EndMarker == null)
+            {
+                player.SendMessage(groupId, "Select an area with worldedit first", EnumChatType.CommandError);
+                return;
+            }
+
+            int startx = Math.Min(workspace.StartMarker.X, workspace.EndMarker.X);
+            int endx = Math.Max(workspace.StartMarker.X, workspace.EndMarker.X);
+            int starty = Math.Min(workspace.StartMarker.Y, workspace.EndMarker.Y);
+            int endy = Math.Max(workspace.StartMarker.Y, workspace.EndMarker.Y);
+            int startz = Math.Min(workspace.StartMarker.Z, workspace.EndMarker.Z);
+            int endZ = Math.Max(workspace.StartMarker.Z, workspace.EndMarker.Z);
+            BlockPos pos = new BlockPos();
+
+            Dictionary<string, Block> blocksByName = new Dictionary<string, Block>();
+            foreach (var block in api.World.Blocks)
+            {
+                if (block.IsMissing || block.Code == null) continue;
+                blocksByName[block.GetHeldItemName(new ItemStack(block))] = block;
+            }
+
+            int graniteBlockId = api.World.GetBlock(new AssetLocation("rock-granite")).Id;
+
+            for (int x = startx; x < endx; x++)
+            {
+                for (int y = starty; y < endy; y++)
+                {
+                    for (int z = startz; z < endZ; z++)
+                    {
+                        pos.Set(x, y, z);
+
+                        Block block = api.World.BlockAccessor.GetBlock(x, y, z);
+                        if (block is BlockChisel)
+                        {
+                            BlockEntityChisel bechisel = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityChisel;
+                            if (bechisel.MaterialIds != null && bechisel.MaterialIds.Length > 0 && bechisel.MaterialIds[0] == graniteBlockId)
+                            {
+
+                                Block matblock = null;
+                                if (blocksByName.TryGetValue(bechisel.BlockName, out matblock))
+                                {
+                                    bechisel.MaterialIds[0] = matblock.Id;
+                                    bechisel.MarkDirty(true);
+                                }
+                            }
+                        }
+
+                        if (block is BlockPlantContainer)
+                        {
+                            FixOldPlantContainers(pos);
+                        }
+                    }
+                }
+            }
         }
 
         private void didUseBlock(IServerPlayer fromPlayer, UpgradeHerePacket networkMessage)
@@ -127,7 +228,9 @@ namespace Vintagestory.ServerMods
         void DropPlantContainer(int blockid, BlockPos pos)
         {
             Block block = api.World.GetBlock(blockid);
-            string[] parts = block.Code.Path.Split(new char[] { '-' }, 3);
+            if (block.Code == null) return;
+
+            string[] parts =  block.Code.Path.Split(new char[] { '-' }, 3);
             if (parts.Length < 3) return;
 
             if ((parts[0] == "clayplanter" || parts[1] == "flowerpot") && parts.Length >= 3)

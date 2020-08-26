@@ -194,7 +194,7 @@ namespace Vintagestory.ServerMods
 
             int chunksize = api.WorldManager.ChunkSize;
 
-            List<Block> blocks = api.World.Blocks;
+            IList<Block> blocks = api.World.Blocks;
 
             foreach (Vec2i coord in coords)
             {
@@ -296,6 +296,9 @@ namespace Vintagestory.ServerMods
             if (!onlydelete)
             {
                 // so that resends arrive after all deletes
+                int leftToLoad = coords.Count;
+
+                api.WorldManager.SendChunks = false;
 
                 foreach (Vec2i coord in coords)
                 {
@@ -308,6 +311,11 @@ namespace Vintagestory.ServerMods
                             for (int cy = 0; cy < api.WorldManager.MapSizeY / api.WorldManager.ChunkSize; cy++)
                             {
                                 api.WorldManager.BroadcastChunk(cx, cy, cz, true);
+                                leftToLoad--;
+                                if (leftToLoad <= 1)
+                                {
+                                    api.WorldManager.SendChunks = true;
+                                }
                             }
                         }
                     });
@@ -389,7 +397,7 @@ namespace Vintagestory.ServerMods
 
             BlockPos pos = player.Entity.Pos.HorizontalAheadCopy(aheadoffset).AsBlockPos;
 
-            IBlockAccessor blockAccessor = api.WorldManager.GetBlockAccessorBulkUpdate(true, true);
+            IBlockAccessor blockAccessor = api.World.GetBlockAccessorBulkUpdate(true, true);
             
             while (blockAccessor.GetBlockId(pos) == 0 && pos.Y > 1)
             {
@@ -397,6 +405,13 @@ namespace Vintagestory.ServerMods
             }
 
             treeGenerators.ReloadTreeGenerators();
+
+            if (treeGenerators.GetGenerator(loc) == null)
+            {
+                player.SendMessage(groupId, "Cannot generate this tree, no such generator found", EnumChatType.CommandError);
+                return;
+            }
+
             treeGenerators.RunGenerator(loc, blockAccessor, pos, size);
 
             blockAccessor.Commit();
@@ -418,7 +433,7 @@ namespace Vintagestory.ServerMods
 
             EntityPos pos = player.Entity.Pos;
             BlockPos center = pos.HorizontalAheadCopy(25).AsBlockPos;
-            IBlockAccessor blockAccessor = api.WorldManager.GetBlockAccessorBulkUpdate(true, true, true);
+            IBlockAccessor blockAccessor = api.World.GetBlockAccessorBulkUpdate(true, true, true);
             AssetLocation loc = new AssetLocation(arguments.PopWord());
 
             int size = 12;
@@ -1160,10 +1175,10 @@ namespace Vintagestory.ServerMods
                         ClimateCondition climate2 = api.World.BlockAccessor.GetClimateAt(pos, EnumGetClimateMode.NowValues);
 
                         string text = string.Format(
-                            "Temperature: {0}°, Rainfall: {1}%, Fertility: {2}%, Forest: {3}%, Shrub: {4}%, Sealevel dist: {5}%, Now temp: {6}, Season: {7}", 
+                            "Temperature: {0}°, Rainfall: {1}%, Fertility: {2}%, Forest: {3}%, Shrub: {4}%, Sealevel dist: {5}%, Now temp: {6}, Season: {7}, Hemisphere: {8}", 
                             climate.Temperature.ToString("0.#"), (int)(climate.Rainfall * 100f), (int)(climate.Fertility * 100f), 
                             (int)(climate.ForestDensity * 100f), (int)(climate.ShrubDensity * 100f), (int)(100f * pos.Y / 255f), climate2.Temperature.ToString("0.#"),
-                            api.World.Calendar.GetSeason(pos)
+                            api.World.Calendar.GetSeason(pos), api.World.Calendar.GetHemisphere(pos)
                         );
 
                         player.SendMessage(groupId, text, EnumChatType.CommandSuccess);

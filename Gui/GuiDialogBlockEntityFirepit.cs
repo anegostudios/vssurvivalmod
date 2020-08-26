@@ -41,7 +41,7 @@ namespace Vintagestory.GameContent
             ItemSlot hoveredSlot = capi.World.Player.InventoryManager.CurrentHoveredSlot;
             if (hoveredSlot != null && hoveredSlot.Inventory?.InventoryID != Inventory?.InventoryID)
             {
-                capi.Input.TriggerOnMouseLeaveSlot(hoveredSlot);
+                //capi.Input.TriggerOnMouseLeaveSlot(hoveredSlot); - wtf is this for?
                 hoveredSlot = null;
             }
 

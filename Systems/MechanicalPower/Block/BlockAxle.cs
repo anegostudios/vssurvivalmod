@@ -35,7 +35,7 @@ namespace Vintagestory.GameContent.Mechanics
                 if (block != null)
                 {
                     BlockFacing faceOpposite = face.GetOpposite();
-                    if (block.HasMechPowerConnectorAt(world, pos, face.GetOpposite()))
+                    if (block.HasMechPowerConnectorAt(world, pos, faceOpposite))
                     {
                         AssetLocation loc = new AssetLocation(FirstCodePart() + "-" + faceOpposite.Code[0] + face.Code[0]);
                         Block toPlaceBlock = world.GetBlock(loc);
@@ -83,18 +83,22 @@ namespace Vintagestory.GameContent.Mechanics
                 bool connected = false;
                 foreach (BlockFacing face in BlockFacing.ALLFACES)
                 {
-                    IMechanicalPowerBlock block = world.BlockAccessor.GetBlock(pos.AddCopy(face)) as IMechanicalPowerBlock;
+                    BlockPos npos = pos.AddCopy(face);
+                    IMechanicalPowerBlock block = world.BlockAccessor.GetBlock(npos) as IMechanicalPowerBlock;
                     bool prevConnected = connected;
                     if (block != null && block.HasMechPowerConnectorAt(world, pos, face.GetOpposite()) && world.BlockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorMPBase>()?.disconnected == false) connected = true;
                     BlockAngledGears blockagears = block as BlockAngledGears;
                     if (blockagears == null) continue;
                     if (blockagears.Facings.Contains(face.GetOpposite()) && blockagears.Facings.Length == 1)
                     {
-                        world.BlockAccessor.BreakBlock(pos.AddCopy(face), null);
+                        world.BlockAccessor.BreakBlock(npos, null);
                         connected = prevConnected;  //undo connected = true in this situation
                     }
                 }
-                if (!connected) world.BlockAccessor.BreakBlock(pos, null);
+                if (!connected)
+                {
+                    world.BlockAccessor.BreakBlock(pos, null);
+                }
             }
 
             base.OnNeighbourBlockChange(world, pos, neibpos);

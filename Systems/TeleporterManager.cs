@@ -236,7 +236,6 @@ namespace Vintagestory.GameContent
             {
                 if (teleVolume > 0) teleportingSound.Start();
             }
-
             
             bool ownTranslocate = !(capi.World.ElapsedMilliseconds - lastTranslocateCollideMsOwnPlayer > 200);
             bool otherTranslocate = !(capi.World.ElapsedMilliseconds - lastTranslocateCollideMsOtherPlayer > 200);

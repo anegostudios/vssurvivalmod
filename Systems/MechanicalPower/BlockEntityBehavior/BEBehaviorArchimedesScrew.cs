@@ -31,25 +31,9 @@ namespace Vintagestory.GameContent.Mechanics
             resistance = properties["resistance"].AsFloat(0.015f);
         }
 
-        public override TurnDirection GetTurnDirection(BlockFacing forFacing)
-        {
-            return GetInTurnDirection();
-        }
-
         public override float GetResistance()
         {
             return resistance;
-        }
-
-        public override float GetTorque()
-        {
-            return 0;
-        }
-
-        protected override MechPowerPath[] GetMechPowerExits(TurnDirection fromExitTurnDir)
-        {
-            // Axles just forward mechanical power in the same direction with the same turn direction
-            return new MechPowerPath[] { new MechPowerPath(fromExitTurnDir.Facing, fromExitTurnDir.Rot) };
         }
 
         protected virtual MeshData getHullMesh()

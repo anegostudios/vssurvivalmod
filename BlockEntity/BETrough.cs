@@ -215,6 +215,7 @@ namespace Vintagestory.GameContent
 
             if (doubleblock != null)
             {
+                // Load only contents and flip 180 degrees
                 capi.Tesselator.TesselateShape("betroughcontents", Api.Assets.TryGet("shapes/" + shapeLoc + ".json").ToObject<Shape>(), out meshadd, this, rotation.Add(0, 180, 0), 0, 0, 0, null, new string[] { "Origin point/contents/*" });
                 BlockFacing facing = doubleblock.OtherPartPos();
                 meshadd.Translate(facing.Normalf);

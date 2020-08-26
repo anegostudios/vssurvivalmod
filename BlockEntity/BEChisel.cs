@@ -75,7 +75,8 @@ namespace Vintagestory.GameContent
         bool[] emitSideAo = new bool[6] { true, true, true, true, true, true };
         bool[] emitSideAoByFlags = new bool[63];
         bool absorbAnyLight;
-        bool[] sideSolid = new bool[6];
+        public bool[] sideSolid = new bool[6];
+        byte nowmaterialIndex;
 
         public bool DetailingMode
         {
@@ -142,14 +143,66 @@ namespace Vintagestory.GameContent
         }
 
 
-        public bool CanAttachBlockAt(BlockFacing blockFace)
+        public bool CanAttachBlockAt(BlockFacing blockFace, Cuboidi attachmentArea = null)
         {
-            return sideSolid[blockFace.Index];
+            if (attachmentArea == null)
+            {
+                return sideSolid[blockFace.Index];
+            } else
+            {
+                HashSet<XYZ> req = new HashSet<XYZ>();
+                for (int x = attachmentArea.X1; x <= attachmentArea.X2; x++)
+                {
+                    for (int y = attachmentArea.Y1; y <= attachmentArea.Y2; y++)
+                    {
+                        for (int z = attachmentArea.Z1; z <= attachmentArea.Z2; z++)
+                        {
+                            XYZ vec = new XYZ(x, y, z);
+
+                            switch (blockFace.Index)
+                            {
+                                case 0: vec = new XYZ(x, y, 0); break; // N
+                                case 1: vec = new XYZ(15, y, z); break; // E
+                                case 2: vec = new XYZ(x, y, 15); break; // S
+                                case 3: vec = new XYZ(0, y, z); break; // W
+                                case 4: vec = new XYZ(x, 15, z); break; // U
+                                case 5: vec = new XYZ(x, 0, z); break; // D
+                                default: vec = new XYZ(0, 0, 0); break;
+                            }
+
+                            req.Add(vec);
+                        }
+                    }
+                }
+                
+                for (int i = 0; i < VoxelCuboids.Count; i++)
+                {
+                    FromUint(VoxelCuboids[i], ref tmpCuboid);
+
+                    for (int x = tmpCuboid.X1; x < tmpCuboid.X2; x++)
+                    {
+                        for (int y = tmpCuboid.Y1; y < tmpCuboid.Y2; y++)
+                        {
+                            for (int z = tmpCuboid.Z1; z < tmpCuboid.Z2; z++)
+                            {
+                                // Early exit
+                                if (x != 0 && x != 15 && y != 0 && y != 15 && z != 0 && z != 15) continue;
+
+                                req.Remove(new XYZ(x, y, z));
+                            }
+                        }
+                    }
+                }
+
+                return req.Count == 0;
+            }
         }
+
+
 
         public void WasPlaced(Block block, string blockName)
         {
-            bool collBoxCuboid = block.Attributes?["chiselShapeFromCollisionBox"].AsBool(false) == true;
+            bool collBoxCuboid = block.Attributes?.IsTrue("chiselShapeFromCollisionBox") == true;
 
             MaterialIds = new int[] { block.BlockId };
 
@@ -159,10 +212,11 @@ namespace Vintagestory.GameContent
             } else
             {
                 Cuboidf[] collboxes = block.GetCollisionBoxes(Api.World.BlockAccessor, Pos);
+
                 for (int i = 0; i < collboxes.Length; i++)
                 {
                     Cuboidf box = collboxes[i];
-                    VoxelCuboids.Add(ToCuboid((int)(16*box.X1), (int)(16 * box.Y1), (int)(16 * box.Z1), (int)(16 * box.X2), (int)(16 * box.Y2), (int)(16 * box.Z2), 0));
+                    VoxelCuboids.Add(ToCuboid((int)(16 * box.X1), (int)(16 * box.Y1), (int)(16 * box.Z1), (int)(16 * box.X2), (int)(16 * box.Y2), (int)(16 * box.Z2), 0));
                 }
             }
 
@@ -234,13 +288,13 @@ namespace Vintagestory.GameContent
 
                     if (isBreak)
                     {
-                        wasChanged = SetVoxel(voxelPos, false, byPlayer);
+                        wasChanged = SetVoxel(voxelPos, false, byPlayer, nowmaterialIndex);
                     }
                     else
                     {
                         if (addAtPos.X >= 0 && addAtPos.X < 16 && addAtPos.Y >= 0 && addAtPos.Y < 16 && addAtPos.Z >= 0 && addAtPos.Z < 16)
                         {
-                            wasChanged = SetVoxel(addAtPos, true, byPlayer);
+                            wasChanged = SetVoxel(addAtPos, true, byPlayer, nowmaterialIndex);
                         }
                     }
                     break;
@@ -295,6 +349,7 @@ namespace Vintagestory.GameContent
                 writer.Write(voxelPos.Z);
                 writer.Write(isBreak);
                 writer.Write((ushort)facing.Index);
+                writer.Write(nowmaterialIndex);
                 data = ms.ToArray();
             }
 
@@ -305,6 +360,10 @@ namespace Vintagestory.GameContent
             );
         }
 
+        internal void SetNowMaterial(byte index)
+        {
+            nowmaterialIndex = (byte)GameMath.Clamp(index, 0, MaterialIds.Length - 1);
+        }
 
         public override void OnReceivedClientPacket(IPlayer player, int packetid, byte[] data)
         {
@@ -333,6 +392,7 @@ namespace Vintagestory.GameContent
                     voxelPos = new Vec3i(reader.ReadInt32(), reader.ReadInt32(), reader.ReadInt32());
                     isBreak = reader.ReadBoolean();
                     facing = BlockFacing.ALLFACES[reader.ReadInt16()];
+                    nowmaterialIndex = reader.ReadByte();
                 }
 
                 UpdateVoxel(player, player.InventoryManager.ActiveHotbarSlot, voxelPos, facing, isBreak);
@@ -497,7 +557,7 @@ namespace Vintagestory.GameContent
 
 
 
-        public bool SetVoxel(Vec3i voxelPos, bool state, IPlayer byPlayer)
+        public bool SetVoxel(Vec3i voxelPos, bool state, IPlayer byPlayer, byte materialId)
         {
             bool[,,] Voxels;
             byte[,,] VoxelMaterial;
@@ -518,6 +578,11 @@ namespace Vintagestory.GameContent
                         wasChanged |= Voxels[voxelPos.X + dx, voxelPos.Y + dy, voxelPos.Z + dz] != state;
 
                         Voxels[voxelPos.X + dx, voxelPos.Y + dy, voxelPos.Z + dz] = state;
+
+                        if (state)
+                        {
+                            VoxelMaterial[voxelPos.X + dx, voxelPos.Y + dy, voxelPos.Z + dz] = materialId;
+                        }
                     }
                 }
             }
@@ -525,6 +590,32 @@ namespace Vintagestory.GameContent
             if (!wasChanged) return false;
 
             RebuildCuboidList(Voxels, VoxelMaterial);
+
+
+            if (Api.Side == EnumAppSide.Client && !state)
+            {
+                Vec3d basepos = Pos
+                    .ToVec3d()
+                    .Add(voxelPos.X / 16.0, voxelPos.Y / 16.0, voxelPos.Z / 16.0)
+                    .Add(size / 4f / 16.0, size / 4f / 16.0, size / 4f / 16.0)
+                ;
+
+                int q = size * 5 - 2 + Api.World.Rand.Next(5);
+                Block block = Api.World.GetBlock(MaterialIds[materialId]);
+
+                while (q-- > 0)
+                {
+                    Api.World.SpawnParticles(
+                        1,
+                        block.GetRandomColor(Api as ICoreClientAPI, Pos, BlockFacing.UP) | (0xff << 24),
+                        basepos,
+                        basepos.Clone().Add(size / 4f / 16.0, size / 4f / 16.0, size / 4f / 16.0),
+                        new Vec3f(-1, -0.5f, -1),
+                        new Vec3f(1, 1 + size/3f, 1),
+                        1, 1, size/30f + 0.1f + (float)Api.World.Rand.NextDouble() * 0.25f, EnumParticleModel.Cube
+                    );
+                }
+            }
 
             return true;
         }
@@ -643,11 +734,10 @@ namespace Vintagestory.GameContent
                         bool didGrowAny = true;
                         while (didGrowAny)
                         {
-                            didGrowAny =
-                                TryGrowX(cub, Voxels, VoxelVisited, VoxelMaterial) ||
-                                TryGrowY(cub, Voxels, VoxelVisited, VoxelMaterial) ||
-                                TryGrowZ(cub, Voxels, VoxelVisited, VoxelMaterial)
-                            ;
+                            didGrowAny = false;
+                            didGrowAny |= TryGrowX(cub, Voxels, VoxelVisited, VoxelMaterial);
+                            didGrowAny |= TryGrowY(cub, Voxels, VoxelVisited, VoxelMaterial);
+                            didGrowAny |= TryGrowZ(cub, Voxels, VoxelVisited, VoxelMaterial);
                         }
 
                         VoxelCuboids.Add(ToCuboid(cub));
@@ -827,10 +917,10 @@ namespace Vintagestory.GameContent
         #region Mesh generation
         public void RegenMesh()
         {
-            Mesh = CreateMesh(Api as ICoreClientAPI, VoxelCuboids, MaterialIds);
+            Mesh = CreateMesh(Api as ICoreClientAPI, VoxelCuboids, MaterialIds, Pos);
         }
 
-        public static MeshData CreateMesh(ICoreClientAPI coreClientAPI, List<uint> voxelCuboids, int[] materials)
+        public static MeshData CreateMesh(ICoreClientAPI coreClientAPI, List<uint> voxelCuboids, int[] materials, BlockPos posForRnd = null)
         {
             MeshData mesh = new MeshData(24, 36, false).WithColorMaps().WithRenderpasses().WithXyzFaces();
             if (voxelCuboids == null || materials == null) return mesh;
@@ -845,11 +935,26 @@ namespace Vintagestory.GameContent
                 float subPixelPaddingx = coreClientAPI.BlockTextureAtlas.SubPixelPaddingX;
                 float subPixelPaddingy = coreClientAPI.BlockTextureAtlas.SubPixelPaddingY;
 
+                int altNum = 0;
+
+                if (block.HasAlternates && posForRnd != null)
+                {
+                    int altcount = 0;
+                    foreach (var val in block.Textures)
+                    {
+                        BakedCompositeTexture bct = val.Value.Baked;
+                        if (bct.BakedVariants == null) continue;
+                        altcount = Math.Max(altcount, bct.BakedVariants.Length);
+                    }
+
+                    altNum = block.RandomizeAxes == EnumRandomizeAxes.XYZ ? GameMath.MurmurHash3Mod(posForRnd.X, posForRnd.Y, posForRnd.Z, altcount) : GameMath.MurmurHash3Mod(posForRnd.X, 0, posForRnd.Z, altcount);
+                }
+
                 MeshData cuboidmesh = genCube(
                     tmpCuboid.X1, tmpCuboid.Y1, tmpCuboid.Z1, 
                     tmpCuboid.X2 - tmpCuboid.X1, tmpCuboid.Y2 - tmpCuboid.Y1, tmpCuboid.Z2 - tmpCuboid.Z1, 
                     coreClientAPI, 
-                    coreClientAPI.Tesselator.GetTexSource(block, 0, true),
+                    coreClientAPI.Tesselator.GetTexSource(block, altNum, true),
                     subPixelPaddingx,
                     subPixelPaddingy,
                     block
@@ -951,9 +1056,13 @@ namespace Vintagestory.GameContent
                 {
                     tpos = texSource[facing.Code];
                 }
-                if (tpos == null)
+                if (tpos == null && block.Textures.Count > 0)
                 {
                     tpos = texSource[block.Textures.First().Key];
+                }
+                if (tpos == null)
+                {
+                    tpos = capi.BlockTextureAtlas.UnknownTexturePosition;
                 }
 
                 float texWidth = tpos.x2 - tpos.x1;
@@ -1039,13 +1148,13 @@ namespace Vintagestory.GameContent
         {
             if (tree["materials"] is IntArrayAttribute)
             {
-                // Pre 1.8 storage 
-                ushort[] values = (tree["materials"] as IntArrayAttribute).AsUShort;
+                // Pre 1.8 storage and Post 1.13-pre.2 storage
+                int[] ids = (tree["materials"] as IntArrayAttribute).value;
 
-                int[] valuesInt = new int[values.Length];
-                for (int i = 0; i < values.Length; i++)
+                int[] valuesInt = new int[ids.Length];
+                for (int i = 0; i < ids.Length; i++)
                 {
-                    valuesInt[i] = values[i];
+                    valuesInt[i] = ids[i];
                 }
 
                 return valuesInt;
@@ -1056,7 +1165,18 @@ namespace Vintagestory.GameContent
                 int[] ids = new int[codes.Length];
                 for (int i = 0; i < ids.Length; i++)
                 {
-                    ids[i] = worldAccessForResolve.GetBlock(new AssetLocation(codes[i])).BlockId;
+                    Block block = worldAccessForResolve.GetBlock(new AssetLocation(codes[i]));
+                    if (block == null)
+                    {
+                        block = worldAccessForResolve.GetBlock(new AssetLocation(codes[i] + "-free")); // pre 1.13 blocks
+
+                        if (block == null)
+                        {
+                            block = worldAccessForResolve.GetBlock(new AssetLocation("rock-granite"));
+                        }
+                    }
+
+                    ids[i] = block.BlockId;
                 }
 
                 return ids;
@@ -1067,13 +1187,8 @@ namespace Vintagestory.GameContent
         {
             base.ToTreeAttributes(tree);
 
-            StringArrayAttribute attr = new StringArrayAttribute();
-            string[] materialCodes = new string[MaterialIds?.Length ?? 0];
-            for (int i = 0; i < materialCodes.Length; i++)
-            {
-                materialCodes[i] = Api.World.Blocks[MaterialIds[i]].Code.ToString();
-            }
-            attr.value = materialCodes;
+            IntArrayAttribute attr = new IntArrayAttribute();
+            attr.value = MaterialIds;
 
             tree["materials"] = attr;
             tree["cuboids"] = new IntArrayAttribute(VoxelCuboids.ToArray());
@@ -1125,6 +1240,62 @@ namespace Vintagestory.GameContent
             tocuboid.Y2 = (int)(((val) >> 16) & 15) + 1;
             tocuboid.Z2 = (int)(((val) >> 20) & 15) + 1;
             tocuboid.Material = (byte)((val >> 24) & 15);
+        }
+
+        public override void OnLoadCollectibleMappings(IWorldAccessor worldForNewMappings, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, int schematicSeed)
+        {
+            base.OnLoadCollectibleMappings(worldForNewMappings, oldBlockIdMapping, oldItemIdMapping, schematicSeed);
+
+            for (int i = 0; i < MaterialIds.Length; i++)
+            {
+                AssetLocation code;
+                if (oldBlockIdMapping.TryGetValue(MaterialIds[i], out code))
+                {
+                    Block block = worldForNewMappings.GetBlock(code);
+                    if (block == null)
+                    {
+                        worldForNewMappings.Logger.Warning("Cannot load chiseled block id mapping @ {1}, block code {0} not found block registry. Will not display correctly.", code, Pos);
+                        continue;
+                    }
+
+                    MaterialIds[i] = block.Id;
+                } else
+                {
+                    worldForNewMappings.Logger.Warning("Cannot load chiseled block id mapping @ {1}, block id {0} not found block registry. Will not display correctly.", MaterialIds[i], Pos);
+                }
+            }
+        }
+
+        public override void OnStoreCollectibleMappings(Dictionary<int, AssetLocation> blockIdMapping, Dictionary<int, AssetLocation> itemIdMapping)
+        {
+            base.OnStoreCollectibleMappings(blockIdMapping, itemIdMapping);
+
+            for (int i = 0; i < MaterialIds.Length; i++)
+            {
+                Block block = Api.World.GetBlock(MaterialIds[i]);
+                blockIdMapping[MaterialIds[i]] = block.Code;
+            }
+        }
+    }
+
+
+
+    struct XYZ : IEquatable<XYZ>
+    {
+        public int X;
+        public int Y;
+        public int Z;
+
+        public XYZ(int x, int y, int z)
+        {
+            X = x;
+            Y = y;
+            Z = z;
+        }
+
+        public bool Equals(XYZ other)
+        {
+            return other.X == X && other.Y == Y && other.Z == Z;
         }
     }
 }

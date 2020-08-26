@@ -39,9 +39,9 @@ namespace Vintagestory.GameContent
             textureSourceBlock = capi.World.GetBlock(new AssetLocation("claypot-cooked"));
         }
 
-        public MeshRef GetOrCreateMealInContainerMeshRef(Block containerBlock, CookingRecipe forRecipe, ItemStack[] contentStacks, Vec3f foodTranslate = null) //, bool withRgba2 = false)
+        public MeshRef GetOrCreateMealInContainerMeshRef(Block containerBlock, CookingRecipe forRecipe, ItemStack[] contentStacks, Vec3f foodTranslate = null)
         {
-            Dictionary<int, MeshRef> meshrefs = null;
+            Dictionary<int, MeshRef> meshrefs;
 
             object obj;
             if (capi.ObjectCache.TryGetValue("cookedMeshRefs", out obj))
@@ -55,14 +55,14 @@ namespace Vintagestory.GameContent
 
             if (contentStacks == null) return null;
 
-            int mealhashcode = GetMealHashCode(capi.World, containerBlock, contentStacks, foodTranslate);// + (withRgba2 ? 121298 : 0);
+            int mealhashcode = GetMealHashCode(capi.World, containerBlock, contentStacks, foodTranslate);
 
             MeshRef mealMeshRef = null;
 
             if (!meshrefs.TryGetValue(mealhashcode, out mealMeshRef))
             {
                 MeshData mesh = GenMealInContainerMesh(containerBlock, forRecipe, contentStacks, foodTranslate);
-                //if (!withRgba2) mesh.Rgba2 = null;
+                
                 meshrefs[mealhashcode] = mealMeshRef = capi.Render.UploadMesh(mesh);
             }
 
@@ -89,7 +89,6 @@ namespace Vintagestory.GameContent
         {
             MealTextureSource source = new MealTextureSource(capi, textureSourceBlock);
             
-
             if (forRecipe != null)
             {
                 MeshData foodMesh = GenFoodMixMesh(contentStacks, forRecipe, foodTranslate);

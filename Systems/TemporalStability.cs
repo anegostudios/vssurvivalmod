@@ -69,12 +69,16 @@ namespace Vintagestory.GameContent
         TemporalStormRunTimeData data = new TemporalStormRunTimeData();
 
 
-
-
-        Dictionary<AssetLocation, int> creatureOriginalMaxSpawnQuantity = new Dictionary<AssetLocation, int>();
-
-
         string worldConfigStorminess;
+
+        public float StormStrength
+        {
+            get
+            {
+                if (data.nowStormActive) return data.stormGlitchStrength;
+                return 0;
+            }
+        }
 
         public override bool ShouldLoad(EnumAppSide forSide)
         {
@@ -85,6 +89,7 @@ namespace Vintagestory.GameContent
         {
             base.Start(api);
             this.api = api;
+
 
             texts = new Dictionary<EnumTempStormStrength, TemporalStormText>()
             {
@@ -202,21 +207,13 @@ namespace Vintagestory.GameContent
                 LoadNoise();
 
 
-                foreach (var val in sapi.World.EntityTypes.Where(tp => tp.Code.Path.Contains("drifter")))
-                {
-                    if (val.Server.SpawnConditions != null)
-                    {
-                        creatureOriginalMaxSpawnQuantity[val.Code] = val.Server.SpawnConditions.Runtime.MaxQuantity;
-                    }
-                }
-
                 if (prepNextStorm)
                 {
                     prepareNextStorm();
                 }
             };
 
-
+            api.Event.OnTrySpawnEntity += Event_OnTrySpawnEntity;
             api.Event.GameWorldSave += Event_GameWorldSave;
             api.Event.PlayerJoin += Event_PlayerJoin;
             api.Event.PlayerNowPlaying += Event_PlayerNowPlaying;
@@ -225,13 +222,27 @@ namespace Vintagestory.GameContent
 
         private void onCmdNextStorm(IServerPlayer player, int groupId, CmdArgs args)
         {
-            double nextStormDaysLeft = data.nextStormTotalDays - api.World.Calendar.TotalDays;
-            player.SendMessage(groupId, Lang.Get("temporalstorm-cmd-daysleft", nextStormDaysLeft), EnumChatType.Notification);
+            if (data.nowStormActive)
+            {
+                double daysleft = data.stormActiveTotalDays - api.World.Calendar.TotalDays;
+                player.SendMessage(groupId, Lang.Get("Storm still active for {0:0.##} days", daysleft), EnumChatType.Notification);
+            }
+            else
+            {
+                if (args.PopWord() == "now")
+                {
+                    data.nextStormTotalDays = api.World.Calendar.TotalDays;
+                    return;
+                }
+
+                double nextStormDaysLeft = data.nextStormTotalDays - api.World.Calendar.TotalDays;
+                player.SendMessage(groupId, Lang.Get("temporalstorm-cmd-daysleft", nextStormDaysLeft), EnumChatType.Notification);
+            }
         }
 
         private void Event_PlayerNowPlaying(IServerPlayer byPlayer)
         {
-            if (sapi.WorldManager.SaveGame.IsNew)
+            if (sapi.WorldManager.SaveGame.IsNew && stormsEnabled)
             {
                 double nextStormDaysLeft = data.nextStormTotalDays - api.World.Calendar.TotalDays;
                 byPlayer.SendMessage(GlobalConstants.GeneralChatGroup, Lang.Get("{0} days until the first temporal storm.", (int)nextStormDaysLeft), EnumChatType.Notification);
@@ -261,6 +272,11 @@ namespace Vintagestory.GameContent
                 data.stormGlitchStrength = 0;
                 data.nowStormActive = false;
                 return;
+            }
+
+            if (data.nowStormActive)
+            {
+                trySpawnDrifters();
             }
 
             double nextStormDaysLeft = data.nextStormTotalDays - api.World.Calendar.TotalDays;
@@ -297,15 +313,18 @@ namespace Vintagestory.GameContent
                     if (data.nextStormStrength == EnumTempStormStrength.Heavy) data.stormGlitchStrength = 0.9f + (float)api.World.Rand.NextDouble() / 10;
                     data.nowStormActive = true;
 
-                    foreach (var val in sapi.World.EntityTypes.Where(tp => tp.Code.Path.Contains("drifter")))
+                    serverChannel.BroadcastPacket(data);
+
+                    var list = (api.World as IServerWorldAccessor).LoadedEntities.Values;
+                    foreach (var e in list)
                     {
-                        if (val.Server.SpawnConditions != null)
+                        if (e.Code.Path.Contains("drifter"))
                         {
-                            val.Server.SpawnConditions.Runtime.MaxQuantity = (int)(creatureOriginalMaxSpawnQuantity[val.Code] * (1 + data.stormGlitchStrength / 2f));
+                            e.Attributes.SetBool("ignoreDaylightFlee", true);
                         }
+                        
                     }
 
-                    serverChannel.BroadcastPacket(data);
                 }
 
                 double activeDaysLeft = data.stormActiveTotalDays - api.World.Calendar.TotalDays;
@@ -324,17 +343,17 @@ namespace Vintagestory.GameContent
 
                     serverChannel.BroadcastPacket(data);
 
-                    foreach (var val in sapi.World.EntityTypes.Where(tp => tp.Code.Path.Contains("drifter")))
+                    var list = (api.World as IServerWorldAccessor).LoadedEntities.Values;
+                    foreach (var e in list)
                     {
-                        if (val.Server.SpawnConditions != null)
+                        if (e.Code.Path.Contains("drifter"))
                         {
-                            val.Server.SpawnConditions.Runtime.MaxQuantity = creatureOriginalMaxSpawnQuantity[val.Code];
+                            e.Attributes.RemoveAttribute("ignoreDaylightFlee");
                         }
                     }
                 }
             }
         }
-
 
         private void prepareNextStorm()
         {
@@ -351,6 +370,97 @@ namespace Vintagestory.GameContent
 
             data.nextStormStrDouble = Math.Max(0, addStrength);
         }
+
+
+        CollisionTester collisionTester = new CollisionTester();
+        long spawnBreakUntilMs;
+        int nobreakSpawns = 0;
+
+        private void trySpawnDrifters()
+        {
+            float str = StormStrength;
+            if (str < 0.01f) return;
+            if (api.World.Rand.NextDouble() < 0.5 || spawnBreakUntilMs > api.World.ElapsedMilliseconds) return;
+
+            var part = api.ModLoader.GetModSystem<EntityPartitioning>();
+            int range = 13;
+            Vec3d plrPos;
+            Vec3d spawnPos = new Vec3d();
+            BlockPos spawnPosi = new BlockPos();
+
+            nobreakSpawns++;
+            if (api.World.Rand.NextDouble() + 0.04f < nobreakSpawns / 100f)
+            {
+                spawnBreakUntilMs = api.World.ElapsedMilliseconds + 1000 * api.World.Rand.Next(15);
+            }
+
+            foreach (var val in api.World.AllOnlinePlayers)
+            {
+                if (api.World.Rand.NextDouble() < 0.75) continue; 
+                
+                int drifterCount = 0;
+                plrPos = val.Entity.ServerPos.XYZ;
+                part.WalkEntities(plrPos, range + 5, (e) => { 
+                    drifterCount += e.Code.Path.Contains("drifter") ? 1 : 0; 
+                    return true; 
+                });
+
+                if (drifterCount <= 2 + str * 6)
+                {
+                    int tries = 15;
+                    int spawned = 0;
+                    while (tries-- > 0 && spawned < 2)
+                    {
+                        float typernd = (str * 0.7f + (float)api.World.Rand.NextDouble() * 0.3f) * drifterTypes.Length;
+                        int index = (int)typernd + api.World.Rand.NextDouble() > (typernd - (int)typernd) ? 1 : 0;
+                        var type = drifterTypes[index];
+
+                        int rndx = api.World.Rand.Next(2 * range) - range;
+                        int rndy = api.World.Rand.Next(2 * range) - range;
+                        int rndz = api.World.Rand.Next(2 * range) - range;
+
+                        spawnPos.Set((int)plrPos.X + rndx + 0.5, (int)plrPos.Y + rndy + 0.001, (int)plrPos.Z + rndz + 0.5);
+
+                        spawnPosi.Set((int)spawnPos.X, (int)spawnPos.Y, (int)spawnPos.Z);
+
+                        while (api.World.BlockAccessor.GetBlock(spawnPosi.X, spawnPosi.Y - 1, spawnPosi.Z).Id == 0 && spawnPos.Y > 0)
+                        {
+                            spawnPosi.Y--;
+                            spawnPos.Y--;
+                        }
+
+                        if (!api.World.BlockAccessor.IsValidPos((int)spawnPos.X, (int)spawnPos.Y, (int)spawnPos.Z)) continue;
+                        Cuboidf collisionBox = type.SpawnCollisionBox.OmniNotDownGrowBy(0.1f);
+                        if (collisionTester.IsColliding(api.World.BlockAccessor, collisionBox, spawnPos, false)) continue;
+
+                        DoSpawn(type, spawnPos, 0);
+                        spawned++;
+                    }
+                }
+            }
+        }
+
+        private void DoSpawn(EntityProperties entityType, Vec3d spawnPosition, long herdid)
+        {
+            Entity entity = api.ClassRegistry.CreateEntity(entityType);
+
+            EntityAgent agent = entity as EntityAgent;
+            if (agent != null) agent.HerdId = herdid;
+
+            entity.ServerPos.SetPos(spawnPosition);
+            entity.ServerPos.SetYaw((float)api.World.Rand.NextDouble() * GameMath.TWOPI);
+            entity.Pos.SetFrom(entity.ServerPos);
+            entity.PositionBeforeFalling.Set(entity.ServerPos.X, entity.ServerPos.Y, entity.ServerPos.Z);
+
+            entity.Attributes.SetString("origin", "entityspawner");
+
+            api.World.SpawnEntity(entity);
+
+            entity.WatchedAttributes.SetDouble("temporalStability", GameMath.Clamp((1 - 1.5f * StormStrength), 0, 1));
+            entity.Attributes.SetBool("ignoreDaylightFlee", true);
+        }
+
+
 
         private bool Event_OnTrySpawnEntity(ref EntityProperties properties, Vec3d spawnPosition, long herdId)
         {
@@ -416,7 +526,6 @@ namespace Vintagestory.GameContent
                     }
                 }
 
-                sapi.Event.OnTrySpawnEntity += Event_OnTrySpawnEntity;
                 sapi.Event.OnEntityDeath += Event_OnEntityDeath;
                 
 
@@ -514,7 +623,9 @@ namespace Vintagestory.GameContent
 
             noiseval = GameMath.Clamp(noiseval, 0, 1.5f);
 
-            return GameMath.Clamp(noiseval - GetGlitchEffectExtraStrength(), 0, 1.5f);
+            float extraStr = 1.5f * GetGlitchEffectExtraStrength();
+            
+            return GameMath.Clamp(noiseval - extraStr, 0, 1.5f);
         }
 
 

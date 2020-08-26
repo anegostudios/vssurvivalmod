@@ -149,6 +149,13 @@ namespace Vintagestory.GameContent
 
                 capi.Tesselator.TesselateItem(stack.Item, out mesh, this);
 
+                if (stack.Collectible.Attributes?["onDisplayTransform"].Exists == true)
+                {
+                    ModelTransform transform = stack.Collectible.Attributes?["onDisplayTransform"].AsObject<ModelTransform>();
+                    transform.EnsureDefaultValues();
+                    mesh.ModelTransform(transform);
+                }
+
                 if (stack.Item.Shape == null || stack.Item.Shape.VoxelizeTexture)
                 {
                     mesh.Rotate(new Vec3f(0.5f, 0.5f, 0.5f), GameMath.PIHALF, 0, 0);

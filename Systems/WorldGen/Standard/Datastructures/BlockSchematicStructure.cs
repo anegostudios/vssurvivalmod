@@ -240,7 +240,7 @@ namespace Vintagestory.ServerMods
 
 
 
-        private Block GetBlockLayerBlock(int unscaledRain, int unscaledTemp, int posY, int firstBlockId, int forDepth, Block defaultBlock, List<Block> blocks)
+        private Block GetBlockLayerBlock(int unscaledRain, int unscaledTemp, int posY, int firstBlockId, int forDepth, Block defaultBlock, IList<Block> blocks)
         {
             float temperature = TerraGenConfig.GetScaledAdjustedTemperatureFloat(unscaledTemp, posY - TerraGenConfig.seaLevel);
             float rainRel = TerraGenConfig.GetRainFall(unscaledRain, posY) / 255f;

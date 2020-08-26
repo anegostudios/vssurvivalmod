@@ -12,7 +12,7 @@ namespace Vintagestory.GameContent.Mechanics
     /// <summary>
     /// A mechanical power network component with axle connections
     /// </summary>
-    public interface IMechanicalPowerNode : IMechanicalPowerRenderable
+    public interface IMechanicalPowerDevice : IMechanicalPowerRenderable, IMechanicalPowerNode
     {
         /// <summary>
         /// If set, then this node is the starting point for network discovery. In principal its fine for any single-connecter node to be starting point but it probably makes most sense if only power producers are
@@ -22,27 +22,31 @@ namespace Vintagestory.GameContent.Mechanics
         MechanicalNetwork Network { get; }
 
         /// <summary>
-        /// Amount of torque produced for given speed of the mechanical network it is in. 
-        /// Return a positive number if the torque is in clockwise direction when looking north or east, and negative if counter clockwise
+        /// The positive propagation direction - equivalent to former InTurnDir.Facing
         /// </summary>
-        /// <returns></returns>
-        float GetTorque();
-
+        BlockFacing GetPropagationDirection();
         /// <summary>
-        /// If not a power producer but a consumer, return an above zero value here
+        /// The propagation direction from the input side for making connections - normally the same as GetPropagationDirection() except for Angled Gears
         /// </summary>
-        /// <returns></returns>
-        float GetResistance();
+        BlockFacing GetPropagationDirectionInput();
+        bool IsPropagationDirection(BlockFacing test);
+        void SetPropagationDirection(MechPowerPath turnDir);
 
-        TurnDirection GetTurnDirection(BlockFacing forFacing);
-
-        TurnDirection GetInTurnDirection();
-        void SetInTurnDirection(TurnDirection turnDir);
-
-        bool JoinAndSpreadNetworkToNeighbours(ICoreAPI api, long propagationId, MechanicalNetwork network, TurnDirection turnDir, out Vec3i missingChunkPos);
+        bool JoinAndSpreadNetworkToNeighbours(ICoreAPI api, long propagationId, MechanicalNetwork network, MechPowerPath turnDir, out Vec3i missingChunkPos);
 
         MechanicalNetwork CreateJoinAndDiscoverNetwork(BlockFacing powerOutFacing);
 
-        void LeaveNetwork();
+        /// <summary>
+        /// True for reverse rotation for rendering purposes (depends on the inTurnDir facing for 2-way blocks such as axles)
+        /// </summary>
+        bool isRotationReversed();
+        /// <summary>
+        /// True if the network inTurnDir is coming into this block instead of going out (may or may not be paired with counter-clockwise rotation)
+        bool isInvertedNetworkFor(BlockPos pos);
+
+        /// <summary>
+        /// Only implemented on blocks which can support JoinPoints, such as Large Gear and Angled Gear
+        /// </summary>
+        void DestroyJoin(BlockPos pos);
     }
 }

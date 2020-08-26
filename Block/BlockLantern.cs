@@ -104,6 +104,7 @@ namespace Vintagestory.GameContent
             }
             
             renderinfo.ModelRef = meshref;
+            renderinfo.CullFaces = false;
         }
 
         public override void OnUnloaded(ICoreAPI api)

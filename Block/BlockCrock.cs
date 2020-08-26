@@ -208,7 +208,7 @@ namespace Vintagestory.GameContent
 
             Block block = api.World.BlockAccessor.GetBlock(blockSel.Position);
 
-            if (block?.Attributes?["mealContainer"]?.AsBool() == true)
+            if (block?.Attributes?.IsTrue("mealContainer") == true)
             {
                 ServeIntoBowl(block, blockSel.Position, slot, byEntity.World);
                 handHandling = EnumHandHandling.PreventDefault;
@@ -247,7 +247,7 @@ namespace Vintagestory.GameContent
                 ItemStack[] ownContentStacks = GetNonEmptyContents(api.World, slot.Itemstack);
                 if (ownContentStacks == null || ownContentStacks.Length == 0)
                 {
-                    if (stack != null && stack.Collectible.Attributes["crockable"].AsBool() == true)
+                    if (stack != null && stack.Collectible.Attributes?.IsTrue("crockable") == true)
                     {
                         SetContents(null, slot.Itemstack, new ItemStack[] { bebarrel.inventory[0].TakeOut(4) }, 1);
                         bebarrel.MarkDirty(true);
@@ -283,7 +283,7 @@ namespace Vintagestory.GameContent
         {
             ItemSlot hotbarSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
 
-            if (!hotbarSlot.Empty && hotbarSlot.Itemstack.Collectible.Attributes?["mealContainer"].AsBool() == true)
+            if (!hotbarSlot.Empty && hotbarSlot.Itemstack.Collectible.Attributes?.IsTrue("mealContainer") == true)
             {
                 BlockEntityCrock bec = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityCrock;
                 if (bec == null) return false;
@@ -499,6 +499,9 @@ namespace Vintagestory.GameContent
         {
             if (world.Side == EnumAppSide.Client) return;
 
+            float quantityServings = GetQuantityServings(world, potslot.Itemstack);
+            if (quantityServings <= 0) return;
+
             string code = selectedBlock.Attributes["mealBlockCode"].AsString();
             Block mealblock = api.World.GetBlock(new AssetLocation(code));
 
@@ -518,7 +521,7 @@ namespace Vintagestory.GameContent
 
 
 
-            float quantityServings = GetQuantityServings(world, potslot.Itemstack);
+            
             float servingsToTransfer = Math.Min(quantityServings, selectedBlock.Attributes["servingCapacity"].AsInt(1));
 
             bemeal.QuantityServings = servingsToTransfer;
@@ -526,7 +529,7 @@ namespace Vintagestory.GameContent
 
             SetQuantityServings(world, potslot.Itemstack, quantityServings - servingsToTransfer);
 
-            if (quantityServings <= 0)
+            if (quantityServings <= 0 && Attributes["emptiedBlockCode"].Exists)
             {
                 Block emptyPotBlock = world.GetBlock(new AssetLocation(Attributes["emptiedBlockCode"].AsString()));
                 potslot.Itemstack = new ItemStack(emptyPotBlock);

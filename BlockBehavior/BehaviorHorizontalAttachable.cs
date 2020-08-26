@@ -127,7 +127,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override bool CanAttachBlockAt(IBlockAccessor world, Block block, BlockPos pos, BlockFacing blockFace, ref EnumHandling handled)
+        public override bool CanAttachBlockAt(IBlockAccessor world, Block block, BlockPos pos, BlockFacing blockFace, ref EnumHandling handled, Cuboidi attachmentArea = null)
         {
             handled = EnumHandling.PreventDefault;
             return false;

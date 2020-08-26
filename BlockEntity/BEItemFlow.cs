@@ -14,8 +14,6 @@ namespace Vintagestory.GameContent
 {
     public class BlockEntityItemFlow : BlockEntityOpenableContainer
     {
-
-        
         internal InventoryGeneric inventory;
 
         public BlockFacing[] PullFaces = new BlockFacing[0];
@@ -32,7 +30,9 @@ namespace Vintagestory.GameContent
         int checkRateMs;
         float itemFlowAccum;
 
-        public override AssetLocation OpenSound => new AssetLocation("sounds/block/hopperopen");
+        private static AssetLocation hopperOpen = new AssetLocation("sounds/block/hopperopen");
+        private static AssetLocation hopperTumble = new AssetLocation("sounds/block/hoppertumble");
+        public override AssetLocation OpenSound => hopperOpen;
         public override AssetLocation CloseSound => null;
 
         public virtual float ItemFlowRate => itemFlowRate;
@@ -176,7 +176,7 @@ namespace Vintagestory.GameContent
 
                 BlockFacing outputFace = PushFaces[Api.World.Rand.Next(PushFaces.Length)];
                 int dir = stack.Attributes.GetInt("chuteDir", -1);
-                BlockFacing desiredDir = dir >= 0 ? BlockFacing.ALLFACES[dir] : null;
+                BlockFacing desiredDir = dir >= 0 && PushFaces.Contains(BlockFacing.ALLFACES[dir]) ? BlockFacing.ALLFACES[dir] : null;
                 
                 // If we have a desired dir, try to go there
                 if (desiredDir != null)
@@ -255,7 +255,7 @@ namespace Vintagestory.GameContent
 
                         if (qmoved > 0 && Api.World.Rand.NextDouble() < 0.2)
                         {
-                            Api.World.PlaySoundAt(new AssetLocation("sounds/block/hoppertumble"), Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5, null, true, 8, 0.5f);
+                            Api.World.PlaySoundAt(hopperTumble, Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5, null, true, 8, 0.5f);
 
                             itemFlowAccum -= qmoved;
                         }
@@ -271,45 +271,51 @@ namespace Vintagestory.GameContent
             if (Api.World.BlockAccessor.GetBlockEntity(OutputPosition) is BlockEntityContainer beContainer)
             {
                 ItemSlot sourceSlot = inventory.FirstOrDefault(slot => !slot.Empty);
-                ItemSlot targetSlot = sourceSlot == null ? null : beContainer.Inventory.GetAutoPushIntoSlot(outputFace.GetOpposite(), sourceSlot);
+                if ((sourceSlot?.Itemstack?.StackSize ?? 0) == 0) return false;  //seems FirstOrDefault() method can sometimes give a slot with stacksize == 0, weird
+
+                int horTravelled = sourceSlot.Itemstack.Attributes.GetInt("chuteQHTravelled");
+                int chuteDir = sourceSlot.Itemstack.Attributes.GetInt("chuteDir");
+                sourceSlot.Itemstack.Attributes.RemoveAttribute("chuteQHTravelled");
+                sourceSlot.Itemstack.Attributes.RemoveAttribute("chuteDir");
+
+                if (horTravelled >= 2) return false;  //chutes can't move items more than 1 block horizontally without a drop
+
+                ItemSlot targetSlot = beContainer.Inventory.GetAutoPushIntoSlot(outputFace.GetOpposite(), sourceSlot);
                 BlockEntityItemFlow beFlow = beContainer as BlockEntityItemFlow;
 
-                if (sourceSlot != null && targetSlot != null && (beFlow == null || targetSlot.Empty))
+                if (targetSlot != null && (beFlow == null || targetSlot.Empty))
                 {
-                    ItemStackMoveOperation op = new ItemStackMoveOperation(Api.World, EnumMouseButton.Left, 0, EnumMergePriority.DirectMerge, (int)itemFlowAccum);
+                    int quantity = (int)itemFlowAccum;
+                    ItemStackMoveOperation op = new ItemStackMoveOperation(Api.World, EnumMouseButton.Left, 0, EnumMergePriority.DirectMerge, quantity);
 
-                    int horTravelled = sourceSlot.Itemstack.Attributes.GetInt("chuteQHTravelled");
-                    if (horTravelled < 2)
+                    int qmoved = sourceSlot.TryPutInto(targetSlot, ref op);
+
+                    if (qmoved > 0)
                     {
-                        int qmoved = sourceSlot.TryPutInto(targetSlot, ref op);
-
-                        if (qmoved > 0 && Api.World.Rand.NextDouble() < 0.2)
+                        if (Api.World.Rand.NextDouble() < 0.2)
                         {
-                            Api.World.PlaySoundAt(new AssetLocation("sounds/block/hoppertumble"), Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5, null, true, 8, 0.5f);
+                            Api.World.PlaySoundAt(hopperTumble, Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5, null, true, 8, 0.5f);
                         }
 
-                        if (qmoved > 0)
+                        if (beFlow != null)
                         {
-                            if (beFlow != null)
-                            {
-                                targetSlot.Itemstack.Attributes.SetInt("chuteQHTravelled", outputFace.IsHorizontal ? (horTravelled + 1) : 0);
-                                targetSlot.Itemstack.Attributes.SetInt("chuteDir", outputFace.Index);
-                            }
-                            else
-                            {
-                                targetSlot.Itemstack.Attributes.RemoveAttribute("chuteQHTravelled");
-                                targetSlot.Itemstack.Attributes.RemoveAttribute("chuteDir");
-                            }
-
-                            sourceSlot.MarkDirty();
-                            targetSlot.MarkDirty();
-                            MarkDirty(false);
-                            beFlow?.MarkDirty(false);
-
-                            itemFlowAccum -= qmoved;
-
-                            return true;
+                            targetSlot.Itemstack.Attributes.SetInt("chuteQHTravelled", outputFace.IsHorizontal ? (horTravelled + 1) : 0);
+                            targetSlot.Itemstack.Attributes.SetInt("chuteDir", outputFace.Index);
                         }
+                        else
+                        {
+                            targetSlot.Itemstack.Attributes.RemoveAttribute("chuteQHTravelled");
+                            targetSlot.Itemstack.Attributes.RemoveAttribute("chuteDir");
+                        }
+
+                        sourceSlot.MarkDirty();
+                        targetSlot.MarkDirty();
+                        MarkDirty(false);
+                        beFlow?.MarkDirty(false);
+
+                        itemFlowAccum -= qmoved;
+
+                        return true;
                     }
                 }
             }

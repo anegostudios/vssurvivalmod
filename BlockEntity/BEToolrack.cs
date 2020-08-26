@@ -64,7 +64,7 @@ namespace Vintagestory.GameContent
 
         void loadToolMeshes()
         {
-            BlockFacing facing = getFacing().GetCW();
+            BlockFacing facing = getFacing().GetCCW();
             if (facing == null) return;
 
             Vec3f facingNormal = facing.Normalf;
@@ -94,22 +94,6 @@ namespace Vintagestory.GameContent
                 {
                     ModelTransform transform = tmpItem.Attributes["toolrackTransform"].AsObject<ModelTransform>();
                     transform.EnsureDefaultValues();
-
-                    /*transform.Rotation.Z = -1;
-                    transform.Rotation.Y = 2.5f;
-                    transform.Translation.Y = 0.59f;*/
-                    /*transform = new ModelTransform();
-                    
-
-                    transform.Rotation.X = 2;
-                    transform.Rotation.Y = 5;
-                    transform.Rotation.Z = 0;
-
-                    transform.Translation.X = 0;
-                    transform.Translation.Y = 0.5f;
-                    transform.Translation.Z = 0f;*/
-
-                    //transform.Translation.Y = 0.63f;
 
                     toolMeshes[i].ModelTransform(transform);
                 }

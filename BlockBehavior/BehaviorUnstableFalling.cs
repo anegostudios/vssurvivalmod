@@ -22,6 +22,7 @@ namespace Vintagestory.GameContent
 
         AssetLocation fallSound;
         float impactDamageMul;
+        Cuboidi attachmentArea;
 
         public BlockBehaviorUnstableFalling(Block block) : base(block)
         {
@@ -31,10 +32,11 @@ namespace Vintagestory.GameContent
         {
             base.Initialize(properties);
 
-            ignorePlaceTest = properties["ingorePlaceTest"].AsBool(false);
+            ignorePlaceTest = properties["ignorePlaceTest"].AsBool(false);
             exceptions = properties["exceptions"].AsObject(new AssetLocation[0], block.Code.Domain);
             fallSideways = properties["fallSideways"].AsBool(false);
             dustyFall = properties["dustyFall"].AsBool(false);
+            attachmentArea = properties["attachmentArea"].AsObject<Cuboidi>(null);
 
             fallSidewaysChance = properties["fallSidewaysChance"].AsFloat(0.25f);
             string sound = properties["fallSound"].AsString(null);
@@ -52,7 +54,7 @@ namespace Vintagestory.GameContent
 
             BlockPos pos = blockSel.Position.DownCopy();
             Block onBlock = world.BlockAccessor.GetBlock(pos);
-            if (blockSel != null && !onBlock.CanAttachBlockAt(world.BlockAccessor, block, pos, BlockFacing.UP) && block.Attributes?["allowUnstablePlacement"].AsBool() != true && !exceptions.Contains(onBlock.Code))
+            if (blockSel != null && !onBlock.CanAttachBlockAt(world.BlockAccessor, block, pos, BlockFacing.UP, attachmentArea) && block.Attributes?["allowUnstablePlacement"].AsBool() != true && !exceptions.Contains(onBlock.Code))
             {
                 handling = EnumHandling.PreventSubsequent;
                 failureCode = "requiresolidground";

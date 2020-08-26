@@ -107,7 +107,7 @@ namespace Vintagestory.GameContent
                     foreach (IPlayer player in sapi.World.AllOnlinePlayers)
                     {
                         IServerPlayer splr = player as IServerPlayer;
-                        splr.Entity.GetBehavior<EntityBehaviorHunger>()?.ConsumeSaturation((float)(api.World.Calendar.TotalDays - lastTickTotalDays) * 600);
+                        splr.Entity.GetBehavior<EntityBehaviorHunger>()?.ConsumeSaturation((float)(api.World.Calendar.TotalDays - lastTickTotalDays) * 2000);
                     }
                 }
 

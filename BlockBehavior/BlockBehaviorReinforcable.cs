@@ -40,7 +40,7 @@ namespace Vintagestory.GameContent
                 
                 world.PlaySoundAt(new AssetLocation("sounds/tool/breakreinforced"), pos.X, pos.Y, pos.Z, byPlayer);
 
-                if (!byPlayer.HasPrivilege("denybreakreinforced"))
+                if (byPlayer == null || !byPlayer.HasPrivilege("denybreakreinforced"))
                 {
                     modBre.ConsumeStrength(pos, 1);
 

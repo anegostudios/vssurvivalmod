@@ -260,7 +260,7 @@ namespace Vintagestory.GameContent
 
 
                 string firstCodePart = slot.Itemstack.Collectible.FirstCodePart();
-                bool forgableGeneric = slot.Itemstack.Collectible.Attributes?["forgable"].AsBool() == true;
+                bool forgableGeneric = slot.Itemstack.Collectible.Attributes?.IsTrue("forgable") == true;
 
                 // Add heatable item
                 if (contents == null && (firstCodePart == "ingot" || firstCodePart == "metalplate" || firstCodePart == "workitem" || forgableGeneric))

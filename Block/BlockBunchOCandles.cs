@@ -36,7 +36,11 @@ namespace Vintagestory.GameContent
 
         static BlockBunchOCandles()
         {
-            
+            initRotations();
+        }
+
+        static void initRotations()
+        {
             for (int i = 0; i < 4; i++)
             {
                 Matrixf m = new Matrixf();
@@ -62,25 +66,9 @@ namespace Vintagestory.GameContent
 
         public override void OnAsyncClientParticleTick(IAsyncParticleManager manager, BlockPos pos, float windAffectednessAtPos, float secondsTicking)
         {
-            for (int i = 0; i < 4; i++)
-            {
-                Matrixf m = new Matrixf();
-                m.Translate(0.5f, 0.5f, 0.5f);
-                m.RotateYDeg(i * 90);
-                m.Translate(-0.5f, -0.5f, -0.5f);
-
-                Vec3f[] poses = candleWickPositionsByRot[i] = new Vec3f[candleWickPositions.Length];
-                for (int j = 0; j < poses.Length; j++)
-                {
-                    Vec4f rotated = m.TransformVector(new Vec4f(candleWickPositions[j].X / 16f, candleWickPositions[j].Y / 16f, candleWickPositions[j].Z / 16f, 1));
-                    poses[j] = new Vec3f(rotated.X, rotated.Y, rotated.Z);
-                }
-            }
-
-
             if (ParticleProperties != null && ParticleProperties.Length > 0)
             {
-                long rnd = 1 + GameMath.MurmurHash3Mod(pos.X, pos.Y, pos.Z, 3);
+                long rnd = GameMath.MurmurHash3Mod(pos.X, pos.Y, pos.Z, 4);
                 Vec3f[] poses = candleWickPositionsByRot[rnd];
 
                 for (int i = 0; i < ParticleProperties.Length; i++)

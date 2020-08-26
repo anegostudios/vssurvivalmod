@@ -32,7 +32,7 @@ namespace Vintagestory.GameContent
 
                 foreach (CollectibleObject obj in api.World.Collectibles)
                 {
-                    if (obj.Attributes?["mealContainer"].AsBool() == true)
+                    if (obj.Attributes?.IsTrue("mealContainer") == true)
                     {
                         List<ItemStack> stacks = obj.GetHandBookStacks(capi);
                         if (stacks != null) fillableStacklist.AddRange(stacks);
@@ -320,7 +320,7 @@ namespace Vintagestory.GameContent
         {
             ItemSlot hotbarSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
 
-            if (!hotbarSlot.Empty && hotbarSlot.Itemstack.Collectible.Attributes?["mealContainer"].AsBool() == true)
+            if (!hotbarSlot.Empty && hotbarSlot.Itemstack.Collectible.Attributes?.IsTrue("mealContainer") == true)
             {
                 BlockEntityCookedContainer bec = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityCookedContainer;
                 if (bec == null) return false;
@@ -350,7 +350,7 @@ namespace Vintagestory.GameContent
             if (blockSel != null)
             {
                 Block selectedBlock = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
-                if (selectedBlock?.Attributes?["mealcontainer"]?.AsBool() == true)
+                if (selectedBlock?.Attributes?.IsTrue("mealContainer") == true)
                 {
                     ServeIntoBowl(selectedBlock, blockSel.Position, slot, byEntity.World);
                     handHandling = EnumHandHandling.PreventDefault;

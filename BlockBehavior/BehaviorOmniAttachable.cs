@@ -1,6 +1,6 @@
-﻿using Vintagestory.API;
+﻿using System.Collections.Generic;
+using Vintagestory.API;
 using Vintagestory.API.Common;
-using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
@@ -8,6 +8,7 @@ namespace Vintagestory.GameContent
     public class BlockBehaviorOmniAttachable : BlockBehavior
     {
         public string facingCode = "orientation";
+        Dictionary<string, Cuboidi> attachmentAreas;
 
         public BlockBehaviorOmniAttachable(Block block) : base(block)
         {
@@ -16,6 +17,17 @@ namespace Vintagestory.GameContent
         public override void Initialize(JsonObject properties)
         {
             facingCode = properties["facingCode"].AsString("orientation");
+
+            var areas = properties["attachmentAreas"].AsObject<Dictionary<string, RotatableCube>>(null);
+            if (areas != null)
+            {
+                attachmentAreas = new Dictionary<string, Cuboidi>();
+                foreach (var val in areas)
+                {
+                    val.Value.Origin.Set(8, 8, 8);
+                    attachmentAreas[val.Key] = val.Value.RotatedCopy().ConvertToCuboidi();
+                }
+            }
         }
 
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref EnumHandling handling, ref string failureCode)
@@ -77,7 +89,10 @@ namespace Vintagestory.GameContent
 
             Block hereBlock = world.BlockAccessor.GetBlock(blockpos);
 
-            if (hereBlock.Replaceable >= 6000 && attachingBlock.CanAttachBlockAt(world.BlockAccessor, block, attachingBlockPos, onFace))
+            Cuboidi attachmentArea = null;
+            attachmentAreas?.TryGetValue(onBlockFace.Code, out attachmentArea);
+
+            if (hereBlock.Replaceable >= 6000 && attachingBlock.CanAttachBlockAt(world.BlockAccessor, block, attachingBlockPos, onFace, attachmentArea))
             {
                 Block orientedBlock = world.BlockAccessor.GetBlock(block.CodeWithVariant(facingCode, onBlockFace.Code));
                 orientedBlock.DoPlaceBlock(world, byPlayer, new BlockSelection() { Position = blockpos, HitPosition = hitPosition, Face = onFace }, itemstack);
@@ -90,14 +105,18 @@ namespace Vintagestory.GameContent
         bool CanStay(IWorldAccessor world, BlockPos pos)
         {
             BlockFacing facing = BlockFacing.FromCode(block.Variant[facingCode]);
-            Block attachedblock = world.BlockAccessor.GetBlock(world.BlockAccessor.GetBlockId(pos.AddCopy(facing.GetOpposite())));
+            BlockPos attachingBlockPos = pos.AddCopy(facing.GetOpposite());
+            Block attachedblock = world.BlockAccessor.GetBlock(world.BlockAccessor.GetBlockId(attachingBlockPos));
 
             BlockFacing onFace = facing;
 
-            return attachedblock.CanAttachBlockAt(world.BlockAccessor, block, pos, onFace);
+            Cuboidi attachmentArea = null;
+            attachmentAreas?.TryGetValue(facing.Code, out attachmentArea);
+
+            return attachedblock.CanAttachBlockAt(world.BlockAccessor, block, attachingBlockPos, onFace, attachmentArea);
         }
 
-        public override bool CanAttachBlockAt(IBlockAccessor blockAccessor, Block block, BlockPos pos, BlockFacing blockFace, ref EnumHandling handled)
+        public override bool CanAttachBlockAt(IBlockAccessor blockAccessor, Block block, BlockPos pos, BlockFacing blockFace, ref EnumHandling handled, Cuboidi attachmentArea = null)
         {
             handled = EnumHandling.PreventDefault;
 

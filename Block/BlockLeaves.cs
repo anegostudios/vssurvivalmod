@@ -12,13 +12,29 @@ namespace Vintagestory.GameContent
     public class BlockLeaves : Block
     {
         bool[] leavesWaveTileSide = new bool[6];
-        RoomRegistry roomreg;
+        string climateColorMapInt;
+        string seasonColorMapInt;
 
-        public override void OnLoaded(ICoreAPI api)
+        public override string ClimateColorMapForMap => climateColorMapInt;
+        public override string SeasonColorMapForMap => seasonColorMapInt;
+
+        int moveIndex7Up;
+
+        public override void OnCollectTextures(ICoreAPI api, ITextureLocationDictionary textureDict)
         {
-            base.OnLoaded(api);
+            base.OnCollectTextures(api, textureDict);
 
-            roomreg = api.ModLoader.GetModSystem<RoomRegistry>();
+            climateColorMapInt = ClimateColorMap;
+            seasonColorMapInt = SeasonColorMap;
+
+            // Branchy leaves
+            if (api.Side == EnumAppSide.Client && SeasonColorMap == null)
+            {
+                climateColorMapInt = (api as ICoreClientAPI).TesselatorManager.GetCachedShape(Shape.Base)?.Elements[0].ClimateColorMap;
+                seasonColorMapInt = (api as ICoreClientAPI).TesselatorManager.GetCachedShape(Shape.Base)?.Elements[0].SeasonColorMap;
+            }
+
+            moveIndex7Up = TileSideEnum.MoveIndex[TileSideEnum.Up] * 7;
         }
 
         public override void OnDecalTesselation(IWorldAccessor world, MeshData decalMesh, BlockPos pos)
@@ -113,14 +129,26 @@ namespace Vintagestory.GameContent
 
                 if (!waveoff)
                 {
-                    // Todo: Improve the performance of this, somehow?
+                    int downMoveIndex = TileSideEnum.MoveIndex[TileSideEnum.Down];
+                    int movedIndex3d = extIndex3d;
+                    Block block;
                     for (; groundOffset < 7; groundOffset++)
                     {
-                        Block block = api.World.BlockAccessor.GetBlock(pos.X, pos.Y - groundOffset, pos.Z);
+                        if (movedIndex3d > 0)
+                        {
+                            block = api.World.Blocks[chunkExtIds[movedIndex3d]];
+                        }
+                        else
+                        {
+                            block = api.World.BlockAccessor.GetBlock(pos.X, pos.Y - groundOffset, pos.Z);
+                        }
+
                         if (block.BlockMaterial != EnumBlockMaterial.Leaves && block.SideSolid[BlockFacing.UP.Index])
                         {
                             break;
                         }
+
+                        movedIndex3d += downMoveIndex;
                     }
                 }
 
@@ -177,23 +205,11 @@ namespace Vintagestory.GameContent
             world.Api.Event.PushEvent("testForDecay", tree);
         }
 
-        public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing)
-        {
-            BakedCompositeTexture tex = Textures?.First().Value?.Baked;
-            int color = capi.BlockTextureAtlas.GetRandomColor(tex.TextureSubId);
-            color = capi.World.ApplyColorMapOnRgba(ClimateColorMap, SeasonColorMap, color, pos.X, pos.Y, pos.Z);
-
-            return color;
-        }
 
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
         {
             return new ItemStack(world.GetBlock(CodeWithParts("placed", LastCodePart())));
         }
 
-        public override int GetColor(ICoreClientAPI capi, BlockPos pos)
-        {
-            return capi.World.ApplyColorMapOnRgba(ClimateColorMap, SeasonColorMap, base.GetColorWithoutTint(capi, pos), pos.X, pos.Y, pos.Z, false);
-        }
     }
 }

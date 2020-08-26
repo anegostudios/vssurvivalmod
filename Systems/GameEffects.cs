@@ -225,7 +225,6 @@ namespace VSSurvivalMod.Systems
                 rainfogAmbient.FogColor.Weight = strength;
                 rainfogAmbient.FogDensity.Weight = strength;
 
-                int chunksize = capi.World.BlockAccessor.ChunkSize;
                 float tries = 40 * strength;
                 while (tries-- > 0)
                 {
@@ -237,8 +236,6 @@ namespace VSSurvivalMod.Systems
                     BlockPos pos = new BlockPos((int)position.X, (int)position.Y, (int)position.Z);
 
                     if (!capi.World.BlockAccessor.IsValidPos(pos)) continue;
-
-                    IMapChunk mapchunk = capi.World.BlockAccessor.GetMapChunkAtBlockPos(pos);
 
                     blackAirParticles.WithTerrainCollision = false;
                     blackAirParticles.MinPos = position;

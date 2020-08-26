@@ -26,7 +26,7 @@ namespace Vintagestory.GameContent
         public override string InventoryClassName => "pottedplant";
 
         public virtual float MeshAngle { get; set; }
-        public string ContainerSize => Block.Attributes["plantContainerSize"].AsString();
+        public string ContainerSize => Block.Attributes?["plantContainerSize"].AsString();
 
         MeshData potMesh;
         MeshData contentMesh;
@@ -167,7 +167,10 @@ namespace Vintagestory.GameContent
             if (Block.Code == null) return;
 
             potMesh = GenPotMesh(capi.Tesselator);
-            potMesh = potMesh.Clone().Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 0, MeshAngle, 0);
+            if (potMesh != null)
+            {
+                potMesh = potMesh.Clone().Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 0, MeshAngle, 0);
+            }
 
             MeshData[] meshes = GenContentMeshes(capi.Tesselator);
             if (meshes != null && meshes.Length > 0)
@@ -207,16 +210,22 @@ namespace Vintagestory.GameContent
                 return mesh;
             }
 
-            if (hasSoil)
+            if (hasSoil && Block.Attributes != null)
             {
                 CompositeShape compshape = Block.Attributes["filledShape"].AsObject<CompositeShape>(null, Block.Code.Domain);
-                IAsset asset = Api.Assets.TryGet(compshape.Base.WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json"));
+                IAsset asset = null; 
+                if (compshape != null)
+                {
+                    asset = Api.Assets.TryGet(compshape.Base.WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json"));
+                }
+
                 if (asset != null)
                 {
                     tesselator.TesselateShape(Block, asset.ToObject<Shape>(), out mesh);
                 } else
                 {
-                    Api.World.Logger.Error("Plant container, asset {0} not found,", compshape.Base.WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json"));
+                    Api.World.Logger.Error("Plant container, asset {0} not found,", compshape?.Base.WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json"));
+                    return mesh;
                 }
             } else
             {

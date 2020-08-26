@@ -25,10 +25,10 @@ namespace Vintagestory.GameContent
 
             if (this.Code.Path.Contains("papyrus"))
             {
-                block = byEntity.World.GetBlock(new AssetLocation(waterBlock ? "tallplant-papyrus-water-harvested" : "tallplant-papyrus-free-harvested"));
+                block = byEntity.World.GetBlock(new AssetLocation(waterBlock ? "tallplant-papyrus-water-harvested-free" : "tallplant-papyrus-land-harvested-free"));
             } else
             {
-                block = byEntity.World.GetBlock(new AssetLocation(waterBlock ? "tallplant-coopersreed-water-harvested" : "tallplant-coopersreed-free-harvested"));
+                block = byEntity.World.GetBlock(new AssetLocation(waterBlock ? "tallplant-coopersreed-water-harvested-free" : "tallplant-coopersreed-land-harvested-free"));
             }
 
             if (block == null)

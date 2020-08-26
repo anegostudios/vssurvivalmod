@@ -52,7 +52,7 @@ namespace Vintagestory.GameContent.Mechanics
             BEBehaviorMPAngledGears gear = dev as BEBehaviorMPAngledGears;
             if (gear != null)
             {
-                BlockFacing inTurn = gear.GetInTurnDirection().Facing;
+                BlockFacing inTurn = gear.GetPropagationDirection();
                 if (inTurn == gear.axis1 || inTurn == gear.axis2)
                 {
                     rotationRad = -rotationRad;
@@ -63,11 +63,11 @@ namespace Vintagestory.GameContent.Mechanics
             float rotZ = rotationRad * dev.AxisSign[2];
             UpdateLightAndTransformMatrix(floatsPeg.Values, index, distToCamera, dev.LightRgba, rotX, rotY, rotZ);// - 0.08f);
 
-            //if (dev.AxisSign.Length < 4)
-            //{
-            //    System.Diagnostics.Debug.WriteLine("3 length AxisSign");
-            //    return;
-            //}
+            if (dev.AxisSign.Length < 4)
+            {
+                System.Diagnostics.Debug.WriteLine("3 length AxisSign");
+                return;
+            }
             rotX = rotationRad * dev.AxisSign[3];
             rotY = rotationRad * dev.AxisSign[4];
             rotZ = rotationRad * dev.AxisSign[5];

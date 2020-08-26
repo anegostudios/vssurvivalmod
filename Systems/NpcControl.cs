@@ -29,7 +29,7 @@ namespace Vintagestory.ServerMods
             base.StartServerSide(api);
 
             sapi = api;
-            api.RegisterCommand("npc", "Npc control", "[list|enqueue or enq|upd|start|clear]", OnCmdNpc, Privilege.controlserver);
+            api.RegisterCommand("npc", "Npc control", "[list|enqueue or enq|upd|start|clear|exec]", OnCmdNpc, Privilege.controlserver);
             api.RegisterCommand("npcs", "Npc control", "[startall|stopall]", OnCmdNpcs, Privilege.controlserver);
 
             api.Event.OnPlayerInteractEntity += Event_OnPlayerInteractEntity;

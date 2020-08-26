@@ -51,7 +51,7 @@ namespace Vintagestory.GameContent
         public bool IsHardenedLeft
         {
             get {
-                return TemperatureLeft < 0.2f * contentsLeft?.Collectible.GetMeltingPoint(Api.World, null, new DummySlot(contentsLeft));
+                return TemperatureLeft < 0.3f * contentsLeft?.Collectible.GetMeltingPoint(Api.World, null, new DummySlot(contentsLeft));
             }
         }
 
@@ -59,7 +59,7 @@ namespace Vintagestory.GameContent
         {
             get
             {
-                return TemperatureRight < 0.2f * contentsRight?.Collectible.GetMeltingPoint(Api.World, null, new DummySlot(contentsRight));
+                return TemperatureRight < 0.3f * contentsRight?.Collectible.GetMeltingPoint(Api.World, null, new DummySlot(contentsRight));
             }
         }
 

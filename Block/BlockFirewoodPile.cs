@@ -72,7 +72,7 @@ namespace Vintagestory.GameContent
             Block block = world.BlockAccessor.GetBlock(pos);
             if (!block.IsReplacableBy(this)) return false;
             Block belowBlock = world.BlockAccessor.GetBlock(pos.DownCopy());
-            if (!belowBlock.SideSolid[BlockFacing.UP.Index] && (belowBlock != this || FillLevel(world.BlockAccessor, pos.DownCopy()) != 4)) return false;
+            if (!belowBlock.CanAttachBlockAt(world.BlockAccessor, this, pos.DownCopy(), BlockFacing.UP) && (belowBlock != this || FillLevel(world.BlockAccessor, pos.DownCopy()) != 4)) return false;
 
             world.BlockAccessor.SetBlock(BlockId, pos);
 
@@ -100,7 +100,7 @@ namespace Vintagestory.GameContent
         public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
         {
             Block belowBlock = world.BlockAccessor.GetBlock(pos.DownCopy());
-            if (!belowBlock.SideSolid[BlockFacing.UP.Index] && (belowBlock != this || FillLevel(world.BlockAccessor, pos.DownCopy()) < 4))
+            if (!belowBlock.CanAttachBlockAt(world.BlockAccessor, this, pos.DownCopy(), BlockFacing.UP) && (belowBlock != this || FillLevel(world.BlockAccessor, pos.DownCopy()) < 4))
             {
                 world.BlockAccessor.BreakBlock(pos, null);
                 //world.PlaySoundAt(new AssetLocation("sounds/block/planks"), pos.X, pos.Y, pos.Z, null, false);
@@ -108,7 +108,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override bool CanAttachBlockAt(IBlockAccessor blockAccessor, Block block, BlockPos pos, BlockFacing blockFace)
+        public override bool CanAttachBlockAt(IBlockAccessor blockAccessor, Block block, BlockPos pos, BlockFacing blockFace, Cuboidi attachmentArea = null)
         {
             BlockEntityFirewoodPile be = blockAccessor.GetBlockEntity(pos) as BlockEntityFirewoodPile;
             if (be != null)
@@ -116,7 +116,7 @@ namespace Vintagestory.GameContent
                 return be.OwnStackSize == be.MaxStackSize;
             }
 
-            return base.CanAttachBlockAt(blockAccessor, block, pos, blockFace);
+            return base.CanAttachBlockAt(blockAccessor, block, pos, blockFace, attachmentArea);
         }
 
         public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)

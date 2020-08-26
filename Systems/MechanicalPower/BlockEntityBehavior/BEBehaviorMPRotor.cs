@@ -58,7 +58,7 @@ namespace Vintagestory.GameContent.Mechanics
             ownFacing = BlockFacing.FromCode(orientation);
             OutFacingForNetworkDiscovery = ownFacing.GetOpposite();
 
-            inTurnDir.Rot = ownFacing == BlockFacing.WEST || ownFacing == BlockFacing.NORTH ? EnumRotDirection.Counterclockwise : EnumRotDirection.Clockwise;
+            //inTurnDir.Rot = ownFacing == BlockFacing.WEST || ownFacing == BlockFacing.NORTH ? EnumRotDirection.Counterclockwise : EnumRotDirection.Clockwise;
         }
 
         public override void Initialize(ICoreAPI api, JsonObject properties)
@@ -90,17 +90,23 @@ namespace Vintagestory.GameContent.Mechanics
 
         public override float GetResistance()
         {
-            return capableSpeed - network.Speed < 0 ? Resistance : 0;
+            return Resistance;
         }
 
-        public override float GetTorque()
+        public override float GetTorque(long tick, float speed, out float resistance)
         {
             float targetSpeed = TargetSpeed;
             capableSpeed += (targetSpeed - capableSpeed) * AccelerationFactor;
+            float csFloat = (float)capableSpeed;
 
-            int dir = 1;// (2 * (int)GetTurnDirection(ownFacing).Rot - 1);
+            float dir = this.propagationDir == OutFacingForNetworkDiscovery ? 1f : -1f;
+            float absSpeed = Math.Abs(speed);
+            float excessSpeed = absSpeed - csFloat;
+            bool wrongDirection = dir * speed < 0f;
 
-            return Math.Max(0, (float)capableSpeed - network.Speed) * dir * TorqueFactor;
+            resistance = wrongDirection ? Resistance * TorqueFactor * Math.Min(0.8f, absSpeed * 400f) : excessSpeed > 0 ? Resistance * Math.Min(0.5f, excessSpeed * 50f) : 0f;
+            float power = wrongDirection ? csFloat : csFloat - absSpeed;
+            return Math.Max(0f, power) * TorqueFactor * dir;
         }
 
         public override void WasPlaced(BlockFacing connectedOnFacing)
@@ -108,7 +114,7 @@ namespace Vintagestory.GameContent.Mechanics
             // Don't run this behavior for power producers. Its done in initialize instead
         }
 
-        protected override MechPowerPath[] GetMechPowerExits(TurnDirection fromExitTurnDir)
+        protected override MechPowerPath[] GetMechPowerExits(MechPowerPath fromExitTurnDir)
         {
             return new MechPowerPath[0];
         }

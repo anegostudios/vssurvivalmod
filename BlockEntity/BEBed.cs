@@ -51,6 +51,8 @@ namespace Vintagestory.GameContent
         {
             get
             {
+                if (facing == null) return null;
+
                 return facing.HorizontalAngleIndex * GameMath.PIHALF;
             }
         }
@@ -68,11 +70,6 @@ namespace Vintagestory.GameContent
             if (collboxes!=null && collboxes.Length > 0) y2 = collboxes[0].Y2;
 
             facing = BlockFacing.FromCode(Block.LastCodePart());
-            
-            if (api.Side == EnumAppSide.Client)
-            {
-                ICoreClientAPI capi = (ICoreClientAPI)api;
-            }
         }
 
 

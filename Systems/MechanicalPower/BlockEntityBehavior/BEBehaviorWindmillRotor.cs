@@ -80,7 +80,7 @@ namespace Vintagestory.GameContent.Mechanics
                     }
                     sailLength = 0;
                     Blockentity.MarkDirty(true);
-                    this.network.updateNetwork();
+                    this.network.updateNetwork(manager.getTickNumber());
                 }
             }
         }

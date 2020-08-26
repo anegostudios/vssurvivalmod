@@ -22,7 +22,7 @@ namespace Vintagestory.GameContent
             return Variant["knobOrientation"];
         }
 
-        public bool IsOpened()
+        public override bool IsOpened()
         {
             return Variant["state"] == "opened";
         }
@@ -35,8 +35,8 @@ namespace Vintagestory.GameContent
 
                 string face = (horVer[0] == BlockFacing.NORTH || horVer[0] == BlockFacing.SOUTH) ? "n" : "w";
 
-                string knobOrientation = GetSuggestedKnobOrientation(world.BlockAccessor, blockSel.Position, horVer[0]);
-                AssetLocation newCode = CodeWithVariants(new string[] { "type", "state", "knobOrientation" }, new string[] { face, "closed", knobOrientation });
+                string knobOrientation = GetSuggestedKnobOrientation(world.BlockAccessor, blockSel.Position, horVer[0], out bool neighbourOpen);
+                AssetLocation newCode = CodeWithVariants(new string[] { "type", "state", "knobOrientation" }, new string[] { face, neighbourOpen ? "opened" : "closed", knobOrientation });
 
                 world.BlockAccessor.SetBlock(world.BlockAccessor.GetBlock(newCode).BlockId, blockSel.Position);
                 return true;
@@ -45,28 +45,65 @@ namespace Vintagestory.GameContent
             return false;
         }
 
-        private string GetSuggestedKnobOrientation(IBlockAccessor ba, BlockPos pos, BlockFacing facing)
+        private string GetSuggestedKnobOrientation(IBlockAccessor ba, BlockPos pos, BlockFacing facing, out bool neighbourOpen)
         {
             string leftOrRight = "left";
 
-            Block nBlock1 = ba.GetBlock(pos.AddCopy(facing.GetCCW()));
-            Block nBlock2 = ba.GetBlock(pos.AddCopy(facing.GetCW()));
+            Block nBlock1 = ba.GetBlock(pos.AddCopy(facing.GetCW()));
+            Block nBlock2 = ba.GetBlock(pos.AddCopy(facing.GetCCW()));
+            bool invert = facing == BlockFacing.EAST || facing == BlockFacing.SOUTH;   //doors and gates assets are setup for n or w orientations
 
             bool isDoor1 = IsSameDoor(nBlock1);
             bool isDoor2 = IsSameDoor(nBlock2);
             if (isDoor1 && isDoor2)
             {
                 leftOrRight = "left";
+                neighbourOpen = (nBlock1 as BlockBaseDoor).IsOpened();
             }
             else
             {
                 if (isDoor1)
                 {
-                    leftOrRight = GetKnobOrientation(nBlock1) == "right" ? "left" : "right";
+                    if (GetKnobOrientation(nBlock1) == "right")   //facing gate: the gate to the right, has its hinge away from us
+                    {
+                        leftOrRight = invert ? "left" : "right";
+                        neighbourOpen = false;
+                    }
+                    else
+                    {
+                        leftOrRight = invert ? "right" : "left";
+                        neighbourOpen = (nBlock1 as BlockBaseDoor).IsOpened();
+                    }
                 }
                 else if (isDoor2)
                 {
-                    leftOrRight = GetKnobOrientation(nBlock2) == "right" ? "left" : "right";
+                    if (GetKnobOrientation(nBlock2) == "right")   //facing gate: the gate to the left, has its hinge towards us ("knob" is hinge apparently)
+                    {
+                        leftOrRight = invert ? "right" : "left";
+                        neighbourOpen = false;
+                    }
+                    else
+                    {
+                        leftOrRight = invert ? "left" : "right";
+                        neighbourOpen = (nBlock2 as BlockBaseDoor).IsOpened();
+                    }
+                }
+                else
+                {
+                    //no neighbouring gate, but some AI for trying to guess which side the player wants the hinge (including potentially the first gate to be placed of a double gate)
+                    neighbourOpen = false;
+                    if (nBlock1.Attributes?.IsTrue("isFence") == true ^ nBlock2.Attributes?.IsTrue("isFence") == true)
+                    {
+                        leftOrRight = (invert ^ nBlock2.Attributes?.IsTrue("isFence") == true) ? "left" : "right";
+                    }
+                    else if (nBlock2.Replaceable >= 6000 && nBlock1.Replaceable < 6000)  //empty space on left, place hinge on right
+                    {
+                        leftOrRight = invert ? "left" : "right";
+                    }
+                    else if (nBlock1.Replaceable >= 6000 && nBlock2.Replaceable < 6000)  //empty space on right, place hinge on left
+                    {
+                        leftOrRight = invert ? "right" : "left";
+                    }
                 }
             }
             return leftOrRight;
@@ -83,7 +120,7 @@ namespace Vintagestory.GameContent
         {
             string knob = GetKnobOrientation();
             BlockFacing dir = GetDirection();
-            return knob == "right" ? pos.AddCopy(dir.GetCW()) : pos.AddCopy(dir.GetCCW());
+            return knob == "right" ? pos.AddCopy(dir.GetCCW()) : pos.AddCopy(dir.GetCW());
         }
 
         public override BlockDropItemStack[] GetDropsForHandbook(ItemStack handbookStack, IPlayer forPlayer)

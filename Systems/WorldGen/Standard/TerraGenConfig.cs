@@ -91,7 +91,7 @@ namespace Vintagestory.ServerMods
         }
 
 
-        // The 1.5f/4.25f is also hardcoded in shaderincluds/colormap.vsh
+        // The ds/1.5f is also hardcoded in shaderincluds/colormap.vsh
         public static int GetScaledAdjustedTemperature(int unscaledTemp, int distToSealevel)
         {
             return GameMath.Clamp((int)((unscaledTemp - distToSealevel / 1.5f) / 4.25f) - 20, -20, 40);

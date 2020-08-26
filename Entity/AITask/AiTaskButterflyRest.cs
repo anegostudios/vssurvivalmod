@@ -121,7 +121,7 @@ namespace Vintagestory.GameContent
                 Block block = entity.World.BlockAccessor.GetBlock(tmpPos);
                 if (block.IsLiquid()) return false;
 
-                if (block.Attributes?["butterflyFeed"].AsBool() == true)
+                if (block.Attributes?.IsTrue("butterflyFeed") == true)
                 {
                     double topPos = block.Attributes["sitHeight"].AsDouble(block.TopMiddlePos.Y);
 

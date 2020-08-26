@@ -15,10 +15,11 @@ namespace Vintagestory.GameContent.Mechanics
 
 
 
-        public void WasPlaced(IWorldAccessor world, BlockPos ownPos, BlockFacing connectedOnFacing)
+        public virtual void WasPlaced(IWorldAccessor world, BlockPos ownPos, BlockFacing connectedOnFacing)
         {
+            if (connectedOnFacing == null) return;
             BEBehaviorMPBase beMechBase = world.BlockAccessor.GetBlockEntity(ownPos)?.GetBehavior<BEBehaviorMPBase>();
-            beMechBase?.WasPlaced(connectedOnFacing);
+            beMechBase?.tryConnect(connectedOnFacing);
         }
 
 
@@ -38,21 +39,19 @@ namespace Vintagestory.GameContent.Mechanics
 
         public virtual MechanicalNetwork GetNetwork(IWorldAccessor world, BlockPos pos)
         {
-            IMechanicalPowerNode be = world.BlockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorMPBase>() as IMechanicalPowerNode;
+            IMechanicalPowerDevice be = world.BlockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorMPBase>() as IMechanicalPowerDevice;
             return be?.Network;
         }
 
         internal void ExchangeBlockAt(IWorldAccessor world, BlockPos pos)
         {
+            world.BlockAccessor.ExchangeBlock(BlockId, pos);
+
             BlockEntity be = world.BlockAccessor.GetBlockEntity(pos);
             BEBehaviorMPBase bemp = be.GetBehavior<BEBehaviorMPBase>();
             bemp.Block = this;
             bemp.SetOrientations();
             bemp.Shape = Shape;
-
-            world.BlockAccessor.ExchangeBlock(BlockId, pos);
-
-
         }
     }
 }

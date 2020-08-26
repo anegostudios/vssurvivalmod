@@ -54,10 +54,10 @@ namespace Vintagestory.GameContent
             Data = new BESpawnerData()
             {
                 EntityCodes = new string[] { entityCode },
-                InGameHourInterval = 1,
+                InGameHourInterval = 0.1f + 0.9f * (float)Api.World.Rand.NextDouble(),
                 MaxCount = Api.World.Rand.Next(7) + 3,
                 SpawnArea = new Cuboidi(-5, -5, -5, 5, 2, 5),
-                GroupSize = 2 + Api.World.Rand.Next(2),
+                GroupSize = 2 + Api.World.Rand.Next(4),
                 SpawnOnlyAfterImport = false,
                 InitialSpawnQuantity = 4 + Api.World.Rand.Next(7),
                 MinPlayerRange = 36
