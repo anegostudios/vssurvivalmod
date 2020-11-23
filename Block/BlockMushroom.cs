@@ -23,6 +23,8 @@ namespace Vintagestory.GameContent
 
         public override void OnLoaded(ICoreAPI api)
         {
+            base.OnLoaded(api);
+
             if (LastCodePart() == "harvested") return;
 
             interactions = ObjectCacheUtil.GetOrCreate(api, "mushromBlockInteractions", () =>
@@ -86,6 +88,8 @@ namespace Vintagestory.GameContent
         {
             if (IsGrown())
             {
+                dropQuantityMultiplier *= byPlayer.Entity.Stats.GetBlended("forageDropRate");
+
                 return base.GetDrops(world, pos, byPlayer, dropQuantityMultiplier);
             }
             else

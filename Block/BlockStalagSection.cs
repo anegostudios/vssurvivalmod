@@ -52,7 +52,7 @@ namespace Vintagestory.GameContent
                 BlockPos neighborPos = pos.AddCopy(facing.Normali);
                 Block neighborBlock = world.BlockAccessor.GetBlock(neighborPos);
 
-                if (neighborBlock.SideSolid[facing.GetOpposite().Index] || neighborBlock is BlockStalagSection) return false;
+                if (neighborBlock.SideSolid[facing.Opposite.Index] || neighborBlock is BlockStalagSection) return false;
             }
             return true;
         }

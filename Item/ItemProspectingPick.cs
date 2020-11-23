@@ -29,7 +29,7 @@ namespace Vintagestory.GameContent
         ICoreServerAPI sapi;
         
 
-        public void OnLoaded(ICoreAPI api)
+        public virtual void OnLoaded(ICoreAPI api)
         {
             if (api.Side == EnumAppSide.Client) return;
 
@@ -43,7 +43,6 @@ namespace Vintagestory.GameContent
             depositGen = new GenDeposits();
             depositGen.setApi(sapi);
             depositGen.initWorldGen(false);
-
 
             sapi.Event.ServerRunPhase(EnumServerRunPhase.RunGame, () =>
             {
@@ -62,7 +61,6 @@ namespace Vintagestory.GameContent
                         {
                             api.World.Logger.Warning("Deposit " + variant.Code + " has no handbook page code. Links created by the prospecting pick will not work without it.");
                         }
-
                     }
 
                     for (int k = 0; variant.ChildDeposits != null && k < variant.ChildDeposits.Length; k++)
@@ -83,7 +81,7 @@ namespace Vintagestory.GameContent
         }
 
         // Tyrons Brute force way of getting the correct reading for a rock strata column
-        public int[] GetRockColumn(int posX, int posZ)
+        public virtual int[] GetRockColumn(int posX, int posZ)
         {
             int chunksize = sapi.World.BlockAccessor.ChunkSize;
             DummyChunk[] chunks = new DummyChunk[sapi.World.BlockAccessor.MapSizeY / chunksize];
@@ -245,25 +243,32 @@ namespace Vintagestory.GameContent
         {
             base.OnLoaded(api);
 
-            if (api is ICoreClientAPI capi)
-            {
-                toolModes = ObjectCacheUtil.GetOrCreate(api, "proPickToolModes", () =>
-                {
-					SkillItem[] modes;
-					if (api.World.Config.GetString("propickNodeSearchRadius").ToInt() > 0)
-					{
-						modes = new SkillItem[2];
-						modes[0] = new SkillItem() { Code = new AssetLocation("density"), Name = Lang.Get("Density Search Mode (Long range, chance based search)") }.WithIcon(capi, Drawheatmap_svg);
-						modes[1] = new SkillItem() { Code = new AssetLocation("node"), Name = Lang.Get("Node Search Mode (Short range, exact search)") }.WithIcon(capi, DrawWaypointRocks);
-					} else
-					{
-						modes = new SkillItem[1];
-						modes[0] = new SkillItem() { Code = new AssetLocation("density"), Name = Lang.Get("Density Search Mode (Long range, chance based search)") }.WithIcon(capi, Drawheatmap_svg);
-					}
+			ICoreClientAPI capi = api as ICoreClientAPI;
 
-                    return modes;
-                });
-            }
+            toolModes = ObjectCacheUtil.GetOrCreate(api, "proPickToolModes", () =>
+            {
+				SkillItem[] modes;
+				if (api.World.Config.GetString("propickNodeSearchRadius").ToInt() > 0)
+				{
+					modes = new SkillItem[2];
+					modes[0] = new SkillItem() { Code = new AssetLocation("density"), Name = Lang.Get("Density Search Mode (Long range, chance based search)") };
+					modes[1] = new SkillItem() { Code = new AssetLocation("node"), Name = Lang.Get("Node Search Mode (Short range, exact search)") };
+					
+				} else
+				{
+					modes = new SkillItem[1];
+					modes[0] = new SkillItem() { Code = new AssetLocation("density"), Name = Lang.Get("Density Search Mode (Long range, chance based search)") };
+				}
+
+				if (capi != null)
+				{
+					modes[0].WithIcon(capi, Drawheatmap_svg);
+					if (modes.Length > 1) modes[1].WithIcon(capi, DrawWaypointRocks);
+				}
+
+
+				return modes;
+            });
 
 
 			if (api.Side == EnumAppSide.Server)
@@ -290,7 +295,7 @@ namespace Vintagestory.GameContent
 		}
 
 
-		public override bool OnBlockBrokenWith(IWorldAccessor world, Entity byEntity, ItemSlot itemslot, BlockSelection blockSel)
+		public override bool OnBlockBrokenWith(IWorldAccessor world, Entity byEntity, ItemSlot itemslot, BlockSelection blockSel, float dropQuantityMultiplier = 1)
         {
 			int toolMode = GetToolMode(itemslot, (byEntity as EntityPlayer).Player, blockSel);
 			int radius = api.World.Config.GetString("propickNodeSearchRadius").ToInt();
@@ -321,7 +326,7 @@ namespace Vintagestory.GameContent
 
 		public override int GetToolMode(ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
 		{
-			return slot.Itemstack.Attributes.GetInt("toolMode");
+			return Math.Min(toolModes.Length - 1, slot.Itemstack.Attributes.GetInt("toolMode"));
 		}
 
 		public override void SetToolMode(ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel, int toolMode)
@@ -329,7 +334,7 @@ namespace Vintagestory.GameContent
 			slot.Itemstack.Attributes.SetInt("toolMode", toolMode);
 		}
 
-		void ProbeBlockNodeMode(IWorldAccessor world, Entity byEntity, ItemSlot itemslot, BlockSelection blockSel, int radius)
+		protected virtual void ProbeBlockNodeMode(IWorldAccessor world, Entity byEntity, ItemSlot itemslot, BlockSelection blockSel, int radius)
 		{
 			IPlayer byPlayer = null;
 			if (byEntity is EntityPlayer) byPlayer = world.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
@@ -378,7 +383,7 @@ namespace Vintagestory.GameContent
 			}
 		}
 
-		private string resultTextByQuantity(int value)
+		protected virtual string resultTextByQuantity(int value)
 		{
 			if (value < 10)
 			{
@@ -404,7 +409,7 @@ namespace Vintagestory.GameContent
 			return "propick-nodesearch-hugeamount";
 		}
 
-		void ProbeBlockDensityMode(IWorldAccessor world, Entity byEntity, ItemSlot itemslot, BlockSelection blockSel)
+		protected virtual void ProbeBlockDensityMode(IWorldAccessor world, Entity byEntity, ItemSlot itemslot, BlockSelection blockSel)
         {
             IPlayer byPlayer = null;
             if (byEntity is EntityPlayer) byPlayer = world.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
@@ -490,7 +495,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        void PrintProbeResults(IWorldAccessor world, IServerPlayer byPlayer, ItemSlot itemslot, BlockPos pos)
+		protected virtual void PrintProbeResults(IWorldAccessor world, IServerPlayer byPlayer, ItemSlot itemslot, BlockPos pos)
         {
             DepositVariant[] deposits = api.ModLoader.GetModSystem<GenDeposits>()?.Deposits;
             if (deposits == null) return;

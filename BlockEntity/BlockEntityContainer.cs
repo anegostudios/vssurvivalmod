@@ -26,6 +26,7 @@ namespace Vintagestory.GameContent
             base.Initialize(api);
 
             Inventory.LateInitialize(InventoryClassName + "-" + Pos.X + "/" + Pos.Y + "/" + Pos.Z, api);
+            Inventory.Pos = Pos;
             Inventory.ResolveBlocksOrItems();
             Inventory.OnAcquireTransitionSpeed = Inventory_OnAcquireTransitionSpeed;
             if (api.Side == EnumAppSide.Client) {
@@ -66,6 +67,7 @@ namespace Vintagestory.GameContent
         protected virtual float Inventory_OnAcquireTransitionSpeed(EnumTransitionType transType, ItemStack stack, float baseMul)
         {
             float positionAwarePerishRate = Api != null && transType == EnumTransitionType.Perish ? GetPerishRate() : 1;
+            if (transType == EnumTransitionType.Dry) positionAwarePerishRate = 0;
 
             return baseMul * positionAwarePerishRate;
         }
@@ -158,9 +160,9 @@ namespace Vintagestory.GameContent
             return stacklist.ToArray();
         }
 
-        public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
+        public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
-            base.FromTreeAtributes(tree, worldForResolving);
+            base.FromTreeAttributes(tree, worldForResolving);
             Inventory.FromTreeAttributes(tree.GetTreeAttribute("inventory"));
         }
 

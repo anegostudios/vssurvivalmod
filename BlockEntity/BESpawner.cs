@@ -184,7 +184,7 @@ namespace Vintagestory.GameContent
                                 BlockFacing face = BlockFacing.ALLFACES[i];
 
                                 spawnBlockPos.Set(spawnPos).Add(face.Normali);
-                                haveWall = Api.World.BlockAccessor.GetBlock(spawnBlockPos).SideSolid[face.GetOpposite().Index];
+                                haveWall = Api.World.BlockAccessor.GetBlock(spawnBlockPos).SideSolid[face.Opposite.Index];
                                 if (haveWall)
                                 {
                                     Cuboidd entityPos = collisionBox2.ToDouble().Translate(spawnPos);
@@ -391,9 +391,9 @@ namespace Vintagestory.GameContent
             tree["spawnedEntities"] = new LongArrayAttribute(this.spawnedEntities.ToArray());
         }
 
-        public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
+        public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
         {
-            base.FromTreeAtributes(tree, worldAccessForResolve);
+            base.FromTreeAttributes(tree, worldAccessForResolve);
             
             Data = new BESpawnerData()
             {

@@ -9,7 +9,7 @@ namespace Vintagestory.GameContent.Mechanics
     /// <summary>
     /// An invisible "fake" block used to fill the space taken by multi-block structures such as the LargeGear3 - provides collision boxes and prevents other blocks from being placed here
     /// </summary>
-    public class BlockMPMultiblockWood : Block
+    public class BlockMPMultiblockGear : Block
     {
         public override bool IsReplacableBy(Block block)
         {
@@ -17,7 +17,7 @@ namespace Vintagestory.GameContent.Mechanics
             return base.IsReplacableBy(block);
         }
 
-        internal bool IsReplacableByGear(IWorldAccessor world, BlockPos pos)
+        public bool IsReplacableByGear(IWorldAccessor world, BlockPos pos)
         {
             BEMPMultiblock be = world.BlockAccessor.GetBlockEntity(pos) as BEMPMultiblock;
             if (be == null || be.Centre == null) return true;
@@ -25,17 +25,18 @@ namespace Vintagestory.GameContent.Mechanics
             return beg == null ? true : beg.CanAcceptGear(pos);
         }
 
-        internal void GearPlaced(IWorldAccessor world, BlockPos pos)
+        public BlockEntity GearPlaced(IWorldAccessor world, BlockPos pos)
         {
             BEMPMultiblock be = world.BlockAccessor.GetBlockEntity(pos) as BEMPMultiblock;
             if (be == null || be.Centre == null)
             {
-                return;
+                return null;
             }
 
             IGearAcceptor beg = world.BlockAccessor.GetBlockEntity(be.Centre) as IGearAcceptor;
             if (beg == null) world.Logger.Notification("no gear acceptor");
             beg?.AddGear(pos);
+            return beg as BlockEntity;
         }
 
         public static void OnGearDestroyed(IWorldAccessor world, BlockPos pos, char orient)

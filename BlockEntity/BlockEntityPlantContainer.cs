@@ -36,6 +36,22 @@ namespace Vintagestory.GameContent
         public BlockEntityPlantContainer()
         {
             inv = new InventoryGeneric(1, null, null, null);
+            inv.OnAcquireTransitionSpeed = slotTransitionSpeed;
+        }
+
+        private float slotTransitionSpeed(EnumTransitionType transType, ItemStack stack, float mulByConfig)
+        {
+            return 0;
+        }
+
+        /*protected override float Inventory_OnAcquireTransitionSpeed(EnumTransitionType transType, ItemStack stack, float baseMul)
+        {
+            return 0;
+        }*/
+
+        protected override void OnTick(float dt)
+        {
+            // Don't tick inventory contents
         }
 
         PlantContainerProps PlantContProps => GetProps(inv[0].Itemstack);
@@ -150,9 +166,9 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
+        public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
-            base.FromTreeAtributes(tree, worldForResolving);
+            base.FromTreeAttributes(tree, worldForResolving);
             MeshAngle = tree.GetFloat("meshAngle", MeshAngle);
 
             if (capi != null)

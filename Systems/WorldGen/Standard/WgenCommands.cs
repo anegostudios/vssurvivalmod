@@ -491,7 +491,7 @@ namespace Vintagestory.ServerMods
                         int spawnMinTemp = 6;
                         int spawnMaxTemp = 14;
 
-                        string startingClimate = worldConfig.GetString("worldClimate");
+                        string startingClimate = worldConfig.GetString("worldClimate", "realistic");
                         switch (startingClimate)
                         {
                             case "hot":
@@ -1176,7 +1176,7 @@ namespace Vintagestory.ServerMods
 
                         string text = string.Format(
                             "Temperature: {0}°, Rainfall: {1}%, Fertility: {2}%, Forest: {3}%, Shrub: {4}%, Sealevel dist: {5}%, Now temp: {6}, Season: {7}, Hemisphere: {8}", 
-                            climate.Temperature.ToString("0.#"), (int)(climate.Rainfall * 100f), (int)(climate.Fertility * 100f), 
+                            climate.Temperature.ToString("0.#"), (int)(climate.WorldgenRainfall * 100f), (int)(climate.Fertility * 100f), 
                             (int)(climate.ForestDensity * 100f), (int)(climate.ShrubDensity * 100f), (int)(100f * pos.Y / 255f), climate2.Temperature.ToString("0.#"),
                             api.World.Calendar.GetSeason(pos), api.World.Calendar.GetHemisphere(pos)
                         );

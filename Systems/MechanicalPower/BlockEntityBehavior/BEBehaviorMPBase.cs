@@ -28,7 +28,7 @@ namespace Vintagestory.GameContent.Mechanics
         }
         public BlockFacing NetworkDir()
         {
-            return this.invert ? OutFacing.GetOpposite() : OutFacing;
+            return this.invert ? OutFacing.Opposite : OutFacing;
         }
     }
 
@@ -176,24 +176,24 @@ namespace Vintagestory.GameContent.Mechanics
 
         public bool tryConnect(BlockFacing toFacing)
         {
-            MechanicalNetwork network;
+            MechanicalNetwork newNetwork;
 
             BlockPos pos = Position.AddCopy(toFacing);
             IMechanicalPowerBlock connectedToBlock = Api.World.BlockAccessor.GetBlock(pos) as IMechanicalPowerBlock;
             if (DEBUG) Api.Logger.Notification("tryConnect at " + this.Position + " towards " + toFacing + " " + pos);
 
-            if (connectedToBlock == null || !connectedToBlock.HasMechPowerConnectorAt(Api.World, pos, toFacing.GetOpposite())) return false;
-            network = connectedToBlock.GetNetwork(Api.World, pos);
-            if (network != null)
+            if (connectedToBlock == null || !connectedToBlock.HasMechPowerConnectorAt(Api.World, pos, toFacing.Opposite)) return false;
+            newNetwork = connectedToBlock.GetNetwork(Api.World, pos);
+            if (newNetwork != null)
             {
                 IMechanicalPowerDevice node = Api.World.BlockAccessor.GetBlockEntity(pos).GetBehavior<BEBehaviorMPBase>() as IMechanicalPowerDevice;
 
-                connectedToBlock.DidConnectAt(Api.World, pos, toFacing.GetOpposite());  //do this first to set the new Angled Gear block correctly prior to getting propagation direction
+                connectedToBlock.DidConnectAt(Api.World, pos, toFacing.Opposite);  //do this first to set the new Angled Gear block correctly prior to getting propagation direction
                 BlockFacing newTurnDir = node.GetPropagationDirectionInput();
                 MechPowerPath curPath = new MechPowerPath(toFacing, node.GearedRatio, !node.IsPropagationDirection(toFacing));
                 SetPropagationDirection(curPath);
                 MechPowerPath[] paths = GetMechPowerExits(curPath);
-                JoinNetwork(network);
+                JoinNetwork(newNetwork);
 
                 for (int i = 0; i < paths.Length; i++)
                 {
@@ -202,7 +202,7 @@ namespace Vintagestory.GameContent.Mechanics
                     BlockPos exitPos = Position.AddCopy(paths[i].OutFacing);
 
                     Vec3i missingChunkPos;
-                    bool chunkLoaded = spreadTo(Api, (node as BEBehaviorMPBase).currentPropagationId, network, exitPos, paths[i], out missingChunkPos);
+                    bool chunkLoaded = spreadTo(Api, (node as BEBehaviorMPBase).currentPropagationId, newNetwork, exitPos, paths[i], out missingChunkPos);
                     if (!chunkLoaded)
                     {
                         LeaveNetwork();
@@ -211,6 +211,11 @@ namespace Vintagestory.GameContent.Mechanics
                 }
 
                 return true;
+            }
+            else if (this.network != null)
+            {
+                BEBehaviorMPBase node = Api.World.BlockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorMPBase>();
+                if (node != null) return node.tryConnect(toFacing.Opposite);
             }
 
             return false;
@@ -357,7 +362,7 @@ namespace Vintagestory.GameContent.Mechanics
         public virtual void SetPropagationDirection(MechPowerPath path)
         {
             BlockFacing turnDir = path.NetworkDir();
-            if (this.propagationDir == turnDir.GetOpposite() && this.network != null)
+            if (this.propagationDir == turnDir.Opposite && this.network != null)
             {
                 if (!network.DirectionHasReversed) network.TurnDir = network.TurnDir == EnumRotDirection.Clockwise ? EnumRotDirection.Counterclockwise : EnumRotDirection.Clockwise;
                 network.DirectionHasReversed = true;
@@ -457,7 +462,7 @@ namespace Vintagestory.GameContent.Mechanics
 
             JoinNetwork(network);
             currentPropagationId = propagationId;
-            (Block as IMechanicalPowerBlock).DidConnectAt(api.World, Position, exitTurnDir.OutFacing.GetOpposite());
+            (Block as IMechanicalPowerBlock).DidConnectAt(api.World, Position, exitTurnDir.OutFacing.Opposite);
 
             MechPowerPath[] paths = GetMechPowerExits(exitTurnDir);
             for (int i = 0; i < paths.Length; i++)
@@ -486,11 +491,12 @@ namespace Vintagestory.GameContent.Mechanics
 
             if (beMechBase == null && api.World.BlockAccessor.GetChunkAtBlockPos(exitPos) == null)
             {
+                if (OutsideMap(api.World.BlockAccessor, exitPos)) return true;  //Network discovery should not fail if there cannot be a block in this position
                 missingChunkPos = new Vec3i(exitPos.X / api.World.BlockAccessor.ChunkSize, exitPos.Y / api.World.BlockAccessor.ChunkSize, exitPos.Z / api.World.BlockAccessor.ChunkSize);
                 return false;
             }
 
-            if (beMechBase != null && mechBlock.HasMechPowerConnectorAt(api.World, exitPos, propagatePath.OutFacing.GetOpposite()))
+            if (beMechBase != null && mechBlock.HasMechPowerConnectorAt(api.World, exitPos, propagatePath.OutFacing.Opposite))
             {
                 beMechBase.Api = api;
                 if (!beMechBase.JoinAndSpreadNetworkToNeighbours(api, propagationId, network, propagatePath, out missingChunkPos))
@@ -498,9 +504,17 @@ namespace Vintagestory.GameContent.Mechanics
                     return false;
                 }
             }
-            else if (DEBUG) api.Logger.Notification("no connector at " + exitPos + " " + propagatePath.OutFacing.GetOpposite());
+            else if (DEBUG) api.Logger.Notification("no connector at " + exitPos + " " + propagatePath.OutFacing.Opposite);
 
             return true;
+        }
+
+        private bool OutsideMap(IBlockAccessor blockAccessor, BlockPos exitPos)
+        {
+            if (exitPos.X < 0 || exitPos.X >= blockAccessor.MapSizeX) return true;
+            if (exitPos.Y < 0 || exitPos.Y >= blockAccessor.MapSizeY) return true;
+            if (exitPos.Z < 0 || exitPos.Z >= blockAccessor.MapSizeZ) return true;
+            return false;
         }
 
         /// <summary>
@@ -511,7 +525,7 @@ namespace Vintagestory.GameContent.Mechanics
         protected virtual MechPowerPath[] GetMechPowerExits(MechPowerPath entryDir)
         {
             // Most blocks - like axles - have two power exits in opposite directions
-            return new MechPowerPath[] { entryDir, new MechPowerPath(entryDir.OutFacing.GetOpposite(), entryDir.gearingRatio, !entryDir.invert) };
+            return new MechPowerPath[] { entryDir, new MechPowerPath(entryDir.OutFacing.Opposite, entryDir.gearingRatio, !entryDir.invert) };
         }
 
 

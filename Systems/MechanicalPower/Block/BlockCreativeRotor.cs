@@ -10,7 +10,7 @@ namespace Vintagestory.GameContent.Mechanics
 
         public override void OnLoaded(ICoreAPI api)
         {
-            powerOutFacing = BlockFacing.FromCode(Variant["side"]).GetOpposite();
+            powerOutFacing = BlockFacing.FromCode(Variant["side"]).Opposite;
 
             base.OnLoaded(api);
         }
@@ -38,15 +38,15 @@ namespace Vintagestory.GameContent.Mechanics
                 IMechanicalPowerBlock block = world.BlockAccessor.GetBlock(pos) as IMechanicalPowerBlock;
                 if (block != null)
                 {
-                    if (block.HasMechPowerConnectorAt(world, pos, face.GetOpposite()))
+                    if (block.HasMechPowerConnectorAt(world, pos, face.Opposite))
                     {
                         //Prevent rotor back-to-back placement
                         if (block is IMPPowered) return false;
 
-                        Block toPlaceBlock = world.GetBlock(new AssetLocation(FirstCodePart() + "-" + face.GetOpposite().Code));
+                        Block toPlaceBlock = world.GetBlock(new AssetLocation(FirstCodePart() + "-" + face.Opposite.Code));
                         world.BlockAccessor.SetBlock(toPlaceBlock.BlockId, blockSel.Position);
 
-                        block.DidConnectAt(world, pos, face.GetOpposite());
+                        block.DidConnectAt(world, pos, face.Opposite);
                         WasPlaced(world, blockSel.Position, face);
 
                         return true;

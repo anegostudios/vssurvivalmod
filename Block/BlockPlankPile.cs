@@ -96,7 +96,7 @@ namespace Vintagestory.GameContent
         internal bool Construct(ItemSlot slot, IWorldAccessor world, BlockPos pos, IPlayer player)
         {
             Block belowBlock = world.BlockAccessor.GetBlock(pos.DownCopy());
-            if (!belowBlock.SideSolid[BlockFacing.UP.Index] && (belowBlock != this || FillLevel(world.BlockAccessor, pos.DownCopy()) != 16)) return false;
+            if (!belowBlock.CanAttachBlockAt(world.BlockAccessor, this, pos.DownCopy(), BlockFacing.UP) && (belowBlock != this || FillLevel(world.BlockAccessor, pos.DownCopy()) != 16)) return false;
 
             if (!world.BlockAccessor.GetBlock(pos).IsReplacableBy(this)) return false;
 
@@ -128,7 +128,7 @@ namespace Vintagestory.GameContent
         public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
         {
             Block belowBlock = world.BlockAccessor.GetBlock(pos.DownCopy());
-            if (!belowBlock.SideSolid[BlockFacing.UP.Index])
+            if (!belowBlock.CanAttachBlockAt(world.BlockAccessor, belowBlock, pos.DownCopy(), BlockFacing.UP))
             {
                 int level = FillLevel(world.BlockAccessor, pos.DownCopy());
                 if (belowBlock != this || level < 16)

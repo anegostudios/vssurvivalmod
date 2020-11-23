@@ -8,6 +8,7 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -117,6 +118,7 @@ namespace Vintagestory.GameContent
             ModelMat.Set(rpi.CameraMatrixOriginf).Translate(pos.X - camPos.X, pos.Y - camPos.Y, pos.Z - camPos.Z);
             outLineColorMul.A = 1 - GameMath.Clamp((float)Math.Sqrt(plrPos.SquareDistanceTo(pos.X, pos.Y, pos.Z)) / 5 - 1f, 0, 1);
 
+            rpi.LineWidth = 2;
             rpi.GLEnableDepthTest();
             rpi.GlToggleBlend(true);
 
@@ -132,137 +134,24 @@ namespace Vintagestory.GameContent
 
 
 
-        public void RegenMesh(ItemStack ingot, byte[,,] voxels, bool[,,] recipeToOutlineVoxels)
+        public void RegenMesh(ItemStack workitemStack, byte[,,] voxels, bool[,,] recipeToOutlineVoxels)
         {
             workItemMeshRef?.Dispose();
             workItemMeshRef = null;
-            
-            if (ingot == null) return;
+            this.ingot = workitemStack;
+
+            if (workitemStack == null) return;
+
+            ObjectCacheUtil.Delete(api, "" + workitemStack.Attributes.GetInt("meshRefId"));
+            workitemStack.Attributes.RemoveAttribute("meshRefId");
 
             if (recipeToOutlineVoxels != null)
             {
                 RegenOutlineMesh(recipeToOutlineVoxels, voxels);
             }
 
-            this.ingot = ingot;
-            MeshData workItemMesh = new MeshData(24, 36, false);
-            workItemMesh.CustomBytes = new CustomMeshDataPartByte()
-            {
-                Conversion = DataConversion.NormalizedFloat,
-                Count = workItemMesh.VerticesCount,
-                InterleaveSizes = new int[] { 1 },
-                Instanced = false,
-                InterleaveOffsets = new int[] { 0 },
-                InterleaveStride = 1,
-                Values = new byte[workItemMesh.VerticesCount]
-            };
+            MeshData workItemMesh = ItemWorkItem.GenMesh(api, workitemStack, voxels, out texId);
 
-            //float thickness = 0.33f + 0.66f * beAnvil.AvailableMetalVoxels / 32f;
-            TextureAtlasPosition tposMetal;
-            TextureAtlasPosition tposSlag;
-
-            if (beAnvil.IsIronBloom)
-            {
-                tposSlag = api.BlockTextureAtlas.GetPosition(beAnvil.Block, "ironbloom");
-                tposMetal = api.BlockTextureAtlas.GetPosition(api.World.GetBlock(new AssetLocation("ingotpile")), "iron");
-            } else
-            {
-                tposMetal = api.BlockTextureAtlas.GetPosition(api.World.GetBlock(new AssetLocation("ingotpile")), ingot.Collectible.LastCodePart());
-                tposSlag = tposMetal;
-            }
-            
-            MeshData metalVoxelMesh = CubeMeshUtil.GetCubeOnlyScaleXyz(1 / 32f, 1 / 32f, new Vec3f(1 / 32f, 1 / 32f, 1 / 32f));
-            CubeMeshUtil.SetXyzFacesAndPacketNormals(metalVoxelMesh);
-            metalVoxelMesh.CustomBytes = new CustomMeshDataPartByte()
-            {
-                Conversion = DataConversion.NormalizedFloat,
-                Count = metalVoxelMesh.VerticesCount,
-                Values = new byte[metalVoxelMesh.VerticesCount]
-            };
-
-            texId = tposMetal.atlasTextureId;
-
-            metalVoxelMesh.XyzFaces = (byte[])CubeMeshUtil.CubeFaceIndices.Clone();
-            metalVoxelMesh.XyzFacesCount = 6;
-            
-            //metalVoxelMesh.ColorMapIds = new int[6];
-            //metalVoxelMesh.TintsCount = 6;
-
-            for (int i = 0; i < metalVoxelMesh.Rgba.Length; i++) metalVoxelMesh.Rgba[i] = 255;
-            //metalVoxelMesh.Rgba2 = null;
-
-
-            MeshData slagVoxelMesh = metalVoxelMesh.Clone();
-
-            for (int i = 0; i < metalVoxelMesh.Uv.Length; i++)
-            {
-                if (i % 2 > 0)
-                {
-                    metalVoxelMesh.Uv[i] = tposMetal.y1 + metalVoxelMesh.Uv[i] * 2f / api.BlockTextureAtlas.Size.Height;
-
-                    slagVoxelMesh.Uv[i] = tposSlag.y1 + slagVoxelMesh.Uv[i] * 2f / api.BlockTextureAtlas.Size.Height;
-                }
-                else
-                {
-                    metalVoxelMesh.Uv[i] = tposMetal.x1 + metalVoxelMesh.Uv[i] * 2f / api.BlockTextureAtlas.Size.Width;
-
-                    slagVoxelMesh.Uv[i] = tposSlag.x1 + slagVoxelMesh.Uv[i] * 2f / api.BlockTextureAtlas.Size.Width;
-                }
-            }
-
-
-
-
-            MeshData metVoxOffset = metalVoxelMesh.Clone();
-            MeshData slagVoxOffset = slagVoxelMesh.Clone();
-
-            for (int x = 0; x < 16; x++)
-            {
-                for (int y = 0; y < 6; y++)
-                {
-                    for (int z = 0; z < 16; z++)
-                    {
-                        EnumVoxelMaterial mat = (EnumVoxelMaterial)voxels[x, y, z];
-                        if (mat == EnumVoxelMaterial.Empty) continue;
-
-                        float px = x / 16f;
-                        float py = 10/16f + y / 16f;
-                        float pz = z / 16f;
-
-                        MeshData mesh = mat == EnumVoxelMaterial.Metal ? metalVoxelMesh : slagVoxelMesh;
-                        MeshData meshVoxOffset = mat == EnumVoxelMaterial.Metal ? metVoxOffset : slagVoxOffset;
-
-                        for (int i = 0; i < mesh.xyz.Length; i += 3)
-                        {
-                            meshVoxOffset.xyz[i] = px + mesh.xyz[i];
-                            meshVoxOffset.xyz[i + 1] = py + mesh.xyz[i + 1];
-                            meshVoxOffset.xyz[i + 2] = pz + mesh.xyz[i + 2];
-                        }
-
-                        float textureSize = 32f / api.BlockTextureAtlas.Size.Width;
-
-                        float offsetX = px * textureSize;
-                        float offsetY = (py * 32f) / api.BlockTextureAtlas.Size.Width;
-                        float offsetZ = pz * textureSize;
-
-                        for (int i = 0; i < mesh.Uv.Length; i += 2)
-                        {
-                            meshVoxOffset.Uv[i] = mesh.Uv[i] + GameMath.Mod(offsetX + offsetY, textureSize);
-                            meshVoxOffset.Uv[i + 1] = mesh.Uv[i + 1] + GameMath.Mod(offsetZ + offsetY, textureSize);
-                        }
-
-                        for (int i = 0; i < meshVoxOffset.CustomBytes.Values.Length; i++)
-                        {
-                            byte glowSub = (byte)GameMath.Clamp(10 * (Math.Abs(x - 8) + Math.Abs(z - 8) + Math.Abs(y - 2)), 100, 250);
-                            meshVoxOffset.CustomBytes.Values[i] = (mat == EnumVoxelMaterial.Metal) ? (byte)0 : glowSub;
-                        }
-
-                        workItemMesh.AddMeshData(meshVoxOffset);
-                    }
-                }
-            }
-
-            //workItemMesh.Rgba2 = null;
             workItemMeshRef = api.Render.UploadMesh(workItemMesh);
         }
 
@@ -274,8 +163,8 @@ namespace Vintagestory.GameContent
             MeshData recipeOutlineMesh = new MeshData(24, 36, false, false, true, false);
             recipeOutlineMesh.SetMode(EnumDrawMode.Lines);
 
-            int greenCol = (156 << 24) | (100 << 16) | (200 << 8) | (100);
-            int orangeCol = (156 << 24) | (219 << 16) | (92 << 8) | (192);
+            int greenCol = (170 << 24) | (100 << 16) | (200 << 8) | (100);
+            int orangeCol = (220 << 24) | (75 << 16) | (0 << 8) | (47);
             MeshData greenVoxelMesh = LineMeshUtil.GetCube(greenCol);
             MeshData orangeVoxelMesh = LineMeshUtil.GetCube(orangeCol);
             for (int i = 0; i < greenVoxelMesh.xyz.Length; i++)

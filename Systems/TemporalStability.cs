@@ -35,7 +35,7 @@ namespace Vintagestory.GameContent
     }
 
     [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
-    class TemporalStormRunTimeData
+    public class TemporalStormRunTimeData
     {
         public bool nowStormActive;
         
@@ -79,6 +79,8 @@ namespace Vintagestory.GameContent
                 return 0;
             }
         }
+
+        public TemporalStormRunTimeData StormData => data;
 
         public override bool ShouldLoad(EnumAppSide forSide)
         {
@@ -452,7 +454,7 @@ namespace Vintagestory.GameContent
             entity.Pos.SetFrom(entity.ServerPos);
             entity.PositionBeforeFalling.Set(entity.ServerPos.X, entity.ServerPos.Y, entity.ServerPos.Z);
 
-            entity.Attributes.SetString("origin", "entityspawner");
+            entity.Attributes.SetString("origin", "timedistortion");
 
             api.World.SpawnEntity(entity);
 
@@ -544,6 +546,7 @@ namespace Vintagestory.GameContent
 
         internal float GetGlitchEffectExtraStrength()
         {
+            if (!data.nowStormActive) return 0;
             return data.stormGlitchStrength;
         }
 

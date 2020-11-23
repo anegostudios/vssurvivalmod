@@ -39,9 +39,25 @@ namespace Vintagestory.GameContent
         public ProtectionModifiers ProtectionModifiers;
         public AssetLocation[] FootStepSounds;
 
+        public EnumCharacterDressType DressType { get; private set; }
+
+        public bool IsArmor
+        {
+            get
+            {
+                return DressType == EnumCharacterDressType.ArmorBody || DressType == EnumCharacterDressType.ArmorHead || DressType == EnumCharacterDressType.ArmorLegs;
+            }
+        }
+
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
+
+            string strdress = Attributes["clothescategory"].AsString();
+            EnumCharacterDressType dt = EnumCharacterDressType.Unknown;
+            Enum.TryParse(strdress, true, out dt);
+            DressType = dt;
+
 
             JsonObject jsonObj = Attributes?["footStepSound"];
             if (jsonObj?.Exists == true)
@@ -58,8 +74,7 @@ namespace Vintagestory.GameContent
                     } else
                     {
                         FootStepSounds = new AssetLocation[] { loc };
-                    }
-                    
+                    }                    
                 }
             }
 
@@ -181,7 +196,7 @@ namespace Vintagestory.GameContent
 
             if (asset == null)
             {
-                capi.World.Logger.Warning("Entity armor shape {0} defined in {1} {2} not found, was supposed to be at {3}. Armor piece will be invisible.", compArmorShape.Base, itemstack.Class, itemstack.Collectible.Code, shapePath);
+                capi.World.Logger.Warning("Entity wearable shape {0} defined in {1} {2} not found, was supposed to be at {3}. Armor piece will be invisible.", compArmorShape.Base, itemstack.Class, itemstack.Collectible.Code, shapePath);
                 return meshref;
             }
 
@@ -199,6 +214,15 @@ namespace Vintagestory.GameContent
 
             newShape.Textures = armorShape.Textures;
 
+            if (armorShape.Textures.Count > 0 && armorShape.TextureSizes.Count == 0)
+            {
+                capi.World.Logger.Warning("Entity wearable shape {0} defines textures but not textures sizes, will probably have a broken texture.", shapePathForLogging);
+            }
+
+            foreach (var val in armorShape.TextureSizes)
+            {
+                newShape.TextureSizes[val.Key] = val.Value;
+            }
 
             foreach (var val in armorShape.Elements)
             {
@@ -209,13 +233,13 @@ namespace Vintagestory.GameContent
                     elem = newShape.GetElementByName(val.StepParentName, StringComparison.InvariantCultureIgnoreCase);
                     if (elem == null)
                     {
-                        capi.World.Logger.Warning("Entity armor shape {0} defined in {1} {2} requires step parent element with name {3}, but no such element was found in shape {3}. Will not be visible.", compArmorShape.Base, itemstack.Class, itemstack.Collectible.Code, val.StepParentName, shapePathForLogging);
+                        capi.World.Logger.Warning("Entity wearable shape {0} defined in {1} {2} requires step parent element with name {3}, but no such element was found in shape {3}. Will not be visible.", compArmorShape.Base, itemstack.Class, itemstack.Collectible.Code, val.StepParentName, shapePathForLogging);
                         continue;
                     }
                 }
                 else
                 {
-                    capi.World.Logger.Warning("Entity armor shape element {0} in shape {1} defined in {2} {3} did not define a step parent element. Will not be visible.", val.Name, compArmorShape.Base, itemstack.Class, itemstack.Collectible.Code);
+                    capi.World.Logger.Warning("Entity wearable shape element {0} in shape {1} defined in {2} {3} did not define a step parent element. Will not be visible.", val.Name, compArmorShape.Base, itemstack.Class, itemstack.Collectible.Code);
                     continue;
                 }
 
@@ -229,12 +253,11 @@ namespace Vintagestory.GameContent
                 }
             }
 
-
             MeshData meshdata;
             ITexPositionSource texSource = capi.Tesselator.GetTextureSource(itemstack.Item);
 
-            capi.Tesselator.TesselateShapeWithJointIds("entity", newShape, out meshdata, texSource, new Vec3f()); //, compositeShape.QuantityElements, compositeShape.SelectiveElements
-            //meshdata.Rgba2 = null;
+            capi.Tesselator.TesselateShapeWithJointIds("entity", newShape, out meshdata, texSource, new Vec3f());
+
             return capi.Render.UploadMesh(meshdata);
         }
 
@@ -246,14 +269,11 @@ namespace Vintagestory.GameContent
             IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
             if (byPlayer == null) return;
 
-            EnumCharacterDressType dresstype;
-            string strdress = slot.Itemstack.ItemAttributes["clothescategory"].AsString();
-            if (!Enum.TryParse(strdress, true, out dresstype)) return;
-
             IInventory inv = byPlayer.InventoryManager.GetOwnInventory(GlobalConstants.characterInvClassName);
             if (inv == null) return;
+            if (DressType == EnumCharacterDressType.Unknown) return;
 
-            if (inv[(int)dresstype].TryFlipWith(slot))
+            if (inv[(int)DressType].TryFlipWith(slot))
             {
                 handHandling = EnumHandHandling.PreventDefault;
             }
@@ -263,14 +283,16 @@ namespace Vintagestory.GameContent
         {
             base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
 
-            EnumCharacterDressType dresstype;
-            string strdress = inSlot.Itemstack.ItemAttributes["clothescategory"].AsString();
-            if (!Enum.TryParse(strdress, true, out dresstype))
+            if ((api as ICoreClientAPI).Settings.Bool["extendedDebugInfo"])
             {
-                dsc.AppendLine(Lang.Get("Cloth Category: Unknown"));
-            } else
-            {
-                dsc.AppendLine(Lang.Get("Cloth Category: {0}", Lang.Get("clothcategory-" + inSlot.Itemstack.ItemAttributes["clothescategory"].AsString())));
+                if (DressType == EnumCharacterDressType.Unknown)
+                {
+                    dsc.AppendLine(Lang.Get("Cloth Category: Unknown"));
+                }
+                else
+                {
+                    dsc.AppendLine(Lang.Get("Cloth Category: {0}", Lang.Get("clothcategory-" + inSlot.Itemstack.ItemAttributes["clothescategory"].AsString())));
+                }
             }
 
 
@@ -324,7 +346,121 @@ namespace Vintagestory.GameContent
                 }
             }
 
+            // Condition: Useless (0-10%)
+            // Condition: Heavily Tattered (10-20%)
+            // Condition: Slightly Tattered (20-30%)
+            // Condition: Heavily Worn (30-40%)
+            // Condition: Worn (40-50%)
+            // Condition: Good (50-100%)
 
+            // Condition: 0-40%
+            // Warmth: +1.5°C
+
+            if (inSlot.Itemstack.ItemAttributes?["warmth"].Exists == true && inSlot.Itemstack.ItemAttributes?["warmth"].AsFloat() != 0)
+            {
+                if (!(inSlot is ItemSlotCreative))
+                {
+                    ensureConditionExists(inSlot);
+                    float condition = inSlot.Itemstack.Attributes.GetFloat("condition");
+                    string condStr;
+
+                    if (condition > 0.5)
+                    {
+                        condStr = Lang.Get("clothingcondition-good", (int)(condition * 100));
+                    }
+                    else if (condition > 0.4)
+                    {
+                        condStr = Lang.Get("clothingcondition-worn", (int)(condition * 100));
+                    }
+                    else if (condition > 0.3)
+                    {
+                        condStr = Lang.Get("clothingcondition-heavilyworn", (int)(condition * 100));
+                    }
+                    else if (condition > 0.2)
+                    {
+                        condStr = Lang.Get("clothingcondition-tattered", (int)(condition * 100));
+                    }
+                    else if (condition > 0.1)
+                    {
+                        condStr = Lang.Get("clothingcondition-heavilytattered", (int)(condition * 100));
+                    }
+                    else
+                    {
+                        condStr = Lang.Get("clothingcondition-terrible", (int)(condition * 100));
+                    }
+
+                    dsc.AppendLine(Lang.Get("Condition:"));
+                    float warmth = GetWarmth(inSlot);
+
+                    string color = ColorUtil.Int2Hex(GuiStyle.DamageColorGradient[(int)Math.Min(99, condition * 200)]);
+
+                    if (warmth < 0.05)
+                    {
+                        dsc.AppendLine(Lang.Get("<font color=\"" + color + "\">{0}</font>, <font color=\"#ff8484\">+{1:0.#}°C</font>", condStr, warmth));
+                    } else
+                    {
+                        dsc.AppendLine(Lang.Get("<font color=\"" + color + "\">{0}</font>, <font color=\"#84ff84\">+{1:0.#}°C</font>", condStr, warmth));
+                    }
+                }
+
+                float maxWarmth = inSlot.Itemstack.ItemAttributes?["warmth"].AsFloat(0) ?? 0;
+                dsc.AppendLine();
+                dsc.AppendLine(Lang.Get("clothing-maxwarmth", maxWarmth));
+            }
+        }
+
+        public float GetWarmth(ItemSlot inslot)
+        {
+            ensureConditionExists(inslot);
+            float maxWarmth = inslot.Itemstack.ItemAttributes?["warmth"].AsFloat(0) ?? 0;
+            float condition = inslot.Itemstack.Attributes.GetFloat("condition");
+            return Math.Min(maxWarmth, condition * 2 * maxWarmth); 
+        }
+
+        public void ChangeCondition(ItemSlot slot, float changeVal)
+        {
+            ensureConditionExists(slot);
+            slot.Itemstack.Attributes.SetFloat("condition", GameMath.Clamp(slot.Itemstack.Attributes.GetFloat("condition") + changeVal, 0, 1));
+            slot.MarkDirty();
+        }
+
+        private void ensureConditionExists(ItemSlot slot)
+        {
+            if (!slot.Itemstack.Attributes.HasAttribute("condition") && api.Side == EnumAppSide.Server)
+            {
+                if (slot.Itemstack.ItemAttributes?["warmth"].Exists == true && slot.Itemstack.ItemAttributes?["warmth"].AsFloat() != 0)
+                {
+                    slot.Itemstack.Attributes.SetFloat("condition", (float)api.World.Rand.NextDouble() * 0.4f);
+                    slot.MarkDirty();
+                }
+            }
+        }
+
+
+        public override TransitionState[] UpdateAndGetTransitionStates(IWorldAccessor world, ItemSlot inslot)
+        {
+            ensureConditionExists(inslot);
+
+            return base.UpdateAndGetTransitionStates(world, inslot);
+        }
+
+        public override TransitionState UpdateAndGetTransitionState(IWorldAccessor world, ItemSlot inslot, EnumTransitionType type)
+        {
+            ensureConditionExists(inslot);
+
+            return base.UpdateAndGetTransitionState(world, inslot, type);
+        }
+
+        public override void DamageItem(IWorldAccessor world, Entity byEntity, ItemSlot itemslot, int amount = 1)
+        {
+            float amountf = amount;
+
+            if (byEntity is EntityPlayer && (DressType == EnumCharacterDressType.ArmorHead || DressType == EnumCharacterDressType.ArmorBody || DressType == EnumCharacterDressType.ArmorLegs))
+            {
+                amountf *= byEntity.Stats.GetBlended("armorDurabilityLoss");
+            }
+
+            base.DamageItem(world, byEntity, itemslot, GameMath.RoundRandom(world.Rand, amountf));
         }
 
         public override WorldInteraction[] GetHeldInteractionHelp(ItemSlot inSlot)
@@ -336,6 +472,37 @@ namespace Vintagestory.GameContent
                     MouseButton = EnumMouseButton.Right,
                 }
             }.Append(base.GetHeldInteractionHelp(inSlot));
+        }
+
+
+        public override int GetMergableQuantity(ItemStack sinkStack, ItemStack sourceStack)
+        {
+            if (sinkStack.ItemAttributes?["warmth"].Exists != true || sinkStack.ItemAttributes?["warmth"].AsFloat() == 0) return base.GetMergableQuantity(sinkStack, sourceStack);
+
+            float repstr = sourceStack?.ItemAttributes?["clothingRepairStrength"].AsFloat(0) ?? 0;
+            if (repstr > 0)
+            {
+                if (sinkStack.Attributes.GetFloat("condition") < 1) return 1;
+                return 0;
+            }
+            
+
+            return base.GetMergableQuantity(sinkStack, sourceStack);
+        }
+
+        public override void TryMergeStacks(ItemStackMergeOperation op)
+        {
+            float repstr = op.SourceSlot.Itemstack.ItemAttributes?["clothingRepairStrength"].AsFloat(0) ?? 0;
+
+            if (repstr > 0 && op.SinkSlot.Itemstack.Attributes.GetFloat("condition") < 1)
+            {
+                ChangeCondition(op.SinkSlot, repstr);
+                op.MovedQuantity = 1;
+                op.SourceSlot.TakeOut(1);
+                return;
+            }
+
+            base.TryMergeStacks(op);
         }
     }
 }

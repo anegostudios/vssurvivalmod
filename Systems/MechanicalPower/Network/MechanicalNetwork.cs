@@ -36,7 +36,7 @@ namespace Vintagestory.GameContent.Mechanics
 
 
 
-        float clientSpeed;
+        public float clientSpeed;
         int chunksize;
         public bool fullyLoaded;
         private bool firstTick = true;
@@ -143,7 +143,7 @@ namespace Vintagestory.GameContent.Mechanics
             //float weirdOffset = 5f; // Server seems to complete a work item quicker than on the client, does it update the angle more quickly or something? o.O
             float f = dt * (50f);// + weirdOffset);
 
-            clientSpeed += GameMath.Clamp(speed - clientSpeed, f * -0.01f, f * 0.01f); 
+            clientSpeed += GameMath.Clamp(speed - clientSpeed, f * -0.01f, f * 0.01f);
 
             UpdateAngle(f * (TurnDir == EnumRotDirection.Clockwise ^ DirectionHasReversed ? clientSpeed : -clientSpeed));
 

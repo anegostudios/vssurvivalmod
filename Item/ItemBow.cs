@@ -187,17 +187,19 @@ namespace Vintagestory.GameContent
             ((EntityProjectile)entity).ProjectileStack = stack;
             ((EntityProjectile)entity).DropOnImpactChance = 1 - breakChance;
 
-            float acc = (1 - byEntity.Attributes.GetFloat("aimingAccuracy", 0));
+            float acc = Math.Max(0.001f, (1 - byEntity.Attributes.GetFloat("aimingAccuracy", 0)));
             double rndpitch = byEntity.WatchedAttributes.GetDouble("aimingRandPitch", 1) * acc * 0.75;
             double rndyaw = byEntity.WatchedAttributes.GetDouble("aimingRandYaw", 1) * acc * 0.75;
             
-            Vec3d pos = byEntity.ServerPos.XYZ.Add(0, byEntity.LocalEyePos.Y - 0.2, 0);
+            Vec3d pos = byEntity.ServerPos.XYZ.Add(0, byEntity.LocalEyePos.Y, 0);
             Vec3d aheadPos = pos.AheadCopy(1, byEntity.SidedPos.Pitch + rndpitch, byEntity.SidedPos.Yaw + rndyaw);
-            Vec3d velocity = (aheadPos - pos) * 0.95;
+            Vec3d velocity = (aheadPos - pos) * byEntity.Stats.GetBlended("bowDrawingStrength");
 
             
-            entity.ServerPos.SetPos(byEntity.SidedPos.BehindCopy(0.21).XYZ.Add(0, byEntity.LocalEyePos.Y - 0.2, 0));
+            entity.ServerPos.SetPos(byEntity.SidedPos.BehindCopy(0.21).XYZ.Add(0, byEntity.LocalEyePos.Y, 0));
             entity.ServerPos.Motion.Set(velocity);
+
+            
 
             entity.Pos.SetFrom(entity.ServerPos);
             entity.World = byEntity.World;

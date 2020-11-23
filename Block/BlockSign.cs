@@ -41,12 +41,12 @@ namespace Vintagestory.GameContent
 
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection bs, ref string failureCode)
         {
-            BlockPos supportingPos = bs.Position.AddCopy(bs.Face.GetOpposite());
+            BlockPos supportingPos = bs.Position.AddCopy(bs.Face.Opposite);
             Block supportingBlock = world.BlockAccessor.GetBlock(supportingPos);
 
             if (bs.Face.IsHorizontal && (supportingBlock.CanAttachBlockAt(world.BlockAccessor, this, bs.Position, bs.Face) || supportingBlock.Attributes?.IsTrue("partialAttachable") == true))
             {
-                Block wallblock = world.BlockAccessor.GetBlock(CodeWithParts("wall", bs.Face.GetOpposite().Code));
+                Block wallblock = world.BlockAccessor.GetBlock(CodeWithParts("wall", bs.Face.Opposite.Code));
 
                 if (!wallblock.CanPlaceBlock(world, byPlayer, bs, ref failureCode))
                 {
@@ -111,7 +111,7 @@ namespace Vintagestory.GameContent
             BlockFacing facing = BlockFacing.FromCode(LastCodePart());
             if (facing.Axis == axis)
             {
-                return CodeWithParts(facing.GetOpposite().Code);
+                return CodeWithParts(facing.Opposite.Code);
             }
             return Code;
         }

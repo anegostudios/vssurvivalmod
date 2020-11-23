@@ -710,9 +710,9 @@ namespace Vintagestory.GameContent
                 ItemSlotTrade slot = GetBuyingSlot(i);
                 if (slot.Itemstack == null) continue;
 
-                if (slot.Itemstack.Equals(Api.World, forStack, GlobalConstants.IgnoredStackAttributes.Append("backpack")))
+                if (slot.Itemstack.Equals(Api.World, forStack, GlobalConstants.IgnoredStackAttributes.Append("backpack")) || slot.Itemstack.Satisfies(forStack))
                 {
-                    return slot;
+                    if (forStack.Collectible.IsReasonablyFresh(traderEntity.World, forStack)) return slot;
                 }
             }
 

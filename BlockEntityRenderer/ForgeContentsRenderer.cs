@@ -26,7 +26,6 @@ namespace Vintagestory.GameContent
         ItemStack stack;
         float fuelLevel;
         bool burning;
-        MetalProperty metals;
 
         TextureAtlasPosition coaltexpos;
         TextureAtlasPosition embertexpos;
@@ -68,9 +67,7 @@ namespace Vintagestory.GameContent
         {
             this.pos = pos;
             this.capi = capi;
-
-            metals = capi.Assets.TryGet("worldproperties/block/metal.json").ToObject<MetalProperty>();
-
+            
             Block block = capi.World.GetBlock(new AssetLocation("forge"));
 
             coaltexpos = capi.BlockTextureAtlas.GetPosition(block, "coal");
@@ -127,7 +124,14 @@ namespace Vintagestory.GameContent
                 capi.Tesselator.TesselateShape("block-fcr", shape, out mesh, this, null, 0, 0, 0, stack.StackSize);
 
             }
-            else if (firstCodePart == "workitem" || firstCodePart == "ingot")
+            else if (firstCodePart == "workitem")
+            {
+                MeshData workItemMesh = ItemWorkItem.GenMesh(capi, stack, ItemWorkItem.GetVoxels(stack), out textureId);
+                workItemMesh.Scale(new Vec3f(0.5f, 0.5f, 0.5f), 0.75f, 0.75f, 0.75f); 
+                workItemMesh.Translate(0, -9f/16f, 0);
+                workItemMeshRef = capi.Render.UploadMesh(workItemMesh);
+            }
+            else if (firstCodePart == "ingot")
             {
                 tmpTextureSource = capi.Tesselator.GetTexSource(capi.World.GetBlock(new AssetLocation("ingotpile")));
                 shape = capi.Assets.TryGet("shapes/block/stone/forge/ingotpile.json").ToObject<Shape>();
@@ -144,6 +148,13 @@ namespace Vintagestory.GameContent
                 {
                     capi.Tesselator.TesselateItem(stack.Item, out mesh);
                     textureId = capi.ItemTextureAtlas.AtlasTextureIds[0];
+                }
+
+                ModelTransform tf = stack.Collectible.Attributes["inForgeTransform"].AsObject<ModelTransform>();
+                if (tf != null)
+                {
+                    tf.EnsureDefaultValues();
+                    mesh.ModelTransform(tf);
                 }
             }
 
@@ -175,6 +186,7 @@ namespace Vintagestory.GameContent
             prog.DontWarpVertices = 0;
             prog.AddRenderFlags = 0;
             prog.ExtraGodray = 0;
+            prog.OverlayOpacity = 0;
             
 
             if (stack != null && workItemMeshRef != null)

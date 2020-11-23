@@ -78,7 +78,7 @@ namespace Vintagestory.GameContent
             if (cnt++ > 30)
             {
                 float affectedness = World.BlockAccessor.GetLightLevel(SidedPos.XYZ.AsBlockPos, EnumLightLevelType.OnlySunLight) < 14 ? 1 : 0;
-                windMotion = Api.ModLoader.GetModSystem<WeatherSystemBase>().WeatherDataSlowAccess.GetWindSpeed(SidedPos.XYZ * affectedness);
+                windMotion = Api.ModLoader.GetModSystem<WeatherSystemBase>().WeatherDataSlowAccess.GetWindSpeed(SidedPos.XYZ) * affectedness;
                 cnt = 0;
             }
 

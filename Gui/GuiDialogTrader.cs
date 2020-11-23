@@ -77,7 +77,7 @@ namespace Vintagestory.GameContent
 
             SingleComposer = 
                 capi.Gui
-                .CreateCompo("traderdialog-" + owningEntity.Code.Path, dialogBounds)
+                .CreateCompo("traderdialog-" + owningEntity.EntityId, dialogBounds)
                 .AddShadedDialogBG(bgBounds, true)
                 .AddDialogTitleBar(Lang.Get("tradingwindow-" + owningEntity.Code.Path, traderName), OnTitleBarClose)
                 .BeginChildElements(bgBounds)
@@ -261,5 +261,6 @@ namespace Vintagestory.GameContent
 
 
         public override bool PrefersUngrabbedMouse => false;
+        public override float ZSize => 300; // Due to crossed out texture on bought out items
     }
 }

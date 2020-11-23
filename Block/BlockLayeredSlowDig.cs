@@ -9,7 +9,7 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
-    class BlockLayeredSlowDig : Block
+    public class BlockLayeredSlowDig : Block
     {
         public int Layers()
         {
@@ -49,14 +49,14 @@ namespace Vintagestory.GameContent
                 return false;
             }
 
-            Block block = world.BlockAccessor.GetBlock(blockSel.Position.AddCopy(blockSel.Face.GetOpposite()));
+            Block block = world.BlockAccessor.GetBlock(blockSel.Position.AddCopy(blockSel.Face.Opposite));
 
             if (block is BlockLayeredSlowDig)
             {
                 Block nextBlock = ((BlockLayeredSlowDig)block).GetNextLayer(world);
                 if (nextBlock == null) return false;
 
-                world.BlockAccessor.SetBlock(nextBlock.BlockId, blockSel.Position.AddCopy(blockSel.Face.GetOpposite()));
+                world.BlockAccessor.SetBlock(nextBlock.BlockId, blockSel.Position.AddCopy(blockSel.Face.Opposite));
 
                 return true;
             }

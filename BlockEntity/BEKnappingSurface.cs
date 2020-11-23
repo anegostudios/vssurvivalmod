@@ -359,6 +359,13 @@ namespace Vintagestory.GameContent
                 }
             }
 
+            // Single voxel with no neighbours
+            if (nodesVisited.Count == 0 && foundPieces.Count == 0)
+            {
+                foundPieces.Add(new Vec2i(x, z));
+            }
+
+
             Vec3d tmp = new Vec3d();
             foreach (var val in foundPieces)
             {
@@ -425,9 +432,9 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
+        public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
-            base.FromTreeAtributes(tree, worldForResolving);
+            base.FromTreeAttributes(tree, worldForResolving);
             deserializeVoxels(tree.GetBytes("voxels"));
             selectedRecipeId = tree.GetInt("selectedRecipeId", -1);
             BaseMaterial = tree.GetItemstack("baseMaterial");

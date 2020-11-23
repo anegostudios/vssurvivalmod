@@ -67,7 +67,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            if (testGroundSnowAdd && api.World.Blocks[chunkExtIds[extIndex3d + TileSideEnum.MoveIndex[rot.GetOpposite().Index]]].BlockMaterial == EnumBlockMaterial.Snow && api.World.Blocks[chunkExtIds[extIndex3d + TileSideEnum.MoveIndex[5]]].SideSolid[BlockFacing.UP.Index] == true)
+            if (testGroundSnowAdd && api.World.Blocks[chunkExtIds[extIndex3d + TileSideEnum.MoveIndex[rot.Opposite.Index]]].BlockMaterial == EnumBlockMaterial.Snow && api.World.Blocks[chunkExtIds[extIndex3d + TileSideEnum.MoveIndex[5]]].SideSolid[BlockFacing.UP.Index] == true)
             {
                 if (groundSnowedMesh == null)
                 {

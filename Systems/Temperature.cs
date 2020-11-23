@@ -55,7 +55,6 @@ namespace Vintagestory.GameContent
         private void Event_OnGetClimate(ref ClimateCondition climate, BlockPos pos, EnumGetClimateMode mode, double totalDays)
         {
             if (mode == EnumGetClimateMode.WorldGenValues) return;
-            if (mode == EnumGetClimateMode.NowValues) totalDays = api.World.Calendar.TotalDays;
 
             updateTemperature(ref climate, pos, api.World.Calendar.YearRel, api.World.Calendar.HourOfDay, totalDays);
         }
@@ -111,8 +110,7 @@ namespace Vintagestory.GameContent
             // 5. Daily random noise
             heretemp += DailyTemperatureNoise.Noise(totalDays, 0);
 
-
-            climate.Temperature = (float)heretemp;
+            climate.Temperature = (float)heretemp;  
         }
 
 

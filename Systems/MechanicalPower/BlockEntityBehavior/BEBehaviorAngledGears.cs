@@ -100,10 +100,10 @@ namespace Vintagestory.GameContent.Mechanics
             //This applies only when the BE is being updated when the gear orientations change after a neighbour block breaks
             if (this.turnDir1 != null)
             {
-                if (propagationDir == turnDir1) propagationDir = turnDir2.GetOpposite();
-                else if (propagationDir == turnDir2) propagationDir = turnDir1.GetOpposite();
-                else if (propagationDir == turnDir2.GetOpposite()) propagationDir = turnDir1;
-                else if (propagationDir == turnDir1.GetOpposite()) propagationDir = turnDir2;
+                if (propagationDir == turnDir1) propagationDir = turnDir2.Opposite;
+                else if (propagationDir == turnDir2) propagationDir = turnDir1.Opposite;
+                else if (propagationDir == turnDir2.Opposite) propagationDir = turnDir1;
+                else if (propagationDir == turnDir1.Opposite) propagationDir = turnDir2;
                 this.turnDir1 = null;
                 this.turnDir2 = null;
             }
@@ -253,10 +253,16 @@ namespace Vintagestory.GameContent.Mechanics
             string orientations = (Block as BlockAngledGears).Orientation;
             if (orientations.Length == 2 && orientations[0] == orientations[1])
             {
-                BlockPos largeGearPos = this.Position.AddCopy(this.orientation.GetOpposite());
+                BlockPos largeGearPos = this.Position.AddCopy(this.orientation.Opposite);
                 BlockEntity be = this.Api.World?.BlockAccessor.GetBlockEntity(largeGearPos);
                 largeGear = be?.GetBehavior<BEBehaviorMPLargeGear3m>();
             }
+        }
+
+        public void AddToLargeGearNetwork(BEBehaviorMPLargeGear3m largeGear, BlockFacing outFacing)
+        {
+            this.JoinNetwork(largeGear.Network);
+            this.SetPropagationDirection(new MechPowerPath(outFacing, largeGear.GearedRatio * largeGear.ratio, largeGear.GetPropagationDirection() == BlockFacing.DOWN));
         }
 
         public override bool isInvertedNetworkFor(BlockPos pos)
@@ -268,7 +274,7 @@ namespace Vintagestory.GameContent.Mechanics
         {
             if (largeGear == null)
             {
-                BlockPos largeGearPos = this.Position.AddCopy(this.orientation.GetOpposite());
+                BlockPos largeGearPos = this.Position.AddCopy(this.orientation.Opposite);
                 BlockEntity be = this.Api.World?.BlockAccessor.GetBlockEntity(largeGearPos);
                 largeGear = be?.GetBehavior<BEBehaviorMPLargeGear3m>();
                 if (largeGear == null) return unchanged;
@@ -297,10 +303,10 @@ namespace Vintagestory.GameContent.Mechanics
             if (this.turnDir1 != null)
             //rotate the input turn direction if it's an angled gear   (this helps later blocks to know which sense the network is turning)
             {
-                if (turnDir == turnDir1) turnDir = turnDir2.GetOpposite();
-                else if (turnDir == turnDir2) turnDir = turnDir1.GetOpposite();
-                else if (turnDir == turnDir2.GetOpposite()) turnDir = turnDir1;
-                else if (turnDir == turnDir1.GetOpposite()) turnDir = turnDir2;
+                if (turnDir == turnDir1) turnDir = turnDir2.Opposite;
+                else if (turnDir == turnDir2) turnDir = turnDir1.Opposite;
+                else if (turnDir == turnDir2.Opposite) turnDir = turnDir1;
+                else if (turnDir == turnDir1.Opposite) turnDir = turnDir2;
                 path = new MechPowerPath(turnDir, path.gearingRatio, false);
             }
             base.SetPropagationDirection(path);
@@ -310,10 +316,10 @@ namespace Vintagestory.GameContent.Mechanics
         {
             if (this.turnDir1 != null)
             {
-                if (propagationDir == turnDir1) return turnDir2.GetOpposite();
-                if (propagationDir == turnDir2) return turnDir1.GetOpposite();
-                if (propagationDir == turnDir1.GetOpposite()) return turnDir2;
-                if (propagationDir == turnDir2.GetOpposite()) return turnDir1;
+                if (propagationDir == turnDir1) return turnDir2.Opposite;
+                if (propagationDir == turnDir2) return turnDir1.Opposite;
+                if (propagationDir == turnDir1.Opposite) return turnDir2;
+                if (propagationDir == turnDir2.Opposite) return turnDir1;
             }
             return propagationDir;
         }
@@ -322,10 +328,10 @@ namespace Vintagestory.GameContent.Mechanics
         {
             if (this.turnDir1 != null)
             {
-                if (propagationDir == turnDir1) return propagationDir == test || propagationDir == turnDir2.GetOpposite();
-                if (propagationDir == turnDir2) return propagationDir == test || propagationDir == turnDir1.GetOpposite();
-                if (propagationDir == turnDir1.GetOpposite()) return propagationDir == test || propagationDir == turnDir2;
-                if (propagationDir == turnDir2.GetOpposite()) return propagationDir == test || propagationDir == turnDir1;
+                if (propagationDir == turnDir1) return propagationDir == test || propagationDir == turnDir2.Opposite;
+                if (propagationDir == turnDir2) return propagationDir == test || propagationDir == turnDir1.Opposite;
+                if (propagationDir == turnDir1.Opposite) return propagationDir == test || propagationDir == turnDir2;
+                if (propagationDir == turnDir2.Opposite) return propagationDir == test || propagationDir == turnDir1;
             }
             return propagationDir == test;
         }
@@ -376,7 +382,7 @@ namespace Vintagestory.GameContent.Mechanics
             {
                 if (newlyPlaced) fromExitTurnDir.invert = !fromExitTurnDir.invert;
                 BlockFacing[] connectors = (Block as BlockAngledGears).Facings;
-                BlockFacing inputSide = fromExitTurnDir.invert ? fromExitTurnDir.OutFacing : fromExitTurnDir.OutFacing.GetOpposite();
+                BlockFacing inputSide = fromExitTurnDir.invert ? fromExitTurnDir.OutFacing : fromExitTurnDir.OutFacing.Opposite;
                 bool inputSideMatches = connectors.Contains(inputSide);
                 if (!newlyPlaced)   //the code for removing the inputSide from the MechPowerExits is unwanted for a newly placed AngledGears block - it needs to seek networks on both faces if newly placed
                 {
@@ -387,7 +393,7 @@ namespace Vintagestory.GameContent.Mechanics
                 for (int i = 0; i < paths.Length; i++)
                 {
                     BlockFacing pathFacing = connectors[i];
-                    paths[i] = new MechPowerPath(pathFacing, this.GearedRatio, connectors.Length < 2 && fromExitTurnDir.OutFacing == pathFacing.GetOpposite() || inputSideMatches && pathFacing != inputSide || !inputSideMatches && pathFacing != inputSide.GetOpposite() ? fromExitTurnDir.invert : !fromExitTurnDir.invert);
+                    paths[i] = new MechPowerPath(pathFacing, this.GearedRatio, connectors.Length < 2 && fromExitTurnDir.OutFacing == pathFacing.Opposite || inputSideMatches && pathFacing != inputSide || !inputSideMatches && pathFacing != inputSide.Opposite ? fromExitTurnDir.invert : !fromExitTurnDir.invert);
                 }
                 return paths;
             }
@@ -395,7 +401,7 @@ namespace Vintagestory.GameContent.Mechanics
             {
                 //alternative code for a small gear connected to a Large Gear - essentially pass through
                 MechPowerPath[] paths = new MechPowerPath[2];
-                paths[0] = new MechPowerPath(this.orientation.GetOpposite(), this.GearedRatio, this.orientation == fromExitTurnDir.OutFacing ? !fromExitTurnDir.invert : fromExitTurnDir.invert);
+                paths[0] = new MechPowerPath(this.orientation.Opposite, this.GearedRatio, this.orientation == fromExitTurnDir.OutFacing ? !fromExitTurnDir.invert : fromExitTurnDir.invert);
                 paths[1] = new MechPowerPath(this.orientation, this.GearedRatio, this.orientation == fromExitTurnDir.OutFacing ? fromExitTurnDir.invert : !fromExitTurnDir.invert);
                 return paths;
             }

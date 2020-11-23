@@ -39,7 +39,7 @@ namespace Vintagestory.GameContent.Mechanics
             BlockFacing[] facings = SuggestedHVOrientation(byPlayer, blockSel);
             if (Variant["type"].StartsWith("ported"))
             {
-                blockToPlace = api.World.GetBlock(CodeWithVariant("type", "ported-" + facings[0].GetOpposite().Code)) as BlockArchimedesScrew;
+                blockToPlace = api.World.GetBlock(CodeWithVariant("type", "ported-" + facings[0].Opposite.Code)) as BlockArchimedesScrew;
             }
 
 
@@ -49,11 +49,11 @@ namespace Vintagestory.GameContent.Mechanics
                 BlockPos pos = blockSel.Position.AddCopy(face);
 
                 IMechanicalPowerBlock block = world.BlockAccessor.GetBlock(pos) as IMechanicalPowerBlock;
-                if (block != null && block.HasMechPowerConnectorAt(world, pos, face.GetOpposite()))
+                if (block != null && block.HasMechPowerConnectorAt(world, pos, face.Opposite))
                 {
                     if (blockToPlace.DoPlaceBlock(world, byPlayer, blockSel, itemstack))
                     {
-                        block.DidConnectAt(world, pos, face.GetOpposite());
+                        block.DidConnectAt(world, pos, face.Opposite);
                         WasPlaced(world, blockSel.Position, face);
                         return true;
                     }
@@ -79,7 +79,7 @@ namespace Vintagestory.GameContent.Mechanics
                 {
                     BlockAngledGears blockagears = world.BlockAccessor.GetBlock(pos.AddCopy(face)) as BlockAngledGears;
                     if (blockagears == null) continue;
-                    if (blockagears.Facings.Contains(face.GetOpposite()) && blockagears.Facings.Length == 1)
+                    if (blockagears.Facings.Contains(face.Opposite) && blockagears.Facings.Length == 1)
                     {
                         world.BlockAccessor.BreakBlock(pos.AddCopy(face), null);
                     }

@@ -68,7 +68,7 @@ namespace Vintagestory.GameContent
         {
             if (ParticleProperties != null && ParticleProperties.Length > 0)
             {
-                long rnd = GameMath.MurmurHash3Mod(pos.X, pos.Y, pos.Z, 4);
+                int rnd = GameMath.MurmurHash3Mod(pos.X, pos.Y, pos.Z, 4);
                 Vec3f[] poses = candleWickPositionsByRot[rnd];
 
                 for (int i = 0; i < ParticleProperties.Length; i++)

@@ -96,7 +96,14 @@ namespace Vintagestory.GameContent
 
             if (secondsUsed > harvestTime - 0.05f && harvestedStack != null && world.Side == EnumAppSide.Server)
             {
-                ItemStack stack = harvestedStack.GetNextItemStack();
+                float dropRate = 1;
+
+                if (block.Attributes?.IsTrue("forageStatAffected") == true)
+                {
+                    dropRate *= byPlayer.Entity.Stats.GetBlended("wildCropDropRate");
+                }
+
+                ItemStack stack = harvestedStack.GetNextItemStack(dropRate);
 
                 if (!byPlayer.InventoryManager.TryGiveItemstack(stack))
                 {

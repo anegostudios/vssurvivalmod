@@ -94,28 +94,22 @@ namespace Vintagestory.GameContent
 
         // Permanent data
         ItemStack workItemStack;
-        int selectedRecipeId = -1;
-        //public int AvailableMetalVoxels;
-
+        public int SelectedRecipeId = -1;
         public byte[,,] Voxels = new byte[16, 6, 16]; // Only the first 2 bits of each byte are used and serialized
 
+
+        // Temporary data
         float voxYOff = 10 / 16f;
-
-
-        // Temporary data, generated on be creation
-
-        Dictionary<string, MetalPropertyVariant> metalsByCode;
-        /// <summary>
-        /// The base material used for the work item, used to check melting point
-        /// </summary>
-        ItemStack baseMaterial;
-        
         Cuboidf[] selectionBoxes = new Cuboidf[1];
         public int OwnMetalTier;
         AnvilWorkItemRenderer workitemRenderer;
         public int rotation = 0;
         public float MeshAngle;
         MeshData currentMesh;
+
+        GuiDialog dlg;
+        ItemStack returnOnCancelStack;
+
 
         public bool [,,] recipeVoxels
         {
@@ -150,27 +144,17 @@ namespace Vintagestory.GameContent
 
         public SmithingRecipe SelectedRecipe
         {
-            get { return Api.World.SmithingRecipes.FirstOrDefault(r => r.RecipeId == selectedRecipeId); }
+            get { return Api.World.SmithingRecipes.FirstOrDefault(r => r.RecipeId == SelectedRecipeId); }
         }
 
         public bool CanWorkCurrent
         {
-            get { return workItemStack != null && CanWork(workItemStack); }
-        }
-
-        public bool IsIronBloom
-        {
-            get { return workItemStack?.Collectible?.FirstCodePart().Equals("ironbloom") == true; }
+            get { return workItemStack != null && (workItemStack.Collectible as IAnvilWorkable).CanWork(WorkItemStack); }
         }
 
         public ItemStack WorkItemStack
         {
             get { return workItemStack; }
-        }
-
-        public ItemStack BaseMaterial
-        {
-            get { return baseMaterial; }
         }
 
         public BlockEntityAnvil() : base() { }
@@ -180,28 +164,8 @@ namespace Vintagestory.GameContent
         {
             base.Initialize(api);
 
-            metalsByCode = new Dictionary<string, MetalPropertyVariant>();
-
-            MetalProperty metals = api.Assets.TryGet("worldproperties/block/metal.json").ToObject<MetalProperty>();
-            for (int i = 0; i < metals.Variants.Length; i++)
-            {
-                // Metals currently don't have a domain
-                metalsByCode[metals.Variants[i].Code.Path] = metals.Variants[i]; 
-            }
-
-            if (workItemStack != null)
-            {
-                workItemStack.ResolveBlockOrItem(api.World);
-                if (IsIronBloom)
-                {
-                    baseMaterial = new ItemStack(workItemStack.Collectible);
-                } else
-                {
-                    baseMaterial = new ItemStack(api.World.GetItem(new AssetLocation("ingot-" + workItemStack.Collectible.LastCodePart())));
-                }
-                
-            }
-
+            workItemStack?.ResolveBlockOrItem(api.World);
+            
             if (api is ICoreClientAPI)
             {
                 ICoreClientAPI capi = (ICoreClientAPI)api;
@@ -212,22 +176,12 @@ namespace Vintagestory.GameContent
                 capi.Tesselator.TesselateBlock(Block, out currentMesh);
             }
 
-            string metalType = Block.LastCodePart();
-            if (metalsByCode.ContainsKey(metalType)) OwnMetalTier = metalsByCode[metalType].Tier;
-        }
-
-
-        public bool CanWork(ItemStack stack)
-        {
-            float temperature = stack.Collectible.GetTemperature(Api.World, stack);
-            float meltingpoint = stack.Collectible.GetMeltingPoint(Api.World, null, new DummySlot(baseMaterial));
-
-            if (stack.Collectible.Attributes?["workableTemperature"].Exists == true)
+            string metalType = Block.Variant["metal"];
+            MetalPropertyVariant var;
+            if (api.ModLoader.GetModSystem<SurvivalCoreSystem>().metalsByCode.TryGetValue(metalType, out var))
             {
-                return stack.Collectible.Attributes["workableTemperature"].AsFloat(meltingpoint / 2) <= temperature;
+                OwnMetalTier = var.Tier;
             }
-
-            return temperature >= meltingpoint / 2;
         }
 
 
@@ -287,27 +241,7 @@ namespace Vintagestory.GameContent
         {
             if (workItemStack == null) return false;
 
-            workItemStack.Attributes.SetBytes("voxels", serializeVoxels(Voxels));
-            //workItemStack.Attributes.SetInt("availableVoxels", AvailableMetalVoxels);
-            workItemStack.Attributes.SetInt("selectedRecipeId", selectedRecipeId);
-
-            if (workItemStack.Collectible is ItemIronBloom bloomItem)
-            {
-                workItemStack.Attributes.SetInt("hashCode", bloomItem.GetWorkItemHashCode(workItemStack));
-            }
-
-            if (!byPlayer.InventoryManager.TryGiveItemstack(workItemStack))
-            {
-                Api.World.SpawnItemEntity(workItemStack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
-            }
-
-            workItemStack = null;
-            Voxels = new byte[16, 6, 16];
-            //AvailableMetalVoxels = 0;
-
-            RegenMeshAndSelectionBoxes();
-            MarkDirty();
-            rotation = 0;
+            ditchWorkItemStack(byPlayer);
 
             return true;
         }
@@ -319,126 +253,60 @@ namespace Vintagestory.GameContent
             if (slot.Itemstack == null) return false;
 
             ItemStack stack = slot.Itemstack;
+            IAnvilWorkable workableobj = stack.Collectible as IAnvilWorkable;
 
-            string metalType = stack.Collectible.LastCodePart();
-            bool viableTier = metalsByCode.ContainsKey(metalType) && metalsByCode[metalType].Tier <= OwnMetalTier + 1;
-            bool viableIngot = stack.Collectible is ItemIngot && CanWork(stack) && viableTier;
+            if (workableobj == null) return false;
+            int requiredTier = workableobj.GetRequiredAnvilTier(stack);
+            if (requiredTier > OwnMetalTier)
+            {
+                if (world.Side == EnumAppSide.Client)
+                {
+                    (Api as ICoreClientAPI).TriggerIngameError(this, "toolowtier", Lang.Get("Working this metal needs a tier {0} anvil", requiredTier));
+                }
 
-            // Place ingot
-            if (viableIngot && (workItemStack == null || workItemStack.Collectible.LastCodePart().Equals(stack.Collectible.LastCodePart())))
+                return false;
+            }
+
+            ItemStack newWorkItemStack = workableobj.TryPlaceOn(stack, this);
+            if (newWorkItemStack != null)
             {
                 if (workItemStack == null)
                 {
-                    if (world is IClientWorldAccessor)
+                    workItemStack = newWorkItemStack;
+                    rotation = workItemStack.Attributes.GetInt("rotation");
+                }
+
+                if (SelectedRecipeId < 0)
+                {
+                    var list = workableobj.GetMatchingRecipes(stack);
+                    if (list.Count == 1)
                     {
-                        OpenDialog(stack);
+                        SelectedRecipeId = list[0].RecipeId;
                     }
-
-                    CreateVoxelsFromIngot();
-
-                    workItemStack = new ItemStack(Api.World.GetItem(new AssetLocation("workitem-" + stack.Collectible.LastCodePart())));
-                    workItemStack.Collectible.SetTemperature(Api.World, workItemStack, stack.Collectible.GetTemperature(Api.World, stack));
-
-                    baseMaterial = new ItemStack(Api.World.GetItem(new AssetLocation("ingot-" + stack.Collectible.LastCodePart())));
-
-                    List<SmithingRecipe> recipes = Api.World.SmithingRecipes
-                        .Where(r => r.Ingredient.SatisfiesAsIngredient(baseMaterial))
-                        .OrderBy(r => r.Output.ResolvedItemstack.Collectible.Code)
-                        .ToList()
-                    ;
-
-                    selectedRecipeId = recipes[0].RecipeId;
-                    //AvailableMetalVoxels += 16;
-                } else
-                {
-                    AddVoxelsFromIngot();
-
-                    //AvailableMetalVoxels += 32;
+                    else
+                    {
+                        if (world.Side == EnumAppSide.Client)
+                        {
+                            OpenDialog(stack);
+                        }
+                    }
                 }
-                
 
-                slot.TakeOut(1);
+                returnOnCancelStack = slot.TakeOut(1);
                 slot.MarkDirty();
 
-                RegenMeshAndSelectionBoxes();
-                MarkDirty();
-                return true;
-            }
-
-            // Place workitem
-            bool viableWorkItem = stack.Collectible.FirstCodePart().Equals("workitem") && viableTier;
-            if (viableWorkItem && workItemStack == null)
-            {
-                try
+                if (Api.Side == EnumAppSide.Server)
                 {
-                    Voxels = deserializeVoxels(stack.Attributes.GetBytes("voxels"));
-                    //AvailableMetalVoxels = stack.Attributes.GetInt("availableVoxels");
-                    selectedRecipeId = stack.Attributes.GetInt("selectedRecipeId");
-
-                    workItemStack = stack.Clone();
-                }
-                catch (Exception)
-                {
-
+                    // Let the server decide the shape, then send the stuff to client, and then show the correct voxels
+                    // instead of the voxels flicker thing when both sides do it (due to voxel placement randomness in iron bloom and blister steel)
+                    RegenMeshAndSelectionBoxes();
                 }
 
-                if (selectedRecipeId < 0 && world is IClientWorldAccessor)
-                {
-                    OpenDialog(stack);
-                }
-
-                slot.TakeOut(1);
-                slot.MarkDirty();
-
-                RegenMeshAndSelectionBoxes();
                 CheckIfFinished(byPlayer);
                 MarkDirty();
                 return true;
             }
 
-            // Place iron bloom
-            bool viableBloom = stack.Collectible.FirstCodePart().Equals("ironbloom") && OwnMetalTier >= 2;
-            if (viableBloom && workItemStack == null)
-            {
-                if (stack.Attributes.HasAttribute("voxels"))
-                {
-                    try
-                    {
-                        Voxels = deserializeVoxels(stack.Attributes.GetBytes("voxels"));
-                        //AvailableMetalVoxels = stack.Attributes.GetInt("availableVoxels");
-                        selectedRecipeId = stack.Attributes.GetInt("selectedRecipeId");
-                    }
-                    catch (Exception)
-                    {
-                        CreateVoxelsFromIronBloom();
-                    }
-                } else
-                {
-                    CreateVoxelsFromIronBloom();
-                }
-
-
-                workItemStack = stack.Clone();
-                workItemStack.StackSize = 1;
-                workItemStack.Collectible.SetTemperature(Api.World, workItemStack, stack.Collectible.GetTemperature(Api.World, stack));
-
-                List<SmithingRecipe> recipes = Api.World.SmithingRecipes
-                        .Where(r => r.Ingredient.SatisfiesAsIngredient(stack))
-                        .OrderBy(r => r.Output.ResolvedItemstack.Collectible.Code)
-                        .ToList()
-                    ;
-
-                selectedRecipeId = recipes[0].RecipeId;
-                baseMaterial = stack.Clone();
-                baseMaterial.StackSize = 1;
-                RegenMeshAndSelectionBoxes();
-                CheckIfFinished(byPlayer);
-
-                slot.TakeOut(1);
-                slot.MarkDirty();
-                MarkDirty();
-                return true;
-            }
 
             return false;
         }
@@ -467,6 +335,12 @@ namespace Vintagestory.GameContent
         {
             if (voxelPos == null)
             {
+                return;
+            }
+
+            if (SelectedRecipe == null)
+            {
+                ditchWorkItemStack();
                 return;
             }
 
@@ -511,7 +385,6 @@ namespace Vintagestory.GameContent
 
                 if (!HasAnyMetalVoxel())
                 {
-                    //AvailableMetalVoxels = 0;
                     workItemStack = null;
                     return;
                 }
@@ -528,11 +401,13 @@ namespace Vintagestory.GameContent
             if (voxelMat == EnumVoxelMaterial.Metal && temp > 800)
             {
                 bigMetalSparks.MinPos = Pos.ToVec3d().AddCopy(voxelPos.X / 16f, voxYOff + voxelPos.Y / 16f + 0.0625f, voxelPos.Z / 16f);
+                bigMetalSparks.AddPos.Set(1 / 16f, 0, 1 / 16f);
                 bigMetalSparks.VertexFlags = (byte)GameMath.Clamp((int)(temp - 700) / 2, 32, 128);
                 Api.World.SpawnParticles(bigMetalSparks, byPlayer);
 
                 smallMetalSparks.MinPos = Pos.ToVec3d().AddCopy(voxelPos.X / 16f, voxYOff + voxelPos.Y / 16f + 0.0625f, voxelPos.Z / 16f);
                 smallMetalSparks.VertexFlags = (byte)GameMath.Clamp((int)(temp - 770) / 3, 32, 128);
+                smallMetalSparks.AddPos.Set(1 / 16f, 0, 1 / 16f);
                 Api.World.SpawnParticles(smallMetalSparks, byPlayer);
             }
 
@@ -546,61 +421,76 @@ namespace Vintagestory.GameContent
         }
 
 
+        internal string PrintDebugText()
+        {
+            SmithingRecipe recipe = SelectedRecipe;
+
+
+            EnumHelveWorkableMode? mode = (workItemStack?.Collectible as IAnvilWorkable)?.GetHelveWorkableMode(workItemStack, this);
+
+            StringBuilder sb = new StringBuilder();
+            sb.AppendLine("Workitem: " + workItemStack);
+            sb.AppendLine("Recipe: " + recipe?.Name);
+            sb.AppendLine("Matches recipe: " + MatchesRecipe());
+            sb.AppendLine("Helve Workable: " + mode);
+
+            return sb.ToString();
+        }
+
         public virtual void OnHelveHammerHit()
         {
             if (workItemStack == null || !CanWorkCurrent) return;
-
+            
             SmithingRecipe recipe = SelectedRecipe;
+            if (recipe == null)
+            {
+                return;
+            }
 
-            // Helve hammer can only work plates and iron bloom
-            if (!recipe.Output.Code.Path.Contains("plate") && !IsIronBloom) return;
+            var mode = (workItemStack.Collectible as IAnvilWorkable).GetHelveWorkableMode(workItemStack, this);
+            if (mode == EnumHelveWorkableMode.NotWorkable) return;
 
             rotation = 0;
             int ymax = recipe.QuantityLayers;
             Vec3i usableMetalVoxel;
-            if (!IsIronBloom)
+            if (mode == EnumHelveWorkableMode.TestSufficientVoxelsWorkable)
             {
                 usableMetalVoxel = findFreeMetalVoxel();
 
-                if (usableMetalVoxel != null)
+                for (int x = 0; x < 16; x++)
                 {
-                    
-                    for (int x = 0; x < 16; x++)
+                    for (int z = 0; z < 16; z++)
                     {
-                        for (int z = 0; z < 16; z++)
+                        for (int y = 0; y < 6; y++)
                         {
-                            for (int y = 0; y < 5; y++)
+                            bool requireMetalHere = y >= ymax ? false : recipe.Voxels[x, y, z];
+
+                            EnumVoxelMaterial mat = (EnumVoxelMaterial)Voxels[x, y, z];
+
+                            if (mat == EnumVoxelMaterial.Slag)
                             {
-                                bool requireMetalHere = y >= ymax ? false : recipe.Voxels[x, y, z];
+                                Voxels[x, y, z] = (byte)EnumVoxelMaterial.Empty;
+                                onHelveHitSuccess(mat, null, x, y, z);
+                                return;
+                            }
 
-                                EnumVoxelMaterial mat = (EnumVoxelMaterial)Voxels[x, y, z];
+                            if (requireMetalHere && usableMetalVoxel != null && mat == EnumVoxelMaterial.Empty)
+                            {
+                                Voxels[x, y, z] = (byte)EnumVoxelMaterial.Metal;
+                                Voxels[usableMetalVoxel.X, usableMetalVoxel.Y, usableMetalVoxel.Z] = (byte)EnumVoxelMaterial.Empty;
 
-                                if (requireMetalHere && mat == EnumVoxelMaterial.Empty)
-                                {
-                                    Voxels[x, y, z] = (byte)EnumVoxelMaterial.Metal;
-                                    Voxels[usableMetalVoxel.X, usableMetalVoxel.Y, usableMetalVoxel.Z] = (byte)EnumVoxelMaterial.Empty;
-
-                                    if (Api.World.Side == EnumAppSide.Client)
-                                    {
-                                        spawnParticles(new Vec3i(x, y, z), mat == EnumVoxelMaterial.Empty ? EnumVoxelMaterial.Metal : mat, null);
-                                        spawnParticles(usableMetalVoxel, EnumVoxelMaterial.Metal, null);
-                                    }
-                                    RegenMeshAndSelectionBoxes();
-                                    CheckIfFinished(null);
-                                    return;
-                                }
-
+                                onHelveHitSuccess(mat, usableMetalVoxel, x, y, z);
+                                return;
                             }
                         }
                     }
+                }
 
+                if (usableMetalVoxel != null)
+                {
                     Voxels[usableMetalVoxel.X, usableMetalVoxel.Y, usableMetalVoxel.Z] = (byte)EnumVoxelMaterial.Empty;
-                    if (Api.World.Side == EnumAppSide.Client)
-                    {
-                        spawnParticles(usableMetalVoxel, EnumVoxelMaterial.Metal, null);
-                    }
-                    RegenMeshAndSelectionBoxes();
-                    CheckIfFinished(null);
+                    onHelveHitSuccess(EnumVoxelMaterial.Metal, null, usableMetalVoxel.X, usableMetalVoxel.Y, usableMetalVoxel.Z);
+                    return;
                 }
             }
             else
@@ -619,11 +509,6 @@ namespace Vintagestory.GameContent
                             if (requireMetalHere && mat == EnumVoxelMaterial.Metal) continue;
                             if (!requireMetalHere && mat == EnumVoxelMaterial.Empty) continue;
 
-                            if (Api.World.Side == EnumAppSide.Client)
-                            {
-                                spawnParticles(new Vec3i(x, y, z), mat == EnumVoxelMaterial.Empty ? EnumVoxelMaterial.Metal : mat, null);
-                            }
-
                             if (requireMetalHere && mat == EnumVoxelMaterial.Empty)
                             {
                                 Voxels[x, y, z] = (byte)EnumVoxelMaterial.Metal;
@@ -633,21 +518,31 @@ namespace Vintagestory.GameContent
                                 Voxels[x, y, z] = (byte)EnumVoxelMaterial.Empty;
                             }
 
-                            RegenMeshAndSelectionBoxes();
-                            CheckIfFinished(null);
+                            onHelveHitSuccess(mat == EnumVoxelMaterial.Empty ? EnumVoxelMaterial.Metal : mat, null, x, y, z);
 
                             return;
                         }
                     }
                 }
             }
+        }
 
+        void onHelveHitSuccess(EnumVoxelMaterial mat, Vec3i usableMetalVoxel, int x, int y, int z)
+        {
+            if (Api.World.Side == EnumAppSide.Client)
+            {
+                spawnParticles(new Vec3i(x, y, z), mat == EnumVoxelMaterial.Empty ? EnumVoxelMaterial.Metal : mat, null);
+                if (usableMetalVoxel != null) spawnParticles(usableMetalVoxel, EnumVoxelMaterial.Metal, null);
+            }
 
+            RegenMeshAndSelectionBoxes();
+            CheckIfFinished(null);
         }
 
         private Vec3i findFreeMetalVoxel()
         {
             SmithingRecipe recipe = SelectedRecipe;
+
             int ymax = recipe.QuantityLayers;
 
             for (int y = 5; y >= 0; y--)
@@ -669,15 +564,16 @@ namespace Vintagestory.GameContent
 
         public virtual void CheckIfFinished(IPlayer byPlayer)
         {
+            if (SelectedRecipe == null) return;
+
             if (MatchesRecipe() && Api.World is IServerWorldAccessor)
             {   
                 Voxels = new byte[16, 6, 16];
-                //AvailableMetalVoxels = 0;
                 ItemStack outstack = SelectedRecipe.Output.ResolvedItemstack.Clone();
                 outstack.Collectible.SetTemperature(Api.World, outstack, workItemStack.Collectible.GetTemperature(Api.World, workItemStack));
                 workItemStack = null;
                 
-                selectedRecipeId = -1;
+                SelectedRecipeId = -1;
 
                 if (byPlayer == null || !byPlayer.InventoryManager.TryGiveItemstack(outstack))
                 {
@@ -689,6 +585,46 @@ namespace Vintagestory.GameContent
                 Api.World.BlockAccessor.MarkBlockDirty(Pos);
                 rotation = 0;
             }
+        }
+
+        public void ditchWorkItemStack(IPlayer byPlayer = null)
+        {
+            if (workItemStack == null) return;
+
+            ItemStack ditchedStack;
+            if (SelectedRecipe == null)
+            {
+                ditchedStack = returnOnCancelStack ?? (workItemStack.Collectible as IAnvilWorkable).GetBaseMaterial(workItemStack);
+                float temp = workItemStack.Collectible.GetTemperature(Api.World, workItemStack);
+                ditchedStack.Collectible.SetTemperature(Api.World, ditchedStack, temp);
+            }
+            else
+            {
+
+                workItemStack.Attributes.SetBytes("voxels", serializeVoxels(Voxels));
+                workItemStack.Attributes.SetInt("selectedRecipeId", SelectedRecipeId);
+                workItemStack.Attributes.SetInt("rotation", rotation);
+
+                if (workItemStack.Collectible is ItemIronBloom bloomItem)
+                {
+                    workItemStack.Attributes.SetInt("hashCode", bloomItem.GetWorkItemHashCode(workItemStack));
+                }
+
+                ditchedStack = workItemStack;
+            }
+
+            if (byPlayer == null || !byPlayer.InventoryManager.TryGiveItemstack(ditchedStack))
+            {
+                Api.World.SpawnItemEntity(ditchedStack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
+            }
+
+            workItemStack = null;
+            Voxels = new byte[16, 6, 16];
+
+            RegenMeshAndSelectionBoxes();
+            MarkDirty();
+            rotation = 0;
+            SelectedRecipeId = -1;
         }
 
         private bool MatchesRecipe()
@@ -769,7 +705,7 @@ namespace Vintagestory.GameContent
             if (Voxels[voxelPos.X, voxelPos.Y, voxelPos.Z] != (byte)EnumVoxelMaterial.Metal) return;
 
             Vec3i npos = voxelPos.Clone().Add(towardsFace);
-            Vec3i opFaceDir = towardsFace.GetOpposite().Normali;
+            Vec3i opFaceDir = towardsFace.Opposite.Normali;
 
             if (npos.X < 0 || npos.X >= 16 || npos.Y < 0 || npos.Y >= 6 || npos.Z < 0 || npos.Z >= 16) return;
 
@@ -802,18 +738,6 @@ namespace Vintagestory.GameContent
                 return;
             }
             
-
-            
-            /*if (Voxels[npos.X, npos.Y, npos.Z] == (byte)EnumVoxelMaterial.Empty)
-            {
-                if (AvailableMetalVoxels > 0)
-                {
-                    Voxels[npos.X, npos.Y, npos.Z] = (byte)EnumVoxelMaterial.Metal;
-                    AvailableMetalVoxels--;
-                }
-                return;
-            }*/
-
 
             npos.Y++;
 
@@ -1012,82 +936,6 @@ namespace Vintagestory.GameContent
         }
 
 
-        private void CreateVoxelsFromIngot()
-        {
-            Voxels = new byte[16, 6, 16];
-
-            for (int x = 0; x < 7; x++)
-            {
-                for (int y = 0; y < 2; y++)
-                {
-                    for (int z = 0; z < 3; z++)
-                    {
-                        Voxels[4 + x, y, 6 + z] = (byte)EnumVoxelMaterial.Metal;
-                    }
-                    
-                }
-            }
-        }
-
-        private void AddVoxelsFromIngot()
-        {
-            for (int x = 0; x < 7; x++)
-            {
-                for (int z = 0; z < 3; z++)
-                {
-                    int y = 0;
-                    int added = 0;
-                    while (y < 6 && added < 2)
-                    {
-                        if (Voxels[4 + x, y, 6 + z] == (byte)EnumVoxelMaterial.Empty)
-                        {
-                            Voxels[4 + x, y, 6 + z] = (byte)EnumVoxelMaterial.Metal;
-                            added++;
-                        }
-
-                        y++;
-                    }
-                }
-            }
-        }
-
-
-        private void CreateVoxelsFromIronBloom()
-        {
-            CreateVoxelsFromIngot();
-
-            Random rand = Api.World.Rand;
-
-            for (int dx = -1; dx < 8; dx++)
-            {
-                for (int y = 0; y < 5; y++)
-                {
-                    for (int dz = -1; dz < 5; dz++)
-                    {
-                        int x = 4 + dx;
-                        int z = 6 + dz;
-
-                        if (y == 0 && Voxels[x, y, z] == (byte)EnumVoxelMaterial.Metal) continue;
-
-                        float dist = Math.Max(0, Math.Abs(x - 7) - 1) + Math.Max(0, Math.Abs(z - 8) - 1) + Math.Max(0, y - 1f);
-
-                        if (rand.NextDouble() < dist/3f - 0.4f + (y-1.5f)/4f)
-                        {
-                            continue;
-                        }
-
-                        if (rand.NextDouble() > dist/2f)
-                        {
-                            Voxels[x, y, z] = (byte)EnumVoxelMaterial.Metal;
-                        } else
-                        {
-                            Voxels[x, y, z] = (byte)EnumVoxelMaterial.Slag;
-                        }
-                    }
-                }
-            }
-        }
-
 
         public override void OnBlockRemoved()
         {
@@ -1100,35 +948,24 @@ namespace Vintagestory.GameContent
             if (workItemStack != null)
             {
                 workItemStack.Attributes.SetBytes("voxels", serializeVoxels(Voxels));
-                //workItemStack.Attributes.SetInt("availableVoxels", AvailableMetalVoxels);
-                workItemStack.Attributes.SetInt("selectedRecipeId", selectedRecipeId);
+                workItemStack.Attributes.SetInt("selectedRecipeId", SelectedRecipeId);
 
                 Api.World.SpawnItemEntity(workItemStack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
             }
         }
 
 
-        public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
+        public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
-            base.FromTreeAtributes(tree, worldForResolving);
+            base.FromTreeAttributes(tree, worldForResolving);
             Voxels = deserializeVoxels(tree.GetBytes("voxels"));
             workItemStack = tree.GetItemstack("workItemStack");
-            //AvailableMetalVoxels = tree.GetInt("availableVoxels");
-            selectedRecipeId = tree.GetInt("selectedRecipeId", -1);
+            SelectedRecipeId = tree.GetInt("selectedRecipeId", -1);
             rotation = tree.GetInt("rotation");
 
             if (Api != null && workItemStack != null)
             {
                 workItemStack.ResolveBlockOrItem(Api.World);
-
-                if (IsIronBloom)
-                {
-                    baseMaterial = new ItemStack(workItemStack.Collectible);
-                }
-                else
-                {
-                    baseMaterial = new ItemStack(Api.World.GetItem(new AssetLocation("ingot-" + workItemStack.Collectible.LastCodePart())));
-                }
             }
 
             RegenMeshAndSelectionBoxes();
@@ -1151,10 +988,8 @@ namespace Vintagestory.GameContent
             base.ToTreeAttributes(tree);
             tree.SetBytes("voxels", serializeVoxels(Voxels));
             tree.SetItemstack("workItemStack", workItemStack);
-            //tree.SetInt("availableVoxels", AvailableMetalVoxels);
-            tree.SetInt("selectedRecipeId", selectedRecipeId);
+            tree.SetInt("selectedRecipeId", SelectedRecipeId);
             tree.SetInt("rotation", rotation);
-
             tree.SetFloat("meshAngle", MeshAngle);
         }
 
@@ -1162,7 +997,7 @@ namespace Vintagestory.GameContent
         static int bitsPerByte = 2;
         static int partsPerByte = 8 / bitsPerByte;
 
-        byte[] serializeVoxels(byte[,,] voxels)
+        public static byte[] serializeVoxels(byte[,,] voxels)
         {
             byte[] data = new byte[16 * 6 * 16 / partsPerByte];
             int pos = 0;
@@ -1183,7 +1018,7 @@ namespace Vintagestory.GameContent
             return data;
         }
 
-        byte[,,] deserializeVoxels(byte[] data)
+        public static byte[,,] deserializeVoxels(byte[] data)
         {
             byte[,,] voxels = new byte[16, 6, 16];
 
@@ -1244,11 +1079,17 @@ namespace Vintagestory.GameContent
                     return;
                 }
 
-                selectedRecipeId = recipe.RecipeId;
+                SelectedRecipeId = recipe.RecipeId;
 
                 // Tell server to save this chunk to disk again
                 MarkDirty();
                 Api.World.BlockAccessor.GetChunkAtBlockPos(Pos.X, Pos.Y, Pos.Z).MarkModified();
+            }
+
+            if (packetid == (int)EnumAnvilPacket.CancelSelect)
+            {
+                ditchWorkItemStack(player);
+                return;
             }
 
             if (packetid == (int)EnumAnvilPacket.OnUserOver)
@@ -1268,16 +1109,7 @@ namespace Vintagestory.GameContent
         
         internal void OpenDialog(ItemStack ingredient)
         {
-            if (ingredient.Collectible is ItemWorkItem)
-            {
-                ingredient = new ItemStack(Api.World.GetItem(new AssetLocation("ingot-" + ingredient.Collectible.LastCodePart())));
-            }
-
-            List<SmithingRecipe> recipes = Api.World.SmithingRecipes
-                .Where(r => r.Ingredient.SatisfiesAsIngredient(ingredient))
-                .OrderBy(r => r.Output.ResolvedItemstack.Collectible.Code) // Cannot sort by name, thats language dependent!
-                .ToList()
-            ;
+            List<SmithingRecipe> recipes = (ingredient.Collectible as IAnvilWorkable).GetMatchingRecipes(ingredient);
 
             List<ItemStack> stacks = recipes
                 .Select(r => r.Output.ResolvedItemstack)
@@ -1286,16 +1118,17 @@ namespace Vintagestory.GameContent
 
             IClientWorldAccessor clientWorld = (IClientWorldAccessor)Api.World;
             ICoreClientAPI capi = Api as ICoreClientAPI;
-            
-            GuiDialog dlg = new GuiDialogBlockEntityRecipeSelector(
+
+            dlg?.Dispose();
+            dlg = new GuiDialogBlockEntityRecipeSelector(
                 Lang.Get("Select smithing recipe"),
                 stacks.ToArray(),
                 (selectedIndex) => {
-                    selectedRecipeId = recipes[selectedIndex].RecipeId;
-                    capi.Network.SendBlockEntityPacket(Pos.X, Pos.Y, Pos.Z, (int)EnumClayFormingPacket.SelectRecipe, SerializerUtil.Serialize(recipes[selectedIndex].RecipeId));
+                    SelectedRecipeId = recipes[selectedIndex].RecipeId;
+                    capi.Network.SendBlockEntityPacket(Pos.X, Pos.Y, Pos.Z, (int)EnumAnvilPacket.SelectRecipe, SerializerUtil.Serialize(recipes[selectedIndex].RecipeId));
                 },
                 () => {
-                    capi.Network.SendBlockEntityPacket(Pos.X, Pos.Y, Pos.Z, (int)EnumClayFormingPacket.CancelSelect);
+                    capi.Network.SendBlockEntityPacket(Pos.X, Pos.Y, Pos.Z, (int)EnumAnvilPacket.CancelSelect);
                 },
                 Pos,
                 Api as ICoreClientAPI
@@ -1307,6 +1140,8 @@ namespace Vintagestory.GameContent
 
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
         {
+            dsc.AppendLine(Lang.Get("Tier {0} anvil", OwnMetalTier));
+
             if (workItemStack == null || SelectedRecipe == null)
             {
                 return;
@@ -1314,21 +1149,21 @@ namespace Vintagestory.GameContent
 
             float temperature = workItemStack.Collectible.GetTemperature(Api.World, workItemStack);
 
-
             dsc.AppendLine(Lang.Get("Output: {0}", SelectedRecipe.Output?.ResolvedItemstack?.GetName()));
-            //dsc.AppendLine(Lang.Get("Available Voxels: {0}", AvailableMetalVoxels));
 
-            dsc.AppendLine(Lang.Get("Temperature: {0}°C", (int)temperature));
+            if (temperature < 25)
+            {
+                dsc.AppendLine(Lang.Get("Temperature: Cold"));
+            } else
+            {
+                dsc.AppendLine(Lang.Get("Temperature: {0}°C", (int)temperature));
+            }
+            
 
             if (!CanWorkCurrent)
             {
                 dsc.AppendLine(Lang.Get("Too cold to work"));
             }
-
-            /*if (AvailableMetalVoxels <= 0)
-            {
-                dsc.AppendLine(Lang.Get("Add another hot ingot to continue smithing, or move voxels"));
-            }*/
         }
 
 
@@ -1359,6 +1194,8 @@ namespace Vintagestory.GameContent
         public override void OnBlockUnloaded()
         {
             workitemRenderer?.Dispose();
+            dlg?.TryClose();
+            dlg?.Dispose();
         }
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
@@ -1373,6 +1210,7 @@ namespace Vintagestory.GameContent
     {
         OpenDialog = 1000,
         SelectRecipe = 1001,
-        OnUserOver = 1002
+        OnUserOver = 1002,
+        CancelSelect = 1003
     }
 }

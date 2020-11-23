@@ -89,6 +89,14 @@ namespace Vintagestory.GameContent
 
         public override void OnInteract(EntityAgent byEntity, ItemSlot slot, Vec3d hitPosition, EnumInteractMode mode)
         {
+            IPlayer plr = (byEntity as EntityPlayer)?.Player;
+            if (plr != null && !byEntity.World.Claims.TryAccess(plr, Pos.AsBlockPos, EnumBlockAccessFlags.Use))
+            {
+                plr.InventoryManager.ActiveHotbarSlot.MarkDirty();
+                WatchedAttributes.MarkAllDirty();
+                return;
+            }
+
             if (mode == EnumInteractMode.Interact && byEntity.RightHandItemSlot != null)
             {
                 ItemSlot handslot = byEntity.RightHandItemSlot;
@@ -131,7 +139,7 @@ namespace Vintagestory.GameContent
                     empty &= gslot.Empty;
                 }
 
-                if (empty)
+                if (empty && byEntity.Controls.Sneak)
                 {
                     ItemStack stack = new ItemStack(byEntity.World.GetItem(new AssetLocation("armorstand")));
                     if (!byEntity.TryGiveItemStack(stack))

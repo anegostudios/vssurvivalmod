@@ -26,12 +26,12 @@ namespace Vintagestory.GameContent
                 return false;
             }
 
-            Block block = world.BlockAccessor.GetBlock(blockSel.Position.AddCopy(blockSel.Face.GetOpposite()));
+            Block block = world.BlockAccessor.GetBlock(blockSel.Position.AddCopy(blockSel.Face.Opposite));
 
             if (block is BlockLayered)
             {
                 Block nextBlock = ((BlockLayered)block).GetNextLayer(world);
-                world.BlockAccessor.SetBlock(nextBlock.BlockId, blockSel.Position.AddCopy(blockSel.Face.GetOpposite()));
+                world.BlockAccessor.SetBlock(nextBlock.BlockId, blockSel.Position.AddCopy(blockSel.Face.Opposite));
 
                 return true;
             }

@@ -124,7 +124,9 @@ namespace Vintagestory.GameContent
                     {
                         source.ForStack = contentStacks[0];
 
-                        Shape contentShape = capi.Assets.TryGet("shapes/block/meal/pickled.json").ToObject<Shape>();
+                        CompositeShape cshape = contentStacks[0]?.ItemAttributes?["inBowlShape"].AsObject<CompositeShape>(new CompositeShape() { Base = new AssetLocation("shapes/block/meal/pickled.json") });
+
+                        Shape contentShape = capi.Assets.TryGet(cshape.Base.WithPathAppendixOnce(".json").WithPathPrefixOnce("shapes/")).ToObject<Shape>();
                         MeshData contentMesh;
                         capi.Tesselator.TesselateShape("picklednmealcontents", contentShape, out contentMesh, source);
 

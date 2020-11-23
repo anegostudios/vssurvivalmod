@@ -27,14 +27,14 @@ namespace Vintagestory.GameContent
         }
 
 
-        RoomRegistry roomreg;
+        //RoomRegistry roomreg;
 
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
 
             tickGrowthProbability = Attributes?["tickGrowthProbability"] != null ? Attributes["tickGrowthProbability"].AsFloat(defaultGrowthProbability) : defaultGrowthProbability;
-            roomreg = api.ModLoader.GetModSystem<RoomRegistry>();
+            //roomreg = api.ModLoader.GetModSystem<RoomRegistry>();
 
             WaveFlagMinY = 0.5f;
         }
@@ -144,9 +144,15 @@ namespace Vintagestory.GameContent
 
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1)
         {
+            BlockEntityFarmland befarmland = world.BlockAccessor.GetBlockEntity(pos.DownCopy()) as BlockEntityFarmland;
+            if (befarmland == null)
+            {
+                dropQuantityMultiplier *= byPlayer?.Entity.Stats.GetBlended("wildCropDropRate")?? 1;
+            }
+
             ItemStack[] drops = base.GetDrops(world, pos, byPlayer, dropQuantityMultiplier);
 
-            BlockEntityFarmland befarmland = world.BlockAccessor.GetBlockEntity(pos.DownCopy()) as BlockEntityFarmland;
+            
             if (befarmland != null)
             {
                 drops = befarmland.GetDrops(drops);

@@ -243,7 +243,7 @@ namespace Vintagestory.GameContent.Mechanics
                 if (newnode.OutFacingForNetworkDiscovery != null && (nowRemovedNode == null || newnode.Position != nowRemovedNode.Position))
                 {
                     MechanicalNetwork newnetwork = newnode.CreateJoinAndDiscoverNetwork(newnode.OutFacingForNetworkDiscovery);
-                    bool reversed = newnode.GetPropagationDirection() == oldTurnDir.GetOpposite();
+                    bool reversed = newnode.GetPropagationDirection() == oldTurnDir.Opposite;
                     newnetwork.Speed = reversed ? -network.Speed : network.Speed;
                     newnetwork.AngleRad = network.AngleRad;
                     newnetwork.TotalAvailableTorque = reversed ? -network.TotalAvailableTorque : network.TotalAvailableTorque;

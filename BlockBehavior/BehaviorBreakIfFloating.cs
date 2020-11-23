@@ -25,7 +25,7 @@ namespace Vintagestory.GameContent
             base.OnNeighbourBlockChange(world, pos, neibpos, ref handled);
         }
 
-        public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier, ref EnumHandling handled)
+        public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, ref float dropQuantityMultiplier, ref EnumHandling handled)
         {
             if(IsSurroundedByNonSolid(world, pos))
             {
@@ -56,7 +56,7 @@ namespace Vintagestory.GameContent
                 BlockPos neighborPos = pos.AddCopy(facing.Normali);
                 Block neighborBlock = world.BlockAccessor.GetBlock(neighborPos);
 
-                if (neighborBlock.SideSolid[facing.GetOpposite().Index]) return false;
+                if (neighborBlock.SideSolid[facing.Opposite.Index]) return false;
             }
             return true;
         }

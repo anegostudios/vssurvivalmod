@@ -19,8 +19,8 @@ namespace Vintagestory.GameContent
     {
         protected GuiDialogBlockEntityInventory invDialog;
 
-        public virtual AssetLocation OpenSound => new AssetLocation("sounds/block/chestopen");
-        public virtual AssetLocation CloseSound => new AssetLocation("sounds/block/chestclose");
+        public virtual AssetLocation OpenSound { get; set; } = new AssetLocation("sounds/block/chestopen");
+        public virtual AssetLocation CloseSound { get; set; } = new AssetLocation("sounds/block/chestclose");
 
         public abstract bool OnPlayerRightClick(IPlayer byPlayer, BlockSelection blockSel);
 
@@ -30,8 +30,16 @@ namespace Vintagestory.GameContent
 
             Inventory.LateInitialize(InventoryClassName + "-" + Pos.X + "/" + Pos.Y + "/" + Pos.Z, api);
             Inventory.ResolveBlocksOrItems();
+
+            string os = Block.Attributes?["openSound"]?.AsString();
+            string cs = Block.Attributes?["closeSound"]?.AsString();
+            AssetLocation opensound = os == null ? null : AssetLocation.Create(os, Block.Code.Domain);
+            AssetLocation closesound = cs == null ? null : AssetLocation.Create(cs, Block.Code.Domain);
+
+            OpenSound = opensound ?? this.OpenSound;
+            CloseSound = closesound ?? this.CloseSound;
         }
-        
+
 
         public override void OnReceivedClientPacket(IPlayer player, int packetid, byte[] data)
         {
@@ -69,32 +77,35 @@ namespace Vintagestory.GameContent
                     return;
                 }
 
+                string dialogClassName;
+                string dialogTitle;
+                int cols;
+                TreeAttribute tree = new TreeAttribute();
+
                 using (MemoryStream ms = new MemoryStream(data))
                 {
                     BinaryReader reader = new BinaryReader(ms);
-
-                    string dialogClassName = reader.ReadString();
-                    string dialogTitle = reader.ReadString();
-                    int cols = reader.ReadByte();
-
-                    TreeAttribute tree = new TreeAttribute();
+                    dialogClassName = reader.ReadString();
+                    dialogTitle = reader.ReadString();
+                    cols = reader.ReadByte();    
                     tree.FromBytes(reader);
-                    Inventory.FromTreeAttributes(tree);
-                    Inventory.ResolveBlocksOrItems();
-                    
-                    invDialog = new GuiDialogBlockEntityInventory(dialogTitle, Inventory, Pos, cols, Api as ICoreClientAPI);
-
-                    Block block = Api.World.BlockAccessor.GetBlock(Pos);
-                    string os = block.Attributes?["openSound"]?.AsString();
-                    string cs = block.Attributes?["closeSound"]?.AsString();
-                    AssetLocation opensound = os == null ? null : AssetLocation.Create(os, block.Code.Domain);
-                    AssetLocation closesound = cs == null ? null : AssetLocation.Create(cs, block.Code.Domain);
-
-                    invDialog.OpenSound = opensound ?? this.OpenSound;
-                    invDialog.CloseSound = closesound ?? this.CloseSound;
-
-                    invDialog.TryOpen();
                 }
+
+                Inventory.FromTreeAttributes(tree);
+                Inventory.ResolveBlocksOrItems();
+                    
+                invDialog = new GuiDialogBlockEntityInventory(dialogTitle, Inventory, Pos, cols, Api as ICoreClientAPI);
+
+                Block block = Api.World.BlockAccessor.GetBlock(Pos);
+                string os = block.Attributes?["openSound"]?.AsString();
+                string cs = block.Attributes?["closeSound"]?.AsString();
+                AssetLocation opensound = os == null ? null : AssetLocation.Create(os, block.Code.Domain);
+                AssetLocation closesound = cs == null ? null : AssetLocation.Create(cs, block.Code.Domain);
+
+                invDialog.OpenSound = opensound ?? this.OpenSound;
+                invDialog.CloseSound = closesound ?? this.CloseSound;
+
+                invDialog.TryOpen();
             }
 
             if (packetid == (int)EnumBlockEntityPacketId.Close)

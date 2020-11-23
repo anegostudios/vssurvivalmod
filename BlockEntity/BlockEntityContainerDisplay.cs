@@ -17,6 +17,9 @@ namespace Vintagestory.GameContent
     {
         
         public Size2i AtlasSize => capi.BlockTextureAtlas.Size;
+
+        public virtual string AttributeTransformCode => "onDisplayTransform";
+
         public TextureAtlasPosition this[string textureCode]
         {
             get
@@ -29,7 +32,13 @@ namespace Vintagestory.GameContent
                 }
                 else
                 {
-                    nowTesselatingShape?.Textures.TryGetValue(textureCode, out texturePath);
+                    if (nowTesselatingItem.Textures.TryGetValue("all", out tex))
+                    {
+                        texturePath = tex.Baked.BakedName;
+                    } else
+                    {
+                        nowTesselatingShape?.Textures.TryGetValue(textureCode, out texturePath);
+                    }
                 }
 
                 if (texturePath == null)
@@ -51,7 +60,7 @@ namespace Vintagestory.GameContent
                     }
                     else
                     {
-                        capi.World.Logger.Warning("Display cased item {0} defined texture {1}, not no such texture found.", nowTesselatingItem.Code, texturePath);
+                        capi.World.Logger.Warning("For render in block " + Block.Code + ", item {0} defined texture {1}, not no such texture found.", nowTesselatingItem.Code, texturePath);
                     }
                 }
 
@@ -95,9 +104,9 @@ namespace Vintagestory.GameContent
 
 
 
-        public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
+        public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
-            base.FromTreeAtributes(tree, worldForResolving);
+            base.FromTreeAttributes(tree, worldForResolving);
 
             if (worldForResolving.Side == EnumAppSide.Client && Api != null)
             {
@@ -107,7 +116,7 @@ namespace Vintagestory.GameContent
 
         protected virtual void updateMeshes()
         {
-            for (int i = 0; i < Inventory.Count; i++)
+            for (int i = 0; i < meshes.Length; i++)
             {
                 updateMesh(i);
             }
@@ -149,9 +158,9 @@ namespace Vintagestory.GameContent
 
                 capi.Tesselator.TesselateItem(stack.Item, out mesh, this);
 
-                if (stack.Collectible.Attributes?["onDisplayTransform"].Exists == true)
+                if (stack.Collectible.Attributes?[AttributeTransformCode].Exists == true)
                 {
-                    ModelTransform transform = stack.Collectible.Attributes?["onDisplayTransform"].AsObject<ModelTransform>();
+                    ModelTransform transform = stack.Collectible.Attributes?[AttributeTransformCode].AsObject<ModelTransform>();
                     transform.EnsureDefaultValues();
                     mesh.ModelTransform(transform);
                 }

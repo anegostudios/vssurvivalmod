@@ -32,7 +32,7 @@ namespace Vintagestory.GameContent
                 {
                     int nBlockId = chunkExtIds[extIndex3d + TileSideEnum.MoveIndex[tileSide]];
                     Block nblock = api.World.Blocks[nBlockId];
-                    leavesWaveTileSide[tileSide] = !nblock.SideSolid[BlockFacing.ALLFACES[tileSide].GetOpposite().Index] || nblock.BlockMaterial == EnumBlockMaterial.Leaves;
+                    leavesWaveTileSide[tileSide] = !nblock.SideSolid[BlockFacing.ALLFACES[tileSide].Opposite.Index] || nblock.BlockMaterial == EnumBlockMaterial.Leaves;
                 }
 
                 bool waveoff;
@@ -162,7 +162,7 @@ namespace Vintagestory.GameContent
 
         bool TryAttachTo(IBlockAccessor blockAccessor, BlockPos blockpos, BlockFacing onBlockFace)
         {
-            BlockPos attachingBlockPos = blockpos.AddCopy(onBlockFace.GetOpposite());
+            BlockPos attachingBlockPos = blockpos.AddCopy(onBlockFace.Opposite);
             Block block = blockAccessor.GetBlock(blockAccessor.GetBlockId(attachingBlockPos));
 
             if (block.CanAttachBlockAt(blockAccessor, this, attachingBlockPos, onBlockFace))
@@ -189,7 +189,7 @@ namespace Vintagestory.GameContent
         bool CanVineStay(IWorldAccessor world, BlockPos pos)
         {
             BlockFacing facing = GetOrientation();
-            Block block = world.BlockAccessor.GetBlock(world.BlockAccessor.GetBlockId(pos.AddCopy(facing.GetOpposite())));
+            Block block = world.BlockAccessor.GetBlock(world.BlockAccessor.GetBlockId(pos.AddCopy(facing.Opposite)));
 
             return block.CanAttachBlockAt(world.BlockAccessor, this, pos, facing) || world.BlockAccessor.GetBlock(pos.UpCopy()) is BlockVines;
         }

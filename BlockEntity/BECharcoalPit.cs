@@ -256,7 +256,7 @@ namespace Vintagestory.GameContent
 
                     Block nBlock = chunk.GetLocalBlockAtBlockPos(Api.World, npos);
 
-                    if (!nBlock.SideSolid[facing.GetOpposite().Index] && nBlock.BlockId != firewoodBlockId && nBlock.BlockId != charcoalPitBlockId)
+                    if (!nBlock.SideSolid[facing.Opposite.Index] && nBlock.BlockId != firewoodBlockId && nBlock.BlockId != charcoalPitBlockId)
                     {
                         return bpos;
                     }
@@ -279,11 +279,11 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
+        public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
             int beforeState = state;
             bool beforeLit = lit;
-            base.FromTreeAtributes(tree, worldForResolving);
+            base.FromTreeAttributes(tree, worldForResolving);
 
             finishedAfterTotalHours = tree.GetDouble("finishedAfterTotalHours");
             startingAfterTotalHours = tree.GetDouble("startingAfterTotalHours");

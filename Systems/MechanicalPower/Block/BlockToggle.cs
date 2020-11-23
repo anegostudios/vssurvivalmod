@@ -34,19 +34,19 @@ namespace Vintagestory.GameContent.Mechanics
                 IMechanicalPowerBlock block = world.BlockAccessor.GetBlock(pos) as IMechanicalPowerBlock;
                 if (block != null)
                 {
-                    if (block.HasMechPowerConnectorAt(world, pos, face.GetOpposite()))
+                    if (block.HasMechPowerConnectorAt(world, pos, face.Opposite))
                     {
-                        AssetLocation loc = new AssetLocation(FirstCodePart() + "-" + face.GetOpposite().Code[0] + face.Code[0]);
+                        AssetLocation loc = new AssetLocation(FirstCodePart() + "-" + face.Opposite.Code[0] + face.Code[0]);
                         Block toPlaceBlock = world.GetBlock(loc);
                         if (toPlaceBlock == null)
                         {
-                            loc = new AssetLocation(FirstCodePart() + "-" + face.Code[0] + face.GetOpposite().Code[0]);
+                            loc = new AssetLocation(FirstCodePart() + "-" + face.Code[0] + face.Opposite.Code[0]);
                             toPlaceBlock = world.GetBlock(loc);
                         }
 
                         if (toPlaceBlock.DoPlaceBlock(world, byPlayer, blockSel, itemstack))
                         {
-                            block.DidConnectAt(world, pos, face.GetOpposite());
+                            block.DidConnectAt(world, pos, face.Opposite);
                             WasPlaced(world, blockSel.Position, face);
                             return true;
                         }
@@ -74,7 +74,7 @@ namespace Vintagestory.GameContent.Mechanics
                     BlockPos npos = pos.AddCopy(face);
                     BlockAngledGears blockagears = world.BlockAccessor.GetBlock(npos) as BlockAngledGears;
                     if (blockagears == null) continue;
-                    if (blockagears.Facings.Contains(face.GetOpposite()) && blockagears.Facings.Length == 1)
+                    if (blockagears.Facings.Contains(face.Opposite) && blockagears.Facings.Length == 1)
                     {
                         world.BlockAccessor.BreakBlock(npos, null);
                     }

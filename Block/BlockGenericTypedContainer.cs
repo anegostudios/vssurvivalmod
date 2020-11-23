@@ -73,6 +73,22 @@ namespace Vintagestory.GameContent
             return base.GetHandBookStacks(capi);
         }
 
+        public override Cuboidf[] GetCollisionBoxes(IBlockAccessor blockAccessor, BlockPos pos)
+        {
+            BlockEntityGenericTypedContainer bect = blockAccessor.GetBlockEntity(pos) as BlockEntityGenericTypedContainer;
+            if (bect?.collisionSelectionBoxes != null) return bect.collisionSelectionBoxes;
+
+            return base.GetCollisionBoxes(blockAccessor, pos);
+        }
+
+        public override Cuboidf[] GetSelectionBoxes(IBlockAccessor blockAccessor, BlockPos pos)
+        {
+            BlockEntityGenericTypedContainer bect = blockAccessor.GetBlockEntity(pos) as BlockEntityGenericTypedContainer;
+            if (bect?.collisionSelectionBoxes != null) return bect.collisionSelectionBoxes;
+
+            return base.GetSelectionBoxes(blockAccessor, pos);
+        }
+
 
         public override bool DoPlaceBlock(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ItemStack byItemStack)
         {
@@ -82,7 +98,7 @@ namespace Vintagestory.GameContent
                 BlockEntityGenericTypedContainer bect = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityGenericTypedContainer;
                 if (bect != null)
                 {
-                    BlockPos targetPos = blockSel.DidOffset ? blockSel.Position.AddCopy(blockSel.Face.GetOpposite()) : blockSel.Position;
+                    BlockPos targetPos = blockSel.DidOffset ? blockSel.Position.AddCopy(blockSel.Face.Opposite) : blockSel.Position;
                     double dx = byPlayer.Entity.Pos.X - (targetPos.X + blockSel.HitPosition.X);
                     double dz = (float)byPlayer.Entity.Pos.Z - (targetPos.Z + blockSel.HitPosition.Z);
                     float angleHor = (float)Math.Atan2(dx, dz);
@@ -201,12 +217,12 @@ namespace Vintagestory.GameContent
         }
 
 
-        public MeshData GenMesh(ICoreClientAPI capi, string type, string shapename, ITesselatorAPI tesselator = null, Vec3f rotation = null)
+        public Shape GetShape(ICoreClientAPI capi, string type, string shapename, ITesselatorAPI tesselator = null, int altTexNumber = 0)
         {
-            if (shapename == null) return new MeshData();
+            if (shapename == null) return null;
             if (tesselator == null) tesselator = capi.Tesselator;
 
-            tmpTextureSource = tesselator.GetTexSource(this);
+            tmpTextureSource = tesselator.GetTexSource(this, altTexNumber);
 
             AssetLocation shapeloc = AssetLocation.Create(shapename, Code.Domain).WithPathPrefix("shapes/");
             Shape shape = capi.Assets.TryGet(shapeloc + ".json")?.ToObject<Shape>();
@@ -214,11 +230,19 @@ namespace Vintagestory.GameContent
             {
                 shape = capi.Assets.TryGet(shapeloc + "1.json")?.ToObject<Shape>();
             }
-            if (shape == null)
-            {
-                return new MeshData();
-            }
-            
+
+            curType = type;
+
+            return shape;
+        }
+
+
+        public MeshData GenMesh(ICoreClientAPI capi, string type, string shapename, ITesselatorAPI tesselator = null, Vec3f rotation = null, int altTexNumber = 0)
+        {
+            Shape shape = GetShape(capi, type, shapename, tesselator, altTexNumber);
+            if (tesselator == null) tesselator = capi.Tesselator;
+            if (shape == null) return new MeshData();
+
             curType = type;
             MeshData mesh;
             tesselator.TesselateShape("typedcontainer", shape, out mesh, this, rotation == null ? new Vec3f(Shape.rotateX, Shape.rotateY, Shape.rotateZ) : rotation);
@@ -321,6 +345,7 @@ namespace Vintagestory.GameContent
 
 
 
+
         public override BlockDropItemStack[] GetDropsForHandbook(ItemStack handbookStack, IPlayer forPlayer)
         {
             string type = handbookStack.Attributes?.GetString("type");
@@ -336,7 +361,7 @@ namespace Vintagestory.GameContent
                 return new BlockDropItemStack[0]; 
             } else
             {
-                return base.GetDropsForHandbook(handbookStack, forPlayer);
+                return new BlockDropItemStack[] { new BlockDropItemStack(handbookStack) };
             }
         }
 

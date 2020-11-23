@@ -101,11 +101,17 @@ namespace Vintagestory.GameContent
             double rndyaw = byEntity.WatchedAttributes.GetDouble("aimingRandYaw", 1) * acc * 0.75;
 
             Vec3d pos = byEntity.ServerPos.XYZ.Add(0, byEntity.LocalEyePos.Y - 0.2, 0);
+
             Vec3d aheadPos = pos.AheadCopy(1, byEntity.ServerPos.Pitch + rndpitch, byEntity.ServerPos.Yaw + rndyaw);
             Vec3d velocity = (aheadPos - pos) * 0.65;
+            Vec3d spawnPos = byEntity.ServerPos.BehindCopy(0.21).XYZ.Add(byEntity.LocalEyePos.X, byEntity.LocalEyePos.Y - 0.2, byEntity.LocalEyePos.Z);
 
-            entity.ServerPos.SetPos(byEntity.ServerPos.BehindCopy(0.21).XYZ.Add(byEntity.LocalEyePos.X, byEntity.LocalEyePos.Y - 0.2, byEntity.LocalEyePos.Z));
+            entity.ServerPos.SetPos(spawnPos);
             entity.ServerPos.Motion.Set(velocity);
+
+            //byEntity.World.SpawnParticles(1, ColorUtil.WhiteArgb, spawnPos, spawnPos, new Vec3f(), new Vec3f(), 1.5f, 0, 1);
+
+
 
             entity.Pos.SetFrom(entity.ServerPos);
             entity.World = byEntity.World;
@@ -115,7 +121,6 @@ namespace Vintagestory.GameContent
             byEntity.StartAnimation("throw");
 
             RefillSlotIfEmpty(slot, byEntity);
-            //byPlayer?.InventoryManager.BroadcastHotbarSlot();
 
             byPlayer.Entity.World.PlaySoundAt(new AssetLocation("sounds/player/strike"), byPlayer.Entity, byPlayer, 0.9f + (float)api.World.Rand.NextDouble() * 0.2f, 16, 0.5f);
         }

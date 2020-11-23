@@ -18,10 +18,6 @@ namespace Vintagestory.GameContent
     {
         InventoryGeneric inventory;
 
-     
-
-
-
         bool[] AttachmentMask; //this is taken care of on placement of the block.
         bool[] DirectionalMask; //Only up and down is checked on placement.
 

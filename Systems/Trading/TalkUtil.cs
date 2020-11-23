@@ -207,7 +207,7 @@ namespace Vintagestory.GameContent
 
 
 
-            if (lettersLeftToTalk == 0 && capi.World.Rand.NextDouble() < 0.0001 && entity.Alive)
+            if (lettersLeftToTalk == 0 && capi.World.Rand.NextDouble() < 0.0005 && entity.Alive)
             {
                 Talk(EnumTalkType.Idle);
             }

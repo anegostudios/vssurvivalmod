@@ -211,7 +211,6 @@ namespace Vintagestory.GameContent
             if (secondsUsed < 0.35f) return;
 
             float damage = 1;
-            string rockType = slot.Itemstack.Collectible.FirstCodePart(1);
             
             ItemStack stack = slot.TakeOut(1);
             slot.MarkDirty();
@@ -220,29 +219,24 @@ namespace Vintagestory.GameContent
             if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
             byEntity.World.PlaySoundAt(new AssetLocation("sounds/player/throw"), byEntity, byPlayer, false, 8);
 
-            EntityProperties type = byEntity.World.GetEntityType(new AssetLocation("thrownstone"));
+            EntityProperties type = byEntity.World.GetEntityType(new AssetLocation("thrownstone-" + Variant["rock"]));
             Entity entity = byEntity.World.ClassRegistry.CreateEntity(type);
             ((EntityThrownStone)entity).FiredBy = byEntity;
             ((EntityThrownStone)entity).Damage = damage;
             ((EntityThrownStone)entity).ProjectileStack = stack;
 
 
-            int? texIndex = type.Attributes?["texturealternateMapping"]?[rockType].AsInt(0);
-            entity.WatchedAttributes.SetInt("textureIndex", texIndex == null ? 0 : (int)texIndex);
-
             float acc = (1 - byEntity.Attributes.GetFloat("aimingAccuracy", 0));
             double rndpitch = byEntity.WatchedAttributes.GetDouble("aimingRandPitch", 1) * acc * 0.75;
             double rndyaw = byEntity.WatchedAttributes.GetDouble("aimingRandYaw", 1) * acc * 0.75;
 
-            Vec3d pos = byEntity.ServerPos.XYZ.Add(0, byEntity.LocalEyePos.Y - 0.2, 0);
+            Vec3d pos = byEntity.ServerPos.XYZ.Add(0, byEntity.LocalEyePos.Y, 0);
             Vec3d aheadPos = pos.AheadCopy(1, byEntity.ServerPos.Pitch + rndpitch, byEntity.ServerPos.Yaw + rndyaw);
             Vec3d velocity = (aheadPos - pos) * 0.5;
 
             entity.ServerPos.SetPos(
-                byEntity.ServerPos.BehindCopy(0.21).XYZ.Add(0, byEntity.LocalEyePos.Y - 0.2, 0)
+                byEntity.ServerPos.BehindCopy(0.21).XYZ.Add(0, byEntity.LocalEyePos.Y, 0)
             );
-
-            //.Ahead(0.25, 0, byEntity.ServerPos.Yaw + GameMath.PIHALF)
 
             entity.ServerPos.Motion.Set(velocity);
 

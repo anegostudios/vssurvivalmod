@@ -34,7 +34,7 @@ namespace Vintagestory.GameContent.Mechanics
                 IMechanicalPowerBlock block = world.BlockAccessor.GetBlock(pos) as IMechanicalPowerBlock;
                 if (block != null)
                 {
-                    BlockFacing faceOpposite = face.GetOpposite();
+                    BlockFacing faceOpposite = face.Opposite;
                     if (block.HasMechPowerConnectorAt(world, pos, faceOpposite))
                     {
                         AssetLocation loc = new AssetLocation(FirstCodePart() + "-" + faceOpposite.Code[0] + face.Code[0]);
@@ -86,10 +86,10 @@ namespace Vintagestory.GameContent.Mechanics
                     BlockPos npos = pos.AddCopy(face);
                     IMechanicalPowerBlock block = world.BlockAccessor.GetBlock(npos) as IMechanicalPowerBlock;
                     bool prevConnected = connected;
-                    if (block != null && block.HasMechPowerConnectorAt(world, pos, face.GetOpposite()) && world.BlockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorMPBase>()?.disconnected == false) connected = true;
+                    if (block != null && block.HasMechPowerConnectorAt(world, pos, face.Opposite) && world.BlockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorMPBase>()?.disconnected == false) connected = true;
                     BlockAngledGears blockagears = block as BlockAngledGears;
                     if (blockagears == null) continue;
-                    if (blockagears.Facings.Contains(face.GetOpposite()) && blockagears.Facings.Length == 1)
+                    if (blockagears.Facings.Contains(face.Opposite) && blockagears.Facings.Length == 1)
                     {
                         world.BlockAccessor.BreakBlock(npos, null);
                         connected = prevConnected;  //undo connected = true in this situation

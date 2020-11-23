@@ -73,10 +73,13 @@ namespace Vintagestory.GameContent
             CairoFont font = CairoFont.WhiteDetailText().WithFontSize(17).WithLineHeightMultiplier(1.15f);
             TextDrawUtil prober = new TextDrawUtil();
             StringBuilder fulltext = new StringBuilder();
-            for (int p = 0; p < journalitems[currentLoreItemIndex].Chapters.Count; p++)
+
+            JournalEntry entry = journalitems[currentLoreItemIndex];
+
+            for (int p = 0; p < entry.Chapters.Count; p++)
             {
                 if (p > 0) fulltext.AppendLine();
-                fulltext.Append(Lang.Get(journalitems[currentLoreItemIndex].Chapters[p].Text));
+                fulltext.Append(Lang.Get(entry.Chapters[p].Text));
             }
 
             pages = Paginate(fulltext.ToString(), font, GuiElement.scaled(629), GuiElement.scaled(450));
@@ -94,7 +97,7 @@ namespace Vintagestory.GameContent
                 .CreateCompo("loreItem", dialogBounds)
                 .AddShadedDialogBG(ElementBounds.Fill, true)
                 .AddDialogTitleBar(Lang.Get(journalitems[i].Title), CloseIconPressedLoreItem)
-                .AddDynamicText(pages[0], font, EnumTextOrientation.Left, textBounds, "page")
+                .AddRichtext(pages[0], font, textBounds, "page")
                 .AddDynamicText("1 / " + pages.Length, CairoFont.WhiteSmallishText(), EnumTextOrientation.Center, ElementBounds.Fixed(250, 500, 100, 30), "currentpage") 
                 .AddButton(Lang.Get("Previous Page"), OnPrevPage, ElementBounds.Fixed(17, 500, 100, 23).WithFixedPadding(10, 4), CairoFont.WhiteSmallishText())
                 .AddButton(Lang.Get("Next Page"), OnNextPage, ElementBounds.Fixed(520, 500, 100, 23).WithFixedPadding(10, 4), CairoFont.WhiteSmallishText())
@@ -157,16 +160,18 @@ namespace Vintagestory.GameContent
 
         private bool OnNextPage()
         {
+            CairoFont font = CairoFont.WhiteDetailText().WithFontSize(17).WithLineHeightMultiplier(1.15f);
             page = Math.Min(pages.Length - 1, page + 1);
-            Composers["loreItem"].GetDynamicText("page").SetNewText(pages[page]);
+            Composers["loreItem"].GetRichtext("page").SetNewText(pages[page], font);
             Composers["loreItem"].GetDynamicText("currentpage").SetNewText((page + 1) + " / " + pages.Length);
             return true;
         }
 
         private bool OnPrevPage()
         {
+            CairoFont font = CairoFont.WhiteDetailText().WithFontSize(17).WithLineHeightMultiplier(1.15f);
             page = Math.Max(0, page - 1);
-            Composers["loreItem"].GetDynamicText("page").SetNewText(pages[page]);
+            Composers["loreItem"].GetRichtext("page").SetNewText(pages[page], font);
             Composers["loreItem"].GetDynamicText("currentpage").SetNewText((page + 1) + " / " + pages.Length);
             return true;
         }

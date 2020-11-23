@@ -17,7 +17,7 @@ namespace Vintagestory.GameContent
         bool ignorePlaceTest;
         AssetLocation[] exceptions;
         public bool fallSideways;
-        bool dustyFall;
+        float dustIntensity;
         float fallSidewaysChance = 0.25f;
 
         AssetLocation fallSound;
@@ -35,7 +35,7 @@ namespace Vintagestory.GameContent
             ignorePlaceTest = properties["ignorePlaceTest"].AsBool(false);
             exceptions = properties["exceptions"].AsObject(new AssetLocation[0], block.Code.Domain);
             fallSideways = properties["fallSideways"].AsBool(false);
-            dustyFall = properties["dustyFall"].AsBool(false);
+            dustIntensity = properties["dustIntensity"].AsFloat(0);
             attachmentArea = properties["attachmentArea"].AsObject<Cuboidi>(null);
 
             fallSidewaysChance = properties["fallSidewaysChance"].AsFloat(0.25f);
@@ -92,7 +92,7 @@ namespace Vintagestory.GameContent
 
                 if (entity == null)
                 {
-                    EntityBlockFalling entityblock = new EntityBlockFalling(block, world.BlockAccessor.GetBlockEntity(pos), pos, fallSound, impactDamageMul, true, dustyFall);
+                    EntityBlockFalling entityblock = new EntityBlockFalling(block, world.BlockAccessor.GetBlockEntity(pos), pos, fallSound, impactDamageMul, true, dustIntensity);
                     world.SpawnEntity(entityblock);
                 } else
                 {

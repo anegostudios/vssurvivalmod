@@ -35,6 +35,10 @@ namespace Vintagestory.GameContent
         protected BlockLayerConfig blocklayerconfig;
         protected int chunksize;
 
+        protected float growthChanceOnTick = 0.33f;
+
+        public bool growOnlyWhereRainfallExposed = false;
+
         protected virtual int MaxStage => 3;
 
 
@@ -59,6 +63,8 @@ namespace Vintagestory.GameContent
             growthLightLevel = Attributes?["growthLightLevel"] != null ? Attributes["growthLightLevel"].AsInt(7) : 7;
             growthBlockLayer = Attributes?["growthBlockLayer"]?.AsString("l1soilwithgrass");
             tallGrassGrowthChance = Attributes?["tallGrassGrowthChance"] != null ? Attributes["tallGrassGrowthChance"].AsFloat(0.3f) : 0.3f;
+            growthChanceOnTick = Attributes?["growthChanceOnTick"] != null ? Attributes["growthChanceOnTick"].AsFloat(0.33f) : 0.33f;
+            growOnlyWhereRainfallExposed = Attributes?["growOnlyWhereRainfallExposed"] != null ? Attributes["growOnlyWhereRainfallExposed"].AsBool(false) : false;
 
             tallGrassCodes.Add(new AssetLocation("tallgrass-veryshort-free"));
             tallGrassCodes.Add(new AssetLocation("tallgrass-short-free"));
@@ -93,6 +99,13 @@ namespace Vintagestory.GameContent
         public override bool ShouldReceiveServerGameTicks(IWorldAccessor world, BlockPos pos, Random offThreadRandom, out object extra)
         {
             extra = null;
+
+            if (offThreadRandom.NextDouble() > growthChanceOnTick) return false;
+
+            if (growOnlyWhereRainfallExposed && world.BlockAccessor.GetRainMapHeightAt(pos) > pos.Y + 1)
+            {
+                return false;
+            }
 
             bool isGrowing = false;
 
@@ -129,9 +142,9 @@ namespace Vintagestory.GameContent
 
         protected Block tryGetBlockForGrowing(IWorldAccessor world, BlockPos pos)
         {
-            int targetStage = 0;
+            int targetStage;
             int currentStage = CurrentStage();
-            if (currentStage != MaxStage && isGrassNearby(world, pos) && (targetStage = getClimateSuitedGrowthStage(world, pos, world.BlockAccessor.GetClimateAt(pos, EnumGetClimateMode.NowValues))) != CurrentStage())
+            if (currentStage != MaxStage && (targetStage = getClimateSuitedGrowthStage(world, pos, world.BlockAccessor.GetClimateAt(pos, EnumGetClimateMode.NowValues))) != CurrentStage())
             {
                 int nextStage = GameMath.Clamp(targetStage, currentStage - 1, currentStage + 1);
 
@@ -238,34 +251,6 @@ namespace Vintagestory.GameContent
         }
 
 
-        protected bool isGrassNearby(IWorldAccessor world, BlockPos pos)
-        {
-            BlockPos neighborPos = new BlockPos();
-            for (int y = -1; y < 2; y++)
-            {
-                foreach (BlockFacing facing in BlockFacing.HORIZONTALS)
-                {
-                    neighborPos.Set(pos.X + facing.Normali.X, pos.Y + y, pos.Z + facing.Normali.Z);
-                    Block neighbor = world.BlockAccessor.GetBlock(neighborPos);
-                    if (grassCanSpreadFrom(neighbor))
-                    {
-                        return true;
-                    }
-                }
-            }
-            return false;
-        }
-
-        /// <summary>
-        /// Returns true if the neighbor block can spread grass. It must be a soil block with some grass on it.
-        /// </summary>
-        /// <param name="block"></param>
-        /// <returns>true if the neighbor block can spread grass, false otherwise</returns>
-        protected bool grassCanSpreadFrom(Block block)
-        {
-            return block.Attributes?.IsTrue("spreadsGrass") == true;
-        }
-
 
         public override int GetColor(ICoreClientAPI capi, BlockPos pos)
         {
@@ -287,12 +272,15 @@ namespace Vintagestory.GameContent
         {
             base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
 
-            var fertility = inSlot.Itemstack.Block.Variant["fertility"];
-            var farmland = world.GetBlock(new AssetLocation("farmland-dry-" + fertility));
-            if (farmland == null) return;
-            var fert_value = farmland.Fertility;
-            if (fert_value <= 0) return;
-            dsc.Append(Lang.Get("Fertility when tilled: ") + fert_value + "%\n");
+            if (Variant.ContainsKey("fertility"))
+            {
+                var fertility = inSlot.Itemstack.Block.Variant["fertility"];
+                var farmland = world.GetBlock(new AssetLocation("farmland-dry-" + fertility));
+                if (farmland == null) return;
+                var fert_value = farmland.Fertility;
+                if (fert_value <= 0) return;
+                dsc.Append(Lang.Get("Fertility when tilled: ") + fert_value + "%\n");
+            }
         }
 
     }

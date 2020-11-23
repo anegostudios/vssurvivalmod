@@ -98,7 +98,7 @@ namespace Vintagestory.GameContent
                 BlockEntityPlantContainer bect = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityPlantContainer;
                 if (bect != null)
                 {
-                    BlockPos targetPos = blockSel.DidOffset ? blockSel.Position.AddCopy(blockSel.Face.GetOpposite()) : blockSel.Position;
+                    BlockPos targetPos = blockSel.DidOffset ? blockSel.Position.AddCopy(blockSel.Face.Opposite) : blockSel.Position;
                     double dx = byPlayer.Entity.Pos.X - (targetPos.X + blockSel.HitPosition.X);
                     double dz = (float)byPlayer.Entity.Pos.Z - (targetPos.Z + blockSel.HitPosition.Z);
                     float angleHor = (float)Math.Atan2(dx, dz);

@@ -53,7 +53,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier, ref EnumHandling handled)
+        public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, ref float dropQuantityMultiplier, ref EnumHandling handled)
         {
             handled = EnumHandling.PreventDefault;
 
@@ -82,7 +82,7 @@ namespace Vintagestory.GameContent
 
         bool TryAttachTo(IWorldAccessor world, IPlayer byPlayer, BlockPos blockpos, Vec3d hitPosition, BlockFacing onBlockFace, ItemStack itemstack)
         {
-            BlockPos attachingBlockPos = blockpos.AddCopy(onBlockFace.GetOpposite());
+            BlockPos attachingBlockPos = blockpos.AddCopy(onBlockFace.Opposite);
             Block attachingBlock = world.BlockAccessor.GetBlock(world.BlockAccessor.GetBlockId(attachingBlockPos));
 
             BlockFacing onFace = onBlockFace;
@@ -105,7 +105,7 @@ namespace Vintagestory.GameContent
         bool CanStay(IWorldAccessor world, BlockPos pos)
         {
             BlockFacing facing = BlockFacing.FromCode(block.Variant[facingCode]);
-            BlockPos attachingBlockPos = pos.AddCopy(facing.GetOpposite());
+            BlockPos attachingBlockPos = pos.AddCopy(facing.Opposite);
             Block attachedblock = world.BlockAccessor.GetBlock(world.BlockAccessor.GetBlockId(attachingBlockPos));
 
             BlockFacing onFace = facing;
@@ -147,7 +147,7 @@ namespace Vintagestory.GameContent
             BlockFacing facing = BlockFacing.FromCode(block.Variant[facingCode]);
             if (facing.Axis == axis)
             {
-                return block.CodeWithVariant(facingCode, facing.GetOpposite().Code);
+                return block.CodeWithVariant(facingCode, facing.Opposite.Code);
             }
             return block.Code;
         }

@@ -13,7 +13,7 @@ namespace Vintagestory.GameContent.Mechanics
                 var bh = GetBehavior<BEBehaviorMPArchimedesScrew>();
                 if (bh?.Network == null) return 0;
 
-                return bh.Network.Speed * itemFlowRate;
+                return Math.Abs(bh.Network.Speed) * itemFlowRate;
             }
         }
 

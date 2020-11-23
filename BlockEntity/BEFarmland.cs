@@ -79,11 +79,14 @@ namespace Vintagestory.GameContent
         public int roomness;
 
 
+        bool allowundergroundfarming;
+
         public override void Initialize(ICoreAPI api)
         {
             base.Initialize(api);
             upPos = base.Pos.UpCopy();
             wsys = api.ModLoader.GetModSystem<WeatherSystemBase>();
+            allowundergroundfarming = Api.World.Config.GetBool("allowUndergroundFarming", false);
 
             if (api is ICoreServerAPI)
             {
@@ -281,7 +284,7 @@ namespace Vintagestory.GameContent
             if (Api.World.BlockAccessor.GetRainMapHeightAt(Pos.X, Pos.Z) <= Pos.Y + 1) {
                 while (hoursPassed > 0)
                 {
-                    double rainLevel = wsys.GetPrecipitation(tmpPos.X, tmpPos.Y, tmpPos.Z, totalDays - hoursPassed * Api.World.Calendar.HoursPerDay / 2f);
+                    double rainLevel = wsys.GetPrecipitation(tmpPos.X, tmpPos.Y, tmpPos.Z, totalDays - hoursPassed * Api.World.Calendar.HoursPerDay);
                     moistureLevel = GameMath.Clamp(moistureLevel + (float)rainLevel / 3f, 0, 1);
                     hoursPassed--;
                 }
@@ -310,8 +313,14 @@ namespace Vintagestory.GameContent
             }
 
             // Slow down growth on bad light levels
+            int lightpenalty = 0;
+            if (!allowundergroundfarming)
+            {
+                lightpenalty = Math.Max(0, Api.World.SeaLevel - Pos.Y);
+            }
+
             int sunlight = Api.World.BlockAccessor.GetLightLevel(Pos.UpCopy(), EnumLightLevelType.MaxLight);
-            double lightGrowthSpeedFactor = GameMath.Clamp(1 - (delayGrowthBelowSunLight - sunlight) * lossPerLevel, 0, 1);
+            double lightGrowthSpeedFactor = GameMath.Clamp(1 - (delayGrowthBelowSunLight - sunlight - lightpenalty) * lossPerLevel, 0, 1);
 
             Block upblock = Api.World.BlockAccessor.GetBlock(upPos);
             
@@ -342,7 +351,7 @@ namespace Vintagestory.GameContent
 
             if (Api.World.BlockAccessor.GetRainMapHeightAt(Pos) > Pos.Y) // Fast pre-check
             {
-                Room room = roomreg?.GetRoomForPosition(Pos);
+                Room room = roomreg?.GetRoomForPosition(Pos.UpCopy());
                 roomness = (room != null && room.SkylightCount > room.NonSkylightCount && room.ExitCount == 0) ? 1 : 0;
             } else
             {
@@ -369,6 +378,7 @@ namespace Vintagestory.GameContent
                 hourIntervall = (3 + rand.NextDouble());
 
                 ClimateCondition conds = Api.World.BlockAccessor.GetClimateAt(Pos, EnumGetClimateMode.ForSuppliedDateValues, totalHoursLastUpdate / Api.World.Calendar.HoursPerDay);
+                if (conds == null) return;
                 if (roomness > 0)
                 {
                     conds.Temperature += 5;
@@ -521,7 +531,7 @@ namespace Vintagestory.GameContent
             return 0f;
         }
 
-        internal bool TryPlant(Block block)
+        public bool TryPlant(Block block)
         {
             if (CanPlant() && block.CropProps != null)
             {
@@ -539,26 +549,26 @@ namespace Vintagestory.GameContent
             return false;
         }
 
-        internal bool CanPlant()
+        public bool CanPlant()
         {
             Block block = Api.World.BlockAccessor.GetBlock(upPos);
             return block == null || block.BlockMaterial == EnumBlockMaterial.Air;
         }
-        
 
-        internal bool HasUnripeCrop()
+
+        public bool HasUnripeCrop()
         {
             Block block = GetCrop();
             return block != null && CropStage(block) < block.CropProps.GrowthStages;
         }
 
-        internal bool HasRipeCrop()
+        public bool HasRipeCrop()
         {
             Block block = GetCrop();
             return block != null && CropStage(block) >= block.CropProps.GrowthStages;
         }
 
-        internal bool TryGrowCrop(double currentTotalHours)
+        public bool TryGrowCrop(double currentTotalHours)
         {
             Block block = GetCrop();
             if (block == null) return false;
@@ -656,9 +666,9 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
+        public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
-            base.FromTreeAtributes(tree, worldForResolving);
+            base.FromTreeAttributes(tree, worldForResolving);
             nutrients[0] = tree.GetFloat("n");
             nutrients[1] = tree.GetFloat("p");
             nutrients[2] = tree.GetFloat("k");
@@ -759,7 +769,7 @@ namespace Vintagestory.GameContent
 
             if (roomness > 0)
             {
-                dsc.AppendLine(Lang.Get("+5°C from greenhouse"));
+                dsc.AppendLine(Lang.Get("greenhousetempbonus"));
             }
 
 

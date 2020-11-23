@@ -4,26 +4,28 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
     public class BlockEntityIngotPile : BlockEntityItemPile, ITexPositionSource
     {
-        Dictionary<AssetLocation, MeshData[]> meshesByType
+        Dictionary<string, MeshData[]> meshesByType
         {
             get
             {
                 object value = null;
                 Api.ObjectCache.TryGetValue("ingotpile-meshes", out value);
-                return (Dictionary<AssetLocation, MeshData[]>)value;
+                return (Dictionary<string, MeshData[]>)value;
             }
             set { Api.ObjectCache["ingotpile-meshes"] = value; }
         }
         
 
         Block tmpBlock;
-        AssetLocation tmpMetal;
+        string tmpMetalCode;
         ITexPositionSource tmpTextureSource;
+        ICoreClientAPI capi;
 
         internal AssetLocation soundLocation = new AssetLocation("sounds/block/ingot");
 
@@ -33,36 +35,33 @@ namespace Vintagestory.GameContent
 
         internal void EnsureMeshExists()
         {
-            if (meshesByType == null) meshesByType = new Dictionary<AssetLocation, MeshData[]>();
-            if (MetalType == null || meshesByType.ContainsKey(new AssetLocation(MetalType))) return;
+            if (meshesByType == null) meshesByType = new Dictionary<string, MeshData[]>();
+            if (MetalType == null || meshesByType.ContainsKey(MetalType)) return;
             if (Api.Side != EnumAppSide.Client) return;
 
             tmpBlock = Api.World.BlockAccessor.GetBlock(Pos);
             tmpTextureSource = ((ICoreClientAPI)Api).Tesselator.GetTexSource(tmpBlock);
-            Shape shape = Api.Assets.TryGet("shapes/block/metal/ingotpile.json")?.ToObject<Shape>();
+
+            Shape shape = ObjectCacheUtil.GetOrCreate(Api, "ingotpileshape", () => Api.Assets.TryGet("shapes/block/metal/ingotpile.json")?.ToObject<Shape>());
             if (shape == null) return;
 
-            MetalProperty metals = Api.Assets.TryGet("worldproperties/block/metal.json").ToObject<MetalProperty>();
-
-            for (int i = 0; i < metals.Variants.Length; i++)
+            foreach (var textureCode in Block.Textures.Keys)
             {
-                if (!metals.Variants[i].Code.Path.Equals(MetalType)) continue;
-
                 ITesselatorAPI mesher = ((ICoreClientAPI)Api).Tesselator;
                 MeshData[] meshes = new MeshData[65];
 
-                tmpMetal = metals.Variants[i].Code;
+                tmpMetalCode = textureCode;
 
                 for (int j = 0; j <= 64; j++)
                 {
                     mesher.TesselateShape("ingotPile", shape, out meshes[j], this, null, 0, 0, 0, j);
                 }
 
-                meshesByType[tmpMetal] = meshes;
+                meshesByType[tmpMetalCode] = meshes;
             }
 
             tmpTextureSource = null;
-            tmpMetal = null;
+            tmpMetalCode = null;
             tmpBlock = null;
         }
 
@@ -76,7 +75,7 @@ namespace Vintagestory.GameContent
 
         public TextureAtlasPosition this[string textureCode]
         {
-            get { return tmpTextureSource[tmpMetal.Path]; }
+            get { return tmpTextureSource[tmpMetalCode]; }
         }
 
 
@@ -90,12 +89,14 @@ namespace Vintagestory.GameContent
             base.Initialize(api);
 
             inventory.ResolveBlocksOrItems();
+
+            capi = api as ICoreClientAPI;
         }
 
 
-        public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
+        public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
-            base.FromTreeAtributes(tree, worldForResolving);
+            base.FromTreeAttributes(tree, worldForResolving);
         }
 
         public string MetalType
@@ -111,7 +112,7 @@ namespace Vintagestory.GameContent
 
                 EnsureMeshExists();
                 MeshData[] mesh = null;
-                if (MetalType != null && meshesByType.TryGetValue(new AssetLocation(MetalType), out mesh))
+                if (MetalType != null && meshesByType.TryGetValue(MetalType, out mesh))
                 {
                     meshdata.AddMeshData(mesh[inventory[0].StackSize]);
                 }

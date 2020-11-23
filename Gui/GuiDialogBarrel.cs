@@ -19,6 +19,8 @@ namespace Vintagestory.GameContent
         protected override double FloatyDialogPosition => 0.6;
         protected override double FloatyDialogAlign => 0.8;
 
+        public override double DrawOrder => 0.2;
+
 
         public GuiDialogBarrel(string dialogTitle, InventoryBase inventory, BlockPos blockEntityPos, ICoreClientAPI capi) : base(dialogTitle, inventory, blockEntityPos, capi)
         {
@@ -160,8 +162,15 @@ namespace Vintagestory.GameContent
             CompositeTexture tex = liquidSlot.Itemstack.Collectible.Attributes?["waterTightContainerProps"]?["texture"]?.AsObject<CompositeTexture>(null, liquidSlot.Itemstack.Collectible.Code.Domain);
             if (tex != null)
             {
+                ctx.Save();
+                Matrix m = ctx.Matrix;
+                m.Scale(GuiElement.scaled(3), GuiElement.scaled(3));
+                ctx.Matrix = m;
+
                 AssetLocation loc = tex.Base.Clone().WithPathAppendixOnce(".png");
-                GuiElement.fillWithPattern(capi, ctx, loc.Path, false);
+                GuiElement.fillWithPattern(capi, ctx, loc.Path, true, false);
+
+                ctx.Restore();
             }
         }
 

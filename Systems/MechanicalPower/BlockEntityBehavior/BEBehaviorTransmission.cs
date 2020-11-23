@@ -77,10 +77,10 @@ namespace Vintagestory.GameContent.Mechanics
             BlockFacing side = orients[0] == BlockFacing.NORTH ? BlockFacing.EAST : BlockFacing.NORTH;
             bool clutchEngaged = false;
             BEClutch bec = access.GetBlockEntity(Position.AddCopy(side)) as BEClutch;
-            if (bec?.Facing == side.GetOpposite()) clutchEngaged = bec.Engaged;
+            if (bec?.Facing == side.Opposite) clutchEngaged = bec.Engaged;
             if (!clutchEngaged)
             {
-                bec = access.GetBlockEntity(Position.AddCopy(side.GetOpposite())) as BEClutch;
+                bec = access.GetBlockEntity(Position.AddCopy(side.Opposite)) as BEClutch;
                 if (bec?.Facing == side) clutchEngaged = bec.Engaged;
             }
             if (clutchEngaged != this.engaged)

@@ -27,7 +27,6 @@ namespace Vintagestory.GameContent
             if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
 
             if (!(byPlayer is IServerPlayer)) return;
-            IServerPlayer serverplayer = byPlayer as IServerPlayer;
 
             TreeAttribute tree = new TreeAttribute();
             tree.SetString("playeruid", byPlayer?.PlayerUID);
@@ -36,12 +35,7 @@ namespace Vintagestory.GameContent
 
             api.Event.PushEvent("loreDiscovery", tree);
             
-            itemslot.TakeOut(1);
-            itemslot.MarkDirty();
-
             handling = EnumHandHandling.PreventDefault;
-
-            byEntity.World.PlaySoundAt(new AssetLocation("sounds/effect/writing"), byEntity, byPlayer);
         }
 
         public override bool OnHeldInteractStep(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)

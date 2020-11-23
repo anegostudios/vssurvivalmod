@@ -47,7 +47,7 @@ namespace Vintagestory.GameContent.Mechanics
 
 
             BlockFacing frontFacing = ownFacing;
-            BlockFacing backFacing = ownFacing.GetOpposite();
+            BlockFacing backFacing = ownFacing.Opposite;
             Block rotBlock = world.GetBlock(orientedBlock.CodeWithVariant("side", leftFacing.Code));
 
             IMechanicalPowerBlock frontBlock = world.BlockAccessor.GetBlock(blockSel.Position.AddCopy(frontFacing)) as IMechanicalPowerBlock;
@@ -69,7 +69,7 @@ namespace Vintagestory.GameContent.Mechanics
         {
             if (block.DoPlaceBlock(world, byPlayer, blockSel, itemstack))
             {
-                connectingBlock.DidConnectAt(world, blockSel.Position.AddCopy(connectingFace), connectingFace.GetOpposite());
+                connectingBlock.DidConnectAt(world, blockSel.Position.AddCopy(connectingFace), connectingFace.Opposite);
                 WasPlaced(world, blockSel.Position, connectingFace);
                 return true;
             }
@@ -87,7 +87,7 @@ namespace Vintagestory.GameContent.Mechanics
                     BlockPos npos = pos.AddCopy(face);
                     BlockAngledGears blockagears = world.BlockAccessor.GetBlock(npos) as BlockAngledGears;
                     if (blockagears == null) continue;
-                    if (blockagears.Facings.Contains(face.GetOpposite()) && blockagears.Facings.Length == 1)
+                    if (blockagears.Facings.Contains(face.Opposite) && blockagears.Facings.Length == 1)
                     {
                         world.BlockAccessor.BreakBlock(npos, null);
                     }

@@ -165,9 +165,9 @@ namespace Vintagestory.GameContent
             MarkDirty();
         }
 
-        public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
+        public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
-            base.FromTreeAtributes(tree, worldForResolving);
+            base.FromTreeAttributes(tree, worldForResolving);
             remainingSeconds = tree.GetFloat("remainingSeconds", 0);
             lit = tree.GetInt("lit") > 0;
             ignitedByPlayerUid = tree.GetString("ignitedByPlayerUid");

@@ -156,9 +156,9 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
+        public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
         {
-            base.FromTreeAtributes(tree, worldAccessForResolve);
+            base.FromTreeAttributes(tree, worldAccessForResolve);
 
             if (tpLocation == null || Api?.Side == EnumAppSide.Client)
             {

@@ -92,7 +92,7 @@ namespace Vintagestory.GameContent
             BlockFacing facing = BlockFacing.FromCode(Variant["horizontalorientation"]);
             if (facing.Axis == axis)
             {
-                return CodeWithVariant("horizontalorientation", facing.GetOpposite().Code);
+                return CodeWithVariant("horizontalorientation", facing.Opposite.Code);
             }
 
             return Code;

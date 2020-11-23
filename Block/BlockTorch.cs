@@ -15,6 +15,8 @@ namespace Vintagestory.GameContent
 
         Dictionary<string, Cuboidi> attachmentAreas;
 
+        public Block ExtinctVariant { get; private set; }
+
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
@@ -29,6 +31,23 @@ namespace Vintagestory.GameContent
                     attachmentAreas[val.Key] = val.Value.RotatedCopy().ConvertToCuboidi();
                 }
             }
+
+            AssetLocation loc = AssetLocation.Create(FirstCodePart() + "-extinct-up", Code.Domain);
+            ExtinctVariant = api.World.GetBlock(loc);
+        }
+
+        public override void OnHeldIdle(ItemSlot slot, EntityAgent byEntity)
+        {
+            if (api.World.Side == EnumAppSide.Server && byEntity.Swimming && !IsExtinct && ExtinctVariant != null)
+            {
+                api.World.PlaySoundAt(new AssetLocation("sounds/effect/extinguish"), byEntity.Pos.X + 0.5, byEntity.Pos.Y + 0.75, byEntity.Pos.Z + 0.5, null, false, 16);
+                
+                int q = slot.Itemstack.StackSize;
+                slot.Itemstack = new ItemStack(ExtinctVariant);
+                slot.Itemstack.StackSize = q;
+                slot.MarkDirty();
+            }
+            
         }
 
         public override EnumIgniteState OnTryIgniteBlock(EntityAgent byEntity, BlockPos pos, float secondsIgniting)
@@ -63,7 +82,7 @@ namespace Vintagestory.GameContent
 
             float stormstr = api.ModLoader.GetModSystem<SystemTemporalStability>().StormStrength;
 
-            if (attackedEntity != null && byEntity.World.Side == EnumAppSide.Server && api.World.Rand.NextDouble() < 0.1 + stormstr)
+            if (!IsExtinct && attackedEntity != null && byEntity.World.Side == EnumAppSide.Server && api.World.Rand.NextDouble() < 0.1 + stormstr)
             {
                 attackedEntity.Ignite();
             }
@@ -170,11 +189,11 @@ namespace Vintagestory.GameContent
             BlockFacing onFace = onBlockFace;
             //if (onFace.IsHorizontal) onFace = onFace.GetOpposite(); - why is this here? Breaks attachment
 
-            BlockPos attachingBlockPos = blockpos.AddCopy(onBlockFace.GetOpposite());
+            BlockPos attachingBlockPos = blockpos.AddCopy(onBlockFace.Opposite);
             Block block = world.BlockAccessor.GetBlock(attachingBlockPos);
 
             Cuboidi attachmentArea = null;
-            attachmentAreas?.TryGetValue(onBlockFace.GetOpposite().Code, out attachmentArea);
+            attachmentAreas?.TryGetValue(onBlockFace.Opposite.Code, out attachmentArea);
 
             if (block.CanAttachBlockAt(world.BlockAccessor, this, attachingBlockPos, onFace, attachmentArea))
             {
@@ -189,12 +208,12 @@ namespace Vintagestory.GameContent
         bool CanTorchStay(IBlockAccessor blockAccessor, BlockPos pos)
         {
             BlockFacing facing = BlockFacing.FromCode(LastCodePart());
-            BlockPos attachingBlockPos = pos.AddCopy(facing.GetOpposite());
+            BlockPos attachingBlockPos = pos.AddCopy(facing.Opposite);
 
             Block block = blockAccessor.GetBlock(attachingBlockPos);
 
             Cuboidi attachmentArea = null;
-            attachmentAreas?.TryGetValue(facing.GetOpposite().Code, out attachmentArea);
+            attachmentAreas?.TryGetValue(facing.Opposite.Code, out attachmentArea);
 
             return block.CanAttachBlockAt(blockAccessor, this, attachingBlockPos, facing, attachmentArea);
         }
@@ -217,7 +236,7 @@ namespace Vintagestory.GameContent
             BlockFacing facing = BlockFacing.FromCode(LastCodePart());
             if (facing.Axis == axis)
             {
-                return CodeWithParts(facing.GetOpposite().Code);
+                return CodeWithParts(facing.Opposite.Code);
             }
             return Code;
         }

@@ -232,9 +232,9 @@ namespace Vintagestory.GameContent.Mechanics
             manager.RemoveDeviceForRender(this);
         }
 
-        public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
+        public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
         {
-            base.FromTreeAtributes(tree, worldAccessForResolve);
+            base.FromTreeAttributes(tree, worldAccessForResolve);
 
             Engaged = tree.GetBool("engaged");
             if (Engaged && armAngle == 0d) armAngle = DEGREES30; 

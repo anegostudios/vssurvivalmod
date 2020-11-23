@@ -62,7 +62,7 @@ namespace Vintagestory.GameContent
             BlockFacing facing = BlockFacing.FromCode(LastCodePart());
             if (facing.Axis == axis)
             {
-                return CodeWithParts(facing.GetOpposite().Code);
+                return CodeWithParts(facing.Opposite.Code);
             }
             return Code;
         }
@@ -78,7 +78,7 @@ namespace Vintagestory.GameContent
         {
             if (LastCodePart(1) == "feet")
             {
-                BlockFacing facing = BlockFacing.FromCode(LastCodePart()).GetOpposite();
+                BlockFacing facing = BlockFacing.FromCode(LastCodePart()).Opposite;
                 pos = pos.AddCopy(facing);
             }
 

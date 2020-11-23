@@ -56,7 +56,7 @@ namespace Vintagestory.GameContent.Mechanics
 
             string orientation = blockentity.Block.Variant["side"];
             ownFacing = BlockFacing.FromCode(orientation);
-            OutFacingForNetworkDiscovery = ownFacing.GetOpposite();
+            OutFacingForNetworkDiscovery = ownFacing.Opposite;
 
             //inTurnDir.Rot = ownFacing == BlockFacing.WEST || ownFacing == BlockFacing.NORTH ? EnumRotDirection.Counterclockwise : EnumRotDirection.Clockwise;
         }

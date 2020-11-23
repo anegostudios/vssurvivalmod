@@ -151,7 +151,7 @@ namespace Vintagestory.GameContent
             {
                 
                 if (hotbarstack == null) return true;
-                if (beb.TryAdd(byPlayer.InventoryManager.ActiveHotbarSlot, byPlayer.Entity.Controls.Sneak ? 5 : 1))
+                if (beb.TryAdd(byPlayer, byPlayer.Entity.Controls.Sneak ? 5 : 1))
                 {
                     if (world.Side == EnumAppSide.Client) (byPlayer as IClientPlayer).TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
                 }

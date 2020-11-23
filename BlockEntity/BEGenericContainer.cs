@@ -46,7 +46,7 @@ namespace Vintagestory.GameContent
             base.Initialize(api);
         }
 
-        public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
+        public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
             if (inventory == null)
             {
@@ -71,7 +71,7 @@ namespace Vintagestory.GameContent
             }
             
 
-            base.FromTreeAtributes(tree, worldForResolving);
+            base.FromTreeAttributes(tree, worldForResolving);
         }
 
         public override void ToTreeAttributes(ITreeAttribute tree)

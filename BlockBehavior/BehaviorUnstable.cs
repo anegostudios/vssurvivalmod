@@ -65,7 +65,7 @@ namespace Vintagestory.GameContent
 
                 Block block = blockAccessor.GetBlock(pos.AddCopy(face));
 
-                if (block.CanAttachBlockAt(blockAccessor, this.block, pos.AddCopy(face), face.GetOpposite()))
+                if (block.CanAttachBlockAt(blockAccessor, this.block, pos.AddCopy(face), face.Opposite))
                 {
                     return true;
                 }

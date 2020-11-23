@@ -50,7 +50,7 @@ namespace Vintagestory.GameContent.Mechanics
                     BlockMPBase toPlaceBlock = world.GetBlock(new AssetLocation("angledgears-" + orient + orient)) as BlockMPBase;
                     BlockFacing bf = BlockFacing.FromFirstLetter(orient);
                     toPlaceBlock.ExchangeBlockAt(world, smallGear);
-                    toPlaceBlock.DidConnectAt(world, smallGear, bf.GetOpposite());
+                    toPlaceBlock.DidConnectAt(world, smallGear, bf.Opposite);
                     connections.Add(bf);
                     //IGearAcceptor beg = beOwn as IGearAcceptor;
                     //if (beg == null) world.Logger.Error("large gear wrong block entity type - not a gear acceptor");

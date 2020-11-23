@@ -67,7 +67,7 @@ namespace Vintagestory.GameContent
 
                     BlockFacing facing = BlockFacing.HORIZONTALS[i];
                     Block block = manager.BlockAccess.GetBlock(pos.X + facing.Normali.X, pos.Y, pos.Z + facing.Normali.Z);
-                    if (block.IsLiquid() || block.SideSolid[facing.GetOpposite().Index]) continue;
+                    if (block.IsLiquid() || block.SideSolid[facing.Opposite.Index]) continue;
 
                     AdvancedParticleProperties bps = ParticleProperties[i];
                     bps.basePos.X = pos.X + TopMiddlePos.X;

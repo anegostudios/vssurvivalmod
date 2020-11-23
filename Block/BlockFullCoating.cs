@@ -95,7 +95,7 @@ namespace Vintagestory.GameContent
             {
                 Block block = world.BlockAccessor.GetBlock(pos.X + facing.Normali.X, pos.Y + facing.Normali.Y, pos.Z + facing.Normali.Z);
 
-                if (block.SideSolid[facing.GetOpposite().Index])
+                if (block.SideSolid[facing.Opposite.Index])
                 {
                     newFacingLetters += facing.Code.Substring(0, 1);
                 }
@@ -136,7 +136,7 @@ namespace Vintagestory.GameContent
             {
                 Block block = blockAccessor.GetBlock(pos.X + facing.Normali.X, pos.Y + facing.Normali.Y, pos.Z + facing.Normali.Z);
 
-                if (block.SideSolid[facing.GetOpposite().Index])
+                if (block.SideSolid[facing.Opposite.Index])
                 {
                     facings += facing.Code.Substring(0, 1);
                 }

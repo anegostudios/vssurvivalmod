@@ -19,8 +19,14 @@ namespace Vintagestory.GameContent
     public class ModSystemWearableStats : ModSystem
     {
         ICoreAPI api;
-
         ICoreClientAPI capi;
+
+        Dictionary<int, EnumCharacterDressType[]> clothingDamageTargetsByAttackTacket = new Dictionary<int, EnumCharacterDressType[]>()
+        {
+            { 0, new EnumCharacterDressType[] { EnumCharacterDressType.Head, EnumCharacterDressType.Face, EnumCharacterDressType.Neck } },
+            { 1, new EnumCharacterDressType[] { EnumCharacterDressType.UpperBody, EnumCharacterDressType.UpperBodyOver, EnumCharacterDressType.Shoulder, EnumCharacterDressType.Arm, EnumCharacterDressType.Hand } },
+            { 2, new EnumCharacterDressType[] { EnumCharacterDressType.LowerBody, EnumCharacterDressType.Foot } }
+        };
         
         public override bool ShouldLoad(EnumAppSide forSide)
         {
@@ -99,6 +105,8 @@ namespace Vintagestory.GameContent
             }
         }
 
+        AssetLocation ripSound = new AssetLocation("sounds/effect/clothrip");
+
         private float handleDamaged(IPlayer player, float damage, DamageSource dmgSource)
         {
             // Does not protect against non-attack damages
@@ -111,24 +119,55 @@ namespace Vintagestory.GameContent
             double rnd = api.World.Rand.NextDouble();
 
 
+            int attackTarget;
+
             if ((rnd -= 0.2) < 0)
             {
                 // Head
                 armorSlot = inv[12];
+                attackTarget = 0;
             }
             else if ((rnd -= 0.5) < 0)
             {
                 // Body
                 armorSlot = inv[13];
+                attackTarget = 1;
             }
             else
             {
                 // Legs
                 armorSlot = inv[14];
+                attackTarget = 2;
             }
 
             // Apply full damage if no armor is in this slot
-            if (armorSlot.Empty || !(armorSlot.Itemstack.Item is ItemWearable)) return damage;
+            if (armorSlot.Empty || !(armorSlot.Itemstack.Item is ItemWearable))
+            {
+                EnumCharacterDressType[] dressTargets = clothingDamageTargetsByAttackTacket[attackTarget];
+                EnumCharacterDressType target = dressTargets[api.World.Rand.Next(dressTargets.Length)];
+
+                ItemSlot targetslot = player.Entity.GearInventory[(int)target];
+                if (!targetslot.Empty)
+                {
+                    // Wolf: 10 hp damage = 10% condition loss
+                    // Ram: 10 hp damage = 2.5% condition loss
+                    // Bronze locust: 10 hp damage = 5% condition loss
+                    float mul = 0.25f;
+                    if (type == EnumDamageType.SlashingAttack) mul = 1f;
+                    if (type == EnumDamageType.PiercingAttack) mul = 0.5f;
+
+                    float diff = -damage / 100 * mul;
+
+                    if (Math.Abs(diff) > 0.05)
+                    {
+                        api.World.PlaySoundAt(ripSound, player.Entity);
+                    }
+
+                    (targetslot.Itemstack.Collectible as ItemWearable)?.ChangeCondition(targetslot, diff);
+                }
+
+                return damage;
+            }
 
             ProtectionModifiers protMods = (armorSlot.Itemstack.Item as ItemWearable).ProtectionModifiers;
 

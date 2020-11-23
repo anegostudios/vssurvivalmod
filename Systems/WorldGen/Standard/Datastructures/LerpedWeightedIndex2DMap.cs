@@ -9,7 +9,7 @@ namespace Vintagestory.ServerMods
     /// <summary>
     /// This datastructure can provide a list of weighted indices (e.g. biome index, geologic province index) for a given x/y coordinate using bilinear interpolation for coordinates with fractional values.
     /// 
-    /// This datastructure is an essential part for the generation of very large scale terrain generation maps. The challenge we are facing is that we require smooth transitions from one dicrete state to another. How do we do it? We turn it into a list of states connected with a weighting factor. E.g. 90% mountain, 10% plains. 
+    /// This datastructure is an essential part for the generation of very large scale terrain generation maps. The challenge we are facing is that we require smooth transitions from one discrete state to another. How do we do it? We turn it into a list of states connected with a weighting factor. E.g. 90% mountain, 10% plains. 
     /// This requires us to:
     /// - Turn scalar values into lists of values + weight
     /// - Perform bilienar interpolation to create smooth transitions

@@ -22,6 +22,8 @@ namespace Vintagestory.GameContent
         protected override double FloatyDialogPosition => 0.6;
         protected override double FloatyDialogAlign => 0.8;
 
+        public override double DrawOrder => 0.2;
+
         public GuiDialogBlockEntityFirepit(string dialogTitle, InventoryBase Inventory, BlockPos BlockEntityPosition,
                                            SyncedTreeAttribute tree, ICoreClientAPI capi)
             : base(dialogTitle, Inventory, BlockEntityPosition, capi)

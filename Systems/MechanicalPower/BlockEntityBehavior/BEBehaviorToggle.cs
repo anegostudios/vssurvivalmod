@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -54,19 +55,38 @@ namespace Vintagestory.GameContent.Mechanics
 
         public override float GetResistance()
         {
+            bool hasHammer = false;
             BEHelveHammer behh = Api.World.BlockAccessor.GetBlockEntity(Position.AddCopy(sides[0])) as BEHelveHammer;
             if (behh != null && behh.HammerStack != null)
             {
-                return 0.2f;
+                hasHammer = true;
             }
-
-            behh = Api.World.BlockAccessor.GetBlockEntity(Position.AddCopy(sides[1])) as BEHelveHammer;
-            if (behh != null && behh.HammerStack != null)
+            else
             {
-                return 0.2f;
+                behh = Api.World.BlockAccessor.GetBlockEntity(Position.AddCopy(sides[1])) as BEHelveHammer;
+                if (behh != null && behh.HammerStack != null)
+                {
+                    hasHammer = true;
+                }
             }
 
-            return 0.0005f;
+            //Significantly increase hammer resistance if the network is turning faster - should normally prevent helvehammering at crazy speeds;
+            float speed = this.network == null ? 0f : this.network.Speed * this.GearedRatio;
+            return hasHammer ? 0.19f + Math.Abs(speed) / 4f : 0.0005f;
+        }
+
+        public override void JoinNetwork(MechanicalNetwork network)
+        {
+            base.JoinNetwork(network);
+
+            //Speed limit when joining a toggle to an existing network: this is to prevent crazy bursts of Helvehammer speed on first connection if the network was spinning fast (with low resistances)
+            // (if the network has enough torque to drive faster than this - which is going to be uncommon - then the network speed can increase after the toggle is joined to the network)
+            float speed = network == null ? 0f : Math.Abs(network.Speed * this.GearedRatio) * 1.6f;
+            if (speed > 1f)
+            {
+                network.Speed /= speed;
+                network.clientSpeed /= speed;
+            }
         }
 
         public bool IsAttachedToBlock()

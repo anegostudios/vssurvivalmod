@@ -10,7 +10,7 @@ using Vintagestory.API.Server;
 
 namespace Vintagestory.GameContent
 {
-    public abstract class BlockEntityItemPile : BlockEntity
+    public abstract class BlockEntityItemPile : BlockEntity, IBlockEntityItemPile
     {
         public InventoryGeneric inventory;
         public object inventoryLock = new object(); // Because OnTesselation runs in another thread
@@ -62,9 +62,9 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
+        public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
-            base.FromTreeAtributes(tree, worldForResolving);
+            base.FromTreeAttributes(tree, worldForResolving);
             inventory.FromTreeAttributes(tree.GetTreeAttribute("inventory"));
             if (Api != null)
             {

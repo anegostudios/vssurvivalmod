@@ -132,7 +132,7 @@ namespace Vintagestory.GameContent
         {
             if (blockSel == null) return;
 
-            BlockEntity be = byEntity.World.BlockAccessor.GetBlockEntity(blockSel.Position.AddCopy(blockSel.Face.GetOpposite()));
+            BlockEntity be = byEntity.World.BlockAccessor.GetBlockEntity(blockSel.Position.AddCopy(blockSel.Face.Opposite));
 
             IPlayer byPlayer = null;
             if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
@@ -179,7 +179,7 @@ namespace Vintagestory.GameContent
 
             Block belowBlock = world.BlockAccessor.GetBlock(blockSel.Position.DownCopy());
 
-            if (belowBlock.CanAttachBlockAt(world.BlockAccessor, this, blockSel.Position, BlockFacing.UP))
+            if (belowBlock.CanAttachBlockAt(world.BlockAccessor, this, blockSel.Position.DownCopy(), BlockFacing.UP))
             {
                 DoPlaceBlock(world, byPlayer, blockSel, itemstack);
                 return true;

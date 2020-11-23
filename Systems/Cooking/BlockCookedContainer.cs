@@ -375,15 +375,15 @@ namespace Vintagestory.GameContent
             IBlockEntityMealContainer bemeal = api.World.BlockAccessor.GetBlockEntity(pos) as IBlockEntityMealContainer;
             if (bemeal == null) return;
 
+            if (tryMergeServingsIntoBE(bemeal, potslot)) return;
+
             bemeal.RecipeCode = GetRecipeCode(world, potslot.Itemstack);
 
-            ItemStack[] stacks = GetContents(api.World, potslot.Itemstack);
-            for (int i = 0; i < stacks.Length; i++)
+            ItemStack[] myStacks = GetNonEmptyContents(api.World, potslot.Itemstack);
+            for (int i = 0; i < myStacks.Length; i++)
             {
-                bemeal.inventory[i].Itemstack = stacks[i].Clone();
+                bemeal.inventory[i].Itemstack = myStacks[i].Clone();
             }
-
-
 
             float quantityServings = GetServings(world, potslot.Itemstack);
             float servingsToTransfer = Math.Min(quantityServings, selectedBlock.Attributes["servingCapacity"].AsFloat(1));
@@ -393,7 +393,7 @@ namespace Vintagestory.GameContent
 
             SetServings(world, potslot.Itemstack, quantityServings - servingsToTransfer);
 
-            if (quantityServings <= 0)
+            if (quantityServings - servingsToTransfer <= 0)
             {
                 Block emptyPotBlock = world.GetBlock(new AssetLocation(Attributes["emptiedBlockCode"].AsString()));
                 potslot.Itemstack = new ItemStack(emptyPotBlock);
@@ -401,6 +401,66 @@ namespace Vintagestory.GameContent
 
             potslot.MarkDirty();
             bemeal.MarkDirty(true);
+        }
+
+
+
+
+        private bool tryMergeServingsIntoBE(IBlockEntityMealContainer bemeal, ItemSlot potslot)
+        {
+            ItemStack[] myStacks = GetNonEmptyContents(api.World, potslot.Itemstack);
+
+            string hisRecipeCode = bemeal.RecipeCode;
+            ItemStack[] hisStacks = bemeal.GetNonEmptyContentStacks();
+            float hisServings = bemeal.QuantityServings;
+
+            string ownRecipeCode = GetRecipeCode(api.World, potslot.Itemstack);
+            float servingCapacity = (bemeal as BlockEntity).Block.Attributes["servingCapacity"].AsFloat(1);
+
+            // Empty
+            if (hisStacks == null || hisServings == 0) return false;
+            // Different ingredient quantity
+            if (myStacks.Length != hisStacks.Length) return true;
+            // Different recipe
+            if (ownRecipeCode != hisRecipeCode) return true;
+            // No more empty space
+            float remainingPlaceableServings = servingCapacity - hisServings;
+            if (remainingPlaceableServings <= 0) return true;
+            // Different ingredieints
+            for (int i = 0; i < myStacks.Length; i++)
+            {
+                if (!myStacks[i].Equals(api.World, hisStacks[i], GlobalConstants.IgnoredStackAttributes))
+                {
+                    return true;
+                }
+            }
+
+
+            // Ok merge transition states
+            for (int i = 0; i < hisStacks.Length; i++)
+            {
+                ItemStackMergeOperation op = new ItemStackMergeOperation(api.World, EnumMouseButton.Left, 0, EnumMergePriority.ConfirmedMerge, myStacks[i].StackSize);
+                op.SourceSlot = new DummySlot(myStacks[i]);
+                op.SinkSlot = new DummySlot(hisStacks[i]);
+                hisStacks[i].Collectible.TryMergeStacks(op);
+            }
+
+            // Now increase serving siize
+            float quantityServings = GetServings(api.World, potslot.Itemstack);
+            float movedservings = Math.Min(remainingPlaceableServings, quantityServings);
+            bemeal.QuantityServings = hisServings + movedservings;
+
+            SetServings(api.World, potslot.Itemstack, quantityServings - movedservings);
+            if (quantityServings - movedservings <= 0)
+            {
+                Block emptyPotBlock = api.World.GetBlock(new AssetLocation(Attributes["emptiedBlockCode"].AsString()));
+                potslot.Itemstack = new ItemStack(emptyPotBlock);
+            }
+
+            potslot.MarkDirty();
+            bemeal.MarkDirty(true);
+
+            return true;
         }
 
 
@@ -453,7 +513,7 @@ namespace Vintagestory.GameContent
                         op.SourceSlot = new DummySlot(myStacks[i]);
                         op.SinkSlot = new DummySlot(hisStacks[i]);
                         hisStacks[i].Collectible.TryMergeStacks(op);
-                    
+
                     }
 
                     // Now increase serving siize
@@ -480,7 +540,7 @@ namespace Vintagestory.GameContent
 
             ItemStack stack = new ItemStack(mealblock);
             (mealblock as IBlockMealContainer).SetContents(ownRecipeCode, stack, stacks, servingsToTransfer);
-            
+
             SetServings(world, potslot.Itemstack, quantityServings - servingsToTransfer);
 
             if (quantityServings - servingsToTransfer <= 0)

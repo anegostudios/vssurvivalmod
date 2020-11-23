@@ -8,7 +8,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.GameContent;
 
-namespace Vintagestory.ServerMods
+namespace Vintagestory.GameContent
 {
     public class CachedModel
     {

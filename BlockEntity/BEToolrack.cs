@@ -6,7 +6,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
-using VintagestoryAPI.Util;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -233,9 +233,9 @@ namespace Vintagestory.GameContent
 
 
 
-        public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
+        public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
-            base.FromTreeAtributes(tree, worldForResolving);
+            base.FromTreeAttributes(tree, worldForResolving);
             inventory.FromTreeAttributes(tree.GetTreeAttribute("inventory"));
             if (Api != null)
             {

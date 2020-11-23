@@ -23,6 +23,9 @@ namespace Vintagestory.GameContent
 
         BlockFacing ownFacing;
 
+        public AssetLocation FuelSoundLocation => new AssetLocation("sounds/block/charcoal");
+        public AssetLocation OreSoundLocation => new AssetLocation("sounds/block/loosestone");
+
         static BlockEntityBloomery() {
             smallMetalSparks = new SimpleParticleProperties(
                 2, 5,
@@ -242,8 +245,10 @@ namespace Vintagestory.GameContent
         }
 
 
-        public bool TryAdd(ItemSlot sourceSlot, int quantity = 1)
+        public bool TryAdd(IPlayer byPlayer , int quantity = 1)
         {
+            ItemSlot sourceSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
+
             if (IsBurning) return false;
             if (OutSlot.StackSize > 0) return false;
             if (sourceSlot.Itemstack == null) return false;
@@ -259,6 +264,9 @@ namespace Vintagestory.GameContent
 
                 sourceSlot.TryPutInto(Api.World, OreSlot, moveableq);
                 MarkDirty();
+
+                Api.World.PlaySoundAt(OreSoundLocation, Pos.X, Pos.Y, Pos.Z, byPlayer);
+
                 return prevsize != sourceSlot.StackSize;
             }
 
@@ -274,6 +282,9 @@ namespace Vintagestory.GameContent
 
                 sourceSlot.TryPutInto(Api.World, FuelSlot, moveableq);
                 MarkDirty();
+
+                Api.World.PlaySoundAt(FuelSoundLocation, Pos.X, Pos.Y, Pos.Z, byPlayer);
+
                 return prevsize != sourceSlot.StackSize;
             }
 
@@ -330,9 +341,9 @@ namespace Vintagestory.GameContent
             base.OnBlockRemoved();
         }
 
-        public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
+        public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
-            base.FromTreeAtributes(tree, worldForResolving);
+            base.FromTreeAttributes(tree, worldForResolving);
 
             bloomeryInv.FromTreeAttributes(tree);
             burning = tree.GetInt("burning") > 0;

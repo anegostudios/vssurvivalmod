@@ -85,7 +85,7 @@ namespace Vintagestory.GameContent
                         Itemstacks = workableStacklist.ToArray(),
                         GetMatchingStacks = (wi, bs, es) => {
                             BlockEntityAnvil bea = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityAnvil;
-                            return bea?.WorkItemStack == null ? null : new ItemStack[] { bea.BaseMaterial };
+                            return bea?.WorkItemStack == null ? null : new ItemStack[] { (bea.WorkItemStack.Collectible as IAnvilWorkable).GetBaseMaterial(bea.WorkItemStack) };
                         }
                     },
                     new WorldInteraction()
@@ -179,7 +179,7 @@ namespace Vintagestory.GameContent
                 BlockEntityAnvil bect = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityAnvil;
                 if (bect != null)
                 {
-                    BlockPos targetPos = blockSel.DidOffset ? blockSel.Position.AddCopy(blockSel.Face.GetOpposite()) : blockSel.Position;
+                    BlockPos targetPos = blockSel.DidOffset ? blockSel.Position.AddCopy(blockSel.Face.Opposite) : blockSel.Position;
                     double dx = byPlayer.Entity.Pos.X - (targetPos.X + blockSel.HitPosition.X);
                     double dz = byPlayer.Entity.Pos.Z - (targetPos.Z + blockSel.HitPosition.Z);
                     float angleHor = (float)Math.Atan2(dx, dz);

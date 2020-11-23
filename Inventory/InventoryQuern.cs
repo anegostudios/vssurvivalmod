@@ -54,7 +54,7 @@ namespace Vintagestory.GameContent
 
         public override void FromTreeAttributes(ITreeAttribute tree)
         {
-            slots = SlotsFromTreeAttributes(tree);
+            slots = SlotsFromTreeAttributes(tree, slots);
         }
 
         public override void ToTreeAttributes(ITreeAttribute tree)

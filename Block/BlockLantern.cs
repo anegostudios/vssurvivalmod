@@ -163,7 +163,7 @@ namespace Vintagestory.GameContent
                 string glass = byItemStack.Attributes.GetString("glass");
                 be.DidPlace(material, lining, glass);
 
-                BlockPos targetPos = blockSel.DidOffset ? blockSel.Position.AddCopy(blockSel.Face.GetOpposite()) : blockSel.Position;
+                BlockPos targetPos = blockSel.DidOffset ? blockSel.Position.AddCopy(blockSel.Face.Opposite) : blockSel.Position;
                 double dx = byPlayer.Entity.Pos.X - (targetPos.X + blockSel.HitPosition.X);
                 double dz = byPlayer.Entity.Pos.Z - (targetPos.Z + blockSel.HitPosition.Z);
                 float angleHor = (float)Math.Atan2(dx, dz);
@@ -192,7 +192,7 @@ namespace Vintagestory.GameContent
             {
                 stack.Attributes.SetString("material", "copper");
                 stack.Attributes.SetString("lining", "plain");
-                stack.Attributes.SetString("glass", "glass");
+                stack.Attributes.SetString("glass", "plain");
             }
 
             return stack;
@@ -276,9 +276,8 @@ namespace Vintagestory.GameContent
 
             dsc.AppendLine(Lang.Get("Material: {0}", Lang.Get("material-" + material)));
             dsc.AppendLine(Lang.Get("Lining: {0}", lining == "plain" ? "-" : Lang.Get("material-" + lining)));
-            dsc.AppendLine(Lang.Get("Glass: {0}", Lang.Get("glass-" + glass)));
+            if (glass != null) dsc.AppendLine(Lang.Get("Glass: {0}", Lang.Get("glass-" + glass)));
         }
-
 
         public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing)
         {
@@ -291,5 +290,55 @@ namespace Vintagestory.GameContent
 
             return base.GetRandomColor(capi, pos, facing);
         }
-    }
+
+        public override List<ItemStack> GetHandBookStacks(ICoreClientAPI capi)
+        {
+            if (Code == null) return null;
+
+            bool inCreativeTab = CreativeInventoryTabs != null && CreativeInventoryTabs.Length > 0;
+            bool inCreativeTabStack = CreativeInventoryStacks != null && CreativeInventoryStacks.Length > 0;
+            bool explicitlyIncluded = Attributes?["handbook"]?["include"].AsBool() == true;
+            bool explicitlyExcluded = Attributes?["handbook"]?["exclude"].AsBool() == true;
+
+            if (explicitlyExcluded) return null;
+            if (!explicitlyIncluded && !inCreativeTab && !inCreativeTabStack) return null;
+
+            List<ItemStack> stacks = new List<ItemStack>();
+
+            if (inCreativeTabStack)
+            {
+                for (int i = 0; i < CreativeInventoryStacks.Length; i++)
+                {
+                    for (int j = 0; j < CreativeInventoryStacks[i].Stacks.Length; j++)
+                    {
+                        ItemStack stack = CreativeInventoryStacks[i].Stacks[j].ResolvedItemstack;
+                        stack.ResolveBlockOrItem(capi.World);
+
+                        stack = stack.Clone();
+                        stack.StackSize = stack.Collectible.MaxStackSize;
+
+                        if (!stacks.Any((stack1) => stack1.Equals(stack)))
+                        {
+                            stacks.Add(stack);
+                            ItemStack otherGlass = stack.Clone();
+                            otherGlass.Attributes.SetString("glass", "plain");
+                            stacks.Add(otherGlass);
+                            ItemStack otherLiningSilver = stack.Clone();
+                            ItemStack otherLiningGold = stack.Clone();
+                            otherLiningSilver.Attributes.SetString("lining", "silver");
+                            otherLiningGold.Attributes.SetString("lining", "gold");
+                            stacks.Add(otherLiningSilver);
+                            stacks.Add(otherLiningGold);
+                        }
+                    }
+                }
+            }
+            else
+            {
+                stacks.Add(new ItemStack(this));
+            }
+
+            return stacks;
+        }
+                    }
 }

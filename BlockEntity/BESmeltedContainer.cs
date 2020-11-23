@@ -48,9 +48,9 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldForResolve)
+        public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolve)
         {
-            base.FromTreeAtributes(tree, worldForResolve);
+            base.FromTreeAttributes(tree, worldForResolve);
 
             contents = tree.GetItemstack("contents");
             units = tree.GetInt("units");

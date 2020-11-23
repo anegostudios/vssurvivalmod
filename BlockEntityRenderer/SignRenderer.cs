@@ -34,7 +34,7 @@ namespace Vintagestory.GameContent
 
         public double RenderOrder
         {
-            get { return 0.5; }
+            get { return 1.1; } // 11.11.2020 - this was 0.5 but that causes issues with signs + chest animation
         }
 
         public int RenderRange
@@ -106,7 +106,7 @@ namespace Vintagestory.GameContent
 
             font.UnscaledFontsize = fontSize / RuntimeEnv.GUIScale;
 
-            loadedTexture = api.Gui.TextTexture.GenTextTexture(text, font, TextWidth, TextHeight, null, EnumTextOrientation.Center);
+            loadedTexture = api.Gui.TextTexture.GenTextTexture(text, font, TextWidth, TextHeight, null, EnumTextOrientation.Center, false);
         }
 
 
@@ -120,7 +120,7 @@ namespace Vintagestory.GameContent
             Vec3d camPos = api.World.Player.Entity.CameraPos;
 
             rpi.GlDisableCullFace();
-            rpi.GlToggleBlend(true);
+            rpi.GlToggleBlend(true, EnumBlendMode.PremultipliedAlpha);
 
             IStandardShaderProgram prog = rpi.PreparedStandardShader(pos.X, pos.Y, pos.Z);
 
@@ -141,6 +141,8 @@ namespace Vintagestory.GameContent
 
             rpi.RenderMesh(quadModelRef);
             prog.Stop();
+
+            rpi.GlToggleBlend(true, EnumBlendMode.Standard);
         }
 
         public void Dispose()

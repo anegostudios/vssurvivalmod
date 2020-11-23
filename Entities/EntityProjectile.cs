@@ -180,11 +180,14 @@ namespace Vintagestory.GameContent
 
                 if (canDamage)
                 {
+                    float dmg = Damage;
+                    dmg *= FiredBy.Stats.GetBlended("rangedWeaponsDamage");
+
                     bool didDamage = entity.ReceiveDamage(new DamageSource() {
                         Source = EnumDamageSource.Entity,
                         SourceEntity = FiredBy == null ? this : FiredBy,
                         Type = EnumDamageType.PiercingAttack
-                    }, Damage);
+                    }, dmg);
 
                     float kbresist = entity.Properties.KnockbackResistance;
                     entity.SidedPos.Motion.Add(kbresist * pos.Motion.X * Weight, kbresist * pos.Motion.Y * Weight, kbresist * pos.Motion.Z * Weight);

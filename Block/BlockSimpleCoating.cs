@@ -55,7 +55,7 @@ namespace Vintagestory.GameContent
 
         bool TryAttachTo(IWorldAccessor world, BlockPos blockpos, BlockFacing onBlockFace)
         {
-            BlockFacing oppositeFace = onBlockFace.GetOpposite();
+            BlockFacing oppositeFace = onBlockFace.Opposite;
 
             BlockPos attachingBlockPos = blockpos.AddCopy(oppositeFace);
             Block block = world.BlockAccessor.GetBlock(world.BlockAccessor.GetBlockId(attachingBlockPos));
@@ -78,7 +78,7 @@ namespace Vintagestory.GameContent
 
             Block block = world.BlockAccessor.GetBlock(blockId);
 
-            return block.CanAttachBlockAt(world.BlockAccessor, this, pos.AddCopy(facing), facing.GetOpposite());
+            return block.CanAttachBlockAt(world.BlockAccessor, this, pos.AddCopy(facing), facing.Opposite);
         }
 
         public override bool CanAttachBlockAt(IBlockAccessor world, Block block, BlockPos pos, BlockFacing blockFace, Cuboidi attachmentArea = null)
@@ -106,7 +106,7 @@ namespace Vintagestory.GameContent
             BlockFacing facing = BlockFacing.FromCode(LastCodePart());
             if (facing.Axis == axis)
             {
-                return CodeWithParts(facing.GetOpposite().Code);
+                return CodeWithParts(facing.Opposite.Code);
             }
             return Code;
         }

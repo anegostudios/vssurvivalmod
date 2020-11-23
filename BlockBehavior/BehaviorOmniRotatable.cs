@@ -67,7 +67,7 @@ namespace Vintagestory.ServerMods
             if (mode == EnumSlabPlaceMode.Horizontal)
             {
                 string side = blockSel.HitPosition.Y < 0.5 ? "down" : "up";
-                if (blockSel.Face.IsVertical) side = blockSel.Face.GetOpposite().Code;
+                if (blockSel.Face.IsVertical) side = blockSel.Face.Opposite.Code;
 
                 blockCode = block.CodeWithVariant("rot", side);
                 orientedBlock = world.BlockAccessor.GetBlock(blockCode);
@@ -83,7 +83,7 @@ namespace Vintagestory.ServerMods
             {
                 BlockFacing[] hv = Block.SuggestedHVOrientation(byPlayer, blockSel);
                 string side = hv[0].Code;
-                if (blockSel.Face.IsHorizontal) side = blockSel.Face.GetOpposite().Code;
+                if (blockSel.Face.IsHorizontal) side = blockSel.Face.Opposite.Code;
 
                 blockCode = block.CodeWithVariant("rot", side);
 
@@ -111,7 +111,7 @@ namespace Vintagestory.ServerMods
                         case EnumAxis.X:
                             if (z < 0.3 && y < 0.3)
                             {
-                                blockCode = block.CodeWithVariant("rot", blockSel.Face.GetOpposite().Code);
+                                blockCode = block.CodeWithVariant("rot", blockSel.Face.Opposite.Code);
                             }
                             else if (z > y)
                             {
@@ -126,7 +126,7 @@ namespace Vintagestory.ServerMods
                         case EnumAxis.Y:
                             if (z < 0.3 && x < 0.3)
                             {
-                                blockCode = block.CodeWithVariant("rot", blockSel.Face.GetOpposite().Code);
+                                blockCode = block.CodeWithVariant("rot", blockSel.Face.Opposite.Code);
                             }
                             else if (z > x)
                             {
@@ -141,7 +141,7 @@ namespace Vintagestory.ServerMods
                         case EnumAxis.Z:
                             if (x < 0.3 && y < 0.3)
                             {
-                                blockCode = block.CodeWithVariant("rot", blockSel.Face.GetOpposite().Code);
+                                blockCode = block.CodeWithVariant("rot", blockSel.Face.Opposite.Code);
                             }
                             else if (x > y)
                             {
@@ -158,7 +158,7 @@ namespace Vintagestory.ServerMods
                 {
                     if (blockSel.Face.IsVertical)
                     {
-                        blockCode = block.CodeWithVariant("rot", blockSel.Face.GetOpposite().Code);
+                        blockCode = block.CodeWithVariant("rot", blockSel.Face.Opposite.Code);
                     }
                     else
                     {
@@ -180,7 +180,7 @@ namespace Vintagestory.ServerMods
                 {
                     if (facing == "block")
                     {
-                        h = blockSel.Face.GetOpposite().Code;
+                        h = blockSel.Face.Opposite.Code;
                     }
                     else
                     {
@@ -282,7 +282,7 @@ namespace Vintagestory.ServerMods
         }
 
 
-        public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropChanceMultiplier, ref EnumHandling handling)
+        public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, ref float dropChanceMultiplier, ref EnumHandling handling)
         {
             if (dropChance < 1)
             {
@@ -293,7 +293,7 @@ namespace Vintagestory.ServerMods
                 }
             }
 
-            return base.GetDrops(world, pos, byPlayer, dropChanceMultiplier, ref handling);
+            return base.GetDrops(world, pos, byPlayer, ref dropChanceMultiplier, ref handling);
         }
 
         public override AssetLocation GetRotatedBlockCode(int angle, ref EnumHandling handling)
@@ -311,7 +311,7 @@ namespace Vintagestory.ServerMods
             handling = EnumHandling.PreventDefault;
 
             BlockFacing curFacing = BlockFacing.FromCode(block.Variant["rot"]);
-            if (curFacing.Axis == axis) return block.CodeWithVariant("rot", curFacing.GetOpposite().Code);
+            if (curFacing.Axis == axis) return block.CodeWithVariant("rot", curFacing.Opposite.Code);
 
             return block.Code;
         }
@@ -321,10 +321,10 @@ namespace Vintagestory.ServerMods
             handling = EnumHandling.PreventDefault;
 
             BlockFacing curFacing = BlockFacing.FromCode(block.Variant["rot"]);
-            if (curFacing.IsVertical) return block.CodeWithVariant("rot", curFacing.GetOpposite().Code);
+            if (curFacing.IsVertical) return block.CodeWithVariant("rot", curFacing.Opposite.Code);
 
             curFacing = BlockFacing.FromCode(block.Variant["v"]);
-            if (curFacing != null && curFacing.IsVertical) return block.CodeWithParts(curFacing.GetOpposite().Code, block.LastCodePart());
+            if (curFacing != null && curFacing.IsVertical) return block.CodeWithParts(curFacing.Opposite.Code, block.LastCodePart());
 
 
             return block.Code;

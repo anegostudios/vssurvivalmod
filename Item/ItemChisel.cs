@@ -176,17 +176,28 @@ namespace Vintagestory.GameContent
         {
             if (block is BlockChisel) return true;
 
-            // Never non cubic blocks or blocks that have chiseling explicitly disallowed
-            if (block.DrawType != EnumDrawType.Cube && block.Attributes?["canChisel"].AsBool(false) != true) return false;
+            // First priority: microblockChiseling disabled
+            ITreeAttribute worldConfig = api.World.Config;
+            string mode = worldConfig.GetString("microblockChiseling");
+            if (mode == "off") return false;
+
+
+            // Second priority: canChisel flag
+            bool canChiselSet = block.Attributes?["canChisel"].Exists == true;
+            bool canChisel = block.Attributes?["canChisel"].AsBool(false) == true;
+
+            if (canChisel) return true;
+            if (canChiselSet && !canChisel) return false;
+
+
+            // Third prio: Never non cubic blocks
+            if (block.DrawType != EnumDrawType.Cube) return false;
             
             // Otherwise if in creative mode, sure go ahead
             if (player?.WorldData.CurrentGameMode == EnumGameMode.Creative) return true;
 
-            // Lastly the config depends
-            ITreeAttribute worldConfig = api.World.Config;
-            string mode = worldConfig.GetString("microblockChiseling");
 
-            if (mode == "off") return false;
+            // Lastly go by the config value
             if (mode == "stonewood")
             {
                 // Saratys definitely required Exception to the rule #312
@@ -197,6 +208,7 @@ namespace Vintagestory.GameContent
 
             return true;
         }
+        
 
         public void OnBlockInteract(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, bool isBreak, ref EnumHandHandling handling)
         {

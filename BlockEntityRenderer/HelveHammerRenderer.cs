@@ -36,7 +36,6 @@ namespace Vintagestory.GameContent
             this.pos = pos;
             this.be = be;
 
-            //mesh.Rgba2 = null;
             meshref = coreClientAPI.Render.UploadMesh(mesh);
         }
 
@@ -61,6 +60,7 @@ namespace Vintagestory.GameContent
             
             float rotY = be.facing.HorizontalAngleIndex * 90;
             float offx = be.facing == BlockFacing.NORTH || be.facing == BlockFacing.WEST ? -1 / 16f : 17 / 16f;
+
             ModelMat
                     .Identity()
                     .Translate(pos.X - camPos.X, pos.Y - camPos.Y, pos.Z - camPos.Z)
@@ -75,7 +75,6 @@ namespace Vintagestory.GameContent
             {
                 IStandardShaderProgram prog = rpi.PreparedStandardShader(pos.X, pos.Y, pos.Z);
                 prog.Tex2D = api.BlockTextureAtlas.AtlasTextureIds[0];
-
 
                 prog.ModelMatrix = ModelMat.Values;
                 prog.ViewMatrix = rpi.CameraMatrixOriginf;

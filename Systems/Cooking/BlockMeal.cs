@@ -32,6 +32,8 @@ namespace Vintagestory.GameContent
         InventoryBase inventory { get; }
         float QuantityServings { get; set; }
 
+        ItemStack[] GetNonEmptyContentStacks(bool cloned = true);
+
         void MarkDirty(bool redrawonclient);
     }
 

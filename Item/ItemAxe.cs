@@ -78,7 +78,7 @@ namespace Vintagestory.GameContent
             return base.OnBlockBreaking(player, blockSel, itemslot, remainingResistance, dt / treeResistance, counter);
         }
 
-        public override bool OnBlockBrokenWith(IWorldAccessor world, Entity byEntity, ItemSlot itemslot, BlockSelection blockSel)
+        public override bool OnBlockBrokenWith(IWorldAccessor world, Entity byEntity, ItemSlot itemslot, BlockSelection blockSel, float dropQuantityMultiplier = 1)
         {
             IPlayer byPlayer = null;
             if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
@@ -98,7 +98,7 @@ namespace Vintagestory.GameContent
 
             if (foundPositions.Count == 0)
             {
-                return base.OnBlockBrokenWith(world, byEntity, itemslot, blockSel);
+                return base.OnBlockBrokenWith(world, byEntity, itemslot, blockSel, dropQuantityMultiplier);
             }
 
             bool damageable = DamagedBy != null && DamagedBy.Contains(EnumItemDamageSource.BlockBreaking);
@@ -162,10 +162,6 @@ namespace Vintagestory.GameContent
                 api.World.PlaySoundAt(new AssetLocation("sounds/effect/treefell"), pos.X, pos.Y, pos.Z, byPlayer, false, 32, GameMath.Clamp(blocksbroken / 100f, 0.25f, 1));
             }
             
-
-            //`byPlayer.Entity.GetBehavior<EntityBehaviorHunger>()?.ConsumeSaturation(GameMath.Sqrt(foundPositions.Count));
-            
-
             return true;
         }
 
@@ -184,7 +180,7 @@ namespace Vintagestory.GameContent
 
             if (block.Code == null) return foundPositions;
 
-            if (block.Code.Path.StartsWith("beehive-inlog-" + treeType) || block.Code.Path.StartsWith("log-resin")|| block.Code.Path.StartsWith("log-grown") || block.Code.Path.StartsWith("bamboo-grown-brown-segment") || block.Code.Path.StartsWith("bamboo-grown-green-segment"))
+            if (block.Code.Path.StartsWith("beehive-inlog-" + treeType) || block.Code.Path.StartsWith("log-resin") || block.Code.Path.StartsWith("log-grown") || block.Code.Path.StartsWith("bamboo-grown-brown-segment") || block.Code.Path.StartsWith("bamboo-grown-green-segment"))
             {
                 treeType = block.FirstCodePart(2);
 
@@ -203,6 +199,7 @@ namespace Vintagestory.GameContent
 
             string logcode = "log-grown-" + treeType;
             string logcode2 = "log-resin-" + treeType;
+            string logcode3 = "log-resinharvested-" + treeType;
             string leavescode = "leaves-grown-" + treeType;
             string leavesbranchycode = "leavesbranchy-grown-" + treeType;
 
@@ -232,7 +229,7 @@ namespace Vintagestory.GameContent
                     block = world.BlockAccessor.GetBlock(neibPos);
                     if (block.Code == null) continue;
 
-                    if ((treeType == "fern" && block is BlockFernTree) || block.Code.Path.StartsWith(logcode) || block.Code.Path.StartsWith(logcode2) || block.Code.Path.StartsWith("bamboo-grown-brown-segment") || block.Code.Path.StartsWith("bamboo-grown-green-segment"))
+                    if ((treeType == "fern" && block is BlockFernTree) || block.Code.Path.StartsWith(logcode) || block.Code.Path.StartsWith(logcode2) || block.Code.Path.StartsWith(logcode3) || block.Code.Path.StartsWith("bamboo-grown-brown-segment") || block.Code.Path.StartsWith("bamboo-grown-green-segment"))
                     {
                         if (pos.W < 2) continue;
 

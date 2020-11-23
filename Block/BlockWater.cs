@@ -40,7 +40,7 @@ namespace Vintagestory.GameContent
             if (freezable && offThreadRandom.NextDouble() < 0.6)
             {
                 ClimateCondition conds = world.BlockAccessor.GetClimateAt(pos, EnumGetClimateMode.NowValues);
-                if (conds.Temperature < -4)
+                if (conds != null && conds.Temperature < -4)
                 {
                     int rainY = world.BlockAccessor.GetRainMapHeightAt(pos);
                     if (rainY <= pos.Y)

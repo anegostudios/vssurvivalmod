@@ -20,9 +20,9 @@ namespace Vintagestory.GameContent.Mechanics
             base.OnBlockPlaced(byItemStack);
         }
 
-        public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor world)
+        public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor world)
         {
-            base.FromTreeAtributes(tree, world);
+            base.FromTreeAttributes(tree, world);
             int cx = tree.GetInt("cx");
             int cy = tree.GetInt("cy");
             int cz = tree.GetInt("cz");
@@ -34,8 +34,7 @@ namespace Vintagestory.GameContent.Mechanics
             else
             {
                 Centre = new BlockPos(cx, cy, cz);
-                IGearAcceptor beg = world.BlockAccessor.GetBlockEntity(Centre) as IGearAcceptor;
-                if (beg != null) beg.RemoveGearAt(this.Pos);
+                if (world.BlockAccessor.GetBlockEntity(Centre) is IGearAcceptor beg) beg.RemoveGearAt(this.Pos);
             }
         }
 
@@ -50,13 +49,18 @@ namespace Vintagestory.GameContent.Mechanics
 
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder sb)
         {
-            if (!Api.World.EntityDebugMode) return;
-            if (Centre == null)
+            if (Api.World.EntityDebugMode)
             {
-                sb.AppendLine("null centre");
-                return;
+                if (Centre == null)
+                {
+                    sb.AppendLine("null centre");
+                    return;
+                }
+                sb.AppendLine("centre at " + Centre);
             }
-            sb.AppendLine("centre at " + Centre);
+
+            if (Centre == null) return;
+
             BlockEntity be = this.Api.World?.BlockAccessor.GetBlockEntity(Centre);
             if (be == null) sb.AppendLine("null be");
             be?.GetBlockInfo(forPlayer, sb);

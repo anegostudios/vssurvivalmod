@@ -39,9 +39,9 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
+        public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
         {
-            base.FromTreeAtributes(tree, worldAccessForResolve);
+            base.FromTreeAttributes(tree, worldAccessForResolve);
 
             SecondsWateringLeft = tree.GetFloat("secondsWateringLeft");
             MeshAngle = tree.GetFloat("meshAngle", MeshAngle);

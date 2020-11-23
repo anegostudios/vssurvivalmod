@@ -26,7 +26,7 @@ namespace Vintagestory.GameContent
         public Vec3d MountPosition
         {
             get {
-                BlockFacing facing = this.facing.GetOpposite();
+                BlockFacing facing = this.facing.Opposite;
 
                 if (facing == BlockFacing.NORTH) return Pos.ToVec3d().Add(0.5, y2, 1);
                 if (facing == BlockFacing.EAST) return Pos.ToVec3d().Add(0, y2, 0.5);
@@ -101,9 +101,9 @@ namespace Vintagestory.GameContent
 
         
 
-        public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
+        public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
-            base.FromTreeAtributes(tree, worldForResolving);
+            base.FromTreeAttributes(tree, worldForResolving);
         }
 
 

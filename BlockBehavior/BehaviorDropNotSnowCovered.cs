@@ -10,7 +10,7 @@ namespace Vintagestory.GameContent
         {
         }
 
-        public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropChanceMultiplier, ref EnumHandling handling)
+        public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, ref float dropChanceMultiplier, ref EnumHandling handling)
         {
             string curcover = block.Variant["cover"];
             
@@ -21,7 +21,7 @@ namespace Vintagestory.GameContent
                 return new ItemStack[] { new ItemStack(world.GetBlock(block.CodeWithVariant("cover", "free"))) };
             }
 
-            return base.GetDrops(world, pos, byPlayer, dropChanceMultiplier, ref handling);
+            return base.GetDrops(world, pos, byPlayer, ref dropChanceMultiplier, ref handling);
         }
 
         public override void OnBlockBroken(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, ref EnumHandling handling)

@@ -23,14 +23,14 @@ namespace Vintagestory.GameContent
         public BlockFacing OtherPartPos()
         {
             BlockFacing facing = BlockFacing.FromCode(LastCodePart());
-            if (LastCodePart(1) == "feet") facing = facing.GetOpposite();
+            if (LastCodePart(1) == "feet") facing = facing.Opposite;
             return facing;
         }
 
         public BlockPos OtherPartPos(IWorldAccessor world, BlockPos pos)
         {
             BlockFacing facing = BlockFacing.FromCode(LastCodePart());
-            if (LastCodePart(1) == "feet") facing = facing.GetOpposite();
+            if (LastCodePart(1) == "feet") facing = facing.Opposite;
 
             return pos.AddCopy(facing);
         }
@@ -45,7 +45,7 @@ namespace Vintagestory.GameContent
 
                 if (!CanPlaceBlock(world, byPlayer, new BlockSelection() { Position = secondPos, Face = blockSel.Face }, ref failureCode)) return false;
 
-                string code = horVer[0].GetOpposite().Code;
+                string code = horVer[0].Opposite.Code;
 
                 Block orientedBlock = world.BlockAccessor.GetBlock(CodeWithParts("head", code));
                 orientedBlock.DoPlaceBlock(world, byPlayer, new BlockSelection() { Position = secondPos, Face = blockSel.Face }, itemstack);
@@ -66,7 +66,7 @@ namespace Vintagestory.GameContent
 
                 if (LastCodePart(1) == "feet")
                 {
-                    BlockFacing facing = BlockFacing.FromCode(LastCodePart()).GetOpposite();
+                    BlockFacing facing = BlockFacing.FromCode(LastCodePart()).Opposite;
                     pos = pos.AddCopy(facing);
                 }
 
@@ -91,7 +91,7 @@ namespace Vintagestory.GameContent
             string headfoot = LastCodePart(1);
 
             BlockFacing facing = BlockFacing.FromCode(LastCodePart());
-            if (LastCodePart(1) == "feet") facing = facing.GetOpposite();
+            if (LastCodePart(1) == "feet") facing = facing.Opposite;
 
             Block secondPlock = world.BlockAccessor.GetBlock(pos.AddCopy(facing));
 
@@ -137,7 +137,7 @@ namespace Vintagestory.GameContent
             BlockFacing facing = BlockFacing.FromCode(LastCodePart());
             if (facing.Axis == axis)
             {
-                return CodeWithParts(facing.GetOpposite().Code);
+                return CodeWithParts(facing.Opposite.Code);
             }
             return Code;
         }
@@ -153,7 +153,7 @@ namespace Vintagestory.GameContent
         {
             if (LastCodePart(1) == "feet")
             {
-                BlockFacing facing = BlockFacing.FromCode(LastCodePart()).GetOpposite();
+                BlockFacing facing = BlockFacing.FromCode(LastCodePart()).Opposite;
                 pos = pos.AddCopy(facing);
             }
 
@@ -188,7 +188,7 @@ namespace Vintagestory.GameContent
 
             if (LastCodePart(1) == "feet")
             {
-                BlockFacing facing = BlockFacing.FromCode(LastCodePart()).GetOpposite();
+                BlockFacing facing = BlockFacing.FromCode(LastCodePart()).Opposite;
                 pos = pos.AddCopy(facing);
             }
 

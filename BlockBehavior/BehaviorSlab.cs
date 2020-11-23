@@ -31,7 +31,7 @@ namespace Vintagestory.GameContent
 
 
 
-        public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier, ref EnumHandling handled)
+        public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, ref float dropQuantityMultiplier, ref EnumHandling handled)
         {
             handled = EnumHandling.PreventDefault;
             return new ItemStack[] { new ItemStack(world.BlockAccessor.GetBlock(block.CodeWithParts("down"))) };

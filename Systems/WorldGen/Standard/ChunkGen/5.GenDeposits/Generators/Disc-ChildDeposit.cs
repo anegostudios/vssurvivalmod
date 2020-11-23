@@ -76,7 +76,7 @@ namespace Vintagestory.ServerMods
                 int index3d = ((targetPos.Y % chunksize) * chunksize + lz) * chunksize + lx;
                 int blockId = chunks[targetPos.Y / chunksize].Blocks[index3d];
                 
-                ResolvedDepositBlock resolvedPlaceBlock = null;
+                ResolvedDepositBlock resolvedPlaceBlock;
 
                 if (placeBlockByInBlockId.TryGetValue(blockId, out resolvedPlaceBlock))
                 {

@@ -231,6 +231,8 @@ namespace Vintagestory.ServerMods
 
             
             beforeGenDeposit(heremapchunk, depoCenterPos);
+
+            if (!shouldGenDepositHere(depoCenterPos)) return;
             
             // Ok generate
             float th = Thickness.nextFloat(1, DepositRand);
@@ -245,8 +247,8 @@ namespace Vintagestory.ServerMods
 
             bool shouldGenSurfaceDeposit = DepositRand.NextFloat() <= GenSurfaceBlockChance && SurfaceBlock != null;
 
-            int lx = GameMath.Mod(depoCenterPos.X, chunksize);
-            int lz = GameMath.Mod(depoCenterPos.Z, chunksize);
+            int lx;
+            int lz;
             int distx, distz;
 
             // No need to go search far beyond chunk boundaries
@@ -324,7 +326,6 @@ namespace Vintagestory.ServerMods
                             else
                             {
                                 chunks[targetPos.Y / chunksize].Blocks[index3d] = placeblock.BlockId;
-                                //placed++;
                             }
 
                             if (variant.ChildDeposits != null)
@@ -370,6 +371,10 @@ namespace Vintagestory.ServerMods
             //Console.WriteLine("placed {0} blocks", placed);
         }
 
+        protected virtual bool shouldGenDepositHere(BlockPos depoCenterPos)
+        {
+            return true;
+        }
 
         protected abstract void beforeGenDeposit(IMapChunk mapChunk, BlockPos pos);
 
@@ -415,8 +420,6 @@ namespace Vintagestory.ServerMods
 
             double quantityOres = totalFactor * absAvgQuantity;
 
-            //world.Logger.Notification(val.Key + "rock factor: " + rockFactor);
-
             double relq = quantityOres / qchunkblocks;
             ppt = relq * 1000;
         }
@@ -427,9 +430,7 @@ namespace Vintagestory.ServerMods
         {
             HashSet<int> oreBearingBlocks = new HashSet<int>();
 
-            DepositVariant deposit = variant;
-            if (deposit == null) return 0;
-            if (deposit.parentDeposit != null) deposit = deposit.parentDeposit;
+            if (variant == null) return 0;
             
             int[] blocks = GetBearingBlocks();
             if (blocks == null) return 1;

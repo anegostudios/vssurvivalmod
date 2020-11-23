@@ -13,8 +13,8 @@ namespace Vintagestory.GameContent
             {
                 return false;
             }
-            BlockPos belowPos = blockSel.Position.DownCopy();
-            Block belowBlock = world.BlockAccessor.GetBlock(belowPos);
+            //BlockPos belowPos = blockSel.Position.DownCopy();
+            //Block belowBlock = world.BlockAccessor.GetBlock(belowPos);
             //if (!belowPos.CanAttachBlockAt(world,)
 
             // Place by looking direction
@@ -50,19 +50,24 @@ namespace Vintagestory.GameContent
 
         private bool TryAttachPlaceToHoriontal(IWorldAccessor world, IPlayer byPlayer, BlockPos position, BlockFacing toFacing, BlockFacing targetFacing)
         {
-            Block neibBlock = world.BlockAccessor.GetBlock(position.AddCopy(toFacing));
+            BlockPos neibPos = position.AddCopy(toFacing);
+            Block neibBlock = world.BlockAccessor.GetBlock(neibPos);
             if (!(neibBlock is BlockRails)) return false;
             
-            BlockFacing fromFacing = toFacing.GetOpposite();
+            BlockFacing fromFacing = toFacing.Opposite;
             BlockFacing[] neibDirFacings = getFacingsFromType(neibBlock.Variant["type"]);
             // Already attached, do default placement behavior
-            if (neibDirFacings[0] == fromFacing || neibDirFacings[1] == fromFacing) return false;
+            if (world.BlockAccessor.GetBlock(neibPos.AddCopy(neibDirFacings[0])) is BlockRails && world.BlockAccessor.GetBlock(neibPos.AddCopy(neibDirFacings[1])) is BlockRails)
+            {
+                return false;
+            }
+
 
             BlockFacing neibFreeFace = getOpenedEndedFace(neibDirFacings, world, position.AddCopy(toFacing));
             // Already fully attached, don't bend rail
             if (neibFreeFace == null) return false;
 
-            Block blockToPlace = getRailBlock(world, "curved_", fromFacing, targetFacing);
+            Block blockToPlace = getRailBlock(world, "curved_", toFacing, targetFacing);
 
             if (blockToPlace != null)
             {
@@ -70,11 +75,14 @@ namespace Vintagestory.GameContent
                 {
                     return false;
                 }
+                return true;
             }
 
             string dirs = neibBlock.Variant["type"].Split('_')[1];
             BlockFacing neibKeepFace = (dirs[0] == neibFreeFace.Code[0]) ? BlockFacing.FromFirstLetter(dirs[1]) : BlockFacing.FromFirstLetter(dirs[0]);
             Block block = getRailBlock(world, "curved_", neibKeepFace, fromFacing);
+            if (block == null) return false;
+
             block.DoPlaceBlock(world, byPlayer, new BlockSelection() { Position = position.AddCopy(toFacing), Face = BlockFacing.UP }, null);
 
             return false;

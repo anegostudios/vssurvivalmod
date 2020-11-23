@@ -27,8 +27,8 @@ namespace Vintagestory.GameContent
             BlockPos pos = blockSel.Position;
             Block blockAtPos = world.BlockAccessor.GetBlock(pos);
 
-            BlockPos aimedAtPos = blockSel.DidOffset ? pos.AddCopy(blockSel.Face.GetOpposite()) : blockSel.Position;
-            Block aimedAtBlock = blockSel.DidOffset ? world.BlockAccessor.GetBlock(pos.AddCopy(blockSel.Face.GetOpposite())) : blockAtPos;
+            BlockPos aimedAtPos = blockSel.DidOffset ? pos.AddCopy(blockSel.Face.Opposite) : blockSel.Position;
+            Block aimedAtBlock = blockSel.DidOffset ? world.BlockAccessor.GetBlock(pos.AddCopy(blockSel.Face.Opposite)) : blockAtPos;
             
             BlockFacing[] horVer = Block.SuggestedHVOrientation(byPlayer, blockSel);
             AssetLocation blockCode = block.CodeWithParts(horVer[0].Code);
@@ -77,7 +77,7 @@ namespace Vintagestory.GameContent
 
 
             // Otherwise maybe on the other side?
-            blockCode = block.CodeWithParts(blockSel.Face.GetOpposite().Code);
+            blockCode = block.CodeWithParts(blockSel.Face.Opposite.Code);
             orientedBlock = world.BlockAccessor.GetBlock(blockCode);
             if (orientedBlock != null && HasSupport(orientedBlock, world.BlockAccessor, pos) && orientedBlock.CanPlaceBlock(world, byPlayer, blockSel, ref failureCode))
             {
@@ -208,7 +208,7 @@ namespace Vintagestory.GameContent
 
         public bool SideSolid(IBlockAccessor blockAccess, BlockPos pos, BlockFacing facing)
         {
-            return blockAccess.GetBlock(pos.X + facing.Normali.X, pos.Y, pos.Z + facing.Normali.Z).SideSolid[facing.GetOpposite().Index];
+            return blockAccess.GetBlock(pos.X + facing.Normali.X, pos.Y, pos.Z + facing.Normali.Z).CanAttachBlockAt(blockAccess, block, pos.AddCopy(facing), facing.Opposite);
         }
 
 
@@ -225,7 +225,7 @@ namespace Vintagestory.GameContent
         }
         
 
-        public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier, ref EnumHandling handled)
+        public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, ref float dropQuantityMultiplier, ref EnumHandling handled)
         {
             handled = EnumHandling.PreventDefault;
             return new ItemStack[] { new ItemStack(world.BlockAccessor.GetBlock(block.CodeWithParts(dropBlockFace))) };
@@ -256,7 +256,7 @@ namespace Vintagestory.GameContent
             BlockFacing facing = BlockFacing.FromCode(block.LastCodePart());
             if (facing.Axis == axis)
             {
-                return block.CodeWithParts(facing.GetOpposite().Code);
+                return block.CodeWithParts(facing.Opposite.Code);
             }
             return block.Code;
         }

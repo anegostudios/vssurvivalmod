@@ -31,6 +31,7 @@ namespace Vintagestory.GameContent.Mechanics
             { "angledgearcage", typeof(AngledCageGearRenderer) },
             { "transmission", typeof(TransmissionBlockRenderer) },
             { "clutch", typeof(ClutchBlockRenderer) },
+            { "pulverizer", typeof(PulverizerRenderer) },
             { "autorotor", typeof(CreativeRotorRenderer) }
         };
         

@@ -30,7 +30,7 @@ namespace Vintagestory.GameContent
 
 
 
-        public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier, ref EnumHandling handled)
+        public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, ref float dropQuantityMultiplier, ref EnumHandling handled)
         {
             handled = EnumHandling.PreventDefault;
             return new ItemStack[] { new ItemStack(world.BlockAccessor.GetBlock(block.CodeWithParts("up", "north"))) };
@@ -59,7 +59,7 @@ namespace Vintagestory.GameContent
             BlockFacing facing = BlockFacing.FromCode(block.LastCodePart());
             if (facing.Axis == axis)
             {
-                return block.CodeWithParts(facing.GetOpposite().Code);
+                return block.CodeWithParts(facing.Opposite.Code);
             }
             return block.Code;
         }

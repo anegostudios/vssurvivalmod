@@ -96,7 +96,7 @@ namespace Vintagestory.GameContent
                     world.BlockAccessor.SetBlock(block.Id, blockSel.Position);
 
                     BlockEntityStaticTranslocator be = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityStaticTranslocator;
-                    if (be != null) be.DoRepair();
+                    if (be != null) be.DoRepair(byPlayer);
 
                     return true;
                 }
@@ -109,7 +109,7 @@ namespace Vintagestory.GameContent
 
                 if (!be.FullyRepaired && slot.Itemstack.Collectible is ItemTemporalGear)
                 {
-                    be.DoRepair();
+                    be.DoRepair(byPlayer);
                     slot.TakeOut(1);
                     world.PlaySoundAt(new AssetLocation("sounds/effect/latch"), blockSel.Position.X + 0.5, blockSel.Position.Y, blockSel.Position.Z + 0.5, byPlayer, true, 16);
 
@@ -226,7 +226,7 @@ namespace Vintagestory.GameContent
             BlockFacing facing = BlockFacing.FromCode(LastCodePart());
             if (facing.Axis == axis)
             {
-                return CodeWithParts(facing.GetOpposite().Code);
+                return CodeWithParts(facing.Opposite.Code);
             }
 
             return Code;

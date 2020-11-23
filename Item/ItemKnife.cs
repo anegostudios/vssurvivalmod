@@ -201,7 +201,7 @@ namespace Vintagestory.GameContent
 
                 //byEntity.World.Logger.Debug("{0} knife interact step: Seconds: {1}/{2}", byEntity.World.Side, secondsUsed, bh.HarvestDuration );
 
-                return secondsUsed < bh.HarvestDuration + 0.15f;
+                return secondsUsed < bh.GetHarvestDuration(byEntity) + 0.15f;
             }
 
             return false;
@@ -220,7 +220,7 @@ namespace Vintagestory.GameContent
             EntityBehaviorHarvestable bh = entitySel.Entity.GetBehavior<EntityBehaviorHarvestable>();
             //byEntity.World.Logger.Debug("{0} knife interact stop, seconds used {1} / {2}, entity: {3}", byEntity.World.Side, secondsUsed, bh?.HarvestDuration, entitySel.Entity);
 
-            if (bh != null && bh.Harvestable && secondsUsed >= bh.HarvestDuration - 0.1f)
+            if (bh != null && bh.Harvestable && secondsUsed >= bh.GetHarvestDuration(byEntity) - 0.1f)
             {
                 bh.SetHarvested((byEntity as EntityPlayer)?.Player);
                 slot?.Itemstack?.Collectible.DamageItem(byEntity.World, byEntity, slot, 3);

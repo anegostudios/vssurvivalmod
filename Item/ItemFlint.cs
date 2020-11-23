@@ -35,7 +35,7 @@ namespace Vintagestory.GameContent
                 Block knappingBlock = world.GetBlock(new AssetLocation("knappingsurface"));
                 if (knappingBlock == null) return;
 
-                world.Logger.Debug("Flint interact start: Test attach");
+                //world.Logger.Debug("Flint interact start: Test attach");
 
                 Block block = world.BlockAccessor.GetBlock(blockSel.Position);
                 if (!block.CanAttachBlockAt(byEntity.World.BlockAccessor, knappingBlock, blockSel.Position, BlockFacing.UP))
@@ -47,7 +47,7 @@ namespace Vintagestory.GameContent
                     return;
                 }
 
-                world.Logger.Debug("Flint interact start: Can place");
+                //world.Logger.Debug("Flint interact start: Can place");
 
                 BlockPos pos = blockSel.Position.AddCopy(blockSel.Face);
                 if (!world.BlockAccessor.GetBlock(pos).IsReplacableBy(knappingBlock)) return;
@@ -57,7 +57,7 @@ namespace Vintagestory.GameContent
                 placeSel.DidOffset = true;
                 string error = "";
 
-                world.Logger.Debug("Flint interact start: Try place");
+                //world.Logger.Debug("Flint interact start: Try place");
 
                 if (!knappingBlock.TryPlaceBlock(world, byPlayer, slot.Itemstack, placeSel, ref error))
                 {
@@ -72,7 +72,7 @@ namespace Vintagestory.GameContent
                     world.PlaySoundAt(knappingBlock.Sounds.Place, pos.X, pos.Y, pos.Z);
                 }
 
-                world.Logger.Debug("Flint interact start: Could place");
+                //world.Logger.Debug("Flint interact start: Could place");
 
                 BlockEntityKnappingSurface bec = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityKnappingSurface;
                 if (bec != null)
@@ -86,7 +86,7 @@ namespace Vintagestory.GameContent
                     }
                 }
 
-                world.Logger.Debug("Flint interact start: Dlg opened");
+                //world.Logger.Debug("Flint interact start: Dlg opened");
 
                 slot.TakeOut(1);
 

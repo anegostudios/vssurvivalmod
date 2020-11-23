@@ -50,16 +50,37 @@ namespace Vintagestory.GameContent
         public override void OnHeldAttackStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
         {
             if (blockSel == null) return;
-            if (!(byEntity.World.BlockAccessor.GetBlock(blockSel.Position) is BlockAnvil)) return;
-
-            BlockEntityAnvil bea = byEntity.World.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityAnvil;
-            if (bea == null) return;
-
-            IPlayer byPlayer = null;
-            if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
+            IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
             if (byPlayer == null) return;
 
 
+            BlockEntity be = byEntity.World.BlockAccessor.GetBlockEntity(blockSel.Position);
+
+            if (be is BlockEntityAnvilPart beap)
+            {
+                handling = EnumHandHandling.PreventDefault;
+
+                if (!beap.TestReadyToMerge())
+                {
+                    return;
+                }
+
+                byEntity.World.RegisterCallback((dt) =>
+                {
+                    if (byEntity.Controls.HandUse == EnumHandInteract.HeldItemAttack)
+                    {
+                        byPlayer.Entity.World.PlaySoundAt(new AssetLocation("sounds/effect/anvilmergehit"), byPlayer, byPlayer);
+                    }
+                }, 464);
+                return;
+            }
+
+            if (!(byEntity.World.BlockAccessor.GetBlock(blockSel.Position) is BlockAnvil)) return;
+
+            
+
+            BlockEntityAnvil bea = be as BlockEntityAnvil;
+            if (bea == null) return;
             bea.OnBeginUse(byPlayer, blockSel);
 
             byEntity.World.RegisterCallback((dt) =>
@@ -81,6 +102,14 @@ namespace Vintagestory.GameContent
 
         public override bool OnHeldAttackStep(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSelection, EntitySelection entitySel)
         {
+            if (blockSelection == null) return false;
+
+            BlockEntity be = byEntity.World.BlockAccessor.GetBlockEntity(blockSelection.Position);
+            if (be is BlockEntityAnvilPart beap && !beap.TestReadyToMerge())
+            {
+                return false;
+            }
+
             if (byEntity.World is IClientWorldAccessor)
             {
                 ModelTransform tf = new ModelTransform();
@@ -109,14 +138,18 @@ namespace Vintagestory.GameContent
         public override void OnHeldAttackStop(float secondsPassed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
             if (blockSel == null || secondsPassed < 0.4f) return;
+            IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
+
+            BlockEntity be = byEntity.World.BlockAccessor.GetBlockEntity(blockSel.Position);
+            if (be is BlockEntityAnvilPart bep)
+            {
+                bep.OnHammerHitOver(byPlayer, blockSel.HitPosition);
+            }
+
             if (!(byEntity.World.BlockAccessor.GetBlock(blockSel.Position) is BlockAnvil)) return;
+            BlockEntityAnvil bea = be as BlockEntityAnvil;
 
-            BlockEntityAnvil bea = byEntity.World.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityAnvil;
             if (bea == null) return;
-
-            IPlayer byPlayer = null;
-            if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
-            if (byPlayer == null) return;
 
 
             /*if (bea.AvailableMetalVoxels <= 0 && GetToolMode(slot, byPlayer, blockSel) != 5)

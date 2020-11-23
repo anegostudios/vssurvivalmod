@@ -13,7 +13,7 @@ namespace Vintagestory.GameContent.Mechanics
     // Concept:
     // - Check every 1 second if the hammer is obstructed, if so, stop moving
     // - Hammer itself is rendered using 1 draw call
-    // - Check every 0.25 seconds if its receiving power from the toggle, if so, stop animating the hammer
+    // - Check every 0.25 seconds if its receiving power from the toggle, if not, stop animating the hammer
     // - Helve hammer helps with iron bloom refining and plate making
     public class BEHelveHammer : BlockEntity, ITexPositionSource
     {
@@ -63,7 +63,7 @@ namespace Vintagestory.GameContent.Mechanics
                 double angle = Math.Abs(Math.Sin(x) / 4.5);
                 float outAngle = (float)angle;
 
-                if (angleBefore > outAngle)
+                if (angleBefore > angle)
                 {
                     outAngle -= (float)(totalIngameSeconds - ellapsedInameSecGrow) * 1.5f;
                 }
@@ -76,7 +76,7 @@ namespace Vintagestory.GameContent.Mechanics
 
                 vibrate *= 0.5f;
 
-                if (outAngle <= 0.01 && !didHit)
+                if (outAngle <= 0.01f && !didHit)
                 {
                     didHit = true;
                     vibrate = 0.02f;
@@ -232,18 +232,10 @@ namespace Vintagestory.GameContent.Mechanics
 
             if (targetAnvil != null && mptoggle?.Network != null && HammerStack != null && !obstructed && Api.World.Side == EnumAppSide.Server)
             {
-                //double x = GameMath.Mod(mptoggle.AngleRad * 2 - 1.2, GameMath.TWOPI * 10);
-                //double angle = Math.Abs(Math.Sin(x) / 4.5);
-
-                // mptoggle.AngleRad changes by a speed of networkspeed/10   (MechanicalNetwork.cs)
-                // double x changes by a speed of AngleRad*2
-
                 float weirdOffset = 0.62f;
 
-                accumHits += mptoggle.Network.Speed * 2 / 10f * weirdOffset * dt * 40f;
-
-                // Math.Abs(Math.Sin(x)) has a periodicity of Math.PI
-                // -> every accum >= Math.PI times we have a hit
+                float speed = Math.Abs(mptoggle.Network.Speed) * mptoggle.GearedRatio;
+                accumHits += speed * weirdOffset * dt * 8f;
 
                 if (accumHits > GameMath.PIHALF)
                 {
@@ -257,9 +249,9 @@ namespace Vintagestory.GameContent.Mechanics
 
 
 
-        public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
+        public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
         {
-            base.FromTreeAtributes(tree, worldAccessForResolve);
+            base.FromTreeAttributes(tree, worldAccessForResolve);
 
             hammerStack = tree.GetItemstack("hammerStack");
             hammerStack?.ResolveBlockOrItem(worldAccessForResolve);

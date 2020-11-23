@@ -154,8 +154,8 @@ namespace Vintagestory.GameContent
             bool rainCheck =
                 Api.Side == EnumAppSide.Server
                 && Api.World.Rand.NextDouble() < 0.15
-                && (rainLevel = wsys.GetPrecipitation(tmpPos)) > 0.1
                 && Api.World.BlockAccessor.GetRainMapHeightAt(Pos.X, Pos.Z) <= Pos.Y
+                && (rainLevel = wsys.GetPrecipitation(tmpPos)) > 0.1
             ;
 
             if (rainCheck && Api.World.Rand.NextDouble() < rainLevel * 5)
@@ -310,7 +310,8 @@ namespace Vintagestory.GameContent
                 renderer.Dispose();
                 renderer = null;
             }
-            
+
+            ambientSound?.Dispose();
         }
 
         public override void OnBlockBroken()
@@ -321,11 +322,13 @@ namespace Vintagestory.GameContent
             {
                 Api.World.SpawnItemEntity(contents, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
             }
+
+            ambientSound?.Dispose();
         }
 
-        public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
+        public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
-            base.FromTreeAtributes(tree, worldForResolving);
+            base.FromTreeAttributes(tree, worldForResolving);
 
             contents = tree.GetItemstack("contents");
             fuelLevel = tree.GetFloat("fuelLevel");

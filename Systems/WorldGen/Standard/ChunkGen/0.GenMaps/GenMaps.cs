@@ -98,7 +98,7 @@ namespace Vintagestory.ServerMods
             noiseSizeBeach = api.WorldManager.RegionSize / TerraGenConfig.beachMapScale;
 
             ITreeAttribute worldConfig = api.WorldManager.SaveGame.WorldConfiguration;
-            string climate = worldConfig.GetString("worldClimate");
+            string climate = worldConfig.GetString("worldClimate", "realistic");
             NoiseClimate noiseClimate;
 
             float tempModifier = worldConfig.GetString("globalTemperature", "1").ToFloat(1);

@@ -25,14 +25,17 @@ namespace Vintagestory.GameContent
 
         string[][] tapestryGroups = new string[][]
         {
-            new string[] { "ambush1", "nightfall1", "rot1" },
-            new string[] { "ambush2", "nightfall2", "rot2" },
-            new string[] { "ambush3", "nightfall3", "rot3" },
+            new string[] { "rot1", "themorning1", "seraphim1" },
+            new string[] { "rot2", "themorning2", "seraphim2" },
+            new string[] { "rot3", "themorning3", "seraphim3" },
 
-            new string[] { "salvation11", "schematic-a11", "schematic-b11" },
-            new string[] { "salvation12", "schematic-a12", "schematic-b12" },
-            new string[] { "salvation21", "schematic-a21", "schematic-b21" },
-            new string[] { "salvation22", "schematic-a22", "schematic-b22" },
+            new string[] { "holy1", "schematic-c1", "schematic-c-bloody1" },
+            new string[] { "holy2", "schematic-c2", "schematic-c-bloody2" },
+
+            new string[] { "salvation11", "schematic-a11", "schematic-b11", "schematic-d11", "rotbeast11", "blackguard11" },
+            new string[] { "salvation12", "schematic-a12", "schematic-b12", "schematic-d12", "rotbeast12", "blackguard12" },
+            new string[] { "salvation21", "schematic-a21", "schematic-b21", "schematic-d21", "rotbeast21", "blackguard21" },
+            new string[] { "salvation22", "schematic-a22", "schematic-b22", "schematic-d22", "rotbeast22", "blackguard22" },
         };
 
         public override void Initialize(ICoreAPI api)
@@ -71,9 +74,9 @@ namespace Vintagestory.GameContent
         }
         
 
-        public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
+        public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
-            base.FromTreeAtributes(tree, worldForResolving);
+            base.FromTreeAttributes(tree, worldForResolving);
 
             rotten = tree.GetBool("rotten");
             type = tree.GetString("type");

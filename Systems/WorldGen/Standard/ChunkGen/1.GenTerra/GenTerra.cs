@@ -13,18 +13,27 @@ namespace Vintagestory.ServerMods
     public class GenTerra : ModStdWorldGen
     {
         ICoreServerAPI api;
-        int regionChunkSize;
         int regionMapSize;
 
         private NormalizedSimplexNoise TerrainNoise;
-
-        //GenRockStrata rockstrataGen;
 
         LandformsWorldProperty landforms;
         Dictionary<int, LerpedWeightedIndex2DMap> LandformMapByRegion = new Dictionary<int, LerpedWeightedIndex2DMap>(10);
 
         SimplexNoise distort2dx;
         SimplexNoise distort2dz;
+
+        int lerpHor;
+        int lerpVer;
+        int noiseWidth;
+        int paddedNoiseWidth;
+        int paddedNoiseHeight;
+        int noiseHeight;
+        float lerpDeltaHor;
+        float lerpDeltaVert;
+
+        double[] noiseTemp;
+        float horizontalScale;
 
         public override bool ShouldLoad(EnumAppSide side)
         {
@@ -43,23 +52,9 @@ namespace Vintagestory.ServerMods
 
             api.Event.InitWorldGenerator(initWorldGen, "standard");
             api.Event.ChunkColumnGeneration(OnChunkColumnGen, EnumWorldGenPass.Terrain, "standard");
-
-            //rockstrataGen = new GenRockStrata();
-            //rockstrataGen.StartServerSide(api);
         }
 
-        // We generate the whole terrain here so we instantly know the heightmap
-        int lerpHor;
-        int lerpVer;
-        int noiseWidth;
-        int paddedNoiseWidth;
-        int paddedNoiseHeight;
-        int noiseHeight;
-        float lerpDeltaHor;
-        float lerpDeltaVert;
 
-        double[] noiseTemp;
-        float horizontalScale;
 
         public void initWorldGen()
         {
@@ -67,10 +62,9 @@ namespace Vintagestory.ServerMods
             LandformMapByRegion.Clear();
 
             chunksize = api.WorldManager.ChunkSize;
-            
-            // Unpadded region noise size in chunks
-            regionChunkSize = api.WorldManager.RegionSize / chunksize;
+
             // Amount of landform regions in all of the map 
+            // Until v1.12.9 this calculation was incorrect
             if (GameVersion.IsAtLeastVersion(api.WorldManager.SaveGame.CreatedGameVersion, "1.12.9"))
             {
                 regionMapSize = (int)Math.Ceiling((double)api.WorldManager.MapSizeX / api.WorldManager.RegionSize);
@@ -81,6 +75,7 @@ namespace Vintagestory.ServerMods
             }
 
 
+            // Starting from v1.11 the world height also horizontally scales the world
             horizontalScale = 1f;
             if (GameVersion.IsAtLeastVersion(api.WorldManager.SaveGame.CreatedGameVersion, "1.11.0-dev.1"))
             {
@@ -104,8 +99,6 @@ namespace Vintagestory.ServerMods
             lerpDeltaHor = 1f / lerpHor;
             lerpDeltaVert = 1f / lerpVer;
 
-            //rockstrataGen.initWorldGen();
-
             noiseTemp = new double[paddedNoiseWidth * paddedNoiseWidth * paddedNoiseHeight];
 
             TerraGenConfig.seaLevel = (int)(0.4313725490196078 * api.WorldManager.MapSizeY);
@@ -117,7 +110,7 @@ namespace Vintagestory.ServerMods
                 distort2dz = new SimplexNoise(new double[] { 55, 40, 30, 10 }, new double[] { 1 / 500.0, 1 / 250.0, 1 / 125.0, 1 / 65 }, api.World.Seed + 9877 + 0);
             } else
             {
-                // Whoops, looks like we made a typo here. Old code stays so    we don't break worldgen on old worlds
+                // Whoops, looks like we made a typo here. Old code stays so we don't break worldgen on old worlds
                 distort2dx = new SimplexNoise(new double[] { 55, 40, 30, 10 }, new double[] { 1 / 500.0, 1 / 250.0, 1 / 125.0, 1 / 65 }, api.World.SeaLevel + 9876 + 0);
                 distort2dz = new SimplexNoise(new double[] { 55, 40, 30, 10 }, new double[] { 1 / 500.0, 1 / 250.0, 1 / 125.0, 1 / 65 }, api.World.SeaLevel + 9877 + 0);
             }
@@ -149,7 +142,7 @@ namespace Vintagestory.ServerMods
             climateBotLeft = climateMap.GetUnpaddedInt((int)(rlX * fac), (int)(rlZ * fac + fac));
             climateBotRight = climateMap.GetUnpaddedInt((int)(rlX * fac + fac), (int)(rlZ * fac + fac));
 
-            int freezingTemp = TerraGenConfig.DescaleTemperature(-17);
+            int freezingTemp = -17;
 
 
             IntDataMap2D landformMap = mapchunk.MapRegion.LandformMap;
@@ -237,7 +230,6 @@ namespace Vintagestory.ServerMods
                         tnoiseGainY3 = (terrainNoise3d[NoiseIndex3d(xN + 1, yN + 1, zN + 1)] - tnoiseY3) * lerpDeltaVert;
 
                         
-
                         for (int y = 0; y < lerpVer; y++)
                         {
                             int posY = yN * lerpVer + y;
@@ -257,7 +249,6 @@ namespace Vintagestory.ServerMods
 
                             thNoiseGainX0 = (terrainThresholdsX1[posY] - thNoiseX0) * lerpDeltaHor;
                             thNoiseGainX1 = (terrainThresholdsX3[posY] - thNoiseX1) * lerpDeltaHor;
-
 
                             for (int x = 0; x < lerpHor; x++)
                             {
@@ -304,7 +295,7 @@ namespace Vintagestory.ServerMods
                                                 float distort = (float)distort2dx.Noise(chunkX * chunksize + lX, chunkZ * chunksize + lZ) / 20f;
                                                 float tempf = TerraGenConfig.GetScaledAdjustedTemperatureFloat(temp, 0) + distort;
 
-                                                chunks[chunkY].Blocks[chunkIndex] = (tempf < -17) ? GlobalConfig.lakeIceBlockId : GlobalConfig.waterBlockId;
+                                                chunks[chunkY].Blocks[chunkIndex] = (tempf < freezingTemp) ? GlobalConfig.lakeIceBlockId : GlobalConfig.waterBlockId;
                                             } else
                                             {
                                                 chunks[chunkY].Blocks[chunkIndex] = GlobalConfig.waterBlockId;

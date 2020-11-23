@@ -10,8 +10,11 @@ using System.Linq;
 
 namespace Vintagestory.GameContent
 {
-    public class ItemOre : Item
+    public class ItemOre : ItemPileable
     {
+        public bool IsCoal => Variant["ore"] == "lignite" || Variant["ore"] == "bituminouscoal" || Variant["ore"] == "anthracite";
+        public override bool IsPileable => IsCoal;
+        protected override AssetLocation PileBlockCode => new AssetLocation("coalpile");
 
         public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
         {
@@ -28,11 +31,12 @@ namespace Vintagestory.GameContent
                     }
                     AssetLocation loc = new AssetLocation("nugget-" + orename);
                     Item item = api.World.GetItem(loc);
+
                     if (item?.CombustibleProps != null)
                     {
                         string metalname = item.CombustibleProps.SmeltedStack.ResolvedItemstack.GetName().Replace(" ingot", "");
                         dsc.AppendLine(Lang.Get("{0} units of {1}", units.ToString("0.#"), metalname));
-                    }
+                    }   
 
                     dsc.AppendLine(Lang.Get("Parent Material: {0}", Lang.Get("rock-" + LastCodePart())));
                     dsc.AppendLine();
@@ -57,7 +61,6 @@ namespace Vintagestory.GameContent
                     string str = Lang.Get("game:smeltdesc-" + smelttype + "ore-plural", units.ToString("0.#"), metalname);
                     dsc.AppendLine(str);
                 }
-
 
                 return;
             }

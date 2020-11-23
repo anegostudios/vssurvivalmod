@@ -13,7 +13,7 @@ namespace Vintagestory.GameContent
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
             BlockEntitySpawner be = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntitySpawner;
-            if (be != null)
+            if (be != null && byPlayer.WorldData.CurrentGameMode == EnumGameMode.Creative)
             {
                 be.OnInteract(byPlayer);
                 return true;

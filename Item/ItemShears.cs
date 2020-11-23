@@ -44,7 +44,7 @@ namespace Vintagestory.GameContent
             foreach (var pos in orderedPositions)
             {
                 if (q == 0) break;
-                BlockFacing facing = BlockFacing.FromNormal(player.Entity.ServerPos.GetViewVector()).GetOpposite();
+                BlockFacing facing = BlockFacing.FromNormal(player.Entity.ServerPos.GetViewVector()).Opposite;
 
                 if (!player.Entity.World.Claims.TryAccess(player, pos, EnumBlockAccessFlags.BuildOrBreak)) continue;
                 
@@ -57,11 +57,11 @@ namespace Vintagestory.GameContent
 
 
 
-        public override bool OnBlockBrokenWith(IWorldAccessor world, Entity byEntity, ItemSlot itemslot, BlockSelection blockSel)
+        public override bool OnBlockBrokenWith(IWorldAccessor world, Entity byEntity, ItemSlot itemslot, BlockSelection blockSel, float dropQuantityMultiplier = 1)
         {
             Block block = world.BlockAccessor.GetBlock(blockSel.Position);
 
-            base.OnBlockBrokenWith(world, byEntity, itemslot, blockSel);            
+            base.OnBlockBrokenWith(world, byEntity, itemslot, blockSel, dropQuantityMultiplier);
 
             if (byEntity as EntityPlayer == null || itemslot.Itemstack == null) return true;
 
@@ -85,8 +85,6 @@ namespace Vintagestory.GameContent
                 DamageItem(world, byEntity, itemslot);
                 
                 q++;
-                
-
                 if (q >= MultiBreakQuantity || itemslot.Itemstack == null) break;
             }
 

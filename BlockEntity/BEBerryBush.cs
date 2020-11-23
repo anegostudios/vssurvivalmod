@@ -175,9 +175,9 @@ namespace Vintagestory.GameContent
 
         
 
-        public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
+        public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
-            base.FromTreeAtributes(tree, worldForResolving);
+            base.FromTreeAttributes(tree, worldForResolving);
 
             transitionHoursLeft = tree.GetDouble("transitionHoursLeft");
 
@@ -229,7 +229,7 @@ namespace Vintagestory.GameContent
 
             if (roomness > 0)
             {
-                sb.AppendLine(Lang.Get("+5°C from greenhouse"));
+                sb.AppendLine(Lang.Get("greenhousetempbonus"));
             }
         }
 

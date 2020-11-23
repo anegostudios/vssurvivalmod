@@ -249,7 +249,7 @@ namespace Vintagestory.ServerMods
         /// <param name="variant"></param>
         /// <param name="forceInitialPosY"></param>
         /// <returns></returns>
-        void GenDeposit(IServerChunk[] chunks, int chunkX, int chunkZ, BlockPos depoCenterPos, DepositVariant variant)
+        public virtual void GenDeposit(IServerChunk[] chunks, int chunkX, int chunkZ, BlockPos depoCenterPos, DepositVariant variant)
         {
             int lx = GameMath.Mod(depoCenterPos.X, chunksize);
             int lz = GameMath.Mod(depoCenterPos.Z, chunksize);

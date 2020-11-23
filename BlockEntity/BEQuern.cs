@@ -81,7 +81,7 @@ namespace Vintagestory.GameContent
             get {
                 if (quantityPlayersGrinding > 0) return 1;
 
-                if (automated && mpc.Network != null) return mpc.Network.Speed;
+                if (automated && mpc.Network != null) return Math.Abs(mpc.Network.Speed);
 
                 return 0;
             }
@@ -475,9 +475,9 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
+        public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
-            base.FromTreeAtributes(tree, worldForResolving);
+            base.FromTreeAttributes(tree, worldForResolving);
             Inventory.FromTreeAttributes(tree.GetTreeAttribute("inventory"));
 
             if (Api != null)

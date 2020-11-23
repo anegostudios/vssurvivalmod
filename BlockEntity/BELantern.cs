@@ -49,9 +49,9 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
+        public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
-            base.FromTreeAtributes(tree, worldForResolving);
+            base.FromTreeAttributes(tree, worldForResolving);
 
             material = tree.GetString("material", "copper");
             lining = tree.GetString("lining", "plain");
@@ -120,7 +120,8 @@ namespace Vintagestory.GameContent
 
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder sb)
         {
-            sb.AppendLine(Lang.Get("{0} with {1} lining and {2} glass panels", material.UcFirst(), lining.UcFirst(), glass));
+            String liningText = (lining == "plain") ? "" : lining.UcFirst() + " lining and ";
+            sb.AppendLine(Lang.Get("{0} with {1}{2} glass panels", material.UcFirst(), liningText, glass));
         }
 
         internal void Interact(IPlayer byPlayer)

@@ -74,7 +74,7 @@ namespace Vintagestory.GameContent
 
 
 
-    public class BlockEntityFirepit : BlockEntityOpenableContainer
+    public class BlockEntityFirepit : BlockEntityOpenableContainer, IHeatSource
     {
         ILoadedSound ambientSound;
 
@@ -351,27 +351,28 @@ namespace Vintagestory.GameContent
 
             if (Api.Side == EnumAppSide.Server && IsBurning && Api.World.Rand.NextDouble() > 0.5)
             {
-                // Die on rainfall
-                tmpPos.Set(Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5);
-                double rainLevel = wsys.GetPrecipitation(tmpPos);
-                if (rainLevel > 0.04 && Api.World.Rand.NextDouble() < rainLevel * 5)
+                if (Api.World.BlockAccessor.GetRainMapHeightAt(Pos.X, Pos.Z) <= Pos.Y)   // It's more efficient to do this quick check before GetPrecipitation
                 {
-                    if (Api.World.BlockAccessor.GetRainMapHeightAt(Pos.X, Pos.Z) > Pos.Y) return;
-
-                    Api.World.PlaySoundAt(new AssetLocation("sounds/effect/extinguish"), Pos.X + 0.5, Pos.Y, Pos.Z + 0.5, null, false, 16);
-
-                    fuelBurnTime -= (float)rainLevel / 10f;
-
-                    if (Api.World.Rand.NextDouble() < rainLevel / 5f || fuelBurnTime <= 0)
+                    // Die on rainfall
+                    tmpPos.Set(Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5);
+                    double rainLevel = wsys.GetPrecipitation(tmpPos);
+                    if (rainLevel > 0.04 && Api.World.Rand.NextDouble() < rainLevel * 5)
                     {
-                        setBlockState("cold");
-                        extinguishedTotalHours = -99;
-                        canIgniteFuel = false;
-                        fuelBurnTime = 0;
-                        maxFuelBurnTime = 0;
-                    }
+                        Api.World.PlaySoundAt(new AssetLocation("sounds/effect/extinguish"), Pos.X + 0.5, Pos.Y, Pos.Z + 0.5, null, false, 16);
 
-                    MarkDirty(true);
+                        fuelBurnTime -= (float)rainLevel / 10f;
+
+                        if (Api.World.Rand.NextDouble() < rainLevel / 5f || fuelBurnTime <= 0)
+                        {
+                            setBlockState("cold");
+                            extinguishedTotalHours = -99;
+                            canIgniteFuel = false;
+                            fuelBurnTime = 0;
+                            maxFuelBurnTime = 0;
+                        }
+
+                        MarkDirty(true);
+                    }
                 }
             }
         }
@@ -673,9 +674,9 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
+        public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
-            base.FromTreeAtributes(tree, worldForResolving);
+            base.FromTreeAttributes(tree, worldForResolving);
             Inventory.FromTreeAttributes(tree.GetTreeAttribute("inventory"));
 
             if (Api != null)
@@ -1139,5 +1140,9 @@ namespace Vintagestory.GameContent
             return meshdata;
         }
 
+        public float GetHeatStrength(IWorldAccessor world, BlockPos heatSourcePos, BlockPos heatReceiverPos)
+        {
+            return IsBurning ? 10 : (canIgniteFuel ? 0.25f : 0);
+        }
     }
 }

@@ -67,7 +67,7 @@ namespace Vintagestory.GameContent
             base.Initialize(api);
 
             RegisterGameTickListener(TestHarvestable, 3000);
-            RegisterGameTickListener(OnScanForEmptySkep, api.World.Rand.Next(20000) + 120000 / 4);
+            RegisterGameTickListener(OnScanForEmptySkep, api.World.Rand.Next(5000) + 30000);
 
             if (api.Side == EnumAppSide.Client)
             {
@@ -383,9 +383,9 @@ namespace Vintagestory.GameContent
             tree.SetInt("hiveHealth", (int)hivePopSize);
         }
 
-        public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
+        public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
-            base.FromTreeAtributes(tree, worldForResolving);
+            base.FromTreeAttributes(tree, worldForResolving);
 
             bool wasHarvestable = Harvestable;
 

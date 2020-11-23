@@ -26,9 +26,9 @@ namespace Vintagestory.GameContent.Mechanics
         public virtual bool tryConnect(IWorldAccessor world, IPlayer byPlayer, BlockPos pos, BlockFacing face)
         {
             IMechanicalPowerBlock block = world.BlockAccessor.GetBlock(pos.AddCopy(face)) as IMechanicalPowerBlock;
-            if (block != null && block.HasMechPowerConnectorAt(world, pos, face.GetOpposite()))
+            if (block != null && block.HasMechPowerConnectorAt(world, pos, face.Opposite))
             {
-                block.DidConnectAt(world, pos.AddCopy(face), face.GetOpposite());
+                block.DidConnectAt(world, pos.AddCopy(face), face.Opposite);
                 WasPlaced(world, pos, face);
                 return true;
             }

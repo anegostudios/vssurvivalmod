@@ -67,13 +67,17 @@ namespace Vintagestory.GameContent
             };
         }
 
-        public ItemStack GetItemStack(IWorldAccessor world, int variant)
+        public ItemStack GetItemStack(IWorldAccessor world, int variant, float dropQuantityMul)
         {
             ItemStack stack = null;
 
             AssetLocation code = codes[variant % codes.Length];
 
-            int quantity = (int)minQuantity + (int)(world.Rand.NextDouble() * (maxQuantity - (int)minQuantity));
+            float qfloat = dropQuantityMul * (minQuantity + ((float)world.Rand.NextDouble() * (maxQuantity - minQuantity)));
+
+            int quantity = (int)qfloat;
+
+            if (quantity <= 0) return null;
 
             if (type == EnumItemClass.Block)
             {
@@ -109,12 +113,14 @@ namespace Vintagestory.GameContent
         public float TotalChance = 0;
 
 
-        public ItemStack[] GenerateLoot(IWorldAccessor world)
+        public ItemStack[] GenerateLoot(IWorldAccessor world, IPlayer forPlayer)
         {
             List<ItemStack> stacks = new List<ItemStack>();
 
             int variant = world.Rand.Next();
             float curtries = Tries;
+
+            float dropRate = forPlayer?.Entity.Stats.GetBlended("vesselContentsDropRate") ?? 1;
 
             while (curtries >= 1 || curtries > world.Rand.NextDouble())
             {
@@ -128,7 +134,7 @@ namespace Vintagestory.GameContent
 
                     if (choice <= 0)
                     {
-                        ItemStack stack = lootItem.GetItemStack(world, variant);
+                        ItemStack stack = lootItem.GetItemStack(world, variant, dropRate);
                         if (stack != null)
                         {
                             stacks.Add(stack);
@@ -209,7 +215,7 @@ namespace Vintagestory.GameContent
                 LootItem.Item(0.1f, 1, 1, "pickaxe-copper"),
                 LootItem.Item(0.1f, 1, 1, "scythe-copper"),
                 LootItem.Item(0.1f, 1, 1, "knife-copper", "knife-copper", "knife-tinbronze"),
-                LootItem.Item(0.1f, 1, 1, "sword-copper", "sword-copper", "sword-tinbronze"),
+                LootItem.Item(0.1f, 1, 1, "longblade-copper", "longblade-copper", "longblade-tinbronze"),
                 LootItem.Item(0.1f, 1, 4, "gear-rusty")
             );
 
@@ -234,7 +240,7 @@ namespace Vintagestory.GameContent
             {
                 for (int i = 0; i < val.codes.Length; i++)
                 {
-                    BlockDropItemStack stack = new BlockDropItemStack(val.GetItemStack(api.World, i));
+                    BlockDropItemStack stack = new BlockDropItemStack(val.GetItemStack(api.World, i, 1));
                     if (stack == null) continue;
                     
                     stack.Quantity.avg = val.chance / list.TotalChance / val.codes.Length;
@@ -247,10 +253,16 @@ namespace Vintagestory.GameContent
 
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)
         {
+            float selfdropRate = (byPlayer?.Entity.Stats.GetBlended("wholeVesselLootChance") ?? 0) - 1;
+            if (api.World.Rand.NextDouble() < selfdropRate)
+            {
+                return new ItemStack[] { new ItemStack(this) };
+            }
+
             LootList list = lootLists[LastCodePart()];
             if (list == null) return new ItemStack[0];
 
-            return list.GenerateLoot(world);
+            return list.GenerateLoot(world, byPlayer);
         }
 
         public override float OnGettingBroken(IPlayer player, BlockSelection blockSel, ItemSlot itemslot, float remainingResistance, float dt, int counter)

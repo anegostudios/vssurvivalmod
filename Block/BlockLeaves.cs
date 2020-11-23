@@ -46,7 +46,7 @@ namespace Vintagestory.GameContent
                     BlockFacing facing = BlockFacing.ALLFACES[tileSide];
                     Block nBlock = world.BlockAccessor.GetBlock(pos.AddCopy(facing));
 
-                    leavesWaveTileSide[tileSide] = !nBlock.SideSolid[BlockFacing.ALLFACES[tileSide].GetOpposite().Index] || nBlock.BlockMaterial == EnumBlockMaterial.Leaves;
+                    leavesWaveTileSide[tileSide] = !nBlock.SideSolid[BlockFacing.ALLFACES[tileSide].Opposite.Index] || nBlock.BlockMaterial == EnumBlockMaterial.Leaves;
                 }
 
                 bool waveoff = false;
@@ -98,7 +98,7 @@ namespace Vintagestory.GameContent
                 {
                     int nBlockId = chunkExtIds[extIndex3d + TileSideEnum.MoveIndex[tileSide]];
                     Block nblock = api.World.Blocks[nBlockId];
-                    leavesWaveTileSide[tileSide] = !nblock.SideSolid[BlockFacing.ALLFACES[tileSide].GetOpposite().Index] || nblock.BlockMaterial == EnumBlockMaterial.Leaves;
+                    leavesWaveTileSide[tileSide] = !nblock.SideSolid[BlockFacing.ALLFACES[tileSide].Opposite.Index] || nblock.BlockMaterial == EnumBlockMaterial.Leaves;
                 }
 
                 int sunLightLevel = chunkLightExt[extIndex3d] & 31; 

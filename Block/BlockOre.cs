@@ -56,6 +56,8 @@ namespace Vintagestory.GameContent
             //base.OnBlockBroken(world, pos, byPlayer, dropQuantityMultiplier);
             // Ugly: copy pasted from Block so EnumHandled.Last prevents placement of empty rock
 
+            dropQuantityMultiplier *= byPlayer?.Entity.Stats.GetBlended("oreDropRate") ?? 1;
+
             EnumHandling handled = EnumHandling.PassThrough;
 
             foreach (BlockBehavior behavior in BlockBehaviors)

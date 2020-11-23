@@ -169,7 +169,6 @@ namespace Vintagestory.GameContent
             itemFlowAccum = Math.Min(itemFlowAccum + ItemFlowRate, Math.Max(1, ItemFlowRate * 2));
             if (itemFlowAccum < 1) return;
 
-
             if (PushFaces != null && PushFaces.Length > 0 && !inventory.IsEmpty)
             {
                 ItemStack stack = inventory.First(slot => !slot.Empty).Itemstack;
@@ -177,7 +176,7 @@ namespace Vintagestory.GameContent
                 BlockFacing outputFace = PushFaces[Api.World.Rand.Next(PushFaces.Length)];
                 int dir = stack.Attributes.GetInt("chuteDir", -1);
                 BlockFacing desiredDir = dir >= 0 && PushFaces.Contains(BlockFacing.ALLFACES[dir]) ? BlockFacing.ALLFACES[dir] : null;
-                
+
                 // If we have a desired dir, try to go there
                 if (desiredDir != null)
                 {
@@ -185,7 +184,7 @@ namespace Vintagestory.GameContent
                     if (!TrySpitOut(desiredDir))
                     {
                         // Then try push it in there,
-                        if (!TryPushInto(desiredDir) && outputFace != desiredDir.GetOpposite())
+                        if (!TryPushInto(desiredDir) && outputFace != desiredDir.Opposite)
                         {
                             // Otherwise try spit it out in a random face, but only if its not back where it came frome
                             if (!TrySpitOut(outputFace))
@@ -223,7 +222,14 @@ namespace Vintagestory.GameContent
 
             if (Api.World.BlockAccessor.GetBlockEntity(InputPosition) is BlockEntityContainer beContainer)
             {
-                ItemSlot sourceSlot = beContainer.Inventory.GetAutoPullFromSlot(inputFace.GetOpposite());
+                //do not both push and pull across the same chute-chute connection
+                if (beContainer.Block is BlockChute chute)
+                {
+                    string[] pushFaces = chute.Attributes["pushFaces"].AsArray<string>(null);
+                    if (pushFaces?.Contains(inputFace.Opposite.Code) == true) return;
+                }
+
+                ItemSlot sourceSlot = beContainer.Inventory.GetAutoPullFromSlot(inputFace.Opposite);
                 ItemSlot targetSlot = sourceSlot == null ? null : inventory.GetBestSuitedSlot(sourceSlot).slot;
                 BlockEntityItemFlow beFlow = beContainer as BlockEntityItemFlow;
 
@@ -240,7 +246,7 @@ namespace Vintagestory.GameContent
                             if (beFlow != null)
                             {
                                 targetSlot.Itemstack.Attributes.SetInt("chuteQHTravelled", inputFace.IsHorizontal ? (horTravelled + 1): 0);
-                                targetSlot.Itemstack.Attributes.SetInt("chuteDir", inputFace.GetOpposite().Index);
+                                targetSlot.Itemstack.Attributes.SetInt("chuteDir", inputFace.Opposite.Index);
                             } else
                             {
                                 targetSlot.Itemstack.Attributes.RemoveAttribute("chuteQHTravelled");
@@ -280,7 +286,7 @@ namespace Vintagestory.GameContent
 
                 if (horTravelled >= 2) return false;  //chutes can't move items more than 1 block horizontally without a drop
 
-                ItemSlot targetSlot = beContainer.Inventory.GetAutoPushIntoSlot(outputFace.GetOpposite(), sourceSlot);
+                ItemSlot targetSlot = beContainer.Inventory.GetAutoPushIntoSlot(outputFace.Opposite, sourceSlot);
                 BlockEntityItemFlow beFlow = beContainer as BlockEntityItemFlow;
 
                 if (targetSlot != null && (beFlow == null || targetSlot.Empty))
@@ -316,6 +322,11 @@ namespace Vintagestory.GameContent
                         itemFlowAccum -= qmoved;
 
                         return true;
+                    }
+                    else
+                    {
+                        //If the push failed, re-apply original chuteDir so that the itemStack still has it for next push attempt
+                        sourceSlot.Itemstack.Attributes.SetInt("chuteDir", chuteDir);
                     }
                 }
             }
@@ -389,7 +400,7 @@ namespace Vintagestory.GameContent
             base.OnReceivedServerPacket(packetid, data);
         }
 
-        public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
+        public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
             InitInventory();
 
@@ -398,7 +409,7 @@ namespace Vintagestory.GameContent
             if (index < 0) LastReceivedFromDir = null;
             else LastReceivedFromDir = BlockFacing.ALLFACES[index];
 
-            base.FromTreeAtributes(tree, worldForResolving);
+            base.FromTreeAttributes(tree, worldForResolving);
         }
 
         public override void ToTreeAttributes(ITreeAttribute tree)
@@ -408,11 +419,40 @@ namespace Vintagestory.GameContent
             tree.SetInt("lastReceivedFromDir", LastReceivedFromDir?.Index ?? -1);
         }
 
-        public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
+        public override void GetBlockInfo(IPlayer forPlayer, StringBuilder sb)
         {
-            base.GetBlockInfo(forPlayer, dsc);
+            if (Block is BlockChute)
+            {
+                //Don't call base.GetBlockInfo - we don't want to show food perish info for chutes as they are not going to be long term storage!
+                foreach (var val in Behaviors)
+                {
+                    val.GetBlockInfo(forPlayer, sb);
+                }
 
-            dsc.AppendLine(Lang.Get("Contents: {0}", inventory[0].Empty ? Lang.Get("Empty") : inventory[0].StackSize + "x " + inventory[0].GetStackName()));
+                sb.AppendLine(Lang.Get("Transporting: {0}", inventory[0].Empty ? Lang.Get("nothing") : inventory[0].StackSize + "x " + inventory[0].GetStackName()));
+
+                // Uncomment this code block for useful debug information
+                /*
+                sb.AppendLine(string.Format("Chute: {0} {1} {2}", c.Type, c.Side, c.Vertical));
+                String s1, s2;
+                s1 = (c.PullFaces.Length > 0) ? c.PullFaces[0] : "-";
+                s2 = (c.PullFaces.Length > 1) ? c.PullFaces[1] : "-";
+                sb.AppendLine(string.Format("Pull: {0} {1}", s1, s2));
+                s1 = (c.PushFaces.Length > 0) ? c.PushFaces[0] : "-";
+                s2 = (c.PushFaces.Length > 1) ? c.PushFaces[1] : "-";
+                sb.AppendLine(string.Format("Push: {0} {1}", s1, s2));
+                s1 = (c.AcceptFaces.Length > 0) ? c.AcceptFaces[0] : "-";
+                s2 = (c.AcceptFaces.Length > 1) ? c.AcceptFaces[1] : "-";
+                sb.AppendLine(string.Format("Accept: {0} {1}", s1, s2));
+                */
+                sb.AppendLine("\u00A0                                                           \u00A0");   //Try to prevent info box size changes when contents changes
+            }
+            else
+            {  //It's a hopper
+                base.GetBlockInfo(forPlayer, sb);
+
+                sb.AppendLine(Lang.Get("Contents: {0}", inventory[0].Empty ? Lang.Get("Empty") : inventory[0].StackSize + "x " + inventory[0].GetStackName()));
+            }
         }
 
 

@@ -95,7 +95,7 @@ namespace Vintagestory.GameContent
             }
 
 
-            interactions = ObjectCacheUtil.GetOrCreate(api, "firepitInteractions", () =>
+            interactions = ObjectCacheUtil.GetOrCreate(api, "firepitInteractions-"+Stage, () =>
             {
                 List<ItemStack> canIgniteStacks = new List<ItemStack>();
 

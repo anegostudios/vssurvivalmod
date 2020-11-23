@@ -145,10 +145,11 @@ namespace Vintagestory.GameContent
                 MeshData contentMesh = getContentMesh(contentStack, forBlockPos, "contents.json");
                 if (contentMesh != null) barrelMesh.AddMeshData(contentMesh);
 
+                bool isopaque = liquidContentStack?.ItemAttributes?["waterTightContainerProps"]?["isopaque"].AsBool(false) == true;
                 bool isliquid = liquidContentStack?.ItemAttributes?["waterTightContainerProps"].Exists == true;
                 if (liquidContentStack != null && (isliquid || contentStack == null))
                 {
-                    string shapefilename = isliquid ? "liquidcontents.json" : "contents.json";
+                    string shapefilename = isliquid && !isopaque ? "liquidcontents.json" : "contents.json";
                     contentMesh = getContentMesh(liquidContentStack, forBlockPos, shapefilename);
                     if (contentMesh != null) barrelMesh.AddMeshData(contentMesh);
                 }
@@ -295,6 +296,7 @@ namespace Vintagestory.GameContent
                 }
 
                 ItemStack[] lstacks = liquidContainerStacks.ToArray();
+                ItemStack[] linenStack = new ItemStack[] { new ItemStack(api.World.GetBlock(new AssetLocation("linen-normal-down"))) };
 
                 return new WorldInteraction[] {
                     new WorldInteraction()
@@ -306,6 +308,19 @@ namespace Vintagestory.GameContent
                         {
                             BlockEntityBarrel bebarrel = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityBarrel;
                             return bebarrel?.Sealed == false ? lstacks : null;
+                        }
+                    },
+                    new WorldInteraction()
+                    {
+                        ActionLangCode = "blockhelp-barrel-takecottagecheese",
+                        MouseButton = EnumMouseButton.Right,
+                        HotKeyCode = "sneak",
+                        Itemstacks = linenStack,
+                        GetMatchingStacks = (wi, bs, ws) =>
+                        {
+                            BlockEntityBarrel bebarrel = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityBarrel;
+                            if (bebarrel?.inventory[1].Itemstack?.Item?.Code?.Path == "cottagecheeseportion") return linenStack;
+                            return null;
                         }
                     }
                 };
@@ -376,10 +391,12 @@ namespace Vintagestory.GameContent
                 ItemSlot slot = bebarrel.Inventory[0];
                 if (!slot.Empty)
                 {
-                    if (text.Length > 0) text += ", ";
+                    if (text.Length > 0) text += "\n";
                     else text += Lang.Get("Contents:") + "\n";
 
                     text += Lang.Get("{0}x {1}", slot.Itemstack.StackSize, slot.Itemstack.GetName());
+
+                    text += BlockBucket.PerishableInfoCompact(api, slot, 0, false);
                 }
 
                 if (bebarrel.Sealed && bebarrel.CurrentRecipe != null)

@@ -39,7 +39,7 @@ namespace Vintagestory.GameContent
                 BlockSelection secondBlockSel = new BlockSelection() { Position = secondPos, Face = BlockFacing.UP };
                 if (!CanPlaceBlock(world, byPlayer, secondBlockSel, ref failureCode)) return false;
 
-                string code = horVer[0].GetOpposite().Code;
+                string code = horVer[0].Opposite.Code;
 
                 Block orientedBlock = world.BlockAccessor.GetBlock(CodeWithParts("head", code));
                 orientedBlock.DoPlaceBlock(world, byPlayer, secondBlockSel, itemstack);
@@ -60,7 +60,7 @@ namespace Vintagestory.GameContent
                 return false;
             }
 
-            BlockFacing facing = BlockFacing.FromCode(LastCodePart()).GetOpposite();
+            BlockFacing facing = BlockFacing.FromCode(LastCodePart()).Opposite;
             BlockEntityBed beBed = world.BlockAccessor.GetBlockEntity(LastCodePart(1) == "feet" ? blockSel.Position.AddCopy(facing) : blockSel.Position) as BlockEntityBed;
 
             if (beBed == null) return false;
@@ -81,7 +81,7 @@ namespace Vintagestory.GameContent
             string headfoot = LastCodePart(1);
 
             BlockFacing facing = BlockFacing.FromCode(LastCodePart());
-            if (LastCodePart(1) == "feet") facing = facing.GetOpposite();
+            if (LastCodePart(1) == "feet") facing = facing.Opposite;
             else
             {
                 BlockEntityBed beBed = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityBed;
@@ -128,7 +128,7 @@ namespace Vintagestory.GameContent
             BlockFacing facing = BlockFacing.FromCode(LastCodePart());
             if (facing.Axis == axis)
             {
-                return CodeWithParts(facing.GetOpposite().Code);
+                return CodeWithParts(facing.Opposite.Code);
             }
             return Code;
         }

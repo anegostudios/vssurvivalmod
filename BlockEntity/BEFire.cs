@@ -45,7 +45,7 @@ namespace Vintagestory.GameContent
             fireBlock = api.World.GetBlock(new AssetLocation("fire"));
             if (fireBlock == null) fireBlock = new Block();
 
-            neibBlock = api.World.BlockAccessor.GetBlock(Pos.AddCopy(fromFacing.GetOpposite()));
+            neibBlock = api.World.BlockAccessor.GetBlock(Pos.AddCopy(fromFacing.Opposite));
             wsys = api.ModLoader.GetModSystem<WeatherSystemBase>();
 
             if (ambientSound == null && api.Side == EnumAppSide.Client)
@@ -73,7 +73,7 @@ namespace Vintagestory.GameContent
         {
             if (Api.Side == EnumAppSide.Client) return;
 
-            BlockPos neibPos = Pos.AddCopy(fromFacing.GetOpposite());
+            BlockPos neibPos = Pos.AddCopy(fromFacing.Opposite);
             neibBlock = Api.World.BlockAccessor.GetBlock(neibPos);
             if (!canBurn(neibBlock, neibPos))
             {
@@ -94,20 +94,21 @@ namespace Vintagestory.GameContent
             }
 
 
-            // Die on rainfall
-            tmpPos.Set(Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5);
-            double rain = wsys.GetPrecipitation(tmpPos);
-            if (rain > 0.1)
+            if (Api.World.BlockAccessor.GetRainMapHeightAt(Pos.X, Pos.Y) <= Pos.Y)   // It's more efficient to do this quick check before GetPrecipitation
             {
-                if (Api.World.BlockAccessor.GetRainMapHeightAt(Pos.X, Pos.Y) > Pos.Y) return;
-
-                Api.World.PlaySoundAt(new AssetLocation("sounds/effect/extinguish"), Pos.X + 0.5, Pos.Y, Pos.Z + 0.5, null, false, 16);
-
-                if (rand.NextDouble() < rain/2)
+                // Die on rainfall
+                tmpPos.Set(Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5);
+                double rain = wsys.GetPrecipitation(tmpPos);
+                if (rain > 0.1)
                 {
-                    Api.World.BlockAccessor.SetBlock(0, Pos);
-                    Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(Pos);
-                    return;
+                    Api.World.PlaySoundAt(new AssetLocation("sounds/effect/extinguish"), Pos.X + 0.5, Pos.Y, Pos.Z + 0.5, null, false, 16);
+
+                    if (rand.NextDouble() < rain / 2)
+                    {
+                        Api.World.BlockAccessor.SetBlock(0, Pos);
+                        Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(Pos);
+                        return;
+                    }
                 }
             }
         }
@@ -120,7 +121,7 @@ namespace Vintagestory.GameContent
 
                 if (remainingBurnDuration <= 0)
                 {
-                    BlockPos fuelPos = Pos.AddCopy(fromFacing.GetOpposite());
+                    BlockPos fuelPos = Pos.AddCopy(fromFacing.Opposite);
                     Block fuelBlock = Api.World.BlockAccessor.GetBlock(fuelPos);
 
                     if (canBurn(fuelBlock, fuelPos))
@@ -146,7 +147,7 @@ namespace Vintagestory.GameContent
             {
                 int index = Math.Min(fireBlock.ParticleProperties.Length-1, Api.World.Rand.Next(fireBlock.ParticleProperties.Length + 1));
                 AdvancedParticleProperties particles = fireBlock.ParticleProperties[index];
-                particles.basePos = RandomBlockPos(Api.World.BlockAccessor, Pos.AddCopy(fromFacing.GetOpposite()), neibBlock, fromFacing);
+                particles.basePos = RandomBlockPos(Api.World.BlockAccessor, Pos.AddCopy(fromFacing.Opposite), neibBlock, fromFacing);
 
                 particles.Quantity.avg = 0.75f;
                 particles.TerrainCollision = false;
@@ -158,7 +159,7 @@ namespace Vintagestory.GameContent
 
         private void TrySpreadFire()
         {
-            BlockPos opos = Pos.AddCopy(fromFacing.GetOpposite());
+            BlockPos opos = Pos.AddCopy(fromFacing.Opposite);
 
             foreach (BlockFacing facing in BlockFacing.ALLFACES)
             {
@@ -219,7 +220,7 @@ namespace Vintagestory.GameContent
             this.fromFacing = fromFacing;
             this.startedByPlayerUid = startedByPlayerUid;
 
-            BlockPos neibPos = Pos.AddCopy(fromFacing.GetOpposite());
+            BlockPos neibPos = Pos.AddCopy(fromFacing.Opposite);
             neibBlock = Api.World.BlockAccessor.GetBlock(neibPos);
 
             if (!canBurn(neibBlock, neibPos))
@@ -230,7 +231,7 @@ namespace Vintagestory.GameContent
                     neibBlock = Api.World.BlockAccessor.GetBlock(nnpos);
                     if (canBurn(neibBlock, nnpos))
                     {
-                        this.fromFacing = facing.GetOpposite();
+                        this.fromFacing = facing.Opposite;
                         startDuration = remainingBurnDuration = neibBlock.CombustibleProps.BurnDuration;
                         return;
                     }
@@ -264,9 +265,9 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
+        public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
-            base.FromTreeAtributes(tree, worldForResolving);
+            base.FromTreeAttributes(tree, worldForResolving);
             remainingBurnDuration = tree.GetFloat("remainingBurnDuration");
             startDuration = tree.GetFloat("startDuration");
             fromFacing = BlockFacing.ALLFACES[tree.GetInt("fromFacing")];

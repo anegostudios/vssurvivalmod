@@ -75,7 +75,7 @@ namespace Vintagestory.GameContent
             if (!CanPlantStay(world.BlockAccessor, pos))
             {
                 world.BlockAccessor.BreakBlock(pos, null);
-                world.BlockAccessor.TriggerNeighbourBlockUpdate(pos);
+                //world.BlockAccessor.TriggerNeighbourBlockUpdate(pos); - Why is this here. BreakBlock already updates neighbours
             }
         }
 

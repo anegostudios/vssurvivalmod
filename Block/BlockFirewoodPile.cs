@@ -7,7 +7,7 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockFirewoodPile : Block
+    public class BlockFirewoodPile : Block, IBlockItemPile
     {
         Cuboidf[][] CollisionBoxesByFillLevel;
 
@@ -67,7 +67,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        internal bool Construct(ItemSlot slot, IWorldAccessor world, BlockPos pos, IPlayer player)
+        public bool Construct(ItemSlot slot, IWorldAccessor world, BlockPos pos, IPlayer player)
         {
             Block block = world.BlockAccessor.GetBlock(pos);
             if (!block.IsReplacableBy(this)) return false;
@@ -87,11 +87,12 @@ namespace Vintagestory.GameContent
                 } else
                 {
                     pile.inventory[0].Itemstack = (ItemStack)slot.Itemstack.Clone();
+                    pile.inventory[0].Itemstack.StackSize = Math.Min(pile.inventory[0].Itemstack.StackSize, pile.MaxStackSize);
                 }
 
                 pile.MarkDirty();
                 world.BlockAccessor.MarkBlockDirty(pos);
-                world.PlaySoundAt(new AssetLocation("sounds/block/planks"), pos.X, pos.Y, pos.Z, player, true);
+                world.PlaySoundAt(pile.soundLocation, pos.X, pos.Y, pos.Z, player, true);
             }
 
             return true;
@@ -103,7 +104,6 @@ namespace Vintagestory.GameContent
             if (!belowBlock.CanAttachBlockAt(world.BlockAccessor, this, pos.DownCopy(), BlockFacing.UP) && (belowBlock != this || FillLevel(world.BlockAccessor, pos.DownCopy()) < 4))
             {
                 world.BlockAccessor.BreakBlock(pos, null);
-                //world.PlaySoundAt(new AssetLocation("sounds/block/planks"), pos.X, pos.Y, pos.Z, null, false);
             }
         }
 

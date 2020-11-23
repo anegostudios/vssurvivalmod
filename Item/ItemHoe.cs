@@ -135,6 +135,11 @@ namespace Vintagestory.GameContent
             byEntity.World.BlockAccessor.SetBlock(farmland.BlockId, pos);
             slot.Itemstack.Collectible.DamageItem(byEntity.World, byEntity, byPlayer.InventoryManager.ActiveHotbarSlot);
 
+            if (slot.Empty)
+            {
+                byEntity.World.PlaySoundAt(new AssetLocation("sounds/effect/toolbreak"), byEntity.Pos.X, byEntity.Pos.Y, byEntity.Pos.Z);
+            }
+
             BlockEntity be = byEntity.World.BlockAccessor.GetBlockEntity(pos);
             if (be is BlockEntityFarmland)
             {

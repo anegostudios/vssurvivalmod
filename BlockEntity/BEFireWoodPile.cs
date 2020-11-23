@@ -5,7 +5,7 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockEntityFirewoodPile : BlockEntityItemPile
+    public class BlockEntityFirewoodPile : BlockEntityItemPile, IBlockEntityItemPile
     {
         internal AssetLocation soundLocation = new AssetLocation("sounds/block/planks");
 

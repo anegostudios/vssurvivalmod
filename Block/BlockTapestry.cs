@@ -8,6 +8,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
@@ -87,21 +88,75 @@ namespace Vintagestory.GameContent
                     }
                 }
 
+                if (texpos == null)
+                {
+                    return capi.BlockTextureAtlas.UnknownTexturePosition;
+                }
+
                 return texpos;
             }
+        }
+    }
+
+    public class TVec2i : Vec2i
+    {
+        public string IntComp;
+
+        public TVec2i(int x, int y, string intcomp) : base(x,y)
+        {
+            this.IntComp = intcomp;
         }
     }
 
     public class BlockTapestry : Block
     {
         ICoreClientAPI capi;
+        BlockFacing orientation;
+
+        static Vec2i left = new Vec2i(-1, 0);
+        static Vec2i right = new Vec2i(1, 0);
+        static Vec2i up = new Vec2i(0, 1);
+        static Vec2i down = new Vec2i(0, -1);
+
+        static Dictionary<string, TVec2i[]> neighbours2x1 = new Dictionary<string, TVec2i[]>()
+        {
+            { "1", new TVec2i[] { new TVec2i(1, 0, "2") } },
+            { "2", new TVec2i[] { new TVec2i(-1, 0, "1") } }
+        };
+
+        static Dictionary<string, TVec2i[]> neighbours1x2 = new Dictionary<string, TVec2i[]>()
+        {
+            { "1", new TVec2i[] { new TVec2i(0, -1, "2") } },
+            { "2", new TVec2i[] { new TVec2i(0, 1, "1") } }
+        };
+
+
+        static Dictionary<string, TVec2i[]> neighbours3x1 = new Dictionary<string, TVec2i[]>()
+        {
+            { "1", new TVec2i[] { new TVec2i(1, 0, "2"), new TVec2i(2, 0, "3") } },
+            { "2", new TVec2i[] { new TVec2i(-1, 0, "1"), new TVec2i(1, 0, "3") } },
+            { "3", new TVec2i[] { new TVec2i(-2, 0, "1"), new TVec2i(-1, 0, "2") } }
+        };
+
+        static Dictionary<string, TVec2i[]> neighbours2x2 = new Dictionary<string, TVec2i[]>()
+        {
+            // yx
+            { "11", new TVec2i[] { new TVec2i(1, 0, "12"), new TVec2i(0, -1, "21"), new TVec2i(1, -1, "22") } },
+            { "12", new TVec2i[] { new TVec2i(-1, 0, "11"), new TVec2i(0, -1, "22"), new TVec2i(-1, -1, "21") } },
+            { "21", new TVec2i[] { new TVec2i(0, 1, "11"), new TVec2i(1, 0, "22"), new TVec2i(1, 1, "12") } },
+            { "22", new TVec2i[] { new TVec2i(0, 1, "12"), new TVec2i(-1, 0, "21"), new TVec2i(-1, 1, "11") } },
+        };
+
 
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
 
             capi = api as ICoreClientAPI;
+            orientation = BlockFacing.FromCode(Variant["side"]);
         }
+
+
 
         public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
         {
@@ -125,6 +180,114 @@ namespace Vintagestory.GameContent
             renderinfo.ModelRef = meshref;
         }
 
+
+        public static string GetBaseCode(string type)
+        {
+            int substr = 0;
+            if (char.IsDigit(type[type.Length - 1])) substr++;
+            if (char.IsDigit(type[type.Length - 2])) substr++;
+
+            return type.Substring(0, type.Length - substr);
+        }
+
+
+        public override void OnBeingLookedAt(IPlayer byPlayer, BlockSelection blockSel, bool firstTick)
+        {
+            if (firstTick && api.Side == EnumAppSide.Server)
+            {
+                BlockEntityTapestry beTas = api.World.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityTapestry;
+                if (beTas.Rotten) return;
+
+                string baseCode = GetBaseCode(beTas.Type);
+                string size = Attributes["sizes"][baseCode].AsString();
+                Dictionary<string, TVec2i[]> neighbours;
+
+
+                switch (size)
+                {
+                    case "2x1":
+                        neighbours = neighbours2x1;
+                        break;
+                    case "1x2":
+                        neighbours = neighbours1x2;
+                        break;
+                    case "3x1":
+                        neighbours = neighbours3x1;
+                        break;
+                    case "2x2":
+                        neighbours = neighbours2x2;
+                        break;
+                    default:
+                        throw new Exception("invalid tapestry json config - missing size attribute for size '" + size + "'");
+                }
+
+                string intComp = beTas.Type.Substring(baseCode.Length);
+                TVec2i[] vecs = neighbours[intComp];
+
+                if (isComplete(blockSel.Position, baseCode, vecs)) {
+
+                    ModJournal jour = api.ModLoader.GetModSystem<ModJournal>();
+                    if (!jour.DidDiscoverLore(byPlayer.PlayerUID, LoreCode, GetLoreChapterId(baseCode)))
+                    {
+                        var splr = byPlayer as IServerPlayer;
+                        jour.DiscoverLore(new LoreDiscovery() { Code = LoreCode, ChapterIds = new List<int>() { GetLoreChapterId(baseCode) } }, splr);
+                    }
+                }
+            }
+        }
+
+        public string LoreCode
+        {
+            get
+            {
+                return "tapestry";
+            }
+        }
+
+
+        public int GetLoreChapterId(string baseCode)
+        {
+            if (!Attributes["loreChapterIds"][baseCode].Exists) throw new Exception("incomplete tapestry json configuration - missing lore piece id");
+            return Attributes["loreChapterIds"][baseCode].AsInt();
+        }
+
+        private bool isComplete(BlockPos position, string baseCode, TVec2i[] vecs)
+        {
+            foreach (var vec in vecs)
+            {
+                Vec3i offs; 
+                switch(orientation.Index)
+                {
+                    // n
+                    case 0: offs = new Vec3i(vec.X, vec.Y, 0); break;
+                    // e
+                    case 1: offs = new Vec3i(0, vec.Y, vec.X); break;
+                    // s
+                    case 2: offs = new Vec3i(-vec.X, vec.Y, 0); break;
+                    // w
+                    case 3: offs = new Vec3i(0, vec.Y, -vec.X); break;
+
+                    default: return false;
+                }
+
+
+                //Console.WriteLine("checking for {3} at {0}/{1}/{2}", offs.X, offs.Y, offs.Z, vec.IntComp);
+
+
+                BlockEntityTapestry bet = api.World.BlockAccessor.GetBlockEntity(position.AddCopy(offs.X, offs.Y, offs.Z)) as BlockEntityTapestry;
+                
+                if (bet == null) return false;
+                string nbaseCode = GetBaseCode(bet.Type);
+                if (nbaseCode != baseCode) return false;
+                if (bet.Rotten) return false;
+
+                string intComp = bet.Type.Substring(nbaseCode.Length);
+
+                if (intComp != vec.IntComp) return false;
+            }
+
+            return true;
+        }
 
         public MeshData genMesh(bool rotten, string type, int rotVariant)
         {
@@ -150,6 +313,18 @@ namespace Vintagestory.GameContent
             return stacks;
         }
 
+
+        public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
+        {
+            BlockEntityTapestry bet = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityTapestry;
+
+            ItemStack stack = new ItemStack(this);
+
+            stack.Attributes.SetString("type", bet?.Type);
+            stack.Attributes.SetBool("rotten", bet?.Rotten == true);
+
+            return stack;
+        }
         public override string GetPlacedBlockInfo(IWorldAccessor world, BlockPos pos, IPlayer forPlayer)
         {
             return base.GetPlacedBlockInfo(world, pos, forPlayer);
@@ -175,6 +350,11 @@ namespace Vintagestory.GameContent
             string type = inSlot.Itemstack.Attributes.GetString("type", "");
 
             dsc.AppendLine(Lang.GetMatching("tapestry-" + type));
+
+            if (withDebugInfo)
+            {
+                dsc.AppendLine(type);
+            }
         }
 
 

@@ -44,7 +44,7 @@ namespace Vintagestory.GameContent
 
             float totalChance = chances.Sum();
             string text = "Total chance: " + (int)totalChance + "%";
-
+            
             SingleComposer = capi.Gui
                 .CreateCompo("itemlootrandomizer", dialogBounds)
                 .AddShadedDialogBG(bgBounds, true)

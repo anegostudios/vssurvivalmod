@@ -58,7 +58,7 @@ namespace Vintagestory.GameContent
                 precipParticleSys = entity.Api.ModLoader.GetModSystem<WeatherSystemClient>().simParticles;
             }
 
-            enabled = entity.Api.World.Config.GetBool("temporalStability", false);
+            enabled = entity.Api.World.Config.GetBool("temporalStability", true);
 
             if (!entity.WatchedAttributes.HasAttribute("temporalStability"))
             {
@@ -196,7 +196,7 @@ namespace Vintagestory.GameContent
 
             if (precipParticleSys != null)
             {
-                precipParticleSys.particleColor = ColorUtil.ColorOverlay(WeatherSimulationParticles.waterColor, WeatherSimulationParticles.lowStabColor, (float)rustPrecipColorStrength);
+                precipParticleSys.rainParticleColor = ColorUtil.ColorOverlay(WeatherSimulationParticles.waterColor, WeatherSimulationParticles.lowStabColor, (float)rustPrecipColorStrength);
             }
 
 

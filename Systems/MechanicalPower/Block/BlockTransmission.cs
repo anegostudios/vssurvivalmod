@@ -32,7 +32,7 @@ namespace Vintagestory.GameContent.Mechanics
                 IMechanicalPowerBlock block = world.BlockAccessor.GetBlock(pos) as IMechanicalPowerBlock;
                 if (block != null)
                 {
-                    BlockFacing faceOpposite = face.GetOpposite();
+                    BlockFacing faceOpposite = face.Opposite;
                     if (block.HasMechPowerConnectorAt(world, pos, faceOpposite))
                     {
                         AssetLocation loc;

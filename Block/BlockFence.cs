@@ -122,8 +122,8 @@ namespace Vintagestory.GameContent
             }
 
             return
-                (block.FirstCodePart() == FirstCodePart() || block.FirstCodePart() == FirstCodePart() + "gate")
-                || block.SideSolid[side.GetOpposite().Index];
+                (block is BlockFence || block is BlockFenceGate)   //Allow any type of fence to connect to any other type of fence - better than leaving gaps!  Modded fences will still work fine so long as they use BlockFence as the base class, if they don't want to do that then they can use the fenceConnect attribute instead
+                || block.SideSolid[side.Opposite.Index];
             ;
         }
 
@@ -148,9 +148,9 @@ namespace Vintagestory.GameContent
             AngleGroups["ew"] = new KeyValuePair<string[], int>(TwoDir, 1);
 
             AngleGroups["ne"] = new KeyValuePair<string[], int>(AngledDir, 0);
-            AngleGroups["nw"] = new KeyValuePair<string[], int>(AngledDir, 1);
-            AngleGroups["es"] = new KeyValuePair<string[], int>(AngledDir, 2);
-            AngleGroups["sw"] = new KeyValuePair<string[], int>(AngledDir, 3);
+            AngleGroups["es"] = new KeyValuePair<string[], int>(AngledDir, 1);
+            AngleGroups["sw"] = new KeyValuePair<string[], int>(AngledDir, 2);
+            AngleGroups["nw"] = new KeyValuePair<string[], int>(AngledDir, 3);
 
             AngleGroups["nes"] = new KeyValuePair<string[], int>(ThreeDir, 0);
             AngleGroups["new"] = new KeyValuePair<string[], int>(ThreeDir, 1);
@@ -171,11 +171,12 @@ namespace Vintagestory.GameContent
 
             if (type == "empty" || type == "nesw") return Code;
 
+
             int angleIndex = angle / 90;
 
             var val = AngleGroups[type];
 
-            string newFacing = val.Key[(angleIndex + val.Value) % val.Key.Length];
+            string newFacing = val.Key[GameMath.Mod(val.Value + angleIndex, val.Key.Length)];
 
             return CodeWithVariant("type", newFacing);
         }

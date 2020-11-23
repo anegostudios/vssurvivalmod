@@ -24,9 +24,19 @@ namespace Vintagestory.GameContent
         public string dialogTitleLangCode = "chestcontents";
         public bool retrieveOnly = false;
 
-        public virtual float MeshAngle { get; set; }
+        float meshangle;
+        public virtual float MeshAngle
+        {
+            get { return meshangle; }
+            set
+            {
+                meshangle = value;
+                rendererRot.Y = value * GameMath.RAD2DEG;
+            }
+        }
 
         MeshData ownMesh;
+        public Cuboidf[] collisionSelectionBoxes;
 
         public virtual string DialogTitle
         {
@@ -43,6 +53,12 @@ namespace Vintagestory.GameContent
             get { return inventoryClassName; }
         }
 
+        BlockEntityAnimationUtil animUtil
+        {
+            get { return GetBehavior<BEBehaviorAnimatable>()?.animUtil; }
+        }
+        Vec3f rendererRot = new Vec3f();
+
         public BlockEntityGenericTypedContainer() : base()
         {
         }
@@ -51,7 +67,6 @@ namespace Vintagestory.GameContent
         {
             defaultType = Block.Attributes?["defaultType"]?.AsString("normal-generic");
             if (defaultType == null) defaultType = "normal-generic";
-            
 
             // Newly placed 
             if (inventory == null)
@@ -86,7 +101,7 @@ namespace Vintagestory.GameContent
 
 
 
-        public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
+        public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
             type = tree.GetString("type", defaultType);
             MeshAngle = tree.GetFloat("meshAngle", MeshAngle);
@@ -124,7 +139,7 @@ namespace Vintagestory.GameContent
                 MarkDirty(true);
             }
 
-            base.FromTreeAtributes(tree, worldForResolving);
+            base.FromTreeAttributes(tree, worldForResolving);
         }
 
         public override void ToTreeAttributes(ITreeAttribute tree)
@@ -141,16 +156,28 @@ namespace Vintagestory.GameContent
 
         protected virtual void InitInventory(Block block)
         {
+
             //this.Block = block; - whats this good for? o.O
             block = this.Block;
 
             if (block?.Attributes != null)
             {
+                collisionSelectionBoxes = block.Attributes["collisionSelectionBoxes"]?[type]?.AsObject<Cuboidf[]>();
+
                 inventoryClassName = block.Attributes["inventoryClassName"].AsString(inventoryClassName);
 
                 dialogTitleLangCode = block.Attributes["dialogTitleLangCode"][type].AsString(dialogTitleLangCode);
                 quantitySlots = block.Attributes["quantitySlots"][type].AsInt(quantitySlots);
                 retrieveOnly = block.Attributes["retrieveOnly"][type].AsBool(false);
+
+                if (block.Attributes["typedOpenSound"][type].Exists)
+                {
+                    OpenSound = AssetLocation.Create(block.Attributes["typedOpenSound"][type].AsString(OpenSound.ToShortString()), Block.Code.Domain);
+                }
+                if (block.Attributes["typedCloseSound"][type].Exists)
+                {
+                    CloseSound = AssetLocation.Create(block.Attributes["typedCloseSound"][type].AsString(CloseSound.ToShortString()), Block.Code.Domain);
+                }
             }
 
             inventory = new InventoryGeneric(quantitySlots, null, null, null);
@@ -189,17 +216,32 @@ namespace Vintagestory.GameContent
 
         protected virtual void OnInvOpened(IPlayer player)
         {
-            inventory.PutLocked = retrieveOnly && player.WorldData.CurrentGameMode != EnumGameMode.Creative; 
+            inventory.PutLocked = retrieveOnly && player.WorldData.CurrentGameMode != EnumGameMode.Creative;
+
+
+            if (Api.Side == EnumAppSide.Client)
+            {
+                animUtil?.StartAnimation(new AnimationMetaData()
+                {
+                    Animation = "lidopen",
+                    Code = "lidopen",
+                    AnimationSpeed = 1.8f,
+                    EaseOutSpeed = 6,
+                    EaseInSpeed = 15
+                });
+            }
         }
 
         protected virtual void OnInvClosed(IPlayer player)
         {
+            animUtil?.StopAnimation("lidopen");
+
             inventory.PutLocked = retrieveOnly;
 
             // This is already handled elsewhere and also causes a stackoverflowexception, but seems needed somehow?
             var inv = invDialog;
             invDialog = null; // Weird handling because to prevent endless recursion
-            if (invDialog?.IsOpened() == true) inv?.TryClose();
+            if (inv?.IsOpened() == true) inv?.TryClose();
             inv?.Dispose();
         }
 
@@ -252,41 +294,80 @@ namespace Vintagestory.GameContent
                 Block = block;
             }
             if (block == null) return null;
-            
-            string key = "typedContainerMeshes" + Block.FirstCodePart() + block.Subtype;
+            int rndTexNum = Block.Attributes?["rndTexNum"][type]?.AsInt(0) ?? 0;
 
+            string key = "typedContainerMeshes" + Block.Code.ToShortString();
             Dictionary<string, MeshData> meshes = ObjectCacheUtil.GetOrCreate(Api, key, () =>
             {
                 return new Dictionary<string, MeshData>();
             });
-
             MeshData mesh;
-            
-            if (meshes.TryGetValue(type + block.Subtype, out mesh))
-            {
-                return mesh;
-            }
 
             string shapename = Block.Attributes?["shape"][type].AsString();
             if (shapename == null)
             {
                 return null;
             }
-            
-            return meshes[type + block.Subtype] = block.GenMesh(Api as ICoreClientAPI, type, shapename, tesselator, new Vec3f());
+
+            Shape shape=null;
+            if (animUtil != null)
+            {
+                string skeydict = "typedContainerShapes";
+                Dictionary<string, Shape> shapes = ObjectCacheUtil.GetOrCreate(Api, skeydict, () =>
+                {
+                    return new Dictionary<string, Shape>();
+                });
+                string skey = Block.FirstCodePart() + block.Subtype + "-" + "-" + shapename + "-" + rndTexNum;
+                if (!shapes.TryGetValue(skey, out shape))
+                {
+                    shapes[skey] = shape = block.GetShape(Api as ICoreClientAPI, type, shapename, tesselator, rndTexNum);
+                }
+            }
+
+            string meshKey = type + block.Subtype + "-" + rndTexNum;
+            if (meshes.TryGetValue(meshKey, out mesh))
+            {
+                if (animUtil != null && animUtil.render == null)
+                {
+                    animUtil.InitializeAnimator(type + "-" + key, mesh, shape, rendererRot);
+                }
+
+                return mesh;
+            }
+
+
+            if (rndTexNum > 0) rndTexNum = GameMath.MurmurHash3Mod(Pos.X, Pos.Y, Pos.Z, rndTexNum);
+
+            if (animUtil != null)
+            {
+                if (animUtil.render == null) 
+                { 
+                    mesh = animUtil.InitializeAnimator(type + "-" + key, shape, block, rendererRot);
+                }
+
+                return meshes[meshKey] = mesh;
+            } else
+            {
+                return meshes[meshKey] = block.GenMesh(Api as ICoreClientAPI, type, shapename, tesselator, new Vec3f(), rndTexNum);
+            }
         }
 
 
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
         {
-            if (ownMesh == null)
-            {
-                ownMesh = GenMesh(tesselator);
-                if (ownMesh == null) return false;
-            }
+            bool skipmesh = base.OnTesselation(mesher, tesselator);
 
-            mesher.AddMeshData(ownMesh.Clone().Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 0, MeshAngle, 0));
+            if (!skipmesh)
+            {
+                if (ownMesh == null)
+                {
+                    ownMesh = GenMesh(tesselator);
+                    if (ownMesh == null) return false;
+                }
+
+                mesher.AddMeshData(ownMesh.Clone().Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 0, MeshAngle, 0));
+            }
 
             /*string facing = ownBlock.LastCodePart();
             if (facing == "north") { mesher.AddMeshData(ownMesh.Clone().Rotate(new API.MathTools.Vec3f(0.5f, 0.5f, 0.5f), 0, 1 * GameMath.PIHALF, 0)); }

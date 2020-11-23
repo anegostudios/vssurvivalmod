@@ -34,6 +34,25 @@ namespace Vintagestory.GameContent
             base.Initialize(api);
         }
 
+        protected override float Inventory_OnAcquireTransitionSpeed(EnumTransitionType transType, ItemStack stack, float baseMul)
+        {
+            if (transType == EnumTransitionType.Dry) return 0;
+            if (Api == null) return 0;
+
+            if (transType == EnumTransitionType.Perish || transType == EnumTransitionType.Ripen)
+            {
+                float perishRate = GetPerishRate();
+                if (transType == EnumTransitionType.Ripen)
+                {
+                    return GameMath.Clamp(((1 - perishRate) - 0.5f) * 3, 0, 1);
+                }
+
+                return baseMul * perishRate;
+            }
+
+            return 1;
+
+        }
 
         internal bool OnInteract(IPlayer byPlayer, BlockSelection blockSel)
         {
@@ -55,6 +74,7 @@ namespace Vintagestory.GameContent
                     if (TryPut(slot, blockSel))
                     {
                         Api.World.PlaySoundAt(sound != null ? sound : new AssetLocation("sounds/player/build"), byPlayer.Entity, byPlayer, true, 16);
+                        updateMeshes();
                         return true;
                     }
 
@@ -113,6 +133,7 @@ namespace Vintagestory.GameContent
                         Api.World.SpawnItemEntity(stack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
                     }
                     MarkDirty(true);
+                    updateMeshes();
                     return true;
                 }
             }
@@ -181,6 +202,14 @@ namespace Vintagestory.GameContent
             }
 
 
+            if (stack.Class == EnumItemClass.Item && (stack.Item.Shape == null || stack.Item.Shape.VoxelizeTexture))
+            {
+                mesh.Rotate(new Vec3f(0.5f, 0.5f, 0.5f), GameMath.PIHALF, 0, 0);
+                mesh.Scale(new Vec3f(0.5f, 0.5f, 0.5f), 0.33f, 0.5f, 0.33f);
+                mesh.Translate(0, -7.5f / 16f, 0f);
+            }
+
+
             float x = ((index % 4) >= 2) ? 12 / 16f : 4 / 16f;
             float y = index >= 4 ? 10 / 16f : 2 / 16f;
             float z = (index % 2 == 0) ? 4 / 16f : 10 / 16f;
@@ -195,6 +224,14 @@ namespace Vintagestory.GameContent
         {
             base.GetBlockInfo(forPlayer, sb);
 
+
+            float ripenRate = GameMath.Clamp(((1 - GetPerishRate()) - 0.5f) * 3, 0, 1);
+            if (ripenRate > 0)
+            {
+                sb.Append("Suitable spot for food ripening.");
+            }
+
+
             sb.AppendLine();
 
             bool up = forPlayer.CurrentBlockSelection != null && forPlayer.CurrentBlockSelection.SelectionBoxIndex > 1;
@@ -203,16 +240,119 @@ namespace Vintagestory.GameContent
             {
                 if (inv[i].Empty) continue;
 
-                if (inv[i].Itemstack.Collectible is BlockCrock)
+                ItemStack stack = inv[i].Itemstack;
+
+                if (stack.Collectible is BlockCrock)
                 {
                     sb.Append(CrockInfoCompact(inv[i]));
                 } else
                 {
-                    sb.AppendLine(inv[i].Itemstack.GetName());
+                    if (stack.Collectible.TransitionableProps != null && stack.Collectible.TransitionableProps.Length > 0)
+                    {
+                        sb.Append(PerishableInfoCompact(Api, inv[i], ripenRate));
+                    }
+                    else
+                    {
+                        sb.AppendLine(stack.GetName());
+                    }
                 }
             }
         }
 
+        public static string PerishableInfoCompact(ICoreAPI Api, ItemSlot contentSlot, float ripenRate, bool withStackName = true)
+        {
+            StringBuilder dsc = new StringBuilder();
+
+            if (withStackName)
+            {
+                dsc.Append(contentSlot.Itemstack.GetName());
+            }
+
+            TransitionState[] transitionStates = contentSlot.Itemstack?.Collectible.UpdateAndGetTransitionStates(Api.World, contentSlot);
+
+            bool nowSpoiling = false;
+
+            if (transitionStates != null)
+            {
+                bool appendLine = false;
+                for (int i = 0; i < transitionStates.Length; i++)
+                {
+                    TransitionState state = transitionStates[i];
+
+                    TransitionableProperties prop = state.Props;
+                    float perishRate = contentSlot.Itemstack.Collectible.GetTransitionRateMul(Api.World, contentSlot, prop.Type);
+
+                    if (perishRate <= 0) continue;
+
+                    float transitionLevel = state.TransitionLevel;
+                    float freshHoursLeft = state.FreshHoursLeft / perishRate;
+
+                    switch (prop.Type)
+                    {
+                        case EnumTransitionType.Perish:
+
+                            appendLine = true;
+
+                            if (transitionLevel > 0)
+                            {
+                                nowSpoiling = true;
+                                dsc.Append(", " + Lang.Get("{0}% spoiled", (int)Math.Round(transitionLevel * 100)));
+                            }
+                            else
+                            {
+                                double hoursPerday = Api.World.Calendar.HoursPerDay;
+
+                                if (freshHoursLeft / hoursPerday >= Api.World.Calendar.DaysPerYear)
+                                {
+                                    dsc.Append(", " + Lang.Get("fresh for {0} years", Math.Round(freshHoursLeft / hoursPerday / Api.World.Calendar.DaysPerYear, 1)));
+                                }
+                                else if (freshHoursLeft > hoursPerday)
+                                {
+                                    dsc.Append(", " + Lang.Get("fresh for {0} days", Math.Round(freshHoursLeft / hoursPerday, 1)));
+                                }
+                                else
+                                {
+                                    dsc.Append(", " + Lang.Get("fresh for {0} hours", Math.Round(freshHoursLeft, 1)));
+                                }
+                            }
+                            break;
+
+                        case EnumTransitionType.Ripen:
+                            if (nowSpoiling) break;
+
+                            appendLine = true;
+
+                            if (transitionLevel > 0)
+                            {
+                                dsc.Append(", " + Lang.Get("{1:0.#} days left to ripen ({0}%)", (int)Math.Round(transitionLevel * 100), (state.TransitionHours - state.TransitionedHours) / Api.World.Calendar.HoursPerDay / ripenRate));
+                            }
+                            else
+                            {
+                                double hoursPerday = Api.World.Calendar.HoursPerDay;
+
+                                if (freshHoursLeft / hoursPerday >= Api.World.Calendar.DaysPerYear)
+                                {
+                                    dsc.Append(", " + Lang.Get("will ripen in {0} years", Math.Round(freshHoursLeft / hoursPerday / Api.World.Calendar.DaysPerYear, 1)));
+                                }
+                                else if (freshHoursLeft > hoursPerday)
+                                {
+                                    dsc.Append(", " + Lang.Get("will ripen in {0} days", Math.Round(freshHoursLeft / hoursPerday, 1)));
+                                }
+                                else
+                                {
+                                    dsc.Append(", " + Lang.Get("will ripen in {0} hours", Math.Round(freshHoursLeft, 1)));
+                                }
+                            }
+                            break;
+                    }
+                }
+
+
+                if (appendLine) dsc.AppendLine();
+            }
+
+            return dsc.ToString();
+        }
 
         public string CrockInfoCompact(ItemSlot inSlot)
         {
@@ -267,12 +407,11 @@ namespace Vintagestory.GameContent
                 return mul * crock.GetContainingTransitionModifierContained(world, inSlot, transType) * inv.GetTransitionSpeedMul(transType, stack);
             };
 
-            float spoilState = 0;
+            
             TransitionState[] transitionStates = contentSlot.Itemstack?.Collectible.UpdateAndGetTransitionStates(Api.World, contentSlot);
             bool addNewLine = true;
             if (transitionStates != null)
             {
-
                 for (int i = 0; i < transitionStates.Length; i++)
                 {
                     TransitionState state = transitionStates[i];
@@ -289,8 +428,6 @@ namespace Vintagestory.GameContent
                     switch (prop.Type)
                     {
                         case EnumTransitionType.Perish:
-                            spoilState = transitionLevel;
-
                             if (transitionLevel > 0)
                             {
                                 dsc.AppendLine(" " + Lang.Get("{0}% spoiled", (int)Math.Round(transitionLevel * 100)));

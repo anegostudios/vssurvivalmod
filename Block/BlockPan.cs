@@ -11,13 +11,9 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class PanningDrop
+    public class PanningDrop : JsonItemStack
     {
-        public EnumItemClass Type;
-        public string Code;
         public NatFloat Chance;
-
-        public ItemStack ResolvedStack;
     }
 
     public class BlockPan : Block, ITexPositionSource
@@ -28,19 +24,21 @@ namespace Vintagestory.GameContent
         TextureAtlasPosition matTexPosition;
         
         ILoadedSound sound;
-        PanningDrop[] drops;
+        Dictionary<string, PanningDrop[]> dropsBySourceMat;
 
         WorldInteraction[] interactions;
 
         public override void OnLoaded(ICoreAPI api)
         {
-            drops = Attributes["panningDrops"].AsObject<PanningDrop[]>();
+            dropsBySourceMat = Attributes["panningDrops"].AsObject<Dictionary<string, PanningDrop[]>>();
 
-            for (int i = 0; i < drops.Length; i++)
+            foreach (var drops in dropsBySourceMat.Values)
             {
-                if (drops[i].Code.Contains("{rocktype}")) continue;
-                drops[i].ResolvedStack = Resolve(drops[i].Type, drops[i].Code);
-
+                for (int i = 0; i < drops.Length; i++)
+                {
+                    if (drops[i].Code.Path.Contains("{rocktype}")) continue;
+                    drops[i].Resolve(api.World, "panningdrop");
+                }
             }
 
             if (api.Side != EnumAppSide.Client) return;
@@ -210,16 +208,16 @@ namespace Vintagestory.GameContent
             Vec3d pos = byEntity.Pos.AheadCopy(0.4f).XYZ;
             pos.Y += byEntity.LocalEyePos.Y - 0.4f;
 
-            if (secondsUsed > 0.5f && (int)(30 * secondsUsed) % 2 == 1)
+            if (secondsUsed > 0.5f && api.World.Rand.NextDouble() > 0.5)
             {
                 Block block = api.World.GetBlock(new AssetLocation(blockMaterialCode));
                 Vec3d particlePos = pos.Clone();
 
                 particlePos.X += GameMath.Sin(-secondsUsed * 20) / 5f;
                 particlePos.Z += GameMath.Cos(-secondsUsed * 20) / 5f;
-                particlePos.Y -= 0.05f;
+                particlePos.Y -= 0.07f;
 
-                byEntity.World.SpawnCubeParticles(particlePos, new ItemStack(block), 0.3f, (int)(1.5f + (float)api.World.Rand.NextDouble()), 0.35f + (float)api.World.Rand.NextDouble()/9f, (byEntity as EntityPlayer)?.Player);
+                byEntity.World.SpawnCubeParticles(particlePos, new ItemStack(block), 0.3f, (int)(1.5f + (float)api.World.Rand.NextDouble()), 0.3f + (float)api.World.Rand.NextDouble()/6f, (byEntity as EntityPlayer)?.Player);
             }
 
 
@@ -297,7 +295,7 @@ namespace Vintagestory.GameContent
 
                 if (api.Side == EnumAppSide.Server)
                 {
-                    CreateDrop(byEntity, code.Split('-')[1]);
+                    CreateDrop(byEntity, code);
                 }
 
                 RemoveMaterial(slot);
@@ -310,23 +308,40 @@ namespace Vintagestory.GameContent
 
 
 
-        private void CreateDrop(EntityAgent byEntity, string rocktype)
+        private void CreateDrop(EntityAgent byEntity, string fromBlockCode)
         {
             IPlayer player = (byEntity as EntityPlayer)?.Player;
+
+            PanningDrop[] drops = null;
+            foreach (var val in dropsBySourceMat.Keys)
+            {
+                if (WildcardUtil.Match(val, fromBlockCode)) {
+                    drops = dropsBySourceMat[val];
+                }
+            }
+
+            if (drops == null)
+            {
+                throw new InvalidOperationException("Coding error, no drops defined for source mat " + fromBlockCode);
+            }
+
+            string rocktype = api.World.GetBlock(new AssetLocation(fromBlockCode))?.Variant["rock"];
+
+            drops.Shuffle(api.World.Rand);
 
             for (int i = 0; i < drops.Length; i++)
             {
                 double rnd = api.World.Rand.NextDouble();
 
                 PanningDrop drop = drops[i];
-                float val= drop.Chance.nextFloat();
+                float val = drop.Chance.nextFloat();
 
 
-                ItemStack stack = drop.ResolvedStack;
+                ItemStack stack = drop.ResolvedItemstack;
 
-                if (drops[i].Code.Contains("{rocktype}"))
+                if (drops[i].Code.Path.Contains("{rocktype}"))
                 {
-                    stack = Resolve(drops[i].Type, drops[i].Code.Replace("{rocktype}", rocktype));
+                    stack = Resolve(drops[i].Type, drops[i].Code.Path.Replace("{rocktype}", rocktype));
                 }
 
                 if (rnd < val && stack != null)
@@ -338,27 +353,20 @@ namespace Vintagestory.GameContent
                     }
                     break;
                 }
-
             }
-
         }
 
 
         public virtual bool IsPannableMaterial(Block block)
         {
-            if ((block.BlockMaterial == EnumBlockMaterial.Gravel || block.BlockMaterial == EnumBlockMaterial.Sand) && block.Variant.ContainsKey("rock"))
-            {
-                return true;
-            }
-
-            return false;
+            return block.Attributes?.IsTrue("pannable") == true;
         }
 
 
         protected virtual void TryTakeMaterial(ItemSlot slot, EntityAgent byEntity, BlockPos position)
         {
             Block block = api.World.BlockAccessor.GetBlock(position);
-            if ((block.BlockMaterial == EnumBlockMaterial.Gravel || block.BlockMaterial == EnumBlockMaterial.Sand) && block.Variant.ContainsKey("rock"))
+            if (IsPannableMaterial(block))
             {
                 if (api.World.BlockAccessor.GetBlock(position.UpCopy()).Id != 0)
                 {
@@ -371,7 +379,8 @@ namespace Vintagestory.GameContent
 
                 if (block.Variant.ContainsKey("layer"))
                 {
-                    Block origblock = api.World.GetBlock(new AssetLocation(block.FirstCodePart() + "-" + block.Variant["rock"]));
+                    string baseCode = block.Code.Path.Substring(0, block.Code.Path.Length - 2);
+                    Block origblock = api.World.GetBlock(new AssetLocation(baseCode));
                     SetMaterial(slot, origblock);
                     
                     string layer = block.Variant["layer"];
@@ -381,7 +390,7 @@ namespace Vintagestory.GameContent
                         api.World.BlockAccessor.SetBlock(0, position);
                     } else
                     {
-                        Block reducedBlock = api.World.GetBlock(new AssetLocation(block.FirstCodePart() + "-" + block.Variant["rock"] + "-" + (int.Parse(layer) - 1)));
+                        Block reducedBlock = api.World.GetBlock(new AssetLocation(baseCode + "-" + (int.Parse(layer) - 1)));
                         api.World.BlockAccessor.SetBlock(reducedBlock.BlockId, position);
                         api.World.BlockAccessor.TriggerNeighbourBlockUpdate(position);
                     }
@@ -389,13 +398,12 @@ namespace Vintagestory.GameContent
                 } else
                 {
                     SetMaterial(slot, block);
-                    Block reducedBlock = api.World.GetBlock(new AssetLocation(block.FirstCodePart() + "-" + block.Variant["rock"] + "-7"));
+                    Block reducedBlock = api.World.GetBlock(new AssetLocation(block.Code.Path + "-7"));
                     api.World.BlockAccessor.SetBlock(reducedBlock.BlockId, position);
                     api.World.BlockAccessor.TriggerNeighbourBlockUpdate(position);
                 }
 
                 slot.MarkDirty();
-                //(byEntity as EntityPlayer)?.Player?.InventoryManager.BroadcastHotbarSlot();
             }
         }
 

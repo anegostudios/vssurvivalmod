@@ -128,7 +128,6 @@ namespace Vintagestory.GameContent
                 if (block.BlockId == 0)
                 {
                     byEntity.World.BlockAccessor.SetBlock(byEntity.World.GetBlock(new AssetLocation("fire")).BlockId, bpos);
-
                     BlockEntityFire befire = byEntity.World.BlockAccessor.GetBlockEntity(bpos) as BlockEntityFire;
                     if (befire != null) befire.Init(blockSel.Face, (byEntity as EntityPlayer).PlayerUID);
                 }

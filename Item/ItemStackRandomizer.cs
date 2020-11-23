@@ -96,7 +96,6 @@ namespace Vintagestory.GameContent
             tree.SetInt("slotId", slot.Inventory.GetSlotId(slot));
 
             api.Event.PushEvent("OpenStackRandomizerDialog", tree);
-            
         }
 
 

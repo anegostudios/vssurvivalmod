@@ -129,7 +129,6 @@ namespace Vintagestory.GameContent
             dialogs[slot] = new GuiDialogItemLootRandomizer(stacks, chances, capi);
             dialogs[slot].TryOpen();
             dialogs[slot].OnClosed += () => DidCloseLootRandomizer(slot, dialogs[slot]);
-
         }
 
 

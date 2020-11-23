@@ -14,8 +14,7 @@ namespace Vintagestory.GameContent
             if (blockSel == null || byEntity?.World == null || !byEntity.Controls.Sneak) return;
 
             BlockPos onBlockPos = blockSel.Position;
-            Block block = byEntity.World.BlockAccessor.GetBlock(onBlockPos);
-
+            
             IPlayer byPlayer = null;
             if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
             if (byPlayer == null) return;
@@ -24,7 +23,7 @@ namespace Vintagestory.GameContent
             if (!byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
             {
                 return;
-        }
+            }
 
             BlockEntity be = byEntity.World.BlockAccessor.GetBlockEntity(onBlockPos);
             if (be is BlockEntityPlankPile)
@@ -52,7 +51,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            block = byEntity.World.GetBlock(new AssetLocation("plankpile"));
+            Block block = byEntity.World.GetBlock(new AssetLocation("plankpile"));
             if (block == null) return;
             BlockPos pos = onBlockPos.Copy();
             if (byEntity.World.BlockAccessor.GetBlock(pos).Replaceable < 6000) pos.Add(blockSel.Face);

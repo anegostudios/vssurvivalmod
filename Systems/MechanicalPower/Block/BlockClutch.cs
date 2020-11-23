@@ -21,14 +21,14 @@ namespace Vintagestory.GameContent.Mechanics
                 }
                 else
                 {
-                    BlockFacing rightFacing = leftFacing.GetOpposite();
+                    BlockFacing rightFacing = leftFacing.Opposite;
                     if (world.BlockAccessor.GetBlock(blockSel.Position.AddCopy(rightFacing)) is BlockTransmission)
                     {
                         bestFacing = rightFacing;
                     }
                     else
                     {
-                        BlockFacing backFacing = frontFacing.GetOpposite();
+                        BlockFacing backFacing = frontFacing.Opposite;
                         if (world.BlockAccessor.GetBlock(blockSel.Position.AddCopy(backFacing)) is BlockTransmission)
                         {
                             bestFacing = backFacing;

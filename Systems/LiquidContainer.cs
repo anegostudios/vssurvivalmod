@@ -146,6 +146,8 @@ namespace Vintagestory.GameContent
 
         public override void OnLoaded(ICoreAPI api)
         {
+            base.OnLoaded(api);
+
             if (Attributes?["capacityLitres"].Exists == true)
             {
                 capacityLitresFromAttributes = Attributes["capacityLitres"].AsInt(10);
@@ -568,11 +570,15 @@ namespace Vintagestory.GameContent
 
         public override void OnHeldInteractStart(ItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handHandling)
         {
-            if (blockSel == null || byEntity.Controls.Sneak) return;
+            if (blockSel == null || byEntity.Controls.Sneak)
+            {
+                base.OnHeldInteractStart(itemslot, byEntity, blockSel, entitySel, firstEvent, ref handHandling);
+                return;
+            }
+
             IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
 
             ItemStack contentStack = GetContent(byEntity.World, itemslot.Itemstack);
-            bool isEmpty = contentStack == null || contentStack.StackSize == 0;
 
             Block targetedBlock = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
 
@@ -599,7 +605,7 @@ namespace Vintagestory.GameContent
                 }
                 else
                 {
-                    if (byPlayer.WorldData.EntityControls.Sprint)
+                    if (byEntity.Controls.Sprint)
                     {
                         SpillContents(itemslot, byEntity, blockSel);
                     }
@@ -801,6 +807,23 @@ namespace Vintagestory.GameContent
             {
                 TryFillFromBlock(entityItem, entityItem.SidedPos.AsBlockPos);
             }
+
+            if (entityItem.Swimming && world.Rand.NextDouble() < 0.01)
+            {
+                ItemStack[] stacks = GetContents(world, entityItem.Itemstack);
+                if (MealMeshCache.ContentsRotten(stacks))
+                {
+                    for (int i = 0; i < stacks.Length; i++)
+                    {
+                        if (stacks[i] != null && stacks[i].StackSize > 0 && stacks[i].Collectible.Code.Path == "rot")
+                        {
+                            world.SpawnItemEntity(stacks[i], entityItem.ServerPos.XYZ);
+                        }
+                    }
+
+                    SetContent(entityItem.Itemstack, null);
+                }
+            }
         }
 
         public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
@@ -833,7 +856,11 @@ namespace Vintagestory.GameContent
             if (litres <= 0) return Lang.Get("Empty");
 
             string incontainername = Lang.Get("incontainer-" + contentStack.Class.ToString().ToLowerInvariant() + "-" + contentStack.Collectible.Code.Path);
-            return Lang.Get("Contents: {0} litres of {1}", litres, incontainername);
+            string text = Lang.Get("Contents:\n{0} litres of {1}", litres, incontainername);
+
+            text += BlockBucket.PerishableInfoCompact(api, slot, 0, false);
+
+            return text;
         }
 
 

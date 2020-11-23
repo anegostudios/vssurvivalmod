@@ -51,7 +51,7 @@ namespace Vintagestory.GameContent
 
                 Block blockAtTargetPos = world.BlockAccessor.GetBlock(offsetedPos);
                 if (!blockAtTargetPos.IsReplacableBy(nextblock)) return;
-                if (!world.BlockAccessor.GetBlock(belowPos).SideSolid[BlockFacing.UP.Index]) return;
+                if (!world.BlockAccessor.GetBlock(belowPos).CanAttachBlockAt(world.BlockAccessor, nextblock, belowPos, BlockFacing.UP, new Cuboidi(1, 14, 1, 14, 15, 14))) return;
 
                 world.BlockAccessor.SetBlock(nextblock.BlockId, offsetedPos);
             }

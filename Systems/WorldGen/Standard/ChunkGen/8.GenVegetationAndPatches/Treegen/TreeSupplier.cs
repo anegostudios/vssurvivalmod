@@ -123,7 +123,7 @@ namespace Vintagestory.ServerMods
                     float rainVal = Math.Max(0, (rain / 255f - treeGenProps.vinesMinRain) / (1 - treeGenProps.vinesMinRain));
                     float tempVal = Math.Max(0, (TerraGenConfig.DescaleTemperature(temp) / 255f - treeGenProps.descVineMinTempRel) / (1 - treeGenProps.descVineMinTempRel));
 
-                    float vinesGrowthChance = 2f * rainVal * tempVal;
+                    float vinesGrowthChance = 1.5f * rainVal * tempVal + 0.5f * rainVal * GameMath.Clamp((tempVal + 0.33f) / 1.33f, 0, 1);
 
                     ITreeGenerator treegen = treeGenerators.GetGenerator(val.Key.Generator);
 

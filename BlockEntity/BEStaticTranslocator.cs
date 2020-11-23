@@ -48,9 +48,11 @@ namespace Vintagestory.GameContent
             get { return tpLocation; }
         }
 
+        public int RepairInteractionsRequired = 4;
+
         public bool FullyRepaired
         {
-            get { return repairState >= 4; }
+            get { return repairState >= RepairInteractionsRequired; }
         }
 
         BlockEntityAnimationUtil animUtil
@@ -71,7 +73,7 @@ namespace Vintagestory.GameContent
 
             ownBlock = Block as BlockStaticTranslocator;
             posvec = new Vec3d(Pos.X + 0.5, Pos.Y, Pos.Z + 0.5);
-
+            
             if (api.World.Side == EnumAppSide.Client)
             {
                 float rotY = Block.Shape.rotateY;
@@ -87,9 +89,23 @@ namespace Vintagestory.GameContent
             MarkDirty(true);
         }
 
-        public void DoRepair()
+        public void DoRepair(IPlayer byPlayer)
         {
             if (FullyRepaired) return;
+
+            // Ok. Metal parts are in
+            if (repairState == 1)
+            {
+                int tlgearCostTrait = GameMath.RoundRandom(Api.World.Rand, byPlayer.Entity.Stats.GetBlended("temporalGearTLRepairCost") - 1);
+
+                if (tlgearCostTrait < 0)
+                {
+                    repairState += -tlgearCostTrait;
+                    RepairInteractionsRequired = 4;
+                }
+
+                RepairInteractionsRequired += Math.Max(0, tlgearCostTrait);
+            }
 
             repairState++;
             MarkDirty(true);
@@ -561,9 +577,9 @@ namespace Vintagestory.GameContent
 
         long somebodyIsTeleportingReceivedTotalMs;
 
-        public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
+        public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
         {
-            base.FromTreeAtributes(tree, worldAccessForResolve);
+            base.FromTreeAttributes(tree, worldAccessForResolve);
 
             canTeleport = tree.GetBool("canTele");
             repairState = tree.GetInt("repairState");
