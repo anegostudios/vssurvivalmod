@@ -273,7 +273,10 @@ namespace Vintagestory.GameContent
                         {
                             blockPot.ServeIntoBowlStack(targetSlot, potSlot, world);
                         }
-                        
+
+                    } else
+                    {
+                        return false;
                     }
 
                     return true;

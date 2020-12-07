@@ -232,5 +232,10 @@ namespace Vintagestory.GameContent
         }
 
 
+        public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
+        {
+            
+        }
+
     }
 }

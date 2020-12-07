@@ -124,11 +124,12 @@ namespace Vintagestory.GameContent
             sb.AppendLine(Lang.Get("{0} with {1}{2} glass panels", material.UcFirst(), liningText, glass));
         }
 
-        internal void Interact(IPlayer byPlayer)
+        internal bool Interact(IPlayer byPlayer)
         {
             ItemSlot slot = byPlayer.InventoryManager.ActiveHotbarSlot;
-            if (slot.Empty) return;
+            if (slot.Empty) return false;
 
+            bool result = false;
             CollectibleObject obj = slot.Itemstack.Collectible;
             if (obj.FirstCodePart() == "glass" && obj.Variant.ContainsKey("color"))
             {
@@ -151,6 +152,7 @@ namespace Vintagestory.GameContent
                 setLightColor(origlightHsv, lightHsv, glass);
 
                 MarkDirty(true);
+                result = true;
             }
 
             if (lining == null || lining == "plain" && obj is ItemMetalPlate && (obj.Variant["metal"] == "gold" || obj.Variant["metal"] == "silver")) 
@@ -162,7 +164,10 @@ namespace Vintagestory.GameContent
 
                 slot.TakeOut(1);
                 MarkDirty(true);
+                result = true;
             }
+
+            return result;
         }
 
 

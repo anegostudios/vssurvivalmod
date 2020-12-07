@@ -109,8 +109,8 @@ namespace Vintagestory.GameContent.Mechanics
 
         public override float GetResistance()
         {
-            // TODO: prevent Pulverizers from being driven in reverse, by very high resistance
-            return 0.085f;
+            bepu = Blockentity as BEPulverizer;
+            return bepu.hasAxle ? 0.085f : 0.005f;
         }
 
         public override void JoinNetwork(MechanicalNetwork network)
@@ -129,6 +129,8 @@ namespace Vintagestory.GameContent.Mechanics
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
         {
+            base.OnTesselation(mesher, tesselator);
+
             switch (BlockFacing.FromCode(Block.Variant["side"]).Index)
             {
                 case 0:

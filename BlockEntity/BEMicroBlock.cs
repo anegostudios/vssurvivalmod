@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -43,7 +44,9 @@ namespace Vintagestory.GameContent
 
     public class BlockEntityMicroBlock : BlockEntity, IBlockEntityRotatable
     {
-        protected static CuboidWithMaterial tmpCuboid = new CuboidWithMaterial();
+        protected static ThreadLocal<CuboidWithMaterial> tmpCuboidTL = new ThreadLocal<CuboidWithMaterial>(() => new CuboidWithMaterial());
+        protected static CuboidWithMaterial tmpCuboid => tmpCuboidTL.Value;
+
 
         // bits 0..3 = xmin
         // bits 4..7 = xmax
@@ -83,8 +86,8 @@ namespace Vintagestory.GameContent
 
             if (MaterialIds != null)
             {
-                if (api.Side == EnumAppSide.Client) RegenMesh();
-                RegenSelectionBoxes(null);
+                //if (api.Side == EnumAppSide.Client) RegenMesh();
+                //RegenSelectionBoxes(null);
             }
         }
 
@@ -122,7 +125,7 @@ namespace Vintagestory.GameContent
                     {
                         for (int z = attachmentArea.Z1; z <= attachmentArea.Z2; z++)
                         {
-                            XYZ vec = new XYZ(x, y, z);
+                            XYZ vec;
 
                             switch (blockFace.Index)
                             {
@@ -139,16 +142,18 @@ namespace Vintagestory.GameContent
                         }
                     }
                 }
-                
+
+                CuboidWithMaterial cwm = tmpCuboid;
+
                 for (int i = 0; i < VoxelCuboids.Count; i++)
                 {
-                    FromUint(VoxelCuboids[i], ref tmpCuboid);
+                    FromUint(VoxelCuboids[i], cwm);
 
-                    for (int x = tmpCuboid.X1; x < tmpCuboid.X2; x++)
+                    for (int x = cwm.X1; x < cwm.X2; x++)
                     {
-                        for (int y = tmpCuboid.Y1; y < tmpCuboid.Y2; y++)
+                        for (int y = cwm.Y1; y < cwm.Y2; y++)
                         {
-                            for (int z = tmpCuboid.Z1; z < tmpCuboid.Z2; z++)
+                            for (int z = cwm.Z1; z < cwm.Z2; z++)
                             {
                                 // Early exit
                                 if (x != 0 && x != 15 && y != 0 && y != 15 && z != 0 && z != 15) continue;
@@ -225,19 +230,20 @@ namespace Vintagestory.GameContent
         {
             voxels = new bool[16, 16, 16];
             materials = new byte[16, 16, 16];
+            CuboidWithMaterial cwm = tmpCuboid;
 
             for (int i = 0; i < VoxelCuboids.Count; i++)
             {
-                FromUint(VoxelCuboids[i], ref tmpCuboid);
+                FromUint(VoxelCuboids[i], cwm);
 
-                for (int dx = tmpCuboid.X1; dx < tmpCuboid.X2; dx++)
+                for (int dx = cwm.X1; dx < cwm.X2; dx++)
                 {
-                    for (int dy = tmpCuboid.Y1; dy < tmpCuboid.Y2; dy++)
+                    for (int dy = cwm.Y1; dy < cwm.Y2; dy++)
                     {
-                        for (int dz = tmpCuboid.Z1; dz < tmpCuboid.Z2; dz++)
+                        for (int dz = cwm.Z1; dz < cwm.Z2; dz++)
                         {
                             voxels[dx, dy, dz] = true;
-                            materials[dx, dy, dz] = tmpCuboid.Material;
+                            materials[dx, dy, dz] = cwm.Material;
                         }
                     }
                 }
@@ -283,13 +289,14 @@ namespace Vintagestory.GameContent
         protected void RotateModel(IPlayer byPlayer, bool clockwise)
         {
             List<uint> rotatedCuboids = new List<uint>();
+            CuboidWithMaterial cwm = tmpCuboid;
 
             foreach (var val in this.VoxelCuboids)
             {
-                FromUint(val, ref tmpCuboid);
-                Cuboidi rotated = tmpCuboid.RotatedCopy(0, clockwise ? 90 : -90, 0, new Vec3d(8, 8, 8));
-                tmpCuboid.Set(rotated.X1, rotated.Y1, rotated.Z1, rotated.X2, rotated.Y2, rotated.Z2);
-                rotatedCuboids.Add(ToCuboid(tmpCuboid));
+                FromUint(val, cwm);
+                Cuboidi rotated = cwm.RotatedCopy(0, clockwise ? 90 : -90, 0, new Vec3d(8, 8, 8));
+                cwm.Set(rotated.X1, rotated.Y1, rotated.Z1, rotated.X2, rotated.Y2, rotated.Z2);
+                rotatedCuboids.Add(ToCuboid(cwm));
             }
 
             VoxelCuboids = rotatedCuboids;
@@ -299,13 +306,13 @@ namespace Vintagestory.GameContent
         public void OnTransformed(ITreeAttribute tree, int byDegrees, EnumAxis? aroundAxis)
         {
             List<uint> rotatedCuboids = new List<uint>();
-
             VoxelCuboids = new List<uint>((tree["cuboids"] as IntArrayAttribute).AsUint);
+            CuboidWithMaterial cwm = tmpCuboid;
 
             foreach (var val in this.VoxelCuboids)
             {
-                FromUint(val, ref tmpCuboid);
-                Cuboidi rotated = tmpCuboid.Clone();
+                FromUint(val, cwm);
+                Cuboidi rotated = cwm.Clone();
 
                 if (aroundAxis == EnumAxis.X)
                 {
@@ -326,8 +333,8 @@ namespace Vintagestory.GameContent
                 rotated = rotated.RotatedCopy(0, byDegrees, 0, new Vec3d(8, 8, 8));
 
 
-                tmpCuboid.Set(rotated.X1, rotated.Y1, rotated.Z1, rotated.X2, rotated.Y2, rotated.Z2);
-                rotatedCuboids.Add(ToCuboid(tmpCuboid));
+                cwm.Set(rotated.X1, rotated.Y1, rotated.Z1, rotated.X2, rotated.Y2, rotated.Z2);
+                rotatedCuboids.Add(ToCuboid(cwm));
             }
 
             tree["cuboids"] = new IntArrayAttribute(rotatedCuboids.ToArray());
@@ -604,10 +611,12 @@ namespace Vintagestory.GameContent
         {
             // Create a temporary array first, because the offthread particle system might otherwise access a null collisionbox
             Cuboidf[] selectionBoxesTmp = new Cuboidf[VoxelCuboids.Count];
+            CuboidWithMaterial cwm = tmpCuboid;
+
             for (int i = 0; i < VoxelCuboids.Count; i++)
             {
-                FromUint(VoxelCuboids[i], ref tmpCuboid);
-                selectionBoxesTmp[i] = tmpCuboid.ToCuboidf();
+                FromUint(VoxelCuboids[i], cwm);
+                selectionBoxesTmp[i] = cwm.ToCuboidf();
             }
             this.selectionBoxes = selectionBoxesTmp;
         }
@@ -622,16 +631,22 @@ namespace Vintagestory.GameContent
             Mesh = CreateMesh(Api as ICoreClientAPI, VoxelCuboids, MaterialIds, Pos);
         }
 
+        public void RegenMesh(ICoreClientAPI capi)
+        {
+            Mesh = CreateMesh(capi, VoxelCuboids, MaterialIds, Pos);
+        }
+
         public static MeshData CreateMesh(ICoreClientAPI coreClientAPI, List<uint> voxelCuboids, int[] materials, BlockPos posForRnd = null)
         {
             MeshData mesh = new MeshData(24, 36, false).WithColorMaps().WithRenderpasses().WithXyzFaces();
             if (voxelCuboids == null || materials == null) return mesh;
+            CuboidWithMaterial cwm = tmpCuboid;
 
             for (int i = 0; i < voxelCuboids.Count; i++)
             {
-                FromUint(voxelCuboids[i], ref tmpCuboid);
+                FromUint(voxelCuboids[i], cwm);
 
-                Block block = coreClientAPI.World.GetBlock(materials[tmpCuboid.Material]);
+                Block block = coreClientAPI.World.GetBlock(materials[cwm.Material]);
 
                 //TextureAtlasPosition tpos = coreClientAPI.BlockTextureAtlas.GetPosition(block, BlockFacing.ALLFACES[0].Code);
                 float subPixelPaddingx = coreClientAPI.BlockTextureAtlas.SubPixelPaddingX;
@@ -653,8 +668,8 @@ namespace Vintagestory.GameContent
                 }
 
                 MeshData cuboidmesh = genCube(
-                    tmpCuboid.X1, tmpCuboid.Y1, tmpCuboid.Z1, 
-                    tmpCuboid.X2 - tmpCuboid.X1, tmpCuboid.Y2 - tmpCuboid.Y1, tmpCuboid.Z2 - tmpCuboid.Z1, 
+                    cwm.X1, cwm.Y1, cwm.Z1,
+                    cwm.X2 - cwm.X1, cwm.Y2 - cwm.Y1, cwm.Z2 - cwm.Z1, 
                     coreClientAPI, 
                     coreClientAPI.Tesselator.GetTexSource(block, altNum, true),
                     subPixelPaddingx,
@@ -677,13 +692,15 @@ namespace Vintagestory.GameContent
         {
             MeshData mesh = new MeshData(24, 36, false).WithColorMaps().WithRenderpasses().WithXyzFaces();
 
+            CuboidWithMaterial cwm = tmpCuboid;
+
             for (int i = 0; i < voxelCuboids.Count; i++)
             {
-                FromUint(voxelCuboids[i], ref tmpCuboid);
+                FromUint(voxelCuboids[i], cwm);
 
                 MeshData cuboidmesh = genCube(
-                    tmpCuboid.X1, tmpCuboid.Y1, tmpCuboid.Z1,
-                    tmpCuboid.X2 - tmpCuboid.X1, tmpCuboid.Y2 - tmpCuboid.Y1, tmpCuboid.Z2 - tmpCuboid.Z1,
+                    cwm.X1, cwm.Y1, cwm.Z1,
+                    cwm.X2 - cwm.X1, cwm.Y2 - cwm.Y1, cwm.Z2 - cwm.Z1,
                     coreClientAPI,
                     decalTexSource,
                     0,
@@ -840,13 +857,12 @@ namespace Vintagestory.GameContent
             }
 
 
-
-            if (Api is ICoreClientAPI)
+            if (worldAccessForResolve.Side == EnumAppSide.Client)
             {
-                RegenMesh();
-                RegenSelectionBoxes(null);
-                MarkDirty(true);
+                RegenMesh(worldAccessForResolve.Api as ICoreClientAPI);
             }
+
+            RegenSelectionBoxes(null);
         }
 
 
@@ -942,7 +958,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public static void FromUint(uint val, ref CuboidWithMaterial tocuboid)
+        public static void FromUint(uint val, CuboidWithMaterial tocuboid)
         {
             tocuboid.X1 = (int)((val) & 15);
             tocuboid.Y1 = (int)((val >> 4) & 15);

@@ -14,37 +14,97 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
+    #region pre v1.14
     [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
-    public class JournalChapter
+    public class JournalChapterOld
     {
         /// <summary>
         /// The journal entry id
         /// </summary>
         public int EntryId;
-        /// <summary>
-        /// The id of this chapter
-        /// </summary>
-        public int ChapterId;
         public string Text;
     }
 
     [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
-    public class JournalEntry
+    public class JournalEntryOld
     {
         public int EntryId;
         public string LoreCode;
 
         public string Title;
         public bool Editable;
-        public List<JournalChapter> Chapters = new List<JournalChapter>();
+        public List<JournalChapterOld> Chapters = new List<JournalChapterOld>();
     }
-    
+
 
     [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
+    public class JournalOld
+    {
+        public List<JournalEntryOld> Entries = new List<JournalEntryOld>();
+    }
+
+    [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
+    public class LoreDiscoveryOld
+    {
+        public string Code;
+        public List<int> PieceIds;
+    }
+    #endregion
+
+
+    #region v1.14
+    [ProtoContract]
+    public class JournalChapter
+    {
+        /// <summary>
+        /// The journal entry id
+        /// </summary>
+        [ProtoMember(1)]
+        public int EntryId;
+        /// <summary>
+        /// The id of this chapter
+        /// </summary>
+        [ProtoMember(2)]
+        public int ChapterId;
+
+        [ProtoMember(3)]
+        public string Text;
+    }
+
+    [ProtoContract]
+    public class JournalEntry
+    {
+        [ProtoMember(1)]
+        public int EntryId;
+        [ProtoMember(2)]
+        public string LoreCode;
+        [ProtoMember(3)]
+        public string Title;
+        [ProtoMember(4)]
+        public bool Editable;
+        [ProtoMember(5)]
+        public List<JournalChapter> Chapters = new List<JournalChapter>();
+    }
+
+
+    [ProtoContract]
     public class Journal
     {
+        [ProtoMember(1)]
         public List<JournalEntry> Entries = new List<JournalEntry>();
     }
+
+    
+    [ProtoContract]
+    public class LoreDiscovery
+    {
+        [ProtoMember(1)]
+        public string Code;
+        [ProtoMember(2)]
+        public List<int> ChapterIds;
+    }
+    #endregion
+
 
     [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
     public class JournalAsset
@@ -55,13 +115,7 @@ namespace Vintagestory.GameContent
         public string Category;
     }
 
-    [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
-    public class LoreDiscovery
-    {
-        public string Code;
-        public List<int> ChapterIds;
-    }
-    
+
     public class ModJournal : ModSystem
     {
         // Server
@@ -209,7 +263,16 @@ namespace Vintagestory.GameContent
             try
             {
                 byte[] data = sapi.WorldManager.SaveGame.GetData("journalItemsByPlayerUid");
-                if (data != null) journalsByPlayerUid = SerializerUtil.Deserialize<Dictionary<string, Journal>>(data);
+
+                if (GameVersion.IsLowerVersionThan(sapi.WorldManager.SaveGame.LastSavedGameVersion, "1.14-pre.1"))
+                {
+                    if (data != null) journalsByPlayerUid = upgrade(SerializerUtil.Deserialize<Dictionary<string, JournalOld>>(data));
+                    sapi.World.Logger.Notification("Upgraded journalItemsByPlayerUid from v1.13 format to v1.14 format");
+                } else
+                {
+                    if (data != null) journalsByPlayerUid = SerializerUtil.Deserialize<Dictionary<string, Journal>>(data);
+                }
+                
             } catch (Exception e)
             {
                 sapi.World.Logger.Error("Failed loading journalItemsByPlayerUid. Resetting. Exception: {0}", e);
@@ -229,7 +292,45 @@ namespace Vintagestory.GameContent
             if (loreDiscoveryiesByPlayerUid == null) loreDiscoveryiesByPlayerUid = new Dictionary<string, Dictionary<string, LoreDiscovery>>();
         }
 
+        private Dictionary<string, Journal> upgrade(Dictionary<string, JournalOld> dict)
+        {
+            Dictionary<string, Journal> newdict = new Dictionary<string, Journal>();
 
+            foreach (var val in dict)
+            {
+                var entries = new List<JournalEntry>();
+
+                foreach (var entry in val.Value.Entries)
+                {
+                    var chapters = new List<JournalChapter>();
+
+                    foreach (var chapter in entry.Chapters)
+                    {
+                        chapters.Add(new JournalChapter()
+                        {
+                            Text = chapter.Text,
+                            EntryId = chapter.EntryId
+                        });
+                    }
+
+                    entries.Add(new JournalEntry()
+                    {
+                        Chapters = chapters,
+                        Editable = entry.Editable,
+                        EntryId = entry.EntryId,
+                        LoreCode = entry.LoreCode,
+                        Title = entry.Title
+                    });
+                }
+
+                newdict[val.Key] = new Journal()
+                {
+                    Entries = entries,
+                };
+            }
+
+            return newdict;
+        }
 
         private void OnPlayerJoin(IServerPlayer byPlayer)
         {

@@ -293,7 +293,7 @@ namespace Vintagestory.GameContent
             renderer?.Dispose();
             track?.Stop();
             track = null;
-            Api.Event.UnregisterCallback(handlerId);
+            Api?.Event.UnregisterCallback(handlerId);
         }
 
         public override void OnBlockRemoved()

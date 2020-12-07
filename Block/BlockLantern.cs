@@ -135,7 +135,12 @@ namespace Vintagestory.GameContent
 
             if (shape == null)
             {
-                shape = capi.Assets.TryGet("shapes/" + this.Shape.Base.Path + ".json").ToObject<Shape>();
+                shape = capi.Assets.TryGet("shapes/" + this.Shape.Base.Path + ".json")?.ToObject<Shape>();
+            }
+
+            if (shape == null)
+            {
+                return null;
             }
 
             this.AtlasSize = capi.BlockTextureAtlas.Size;
@@ -252,8 +257,9 @@ namespace Vintagestory.GameContent
             if (!byPlayer.Entity.Controls.Sneak)
             {
                 BELantern bel = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BELantern;
-                bel.Interact(byPlayer);
-                return true;
+                if (bel.Interact(byPlayer))
+                    return true;
+                // if Interact returned false, the player had an empty slot so revert to base: right-click pickup
             }
 
             return base.OnBlockInteractStart(world, byPlayer, blockSel);

@@ -71,11 +71,11 @@ namespace Vintagestory.GameContent
 
             if (api.Side == EnumAppSide.Client)
             {
-                api.Event.RegisterGameTickListener(onClientTick50ms, 50);
+                RegisterGameTickListener(onClientTick50ms, 50);
             } else
             {
-                api.Event.RegisterGameTickListener(onServerTick1s, 1000);
-                api.Event.RegisterGameTickListener(onServerTick3s, 3000);
+                RegisterGameTickListener(onServerTick1s, 1000);
+                RegisterGameTickListener(onServerTick3s, 3000);
             }
 
 
@@ -290,7 +290,14 @@ namespace Vintagestory.GameContent
             {
                 totalHoursLastUpdate = Api.World.Calendar.TotalHours;
             }
-            receivesHeat = isBurningCoalPile(coalPilePos) && isBurningCoalPile(othercoalPilePos);
+
+            BlockEntityCoalPile becp = Api.World.BlockAccessor.GetBlockEntity(coalPilePos) as BlockEntityCoalPile;
+            float leftHeatHoursLeft = (becp != null && becp.IsBurning) ? becp.GetHoursLeft(totalHoursLastUpdate) : 0f;
+            becp = Api.World.BlockAccessor.GetBlockEntity(othercoalPilePos) as BlockEntityCoalPile;
+            float rightHeatHoursLeft = (becp != null && becp.IsBurning) ? becp.GetHoursLeft(totalHoursLastUpdate) : 0f;
+
+            receivesHeat = leftHeatHoursLeft > 0 && rightHeatHoursLeft > 0;
+
 
             if (processComplete || !IsFull || !hasLid()) return;
 
@@ -305,8 +312,10 @@ namespace Vintagestory.GameContent
             {
                 if (!structureComplete) return;
 
-                double hoursdelta = Api.World.Calendar.TotalHours - totalHoursLastUpdate;
-                progress += hoursdelta / 16f;
+                double hoursPassed = Api.World.Calendar.TotalHours - totalHoursLastUpdate;
+                double heatHoursReceived = Math.Max(0, Math.Min(hoursPassed, Math.Min(leftHeatHoursLeft, rightHeatHoursLeft)));
+
+                progress += heatHoursReceived / 160f;
                 totalHoursLastUpdate = Api.World.Calendar.TotalHours;
                 MarkDirty();
             }
@@ -338,11 +347,6 @@ namespace Vintagestory.GameContent
             }
         }
 
-        private bool isBurningCoalPile(BlockPos pos)
-        {
-            BlockEntityCoalPile becp = Api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityCoalPile;
-            return becp != null && becp.IsBurning;
-        }
 
         bool hasLid()
         {
@@ -441,7 +445,7 @@ namespace Vintagestory.GameContent
         {
             base.OnBlockUnloaded();
 
-            if (Api.Side == EnumAppSide.Client)
+            if (Api?.Side == EnumAppSide.Client)
             {
                 ms.ClearHighlights(Api.World, (Api as ICoreClientAPI).World.Player);
             }

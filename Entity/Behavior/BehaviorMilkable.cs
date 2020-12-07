@@ -53,6 +53,9 @@ namespace Vintagestory.GameContent
 
             EntityBehaviorTaskAI taskAi = entity.GetBehavior<EntityBehaviorTaskAI>();
             taskAi.taskManager.ShouldExecuteTask = (task) => !IsBeingMilked;
+
+            bhmul = entity.GetBehavior<EntityBehaviorMultiply>();
+            bhmul.TotalDaysLastBirth = Math.Max(bhmul.TotalDaysLastBirth, entity.World.Calendar.TotalDays);
         }
 
         public bool TryBeginMilking()
@@ -72,7 +75,7 @@ namespace Vintagestory.GameContent
             }
 
             // Can only be milked for 21 days after giving birth
-            if (bhmul != null && entity.World.Calendar.TotalDays - bhmul.TotalDaysLastBirth > lactatingDaysAfterBirth) return false;
+            if (bhmul != null && (lactatingDaysAfterBirth - Math.Max(0, entity.World.Calendar.TotalDays - bhmul.TotalDaysLastBirth)) <= 0) return false;
 
             // Can only be milked every 24 hours
             if (entity.World.Calendar.TotalHours - lastMilkedTotalHours < entity.World.Calendar.HoursPerDay) return false;
@@ -209,7 +212,8 @@ namespace Vintagestory.GameContent
 
             bhmul = entity.GetBehavior<EntityBehaviorMultiply>();
             // Can only be milked for 21 days after giving birth
-            double lactatingDaysLeft = lactatingDaysAfterBirth - (entity.World.Calendar.TotalDays - bhmul.TotalDaysLastBirth);
+            double lactatingDaysLeft = lactatingDaysAfterBirth - Math.Max(0, entity.World.Calendar.TotalDays - bhmul.TotalDaysLastBirth);
+
             if (bhmul != null && lactatingDaysLeft > 0)
             {
                 if (entity.World.Calendar.TotalHours - lastMilkedTotalHours >= entity.World.Calendar.HoursPerDay)

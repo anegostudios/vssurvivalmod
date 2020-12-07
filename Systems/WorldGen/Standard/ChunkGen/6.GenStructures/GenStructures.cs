@@ -55,6 +55,8 @@ namespace Vintagestory.ServerMods
         
         IWorldGenBlockAccessor worldgenBlockAccessor;
 
+        WorldGenStructure[] shuffledStructures;
+
         public override double ExecuteOrder() { return 0.3; }
 
         public override void StartServerSide(ICoreServerAPI api)
@@ -96,6 +98,8 @@ namespace Vintagestory.ServerMods
             asset = api.Assets.Get("worldgen/villages.json");
             vcfg = asset.ToObject<WorldGenVillageConfig>();
             vcfg.Init(api);
+
+            shuffledStructures = new WorldGenStructure[scfg.Structures.Length];
         }
 
         private void OnChunkColumnGenPostPass(IServerChunk[] chunks, int chunkX, int chunkZ, ITreeAttribute chunkGenParams = null)
@@ -162,11 +166,15 @@ namespace Vintagestory.ServerMods
 
             strucRand.InitPositionSeed(chunkX, chunkZ);
 
-            scfg.Structures.Shuffle(strucRand);
+            // We need to make a copy each time to preserve determinism
+            // which is crucial for the translocator to find an exit point
+            for (int i = 0; i < shuffledStructures.Length; i++) shuffledStructures[i] = scfg.Structures[i];
 
-            for (int i = 0; i < scfg.Structures.Length; i++)
+            shuffledStructures.Shuffle(strucRand);
+
+            for (int i = 0; i < shuffledStructures.Length; i++)
             {
-                WorldGenStructure struc = scfg.Structures[i];
+                WorldGenStructure struc = shuffledStructures[i];
                 if (struc.PostPass != postPass) continue;
 
                 float chance = struc.Chance * scfg.ChanceMultiplier;

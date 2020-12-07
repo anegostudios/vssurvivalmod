@@ -103,6 +103,7 @@ namespace Vintagestory.GameContent.Mechanics
 
             if (stage == EnumRenderStage.Opaque)
             {
+                capi.Render.GlToggleBlend(false); // Seems to break SSAO without
                 prog.Use();
                 prog.BindTexture2D("tex", capi.BlockTextureAtlas.Positions[0].atlasTextureId, 0);
                 prog.Uniform("rgbaFogIn", capi.Render.FogColor);

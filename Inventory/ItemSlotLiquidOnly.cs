@@ -5,8 +5,11 @@ namespace Vintagestory.GameContent
 {
     public class ItemSlotLiquidOnly : ItemSlot
     {
-        public ItemSlotLiquidOnly(InventoryBase inventory) : base(inventory)
+        public float CapacityLitres;
+
+        public ItemSlotLiquidOnly(InventoryBase inventory, float capacityLitres) : base(inventory)
         {
+            this.CapacityLitres = capacityLitres;
         }
 
         public override bool CanHold(ItemSlot itemstackFromSourceSlot)
@@ -21,7 +24,7 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        public override bool CanTakeFrom(ItemSlot sourceSlot)
+        public override bool CanTakeFrom(ItemSlot sourceSlot, EnumMergePriority priority = EnumMergePriority.AutoMerge)
         {
             if (inventory?.PutLocked == true) return false;
 
@@ -30,7 +33,7 @@ namespace Vintagestory.GameContent
 
             WaterTightContainableProps props = BlockLiquidContainerBase.GetInContainerProps(sourceStack);
 
-            return props != null && (itemstack == null || itemstack.Collectible.GetMergableQuantity(itemstack, sourceStack) > 0) && RemainingSlotSpace > 0;
+            return props != null && (itemstack == null || itemstack.Collectible.GetMergableQuantity(itemstack, sourceStack, priority) > 0) && RemainingSlotSpace > 0;
         }
 
 
@@ -39,7 +42,7 @@ namespace Vintagestory.GameContent
             if (Empty) return;
             if (sourceSlot.CanHold(this))
             {
-                if (sourceSlot.Itemstack != null && sourceSlot.Itemstack != null && sourceSlot.Itemstack.Collectible.GetMergableQuantity(sourceSlot.Itemstack, itemstack) < itemstack.StackSize) return;
+                if (sourceSlot.Itemstack != null && sourceSlot.Itemstack != null && sourceSlot.Itemstack.Collectible.GetMergableQuantity(sourceSlot.Itemstack, itemstack, op.CurrentPriority) < itemstack.StackSize) return;
 
                 op.RequestedQuantity = StackSize;
 

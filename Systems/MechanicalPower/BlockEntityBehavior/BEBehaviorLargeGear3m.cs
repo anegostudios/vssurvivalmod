@@ -51,7 +51,7 @@ namespace Vintagestory.GameContent.Mechanics
             BlockFacing turnDir = path.NetworkDir();
             if (turnDir != BlockFacing.UP && turnDir != BlockFacing.DOWN)
             {
-                turnDir = path.invert ? BlockFacing.UP : BlockFacing.DOWN;  //network coming in (clockwise) from any of the 4 sides should then propagate (clockwise) in the down direction
+                turnDir = path.IsInvertedTowards(Position) ? BlockFacing.UP : BlockFacing.DOWN;  //network coming in (clockwise) from any of the 4 sides should then propagate (clockwise) in the down direction
                 this.GearedRatio = path.gearingRatio / ratio;
             }
             else
@@ -66,6 +66,26 @@ namespace Vintagestory.GameContent.Mechanics
             this.propagationDir = turnDir;
         }
 
+        public override bool IsPropagationDirection(BlockPos fromPos, BlockFacing test)
+        {
+            if (propagationDir == test) return true;
+
+            if (test.IsHorizontal)
+            {
+                // Directions coming in from the sides correspond to this having a propagation direction of DOWN
+                if (fromPos.AddCopy(test) == this.Position) return this.propagationDir == BlockFacing.DOWN;
+                if (fromPos.AddCopy(test.Opposite) == this.Position) return this.propagationDir == BlockFacing.UP;
+            }
+
+            return false;
+        }
+
+        public override float GetGearedRatio(BlockFacing face)
+        {   
+            return face.IsHorizontal ? this.GearedRatio * ratio : this.GearedRatio;
+        }
+
+
         protected override MechPowerPath[] GetMechPowerExits(MechPowerPath pathDir)
         {
             BlockFacing face = pathDir.OutFacing;
@@ -75,25 +95,31 @@ namespace Vintagestory.GameContent.Mechanics
             {
                 MechPowerPath[] paths = new MechPowerPath[2 + beg.CountGears(Api)];
                 paths[index] = pathDir;
-                paths[++index] = new MechPowerPath(pathDir.OutFacing.Opposite, pathDir.gearingRatio, !pathDir.invert);
+                paths[++index] = new MechPowerPath(pathDir.OutFacing.Opposite, pathDir.gearingRatio, null, !pathDir.invert);
                 for (int i = 0; i < 4; i++)
                 {
-                    face = BlockFacing.HORIZONTALS[i];
-                    if (beg.HasGearAt(Api, Position.AddCopy(face))) paths[++index] = new MechPowerPath(face, pathDir.gearingRatio * ratio, face == BlockFacing.UP ? true : false);
+                    BlockFacing horizFace = BlockFacing.HORIZONTALS[i];
+                    if (beg.HasGearAt(Api, Position.AddCopy(horizFace))) paths[++index] = new MechPowerPath(horizFace, pathDir.gearingRatio * ratio, null, face == BlockFacing.DOWN ^ pathDir.invert);  //invert all horizontal output paths
                 }
                 return paths;
             }
 
             MechPowerPath[] pathss = new MechPowerPath[2 + beg.CountGears(Api)];
-            pathss[0] = new MechPowerPath(BlockFacing.DOWN, pathDir.gearingRatio / ratio, pathDir.invert);
-            pathss[1] = new MechPowerPath(BlockFacing.UP, pathDir.gearingRatio / ratio, !pathDir.invert);
+            bool invert = pathDir.IsInvertedTowards(Position);
+            pathss[0] = new MechPowerPath(BlockFacing.DOWN, pathDir.gearingRatio / ratio, null, invert);
+            pathss[1] = new MechPowerPath(BlockFacing.UP, pathDir.gearingRatio / ratio, null, !invert);
             index = 1;
             for (int i = 0; i < 4; i++)
             {
-                BlockFacing side = BlockFacing.HORIZONTALS[i];
-                if (beg.HasGearAt(Api, Position.AddCopy(side))) pathss[++index] = new MechPowerPath(side, pathDir.gearingRatio, face.Opposite == side ^ !pathDir.invert);  //horizontals match the gearing ratio of the input horizontal; invert unless its the input side
+                BlockFacing horizFace = BlockFacing.HORIZONTALS[i];
+                if (beg.HasGearAt(Api, Position.AddCopy(horizFace))) pathss[++index] = new MechPowerPath(horizFace, pathDir.gearingRatio, null, (face.Opposite == horizFace || face == BlockFacing.DOWN) ^ !invert);  //horizontals match the gearing ratio of the input horizontal; invert unless its the input side
             }
             return pathss;
+        }
+
+        public bool AngledGearNotAlreadyAdded(BlockPos position)
+        {
+            return ((BELargeGear3m)Blockentity).AngledGearNotAlreadyAdded(position);
         }
 
         public override float GetResistance()

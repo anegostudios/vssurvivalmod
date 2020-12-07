@@ -132,7 +132,7 @@ namespace Vintagestory.GameContent
                     else if (HasConnector(worldmap, pos.AddCopy(bs.Face), bs.Face.Opposite, out vert)) horizontal = bs.Face;
                 }
                 //Special case: the 3way has two connectors but the directional attribute covers only one of them
-                if (Type == "3way")
+                if (Type == "3way" && horizontal != null)
                 {
                     face = horizontal.GetCW();
                     BlockFacing unused = null;

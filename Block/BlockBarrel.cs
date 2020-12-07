@@ -186,7 +186,7 @@ namespace Vintagestory.GameContent
             if (props != null)
             {
                 contentSource = new ContainerTextureSource(capi, stack, props.Texture);
-                fillHeight = GameMath.Min(10 / 16f, 0.2f * stack.StackSize / props.ItemsPerLitre / 16f);
+                fillHeight = GameMath.Min(1f, stack.StackSize / props.ItemsPerLitre / Math.Max(50, props.MaxStackSize)) * 10f / 16f;
 
                 if (props.Texture == null) return null;
             }

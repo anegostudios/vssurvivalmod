@@ -96,6 +96,10 @@ namespace Vintagestory.ServerMods
                     RegenChunksAroundPlayer(player, args, false);
                     break;
 
+                case "pregen":
+                    PregenerateChunksAroundPlayer(player, args);
+                    break;
+
                 case "regenr":
                     RegenChunksAroundPlayer(player, args, true);
                     break;
@@ -225,6 +229,61 @@ namespace Vintagestory.ServerMods
 
 
 
+        private void PregenerateChunksAroundPlayer(IServerPlayer player, CmdArgs arguments)
+        {
+            int chunkMidX = (int)player.Entity.Pos.X / api.WorldManager.ChunkSize;
+            int chunkMidZ = (int)player.Entity.Pos.Z / api.WorldManager.ChunkSize;
+            
+            List<Vec2i> coords = new List<Vec2i>();
+
+            int rad = (int)arguments.PopInt(2);
+
+            for (int x = -rad; x <= rad; x++)
+            {
+                for (int z = -rad; z <= rad; z++)
+                {
+                    coords.Add(new Vec2i(chunkMidX + x, chunkMidZ + z));
+                }
+            }
+
+            player.SendMessage(groupId, string.Format("Type /debug cgenq to see current generting queue size"), EnumChatType.CommandSuccess);
+
+            LoadColumnsSlow(player, coords, 0);
+
+        }
+
+        private void LoadColumnsSlow(IServerPlayer player, List<Vec2i> coords, int startIndex)
+        {
+            int qadded = 0;
+
+            if (api.WorldManager.CurrentGeneratingChunkCount < 10)
+            {
+                int batchSize = 200;
+
+                for (int i = startIndex; i < coords.Count; i++)
+                {
+                    qadded++;
+                    startIndex++;
+                    Vec2i coord = coords[i];
+                    api.WorldManager.LoadChunkColumn(coord.X, coord.Y);
+
+                    if (qadded > batchSize)
+                    {
+                        break;
+                    }
+                }
+
+                player.SendMessage(groupId, string.Format("Ok, added {0} columns, {1} left to add, waiting until these are done.", qadded, coords.Count - startIndex), EnumChatType.CommandSuccess);
+            }
+
+            if (startIndex < coords.Count)
+            {
+                api.World.RegisterCallback((dt) => LoadColumnsSlow(player, coords, startIndex), 1000);
+            } else
+            {
+                player.SendMessage(groupId, string.Format("Ok, {0} columns, generated!", coords.Count), EnumChatType.CommandSuccess);
+            }
+        }
 
         private void RegenChunksAroundPlayer(IServerPlayer player, CmdArgs arguments, bool randomSeed)
         {
@@ -279,6 +338,11 @@ namespace Vintagestory.ServerMods
             List<Vec2i> coords = new List<Vec2i>();
 
             int rad = (int)arguments.PopInt(2);
+
+            if (rad > 50)
+            {
+                player.SendMessage(GlobalConstants.CurrentChatGroup, "Cannot generate a radius above 50. It would kill the server.", EnumChatType.CommandError);
+            }
 
             for (int x = -rad; x <= rad; x++)
             {
@@ -730,7 +794,6 @@ namespace Vintagestory.ServerMods
                 return;
             }
 
-            int chunkSize = api.WorldManager.ChunkSize; 
             BlockPos pos = player.Entity.Pos.AsBlockPos;
             IServerChunk serverchunk = api.WorldManager.GetChunk(pos);
             if (serverchunk == null)

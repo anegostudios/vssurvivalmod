@@ -320,8 +320,8 @@ namespace Vintagestory.GameContent
                     tmgr.ExecuteTask(task, 1);
                 }
 
-                AnimManager.StopAnimation("idle");
                 AnimManager.StartAnimation(new AnimationMetaData() { Animation = "welcome", Code = "welcome", Weight = 10, EaseOutSpeed = 10000, EaseInSpeed = 10000 });
+                AnimManager.StopAnimation("idle");
             }
         }
 

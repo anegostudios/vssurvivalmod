@@ -19,7 +19,7 @@ namespace Vintagestory.GameContent
             extra = null;
             ClimateCondition conds = world.BlockAccessor.GetClimateAt(pos, EnumGetClimateMode.NowValues);
 
-            float chance = GameMath.Clamp((conds.Temperature - 0.5f) / 15f, 0, 1);
+            float chance = GameMath.Clamp((conds.Temperature - 2f) / 25f, 0, 1);
             return offThreadRandom.NextDouble() < chance;
         }
 

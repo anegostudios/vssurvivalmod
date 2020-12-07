@@ -85,12 +85,14 @@ namespace Vintagestory.GameContent
             {
                 entity.WatchedAttributes.SetAttribute("bodyTemp", tempTree = new TreeAttribute());
 
-                BodyTempUpdateTotalHours = api.World.Calendar.TotalHours;
-                LastWetnessUpdateTotalHours = api.World.Calendar.TotalHours;
                 CurBodyTemperature = NormalBodyTemperature + 4;
 
                 return;
             }
+
+            // Run this every time a entity spawns so it doesnt freeze while unloaded / offline
+            BodyTempUpdateTotalHours = api.World.Calendar.TotalHours;
+            LastWetnessUpdateTotalHours = api.World.Calendar.TotalHours;
 
             bodyTemperatureResistance = entity.World.Config.GetString("bodyTemperatureResistance").ToFloat(0);
         }
@@ -139,6 +141,8 @@ namespace Vintagestory.GameContent
                 slowaccum = 0;
 
                 updateWearableConditions();
+
+                entity.WatchedAttributes.MarkPathDirty("bodyTemp");
             }
 
             if (accum > 1)
@@ -164,7 +168,7 @@ namespace Vintagestory.GameContent
 
                 Wetness = GameMath.Clamp(
                     Wetness
-                    + conds.Rainfall * (rainExposed ? 0.016f : 0) * (conds.Temperature < -1 ? 0.2f : 1) /* Get wet 5 times slower with snow */
+                    + conds.Rainfall * (rainExposed ? 0.06f : 0) * (conds.Temperature < -1 ? 0.2f : 1) /* Get wet 5 times slower with snow */
                     + (entity.Swimming ? 1 : 0)
                     - (float)Math.Max(0, (api.World.Calendar.TotalHours - LastWetnessUpdateTotalHours) * GameMath.Clamp(nearHeatSourceStrength, 1, 2))
                 , 0, 1);

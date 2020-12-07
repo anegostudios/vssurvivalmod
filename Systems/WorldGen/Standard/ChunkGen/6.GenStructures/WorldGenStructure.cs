@@ -326,7 +326,6 @@ namespace Vintagestory.ServerMods
         internal bool TryGenerateAtSurface(IBlockAccessor blockAccessor, IWorldAccessor worldForCollectibleResolve, BlockPos pos)
         {
             int chunksize = blockAccessor.ChunkSize;
-            int climate = GameMath.BiLerpRgbColor((float)(pos.X % chunksize) / chunksize, (float)(pos.Z % chunksize) / chunksize, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight);
 
             int num = rand.NextInt(schematicDatas.Length);
             int orient = rand.NextInt(4);

@@ -88,7 +88,7 @@ namespace Vintagestory.GameContent
         {
             if (IsGrown())
             {
-                dropQuantityMultiplier *= byPlayer.Entity.Stats.GetBlended("forageDropRate");
+                dropQuantityMultiplier *= byPlayer?.Entity?.Stats.GetBlended("forageDropRate") ?? 1;
 
                 return base.GetDrops(world, pos, byPlayer, dropQuantityMultiplier);
             }

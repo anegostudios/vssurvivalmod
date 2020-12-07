@@ -28,7 +28,7 @@ namespace Vintagestory.GameContent.Mechanics
         public override string InventoryClassName => "pulverizer";
 
         float rotateY = 0f;
-        InventoryGeneric inv;
+        InventoryPulverizer inv;
 
         internal Matrixf mat = new Matrixf();
 
@@ -46,7 +46,7 @@ namespace Vintagestory.GameContent.Mechanics
 
         public BEPulverizer()
         {
-            inv = new InventoryGeneric(3, null, null);
+            inv = new InventoryPulverizer(this, 3);
             inv.SlotModified += Inv_SlotModified;
             meshes = new MeshData[2];
         }
@@ -60,7 +60,10 @@ namespace Vintagestory.GameContent.Mechanics
         {
             string metal = "nometal";
             if (!inv[2].Empty) metal = inv[2].Itemstack.Collectible.Variant["metal"];
-            CapMetalIndexL = CapMetalIndexR = PulverizerRenderer.metals.IndexOf(metal);
+
+            MetalPropertyVariant metalvar = null;
+            if (metal != null) Api.ModLoader.GetModSystem<SurvivalCoreSystem>().metalsByCode.TryGetValue(metal, out metalvar);
+            CapMetalIndexL = CapMetalIndexR = Math.Max(metalvar?.Tier ?? 0, 0);
 
             base.updateMeshes();
         }
@@ -92,9 +95,6 @@ namespace Vintagestory.GameContent.Mechanics
             base.Initialize(api);
 
             inv.LateInitialize(InventoryClassName + "-" + Pos, api);
-            inv[0].MaxSlotStackSize = 1;
-            inv[1].MaxSlotStackSize = 1;
-            inv[2].MaxSlotStackSize = 1;
 
             if (api.World.Side == EnumAppSide.Server)
             {
@@ -119,10 +119,10 @@ namespace Vintagestory.GameContent.Mechanics
                 accumLeft += dt * nwspeed;
 
                 //TODO: instead tie this in with actual strikes from the beBehavior
-                if (accumLeft > 3)
+                if (accumLeft > 5)
                 {
                     accumLeft = 0;
-                    Crush(0, CapMetalIndexL, -3.5 / 16d);
+                    Crush(0, CapMetalIndexL, -4 / 16d);
                 }
             }
 
@@ -130,10 +130,10 @@ namespace Vintagestory.GameContent.Mechanics
             {
                 accumRight += dt * nwspeed;
 
-                if (accumRight > 3)
+                if (accumRight > 5)
                 {
                     accumRight = 0;
-                    Crush(1, CapMetalIndexR, 3.5 / 16d);
+                    Crush(1, CapMetalIndexR, 4 / 16d);
                 }
             }
 
@@ -141,41 +141,27 @@ namespace Vintagestory.GameContent.Mechanics
 
         private void Crush(int slot, int capTier, double xOffset)
         {
-            ItemStack input = inv[slot].TakeOut(1);
-            JsonItemStack jstack = input.ItemAttributes?["crushedOutput"].AsObject<JsonItemStack>(null, Block.Code.Domain);
-            jstack.Resolve(Api.World, "crushed output");
-            ItemStack output = jstack.ResolvedItemstack;
-            bool tierPassed = output != null && TierPasses(output.Attributes?.GetString("crushingtier"), capTier);
-            if (output != null) output.Attributes.RemoveAttribute("crushingtier");
+            ItemStack inputStack = inv[slot].TakeOut(1);
+            ItemStack outputStack = inputStack.Collectible.CrushingProps?.CrushedStack?.ResolvedItemstack.Clone();
 
-            Vec3d position = mat.TransformVector(new Vec4d(xOffset, 0.1, 0.7, 0)).XYZ.Add(Pos).Add(0.5, 0, 0.5);
-            Vec3d velocity = new Vec3d((float)Api.World.Rand.NextDouble() * 0.05f - 0.025f, (float)Api.World.Rand.NextDouble() * 0.05f - 0.025f, (float)Api.World.Rand.NextDouble() * 0.05f - 0.025f);
-            Api.World.SpawnItemEntity(tierPassed ? output : input, position, velocity);
-            //Api.World.SpawnParticles(1, ColorUtil.WhiteArgb, position, position, new Vec3f(), new Vec3f(), 2, 0, 0.3f);
+            Vec3d position = mat.TransformVector(new Vec4d(xOffset * 0.999, 0.1, 0.8, 0)).XYZ.Add(Pos).Add(0.5, 0, 0.5);
+            double lengthways = Api.World.Rand.NextDouble() * 0.07 - 0.035;
+            double sideways = Api.World.Rand.NextDouble() * 0.03 - 0.005;
+            Vec3d velocity = new Vec3d(Facing.IsAxisNS ? sideways : lengthways, Api.World.Rand.NextDouble() * 0.02 - 0.01, Facing.IsAxisNS ? lengthways : sideways);
+
+            bool tierPassed = outputStack != null && inputStack.Collectible.CrushingProps.HardnessTier <= capTier;
+
+            Api.World.SpawnItemEntity(tierPassed ? outputStack : inputStack, position, velocity);
+
             MarkDirty(true);
         }
 
-        private bool TierPasses(string requiredMetal, int capTier)
-        {
-            int requiredTier = 0;
-            String[] names = PulverizerRenderer.metals;
-            for (int i = 0; i < names.Length; i++)
-            {
-                if (names[i] == requiredMetal)
-                {
-                    requiredTier = i;
-                    break;
-                }
-            }
-            return requiredTier <= capTier;
-        }
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
         {
             // Adds the display items
             base.OnTesselation(mesher, tesselator);
 
-            lightRbs = Api.World.BlockAccessor.GetLightRGBs(Pos);
             ICoreClientAPI capi = Api as ICoreClientAPI;
 
             
@@ -241,7 +227,7 @@ namespace Vintagestory.GameContent.Mechanics
             {
                 if (TryAddPart(handslot, byPlayer)) return true;
 
-                if (handslot.Itemstack.ItemAttributes?["crushedOutput"].Exists == true)
+                if (handslot.Itemstack.Collectible.CrushingProps != null)
                 {
                     TryPut(handslot, targetSlot);
                 }
@@ -384,4 +370,20 @@ namespace Vintagestory.GameContent.Mechanics
         {
         }
     }
+
+    public class InventoryPulverizer : InventoryDisplayed
+    {
+        public InventoryPulverizer(BlockEntity be, int size) : base(be, size, "pulverizer-0", null)
+        {
+            slots = GenEmptySlots(size);
+            for (int i = 0; i < size; i++) slots[i].MaxSlotStackSize = 1;
+        }
+
+        public override float GetSuitability(ItemSlot sourceSlot, ItemSlot targetSlot, bool isMerge)
+        {
+            if (targetSlot == slots[slots.Length - 1]) return 0;  //disallow hoppers/chutes to place any items in the PounderCap slot
+            return base.GetSuitability(sourceSlot, targetSlot, isMerge);
+        }
+    }
+
 }

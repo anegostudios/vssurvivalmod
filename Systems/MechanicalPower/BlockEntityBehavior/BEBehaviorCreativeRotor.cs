@@ -51,6 +51,8 @@ namespace Vintagestory.GameContent.Mechanics
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
         {
+            base.OnTesselation(mesher, tesselator);
+
             ICoreClientAPI capi = Api as ICoreClientAPI;
             Shape shape = capi.Assets.TryGet("shapes/block/metal/mechanics/creativerotor-frame.json").ToObject<Shape>();
             float rotateY = 0f;
@@ -95,5 +97,6 @@ namespace Vintagestory.GameContent.Mechanics
             base.GetBlockInfo(forPlayer, sb);
             sb.AppendLine(string.Format(Lang.Get("Power: {0}%", (int)(10 * powerSetting))));
         }
+
     }
 }

@@ -11,6 +11,7 @@ namespace Vintagestory.GameContent.Mechanics
         public API.Common.Action OnConnected;
         public API.Common.Action OnDisconnected;
 
+        public float TrueSpeed { get { return System.Math.Abs(Network?.Speed * GearedRatio ?? 0f); }}
 
         public BEBehaviorMPConsumer(BlockEntity blockentity) : base(blockentity)
         {

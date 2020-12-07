@@ -227,7 +227,7 @@ namespace Vintagestory.GameContent
             Vec3d camPos = api.World.Player.Entity.CameraPos;
 
             rpi.GlDisableCullFace();
-            rpi.GlToggleBlend(true);
+            rpi.GlToggleBlend(true, EnumBlendMode.PremultipliedAlpha);
 
             IStandardShaderProgram prog = rpi.PreparedStandardShader(pos.X, pos.Y, pos.Z);
 
@@ -245,6 +245,8 @@ namespace Vintagestory.GameContent
 
             rpi.RenderMesh(quadModelRef);
             prog.Stop();
+
+            rpi.GlToggleBlend(true, EnumBlendMode.Standard);
         }
 
         public void Dispose()

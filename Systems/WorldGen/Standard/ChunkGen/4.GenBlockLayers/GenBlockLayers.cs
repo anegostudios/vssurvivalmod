@@ -191,9 +191,9 @@ namespace Vintagestory.ServerMods
                         {
                             if (foundAir >= 8)
                             {
-                                temp = TerraGenConfig.GetScaledAdjustedTemperatureFloat(tempUnscaled, posY - TerraGenConfig.seaLevel);
-                                rainRel = TerraGenConfig.GetRainFall((climate >> 8) & 0xff, posY) / 255f;
 
+                                //temp = TerraGenConfig.GetScaledAdjustedTemperatureFloat(tempUnscaled, posY - TerraGenConfig.seaLevel);
+                                //rainRel = TerraGenConfig.GetRainFall((climate >> 8) & 0xff, posY) / 255f;
                                 //PutLayers(transitionRand, x, posY, z, chunks, rainRel, temp, tempUnscaled, null);
                                 break;
                             } else
@@ -235,6 +235,12 @@ namespace Vintagestory.ServerMods
                 {
                     underWater = true;   
                     continue;
+                }
+
+                // Don't generate on ice (would otherwise cause snow above water, which collapses with block gravity enabled, causing massive lag)
+                if (blockId == GlobalConfig.lakeIceBlockId)
+                {
+                    break;
                 }
 
                 if (blockId != 0)

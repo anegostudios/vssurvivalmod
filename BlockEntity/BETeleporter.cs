@@ -60,7 +60,7 @@ namespace Vintagestory.GameContent
 
         internal void OnEntityCollide(Entity entity)
         {
-            TeleportingEntity tpe = null;
+            TeleportingEntity tpe;
             if (!tpingEntities.TryGetValue(entity.EntityId, out tpe))
             {
                 tpingEntities[entity.EntityId] = tpe = new TeleportingEntity()

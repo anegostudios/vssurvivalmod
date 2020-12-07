@@ -110,7 +110,7 @@ namespace Vintagestory.GameContent
             
             int index = rand.NextDouble() < entry.ScrapChance ? 0 : 1;
 
-            float chance = byPlayer?.Entity.Stats.GetBlended("rustyGearDropRate") ?? 0 - 1;
+            float chance = (byPlayer?.Entity.Stats.GetBlended("rustyGearDropRate") ?? 0) - 1;
             if (chance > 0 && rand.NextDouble() < chance)
             {
                 index = 2;

@@ -22,7 +22,7 @@ namespace Vintagestory.GameContent
             Block block = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
 
             IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
-            if (!byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            if (!byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.Use))
             {
                 return;
             }
@@ -51,7 +51,7 @@ namespace Vintagestory.GameContent
             if (blockSel == null) return false;
 
             IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
-            if (!byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            if (!byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.Use))
             {
                 return false;
             }
@@ -103,7 +103,7 @@ namespace Vintagestory.GameContent
             if (blockSel == null || secondsUsed < 3) return;
 
             IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
-            if (!byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            if (!byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.Use))
             {
                 return;
             }
@@ -119,6 +119,11 @@ namespace Vintagestory.GameContent
             }
 
             handling = EnumHandling.PreventDefault;
+
+            if (!byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            {
+                return;
+            }
 
             if (blockSel != null && byEntity.World.Side == EnumAppSide.Server)
             {

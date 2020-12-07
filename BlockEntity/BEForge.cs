@@ -9,7 +9,7 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockEntityForge : BlockEntity
+    public class BlockEntityForge : BlockEntity, IHeatSource
     {
         ForgeContentsRenderer renderer;
         ItemStack contents;
@@ -403,5 +403,9 @@ namespace Vintagestory.GameContent
             renderer?.Dispose();
         }
 
+        public float GetHeatStrength(IWorldAccessor world, BlockPos heatSourcePos, BlockPos heatReceiverPos)
+        {
+            return IsBurning ? 5 : 0;
+        }
     }
 }

@@ -103,10 +103,13 @@ namespace Vintagestory.GameContent
         {
             font.WithColor(ColorUtil.ToRGBADoubles(color));
             loadedTexture?.Dispose();
+            loadedTexture = null;
 
-            font.UnscaledFontsize = fontSize / RuntimeEnv.GUIScale;
-
-            loadedTexture = api.Gui.TextTexture.GenTextTexture(text, font, TextWidth, TextHeight, null, EnumTextOrientation.Center, false);
+            if (text.Length > 0)
+            {
+                font.UnscaledFontsize = fontSize / RuntimeEnv.GUIScale;
+                loadedTexture = api.Gui.TextTexture.GenTextTexture(text, font, TextWidth, TextHeight, null, EnumTextOrientation.Center, false);
+            }
         }
 
 
@@ -115,6 +118,7 @@ namespace Vintagestory.GameContent
         public virtual void OnRenderFrame(float deltaTime, EnumRenderStage stage)
         {
             if (loadedTexture == null) return;
+            if (!api.Render.DefaultFrustumCuller.SphereInFrustum(pos.X + 0.5, pos.Y + 0.5, pos.Z + 0.5, 1)) return;
 
             IRenderAPI rpi = api.Render;
             Vec3d camPos = api.World.Player.Entity.CameraPos;

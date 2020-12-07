@@ -68,19 +68,25 @@ namespace Vintagestory.GameContent
         {
             base.OnNeighbourBlockChange(world, pos, neibpos, ref handling);
 
-            EnumHandling bla = EnumHandling.PassThrough;
-            string bla2 = "";
-            TryFalling(world, pos, ref bla, ref bla2);
+            if (world.Side == EnumAppSide.Client) return;
+
+            // Would be real nice if we could do this but it causes duplication, because the block is not instantly removed
+            //world.RegisterCallbackUnique((hereworld, herepos, dt) =>
+            //{
+                EnumHandling bla = EnumHandling.PassThrough;
+                string bla2 = "";
+                TryFalling(world, pos, ref bla, ref bla2);
+            //}, pos, world.Rand.Next(30));
+            
         }
 
         private bool TryFalling(IWorldAccessor world, BlockPos pos, ref EnumHandling handling, ref string failureCode)
         {
+            if (world.Side != EnumAppSide.Server) return false;
 
-            if (world.Side == EnumAppSide.Server)
-            {
-                ICoreServerAPI sapi = (world as IServerWorldAccessor).Api as ICoreServerAPI;
-                if (!sapi.Server.Config.AllowFallingBlocks) return false;
-            }
+            ICoreServerAPI sapi = (world as IServerWorldAccessor).Api as ICoreServerAPI;
+            if (!sapi.Server.Config.AllowFallingBlocks) return false;
+
 
             if (IsReplacableBeneath(world, pos) || (fallSideways && world.Rand.NextDouble() < fallSidewaysChance && IsReplacableBeneathAndSideways(world, pos)))
             {

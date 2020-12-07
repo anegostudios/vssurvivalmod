@@ -29,7 +29,7 @@ namespace Vintagestory.GameContent
                 handling = EnumHandling.PreventDefault;
 
                 //handles the collection of items, and the transformation of the block.
-                world.Logger.VerboseDebug($"Collecting item(s) from target block at {blockSel.Position.ToString()}.");
+                world.Logger.VerboseDebug("Collecting item(s) from target block at {0}.", blockSel.Position);
 
                 if (block.Drops != null && block.Drops.Length > 1)
                 {

@@ -435,7 +435,7 @@ namespace Vintagestory.GameContent
                 foreach (var val in trait.Attributes)
                 {
                     if (attributes.Length > 0) attributes.Append(", ");
-                    attributes.Append(Lang.Get("charattribute-" + val.Key + "-" + val.Value));
+                    attributes.Append(Lang.Get(string.Format(GlobalConstants.DefaultCultureInfo, "charattribute-{0}-{1}", val.Key, val.Value)));
                 }
 
                 if (attributes.Length > 0)

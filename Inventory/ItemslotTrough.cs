@@ -18,9 +18,9 @@ namespace Vintagestory.GameContent
             this.be = be;
         }
 
-        public override bool CanTakeFrom(ItemSlot sourceSlot)
+        public override bool CanTakeFrom(ItemSlot sourceSlot, EnumMergePriority priority = EnumMergePriority.AutoMerge)
         {
-            return base.CanTakeFrom(sourceSlot) && troughable(sourceSlot);
+            return base.CanTakeFrom(sourceSlot, priority) && troughable(sourceSlot);
         }
 
         public override bool CanHold(ItemSlot itemstackFromSourceSlot)

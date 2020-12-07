@@ -10,9 +10,9 @@ namespace Vintagestory.GameContent.Mechanics
 {
     public class BEBehaviorMPToggle : BEBehaviorMPBase
     {
-        BlockFacing[] orients = new BlockFacing[2];
+        protected readonly BlockFacing[] orients = new BlockFacing[2];
 
-        BlockFacing[] sides = new BlockFacing[2];
+        protected readonly BlockFacing[] sides = new BlockFacing[2];
 
         ICoreClientAPI capi;
         string orientations;
@@ -70,9 +70,10 @@ namespace Vintagestory.GameContent.Mechanics
                 }
             }
 
-            //Significantly increase hammer resistance if the network is turning faster - should normally prevent helvehammering at crazy speeds;
-            float speed = this.network == null ? 0f : this.network.Speed * this.GearedRatio;
-            return hasHammer ? 0.19f + Math.Abs(speed) / 4f : 0.0005f;
+            //Exponentially increase hammer resistance if the network is turning faster - should almost always prevent helvehammering at crazy speeds;
+            float speed = this.network == null ? 0f : Math.Abs(this.network.Speed * this.GearedRatio);
+            float speedLimiter = 5f * (float) Math.Exp(speed * 2.8 - 5.0);
+            return hasHammer ? 0.125f + speedLimiter : 0.0005f;
         }
 
         public override void JoinNetwork(MechanicalNetwork network)

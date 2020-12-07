@@ -51,17 +51,14 @@ namespace Vintagestory.GameContent
             inventory = new InventoryGeneric(2, null, null, (id, self) =>
             {
                 if (id == 0) return new ItemSlotBarrelInput(self);
-                else return new ItemSlotLiquidOnly(self);
+                else return new ItemSlotLiquidOnly(self, 50);
             });
             inventory.BaseWeight = 1;
             inventory.OnGetSuitability = (sourceSlot, targetSlot, isMerge) => (isMerge ? (inventory.BaseWeight + 3) : (inventory.BaseWeight + 1)) + (sourceSlot.Inventory is InventoryBasePlayer ? 1 : 0);
 
 
             inventory.SlotModified += Inventory_SlotModified;
-
-            
         }
-
 
 
         protected override float Inventory_OnAcquireTransitionSpeed(EnumTransitionType transType, ItemStack stack, float baseMul)
@@ -81,6 +78,7 @@ namespace Vintagestory.GameContent
             if (ownBlock?.Attributes?["capacityLitres"].Exists == true)
             {
                 CapacityLitres = ownBlock.Attributes["capacityLitres"].AsInt(50);
+                (inventory[1] as ItemSlotLiquidOnly).CapacityLitres = CapacityLitres;
             }
 
             if (api.Side == EnumAppSide.Client && currentMesh == null)

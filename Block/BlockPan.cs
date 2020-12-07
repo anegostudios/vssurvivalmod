@@ -14,6 +14,7 @@ namespace Vintagestory.GameContent
     public class PanningDrop : JsonItemStack
     {
         public NatFloat Chance;
+        public string DropModbyStat;
     }
 
     public class BlockPan : Block, ITexPositionSource
@@ -293,7 +294,7 @@ namespace Vintagestory.GameContent
             {
                 string code = GetBlockMaterialCode(slot.Itemstack);
 
-                if (api.Side == EnumAppSide.Server)
+                if (api.Side == EnumAppSide.Server && code != null)
                 {
                     CreateDrop(byEntity, code);
                 }
@@ -331,10 +332,18 @@ namespace Vintagestory.GameContent
 
             for (int i = 0; i < drops.Length; i++)
             {
+                PanningDrop drop = drops[i];
+
                 double rnd = api.World.Rand.NextDouble();
 
-                PanningDrop drop = drops[i];
-                float val = drop.Chance.nextFloat();
+                float extraMul = 1f;
+                if (drop.DropModbyStat != null)
+                {
+                    // If the stat does not exist, then GetBlended returns 1 \o/
+                    extraMul = byEntity.Stats.GetBlended(drop.DropModbyStat);
+                }
+                
+                float val = drop.Chance.nextFloat() * extraMul;
 
 
                 ItemStack stack = drop.ResolvedItemstack;

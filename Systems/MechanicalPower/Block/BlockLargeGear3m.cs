@@ -153,9 +153,9 @@ namespace Vintagestory.GameContent.Mechanics
             return base.OnBlockInteractStart(world, byPlayer, blockSel);
         }
 
-        public override void OnBlockBroken(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)
+        public override void OnBlockRemoved(IWorldAccessor world, BlockPos pos)
         {
-            base.OnBlockBroken(world, pos, byPlayer, dropQuantityMultiplier);
+            base.OnBlockRemoved(world, pos);
             BlockPos tmpPos = new BlockPos();
 
             for (int dx = -1; dx <= 1; dx++)
@@ -179,8 +179,6 @@ namespace Vintagestory.GameContent.Mechanics
                     }
                 }
             }
-
-
         }
     }
 }

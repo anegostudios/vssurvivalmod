@@ -34,7 +34,7 @@ namespace Vintagestory.GameContent
         {
             extra = null;
             ClimateCondition conds = world.BlockAccessor.GetClimateAt(pos, EnumGetClimateMode.NowValues);
-            return canMelt && offThreadRandom.NextDouble() < GameMath.Clamp((conds.Temperature - 0.5f) / 15f, 0, 1);
+            return conds != null && canMelt && offThreadRandom.NextDouble() < GameMath.Clamp((conds.Temperature - 0.5f) / 15f, 0, 1);
         }
 
         public override void OnServerGameTick(IWorldAccessor world, BlockPos pos, object extra = null)

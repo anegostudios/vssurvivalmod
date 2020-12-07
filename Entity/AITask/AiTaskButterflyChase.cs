@@ -102,6 +102,8 @@ namespace Vintagestory.GameContent
 
         public override bool ContinueExecute(float dt)
         {
+            if (targetEntity == null) return false;
+
             targetPos.Set(targetEntity.ServerPos.X, targetEntity.ServerPos.Y + (fleeState ? 1 : 0), targetEntity.ServerPos.Z);
 
             return (chaseTime -= dt) >= 0;

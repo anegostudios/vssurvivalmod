@@ -476,8 +476,13 @@ namespace Vintagestory.GameContent
 
                 if (Api.World.ElapsedMilliseconds - val.Value.LastCollideMs > 100)
                 {
-                    toremove.Add(val.Key);
-                    continue;
+                    // Make sure its not just server lag
+                    Block block = Api.World.CollisionTester.GetCollidingBlock(Api.World.BlockAccessor, val.Value.Entity.CollisionBox, val.Value.Entity.Pos.XYZ, true);
+                    if (!(block is BlockStaticTranslocator))
+                    {
+                        toremove.Add(val.Key);
+                        continue;
+                    }
                 }
 
                 if (val.Value.SecondsPassed > 0.1 && !somebodyIsTeleporting)

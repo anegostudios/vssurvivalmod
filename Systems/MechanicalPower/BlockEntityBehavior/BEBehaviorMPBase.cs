@@ -16,28 +16,44 @@ namespace Vintagestory.GameContent.Mechanics
         public BlockFacing OutFacing;
         public bool invert;
         public float gearingRatio;
+        private readonly BlockPos fromPos;
 
         public MechPowerPath()
         {
         }
-        public MechPowerPath(BlockFacing facing, float gearingRatioHere, bool inverted = false)
+        
+        /// <summary>
+        /// Specify fromPos where it matters (e.g. when SetPropagationDir using a direction taken from a neighbour
+        /// </summary>
+        public MechPowerPath(BlockFacing facing, float gearingRatioHere, BlockPos fromPos = null, bool inverted = false)
         {
             this.OutFacing = facing;
             this.invert = inverted;
             this.gearingRatio = gearingRatioHere;
+            this.fromPos = fromPos;
         }
+
         public BlockFacing NetworkDir()
         {
             return this.invert ? OutFacing.Opposite : OutFacing;
+        }
+
+        public bool IsInvertedTowards(BlockPos testPos)
+        {
+            return fromPos == null ? invert : fromPos.AddCopy(this.NetworkDir()) != testPos;
         }
     }
 
     public abstract class BEBehaviorMPBase : BlockEntityBehavior, IMechanicalPowerDevice
     {
+#if DEBUG
         /// <summary>
-        /// Change to true to enable network discovery messages in the log - we need to keep this until totally sure there are no MechPower bugs, so maybe forever...
+        /// Set to true to debug Mechanical Power network discovery etc..  The #if DEBUG is just in case: ensures this debugging log spam can never make it into a release build by accident.
         /// </summary>
         private static readonly bool DEBUG = false;
+#else
+        private static readonly bool DEBUG = false;
+#endif
 
         protected MechanicalPowerMod manager;
         protected MechanicalNetwork network;
@@ -83,6 +99,7 @@ namespace Vintagestory.GameContent.Mechanics
         protected BlockFacing propagationDir = BlockFacing.NORTH;
         private float gearedRatio = 1.0f;
         public float GearedRatio { get { return gearedRatio; } set { gearedRatio = value;} }
+        public virtual float GetGearedRatio(BlockFacing face) { return gearedRatio; }
 
         protected float lastKnownAngleRad = 0;
         public bool disconnected = false;
@@ -190,7 +207,7 @@ namespace Vintagestory.GameContent.Mechanics
 
                 connectedToBlock.DidConnectAt(Api.World, pos, toFacing.Opposite);  //do this first to set the new Angled Gear block correctly prior to getting propagation direction
                 BlockFacing newTurnDir = node.GetPropagationDirectionInput();
-                MechPowerPath curPath = new MechPowerPath(toFacing, node.GearedRatio, !node.IsPropagationDirection(toFacing));
+                MechPowerPath curPath = new MechPowerPath(toFacing, node.GetGearedRatio(toFacing), pos, !node.IsPropagationDirection(Position, toFacing));
                 SetPropagationDirection(curPath);
                 MechPowerPath[] paths = GetMechPowerExits(curPath);
                 JoinNetwork(newNetwork);
@@ -201,8 +218,7 @@ namespace Vintagestory.GameContent.Mechanics
                     if (DEBUG) Api.Logger.Notification("== spreading path " + (paths[i].invert ? "-" : "") + paths[i].OutFacing + "  " + paths[i].gearingRatio);
                     BlockPos exitPos = Position.AddCopy(paths[i].OutFacing);
 
-                    Vec3i missingChunkPos;
-                    bool chunkLoaded = spreadTo(Api, (node as BEBehaviorMPBase).currentPropagationId, newNetwork, exitPos, paths[i], out missingChunkPos);
+                    bool chunkLoaded = spreadTo(Api, newNetwork, exitPos, paths[i], out _);
                     if (!chunkLoaded)
                     {
                         LeaveNetwork();
@@ -249,7 +265,6 @@ namespace Vintagestory.GameContent.Mechanics
             network?.Leave(this);
             network = null;
             NetworkId = 0;
-            currentPropagationId = -1;  //reset currentPropagationId to allow the block to be later reconnected to the same network without problems, if the connection to the network is re-placed
             Blockentity.MarkDirty();
         }
 
@@ -274,7 +289,7 @@ namespace Vintagestory.GameContent.Mechanics
         {
             base.OnBlockUnloaded();
             network?.DidUnload(this);
-            manager.RemoveDeviceForRender(this);
+            manager?.RemoveDeviceForRender(this);
         }
 
 
@@ -354,7 +369,7 @@ namespace Vintagestory.GameContent.Mechanics
             return propagationDir;
         }
 
-        public virtual bool IsPropagationDirection(BlockFacing test)
+        public virtual bool IsPropagationDirection(BlockPos fromPos, BlockFacing test)
         {
             return propagationDir == test;
         }
@@ -385,7 +400,7 @@ namespace Vintagestory.GameContent.Mechanics
         }
 
 
-        #region Network Discovery
+#region Network Discovery
 
 
         public virtual MechanicalNetwork CreateJoinAndDiscoverNetwork(BlockFacing powerOutFacing)
@@ -408,7 +423,7 @@ namespace Vintagestory.GameContent.Mechanics
                 }
 
                 Vec3i missingChunkPos;
-                bool chunksLoaded = spreadTo(Api, manager.GetNextPropagationId(), newNetwork, neibPos, new MechPowerPath(GetPropagationDirection(), this.gearedRatio), out missingChunkPos);
+                bool chunksLoaded = spreadTo(Api, newNetwork, neibPos, new MechPowerPath(GetPropagationDirection(), this.gearedRatio), out missingChunkPos);
                 if (network == null)
                 {
                     if (DEBUG) Api.Logger.Notification("Incomplete chunkloading, possible issues with mechanical network around block " + neibPos);
@@ -424,7 +439,11 @@ namespace Vintagestory.GameContent.Mechanics
                 else
                 {
                     IMechanicalPowerDevice node = Api.World.BlockAccessor.GetBlockEntity(neibPos)?.GetBehavior<BEBehaviorMPBase>() as IMechanicalPowerDevice;
-                    if (node != null) SetPropagationDirection(new MechPowerPath(node.GetPropagationDirectionInput(), node.GearedRatio));
+                    if (node != null)
+                    {
+                        BlockFacing facing = node.GetPropagationDirectionInput();
+                        SetPropagationDirection(new MechPowerPath(facing, node.GetGearedRatio(facing), neibPos));
+                    }
                 }
             }
             else
@@ -434,34 +453,31 @@ namespace Vintagestory.GameContent.Mechanics
                 {
                     if (tryConnect(OutFacingForNetworkDiscovery))
                     {
-                        this.gearedRatio = neib.GearedRatio;  //no need to set propagationDir, it's already been set by tryConnect
+                        this.gearedRatio = neib.GetGearedRatio(OutFacingForNetworkDiscovery);  //no need to set propagationDir, it's already been set by tryConnect
                     }
                 }
                 else
                 {
                     JoinNetwork(neibNetwork);
-                    SetPropagationDirection(new MechPowerPath(neib.propagationDir, neib.GearedRatio));
+                    SetPropagationDirection(new MechPowerPath(neib.propagationDir, neib.GetGearedRatio(neib.propagationDir), neibPos));
                 }
             }
 
             return network;
         }
 
-        long currentPropagationId = 0;
-
         /// <summary>
         /// Network propagation has a power path direction (for the network discovery process) and normally power transmission will be in the same sense, but it may be inverted (e.g. if a block is inserted in a way which joins two existing networks)
         /// </summary>
-        public virtual bool JoinAndSpreadNetworkToNeighbours(ICoreAPI api, long propagationId, MechanicalNetwork network, MechPowerPath exitTurnDir, out Vec3i missingChunkPos)
+        public virtual bool JoinAndSpreadNetworkToNeighbours(ICoreAPI api, MechanicalNetwork network, MechPowerPath exitTurnDir, out Vec3i missingChunkPos)
         {
             missingChunkPos = null;
-            if (propagationId == currentPropagationId) return true; // Already got the message
+            if (this.network?.networkId == network?.networkId) return true; // Already got the message
 
             if (DEBUG) api.Logger.Notification("Spread to " + this.Position + " with direction " + exitTurnDir.OutFacing + (exitTurnDir.invert ? "-" : "") + " Network:" + network.networkId);
             SetPropagationDirection(exitTurnDir);
 
             JoinNetwork(network);
-            currentPropagationId = propagationId;
             (Block as IMechanicalPowerBlock).DidConnectAt(api.World, Position, exitTurnDir.OutFacing.Opposite);
 
             MechPowerPath[] paths = GetMechPowerExits(exitTurnDir);
@@ -470,7 +486,7 @@ namespace Vintagestory.GameContent.Mechanics
                 //if (paths[i].OutFacing == exitTurnDir.OutFacing.GetOpposite()) continue;   //currently commented out to force testing of path in both directions, though usually (maybe always) the OutFacing.getOpposite() sense will return quickly - anyhow, it seems to work with this commented out
                 if (DEBUG) api.Logger.Notification("-- spreading path " + (paths[i].invert ? "-" : "") + paths[i].OutFacing + "  " + paths[i].gearingRatio);
                 BlockPos exitPos = Position.AddCopy(paths[i].OutFacing);
-                bool chunkLoaded = spreadTo(api, propagationId, network, exitPos, paths[i], out missingChunkPos);
+                bool chunkLoaded = spreadTo(api, network, exitPos, paths[i], out missingChunkPos);
 
                 if (!chunkLoaded)
                 {
@@ -482,7 +498,7 @@ namespace Vintagestory.GameContent.Mechanics
             return true;
         }
 
-        protected virtual bool spreadTo(ICoreAPI api, long propagationId, MechanicalNetwork network, BlockPos exitPos, MechPowerPath propagatePath, out Vec3i missingChunkPos)
+        protected virtual bool spreadTo(ICoreAPI api, MechanicalNetwork network, BlockPos exitPos, MechPowerPath propagatePath, out Vec3i missingChunkPos)
         {
             missingChunkPos = null;
             BEBehaviorMPBase beMechBase = api.World.BlockAccessor.GetBlockEntity(exitPos)?.GetBehavior<BEBehaviorMPBase>();
@@ -499,7 +515,7 @@ namespace Vintagestory.GameContent.Mechanics
             if (beMechBase != null && mechBlock.HasMechPowerConnectorAt(api.World, exitPos, propagatePath.OutFacing.Opposite))
             {
                 beMechBase.Api = api;
-                if (!beMechBase.JoinAndSpreadNetworkToNeighbours(api, propagationId, network, propagatePath, out missingChunkPos))
+                if (!beMechBase.JoinAndSpreadNetworkToNeighbours(api, network, propagatePath, out missingChunkPos))
                 {
                     return false;
                 }
@@ -525,11 +541,11 @@ namespace Vintagestory.GameContent.Mechanics
         protected virtual MechPowerPath[] GetMechPowerExits(MechPowerPath entryDir)
         {
             // Most blocks - like axles - have two power exits in opposite directions
-            return new MechPowerPath[] { entryDir, new MechPowerPath(entryDir.OutFacing.Opposite, entryDir.gearingRatio, !entryDir.invert) };
+            return new MechPowerPath[] { entryDir, new MechPowerPath(entryDir.OutFacing.Opposite, entryDir.gearingRatio, Position, !entryDir.invert) };
         }
 
 
-        #endregion
+#endregion
     }
 
 

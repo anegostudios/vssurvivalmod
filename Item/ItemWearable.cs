@@ -216,7 +216,7 @@ namespace Vintagestory.GameContent
 
             if (armorShape.Textures.Count > 0 && armorShape.TextureSizes.Count == 0)
             {
-                capi.World.Logger.Warning("Entity wearable shape {0} defines textures but not textures sizes, will probably have a broken texture.", shapePathForLogging);
+                capi.World.Logger.Warning("Entity wearable shape {0} defines textures but not textures sizes, will probably have a broken texture.", shapePath);
             }
 
             foreach (var val in armorShape.TextureSizes)
@@ -475,31 +475,37 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override int GetMergableQuantity(ItemStack sinkStack, ItemStack sourceStack)
+        public override int GetMergableQuantity(ItemStack sinkStack, ItemStack sourceStack, EnumMergePriority priority)
         {
-            if (sinkStack.ItemAttributes?["warmth"].Exists != true || sinkStack.ItemAttributes?["warmth"].AsFloat() == 0) return base.GetMergableQuantity(sinkStack, sourceStack);
-
-            float repstr = sourceStack?.ItemAttributes?["clothingRepairStrength"].AsFloat(0) ?? 0;
-            if (repstr > 0)
+            if (priority == EnumMergePriority.DirectMerge)
             {
-                if (sinkStack.Attributes.GetFloat("condition") < 1) return 1;
-                return 0;
+                if (sinkStack.ItemAttributes?["warmth"].Exists != true || sinkStack.ItemAttributes?["warmth"].AsFloat() == 0) return base.GetMergableQuantity(sinkStack, sourceStack, priority);
+
+                float repstr = sourceStack?.ItemAttributes?["clothingRepairStrength"].AsFloat(0) ?? 0;
+                if (repstr > 0)
+                {
+                    if (sinkStack.Attributes.GetFloat("condition") < 1) return 1;
+                    return 0;
+                }
             }
             
 
-            return base.GetMergableQuantity(sinkStack, sourceStack);
+            return base.GetMergableQuantity(sinkStack, sourceStack, priority);
         }
 
         public override void TryMergeStacks(ItemStackMergeOperation op)
         {
-            float repstr = op.SourceSlot.Itemstack.ItemAttributes?["clothingRepairStrength"].AsFloat(0) ?? 0;
-
-            if (repstr > 0 && op.SinkSlot.Itemstack.Attributes.GetFloat("condition") < 1)
+            if (op.CurrentPriority == EnumMergePriority.DirectMerge)
             {
-                ChangeCondition(op.SinkSlot, repstr);
-                op.MovedQuantity = 1;
-                op.SourceSlot.TakeOut(1);
-                return;
+                float repstr = op.SourceSlot.Itemstack.ItemAttributes?["clothingRepairStrength"].AsFloat(0) ?? 0;
+
+                if (repstr > 0 && op.SinkSlot.Itemstack.Attributes.GetFloat("condition") < 1)
+                {
+                    ChangeCondition(op.SinkSlot, repstr);
+                    op.MovedQuantity = 1;
+                    op.SourceSlot.TakeOut(1);
+                    return;
+                }
             }
 
             base.TryMergeStacks(op);

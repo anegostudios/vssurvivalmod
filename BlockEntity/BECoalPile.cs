@@ -57,6 +57,8 @@ namespace Vintagestory.GameContent
 
         float cokeConversionRate = 0f;
 
+        public float BurnHoursPerLayer = 4f;
+
         public bool IsBurning
         {
             get { return burning; }
@@ -86,8 +88,6 @@ namespace Vintagestory.GameContent
         {
             if (burning) return;
 
-            
-
             burning = true;
             burnStartTotalHours = Api.World.Calendar.TotalHours;
             MarkDirty();
@@ -112,7 +112,11 @@ namespace Vintagestory.GameContent
                         Volume = 1
                     });
 
-                    ambientSound.Start();
+                    if (ambientSound != null)
+                    {
+                        ambientSound.PlaybackPosition = ambientSound.SoundLengthSeconds * (float)Api.World.Rand.NextDouble();
+                        ambientSound.Start();
+                    }
                 }
 
                 listenerId = RegisterGameTickListener(onBurningTickClient, 100);
@@ -135,6 +139,16 @@ namespace Vintagestory.GameContent
 
         long listenerId;
         static BlockFacing[] facings = (BlockFacing[])BlockFacing.ALLFACES.Clone();
+
+        public float GetHoursLeft(double startTotalHours)
+        {
+            double totalHoursPassed = startTotalHours - burnStartTotalHours;
+
+            double burnHourTimeLeft = inventory[0].StackSize / 2 * BurnHoursPerLayer;
+
+            return (float)(burnHourTimeLeft - totalHoursPassed);
+        }
+        
 
         private void onBurningTickServer(float dt)
         {
@@ -182,14 +196,25 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            if (Api.World.Calendar.TotalHours - burnStartTotalHours > 2)
+            bool changed = false;
+            while (Api.World.Calendar.TotalHours - burnStartTotalHours > BurnHoursPerLayer)
             {
-                burnStartTotalHours = Api.World.Calendar.TotalHours;
+                burnStartTotalHours += BurnHoursPerLayer;
                 inventory[0].TakeOut(2);
+
                 if (inventory[0].Empty)
                 {
                     Api.World.BlockAccessor.SetBlock(0, Pos);
+                    break;
+                } else
+                {
+                    changed = true;
                 }
+            }
+
+            if (changed)
+            {
+                MarkDirty(true);
             }
         }
 
@@ -441,6 +466,12 @@ namespace Vintagestory.GameContent
             ambientSound?.Dispose();
         }
 
+        public override void OnBlockUnloaded()
+        {
+            base.OnBlockUnloaded();
+
+            ambientSound?.Dispose();
+        }
 
         public TextureAtlasPosition this[string textureCode]
         {

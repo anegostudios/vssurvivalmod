@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.GameContent;
@@ -74,6 +75,7 @@ namespace Vintagestory.ServerMods
 
             api.RegisterCommand("upgradearea", "Fixes chiseled blocks, pots and planters broken in v1.13", "", onUpgradeCmd, "worldedit");
             api.RegisterCommand("setchiselblockmat", "Sets the material of a currently looked at chisel block to the material in the active hands", "", onSetChiselMat, "worldedit");
+            api.RegisterCommand("setchiseleditable", "Upgrade/Downgrade chiseled blocks to an editable/non-editable state in given area", "", onSetChiselEditable, "worldedit");
         }
 
         private void onSetChiselMat(IServerPlayer player, int groupId, CmdArgs args)
@@ -109,6 +111,77 @@ namespace Vintagestory.ServerMods
             player.SendMessage(groupId, "Ok material set", EnumChatType.CommandError);
             return;
         }
+
+
+
+        private void onSetChiselEditable(IServerPlayer player, int groupId, CmdArgs args)
+        {
+            var wmod = api.ModLoader.GetModSystem<WorldEdit.WorldEdit>();
+
+            var workspace = wmod.GetWorkSpace(player.PlayerUID);
+
+            if (workspace == null || workspace.StartMarker == null || workspace.EndMarker == null)
+            {
+                player.SendMessage(groupId, "Select an area with worldedit first", EnumChatType.CommandError);
+                return;
+            }
+
+            bool editable = args.PopBool() == true;
+            bool resetName = args.PopBool() == true;
+
+            Block chiselBlock = api.World.GetBlock(new AssetLocation("chiseledblock"));
+            Block microblock = api.World.GetBlock(new AssetLocation("microblock"));
+
+            Block targetBlock = editable ? chiselBlock : microblock;
+
+            int startx = Math.Min(workspace.StartMarker.X, workspace.EndMarker.X);
+            int endx = Math.Max(workspace.StartMarker.X, workspace.EndMarker.X);
+            int starty = Math.Min(workspace.StartMarker.Y, workspace.EndMarker.Y);
+            int endy = Math.Max(workspace.StartMarker.Y, workspace.EndMarker.Y);
+            int startz = Math.Min(workspace.StartMarker.Z, workspace.EndMarker.Z);
+            int endZ = Math.Max(workspace.StartMarker.Z, workspace.EndMarker.Z);
+            BlockPos pos = new BlockPos();
+
+            IBulkBlockAccessor ba = api.World.BulkBlockAccessor;
+
+            int cnt = 0;
+
+            for (int x = startx; x < endx; x++)
+            {
+                for (int y = starty; y < endy; y++)
+                {
+                    for (int z = startz; z < endZ; z++)
+                    {
+                        pos.Set(x, y, z);
+
+                        Block block = ba.GetBlock(x, y, z);
+                        if (block is BlockMicroBlock && block.Id != targetBlock.Id)
+                        {
+                            cnt++;
+
+                            TreeAttribute tree = new TreeAttribute();
+                            BlockEntityMicroBlock be = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityMicroBlock;
+                            be.ToTreeAttributes(tree);
+
+                            api.World.BlockAccessor.SetBlock(targetBlock.Id, pos);
+
+                            be = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityMicroBlock;
+                            be.FromTreeAttributes(tree, api.World);
+
+                            if (resetName)
+                            {
+                                be.BlockName = api.World.BlockAccessor.GetBlock(be.MaterialIds[0]).GetPlacedBlockName(api.World, pos);
+                            }
+                        }
+                    }
+                }
+            }
+
+            player.SendMessage(groupId, string.Format("Ok. {0} Chisel blocks exchanged", cnt), EnumChatType.CommandSuccess);
+        }
+
+
+
 
         private void onUpgradeCmd(IServerPlayer player, int groupId, CmdArgs args)
         {

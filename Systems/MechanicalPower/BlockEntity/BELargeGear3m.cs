@@ -28,6 +28,13 @@ namespace Vintagestory.GameContent.Mechanics
             if (accessor.GetBlock(pos) is BlockAngledGears) AddGear(pos);
         }
 
+        public bool AngledGearNotAlreadyAdded(BlockPos position)
+        {
+            if (gear == null || HasGearAt(position)) return false;
+            this.AddGear(position);
+            return true;
+        }
+
         bool IGearAcceptor.CanAcceptGear(BlockPos pos)
         {
             if (pos.Y != Pos.Y) return false;
@@ -99,6 +106,7 @@ namespace Vintagestory.GameContent.Mechanics
 
         public void RemoveGearAt(BlockPos pos)
         {
+            if (gear == null) return;
             for (int i = 0; i < 4; i++)
             {
                 if (pos.Equals(gear[i]))

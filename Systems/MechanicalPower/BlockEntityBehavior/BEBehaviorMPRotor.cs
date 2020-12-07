@@ -104,7 +104,7 @@ namespace Vintagestory.GameContent.Mechanics
             float excessSpeed = absSpeed - csFloat;
             bool wrongDirection = dir * speed < 0f;
 
-            resistance = wrongDirection ? Resistance * TorqueFactor * Math.Min(0.8f, absSpeed * 400f) : excessSpeed > 0 ? Resistance * Math.Min(0.5f, excessSpeed * 50f) : 0f;
+            resistance = wrongDirection ? Resistance * TorqueFactor * Math.Min(0.8f, absSpeed * 400f) : excessSpeed > 0 ? Resistance * Math.Min(0.2f, excessSpeed * excessSpeed * 80f) : 0f;
             float power = wrongDirection ? csFloat : csFloat - absSpeed;
             return Math.Max(0f, power) * TorqueFactor * dir;
         }

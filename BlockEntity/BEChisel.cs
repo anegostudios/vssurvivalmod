@@ -289,12 +289,14 @@ namespace Vintagestory.GameContent
         {
             // Create a temporary array first, because the offthread particle system might otherwise access a null collisionbox
             Cuboidf[] selectionBoxesTmp = new Cuboidf[VoxelCuboids.Count];
+            CuboidWithMaterial cwm = tmpCuboid;
+
             for (int i = 0; i < VoxelCuboids.Count; i++)
             {
-                FromUint(VoxelCuboids[i], ref tmpCuboid);
-                selectionBoxesTmp[i] = tmpCuboid.ToCuboidf();
+                FromUint(VoxelCuboids[i], cwm);
+                selectionBoxesTmp[i] = cwm.ToCuboidf();
             }
-            this.selectionBoxes = selectionBoxesTmp;
+            selectionBoxes = selectionBoxesTmp;
 
 
             if (byPlayer != null)
@@ -326,15 +328,17 @@ namespace Vintagestory.GameContent
             float sy = size / 16f;
             float sz = size / 16f;
 
+            CuboidWithMaterial cwm = tmpCuboid;
+
             for (int i = 0; i < VoxelCuboids.Count; i++)
             {
-                FromUint(VoxelCuboids[i], ref tmpCuboid);
+                FromUint(VoxelCuboids[i], cwm);
                 
-                for (int x1 = tmpCuboid.X1; x1 < tmpCuboid.X2; x1 += size)
+                for (int x1 = cwm.X1; x1 < cwm.X2; x1 += size)
                 {
-                    for (int y1 = tmpCuboid.Y1; y1 < tmpCuboid.Y2; y1 += size)
+                    for (int y1 = cwm.Y1; y1 < cwm.Y2; y1 += size)
                     {
-                        for (int z1 = tmpCuboid.Z1; z1 < tmpCuboid.Z2; z1 += size)
+                        for (int z1 = cwm.Z1; z1 < cwm.Z2; z1 += size)
                         {
                             float px = (float)Math.Floor((float)x1 / size) * sx;
                             float py = (float)Math.Floor((float)y1 / size) * sy;

@@ -72,15 +72,11 @@ namespace Vintagestory.GameContent.Mechanics
                 Blockentity.RegisterGameTickListener(onEverySecond, 1000);
             }
 
-            //if (largeGear != null)
-            //{
-            //    this.CreateNetworkFromHere();
-            //    if (largeGear.Api != null)   //if already initialised - otherwise it will initialise itself later if this was called during chunk loading (it's random whether the angled gear or the large gear gets initialised first)
-            //    {
-            //        if (largeGear.Network == null) largeGear.CreateJoinAndDiscoverNetwork(BlockFacing.DOWN);
-            //        if (largeGear.Network == null) largeGear.CreateJoinAndDiscoverNetwork(BlockFacing.UP);
-            //    }
-            //}
+            if (largeGear != null)
+            {
+                if (largeGear.AngledGearNotAlreadyAdded(this.Position))  // during chunk loading it's random whether the angled gear or the large gear gets initialised first
+                    this.tryConnect(this.orientation.Opposite);
+            }
         }
 
         private void onEverySecond(float dt)
@@ -115,6 +111,7 @@ namespace Vintagestory.GameContent.Mechanics
                 case "nn":   //"nn" "ss" "ee" "ww" variants are used for the single cage gear instead of the peg gear (e.g. on interaction with LargeGear3)
                     this.orientation = BlockFacing.NORTH;
                     AxisSign = new int[3] { 0, 0, -1 };   //for these "single direction" gears, the renderertype is generic, i.e. only one mesh, the peg gear, will be rendered
+                    axis1 = BlockFacing.NORTH;  //render rotation in the reverse sense for this axis (negative axis)
                     break;
                 case "s":
                 case "ss":
@@ -132,6 +129,7 @@ namespace Vintagestory.GameContent.Mechanics
                 case "ww":
                     AxisSign = new int[3] { -1, 0, 0 };
                     this.orientation = BlockFacing.WEST;
+                    axis1 = BlockFacing.WEST;
                     break;
 
                 case "u":
@@ -140,6 +138,7 @@ namespace Vintagestory.GameContent.Mechanics
 
                 case "d":
                     AxisSign = new int[3] { 0, 1, 0 };
+                    axis1 = BlockFacing.DOWN;
                     break;
 
                 case "es":
@@ -232,7 +231,7 @@ namespace Vintagestory.GameContent.Mechanics
 
                 case "en":
                     AxisSign = new int[6] { 0, 0, 1, 1, 0, 0 };
-                    axis1 = BlockFacing.EAST;
+                    axis1 = BlockFacing.SOUTH;
                     axis2 = BlockFacing.NORTH;
                     this.turnDir1 = BlockFacing.EAST;
                     this.turnDir2 = BlockFacing.NORTH;
@@ -262,7 +261,7 @@ namespace Vintagestory.GameContent.Mechanics
         public void AddToLargeGearNetwork(BEBehaviorMPLargeGear3m largeGear, BlockFacing outFacing)
         {
             this.JoinNetwork(largeGear.Network);
-            this.SetPropagationDirection(new MechPowerPath(outFacing, largeGear.GearedRatio * largeGear.ratio, largeGear.GetPropagationDirection() == BlockFacing.DOWN));
+            this.SetPropagationDirection(new MechPowerPath(outFacing, largeGear.GearedRatio * largeGear.ratio, null, largeGear.GetPropagationDirection() == BlockFacing.DOWN));
         }
 
         public override bool isInvertedNetworkFor(BlockPos pos)
@@ -285,10 +284,10 @@ namespace Vintagestory.GameContent.Mechanics
 
         internal void CreateNetworkFromHere()
         {
-            OutFacingForNetworkDiscovery = this.orientation;
-            if (Api.Side == EnumAppSide.Server && OutFacingForNetworkDiscovery != null)
+            if (Api.Side == EnumAppSide.Server)
             {
-                CreateJoinAndDiscoverNetwork(OutFacingForNetworkDiscovery);
+                CreateJoinAndDiscoverNetwork(this.orientation);
+                CreateJoinAndDiscoverNetwork(this.orientation.Opposite);
             }
         }
 
@@ -307,7 +306,7 @@ namespace Vintagestory.GameContent.Mechanics
                 else if (turnDir == turnDir2) turnDir = turnDir1.Opposite;
                 else if (turnDir == turnDir2.Opposite) turnDir = turnDir1;
                 else if (turnDir == turnDir1.Opposite) turnDir = turnDir2;
-                path = new MechPowerPath(turnDir, path.gearingRatio, false);
+                path = new MechPowerPath(turnDir, path.gearingRatio, null, false);
             }
             base.SetPropagationDirection(path);
         }
@@ -324,14 +323,14 @@ namespace Vintagestory.GameContent.Mechanics
             return propagationDir;
         }
 
-        public override bool IsPropagationDirection(BlockFacing test)
+        public override bool IsPropagationDirection(BlockPos fromPos, BlockFacing test)
         {
             if (this.turnDir1 != null)
             {
-                if (propagationDir == turnDir1) return propagationDir == test || propagationDir == turnDir2.Opposite;
-                if (propagationDir == turnDir2) return propagationDir == test || propagationDir == turnDir1.Opposite;
-                if (propagationDir == turnDir1.Opposite) return propagationDir == test || propagationDir == turnDir2;
-                if (propagationDir == turnDir2.Opposite) return propagationDir == test || propagationDir == turnDir1;
+                if (propagationDir == turnDir1) return propagationDir == test || test == turnDir2.Opposite;
+                if (propagationDir == turnDir2) return propagationDir == test || test == turnDir1.Opposite;
+                if (propagationDir == turnDir1.Opposite) return propagationDir == test || test == turnDir2;
+                if (propagationDir == turnDir2.Opposite) return propagationDir == test || test == turnDir1;
             }
             return propagationDir == test;
         }
@@ -393,7 +392,7 @@ namespace Vintagestory.GameContent.Mechanics
                 for (int i = 0; i < paths.Length; i++)
                 {
                     BlockFacing pathFacing = connectors[i];
-                    paths[i] = new MechPowerPath(pathFacing, this.GearedRatio, connectors.Length < 2 && fromExitTurnDir.OutFacing == pathFacing.Opposite || inputSideMatches && pathFacing != inputSide || !inputSideMatches && pathFacing != inputSide.Opposite ? fromExitTurnDir.invert : !fromExitTurnDir.invert);
+                    paths[i] = new MechPowerPath(pathFacing, this.GearedRatio, null, connectors.Length < 2 && fromExitTurnDir.OutFacing == pathFacing.Opposite || inputSideMatches && pathFacing != inputSide || !inputSideMatches && pathFacing != inputSide.Opposite ? fromExitTurnDir.invert : !fromExitTurnDir.invert);
                 }
                 return paths;
             }
@@ -401,8 +400,8 @@ namespace Vintagestory.GameContent.Mechanics
             {
                 //alternative code for a small gear connected to a Large Gear - essentially pass through
                 MechPowerPath[] paths = new MechPowerPath[2];
-                paths[0] = new MechPowerPath(this.orientation.Opposite, this.GearedRatio, this.orientation == fromExitTurnDir.OutFacing ? !fromExitTurnDir.invert : fromExitTurnDir.invert);
-                paths[1] = new MechPowerPath(this.orientation, this.GearedRatio, this.orientation == fromExitTurnDir.OutFacing ? fromExitTurnDir.invert : !fromExitTurnDir.invert);
+                paths[0] = new MechPowerPath(this.orientation.Opposite, this.GearedRatio, null, this.orientation == fromExitTurnDir.OutFacing ? !fromExitTurnDir.invert : fromExitTurnDir.invert);
+                paths[1] = new MechPowerPath(this.orientation, this.GearedRatio, null, this.orientation == fromExitTurnDir.OutFacing ? fromExitTurnDir.invert : !fromExitTurnDir.invert);
                 return paths;
             }
         }

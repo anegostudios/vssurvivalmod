@@ -244,7 +244,7 @@ namespace Vintagestory.GameContent.Mechanics
             float unusedTorque = Math.Abs(totalTorque) - networkResistance;
             float torqueSign = totalTorque >= 0f ? 1f : -1f;
 
-            float drag = Math.Max(1f, (float) Math.Pow(nodes.Count, 0.25));
+            float drag = Math.Max(1f, (float)Math.Pow(nodes.Count, 0.25));
             float step = 1f / (float)drag;
 
             bool wrongTurnSense = speed * torqueSign < 0f;
@@ -257,10 +257,10 @@ namespace Vintagestory.GameContent.Mechanics
                 float change = unusedTorque;
                 if (wrongTurnSense) change = -networkResistance;
                 if (change < -Math.Abs(speed)) change = -Math.Abs(speed);  //this creates a momentum effect: the network will not stop suddenly, even if resistance suddenly goes sky high.  Momentum increases for more pieces in the network (1/drag).
-                if (change < -0.000001f)
+                if (change < -0.000001f || Math.Abs(speed) > 0.000001f)   //the change to this line in 1.14rc5 should stop the oscillations (speed crashes to zero)
                 {
                     float speedSign = speed < 0f ? -1f : 1f;
-                    speed = Math.Max(0.000001f, Math.Abs(speed) + 4f * drag * change) * speedSign;  //the 4f * drag multiplier slows a network down fairly quickly when torque is removed
+                    speed = Math.Max(0.000001f, Math.Abs(speed) + step * change) * speedSign;  //before 1.14rc5 the 4f * drag multiplier (which was supposed to slow a network down quickly when torque is removed) caused oscillations in larger networks - too much slow-down when only slightly over speed for the current torque
                 }
                 else if (Math.Abs(unusedTorque) > 0f) speed = torqueSign / 1000000f;   //a small speed in the correct direction, to start things off
             }

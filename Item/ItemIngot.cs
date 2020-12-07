@@ -149,7 +149,8 @@ namespace Vintagestory.GameContent
                 CreateVoxelsFromIngot(api, ref beAnvil.Voxels, isBlisterSteel);
             } else
             {
-                AddVoxelsFromIngot(api, ref beAnvil.Voxels, isBlisterSteel);
+                if (isBlisterSteel) return null;
+                AddVoxelsFromIngot(api, ref beAnvil.Voxels);
             }
 
             return workItemStack;

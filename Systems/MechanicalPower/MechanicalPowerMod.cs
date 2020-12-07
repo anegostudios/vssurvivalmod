@@ -64,8 +64,6 @@ namespace Vintagestory.GameContent.Mechanics
 
         MechPowerData data = new MechPowerData();
 
-        long nextPropagationId = 1;
-
         public override bool ShouldLoad(EnumAppSide side)
         {
             return true;
@@ -131,12 +129,6 @@ namespace Vintagestory.GameContent.Mechanics
             api.Event.ChunkDirty += Event_ChunkDirty;
         }
 
-        public long GetNextPropagationId()
-        {
-            return nextPropagationId++;
-        }
-
-
         protected void OnServerGameTick(float dt)
         {
             data.tickNumber++;
@@ -144,7 +136,7 @@ namespace Vintagestory.GameContent.Mechanics
             List<MechanicalNetwork> clone = data.networksById.Values.ToList();
             foreach (MechanicalNetwork network in clone)
             {
-                if (network.fullyLoaded)
+                if (network.fullyLoaded && network.nodes.Count > 0)
                 {
                     network.ServerTick(dt, data.tickNumber);
                 }

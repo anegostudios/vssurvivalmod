@@ -119,6 +119,12 @@ namespace Vintagestory.GameContent.Mechanics
         {
             return resistance;
         }
-        
+
+
+
+        public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
+        {
+            return base.OnTesselation(mesher, tesselator);
+        }
     }
 }

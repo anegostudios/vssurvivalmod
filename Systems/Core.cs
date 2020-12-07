@@ -103,7 +103,7 @@ namespace Vintagestory.GameContent
         public override void StartPre(ICoreAPI api)
         {
             // When loaded, load survival assets
-            api.Assets.AddPathOrigin("game", Path.Combine(GamePaths.AssetsPath, "survival"));
+            api.Assets.AddModOrigin("game", Path.Combine(GamePaths.AssetsPath, "survival"));
         }
 
         public override void Start(ICoreAPI api)

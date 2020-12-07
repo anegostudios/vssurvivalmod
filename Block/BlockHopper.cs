@@ -27,17 +27,14 @@ namespace Vintagestory.GameContent
         {
             base.OnEntityCollide(world, entity, pos, facing, collideSpeed, isImpact);
 
-            // Don't suck up everything instantly
-            if (world.Rand.NextDouble() < 0.9) return;
-
-            if (facing == BlockFacing.UP && entity is EntityItem)
+            if (facing == BlockFacing.UP && entity is EntityItem inWorldItem)
             {
-                EntityItem inWorldItem = (EntityItem)entity;
-                BlockEntity blockEntity = world.BlockAccessor.GetBlockEntity(pos);
-                if (blockEntity is BlockEntityItemFlow)
-                { 
-                    BlockEntityItemFlow beItemFlow = (BlockEntityItemFlow)blockEntity;
+                // Don't suck up everything instantly
+                if (world.Rand.NextDouble() < 0.9) return;
 
+                BlockEntity blockEntity = world.BlockAccessor.GetBlockEntity(pos);
+                if (blockEntity is BlockEntityItemFlow beItemFlow)
+                {
                     WeightedSlot ws = beItemFlow.inventory.GetBestSuitedSlot(inWorldItem.Slot);
 
                     if (ws.slot != null) //we have determined there is room for this itemStack in this inventory.

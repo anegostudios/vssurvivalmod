@@ -79,6 +79,9 @@ namespace Vintagestory.GameContent
 
         public ItemStack TryPlaceOn(ItemStack stack, BlockEntityAnvil beAnvil)
         {
+            // Already occupied anvil
+            if (beAnvil.WorkItemStack != null) return null;
+
             if (stack.Attributes.HasAttribute("voxels"))
             {
                 try

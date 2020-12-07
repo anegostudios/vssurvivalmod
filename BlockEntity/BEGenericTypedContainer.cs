@@ -156,10 +156,6 @@ namespace Vintagestory.GameContent
 
         protected virtual void InitInventory(Block block)
         {
-
-            //this.Block = block; - whats this good for? o.O
-            block = this.Block;
-
             if (block?.Attributes != null)
             {
                 collisionSelectionBoxes = block.Attributes["collisionSelectionBoxes"]?[type]?.AsObject<Cuboidf[]>();
@@ -172,11 +168,11 @@ namespace Vintagestory.GameContent
 
                 if (block.Attributes["typedOpenSound"][type].Exists)
                 {
-                    OpenSound = AssetLocation.Create(block.Attributes["typedOpenSound"][type].AsString(OpenSound.ToShortString()), Block.Code.Domain);
+                    OpenSound = AssetLocation.Create(block.Attributes["typedOpenSound"][type].AsString(OpenSound.ToShortString()), block.Code.Domain);
                 }
                 if (block.Attributes["typedCloseSound"][type].Exists)
                 {
-                    CloseSound = AssetLocation.Create(block.Attributes["typedCloseSound"][type].AsString(CloseSound.ToShortString()), Block.Code.Domain);
+                    CloseSound = AssetLocation.Create(block.Attributes["typedCloseSound"][type].AsString(CloseSound.ToShortString()), block.Code.Domain);
                 }
             }
 

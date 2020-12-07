@@ -79,9 +79,9 @@ namespace Vintagestory.GameContent
         public float GrindSpeed
         {
             get {
-                if (quantityPlayersGrinding > 0) return 1;
+                if (quantityPlayersGrinding > 0) return 1f;
 
-                if (automated && mpc.Network != null) return Math.Abs(mpc.Network.Speed);
+                if (automated && mpc.Network != null) return mpc.TrueSpeed;
 
                 return 0;
             }
@@ -163,7 +163,7 @@ namespace Vintagestory.GameContent
                     ShouldLoop = true,
                     Position = Pos.ToVec3f().Add(0.5f, 0.25f, 0.5f),
                     DisposeOnFinish = false,
-                    Volume = 0.5f
+                    Volume = 0.75f
                 });
             }
 
@@ -257,8 +257,8 @@ namespace Vintagestory.GameContent
 
                 if (ambientSound != null && automated)
                 {
-                    ambientSound.SetPitch((0.5f + mpc.Network.Speed) * 0.9f);
-                    ambientSound.SetVolume(mpc.Network.Speed * 0.75f);
+                    ambientSound.SetPitch((0.5f + mpc.TrueSpeed) * 0.9f);
+                    ambientSound.SetVolume(Math.Min(1f, mpc.TrueSpeed * 3f));
                 }
 
                 return;
@@ -292,7 +292,7 @@ namespace Vintagestory.GameContent
             }
             else
             {
-                int mergableQuantity = OutputSlot.Itemstack.Collectible.GetMergableQuantity(OutputSlot.Itemstack, grindedStack);
+                int mergableQuantity = OutputSlot.Itemstack.Collectible.GetMergableQuantity(OutputSlot.Itemstack, grindedStack, EnumMergePriority.AutoMerge);
 
                 if (mergableQuantity > 0)
                 {
@@ -364,7 +364,7 @@ namespace Vintagestory.GameContent
         {
             if (Api?.World == null) return;
 
-            bool nowGrinding = quantityPlayersGrinding > 0 || (automated && mpc.Network?.Speed > 0);
+            bool nowGrinding = quantityPlayersGrinding > 0 || (automated && mpc.TrueSpeed > 0f);
 
             if (nowGrinding != beforeGrinding)
             {

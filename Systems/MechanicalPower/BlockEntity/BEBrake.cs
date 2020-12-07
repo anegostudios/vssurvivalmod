@@ -55,6 +55,8 @@ namespace Vintagestory.GameContent.Mechanics
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
         {
+            base.OnTesselation(mesher, tessThreadTesselator);
+
             if (!Engaged)
             {
                 if (ownMesh == null)

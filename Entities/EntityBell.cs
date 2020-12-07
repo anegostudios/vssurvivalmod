@@ -72,5 +72,12 @@ namespace Vintagestory.GameContent
 
             base.OnReceivedServerPacket(packetid, data);
         }
+
+        public override void OnEntityDespawn(EntityDespawnReason despawn)
+        {
+            base.OnEntityDespawn(despawn);
+
+            alarmSound?.FadeOutAndStop(0.25f);
+        }
     }
 }

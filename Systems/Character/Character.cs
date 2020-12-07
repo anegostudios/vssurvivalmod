@@ -80,9 +80,7 @@ namespace Vintagestory.GameContent
             api.Event.IsPlayerReady += Event_IsPlayerReady;
             api.Event.PlayerJoin += Event_PlayerJoin;
 
-//#if DEBUG
             api.RegisterCommand("charsel", "", "", onCharSelCmd);
-//#endif
 
             api.Event.BlockTexturesLoaded += loadCharacterClasses;
         }
@@ -331,12 +329,19 @@ namespace Vintagestory.GameContent
 
         private void onCharacterSelection(IServerPlayer fromPlayer, CharacterSelectionPacket p)
         {
+            bool didSelectBefore = SerializerUtil.Deserialize(fromPlayer.GetModdata("createCharacter"), false);
+            if (didSelectBefore && fromPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
+            {
+                fromPlayer.BroadcastPlayerData(true);
+                fromPlayer.Entity.WatchedAttributes.MarkPathDirty("skinConfig");
+                return;
+            }
+
             if (p.DidSelect)
             {
-                bool didSelect = SerializerUtil.Deserialize(fromPlayer.GetModdata("createCharacter"), false);
                 fromPlayer.SetModdata("createCharacter", SerializerUtil.Serialize<bool>(p.DidSelect));
 
-                setCharacterClass(fromPlayer.Entity, p.CharacterClass, !didSelect || fromPlayer.WorldData.CurrentGameMode == EnumGameMode.Creative);
+                setCharacterClass(fromPlayer.Entity, p.CharacterClass, !didSelectBefore || fromPlayer.WorldData.CurrentGameMode == EnumGameMode.Creative);
 
                 /*IInventory inv = fromPlayer.InventoryManager.GetOwnInventory(GlobalConstants.characterInvClassName);
                 for (int i = 0; i < p.Clothes.Length; i++)
@@ -374,9 +379,8 @@ namespace Vintagestory.GameContent
                 }
             }
 
-
-            fromPlayer.BroadcastPlayerData(true);
             fromPlayer.Entity.WatchedAttributes.MarkPathDirty("skinConfig");
+            fromPlayer.BroadcastPlayerData(true);
         }
 
         private void SubcmdSkinSelectable(IServerPlayer player, string playername, int groupId, CmdArgs args)

@@ -50,21 +50,20 @@ namespace Vintagestory.GameContent
 
             if (ambientSound == null && api.Side == EnumAppSide.Client)
             {
-                RegisterDelayedCallback((dt) => {
-                    // When the world loads with a lot of fire they'll all start at the same millisecond, so lets delay a bit
-                    ambientSound = ((IClientWorldAccessor)api.World).LoadSound(new SoundParams()
-                    {
-                        Location = new AssetLocation("sounds/environment/fire.ogg"),
-                        ShouldLoop = true,
-                        Position = Pos.ToVec3f().Add(0.5f, 0.25f, 0.5f),
-                        DisposeOnFinish = false,
-                        Volume = 1f
-                    });
-                    ambientSound?.Start();
+                ambientSound = ((IClientWorldAccessor)api.World).LoadSound(new SoundParams()
+                {
+                    Location = new AssetLocation("sounds/environment/fire.ogg"),
+                    ShouldLoop = true,
+                    Position = Pos.ToVec3f().Add(0.5f, 0.25f, 0.5f),
+                    DisposeOnFinish = false,
+                    Volume = 1f
+                });
 
-                }, api.World.Rand.Next(200));
-
-
+                if (ambientSound != null)
+                {
+                    ambientSound.PlaybackPosition = ambientSound.SoundLengthSeconds * (float)Api.World.Rand.NextDouble();
+                    ambientSound.Start();
+                }
             }
         }
 

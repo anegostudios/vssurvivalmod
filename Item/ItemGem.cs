@@ -10,7 +10,15 @@ namespace Vintagestory.GameContent
 {
     public class ItemGem : Item
     {
+        public override TransitionState[] UpdateAndGetTransitionStates(IWorldAccessor world, ItemSlot inslot)
+        {
+            if (!inslot.Itemstack.Attributes.HasAttribute("potential"))
+            {
+                inslot.Itemstack.Attributes.SetString("potential", "low");
+            }
 
+            return base.UpdateAndGetTransitionStates(world, inslot);
+        }
 
         public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
         {

@@ -41,12 +41,21 @@ namespace Vintagestory.GameContent
         
         public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
         {
+            ItemStack[] stacks = GetDrops(world, selection.Position, forPlayer);
+
+            bool knappable = stacks != null && stacks.Length > 0 && stacks[0].Collectible.Attributes["knappable"].AsBool(false);
+            if (!knappable)
+            {
+                return base.GetPlacedBlockInteractionHelp(world, selection, forPlayer);
+            }
+
+
             return new WorldInteraction[] {
                 new WorldInteraction()
                 {
                     ActionLangCode = "blockhelp-knappingsurface-knap",
                     HotKeyCode = "sneak",
-                    Itemstacks = GetDrops(world, selection.Position, forPlayer),
+                    Itemstacks = stacks,
                     MouseButton = EnumMouseButton.Right,
                 }
             }.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));

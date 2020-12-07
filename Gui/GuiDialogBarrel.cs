@@ -92,7 +92,7 @@ namespace Vintagestory.GameContent
                     if (props != null)
                     {
                         string incontainername = Lang.Get("incontainer-" + stack.Class.ToString().ToLowerInvariant() + "-" + stack.Collectible.Code.Path);
-                        contents += "\n" + Lang.Get("{0} litres of {1}", (float)stack.StackSize / props.ItemsPerLitre, incontainername);
+                        contents += "\n" + Lang.Get(props.MaxStackSize > 0 ? "{0}x of {1}" : "{0} litres of {1}", (float)stack.StackSize / props.ItemsPerLitre, incontainername);
                     }
                     else
                     {
@@ -142,16 +142,19 @@ namespace Vintagestory.GameContent
         {
             ItemSlot liquidSlot = Inventory[1];
             if (liquidSlot.Empty) return;
-                       
-            int itemsPerLitre = 1;
-
-            if (liquidSlot.Itemstack.ItemAttributes?["waterTightContainerProps"].Exists == true)
-            {
-                itemsPerLitre = liquidSlot.Itemstack.ItemAttributes["waterTightContainerProps"]["itemsPerLitre"].AsInt(1);
-            }
 
             BlockEntityBarrel bebarrel = capi.World.BlockAccessor.GetBlockEntity(BlockEntityPosition) as BlockEntityBarrel;
-            float fullnessRelative = ((float)liquidSlot.StackSize / itemsPerLitre) / bebarrel.CapacityLitres;
+            float itemsPerLitre = 1f;
+            int capacity = bebarrel.CapacityLitres;
+
+            WaterTightContainableProps props = BlockLiquidContainerBase.GetInContainerProps(liquidSlot.Itemstack);
+            if (props != null)
+            {
+                itemsPerLitre = props.ItemsPerLitre;
+                capacity = Math.Max(capacity, props.MaxStackSize);
+            }
+
+            float fullnessRelative = liquidSlot.StackSize / itemsPerLitre / capacity;
 
             double offY = (1 - fullnessRelative) * currentBounds.InnerHeight;
 

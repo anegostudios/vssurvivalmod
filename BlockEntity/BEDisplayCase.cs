@@ -20,7 +20,7 @@ namespace Vintagestory.GameContent
 
         public BlockEntityDisplayCase()
         {
-            inventory = new InventoryGeneric(4, "displaycase-0", null, null);
+            inventory = new InventoryDisplayed(this, 4, "displaycase-0", null, null);
             meshes = new MeshData[4];
         }
 

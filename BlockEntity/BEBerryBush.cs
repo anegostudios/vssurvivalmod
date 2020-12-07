@@ -292,7 +292,7 @@ namespace Vintagestory.GameContent
         {
             base.OnBlockUnloaded();
 
-            if (Api.Side == EnumAppSide.Server)
+            if (Api?.Side == EnumAppSide.Server)
             {
                 Api.ModLoader.GetModSystem<POIRegistry>().RemovePOI(this);
             }

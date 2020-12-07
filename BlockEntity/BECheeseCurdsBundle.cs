@@ -78,7 +78,10 @@ namespace Vintagestory.GameContent
 
         public override void OnBlockPlaced(ItemStack byItemStack = null)
         {
-            inv[0].Itemstack = (byItemStack.Block as BlockCheeseCurdsBundle)?.GetContents(byItemStack);
+            if (byItemStack != null)
+            {
+                inv[0].Itemstack = (byItemStack.Block as BlockCheeseCurdsBundle)?.GetContents(byItemStack);
+            }
         }
 
         BlockEntityAnimationUtil animUtil

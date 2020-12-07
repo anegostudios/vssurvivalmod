@@ -89,13 +89,14 @@ namespace Vintagestory.GameContent
     public class WaterTightContainableProps
     {
         public bool Containable;
-        public float ItemsPerLitre;
+        public float ItemsPerLitre = 1f;  //prevent possible divide by zero if people are not careful to include this in assets...
         public AssetLocation FillSpillSound = new AssetLocation("sounds/block/water");
         public CompositeTexture Texture;
         public string ClimateColorMap = null;
         public bool AllowSpill = true;
         public WhenSpilledProps WhenSpilled;
         public WhenFilledProps WhenFilled;
+        public int MaxStackSize;
 
         public enum EnumSpilledAction { PlaceBlock, DropContents };
 
@@ -254,7 +255,7 @@ namespace Vintagestory.GameContent
             try
             {
                 JsonObject obj = stack?.ItemAttributes?["waterTightContainerProps"];
-                if (obj != null && obj.Exists) return obj.AsObject<WaterTightContainableProps>();
+                if (obj != null && obj.Exists) return obj.AsObject<WaterTightContainableProps>(null, stack.Collectible.Code.Domain);
                 return null;
             }
             catch (Exception)
@@ -866,7 +867,7 @@ namespace Vintagestory.GameContent
 
         public override void TryMergeStacks(ItemStackMergeOperation op)
         {
-            op.MovableQuantity = GetMergableQuantity(op.SinkSlot.Itemstack, op.SourceSlot.Itemstack);
+            op.MovableQuantity = GetMergableQuantity(op.SinkSlot.Itemstack, op.SourceSlot.Itemstack, op.CurrentPriority);
             if (op.MovableQuantity == 0) return;
             if (!op.SinkSlot.CanTakeFrom(op.SourceSlot)) return;
 

@@ -29,10 +29,10 @@ namespace Vintagestory.GameContent.Mechanics
         /// The propagation direction from the input side for making connections - normally the same as GetPropagationDirection() except for Angled Gears
         /// </summary>
         BlockFacing GetPropagationDirectionInput();
-        bool IsPropagationDirection(BlockFacing test);
+        bool IsPropagationDirection(BlockPos fromPos, BlockFacing test);
         void SetPropagationDirection(MechPowerPath turnDir);
 
-        bool JoinAndSpreadNetworkToNeighbours(ICoreAPI api, long propagationId, MechanicalNetwork network, MechPowerPath turnDir, out Vec3i missingChunkPos);
+        bool JoinAndSpreadNetworkToNeighbours(ICoreAPI api, MechanicalNetwork network, MechPowerPath turnDir, out Vec3i missingChunkPos);
 
         MechanicalNetwork CreateJoinAndDiscoverNetwork(BlockFacing powerOutFacing);
 
@@ -48,5 +48,10 @@ namespace Vintagestory.GameContent.Mechanics
         /// Only implemented on blocks which can support JoinPoints, such as Large Gear and Angled Gear
         /// </summary>
         void DestroyJoin(BlockPos pos);
+
+        /// <summary>
+        /// A side-sensitive version of GearedRatio property
+        /// </summary>
+        float GetGearedRatio(BlockFacing toFacing);
     }
 }

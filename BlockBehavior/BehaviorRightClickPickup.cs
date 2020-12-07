@@ -50,7 +50,7 @@ namespace Vintagestory.GameContent
                         {
                             world.BlockAccessor.SetBlock(0, blockSel.Position);
                             world.BlockAccessor.TriggerNeighbourBlockUpdate(blockSel.Position);
-                            world.PlaySoundAt(pickupSound ?? block.Sounds.Place, byPlayer, byPlayer);
+                            world.PlaySoundAt(pickupSound ?? block.Sounds.Place, byPlayer, null);
                             handling = EnumHandling.PreventDefault;
                             return true;
                         }

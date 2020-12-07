@@ -178,6 +178,12 @@ namespace Vintagestory.GameContent
 
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder sb)
         {
+            if (forPlayer.CurrentBlockSelection == null)
+            {
+                base.GetBlockInfo(forPlayer, sb);
+                return;
+            }
+
             int index = forPlayer.CurrentBlockSelection.SelectionBoxIndex;
             ItemSlot slot = inv[index];
             if (slot.Empty)

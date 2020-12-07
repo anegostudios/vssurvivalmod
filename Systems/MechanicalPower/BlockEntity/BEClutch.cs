@@ -229,7 +229,7 @@ namespace Vintagestory.GameContent.Mechanics
         public override void OnBlockUnloaded()
         {
             base.OnBlockUnloaded();
-            manager.RemoveDeviceForRender(this);
+            manager?.RemoveDeviceForRender(this);
         }
 
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)

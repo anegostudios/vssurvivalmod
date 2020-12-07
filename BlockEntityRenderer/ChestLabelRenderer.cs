@@ -33,7 +33,7 @@ namespace Vintagestory.GameContent
             if (camPos.SquareDistanceTo(pos.X, pos.Y, pos.Z) > 20 * 20) return;
 
             rpi.GlDisableCullFace();
-            rpi.GlToggleBlend(true);
+            rpi.GlToggleBlend(true, EnumBlendMode.PremultipliedAlpha);
 
             IStandardShaderProgram prog = rpi.PreparedStandardShader(pos.X, pos.Y, pos.Z);
 
@@ -56,6 +56,8 @@ namespace Vintagestory.GameContent
 
             rpi.RenderMesh(quadModelRef);
             prog.Stop();
+
+            rpi.GlToggleBlend(true, EnumBlendMode.Standard);
         }
     }
 }

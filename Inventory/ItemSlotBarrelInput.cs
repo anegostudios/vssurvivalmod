@@ -26,13 +26,21 @@ namespace Vintagestory.API.Common
             base.OnItemSlotModified(stack);
 
             if (itemstack == null) return;
-            
-            ItemSlot liquidSlot = inventory[1];
+
+            ItemSlotLiquidOnly liquidSlot = inventory[1] as ItemSlotLiquidOnly;
 
             bool stackable = !liquidSlot.Empty && liquidSlot.Itemstack.Equals(inventory.Api.World, itemstack, GlobalConstants.IgnoredStackAttributes);
             if (stackable)
             {
                 int remaining = liquidSlot.Itemstack.Collectible.MaxStackSize - liquidSlot.Itemstack.StackSize;
+
+                WaterTightContainableProps props = BlockLiquidContainerBase.GetInContainerProps(liquidSlot.Itemstack);
+                if (props != null)
+                {
+                    int max = (int)(liquidSlot.CapacityLitres * props.ItemsPerLitre);
+                    int maxOverride = props.MaxStackSize;  //allows 64 rot to be placed in barrel
+                    remaining = Math.Max(max, maxOverride) - liquidSlot.Itemstack.StackSize;
+                }
 
                 int moved = GameMath.Clamp(itemstack.StackSize, 0, remaining);
                 liquidSlot.Itemstack.StackSize += moved;
