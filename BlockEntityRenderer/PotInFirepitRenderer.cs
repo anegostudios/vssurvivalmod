@@ -74,29 +74,16 @@ namespace Vintagestory.GameContent
             rpi.GlToggleBlend(true);
 
             IStandardShaderProgram prog = rpi.PreparedStandardShader(pos.X, pos.Y, pos.Z);
+            capi.Render.BindTexture2d(capi.BlockTextureAtlas.AtlasTextureIds[0]);
 
-            prog.Tex2D = capi.BlockTextureAtlas.AtlasTextureIds[0];
             prog.DontWarpVertices = 0;
             prog.AddRenderFlags = 0;
-            prog.RgbaAmbientIn = rpi.AmbientColor;
-            prog.RgbaFogIn = rpi.FogColor;
-            prog.FogMinIn = rpi.FogMin;
-            prog.FogDensityIn = rpi.FogDensity;
-            prog.RgbaTint = ColorUtil.WhiteArgbVec;
-            prog.NormalShaded = 1;
-            prog.ExtraGodray = 0;
-            prog.SsaoAttn = 0;
-            prog.AlphaTest = 0.05f;
-            prog.OverlayOpacity = 0;
-
-
             prog.ModelMatrix = ModelMat
                 .Identity()
                 .Translate(pos.X - camPos.X + 0.001f, pos.Y - camPos.Y, pos.Z - camPos.Z - 0.001f)
                 .Translate(0f, 1 / 16f, 0f)
                 .Values
             ;
-
             prog.ViewMatrix = rpi.CameraMatrixOriginf;
             prog.ProjectionMatrix = rpi.CurrentProjectionMatrix;
 

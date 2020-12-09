@@ -25,9 +25,9 @@ namespace Vintagestory.GameContent
 
         string[][] tapestryGroups = new string[][]
         {
-            new string[] { "rot1" },
-            new string[] { "rot2" },
-            new string[] { "rot3" },
+            new string[] { "rot1", "themorning1", "seraphim1" },
+            new string[] { "rot2", "themorning2", "seraphim2" },
+            new string[] { "rot3", "themorning3", "seraphim3" },
 
             new string[] { "holy1", "schematic-c1", "schematic-c-bloody1" },
             new string[] { "holy2", "schematic-c2", "schematic-c-bloody2" },

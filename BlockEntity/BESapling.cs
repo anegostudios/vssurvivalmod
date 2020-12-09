@@ -49,7 +49,7 @@ namespace Vintagestory.ServerMods
             if (Api.World.Calendar.TotalHours < totalHoursTillGrowth) return;
 
             ClimateCondition conds = Api.World.BlockAccessor.GetClimateAt(Pos, EnumGetClimateMode.NowValues);
-            if (conds.Temperature < 5)
+            if (conds == null || conds.Temperature < 5)
             {
                 return;
             }

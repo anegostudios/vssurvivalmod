@@ -53,9 +53,6 @@ namespace Vintagestory.GameContent
 
             EntityBehaviorTaskAI taskAi = entity.GetBehavior<EntityBehaviorTaskAI>();
             taskAi.taskManager.ShouldExecuteTask = (task) => !IsBeingMilked;
-
-            bhmul = entity.GetBehavior<EntityBehaviorMultiply>();
-            bhmul.TotalDaysLastBirth = Math.Max(bhmul.TotalDaysLastBirth, entity.World.Calendar.TotalDays);
         }
 
         public bool TryBeginMilking()

@@ -434,7 +434,7 @@ namespace Vintagestory.GameContent
             // Only Heat ore. Cooling happens already in the itemstack
             if (oldTemp < furnaceTemperature)
             {
-                float f = (1 + GameMath.Clamp((furnaceTemperature - oldTemp) / 30, 0, 1.6f)) * dt;
+                float f = (1 + GameMath.Clamp((furnaceTemperature - oldTemp)/30, 0, 1.6f)) * dt;
                 if (nowTemp >= meltingPoint) f /= 11;
 
                 float newTemp = changeTemperature(oldTemp, furnaceTemperature, f);

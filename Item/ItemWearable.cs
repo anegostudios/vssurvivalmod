@@ -216,7 +216,7 @@ namespace Vintagestory.GameContent
 
             if (armorShape.Textures.Count > 0 && armorShape.TextureSizes.Count == 0)
             {
-                capi.World.Logger.Warning("Entity wearable shape {0} defines textures but not textures sizes, will probably have a broken texture.", shapePath);
+                capi.World.Logger.Warning("Entity wearable shape {0} defines textures but not textures sizes, will probably have a broken texture.", shapePathForLogging);
             }
 
             foreach (var val in armorShape.TextureSizes)

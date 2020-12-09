@@ -16,13 +16,15 @@ namespace Vintagestory.GameContent
         }
 
         bool[] leavesWaveTileSide = new bool[6];
+        RoomRegistry roomreg;
 
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
+            roomreg = api.ModLoader.GetModSystem<RoomRegistry>();
         }
 
-        public override void OnJsonTesselation(ref MeshData sourceMesh, BlockPos pos, int[] chunkExtIds, ushort[] chunkLightExt, int extIndex3d)
+        public override void OnJsonTesselation(ref MeshData sourceMesh, ref int[] lightRgbsByCorner, BlockPos pos, int[] chunkExtIds, ushort[] chunkLightExt, int extIndex3d)
         {
             if (VertexFlags.LeavesWindWave)
             {

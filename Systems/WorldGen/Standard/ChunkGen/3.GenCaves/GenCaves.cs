@@ -8,15 +8,12 @@ namespace Vintagestory.ServerMods
     public class GenCaves : GenPartial
     {
         
-
         internal override int chunkRange { get { return 5; } }
 
         public override double ExecuteOrder() { return 0.3; }
 
         internal LCGRandom caveRand;
         IWorldGenBlockAccessor worldgenBlockAccessor;
-
-        Random rand = new Random();
 
         NormalizedSimplexNoise basaltNoise;
         NormalizedSimplexNoise heightvarNoise;

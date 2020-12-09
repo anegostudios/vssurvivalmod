@@ -23,6 +23,34 @@ namespace Vintagestory.GameContent
             return otherblock != null && otherblock.Orientation == Orientation.Opposite;
         }
 
+        public override void OnJsonTesselation(ref MeshData sourceMesh, ref int[] lightRgbsByCorner, BlockPos pos, int[] chunkExtIds, ushort[] chunkLightExt, int extIndex3d)
+        {
+            int temp = GetTemperature(api.World, pos);
+            int extraGlow = GameMath.Clamp((temp - 550) / 2, 0, 255);
+            for (int i = 0; i < sourceMesh.FlagsCount; i++)
+            {
+                sourceMesh.Flags[i] &= ~0xff;
+                sourceMesh.Flags[i] |= extraGlow;
+            }
+
+            int[] incade = ColorUtil.getIncandescenceColor(temp);
+            
+            float ina = GameMath.Clamp(incade[3] / 255f, 0, 1);
+
+            for (int i = 0; i < lightRgbsByCorner.Length; i++)
+            {
+                int col = lightRgbsByCorner[i];
+
+                int r = col & 0xff;
+                int g = (col>>8) & 0xff;
+                int b = (col>>16) & 0xff;
+                int a = (col>>24) & 0xff;
+
+                lightRgbsByCorner[i] = (GameMath.Mix(a, 0, System.Math.Min(1, 1.5f * ina)) << 24) | (GameMath.Mix(b, incade[2], ina) << 16) | (GameMath.Mix(g, incade[1], ina) << 8) | GameMath.Mix(r, incade[0], ina);
+            }
+
+        }
+
         public override bool CanAttachBlockAt(IBlockAccessor blockAccessor, Block block, BlockPos pos, BlockFacing blockFace, Cuboidi attachmentArea = null)
         {
             if (blockFace == BlockFacing.UP && block.FirstCodePart() == "stonecoffinlid") return true;
@@ -43,14 +71,34 @@ namespace Vintagestory.GameContent
             BlockEntityStoneCoffin besc = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityStoneCoffin;
             if (besc != null)
             {
-                bool placed = besc.Interact(byPlayer);
+                besc.Interact(byPlayer);
                 (byPlayer as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
                 return true;
             }
 
             return base.OnBlockInteractStart(world, byPlayer, blockSel);
-
         }
+
+
+        public int GetTemperature(IWorldAccessor world, BlockPos pos)
+        {
+            if (!ControllerBlock)
+            {
+                pos = GetControllerBlockPositionOrNull(pos);
+            }
+
+            if (pos == null) return 0;
+
+            BlockEntityStoneCoffin besc = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityStoneCoffin;
+            if (besc != null)
+            {
+                return besc.CoffinTemperature;
+            }
+
+            return 0;
+        }
+
+
 
         BlockPos GetControllerBlockPositionOrNull(BlockPos pos)
         {

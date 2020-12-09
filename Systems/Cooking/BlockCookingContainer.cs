@@ -48,11 +48,7 @@ namespace Vintagestory.GameContent
 
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
         {
-            if (!byPlayer.Entity.Controls.Sneak)
-            {
-                failureCode = "onlywhensneaking";
-                return false;
-            }
+            if (!byPlayer.Entity.Controls.Sneak) return false;
 
             if (CanPlaceBlock(world, byPlayer, blockSel, ref failureCode) && world.BlockAccessor.GetBlock(blockSel.Position.DownCopy()).CanAttachBlockAt(world.BlockAccessor, this, blockSel.Position.DownCopy(), BlockFacing.UP, attachmentArea))
             {
