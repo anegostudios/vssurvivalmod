@@ -13,7 +13,7 @@ namespace Vintagestory.GameContent
         protected WeatherSystemBase weatherSystem;
         protected static readonly AssetLocation drip;
         protected static readonly SimpleParticleProperties waterParticles = null;
-        protected readonly static Vec3d centre = new Vec3d(0.5, 0.125, 0.5);
+        protected readonly static Vec3d center = new Vec3d(0.5, 0.125, 0.5);
 
         static BlockSticksLayer()
         {

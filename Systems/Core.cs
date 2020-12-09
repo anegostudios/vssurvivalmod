@@ -510,6 +510,7 @@ namespace Vintagestory.GameContent
             api.RegisterBlockClass("BlockCharcoalPile", typeof(BlockCharcoalPile));
             api.RegisterBlockClass("BlockRefractoryBrick", typeof(BlockRefractoryBrick));
             api.RegisterBlockClass("BlockCokeOvenDoor", typeof(BlockCokeOvenDoor));
+            api.RegisterBlockClass("BlockStoneCoffinLid", typeof(BlockStoneCoffinLid));
         }
 
         

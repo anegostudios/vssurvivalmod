@@ -124,7 +124,6 @@ namespace Vintagestory.GameContent
 
             IStandardShaderProgram prog = rpi.StandardShader;
             prog.Use();
-            prog.Tex2D = api.ItemTextureAtlas.AtlasTextureIds[0];
             prog.DontWarpVertices = 0;
             prog.AddRenderFlags = 0;
             prog.RgbaAmbientIn = rpi.AmbientColor;
@@ -134,9 +133,9 @@ namespace Vintagestory.GameContent
             prog.RgbaTint = ColorUtil.WhiteArgbVec;
             prog.NormalShaded = 1;
             prog.ExtraGodray = 0;
-            prog.SsaoAttn = 0;
-            prog.AlphaTest = 0.05f;
-            prog.OverlayOpacity = 0;
+            prog.AlphaTest = 0.01f;
+
+            api.Render.BindTexture2d(api.ItemTextureAtlas.AtlasTextureIds[0]);
 
             int temp = (int)ContentStack.Collectible.GetTemperature(api.World, ContentStack);
             Vec4f lightrgbs = api.World.BlockAccessor.GetLightRGBs(pos.X, pos.Y, pos.Z);

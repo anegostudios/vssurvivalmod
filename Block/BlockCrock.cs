@@ -11,7 +11,7 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockCrock : BlockCookedContainerBase, IBlockMealContainer
+    public class BlockCrock : BlockContainer, IBlockMealContainer
     {
         public override float GetContainingTransitionModifierContained(IWorldAccessor world, ItemSlot inSlot, EnumTransitionType transType)
         {
@@ -254,13 +254,16 @@ namespace Vintagestory.GameContent
                     }
                 } else
                 {
-                    new DummySlot(ownContentStacks[0]).TryPutInto(api.World, bebarrel.inventory[0], ownContentStacks[0].StackSize);
-                    if (ownContentStacks[0].StackSize <= 0)
+                    if (stack != null)
                     {
-                        SetContents(slot.Itemstack, new ItemStack[0]);
+                        new DummySlot(ownContentStacks[0]).TryPutInto(api.World, bebarrel.inventory[0], ownContentStacks[0].StackSize);
+                        if (ownContentStacks[0].StackSize <= 0)
+                        {
+                            SetContents(slot.Itemstack, new ItemStack[0]);
+                        }
+                        bebarrel.MarkDirty(true);
+                        slot.MarkDirty();
                     }
-                    bebarrel.MarkDirty(true);
-                    slot.MarkDirty();
                 }
                 
 
@@ -294,13 +297,12 @@ namespace Vintagestory.GameContent
 
                 if (bec.QuantityServings == 0)
                 {
-                    ServeIntoBowl(this, blockSel.Position, hotbarSlot, world);
-                    //bec.OnBlockPlaced(hotbarSlot.Itemstack);
+                    bec.OnBlockPlaced(hotbarSlot.Itemstack);
                     bec.Sealed = false;
                     bec.MarkDirty(true);
-                    //hotbarSlot.Itemstack.Attributes.RemoveAttribute("recipeCode");
-                    //hotbarSlot.Itemstack.Attributes.RemoveAttribute("quantityServings");
-                    //hotbarSlot.Itemstack.Attributes.RemoveAttribute("contents");
+                    hotbarSlot.Itemstack.Attributes.RemoveAttribute("recipeCode");
+                    hotbarSlot.Itemstack.Attributes.RemoveAttribute("quantityServings");
+                    hotbarSlot.Itemstack.Attributes.RemoveAttribute("contents");
                     return true;
                 }
             }
@@ -474,6 +476,90 @@ namespace Vintagestory.GameContent
         }
 
 
+        public void SetContents(string recipeCode, ItemStack containerStack, ItemStack[] stacks, float quantityServings = 1)
+        {
+            base.SetContents(containerStack, stacks);
+
+            if (recipeCode == null)
+            {
+                containerStack.Attributes.RemoveAttribute("recipeCode");
+            }
+            else
+            {
+                containerStack.Attributes.SetString("recipeCode", recipeCode);
+            }
+
+            containerStack.Attributes.SetFloat("quantityServings", quantityServings);
+        }
+
+
+
+
+        public void ServeIntoBowl(Block selectedBlock, BlockPos pos, ItemSlot potslot, IWorldAccessor world)
+        {
+            if (world.Side == EnumAppSide.Client) return;
+
+            float quantityServings = GetQuantityServings(world, potslot.Itemstack);
+            if (quantityServings <= 0) return;
+
+            string code = selectedBlock.Attributes["mealBlockCode"].AsString();
+            Block mealblock = api.World.GetBlock(new AssetLocation(code));
+
+            world.BlockAccessor.SetBlock(mealblock.BlockId, pos);
+
+            IBlockEntityMealContainer bemeal = api.World.BlockAccessor.GetBlockEntity(pos) as IBlockEntityMealContainer;
+            if (bemeal == null || bemeal.QuantityServings > 0) return;
+
+            bemeal.RecipeCode = GetRecipeCode(world, potslot.Itemstack);
+
+            ItemStack[] stacks = GetNonEmptyContents(api.World, potslot.Itemstack);
+            for (int i = 0; i < stacks.Length; i++)
+            {
+                bemeal.inventory[i].Itemstack = stacks[i].Clone();
+                bemeal.inventory[i].Itemstack.StackSize = 1;
+            }
+
+
+
+            
+            float servingsToTransfer = Math.Min(quantityServings, selectedBlock.Attributes["servingCapacity"].AsInt(1));
+
+            bemeal.QuantityServings = servingsToTransfer;
+
+
+            SetQuantityServings(world, potslot.Itemstack, quantityServings - servingsToTransfer);
+
+            if (quantityServings <= 0 && Attributes["emptiedBlockCode"].Exists)
+            {
+                Block emptyPotBlock = world.GetBlock(new AssetLocation(Attributes["emptiedBlockCode"].AsString()));
+                potslot.Itemstack = new ItemStack(emptyPotBlock);
+            }
+
+            potslot.MarkDirty();
+            bemeal.MarkDirty(true);
+        }
+
+        public float GetQuantityServings(IWorldAccessor world, ItemStack byItemStack)
+        {
+            return (float)byItemStack.Attributes.GetDecimal("quantityServings");
+        }
+
+        public void SetQuantityServings(IWorldAccessor world, ItemStack byItemStack, float value)
+        {
+            byItemStack.Attributes.SetFloat("quantityServings", value);
+        }
+
+
+        public string GetRecipeCode(IWorldAccessor world, ItemStack containerStack)
+        {
+            return containerStack.Attributes.GetString("recipeCode");
+        }
+
+        public CookingRecipe GetCookingRecipe(IWorldAccessor world, ItemStack containerStack)
+        {
+            string recipecode = GetRecipeCode(world, containerStack);
+            return world.CookingRecipes.FirstOrDefault((rec) => recipecode == rec.Code);
+        }
 
 
         public override TransitionState[] UpdateAndGetTransitionStates(IWorldAccessor world, ItemSlot inslot)

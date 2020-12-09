@@ -43,6 +43,10 @@ namespace Vintagestory.GameContent
         bool processComplete;
         bool structureComplete;
 
+        int tempStoneCoffin;
+        BlockPos tmpPos = new BlockPos();
+        BlockPos[] particlePositions = new BlockPos[7];
+
         public override InventoryBase Inventory => inv;
         public override string InventoryClassName => "stonecoffin";
 
@@ -54,7 +58,6 @@ namespace Vintagestory.GameContent
             }
         }
 
-        BlockPos[] particlePositions = new BlockPos[7];
 
         public BlockEntityStoneCoffin()
         {
@@ -89,8 +92,6 @@ namespace Vintagestory.GameContent
 
             blockScs = Block as BlockStoneCoffinSection;
             updateSelectiveElements();
-
-
 
 
             particlePositions[0] = Pos.DownCopy(2);
@@ -236,6 +237,7 @@ namespace Vintagestory.GameContent
         public int IngotCount => inv[1].StackSize;
         public int CoalLayerCount => inv[0].StackSize / 8;
 
+        public int CoffinTemperature => tempStoneCoffin;
 
         string[] selectiveElementsMain = new string[0];
         string[] selectiveElementsSlave = new string[0];
@@ -317,6 +319,20 @@ namespace Vintagestory.GameContent
 
                 progress += heatHoursReceived / 160f;
                 totalHoursLastUpdate = Api.World.Calendar.TotalHours;
+
+                float temp = inv[1].Itemstack.Collectible.GetTemperature(Api.World, inv[1].Itemstack);
+                float tempGain = (float)(hoursPassed * 500);
+                inv[1].Itemstack.Collectible.SetTemperature(Api.World, inv[1].Itemstack, Math.Min(800, temp + tempGain));
+
+                if (Math.Abs(tempStoneCoffin - temp) > 25)
+                {
+                    tempStoneCoffin = (int)temp;
+                    if (tempStoneCoffin > 500)
+                    {
+                        MarkDirty(true);
+                    }
+                }
+
                 MarkDirty();
             }
 
@@ -327,9 +343,11 @@ namespace Vintagestory.GameContent
                 JsonItemStack jstack = inv[1].Itemstack.ItemAttributes?["carburizableProps"]["carburizedOutput"].AsObject<JsonItemStack>(null, Block.Code.Domain);
                 if (jstack.Resolve(Api.World, "carburizable output"))
                 {
+                    float temp = inv[1].Itemstack.Collectible.GetTemperature(Api.World, inv[0].Itemstack);
                     inv[0].Itemstack = null;
                     inv[1].Itemstack = jstack.ResolvedItemstack.Clone();
                     inv[1].Itemstack.StackSize = stacksize;
+                    inv[1].Itemstack.Collectible.SetTemperature(Api.World, inv[1].Itemstack, temp);
                 }
 
                 ms.WalkMatchingBlocks(Api.World, Pos, (block, pos) =>
@@ -356,7 +374,6 @@ namespace Vintagestory.GameContent
             ;
         }
 
-        BlockPos tmpPos = new BlockPos();
         private void onClientTick50ms(float dt)
         {
             if (processComplete || !structureComplete) return;
@@ -381,7 +398,7 @@ namespace Vintagestory.GameContent
                         particles = smokeParticles;
                         particles.Quantity.avg = 0.2f;
                         particles.basePos.Set(pos.X + 0.5, pos.Y + 0.75, pos.Z + 0.5);
-                        particles.Velocity[1].avg = (float)(0.3 + 0.3 * rnd.NextDouble());
+                        particles.Velocity[1].avg = (float)(0.3 + 0.3 * rnd.NextDouble()) * 2;
                         particles.PosOffset[1].var = 0.2f;
                         particles.Velocity[0].avg = (float)(rnd.NextDouble() - 0.5) / 4;
                         particles.Velocity[2].avg = (float)(rnd.NextDouble() - 0.5) / 4;
@@ -391,10 +408,10 @@ namespace Vintagestory.GameContent
                     {
                         particles.Quantity.avg = GameMath.Sqrt(0.5f * (index == 0 ? 0.5f : (index == 1 ? 5 : 0.6f)))/2f;
                         particles.basePos.Set(pos.X + 0.5, pos.Y + 0.5, pos.Z + 0.5);
-                        particles.Velocity[1].avg = (float)(0.5 + 0.5 * rnd.NextDouble());
+                        particles.Velocity[1].avg = (float)(0.5 + 0.5 * rnd.NextDouble()) * 2;
                         particles.PosOffset[1].var = 1;
-                        particles.Velocity[0].avg = (float)(rnd.NextDouble() - 0.5) / 2;
-                        particles.Velocity[2].avg = (float)(rnd.NextDouble() - 0.5) / 2;
+                        particles.Velocity[0].avg = (float)(rnd.NextDouble() - 0.5);
+                        particles.Velocity[2].avg = (float)(rnd.NextDouble() - 0.5);
                     }
 
                     
@@ -418,6 +435,7 @@ namespace Vintagestory.GameContent
             progress = tree.GetDouble("progress");
             processComplete = tree.GetBool("processComplete");
             structureComplete = tree.GetBool("structureComplete");
+            tempStoneCoffin = tree.GetInt("tempStoneCoffin");
         }
 
         public override void ToTreeAttributes(ITreeAttribute tree)
@@ -429,6 +447,7 @@ namespace Vintagestory.GameContent
             tree.SetDouble("progress", progress);
             tree.SetBool("processComplete", processComplete);
             tree.SetBool("structureComplete", structureComplete);
+            tree.SetInt("tempStoneCoffin", tempStoneCoffin);
         }
 
         public override void OnBlockRemoved()
@@ -472,6 +491,8 @@ namespace Vintagestory.GameContent
 
             mesher.AddMeshData(meshdatamain);
             mesher.AddMeshData(meshdataslave);
+
+            
 
             return false;
         }

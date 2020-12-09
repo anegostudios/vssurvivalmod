@@ -20,20 +20,20 @@ namespace Vintagestory.GameContent.Mechanics
         public bool IsReplacableByGear(IWorldAccessor world, BlockPos pos)
         {
             BEMPMultiblock be = world.BlockAccessor.GetBlockEntity(pos) as BEMPMultiblock;
-            if (be == null || be.Centre == null) return true;
-            IGearAcceptor beg = world.BlockAccessor.GetBlockEntity(be.Centre) as IGearAcceptor;
+            if (be == null || be.Principal == null) return true;
+            IGearAcceptor beg = world.BlockAccessor.GetBlockEntity(be.Principal) as IGearAcceptor;
             return beg == null ? true : beg.CanAcceptGear(pos);
         }
 
         public BlockEntity GearPlaced(IWorldAccessor world, BlockPos pos)
         {
             BEMPMultiblock be = world.BlockAccessor.GetBlockEntity(pos) as BEMPMultiblock;
-            if (be == null || be.Centre == null)
+            if (be == null || be.Principal == null)
             {
                 return null;
             }
 
-            IGearAcceptor beg = world.BlockAccessor.GetBlockEntity(be.Centre) as IGearAcceptor;
+            IGearAcceptor beg = world.BlockAccessor.GetBlockEntity(be.Principal) as IGearAcceptor;
             if (beg == null) world.Logger.Notification("no gear acceptor");
             beg?.AddGear(pos);
             return beg as BlockEntity;
@@ -41,31 +41,31 @@ namespace Vintagestory.GameContent.Mechanics
 
         public static void OnGearDestroyed(IWorldAccessor world, BlockPos pos, char orient)
         {
-            BlockPos posCentre;
+            BlockPos posCenter;
             switch (orient)
             {
                 case 's':
-                    posCentre = pos.NorthCopy();
+                    posCenter = pos.NorthCopy();
                     break;
                 case 'w':
-                    posCentre = pos.EastCopy();
+                    posCenter = pos.EastCopy();
                     break;
                 case 'e':
-                    posCentre = pos.WestCopy();
+                    posCenter = pos.WestCopy();
                     break;
                 case 'n':
                 default:
-                    posCentre = pos.SouthCopy();
+                    posCenter = pos.SouthCopy();
                     break;
             }
-            if (world.BlockAccessor.GetBlockEntity(posCentre) is IGearAcceptor beg)
+            if (world.BlockAccessor.GetBlockEntity(posCenter) is IGearAcceptor beg)
             {
                 beg.RemoveGearAt(pos);
                 Block toPlaceBlock = world.GetBlock(new AssetLocation("mpmultiblockwood"));
                 world.BlockAccessor.SetBlock(toPlaceBlock.BlockId, pos);
-                if (world.BlockAccessor.GetBlockEntity(pos) is BEMPMultiblock be) be.Centre = posCentre;
+                if (world.BlockAccessor.GetBlockEntity(pos) is BEMPMultiblock be) be.Principal = posCenter;
             }
-            else world.Logger.Notification("no LG found at " + posCentre + " from " + pos);
+            else world.Logger.Notification("no LG found at " + posCenter + " from " + pos);
         }
 
         public override float OnGettingBroken(IPlayer player, BlockSelection blockSel, ItemSlot itemslot, float remainingResistance, float dt, int counter)
@@ -73,17 +73,17 @@ namespace Vintagestory.GameContent.Mechanics
             IWorldAccessor world = player?.Entity?.World;
             if (world == null) world = api.World;
             BEMPMultiblock be = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BEMPMultiblock;
-            if (be == null || be.Centre == null) return 1f;  //never break
-            Block centreBlock = world.BlockAccessor.GetBlock(be.Centre);
+            if (be == null || be.Principal == null) return 1f;  //never break
+            Block centerBlock = world.BlockAccessor.GetBlock(be.Principal);
             if (api.Side == EnumAppSide.Client)
             {
                 //Vintagestory.Client.SystemMouseInWorldInteractions mouse;
-                //mouse.loadOrCreateBlockDamage(bs, centreBlock);
+                //mouse.loadOrCreateBlockDamage(bs, centerBlock);
                 //mouse.curBlockDmg.LastBreakEllapsedMs = game.ElapsedMilliseconds;
             }
             BlockSelection bs = blockSel.Clone();
-            bs.Position = be.Centre;
-            return centreBlock.OnGettingBroken(player, bs, itemslot, remainingResistance, dt, counter);
+            bs.Position = be.Principal;
+            return centerBlock.OnGettingBroken(player, bs, itemslot, remainingResistance, dt, counter);
         }
 
         public override void OnBlockPlaced(IWorldAccessor world, BlockPos blockPos, ItemStack byItemStack = null)
@@ -94,24 +94,24 @@ namespace Vintagestory.GameContent.Mechanics
         public override void OnBlockBroken(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)
         {
             BEMPMultiblock be = world.BlockAccessor.GetBlockEntity(pos) as BEMPMultiblock;
-            if (be == null || be.Centre == null)
+            if (be == null || be.Principal == null)
             {
-                // being broken by other game code (including on breaking the centre large gear): standard block breaking treatment
+                // being broken by other game code (including on breaking the center large gear): standard block breaking treatment
                 base.OnBlockBroken(world, pos, byPlayer, dropQuantityMultiplier);
                 return;
             }
-            // being broken by player: break the centre block instead
-            BlockPos centrePos = be.Centre;
-            Block centreBlock = world.BlockAccessor.GetBlock(centrePos);
-            centreBlock.OnBlockBroken(world, centrePos, byPlayer, dropQuantityMultiplier);
+            // being broken by player: break the center block instead
+            BlockPos centerPos = be.Principal;
+            Block centerBlock = world.BlockAccessor.GetBlock(centerPos);
+            centerBlock.OnBlockBroken(world, centerPos, byPlayer, dropQuantityMultiplier);
 
             // Need to trigger neighbourchange on client side only (because it's normally in the player block breaking code)
             if (api.Side == EnumAppSide.Client)
             {
                 foreach (BlockFacing facing in BlockFacing.VERTICALS)
                 {
-                    BlockPos npos = centrePos.AddCopy(facing);
-                    world.BlockAccessor.GetBlock(npos).OnNeighbourBlockChange(world, npos, centrePos);
+                    BlockPos npos = centerPos.AddCopy(facing);
+                    world.BlockAccessor.GetBlock(npos).OnNeighbourBlockChange(world, npos, centerPos);
                 }
             }
         }
@@ -119,13 +119,13 @@ namespace Vintagestory.GameContent.Mechanics
         public override Cuboidf GetParticleBreakBox(IBlockAccessor blockAccess, BlockPos pos, BlockFacing facing)
         {
             BEMPMultiblock be = blockAccess.GetBlockEntity(pos) as BEMPMultiblock;
-            if (be == null || be.Centre == null)
+            if (be == null || be.Principal == null)
             {
                 return base.GetParticleBreakBox(blockAccess, pos, facing);
             }
-            // being broken by player: break the centre block instead
-            Block centreBlock = blockAccess.GetBlock(be.Centre);
-            return centreBlock.GetParticleBreakBox(blockAccess, be.Centre, facing);
+            // being broken by player: break the center block instead
+            Block centerBlock = blockAccess.GetBlock(be.Principal);
+            return centerBlock.GetParticleBreakBox(blockAccess, be.Principal, facing);
         }
 
         //Need to override because this fake block has no texture of its own (no texture gives black breaking particles)
@@ -133,12 +133,12 @@ namespace Vintagestory.GameContent.Mechanics
         {
             IBlockAccessor blockAccess = capi.World.BlockAccessor;
             BEMPMultiblock be = blockAccess.GetBlockEntity(pos) as BEMPMultiblock;
-            if (be == null || be.Centre == null)
+            if (be == null || be.Principal == null)
             {
                 return 0;
             }
-            Block centreBlock = blockAccess.GetBlock(be.Centre);
-            return centreBlock.GetRandomColor(capi, be.Centre, facing);
+            Block centerBlock = blockAccess.GetBlock(be.Principal);
+            return centerBlock.GetRandomColor(capi, be.Principal, facing);
         }
 
 

@@ -107,7 +107,7 @@ namespace Vintagestory.GameContent.Mechanics
                     tmpPos.Set(pos.X + dx, pos.Y, pos.Z + dz);
                     world.BlockAccessor.SetBlock(toPlaceBlock.BlockId, tmpPos);
                     BEMPMultiblock be = world.BlockAccessor.GetBlockEntity(tmpPos) as BEMPMultiblock;
-                    if (be != null) be.Centre = pos;
+                    if (be != null) be.Principal = pos;
                 }
             }
         }
@@ -167,9 +167,9 @@ namespace Vintagestory.GameContent.Mechanics
 
                     //Destroy any fake blocks; revert small gears to their normal peg gear type
                     BEMPMultiblock be = world.BlockAccessor.GetBlockEntity(tmpPos) as BEMPMultiblock;
-                    if (be != null && pos.Equals(be.Centre))
+                    if (be != null && pos.Equals(be.Principal))
                     {
-                        be.Centre = null;  //signal to BlockMPMultiblockWood that it can be broken normally without triggering this in a loop
+                        be.Principal = null;  //signal to BlockMPMultiblockWood that it can be broken normally without triggering this in a loop
                         world.BlockAccessor.SetBlock(0, tmpPos);
                     }
                     else

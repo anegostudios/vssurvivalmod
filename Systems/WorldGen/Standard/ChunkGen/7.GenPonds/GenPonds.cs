@@ -127,6 +127,8 @@ namespace Vintagestory.ServerMods
 
             int dx, dz;
 
+            int baseX = chunkX * chunksize;
+            int baseZ = chunkZ * chunksize;
 
 
             while (maxTries-- > 0)
@@ -136,16 +138,47 @@ namespace Vintagestory.ServerMods
                 dx = rand.NextInt(chunksize);
                 dz = rand.NextInt(chunksize);
 
-                TryPlacePondAt(dx, dz, chunkX, chunkZ, heightmap);
+                pondYPos = heightmap[dz * chunksize + dx] + 1;
+                if (pondYPos <= 0 || pondYPos >= mapheight - 1) return;
 
-                //ushort blockId = blockAccessor.GetBlock(new AssetLocation("creativeblock-37")).BlockId;
-                //blockAccessor.SetBlock(blockId, new BlockPos(chunkX * chunksize + dx, heightmap[dz * chunksize + dx] + 1, chunkZ * chunksize + dz));
+                TryPlacePondAt(dx, pondYPos, dz, chunkX, chunkZ);
+            }
+
+            maxTries = 600;
+            while (maxTries-- > 0)
+            {
+                if (maxTries < 1 && rand.NextDouble() > maxTries) break;
+
+                dx = rand.NextInt(chunksize);
+                dz = rand.NextInt(chunksize);
+
+                pondYPos = (int)(rand.NextDouble() * heightmap[dz * chunksize + dx]);
+                if (pondYPos <= 0 || pondYPos >= mapheight - 1) return;
+
+                int chunkY = pondYPos / chunksize;
+                int dy = pondYPos % chunksize;
+                int blockID = chunks[chunkY].Blocks[(dy * chunksize + dz) * chunksize + dx];
+
+                while (blockID == 0 && pondYPos > 20)
+                {
+                    pondYPos--;
+
+                    chunkY = pondYPos / chunksize;
+                    dy = pondYPos % chunksize;
+                    blockID = chunks[chunkY].Blocks[(dy * chunksize + dz) * chunksize + dx];
+
+                    if (blockID != 0)
+                    {
+                        //blockAccessor.SetBlock(63, new BlockPos(dx + baseX, pondYPos, dz + baseZ));
+                        TryPlacePondAt(dx, pondYPos, dz, chunkX, chunkZ);
+                    }
+                }
             }
         }
 
 
 
-        public void TryPlacePondAt(int dx, int dz, int chunkX, int chunkZ, ushort[] heightmap, int depth = 0)
+        public void TryPlacePondAt(int dx, int pondYPos, int dz, int chunkX, int chunkZ, int depth = 0)
         {
             searchPositionsDeltas.Clear();
             pondPositions.Clear();
@@ -153,9 +186,6 @@ namespace Vintagestory.ServerMods
             // Clear Array
             for (int i = 0; i < didCheckPosition.Length; i++) didCheckPosition[i] = false;
 
-            pondYPos = heightmap[dz * chunksize + dx] + 1;
-
-            if (pondYPos <= 0 || pondYPos >= mapheight - 1) return;
 
             int basePosX = chunkX * chunksize;
             int basePosZ = chunkZ * chunksize;
@@ -308,7 +338,7 @@ namespace Vintagestory.ServerMods
 
             if (pondPositions.Count > 0 && extraPondDepth)
             {
-                TryPlacePondAt(dx, dz, chunkX, chunkZ, heightmap, depth + 1);
+                TryPlacePondAt(dx, pondYPos+1, dz, chunkX, chunkZ, depth + 1);
             }
         }
     }

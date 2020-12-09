@@ -21,7 +21,7 @@ namespace Vintagestory.GameContent
             snowLayerBlock = api.World.GetBlock(new AssetLocation("snowlayer-1"));
         }
 
-        public override void OnJsonTesselation(ref MeshData sourceMesh, BlockPos pos, int[] chunkExtIds, ushort[] chunkLightExt, int extIndex3d)
+        public override void OnJsonTesselation(ref MeshData sourceMesh, ref int[] lightRgbsByCorner, BlockPos pos, int[] chunkExtIds, ushort[] chunkLightExt, int extIndex3d)
         {
             // Todo: make this work
 /*            int nBlockId = chunkExtIds[extIndex3d + TileSideEnum.MoveIndex[TileSideEnum.Up]];
@@ -34,7 +34,7 @@ namespace Vintagestory.GameContent
                 return;
             }*/
 
-            base.OnJsonTesselation(ref sourceMesh, pos, chunkExtIds, chunkLightExt, extIndex3d);
+            base.OnJsonTesselation(ref sourceMesh, ref lightRgbsByCorner, pos, chunkExtIds, chunkLightExt, extIndex3d);
         }
 
         public string GetOrientations(IWorldAccessor world, BlockPos pos)

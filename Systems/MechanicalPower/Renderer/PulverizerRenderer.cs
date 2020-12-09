@@ -21,7 +21,7 @@ namespace Vintagestory.GameContent.Mechanics
         readonly MeshRef toggleMeshref;
         readonly MeshRef[] lPoundMeshrefs = new MeshRef[metals.Length];
         readonly MeshRef[] rPounderMeshrefs = new MeshRef[metals.Length];
-        readonly Vec3f axisCentre = new Vec3f(0.5f, 0.5f, 0.5f);
+        readonly Vec3f axisCenter = new Vec3f(0.5f, 0.5f, 0.5f);
 
 
         int quantityAxles = 0;
@@ -116,7 +116,7 @@ namespace Vintagestory.GameContent.Mechanics
             {
                 float rotX = rot * axX;
                 float rotZ = rot * axZ;
-                UpdateLightAndTransformMatrix(matrixAndLightFloatsAxle.Values, quantityAxles, distToCamera, dev.LightRgba, rotX, rotZ, axisCentre, 0f);
+                UpdateLightAndTransformMatrix(matrixAndLightFloatsAxle.Values, quantityAxles, distToCamera, dev.LightRgba, rotX, rotZ, axisCenter, 0f);
                 quantityAxles++;
             }
 
@@ -129,7 +129,7 @@ namespace Vintagestory.GameContent.Mechanics
                 int metalIndexLeft = bhpu.bepu.CapMetalIndexL;
 
                 float progress = GetProgress(bhpu.bepu.hasAxle ? rot - 0.45f + GameMath.PIHALF / 2f : 0f, 0f);
-                UpdateLightAndTransformMatrix(matrixAndLightFloatsLPounder[metalIndexLeft].Values, quantityLPounders[metalIndexLeft], distToCamera, dev.LightRgba, 0f, 0f, axisCentre, Math.Max(progress / 6f + 0.0071f, leftEmpty ? -1 : 1 / 32f));
+                UpdateLightAndTransformMatrix(matrixAndLightFloatsLPounder[metalIndexLeft].Values, quantityLPounders[metalIndexLeft], distToCamera, dev.LightRgba, 0f, 0f, axisCenter, Math.Max(progress / 6f + 0.0071f, leftEmpty ? -1 : 1 / 32f));
 
                 if (progress < bhpu.prevProgressLeft && progress < 0.25f)
                 {
@@ -153,7 +153,7 @@ namespace Vintagestory.GameContent.Mechanics
                 int metalIndexRight = bhpu.bepu.CapMetalIndexR;
 
                 float progress = GetProgress(bhpu.bepu.hasAxle ? rot - 0.45f : 0f, 0f);
-                UpdateLightAndTransformMatrix(matrixAndLightFloatsRPounder[metalIndexRight].Values, quantityRPounders[metalIndexRight], distToCamera, dev.LightRgba, 0f, 0f, axisCentre, Math.Max(progress / 6f + 0.0071f, rightEmpty ? -1 : 1 / 32f));
+                UpdateLightAndTransformMatrix(matrixAndLightFloatsRPounder[metalIndexRight].Values, quantityRPounders[metalIndexRight], distToCamera, dev.LightRgba, 0f, 0f, axisCenter, Math.Max(progress / 6f + 0.0071f, rightEmpty ? -1 : 1 / 32f));
 
                 if (progress < bhpu.prevProgressRight && progress < 0.25f)
                 {

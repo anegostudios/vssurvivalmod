@@ -150,10 +150,10 @@
     <Compile Include="BlockEntity\BESapling.cs" />
     <Compile Include="BlockEntity\BECrock.cs" />
     <Compile Include="BlockEntity\BlockEntityContainerDisplay.cs" />
+    <Compile Include="Block\BlockStoneCoffinLid.cs" />
     <Compile Include="Block\BlockCokeOvenDoor.cs" />
     <Compile Include="Block\BlockAnvilPart.cs" />
     <Compile Include="Block\BlockCharcoalPile.cs" />
-    <Compile Include="Block\BlockCookedContainerBase.cs" />
     <Compile Include="Block\BlockRefractoryBrick.cs" />
     <Compile Include="Block\BlockSticksLayer.cs" />
     <Compile Include="Block\BlockGlassPane.cs" />
