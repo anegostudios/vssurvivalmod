@@ -52,8 +52,9 @@ namespace Vintagestory.GameContent
             if (byEntity.Controls.Sneak)
             {
                 IPlayer player = byEntity.World.PlayerByUid((byEntity as EntityPlayer)?.PlayerUID);
+                BlockPos placePos = blockSel.Position.AddCopy(blockSel.Face);
 
-                if (!byEntity.World.Claims.TryAccess(player, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+                if (!byEntity.World.Claims.TryAccess(player, placePos, EnumBlockAccessFlags.BuildOrBreak))
                 {
                     slot.MarkDirty();
                     return;
@@ -74,15 +75,14 @@ namespace Vintagestory.GameContent
 
                 if (!belowBlock.CanAttachBlockAt(byEntity.World.BlockAccessor, clayformBlock, belowPos, BlockFacing.UP)) return;
 
-                BlockPos pos = blockSel.Position.AddCopy(blockSel.Face);
-                if (!world.BlockAccessor.GetBlock(pos).IsReplacableBy(clayformBlock)) return;
+                
+                if (!world.BlockAccessor.GetBlock(placePos).IsReplacableBy(clayformBlock)) return;
 
-                world.BlockAccessor.SetBlock(clayformBlock.BlockId, pos);
+                world.BlockAccessor.SetBlock(clayformBlock.BlockId, placePos);
 
                 if (clayformBlock.Sounds != null) world.PlaySoundAt(clayformBlock.Sounds.Place, blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z);
 
-                ItemStack fromitemstack = slot.Itemstack.Clone();
-                bec = byEntity.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityClayForm;
+                bec = byEntity.World.BlockAccessor.GetBlockEntity(placePos) as BlockEntityClayForm;
 
                 if (bec != null) bec.PutClay(slot);
 

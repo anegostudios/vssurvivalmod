@@ -231,6 +231,8 @@ namespace Vintagestory.GameContent
                 return GetOrCreateVoxelSelectionBoxes(forPlayer);
             }
 
+            if (selectionBoxes.Length == 0) return new Cuboidf[] { Cuboidf.Default() };
+
             return selectionBoxes;
         }
 

@@ -12,7 +12,7 @@ namespace Vintagestory.GameContent.Mechanics
 {
     public class BEBehaviorMPAxle : BEBehaviorMPBase
     {
-        private Vec3f center = new Vec3f(0.5f, 0.5f, 0.5f);
+        private Vec3f centre = new Vec3f(0.5f, 0.5f, 0.5f);
         BlockFacing[] orients = new BlockFacing[2];
         ICoreClientAPI capi;
         string orientations;
@@ -69,21 +69,22 @@ namespace Vintagestory.GameContent.Mechanics
             });
         }
 
-        public bool IsAttachedToBlock()
+        public static bool IsAttachedToBlock(IBlockAccessor blockaccessor, Block block, BlockPos Position)
         {
+            string orientations = block.Variant["rotation"];
             if (orientations == "ns" || orientations == "we")
             {
                 // Up or down
                 if (
-                    Api.World.BlockAccessor.GetBlock(Position.X, Position.Y - 1, Position.Z).SideSolid[BlockFacing.UP.Index] ||
-                    Api.World.BlockAccessor.GetBlock(Position.X, Position.Y + 1, Position.Z).SideSolid[BlockFacing.DOWN.Index]
+                    blockaccessor.GetBlock(Position.X, Position.Y - 1, Position.Z).SideSolid[BlockFacing.UP.Index] ||
+                    blockaccessor.GetBlock(Position.X, Position.Y + 1, Position.Z).SideSolid[BlockFacing.DOWN.Index]
                 ) return true;
 
                 // Front or back
                 BlockFacing frontFacing = orientations == "ns" ? BlockFacing.WEST : BlockFacing.NORTH;
                 return
-                    Api.World.BlockAccessor.GetBlock(Position.AddCopy(frontFacing)).SideSolid[frontFacing.Opposite.Index] ||
-                    Api.World.BlockAccessor.GetBlock(Position.AddCopy(frontFacing.Opposite)).SideSolid[frontFacing.Index]
+                    blockaccessor.GetBlock(Position.AddCopy(frontFacing)).SideSolid[frontFacing.Opposite.Index] ||
+                    blockaccessor.GetBlock(Position.AddCopy(frontFacing.Opposite)).SideSolid[frontFacing.Index]
                 ;
             }
             else
@@ -92,8 +93,8 @@ namespace Vintagestory.GameContent.Mechanics
                 for (int i = 0; i < 4; i++)
                 {
                     BlockFacing face = BlockFacing.HORIZONTALS[i];
-                    Block block = Api.World.BlockAccessor.GetBlock(Position.X + face.Normali.X, Position.Y, Position.Z + face.Normali.Z);
-                    if (block.SideSolid[face.Opposite.Index])
+                    Block blockNeib = blockaccessor.GetBlock(Position.X + face.Normali.X, Position.Y, Position.Z + face.Normali.Z);
+                    if (blockNeib.SideSolid[face.Opposite.Index])
                     {
                         return true;
                     }
@@ -148,7 +149,7 @@ namespace Vintagestory.GameContent.Mechanics
                 }
                 return true;
             }
-            if (bempaxle.IsAttachedToBlock()) return false;
+            if (IsAttachedToBlock(Api.World.BlockAccessor, block, sidePos)) return false;
             return bempaxle.RequiresStand(sidePos, vector);
         }
 
@@ -158,28 +159,28 @@ namespace Vintagestory.GameContent.Mechanics
             {
                 mesh = mesh.Clone();
 
-                if (orientations == "ns") mesh = mesh.Rotate(center, 0, -GameMath.PIHALF, 0);
+                if (orientations == "ns") mesh = mesh.Rotate(centre, 0, -GameMath.PIHALF, 0);
 
                 //No stand rotation if standing on a solid block below
                 if (!Api.World.BlockAccessor.GetBlock(Position.X, Position.Y - 1, Position.Z).SideSolid[BlockFacing.UP.Index])
                 {
                     if (Api.World.BlockAccessor.GetBlock(Position.X, Position.Y + 1, Position.Z).SideSolid[BlockFacing.DOWN.Index])
                     {
-                        mesh = mesh.Rotate(center, GameMath.PI, 0, 0);
+                        mesh = mesh.Rotate(centre, GameMath.PI, 0, 0);
                     } else
                     if (orientations == "ns")
                     {
                         BlockFacing face = BlockFacing.EAST;
                         if (Api.World.BlockAccessor.GetBlock(Position.X + face.Normali.X, Position.Y, Position.Z + face.Normali.Z).SideSolid[face.Opposite.Index])
                         {
-                            mesh = mesh.Rotate(center, 0, 0, GameMath.PIHALF);
+                            mesh = mesh.Rotate(centre, 0, 0, GameMath.PIHALF);
                         }
                         else
                         {
                             face = BlockFacing.WEST;
                             if (Api.World.BlockAccessor.GetBlock(Position.X + face.Normali.X, Position.Y, Position.Z + face.Normali.Z).SideSolid[face.Opposite.Index])
                             {
-                                mesh = mesh.Rotate(center, 0, 0, -GameMath.PIHALF);
+                                mesh = mesh.Rotate(centre, 0, 0, -GameMath.PIHALF);
                             }
                             else return null;
                         }
@@ -188,14 +189,14 @@ namespace Vintagestory.GameContent.Mechanics
                         BlockFacing face = BlockFacing.NORTH;
                         if (Api.World.BlockAccessor.GetBlock(Position.X + face.Normali.X, Position.Y, Position.Z + face.Normali.Z).SideSolid[face.Opposite.Index])
                         {
-                            mesh = mesh.Rotate(center, GameMath.PIHALF, 0, 0);
+                            mesh = mesh.Rotate(centre, GameMath.PIHALF, 0, 0);
                         }
                         else
                         {
                             face = BlockFacing.SOUTH;
                             if (Api.World.BlockAccessor.GetBlock(Position.X + face.Normali.X, Position.Y, Position.Z + face.Normali.Z).SideSolid[face.Opposite.Index])
                             {
-                                mesh = mesh.Rotate(center, -GameMath.PIHALF, 0, 0);
+                                mesh = mesh.Rotate(centre, -GameMath.PIHALF, 0, 0);
                             }
                             else return null;
                         }
@@ -219,8 +220,8 @@ namespace Vintagestory.GameContent.Mechanics
                 if (attachFace != null)
                 {
                     mesh = mesh.Clone()
-                        .Rotate(center, 0, 0, GameMath.PIHALF)
-                        .Rotate(center, 0, attachFace.HorizontalAngleIndex * 90 * GameMath.DEG2RAD, 0)
+                        .Rotate(centre, 0, 0, GameMath.PIHALF)
+                        .Rotate(centre, 0, attachFace.HorizontalAngleIndex * 90 * GameMath.DEG2RAD, 0)
                     ;
                     return mesh;
                 }

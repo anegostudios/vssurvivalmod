@@ -151,6 +151,7 @@ namespace Vintagestory.GameContent
         {
             BlockEntityFirepit bef = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityFirepit;
             if (bef != null && bef.fuelSlot.Empty) return EnumIgniteState.NotIgnitablePreventDefault;
+            if (bef != null && bef.IsBurning) return EnumIgniteState.NotIgnitablePreventDefault;
 
             return secondsIgniting > 3 ? EnumIgniteState.IgniteNow : EnumIgniteState.Ignitable;
         }
@@ -273,7 +274,10 @@ namespace Vintagestory.GameContent
                         {
                             blockPot.ServeIntoBowlStack(targetSlot, potSlot, world);
                         }
-                        
+
+                    } else
+                    {
+                        return false;
                     }
 
                     return true;

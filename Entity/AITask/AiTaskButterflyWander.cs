@@ -99,12 +99,14 @@ namespace Vintagestory.GameContent
             double dy = desiredYPos - entity.ServerPos.Y;
             double yMot = GameMath.Clamp(dy, -1, 1);
 
-
+            
             float yawDist = GameMath.AngleRadDistance(entity.ServerPos.Yaw, desiredYaw);
 
-            entity.ServerPos.Yaw += GameMath.Clamp(yawDist, -curTurnRadPerSec * dt * (yMot < 0 ? 0.25f : 1), curTurnRadPerSec * dt * (yMot < 0 ? 0.25f : 1));
-            entity.ServerPos.Yaw = entity.ServerPos.Yaw % GameMath.TWOPI;
-
+            if (!entity.FeetInLiquid)
+            {
+                entity.ServerPos.Yaw += GameMath.Clamp(yawDist, -curTurnRadPerSec * dt * (yMot < 0 ? 0.25f : 1), curTurnRadPerSec * dt * (yMot < 0 ? 0.25f : 1));
+                entity.ServerPos.Yaw = entity.ServerPos.Yaw % GameMath.TWOPI;
+            }
 
             double cosYaw = Math.Cos(entity.ServerPos.Yaw);
             double sinYaw = Math.Sin(entity.ServerPos.Yaw);
@@ -133,6 +135,19 @@ namespace Vintagestory.GameContent
         protected void ReadjustFlyHeight()
         {
             int terrainYPos = entity.World.BlockAccessor.GetTerrainMapheightAt(entity.SidedPos.AsBlockPos);
+            int tries = 10;
+            while (tries-- > 0)
+            {
+                Block block = entity.World.BlockAccessor.GetBlock((int)entity.ServerPos.X, terrainYPos, (int)entity.ServerPos.Z);
+                if (block.IsLiquid())
+                {
+                    terrainYPos++;
+                } else
+                {
+                    break;
+                }
+            }
+
             desiredYPos = terrainYPos + desiredflyHeightAboveGround;
         }
 

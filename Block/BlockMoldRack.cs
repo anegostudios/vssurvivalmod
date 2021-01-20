@@ -26,16 +26,5 @@ namespace Vintagestory.GameContent
 
             return base.OnBlockInteractStart(world, byPlayer, blockSel);
         }
-
-        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
-        {
-            if (!world.BlockAccessor.GetBlock(blockSel.Position.DownCopy()).CanAttachBlockAt(world.BlockAccessor, this, blockSel.Position.DownCopy(), BlockFacing.UP))
-            {
-                failureCode = "requiresolidground";
-                return false;
-            }
-
-            return base.TryPlaceBlock(world, byPlayer, itemstack, blockSel, ref failureCode);
-        }
     }
 }

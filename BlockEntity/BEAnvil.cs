@@ -633,6 +633,8 @@ namespace Vintagestory.GameContent
 
             int ymax = Math.Min(6, SelectedRecipe.QuantityLayers);
 
+            bool[,,] recipeVoxels = this.recipeVoxels; // Otherwise we cause lag spikes
+
             for (int x = 0; x < 16; x++)
             {
                 for (int y = 0; y < ymax; y++)

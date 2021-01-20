@@ -85,12 +85,18 @@ namespace Vintagestory.GameContent
             {
                 entity.WatchedAttributes.SetAttribute("bodyTemp", tempTree = new TreeAttribute());
 
+                CurBodyTemperature = NormalBodyTemperature + 4;
+
+                // Run this every time a entity spawns so it doesnt freeze while unloaded / offline
                 BodyTempUpdateTotalHours = api.World.Calendar.TotalHours;
                 LastWetnessUpdateTotalHours = api.World.Calendar.TotalHours;
-                CurBodyTemperature = NormalBodyTemperature + 4;
 
                 return;
             }
+
+            // Run this every time a entity spawns so it doesnt freeze while unloaded / offline
+            BodyTempUpdateTotalHours = api.World.Calendar.TotalHours;
+            LastWetnessUpdateTotalHours = api.World.Calendar.TotalHours;
 
             bodyTemperatureResistance = entity.World.Config.GetString("bodyTemperatureResistance").ToFloat(0);
         }
@@ -250,7 +256,9 @@ namespace Vintagestory.GameContent
             // 1296 hours is half a default year
             if (!isStandingStill) conditionloss = -(float)hoursPassed / 1296f;
 
-            IInventory gearWorn = eagent?.GearInventory;
+            if (eagent?.GearInventory == null) return;
+
+            IInventory gearWorn = eagent.GearInventory;
             if (gearWorn != null)  //can be null when creating a new world and entering for the first time
             {
                 foreach (var slot in gearWorn)

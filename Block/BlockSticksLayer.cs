@@ -13,7 +13,7 @@ namespace Vintagestory.GameContent
         protected WeatherSystemBase weatherSystem;
         protected static readonly AssetLocation drip;
         protected static readonly SimpleParticleProperties waterParticles = null;
-        protected readonly static Vec3d center = new Vec3d(0.5, 0.125, 0.5);
+        protected readonly static Vec3d centre = new Vec3d(0.5, 0.125, 0.5);
 
         static BlockSticksLayer()
         {
@@ -139,7 +139,8 @@ namespace Vintagestory.GameContent
         private bool CanSupportThis(IBlockAccessor blockAccess, BlockPos pos, BlockFacing sideToTest)
         {
             Block block = blockAccess.GetBlock(pos);
-            if (block.SideSolid[API.MathTools.BlockFacing.UP.Index]) return true;
+            if (block.SideSolid[BlockFacing.UP.Index]) return true;
+            if (sideToTest == null && block.FirstCodePart() == "roughhewnfence") return true;
             Cuboidf[] boxes = block.CollisionBoxes;
             if (boxes != null)
             {
@@ -147,6 +148,7 @@ namespace Vintagestory.GameContent
                 {
                     if (boxes[i].Y2 == 1.0f)
                     {
+                        if (sideToTest == null) return true;   //any partial block below, with full height can support from beneath
                         if (sideToTest == BlockFacing.WEST && boxes[i].X1 != 0.0f) continue;
                         if (sideToTest == BlockFacing.EAST && boxes[i].X2 != 1.0f) continue;
                         if (sideToTest == BlockFacing.NORTH && boxes[i].Z1 != 0.0f) continue;

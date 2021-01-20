@@ -200,9 +200,9 @@ namespace Vintagestory.GameContent
             if (facing == null)
             {
                 return new Vec3d(
-                    Pos.X + box.X1 + 1 / 32f + rand.NextDouble() * (box.X2 - box.X1 - 1 / 16f),
-                    Pos.Y + box.Y1 + 1 / 32f + rand.NextDouble() * (box.Y2 - box.Y1 - 1 / 16f),
-                    Pos.Z + box.Z1 + 1 / 32f + rand.NextDouble() * (box.Z2 - box.Z1 - 1 / 16f)
+                    Pos.X + box.X1 + 1 / 32f + rand.NextDouble() * (box.XSize - 1 / 16f),
+                    Pos.Y + box.Y1 + 1 / 32f + rand.NextDouble() * (box.YSize - 1 / 16f),
+                    Pos.Z + box.Z1 + 1 / 32f + rand.NextDouble() * (box.ZSize - 1 / 16f)
                 );
             }
             else

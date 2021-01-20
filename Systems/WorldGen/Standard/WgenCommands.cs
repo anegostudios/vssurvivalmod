@@ -9,6 +9,7 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
+using Vintagestory.GameContent;
 using Vintagestory.ServerMods.NoObf;
 
 namespace Vintagestory.ServerMods
@@ -133,18 +134,42 @@ namespace Vintagestory.ServerMods
                     break;
 
                 case "testmap":
+                    if (api.Server.Config.HostedMode)
+                    {
+                        player.SendMessage(groupId, Lang.Get("Can't access this feature, server is in hosted mode"), EnumChatType.CommandError);
+                        return;
+                    }
+
                     TestMap(player, args);
                     break;
 
                 case "genmap":
+                    if (api.Server.Config.HostedMode)
+                    {
+                        player.SendMessage(groupId, Lang.Get("Can't access this feature, server is in hosted mode"), EnumChatType.CommandError);
+                        return;
+                    }
+
                     GenMap(player, args);
                     break;
 
                 case "chunk":
+                    if (api.Server.Config.HostedMode)
+                    {
+                        player.SendMessage(groupId, Lang.Get("Can't access this feature, server is in hosted mode"), EnumChatType.CommandError);
+                        return;
+                    }
+
                     ReadChunk(player, args);
                     break;
 
                 case "region":
+                    if (api.Server.Config.HostedMode)
+                    {
+                        player.SendMessage(groupId, Lang.Get("Can't access this feature, server is in hosted mode"), EnumChatType.CommandError);
+                        return;
+                    }
+
                     ReadRegion(player, args);
                     break;
 
@@ -154,6 +179,13 @@ namespace Vintagestory.ServerMods
 
 
                 case "testnoise":
+                    if (api.Server.Config.HostedMode)
+                    {
+                        player.SendMessage(groupId, Lang.Get("Can't access this feature, server is in hosted mode"), EnumChatType.CommandError);
+                        return;
+                    }
+
+
                     TestNoise(player, args);
                     break;
 
@@ -246,10 +278,9 @@ namespace Vintagestory.ServerMods
                 }
             }
 
-            player.SendMessage(groupId, string.Format("Type /debug cgenq to see current generting queue size"), EnumChatType.CommandSuccess);
+            player.SendMessage(groupId, string.Format("Type /debug cgenq to see current generating queue size"), EnumChatType.CommandSuccess);
 
             LoadColumnsSlow(player, coords, 0);
-
         }
 
         private void LoadColumnsSlow(IServerPlayer player, List<Vec2i> coords, int startIndex)
@@ -1014,6 +1045,11 @@ namespace Vintagestory.ServerMods
                     break;
                 case "coords":
                     player.SendMessage(groupId, string.Format("Chunk X/Z: {0}/{1}, Region X/Z: {2},{3}", chunkX, chunkZ, regionX, regionZ), EnumChatType.CommandSuccess);
+                    break;
+
+                case "latitude":
+                    double? lat = api.ModLoader.GetModSystem<SurvivalCoreSystem>().onGetLatitude?.Invoke(pos.Z);
+                    player.SendMessage(groupId, string.Format("Latitude: {0}°, {1}", lat * 90, lat < 0 ? "Southern Hemisphere" : "Northern Hemisphere"), EnumChatType.CommandSuccess);
                     break;
 
                 case "structures":

@@ -69,8 +69,6 @@ namespace Vintagestory.GameContent
                 world.BlockAccessor.SetBlock(0, blockSel.Position);
                 return true;
             }
-
-            return base.OnBlockInteractStart(world, byPlayer, blockSel);
         }
     }
 }

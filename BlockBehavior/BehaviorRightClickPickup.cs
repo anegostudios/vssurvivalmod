@@ -33,7 +33,17 @@ namespace Vintagestory.GameContent
         {
             ItemStack[] stacks = new ItemStack[] { block.OnPickBlock(world, blockSel.Position) };
 
-            if (dropsPickupMode) stacks = block.GetDrops(world, blockSel.Position, byPlayer);
+            if (dropsPickupMode)
+            {
+                float dropMul = 1f;
+
+                if (block.Attributes?.IsTrue("forageStatAffected") == true)
+                {
+                    dropMul *= byPlayer.Entity.Stats.GetBlended("forageDropRate");
+                }
+
+                stacks = block.GetDrops(world, blockSel.Position, byPlayer, dropMul);
+            }
 
             if (!world.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
             {

@@ -13,16 +13,16 @@ namespace Vintagestory.GameContent
 {
     public class EntityThrownStone : Entity
     {
-        bool beforeCollided;
-        bool stuck;
+        protected bool beforeCollided;
+        protected bool stuck;
 
-        long msLaunch;
-        Vec3d motionBeforeCollide = new Vec3d();
+        protected long msLaunch;
+        protected Vec3d motionBeforeCollide = new Vec3d();
 
-        CollisionTester collTester = new CollisionTester();
+        protected CollisionTester collTester = new CollisionTester();
 
         public Entity FiredBy;
-        internal float Damage;
+        public float Damage;
         public ItemStack ProjectileStack;
 
         public override bool IsInteractable

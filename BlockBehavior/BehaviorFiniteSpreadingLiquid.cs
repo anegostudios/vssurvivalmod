@@ -40,6 +40,8 @@ namespace Vintagestory.GameContent
 
         public override void Initialize(JsonObject properties)
         {
+            base.Initialize(properties);
+
             spreadDelay = properties["spreadDelay"].AsInt();
 
             collisionReplaceSound = CreateAssetLocation(properties, "sounds/", "liquidCollisionSound");
@@ -351,7 +353,7 @@ namespace Vintagestory.GameContent
         {
             SpreadLiquid(GetLessLiquidBlockId(world, pos, block), pos, world);
 
-            for (int i = 0; i < BlockFacing.ALLFACES.Length; i++)
+            for (int i = 0; i < BlockFacing.NumberOfFaces; i++)
             {
                 BlockPos npos = pos.AddCopy(BlockFacing.ALLFACES[i]);
                 world.BlockAccessor.GetBlock(npos).OnNeighbourBlockChange(world, npos, pos);

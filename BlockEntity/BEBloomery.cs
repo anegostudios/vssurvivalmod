@@ -12,7 +12,7 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockEntityBloomery : BlockEntity
+    public class BlockEntityBloomery : BlockEntity, IHeatSource
     {
         ILoadedSound ambientSound;
         BloomeryContentsRenderer renderer;
@@ -384,6 +384,10 @@ namespace Vintagestory.GameContent
             base.GetBlockInfo(forPlayer, dsc);
         }
 
+        public float GetHeatStrength(IWorldAccessor world, BlockPos heatSourcePos, BlockPos heatReceiverPos)
+        {
+            return IsBurning ? 7 : 0;
+        }
 
         ItemSlot FuelSlot { get { return bloomeryInv[0]; } }
         ItemSlot OreSlot { get { return bloomeryInv[1]; } }
@@ -409,6 +413,7 @@ namespace Vintagestory.GameContent
                 return 6f / OreCapacity;
             }
         }
+
     }
 }
 

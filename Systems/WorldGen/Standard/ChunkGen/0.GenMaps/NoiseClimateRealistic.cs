@@ -19,15 +19,8 @@ namespace Vintagestory.ServerMods
         
         public NoiseClimateRealistic(long seed, double mapsizeZ, int polarEquatorDistance, int spawnMinTemp, int spawnMaxTemp) : base(seed+1)
         {
-            // We want the full range (from min temp to max temp) to pass every 50.000 blocks 
-            //double climateBandWaveLength = 100000 / 2;
-            
             // range must be divided by the climate map scaling
             halfRange = polarEquatorDistance / TerraGenConfig.climateMapScale / TerraGenConfig.climateMapSubScale;
-
-            // We want the player to spawn in an area of temperature from 6 to 15 degrees
-            //float minTemp = 6;
-            //float maxTemp = 14;
 
             // Our temperature values are stored in a range from 0..255, so lets descale them
             int minTempDescaled = TerraGenConfig.DescaleTemperature(spawnMinTemp);
@@ -40,9 +33,7 @@ namespace Vintagestory.ServerMods
             double zPerDegDescaled = halfRange / 255;
            
             // We need to shift over z by this much to achieve 6-15 degrees
-            ZOffset = rndTemp * zPerDegDescaled - mapsizeZ / 2;  
-
-            //this.mapsizeZ = mapsizeZ;
+            ZOffset = rndTemp * zPerDegDescaled - mapsizeZ / 2;
         }
 
         public override int GetClimateAt(int posX, int posZ)

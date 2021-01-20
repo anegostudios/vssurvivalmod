@@ -100,5 +100,10 @@ namespace Vintagestory.GameContent
         {
             return OrientedAsset(Orientation == BlockFacing.NORTH ? "ew" : "ns");
         }
+
+        public override int GetHeatRetention(BlockPos pos, BlockFacing facing)
+        {
+            return 1;
+        }
     }
 }

@@ -190,10 +190,12 @@ namespace Vintagestory.GameContent
 
         private void onSkinConfigChanged()
         {
+            skintree = entity.WatchedAttributes["skinConfig"] as ITreeAttribute;
+            
             if (entity.World.Side == EnumAppSide.Client)
             {
                 var essr = entity.Properties.Client.Renderer as EntitySkinnableShapeRenderer;
-                essr.TesselateShape();
+                essr.MarkShapeModified();
             }
         }
 
@@ -209,15 +211,32 @@ namespace Vintagestory.GameContent
             init();
         }
 
+        public override void OnEntityDespawn(EntityDespawnReason despawn)
+        {
+            base.OnEntityDespawn(despawn);
+
+            var essr = entity.Properties.Client.Renderer as EntitySkinnableShapeRenderer;
+            if (essr != null)
+            {
+                essr.OnReloadSkin -= Essr_OnReloadSkin;
+                essr.OnTesselation -= Essr_OnTesselation;
+            }
+        }
+
+        bool didInit = false;
         void init()
         {
             if (entity.World.Side != EnumAppSide.Client) return;
 
-            var essr = entity.Properties.Client.Renderer as EntitySkinnableShapeRenderer;
-            if (essr == null) throw new InvalidOperationException("The extra skinnable requires the entity to use the SkinnableShape renderer.");
+            if (!didInit)
+            {
+                var essr = entity.Properties.Client.Renderer as EntitySkinnableShapeRenderer;
+                if (essr == null) throw new InvalidOperationException("The extra skinnable requires the entity to use the SkinnableShape renderer.");
 
-            essr.OnReloadSkin += Essr_OnReloadSkin;
-            essr.OnTesselation += Essr_OnTesselation;
+                essr.OnReloadSkin += Essr_OnReloadSkin;
+                essr.OnTesselation += Essr_OnTesselation;
+                didInit = true;
+            }
         }
 
 
@@ -229,12 +248,12 @@ namespace Vintagestory.GameContent
             newShape.ResolveAndLoadJoints("head");
             entityShape = newShape;
 
-
             foreach (var val in AppliedSkinParts)
             {
-                SkinnablePart part = AvailableSkinPartsByCode[val.PartCode];
-
-                if (part.Type == EnumSkinnableType.Shape)
+                SkinnablePart part;
+                AvailableSkinPartsByCode.TryGetValue(val.PartCode, out part);
+                
+                if (part?.Type == EnumSkinnableType.Shape)
                 {
                     entityShape = addSkinPart(val, entityShape, part.DisableElements, shapePathForLogging);
                 }
@@ -242,9 +261,10 @@ namespace Vintagestory.GameContent
 
             foreach (var val in AppliedSkinParts)
             {
-                SkinnablePart part = AvailableSkinPartsByCode[val.PartCode];
+                SkinnablePart part;
+                AvailableSkinPartsByCode.TryGetValue(val.PartCode, out part);
 
-                if (part.Type == EnumSkinnableType.Texture && part.TextureTarget != null && part.TextureTarget != "seraph")
+                if (part != null && part.Type == EnumSkinnableType.Texture && part.TextureTarget != null && part.TextureTarget != "seraph")
                 {
                     AssetLocation textureLoc;
                     if (part.TextureTemplate != null)
@@ -257,7 +277,16 @@ namespace Vintagestory.GameContent
                         textureLoc = val.Texture;
                     }
 
-                    loadTexture(entityShape, "skinpart-" + part.TextureTarget, textureLoc, entityShape.TextureSizes["skinpart-" + part.TextureTarget][0], entityShape.TextureSizes["skinpart-" + part.TextureTarget][1], shapePathForLogging);
+                    string code = "skinpart-" + part.TextureTarget;
+                    entityShape.TextureSizes.TryGetValue(code, out int[] sizes);
+                    if (sizes != null)
+                    {
+                        loadTexture(entityShape, code, textureLoc, sizes[0], sizes[1], shapePathForLogging);
+                    }
+                    else
+                    {
+                        entity.Api.Logger.Error("Skinpart has no textureSize: " + code + "  in: " + shapePathForLogging);
+                    }
                 }
             }
 
@@ -478,7 +507,7 @@ namespace Vintagestory.GameContent
                 if (texAsset != null)
                 {
                     BitmapRef bmp = texAsset.ToBitmap(api);
-                    api.EntityTextureAtlas.InsertTexture(bmp, out textureSubId, out texpos);
+                    api.EntityTextureAtlas.InsertTexture(bmp, out textureSubId, out texpos, -1);
                 }
                 else
                 {
@@ -502,5 +531,7 @@ namespace Vintagestory.GameContent
             return "skinnableplayer";
         }
 
+
+        
     }
 }

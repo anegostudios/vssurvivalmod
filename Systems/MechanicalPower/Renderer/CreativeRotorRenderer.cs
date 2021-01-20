@@ -20,7 +20,7 @@ namespace Vintagestory.GameContent.Mechanics
         MeshRef blockMeshRef2;
         MeshRef blockMeshRef3;
         MeshRef blockMeshRef4;
-        Vec3f axisCenter = new Vec3f(0.5f, 0.5f, 0.5f);
+        Vec3f axisCentre = new Vec3f(0.5f, 0.5f, 0.5f);
 
         public CreativeRotorRenderer(ICoreClientAPI capi, MechanicalPowerMod mechanicalPowerMod, Block textureSoureBlock, CompositeShape shapeLoc) : base(capi, mechanicalPowerMod)
         {
@@ -88,22 +88,22 @@ namespace Vintagestory.GameContent.Mechanics
             //axle
             float rotX = rot1 * axX;
             float rotZ = rot1 * axZ;
-            UpdateLightAndTransformMatrix(matrixAndLightFloats1.Values, index, distToCamera, dev.LightRgba, rotX, rotZ, axisCenter, null);
+            UpdateLightAndTransformMatrix(matrixAndLightFloats1.Values, index, distToCamera, dev.LightRgba, rotX, rotZ, axisCentre, null);
 
             //contra-rotating axle parts
             rotX = rot2 * axX;
             rotZ = rot2 * axZ;
-            UpdateLightAndTransformMatrix(matrixAndLightFloats2.Values, index, distToCamera, dev.LightRgba, rotX, rotZ, axisCenter, null);
+            UpdateLightAndTransformMatrix(matrixAndLightFloats2.Values, index, distToCamera, dev.LightRgba, rotX, rotZ, axisCentre, null);
 
             //the spin bar
             rotX = rot3 * axX;
             rotZ = rot3 * axZ;
-            UpdateLightAndTransformMatrix(matrixAndLightFloats3.Values, index, distToCamera, dev.LightRgba, rotX, rotZ, axisCenter, null);
+            UpdateLightAndTransformMatrix(matrixAndLightFloats3.Values, index, distToCamera, dev.LightRgba, rotX, rotZ, axisCentre, null);
 
             //position the ball on the spin bar (45 degrees ahead of the spinbar)
             rotX = (rot3 + GameMath.PI / 4) * axX;
             rotZ = (rot3 + GameMath.PI / 4) * axZ;
-            TransformMatrix(distToCamera, rotX, rotZ, axisCenter);
+            TransformMatrix(distToCamera, rotX, rotZ, axisCentre);
 
             rotX = axX == 0 ? rot1 * 2f : 0f;
             rotZ = axZ == 0 ? -rot1 * 2f : 0f;
@@ -114,7 +114,7 @@ namespace Vintagestory.GameContent.Mechanics
             //position the other ball on the spin bar (225 degrees ahead of the spinbar i.e. opposite side from the first one)
             rotX = (rot3 + GameMath.PI * 1.25f) * -Math.Abs(dev.AxisSign[0]);
             rotZ = (rot3 + GameMath.PI * 1.25f) * -Math.Abs(dev.AxisSign[2]);
-            TransformMatrix(distToCamera, rotX, rotZ, axisCenter);
+            TransformMatrix(distToCamera, rotX, rotZ, axisCentre);
 
             rotX = axX == 0 ? rot1 * 2f : 0f;
             rotZ = axZ == 0 ? -rot1 * 2f : 0f;

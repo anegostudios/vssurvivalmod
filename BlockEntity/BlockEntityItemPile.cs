@@ -166,7 +166,16 @@ namespace Vintagestory.GameContent
 
                 int q = GameMath.Min(hotbarSlot.StackSize, putBulk ? BulkTakeQuantity : DefaultTakeQuantity, MaxStackSize - OwnStackSize);
 
+                //add to the pile and average item temperatures
+                int oldSize = invSlot.Itemstack.StackSize;
                 invSlot.Itemstack.StackSize += q;
+                if (oldSize + q > 0)
+                {
+                    float tempPile = invSlot.Itemstack.Collectible.GetTemperature(Api.World, invSlot.Itemstack);
+                    float tempAdded = hotbarSlot.Itemstack.Collectible.GetTemperature(Api.World, hotbarSlot.Itemstack);
+                    invSlot.Itemstack.Collectible.SetTemperature(Api.World, invSlot.Itemstack, (tempPile * oldSize + tempAdded * q) / (oldSize + q), false);
+                }
+
                 if (player.WorldData.CurrentGameMode != EnumGameMode.Creative)
                 {
                     hotbarSlot.TakeOut(q);

@@ -216,7 +216,7 @@ namespace Vintagestory.GameContent
 
             if (armorShape.Textures.Count > 0 && armorShape.TextureSizes.Count == 0)
             {
-                capi.World.Logger.Warning("Entity wearable shape {0} defines textures but not textures sizes, will probably have a broken texture.", shapePathForLogging);
+                capi.World.Logger.Warning("Entity wearable shape {0} defines textures but not textures sizes, will probably have a broken texture.", shapePath);
             }
 
             foreach (var val in armorShape.TextureSizes)
@@ -430,7 +430,14 @@ namespace Vintagestory.GameContent
             {
                 if (slot.Itemstack.ItemAttributes?["warmth"].Exists == true && slot.Itemstack.ItemAttributes?["warmth"].AsFloat() != 0)
                 {
-                    slot.Itemstack.Attributes.SetFloat("condition", (float)api.World.Rand.NextDouble() * 0.4f);
+                    if (slot is ItemSlotTrade)
+                    {
+                        slot.Itemstack.Attributes.SetFloat("condition", (float)api.World.Rand.NextDouble() * 0.25f + 0.75f);
+                    } else
+                    {
+                        slot.Itemstack.Attributes.SetFloat("condition", (float)api.World.Rand.NextDouble() * 0.4f);
+                    }
+                    
                     slot.MarkDirty();
                 }
             }

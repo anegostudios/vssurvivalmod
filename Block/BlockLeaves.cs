@@ -41,7 +41,7 @@ namespace Vintagestory.GameContent
         {
             if (VertexFlags.LeavesWindWave)
             {
-                for (int tileSide = 0; tileSide < BlockFacing.ALLFACES.Length; tileSide++)
+                for (int tileSide = 0; tileSide < BlockFacing.NumberOfFaces; tileSide++)
                 {
                     BlockFacing facing = BlockFacing.ALLFACES[tileSide];
                     Block nBlock = world.BlockAccessor.GetBlock(pos.AddCopy(facing));
@@ -90,7 +90,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override void OnJsonTesselation(ref MeshData sourceMesh, ref int[] lightRgbsByCorner, BlockPos pos, int[] chunkExtIds, ushort[] chunkLightExt, int extIndex3d)
+        public override void OnJsonTesselation(ref MeshData sourceMesh, BlockPos pos, int[] chunkExtIds, ushort[] chunkLightExt, int extIndex3d)
         {
             if (VertexFlags.LeavesWindWave)
             {

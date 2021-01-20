@@ -242,7 +242,7 @@ namespace Vintagestory.GameContent
                 BlockEntityCoalPile pile = (BlockEntityCoalPile)be;
                 if (player == null || player.WorldData.CurrentGameMode != EnumGameMode.Creative)
                 {
-                    pile.inventory[0].Itemstack = (ItemStack)slot.TakeOut(player.Entity.Controls.Sprint ? pile.BulkTakeQuantity : pile.DefaultTakeQuantity);
+                    pile.inventory[0].Itemstack = (ItemStack)slot.TakeOut(player?.Entity.Controls.Sprint == true ? pile.BulkTakeQuantity : pile.DefaultTakeQuantity);
                     slot.MarkDirty();
                 }
                 else

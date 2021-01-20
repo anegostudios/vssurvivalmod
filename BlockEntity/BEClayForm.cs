@@ -497,6 +497,8 @@ namespace Vintagestory.GameContent
 
         public override void OnBlockRemoved()
         {
+            dlg?.TryClose();
+
             if (workitemRenderer != null)
             {
                 workitemRenderer.Dispose();
@@ -649,6 +651,7 @@ namespace Vintagestory.GameContent
         }
 
 
+        GuiDialog dlg;
 
         public void OpenDialog(IClientWorldAccessor world, BlockPos pos, ItemStack ingredient)
         {
@@ -671,7 +674,7 @@ namespace Vintagestory.GameContent
 
             ICoreClientAPI capi = Api as ICoreClientAPI;
             
-            GuiDialog dlg = new GuiDialogBlockEntityRecipeSelector(
+            dlg = new GuiDialogBlockEntityRecipeSelector(
                 Lang.Get("Select recipe"), 
                 stacks.ToArray(), 
                 (selectedIndex) => {

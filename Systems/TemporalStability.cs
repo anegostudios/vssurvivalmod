@@ -297,7 +297,8 @@ namespace Vintagestory.GameContent
 
             if (nextStormDaysLeft <= 0)
             {
-                double stormActiveDays = 0.1f + data.nextStormStrDouble * 0.1f;
+                float tempstormDurationMul = api.World.Config.GetFloat("tempstormDurationMul", 1);
+                double stormActiveDays = (0.1f + data.nextStormStrDouble * 0.1f) * tempstormDurationMul;
 
                 // Happens when time is fast forwarded
                 if (!data.nowStormActive && nextStormDaysLeft + stormActiveDays < 0)

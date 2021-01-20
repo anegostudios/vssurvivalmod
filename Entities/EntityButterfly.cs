@@ -38,8 +38,6 @@ namespace Vintagestory.GameContent
                 });
             }
 
-            wsys = api.ModLoader.GetModSystem<WeatherSystemBase>();
-            roomReg = api.ModLoader.GetModSystem<RoomRegistry>();
 
             ClimateCondition conds = api.World.BlockAccessor.GetClimateAt(Pos.AsBlockPos, EnumGetClimateMode.NowValues);
             if (conds.Temperature < 0)
@@ -48,9 +46,8 @@ namespace Vintagestory.GameContent
             }
         }
 
-        WeatherSystemBase wsys;
-        RoomRegistry roomReg;
-        BlockPos tmpPos = new BlockPos();
+
+        float flapPauseDt = 0;
 
         public override void OnGameTick(float dt)
         {
@@ -62,13 +59,55 @@ namespace Vintagestory.GameContent
 
             if (!AnimManager.ActiveAnimationsByAnimCode.ContainsKey("feed") && !AnimManager.ActiveAnimationsByAnimCode.ContainsKey("rest"))
             {
-                if (ServerPos.Y < Pos.Y - 0.25 && !Collided)
+                if (ServerPos.Y < Pos.Y - 0.05 && !Collided)
                 {
                     SetAnimation("glide", 1);
                 }
-                else
+
+                if ((ServerPos.Y > Pos.Y - 0.02 || Collided) && !FeetInLiquid)
                 {
-                    SetAnimation("fly", 2);
+                    SetAnimation("fly", 2.5f);
+                }
+
+                if (FeetInLiquid)
+                {
+                    (Properties.Client.Renderer as EntityShapeRenderer).AddRenderFlags |= 1 << 12; 
+                } else
+                {
+                    (Properties.Client.Renderer as EntityShapeRenderer).AddRenderFlags &= ~(1 << 12);
+                }
+                
+                if (FeetInLiquid && flapPauseDt <= 0 && Api.World.Rand.NextDouble() < 0.07)
+                {
+                    flapPauseDt = 2 + 6 * (float)Api.World.Rand.NextDouble();
+                    StopAnimation("fly");
+                }
+
+                if (flapPauseDt > 0)
+                {
+                    flapPauseDt -= dt;
+
+                    if (flapPauseDt <= 0)
+                    {
+                        SetAnimation("fly", 2.5f);
+                    }
+                } else
+                {
+                    if (FeetInLiquid)
+                    {
+                        EntityPos herepos = Pos;
+                        double width = CollisionBox.XSize * 0.75f;
+
+                        SplashParticleProps.BasePos.Set(herepos.X - width / 2, herepos.Y - 0.05, herepos.Z - width / 2);
+                        SplashParticleProps.AddPos.Set(width, 0, width);
+
+                        SplashParticleProps.AddVelocity.Set(0, 0, 0);
+                        SplashParticleProps.QuantityMul = 0.01f;
+
+                        World.SpawnParticles(SplashParticleProps);
+
+                        SpawnWaterMovementParticles(1, 0, +0.05, 0);
+                    }
                 }
             }
 
@@ -87,7 +126,7 @@ namespace Vintagestory.GameContent
                 SidedPos.X += Math.Max(0, (windMotion - 0.2) / 20.0);
             }
 
-            if (ServerPos.SquareDistanceTo(Pos.XYZ) > 0.01)
+            if (ServerPos.SquareDistanceTo(Pos.XYZ) > 0.01 && !FeetInLiquid)
             {
                 float desiredYaw = (float)Math.Atan2(ServerPos.X - Pos.X, ServerPos.Z - Pos.Z);
 

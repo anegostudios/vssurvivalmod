@@ -61,6 +61,12 @@ namespace Vintagestory.GameContent.Mechanics
             float rotX = rotation * dev.AxisSign[0];
             float rotY = rotation * dev.AxisSign[1];
             float rotZ = rotation * dev.AxisSign[2];
+            if (dev is BEBehaviorMPToggle tog && (rotX == 0 ^ tog.isRotationReversed()))
+            {
+                rotY = GameMath.PI;
+                //rotX = -rotX;
+                rotZ = -rotZ;
+            }
 
             UpdateLightAndTransformMatrix(matrixAndLightFloats.Values, index, distToCamera, dev.LightRgba, rotX, rotY, rotZ);
         }

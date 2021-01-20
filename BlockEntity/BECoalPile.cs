@@ -112,7 +112,11 @@ namespace Vintagestory.GameContent
                         Volume = 1
                     });
 
-                    ambientSound.Start();
+                    if (ambientSound != null)
+                    {
+                        ambientSound.PlaybackPosition = ambientSound.SoundLengthSeconds * (float)Api.World.Rand.NextDouble();
+                        ambientSound.Start();
+                    }
                 }
 
                 listenerId = RegisterGameTickListener(onBurningTickClient, 100);

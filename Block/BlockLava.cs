@@ -11,8 +11,12 @@ namespace Vintagestory.GameContent
     /// of 2,3,2 respectively. If the block is combustible and has a burn temperature lower than or equal
     /// to the temperature at that location then a fire block will be placed in the adjacent air block.
     /// </summary>
-    public class BlockLava : Block
+    public class BlockLava : Block, VintagestoryAPI.Common.Collectible.Block.IBlockFlowing
     {
+        public string Flow { get; set; }
+        public Vec3i FlowNormali { get => null; set {} }
+        public bool IsLava => true;
+
         /// <summary>
         /// Data structure returned to the tick system to be used by this block in order to
         /// initialize the BEFire with the right BlockFacing value.

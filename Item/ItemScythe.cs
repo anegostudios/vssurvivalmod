@@ -18,6 +18,7 @@ namespace Vintagestory.GameContent
     public class ItemScythe : ItemShears
     {
         string[] allowedPrefixes;
+        string[] disallowedSuffixes;
 
         public override int MultiBreakQuantity { get { return 5; } }
 
@@ -25,13 +26,26 @@ namespace Vintagestory.GameContent
         {
             base.OnLoaded(api);
             allowedPrefixes = Attributes["codePrefixes"].AsArray<string>();
+            disallowedSuffixes = Attributes["disallowedSuffixes"].AsArray<string>();
         }
 
         public override bool CanMultiBreak(Block block)
         {
             for (int i = 0; i < allowedPrefixes.Length; i++)
             {
-                if (block.Code.Path.StartsWith(allowedPrefixes[i])) return true;
+                if (block.Code.Path.StartsWith(allowedPrefixes[i]))
+                {
+                    // Disable scything on thick snow variants (-snow2, -snow3 etc.)
+                    if (disallowedSuffixes != null)
+                    {
+                        for (int j = 0; j < disallowedSuffixes.Length; j++)
+                        {
+                            if (block.Code.Path.EndsWith(disallowedSuffixes[j])) return false;
+                        }
+                    }
+
+                    return true;
+                }
             }
 
             return false;   
@@ -41,6 +55,12 @@ namespace Vintagestory.GameContent
         {
             base.OnHeldAttackStart(slot, byEntity, blockSel, entitySel, ref handling);
             if (blockSel == null) return;
+
+            IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
+            if (!byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            {
+                return;
+            }
 
             if (CanMultiBreak(api.World.BlockAccessor.GetBlock(blockSel.Position)))
             {
@@ -102,6 +122,12 @@ namespace Vintagestory.GameContent
             {
                 if (byEntity.World.Side == EnumAppSide.Server)
                 {
+                    IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
+                    if (!byEntity.World.Claims.TryAccess(byPlayer, blockSelection.Position, EnumBlockAccessFlags.BuildOrBreak))
+                    {
+                        return false;
+                    }
+
                     OnBlockBrokenWith(byEntity.World, byEntity, slot, blockSelection);
                 }
                 byEntity.Attributes.SetBool("didBreakBlocks", true);

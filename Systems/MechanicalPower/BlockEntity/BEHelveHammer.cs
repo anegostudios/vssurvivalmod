@@ -42,6 +42,8 @@ namespace Vintagestory.GameContent.Mechanics
 
         float rnd;
         public BlockFacing facing;
+        private BlockPos togglePos;
+        private BlockPos anvilPos;
         BlockEntityAnvil targetAnvil;
 
         double angleBefore;
@@ -59,7 +61,23 @@ namespace Vintagestory.GameContent.Mechanics
 
                 double totalIngameSeconds = Api.World.Calendar.TotalHours * 60 * 2;
 
-                double x = GameMath.Mod(mptoggle.AngleRad * 2 - 1.2 - rnd, GameMath.TWOPI * 10);
+                double adjust = 0;
+                switch (facing.Index)
+                {
+                    case 3:
+                        adjust = mptoggle.isRotationReversed() ? 1.9 : 0.6;
+                        break;
+                    case 1:
+                        adjust = mptoggle.isRotationReversed() ? -0.65 : -1.55;
+                        break;
+                    case 0:
+                        adjust = mptoggle.isRotationReversed() ? -0.4 : 1.2;
+                        break;
+                    default:
+                        adjust = mptoggle.isRotationReversed() ? 1.8 : 1.2;
+                        break;
+                }
+                double x = GameMath.Mod(mptoggle.AngleRad * 2.0 + adjust - rnd, Math.PI * 20);
                 double angle = Math.Abs(Math.Sin(x) / 4.5);
                 float outAngle = (float)angle;
 
@@ -114,8 +132,12 @@ namespace Vintagestory.GameContent.Mechanics
             {
                 if (textureCode == "metal")
                 {
-                    AssetLocation texturePath = hammerStack.Item.Textures[textureCode].Base;
-                    return capi.BlockTextureAtlas[texturePath];
+                    CompositeTexture ctex;
+                    if (hammerStack.Item.Textures.TryGetValue(textureCode, out ctex))
+                    {
+                        AssetLocation texturePath = ctex.Base;
+                        return capi.BlockTextureAtlas[texturePath];
+                    }
                 }
 
                 return blockTexSource[textureCode];
@@ -130,6 +152,10 @@ namespace Vintagestory.GameContent.Mechanics
             base.Initialize(api);
             facing = BlockFacing.FromCode(Block.Variant["side"]);
             if (facing == null) { Api.World.BlockAccessor.SetBlock(0, Pos); return; }
+            Vec3i dir = facing.Normali;
+            anvilPos = Pos.AddCopy(dir.X * 3, 0, dir.Z * 3);
+            togglePos = Pos.AddCopy(dir);
+
 
             RegisterGameTickListener(onEvery25ms, 25);
 
@@ -198,39 +224,10 @@ namespace Vintagestory.GameContent.Mechanics
             if (count >= 40)
             {
                 count = 0;
-
-                Vec3i dir = facing.Normali;
-                BlockPos npos = Pos.AddCopy(0, 1, 0);
-
-                targetAnvil = Api.World.BlockAccessor.GetBlockEntity(Pos.AddCopy(dir.X * 3, 0, dir.Z * 3)) as BlockEntityAnvil;
-
-                obstructed = false;
-                if (renderer != null)
-                {
-                    renderer.Obstructed = false;
-                }
-
-                mptoggle = Api.World.BlockAccessor.GetBlockEntity(Pos.AddCopy(dir))?.GetBehavior<BEBehaviorMPToggle>();
-
-                for (int i = 0; i < 3; i++)
-                {
-                    Block block = Api.World.BlockAccessor.GetBlock(npos);
-                    Cuboidf[] collboxes = block.GetCollisionBoxes(Api.World.BlockAccessor, npos);
-                    if (collboxes != null && collboxes.Length > 0)
-                    {
-                        obstructed = true;
-                        if (renderer != null)
-                        {
-                            renderer.Obstructed = true;
-                        }
-                        break;
-                    }
-
-                    npos.Add(dir);
-                }
+                CheckValidToggleAndNotObstructed();
             }
 
-            if (targetAnvil != null && mptoggle?.Network != null && HammerStack != null && !obstructed && Api.World.Side == EnumAppSide.Server)
+            if (Api.World.Side == EnumAppSide.Server && targetAnvil != null && mptoggle?.Network != null && HammerStack != null && !obstructed)
             {
                 float weirdOffset = 0.62f;
 
@@ -247,7 +244,37 @@ namespace Vintagestory.GameContent.Mechanics
             count++;
         }
 
+        private void CheckValidToggleAndNotObstructed()
+        {
+            targetAnvil = Api.World.BlockAccessor.GetBlockEntity(anvilPos) as BlockEntityAnvil;
 
+            obstructed = false;
+            if (renderer != null) renderer.Obstructed = false;
+
+            mptoggle = Api.World.BlockAccessor.GetBlockEntity(togglePos)?.GetBehavior<BEBehaviorMPToggle>();
+            if (mptoggle?.ValidHammerBase(Pos) == false)
+            {
+                mptoggle = null;
+                obstructed = true;
+                if (renderer != null) renderer.Obstructed = true;
+                return;
+            }
+
+            BlockPos npos = Pos.AddCopy(0, 1, 0);
+            for (int i = 0; i < 3; i++)
+            {
+                Block block = Api.World.BlockAccessor.GetBlock(npos);
+                Cuboidf[] collboxes = block.GetCollisionBoxes(Api.World.BlockAccessor, npos);
+                if (collboxes != null && collboxes.Length > 0)
+                {
+                    obstructed = true;
+                    if (renderer != null) renderer.Obstructed = true;
+                    break;
+                }
+
+                npos.Add(facing.Normali);
+            }
+        }
 
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
         {
@@ -280,6 +307,21 @@ namespace Vintagestory.GameContent.Mechanics
             base.OnBlockRemoved();
 
             renderer?.Dispose();
+        }
+
+
+        public override void OnLoadCollectibleMappings(IWorldAccessor worldForNewMappings, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, int schematicSeed)
+        {
+            base.OnLoadCollectibleMappings(worldForNewMappings, oldBlockIdMapping, oldItemIdMapping, schematicSeed);
+
+            hammerStack.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForNewMappings);
+        }
+
+        public override void OnStoreCollectibleMappings(Dictionary<int, AssetLocation> blockIdMapping, Dictionary<int, AssetLocation> itemIdMapping)
+        {
+            base.OnStoreCollectibleMappings(blockIdMapping, itemIdMapping);
+
+            hammerStack?.Collectible.OnStoreCollectibleMappings(Api.World, new DummySlot(HammerStack), blockIdMapping, itemIdMapping);
         }
     }
 }

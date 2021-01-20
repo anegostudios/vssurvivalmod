@@ -307,6 +307,9 @@ namespace Vintagestory.GameContent
             if (charclass != null)
             {
                 modSys.setCharacterClass(capi.World.Player.Entity, charclass, true);
+            } else 
+            {
+                modSys.setCharacterClass(capi.World.Player.Entity, modSys.characterClasses[0].Code, true);
             }
 
             ComposeGuis();
@@ -379,7 +382,7 @@ namespace Vintagestory.GameContent
 
                 string code = skinpart.Code;
 
-                if (skinpart.Type == EnumSkinnableType.Texture)
+                if (skinpart.Type == EnumSkinnableType.Texture && !skinpart.UseDropDown)
                 {
                     Composers["createcharacter"].ColorListPickerSetValue("picker-" + code, index);
                 }
@@ -395,22 +398,6 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        private bool OnRandomizeClothes()
-        {
-            int[] slots = new int[] { 1, 2, 3, 4, 5 };
-
-            foreach (int slotId in slots)
-            {
-                int cnt = DressesByDressType[(EnumCharacterDressType)slotId].Length;
-                int pos;
-                DressPositionByTressType[(EnumCharacterDressType)slotId] = pos = capi.World.Rand.Next(cnt);
-
-                characterInv[slotId].Itemstack = DressesByDressType[(EnumCharacterDressType)slotId][pos];
-                characterInv[slotId].MarkDirty();
-            }
-
-            return true;
-        }
 
 
         void changeClass(int dir)
@@ -469,26 +456,7 @@ namespace Vintagestory.GameContent
             essr.TesselateShape();
         }
 
-        private void OnNext(int slotId)
-        {
-            int cnt = DressesByDressType[(EnumCharacterDressType)slotId].Length;
-            int nextid = GameMath.Mod(DressPositionByTressType[(EnumCharacterDressType)slotId] + 1, cnt);
-            DressPositionByTressType[(EnumCharacterDressType)slotId] = nextid;
-
-            characterInv[slotId].Itemstack = DressesByDressType[(EnumCharacterDressType)slotId][nextid];
-            characterInv[slotId].MarkDirty();
-        }
-
-        private void OnPrevious(int slotId)
-        {
-            int cnt = DressesByDressType[(EnumCharacterDressType)slotId].Length;
-            int previd = GameMath.Mod(DressPositionByTressType[(EnumCharacterDressType)slotId] - 1, cnt);
-            DressPositionByTressType[(EnumCharacterDressType)slotId] = previd;
-
-            characterInv[slotId].Itemstack = DressesByDressType[(EnumCharacterDressType)slotId][previd];
-            characterInv[slotId].MarkDirty();
-        }
-
+        
         public void PrepAndOpen()
         {
             GatherDresses(EnumCharacterDressType.Foot);

@@ -192,7 +192,6 @@ namespace Vintagestory.GameContent
             else
             {
                 animUtil.StopAnimation("teleport");
-                
             }
 
 
@@ -637,14 +636,12 @@ namespace Vintagestory.GameContent
                 tree.SetInt("teleY", tpLocation.Y);
                 tree.SetInt("teleZ", tpLocation.Z);
             }
-
-            //api.World.Logger.Debug("Translocator ToTreeAttributes. Pos {0} (chunkpos {1})     - tpLocation: {2}", pos, pos / 32, tpLocation);
         }
 
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
         {
-            if (animUtil.activeAnimationsByAnimCode.Count > 0)
+            if (animUtil.activeAnimationsByAnimCode.Count > 0 || (animUtil.animator != null && animUtil.animator.ActiveAnimationCount > 0))
             {
                 return true;
             }

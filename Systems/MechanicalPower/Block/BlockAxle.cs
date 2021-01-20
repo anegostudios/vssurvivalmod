@@ -78,7 +78,7 @@ namespace Vintagestory.GameContent.Mechanics
         public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
         {
             BEBehaviorMPAxle bempaxle = world.BlockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorMPAxle>();
-            if (bempaxle != null && !bempaxle.IsAttachedToBlock())
+            if (bempaxle != null && !BEBehaviorMPAxle.IsAttachedToBlock(world.BlockAccessor, bempaxle.Block, pos))
             {
                 bool connected = false;
                 foreach (BlockFacing face in BlockFacing.ALLFACES)

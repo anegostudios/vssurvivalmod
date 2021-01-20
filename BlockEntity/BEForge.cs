@@ -245,6 +245,12 @@ namespace Vintagestory.GameContent
                     if (fuelLevel >= 5 / 16f) return false;
                     fuelLevel += 1 / 16f;
 
+                    if (slot.Itemstack.Collectible is ItemCoal || slot.Itemstack.Collectible is ItemOre)
+                    {
+                        Api.World.PlaySoundAt(new AssetLocation("sounds/block/charcoal"), byPlayer, byPlayer, true, 16);
+                    }
+                    (Api as ICoreClientAPI)?.World.Player.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
+
                     renderer?.SetContents(contents, fuelLevel, burning, false);
                     MarkDirty();
 
@@ -405,7 +411,7 @@ namespace Vintagestory.GameContent
 
         public float GetHeatStrength(IWorldAccessor world, BlockPos heatSourcePos, BlockPos heatReceiverPos)
         {
-            return IsBurning ? 5 : 0;
+            return IsBurning ? 7 : 0;
         }
     }
 }

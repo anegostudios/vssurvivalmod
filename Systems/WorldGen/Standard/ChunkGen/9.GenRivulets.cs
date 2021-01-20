@@ -85,7 +85,7 @@ namespace Vintagestory.ServerMods
 
                 int quantitySolid = 0;
                 int quantityAir = 0;
-                for (int i = 0; i < BlockFacing.ALLFACES.Length; i++)
+                for (int i = 0; i < BlockFacing.NumberOfFaces; i++)
                 {
                     BlockFacing facing = BlockFacing.ALLFACES[i];
                     fx = dx + facing.Normali.X;

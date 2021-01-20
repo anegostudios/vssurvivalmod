@@ -16,6 +16,8 @@ namespace Vintagestory.GameContent
 
         public override void Initialize(JsonObject properties)
         {
+            base.Initialize(properties);
+
             facingCode = properties["facingCode"].AsString("orientation");
 
             var areas = properties["attachmentAreas"].AsObject<Dictionary<string, RotatableCube>>(null);

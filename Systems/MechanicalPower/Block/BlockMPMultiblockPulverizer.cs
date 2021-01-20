@@ -21,17 +21,17 @@ namespace Vintagestory.GameContent.Mechanics
             IWorldAccessor world = player?.Entity?.World;
             if (world == null) world = api.World;
             BEMPMultiblock be = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BEMPMultiblock;
-            if (be == null || be.Principal == null) return 1f;  //never break
-            Block principalBlock = world.BlockAccessor.GetBlock(be.Principal);
+            if (be == null || be.Centre == null) return 1f;  //never break
+            Block centreBlock = world.BlockAccessor.GetBlock(be.Centre);
             if (api.Side == EnumAppSide.Client)
             {
                 //Vintagestory.Client.SystemMouseInWorldInteractions mouse;
-                //mouse.loadOrCreateBlockDamage(bs, principalBlock);
+                //mouse.loadOrCreateBlockDamage(bs, centreBlock);
                 //mouse.curBlockDmg.LastBreakEllapsedMs = game.ElapsedMilliseconds;
             }
             BlockSelection bs = blockSel.Clone();
-            bs.Position = be.Principal;
-            return principalBlock.OnGettingBroken(player, bs, itemslot, remainingResistance, dt, counter);
+            bs.Position = be.Centre;
+            return centreBlock.OnGettingBroken(player, bs, itemslot, remainingResistance, dt, counter);
         }
 
         public override void OnBlockPlaced(IWorldAccessor world, BlockPos blockPos, ItemStack byItemStack = null)
@@ -42,24 +42,24 @@ namespace Vintagestory.GameContent.Mechanics
         public override void OnBlockBroken(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)
         {
             BEMPMultiblock be = world.BlockAccessor.GetBlockEntity(pos) as BEMPMultiblock;
-            if (be == null || be.Principal == null)
+            if (be == null || be.Centre == null)
             {
                 // being broken by other game code (including on breaking the pulverizer base block): standard block breaking treatment
                 base.OnBlockBroken(world, pos, byPlayer, dropQuantityMultiplier);
                 return;
             }
-            // being broken by player: break the main block instead
-            BlockPos principalPos = be.Principal;
-            Block principalBlock = world.BlockAccessor.GetBlock(principalPos);
-            principalBlock.OnBlockBroken(world, principalPos, byPlayer, dropQuantityMultiplier);
+            // being broken by player: break the centre block instead
+            BlockPos centrePos = be.Centre;
+            Block centreBlock = world.BlockAccessor.GetBlock(centrePos);
+            centreBlock.OnBlockBroken(world, centrePos, byPlayer, dropQuantityMultiplier);
 
             // Need to trigger neighbourchange on client side only (because it's normally in the player block breaking code)
             if (api.Side == EnumAppSide.Client)
             {
                 foreach (BlockFacing facing in BlockFacing.HORIZONTALS)
                 {
-                    BlockPos npos = principalPos.AddCopy(facing);
-                    world.BlockAccessor.GetBlock(npos).OnNeighbourBlockChange(world, npos, principalPos);
+                    BlockPos npos = centrePos.AddCopy(facing);
+                    world.BlockAccessor.GetBlock(npos).OnNeighbourBlockChange(world, npos, centrePos);
                 }
             }
 
@@ -69,13 +69,13 @@ namespace Vintagestory.GameContent.Mechanics
         public override Cuboidf GetParticleBreakBox(IBlockAccessor blockAccess, BlockPos pos, BlockFacing facing)
         {
             BEMPMultiblock be = blockAccess.GetBlockEntity(pos) as BEMPMultiblock;
-            if (be == null || be.Principal == null)
+            if (be == null || be.Centre == null)
             {
                 return base.GetParticleBreakBox(blockAccess, pos, facing);
             }
-            // being broken by player: break the main block instead
-            Block principalBlock = blockAccess.GetBlock(be.Principal);
-            return principalBlock.GetParticleBreakBox(blockAccess, be.Principal, facing);
+            // being broken by player: break the centre block instead
+            Block centreBlock = blockAccess.GetBlock(be.Centre);
+            return centreBlock.GetParticleBreakBox(blockAccess, be.Centre, facing);
         }
 
         //Need to override because this fake block has no texture of its own (no texture gives black breaking particles)
@@ -83,12 +83,12 @@ namespace Vintagestory.GameContent.Mechanics
         {
             IBlockAccessor blockAccess = capi.World.BlockAccessor;
             BEMPMultiblock be = blockAccess.GetBlockEntity(pos) as BEMPMultiblock;
-            if (be == null || be.Principal == null)
+            if (be == null || be.Centre == null)
             {
                 return 0;
             }
-            Block principalBlock = blockAccess.GetBlock(be.Principal);
-            return principalBlock.GetRandomColor(capi, be.Principal, facing);
+            Block centreBlock = blockAccess.GetBlock(be.Centre);
+            return centreBlock.GetRandomColor(capi, be.Centre, facing);
         }
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
@@ -96,7 +96,7 @@ namespace Vintagestory.GameContent.Mechanics
             BEMPMultiblock bem = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BEMPMultiblock;
             if (bem != null)
             {
-                BlockEntity be = world.BlockAccessor.GetBlockEntity(bem.Principal);
+                BlockEntity be = world.BlockAccessor.GetBlockEntity(bem.Centre);
                 if (be is BEPulverizer bep)
                     return bep.OnInteract(byPlayer, blockSel);
             }

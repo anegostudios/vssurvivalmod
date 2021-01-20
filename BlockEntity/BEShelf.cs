@@ -101,6 +101,7 @@ namespace Vintagestory.GameContent
                 if (inv[i].Empty)
                 {
                     int moved = slot.TryPutInto(Api.World, inv[i]);
+                    updateMeshes();
                     MarkDirty(true);
                     return moved > 0;
                 }
@@ -236,8 +237,11 @@ namespace Vintagestory.GameContent
 
             bool up = forPlayer.CurrentBlockSelection != null && forPlayer.CurrentBlockSelection.SelectionBoxIndex > 1;
 
-            for (int i = up ? 7 : 3; i >= (up ? 4 : 0); i--)
+            for (int j = 3; j >= 0; j--)
             {
+                int i = j + (up ? 4 : 0);
+                i ^= 2;   //Display shelf contents text for items from left-to-right, not right-to-left
+
                 if (inv[i].Empty) continue;
 
                 ItemStack stack = inv[i].Itemstack;
@@ -261,6 +265,8 @@ namespace Vintagestory.GameContent
 
         public static string PerishableInfoCompact(ICoreAPI Api, ItemSlot contentSlot, float ripenRate, bool withStackName = true)
         {
+            if (contentSlot.Empty) return "";
+
             StringBuilder dsc = new StringBuilder();
 
             if (withStackName)

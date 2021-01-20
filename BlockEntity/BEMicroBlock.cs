@@ -57,6 +57,12 @@ namespace Vintagestory.GameContent
         // bits 24..31 = materialindex
         public List<uint> VoxelCuboids = new List<uint>();
 
+        public int SnowLevel = 0;
+        public int PrevSnowLevel = 0;
+        public int snowLayerBlockId;
+        public List<uint> SnowCuboids = new List<uint>();
+        public List<uint> GroundSnowCuboids = new List<uint>();
+
         /// <summary>
         /// List of block ids for the materials used
         /// </summary>
@@ -64,6 +70,7 @@ namespace Vintagestory.GameContent
         
         
         public MeshData Mesh;
+        public MeshData SnowMesh;
         protected Cuboidf[] selectionBoxes = new Cuboidf[0];
         protected Cuboidf[] selectionBoxesVoxels = new Cuboidf[0];
         protected int prevSize = -1;
@@ -89,6 +96,9 @@ namespace Vintagestory.GameContent
                 //if (api.Side == EnumAppSide.Client) RegenMesh();
                 //RegenSelectionBoxes(null);
             }
+
+            SnowLevel = (int)Block.snowLevel;
+            snowLayerBlockId = (Block as BlockMicroBlock)?.snowLayerBlockId ?? 0;
         }
 
         public int GetLightAbsorption()
@@ -212,6 +222,7 @@ namespace Vintagestory.GameContent
 
         public virtual Cuboidf[] GetSelectionBoxes(IBlockAccessor world, BlockPos pos, IPlayer forPlayer = null)
         {
+            if (selectionBoxes.Length == 0) return new Cuboidf[] { Cuboidf.Default() };
             return selectionBoxes;
         }
 
@@ -231,6 +242,8 @@ namespace Vintagestory.GameContent
             voxels = new bool[16, 16, 16];
             materials = new byte[16, 16, 16];
             CuboidWithMaterial cwm = tmpCuboid;
+
+            
 
             for (int i = 0; i < VoxelCuboids.Count; i++)
             {
@@ -291,7 +304,17 @@ namespace Vintagestory.GameContent
             List<uint> rotatedCuboids = new List<uint>();
             CuboidWithMaterial cwm = tmpCuboid;
 
-            foreach (var val in this.VoxelCuboids)
+            foreach (var val in VoxelCuboids)
+            {
+                FromUint(val, cwm);
+                Cuboidi rotated = cwm.RotatedCopy(0, clockwise ? 90 : -90, 0, new Vec3d(8, 8, 8));
+                cwm.Set(rotated.X1, rotated.Y1, rotated.Z1, rotated.X2, rotated.Y2, rotated.Z2);
+                rotatedCuboids.Add(ToCuboid(cwm));
+            }
+            VoxelCuboids = rotatedCuboids;
+
+            rotatedCuboids = new List<uint>();
+            foreach (var val in SnowCuboids)
             {
                 FromUint(val, cwm);
                 Cuboidi rotated = cwm.RotatedCopy(0, clockwise ? 90 : -90, 0, new Vec3d(8, 8, 8));
@@ -299,7 +322,7 @@ namespace Vintagestory.GameContent
                 rotatedCuboids.Add(ToCuboid(cwm));
             }
 
-            VoxelCuboids = rotatedCuboids;
+            SnowCuboids = rotatedCuboids;
         }
 
 
@@ -309,20 +332,20 @@ namespace Vintagestory.GameContent
             VoxelCuboids = new List<uint>((tree["cuboids"] as IntArrayAttribute).AsUint);
             CuboidWithMaterial cwm = tmpCuboid;
 
-            foreach (var val in this.VoxelCuboids)
+            foreach (var val in VoxelCuboids)
             {
                 FromUint(val, cwm);
                 Cuboidi rotated = cwm.Clone();
 
                 if (aroundAxis == EnumAxis.X)
                 {
-                    rotated.Y1 = 16 - rotated.Y1;
-                    rotated.Y2 = 16 - rotated.Y2;
+                    rotated.X1 = 16 - rotated.X1;
+                    rotated.X2 = 16 - rotated.X2;
                 }
                 if (aroundAxis == EnumAxis.Y)
                 {
-                    rotated.X1 = 16 - rotated.X1;
-                    rotated.X2 = 16 - rotated.X2;
+                    rotated.Y1 = 16 - rotated.Y1;
+                    rotated.Y2 = 16 - rotated.Y2;
                 }
                 if (aroundAxis == EnumAxis.Z)
                 {
@@ -526,6 +549,67 @@ namespace Vintagestory.GameContent
 
             this.emitSideAoByFlags = Block.ResolveAoFlags(this.Block, emitSideAo);
             this.sizeRel = voxelCount / (16f * 16f * 16f);
+
+            buildSnowCuboids(Voxels);
+        }
+
+        void buildSnowCuboids(bool[,,] Voxels) 
+        {
+            SnowCuboids.Clear();
+            GroundSnowCuboids.Clear();
+
+            //if (SnowLevel > 0) - always generate this
+            {
+                bool[,] snowVoxelVisited = new bool[16, 16];
+
+                for (int dx = 0; dx < 16; dx++)
+                {
+                    for (int dz = 0; dz < 16; dz++)
+                    {
+                        if (snowVoxelVisited[dx, dz]) continue;
+
+                        for (int dy = 15; dy >= 0; dy--)
+                        {
+                            bool ground = dy == 0;
+                            bool solid = ground || Voxels[dx, dy, dz];
+
+                            if (solid)
+                            {
+                                CuboidWithMaterial cub = new CuboidWithMaterial()
+                                {
+                                    Material = 0,
+                                    X1 = dx,
+                                    Y1 = dy,
+                                    Z1 = dz,
+                                    X2 = dx + 1,
+                                    Y2 = dy + 1,
+                                    Z2 = dz + 1
+                                };
+
+                                // Try grow this cuboid for as long as we can
+                                bool didGrowAny = true;
+                                while (didGrowAny)
+                                {
+                                    didGrowAny = false;
+                                    didGrowAny |= TrySnowGrowX(cub, Voxels, snowVoxelVisited);
+                                    didGrowAny |= TrySnowGrowZ(cub, Voxels, snowVoxelVisited);
+                                }
+
+                                if (ground)
+                                {
+                                    GroundSnowCuboids.Add(ToCuboid(cub));
+                                }
+                                else
+                                {
+                                    SnowCuboids.Add(ToCuboid(cub));
+                                }
+
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
         }
 
 
@@ -604,6 +688,49 @@ namespace Vintagestory.GameContent
 
 
 
+        #region Snowgrow
+
+        protected bool TrySnowGrowX(CuboidWithMaterial cub, bool[,,] voxels, bool[,] voxelVisited)
+        {
+            if (cub.X2 > 15) return false;
+
+            for (int z = cub.Z1; z < cub.Z2; z++)
+            {
+                if (!voxels[cub.X2, cub.Y1, z] || voxelVisited[cub.X2, z] || (cub.Y2 < 15 && voxels[cub.X2, cub.Y2, z])) return false;
+            }
+
+            for (int z = cub.Z1; z < cub.Z2; z++)
+            {
+                voxelVisited[cub.X2, z] = true;
+            }
+
+            cub.X2++;
+            return true;
+        }
+
+        protected bool TrySnowGrowZ(CuboidWithMaterial cub, bool[,,] voxels, bool[,] voxelVisited)
+        {
+            if (cub.Z2 > 15) return false;
+
+            for (int x = cub.X1; x < cub.X2; x++)
+            {
+                // Stop if
+                // "Floor" is gone, already visited, or there's a voxel above
+                if (!voxels[x, cub.Y1, cub.Z2] || voxelVisited[x, cub.Z2] || (cub.Y2 < 15 && voxels[x, cub.Y2, cub.Z2])) return false;
+            }
+
+            for (int x = cub.X1; x < cub.X2; x++)
+            {
+                voxelVisited[x, cub.Z2] = true;
+            }
+
+            cub.Z2++;
+            return true;
+        }
+
+
+
+        #endregion
 
 
 
@@ -629,6 +756,25 @@ namespace Vintagestory.GameContent
         public void RegenMesh()
         {
             Mesh = CreateMesh(Api as ICoreClientAPI, VoxelCuboids, MaterialIds, Pos);
+            GenSnowMesh();
+        }
+
+        private void GenSnowMesh()
+        {
+            if (SnowCuboids.Count > 0 && SnowLevel > 0)
+            {
+                SnowMesh = CreateMesh(Api as ICoreClientAPI, SnowCuboids, new int[] { snowLayerBlockId }, Pos);
+                SnowMesh.Translate(0, 1 / 16f, 0);
+
+                if (Api.World.BlockAccessor.GetBlock(Pos.DownCopy()).SideSolid[BlockFacing.UP.Index])
+                {
+                    SnowMesh.AddMeshData(CreateMesh(Api as ICoreClientAPI, GroundSnowCuboids, new int[] { snowLayerBlockId }, Pos));
+                }
+            }
+            else
+            {
+                SnowMesh = null;
+            }
         }
 
         public void RegenMesh(ICoreClientAPI capi)
@@ -648,7 +794,6 @@ namespace Vintagestory.GameContent
 
                 Block block = coreClientAPI.World.GetBlock(materials[cwm.Material]);
 
-                //TextureAtlasPosition tpos = coreClientAPI.BlockTextureAtlas.GetPosition(block, BlockFacing.ALLFACES[0].Code);
                 float subPixelPaddingx = coreClientAPI.BlockTextureAtlas.SubPixelPaddingX;
                 float subPixelPaddingy = coreClientAPI.BlockTextureAtlas.SubPixelPaddingY;
 
@@ -752,7 +897,7 @@ namespace Vintagestory.GameContent
 
                 mesh.XyzFaces[i] = facing.MeshDataIndex;
 
-                int normal = (VertexFlags.NormalToPackedInt(facing.Normalf.X, facing.Normalf.Y, facing.Normalf.Z) << 15);
+                int normal = facing.NormalPackedFlags;
                 mesh.Flags[i * 4 + 0] |= normal;
                 mesh.Flags[i * 4 + 1] |= normal;
                 mesh.Flags[i * 4 + 2] |= normal;
@@ -830,6 +975,19 @@ namespace Vintagestory.GameContent
             }
             VoxelCuboids = new List<uint>(values);
 
+            uint[] snowvalues = (tree["snowcuboids"] as IntArrayAttribute)?.AsUint;
+            uint[] groundsnowvalues = (tree["groundSnowCuboids"] as IntArrayAttribute)?.AsUint;
+            if (snowvalues != null && groundsnowvalues != null)
+            {
+                SnowCuboids = new List<uint>(snowvalues);
+                GroundSnowCuboids = new List<uint>(groundsnowvalues);
+            } else
+            {
+                bool[,,] Voxels;
+                byte[,,] VoxelMaterial;
+                convertToVoxels(out Voxels, out VoxelMaterial);
+                buildSnowCuboids(Voxels);
+            }
 
             byte[] sideAo = tree.GetBytes("emitSideAo", new byte[] { 255 });
             if (sideAo.Length > 0)
@@ -917,14 +1075,26 @@ namespace Vintagestory.GameContent
             IntArrayAttribute attr = new IntArrayAttribute();
             attr.value = MaterialIds;
 
-            tree["materials"] = attr;
+            if (attr.value != null)
+            {
+                tree["materials"] = attr;
+            }
+
+            
             tree["cuboids"] = new IntArrayAttribute(VoxelCuboids.ToArray());
+
+            if (SnowCuboids.Count > 0)
+            {
+                tree["snowcuboids"] = new IntArrayAttribute(SnowCuboids.ToArray());
+            }
+            if (GroundSnowCuboids.Count > 0)
+            {
+                tree["groundSnowCuboids"] = new IntArrayAttribute(GroundSnowCuboids.ToArray());
+            }
 
             tree.SetBytes("emitSideAo", new byte[] { (byte)((emitSideAo[0] ? 1 : 0) | (emitSideAo[1] ? 2 : 0) | (emitSideAo[2] ? 4 : 0) | (emitSideAo[3] ? 8 : 0) | (emitSideAo[4] ? 16 : 0) | (emitSideAo[5] ? 32 : 0)) });
 
             tree.SetBytes("sideSolid", new byte[] { (byte)((sideSolid[0] ? 1 : 0) | (sideSolid[1] ? 2 : 0) | (sideSolid[2] ? 4 : 0) | (sideSolid[3] ? 8 : 0) | (sideSolid[4] ? 16 : 0) | (sideSolid[5] ? 32 : 0)) });
-
-            
 
             tree.SetString("blockName", BlockName);
         }
@@ -932,10 +1102,20 @@ namespace Vintagestory.GameContent
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
         {
-            //ICoreClientAPI capi = api as ICoreClientAPI;
             if (Mesh == null) return false;
 
             mesher.AddMeshData(Mesh);
+
+            Block = Api.World.BlockAccessor.GetBlock(Pos);
+            SnowLevel = (int)Block.snowLevel;
+            if (PrevSnowLevel != SnowLevel || SnowMesh == null)
+            {
+                GenSnowMesh();
+                PrevSnowLevel = SnowLevel;
+            }
+
+            mesher.AddMeshData(SnowMesh);
+
             return true;
         }
 

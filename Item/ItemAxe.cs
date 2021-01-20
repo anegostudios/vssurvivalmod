@@ -180,7 +180,7 @@ namespace Vintagestory.GameContent
 
             if (block.Code == null) return foundPositions;
 
-            if (block.Code.Path.StartsWith("beehive-inlog-" + treeType) || block.Code.Path.StartsWith("log-resin") || block.Code.Path.StartsWith("log-grown") || block.Code.Path.StartsWith("bamboo-grown-brown-segment") || block.Code.Path.StartsWith("bamboo-grown-green-segment"))
+            if (block.Code.Path.StartsWith("log-grown") || block.Code.Path.StartsWith("beehive-inlog-") || block.Code.Path.StartsWith("log-resin") || block.Code.Path.StartsWith("bamboo-grown-"))
             {
                 treeType = block.FirstCodePart(2);
 
@@ -189,18 +189,20 @@ namespace Vintagestory.GameContent
                 checkedPositions.Add(startPos);
             }
 
+            string logcode = block.Code.Path.StartsWith("bamboo") ? "bamboo-grown-" + treeType : "log-grown-" + treeType;
+             
             if (block is BlockFernTree)
             {
                 treeType = "fern";
+                logcode = "ferntree-normal";
                 queue.Enqueue(new Vec4i(startPos.X, startPos.Y, startPos.Z, 2));
                 foundPositions.Push(startPos);
                 checkedPositions.Add(startPos);
             }
 
-            string logcode = "log-grown-" + treeType;
             string logcode2 = "log-resin-" + treeType;
             string logcode3 = "log-resinharvested-" + treeType;
-            string leavescode = "leaves-grown-" + treeType;
+            string leavescode = block.Code.Path.StartsWith("bamboo") ? "bambooleaves-" + treeType + "-grown"  : "leaves-grown-" + treeType;
             string leavesbranchycode = "leavesbranchy-grown-" + treeType;
 
             
@@ -229,7 +231,7 @@ namespace Vintagestory.GameContent
                     block = world.BlockAccessor.GetBlock(neibPos);
                     if (block.Code == null) continue;
 
-                    if ((treeType == "fern" && block is BlockFernTree) || block.Code.Path.StartsWith(logcode) || block.Code.Path.StartsWith(logcode2) || block.Code.Path.StartsWith(logcode3) || block.Code.Path.StartsWith("bamboo-grown-brown-segment") || block.Code.Path.StartsWith("bamboo-grown-green-segment"))
+                    if (block.Code.Path.StartsWith(logcode) || block.Code.Path.StartsWith(logcode2) || block.Code.Path.StartsWith(logcode3))
                     {
                         if (pos.W < 2) continue;
 
@@ -241,7 +243,7 @@ namespace Vintagestory.GameContent
 
                         foundPositions.Push(neibPos.Copy());
                         queue.Enqueue(new Vec4i(neibPos.X, neibPos.Y, neibPos.Z, 1));
-                    } else if (block.Code.Path.StartsWith(leavescode) || block.Code.Path == "bambooleaves-grown")
+                    } else if (block.Code.Path.StartsWith(leavescode))
                     {
                         foundPositions.Push(neibPos.Copy());
                         queue.Enqueue(new Vec4i(neibPos.X, neibPos.Y, neibPos.Z, 0));

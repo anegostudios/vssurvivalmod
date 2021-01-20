@@ -45,6 +45,7 @@ namespace Vintagestory.ServerMods
         public override void Initialize(JsonObject properties)
         {
             base.Initialize(properties);
+
             rotateH = properties["rotateH"].AsBool(rotateH);
             rotateV = properties["rotateV"].AsBool(rotateV);
             rotateV4 = properties["rotateV4"].AsBool(rotateV4);
@@ -253,7 +254,7 @@ namespace Vintagestory.ServerMods
 
             Block inBlock = inputSlot.Itemstack.Block;
 
-            if (inBlock == null || inBlock.GetType() != block.GetType())
+            if (inBlock == null || !inBlock.HasBehavior<BlockBehaviorOmniRotatable>())
             {
                 base.OnCreatedByCrafting(allInputslots, outputSlot, byRecipe, ref handled);
                 return;

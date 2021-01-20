@@ -53,6 +53,10 @@ namespace Vintagestory.GameContent
             prog.ViewMatrix = rpi.CameraMatrixOriginf;
             prog.ProjectionMatrix = rpi.CurrentProjectionMatrix;
             prog.NormalShaded = 0;
+            prog.ExtraGodray = 0;
+            prog.SsaoAttn = 0;
+            prog.AlphaTest = 0.05f;
+            prog.OverlayOpacity = 0;
 
             rpi.RenderMesh(quadModelRef);
             prog.Stop();

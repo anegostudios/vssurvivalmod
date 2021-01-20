@@ -47,5 +47,11 @@ namespace Vintagestory.GameContent
             }
             return base.GetPlacedBlockName(world, pos);
         }
+
+
+        public override int GetHeatRetention(BlockPos pos, BlockFacing facing)
+        {
+            return 3;
+        }
     }
 }

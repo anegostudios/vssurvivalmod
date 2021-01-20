@@ -13,13 +13,13 @@ namespace Vintagestory.ServerMods
     {
         public DepositVariant[] Deposits;
 
-        internal override int chunkRange { get { return 3; } }
+        public int depositChunkRange = 3;
+
+        internal override int chunkRange { get { return depositChunkRange; } }
         public override double ExecuteOrder() { return 0.2; }
 
 
-        int regionChunkSize;
         int noiseSizeClimate;
-        int noiseSizeOre;
         int regionSize;
 
         float chanceMultiplier;
@@ -107,9 +107,7 @@ namespace Vintagestory.ServerMods
             depositShapeDistortNoise = NormalizedSimplexNoise.FromDefaultOctaves(3, 1 / 10f, 0.9f, 1);
 
             regionSize = api.WorldManager.RegionSize;
-            regionChunkSize = api.WorldManager.RegionSize / chunksize;
             noiseSizeClimate = regionSize / TerraGenConfig.climateMapScale;
-            noiseSizeOre = regionSize / TerraGenConfig.oreMapScale;
             
             
             int seed = api.WorldManager.Seed;

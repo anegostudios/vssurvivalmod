@@ -15,6 +15,8 @@ namespace Vintagestory.GameContent
 
         public override void Initialize(JsonObject properties)
         {
+            base.Initialize(properties);
+
             AttachedToFaces = new BlockFacing[] { BlockFacing.DOWN };
 
             if (properties["attachedToFaces"].Exists)

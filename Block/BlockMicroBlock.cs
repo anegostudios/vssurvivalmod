@@ -14,11 +14,80 @@ namespace Vintagestory.GameContent
 {
     public class BlockMicroBlock : Block
     {
+        public int snowLayerBlockId;
+
+        bool IsSnowCovered;
+
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
+
+            notSnowCovered = api.World.GetBlock(AssetLocation.Create(FirstCodePart(), Code.Domain));
+            snowCovered1 = api.World.GetBlock(AssetLocation.Create(FirstCodePart() + "-snow", Code.Domain));
+            snowCovered2 = api.World.GetBlock(AssetLocation.Create(FirstCodePart() + "-snow2", Code.Domain));
+            snowCovered3 = api.World.GetBlock(AssetLocation.Create(FirstCodePart() + "-snow3", Code.Domain));
+            if (this == snowCovered1) snowLevel = 1;
+            if (this == snowCovered2) snowLevel = 2;
+            if (this == snowCovered3) snowLevel = 3;
+
+
+            snowLayerBlockId = api.World.GetBlock(new AssetLocation("snowlayer-1")).Id;
+
+            IsSnowCovered = this.Id != notSnowCovered.Id;
         }
 
+
+        public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
+        {
+            // We cannot call the base method, otherwise we'll destroy the chiseled block
+            //base.OnNeighbourBlockChange(world, pos, neibpos);
+
+            if (pos.X == neibpos.X && pos.Z == neibpos.Z && pos.Y + 1 == neibpos.Y && world.BlockAccessor.GetBlock(neibpos).Id != 0)
+            {
+                BlockEntityMicroBlock bec = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityMicroBlock;
+                if (bec.SnowLevel > 0)
+                {
+                    world.BlockAccessor.ExchangeBlock(notSnowCovered.Id, pos);
+                    bec.SnowLevel = 0;
+                    bec.MarkDirty(true);
+                }
+            }
+        }
+
+        public override void OnServerGameTick(IWorldAccessor world, BlockPos pos, object extra = null)
+        {
+            // We cannot call the base method, otherwise we'll destroy the chiseled block
+            // base.OnServerGameTick(world, pos, extra);
+
+            if (extra is string && (string)extra == "melt")
+            {
+                BlockEntityMicroBlock bec = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityMicroBlock;
+
+                if (this == snowCovered3)
+                {
+                    world.BlockAccessor.ExchangeBlock(snowCovered2.Id, pos);
+                    bec.SnowLevel = 0;
+                    bec.MarkDirty(true);
+                }
+                else if (this == snowCovered2)
+                {
+                    world.BlockAccessor.ExchangeBlock(snowCovered1.Id, pos);
+                    bec.SnowLevel = 0;
+                    bec.MarkDirty(true);
+                }
+                else if (this == snowCovered1)
+                {
+                    world.BlockAccessor.ExchangeBlock(notSnowCovered.Id, pos);
+                    bec.SnowLevel = 0;
+                    bec.MarkDirty(true);
+                }
+            }
+        }
+
+        public override float GetSnowLevel(BlockPos pos)
+        {
+            return IsSnowCovered ? 0.5f : 0;
+        }
 
         public override bool DoParticalSelection(IWorldAccessor world, BlockPos pos)
         {
@@ -61,7 +130,9 @@ namespace Vintagestory.GameContent
 
             return base.GetLightHsv(blockAccessor, pos, stack);
         }
+
         
+
         public override bool MatchesForCrafting(ItemStack inputStack, GridRecipe gridRecipe, CraftingRecipeIngredient ingredient)
         {
             int len = (inputStack.Attributes["materials"] as StringArrayAttribute)?.value?.Length ?? 0;
@@ -151,8 +222,9 @@ namespace Vintagestory.GameContent
             tree.RemoveAttribute("posx");
             tree.RemoveAttribute("posy");
             tree.RemoveAttribute("posz");
+            tree.RemoveAttribute("snowcuboids");
             
-            return new ItemStack(Id, EnumItemClass.Block, 1, tree, world);
+            return new ItemStack(notSnowCovered.Id, EnumItemClass.Block, 1, tree, world);
         }
 
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1)
@@ -183,11 +255,12 @@ namespace Vintagestory.GameContent
             BlockEntityMicroBlock be = world.BlockAccessor.GetBlockEntity(blockPos) as BlockEntityMicroBlock;
             if (be != null && byItemStack != null)
             {
-                byItemStack.Attributes.SetInt("posx", blockPos.X);
-                byItemStack.Attributes.SetInt("posy", blockPos.Y);
-                byItemStack.Attributes.SetInt("posz", blockPos.Z);
+                ITreeAttribute tree = byItemStack.Attributes.Clone();
+                tree.SetInt("posx", blockPos.X);
+                tree.SetInt("posy", blockPos.Y);
+                tree.SetInt("posz", blockPos.Z);
 
-                be.FromTreeAttributes(byItemStack.Attributes, world);
+                be.FromTreeAttributes(tree, world);
                 be.MarkDirty(true);
 
                 if (world.Side == EnumAppSide.Client)
@@ -271,7 +344,7 @@ namespace Vintagestory.GameContent
         public override bool Equals(ItemStack thisStack, ItemStack otherStack, params string[] ignoreAttributeSubTrees)
         {
             List<string> ign = new List<string>(ignoreAttributeSubTrees);
-            ign.Add("meshid");
+            ign.Add("meshId");
             return base.Equals(thisStack, otherStack, ign.ToArray());
         }
 
@@ -304,15 +377,15 @@ namespace Vintagestory.GameContent
             return base.GetSnowCoveredVariant(pos, snowLevel);
         }
 
-        public override float GetSnowLevel(BlockPos pos)
-        {
-            return base.GetSnowLevel(pos);
-        }
 
         public override void PerformSnowLevelUpdate(IBulkBlockAccessor ba, BlockPos pos, Block newBlock, float snowLevel)
         {
-            base.PerformSnowLevelUpdate(ba, pos, newBlock, snowLevel);
+            if (newBlock.Id != Id && (BlockMaterial == EnumBlockMaterial.Snow || BlockId == 0 || this.FirstCodePart() == newBlock.FirstCodePart()))
+            {
+                ba.ExchangeBlock(newBlock.Id, pos);
+            }
         }
+
 
     }
 }

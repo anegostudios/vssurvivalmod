@@ -113,7 +113,7 @@ namespace Vintagestory.GameContent
 
         FirepitContentsRenderer renderer;
 
-
+        bool shouldRedraw;
 
 
         #region Config
@@ -219,8 +219,8 @@ namespace Vintagestory.GameContent
             }
             else
             {
-                ambientSound.Stop();
-                ambientSound.Dispose();
+                ambientSound?.Stop();
+                ambientSound?.Dispose();
                 ambientSound = null;
             }
 
@@ -233,6 +233,7 @@ namespace Vintagestory.GameContent
 
             UpdateRenderer();
             MarkDirty(Api.Side == EnumAppSide.Server); // Save useless triple-remesh by only letting the server decide when to redraw
+            shouldRedraw = true;
 
             if (Api is ICoreClientAPI && clientDialog != null)
             {
@@ -434,7 +435,7 @@ namespace Vintagestory.GameContent
             // Only Heat ore. Cooling happens already in the itemstack
             if (oldTemp < furnaceTemperature)
             {
-                float f = (1 + GameMath.Clamp((furnaceTemperature - oldTemp)/30, 0, 1.6f)) * dt;
+                float f = (1 + GameMath.Clamp((furnaceTemperature - oldTemp) / 30, 0, 1.6f)) * dt;
                 if (nowTemp >= meltingPoint) f /= 11;
 
                 float newTemp = changeTemperature(oldTemp, furnaceTemperature, f);
@@ -702,11 +703,12 @@ namespace Vintagestory.GameContent
             }
 
 
-            if (Api?.Side == EnumAppSide.Client && clientSidePrevBurning != IsBurning)
+            if (Api?.Side == EnumAppSide.Client && (clientSidePrevBurning != IsBurning || shouldRedraw))
             {
                 ToggleAmbientSounds(IsBurning);
                 clientSidePrevBurning = IsBurning;
                 MarkDirty(true);
+                shouldRedraw = false;
             }
         }
 

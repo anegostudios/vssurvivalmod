@@ -359,7 +359,9 @@ namespace Vintagestory.GameContent
             api.RegisterBlockClass("BlockStairs", typeof(BlockStairs));
             api.RegisterBlockClass("BlockFence", typeof(BlockFence));
             api.RegisterBlockClass("BlockDoor", typeof(BlockDoor));
+            api.RegisterBlockClass("BlockTrapdoor", typeof(BlockTrapdoor));
             api.RegisterBlockClass("BlockFenceGate", typeof(BlockFenceGate));
+            api.RegisterBlockClass("BlockFenceGateRoughHewn", typeof(BlockFenceGateRoughHewn));
             api.RegisterBlockClass("BlockLayered", typeof(BlockLayered));
             api.RegisterBlockClass("BlockVines", typeof(BlockVines));
             api.RegisterBlockClass("BlockPlant", typeof(BlockPlant));
@@ -510,7 +512,6 @@ namespace Vintagestory.GameContent
             api.RegisterBlockClass("BlockCharcoalPile", typeof(BlockCharcoalPile));
             api.RegisterBlockClass("BlockRefractoryBrick", typeof(BlockRefractoryBrick));
             api.RegisterBlockClass("BlockCokeOvenDoor", typeof(BlockCokeOvenDoor));
-            api.RegisterBlockClass("BlockStoneCoffinLid", typeof(BlockStoneCoffinLid));
         }
 
         
@@ -545,6 +546,7 @@ namespace Vintagestory.GameContent
             api.RegisterBlockBehaviorClass("CanAttach", typeof(BlockBehaviorCanAttach));
             api.RegisterBlockBehaviorClass("MilkingContainer", typeof(BlockBehaviorMilkingContainer));
             api.RegisterBlockBehaviorClass("HeatSource", typeof(BlockBehaviorHeatSource));
+            api.RegisterBlockBehaviorClass("BreakSnowFirst", typeof(BlockBehaviorBreakSnowFirst));
         }
 
         private void RegisterDefaultBlockEntityBehaviors()

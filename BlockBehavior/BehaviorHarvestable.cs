@@ -100,7 +100,7 @@ namespace Vintagestory.GameContent
 
                 if (block.Attributes?.IsTrue("forageStatAffected") == true)
                 {
-                    dropRate *= byPlayer.Entity.Stats.GetBlended("wildCropDropRate");
+                    dropRate *= byPlayer.Entity.Stats.GetBlended("forageDropRate");
                 }
 
                 ItemStack stack = harvestedStack.GetNextItemStack(dropRate);

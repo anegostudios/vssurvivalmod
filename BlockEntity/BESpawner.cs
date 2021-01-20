@@ -179,7 +179,7 @@ namespace Vintagestory.GameContent
                         if (requireSpawnOnWallSide)
                         {
                             bool haveWall = false;
-                            for (int i = 0; !haveWall && i < BlockFacing.ALLFACES.Length; i++)
+                            for (int i = 0; !haveWall && i < BlockFacing.NumberOfFaces; i++)
                             {
                                 BlockFacing face = BlockFacing.ALLFACES[i];
 

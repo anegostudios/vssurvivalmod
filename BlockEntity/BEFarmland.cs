@@ -701,6 +701,7 @@ namespace Vintagestory.GameContent
 
             unripeCropColdDamaged = tree.GetBool("unripeCropExposedToFrost");
             ripeCropColdDamaged = tree.GetBool("ripeCropExposedToFrost");
+            unripeHeatDamaged = tree.GetBool("unripeHeatDamaged");
 
             roomness = tree.GetInt("roomness");
         }
@@ -726,6 +727,8 @@ namespace Vintagestory.GameContent
 
             tree.SetBool("ripeCropExposedToFrost", ripeCropColdDamaged);
             tree.SetBool("unripeCropExposedToFrost", unripeCropColdDamaged);
+            tree.SetBool("unripeHeatDamaged", unripeHeatDamaged);
+            
 
             tree.SetInt("roomness", roomness);
 
@@ -752,7 +755,7 @@ namespace Vintagestory.GameContent
             ));
 
             var cropProps = GetCrop()?.CropProps;
-            if ((ripeCropColdDamaged || unripeCropColdDamaged) && cropProps != null)
+            if ((ripeCropColdDamaged || unripeCropColdDamaged || unripeHeatDamaged) && cropProps != null)
             {
                 if (ripeCropColdDamaged)
                 {

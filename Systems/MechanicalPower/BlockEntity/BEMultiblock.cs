@@ -8,7 +8,7 @@ namespace Vintagestory.GameContent.Mechanics
 {
     public class BEMPMultiblock: BlockEntity
     {
-        public BlockPos Principal { get; set; }
+        public BlockPos Centre { get; set; }
 
         public override void Initialize(ICoreAPI api)
         {
@@ -26,42 +26,42 @@ namespace Vintagestory.GameContent.Mechanics
             int cx = tree.GetInt("cx");
             int cy = tree.GetInt("cy");
             int cz = tree.GetInt("cz");
-            // (-1, -1, -1) signifies a null center; this cannot happen spontaneously
+            // (-1, -1, -1) signifies a null centre; this cannot happen spontaneously
             if (cy == -1 && cx == -1 && cz == -1)
             {
-                Principal = null;
+                Centre = null;
             }
             else
             {
-                Principal = new BlockPos(cx, cy, cz);
-                if (world.BlockAccessor.GetBlockEntity(Principal) is IGearAcceptor beg) beg.RemoveGearAt(this.Pos);
+                Centre = new BlockPos(cx, cy, cz);
+                if (world.BlockAccessor.GetBlockEntity(Centre) is IGearAcceptor beg) beg.RemoveGearAt(this.Pos);
             }
         }
 
         public override void ToTreeAttributes(ITreeAttribute tree)
         {
             base.ToTreeAttributes(tree);
-            // (-1, -1, -1) signifies a null center; this cannot happen spontaneously
-            tree.SetInt("cx", Principal == null ? -1 : Principal.X);
-            tree.SetInt("cy", Principal == null ? -1 : Principal.Y);
-            tree.SetInt("cz", Principal == null ? -1 : Principal.Z);
+            // (-1, -1, -1) signifies a null centre; this cannot happen spontaneously
+            tree.SetInt("cx", Centre == null ? -1 : Centre.X);
+            tree.SetInt("cy", Centre == null ? -1 : Centre.Y);
+            tree.SetInt("cz", Centre == null ? -1 : Centre.Z);
         }
 
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder sb)
         {
             if (Api.World.EntityDebugMode)
             {
-                if (Principal == null)
+                if (Centre == null)
                 {
-                    sb.AppendLine("null center");
+                    sb.AppendLine("null centre");
                     return;
                 }
-                sb.AppendLine("center at " + Principal);
+                sb.AppendLine("centre at " + Centre);
             }
 
-            if (Principal == null) return;
+            if (Centre == null) return;
 
-            BlockEntity be = this.Api.World?.BlockAccessor.GetBlockEntity(Principal);
+            BlockEntity be = this.Api.World?.BlockAccessor.GetBlockEntity(Centre);
             if (be == null) sb.AppendLine("null be");
             be?.GetBlockInfo(forPlayer, sb);
         }

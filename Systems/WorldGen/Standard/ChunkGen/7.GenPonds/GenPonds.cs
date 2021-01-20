@@ -296,7 +296,7 @@ namespace Vintagestory.ServerMods
 
 
                 // Raise heightmap by 1
-                mapchunk.RainHeightMap[lz * chunksize + lx] = (ushort)pondYPos;
+                mapchunk.RainHeightMap[lz * chunksize + lx] = Math.Max(mapchunk.RainHeightMap[lz * chunksize + lx], (ushort)pondYPos);
 
                 // Identify correct climate at this position
                 int climate = GameMath.BiLerpRgbColor((float)lx / chunksize, (float)lz / chunksize, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight);

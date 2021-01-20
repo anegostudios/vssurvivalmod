@@ -172,7 +172,6 @@ namespace Vintagestory.GameContent
             if (!tapestryMeshes.TryGetValue(type, out meshref))
             {
                 MeshData mesh = genMesh(false, type, 0);
-                //mesh.Rgba2 = null;
                 meshref = capi.Render.UploadMesh(mesh);
                 tapestryMeshes[type] = meshref;
             }
@@ -201,7 +200,6 @@ namespace Vintagestory.GameContent
                 string baseCode = GetBaseCode(beTas.Type);
                 string size = Attributes["sizes"][baseCode].AsString();
                 Dictionary<string, TVec2i[]> neighbours;
-
 
                 switch (size)
                 {
@@ -269,10 +267,6 @@ namespace Vintagestory.GameContent
 
                     default: return false;
                 }
-
-
-                //Console.WriteLine("checking for {3} at {0}/{1}/{2}", offs.X, offs.Y, offs.Z, vec.IntComp);
-
 
                 BlockEntityTapestry bet = api.World.BlockAccessor.GetBlockEntity(position.AddCopy(offs.X, offs.Y, offs.Z)) as BlockEntityTapestry;
                 
@@ -349,12 +343,63 @@ namespace Vintagestory.GameContent
 
             string type = inSlot.Itemstack.Attributes.GetString("type", "");
 
-            dsc.AppendLine(Lang.GetMatching("tapestry-" + type));
+            dsc.AppendLine(Lang.Get("Title: ") + " " + Lang.GetMatching("tapestry-" + type));
+
+            dsc.AppendLine(GetWordedSection(inSlot, world));
 
             if (withDebugInfo)
             {
                 dsc.AppendLine(type);
             }
+        }
+
+
+        public string GetWordedSection(ItemSlot slot, IWorldAccessor world)
+        {
+            string type = slot.Itemstack.Attributes.GetString("type", "");
+            string baseCode = GetBaseCode(type);
+            string size = Attributes["sizes"][baseCode].AsString();
+            string intComp = type.Substring(baseCode.Length);
+
+            switch (size)
+            {
+                case "2x1":
+                    switch (intComp)
+                    {
+                        case "1": return Lang.Get("Section: Left Half");
+                        case "2": return Lang.Get("Section: Right Half");
+                        default: return "unknown";
+                    }
+                case "1x2":
+                    switch (intComp)
+                    {
+                        case "1": return Lang.Get("Section: Top Half");
+                        case "2": return Lang.Get("Section: Bottom Half");
+                        default: return "unknown";
+                    }
+                case "3x1":
+                    switch (intComp)
+                    {
+                        case "1": return Lang.Get("Section: Left third");
+                        case "2": return Lang.Get("Section: Center third");
+                        case "3": return Lang.Get("Section: Right third");
+                        default: return "unknown";
+                    }
+                case "2x2":
+                    switch (intComp)
+                    {
+                        case "11": return Lang.Get("Section: Top Left Quarter");
+                        case "12": return Lang.Get("Section: Bottom Left Quarter");
+                        case "21": return Lang.Get("Section: Top Right Quarter");
+                        case "22": return Lang.Get("Section: Bottom Right Quarter");
+                        default: return "unknown";
+                    }
+                default:
+                    throw new Exception("invalid tapestry json config - missing size attribute for size '" + size + "'");
+            }
+
+
+            return "";
         }
 
 

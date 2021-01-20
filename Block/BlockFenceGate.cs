@@ -22,11 +22,6 @@ namespace Vintagestory.GameContent
             return Variant["knobOrientation"];
         }
 
-        public override bool IsOpened()
-        {
-            return Variant["state"] == "opened";
-        }
-
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
         {
             if (CanPlaceBlock(world, byPlayer, blockSel, ref failureCode))

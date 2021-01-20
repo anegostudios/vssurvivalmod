@@ -23,9 +23,9 @@ namespace Vintagestory.GameContent
             snowLevel = height;
 
             notSnowCovered = api.World.GetBlock(0);
-            snowCovered1 = api.World.GetBlock(CodeWithVariant("cover", "1"));
-            snowCovered2 = api.World.GetBlock(CodeWithVariant("cover", "2"));
-            snowCovered3 = api.World.GetBlock(CodeWithVariant("cover", "3"));
+            snowCovered1 = api.World.GetBlock(CodeWithVariant("height", "1"));
+            snowCovered2 = api.World.GetBlock(CodeWithVariant("height", "2"));
+            snowCovered3 = api.World.GetBlock(CodeWithVariant("height", "3"));
 
             canMelt = api.World.Config.GetBool("snowAccum", true);
         }
@@ -33,8 +33,9 @@ namespace Vintagestory.GameContent
         public override bool ShouldReceiveServerGameTicks(IWorldAccessor world, BlockPos pos, Random offThreadRandom, out object extra)
         {
             extra = null;
+            if (!canMelt) return false;
             ClimateCondition conds = world.BlockAccessor.GetClimateAt(pos, EnumGetClimateMode.NowValues);
-            return conds != null && canMelt && offThreadRandom.NextDouble() < GameMath.Clamp((conds.Temperature - 0.5f) / 15f, 0, 1);
+            return conds != null && offThreadRandom.NextDouble() < GameMath.Clamp((conds.Temperature - 0.5f) / (15f - 10f * conds.Rainfall), 0, 1);
         }
 
         public override void OnServerGameTick(IWorldAccessor world, BlockPos pos, object extra = null)

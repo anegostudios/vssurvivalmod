@@ -92,5 +92,15 @@ namespace Vintagestory.GameContent
         {
             dsc.Append(BlockEntityShelf.PerishableInfoCompact(Api, inv[0], 0));
         }
+
+        public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
+        {
+            base.FromTreeAttributes(tree, worldForResolving);
+
+            if (worldForResolving.Side == EnumAppSide.Client)
+            {
+                MarkDirty(true);
+            }
+        }
     }
 }

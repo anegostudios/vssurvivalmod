@@ -16,6 +16,8 @@ namespace Vintagestory.GameContent
 
         public override void Initialize(JsonObject properties)
         {
+            base.Initialize(properties);
+
             eventName = properties["eventName"]?.AsString();
         }
 

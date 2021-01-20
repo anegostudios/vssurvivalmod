@@ -32,6 +32,7 @@ namespace Vintagestory.GameContent
 
         Cuboidf collisionTestBox;
 
+        EntityPartitioning ep;
 
 
         public override bool ApplyGravity
@@ -51,6 +52,47 @@ namespace Vintagestory.GameContent
             msLaunch = World.ElapsedMilliseconds;
 
             collisionTestBox = CollisionBox.Clone().OmniGrowBy(0.05f);
+
+            if (api.Side == EnumAppSide.Server)
+            {
+                GetBehavior<EntityBehaviorPassivePhysics>().OnPhysicsTickCallback = onPhysicsTickCallback;
+
+                ep = api.ModLoader.GetModSystem<EntityPartitioning>();
+            }
+
+            
+        }
+
+        private void onPhysicsTickCallback(float dtFac)
+        {
+            if (ShouldDespawn || !Alive) return;
+            if (World is IClientWorldAccessor || World.ElapsedMilliseconds <= msCollide + 500) return;
+
+            Cuboidd projectileBox = CollisionBox.ToDouble().Translate(ServerPos.X, ServerPos.Y, ServerPos.Z);
+
+            if (ServerPos.Motion.X < 0) projectileBox.X1 += ServerPos.Motion.X * dtFac;
+            else projectileBox.X2 += ServerPos.Motion.X * dtFac;
+            if (ServerPos.Motion.Y < 0) projectileBox.Y1 += ServerPos.Motion.Y * dtFac;
+            else projectileBox.Y2 += ServerPos.Motion.Y * dtFac;
+            if (ServerPos.Motion.Z < 0) projectileBox.Z1 += ServerPos.Motion.Z * dtFac;
+            else projectileBox.Z2 += ServerPos.Motion.Z * dtFac;
+
+            ep.WalkEntities(ServerPos.XYZ, 5f, (e) => {
+                if (e.EntityId == this.EntityId || !e.IsInteractable) return false;
+                Cuboidd eBox = e.CollisionBox.ToDouble().Translate(e.ServerPos.X, e.ServerPos.Y, e.ServerPos.Z);
+                if (eBox.IntersectsOrTouches(projectileBox))
+                {
+                    if (FiredBy != null && e.EntityId == FiredBy.EntityId && World.ElapsedMilliseconds - msLaunch < 500)
+                    {
+                        return true;
+                    }
+
+                    impactOnEntity(e);
+
+                    return false;
+                }
+                return true;
+            });
         }
 
 
@@ -95,7 +137,7 @@ namespace Vintagestory.GameContent
         {
             pos.Motion.Set(0, 0, 0);
 
-            if (!beforeCollided && World is IServerWorldAccessor && World.ElapsedMilliseconds > msCollide + 250)
+            if (!beforeCollided && World is IServerWorldAccessor && World.ElapsedMilliseconds > msCollide + 500)
             {
                 if (impactSpeed >= 0.07)
                 {
@@ -158,67 +200,78 @@ namespace Vintagestory.GameContent
 
             if (entity != null)
             {
-                IServerPlayer fromPlayer = null;
-                if (FiredBy is EntityPlayer)
-                {
-                    fromPlayer = (FiredBy as EntityPlayer).Player as IServerPlayer;
-                }
-
-                bool targetIsPlayer = entity is EntityPlayer;
-                bool targetIsCreature = entity is EntityAgent;
-                bool canDamage = true;
-
-                ICoreServerAPI sapi = World.Api as ICoreServerAPI;
-                if (fromPlayer != null)
-                {
-                    if (targetIsPlayer && (!sapi.Server.Config.AllowPvP || !fromPlayer.HasPrivilege("attackplayers"))) canDamage = false;
-                    if (targetIsCreature && !fromPlayer.HasPrivilege("attackcreatures")) canDamage = false;
-                }
-
-                msCollide = World.ElapsedMilliseconds;
-                World.PlaySoundAt(new AssetLocation("sounds/arrow-impact"), this, null, false, 24);
-
-                if (canDamage)
-                {
-                    float dmg = Damage;
-                    dmg *= FiredBy.Stats.GetBlended("rangedWeaponsDamage");
-
-                    bool didDamage = entity.ReceiveDamage(new DamageSource() {
-                        Source = EnumDamageSource.Entity,
-                        SourceEntity = FiredBy == null ? this : FiredBy,
-                        Type = EnumDamageType.PiercingAttack
-                    }, dmg);
-
-                    float kbresist = entity.Properties.KnockbackResistance;
-                    entity.SidedPos.Motion.Add(kbresist * pos.Motion.X * Weight, kbresist * pos.Motion.Y * Weight, kbresist * pos.Motion.Z * Weight);
-
-                    int leftDurability = ProjectileStack == null ? 1 : ProjectileStack.Attributes.GetInt("durability", 1);
-
-                    if (World.Rand.NextDouble() < DropOnImpactChance && leftDurability > 0)
-                    {
-                        pos.Motion.Set(0, 0, 0);
-                    }
-                    else
-                    {
-                        Die();
-                    }
-
-                    if (FiredBy is EntityPlayer && didDamage)
-                    {
-                        World.PlaySoundFor(new AssetLocation("sounds/player/projectilehit"), (FiredBy as EntityPlayer).Player, false, 24);
-                    }
-
-
-                } else
-                {
-                    pos.Motion.Set(0, 0, 0);
-                }
-
+                impactOnEntity(entity);
                 return true;
             }
             
 
             return false;
+        }
+
+
+        private void impactOnEntity(Entity entity)
+        {
+            if (!Alive) return;
+
+            EntityPos pos = SidedPos;
+
+            IServerPlayer fromPlayer = null;
+            if (FiredBy is EntityPlayer)
+            {
+                fromPlayer = (FiredBy as EntityPlayer).Player as IServerPlayer;
+            }
+
+            bool targetIsPlayer = entity is EntityPlayer;
+            bool targetIsCreature = entity is EntityAgent;
+            bool canDamage = true;
+
+            ICoreServerAPI sapi = World.Api as ICoreServerAPI;
+            if (fromPlayer != null)
+            {
+                if (targetIsPlayer && (!sapi.Server.Config.AllowPvP || !fromPlayer.HasPrivilege("attackplayers"))) canDamage = false;
+                if (targetIsCreature && !fromPlayer.HasPrivilege("attackcreatures")) canDamage = false;
+            }
+
+            msCollide = World.ElapsedMilliseconds;
+            World.PlaySoundAt(new AssetLocation("sounds/arrow-impact"), this, null, false, 24);
+
+            if (canDamage)
+            {
+                float dmg = Damage;
+                dmg *= FiredBy.Stats.GetBlended("rangedWeaponsDamage");
+
+                bool didDamage = entity.ReceiveDamage(new DamageSource()
+                {
+                    Source = EnumDamageSource.Entity,
+                    SourceEntity = FiredBy == null ? this : FiredBy,
+                    Type = EnumDamageType.PiercingAttack
+                }, dmg);
+
+                float kbresist = entity.Properties.KnockbackResistance;
+                entity.SidedPos.Motion.Add(kbresist * pos.Motion.X * Weight, kbresist * pos.Motion.Y * Weight, kbresist * pos.Motion.Z * Weight);
+
+                int leftDurability = ProjectileStack == null ? 1 : ProjectileStack.Attributes.GetInt("durability", 1);
+
+                if (World.Rand.NextDouble() < DropOnImpactChance && leftDurability > 0)
+                {
+                    pos.Motion.Set(0, 0, 0);
+                }
+                else
+                {
+                    Die();
+                }
+
+                if (FiredBy is EntityPlayer && didDamage)
+                {
+                    World.PlaySoundFor(new AssetLocation("sounds/player/projectilehit"), (FiredBy as EntityPlayer).Player, false, 24);
+                }
+
+
+            }
+            else
+            {
+                pos.Motion.Set(0, 0, 0);
+            }
         }
 
 

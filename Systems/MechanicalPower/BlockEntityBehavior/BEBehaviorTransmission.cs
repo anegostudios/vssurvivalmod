@@ -132,8 +132,14 @@ namespace Vintagestory.GameContent.Mechanics
         internal float RotationNeighbour(int side, bool allowIndirect)
         {
             BlockPos pos = Position.AddCopy(orients[side]);
-            BlockEntity be = Api.World.BlockAccessor.GetBlockEntity(pos);
+            IMechanicalPowerBlock block = Api.World.BlockAccessor.GetBlock(pos) as IMechanicalPowerBlock;
+            if (block?.HasMechPowerConnectorAt(Api.World, pos, orients[side].Opposite) != true)
+            {
+                block = null;
+            }
+            BlockEntity be = block == null ? null : Api.World.BlockAccessor.GetBlockEntity(pos);
             IMechanicalPowerDevice node = be?.GetBehavior<BEBehaviorMPBase>() as IMechanicalPowerDevice;
+            if (node is BEBehaviorMPTransmission trans && !trans.engaged) node = null;
             float rot;
             if (node == null || node.Network == null)
             {

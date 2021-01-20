@@ -81,6 +81,7 @@ namespace Vintagestory.GameContent
                 if (inv[slotnum].Empty)
                 {
                     int moved = slot.TryPutInto(Api.World, inv[slotnum]);
+                    updateMeshes();
                     MarkDirty(true);
                     return moved > 0;
                 }
@@ -106,6 +107,8 @@ namespace Vintagestory.GameContent
                 {
                     Api.World.SpawnItemEntity(stack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
                 }
+
+                updateMeshes();
                 MarkDirty(true);
                 return true;
             }

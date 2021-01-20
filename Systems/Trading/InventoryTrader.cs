@@ -490,11 +490,9 @@ namespace Vintagestory.GameContent
                 if (invslot is ItemSlotCreative) return true;
                 if (invslot.Itemstack == null || invslot.Itemstack.Collectible.Attributes == null) return true;
 
-                JsonObject obj = invslot.Itemstack.Collectible.Attributes["currency"];
-                if (obj.Exists && obj["value"].Exists)
+                int pieceValue = CurrencyValuePerItem(invslot);
+                if (pieceValue != 0)
                 {
-                    int pieceValue = obj["value"].AsInt(0);
-
                     List<ItemSlot> slots = null;
                     if (!moneys.TryGetValue(pieceValue, out slots)) slots = new List<ItemSlot>();
 
@@ -597,15 +595,9 @@ namespace Vintagestory.GameContent
 
             player.Entity.WalkInventory((invslot) =>
             {
-                if (invslot is ItemSlotCreative) return true;
-                if (invslot.Itemstack == null || invslot.Itemstack.Collectible.Attributes == null) return true;
-                if (!(invslot.Inventory is InventoryBasePlayer)) return true;
+                if (invslot is ItemSlotCreative || !(invslot.Inventory is InventoryBasePlayer)) return true;
 
-                JsonObject obj = invslot.Itemstack.Collectible.Attributes["currency"];
-                if (obj.Exists && obj["value"].Exists)
-                {
-                    totalAssets += obj["value"].AsInt(0) * invslot.StackSize;
-                }
+                totalAssets += CurrencyValuePerItem(invslot) * invslot.StackSize;
 
                 return true;
             });
@@ -619,13 +611,21 @@ namespace Vintagestory.GameContent
             int totalAssets = 0;
             if (MoneySlot.Empty) return 0;
 
-            JsonObject obj = MoneySlot.Itemstack.Collectible.Attributes["currency"];
-            if (obj.Exists && obj["value"].Exists)
-            {
-                totalAssets += obj["value"].AsInt(0) * MoneySlot.StackSize;
-            }
+            totalAssets += CurrencyValuePerItem(MoneySlot) * MoneySlot.StackSize;
 
             return totalAssets;
+        }
+
+
+        private int CurrencyValuePerItem(ItemSlot slot)
+        {
+            JsonObject obj = slot.Itemstack?.Collectible?.Attributes?["currency"];
+            if (obj != null && obj.Exists)
+            {
+                JsonObject v = obj["value"];
+                return v.Exists ? v.AsInt(0) : 0;
+            }
+            return 0;
         }
 
 
@@ -753,6 +753,63 @@ namespace Vintagestory.GameContent
 
             return p;
         }
+
+        #region shift-clicking
+
+        public override WeightedSlot GetBestSuitedSlot(ItemSlot sourceSlot, List<ItemSlot> skipSlots = null)
+        {
+            WeightedSlot bestWSlot = new WeightedSlot();
+
+            if (PutLocked || sourceSlot.Inventory == this) return bestWSlot;
+
+            // Don't allow any shift-clicking of currency
+            if (this.CurrencyValuePerItem(sourceSlot) != 0) return bestWSlot;
+
+            // 1. Prefer already filled slots - only allowing shift-clicking into the 4 Selling Cart slots
+            for (int i = 0; i < 4; i++)
+            {
+                ItemSlot slot = GetSellingCartSlot(i);
+                if (skipSlots != null && skipSlots.Contains(slot)) continue;
+
+                if (slot.Itemstack != null && slot.CanTakeFrom(sourceSlot))
+                {
+                    float curWeight = GetSuitability(sourceSlot, slot, true);
+
+                    if (bestWSlot.slot == null || bestWSlot.weight < curWeight)
+                    {
+                        bestWSlot.slot = slot;
+                        bestWSlot.weight = curWeight;
+                    }
+                }
+            }
+
+            // 2. Otherwise use empty slots - again only allowing shift-clicking into the 4 Selling Cart slots
+            for (int i = 0; i < 4; i++)
+            {
+                ItemSlot slot = GetSellingCartSlot(i);
+                if (skipSlots != null && skipSlots.Contains(slot)) continue;
+
+                if (slot.Itemstack == null && slot.CanTakeFrom(sourceSlot))
+                {
+                    float curWeight = GetSuitability(sourceSlot, slot, false);
+
+                    if (bestWSlot.slot == null || bestWSlot.weight < curWeight)
+                    {
+                        bestWSlot.slot = slot;
+                        bestWSlot.weight = curWeight;
+                    }
+                }
+            }
+
+            return bestWSlot;
+        }
+
+        public override float GetSuitability(ItemSlot sourceSlot, ItemSlot targetSlot, bool isMerge)
+        {
+            return base.GetSuitability(sourceSlot, targetSlot, isMerge);
+        }
+
+        #endregion
 
     }
 }

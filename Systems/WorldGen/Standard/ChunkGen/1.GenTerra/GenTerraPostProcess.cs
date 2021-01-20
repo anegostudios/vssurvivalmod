@@ -123,7 +123,7 @@ namespace Vintagestory.ServerMods
 
                 curVisitedNodes.Add(node);
                 
-                for (int faceIndex = 0; faceIndex < BlockFacing.ALLFACES.Length; faceIndex++)
+                for (int faceIndex = 0; faceIndex < BlockFacing.NumberOfFaces; faceIndex++)
                 {
                     Vec3i vec = BlockFacing.ALLFACES[faceIndex].Normali;
                     VisitNode nnode = new VisitNode(node.X + vec.X, node.Y + vec.Y, node.Z + vec.Z);

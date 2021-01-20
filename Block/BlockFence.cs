@@ -21,7 +21,7 @@ namespace Vintagestory.GameContent
             snowLayerBlock = api.World.GetBlock(new AssetLocation("snowlayer-1"));
         }
 
-        public override void OnJsonTesselation(ref MeshData sourceMesh, ref int[] lightRgbsByCorner, BlockPos pos, int[] chunkExtIds, ushort[] chunkLightExt, int extIndex3d)
+        public override void OnJsonTesselation(ref MeshData sourceMesh, BlockPos pos, int[] chunkExtIds, ushort[] chunkLightExt, int extIndex3d)
         {
             // Todo: make this work
 /*            int nBlockId = chunkExtIds[extIndex3d + TileSideEnum.MoveIndex[TileSideEnum.Up]];
@@ -34,7 +34,7 @@ namespace Vintagestory.GameContent
                 return;
             }*/
 
-            base.OnJsonTesselation(ref sourceMesh, ref lightRgbsByCorner, pos, chunkExtIds, chunkLightExt, extIndex3d);
+            base.OnJsonTesselation(ref sourceMesh, pos, chunkExtIds, chunkLightExt, extIndex3d);
         }
 
         public string GetOrientations(IWorldAccessor world, BlockPos pos)
@@ -122,8 +122,10 @@ namespace Vintagestory.GameContent
             }
 
             return
-                (block is BlockFence || block is BlockFenceGate)   //Allow any type of fence to connect to any other type of fence - better than leaving gaps!  Modded fences will still work fine so long as they use BlockFence as the base class, if they don't want to do that then they can use the fenceConnect attribute instead
-                || block.SideSolid[side.Opposite.Index];
+                block is BlockFence ||
+                (block is BlockFenceGate gate && gate.GetDirection() != side && gate.GetDirection() != side.Opposite) ||   //Allow any type of fence to connect to any other type of fence or door - better than leaving gaps!  Modded fences will still work fine so long as they use BlockFence as the base class, if they don't want to do that then they can use the fenceConnect attribute instead
+                (block is BlockFenceGateRoughHewn gate1 && gate1.GetDirection() != side && gate1.GetDirection() != side.Opposite) ||
+                block.SideSolid[side.Opposite.Index];
             ;
         }
 

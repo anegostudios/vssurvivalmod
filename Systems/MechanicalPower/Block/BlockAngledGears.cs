@@ -123,7 +123,7 @@ namespace Vintagestory.GameContent.Mechanics
             if (largeGearEdge != null)
             {
                 BEMPMultiblock be = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BEMPMultiblock;
-                if (be != null) validLargeGear = be.Principal != null;
+                if (be != null) validLargeGear = be.Centre != null;
             }
 
             foreach (BlockFacing face in BlockFacing.ALLFACES)
@@ -154,7 +154,7 @@ namespace Vintagestory.GameContent.Mechanics
                 IMechanicalPowerBlock neighbour = be?.Block as IMechanicalPowerBlock;
 
                 BEBehaviorMPAxle bempaxle = be?.GetBehavior<BEBehaviorMPAxle>();
-                if (bempaxle != null && !bempaxle.IsAttachedToBlock())
+                if (bempaxle != null && !BEBehaviorMPAxle.IsAttachedToBlock(world.BlockAccessor, neighbour as Block, firstPos))
                 {
                     failureCode = "axlemusthavesupport";
                     return false;
@@ -242,7 +242,7 @@ namespace Vintagestory.GameContent.Mechanics
                 IMechanicalPowerBlock neighbour = beNeib?.Block as IMechanicalPowerBlock;
 
                 BEBehaviorMPAxle bempaxle = beNeib?.GetBehavior<BEBehaviorMPAxle>();
-                if (bempaxle != null && !bempaxle.IsAttachedToBlock())
+                if (bempaxle != null && !BEBehaviorMPAxle.IsAttachedToBlock(world.BlockAccessor, neighbour as Block, firstPos))
                 {
                     return;
                 }

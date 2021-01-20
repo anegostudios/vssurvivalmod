@@ -19,7 +19,7 @@ namespace Vintagestory.GameContent
             extra = null;
             ClimateCondition conds = world.BlockAccessor.GetClimateAt(pos, EnumGetClimateMode.NowValues);
 
-            float chance = GameMath.Clamp((conds.Temperature - 2f) / 25f, 0, 1);
+            float chance = GameMath.Clamp((conds.Temperature - 2f) / 20f, 0, 1);
             return offThreadRandom.NextDouble() < chance;
         }
 
@@ -27,6 +27,11 @@ namespace Vintagestory.GameContent
         {
             Block waterBlock = world.GetBlock(new AssetLocation("water-still-7"));
             world.BlockAccessor.SetBlock(waterBlock.Id, pos);
+        }
+
+        public override bool MergeFaceNeighbouringIce(int facingIndex, Block neighbourIce, int intraChunkIndex3d)
+        {
+            return BlockMaterial == neighbourIce.BlockMaterial;
         }
     }
 }

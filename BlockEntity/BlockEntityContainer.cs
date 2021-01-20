@@ -20,6 +20,7 @@ namespace Vintagestory.GameContent
 
         IInventory IBlockEntityContainer.Inventory { get { return Inventory; } }
 
+        RoomRegistry roomReg;
 
         public override void Initialize(ICoreAPI api)
         {
@@ -34,12 +35,17 @@ namespace Vintagestory.GameContent
             }
 
             RegisterGameTickListener(OnTick, 10000);
+
+            roomReg = Api.ModLoader.GetModSystem<RoomRegistry>();
+            room = roomReg.GetRoomForPosition(Pos);
         }
 
         private void Inventory_OnInventoryOpenedClient(IPlayer player)
         {
             OnTick(1);
         }
+
+        Room room;
 
         protected virtual void OnTick(float dt)
         {
@@ -48,6 +54,9 @@ namespace Vintagestory.GameContent
                 // We don't have to do this client side. The item stack renderer already updates those states for us
                 return;
             }
+
+            room = roomReg.GetRoomForPosition(Pos);
+            if (room.AnyChunkUnloaded) return;
 
             foreach (ItemSlot slot in Inventory)
             {
@@ -80,8 +89,6 @@ namespace Vintagestory.GameContent
 
             ClimateCondition cond = Api.World.BlockAccessor.GetClimateAt(sealevelpos);
             if (cond == null) return 1;
-
-            Room room = Api.ModLoader.GetModSystem<RoomRegistry>().GetRoomForPosition(Pos);
 
             float soilTempWeight = 0f;
 

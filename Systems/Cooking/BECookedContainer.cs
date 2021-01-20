@@ -12,15 +12,15 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockEntityCookedContainer : BlockEntityContainer
+    public class BlockEntityCookedContainer : BlockEntityContainer, IBlockEntityMealContainer
     {
         public override InventoryBase Inventory => inventory;
         public override string InventoryClassName => "cookedcontainer";
 
 
         internal InventoryGeneric inventory;
-        public float QuantityServings;
-        public string RecipeCode;
+        public float QuantityServings { get; set; }
+        public string RecipeCode { get; set; }
 
         internal BlockCookedContainer ownBlock;
 
@@ -28,6 +28,11 @@ namespace Vintagestory.GameContent
 
         bool wasRotten;
         int tickCnt = 0;
+
+
+        InventoryBase IBlockEntityMealContainer.inventory => inventory;
+
+
 
         public bool Rotten
         {
@@ -47,6 +52,8 @@ namespace Vintagestory.GameContent
         {
             get { return Api.World.CookingRecipes.FirstOrDefault(rec => rec.Code == RecipeCode); }
         }
+
+        
 
         public BlockEntityCookedContainer()
         {

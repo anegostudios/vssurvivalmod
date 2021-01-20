@@ -97,10 +97,7 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            
-            Block chiseledblock = byEntity.World.GetBlock(new AssetLocation("chiseledblock"));
-
-            if (block == chiseledblock)
+            if (block is BlockChisel)
             {   
                 OnBlockInteract(byEntity.World, byPlayer, blockSel, true, ref handling);
                 return;
@@ -151,16 +148,14 @@ namespace Vintagestory.GameContent
             
             string blockName = block.GetPlacedBlockName(byEntity.World, blockSel.Position);
 
-            Block chiseledblock = byEntity.World.GetBlock(new AssetLocation("chiseledblock"));
-
-            if (block == chiseledblock)
+            
+            if (block is BlockChisel)
             {
                 OnBlockInteract(byEntity.World, byPlayer, blockSel, false, ref handling);
                 return;
             }
 
-            
-            
+            Block chiseledblock = byEntity.World.GetBlock(new AssetLocation("chiseledblock"));
 
             byEntity.World.BlockAccessor.SetBlock(chiseledblock.BlockId, blockSel.Position);
 

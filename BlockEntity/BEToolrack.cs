@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Vintagestory.API.Client;
@@ -99,14 +100,14 @@ namespace Vintagestory.GameContent
                 }
 
 
-                float zOff = i > 1 ? (-1.8f / 16f) : 0;
+                float yOff = i > 1 ? (-1.8f / 16f) : 0;
 
                 if (stack.Class == EnumItemClass.Item && stack.Item.Shape?.VoxelizeTexture == true)
                 {
                     toolMeshes[i].Scale(origin, 0.33f, 0.33f, 0.33f);
                     toolMeshes[i].Translate(
                         (((i % 2) == 0) ? 0.23f : -0.3f), 
-                        ((i > 1) ? 0.2f : -0.3f) + zOff, 
+                        ((i > 1) ? 0.2f : -0.3f) + yOff, 
                         0.433f * ((facing.Axis == EnumAxis.X) ? -1 : 1)
                     );
                     toolMeshes[i].Rotate(origin, 0, facing.HorizontalAngleIndex * 90 * GameMath.DEG2RAD, 0);
@@ -119,7 +120,7 @@ namespace Vintagestory.GameContent
                     float x = ((i > 1) ? -0.2f : 0.3f);
                     float z = ((i % 2 == 0) ? 0.23f : -0.2f) * (facing.Axis == EnumAxis.X ? 1f : -1f);
 
-                    toolMeshes[i].Translate(x, 0.433f + zOff, z);
+                    toolMeshes[i].Translate(x, 0.433f + yOff, z);
                     toolMeshes[i].Rotate(origin, 0, facing.HorizontalAngleIndex * 90 * GameMath.DEG2RAD, GameMath.PIHALF);
                     toolMeshes[i].Rotate(origin, 0, GameMath.PIHALF, 0);
                 }
@@ -293,27 +294,41 @@ namespace Vintagestory.GameContent
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder sb)
         {
             int i = 0;
+
+            // The item meshes are drawn first on the right, then on the left: BlockInfo text description should match item positions i.e. 1, 0, 3, 2 
+            ItemStack slotsReverserLeftRight = null;
             foreach (var slot in inventory)
             {
-                if (sb.Length > 0 && i == 2)
+                if (i % 2 == 0)
                 {
-                    sb.Append("\n");
+                    slotsReverserLeftRight = slot.Itemstack;
+                }
+                else
+                {
+                    AddSlotItemInfo(sb, i - 1, slot.Itemstack);
+                    AddSlotItemInfo(sb, i, slotsReverserLeftRight);
                 }
                 i++;
-                if (slot.Itemstack == null) continue;
-
-                if (sb.Length > 0 && sb[sb.Length - 1] != '\n')
-                {
-                    sb.Append(", ");
-                }
-
-                
-                sb.Append(slot.Itemstack.GetName());
             }
 
             sb.AppendLineOnce();
             sb.ToString();
         }
 
+        private void AddSlotItemInfo(StringBuilder sb, int i, ItemStack itemstack)
+        {
+            if (i == 2 && sb.Length > 0)
+            {
+                sb.Append("\n");
+            }
+            if (itemstack == null) return;
+
+            if (sb.Length > 0 && sb[sb.Length - 1] != '\n')
+            {
+                sb.Append(", ");
+            }
+
+            sb.Append(itemstack.GetName());
+        }
     }
 }

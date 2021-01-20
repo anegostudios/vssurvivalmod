@@ -13,11 +13,13 @@ namespace Vintagestory.GameContent
         protected abstract BlockPos TryGetConnectedDoorPos(BlockPos pos);
         protected abstract void Open(IWorldAccessor world, IPlayer byPlayer, BlockPos position);
         protected string type;
+        protected bool open;
 
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
             this.type = string.Intern(Code.Path.Substring(0, Code.Path.IndexOf('-')));
+            this.open = Variant["state"] == "opened";
         }
 
         public bool IsSameDoor(Block block)
@@ -25,7 +27,10 @@ namespace Vintagestory.GameContent
             return (block is BlockBaseDoor otherDoor) && otherDoor.type == this.type;
         }
 
-        public abstract bool IsOpened();
+        public virtual bool IsOpened()
+        {
+            return open;
+        }
 
         public bool DoesBehaviorAllow(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
@@ -76,9 +81,10 @@ namespace Vintagestory.GameContent
             BlockPos pos = blockSel.Position;
             Open(world, byPlayer, pos);
 
-            world.PlaySoundAt(new AssetLocation("sounds/block/door"), pos.X + 0.5f, pos.Y + 0.5f, pos.Z + 0.5f, byPlayer);
+            bool isRoughFence = this.FirstCodePart() == "roughhewnfencegate";
+            world.PlaySoundAt(new AssetLocation(isRoughFence ? "sounds/walk/wood" : "sounds/block/door"), pos.X + 0.5f, pos.Y + 0.5f, pos.Z + 0.5f, byPlayer);
 
-            TryOpenConnectedDoor(world, byPlayer, pos);
+            if (!isRoughFence) TryOpenConnectedDoor(world, byPlayer, pos);
 
             (byPlayer as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
 

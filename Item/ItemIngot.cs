@@ -3,6 +3,7 @@ using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
@@ -150,6 +151,15 @@ namespace Vintagestory.GameContent
             } else
             {
                 if (isBlisterSteel) return null;
+
+                IAnvilWorkable workable = beAnvil.WorkItemStack.Collectible as IAnvilWorkable;
+
+                if (!workable.GetBaseMaterial(beAnvil.WorkItemStack).Equals(api.World, GetBaseMaterial(stack), GlobalConstants.IgnoredStackAttributes))
+                {
+                    if (api.Side == EnumAppSide.Client) (api as ICoreClientAPI).TriggerIngameError(this, "notequal", Lang.Get("Must be the same metal to add voxels"));
+                    return null;
+                }
+
                 AddVoxelsFromIngot(api, ref beAnvil.Voxels);
             }
 

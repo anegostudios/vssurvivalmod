@@ -160,7 +160,9 @@ namespace Vintagestory.GameContent
 
             #region unused by rockstrata gen
             public ushort[] Light { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
-            public byte[] LightSat { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+			public ushort[] Light_Buffered { get => throw new NotImplementedException(); }
+			public ushort[] Light_SecondBuffer { get => throw new NotImplementedException(); }
+			public byte[] LightSat { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
             public Entity[] Entities => throw new NotImplementedException();
             public int EntitiesCount => throw new NotImplementedException();
             public BlockEntity[] BlockEntities { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
@@ -226,8 +228,13 @@ namespace Vintagestory.GameContent
             {
                 throw new NotImplementedException();
             }
-            #endregion
-        }
+
+			public void FinishLightDoubleBuffering()
+			{
+				throw new NotImplementedException();
+			}
+			#endregion
+		}
     }
 
 

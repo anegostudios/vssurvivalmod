@@ -13,7 +13,7 @@ namespace Vintagestory.GameContent
     {
         public ResolvedTradeItem TradeItem;
 
-        bool isBuyingSlot;
+        public bool IsBuyingSlot { get; private set; }
 
         public override bool DrawUnavailable
         {
@@ -32,7 +32,7 @@ namespace Vintagestory.GameContent
 
         public ItemSlotTrade(InventoryBase inventory, bool isBuyingSlot = false) : base(inventory)
         {
-            this.isBuyingSlot = isBuyingSlot;
+            this.IsBuyingSlot = isBuyingSlot;
         }
 
         public override bool CanTake()
@@ -80,7 +80,7 @@ namespace Vintagestory.GameContent
         {
             if (TradeItem == null) return base.GetStackDescription(world, extendedDebugInfo);
 
-            if (isBuyingSlot)
+            if (IsBuyingSlot)
             {
                 return Lang.Get("Price: {0} gears\nDemand: {1}", TradeItem.Price, TradeItem.Stock) + "\n\n" + base.GetStackDescription(world, extendedDebugInfo);
             } else

@@ -40,11 +40,21 @@ namespace Vintagestory.ServerMods
         {
             api.WorldManager.SunFloodChunkColumnForWorldGen(chunks, chunkX, chunkZ);
             blockAccessor.RunScheduledBlockLightUpdates();
+
+            for (int i = 0; i < chunks.Length; i++)
+            {
+                chunks[i].MarkModified();
+            }
         }
 
         private void OnChunkColumnGenerationFlood(IServerChunk[] chunks, int chunkX, int chunkZ, ITreeAttribute chunkGenParams = null)
         {
             api.WorldManager.SunFloodChunkColumnNeighboursForWorldGen(chunks, chunkX, chunkZ);
+
+            for (int i = 0; i < chunks.Length; i++)
+            {
+                chunks[i].MarkModified();
+            }
         }
 
      

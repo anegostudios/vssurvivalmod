@@ -70,6 +70,7 @@ namespace Vintagestory.GameContent
         public override void OnHeldInteractStop(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
             if (entitySel == null || secondsUsed < 1.05f) return;
+            if (entitySel.Entity is EntityPlayer) return;
 
             int generation = entitySel.Entity.WatchedAttributes.GetInt("generation", 0);
 

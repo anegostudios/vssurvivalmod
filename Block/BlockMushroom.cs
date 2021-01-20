@@ -86,9 +86,13 @@ namespace Vintagestory.GameContent
 
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)
         {
+
             if (IsGrown())
             {
-                dropQuantityMultiplier *= byPlayer.Entity.Stats.GetBlended("forageDropRate");
+                if (Attributes?.IsTrue("forageStatAffected") == true)
+                {
+                    dropQuantityMultiplier *= byPlayer?.Entity?.Stats.GetBlended("forageDropRate") ?? 1;
+                }
 
                 return base.GetDrops(world, pos, byPlayer, dropQuantityMultiplier);
             }

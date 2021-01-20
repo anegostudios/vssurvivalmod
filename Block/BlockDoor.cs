@@ -26,11 +26,6 @@ namespace Vintagestory.GameContent
             return Variant["part"] == "up";
         }
 
-        public override bool IsOpened()
-        {
-            return Variant["state"] == "opened";
-        }
-
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
         {
             BlockPos abovePos = blockSel.Position.AddCopy(0, 1, 0);
@@ -167,5 +162,10 @@ namespace Vintagestory.GameContent
             return CodeWithVariant("horizontalorientation", nowFacing.Code);
         }
 
+        public override int GetHeatRetention(BlockPos pos, BlockFacing facing)
+        {
+            return open ? 1 : 3;
+        }
     }
 }
+

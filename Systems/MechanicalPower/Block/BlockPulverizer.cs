@@ -84,7 +84,7 @@ namespace Vintagestory.GameContent.Mechanics
         {
             Block toPlaceBlock = world.GetBlock(new AssetLocation("mppulverizertop"));
             world.BlockAccessor.SetBlock(toPlaceBlock.BlockId, pos.UpCopy());
-            if (world.BlockAccessor.GetBlockEntity(pos.UpCopy()) is BEMPMultiblock be) be.Principal = pos;
+            if (world.BlockAccessor.GetBlockEntity(pos.UpCopy()) is BEMPMultiblock be) be.Centre = pos;
         }
 
         public override void OnBlockBroken(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1)

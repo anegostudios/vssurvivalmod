@@ -12,7 +12,7 @@ namespace Vintagestory.GameContent.Mechanics
     {
         protected readonly BlockFacing[] orients = new BlockFacing[2];
 
-        protected readonly BlockFacing[] sides = new BlockFacing[2];
+        protected readonly BlockPos[] sides = new BlockPos[2];
 
         ICoreClientAPI capi;
         string orientations;
@@ -38,8 +38,8 @@ namespace Vintagestory.GameContent.Mechanics
                     orients[0] = BlockFacing.NORTH;
                     orients[1] = BlockFacing.SOUTH;
 
-                    sides[0] = BlockFacing.WEST;
-                    sides[1] = BlockFacing.EAST;
+                    sides[0] = Position.AddCopy(BlockFacing.WEST);
+                    sides[1] = Position.AddCopy(BlockFacing.EAST);
                     break;
 
                 case "we":
@@ -47,23 +47,28 @@ namespace Vintagestory.GameContent.Mechanics
                     orients[0] = BlockFacing.WEST;
                     orients[1] = BlockFacing.EAST;
 
-                    sides[0] = BlockFacing.NORTH;
-                    sides[1] = BlockFacing.SOUTH;
+                    sides[0] = Position.AddCopy(BlockFacing.NORTH);
+                    sides[1] = Position.AddCopy(BlockFacing.SOUTH);
                     break;
             }
+        }
+
+        public bool ValidHammerBase(BlockPos pos)
+        {
+            return sides[0] == pos || sides[1] == pos;
         }
 
         public override float GetResistance()
         {
             bool hasHammer = false;
-            BEHelveHammer behh = Api.World.BlockAccessor.GetBlockEntity(Position.AddCopy(sides[0])) as BEHelveHammer;
+            BEHelveHammer behh = Api.World.BlockAccessor.GetBlockEntity(sides[0]) as BEHelveHammer;
             if (behh != null && behh.HammerStack != null)
             {
                 hasHammer = true;
             }
             else
             {
-                behh = Api.World.BlockAccessor.GetBlockEntity(Position.AddCopy(sides[1])) as BEHelveHammer;
+                behh = Api.World.BlockAccessor.GetBlockEntity(sides[1]) as BEHelveHammer;
                 if (behh != null && behh.HammerStack != null)
                 {
                     hasHammer = true;

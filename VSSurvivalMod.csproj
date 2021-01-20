@@ -105,6 +105,7 @@
     <Compile Include="BlockBehavior\BehaviorOmniRotatable.cs" />
     <Compile Include="BlockBehavior\BehaviorPushEventOnBlockBroken.cs" />
     <Compile Include="BlockBehavior\BehaviorRightClickPickup.cs" />
+    <Compile Include="BlockBehavior\BehaviorBreakSnowFirst.cs" />
     <Compile Include="BlockBehavior\BehaviorSneakPlacing.cs" />
     <Compile Include="BlockBehavior\BehaviorLockable.cs" />
     <Compile Include="BlockBehavior\BehaviorMilkingContainer.cs" />
@@ -150,10 +151,12 @@
     <Compile Include="BlockEntity\BESapling.cs" />
     <Compile Include="BlockEntity\BECrock.cs" />
     <Compile Include="BlockEntity\BlockEntityContainerDisplay.cs" />
-    <Compile Include="Block\BlockStoneCoffinLid.cs" />
     <Compile Include="Block\BlockCokeOvenDoor.cs" />
     <Compile Include="Block\BlockAnvilPart.cs" />
     <Compile Include="Block\BlockCharcoalPile.cs" />
+    <Compile Include="Block\BlockCookedContainerBase.cs" />
+    <Compile Include="Block\BlockTrapdoor.cs" />
+    <Compile Include="Block\BlockFenceGateRoughHewn.cs" />
     <Compile Include="Block\BlockRefractoryBrick.cs" />
     <Compile Include="Block\BlockSticksLayer.cs" />
     <Compile Include="Block\BlockGlassPane.cs" />
@@ -452,7 +455,7 @@
     <Compile Include="Gui\GuiDialogBarrel.cs" />
     <Compile Include="Gui\GuiDialogSignPost.cs" />
     <Compile Include="Inventory\ItemSlotBarrelInput.cs" />
-    <Compile Include="Inventory\ItemSlotBuying.cs" />
+    <Compile Include="Systems\Trading\ItemSlotBuying.cs" />
     <Compile Include="Inventory\ItemSlotLiquidOnly.cs" />
     <Compile Include="Inventory\ItemslotTrough.cs" />
     <Compile Include="Inventory\ItemSlotWatertight.cs" />
@@ -482,9 +485,9 @@
     <Compile Include="Gui\GuiDialogJournal.cs" />
     <Compile Include="Gui\GuiDialogSpawner.cs" />
     <Compile Include="Gui\GuiDialogTrader.cs" />
-    <Compile Include="Inventory\InventoryTrader.cs" />
+    <Compile Include="Systems\Trading\InventoryTrader.cs" />
     <Compile Include="Inventory\ItemSlotFirepitInput.cs" />
-    <Compile Include="Inventory\ItemSlotTrade.cs" />
+    <Compile Include="Systems\Trading\ItemSlotTrade.cs" />
     <Compile Include="Systems\WearableStats.cs" />
     <Compile Include="Systems\BlockReinforcement.cs" />
     <Compile Include="Systems\ChiselBlockModelCache.cs" />

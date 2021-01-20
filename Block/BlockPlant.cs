@@ -1,7 +1,9 @@
 ﻿using System;
+using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
@@ -18,12 +20,17 @@ namespace Vintagestory.GameContent
             {
                 snowLayerBlock = api.World.GetBlock(new AssetLocation("snowlayer-1"));
                 tallGrassBlock = api.World.GetBlock(new AssetLocation("tallgrass-tall-free"));
+                if (this.RandomDrawOffset > 0)
+                {
+                    JsonObject overrider = Attributes?["overrideRandomDrawOffset"];
+                    if (overrider?.Exists == true) this.RandomDrawOffset = overrider.AsInt(1);
+                }
             }
 
             WaveFlagMinY = 0.5f;
         }
 
-        public override void OnJsonTesselation(ref MeshData sourceMesh, ref int[] lightRgbsByCorner, BlockPos pos, int[] chunkExtIds, ushort[] chunkLightExt, int extIndex3d)
+        public override void OnJsonTesselation(ref MeshData sourceMesh, BlockPos pos, int[] chunkExtIds, ushort[] chunkLightExt, int extIndex3d)
         {
             int sunLightLevel = chunkLightExt[extIndex3d] & 31;
             bool waveOff = sunLightLevel < 14;
@@ -127,7 +134,16 @@ namespace Vintagestory.GameContent
             return base.GetColor(capi, pos);
         }
 
-        
+        public override Cuboidf[] GetSelectionBoxes(IBlockAccessor blockAccessor, BlockPos pos)
+        {
+            // Return an unshifted selection box if looking at or breaking a snowy block, or a block with only small random drawoffset (e.g. berry bush)
+            if (this.snowLevel > 1 || this.RandomDrawOffset > 7)
+            {
+                return SelectionBoxes;
+            }
+
+            return base.GetSelectionBoxes(blockAccessor, pos);
+        }
 
     }
 }
