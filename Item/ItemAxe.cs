@@ -83,11 +83,7 @@ namespace Vintagestory.GameContent
             IPlayer byPlayer = null;
             if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
 
-            ITreeAttribute tempAttr = itemslot.Itemstack.TempAttributes;
-            //tempAttr.SetInt("breakCounter", 0);
-
-            double windspeed = api.ModLoader.GetModSystem<WeatherSystemBase>()?.WeatherDataSlowAccess.GetWindSpeed(byEntity.SidedPos.XYZ) ?? 0;
-            
+            double windspeed = api.ModLoader.GetModSystem<WeatherSystemBase>()?.WeatherDataSlowAccess.GetWindSpeed(byEntity.SidedPos.XYZ) ?? 0;            
 
             string treeType;
             Stack<BlockPos> foundPositions = FindTree(world, blockSel.Position, out treeType);

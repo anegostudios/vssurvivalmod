@@ -45,9 +45,9 @@ namespace Vintagestory.GameContent
             base.OnDecalTesselation(world, decalMesh, pos);
         }
 
-        public override void OnJsonTesselation(ref MeshData sourceMesh, BlockPos pos, int[] chunkExtIds, ushort[] chunkLightExt, int extIndex3d)
+        public override void OnJsonTesselation(ref MeshData sourceMesh, ref int[] lightRgbsByCorner, BlockPos pos, Block[] chunkExtBlocks, int extIndex3d)
         {
-            base.OnJsonTesselation(ref sourceMesh, pos, chunkExtIds, chunkLightExt, extIndex3d);
+            base.OnJsonTesselation(ref sourceMesh, ref lightRgbsByCorner, pos, chunkExtBlocks, extIndex3d);
 
             if (this == foliage)
             {
@@ -67,12 +67,37 @@ namespace Vintagestory.GameContent
 
         public void GrowTree(IBlockAccessor blockAccessor, BlockPos pos, float sizeModifier = 1, float vineGrowthChance = 0, float forestDensity = 0)
         {
-            GrowOneFern(blockAccessor, pos.UpCopy(), sizeModifier, vineGrowthChance);
+            int quantity = 2 + (int)((1 + rand.NextDouble() * 4) * (1 - forestDensity) * (1 - forestDensity));
+
+            while (quantity-- > 0)
+            {
+                GrowOneFern(blockAccessor, pos.UpCopy(), sizeModifier, vineGrowthChance);
+
+                // Potentially grow another one nearby
+                pos.X += rand.Next(8) - 4;
+                pos.Z += rand.Next(8) - 4;
+
+                // Test up to 2 blocks up and down.
+                bool foundSuitableBlock = false;
+                for (int y = 2; y >= -2; y--)
+                {
+                    Block block = blockAccessor.GetBlock(pos.X, pos.Y + y, pos.Z);
+                    if (block.Fertility > 0)
+                    {
+                        pos.Y = pos.Y + y;
+                        foundSuitableBlock = true;
+                        break;
+                    }
+                }
+                if (!foundSuitableBlock) break;
+            }
+
+            
         }
 
         private void GrowOneFern(IBlockAccessor blockAccessor, BlockPos upos, float sizeModifier, float vineGrowthChance)
         {
-            int height = GameMath.Clamp((int)(sizeModifier * (2 + rand.Next(5))), 2, 6);
+            int height = GameMath.Clamp((int)(sizeModifier * (2 + rand.Next(6))), 2, 6);
 
             Block trunkTop = height > 2 ? trunkTopOld : trunkTopMedium;
             if (height == 1) trunkTop = trunkTopYoung;

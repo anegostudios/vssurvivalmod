@@ -40,7 +40,7 @@ namespace Vintagestory.GameContent
 
 
             ClimateCondition conds = api.World.BlockAccessor.GetClimateAt(Pos.AsBlockPos, EnumGetClimateMode.NowValues);
-            if (conds.Temperature < 0)
+            if (conds != null & conds.Temperature < 0)
             {
                 Die(EnumDespawnReason.Removed);
             }

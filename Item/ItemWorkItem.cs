@@ -20,6 +20,14 @@ namespace Vintagestory.GameContent
     public class ItemWorkItem : Item, IAnvilWorkable
     {
         static int nextMeshRefId = 0;
+        public bool isBlisterSteel;
+
+        public override void OnLoaded(ICoreAPI api)
+        {
+            base.OnLoaded(api);
+
+            isBlisterSteel = Variant["metal"] == "blistersteel";
+        }
 
         public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
         {
@@ -263,7 +271,12 @@ namespace Vintagestory.GameContent
 
         public ItemStack GetBaseMaterial(ItemStack stack)
         {
-            return new ItemStack(api.World.GetItem(new AssetLocation("ingot-" + Variant["metal"])));
+            Item item = api.World.GetItem(AssetLocation.Create("ingot-" + Variant["metal"], Attributes?["baseMaterialDomain"].AsString("game")));
+            if (item == null)
+            {
+                throw new Exception(string.Format("Base material for {0} not found, there is no item with code 'ingot-{1}'", stack.Collectible.Code, Variant["metal"]));
+            }
+            return new ItemStack(item);
         }
 
         public EnumHelveWorkableMode GetHelveWorkableMode(ItemStack stack, BlockEntityAnvil beAnvil)

@@ -40,6 +40,10 @@ namespace Vintagestory.ServerMods.NoObf
         [JsonProperty]
         public float MaxForest = 1;
         [JsonProperty]
+        public float MinShrub = 0;
+        [JsonProperty]
+        public float MaxShrub = 1;
+        [JsonProperty]
         public float MinFertility = 0;
         [JsonProperty]
         public float MaxFertility = 1;

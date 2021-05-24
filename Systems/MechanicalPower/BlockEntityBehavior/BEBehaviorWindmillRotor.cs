@@ -157,7 +157,7 @@ namespace Vintagestory.GameContent.Mechanics
             return false;
         }
 
-        public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
+        public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
         {
             sailLength = tree.GetInt("sailLength");
 
@@ -166,7 +166,7 @@ namespace Vintagestory.GameContent.Mechanics
                 updateShape();
             }
 
-            base.FromTreeAtributes(tree, worldAccessForResolve);
+            base.FromTreeAttributes(tree, worldAccessForResolve);
         }
 
         public override void ToTreeAttributes(ITreeAttribute tree)

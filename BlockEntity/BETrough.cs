@@ -192,7 +192,7 @@ namespace Vintagestory.GameContent
 
         internal MeshData GenMesh()
         {
-            if (Block == null || contentCode == "") return null;
+            if (Block == null || contentCode == "" || contentConfigs == null) return null;
             ContentConfig config = contentConfigs.FirstOrDefault(c => c.Code == contentCode);
             if (config == null) return null;
 
@@ -209,14 +209,14 @@ namespace Vintagestory.GameContent
             MeshData meshadd;
 
             blockTexPosSource = capi.Tesselator.GetTexSource(Block);
-            capi.Tesselator.TesselateShape("betrough", Api.Assets.TryGet("shapes/" + shapeLoc + ".json").ToObject<Shape>(), out meshbase, this, rotation);
+            Shape shape = Api.Assets.TryGet("shapes/" + shapeLoc + ".json").ToObject<Shape>();
+            capi.Tesselator.TesselateShape("betroughcontentsleft", shape, out meshbase, this, rotation);
 
             BlockTroughDoubleBlock doubleblock = Block as BlockTroughDoubleBlock;
 
             if (doubleblock != null)
             {
-                // Load only contents and flip 180 degrees
-                capi.Tesselator.TesselateShape("betroughcontents", Api.Assets.TryGet("shapes/" + shapeLoc + ".json").ToObject<Shape>(), out meshadd, this, rotation.Add(0, 180, 0), 0, 0, 0, null, new string[] { "Origin point/contents/*" });
+                capi.Tesselator.TesselateShape("betroughcontentsright", shape, out meshadd, this, rotation.Add(0, 180, 0));
                 BlockFacing facing = doubleblock.OtherPartPos();
                 meshadd.Translate(facing.Normalf);
                 meshbase.AddMeshData(meshadd);
@@ -229,7 +229,7 @@ namespace Vintagestory.GameContent
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
         {
             mesher.AddMeshData(currentMesh);
-            return currentMesh != null;
+            return false;
         }
 
         internal bool OnInteract(IPlayer byPlayer, BlockSelection blockSel)

@@ -79,7 +79,7 @@ namespace Vintagestory.ServerMods.NoObf
         float fertilityRel;
 
 
-        internal bool IsPatchSuitableAt(BlockPatch patch, Block onBlock, IWorldManagerAPI world, int climate, int y, float forestRel)
+        internal bool IsPatchSuitableAt(BlockPatch patch, Block onBlock, IWorldManagerAPI world, int climate, int y, float forestRel, float shrubRel)
         {
             if ((patch.Placement == EnumBlockPatchPlacement.NearWater || patch.Placement == EnumBlockPatchPlacement.UnderWater) && onBlock.LiquidCode != "water") return false;
             if ((patch.Placement == EnumBlockPatchPlacement.NearSeaWater || patch.Placement == EnumBlockPatchPlacement.UnderSeaWater) && onBlock.LiquidCode != "seawater") return false;
@@ -96,7 +96,8 @@ namespace Vintagestory.ServerMods.NoObf
                 rainRel >= patch.MinRain && rainRel <= patch.MaxRain &&
                 temp >= patch.MinTemp && temp <= patch.MaxTemp &&
                 sealevelDistRel >= patch.MinY && sealevelDistRel <= patch.MaxY &&
-                forestRel >= patch.MinForest && forestRel <= patch.MaxForest
+                forestRel >= patch.MinForest && forestRel <= patch.MaxForest &&
+                shrubRel >= patch.MinShrub && forestRel <= patch.MaxShrub
             ;
         }
     }

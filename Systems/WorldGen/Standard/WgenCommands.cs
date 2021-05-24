@@ -57,8 +57,6 @@ namespace Vintagestory.ServerMods
             {
                 OnGameWorldLoaded();
             }
-
-          //  api.WorldManager.AutoGenerateChunks = false;
         }
 
 
@@ -171,6 +169,16 @@ namespace Vintagestory.ServerMods
                     }
 
                     ReadRegion(player, args);
+                    break;
+
+                case "regions":
+                    if (api.Server.Config.HostedMode)
+                    {
+                        player.SendMessage(groupId, Lang.Get("Can't access this feature, server is in hosted mode"), EnumChatType.CommandError);
+                        return;
+                    }
+
+                    ReadRegions(player, args);
                     break;
 
                 case "pos":
@@ -987,6 +995,115 @@ namespace Vintagestory.ServerMods
         }
 
 
+
+
+
+        private void ReadRegions(IServerPlayer player, CmdArgs arguments)
+        {
+            if (arguments.Length == 0)
+            {
+                player.SendMessage(groupId, "/wgen region [radius] [ore] [orename]", EnumChatType.CommandError);
+                return;
+            }
+
+            BlockPos pos = player.Entity.Pos.AsBlockPos;
+            IServerChunk serverchunk = api.WorldManager.GetChunk(pos);
+            if (serverchunk == null)
+            {
+                player.SendMessage(groupId, "Can't check here, beyond chunk boundaries!", EnumChatType.CommandError);
+                return;
+            }
+
+            IMapRegion mapRegion = serverchunk.MapChunk.MapRegion;
+
+
+            int regionX = pos.X / regionSize;
+            int regionZ = pos.Z / regionSize;
+
+            int radius = (int)arguments.PopInt(1);
+
+            string arg = arguments.PopWord();
+
+            NoiseBase.Debug = false;
+
+
+
+            switch (arg)
+            {
+
+                case "ore":
+                    string type = arguments.PopWord("limonite");
+                    if (type == null) type = "limonite";
+
+                    if (!mapRegion.OreMaps.ContainsKey(type))
+                    {
+                        player.SendMessage(groupId, "Mapregion does not contain an ore map for ore " + type, EnumChatType.CommandError);
+                        return;
+                    }
+
+                    int oreMapSize = mapRegion.OreMaps[type].InnerSize;
+                    int len = (2*radius+1) * oreMapSize;
+                    int[] outPixels = new int[len * len];
+
+
+                    var depsys = api.ModLoader.GetModSystem<GenDeposits>();
+                    api.ModLoader.GetModSystem<GenDeposits>().initWorldGen();
+
+                    for (int dx = -radius; dx <= radius; dx++)
+                    {
+                        for (int dz = -radius; dz <= radius; dz++)
+                        {
+                            mapRegion = api.World.BlockAccessor.GetMapRegion(regionX + dx, regionZ + dz);
+                            if (mapRegion == null) {
+                                continue;
+                            }
+
+                            mapRegion.OreMaps.Clear();
+
+                            depsys.OnMapRegionGen(mapRegion, regionX + dx, regionZ + dz);
+
+                            if (!mapRegion.OreMaps.ContainsKey(type))
+                            {
+                                player.SendMessage(groupId, "Mapregion does not contain an ore map for ore " + type, EnumChatType.CommandError);
+                                return;
+                            }
+
+                            IntDataMap2D map = mapRegion.OreMaps[type];
+
+                            int baseX = (dx + radius) * oreMapSize;
+                            int baseZ = (dz + radius) * oreMapSize;
+
+                            for (int px = 0; px < map.InnerSize; px++)
+                            {
+                                for (int pz = 0; pz < map.InnerSize; pz++)
+                                {
+                                    int pixel = map.GetUnpaddedInt(px, pz);
+
+                                    outPixels[(pz + baseZ) * len + px + baseX] = pixel;
+                                }
+                            }
+                        }
+                    }
+
+
+                    NoiseBase.Debug = true;
+                    NoiseBase.DebugDrawBitmap(DebugDrawMode.RGB, outPixels, len, "ore-"+type+"around-" + regionX + "-" + regionZ);
+                    player.SendMessage(groupId, type + " ore map generated.", EnumChatType.CommandSuccess);
+
+                    break;
+
+
+                default:
+                    player.SendMessage(groupId, "/wgen regions [radius] [climate|ore|forest|wind|gprov|landform]", EnumChatType.CommandError);
+                    break;
+            }
+
+            NoiseBase.Debug = false;
+        }
+
+
+
+
         void DrawMapRegion(DebugDrawMode mode, IServerPlayer player, IntDataMap2D map, string prefix, bool lerp, int regionX, int regionZ, int scale)
         {
 
@@ -1048,7 +1165,7 @@ namespace Vintagestory.ServerMods
                     break;
 
                 case "latitude":
-                    double? lat = api.ModLoader.GetModSystem<SurvivalCoreSystem>().onGetLatitude?.Invoke(pos.Z);
+                    double? lat = api.World.Calendar.OnGetLatitude(pos.Z);
                     player.SendMessage(groupId, string.Format("Latitude: {0}°, {1}", lat * 90, lat < 0 ? "Southern Hemisphere" : "Northern Hemisphere"), EnumChatType.CommandSuccess);
                     break;
 

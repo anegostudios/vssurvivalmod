@@ -29,7 +29,7 @@ namespace Vintagestory.GameContent
         BlockPos plrpos = new BlockPos();
 
         bool inEnclosedRoom;
-        float nearHeatSourceStrength;
+        
         float tempChange;
         float clothingBonus;
 
@@ -45,6 +45,13 @@ namespace Vintagestory.GameContent
         {
             get { return tempTree.GetFloat("bodytemp"); }
             set { tempTree.SetFloat("bodytemp", value); entity.WatchedAttributes.MarkPathDirty("bodyTemp"); }
+        }
+
+
+        protected float nearHeatSourceStrength
+        {
+            get { return tempTree.GetFloat("nearHeatSourceStrength"); }
+            set { tempTree.SetFloat("nearHeatSourceStrength", value); }
         }
 
         public float Wetness
@@ -129,20 +136,53 @@ namespace Vintagestory.GameContent
 
             if (slowaccum > 3)
             {
-                Room room = api.ModLoader.GetModSystem<RoomRegistry>().GetRoomForPosition(plrpos);
-                inEnclosedRoom = room.ExitCount == 0 || room.SkylightCount < room.NonSkylightCount;
-                nearHeatSourceStrength = 0;
-
-                api.World.BlockAccessor.WalkBlocks(plrpos.AddCopy(-3, -3, -3), plrpos.AddCopy(3, 3, 3), (block, pos) =>
+                // No need to call this on the client, because we sync nearHeatSourceStrength
+                if (api.World.Side == EnumAppSide.Server)
                 {
-                    BlockBehavior src;
-                    if ((src = block.GetBehavior(typeof(IHeatSource), true)) != null)
-                    {
-                        nearHeatSourceStrength += (src as IHeatSource).GetHeatStrength(api.World, pos, plrpos);
-                    }
-                });
+                    Room room = api.ModLoader.GetModSystem<RoomRegistry>().GetRoomForPosition(plrpos);
+                    // Check whether it is a proper room, or something like a room i.e. with a roof, for exaample a natural cave
+                    inEnclosedRoom = room.ExitCount == 0 || room.SkylightCount < room.NonSkylightCount;
+                    nearHeatSourceStrength = 0;
 
-                slowaccum = 0;
+                    double px = entity.Pos.X;
+                    double py = entity.Pos.Y + 0.9;
+                    double pz = entity.Pos.Z;
+
+                    // Fire heat proximity effect (measured by straight-line shortest distance to fire, i.e. what the player sees visually)
+                    // within 1 block from the edge of the fire block: full heat
+                    // within 2 blocks from the edge of the fire block: ~66% heat
+                    // within 3 blocks from the edge of the fire block: ~33% heat
+                    // max range (3 blocks diagonally in both X and Z directions): ~12% heat
+
+                    // similar consequences in a room, but slower falloff, still 33% heat at 6 blocks range
+
+                    // http://fooplot.com/#W3sidHlwZSI6MCwiZXEiOiJtaW4oMSw5Lyg4K3heMi41KSkiLCJjb2xvciI6IiMwMDAwMDAifSx7InR5cGUiOjAsImVxIjoibWluKDEsOS8oOCt4XjEuNzUpKSIsImNvbG9yIjoiIzAwMDAwMCJ9LHsidHlwZSI6MTAwMCwid2luZG93IjpbIjAiLCI5IiwiMCIsIjEuMiJdfV0-
+
+                    double proximityPower = inEnclosedRoom ? 0.875 : 1.25;
+                    BlockPos min, max;
+                    if (inEnclosedRoom && room.Location.SizeX >= 1 && room.Location.SizeY >= 1 && room.Location.SizeZ >= 1)
+                    {
+                        min = new BlockPos(room.Location.MinX, room.Location.MinY, room.Location.MinZ);
+                        max = new BlockPos(room.Location.MaxX, room.Location.MaxY, room.Location.MaxZ);
+                    }
+                    else
+                    {
+                        min = plrpos.AddCopy(-3, -3, -3);
+                        max = plrpos.AddCopy(3, 3, 3);
+                    }
+
+                    api.World.BlockAccessor.WalkBlocks(min, max, (block, pos) =>
+                    {
+                        BlockBehavior src;
+                        if ((src = block.GetBehavior(typeof(IHeatSource), true)) != null)
+                        {
+                            float factor = Math.Min(1f, 9 / (8 + (float)Math.Pow(pos.DistanceSqToNearerEdge(px, py, pz), proximityPower)));
+                            nearHeatSourceStrength += (src as IHeatSource).GetHeatStrength(api.World, pos, plrpos) * factor;
+                        }
+                    });
+
+                    slowaccum = 0;
+                }
 
                 updateWearableConditions();
 
@@ -152,7 +192,10 @@ namespace Vintagestory.GameContent
             if (accum > 1)
             {
                 IPlayer plr = (entity as EntityPlayer)?.Player;
-                if (plr?.WorldData.CurrentGameMode == EnumGameMode.Creative || plr?.WorldData.CurrentGameMode == EnumGameMode.Spectator)
+
+                if (entity.World.Side == EnumAppSide.Server && (plr as IServerPlayer)?.ConnectionState != EnumClientState.Playing) return;
+
+                if ((plr?.WorldData.CurrentGameMode == EnumGameMode.Creative || plr?.WorldData.CurrentGameMode == EnumGameMode.Spectator))
                 {
                     CurBodyTemperature = NormalBodyTemperature;
                     entity.WatchedAttributes.SetFloat("freezingEffectStrength", 0);
@@ -206,6 +249,9 @@ namespace Vintagestory.GameContent
                     }
                 }
 
+                if (entity.IsOnFire) tempChange = Math.Max(25, tempChange);
+
+
                 float tempUpdateHoursPassed = (float)(api.World.Calendar.TotalHours - BodyTempUpdateTotalHours);
                 if (tempUpdateHoursPassed > 0.01)
                 {
@@ -256,9 +302,7 @@ namespace Vintagestory.GameContent
             // 1296 hours is half a default year
             if (!isStandingStill) conditionloss = -(float)hoursPassed / 1296f;
 
-            if (eagent?.GearInventory == null) return;
-
-            IInventory gearWorn = eagent.GearInventory;
+            IInventory gearWorn = eagent?.GearInventory;
             if (gearWorn != null)  //can be null when creating a new world and entering for the first time
             {
                 foreach (var slot in gearWorn)

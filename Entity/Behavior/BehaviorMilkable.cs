@@ -49,13 +49,15 @@ namespace Vintagestory.GameContent
 
         void init()
         {
+            lastMilkedTotalHours = entity.WatchedAttributes.GetFloat("lastMilkedTotalHours");
             if (entity.World.Side == EnumAppSide.Client) return;
 
             EntityBehaviorTaskAI taskAi = entity.GetBehavior<EntityBehaviorTaskAI>();
             taskAi.taskManager.ShouldExecuteTask = (task) => !IsBeingMilked;
 
-            bhmul = entity.GetBehavior<EntityBehaviorMultiply>();
-            bhmul.TotalDaysLastBirth = Math.Max(bhmul.TotalDaysLastBirth, entity.World.Calendar.TotalDays);
+            // wtf is this for? this does not fix the forever milkable bug but causes it? o.O
+            //bhmul = entity.GetBehavior<EntityBehaviorMultiply>();
+            //bhmul.TotalDaysLastBirth = Math.Max(bhmul.TotalDaysLastBirth, entity.World.Calendar.TotalDays);
         }
 
         public bool TryBeginMilking()
@@ -75,7 +77,8 @@ namespace Vintagestory.GameContent
             }
 
             // Can only be milked for 21 days after giving birth
-            if (bhmul != null && (lactatingDaysAfterBirth - Math.Max(0, entity.World.Calendar.TotalDays - bhmul.TotalDaysLastBirth)) <= 0) return false;
+            double daysSinceBirth = Math.Max(0, entity.World.Calendar.TotalDays - bhmul.TotalDaysLastBirth);
+            if (bhmul != null && daysSinceBirth >= lactatingDaysAfterBirth) return false;
 
             // Can only be milked every 24 hours
             if (entity.World.Calendar.TotalHours - lastMilkedTotalHours < entity.World.Calendar.HoursPerDay) return false;
@@ -163,6 +166,7 @@ namespace Vintagestory.GameContent
         public void MilkingComplete(ItemSlot slot, EntityAgent byEntity)
         {
             lastMilkedTotalHours = entity.World.Calendar.TotalHours;
+            entity.WatchedAttributes.SetFloat("lastMilkedTotalHours", (float)lastMilkedTotalHours);
 
             BlockLiquidContainerBase lcblock = slot.Itemstack.Collectible as BlockLiquidContainerBase;
             if (lcblock == null)

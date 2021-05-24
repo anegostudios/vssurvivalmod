@@ -91,7 +91,6 @@ namespace Vintagestory.GameContent
         public virtual bool OnPlayerInteract(IPlayer byPlayer)
         {
             BlockPos abovePos = Pos.UpCopy();
-
             BlockEntity be = Api.World.BlockAccessor.GetBlockEntity(abovePos);
             if (be is BlockEntityItemPile)
             {
@@ -166,7 +165,7 @@ namespace Vintagestory.GameContent
 
                 int q = GameMath.Min(hotbarSlot.StackSize, putBulk ? BulkTakeQuantity : DefaultTakeQuantity, MaxStackSize - OwnStackSize);
 
-                //add to the pile and average item temperatures
+                // add to the pile and average item temperatures
                 int oldSize = invSlot.Itemstack.StackSize;
                 invSlot.Itemstack.StackSize += q;
                 if (oldSize + q > 0)

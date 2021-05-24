@@ -8,6 +8,7 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
@@ -869,7 +870,7 @@ namespace Vintagestory.GameContent
         {
             op.MovableQuantity = GetMergableQuantity(op.SinkSlot.Itemstack, op.SourceSlot.Itemstack, op.CurrentPriority);
             if (op.MovableQuantity == 0) return;
-            if (!op.SinkSlot.CanTakeFrom(op.SourceSlot)) return;
+            if (!op.SinkSlot.CanTakeFrom(op.SourceSlot, op.CurrentPriority)) return;
 
             ItemStack sinkContent = GetContent(op.World, op.SinkSlot.Itemstack);
             ItemStack sourceContent = GetContent(op.World, op.SourceSlot.Itemstack);

@@ -360,7 +360,7 @@ namespace Vintagestory.ServerMods
                         }
                         if (chunk == null) return true;
 
-                        chunk.Unpack();
+                        chunk.Unpack_ReadOnly();
 
                         int index = ((y % chunksize) * chunksize + (z % chunksize)) * chunksize + (x % chunksize);
                         Block block = api.World.Blocks[chunk.Blocks[index]];

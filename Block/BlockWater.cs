@@ -10,7 +10,7 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockWater : Block, VintagestoryAPI.Common.Collectible.Block.IBlockFlowing
+    public class BlockWater : Block, IBlockFlowing
     {
         public string Flow { get; set; }
         public Vec3i FlowNormali { get; set; }

@@ -164,9 +164,9 @@ namespace Vintagestory.GameContent.Mechanics
             return rot;
         }
 
-        public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
+        public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
         {
-            base.FromTreeAtributes(tree, worldAccessForResolve);
+            base.FromTreeAttributes(tree, worldAccessForResolve);
             this.engaged = tree.GetBool("engaged");
         }
 

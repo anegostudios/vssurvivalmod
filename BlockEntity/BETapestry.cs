@@ -29,8 +29,8 @@ namespace Vintagestory.GameContent
             new string[] { "rot2" },
             new string[] { "rot3" },
 
-            new string[] { "holy1", "schematic-c1", "schematic-c-bloody1" },
-            new string[] { "holy2", "schematic-c2", "schematic-c-bloody2" },
+            new string[] { "holy1", "schematic-c1", "schematic-c-bloody1", "forlorn1" },
+            new string[] { "holy2", "schematic-c2", "schematic-c-bloody2", "forlorn2" },
 
             new string[] { "salvation11", "schematic-a11", "schematic-b11", "schematic-d11", "rotbeast11", "blackguard11" },
             new string[] { "salvation12", "schematic-a12", "schematic-b12", "schematic-d12", "rotbeast12", "blackguard12" },

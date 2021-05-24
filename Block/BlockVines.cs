@@ -15,69 +15,33 @@ namespace Vintagestory.GameContent
             return BlockFacing.FromCode(parts[parts.Length - 1]);
         }
 
-        bool[] leavesWaveTileSide = new bool[6];
-
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
         }
 
-        public override void OnJsonTesselation(ref MeshData sourceMesh, BlockPos pos, int[] chunkExtIds, ushort[] chunkLightExt, int extIndex3d)
+        public override void OnJsonTesselation(ref MeshData sourceMesh, ref int[] lightRgbsByCorner, BlockPos pos, Block[] chunkExtBlocks, int extIndex3d)
         {
             if (VertexFlags.LeavesWindWave)
             {
-                for (int tileSide = 0; tileSide < TileSideEnum.SideCount; tileSide++)
+                int leavesNoWaveTileSide = 0;  //any bit set to 1 means no Wave on that tileSide
+                for (int tileSide = 0; tileSide < TileSideEnum.Down; tileSide++)  // VINES are free to move on the down side :)
                 {
-                    int nBlockId = chunkExtIds[extIndex3d + TileSideEnum.MoveIndex[tileSide]];
-                    Block nblock = api.World.Blocks[nBlockId];
-                    leavesWaveTileSide[tileSide] = !nblock.SideSolid[BlockFacing.ALLFACES[tileSide].Opposite.Index] || nblock.BlockMaterial == EnumBlockMaterial.Leaves;
+                    Block nblock = chunkExtBlocks[extIndex3d + TileSideEnum.MoveIndex[tileSide]];
+                    if (!nblock.VertexFlags.LeavesWindWave && nblock.SideSolid[TileSideEnum.GetOpposite(tileSide)]) leavesNoWaveTileSide |= (1 << tileSide);
                 }
 
-                bool waveoff;
                 int groundOffset = 0;
 
-                waveoff = api.World.BlockAccessor.GetLightLevel(pos, EnumLightLevelType.OnlySunLight) < 14;
+                bool waveoff = (byte)(lightRgbsByCorner[24] >> 24) < 159;  //corresponds with a sunlight level of less than 14
 
                 if (!waveoff)
                 {
+                    // We could invert the ground offset, have vines bend more the further they descend ...
                     groundOffset = 1;
                 }
 
-                setLeaveWaveFlags(sourceMesh, leavesWaveTileSide, waveoff, groundOffset);
-            }
-        }
-
-
-
-        void setLeaveWaveFlags(MeshData sourceMesh, bool[] leavesWaveTileSide, bool off, int groundOffset)
-        {
-            int leaveWave = VertexFlags.LeavesWindWaveBitMask;
-            int clearFlags = (~VertexFlags.LeavesWindWaveBitMask) & (~VertexFlags.GroundDistanceBitMask);
-
-            // Iterate over each element face
-            for (int vertexNum = 0; vertexNum < sourceMesh.GetVerticesCount(); vertexNum++)
-            {
-                float x = sourceMesh.xyz[vertexNum * 3 + 0];
-                float y = sourceMesh.xyz[vertexNum * 3 + 1];
-                float z = sourceMesh.xyz[vertexNum * 3 + 2];
-
-                // Is there some pretty math formula for this? :<
-                bool notwaving =
-                    off ||
-                    (y > 0.5 && !leavesWaveTileSide[BlockFacing.UP.Index]) ||
-                    (y < 0.5 && !leavesWaveTileSide[BlockFacing.DOWN.Index]) ||
-                    (z < 0.5 && !leavesWaveTileSide[BlockFacing.NORTH.Index]) ||
-                    (z > 0.5 && !leavesWaveTileSide[BlockFacing.SOUTH.Index]) ||
-                    (x > 0.5 && !leavesWaveTileSide[BlockFacing.EAST.Index]) ||
-                    (x < 0.5 && !leavesWaveTileSide[BlockFacing.WEST.Index])
-                ;
-
-                sourceMesh.Flags[vertexNum] &= clearFlags;
-
-                if (!notwaving)
-                {
-                    sourceMesh.Flags[vertexNum] |= leaveWave | (groundOffset << 28);
-                }
+                BlockWithLeavesMotion.SetLeaveWaveFlags(sourceMesh, leavesNoWaveTileSide, waveoff, VertexFlags.LeavesWindWaveBitMask, groundOffset);
             }
         }
 

@@ -39,8 +39,6 @@ namespace Vintagestory.GameContent.Mechanics
                 }
             }
 
-            //blockMesh.Rgba2 = null;
-
             // 16 floats matrix, 4 floats light rgbs
             blockMesh.CustomFloats = matrixAndLightFloats = new CustomMeshDataPartFloat((16 + 4) * 10100)
             {

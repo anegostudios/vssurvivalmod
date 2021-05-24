@@ -44,21 +44,10 @@ namespace Vintagestory.GameContent.Mechanics
             capi.Event.RegisterRenderer(this, EnumRenderStage.ShadowFar, "mechnetwork");
             capi.Event.RegisterRenderer(this, EnumRenderStage.ShadowNear, "mechnetwork");
 
-            capi.Event.ReloadShader += LoadShader;
-            LoadShader();
+            // This shader is created by the essentials mod in Core.cs
+            prog = capi.Shader.GetProgramByName("instanced");
         }
 
-        public bool LoadShader()
-        {
-            prog = capi.Shader.NewShaderProgram();
-
-            prog.VertexShader = capi.Shader.NewShader(EnumShaderType.VertexShader);
-            prog.FragmentShader = capi.Shader.NewShader(EnumShaderType.FragmentShader);
-
-            capi.Shader.RegisterFileShaderProgram("mechpower", prog);
-
-            return prog.Compile();
-        }
 
 
         public void AddDevice(IMechanicalPowerRenderable device)
@@ -99,6 +88,8 @@ namespace Vintagestory.GameContent.Mechanics
         
         public void OnRenderFrame(float deltaTime, EnumRenderStage stage)
         {
+            if (prog.Disposed) prog = capi.Shader.GetProgramByName("instanced");
+
             capi.Render.GlDisableCullFace();
 
             if (stage == EnumRenderStage.Opaque)

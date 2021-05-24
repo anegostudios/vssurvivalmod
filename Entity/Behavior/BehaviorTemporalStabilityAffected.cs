@@ -3,7 +3,9 @@ using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
@@ -163,6 +165,17 @@ namespace Vintagestory.GameContent
                 initSoundsAndEffects();
                 requireInitSounds = false;
             }
+
+            if (entity.World.Side == EnumAppSide.Client)
+            {
+                if (!(entity.World.Api as ICoreClientAPI).PlayerReadyFired) return;
+            } else
+            {
+                
+                IServerPlayer player = entity.World.PlayerByUid(((EntityPlayer)entity).PlayerUID) as IServerPlayer;
+                if (player != null && player.ConnectionState != EnumClientState.Playing) return;
+            }
+
 
             deltaTime = GameMath.Min(0.5f, deltaTime);
 

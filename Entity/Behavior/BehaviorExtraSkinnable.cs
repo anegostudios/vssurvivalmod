@@ -16,7 +16,9 @@ namespace Vintagestory.GameContent
 {
     public enum EnumSkinnableType
     {
-        Shape, Texture
+        Shape, 
+        Texture, 
+        Voice
     }
 
     public class SkinnablePart
@@ -41,6 +43,7 @@ namespace Vintagestory.GameContent
         public string Code;
         public CompositeShape Shape;
         public AssetLocation Texture;
+        public AssetLocation Sound;
         public int Color;
 
         public AppliedSkinnablePartVariant AppliedCopy(string partCode)
@@ -354,6 +357,40 @@ namespace Vintagestory.GameContent
 
         public void selectSkinPart(string partCode, string variantCode, bool retesselateShape = true)
         {
+            AvailableSkinPartsByCode.TryGetValue(partCode, out var part);
+            if (part?.Type == EnumSkinnableType.Voice)
+            {
+                entity.WatchedAttributes.SetString(partCode, variantCode);
+
+                if (entity is EntityPlayer plr && plr.talkUtil != null)
+                {
+                    if (partCode == "voicetype")
+                    {
+                        plr.talkUtil.soundName = part.VariantsByCode[variantCode].Sound;
+                    }
+                    if (partCode == "voicepitch")
+                    {
+                        float pitchMod = 1;
+                        switch (variantCode)
+                        {
+                            case "verylow": pitchMod = 0.6f; break;
+                            case "low": pitchMod = 0.8f; break;
+                            case "medium": pitchMod = 1f; break;
+                            case "high": pitchMod = 1.2f; break;
+                            case "veryhigh": pitchMod = 1.4f; break;
+                        }
+
+                        plr.talkUtil.pitchModifier = pitchMod;
+                        plr.talkUtil.talkSpeedModifier = 1.1f;// 1 + (1.3f - pitchMod);
+                    }
+
+                    plr.talkUtil.Talk(EnumTalkType.Idle);
+                }
+                
+
+                return;
+            }
+
             var essr = entity.Properties.Client.Renderer as EntitySkinnableShapeRenderer;
 
             ITreeAttribute appliedTree = skintree.GetTreeAttribute("appliedParts");
@@ -369,6 +406,12 @@ namespace Vintagestory.GameContent
         protected Shape addSkinPart(AppliedSkinnablePartVariant part, Shape entityShape, string[] disableElements, string shapePathForLogging)
         {
             //if (part.PartCode.Contains("hair")) return entityShape; // Disabled until pre.2
+
+            if (AvailableSkinPartsByCode[part.PartCode].Type == EnumSkinnableType.Voice)
+            {
+                entity.WatchedAttributes.SetString("voicetype", part.Code);
+                return entityShape;
+            }
 
             if (disableElements != null)
             {
@@ -507,7 +550,7 @@ namespace Vintagestory.GameContent
                 if (texAsset != null)
                 {
                     BitmapRef bmp = texAsset.ToBitmap(api);
-                    api.EntityTextureAtlas.InsertTexture(bmp, out textureSubId, out texpos, -1);
+                    api.EntityTextureAtlas.InsertTextureCached(location, bmp, out textureSubId, out texpos, -1);
                 }
                 else
                 {

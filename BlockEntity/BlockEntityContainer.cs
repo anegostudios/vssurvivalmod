@@ -49,14 +49,14 @@ namespace Vintagestory.GameContent
 
         protected virtual void OnTick(float dt)
         {
+            room = roomReg.GetRoomForPosition(Pos);
             if (Api.Side == EnumAppSide.Client)
             {
                 // We don't have to do this client side. The item stack renderer already updates those states for us
                 return;
             }
 
-            room = roomReg.GetRoomForPosition(Pos);
-            if (room.AnyChunkUnloaded) return;
+            if (room.AnyChunkUnloaded != 0)  return;
 
             foreach (ItemSlot slot in Inventory)
             {
@@ -225,6 +225,7 @@ namespace Vintagestory.GameContent
         {
             base.GetBlockInfo(forPlayer, dsc);
 
+            room = roomReg.GetRoomForPosition(Pos);
             float rate = GetPerishRate();
 
             if (Inventory is InventoryGeneric)

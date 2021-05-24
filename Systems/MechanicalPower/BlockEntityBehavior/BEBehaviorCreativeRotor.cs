@@ -79,11 +79,11 @@ namespace Vintagestory.GameContent.Mechanics
             return true;
         }
 
-        public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor world)
+        public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor world)
         {
             powerSetting = tree.GetInt("p");
             if (powerSetting > 10 || powerSetting < 1) powerSetting = 3;
-            base.FromTreeAtributes(tree, world);
+            base.FromTreeAttributes(tree, world);
         }
 
         public override void ToTreeAttributes(ITreeAttribute tree)

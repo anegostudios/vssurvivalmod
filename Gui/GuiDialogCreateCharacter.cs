@@ -28,6 +28,8 @@ namespace Vintagestory.GameContent
         float charZoom = 1f;
         bool charNaked = true;
 
+        protected int dlgHeight = 433 + 50;
+
 
         public GuiDialogCreateCharacter(ICoreClientAPI capi, CharacterSystem modSys) : base(capi)
         {
@@ -45,14 +47,16 @@ namespace Vintagestory.GameContent
 
             double ypos = 20 + pad;
 
-            ElementBounds bgBounds = ElementBounds.FixedSize(717, 433).WithFixedPadding(GuiStyle.ElementToDialogPadding);
+            
 
-            ElementBounds dialogBounds = ElementBounds.FixedSize(757, 473).WithAlignment(EnumDialogArea.CenterMiddle)
+            ElementBounds bgBounds = ElementBounds.FixedSize(717, dlgHeight).WithFixedPadding(GuiStyle.ElementToDialogPadding);
+
+            ElementBounds dialogBounds = ElementBounds.FixedSize(757, dlgHeight+40).WithAlignment(EnumDialogArea.CenterMiddle)
                 .WithFixedAlignmentOffset(GuiStyle.DialogToScreenPadding, 0);
 
 
             GuiTab[] tabs = new GuiTab[] { 
-                new GuiTab() { Name = "Skin", DataInt = 0 },
+                new GuiTab() { Name = "Skin & Voice", DataInt = 0 },
                 new GuiTab() { Name = "Class", DataInt = 1 },
               //  new GuiTab() { Name = "Outfit", DataInt = 2 }
             };
@@ -62,7 +66,7 @@ namespace Vintagestory.GameContent
                 .CreateCompo("createcharacter", dialogBounds)
                 .AddShadedDialogBG(bgBounds, true)
                 .AddDialogTitleBar(curTab == 0 ? Lang.Get("Customize Skin") : (curTab == 1 ? Lang.Get("Select character class") : Lang.Get("Select your outfit")), OnTitleBarClose)
-                .AddHorizontalTabs(tabs, tabBounds, onTabClicked, CairoFont.WhiteSmallText(), CairoFont.WhiteSmallText().WithWeight(Cairo.FontWeight.Bold), "tabs")
+                .AddHorizontalTabs(tabs, tabBounds, onTabClicked, CairoFont.WhiteSmallText().WithWeight(Cairo.FontWeight.Bold), CairoFont.WhiteSmallText().WithWeight(Cairo.FontWeight.Bold), "tabs")
                 .BeginChildElements(bgBounds)
             ;
 
@@ -80,9 +84,10 @@ namespace Vintagestory.GameContent
                 var tExt = smallfont.GetTextExtents(Lang.Get("Show dressed"));
                 int colorIconSize = 22;
 
-                ElementBounds leftSlotBounds = ElementStdBounds.SlotGrid(EnumDialogArea.None, 0, ypos, 4, rows).FixedGrow(2 * pad, 2 * pad);
-                insetSlotBounds = ElementBounds.Fixed(0, ypos + 2, 265, leftSlotBounds.fixedHeight - 2 * pad + 10).FixedRightOf(leftSlotBounds, 10);
-                ElementBounds rightSlotBounds = ElementStdBounds.SlotGrid(EnumDialogArea.None, 0, ypos, 1, rows).FixedGrow(2 * pad, 2 * pad).FixedRightOf(insetSlotBounds, 10);
+                ElementBounds leftColBounds = ElementBounds.Fixed(0, ypos, 204, dlgHeight - 76).FixedGrow(2 * pad, 2 * pad);
+
+                insetSlotBounds = ElementBounds.Fixed(0, ypos + 2, 265, leftColBounds.fixedHeight - 2 * pad + 10).FixedRightOf(leftColBounds, 10);
+                ElementBounds rightColBounds = ElementBounds.Fixed(0, ypos, 54, dlgHeight - 76).FixedGrow(2 * pad, 2 * pad).FixedRightOf(insetSlotBounds, 10);
                 ElementBounds toggleButtonBounds = ElementBounds.Fixed(
                         (int)insetSlotBounds.fixedX + insetSlotBounds.fixedWidth / 2 - tExt.Width / RuntimeEnv.GUIScale / 2 - 12, 
                         0,
@@ -120,6 +125,16 @@ namespace Vintagestory.GameContent
 
                         Composers["createcharacter"].AddStaticText(Lang.Get("skinpart-"+code), CairoFont.WhiteSmallText(), bounds = bounds.BelowCopy(0, 10).WithFixedSize(210, 22));
                         Composers["createcharacter"].AddColorListPicker(colors, (index) => onToggleSkinPartColor(code, index), bounds = bounds.BelowCopy(0, 0).WithFixedSize(colorIconSize, colorIconSize), 180, "picker-" + code);
+
+                        for (int i = 0; i < colors.Length; i++)
+                        {
+                            var picker = Composers["createcharacter"].GetColorListPicker("picker-" + code + "-" + i);
+                            picker.ShowToolTip = true;
+                            picker.TooltipText = Lang.Get("color-" + skinpart.Variants[i].Code);
+                            
+                            //Console.WriteLine("\"" + Lang.Get("color-" + skinpart.Variants[i].Code) + "\": \""+ skinpart.Variants[i].Code + "\"");
+                        }
+
                         Composers["createcharacter"].ColorListPickerSetValue("picker-" + code, selectedIndex);
                     }
                     else
@@ -158,8 +173,8 @@ namespace Vintagestory.GameContent
                 Composers["createcharacter"]
                     .AddInset(insetSlotBounds, 2)
                     .AddToggleButton(Lang.Get("Show dressed"), smallfont, OnToggleDressOnOff, toggleButtonBounds, "showdressedtoggle")
-                    .AddSmallButton(Lang.Get("Randomize"), OnRandomizeSkin, ElementBounds.Fixed(0, 0).FixedUnder(rightSlotBounds, 16).WithAlignment(EnumDialogArea.LeftFixed).WithFixedPadding(12, 6), EnumButtonStyle.Normal, EnumTextOrientation.Center)
-                    .AddSmallButton(Lang.Get("Confirm Skin"), OnNext, ElementBounds.Fixed(0, 0).FixedUnder(rightSlotBounds, 16).WithAlignment(EnumDialogArea.RightFixed).WithFixedPadding(12, 6), EnumButtonStyle.Normal, EnumTextOrientation.Center)
+                    .AddSmallButton(Lang.Get("Randomize"), OnRandomizeSkin, ElementBounds.Fixed(0, dlgHeight - 30).WithAlignment(EnumDialogArea.LeftFixed).WithFixedPadding(12, 6), EnumButtonStyle.Normal, EnumTextOrientation.Center)
+                    .AddSmallButton(Lang.Get("Confirm Skin"), OnNext, ElementBounds.Fixed(0, dlgHeight - 30).WithAlignment(EnumDialogArea.RightFixed).WithFixedPadding(12, 6), EnumButtonStyle.Normal, EnumTextOrientation.Center)
                 ;
 
                 Composers["createcharacter"].GetToggleButton("showdressedtoggle").SetValue(!charNaked);

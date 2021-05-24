@@ -308,11 +308,16 @@ namespace Vintagestory.GameContent
                     shapeTextures = shape.Textures;
                     MeshData mesh;
 
-                    tesselator.TesselateShape("plant container content shape", shape, out mesh, this);
+                    try
+                    {
+                        tesselator.TesselateShape("plant container content shape", shape, out mesh, this);
+                    }
+                    catch (Exception e)
+                    { Api.Logger.Error(e.Message + " (when tesselating " + compoShape.Base.WithPathPrefixOnce("shapes/") + ")"); meshwithVariants = null; break; }
 
                     for (int j = 0; j < mesh.RenderPassCount; j++)
                     {
-                        mesh.RenderPasses[j] = (int)EnumChunkRenderPass.OpaqueNoCull;
+                        mesh.RenderPassesAndExtraBits[j] = (int)EnumChunkRenderPass.OpaqueNoCull;
                     }
 
                     Block block = GetContents()?.Block;

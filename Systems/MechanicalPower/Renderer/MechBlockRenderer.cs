@@ -54,7 +54,9 @@ namespace Vintagestory.GameContent.Mechanics
             int i = 0;
             foreach (var dev in renderedDevices.Values)
             {
-                tmp.Set((float)(dev.Position.X - pos.X), (float)(dev.Position.Y - pos.Y), (float)(dev.Position.Z - pos.Z));  //double precision int-double subtraction is needed here (even though the desired result is a float).  It's needed to have enough significant figures in the result, as the integer size could be large e.g. 50000 but the difference should be small (can easily be less than 5)
+                //double precision int-double subtraction is needed here (even though the desired result is a float).  
+                // It's needed to have enough significant figures in the result, as the integer size could be large e.g. 50000 but the difference should be small (can easily be less than 5)
+                tmp.Set((float)(dev.Position.X - pos.X), (float)(dev.Position.Y - pos.Y), (float)(dev.Position.Z - pos.Z));  
 
                 UpdateLightAndTransformMatrix(i, tmp, dev.AngleRad % GameMath.TWOPI, dev);
                 i++;

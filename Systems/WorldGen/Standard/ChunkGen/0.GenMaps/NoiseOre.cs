@@ -53,8 +53,6 @@ namespace Vintagestory.ServerMods
             return val == 0 ? 0 : val | richness | hypercommon;
         }
 
-        int gaussRnd3(int maxint) { return Math.Min(255, (NextInt(maxint) + NextInt(maxint) + NextInt(maxint)) / 3); }
-        int gaussRnd2(int maxint) { return Math.Min(255, (NextInt(maxint) + NextInt(maxint)) / 2); }
 
         int GetRandomOre()
         {
@@ -63,7 +61,6 @@ namespace Vintagestory.ServerMods
             // 35% chance poor
             // 15% chance rich
             // 50% chance normal
-            //int quality = NextInt(2) > 0 ? 160 : (NextInt(50) > 15 ? 85 : 255);
             int quality = (NextInt(2) > 0 ? 1 : (NextInt(50) > 15 ? 0 : 2)) << 10;
 
             // Very low chance for hyper rich area

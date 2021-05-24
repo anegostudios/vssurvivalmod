@@ -108,7 +108,7 @@ namespace Vintagestory.GameContent
                             CompositeTexture ctex = new CompositeTexture(val.Value.Clone());
                             ctex.Bake(api.Assets);
 
-                            textureDict.AddTextureLocation(new AssetLocationAndSource(ctex.Baked.BakedName, "Shape code " + item.Shape.Base));
+                            textureDict.AddTextureLocation(new AssetLocationAndSource(ctex.Baked.BakedName, "Shape code ", item.Shape.Base));
                             tt.TextureSubIdsByCode[val.Key] = textureDict[new AssetLocationAndSource(ctex.Baked.BakedName)];
                         }
                     }
@@ -117,7 +117,7 @@ namespace Vintagestory.GameContent
                 foreach (var val in item.Textures)
                 {
                     val.Value.Bake(api.Assets);
-                    textureDict.AddTextureLocation(new AssetLocationAndSource(val.Value.Baked.BakedName, "Item code " + item.Code));
+                    textureDict.AddTextureLocation(new AssetLocationAndSource(val.Value.Baked.BakedName, "Item code ", item.Code));
                     tt.TextureSubIdsByCode[val.Key] = textureDict[new AssetLocationAndSource(val.Value.Baked.BakedName)];
                 }
 

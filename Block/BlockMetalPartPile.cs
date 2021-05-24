@@ -117,6 +117,7 @@ namespace Vintagestory.GameContent
             }
 
             ItemStack drop = Drops[index].GetNextItemStack(dropQuantityMultiplier);
+            if (drop == null) return new ItemStack[0];
 
             double rndVal = rand.NextDouble();
             Dictionary<int, double> quantityDict = index==0 ? entry.ScrapQuantityChances : entry.PartQuantityChances;

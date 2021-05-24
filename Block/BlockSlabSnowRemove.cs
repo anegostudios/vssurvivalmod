@@ -47,12 +47,11 @@ namespace Vintagestory.GameContent
             ;
         }
 
-        public override void OnJsonTesselation(ref MeshData sourceMesh, BlockPos pos, int[] chunkExtIds, ushort[] chunkLightExt, int extIndex3d)
+        public override void OnJsonTesselation(ref MeshData sourceMesh, ref int[] lightRgbsByCorner, BlockPos pos, Block[] chunkExtBlocks, int extIndex3d)
         {
             if (testGroundSnowRemoval)
             {
-                int nBlockId = chunkExtIds[extIndex3d + TileSideEnum.MoveIndex[TileSideEnum.Down]];
-                Block nblock = api.World.Blocks[nBlockId];
+                Block nblock = chunkExtBlocks[extIndex3d + TileSideEnum.MoveIndex[TileSideEnum.Down]];
 
                 if (!nblock.SideSolid[BlockFacing.UP.Index])
                 {
@@ -67,7 +66,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            if (testGroundSnowAdd && api.World.Blocks[chunkExtIds[extIndex3d + TileSideEnum.MoveIndex[rot.Opposite.Index]]].BlockMaterial == EnumBlockMaterial.Snow && api.World.Blocks[chunkExtIds[extIndex3d + TileSideEnum.MoveIndex[5]]].SideSolid[BlockFacing.UP.Index] == true)
+            if (testGroundSnowAdd && chunkExtBlocks[extIndex3d + TileSideEnum.MoveIndex[rot.Opposite.Index]].BlockMaterial == EnumBlockMaterial.Snow && chunkExtBlocks[extIndex3d + TileSideEnum.MoveIndex[5]].SideSolid[BlockFacing.UP.Index] == true)
             {
                 if (groundSnowedMesh == null)
                 {
@@ -77,7 +76,7 @@ namespace Vintagestory.GameContent
                     // No idea why this is needed
                     for (int i = 0; i < groundSnowedMesh.RenderPassCount; i++)
                     {
-                        groundSnowedMesh.RenderPasses[i] = 0;
+                        groundSnowedMesh.RenderPassesAndExtraBits[i] = 0;
                     }
 
                     groundSnowedMesh.AddMeshData(sourceMesh);

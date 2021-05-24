@@ -187,7 +187,10 @@ namespace Vintagestory.GameContent
 
             // Third prio: Never non cubic blocks
             if (block.DrawType != EnumDrawType.Cube) return false;
-            
+
+            // Fourth prio: Never tinted blocks (because then the chiseled block would have the wrong colors)
+            if (block.SeasonColorMap != null || block.ClimateColorMap != null) return false;
+
             // Otherwise if in creative mode, sure go ahead
             if (player?.WorldData.CurrentGameMode == EnumGameMode.Creative) return true;
 

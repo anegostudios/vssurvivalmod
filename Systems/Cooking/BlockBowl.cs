@@ -107,7 +107,7 @@ namespace Vintagestory.GameContent
             }
 
 
-            handHandling = EnumHandHandling.PreventDefault;
+            //handHandling = EnumHandHandling.PreventDefault;
 
             base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handHandling);
         }

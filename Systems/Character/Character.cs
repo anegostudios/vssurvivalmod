@@ -44,7 +44,8 @@ namespace Vintagestory.GameContent
         ICoreClientAPI capi;
         ICoreServerAPI sapi;
 
-        GuiDialogCreateCharacter dlg;
+        GuiDialogCreateCharacter createCharDlg;
+        GuiDialogCharacterBase charDlg;
 
         bool didSelect;
 
@@ -83,7 +84,74 @@ namespace Vintagestory.GameContent
             api.RegisterCommand("charsel", "", "", onCharSelCmd);
 
             api.Event.BlockTexturesLoaded += loadCharacterClasses;
+
+
+            charDlg = api.Gui.LoadedGuis.Find(dlg => dlg is GuiDialogCharacterBase) as GuiDialogCharacterBase;
+            charDlg.Tabs.Add(new GuiTab() { Name = "Traits", DataInt = 1 });
+            charDlg.RenderTabHandlers.Add(composeTraitsTab);
         }
+
+        private void composeTraitsTab(GuiComposer compo)
+        {
+            compo
+                .AddRichtext(getClassTraitText(), CairoFont.WhiteDetailText().WithLineHeightMultiplier(1.15), ElementBounds.Fixed(0, 25, 385, 200));
+        }
+
+        string getClassTraitText()
+        {
+            string charClass = capi.World.Player.Entity.WatchedAttributes.GetString("characterClass");
+            CharacterClass chclass = characterClasses.FirstOrDefault(c => c.Code == charClass);
+
+            StringBuilder fulldesc = new StringBuilder();
+            StringBuilder attributes = new StringBuilder();
+
+            //fulldesc.AppendLine(Lang.Get("characterdesc-" + chclass.Code));
+            //fulldesc.AppendLine();
+            //fulldesc.AppendLine(Lang.Get("traits-title"));
+
+            var chartraits = chclass.Traits.Select(code => TraitsByCode[code]).OrderBy(trait => (int)trait.Type);
+
+            foreach (var trait in chartraits)
+            {
+                attributes.Clear();
+                foreach (var val in trait.Attributes)
+                {
+                    if (attributes.Length > 0) attributes.Append(", ");
+                    attributes.Append(Lang.Get(string.Format(GlobalConstants.DefaultCultureInfo, "charattribute-{0}-{1}", val.Key, val.Value)));
+                }
+
+                if (attributes.Length > 0)
+                {
+                    fulldesc.AppendLine(Lang.Get("traitwithattributes", Lang.Get("trait-" + trait.Code), attributes));
+                }
+                else
+                {
+                    string desc = Lang.GetIfExists("traitdesc-" + trait.Code);
+                    if (desc != null)
+                    {
+                        fulldesc.AppendLine(Lang.Get("traitwithattributes", Lang.Get("trait-" + trait.Code), desc));
+                    }
+                    else
+                    {
+                        fulldesc.AppendLine(Lang.Get("trait-" + trait.Code));
+                    }
+
+
+                }
+            }
+
+            if (chclass.Traits.Length == 0)
+            {
+                fulldesc.AppendLine("No positive or negative traits");
+            }
+
+            return fulldesc.ToString();
+        }
+
+
+
+
+
 
         private void loadCharacterClasses()
         {
@@ -229,15 +297,15 @@ namespace Vintagestory.GameContent
 
         private void onCharSelCmd(int groupId, CmdArgs args)
         {
-            if (dlg == null)
+            if (createCharDlg == null)
             {
-                dlg = new GuiDialogCreateCharacter(capi, this);
-                dlg.PrepAndOpen();
+                createCharDlg = new GuiDialogCreateCharacter(capi, this);
+                createCharDlg.PrepAndOpen();
             }
 
-            if (!dlg.IsOpened())
+            if (!createCharDlg.IsOpened())
             {
-                dlg.TryOpen();
+                createCharDlg.TryOpen();
             }
         }
 
@@ -250,8 +318,8 @@ namespace Vintagestory.GameContent
         {
             if (!didSelect && byPlayer.PlayerUID == capi.World.Player.PlayerUID)
             {
-                dlg = new GuiDialogCreateCharacter(capi, this);
-                dlg.PrepAndOpen();
+                createCharDlg = new GuiDialogCreateCharacter(capi, this);
+                createCharDlg.PrepAndOpen();
             }
         }
 
@@ -447,7 +515,7 @@ namespace Vintagestory.GameContent
 
             capi.Network.SendPlayerNowReady();
 
-            dlg = null;
+            createCharDlg = null;
         }
     }
 }

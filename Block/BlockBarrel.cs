@@ -46,13 +46,13 @@ namespace Vintagestory.GameContent
 
             bool issealed = itemstack.Attributes.GetBool("sealed");
 
-            int hashcode = GetBarrelHashCode(capi.World, contentStacks[0], contentStacks[1]);
+            int hashcode = GetBarrelHashCode(capi.World, contentStacks[0], contentStacks.Length > 1 ? contentStacks[1] : null);
 
             MeshRef meshRef;
 
             if (!meshrefs.TryGetValue(hashcode, out meshRef))
             {
-                MeshData meshdata = GenMesh(contentStacks[0], contentStacks[1], issealed);
+                MeshData meshdata = GenMesh(contentStacks[0], contentStacks.Length > 1 ? contentStacks[1] : null, issealed);
                 //meshdata.Rgba2 = null;
                 meshrefs[hashcode] = meshRef = capi.Render.UploadMesh(meshdata);
             }

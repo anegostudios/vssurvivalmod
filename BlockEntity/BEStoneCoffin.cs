@@ -46,6 +46,10 @@ namespace Vintagestory.GameContent
         bool structureComplete;
         int tickCounter;
 
+        int tempStoneCoffin;
+        BlockPos tmpPos = new BlockPos();
+        BlockPos[] particlePositions = new BlockPos[7];
+
         public override InventoryBase Inventory => inv;
         public override string InventoryClassName => "stonecoffin";
 
@@ -57,7 +61,6 @@ namespace Vintagestory.GameContent
             }
         }
 
-        BlockPos[] particlePositions = new BlockPos[7];
 
         public BlockEntityStoneCoffin()
         {
@@ -96,8 +99,6 @@ namespace Vintagestory.GameContent
 
             blockScs = Block as BlockStoneCoffinSection;
             updateSelectiveElements();
-
-
 
 
             particlePositions[0] = Pos.DownCopy(2);
@@ -223,14 +224,14 @@ namespace Vintagestory.GameContent
         {
             if (CoalLayerCount >= 5)
             {
-                capi?.TriggerIngameError(this, "notenoughfuel", Lang.Get("This stone coffin is full already!"));
+                capi?.TriggerIngameError(this, "notenoughfuel", Lang.Get("This stone coffin is full already"));
                 return false;
             }
 
             var props = slot.Itemstack.Collectible.CombustibleProps;
             if (props == null || props.BurnTemperature < 1300)
             {
-                capi?.TriggerIngameError(this, "wrongfuel", Lang.Get("Needs a layer of high-quality carbon-bearing material (coke or coal or charcoal)"));
+                capi?.TriggerIngameError(this, "wrongfuel", Lang.Get("Needs a layer of high-quality carbon-bearing material (coke or charcoal)"));
                 return false;
             }
 
@@ -257,7 +258,7 @@ namespace Vintagestory.GameContent
         {
             if (IngotCount >= 16)
             {
-                capi?.TriggerIngameError(this, "notenoughfuel", Lang.Get("This stone coffin is full already!"));
+                capi?.TriggerIngameError(this, "notenoughfuel", Lang.Get("This stone coffin is full already"));
                 return false;
             }
 
@@ -267,7 +268,8 @@ namespace Vintagestory.GameContent
                 return false;
             }
 
-            int moved = slot.TryPutInto(Api.World, inv[1], 1);
+            ItemStackMoveOperation op = new ItemStackMoveOperation(Api.World, EnumMouseButton.Left, 0, EnumMergePriority.DirectMerge, 1);
+            int moved = slot.TryPutInto(inv[1], ref op);
             if (moved == 0)
             {
                 capi?.TriggerIngameError(this, "cannotmixfuels", Lang.Get("Cannot mix ingots, it will mess with the carburisation process!"));
@@ -283,6 +285,8 @@ namespace Vintagestory.GameContent
 
         public int IngotCount => inv[1].StackSize;
         public int CoalLayerCount => inv[0].StackSize / 8;
+
+        public int CoffinTemperature => tempStoneCoffin;
 
         string[] selectiveElementsMain = new string[0];
         string[] selectiveElementsSecondary = new string[0];
@@ -381,6 +385,20 @@ namespace Vintagestory.GameContent
 
                 progress += heatHoursReceived / 160f;
                 totalHoursLastUpdate = Api.World.Calendar.TotalHours;
+
+                float temp = inv[1].Itemstack.Collectible.GetTemperature(Api.World, inv[1].Itemstack);
+                float tempGain = (float)(hoursPassed * 500);
+                inv[1].Itemstack.Collectible.SetTemperature(Api.World, inv[1].Itemstack, Math.Min(800, temp + tempGain));
+
+                if (Math.Abs(tempStoneCoffin - temp) > 25)
+                {
+                    tempStoneCoffin = (int)temp;
+                    if (tempStoneCoffin > 500)
+                    {
+                        MarkDirty(true);
+                    }
+                }
+
                 MarkDirty();
             }
 
@@ -391,9 +409,11 @@ namespace Vintagestory.GameContent
                 JsonItemStack jstack = inv[1].Itemstack.ItemAttributes?["carburizableProps"]["carburizedOutput"].AsObject<JsonItemStack>(null, Block.Code.Domain);
                 if (jstack.Resolve(Api.World, "carburizable output"))
                 {
+                    float temp = inv[1].Itemstack.Collectible.GetTemperature(Api.World, inv[0].Itemstack);
                     inv[0].Itemstack.StackSize -= 8;
                     inv[1].Itemstack = jstack.ResolvedItemstack.Clone();
                     inv[1].Itemstack.StackSize = stacksize;
+                    inv[1].Itemstack.Collectible.SetTemperature(Api.World, inv[1].Itemstack, temp);
                 }
                 MarkDirty();
 
@@ -421,7 +441,6 @@ namespace Vintagestory.GameContent
             ;
         }
 
-        BlockPos tmpPos = new BlockPos();
         private void onClientTick50ms(float dt)
         {
             if (processComplete || !structureComplete) return;
@@ -446,7 +465,7 @@ namespace Vintagestory.GameContent
                         particles = smokeParticles;
                         particles.Quantity.avg = 0.2f;
                         particles.basePos.Set(pos.X + 0.5, pos.Y + 0.75, pos.Z + 0.5);
-                        particles.Velocity[1].avg = (float)(0.3 + 0.3 * rnd.NextDouble());
+                        particles.Velocity[1].avg = (float)(0.3 + 0.3 * rnd.NextDouble()) * 2;
                         particles.PosOffset[1].var = 0.2f;
                         particles.Velocity[0].avg = (float)(rnd.NextDouble() - 0.5) / 4;
                         particles.Velocity[2].avg = (float)(rnd.NextDouble() - 0.5) / 4;
@@ -456,10 +475,10 @@ namespace Vintagestory.GameContent
                     {
                         particles.Quantity.avg = GameMath.Sqrt(0.5f * (index == 0 ? 0.5f : (index == 1 ? 5 : 0.6f)))/2f;
                         particles.basePos.Set(pos.X + 0.5, pos.Y + 0.5, pos.Z + 0.5);
-                        particles.Velocity[1].avg = (float)(0.5 + 0.5 * rnd.NextDouble());
+                        particles.Velocity[1].avg = (float)(0.5 + 0.5 * rnd.NextDouble()) * 2;
                         particles.PosOffset[1].var = 1;
-                        particles.Velocity[0].avg = (float)(rnd.NextDouble() - 0.5) / 2;
-                        particles.Velocity[2].avg = (float)(rnd.NextDouble() - 0.5) / 2;
+                        particles.Velocity[0].avg = (float)(rnd.NextDouble() - 0.5);
+                        particles.Velocity[2].avg = (float)(rnd.NextDouble() - 0.5);
                     }
 
                     
@@ -486,6 +505,7 @@ namespace Vintagestory.GameContent
             progress = tree.GetDouble("progress");
             processComplete = tree.GetBool("processComplete");
             structureComplete = tree.GetBool("structureComplete");
+            tempStoneCoffin = tree.GetInt("tempStoneCoffin");
 
             if (worldAccessForResolve.Api.Side == EnumAppSide.Client)
             {
@@ -507,6 +527,7 @@ namespace Vintagestory.GameContent
             tree.SetDouble("progress", progress);
             tree.SetBool("processComplete", processComplete);
             tree.SetBool("structureComplete", structureComplete);
+            tree.SetInt("tempStoneCoffin", tempStoneCoffin);
         }
 
         public override void OnBlockRemoved()
@@ -552,6 +573,8 @@ namespace Vintagestory.GameContent
 
             mesher.AddMeshData(meshdataMain);
             mesher.AddMeshData(meshdataSecondary);
+
+            
 
             return false;
         }
@@ -606,7 +629,7 @@ namespace Vintagestory.GameContent
         {
         }
 
-        public override void DropAll(Vec3d pos)
+        public override void DropAll(Vec3d pos, int maxStackSize = 0)
         {
             foreach (var slot in this)
             {

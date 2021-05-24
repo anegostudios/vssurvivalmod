@@ -20,19 +20,21 @@ namespace Vintagestory.ServerMods
         public override int[] GenLayer(int xCoord, int zCoord, int sizeX, int sizeZ)
         {
             int[] result = new int[sizeX * sizeZ];
-            
-            int cacheSizeX = (int)Math.Ceiling((float)sizeX / TerraGenConfig.oreMapSubScale) + 1;
-            int cacheSizeZ = (int)Math.Ceiling((float)sizeZ / TerraGenConfig.oreMapSubScale) + 1;
 
-            int[] oreCache = getOreCache(xCoord / TerraGenConfig.oreMapSubScale, zCoord / TerraGenConfig.oreMapSubScale, cacheSizeX, cacheSizeZ);
+            float scale = TerraGenConfig.oreMapSubScale * zoomMul;
+
+            int cacheSizeX = (int)Math.Ceiling((float)sizeX / scale) + 1;
+            int cacheSizeZ = (int)Math.Ceiling((float)sizeZ / scale) + 1;
+
+            int[] oreCache = getOreCache((int)(xCoord / scale), (int)(zCoord / scale), cacheSizeX, cacheSizeZ);
 
             for (int x = 0; x < sizeX; x++)
             {
                 for (int z = 0; z < sizeZ; z++)
                 {
                     result[z * sizeX + x] = map.GetLerpedOreValueAt(
-                        x / (double)TerraGenConfig.oreMapSubScale / zoomMul,
-                        z / (double)TerraGenConfig.oreMapSubScale / zoomMul,
+                        x / (double)scale,
+                        z / (double)scale,
                         oreCache,
                         cacheSizeX,
                         contrastMul,

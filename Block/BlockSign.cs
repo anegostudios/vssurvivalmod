@@ -120,5 +120,14 @@ namespace Vintagestory.GameContent
         {
             return interactions.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
         }
+
+        public override AssetLocation GetRotatedBlockCode(int angle)
+        {
+            BlockFacing beforeFacing = BlockFacing.FromCode(LastCodePart());
+            int rotatedIndex = GameMath.Mod(beforeFacing.HorizontalAngleIndex - angle / 90, 4);
+            BlockFacing nowFacing = BlockFacing.HORIZONTALS_ANGLEORDER[rotatedIndex];
+
+            return CodeWithParts(nowFacing.Code);
+        }
     }
 }

@@ -168,12 +168,13 @@ namespace Vintagestory.ServerMods
             this.climateBotLeft = climateBotLeft;
             this.climateBotRight = climateBotRight;
 
-            float cnt = QuantityStructures.nextFloat();
+            rand.InitPositionSeed(pos.X, pos.Z);
+
+            float cnt = QuantityStructures.nextFloat(1, rand);
             int minQuantity = (int)cnt;
             BlockPos schemPos = pos.Copy();
             Cuboidi location = new Cuboidi();
 
-            rand.InitPositionSeed(pos.X, pos.Z);
 
             List<GeneratableStructure> generatables = new List<GeneratableStructure>();
 

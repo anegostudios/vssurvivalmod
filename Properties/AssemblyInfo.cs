@@ -49,6 +49,7 @@ using Vintagestory.API.Config;
 	    playstyles: [
 		    {
 			    code: ""surviveandbuild"",
+                playListCode: ""survival"",
                 langcode: ""preset-surviveandbuild"",
 			    requestMods: [""game"", ""survival""],
                 listOrder: 5,
@@ -68,6 +69,7 @@ using Vintagestory.API.Config;
 		    },
 		    {
 			    code: ""exploration"",
+                playListCode: ""survival"",
                 langcode: ""preset-exploration"",
 			    requestMods: [""game"", ""survival""],
                 listOrder: 6,
@@ -83,7 +85,7 @@ using Vintagestory.API.Config;
                     playerHungerSpeed: ""0.5"",
                     foodSpoilSpeed: ""0.5"",
                     toolDurability: ""2"",
-                    saplingGrowthDays: ""5"",
+                    saplingGrowthRate: ""0.5"",
                     playerMoveSpeed: ""1.25"",
                     temporalStability: ""false"",
                     temporalStorms: ""off"",
@@ -98,6 +100,7 @@ using Vintagestory.API.Config;
 			},
             {
                 code: ""wildernesssurvival"",
+                musicListCode: ""survival"",
                 langcode: ""preset-wildernesssurvival"",
 			    requestMods: [""game"", ""survival""],
                 listOrder: 7,
@@ -120,7 +123,7 @@ using Vintagestory.API.Config;
                     allowLandClaiming: ""false"",
                     surfaceCopperDeposits: ""0.05"",
                     surfaceTinDeposits: ""0"",
-                    saplingGrowthDays: ""24"",
+                    saplingGrowthRate: ""3"",
                     temporalStability: ""true"",
                     temporalStorms: ""often"",
                     polarEquatorDistance: ""100000"",
@@ -133,27 +136,27 @@ using Vintagestory.API.Config;
 	    ],
 	    worldConfigAttributes: [
             { code: ""gameMode"", dataType: ""dropdown"", values: [""survival"", ""creative""], names: [""Survival"", ""Creative""], default: ""survival"" },
-            { code: ""worldClimate"", dataType: ""dropdown"", values: [""realistic"", ""patchy""], names: [""Realistic"", ""Patchy""], default: ""realistic"" },
-            { code: ""worldWidth"", dataType: ""dropdown"", values: [""1024000"", ""600000"", ""512000"", ""102400"", ""51200"", ""10240"", ""5120"", ""1024"", ""512"", ""384"", ""256"", ""128"", ""64"", ""32"" ], names: [""1 mil blocks"", ""600k blocks"", ""512k blocks"", ""102k blocks"", ""51k blocks"", ""10k blocks"", ""5120 blocks"", ""1024 blocks"", ""512 blocks"", ""384 blocks"", ""256 blocks"", ""128 blocks"", ""64 blocks"", ""32 blocks""], default: ""1024000"" },
-            { code: ""worldLength"", dataType: ""dropdown"", values: [""1024000"", ""600000"", ""512000"", ""102400"", ""51200"", ""10240"", ""5120"", ""1024"", ""512"", ""384"", ""256"", ""128"", ""64"", ""32"" ], names: [""1 mil blocks"", ""600k blocks"", ""512k blocks"", ""102k blocks"", ""51k blocks"", ""10k blocks"", ""5120 blocks"", ""1024 blocks"", ""512 blocks"", ""384 blocks"", ""256 blocks"", ""128 blocks"", ""64 blocks"", ""32 blocks""], default: ""1024000"" },
+            { code: ""worldClimate"", dataType: ""dropdown"", values: [""realistic"", ""patchy""], names: [""Realistic"", ""Patchy""], default: ""realistic"", onlyDuringWorldCreate: true },
+            { code: ""worldWidth"", dataType: ""dropdown"", values: [""1024000"", ""600000"", ""512000"", ""102400"", ""51200"", ""10240"", ""5120"", ""1024"", ""512"", ""384"", ""256"", ""128"", ""64"", ""32"" ], names: [""1 mil blocks"", ""600k blocks"", ""512k blocks"", ""102k blocks"", ""51k blocks"", ""10k blocks"", ""5120 blocks"", ""1024 blocks"", ""512 blocks"", ""384 blocks"", ""256 blocks"", ""128 blocks"", ""64 blocks"", ""32 blocks""], default: ""1024000"", onlyDuringWorldCreate: true },
+            { code: ""worldLength"", dataType: ""dropdown"", values: [""1024000"", ""600000"", ""512000"", ""102400"", ""51200"", ""10240"", ""5120"", ""1024"", ""512"", ""384"", ""256"", ""128"", ""64"", ""32"" ], names: [""1 mil blocks"", ""600k blocks"", ""512k blocks"", ""102k blocks"", ""51k blocks"", ""10k blocks"", ""5120 blocks"", ""1024 blocks"", ""512 blocks"", ""384 blocks"", ""256 blocks"", ""128 blocks"", ""64 blocks"", ""32 blocks""], default: ""1024000"", onlyDuringWorldCreate: true },
             { code: ""worldEdge"", dataType: ""dropdown"", values: [""blocked"", ""traversable"" ], names: [""Blocked"", ""Traversable (Can fall down)""], default: ""traversable"" },
 
-            { code: ""polarEquatorDistance"", dataType: ""dropdown"", values: [""800000"", ""400000"", ""200000"", ""100000"", ""50000"", ""25000"", ""15000"", ""10000"", ""5000""], names: [""800k blocks"", ""400k blocks"", ""200k blocks"", ""100k blocks"", ""50k blocks"", ""25k blocks"", ""15k blocks"", ""10k blocks"", ""5000 blocks""], default: ""50000"" },
-            { code: ""startingClimate"", dataType: ""dropdown"", values: [""hot"", ""warm"", ""temperate"", ""cool"", ""icy""], names: [""Hot (28-32°C)"", ""Warm (19-23 °C)"", ""Temperate (6-14 °C)"", ""Cool (-5 to 1 °C)"", ""Icy (-15 to -10°C)""], default: ""temperate"" },
+            { code: ""polarEquatorDistance"", dataType: ""dropdown"", values: [""800000"", ""400000"", ""200000"", ""100000"", ""50000"", ""25000"", ""15000"", ""10000"", ""5000""], names: [""800k blocks"", ""400k blocks"", ""200k blocks"", ""100k blocks"", ""50k blocks"", ""25k blocks"", ""15k blocks"", ""10k blocks"", ""5000 blocks""], default: ""50000"", onlyDuringWorldCreate: true },
+            { code: ""startingClimate"", dataType: ""dropdown"", values: [""hot"", ""warm"", ""temperate"", ""cool"", ""icy""], names: [""Hot (28-32°C)"", ""Warm (19-23 °C)"", ""Temperate (6-14 °C)"", ""Cool (-5 to 1 °C)"", ""Icy (-15 to -10°C)""], default: ""temperate"", onlyDuringWorldCreate: true },
             { code: ""seasons"", dataType: ""dropdown"", values: [""enabled"", ""spring""], names: [""Enabled"", ""Off, always spring""], default: ""enabled"" },
             { code: ""daysPerMonth"", dataType: ""dropdown"", values: [""30"", ""20"", ""12"", ""9"", ""6"", ""3""], names: [""30 days (24 real life hours)"", ""20 days (16 real life hours)"", ""12 days (9.6 real life hours)"", ""9 days (7.2 real life hours)"", ""6 days (4.8 real life hours)"", ""3 days (2.4 real life hours)""], default: ""9"" },
             { code: ""snowAccum"", dataType: ""dropdown"", values: [""true"", ""false""], names: [""Enabled"", ""Disabled""], default: ""true"" },
             { code: ""harshWinters"", dataType: ""dropdown"", values: [""true"", ""false""], names: [""Enabled"", ""Disabled""], default: ""true"" },
             { code: ""bodyTemperatureResistance"", dataType: ""dropdown"", values: [""-40"", ""-30"", ""-25"", ""-20"", ""-15"", ""-10"", ""-5"", ""0"", ""5"", ""10"", ""15"", ""20""], names: [""-40"", ""-30"", ""-25"", ""-20"", ""-15"", ""-10"", ""-5"", ""0"", ""5"", ""10"", ""15"", ""20""], default: ""0"" },
             
-            { code: ""globalTemperature"", dataType: ""dropdown"", values: [""4"", ""2"", ""1.5"", ""1"", ""0.75"", ""0.5"", ""0.25""], names: [""Scorching hot"", ""Very hot"", ""Hot"", ""Normal"", ""Cold"", ""Very Cold"", ""Snowball earth""], default: ""1"" },
-            { code: ""globalPrecipitation"", dataType: ""dropdown"", values: [""4"", ""2"", ""1.5"", ""1"", ""0.5"", ""0.25"", ""0.1""], names: [""Super humid"", ""Very humid"", ""Humid"", ""Normal"", ""Semi-Arid"", ""Arid"", ""Hyperarid""], default: ""1"" },
-            { code: ""globalForestation"", dataType: ""dropdown"", values: [""1"", ""0.9"", ""0.75"", ""0.5"", ""0.25"", ""0"", ""-0.25"", ""-0.5"", ""-0.75"", ""-0.9"", ""-1""], names: [""Forest World (+100%)"", ""Extremely forested (+90%)"", ""Very highly forested (+75%)"", ""Highly forested (+50%)"", ""Somewhat more forest (+25%)"", ""Normal"", ""Somewhat less forest (-25%)"", ""Significantly less forested (-50%)"", ""Much less forested (-75%)"", ""Near Tree-less (-90%)"", ""Tree-less World (-100%)""], default: ""0"" },
+            { code: ""globalTemperature"", dataType: ""dropdown"", values: [""4"", ""2"", ""1.5"", ""1"", ""0.75"", ""0.5"", ""0.25""], names: [""Scorching hot"", ""Very hot"", ""Hot"", ""Normal"", ""Cold"", ""Very Cold"", ""Snowball earth""], default: ""1"", onlyDuringWorldCreate: true },
+            { code: ""globalPrecipitation"", dataType: ""dropdown"", values: [""4"", ""2"", ""1.5"", ""1"", ""0.5"", ""0.25"", ""0.1""], names: [""Super humid"", ""Very humid"", ""Humid"", ""Normal"", ""Semi-Arid"", ""Arid"", ""Hyperarid""], default: ""1"", onlyDuringWorldCreate: true },
+            { code: ""globalForestation"", dataType: ""dropdown"", values: [""1"", ""0.9"", ""0.75"", ""0.5"", ""0.25"", ""0"", ""-0.25"", ""-0.5"", ""-0.75"", ""-0.9"", ""-1""], names: [""Forest World (+100%)"", ""Extremely forested (+90%)"", ""Very highly forested (+75%)"", ""Highly forested (+50%)"", ""Somewhat more forest (+25%)"", ""Normal"", ""Somewhat less forest (-25%)"", ""Significantly less forested (-50%)"", ""Much less forested (-75%)"", ""Near Tree-less (-90%)"", ""Tree-less World (-100%)""], default: ""0"", onlyDuringWorldCreate: true },
             
             { code: ""microblockChiseling"", dataType: ""dropdown"", values: [""off"", ""stonewood"", ""all""], names: [""Off"", ""Stone and Wood"", ""Most cubic blocks""], default: ""stonewood"" },
             { code: ""deathPunishment"", dataType: ""dropdown"", values: [""drop"", ""keep""], names: [""Drop inventory contents"", ""Keep inventory contents""], default: ""drop"" },
             { code: ""spawnRadius"", dataType: ""dropdown"", values: [""10000"", ""5000"", ""2500"", ""1000"", ""500"", ""250"", ""100"", ""50"", ""25"", ""0""], names: [""10000 blocks"", ""5000 blocks"", ""2500 blocks"", ""1000 blocks"", ""500 blocks"", ""250 blocks"", ""100 blocks"", ""50 blocks"", ""25 blocks"",""0 blocks""], default: ""50"" },
-            { code: ""graceTimer"", dataType: ""dropdown"", values: [""10"", ""5"", ""4"", ""3"", ""2"", ""1"", ""0""], names: [""10 days before monsters appear"", ""5 days before monsters appear"", ""4 days before monsters appear"", ""3 days before monsters appear"", ""2 days before monsters appear"", ""1 day before monsters appear"", ""No timer. Monsters spawn right away.""], default: ""0"" },
+            { code: ""graceTimer"", dataType: ""dropdown"", values: [""10"", ""5"", ""4"", ""3"", ""2"", ""1"", ""0""], names: [""10 days before monsters appear"", ""5 days before monsters appear"", ""4 days before monsters appear"", ""3 days before monsters appear"", ""2 days before monsters appear"", ""1 day before monsters appear"", ""No timer. Monsters spawn right away.""], default: ""0"", onlyDuringWorldCreate: true },
             { code: ""creatureHostility"", dataType: ""dropdown"", values: [""aggressive"", ""passive"", ""off""], names: [""Aggressive"", ""Passive"", ""Never hostile""], default: ""aggressive"" },
             { code: ""creatureStrength"", dataType: ""dropdown"", values: [""4"", ""2"", ""1.5"", ""1"", ""0.5"", ""0.25""], names: [""Deadly (400%)"", ""Very Strong (200%)"", ""Strong (150%)"", ""Normal (100%)"", ""Weak (50%)"", ""Very weak (25%)""], default: ""1"" },
             { code: ""playerHealthPoints"", dataType: ""dropdown"", values: [""5"", ""10"", ""15"", ""20"", ""25"", ""30"", ""35""], names: [""5 hp"", ""10 hp"", ""15 hp"", ""20 hp"", ""25 hp"", ""30 hp"", ""35 hp""], default: ""15"" },
@@ -163,7 +166,7 @@ using Vintagestory.API.Config;
             { code: ""blockGravity"", dataType: ""dropdown"", values: [""sandgravel"", ""sandgravelsoil""], names: [""Sand and gravel"", ""Sand, gravel and soil with sideways instability""], default: ""sandgravel"" },
 
             { code: ""foodSpoilSpeed"", dataType: ""dropdown"", values: [""4"", ""3"", ""2"", ""1.5"", ""1.25"", ""1"", ""0.75"", ""0.5"", ""0.25""], names: [""400%"", ""300%"", ""200%"", ""150%"", ""125%"", ""100%"", ""75%"", ""50%"", ""25%""], default: ""1"" },
-            { code: ""saplingGrowthDays"", dataType: ""dropdown"", values: [""1.5"", ""3"", ""5"", ""6.5"", ""8"", ""10"", ""12"", ""24"", ""48"", ""96""], names: [""1.5 days"", ""3 days"", ""5 days"", ""6.5 days"", ""8 days"", ""10 days"", ""12 days"", ""24 days"", ""48 days"", ""96 days""], default: ""8"" },
+            { code: ""saplingGrowthRate"", dataType: ""dropdown"", values: [""16"", ""8"", ""4"", ""2"", ""1.5"", ""1"", ""0.75"", ""0.5"", ""0.25""], names: [""Extremely slow (16x)"", ""Much slower (8x)"", ""Slower (4x)"", ""Somewhat slower (2x)"", ""Slightly slower (1.5x)"", ""Normal (1x)"", ""Slightly faster (0.75x)"", ""Faster (0.5x)"", ""Much faster (0.25x)""], default: ""1"" },
             { code: ""toolDurability"", dataType: ""dropdown"", values: [""4"", ""3"", ""2"", ""1.5"", ""1.25"", ""1"", ""0.75"", ""0.5""], names: [""400%"", ""300%"", ""200%"", ""150%"", ""125%"", ""100%"", ""75%"", ""50%""], default: ""1"" },
             { code: ""toolMiningSpeed"", dataType: ""dropdown"", values: [""3"", ""2"", ""1.5"", ""1.25"", ""1"", ""0.75"", ""0.5"", ""0.25""], names: [""300%"", ""200%"", ""150%"", ""125%"", ""100%"", ""75%"", ""50%"", ""25%""], default: ""1"" },
 

@@ -309,9 +309,9 @@ namespace Vintagestory.GameContent.Mechanics
             return true;
         }
 
-        public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
+        public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
         {
-            base.FromTreeAtributes(tree, worldAccessForResolve);
+            base.FromTreeAttributes(tree, worldAccessForResolve);
 
             long nowNetworkId = tree.GetLong("networkid");
             if (worldAccessForResolve.Side == EnumAppSide.Client)
@@ -441,8 +441,8 @@ namespace Vintagestory.GameContent.Mechanics
                     IMechanicalPowerDevice node = Api.World.BlockAccessor.GetBlockEntity(neibPos)?.GetBehavior<BEBehaviorMPBase>() as IMechanicalPowerDevice;
                     if (node != null)
                     {
-                        BlockFacing facing = node.GetPropagationDirectionInput();
-                        SetPropagationDirection(new MechPowerPath(facing, node.GetGearedRatio(facing), neibPos));
+                        BlockFacing facing = node.IsPropagationDirection(Position, powerOutFacing) ? powerOutFacing : powerOutFacing.Opposite;
+                        SetPropagationDirection(new MechPowerPath(facing, node.GetGearedRatio(facing.Opposite), neibPos));
                     }
                 }
             }

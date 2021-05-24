@@ -72,13 +72,14 @@ namespace Vintagestory.GameContent
         protected Shape nowTesselatingShape;
         protected ICoreClientAPI capi;
         protected MeshData[] meshes;
-
+        protected MealMeshCache ms;
 
 
 
         public override void Initialize(ICoreAPI api)
         {
             base.Initialize(api);
+            this.ms = api.ModLoader.GetModSystem<MealMeshCache>();
 
             capi = api as ICoreClientAPI;
             if (capi != null)
@@ -146,7 +147,11 @@ namespace Vintagestory.GameContent
             ICoreClientAPI capi = Api as ICoreClientAPI;
             if (stack.Class == EnumItemClass.Block)
             {
-                mesh = capi.TesselatorManager.GetDefaultBlockMesh(stack.Block).Clone();
+                if (stack.Block is BlockPie)
+                {
+                    mesh = ms.GetPieMesh(stack);
+                }
+                else mesh = capi.TesselatorManager.GetDefaultBlockMesh(stack.Block).Clone();
             }
             else
             {
@@ -172,7 +177,7 @@ namespace Vintagestory.GameContent
                     mesh.Translate(0, -7.5f / 16f, 0f);
                 }
 
-                mesh.RenderPasses.Fill((byte)EnumChunkRenderPass.BlendNoCull);
+                mesh.RenderPassesAndExtraBits.Fill((byte)EnumChunkRenderPass.BlendNoCull);
 
             }
 

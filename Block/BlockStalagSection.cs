@@ -157,6 +157,16 @@ namespace Vintagestory.GameContent
             }
         }
 
+        public override string GetHeldItemName(ItemStack itemStack)
+        {
+            return Lang.Get("block-speleothem", Lang.Get("rock-" + Variant["rock"]));
+        }
+
+        public override string GetPlacedBlockName(IWorldAccessor world, BlockPos pos)
+        {
+            return Lang.Get("block-speleothem", Lang.Get("rock-" + Variant["rock"]));
+        }
+
         public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
         {
             base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);

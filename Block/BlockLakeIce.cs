@@ -29,7 +29,7 @@ namespace Vintagestory.GameContent
             world.BlockAccessor.SetBlock(waterBlock.Id, pos);
         }
 
-        public override bool MergeFaceNeighbouringIce(int facingIndex, Block neighbourIce, int intraChunkIndex3d)
+        public override bool ShouldMergeFace(int facingIndex, Block neighbourIce, int intraChunkIndex3d)
         {
             return BlockMaterial == neighbourIce.BlockMaterial;
         }

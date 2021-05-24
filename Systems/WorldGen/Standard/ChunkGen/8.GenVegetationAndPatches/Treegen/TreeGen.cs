@@ -34,8 +34,10 @@ namespace Vintagestory.ServerMods
 
         public void GrowTree(IBlockAccessor api, BlockPos pos, float sizeModifier = 1f, float vineGrowthChance = 0, float otherBlockChance = 1f)
         {
+            Random rnd = rand.Value;
+
             this.api = api;
-            this.size = sizeModifier * config.sizeMultiplier;
+            this.size = sizeModifier * config.sizeMultiplier + config.sizeVar.nextFloat(1, rnd);
             this.vineGrowthChance = vineGrowthChance;
             this.otherBlockChance = otherBlockChance;
 
@@ -47,7 +49,6 @@ namespace Vintagestory.ServerMods
             branchesByDepth.Add(null);
             branchesByDepth.AddRange(config.branches);
 
-            Random rnd = rand.Value;
 
             for (int i = 0; i < trunks.Length; i++)
             {
@@ -81,17 +82,18 @@ namespace Vintagestory.ServerMods
 
             TreeGenBranch branch = branchesByDepth[Math.Min(depth, branchesByDepth.Count - 1)];
 
-
+            float widthloss = branch.WidthLoss(rand);
+            float widthlossCurve = branch.widthlossCurve;
             float branchspacing = branch.branchSpacing.nextFloat(1, rand);
             float branchstart = branch.branchStart.nextFloat(1, rand);
             float branchQuantityStart = branch.branchQuantity.nextFloat(1, rand);
             float branchWidthMulitplierStart = branch.branchWidthMultiplier.nextFloat(1, rand);
 
             float reldistance = 0, lastreldistance = 0;
-            float totaldistance = curWidth / branch.widthloss;
+            float totaldistance = curWidth / widthloss;
 
             int iteration = 0;
-            float sequencesPerIteration = 1f / (curWidth / branch.widthloss);
+            float sequencesPerIteration = 1f / (curWidth / widthloss);
 
             
             float ddrag = 0, angleVer = 0, angleHor = 0;
@@ -110,7 +112,8 @@ namespace Vintagestory.ServerMods
 
             while (curWidth > 0 && iteration++ < 5000)
             {
-                curWidth -= branch.widthloss;
+                curWidth -= widthloss;
+                if (widthlossCurve + curWidth / 20 < 1f) widthloss *= (widthlossCurve + curWidth / 20);
                 
                 currentSequence = sequencesPerIteration * (iteration - 1);
 
@@ -133,7 +136,7 @@ namespace Vintagestory.ServerMods
                 dy += Math.Min(1, Math.Max(-1, GameMath.FastCos(angleVer) - ddrag));
                 dz += sinAngleVer * sinAngleHor / Math.Max(1, Math.Abs(ddrag));
 
-                int blockId = getBlockId(curWidth);
+                int blockId = branch.getBlockId(curWidth, config.treeBlocks, this);
                 if (blockId == 0) return;
 
                 currentPos = pos.AddCopy(dx, dy, dz);
@@ -192,7 +195,7 @@ namespace Vintagestory.ServerMods
 
                     float prevHorAngle = 0f;
                     float horAngle;
-                    float minHorangleDist = Math.Min(GameMath.PI / 10, branch.branchHorizontalAngle.var / 5);
+                    float minHorangleDist = Math.Min(GameMath.PI / 5, branch.branchHorizontalAngle.var / 5);
                     
 
                     bool first = true;
@@ -203,12 +206,16 @@ namespace Vintagestory.ServerMods
 
                         curWidth *= branch.branchWidthLossMul;
 
-                        horAngle = branch.branchHorizontalAngle.nextFloat(1, rand);
+                        horAngle = angleHor + branch.branchHorizontalAngle.nextFloat(1, rand);
 
-                        int tries = 5;
+                        int tries = 10;
                         while (!first && Math.Abs(horAngle - prevHorAngle) < minHorangleDist && tries-- > 0)
                         {
-                            horAngle = branch.branchHorizontalAngle.nextFloat(1, rand);
+                            float newAngle = angleHor + branch.branchHorizontalAngle.nextFloat(1, rand);
+                            if (Math.Abs(horAngle - prevHorAngle) < Math.Abs(newAngle - prevHorAngle))
+                            {
+                                horAngle = newAngle;
+                            }
                         }
 
                         if (branch.branchWidthMultiplierEvolve != null)
@@ -224,33 +231,22 @@ namespace Vintagestory.ServerMods
                             depth + 1, 
                             pos, dx + trunkOffsetX, dy, dz + trunkOffsetZ, 
                             branch.branchVerticalAngle.nextFloat(1, rand), 
-                            angleHor + branch.branchHorizontalAngle.nextFloat(1, rand), 
+                            horAngle,
                             branchWidth,
                             Math.Max(0, branch.dieAt.nextFloat(1, rand))
                         );
 
                         first = false;
-                        prevHorAngle = horAngle;
+                        prevHorAngle = angleHor + horAngle;
                     }
                 }
             }
         }
 
-
-        
-        public int getBlockId(float width)
+        internal bool TriggerRandomOtherBlock()
         {
-            TreeGenBlocks blocks = config.treeBlocks;
-            return
-                width < 0.1f ? blocks.leavesBlockId : (
-                    width < 0.3f ? blocks.leavesBranchyBlockId : 
-                        (blocks.otherLogBlockCode != null && rand.Value.NextDouble() < otherBlockChance * blocks.otherLogChance ? config.treeBlocks.otherLogBlockId : config.treeBlocks.logBlockId)
-                )
-            ;
+            return rand.Value.NextDouble() < otherBlockChance * config.treeBlocks.otherLogChance;
         }
-
-        
-
 
         PlaceResumeState getPlaceResumeState(BlockPos targetPos, int desiredblockId)
         {

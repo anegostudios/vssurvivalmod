@@ -1,6 +1,6 @@
 ﻿using Vintagestory.API.Common;
 
-namespace Vintagestory.ServerMods
+namespace Vintagestory.GameContent
 {
     public class SaplingControl : ModSystem
     {

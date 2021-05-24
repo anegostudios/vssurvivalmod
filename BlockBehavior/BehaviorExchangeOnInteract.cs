@@ -7,6 +7,7 @@ using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Datastructures;
 
 namespace Vintagestory.GameContent
 {
@@ -30,11 +31,7 @@ namespace Vintagestory.GameContent
 
             for (int i = 0; i < blockCodes.Length; i++)
             {
-                this.blockCodes[i] = new AssetLocation(blockCodes[i]);
-                if (!this.blockCodes[i].HasDomain())
-                {
-                    this.blockCodes[i].Domain = block.Code.Domain;
-                }
+                this.blockCodes[i] = AssetLocation.Create(blockCodes[i], block.Code.Domain);
             }
 
             sound = properties["sound"].AsString();

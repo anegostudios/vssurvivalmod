@@ -231,7 +231,7 @@ namespace Vintagestory.GameContent
             ItemStack smeltedStack = inputStack.Collectible.CombustibleProps?.SmeltedStack?.ResolvedItemstack;
 
             if (smeltedStack == null) return null;
-            if (inputStack.Collectible.CombustibleProps.RequiresContainer) return "Can't smelt, requires smelting container (i.e. Crucible)";
+            if (inputStack.Collectible.CombustibleProps.RequiresContainer) return Lang.Get("Can't smelt, requires smelting container (i.e. Crucible)");
 
             return Lang.Get("firepit-gui-willcreate", inputStack.StackSize / inputStack.Collectible.CombustibleProps.SmeltedRatio, smeltedStack.GetName());
         }

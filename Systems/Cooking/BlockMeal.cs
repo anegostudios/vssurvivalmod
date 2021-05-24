@@ -34,11 +34,13 @@ namespace Vintagestory.GameContent
 
         ItemStack[] GetNonEmptyContentStacks(bool cloned = true);
 
-        void MarkDirty(bool redrawonclient);
+        void MarkDirty(bool redrawonclient, IPlayer skipPlayer = null);
     }
 
     public class BlockMeal : BlockContainer, IBlockMealContainer
     {
+        protected virtual bool PlacedBlockEating => true;
+
         public override string GetHeldTpUseAnimation(ItemSlot activeHotbarSlot, Entity forEntity)
         {
             return "eat";
@@ -70,7 +72,27 @@ namespace Vintagestory.GameContent
 
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handHandling)
         {
-            if (!byEntity.Controls.Sneak && GetContentNutritionProperties(byEntity.World, slot, byEntity) != null)
+            tryBeginEatMeal(slot, byEntity, ref handHandling);
+
+            base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handHandling);
+        }
+
+        public override bool OnHeldInteractStep(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        {
+            return tryContinueEatMeal(secondsUsed, slot, byEntity);
+        }
+
+        public override void OnHeldInteractStop(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        {
+            tryFinishEatMeal(secondsUsed, slot, byEntity);
+        }
+
+
+
+
+        protected virtual void tryBeginEatMeal(ItemSlot slot, EntityAgent byEntity, ref EnumHandHandling handHandling)
+        {
+            if (!byEntity.Controls.Sneak && GetContentNutritionProperties(api.World, slot, byEntity) != null)
             {
                 byEntity.World.RegisterCallback((dt) =>
                 {
@@ -84,19 +106,9 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handHandling);
         }
 
-        /// <summary>
-        /// Called every frame while the player is using this collectible. Return false to stop the interaction.
-        /// </summary>
-        /// <param name="secondsUsed"></param>
-        /// <param name="slot"></param>
-        /// <param name="byEntity"></param>
-        /// <param name="blockSel"></param>
-        /// <param name="entitySel"></param>
-        /// <returns>False if the interaction should be stopped. True if the interaction should continue</returns>
-        public override bool OnHeldInteractStep(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        protected virtual bool tryContinueEatMeal(float secondsUsed, ItemSlot slot, EntityAgent byEntity)
         {
             if (GetContentNutritionProperties(byEntity.World, slot, byEntity) == null) return false;
 
@@ -114,7 +126,7 @@ namespace Vintagestory.GameContent
                     byEntity.World.SpawnCubeParticles(pos, rndStack, 0.3f, 4, 1, player);
                 }
 
-                
+
             }
 
 
@@ -123,7 +135,7 @@ namespace Vintagestory.GameContent
                 ModelTransform tf = new ModelTransform();
                 tf.Origin.Set(1.1f, 0.5f, 0.5f);
                 tf.EnsureDefaultValues();
-                
+
                 tf.Translation.X -= Math.Min(1.7f, secondsUsed * 4 * 1.8f) / FpHandTransform.ScaleXYZ.X;
                 tf.Translation.Y += Math.Min(0.4f, secondsUsed * 1.8f) / FpHandTransform.ScaleXYZ.X;
                 tf.Scale = 1 + Math.Min(0.5f, secondsUsed * 4 * 1.8f) / FpHandTransform.ScaleXYZ.X;
@@ -135,25 +147,16 @@ namespace Vintagestory.GameContent
                 }
 
                 byEntity.Controls.UsingHeldItemTransformBefore = tf;
-                
+
 
                 return secondsUsed <= 1.5f;
             }
 
             // Let the client decide when he is done eating
-            return true;
+            return true; 
         }
 
-
-        /// <summary>
-        /// Called when the player successfully completed the using action, always called once an interaction is over
-        /// </summary>
-        /// <param name="secondsUsed"></param>
-        /// <param name="slot"></param>
-        /// <param name="byEntity"></param>
-        /// <param name="blockSel"></param>
-        /// <param name="entitySel"></param>
-        public override void OnHeldInteractStop(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        protected virtual void tryFinishEatMeal(float secondsUsed, ItemSlot slot, EntityAgent byEntity)
         {
             FoodNutritionProperties[] multiProps = GetContentNutritionProperties(byEntity.World, slot, byEntity);
 
@@ -215,8 +218,12 @@ namespace Vintagestory.GameContent
 
 
 
+
+
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
+            if (!PlacedBlockEating) return base.OnBlockInteractStart(world, byPlayer, blockSel);
+            
             ItemStack stack = OnPickBlock(world, blockSel.Position);
 
             if (!byPlayer.Entity.Controls.Sneak)
@@ -254,7 +261,9 @@ namespace Vintagestory.GameContent
 
 
         public override bool OnBlockInteractStep(float secondsUsed, IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
-        { 
+        {
+            if (!PlacedBlockEating) return base.OnBlockInteractStep(secondsUsed, world, byPlayer, blockSel);
+
             if (!byPlayer.Entity.Controls.Sneak) return false;
 
             ItemStack stack = OnPickBlock(world, blockSel.Position);
@@ -316,6 +325,8 @@ namespace Vintagestory.GameContent
 
         public override void OnBlockInteractStop(float secondsUsed, IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
+            if (!PlacedBlockEating) base.OnBlockInteractStop(secondsUsed, world, byPlayer, blockSel);
+
             if (!byPlayer.Entity.Controls.Sneak) return;
 
             ItemStack stack = OnPickBlock(world, blockSel.Position);
@@ -711,9 +722,10 @@ namespace Vintagestory.GameContent
                 inslot.Itemstack.Attributes?.RemoveAttribute("quantityServings");
             }
 
-            if ((stacks == null || stacks.Length == 0) && Attributes?["eatenBlock"] != null)
+            string eaten = Attributes["eatenBlock"].AsString();
+            if ((stacks == null || stacks.Length == 0) && eaten != null)
             {
-                Block block = world.GetBlock(new AssetLocation(Attributes["eatenBlock"].AsString()));
+                Block block = world.GetBlock(new AssetLocation(eaten));
 
                 if (block != null)
                 {

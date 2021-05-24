@@ -70,7 +70,7 @@ namespace Vintagestory.GameContent
             // - Above the arctic circle it seems to vary by up to 60 degrees (~ -39 - 20)
 
             // -1 for south pole, 0 for equater, 1 for north pole
-            double latitude = coreSys.onGetLatitude(pos.Z);
+            double latitude = api.World.Calendar.OnGetLatitude(pos.Z);
             double seasonalVariationAmplitude = Math.Abs(latitude) * 65;
 
             heretemp -= seasonalVariationAmplitude / 2;

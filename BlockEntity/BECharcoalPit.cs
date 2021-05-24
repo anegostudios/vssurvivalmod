@@ -66,7 +66,7 @@ namespace Vintagestory.GameContent
 
                     Block upblock = Api.World.BlockAccessor.GetBlock(pos);
                     AdvancedParticleProperties particles = Block.ParticleProperties[0];
-                    particles.basePos = BlockEntityFire.RandomBlockPos(Api.World.BlockAccessor, pos, upblock, BlockFacing.UP);
+                    particles.basePos = BEBehaviorBurning.RandomBlockPos(Api.World.BlockAccessor, pos, upblock, BlockFacing.UP);
 
                     particles.Quantity.avg = 1;
                     Api.World.SpawnParticles(particles);
@@ -116,8 +116,8 @@ namespace Vintagestory.GameContent
                 Block fireblock = Api.World.GetBlock(new AssetLocation("fire"));
                 Api.World.BlockAccessor.SetBlock(fireblock.BlockId, holePos);
 
-                BlockEntityFire befire = Api.World.BlockAccessor.GetBlockEntity(holePos) as BlockEntityFire;
-                befire?.Init(firefacing, startedByPlayerUid);
+                BlockEntity befire = Api.World.BlockAccessor.GetBlockEntity(holePos);
+                befire?.GetBehavior<BEBehaviorBurning>()?.OnFirePlaced(firefacing, startedByPlayerUid);
 
                 return;
             }
@@ -144,7 +144,7 @@ namespace Vintagestory.GameContent
 
         void ConvertPit()
         {
-            Dictionary<BlockPos, Vec2i> quantityPerColumn = new Dictionary<BlockPos, Vec2i>();
+            Dictionary<BlockPos, Vec3i> quantityPerColumn = new Dictionary<BlockPos, Vec3i>();
 
             HashSet<BlockPos> visitedPositions = new HashSet<BlockPos>();
             Queue<BlockPos> bfsQueue = new Queue<BlockPos>();
@@ -153,7 +153,7 @@ namespace Vintagestory.GameContent
             int maxHalfSize = 6;
             int firewoodBlockId = Api.World.GetBlock(new AssetLocation("firewoodpile")).BlockId;
 
-            Vec2i curQuantityAndYPos;
+            Vec3i curQuantityAndYMinMax;
 
             while (bfsQueue.Count > 0)
             {
@@ -162,20 +162,21 @@ namespace Vintagestory.GameContent
                 BlockPos bposGround = bpos.Copy();
                 bposGround.Y = 0;
 
-                if (quantityPerColumn.TryGetValue(bposGround, out curQuantityAndYPos))
+                if (quantityPerColumn.TryGetValue(bposGround, out curQuantityAndYMinMax))
                 {
-                    curQuantityAndYPos.Y = Math.Min(curQuantityAndYPos.Y, bpos.Y);
-                } else
+                    curQuantityAndYMinMax.Y = Math.Min(curQuantityAndYMinMax.Y, bpos.Y);
+                    curQuantityAndYMinMax.Z = Math.Max(curQuantityAndYMinMax.Z, bpos.Y);
+                }
+                else
                 {
-                    curQuantityAndYPos = quantityPerColumn[bposGround] = new Vec2i(0, bpos.Y);
+                    curQuantityAndYMinMax = quantityPerColumn[bposGround] = new Vec3i(0, bpos.Y, bpos.Y);
                 }
 
                 BlockEntityFirewoodPile be = Api.World.BlockAccessor.GetBlockEntity(bpos) as BlockEntityFirewoodPile;
                 if (be != null)
                 {
-                    curQuantityAndYPos.X += be.OwnStackSize;
+                    curQuantityAndYMinMax.X += be.OwnStackSize;
                 }
-                Api.World.BlockAccessor.SetBlock(0, bpos);
 
                 foreach (BlockFacing facing in BlockFacing.ALLFACES)
                 {
@@ -183,7 +184,12 @@ namespace Vintagestory.GameContent
                     Block nBlock = Api.World.BlockAccessor.GetBlock(npos);
 
                     // Only traverse inside the firewood pile
-                    if (nBlock.BlockId != firewoodBlockId) continue;
+                    if (nBlock.BlockId != firewoodBlockId)
+                    {
+                        IWorldChunk chunk = Api.World.BlockAccessor.GetChunkAtBlockPos(npos);
+                        if (chunk == null) return; // Maybe at the endge of the loaded chunk, in which case return before changing any blocks and it can be converted next tick instead
+                        continue;
+                    }
 
                     // Only traverse within a 12x12x12 block cube
                     bool inCube = Math.Abs(npos.X - Pos.X) <= maxHalfSize && Math.Abs(npos.Y - Pos.Y) <= maxHalfSize && Math.Abs(npos.Z - Pos.Z) <= maxHalfSize;
@@ -196,7 +202,6 @@ namespace Vintagestory.GameContent
                 }
             }
 
-
             BlockPos lpos = new BlockPos();
             foreach (var val in quantityPerColumn)
             {
@@ -204,11 +209,24 @@ namespace Vintagestory.GameContent
                 int logQuantity = val.Value.X;
                 int charCoalQuantity = (int)(logQuantity * (0.125f + (float)Api.World.Rand.NextDouble() / 8));
 
-                while (charCoalQuantity > 0)
+                int maxY = val.Value.Z;
+                while (lpos.Y <= maxY)
                 {
-                    Block charcoalBlock = Api.World.GetBlock(new AssetLocation("charcoalpile-" + GameMath.Clamp(charCoalQuantity, 1, 8)));
-                    Api.World.BlockAccessor.SetBlock(charcoalBlock.BlockId, lpos);
-                    charCoalQuantity -= 8;
+                    Block nBlock = Api.World.BlockAccessor.GetBlock(lpos);
+                    if (nBlock.BlockId == firewoodBlockId)  //test for the possibility someone had contiguous firewood both above and below a soil block for example
+                    {
+                        if (charCoalQuantity > 0)
+                        {
+                            Block charcoalBlock = Api.World.GetBlock(new AssetLocation("charcoalpile-" + GameMath.Clamp(charCoalQuantity, 1, 8)));
+                            Api.World.BlockAccessor.SetBlock(charcoalBlock.BlockId, lpos);
+                            charCoalQuantity -= 8;
+                        }
+                        else
+                        {
+                            //Set any free blocks still in this column (y <= maxY) to air
+                            Api.World.BlockAccessor.SetBlock(0, lpos);
+                        }
+                    }
                     lpos.Up();
                 }
             }

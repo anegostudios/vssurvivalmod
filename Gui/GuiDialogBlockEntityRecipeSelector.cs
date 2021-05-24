@@ -64,7 +64,7 @@ namespace Vintagestory.GameContent
         public string GetCraftDescKey(ItemStack stack)
         {
             string name = "";
-            string type = stack.Class == EnumItemClass.Block ? "block" : "item";
+            string type = stack.Class.Name();
 
             name = stack.Collectible.Code?.Domain + AssetLocation.LocationSeparator + type + "craftdesc-" + stack.Collectible.Code?.Path;
 

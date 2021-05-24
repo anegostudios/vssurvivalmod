@@ -4,10 +4,32 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
+    public class BlockFern : BlockPlant
+    {
+        public override void OnLoaded(ICoreAPI api)
+        {
+            base.OnLoaded(api);
+
+            WaveFlagMinY = 0.25f;
+        }
+
+        public override void OnJsonTesselation(ref MeshData sourceMesh, ref int[] lightRgbsByCorner, BlockPos pos, Block[] chunkExtBlocks, int extIndex3d)
+        {
+            base.OnJsonTesselation(ref sourceMesh, ref lightRgbsByCorner, pos, chunkExtBlocks, extIndex3d);
+
+            for (int i = 0; i < sourceMesh.FlagsCount; i++)
+            {
+                sourceMesh.Flags[i] &= VertexFlags.clearNormalBits;
+                sourceMesh.Flags[i] |= VertexFlags.NormalToPackedInt(0, 1, 0) << 15;
+            }
+        }
+    }
+
     public class BlockPlant : Block
     {
         Block snowLayerBlock;
@@ -30,13 +52,12 @@ namespace Vintagestory.GameContent
             WaveFlagMinY = 0.5f;
         }
 
-        public override void OnJsonTesselation(ref MeshData sourceMesh, BlockPos pos, int[] chunkExtIds, ushort[] chunkLightExt, int extIndex3d)
+        public override void OnJsonTesselation(ref MeshData sourceMesh, ref int[] lightRgbsByCorner, BlockPos pos, Block[] chunkExtBlocks, int extIndex3d)
         {
-            int sunLightLevel = chunkLightExt[extIndex3d] & 31;
-            bool waveOff = sunLightLevel < 14;
-
             if (VertexFlags.GrassWindWave)
             {
+                bool waveOff = (byte)(lightRgbsByCorner[24] >> 24) < 159;  //corresponds with a sunlight level of less than 14
+
                 setLeaveWaveFlags(sourceMesh, waveOff);
             }
         }
@@ -45,21 +66,19 @@ namespace Vintagestory.GameContent
         void setLeaveWaveFlags(MeshData sourceMesh, bool off)
         {
             int grassWave = VertexFlags.All;
-            int clearFlags = (~VertexFlags.LeavesWindWaveBitMask) & (~VertexFlags.FoliageWindWaveBitMask) & (~VertexFlags.GroundDistanceBitMask);
+            int clearFlags = VertexFlags.clearWaveBits;
+            int verticesCount = sourceMesh.VerticesCount;
 
             // Iterate over each element face
-            for (int vertexNum = 0; vertexNum < sourceMesh.GetVerticesCount(); vertexNum++)
+            for (int vertexNum = 0; vertexNum < verticesCount; vertexNum++)
             {
-                float y = sourceMesh.xyz[vertexNum * 3 + 1];
+                int flag = sourceMesh.Flags[vertexNum] & clearFlags;
 
-                bool notwaving = off || y < 0.5;
-
-                sourceMesh.Flags[vertexNum] &= clearFlags;
-
-                if (!notwaving)
+                if (!off && sourceMesh.xyz[vertexNum * 3 + 1] > 0.5)
                 {
-                    sourceMesh.Flags[vertexNum] |= grassWave;
+                    flag |= grassWave;
                 }
+                sourceMesh.Flags[vertexNum] = flag;
             }
         }
 
@@ -119,6 +138,30 @@ namespace Vintagestory.GameContent
 
             return color;
         }
+
+
+        public override string GetPlacedBlockName(IWorldAccessor world, BlockPos pos)
+        {
+            if (EntityClass != null)
+            {
+                BlockEntity be = world.BlockAccessor.GetBlockEntity(pos);
+                if (be is BlockEntitySapling bes) return bes.GetBlockName();
+            }
+
+            return base.GetPlacedBlockName(world, pos);
+        }
+
+        public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1)
+        {
+            if (EntityClass != null)
+            {
+                BlockEntity be = world.BlockAccessor.GetBlockEntity(pos);
+                if (be is BlockEntitySapling bes) return bes.GetDrops();
+            }
+
+            return base.GetDrops(world, pos, byPlayer, dropQuantityMultiplier);
+        }
+
 
         public override int GetColor(ICoreClientAPI capi, BlockPos pos)
         {

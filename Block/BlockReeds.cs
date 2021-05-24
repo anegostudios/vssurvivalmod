@@ -148,10 +148,11 @@ namespace Vintagestory.GameContent
 
         public override BlockDropItemStack[] GetDropsForHandbook(ItemStack handbookStack, IPlayer forPlayer)
         {
+            bool isReed = Variant["type"] == "coopersreed";
             return new BlockDropItemStack[]
             {
-                new BlockDropItemStack(new ItemStack(api.World.GetItem(new AssetLocation("cattailtops")))),
-                new BlockDropItemStack(Variant["type"] == "coopersreed" ? new ItemStack(api.World.GetItem(new AssetLocation("cattailroot"))) : new ItemStack(api.World.GetItem(new AssetLocation("papyrusroot")))),
+                new BlockDropItemStack(new ItemStack(api.World.GetItem(new AssetLocation(isReed ? "cattailtops" : "papyrustops")))),
+                new BlockDropItemStack(new ItemStack(api.World.GetItem(new AssetLocation(isReed ? "cattailroot" : "papyrusroot"))))
             };
         }
 
@@ -159,21 +160,15 @@ namespace Vintagestory.GameContent
         {
             if (world.Side == EnumAppSide.Server && (byPlayer == null || byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative))
             {
+                bool isReed = Variant["type"] == "coopersreed";
                 ItemStack drop = null;
                 if (Variant["state"] == "normal")
                 {
-                    drop = new ItemStack(world.GetItem(new AssetLocation("cattailtops")));
+                    drop = new ItemStack(world.GetItem(new AssetLocation(isReed ? "cattailtops" : "papyrustops")));
                 }
                 else
                 {
-                    if (Variant["type"] == "coopersreed")
-                    {
-                        drop = new ItemStack(world.GetItem(new AssetLocation("cattailroot")));
-                    }
-                    if (Variant["type"] == "papyrus")
-                    {
-                        drop = new ItemStack(world.GetItem(new AssetLocation("papyrusroot")));
-                    }
+                    drop = new ItemStack(world.GetItem(new AssetLocation(isReed ? "cattailroot" : "papyrusroot")));
                 }
 
                 if (drop != null)
@@ -255,7 +250,7 @@ namespace Vintagestory.GameContent
             return interactions.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
         }
 
-        public override bool MergeFaceNeighbouringIce(int facingIndex, Block neighbourIce, int intraChunkIndex3d)
+        public override bool ShouldMergeFace(int facingIndex, Block neighbourIce, int intraChunkIndex3d)
         {
             return BlockMaterial == neighbourIce.BlockMaterial;
         }

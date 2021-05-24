@@ -17,7 +17,7 @@ namespace Vintagestory.GameContent
     public class BlockEntityLayer : BlockEntity
     {
         protected static readonly int WEIGHTLIMIT = 75;
-        protected readonly static Vec3d centre = new Vec3d(0.5, 0.125, 0.5);
+        protected readonly static Vec3d center = new Vec3d(0.5, 0.125, 0.5);
 
         public override void Initialize(ICoreAPI api)
         {
@@ -30,7 +30,7 @@ namespace Vintagestory.GameContent
             // Random checks for breaking this block if heavy entity above and unsupported below
 
             IWorldAccessor world = Api.World;
-            Vec3d pos3d = centre.AddCopy(Pos);
+            Vec3d pos3d = center.AddCopy(Pos);
             BlockPos down = Pos.DownCopy();
 
             // If this block is unsupported, do an entity weight + block breaking check

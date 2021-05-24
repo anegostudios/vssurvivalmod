@@ -22,7 +22,8 @@ namespace Vintagestory.ServerMods
 
     public class GenMaps : ModSystem
     {
-        ICoreServerAPI api;
+        ICoreServerAPI sapi;
+        ICoreClientAPI capi;
 
         MapLayerBase climateGen;
         MapLayerBase flowerGen;
@@ -56,12 +57,16 @@ namespace Vintagestory.ServerMods
         public override void StartClientSide(ICoreClientAPI api)
         {
             api.Network.GetChannel("latitudedata").SetMessageHandler<LatitudeData>(onLatitudeDataReceived);
+            api.Event.LevelFinalize += Event_LevelFinalize;
 
-            api.ModLoader.GetModSystem<SurvivalCoreSystem>().onGetLatitude = getLatitude;
+            capi = api;
             
         }
 
-        
+        private void Event_LevelFinalize()
+        {
+            capi.World.Calendar.OnGetLatitude = getLatitude;
+        }
 
         private void onLatitudeDataReceived(LatitudeData latdata)
         {
@@ -70,7 +75,7 @@ namespace Vintagestory.ServerMods
 
         public override void StartServerSide(ICoreServerAPI api)
         {
-            this.api = api;
+            this.sapi = api;
 
             api.Event.InitWorldGenerator(initWorldGen, "standard");
             api.Event.InitWorldGenerator(initWorldGen, "superflat");
@@ -89,15 +94,15 @@ namespace Vintagestory.ServerMods
 
         public void initWorldGen()
         {
-            long seed = api.WorldManager.Seed;
-            noiseSizeClimate = api.WorldManager.RegionSize / TerraGenConfig.climateMapScale;
-            noiseSizeForest = api.WorldManager.RegionSize / TerraGenConfig.forestMapScale;
-            noiseSizeShrubs = api.WorldManager.RegionSize / TerraGenConfig.shrubMapScale;
-            noiseSizeGeoProv = api.WorldManager.RegionSize / TerraGenConfig.geoProvMapScale;
-            noiseSizeLandform = api.WorldManager.RegionSize / TerraGenConfig.landformMapScale;
-            noiseSizeBeach = api.WorldManager.RegionSize / TerraGenConfig.beachMapScale;
+            long seed = sapi.WorldManager.Seed;
+            noiseSizeClimate = sapi.WorldManager.RegionSize / TerraGenConfig.climateMapScale;
+            noiseSizeForest = sapi.WorldManager.RegionSize / TerraGenConfig.forestMapScale;
+            noiseSizeShrubs = sapi.WorldManager.RegionSize / TerraGenConfig.shrubMapScale;
+            noiseSizeGeoProv = sapi.WorldManager.RegionSize / TerraGenConfig.geoProvMapScale;
+            noiseSizeLandform = sapi.WorldManager.RegionSize / TerraGenConfig.landformMapScale;
+            noiseSizeBeach = sapi.WorldManager.RegionSize / TerraGenConfig.beachMapScale;
 
-            ITreeAttribute worldConfig = api.WorldManager.SaveGame.WorldConfiguration;
+            ITreeAttribute worldConfig = sapi.WorldManager.SaveGame.WorldConfiguration;
             string climate = worldConfig.GetString("worldClimate", "realistic");
             NoiseClimate noiseClimate;
 
@@ -132,7 +137,7 @@ namespace Vintagestory.ServerMods
                             break;
                     }
 
-                    noiseClimate = new NoiseClimateRealistic(seed, (double)api.WorldManager.MapSizeZ / TerraGenConfig.climateMapScale / TerraGenConfig.climateMapSubScale, latdata.polarEquatorDistance, spawnMinTemp, spawnMaxTemp);
+                    noiseClimate = new NoiseClimateRealistic(seed, (double)sapi.WorldManager.MapSizeZ / TerraGenConfig.climateMapScale / TerraGenConfig.climateMapSubScale, latdata.polarEquatorDistance, spawnMinTemp, spawnMaxTemp);
                     latdata.isRealisticClimate = true;
                     latdata.ZOffset = (noiseClimate as NoiseClimateRealistic).ZOffset;
                     break;
@@ -152,10 +157,10 @@ namespace Vintagestory.ServerMods
             flowerGen = GetForestMapGen(seed + 223, TerraGenConfig.forestMapScale);
             beachGen = GetBeachMapGen(seed + 2273, TerraGenConfig.beachMapScale);
 
-            geologicprovinceGen = GetGeologicProvinceMapGen(seed + 3, api);
-            landformsGen = GetLandformMapGen(seed + 4, noiseClimate, api);
+            geologicprovinceGen = GetGeologicProvinceMapGen(seed + 3, sapi);
+            landformsGen = GetLandformMapGen(seed + 4, noiseClimate, sapi);
 
-            api.ModLoader.GetModSystem<SurvivalCoreSystem>().onGetLatitude = getLatitude;
+            sapi.World.Calendar.OnGetLatitude = getLatitude;
         }
 
         

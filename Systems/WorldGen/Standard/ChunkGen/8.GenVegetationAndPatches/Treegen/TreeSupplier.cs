@@ -100,7 +100,7 @@ namespace Vintagestory.ServerMods
 
                 if (random.NextDouble() < distSq) continue;
 
-                float distance = (fertDist + rainDist + tempDist + forestDist + heightDist) * variant.Weight / 100f;
+                float distance = GameMath.Clamp(1 - (fertDist + rainDist + tempDist + forestDist + heightDist)/5f, 0, 1) * variant.Weight / 100f;
 
                 distances.Add(variant, distance);
 
@@ -109,11 +109,12 @@ namespace Vintagestory.ServerMods
 
             distances = distances.Shuffle(random);
 
-            double rnd = random.NextDouble();
+            double rnd = random.NextDouble() * total;
 
             foreach (var val in distances)
             {
-                rnd -= val.Value / total;
+                rnd -= val.Value;
+
                 if (rnd <= 0.001)
                 {
                     float suitabilityBonus = GameMath.Clamp(0.7f - val.Value, 0f, 0.7f) * 1/0.7f * val.Key.SuitabilitySizeBonus;

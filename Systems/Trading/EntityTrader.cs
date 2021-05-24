@@ -34,7 +34,7 @@ namespace Vintagestory.GameContent
         EntityPlayer tradingWith;
         GuiDialog dlg;
 
-        public TalkUtil talkUtil;
+        public EntityTalkUtil talkUtil;
 
         public string Personality
         {
@@ -92,7 +92,7 @@ namespace Vintagestory.GameContent
                 
             } else
             {
-                talkUtil = new TalkUtil(api as ICoreClientAPI, this);
+                talkUtil = new EntityTalkUtil(api as ICoreClientAPI, this);
 
             }
             

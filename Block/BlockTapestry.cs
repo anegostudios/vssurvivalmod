@@ -385,12 +385,29 @@ namespace Vintagestory.GameContent
                         case "3": return Lang.Get("Section: Right third");
                         default: return "unknown";
                     }
+                case "1x3":
+                    switch (intComp)
+                    {
+                        case "1": return Lang.Get("Section: Top third");
+                        case "2": return Lang.Get("Section: Middle third");
+                        case "3": return Lang.Get("Section: Bottom third");
+                        default: return "unknown";
+                    }
+                case "4x1":
+                    switch (intComp)
+                    {
+                        case "1": return Lang.Get("Section: Top quarter");
+                        case "2": return Lang.Get("Section: Top middle quarter");
+                        case "3": return Lang.Get("Section: Bottom middle quarter");
+                        case "4": return Lang.Get("Section: Bottom quarter");
+                        default: return "unknown";
+                    }
                 case "2x2":
                     switch (intComp)
                     {
                         case "11": return Lang.Get("Section: Top Left Quarter");
-                        case "12": return Lang.Get("Section: Bottom Left Quarter");
-                        case "21": return Lang.Get("Section: Top Right Quarter");
+                        case "21": return Lang.Get("Section: Bottom Left Quarter");
+                        case "12": return Lang.Get("Section: Top Right Quarter");
                         case "22": return Lang.Get("Section: Bottom Right Quarter");
                         default: return "unknown";
                     }

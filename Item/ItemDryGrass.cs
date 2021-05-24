@@ -28,19 +28,33 @@ namespace Vintagestory.GameContent
             
 
             Block block = world.BlockAccessor.GetBlock(onPos.DownCopy());
-            Block atBlock = world.BlockAccessor.GetBlock(onPos);
+            Block aimedBlock = world.BlockAccessor.GetBlock(blockSel.Position);
+            if (aimedBlock is BlockGroundStorage)
+            {
+                if (!(aimedBlock is BlockPitkiln))
+                {
+                    BlockPitkiln blockpk = world.GetBlock(new AssetLocation("pitkiln")) as BlockPitkiln;
+                    if (blockpk.TryCreateKiln(world, byPlayer, blockSel.Position))
+                    {
+                        handHandling = EnumHandHandling.PreventDefault;
+                    }
+                }
+            }
+            else
+            {
 
-            string useless = "";
+                string useless = "";
 
-            if (!block.CanAttachBlockAt(byEntity.World.BlockAccessor, firepitBlock, onPos.DownCopy(), BlockFacing.UP)) return;
-            if (!firepitBlock.CanPlaceBlock(world, byPlayer, new BlockSelection() { Position = onPos, Face = BlockFacing.UP }, ref useless)) return;
+                if (!block.CanAttachBlockAt(byEntity.World.BlockAccessor, firepitBlock, onPos.DownCopy(), BlockFacing.UP)) return;
+                if (!firepitBlock.CanPlaceBlock(world, byPlayer, new BlockSelection() { Position = onPos, Face = BlockFacing.UP }, ref useless)) return;
 
-            world.BlockAccessor.SetBlock(firepitBlock.BlockId, onPos);
+                world.BlockAccessor.SetBlock(firepitBlock.BlockId, onPos);
 
-            if (firepitBlock.Sounds != null) world.PlaySoundAt(firepitBlock.Sounds.Place, blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z, byPlayer);
+                if (firepitBlock.Sounds != null) world.PlaySoundAt(firepitBlock.Sounds.Place, blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z, byPlayer);
 
-            itemslot.Itemstack.StackSize--;
-            handHandling = EnumHandHandling.PreventDefaultAction;
+                itemslot.Itemstack.StackSize--;
+                handHandling = EnumHandHandling.PreventDefaultAction;
+            }
         }
 
 

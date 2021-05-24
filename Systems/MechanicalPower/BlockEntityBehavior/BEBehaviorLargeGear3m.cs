@@ -96,10 +96,11 @@ namespace Vintagestory.GameContent.Mechanics
                 MechPowerPath[] paths = new MechPowerPath[2 + beg.CountGears(Api)];
                 paths[index] = pathDir;
                 paths[++index] = new MechPowerPath(pathDir.OutFacing.Opposite, pathDir.gearingRatio, null, !pathDir.invert);
+                bool sideInvert = face == BlockFacing.DOWN ^ pathDir.invert;
                 for (int i = 0; i < 4; i++)
                 {
                     BlockFacing horizFace = BlockFacing.HORIZONTALS[i];
-                    if (beg.HasGearAt(Api, Position.AddCopy(horizFace))) paths[++index] = new MechPowerPath(horizFace, pathDir.gearingRatio * ratio, null, face == BlockFacing.DOWN ^ pathDir.invert);  //invert all horizontal output paths
+                    if (beg.HasGearAt(Api, Position.AddCopy(horizFace))) paths[++index] = new MechPowerPath(horizFace, pathDir.gearingRatio * ratio, null, sideInvert);  //invert all horizontal output paths
                 }
                 return paths;
             }
@@ -109,10 +110,11 @@ namespace Vintagestory.GameContent.Mechanics
             pathss[0] = new MechPowerPath(BlockFacing.DOWN, pathDir.gearingRatio / ratio, null, invert);
             pathss[1] = new MechPowerPath(BlockFacing.UP, pathDir.gearingRatio / ratio, null, !invert);
             index = 1;
+            bool sidesInvert = face == BlockFacing.DOWN ^ !invert;  //invert power in the opposite sense if power fed in from one of the sides instead of through up/down axle
             for (int i = 0; i < 4; i++)
             {
                 BlockFacing horizFace = BlockFacing.HORIZONTALS[i];
-                if (beg.HasGearAt(Api, Position.AddCopy(horizFace))) pathss[++index] = new MechPowerPath(horizFace, pathDir.gearingRatio, null, (face.Opposite == horizFace || face == BlockFacing.DOWN) ^ !invert);  //horizontals match the gearing ratio of the input horizontal; invert unless its the input side
+                if (beg.HasGearAt(Api, Position.AddCopy(horizFace))) pathss[++index] = new MechPowerPath(horizFace, pathDir.gearingRatio, null, sidesInvert);  //horizontals match the gearing ratio of the input horizontal
             }
             return pathss;
         }

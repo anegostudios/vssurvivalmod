@@ -77,8 +77,7 @@ namespace Vintagestory.GameContent
 
         public string BlockName { get; set; } = "";
 
-        protected bool[] emitSideAo = new bool[6] { true, true, true, true, true, true };
-        protected bool[] emitSideAoByFlags = new bool[63];
+        protected int emitSideAo = 0x3F;
         protected bool absorbAnyLight;
         public bool[] sideSolid = new bool[6];
         protected byte nowmaterialIndex;
@@ -103,7 +102,7 @@ namespace Vintagestory.GameContent
 
         public int GetLightAbsorption()
         {
-            if (MaterialIds == null || !absorbAnyLight)
+            if (MaterialIds == null || !absorbAnyLight || Api == null)
             {
                 return 0;
             }
@@ -303,11 +302,12 @@ namespace Vintagestory.GameContent
         {
             List<uint> rotatedCuboids = new List<uint>();
             CuboidWithMaterial cwm = tmpCuboid;
+            Vec3d axis = new Vec3d(8, 8, 8);
 
             foreach (var val in VoxelCuboids)
             {
                 FromUint(val, cwm);
-                Cuboidi rotated = cwm.RotatedCopy(0, clockwise ? 90 : -90, 0, new Vec3d(8, 8, 8));
+                Cuboidi rotated = cwm.RotatedCopy(0, clockwise ? 90 : -90, 0, axis);
                 cwm.Set(rotated.X1, rotated.Y1, rotated.Z1, rotated.X2, rotated.Y2, rotated.Z2);
                 rotatedCuboids.Add(ToCuboid(cwm));
             }
@@ -317,19 +317,57 @@ namespace Vintagestory.GameContent
             foreach (var val in SnowCuboids)
             {
                 FromUint(val, cwm);
-                Cuboidi rotated = cwm.RotatedCopy(0, clockwise ? 90 : -90, 0, new Vec3d(8, 8, 8));
+                Cuboidi rotated = cwm.RotatedCopy(0, clockwise ? 90 : -90, 0, axis);
                 cwm.Set(rotated.X1, rotated.Y1, rotated.Z1, rotated.X2, rotated.Y2, rotated.Z2);
                 rotatedCuboids.Add(ToCuboid(cwm));
             }
 
             SnowCuboids = rotatedCuboids;
+
+            rotatedCuboids = new List<uint>();
+            foreach (var val in GroundSnowCuboids)
+            {
+                FromUint(val, cwm);
+                Cuboidi rotated = cwm.RotatedCopy(0, clockwise ? 90 : -90, 0, axis);
+                cwm.Set(rotated.X1, rotated.Y1, rotated.Z1, rotated.X2, rotated.Y2, rotated.Z2);
+                rotatedCuboids.Add(ToCuboid(cwm));
+            }
+
+            GroundSnowCuboids = rotatedCuboids;
         }
 
 
         public void OnTransformed(ITreeAttribute tree, int byDegrees, EnumAxis? aroundAxis)
         {
+            uint[] cuboidValues = (tree["cuboids"] as IntArrayAttribute)?.AsUint;
+            VoxelCuboids = cuboidValues == null ? new List<uint>(0) : new List<uint>(cuboidValues);
+
+            // Rotations from rotate schematic:
+            if (aroundAxis == null && byDegrees == 90 || byDegrees == -90)
+            {
+                uint[] snowcuboidValues = (tree["snowcuboids"] as IntArrayAttribute)?.AsUint;
+                uint[] groundsnowvalues = (tree["groundSnowCuboids"] as IntArrayAttribute)?.AsUint;
+                SnowCuboids = snowcuboidValues == null ? new List<uint>(0) : new List<uint>(snowcuboidValues);
+                GroundSnowCuboids = groundsnowvalues == null ? new List<uint>(0) : new List<uint>(groundsnowvalues);
+
+                this.RotateModel(null, byDegrees < 0);
+
+                tree["cuboids"] = new IntArrayAttribute(VoxelCuboids.ToArray());
+                if (SnowCuboids.Count > 0)
+                {
+                    tree["snowcuboids"] = new IntArrayAttribute(SnowCuboids.ToArray());
+                }
+                if (GroundSnowCuboids.Count > 0)
+                {
+                    tree["groundSnowCuboids"] = new IntArrayAttribute(GroundSnowCuboids.ToArray());
+                }
+
+                return;
+            }
+
+
             List<uint> rotatedCuboids = new List<uint>();
-            VoxelCuboids = new List<uint>((tree["cuboids"] as IntArrayAttribute).AsUint);
+            Vec3d axis = new Vec3d(8, 8, 8);
             CuboidWithMaterial cwm = tmpCuboid;
 
             foreach (var val in VoxelCuboids)
@@ -353,7 +391,7 @@ namespace Vintagestory.GameContent
                     rotated.Z2 = 16 - rotated.Z2;
                 }
 
-                rotated = rotated.RotatedCopy(0, byDegrees, 0, new Vec3d(8, 8, 8));
+                rotated = rotated.RotatedCopy(0, byDegrees, 0, axis);
 
 
                 cwm.Set(rotated.X1, rotated.Y1, rotated.Z1, rotated.X2, rotated.Y2, rotated.Z2);
@@ -361,6 +399,8 @@ namespace Vintagestory.GameContent
             }
 
             tree["cuboids"] = new IntArrayAttribute(rotatedCuboids.ToArray());
+            tree.RemoveAttribute("snowcuboids");   //can't sensibly rotate the current snow layer on X-Z axis rotations
+            tree.RemoveAttribute("groundSnowCuboids");
         }
 
 
@@ -428,12 +468,12 @@ namespace Vintagestory.GameContent
 
         public bool DoEmitSideAo(int facing)
         {
-            return emitSideAo[facing];
+            return (emitSideAo & (1 << facing)) != 0;
         }
 
         public bool DoEmitSideAoByFlag(int flag)
         {
-            return emitSideAoByFlags[flag];
+            return (emitSideAo & flag) != 0;
         }
 
         #endregion
@@ -442,7 +482,7 @@ namespace Vintagestory.GameContent
         protected void RebuildCuboidList(bool[,,] Voxels, byte[,,] VoxelMaterial)
         {
             bool[,,] VoxelVisited = new bool[16, 16, 16];
-            emitSideAo = new bool[] { true, true, true, true, true, true };
+            emitSideAo = 0x3F;
             sideSolid = new bool[] { true, true, true, true, true, true };
             float voxelCount = 0;
 
@@ -543,11 +583,10 @@ namespace Vintagestory.GameContent
 
             for (int i = 0; i < 6; i++)
             {
-                emitSideAo[i] = doEmitSideAo;
                 sideSolid[i] = edgeCenterVoxelsMissing[i] < 5;
             }
+            emitSideAo = doEmitSideAo ? 0x3F : 0;
 
-            this.emitSideAoByFlags = Block.ResolveAoFlags(this.Block, emitSideAo);
             this.sizeRel = voxelCount / (16f * 16f * 16f);
 
             buildSnowCuboids(Voxels);
@@ -828,6 +867,133 @@ namespace Vintagestory.GameContent
             return mesh;
         }
 
+
+        // Incomplete greedy mesh impl from 
+        // https://0fps.net/2012/06/30/meshing-in-a-minecraft-game/
+        MeshData GreedyMesh(bool[,,] voxels, byte[,,] materials, int[] dims)
+        {
+            // Sweep over 3-axes
+            var mesh = new MeshData();
+
+            for (var d = 0; d < 3; ++d)
+            {
+                int i, j, k, l, w, h
+                  , u = (d + 1) % 3
+                  , v = (d + 2) % 3;
+
+                int[] x = new int[] { 0, 0, 0 };
+                int[] q = new int[] { 0, 0, 0 };
+                bool[] mask = new bool[dims[u] * dims[v]];
+
+                q[d] = 1;
+
+                for (x[d] = -1; x[d] < dims[d];)
+                {
+                    // Compute mask
+                    var n = 0;
+                    for (x[v] = 0; x[v] < dims[v]; ++x[v])
+                        for (x[u] = 0; x[u] < dims[u]; ++x[u])
+                        {
+                            mask[n++] =
+                              (0 <= x[d] ? voxels[x[0], x[1], x[2]] : false) !=
+                              (x[d] < dims[d] - 1 ? voxels[x[0] + q[0], x[1] + q[1], x[2] + q[2]] : false);
+                        }
+
+                    // Increment x[d]
+                    ++x[d];
+
+                    // Generate mesh for mask using lexicographic ordering
+                    n = 0;
+
+                    for (j = 0; j < dims[v]; ++j)
+                    {
+                        for (i = 0; i < dims[u];)
+                        {
+                            if (mask[n])
+                            {
+                                // Compute width
+                                for (w = 1; mask[n + w] && i + w < dims[u]; ++w)
+                                {
+                                }
+
+                                // Compute height (this is slightly awkward
+                                var done = false;
+                                for (h = 1; j + h < dims[v]; ++h)
+                                {
+                                    for (k = 0; k < w; ++k)
+                                    {
+                                        if (!mask[n + k + h * dims[u]])
+                                        {
+                                            done = true;
+                                            break;
+                                        }
+                                    }
+                                    if (done)
+                                    {
+                                        break;
+                                    }
+                                }
+
+                                // Add quad
+                                x[u] = i; x[v] = j;
+                                int[] du = new int[] { 0, 0, 0 };
+                                int[] dv = new int[] { 0, 0, 0 };
+                                du[u] = w;
+                                dv[v] = h;
+
+                                mesh.AddVertex(x[0], x[1], x[2]);
+                                mesh.AddVertex(x[0] + du[0], x[1] + du[1], x[2] + du[2]);
+                                mesh.AddVertex(x[0] + du[0] + dv[0], x[1] + du[1] + dv[1], x[2] + du[2] + dv[2]);
+                                mesh.AddVertex(x[0] + dv[0], x[1] + dv[1], x[2] + dv[2]);
+
+
+                                // Zero-out mask
+                                for (l = 0; l < h; ++l)
+                                {
+                                    for (k = 0; k < w; ++k)
+                                    {
+                                        mask[n + k + l * dims[u]] = false;
+                                    }
+                                }
+
+                                // Increment counters and continue
+                                i += w; n += w;
+                            }
+                            else
+                            {
+                                ++i; ++n;
+                            }
+                        }
+                    }
+                }
+            }
+
+
+            Block block = Api.World.GetBlock(MaterialIds[0]);
+
+            short renderpass = (short)block.RenderPass;
+            int renderFlags = block.VertexFlags.All;
+
+            mesh.Flags = new int[mesh.VerticesCount];
+            mesh.Flags.Fill(renderFlags);
+            mesh.RenderPassesAndExtraBits = new short[mesh.VerticesCount / 4];
+            mesh.RenderPassCount = mesh.VerticesCount / 4;
+            for (int i = 0; i < mesh.RenderPassCount; i++)
+            {
+                mesh.RenderPassesAndExtraBits[i] = renderpass;
+            }
+
+            mesh.ColorMapIdsCount = mesh.VerticesCount / 4;
+            mesh.ClimateColorMapIds = new byte[mesh.VerticesCount / 4];
+            mesh.SeasonColorMapIds = new byte[mesh.VerticesCount / 4];
+
+            mesh.XyzFaces = new byte[mesh.VerticesCount / 4];
+            mesh.XyzFacesCount = mesh.VerticesCount / 4;
+
+            return mesh;
+        }
+
+
         public MeshData CreateDecalMesh(ITexPositionSource decalTexSource)
         {
             return CreateDecalMesh(Api as ICoreClientAPI, VoxelCuboids, decalTexSource);
@@ -875,11 +1041,11 @@ namespace Vintagestory.GameContent
             mesh.Rgba.Fill((byte)255);
             mesh.Flags = new int[mesh.VerticesCount];
             mesh.Flags.Fill(renderFlags);
-            mesh.RenderPasses = new short[mesh.VerticesCount / 4];
+            mesh.RenderPassesAndExtraBits = new short[mesh.VerticesCount / 4];
             mesh.RenderPassCount = mesh.VerticesCount / 4;
             for (int i = 0; i < mesh.RenderPassCount; i++)
             {
-                mesh.RenderPasses[i] = renderpass;
+                mesh.RenderPassesAndExtraBits[i] = renderpass;
             }
 
             mesh.ColorMapIdsCount = mesh.VerticesCount / 4;
@@ -992,26 +1158,15 @@ namespace Vintagestory.GameContent
             byte[] sideAo = tree.GetBytes("emitSideAo", new byte[] { 255 });
             if (sideAo.Length > 0)
             {
-                emitSideAo[0] = (sideAo[0] & 1) > 0;
-                emitSideAo[1] = (sideAo[0] & 2) > 0;
-                emitSideAo[2] = (sideAo[0] & 4) > 0;
-                emitSideAo[3] = (sideAo[0] & 8) > 0;
-                emitSideAo[4] = (sideAo[0] & 16) > 0;
-                emitSideAo[5] = (sideAo[0] & 32) > 0;
+                emitSideAo = sideAo[0];
 
-                absorbAnyLight = emitSideAo[0];
-                emitSideAoByFlags = Block.ResolveAoFlags(this.Block, emitSideAo);
+                absorbAnyLight = emitSideAo != 0;
             }
 
             byte[] sideSolid = tree.GetBytes("sideSolid", new byte[] { 255 });
             if (sideSolid.Length > 0)
             {
-                this.sideSolid[0] = (sideSolid[0] & 1) > 0;
-                this.sideSolid[1] = (sideSolid[0] & 2) > 0;
-                this.sideSolid[2] = (sideSolid[0] & 4) > 0;
-                this.sideSolid[3] = (sideSolid[0] & 8) > 0;
-                this.sideSolid[4] = (sideSolid[0] & 16) > 0;
-                this.sideSolid[5] = (sideSolid[0] & 32) > 0;
+                GameMath.BoolsFromInt(this.sideSolid, sideSolid[0]);
             }
 
 
@@ -1092,9 +1247,9 @@ namespace Vintagestory.GameContent
                 tree["groundSnowCuboids"] = new IntArrayAttribute(GroundSnowCuboids.ToArray());
             }
 
-            tree.SetBytes("emitSideAo", new byte[] { (byte)((emitSideAo[0] ? 1 : 0) | (emitSideAo[1] ? 2 : 0) | (emitSideAo[2] ? 4 : 0) | (emitSideAo[3] ? 8 : 0) | (emitSideAo[4] ? 16 : 0) | (emitSideAo[5] ? 32 : 0)) });
+            tree.SetBytes("emitSideAo", new byte[] { (byte) emitSideAo });
 
-            tree.SetBytes("sideSolid", new byte[] { (byte)((sideSolid[0] ? 1 : 0) | (sideSolid[1] ? 2 : 0) | (sideSolid[2] ? 4 : 0) | (sideSolid[3] ? 8 : 0) | (sideSolid[4] ? 16 : 0) | (sideSolid[5] ? 32 : 0)) });
+            tree.SetBytes("sideSolid", new byte[] { (byte) GameMath.IntFromBools(sideSolid) });
 
             tree.SetString("blockName", BlockName);
         }

@@ -275,6 +275,7 @@ namespace Vintagestory.GameContent
                     workItemStack = newWorkItemStack;
                     rotation = workItemStack.Attributes.GetInt("rotation");
                 }
+                else if (workItemStack.Collectible is ItemWorkItem wi && wi.isBlisterSteel) return false;
 
                 if (SelectedRecipeId < 0)
                 {
@@ -575,7 +576,11 @@ namespace Vintagestory.GameContent
                 
                 SelectedRecipeId = -1;
 
-                if (byPlayer == null || !byPlayer.InventoryManager.TryGiveItemstack(outstack))
+                if (byPlayer?.InventoryManager.TryGiveItemstack(outstack) == true)
+                {
+                    Api.World.PlaySoundFor(new AssetLocation("sounds/player/collect"), byPlayer, false, 24);
+                }
+                else
                 {
                     Api.World.SpawnItemEntity(outstack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
                 }

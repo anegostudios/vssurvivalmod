@@ -66,10 +66,11 @@ namespace Vintagestory.GameContent
         {
             if (!Api.World.Claims.TryAccess(byPlayer, Pos, EnumBlockAccessFlags.Use))
             {
-                MarkDirty(true);
+                MarkDirty(true, byPlayer);
                 return;
             }
 
+            
             EnumChiselMode mode = ChiselMode(byPlayer);
 
             bool wasChanged = false;
@@ -125,7 +126,7 @@ namespace Vintagestory.GameContent
             }
 
             RegenSelectionBoxes(byPlayer);
-            MarkDirty(true);
+            MarkDirty(true, byPlayer);
 
             // Send a custom network packet for server side, because
             // serverside blockselection index is inaccurate
@@ -187,7 +188,7 @@ namespace Vintagestory.GameContent
                     BlockName = reader.ReadString();
                     if (BlockName == null) BlockName = "";
                 }
-                MarkDirty(true);
+                MarkDirty(true, player);
                 // Tell server to save this chunk to disk again
                 Api.World.BlockAccessor.GetChunkAtBlockPos(Pos.X, Pos.Y, Pos.Z).MarkModified();
             }
@@ -250,7 +251,7 @@ namespace Vintagestory.GameContent
         #region Voxel math
 
         public bool SetVoxel(Vec3i voxelPos, bool state, IPlayer byPlayer, byte materialId)
-        {
+        {           
             int size = ChiselSize(byPlayer);
             bool wasChanged = SetVoxel(voxelPos, state, byPlayer, materialId, size);
 

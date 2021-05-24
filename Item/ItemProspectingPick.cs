@@ -213,8 +213,12 @@ namespace Vintagestory.GameContent
             {
                 throw new NotImplementedException();
             }
+			public bool Unpack_ReadOnly()
+			{
+				throw new NotImplementedException();
+			}
 
-            public Block GetLocalBlockAtBlockPos(IWorldAccessor world, BlockPos position)
+			public Block GetLocalBlockAtBlockPos(IWorldAccessor world, BlockPos position)
             {
                 throw new NotImplementedException();
             }
@@ -229,10 +233,31 @@ namespace Vintagestory.GameContent
                 throw new NotImplementedException();
             }
 
+			public bool AddDecor(IBlockAccessor blockAccessor, BlockPos pos, int faceIndex, Block block)
+			{
+				throw new NotImplementedException();
+			}
+
+			public void RemoveDecor(int index3d, IWorldAccessor world, BlockPos pos)
+			{
+				throw new NotImplementedException();
+			}
+
+			public bool GetDecors(IBlockAccessor blockAccessor, BlockPos pos, Block[] result)
+			{
+				throw new NotImplementedException();
+			}
+
+			public Cuboidf[] AdjustSelectionBoxForDecor(IBlockAccessor blockAccessor, BlockPos pos, Cuboidf[] orig)
+			{
+				throw new NotImplementedException();
+			}
+
 			public void FinishLightDoubleBuffering()
 			{
 				throw new NotImplementedException();
 			}
+
 			#endregion
 		}
     }
@@ -577,7 +602,7 @@ namespace Vintagestory.GameContent
                     {
                         if (i > 0) sbTrace.Append(", ");
                         string pageCode = ppws.pageCodes[val];
-                        string text = Lang.Get("<a href=\"handbook://{0}\">{1}</a>", pageCode, Lang.Get("ore-" + val));
+                        string text = string.Format("<a href=\"handbook://{0}\">{1}</a>", pageCode, Lang.Get("ore-" + val));
                         sbTrace.Append(text);
                         i++;
                     }

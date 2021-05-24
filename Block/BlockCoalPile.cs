@@ -91,6 +91,20 @@ namespace Vintagestory.GameContent
             });
         }
 
+
+        public override void GetDecal(IWorldAccessor world, BlockPos pos, ITexPositionSource decalTexSource, ref MeshData decalModelData, ref MeshData blockModelData)
+        {
+            BlockEntityCoalPile bea = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityCoalPile;
+            if (bea == null)
+            {
+                base.GetDecal(world, pos, decalTexSource, ref decalModelData, ref blockModelData);
+                return;
+            }
+
+            decalModelData.Clear();
+            bea.GetDecalMesh(decalTexSource, out decalModelData);
+        }
+
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
         {
             BlockEntityCoalPile bea = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityCoalPile;

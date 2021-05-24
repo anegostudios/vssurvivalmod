@@ -23,6 +23,7 @@ namespace Vintagestory.ServerMods
         BlockPatchConfig bpc;
 
         float forestMod;
+        float shrubMod = 0f;
 
         public override bool ShouldLoad(EnumAppSide side)
         {
@@ -202,9 +203,12 @@ namespace Vintagestory.ServerMods
                     float forestRel = GameMath.BiLerp(forestUpLeft, forestUpRight, forestBotLeft, forestBotRight, (float)dx / chunksize, (float)dz / chunksize) / 255f;
                     forestRel = GameMath.Clamp(forestRel + forestMod, 0, 1);
 
+                    float shrubRel = GameMath.BiLerp(shrubUpLeft, shrubUpRight, shrubBotLeft, shrubBotRight, (float)dx / chunksize, (float)dz / chunksize) / 255f;
+                    shrubRel = GameMath.Clamp(shrubRel + shrubMod, 0, 1);
+
                     int climate = GameMath.BiLerpRgbColor((float)dx / chunksize, (float)dz / chunksize, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight);
 
-                    if (bpc.IsPatchSuitableAt(blockPatch, block, api.WorldManager, climate, y, forestRel))
+                    if (bpc.IsPatchSuitableAt(blockPatch, block, api.WorldManager, climate, y, forestRel, shrubRel))
                     {
                         int firstBlockId = 0;
                         bool found = true;

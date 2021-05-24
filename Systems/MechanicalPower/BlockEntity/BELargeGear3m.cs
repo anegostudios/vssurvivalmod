@@ -25,7 +25,13 @@ namespace Vintagestory.GameContent.Mechanics
 
         private void TestGear(IBlockAccessor accessor, BlockPos pos)
         {
-            if (accessor.GetBlock(pos) is BlockAngledGears) AddGear(pos);
+            if (accessor.GetBlock(pos) is BlockAngledGears)
+            {
+                AddGear(pos);
+
+                // set largegear on the connected gears, in case not already set by their initialisation methods (can happen at a chunk boundary if this chunk loaded second)
+                accessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorMPAngledGears>()?.SetLargeGear(this);
+            }
         }
 
         public bool AngledGearNotAlreadyAdded(BlockPos position)
@@ -42,7 +48,7 @@ namespace Vintagestory.GameContent.Mechanics
             int dz = Pos.Z - pos.Z;
             if (dx != 0 && dz != 0) return false;  //one of dx and dz must be 0
             if (HasGearAt(pos)) return false;
-            return dx + dz == 1 || dx + dz == -1;  //this should always be true if replacing a multiblock fake block with this gear as centre, but check just in case
+            return dx + dz == 1 || dx + dz == -1;  //this should always be true if replacing a multiblock fake block with this gear as center, but check just in case
         }
 
         public bool HasGears()

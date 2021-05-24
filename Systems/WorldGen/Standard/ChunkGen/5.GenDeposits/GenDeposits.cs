@@ -145,7 +145,7 @@ namespace Vintagestory.ServerMods
         
         MapLayerBase getOrCreateMapLayer(int seed, string oremapCode, Dictionary<string, MapLayerBase> maplayersByCode, float scaleMul, float contrastMul, float sub)
         {
-            MapLayerBase ml = null;
+            MapLayerBase ml;
             if (!maplayersByCode.TryGetValue(oremapCode, out ml))
             {
                 NoiseOre noiseOre = new NoiseOre(seed + oremapCode.GetHashCode());
@@ -156,7 +156,7 @@ namespace Vintagestory.ServerMods
         }
 
 
-        private void OnMapRegionGen(IMapRegion mapRegion, int regionX, int regionZ)
+        public void OnMapRegionGen(IMapRegion mapRegion, int regionX, int regionZ)
         {
             int pad = 2;
             TerraGenConfig.depositVerticalDistortScale = 2;
@@ -273,7 +273,7 @@ namespace Vintagestory.ServerMods
                 if (rainRel < variant.Climate.MinRain || rainRel > variant.Climate.MaxRain || temp < variant.Climate.MinTemp || temp > variant.Climate.MaxTemp) return;
             }
 
-            variant.GeneratorInst.GenDeposit(blockAccessor, chunks, chunkX, chunkZ, depoCenterPos, ref subDepositsToPlace);
+            variant.GeneratorInst?.GenDeposit(blockAccessor, chunks, chunkX, chunkZ, depoCenterPos, ref subDepositsToPlace);
         }
 
     }

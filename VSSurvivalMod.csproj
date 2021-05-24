@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="14.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
@@ -9,7 +9,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>VSSurvivalMod</RootNamespace>
     <AssemblyName>VSSurvivalMod</AssemblyName>
-    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <PublishUrl>publish\</PublishUrl>
@@ -27,6 +27,7 @@
     <IsWebBootstrapper>false</IsWebBootstrapper>
     <UseApplicationTrust>false</UseApplicationTrust>
     <BootstrapperEnabled>true</BootstrapperEnabled>
+    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -72,6 +73,17 @@
     <ErrorReport>prompt</ErrorReport>
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'PerfTest|AnyCPU'">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>..\bin\Release\Mods\</OutputPath>
+    <DefineConstants>TRACE;PERFTEST</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <UseVSHostingProcess>false</UseVSHostingProcess>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="0Harmony, Version=2.0.0.8, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\Lib.Harmony.2.0.0.8\lib\net45\0Harmony.dll</HintPath>
@@ -102,6 +114,7 @@
     <Compile Include="BlockBehavior\BehaviorCanAttach.cs" />
     <Compile Include="BlockBehavior\BehaviorCollectFrom.cs" />
     <Compile Include="BlockBehavior\BehaviorDropNotSnowCovered.cs" />
+    <Compile Include="BlockBehavior\BehaviorRopeTieable.cs" />
     <Compile Include="BlockBehavior\BehaviorOmniRotatable.cs" />
     <Compile Include="BlockBehavior\BehaviorPushEventOnBlockBroken.cs" />
     <Compile Include="BlockBehavior\BehaviorRightClickPickup.cs" />
@@ -111,6 +124,7 @@
     <Compile Include="BlockBehavior\BehaviorMilkingContainer.cs" />
     <Compile Include="BlockBehavior\BehaviorReinforcable.cs" />
     <Compile Include="BlockBehavior\BehaviorHeatSource.cs" />
+    <Compile Include="BlockEntityBehavior\BEBehaviorBurning.cs" />
     <Compile Include="BlockEntityRenderer\AnvilPartRenderer.cs" />
     <Compile Include="BlockEntityRenderer\BlockEntitySignPostRenderer.cs" />
     <Compile Include="BlockEntityRenderer\ChestLabelRenderer.cs" />
@@ -122,6 +136,9 @@
     <Compile Include="BlockEntity\BEBarrel.cs" />
     <Compile Include="BlockEntity\BEAnvilPart.cs" />
     <Compile Include="BlockEntity\BECanvas.cs" />
+    <Compile Include="BlockEntity\BEPie.cs" />
+    <Compile Include="BlockEntity\BEClayOven.cs" />
+    <Compile Include="BlockEntity\BEPitKiln.cs" />
     <Compile Include="BlockEntity\BELayer.cs" />
     <Compile Include="BlockEntity\BEMicroBlock.cs" />
     <Compile Include="BlockEntity\BECoalPile.cs" />
@@ -131,12 +148,19 @@
     <Compile Include="BlockEntity\BEDisplayCase.cs" />
     <Compile Include="BlockEntity\BEEchoChamber.cs" />
     <Compile Include="BlockEntity\BEMoldRack.cs" />
-    <Compile Include="BlockEntity\BEPeatPile.cs" />
+    <Compile Include="Block\BlockPie.cs" />
+    <Compile Include="Block\BlockGlacierIce.cs" />
+    <Compile Include="Block\BlockPitkiln.cs" />
+    <Compile Include="CollectibleBehavior\BehaviorContainer.cs" />
+    <Compile Include="Item\ItemDough.cs" />
+    <Compile Include="Legacy\BlockEntity\BEPeatPile.cs" />
     <Compile Include="BlockEntity\BEItemFlow.cs" />
     <Compile Include="BlockEntity\BELabeledChest.cs" />
     <Compile Include="BlockEntity\BELocustNest.cs" />
-    <Compile Include="BlockEntity\BEPlankPile.cs" />
+    <Compile Include="Legacy\BlockEntity\BEPlankPile.cs" />
     <Compile Include="BlockEntity\BEStoneCoffin.cs" />
+    <Compile Include="BlockEntity\BEHenBox.cs" />
+    <Compile Include="BlockEntity\BlockEntityGroundStorage.cs" />
     <Compile Include="BlockEntity\BlockEntityPlantContainer.cs" />
     <Compile Include="BlockEntity\BEShelf.cs" />
     <Compile Include="BlockEntity\BESignPost.cs" />
@@ -151,6 +175,16 @@
     <Compile Include="BlockEntity\BESapling.cs" />
     <Compile Include="BlockEntity\BECrock.cs" />
     <Compile Include="BlockEntity\BlockEntityContainerDisplay.cs" />
+    <Compile Include="Block\BlockCropCustomWave.cs" />
+    <Compile Include="Block\BlockFenceStackAware.cs" />
+    <Compile Include="Block\BlockGroundStorage.cs" />
+    <Compile Include="Block\BlockLeavesTest.cs" />
+    <Compile Include="Block\BlockLogSection.cs" />
+    <Compile Include="Block\BlockWithLeavesMotion.cs" />
+    <Compile Include="Block\BlockBough.cs" />
+    <Compile Include="Block\BlockClayOven.cs" />
+    <Compile Include="Block\BlockLeavesNarrow.cs" />
+    <Compile Include="Block\BlockStoneCoffinLid.cs" />
     <Compile Include="Block\BlockCokeOvenDoor.cs" />
     <Compile Include="Block\BlockAnvilPart.cs" />
     <Compile Include="Block\BlockCharcoalPile.cs" />
@@ -185,7 +219,7 @@
     <Compile Include="Block\BlockHopper.cs" />
     <Compile Include="Block\BlockShell.cs" />
     <Compile Include="Block\BlockPeatbrick.cs" />
-    <Compile Include="Block\BlockPeatPile.cs" />
+    <Compile Include="Legacy\Block\BlockPeatPile.cs" />
     <Compile Include="Block\BlockLabeledChest.cs" />
     <Compile Include="Block\BlockLocustNest.cs" />
     <Compile Include="Block\BlockLog.cs" />
@@ -194,7 +228,7 @@
     <Compile Include="Block\BlockMetalPartPile.cs" />
     <Compile Include="Block\BlockMetalSpikes.cs" />
     <Compile Include="Block\BlockMeteorite.cs" />
-    <Compile Include="Block\BlockPlankPile.cs" />
+    <Compile Include="Legacy\Block\BlockPlankPile.cs" />
     <Compile Include="Block\BlockRequireSolidGround.cs" />
     <Compile Include="Block\BlockShelf.cs" />
     <Compile Include="Block\BlockSignPost.cs" />
@@ -207,16 +241,24 @@
     <Compile Include="Block\BlockWaterfall.cs" />
     <Compile Include="Block\BlockWaterFlowing.cs" />
     <Compile Include="Block\BlockStoneCoffinSection.cs" />
+    <Compile Include="CollectibleBehavior\BehaviorGroundStorable.cs" />
     <Compile Include="Entities\EntityArmorStand.cs" />
     <Compile Include="Entities\EntityBell.cs" />
+    <Compile Include="Entities\EntityFish.cs" />
     <Compile Include="Entity\AITask\AiTaskBellAlarm.cs" />
+    <Compile Include="Entity\AITask\AiTaskFishOutOfWater.cs" />
+    <Compile Include="Entity\AITask\AiTaskFishMoveFast.cs" />
     <Compile Include="Entity\Behavior\BehaviorBodyTemperature.cs" />
+    <Compile Include="Entity\Behavior\BehaviorRopeTieable.cs" />
     <Compile Include="Entity\Behavior\BehaviorMilkable.cs" />
     <Compile Include="Entity\Behavior\BehaviorExtraSkinnable.cs" />
     <Compile Include="Gui\GuiDialogCreateCharacter.cs" />
+    <Compile Include="Gui\GuiDialogCaveArt.cs" />
     <Compile Include="Item\ItemCheese.cs" />
     <Compile Include="Item\ItemCoal.cs" />
     <Compile Include="Item\ItemPileable.cs" />
+    <Compile Include="Item\ItemTreeSeed.cs" />
+    <Compile Include="Item\ItemRope.cs" />
     <Compile Include="Item\ItemScrapWeaponKit.cs" />
     <Compile Include="Systems\Character\Trait.cs" />
     <Compile Include="Systems\ChiselBlockBulkSetMaterial.cs" />
@@ -267,16 +309,15 @@
     <Compile Include="BlockEntity\BECharcoalPit.cs" />
     <Compile Include="BlockEntity\BEClayForm.cs" />
     <Compile Include="BlockEntity\BEFarmland.cs" />
-    <Compile Include="BlockEntity\BEFire.cs" />
     <Compile Include="BlockEntity\BEFirepit.cs" />
-    <Compile Include="BlockEntity\BEFireWoodPile.cs" />
+    <Compile Include="Legacy\BlockEntity\BEFireWoodPile.cs" />
     <Compile Include="BlockEntity\BEForge.cs" />
     <Compile Include="BlockEntity\BEQuern.cs" />
     <Compile Include="BlockEntity\BEIngotMold.cs" />
-    <Compile Include="BlockEntity\BEIngotPile.cs" />
+    <Compile Include="Legacy\BlockEntity\BEIngotPile.cs" />
     <Compile Include="BlockEntity\BEKnappingSurface.cs" />
     <Compile Include="BlockEntity\BESmeltedContainer.cs" />
-    <Compile Include="BlockEntity\BEPlatePile.cs" />
+    <Compile Include="Legacy\BlockEntity\BEPlatePile.cs" />
     <Compile Include="BlockEntity\BEPumpkinVine.cs" />
     <Compile Include="BlockEntity\BESign.cs" />
     <Compile Include="BlockEntity\BESpawner.cs" />
@@ -294,7 +335,7 @@
     <Compile Include="BlockEntity\BlockEntityContainer.cs" />
     <Compile Include="Systems\Cooking\BECookedContainer.cs" />
     <Compile Include="BlockEntity\BlockEntityOpenableContainer.cs" />
-    <Compile Include="BlockEntity\BlockEntityItemPile.cs" />
+    <Compile Include="Legacy\BlockEntity\BlockEntityItemPile.cs" />
     <Compile Include="BlockEntityRenderer\AnvilWorkItemRenderer.cs" />
     <Compile Include="BlockEntityRenderer\BloomeryContentsRenderer.cs" />
     <Compile Include="BlockEntityRenderer\ClayFormRenderer.cs" />
@@ -348,13 +389,13 @@
     <Compile Include="Block\BlockFence.cs" />
     <Compile Include="Block\BlockFenceGate.cs" />
     <Compile Include="Block\BlockFirepit.cs" />
-    <Compile Include="Block\BlockFirewoodPile.cs" />
+    <Compile Include="Legacy\Block\BlockFirewoodPile.cs" />
     <Compile Include="Block\BlockPlantContainer.cs" />
     <Compile Include="Block\BlockForge.cs" />
     <Compile Include="Block\BlockFullCoating.cs" />
     <Compile Include="Block\BlockGenericTypedContainer.cs" />
     <Compile Include="Block\BlockIngotMold.cs" />
-    <Compile Include="Block\BlockIngotPile.cs" />
+    <Compile Include="Legacy\Block\BlockIngotPile.cs" />
     <Compile Include="Block\BlockKnappingSurface.cs" />
     <Compile Include="Block\BlockLantern.cs" />
     <Compile Include="Block\BlockLooseGears.cs" />
@@ -372,7 +413,7 @@
     <Compile Include="Block\BlockOre.cs" />
     <Compile Include="Block\BlockMushroom.cs" />
     <Compile Include="Block\BlockPlant.cs" />
-    <Compile Include="Block\BlockPlatePile.cs" />
+    <Compile Include="Legacy\Block\BlockPlatePile.cs" />
     <Compile Include="Block\BlockRails.cs" />
     <Compile Include="Block\BlockReeds.cs" />
     <Compile Include="Block\BlockSeaweed.cs" />
@@ -420,7 +461,6 @@
     <Compile Include="Systems\CustomSpawnConditions.cs" />
     <Compile Include="Systems\TemporalStability.cs" />
     <Compile Include="Systems\Trading\ResolvedTradeItem.cs" />
-    <Compile Include="Systems\Trading\TalkUtil.cs" />
     <Compile Include="Systems\Trading\TradeClasses.cs" />
     <Compile Include="Systems\Trading\TradeItem.cs" />
     <Compile Include="Systems\Trading\TraderOutfits.cs" />
@@ -613,7 +653,7 @@
     <Compile Include="Systems\WorldGen\Standard\WgenCommands.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Debug.cs" />
-    <Compile Include="UpgradeTasks.cs" />
+    <Compile Include="Legacy\UpgradeTasks.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Cairo\Cairo.csproj">
@@ -634,6 +674,7 @@
     <ProjectReference Include="..\VSEssentials\VSEssentialsMod.csproj">
       <Project>{3730ff53-02ab-4ccd-80ab-6199df67383b}</Project>
       <Name>VSEssentialsMod</Name>
+      <Private>False</Private>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

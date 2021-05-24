@@ -32,50 +32,58 @@ namespace Vintagestory.GameContent
             }
         }
 
+        BlockPos atPos = new BlockPos();
+
         public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, LCGRandom worldgenRand)
         {
             //blockAccessor.SetBlock(blockAccessor.GetBlock(new AssetLocation("creativeblock-60")).BlockId, pos);
             
             for (int i = 1; i < 4; i++)
             {
-                Block aboveBlock = blockAccessor.GetBlock(pos.X, pos.Y - i, pos.Z);
-                
-                if  (
-                    (aboveBlock.BlockMaterial == EnumBlockMaterial.Wood || aboveBlock.BlockMaterial == EnumBlockMaterial.Leaves) && aboveBlock.SideSolid[BlockFacing.DOWN.Index]
-                )
-                {
-                    BlockPos atpos = new BlockPos(pos.X, pos.Y - i - 1, pos.Z);
+                atPos.Set(pos.X, pos.Y - i, pos.Z);
+                Block aboveBlock = blockAccessor.GetBlock(atPos);
 
-                    Block block = blockAccessor.GetBlock(atpos);
+                var abovemat = aboveBlock.GetBlockMaterial(blockAccessor, atPos);
+
+                if ((abovemat == EnumBlockMaterial.Wood || abovemat == EnumBlockMaterial.Leaves) && aboveBlock.SideSolid[BlockFacing.DOWN.Index])
+                {
+                    atPos.Set(pos.X, pos.Y - i - 1, pos.Z);
+
+                    Block block = blockAccessor.GetBlock(atPos);
+                    var mat = block.GetBlockMaterial(blockAccessor, atPos);
+
+                    BlockPos belowPos = new BlockPos(pos.X, pos.Y - i - 2, pos.Z);
 
                     if (
-                        block.BlockMaterial == EnumBlockMaterial.Wood && 
-                        aboveBlock.BlockMaterial == EnumBlockMaterial.Wood &&
-                        blockAccessor.GetBlock(pos.X, pos.Y - i - 2, pos.Z).BlockMaterial == EnumBlockMaterial.Wood &&
+                        mat == EnumBlockMaterial.Wood &&
+                        abovemat == EnumBlockMaterial.Wood &&
+                        blockAccessor.GetBlock(belowPos).GetBlockMaterial(blockAccessor, belowPos) == EnumBlockMaterial.Wood &&
                         aboveBlock.LastCodePart() == "ud"
                     )
-                    {   
-                        blockAccessor.SetBlock(blockAccessor.GetBlock(new AssetLocation("wildbeehive-inlog-" + aboveBlock.FirstCodePart(2))).BlockId, atpos);
+                    {
+                        Block inlogblock = blockAccessor.GetBlock(new AssetLocation("wildbeehive-inlog-" + aboveBlock.Variant["wood"]));
+
+                        blockAccessor.SetBlock(inlogblock.BlockId, atPos);
                         if (EntityClass != null)
                         {
-                            blockAccessor.SpawnBlockEntity(EntityClass, atpos);
+                            blockAccessor.SpawnBlockEntity(EntityClass, atPos);
                         }
                      
                         return true;
                     }
 
-                    if (block.BlockMaterial != EnumBlockMaterial.Leaves && block.BlockMaterial != EnumBlockMaterial.Air) continue;
+                    if (mat != EnumBlockMaterial.Leaves && mat != EnumBlockMaterial.Air) continue;
 
                     int dx = pos.X % blockAccessor.ChunkSize;
                     int dz = pos.Z % blockAccessor.ChunkSize;
-                    int surfacey = blockAccessor.GetMapChunkAtBlockPos(atpos).WorldGenTerrainHeightMap[dz * blockAccessor.ChunkSize + dx];
+                    int surfacey = blockAccessor.GetMapChunkAtBlockPos(atPos).WorldGenTerrainHeightMap[dz * blockAccessor.ChunkSize + dx];
                    
                     if (pos.Y - surfacey < 4) return false;
                     
-                    blockAccessor.SetBlock(BlockId, atpos);
+                    blockAccessor.SetBlock(BlockId, atPos);
                     if (EntityClass != null)
                     {
-                        blockAccessor.SpawnBlockEntity(EntityClass, atpos);
+                        blockAccessor.SpawnBlockEntity(EntityClass, atPos);
                     }
 
                     //BlockPos test = pos.Copy();

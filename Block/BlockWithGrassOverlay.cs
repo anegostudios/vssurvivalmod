@@ -62,9 +62,9 @@ namespace Vintagestory.GameContent
 
             int grassColor = capi.BlockTextureAtlas.GetAverageColor((int)textureSubId);
 
-            if (ClimateColorMap != null)
+            if (ClimateColorMapResolved != null)
             {
-                grassColor = capi.World.ApplyColorMapOnRgba(ClimateColorMap, SeasonColorMap, grassColor, pos.X, pos.Y, pos.Z, false);
+                grassColor = capi.World.ApplyColorMapOnRgba(ClimateColorMapResolved, SeasonColorMapResolved, grassColor, pos.X, pos.Y, pos.Z, false);
             }
 
             if (grasscover == "normal")

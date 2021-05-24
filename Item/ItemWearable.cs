@@ -8,6 +8,7 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
@@ -216,7 +217,11 @@ namespace Vintagestory.GameContent
 
             if (armorShape.Textures.Count > 0 && armorShape.TextureSizes.Count == 0)
             {
-                capi.World.Logger.Warning("Entity wearable shape {0} defines textures but not textures sizes, will probably have a broken texture.", shapePath);
+                foreach (var val in armorShape.Textures)
+                {
+                    armorShape.TextureSizes.Add(val.Key, new int[] { armorShape.TextureWidth, armorShape.TextureHeight });
+                }
+                //capi.World.Logger.Warning("Entity wearable shape {0} defines textures but not textures sizes, will probably have a broken texture.", shapePath);
             }
 
             foreach (var val in armorShape.TextureSizes)

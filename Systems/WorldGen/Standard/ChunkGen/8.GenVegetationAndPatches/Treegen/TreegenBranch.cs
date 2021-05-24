@@ -31,6 +31,16 @@ namespace Vintagestory.ServerMods.NoObf
         public float widthloss = 0.05f;
 
         /// <summary>
+        /// Randomise the widthloss from tree to tree - leads to taller/shorter, fatter/narrower variety
+        /// </summary>
+        public NatFloat randomWidthLoss = null;
+
+        /// <summary>
+        /// If this is less than 1, the width loss will reduce as it progresses -> leads to a taller more spindly tree
+        /// </summary>
+        public float widthlossCurve = 1f;
+
+        /// <summary>
         /// Stop growing once size has gone below this value
         /// </summary>
         public NatFloat dieAt = NatFloat.createUniform(0.0002f, 0);
@@ -67,6 +77,7 @@ namespace Vintagestory.ServerMods.NoObf
         public EvolvingNatFloat angleHoriEvolve = EvolvingNatFloat.createIdentical(0f);
 
 
+        public bool NoLogs;
 
         public NatFloat branchStart = NatFloat.createUniform(0.7f, 0f);
 
@@ -75,7 +86,6 @@ namespace Vintagestory.ServerMods.NoObf
         public NatFloat branchVerticalAngle = NatFloat.createUniform(0, GameMath.PI);
 
         public NatFloat branchHorizontalAngle = NatFloat.createUniform(0, GameMath.PI);
-
 
 
         /// <summary>
@@ -98,7 +108,6 @@ namespace Vintagestory.ServerMods.NoObf
         /// </summary>            
         public EvolvingNatFloat branchQuantityEvolve = null;
 
-
         public TreeGenBranch()
         {
 
@@ -109,7 +118,7 @@ namespace Vintagestory.ServerMods.NoObf
             FieldInfo[] fields = GetType().GetFields();
             foreach (FieldInfo field in fields)
             {
-                if (!skip.Contains(field.Name))
+                if (skip == null || !skip.Contains(field.Name))
                 {
                     field.SetValue(this, treeGenTrunk.GetType().GetField(field.Name).GetValue(treeGenTrunk));
                 }
@@ -120,6 +129,21 @@ namespace Vintagestory.ServerMods.NoObf
         internal void OnDeserializedMethod(StreamingContext context)
         {
             if (angleVert == null) angleVert = NatFloat.createUniform(0, 0);
+        }
+
+
+        public float WidthLoss(Random rand)
+        {
+            return randomWidthLoss != null ? randomWidthLoss.nextFloat(1f, rand) : widthloss;
+        }
+
+
+        public virtual int getBlockId(float width, TreeGenBlocks blocks, TreeGen gen)
+        {
+            return
+                width < 0.3f || NoLogs ? blocks.GetLeaves(width) :
+                    (blocks.otherLogBlockCode != null && gen.TriggerRandomOtherBlock() ? blocks.otherLogBlockId : blocks.logBlockId)
+            ;
         }
     }
 }

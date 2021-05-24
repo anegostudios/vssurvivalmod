@@ -11,7 +11,7 @@ namespace Vintagestory.GameContent
     /// of 2,3,2 respectively. If the block is combustible and has a burn temperature lower than or equal
     /// to the temperature at that location then a fire block will be placed in the adjacent air block.
     /// </summary>
-    public class BlockLava : Block, VintagestoryAPI.Common.Collectible.Block.IBlockFlowing
+    public class BlockLava : Block, IBlockFlowing
     {
         public string Flow { get; set; }
         public Vec3i FlowNormali { get => null; set {} }
@@ -63,11 +63,8 @@ namespace Vintagestory.GameContent
             }
             FireLocation fireLocation = (FireLocation)extra;
             world.BlockAccessor.SetBlock(blockFire.BlockId,fireLocation.firePos);
-            BlockEntityFire befire = world.BlockAccessor.GetBlockEntity(fireLocation.firePos) as BlockEntityFire;
-            if (befire != null)
-            {
-                befire.Init(fireLocation.facing, null);
-            }
+            BlockEntity befire = world.BlockAccessor.GetBlockEntity(fireLocation.firePos);
+            befire?.GetBehavior<BEBehaviorBurning>()?.OnFirePlaced(fireLocation.facing, null);
         }
 
         /// <summary>

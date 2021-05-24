@@ -111,7 +111,7 @@ namespace Vintagestory.ServerMods
 
                     bool numeric = int.TryParse(variant, NumberStyles.Any, GlobalConstants.DefaultCultureInfo, out index);
 
-                    treeGenerators.LoadTreeGenerators();
+                    treeGenerators.ReloadTreeGenerators();
 
                     if (numeric)
                     {

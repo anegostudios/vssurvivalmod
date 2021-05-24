@@ -127,6 +127,15 @@ namespace Vintagestory.GameContent
 
         protected override void Open(IWorldAccessor world, IPlayer byPlayer, BlockPos position)
         {
+            float breakChance = Attributes["breakOnTriggerChance"].AsFloat(0);
+            if (world.Side == EnumAppSide.Server && world.Rand.NextDouble() < breakChance)
+            {
+                world.BlockAccessor.BreakBlock(position, byPlayer);
+                world.PlaySoundAt(new AssetLocation("sounds/effect/toolbreak"), position.X + 0.5, position.Y + 0.5, position.Z + 0.5, null);
+
+                return;
+            }
+
             AssetLocation newCode = CodeWithVariant("state", IsOpened() ? "closed" : "opened");
             Block newBlock = world.BlockAccessor.GetBlock(newCode);
 
@@ -164,7 +173,7 @@ namespace Vintagestory.GameContent
 
         public override int GetHeatRetention(BlockPos pos, BlockFacing facing)
         {
-            return open ? 1 : 3;
+            return open ? 3 : 1;
         }
     }
 }

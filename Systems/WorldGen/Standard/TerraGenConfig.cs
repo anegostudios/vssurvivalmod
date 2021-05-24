@@ -51,7 +51,7 @@ namespace Vintagestory.ServerMods
 
         public static int oreMapWobbleScale = 110;
         public static int oreMapScale = 16;
-        public static int oreMapSubScale = 12;
+        public static int oreMapSubScale = 16; // was 12, but that does not properly align then
 
         public static int depositVerticalDistortScale = 8;
 

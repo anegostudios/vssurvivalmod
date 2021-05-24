@@ -1,6 +1,7 @@
 ﻿using Vintagestory.API;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
@@ -8,11 +9,15 @@ namespace Vintagestory.GameContent
     public class BlockBehaviorHorizontalOrientable : BlockBehavior
     {
         string dropBlockFace = "north";
+        string variantCode = "horizontalorientation";
         JsonItemStack drop = null;
 
         public BlockBehaviorHorizontalOrientable(Block block) : base(block)
         {
-
+            if (!block.Variant.ContainsKey("horizontalorientation"))
+            {
+                variantCode = "side";
+            }
         }
 
         public override void Initialize(JsonObject properties)
@@ -40,7 +45,7 @@ namespace Vintagestory.GameContent
         {
             handling = EnumHandling.PreventDefault;
             BlockFacing[] horVer = Block.SuggestedHVOrientation(byPlayer, blockSel);
-            AssetLocation blockCode = block.CodeWithParts(horVer[0].Code);
+            AssetLocation blockCode = block.CodeWithVariant(variantCode, horVer[0].Code);
             Block orientedBlock = world.BlockAccessor.GetBlock(blockCode);
 
             if (orientedBlock.CanPlaceBlock(world, byPlayer, blockSel, ref failureCode))
@@ -59,7 +64,7 @@ namespace Vintagestory.GameContent
             {
                 return new ItemStack[] { drop?.ResolvedItemstack.Clone() };
             }
-            return new ItemStack[] { new ItemStack(world.BlockAccessor.GetBlock(block.CodeWithParts(dropBlockFace))) };
+            return new ItemStack[] { new ItemStack(world.BlockAccessor.GetBlock(block.CodeWithVariant(variantCode, dropBlockFace))) };
         }
 
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos, ref EnumHandling handled)
@@ -70,7 +75,7 @@ namespace Vintagestory.GameContent
                 return drop?.ResolvedItemstack.Clone();
             }
 
-            return new ItemStack(world.BlockAccessor.GetBlock(block.CodeWithParts(dropBlockFace)));
+            return new ItemStack(world.BlockAccessor.GetBlock(block.CodeWithVariant(variantCode, dropBlockFace)));
         }
 
         
@@ -78,21 +83,21 @@ namespace Vintagestory.GameContent
         {
             handled = EnumHandling.PreventDefault;
 
-            BlockFacing beforeFacing = BlockFacing.FromCode(block.LastCodePart());
+            BlockFacing beforeFacing = BlockFacing.FromCode(block.Variant[variantCode]);
             int rotatedIndex = GameMath.Mod(beforeFacing.HorizontalAngleIndex - angle / 90, 4);
             BlockFacing nowFacing = BlockFacing.HORIZONTALS_ANGLEORDER[rotatedIndex];
             
-            return block.CodeWithParts(nowFacing.Code);
+            return block.CodeWithVariant(variantCode, nowFacing.Code);
         }
 
         public override AssetLocation GetHorizontallyFlippedBlockCode(EnumAxis axis, ref EnumHandling handling)
         {
             handling = EnumHandling.PreventDefault;
 
-            BlockFacing facing = BlockFacing.FromCode(block.LastCodePart());
+            BlockFacing facing = BlockFacing.FromCode(block.Variant[variantCode]);
             if (facing.Axis == axis)
             {
-                return block.CodeWithParts(facing.Opposite.Code);
+                return block.CodeWithVariant(variantCode, facing.Opposite.Code);
             }
             return block.Code;
         }

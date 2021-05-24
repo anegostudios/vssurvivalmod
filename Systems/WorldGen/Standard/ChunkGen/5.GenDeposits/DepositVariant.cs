@@ -6,6 +6,7 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Common;
 using System.Linq;
+using Vintagestory.API.Datastructures;
 
 namespace Vintagestory.ServerMods
 {
@@ -128,7 +129,7 @@ namespace Vintagestory.ServerMods
 
         public float GetOreMapFactor(int chunkx, int chunkz)
         {
-            IMapRegion originMapRegion = api.WorldManager.GetMapRegion(chunkx * chunksize / regionSize, chunkz * chunksize / regionSize);
+            IMapRegion originMapRegion = api?.WorldManager.GetMapRegion(chunkx * chunksize / regionSize, chunkz * chunksize / regionSize);
             if (originMapRegion == null) return 0;
             int lx = (chunkx * chunksize + chunksize / 2) % regionSize;
             int lz = (chunkz * chunksize + chunksize / 2) % regionSize;

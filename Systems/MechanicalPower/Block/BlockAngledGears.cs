@@ -7,7 +7,13 @@ namespace Vintagestory.GameContent.Mechanics
 {
     public class BlockAngledGears : BlockMPBase
     {
-        public string Orientation => Variant["orientation"];
+        public string Orientation;
+
+        public override void OnLoaded(ICoreAPI api)
+        {
+            Orientation = Variant["orientation"];
+            base.OnLoaded(api);
+        }
 
         public BlockFacing[] Facings
         {
@@ -123,7 +129,7 @@ namespace Vintagestory.GameContent.Mechanics
             if (largeGearEdge != null)
             {
                 BEMPMultiblock be = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BEMPMultiblock;
-                if (be != null) validLargeGear = be.Centre != null;
+                if (be != null) validLargeGear = be.Principal != null;
             }
 
             foreach (BlockFacing face in BlockFacing.ALLFACES)

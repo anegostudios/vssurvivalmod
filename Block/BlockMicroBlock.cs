@@ -1,14 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
-using Vintagestory.ServerMods;
+using VintagestoryAPI.Math.Vector;
 
 namespace Vintagestory.GameContent
 {
@@ -186,27 +181,16 @@ namespace Vintagestory.GameContent
             return bec?.GetLightAbsorption() ?? 0;
         }
 
-
-        public override bool DoEmitSideAo(IBlockAccessor blockAccessor, BlockPos pos, int facing)
+        public override bool DoEmitSideAo(IGeometryTester caller, BlockFacing facing)
         {
-            BlockEntityMicroBlock bec = blockAccessor.GetBlockEntity(pos) as BlockEntityMicroBlock;
-            if (bec == null)
-            {
-                return base.DoEmitSideAo(blockAccessor, pos, facing);
-            }
-
-            return bec.DoEmitSideAo(facing);
+            BlockEntityMicroBlock bec = caller.GetCurrentBlockEntityOnSide(facing.Opposite) as BlockEntityMicroBlock;
+            return bec?.DoEmitSideAo(facing.Index) ?? base.DoEmitSideAo(caller, facing);
         }
 
-        public override bool DoEmitSideAoByFlag(IBlockAccessor blockAccessor, BlockPos pos, int flag)
+        public override bool DoEmitSideAoByFlag(IGeometryTester caller, Vec3iAndFacingFlags vec)
         {
-            BlockEntityMicroBlock bec = blockAccessor.GetBlockEntity(pos) as BlockEntityMicroBlock;
-            if (bec == null)
-            {
-                return base.DoEmitSideAoByFlag(blockAccessor, pos, flag);
-            }
-
-            return bec.DoEmitSideAoByFlag(flag);
+            BlockEntityMicroBlock bec = caller.GetCurrentBlockEntityOnSide(vec) as BlockEntityMicroBlock;
+            return bec?.DoEmitSideAoByFlag(vec.OppositeFlags) ?? base.DoEmitSideAoByFlag(caller, vec);
         }
 
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)

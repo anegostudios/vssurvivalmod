@@ -120,7 +120,7 @@ namespace Vintagestory.GameContent
             byEntity.World.SpawnEntity(entity);
             byEntity.StartAnimation("throw");
 
-            RefillSlotIfEmpty(slot, byEntity);
+            RefillSlotIfEmpty(slot, byEntity, (itemstack) => itemstack.Collectible is ItemSpear);
 
             byPlayer.Entity.World.PlaySoundAt(new AssetLocation("sounds/player/strike"), byPlayer.Entity, byPlayer, 0.9f + (float)api.World.Rand.NextDouble() * 0.2f, 16, 0.5f);
         }
@@ -193,29 +193,6 @@ namespace Vintagestory.GameContent
         }
 
 
-        private void RefillSlotIfEmpty(ItemSlot slot, EntityAgent byEntity)
-        {
-            if (!slot.Empty) return;
-
-            byEntity.WalkInventory((invslot) =>
-            {
-                if (invslot is ItemSlotCreative) return true;
-
-                InventoryBase inv = invslot.Inventory;
-                if (!(inv is InventoryBasePlayer) && !inv.HasOpened((byEntity as EntityPlayer).Player)) return true;
-
-                if (invslot.Itemstack != null && invslot.Itemstack.Collectible is ItemSpear)
-                {
-                    invslot.TryPutInto(byEntity.World, slot);
-                    invslot.Inventory.PerformNotifySlot(invslot.Inventory.GetSlotId(invslot));
-                    slot.Inventory.PerformNotifySlot(slot.Inventory.GetSlotId(slot));
-
-                    return false;
-                }
-
-                return true;
-            });
-        }
 
         public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
         {

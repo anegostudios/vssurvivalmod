@@ -51,12 +51,6 @@ namespace Vintagestory.GameContent
                 .WithAlignment(IsRight(screenPos) ? EnumDialogArea.RightMiddle : EnumDialogArea.LeftMiddle)
             ;
 
-            if (!capi.Settings.Bool["immersiveMouseMode"])
-            {
-                //dialogBounds.fixedOffsetY += (barrelBoundsLeft.fixedHeight + 65);
-            }
-
-            
 
             SingleComposer = capi.Gui
                 .CreateCompo("blockentitybarrel" + BlockEntityPosition, dialogBounds)
@@ -65,7 +59,6 @@ namespace Vintagestory.GameContent
                 .BeginChildElements(bgBounds)
                     .AddItemSlotGrid(Inventory, SendInvPacket, 1, new int[] { 0 }, inputSlotBounds, "inputSlot")
                     .AddSmallButton("Seal", onSealClick, ElementBounds.Fixed(0, 100, 80, 25), EnumButtonStyle.Normal, EnumTextOrientation.Center)
-                    //.AddSmallButton("Empty", onEmptyClick, ElementBounds.Fixed(0, 140, 80, 25), EnumButtonStyle.Normal, EnumTextOrientation.Center)
 
                     .AddInset(fullnessMeterBounds.ForkBoundingParent(2,2,2,2), 2)
                     .AddDynamicCustomDraw(fullnessMeterBounds, fullnessMeterDraw, "liquidBar")
@@ -159,8 +152,6 @@ namespace Vintagestory.GameContent
             double offY = (1 - fullnessRelative) * currentBounds.InnerHeight;
 
             ctx.Rectangle(0, offY, currentBounds.InnerWidth, currentBounds.InnerHeight - offY);
-            //ctx.SetSourceRGBA(ravg/255.0, gavg / 255.0, bavg / 255.0, aavg / 255.0);
-            //ctx.Fill();
 
             CompositeTexture tex = liquidSlot.Itemstack.Collectible.Attributes?["waterTightContainerProps"]?["texture"]?.AsObject<CompositeTexture>(null, liquidSlot.Itemstack.Collectible.Code.Domain);
             if (tex != null)
@@ -178,10 +169,6 @@ namespace Vintagestory.GameContent
         }
 
 
-        private bool onEmptyClick()
-        {
-            return true;
-        }
 
         private bool onSealClick()
         {
@@ -214,15 +201,11 @@ namespace Vintagestory.GameContent
         }
 
 
-        private void OnInventorySlotModified(int slotid)
-        {
-            //SetupDialog();
-        }
+
 
         public override void OnGuiOpened()
         {
             base.OnGuiOpened();
-            Inventory.SlotModified += OnInventorySlotModified;
 
             screenPos = GetFreePos("smallblockgui");
             OccupyPos("smallblockgui", screenPos);
@@ -231,8 +214,6 @@ namespace Vintagestory.GameContent
 
         public override void OnGuiClosed()
         {
-            Inventory.SlotModified -= OnInventorySlotModified;
-
             SingleComposer.GetSlotGrid("inputSlot").OnGuiClosed(capi);
 
             base.OnGuiClosed();

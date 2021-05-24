@@ -67,6 +67,7 @@ namespace Vintagestory.GameContent
         {
             if (ShouldDespawn || !Alive) return;
             if (World is IClientWorldAccessor || World.ElapsedMilliseconds <= msCollide + 500) return;
+            if (ServerPos.Motion.X == 0 && ServerPos.Motion.Y == 0 && ServerPos.Motion.Z == 0) return;  //don't do damage if stuck in ground
 
             Cuboidd projectileBox = CollisionBox.ToDouble().Translate(ServerPos.X, ServerPos.Y, ServerPos.Z);
 
@@ -238,7 +239,7 @@ namespace Vintagestory.GameContent
             if (canDamage)
             {
                 float dmg = Damage;
-                dmg *= FiredBy.Stats.GetBlended("rangedWeaponsDamage");
+                if (FiredBy != null) dmg *= FiredBy.Stats.GetBlended("rangedWeaponsDamage");
 
                 bool didDamage = entity.ReceiveDamage(new DamageSource()
                 {

@@ -5,6 +5,7 @@ using Vintagestory.API.Client.Tesselation;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
@@ -33,13 +34,30 @@ namespace Vintagestory.GameContent
         {
             base.OnLoaded(api);
 
+            if (Code.Path.Contains("sunflower"))
+            {
+                WaveFlagMinY = 0.1f;
+            } else
+            {
+                WaveFlagMinY = 0.5f;
+            }
+
             tickGrowthProbability = Attributes?["tickGrowthProbability"] != null ? Attributes["tickGrowthProbability"].AsFloat(defaultGrowthProbability) : defaultGrowthProbability;
             //roomreg = api.ModLoader.GetModSystem<RoomRegistry>();
 
-            WaveFlagMinY = 0.5f;
+            
+
+            if (api.Side == EnumAppSide.Client)
+            {
+                if (this.RandomDrawOffset > 0)
+                {
+                    JsonObject overrider = Attributes?["overrideRandomDrawOffset"];
+                    if (overrider?.Exists == true) this.RandomDrawOffset = overrider.AsInt(1);
+                }
+            }
         }
 
-        public override void OnJsonTesselation(ref MeshData sourceMesh, BlockPos pos, int[] chunkExtIds, ushort[] chunkLightExt, int extIndex3d)
+        public override void OnJsonTesselation(ref MeshData sourceMesh, ref int[] lightRgbsByCorner, BlockPos pos, Block[] chunkExtBlocks, int extIndex3d)
         {
 
             // Too expensive
@@ -50,8 +68,7 @@ namespace Vintagestory.GameContent
                 waveoff = ((float)room.SkylightCount / room.NonSkylightCount) < 0.1f;
             }*/
 
-            int sunLightLevel = chunkLightExt[extIndex3d] & 31;
-            bool waveoff = sunLightLevel < 14;
+            bool waveoff = (byte)(lightRgbsByCorner[24] >> 24) < 159;  //corresponds with a sunlight level of less than 14
             setLeaveWaveFlags(sourceMesh, waveoff);
         }
 
@@ -65,22 +82,23 @@ namespace Vintagestory.GameContent
         }
 
 
-        void setLeaveWaveFlags(MeshData sourceMesh, bool off)
+        protected virtual void setLeaveWaveFlags(MeshData sourceMesh, bool off)
         {
-            int leaveWave = VertexFlags.All;
-            int clearFlags = (~VertexFlags.LeavesWindWaveBitMask) & (~VertexFlags.FoliageWindWaveBitMask) & (~VertexFlags.GroundDistanceBitMask);
-
+            
+            int grassWave = VertexFlags.All;
+            int clearFlags = VertexFlags.clearWaveFlagsOnly;
+            int verticesCount = sourceMesh.VerticesCount;
+            
             // Iterate over each element face
-            for (int vertexNum = 0; vertexNum < sourceMesh.GetVerticesCount(); vertexNum++)
+            for (int vertexNum = 0; vertexNum < verticesCount; vertexNum++)
             {
-                float y = sourceMesh.xyz[vertexNum * 3 + 1];
+                int flag = sourceMesh.Flags[vertexNum] & clearFlags;
 
-                sourceMesh.Flags[vertexNum] &= clearFlags;
-
-                if (!off && y > 0.5)
+                if (!off && sourceMesh.xyz[vertexNum * 3 + 1] >= WaveFlagMinY)
                 {
-                    sourceMesh.Flags[vertexNum] |= leaveWave;
+                    flag |= grassWave;
                 }
+                sourceMesh.Flags[vertexNum] = flag;
             }
         }
 
@@ -165,10 +183,11 @@ namespace Vintagestory.GameContent
         {
             string info = world.BlockAccessor.GetBlock(pos.DownCopy()).GetPlacedBlockInfo(world, pos.DownCopy(), forPlayer);
 
+            if (info != null) return info;
+
             return
                 Lang.Get("Required Nutrient: {0}", CropProps.RequiredNutrient) + "\n" +
-                Lang.Get("Growth Stage: {0} / {1}", CurrentStage(), CropProps.GrowthStages) +
-                (info != null && info.Length > 0 ? "\n\n"+ Lang.Get("soil-tooltip") +"\n" + info : "")
+                Lang.Get("Growth Stage: {0} / {1}", CurrentStage(), CropProps.GrowthStages)
             ;
         }
 

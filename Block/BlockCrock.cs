@@ -207,10 +207,14 @@ namespace Vintagestory.GameContent
             }
 
             Block block = api.World.BlockAccessor.GetBlock(blockSel.Position);
+            float quantityServings = (float)slot.Itemstack.Attributes.GetDecimal("quantityServings");
 
             if (block?.Attributes?.IsTrue("mealContainer") == true)
             {
-                ServeIntoBowl(block, blockSel.Position, slot, byEntity.World);
+                if (quantityServings > 0)
+                {
+                    ServeIntoBowl(block, blockSel.Position, slot, byEntity.World);
+                }
                 handHandling = EnumHandHandling.PreventDefault;
                 return;
             }
@@ -221,7 +225,7 @@ namespace Vintagestory.GameContent
                 ((byEntity as EntityPlayer)?.Player as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
 
                 string recipeCode = slot.Itemstack.Attributes.GetString("recipeCode");
-                float quantityServings = (float)slot.Itemstack.Attributes.GetDecimal("quantityServings");
+                
 
                 float movedServings = (block as BlockCookingContainer).PutMeal(blockSel.Position, GetNonEmptyContents(api.World, slot.Itemstack), recipeCode, quantityServings);
 
@@ -327,6 +331,12 @@ namespace Vintagestory.GameContent
             if (stacks == null || stacks.Length == 0)
             {
                 dsc.AppendLine("Empty");
+
+                if (inSlot.Itemstack.Attributes.GetBool("sealed"))
+                {
+                    dsc.AppendLine("<font color=\"lightgreen\">" + Lang.Get("Sealed.") + "</font>");
+                }
+
                 return;
             }
 
@@ -522,6 +532,7 @@ namespace Vintagestory.GameContent
                         }
                     }
 
+                    entityItem.Itemstack.Attributes.RemoveAttribute("sealed");
                     entityItem.Itemstack.Attributes.RemoveAttribute("recipeCode");
                     entityItem.Itemstack.Attributes.RemoveAttribute("quantityServings");
                     entityItem.Itemstack.Attributes.RemoveAttribute("contents");

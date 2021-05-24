@@ -28,7 +28,7 @@ namespace Vintagestory.GameContent.Mechanics
                 float angle = base.AngleRad;
 
                 bool flip = propagationDir == BlockFacing.DOWN || propagationDir == BlockFacing.WEST;
-                if (propagationDir == this.orientation && (this.orientation == BlockFacing.WEST || this.orientation == BlockFacing.EAST)) flip = !flip;
+                if (propagationDir == this.orientation && propagationDir != BlockFacing.NORTH && propagationDir != BlockFacing.SOUTH && propagationDir != BlockFacing.UP) flip = !flip;
                 //if (flip) return /*lastKnownAngleRad = - why do i do this? it creates massive jitter*/ GameMath.TWOPI - angle;
 
                 return flip ? GameMath.TWOPI - angle : angle;
@@ -134,10 +134,12 @@ namespace Vintagestory.GameContent.Mechanics
 
                 case "u":
                     AxisSign = new int[3] { 0, -1, 0 };
+                    this.orientation = BlockFacing.UP;
                     break;
 
                 case "d":
                     AxisSign = new int[3] { 0, 1, 0 };
+                    this.orientation = BlockFacing.DOWN;
                     axis1 = BlockFacing.DOWN;
                     break;
 
@@ -254,8 +256,13 @@ namespace Vintagestory.GameContent.Mechanics
             {
                 BlockPos largeGearPos = this.Position.AddCopy(this.orientation.Opposite);
                 BlockEntity be = this.Api.World?.BlockAccessor.GetBlockEntity(largeGearPos);
-                largeGear = be?.GetBehavior<BEBehaviorMPLargeGear3m>();
+                if (be != null) SetLargeGear(be);
             }
+        }
+
+        public void SetLargeGear(BlockEntity be)
+        {
+            if (largeGear == null) largeGear = be.GetBehavior<BEBehaviorMPLargeGear3m>();
         }
 
         public void AddToLargeGearNetwork(BEBehaviorMPLargeGear3m largeGear, BlockFacing outFacing)
@@ -275,7 +282,7 @@ namespace Vintagestory.GameContent.Mechanics
             {
                 BlockPos largeGearPos = this.Position.AddCopy(this.orientation.Opposite);
                 BlockEntity be = this.Api.World?.BlockAccessor.GetBlockEntity(largeGearPos);
-                largeGear = be?.GetBehavior<BEBehaviorMPLargeGear3m>();
+                if (be != null) SetLargeGear(be);
                 if (largeGear == null) return unchanged;
             }
             int dir = this.orientation == BlockFacing.SOUTH ? -1 : 1;
@@ -364,9 +371,9 @@ namespace Vintagestory.GameContent.Mechanics
             base.ToTreeAttributes(tree);
         }
 
-        public override void FromTreeAtributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
+        public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
         {
-            base.FromTreeAtributes(tree, worldAccessForResolve);
+            base.FromTreeAttributes(tree, worldAccessForResolve);
         }
 
         public override float GetResistance()
@@ -377,22 +384,26 @@ namespace Vintagestory.GameContent.Mechanics
         protected override MechPowerPath[] GetMechPowerExits(MechPowerPath fromExitTurnDir)
         {
             if (this.orientation == null) this.SetOrientations();  //this method could be called from another (earlier in the loading chunk) block's Initialise() method, i.e. before this itself is initialised.
-            if (largeGear == null)
+            string orientations = (Block as BlockAngledGears).Orientation;
+            if (orientations.Length < 2 || orientations[0] != orientations[1])
             {
-                if (newlyPlaced) fromExitTurnDir.invert = !fromExitTurnDir.invert;
+                bool invert = fromExitTurnDir.invert;
                 BlockFacing[] connectors = (Block as BlockAngledGears).Facings;
-                BlockFacing inputSide = fromExitTurnDir.invert ? fromExitTurnDir.OutFacing : fromExitTurnDir.OutFacing.Opposite;
-                bool inputSideMatches = connectors.Contains(inputSide);
+                BlockFacing inputSide = fromExitTurnDir.OutFacing;
+                if (!connectors.Contains(inputSide))
+                {
+                    inputSide = inputSide.Opposite;
+                    invert = !invert;
+                }
                 if (!newlyPlaced)   //the code for removing the inputSide from the MechPowerExits is unwanted for a newly placed AngledGears block - it needs to seek networks on both faces if newly placed
                 {
-                    if (inputSideMatches) connectors = connectors.Remove(inputSide);
-                    else connectors = connectors.Remove(fromExitTurnDir.OutFacing);
+                    connectors = connectors.Remove(inputSide);
                 }
                 MechPowerPath[] paths = new MechPowerPath[connectors.Length];
                 for (int i = 0; i < paths.Length; i++)
                 {
                     BlockFacing pathFacing = connectors[i];
-                    paths[i] = new MechPowerPath(pathFacing, this.GearedRatio, null, connectors.Length < 2 && fromExitTurnDir.OutFacing == pathFacing.Opposite || inputSideMatches && pathFacing != inputSide || !inputSideMatches && pathFacing != inputSide.Opposite ? fromExitTurnDir.invert : !fromExitTurnDir.invert);
+                    paths[i] = new MechPowerPath(pathFacing, this.GearedRatio, null, pathFacing == inputSide ? invert : !invert);   //an angled gear's output side rotates in the opposite sense from the input side
                 }
                 return paths;
             }

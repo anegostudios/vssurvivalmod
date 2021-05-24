@@ -23,5 +23,13 @@ namespace Vintagestory.GameContent
 
             return base.GetCollisionBoxes(world, pos);
         }
+
+        /// <summary>
+        /// No need to render the face of lake / glacier ice adjoining solid snow blocks; and this will help with z-fighting in arctic landscapes
+        /// </summary>
+        public override bool ShouldMergeFace(int facingIndex, Block neighbourIce, int intraChunkIndex3d)
+        {
+            return true;
+        }
     }
 }

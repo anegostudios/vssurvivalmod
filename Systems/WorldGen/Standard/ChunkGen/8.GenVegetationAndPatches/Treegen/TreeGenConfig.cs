@@ -1,5 +1,6 @@
 ﻿using Newtonsoft.Json;
 using Vintagestory.API.Common;
+using Vintagestory.API.MathTools;
 
 namespace Vintagestory.ServerMods.NoObf
 {
@@ -9,6 +10,8 @@ namespace Vintagestory.ServerMods.NoObf
         public int yOffset;
         [JsonProperty]
         public float sizeMultiplier;
+        [JsonProperty]
+        public NatFloat sizeVar = NatFloat.Zero;
         [JsonProperty]
         public float heightMultiplier;
         [JsonProperty]

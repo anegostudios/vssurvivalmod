@@ -69,6 +69,8 @@ namespace Vintagestory.GameContent
             RegisterGameTickListener(TestHarvestable, 3000);
             RegisterGameTickListener(OnScanForEmptySkep, api.World.Rand.Next(5000) + 30000);
 
+            roomreg = Api.ModLoader.GetModSystem<RoomRegistry>();
+
             if (api.Side == EnumAppSide.Client)
             {
                 RegisterGameTickListener(SpawnBeeParticles, 300);
@@ -113,7 +115,9 @@ namespace Vintagestory.GameContent
             if (Api.World.Rand.NextDouble() > 2 * dayLightStrength - 0.5) return;
 
             Random rand = Api.World.Rand;
-            
+
+            Bees.MinQuantity = actvitiyLevel;
+
             // Leave hive
             if (Api.World.Rand.NextDouble() > 0.5)
             {    
@@ -152,10 +156,26 @@ namespace Vintagestory.GameContent
             }
         }
 
-        
+
+        float actvitiyLevel;
+        RoomRegistry roomreg;
+        float roomness;
 
         private void TestHarvestable(float dt)
         {
+            ClimateCondition conds = Api.World.BlockAccessor.GetClimateAt(Pos, EnumGetClimateMode.NowValues);
+            if (conds == null) return;
+
+            float temp = conds.Temperature + (roomness > 0 ? 5 : 0);
+            actvitiyLevel = GameMath.Clamp(temp / 5f, 0f, 1f);
+
+            // Reset timers during winter
+            if (temp <= -10)
+            {
+                harvestableAtTotalHours = Api.World.Calendar.TotalHours + 24 / 2 * (3 + Api.World.Rand.NextDouble() * 8);
+                cooldownUntilTotalHours = Api.World.Calendar.TotalHours + 4 / 2 * 24;
+            }
+
             if (!Harvestable && !isWildHive && Api.World.Calendar.TotalHours > harvestableAtTotalHours && hivePopSize > EnumHivePopSize.Poor)
             {
                 Harvestable = true;
@@ -165,6 +185,10 @@ namespace Vintagestory.GameContent
 
         private void OnScanForEmptySkep(float dt)
         {
+            Room room = roomreg?.GetRoomForPosition(Pos);
+            roomness = (room != null && room.SkylightCount > room.NonSkylightCount && room.ExitCount == 0) ? 1 : 0;
+
+            if (actvitiyLevel < 1) return;
             if (Api.Side == EnumAppSide.Client) return;
             if (Api.World.Calendar.TotalHours < cooldownUntilTotalHours) return;
 
@@ -381,6 +405,7 @@ namespace Vintagestory.GameContent
             tree.SetDouble("cooldownUntilTotalHours", cooldownUntilTotalHours);
             tree.SetDouble("harvestableAtTotalHours", harvestableAtTotalHours);
             tree.SetInt("hiveHealth", (int)hivePopSize);
+            tree.SetFloat("roomness", roomness);
         }
 
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
@@ -434,6 +459,7 @@ namespace Vintagestory.GameContent
             cooldownUntilTotalHours = tree.GetDouble("cooldownUntilTotalHours");
             harvestableAtTotalHours = tree.GetDouble("harvestableAtTotalHours");
             hivePopSize = (EnumHivePopSize)tree.GetInt("hiveHealth");
+            roomness = tree.GetFloat("roomness");
 
             if (Harvestable != wasHarvestable && Api != null)
             {

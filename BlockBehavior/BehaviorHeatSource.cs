@@ -1,6 +1,7 @@
 ﻿using Vintagestory.API;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
@@ -28,11 +29,11 @@ namespace Vintagestory.GameContent
                 var behs = world.BlockAccessor.GetBlockEntity(heatSourcePos) as IHeatSource;
                 if (behs != null)
                 {
-                    return behs.GetHeatStrength(world, heatSourcePos, heatReceiverPos) * GameMath.Clamp(1 - (heatSourcePos.DistanceTo(heatReceiverPos) - 1)/3f, 0, 1);
+                    return behs.GetHeatStrength(world, heatSourcePos, heatReceiverPos);
                 }
             }
 
-            return heatStrength * GameMath.Clamp(1 - (heatSourcePos.DistanceTo(heatReceiverPos) - 1) / 3f, 0, 1);
+            return heatStrength;
         }
     }
 }

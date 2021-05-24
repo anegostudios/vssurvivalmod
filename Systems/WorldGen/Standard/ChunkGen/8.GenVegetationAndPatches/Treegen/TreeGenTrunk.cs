@@ -15,13 +15,14 @@ namespace Vintagestory.ServerMods.NoObf
         public float dx = 0.5f;
         public float dz = 0.5f;
         public float probability = 1;
+        public int segment = 0;
 
         public void InheritFrom(TreeGenTrunk treeGenTrunk, string[] skip)
         {
             FieldInfo[] fields = GetType().GetFields();
             foreach (FieldInfo field in fields)
             {
-                if (!skip.Contains(field.Name) && field.Name != "inerhit")
+                if (!skip.Contains(field.Name) && field.Name != "inherit")
                 {
                     field.SetValue(this, treeGenTrunk.GetType().GetField(field.Name).GetValue(treeGenTrunk));
                 }
@@ -34,7 +35,11 @@ namespace Vintagestory.ServerMods.NoObf
             if (angleVert == null) angleVert = NatFloat.createUniform(GameMath.PI, 0);
         }
 
-
+        public override int getBlockId(float width, TreeGenBlocks blocks, TreeGen gen)
+        {
+            if (segment != 0 && width >= 0.3f) return blocks.trunkSegmentBlockIds[segment - 1];
+            return base.getBlockId(width, blocks, gen);
+        }
     }
 }
 

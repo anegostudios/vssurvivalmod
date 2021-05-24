@@ -46,7 +46,7 @@ namespace Vintagestory.GameContent
             string entityCode = "locust-bronze";
             
 
-            if (Api.World.Rand.NextDouble() > corrupLocustNestChance)
+            if (Api.World.Rand.NextDouble() < corrupLocustNestChance)
             {
                 entityCode = "locust-corrupt";
             }

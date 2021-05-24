@@ -81,9 +81,9 @@ namespace Vintagestory.GameContent
             BlockPos pos = blockSel.Position;
             Open(world, byPlayer, pos);
 
-            bool isRoughFence = this.FirstCodePart() == "roughhewnfencegate";
-            world.PlaySoundAt(new AssetLocation(isRoughFence ? "sounds/walk/wood" : "sounds/block/door"), pos.X + 0.5f, pos.Y + 0.5f, pos.Z + 0.5f, byPlayer);
+            world.PlaySoundAt(AssetLocation.Create(Attributes["triggerSound"].AsString("sounds/block/door"), Code.Domain), pos.X + 0.5f, pos.Y + 0.5f, pos.Z + 0.5f, byPlayer);
 
+            bool isRoughFence = this.FirstCodePart() == "roughhewnfencegate";
             if (!isRoughFence) TryOpenConnectedDoor(world, byPlayer, pos);
 
             (byPlayer as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);

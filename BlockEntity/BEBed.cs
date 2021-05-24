@@ -97,9 +97,18 @@ namespace Vintagestory.GameContent
             }
         }
 
+        bool blockBroken;
+
+        public override void OnBlockBroken()
+        {
+            base.OnBlockBroken();
+
+            blockBroken = true;
+            MountedBy?.TryUnmount();
+        }
 
 
-        
+
 
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
@@ -126,14 +135,17 @@ namespace Vintagestory.GameContent
             EntityBehaviorTiredness ebt = MountedBy?.GetBehavior("tiredness") as EntityBehaviorTiredness;
             if (ebt != null) ebt.IsSleeping = false;
             MountedBy = null;
-            
-            foreach (BlockFacing facing in BlockFacing.HORIZONTALS)
+
+            if (!blockBroken)
             {
-                Vec3d placepos = Pos.ToVec3d().AddCopy(facing).Add(0.5, 0.001, 0.5);
-                if (!Api.World.CollisionTester.IsColliding(Api.World.BlockAccessor, entityAgent.CollisionBox, placepos, false))
+                foreach (BlockFacing facing in BlockFacing.HORIZONTALS)
                 {
-                    entityAgent.TeleportTo(placepos);
-                    break;
+                    Vec3d placepos = Pos.ToVec3d().AddCopy(facing).Add(0.5, 0.001, 0.5);
+                    if (!Api.World.CollisionTester.IsColliding(Api.World.BlockAccessor, entityAgent.CollisionBox, placepos, false))
+                    {
+                        entityAgent.TeleportTo(placepos);
+                        break;
+                    }
                 }
             }
 

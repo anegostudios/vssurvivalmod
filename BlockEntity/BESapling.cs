@@ -4,19 +4,48 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Vintagestory.API;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
 
-namespace Vintagestory.ServerMods
+namespace Vintagestory.GameContent
 {
+    public enum EnumTreeGrowthStage
+    {
+        Seed,
+        Sapling
+    }
+
     public class BlockEntitySapling : BlockEntity
     {
         double totalHoursTillGrowth;
         long growListenerId;
+        EnumTreeGrowthStage stage;
+        bool plantedFromSeed;
 
+        MeshData dirtMoundMesh
+        {
+            get
+            {
+                ICoreClientAPI capi = Api as ICoreClientAPI;
+                if (capi == null) return null;
+
+                return ObjectCacheUtil.GetOrCreate(Api, "dirtMoundMesh", () =>
+                {
+                    MeshData mesh = null;
+
+                    Shape shape = capi.Assets.TryGet(AssetLocation.Create("shapes/block/plant/dirtmound.json", Block.Code.Domain))?.ToObject<Shape>();
+                    capi.Tesselator.TesselateShape(Block, shape, out mesh);
+
+                    return mesh;
+                });
+            }
+        }
+            
 
         public override void Initialize(ICoreAPI api)
         {
@@ -28,22 +57,39 @@ namespace Vintagestory.ServerMods
             }
         }
 
+        NatFloat nextStageDaysRnd
+        {
+            get
+            {
+                if (stage == EnumTreeGrowthStage.Seed)
+                {
+                    NatFloat sproutDays = NatFloat.create(EnumDistribution.UNIFORM, 1.5f, 0.5f);
+                    if (Block?.Attributes != null)
+                    {
+                        return Block.Attributes["growthDays"].AsObject(sproutDays);
+                    }
+                    return sproutDays;
+                }
+
+                NatFloat matureDays = NatFloat.create(EnumDistribution.UNIFORM, 7f, 2f);
+                if (Block?.Attributes != null)
+                {
+                    return Block.Attributes["matureDays"].AsObject(matureDays);
+                }
+                return matureDays;
+            }
+        }
+
+        float GrowthRateMod => Api.World.Config.GetString("saplingGrowthRate").ToFloat(1);
 
         public override void OnBlockPlaced(ItemStack byItemStack = null)
         {
-            Block block = Api.World.BlockAccessor.GetBlock(Pos);
-
-            NatFloat growthDays = NatFloat.create(EnumDistribution.UNIFORM, 6.5f, 1.5f);
-
-            if (block?.Attributes != null)
-            {
-                growthDays = block.Attributes["growthDays"].AsObject(growthDays);
-            }
-
-            totalHoursTillGrowth = Api.World.Calendar.TotalHours + growthDays.nextFloat(1, Api.World.Rand) * 24;
+            stage = byItemStack?.Collectible is ItemTreeSeed ? EnumTreeGrowthStage.Seed : EnumTreeGrowthStage.Sapling;
+            plantedFromSeed = stage == EnumTreeGrowthStage.Seed;
+            totalHoursTillGrowth = Api.World.Calendar.TotalHours + nextStageDaysRnd.nextFloat(1, Api.World.Rand) * 24 * GrowthRateMod;
         }
 
-        
+
         private void CheckGrow(float dt)
         {
             if (Api.World.Calendar.TotalHours < totalHoursTillGrowth) return;
@@ -56,7 +102,15 @@ namespace Vintagestory.ServerMods
 
             if (conds.Temperature < 0)
             {
-                totalHoursTillGrowth = Api.World.Calendar.TotalHours + (float)Api.World.Rand.NextDouble() * 72;
+                totalHoursTillGrowth = Api.World.Calendar.TotalHours + (float)Api.World.Rand.NextDouble() * 72 * GrowthRateMod;
+                return;
+            }
+
+            if (stage == EnumTreeGrowthStage.Seed)
+            {
+                stage = EnumTreeGrowthStage.Sapling;
+                totalHoursTillGrowth = Api.World.Calendar.TotalHours + nextStageDaysRnd.nextFloat(1, Api.World.Rand) * 24 * GrowthRateMod;
+                MarkDirty(true);
                 return;
             }
 
@@ -104,6 +158,8 @@ namespace Vintagestory.ServerMods
             base.ToTreeAttributes(tree);
 
             tree.SetDouble("totalHoursTillGrowth", totalHoursTillGrowth);
+            tree.SetInt("growthStage", (int)stage);
+            tree.SetBool("plantedFromSeed", plantedFromSeed);
         }
 
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
@@ -111,6 +167,32 @@ namespace Vintagestory.ServerMods
             base.FromTreeAttributes(tree, worldForResolving);
 
             totalHoursTillGrowth = tree.GetDouble("totalHoursTillGrowth", 0);
+            stage = (EnumTreeGrowthStage)tree.GetInt("growthStage", 1);
+            plantedFromSeed = tree.GetBool("plantedFromSeed");
+        }
+
+        public ItemStack[] GetDrops()
+        {
+            if (stage == EnumTreeGrowthStage.Seed)
+            {
+                Item item = Api.World.GetItem(AssetLocation.Create("treeseed-" + Block.Variant["wood"], Block.Code.Domain));
+                return new ItemStack[] { new ItemStack(item) };
+            } else
+            {
+                return new ItemStack[] { new ItemStack(Block) };
+            }
+        }
+
+
+        public string GetBlockName()
+        {
+            if (stage == EnumTreeGrowthStage.Seed)
+            {
+                return Lang.Get("treeseed-planted-" + Block.Variant["wood"]);
+            } else
+            {
+                return Block.OnPickBlock(Api.World, Pos).GetName();
+            }
         }
 
 
@@ -121,13 +203,48 @@ namespace Vintagestory.ServerMods
             double hoursleft = totalHoursTillGrowth - Api.World.Calendar.TotalHours;
             double daysleft = hoursleft / Api.World.Calendar.HoursPerDay;
 
-            if (daysleft <= 1) {
-                dsc.AppendLine(Lang.Get("Will grow in less than a day"));
-            } else
+            if (stage == EnumTreeGrowthStage.Seed)
             {
-                dsc.AppendLine(Lang.Get("Will grow in about {0} days", (int)daysleft));
+                if (daysleft <= 1)
+                {
+                    dsc.AppendLine(Lang.Get("Will sprout in less than a day"));
+                }
+                else
+                {
+                    dsc.AppendLine(Lang.Get("Will sprout in about {0} days", (int)daysleft));
+                }
+            }
+            else
+            {
+
+                if (daysleft <= 1)
+                {
+                    dsc.AppendLine(Lang.Get("Will mature in less than a day"));
+                }
+                else
+                {
+                    dsc.AppendLine(Lang.Get("Will mature in about {0} days", (int)daysleft));
+                }
             }
         }
+
+
+        public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
+        {
+            if (plantedFromSeed)
+            {
+                mesher.AddMeshData(dirtMoundMesh);
+            }
+
+            if (stage == EnumTreeGrowthStage.Seed)
+            {
+                return true;
+            }
+
+            return base.OnTesselation(mesher, tessThreadTesselator);
+        }
+
+        
 
     }
 }

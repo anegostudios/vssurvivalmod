@@ -57,8 +57,6 @@ namespace Vintagestory.GameContent.Mechanics
             string orientation = blockentity.Block.Variant["side"];
             ownFacing = BlockFacing.FromCode(orientation);
             OutFacingForNetworkDiscovery = ownFacing.Opposite;
-
-            //inTurnDir.Rot = ownFacing == BlockFacing.WEST || ownFacing == BlockFacing.NORTH ? EnumRotDirection.Counterclockwise : EnumRotDirection.Clockwise;
         }
 
         public override void Initialize(ICoreAPI api, JsonObject properties)
