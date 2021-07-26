@@ -248,7 +248,7 @@ namespace Vintagestory.GameContent
                 inventory.PutLocked = false;
             }
 
-            if (inventory.PutLocked && inventory.IsEmpty) return false;
+            if (inventory.PutLocked && inventory.Empty) return false;
 
             if (Api.World is IServerWorldAccessor)
             {
@@ -323,7 +323,7 @@ namespace Vintagestory.GameContent
             string meshKey = type + block.Subtype + "-" + rndTexNum;
             if (meshes.TryGetValue(meshKey, out mesh))
             {
-                if (animUtil != null && animUtil.render == null)
+                if (animUtil != null && animUtil.renderer == null)
                 {
                     animUtil.InitializeAnimator(type + "-" + key, mesh, shape, rendererRot);
                 }
@@ -336,7 +336,7 @@ namespace Vintagestory.GameContent
 
             if (animUtil != null)
             {
-                if (animUtil.render == null) 
+                if (animUtil.renderer == null) 
                 { 
                     mesh = animUtil.InitializeAnimator(type + "-" + key, shape, block, rendererRot);
                 }

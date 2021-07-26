@@ -81,19 +81,19 @@ namespace Vintagestory.GameContent
 
             ItemStack stack = slot.TakeOut(1);
             slot.MarkDirty();
-            stack.Collectible.DamageItem(byEntity.World, byEntity, new DummySlot(stack));
-
+            
             IPlayer byPlayer = null;
             if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
             byEntity.World.PlaySoundAt(new AssetLocation("sounds/player/throw"), byEntity, byPlayer, false, 8);
 
             EntityProperties type = byEntity.World.GetEntityType(new AssetLocation(Attributes["spearEntityCode"].AsString()));
-            Entity entity = byEntity.World.ClassRegistry.CreateEntity(type);
-            ((EntityProjectile)entity).FiredBy = byEntity;
-            ((EntityProjectile)entity).Damage = damage;
-            ((EntityProjectile)entity).ProjectileStack = stack;
-            ((EntityProjectile)entity).DropOnImpactChance = 1.1f;
-            ((EntityProjectile)entity).Weight = 0.3f;
+            EntityProjectile enpr = byEntity.World.ClassRegistry.CreateEntity(type) as EntityProjectile;
+            enpr.FiredBy = byEntity;
+            enpr.Damage = damage;
+            enpr.ProjectileStack = stack;
+            enpr.DropOnImpactChance = 1.1f;
+            enpr.DamageStackOnImpact = true;
+            enpr.Weight = 0.3f;
 
 
             float acc = (1 - byEntity.Attributes.GetFloat("aimingAccuracy", 0));
@@ -106,21 +106,21 @@ namespace Vintagestory.GameContent
             Vec3d velocity = (aheadPos - pos) * 0.65;
             Vec3d spawnPos = byEntity.ServerPos.BehindCopy(0.21).XYZ.Add(byEntity.LocalEyePos.X, byEntity.LocalEyePos.Y - 0.2, byEntity.LocalEyePos.Z);
 
-            entity.ServerPos.SetPos(spawnPos);
-            entity.ServerPos.Motion.Set(velocity);
+            enpr.ServerPos.SetPos(spawnPos);
+            enpr.ServerPos.Motion.Set(velocity);
 
             //byEntity.World.SpawnParticles(1, ColorUtil.WhiteArgb, spawnPos, spawnPos, new Vec3f(), new Vec3f(), 1.5f, 0, 1);
 
 
 
-            entity.Pos.SetFrom(entity.ServerPos);
-            entity.World = byEntity.World;
-            ((EntityProjectile)entity).SetRotation();
+            enpr.Pos.SetFrom(enpr.ServerPos);
+            enpr.World = byEntity.World;
+            ((EntityProjectile)enpr).SetRotation();
 
-            byEntity.World.SpawnEntity(entity);
+            byEntity.World.SpawnEntity(enpr);
             byEntity.StartAnimation("throw");
 
-            RefillSlotIfEmpty(slot, byEntity, (itemstack) => itemstack.Collectible is ItemSpear);
+            if (byEntity is EntityPlayer) RefillSlotIfEmpty(slot, byEntity, (itemstack) => itemstack.Collectible is ItemSpear);
 
             byPlayer.Entity.World.PlaySoundAt(new AssetLocation("sounds/player/strike"), byPlayer.Entity, byPlayer, 0.9f + (float)api.World.Rand.NextDouble() * 0.2f, 16, 0.5f);
         }

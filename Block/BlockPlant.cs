@@ -1,6 +1,7 @@
 ﻿using System;
 using Vintagestory.API;
 using Vintagestory.API.Client;
+using Vintagestory.API.Client.Tesselation;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
@@ -16,6 +17,7 @@ namespace Vintagestory.GameContent
             base.OnLoaded(api);
 
             WaveFlagMinY = 0.25f;
+            tallGrassColorMapping = true;
         }
 
         public override void OnJsonTesselation(ref MeshData sourceMesh, ref int[] lightRgbsByCorner, BlockPos pos, Block[] chunkExtBlocks, int extIndex3d)
@@ -30,9 +32,14 @@ namespace Vintagestory.GameContent
         }
     }
 
-    public class BlockPlant : Block
+    public class BlockPlant : Block, IDrawYAdjustable
     {
         Block snowLayerBlock;
+        Block tallGrassBlock;
+
+        protected bool climateColorMapping = false;
+        protected bool tallGrassColorMapping = false;
+
 
         public override void OnLoaded(ICoreAPI api)
         {
@@ -49,7 +56,16 @@ namespace Vintagestory.GameContent
                 }
             }
 
+            climateColorMapping = EntityClass == "Sapling";
+            tallGrassColorMapping = Code.Path == "flower-lilyofthevalley-free";
+
             WaveFlagMinY = 0.5f;
+        }
+
+        public float AdjustYPosition(Block[] chunkExtBlocks, int extIndex3d)
+        {
+            Block nblock = chunkExtBlocks[extIndex3d + TileSideEnum.MoveIndex[TileSideEnum.Down]];
+            return nblock is BlockFarmland ? -0.0625f : 0f;
         }
 
         public override void OnJsonTesselation(ref MeshData sourceMesh, ref int[] lightRgbsByCorner, BlockPos pos, Block[] chunkExtBlocks, int extIndex3d)
@@ -118,23 +134,23 @@ namespace Vintagestory.GameContent
             return base.TryPlaceBlockForWorldGen(blockAccessor, pos, onBlockFace, worldGenRand);
         }
 
-        Block tallGrassBlock;
+        
 
         public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing)
         {
             if (snowLevel > 0) return snowLayerBlock.GetRandomColor(capi, pos, facing);
 
-            int color = base.GetRandomColor(capi, pos, facing);
+            if (tallGrassColorMapping)
+            {
+                return tallGrassBlock.GetRandomColor(capi, pos, BlockFacing.UP);
+            }
 
-            if (EntityClass == "Sapling")
+            int color = base.GetRandomColor(capi, pos, facing);
+            if (climateColorMapping)
             {
                 color = capi.World.ApplyColorMapOnRgba(ClimateColorMap, SeasonColorMap, color, pos.X, pos.Y, pos.Z);
             }
-            if (Code.Path == "flower-lilyofthevalley-free")
-            {
-                color = tallGrassBlock.GetColor(capi, pos);
-                color = capi.World.ApplyColorMapOnRgba("climatePlantTint", "seasonalGrass", color, pos.X, pos.Y, pos.Z);
-            }
+
 
             return color;
         }
@@ -169,9 +185,9 @@ namespace Vintagestory.GameContent
             {
                 return snowLayerBlock.GetColor(capi, pos);
             }
-            if (Code.Path == "flower-lilyofthevalley-free")
+            if (tallGrassColorMapping)
             {
-                return capi.World.ApplyColorMapOnRgba("climatePlantTint", "seasonalGrass", tallGrassBlock.GetColor(capi, pos), pos.X, pos.Y, pos.Z);
+               return tallGrassBlock.GetColor(capi, pos);
             }
 
             return base.GetColor(capi, pos);

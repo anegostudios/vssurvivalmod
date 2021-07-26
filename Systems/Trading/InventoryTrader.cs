@@ -749,8 +749,9 @@ namespace Vintagestory.GameContent
                 Api.World.SpawnItemEntity(slots[i + 36].Itemstack, traderEntity.ServerPos.XYZ);
                 slots[i + 36].Itemstack = null;
             }
-            
 
+
+            traderEntity.tradingWith = null;
             return p;
         }
 

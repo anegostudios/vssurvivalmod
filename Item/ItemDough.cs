@@ -37,10 +37,17 @@ namespace Vintagestory.GameContent
                 var block = api.World.BlockAccessor.GetBlock(blockSel.Position);
                 if (block.Attributes?.IsTrue("pieFormingSurface") == true)
                 {
-                    BlockPie blockform = api.World.GetBlock(new AssetLocation("pie-raw")) as BlockPie;
+                    if (slot.StackSize >= 2)
+                    {
+                        BlockPie blockform = api.World.GetBlock(new AssetLocation("pie-raw")) as BlockPie;
+                        blockform.TryPlacePie(byEntity, blockSel);
+                    } else
+                    {
+                        ICoreClientAPI capi = api as ICoreClientAPI;
+                        if (capi != null) capi.TriggerIngameError(this, "notpieable", Lang.Get("Need at least 2 dough"));
+                    }
 
                     handling = EnumHandHandling.PreventDefault;
-                    blockform.TryPlacePie(byEntity, blockSel);
                     return;
                 }
             }

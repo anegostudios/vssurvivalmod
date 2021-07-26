@@ -749,6 +749,7 @@ namespace Vintagestory.GameContent
                     if (blockAcc.GetBlock(secondPos).Replaceable >= 6000)
                     {
                         blockAcc.SetBlock(waterBlock.BlockId, secondPos);
+                        blockAcc.TriggerNeighbourBlockUpdate(pos);
                         blockAcc.MarkBlockDirty(secondPos);
                     }
                     else

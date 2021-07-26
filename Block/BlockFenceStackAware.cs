@@ -60,7 +60,6 @@ namespace Vintagestory.GameContent
                 }
 
                 sourceMesh = mesh;
-
             }
 
 

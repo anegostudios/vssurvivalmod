@@ -35,7 +35,7 @@ namespace Vintagestory.GameContent
         protected BlockLayerConfig blocklayerconfig;
         protected int chunksize;
 
-        protected float growthChanceOnTick = 0.33f;
+        protected float growthChanceOnTick = 0.16f;
 
         public bool growOnlyWhereRainfallExposed = false;
 

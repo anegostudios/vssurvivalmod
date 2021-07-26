@@ -57,17 +57,17 @@ namespace Vintagestory.ServerMods
         }
 
 
-        public TreeGenForClimate GetRandomTreeGenForClimate(int climate, int forest, int y)
+        public TreeGenForClimate GetRandomTreeGenForClimate(int climate, int forest, int y, bool isUnderwater)
         {
-            return GetRandomGenForClimate(treeGenProps.TreeGens, climate, forest, y);
+            return GetRandomGenForClimate(treeGenProps.TreeGens, climate, forest, y, isUnderwater);
         }
 
         public TreeGenForClimate GetRandomShrubGenForClimate(int climate, int forest, int y)
         {
-            return GetRandomGenForClimate(treeGenProps.ShrubGens, climate, forest, y);
+            return GetRandomGenForClimate(treeGenProps.ShrubGens, climate, forest, y, false);
         }
 
-        public TreeGenForClimate GetRandomGenForClimate(TreeVariant[] gens, int climate, int forest, int y)
+        public TreeGenForClimate GetRandomGenForClimate(TreeVariant[] gens, int climate, int forest, int y, bool isUnderwater)
         {
             int rain = TerraGenConfig.GetRainFall((climate >> 8) & 0xff, y);
             int temp = TerraGenConfig.GetScaledAdjustedTemperature((climate >> 16) & 0xff, y - TerraGenConfig.seaLevel);
@@ -82,6 +82,9 @@ namespace Vintagestory.ServerMods
             for (int i = 0; i < gens.Length; i++)
             {
                 TreeVariant variant = gens[i];
+                if (isUnderwater && (int)variant.Habitat == 0) continue;
+                if (!isUnderwater && variant.Habitat == EnumTreeHabitat.Water) continue;
+
 
                 fertDist = Math.Abs(fertility - variant.FertMid) / variant.FertRange;
                 rainDist = Math.Abs(rain - variant.RainMid) / variant.RainRange;
@@ -91,11 +94,11 @@ namespace Vintagestory.ServerMods
 
 
                 double distSq =
-                    Math.Max(0, fertDist * fertDist - 1) +
-                    Math.Max(0, rainDist * rainDist - 1) +
-                    Math.Max(0, tempDist * tempDist - 1) +
-                    Math.Max(0, forestDist * forestDist - 1) +
-                    Math.Max(0, heightDist * heightDist - 1)
+                    Math.Max(0, 1.2f * fertDist * fertDist - 1) +
+                    Math.Max(0, 1.2f * rainDist * rainDist - 1) +
+                    Math.Max(0, 1.2f * tempDist * tempDist - 1) +
+                    Math.Max(0, 1.2f * forestDist * forestDist - 1) +
+                    Math.Max(0, 1.2f * heightDist * heightDist - 1)
                 ;
 
                 if (random.NextDouble() < distSq) continue;

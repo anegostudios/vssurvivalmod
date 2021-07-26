@@ -110,13 +110,17 @@ namespace Vintagestory.GameContent
 
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)
         {
-            Block block = world.BlockAccessor.GetBlock(CodeWithParts("north"));
+            // fix for tropical vines (e.g. wildvine-tropical-section-east) to drop regular vine block
+            string[] parts = Code.Path.Split('-');
+            Block block = world.BlockAccessor.GetBlock(new AssetLocation(parts[0] + "-" + parts[parts.Length - 2] + "-north"));
             return new ItemStack[] { new ItemStack(block) };
         }
 
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
         {
-            Block block = world.BlockAccessor.GetBlock(CodeWithParts("north"));
+            // fix for tropical vines (e.g. wildvine-tropical-section-east) to drop regular vine block
+            string[] parts = Code.Path.Split('-');
+            Block block = world.BlockAccessor.GetBlock(new AssetLocation(parts[0] + "-" + parts[parts.Length - 2] + "-north"));
             return new ItemStack(block);
         }
 

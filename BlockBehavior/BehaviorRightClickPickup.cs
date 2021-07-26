@@ -51,17 +51,25 @@ namespace Vintagestory.GameContent
                 return false;
             }
 
-            if (!byPlayer.Entity.Controls.Sneak && byPlayer.InventoryManager.ActiveHotbarSlot.Empty)
+            ItemSlot activeSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
+            if (!byPlayer.Entity.Controls.Sneak)
             {
-                if (world.Side == EnumAppSide.Server)
+                if (world.Side == EnumAppSide.Server
+                    && (activeSlot.Empty || stacks.Length == 1 && activeSlot.Itemstack.Equals(world, stacks[0], API.Config.GlobalConstants.IgnoredStackAttributes))
+                    && BlockBehaviorReinforcable.AllowRightClickPickup(world, blockSel.Position, byPlayer))
                 {
+                    bool blockToBreak = true;
                     foreach (var stack in stacks)
                     {
                         if (byPlayer.InventoryManager.TryGiveItemstack(stack, true))
                         {
-                            world.BlockAccessor.SetBlock(0, blockSel.Position);
-                            world.BlockAccessor.TriggerNeighbourBlockUpdate(blockSel.Position);
-                            world.PlaySoundAt(pickupSound ?? block.Sounds.Place, byPlayer, null);
+                            if (blockToBreak)
+                            {
+                                blockToBreak = false;
+                                world.BlockAccessor.SetBlock(0, blockSel.Position);
+                                world.BlockAccessor.TriggerNeighbourBlockUpdate(blockSel.Position);
+                            }
+                            world.PlaySoundAt(pickupSound ?? block.GetSounds(world.BlockAccessor, blockSel.Position).Place, byPlayer, null);
                             handling = EnumHandling.PreventDefault;
                             return true;
                         }

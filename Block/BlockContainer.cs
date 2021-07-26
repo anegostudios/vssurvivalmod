@@ -38,7 +38,7 @@ namespace Vintagestory.GameContent
         public virtual ItemStack[] GetContents(IWorldAccessor world, ItemStack itemstack)
         {
             List<ItemStack> stacks = new List<ItemStack>();
-            ITreeAttribute treeAttr = itemstack.Attributes.GetTreeAttribute("contents");
+            ITreeAttribute treeAttr = itemstack?.Attributes?.GetTreeAttribute("contents");
             if (treeAttr == null) return new ItemStack[0];
 
             foreach (var val in treeAttr)

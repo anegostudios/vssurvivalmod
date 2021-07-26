@@ -217,6 +217,14 @@ namespace Vintagestory.GameContent
 			{
 				throw new NotImplementedException();
 			}
+			public int Unpack_AndReadBlock(int index)
+			{
+				throw new NotImplementedException();
+			}
+			public ushort Unpack_AndReadLight(int index)
+			{
+				throw new NotImplementedException();
+			}
 
 			public Block GetLocalBlockAtBlockPos(IWorldAccessor world, BlockPos position)
             {
@@ -254,6 +262,36 @@ namespace Vintagestory.GameContent
 			}
 
 			public void FinishLightDoubleBuffering()
+			{
+				throw new NotImplementedException();
+			}
+
+            public bool AddDecor(IBlockAccessor blockAccessor, Block block, BlockPos pos, BlockFacing onFace)
+            {
+                throw new NotImplementedException();
+            }
+
+			public bool AddDecor(IBlockAccessor blockAccessor, Block block, BlockPos pos, int subPosition)
+			{
+				throw new NotImplementedException();
+			}
+
+			public void BreakDecor(IWorldAccessor world, BlockPos pos, BlockFacing side = null)
+            {
+                throw new NotImplementedException();
+            }
+
+            public void BreakAllDecorFast(IWorldAccessor world, BlockPos pos, int index3d)
+            {
+                throw new NotImplementedException();
+            }
+
+            public Block[] GetDecors(IBlockAccessor blockAccessor, BlockPos pos)
+            {
+                throw new NotImplementedException();
+            }
+
+			public void SetDecors(Dictionary<int, Block> newDecors)
 			{
 				throw new NotImplementedException();
 			}

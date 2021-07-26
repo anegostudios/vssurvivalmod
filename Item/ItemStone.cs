@@ -34,6 +34,20 @@ namespace Vintagestory.GameContent
                 return;
             }
 
+            EnumHandHandling bhHandHandling = EnumHandHandling.NotHandled;
+            foreach (CollectibleBehavior bh in CollectibleBehaviors)
+            {
+                EnumHandling hd = EnumHandling.PassThrough;
+                bh.OnHeldInteractStart(itemslot, byEntity, blockSel, entitySel, firstEvent, ref bhHandHandling, ref hd);
+
+                if (hd == EnumHandling.PreventSubsequent) break;
+            }
+            if (bhHandHandling != EnumHandHandling.NotHandled)
+            {
+                handling = bhHandHandling;
+                return;
+            }
+
             bool knappable = itemslot.Itemstack.Collectible.Attributes != null && itemslot.Itemstack.Collectible.Attributes["knappable"].AsBool(false);
             bool haveKnappableStone = false;
 
@@ -168,6 +182,23 @@ namespace Vintagestory.GameContent
 
         public override bool OnHeldInteractStep(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
+            bool result = true;
+            bool preventDefault = false;
+            foreach (CollectibleBehavior behavior in CollectibleBehaviors)
+            {
+                EnumHandling handled = EnumHandling.PassThrough;
+
+                bool behaviorResult = behavior.OnHeldInteractStep(secondsUsed, slot, byEntity, blockSel, entitySel, ref handled);
+                if (handled != EnumHandling.PassThrough)
+                {
+                    result &= behaviorResult;
+                    preventDefault = true;
+                }
+
+                if (handled == EnumHandling.PreventSubsequent) return result;
+            }
+            if (preventDefault) return result;
+
             if (byEntity.Attributes.GetInt("aimingCancel") == 1) return false;
 
             if (byEntity.World is IClientWorldAccessor)
@@ -203,6 +234,20 @@ namespace Vintagestory.GameContent
 
         public override void OnHeldInteractStop(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
+            bool preventDefault = false;
+
+            foreach (CollectibleBehavior behavior in CollectibleBehaviors)
+            {
+                EnumHandling handled = EnumHandling.PassThrough;
+
+                behavior.OnHeldInteractStop(secondsUsed, slot, byEntity, blockSel, entitySel, ref handled);
+                if (handled != EnumHandling.PassThrough) preventDefault = true;
+
+                if (handled == EnumHandling.PreventSubsequent) return;
+            }
+
+            if (preventDefault) return;
+
             if (byEntity.Attributes.GetInt("aimingCancel") == 1) return;
 
             byEntity.Attributes.SetInt("aiming", 0);

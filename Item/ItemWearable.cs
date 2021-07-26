@@ -361,6 +361,7 @@ namespace Vintagestory.GameContent
             // Condition: 0-40%
             // Warmth: +1.5°C
 
+
             if (inSlot.Itemstack.ItemAttributes?["warmth"].Exists == true && inSlot.Itemstack.ItemAttributes?["warmth"].AsFloat() != 0)
             {
                 if (!(inSlot is ItemSlotCreative))
@@ -394,7 +395,7 @@ namespace Vintagestory.GameContent
                         condStr = Lang.Get("clothingcondition-terrible", (int)(condition * 100));
                     }
 
-                    dsc.AppendLine(Lang.Get("Condition:"));
+                    dsc.Append(Lang.Get("Condition: "));
                     float warmth = GetWarmth(inSlot);
 
                     string color = ColorUtil.Int2Hex(GuiStyle.DamageColorGradient[(int)Math.Min(99, condition * 200)]);

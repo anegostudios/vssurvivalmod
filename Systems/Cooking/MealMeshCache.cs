@@ -181,32 +181,7 @@ namespace Vintagestory.GameContent
             int bakeLevel = pieStack.Attributes.GetInt("bakeLevel", 0);
 
             if (stackprops.Length == 0) return null;
-            if (stackprops[0] == null)
-            {
-                if (contentStacks[0].Collectible.Code.Path == "rot")
-                {
-                    crustTextureLoc = new AssetLocation("block/rot/rot");
-                }
-            }
-            else
-            {
-                crustTextureLoc = stackprops[0].Texture.Clone();
-                crustTextureLoc.Path = crustTextureLoc.Path.Replace("{bakelevel}", "" + (bakeLevel + 1));
-                fillingTextureLoc = new AssetLocation("block/transparent");
-            }
 
-            topCrustTextureLoc = new AssetLocation("block/transparent");
-            if (stackprops[5] != null)
-            {
-                topCrustTextureLoc = stackprops[5].Texture.Clone();
-                topCrustTextureLoc.Path = topCrustTextureLoc.Path.Replace("{bakelevel}", "" + (bakeLevel + 1));
-            } else
-            {
-                if (contentStacks[5]?.Collectible?.Code.Path == "rot")
-                {
-                    topCrustTextureLoc = new AssetLocation("block/rot/rot");
-                }
-            }
 
             ItemStack cstack = contentStacks[1];
             bool equal = true;
@@ -218,20 +193,44 @@ namespace Vintagestory.GameContent
                 cstack = contentStacks[i];
             }
 
-            if (contentStacks[1] != null)
-            {
-                EnumFoodCategory fillingFoodCat =
-                    contentStacks[1].Collectible.NutritionProps?.FoodCategory
-                    ?? contentStacks[1].ItemAttributes?["nutritionPropsWhenInMeal"]?.AsObject<FoodNutritionProperties>()?.FoodCategory
-                    ?? EnumFoodCategory.Vegetable
-                ;
 
-                fillingTextureLoc = equal ? stackprops[1]?.Texture : pieMixedFillingTextures[(int)fillingFoodCat];
+            if (ContentsRotten(contentStacks))
+            {
+                crustTextureLoc = new AssetLocation("block/rot/rot");
+                fillingTextureLoc = new AssetLocation("block/rot/rot");
+                topCrustTextureLoc = new AssetLocation("block/rot/rot");
+            }
+            else
+            {
+                if (stackprops[0] != null)
+                {
+                    crustTextureLoc = stackprops[0].Texture.Clone();
+                    crustTextureLoc.Path = crustTextureLoc.Path.Replace("{bakelevel}", "" + (bakeLevel + 1));
+                    fillingTextureLoc = new AssetLocation("block/transparent");
+                }
+
+                topCrustTextureLoc = new AssetLocation("block/transparent");
+                if (stackprops[5] != null)
+                {
+                    topCrustTextureLoc = stackprops[5].Texture.Clone();
+                    topCrustTextureLoc.Path = topCrustTextureLoc.Path.Replace("{bakelevel}", "" + (bakeLevel + 1));
+                }
+
+                if (contentStacks[1] != null)
+                {
+                    EnumFoodCategory fillingFoodCat =
+                        contentStacks[1].Collectible.NutritionProps?.FoodCategory
+                        ?? contentStacks[1].ItemAttributes?["nutritionPropsWhenInMeal"]?.AsObject<FoodNutritionProperties>()?.FoodCategory
+                        ?? EnumFoodCategory.Vegetable
+                    ;
+
+                    fillingTextureLoc = equal ? stackprops[1]?.Texture : pieMixedFillingTextures[(int)fillingFoodCat];
+                }
             }
 
 
             int fillLevel = (contentStacks[1] != null ? 1 : 0) + (contentStacks[2] != null ? 1 : 0) + (contentStacks[3] != null ? 1 : 0) + (contentStacks[4] != null ? 1 : 0);
-            bool isComplete = !contentStacks.Any(stack => stack == null);
+            bool isComplete = fillLevel == 4;
 
             AssetLocation shapeloc = isComplete ? pieShapeBySize[pieSize - 1] : pieShapeLocByFillLevel[fillLevel];
 
@@ -240,8 +239,8 @@ namespace Vintagestory.GameContent
             MeshData mesh;
 
             int topCrustType = pieStack.Attributes.GetInt("topCrustType");
-            string[] topCrusts = new string[] { "top crust full", "top crust square/*", "top crust diagonal/*" };
-            string[] selectiveElements = new string[] { "origin", "base", "crust regular/*", "filling", topCrusts[topCrustType] };
+            string[] topCrusts = new string[] { "origin/base/top crust full/*", "origin/base/top crust square/*", "origin/base/top crust diagonal/*" };
+            string[] selectiveElements = new string[] { "origin/base/crust regular/*", "origin/base/filling/*", "origin/base/base-quarter/*", "origin/base/fillingquarter/*", topCrusts[topCrustType] };
 
             capi.Tesselator.TesselateShape("pie", shape, out mesh, this, null, 0, 0, 0, null, selectiveElements);
             if (transform != null) mesh.ModelTransform(transform);
@@ -253,7 +252,7 @@ namespace Vintagestory.GameContent
         public AssetLocation[] pieMixedFillingTextures = new AssetLocation[] {
             new AssetLocation("block/food/pie/fill-mixedfruit"),
             new AssetLocation("block/food/pie/fill-mixedvegetable"), 
-            new AssetLocation("block/food/pie/fill-mixedprotein"), 
+            new AssetLocation("block/food/pie/fill-mixedmeat"), 
             new AssetLocation("block/food/pie/fill-mixeddairy") 
         };
 
@@ -321,7 +320,7 @@ namespace Vintagestory.GameContent
                 bool rotten = ContentsRotten(contentStacks);
                 if (rotten)
                 {
-                    Shape contentShape = capi.Assets.TryGet("shapes/block/meal/rot.json").ToObject<Shape>();
+                    Shape contentShape = capi.Assets.TryGet("shapes/block/food/meal/rot.json").ToObject<Shape>();
 
                     MeshData contentMesh;
                     capi.Tesselator.TesselateShape("rotcontents", contentShape, out contentMesh, source);
@@ -342,7 +341,7 @@ namespace Vintagestory.GameContent
                     {
                         source.ForStack = contentStacks[0];
 
-                        CompositeShape cshape = contentStacks[0]?.ItemAttributes?["inBowlShape"].AsObject<CompositeShape>(new CompositeShape() { Base = new AssetLocation("shapes/block/meal/pickled.json") });
+                        CompositeShape cshape = contentStacks[0]?.ItemAttributes?["inBowlShape"].AsObject<CompositeShape>(new CompositeShape() { Base = new AssetLocation("shapes/block/food/meal/pickled.json") });
 
                         Shape contentShape = capi.Assets.TryGet(cshape.Base.WithPathAppendixOnce(".json").WithPathPrefixOnce("shapes/")).ToObject<Shape>();
                         MeshData contentMesh;
@@ -362,9 +361,15 @@ namespace Vintagestory.GameContent
             for (int i = 0; i < contentStacks.Length; i++)
             {
                 if (contentStacks[i]?.Collectible.Code.Path == "rot") return true;
-
             }
-
+            return false;
+        }
+        public static bool ContentsRotten(InventoryBase inv)
+        {
+            foreach (var slot in inv)
+            {
+                if (slot.Itemstack?.Collectible.Code.Path == "rot") return true;
+            }
             return false;
         }
 
@@ -377,7 +382,7 @@ namespace Vintagestory.GameContent
             bool rotten = ContentsRotten(contentStacks);
             if (rotten)
             {
-                shapePath = "shapes/block/meal/rot.json";
+                shapePath = "shapes/block/food/meal/rot.json";
             }
             
 

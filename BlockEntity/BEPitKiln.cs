@@ -1,16 +1,19 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-
+    // The first 4 slots are the ground storage contents
+    // Slots 5 to 10 is the fuel
     public class BlockEntityPitKiln : BlockEntityGroundStorage, IHeatSource
     {
         protected ILoadedSound ambientSound;
@@ -36,17 +39,66 @@ namespace Vintagestory.GameContent
             bh.OnFireTick = (dt) => {
                 if (api.World.Calendar.TotalHours >= BurningUntilTotalHours)
                 {
-                    OnFired();
+                    if (IsAreaLoaded()) // Wait until nearby chunks area loaded befire firing fully
+                    {
+                        OnFired();
+                    }
                 }
             };
+            bh.OnFireDeath = KillFire;
 
             bh.ShouldBurn = () => Lit;
-            bh.OnCanBurn = (dt) => true;
+            bh.OnCanBurn = (pos) =>
+            {
+                if (pos == this.Pos && !Lit && IsComplete) return true;
+
+                Block block = Api.World.BlockAccessor.GetBlock(pos);
+                Block upblock = Api.World.BlockAccessor.GetBlock(Pos.UpCopy());
+
+                return block?.CombustibleProps != null && block.CombustibleProps.BurnDuration > 0 && (!IsAreaLoaded() || upblock.Replaceable >= 6000);
+            };
 
             base.Initialize(api);
 
             DetermineBuildStages();
+
+            bh.FuelPos = Pos.Copy();
+            bh.FirePos = Pos.UpCopy();
         }
+
+        public bool IsAreaLoaded()
+        {
+            if (Api == null || Api.Side == EnumAppSide.Client) return true;
+
+            ICoreServerAPI sapi = Api as ICoreServerAPI;
+
+            int chunksize = Api.World.BlockAccessor.ChunkSize;
+            int sizeX = sapi.WorldManager.MapSizeX / chunksize;
+            int sizeY = sapi.WorldManager.MapSizeY / chunksize;
+            int sizeZ = sapi.WorldManager.MapSizeZ / chunksize;
+
+            int mincx = GameMath.Clamp((Pos.X - 1) / chunksize, 0, sizeX - 1);
+            int maxcx = GameMath.Clamp((Pos.X + 1) / chunksize, 0, sizeX - 1);
+            int mincy = GameMath.Clamp((Pos.Y - 1) / chunksize, 0, sizeY - 1);
+            int maxcy = GameMath.Clamp((Pos.Y + 1) / chunksize, 0, sizeY - 1);
+            int mincz = GameMath.Clamp((Pos.Z - 1) / chunksize, 0, sizeZ - 1);
+            int maxcz = GameMath.Clamp((Pos.Z + 1) / chunksize, 0, sizeZ - 1);
+
+            for (int cx = mincx; cx <= maxcx; cx++)
+            {
+                for (int cy = mincy; cy <= maxcy; cy++)
+                {
+                    for (int cz = mincz; cz <= maxcz; cz++)
+                    {
+                        if (sapi.WorldManager.GetChunk(cx, cy, cz) == null) return false;
+                    }
+                }
+            }
+
+            return true;
+        }
+
+
 
 
         public override bool OnPlayerInteract(IPlayer player, BlockSelection bs)
@@ -73,6 +125,7 @@ namespace Vintagestory.GameContent
                     mesh = null;
                     MarkDirty(true);
                     updateSelectiveElements();
+                    (player as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
                 }
             }
 
@@ -107,8 +160,9 @@ namespace Vintagestory.GameContent
         {
             if (IsValidPitKiln())
             {
-                foreach (var slot in inventory)
+                for (int i = 0; i < 4; i++)
                 {
+                    ItemSlot slot = inventory[i];
                     if (slot.Empty) continue;
                     ItemStack rawStack = slot.Itemstack;
                     ItemStack firedStack = rawStack.Collectible.CombustibleProps?.SmeltedStack?.ResolvedItemstack;
@@ -119,20 +173,11 @@ namespace Vintagestory.GameContent
                         slot.Itemstack.StackSize = rawStack.StackSize / rawStack.Collectible.CombustibleProps.SmeltedRatio;
                     }
                 }
+
+                MarkDirty(true);
             }
 
-            Block blockgs = Api.World.GetBlock(new AssetLocation("groundstorage"));
-            Api.World.BlockAccessor.SetBlock(blockgs.Id, Pos);
-
-            var begs = Api.World.BlockAccessor.GetBlockEntity(Pos) as BlockEntityGroundStorage;
-            begs.ForceStorageProps(StorageProps);
-
-            for (int i = 0; i < begs.Capacity; i++)
-            {
-                begs.Inventory[i] = inventory[i];
-            }
-
-            MarkDirty(true);
+            KillFire(true);
         }
 
 
@@ -222,6 +267,10 @@ namespace Vintagestory.GameContent
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
             base.FromTreeAttributes(tree, worldForResolving);
+            BurningUntilTotalHours = tree.GetDouble("burnUntil");
+
+            int prevStage = currentBuildStage;
+            bool prevLit = Lit;
 
             currentBuildStage = tree.GetInt("currentBuildStage");
             Lit = tree.GetBool("lit");
@@ -229,6 +278,20 @@ namespace Vintagestory.GameContent
             if (Api != null)
             {
                 DetermineBuildStages();
+
+                if (Api.Side == EnumAppSide.Client)
+                {
+                    if (prevStage != currentBuildStage) mesh = null;
+                    if (!prevLit && Lit)
+                    {
+                        TryIgnite(null);
+                    }
+                    if (prevLit && !Lit)
+                    {
+                        var bh = GetBehavior<BEBehaviorBurning>();
+                        bh.KillFire(false);
+                    }
+                }
             }
         }
 
@@ -238,6 +301,7 @@ namespace Vintagestory.GameContent
 
             tree.SetInt("currentBuildStage", currentBuildStage);
             tree.SetBool("lit", Lit);
+            tree.SetDouble("burnUntil", BurningUntilTotalHours);
         }
 
 
@@ -265,12 +329,90 @@ namespace Vintagestory.GameContent
 
         public void TryIgnite(IPlayer byPlayer)
         {
-            BurningUntilTotalHours = Api.World.Calendar.TotalHours + 24f;
+            BurningUntilTotalHours = Api.World.Calendar.TotalHours + 20f;
 
             var bh = GetBehavior<BEBehaviorBurning>();
-            bh.EffectOffset = new Vec3d(0, 1, 0);
             Lit = true;
-            bh.OnFirePlaced(BlockFacing.UP, byPlayer.PlayerUID);
+            bh.OnFirePlaced(Pos.UpCopy(), Pos.Copy(), byPlayer?.PlayerUID);
+            MarkDirty(true);
+
+            //Api.World.Logger.Debug(string.Format("Pit kiln @{0}: Ignited.", Pos));
+        }
+
+        public override string GetBlockName()
+        {
+            return Lang.Get("Pit kiln");
+        }
+
+        public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
+        {
+            if (inventory.Empty) return;
+
+            string[] contentSummary = getContentSummary();
+
+            foreach (var line in contentSummary) dsc.AppendLine(line);
+
+            if (Lit) dsc.AppendLine(Lang.Get("Lit"));
+            else dsc.AppendLine(Lang.Get("Unlit"));
+        }
+
+
+        public override string[] getContentSummary()
+        {
+            OrderedDictionary<string, int> dict = new OrderedDictionary<string, int>();
+
+            for (int i = 0; i < 4; i++)
+            {
+                ItemSlot slot = inventory[i];
+                if (slot.Empty) continue;
+
+                int cnt;
+                string stackName = slot.Itemstack.GetName();
+                if (!dict.TryGetValue(stackName, out cnt)) cnt = 0;
+
+                dict[stackName] = cnt + slot.StackSize;
+            }
+
+            return dict.Select(elem => Lang.Get("{0}x {1}", elem.Value, elem.Key)).ToArray();
+        }
+
+
+        public void KillFire(bool consumefuel)
+        {
+            if (!consumefuel)
+            {
+                Lit = false;
+                MarkDirty(true);
+                return; // Probably extinguished by rain
+            }
+
+            if (Api.Side == EnumAppSide.Client) return;
+
+            Block blockgs = Api.World.GetBlock(new AssetLocation("groundstorage"));
+            Api.World.BlockAccessor.SetBlock(blockgs.Id, Pos);
+
+            var begs = Api.World.BlockAccessor.GetBlockEntity(Pos) as BlockEntityGroundStorage;
+
+            ItemStack sourceStack = inventory.FirstNonEmptySlot?.Itemstack;
+            var storeprops = sourceStack?.Collectible.GetBehavior<CollectibleBehaviorGroundStorable>()?.StorageProps;
+
+            begs.ForceStorageProps(storeprops ?? StorageProps);
+
+            //StringBuilder sb = new StringBuilder();
+           // sb.Append(string.Format("Pit kiln @{0}: Kill fire. Replacing with ground storage. Moving Items:", Pos));
+            for (int i = 0; i < 4; i++)
+            {
+                begs.Inventory[i] = inventory[i];
+
+                /*if (!inventory[i].Empty) {
+                    sb.Append(inventory[i].Itemstack.GetName());
+                }*/
+            }
+
+            //Api.World.Logger.Debug(sb.ToString());
+
+            MarkDirty(true);
+            Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(Pos);
         }
     }
 

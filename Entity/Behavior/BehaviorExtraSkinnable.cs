@@ -68,6 +68,9 @@ namespace Vintagestory.GameContent
     {
         public Dictionary<string, SkinnablePart> AvailableSkinPartsByCode = new Dictionary<string, SkinnablePart>();
         public SkinnablePart[] AvailableSkinParts;
+        public string VoiceType = "altoflute";
+        public string VoicePitch = "medium";
+
 
         public List<AppliedSkinnablePartVariant> appliedTemp = new List<AppliedSkinnablePartVariant>();
 
@@ -117,6 +120,8 @@ namespace Vintagestory.GameContent
             }
 
             entity.WatchedAttributes.RegisterModifiedListener("skinConfig", onSkinConfigChanged);
+            entity.WatchedAttributes.RegisterModifiedListener("voicetype", onVoiceConfigChanged);
+            entity.WatchedAttributes.RegisterModifiedListener("voicepitch", onVoiceConfigChanged);
 
             AvailableSkinParts = properties.Attributes["skinnableParts"].AsObject<SkinnablePart[]>();
             foreach (var val in AvailableSkinParts)
@@ -189,18 +194,29 @@ namespace Vintagestory.GameContent
                 }
             }
 
+            onVoiceConfigChanged();
         }
 
         private void onSkinConfigChanged()
         {
             skintree = entity.WatchedAttributes["skinConfig"] as ITreeAttribute;
-            
+           
             if (entity.World.Side == EnumAppSide.Client)
             {
                 var essr = entity.Properties.Client.Renderer as EntitySkinnableShapeRenderer;
                 essr.MarkShapeModified();
             }
         }
+
+
+        private void onVoiceConfigChanged()
+        {
+            VoiceType = entity.WatchedAttributes.GetString("voicetype");
+            VoicePitch = entity.WatchedAttributes.GetString("voicepitch");
+
+            ApplyVoice(VoiceType, VoicePitch, false);
+        }
+
 
         public override void OnEntityLoaded()
         {
@@ -358,55 +374,70 @@ namespace Vintagestory.GameContent
         public void selectSkinPart(string partCode, string variantCode, bool retesselateShape = true)
         {
             AvailableSkinPartsByCode.TryGetValue(partCode, out var part);
+
+            var essr = entity.Properties.Client.Renderer as EntitySkinnableShapeRenderer;
+            ITreeAttribute appliedTree = skintree.GetTreeAttribute("appliedParts");
+            if (appliedTree == null) skintree["appliedParts"] = appliedTree = new TreeAttribute();
+            appliedTree[partCode] = new StringAttribute(variantCode);
+
+
             if (part?.Type == EnumSkinnableType.Voice)
             {
                 entity.WatchedAttributes.SetString(partCode, variantCode);
 
-                if (entity is EntityPlayer plr && plr.talkUtil != null)
+                if (partCode == "voicetype")
                 {
-                    if (partCode == "voicetype")
-                    {
-                        plr.talkUtil.soundName = part.VariantsByCode[variantCode].Sound;
-                    }
-                    if (partCode == "voicepitch")
-                    {
-                        float pitchMod = 1;
-                        switch (variantCode)
-                        {
-                            case "verylow": pitchMod = 0.6f; break;
-                            case "low": pitchMod = 0.8f; break;
-                            case "medium": pitchMod = 1f; break;
-                            case "high": pitchMod = 1.2f; break;
-                            case "veryhigh": pitchMod = 1.4f; break;
-                        }
-
-                        plr.talkUtil.pitchModifier = pitchMod;
-                        plr.talkUtil.talkSpeedModifier = 1.1f;// 1 + (1.3f - pitchMod);
-                    }
-
-                    plr.talkUtil.Talk(EnumTalkType.Idle);
+                    VoiceType = variantCode;
                 }
-                
+                if (partCode == "voicepitch")
+                {
+                    VoicePitch = variantCode;
+                }
 
+                ApplyVoice(VoiceType, VoicePitch, true);
                 return;
             }
 
-            var essr = entity.Properties.Client.Renderer as EntitySkinnableShapeRenderer;
-
-            ITreeAttribute appliedTree = skintree.GetTreeAttribute("appliedParts");
-            if (appliedTree == null) skintree["appliedParts"] = appliedTree = new TreeAttribute();
-
-            appliedTree[partCode] = new StringAttribute(variantCode);
             if (retesselateShape) essr?.TesselateShape();
             return;
         }
 
 
+        public void ApplyVoice(string voiceType, string voicePitch, bool testTalk)
+        {
+            if (!AvailableSkinPartsByCode.TryGetValue("voicetype", out var availVoices) || !AvailableSkinPartsByCode.TryGetValue("voicepitch", out var availPitches))
+            {
+                return;
+            }
+
+            VoiceType = voiceType;
+            VoicePitch = voicePitch;
+
+            if (entity is EntityPlayer plr && plr.talkUtil != null && voiceType != null) {
+                plr.talkUtil.soundName = availVoices.VariantsByCode[voiceType].Sound;
+                
+                float pitchMod = 1;
+                switch (VoicePitch)
+                {
+                    case "verylow": pitchMod = 0.6f; break;
+                    case "low": pitchMod = 0.8f; break;
+                    case "medium": pitchMod = 1f; break;
+                    case "high": pitchMod = 1.2f; break;
+                    case "veryhigh": pitchMod = 1.4f; break;
+                }
+
+                plr.talkUtil.pitchModifier = pitchMod;
+                plr.talkUtil.talkSpeedModifier = 1.1f;
+
+                if (testTalk)
+                {
+                    plr.talkUtil.Talk(EnumTalkType.Idle);
+                }
+            }
+        }
 
         protected Shape addSkinPart(AppliedSkinnablePartVariant part, Shape entityShape, string[] disableElements, string shapePathForLogging)
         {
-            //if (part.PartCode.Contains("hair")) return entityShape; // Disabled until pre.2
-
             if (AvailableSkinPartsByCode[part.PartCode].Type == EnumSkinnableType.Voice)
             {
                 entity.WatchedAttributes.SetString("voicetype", part.Code);

@@ -15,7 +15,6 @@ namespace Vintagestory.GameContent
     public class BlockChisel : BlockMicroBlock
     {
 
-
         public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
         {
             base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);

@@ -103,9 +103,20 @@ namespace Vintagestory.GameContent
                     conds.Temperature += 5;
                 }
 
-                bool reset = conds.Temperature < Block.Attributes["resetBelowTemperature"].AsFloat(-999);
-                bool stop = conds.Temperature < Block.Attributes["stopBelowTemperature"].AsFloat(-999);
-                bool revert = conds.Temperature < Block.Attributes["revertBlockBelowTemperature"].AsFloat(-999);
+                bool reset = 
+                    conds.Temperature < Block.Attributes["resetBelowTemperature"].AsFloat(-999) ||
+                    conds.Temperature > Block.Attributes["resetAboveTemperature"].AsFloat(999)
+                ;
+
+                bool stop = 
+                    conds.Temperature < Block.Attributes["stopBelowTemperature"].AsFloat(-999) ||
+                    conds.Temperature > Block.Attributes["stopAboveTemperature"].AsFloat(999)
+                ;
+
+                bool revert = 
+                    conds.Temperature < Block.Attributes["revertBlockBelowTemperature"].AsFloat(-999) ||
+                    conds.Temperature > Block.Attributes["revertBlockAboveTemperature"].AsFloat(999)
+                ;
 
                 if (stop || reset)
                 {

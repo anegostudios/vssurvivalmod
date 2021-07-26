@@ -100,7 +100,6 @@ namespace Vintagestory.GameContent
         {
             base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
             if (inSlot.Itemstack.Collectible.Attributes == null) return;
-            dsc.AppendLine(Lang.Get("0.5 blunt damage when thrown. Spawns an angry mob of bees upon impact."));
         }
 
 

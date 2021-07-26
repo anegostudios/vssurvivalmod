@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -14,6 +15,8 @@ namespace Vintagestory.GameContent
     public class CuboidWithMaterial : Cuboidi
     {
         public byte Material;
+
+        
 
         internal Cuboidf ToCuboidf()
         {
@@ -79,12 +82,19 @@ namespace Vintagestory.GameContent
 
         protected int emitSideAo = 0x3F;
         protected bool absorbAnyLight;
-        public bool[] sideSolid = new bool[6];
+        public bool[] sidecenterSolid = new bool[6];
+        public bool[] sideAlmostSolid = new bool[6];
+
         protected byte nowmaterialIndex;
 
         public float sizeRel=1;
 
+        protected int totalVoxels;
 
+        /// <summary>
+        /// A value from 0..1 describing how % of the full block is still left
+        /// </summary>
+        public float VolumeRel => totalVoxels / (16f * 16f * 16f);
 
         public override void Initialize(ICoreAPI api)
         {
@@ -97,7 +107,14 @@ namespace Vintagestory.GameContent
             }
 
             SnowLevel = (int)Block.snowLevel;
-            snowLayerBlockId = (Block as BlockMicroBlock)?.snowLayerBlockId ?? 0;
+            snowLayerBlockId = (Block as BlockMicroBlock)?.snowLayerBlockId ?? 0;            
+        }
+
+        public BlockSounds GetSounds()
+        {
+            var mbsounds = (Block as BlockMicroBlock).MBSounds.Value;
+            mbsounds.Init(this, Block);
+            return mbsounds;
         }
 
         public int GetLightAbsorption()
@@ -124,7 +141,7 @@ namespace Vintagestory.GameContent
         {
             if (attachmentArea == null)
             {
-                return sideSolid[blockFace.Index];
+                return sidecenterSolid[blockFace.Index];
             } else
             {
                 HashSet<XYZ> req = new HashSet<XYZ>();
@@ -187,7 +204,7 @@ namespace Vintagestory.GameContent
 
             if (!collBoxCuboid)
             {
-                VoxelCuboids.Add(ToCuboid(0, 0, 0, 16, 16, 16, 0));
+                VoxelCuboids.Add(ToUint(0, 0, 0, 16, 16, 16, 0));
             } else
             {
                 Cuboidf[] collboxes = block.GetCollisionBoxes(Api.World.BlockAccessor, Pos);
@@ -195,7 +212,7 @@ namespace Vintagestory.GameContent
                 for (int i = 0; i < collboxes.Length; i++)
                 {
                     Cuboidf box = collboxes[i];
-                    VoxelCuboids.Add(ToCuboid((int)(16 * box.X1), (int)(16 * box.Y1), (int)(16 * box.Z1), (int)(16 * box.X2), (int)(16 * box.Y2), (int)(16 * box.Z2), 0));
+                    VoxelCuboids.Add(ToUint((int)(16 * box.X1), (int)(16 * box.Y1), (int)(16 * box.Z1), (int)(16 * box.X2), (int)(16 * box.Y2), (int)(16 * box.Z2), 0));
                 }
             }
 
@@ -298,109 +315,85 @@ namespace Vintagestory.GameContent
             RebuildCuboidList(outVoxels, outVoxelMaterial);
         }
 
-        protected void RotateModel(IPlayer byPlayer, bool clockwise)
+        protected void TransformList(int degrees, EnumAxis? flipAroundAxis, List<uint> list)
         {
-            List<uint> rotatedCuboids = new List<uint>();
             CuboidWithMaterial cwm = tmpCuboid;
             Vec3d axis = new Vec3d(8, 8, 8);
 
-            foreach (var val in VoxelCuboids)
+            for (int i = 0; i < list.Count; i++)
             {
+                uint val = list[i];
                 FromUint(val, cwm);
-                Cuboidi rotated = cwm.RotatedCopy(0, clockwise ? 90 : -90, 0, axis);
-                cwm.Set(rotated.X1, rotated.Y1, rotated.Z1, rotated.X2, rotated.Y2, rotated.Z2);
-                rotatedCuboids.Add(ToCuboid(cwm));
-            }
-            VoxelCuboids = rotatedCuboids;
 
-            rotatedCuboids = new List<uint>();
-            foreach (var val in SnowCuboids)
+                if (flipAroundAxis == EnumAxis.X)
+                {
+                    cwm.X1 = 16 - cwm.X1;
+                    cwm.X2 = 16 - cwm.X2;
+                }
+                if (flipAroundAxis == EnumAxis.Y)
+                {
+                    cwm.Y1 = 16 - cwm.Y1;
+                    cwm.Y2 = 16 - cwm.Y2;
+                }
+                if (flipAroundAxis == EnumAxis.Z)
+                {
+                    cwm.Z1 = 16 - cwm.Z1;
+                    cwm.Z2 = 16 - cwm.Z2;
+                }
+
+                Cuboidi rotated = cwm.RotatedCopy(0, -degrees, 0, axis); // Not sure why its negative
+
+                cwm.Set(rotated.X1, rotated.Y1, rotated.Z1, rotated.X2, rotated.Y2, rotated.Z2);
+                list[i] = ToUint(cwm);
+            }
+        }
+
+        protected void RotateModel(int degrees, EnumAxis? flipAroundAxis)
+        {
+            TransformList(degrees, flipAroundAxis, VoxelCuboids);
+
+            // Snow falls off if you flip around the block
+            if (flipAroundAxis != null)
             {
-                FromUint(val, cwm);
-                Cuboidi rotated = cwm.RotatedCopy(0, clockwise ? 90 : -90, 0, axis);
-                cwm.Set(rotated.X1, rotated.Y1, rotated.Z1, rotated.X2, rotated.Y2, rotated.Z2);
-                rotatedCuboids.Add(ToCuboid(cwm));
-            }
+                SnowCuboids = new List<uint>();
+                GroundSnowCuboids = new List<uint>();
+                SnowLevel = 0;
+                if (Api != null) Api.World.BlockAccessor.ExchangeBlock((Block as BlockMicroBlock).notSnowCovered.Id, Pos);
 
-            SnowCuboids = rotatedCuboids;
-
-            rotatedCuboids = new List<uint>();
-            foreach (var val in GroundSnowCuboids)
+            } else
             {
-                FromUint(val, cwm);
-                Cuboidi rotated = cwm.RotatedCopy(0, clockwise ? 90 : -90, 0, axis);
-                cwm.Set(rotated.X1, rotated.Y1, rotated.Z1, rotated.X2, rotated.Y2, rotated.Z2);
-                rotatedCuboids.Add(ToCuboid(cwm));
-            }
+                TransformList(degrees, flipAroundAxis, SnowCuboids);
+                TransformList(degrees, flipAroundAxis, GroundSnowCuboids);
 
-            GroundSnowCuboids = rotatedCuboids;
+                int shift = -degrees / 90;
+                bool[] prevSolid = (bool[])sidecenterSolid.Clone();
+                bool[] prevAlmostSolid = (bool[])sideAlmostSolid.Clone();
+
+                for (int i = 0; i < 6; i++)
+                {
+                    sidecenterSolid[i] = prevSolid[GameMath.Mod(i + shift, 6)];
+                    sideAlmostSolid[i] = prevAlmostSolid[GameMath.Mod(i + shift, 6)];
+                }
+            }
         }
 
 
-        public void OnTransformed(ITreeAttribute tree, int byDegrees, EnumAxis? aroundAxis)
+        public void OnTransformed(ITreeAttribute tree, int byDegrees, EnumAxis? flipAroundAxis)
         {
             uint[] cuboidValues = (tree["cuboids"] as IntArrayAttribute)?.AsUint;
             VoxelCuboids = cuboidValues == null ? new List<uint>(0) : new List<uint>(cuboidValues);
-
-            // Rotations from rotate schematic:
-            if (aroundAxis == null && byDegrees == 90 || byDegrees == -90)
-            {
-                uint[] snowcuboidValues = (tree["snowcuboids"] as IntArrayAttribute)?.AsUint;
-                uint[] groundsnowvalues = (tree["groundSnowCuboids"] as IntArrayAttribute)?.AsUint;
-                SnowCuboids = snowcuboidValues == null ? new List<uint>(0) : new List<uint>(snowcuboidValues);
-                GroundSnowCuboids = groundsnowvalues == null ? new List<uint>(0) : new List<uint>(groundsnowvalues);
-
-                this.RotateModel(null, byDegrees < 0);
-
-                tree["cuboids"] = new IntArrayAttribute(VoxelCuboids.ToArray());
-                if (SnowCuboids.Count > 0)
-                {
-                    tree["snowcuboids"] = new IntArrayAttribute(SnowCuboids.ToArray());
-                }
-                if (GroundSnowCuboids.Count > 0)
-                {
-                    tree["groundSnowCuboids"] = new IntArrayAttribute(GroundSnowCuboids.ToArray());
-                }
-
-                return;
-            }
+            uint[] snowcuboidValues = (tree["snowcuboids"] as IntArrayAttribute)?.AsUint;
+            SnowCuboids = snowcuboidValues == null ? new List<uint>(0) : new List<uint>(snowcuboidValues);
+            uint[] groundsnowvalues = (tree["groundSnowCuboids"] as IntArrayAttribute)?.AsUint;
+            GroundSnowCuboids = groundsnowvalues == null ? new List<uint>(0) : new List<uint>(groundsnowvalues);
 
 
-            List<uint> rotatedCuboids = new List<uint>();
-            Vec3d axis = new Vec3d(8, 8, 8);
-            CuboidWithMaterial cwm = tmpCuboid;
-
-            foreach (var val in VoxelCuboids)
-            {
-                FromUint(val, cwm);
-                Cuboidi rotated = cwm.Clone();
-
-                if (aroundAxis == EnumAxis.X)
-                {
-                    rotated.X1 = 16 - rotated.X1;
-                    rotated.X2 = 16 - rotated.X2;
-                }
-                if (aroundAxis == EnumAxis.Y)
-                {
-                    rotated.Y1 = 16 - rotated.Y1;
-                    rotated.Y2 = 16 - rotated.Y2;
-                }
-                if (aroundAxis == EnumAxis.Z)
-                {
-                    rotated.Z1 = 16 - rotated.Z1;
-                    rotated.Z2 = 16 - rotated.Z2;
-                }
-
-                rotated = rotated.RotatedCopy(0, byDegrees, 0, axis);
+            RotateModel(byDegrees, flipAroundAxis);
 
 
-                cwm.Set(rotated.X1, rotated.Y1, rotated.Z1, rotated.X2, rotated.Y2, rotated.Z2);
-                rotatedCuboids.Add(ToCuboid(cwm));
-            }
-
-            tree["cuboids"] = new IntArrayAttribute(rotatedCuboids.ToArray());
-            tree.RemoveAttribute("snowcuboids");   //can't sensibly rotate the current snow layer on X-Z axis rotations
-            tree.RemoveAttribute("groundSnowCuboids");
+            tree["cuboids"] = new IntArrayAttribute(VoxelCuboids.ToArray());
+            tree["snowcuboids"] = new IntArrayAttribute(SnowCuboids.ToArray());
+            tree["groundSnowCuboids"] = new IntArrayAttribute(GroundSnowCuboids.ToArray());
         }
 
 
@@ -483,7 +476,7 @@ namespace Vintagestory.GameContent
         {
             bool[,,] VoxelVisited = new bool[16, 16, 16];
             emitSideAo = 0x3F;
-            sideSolid = new bool[] { true, true, true, true, true, true };
+            sidecenterSolid = new bool[] { true, true, true, true, true, true };
             float voxelCount = 0;
 
             // And now let's rebuild the cuboids with some greedy search algo thing
@@ -563,7 +556,7 @@ namespace Vintagestory.GameContent
                             didGrowAny |= TryGrowZ(cub, Voxels, VoxelVisited, VoxelMaterial);
                         }
 
-                        VoxelCuboids.Add(ToCuboid(cub));
+                        VoxelCuboids.Add(ToUint(cub));
                     }
                 }
             }
@@ -583,7 +576,8 @@ namespace Vintagestory.GameContent
 
             for (int i = 0; i < 6; i++)
             {
-                sideSolid[i] = edgeCenterVoxelsMissing[i] < 5;
+                sidecenterSolid[i] = edgeCenterVoxelsMissing[i] < 5;
+                sideAlmostSolid[i] = edgeVoxelsMissing[i] <= 32;
             }
             emitSideAo = doEmitSideAo ? 0x3F : 0;
 
@@ -636,11 +630,11 @@ namespace Vintagestory.GameContent
 
                                 if (ground)
                                 {
-                                    GroundSnowCuboids.Add(ToCuboid(cub));
+                                    GroundSnowCuboids.Add(ToUint(cub));
                                 }
                                 else
                                 {
-                                    SnowCuboids.Add(ToCuboid(cub));
+                                    SnowCuboids.Add(ToUint(cub));
                                 }
 
                                 break;
@@ -779,10 +773,15 @@ namespace Vintagestory.GameContent
             Cuboidf[] selectionBoxesTmp = new Cuboidf[VoxelCuboids.Count];
             CuboidWithMaterial cwm = tmpCuboid;
 
+
+            totalVoxels = 0;
+
             for (int i = 0; i < VoxelCuboids.Count; i++)
             {
                 FromUint(VoxelCuboids[i], cwm);
                 selectionBoxesTmp[i] = cwm.ToCuboidf();
+
+                totalVoxels += cwm.Volume;
             }
             this.selectionBoxes = selectionBoxesTmp;
         }
@@ -848,7 +847,10 @@ namespace Vintagestory.GameContent
                         altcount = Math.Max(altcount, bct.BakedVariants.Length);
                     }
 
-                    altNum = block.RandomizeAxes == EnumRandomizeAxes.XYZ ? GameMath.MurmurHash3Mod(posForRnd.X, posForRnd.Y, posForRnd.Z, altcount) : GameMath.MurmurHash3Mod(posForRnd.X, 0, posForRnd.Z, altcount);
+                    if (altcount > 0)  //block.HasAlternates might indicate alternate shapes, but no alternate textures!
+                    {
+                        altNum = block.RandomizeAxes == EnumRandomizeAxes.XYZ ? GameMath.MurmurHash3Mod(posForRnd.X, posForRnd.Y, posForRnd.Z, altcount) : GameMath.MurmurHash3Mod(posForRnd.X, 0, posForRnd.Z, altcount);
+                    }
                 }
 
                 MeshData cuboidmesh = genCube(
@@ -1137,7 +1139,7 @@ namespace Vintagestory.GameContent
             }
             if (values == null)
             {
-                values = new uint[] { ToCuboid(0,0,0, 16, 16, 16, 0) };
+                values = new uint[] { ToUint(0,0,0, 16, 16, 16, 0) };
             }
             VoxelCuboids = new List<uint>(values);
 
@@ -1166,7 +1168,7 @@ namespace Vintagestory.GameContent
             byte[] sideSolid = tree.GetBytes("sideSolid", new byte[] { 255 });
             if (sideSolid.Length > 0)
             {
-                GameMath.BoolsFromInt(this.sideSolid, sideSolid[0]);
+                GameMath.BoolsFromInt(this.sidecenterSolid, sideSolid[0]);
             }
 
 
@@ -1249,7 +1251,7 @@ namespace Vintagestory.GameContent
 
             tree.SetBytes("emitSideAo", new byte[] { (byte) emitSideAo });
 
-            tree.SetBytes("sideSolid", new byte[] { (byte) GameMath.IntFromBools(sideSolid) });
+            tree.SetBytes("sideSolid", new byte[] { (byte) GameMath.IntFromBools(sidecenterSolid) });
 
             tree.SetString("blockName", BlockName);
         }
@@ -1275,7 +1277,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public static uint ToCuboid(int minx, int miny, int minz, int maxx, int maxy, int maxz, int material)
+        public static uint ToUint(int minx, int miny, int minz, int maxx, int maxy, int maxz, int material)
         {
             Debug.Assert(maxx > 0 && maxx > minx);
             Debug.Assert(maxy > 0 && maxy > miny);
@@ -1287,7 +1289,7 @@ namespace Vintagestory.GameContent
             return (uint)(minx | (miny << 4) | (minz << 8) | ((maxx - 1) << 12) | ((maxy - 1) << 16) | ((maxz - 1) << 20) | (material << 24));
         }
 
-        protected uint ToCuboid(CuboidWithMaterial cub)
+        protected uint ToUint(CuboidWithMaterial cub)
         {
             return (uint)(cub.X1 | (cub.Y1 << 4) | (cub.Z1 << 8) | ((cub.X2 - 1) << 12) | ((cub.Y2 - 1) << 16) | ((cub.Z2 - 1) << 20) | (cub.Material << 24));
         }
@@ -1337,6 +1339,25 @@ namespace Vintagestory.GameContent
                 Block block = Api.World.GetBlock(MaterialIds[i]);
                 blockIdMapping[MaterialIds[i]] = block.Code;
             }
+        }
+
+        public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
+        {
+            base.GetBlockInfo(forPlayer, dsc);
+
+            if (forPlayer?.CurrentBlockSelection?.Face != null && MaterialIds != null)
+            {
+                Block block = Api.World.GetBlock(MaterialIds[0]);
+                var mat = block.BlockMaterial;
+                if (mat == EnumBlockMaterial.Ore || mat == EnumBlockMaterial.Stone || mat == EnumBlockMaterial.Soil || mat == EnumBlockMaterial.Ceramic)
+                {
+                    if (sideAlmostSolid[forPlayer.CurrentBlockSelection.Face.Index] && VolumeRel >= 0.5f)
+                    {
+                        dsc.AppendLine("Insulating block face");
+                    }
+                }
+            }
+             
         }
     }
 

@@ -11,6 +11,13 @@ using Vintagestory.API.Server;
 
 namespace Vintagestory.ServerMods.NoObf
 {
+    public enum EnumTreeHabitat
+    {
+        Land = 0,
+        LandWater = 1,
+        Water =2
+    }
+
     [JsonObject(MemberSerialization.OptIn)]
     public class TreeVariant
     {
@@ -19,6 +26,9 @@ namespace Vintagestory.ServerMods.NoObf
 
         [JsonProperty]
         public float Weight;
+
+        [JsonProperty]
+        public EnumTreeHabitat Habitat = EnumTreeHabitat.Land;
 
         [JsonProperty]
         public float MinSize = 0.2f;

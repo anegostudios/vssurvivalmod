@@ -279,6 +279,21 @@ namespace Vintagestory.GameContent
 
         long lastMoveMs=0;
 
+
+        /// <summary>
+        /// Affect the players body temperature by eating meals with a larger temperature difference
+        /// </summary>
+        /// <param name="stack"></param>
+        public void didConsume(ItemStack stack, float intensity = 1f)
+        {
+            float temp = stack.Collectible.GetTemperature(api.World, stack);
+            if (Math.Abs(temp - CurBodyTemperature) > 10)
+            {
+                //float intensity = Math.Min(1, (temp - CurBodyTemperature) / 30f);
+                //bh.CurBodyTemperature += 2 * servingsToEat * intensity;
+            }
+        }
+
         private void updateWearableConditions()
         {
             double hoursPassed = api.World.Calendar.TotalHours - lastWearableHoursTotalUpdate;

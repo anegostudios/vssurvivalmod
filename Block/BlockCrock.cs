@@ -120,23 +120,25 @@ namespace Vintagestory.GameContent
         {
             ItemStack stack = new ItemStack(world.GetBlock(CodeWithVariant("side", "east")));
 
-            BlockEntityContainer bec = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityContainer;
-
-            if (bec != null)
-            {
-                SetContents(stack, bec.GetContentStacks());
-            }
-            
-
             BlockEntityCrock becrock = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityCrock;
-            if (becrock == null) return stack;
-
-            ItemStack[] stacks = becrock.inventory.Where(slot => !slot.Empty).Select(slot => slot.Itemstack).ToArray();
-            if (becrock.RecipeCode != null)
+            if (becrock != null)
             {
-                stack.Attributes.SetString("recipeCode", becrock.RecipeCode);
-                stack.Attributes.SetFloat("quantityServings", becrock.QuantityServings);
-                stack.Attributes.SetBool("sealed", becrock.Sealed);
+                ItemStack[] contents = becrock.GetContentStacks();
+                for (int i = 0; i < contents.Length; i++)
+                {
+                    // if any of the crock's contents still has a stack, return a crock with all the contents
+                    if (contents[i] != null)
+                    {
+                        SetContents(stack, contents);
+
+                        if (becrock.RecipeCode != null)
+                        {
+                            stack.Attributes.SetString("recipeCode", becrock.RecipeCode);
+                            stack.Attributes.SetFloat("quantityServings", becrock.QuantityServings);
+                            stack.Attributes.SetBool("sealed", becrock.Sealed);
+                        }
+                    }
+                }
             }
 
             return stack;
@@ -219,6 +221,29 @@ namespace Vintagestory.GameContent
                 return;
             }
 
+			// This works but doesn't render meal bowl contents. We need to rewrite ground storable and shelfing
+			// mesh generation. Its hardcoded right now, dont want to add more hardcoding...
+            /*if (block is BlockGroundStorage)
+            {
+                var begs = api.World.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityGroundStorage;
+                foreach (var gsslot in begs.Inventory)
+                {
+                    if (gsslot.Empty) continue;
+                    if (gsslot.Itemstack.ItemAttributes?.IsTrue("mealContainer") == true)
+                    {
+                        if (quantityServings > 0)
+                        {
+                            ServeIntoBowlStack(gsslot, slot, byEntity.World);
+                            gsslot.MarkDirty();
+                            begs.updateMeshes();
+                            begs.MarkDirty(true);
+                        }
+                        handHandling = EnumHandHandling.PreventDefault;
+                        return;
+                    }
+                }
+            }*/
+
             if (block is BlockCookingContainer && slot.Itemstack.Attributes.HasAttribute("recipeCode"))
             {
                 handHandling = EnumHandHandling.PreventDefault;
@@ -289,7 +314,7 @@ namespace Vintagestory.GameContent
         {
             ItemSlot hotbarSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
 
-            if (!hotbarSlot.Empty && hotbarSlot.Itemstack.Collectible.Attributes?.IsTrue("mealContainer") == true)
+            if (!hotbarSlot.Empty && hotbarSlot.Itemstack.Collectible.Attributes?.IsTrue("mealContainer") == true && (!(hotbarSlot.Itemstack.Collectible is BlockCrock) || hotbarSlot.StackSize == 1))
             {
                 BlockEntityCrock bec = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityCrock;
                 if (bec == null) return false;
@@ -297,23 +322,19 @@ namespace Vintagestory.GameContent
                 if (hotbarSlot.Itemstack.Attributes.GetDecimal("quantityServings", 0) == 0)
                 {
                     bec.ServeInto(byPlayer, hotbarSlot);
-                    bec.Sealed = false;
+                    
                     return true;
                 }
 
                 if (bec.QuantityServings == 0)
                 {
                     ServeIntoBowl(this, blockSel.Position, hotbarSlot, world);
-                    //bec.OnBlockPlaced(hotbarSlot.Itemstack);
+                    
                     bec.Sealed = false;
                     bec.MarkDirty(true);
-                    //hotbarSlot.Itemstack.Attributes.RemoveAttribute("recipeCode");
-                    //hotbarSlot.Itemstack.Attributes.RemoveAttribute("quantityServings");
-                    //hotbarSlot.Itemstack.Attributes.RemoveAttribute("contents");
                     return true;
                 }
             }
-            
 
             return base.OnBlockInteractStart(world, byPlayer, blockSel);
         }
@@ -401,7 +422,7 @@ namespace Vintagestory.GameContent
         public override string GetPlacedBlockInfo(IWorldAccessor world, BlockPos pos, IPlayer forPlayer)
         {
             BlockEntityCrock becrock = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityCrock;
-            if (becrock == null) return null;
+            if (becrock == null) return "";
 
             BlockMeal mealblock = world.GetBlock(new AssetLocation("bowl-meal")) as BlockMeal;
 

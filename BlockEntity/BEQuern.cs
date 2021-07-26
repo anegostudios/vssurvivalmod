@@ -60,7 +60,8 @@ namespace Vintagestory.GameContent
         QuernTopRenderer renderer;
         bool automated;
         BEBehaviorMPConsumer mpc;
-        
+        private float prevSpeed = float.NaN;
+
 
         // Server side only
         Dictionary<string, long> playersGrinding = new Dictionary<string, long>();
@@ -255,11 +256,13 @@ namespace Vintagestory.GameContent
                     Api.World.SpawnParticles(FlourDustParticles);
                 }
 
-                if (ambientSound != null && automated)
+                if (ambientSound != null && automated && mpc.TrueSpeed != prevSpeed)
                 {
-                    ambientSound.SetPitch((0.5f + mpc.TrueSpeed) * 0.9f);
-                    ambientSound.SetVolume(Math.Min(1f, mpc.TrueSpeed * 3f));
+                    prevSpeed = mpc.TrueSpeed;
+                    ambientSound.SetPitch((0.5f + prevSpeed) * 0.9f);
+                    ambientSound.SetVolume(Math.Min(1f, prevSpeed * 3f));
                 }
+                else prevSpeed = float.NaN;
 
                 return;
             }
@@ -561,6 +564,8 @@ namespace Vintagestory.GameContent
                 ambientSound.Stop();
                 ambientSound.Dispose();
             }
+
+            clientDialog?.TryClose();
 
             renderer?.Dispose();
             renderer = null;

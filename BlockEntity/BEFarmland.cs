@@ -75,6 +75,11 @@ namespace Vintagestory.GameContent
         bool unripeHeatDamaged;
         bool ripeCropColdDamaged;
 
+        // 0 = Unknown
+        // 1 = too hot
+        // 2 = too cold
+        float[] damageAccum = new float[Enum.GetValues(typeof(EnumCropStressType)).Length];
+
         WeatherSystemBase wsys;
         Vec3d tmpPos = new Vec3d();
         float lastWaterDistance = 99;
@@ -85,6 +90,7 @@ namespace Vintagestory.GameContent
 
 
         bool allowundergroundfarming;
+        bool allowcropDeath;
 
         public override void Initialize(ICoreAPI api)
         {
@@ -92,6 +98,7 @@ namespace Vintagestory.GameContent
             upPos = base.Pos.UpCopy();
             wsys = api.ModLoader.GetModSystem<WeatherSystemBase>();
             allowundergroundfarming = Api.World.Config.GetBool("allowUndergroundFarming", false);
+            allowcropDeath = Api.World.Config.GetBool("allowCropDeath", true);
 
             if (api is ICoreServerAPI)
             {
@@ -172,9 +179,20 @@ namespace Vintagestory.GameContent
             return true;
         }
 
+        public void OnCropBlockBroken()
+        {
+            ripeCropColdDamaged = false;
+            unripeCropColdDamaged = false;
+            unripeHeatDamaged = false;
+            for (int i = 0; i < damageAccum.Length; i++) damageAccum[i] = 0;
+            MarkDirty(true);
+        }
+
         public ItemStack[] GetDrops(ItemStack[] drops)
         {
-            if (!ripeCropColdDamaged && !unripeCropColdDamaged && !unripeHeatDamaged) return drops;
+            bool isDead = Api.World.BlockAccessor.GetBlock(upPos) == Api.World.GetBlock(new AssetLocation("deadcrop"));
+
+            if (!ripeCropColdDamaged && !unripeCropColdDamaged && !unripeHeatDamaged && !isDead) return drops;
             if (!Api.World.Config.GetString("harshWinters").ToBool(true)) return drops;
 
             List<ItemStack> stacks = new List<ItemStack>();
@@ -185,6 +203,7 @@ namespace Vintagestory.GameContent
             float mul = 1f;
             if (ripeCropColdDamaged) mul = cropProps.ColdDamageRipeMul;
             if (unripeHeatDamaged || unripeCropColdDamaged) mul = cropProps.DamageGrowthStuntMul;
+            if (isDead) mul = Math.Max(cropProps.ColdDamageRipeMul, cropProps.DamageGrowthStuntMul);
 
             for (int i = 0; i < drops.Length; i++)
             {
@@ -205,8 +224,6 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            ripeCropColdDamaged = false;
-            unripeCropColdDamaged = false;
             MarkDirty(true);
 
             return stacks.ToArray();
@@ -338,6 +355,8 @@ namespace Vintagestory.GameContent
             double lightGrowthSpeedFactor = GameMath.Clamp(1 - (delayGrowthBelowSunLight - sunlight - lightpenalty) * lossPerLevel, 0, 1);
 
             Block upblock = Api.World.BlockAccessor.GetBlock(upPos);
+            Block deadCropBlock = Api.World.GetBlock(new AssetLocation("deadcrop"));
+
 
             double lightHoursPenalty = hoursNextStage / lightGrowthSpeedFactor - hoursNextStage;
 
@@ -390,7 +409,7 @@ namespace Vintagestory.GameContent
                 updateMoistureLevel(totalHoursLastUpdate / Api.World.Calendar.HoursPerDay, waterDistance);
 
                 totalHoursLastUpdate += hourIntervall;
-                hourIntervall = (3 + rand.NextDouble());
+                hourIntervall = 3 + rand.NextDouble();
 
                 ClimateCondition conds = Api.World.BlockAccessor.GetClimateAt(Pos, EnumGetClimateMode.ForSuppliedDateValues, totalHoursLastUpdate / Api.World.Calendar.HoursPerDay);
                 if (conds == null) return;
@@ -399,31 +418,57 @@ namespace Vintagestory.GameContent
                     conds.Temperature += 5;
                 }
 
-                if (cropBlock?.CropProps != null && conds.Temperature < cropBlock.CropProps.ColdDamageBelow)
-                {
-                    if (hasRipeCrop)
-                    {
-                        ripeCropColdDamaged = true;
-                    }
-                    else if (hasCrop)
-                    {
-                        unripeCropColdDamaged = true;
-                    }
-                }
-                else if (!hasCrop)
+                if (!hasCrop)
                 {
                     ripeCropColdDamaged = false;
                     unripeCropColdDamaged = false;
-                }
-
-
-                if (cropBlock?.CropProps != null && conds.Temperature > cropBlock.CropProps.HeatDamageAbove && hasCrop)
-                {
-                    unripeHeatDamaged = true;
-                }
-                else if (!hasCrop)
-                {
                     unripeHeatDamaged = false;
+                    for (int i = 0; i < damageAccum.Length; i++) damageAccum[i] = 0;
+                }
+                else
+                {
+                    if (cropBlock?.CropProps != null && conds.Temperature < cropBlock.CropProps.ColdDamageBelow)
+                    {
+                        if (hasRipeCrop)
+                        {
+                            ripeCropColdDamaged = true;
+                        }
+                        else
+                        {
+                            unripeCropColdDamaged = true;
+                            damageAccum[(int)EnumCropStressType.TooCold] += (float)hourIntervall;
+                        }
+                    }
+                    else
+                    {
+                        damageAccum[(int)EnumCropStressType.TooCold] = Math.Max(0, damageAccum[(int)EnumCropStressType.TooCold] - (float)hourIntervall / 10);
+                    }
+
+                    if (cropBlock?.CropProps != null && conds.Temperature > cropBlock.CropProps.HeatDamageAbove && hasCrop)
+                    {
+                        unripeHeatDamaged = true;
+                        damageAccum[(int)EnumCropStressType.TooHot] += (float)hourIntervall;
+                    }
+                    else
+                    {
+                        damageAccum[(int)EnumCropStressType.TooHot] = Math.Max(0, damageAccum[(int)EnumCropStressType.TooHot] - (float)hourIntervall / 10);
+                    }
+
+                    for (int i = 0; i < damageAccum.Length; i++)
+                    {
+                        float dmg = damageAccum[i];
+                        if (!allowcropDeath) dmg = damageAccum[i] = 0;
+
+                        if (dmg > 48)
+                        {
+                            Api.World.BlockAccessor.SetBlock(deadCropBlock.Id, Pos.UpCopy());
+                            var be = Api.World.BlockAccessor.GetBlockEntity(Pos.UpCopy()) as BlockEntityDeadCrop;
+                            be.Inventory[0].Itemstack = new ItemStack(cropBlock);
+                            be.deathReason = (EnumCropStressType)i;
+                            hasCrop = false;
+                            break;
+                        }
+                    }
                 }
 
                 // Stop growth and fertility recovery below zero degrees
@@ -548,6 +593,12 @@ namespace Vintagestory.GameContent
             return moistFactor * 0.1f;
         }
 
+        public float GetGrowthRate()
+        {
+            var cropProps = GetCrop()?.CropProps;
+            return cropProps == null ? 1.0f : GetGrowthRate(cropProps.RequiredNutrient);
+        }
+
         public float DeathChance(int nutrientIndex)
         {
             if (nutrients[nutrientIndex] <= 5) return 0.5f;
@@ -616,7 +667,10 @@ namespace Vintagestory.GameContent
                     if (handled == EnumHandling.PreventDefault) return result;
                 }
 
-                Api.World.BlockAccessor.SetBlock(nextBlock.BlockId, upPos);
+                if (Api.World.BlockAccessor.GetBlockEntity(upPos) == null)
+                    Api.World.BlockAccessor.SetBlock(nextBlock.BlockId, upPos);    //create any blockEntity if necessary (e.g. Bell Pepper and other fruiting crops)
+                else
+                    Api.World.BlockAccessor.ExchangeBlock(nextBlock.BlockId, upPos);    //do not destroy existing blockEntity (e.g. Bell Pepper and other fruiting crops)
                 ConsumeNutrients(block);
                 return true;
             }

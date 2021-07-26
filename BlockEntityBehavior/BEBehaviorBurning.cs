@@ -12,18 +12,14 @@ using Vintagestory.API.Server;
 
 namespace Vintagestory.GameContent
 {
-    
+
     public class BEBehaviorBurning : BlockEntityBehavior
     {
         public float startDuration;
         public float remainingBurnDuration;
-        public BlockFacing fromFacing = BlockFacing.NORTH;
 
         Block fireBlock;
         Block fuelBlock;
-
-        public Vec3d EffectOffset = new Vec3d();
-
         string startedByPlayerUid;
 
         ILoadedSound ambientSound;
@@ -38,8 +34,10 @@ namespace Vintagestory.GameContent
         }
 
         public API.Common.Action<float> OnFireTick;
+        public API.Common.Action<bool> OnFireDeath;
         public API.Common.ActionBoolReturn ShouldBurn;
         public API.Common.ActionBoolReturn<BlockPos> OnCanBurn;
+
 
         public bool IsBurning;
 
@@ -60,12 +58,26 @@ namespace Vintagestory.GameContent
             {
                 if (remainingBurnDuration <= 0)
                 {
-                    if (canBurn(FuelPos))
-                    {
-                        TrySpreadTo(FuelPos, fromFacing);
-                    }
-                    KillFire();
+                    KillFire(true);
                 }
+            };
+
+            OnFireDeath = (consumefuel) =>
+            {
+                if (consumefuel)
+                {
+                    Api.World.BlockAccessor.SetBlock(0, FuelPos);
+                    Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(FuelPos);
+                    TrySpreadTo(FuelPos);
+
+                    //Api.World.Logger.Debug(string.Format("Fire @{0}: Destroy fuel @ {1}.", FirePos, FuelPos));
+                }
+
+                Api.World.BlockAccessor.SetBlock(0, FirePos);
+
+                //Api.World.Logger.Debug(string.Format("Fire @{0}: Destroy fire.", FirePos));
+
+                Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(FirePos);
             };
         }
 
@@ -78,30 +90,33 @@ namespace Vintagestory.GameContent
 
             if (IsBurning)
             {
-                startBurning();
+                initSoundsAndTicking();
             }
         }
 
         public void OnFirePlaced(BlockFacing fromFacing, string startedByPlayerUid)
         {
+            OnFirePlaced(Blockentity.Pos, Blockentity.Pos.AddCopy(fromFacing.Opposite), startedByPlayerUid);
+        }
+
+        public void OnFirePlaced(BlockPos firePos, BlockPos fuelPos, string startedByPlayerUid)
+        {
             if (IsBurning || !ShouldBurn()) return;
 
-            this.fromFacing = fromFacing;
             this.startedByPlayerUid = startedByPlayerUid;
 
-            FirePos = Blockentity.Pos;
-            FuelPos = Blockentity.Pos.AddCopy(fromFacing.Opposite);
-            fuelBlock = Api.World.BlockAccessor.GetBlock(FuelPos);
-
-            if (!canBurn(FuelPos))
+            FirePos = firePos.Copy();
+            FuelPos = fuelPos.Copy();
+            
+            if (FuelPos == null || !canBurn(FuelPos))
             {
                 foreach (BlockFacing facing in BlockFacing.ALLFACES)
                 {
-                    BlockPos nnpos = FirePos.AddCopy(facing);
-                    fuelBlock = Api.World.BlockAccessor.GetBlock(nnpos);
-                    if (canBurn(nnpos))
+                    BlockPos npos = FirePos.AddCopy(facing);
+                    fuelBlock = Api.World.BlockAccessor.GetBlock(npos);
+                    if (canBurn(npos))
                     {
-                        this.fromFacing = facing.Opposite;
+                        FuelPos = npos;
                         startDuration = remainingBurnDuration = fuelBlock.CombustibleProps.BurnDuration;
                         return;
                     }
@@ -109,9 +124,12 @@ namespace Vintagestory.GameContent
 
                 startDuration = 1;
                 remainingBurnDuration = 1;
+                FuelPos = FirePos.Copy(); // No fuel left
             }
             else
             {
+                fuelBlock = Api.World.BlockAccessor.GetBlock(FuelPos);
+
                 if (fuelBlock.CombustibleProps != null)
                 {
                     startDuration = remainingBurnDuration = fuelBlock.CombustibleProps.BurnDuration;
@@ -126,12 +144,15 @@ namespace Vintagestory.GameContent
         private void startBurning()
         {
             if (IsBurning) return;
-
-            FirePos = Blockentity.Pos;
-            FuelPos = Blockentity.Pos.AddCopy(fromFacing.Opposite);
-            fuelBlock = Api.World.BlockAccessor.GetBlock(FuelPos);
-
             IsBurning = true;
+            if (Api != null) initSoundsAndTicking();
+        }
+
+        BlockFacing particleFacing;
+
+        private void initSoundsAndTicking()
+        {
+            fuelBlock = Api.World.BlockAccessor.GetBlock(FuelPos);
 
             l1 = Blockentity.RegisterGameTickListener(OnTick, 25);
             if (Api.Side == EnumAppSide.Server)
@@ -147,7 +168,7 @@ namespace Vintagestory.GameContent
                 {
                     Location = new AssetLocation("sounds/environment/fire.ogg"),
                     ShouldLoop = true,
-                    Position = FirePos.ToVec3f().Add(0.5f, 0.25f, 0.5f).Add((float)EffectOffset.X, (float)EffectOffset.Y, (float)EffectOffset.Z),
+                    Position = FirePos.ToVec3f().Add(0.5f, 0.25f, 0.5f),
                     DisposeOnFinish = false,
                     Volume = 1f
                 });
@@ -158,6 +179,8 @@ namespace Vintagestory.GameContent
                     ambientSound.Start();
                 }
             }
+
+            particleFacing = BlockFacing.FromNormal(new Vec3i(FirePos.X - FuelPos.X, FirePos.Y - FuelPos.Y, FirePos.Z - FuelPos.Z));
         }
 
 
@@ -168,7 +191,7 @@ namespace Vintagestory.GameContent
         {
             if (!canBurn(FuelPos))
             {
-                KillFire();
+                KillFire(false);
                 return;
             }
 
@@ -183,18 +206,18 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            if (Api.World.BlockAccessor.GetRainMapHeightAt(FirePos.X, FirePos.Y) <= FirePos.Y)   // It's more efficient to do this quick check before GetPrecipitation
+            if (Api.World.BlockAccessor.GetRainMapHeightAt(FirePos.X, FirePos.Z) <= FirePos.Y)   // It's more efficient to do this quick check before GetPrecipitation
             {
                 // Die on rainfall
                 tmpPos.Set(FirePos.X + 0.5, FirePos.Y + 0.5, FirePos.Z + 0.5);
                 double rain = wsys.GetPrecipitation(tmpPos);
-                if (rain > 0.1)
+                if (rain > 0.15)
                 {
                     Api.World.PlaySoundAt(new AssetLocation("sounds/effect/extinguish"), FirePos.X + 0.5, FirePos.Y, FirePos.Z + 0.5, null, false, 16);
 
                     if (rand.NextDouble() < rain / 2)
                     {
-                        KillFire();
+                        KillFire(false);
                         return;
                     }
                 }
@@ -214,7 +237,7 @@ namespace Vintagestory.GameContent
 
                 if (((ICoreServerAPI)Api).Server.Config.AllowFireSpread && spreadChance > Api.World.Rand.NextDouble())
                 {
-                    TrySpreadFire();
+                    TrySpreadFireAllDirs();
                 }
             }
 
@@ -222,7 +245,8 @@ namespace Vintagestory.GameContent
             {
                 int index = Math.Min(fireBlock.ParticleProperties.Length - 1, Api.World.Rand.Next(fireBlock.ParticleProperties.Length + 1));
                 AdvancedParticleProperties particles = fireBlock.ParticleProperties[index];
-                particles.basePos = RandomBlockPos(Api.World.BlockAccessor, FuelPos, fuelBlock, fromFacing).Add(EffectOffset);
+                
+                particles.basePos = RandomBlockPos(Api.World.BlockAccessor, FuelPos, fuelBlock, particleFacing);
 
                 particles.Quantity.avg = 0.75f;
                 particles.TerrainCollision = false;
@@ -234,69 +258,78 @@ namespace Vintagestory.GameContent
 
 
 
-        private void KillFire()
+        public void KillFire(bool consumeFuel)
         {
             IsBurning = false;
             Blockentity.UnregisterGameTickListener(l1);
             Blockentity.UnregisterGameTickListener(l2);
             ambientSound?.FadeOutAndStop(1);
-
-            Api.World.BlockAccessor.SetBlock(0, FirePos);
-            Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(FirePos);
+            OnFireDeath(consumeFuel);
         }
 
 
-        private void TrySpreadFire()
+        protected void TrySpreadFireAllDirs()
         {
             foreach (BlockFacing facing in BlockFacing.ALLFACES)
             {
-                BlockPos npos = FuelPos.AddCopy(facing);
+                BlockPos npos = FirePos.AddCopy(facing);
+                TrySpreadTo(npos);
+            }
 
-                if (canBurn(npos))
-                {
-                    if (Api.World.BlockAccessor.GetBlock(npos.AddCopy(fromFacing)).BlockId == 0 && TrySpreadTo(npos.AddCopy(fromFacing), fromFacing))
-                    {
-                        break;
-                    }
-
-                    bool dobreak = false;
-                    foreach (BlockFacing firefacing in BlockFacing.ALLFACES)
-                    {
-                        BlockPos nnpos = npos.AddCopy(firefacing);
-                        
-                        if (canBurn(nnpos) && TrySpreadTo(nnpos, firefacing))
-                        {
-                            dobreak = true;
-                            break;
-                        }
-                    }
-
-                    if (dobreak) break;
-                }
+            if (FuelPos != FirePos)
+            {
+                TrySpreadTo(FirePos);
             }
         }
 
 
-        public bool TrySpreadTo(BlockPos pos, BlockFacing facing)
+        public bool TrySpreadTo(BlockPos pos)
         {
-            IPlayer player = Api.World.PlayerByUid(startedByPlayerUid);
-            
+            // 1. Replaceable test
+            var block = Api.World.BlockAccessor.GetBlock(pos);
+            if (block.Replaceable < 6000) return false;
+
+            BlockEntity be = Api.World.BlockAccessor.GetBlockEntity(pos);
+            if (be?.GetBehavior<BEBehaviorBurning>() != null) return false;
+
+            // 2. fuel test
+            bool hasFuel = false;
+            BlockPos npos = null;
+            foreach (BlockFacing firefacing in BlockFacing.ALLFACES)
+            {
+                npos = pos.AddCopy(firefacing);
+                block = Api.World.BlockAccessor.GetBlock(npos);
+                if (canBurn(npos) && Api.World.BlockAccessor.GetBlockEntity(npos)?.GetBehavior<BEBehaviorBurning>() == null) {
+                    hasFuel = true; 
+                    break; 
+                }
+            }
+            if (!hasFuel) return false;
+
+            // 3. Land claim test
+            IPlayer player = Api.World.PlayerByUid(startedByPlayerUid);            
             if (player != null && Api.World.Claims.TestAccess(player, pos, EnumBlockAccessFlags.BuildOrBreak) != EnumWorldAccessResponse.Granted) {
                 return false;
             }
 
+
             Api.World.BlockAccessor.SetBlock(fireBlock.BlockId, pos);
 
+            //Api.World.Logger.Debug(string.Format("Fire @{0}: Spread to {1}.", FirePos, pos));
+
             BlockEntity befire = Api.World.BlockAccessor.GetBlockEntity(pos);
-            befire.GetBehavior<BEBehaviorBurning>()?.OnFirePlaced(facing, startedByPlayerUid);
+            befire.GetBehavior<BEBehaviorBurning>()?.OnFirePlaced(pos, npos, startedByPlayerUid);
 
             return true;
         }
 
 
-        bool canBurn(BlockPos pos)
+        protected bool canBurn(BlockPos pos)
         {
-            return OnCanBurn(pos) && Api.ModLoader.GetModSystem<ModSystemBlockReinforcement>()?.IsReinforced(pos) != true;
+            return 
+                OnCanBurn(pos) 
+                && Api.ModLoader.GetModSystem<ModSystemBlockReinforcement>()?.IsReinforced(pos) != true
+            ;
         }
 
         public override void OnBlockRemoved()
@@ -324,7 +357,19 @@ namespace Vintagestory.GameContent
             base.FromTreeAttributes(tree, worldAccessForResolve);
             remainingBurnDuration = tree.GetFloat("remainingBurnDuration");
             startDuration = tree.GetFloat("startDuration");
-            fromFacing = BlockFacing.ALLFACES[tree.GetInt("fromFacing")];
+
+            // pre v1.15-pre.3 fire
+            if (!tree.HasAttribute("fireposX"))
+            {
+                BlockFacing fromFacing = BlockFacing.ALLFACES[tree.GetInt("fromFacing", 0)];
+                FirePos = Blockentity.Pos.Copy();
+                FuelPos = FirePos.AddCopy(fromFacing);
+            }
+            else
+            {
+                FirePos = new BlockPos(tree.GetInt("fireposX"), tree.GetInt("fireposY"), tree.GetInt("fireposZ"));
+                FuelPos = new BlockPos(tree.GetInt("fuelposX"), tree.GetInt("fuelposY"), tree.GetInt("fuelposZ"));
+            }
 
             bool wasBurning = IsBurning;
             bool nowBurning = tree.GetBool("isBurning", true);
@@ -332,6 +377,11 @@ namespace Vintagestory.GameContent
             if (nowBurning && !wasBurning)
             {
                 startBurning();
+            }
+            if (!nowBurning && wasBurning)
+            {
+                KillFire(remainingBurnDuration <= 0);
+                IsBurning = nowBurning;
             }
 
             startedByPlayerUid = tree.GetString("startedByPlayerUid");
@@ -342,8 +392,10 @@ namespace Vintagestory.GameContent
             base.ToTreeAttributes(tree);
             tree.SetFloat("remainingBurnDuration", remainingBurnDuration);
             tree.SetFloat("startDuration", startDuration);
-            tree.SetInt("fromFacing", fromFacing.Index);
             tree.SetBool("isBurning", IsBurning);
+
+            tree.SetInt("fireposX", FirePos.X); tree.SetInt("fireposY", FirePos.Y); tree.SetInt("fireposZ", FirePos.Z);
+            tree.SetInt("fuelposX", FuelPos.X); tree.SetInt("fuelposY", FuelPos.Y); tree.SetInt("fuelposZ", FuelPos.Z);
 
             if (startedByPlayerUid != null)
             {

@@ -20,7 +20,11 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            if (blockSel == null || byEntity?.World == null || !byEntity.Controls.Sneak) return;
+            if (blockSel == null || byEntity?.World == null || !byEntity.Controls.Sneak)
+            {
+                base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handling);
+                return;
+            }
 
             BlockPos onBlockPos = blockSel.Position;
             

@@ -33,7 +33,7 @@ namespace Vintagestory.GameContent
 
             WaterTightContainableProps props = BlockLiquidContainerBase.GetInContainerProps(sourceStack);
 
-            return props != null && (itemstack == null || itemstack.Collectible.GetMergableQuantity(itemstack, sourceStack, priority) > 0) && RemainingSlotSpace > 0;
+            return props != null && (itemstack == null || itemstack.Collectible.GetMergableQuantity(itemstack, sourceStack, priority) > 0) && GetRemainingSlotSpace(sourceStack) > 0;
         }
 
 

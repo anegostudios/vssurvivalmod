@@ -1,4 +1,5 @@
-﻿using Vintagestory.API;
+﻿using System.Collections.Generic;
+using Vintagestory.API;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
@@ -9,6 +10,7 @@ namespace Vintagestory.GameContent
     public class BlockBehaviorUnstable : BlockBehavior
     {
         BlockFacing[] AttachedToFaces;
+        Dictionary<string, Cuboidi> attachmentAreas;
 
         public BlockBehaviorUnstable(Block block) : base(block)
         {
@@ -30,6 +32,17 @@ namespace Vintagestory.GameContent
                     AttachedToFaces[i] = BlockFacing.FromCode(faces[i]);
                 }
             }
+
+            var areas = properties["attachmentAreas"].AsObject<Dictionary<string, RotatableCube>>(null);
+            if (areas != null)
+            {
+                attachmentAreas = new Dictionary<string, Cuboidi>();
+                foreach (var val in areas)
+                {
+                    val.Value.Origin.Set(8, 8, 8);
+                    attachmentAreas[val.Key] = val.Value.RotatedCopy().ConvertToCuboidi();
+                }
+            }
         }
 
 
@@ -38,7 +51,7 @@ namespace Vintagestory.GameContent
             if (!IsAttached(world.BlockAccessor, blockSel.Position))
             {
                 handling = EnumHandling.PreventSubsequent;
-                failureCode = "requiresolidground";
+                failureCode = "requireattachable";
                 return false;
             }
 
@@ -60,7 +73,7 @@ namespace Vintagestory.GameContent
 
 
 
-        internal virtual bool IsAttached(IBlockAccessor blockAccessor, BlockPos pos)
+        public virtual bool IsAttached(IBlockAccessor blockAccessor, BlockPos pos)
         {
             for (int i = 0; i < AttachedToFaces.Length; i++)
             {
@@ -68,7 +81,10 @@ namespace Vintagestory.GameContent
 
                 Block block = blockAccessor.GetBlock(pos.AddCopy(face));
 
-                if (block.CanAttachBlockAt(blockAccessor, this.block, pos.AddCopy(face), face.Opposite))
+                Cuboidi attachmentArea = null;
+                attachmentAreas?.TryGetValue(face.Code, out attachmentArea);
+
+                if (block.CanAttachBlockAt(blockAccessor, this.block, pos.AddCopy(face), face.Opposite, attachmentArea))
                 {
                     return true;
                 }

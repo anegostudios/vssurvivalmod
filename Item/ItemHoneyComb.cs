@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -10,9 +11,21 @@ namespace Vintagestory.GameContent
 {
     public class ItemHoneyComb : Item
     {
-        public bool CanSqueezeInto(Block block)
+        public bool CanSqueezeInto(Block block, BlockPos pos)
         {
-            return block is BlockBucket || block?.Attributes?["contentItem2BlockCodes"]?["honeyportion"].Exists == true;
+            if (block is BlockBucket || block?.Attributes?["contentItem2BlockCodes"]?["honeyportion"].Exists == true) return true;
+
+            if (pos != null)
+            {
+                var beg = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityGroundStorage;
+                if (beg != null)
+                {
+                    ItemSlot squeezeIntoSlot = beg.Inventory.FirstOrDefault(slot => slot.Itemstack?.Block != null && CanSqueezeInto(slot.Itemstack.Block, null));
+                    return squeezeIntoSlot != null;
+                }
+            }
+
+            return false;
         }
 
         WorldInteraction[] interactions;
@@ -30,7 +43,7 @@ namespace Vintagestory.GameContent
                 {
                     if (block.Code == null) continue;
 
-                    if (CanSqueezeInto(block))
+                    if (CanSqueezeInto(block, null))
                     {
                         stacks.Add(new ItemStack(block));
                     }
@@ -56,14 +69,13 @@ namespace Vintagestory.GameContent
 
             Block block = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
 
-            if (byEntity.World is IClientWorldAccessor && CanSqueezeInto(block))
-            {
-                byEntity.World.PlaySoundAt(new AssetLocation("sounds/player/squeezehoneycomb"), byEntity);
-            }
-
-            if (CanSqueezeInto(block))
+            if (CanSqueezeInto(block, blockSel.Position))
             {
                 handling = EnumHandHandling.PreventDefault;
+                if (api.World.Side == EnumAppSide.Client)
+                {
+                    byEntity.World.PlaySoundAt(new AssetLocation("sounds/player/squeezehoneycomb"), byEntity);
+                }
             }
         }
 
@@ -98,7 +110,7 @@ namespace Vintagestory.GameContent
             IWorldAccessor world = byEntity.World;
 
             Block block = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
-            if (!CanSqueezeInto(block)) return;
+            if (!CanSqueezeInto(block, blockSel.Position)) return;
 
             BlockBucket blockbucket = block as BlockBucket;
             if (blockbucket != null)
@@ -107,8 +119,31 @@ namespace Vintagestory.GameContent
             }
             else
             {
-                AssetLocation loc = new AssetLocation(block.Attributes["contentItem2BlockCodes"]["honeyportion"].AsString());
-                world.BlockAccessor.SetBlock(world.GetBlock(loc).BlockId, blockSel.Position);
+                AssetLocation loc = null;
+
+                if (block.Attributes?["contentItem2BlockCodes"].Exists == true)
+                {
+                    loc = new AssetLocation(block.Attributes?["contentItem2BlockCodes"]["honeyportion"].AsString());
+                }
+
+                if (loc == null)
+                {
+                    var beg = api.World.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityGroundStorage;
+                    if (beg != null)
+                    {
+                        ItemSlot squeezeIntoSlot = beg.Inventory.FirstOrDefault(gslot => gslot.Itemstack?.Block != null && CanSqueezeInto(gslot.Itemstack.Block, null));
+                        if (squeezeIntoSlot != null)
+                        {
+                            loc = new AssetLocation(squeezeIntoSlot.Itemstack.ItemAttributes?["contentItem2BlockCodes"]["honeyportion"].AsString());
+                            squeezeIntoSlot.Itemstack = new ItemStack(world.GetBlock(loc));
+                            beg.MarkDirty(true);
+                        }
+                    }
+                }
+                else
+                {
+                    world.BlockAccessor.SetBlock(world.GetBlock(loc).BlockId, blockSel.Position);
+                }
             }
 
             slot.TakeOut(1);

@@ -263,7 +263,7 @@ namespace Vintagestory.GameContent
 
             MeshData[] meshwithVariants;
             string containersize = this.ContainerSize;
-            string key = GetContents()?.ToString() + "-" + containersize;
+            string key = content?.ToString() + "-" + containersize;
 
             if (meshes.TryGetValue(key, out meshwithVariants))
             {
@@ -310,7 +310,10 @@ namespace Vintagestory.GameContent
 
                     try
                     {
-                        tesselator.TesselateShape("plant container content shape", shape, out mesh, this);
+                        byte climateColorMapId = content.Block?.ClimateColorMapResolved == null ? (byte)0 : (byte)(content.Block.ClimateColorMapResolved.RectIndex + 1);
+                        byte seasonColorMapId = content.Block?.SeasonColorMapResolved == null ? (byte)0 : (byte)(content.Block.SeasonColorMapResolved.RectIndex + 1);
+
+                        tesselator.TesselateShape("plant container content shape", shape, out mesh, this, null, 0, climateColorMapId, seasonColorMapId);
                     }
                     catch (Exception e)
                     { Api.Logger.Error(e.Message + " (when tesselating " + compoShape.Base.WithPathPrefixOnce("shapes/") + ")"); meshwithVariants = null; break; }

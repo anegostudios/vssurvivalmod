@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Collections.Generic;
+using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -11,6 +12,43 @@ namespace Vintagestory.GameContent
 {
     public class BlockCheese : Block
     {
+        WorldInteraction[] interactions;
+
+        public override void OnLoaded(ICoreAPI api)
+        {
+            InteractionHelpYOffset = 0.375f;
+
+            interactions = ObjectCacheUtil.GetOrCreate(api, "cheeseInteractions-", () =>
+            {
+                List<ItemStack> knifeStacks = new List<ItemStack>();
+
+                foreach (CollectibleObject obj in api.World.Items)
+                {
+                    if (obj.Tool == EnumTool.Knife || obj.Tool == EnumTool.Sword)
+                    {
+                        knifeStacks.Add(new ItemStack(obj));
+                    }
+                }
+
+                return new WorldInteraction[]
+                {
+                    new WorldInteraction()
+                    {
+                        ActionLangCode = "blockhelp-cheese-cut",
+                        MouseButton = EnumMouseButton.Right,
+                        Itemstacks = knifeStacks.ToArray(),
+                        GetMatchingStacks = (wi, bs, es) => {
+                            BECheese bec = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BECheese;
+                            if (bec != null && bec.SlicesLeft > 1)
+                            {
+                                return wi.Itemstacks;
+                            }
+                            return null;
+                        }
+                    }
+                };
+            });
+        }
 
         public override void GetDecal(IWorldAccessor world, BlockPos pos, ITexPositionSource decalTexSource, ref MeshData decalModelData, ref MeshData blockModelData)
         {
@@ -32,7 +70,8 @@ namespace Vintagestory.GameContent
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
-            if (byPlayer.InventoryManager.ActiveHotbarSlot?.Itemstack?.Collectible.Tool == EnumTool.Knife)
+            EnumTool? tool = byPlayer.InventoryManager.ActiveHotbarSlot?.Itemstack?.Collectible.Tool;
+            if (tool == EnumTool.Knife || tool == EnumTool.Sword)
             {
                 BECheese bec = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BECheese;
 
@@ -69,6 +108,12 @@ namespace Vintagestory.GameContent
                 world.BlockAccessor.SetBlock(0, blockSel.Position);
                 return true;
             }
+        }
+
+
+        public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
+        {
+            return interactions.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
         }
     }
 }

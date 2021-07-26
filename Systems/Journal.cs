@@ -143,7 +143,6 @@ namespace Vintagestory.GameContent
         public override void Start(ICoreAPI api)
         {
             base.Start(api);
-
         }
 
        

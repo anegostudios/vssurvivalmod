@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Threading;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -7,11 +8,51 @@ using VintagestoryAPI.Math.Vector;
 
 namespace Vintagestory.GameContent
 {
+    public class MicroBlockSounds : BlockSounds
+    {
+        //public override AssetLocation Ambient { get => base.Ambient; set => base.Ambient = value; }
+        public override AssetLocation Break { get => block.Sounds.Break; set { } }
+        public override AssetLocation Hit { get => block.Sounds.Hit; set { } }
+        public override AssetLocation Inside { get => block.Sounds.Inside; set { } }
+        public override AssetLocation Place { get => block.Sounds.Place; set { } }
+        public override AssetLocation Walk { get => block.Sounds.Walk ; set { } }
+        public override Dictionary<EnumTool, BlockSounds> ByTool { get => block.Sounds.ByTool; set { } }
+
+
+        public BlockEntityMicroBlock be;
+        public Block defaultBlock;
+
+        public MicroBlockSounds() { }
+
+        public void Init(BlockEntityMicroBlock be, Block defaultBlock)
+        {
+            this.be = be;
+            this.defaultBlock = defaultBlock;
+            Ambient = defaultBlock.Sounds.Ambient;
+        }
+
+        Block block
+        {
+            get
+            {
+                if (be?.MaterialIds != null && be.MaterialIds.Length > 0)
+                {
+                    Block block = be.Api.World.GetBlock(be.MaterialIds[0]);
+                    return block;
+                }
+
+                return defaultBlock;
+            }
+        }
+    }
+
     public class BlockMicroBlock : Block
     {
         public int snowLayerBlockId;
 
         bool IsSnowCovered;
+
+        public ThreadLocal<MicroBlockSounds> MBSounds = new ThreadLocal<MicroBlockSounds>(() => new MicroBlockSounds());
 
         public override void OnLoaded(ICoreAPI api)
         {
@@ -31,6 +72,17 @@ namespace Vintagestory.GameContent
             IsSnowCovered = this.Id != notSnowCovered.Id;
         }
 
+        public override void OnUnloaded(ICoreAPI api)
+        {
+            MBSounds.Dispose();
+        }
+
+        public override BlockSounds GetSounds(IBlockAccessor blockAccessor, BlockPos pos, ItemStack stack = null)
+        {
+            BlockEntityMicroBlock bec = blockAccessor.GetBlockEntity(pos) as BlockEntityMicroBlock;
+
+            return bec?.GetSounds() ?? base.GetSounds(blockAccessor, pos, stack);
+        }
 
         public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
         {
@@ -40,12 +92,20 @@ namespace Vintagestory.GameContent
             if (pos.X == neibpos.X && pos.Z == neibpos.Z && pos.Y + 1 == neibpos.Y && world.BlockAccessor.GetBlock(neibpos).Id != 0)
             {
                 BlockEntityMicroBlock bec = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityMicroBlock;
-                if (bec.SnowLevel > 0)
+                bool markdirty = bec.SnowLevel != 0 || bec.SnowCuboids.Count > 0 || bec.GroundSnowCuboids.Count > 0;
+
+                if (Id != notSnowCovered.Id)
                 {
                     world.BlockAccessor.ExchangeBlock(notSnowCovered.Id, pos);
-                    bec.SnowLevel = 0;
-                    bec.MarkDirty(true);
+                    markdirty = true;
                 }
+
+                bec.SnowLevel = 0;
+                bec.SnowCuboids.Clear();
+                bec.GroundSnowCuboids.Clear();
+
+                if (markdirty) bec.MarkDirty(true);
+                
             }
         }
 
@@ -90,7 +150,23 @@ namespace Vintagestory.GameContent
             return true;
         }
 
+        public override int GetHeatRetention(BlockPos pos, BlockFacing facing)
+        {
+            BlockEntityMicroBlock bemc = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityMicroBlock;
 
+            if (bemc?.MaterialIds != null && bemc.sideAlmostSolid[facing.Index] && bemc.MaterialIds.Length > 0 && bemc.VolumeRel >= 0.5f)
+            {
+                Block block = api.World.GetBlock(bemc.MaterialIds[0]);
+                var mat = block.BlockMaterial;
+                if (mat == EnumBlockMaterial.Ore || mat == EnumBlockMaterial.Stone || mat == EnumBlockMaterial.Soil || mat == EnumBlockMaterial.Ceramic)
+                {
+                    return -1;
+                }
+                return 1;
+            }
+
+            return base.GetHeatRetention(pos, facing);
+        }
 
         public override byte[] GetLightHsv(IBlockAccessor blockAccessor, BlockPos pos, ItemStack stack = null)
         {
@@ -181,6 +257,30 @@ namespace Vintagestory.GameContent
             return bec?.GetLightAbsorption() ?? 0;
         }
 
+        public override EnumBlockMaterial GetBlockMaterial(IBlockAccessor blockAccessor, BlockPos pos, ItemStack stack = null)
+        {
+            if (pos != null)
+            {
+                BlockEntityMicroBlock be = blockAccessor.GetBlockEntity(pos) as BlockEntityMicroBlock;
+                if (be?.MaterialIds != null && be.MaterialIds.Length > 0)
+                {
+                    Block block = api.World.GetBlock(be.MaterialIds[0]);
+                    return block.BlockMaterial;
+                }
+            } else
+            {
+                int[] mats = (stack.Attributes?["materials"] as IntArrayAttribute)?.value;
+                
+                if (mats != null && mats.Length > 0)
+                {
+                    Block block = api.World.GetBlock(mats[0]);
+                    return block.BlockMaterial;
+                }
+            }
+
+            return base.GetBlockMaterial(blockAccessor, pos, stack);
+        }
+
         public override bool DoEmitSideAo(IGeometryTester caller, BlockFacing facing)
         {
             BlockEntityMicroBlock bec = caller.GetCurrentBlockEntityOnSide(facing.Opposite) as BlockEntityMicroBlock;
@@ -261,6 +361,17 @@ namespace Vintagestory.GameContent
             return base.OnGettingBroken(player, blockSel, itemslot, remainingResistance, dt, counter);
         }
 
+        public override float GetResistance(IBlockAccessor blockAccessor, BlockPos pos)
+        {
+            BlockEntityMicroBlock be = blockAccessor.GetBlockEntity(pos) as BlockEntityMicroBlock;
+            if (be?.MaterialIds != null && be.MaterialIds.Length > 0)
+            {
+                Block block = api.World.GetBlock(be.MaterialIds[0]);
+                return block.Resistance;
+            }
+
+            return base.GetResistance(blockAccessor, pos);
+        }
 
         public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
         {
@@ -327,7 +438,7 @@ namespace Vintagestory.GameContent
 
         public override bool Equals(ItemStack thisStack, ItemStack otherStack, params string[] ignoreAttributeSubTrees)
         {
-            List<string> ign = new List<string>(ignoreAttributeSubTrees);
+            List<string> ign = ignoreAttributeSubTrees == null ? new List<string>() : new List<string>(ignoreAttributeSubTrees);
             ign.Add("meshId");
             return base.Equals(thisStack, otherStack, ign.ToArray());
         }
@@ -369,6 +480,7 @@ namespace Vintagestory.GameContent
                 ba.ExchangeBlock(newBlock.Id, pos);
             }
         }
+
 
 
     }

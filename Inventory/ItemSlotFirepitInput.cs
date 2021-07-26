@@ -1,4 +1,5 @@
-﻿using Vintagestory.API.Common;
+﻿using System;
+using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 
 namespace Vintagestory.API.Common
@@ -10,9 +11,28 @@ namespace Vintagestory.API.Common
     {
         public int outputSlotId;
 
+
+        public bool IsCookingContainer
+        {
+            get { return Itemstack?.ItemAttributes?.KeyExists("cookingContainerSlots") == true; }
+        }
+
+        public override int GetRemainingSlotSpace(ItemStack forItemstack)
+        {
+            if (IsCookingContainer) return 0;
+            if (Empty && forItemstack?.ItemAttributes?.KeyExists("cookingContainerSlots") == true) return 1;
+            return base.GetRemainingSlotSpace(forItemstack);
+        }
+
         public ItemSlotInput(InventoryBase inventory, int outputSlotId) : base(inventory)
         {
             this.outputSlotId = outputSlotId;
+        }
+
+
+        public override int TryPutInto(ItemSlot sinkSlot, ref ItemStackMoveOperation op)
+        {
+            return base.TryPutInto(sinkSlot, ref op);
         }
 
         public override bool CanHold(ItemSlot slot)

@@ -31,7 +31,7 @@ namespace Vintagestory.GameContent
         public TradeProperties TradeProps;
 
         
-        EntityPlayer tradingWith;
+        public EntityPlayer tradingWith;
         GuiDialog dlg;
 
         public EntityTalkUtil talkUtil;
@@ -200,6 +200,8 @@ namespace Vintagestory.GameContent
 
             #region Avoid duplicate sales
 
+            string[] ignoredAttributes = GlobalConstants.IgnoredStackAttributes.Append("condition");
+
             for (int i = 0; i < TradeProps.Selling.List.Length; i++)
             {
                 if (newsellItems.Count >= sellingQuantity) break;
@@ -207,7 +209,7 @@ namespace Vintagestory.GameContent
                 TradeItem item = TradeProps.Selling.List[i];
                 item.Resolve(World, "tradeItem resolver");
                 
-                bool alreadySelling = sellingSlots.Any((slot) => slot?.Itemstack != null && slot.TradeItem.Stock > 0 && item.ResolvedItemstack?.Equals(World, slot.Itemstack, GlobalConstants.IgnoredStackAttributes) == true);
+                bool alreadySelling = sellingSlots.Any((slot) => slot?.Itemstack != null && slot.TradeItem.Stock > 0 && item.ResolvedItemstack?.Equals(World, slot.Itemstack, ignoredAttributes) == true);
 
                 if (!alreadySelling)
                 {
@@ -222,7 +224,7 @@ namespace Vintagestory.GameContent
                 TradeItem item = TradeProps.Buying.List[i];
                 item.Resolve(World, "tradeItem resolver");
 
-                bool alreadySelling = buyingSlots.Any((slot) => slot?.Itemstack != null && slot.TradeItem.Stock > 0 && item.ResolvedItemstack?.Equals(World, slot.Itemstack, GlobalConstants.IgnoredStackAttributes) == true);
+                bool alreadySelling = buyingSlots.Any((slot) => slot?.Itemstack != null && slot.TradeItem.Stock > 0 && item.ResolvedItemstack?.Equals(World, slot.Itemstack, ignoredAttributes) == true);
 
                 if (!alreadySelling)
                 {
@@ -298,7 +300,12 @@ namespace Vintagestory.GameContent
                 {
                     dlg = new GuiDialogTrader(Inventory, this, World.Api as ICoreClientAPI);
                     dlg.TryOpen();
-                    dlg.OnClosed += () => tradingWith = null;
+                }
+                else
+                {
+                    // Ensure inventory promptly closed server-side if the client didn't open the GUI
+                    ICoreClientAPI capi = (ICoreClientAPI)Api;
+                    capi.Network.SendPacketClient(capi.World.Player.InventoryManager.CloseInventory(Inventory));
                 }
 
                 talkUtil.Talk(EnumTalkType.Meet);
@@ -434,7 +441,8 @@ namespace Vintagestory.GameContent
             if (tradingWith != null && (tradingWith.Pos.SquareDistanceTo(this.Pos) > 5 || Inventory.openedByPlayerGUIds.Count == 0 || !Alive))
             {
                 dlg?.TryClose();
-                tradingWith = null;
+                IPlayer tradingPlayer = tradingWith?.Player;
+                if (tradingPlayer != null) Inventory.Close(tradingPlayer);
             }
         }
         

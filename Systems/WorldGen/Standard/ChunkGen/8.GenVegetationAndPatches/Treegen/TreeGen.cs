@@ -49,10 +49,12 @@ namespace Vintagestory.ServerMods
             branchesByDepth.Add(null);
             branchesByDepth.AddRange(config.branches);
 
-
+            TreeGenTrunk trunk = config.trunks[0];
+            float trunkHeight = Math.Max(0, trunk.dieAt.nextFloat(1, rnd));
+            float trunkWidthLoss = trunk.WidthLoss(rnd);
             for (int i = 0; i < trunks.Length; i++)
             {
-                TreeGenTrunk trunk = config.trunks[i];
+                trunk = config.trunks[i];
 
                 if (rnd.NextDouble() <= trunk.probability)
                 {
@@ -64,7 +66,7 @@ namespace Vintagestory.ServerMods
                         trunk.angleVert.nextFloat(1, rnd),
                         trunk.angleHori.nextFloat(1, rnd),
                         size * trunk.widthMultiplier,
-                        Math.Max(0, trunk.dieAt.nextFloat(1, rnd))
+                        trunkHeight, trunkWidthLoss, trunks.Length > 1
                     );
                 }
             }
@@ -76,13 +78,13 @@ namespace Vintagestory.ServerMods
 
         
 
-        private void growBranch(Random rand, int depth, BlockPos pos, float dx, float dy, float dz, float angleVerStart, float angleHorStart, float curWidth, float dieAt)
+        private void growBranch(Random rand, int depth, BlockPos pos, float dx, float dy, float dz, float angleVerStart, float angleHorStart, float curWidth, float dieAt, float trunkWidthLoss, bool wideTrunk)
         {
             if (depth > 30) { Console.WriteLine("TreeGen.growBranch() aborted, too many branches!"); return; }
 
             TreeGenBranch branch = branchesByDepth[Math.Min(depth, branchesByDepth.Count - 1)];
 
-            float widthloss = branch.WidthLoss(rand);
+            float widthloss = depth == 0 ? trunkWidthLoss : branch.WidthLoss(rand);
             float widthlossCurve = branch.widthlossCurve;
             float branchspacing = branch.branchSpacing.nextFloat(1, rand);
             float branchstart = branch.branchStart.nextFloat(1, rand);
@@ -141,7 +143,7 @@ namespace Vintagestory.ServerMods
 
                 currentPos = pos.AddCopy(dx, dy, dz);
 
-                PlaceResumeState state = getPlaceResumeState(currentPos, blockId);
+                PlaceResumeState state = getPlaceResumeState(currentPos, blockId, wideTrunk);
 
                 if (state == PlaceResumeState.CanPlace)
                 {
@@ -233,7 +235,8 @@ namespace Vintagestory.ServerMods
                             branch.branchVerticalAngle.nextFloat(1, rand), 
                             horAngle,
                             branchWidth,
-                            Math.Max(0, branch.dieAt.nextFloat(1, rand))
+                            Math.Max(0, branch.dieAt.nextFloat(1, rand)),
+                            trunkWidthLoss, false
                         );
 
                         first = false;
@@ -248,7 +251,7 @@ namespace Vintagestory.ServerMods
             return rand.Value.NextDouble() < otherBlockChance * config.treeBlocks.otherLogChance;
         }
 
-        PlaceResumeState getPlaceResumeState(BlockPos targetPos, int desiredblockId)
+        PlaceResumeState getPlaceResumeState(BlockPos targetPos, int desiredblockId, bool wideTrunk)
         {
             if (targetPos.X < 0 || targetPos.Y < 0 || targetPos.Z < 0 || targetPos.X >= api.MapSizeX || targetPos.Y >= api.MapSizeY || targetPos.Z >= api.MapSizeZ) return PlaceResumeState.Stop;
 
@@ -261,7 +264,8 @@ namespace Vintagestory.ServerMods
             Block currentBlock = api.GetBlock(currentblockId);
             Block desiredBock = api.GetBlock(desiredblockId);
 
-            if (currentBlock.Replaceable < 6000 && !config.treeBlocks.blockIds.Contains(currentBlock.BlockId) && (desiredBock.BlockMaterial != EnumBlockMaterial.Wood || currentBlock.Fertility == 0) /* Allow logs to replace soil */)
+            // For everything except redwood trunks, abort the treegen if it encounters a non-replaceable, non-soil, non-same-tree block.  Redwood trunks continue regardless, otherwise we get 3/4 chunks because of some other random worldgen block near the base etc.
+            if ((currentBlock.Fertility == 0 || desiredBock.BlockMaterial != EnumBlockMaterial.Wood) && currentBlock.Replaceable < 6000 && !wideTrunk && !config.treeBlocks.blockIds.Contains(currentBlock.BlockId) /* Allow logs to replace soil */)
             {
                 return PlaceResumeState.Stop;
             }

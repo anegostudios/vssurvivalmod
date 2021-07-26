@@ -73,7 +73,10 @@ namespace Vintagestory.GameContent
         {
             if (!CanWork(stack)) return null;
 
-            ItemStack workItemStack = new ItemStack(api.World.GetItem(new AssetLocation("workitem-" + Variant["metal"])));
+            Item item = api.World.GetItem(new AssetLocation("workitem-" + Variant["metal"]));
+            if (item == null) return null;
+
+            ItemStack workItemStack = new ItemStack(item);
             workItemStack.Collectible.SetTemperature(api.World, workItemStack, stack.Collectible.GetTemperature(api.World, stack));
 
             if (beAnvil.WorkItemStack == null)

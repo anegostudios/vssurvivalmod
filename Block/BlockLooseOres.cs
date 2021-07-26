@@ -30,7 +30,7 @@ namespace Vintagestory.GameContent
             get
             {
                 StringBuilder dsc = new StringBuilder();
-                dsc.AppendLine(Lang.Get("ore-in-rock", Lang.Get("ore-" + OreName), Lang.Get("rock-" + MotherRock)));
+                dsc.Append(Lang.Get("ore-in-rock", Lang.Get("ore-" + OreName), Lang.Get("rock-" + MotherRock)));
 
                 return dsc.ToString();
             }
@@ -47,7 +47,8 @@ namespace Vintagestory.GameContent
 
         public override string GetPlacedBlockInfo(IWorldAccessor world, BlockPos pos, IPlayer forPlayer)
         {
-            return InfoText + "\n" + base.GetPlacedBlockInfo(world, pos, forPlayer);
+            string text = base.GetPlacedBlockInfo(world, pos, forPlayer).Trim();
+            return InfoText + (text.Length > 0 ? "\n" : "") + text;
         }
 
     }

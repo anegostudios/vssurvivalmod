@@ -25,7 +25,7 @@ namespace Vintagestory.GameContent
         {
             base.OnLoaded(api);
 
-            if (LastCodePart() == "harvested") return;
+            if (Variant["state"] == "harvested") return;
 
             interactions = ObjectCacheUtil.GetOrCreate(api, "mushromBlockInteractions", () =>
             {

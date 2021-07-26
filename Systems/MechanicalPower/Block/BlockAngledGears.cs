@@ -95,10 +95,7 @@ namespace Vintagestory.GameContent.Mechanics
                 if (nowFace.IsAdjacent(face))
                 {
                     Block toPlaceBlock = getGearBlock(world, false, Facings[0], face);
-                    MechanicalNetwork nw = GetNetwork(world, pos);
-
                     (toPlaceBlock as BlockMPBase).ExchangeBlockAt(world, pos);
-                    BEBehaviorMPBase bemp = world.BlockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorMPBase>();
                 }
             }
         }

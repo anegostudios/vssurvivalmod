@@ -178,6 +178,13 @@ namespace Vintagestory.GameContent
                 return;
             }
 
+            IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
+            if (byPlayer == null) return;
+            if (blockSel != null && !byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            {
+                return;
+            }
+
             string blockMatCode = GetBlockMaterialCode(slot.Itemstack);
 
             if (!byEntity.FeetInLiquid && api.Side == EnumAppSide.Client && blockMatCode != null)
@@ -202,6 +209,14 @@ namespace Vintagestory.GameContent
         public override bool OnHeldInteractStep(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
             if ((byEntity.Controls.TriesToMove || byEntity.Controls.Jump) && !byEntity.Controls.Sneak) return false; // Cancel if the player begins walking
+
+            IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
+            if (byPlayer == null) return false;
+            if (blockSel != null && !byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            {
+                return false;
+            }
+
 
             string blockMaterialCode = GetBlockMaterialCode(slot.Itemstack);
             if (blockMaterialCode == null || !slot.Itemstack.TempAttributes.GetBool("canpan")) return false;

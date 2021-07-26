@@ -40,6 +40,12 @@ namespace Vintagestory.GameContent
                         ActionLangCode = "heldhelp-reinforceblock",
                         MouseButton = EnumMouseButton.Right,
                         Itemstacks = stacks.ToArray()
+                    },
+                    new WorldInteraction()
+                    {
+                        ActionLangCode = "heldhelp-removereinforcement",
+                        MouseButton = EnumMouseButton.Left,
+                        Itemstacks = stacks.ToArray()
                     }
                 };
             });

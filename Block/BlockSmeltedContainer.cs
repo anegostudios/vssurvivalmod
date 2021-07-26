@@ -66,7 +66,8 @@ namespace Vintagestory.GameContent
 
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
         {
-            if (!byPlayer.Entity.Controls.Sneak || world.BlockAccessor.GetBlockEntity(blockSel.Position.DownCopy()) is ILiquidMetalSink)
+            return base.TryPlaceBlock(world, byPlayer, itemstack, blockSel, ref failureCode);
+            /*(if (!byPlayer.Entity.Controls.Sneak || world.BlockAccessor.GetBlockEntity(blockSel.Position.DownCopy()) is ILiquidMetalSink)
             {
                 failureCode = "__ignore__";
                 return false;
@@ -92,7 +93,7 @@ namespace Vintagestory.GameContent
 
             failureCode = "requiresolidground";
 
-            return false;
+            return false;*/
         }
 
 
@@ -164,6 +165,11 @@ namespace Vintagestory.GameContent
                 }, blockSel.Position, 666);
 
                 handHandling = EnumHandHandling.PreventDefault;
+            }
+
+            if (handHandling == EnumHandHandling.NotHandled)
+            {
+                base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handHandling);
             }
         }
 
@@ -320,6 +326,22 @@ namespace Vintagestory.GameContent
             }
 
             return stacks;
+        }
+
+
+        public override string GetHeldItemName(ItemStack itemStack)
+        {
+            KeyValuePair<ItemStack, int> contents = GetContents(api.World, itemStack);
+
+            string mat = contents.Key.Collectible.Variant["metal"];
+
+            if (HasSolidifed(itemStack, contents.Key, api.World))
+            {
+                return Lang.Get("Crucible (Contains solidified {0})", mat == null ? itemStack.GetName() : Lang.Get("material-" + mat));
+            } else
+            {
+                return Lang.Get("Crucible (Contains molten {0})", mat == null ? itemStack.GetName() : Lang.Get("material-" + mat));
+            }
         }
 
         public override string GetPlacedBlockInfo(IWorldAccessor world, BlockPos pos, IPlayer forPlayer)

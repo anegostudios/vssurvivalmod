@@ -132,6 +132,7 @@ namespace Vintagestory.ServerMods
 
                     BlockSchematicStructure schematic = asset.ToObject<BlockSchematicStructure>();
 
+
                     if (schematic == null)
                     {
                         api.World.Logger.Warning("Could not load {0}: {1}", Schematics[i], error);
@@ -260,29 +261,30 @@ namespace Vintagestory.ServerMods
             int num = rand.NextInt(schematicDatas.Length);
             int orient = rand.NextInt(4);
             BlockSchematicStructure schematic = schematicDatas[num][orient];
-            
-
-            int widthHalf = (int)Math.Ceiling(schematic.SizeX / 2f);
-            int lengthHalf = (int)Math.Ceiling(schematic.SizeZ / 2f);
 
 
+            int wdthalf = (int)Math.Ceiling(schematic.SizeX / 2f);
+            int lenhalf = (int)Math.Ceiling(schematic.SizeZ / 2f);
 
+            int wdt = schematic.SizeX;
+            int len = schematic.SizeZ;
+
+
+            tmpPos.Set(pos.X + wdthalf, 0, pos.Z + lenhalf);
+            int centerY = blockAccessor.GetTerrainMapheightAt(pos);
 
             // Probe all 4 corners + center if they either touch the surface or are sightly below ground
 
-            int centerY = blockAccessor.GetTerrainMapheightAt(pos);
-
-
-            tmpPos.Set(pos.X - widthHalf, 0, pos.Z - lengthHalf);
+            tmpPos.Set(pos.X, 0, pos.Z);
             int topLeftY = blockAccessor.GetTerrainMapheightAt(tmpPos);
 
-            tmpPos.Set(pos.X + widthHalf, 0, pos.Z - lengthHalf);
+            tmpPos.Set(pos.X + wdt, 0, pos.Z);
             int topRightY = blockAccessor.GetTerrainMapheightAt(tmpPos);
 
-            tmpPos.Set(pos.X - widthHalf, 0, pos.Z + lengthHalf);
+            tmpPos.Set(pos.X, 0, pos.Z + len);
             int botLeftY = blockAccessor.GetTerrainMapheightAt(tmpPos);
 
-            tmpPos.Set(pos.X + widthHalf, 0, pos.Z + lengthHalf);
+            tmpPos.Set(pos.X + wdt, 0, pos.Z + len);
             int botRightY = blockAccessor.GetTerrainMapheightAt(tmpPos);
 
 
@@ -297,16 +299,16 @@ namespace Vintagestory.ServerMods
 
             // Ensure not deeply submerged in water
 
-            tmpPos.Set(pos.X - widthHalf, pos.Y + 1 + OffsetY, pos.Z - lengthHalf);
+            tmpPos.Set(pos.X, pos.Y + 1 + OffsetY, pos.Z);
             if (blockAccessor.GetBlock(tmpPos).IsLiquid()) return false;
 
-            tmpPos.Set(pos.X + widthHalf, pos.Y + 1 + OffsetY, pos.Z - lengthHalf);
+            tmpPos.Set(pos.X + wdt, pos.Y + 1 + OffsetY, pos.Z);
             if (blockAccessor.GetBlock(tmpPos).IsLiquid()) return false;
 
-            tmpPos.Set(pos.X - widthHalf, pos.Y + 1 + OffsetY, pos.Z + lengthHalf);
+            tmpPos.Set(pos.X, pos.Y + 1 + OffsetY, pos.Z + len);
             if (blockAccessor.GetBlock(tmpPos).IsLiquid()) return false;
 
-            tmpPos.Set(pos.X + widthHalf, pos.Y + 1 + OffsetY, pos.Z + lengthHalf);
+            tmpPos.Set(pos.X + wdt, pos.Y + 1 + OffsetY, pos.Z + len);
             if (blockAccessor.GetBlock(tmpPos).IsLiquid()) return false;
 
 
@@ -325,32 +327,30 @@ namespace Vintagestory.ServerMods
 
         internal bool TryGenerateAtSurface(IBlockAccessor blockAccessor, IWorldAccessor worldForCollectibleResolve, BlockPos pos)
         {
-            int chunksize = blockAccessor.ChunkSize;
-
             int num = rand.NextInt(schematicDatas.Length);
             int orient = rand.NextInt(4);
             BlockSchematicStructure schematic = schematicDatas[num][orient];
             
+            int wdthalf = (int)Math.Ceiling(schematic.SizeX / 2f);
+            int lenhalf = (int)Math.Ceiling(schematic.SizeZ / 2f);
+            int wdt = schematic.SizeX;
+            int len = schematic.SizeZ;
 
-            int widthHalf = (int)Math.Ceiling(schematic.SizeX / 2f);
-            int lengthHalf = (int)Math.Ceiling(schematic.SizeZ / 2f);
 
-
+            tmpPos.Set(pos.X + wdthalf, 0, pos.Z + lenhalf);
+            int centerY = blockAccessor.GetTerrainMapheightAt(tmpPos);
 
             // Probe all 4 corners + center if they are on the same height
-
-            int centerY = blockAccessor.GetTerrainMapheightAt(pos);
-            
-            tmpPos.Set(pos.X - widthHalf, 0, pos.Z - lengthHalf);
+            tmpPos.Set(pos.X, 0, pos.Z);
             int topLeftY = blockAccessor.GetTerrainMapheightAt(tmpPos);
 
-            tmpPos.Set(pos.X + widthHalf, 0, pos.Z - lengthHalf);
+            tmpPos.Set(pos.X + wdt, 0, pos.Z);
             int topRightY = blockAccessor.GetTerrainMapheightAt(tmpPos);
 
-            tmpPos.Set(pos.X - widthHalf, 0, pos.Z + lengthHalf);
+            tmpPos.Set(pos.X, 0, pos.Z + len);
             int botLeftY = blockAccessor.GetTerrainMapheightAt(tmpPos);
 
-            tmpPos.Set(pos.X + widthHalf, 0, pos.Z + lengthHalf);
+            tmpPos.Set(pos.X + wdt, 0, pos.Z + len);
             int botRightY = blockAccessor.GetTerrainMapheightAt(tmpPos);
 
 
@@ -361,43 +361,51 @@ namespace Vintagestory.ServerMods
 
 
             // Ensure not floating on water
-            tmpPos.Set(pos.X - widthHalf, pos.Y - 1, pos.Z - lengthHalf);
+            tmpPos.Set(pos.X + wdthalf, pos.Y - 1, pos.Z + lenhalf);
             if (blockAccessor.GetBlock(tmpPos).IsLiquid()) return false;
 
-            tmpPos.Set(pos.X + widthHalf, pos.Y - 1, pos.Z - lengthHalf);
+       
+            tmpPos.Set(pos.X, pos.Y - 1, pos.Z);
             if (blockAccessor.GetBlock(tmpPos).IsLiquid()) return false;
 
-            tmpPos.Set(pos.X - widthHalf, pos.Y - 1, pos.Z + lengthHalf);
+            tmpPos.Set(pos.X + wdt, pos.Y - 1, pos.Z);
             if (blockAccessor.GetBlock(tmpPos).IsLiquid()) return false;
 
-            tmpPos.Set(pos.X + widthHalf, pos.Y - 1, pos.Z + lengthHalf);
+            tmpPos.Set(pos.X, pos.Y - 1, pos.Z + len);
+            if (blockAccessor.GetBlock(tmpPos).IsLiquid()) return false;
+
+            tmpPos.Set(pos.X + wdt, pos.Y - 1, pos.Z + len);
             if (blockAccessor.GetBlock(tmpPos).IsLiquid()) return false;
 
             // Ensure not submerged in water
-            tmpPos.Set(pos.X - widthHalf, pos.Y, pos.Z - lengthHalf);
-            if (blockAccessor.GetBlock(tmpPos).IsLiquid()) return false;
-
-            tmpPos.Set(pos.X + widthHalf, pos.Y, pos.Z - lengthHalf);
-            if (blockAccessor.GetBlock(tmpPos).IsLiquid()) return false;
-
-            tmpPos.Set(pos.X - widthHalf, pos.Y, pos.Z + lengthHalf);
-            if (blockAccessor.GetBlock(tmpPos).IsLiquid()) return false;
-
-            tmpPos.Set(pos.X + widthHalf, pos.Y, pos.Z + lengthHalf);
+            tmpPos.Set(pos.X, pos.Y, pos.Z);
             if (blockAccessor.GetBlock(tmpPos).IsLiquid()) return false;
 
 
-
-            tmpPos.Set(pos.X - widthHalf, pos.Y + 1, pos.Z - lengthHalf);
+            tmpPos.Set(pos.X + wdt, pos.Y - 1, pos.Z + len);
             if (blockAccessor.GetBlock(tmpPos).IsLiquid()) return false;
 
-            tmpPos.Set(pos.X + widthHalf, pos.Y + 1, pos.Z - lengthHalf);
+            tmpPos.Set(pos.X + wdt, pos.Y, pos.Z);
             if (blockAccessor.GetBlock(tmpPos).IsLiquid()) return false;
 
-            tmpPos.Set(pos.X - widthHalf, pos.Y + 1, pos.Z + lengthHalf);
+            tmpPos.Set(pos.X, pos.Y, pos.Z + len);
             if (blockAccessor.GetBlock(tmpPos).IsLiquid()) return false;
 
-            tmpPos.Set(pos.X + widthHalf, pos.Y + 1, pos.Z + lengthHalf);
+            tmpPos.Set(pos.X + wdt, pos.Y, pos.Z + len);
+            if (blockAccessor.GetBlock(tmpPos).IsLiquid()) return false;
+
+
+
+            tmpPos.Set(pos.X, pos.Y + 1, pos.Z);
+            if (blockAccessor.GetBlock(tmpPos).IsLiquid()) return false;
+
+            tmpPos.Set(pos.X + wdt, pos.Y + 1, pos.Z);
+            if (blockAccessor.GetBlock(tmpPos).IsLiquid()) return false;
+
+            tmpPos.Set(pos.X, pos.Y + 1, pos.Z + len);
+            if (blockAccessor.GetBlock(tmpPos).IsLiquid()) return false;
+
+            tmpPos.Set(pos.X + wdt, pos.Y + 1, pos.Z + len);
             if (blockAccessor.GetBlock(tmpPos).IsLiquid()) return false;
 
 

@@ -301,10 +301,10 @@ namespace Vintagestory.GameContent
             int sizeZ = sapi.WorldManager.MapSizeZ / chunksize;
 
             int mincx = GameMath.Clamp((Pos.X + Data.SpawnArea.MinX) / chunksize, 0, sizeX - 1);
-            int maxcx = GameMath.Clamp((Pos.Y + Data.SpawnArea.MaxX) / chunksize, 0, sizeX - 1);
-            int mincy = GameMath.Clamp((Pos.Z + Data.SpawnArea.MinY) / chunksize, 0, sizeY - 1);
-            int maxcy = GameMath.Clamp((Pos.X + Data.SpawnArea.MaxY) / chunksize, 0, sizeY - 1);
-            int mincz = GameMath.Clamp((Pos.Y + Data.SpawnArea.MinZ) / chunksize, 0, sizeZ - 1);
+            int maxcx = GameMath.Clamp((Pos.X + Data.SpawnArea.MaxX) / chunksize, 0, sizeX - 1);
+            int mincy = GameMath.Clamp((Pos.Y + Data.SpawnArea.MinY) / chunksize, 0, sizeY - 1);
+            int maxcy = GameMath.Clamp((Pos.Y + Data.SpawnArea.MaxY) / chunksize, 0, sizeY - 1);
+            int mincz = GameMath.Clamp((Pos.Z + Data.SpawnArea.MinZ) / chunksize, 0, sizeZ - 1);
             int maxcz = GameMath.Clamp((Pos.Z + Data.SpawnArea.MaxZ) / chunksize, 0, sizeZ - 1);
             
             for (int cx = mincx; cx <= maxcx; cx++)

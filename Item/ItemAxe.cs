@@ -35,7 +35,6 @@ namespace Vintagestory.GameContent
 
         static ItemAxe()
         {
-
             dustParticles.ParticleModel = EnumParticleModel.Quad;
             dustParticles.AddPos.Set(1, 1, 1);
             dustParticles.MinQuantity = 2;
@@ -49,6 +48,7 @@ namespace Vintagestory.GameContent
             dustParticles.WindAffectednes = 0.5f;
         }
 
+
         public override float OnBlockBreaking(IPlayer player, BlockSelection blockSel, ItemSlot itemslot, float remainingResistance, float dt, int counter)
         {
             ITreeAttribute tempAttr = itemslot.Itemstack.TempAttributes;
@@ -56,20 +56,17 @@ namespace Vintagestory.GameContent
             int posy = tempAttr.GetInt("lastposY", -1);
             int posz = tempAttr.GetInt("lastposZ", -1);
             float treeResistance = tempAttr.GetFloat("treeResistance", 1);
-            //int counter = tempAttr.GetInt("breakCounter", 0);
 
             BlockPos pos = blockSel.Position;
 
             if (pos.X != posx || pos.Y != posy || pos.Z != posz || counter % 30 == 0)
             {
-                string bla;
-                Stack<BlockPos> foundPositions = FindTree(player.Entity.World, pos, out bla);
+                Stack<BlockPos> foundPositions = FindTree(player.Entity.World, pos);
                 treeResistance = (float)Math.Max(1, Math.Sqrt(foundPositions.Count));
 
                 tempAttr.SetFloat("treeResistance", treeResistance);
             }
 
-            //tempAttr.SetInt("breakCounter", counter + 1);
             tempAttr.SetInt("lastposX", pos.X);
             tempAttr.SetInt("lastposY", pos.Y);
             tempAttr.SetInt("lastposZ", pos.Z);
@@ -85,13 +82,8 @@ namespace Vintagestory.GameContent
 
             double windspeed = api.ModLoader.GetModSystem<WeatherSystemBase>()?.WeatherDataSlowAccess.GetWindSpeed(byEntity.SidedPos.XYZ) ?? 0;            
 
-            string treeType;
-            Stack<BlockPos> foundPositions = FindTree(world, blockSel.Position, out treeType);
+            Stack<BlockPos> foundPositions = FindTree(world, blockSel.Position);
             
-            Block leavesBranchyBlock = world.GetBlock(new AssetLocation("leavesbranchy-grown-" + treeType));
-            Block leavesBlock = world.GetBlock(new AssetLocation("leaves-grown-" + treeType));
-            
-
             if (foundPositions.Count == 0)
             {
                 return base.OnBlockBrokenWith(world, byEntity, itemslot, blockSel, dropQuantityMultiplier);
@@ -109,9 +101,9 @@ namespace Vintagestory.GameContent
 
                 Block block = world.BlockAccessor.GetBlock(pos);
 
-                bool isLog = block.Code.Path.StartsWith("beehive-inlog-" + treeType) || block.Code.Path.StartsWith("log-resinharvested-" + treeType) || block.Code.Path.StartsWith("log-resin-" + treeType) || block.Code.Path.StartsWith("log-grown-"+treeType) || block.Code.Path.StartsWith("bamboo-grown-brown-segment") || block.Code.Path.StartsWith("bamboo-grown-green-segment");
-                bool isBranchy = block == leavesBranchyBlock;
-                bool isLeaves = block == leavesBlock || block.Code.Path == "bambooleaves-grown";
+                bool isLog = block.BlockMaterial == EnumBlockMaterial.Wood;
+                bool isBranchy = block.Code.Path.Contains("branchy");
+                bool isLeaves = block.BlockMaterial == EnumBlockMaterial.Leaves;
 
                 world.BlockAccessor.BreakBlock(pos, byPlayer, isLeaves ? leavesMul : (isBranchy ? leavesBranchyMul : 1));
 
@@ -163,49 +155,29 @@ namespace Vintagestory.GameContent
 
 
 
-        public Stack<BlockPos> FindTree(IWorldAccessor world, BlockPos startPos, out string treeType)
+        public Stack<BlockPos> FindTree(IWorldAccessor world, BlockPos startPos)
         {
             Queue<Vec4i> queue = new Queue<Vec4i>();
             HashSet<BlockPos> checkedPositions = new HashSet<BlockPos>();
             Stack<BlockPos> foundPositions = new Stack<BlockPos>();
-
-            treeType = "";
-
             
             Block block = world.BlockAccessor.GetBlock(startPos);
-
             if (block.Code == null) return foundPositions;
 
-            if (block.Code.Path.StartsWith("log-grown") || block.Code.Path.StartsWith("beehive-inlog-") || block.Code.Path.StartsWith("log-resin") || block.Code.Path.StartsWith("bamboo-grown-"))
-            {
-                treeType = block.FirstCodePart(2);
+            string treeFellingGroupCode = block.Attributes?["treeFellingGroupCode"].AsString();
+            int spreadIndex = block.Attributes?["treeFellingGroupSpreadIndex"].AsInt(0) ?? 0;
 
-                queue.Enqueue(new Vec4i(startPos.X, startPos.Y, startPos.Z, 2));
-                foundPositions.Push(startPos);
-                checkedPositions.Add(startPos);
-            }
+            // Must start with a log
+            if (spreadIndex < 2) return foundPositions;
+            if (treeFellingGroupCode == null) return foundPositions;
 
-            string logcode = block.Code.Path.StartsWith("bamboo") ? "bamboo-grown-" + treeType : "log-grown-" + treeType;
-             
-            if (block is BlockFernTree)
-            {
-                treeType = "fern";
-                logcode = "ferntree-normal";
-                queue.Enqueue(new Vec4i(startPos.X, startPos.Y, startPos.Z, 2));
-                foundPositions.Push(startPos);
-                checkedPositions.Add(startPos);
-            }
-
-            string logcode2 = "log-resin-" + treeType;
-            string logcode3 = "log-resinharvested-" + treeType;
-            string leavescode = block.Code.Path.StartsWith("bamboo") ? "bambooleaves-" + treeType + "-grown"  : "leaves-grown-" + treeType;
-            string leavesbranchycode = "leavesbranchy-grown-" + treeType;
-
-            
+            queue.Enqueue(new Vec4i(startPos.X, startPos.Y, startPos.Z, spreadIndex));
+            foundPositions.Push(startPos);
+            checkedPositions.Add(startPos);
 
             while (queue.Count > 0)
             {
-                if (foundPositions.Count > 2000)
+                if (foundPositions.Count > 2500)
                 {
                     break;
                 }
@@ -225,25 +197,20 @@ namespace Vintagestory.GameContent
                     if (checkedPositions.Contains(neibPos)) continue;
 
                     block = world.BlockAccessor.GetBlock(neibPos);
-                    if (block.Code == null) continue;
+                    if (block.Code == null || block.Id == 0) continue;
 
-                    if (block.Code.Path.StartsWith(logcode) || block.Code.Path.StartsWith(logcode2) || block.Code.Path.StartsWith(logcode3))
-                    {
-                        if (pos.W < 2) continue;
+                    string ngcode = block.Attributes?["treeFellingGroupCode"].AsString();
+                    
+                    // Only break the same type tree blocks
+                    if (ngcode != treeFellingGroupCode) continue;
 
-                        foundPositions.Push(neibPos.Copy());
-                        queue.Enqueue(new Vec4i(neibPos.X, neibPos.Y, neibPos.Z, 2));
-                    } else if (block.Code.Path.StartsWith(leavesbranchycode))
-                    {
-                        if (pos.W < 1) continue;
+                    // Only spread from "high to low". i.e. spread from log to leaves, but not from leaves to logs
+                    int nspreadIndex = block.Attributes?["treeFellingGroupSpreadIndex"].AsInt(0) ?? 0;
+                    if (pos.W < nspreadIndex) continue;
 
-                        foundPositions.Push(neibPos.Copy());
-                        queue.Enqueue(new Vec4i(neibPos.X, neibPos.Y, neibPos.Z, 1));
-                    } else if (block.Code.Path.StartsWith(leavescode))
-                    {
-                        foundPositions.Push(neibPos.Copy());
-                        queue.Enqueue(new Vec4i(neibPos.X, neibPos.Y, neibPos.Z, 0));
-                    }
+                    foundPositions.Push(neibPos.Copy());
+                    queue.Enqueue(new Vec4i(neibPos.X, neibPos.Y, neibPos.Z, nspreadIndex));
+
 
                     checkedPositions.Add(neibPos);
                 }

@@ -65,10 +65,10 @@ namespace Vintagestory.GameContent
         }
 
 
-        private bool onClickItem(int i)
+        private bool onClickItem(int page)
         {
-            currentLoreItemIndex = i;
-            page = 0;
+            currentLoreItemIndex = page;
+            this.page = 0;
 
             CairoFont font = CairoFont.WhiteDetailText().WithFontSize(17).WithLineHeightMultiplier(1.15f);
             TextDrawUtil prober = new TextDrawUtil();
@@ -96,7 +96,7 @@ namespace Vintagestory.GameContent
                 capi.Gui
                 .CreateCompo("loreItem", dialogBounds)
                 .AddShadedDialogBG(ElementBounds.Fill, true)
-                .AddDialogTitleBar(Lang.Get(journalitems[i].Title), CloseIconPressedLoreItem)
+                .AddDialogTitleBar(Lang.Get(journalitems[page].Title), CloseIconPressedLoreItem)
                 .AddRichtext(pages[0], font, textBounds, "page")
                 .AddDynamicText("1 / " + pages.Length, CairoFont.WhiteSmallishText(), EnumTextOrientation.Center, ElementBounds.Fixed(250, 500, 100, 30), "currentpage") 
                 .AddButton(Lang.Get("Previous Page"), OnPrevPage, ElementBounds.Fixed(17, 500, 100, 23).WithFixedPadding(10, 4), CairoFont.WhiteSmallishText())

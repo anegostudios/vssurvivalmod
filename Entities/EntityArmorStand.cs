@@ -32,11 +32,22 @@ namespace Vintagestory.GameContent
                 gearInv.SlotModified += GearInv_SlotModified;
             }
 
+            if (api.Side == EnumAppSide.Client) {
+                WatchedAttributes.RegisterModifiedListener("inventory", readInventoryFromAttributes);
+            }
+
+            readInventoryFromAttributes();
+        }
+
+        private void readInventoryFromAttributes()
+        {
             ITreeAttribute tree = WatchedAttributes["inventory"] as ITreeAttribute;
             if (gearInv != null && tree != null)
             {
                 gearInv.FromTreeAttributes(tree);
             }
+
+            (Properties.Client.Renderer as EntityShapeRenderer)?.MarkShapeModified();
         }
 
         private void GearInv_SlotModified(int t1)
@@ -117,7 +128,7 @@ namespace Vintagestory.GameContent
                 {
                     if (!ItemSlotCharacter.IsDressType(slot.Itemstack, EnumCharacterDressType.ArmorBody) && !ItemSlotCharacter.IsDressType(slot.Itemstack, EnumCharacterDressType.ArmorHead) && !ItemSlotCharacter.IsDressType(slot.Itemstack, EnumCharacterDressType.ArmorLegs)) {
 
-                        (byEntity.World.Api as ICoreClientAPI)?.TriggerIngameError(this, "cantplace", "Cannot place dresses on armor stands");
+                        (byEntity.World.Api as ICoreClientAPI)?.TriggerIngameError(this, "cantplace", "Cannot place dresses or other non-armor items on armor stands");
 
                         return;
                     }

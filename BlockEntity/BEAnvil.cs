@@ -729,7 +729,9 @@ namespace Vintagestory.GameContent
                 else
                 {
                     npos.Y++;
-                    
+
+                    if (voxelPos.X + opFaceDir.X < 0 || voxelPos.X + opFaceDir.X >= 16 || voxelPos.Z + opFaceDir.Z < 0 || voxelPos.Z + opFaceDir.Z >= 16) return;
+
                     if (npos.Y < 6 && Voxels[npos.X, npos.Y, npos.Z] == (byte)EnumVoxelMaterial.Empty && Voxels[npos.X, npos.Y - 1, npos.Z] != (byte)EnumVoxelMaterial.Empty && Voxels[voxelPos.X + opFaceDir.X, voxelPos.Y, voxelPos.Z + opFaceDir.Z] == (byte)EnumVoxelMaterial.Empty)
                     {
                         Voxels[npos.X, npos.Y, npos.Z] = (byte)EnumVoxelMaterial.Metal;

@@ -34,6 +34,8 @@ namespace Vintagestory.GameContent
         public ClothStack[] Clothes;
         public string CharacterClass;
         public Dictionary<string, string> SkinParts;
+        public string VoiceType;
+        public string VoicePitch;
     }
 
 
@@ -411,36 +413,9 @@ namespace Vintagestory.GameContent
 
                 setCharacterClass(fromPlayer.Entity, p.CharacterClass, !didSelectBefore || fromPlayer.WorldData.CurrentGameMode == EnumGameMode.Creative);
 
-                /*IInventory inv = fromPlayer.InventoryManager.GetOwnInventory(GlobalConstants.characterInvClassName);
-                for (int i = 0; i < p.Clothes.Length; i++)
-                {
-                    CollectibleObject collObj;
-                    if (p.Clothes[i].Class == EnumItemClass.Block)
-                    {
-                        collObj = api.World.GetBlock(new AssetLocation(p.Clothes[i].Code));
-                    }
-                    else
-                    {
-                        collObj = api.World.GetItem(new AssetLocation(p.Clothes[i].Code));
-                    }
-
-                    ItemStack stack = new ItemStack(collObj);
-                    ItemSlot slot = ((InventoryBase)inv)?[p.Clothes[i].SlotNum];
-
-                    if (stack != null && slot != null)
-                    {
-                        string clothcat = stack.Item?.Attributes["clothescategory"]?.AsString();
-
-                        if (clothcat != null && allow)
-                        {
-                            slot.Itemstack = stack;
-                            slot.MarkDirty();
-                        }
-                    }
-                }*/
-
-
                 var bh = fromPlayer.Entity.GetBehavior<EntityBehaviorExtraSkinnable>();
+                bh.ApplyVoice(p.VoiceType, p.VoicePitch, false);
+
                 foreach (var skinpart in p.SkinParts)
                 {
                     bh.selectSkinPart(skinpart.Key, skinpart.Value, false);
@@ -451,35 +426,6 @@ namespace Vintagestory.GameContent
             fromPlayer.BroadcastPlayerData(true);
         }
 
-        private void SubcmdSkinSelectable(IServerPlayer player, string playername, int groupId, CmdArgs args)
-        {
-            /*if (!player.HasPrivilege(Privilege.grantrevoke))
-            {
-                Error(player, groupId, Lang.Get("Insufficient Privileges"));
-                return;
-            }
-
-
-            bool? on = args.PopBool();
-
-            if (on == null)
-            {
-                Success(player, groupId, "Did select flag = " + player.WorldData.DidSelectSkin);
-                return;
-            }
-
-            if (on == true)
-            {
-                player.WorldData.DidSelectSkin = false;
-                Success(player, groupId, "Player can now select skin on reload again.");
-            }
-            else
-            {
-                player.WorldData.DidSelectSkin = true;
-                Success(player, groupId, "Player can no longer select skin.");
-            }*/
-
-        }
 
         internal void ClientSelectionDone(IInventory characterInv, string characterClass, bool didSelect)
         {
@@ -498,8 +444,9 @@ namespace Vintagestory.GameContent
             }
 
             Dictionary<string, string> skinParts = new Dictionary<string, string>();
+            var bh = capi.World.Player.Entity.GetBehavior<EntityBehaviorExtraSkinnable>();
 
-            var applied = capi.World.Player.Entity.GetBehavior<EntityBehaviorExtraSkinnable>().AppliedSkinParts;
+            var applied = bh.AppliedSkinParts;
             foreach (var val in applied)
             {
                 skinParts[val.PartCode] = val.Code;
@@ -510,7 +457,9 @@ namespace Vintagestory.GameContent
                 Clothes = clothesPacket.ToArray(),
                 DidSelect = didSelect,
                 SkinParts = skinParts,
-                CharacterClass = characterClass
+                CharacterClass = characterClass,
+                VoicePitch = bh.VoicePitch,
+                VoiceType = bh.VoiceType
             });
 
             capi.Network.SendPlayerNowReady();

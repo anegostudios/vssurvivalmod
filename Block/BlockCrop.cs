@@ -11,7 +11,7 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockCrop : Block
+    public class BlockCrop : Block, IDrawYAdjustable
     {
         private static readonly float defaultGrowthProbability = 0.8f;
 
@@ -45,7 +45,7 @@ namespace Vintagestory.GameContent
             tickGrowthProbability = Attributes?["tickGrowthProbability"] != null ? Attributes["tickGrowthProbability"].AsFloat(defaultGrowthProbability) : defaultGrowthProbability;
             //roomreg = api.ModLoader.GetModSystem<RoomRegistry>();
 
-            
+
 
             if (api.Side == EnumAppSide.Client)
             {
@@ -56,6 +56,14 @@ namespace Vintagestory.GameContent
                 }
             }
         }
+
+
+        public float AdjustYPosition(Block[] chunkExtBlocks, int extIndex3d)
+        {
+            Block nblock = chunkExtBlocks[extIndex3d + TileSideEnum.MoveIndex[TileSideEnum.Down]];
+            return nblock is BlockFarmland ? -0.0625f : 0f;
+        }
+
 
         public override void OnJsonTesselation(ref MeshData sourceMesh, ref int[] lightRgbsByCorner, BlockPos pos, Block[] chunkExtBlocks, int extIndex3d)
         {
@@ -137,7 +145,6 @@ namespace Vintagestory.GameContent
             return base.OnBlockInteractStart(world, byPlayer, blockSel);
         }
 
-
         public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, LCGRandom worldGenRand)
         {
             Block block = blockAccessor.GetBlock(pos.X, pos.Y - 1, pos.Z);
@@ -179,11 +186,18 @@ namespace Vintagestory.GameContent
             return drops;
         }
 
+        public override void OnBlockBroken(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1)
+        {
+            base.OnBlockBroken(world, pos, byPlayer, dropQuantityMultiplier);
+
+            BlockEntityFarmland befarmland = world.BlockAccessor.GetBlockEntity(pos.DownCopy()) as BlockEntityFarmland;
+            befarmland?.OnCropBlockBroken();
+        }
+
         public override string GetPlacedBlockInfo(IWorldAccessor world, BlockPos pos, IPlayer forPlayer)
         {
-            string info = world.BlockAccessor.GetBlock(pos.DownCopy()).GetPlacedBlockInfo(world, pos.DownCopy(), forPlayer);
-
-            if (info != null) return info;
+            Block block = world.BlockAccessor.GetBlock(pos.DownCopy());
+            if (block is BlockFarmland) return block.GetPlacedBlockInfo(world, pos.DownCopy(), forPlayer);
 
             return
                 Lang.Get("Required Nutrient: {0}", CropProps.RequiredNutrient) + "\n" +

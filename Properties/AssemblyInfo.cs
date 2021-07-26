@@ -64,7 +64,9 @@ using Vintagestory.API.Config;
                     polarEquatorDistance: ""100000"",
                     harshWinters: ""true"",
                     daysPerMonth: ""9"",
-                    allowUndergroundFarming: ""false""
+                    saplingGrowthRate: ""2"",
+                    allowUndergroundFarming: ""false"",
+                    temporalGearRespawnUses: ""-1""
 			    }
 		    },
 		    {
@@ -95,7 +97,8 @@ using Vintagestory.API.Config;
                     propickNodeSearchRadius: ""8"",
                     polarEquatorDistance: ""50000"",
                     harshWinters: ""false"",
-                    allowUndergroundFarming: ""true""
+                    allowUndergroundFarming: ""true"",
+                    temporalGearRespawnUses: ""-1""
                 }
 			},
             {
@@ -130,15 +133,16 @@ using Vintagestory.API.Config;
                     harshWinters: ""true"",
                     daysPerMonth: ""9"",
                     allowUndergroundFarming: ""false"",
-                    spawnRadius: ""5000""
+                    spawnRadius: ""5000"",
+                    temporalGearRespawnUses: ""2""
 			    }
 		    }
 	    ],
 	    worldConfigAttributes: [
             { code: ""gameMode"", dataType: ""dropdown"", values: [""survival"", ""creative""], names: [""Survival"", ""Creative""], default: ""survival"" },
             { code: ""worldClimate"", dataType: ""dropdown"", values: [""realistic"", ""patchy""], names: [""Realistic"", ""Patchy""], default: ""realistic"", onlyDuringWorldCreate: true },
-            { code: ""worldWidth"", dataType: ""dropdown"", values: [""1024000"", ""600000"", ""512000"", ""102400"", ""51200"", ""10240"", ""5120"", ""1024"", ""512"", ""384"", ""256"", ""128"", ""64"", ""32"" ], names: [""1 mil blocks"", ""600k blocks"", ""512k blocks"", ""102k blocks"", ""51k blocks"", ""10k blocks"", ""5120 blocks"", ""1024 blocks"", ""512 blocks"", ""384 blocks"", ""256 blocks"", ""128 blocks"", ""64 blocks"", ""32 blocks""], default: ""1024000"", onlyDuringWorldCreate: true },
-            { code: ""worldLength"", dataType: ""dropdown"", values: [""1024000"", ""600000"", ""512000"", ""102400"", ""51200"", ""10240"", ""5120"", ""1024"", ""512"", ""384"", ""256"", ""128"", ""64"", ""32"" ], names: [""1 mil blocks"", ""600k blocks"", ""512k blocks"", ""102k blocks"", ""51k blocks"", ""10k blocks"", ""5120 blocks"", ""1024 blocks"", ""512 blocks"", ""384 blocks"", ""256 blocks"", ""128 blocks"", ""64 blocks"", ""32 blocks""], default: ""1024000"", onlyDuringWorldCreate: true },
+            { code: ""worldWidth"", dataType: ""dropdown"", values: [""1024000"", ""600000"", ""512000"", ""256000"", ""102400"", ""51200"", ""25600"", ""10240"", ""5120"", ""1024"", ""512"", ""384"", ""256"", ""128"", ""64"", ""32"" ], names: [""1 mil blocks"", ""600k blocks"", ""512k blocks"", ""256k blocks"", ""102k blocks"", ""51k blocks"", ""25k blocks"", ""10k blocks"", ""5120 blocks"", ""1024 blocks"", ""512 blocks"", ""384 blocks"", ""256 blocks"", ""128 blocks"", ""64 blocks"", ""32 blocks""], default: ""1024000"", onlyDuringWorldCreate: true },
+            { code: ""worldLength"", dataType: ""dropdown"", values: [""1024000"", ""600000"", ""512000"", ""256000"", ""102400"", ""51200"", ""10240"", ""5120"", ""1024"", ""512"", ""384"", ""256"", ""128"", ""64"", ""32"" ], names: [""1 mil blocks"", ""600k blocks"", ""512k blocks"", ""256k blocks"", ""102k blocks"", ""51k blocks"", ""10k blocks"", ""5120 blocks"", ""1024 blocks"", ""512 blocks"", ""384 blocks"", ""256 blocks"", ""128 blocks"", ""64 blocks"", ""32 blocks""], default: ""1024000"", onlyDuringWorldCreate: true },
             { code: ""worldEdge"", dataType: ""dropdown"", values: [""blocked"", ""traversable"" ], names: [""Blocked"", ""Traversable (Can fall down)""], default: ""traversable"" },
 
             { code: ""polarEquatorDistance"", dataType: ""dropdown"", values: [""800000"", ""400000"", ""200000"", ""100000"", ""50000"", ""25000"", ""15000"", ""10000"", ""5000""], names: [""800k blocks"", ""400k blocks"", ""200k blocks"", ""100k blocks"", ""50k blocks"", ""25k blocks"", ""15k blocks"", ""10k blocks"", ""5000 blocks""], default: ""50000"", onlyDuringWorldCreate: true },
@@ -166,7 +170,7 @@ using Vintagestory.API.Config;
             { code: ""blockGravity"", dataType: ""dropdown"", values: [""sandgravel"", ""sandgravelsoil""], names: [""Sand and gravel"", ""Sand, gravel and soil with sideways instability""], default: ""sandgravel"" },
 
             { code: ""foodSpoilSpeed"", dataType: ""dropdown"", values: [""4"", ""3"", ""2"", ""1.5"", ""1.25"", ""1"", ""0.75"", ""0.5"", ""0.25""], names: [""400%"", ""300%"", ""200%"", ""150%"", ""125%"", ""100%"", ""75%"", ""50%"", ""25%""], default: ""1"" },
-            { code: ""saplingGrowthRate"", dataType: ""dropdown"", values: [""16"", ""8"", ""4"", ""2"", ""1.5"", ""1"", ""0.75"", ""0.5"", ""0.25""], names: [""Extremely slow (16x)"", ""Much slower (8x)"", ""Slower (4x)"", ""Somewhat slower (2x)"", ""Slightly slower (1.5x)"", ""Normal (1x)"", ""Slightly faster (0.75x)"", ""Faster (0.5x)"", ""Much faster (0.25x)""], default: ""1"" },
+            { code: ""saplingGrowthRate"", dataType: ""dropdown"", values: [""16"", ""8"", ""4"", ""2"", ""1.5"", ""1"", ""0.75"", ""0.5"", ""0.25""], names: [""Extremely slow (16x)"", ""Much slower (8x)"", ""Slower (4x)"", ""Somewhat slower (2x)"", ""Slightly slower (1.5x)"", ""Normal (1x)"", ""Slightly faster (0.75x)"", ""Faster (0.5x)"", ""Much faster (0.25x)""], default: ""2"" },
             { code: ""toolDurability"", dataType: ""dropdown"", values: [""4"", ""3"", ""2"", ""1.5"", ""1.25"", ""1"", ""0.75"", ""0.5""], names: [""400%"", ""300%"", ""200%"", ""150%"", ""125%"", ""100%"", ""75%"", ""50%""], default: ""1"" },
             { code: ""toolMiningSpeed"", dataType: ""dropdown"", values: [""3"", ""2"", ""1.5"", ""1.25"", ""1"", ""0.75"", ""0.5"", ""0.25""], names: [""300%"", ""200%"", ""150%"", ""125%"", ""100%"", ""75%"", ""50%"", ""25%""], default: ""1"" },
 
@@ -179,6 +183,7 @@ using Vintagestory.API.Config;
             { code: ""temporalStorms"", dataType: ""dropdown"", values: [""off"", ""veryrare"", ""rare"", ""sometimes"", ""often"", ""veryoften""], names: [""Off"", ""Every 30-40 days, increase strength/frequency by 2.5% each time, capped at +25%"", ""Approx. every 20-30 days, increase strength/frequency by 5% each time, capped at +50%"", ""Approx. every 10-20 days, increase strength/frequency by +10% each time, capped at 100%"", ""Approx. every 5-10 days, increase strength/frequency by 15% each time, capped at +150%"", ""Approx. every 3-6 days, increase strength/frequency by 20% each time, capped at +200%""], default: ""sometimes"" },
             { code: ""tempstormDurationMul"", dataType: ""dropdown"", values: [""2"", ""1.5"", ""1.25"", ""1"", ""0.75"", ""0.5"", ""0.25""], names: [""Much longer (200%)"", ""Longer (150%)"", ""Slightly longer (125%)"", ""Normal (100%)"", ""Slightly shorter (75%)"", ""Shorter (50%)"", ""Much Shorter (25%)""], default: ""1"" },
             { code: ""temporalStability"", dataType: ""bool"", default: ""true"" },
+            { code: ""temporalGearRespawnUses"", dataType: ""dropdown"", values: [""-1"", ""20"", ""10"", ""5"", ""4"", ""3"", ""2"", ""1""], names: [""Infinite"", ""20 times"", ""10 times"", ""5 times"", ""4 times"", ""3 times"", ""2 times"", ""One time""], default: ""1"" },
             { code: ""allowCoordinateHud"", dataType: ""bool"", default: ""true"" },
             { code: ""allowMap"", dataType: ""bool"", default: ""true"" },
             { code: ""allowLandClaiming"", dataType: ""bool"", default: ""true"" },

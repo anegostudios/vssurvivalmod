@@ -54,6 +54,8 @@ namespace Vintagestory.GameContent
 
             string lastCodePart = itemslot.Itemstack.Collectible.LastCodePart();
 
+            if (lastCodePart == "bellpepper") return;
+
             BlockEntity be = byEntity.World.BlockAccessor.GetBlockEntity(pos);
             if (be is BlockEntityFarmland)
             {

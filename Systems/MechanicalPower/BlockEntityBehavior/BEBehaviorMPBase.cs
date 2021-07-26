@@ -203,10 +203,9 @@ namespace Vintagestory.GameContent.Mechanics
             newNetwork = connectedToBlock.GetNetwork(Api.World, pos);
             if (newNetwork != null)
             {
-                IMechanicalPowerDevice node = Api.World.BlockAccessor.GetBlockEntity(pos).GetBehavior<BEBehaviorMPBase>() as IMechanicalPowerDevice;
+                IMechanicalPowerDevice node = Api.World.BlockAccessor.GetBlockEntity(pos).GetBehavior<BEBehaviorMPBase>();
 
                 connectedToBlock.DidConnectAt(Api.World, pos, toFacing.Opposite);  //do this first to set the new Angled Gear block correctly prior to getting propagation direction
-                BlockFacing newTurnDir = node.GetPropagationDirectionInput();
                 MechPowerPath curPath = new MechPowerPath(toFacing, node.GetGearedRatio(toFacing), pos, !node.IsPropagationDirection(Position, toFacing));
                 SetPropagationDirection(curPath);
                 MechPowerPath[] paths = GetMechPowerExits(curPath);
@@ -214,7 +213,6 @@ namespace Vintagestory.GameContent.Mechanics
 
                 for (int i = 0; i < paths.Length; i++)
                 {
-                    //if (paths[i].OutFacing == toFacing) continue;
                     if (DEBUG) Api.Logger.Notification("== spreading path " + (paths[i].invert ? "-" : "") + paths[i].OutFacing + "  " + paths[i].gearingRatio);
                     BlockPos exitPos = Position.AddCopy(paths[i].OutFacing);
 
@@ -292,15 +290,6 @@ namespace Vintagestory.GameContent.Mechanics
             manager?.RemoveDeviceForRender(this);
         }
 
-
-        //public virtual void DidConnectTo(BlockPos pos, BlockFacing facing)
-        //{
-        //    BEBehaviorMPBase nbe = Api.World.BlockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorMPBase>();
-        //    if (nbe != null)
-        //    {
-        //        NetworkId = nbe.NetworkId;
-        //    }
-        //}
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
         {

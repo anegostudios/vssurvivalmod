@@ -242,9 +242,11 @@ namespace Vintagestory.GameContent
             // The Sun's declination at any given moment is calculated by: 
             // delta = arcsin(sin(-23.44°) * sin(EL))
             // EL is the ecliptic longitude (essentially, the Earth's position in its orbit). Since the Earth's orbital eccentricity is small, its orbit can be approximated as a circle which causes up to 1° of error. 
-            // delta = -23.44° * cos(360° / 365 * (ye   arRel +10))
+            // delta = -23.44° * cos(360° / 365 * (yearRel + 10))
             // The number 10, in (N+10), is the approximate number of days after the December solstice to January 1
             float delta = -EarthAxialTilt * GameMath.Cos(GameMath.TWOPI * (dayOfYear + 10) / daysPerYear);
+
+            // sin(1.35) * sin(-0.37) + cos(1.35) * cos(-0.37) * cos((x/24 - 0.5) * 3.14159 * 2)
 
             // sample 1
             // latitude = 0.5 (equator)
@@ -382,6 +384,7 @@ namespace Vintagestory.GameContent
             api.RegisterBlockClass("BlockBucket", typeof(BlockBucket));
             api.RegisterBlockClass("BlockCrop", typeof(BlockCrop));
             api.RegisterBlockClass("BlockCropCustomWave", typeof(BlockCropCustomWave));
+            api.RegisterBlockClass("BlockFruiting", typeof(BlockFruiting));
             api.RegisterBlockClass("BlockWaterPlant", typeof(BlockWaterPlant));
             api.RegisterBlockClass("BlockSeaweed", typeof(BlockSeaweed));
             
@@ -436,7 +439,6 @@ namespace Vintagestory.GameContent
             api.RegisterBlockClass("BlockTroughDoubleBlock", typeof(BlockTroughDoubleBlock));
             api.RegisterBlockClass("BlockLeaves", typeof(BlockLeaves));
             api.RegisterBlockClass("BlockLeavesNarrow", typeof(BlockLeavesNarrow));
-            api.RegisterBlockClass("BlockLeavesTest", typeof(BlockLeavesTest));
             api.RegisterBlockClass("BlockBough", typeof(BlockBough));
             api.RegisterBlockClass("BlockFarmland", typeof(BlockFarmland));
             api.RegisterBlockClass("BlockSticksLayer", typeof(BlockSticksLayer));
@@ -479,6 +481,7 @@ namespace Vintagestory.GameContent
             api.RegisterBlockClass("BlockCrock", typeof(BlockCrock));
             api.RegisterBlockClass("BlockThermalDiff", typeof(BlockThermalDifference));
             api.RegisterBlockClass("BlockSignPost", typeof(BlockSignPost));
+            api.RegisterBlockClass("BlockHenbox", typeof(BlockHenbox));
 
             api.RegisterBlockClass("BlockPeatbrick", typeof(BlockPeatbrick));
             api.RegisterBlockClass("BlockWater", typeof(BlockWater));
@@ -527,6 +530,10 @@ namespace Vintagestory.GameContent
             api.RegisterBlockClass("BlockGroundStorage", typeof(BlockGroundStorage));
             api.RegisterBlockClass("BlockPitkiln", typeof(BlockPitkiln));
             api.RegisterBlockClass("BlockPie", typeof(BlockPie));
+            api.RegisterBlockClass("BlockHangingLichen", typeof(BlockHangingLichen));
+            api.RegisterBlockClass("BlockDeadCrop", typeof(BlockDeadCrop));
+            api.RegisterBlockClass("BlockFruitPress", typeof(BlockFruitPress));
+            api.RegisterBlockClass("BlockFruitPressTop", typeof(BlockFruitPressTop));
         }
 
         
@@ -582,11 +589,14 @@ namespace Vintagestory.GameContent
             api.RegisterBlockEntityBehaviorClass("MPPulverizer", typeof(BEBehaviorMPPulverizer));
 
             api.RegisterBlockEntityBehaviorClass("Burning", typeof(BEBehaviorBurning));
+            api.RegisterBlockEntityBehaviorClass("FirepitAmbient", typeof(BEBehaviorFirepitAmbient));
+            api.RegisterBlockEntityBehaviorClass("Fruiting", typeof(BEBehaviorFruiting));
         }
 
         private void RegisterDefaultCollectibleBehaviors()
         {
             api.RegisterCollectibleBehaviorClass("GroundStorable", typeof(CollectibleBehaviorGroundStorable));
+            api.RegisterCollectibleBehaviorClass("ArtPigment", typeof(CollectibleBehaviorArtPigment));
         }
 
 
@@ -677,7 +687,8 @@ namespace Vintagestory.GameContent
             api.RegisterBlockEntityClass("GroundStorage", typeof(BlockEntityGroundStorage));
             api.RegisterBlockEntityClass("PitKiln", typeof(BlockEntityPitKiln));
             api.RegisterBlockEntityClass("Pie", typeof(BlockEntityPie));
-
+            api.RegisterBlockEntityClass("DeadCrop", typeof(BlockEntityDeadCrop));
+            api.RegisterBlockEntityClass("FruitPress", typeof(BlockEntityFruitPress));
         }
 
 

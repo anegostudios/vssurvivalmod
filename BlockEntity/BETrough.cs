@@ -22,6 +22,7 @@ namespace Vintagestory.GameContent
         public AssetLocation[] Foodfor;
         public string[] ShapesPerFillLevel;
         public string TextureCode;
+        public string FoodForDesc;
     }
 
     public class BlockEntityTrough : BlockEntityContainer, ITexPositionSource, IAnimalFoodSource
@@ -309,6 +310,10 @@ namespace Vintagestory.GameContent
             int fillLevel = firstStack.StackSize / config.QuantityPerFillLevel;
 
             dsc.AppendLine(Lang.Get("Portions: {0}", fillLevel));
+
+            ItemStack contentsStack = config.Content.ResolvedItemstack;
+            if (contentsStack != null) dsc.AppendLine(Lang.Get(contentsStack.GetName()));
+            if (config.FoodForDesc != null) dsc.AppendLine(Lang.Get(config.FoodForDesc));
         }
     }
 }

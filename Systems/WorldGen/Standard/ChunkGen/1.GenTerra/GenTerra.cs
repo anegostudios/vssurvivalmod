@@ -328,12 +328,12 @@ namespace Vintagestory.ServerMods
                 }
             }
 
-            int ymax = 0;
+            ushort ymax = 0;
             for (int i = 0; i < rainheightmap.Length; i++)
             {
                 ymax = Math.Max(ymax, rainheightmap[i]);
             }
-            chunks[0].MapChunk.YMax = (ushort)ymax;
+            chunks[0].MapChunk.YMax = ymax;
         }
 
 

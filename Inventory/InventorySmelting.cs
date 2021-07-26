@@ -28,17 +28,30 @@ namespace Vintagestory.GameContent
             get { return cookingSlots; }
         }
 
+        public override Size3f MaxContentDimensions {
+            get {
+                return slots[1].Itemstack?.ItemAttributes?["maxContentDimensions"].AsObject<Size3f>(null);
+            }
+            set { }
+        }
+
         public bool HaveCookingContainer
         {
-            get { return slots[1].Itemstack?.Collectible.Attributes?.KeyExists("cookingContainerSlots") == true; }
+            get { return slots[1].Itemstack?.ItemAttributes?.KeyExists("cookingContainerSlots") == true; }
         }
 
         public int CookingContainerMaxSlotStackSize
         {
             get {
                 if (!HaveCookingContainer) return 0;
-                return slots[1].Itemstack.Collectible.Attributes["maxContainerSlotStackSize"].AsInt(999);
+                return slots[1].Itemstack.ItemAttributes["maxContainerSlotStackSize"].AsInt(999);
             }
+        }
+
+        public override bool CanContain(ItemSlot sinkSlot, ItemSlot sourceSlot)
+        {
+            int slotid = GetSlotId(sinkSlot);
+            return slotid < 3 || base.CanContain(sinkSlot, sourceSlot);
         }
 
         public InventorySmelting(string inventoryID, ICoreAPI api) : base(inventoryID, api)
@@ -99,14 +112,14 @@ namespace Vintagestory.GameContent
 
             if (slots[1] == slot)
             {
-                if (slot.Itemstack == null)
+                if (slot?.Itemstack?.ItemAttributes?["storageType"].Exists != true)
                 {
                     discardCookingSlots();
                 } else
                 {
                     updateStorageTypeFromContainer(slot.Itemstack);
                 }
-                
+       
             }
         }
 
@@ -231,6 +244,7 @@ namespace Vintagestory.GameContent
             ItemStack smeltedStack = inputStack.Collectible.CombustibleProps?.SmeltedStack?.ResolvedItemstack;
 
             if (smeltedStack == null) return null;
+            if (inputStack.Collectible.CombustibleProps.SmeltingType == EnumSmeltType.Fire) return Lang.Get("Can't smelt, requires a kiln");
             if (inputStack.Collectible.CombustibleProps.RequiresContainer) return Lang.Get("Can't smelt, requires smelting container (i.e. Crucible)");
 
             return Lang.Get("firepit-gui-willcreate", inputStack.StackSize / inputStack.Collectible.CombustibleProps.SmeltedRatio, smeltedStack.GetName());

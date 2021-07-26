@@ -255,6 +255,8 @@ namespace Vintagestory.GameContent
 
         public ItemStack TryPlaceOn(ItemStack stack, BlockEntityAnvil beAnvil)
         {
+            if (beAnvil.WorkItemStack != null) return null;
+
             try
             {
                 beAnvil.Voxels = BlockEntityAnvil.deserializeVoxels(stack.Attributes.GetBytes("voxels"));

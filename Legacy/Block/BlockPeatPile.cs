@@ -109,6 +109,17 @@ namespace Vintagestory.GameContent
             return new ItemStack[0];
         }
 
+        public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
+        {
+            var beg = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityPeatPile;
+            if (beg != null)
+            {
+                return beg.inventory.FirstNonEmptySlot?.Itemstack.Clone();
+            }
+
+            return null;
+        }
+
 
         public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
         {
@@ -126,24 +137,6 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
-        {
-            BlockEntity be = world.BlockAccessor.GetBlockEntity(pos);
-            if (be is BlockEntityPeatPile)
-            {
-                BlockEntityPeatPile pile = (BlockEntityPeatPile)be;
-                ItemStack stack = pile.inventory[0].Itemstack;
-                if (stack != null)
-                {
-                    ItemStack pickstack = stack.Clone();
-                    pickstack.StackSize = 1;
-                    return pickstack;
-                }
-            }
-
-            return new ItemStack(this);
-        }
-
         public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
         {
             return new WorldInteraction[]
@@ -157,7 +150,7 @@ namespace Vintagestory.GameContent
                     GetMatchingStacks = (wi, bs, es) =>
                     {
                         BlockEntityPeatPile pile = world.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityPeatPile;
-                        if (pile != null && pile.MaxStackSize > pile.inventory[0].StackSize && pile.inventory[0].Itemstack != null)
+                        if (pile != null && pile.inventory[0].Itemstack != null)
                         {
                             ItemStack displaystack = pile.inventory[0].Itemstack.Clone();
                             displaystack.StackSize = pile.DefaultTakeQuantity;
@@ -182,7 +175,7 @@ namespace Vintagestory.GameContent
                     GetMatchingStacks = (wi, bs, es) =>
                     {
                         BlockEntityPeatPile pile = world.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityPeatPile;
-                        if (pile != null && pile.MaxStackSize > pile.inventory[0].StackSize && pile.inventory[0].Itemstack != null)
+                        if (pile != null && pile.inventory[0].Itemstack != null)
                         {
                             ItemStack displaystack = pile.inventory[0].Itemstack.Clone();
                             displaystack.StackSize = pile.BulkTakeQuantity;

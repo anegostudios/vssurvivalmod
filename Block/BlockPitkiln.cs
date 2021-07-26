@@ -29,6 +29,7 @@ namespace Vintagestory.GameContent
     {
         public Dictionary<string, BuildStage[]> BuildStagesByBlock = new Dictionary<string, BuildStage[]>();
         public Dictionary<string, Shape> ShapesByBlock = new Dictionary<string, Shape>();
+        Dictionary<string, ItemStack> resolvedMats = new Dictionary<string, ItemStack>();
 
         WorldInteraction[] ingiteInteraction;
 
@@ -58,7 +59,7 @@ namespace Vintagestory.GameContent
                 GetMatchingStacks = (wi, bs, es) =>
                 {
                     BlockEntityPitKiln beg = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityPitKiln;
-                    if (beg?.Lit != true)
+                    if (beg?.Lit != true && beg?.CanIgnite() == true)
                     {
                         return wi.Itemstacks;
                     }
@@ -71,8 +72,6 @@ namespace Vintagestory.GameContent
 
             var modelConfigs = Attributes["modelConfigs"].AsObject<Dictionary<string, PitKilnModelConfig>>();
             var buildMats = Attributes["buildMats"].AsObject<Dictionary<string, JsonItemStack>>();
-
-            Dictionary<string, ItemStack> resolvedMats = new Dictionary<string, ItemStack>();
 
             foreach (var val in buildMats)
             {
@@ -160,6 +159,11 @@ namespace Vintagestory.GameContent
             BlockEntity be = world.BlockAccessor.GetBlockEntity(pos);
             if (be is BlockEntityGroundStorage beg)
             {
+                if (!beg.OnTryCreateKiln())
+                {
+                    return false;
+                }
+
                 ICoreClientAPI capi = api as ICoreClientAPI;
                 bool ok = true;
                 foreach (var face in BlockFacing.HORIZONTALS.Append(BlockFacing.DOWN))
@@ -168,13 +172,13 @@ namespace Vintagestory.GameContent
                     Block block = world.BlockAccessor.GetBlock(npos);
                     if (!block.CanAttachBlockAt(world.BlockAccessor, this, npos, face.Opposite))
                     {
-                        capi?.TriggerIngameError(this, "notsolid", Lang.Get("Pitkilns need to be surrounded by solid, non-flammabe blocks."));
+                        capi?.TriggerIngameError(this, "notsolid", Lang.Get("Pit kilns need to be surrounded by solid, non-flammable blocks"));
                         ok = false;
                         break;
                     }
                     if (block.CombustibleProps != null)
                     {
-                        capi?.TriggerIngameError(this, "notsolid", Lang.Get("Pitkilns need to be surrounded by solid, non-flammabe blocks."));
+                        capi?.TriggerIngameError(this, "notsolid", Lang.Get("Pit kilns need to be surrounded by solid, non-flammable blocks"));
                         ok = false;
                         break;
                     }
@@ -185,7 +189,7 @@ namespace Vintagestory.GameContent
                 if (upblock.Replaceable < 6000)
                 {
                     ok = false;
-                    capi?.TriggerIngameError(this, "notairspace", Lang.Get("Pitkilns need air space one block above."));
+                    capi?.TriggerIngameError(this, "notairspace", Lang.Get("Pit kilns need one block of air space above them"));
                 }
                 if (!ok) return false;
 
@@ -279,5 +283,23 @@ namespace Vintagestory.GameContent
             return base.GetPlacedBlockInteractionHelp(world, selection, forPlayer);
         }
 
+
+        public override string GetPlacedBlockName(IWorldAccessor world, BlockPos pos)
+        {
+            return new ItemStack(this).GetName();
+        }
+
+
+        public bool IsFuelMaterial(ItemStack stack)
+        {
+            foreach (var val in resolvedMats)
+            {
+                ItemStack testStack = val.Value;
+                if (testStack == null) continue;
+                if (testStack.Collectible.Equals(stack.Collectible)) return true;
+            }
+
+            return false;
+        }
     }
 }

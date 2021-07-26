@@ -84,10 +84,10 @@ namespace Vintagestory.GameContent
                 var tExt = smallfont.GetTextExtents(Lang.Get("Show dressed"));
                 int colorIconSize = 22;
 
-                ElementBounds leftColBounds = ElementBounds.Fixed(0, ypos, 204, dlgHeight - 76).FixedGrow(2 * pad, 2 * pad);
+                ElementBounds leftColBounds = ElementBounds.Fixed(0, ypos, 204, dlgHeight - 59).FixedGrow(2 * pad, 2 * pad);
 
                 insetSlotBounds = ElementBounds.Fixed(0, ypos + 2, 265, leftColBounds.fixedHeight - 2 * pad + 10).FixedRightOf(leftColBounds, 10);
-                ElementBounds rightColBounds = ElementBounds.Fixed(0, ypos, 54, dlgHeight - 76).FixedGrow(2 * pad, 2 * pad).FixedRightOf(insetSlotBounds, 10);
+                ElementBounds rightColBounds = ElementBounds.Fixed(0, ypos, 54, dlgHeight - 59).FixedGrow(2 * pad, 2 * pad).FixedRightOf(insetSlotBounds, 10);
                 ElementBounds toggleButtonBounds = ElementBounds.Fixed(
                         (int)insetSlotBounds.fixedX + insetSlotBounds.fixedWidth / 2 - tExt.Width / RuntimeEnv.GUIScale / 2 - 12, 
                         0,
@@ -123,7 +123,7 @@ namespace Vintagestory.GameContent
                             if (appliedVar?.Code == skinpart.Variants[i].Code) selectedIndex = i;
                         }
 
-                        Composers["createcharacter"].AddStaticText(Lang.Get("skinpart-"+code), CairoFont.WhiteSmallText(), bounds = bounds.BelowCopy(0, 10).WithFixedSize(210, 22));
+                        Composers["createcharacter"].AddRichtext(Lang.Get("skinpart-"+code), CairoFont.WhiteSmallText(), bounds = bounds.BelowCopy(0, 10).WithFixedSize(210, 22));
                         Composers["createcharacter"].AddColorListPicker(colors, (index) => onToggleSkinPartColor(code, index), bounds = bounds.BelowCopy(0, 0).WithFixedSize(colorIconSize, colorIconSize), 180, "picker-" + code);
 
                         for (int i = 0; i < colors.Length; i++)
@@ -155,7 +155,14 @@ namespace Vintagestory.GameContent
                         }
 
 
-                        Composers["createcharacter"].AddStaticText(Lang.Get("skinpart-" + code), CairoFont.WhiteSmallText(), bounds = bounds.BelowCopy(0, 10).WithFixedSize(210, 22));
+                        Composers["createcharacter"].AddRichtext(Lang.Get("skinpart-" + code), CairoFont.WhiteSmallText(), bounds = bounds.BelowCopy(0, 10).WithFixedSize(210, 22));
+
+                        string tooltip = Lang.GetIfExists("skinpartdesc-" + code);
+                        if (tooltip != null)
+                        {
+                            Composers["createcharacter"].AddHoverText(tooltip, CairoFont.WhiteSmallText(), 300, bounds = bounds.FlatCopy());
+                        }
+
                         Composers["createcharacter"].AddDropDown(values, names, selectedIndex, (variantcode, selected) => onToggleSkinPartColor(code, variantcode), bounds = bounds.BelowCopy(0, 0).WithFixedSize(200, 25), "dropdown-" + code);
                     }
 
@@ -186,8 +193,13 @@ namespace Vintagestory.GameContent
                 essr.TesselateShape();
                 
                 ypos -= 10;
-                ElementBounds leftSlotBounds = ElementStdBounds.SlotGrid(EnumDialogArea.None, 0, ypos, 0, rows).FixedGrow(2 * pad, 2 * pad);
-                insetSlotBounds = ElementBounds.Fixed(0, ypos + 25, 190, leftSlotBounds.fixedHeight - 2 * pad + 8 + 25).FixedRightOf(leftSlotBounds, 10);
+
+                ElementBounds leftColBounds = ElementBounds.Fixed(0, ypos, 0, dlgHeight - 47).FixedGrow(2 * pad, 2 * pad);
+                insetSlotBounds = ElementBounds.Fixed(0, ypos + 25, 190, leftColBounds.fixedHeight - 2 * pad + 10).FixedRightOf(leftColBounds, 10);
+
+                //ElementBounds leftSlotBounds = ElementStdBounds.SlotGrid(EnumDialogArea.None, 0, ypos, 0, rows).FixedGrow(2 * pad, 2 * pad);
+                //insetSlotBounds = ElementBounds.Fixed(0, ypos + 25, 190, leftSlotBounds.fixedHeight - 2 * pad + 8 + 25).FixedRightOf(leftSlotBounds, 10);
+
                 ElementBounds rightSlotBounds = ElementStdBounds.SlotGrid(EnumDialogArea.None, 0, ypos, 1, rows).FixedGrow(2 * pad, 2 * pad).FixedRightOf(insetSlotBounds, 10);
 
                 ElementBounds prevButtonBounds = ElementBounds.Fixed(0, ypos + 25, 35, slotsize - 4).WithFixedPadding(2).FixedRightOf(insetSlotBounds, 20);
@@ -211,7 +223,7 @@ namespace Vintagestory.GameContent
                     .AddIconButton("right", (on) => changeClass(1), nextButtonBounds.FlatCopy())
 
                     .AddRichtext("", CairoFont.WhiteDetailText(), charTextBounds, "characterDesc")
-                    .AddSmallButton(Lang.Get("Confirm Class"), OnConfirm, ElementBounds.Fixed(0, 0).FixedUnder(rightSlotBounds, 26).WithAlignment(EnumDialogArea.RightFixed).WithFixedPadding(12, 6), EnumButtonStyle.Normal, EnumTextOrientation.Center)
+                    .AddSmallButton(Lang.Get("Confirm Class"), OnConfirm, ElementBounds.Fixed(0, dlgHeight - 30).WithAlignment(EnumDialogArea.RightFixed).WithFixedPadding(12, 6), EnumButtonStyle.Normal, EnumTextOrientation.Center)
                 ;
 
                 changeClass(0);
@@ -591,7 +603,7 @@ namespace Vintagestory.GameContent
                     deltaTime,
                     capi.World.Player.Entity,
                     insetSlotBounds.renderX + pad - GuiElement.scaled(195) * charZoom + GuiElement.scaled(115 * (1-charZoom)),
-                    insetSlotBounds.renderY + pad - GuiElement.scaled(10 + 30 * (1 - charZoom)),
+                    insetSlotBounds.renderY + pad + GuiElement.scaled(10 * (1 - charZoom)),
                     (float)GuiElement.scaled(230),
                     yaw,
                     (float)GuiElement.scaled(330 * charZoom),
@@ -602,7 +614,7 @@ namespace Vintagestory.GameContent
                     deltaTime,
                     capi.World.Player.Entity,
                     insetSlotBounds.renderX + pad - GuiElement.scaled(95),
-                    insetSlotBounds.renderY + pad - GuiElement.scaled(35),
+                    insetSlotBounds.renderY + pad - GuiElement.scaled(0),
                     (float)GuiElement.scaled(230),
                     yaw,
                     (float)GuiElement.scaled(180),

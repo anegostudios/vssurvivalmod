@@ -37,6 +37,8 @@ namespace Vintagestory.ServerMods
         private bool rotateSides = false;
         private float dropChance = 1f;
 
+        public string Rot => block.Variant["rot"];
+
         public BlockBehaviorOmniRotatable(Block block) : base(block)
         {
             
@@ -295,6 +297,23 @@ namespace Vintagestory.ServerMods
             }
 
             return base.GetDrops(world, pos, byPlayer, ref dropChanceMultiplier, ref handling);
+        }
+
+
+        public override bool CanAttachBlockAt(IBlockAccessor world, Block block, BlockPos pos, BlockFacing blockFace, ref EnumHandling handling, Cuboidi attachmentArea = null)
+        {
+            if (Rot == "down")
+            {
+                handling = EnumHandling.PreventDefault;
+                return blockFace == BlockFacing.DOWN || (attachmentArea != null && attachmentArea.Y2 < 8);
+            }
+            if (Rot == "up")
+            {
+                handling = EnumHandling.PreventDefault;
+                return blockFace == BlockFacing.UP || (attachmentArea != null && attachmentArea.Y1 > 7);
+            }
+
+            return base.CanAttachBlockAt(world, block, pos, blockFace, ref handling, attachmentArea);
         }
 
         public override AssetLocation GetRotatedBlockCode(int angle, ref EnumHandling handling)

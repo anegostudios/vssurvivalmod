@@ -115,7 +115,7 @@ namespace Vintagestory.ServerMods
 
         BlockPos chunkBase = new BlockPos();
         BlockPos chunkend = new BlockPos();
-        List<GeneratedStructure> structuresIntersectingChunk = new List<GeneratedStructure>();
+        List<Cuboidi> structuresIntersectingChunk = new List<Cuboidi>();
 
         private void OnChunkColumnGen(IServerChunk[] chunks, int chunkX, int chunkZ, ITreeAttribute chunkGenParams = null)
         {
@@ -160,7 +160,7 @@ namespace Vintagestory.ServerMods
             {
                 if (struc.Code.StartsWith("trader"))
                 {
-                    structuresIntersectingChunk.Add(struc);
+                    structuresIntersectingChunk.Add(struc.Location.Clone().GrowBy(1,1,1));
                 }
             });
 
@@ -272,7 +272,7 @@ namespace Vintagestory.ServerMods
                     bool canGen = true;
                     for (int i = 0; i < structuresIntersectingChunk.Count; i++)
                     {
-                        if (structuresIntersectingChunk[i].Location.Contains(tmpPos)) { canGen = false; break; }
+                        if (structuresIntersectingChunk[i].Contains(tmpPos)) { canGen = false; break; }
                     }
                     if (!canGen) continue;
 
@@ -317,8 +317,14 @@ namespace Vintagestory.ServerMods
                 int y = heightmap[dz * chunksize + dx];
                 if (y <= 0 || y >= worldheight - 15) continue;
 
+                bool underwater = false;
+
                 tmpPos.Set(x, y, z);
                 block = blockAccessor.GetBlock(tmpPos);
+                
+                if (block.IsLiquid()) { underwater = true; tmpPos.Y--; block = blockAccessor.GetBlock(tmpPos); }
+                if (block.IsLiquid()) { underwater = true; tmpPos.Y--; block = blockAccessor.GetBlock(tmpPos); }
+
                 if (block.Fertility == 0) continue;
 
                 // Place according to forest value
@@ -335,14 +341,14 @@ namespace Vintagestory.ServerMods
                 // 1 in 400 chance to always spawn a tree
                 // otherwise go by tree density using a quadratic drop off to create clearer forest edges
                 if (rnd.NextDouble() > Math.Max(0.0025, treeDensityNormalized * treeDensityNormalized) || forestMod <= -1) continue;
-                TreeGenForClimate treegenParams = treeSupplier.GetRandomTreeGenForClimate(climate, (int)treeDensity, y);
+                TreeGenForClimate treegenParams = treeSupplier.GetRandomTreeGenForClimate(climate, (int)treeDensity, y, underwater);
 
                 if (treegenParams != null)
                 {
                     bool canGen = true;
                     for (int i = 0; i < structuresIntersectingChunk.Count; i++)
                     {
-                        if (structuresIntersectingChunk[i].Location.Contains(tmpPos)) { canGen = false; break; }
+                        if (structuresIntersectingChunk[i].Contains(tmpPos)) { canGen = false; break; }
                     }
                     if (!canGen) continue;
 

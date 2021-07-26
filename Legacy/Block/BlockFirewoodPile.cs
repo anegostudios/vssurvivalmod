@@ -67,6 +67,19 @@ namespace Vintagestory.GameContent
         }
 
 
+        public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
+        {
+            var beg = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityFirewoodPile;
+            if (beg != null)
+            {
+                return beg.inventory.FirstNonEmptySlot?.Itemstack.Clone();
+            }
+
+            return null;
+        }
+
+
+
         public bool Construct(ItemSlot slot, IWorldAccessor world, BlockPos pos, IPlayer player)
         {
             Block block = world.BlockAccessor.GetBlock(pos);

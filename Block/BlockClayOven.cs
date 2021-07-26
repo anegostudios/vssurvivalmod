@@ -6,6 +6,11 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
+    public interface IBakeableCallback
+    {
+        void OnBaked(ItemStack oldStack, ItemStack newStack);
+    }
+
     public class BlockClayOven : Block
     {
         /*
@@ -59,7 +64,7 @@ namespace Vintagestory.GameContent
                         List<ItemStack> stacks = obj.GetHandBookStacks(capi);
                         if (stacks != null) fuelStacklist.AddRange(stacks);
                     }
-                    else if (obj.Attributes?["bakingResultCode"].AsString() != null || obj.CombustibleProps?.SmeltingType == EnumSmeltType.Bake && obj.CombustibleProps.SmeltedStack != null && obj.CombustibleProps.MeltingPoint < BlockEntityOven.maxBakingTemperatureAccepted)
+                    else if (obj.Attributes?["bakingProperties"]?.AsObject<BakingProperties>() != null || obj.CombustibleProps?.SmeltingType == EnumSmeltType.Bake && obj.CombustibleProps.SmeltedStack != null && obj.CombustibleProps.MeltingPoint < BlockEntityOven.maxBakingTemperatureAccepted)
                     {
                         List<ItemStack> stacks = obj.GetHandBookStacks(capi);
                         if (stacks != null) bakeableStacklist.AddRange(stacks);

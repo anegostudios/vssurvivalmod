@@ -93,7 +93,7 @@ namespace Vintagestory.GameContent
                     break;
 
                 case EnumChiselMode.Rotate:
-                    RotateModel(byPlayer, isBreak);
+                    RotateModel(isBreak ? 90 : -90, null);
                     wasChanged = true;
                     break;
 
@@ -294,10 +294,14 @@ namespace Vintagestory.GameContent
             Cuboidf[] selectionBoxesTmp = new Cuboidf[VoxelCuboids.Count];
             CuboidWithMaterial cwm = tmpCuboid;
 
+            totalVoxels = 0;
+
             for (int i = 0; i < VoxelCuboids.Count; i++)
             {
                 FromUint(VoxelCuboids[i], cwm);
                 selectionBoxesTmp[i] = cwm.ToCuboidf();
+
+                totalVoxels += cwm.Volume;
             }
             selectionBoxes = selectionBoxesTmp;
 

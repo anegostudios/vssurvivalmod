@@ -181,6 +181,7 @@ namespace Vintagestory.GameContent
                 RecipeCode = "";
             }
 
+            Sealed = false;
             currentMesh = null;
             MarkDirty(true);
         }

@@ -322,6 +322,15 @@ namespace Vintagestory.GameContent
         {
             if (blockSel != null)
             {
+                BlockPos onBlockPos = blockSel.Position;
+                Block block = byEntity.World.BlockAccessor.GetBlock(onBlockPos);
+
+                if (block is BlockClayOven)
+                {
+                    // Prevent placing cake when trying add it to the oven
+                    return;
+                }
+
                 Block selectedBlock = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
                 if (selectedBlock?.Attributes?.IsTrue("mealContainer") == true)
                 {

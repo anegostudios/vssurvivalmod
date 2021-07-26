@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Vintagestory.API;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
@@ -244,7 +245,12 @@ namespace Vintagestory.GameContent
                     if (stack == null) continue;
                     
                     stack.Quantity.avg = val.chance / list.TotalChance / val.codes.Length;
-                    drops.Add(stack);
+
+                    // Prevent duplicates
+                    if (drops.FirstOrDefault(dstack => dstack.ResolvedItemstack.Equals(api.World, stack.ResolvedItemstack, GlobalConstants.IgnoredStackAttributes)) == null)
+                    {
+                        drops.Add(stack);
+                    }
                 }   
             }
 

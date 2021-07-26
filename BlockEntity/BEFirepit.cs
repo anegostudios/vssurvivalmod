@@ -166,7 +166,6 @@ namespace Vintagestory.GameContent
         #endregion
 
 
-
         public BlockEntityFirepit()
         {
             inventory = new InventorySmelting(null, null);
@@ -189,7 +188,6 @@ namespace Vintagestory.GameContent
             if (api is ICoreClientAPI)
             {
                 renderer = new FirepitContentsRenderer(api as ICoreClientAPI, Pos);
-
                 (api as ICoreClientAPI).Event.RegisterRenderer(renderer, EnumRenderStage.Opaque, "firepit");
 
                 UpdateRenderer();
@@ -214,7 +212,11 @@ namespace Vintagestory.GameContent
                         Volume = SoundLevel
                     });
 
-                    ambientSound.Start();
+                    if (ambientSound != null)
+                    {
+                        ambientSound.Start();
+                        ambientSound.PlaybackPosition = ambientSound.SoundLengthSeconds * (float)Api.World.Rand.NextDouble();
+                    }
                 }
             }
             else

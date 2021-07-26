@@ -39,6 +39,23 @@ namespace Vintagestory.GameContent
             }
         }
 
+        public int SlicesLeft
+        {
+            get
+            {
+                ItemCheese cheese = inv[0].Itemstack.Collectible as ItemCheese;
+                switch (cheese.Part)
+                {
+                    case "1slice": return 1;
+                    case "2slice": return 2;
+                    case "3slice": return 3;
+                    case "4slice": return 4;
+                }
+
+                return 0;
+            }
+        }
+
         public ItemStack TakeSlice()
         {
             ItemCheese cheese = inv[0].Itemstack.Collectible as ItemCheese;

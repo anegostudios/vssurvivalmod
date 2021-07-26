@@ -302,7 +302,7 @@ namespace Vintagestory.GameContent
                 List<string> target = (i % 4) >= 2 ? secondary : main;
                 int num = 1 + (i / 4) * 2 + (i % 2);
 
-                target.Add((i >= 7 && isSteel ? "Steel" : "Ingot") + num);
+                target.Add("Charcoal" + ((num + 1) / 2) + "/" + (i >= 7 && isSteel ? "Steel" : "Ingot") + num);
             }
 
             for (int i = 0; i < CoalLayerCount; i++)

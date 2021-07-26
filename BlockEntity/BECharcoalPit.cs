@@ -261,7 +261,7 @@ namespace Vintagestory.GameContent
                 BlockPos bposGround = bpos.Copy();
                 bposGround.Y = 0;
 
-                int yMax = 0;
+                int yMax;
                 smokeLocations.TryGetValue(bposGround, out yMax);
                 smokeLocations[bposGround] = Math.Max(yMax, bpos.Y);
 
@@ -274,7 +274,9 @@ namespace Vintagestory.GameContent
 
                     Block nBlock = chunk.GetLocalBlockAtBlockPos(Api.World, npos);
 
-                    if (!nBlock.SideSolid[facing.Opposite.Index] && nBlock.BlockId != firewoodBlockId && nBlock.BlockId != charcoalPitBlockId)
+                    bool solid = nBlock.SideSolid[facing.Opposite.Index] || (nBlock is BlockMicroBlock && (chunk.GetLocalBlockEntityAtBlockPos(npos) as BlockEntityMicroBlock).sideAlmostSolid[facing.Opposite.Index]); 
+
+                    if (!solid && nBlock.BlockId != firewoodBlockId && nBlock.BlockId != charcoalPitBlockId)
                     {
                         return bpos;
                     }

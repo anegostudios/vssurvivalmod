@@ -167,16 +167,22 @@ namespace Vintagestory.GameContent
                         player.SendMessage(groupId, "Invalid or missing access flag. Declare 'use' or 'all'", EnumChatType.CommandError);
                         return;
                     }
-
                     SetPlayerPrivilege(player, groupId, plrData.PlayerUID, flags);
                     break;
+
                 case "revoke":
                     SetPlayerPrivilege(player, groupId, plrData.PlayerUID, EnumBlockAccessFlags.None);
                     break;
 
                 case "grantgroup":
+                    if (flags == EnumBlockAccessFlags.None)
+                    {
+                        player.SendMessage(groupId, "Invalid or missing access flag. Declare 'use' or 'all'", EnumChatType.CommandError);
+                        return;
+                    }
                     SetGroupPrivilege(player, groupId, plrgrpname, flags);
                     break;
+
                 case "revokegroup":
                     SetGroupPrivilege(player, groupId, plrgrpname, EnumBlockAccessFlags.None); ;
                     break;
@@ -231,10 +237,23 @@ namespace Vintagestory.GameContent
         {
             foreach (Block block in api.World.Blocks)
             {
-                if (block.Code == null) continue;
+                if (block.Code == null || block.Id == 0) continue;
+                if (block.BlockMaterial == EnumBlockMaterial.Plant ||
+                    block.BlockMaterial == EnumBlockMaterial.Liquid ||
+                    block.BlockMaterial == EnumBlockMaterial.Snow ||
+                    block.BlockMaterial == EnumBlockMaterial.Leaves ||
+                    block.BlockMaterial == EnumBlockMaterial.Lava ||
+                    block.BlockMaterial == EnumBlockMaterial.Sand ||
+                    block.BlockMaterial == EnumBlockMaterial.Gravel)
+                {
+                    // Do not allow reinforcement of soft blocks, unless positively given the attribute reinforcable == true
+                    if (block.Attributes == null || block.Attributes["reinforcable"].AsBool(false) != true) continue;
+                }
+                // For other blocks, allow reinforcement unless positively given the attribute reinforcable == false
                 if (block.Attributes == null || block.Attributes["reinforcable"].AsBool(true) != false)
                 {
                     block.BlockBehaviors = block.BlockBehaviors.Append(new BlockBehaviorReinforcable(block));
+                    block.CollectibleBehaviors = block.CollectibleBehaviors.Append(new BlockBehaviorReinforcable(block));
                 }
             }
         }
@@ -495,7 +514,6 @@ namespace Vintagestory.GameContent
             int chunkY = pos.Y / chunksize;
             int chunkZ = pos.Z / chunksize;
 
-            long index3d = MapUtil.Index3dL(chunkX, chunkY, chunkZ, api.World.BlockAccessor.MapSizeX / chunksize, api.World.BlockAccessor.MapSizeZ / chunksize);
             byte[] data = SerializerUtil.Serialize(reif);
 
             IWorldChunk chunk = api.World.BlockAccessor.GetChunk(chunkX, chunkY, chunkZ);

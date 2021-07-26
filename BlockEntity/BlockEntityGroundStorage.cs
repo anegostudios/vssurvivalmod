@@ -187,12 +187,20 @@ namespace Vintagestory.GameContent
 
             if (!hotbarSlot.Empty && !hotbarSlot.Itemstack.Collectible.HasBehavior<CollectibleBehaviorGroundStorable>()) return false;
 
+            if (!BlockBehaviorReinforcable.AllowRightClickPickup(Api.World, Pos, player)) return false;
+
             DetermineStorageProperties(hotbarSlot);
 
             bool ok = false;
 
             if (StorageProps != null)
             {
+                if (!hotbarSlot.Empty)
+                {
+                    bool layoutEqual = StorageProps.Layout == hotbarSlot.Itemstack.Collectible.GetBehavior<CollectibleBehaviorGroundStorable>()?.StorageProps.Layout;
+                    if (!layoutEqual) return false;
+                }
+
                 switch (StorageProps.Layout)
                 {
                     case EnumGroundStorageLayout.SingleCenter:
@@ -233,6 +241,26 @@ namespace Vintagestory.GameContent
             return ok;
         }
 
+        public bool OnTryCreateKiln()
+        {
+            ItemStack stack = inventory.FirstNonEmptySlot.Itemstack;
+            if (stack == null) return false;
+
+            if (stack.StackSize > StorageProps.MaxFireable)
+            {
+                capi?.TriggerIngameError(this, "overfull", Lang.Get("Can only fire up to {0} at once.", StorageProps.MaxFireable));
+                return false;
+            }
+            
+            if (stack.Collectible.CombustibleProps == null || stack.Collectible.CombustibleProps.SmeltingType != EnumSmeltType.Fire)
+            {
+                capi?.TriggerIngameError(this, "notfireable", Lang.Get("This is not a fireable block or item", StorageProps.MaxFireable));
+                return false;
+            }
+
+
+            return true;
+        }
 
         public virtual void DetermineStorageProperties(ItemSlot sourceSlot)
         {
@@ -248,21 +276,23 @@ namespace Vintagestory.GameContent
                 }
             }
 
+            if (StorageProps == null) return;  // Seems necessary to avoid crash with certain items placed in game version 1.15-pre.1?
+
             if (StorageProps.CollisionBox != null)
             {
                 colSelBoxes[0] = StorageProps.CollisionBox.Clone();
             } else
             {
-                if (sourceStack.Block != null)
+                if (sourceStack?.Block != null)
                 {
                     colSelBoxes[0] = sourceStack.Block.CollisionBoxes[0].Clone();
                 }
                 
             }
-            if (StorageProps.CbHeightMulFactor != 0)
+            if (StorageProps.CbScaleYByLayer != 0)
             {
                 colSelBoxes[0] = colSelBoxes[0].Clone();
-                colSelBoxes[0].Y2 *= ((int)Math.Ceiling(StorageProps.CbHeightMulFactor * inventory[0].StackSize) * 8) / 8;
+                colSelBoxes[0].Y2 *= ((int)Math.Ceiling(StorageProps.CbScaleYByLayer * inventory[0].StackSize) * 8) / 8;
             }
         }
 
@@ -282,14 +312,7 @@ namespace Vintagestory.GameContent
 
             ItemSlot hotbarSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
 
-            bool equalStack = inventory[0].Empty || hotbarSlot.Itemstack != null && hotbarSlot.Itemstack.Equals(Api.World, inventory[0].Itemstack, GlobalConstants.IgnoredStackAttributes);
-
-            if (sneaking && !equalStack)
-            {
-                return false;
-            }
-
-            if (sneaking && equalStack && TotalStackSize >= Capacity)
+            if (sneaking && TotalStackSize >= Capacity)
             {
                 Block pileblock = Api.World.BlockAccessor.GetBlock(Pos);
                 Block aboveblock = Api.World.BlockAccessor.GetBlock(abovePos);
@@ -297,9 +320,20 @@ namespace Vintagestory.GameContent
                 if (aboveblock.IsReplacableBy(pileblock))
                 {
                     BlockGroundStorage bgs = pileblock as BlockGroundStorage;
-                    return bgs.CreateStorage(Api.World, bs, byPlayer);
+                    var bsc = bs.Clone();
+                    bsc.Position.Up();
+                    bsc.Face = null;
+                    return bgs.CreateStorage(Api.World, bsc, byPlayer);
                 }
 
+                return false;
+            }
+
+
+            bool equalStack = inventory[0].Empty || hotbarSlot.Itemstack != null && hotbarSlot.Itemstack.Equals(Api.World, inventory[0].Itemstack, GlobalConstants.IgnoredStackAttributes);
+
+            if (sneaking && !equalStack)
+            {
                 return false;
             }
 
@@ -418,6 +452,8 @@ namespace Vintagestory.GameContent
 
                 if (ourSlot.Empty)
                 {
+                    if (hotbarSlot.Empty) return false;
+
                     if (player.WorldData.CurrentGameMode == EnumGameMode.Creative)
                     {
                         ItemStack stack = hotbarSlot.Itemstack.Clone();
@@ -486,19 +522,66 @@ namespace Vintagestory.GameContent
 
         public override void OnBlockBroken()
         {
-            if (Api.World.Side == EnumAppSide.Server)
+            // Handled by block.GetDrops()
+            /*if (Api.World.Side == EnumAppSide.Server)
             {
                 inventory.DropAll(Pos.ToVec3d().Add(0.5, 0.5, 0.5), 4);
-            }
+            }*/
         }
 
 
+
+        public virtual string GetBlockName()
+        {
+            var props = StorageProps;
+            if (props == null || inventory.Empty) return "Empty pile";
+
+            string[] contentSummary = getContentSummary();
+            if (contentSummary.Length <= 1)
+            {
+                if (contentSummary.Length == 1)
+                {
+                    ItemStack stack = inventory.FirstNonEmptySlot.Itemstack;
+                    if (inventory.Sum(s => s.StackSize) == 1) return stack.GetName();
+                }
+                return contentSummary[0];
+            }
+
+            return Lang.Get("Ground Storage");
+        }
+
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
         {
-            ItemStack stack = inventory[0].Itemstack;
-            if (stack == null) return;
+            if (inventory.Empty) return;
 
-            dsc.AppendLine(stack.StackSize + "x " + stack.GetName());
+            string[] contentSummary = getContentSummary();
+
+            ItemStack stack = inventory.FirstNonEmptySlot.Itemstack;
+            if (contentSummary.Length == 1 && stack.Class == EnumItemClass.Block && ((Block)stack.Collectible).EntityClass == null)  // Only add supplemental info for non-BlockEntities (otherwise it will be wrong or will get into a recursive loop, because right now this BEGroundStorage is the BlockEntity)
+            {
+                string detailedInfo = stack.Block.GetPlacedBlockInfo(Api.World, Pos, forPlayer);
+                if (detailedInfo != null && detailedInfo.Length > 0) dsc.Append(detailedInfo);
+            } else
+            {
+                foreach (var line in contentSummary) dsc.AppendLine(line);
+            }
+        }
+
+        public virtual string[] getContentSummary()
+        {
+            OrderedDictionary<string, int> dict = new OrderedDictionary<string, int>();
+
+            foreach (var slot in inventory)
+            {
+                if (slot.Empty) continue;
+                int cnt;
+                string stackName = slot.Itemstack.GetName();
+                if (!dict.TryGetValue(stackName, out cnt)) cnt = 0;
+
+                dict[stackName] = cnt + slot.StackSize;
+            }
+
+            return dict.Select(elem => Lang.Get("{0}x {1}", elem.Value, elem.Key)).ToArray();
         }
 
 

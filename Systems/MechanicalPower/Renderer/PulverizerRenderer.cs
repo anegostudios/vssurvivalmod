@@ -121,12 +121,13 @@ namespace Vintagestory.GameContent.Mechanics
             }
 
             if ((dev.Block as BlockPulverizer).InvertPoundersOnRender) rot = -rot;
+            if (bhpu.isRotationReversed()) rot = -rot;
 
             // Pounder-left
-            if (bhpu.bepu.hasLPounder)
+            int metalIndexLeft = bhpu.bepu.CapMetalIndexL;
+            if (bhpu.bepu.hasLPounder && metalIndexLeft >= 0)
             {
                 bool leftEmpty = bhpu.bepu.Inventory[1].Empty;
-                int metalIndexLeft = bhpu.bepu.CapMetalIndexL;
 
                 float progress = GetProgress(bhpu.bepu.hasAxle ? rot - 0.45f + GameMath.PIHALF / 2f : 0f, 0f);
                 UpdateLightAndTransformMatrix(matrixAndLightFloatsLPounder[metalIndexLeft].Values, quantityLPounders[metalIndexLeft], distToCamera, dev.LightRgba, 0f, 0f, axisCenter, Math.Max(progress / 6f + 0.0071f, leftEmpty ? -1 : 1 / 32f));
@@ -147,10 +148,10 @@ namespace Vintagestory.GameContent.Mechanics
 
 
             // Pounder-right
-            if (bhpu.bepu.hasRPounder)
+            int metalIndexRight = bhpu.bepu.CapMetalIndexR;
+            if (bhpu.bepu.hasRPounder && metalIndexRight >= 0)
             {
                 bool rightEmpty = bhpu.bepu.Inventory[0].Empty;
-                int metalIndexRight = bhpu.bepu.CapMetalIndexR;
 
                 float progress = GetProgress(bhpu.bepu.hasAxle ? rot - 0.45f : 0f, 0f);
                 UpdateLightAndTransformMatrix(matrixAndLightFloatsRPounder[metalIndexRight].Values, quantityRPounders[metalIndexRight], distToCamera, dev.LightRgba, 0f, 0f, axisCenter, Math.Max(progress / 6f + 0.0071f, rightEmpty ? -1 : 1 / 32f));

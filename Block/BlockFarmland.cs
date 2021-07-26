@@ -20,7 +20,7 @@ namespace Vintagestory.GameContent
 
         public override bool CanAttachBlockAt(IBlockAccessor world, Block block, BlockPos pos, BlockFacing blockFace, Cuboidi attachmentArea = null)
         {
-            if (block is BlockCrop && blockFace == BlockFacing.UP) return true;
+            if ((block is BlockCrop || block is BlockDeadCrop) && blockFace == BlockFacing.UP) return true;
 
             return base.CanAttachBlockAt(world, block, pos, blockFace, attachmentArea);
         }

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using Vintagestory.API;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -19,11 +20,13 @@ namespace Vintagestory.GameContent
         AssetLocation[] exceptions;
         public bool fallSideways;
         float dustIntensity;
-        float fallSidewaysChance = 0.25f;
+        float fallSidewaysChance = 0.3f;
 
         AssetLocation fallSound;
         float impactDamageMul;
-        Cuboidi attachmentArea;
+        Dictionary<string, Cuboidi> attachmentAreas;
+
+        BlockFacing[] attachableFaces;
 
         public BlockBehaviorUnstableFalling(Block block) : base(block)
         {
@@ -33,18 +36,46 @@ namespace Vintagestory.GameContent
         {
             base.Initialize(properties);
 
+
+            attachableFaces = new BlockFacing[] { BlockFacing.DOWN };
+
+            if (properties["attachableFaces"].Exists)
+            {
+                string[] faces = properties["attachableFaces"].AsArray<string>();
+                attachableFaces = new BlockFacing[faces.Length];
+
+                for (int i = 0; i < faces.Length; i++)
+                {
+                    attachableFaces[i] = BlockFacing.FromCode(faces[i]);
+                }
+            }
+            
+            var areas = properties["attachmentAreas"].AsObject<Dictionary<string, RotatableCube>>(null);
+            attachmentAreas = new Dictionary<string, Cuboidi>();
+            if (areas != null)
+            {
+                foreach (var val in areas)
+                {
+                    val.Value.Origin.Set(8, 8, 8);
+                    attachmentAreas[val.Key] = val.Value.RotatedCopy().ConvertToCuboidi();
+                }
+            } else
+            {
+                attachmentAreas["up"] = properties["attachmentArea"].AsObject<Cuboidi>(null);
+            }
+
             ignorePlaceTest = properties["ignorePlaceTest"].AsBool(false);
             exceptions = properties["exceptions"].AsObject(new AssetLocation[0], block.Code.Domain);
             fallSideways = properties["fallSideways"].AsBool(false);
             dustIntensity = properties["dustIntensity"].AsFloat(0);
-            attachmentArea = properties["attachmentArea"].AsObject<Cuboidi>(null);
 
-            fallSidewaysChance = properties["fallSidewaysChance"].AsFloat(0.25f);
+            fallSidewaysChance = properties["fallSidewaysChance"].AsFloat(0.3f);
             string sound = properties["fallSound"].AsString(null);
             if (sound != null)
             {
                 fallSound = AssetLocation.Create(sound, block.Code.Domain);
             }
+
             impactDamageMul = properties["impactDamageMul"].AsFloat(1f);
         }
 
@@ -53,9 +84,12 @@ namespace Vintagestory.GameContent
             handling = EnumHandling.PassThrough;
             if (ignorePlaceTest) return true;
 
+            Cuboidi attachmentArea = null;
+            attachmentAreas?.TryGetValue(BlockFacing.UP.Code, out attachmentArea);
+
             BlockPos pos = blockSel.Position.DownCopy();
             Block onBlock = world.BlockAccessor.GetBlock(pos);
-            if (blockSel != null && !onBlock.CanAttachBlockAt(world.BlockAccessor, block, pos, BlockFacing.UP, attachmentArea) && block.Attributes?["allowUnstablePlacement"].AsBool() != true && !exceptions.Contains(onBlock.Code))
+            if (blockSel != null && !IsAttached(world.BlockAccessor, blockSel.Position) && !onBlock.CanAttachBlockAt(world.BlockAccessor, block, pos, BlockFacing.UP, attachmentArea) && block.Attributes?["allowUnstablePlacement"].AsBool() != true && !exceptions.Contains(onBlock.Code))
             {
                 handling = EnumHandling.PreventSubsequent;
                 failureCode = "requiresolidground";
@@ -84,6 +118,7 @@ namespace Vintagestory.GameContent
         private bool TryFalling(IWorldAccessor world, BlockPos pos, ref EnumHandling handling, ref string failureCode)
         {
             if (world.Side != EnumAppSide.Server) return false;
+            if (!fallSideways && IsAttached(world.BlockAccessor, pos)) return false;
 
             ICoreServerAPI sapi = (world as IServerWorldAccessor).Api as ICoreServerAPI;
             if (!sapi.Server.Config.AllowFallingBlocks) return false;
@@ -113,6 +148,27 @@ namespace Vintagestory.GameContent
             }
 
             handling = EnumHandling.PassThrough;
+            return false;
+        }
+
+
+        public virtual bool IsAttached(IBlockAccessor blockAccessor, BlockPos pos)
+        {
+            for (int i = 0; i < attachableFaces.Length; i++)
+            {
+                BlockFacing face = attachableFaces[i];
+
+                Block block = blockAccessor.GetBlock(pos.AddCopy(face));
+
+                Cuboidi attachmentArea = null;
+                attachmentAreas?.TryGetValue(face.Code, out attachmentArea);
+
+                if (block.CanAttachBlockAt(blockAccessor, this.block, pos.AddCopy(face), face.Opposite, attachmentArea))
+                {
+                    return true;
+                }
+            }
+
             return false;
         }
 

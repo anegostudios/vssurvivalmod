@@ -29,6 +29,7 @@ namespace Vintagestory.GameContent
         public float Damage;
         public ItemStack ProjectileStack;
         public float DropOnImpactChance = 0f;
+        public bool DamageStackOnImpact = false;
 
         Cuboidf collisionTestBox;
 
@@ -151,6 +152,11 @@ namespace Vintagestory.GameContent
                     // Resend position to client
                     WatchedAttributes.MarkAllDirty();
 
+                    if (DamageStackOnImpact)
+                    {
+                        ProjectileStack.Collectible.DamageItem(World, this, new DummySlot(ProjectileStack));
+                    }
+
                     int leftDurability = ProjectileStack == null ? 1 : ProjectileStack.Attributes.GetInt("durability", 1);
                     if (leftDurability <= 0)
                     {
@@ -251,7 +257,13 @@ namespace Vintagestory.GameContent
                 float kbresist = entity.Properties.KnockbackResistance;
                 entity.SidedPos.Motion.Add(kbresist * pos.Motion.X * Weight, kbresist * pos.Motion.Y * Weight, kbresist * pos.Motion.Z * Weight);
 
+                if (DamageStackOnImpact)
+                {
+                    ProjectileStack.Collectible.DamageItem(entity.World, entity, new DummySlot(ProjectileStack));
+                }
+
                 int leftDurability = ProjectileStack == null ? 1 : ProjectileStack.Attributes.GetInt("durability", 1);
+
 
                 if (World.Rand.NextDouble() < DropOnImpactChance && leftDurability > 0)
                 {

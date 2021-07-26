@@ -227,14 +227,18 @@ namespace Vintagestory.GameContent
                 teleVolume = Math.Min(0.5f, teleVolume + dt / 3);
             }
 
-            teleportingSound.SetVolume(teleVolume);
+            if (teleportingSound != null)
+            {
+                teleportingSound.SetVolume(teleVolume);
 
-            if (teleportingSound.IsPlaying)
-            {
-                if (teleVolume <= 0) teleportingSound.Stop();
-            } else
-            {
-                if (teleVolume > 0) teleportingSound.Start();
+                if (teleportingSound.IsPlaying)
+                {
+                    if (teleVolume <= 0) teleportingSound.Stop();
+                }
+                else
+                {
+                    if (teleVolume > 0) teleportingSound.Start();
+                }
             }
             
             bool ownTranslocate = !(capi.World.ElapsedMilliseconds - lastTranslocateCollideMsOwnPlayer > 200);

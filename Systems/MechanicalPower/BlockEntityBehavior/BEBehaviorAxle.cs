@@ -135,23 +135,46 @@ namespace Vintagestory.GameContent.Mechanics
 
         private bool RequiresStand(BlockPos pos, Vec3i vector)
         {
-            BlockMPBase block = Api.World.BlockAccessor.GetBlock(pos.X + vector.X, pos.Y + vector.Y, pos.Z + vector.Z) as BlockMPBase;
-            if (block == null) return true;
-            BlockPos sidePos = new BlockPos(pos.X + vector.X, pos.Y + vector.Y, pos.Z + vector.Z);
-            BEBehaviorMPBase bemp = Api.World.BlockAccessor.GetBlockEntity(sidePos)?.GetBehavior<BEBehaviorMPBase>();
-            if (bemp == null) return true;
-            BEBehaviorMPAxle bempaxle = bemp as BEBehaviorMPAxle;
-            if (bempaxle == null)
+            int a = 0;
+            try
             {
-                if (bemp is BEBehaviorMPBrake || bemp is BEBehaviorMPCreativeRotor)
+                BlockMPBase block = Api.World.BlockAccessor.GetBlock(pos.X + vector.X, pos.Y + vector.Y, pos.Z + vector.Z) as BlockMPBase;
+                a++;
+                if (block == null) return true;
+                a++;
+                BlockPos sidePos = new BlockPos(pos.X + vector.X, pos.Y + vector.Y, pos.Z + vector.Z);
+                a++;
+                BEBehaviorMPBase bemp = Api.World.BlockAccessor.GetBlockEntity(sidePos)?.GetBehavior<BEBehaviorMPBase>();
+                a++;
+                if (bemp == null) return true;
+                a++;
+                BEBehaviorMPAxle bempaxle = bemp as BEBehaviorMPAxle;
+                a++;
+                if (bempaxle == null)
                 {
-                    BlockFacing side = BlockFacing.FromNormal(vector);
-                    if (side != null && block.HasMechPowerConnectorAt(Api.World, sidePos, side.Opposite)) return false;
+                    a++;
+                    if (bemp is BEBehaviorMPBrake || bemp is BEBehaviorMPCreativeRotor)
+                    {
+                        a++;
+                        BlockFacing side = BlockFacing.FromNormal(vector);
+                        a++;
+                        if (side != null && block.HasMechPowerConnectorAt(Api.World, sidePos, side.Opposite)) return false;
+                    }
+                    return true;
                 }
+                a += 16;
+                if (IsAttachedToBlock(Api.World.BlockAccessor, block, sidePos)) return false;
+                a += 16;
+                return bempaxle.RequiresStand(sidePos, vector);
+            }
+            catch (Exception e)
+            {
+                Api.Logger.Error("ERROR, please report on VS Discord #bug-reports: BEMPBehaviorAxle counter: " + a);
+#if DEBUG
+                throw (e);
+#endif
                 return true;
             }
-            if (IsAttachedToBlock(Api.World.BlockAccessor, block, sidePos)) return false;
-            return bempaxle.RequiresStand(sidePos, vector);
         }
 
         private MeshData rotStand(MeshData mesh)

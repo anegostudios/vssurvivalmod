@@ -6,6 +6,14 @@ namespace Vintagestory.GameContent
 {
     public class BlockDoor : BlockBaseDoor
     {
+        bool airtight;
+
+        public override void OnLoaded(ICoreAPI api)
+        {
+            airtight = Variant["material"] != "log";
+            base.OnLoaded(api);
+        }
+
         public override string GetKnobOrientation()
         {
             return GetKnobOrientation(this);
@@ -128,7 +136,7 @@ namespace Vintagestory.GameContent
         protected override void Open(IWorldAccessor world, IPlayer byPlayer, BlockPos position)
         {
             float breakChance = Attributes["breakOnTriggerChance"].AsFloat(0);
-            if (world.Side == EnumAppSide.Server && world.Rand.NextDouble() < breakChance)
+            if (world.Side == EnumAppSide.Server && world.Rand.NextDouble() < breakChance && byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
             {
                 world.BlockAccessor.BreakBlock(position, byPlayer);
                 world.PlaySoundAt(new AssetLocation("sounds/effect/toolbreak"), position.X + 0.5, position.Y + 0.5, position.Z + 0.5, null);
@@ -173,6 +181,7 @@ namespace Vintagestory.GameContent
 
         public override int GetHeatRetention(BlockPos pos, BlockFacing facing)
         {
+            if (!airtight) return 0;
             return open ? 3 : 1;
         }
     }

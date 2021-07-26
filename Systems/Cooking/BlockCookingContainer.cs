@@ -251,7 +251,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public float GetIngredientsTemperature(IWorldAccessor world, ItemStack[] ingredients)
+        public static float GetIngredientsTemperature(IWorldAccessor world, ItemStack[] ingredients)
         {
             bool haveStack = false;
             float lowestTemp = 0;

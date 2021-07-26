@@ -52,7 +52,7 @@ namespace Vintagestory.GameContent
             stuck = Collided;
             if (stuck)
             {
-                pos.Pitch = GameMath.PIHALF;
+                pos.Pitch = 0;
                 pos.Roll = 0;
                 pos.Yaw = GameMath.PIHALF;
             } else

@@ -225,6 +225,9 @@ namespace Vintagestory.GameContent
                 if (isComplete(blockSel.Position, baseCode, vecs)) {
 
                     ModJournal jour = api.ModLoader.GetModSystem<ModJournal>();
+
+                    if (baseCode == "schematic-c-bloody") baseCode = "schematic-c";
+
                     if (!jour.DidDiscoverLore(byPlayer.PlayerUID, LoreCode, GetLoreChapterId(baseCode)))
                     {
                         var splr = byPlayer as IServerPlayer;

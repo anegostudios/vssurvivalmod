@@ -18,7 +18,7 @@ namespace Vintagestory.GameContent
 
         public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
         {
-            if (CombustibleProps?.SmeltedStack == null)
+            if (CombustibleProps?.SmeltedStack?.ResolvedItemstack == null)
             {
                 if (Attributes?["metalUnits"].Exists == true)
                 {
@@ -32,7 +32,7 @@ namespace Vintagestory.GameContent
                     AssetLocation loc = new AssetLocation("nugget-" + orename);
                     Item item = api.World.GetItem(loc);
 
-                    if (item?.CombustibleProps != null)
+                    if (item?.CombustibleProps?.SmeltedStack?.ResolvedItemstack != null)
                     {
                         string metalname = item.CombustibleProps.SmeltedStack.ResolvedItemstack.GetName().Replace(" ingot", "");
                         dsc.AppendLine(Lang.Get("{0} units of {1}", units.ToString("0.#"), metalname));
@@ -50,7 +50,6 @@ namespace Vintagestory.GameContent
 
                 if (CombustibleProps.SmeltedStack.ResolvedItemstack.GetName().Contains("ingot"))
                 {
-
                     string smelttype = CombustibleProps.SmeltingType.ToString().ToLowerInvariant();
                     int instacksize = CombustibleProps.SmeltedRatio;
                     int outstacksize = CombustibleProps.SmeltedStack.ResolvedItemstack.StackSize;

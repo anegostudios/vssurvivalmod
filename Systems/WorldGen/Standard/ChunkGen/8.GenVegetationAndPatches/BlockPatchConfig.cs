@@ -72,11 +72,6 @@ namespace Vintagestory.ServerMods.NoObf
 
 
 
-        int rain;
-        float rainRel;
-        int temp;
-        float sealevelDistRel;
-        float fertilityRel;
 
 
         internal bool IsPatchSuitableAt(BlockPatch patch, Block onBlock, IWorldManagerAPI world, int climate, int y, float forestRel, float shrubRel)
@@ -84,21 +79,36 @@ namespace Vintagestory.ServerMods.NoObf
             if ((patch.Placement == EnumBlockPatchPlacement.NearWater || patch.Placement == EnumBlockPatchPlacement.UnderWater) && onBlock.LiquidCode != "water") return false;
             if ((patch.Placement == EnumBlockPatchPlacement.NearSeaWater || patch.Placement == EnumBlockPatchPlacement.UnderSeaWater) && onBlock.LiquidCode != "seawater") return false;
 
-            rain = TerraGenConfig.GetRainFall((climate >> 8) & 0xff, y);
-            rainRel = rain / 255f;
-            temp = TerraGenConfig.GetScaledAdjustedTemperature((climate >> 16) & 0xff, y - TerraGenConfig.seaLevel);
-            sealevelDistRel = ((float)y - TerraGenConfig.seaLevel) / ((float)world.MapSizeY - TerraGenConfig.seaLevel);
-            fertilityRel = TerraGenConfig.GetFertility(rain, temp, sealevelDistRel) / 255f;
+            if (forestRel < patch.MinForest || forestRel > patch.MaxForest || shrubRel < patch.MinShrub || forestRel > patch.MaxShrub)
+            {
+                // faster path without needing to fetch rainfall and temperature etc
+                return false;
+            }
 
+            int rain = TerraGenConfig.GetRainFall((climate >> 8) & 0xff, y);
+            float rainRel = rain / 255f;
+            if (rainRel < patch.MinRain || rainRel > patch.MaxRain)
+            {
+                // again faster path without needing to fetch temperature etc
+                return false;
+            }
 
-            return
-                fertilityRel >= patch.MinFertility && fertilityRel <= patch.MaxFertility &&
-                rainRel >= patch.MinRain && rainRel <= patch.MaxRain &&
-                temp >= patch.MinTemp && temp <= patch.MaxTemp &&
-                sealevelDistRel >= patch.MinY && sealevelDistRel <= patch.MaxY &&
-                forestRel >= patch.MinForest && forestRel <= patch.MaxForest &&
-                shrubRel >= patch.MinShrub && forestRel <= patch.MaxShrub
-            ;
+            int temp = TerraGenConfig.GetScaledAdjustedTemperature((climate >> 16) & 0xff, y - TerraGenConfig.seaLevel);
+            if (temp < patch.MinTemp || temp > patch.MaxTemp)
+            {
+                // again faster path without needing to fetch sealevel and fertility
+                return false;
+            }
+
+            float sealevelDistRel = ((float)y - TerraGenConfig.seaLevel) / ((float)world.MapSizeY - TerraGenConfig.seaLevel);
+            if (sealevelDistRel < patch.MinY || sealevelDistRel > patch.MaxY)
+            {
+                return false;
+            }
+
+            // finally test fertility (the least common blockpatch criterion)
+            float fertilityRel = TerraGenConfig.GetFertility(rain, temp, sealevelDistRel) / 255f;
+            return fertilityRel >= patch.MinFertility && fertilityRel <= patch.MaxFertility;
         }
     }
 }

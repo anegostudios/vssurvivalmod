@@ -152,7 +152,7 @@ namespace Vintagestory.GameContent
         {
             for (int d = 0; d < 6; d++)
             {
-                if(inventory.IsEmpty)
+                if(inventory.Empty)
                 {
                     break; //don't need to check for output if we don't have anything to output.
                 }

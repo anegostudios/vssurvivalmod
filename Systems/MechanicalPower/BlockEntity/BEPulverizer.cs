@@ -39,6 +39,9 @@ namespace Vintagestory.GameContent.Mechanics
         public bool hasRPounder;
         public bool hasPounderCaps => !inv[2].Empty;
 
+        public int CapMetalTierL;
+        public int CapMetalTierR;
+
         public int CapMetalIndexL;
         public int CapMetalIndexR;
 
@@ -63,7 +66,9 @@ namespace Vintagestory.GameContent.Mechanics
 
             MetalPropertyVariant metalvar = null;
             if (metal != null) Api.ModLoader.GetModSystem<SurvivalCoreSystem>().metalsByCode.TryGetValue(metal, out metalvar);
-            CapMetalIndexL = CapMetalIndexR = Math.Max(metalvar?.Tier ?? 0, 0);
+            CapMetalTierL = CapMetalTierR = Math.Max(metalvar?.Tier ?? 0, 0);
+
+            CapMetalIndexL = CapMetalIndexR = Math.Max(0, PulverizerRenderer.metals.IndexOf(metal));
 
             base.updateMeshes();
         }
@@ -122,7 +127,7 @@ namespace Vintagestory.GameContent.Mechanics
                 if (accumLeft > 5)
                 {
                     accumLeft = 0;
-                    Crush(0, CapMetalIndexL, -4 / 16d);
+                    Crush(0, CapMetalTierL, -4 / 16d);
                 }
             }
 
@@ -133,7 +138,7 @@ namespace Vintagestory.GameContent.Mechanics
                 if (accumRight > 5)
                 {
                     accumRight = 0;
-                    Crush(1, CapMetalIndexR, 4 / 16d);
+                    Crush(1, CapMetalTierR, 4 / 16d);
                 }
             }
 

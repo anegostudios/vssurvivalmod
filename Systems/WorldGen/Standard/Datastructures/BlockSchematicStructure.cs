@@ -116,14 +116,20 @@ namespace Vintagestory.ServerMods
                             depth++;
                         }
 
-                        
                         Block oldBlock = blockAccessor.GetBlock(curPos);
                         int p = handler(blockAccessor, curPos, oldBlock, newBlock);
                         placed += p;
 
                         if (p > 0 && !newBlock.RainPermeable)
                         {
-                            maxY = Math.Max(curPos.Y, maxY);
+                            if (newBlock == fillerBlock || newBlock == pathwayBlock)
+                            {
+                                int lx = curPos.X % chunksize;
+                                int lz = curPos.Z % chunksize;
+                                if (mapchunk.RainHeightMap[lz * chunksize + lx] == curPos.Y) mapchunk.RainHeightMap[lz * chunksize + lx]--;
+                            } else {
+                                maxY = Math.Max(curPos.Y, maxY);
+                            }
                         }
                         
 
@@ -140,7 +146,8 @@ namespace Vintagestory.ServerMods
                     {
                         int lx = curPos.X % chunksize;
                         int lz = curPos.Z % chunksize;
-                        mapchunk.RainHeightMap[lz * chunksize + lx] = (ushort)Math.Max(mapchunk.RainHeightMap[lz * chunksize + lx], maxY);
+                        int y = mapchunk.RainHeightMap[lz * chunksize + lx];
+                        mapchunk.RainHeightMap[lz * chunksize + lx] = (ushort)Math.Max(y, maxY);
                     }
                 }
             }

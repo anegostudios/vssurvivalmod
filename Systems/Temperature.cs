@@ -110,7 +110,7 @@ namespace Vintagestory.GameContent
             // 5. Daily random noise
             heretemp += DailyTemperatureNoise.Noise(totalDays, 0);
 
-            climate.Temperature = (float)heretemp;  
+            climate.Temperature = (float)heretemp;
         }
 
 

@@ -126,7 +126,7 @@ namespace Vintagestory.GameContent
 
             if (quantityServings - servingsToTransfer <= 0)
             {
-                string loc = Attributes["emptiedBlockCode"].AsString();
+                string loc = potslot.Itemstack.Collectible.Attributes["emptiedBlockCode"].AsString();
                 if (loc != null)
                 {
                     Block emptyPotBlock = world.GetBlock(new AssetLocation(loc));
@@ -273,8 +273,11 @@ namespace Vintagestory.GameContent
                     }
 
 
+                    potslot.Itemstack.Attributes.RemoveAttribute("sealed");
                     potslot.MarkDirty();
                     bowlSlot.MarkDirty();
+
+                    
 
                     return true;
                 }

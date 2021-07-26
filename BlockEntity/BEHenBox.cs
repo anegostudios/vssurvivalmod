@@ -243,6 +243,9 @@ namespace Vintagestory.GameContent
                     dsc.AppendLine(Lang.Get("Incubation time remaining: 1 day"));
                 else if (timeToIncubate > 0)
                     dsc.AppendLine(Lang.Get("Incubation time remaining: {0:0} hours", timeToIncubate * 24));
+
+                if (occupier == null && Block.LastCodePart() == fullCode)
+                    dsc.AppendLine(Lang.Get("A broody hen is needed!"));
             }
             else if (eggCount > 0)
             {

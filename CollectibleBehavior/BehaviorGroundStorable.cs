@@ -45,7 +45,9 @@ namespace Vintagestory.GameContent
         public int BulkTransferQuantity = 4;
 
         public Cuboidf CollisionBox;
-        public float CbHeightMulFactor = 0;
+        public float CbScaleYByLayer = 0;
+
+        public int MaxFireable = 9999;
     }
 
 

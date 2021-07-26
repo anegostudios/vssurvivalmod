@@ -177,9 +177,16 @@ namespace Vintagestory.GameContent
             if (byEntity.World.Side == EnumAppSide.Server && byEntity is EntityPlayer)
             {
                 IServerPlayer plr = byEntity.World.PlayerByUid((byEntity as EntityPlayer).PlayerUID) as IServerPlayer;
-                ICoreServerAPI sapi = byEntity.World.Api as ICoreServerAPI;
 
-                plr.SetSpawnPosition(new PlayerSpawnPos(byEntity.ServerPos.XYZInt.X, byEntity.ServerPos.XYZInt.Y, byEntity.ServerPos.XYZInt.Z) { yaw = byEntity.ServerPos.Yaw, pitch = byEntity.ServerPos.Pitch });
+                int uses = api.World.Config.GetString("temporalGearRespawnUses", "-1").ToInt();
+                plr.SetSpawnPosition(new PlayerSpawnPos() {
+                    x = byEntity.ServerPos.XYZInt.X, 
+                    y = byEntity.ServerPos.XYZInt.Y, 
+                    z = byEntity.ServerPos.XYZInt.Z,
+                    yaw = byEntity.ServerPos.Yaw, 
+                    pitch = byEntity.ServerPos.Pitch,
+                    RemainingUses = uses
+                });
             }
 
         }

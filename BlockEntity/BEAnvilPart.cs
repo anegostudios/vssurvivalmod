@@ -40,7 +40,6 @@ namespace Vintagestory.GameContent
             {
                 renderer = new AnvilPartRenderer(capi, this);
                 updateMeshRefs();
-
             }
         }
 
@@ -72,6 +71,7 @@ namespace Vintagestory.GameContent
             if (byItemStack != null)
             {
                 inv[0].Itemstack = byItemStack.Clone();
+                inv[0].Itemstack.StackSize = 1;
             }
         }
 

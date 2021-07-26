@@ -13,7 +13,8 @@ namespace Vintagestory.GameContent
     {
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
         {
-            return new ItemStack(world.GetBlock(CodeWithParts("placed", "darkpine", "5")));
+            string woodType = Variant["wood"];
+            return new ItemStack(world.GetBlock(CodeWithParts("placed", woodType, "5")));
         }
     }
 }

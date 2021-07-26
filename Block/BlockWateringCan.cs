@@ -66,6 +66,7 @@ namespace Vintagestory.GameContent
 
                 byEntity.World.PlaySoundAt(new AssetLocation("sounds/block/water"), pos.X, pos.Y, pos.Z, byPlayer);
                 handHandling = EnumHandHandling.PreventDefault;
+                return;
             }
 
 

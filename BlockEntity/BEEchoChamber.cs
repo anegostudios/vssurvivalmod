@@ -149,6 +149,7 @@ namespace Vintagestory.GameContent
             if (sound == null) return;
 
             track.Sound = sound;
+
             // Needed so that the music engine does not dispose the sound
             Api.Event.EnqueueMainThreadTask(() => track.loading = true, "settrackloading");
 
