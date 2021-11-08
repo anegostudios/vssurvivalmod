@@ -74,7 +74,7 @@ namespace Vintagestory.GameContent.Mechanics
             set
             {
                 CompositeShape prev = Shape;
-                if (prev != null && manager != null)
+                if (prev != null && manager != null && prev != value)
                 {
                     manager.RemoveDeviceForRender(this);
                     this.shape = value;
@@ -94,7 +94,7 @@ namespace Vintagestory.GameContent.Mechanics
         public MechanicalNetwork Network => network;
         public virtual BlockFacing OutFacingForNetworkDiscovery { get; protected set; } = null;
 
-        public virtual Block Block { get; set; }
+        public virtual Block Block => Blockentity.Block;
 
         protected BlockFacing propagationDir = BlockFacing.NORTH;
         private float gearedRatio = 1.0f;
@@ -135,7 +135,6 @@ namespace Vintagestory.GameContent.Mechanics
 
         public BEBehaviorMPBase(BlockEntity blockentity) : base(blockentity)
         {
-            Block = Blockentity.Block;
         }
 
 
@@ -328,7 +327,16 @@ namespace Vintagestory.GameContent.Mechanics
                     }
                 }
             }
+
+            SetOrientations();
+            updateShape(worldAccessForResolve);
         }
+
+        protected virtual void updateShape(IWorldAccessor worldForResolve)
+        {
+            Shape = Block?.Shape;
+        }
+
 
         public override void ToTreeAttributes(ITreeAttribute tree)
         {

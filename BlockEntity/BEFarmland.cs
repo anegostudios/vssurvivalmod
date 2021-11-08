@@ -102,7 +102,7 @@ namespace Vintagestory.GameContent
 
             if (api is ICoreServerAPI)
             {
-                RegisterGameTickListener(Update, 3500);
+                RegisterGameTickListener(Update, 3300 + rand.Next(400));
                 api.ModLoader.GetModSystem<POIRegistry>().AddPOI(this);
                 roomreg = Api.ModLoader.GetModSystem<RoomRegistry>();
             }
@@ -167,6 +167,7 @@ namespace Vintagestory.GameContent
                 originalFertility[0] += props.PermaBoost.N;
                 originalFertility[1] += props.PermaBoost.P;
                 originalFertility[2] += props.PermaBoost.K;
+                PermaBoosts.Add(props.PermaBoost.Code);
             }
 
             byPlayer.InventoryManager.ActiveHotbarSlot.TakeOut(1);
@@ -286,13 +287,26 @@ namespace Vintagestory.GameContent
                 lastWaterDistance = dist;
             }
 
-            updateMoistureLevel(totalDays, dist);
+            if (updateMoistureLevel(totalDays, dist)) UpdateFarmlandBlock();
 
             return true;
         }
 
-
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns>true if it was a longer interval check (checked rain as well) so that an UpdateFarmlandBlock() is advisable</returns>
         bool updateMoistureLevel(double totalDays, float waterDistance)
+        {
+            bool skyExposed = Api.World.BlockAccessor.GetRainMapHeightAt(Pos.X, Pos.Z) <= (GetCrop() == null ? Pos.Y : Pos.Y + 1);
+            return updateMoistureLevel(totalDays, waterDistance, skyExposed);
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns>true if it was a longer interval check (checked rain as well) so that an UpdateFarmlandBlock() is advisable</returns>
+        bool updateMoistureLevel(double totalDays, float waterDistance, bool skyExposed, ClimateCondition baseClimate = null)
         {
             tmpPos.Set(Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5);
 
@@ -302,7 +316,7 @@ namespace Vintagestory.GameContent
                 // Get wet from a water source
                 moistureLevel = Math.Max(moistureLevel, GameMath.Clamp(1 - waterDistance / 4f, 0, 1));
 
-                return true;
+                return false;
             }
 
             // Dry out
@@ -312,17 +326,16 @@ namespace Vintagestory.GameContent
             moistureLevel = Math.Max(moistureLevel, GameMath.Clamp(1 - waterDistance / 4f, 0, 1));
 
             // Get wet from all the rainfall since last update
-            if (Api.World.BlockAccessor.GetRainMapHeightAt(Pos.X, Pos.Z) <= Pos.Y + 1)
+            if (skyExposed)
             {
+                if (baseClimate == null && hoursPassed > 0) baseClimate = Api.World.BlockAccessor.GetClimateAt(Pos, EnumGetClimateMode.WorldGenValues, totalDays - hoursPassed * Api.World.Calendar.HoursPerDay / 2);
                 while (hoursPassed > 0)
                 {
-                    double rainLevel = wsys.GetPrecipitation(tmpPos.X, tmpPos.Y, tmpPos.Z, totalDays - hoursPassed * Api.World.Calendar.HoursPerDay);
+                    double rainLevel = wsys.GetPrecipitation(Pos, totalDays - hoursPassed * Api.World.Calendar.HoursPerDay, baseClimate);
                     moistureLevel = GameMath.Clamp(moistureLevel + (float)rainLevel / 3f, 0, 1);
                     hoursPassed--;
                 }
             }
-
-            UpdateFarmlandBlock();
 
             lastMoistureLevelUpdateTotalDays = totalDays;
 
@@ -338,9 +351,13 @@ namespace Vintagestory.GameContent
             double nowTotalHours = Api.World.Calendar.TotalHours;
             double hourIntervall = 3 + rand.NextDouble();
 
+            Block cropBlock = GetCrop();
+            bool hasCrop = cropBlock != null;
+            bool skyExposed = Api.World.BlockAccessor.GetRainMapHeightAt(Pos.X, Pos.Z) <= (hasCrop ? Pos.Y + 1 : Pos.Y);
+
             if ((nowTotalHours - totalHoursLastUpdate) < hourIntervall)
             {
-                updateMoistureLevel(Api.World.Calendar.TotalDays, lastWaterDistance);
+                if (updateMoistureLevel(Api.World.Calendar.TotalDays, lastWaterDistance, skyExposed)) UpdateFarmlandBlock();
                 return;
             }
 
@@ -351,7 +368,7 @@ namespace Vintagestory.GameContent
                 lightpenalty = Math.Max(0, Api.World.SeaLevel - Pos.Y);
             }
 
-            int sunlight = Api.World.BlockAccessor.GetLightLevel(Pos.UpCopy(), EnumLightLevelType.MaxLight);
+            int sunlight = Api.World.BlockAccessor.GetLightLevel(upPos, EnumLightLevelType.MaxLight);
             double lightGrowthSpeedFactor = GameMath.Clamp(1 - (delayGrowthBelowSunLight - sunlight - lightpenalty) * lossPerLevel, 0, 1);
 
             Block upblock = Api.World.BlockAccessor.GetBlock(upPos);
@@ -378,19 +395,21 @@ namespace Vintagestory.GameContent
             // Don't update more than a year
             totalHoursLastUpdate = Math.Max(totalHoursLastUpdate, nowTotalHours - Api.World.Calendar.DaysPerYear * Api.World.Calendar.HoursPerDay);
 
-            Block cropBlock = GetCrop();
-            bool hasCrop = cropBlock != null;
             bool hasRipeCrop = HasRipeCrop();
 
-            if (Api.World.BlockAccessor.GetRainMapHeightAt(Pos) > Pos.Y) // Fast pre-check
+            if (!skyExposed) // Fast pre-check
             {
-                Room room = roomreg?.GetRoomForPosition(Pos.UpCopy());
+                Room room = roomreg?.GetRoomForPosition(upPos);
                 roomness = (room != null && room.SkylightCount > room.NonSkylightCount && room.ExitCount == 0) ? 1 : 0;
             }
             else
             {
                 roomness = 0;
             }
+
+            ClimateCondition baseClimate = Api.World.BlockAccessor.GetClimateAt(Pos, EnumGetClimateMode.WorldGenValues);
+            if (baseClimate == null) return;
+            float baseTemperature = baseClimate.Temperature;
 
             // Fast forward in 3-4 hour intervalls
             while ((nowTotalHours - totalHoursLastUpdate) > hourIntervall)
@@ -406,13 +425,14 @@ namespace Vintagestory.GameContent
                     lastWaterDistance = waterDistance;
                 }
 
-                updateMoistureLevel(totalHoursLastUpdate / Api.World.Calendar.HoursPerDay, waterDistance);
+                updateMoistureLevel(totalHoursLastUpdate / Api.World.Calendar.HoursPerDay, waterDistance, skyExposed, baseClimate);
 
                 totalHoursLastUpdate += hourIntervall;
                 hourIntervall = 3 + rand.NextDouble();
 
-                ClimateCondition conds = Api.World.BlockAccessor.GetClimateAt(Pos, EnumGetClimateMode.ForSuppliedDateValues, totalHoursLastUpdate / Api.World.Calendar.HoursPerDay);
-                if (conds == null) return;
+                baseClimate.Temperature = baseTemperature;
+                ClimateCondition conds = Api.World.BlockAccessor.GetClimateAt(Pos, baseClimate, EnumGetClimateMode.ForSuppliedDate_TemperatureOnly, totalHoursLastUpdate / Api.World.Calendar.HoursPerDay);
+
                 if (roomness > 0)
                 {
                     conds.Temperature += 5;
@@ -461,8 +481,8 @@ namespace Vintagestory.GameContent
 
                         if (dmg > 48)
                         {
-                            Api.World.BlockAccessor.SetBlock(deadCropBlock.Id, Pos.UpCopy());
-                            var be = Api.World.BlockAccessor.GetBlockEntity(Pos.UpCopy()) as BlockEntityDeadCrop;
+                            Api.World.BlockAccessor.SetBlock(deadCropBlock.Id, upPos);
+                            var be = Api.World.BlockAccessor.GetBlockEntity(upPos) as BlockEntityDeadCrop;
                             be.Inventory[0].Itemstack = new ItemStack(cropBlock);
                             be.deathReason = (EnumCropStressType)i;
                             hasCrop = false;
@@ -725,7 +745,7 @@ namespace Vintagestory.GameContent
                 if (val.Value >= fertiltyValue) return i;
                 i++;
             }
-            return 3;
+            return Fertilities.Count - 1;
         }
 
         internal Block GetCrop()
@@ -931,6 +951,7 @@ namespace Vintagestory.GameContent
             }
 
             updateMoistureLevel(Api.World.Calendar.TotalDays, lastWaterDistance);
+            UpdateFarmlandBlock();
         }
 
         public double TotalHoursForNextStage

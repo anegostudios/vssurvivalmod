@@ -123,7 +123,7 @@ namespace Vintagestory.GameContent.Mechanics
                 slot.MarkDirty();
             }
             sailLength++;
-            updateShape();
+            updateShape(Api.World);
 
             Blockentity.MarkDirty(true);
             return true;
@@ -161,11 +161,6 @@ namespace Vintagestory.GameContent.Mechanics
         {
             sailLength = tree.GetInt("sailLength");
 
-            if (worldAccessForResolve.Side == EnumAppSide.Client && Block != null)
-            {
-                updateShape();
-            }
-
             base.FromTreeAttributes(tree, worldAccessForResolve);
         }
 
@@ -175,8 +170,13 @@ namespace Vintagestory.GameContent.Mechanics
             base.ToTreeAttributes(tree);
         }
 
-        protected override void updateShape()
+        protected override void updateShape(IWorldAccessor worldForResolve)
         {
+            if (worldForResolve.Side != EnumAppSide.Client || Block == null)
+            {
+                return;
+            }
+
             if (sailLength == 0)
             {
                 Shape = new CompositeShape()

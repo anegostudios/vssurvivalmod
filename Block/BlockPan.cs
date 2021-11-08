@@ -31,6 +31,8 @@ namespace Vintagestory.GameContent
 
         public override void OnLoaded(ICoreAPI api)
         {
+            base.OnLoaded(api);
+
             dropsBySourceMat = Attributes["panningDrops"].AsObject<Dictionary<string, PanningDrop[]>>();
 
             foreach (var drops in dropsBySourceMat.Values)
@@ -159,11 +161,6 @@ namespace Vintagestory.GameContent
                 ownTextureSource = capi.Tesselator.GetTexSource(this);
 
                 capi.Tesselator.TesselateShape("filledpan", shape, out meshdata, this);
-
-                /*if (target == EnumItemRenderTarget.Gui || target == EnumItemRenderTarget.HandFp || target == EnumItemRenderTarget.HandTp)
-                {
-                    meshdata.Rgba2 = null;
-                }*/
 
                 return capi.Render.UploadMesh(meshdata);
             });
@@ -416,10 +413,12 @@ namespace Vintagestory.GameContent
                     {
                         Block reducedBlock = api.World.GetBlock(new AssetLocation(baseCode + "-" + (int.Parse(layer) - 1)));
                         api.World.BlockAccessor.SetBlock(reducedBlock.BlockId, position);
-                        api.World.BlockAccessor.TriggerNeighbourBlockUpdate(position);
                     }
-                    
-                } else
+
+                    api.World.BlockAccessor.TriggerNeighbourBlockUpdate(position);
+
+                }
+                else
                 {
                     SetMaterial(slot, block);
                     Block reducedBlock = api.World.GetBlock(new AssetLocation(block.Code.Path + "-7"));

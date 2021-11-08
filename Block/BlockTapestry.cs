@@ -151,7 +151,6 @@ namespace Vintagestory.GameContent
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
-
             capi = api as ICoreClientAPI;
             orientation = BlockFacing.FromCode(Variant["side"]);
         }
@@ -163,15 +162,15 @@ namespace Vintagestory.GameContent
             base.OnBeforeRender(capi, itemstack, target, ref renderinfo);
 
             Dictionary<string, MeshRef> tapestryMeshes;
-            tapestryMeshes = ObjectCacheUtil.GetOrCreate(capi, "tapestryMeshes", () => new Dictionary<string, MeshRef>());
-
+            tapestryMeshes = ObjectCacheUtil.GetOrCreate(capi, "tapestryMeshesInventory", () => new Dictionary<string, MeshRef>());
+            renderinfo.NormalShaded = false;
             MeshRef meshref;
 
             string type = itemstack.Attributes.GetString("type", "");
 
             if (!tapestryMeshes.TryGetValue(type, out meshref))
             {
-                MeshData mesh = genMesh(false, type, 0);
+                MeshData mesh = genMesh(false, type, 0, true);
                 meshref = capi.Render.UploadMesh(mesh);
                 tapestryMeshes[type] = meshref;
             }
@@ -286,12 +285,12 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        public MeshData genMesh(bool rotten, string type, int rotVariant)
+        public MeshData genMesh(bool rotten, string type, int rotVariant, bool inventory = false)
         {
             MeshData mesh;
 
             TapestryTextureSource txs = new TapestryTextureSource(capi, rotten, type, rotVariant);
-            Shape shape = capi.TesselatorManager.GetCachedShape(Shape.Base);
+            Shape shape = capi.TesselatorManager.GetCachedShape(inventory ? ShapeInventory.Base : Shape.Base);
             capi.Tesselator.TesselateShape("tapestryblock", shape, out mesh, txs);
 
             return mesh;
@@ -329,7 +328,8 @@ namespace Vintagestory.GameContent
 
         public override string GetHeldItemName(ItemStack itemStack)
         {
-            return base.GetHeldItemName(itemStack);
+            string type = itemStack.Attributes.GetString("type", "");
+            return Lang.Get("tapestry-name", Lang.GetMatching("tapestry-" + type));
         }
 
         public override string GetPlacedBlockName(IWorldAccessor world, BlockPos pos)
@@ -337,7 +337,8 @@ namespace Vintagestory.GameContent
             BlockEntityTapestry bet = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityTapestry;
             if (bet?.Rotten == true) return Lang.Get("Rotten Tapestry");
 
-            return base.GetPlacedBlockName(world, pos);
+            string type = bet?.Type;
+            return Lang.Get("tapestry-name", Lang.GetMatching("tapestry-" + type));
         }
 
         public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
@@ -345,8 +346,6 @@ namespace Vintagestory.GameContent
             base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
 
             string type = inSlot.Itemstack.Attributes.GetString("type", "");
-
-            dsc.AppendLine(Lang.Get("Title: ") + " " + Lang.GetMatching("tapestry-" + type));
 
             dsc.AppendLine(GetWordedSection(inSlot, world));
 

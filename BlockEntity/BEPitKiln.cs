@@ -20,7 +20,9 @@ namespace Vintagestory.GameContent
         protected BuildStage[] buildStages;
         protected Shape shape;
         protected MeshData mesh;
+
         protected string[] selectiveElements;
+        protected Dictionary<string, string> textureCodeReplace = new Dictionary<string, string>();
         protected int currentBuildStage;
 
 
@@ -32,9 +34,38 @@ namespace Vintagestory.GameContent
 
         protected override int invSlotCount => 10;
 
+        public float BurnTimeHours = 20;
+
+        bool nowTesselatingKiln;
+        ITexPositionSource blockTexPos;
+
+        public override TextureAtlasPosition this[string textureCode]
+        {
+            get
+            {
+                if (nowTesselatingKiln)
+                {
+                    if (textureCodeReplace.TryGetValue(textureCode, out string replaceCode))
+                    {
+                        textureCode = replaceCode;
+                    }
+
+                    return blockTexPos[textureCode];
+                }
+
+                return base[textureCode];
+            }
+        }
+
         public override void Initialize(ICoreAPI api)
         {
             var bh = GetBehavior<BEBehaviorBurning>();
+
+            // Make sure the kiln doesn't burn longer than intended (e.g. when exported from an old world and imported into a new world)
+            if (Lit)
+            {
+                BurningUntilTotalHours = Math.Min(api.World.Calendar.TotalHours + BurnTimeHours, BurningUntilTotalHours);
+            }
 
             bh.OnFireTick = (dt) => {
                 if (api.World.Calendar.TotalHours >= BurningUntilTotalHours)
@@ -50,7 +81,7 @@ namespace Vintagestory.GameContent
             bh.ShouldBurn = () => Lit;
             bh.OnCanBurn = (pos) =>
             {
-                if (pos == this.Pos && !Lit && IsComplete) return true;
+                if (pos == Pos && !Lit && IsComplete) return true;
 
                 Block block = Api.World.BlockAccessor.GetBlock(pos);
                 Block upblock = Api.World.BlockAccessor.GetBlock(Pos.UpCopy());
@@ -110,27 +141,63 @@ namespace Vintagestory.GameContent
             if (currentBuildStage < buildStages.Length)
             {
                 BuildStage stage = buildStages[currentBuildStage];
+                BuildStageMaterial[] mats = stage.Materials;
 
-                if (stage.Material.Equals(Api.World, hotbarSlot.Itemstack, GlobalConstants.IgnoredStackAttributes) && stage.Material.StackSize <= hotbarSlot.StackSize)
+                for (int i = 0; i < mats.Length; i++)
                 {
-                    int toMove = stage.Material.StackSize;
-                    for (int i = 4; i < invSlotCount && toMove > 0; i++)
+                    var stack = mats[i].ItemStack;
+
+                    if (stack.Equals(Api.World, hotbarSlot.Itemstack, GlobalConstants.IgnoredStackAttributes) && stack.StackSize <= hotbarSlot.StackSize)
                     {
-                        toMove -= hotbarSlot.TryPutInto(Api.World, inventory[i], toMove);
+                        if (!isSameMatAsPreviouslyAdded(stack)) continue;
+
+                        int toMove = stack.StackSize;
+                        for (int j = 4; j < invSlotCount && toMove > 0; j++)
+                        {
+                            toMove -= hotbarSlot.TryPutInto(Api.World, inventory[j], toMove);
+                        }
+
+                        hotbarSlot.MarkDirty();
+
+                        currentBuildStage++;
+                        mesh = null;
+                        MarkDirty(true);
+                        updateSelectiveElements();
+                        (player as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
+
+                        if (stack.Collectible.Attributes?["placeSound"].Exists == true)
+                        {
+                            AssetLocation sound = AssetLocation.Create(stack.Collectible.Attributes["placeSound"].AsString(), stack.Collectible.Code.Domain);
+                            if (sound != null)
+                            {
+                                Api.World.PlaySoundAt(sound.WithPathPrefixOnce("sounds/"), Pos.X + 0.5, Pos.Y + 0.1, Pos.Z + 0.5, player, true, 12);
+                            }
+                        }
                     }
-
-                    hotbarSlot.MarkDirty();
-
-                    currentBuildStage++;
-                    mesh = null;
-                    MarkDirty(true);
-                    updateSelectiveElements();
-                    (player as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
                 }
             }
 
 
             DetermineStorageProperties(null);
+
+            return true;
+        }
+
+
+        protected bool isSameMatAsPreviouslyAdded(ItemStack newStack)
+        {
+            BuildStage bstage = buildStages[currentBuildStage];
+
+            for (int i = 0; i < inventory.Count; i++)
+            {
+                ItemSlot slot = inventory[i];
+                if (slot.Empty) continue;
+
+                if (bstage.Materials.FirstOrDefault(bsm => bsm.ItemStack.Equals(Api.World, slot.Itemstack, GlobalConstants.IgnoredStackAttributes)) != null)
+                {
+                    if (!newStack.Equals(Api.World, slot.Itemstack, GlobalConstants.IgnoredStackAttributes)) return false;
+                }
+            }
 
             return true;
         }
@@ -152,7 +219,7 @@ namespace Vintagestory.GameContent
 
         public float GetHeatStrength(IWorldAccessor world, BlockPos heatSourcePos, BlockPos heatReceiverPos)
         {
-            return Lit ? 3 : 0;
+            return Lit ? 10 : 0;
         }
 
 
@@ -216,8 +283,17 @@ namespace Vintagestory.GameContent
             DetermineBuildStages();
             DetermineStorageProperties(null);
 
-            inventory[4].Itemstack = byPlayer.InventoryManager.ActiveHotbarSlot.TakeOut(buildStages[0].Material.StackSize);
+            var stack = inventory[4].Itemstack = byPlayer.InventoryManager.ActiveHotbarSlot.TakeOut(buildStages[0].Materials[0].ItemStack.StackSize);
             currentBuildStage++;
+
+            if (stack.Collectible.Attributes?["placeSound"].Exists == true)
+            {
+                AssetLocation sound = AssetLocation.Create(stack.Collectible.Attributes["placeSound"].AsString(), stack.Collectible.Code.Domain);
+                if (sound != null)
+                {
+                    Api.World.PlaySoundAt(sound.WithPathPrefixOnce("sounds/"), Pos.X + 0.5, Pos.Y + 0.1, Pos.Z + 0.5, byPlayer, true, 12);
+                }
+            }
 
             byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
 
@@ -251,17 +327,76 @@ namespace Vintagestory.GameContent
 
         private void updateSelectiveElements()
         {
-            selectiveElements = new string[currentBuildStage];
-            for (int i = 0; i < currentBuildStage; i++)
+            if (Api.Side == EnumAppSide.Client)
             {
-                selectiveElements[i] = buildStages[i].ElementName;
+                textureCodeReplace.Clear();
+
+                Dictionary<string, string> matCodeToEleCode = new Dictionary<string, string>();
+                for (int i = 0; i < currentBuildStage; i++)
+                {
+                    var bStage = buildStages[i];
+                    if (!matCodeToEleCode.ContainsKey(bStage.MatCode))
+                    {
+                        var bsm = currentlyUsedMaterialOfStage(bStage);
+                        matCodeToEleCode[bStage.MatCode] = bsm?.EleCode;
+
+                        if (bsm.TextureCodeReplace != null)
+                        {
+                            textureCodeReplace[bsm.TextureCodeReplace.From] = bsm.TextureCodeReplace.To;
+                        }
+                    }
+                }
+
+                selectiveElements = new string[currentBuildStage];
+                for (int i = 0; i < currentBuildStage; i++)
+                {
+                    string eleName = buildStages[i].ElementName;
+                    if (matCodeToEleCode.TryGetValue(buildStages[i].MatCode, out string replace))
+                    {
+                        eleName = eleName.Replace("{eleCode}", replace);
+                    }
+
+                    selectiveElements[i] = eleName;
+                }
+            } else
+            {
+                for (int i = 0; i < currentBuildStage; i++)
+                {
+                    var bStage = buildStages[i];
+                    var bsm = currentlyUsedMaterialOfStage(bStage);
+                    if (bsm?.BurnTimeHours != null)
+                    {
+                        BurnTimeHours = (float)bsm.BurnTimeHours;
+                    }
+                }
             }
+
+            
 
             colSelBoxes[0].X1 = 0;
             colSelBoxes[0].X2 = 1;
             colSelBoxes[0].Z1 = 0;
             colSelBoxes[0].Z2 = 1;
             colSelBoxes[0].Y2 = Math.Max(colSelBoxes[0].Y2, buildStages[Math.Min(buildStages.Length - 1, currentBuildStage)].MinHitboxY2 / 16f);
+        }
+
+
+
+        BuildStageMaterial currentlyUsedMaterialOfStage(BuildStage buildStage)
+        {
+            BuildStageMaterial[] bsms = buildStage.Materials;
+
+            for (int i = 0; i < bsms.Length; i++)
+            {
+                var bsm = bsms[i];
+                foreach (var slot in inventory)
+                {
+                    if (slot.Empty) continue;
+                    if (slot.Itemstack.Equals(Api.World, bsm.ItemStack, GlobalConstants.IgnoredStackAttributes)) return bsm;
+                }
+            }
+
+            return null;
         }
 
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
@@ -305,12 +440,17 @@ namespace Vintagestory.GameContent
         }
 
 
+        
+
         public override bool OnTesselation(ITerrainMeshPool meshdata, ITesselatorAPI tesselator)
         {
             DetermineBuildStages();
             if (mesh == null)
             {
-                tesselator.TesselateShape(Block, shape, out mesh, null, null, selectiveElements);
+                nowTesselatingKiln = true;
+                blockTexPos = tesselator.GetTexSource(Block);
+                tesselator.TesselateShape("pitkiln", shape, out mesh, this, null, 0, 0, 0, null, selectiveElements);
+                nowTesselatingKiln = false;
                 mesh.Scale(new Vec3f(0.5f, 0.5f, 0.5f), 1.005f, 1.005f, 1.005f);
                 mesh.Translate(0, GameMath.MurmurHash3Mod(Pos.X, Pos.Y, Pos.Z, 10)/500f, 0);
             }
@@ -329,12 +469,17 @@ namespace Vintagestory.GameContent
 
         public void TryIgnite(IPlayer byPlayer)
         {
-            BurningUntilTotalHours = Api.World.Calendar.TotalHours + 20f;
+            BurningUntilTotalHours = Api.World.Calendar.TotalHours + BurnTimeHours;
 
             var bh = GetBehavior<BEBehaviorBurning>();
             Lit = true;
             bh.OnFirePlaced(Pos.UpCopy(), Pos.Copy(), byPlayer?.PlayerUID);
+
+            Api.World.BlockAccessor.ExchangeBlock(Block.Id, Pos); // Forces a relight of this block
+
             MarkDirty(true);
+
+            
 
             //Api.World.Logger.Debug(string.Format("Pit kiln @{0}: Ignited.", Pos));
         }
@@ -382,6 +527,7 @@ namespace Vintagestory.GameContent
             if (!consumefuel)
             {
                 Lit = false;
+                Api.World.BlockAccessor.RemoveBlockLight((Block as BlockPitkiln).litKilnLightHsv, Pos);
                 MarkDirty(true);
                 return; // Probably extinguished by rain
             }
@@ -390,6 +536,7 @@ namespace Vintagestory.GameContent
 
             Block blockgs = Api.World.GetBlock(new AssetLocation("groundstorage"));
             Api.World.BlockAccessor.SetBlock(blockgs.Id, Pos);
+            Api.World.BlockAccessor.RemoveBlockLight((Block as BlockPitkiln).litKilnLightHsv, Pos);
 
             var begs = Api.World.BlockAccessor.GetBlockEntity(Pos) as BlockEntityGroundStorage;
 
@@ -398,18 +545,10 @@ namespace Vintagestory.GameContent
 
             begs.ForceStorageProps(storeprops ?? StorageProps);
 
-            //StringBuilder sb = new StringBuilder();
-           // sb.Append(string.Format("Pit kiln @{0}: Kill fire. Replacing with ground storage. Moving Items:", Pos));
             for (int i = 0; i < 4; i++)
             {
                 begs.Inventory[i] = inventory[i];
-
-                /*if (!inventory[i].Empty) {
-                    sb.Append(inventory[i].Itemstack.GetName());
-                }*/
             }
-
-            //Api.World.Logger.Debug(sb.ToString());
 
             MarkDirty(true);
             Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(Pos);

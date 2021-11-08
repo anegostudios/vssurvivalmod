@@ -39,9 +39,12 @@ namespace Vintagestory.GameContent
 
         public override bool StartAnimation(AnimationMetaData animdata)
         {
+            if ((animdata.Code == "idle2" || animdata.Code == "laugh") && ActiveAnimationsByAnimCode.ContainsKey(Personality + "welcome")) return false;
+
             if (Personality == "formal" || Personality == "rowdy" || Personality == "lazy")
             {
                 StopAnimation(Personality + "idle");
+                StopAnimation(Personality + "laugh");
                 StopAnimation(Personality + "idle2");
             }
 

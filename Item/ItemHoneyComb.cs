@@ -54,6 +54,7 @@ namespace Vintagestory.GameContent
                     new WorldInteraction()
                     {
                         ActionLangCode = "heldhelp-squeeze",
+                        HotKeyCode = "sneak",
                         MouseButton = EnumMouseButton.Right,
                         Itemstacks = stacks.ToArray()
                     }
@@ -65,7 +66,7 @@ namespace Vintagestory.GameContent
 
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
-            if (blockSel == null) return;
+            if (blockSel == null || !byEntity.Controls.Sneak) return;
 
             Block block = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
 
@@ -74,14 +75,14 @@ namespace Vintagestory.GameContent
                 handling = EnumHandHandling.PreventDefault;
                 if (api.World.Side == EnumAppSide.Client)
                 {
-                    byEntity.World.PlaySoundAt(new AssetLocation("sounds/player/squeezehoneycomb"), byEntity);
+                    byEntity.World.PlaySoundAt(new AssetLocation("sounds/player/squeezehoneycomb"), byEntity, null, true, 16, 0.5f);
                 }
             }
         }
 
         public override bool OnHeldInteractStep(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
-            if (blockSel == null) return false;
+            if (blockSel == null || !byEntity.Controls.Sneak) return false;
 
             if (byEntity.World is IClientWorldAccessor)
             {

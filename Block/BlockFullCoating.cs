@@ -21,6 +21,8 @@ namespace Vintagestory.GameContent
 
         public override void OnLoaded(ICoreAPI api)
         {
+            base.OnLoaded(api);
+
             string facingletters = Variant["coating"];
 
             ownFacings = new BlockFacing[facingletters.Length];

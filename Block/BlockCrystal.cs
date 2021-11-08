@@ -16,6 +16,8 @@ namespace Vintagestory.GameContent
 
         public override void OnLoaded(ICoreAPI api)
         {
+            base.OnLoaded(api);
+
             rand = new Random(api.World.Seed + 131);
 
             FacingBlocks = new Block[6];
@@ -39,7 +41,7 @@ namespace Vintagestory.GameContent
         {
             if (world.Rand.NextDouble() < 0.25)
             {
-                ItemStack stack = new ItemStack(this);
+                ItemStack stack = new ItemStack(api.World.GetBlock(CodeWithVariant("position", "up")));
                 stack.StackSize = 1;
                 world.SpawnItemEntity(stack, new Vec3d(pos.X + 0.5, pos.Y + 0.5, pos.Z + 0.5), null);
             } else

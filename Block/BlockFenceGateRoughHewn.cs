@@ -38,7 +38,7 @@ namespace Vintagestory.GameContent
         {
             AssetLocation newCode = CodeWithVariant("state", IsOpened() ? "closed" : "opened");
 
-            world.BlockAccessor.SetBlock(world.BlockAccessor.GetBlock(newCode).BlockId, pos);
+            world.BlockAccessor.ExchangeBlock(world.BlockAccessor.GetBlock(newCode).BlockId, pos);
         }
 
         protected override BlockPos TryGetConnectedDoorPos(BlockPos pos)

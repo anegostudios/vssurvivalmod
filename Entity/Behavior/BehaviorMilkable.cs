@@ -55,9 +55,11 @@ namespace Vintagestory.GameContent
             EntityBehaviorTaskAI taskAi = entity.GetBehavior<EntityBehaviorTaskAI>();
             taskAi.taskManager.ShouldExecuteTask = (task) => !IsBeingMilked;
 
-            // wtf is this for? this does not fix the forever milkable bug but causes it? o.O
-            //bhmul = entity.GetBehavior<EntityBehaviorMultiply>();
-            //bhmul.TotalDaysLastBirth = Math.Max(bhmul.TotalDaysLastBirth, entity.World.Calendar.TotalDays);
+            // Make sure TotalDaysLastBirth is not a future date (e.g. when exported from an old world and imported into a new world)
+            bhmul = entity.GetBehavior<EntityBehaviorMultiply>();
+            bhmul.TotalDaysLastBirth = Math.Min(bhmul.TotalDaysLastBirth, entity.World.Calendar.TotalDays);
+
+            lastMilkedTotalHours = Math.Min(lastMilkedTotalHours, entity.World.Calendar.TotalHours);
         }
 
         public bool TryBeginMilking()
@@ -80,7 +82,7 @@ namespace Vintagestory.GameContent
             double daysSinceBirth = Math.Max(0, entity.World.Calendar.TotalDays - bhmul.TotalDaysLastBirth);
             if (bhmul != null && daysSinceBirth >= lactatingDaysAfterBirth) return false;
 
-            // Can only be milked every 24 hours
+            // Can only be milked once every day
             if (entity.World.Calendar.TotalHours - lastMilkedTotalHours < entity.World.Calendar.HoursPerDay) return false;
             int generation = entity.WatchedAttributes.GetInt("generation", 0);
             aggroChance = Math.Min(1 - generation / 3f, 0.95f);

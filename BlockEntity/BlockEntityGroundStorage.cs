@@ -77,7 +77,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public TextureAtlasPosition this[string textureCode]
+        public virtual TextureAtlasPosition this[string textureCode]
         {
             get
             {
@@ -152,7 +152,11 @@ namespace Vintagestory.GameContent
         public BlockEntityGroundStorage() : base()
         {
             meshes = new MeshData[invSlotCount];
-            inventory = new InventoryGeneric(invSlotCount, null, null);
+            inventory = new InventoryGeneric(invSlotCount, null, null, (int slotId, InventoryGeneric inv) => new ItemSlot(inv));
+            foreach (var slot in inventory)
+            {
+                slot.StorageType |= EnumItemStorageFlags.Backpack;
+            }
 
             colSelBoxes = new Cuboidf[] { new Cuboidf(0, 0, 0, 1, 0.25f, 1) };
         }

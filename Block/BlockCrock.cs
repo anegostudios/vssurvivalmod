@@ -351,7 +351,7 @@ namespace Vintagestory.GameContent
 
             if (stacks == null || stacks.Length == 0)
             {
-                dsc.AppendLine("Empty");
+                dsc.AppendLine(Lang.Get("Empty"));
 
                 if (inSlot.Itemstack.Attributes.GetBool("sealed"))
                 {
@@ -431,7 +431,7 @@ namespace Vintagestory.GameContent
 
             if (stacks == null || stacks.Length == 0)
             {
-                return "Empty";
+                return Lang.Get("Empty");
             }
 
             StringBuilder dsc = new StringBuilder();

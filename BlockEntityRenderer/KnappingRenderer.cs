@@ -59,7 +59,6 @@ namespace Vintagestory.GameContent
             IRenderAPI rpi = api.Render;
             IClientWorldAccessor worldAccess = api.World;
             Vec3d camPos = worldAccess.Player.Entity.CameraPos;
-            EntityPos plrPos = worldAccess.Player.Entity.Pos;
 
             rpi.GlDisableCullFace();
             IStandardShaderProgram prog = rpi.PreparedStandardShader(pos.X, pos.Y, pos.Z);
@@ -117,7 +116,6 @@ namespace Vintagestory.GameContent
             }
 
             MeshData workItemMesh = new MeshData(24, 36, false);
-            //workItemMesh.Rgba2 = null;
 
             float subPixelPaddingx = api.BlockTextureAtlas.SubPixelPaddingX;
             float subPixelPaddingy = api.BlockTextureAtlas.SubPixelPaddingY;
@@ -181,8 +179,6 @@ namespace Vintagestory.GameContent
 
         private void RegenOutlineMesh(KnappingRecipe recipeToOutline, bool[,] Voxels)
         {
-            recipeOutlineMeshRef?.Dispose();
-
             MeshData recipeOutlineMesh = new MeshData(24, 36, false, false, true, false);
             recipeOutlineMesh.SetMode(EnumDrawMode.Lines);
 
@@ -224,7 +220,12 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            recipeOutlineMeshRef = api.Render.UploadMesh(recipeOutlineMesh);
+            recipeOutlineMeshRef?.Dispose();
+            recipeOutlineMeshRef = null;
+            if (recipeOutlineMesh.VerticesCount > 0)
+            {
+                recipeOutlineMeshRef = api.Render.UploadMesh(recipeOutlineMesh);
+            }
         }
 
         public void Dispose()

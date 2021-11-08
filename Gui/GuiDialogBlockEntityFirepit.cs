@@ -35,7 +35,8 @@ namespace Vintagestory.GameContent
 
         private void OnInventorySlotModified(int slotid)
         {
-            SetupDialog();
+            // Direct call can cause InvalidOperationException
+            capi.Event.EnqueueMainThreadTask(SetupDialog, "setupfirepitdlg");
         }
 
         void SetupDialog()
@@ -43,12 +44,8 @@ namespace Vintagestory.GameContent
             ItemSlot hoveredSlot = capi.World.Player.InventoryManager.CurrentHoveredSlot;
             if (hoveredSlot != null && hoveredSlot.Inventory?.InventoryID != Inventory?.InventoryID)
             {
-                //capi.Input.TriggerOnMouseLeaveSlot(hoveredSlot); - wtf is this for?
                 hoveredSlot = null;
             }
-
-            
-
 
             string newOutputText = Attributes.GetString("outputText", "");
             bool newHaveCookingContainer = Attributes.GetInt("haveCookingContainer") > 0;

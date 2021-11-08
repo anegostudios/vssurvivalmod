@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Text;
 using System.Threading;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -332,6 +333,17 @@ namespace Vintagestory.GameContent
             return base.CanAttachBlockAt(world, block, pos, blockFace);
         }
 
+        public override bool AllowSnowCoverage(IWorldAccessor world, BlockPos blockPos)
+        {
+            BlockEntityMicroBlock be = world.BlockAccessor.GetBlockEntity(blockPos) as BlockEntityMicroBlock;
+            if (be != null)
+            {
+                return be.sideAlmostSolid[BlockFacing.UP.Index];
+            }
+
+            return base.AllowSnowCoverage(world, blockPos);
+        }
+
         public override void OnBlockPlaced(IWorldAccessor world, BlockPos blockPos, ItemStack byItemStack)
         {
             base.OnBlockPlaced(world, blockPos, byItemStack);
@@ -458,10 +470,32 @@ namespace Vintagestory.GameContent
         }
 
 
+        public override string GetHeldItemName(ItemStack itemStack)
+        {
+            if (itemStack.Attributes.HasAttribute("blockName"))
+            {
+                return itemStack.Attributes.GetString("blockName", "").Split('\n')[0];
+            }
+
+            return base.GetHeldItemName(itemStack);
+        }
+
+        public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
+        {
+            if (inSlot.Itemstack.Attributes.HasAttribute("blockName"))
+            {
+                string bname = inSlot.Itemstack.Attributes.GetString("blockName", "");
+                dsc.AppendLine(bname.Substring(bname .IndexOf('\n') + 1));
+            }
+            
+
+            base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
+        }
+
         public override string GetPlacedBlockName(IWorldAccessor world, BlockPos pos)
         {
             BlockEntityMicroBlock be = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityMicroBlock;
-            if (be != null) return be.BlockName;
+            if (be != null) return be.BlockName.Split('\n')[0];
 
             return base.GetPlacedBlockName(world, pos);
         }

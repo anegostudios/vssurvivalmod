@@ -6,7 +6,7 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    class ItemFirewood : ItemPileable
+    public class ItemFirewood : ItemPileable
     {
         protected override AssetLocation PileBlockCode => new AssetLocation("firewoodpile");
 

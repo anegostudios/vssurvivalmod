@@ -550,7 +550,7 @@ namespace Vintagestory.GameContent
 
             foreach (var val in totalSaturation)
             {
-                sb.AppendLine("- " + Lang.Get("" + val.Key) + ": " + Math.Round(val.Value) + " sat.");
+                sb.AppendLine(Lang.Get("nutrition-facts-line-satiety", Lang.Get("foodcategory-" + val.Key.ToString().ToLowerInvariant()), Math.Round(val.Value)));
             }
 
             if (totalHealth != 0)

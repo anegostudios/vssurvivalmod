@@ -552,7 +552,7 @@ namespace Vintagestory.GameContent
                 contents += Lang.Get("{0} units of {1} {2} ({3})", fillLevelRight, state, contentsRight.GetName(), temp) + "\n";
             }
 
-            dsc.AppendLine(contents.Length == 0 ? "Empty" : contents);
+            dsc.AppendLine(contents.Length == 0 ? Lang.Get("Empty") : contents);
         }
 
         public override void OnBlockUnloaded()

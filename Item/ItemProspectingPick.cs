@@ -296,8 +296,23 @@ namespace Vintagestory.GameContent
 				throw new NotImplementedException();
 			}
 
-			#endregion
-		}
+            public void BreakDecorPart(IWorldAccessor world, BlockPos pos, BlockFacing side, int faceAndSubposition)
+            {
+                throw new NotImplementedException();
+            }
+
+            public Block GetDecor(IBlockAccessor blockAccessor, BlockPos pos, int faceAndSubposition)
+            {
+                throw new NotImplementedException();
+            }
+
+            bool IWorldChunk.BreakDecorPart(IWorldAccessor world, BlockPos pos, BlockFacing side, int faceAndSubposition)
+            {
+                throw new NotImplementedException();
+            }
+
+            #endregion
+        }
     }
 
 

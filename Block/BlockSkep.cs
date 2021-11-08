@@ -107,14 +107,32 @@ namespace Vintagestory.GameContent
 
         public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
         {
-            return new WorldInteraction[]
+            var wi = new WorldInteraction()
             {
-                new WorldInteraction()
+                ActionLangCode = LastCodePart(1) == "populated" ? "blockhelp-skep-putinbagslot" : "blockhelp-skep-pickup",
+                MouseButton = EnumMouseButton.Right
+            };
+
+            BlockEntityBeehive beh = world.BlockAccessor.GetBlockEntity(selection.Position) as BlockEntityBeehive;
+            if (beh?.Harvestable == true)
+            {
+                return new WorldInteraction[]
                 {
-                    ActionLangCode = LastCodePart(1) == "populated" ? "blockhelp-skep-putinbagslot" : "blockhelp-skep-pickup",
-                    MouseButton = EnumMouseButton.Right
-                }
-            }.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
+                    wi,
+                    new WorldInteraction()
+                    {
+                        ActionLangCode = "blockhelp-skep-harvest",
+                        MouseButton = EnumMouseButton.Left
+                    }
+                }.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
+
+            }
+            else
+            {
+                return new WorldInteraction[] { wi }.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
+
+            }
+
 
 
         }

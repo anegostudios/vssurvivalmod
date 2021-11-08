@@ -25,6 +25,30 @@ namespace Vintagestory.GameContent
         public string FoodForDesc;
     }
 
+    public class DoubleTroughPoiDummy : IAnimalFoodSource
+    {
+        BlockEntityTrough be;
+
+        public DoubleTroughPoiDummy(BlockEntityTrough be)
+        {
+            this.be = be;
+        }
+
+        public Vec3d Position { get; set; }
+
+        public string Type => be.Type;
+
+        public float ConsumeOnePortion()
+        {
+            return be.ConsumeOnePortion();
+        }
+
+        public bool IsSuitableFor(Entity entity)
+        {
+            return be.IsSuitableFor(entity);
+        }
+    }
+
     public class BlockEntityTrough : BlockEntityContainer, ITexPositionSource, IAnimalFoodSource
     {
         internal InventoryGeneric inventory;
@@ -43,6 +67,8 @@ namespace Vintagestory.GameContent
         ContentConfig[] contentConfigs;
 
         string contentCode = "";
+
+        DoubleTroughPoiDummy dummypoi;
 
         public ContentConfig[] ContentConfig => contentConfigs;
 
@@ -142,6 +168,15 @@ namespace Vintagestory.GameContent
             {
                 Api.ModLoader.GetModSystem<POIRegistry>().AddPOI(this);
 
+                BlockTroughDoubleBlock doubleblock = Block as BlockTroughDoubleBlock;
+
+                if (doubleblock != null)
+                {
+                    dummypoi = new DoubleTroughPoiDummy(this) { Position = doubleblock.OtherPartPos(Pos).ToVec3d().Add(0.5, 0.5, 0.5) };
+                    Api.ModLoader.GetModSystem<POIRegistry>().AddPOI(dummypoi);
+                }
+
+
             }
 
             inventory.SlotModified += Inventory_SlotModified;
@@ -176,6 +211,7 @@ namespace Vintagestory.GameContent
             if (Api.Side == EnumAppSide.Server)
             {
                 Api.ModLoader.GetModSystem<POIRegistry>().RemovePOI(this);
+                if (dummypoi != null) Api.ModLoader.GetModSystem<POIRegistry>().RemovePOI(dummypoi);
             }
         }
 
@@ -186,6 +222,7 @@ namespace Vintagestory.GameContent
             if (Api?.Side == EnumAppSide.Server)
             {
                 Api.ModLoader.GetModSystem<POIRegistry>().RemovePOI(this);
+                if (dummypoi != null) Api.ModLoader.GetModSystem<POIRegistry>().RemovePOI(dummypoi);
             }
         }
 
@@ -193,17 +230,33 @@ namespace Vintagestory.GameContent
 
         internal MeshData GenMesh()
         {
-            if (Block == null || contentCode == "" || contentConfigs == null) return null;
-            ContentConfig config = contentConfigs.FirstOrDefault(c => c.Code == contentCode);
-            if (config == null) return null;
-
-            ICoreClientAPI capi = Api as ICoreClientAPI;
-
+            if (Block == null) return null;
             ItemStack firstStack = inventory[0].Itemstack;
             if (firstStack == null) return null;
 
-            int fillLevel = Math.Max(0, firstStack.StackSize / config.QuantityPerFillLevel - 1);
-            string shapeLoc = config.ShapesPerFillLevel[Math.Min(config.ShapesPerFillLevel.Length - 1, fillLevel)];
+            string shapeLoc = "";
+            ICoreClientAPI capi = Api as ICoreClientAPI;
+
+            if (contentCode == "" || contentConfigs == null)
+            {
+                if (firstStack.Collectible.Code.Path == "rot")
+                {
+                    shapeLoc = "block/wood/trough/"+(Block.Variant["part"] == "small" ? "small" : "large")+"/rotfill" + GameMath.Clamp(firstStack.StackSize / 4, 1, 4);
+                }
+                else
+                {
+                    return null;
+                }
+            } else
+            {
+                ContentConfig config = contentConfigs.FirstOrDefault(c => c.Code == contentCode);
+                if (config == null) return null;
+
+                int fillLevel = Math.Max(0, firstStack.StackSize / config.QuantityPerFillLevel - 1);
+                shapeLoc = config.ShapesPerFillLevel[Math.Min(config.ShapesPerFillLevel.Length - 1, fillLevel)];
+            }
+
+
 
             Vec3f rotation = new Vec3f(Block.Shape.rotateX, Block.Shape.rotateY, Block.Shape.rotateZ);
             MeshData meshbase;
@@ -218,7 +271,7 @@ namespace Vintagestory.GameContent
             if (doubleblock != null)
             {
                 capi.Tesselator.TesselateShape("betroughcontentsright", shape, out meshadd, this, rotation.Add(0, 180, 0));
-                BlockFacing facing = doubleblock.OtherPartPos();
+                BlockFacing facing = doubleblock.OtherPartFacing();
                 meshadd.Translate(facing.Normalf);
                 meshbase.AddMeshData(meshadd);
             }
@@ -300,10 +353,20 @@ namespace Vintagestory.GameContent
 
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
         {
-            if (contentConfigs == null) return;
+            ItemStack firstStack = inventory[0].Itemstack;
+
+            if (contentConfigs == null)
+            {
+                return;
+            }
 
             ContentConfig config = contentConfigs.FirstOrDefault(c => c.Code == contentCode);
-            ItemStack firstStack = inventory[0].Itemstack;
+
+            if (config == null && firstStack != null)
+            {
+                dsc.AppendLine(firstStack.StackSize + "x " + firstStack.GetName());
+            }
+
 
             if (config == null || firstStack == null) return;
 

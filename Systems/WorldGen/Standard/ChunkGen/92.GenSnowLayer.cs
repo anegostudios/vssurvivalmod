@@ -105,7 +105,8 @@ namespace Vintagestory.ServerMods
         }
 
 
-        bool PlaceSnowLayer(int x, int posY, int z, IServerChunk[] chunks, float temp)
+
+        bool PlaceSnowLayer(int lx, int posY, int lz, IServerChunk[] chunks, float temp)
         {
             float transDistance = temp - minTemp;
 
@@ -118,18 +119,18 @@ namespace Vintagestory.ServerMods
                 return false;
             }
 
-            while (posY < worldheight - 1 && chunks[(posY+1) / chunksize].Blocks[(chunksize * ((posY + 1) % chunksize) + z) * chunksize + x] != 0)
+            while (posY < worldheight - 1 && chunks[(posY+1) / chunksize].Blocks[(chunksize * ((posY + 1) % chunksize) + lz) * chunksize + lx] != 0)
             {
                 posY++;
             }
 
             if (posY >= worldheight - 1) return false;
 
-            int blockId = chunks[posY / chunksize].Blocks[(chunksize * (posY % chunksize) + z) * chunksize + x];
+            int blockId = chunks[posY / chunksize].Blocks[(chunksize * (posY % chunksize) + lz) * chunksize + lx];
             Block block = api.World.Blocks[blockId];
-            if (block.SnowCoverage == null && block.SideSolid[BlockFacing.UP.Index] || (block.SnowCoverage == true))
+            if (block.SideSolid[BlockFacing.UP.Index])
             {
-                chunks[(posY + 1) / chunksize].Blocks[(chunksize * ((posY + 1) % chunksize) + z) * chunksize + x] = blockLayerConfig.SnowLayer.BlockId;
+                chunks[(posY + 1) / chunksize].Blocks[(chunksize * ((posY + 1) % chunksize) + lz) * chunksize + lx] = blockLayerConfig.SnowLayer.BlockId;
                 return true;
             }
 

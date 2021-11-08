@@ -703,6 +703,8 @@ namespace Vintagestory.GameContent
             return slots[36 + index] as ItemSlotSurvival;
         }
 
+        string[] ignoredAttrs = GlobalConstants.IgnoredStackAttributes.Append("backpack").Append("condition");
+
         public ItemSlotTrade GetBuyingConditionsSlot(ItemStack forStack)
         {
             for (int i = 0; i < 4*4; i++)
@@ -710,7 +712,7 @@ namespace Vintagestory.GameContent
                 ItemSlotTrade slot = GetBuyingSlot(i);
                 if (slot.Itemstack == null) continue;
 
-                if (slot.Itemstack.Equals(Api.World, forStack, GlobalConstants.IgnoredStackAttributes.Append("backpack")) || slot.Itemstack.Satisfies(forStack))
+                if (slot.Itemstack.Equals(Api.World, forStack, ignoredAttrs) || slot.Itemstack.Satisfies(forStack))
                 {
                     if (forStack.Collectible.IsReasonablyFresh(traderEntity.World, forStack)) return slot;
                 }

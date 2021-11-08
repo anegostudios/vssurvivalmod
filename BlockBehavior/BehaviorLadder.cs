@@ -331,8 +331,8 @@ namespace Vintagestory.GameContent
 
             Block block = blockAccess.GetBlock(pos.X + facing.Normali.X, pos.Y, pos.Z + facing.Normali.Z);
 
-            Cuboidi upHalf = new Cuboidi(14, 0, 0, 15, 7, 15).RotatedCopy(0, 90 * facing.HorizontalAngleIndex, 0, new Vec3d(0.5, 0.5, 0.5));
-            Cuboidi downHalf = new Cuboidi(14, 8, 0, 15, 15, 15).RotatedCopy(0, 90 * facing.HorizontalAngleIndex, 0, new Vec3d(0.5, 0.5, 0.5));
+            Cuboidi upHalf = new Cuboidi(14, 0, 0, 15, 7, 15).RotatedCopy(0, 90 * facing.HorizontalAngleIndex, 0, new Vec3d(7.5, 0, 7.5));
+            Cuboidi downHalf = new Cuboidi(14, 8, 0, 15, 15, 15).RotatedCopy(0, 90 * facing.HorizontalAngleIndex, 0, new Vec3d(7.5, 0, 7.5));
 
             return 
                 block.CanAttachBlockAt(blockAccess, block, pos.AddCopy(facing), facing.Opposite, upHalf) ||

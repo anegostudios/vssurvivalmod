@@ -62,7 +62,10 @@ namespace Vintagestory.GameContent
             }
 
 
-            block.Construct(itemslot, byEntity.World, blockSel.Position.AddCopy(blockSel.Face), byPlayer);
+            if (!block.Construct(itemslot, byEntity.World, blockSel.Position.AddCopy(blockSel.Face), byPlayer))
+            {
+                handHandling = EnumHandHandling.NotHandled;
+            }
         }
 
 

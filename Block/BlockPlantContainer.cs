@@ -32,6 +32,8 @@ namespace Vintagestory.GameContent
 
         public override void OnLoaded(ICoreAPI api)
         {
+            base.OnLoaded(api);
+
             LoadColorMapAnyway = true;
 
             List<ItemStack> stacks = new List<ItemStack>();

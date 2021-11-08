@@ -841,7 +841,7 @@ namespace Vintagestory.GameContent
             else
             {
                 string incontainerrname = Lang.Get("incontainer-" + contentStack.Class.ToString().ToLowerInvariant() + "-" + contentStack.Collectible.Code.Path);
-                dsc.Append(Lang.Get("Contents: {0} litres of {1}", litres, incontainerrname));
+                dsc.Append(Lang.Get("liquidcontainer-contents", litres, incontainerrname));
             }
         }
 
@@ -859,7 +859,7 @@ namespace Vintagestory.GameContent
             if (litres <= 0) return Lang.Get("Empty");
 
             string incontainername = Lang.Get("incontainer-" + contentStack.Class.ToString().ToLowerInvariant() + "-" + contentStack.Collectible.Code.Path);
-            string text = Lang.Get("Contents:\n{0} litres of {1}", litres, incontainername);
+            string text = Lang.Get("liquidcontainer-contents", litres, incontainername);
 
             text += BlockBucket.PerishableInfoCompact(api, slot, 0, false);
 
@@ -922,7 +922,7 @@ namespace Vintagestory.GameContent
 
             ItemStack contentStack = GetContent(api.World, inputStack);
 
-            api.World.Logger.VerboseDebug("LiquidContainer.MatchesForCrafting: contentStack null? " + (contentStack==null));
+            //api.World.Logger.VerboseDebug("LiquidContainer.MatchesForCrafting: contentStack null? " + (contentStack==null));
 
             if (contentStack == null) return false;
 
@@ -932,7 +932,7 @@ namespace Vintagestory.GameContent
             bool b = WildcardUtil.Match(contentStack.Collectible.Code, new AssetLocation(contentCode));
             bool c = contentStack.StackSize >= q;
 
-            api.World.Logger.VerboseDebug("LiquidContainer.MatchesForCrafting: {0} && {1} && {2}", a, b, c);
+            //api.World.Logger.VerboseDebug("LiquidContainer.MatchesForCrafting: {0} && {1} && {2}", a, b, c);
 
             return a && b && c;
         }

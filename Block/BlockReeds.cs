@@ -36,6 +36,8 @@ namespace Vintagestory.GameContent
 
         public override void OnLoaded(ICoreAPI api)
         {
+            base.OnLoaded(api);
+
             string habitat = Variant["habitat"];
             if (habitat == "water") this.habitat = EnumReedsHabitat.Water;
             else if (habitat == "ice") this.habitat = EnumReedsHabitat.Ice;

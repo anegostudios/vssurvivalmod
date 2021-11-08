@@ -1166,7 +1166,7 @@ namespace Vintagestory.ServerMods
 
                 case "latitude":
                     double? lat = api.World.Calendar.OnGetLatitude(pos.Z);
-                    player.SendMessage(groupId, string.Format("Latitude: {0}°, {1}", lat * 90, lat < 0 ? "Southern Hemisphere" : "Northern Hemisphere"), EnumChatType.CommandSuccess);
+                    player.SendMessage(groupId, string.Format("Latitude: {0:0.##}°, {1}", lat * 90, lat < 0 ? "Southern Hemisphere" : "Northern Hemisphere"), EnumChatType.CommandSuccess);
                     break;
 
                 case "structures":

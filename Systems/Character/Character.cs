@@ -89,7 +89,7 @@ namespace Vintagestory.GameContent
 
 
             charDlg = api.Gui.LoadedGuis.Find(dlg => dlg is GuiDialogCharacterBase) as GuiDialogCharacterBase;
-            charDlg.Tabs.Add(new GuiTab() { Name = "Traits", DataInt = 1 });
+            charDlg.Tabs.Add(new GuiTab() { Name = Lang.Get("charactertab-traits"), DataInt = 1 });
             charDlg.RenderTabHandlers.Add(composeTraitsTab);
         }
 
@@ -144,7 +144,7 @@ namespace Vintagestory.GameContent
 
             if (chclass.Traits.Length == 0)
             {
-                fulldesc.AppendLine("No positive or negative traits");
+                fulldesc.AppendLine(Lang.Get("No positive or negative traits"));
             }
 
             return fulldesc.ToString();

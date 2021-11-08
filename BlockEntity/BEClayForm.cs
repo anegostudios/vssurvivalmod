@@ -156,74 +156,49 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            //api.World.Logger.VerboseDebug("clay form on user over start");
-
             // Send a custom network packet for server side, because
             // serverside blockselection index is inaccurate
             if (Api.Side == EnumAppSide.Client)
             {
                 SendUseOverPacket(byPlayer, voxelPos, facing, mouseBreakMode);
-                
             }
-
 
             ItemSlot slot = byPlayer.InventoryManager.ActiveHotbarSlot;
-            if (slot.Itemstack == null || !CanWorkCurrent)
+            if (slot.Itemstack == null || !CanWorkCurrent) return;
+
+            int toolMode = slot.Itemstack.Collectible.GetToolMode(slot, byPlayer, new BlockSelection() { Position = Pos });
+            bool didmodify = false;
+
+            if (toolMode == 3)
             {
+                if (!mouseBreakMode) didmodify = OnCopyLayer();
+                else toolMode = 1;
+            }
+
+            if (toolMode != 3)
+            {
+                didmodify = mouseBreakMode ? OnRemove(voxelPos, facing, toolMode) : OnAdd(voxelPos, facing, toolMode);
+            }                
+
+            if (didmodify)
+            {
+                Api.World.PlaySoundAt(new AssetLocation("sounds/player/clayform.ogg"), byPlayer, byPlayer, true, 8);
+            }
                 
+            RegenMeshAndSelectionBoxes();
+            Api.World.BlockAccessor.MarkBlockDirty(Pos);
+            Api.World.BlockAccessor.MarkBlockEntityDirty(Pos);
+
+            if (!HasAnyVoxel())
+            {
+                AvailableVoxels = 0;
+                workItemStack = null;
+                Api.World.BlockAccessor.SetBlock(0, Pos);
                 return;
             }
-            int toolMode = slot.Itemstack.Collectible.GetToolMode(slot, byPlayer, new BlockSelection() { Position = Pos });
-
-            float yaw = GameMath.Mod(byPlayer.Entity.Pos.Yaw, 2 * GameMath.PI);
-            BlockFacing towardsFace = BlockFacing.HorizontalFromAngle(yaw);
-
-
-            //if (didBeginUse > 0)
-            {
-                bool didmodify = false;
-
-                if (toolMode == 3)
-                {
-                    if (!mouseBreakMode) didmodify = OnCopyLayer();
-                    else toolMode = 1;
-                }
-
-                if (toolMode != 3)
-                {
-                    didmodify = mouseBreakMode ? OnRemove(voxelPos, facing, toolMode) : OnAdd(voxelPos, facing, toolMode);
-                }                
-
-                if (didmodify)
-                {
-                    //byPlayer.Entity.GetBehavior<EntityBehaviorHunger>()?.ConsumeSaturation(1f);
-                }
-
-                if (didmodify && Api.Side == EnumAppSide.Client)
-                {
-                    Api.World.PlaySoundAt(new AssetLocation("sounds/player/clayform.ogg"), byPlayer, null, true, 8);
-                }
-                
-                RegenMeshAndSelectionBoxes();
-                Api.World.BlockAccessor.MarkBlockDirty(Pos);
-                Api.World.BlockAccessor.MarkBlockEntityDirty(Pos);
-
-                if (!HasAnyVoxel())
-                {
-                    AvailableVoxels = 0;
-                    workItemStack = null;
-                    Api.World.BlockAccessor.SetBlock(0, Pos);
-                    //didBeginUse = 0;
-                    return;
-                }
-            }
-
-
-            //didBeginUse = Math.Max(0, didBeginUse - 1);
+           
             CheckIfFinished(byPlayer);
             MarkDirty();
-
-            //api.World.Logger.VerboseDebug("clay form on user over end");
         }
 
 

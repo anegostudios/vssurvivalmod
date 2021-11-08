@@ -173,10 +173,38 @@ namespace Vintagestory.GameContent
 
             BlockPos targetPos = blockSel.Position;
 
-            Block facingBlock = world.BlockAccessor.GetBlock(blockSel.Position.AddCopy(blockSel.Face));
-            if (facingBlock.Code.Path == "fire")
+            if (api.World.Side == EnumAppSide.Server)
             {
-                world.BlockAccessor.SetBlock(0, blockSel.Position.AddCopy(blockSel.Face));
+                Block facingBlock = world.BlockAccessor.GetBlock(blockSel.Position.AddCopy(blockSel.Face));
+                if (facingBlock.Code.Path == "fire")
+                {
+                    world.BlockAccessor.SetBlock(0, blockSel.Position.AddCopy(blockSel.Face));
+                }
+
+                Vec3i voxelPos = new Vec3i();
+                for (int dx = -2; dx < 2; dx++)
+                {
+                    for (int dy = -2; dy < 2; dy++)
+                    {
+                        for (int dz = -2; dz < 2; dz++)
+                        {
+                            int x = (int)(blockSel.HitPosition.X * 16);
+                            int y = (int)(blockSel.HitPosition.Y * 16);
+                            int z = (int)(blockSel.HitPosition.Z * 16);
+                            if (x + dx < 0 || x + dx > 15 || y + dy < 0 || y + dy > 15 || z + dz < 0 || z + dz > 15) continue;
+
+                            voxelPos.Set(x + dx, y + dy, z + dz);
+
+                            int faceAndSubPosition = CollectibleBehaviorArtPigment.BlockSelectionToSubPosition(blockSel.Face, voxelPos);
+                            Block decorblock = world.BlockAccessor.GetDecor(blockSel.Position, faceAndSubPosition);
+
+                            if (decorblock?.FirstCodePart() == "caveart")
+                            {
+                                world.BlockAccessor.BreakDecorPart(blockSel.Position, blockSel.Face, faceAndSubPosition);
+                            }
+                        }
+                    }
+                }
             }
 
             Block block = world.BlockAccessor.GetBlock(blockSel.Position);

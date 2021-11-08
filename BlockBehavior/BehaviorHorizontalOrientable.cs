@@ -48,6 +48,11 @@ namespace Vintagestory.GameContent
             AssetLocation blockCode = block.CodeWithVariant(variantCode, horVer[0].Code);
             Block orientedBlock = world.BlockAccessor.GetBlock(blockCode);
 
+            if (orientedBlock == null)
+            {
+                throw new System.NullReferenceException("Unable to to find a rotated block with code " + blockCode + ", you're maybe missing the side variant group of have a dash in your block code");
+            }
+
             if (orientedBlock.CanPlaceBlock(world, byPlayer, blockSel, ref failureCode))
             {
                 orientedBlock.DoPlaceBlock(world, byPlayer, blockSel, itemstack);

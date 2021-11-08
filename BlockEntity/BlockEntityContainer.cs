@@ -37,7 +37,11 @@ namespace Vintagestory.GameContent
             RegisterGameTickListener(OnTick, 10000);
 
             roomReg = Api.ModLoader.GetModSystem<RoomRegistry>();
-            room = roomReg.GetRoomForPosition(Pos);
+
+            if (Api.Side == EnumAppSide.Server)
+            {
+                room = roomReg.GetRoomForPosition(Pos);
+            }
         }
 
         private void Inventory_OnInventoryOpenedClient(IPlayer player)
@@ -45,16 +49,17 @@ namespace Vintagestory.GameContent
             OnTick(1);
         }
 
-        Room room;
+        private Room room; // intentionally set private
 
         protected virtual void OnTick(float dt)
         {
-            room = roomReg.GetRoomForPosition(Pos);
             if (Api.Side == EnumAppSide.Client)
             {
                 // We don't have to do this client side. The item stack renderer already updates those states for us
                 return;
             }
+
+            room = roomReg.GetRoomForPosition(Pos);
 
             if (room.AnyChunkUnloaded != 0)  return;
 
@@ -89,6 +94,11 @@ namespace Vintagestory.GameContent
 
             ClimateCondition cond = Api.World.BlockAccessor.GetClimateAt(sealevelpos);
             if (cond == null) return 1;
+
+            if (room == null)
+            {
+                room = roomReg.GetRoomForPosition(Pos);
+            }
 
             float soilTempWeight = 0f;
 
@@ -126,6 +136,12 @@ namespace Vintagestory.GameContent
             if (container != null)
             {
                 ItemStack[] stacks = container.GetContents(Api.World, byItemStack);
+
+                if (stacks != null && stacks.Length > Inventory.Count)
+                {
+                    throw new InvalidOperationException(string.Format("OnBlockPlaced stack copy failed. Trying to set {0} stacks on an inventory with {1} slots", stacks.Length, Inventory.Count));
+                }
+
                 for (int i = 0; stacks != null && i < stacks.Length; i++)
                 {
                     Inventory[i].Itemstack = stacks[i]?.Clone();

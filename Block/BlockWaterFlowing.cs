@@ -54,7 +54,7 @@ namespace Vintagestory.GameContent
             bps.basePos.Z = pos.Z;
 
             bps.Velocity[0].avg = (float)PushVector.X * 500;
-            bps.Velocity[1].avg = (float)PushVector.Y * 500;
+            bps.Velocity[1].avg = (float)PushVector.Y * 1000;
             bps.Velocity[2].avg = (float)PushVector.Z * 500;
 
             bps.GravityEffect.avg = 0.5f;
@@ -65,6 +65,10 @@ namespace Vintagestory.GameContent
             bps.PosOffset[1].avg = 2/16f;
             bps.PosOffset[1].var = LiquidLevel / 8f * 0.75f;
             bps.SwimOnLiquid = true;
+
+            bps.Size.avg = 0.05f;
+            bps.Size.var = 0f;
+            bps.SizeEvolve = EvolvingNatFloat.create(EnumTransformFunction.LINEAR, 0.8f);
 
             manager.Spawn(bps);
         }

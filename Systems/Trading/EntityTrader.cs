@@ -289,22 +289,27 @@ namespace Vintagestory.GameContent
 
             EntityPlayer entityplr = byEntity as EntityPlayer;
             IPlayer player = World.PlayerByUid(entityplr.PlayerUID);
-            player.InventoryManager.OpenInventory(Inventory);
+            
 
             tradingWith = entityplr;
 
 
             if (World.Side == EnumAppSide.Client)
             {
+                ICoreClientAPI capi = (ICoreClientAPI)Api;
+
                 if (tradingWith.Pos.SquareDistanceTo(this.Pos) <= 5 && dlg?.IsOpened() != true)
                 {
+                    capi.Network.SendEntityPacket(this.EntityId, 1001);
+                    player.InventoryManager.OpenInventory(Inventory);
+
                     dlg = new GuiDialogTrader(Inventory, this, World.Api as ICoreClientAPI);
                     dlg.TryOpen();
                 }
                 else
                 {
                     // Ensure inventory promptly closed server-side if the client didn't open the GUI
-                    ICoreClientAPI capi = (ICoreClientAPI)Api;
+                    
                     capi.Network.SendPacketClient(capi.World.Player.InventoryManager.CloseInventory(Inventory));
                 }
 
@@ -356,6 +361,10 @@ namespace Vintagestory.GameContent
                     Inventory.ToTreeAttributes(tree);
                     (Api as ICoreServerAPI).Network.BroadcastEntityPacket(EntityId, 1234, tree.ToBytes());
                 }
+            }
+            if (packetid == 1001)
+            {
+                player.InventoryManager.OpenInventory(Inventory);
             }
         }
 

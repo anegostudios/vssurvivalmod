@@ -27,9 +27,7 @@ namespace Vintagestory.GameContent.Mechanics
             capi.Tesselator.TesselateShape(textureSoureBlock, capi.Assets.TryGet("shapes/block/wood/mechanics/angledgearbox-cage.json").ToObject<Shape>(), out gearboxCageMesh, rot);
             capi.Tesselator.TesselateShape(textureSoureBlock, capi.Assets.TryGet("shapes/block/wood/mechanics/angledgearbox-peg.json").ToObject<Shape>(), out gearboxPegMesh, rot);
 
-            //gearboxPegMesh.Rgba2 = null;
-            //gearboxCageMesh.Rgba2 = null;
-
+            
             // 16 floats matrix, 4 floats light rgbs
             gearboxPegMesh.CustomFloats = floatsPeg = new CustomMeshDataPartFloat((16 + 4) * 10100)
             {
@@ -65,7 +63,7 @@ namespace Vintagestory.GameContent.Mechanics
 
             if (dev.AxisSign.Length < 4)
             {
-                System.Diagnostics.Debug.WriteLine("3 length AxisSign");
+                //System.Diagnostics.Debug.WriteLine("3 length AxisSign");
                 return;
             }
             rotX = rotationRad * dev.AxisSign[3];

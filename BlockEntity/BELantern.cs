@@ -120,8 +120,13 @@ namespace Vintagestory.GameContent
 
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder sb)
         {
-            String liningText = (lining == "plain") ? "" : lining.UcFirst() + " lining and ";
-            sb.AppendLine(Lang.Get("{0} with {1}{2} glass panels", material.UcFirst(), liningText, glass));
+            if (lining == "plain")
+            {
+                sb.AppendLine(Lang.Get("{0} with {1} lining and glass panels", Lang.Get("material-" + material), glass));
+            } else
+            {
+                sb.AppendLine(Lang.Get("{0} with {1} glass panels", Lang.Get("material-" + material), glass));
+            }
         }
 
         internal bool Interact(IPlayer byPlayer)
@@ -150,9 +155,11 @@ namespace Vintagestory.GameContent
                 Api.World.PlaySoundAt(Api.World.GetBlock(new AssetLocation("glass-" + glass)).Sounds.Place, soundpos.X, soundpos.Y, soundpos.Z, byPlayer);
 
                 setLightColor(origlightHsv, lightHsv, glass);
+                Api.World.BlockAccessor.ExchangeBlock(Block.Id, Pos); // Forces a lighting update
 
                 MarkDirty(true);
-                result = true;
+                
+                
             }
 
             if (lining == null || lining == "plain" && obj is ItemMetalPlate && (obj.Variant["metal"] == "gold" || obj.Variant["metal"] == "silver")) 

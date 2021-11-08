@@ -187,7 +187,7 @@ namespace Vintagestory.GameContent.Mechanics
 
         void setRenderer()
         {
-            if (HammerStack != null && renderer == null && Api.Side == EnumAppSide.Client)
+            if (HammerStack != null && renderer == null && Api?.Side == EnumAppSide.Client)
             {
                 renderer = new HelveHammerRenderer(Api as ICoreClientAPI, this, Pos, GenHammerMesh());
                 (Api as ICoreClientAPI).Event.RegisterRenderer(renderer, EnumRenderStage.Opaque, "helvehammer");
@@ -282,6 +282,7 @@ namespace Vintagestory.GameContent.Mechanics
 
             hammerStack = tree.GetItemstack("hammerStack");
             hammerStack?.ResolveBlockOrItem(worldAccessForResolve);
+            HammerStack = hammerStack;
 
             rnd = tree.GetFloat("rnd");
         }

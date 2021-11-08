@@ -35,6 +35,13 @@ namespace Vintagestory.API.Common
             return base.TryPutInto(sinkSlot, ref op);
         }
 
+        public override bool TryFlipWith(ItemSlot itemSlot)
+        {
+            if (!itemSlot.Empty && itemSlot.Itemstack?.ItemAttributes?.KeyExists("cookingContainerSlots") == true && itemSlot.StackSize > 1) return false;
+
+            return base.TryFlipWith(itemSlot);
+        }
+
         public override bool CanHold(ItemSlot slot)
         {
             return CanBeStackedWithOutputSlotItem(slot as ItemSlot);

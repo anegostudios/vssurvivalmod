@@ -40,10 +40,38 @@ namespace Vintagestory.GameContent
         }
 
 
+        public override void Initialize(ICoreAPI api)
+        {
+            // do not call `base.Initialize()` - we do not want the BEContainer.Initialize() code which does a room check and adds a contents ticker (BEDeadCrop contents is only ever a seed bag, doesn't need ticking)
+            this.Api = api;
+            foreach (var val in Behaviors)
+            {
+                val.Initialize(api, val.properties);
+            }
+
+            Inventory.LateInitialize(InventoryClassName + "-" + Pos.X + "/" + Pos.Y + "/" + Pos.Z, api);
+            Inventory.Pos = Pos;
+            Inventory.ResolveBlocksOrItems();
+            Inventory.OnAcquireTransitionSpeed = Inventory_OnAcquireTransitionSpeed;
+        }
+
+
         public ItemStack[] GetDrops(IPlayer byPlayer, float dropQuantityMultiplier)
         {
             if (inv[0].Empty) return new ItemStack[0];
-            return inv[0].Itemstack.Block.GetDrops(Api.World, Pos, byPlayer, dropQuantityMultiplier);
+            ItemStack[] drops = inv[0].Itemstack.Block.GetDrops(Api.World, Pos, byPlayer, dropQuantityMultiplier);
+
+            // Minor hack to make dead crop always drop seeds
+            var seedStack = drops.FirstOrDefault(stack => stack.Collectible is ItemPlantableSeed);
+            if (seedStack == null) {
+                seedStack = inv[0].Itemstack.Block.Drops.FirstOrDefault(bstack => bstack.ResolvedItemstack.Collectible is ItemPlantableSeed)?.ResolvedItemstack.Clone();
+                if (seedStack != null)
+                {
+                    drops = drops.Append(seedStack);
+                }
+            }
+
+            return drops;
         }
 
         public string GetPlacedBlockName()

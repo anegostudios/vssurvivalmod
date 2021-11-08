@@ -229,7 +229,7 @@ namespace Vintagestory.GameContent
             float ripenRate = GameMath.Clamp(((1 - GetPerishRate()) - 0.5f) * 3, 0, 1);
             if (ripenRate > 0)
             {
-                sb.Append("Suitable spot for food ripening.");
+                sb.Append(Lang.Get("Suitable spot for food ripening."));
             }
 
 

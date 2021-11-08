@@ -82,13 +82,18 @@ namespace Vintagestory.GameContent
 
             if (IsBuyingSlot)
             {
-                return Lang.Get("Price: {0} gears\nDemand: {1}", TradeItem.Price, TradeItem.Stock) + "\n\n" + base.GetStackDescription(world, extendedDebugInfo);
+                if (itemstack.Collectible.GetDurability(itemstack) > 1)
+                {
+                    return Lang.Get("tradeitem-demand-withdurability", TradeItem.Price, TradeItem.Stock) + "\n\n" + base.GetStackDescription(world, extendedDebugInfo);
+                } else
+                {
+                    return Lang.Get("tradeitem-demand", TradeItem.Price, TradeItem.Stock) + "\n\n" + base.GetStackDescription(world, extendedDebugInfo);
+                }
+                
             } else
             {
-                return Lang.Get("Price: {0} gears\nSupply: {1}", TradeItem.Price, TradeItem.Stock) + "\n\n" + base.GetStackDescription(world, extendedDebugInfo);
+                return Lang.Get("tradeitem-supply", TradeItem.Price, TradeItem.Stock) + "\n\n" + base.GetStackDescription(world, extendedDebugInfo);
             }
-
-            
         }
     }
 }

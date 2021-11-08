@@ -190,7 +190,7 @@ namespace Vintagestory.GameContent
         {
             if (tpLocation == null) return;
 
-            dsc.AppendLine(Lang.Get("This is {0}\nTeleports to {1}", tpLocation.SourceName, tpLocation.TargetName));
+            dsc.AppendLine(Lang.Get("teleporter-info", tpLocation.SourceName, tpLocation.TargetName));
         }
     }
 }

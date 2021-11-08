@@ -106,9 +106,9 @@ namespace Vintagestory.GameContent
                 if (Api?.Side == EnumAppSide.Client)
                 {
                     currentMesh = GenMesh();
-                    MarkDirty(true);
                 }
-            
+
+                MarkDirty(true);
                 FindMatchingRecipe();
             }
 

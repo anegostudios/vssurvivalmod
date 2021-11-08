@@ -132,6 +132,7 @@ namespace Vintagestory.GameContent
             ItemStack stack = inv[0].Itemstack.Clone();
             stack.Attributes.SetInt("pieSize", 1);
             stack.Attributes.SetFloat("quantityServings", 0.25f);
+            stack.Attributes.SetBool("bakeable", false);
 
             if (size <= 1)
             {
@@ -198,6 +199,8 @@ namespace Vintagestory.GameContent
                 return true;
             }
 
+            
+
             // Filling rules:
             // 1. get inPieProperties
             // 2. any filing there yet? if not, all good
@@ -215,22 +218,26 @@ namespace Vintagestory.GameContent
                     MarkDirty(true);
                 }
 
-                inv[0].Itemstack.Attributes.SetBool("bakeable", HasAnyFilling);
+                inv[0].Itemstack.Attributes.SetBool("bakeable", HasAllFilling);
 
                 return added;
             } else
             {
                 if (SlicesLeft == 1 && !inv[0].Itemstack.Attributes.HasAttribute("quantityServings"))
                 {
+                    inv[0].Itemstack.Attributes.SetBool("bakeable", false);
                     inv[0].Itemstack.Attributes.SetFloat("quantityServings", 0.25f);
                 }
 
-                if (!byPlayer.InventoryManager.TryGiveItemstack(inv[0].Itemstack))
+                if (Api.Side == EnumAppSide.Server)
                 {
-                    Api.World.SpawnItemEntity(inv[0].Itemstack, Pos.ToVec3d().Add(0.5, 0.25, 0.5));
+                    if (!byPlayer.InventoryManager.TryGiveItemstack(inv[0].Itemstack))
+                    {
+                        Api.World.SpawnItemEntity(inv[0].Itemstack, Pos.ToVec3d().Add(0.5, 0.25, 0.5));
+                    }
+                    this.inv[0].Itemstack = null;
                 }
 
-                this.inv[0].Itemstack = null;
                 Api.World.BlockAccessor.SetBlock(0, Pos);
             }
 

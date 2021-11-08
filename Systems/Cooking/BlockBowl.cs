@@ -62,7 +62,7 @@ namespace Vintagestory.GameContent
                     {
                         stack = bebarrel.Inventory[0].Itemstack;
 
-                        if (stack != null && stack.Collectible.Attributes["crockable"].AsBool() == true)
+                        if (stack != null && stack.Collectible.Attributes?["crockable"].AsBool() == true)
                         {
                             Block mealblock = api.World.GetBlock(AssetLocation.Create(slot.Itemstack.Collectible.Attributes["mealBlockCode"].AsString(), slot.Itemstack.Collectible.Code.Domain));
                             ItemStack mealstack = new ItemStack(mealblock);

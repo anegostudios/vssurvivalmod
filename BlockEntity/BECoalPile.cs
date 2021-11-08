@@ -293,6 +293,8 @@ namespace Vintagestory.GameContent
         {
             base.FromTreeAttributes(tree, worldAccessForResolve);
 
+            bool wasBurning = burning;
+
             burning = tree.GetBool("burning");
             burnStartTotalHours = tree.GetDouble("lastTickTotalHours");
             isCokable = tree.GetBool("isCokable");
@@ -305,6 +307,11 @@ namespace Vintagestory.GameContent
                 }
                 ambientSound?.Stop();
                 listenerId = 0;
+            }
+
+            if (Api != null && Api.Side == EnumAppSide.Client && !wasBurning && burning)
+            {
+                updateBurningState();
             }
         }
 

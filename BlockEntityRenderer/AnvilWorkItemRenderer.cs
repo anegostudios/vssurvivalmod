@@ -158,8 +158,6 @@ namespace Vintagestory.GameContent
 
         private void RegenOutlineMesh(bool[,,] recipeToOutlineVoxels, byte[,,] voxels)
         {
-            recipeOutlineMeshRef?.Dispose();
-
             MeshData recipeOutlineMesh = new MeshData(24, 36, false, false, true, false);
             recipeOutlineMesh.SetMode(EnumDrawMode.Lines);
 
@@ -208,7 +206,12 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            recipeOutlineMeshRef = api.Render.UploadMesh(recipeOutlineMesh);
+            recipeOutlineMeshRef?.Dispose();
+            recipeOutlineMeshRef = null;
+            if (recipeOutlineMesh.VerticesCount > 0)
+            {
+                recipeOutlineMeshRef = api.Render.UploadMesh(recipeOutlineMesh);
+            }
         }
 
 

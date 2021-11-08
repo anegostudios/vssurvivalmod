@@ -20,14 +20,14 @@ namespace Vintagestory.GameContent
         }
 
 
-        public BlockFacing OtherPartPos()
+        public BlockFacing OtherPartFacing()
         {
             BlockFacing facing = BlockFacing.FromCode(LastCodePart());
             if (LastCodePart(1) == "feet") facing = facing.Opposite;
             return facing;
         }
 
-        public BlockPos OtherPartPos(IWorldAccessor world, BlockPos pos)
+        public BlockPos OtherPartPos(BlockPos pos)
         {
             BlockFacing facing = BlockFacing.FromCode(LastCodePart());
             if (LastCodePart(1) == "feet") facing = facing.Opposite;

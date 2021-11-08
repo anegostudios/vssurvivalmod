@@ -252,8 +252,9 @@ namespace Vintagestory.GameContent
         public AssetLocation[] pieMixedFillingTextures = new AssetLocation[] {
             new AssetLocation("block/food/pie/fill-mixedfruit"),
             new AssetLocation("block/food/pie/fill-mixedvegetable"), 
-            new AssetLocation("block/food/pie/fill-mixedmeat"), 
-            new AssetLocation("block/food/pie/fill-mixeddairy") 
+            new AssetLocation("block/food/pie/fill-mixedmeat"),
+            new AssetLocation("grain-unused-placeholder"),
+            new AssetLocation("block/food/pie/fill-mixedcheese") 
         };
 
         public MeshRef GetOrCreateMealInContainerMeshRef(Block containerBlock, CookingRecipe forRecipe, ItemStack[] contentStacks, Vec3f foodTranslate = null)

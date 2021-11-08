@@ -273,6 +273,8 @@ namespace Vintagestory.GameContent
 
         public override void OnLoaded(ICoreAPI api)
         {
+            base.OnLoaded(api);
+
             if (Attributes?["capacityLitres"].Exists == true)
             {
                 capacityLitresFromAttributes = Attributes["capacityLitres"].AsInt(50);

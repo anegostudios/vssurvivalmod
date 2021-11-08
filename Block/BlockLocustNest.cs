@@ -19,6 +19,8 @@ namespace Vintagestory.GameContent
 
         public override void OnLoaded(ICoreAPI api)
         {
+            base.OnLoaded(api);
+
             DecoBlocksCeiling = new Block[]
             {
                 api.World.GetBlock(new AssetLocation("locustnest-cage")),

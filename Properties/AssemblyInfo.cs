@@ -103,7 +103,7 @@ using Vintagestory.API.Config;
 			},
             {
                 code: ""wildernesssurvival"",
-                musicListCode: ""survival"",
+                playListCode: ""survival"",
                 langcode: ""preset-wildernesssurvival"",
 			    requestMods: [""game"", ""survival""],
                 listOrder: 7,

@@ -292,7 +292,7 @@ namespace Vintagestory.GameContent
         {
             // Create a temporary array first, because the offthread particle system might otherwise access a null collisionbox
             Cuboidf[] selectionBoxesTmp = new Cuboidf[VoxelCuboids.Count];
-            CuboidWithMaterial cwm = tmpCuboid;
+            CuboidWithMaterial cwm = tmpCuboids[0];
 
             totalVoxels = 0;
 
@@ -335,7 +335,7 @@ namespace Vintagestory.GameContent
             float sy = size / 16f;
             float sz = size / 16f;
 
-            CuboidWithMaterial cwm = tmpCuboid;
+            CuboidWithMaterial cwm = tmpCuboids[0];
 
             for (int i = 0; i < VoxelCuboids.Count; i++)
             {

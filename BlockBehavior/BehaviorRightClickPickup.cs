@@ -27,7 +27,11 @@ namespace Vintagestory.GameContent
 
             dropsPickupMode = properties["dropsPickupMode"].AsBool(false);
             string strloc = properties["sound"].AsString();
+
+            if (strloc == null) strloc = block.Attributes?["placeSound"].AsString();
+
             pickupSound = strloc == null ? null : AssetLocation.Create(strloc, block.Code.Domain);
+
         }
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ref EnumHandling handling)

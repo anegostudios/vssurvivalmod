@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -103,6 +104,8 @@ namespace Vintagestory.GameContent
 
         public override void Start(ICoreAPI api)
         {
+            GameVersion.EnsureEqualVersionOrKillExecutable(api, System.Diagnostics.FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location).FileVersion, GameVersion.OverallVersion, "VSSurvivalMod");
+
             this.api = api;
             api.Network.RegisterChannel("survivalCoreConfig").RegisterMessageType<SurvivalConfig>();
 

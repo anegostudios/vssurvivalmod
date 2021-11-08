@@ -74,14 +74,16 @@ namespace Vintagestory.ServerMods
 
             for (int i = 0; i < api.World.EntityTypes.Count; i++)
             {
-                if (api.World.EntityTypes[i].Server?.SpawnConditions?.Worldgen == null) continue;
+                EntityProperties type = api.World.EntityTypes[i];
+                WorldGenSpawnConditions conds = type.Server?.SpawnConditions?.Worldgen;
+                if (conds == null) continue;
 
                 List<EntityProperties> grouptypes = new List<EntityProperties>();
-
-                EntityProperties type = api.World.EntityTypes[i];
                 grouptypes.Add(type);
 
-                AssetLocation[] companions = type.Server.SpawnConditions.Worldgen.Companions;
+                conds.Initialise(api.World, type.Code.ToShortString());
+
+                AssetLocation[] companions = conds.Companions;
                 if (companions == null) continue;
 
                 for (int j = 0; j < companions.Length; j++)
@@ -318,7 +320,7 @@ namespace Vintagestory.ServerMods
             }
 
             Block block = blockAccessor.GetBlock(pos);
-            if (!block.WildCardMatch(sc.InsideBlockCodes)) return false;
+            if (!sc.CanSpawnInside(block)) return false;
 
             Cuboidf collisionBox = type.SpawnCollisionBox.OmniNotDownGrowBy(0.1f);
 

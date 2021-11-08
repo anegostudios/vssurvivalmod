@@ -337,18 +337,19 @@ namespace Vintagestory.GameContent
 
                 if (StatModifers.rangedWeaponsSpeed != 0)
                 {
-                    dsc.AppendLine(Lang.Get("Ranged Weapon Charge Time: {1}{0}%", -(int)(100 * StatModifers.rangedWeaponsSpeed), StatModifers.rangedWeaponsSpeed > 0 ? "+" : ""));
+                    dsc.AppendLine(Lang.Get("Ranged Weapon Charge Time: {1}{0}%", -(int)(100 * StatModifers.rangedWeaponsSpeed), -StatModifers.rangedWeaponsSpeed > 0 ? "+" : ""));
                 }
 
                 if (StatModifers.walkSpeed != 0)
                 {
                     dsc.AppendLine(Lang.Get("Walk speed: {1}{0}%", (int)(100 * StatModifers.walkSpeed), StatModifers.walkSpeed > 0 ? "+" : ""));
                 }
+            }
 
-                if (ProtectionModifiers?.HighDamageTierResistant == true)
-                {
-                    dsc.AppendLine(Lang.Get("<font color=\"#86aad0\">High damage tier resistant.</font> When damaged by a higher tier attack, the loss of protection is only half as much."));
-                }
+
+            if (ProtectionModifiers?.HighDamageTierResistant == true)
+            {
+                dsc.AppendLine(Lang.Get("<font color=\"#86aad0\">High damage tier resistant.</font> When damaged by a higher tier attack, the loss of protection is only half as much."));
             }
 
             // Condition: Useless (0-10%)

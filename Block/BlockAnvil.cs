@@ -17,6 +17,8 @@ namespace Vintagestory.GameContent
 
         public override void OnLoaded(ICoreAPI api)
         {
+            base.OnLoaded(api);
+
             if (api.Side != EnumAppSide.Client) return;
             ICoreClientAPI capi = api as ICoreClientAPI;
 
@@ -58,6 +60,16 @@ namespace Vintagestory.GameContent
                 return new WorldInteraction[] {
                     new WorldInteraction()
                     {
+                        ActionLangCode = "blockhelp-anvil-takeworkable",
+                        HotKeyCode = null,
+                        MouseButton = EnumMouseButton.Right,
+                        ShouldApply = (wi, bs, es) => {
+                            BlockEntityAnvil bea = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityAnvil;
+                            return bea?.WorkItemStack != null;
+                        }
+                    },
+                    new WorldInteraction()
+                    {
                         ActionLangCode = "blockhelp-anvil-placeworkable",
                         HotKeyCode = "sneak",
                         MouseButton = EnumMouseButton.Right,
@@ -79,23 +91,12 @@ namespace Vintagestory.GameContent
                     },
                     new WorldInteraction()
                     {
-                        ActionLangCode = "blockhelp-anvil-addvoxels",
-                        HotKeyCode = "sneak",
+                        ActionLangCode = "blockhelp-anvil-rotateworkitem",
                         MouseButton = EnumMouseButton.Right,
-                        Itemstacks = workableStacklist.ToArray(),
+                        Itemstacks = hammerStacklist.ToArray(),
                         GetMatchingStacks = (wi, bs, es) => {
                             BlockEntityAnvil bea = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityAnvil;
-                            return bea?.WorkItemStack == null ? null : new ItemStack[] { (bea.WorkItemStack.Collectible as IAnvilWorkable).GetBaseMaterial(bea.WorkItemStack) };
-                        }
-                    },
-                    new WorldInteraction()
-                    {
-                        ActionLangCode = "blockhelp-anvil-takeworkable",
-                        HotKeyCode = null,
-                        MouseButton = EnumMouseButton.Right,
-                        ShouldApply = (wi, bs, es) => {
-                            BlockEntityAnvil bea = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityAnvil;
-                            return bea?.WorkItemStack != null;
+                            return bea?.WorkItemStack == null ? null : wi.Itemstacks;
                         }
                     },
                     new WorldInteraction()
@@ -107,6 +108,17 @@ namespace Vintagestory.GameContent
                         GetMatchingStacks = (wi, bs, es) => {
                             BlockEntityAnvil bea = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityAnvil;
                             return bea?.WorkItemStack == null ? null : wi.Itemstacks;
+                        }
+                    },
+                    new WorldInteraction()
+                    {
+                        ActionLangCode = "blockhelp-anvil-addvoxels",
+                        HotKeyCode = "sneak",
+                        MouseButton = EnumMouseButton.Right,
+                        Itemstacks = workableStacklist.ToArray(),
+                        GetMatchingStacks = (wi, bs, es) => {
+                            BlockEntityAnvil bea = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityAnvil;
+                            return bea?.WorkItemStack == null ? null : new ItemStack[] { (bea.WorkItemStack.Collectible as IAnvilWorkable).GetBaseMaterial(bea.WorkItemStack) };
                         }
                     }
                 };

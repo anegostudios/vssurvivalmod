@@ -585,28 +585,28 @@ namespace Vintagestory.GameContent
         {
             if (processComplete)
             {
-                dsc.AppendLine("Carburization process complete. Break to retrieve blister steel.");
+                dsc.AppendLine(Lang.Get("Carburization process complete. Break to retrieve blister steel."));
                 return;
             }
 
             if (IsFull) {
                 if (!hasLid())
                 {
-                    dsc.AppendLine("Stone coffin lid is missing");
+                    dsc.AppendLine(Lang.Get("Stone coffin lid is missing"));
                 } else
                 {
                     if (!structureComplete)
                     {
-                        dsc.AppendLine("Structure incomplete! Can't get hot enough, carburization paused.");
+                        dsc.AppendLine(Lang.Get("Structure incomplete! Can't get hot enough, carburization paused."));
                         return;
                     }
 
                     if (receivesHeat)
                     {
-                        dsc.AppendLine("Okay! Receives heat!");
+                        dsc.AppendLine(Lang.Get("Okay! Receives heat!"));
                     } else
                     {
-                        dsc.AppendLine("Ready to be fired. Ignite a pile of coal below each stone coffin half.");
+                        dsc.AppendLine(Lang.Get("Ready to be fired. Ignite a pile of coal below each stone coffin half."));
                     }
                     
                 }
@@ -614,7 +614,7 @@ namespace Vintagestory.GameContent
 
             if (progress > 0)
             {
-                dsc.AppendLine(string.Format("Carburization: {0}% complete", (int)(progress * 100)));
+                dsc.AppendLine(Lang.Get("Carburization: {0}% complete", (int)(progress * 100)));
             }
             
         }

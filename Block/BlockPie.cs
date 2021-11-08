@@ -342,10 +342,11 @@ namespace Vintagestory.GameContent
         {
             int pieSie = inSlot.Itemstack.Attributes.GetInt("pieSize");
             ItemStack pieStack = inSlot.Itemstack;
+            float servingsLeft = GetQuantityServings(world, inSlot.Itemstack);
+            if (!inSlot.Itemstack.Attributes.HasAttribute("quantityServings")) servingsLeft = 1;
 
             if (pieSie == 1)
             {
-                float servingsLeft = GetQuantityServings(world, inSlot.Itemstack);
                 dsc.AppendLine(Lang.Get("pie-slice-single", servingsLeft));
             } else
             {
@@ -363,7 +364,9 @@ namespace Vintagestory.GameContent
 
             var forEntity = (world as IClientWorldAccessor)?.Player?.Entity;
 
-            dsc.AppendLine(GetContentNutritionFacts(api.World, inSlot, stacks, null, true, GetNutritionMul(null, inSlot, forEntity)));
+
+
+            dsc.AppendLine(GetContentNutritionFacts(api.World, inSlot, stacks, null, true, servingsLeft * GetNutritionMul(null, inSlot, forEntity)));
         }
 
         public override string GetPlacedBlockInfo(IWorldAccessor world, BlockPos pos, IPlayer forPlayer)
@@ -382,7 +385,15 @@ namespace Vintagestory.GameContent
             {
                 pieStack.Collectible.AppendPerishableInfoText(bep.Inventory[0], sb, api.World);
             }
-            sb.AppendLine(mealblock.GetContentNutritionFacts(api.World, bep.Inventory[0], stacks, null, true, GetNutritionMul(pos, null, forPlayer.Entity)));
+
+            float servingsLeft = GetQuantityServings(world, bep.Inventory[0].Itemstack);
+            if (!bep.Inventory[0].Itemstack.Attributes.HasAttribute("quantityServings")) servingsLeft = bep.SlicesLeft / 4f;
+
+            float mul = GetNutritionMul(pos, null, forPlayer.Entity) * servingsLeft;
+
+
+
+            sb.AppendLine(mealblock.GetContentNutritionFacts(api.World, bep.Inventory[0], stacks, null, true, mul));
             
             return sb.ToString();
         }
@@ -462,7 +473,6 @@ namespace Vintagestory.GameContent
                 float spoilState = state != null ? state.TransitionLevel : 0;
                 satLossMul = GlobalConstants.FoodSpoilageSatLossMul(spoilState, slot.Itemstack, forEntity);
             }
-
 
             return Attributes["nutritionMul"].AsFloat(1) * satLossMul;
         }

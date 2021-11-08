@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using System.Text;
 using Vintagestory.API;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -15,6 +16,8 @@ namespace Vintagestory.GameContent.Mechanics
 
         protected BlockFacing ownFacing;
         EntityPartitioning partitionUtil;
+        ICoreClientAPI capi;
+
 
         protected virtual AssetLocation Sound { get; }
         protected virtual float GetSoundVolume() => 0f;
@@ -40,7 +43,7 @@ namespace Vintagestory.GameContent.Mechanics
         {
             get
             {
-                if (Sound != null && network?.Speed > 0 && Api.World.ElapsedMilliseconds - lastMsAngle > 500 / network.Speed)
+                if (Sound != null && network?.Speed > 0 && Api.World.ElapsedMilliseconds - lastMsAngle > 500 / network.Speed && Api.Side == EnumAppSide.Client)
                 {
                     Api.World.PlaySoundAt(Sound, Position.X + 0.5, Position.Y + 0.5, Position.Z + 0.5, null, false, 18, GetSoundVolume());
                     lastMsAngle = Api.World.ElapsedMilliseconds;
@@ -63,6 +66,8 @@ namespace Vintagestory.GameContent.Mechanics
         {
             base.Initialize(api, properties);
 
+            capi = api as ICoreClientAPI;
+
             switch (ownFacing.Code)
             {
                 case "north":
@@ -82,7 +87,7 @@ namespace Vintagestory.GameContent.Mechanics
             }
             if (Api.Side == EnumAppSide.Client)
             {
-                updateShape();
+                updateShape(api.World);
             }
         }
 
@@ -115,10 +120,6 @@ namespace Vintagestory.GameContent.Mechanics
         protected override MechPowerPath[] GetMechPowerExits(MechPowerPath fromExitTurnDir)
         {
             return new MechPowerPath[0];
-        }
-
-        protected virtual void updateShape()
-        {
         }
     }
 }

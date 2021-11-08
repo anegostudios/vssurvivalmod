@@ -50,7 +50,7 @@ namespace Vintagestory.GameContent
                     {
                         Location = loc,
                         Position = Pos.XYZ.ToVec3f(),
-                        Range = 32,
+                        Range = 48,
                         ShouldLoop = true,
                         SoundType = EnumSoundType.Sound,
                         Volume = 0,

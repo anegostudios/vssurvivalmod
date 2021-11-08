@@ -152,7 +152,6 @@ namespace Vintagestory.GameContent
         {
             base.GetBlockInfo(forPlayer, dsc);
 
-            dsc.AppendLine(Lang.GetMatching("tapestry-" + type));
             if (Rotten) dsc.AppendLine(Lang.Get("Will fall apart when broken"));
         }
     }

@@ -289,7 +289,7 @@ namespace Vintagestory.GameContent
             float servings = QuantityServings;
             int temp = GetTemperature();
             string temppretty = Lang.Get("{0}°C", temp);
-            if (temp < 20) temppretty = "Cold";
+            if (temp < 20) temppretty = Lang.Get("Cold");
     
             BlockMeal mealblock = Api.World.GetBlock(new AssetLocation("bowl-meal")) as BlockMeal;
             string nutriFacts = mealblock.GetContentNutritionFacts(Api.World, inventory[0], contentStacks, forPlayer.Entity);
@@ -297,11 +297,11 @@ namespace Vintagestory.GameContent
             
             if (servings == 1)
             {
-                dsc.Append(Lang.Get("{0} serving of {1}\nTemperature: {2}{3}{4}", Math.Round(servings, 1), recipe.GetOutputName(forPlayer.Entity.World, contentStacks), temppretty, nutriFacts != null ? "\n" : "", nutriFacts));
+                dsc.Append(Lang.Get("cookedcontainer-servingstemp-singular", Math.Round(servings, 1), recipe.GetOutputName(forPlayer.Entity.World, contentStacks), temppretty, nutriFacts != null ? "\n" : "", nutriFacts));
             }
             else
             {
-                dsc.Append(Lang.Get("{0} servings of {1}\nTemperature: {2}{3}{4}", Math.Round(servings, 1), recipe.GetOutputName(forPlayer.Entity.World, contentStacks), temppretty, nutriFacts != null ? "\n" : "", nutriFacts));
+                dsc.Append(Lang.Get("cookedcontainer-servingstemp-plural", Math.Round(servings, 1), recipe.GetOutputName(forPlayer.Entity.World, contentStacks), temppretty, nutriFacts != null ? "\n" : "", nutriFacts));
             }
 
 

@@ -6,26 +6,27 @@ using System.Threading.Tasks;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
     public class CollectibleBehaviorArtPigment : CollectibleBehavior
     {
-        CollectibleObject thisObject;
-        private int numberOfModes;
-        private int countPerSide;
-        private string decorBase;
-        private string guiBase;
-        private EnumBlockMaterial[] allowedMaterials;
+        private EnumBlockMaterial[] paintableOnBlockMaterials;
 
         private MeshRef[] meshes;
         TextureAtlasPosition texPos;
-        SkillItem[] toolModesForGUI;
+        SkillItem[] toolModes;
+        List<Block> decorBlocks = new List<Block>();
+
+        string[] onmaterialsStrTmp;
+        AssetLocation[] decorCodesTmp;
+
 
         static int[] quadVertices = {
-            // Front face
             -1, -1,  0,
              1, -1,  0,
              1,  1,  0,
@@ -36,78 +37,117 @@ namespace Vintagestory.GameContent
 
         static int[] quadVertexIndices = { 0, 1, 2,   0, 2, 3 };
 
+        
+
         public CollectibleBehaviorArtPigment(CollectibleObject collObj) : base(collObj)
         {
-            thisObject = collObj;
+            this.collObj = collObj;
         }
+
 
         public override void Initialize(JsonObject properties)
         {
-            numberOfModes = properties["numberOfModes"].AsInt(6);
-            countPerSide = properties["countPerSide"].AsInt(6);
-            decorBase = properties["decorBase"].AsString();
-            guiBase = properties["guiBase"].AsString(decorBase);
-            string[] materials = properties["allowedMaterials"].AsArray<string>(new string[0]);
-            allowedMaterials = new EnumBlockMaterial[materials.Length];
-            try
-            {
-                for (int i = 0; i < materials.Length; i++)
-                {
-                    if (materials[i] == null) continue;
-                    allowedMaterials[i] = (EnumBlockMaterial)Enum.Parse(typeof(EnumBlockMaterial), materials[i]);
-                }
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("Error decoding allowed materials, in ArtPigment behavior for " + collObj.Code.ToShortString());
-                string list = "[";
-                for (int i = 0; i < materials.Length; i++)
-                {
-                    if (i > 0) list += ",";
-                    list += materials[i] == null ? "null" : materials[i];
-                }
-                Console.WriteLine(list + "]");
-                Console.WriteLine(e.Message);
-            }
-
+            onmaterialsStrTmp = properties["paintableOnBlockMaterials"].AsArray<string>(new string[0]);
+            decorCodesTmp = properties["decorBlockCodes"].AsObject(new AssetLocation[0], collObj.Code.Domain);
 
             base.Initialize(properties);
         }
 
         public override void OnLoaded(ICoreAPI api)
         {
-            if (api is ICoreClientAPI capi)
+            paintableOnBlockMaterials = new EnumBlockMaterial[onmaterialsStrTmp.Length];
+            for (int i = 0; i < onmaterialsStrTmp.Length; i++)
             {
-                Block art = capi.World.BlockAccessor.GetBlock(new AssetLocation(guiBase + "-1-1"));
-                BakedCompositeTexture tex = art.Textures["up"].Baked;
-                texPos = capi.BlockTextureAtlas.Positions[tex.TextureSubId];
-
-                meshes = new MeshRef[numberOfModes];
-                toolModesForGUI = new SkillItem[numberOfModes];
-                for (int i = 0; i < meshes.Length; i++)
+                if (onmaterialsStrTmp[i] == null) continue;
+                try
                 {
-                    MeshData mesh = genMesh(capi, i);
-                    meshes[i] = capi.Render.UploadMesh(mesh);
+                    paintableOnBlockMaterials[i] = (EnumBlockMaterial)Enum.Parse(typeof(EnumBlockMaterial), onmaterialsStrTmp[i]);
                 }
-
-                AssetLocation blockCode = thisObject.Code;
-                for (int i = 0; i < toolModesForGUI.Length; i++)
+                catch (Exception)
                 {
-                    toolModesForGUI[i] = new SkillItem()
-                    {
-                        Code = blockCode.CopyWithPath("art" + i),   //unique code, it doesn't really matter what it is
-                        Linebreak = i % countPerSide == 0,
-                        Name = "",   // no name - alternatively each icon could be given a name? But discussed in meeting on 6/6/21 and decided it is better for players to assign their own meanings to the icons
-                        Data = "" + i,
-                        RenderHandler = (AssetLocation code, float dt, double atPosX, double atPosY) =>
-                        {
-                            float wdt = (float)GuiElement.scaled(GuiElementPassiveItemSlot.unscaledSlotSize);
-                            string id = code.Path.Substring(3);
-                            capi.Render.Render2DTexture(meshes[int.Parse(id)], texPos.atlasTextureId, (float)atPosX, (float)atPosY, wdt, wdt);
-                        }
-                    };
+                    api.Logger.Warning("ArtPigment behavior for collectible {0}, paintable on material {1} is not a valid block material, will default to stone", collObj.Code, onmaterialsStrTmp[i]);
+                    paintableOnBlockMaterials[i] = EnumBlockMaterial.Stone;
                 }
             }
+            onmaterialsStrTmp = null;
+
+            var capi = api as ICoreClientAPI;
+
+            foreach (var loc in decorCodesTmp)
+            {
+                if (loc.Path.Contains("*"))
+                {
+                    Block[] blocks = api.World.SearchBlocks(loc);
+                    foreach (var block in blocks)
+                    {
+                        decorBlocks.Add(block);
+                        //Console.WriteLine("\"/bir remapq " + block.Code.ToShortString() + " drawnart"+block.Variant["material"]+"-1-" + block.Variant["row"] +"-" + block.Variant["col"] + " force\",");
+                    }
+                    if (blocks.Length == 0)
+                    {
+                        api.Logger.Warning("ArtPigment behavior for collectible {0}, decor {1}, no such block using this wildcard found", collObj.Code, loc);
+                    }
+
+                }
+                else
+                {
+                    Block block = api.World.GetBlock(loc);
+                    if (block == null)
+                    {
+                        api.Logger.Warning("ArtPigment behavior for collectible {0}, decor {1} is not a loaded block", collObj.Code, loc);
+                    }
+                    else
+                    {
+                        decorBlocks.Add(block);
+                    }
+
+                }
+            }
+
+            if (api.Side == EnumAppSide.Client)
+            {
+                if (decorBlocks.Count > 0)
+                {
+                    BakedCompositeTexture tex = decorBlocks[0].Textures["up"].Baked;
+                    texPos = capi.BlockTextureAtlas.Positions[tex.TextureSubId];
+                }
+                else
+                {
+                    texPos = capi.BlockTextureAtlas.UnknownTexturePosition;
+                }
+            }
+
+            AssetLocation blockCode = collObj.Code;
+            toolModes = new SkillItem[decorBlocks.Count];
+            for (int i = 0; i < toolModes.Length; i++)
+            {
+                toolModes[i] = new SkillItem()
+                {
+                    Code = blockCode.CopyWithPath("art" + i),   // Unique code, it doesn't really matter what it is
+                    Linebreak = i % GlobalConstants.CaveArtColsPerRow == 0,
+                    Name = "",   // No name - alternatively each icon could be given a name? But discussed in meeting on 6/6/21 and decided it is better for players to assign their own meanings to the icons
+                    Data = decorBlocks[i],
+                    RenderHandler = (AssetLocation code, float dt, double atPosX, double atPosY) =>
+                    {
+                        float wdt = (float)GuiElement.scaled(GuiElementPassiveItemSlot.unscaledSlotSize);
+                        string id = code.Path.Substring(3);
+                        capi.Render.Render2DTexture(meshes[int.Parse(id)], texPos.atlasTextureId, (float)atPosX, (float)atPosY, wdt, wdt);
+                    }
+                };
+            }
+
+
+            if (capi != null)
+            {
+                meshes = new MeshRef[decorBlocks.Count];
+
+                for (int i = 0; i < meshes.Length; i++)
+                {
+                    MeshData mesh = genMesh(i);
+                    meshes[i] = capi.Render.UploadMesh(mesh);
+                }
+            }
+
         }
 
         public override void OnUnloaded(ICoreAPI api)
@@ -120,7 +160,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public MeshData genMesh(ICoreClientAPI capi, int index)
+        public MeshData genMesh(int index)
         {
             MeshData m = new MeshData(4, 6, false, true, false, false);
 
@@ -130,10 +170,10 @@ namespace Vintagestory.GameContent
             float y2 = texPos.y2;
 
 
-            float xSize = (x2 - x1) / 6;
-            float ySize = (y2 - y1) / 6;
-            x1 += (index % 6) * xSize;
-            y1 += (index / 6) * ySize;
+            float xSize = (x2 - x1) / GlobalConstants.CaveArtColsPerRow;
+            float ySize = (y2 - y1) / GlobalConstants.CaveArtColsPerRow;
+            x1 += (index % GlobalConstants.CaveArtColsPerRow) * xSize;
+            y1 += (index / GlobalConstants.CaveArtColsPerRow) * ySize;
 
             for (int i = 0; i < 4; i++)
             {
@@ -160,10 +200,10 @@ namespace Vintagestory.GameContent
 
             IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
             if (!byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak)) return;
-            if (byPlayer == null || byPlayer.Entity.Controls.Sneak) return;  // Base behavior if shift is held
+            if (byPlayer == null || !byPlayer.Entity.Controls.Sprint) return;
             if (!SuitablePosition(byEntity.World.BlockAccessor, blockSel)) return;
 
-            handHandling = EnumHandHandling.PreventDefault;  // Custom behavior (onHeldInteractStop) if this pigment can be used here
+            handHandling = EnumHandHandling.PreventDefault;
         }
 
         public override bool OnHeldInteractStep(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandling handling)
@@ -172,10 +212,10 @@ namespace Vintagestory.GameContent
 
             IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
             if (!byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak)) return false;
-            if (byPlayer == null || byPlayer.Entity.Controls.Sneak) return false;
+            if (byPlayer == null || !byPlayer.Entity.Controls.Sprint) return false;
             if (!SuitablePosition(byEntity.World.BlockAccessor, blockSel)) return false;
 
-            handling = EnumHandling.PreventSubsequent;  // Ensure that this returns true, i.e. continue the interaction until Stop
+            handling = EnumHandling.PreventSubsequent;
             return true;
         }
 
@@ -185,50 +225,94 @@ namespace Vintagestory.GameContent
 
             IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
             if (!byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak)) return;
-            if (byPlayer == null || byPlayer.Entity.Controls.Sneak) return;
+            if (byPlayer == null || !byPlayer.Entity.Controls.Sprint) return;
 
             IBlockAccessor blockAccessor = byEntity.World.BlockAccessor;
             if (!SuitablePosition(blockAccessor, blockSel)) return;
 
             handling = EnumHandling.PreventDefault;
-            DrawCaveArt(blockSel, blockAccessor, byPlayer);  // Now draw the art :)
+            DrawCaveArt(blockSel, blockAccessor, byPlayer);
+
+            // 10% chance to consume the item
+            if (byEntity.World.Side == EnumAppSide.Server && byEntity.World.Rand.NextDouble() < 0.1)
+            {
+                slot.TakeOut(1);
+                slot.MarkDirty();
+            }
 
             byEntity.World.PlaySoundAt(new AssetLocation("sounds/player/chalkdraw"), blockSel.Position.X + blockSel.HitPosition.X, blockSel.Position.Y + blockSel.HitPosition.Y, blockSel.Position.Z + blockSel.HitPosition.Z, byPlayer, true, 8);
         }
 
         private void DrawCaveArt(BlockSelection blockSel, IBlockAccessor blockAccessor, IPlayer byPlayer)
         {
-            int xx = (int)(blockSel.HitPosition.X * 16);
-            int yy = 15 - (int)(blockSel.HitPosition.Y * 16);
-            int zz = (int)(blockSel.HitPosition.Z * 16);
+            int toolMode = GetToolMode(null, byPlayer, blockSel);
+            Block blockToPlace = (Block)toolModes[toolMode].Data;
+            blockAccessor.AddDecor(blockToPlace, blockSel.Position, BlockSelectionToSubPosition(blockSel));
+        }
+
+
+        public static int BlockSelectionToSubPosition(BlockSelection blockSel)
+        {
+            int x = (int)(blockSel.HitPosition.X * 16);
+            int y = 15 - (int)(blockSel.HitPosition.Y * 16);
+            int z = (int)(blockSel.HitPosition.Z * 16);
             int offset = 0;
+
             switch (blockSel.Face.Index)
             {
                 case 0:
-                    offset = (15 - xx) + yy * 16;
+                    offset = (15 - x) + y * 16;
                     break;
                 case 1:
-                    offset = (15 - zz) + yy * 16;
+                    offset = (15 - z) + y * 16;
                     break;
                 case 2:
-                    offset = xx + yy * 16;
+                    offset = x + y * 16;
                     break;
                 case 3:
-                    offset = zz + yy * 16;
+                    offset = z + y * 16;
                     break;
                 case 4:
-                    offset = xx + zz * 16;
+                    offset = x + z * 16;
                     break;
                 case 5:
-                    offset = xx + (15 - zz) * 16;
+                    offset = x + (15 - z) * 16;
                     break;
             }
 
-            int toolMode = GetToolMode(null, byPlayer, blockSel);
-            int ix = 1 + toolMode / countPerSide;
-            int iz = 1 + toolMode % countPerSide;
-            Block blockToPlace = blockAccessor.GetBlock(new AssetLocation(decorBase + "-" + ix + "-" + iz));
-            blockAccessor.AddDecor(blockToPlace, blockSel.Position, blockSel.Face.Index + 6 * (1 + offset));
+            return blockSel.Face.Index + 6 * (1 + offset);
+        }
+
+        public static int BlockSelectionToSubPosition(BlockFacing face, Vec3i voxelPos)
+        {
+            int x = voxelPos.X;
+            int y = 15 - voxelPos.Y;
+            int z = voxelPos.Z;
+            int offset = 0;
+
+            switch (face.Index)
+            {
+                case 0:
+                    offset = (15 - x) + y * 16;
+                    break;
+                case 1:
+                    offset = (15 - z) + y * 16;
+                    break;
+                case 2:
+                    offset = x + y * 16;
+                    break;
+                case 3:
+                    offset = z + y * 16;
+                    break;
+                case 4:
+                    offset = x + z * 16;
+                    break;
+                case 5:
+                    offset = x + (15 - z) * 16;
+                    break;
+            }
+
+            return face.Index + 6 * (1 + offset);
         }
 
         private bool SuitablePosition(IBlockAccessor blockAccessor, BlockSelection blockSel)
@@ -237,7 +321,7 @@ namespace Vintagestory.GameContent
             if (attachingBlock.SideSolid[blockSel.Face.Index] || (attachingBlock is BlockMicroBlock && (blockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityMicroBlock).sideAlmostSolid[blockSel.Face.Index]))
             {
                 EnumBlockMaterial targetMaterial = attachingBlock.GetBlockMaterial(blockAccessor, blockSel.Position);
-                for (int i = 0; i < allowedMaterials.Length; i++) if (targetMaterial == allowedMaterials[i]) return true;
+                for (int i = 0; i < paintableOnBlockMaterials.Length; i++) if (targetMaterial == paintableOnBlockMaterials[i]) return true;
             }
             return false;
         }
@@ -252,20 +336,32 @@ namespace Vintagestory.GameContent
                 return null;
             }
 
-            return toolModesForGUI;
+            return toolModes;
         }
 
         public override int GetToolMode(ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
         {
             if (byPlayer?.Entity == null) return 0;
-            return byPlayer.Entity.WatchedAttributes.GetInt("toolModeArt-" + decorBase);
+            return byPlayer.Entity.WatchedAttributes.GetInt("toolModeCaveArt");
         }
 
         public override void SetToolMode(ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel, int toolMode)
         {
-             byPlayer?.Entity.WatchedAttributes.SetInt("toolModeArt-" + decorBase, toolMode % numberOfModes);
+             byPlayer?.Entity.WatchedAttributes.SetInt("toolModeCaveArt", toolMode);
         }
 
+        public override WorldInteraction[] GetHeldInteractionHelp(ItemSlot inSlot, ref EnumHandling handling)
+        {
+            return new WorldInteraction[]
+            {
+                new WorldInteraction
+                {
+                    HotKeyCode = "sprint",
+                    ActionLangCode = "heldhelp-draw",
+                    MouseButton = EnumMouseButton.Right
+                }
+            }.Append(base.GetHeldInteractionHelp(inSlot, ref handling));
 
+        }
     }
 }

@@ -14,6 +14,8 @@ namespace Vintagestory.GameContent
 
         public override void OnLoaded(ICoreAPI api)
         {
+            base.OnLoaded(api);
+
             if (api.Side != EnumAppSide.Client) return;
 
             interactions = ObjectCacheUtil.GetOrCreate(api, "signBlockInteractions", () =>

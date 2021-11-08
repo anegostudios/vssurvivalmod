@@ -214,7 +214,8 @@ namespace Vintagestory.GameContent.Mechanics
 
             if (network.nodes.Values.Count == 0)
             {
-                if (Api.Side == EnumAppSide.Server) Api.Logger.Notification("Network with id " + network.networkId + " had zero nodes?");
+                // This case shouldn't happen, but it does occasionally, should get debugged eventually, until then, it makes no sense to spam the log files with this
+                //if (Api.Side == EnumAppSide.Server) Api.Logger.Notification("Mech. Network with id " + network.networkId + " had zero nodes?");
                 return;
             }
 

@@ -123,6 +123,7 @@ namespace Vintagestory.GameContent
 
         public override void Initialize(ICoreAPI api)
         {
+            capi = api as ICoreClientAPI;
             base.Initialize(api);
             ovenInv.LateInitialize(InventoryClassName + "-" + Pos, api);
 
@@ -212,8 +213,8 @@ namespace Vintagestory.GameContent
                             if (slot.Itemstack.Block?.GetBehavior<BlockBehaviorCanIgnite>() == null)
                             {
                                 ICoreClientAPI capi = Api as ICoreClientAPI;
-                                if (capi != null && slot.Empty) capi.TriggerIngameError(this, "notbakeable", Lang.Get("This item is not bakeable"));
-                                if (capi != null && !slot.Empty) capi.TriggerIngameError(this, "notbakeable", burning ? Lang.Get("Wait until the fire is out") : Lang.Get("Oven is full"));
+                                if (capi != null && (slot.Empty || slot.Itemstack.Attributes.GetBool("bakeable", true) == false)) capi.TriggerIngameError(this, "notbakeable", Lang.Get("This item is not bakeable."));
+                                else if (capi != null && !slot.Empty) capi.TriggerIngameError(this, "notbakeable", burning ? Lang.Get("Wait until the fire is out") : Lang.Get("Oven is full"));
                                 
                                 return true;
                             }
@@ -607,7 +608,7 @@ namespace Vintagestory.GameContent
             }
             if (fromTemp > toTemp)
             {
-                dt = -dt;
+                dt = -dt / 2;
             }
             if (Math.Abs(fromTemp - toTemp) < 1)
             {
@@ -663,11 +664,11 @@ namespace Vintagestory.GameContent
         {
             if (ovenTemperature <= 25)
             {
-                sb.AppendLine(string.Format("Temperature: {0}", Lang.Get("Cold")));
+                sb.AppendLine(Lang.Get("Temperature: {0}", Lang.Get("Cold")));
             }
             else
             {
-                sb.AppendLine(string.Format("Temperature: {0}°C", (int)ovenTemperature));
+                sb.AppendLine(Lang.Get("Temperature: {0}°C", (int)ovenTemperature));
                 if (ovenTemperature < 100 && !IsBurning)
                 {
                     sb.AppendLine(Lang.Get("Reheat to continue baking"));

@@ -144,7 +144,7 @@ namespace Vintagestory.GameContent
         {
             int targetStage;
             int currentStage = CurrentStage();
-            if (currentStage != MaxStage && (targetStage = getClimateSuitedGrowthStage(world, pos, world.BlockAccessor.GetClimateAt(pos, EnumGetClimateMode.NowValues))) != CurrentStage())
+            if (currentStage != MaxStage && (targetStage = getClimateSuitedGrowthStage(world, pos, world.BlockAccessor.GetClimateAt(pos, EnumGetClimateMode.WorldGenValues))) != CurrentStage())
             {
                 int nextStage = GameMath.Clamp(targetStage, currentStage - 1, currentStage + 1);
 
@@ -206,7 +206,7 @@ namespace Vintagestory.GameContent
                 world.BlockAccessor.GetLightLevel(pos, EnumLightLevelType.MaxLight) >= growthLightLevel &&
                 world.BlockAccessor.GetBlock(pos.UpCopy()).SideSolid[BlockFacing.DOWN.Index] == false)
             {
-                return getClimateSuitedGrowthStage(world, pos, world.BlockAccessor.GetClimateAt(pos, EnumGetClimateMode.NowValues)) != CurrentStage();
+                return getClimateSuitedGrowthStage(world, pos, world.BlockAccessor.GetClimateAt(pos, EnumGetClimateMode.WorldGenValues)) != CurrentStage();
             }
             return false;
         }
@@ -279,7 +279,7 @@ namespace Vintagestory.GameContent
                 if (farmland == null) return;
                 var fert_value = farmland.Fertility;
                 if (fert_value <= 0) return;
-                dsc.Append(Lang.Get("Fertility when tilled: ") + fert_value + "%\n");
+                dsc.Append(Lang.Get("Fertility when tilled:") + " " + fert_value + "%\n");
             }
         }
 

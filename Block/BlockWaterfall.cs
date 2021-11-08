@@ -78,6 +78,12 @@ namespace Vintagestory.GameContent
                     bps.HsvaColor[3].avg = 180 * Math.Min(1, secondsTicking / 7f);
                     bps.Quantity.avg = 1;
                     bps.Velocity[1].avg = -0.4f;
+                    bps.Velocity[0].avg = API.Config.GlobalConstants.CurrentWindSpeedClient.X * windAffectednessAtPos;
+                    bps.Velocity[2].avg = API.Config.GlobalConstants.CurrentWindSpeedClient.Z * windAffectednessAtPos;
+
+                    bps.Size.avg = 0.05f;
+                    bps.Size.var = 0f;
+                    bps.SizeEvolve = EvolvingNatFloat.create(EnumTransformFunction.LINEAR, 0.8f);
 
                     manager.Spawn(bps);
                 }

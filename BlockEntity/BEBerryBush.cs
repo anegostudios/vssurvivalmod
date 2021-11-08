@@ -72,51 +72,59 @@ namespace Vintagestory.GameContent
             // We don't need to check more than one year because it just begins to loop then
             double daysToCheck = GameMath.Mod(Api.World.Calendar.TotalDays - lastCheckAtTotalDays, Api.World.Calendar.DaysPerYear);
 
-            bool changed = false;
+            ClimateCondition baseClimate = Api.World.BlockAccessor.GetClimateAt(Pos, EnumGetClimateMode.WorldGenValues);
+            if (baseClimate == null) return;
+            float baseTemperature = baseClimate.Temperature;
 
-            while (daysToCheck > 1f / Api.World.Calendar.HoursPerDay)
+            bool changed = false;
+            float oneHour = 1f / Api.World.Calendar.HoursPerDay;
+            float resetBelowTemperature = 0, resetAboveTemperature = 0, stopBelowTemperature = 0, stopAboveTemperature = 0, revertBlockBelowTemperature = 0, revertBlockAboveTemperature = 0;
+            if (daysToCheck > oneHour)
             {
-                if (!changed)
+                resetBelowTemperature = Block.Attributes["resetBelowTemperature"].AsFloat(-999);
+                resetAboveTemperature = Block.Attributes["resetAboveTemperature"].AsFloat(999);
+                stopBelowTemperature = Block.Attributes["stopBelowTemperature"].AsFloat(-999);
+                stopAboveTemperature = Block.Attributes["stopAboveTemperature"].AsFloat(999);
+                revertBlockBelowTemperature = Block.Attributes["revertBlockBelowTemperature"].AsFloat(-999);
+                revertBlockAboveTemperature = Block.Attributes["revertBlockAboveTemperature"].AsFloat(999);
+
+                if (Api.World.BlockAccessor.GetRainMapHeightAt(Pos) > Pos.Y) // Fast pre-check
                 {
-                    if (Api.World.BlockAccessor.GetRainMapHeightAt(Pos) > Pos.Y) // Fast pre-check
-                    {
-                        Room room = roomreg?.GetRoomForPosition(Pos);
-                        roomness = (room != null && room.SkylightCount > room.NonSkylightCount && room.ExitCount == 0) ? 1 : 0;
-                    }
-                    else
-                    {
-                        roomness = 0;
-                    }
+                    Room room = roomreg?.GetRoomForPosition(Pos);
+                    roomness = (room != null && room.SkylightCount > room.NonSkylightCount && room.ExitCount == 0) ? 1 : 0;
+                }
+                else
+                {
+                    roomness = 0;
                 }
 
                 changed = true;
+            }
 
-                daysToCheck -= 1f / Api.World.Calendar.HoursPerDay;
-
-                lastCheckAtTotalDays += 1f / Api.World.Calendar.HoursPerDay;
+            while (daysToCheck > oneHour)
+            {
+                daysToCheck -= oneHour;
+                lastCheckAtTotalDays += oneHour;
                 transitionHoursLeft -= 1f;
 
-                ClimateCondition conds = Api.World.BlockAccessor.GetClimateAt(Pos, EnumGetClimateMode.ForSuppliedDateValues, lastCheckAtTotalDays);
-                if (conds == null) return;
+                baseClimate.Temperature = baseTemperature;
+                ClimateCondition conds = Api.World.BlockAccessor.GetClimateAt(Pos, baseClimate, EnumGetClimateMode.ForSuppliedDate_TemperatureOnly, lastCheckAtTotalDays);
                 if (roomness > 0)
                 {
                     conds.Temperature += 5;
                 }
 
-                bool reset = 
-                    conds.Temperature < Block.Attributes["resetBelowTemperature"].AsFloat(-999) ||
-                    conds.Temperature > Block.Attributes["resetAboveTemperature"].AsFloat(999)
-                ;
+                bool reset =
+                    conds.Temperature < resetBelowTemperature ||
+                    conds.Temperature > resetAboveTemperature;
 
-                bool stop = 
-                    conds.Temperature < Block.Attributes["stopBelowTemperature"].AsFloat(-999) ||
-                    conds.Temperature > Block.Attributes["stopAboveTemperature"].AsFloat(999)
-                ;
-
+                bool stop =
+                    conds.Temperature < stopBelowTemperature ||
+                    conds.Temperature > stopAboveTemperature;
+                
                 bool revert = 
-                    conds.Temperature < Block.Attributes["revertBlockBelowTemperature"].AsFloat(-999) ||
-                    conds.Temperature > Block.Attributes["revertBlockAboveTemperature"].AsFloat(999)
-                ;
+                    conds.Temperature < revertBlockBelowTemperature ||
+                    conds.Temperature > revertBlockAboveTemperature;
 
                 if (stop || reset)
                 {
@@ -125,7 +133,7 @@ namespace Vintagestory.GameContent
                     if (reset)
                     {
                         transitionHoursLeft = GetHoursForNextStage();
-                        if (Block.Variant["state"] != "empty" && revert)
+                        if (revert && Block.Variant["state"] != "empty")
                         {
                             Block nextBlock = Api.World.GetBlock(Block.CodeWithVariant("state", "empty"));
                             Api.World.BlockAccessor.ExchangeBlock(nextBlock.BlockId, Pos);

@@ -10,6 +10,14 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
+    public class TextureCodeReplace { public string From; public string To; }
+    public class JsonItemStackBuildStage : JsonItemStack
+    {
+        public string EleCode;
+        public TextureCodeReplace TextureCodeReplace;
+        public float? BurnTimeHours;
+    }
+
     public class PitKilnModelConfig
     {
         public CompositeShape Shape;
@@ -18,18 +26,27 @@ namespace Vintagestory.GameContent
         public string[] BuildMatCodes;
     }
 
+    public class BuildStageMaterial
+    {
+        public ItemStack ItemStack;
+        public string EleCode;
+        public TextureCodeReplace TextureCodeReplace;
+        public float? BurnTimeHours;
+    }
+
     public class BuildStage
     {
         public string ElementName;
-        public ItemStack Material;
+        public BuildStageMaterial[] Materials;
         public float MinHitboxY2;
+        public string MatCode;
     }
 
     public class BlockPitkiln : BlockGroundStorage
     {
         public Dictionary<string, BuildStage[]> BuildStagesByBlock = new Dictionary<string, BuildStage[]>();
         public Dictionary<string, Shape> ShapesByBlock = new Dictionary<string, Shape>();
-        Dictionary<string, ItemStack> resolvedMats = new Dictionary<string, ItemStack>();
+        public byte[] litKilnLightHsv = new byte[] { 4, 7, 14 };
 
         WorldInteraction[] ingiteInteraction;
 
@@ -37,6 +54,7 @@ namespace Vintagestory.GameContent
         {
             base.OnLoaded(api);
 
+            Dictionary<string, BuildStageMaterial[]> resolvedMats = new Dictionary<string, BuildStageMaterial[]>();
 
             List<ItemStack> canIgniteStacks = new List<ItemStack>();
             foreach (CollectibleObject obj in api.World.Collectibles)
@@ -71,13 +89,19 @@ namespace Vintagestory.GameContent
 
 
             var modelConfigs = Attributes["modelConfigs"].AsObject<Dictionary<string, PitKilnModelConfig>>();
-            var buildMats = Attributes["buildMats"].AsObject<Dictionary<string, JsonItemStack>>();
+            var buildMats = Attributes["buildMats"].AsObject<Dictionary<string, JsonItemStackBuildStage[]>>();
 
             foreach (var val in buildMats)
             {
-                if (!val.Value.Resolve(api.World, "pit kiln build material", true)) continue;
+                resolvedMats[val.Key] = new BuildStageMaterial[val.Value.Length];
 
-                resolvedMats[val.Key] = val.Value.ResolvedItemstack;
+                int i = 0;
+                foreach (var stack in val.Value)
+                {
+                    if (!stack.Resolve(api.World, "pit kiln build material", true)) continue;
+
+                    resolvedMats[val.Key][i++] = new BuildStageMaterial() { ItemStack = stack.ResolvedItemstack, EleCode = stack.EleCode, TextureCodeReplace = stack.TextureCodeReplace, BurnTimeHours = stack.BurnTimeHours };
+                }
             }
 
             foreach (var val in modelConfigs)
@@ -109,8 +133,9 @@ namespace Vintagestory.GameContent
 
                 for (int i = 0; i < stages.Length; i++)
                 {
-                    ItemStack stack;
-                    if (!resolvedMats.TryGetValue(matcodes[i], out stack))
+                    BuildStageMaterial[] stacks;
+
+                    if (!resolvedMats.TryGetValue(matcodes[i], out stacks))
                     {
                         api.World.Logger.Error("Pit kiln model configs: No such mat code " + matcodes[i] + ". Please fix. Will ignore all configs.");
                         return;
@@ -122,7 +147,7 @@ namespace Vintagestory.GameContent
                         miny2 = val.Value.MinHitboxY2[GameMath.Clamp(i, 0, val.Value.MinHitboxY2.Length - 1)];
                     }
 
-                    resostages[i] = new BuildStage() { ElementName = stages[i], Material = stack, MinHitboxY2 = miny2 };
+                    resostages[i] = new BuildStage() { ElementName = stages[i], Materials = stacks, MinHitboxY2 = miny2, MatCode = matcodes[i] };
                     
                 }
 
@@ -131,6 +156,21 @@ namespace Vintagestory.GameContent
             }
         }
 
+        
+
+        public override byte[] GetLightHsv(IBlockAccessor blockAccessor, BlockPos pos, ItemStack stack = null)
+        {
+            if (pos != null)
+            {
+                BlockEntityPitKiln beb = blockAccessor.GetBlockEntity(pos) as BlockEntityPitKiln;
+                if (beb != null && beb.Lit)
+                {
+                    return litKilnLightHsv;
+                }
+            }
+
+            return base.GetLightHsv(blockAccessor, pos, stack);
+        }
 
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
@@ -211,7 +251,7 @@ namespace Vintagestory.GameContent
                 }
 
                 if (buildStages == null) return false;
-                if (!hotbarSlot.Itemstack.Equals(world, buildStages[0].Material, GlobalConstants.IgnoredStackAttributes) || hotbarSlot.StackSize < buildStages[0].Material.StackSize) return false;
+                if (!hotbarSlot.Itemstack.Equals(world, buildStages[0].Materials[0].ItemStack, GlobalConstants.IgnoredStackAttributes) || hotbarSlot.StackSize < buildStages[0].Materials[0].ItemStack.StackSize) return false;
 
 
 
@@ -228,6 +268,8 @@ namespace Vintagestory.GameContent
                 begs.OnCreated(byPlayer);
                 begs.updateMeshes();
                 begs.MarkDirty(true);
+
+
                 return true;
             }
 
@@ -263,7 +305,7 @@ namespace Vintagestory.GameContent
             {
                 if (!begs.IsComplete)
                 {
-                    ItemStack[] stacks = new ItemStack[] { begs.NextBuildStage.Material };
+                    ItemStack[] stacks = begs.NextBuildStage.Materials.Select(bsm => bsm.ItemStack).ToArray();
 
                     return new WorldInteraction[] { new WorldInteraction() {
                         ActionLangCode = "blockhelp-pitkiln-build",
@@ -287,19 +329,6 @@ namespace Vintagestory.GameContent
         public override string GetPlacedBlockName(IWorldAccessor world, BlockPos pos)
         {
             return new ItemStack(this).GetName();
-        }
-
-
-        public bool IsFuelMaterial(ItemStack stack)
-        {
-            foreach (var val in resolvedMats)
-            {
-                ItemStack testStack = val.Value;
-                if (testStack == null) continue;
-                if (testStack.Collectible.Equals(stack.Collectible)) return true;
-            }
-
-            return false;
         }
     }
 }

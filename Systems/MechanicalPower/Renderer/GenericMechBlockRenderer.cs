@@ -62,7 +62,6 @@ namespace Vintagestory.GameContent.Mechanics
             if (dev is BEBehaviorMPToggle tog && (rotX == 0 ^ tog.isRotationReversed()))
             {
                 rotY = GameMath.PI;
-                //rotX = -rotX;
                 rotZ = -rotZ;
             }
 

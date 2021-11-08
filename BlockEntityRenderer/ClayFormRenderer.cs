@@ -233,7 +233,11 @@ namespace Vintagestory.GameContent
             }
 
             recipeOutlineMeshRef?.Dispose();
-            recipeOutlineMeshRef = api.Render.UploadMesh(recipeOutlineMesh);
+            recipeOutlineMeshRef = null;
+            if (recipeOutlineMesh.VerticesCount > 0)
+            {
+                recipeOutlineMeshRef = api.Render.UploadMesh(recipeOutlineMesh);
+            }
         }
 
         public void Dispose()

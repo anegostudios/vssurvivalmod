@@ -229,14 +229,13 @@ namespace Vintagestory.GameContent.Mechanics
 
             if (lostFacings.Count > 0)
             {
-                MechanicalNetwork nw = GetNetwork(world, pos);
-
                 orients = orients.Replace("" + lostFacings[0].Code[0], "");
                 Block toPlaceBlock = world.GetBlock(new AssetLocation(FirstCodePart() + "-" + orients));
                 (toPlaceBlock as BlockMPBase).ExchangeBlockAt(world, pos);
                 BlockEntity be = world.BlockAccessor.GetBlockEntity(pos);
                 BEBehaviorMPBase bemp = be.GetBehavior<BEBehaviorMPBase>();
                 bemp.LeaveNetwork();
+                
 
                 //check for connect to adjacent valid facings, similar to TryPlaceBlock
                 BlockFacing firstFace = BlockFacing.FromFirstLetter(orients[0]);

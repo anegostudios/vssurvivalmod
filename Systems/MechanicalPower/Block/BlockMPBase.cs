@@ -48,10 +48,14 @@ namespace Vintagestory.GameContent.Mechanics
             world.BlockAccessor.ExchangeBlock(BlockId, pos);
 
             BlockEntity be = world.BlockAccessor.GetBlockEntity(pos);
-            BEBehaviorMPBase bemp = be.GetBehavior<BEBehaviorMPBase>();
-            bemp.Block = this;
-            bemp.SetOrientations();
-            bemp.Shape = Shape;
+            BEBehaviorMPBase bemp = be?.GetBehavior<BEBehaviorMPBase>();
+
+            if (bemp != null)
+            {
+                bemp.SetOrientations();
+                bemp.Shape = Shape;
+                be.MarkDirty();
+            }
         }
     }
 }

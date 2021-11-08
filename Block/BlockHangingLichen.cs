@@ -20,7 +20,11 @@ namespace Vintagestory.GameContent
             if (VertexFlags.LeavesWindWave)
             {
                 int leavesNoWaveTileSide = 0;  //any bit set to 1 means no Wave on that tileSide
-                
+
+                // Disable motion if top side touching a solid block
+                BlockFacing facing = BlockFacing.ALLFACES[4];
+                Block nblock = api.World.BlockAccessor.GetBlock(pos.AddCopy(facing));
+                if (nblock.BlockMaterial != EnumBlockMaterial.Leaves && nblock.SideSolid[BlockFacing.ALLFACES[4].Opposite.Index]) leavesNoWaveTileSide |= (1 << 4);
 
                 int groundOffset = 0;
 
@@ -87,7 +91,7 @@ namespace Vintagestory.GameContent
                 return true;
             }
 
-            failureCode = "requirevineattachable";
+            failureCode = "requirelichenattachable";
 
             return false;
         }
@@ -107,6 +111,8 @@ namespace Vintagestory.GameContent
 
         bool TryAttachTo(IBlockAccessor blockAccessor, BlockPos blockpos, BlockFacing onBlockFace)
         {
+            if (!onBlockFace.IsVertical) return false;
+
             BlockPos attachingBlockPos = blockpos.AddCopy(onBlockFace.Opposite);
             Block block = blockAccessor.GetBlock(blockAccessor.GetBlockId(attachingBlockPos));
 
@@ -135,13 +141,8 @@ namespace Vintagestory.GameContent
         {
             Block block = world.BlockAccessor.GetBlock(pos.UpCopy());
 
-            return block is BlockLeaves || block is BlockHangingLichen;
+            return block is BlockLeaves || block is BlockHangingLichen || block.CanAttachBlockAt(world.BlockAccessor, this, pos.UpCopy(), BlockFacing.DOWN);
         }
 
-        public override AssetLocation GetRotatedBlockCode(int angle)
-        {
-            BlockFacing newFacing = BlockFacing.HORIZONTALS_ANGLEORDER[(angle / 90 + BlockFacing.FromCode(LastCodePart()).HorizontalAngleIndex) % 4];
-            return CodeWithParts(newFacing.Code);
-        }
     }
 }

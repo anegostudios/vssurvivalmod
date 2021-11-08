@@ -19,6 +19,8 @@ namespace Vintagestory.GameContent
 
         public override void OnLoaded(ICoreAPI api)
         {
+            base.OnLoaded(api);
+
             ICoreServerAPI sapi = api as ICoreServerAPI;
             if (sapi != null)
             {

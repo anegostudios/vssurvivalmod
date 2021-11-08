@@ -155,7 +155,9 @@ namespace Vintagestory.GameContent
 
         private void DoSmelt()
         {
-            int q = OreStack.StackSize / OreStack.Collectible.CombustibleProps.SmeltedRatio;
+            if (OreStack.Collectible.CombustibleProps == null) return;
+
+            int q = OreStack.StackSize / (OreStack.Collectible.CombustibleProps.SmeltedRatio);
 
             if (OreStack.Collectible.Attributes?.IsTrue("mergeUnitsInBloomery") == true)
             {

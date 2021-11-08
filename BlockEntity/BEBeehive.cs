@@ -489,7 +489,7 @@ namespace Vintagestory.GameContent
                     + "\n" + Lang.Get("Population Size: " + hivePopSize));
             }
 
-            string str = Lang.Get("Nearby flowers: {0}\nPopulation Size: {1}", quantityNearbyFlowers, hivePopSize);
+            string str = Lang.Get("beehive-flowers-pop", quantityNearbyFlowers, hivePopSize);
             if (Harvestable) str += "\n" + Lang.Get("Harvestable");
 
             if (skepToPop != null && Api.World.Calendar.TotalHours > cooldownUntilTotalHours)

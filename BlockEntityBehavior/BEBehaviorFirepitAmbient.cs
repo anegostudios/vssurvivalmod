@@ -62,7 +62,7 @@ namespace Vintagestory.GameContent
                 MusicActive = true;
                 MusicLastPlayedTotalHr = nowHours;
                 startLoadingMs = Api.World.ElapsedMilliseconds;
-                track = (Api as ICoreClientAPI)?.StartTrack(new AssetLocation(trackstring), 120f, EnumSoundType.AmbientGlitchunaffected, onTrackLoaded);
+                track = (Api as ICoreClientAPI)?.StartTrack(new AssetLocation(trackstring), 120f, EnumSoundType.Music, onTrackLoaded);
             }
         }
 

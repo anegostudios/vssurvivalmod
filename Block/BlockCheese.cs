@@ -16,6 +16,8 @@ namespace Vintagestory.GameContent
 
         public override void OnLoaded(ICoreAPI api)
         {
+            base.OnLoaded(api);
+
             InteractionHelpYOffset = 0.375f;
 
             interactions = ObjectCacheUtil.GetOrCreate(api, "cheeseInteractions-", () =>

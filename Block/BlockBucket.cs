@@ -127,6 +127,11 @@ namespace Vintagestory.GameContent
             {
                 WaterTightContainableProps props = GetInContainerProps(contentStack);
 
+                if (props == null)
+                {
+                    return bucketmesh;
+                }
+
                 ContainerTextureSource contentSource = new ContainerTextureSource(capi, contentStack, props.Texture);
                 shape = capi.Assets.TryGet("shapes/block/wood/bucket/contents.json").ToObject<Shape>();
                 MeshData contentMesh;

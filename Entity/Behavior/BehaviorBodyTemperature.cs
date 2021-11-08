@@ -40,6 +40,8 @@ namespace Vintagestory.GameContent
 
         float bodyTemperatureResistance;
 
+        ICachingBlockAccessor blockAccess;
+
 
         public float CurBodyTemperature
         {
@@ -83,6 +85,7 @@ namespace Vintagestory.GameContent
         public override void Initialize(EntityProperties properties, JsonObject typeAttributes)
         {
             api = entity.World.Api;
+            blockAccess = api.World.GetCachingBlockAccessor(false, false);
 
             tempTree = entity.WatchedAttributes.GetTreeAttribute("bodyTemp");
 
@@ -171,7 +174,8 @@ namespace Vintagestory.GameContent
                         max = plrpos.AddCopy(3, 3, 3);
                     }
 
-                    api.World.BlockAccessor.WalkBlocks(min, max, (block, pos) =>
+                    blockAccess.Begin();
+                    blockAccess.WalkBlocks(min, max, (block, pos) =>
                     {
                         BlockBehavior src;
                         if ((src = block.GetBehavior(typeof(IHeatSource), true)) != null)
@@ -180,13 +184,11 @@ namespace Vintagestory.GameContent
                             nearHeatSourceStrength += (src as IHeatSource).GetHeatStrength(api.World, pos, plrpos) * factor;
                         }
                     });
-
-                    slowaccum = 0;
                 }
 
                 updateWearableConditions();
-
                 entity.WatchedAttributes.MarkPathDirty("bodyTemp");
+                slowaccum = 0;
             }
 
             if (accum > 1)

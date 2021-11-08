@@ -29,7 +29,8 @@ namespace Vintagestory.GameContent
 
         private void OnInventorySlotModified(int slotid)
         {
-            SetupDialog();
+            // Direct call can cause InvalidOperationException
+            capi.Event.EnqueueMainThreadTask(SetupDialog, "setupquerndlg");
         }
 
         void SetupDialog()

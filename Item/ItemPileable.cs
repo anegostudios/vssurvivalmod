@@ -84,6 +84,9 @@ namespace Vintagestory.GameContent
             {
                 handling = EnumHandHandling.PreventDefaultAction;
                 ((byEntity as EntityPlayer)?.Player as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
+            } else
+            {
+                base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handling);
             }
             
 

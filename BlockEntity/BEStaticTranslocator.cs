@@ -606,7 +606,11 @@ namespace Vintagestory.GameContent
 
                 if (tree.GetBool("somebodyDidTeleport"))
                 {
-                    worldAccessForResolve.PlaySoundAt(new AssetLocation("sounds/effect/translocate-breakdimension"), Pos.X + 0.5f, Pos.Y + 0.5f, Pos.Z + 0.5f, null, false, 16);
+                    // Might get called from the SystemNetworkProcess thread
+                    worldAccessForResolve.Api.Event.EnqueueMainThreadTask(
+                        () => worldAccessForResolve.PlaySoundAt(new AssetLocation("sounds/effect/translocate-breakdimension"), Pos.X + 0.5f, Pos.Y + 0.5f, Pos.Z + 0.5f, null, false, 16),
+                        "playtelesound"
+                    );
                 }
             }
 

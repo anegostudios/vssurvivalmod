@@ -227,7 +227,7 @@ namespace Vintagestory.GameContent
             if (data.nowStormActive)
             {
                 double daysleft = data.stormActiveTotalDays - api.World.Calendar.TotalDays;
-                player.SendMessage(groupId, Lang.Get("Storm still active for {0:0.##} days", daysleft), EnumChatType.Notification);
+                player.SendMessage(groupId, Lang.Get(data.nextStormStrength + " Storm still active for {0:0.##} days", daysleft), EnumChatType.Notification);
             }
             else
             {
@@ -386,7 +386,7 @@ namespace Vintagestory.GameContent
             if (api.World.Rand.NextDouble() < 0.5 || spawnBreakUntilMs > api.World.ElapsedMilliseconds) return;
 
             var part = api.ModLoader.GetModSystem<EntityPartitioning>();
-            int range = 13;
+            int range = 15;
             Vec3d plrPos;
             Vec3d spawnPos = new Vec3d();
             BlockPos spawnPosi = new BlockPos();
@@ -408,15 +408,15 @@ namespace Vintagestory.GameContent
                     return true; 
                 });
 
-                if (drifterCount <= 2 + str * 6)
+                if (drifterCount <= 2 + str * 8)
                 {
                     int tries = 15;
                     int spawned = 0;
                     while (tries-- > 0 && spawned < 2)
                     {
-                        float typernd = (str * 0.7f + (float)api.World.Rand.NextDouble() * 0.3f) * drifterTypes.Length;
-                        int index = (int)typernd + api.World.Rand.NextDouble() > (typernd - (int)typernd) ? 1 : 0;
-                        var type = drifterTypes[index];
+                        float typernd = (str * 0.15f + (float)api.World.Rand.NextDouble() * (0.3f + str/2f)) * drifterTypes.Length;
+                        int index = GameMath.RoundRandom(api.World.Rand, typernd);
+                        var type = drifterTypes[GameMath.Clamp(index, 0, drifterTypes.Length - 1)];
 
                         int rndx = api.World.Rand.Next(2 * range) - range;
                         int rndy = api.World.Rand.Next(2 * range) - range;

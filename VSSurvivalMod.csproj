@@ -282,6 +282,7 @@
     <Compile Include="Systems\MechanicalPower\Block\BlockMPMultiblockPulverizer.cs" />
     <Compile Include="Systems\MechanicalPower\Block\BlockPulverizer.cs" />
     <Compile Include="Systems\MechanicalPower\Renderer\PulverizerRenderer.cs" />
+    <Compile Include="Systems\NighttimeDangers\RiftWeather.cs" />
     <Compile Include="Systems\Trading\TraderAnimationManager.cs" />
     <Compile Include="Entity\AITask\AiTaskButterflyFlee.cs" />
     <Compile Include="Entity\AITask\AiTaskButterflyRest.cs" />
@@ -702,6 +703,7 @@
       <Install>false</Install>
     </BootstrapperPackage>
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PostBuildEvent>

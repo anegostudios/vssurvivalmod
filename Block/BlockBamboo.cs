@@ -35,6 +35,8 @@ namespace Vintagestory.GameContent
 
         public override void OnLoaded(ICoreAPI api)
         {
+            base.OnLoaded(api);
+
             ICoreServerAPI sapi = api as ICoreServerAPI;
             if (sapi != null)
             {
@@ -332,7 +334,8 @@ namespace Vintagestory.GameContent
                             }
                             else
                             {
-                                continuousBambooCane = false;
+                                if (block1 is BlockWithLeavesMotion) bambooLeavesFound = true;
+                                else continuousBambooCane = false;
                                 break;  // Stop searching once no longer a continuous bamboo cane above
                             }
                         }

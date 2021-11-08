@@ -23,7 +23,7 @@ namespace Vintagestory.GameContent
         string startedByPlayerUid;
 
         ILoadedSound ambientSound;
-        Cuboidf fireCuboid = new Cuboidf(0, 0, 0, 1, 1, 1);
+        static Cuboidf fireCuboid = new Cuboidf(-0.125f, 0, -0.125f, 1.125f, 1, 1.125f);
         WeatherSystemBase wsys;
         Vec3d tmpPos = new Vec3d();
 
@@ -66,6 +66,9 @@ namespace Vintagestory.GameContent
             {
                 if (consumefuel)
                 {
+                    var becontainer = Api.World.BlockAccessor.GetBlockEntity(FuelPos) as BlockEntityContainer;
+                    becontainer?.OnBlockBroken();
+
                     Api.World.BlockAccessor.SetBlock(0, FuelPos);
                     Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(FuelPos);
                     TrySpreadTo(FuelPos);
@@ -195,14 +198,21 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            Entity[] entities = Api.World.GetEntitiesAround(FirePos.ToVec3d().Add(0.5, 0.5, 0.5), 3, 3, (e) => e.Alive);
+            Entity[] entities = Api.World.GetEntitiesAround(FirePos.ToVec3d().Add(0.5, 0.5, 0.5), 3, 3, (e) => true);
             Vec3d ownPos = FirePos.ToVec3d();
             for (int i = 0; i < entities.Length; i++)
             {
                 Entity entity = entities[i];
-                if (CollisionTester.AabbIntersect(entity.CollisionBox, entity.ServerPos.X, entity.ServerPos.Y, entity.ServerPos.Z, fireCuboid, ownPos))
+                if (!CollisionTester.AabbIntersect(entity.CollisionBox, entity.ServerPos.X, entity.ServerPos.Y, entity.ServerPos.Z, fireCuboid, ownPos)) continue;
+
+                if (entity.Alive)
                 {
                     entity.ReceiveDamage(new DamageSource() { Source = EnumDamageSource.Block, SourceBlock = fireBlock, SourcePos = ownPos, Type = EnumDamageType.Fire }, 2f);
+                }
+
+                if (Api.World.Rand.NextDouble() < 0.125)
+                {
+                    entity.Ignite();
                 }
             }
 
