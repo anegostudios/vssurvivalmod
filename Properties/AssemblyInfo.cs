@@ -65,6 +65,7 @@ using Vintagestory.API.Config;
                     harshWinters: ""true"",
                     daysPerMonth: ""9"",
                     saplingGrowthRate: ""2"",
+                    farmlandGrowthRate: ""1"",
                     allowUndergroundFarming: ""false"",
                     temporalGearRespawnUses: ""-1""
 			    }
@@ -88,6 +89,7 @@ using Vintagestory.API.Config;
                     foodSpoilSpeed: ""0.5"",
                     toolDurability: ""2"",
                     saplingGrowthRate: ""0.5"",
+                    farmlandGrowthRate: ""0.5"",
                     playerMoveSpeed: ""1.25"",
                     temporalStability: ""false"",
                     temporalStorms: ""off"",
@@ -127,6 +129,7 @@ using Vintagestory.API.Config;
                     surfaceCopperDeposits: ""0.05"",
                     surfaceTinDeposits: ""0"",
                     saplingGrowthRate: ""3"",
+                    farmlandGrowthRate: ""3"",
                     temporalStability: ""true"",
                     temporalStorms: ""often"",
                     polarEquatorDistance: ""100000"",
@@ -170,6 +173,7 @@ using Vintagestory.API.Config;
             { code: ""blockGravity"", dataType: ""dropdown"", values: [""sandgravel"", ""sandgravelsoil""], names: [""Sand and gravel"", ""Sand, gravel and soil with sideways instability""], default: ""sandgravel"" },
 
             { code: ""foodSpoilSpeed"", dataType: ""dropdown"", values: [""4"", ""3"", ""2"", ""1.5"", ""1.25"", ""1"", ""0.75"", ""0.5"", ""0.25""], names: [""400%"", ""300%"", ""200%"", ""150%"", ""125%"", ""100%"", ""75%"", ""50%"", ""25%""], default: ""1"" },
+            { code: ""farmlandGrowthRate"", dataType: ""dropdown"", values: [""3"",""1"", ""0.5"",], names: [""Extremely slow (3x)"",""Normal (1x)"", ""Faster (0.5x)"", ""Much faster (0.25x)""], default: ""1"" },
             { code: ""saplingGrowthRate"", dataType: ""dropdown"", values: [""16"", ""8"", ""4"", ""2"", ""1.5"", ""1"", ""0.75"", ""0.5"", ""0.25""], names: [""Extremely slow (16x)"", ""Much slower (8x)"", ""Slower (4x)"", ""Somewhat slower (2x)"", ""Slightly slower (1.5x)"", ""Normal (1x)"", ""Slightly faster (0.75x)"", ""Faster (0.5x)"", ""Much faster (0.25x)""], default: ""2"" },
             { code: ""toolDurability"", dataType: ""dropdown"", values: [""4"", ""3"", ""2"", ""1.5"", ""1.25"", ""1"", ""0.75"", ""0.5""], names: [""400%"", ""300%"", ""200%"", ""150%"", ""125%"", ""100%"", ""75%"", ""50%""], default: ""1"" },
             { code: ""toolMiningSpeed"", dataType: ""dropdown"", values: [""3"", ""2"", ""1.5"", ""1.25"", ""1"", ""0.75"", ""0.5"", ""0.25""], names: [""300%"", ""200%"", ""150%"", ""125%"", ""100%"", ""75%"", ""50%"", ""25%""], default: ""1"" },

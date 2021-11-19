@@ -32,6 +32,7 @@ namespace Vintagestory.GameContent
     {
         protected static Random rand = new Random();
         protected static CodeAndChance[] weedNames;
+        float GrowthRateMod => Api.World.Config.GetString("farmlandGrowthRate").ToFloat(1);
 
 
         protected static float totalWeedChance;
@@ -588,8 +589,7 @@ namespace Vintagestory.GameContent
             Block block = GetCrop();
             if (block == null) return 99999999;
 
-            float stageHours = 24 * block.CropProps.TotalGrowthDays / block.CropProps.GrowthStages;
-
+            float stageHours = (24 * block.CropProps.TotalGrowthDays / block.CropProps.GrowthStages) * GrowthRateMod;
             stageHours *= 1 / GetGrowthRate(block.CropProps.RequiredNutrient);
 
             // Add a bit random to it (+/- 10%)
