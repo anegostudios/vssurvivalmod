@@ -589,7 +589,7 @@ namespace Vintagestory.GameContent
             Block block = GetCrop();
             if (block == null) return 99999999;
 
-            float stageHours = (24 * block.CropProps.TotalGrowthDays / block.CropProps.GrowthStages) * GrowthRateMod;
+            float stageHours = (Api.World.Calendar.HoursPerDay * block.CropProps.TotalGrowthDays / block.CropProps.GrowthStages) * GrowthRateMod;
             stageHours *= 1 / GetGrowthRate(block.CropProps.RequiredNutrient);
 
             // Add a bit random to it (+/- 10%)
