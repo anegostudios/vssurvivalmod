@@ -22,6 +22,16 @@ namespace Vintagestory.ServerMods
         }
     }
 
+    public enum EnumTreeType
+    {
+        Any,
+        Decidious,
+        Conifer,
+        Kapok,
+        Acacia
+    }
+
+
     public class WgenTreeSupplier
     {
         private ICoreServerAPI api;
@@ -50,9 +60,9 @@ namespace Vintagestory.ServerMods
             treeGenProps.descVineMinTempRel = TerraGenConfig.DescaleTemperature(treeGenProps.vinesMinTemp) / 255f;
 
             treeGenerators.LoadTreeGenerators();
-            
+
             random = new Random(api.WorldManager.Seed);
-            
+
             worldheight = api.WorldManager.MapSizeY;
         }
 
@@ -103,7 +113,7 @@ namespace Vintagestory.ServerMods
 
                 if (random.NextDouble() < distSq) continue;
 
-                float distance = GameMath.Clamp(1 - (fertDist + rainDist + tempDist + forestDist + heightDist)/5f, 0, 1) * variant.Weight / 100f;
+                float distance = GameMath.Clamp(1 - (fertDist + rainDist + tempDist + forestDist + heightDist) / 5f, 0, 1) * variant.Weight / 100f;
 
                 distances.Add(variant, distance);
 
@@ -120,7 +130,7 @@ namespace Vintagestory.ServerMods
 
                 if (rnd <= 0.001)
                 {
-                    float suitabilityBonus = GameMath.Clamp(0.7f - val.Value, 0f, 0.7f) * 1/0.7f * val.Key.SuitabilitySizeBonus;
+                    float suitabilityBonus = GameMath.Clamp(0.7f - val.Value, 0f, 0.7f) * 1 / 0.7f * val.Key.SuitabilitySizeBonus;
 
                     float size = val.Key.MinSize + (float)random.NextDouble() * (val.Key.MaxSize - val.Key.MinSize) + suitabilityBonus;
 

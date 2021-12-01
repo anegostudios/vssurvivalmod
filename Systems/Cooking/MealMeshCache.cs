@@ -109,7 +109,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public MeshRef GetOrCreatePieMeshRef(ItemStack pieStack, ModelTransform transform = null)
+        public MeshRef GetOrCreatePieMeshRef(ItemStack pieStack)
         {
             Dictionary<int, MeshRef> meshrefs;
 
@@ -130,13 +130,13 @@ namespace Vintagestory.GameContent
 
             string extrakey = "ct" + pieStack.Attributes.GetInt("topCrustType") + "-bl" + pieStack.Attributes.GetInt("bakeLevel", 0) + "-ps" + pieStack.Attributes.GetInt("pieSize");
 
-            int mealhashcode = GetMealHashCode(capi.World, pieStack.Block, contentStacks, transform?.Translation, extrakey);
+            int mealhashcode = GetMealHashCode(pieStack.Block, contentStacks, null, extrakey);
 
             MeshRef mealMeshRef;
 
             if (!meshrefs.TryGetValue(mealhashcode, out mealMeshRef))
             {
-                MeshData mesh = GetPieMesh(pieStack, transform);
+                MeshData mesh = GetPieMesh(pieStack);
                 if (mesh == null) return null;
 
                 meshrefs[mealhashcode] = mealMeshRef = capi.Render.UploadMesh(mesh);
@@ -273,7 +273,7 @@ namespace Vintagestory.GameContent
 
             if (contentStacks == null) return null;
 
-            int mealhashcode = GetMealHashCode(capi.World, containerBlock, contentStacks, foodTranslate);
+            int mealhashcode = GetMealHashCode(containerBlock, contentStacks, foodTranslate);
 
             MeshRef mealMeshRef;
 
@@ -474,7 +474,19 @@ namespace Vintagestory.GameContent
             }
         }
 
-        private int GetMealHashCode(IClientWorldAccessor world, Block block, ItemStack[] contentStacks, Vec3f translate, string extraKey = null)
+        public int GetMealHashCode(ItemStack stack, Vec3f translate = null, string extraKey = "")
+        {
+            ItemStack[] contentStacks = (stack.Block as BlockContainer).GetContents(capi.World, stack);
+
+            if (stack.Block is BlockPie)
+            {
+                extraKey += "ct" + stack.Attributes.GetInt("topCrustType") + "-bl" + stack.Attributes.GetInt("bakeLevel", 0) + "-ps" + stack.Attributes.GetInt("pieSize");
+            }
+
+            return GetMealHashCode(stack.Block, contentStacks, translate, extraKey);
+        }
+
+        protected int GetMealHashCode(Block block, ItemStack[] contentStacks, Vec3f translate = null, string extraKey = null)
         {
             string shapestring = block.Shape.ToString() + block.Code.ToShortString();
             if (translate != null) shapestring += translate.X + "/" + translate.Y + "/" + translate.Z;

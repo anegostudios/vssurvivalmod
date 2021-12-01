@@ -130,7 +130,7 @@ namespace Vintagestory.ServerMods
                     // Place according to forest value
                     int climate = GameMath.BiLerpRgbColor((float)dx / chunksize, (float)dz / chunksize, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight);
 
-                    if (bpc.IsPatchSuitableAt(blockPatch, block, api.WorldManager, climate, y, 0, 0))
+                    if (bpc.IsPatchSuitableAt(blockPatch, block, api.WorldManager.MapSizeY, climate, y, 0, 0))
                     {
                         int firstBlockId = 0;
                         bool found = true;

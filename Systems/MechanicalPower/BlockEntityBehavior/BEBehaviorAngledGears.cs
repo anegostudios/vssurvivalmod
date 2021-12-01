@@ -327,7 +327,7 @@ namespace Vintagestory.GameContent.Mechanics
             // Skip this if already called CreateJoinAndDiscoverNetwork in Initialize()
             if ((Api.Side == EnumAppSide.Client || OutFacingForNetworkDiscovery == null) && connectedOnFacing != null)
             {
-                if (connectedOnFacing.IsAxisWE)
+                if (connectedOnFacing.Axis == EnumAxis.X)
                 {
                     if (!tryConnect(BlockFacing.NORTH) && !tryConnect(BlockFacing.SOUTH))
                     {
@@ -336,7 +336,7 @@ namespace Vintagestory.GameContent.Mechanics
                     return;
                 }
 
-                if (connectedOnFacing.IsAxisNS)
+                if (connectedOnFacing.Axis == EnumAxis.Z)
                 {
                     if (!tryConnect(BlockFacing.WEST) && !tryConnect(BlockFacing.EAST))
                     {

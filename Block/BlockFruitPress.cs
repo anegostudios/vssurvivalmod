@@ -7,6 +7,22 @@ namespace Vintagestory.GameContent
 {
     public class BlockFruitPress : Block
     {
+        Cuboidf[] particleCollBoxes;
+
+        public override void OnLoaded(ICoreAPI api)
+        {
+            particleCollBoxes = new Cuboidf[] { CollisionBoxes[0].Clone() };
+            particleCollBoxes[0].Y1 = 0.7f;
+
+            base.OnLoaded(api);
+        }
+
+        public override Cuboidf[] GetParticleCollisionBoxes(IBlockAccessor blockAccessor, BlockPos pos)
+        {
+            
+            return particleCollBoxes;
+        }
+
         public override bool DoParticalSelection(IWorldAccessor world, BlockPos pos)
         {
             return true;
@@ -78,6 +94,11 @@ namespace Vintagestory.GameContent
         public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
         {
             return base.GetPlacedBlockInteractionHelp(world, selection, forPlayer);
+        }
+
+        public override string GetPlacedBlockInfo(IWorldAccessor world, BlockPos pos, IPlayer forPlayer)
+        {
+            return base.GetPlacedBlockInfo(world, pos, forPlayer);
         }
     }
 }

@@ -17,6 +17,26 @@ namespace Vintagestory.GameContent
         int color;
         int tempColor;
         ItemStack tempStack;
+        float rotAngleY;
+
+        public Cuboidf[] colSelBox;
+
+        public virtual float MeshAngle
+        {
+            get { return rotAngleY; }
+            set
+            {
+                rotAngleY = value;
+                colSelBox = new Cuboidf[] { Block.CollisionBoxes[0].RotatedCopy(0, value * GameMath.RAD2DEG, 0, new Vec3d(0.5, 0.5, 0.5)) };
+                if (signRenderer != null)
+                {
+                    signRenderer.rotY = 180 + rotAngleY * GameMath.RAD2DEG;
+                    signRenderer.translateX = 8f/16f;
+                    signRenderer.translateZ = 8f/16f;
+                    signRenderer.offsetZ = -1.51f / 16f;
+                }
+            }
+        }
 
         public override void Initialize(ICoreAPI api)
         {
@@ -27,6 +47,11 @@ namespace Vintagestory.GameContent
                 signRenderer = new BlockEntitySignRenderer(Pos, (ICoreClientAPI)api);
                 
                 if (text.Length > 0) signRenderer.SetNewText(text, color);
+
+                signRenderer.rotY = 180 + rotAngleY * GameMath.RAD2DEG;
+                signRenderer.translateX = 8f / 16f;
+                signRenderer.translateZ = 8f / 16f;
+                signRenderer.offsetZ = -1.51f / 16f;
             }
         }
 
@@ -44,7 +69,16 @@ namespace Vintagestory.GameContent
             if (color == 0) color = ColorUtil.BlackArgb;
 
             text = tree.GetString("text", "");
-            
+
+            if (!tree.HasAttribute("meshAngle"))
+            {
+                // Pre 1.16 behavior
+                MeshAngle = Block.Shape.rotateY;
+            } else
+            {
+                MeshAngle = tree.GetFloat("meshAngle", 0);
+            }
+
             signRenderer?.SetNewText(text, color);
         }
 
@@ -53,6 +87,7 @@ namespace Vintagestory.GameContent
             base.ToTreeAttributes(tree);
             tree.SetInt("color", color);
             tree.SetString("text", text);
+            tree.SetFloat("meshAngle", MeshAngle);
         }
 
         public override void OnReceivedClientPacket(IPlayer player, int packetid, byte[] data)
@@ -67,12 +102,6 @@ namespace Vintagestory.GameContent
                 }
 
                 color = tempColor;
-
-                /*((ICoreServerAPI)api).Network.BroadcastBlockEntityPacket(
-                    pos.X, pos.Y, pos.Z,
-                    (int)EnumSignPacketId.NowText,
-                    data
-                );*/
 
                 MarkDirty(true);
 
@@ -191,6 +220,26 @@ namespace Vintagestory.GameContent
             signRenderer?.Dispose();
         }
 
+        MeshData mesh;
+
+        public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
+        {
+            if (Block.Variant["attachment"] != "ground")
+            {
+                return base.OnTesselation(mesher, tessThreadTesselator);
+            }
+            
+            if (mesh == null)
+            {
+                ICoreClientAPI capi = Api as ICoreClientAPI;
+                var shape = capi.TesselatorManager.GetCachedShape(Block.Shape.Base);
+                capi.Tesselator.TesselateShape(Block, shape, out mesh, new Vec3f(0, MeshAngle * GameMath.RAD2DEG, 0));
+            }
+
+            mesher.AddMeshData(mesh);
+
+            return true;
+        }
     }
 
     public enum EnumSignPacketId

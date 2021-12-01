@@ -68,6 +68,8 @@ namespace Vintagestory.GameContent
         TemporalStormConfig config;
         TemporalStormRunTimeData data = new TemporalStormRunTimeData();
 
+        public float modGlitchStrength;
+
 
         string worldConfigStorminess;
 
@@ -547,8 +549,8 @@ namespace Vintagestory.GameContent
 
         internal float GetGlitchEffectExtraStrength()
         {
-            if (!data.nowStormActive) return 0;
-            return data.stormGlitchStrength;
+            if (!data.nowStormActive) return modGlitchStrength;
+            return data.stormGlitchStrength + modGlitchStrength;
         }
 
         private void Event_OnEntityDeath(Entity entity, DamageSource damageSource)

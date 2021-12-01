@@ -320,9 +320,9 @@ namespace Vintagestory.GameContent
             ambientSound?.Dispose();
         }
 
-        public override void OnBlockBroken()
+        public override void OnBlockBroken(IPlayer byPlayer = null)
         {
-            base.OnBlockBroken();
+            base.OnBlockBroken(byPlayer);
 
             if (contents != null)
             {

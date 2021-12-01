@@ -5,6 +5,7 @@ using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 using System.Linq;
 using Vintagestory.API.Util;
+using System;
 
 namespace Vintagestory.GameContent
 {
@@ -41,6 +42,24 @@ namespace Vintagestory.GameContent
             });
         }
 
+        public override Cuboidf[] GetCollisionBoxes(IBlockAccessor blockAccessor, BlockPos pos)
+        {
+            if (Variant["attachment"] == "wall") return base.GetCollisionBoxes(blockAccessor, pos);
+
+            BlockEntitySign besign = blockAccessor.GetBlockEntity(pos) as BlockEntitySign;
+            if (besign != null) return besign.colSelBox;
+            return base.GetCollisionBoxes(blockAccessor, pos);
+        }
+
+        public override Cuboidf[] GetSelectionBoxes(IBlockAccessor blockAccessor, BlockPos pos)
+        {
+            if (Variant["attachment"] == "wall") return base.GetCollisionBoxes(blockAccessor, pos);
+
+            BlockEntitySign besign = blockAccessor.GetBlockEntity(pos) as BlockEntitySign;
+            if (besign != null) return besign.colSelBox;
+            return base.GetSelectionBoxes(blockAccessor, pos);
+        }
+
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection bs, ref string failureCode)
         {
             BlockPos supportingPos = bs.Position.AddCopy(bs.Face.Opposite);
@@ -71,6 +90,21 @@ namespace Vintagestory.GameContent
             AssetLocation blockCode = CodeWithParts(horVer[0].Code);
             Block block = world.BlockAccessor.GetBlock(blockCode);
             world.BlockAccessor.SetBlock(block.BlockId, bs.Position);
+
+            BlockEntitySign bect = world.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntitySign;
+            if (bect != null)
+            {
+                BlockPos targetPos = bs.DidOffset ? bs.Position.AddCopy(bs.Face.Opposite) : bs.Position;
+                double dx = byPlayer.Entity.Pos.X - (targetPos.X + bs.HitPosition.X);
+                double dz = (float)byPlayer.Entity.Pos.Z - (targetPos.Z + bs.HitPosition.Z);
+                float angleHor = (float)Math.Atan2(dx, dz);
+
+                float deg45 = GameMath.PIHALF / 2;
+                float roundRad = ((int)Math.Round(angleHor / deg45)) * deg45;
+                bect.MeshAngle = roundRad;
+            }
+
+
             return true;
         }
 

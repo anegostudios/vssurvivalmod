@@ -166,12 +166,26 @@ namespace Vintagestory.GameContent
 
             string treeFellingGroupCode = block.Attributes?["treeFellingGroupCode"].AsString();
             int spreadIndex = block.Attributes?["treeFellingGroupSpreadIndex"].AsInt(0) ?? 0;
+            if (block.Attributes?["treeFellingCanChop"].AsBool(true) == false) return foundPositions;
+
+            int dy = 0;
+            
+            if (block is ICustomTreeFellingBehavior ctfbh)
+            {
+                EnumTreeFellingBehavior bh = ctfbh.GetTreeFellingBehavior(startPos, null, spreadIndex);
+                if (bh == EnumTreeFellingBehavior.NoChop) return foundPositions;
+                if (bh == EnumTreeFellingBehavior.ChopSpreadVerticalOnly)
+                {
+                    dy = 1;
+                }
+            }
+
 
             // Must start with a log
             if (spreadIndex < 2) return foundPositions;
             if (treeFellingGroupCode == null) return foundPositions;
 
-            queue.Enqueue(new Vec4i(startPos.X, startPos.Y, startPos.Z, spreadIndex));
+            queue.Enqueue(new Vec4i(startPos.X, startPos.Y + dy, startPos.Z, spreadIndex));
             foundPositions.Push(startPos);
             checkedPositions.Add(startPos);
 
@@ -204,6 +218,18 @@ namespace Vintagestory.GameContent
                     // Only break the same type tree blocks
                     if (ngcode != treeFellingGroupCode) continue;
 
+                    if (block is ICustomTreeFellingBehavior ctfbhn)
+                    {
+                        EnumTreeFellingBehavior bh = ctfbhn.GetTreeFellingBehavior(neibPos, facing, pos.W);
+                        if (bh == EnumTreeFellingBehavior.NoChop) continue;
+                        if (bh == EnumTreeFellingBehavior.ChopSpreadVerticalOnly && facing.Equals(0, 1, 0))
+                        {
+                            foundPositions.Push(neibPos.Copy());
+                            checkedPositions.Add(neibPos);
+                            continue;
+                        }
+                    }
+
                     // Only spread from "high to low". i.e. spread from log to leaves, but not from leaves to logs
                     int nspreadIndex = block.Attributes?["treeFellingGroupSpreadIndex"].AsInt(0) ?? 0;
                     if (pos.W < nspreadIndex) continue;
@@ -219,5 +245,18 @@ namespace Vintagestory.GameContent
             return foundPositions;
         }
 
+    }
+
+
+    public enum EnumTreeFellingBehavior
+    {
+        NoChop,
+        Chop,
+        ChopSpreadVerticalOnly
+    }
+
+    public interface ICustomTreeFellingBehavior
+    {
+        EnumTreeFellingBehavior GetTreeFellingBehavior(BlockPos pos, Vec3i fromDir, int spreadIndex);
     }
 }

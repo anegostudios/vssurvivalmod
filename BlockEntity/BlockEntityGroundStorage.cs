@@ -17,30 +17,23 @@ namespace Vintagestory.GameContent
 
     
 
-    public class BlockEntityGroundStorage : BlockEntityContainer, IBlockEntityContainer, ITexPositionSource
+    public class BlockEntityGroundStorage : BlockEntityDisplay, IBlockEntityContainer, ITexPositionSource
     {
-        public Size2i AtlasSize => capi.BlockTextureAtlas.Size;
-
         public object inventoryLock = new object(); // Because OnTesselation runs in another thread
 
         protected InventoryGeneric inventory;
 
         public GroundStorageProperties StorageProps { get; protected set; }
         public bool forceStorageProps = false;
+        protected EnumGroundStorageLayout? overrideLayout;
 
         public int TransferQuantity => StorageProps.TransferQuantity;
-
-        
-
         public int BulkTransferQuantity => StorageProps.Layout == EnumGroundStorageLayout.Stacking ? StorageProps.BulkTransferQuantity : 1;
 
-
-        ICoreClientAPI capi;
-
         protected virtual int invSlotCount => 4;
+        protected Cuboidf[] colSelBoxes;
 
-
-        protected MeshData[] meshes;
+        ItemSlot isUsingSlot;
 
         public int TotalStackSize
         {
@@ -76,77 +69,25 @@ namespace Vintagestory.GameContent
             get { return "groundstorage"; }
         }
 
+        public override string AttributeTransformCode => "groundStorageTransform";
 
-        public virtual TextureAtlasPosition this[string textureCode]
+        public override TextureAtlasPosition this[string textureCode]
         {
             get
             {
-                AssetLocation texturePath = null;
-
                 // Prio 1: Get from list of explicility defined textures
                 if (StorageProps.Layout == EnumGroundStorageLayout.Stacking && StorageProps.StackingTextures != null)
                 {
-                    StorageProps.StackingTextures.TryGetValue(textureCode, out texturePath);
-                }
-
-                // Prio 2: Get from collectible textures
-                CompositeTexture tex;
-                Dictionary<string, CompositeTexture> textures = nowTesselatingStack.Collectible is Item item ? item.Textures : (nowTesselatingStack.Collectible as Block).Textures;
-
-                if (texturePath == null && textures.TryGetValue(textureCode, out tex))
-                {
-                    texturePath = tex.Baked.BakedName;
-                }
-
-                // Prio 3: Get from collectible textures, use "all" code
-                if (texturePath == null && textures.TryGetValue("all", out tex))
-                {
-                    texturePath = tex.Baked.BakedName;
-                }
-
-                // Prio 4: Get from currently tesselating shape
-                if (texturePath == null)
-                {
-                    nowTesselatingShape?.Textures.TryGetValue(textureCode, out texturePath);
-                }
-                
-                // Prio 5: The code is the path
-                if (texturePath == null)
-                {
-                    texturePath = new AssetLocation(textureCode);
-                }
-
-                TextureAtlasPosition texpos = capi.BlockTextureAtlas[texturePath];
-
-
-                if (texpos == null)
-                {
-                    IAsset texAsset = capi.Assets.TryGet(texturePath.Clone().WithPathPrefixOnce("textures/").WithPathAppendixOnce(".png"));
-                    if (texAsset != null)
+                    if (StorageProps.StackingTextures.TryGetValue(textureCode, out var texturePath))
                     {
-                        BitmapRef bmp = texAsset.ToBitmap(capi);
-                        capi.BlockTextureAtlas.InsertTextureCached(texturePath, bmp, out _, out texpos);
-                    }
-                    else
-                    {
-                        capi.World.Logger.Warning("For render in block " + Block.Code + ", item {0} defined texture {1}, not no such texture found.", nowTesselatingStack.Collectible.Code, texturePath);
+                        return getOrCreateTexPos(texturePath);
                     }
                 }
 
-                return texpos;
+                // Prio 2: Try other texture sources
+                return base[textureCode];
             }
         }
-
-        internal void ForceStorageProps(GroundStorageProperties storageProps)
-        {
-            this.StorageProps = storageProps;
-            forceStorageProps = true;
-        }
-
-        protected ItemStack nowTesselatingStack;
-        protected Shape nowTesselatingShape;
-        
-        protected Cuboidf[] colSelBoxes;
 
 
         public BlockEntityGroundStorage() : base()
@@ -160,6 +101,14 @@ namespace Vintagestory.GameContent
 
             colSelBoxes = new Cuboidf[] { new Cuboidf(0, 0, 0, 1, 0.25f, 1) };
         }
+
+
+        public void ForceStorageProps(GroundStorageProperties storageProps)
+        {
+            StorageProps = storageProps;
+            forceStorageProps = true;
+        }
+
 
         public override void Initialize(ICoreAPI api)
         {
@@ -185,7 +134,7 @@ namespace Vintagestory.GameContent
             return colSelBoxes;
         }
 
-        public virtual bool OnPlayerInteract(IPlayer player, BlockSelection bs)
+        public virtual bool OnPlayerInteractStart(IPlayer player, BlockSelection bs)
         {
             ItemSlot hotbarSlot = player.InventoryManager.ActiveHotbarSlot;
 
@@ -205,27 +154,38 @@ namespace Vintagestory.GameContent
                     if (!layoutEqual) return false;
                 }
 
+                if (StorageProps.Layout == EnumGroundStorageLayout.Quadrants && inventory.Empty)
+                {
+                    double dx = Math.Abs(bs.HitPosition.X - 0.5);
+                    double dz = Math.Abs(bs.HitPosition.X - 0.5);
+                    if (dx < 2 / 16f && dz < 2 / 16f)
+                    {
+                        overrideLayout = EnumGroundStorageLayout.SingleCenter;
+                        DetermineStorageProperties(hotbarSlot);
+                    }
+                }
+
                 switch (StorageProps.Layout)
                 {
                     case EnumGroundStorageLayout.SingleCenter:
-                        ok = putOrGetItemSingle(inventory[0], player);
+                        ok = putOrGetItemSingle(inventory[0], player, bs);
                         break;
 
 
                     case EnumGroundStorageLayout.Halves:
                         if (bs.HitPosition.X < 0.5)
                         {
-                            ok = putOrGetItemSingle(inventory[0], player);
+                            ok = putOrGetItemSingle(inventory[0], player, bs);
                         }
                         else
                         {
-                            ok = putOrGetItemSingle(inventory[1], player);
+                            ok = putOrGetItemSingle(inventory[1], player, bs);
                         }
                         break;
 
                     case EnumGroundStorageLayout.Quadrants:
                         int pos = ((bs.HitPosition.X > 0.5) ? 2 : 0) + ((bs.HitPosition.Z > 0.5) ? 1 : 0);
-                        ok = putOrGetItemSingle(inventory[pos], player);
+                        ok = putOrGetItemSingle(inventory[pos], player, bs);
                         break;
 
                     case EnumGroundStorageLayout.Stacking:
@@ -244,6 +204,67 @@ namespace Vintagestory.GameContent
 
             return ok;
         }
+
+
+
+        public bool OnPlayerInteractStep(float secondsUsed, IPlayer byPlayer, BlockSelection blockSel)
+        {
+            if (isUsingSlot?.Itemstack?.Collectible is IContainedInteractable collIci)
+            {
+                return collIci.OnContainedInteractStep(secondsUsed, this, isUsingSlot, byPlayer, blockSel);
+            }
+
+            isUsingSlot = null;
+            return false;
+        }
+
+
+        public void OnPlayerInteractStop(float secondsUsed, IPlayer byPlayer, BlockSelection blockSel)
+        {
+            if (isUsingSlot?.Itemstack.Collectible is IContainedInteractable collIci)
+            {
+                collIci.OnContainedInteractStop(secondsUsed, this, isUsingSlot, byPlayer, blockSel);
+            }
+
+            isUsingSlot = null;
+        }
+
+
+
+
+
+
+        public ItemSlot GetSlotAt(BlockSelection bs)
+        {
+            if (StorageProps == null) return null;
+
+            switch (StorageProps.Layout)
+            {
+                case EnumGroundStorageLayout.SingleCenter:
+                    return inventory[0];
+
+                case EnumGroundStorageLayout.Halves:
+                    if (bs.HitPosition.X < 0.5)
+                    {
+                        return inventory[0];
+                    }
+                    else
+                    {
+                        return inventory[1];
+                    }
+
+                case EnumGroundStorageLayout.Quadrants:
+                    int pos = ((bs.HitPosition.X > 0.5) ? 2 : 0) + ((bs.HitPosition.Z > 0.5) ? 1 : 0);
+                    return inventory[pos];
+
+                case EnumGroundStorageLayout.Stacking:
+                    return inventory[0];
+            }
+
+            return null;
+        }
+
+
 
         public bool OnTryCreateKiln()
         {
@@ -298,6 +319,12 @@ namespace Vintagestory.GameContent
                 colSelBoxes[0] = colSelBoxes[0].Clone();
                 colSelBoxes[0].Y2 *= ((int)Math.Ceiling(StorageProps.CbScaleYByLayer * inventory[0].StackSize) * 8) / 8;
             }
+
+            if (overrideLayout != null)
+            {
+                StorageProps = StorageProps.Clone();
+                StorageProps.Layout = (EnumGroundStorageLayout)overrideLayout;
+            }
         }
 
 
@@ -308,7 +335,7 @@ namespace Vintagestory.GameContent
             BlockEntity be = Api.World.BlockAccessor.GetBlockEntity(abovePos);
             if (be is BlockEntityGroundStorage beg)
             {
-                return beg.OnPlayerInteract(byPlayer, bs);
+                return beg.OnPlayerInteractStart(byPlayer, bs);
             }
 
             bool sneaking = byPlayer.Entity.Controls.Sneak;
@@ -446,10 +473,19 @@ namespace Vintagestory.GameContent
 
 
 
-
-
-        bool putOrGetItemSingle(ItemSlot ourSlot, IPlayer player)
+        bool putOrGetItemSingle(ItemSlot ourSlot, IPlayer player, BlockSelection bs)
         {
+            isUsingSlot = null;
+            if (!ourSlot.Empty && ourSlot.Itemstack.Collectible is IContainedInteractable collIci)
+            {
+                if (collIci.OnContainedInteractStart(this, ourSlot, player, bs))
+                {
+                    BlockGroundStorage.IsUsingContainedBlock = true;
+                    isUsingSlot = ourSlot;
+                    return true;
+                }
+            }
+
             lock (inventoryLock)
             {
                 ItemSlot hotbarSlot = player.InventoryManager.ActiveHotbarSlot;
@@ -500,6 +536,12 @@ namespace Vintagestory.GameContent
                 StorageProps = JsonUtil.FromString<GroundStorageProperties>(tree.GetString("storageProps"));
             }
 
+            overrideLayout = null;
+            if (tree.HasAttribute("overrideLayout"))
+            {
+                overrideLayout = (EnumGroundStorageLayout)tree.GetInt("overrideLayout");
+            }
+
             if (this.Api != null)
             {
                 DetermineStorageProperties(null);
@@ -521,10 +563,14 @@ namespace Vintagestory.GameContent
             {
                 tree.SetString("storageProps", JsonUtil.ToString(StorageProps));
             }
+            if (overrideLayout != null)
+            {
+                tree.SetInt("overrideLayout", (int)overrideLayout);
+            }
         }
 
 
-        public override void OnBlockBroken()
+        public override void OnBlockBroken(IPlayer byPlayer = null)
         {
             // Handled by block.GetDrops()
             /*if (Api.World.Side == EnumAppSide.Server)
@@ -621,7 +667,7 @@ namespace Vintagestory.GameContent
         }
 
         
-        public virtual void updateMeshes()
+        public override void updateMeshes()
         {
             if (Api.Side == EnumAppSide.Server) return;
             if (StorageProps == null) return;
@@ -671,11 +717,16 @@ namespace Vintagestory.GameContent
 
             string key = StorageProps.Layout + (StorageProps.TessQuantityElements > 0 ? itemSlot.StackSize : 1) + "x" + itemSlot.Itemstack.Collectible.Code.ToShortString() + offset;
 
+            if (itemSlot.Itemstack.Collectible is IContainedMeshSource ics)
+            {
+                key = ics.GetMeshCacheKey(itemSlot.Itemstack) + StorageProps.Layout + offset;
+            }
+
             MeshData mesh;
             if (gmeshes.TryGetValue(key, out mesh)) return mesh;
 
 
-            nowTesselatingStack = itemSlot.Itemstack;
+            nowTesselatingObj = itemSlot.Itemstack.Collectible;
             ITesselatorAPI mesher = capi.Tesselator;
 
             if (StorageProps.Layout == EnumGroundStorageLayout.Stacking)
@@ -692,7 +743,7 @@ namespace Vintagestory.GameContent
             }
             else
             {
-                mesh = genMeshFromStack(itemSlot.Itemstack);
+                mesh = genMesh(itemSlot.Itemstack);
             }
 
             mesh.Translate(offset);
@@ -702,43 +753,6 @@ namespace Vintagestory.GameContent
         }
         
 
-        protected virtual MeshData genMeshFromStack(ItemStack stack)
-        {
-            MeshData mesh;
-            ICoreClientAPI capi = Api as ICoreClientAPI;
-            if (stack.Class == EnumItemClass.Block)
-            {
-                mesh = capi.TesselatorManager.GetDefaultBlockMesh(stack.Block).Clone();
-            }
-            else
-            {
-                if (stack.Item.Shape != null)
-                {
-                    nowTesselatingShape = capi.TesselatorManager.GetCachedShape(stack.Item.Shape.Base);
-                }
-
-                capi.Tesselator.TesselateItem(stack.Item, out mesh, this);
-
-                if (stack.Collectible.Attributes?["groundStorageTransform"].Exists == true)
-                {
-                    ModelTransform transform = stack.Collectible.Attributes?["groundStorageTransform"].AsObject<ModelTransform>();
-                    transform.EnsureDefaultValues();
-                    mesh.ModelTransform(transform);
-                }
-
-                if (stack.Item.Shape == null || stack.Item.Shape.VoxelizeTexture)
-                {
-                    mesh.Rotate(new Vec3f(0.5f, 0.5f, 0.5f), GameMath.PIHALF, 0, 0);
-                    mesh.Scale(new Vec3f(0.5f, 0.5f, 0.5f), 0.33f, 0.5f, 0.33f);
-                    mesh.Translate(0, -7.5f / 16f, 0f);
-                }
-
-                mesh.RenderPassesAndExtraBits.Fill((byte)EnumChunkRenderPass.BlendNoCull);
-
-            }
-
-            return mesh;
-        }
 
         public bool TryFire()
         {

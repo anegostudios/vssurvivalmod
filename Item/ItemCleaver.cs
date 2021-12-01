@@ -11,7 +11,7 @@ namespace Vintagestory.GameContent
     {
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
-            if (entitySel != null && entitySel.Entity.Alive)
+            if (entitySel != null && entitySel.Entity.Alive && !(entitySel.Entity is EntityArmorStand))
             {
                 handling = EnumHandHandling.PreventDefault;
 

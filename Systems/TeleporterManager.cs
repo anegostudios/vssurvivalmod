@@ -256,11 +256,11 @@ namespace Vintagestory.GameContent
                 translocPitch = Math.Max(translocPitch - dt, 0.5f);
             }
 
-            translocatingSound.SetVolume(translocVolume);
-            translocatingSound.SetPitch(translocPitch);
 
             if (translocatingSound.IsPlaying)
             {
+                translocatingSound.SetVolume(translocVolume);
+                translocatingSound.SetPitch(translocPitch);
                 if (translocVolume <= 0) translocatingSound.Stop();
             }
             else

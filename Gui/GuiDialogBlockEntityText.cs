@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using Vintagestory.API.Client;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
@@ -9,8 +10,8 @@ namespace Vintagestory.GameContent
     {
         double textareaFixedY;
         BlockPos blockEntityPos;
-        public API.Common.Action<string> OnTextChanged;
-        public API.Common.Action OnCloseCancel;
+        public Action<string> OnTextChanged;
+        public Action OnCloseCancel;
 
         bool didSave;
 

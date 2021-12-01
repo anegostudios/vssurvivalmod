@@ -21,6 +21,7 @@ namespace Vintagestory.GameContent
         IInventory IBlockEntityContainer.Inventory { get { return Inventory; } }
 
         RoomRegistry roomReg;
+        protected Room room;
 
         public override void Initialize(ICoreAPI api)
         {
@@ -38,7 +39,7 @@ namespace Vintagestory.GameContent
 
             roomReg = Api.ModLoader.GetModSystem<RoomRegistry>();
 
-            if (Api.Side == EnumAppSide.Server)
+            if (api.Side == EnumAppSide.Server)
             {
                 room = roomReg.GetRoomForPosition(Pos);
             }
@@ -49,8 +50,6 @@ namespace Vintagestory.GameContent
             OnTick(1);
         }
 
-        private Room room; // intentionally set private
-
         protected virtual void OnTick(float dt)
         {
             if (Api.Side == EnumAppSide.Client)
@@ -60,7 +59,6 @@ namespace Vintagestory.GameContent
             }
 
             room = roomReg.GetRoomForPosition(Pos);
-
             if (room.AnyChunkUnloaded != 0)  return;
 
             foreach (ItemSlot slot in Inventory)
@@ -89,9 +87,13 @@ namespace Vintagestory.GameContent
 
         public virtual float GetPerishRate()
         {
+            // ##TODO: for performance the cond.Temperature can be saved in a field for each BlockEntityContainer, worldgen climage values at a position will not change
+            // ##TODO: for performance, perishRate can be cached instead of being re-calculated for each separate slot which is updated
+
             BlockPos sealevelpos = Pos.Copy();
             sealevelpos.Y = Api.World.SeaLevel;
 
+            // ##TODO: this ought to be season specific, i.e. perishrate should rise on a hot summer day
             ClimateCondition cond = Api.World.BlockAccessor.GetClimateAt(sealevelpos);
             if (cond == null) return 1;
 
@@ -101,19 +103,34 @@ namespace Vintagestory.GameContent
             }
 
             float soilTempWeight = 0f;
+            float skyLightProportion = (float)room.SkylightCount / Math.Max(1, room.SkylightCount + room.NonSkylightCount);   // avoid any risk of divide by zero
 
-            if (room.ExitCount == 0)
+            if (room.IsSmallRoom)
             {
-                soilTempWeight = 0.5f + 0.5f * (1 - GameMath.Clamp((float)room.NonCoolingWallCount / Math.Max(1, room.CoolingWallCount), 0, 1));
+                soilTempWeight = 1f;
+                // If there's too much skylight, it's less cellar-like
+                soilTempWeight -= 0.4f * skyLightProportion;
+                // If non-cooling blocks exceed cooling blocks, it's less cellar-like
+                soilTempWeight -= 0.5f * GameMath.Clamp((float)room.NonCoolingWallCount / Math.Max(1, room.CoolingWallCount), 0f, 1f);
             }
 
             int lightlevel = Api.World.BlockAccessor.GetLightLevel(Pos, EnumLightLevelType.OnlySunLight);
 
-            // light level above 12 makes it additionally warmer, especially when part of a cellar
-            float airTemp = cond.Temperature + GameMath.Clamp(lightlevel - 11, 0, 10) * (1f + 5 * soilTempWeight);
+            // light level above 12 makes it additionally warmer, especially when part of a cellar or a greenhouse
+            float lightImportance = 0.1f;
+            // light in small fully enclosed rooms has a big impact
+            if (room.IsSmallRoom) lightImportance += 0.3f * soilTempWeight + 1.75f * skyLightProportion;
+            // light in large most enclosed rooms (e.g. houses, greenhouses) has medium impact
+            else if (room.ExitCount <= 0.1f * (room.CoolingWallCount + room.NonCoolingWallCount)) lightImportance += 1.25f * skyLightProportion;
+            // light outside rooms (e.g. chests on world surface) has low impact but still warms them above base air temperature
+            else lightImportance += 0.5f * skyLightProportion;
+            lightImportance = GameMath.Clamp(lightImportance, 0f, 1.5f);
+            float airTemp = cond.Temperature + GameMath.Clamp(lightlevel - 11, 0, 10) * lightImportance;
 
 
             // Lets say deep soil temperature is a constant 5°C
+            // ##TODO: this ought to depend on worldgen climate: in the Arctic for example, deep soil temperature is going to be lower ...
+            // ##TODO: this ought to be based on depth below worldgen original world surface
             float cellarTemp = 5;
 
             // How good of a cellar it is depends on how much rock or soil was used on he cellars walls
@@ -150,14 +167,14 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override void OnBlockBroken()
+        public override void OnBlockBroken(IPlayer byPlayer = null)
         {
             if (Api.World is IServerWorldAccessor)
             {
                 Inventory.DropAll(Pos.ToVec3d().Add(0.5, 0.5, 0.5));
             }
 
-            base.OnBlockBroken();
+            base.OnBlockBroken(byPlayer);
         }
 
         public ItemStack[] GetNonEmptyContentStacks(bool cloned = true)

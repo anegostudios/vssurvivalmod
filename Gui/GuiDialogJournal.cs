@@ -98,7 +98,7 @@ namespace Vintagestory.GameContent
                 .AddShadedDialogBG(ElementBounds.Fill, true)
                 .AddDialogTitleBar(Lang.Get(journalitems[page].Title), CloseIconPressedLoreItem)
                 .AddRichtext(pages[0], font, textBounds, "page")
-                .AddDynamicText("1 / " + pages.Length, CairoFont.WhiteSmallishText(), EnumTextOrientation.Center, ElementBounds.Fixed(250, 500, 100, 30), "currentpage") 
+                .AddDynamicText("1 / " + pages.Length, CairoFont.WhiteSmallishText().WithOrientation(EnumTextOrientation.Center), ElementBounds.Fixed(250, 500, 100, 30), "currentpage") 
                 .AddButton(Lang.Get("Previous Page"), OnPrevPage, ElementBounds.Fixed(17, 500, 100, 23).WithFixedPadding(10, 4), CairoFont.WhiteSmallishText())
                 .AddButton(Lang.Get("Next Page"), OnNextPage, ElementBounds.Fixed(520, 500, 100, 23).WithFixedPadding(10, 4), CairoFont.WhiteSmallishText())
                 .Compose()

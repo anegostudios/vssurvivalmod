@@ -60,7 +60,7 @@ namespace Vintagestory.GameContent
             return mul;
         }
 
-        public override void OnBlockBroken()
+        public override void OnBlockBroken(IPlayer byPlayer = null)
         {
             //base.OnBlockBroken(); - don't drop contents
         }
@@ -98,7 +98,7 @@ namespace Vintagestory.GameContent
                 return mesh;
             }
 
-            return meshes[key] = block.GenMesh(api as ICoreClientAPI, labelLoc, rot, tesselator);
+            return meshes[key] = block.GenMesh(api as ICoreClientAPI, labelLoc, rot);
         }
 
 

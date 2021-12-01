@@ -186,7 +186,7 @@ namespace Vintagestory.GameContent
 
                         string code = anim.Code == null ? anim.Name.ToLowerInvariant() : anim.Code;
                         active += ", " + code;
-                        AnimationMetaData animmeta = null;
+                        AnimationMetaData animmeta;
                         Properties.Client.AnimationsByMetaCode.TryGetValue(code, out animmeta);
 
                         if (animmeta == null)
@@ -213,7 +213,7 @@ namespace Vintagestory.GameContent
                 AnimManager.StopAnimation("fly");
                 AnimManager.StopAnimation("glide");
 
-                (Properties.Client.Renderer as EntityShapeRenderer).AddRenderFlags = VertexFlags.FoliageWindWaveBitMask;
+                (Properties.Client.Renderer as EntityShapeRenderer).AddRenderFlags = EnumWindBitModeMask.Bend;
                 (Properties.Client.Renderer as EntityShapeRenderer).WindWaveIntensity = WatchedAttributes.GetDouble("windWaveIntensity");
             } else
             {

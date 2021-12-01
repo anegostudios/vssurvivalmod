@@ -50,8 +50,8 @@ namespace Vintagestory.GameContent
 
         private void Event_LevelFinalize()
         {
-            capi.World.Player.Entity.OnFootStep = () => onFootStep(capi.World.Player.Entity);
-            capi.World.Player.Entity.OnImpact = (motionY) => onFallToGround(capi.World.Player.Entity, motionY);
+            capi.World.Player.Entity.OnFootStep += () => onFootStep(capi.World.Player.Entity);
+            capi.World.Player.Entity.OnImpact += (motionY) => onFallToGround(capi.World.Player.Entity, motionY);
         }
 
         public override void StartServerSide(ICoreServerAPI api)
@@ -69,8 +69,8 @@ namespace Vintagestory.GameContent
             var bh = byPlayer.Entity.GetBehavior<EntityBehaviorHealth>();
             if (bh != null) bh.onDamaged += (dmg, dmgSource) => handleDamaged(byPlayer, dmg, dmgSource);
 
-            byPlayer.Entity.OnFootStep = () => onFootStep(byPlayer.Entity);
-            byPlayer.Entity.OnImpact = (motionY) => onFallToGround(byPlayer.Entity, motionY);
+            byPlayer.Entity.OnFootStep += () => onFootStep(byPlayer.Entity);
+            byPlayer.Entity.OnImpact += (motionY) => onFallToGround(byPlayer.Entity, motionY);
 
             updateWearableStats(inv, byPlayer);
         }
@@ -215,6 +215,8 @@ namespace Vintagestory.GameContent
         {
             StatModifiers allmod = new StatModifiers();
 
+            float walkSpeedmul = player.Entity.Stats.GetBlended("armorWalkSpeedAffectedness");
+
             foreach (var slot in inv)
             {
                 if (slot.Empty || !(slot.Itemstack.Item is ItemWearable)) continue;
@@ -224,7 +226,15 @@ namespace Vintagestory.GameContent
                 allmod.canEat &= statmod.canEat;
                 allmod.healingeffectivness += statmod.healingeffectivness;
                 allmod.hungerrate += statmod.hungerrate;
-                allmod.walkSpeed += statmod.walkSpeed;
+
+                if (statmod.walkSpeed < 0)
+                {
+                    allmod.walkSpeed += statmod.walkSpeed * walkSpeedmul;
+                } else
+                {
+                    allmod.walkSpeed += statmod.walkSpeed;
+                }
+                
                 allmod.rangedWeaponsAcc += statmod.rangedWeaponsAcc;
                 allmod.rangedWeaponsSpeed += statmod.rangedWeaponsSpeed;
             }

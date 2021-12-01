@@ -15,29 +15,36 @@ namespace Vintagestory.GameContent
             base.OnLoaded(api);
         }
 
+        int[] origWindMode;
+
         public override void OnJsonTesselation(ref MeshData sourceMesh, ref int[] lightRgbsByCorner, BlockPos pos, Block[] chunkExtBlocks, int extIndex3d)
         {
-            if (VertexFlags.LeavesWindWave)
+            if (VertexFlags.WindMode == EnumWindBitMode.NoWind) return;
+            if (origWindMode == null)
             {
-                int leavesNoWaveTileSide = 0;  //any bit set to 1 means no Wave on that tileSide
-
-                // Disable motion if top side touching a solid block
-                BlockFacing facing = BlockFacing.ALLFACES[4];
-                Block nblock = api.World.BlockAccessor.GetBlock(pos.AddCopy(facing));
-                if (nblock.BlockMaterial != EnumBlockMaterial.Leaves && nblock.SideSolid[BlockFacing.ALLFACES[4].Opposite.Index]) leavesNoWaveTileSide |= (1 << 4);
-
-                int groundOffset = 0;
-
-                bool waveoff = (byte)(lightRgbsByCorner[24] >> 24) < 159;  //corresponds with a sunlight level of less than 14
-
-                if (!waveoff)
-                {
-                    // We could invert the ground offset, have vines bend more the further they descend ...
-                    groundOffset = 1;
-                }
-
-                BlockWithLeavesMotion.SetLeaveWaveFlags(sourceMesh, leavesNoWaveTileSide, waveoff, VertexFlags.LeavesWindWaveBitMask, groundOffset);
+                origWindMode = (int[])sourceMesh.Flags.Clone();
+                int cnt = sourceMesh.FlagsCount;
+                for (int i = 0; i < cnt; i++) origWindMode[i] &= VertexFlags.WindModeBitsMask;
             }
+
+            int sideDisableWindWave = 0;  // Any bit set to 1 means no Wave on that tileSide
+
+            // Disable motion if top side touching a solid block
+            BlockFacing facing = BlockFacing.ALLFACES[4];
+            Block nblock = api.World.BlockAccessor.GetBlock(pos.AddCopy(facing));
+            if (nblock.BlockMaterial != EnumBlockMaterial.Leaves && nblock.SideSolid[BlockFacing.ALLFACES[4].Opposite.Index]) sideDisableWindWave |= (1 << 4);
+
+            int groundOffset = 0;
+
+            bool enableWind = (byte)(lightRgbsByCorner[24] >> 24) >= 159;  //corresponds with a sunlight level of less than 14
+
+            if (enableWind)
+            {
+                // We could invert the ground offset, have vines bend more the further they descend ...
+                groundOffset = 1;
+            }
+
+            ToggleWindModeSetWindData(sourceMesh, sideDisableWindWave, enableWind, groundOffset, origWindMode);
         }
 
 
@@ -54,11 +61,11 @@ namespace Vintagestory.GameContent
             }
 
             Block upBlock = blockAccessor.GetBlock(pos.UpCopy());
-            if (upBlock is BlockVines)
+            if (upBlock is BlockHangingLichen)
             {
-                BlockFacing facing = ((BlockVines)upBlock).GetOrientation();
-                Block block = blockAccessor.GetBlock(CodeWithParts(facing.Code));
-                blockAccessor.SetBlock(block == null ? upBlock.BlockId : block.BlockId, pos);
+                //BlockFacing facing = ((BlockHangingLichen)upBlock).VineFacing;
+                //Block block = blockAccessor.GetBlock(CodeWithParts(facing.Code));
+                blockAccessor.SetBlock(BlockId, pos);
                 return true;
             }
 

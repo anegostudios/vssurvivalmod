@@ -147,7 +147,7 @@ namespace Vintagestory.GameContent
             Api.World.BlockAccessor.SetBlock(0, Pos);
             Api.World.BulkBlockAccessor.ReadFromStagedByDefault = true;
             float size = 0.6f + (float)Api.World.Rand.NextDouble() * 0.5f;
-            sapi.World.TreeGenerators[code].GrowTree(Api.World.BulkBlockAccessor, Pos.DownCopy(), size, 0, 0);
+            sapi.World.TreeGenerators[code].GrowTree(Api.World.BulkBlockAccessor, Pos.DownCopy(), true, size, 0, 0);
 
             Api.World.BulkBlockAccessor.Commit();
         }

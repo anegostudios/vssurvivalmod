@@ -346,7 +346,7 @@ namespace Vintagestory.ServerMods
 
                 if (ModStdWorldGen.DoDecorationPass)
                 {
-                    api.ModLoader.GetModSystem<GenVegetation>().initWorldGen();
+                    api.ModLoader.GetModSystem<GenVegetationAndPatches>().initWorldGen();
                     api.ModLoader.GetModSystem<GenPonds>().initWorldGen();
                     api.ModLoader.GetModSystem<GenBlockLayers>().InitWorldGen();
                     api.ModLoader.GetModSystem<GenCaves>().initWorldGen();

@@ -25,6 +25,9 @@ namespace Vintagestory.GameContent
         public float Damage;
         public ItemStack ProjectileStack;
 
+        public bool NonCollectible;
+        public float collidedAccum;
+
         public override bool IsInteractable
         {
             get { return false; }
@@ -55,6 +58,10 @@ namespace Vintagestory.GameContent
                 pos.Pitch = 0;
                 pos.Roll = 0;
                 pos.Yaw = GameMath.PIHALF;
+
+                collidedAccum += dt;
+                if (NonCollectible && collidedAccum > 1) Die();
+
             } else
             {
                 pos.Pitch = (World.ElapsedMilliseconds / 300f) % GameMath.TWOPI;
@@ -85,13 +92,7 @@ namespace Vintagestory.GameContent
                         pos.Motion.Y = GameMath.Clamp(motionBeforeCollide.Y * -0.4f, -0.1f, 0.1f);
                     }
 
-                    
-
                     World.PlaySoundAt(new AssetLocation("sounds/thud"), this, null, false, 32, strength);
-
-                    // Slighty randomize orientation to make it a bit more realistic
-                    //pos.Yaw += (float)(World.Rand.NextDouble() * 0.05 - 0.025);
-                    //pos.Roll += (float)(World.Rand.NextDouble() * 0.05 - 0.025);
 
                     // Resend position to client
                     WatchedAttributes.MarkAllDirty();
@@ -110,7 +111,7 @@ namespace Vintagestory.GameContent
                         return false;
                     }
 
-                    double dist = e.CollisionBox.ToDouble().Translate(e.ServerPos.X, e.ServerPos.Y, e.ServerPos.Z).ShortestDistanceFrom(ServerPos.X, ServerPos.Y, ServerPos.Z);
+                    double dist = e.SelectionBox.ToDouble().Translate(e.ServerPos.X, e.ServerPos.Y, e.ServerPos.Z).ShortestDistanceFrom(ServerPos.X, ServerPos.Y, ServerPos.Z);
                     return dist < 0.5f;
                 });
 
@@ -132,52 +133,12 @@ namespace Vintagestory.GameContent
 
             beforeCollided = false;
             motionBeforeCollide.Set(pos.Motion.X, pos.Motion.Y, pos.Motion.Z);
-
-            SetRotation();
-        }
-
-
-        public virtual void SetRotation()
-        {
-            EntityPos pos = (World is IServerWorldAccessor) ? ServerPos : Pos;
-
-            double speed = pos.Motion.Length();
-
-            /* if (speed > 0.01)
-             {
-
-                 pos.Yaw =
-                     GameMath.PI + (float)Math.Atan2(pos.Motion.X / speed, pos.Motion.Z / speed)
-                     + GameMath.Cos((World.ElapsedMilliseconds - msLaunch) / 200f) * 0.03f
-                 ;
-                 pos.Roll = 0;
-             }*/
-
-            /*float sizex = Math.Max(0.25f, 0.8f * Math.Abs(GameMath.Sin(pos.Yaw) * GameMath.Cos(pos.Roll)));
-            float sizez = Math.Max(0.25f, 0.8f * Math.Abs(GameMath.Cos(pos.Yaw) * GameMath.Cos(pos.Roll)));
-            float sizey = Math.Max(0.25f, 0.8f * Math.Abs(GameMath.Sin(pos.Roll)));
-
-            if (CollisionBox == null) return;
-            CollisionBox.X1 = -sizex / 2;
-            CollisionBox.X2 = sizex / 2;
-            CollisionBox.Z1 = -sizez / 2;
-            CollisionBox.Z2 = sizez / 2;
-            CollisionBox.Y1 = -sizey / 2;
-            CollisionBox.Y2 = sizey / 2;*/
-
-            if (CollisionBox == null) return;
-            CollisionBox.X1 = -0.2f;
-            CollisionBox.X2 = 0.2f;
-            CollisionBox.Z1 = -0.2f;
-            CollisionBox.Z2 = 0.2f;
-            CollisionBox.Y1 = 0f;
-            CollisionBox.Y2 = 0.2f;
         }
 
 
         public override bool CanCollect(Entity byEntity)
         {
-            return Alive && World.ElapsedMilliseconds - msLaunch > 1000 && ServerPos.Motion.Length() < 0.01;
+            return !NonCollectible && Alive && World.ElapsedMilliseconds - msLaunch > 1000 && ServerPos.Motion.Length() < 0.01;
         }
 
         public override ItemStack OnCollected(Entity byEntity)

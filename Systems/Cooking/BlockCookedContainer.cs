@@ -14,7 +14,7 @@ using Vintagestory.API.Util;
 namespace Vintagestory.GameContent
 {
 
-    public class BlockCookedContainer : BlockCookedContainerBase, IInFirepitRendererSupplier
+    public class BlockCookedContainer : BlockCookedContainerBase, IInFirepitRendererSupplier, IContainedMeshSource, IContainedInteractable
     {
         public static SimpleParticleProperties smokeHeld;
         public static SimpleParticleProperties foodSparks;
@@ -28,6 +28,8 @@ namespace Vintagestory.GameContent
 
             if (api.Side != EnumAppSide.Client) return;
             ICoreClientAPI capi = api as ICoreClientAPI;
+
+            meshCache = api.ModLoader.GetModSystem<MealMeshCache>();
 
             interactions = ObjectCacheUtil.GetOrCreate(api, "cookedContainerBlockInteractions", () =>
             {
@@ -96,6 +98,8 @@ namespace Vintagestory.GameContent
 
 
         MealMeshCache meshCache;
+        float yoff = 2.5f;
+
         public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
         {
             if (meshCache == null) meshCache = capi.ModLoader.GetModSystem<MealMeshCache>();
@@ -103,10 +107,20 @@ namespace Vintagestory.GameContent
             CookingRecipe recipe = GetCookingRecipe(capi.World, itemstack);
             ItemStack[] contents = GetNonEmptyContents(capi.World, itemstack);
 
-            float yoff = 2.5f;
-
             MeshRef meshref = meshCache.GetOrCreateMealInContainerMeshRef(this, recipe, contents, new Vec3f(0, yoff/16f, 0));
             if (meshref != null) renderinfo.ModelRef = meshref;
+        }
+
+
+        public virtual string GetMeshCacheKey(ItemStack itemstack)
+        {
+            return ""+meshCache.GetMealHashCode(itemstack);
+        }
+
+
+        public MeshData GenMesh(ItemStack itemstack, ITextureAtlasAPI targetAtlas, BlockPos forBlockPos = null)
+        {
+            return meshCache.GenMealInContainerMesh(this, GetCookingRecipe(api.World, itemstack), GetNonEmptyContents(api.World, itemstack), new Vec3f(0, yoff / 16f, 0));
         }
 
         public override TransitionState[] UpdateAndGetTransitionStates(IWorldAccessor world, ItemSlot inslot)
@@ -257,7 +271,6 @@ namespace Vintagestory.GameContent
 
         public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
         {
-            //base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
             float temp = GetTemperature(world, inSlot.Itemstack);
             if (temp > 20)
             {
@@ -303,13 +316,14 @@ namespace Vintagestory.GameContent
                 return bec.ServeInto(byPlayer, hotbarSlot);
             }
 
-        
+
+
             ItemStack stack = OnPickBlock(world, blockSel.Position);
 
             if (byPlayer.InventoryManager.TryGiveItemstack(stack, true))
             {
                 world.BlockAccessor.SetBlock(0, blockSel.Position);
-                world.PlaySoundAt(this.Sounds.Place, byPlayer, byPlayer);
+                world.PlaySoundAt(Sounds.Place, byPlayer, byPlayer);
                 return true;
             }
 
@@ -336,12 +350,39 @@ namespace Vintagestory.GameContent
                 Block selectedBlock = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
                 if (selectedBlock?.Attributes?.IsTrue("mealContainer") == true)
                 {
+                    if (!byEntity.Controls.Sneak) return;
                     ServeIntoBowl(selectedBlock, blockSel.Position, slot, byEntity.World);
                     handHandling = EnumHandHandling.PreventDefault;
                     return;
                 }
+
+
+                float quantityServings = (float)slot.Itemstack.Attributes.GetDecimal("quantityServings");
+                if (block is BlockGroundStorage)
+                {
+                    if (!byEntity.Controls.Sneak) return;
+                    var begs = api.World.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityGroundStorage;
+                    ItemSlot gsslot = begs.GetSlotAt(blockSel);
+                    if (gsslot == null || gsslot.Empty) return;
+
+                    if (gsslot.Itemstack.ItemAttributes?.IsTrue("mealContainer") == true)
+                    {
+                        if (quantityServings > 0)
+                        {
+                            ServeIntoStack(gsslot, slot, byEntity.World);
+                            gsslot.MarkDirty();
+                            begs.updateMeshes();
+                            begs.MarkDirty(true);
+                        }
+
+                        handHandling = EnumHandHandling.PreventDefault;
+                        return;
+                    }
+                }
+
+
             }
-            
+
             base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handHandling);
         }
 
@@ -350,13 +391,13 @@ namespace Vintagestory.GameContent
 
 
 
-        public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing)
+        public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing, int rndIndex = -1)
         {
             BlockEntityCookedContainer bem = capi.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityCookedContainer;
-            if (bem == null) return base.GetRandomColor(capi, pos, facing);
+            if (bem == null) return base.GetRandomColor(capi, pos, facing, rndIndex);
 
             ItemStack[] stacks = bem.GetNonEmptyContentStacks();
-            if (stacks == null || stacks.Length == 0) return base.GetRandomColor(capi, pos, facing);
+            if (stacks == null || stacks.Length == 0) return base.GetRandomColor(capi, pos, facing, rndIndex);
 
             ItemStack rndStack = stacks[capi.World.Rand.Next(stacks.Length)];
 
@@ -367,11 +408,11 @@ namespace Vintagestory.GameContent
 
             if (rndStack.Class == EnumItemClass.Block)
             {
-                return rndStack.Block.GetRandomColor(capi, pos, facing);
+                return rndStack.Block.GetRandomColor(capi, pos, facing, rndIndex);
             }
             else
             {
-                return capi.ItemTextureAtlas.GetRandomColor(rndStack.Item.FirstTexture.Baked.TextureSubId);
+                return capi.ItemTextureAtlas.GetRandomColor(rndStack.Item.FirstTexture.Baked.TextureSubId, rndIndex);
             }
         }
 

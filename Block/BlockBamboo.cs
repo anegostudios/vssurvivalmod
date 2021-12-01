@@ -69,7 +69,7 @@ namespace Vintagestory.GameContent
                 brownShootBlock = blockAccess.GetBlock(new AssetLocation("sapling-brownbambooshoots-free"));
             }
 
-            if (this.RandomDrawOffset > 0)
+            if (RandomDrawOffset > 0)
             {
                 JsonObject overrider = Attributes?["overrideRandomDrawOffset"];
                 if (overrider?.Exists == true) this.RandomDrawOffset = overrider.AsInt(1);
@@ -96,7 +96,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public void GrowTree(IBlockAccessor blockAccessor, BlockPos pos, float sizeModifier = 1, float vineGrowthChance = 0, float forestDensity = 0)
+        public void GrowTree(IBlockAccessor blockAccessor, BlockPos pos, bool skipForestFloor, float sizeModifier = 1, float vineGrowthChance = 0, float forestDensity = 0, int treesInChunkGenerated = 0)
         {
             int quantity = (2 + (int)((1 + rand.NextDouble() * 4) * (1 - forestDensity) * (1 - forestDensity))) * 3 * 3;
 
@@ -234,9 +234,9 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing)
+        public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing, int rndIndex = -1)
         {
-            if (!this.isSegmentWithLeaves || LastCodePart() != "segment3") return base.GetRandomColor(capi, pos, facing);
+            if (!this.isSegmentWithLeaves || LastCodePart() != "segment3") return base.GetRandomColor(capi, pos, facing, rndIndex);
 
             if (Textures == null || Textures.Count == 0) return 0;
             CompositeTexture tex;
@@ -246,140 +246,137 @@ namespace Vintagestory.GameContent
             }
             if (tex?.Baked == null) return 0;
 
-            int color = capi.BlockTextureAtlas.GetRandomColor(tex.Baked.TextureSubId);
+            int color = capi.BlockTextureAtlas.GetRandomColor(tex.Baked.TextureSubId, rndIndex);
 
             return capi.World.ApplyColorMapOnRgba("climatePlantTint", SeasonColorMap, color, pos.X, pos.Y, pos.Z);
         }
 
 
+        Dictionary<int, int[]> windModeByFlagCount = new Dictionary<int, int[]>();
+
         public override void OnJsonTesselation(ref MeshData sourceMesh, ref int[] lightRgbsByCorner, BlockPos pos, Block[] chunkExtBlocks, int extIndex3d)
         {
-            if (VertexFlags.LeavesWindWave)
+            int[] origFlags;
+            if (!windModeByFlagCount.TryGetValue(sourceMesh.FlagsCount, out origFlags))
             {
-                int leavesNoWaveTileSide = 0;
+                origFlags = windModeByFlagCount[sourceMesh.FlagsCount] = new int[sourceMesh.FlagsCount];
+                for (int i = 0; i < origFlags.Length; i++) origFlags[i] = sourceMesh.Flags[i] & VertexFlags.WindModeBitsMask;
+            }
 
-                // For bamboo poles, only check the block below - unlike leaves, these don't attach to solid blocks on all sides
-                Block nblock = chunkExtBlocks[extIndex3d + TileSideEnum.MoveIndex[TileSideEnum.Down]];
-                if (!nblock.VertexFlags.LeavesWindWave && nblock.SideSolid[TileSideEnum.Up]) leavesNoWaveTileSide = 32;
-                else if (nblock is BlockBamboo)
+            bool sideDisableWindWaveDown = false;
+
+            // For bamboo poles, only check the block below - unlike leaves, these don't attach to solid blocks on all sides
+            Block nblock = chunkExtBlocks[extIndex3d + TileSideEnum.MoveIndex[TileSideEnum.Down]];
+            if (nblock.VertexFlags.WindMode == EnumWindBitMode.NoWind && nblock.SideSolid[TileSideEnum.Up]) sideDisableWindWaveDown = true;
+            else if (nblock is BlockBamboo)
+            {
+                // Detect immobile bamboo below
+
+                nblock = chunkExtBlocks[extIndex3d + TileSideEnum.MoveIndex[TileSideEnum.Down] + 1];
+                if (nblock.VertexFlags.WindMode == EnumWindBitMode.NoWind && nblock.SideSolid[TileSideEnum.West]) sideDisableWindWaveDown = true;
+            }
+
+
+            bool enableWind = (byte)(lightRgbsByCorner[24] >> 24) >= 159;  //corresponds with a sunlight level of less than 14
+            int groundOffset = 1;
+
+            // Disable swaying if would push into a block to the East
+            nblock = chunkExtBlocks[extIndex3d + 1];
+            if (nblock.VertexFlags.WindMode == EnumWindBitMode.NoWind && nblock.SideSolid[TileSideEnum.West]) enableWind = false;
+
+            if (enableWind)
+            {
+                bool bambooLeavesFound = isSegmentWithLeaves;
+                bool continuousBambooCane = true;
+                int upMoveIndex = TileSideEnum.MoveIndex[TileSideEnum.Up];
+                int nsMoveIndex = TileSideEnum.MoveIndex[TileSideEnum.South];
+                int movedIndex3d = extIndex3d;
+                Block block1;
+                Block block2;
+                for (; groundOffset < 8; groundOffset++)
                 {
-                    // Detect immobile bamboo below
+                    movedIndex3d -= upMoveIndex;    // move down first because groundOffset starts at 1 (no point checking this block itself!)
+                    if (movedIndex3d >= 0)
+                    {
+                        block1 = chunkExtBlocks[movedIndex3d];
+                        block2 = (block1 is BlockBamboo) ? chunkExtBlocks[movedIndex3d + 1] : null;
+                    }
+                    else
+                    {
+                        block1 = api.World.BlockAccessor.GetBlock(pos.X, pos.Y - groundOffset, pos.Z);
+                        block2 = (block1 is BlockBamboo) ? api.World.BlockAccessor.GetBlock(pos.X + 1, pos.Y - groundOffset, pos.Z) : null;
+                    }
 
-                    nblock = chunkExtBlocks[extIndex3d + TileSideEnum.MoveIndex[TileSideEnum.Down] + 1];
-                    if (!nblock.VertexFlags.LeavesWindWave && nblock.SideSolid[TileSideEnum.West]) leavesNoWaveTileSide = 32;
+                    if (block1.VertexFlags.WindMode == EnumWindBitMode.NoWind && block1.SideSolid[TileSideEnum.Up]) break;
+                    if (block2 != null && block2.VertexFlags.WindMode == EnumWindBitMode.NoWind && block2.SideSolid[TileSideEnum.West]) break;
+
+                    if (block2 == null) continuousBambooCane = false;
+
+                    if (!bambooLeavesFound && continuousBambooCane)
+                    {
+                        if (block1 is BlockBamboo bam && bam.isSegmentWithLeaves)
+                        {
+                            bambooLeavesFound = true; continue;
+                        }
+                    }
                 }
 
 
-                bool waveoff = (byte)(lightRgbsByCorner[24] >> 24) < 159;  //corresponds with a sunlight level of less than 14
-                int groundOffset = 1;
-
-                // Disable swaying if would push into a block to the East
-                nblock = chunkExtBlocks[extIndex3d + 1];
-                if (!nblock.VertexFlags.LeavesWindWave && nblock.SideSolid[TileSideEnum.West]) waveoff = true;
-
-                if (!waveoff)
+                int y = pos.Y;
+                continuousBambooCane = true;
+                if (!bambooLeavesFound)
                 {
-                    bool bambooLeavesFound = isSegmentWithLeaves;
-                    bool continuousBambooCane = true;
-                    int upMoveIndex = TileSideEnum.MoveIndex[TileSideEnum.Up];
-                    int nsMoveIndex = TileSideEnum.MoveIndex[TileSideEnum.South];
-                    int movedIndex3d = extIndex3d;
-                    Block block1;
-                    Block block2;
-                    for (; groundOffset < 8; groundOffset++)
+                    movedIndex3d = extIndex3d;
+                    int max = upMoveIndex * (nsMoveIndex - 1);  //this is the index of the top (max Y) layer in the extBlocks
+
+                    do
                     {
-                        movedIndex3d -= upMoveIndex;    // move down first because groundOffset starts at 1 (no point checking this block itself!)
-                        if (movedIndex3d >= 0)
-                        {
-                            block1 = chunkExtBlocks[movedIndex3d];
-                            block2 = (block1 is BlockBamboo) ? chunkExtBlocks[movedIndex3d + 1] : null;
-                        }
-                        else
-                        {
-                            block1 = api.World.BlockAccessor.GetBlock(pos.X, pos.Y - groundOffset, pos.Z);
-                            block2 = (block1 is BlockBamboo) ? api.World.BlockAccessor.GetBlock(pos.X + 1, pos.Y - groundOffset, pos.Z) : null;
-                        }
+                        movedIndex3d += upMoveIndex;
+                        y++;
 
-                        if (!block1.VertexFlags.LeavesWindWave && block1.SideSolid[TileSideEnum.Up]) break;
-                        if (block2 != null && !block2.VertexFlags.LeavesWindWave && block2.SideSolid[TileSideEnum.West]) break;
-
-                        if (block2 == null) continuousBambooCane = false;
-
-                        if (!bambooLeavesFound && continuousBambooCane)
-                        {
-                            if (block1 is BlockBamboo bam && bam.isSegmentWithLeaves)
-                            {
-                                bambooLeavesFound = true; continue;
-                            }
-                        }
-                    }
-
-
-                    int y = pos.Y;
-                    continuousBambooCane = true;
-                    if (!bambooLeavesFound)
-                    {
-                        movedIndex3d = extIndex3d;
-                        int max = upMoveIndex * (nsMoveIndex - 1);  //this is the index of the top (max Y) layer in the extBlocks
-
-                        do
-                        {
-                            movedIndex3d += upMoveIndex;
-                            y++;
-
-                            block1 = chunkExtBlocks[movedIndex3d];
-                            if (block1 is BlockBamboo bam)
-                            {
-                                bambooLeavesFound = bam.isSegmentWithLeaves;
-                            }
-                            else
-                            {
-                                if (block1 is BlockWithLeavesMotion) bambooLeavesFound = true;
-                                else continuousBambooCane = false;
-                                break;  // Stop searching once no longer a continuous bamboo cane above
-                            }
-                        }
-                        while (!bambooLeavesFound && movedIndex3d < max);
-                    }
-
-                    // Carry on doing the same check even into the next chunk above, as long as there's bamboo here
-                    while (!bambooLeavesFound && continuousBambooCane)
-                    {
-                        block1 = api.World.BlockAccessor.GetBlock(pos.X, ++y, pos.Z);
+                        block1 = chunkExtBlocks[movedIndex3d];
                         if (block1 is BlockBamboo bam)
                         {
                             bambooLeavesFound = bam.isSegmentWithLeaves;
                         }
                         else
                         {
+                            if (block1 is BlockWithLeavesMotion) bambooLeavesFound = true;
+                            else continuousBambooCane = false;
                             break;  // Stop searching once no longer a continuous bamboo cane above
                         }
                     }
-
-                    if (!bambooLeavesFound) waveoff = true;
+                    while (!bambooLeavesFound && movedIndex3d < max);
                 }
 
-                if (VertexFlags.GrassWindWave)
+                // Carry on doing the same check even into the next chunk above, as long as there's bamboo here
+                while (!bambooLeavesFound && continuousBambooCane)
                 {
-                    // Standard: apply swaying motion (based on this block's VertexFlags)
-                    BlockWithLeavesMotion.SetLeaveWaveFlags(sourceMesh, leavesNoWaveTileSide, waveoff, VertexFlags.All, groundOffset);
+                    block1 = api.World.BlockAccessor.GetBlock(pos.X, ++y, pos.Z);
+                    if (block1 is BlockBamboo bam)
+                    {
+                        bambooLeavesFound = bam.isSegmentWithLeaves;
+                    }
+                    else
+                    {
+                        break;  // Stop searching once no longer a continuous bamboo cane above
+                    }
                 }
-                else
-                {
-                    // Segment3: we want the CANES part to sway but the LEAVES part to have full leaves motion
-                    SetLeaveWaveFlagsAdaptive(sourceMesh, leavesNoWaveTileSide, waveoff, VertexFlags.All, groundOffset);
-                }
+
+                if (!bambooLeavesFound) enableWind = false;
             }
-        }
 
-        void SetLeaveWaveFlagsAdaptive(MeshData sourceMesh, int leavesNoWaveTileSide, bool waveOff, int leaveWave, int groundOffsetTop)
-        {
-            int clearFlags = VertexFlags.clearWaveBits;
+            // Derps. Also does more than necessary
+            //int sideDisableWindWave = sideDisableWindWaveDown ? 32 : 0;
+            //ToggleWindModeSetWindData(sourceMesh, sideDisableWindWave, enableWind, groundOffset, origFlags);
+
+
+            int clearFlags = VertexFlags.ClearWindBitsMask;
             int verticesCount = sourceMesh.VerticesCount;
 
-            if (waveOff)
+            if (!enableWind)
             {
-                // shorter return path, and no need to test off in every iteration of the loop in the other code path
+                // Shorter return path, and no need to test off in every iteration of the loop in the other code path
                 for (int vertexNum = 0; vertexNum < verticesCount; vertexNum++)
                 {
                     sourceMesh.Flags[vertexNum] &= clearFlags;
@@ -390,25 +387,16 @@ namespace Vintagestory.GameContent
             for (int vertexNum = 0; vertexNum < verticesCount; vertexNum++)
             {
                 int flag = sourceMesh.Flags[vertexNum] & clearFlags;
+                float fy = sourceMesh.xyz[vertexNum * 3 + 1];
 
-                float fx = sourceMesh.xyz[vertexNum * 3 + 0];
-                float fz = sourceMesh.xyz[vertexNum * 3 + 2];
-                int x = (int)(fx - 1.5f) >> 1;
-                int y = (int)(sourceMesh.xyz[vertexNum * 3 + 1] - 1.5f) >> 1;
-                int z = (int)(fz - 1.5f) >> 1;
-
-                int sidesToCheckMask = 1 << TileSideEnum.Up - y | 4 + z * 4 | 2 - x * 6;
-
-                if ((leavesNoWaveTileSide & sidesToCheckMask) == 0)
+                if (fy > 0.05f || !sideDisableWindWaveDown)
                 {
-                    // regular leaf motion for the outer leaf, swaying motion for the inner canes:  here we know that the Segment3 model has outer leaf vertices at 0.1/16 and 15.9/16, this code may break if the leaf model is changed  (we really need per-element VertexFlags in the model)
-                    if (fx > 0.0065f && fx < 0.9935f && fz > 0.0065f && fz < 0.9935f) leaveWave |= VertexFlags.FoliageWindWaveBitMask;
-
-                    flag |= leaveWave | (groundOffsetTop == 8 ? 7 : groundOffsetTop + y) << 28;
+                    flag |= origFlags[vertexNum] | (GameMath.Clamp(groundOffset + (fy < 0.95f ? -1 : 0), 0, 7) << VertexFlags.WindDataBitsPos);
                 }
 
                 sourceMesh.Flags[vertexNum] = flag;
             }
         }
+
     }
 }

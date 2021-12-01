@@ -131,10 +131,6 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing)
-        {
-            return base.GetRandomColor(capi, pos, facing);
-        }
 
 
         public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)

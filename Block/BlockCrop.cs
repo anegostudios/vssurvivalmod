@@ -67,48 +67,29 @@ namespace Vintagestory.GameContent
 
         public override void OnJsonTesselation(ref MeshData sourceMesh, ref int[] lightRgbsByCorner, BlockPos pos, Block[] chunkExtBlocks, int extIndex3d)
         {
-
-            // Too expensive
-            /*if (roomreg != null)
+            /*if ((byte)(lightRgbsByCorner[24] >> 24) >= 159)
             {
-                Room room = roomreg.GetRoomForPosition(pos);
-
-                waveoff = ((float)room.SkylightCount / room.NonSkylightCount) < 0.1f;
+                SetWindFlag(sourceMesh, (int)VertexFlags.WindMode);
+            }
+            else
+            {
+                ClearWindFlags(sourceMesh);
             }*/
-
-            bool waveoff = (byte)(lightRgbsByCorner[24] >> 24) < 159;  //corresponds with a sunlight level of less than 14
-            setLeaveWaveFlags(sourceMesh, waveoff);
         }
 
         public override void OnDecalTesselation(IWorldAccessor world, MeshData decalMesh, BlockPos pos)
         {
-            base.OnDecalTesselation(world, decalMesh, pos);
-
             int sunLightLevel = world.BlockAccessor.GetLightLevel(pos, EnumLightLevelType.OnlySunLight);
-            bool waveoff = sunLightLevel < 14;
-            setLeaveWaveFlags(decalMesh, waveoff);
-        }
-
-
-        protected virtual void setLeaveWaveFlags(MeshData sourceMesh, bool off)
-        {
-            
-            int grassWave = VertexFlags.All;
-            int clearFlags = VertexFlags.clearWaveFlagsOnly;
-            int verticesCount = sourceMesh.VerticesCount;
-            
-            // Iterate over each element face
-            for (int vertexNum = 0; vertexNum < verticesCount; vertexNum++)
+            if (sunLightLevel >= 14)
             {
-                int flag = sourceMesh.Flags[vertexNum] & clearFlags;
-
-                if (!off && sourceMesh.xyz[vertexNum * 3 + 1] >= WaveFlagMinY)
-                {
-                    flag |= grassWave;
-                }
-                sourceMesh.Flags[vertexNum] = flag;
+                SetWindFlag(decalMesh, (int)VertexFlags.WindMode);
+            } else
+            {
+                ClearWindFlags(decalMesh);
             }
         }
+
+
 
 
         public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)

@@ -14,6 +14,8 @@ namespace Vintagestory.GameContent
         ItemStack[] groundStorablesQuadrants;
         ItemStack[] groundStorablesHalves;
 
+        public static bool IsUsingContainedBlock; // This value is only relevant (and correct) client side
+
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
@@ -42,6 +44,17 @@ namespace Vintagestory.GameContent
             groundStorablesQuadrants = stacks[0];
             groundStorablesHalves = stacks[1];
 
+            if (api.Side == EnumAppSide.Client)
+            {
+                ICoreClientAPI capi = api as ICoreClientAPI;
+                capi.Event.MouseUp += Event_MouseUp;
+            }
+
+        }
+
+        private void Event_MouseUp(MouseEvent e)
+        {
+            IsUsingContainedBlock = false;
         }
 
         public override Cuboidf[] GetCollisionBoxes(IBlockAccessor blockAccessor, BlockPos pos)
@@ -68,13 +81,38 @@ namespace Vintagestory.GameContent
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
+            if (api.Side == EnumAppSide.Client && IsUsingContainedBlock) return false;
+
             BlockEntity be = world.BlockAccessor.GetBlockEntity(blockSel.Position);
             if (be is BlockEntityGroundStorage beg) 
             { 
-                return beg.OnPlayerInteract(byPlayer, blockSel);
+                return beg.OnPlayerInteractStart(byPlayer, blockSel);
             }
 
             return base.OnBlockInteractStart(world, byPlayer, blockSel);
+        }
+
+        public override bool OnBlockInteractStep(float secondsUsed, IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
+        {
+            BlockEntity be = world.BlockAccessor.GetBlockEntity(blockSel.Position);
+            if (be is BlockEntityGroundStorage beg)
+            {
+                return beg.OnPlayerInteractStep(secondsUsed, byPlayer, blockSel);
+            }
+
+            return base.OnBlockInteractStep(secondsUsed, world, byPlayer, blockSel);
+        }
+
+        public override void OnBlockInteractStop(float secondsUsed, IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
+        {
+            BlockEntity be = world.BlockAccessor.GetBlockEntity(blockSel.Position);
+            if (be is BlockEntityGroundStorage beg)
+            {
+                beg.OnPlayerInteractStop(secondsUsed, byPlayer, blockSel);
+                return;
+            }
+
+            base.OnBlockInteractStop(secondsUsed, world, byPlayer, blockSel);
         }
 
         public override EnumBlockMaterial GetBlockMaterial(IBlockAccessor blockAccessor, BlockPos pos, ItemStack stack = null)
@@ -132,7 +170,7 @@ namespace Vintagestory.GameContent
             BlockEntity be = world.BlockAccessor.GetBlockEntity(pos);
             if (be is BlockEntityGroundStorage beg)
             {
-                beg.OnPlayerInteract(player, blockSel);
+                beg.OnPlayerInteractStart(player, blockSel);
                 beg.MarkDirty(true);
             }
 
@@ -168,7 +206,7 @@ namespace Vintagestory.GameContent
             return base.GetColorWithoutTint(capi, pos);
         }
 
-        public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing)
+        public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing, int rndIndex = -1)
         {
             BlockEntity be = capi.World.BlockAccessor.GetBlockEntity(pos);
             if (be is BlockEntityGroundStorage beg)
@@ -180,7 +218,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            return base.GetRandomColor(capi, pos, facing);
+            return base.GetRandomColor(capi, pos, facing, rndIndex);
         }
 
         public override int GetRandomColor(ICoreClientAPI capi, ItemStack stack)

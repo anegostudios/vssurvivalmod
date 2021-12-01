@@ -736,13 +736,6 @@ namespace Vintagestory.GameContent
 
         #region Rendering
 
-        protected override void updateMeshes()
-        {
-            for (int i = 0; i < meshes.Length; i++)
-            {
-                updateMesh(i);
-            }
-        }
 
         protected override void updateMesh(int index)
         {
@@ -781,7 +774,7 @@ namespace Vintagestory.GameContent
                 if (props == null) return;
                 isLargeItem = props.LargeItem;
             }
-            MeshData mesh = genMesh(stack, index);
+            MeshData mesh = genMesh(stack);
             if (mesh != null)
             {
                 translateMesh(mesh, index, isWood, isLargeItem, scaleY);

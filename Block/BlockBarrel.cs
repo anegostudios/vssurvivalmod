@@ -16,12 +16,12 @@ namespace Vintagestory.GameContent
     public class BlockBarrel : BlockLiquidContainerBase
     {
 
-        public override int GetContainerSlotId(IWorldAccessor world, BlockPos pos)
+        public override int GetContainerSlotId(BlockPos pos)
         {
             return 1;
         }
 
-        public override int GetContainerSlotId(IWorldAccessor world, ItemStack containerStack)
+        public override int GetContainerSlotId(ItemStack containerStack)
         {
             return 1;
         }
@@ -46,14 +46,13 @@ namespace Vintagestory.GameContent
 
             bool issealed = itemstack.Attributes.GetBool("sealed");
 
-            int hashcode = GetBarrelHashCode(capi.World, contentStacks[0], contentStacks.Length > 1 ? contentStacks[1] : null);
+            int hashcode = GetBarrelHashCode(contentStacks[0], contentStacks.Length > 1 ? contentStacks[1] : null);
 
             MeshRef meshRef;
 
             if (!meshrefs.TryGetValue(hashcode, out meshRef))
             {
                 MeshData meshdata = GenMesh(contentStacks[0], contentStacks.Length > 1 ? contentStacks[1] : null, issealed);
-                //meshdata.Rgba2 = null;
                 meshrefs[hashcode] = meshRef = capi.Render.UploadMesh(meshdata);
             }
 
@@ -62,10 +61,10 @@ namespace Vintagestory.GameContent
 
 
 
-        public int GetBarrelHashCode(IClientWorldAccessor world, ItemStack contentStack, ItemStack liquidStack)
+        public int GetBarrelHashCode(ItemStack contentStack, ItemStack liquidStack)
         {
-            string s = contentStack?.StackSize + "x" + contentStack?.Collectible.Code.ToShortString();
-            s+= liquidStack?.StackSize + "x" + liquidStack?.Collectible.Code.ToShortString();
+            string s = contentStack?.StackSize + "x" + contentStack?.GetHashCode();
+            s += liquidStack?.StackSize + "x" + liquidStack?.GetHashCode();
             return s.GetHashCode();
         }
 
@@ -126,10 +125,16 @@ namespace Vintagestory.GameContent
             
         }
 
-        public override int TryPutContent(IWorldAccessor world, ItemStack containerStack, ItemStack contentStack, int desiredItems)
+        public override int TryPutLiquid(BlockPos pos, ItemStack liquidStack, float desiredLitres)
         {
             return 0;
         }
+
+        public override int TryPutLiquid(ItemStack containerStack, ItemStack liquidStack, float desiredLitres)
+        {
+            return 0;
+        }
+
 
 
         public MeshData GenMesh(ItemStack contentStack, ItemStack liquidContentStack, bool issealed, BlockPos forBlockPos = null)
@@ -178,10 +183,8 @@ namespace Vintagestory.GameContent
             ICoreClientAPI capi = api as ICoreClientAPI;
 
             WaterTightContainableProps props = GetInContainerProps(stack);
-            ITexPositionSource contentSource = null;
-
-
-            float fillHeight = 0;
+            ITexPositionSource contentSource;
+            float fillHeight;
 
             if (props != null)
             {
@@ -192,34 +195,8 @@ namespace Vintagestory.GameContent
             }
             else
             {
-                JsonObject obj = stack?.ItemAttributes?["inContainerTexture"];
-                if (obj != null && obj.Exists)
-                {
-                    contentSource = new ContainerTextureSource(capi, stack, obj.AsObject<CompositeTexture>());
-                    fillHeight = GameMath.Min(10 / 16f, 0.7f * stack.StackSize / stack.Collectible.MaxStackSize);
-                } else
-                {
-                    if (stack?.Block != null && (stack.Block.DrawType == EnumDrawType.Cube || stack.Block.Shape.Base.Path.Contains("basic/cube")))
-                    {
-                        contentSource = new BlockTopTextureSource(capi, stack.Block);
-                        fillHeight = GameMath.Min(10 / 16f, 0.7f * 1);
-                    } else if (stack != null)
-                    {
-                        // looks silly :D
-                        /*if (stack.Class == EnumItemClass.Block)
-                        {
-                            contentSource = new ContainerTextureSource(capi, stack, stack.Block.Textures.FirstOrDefault().Value);
-                        } else
-                        {
-                            contentSource = new ContainerTextureSource(capi, stack, stack.Item.FirstTexture);
-                        }
-                        
-
-                        fillHeight = GameMath.Min(10 / 16f, 0.7f * stack.StackSize / stack.Collectible.MaxStackSize);*/
-                    }
-                }
+                contentSource = getContentTexture(capi, stack, out fillHeight);
             }
-
 
 
             if (stack != null && contentSource != null)
@@ -251,6 +228,49 @@ namespace Vintagestory.GameContent
             }
 
             return null;
+        }
+
+
+        public static ITexPositionSource getContentTexture(ICoreClientAPI capi, ItemStack stack, out float fillHeight)
+        {
+            ITexPositionSource contentSource = null;
+            fillHeight = 0;
+
+            JsonObject obj = stack?.ItemAttributes?["inContainerTexture"];
+            if (obj != null && obj.Exists)
+            {
+                contentSource = new ContainerTextureSource(capi, stack, obj.AsObject<CompositeTexture>());
+                fillHeight = GameMath.Min(10 / 16f, 0.7f * stack.StackSize / stack.Collectible.MaxStackSize);
+            }
+            else
+            {
+                if (stack?.Block != null && (stack.Block.DrawType == EnumDrawType.Cube || stack.Block.Shape.Base.Path.Contains("basic/cube")) && capi.BlockTextureAtlas.GetPosition(stack.Block, "up", true) != null)
+                {
+                    contentSource = new BlockTopTextureSource(capi, stack.Block);
+                    fillHeight = GameMath.Min(10 / 16f, 0.7f * 1);
+                }
+                else if (stack != null)
+                {
+
+                    if (stack.Class == EnumItemClass.Block)
+                    {
+                        if (stack.Block.Textures.Count > 1) return null;
+
+                        contentSource = new ContainerTextureSource(capi, stack, stack.Block.Textures.FirstOrDefault().Value);
+                    }
+                    else
+                    {
+                        if (stack.Item.Textures.Count > 1) return null;
+
+                        contentSource = new ContainerTextureSource(capi, stack, stack.Item.FirstTexture);
+                    }
+
+
+                    fillHeight = GameMath.Min(10 / 16f, 0.7f * stack.StackSize / stack.Collectible.MaxStackSize);
+                }
+            }
+
+            return contentSource;
         }
 
 
@@ -290,7 +310,7 @@ namespace Vintagestory.GameContent
 
                 foreach (CollectibleObject obj in api.World.Collectibles)
                 {
-                    if ((obj is BlockBowl && obj.LastCodePart() != "raw") || obj is ILiquidSource || obj is ILiquidSink || obj is BlockWateringCan)
+                    if (obj is ILiquidSource || obj is ILiquidSink || obj is BlockWateringCan)
                     {
                         List<ItemStack> stacks = obj.GetHandBookStacks(capi);
                         if (stacks != null) liquidContainerStacks.AddRange(stacks);
@@ -321,7 +341,7 @@ namespace Vintagestory.GameContent
                         GetMatchingStacks = (wi, bs, ws) =>
                         {
                             BlockEntityBarrel bebarrel = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityBarrel;
-                            if (bebarrel?.inventory[1].Itemstack?.Item?.Code?.Path == "cottagecheeseportion") return linenStack;
+                            if (bebarrel?.Inventory[1].Itemstack?.Item?.Code?.Path == "cottagecheeseportion") return linenStack;
                             return null;
                         }
                     }
@@ -384,7 +404,7 @@ namespace Vintagestory.GameContent
         {
             string text = base.GetPlacedBlockInfo(world, pos, forPlayer);
 
-            float litres = GetCurrentLitres(world, pos);
+            float litres = GetCurrentLitres(pos);
             if (litres <= 0) text = "";
 
             BlockEntityBarrel bebarrel = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityBarrel;
@@ -398,7 +418,7 @@ namespace Vintagestory.GameContent
 
                     text += Lang.Get("{0}x {1}", slot.Itemstack.StackSize, slot.Itemstack.GetName());
 
-                    text += BlockBucket.PerishableInfoCompact(api, slot, 0, false);
+                    text += PerishableInfoCompact(api, slot, 0, false);
                 }
 
                 if (bebarrel.Sealed && bebarrel.CurrentRecipe != null)

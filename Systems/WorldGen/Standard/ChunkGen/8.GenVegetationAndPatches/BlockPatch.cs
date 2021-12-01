@@ -17,7 +17,10 @@ namespace Vintagestory.ServerMods.NoObf
         Underground,
         UnderWater,
         NearSeaWater,
-        UnderSeaWater
+        UnderSeaWater,
+        UnderTrees,
+        OnTrees,
+        OnSurfacePlusUnderTrees
     }
 
     [JsonObject(MemberSerialization.OptIn)]
@@ -53,6 +56,8 @@ namespace Vintagestory.ServerMods.NoObf
         public float MaxY = 1;
         [JsonProperty]
         public EnumBlockPatchPlacement Placement = EnumBlockPatchPlacement.OnSurface;
+        [JsonProperty]
+        public EnumTreeType TreeType = EnumTreeType.Any;
         [JsonProperty]
         public NatFloat OffsetX = NatFloat.createGauss(0, 5);
         [JsonProperty]
@@ -119,11 +124,17 @@ namespace Vintagestory.ServerMods.NoObf
 
                 if (Placement == EnumBlockPatchPlacement.Underground)
                 {
-                    pos.Y = rnd.NextInt(Math.Max(1, chunk.MapChunk.WorldGenTerrainHeightMap[lz * blockAccessor.ChunkSize + lx] - 1)) ;
+                    
+                    if (Placement == EnumBlockPatchPlacement.UnderTrees || Placement == EnumBlockPatchPlacement.OnSurfacePlusUnderTrees)
+                    {
+                        pos.Y = rnd.NextInt(Math.Max((ushort)1, chunk.MapChunk.WorldGenTerrainHeightMap[lz * blockAccessor.ChunkSize + lx]));
+                    } else
+                    {
+                        pos.Y = rnd.NextInt(Math.Max(1, chunk.MapChunk.WorldGenTerrainHeightMap[lz * blockAccessor.ChunkSize + lx] - 1));
+                    }
                 }
                 else
                 {
-
                     pos.Y = chunk.MapChunk.RainHeightMap[lz * blockAccessor.ChunkSize + lx] + 1;
 
                     if (Math.Abs(pos.Y - posY) > 8 || pos.Y >= blockAccessor.MapSizeY - 1) continue;
@@ -142,10 +153,10 @@ namespace Vintagestory.ServerMods.NoObf
 
         private Block[] getBlocks(int firstBlockId)
         {
-            Block[] blocks = this.Blocks;
+            Block[] blocks;
             if (BlocksByRockType == null || !BlocksByRockType.TryGetValue(firstBlockId, out blocks))
             {
-                blocks = this.Blocks;
+                blocks = Blocks;
             }
 
             return blocks;

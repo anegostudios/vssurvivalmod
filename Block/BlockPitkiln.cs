@@ -178,7 +178,7 @@ namespace Vintagestory.GameContent
             BlockEntity be = world.BlockAccessor.GetBlockEntity(blockSel.Position);
             if (be is BlockEntityGroundStorage beg) 
             { 
-                beg.OnPlayerInteract(byPlayer, blockSel);
+                beg.OnPlayerInteractStart(byPlayer, blockSel);
                 return true;
             }
 

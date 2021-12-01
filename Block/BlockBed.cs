@@ -73,6 +73,15 @@ namespace Vintagestory.GameContent
                 return false;
             }
 
+            int tempStormSleep = api.World.Config.GetString("temporalStormSleeping", "0").ToInt();
+            if (tempStormSleep == 0 && api.ModLoader.GetModSystem<SystemTemporalStability>().StormStrength > 0)
+            {
+                if (world.Side == EnumAppSide.Client) (api as ICoreClientAPI).TriggerIngameError(this, "cantsleep-tempstorm", Lang.Get("cantsleep-tempstorm"));
+                return false;
+            }
+
+
+
             return byPlayer.Entity.TryMount(beBed);
         }
 

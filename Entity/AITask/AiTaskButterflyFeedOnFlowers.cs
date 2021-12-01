@@ -92,7 +92,9 @@ namespace Vintagestory.GameContent
             {
                 double topPos = block.Attributes["sitHeight"].AsDouble(block.TopMiddlePos.Y);
 
-                entity.WatchedAttributes.SetDouble("windWaveIntensity", block.VertexFlags.GrassWindWave ? (block.VertexFlags.WeakWave ? topPos / 2 : topPos) : 0);
+                bool weak = block.VertexFlags.WindMode == EnumWindBitMode.WeakWind || block.VertexFlags.WindMode == EnumWindBitMode.TallBend;
+
+                entity.WatchedAttributes.SetDouble("windWaveIntensity", block.VertexFlags.WindMode != EnumWindBitMode.NoWind ? (weak ? topPos / 2 : topPos) : 0);
 
                 MainTarget = tmpPos.ToVec3d().Add(block.TopMiddlePos.X, topPos, block.TopMiddlePos.Z);
                 return true;

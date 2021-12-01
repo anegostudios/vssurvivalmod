@@ -287,7 +287,6 @@ namespace Vintagestory.GameContent
 
             entity.Pos.SetFrom(entity.ServerPos);
             entity.World = byEntity.World;
-            ((EntityThrownStone)entity).SetRotation();
 
             byEntity.World.SpawnEntity(entity);
             byEntity.StartAnimation("throw");

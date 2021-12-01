@@ -74,8 +74,7 @@ namespace Vintagestory.GameContent
             {
                 try
                 {
-                    string json = Properties.Server.Attributes["tradeProps"].ToJsonToken();
-                    TradeProps = new JsonObject(json).AsObject<TradeProperties>();
+                    TradeProps = Properties.Attributes["tradeProps"].AsObject<TradeProperties>();
                 } catch (Exception e)
                 {
                     api.World.Logger.Error("Failed deserializing TradeProperties for trader {0}, exception logged to verbose debug", properties.Code);
@@ -300,11 +299,18 @@ namespace Vintagestory.GameContent
 
                 if (tradingWith.Pos.SquareDistanceTo(this.Pos) <= 5 && dlg?.IsOpened() != true)
                 {
-                    capi.Network.SendEntityPacket(this.EntityId, 1001);
-                    player.InventoryManager.OpenInventory(Inventory);
+                    // Will break all kinds of things if we allow multiple concurrent of these dialogs
+                    if (capi.Gui.OpenedGuis.FirstOrDefault(dlg => dlg is GuiDialogTrader && dlg.IsOpened()) == null)
+                    {
+                        capi.Network.SendEntityPacket(this.EntityId, 1001);
+                        player.InventoryManager.OpenInventory(Inventory);
 
-                    dlg = new GuiDialogTrader(Inventory, this, World.Api as ICoreClientAPI);
-                    dlg.TryOpen();
+                        dlg = new GuiDialogTrader(Inventory, this, World.Api as ICoreClientAPI);
+                        dlg.TryOpen();
+                    } else
+                    {
+                        capi.TriggerIngameError(this, "onlyonedialog", Lang.Get("Can only trade with one trader at a time"));
+                    }
                 }
                 else
                 {

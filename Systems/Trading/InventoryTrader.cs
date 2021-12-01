@@ -289,7 +289,7 @@ namespace Vintagestory.GameContent
                 ItemSlotTrade slot = GetBuyingCartSlot(i);
                 if (slot.Itemstack == null) continue;
 
-                GiveOrDrop(buyingPlayer, slot.Itemstack);
+                GiveOrDrop(buyingPlayer.Entity, slot.Itemstack);
 
                 slot.TradeItem.Stock -= slot.Itemstack.StackSize / slot.TradeItem.Stack.StackSize;
                 slot.Itemstack = null;
@@ -411,7 +411,7 @@ namespace Vintagestory.GameContent
 
         public bool HasPlayerEnoughAssets(IPlayer buyingPlayer)
         {
-            int playerAssets = GetPlayerAssets(buyingPlayer);
+            int playerAssets = GetPlayerAssets(buyingPlayer.Entity);
             int totalCost = GetTotalCost();
             int totalGain = GetTotalGain();
 
@@ -433,7 +433,7 @@ namespace Vintagestory.GameContent
 
         bool HandleMoneyTransaction(IPlayer buyingPlayer)
         {
-            int playerAssets = GetPlayerAssets(buyingPlayer);
+            int playerAssets = GetPlayerAssets(buyingPlayer.Entity);
             int traderAssets = GetTraderAssets();
             int totalCost = GetTotalCost();
             int totalGain = GetTotalGain();
@@ -449,11 +449,11 @@ namespace Vintagestory.GameContent
 
             if (deduct > 0)
             {
-                DeductFromPlayer(buyingPlayer, deduct);
+                DeductFromEntity(Api, buyingPlayer.Entity, deduct);
                 GiveToTrader(deduct);
             } else
             {
-                GiveOrDropToPlayer(buyingPlayer, new ItemStack(Api.World.GetItem(new AssetLocation("gear-rusty"))), -deduct);
+                GiveOrDrop(buyingPlayer.Entity, new ItemStack(Api.World.GetItem(new AssetLocation("gear-rusty"))), -deduct);
                 DeductFromTrader(-deduct);
             }
 
@@ -481,11 +481,11 @@ namespace Vintagestory.GameContent
         }
 
 
-        public void DeductFromPlayer(IPlayer buyingPlayer, int totalUnitsToDeduct)
+        public static void DeductFromEntity(ICoreAPI api, EntityAgent eagent, int totalUnitsToDeduct)
         {
             SortedDictionary<int, List<ItemSlot>> moneys = new SortedDictionary<int, List<ItemSlot>>();
 
-            buyingPlayer.Entity.WalkInventory((invslot) =>
+            eagent.WalkInventory((invslot) =>
             {
                 if (invslot is ItemSlotCreative) return true;
                 if (invslot.Itemstack == null || invslot.Itemstack.Collectible.Attributes == null) return true;
@@ -556,18 +556,18 @@ namespace Vintagestory.GameContent
             // ...and return single value gears 
             if (totalUnitsToDeduct < 0)
             {
-                GiveOrDropToPlayer(buyingPlayer, new ItemStack(Api.World.GetItem(new AssetLocation("gear-rusty"))), -totalUnitsToDeduct);
+                GiveOrDrop(eagent, new ItemStack(api.World.GetItem(new AssetLocation("gear-rusty"))), -totalUnitsToDeduct);
             }
         }
 
-        public void GiveOrDrop(IPlayer buyingPlayer, ItemStack stack)
+        public void GiveOrDrop(EntityAgent eagent, ItemStack stack)
         {
             if (stack == null) return;
 
-            GiveOrDropToPlayer(buyingPlayer, stack, stack.StackSize);
+            GiveOrDrop(eagent, stack, stack.StackSize);
         }
 
-        public void GiveOrDropToPlayer(IPlayer buyingPlayer, ItemStack stack, int quantity)
+        public static void GiveOrDrop(EntityAgent eagent, ItemStack stack, int quantity)
         {
             if (stack == null) return;
 
@@ -579,9 +579,9 @@ namespace Vintagestory.GameContent
                 ItemStack stackPart = stack.Clone();
                 stackPart.StackSize = stacksize;
 
-                if (!buyingPlayer.InventoryManager.TryGiveItemstack(stackPart, true))
+                if (!eagent.TryGiveItemStack(stackPart))
                 {
-                    Api.World.SpawnItemEntity(stackPart, buyingPlayer.Entity.Pos.XYZ);
+                    eagent.World.SpawnItemEntity(stackPart, eagent.Pos.XYZ);
                 }
 
                 quantity -= stacksize;
@@ -589,11 +589,11 @@ namespace Vintagestory.GameContent
         }
 
 
-        public int GetPlayerAssets(IPlayer player)
+        public static int GetPlayerAssets(EntityAgent eagent)
         {
             int totalAssets = 0;
 
-            player.Entity.WalkInventory((invslot) =>
+            eagent.WalkInventory((invslot) =>
             {
                 if (invslot is ItemSlotCreative || !(invslot.Inventory is InventoryBasePlayer)) return true;
 
@@ -617,7 +617,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        private int CurrencyValuePerItem(ItemSlot slot)
+        private static int CurrencyValuePerItem(ItemSlot slot)
         {
             JsonObject obj = slot.Itemstack?.Collectible?.Attributes?["currency"];
             if (obj != null && obj.Exists)
@@ -752,12 +752,11 @@ namespace Vintagestory.GameContent
                 slots[i + 36].Itemstack = null;
             }
 
-
             traderEntity.tradingWith = null;
             return p;
         }
 
-        #region shift-clicking
+        #region Shift-clicking
 
         public override WeightedSlot GetBestSuitedSlot(ItemSlot sourceSlot, List<ItemSlot> skipSlots = null)
         {
@@ -766,7 +765,7 @@ namespace Vintagestory.GameContent
             if (PutLocked || sourceSlot.Inventory == this) return bestWSlot;
 
             // Don't allow any shift-clicking of currency
-            if (this.CurrencyValuePerItem(sourceSlot) != 0) return bestWSlot;
+            if (CurrencyValuePerItem(sourceSlot) != 0) return bestWSlot;
 
             // 1. Prefer already filled slots - only allowing shift-clicking into the 4 Selling Cart slots
             for (int i = 0; i < 4; i++)

@@ -4,6 +4,7 @@ using System.Threading;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.GameContent;
 using Vintagestory.ServerMods.NoObf;
 
 namespace Vintagestory.ServerMods
@@ -23,18 +24,20 @@ namespace Vintagestory.ServerMods
 
         // Tree config
         TreeGenConfig config;
+        private readonly ForestFloorSystem forestFloor;
 
-        
 
-        public TreeGen(TreeGenConfig config, int seed)
+        public TreeGen(TreeGenConfig config, int seed, ForestFloorSystem ffs)
         {
             this.config = config;
+            this.forestFloor = ffs;
             lcgrandTL = new ThreadLocal<LCGRandom>(() => new LCGRandom(seed));
         }
 
-        public void GrowTree(IBlockAccessor api, BlockPos pos, float sizeModifier = 1f, float vineGrowthChance = 0, float otherBlockChance = 1f)
+        public void GrowTree(IBlockAccessor api, BlockPos pos, bool isShrubLayer, float sizeModifier = 1f, float vineGrowthChance = 0, float otherBlockChance = 1f, int treesInChunkGenerated = 0)
         {
             Random rnd = rand.Value;
+            lcgrandTL.Value.InitPositionSeed(pos.X, pos.Z);
 
             this.api = api;
             this.size = sizeModifier * config.sizeMultiplier + config.sizeVar.nextFloat(1, rnd);
@@ -42,12 +45,14 @@ namespace Vintagestory.ServerMods
             this.otherBlockChance = otherBlockChance;
 
             pos.Up(config.yOffset);
-            
+
             TreeGenTrunk[] trunks = config.trunks;
 
             branchesByDepth.Clear();
             branchesByDepth.Add(null);
             branchesByDepth.AddRange(config.branches);
+
+            forestFloor.ClearOutline();
 
             TreeGenTrunk trunk = config.trunks[0];
             float trunkHeight = Math.Max(0, trunk.dieAt.nextFloat(1, rnd));
@@ -70,19 +75,20 @@ namespace Vintagestory.ServerMods
                     );
                 }
             }
+
+            if (!isShrubLayer)
+            {
+                forestFloor.CreateForestFloor(api, config, pos, lcgrandTL.Value, treesInChunkGenerated);
+            }
         }
 
-
-
-    
-
-        
 
         private void growBranch(Random rand, int depth, BlockPos pos, float dx, float dy, float dz, float angleVerStart, float angleHorStart, float curWidth, float dieAt, float trunkWidthLoss, bool wideTrunk)
         {
             if (depth > 30) { Console.WriteLine("TreeGen.growBranch() aborted, too many branches!"); return; }
 
             TreeGenBranch branch = branchesByDepth[Math.Min(depth, branchesByDepth.Count - 1)];
+            short[] outline = forestFloor.GetOutline();
 
             float widthloss = depth == 0 ? trunkWidthLoss : branch.WidthLoss(rand);
             float widthlossCurve = branch.widthlossCurve;
@@ -91,19 +97,19 @@ namespace Vintagestory.ServerMods
             float branchQuantityStart = branch.branchQuantity.nextFloat(1, rand);
             float branchWidthMulitplierStart = branch.branchWidthMultiplier.nextFloat(1, rand);
 
-            float reldistance = 0, lastreldistance = 0;
+            float reldistance, lastreldistance = 0;
             float totaldistance = curWidth / widthloss;
 
             int iteration = 0;
             float sequencesPerIteration = 1f / (curWidth / widthloss);
 
             
-            float ddrag = 0, angleVer = 0, angleHor = 0;
+            float ddrag, angleVer, angleHor;
 
             // we want to place around the trunk/branch => offset the coordinates when growing stuff from the base
-            float trunkOffsetX = 0, trunkOffsetZ = 0, trunkOffsetY = 0;
+            float trunkOffsetX, trunkOffsetZ;
 
-            BlockPos currentPos;
+            BlockPos currentPos = new BlockPos();
 
             float branchQuantity, branchWidth;
             float sinAngleVer, cosAnglerHor, sinAngleHor;
@@ -129,7 +135,6 @@ namespace Vintagestory.ServerMods
                 sinAngleHor = GameMath.FastSin(angleHor);
 
                 trunkOffsetX = Math.Max(-0.5f, Math.Min(0.5f, 0.7f * sinAngleVer * cosAnglerHor));
-                trunkOffsetY = Math.Max(-0.5f, Math.Min(0.5f, 0.7f * cosAnglerHor)) + 0.5f;
                 trunkOffsetZ = Math.Max(-0.5f, Math.Min(0.5f, 0.7f * sinAngleVer * sinAngleHor));
 
                 ddrag = branch.gravityDrag * (float)Math.Sqrt(dx * dx + dz * dz);
@@ -141,13 +146,37 @@ namespace Vintagestory.ServerMods
                 int blockId = branch.getBlockId(curWidth, config.treeBlocks, this);
                 if (blockId == 0) return;
 
-                currentPos = pos.AddCopy(dx, dy, dz);
+                currentPos.Set(pos.X + dx, pos.Y + dy, pos.Z + dz);
 
                 PlaceResumeState state = getPlaceResumeState(currentPos, blockId, wideTrunk);
 
                 if (state == PlaceResumeState.CanPlace)
                 {
                     api.SetBlock(blockId, currentPos);
+
+                    // Update the canopy outline of the tree for this block position
+                    int idz = (int)(dz + 16);
+                    int idx = (int)(dx + 16);
+                    if (idz > 1 && idz < 31 && idx > 1 && idx < 31)
+                    {
+                        int canopyIndex = idz * 33 + idx;
+                        outline[canopyIndex - 68]++;
+                        outline[canopyIndex - 67]++;  //bias canopy shading towards the North (- z direction) for sun effects
+                        outline[canopyIndex - 66]++;
+                        outline[canopyIndex - 65]++;
+                        outline[canopyIndex - 64]++;
+                        outline[canopyIndex - 35]++;
+                        outline[canopyIndex - 34] += 2;
+                        outline[canopyIndex - 33] += 2;
+                        outline[canopyIndex - 32] += 2;
+                        outline[canopyIndex - 31]++;
+                        outline[canopyIndex - 2]++;
+                        outline[canopyIndex - 1] += 2;
+                        outline[canopyIndex + 0] += 3;
+                        outline[canopyIndex + 1] += 2;
+                        outline[canopyIndex + 2]++;
+                        outline[canopyIndex + 33]++;
+                    }
 
                     if (vineGrowthChance > 0 && rand.NextDouble() < vineGrowthChance && config.treeBlocks.vinesBlock != null)
                     {
@@ -246,10 +275,12 @@ namespace Vintagestory.ServerMods
             }
         }
 
+
         internal bool TriggerRandomOtherBlock()
         {
             return rand.Value.NextDouble() < otherBlockChance * config.treeBlocks.otherLogChance;
         }
+
 
         PlaceResumeState getPlaceResumeState(BlockPos targetPos, int desiredblockId, bool wideTrunk)
         {
@@ -272,6 +303,8 @@ namespace Vintagestory.ServerMods
 
             return (desiredBock.Replaceable > currentBlock.Replaceable) ? PlaceResumeState.CannotPlace : PlaceResumeState.CanPlace;
         }
+
+
     }
 
     enum PlaceResumeState

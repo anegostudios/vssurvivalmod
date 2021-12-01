@@ -7,6 +7,7 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -75,6 +76,33 @@ namespace Vintagestory.GameContent
         public override void OnServerGameTick(IWorldAccessor world, BlockPos pos, object extra = null)
         {
             world.BlockAccessor.SetBlock(iceBlock.Id, pos);
+        }
+
+        public override void OnGroundIdle(EntityItem entityItem)
+        {
+            entityItem.Die(EnumDespawnReason.Removed);
+
+            if (entityItem.World.Side == EnumAppSide.Server)
+            {
+                Vec3d pos = entityItem.ServerPos.XYZ;
+
+                WaterTightContainableProps props = BlockLiquidContainerBase.GetInContainerProps(entityItem.Itemstack);
+                float litres = (float)entityItem.Itemstack.StackSize / props.ItemsPerLitre;
+
+                entityItem.World.SpawnCubeParticles(pos, entityItem.Itemstack, 0.75f, Math.Min(100, (int)(2 * litres)), 0.45f);
+                entityItem.World.PlaySoundAt(new AssetLocation("sounds/environment/smallsplash"), (float)pos.X, (float)pos.Y, (float)pos.Z, null);
+
+                BlockEntityFarmland bef = api.World.BlockAccessor.GetBlockEntity(pos.AsBlockPos) as BlockEntityFarmland;
+                if (bef != null)
+                {
+                    bef.WaterFarmland(Height.ToInt() / 6f, false);
+                    bef.MarkDirty(true);
+                }
+            }
+
+            
+
+            base.OnGroundIdle(entityItem);
         }
     }
 }

@@ -277,7 +277,7 @@ namespace Vintagestory.GameContent
             MarkDirty(true);
         }*/
 
-        public override void OnBlockBroken()
+        public override void OnBlockBroken(IPlayer byPlayer = null)
         {
             // Don't drop inventory contents
         }

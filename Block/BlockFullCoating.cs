@@ -155,7 +155,7 @@ namespace Vintagestory.GameContent
 
         public bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace)
         {
-            if (pos.Y < 16) return false;
+            if (pos.Y < 16 && (api == null || api.World.SeaLevel > 40)) return false;
 
             if (blockAccessor.GetBlock(pos).Replaceable < 6000) return false; // Don't place where there's solid blocks
 

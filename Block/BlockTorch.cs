@@ -12,7 +12,7 @@ namespace Vintagestory.GameContent
 {
     public class BlockTorch : Block
     {
-        bool IsExtinct => Variant["variant"] == "extinct";
+        bool IsExtinct => Variant["state"] == "extinct";
 
         Dictionary<string, Cuboidi> attachmentAreas;
 
@@ -33,7 +33,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            AssetLocation loc = AssetLocation.Create(FirstCodePart() + "-extinct-up", Code.Domain);
+            AssetLocation loc = CodeWithVariant("state", "extinct");
             ExtinctVariant = api.World.GetBlock(loc);
         }
 
@@ -48,7 +48,18 @@ namespace Vintagestory.GameContent
                 slot.Itemstack.StackSize = q;
                 slot.MarkDirty();
             }
-            
+        }
+
+        public override void OnGroundIdle(EntityItem entityItem)
+        {
+            if (!IsExtinct && entityItem.Swimming && ExtinctVariant != null)
+            {
+                api.World.PlaySoundAt(new AssetLocation("sounds/effect/extinguish"), entityItem.Pos.X + 0.5, entityItem.Pos.Y + 0.75, entityItem.Pos.Z + 0.5, null, false, 16);
+
+                int q = entityItem.Itemstack.StackSize;
+                entityItem.Itemstack = new ItemStack(ExtinctVariant);
+                entityItem.Itemstack.StackSize = q;
+            }
         }
 
         public override EnumIgniteState OnTryIgniteBlock(EntityAgent byEntity, BlockPos pos, float secondsIgniting)
@@ -66,7 +77,7 @@ namespace Vintagestory.GameContent
             if (IsExtinct)
             {
                 handling = EnumHandling.PreventDefault;
-                AssetLocation loc = new AssetLocation(FirstCodePart() + "-" + Variant["orientation"]);
+                AssetLocation loc = CodeWithVariant("state", "lit");
                 Block block = api.World.BlockAccessor.GetBlock(loc);
                 if (block != null)
                 {
@@ -158,15 +169,15 @@ namespace Vintagestory.GameContent
 
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)
         {
-            if (FirstCodePart(1) == "burnedout") return new ItemStack[0];
+            if (Variant["state"] == "burnedout") return new ItemStack[0];
 
-            Block block = world.BlockAccessor.GetBlock(CodeWithParts("up"));
+            Block block = world.BlockAccessor.GetBlock(CodeWithVariant("orientation", "up"));
             return new ItemStack[] { new ItemStack(block) };
         }
 
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
         {
-            Block block = world.BlockAccessor.GetBlock(CodeWithParts("up"));
+            Block block = world.BlockAccessor.GetBlock(CodeWithVariant("orientation", "up"));
             return new ItemStack(block);
         }
 
@@ -188,7 +199,6 @@ namespace Vintagestory.GameContent
         bool TryAttachTo(IWorldAccessor world, BlockPos blockpos, BlockFacing onBlockFace)
         {
             BlockFacing onFace = onBlockFace;
-            //if (onFace.IsHorizontal) onFace = onFace.GetOpposite(); - why is this here? Breaks attachment
 
             BlockPos attachingBlockPos = blockpos.AddCopy(onBlockFace.Opposite);
             Block block = world.BlockAccessor.GetBlock(attachingBlockPos);
@@ -198,7 +208,7 @@ namespace Vintagestory.GameContent
 
             if (block.CanAttachBlockAt(world.BlockAccessor, this, attachingBlockPos, onFace, attachmentArea))
             {
-                int blockId = world.BlockAccessor.GetBlock(CodeWithParts(onBlockFace.Code)).BlockId;
+                int blockId = world.BlockAccessor.GetBlock(CodeWithVariant("orientation", onBlockFace.Code)).BlockId;
                 world.BlockAccessor.SetBlock(blockId, blockpos);
                 return true;
             }
@@ -208,7 +218,7 @@ namespace Vintagestory.GameContent
 
         bool CanTorchStay(IBlockAccessor blockAccessor, BlockPos pos)
         {
-            BlockFacing facing = BlockFacing.FromCode(LastCodePart());
+            BlockFacing facing = BlockFacing.FromCode(Variant["orientation"]);
             BlockPos attachingBlockPos = pos.AddCopy(facing.Opposite);
 
             Block block = blockAccessor.GetBlock(attachingBlockPos);
@@ -226,18 +236,20 @@ namespace Vintagestory.GameContent
 
         public override AssetLocation GetRotatedBlockCode(int angle)
         {
-            if (LastCodePart() == "up") return Code;
+            if (Variant["orientation"] == "up") return Code;
 
-            BlockFacing newFacing = BlockFacing.HORIZONTALS_ANGLEORDER[((360 - angle) / 90 + BlockFacing.FromCode(LastCodePart()).HorizontalAngleIndex) % 4];
+            BlockFacing oldFacing = BlockFacing.FromCode(Variant["orientation"]);
+            BlockFacing newFacing = BlockFacing.HORIZONTALS_ANGLEORDER[((360 - angle) / 90 + oldFacing.HorizontalAngleIndex) % 4];
+
             return CodeWithParts(newFacing.Code);
         }
 
         public override AssetLocation GetHorizontallyFlippedBlockCode(EnumAxis axis)
         {
-            BlockFacing facing = BlockFacing.FromCode(LastCodePart());
+            BlockFacing facing = BlockFacing.FromCode(Variant["orientation"]);
             if (facing.Axis == axis)
             {
-                return CodeWithParts(facing.Opposite.Code);
+                return CodeWithVariant("orientation", facing.Opposite.Code);
             }
             return Code;
         }

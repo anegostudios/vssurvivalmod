@@ -13,13 +13,13 @@ namespace Vintagestory.ServerMods
 {
     public abstract class GenPartial : ModStdWorldGen
     {
-        internal ICoreServerAPI api;
-        internal int worldheight;
+        protected ICoreServerAPI api;
+        protected int worldheight;
         public int airBlockId = 0;
 
-        internal abstract int chunkRange { get; }
+        protected abstract int chunkRange { get; }
 
-        internal LCGRandom chunkRand;
+        protected LCGRandom chunkRand;
 
         public override bool ShouldLoad(EnumAppSide side)
         {

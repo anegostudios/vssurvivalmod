@@ -316,28 +316,26 @@ namespace Vintagestory.GameContent
                         tesselator.TesselateShape("plant container content shape", shape, out mesh, this, null, 0, climateColorMapId, seasonColorMapId);
                     }
                     catch (Exception e)
-                    { Api.Logger.Error(e.Message + " (when tesselating " + compoShape.Base.WithPathPrefixOnce("shapes/") + ")"); meshwithVariants = null; break; }
+                    { 
+                        Api.Logger.Error(e.Message + " (when tesselating " + compoShape.Base.WithPathPrefixOnce("shapes/") + ")"); meshwithVariants = null; break; 
+                    }
 
-                    for (int j = 0; j < mesh.RenderPassCount; j++)
+                    // WTF is this here for? It breaks mycelium overlay
+                    /*for (int j = 0; j < mesh.RenderPassCount; j++)
                     {
                         mesh.RenderPassesAndExtraBits[j] = (int)EnumChunkRenderPass.OpaqueNoCull;
-                    }
+                    }*/
 
-                    Block block = GetContents()?.Block;
-                    VertexFlags flags = block?.VertexFlags;
-                    if (flags != null && flags.GrassWindWave)
-                    {
-                        int grassWave = VertexFlags.FoliageWindWaveBitMask | VertexFlags.WeakWaveBitMask;
-
-                        for (int vertexNum = 0; vertexNum < mesh.GetVerticesCount(); vertexNum++)
+                    //Block block = GetContents()?.Block;
+                    /*int clearBitMask = VertexFlags.ClearWindModeBitsMask;
+                    for (int vertexNum = 0; vertexNum < mesh.GetVerticesCount(); vertexNum++)
+                    {                      
+                        float y = mesh.xyz[vertexNum * 3 + 1];
+                        if (y <= block.WaveFlagMinY)
                         {
-                            float y = mesh.xyz[vertexNum * 3 + 1];
-                            if (y > block.WaveFlagMinY)
-                            {
-                                mesh.Flags[vertexNum] |= grassWave;
-                            }
+                            mesh.Flags[vertexNum] &= clearBitMask;
                         }
-                    }
+                    }*/
 
                     mesh.ModelTransform(transform);
                     meshwithVariants[i] = mesh;

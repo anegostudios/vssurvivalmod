@@ -12,16 +12,19 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
+
     public class BlockGenericTypedContainer : Block, ITexPositionSource
     {
         public Size2i AtlasSize { get { return tmpTextureSource.AtlasSize; } }
+        ITexPositionSource tmpTextureSource;
 
         string curType;
         string defaultType;
         string variantByGroup;
         string variantByGroupInventory;
-        ITexPositionSource tmpTextureSource;
-            
+
+
+
         public string Subtype
         {
             get
@@ -147,7 +150,6 @@ namespace Vintagestory.GameContent
 
                 foreach (var val in meshes)
                 {
-                    //val.Value.Rgba2 = null;
                     meshrefs[val.Key] = capi.Render.UploadMesh(val.Value);
                 }
 
@@ -209,7 +211,7 @@ namespace Vintagestory.GameContent
 
             foreach (string type in types)
             {
-                string shapename = this.Attributes["shape"][type].AsString();
+                string shapename = Attributes["shape"][type].AsString();
                 meshes[type] = GenMesh(capi, type, shapename, null, ShapeInventory == null ? null : new Vec3f(ShapeInventory.rotateX, ShapeInventory.rotateY, ShapeInventory.rotateZ));
             }
 
@@ -255,7 +257,7 @@ namespace Vintagestory.GameContent
             if (be != null)
             {
                 ICoreClientAPI capi = api as ICoreClientAPI;
-                string shapename = this.Attributes["shape"][be.type].AsString();
+                string shapename = Attributes["shape"][be.type].AsString();
                 if (shapename == null)
                 {
                     base.GetDecal(world, pos, decalTexSource, ref decalModelData, ref blockModelData);
@@ -392,12 +394,12 @@ namespace Vintagestory.GameContent
             if (type != null)
             {
                 int? qslots = inSlot.Itemstack.ItemAttributes?["quantitySlots"]?[type]?.AsInt(0);
-                dsc.AppendLine("\n" + Lang.Get("Quantity Slots: {0}", qslots));
+                dsc.AppendLine("\n" + Lang.Get("Storage Slots: {0}", qslots));
             }
         }
 
 
-        public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing)
+        public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing, int rndIndex = -1)
         {
             BlockEntityGenericTypedContainer be = capi.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityGenericTypedContainer;
             if (be != null)
@@ -406,10 +408,10 @@ namespace Vintagestory.GameContent
                 if (!Textures.TryGetValue(be.type + "-lid", out tex)) {
                     Textures.TryGetValue(be.type + "-top", out tex);
                 }
-                return capi.BlockTextureAtlas.GetRandomColor(tex?.Baked == null ? 0 : tex.Baked.TextureSubId);
+                return capi.BlockTextureAtlas.GetRandomColor(tex?.Baked == null ? 0 : tex.Baked.TextureSubId, rndIndex);
             }
 
-            return base.GetRandomColor(capi, pos, facing);
+            return base.GetRandomColor(capi, pos, facing, rndIndex);
         }
 
 

@@ -416,9 +416,6 @@ namespace Vintagestory.GameContent
                 default:
                     throw new Exception("invalid tapestry json config - missing size attribute for size '" + size + "'");
             }
-
-
-            return "";
         }
 
 

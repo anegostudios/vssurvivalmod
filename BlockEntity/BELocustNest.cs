@@ -90,11 +90,11 @@ namespace Vintagestory.GameContent
 
                     Cuboidf collisionBox = new Cuboidf()
                     {
-                        X1 = -type.HitBoxSize.X / 2,
-                        Z1 = -type.HitBoxSize.X / 2,
-                        X2 = type.HitBoxSize.X / 2,
-                        Z2 = type.HitBoxSize.X / 2,
-                        Y2 = type.HitBoxSize.Y
+                        X1 = -type.CollisionBoxSize.X / 2,
+                        Z1 = -type.CollisionBoxSize.X / 2,
+                        X2 = type.CollisionBoxSize.X / 2,
+                        Z2 = type.CollisionBoxSize.X / 2,
+                        Y2 = type.CollisionBoxSize.Y
                     }.OmniNotDownGrowBy(0.1f);
 
                     Vec3d spawnPos = new Vec3d();

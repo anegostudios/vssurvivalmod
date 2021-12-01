@@ -10,7 +10,7 @@ namespace Vintagestory.GameContent
 {
     public class BlockWateringCan : Block
     {
-        public float CapacitySeconds = 48;
+        public float CapacitySeconds = 32;
 
 
         public static SimpleParticleProperties WaterParticles;
@@ -38,12 +38,14 @@ namespace Vintagestory.GameContent
             if (blockSel == null) return;
             if (byEntity.Controls.Sneak) return;
 
+            
             slot.Itemstack.TempAttributes.SetFloat("secondsUsed", 0);
 
             IPlayer byPlayer = null;
             if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
 
-            if (byEntity.World.BlockAccessor.GetBlock(blockSel.Position).LiquidCode == "water")
+            Block block = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
+            if (block.LiquidCode == "water")
             {
                 BlockPos pos = blockSel.Position;
                 SetRemainingWateringSeconds(slot.Itemstack, CapacitySeconds);
@@ -56,11 +58,16 @@ namespace Vintagestory.GameContent
             }
 
             BlockBucket bucket = byEntity.World.BlockAccessor.GetBlock(blockSel.Position) as BlockBucket;
-            if (bucket != null && bucket.GetContent(byEntity.World, blockSel.Position)?.Block?.LiquidCode == "water")
+            Block contentBlock = bucket?.GetContent(blockSel.Position)?.Block;
+            if (bucket != null && contentBlock?.LiquidCode == "water")
             {
+                var liquidProps = contentBlock.Attributes["waterTightContainerProps"].AsObject<WaterTightContainableProps>(null, block.Code.Domain);
+                int quantityItems = (int)(5 / liquidProps.ItemsPerLitre);
+                float litres = bucket.GetCurrentLitres(blockSel.Position);
+
                 BlockPos pos = blockSel.Position;
-                ItemStack takenWater = bucket.TryTakeContent(byEntity.World, blockSel.Position, 5);
-                SetRemainingWateringSeconds(slot.Itemstack, CapacitySeconds * takenWater.StackSize / 5f);
+                ItemStack takenWater = bucket.TryTakeContent(blockSel.Position, quantityItems);
+                SetRemainingWateringSeconds(slot.Itemstack, CapacitySeconds * takenWater.StackSize * liquidProps.ItemsPerLitre);
                 slot.Itemstack.TempAttributes.SetInt("refilled", 1);
                 slot.MarkDirty();
 
@@ -175,11 +182,11 @@ namespace Vintagestory.GameContent
 
             if (api.World.Side == EnumAppSide.Server)
             {
-                Block facingBlock = world.BlockAccessor.GetBlock(blockSel.Position.AddCopy(blockSel.Face));
-                if (facingBlock.Code.Path == "fire")
-                {
-                    world.BlockAccessor.SetBlock(0, blockSel.Position.AddCopy(blockSel.Face));
-                }
+                var beburningBh = world.BlockAccessor.GetBlockEntity(blockSel.Position.AddCopy(blockSel.Face))?.GetBehavior<BEBehaviorBurning>();
+                if (beburningBh != null) beburningBh.KillFire(false);
+
+                beburningBh = world.BlockAccessor.GetBlockEntity(blockSel.Position)?.GetBehavior<BEBehaviorBurning>();
+                if (beburningBh != null) beburningBh.KillFire(false);
 
                 Vec3i voxelPos = new Vec3i();
                 for (int dx = -2; dx < 2; dx++)
@@ -200,7 +207,7 @@ namespace Vintagestory.GameContent
 
                             if (decorblock?.FirstCodePart() == "caveart")
                             {
-                                world.BlockAccessor.BreakDecorPart(blockSel.Position, blockSel.Face, faceAndSubPosition);
+                                world.BlockAccessor.BreakDecor(blockSel.Position, blockSel.Face, faceAndSubPosition);
                             }
                         }
                     }
@@ -221,7 +228,7 @@ namespace Vintagestory.GameContent
                 be.WaterFarmland(secondsUsed - prevsecondsused);
             }
             
-            float speed = 4f;            
+            float speed = 3f;            
 
             if (world.Side == EnumAppSide.Client)
             {
@@ -229,9 +236,8 @@ namespace Vintagestory.GameContent
                 tf.EnsureDefaultValues();
 
                 tf.Origin.Set(0.5f, 0.2f, 0.5f);
-                tf.Translation.Set(-Math.Min(0.25f, speed * secondsUsed / 4), 0, 0);
-                
-                tf.Rotation.Z = GameMath.Min(60, secondsUsed * 90 * speed, 80 - remainingwater * 5);
+                tf.Translation.Set(-Math.Min(0.25f, speed * secondsUsed / 2), 0, 0);                
+                tf.Rotation.Z = GameMath.Min(60, secondsUsed * 90 * speed, 120 - remainingwater * 4);
                 byEntity.Controls.UsingHeldItemTransformBefore = tf;
             }
 
@@ -306,14 +312,18 @@ namespace Vintagestory.GameContent
         public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
         {
             base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
+            
+            dsc.AppendLine();            
 
             double perc = Math.Round(100 * GetRemainingWateringSeconds(inSlot.Itemstack) / CapacitySeconds);
+            string colorn = ColorUtil.Int2Hex(GuiStyle.DamageColorGradient[(int)Math.Min(99, perc)]);
+
             if (perc < 1)
             {
-                dsc.AppendLine(Lang.Get("Empty"));
+                dsc.AppendLine(string.Format("<font color=\"{0}\">" + Lang.Get("Empty") + "</font>", colorn));
             } else
             {
-                dsc.AppendLine(Lang.Get("{0}% full", perc));
+                dsc.AppendLine(string.Format("<font color=\"{0}\">" + Lang.Get("{0}% full", perc) + "</font>", colorn));
             }
             
         }

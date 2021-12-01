@@ -207,6 +207,12 @@ namespace Vintagestory.GameContent
             renderinfo.ModelRef = ms.GetOrCreatePieMeshRef(itemstack);
         }
 
+
+        public override MeshData GenMesh(ItemStack itemstack, ITextureAtlasAPI targetAtlas, BlockPos atBlockPos = null)
+        {
+            return ms.GetPieMesh(itemstack);
+        }
+
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
         {
             BlockEntityPie bec = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityPie;
@@ -365,8 +371,8 @@ namespace Vintagestory.GameContent
             var forEntity = (world as IClientWorldAccessor)?.Player?.Entity;
 
 
-
-            dsc.AppendLine(GetContentNutritionFacts(api.World, inSlot, stacks, null, true, servingsLeft * GetNutritionMul(null, inSlot, forEntity)));
+            float[] nmul = GetNutritionHealthMul(null, inSlot, forEntity);
+            dsc.AppendLine(GetContentNutritionFacts(api.World, inSlot, stacks, null, true, servingsLeft * nmul[0], servingsLeft * nmul[1]));
         }
 
         public override string GetPlacedBlockInfo(IWorldAccessor world, BlockPos pos, IPlayer forPlayer)
@@ -389,11 +395,9 @@ namespace Vintagestory.GameContent
             float servingsLeft = GetQuantityServings(world, bep.Inventory[0].Itemstack);
             if (!bep.Inventory[0].Itemstack.Attributes.HasAttribute("quantityServings")) servingsLeft = bep.SlicesLeft / 4f;
 
-            float mul = GetNutritionMul(pos, null, forPlayer.Entity) * servingsLeft;
+            float[] nmul = GetNutritionHealthMul(pos, null, forPlayer.Entity);
 
-
-
-            sb.AppendLine(mealblock.GetContentNutritionFacts(api.World, bep.Inventory[0], stacks, null, true, mul));
+            sb.AppendLine(mealblock.GetContentNutritionFacts(api.World, bep.Inventory[0], stacks, null, true, nmul[0] * servingsLeft, nmul[1] * servingsLeft));
             
             return sb.ToString();
         }
@@ -423,11 +427,11 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override string GetContentNutritionFacts(IWorldAccessor world, ItemSlot inSlotorFirstSlot, ItemStack[] contentStacks, EntityAgent forEntity, bool mulWithStacksize = false, float nutritionMul = 1)
+        public override string GetContentNutritionFacts(IWorldAccessor world, ItemSlot inSlotorFirstSlot, ItemStack[] contentStacks, EntityAgent forEntity, bool mulWithStacksize = false, float nutritionMul = 1, float healthMul = 1)
         {
             UnspoilContents(world, contentStacks);
 
-            return base.GetContentNutritionFacts(world, inSlotorFirstSlot, contentStacks, forEntity, mulWithStacksize, nutritionMul);
+            return base.GetContentNutritionFacts(world, inSlotorFirstSlot, contentStacks, forEntity, mulWithStacksize, nutritionMul, healthMul);
         }
 
 
@@ -457,7 +461,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override float GetNutritionMul(BlockPos pos, ItemSlot slot, EntityAgent forEntity)
+        public override float[] GetNutritionHealthMul(BlockPos pos, ItemSlot slot, EntityAgent forEntity)
         {
             float satLossMul = 1f;
 
@@ -474,7 +478,7 @@ namespace Vintagestory.GameContent
                 satLossMul = GlobalConstants.FoodSpoilageSatLossMul(spoilState, slot.Itemstack, forEntity);
             }
 
-            return Attributes["nutritionMul"].AsFloat(1) * satLossMul;
+            return new float[] { Attributes["nutritionMul"].AsFloat(1) * satLossMul, satLossMul };
         }
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)

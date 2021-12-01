@@ -85,7 +85,6 @@ namespace Vintagestory.GameContent
         });
         protected static CuboidWithMaterial[] tmpCuboids => tmpCuboidTL.Value;
 
-
         // bits 0..3 = xmin
         // bits 4..7 = xmax
         // bits 8..11 = ymin
@@ -119,6 +118,37 @@ namespace Vintagestory.GameContent
         protected bool absorbAnyLight;
         public bool[] sidecenterSolid = new bool[6];
         public bool[] sideAlmostSolid = new bool[6];
+
+        public byte[] LightHsv
+        {
+            get
+            {
+                int[] matids = MaterialIds;
+                byte[] hsv = new byte[3];
+                int q = 0;
+
+                for (int i = 0; i < matids.Length; i++)
+                {
+                    Block block = Api.World.BlockAccessor.GetBlock(matids[i]);
+                    if (block.LightHsv[2] > 0)
+                    {
+                        hsv[0] += block.LightHsv[0];
+                        hsv[1] += block.LightHsv[1];
+                        hsv[2] += block.LightHsv[2]; // Should take into account the amount of used voxels, but that then we need to pass the old light hsv to the relighting engine or we'll get lighting bugs
+                        q++;  
+                    }
+                }
+
+                if (q == 0) return hsv;
+
+                hsv[0] = (byte)(hsv[0] / q);
+                hsv[1] = (byte)(hsv[1] / q);
+                hsv[2] = (byte)(hsv[2] / q);
+
+
+                return hsv;
+            }
+        }
 
         protected byte nowmaterialIndex;
 
@@ -267,6 +297,11 @@ namespace Vintagestory.GameContent
         public void SetNowMaterial(byte index)
         {
             nowmaterialIndex = (byte)GameMath.Clamp(index, 0, MaterialIds.Length - 1);
+        }
+
+        public void SetNowMaterialId(int materialId)
+        {
+            nowmaterialIndex = (byte)Math.Max(0, MaterialIds.IndexOf(materialId));
         }
 
 
@@ -519,6 +554,8 @@ namespace Vintagestory.GameContent
             int[] edgeVoxelsMissing = new int[6];
             int[] edgeCenterVoxelsMissing = new int[6];
 
+            byte[] lightshv = this.LightHsv;
+
             for (int dx = 0; dx < 16; dx++)
             {
                 for (int dy = 0; dy < 16; dy++)
@@ -613,7 +650,7 @@ namespace Vintagestory.GameContent
                 sidecenterSolid[i] = edgeCenterVoxelsMissing[i] < 5;
                 sideAlmostSolid[i] = edgeVoxelsMissing[i] <= 32;
             }
-            emitSideAo = doEmitSideAo ? 0x3F : 0;
+            emitSideAo = lightshv[2] < 10 && doEmitSideAo ? 0x3F : 0;
 
             this.sizeRel = voxelCount / (16f * 16f * 16f);
 
@@ -1218,6 +1255,7 @@ namespace Vintagestory.GameContent
                 // From 1.15.0 until 1.15.5 we forgot to store sideAlmostSolid
                 if (!tree.HasAttribute("sideAlmostSolid"))
                 {
+                    if (Api == null) this.Api = worldAccessForResolve.Api; // Needed for LightHsv property, I hope this does not break things >.>
                     updateSideSolidSideAo();
                 }
             }

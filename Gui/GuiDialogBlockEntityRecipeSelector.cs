@@ -19,10 +19,10 @@ namespace Vintagestory.GameContent
         int prevSlotOver = -1;
         List<SkillItem> skillItems;
         bool didSelect = false;
-        API.Common.Action<int> onSelectedRecipe;
-        API.Common.Action onCancelSelect;
+        Action<int> onSelectedRecipe;
+        Action onCancelSelect;
 
-        public GuiDialogBlockEntityRecipeSelector(string DialogTitle, ItemStack[] recipeOutputs, API.Common.Action<int> onSelectedRecipe, API.Common.Action onCancelSelect, BlockPos blockEntityPos, ICoreClientAPI capi) : base(DialogTitle, capi)
+        public GuiDialogBlockEntityRecipeSelector(string DialogTitle, ItemStack[] recipeOutputs, Action<int> onSelectedRecipe, Action onCancelSelect, BlockPos blockEntityPos, ICoreClientAPI capi) : base(DialogTitle, capi)
         {
             this.blockEntityPos = blockEntityPos;
             this.onSelectedRecipe = onSelectedRecipe;
@@ -96,8 +96,8 @@ namespace Vintagestory.GameContent
                 .AddDialogTitleBar(Lang.Get("Select Recipe"), OnTitleBarClose)
                 .BeginChildElements(bgBounds)
                     .AddSkillItemGrid(skillItems, cols, rows, OnSlotClick, skillGridBounds, "skillitemgrid")
-                    .AddDynamicText("", CairoFont.WhiteSmallishText(), EnumTextOrientation.Left, textBounds, "name")
-                    .AddDynamicText("", CairoFont.WhiteDetailText(), EnumTextOrientation.Left, textBounds.BelowCopy(0,10,0,0), "desc")
+                    .AddDynamicText("", CairoFont.WhiteSmallishText(), textBounds, "name")
+                    .AddDynamicText("", CairoFont.WhiteDetailText(), textBounds.BelowCopy(0,10,0,0), "desc")
                 .EndChildElements()
                 .Compose()
             ;

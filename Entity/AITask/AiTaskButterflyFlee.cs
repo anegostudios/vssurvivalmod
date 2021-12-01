@@ -50,8 +50,8 @@ namespace Vintagestory.GameContent
             if (entity.World.Rand.NextDouble() > 0.05) return false;
             if (cooldownUntilMs > entity.World.ElapsedMilliseconds) return false;
             if (cooldownUntilTotalHours > entity.World.Calendar.TotalHours) return false;
-            if (whenInEmotionState != null && !entity.HasEmotionState(whenInEmotionState)) return false;
-            if (whenNotInEmotionState != null && entity.HasEmotionState(whenNotInEmotionState)) return false;
+            if (whenInEmotionState != null && bhEmo?.IsInEmotionState(whenInEmotionState) != true) return false;
+            if (whenNotInEmotionState != null && bhEmo?.IsInEmotionState(whenNotInEmotionState) == true) return false;
 
             fleeFromEntity = entity.World.GetNearestEntity(entity.ServerPos.XYZ, seekingRange, seekingRange, (e) => {
                 if (!e.Alive || e.EntityId == this.entity.EntityId) return false;

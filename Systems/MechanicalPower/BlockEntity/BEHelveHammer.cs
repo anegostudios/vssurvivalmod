@@ -196,13 +196,13 @@ namespace Vintagestory.GameContent.Mechanics
             }
         }
 
-        public override void OnBlockBroken()
+        public override void OnBlockBroken(IPlayer byPlayer = null)
         {
             if (HammerStack != null)
             {
                 Api.World.SpawnItemEntity(HammerStack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
             }
-            base.OnBlockBroken();
+            base.OnBlockBroken(byPlayer);
         }
 
         private MeshData GenHammerMesh()
@@ -315,7 +315,7 @@ namespace Vintagestory.GameContent.Mechanics
         {
             base.OnLoadCollectibleMappings(worldForNewMappings, oldBlockIdMapping, oldItemIdMapping, schematicSeed);
 
-            hammerStack.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForNewMappings);
+            hammerStack?.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForNewMappings);
         }
 
         public override void OnStoreCollectibleMappings(Dictionary<int, AssetLocation> blockIdMapping, Dictionary<int, AssetLocation> itemIdMapping)

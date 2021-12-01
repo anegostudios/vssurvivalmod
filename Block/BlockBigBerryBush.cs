@@ -18,13 +18,13 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing)
+        public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing, int rndIndex = -1)
         {
             if (Textures == null || Textures.Count == 0) return 0;
             BakedCompositeTexture tex = Textures?.First().Value?.Baked;
             if (tex == null) return 0;
 
-            int color = capi.BlockTextureAtlas.GetRandomColor(tex.TextureSubId);
+            int color = capi.BlockTextureAtlas.GetRandomColor(tex.TextureSubId, rndIndex);
             color = capi.World.ApplyColorMapOnRgba("climatePlantTint", SeasonColorMap, color, pos.X, pos.Y, pos.Z);
             return color;
         }

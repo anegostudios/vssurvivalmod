@@ -11,10 +11,8 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockEntityBucket : BlockEntityContainer
+    public class BlockEntityBucket : BlockEntityLiquidContainer
     {
-        internal InventoryGeneric inventory;
-        public override InventoryBase Inventory => inventory;
         public override string InventoryClassName => "bucket";
 
         MeshData currentMesh;
@@ -40,7 +38,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void OnBlockBroken()
+        public override void OnBlockBroken(IPlayer byPlayer = null)
         {
             // Don't drop inventory contents
         }
@@ -57,17 +55,6 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public ItemStack GetContent()
-        {
-            return inventory[0].Itemstack;
-        }
-
-
-        internal void SetContent(ItemStack stack)
-        {
-            inventory[0].Itemstack = stack;
-            MarkDirty(true);
-        }
         
 
 

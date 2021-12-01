@@ -11,73 +11,8 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public enum EnumFirepitModel
+    public class BlockEntityFirepit : BlockEntityOpenableContainer, IHeatSource, IFirePit
     {
-        Normal = 0,
-        Spit = 1,
-        Wide = 2
-    }
-
-    public interface IInFirepitMeshSupplier
-    {
-        /// <summary>
-        /// Return the mesh you want to be rendered in the firepit. You can return null to signify that you do not wish to use a custom mesh.
-        /// </summary>
-        /// <param name="stack"></param>
-        /// <param name="world"></param>
-        /// <param name="pos"></param>
-        /// <param name="firepitModel"></param>
-        /// <returns></returns>
-        MeshData GetMeshWhenInFirepit(ItemStack stack, IWorldAccessor world, BlockPos pos, ref EnumFirepitModel firepitModel);
-    }
-
-    public class InFirePitProps
-    {
-        public ModelTransform Transform;
-        public EnumFirepitModel UseFirepitModel;
-    }
-
-    public interface IInFirepitRenderer : IRenderer
-    {
-        /// <summary>
-        /// Called every 100ms in case you want to do custom stuff, such as playing a sound after a certain temperature
-        /// </summary>
-        /// <param name="temperature"></param>
-        void OnUpdate(float temperature);
-
-        /// <summary>
-        /// Called when the itemstack has been moved to the output slot
-        /// </summary>
-        void OnCookingComplete();
-    }
-
-    public interface IInFirepitRendererSupplier
-    {
-        /// <summary>
-        /// Return the renderer that perfroms the rendering of your block/item in the firepit. You can return null to signify that you do not wish to use a custom renderer
-        /// </summary>
-        /// <param name="stack"></param>
-        /// <param name="world"></param>
-        /// <param name="pos"></param>
-        /// <returns></returns>
-        IInFirepitRenderer GetRendererWhenInFirepit(ItemStack stack, BlockEntityFirepit firepit, bool forOutputSlot);
-
-        /// <summary>
-        /// The model type the firepit should be using while you render your custom item
-        /// </summary>
-        /// <param name="stack"></param>
-        /// <param name="world"></param>
-        /// <param name="pos"></param>
-        /// <returns></returns>
-        EnumFirepitModel GetDesiredFirepitModel(ItemStack stack, BlockEntityFirepit firepit, bool forOutputSlot);
-    }
-
-
-
-    public class BlockEntityFirepit : BlockEntityOpenableContainer, IHeatSource
-    {
-        ILoadedSound ambientSound;
-
         internal InventorySmelting inventory;
 
 
@@ -131,10 +66,6 @@ namespace Vintagestory.GameContent
             get { return 1f; }
         }
 
-        public virtual float SoundLevel
-        {
-            get { return 0.66f; }
-        }
 
         // Resting temperature
         public virtual int enviromentTemperature()
@@ -180,8 +111,7 @@ namespace Vintagestory.GameContent
 
             inventory.pos = Pos;
             inventory.LateInitialize("smelting-" + Pos.X + "/" + Pos.Y + "/" + Pos.Z, api);
-            wsys = api.ModLoader.GetModSystem<WeatherSystemBase>();
-
+            
             RegisterGameTickListener(OnBurnTick, 100);
             RegisterGameTickListener(On500msTick, 500);
 
@@ -192,41 +122,10 @@ namespace Vintagestory.GameContent
 
                 UpdateRenderer();
             }
+
+            wsys = api.ModLoader.GetModSystem<WeatherSystemBase>();
         }
 
-
-        public void ToggleAmbientSounds(bool on)
-        {
-            if (Api.Side != EnumAppSide.Client) return;
-
-            if (on)
-            {
-                if (ambientSound == null || !ambientSound.IsPlaying)
-                {
-                    ambientSound = ((IClientWorldAccessor)Api.World).LoadSound(new SoundParams()
-                    {
-                        Location = new AssetLocation("sounds/environment/fireplace.ogg"),
-                        ShouldLoop = true,
-                        Position = Pos.ToVec3f().Add(0.5f, 0.25f, 0.5f),
-                        DisposeOnFinish = false,
-                        Volume = SoundLevel
-                    });
-
-                    if (ambientSound != null)
-                    {
-                        ambientSound.Start();
-                        ambientSound.PlaybackPosition = ambientSound.SoundLengthSeconds * (float)Api.World.Rand.NextDouble();
-                    }
-                }
-            }
-            else
-            {
-                ambientSound?.Stop();
-                ambientSound?.Dispose();
-                ambientSound = null;
-            }
-
-        }
 
 
         private void OnSlotModifid(int slotid)
@@ -246,6 +145,7 @@ namespace Vintagestory.GameContent
         }
 
 
+        public bool IsSmoldering => canIgniteFuel;
 
         public bool IsBurning
         {
@@ -257,6 +157,63 @@ namespace Vintagestory.GameContent
         {
             return 64;
         }
+
+        // Sync to client every 500ms
+        private void On500msTick(float dt)
+        {
+            if (Api is ICoreServerAPI && (IsBurning || prevFurnaceTemperature != furnaceTemperature))
+            {
+                MarkDirty();
+            }
+
+            prevFurnaceTemperature = furnaceTemperature;
+
+            if (shouldExtinguishFromRainFall(out float rainLevel))
+            {
+                Api.World.PlaySoundAt(new AssetLocation("sounds/effect/extinguish"), Pos.X + 0.5, Pos.Y, Pos.Z + 0.5, null, false, 16);
+
+                fuelBurnTime -= (float)rainLevel / 10f;
+
+                if (Api.World.Rand.NextDouble() < rainLevel / 5f || fuelBurnTime <= 0)
+                {
+                    setBlockState("cold");
+                    extinguishedTotalHours = -99;
+                    canIgniteFuel = false;
+                    fuelBurnTime = 0;
+                    maxFuelBurnTime = 0;
+                }
+
+                MarkDirty(true);
+            }
+        }
+
+
+
+        WeatherSystemBase wsys;
+        Vec3d tmpPos = new Vec3d();
+
+
+        public bool shouldExtinguishFromRainFall(out float rainLevel)
+        {
+            rainLevel = 0;
+            if (Api.Side == EnumAppSide.Server && IsBurning && Api.World.Rand.NextDouble() > 0.5)
+            {
+                if (Api.World.BlockAccessor.GetRainMapHeightAt(Pos.X, Pos.Z) <= Pos.Y)   // It's more efficient to do this quick check before GetPrecipitation
+                {
+                    // Die on rainfall
+                    tmpPos.Set(Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5);
+                    rainLevel = wsys.GetPrecipitation(tmpPos);
+                    if (rainLevel > 0.04 && Api.World.Rand.NextDouble() < rainLevel * 5)
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+
 
 
         private void OnBurnTick(float dt)
@@ -340,45 +297,6 @@ namespace Vintagestory.GameContent
         }
 
 
-        WeatherSystemBase wsys;
-        Vec3d tmpPos = new Vec3d();
-        // Sync to client every 500ms
-        private void On500msTick(float dt)
-        {
-            if (Api is ICoreServerAPI && (IsBurning || prevFurnaceTemperature != furnaceTemperature))
-            {
-                MarkDirty();
-            }
-
-            prevFurnaceTemperature = furnaceTemperature;
-
-            if (Api.Side == EnumAppSide.Server && IsBurning && Api.World.Rand.NextDouble() > 0.5)
-            {
-                if (Api.World.BlockAccessor.GetRainMapHeightAt(Pos.X, Pos.Z) <= Pos.Y)   // It's more efficient to do this quick check before GetPrecipitation
-                {
-                    // Die on rainfall
-                    tmpPos.Set(Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5);
-                    double rainLevel = wsys.GetPrecipitation(tmpPos);
-                    if (rainLevel > 0.04 && Api.World.Rand.NextDouble() < rainLevel * 5)
-                    {
-                        Api.World.PlaySoundAt(new AssetLocation("sounds/effect/extinguish"), Pos.X + 0.5, Pos.Y, Pos.Z + 0.5, null, false, 16);
-
-                        fuelBurnTime -= (float)rainLevel / 10f;
-
-                        if (Api.World.Rand.NextDouble() < rainLevel / 5f || fuelBurnTime <= 0)
-                        {
-                            setBlockState("cold");
-                            extinguishedTotalHours = -99;
-                            canIgniteFuel = false;
-                            fuelBurnTime = 0;
-                            maxFuelBurnTime = 0;
-                        }
-
-                        MarkDirty(true);
-                    }
-                }
-            }
-        }
 
 
         public float changeTemperature(float fromTemp, float toTemp, float dt)
@@ -470,10 +388,7 @@ namespace Vintagestory.GameContent
 
         public void heatOutput(float dt)
         {
-            //dt *= 20;
-
             float oldTemp = OutputStackTemp;
-            float nowTemp = oldTemp;
 
             // Only Heat ore. Cooling happens already in the itemstack
             if (oldTemp < furnaceTemperature)
@@ -488,7 +403,6 @@ namespace Vintagestory.GameContent
                 if (oldTemp != newTemp)
                 {
                     OutputStackTemp = newTemp;
-                    nowTemp = newTemp;
                 }
             }
         }
@@ -593,6 +507,7 @@ namespace Vintagestory.GameContent
             maxTemperature = (int)(fuelCopts.BurnTemperature * HeatModifier);
             smokeLevel = fuelCopts.SmokeLevel;
             setBlockState("lit");
+            MarkDirty(true);
         }
 
 
@@ -707,7 +622,7 @@ namespace Vintagestory.GameContent
 
             if (Api?.Side == EnumAppSide.Client && (clientSidePrevBurning != IsBurning || shouldRedraw))
             {
-                ToggleAmbientSounds(IsBurning);
+                GetBehavior<BEBehaviorFirepitAmbient>()?.ToggleAmbientSounds(IsBurning);
                 clientSidePrevBurning = IsBurning;
                 MarkDirty(true);
                 shouldRedraw = false;
@@ -808,11 +723,7 @@ namespace Vintagestory.GameContent
         {
             base.OnBlockRemoved();
 
-            if (ambientSound != null)
-            {
-                ambientSound.Stop();
-                ambientSound.Dispose();
-            }
+            
 
             renderer?.Dispose();
             renderer = null;
@@ -825,18 +736,11 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override void OnBlockBroken()
+        public override void OnBlockBroken(IPlayer byPlayer = null)
         {
             base.OnBlockBroken();
         }
 
-        ~BlockEntityFirepit()
-        {
-            if (ambientSound != null)
-            {
-                ambientSound.Dispose();
-            }
-        }
 
         public override void OnReceivedClientPacket(IPlayer player, int packetid, byte[] data)
         {
@@ -1144,9 +1048,10 @@ namespace Vintagestory.GameContent
             return meshdata;
         }
 
+
         public float GetHeatStrength(IWorldAccessor world, BlockPos heatSourcePos, BlockPos heatReceiverPos)
         {
-            return IsBurning ? 10 : (canIgniteFuel ? 0.25f : 0);
+            return IsBurning ? 10 : (IsSmoldering ? 0.25f : 0);
         }
     }
 }

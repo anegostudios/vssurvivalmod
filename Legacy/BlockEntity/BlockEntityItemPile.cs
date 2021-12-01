@@ -48,7 +48,7 @@ namespace Vintagestory.GameContent
             inventory.ResolveBlocksOrItems();
         }
 
-        public override void OnBlockBroken()
+        public override void OnBlockBroken(IPlayer byPlayer = null)
         {
             if (Api.World is IServerWorldAccessor)
             {

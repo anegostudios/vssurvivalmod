@@ -10,7 +10,8 @@ using Vintagestory.ServerMods.NoObf;
 
 namespace Vintagestory.ServerMods
 {
-    public class GenVegetation : ModStdWorldGen
+
+    public class GenVegetationAndPatches : ModStdWorldGen
     {
         ICoreServerAPI api;
         LCGRandom rnd;
@@ -19,8 +20,8 @@ namespace Vintagestory.ServerMods
         int worldheight;
         int chunkMapSizeY;
         int regionChunkSize;
-        Dictionary<string, int> RockBlockIdsByType;
-        BlockPatchConfig bpc;
+        public Dictionary<string, int> RockBlockIdsByType;
+        public BlockPatchConfig bpc;
 
         float forestMod;
         float shrubMod = 0f;
@@ -85,8 +86,15 @@ namespace Vintagestory.ServerMods
             }
             IAsset asset = api.Assets.Get("worldgen/blockpatches.json");
             bpc = asset.ToObject<BlockPatchConfig>();
-            bpc.ResolveBlockIds(api, rockstrata);
 
+            var blockpatchesfiles = api.Assets.GetMany<BlockPatch[]>(api.World.Logger, "worldgen/blockpatches/");
+            foreach (var patches in blockpatchesfiles.Values)
+            {
+                bpc.Patches = bpc.Patches.Append(patches);
+            }
+
+            bpc.ResolveBlockIds(api, rockstrata);
+            treeSupplier.treeGenerators.forestFloorSystem.SetBlockPatches(bpc);
 
 
             ITreeAttribute worldConfig = api.WorldManager.SaveGame.WorldConfiguration;
@@ -178,10 +186,11 @@ namespace Vintagestory.ServerMods
         {
             int dx, dz, x, z;
             Block block;
-            
-            for (int i = 0; i < bpc.Patches.Length; i++)
+            int mapsizeY = blockAccessor.MapSizeY;
+
+            for (int i = 0; i < bpc.PatchesNonTree.Length; i++)
             {
-                BlockPatch blockPatch = bpc.Patches[i];
+                BlockPatch blockPatch = bpc.PatchesNonTree[i];
                 if (blockPatch.PostPass != postPass) continue;
 
                 float chance = blockPatch.Chance * bpc.ChanceMultiplier.nextFloat();
@@ -208,7 +217,7 @@ namespace Vintagestory.ServerMods
 
                     int climate = GameMath.BiLerpRgbColor((float)dx / chunksize, (float)dz / chunksize, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight);
 
-                    if (bpc.IsPatchSuitableAt(blockPatch, block, api.WorldManager, climate, y, forestRel, shrubRel))
+                    if (bpc.IsPatchSuitableAt(blockPatch, block, mapsizeY, climate, y, forestRel, shrubRel))
                     {
                         int firstBlockId = 0;
                         bool found = true;
@@ -233,8 +242,6 @@ namespace Vintagestory.ServerMods
                 }
             }
         }
-
-
 
         void genShrubs(int chunkX, int chunkZ)
         {
@@ -284,6 +291,7 @@ namespace Vintagestory.ServerMods
                     treegenParams.treeGen.GrowTree(
                         blockAccessor,
                         tmpPos,
+                        true,
                         treegenParams.size,
                         treegenParams.vinesGrowthChance
                     );
@@ -304,6 +312,7 @@ namespace Vintagestory.ServerMods
             int triesTrees = (int)(treeSupplier.treeGenProps.treesPerChunk.nextFloat() * drypenalty * wetboost);
             int dx, dz, x, z;
             Block block;
+            int treesGenerated = 0;
 
             while (triesTrees > 0)
             {
@@ -360,9 +369,13 @@ namespace Vintagestory.ServerMods
                     treegenParams.treeGen.GrowTree(
                         blockAccessor,
                         tmpPos,
+                        false,
                         treegenParams.size,
-                        treegenParams.vinesGrowthChance
+                        treegenParams.vinesGrowthChance,
+                        treesGenerated
                     );
+
+                    treesGenerated++;
                 }
             }
         }

@@ -582,7 +582,7 @@ namespace Vintagestory.GameContent
                 }
                 else
                 {
-                    Api.World.SpawnItemEntity(outstack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                    Api.World.SpawnItemEntity(outstack, Pos.ToVec3d().Add(0.5, 0.626, 0.5));
                 }
 
                 RegenMeshAndSelectionBoxes();
@@ -952,7 +952,7 @@ namespace Vintagestory.GameContent
             workitemRenderer = null;
         }
 
-        public override void OnBlockBroken()
+        public override void OnBlockBroken(IPlayer byPlayer = null)
         {
             if (workItemStack != null)
             {

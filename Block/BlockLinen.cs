@@ -29,11 +29,11 @@ namespace Vintagestory.GameContent
             if (blockSel != null)
             {
                 BlockEntityBarrel beba = api.World.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityBarrel;
-                if (beba != null && !beba.inventory[1].Empty)
+                if (beba != null && !beba.Inventory[1].Empty)
                 {
-                    if (beba.inventory[1].Itemstack.Item?.Code?.Path == "cottagecheeseportion")
+                    if (beba.Inventory[1].Itemstack.Item?.Code?.Path == "cottagecheeseportion")
                     {
-                        if (beba.inventory[1].StackSize < 25)
+                        if (beba.Inventory[1].StackSize < 25)
                         {
                             (api as ICoreClientAPI)?.TriggerIngameError(this, "notenough", Lang.Get("Need at least 25 litres to create a roll of cheese"));
                             handHandling = EnumHandHandling.PreventDefault;
@@ -42,7 +42,7 @@ namespace Vintagestory.GameContent
 
                         if (api.World.Side == EnumAppSide.Server)
                         {
-                            ItemStack ccStack = beba.inventory[1].TakeOut(25);
+                            ItemStack ccStack = beba.Inventory[1].TakeOut(25);
 
                             BlockCheeseCurdsBundle block = api.World.GetBlock(new AssetLocation("curdbundle")) as BlockCheeseCurdsBundle;
                             ItemStack bundleStack = new ItemStack(block);

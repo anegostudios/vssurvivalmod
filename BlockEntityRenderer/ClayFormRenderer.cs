@@ -112,8 +112,6 @@ namespace Vintagestory.GameContent
             this.workItem = workitem;
             MeshData workItemMesh = new MeshData(24, 36, false);
             
-            //workItemMesh.Rgba2 = null;
-
             float subPixelPaddingx = api.BlockTextureAtlas.SubPixelPaddingX;
             float subPixelPaddingy = api.BlockTextureAtlas.SubPixelPaddingY;
 
@@ -140,7 +138,7 @@ namespace Vintagestory.GameContent
 
             for (int i = 0; i < 6; i++)
             {
-                singleVoxelMesh.Flags[i * 4] = singleVoxelMesh.Flags[i * 4 + 1] = singleVoxelMesh.Flags[i * 4 + 2] = singleVoxelMesh.Flags[i * 4 + 3] = VertexFlags.NormalToPackedInt(BlockFacing.ALLFACES[i].Normali) << 15;
+                singleVoxelMesh.Flags[i * 4] = singleVoxelMesh.Flags[i * 4 + 1] = singleVoxelMesh.Flags[i * 4 + 2] = singleVoxelMesh.Flags[i * 4 + 3] = VertexFlags.PackNormal(BlockFacing.ALLFACES[i].Normali);
             }
 
 

@@ -19,11 +19,24 @@ namespace Vintagestory.ServerMods.NoObf
         [JsonProperty]
         public BlockPatch[] Patches;
 
+        /// <summary>
+        /// Patches that are not handled by TreeGen
+        /// </summary>
+        public BlockPatch[] PatchesNonTree;
+
         internal void ResolveBlockIds(ICoreServerAPI api, RockStrataConfig rockstrata)
         {
+            List<BlockPatch> patchesNonTree = new List<BlockPatch>();
+
             for (int i = 0; i < Patches.Length; i++)
             {
                 BlockPatch patch = Patches[i];
+
+                bool handledbyTreegen = patch.Placement == EnumBlockPatchPlacement.OnTrees || patch.Placement == EnumBlockPatchPlacement.UnderTrees;
+                if (!handledbyTreegen)
+                {
+                    patchesNonTree.Add(patch);
+                }
 
                 List<Block> blocks = new List<Block>();
 
@@ -68,13 +81,15 @@ namespace Vintagestory.ServerMods.NoObf
                     patch.BlockCodeIndex = NatFloat.createUniform(0, patch.Blocks.Length);
                 }
             }
+
+            this.PatchesNonTree = patchesNonTree.ToArray();
         }
 
 
 
 
 
-        internal bool IsPatchSuitableAt(BlockPatch patch, Block onBlock, IWorldManagerAPI world, int climate, int y, float forestRel, float shrubRel)
+        public bool IsPatchSuitableAt(BlockPatch patch, Block onBlock, int mapSizeY, int climate, int y, float forestRel, float shrubRel)
         {
             if ((patch.Placement == EnumBlockPatchPlacement.NearWater || patch.Placement == EnumBlockPatchPlacement.UnderWater) && onBlock.LiquidCode != "water") return false;
             if ((patch.Placement == EnumBlockPatchPlacement.NearSeaWater || patch.Placement == EnumBlockPatchPlacement.UnderSeaWater) && onBlock.LiquidCode != "seawater") return false;
@@ -100,7 +115,7 @@ namespace Vintagestory.ServerMods.NoObf
                 return false;
             }
 
-            float sealevelDistRel = ((float)y - TerraGenConfig.seaLevel) / ((float)world.MapSizeY - TerraGenConfig.seaLevel);
+            float sealevelDistRel = ((float)y - TerraGenConfig.seaLevel) / ((float)mapSizeY - TerraGenConfig.seaLevel);
             if (sealevelDistRel < patch.MinY || sealevelDistRel > patch.MaxY)
             {
                 return false;
@@ -108,6 +123,34 @@ namespace Vintagestory.ServerMods.NoObf
 
             // finally test fertility (the least common blockpatch criterion)
             float fertilityRel = TerraGenConfig.GetFertility(rain, temp, sealevelDistRel) / 255f;
+            return fertilityRel >= patch.MinFertility && fertilityRel <= patch.MaxFertility;
+        }
+
+
+        public bool IsPatchSuitableUnderTree(BlockPatch patch, int mapSizeY, ClimateCondition climate, int y)
+        {
+            float rainRel = climate.Rainfall;
+            if (rainRel < patch.MinRain || rainRel > patch.MaxRain)
+            {
+                // again faster path without needing to fetch temperature etc
+                return false;
+            }
+
+            float temp = climate.Temperature;
+            if (temp < patch.MinTemp || temp > patch.MaxTemp)
+            {
+                // again faster path without needing to fetch sealevel and fertility
+                return false;
+            }
+
+            float sealevelDistRel = ((float)y - TerraGenConfig.seaLevel) / ((float)mapSizeY - TerraGenConfig.seaLevel);
+            if (sealevelDistRel < patch.MinY || sealevelDistRel > patch.MaxY)
+            {
+                return false;
+            }
+
+            // finally test fertility (the least common blockpatch criterion)
+            float fertilityRel = climate.Fertility;
             return fertilityRel >= patch.MinFertility && fertilityRel <= patch.MaxFertility;
         }
     }

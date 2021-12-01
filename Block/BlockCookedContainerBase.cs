@@ -9,7 +9,7 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockCookedContainerBase : BlockContainer, IBlockMealContainer
+    public class BlockCookedContainerBase : BlockContainer, IBlockMealContainer, IContainedInteractable
     {
         public void SetContents(string recipeCode, float servings, ItemStack containerStack, ItemStack[] stacks)
         {
@@ -210,17 +210,12 @@ namespace Vintagestory.GameContent
 
 
 
-        public bool ServeIntoBowlStack(ItemSlot bowlSlot, ItemSlot potslot, IWorldAccessor world)
+        public bool ServeIntoStack(ItemSlot bowlSlot, ItemSlot potslot, IWorldAccessor world)
         {
             if (world.Side == EnumAppSide.Client) return true;
 
-            string code = bowlSlot.Itemstack.Block.Attributes["mealBlockCode"].AsString();
-            Block mealblock = api.World.GetBlock(new AssetLocation(code)) as Block;
-
-            ItemStack[] stacks = GetContents(api.World, potslot.Itemstack);
             float quantityServings = GetServings(world, potslot.Itemstack);
             string ownRecipeCode = GetRecipeCode(world, potslot.Itemstack);
-
             float servingCapacity = bowlSlot.Itemstack.Block.Attributes["servingCapacity"].AsFloat(1);
 
             // Merge existing servings
@@ -284,6 +279,10 @@ namespace Vintagestory.GameContent
             }
 
 
+            ItemStack[] stacks = GetContents(api.World, potslot.Itemstack);
+            string code = bowlSlot.Itemstack.Block.Attributes["mealBlockCode"].AsString();
+            Block mealblock = api.World.GetBlock(new AssetLocation(code));
+
             float servingsToTransfer = Math.Min(quantityServings, servingCapacity);
 
             ItemStack stack = new ItemStack(mealblock);
@@ -306,6 +305,50 @@ namespace Vintagestory.GameContent
 
 
 
+
+        public bool OnContainedInteractStart(BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
+        {
+            if (!byPlayer.Entity.Controls.Sneak) return false;
+
+            var targetSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
+            if (targetSlot.Empty) return false;
+
+            if ((targetSlot.Itemstack.Collectible.Attributes?.IsTrue("mealContainer") == true || targetSlot.Itemstack.Block is IBlockMealContainer) && GetServings(api.World, slot.Itemstack) > 0)
+            {
+                if (targetSlot.StackSize > 1)
+                {
+                    targetSlot = new DummySlot(targetSlot.TakeOut(1));
+                    byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
+                    ServeIntoStack(targetSlot, slot, api.World);
+                    if (!byPlayer.InventoryManager.TryGiveItemstack(targetSlot.Itemstack, true))
+                    {
+                        api.World.SpawnItemEntity(targetSlot.Itemstack, byPlayer.Entity.ServerPos.XYZ);
+                    }
+                }
+                else
+                {
+                    ServeIntoStack(targetSlot, slot, api.World);
+                }
+
+                slot.MarkDirty();
+                be.MarkDirty(true);
+                return true;
+            }
+
+
+
+            return false;
+        }
+
+        public bool OnContainedInteractStep(float secondsUsed, BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
+        {
+            return false;
+        }
+
+        public void OnContainedInteractStop(float secondsUsed, BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
+        {
+
+        }
     }
 
 }

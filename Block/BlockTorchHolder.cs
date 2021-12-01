@@ -22,7 +22,7 @@ namespace Vintagestory.GameContent
             if (Empty)
             {
                 ItemStack heldStack = byPlayer.InventoryManager.ActiveHotbarSlot.Itemstack;
-                if (heldStack != null && heldStack.Collectible.Code.Path.Equals("torch-up"))
+                if (heldStack != null && heldStack.Collectible.Code.Path.Equals("torch-basic-lit-up"))
                 {
                     byPlayer.InventoryManager.ActiveHotbarSlot.TakeOut(1);
                     byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
@@ -39,7 +39,7 @@ namespace Vintagestory.GameContent
                 }
             } else
             {
-                ItemStack stack = new ItemStack(world.GetBlock(new AssetLocation("torch-up")));
+                ItemStack stack = new ItemStack(world.GetBlock(new AssetLocation("torch-basic-lit-up")));
                 if (byPlayer.InventoryManager.TryGiveItemstack(stack, true))
                 {
                     Block filledBlock = world.GetBlock(CodeWithVariant("state", "empty"));
@@ -68,7 +68,7 @@ namespace Vintagestory.GameContent
                     {
                         ActionLangCode = "blockhelp-torchholder-addtorch",
                         MouseButton = EnumMouseButton.Right,
-                        Itemstacks = new ItemStack[] { new ItemStack(world.GetBlock(new AssetLocation("torch-up"))) }
+                        Itemstacks = new ItemStack[] { new ItemStack(world.GetBlock(new AssetLocation("torch-basic-lit-up"))) }
                     }
                 }.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
             } else

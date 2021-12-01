@@ -43,7 +43,7 @@ namespace Vintagestory.GameContent
                 byEntity.World.Logger.Error("ItemCreature: No such entity - {0}", location);
                 if (api.World.Side == EnumAppSide.Client)
                 {
-                    (api as ICoreClientAPI).TriggerIngameError(this, "nosuchentity", "No such entity '{0}' loaded.");
+                    (api as ICoreClientAPI).TriggerIngameError(this, "nosuchentity", string.Format("No such entity loaded - '{0}'.", location));
                 }
                 return;
             }
@@ -74,7 +74,7 @@ namespace Vintagestory.GameContent
             EntityProperties type = byEntity.World.GetEntityType(new AssetLocation(Code.Domain, CodeEndWithoutParts(1)));
             if (type == null) return base.GetHeldTpIdleAnimation(activeHotbarSlot, byEntity, hand);
 
-            float size = Math.Max(type.HitBoxSize.X, type.HitBoxSize.Y);
+            float size = Math.Max(type.CollisionBoxSize.X, type.CollisionBoxSize.Y);
 
             if (size > 1) return "holdunderarm";
             return "holdbothhands";

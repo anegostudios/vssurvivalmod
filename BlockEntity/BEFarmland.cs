@@ -95,6 +95,9 @@ namespace Vintagestory.GameContent
         public override void Initialize(ICoreAPI api)
         {
             base.Initialize(api);
+
+            totalHoursWaterRetention = Api.World.Calendar.HoursPerDay + 0.5;
+
             upPos = base.Pos.UpCopy();
             wsys = api.ModLoader.GetModSystem<WeatherSystemBase>();
             allowundergroundfarming = Api.World.Config.GetBool("allowUndergroundFarming", false);
@@ -588,7 +591,7 @@ namespace Vintagestory.GameContent
             Block block = GetCrop();
             if (block == null) return 99999999;
 
-            float stageHours = 24 * block.CropProps.TotalGrowthDays / block.CropProps.GrowthStages;
+            float stageHours = Api.World.Calendar.HoursPerDay * block.CropProps.TotalGrowthDays / block.CropProps.GrowthStages;
 
             stageHours *= 1 / GetGrowthRate(block.CropProps.RequiredNutrient);
 

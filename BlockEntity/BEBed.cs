@@ -8,9 +8,11 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
+
     public class BlockEntityBed : BlockEntity, IMountable
     {
         float sleepEfficiency = 0.5f;
@@ -42,9 +44,12 @@ namespace Vintagestory.GameContent
             get { return "sleep"; }
         }
 
+        EntityControls controls = new EntityControls();
         public EntityControls Controls
         {
-            get { return null; }
+            get {
+                return controls; 
+            }
         }
 
         public float? MountYaw
@@ -62,6 +67,7 @@ namespace Vintagestory.GameContent
         {
             base.Initialize(api);
 
+            controls.OnAction = onControls;
             if (Block.Attributes != null) sleepEfficiency = Block.Attributes["sleepEfficiency"].AsFloat(0.5f);
 
             
@@ -72,6 +78,14 @@ namespace Vintagestory.GameContent
             facing = BlockFacing.FromCode(Block.LastCodePart());
         }
 
+        private void onControls(EnumEntityAction action, bool on, ref EnumHandling handled)
+        {
+            if (action == EnumEntityAction.Sneak && on)
+            {
+                MountedBy?.TryUnmount();
+                controls.StopAllMovement();
+            }
+        }
 
         private void RestPlayer(float dt)
         {
@@ -82,6 +96,13 @@ namespace Vintagestory.GameContent
 
             if (hoursPassed > 0)
             {
+                int tempStormSleep = Api.World.Config.GetString("temporalStormSleeping", "0").ToInt();
+                if (tempStormSleep == 0 && Api.ModLoader.GetModSystem<SystemTemporalStability>().StormStrength > 0)
+                {
+                    MountedBy.TryUnmount();
+                    return;
+                }
+
                 EntityBehaviorTiredness ebt = MountedBy?.GetBehavior("tiredness") as EntityBehaviorTiredness;
                 if (ebt != null)
                 {
@@ -99,9 +120,9 @@ namespace Vintagestory.GameContent
 
         bool blockBroken;
 
-        public override void OnBlockBroken()
+        public override void OnBlockBroken(IPlayer byPlayer = null)
         {
-            base.OnBlockBroken();
+            base.OnBlockBroken(byPlayer);
 
             blockBroken = true;
             MountedBy?.TryUnmount();
@@ -154,7 +175,11 @@ namespace Vintagestory.GameContent
 
         public void DidMount(EntityAgent entityAgent)
         {
-            if (MountedBy != null) return;
+            if (MountedBy != null)
+            {
+                entityAgent.TryUnmount();
+                return;
+            }
 
             MountedBy = entityAgent;
             if (Api.Side == EnumAppSide.Server)

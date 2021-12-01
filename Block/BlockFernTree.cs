@@ -67,7 +67,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public void GrowTree(IBlockAccessor blockAccessor, BlockPos pos, float sizeModifier = 1, float vineGrowthChance = 0, float forestDensity = 0)
+        public void GrowTree(IBlockAccessor blockAccessor, BlockPos pos, bool skipForestFloor, float sizeModifier = 1, float vineGrowthChance = 0, float forestDensity = 0, int treesInChunkGenerated = 0)
         {
             int quantity = 2 + (int)((1 + rand.NextDouble() * 4) * (1 - forestDensity) * (1 - forestDensity));
 

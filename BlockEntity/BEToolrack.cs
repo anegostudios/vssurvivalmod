@@ -193,7 +193,7 @@ namespace Vintagestory.GameContent
             
         }
 
-        public override void OnBlockBroken()
+        public override void OnBlockBroken(IPlayer byPlayer = null)
         {
             for (int i = 0; i < 4; i++)
             {

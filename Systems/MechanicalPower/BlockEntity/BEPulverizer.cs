@@ -59,19 +59,6 @@ namespace Vintagestory.GameContent.Mechanics
             updateMeshes();
         }
 
-        protected override void updateMeshes()
-        {
-            string metal = "nometal";
-            if (!inv[2].Empty) metal = inv[2].Itemstack.Collectible.Variant["metal"];
-
-            MetalPropertyVariant metalvar = null;
-            if (metal != null) Api.ModLoader.GetModSystem<SurvivalCoreSystem>().metalsByCode.TryGetValue(metal, out metalvar);
-            CapMetalTierL = CapMetalTierR = Math.Max(metalvar?.Tier ?? 0, 0);
-
-            CapMetalIndexL = CapMetalIndexR = Math.Max(0, PulverizerRenderer.metals.IndexOf(metal));
-
-            base.updateMeshes();
-        }
 
         public override void Initialize(ICoreAPI api)
         {
@@ -152,7 +139,7 @@ namespace Vintagestory.GameContent.Mechanics
             Vec3d position = mat.TransformVector(new Vec4d(xOffset * 0.999, 0.1, 0.8, 0)).XYZ.Add(Pos).Add(0.5, 0, 0.5);
             double lengthways = Api.World.Rand.NextDouble() * 0.07 - 0.035;
             double sideways = Api.World.Rand.NextDouble() * 0.03 - 0.005;
-            Vec3d velocity = new Vec3d(Facing.IsAxisNS ? sideways : lengthways, Api.World.Rand.NextDouble() * 0.02 - 0.01, Facing.IsAxisNS ? lengthways : sideways);
+            Vec3d velocity = new Vec3d(Facing.Axis == EnumAxis.Z ? sideways : lengthways, Api.World.Rand.NextDouble() * 0.02 - 0.01, Facing.Axis == EnumAxis.Z ? lengthways : sideways);
 
             bool tierPassed = outputStack != null && inputStack.Collectible.CrushingProps.HardnessTier <= capTier;
 
@@ -317,17 +304,28 @@ namespace Vintagestory.GameContent.Mechanics
             MarkDirty(true);
         }
 
-        protected override MeshData genMesh(ItemStack stack, int index)
-        {
-            MeshData mesh = base.genMesh(stack, index);
 
+        public override void updateMeshes()
+        {
+            string metal = "nometal";
+            if (!inv[2].Empty) metal = inv[2].Itemstack.Collectible.Variant["metal"];
+
+            MetalPropertyVariant metalvar = null;
+            if (metal != null) Api.ModLoader.GetModSystem<SurvivalCoreSystem>().metalsByCode.TryGetValue(metal, out metalvar);
+            CapMetalTierL = CapMetalTierR = Math.Max(metalvar?.Tier ?? 0, 0);
+
+            CapMetalIndexL = CapMetalIndexR = Math.Max(0, PulverizerRenderer.metals.IndexOf(metal));
+
+            base.updateMeshes();
+        }
+
+        public override void TranslateMesh(MeshData mesh, int index)
+        {
             float x = (index % 2 == 0) ? 11.5f / 16f : 4.5f / 16f;
 
             Vec4f offset = mat.TransformVector(new Vec4f(x - 0.5f, 4/16f, -4.5f/16f, 0f));
             mesh.Scale(new Vec3f(0.5f, 0f, 0.5f), 0.5f, 0.5f, 0.5f);
             mesh.Translate(offset.XYZ);
-
-            return mesh;
         }
 
         public override void OnBlockRemoved()

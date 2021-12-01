@@ -18,7 +18,7 @@ namespace Vintagestory.ServerMods
     public class DebugSystem : ModSystem
     {
         ICoreAPI api;
-        ICoreClientAPI capi;
+
 
         public override bool ShouldLoad(EnumAppSide forSide)
         {

@@ -13,7 +13,7 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockEntityBarrel : BlockEntityContainer
+    public class BlockEntityBarrel : BlockEntityLiquidContainer
     {
         public int CapacityLitres { get; set; } = 50;
 
@@ -21,10 +21,6 @@ namespace Vintagestory.GameContent
         
         // Slot 0: Input/Item slot
         // Slot 1: Liquid slot
-
-        internal InventoryGeneric inventory;
-
-        public override InventoryBase Inventory => inventory;
         public override string InventoryClassName => "barrel";
 
         MeshData currentMesh;
@@ -67,6 +63,12 @@ namespace Vintagestory.GameContent
             if (Sealed && CurrentRecipe != null && CurrentRecipe.SealHours > 0) return 0;
 
             return base.Inventory_OnAcquireTransitionSpeed(transType, stack, baseMul);
+        }
+
+        protected override ItemSlot GetAutoPushIntoSlot(BlockFacing atBlockFace, ItemSlot fromSlot)
+        {
+            if (atBlockFace == BlockFacing.UP) return inventory[0];
+            return null;
         }
 
         public override void Initialize(ICoreAPI api)
@@ -186,11 +188,11 @@ namespace Vintagestory.GameContent
 
 
 
-        public override void OnBlockBroken()
+        public override void OnBlockBroken(IPlayer byPlayer = null)
         {
             if (!Sealed)
             {
-                base.OnBlockBroken();
+                base.OnBlockBroken(byPlayer);
             }
 
             invDialog?.TryClose();

@@ -1,4 +1,5 @@
-﻿using Vintagestory.API;
+﻿using System;
+using Vintagestory.API;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -9,8 +10,8 @@ namespace Vintagestory.GameContent.Mechanics
     {
         protected float resistance = 0.1f;
 
-        public API.Common.Action OnConnected;
-        public API.Common.Action OnDisconnected;
+        public Action OnConnected;
+        public Action OnDisconnected;
 
         public float TrueSpeed { get { return System.Math.Abs(Network?.Speed * GearedRatio ?? 0f); }}
 

@@ -89,7 +89,6 @@ namespace Vintagestory.GameContent.Mechanics
                 ;
             }
             else
-            //if (orientations == "ud")
             {
                 for (int i = 0; i < 4; i++)
                 {
@@ -135,45 +134,38 @@ namespace Vintagestory.GameContent.Mechanics
 
         private bool RequiresStand(BlockPos pos, Vec3i vector)
         {
-            int a = 0;
             try
             {
                 BlockMPBase block = Api.World.BlockAccessor.GetBlock(pos.X + vector.X, pos.Y + vector.Y, pos.Z + vector.Z) as BlockMPBase;
-                a++;
                 if (block == null) return true;
-                a++;
+
                 BlockPos sidePos = new BlockPos(pos.X + vector.X, pos.Y + vector.Y, pos.Z + vector.Z);
-                a++;
                 BEBehaviorMPBase bemp = Api.World.BlockAccessor.GetBlockEntity(sidePos)?.GetBehavior<BEBehaviorMPBase>();
-                a++;
                 if (bemp == null) return true;
-                a++;
+
                 BEBehaviorMPAxle bempaxle = bemp as BEBehaviorMPAxle;
-                a++;
                 if (bempaxle == null)
                 {
-                    a++;
                     if (bemp is BEBehaviorMPBrake || bemp is BEBehaviorMPCreativeRotor)
                     {
-                        a++;
                         BlockFacing side = BlockFacing.FromNormal(vector);
-                        a++;
                         if (side != null && block.HasMechPowerConnectorAt(Api.World, sidePos, side.Opposite)) return false;
                     }
                     return true;
                 }
-                a += 16;
+
                 if (IsAttachedToBlock(Api.World.BlockAccessor, block, sidePos)) return false;
-                a += 16;
                 return bempaxle.RequiresStand(sidePos, vector);
             }
             catch (Exception e)
             {
-                Api.Logger.Error("ERROR, please report on VS Discord #bug-reports: BEMPBehaviorAxle counter: " + a);
 #if DEBUG
                 throw (e);
+#else
+                Api.Logger.Error("Exception thrown in RequiresStand, will log exception but silently ignore it");
+                Api.Logger.Error("{0}", e);
+                return false;
 #endif
-                return true;
             }
         }
 
@@ -185,14 +177,15 @@ namespace Vintagestory.GameContent.Mechanics
 
                 if (orientations == "ns") mesh = mesh.Rotate(center, 0, -GameMath.PIHALF, 0);
 
-                //No stand rotation if standing on a solid block below
+                // No stand rotation if standing on a solid block below
                 if (!Api.World.BlockAccessor.GetBlock(Position.X, Position.Y - 1, Position.Z).SideSolid[BlockFacing.UP.Index])
                 {
                     if (Api.World.BlockAccessor.GetBlock(Position.X, Position.Y + 1, Position.Z).SideSolid[BlockFacing.DOWN.Index])
                     {
                         mesh = mesh.Rotate(center, GameMath.PI, 0, 0);
-                    } else
-                    if (orientations == "ns")
+
+                    }
+                    else if (orientations == "ns")
                     {
                         BlockFacing face = BlockFacing.EAST;
                         if (Api.World.BlockAccessor.GetBlock(Position.X + face.Normali.X, Position.Y, Position.Z + face.Normali.Z).SideSolid[face.Opposite.Index])
@@ -228,7 +221,6 @@ namespace Vintagestory.GameContent.Mechanics
                 }
             }
             else
-            //if (orientations == "ud")
             {
                 BlockFacing attachFace = null;
                 for (int i = 0; i < 4; i++)

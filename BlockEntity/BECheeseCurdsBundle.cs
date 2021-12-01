@@ -150,9 +150,9 @@ namespace Vintagestory.GameContent
             Api.World.UnregisterGameTickListener(listenerId);
         }
 
-        public override void OnBlockBroken()
+        public override void OnBlockBroken(IPlayer byPlayer = null)
         {
-            base.OnBlockBroken();
+            base.OnBlockBroken(byPlayer);
 
             ItemStack stack = new ItemStack(Api.World.GetBlock(new AssetLocation("linen-normal-down")));
             Api.World.SpawnItemEntity(stack, Pos.ToVec3d().AddCopy(0.5, 0.25, 0.5));

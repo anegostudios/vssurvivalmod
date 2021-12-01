@@ -63,7 +63,7 @@ namespace Vintagestory.GameContent
                     .AddNumberInput(chanceInputBounds = chanceInputBounds.RightCopy(3), (t) => OnTextChanced(9), CairoFont.WhiteDetailText(), "chance10")
 
                     .AddButton("Close", OnCloseClicked, leftButton.FixedUnder(chanceInputBounds, 25))
-                    .AddDynamicText(text, CairoFont.WhiteDetailText(), EnumTextOrientation.Left, chanceTextBounds.FixedUnder(chanceInputBounds, 25), "totalchance")
+                    .AddDynamicText(text, CairoFont.WhiteDetailText(), chanceTextBounds.FixedUnder(chanceInputBounds, 25), "totalchance")
                     .AddButton("Save", OnSaveClicked, rightButton.FixedUnder(chanceInputBounds, 25))
 
 

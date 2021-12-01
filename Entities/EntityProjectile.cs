@@ -68,7 +68,8 @@ namespace Vintagestory.GameContent
         {
             if (ShouldDespawn || !Alive) return;
             if (World is IClientWorldAccessor || World.ElapsedMilliseconds <= msCollide + 500) return;
-            if (ServerPos.Motion.X == 0 && ServerPos.Motion.Y == 0 && ServerPos.Motion.Z == 0) return;  //don't do damage if stuck in ground
+            if (ServerPos.Motion.X == 0 && ServerPos.Motion.Y == 0 && ServerPos.Motion.Z == 0) return;  // don't do damage if stuck in ground
+
 
             Cuboidd projectileBox = CollisionBox.ToDouble().Translate(ServerPos.X, ServerPos.Y, ServerPos.Z);
 
@@ -78,21 +79,18 @@ namespace Vintagestory.GameContent
             else projectileBox.Y2 += ServerPos.Motion.Y * dtFac;
             if (ServerPos.Motion.Z < 0) projectileBox.Z1 += ServerPos.Motion.Z * dtFac;
             else projectileBox.Z2 += ServerPos.Motion.Z * dtFac;
-
+            
             ep.WalkEntities(ServerPos.XYZ, 5f, (e) => {
-                if (e.EntityId == this.EntityId || !e.IsInteractable) return false;
-                Cuboidd eBox = e.CollisionBox.ToDouble().Translate(e.ServerPos.X, e.ServerPos.Y, e.ServerPos.Z);
+                if (e.EntityId == this.EntityId || !e.IsInteractable || (FiredBy != null && e.EntityId == FiredBy.EntityId && World.ElapsedMilliseconds - msLaunch < 500)) return true;
+
+                Cuboidd eBox = e.SelectionBox.ToDouble().Translate(e.ServerPos.X, e.ServerPos.Y, e.ServerPos.Z);
+
                 if (eBox.IntersectsOrTouches(projectileBox))
                 {
-                    if (FiredBy != null && e.EntityId == FiredBy.EntityId && World.ElapsedMilliseconds - msLaunch < 500)
-                    {
-                        return true;
-                    }
-
                     impactOnEntity(e);
-
                     return false;
                 }
+
                 return true;
             });
         }
@@ -144,10 +142,6 @@ namespace Vintagestory.GameContent
                 if (impactSpeed >= 0.07)
                 {
                     World.PlaySoundAt(new AssetLocation("sounds/arrow-impact"), this, null, false, 32);
-
-                    // Slighty randomize orientation to make it a bit more realistic
-                    //pos.Yaw += (float)(World.Rand.NextDouble() * 0.05 - 0.025);
-                    //pos.Roll += (float)(World.Rand.NextDouble() * 0.05 - 0.025);
 
                     // Resend position to client
                     WatchedAttributes.MarkAllDirty();

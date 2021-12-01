@@ -85,7 +85,7 @@ namespace Vintagestory.GameContent.Mechanics
             }
         }
 
-        public override void OnBlockBroken()
+        public override void OnBlockBroken(IPlayer byPlayer = null)
         {
             while (sailLength-- > 0)
             { 
@@ -93,7 +93,7 @@ namespace Vintagestory.GameContent.Mechanics
                 Api.World.SpawnItemEntity(stacks, Blockentity.Pos.ToVec3d().Add(0.5, 0.5, 0.5));
             }
 
-            base.OnBlockBroken();
+            base.OnBlockBroken(byPlayer);
         }
 
         internal bool OnInteract(IPlayer byPlayer)
@@ -146,7 +146,7 @@ namespace Vintagestory.GameContent.Mechanics
 
                     Block block = Api.World.BlockAccessor.GetBlock(tmpPos);
                     Cuboidf[] collBoxes = block.GetCollisionBoxes(Api.World.BlockAccessor, tmpPos);
-                    if (collBoxes != null && collBoxes.Length > 0)
+                    if (collBoxes != null && collBoxes.Length > 0 && !(block is BlockSnowLayer) && !(block is BlockSnow))
                     {
                         
                         return true;

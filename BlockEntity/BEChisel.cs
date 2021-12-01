@@ -75,6 +75,8 @@ namespace Vintagestory.GameContent
 
             bool wasChanged = false;
 
+            byte[] lightHsv = this.LightHsv;
+
             switch (mode)
             {
                 case EnumChiselMode.Rename:
@@ -149,6 +151,7 @@ namespace Vintagestory.GameContent
             if (VoxelCuboids.Count == 0)
             {
                 Api.World.BlockAccessor.SetBlock(0, Pos);
+                Api.World.BlockAccessor.RemoveBlockLight(LightHsv, Pos);
                 return;
             }
         }

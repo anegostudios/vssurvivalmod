@@ -192,7 +192,7 @@ namespace Vintagestory.GameContent
         /// * Soil is not fully grown
         /// * Light Level is greater than or equal to the value of the growthLightLevel Attribute
         /// * The BlockLayer associated with the next growth stage has climate conditions that match the current climate
-        /// * The block above this soil block is solid
+        /// * The block above this soil block is not solid
         /// </summary>
         /// <param name="world"></param>
         /// <param name="pos"></param>
@@ -215,6 +215,8 @@ namespace Vintagestory.GameContent
 
         protected int getClimateSuitedGrowthStage(IWorldAccessor world, BlockPos pos, ClimateCondition climate)
         {
+            if (climate == null) return CurrentStage();  // Can occasionally be null, e.g. during running /wgen regen command
+
             ICoreServerAPI api = (ICoreServerAPI)world.Api;
             int mapheight = api.WorldManager.MapSizeY;
             float transitionSize = blocklayerconfig.blockLayerTransitionSize;
@@ -258,13 +260,13 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing)
+        public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing, int rndIndex = -1)
         {
             if (facing == BlockFacing.UP && Variant["grasscoverage"] != "none")
             {
-                return capi.World.ApplyColorMapOnRgba(ClimateColorMap, SeasonColorMap, capi.BlockTextureAtlas.GetRandomColor(Textures["specialSecondTexture"].Baked.TextureSubId), pos.X, pos.Y, pos.Z);
+                return capi.World.ApplyColorMapOnRgba(ClimateColorMap, SeasonColorMap, capi.BlockTextureAtlas.GetRandomColor(Textures["specialSecondTexture"].Baked.TextureSubId, rndIndex), pos.X, pos.Y, pos.Z);
             }
-            return base.GetRandomColor(capi, pos, facing);
+            return base.GetRandomColor(capi, pos, facing, rndIndex);
         }
 
 

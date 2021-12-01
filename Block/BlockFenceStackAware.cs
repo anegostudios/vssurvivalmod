@@ -11,7 +11,6 @@ namespace Vintagestory.GameContent
     public class BlockFenceStackAware : BlockFence
     {
         ICoreClientAPI capi;
-        Block snowLayerBlock;
 
         Dictionary<string, MeshData> continousFenceMeches;
         string cntCode;
@@ -22,7 +21,6 @@ namespace Vintagestory.GameContent
 
             capi = api as ICoreClientAPI;
 
-            snowLayerBlock = api.World.GetBlock(new AssetLocation("snowlayer-1"));
 
             if (capi != null)
             {

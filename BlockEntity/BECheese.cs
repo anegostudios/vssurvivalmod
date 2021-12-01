@@ -52,8 +52,6 @@ namespace Vintagestory.GameContent
                     case "4slice": return 4;
                     default: return 0;
                 }
-
-                return 0;
             }
         }
 

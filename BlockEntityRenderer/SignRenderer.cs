@@ -25,10 +25,14 @@ namespace Vintagestory.GameContent
         protected MeshRef quadModelRef;
         public Matrixf ModelMat = new Matrixf();
 
-        protected float rotY = 0;
-        protected float translateX = 0;
-        protected float translateY = 0.5625f;
-        protected float translateZ = 0;
+        public float rotY = 0;
+        public float translateX = 0;
+        public float translateY = 0.5625f;
+        public float translateZ = 0;
+
+        public float offsetX;
+        public float offsetY;
+        public float offsetZ;
 
         float fontSize=20;
 
@@ -61,8 +65,6 @@ namespace Vintagestory.GameContent
             };
             modeldata.Rgba = new byte[4 * 4];
             modeldata.Rgba.Fill((byte)255);
-            //modeldata.Rgba2 = null; //= new byte[4 * 4];
-            //modeldata.Rgba2.Fill((byte)255);
 
             quadModelRef = api.Render.UploadMesh(modeldata);
 
@@ -97,6 +99,8 @@ namespace Vintagestory.GameContent
                     break;
                     
             }
+
+            
         }
 
         public virtual void SetNewText(string text, int color)
@@ -135,6 +139,7 @@ namespace Vintagestory.GameContent
                 .Translate(pos.X - camPos.X, pos.Y - camPos.Y, pos.Z - camPos.Z)
                 .Translate(translateX, translateY, translateZ)
                 .RotateY(rotY * GameMath.DEG2RAD)
+                .Translate(offsetX, offsetY, offsetZ)
                 .Scale(0.45f * QuadWidth, 0.45f * QuadHeight, 0.45f * QuadWidth)
                 .Values
             ;

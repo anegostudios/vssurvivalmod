@@ -124,8 +124,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-
-        protected override void translateMesh(MeshData mesh, int index)
+        public override void TranslateMesh(MeshData mesh, int index)
         {
             float x = (index % 2 == 0) ? 5 / 16f : 11 / 16f;
             float y = 1.01f / 16f;
@@ -134,9 +133,7 @@ namespace Vintagestory.GameContent
             mesh.Scale(new Vec3f(0.5f, 0, 0.5f), 0.75f, 0.75f, 0.75f);
             mesh.Rotate(new Vec3f(0.5f, 0, 0.5f), 0, 45 * GameMath.DEG2RAD, 0);
             mesh.Translate(x - 0.5f, y, z - 0.5f);
-
         }
-
     }
 
 }

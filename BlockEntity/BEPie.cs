@@ -385,7 +385,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override void OnBlockBroken()
+        public override void OnBlockBroken(IPlayer byPlayer = null)
         {
             //base.OnBlockBroken(); - dont drop inventory contents, the GetDrops() method already handles pie dropping
         }

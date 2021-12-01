@@ -571,9 +571,9 @@ namespace Vintagestory.GameContent
             renderer = null;
         }
 
-        public override void OnBlockBroken()
+        public override void OnBlockBroken(IPlayer byPlayer = null)
         {
-            base.OnBlockBroken();
+            base.OnBlockBroken(byPlayer);
         }
 
         ~BlockEntityQuern()

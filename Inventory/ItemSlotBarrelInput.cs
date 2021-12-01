@@ -95,13 +95,13 @@ namespace Vintagestory.API.Common
                 ItemSlot liquidSlot = inventory[1];
                 ILiquidSource source = sourceSlot.Itemstack.Collectible as ILiquidSource;
                 
-                ItemStack bucketContents = source.GetContent(world, sourceSlot.Itemstack);
+                ItemStack bucketContents = source.GetContent(sourceSlot.Itemstack);
                 bool stackable = !liquidSlot.Empty && liquidSlot.Itemstack.Equals(world, bucketContents, GlobalConstants.IgnoredStackAttributes);
 
                 if ((liquidSlot.Empty || stackable) && bucketContents != null)
                 {
                     ItemStack bucketStack = sourceSlot.Itemstack;
-                    ItemStack takenContent = source.TryTakeContent(world, bucketStack, 1);
+                    ItemStack takenContent = source.TryTakeContent(bucketStack, 1);
                     sourceSlot.Itemstack = bucketStack;
                     takenContent.StackSize += liquidSlot.StackSize;
                     liquidSlot.Itemstack = takenContent;

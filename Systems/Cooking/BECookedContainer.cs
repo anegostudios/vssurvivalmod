@@ -130,7 +130,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void OnBlockBroken()
+        public override void OnBlockBroken(IPlayer byPlayer = null)
         {
             // Don't drop contents
         }

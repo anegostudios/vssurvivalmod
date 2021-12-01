@@ -329,10 +329,8 @@ namespace Vintagestory.GameContent
                     {
                         foreach (var val in disableElements)
                         {
-                            bool ok = entityShape.RemoveElementByName(val);
-                            //Console.WriteLine(val + ": " + ok);
+                            entityShape.RemoveElementByName(val);
                         }
-
                     }
                 }
             }

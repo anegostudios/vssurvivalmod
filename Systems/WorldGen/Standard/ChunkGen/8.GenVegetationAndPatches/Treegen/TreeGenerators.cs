@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using Newtonsoft.Json;
+using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -7,13 +8,30 @@ using Vintagestory.ServerMods.NoObf;
 
 namespace Vintagestory.ServerMods
 {
+
+    public class WoodWorldProperty : WorldProperty<WorldWoodPropertyVariant>
+    {
+    }
+
+    [JsonObject(MemberSerialization.OptIn)]
+    public class WorldWoodPropertyVariant
+    {
+        [JsonProperty]
+        public AssetLocation Code;
+
+        [JsonProperty]
+        public EnumTreeType TreeType;
+    }
+
     class TreeGeneratorsUtil
     {
         ICoreServerAPI sapi;
+        public ForestFloorSystem forestFloorSystem;
 
         public TreeGeneratorsUtil(ICoreServerAPI api)
         {
             sapi = api;
+            forestFloorSystem = new ForestFloorSystem(api);
         }
 
         public void ReloadTreeGenerators()
@@ -27,7 +45,14 @@ namespace Vintagestory.ServerMods
         public void LoadTreeGenerators()
         {
             Dictionary<AssetLocation, TreeGenConfig> TreeGenModelsByTree = sapi.Assets.GetMany<TreeGenConfig>(sapi.Server.Logger, "worldgen/treegen");
-            
+
+            var worldprops = sapi.Assets.Get<WoodWorldProperty>(new AssetLocation("worldproperties/block/wood.json"));
+            Dictionary<string, EnumTreeType> treetypes = new Dictionary<string, EnumTreeType>();
+            foreach (var val in worldprops.Variants)
+            {
+                treetypes[val.Code.Path] = val.TreeType;
+            }
+
             string names = "";
             foreach (var val in TreeGenModelsByTree)
             {
@@ -45,12 +70,15 @@ namespace Vintagestory.ServerMods
 
                 val.Value.Init(val.Key, sapi.Server.Logger);
 
-                sapi.RegisterTreeGenerator(name, new TreeGen(val.Value, sapi.WorldManager.Seed));
-                val.Value.treeBlocks.ResolveBlockNames(sapi);
+                sapi.RegisterTreeGenerator(name, new TreeGen(val.Value, sapi.WorldManager.Seed, forestFloorSystem));
+                val.Value.treeBlocks.ResolveBlockNames(sapi, name.Path);
+
+                treetypes.TryGetValue(sapi.World.GetBlock(val.Value.treeBlocks.logBlockId).Variant["wood"], out val.Value.Treetype);
             }
 
 
             sapi.Server.LogNotification("Reloaded {0} tree generators", TreeGenModelsByTree.Count);
+
         }
 
         public ITreeGenerator GetGenerator(AssetLocation generatorCode)
@@ -72,7 +100,7 @@ namespace Vintagestory.ServerMods
 
         public void RunGenerator(AssetLocation treeName, IBlockAccessor api, BlockPos pos, float size = 1)
         {
-            sapi.World.TreeGenerators[treeName].GrowTree(api, pos, size);
+            sapi.World.TreeGenerators[treeName].GrowTree(api, pos, true, size);
         }
     }
 }

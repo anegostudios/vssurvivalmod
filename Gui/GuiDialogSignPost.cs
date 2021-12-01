@@ -10,8 +10,8 @@ namespace Vintagestory.GameContent
     public class GuiDialogSignPost : GuiDialogGeneric
     {
         BlockPos blockEntityPos;
-        public API.Common.Action<string[]> OnTextChanged;
-        public API.Common.Action OnCloseCancel;
+        public Action<string[]> OnTextChanged;
+        public Action OnCloseCancel;
 
         bool didSave;
 

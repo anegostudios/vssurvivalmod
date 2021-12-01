@@ -15,7 +15,7 @@ namespace Vintagestory.ServerMods
 
         public int depositChunkRange = 3;
 
-        internal override int chunkRange { get { return depositChunkRange; } }
+        protected override int chunkRange { get { return depositChunkRange; } }
         public override double ExecuteOrder() { return 0.2; }
 
 

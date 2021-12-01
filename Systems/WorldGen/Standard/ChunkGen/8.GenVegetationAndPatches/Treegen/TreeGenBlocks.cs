@@ -47,12 +47,12 @@ namespace Vintagestory.ServerMods.NoObf
 
         public HashSet<int> blockIds = new HashSet<int>();
 
-        public void ResolveBlockNames(ICoreServerAPI api)
+        public void ResolveBlockNames(ICoreServerAPI api, string treeName)
         {
             int logBlockId = api.WorldManager.GetBlockId(logBlockCode);
             if (logBlockId == -1)
             {
-                api.Server.LogWarning("Tree gen tree: No block found with the blockcode " + logBlockCode);
+                api.Server.LogWarning("Tree gen tree " + treeName + ": No block found with the blockcode " + logBlockCode);
                 logBlockId = 0;
             }
             this.logBlockId = logBlockId;
@@ -63,7 +63,7 @@ namespace Vintagestory.ServerMods.NoObf
                 int otherLogBlockId = api.WorldManager.GetBlockId(otherLogBlockCode);
                 if (otherLogBlockId == -1)
                 {
-                    api.Server.LogWarning("Tree gen tree: No block found with the blockcode " + otherLogBlockCode);
+                    api.Server.LogWarning("Tree gen tree " + treeName + ": No block found with the blockcode " + otherLogBlockCode);
                     otherLogBlockId = 0;
                 }
                 this.otherLogBlockId = otherLogBlockId;
@@ -73,7 +73,7 @@ namespace Vintagestory.ServerMods.NoObf
             int leavesBlockId = api.WorldManager.GetBlockId(leavesBlockCode);
             if (leavesBlockId == -1)
             {
-                api.Server.LogWarning("Tree gen tree: No block found with the blockcode " + leavesBlockCode);
+                api.Server.LogWarning("Tree gen tree " + treeName + ": No block found with the blockcode " + leavesBlockCode);
                 leavesBlockId = 0;
             }
             this.leavesBlockId = leavesBlockId;
@@ -82,7 +82,7 @@ namespace Vintagestory.ServerMods.NoObf
             int leavesBranchyBlockId = api.WorldManager.GetBlockId(leavesBranchyBlockCode);
             if (leavesBranchyBlockId == -1)
             {
-                api.Server.LogWarning("Tree gen tree: No block found with the blockcode " + leavesBranchyBlockCode);
+                api.Server.LogWarning("Tree gen tree " + treeName + ": No block found with the blockcode " + leavesBranchyBlockCode);
                 leavesBranchyBlockId = 0;
             }
             this.leavesBranchyBlockId = leavesBranchyBlockId;
@@ -92,7 +92,7 @@ namespace Vintagestory.ServerMods.NoObf
                 int vinesBlockId = api.WorldManager.GetBlockId(vinesBlockCode);
                 if (vinesBlockId == -1)
                 {
-                    api.Server.LogWarning("Tree gen tree: No block found with the blockcode " + vinesBlockCode);
+                    api.Server.LogWarning("Tree gen tree " + treeName + ": No block found with the blockcode " + vinesBlockCode);
                     vinesBlockId = 0;
                 } else
                 {
@@ -105,7 +105,7 @@ namespace Vintagestory.ServerMods.NoObf
                 int vinesEndBlockId = api.WorldManager.GetBlockId(vinesEndBlockCode);
                 if (vinesEndBlockId == -1)
                 {
-                    api.Server.LogWarning("Tree gen tree: No block found with the blockcode " + vinesEndBlockCode);
+                    api.Server.LogWarning("Tree gen tree " + treeName + ": No block found with the blockcode " + vinesEndBlockCode);
                     vinesEndBlockId = 0;
                 } else
                 {
@@ -149,7 +149,7 @@ namespace Vintagestory.ServerMods.NoObf
 
         public int GetLeaves(float width)
         {
-            return leavesByLevel[Math.Min(leavesByLevel.Length - 1, (int)(width * leafLevelFactor + 0.5f))];  // width < 0.1f ? leavesBlockId : leavesBranchyBlockId
+            return leavesByLevel[Math.Min(leavesByLevel.Length - 1, (int)(width * leafLevelFactor + 0.5f))];
         }
     }
 }

@@ -66,7 +66,14 @@ namespace Vintagestory.GameContent
             if (workItemStack != null)
             {
                 workItemStack.ResolveBlockOrItem(api.World);
-                baseMaterial = new ItemStack(api.World.GetItem(new AssetLocation("clay-" + workItemStack.Collectible.LastCodePart())));
+                if (baseMaterial == null)
+                {
+                    baseMaterial = new ItemStack(api.World.GetItem(new AssetLocation("clay-" + workItemStack.Collectible.LastCodePart())));
+                } else
+                {
+                    baseMaterial.ResolveBlockOrItem(api.World);
+                }
+
             }
 
             if (api is ICoreClientAPI)
@@ -103,7 +110,7 @@ namespace Vintagestory.GameContent
 
                 CreateInitialWorkItem();
                 workItemStack = new ItemStack(Api.World.GetItem(new AssetLocation("clayworkitem-" + slot.Itemstack.Collectible.LastCodePart())));
-                baseMaterial = new ItemStack(Api.World.GetItem(new AssetLocation("clay-" + slot.Itemstack.Collectible.LastCodePart())));
+                baseMaterial = slot.Itemstack.Clone();
             }
 
             AvailableVoxels += 25;
@@ -487,6 +494,7 @@ namespace Vintagestory.GameContent
             base.FromTreeAttributes(tree, worldForResolving);
             deserializeVoxels(tree.GetBytes("voxels"));
             workItemStack = tree.GetItemstack("workItemStack");
+            baseMaterial = tree.GetItemstack("baseMaterial");
             AvailableVoxels = tree.GetInt("availableVoxels");
             selectedRecipeId = tree.GetInt("selectedRecipeId", -1);
 
@@ -504,6 +512,7 @@ namespace Vintagestory.GameContent
             base.ToTreeAttributes(tree);
             tree.SetBytes("voxels", serializeVoxels());
             tree.SetItemstack("workItemStack", workItemStack);
+            tree.SetItemstack("baseMaterial", baseMaterial);
             tree.SetInt("availableVoxels", AvailableVoxels);
             tree.SetInt("selectedRecipeId", selectedRecipeId);
         }
@@ -619,8 +628,6 @@ namespace Vintagestory.GameContent
 
                 }
 
-             //   api.World.Logger.Notification("ok got use over packet from {0} at pos {1}", player.PlayerName, voxelPos);
-
                 OnUseOver(player, voxelPos, facing, mouseMode);
             }
         }
@@ -679,8 +686,6 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            float temperature = workItemStack.Collectible.GetTemperature(Api.World, workItemStack);
-            
             dsc.AppendLine(Lang.Get("Output: {0}", SelectedRecipe?.Output?.ResolvedItemstack?.GetName()));
             dsc.AppendLine(Lang.Get("Available Voxels: {0}", AvailableVoxels));
         }

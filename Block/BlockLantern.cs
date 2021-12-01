@@ -99,7 +99,6 @@ namespace Vintagestory.GameContent
                 Shape shape = capi.Assets.TryGet(shapeloc).ToObject<Shape>();
 
                 MeshData mesh = GenMesh(capi, material, lining, glass, shape);
-                //mesh.Rgba2 = null;
                 meshrefs[key] = meshref = capi.Render.UploadMesh(mesh);
             }
             
@@ -285,16 +284,16 @@ namespace Vintagestory.GameContent
             if (glass != null) dsc.AppendLine(Lang.Get("Glass: {0}", Lang.Get("glass-" + glass)));
         }
 
-        public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing)
+        public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing, int rndIndex = -1)
         {
             BELantern be = capi.World.BlockAccessor.GetBlockEntity(pos) as BELantern;
             if (be != null)
             {
                 CompositeTexture tex = null;
-                if (Textures.TryGetValue(be.material, out tex)) return capi.BlockTextureAtlas.GetRandomColor(tex.Baked.TextureSubId);
+                if (Textures.TryGetValue(be.material, out tex)) return capi.BlockTextureAtlas.GetRandomColor(tex.Baked.TextureSubId, rndIndex);
             }
 
-            return base.GetRandomColor(capi, pos, facing);
+            return base.GetRandomColor(capi, pos, facing, rndIndex);
         }
 
         public override List<ItemStack> GetHandBookStacks(ICoreClientAPI capi)

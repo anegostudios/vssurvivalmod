@@ -94,7 +94,7 @@ namespace Vintagestory.GameContent
             tree.SetInt("deathReason", (int)deathReason);
         }
 
-        public override void OnBlockBroken()
+        public override void OnBlockBroken(IPlayer byPlayer = null)
         {
             //base.OnBlockBroken(); - dont drop contents
         }

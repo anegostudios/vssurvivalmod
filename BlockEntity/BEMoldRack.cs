@@ -14,13 +14,13 @@ namespace Vintagestory.GameContent
 {
     public class BlockEntityMoldRack : BlockEntityDisplay
     {
-        InventoryGeneric inv;
         public override InventoryBase Inventory => inv;
-
         public override string InventoryClassName => "moldrack";
+        public override string AttributeTransformCode => "onmoldrackTransform";
 
+        InventoryGeneric inv;
         Block block;
-
+        Matrixf mat = new Matrixf();
 
         public BlockEntityMoldRack()
         {
@@ -31,6 +31,7 @@ namespace Vintagestory.GameContent
         public override void Initialize(ICoreAPI api)
         {
             block = api.World.BlockAccessor.GetBlock(Pos);
+            mat.RotateYDeg(block.Shape.rotateY);
             base.Initialize(api);
         }
 
@@ -117,66 +118,14 @@ namespace Vintagestory.GameContent
         }
 
 
-        Matrixf mat = new Matrixf();
-
-        public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
+        public override void TranslateMesh(MeshData mesh, int index)
         {
-            mat.Identity();
-            mat.RotateYDeg(block.Shape.rotateY);
-
-            return base.OnTesselation(mesher, tessThreadTesselator);
-        }
-
-        protected override void updateMeshes()
-        {
-            mat.Identity();
-            mat.RotateYDeg(block.Shape.rotateY);
-
-            base.updateMeshes();
-        }
-
-        protected override MeshData genMesh(ItemStack stack, int index)
-        {
-            MeshData mesh;
-
-            ICoreClientAPI capi = Api as ICoreClientAPI;
-            if (stack.Class == EnumItemClass.Block)
-            {
-                mesh = capi.TesselatorManager.GetDefaultBlockMesh(stack.Block).Clone();
-            }
-            else
-            {
-                nowTesselatingItem = stack.Item;
-                nowTesselatingShape = capi.TesselatorManager.GetCachedShape(stack.Item.Shape.Base);
-                capi.Tesselator.TesselateItem(stack.Item, out mesh, this);
-
-                mesh.RenderPassesAndExtraBits.Fill((short)EnumChunkRenderPass.BlendNoCull);
-            }
-        
-            if (stack.Collectible.Attributes?["onmoldrackTransform"].Exists == true)
-            {
-                ModelTransform transform = stack.Collectible.Attributes?["onmoldrackTransform"].AsObject<ModelTransform>();
-                transform.EnsureDefaultValues();
-
-                transform.Rotation.X = 0;
-                transform.Rotation.Y = block.Shape.rotateY;
-                transform.Rotation.Z = 90;
-
-                mesh.ModelTransform(transform);
-            }
-
-            //ModelTransform tf = new ModelTransform();
-            //tf.EnsureDefaultValues();
-            //mesh.ModelTransform(tf);
-
-            float x = 3/16f + 3 / 16f * index - 1;
+            float x = 3 / 16f + 3 / 16f * index - 1;
             float y = 0;
             float z = 0;
 
             Vec4f offset = mat.TransformVector(new Vec4f(x, y, z, 0));
             mesh.Translate(offset.XYZ);
-
-            return mesh;
         }
 
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder sb)

@@ -34,7 +34,7 @@ namespace Vintagestory.GameContent
         public bool HighDamageTierResistant;
     }
 
-    public class ItemWearable : Item
+    public class ItemWearable : Item, IContainedMeshSource, ITexPositionSource
     {
         public StatModifiers StatModifers;
         public ProtectionModifiers ProtectionModifiers;
@@ -49,6 +49,95 @@ namespace Vintagestory.GameContent
                 return DressType == EnumCharacterDressType.ArmorBody || DressType == EnumCharacterDressType.ArmorHead || DressType == EnumCharacterDressType.ArmorLegs;
             }
         }
+
+
+        #region For ground storable mesh
+        ITextureAtlasAPI curAtlas;
+        Shape nowTesselatingShape;
+
+        public Size2i AtlasSize => curAtlas.Size;
+
+
+        public virtual TextureAtlasPosition this[string textureCode]
+        {
+            get
+            {
+                AssetLocation texturePath = null;
+                CompositeTexture tex;
+
+                // Prio 1: Get from collectible textures
+                if (Textures.TryGetValue(textureCode, out tex))
+                {
+                    texturePath = tex.Baked.BakedName;
+                }
+
+                // Prio 2: Get from collectible textures, use "all" code
+                if (texturePath == null && Textures.TryGetValue("all", out tex))
+                {
+                    texturePath = tex.Baked.BakedName;
+                }
+
+                // Prio 3: Get from currently tesselating shape
+                if (texturePath == null)
+                {
+                    nowTesselatingShape?.Textures.TryGetValue(textureCode, out texturePath);
+                }
+
+                // Prio 4: The code is the path
+                if (texturePath == null)
+                {
+                    texturePath = new AssetLocation(textureCode);
+                }
+
+                return getOrCreateTexPos(texturePath);
+            }
+        }
+
+
+        protected TextureAtlasPosition getOrCreateTexPos(AssetLocation texturePath)
+        {
+            var capi = api as ICoreClientAPI;
+            TextureAtlasPosition texpos = curAtlas[texturePath];
+
+            if (texpos == null)
+            {
+                IAsset texAsset = capi.Assets.TryGet(texturePath.Clone().WithPathPrefixOnce("textures/").WithPathAppendixOnce(".png"));
+                if (texAsset != null)
+                {
+                    BitmapRef bmp = texAsset.ToBitmap(capi);
+                    curAtlas.InsertTextureCached(texturePath, bmp, out _, out texpos, 0.1f);
+                }
+                else
+                {
+                    capi.World.Logger.Warning("Item {0} defined texture {1}, not no such texture found.", Code, texturePath);
+                }
+            }
+
+            return texpos;
+        }
+
+        public MeshData GenMesh(ItemStack itemstack, ITextureAtlasAPI targetAtlas, BlockPos forBlockPos = null)
+        {
+            var capi = api as ICoreClientAPI;
+            if (targetAtlas == capi.ItemTextureAtlas)
+            {
+                ITexPositionSource texSource = capi.Tesselator.GetTextureSource(itemstack.Item);
+                return genMesh(capi, itemstack, texSource);
+            }
+
+
+            curAtlas = targetAtlas;
+            MeshData mesh = genMesh(api as ICoreClientAPI, itemstack, this);
+            mesh.RenderPassesAndExtraBits.Fill((short)EnumChunkRenderPass.OpaqueNoCull);
+            return mesh;
+        }
+
+        public string GetMeshCacheKey(ItemStack itemstack)
+        {
+            return "armorModelRef-" + itemstack.Collectible.Code.ToString();
+        }
+        #endregion
+
 
         public override void OnLoaded(ICoreAPI api)
         {
@@ -148,6 +237,8 @@ namespace Vintagestory.GameContent
             api.ObjectCache.Remove("armorMeshRefs");
         }
 
+
+
         public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
         {
             JsonObject attrObj = itemstack.Collectible.Attributes;
@@ -158,14 +249,15 @@ namespace Vintagestory.GameContent
 
             if (!armorMeshrefs.TryGetValue(key, out renderinfo.ModelRef))
             {
-                renderinfo.ModelRef = armorMeshrefs[key] = genMeshRef(capi, itemstack, renderinfo);
+                ITexPositionSource texSource = capi.Tesselator.GetTextureSource(itemstack.Item);
+                var mesh = genMesh(capi, itemstack, texSource);
+                renderinfo.ModelRef = armorMeshrefs[key] = mesh == null ? renderinfo.ModelRef : capi.Render.UploadMesh(mesh);
             }
         }
 
 
-        private MeshRef genMeshRef(ICoreClientAPI capi, ItemStack itemstack, ItemRenderInfo renderinfo)
+        private MeshData genMesh(ICoreClientAPI capi, ItemStack itemstack, ITexPositionSource texSource)
         {
-            MeshRef meshref = renderinfo.ModelRef;
             JsonObject attrObj = itemstack.Collectible.Attributes;
             EntityProperties props = capi.World.GetEntityType(new AssetLocation("player"));
             Shape entityShape = props.Client.LoadedShape;
@@ -188,7 +280,7 @@ namespace Vintagestory.GameContent
             if (compArmorShape == null)
             {
                 capi.World.Logger.Warning("Entity armor {0} {1} does not define a shape through either the shape property or the attachShape Attribute. Armor pieces will be invisible.", itemstack.Class, itemstack.Collectible.Code);
-                return meshref;
+                return null;
             }
 
             AssetLocation shapePath = compArmorShape.Base.CopyWithPath("shapes/" + compArmorShape.Base.Path + ".json");
@@ -198,7 +290,7 @@ namespace Vintagestory.GameContent
             if (asset == null)
             {
                 capi.World.Logger.Warning("Entity wearable shape {0} defined in {1} {2} not found, was supposed to be at {3}. Armor piece will be invisible.", compArmorShape.Base, itemstack.Class, itemstack.Collectible.Code, shapePath);
-                return meshref;
+                return null;
             }
 
             Shape armorShape;
@@ -210,7 +302,7 @@ namespace Vintagestory.GameContent
             catch (Exception e)
             {
                 capi.World.Logger.Warning("Exception thrown when trying to load entity armor shape {0} defined in {1} {2}. Armor piece will be invisible. Exception: {3}", compArmorShape.Base, itemstack.Class, itemstack.Collectible.Code, e);
-                return meshref;
+                return null;
             }
 
             newShape.Textures = armorShape.Textures;
@@ -259,17 +351,24 @@ namespace Vintagestory.GameContent
             }
 
             MeshData meshdata;
-            ITexPositionSource texSource = capi.Tesselator.GetTextureSource(itemstack.Item);
+
+            nowTesselatingShape = newShape;
 
             capi.Tesselator.TesselateShapeWithJointIds("entity", newShape, out meshdata, texSource, new Vec3f());
 
-            return capi.Render.UploadMesh(meshdata);
+            nowTesselatingShape = null;
+
+            return meshdata;
         }
 
 
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handHandling)
         {
-            if (byEntity.Controls.Sneak) return;
+            if (byEntity.Controls.Sneak)
+            {
+                base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handHandling);
+                return;
+            }
 
             IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
             if (byPlayer == null) return;

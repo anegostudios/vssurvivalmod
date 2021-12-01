@@ -265,7 +265,7 @@ namespace Vintagestory.GameContent.Mechanics
             Blockentity.MarkDirty();
         }
 
-        public override void OnBlockBroken()
+        public override void OnBlockBroken(IPlayer byPlayer = null)
         {
             this.disconnected = true;
         }

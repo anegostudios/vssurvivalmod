@@ -26,6 +26,12 @@ namespace Vintagestory.GameContent
 
         public virtual void SetContents(ItemStack containerStack, ItemStack[] stacks)
         {
+            if (stacks == null || stacks.Length == 0)
+            {
+                containerStack.Attributes.RemoveAttribute("contents");
+                return;
+            }
+
             TreeAttribute stacksTree = new TreeAttribute();
             for (int i = 0; i < stacks.Length; i++)
             {
@@ -39,7 +45,25 @@ namespace Vintagestory.GameContent
         {
             List<ItemStack> stacks = new List<ItemStack>();
             ITreeAttribute treeAttr = itemstack?.Attributes?.GetTreeAttribute("contents");
-            if (treeAttr == null) return new ItemStack[0];
+            if (treeAttr == null)
+            {
+                if (itemstack?.Attributes.HasAttribute("ucontents") == true)
+                {
+                    var attrs = itemstack.Attributes["ucontents"] as TreeArrayAttribute;
+                    foreach (ITreeAttribute stackAttr in attrs.value)
+                    {
+                        stacks.Add(CreateItemStackFromJson(stackAttr, world, itemstack.Collectible.Code.Domain));
+                    }
+                    SetContents(itemstack, stacks.ToArray());
+                    itemstack.Attributes.RemoveAttribute("ucontents");
+
+                    return stacks.ToArray();
+                }
+                else
+                {
+                    return new ItemStack[0];
+                }
+            }
 
             foreach (var val in treeAttr)
             {
@@ -51,6 +75,44 @@ namespace Vintagestory.GameContent
 
             return stacks.ToArray();
         }
+
+
+        public virtual ItemStack CreateItemStackFromJson(ITreeAttribute stackAttr, IWorldAccessor world, string domain)
+        {
+            CollectibleObject collObj;
+            var loc = AssetLocation.Create(stackAttr.GetString("code"), domain);
+            if (stackAttr.GetString("type") == "item")
+            {
+                collObj = world.GetItem(loc);
+            }
+            else
+            {
+                collObj = world.GetBlock(loc);
+            }
+
+            ItemStack stack = new ItemStack(collObj, stackAttr.GetInt("quantity"));
+            var attr = (stackAttr["attributes"] as TreeAttribute)?.Clone();
+            if (attr != null) stack.Attributes = attr;
+
+            return stack;
+        }
+
+
+        public bool IsEmpty(ItemStack itemstack)
+        {
+            ITreeAttribute treeAttr = itemstack?.Attributes?.GetTreeAttribute("contents");
+
+            if (treeAttr == null) return true;
+
+            foreach (var val in treeAttr)
+            {
+                ItemStack stack = (val.Value as ItemstackAttribute).value;
+                if (stack != null) return false;
+            }
+
+            return true;
+        }
+
 
         public virtual ItemStack[] GetNonEmptyContents(IWorldAccessor world, ItemStack itemstack)
         {
@@ -73,6 +135,19 @@ namespace Vintagestory.GameContent
 
         public override void OnBlockBroken(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1)
         {
+            bool preventDefault = false;
+            foreach (BlockBehavior behavior in BlockBehaviors)
+            {
+                EnumHandling handled = EnumHandling.PassThrough;
+
+                behavior.OnBlockBroken(world, pos, byPlayer, ref handled);
+                if (handled == EnumHandling.PreventDefault) preventDefault = true;
+                if (handled == EnumHandling.PreventSubsequent) return;
+            }
+
+            if (preventDefault) return;
+
+
             if (world.Side == EnumAppSide.Server && (byPlayer == null || byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative))
             {
                 ItemStack[] drops = new ItemStack[] { OnPickBlock(world, pos) };
@@ -109,7 +184,6 @@ namespace Vintagestory.GameContent
                 if (inslot.Inventory == null)
                 {
                     DummyInventory dummyInv = new DummyInventory(api);
-                    //slot = new DummySlot(stacks != null && stacks.Length > 0 ? stacks[0] : null, dummyInv); - this seems wrong...?
                     slot = new DummySlot(stacks[i], dummyInv);
 
                     dummyInv.OnAcquireTransitionSpeed = (transType, stack, mul) =>
@@ -132,7 +206,6 @@ namespace Vintagestory.GameContent
                         }
 
                         return GetContainingTransitionModifierContained(world, inslot, transType) * mul;
-                        //return mulByConfig * GetContainingTransitionModifierContained(world, slot, transType); - doesn't work for sealed crocks
                     };
 
                     slot.MarkedDirty += () => { inslot.Inventory.DidModifyItemSlot(inslot); return true; };

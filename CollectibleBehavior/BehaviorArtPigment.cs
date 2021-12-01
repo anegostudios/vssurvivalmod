@@ -247,7 +247,7 @@ namespace Vintagestory.GameContent
         {
             int toolMode = GetToolMode(null, byPlayer, blockSel);
             Block blockToPlace = (Block)toolModes[toolMode].Data;
-            blockAccessor.AddDecor(blockToPlace, blockSel.Position, BlockSelectionToSubPosition(blockSel));
+            blockAccessor.SetDecor(blockToPlace, blockSel.Position, BlockSelectionToSubPosition(blockSel));
         }
 
 

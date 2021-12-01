@@ -6,11 +6,15 @@ using System.Threading.Tasks;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
+using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
     public class BEBehaviorFirepitAmbient : BlockEntityBehavior
     {
+        protected ILoadedSound ambientSound;
+
+
         static bool MusicActive;
         static double MusicLastPlayedTotalHr = -99;
 
@@ -19,13 +23,62 @@ namespace Vintagestory.GameContent
 
         string trackstring = "music/safety-of-a-warm-fire.ogg";
 
-        BlockEntityFirepit befirepit;
+        IFirePit befirepit;
+        BlockEntity be;
         bool fadingOut;
+
+        BlockPos Pos => be.Pos;
 
         public BEBehaviorFirepitAmbient(BlockEntity blockentity) : base(blockentity)
         {
-            befirepit = blockentity as BlockEntityFirepit;
+            be = blockentity;
+            befirepit = blockentity as IFirePit;
         }
+
+
+
+        #region Sound
+        public virtual float SoundLevel
+        {
+            get { return 0.66f; }
+        }
+
+        public void ToggleAmbientSounds(bool on)
+        {
+            if (Api.Side != EnumAppSide.Client) return;
+
+            if (on)
+            {
+                if (ambientSound == null || !ambientSound.IsPlaying)
+                {
+                    ambientSound = ((IClientWorldAccessor)Api.World).LoadSound(new SoundParams()
+                    {
+                        Location = new AssetLocation("sounds/environment/fireplace.ogg"),
+                        ShouldLoop = true,
+                        Position = be.Pos.ToVec3f().Add(0.5f, 0.25f, 0.5f),
+                        DisposeOnFinish = false,
+                        Volume = SoundLevel
+                    });
+
+                    if (ambientSound != null)
+                    {
+                        ambientSound.Start();
+                        ambientSound.PlaybackPosition = ambientSound.SoundLengthSeconds * (float)Api.World.Rand.NextDouble();
+                    }
+                }
+            }
+            else
+            {
+                ambientSound?.Stop();
+                ambientSound?.Dispose();
+                ambientSound = null;
+            }
+
+        }
+
+        #endregion
+
+        #region Music
 
         public override void Initialize(ICoreAPI api, JsonObject properties)
         {
@@ -141,11 +194,28 @@ namespace Vintagestory.GameContent
         public override void OnBlockRemoved()
         {
             StopMusic();
+            if (ambientSound != null)
+            {
+                ambientSound.Stop();
+                ambientSound.Dispose();
+            }
         }
 
         public override void OnBlockUnloaded()
         {
             StopMusic();
+            ToggleAmbientSounds(false);
         }
+
+
+        ~BEBehaviorFirepitAmbient()
+        {
+            if (ambientSound != null)
+            {
+                ambientSound.Dispose();
+            }
+        }
+
+        #endregion
     }
 }

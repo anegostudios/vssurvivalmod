@@ -265,14 +265,14 @@ namespace Vintagestory.GameContent
                         {
                             targetSlot = new DummySlot(targetSlot.TakeOut(1));
                             byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
-                            blockPot.ServeIntoBowlStack(targetSlot, potSlot, world);
+                            blockPot.ServeIntoStack(targetSlot, potSlot, world);
                             if (!byPlayer.InventoryManager.TryGiveItemstack(targetSlot.Itemstack, true))
                             {
                                 world.SpawnItemEntity(targetSlot.Itemstack, byPlayer.Entity.ServerPos.XYZ);
                             }
                         } else
                         {
-                            blockPot.ServeIntoBowlStack(targetSlot, potSlot, world);
+                            blockPot.ServeIntoStack(targetSlot, potSlot, world);
                         }
 
                     } else

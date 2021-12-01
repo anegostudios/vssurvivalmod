@@ -63,7 +63,7 @@ namespace Vintagestory.GameContent
                     .AddInset(fullnessMeterBounds.ForkBoundingParent(2,2,2,2), 2)
                     .AddDynamicCustomDraw(fullnessMeterBounds, fullnessMeterDraw, "liquidBar")
 
-                    .AddDynamicText(getContentsText(), CairoFont.WhiteDetailText(), EnumTextOrientation.Left, barrelBoundsRight, "contentText")
+                    .AddDynamicText(getContentsText(), CairoFont.WhiteDetailText(), barrelBoundsRight, "contentText")
 
                 .EndChildElements()
             .Compose();
@@ -153,7 +153,7 @@ namespace Vintagestory.GameContent
 
             ctx.Rectangle(0, offY, currentBounds.InnerWidth, currentBounds.InnerHeight - offY);
 
-            CompositeTexture tex = liquidSlot.Itemstack.Collectible.Attributes?["waterTightContainerProps"]?["texture"]?.AsObject<CompositeTexture>(null, liquidSlot.Itemstack.Collectible.Code.Domain);
+            CompositeTexture tex = props.Texture;
             if (tex != null)
             {
                 ctx.Save();
@@ -162,7 +162,7 @@ namespace Vintagestory.GameContent
                 ctx.Matrix = m;
 
                 AssetLocation loc = tex.Base.Clone().WithPathAppendixOnce(".png");
-                GuiElement.fillWithPattern(capi, ctx, loc.Path, true, false);
+                GuiElement.fillWithPattern(capi, ctx, loc, true, false, tex.Alpha);
 
                 ctx.Restore();
             }

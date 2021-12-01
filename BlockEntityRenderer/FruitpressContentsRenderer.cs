@@ -14,8 +14,6 @@ namespace Vintagestory.GameContent
         
         ICoreClientAPI api;
         BlockPos pos;
-        
-        int textureId;
         Matrixf ModelMat = new Matrixf();
 
 
@@ -36,6 +34,9 @@ namespace Vintagestory.GameContent
 
         AssetLocation textureLocation;
         TextureAtlasPosition texPos;
+
+
+        public TextureAtlasPosition juiceTexPos;
 
         public Size2i AtlasSize => api.BlockTextureAtlas.Size;
 
@@ -81,7 +82,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public void reloadMeshes(bool mustReload)
+        public void reloadMeshes(JuicableProperties props, bool mustReload)
         {
             if (befruitpress.Inventory.Empty)
             {
@@ -96,20 +97,32 @@ namespace Vintagestory.GameContent
 
             ItemStack stack = befruitpress.Inventory[0].Itemstack;
 
+            if (stack == null) return;
+
             // Mash
-            textureLocation = AssetLocation.Create("block/food/pie/fill-" + stack.Collectible.Variant["fruit"], stack.Collectible.Code.Domain);
-            Shape mashShape = api.Assets.TryGet("shapes/block/wood/fruitpress/part-mash.json").ToObject<Shape>();
-            api.Tesselator.TesselateShape("fruitpress-mash", mashShape, out MeshData mashMesh, this);
-
-            // Juice
-            Shape juiceShape = api.Assets.TryGet("shapes/block/wood/fruitpress/part-juice.json").ToObject<Shape>();
-
+            int y;
             if (stack.Collectible.Code.Path == "rot")
             {
                 textureLocation = new AssetLocation("block/rot/rot");
-            }
-            else
+                y = GameMath.Clamp(stack.StackSize / 4, 1, 9);
+            } else
             {
+                textureLocation = AssetLocation.Create("block/food/pie/fill-" + stack.Collectible.Variant["fruit"], stack.Collectible.Code.Domain);
+                y = GameMath.Clamp(stack.StackSize / props.Quantity, 1, 9);
+            }
+
+            
+
+            Shape mashShape = api.Assets.TryGet("shapes/block/wood/fruitpress/part-mash-"+y+".json").ToObject<Shape>();
+            api.Tesselator.TesselateShape("fruitpress-mash", mashShape, out MeshData mashMesh, this);
+
+            juiceTexPos = api.BlockTextureAtlas[textureLocation];
+
+            // Juice
+            if (stack.Collectible.Code.Path != "rot")
+            {
+                Shape juiceShape = api.Assets.TryGet("shapes/block/wood/fruitpress/part-juice.json").ToObject<Shape>();
+
                 var loc = AssetLocation.Create("juiceportion-" + stack.Collectible.Variant["fruit"], stack.Collectible.Code.Domain);
                 Item item = api.World.GetItem(loc);
                 textureLocation = null;
@@ -121,11 +134,13 @@ namespace Vintagestory.GameContent
                 {
                     texPos = api.BlockTextureAtlas.Positions[item.FirstTexture.Baked.TextureSubId];
                 }
+
+                api.Tesselator.TesselateShape("fruitpress-juice", juiceShape, out MeshData juiceMesh, this);
+
+                juiceMeshref = api.Render.UploadMesh(juiceMesh);
             }
 
-            api.Tesselator.TesselateShape("fruitpress-juice", juiceShape, out MeshData juiceMesh, this);
-
-            juiceMeshref = api.Render.UploadMesh(juiceMesh);
+            
             mashMeshref = api.Render.UploadMesh(mashMesh);
         }
 
@@ -133,7 +148,7 @@ namespace Vintagestory.GameContent
         // Needs to render mash, juice quad and bucket
         public void OnRenderFrame(float deltaTime, EnumRenderStage stage)
         {
-            if (mashMeshref == null) return;
+            if (mashMeshref == null || mashMeshref.Disposed) return;
             
             IRenderAPI rpi = api.Render;
             Vec3d camPos = api.World.Player.Entity.CameraPos;
@@ -143,7 +158,7 @@ namespace Vintagestory.GameContent
 
             IStandardShaderProgram prog = rpi.StandardShader;
             prog.Use();
-            prog.Tex2D = api.ItemTextureAtlas.AtlasTextureIds[0];
+            prog.Tex2D = api.BlockTextureAtlas.AtlasTextureIds[0];
             prog.DontWarpVertices = 0;
             prog.AddRenderFlags = 0;
             prog.RgbaAmbientIn = rpi.AmbientColor;
@@ -159,13 +174,15 @@ namespace Vintagestory.GameContent
 
             Vec4f lightrgbs = api.World.BlockAccessor.GetLightRGBs(pos.X, pos.Y, pos.Z);
             prog.RgbaLightIn = lightrgbs;
+
             
+
+
             prog.ModelMatrix = ModelMat
                 .Identity()
                 .Translate(pos.X - camPos.X, pos.Y - camPos.Y, pos.Z - camPos.Z)
                 .Translate(0, 0.8f, 0)
-               
-                
+                .Scale(1, befruitpress.GetSqueezeYScale(), 1)
                 .Values
             ;
 

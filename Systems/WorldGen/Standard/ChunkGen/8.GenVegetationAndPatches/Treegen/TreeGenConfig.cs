@@ -20,6 +20,10 @@ namespace Vintagestory.ServerMods.NoObf
         public TreeGenBranch[] branches;
         [JsonProperty]
         public TreeGenBlocks treeBlocks = null;
+        [JsonProperty]
+        public bool isTropical = false;
+
+        public EnumTreeType Treetype;
 
         internal void Init(AssetLocation location, ILogger logger)
         {

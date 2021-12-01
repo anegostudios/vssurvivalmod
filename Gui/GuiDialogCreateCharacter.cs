@@ -81,7 +81,7 @@ namespace Vintagestory.GameContent
                 essr.TesselateShape();
 
                 CairoFont smallfont = CairoFont.WhiteSmallText();
-                var tExt = smallfont.GetTextExtents(Lang.Get("Show dressed"));
+                var textExt = smallfont.GetTextExtents(Lang.Get("Show dressed"));
                 int colorIconSize = 22;
 
                 ElementBounds leftColBounds = ElementBounds.Fixed(0, ypos, 204, dlgHeight - 59).FixedGrow(2 * pad, 2 * pad);
@@ -89,10 +89,10 @@ namespace Vintagestory.GameContent
                 insetSlotBounds = ElementBounds.Fixed(0, ypos + 2, 265, leftColBounds.fixedHeight - 2 * pad + 10).FixedRightOf(leftColBounds, 10);
                 ElementBounds rightColBounds = ElementBounds.Fixed(0, ypos, 54, dlgHeight - 59).FixedGrow(2 * pad, 2 * pad).FixedRightOf(insetSlotBounds, 10);
                 ElementBounds toggleButtonBounds = ElementBounds.Fixed(
-                        (int)insetSlotBounds.fixedX + insetSlotBounds.fixedWidth / 2 - tExt.Width / RuntimeEnv.GUIScale / 2 - 12, 
+                        (int)insetSlotBounds.fixedX + insetSlotBounds.fixedWidth / 2 - textExt.Width / RuntimeEnv.GUIScale / 2 - 12, 
                         0,
-                        tExt.Width / RuntimeEnv.GUIScale,
-                        tExt.Height / RuntimeEnv.GUIScale
+                        textExt.Width / RuntimeEnv.GUIScale + 1,
+                        textExt.Height / RuntimeEnv.GUIScale
                     )
                     .FixedUnder(insetSlotBounds, 4).WithAlignment(EnumDialogArea.LeftFixed).WithFixedPadding(12, 6)
                 ;
@@ -219,7 +219,7 @@ namespace Vintagestory.GameContent
 
                     .AddIconButton("left", (on) => changeClass(-1), prevButtonBounds.FlatCopy())
                     .AddInset(charclasssInset, 2)
-                    .AddDynamicText("Commoner", font, EnumTextOrientation.Center, centerTextBounds, "className")
+                    .AddDynamicText("Commoner", font.Clone().WithOrientation(EnumTextOrientation.Center), centerTextBounds, "className")
                     .AddIconButton("right", (on) => changeClass(1), nextButtonBounds.FlatCopy())
 
                     .AddRichtext("", CairoFont.WhiteDetailText(), charTextBounds, "characterDesc")

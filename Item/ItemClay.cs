@@ -47,7 +47,7 @@ namespace Vintagestory.GameContent
             if (blockSel == null) return;
 
             BlockEntityClayForm bec = byEntity.World.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityClayForm;
-            if (bec != null && bec.BaseMaterial.Collectible.LastCodePart() != LastCodePart()) return;
+            if (bec != null && bec.BaseMaterial.Collectible.Variant["type"] != Variant["type"]) return;
 
             if (byEntity.Controls.Sneak)
             {
@@ -177,8 +177,6 @@ namespace Vintagestory.GameContent
             IPlayer byPlayer = null;
             if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
             if (byPlayer == null) return;
-
-            int curMode = GetToolMode(slot, byPlayer, blockSel);
 
             if (!byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.Use))
             {

@@ -273,9 +273,7 @@ namespace Vintagestory.GameContent
                 rainfogAmbient.AmbientColor.Value[0] = 0.5f * 116 / 255f;
                 rainfogAmbient.AmbientColor.Value[1] = 0.5f * 77 / 255f;
                 rainfogAmbient.AmbientColor.Value[2] = 0.5f * 49 / 255f;
-
-                //new float[] { 0.5f * 132 / 255f, 0.5f * 115 / 255f, 0.5f * 112f / 255f, 1 }
-
+                
                 rustParticles.MinVelocity.Set(-0.1f, 0.1f, 0.1f);
                 rustParticles.AddVelocity.Set(0.2f, 0.2f, 0.2f);
                 rustParticles.Color = ColorUtil.ToRgba((int)(strength * 150), 50, 25, 15);
@@ -301,7 +299,6 @@ namespace Vintagestory.GameContent
 
                     if (!capi.World.BlockAccessor.IsValidPos(pos)) continue;
 
-                    
                     rustParticles.MinPos = position;
                     capi.World.SpawnParticles(rustParticles);
                 }

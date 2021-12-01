@@ -42,7 +42,7 @@ namespace Vintagestory.GameContent
                 {
                     Block block = Api.World.BlockAccessor.GetBlock(Pos);
                     if (block.Attributes == null) return;
-                    string toCode = block.Attributes["convertToWaterExtinguished"].AsString();
+                    var toCode = block.CodeWithVariant("state", "extinct").ToShortString();
                     tryTransition(toCode);
                 }
             }

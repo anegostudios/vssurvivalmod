@@ -456,7 +456,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void OnBlockBroken()
+        public override void OnBlockBroken(IPlayer byPlayer = null)
         {
             if (Api.World is IServerWorldAccessor)
             {
@@ -474,7 +474,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            base.OnBlockBroken();
+            base.OnBlockBroken(byPlayer);
         }
 
     }

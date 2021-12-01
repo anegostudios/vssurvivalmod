@@ -9,39 +9,94 @@ namespace Vintagestory.GameContent
 {
     public class BlockVines : Block
     {
-        public BlockFacing GetOrientation()
-        {
-            string[] parts = Code.Path.Split('-');
-            return BlockFacing.FromCode(parts[parts.Length - 1]);
-        }
+        public BlockFacing VineFacing;
 
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
+            VineFacing = BlockFacing.FromCode(Variant["horizontalorientation"]);
         }
+
+        int[] origWindMode;
+        BlockPos tmpPos = new BlockPos();
 
         public override void OnJsonTesselation(ref MeshData sourceMesh, ref int[] lightRgbsByCorner, BlockPos pos, Block[] chunkExtBlocks, int extIndex3d)
         {
-            if (VertexFlags.LeavesWindWave)
+            if (origWindMode == null)
             {
-                int leavesNoWaveTileSide = 0;  //any bit set to 1 means no Wave on that tileSide
-                for (int tileSide = 0; tileSide < TileSideEnum.Down; tileSide++)  // VINES are free to move on the down side :)
+                int cnt = sourceMesh.FlagsCount;
+                origWindMode = (int[])sourceMesh.Flags.Clone();
+                for (int i = 0; i < cnt; i++) origWindMode[i] &= VertexFlags.WindModeBitsMask;
+            }
+
+            int verticesCount = sourceMesh.VerticesCount;
+            bool enableWind = (byte)(lightRgbsByCorner[24] >> 24) >= 159;  //corresponds with a sunlight level of less than 14
+
+            // Are we fully attached? => No wave
+            Block ablock = chunkExtBlocks[extIndex3d + TileSideEnum.MoveIndex[VineFacing.Opposite.Index]];
+            if (!enableWind || (ablock.Id != 0 && ablock.CanAttachBlockAt(api.World.BlockAccessor, this, tmpPos.Set(pos).Add(VineFacing.Opposite), VineFacing)))
+            {
+                for (int i = 0; i < verticesCount; i++)
                 {
-                    Block nblock = chunkExtBlocks[extIndex3d + TileSideEnum.MoveIndex[tileSide]];
-                    if (!nblock.VertexFlags.LeavesWindWave && nblock.SideSolid[TileSideEnum.GetOpposite(tileSide)]) leavesNoWaveTileSide |= (1 << tileSide);
+                    sourceMesh.Flags[i] &= VertexFlags.ClearWindModeBitsMask;
                 }
+                return;
+            }
 
-                int groundOffset = 0;
+            int windData =
+                ((api.World.BlockAccessor.GetBlock(pos.X, pos.Y + 1, pos.Z) is BlockVines) ? 1 : 0)
+                + ((api.World.BlockAccessor.GetBlock(pos.X, pos.Y + 2, pos.Z) is BlockVines) ? 1 : 0)
+                + ((api.World.BlockAccessor.GetBlock(pos.X, pos.Y + 3, pos.Z) is BlockVines) ? 1 : 0)
+            ;
 
-                bool waveoff = (byte)(lightRgbsByCorner[24] >> 24) < 159;  //corresponds with a sunlight level of less than 14
+            int windDatam1;
+            
+            if (windData == 3 && api.World.BlockAccessor.GetBlock(pos.X, pos.Y + 4, pos.Z) is BlockVines)
+            {
+                windDatam1 = windData << VertexFlags.WindDataBitsPos;
+            } else
+            {
+                windDatam1 = (Math.Max(0, windData - 1) << VertexFlags.WindDataBitsPos);
+            }
 
-                if (!waveoff)
+            windData = windData << VertexFlags.WindDataBitsPos;
+
+            // Is there a vine above thats attached? => Wave for the bottom half
+            Block ublock = chunkExtBlocks[extIndex3d + TileSideEnum.MoveIndex[BlockFacing.UP.Index]];
+            if (ublock is BlockVines)
+            {
+                Block uablock = chunkExtBlocks[extIndex3d + TileSideEnum.MoveIndex[VineFacing.Opposite.Index] + TileSideEnum.MoveIndex[BlockFacing.UP.Index]];
+                if (uablock.Id != 0 && uablock.CanAttachBlockAt(api.World.BlockAccessor, this, tmpPos.Set(pos).Up().Add(VineFacing.Opposite), VineFacing))
                 {
-                    // We could invert the ground offset, have vines bend more the further they descend ...
-                    groundOffset = 1;
-                }
+                    for (int i = 0; i < verticesCount; i++)
+                    {
+                        float y = sourceMesh.xyz[i * 3 + 1];
 
-                BlockWithLeavesMotion.SetLeaveWaveFlags(sourceMesh, leavesNoWaveTileSide, waveoff, VertexFlags.LeavesWindWaveBitMask, groundOffset);
+                        if (y > 0.5)
+                        {
+                            sourceMesh.Flags[i] &= VertexFlags.ClearWindModeBitsMask;
+                        } else
+                        {
+                            sourceMesh.Flags[i] = (sourceMesh.Flags[i] & VertexFlags.ClearWindBitsMask) | origWindMode[i] | windData;
+                        }
+                    }
+                    return;
+                }
+            }
+
+            // Otherwise all wave
+            for (int i = 0; i < verticesCount; i++)
+            {
+                float y = sourceMesh.xyz[i * 3 + 1];
+
+                if (y > 0.5)
+                {
+                    sourceMesh.Flags[i] = (sourceMesh.Flags[i] & VertexFlags.ClearWindBitsMask) | origWindMode[i] | windDatam1;
+                }
+                else
+                {
+                    sourceMesh.Flags[i] = (sourceMesh.Flags[i] & VertexFlags.ClearWindBitsMask) | origWindMode[i] | windData;
+                }
             }
         }
 
@@ -61,7 +116,7 @@ namespace Vintagestory.GameContent
             Block upBlock = blockAccessor.GetBlock(pos.UpCopy());
             if (upBlock is BlockVines)
             {
-                BlockFacing facing = ((BlockVines)upBlock).GetOrientation();
+                BlockFacing facing = ((BlockVines)upBlock).VineFacing;
                 Block block = blockAccessor.GetBlock(CodeWithParts(facing.Code));
                 blockAccessor.SetBlock(block == null ? upBlock.BlockId : block.BlockId, pos);
                 return true;
@@ -91,7 +146,7 @@ namespace Vintagestory.GameContent
             Block upBlock = world.BlockAccessor.GetBlock(blockSel.Position.UpCopy());
             if (upBlock is BlockVines)
             {
-                BlockFacing facing = ((BlockVines)upBlock).GetOrientation();
+                BlockFacing facing = ((BlockVines)upBlock).VineFacing;
                 Block block = world.BlockAccessor.GetBlock(CodeWithParts(facing.Code));
                 world.BlockAccessor.SetBlock(block == null ? upBlock.BlockId : block.BlockId, blockSel.Position);
                 return true;
@@ -154,10 +209,10 @@ namespace Vintagestory.GameContent
 
         bool CanVineStay(IWorldAccessor world, BlockPos pos)
         {
-            BlockFacing facing = GetOrientation();
-            Block block = world.BlockAccessor.GetBlock(world.BlockAccessor.GetBlockId(pos.AddCopy(facing.Opposite)));
+            BlockPos apos = pos.AddCopy(VineFacing.Opposite);
+            Block block = world.BlockAccessor.GetBlock(world.BlockAccessor.GetBlockId(apos));
 
-            return block.CanAttachBlockAt(world.BlockAccessor, this, pos, facing) || world.BlockAccessor.GetBlock(pos.UpCopy()) is BlockVines;
+            return block.CanAttachBlockAt(world.BlockAccessor, this, apos, VineFacing) || world.BlockAccessor.GetBlock(pos.UpCopy()) is BlockVines;
         }
 
         public override AssetLocation GetRotatedBlockCode(int angle)

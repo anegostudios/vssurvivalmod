@@ -79,7 +79,7 @@ namespace Vintagestory.GameContent.Mechanics
         }
 
         //Need to override because this fake block has no texture of its own (no texture gives black breaking particles)
-        public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing)
+        public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing, int rndIndex = -1)
         {
             IBlockAccessor blockAccess = capi.World.BlockAccessor;
             BEMPMultiblock be = blockAccess.GetBlockEntity(pos) as BEMPMultiblock;
@@ -88,7 +88,7 @@ namespace Vintagestory.GameContent.Mechanics
                 return 0;
             }
             Block principalBlock = blockAccess.GetBlock(be.Principal);
-            return principalBlock.GetRandomColor(capi, be.Principal, facing);
+            return principalBlock.GetRandomColor(capi, be.Principal, facing, rndIndex);
         }
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)

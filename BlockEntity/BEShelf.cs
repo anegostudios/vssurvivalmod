@@ -20,6 +20,7 @@ namespace Vintagestory.GameContent
         public override string InventoryClassName => "shelf";
 
         Block block;
+        Matrixf mat = new Matrixf();
 
 
         public BlockEntityShelf()
@@ -31,12 +32,14 @@ namespace Vintagestory.GameContent
         public override void Initialize(ICoreAPI api)
         {
             block = api.World.BlockAccessor.GetBlock(Pos);
+            mat.RotateYDeg(block.Shape.rotateY);
+
             base.Initialize(api);
         }
 
         protected override float Inventory_OnAcquireTransitionSpeed(EnumTransitionType transType, ItemStack stack, float baseMul)
         {
-            if (transType == EnumTransitionType.Dry) return 0;
+            if (transType == EnumTransitionType.Dry) return room?.ExitCount == 0 ? 2f : 0.5f;
             if (Api == null) return 0;
 
             if (transType == EnumTransitionType.Perish || transType == EnumTransitionType.Ripen)
@@ -143,82 +146,15 @@ namespace Vintagestory.GameContent
         }
 
 
-        Matrixf mat = new Matrixf();
 
-        public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
+        public override void TranslateMesh(MeshData mesh, int index)
         {
-            mat.Identity();
-            mat.RotateYDeg(block.Shape.rotateY);
-
-            return base.OnTesselation(mesher, tessThreadTesselator);
-        }
-
-        protected override void updateMeshes()
-        {
-            mat.Identity();
-            mat.RotateYDeg(block.Shape.rotateY);
-
-            base.updateMeshes();
-        }
-
-        protected override MeshData genMesh(ItemStack stack, int index)
-        {
-            BlockCrock crockblock = stack.Collectible as BlockCrock;
-            BlockMeal mealblock = stack.Collectible as BlockMeal;
-            MeshData mesh;
-
-            if (crockblock != null)
-            {
-                Vec3f rot = new Vec3f(0, block.Shape.rotateY, 0);
-                mesh = BlockEntityCrock.GetMesh(capi.Tesselator, Api, crockblock, crockblock.GetContents(Api.World, stack), crockblock.GetRecipeCode(Api.World, stack), rot).Clone();
-            }
-            else if (mealblock != null)
-            {
-                ICoreClientAPI capi = Api as ICoreClientAPI;
-                MealMeshCache meshCache = capi.ModLoader.GetModSystem<MealMeshCache>();
-                mesh = meshCache.GenMealInContainerMesh(mealblock, mealblock.GetCookingRecipe(capi.World, stack), mealblock.GetNonEmptyContents(capi.World, stack));
-            }
-            else
-            {
-                ICoreClientAPI capi = Api as ICoreClientAPI;
-                if (stack.Class == EnumItemClass.Block)
-                {
-                    mesh = capi.TesselatorManager.GetDefaultBlockMesh(stack.Block).Clone();
-                }
-                else
-                {
-                    nowTesselatingItem = stack.Item;
-                    nowTesselatingShape = capi.TesselatorManager.GetCachedShape(stack.Item.Shape.Base);
-                    capi.Tesselator.TesselateItem(stack.Item, out mesh, this);
-
-                    mesh.RenderPassesAndExtraBits.Fill((short)EnumChunkRenderPass.BlendNoCull);
-                }
-            }
-
-            if (stack.Collectible.Attributes?["onDisplayTransform"].Exists == true)
-            {
-                ModelTransform transform = stack.Collectible.Attributes?["onDisplayTransform"].AsObject<ModelTransform>();
-                transform.EnsureDefaultValues();
-                mesh.ModelTransform(transform);
-            }
-
-
-            if (stack.Class == EnumItemClass.Item && (stack.Item.Shape == null || stack.Item.Shape.VoxelizeTexture))
-            {
-                mesh.Rotate(new Vec3f(0.5f, 0.5f, 0.5f), GameMath.PIHALF, 0, 0);
-                mesh.Scale(new Vec3f(0.5f, 0.5f, 0.5f), 0.33f, 0.5f, 0.33f);
-                mesh.Translate(0, -7.5f / 16f, 0f);
-            }
-
-
             float x = ((index % 4) >= 2) ? 12 / 16f : 4 / 16f;
             float y = index >= 4 ? 10 / 16f : 2 / 16f;
             float z = (index % 2 == 0) ? 4 / 16f : 10 / 16f;
 
             Vec4f offset = mat.TransformVector(new Vec4f(x - 0.5f, y, z - 0.5f, 0));
             mesh.Translate(offset.XYZ);
-
-            return mesh;
         }
 
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder sb)

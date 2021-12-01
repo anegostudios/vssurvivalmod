@@ -4,6 +4,7 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
@@ -20,6 +21,7 @@ namespace Vintagestory.GameContent
         EntityBehaviorMultiply bhmul;
 
         float lactatingDaysAfterBirth = 21;
+        float yieldLitres = 10f;
 
         long lastIsMilkingStateTotalMs;
 
@@ -30,6 +32,12 @@ namespace Vintagestory.GameContent
         public EntityBehaviorMilkable(Entity entity) : base(entity)
         {
 
+        }
+        public override void Initialize(EntityProperties properties, JsonObject attributes)
+        {
+            base.Initialize(properties, attributes);
+
+            yieldLitres = attributes["yieldLitres"].AsFloat(10);
         }
 
         public override string PropertyName()
@@ -183,12 +191,12 @@ namespace Vintagestory.GameContent
 
                 if (slot.Itemstack.StackSize == 1)
                 {
-                    lcblock.TryPutContent(byEntity.World, slot.Itemstack, contentStack, 10);
+                    lcblock.TryPutLiquid(slot.Itemstack, contentStack, yieldLitres);
                 }
                 else
                 {
                     ItemStack containerStack = slot.TakeOut(1);
-                    lcblock.TryPutContent(byEntity.World, containerStack, contentStack, 10);
+                    lcblock.TryPutLiquid(containerStack, contentStack, yieldLitres);
 
                     if (!byEntity.TryGiveItemStack(containerStack))
                     {

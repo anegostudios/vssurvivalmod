@@ -8,7 +8,7 @@ namespace Vintagestory.ServerMods
     public class GenCaves : GenPartial
     {
         
-        internal override int chunkRange { get { return 5; } }
+        protected override int chunkRange { get { return 5; } }
 
         public override double ExecuteOrder() { return 0.3; }
 

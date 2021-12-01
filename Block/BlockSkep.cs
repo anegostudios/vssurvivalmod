@@ -12,7 +12,7 @@ namespace Vintagestory.GameContent
     {
         public bool IsEmpty()
         {
-            return LastCodePart(1) == "empty";
+            return Variant["type"] == "empty";
         }
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
@@ -109,7 +109,7 @@ namespace Vintagestory.GameContent
         {
             var wi = new WorldInteraction()
             {
-                ActionLangCode = LastCodePart(1) == "populated" ? "blockhelp-skep-putinbagslot" : "blockhelp-skep-pickup",
+                ActionLangCode = Variant["type"] == "populated" ? "blockhelp-skep-putinbagslot" : "blockhelp-skep-pickup",
                 MouseButton = EnumMouseButton.Right
             };
 

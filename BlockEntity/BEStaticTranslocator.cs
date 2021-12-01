@@ -134,7 +134,7 @@ namespace Vintagestory.GameContent
         {
             if (!FullyRepaired || !Activated || !canTeleport) return;
 
-            TeleportingEntity tpe = null;
+            TeleportingEntity tpe;
             if (!tpingEntities.TryGetValue(entity.EntityId, out tpe))
             {
                 tpingEntities[entity.EntityId] = tpe = new TeleportingEntity()
@@ -344,7 +344,7 @@ namespace Vintagestory.GameContent
                 Api.World.BlockAccessor.MarkBlockEntityDirty(exitPos);
                 Api.World.BlockAccessor.MarkBlockDirty(exitPos);
 
-                //api.World.Logger.Debug("Connected translocator at {0} (chunkpos: {2}) to my location: {1}", exitPos, pos, exitPos / 32);
+                Api.World.Logger.Debug("Connected translocator at {0} (chunkpos: {2}) to my location: {1}", exitPos, Pos, exitPos / 32);
 
                 // Connect self
                 MarkDirty(true);
@@ -418,10 +418,9 @@ namespace Vintagestory.GameContent
                     for (int z = location.Z1; z < location.Z2; z++)
                     {
                         int cx = x / chunksize;
-                        int cy = y / chunksize;
                         int cz = z / chunksize;
 
-                        IServerChunk[] chunks = null;
+                        IServerChunk[] chunks;
                         if (!columnsByChunkCoordinate.TryGetValue(new Vec2i(cx, cz), out chunks))
                         {
                             continue;
@@ -589,10 +588,8 @@ namespace Vintagestory.GameContent
             repairState = tree.GetInt("repairState");
             findNextChunk = tree.GetBool("findNextChunk", true);
             activated = tree.GetBool("activated");
-
             somebodyIsTeleporting = tree.GetBool("somebodyIsTeleporting");
 
-            
 
             if (canTeleport) {
                 tpLocation = new BlockPos(tree.GetInt("teleX"), tree.GetInt("teleY"), tree.GetInt("teleZ"));

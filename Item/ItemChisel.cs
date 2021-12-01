@@ -219,11 +219,10 @@ namespace Vintagestory.GameContent
             BlockEntityChisel bec = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityChisel;
             if (bec != null)
             {
-                int matnum = byPlayer.InventoryManager.ActiveHotbarSlot.Itemstack.Attributes.GetInt("materialNum", -1);
-                if (matnum >= 0)
+                int materialId = byPlayer.InventoryManager.ActiveHotbarSlot.Itemstack.Attributes.GetInt("materialId", -1);
+                if (materialId >= 0)
                 {
-                    byPlayer.InventoryManager.ActiveHotbarSlot.Itemstack.Attributes.RemoveAttribute("materialNum");
-                    bec.SetNowMaterial((byte)(matnum));
+                    bec.SetNowMaterialId(materialId);
                 }
 
                 bec.OnBlockInteract(byPlayer, blockSel, isBreak);
@@ -278,7 +277,13 @@ namespace Vintagestory.GameContent
         {
             if (toolMode > 6)
             {
-                slot.Itemstack.Attributes.SetInt("materialNum", toolMode - 7);
+                int matNum = toolMode - 7;
+                BlockEntityChisel be = api.World.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityChisel;
+                if (be != null && be.MaterialIds.Length > matNum)
+                {
+                    slot.Itemstack.Attributes.SetInt("materialId", be.MaterialIds[matNum]);
+                }
+
                 return;
             }
 
@@ -287,7 +292,7 @@ namespace Vintagestory.GameContent
 
         public void Drawrotate_svg(Context cr, int x, int y, float width, float height, double[] rgba)
         {
-            Pattern pattern = null;
+            Pattern pattern;
             Matrix matrix = cr.Matrix;
 
             cr.Save();

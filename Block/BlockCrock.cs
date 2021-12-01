@@ -11,7 +11,7 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockCrock : BlockCookedContainerBase, IBlockMealContainer
+    public class BlockCrock : BlockCookedContainerBase, IBlockMealContainer, IContainedMeshSource
     {
         public override float GetContainingTransitionModifierContained(IWorldAccessor world, ItemSlot inSlot, EnumTransitionType transType)
         {
@@ -161,19 +161,33 @@ namespace Vintagestory.GameContent
             if (!meshrefs.TryGetValue(key, out meshref))
             {
                 MeshData mesh = GenMesh(capi, loc, new Vec3f(0, 270, 0));
-                //mesh.Rgba2 = null;
                 meshrefs[key] = meshref = capi.Render.UploadMesh(mesh);
             }
 
             renderinfo.ModelRef = meshref;
         }
-        
 
-
-        public MeshData GenMesh(ICoreClientAPI capi, AssetLocation labelLoc, Vec3f rot = null, ITesselatorAPI tesselator = null)
+        public virtual string GetMeshCacheKey(ItemStack itemstack)
         {
-            if (tesselator == null) tesselator = capi.Tesselator;
+            ItemStack[] contents = GetNonEmptyContents(api.World, itemstack);
+            string recipeCode = itemstack.Attributes.GetString("recipeCode");
+            AssetLocation loc = LabelForContents(recipeCode, contents);
 
+            return Code.ToShortString() + loc.ToShortString();
+        }
+
+
+        public MeshData GenMesh(ItemStack itemstack, ITextureAtlasAPI targetAtlas, BlockPos forBlockPos = null)
+        {
+            ItemStack[] contents = GetNonEmptyContents(api.World, itemstack);
+            string recipeCode = itemstack.Attributes.GetString("recipeCode");
+            
+            return GenMesh(api as ICoreClientAPI, LabelForContents(recipeCode, contents));
+        }
+
+        public MeshData GenMesh(ICoreClientAPI capi, AssetLocation labelLoc, Vec3f rot = null)
+        {
+            var tesselator = capi.Tesselator;
             Shape baseshape = capi.Assets.TryGet(AssetLocation.Create("shapes/block/clay/crock/base.json", Code.Domain)).ToObject<Shape>();
             Shape labelshape = capi.Assets.TryGet(labelLoc).ToObject<Shape>();
 
@@ -213,6 +227,7 @@ namespace Vintagestory.GameContent
 
             if (block?.Attributes?.IsTrue("mealContainer") == true)
             {
+                if (!byEntity.Controls.Sneak) return;
                 if (quantityServings > 0)
                 {
                     ServeIntoBowl(block, blockSel.Position, slot, byEntity.World);
@@ -221,28 +236,28 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-			// This works but doesn't render meal bowl contents. We need to rewrite ground storable and shelfing
-			// mesh generation. Its hardcoded right now, dont want to add more hardcoding...
-            /*if (block is BlockGroundStorage)
+
+            if (block is BlockGroundStorage)
             {
+                if (!byEntity.Controls.Sneak) return;
                 var begs = api.World.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityGroundStorage;
-                foreach (var gsslot in begs.Inventory)
+                ItemSlot gsslot = begs.GetSlotAt(blockSel);
+                if (gsslot == null || gsslot.Empty) return;
+
+                if (gsslot.Itemstack.ItemAttributes?.IsTrue("mealContainer") == true)
                 {
-                    if (gsslot.Empty) continue;
-                    if (gsslot.Itemstack.ItemAttributes?.IsTrue("mealContainer") == true)
+                    if (quantityServings > 0)
                     {
-                        if (quantityServings > 0)
-                        {
-                            ServeIntoBowlStack(gsslot, slot, byEntity.World);
-                            gsslot.MarkDirty();
-                            begs.updateMeshes();
-                            begs.MarkDirty(true);
-                        }
-                        handHandling = EnumHandHandling.PreventDefault;
-                        return;
+                        ServeIntoStack(gsslot, slot, byEntity.World);
+                        gsslot.MarkDirty();
+                        begs.updateMeshes();
+                        begs.MarkDirty(true);
                     }
+
+                    handHandling = EnumHandHandling.PreventDefault;
+                    return;
                 }
-            }*/
+            }
 
             if (block is BlockCookingContainer && slot.Itemstack.Attributes.HasAttribute("recipeCode"))
             {
@@ -273,26 +288,42 @@ namespace Vintagestory.GameContent
                 BlockEntityBarrel bebarrel = api.World.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityBarrel;
                 if (bebarrel != null)
                 {
-                    ItemStack stack = bebarrel.inventory[0].Itemstack;
+                    ItemStack stack = bebarrel.Inventory[0].Itemstack;
 
                     ItemStack[] ownContentStacks = GetNonEmptyContents(api.World, slot.Itemstack);
                     if (ownContentStacks == null || ownContentStacks.Length == 0)
                     {
                         if (stack != null && stack.Collectible.Attributes?.IsTrue("crockable") == true)
                         {
-                            SetContents(null, slot.Itemstack, new ItemStack[] { bebarrel.inventory[0].TakeOut(4) }, 1);
+                            float servingCapacity = slot.Itemstack.Block.Attributes["servingCapacity"].AsFloat(1);
+
+                            var foodstack = bebarrel.Inventory[0].TakeOut((int)servingCapacity * 4);
+                            float servingSize = foodstack.StackSize / 4f; 
+                            
+                            foodstack.StackSize = Math.Max(0, foodstack.StackSize / 4);
+
+                            SetContents(null, slot.Itemstack, new ItemStack[] { foodstack }, servingSize);
                             bebarrel.MarkDirty(true);
                             slot.MarkDirty();
                         }
                     }
+
                     // non-meal items (eg. pickled vegetables) can be placed from a crock INTO a barrel - this is useful eg. for cheese-making
                     else if (ownContentStacks.Length == 1 && slot.Itemstack.Attributes.GetString("recipeCode") == null)
                     {
-                        new DummySlot(ownContentStacks[0]).TryPutInto(api.World, bebarrel.inventory[0], ownContentStacks[0].StackSize);
-                        if (ownContentStacks[0].StackSize <= 0)
+                        var foodstack = ownContentStacks[0].Clone();
+                        foodstack.StackSize = (int)(foodstack.StackSize * quantityServings);
+                        new DummySlot(foodstack).TryPutInto(api.World, bebarrel.Inventory[0], foodstack.StackSize);
+                        foodstack.StackSize = (int)(foodstack.StackSize / quantityServings);
+
+                        if (foodstack.StackSize <= 0)
                         {
                             SetContents(slot.Itemstack, new ItemStack[0]);
+                        } else
+                        {
+                            SetContents(slot.Itemstack, new ItemStack[] { foodstack });
                         }
+
                         bebarrel.MarkDirty(true);
                         slot.MarkDirty();
                     }
@@ -338,6 +369,7 @@ namespace Vintagestory.GameContent
 
             return base.OnBlockInteractStart(world, byPlayer, blockSel);
         }
+
 
 
         public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
@@ -400,12 +432,20 @@ namespace Vintagestory.GameContent
 
             } else
             {
-                dsc.AppendLine("Contents:");
-                foreach (var stack in stacks)
+                if (inSlot.Itemstack.Attributes.HasAttribute("quantityServings"))
                 {
-                    if (stack == null) continue;
+                    double servings = inSlot.Itemstack.Attributes.GetDecimal("quantityServings");
+                    dsc.AppendLine(Lang.Get("{0} servings left", Math.Round(servings, 1)));
+                }
+                else
+                {
+                    dsc.AppendLine("Contents:");
+                    foreach (var stack in stacks)
+                    {
+                        if (stack == null) continue;
 
-                    dsc.AppendLine(stack.StackSize + "x  " + stack.GetName());
+                        dsc.AppendLine(stack.StackSize + "x  " + stack.GetName());
+                    }
                 }
             }
 
@@ -581,6 +621,7 @@ namespace Vintagestory.GameContent
                 capi.ObjectCache.Remove("blockcrockGuiMeshRefs");
             }
         }
+
 
     }
 }

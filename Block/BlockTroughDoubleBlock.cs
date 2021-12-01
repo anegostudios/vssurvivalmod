@@ -170,9 +170,9 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing)
+        public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing, int rndIndex = -1)
         {
-            return capi.BlockTextureAtlas.GetRandomColor(Textures["wood"].Baked.TextureSubId);
+            return capi.BlockTextureAtlas.GetRandomColor(Textures["wood"].Baked.TextureSubId, rndIndex);
         }
 
         public override int GetColorWithoutTint(ICoreClientAPI capi, BlockPos pos)

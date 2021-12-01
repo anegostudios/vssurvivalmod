@@ -22,13 +22,17 @@ namespace Vintagestory.GameContent
             
         }
 
+        public override ItemSlot LeftHandItemSlot => gearInv[15];
+        public override ItemSlot RightHandItemSlot => gearInv[16];
+
+
         public override void Initialize(EntityProperties properties, ICoreAPI api, long InChunkIndex3d)
         {
             base.Initialize(properties, api, InChunkIndex3d);
 
             if (gearInv == null)
             {
-                gearInv = new InventoryGeneric(15, "gear-" + EntityId, api, onNewSlot);
+                gearInv = new InventoryGeneric(17, "gear-" + EntityId, api, onNewSlot);
                 gearInv.SlotModified += GearInv_SlotModified;
             }
 
@@ -50,7 +54,7 @@ namespace Vintagestory.GameContent
             (Properties.Client.Renderer as EntityShapeRenderer)?.MarkShapeModified();
         }
 
-        private void GearInv_SlotModified(int t1)
+        private void GearInv_SlotModified(int slotid)
         {
             ITreeAttribute tree = new TreeAttribute();
             WatchedAttributes["inventory"] = tree;
@@ -61,6 +65,8 @@ namespace Vintagestory.GameContent
 
         private ItemSlot onNewSlot(int slotId, InventoryGeneric self)
         {
+            if (slotId >= 15) return new ItemSlotSurvival(self);
+
             EnumCharacterDressType type = (EnumCharacterDressType)slotId;
             ItemSlotCharacter slot = new ItemSlotCharacter(type, self);
             iconByDressType.TryGetValue(type, out slot.BackgroundIcon);
@@ -126,6 +132,12 @@ namespace Vintagestory.GameContent
                     }
                 } else
                 {
+                    if (slot.Itemstack.Collectible.Tool != null || slot.Itemstack.ItemAttributes?["toolrackTransform"].Exists == true)
+                    {
+                        handslot.TryPutInto(byEntity.World, RightHandItemSlot);
+                        return;
+                    }
+
                     if (!ItemSlotCharacter.IsDressType(slot.Itemstack, EnumCharacterDressType.ArmorBody) && !ItemSlotCharacter.IsDressType(slot.Itemstack, EnumCharacterDressType.ArmorHead) && !ItemSlotCharacter.IsDressType(slot.Itemstack, EnumCharacterDressType.ArmorLegs)) {
 
                         (byEntity.World.Api as ICoreClientAPI)?.TriggerIngameError(this, "cantplace", "Cannot place dresses or other non-armor items on armor stands");
@@ -166,7 +178,6 @@ namespace Vintagestory.GameContent
 
             if (!Alive || World.Side == EnumAppSide.Client || mode == 0)
             {
-                //base.OnInteract(byEntity, slot, hitPosition, mode);
                 return;
             }
 

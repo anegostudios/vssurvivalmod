@@ -1,78 +1,97 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
-using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
+    public interface IContainedInteractable
+    {
+        bool OnContainedInteractStart(BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel);
+        bool OnContainedInteractStep(float secondsUsed, BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel);
+        void OnContainedInteractStop(float secondsUsed, BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel);
+    }
+
+
+    public interface IContainedMeshSource
+    {
+        MeshData GenMesh(ItemStack itemstack, ITextureAtlasAPI targetAtlas, BlockPos atBlockPos);
+
+        string GetMeshCacheKey(ItemStack itemstack);
+    }
+
     public abstract class BlockEntityDisplay : BlockEntityContainer, ITexPositionSource
     {
-        
+        protected CollectibleObject nowTesselatingObj;
+        protected Shape nowTesselatingShape;
+        protected ICoreClientAPI capi;
+        protected MeshData[] meshes;
+        protected MealMeshCache ms;
+
+
         public Size2i AtlasSize => capi.BlockTextureAtlas.Size;
 
         public virtual string AttributeTransformCode => "onDisplayTransform";
 
-        public TextureAtlasPosition this[string textureCode]
+        public virtual TextureAtlasPosition this[string textureCode]
         {
             get
             {
-                AssetLocation texturePath=null;
+                Dictionary<string, CompositeTexture> textures = nowTesselatingObj is Item item ? item.Textures : (nowTesselatingObj as Block).Textures;
+                AssetLocation texturePath = null;
                 CompositeTexture tex;
-                if (nowTesselatingItem.Textures.TryGetValue(textureCode, out tex))
+
+                // Prio 1: Get from collectible textures
+                if (textures.TryGetValue(textureCode, out tex))
                 {
                     texturePath = tex.Baked.BakedName;
                 }
-                else
+
+                // Prio 2: Get from collectible textures, use "all" code
+                if (texturePath == null && textures.TryGetValue("all", out tex))
                 {
-                    if (nowTesselatingItem.Textures.TryGetValue("all", out tex))
-                    {
-                        texturePath = tex.Baked.BakedName;
-                    } else
-                    {
-                        nowTesselatingShape?.Textures.TryGetValue(textureCode, out texturePath);
-                    }
+                    texturePath = tex.Baked.BakedName;
                 }
 
+                // Prio 3: Get from currently tesselating shape
+                if (texturePath == null)
+                {
+                    nowTesselatingShape?.Textures.TryGetValue(textureCode, out texturePath);
+                }
+
+                // Prio 4: The code is the path
                 if (texturePath == null)
                 {
                     texturePath = new AssetLocation(textureCode);
                 }
 
-                TextureAtlasPosition texpos = capi.BlockTextureAtlas[texturePath];
-
-                
-
-                if (texpos == null)
-                {
-                    IAsset texAsset = capi.Assets.TryGet(texturePath.Clone().WithPathPrefixOnce("textures/").WithPathAppendixOnce(".png"));
-                    if (texAsset != null)
-                    {
-                        BitmapRef bmp = texAsset.ToBitmap(capi);
-                        capi.BlockTextureAtlas.InsertTextureCached(texturePath, bmp, out _, out texpos);
-                    }
-                    else
-                    {
-                        capi.World.Logger.Warning("For render in block " + Block.Code + ", item {0} defined texture {1}, not no such texture found.", nowTesselatingItem.Code, texturePath);
-                    }
-                }
-
-                return texpos;
+                return getOrCreateTexPos(texturePath);
             }
         }
 
-        protected Item nowTesselatingItem;
-        protected Shape nowTesselatingShape;
-        protected ICoreClientAPI capi;
-        protected MeshData[] meshes;
-        protected MealMeshCache ms;
+
+        protected TextureAtlasPosition getOrCreateTexPos(AssetLocation texturePath)
+        {
+            TextureAtlasPosition texpos = capi.BlockTextureAtlas[texturePath];
+
+            if (texpos == null)
+            {
+                IAsset texAsset = capi.Assets.TryGet(texturePath.Clone().WithPathPrefixOnce("textures/").WithPathAppendixOnce(".png"));
+                if (texAsset != null)
+                {
+                    BitmapRef bmp = texAsset.ToBitmap(capi);
+                    capi.BlockTextureAtlas.InsertTextureCached(texturePath, bmp, out _, out texpos);
+                }
+                else
+                {
+                    capi.World.Logger.Warning("For render in block " + Block.Code + ", item {0} defined texture {1}, not no such texture found.", nowTesselatingObj.Code, texturePath);
+                }
+            }
+
+            return texpos;
+        }
 
 
 
@@ -115,7 +134,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        protected virtual void updateMeshes()
+        public virtual void updateMeshes()
         {
             for (int i = 0; i < meshes.Length; i++)
             {
@@ -132,59 +151,56 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            ItemStack stack = Inventory[index].Itemstack;
-
-            MeshData mesh = genMesh(stack, index);
-
-            translateMesh(mesh, index);
-
+            MeshData mesh = genMesh(Inventory[index].Itemstack);
+            TranslateMesh(mesh, index);
             meshes[index] = mesh;
         }
 
-        protected virtual MeshData genMesh(ItemStack stack, int index)
+        protected virtual MeshData genMesh(ItemStack stack)
         {
             MeshData mesh;
-            ICoreClientAPI capi = Api as ICoreClientAPI;
-            if (stack.Class == EnumItemClass.Block)
+            var dynBlock = stack.Collectible as IContainedMeshSource;
+
+            if (dynBlock != null)
             {
-                if (stack.Block is BlockPie)
-                {
-                    mesh = ms.GetPieMesh(stack);
-                }
-                else mesh = capi.TesselatorManager.GetDefaultBlockMesh(stack.Block).Clone();
+                mesh = dynBlock.GenMesh(stack, capi.BlockTextureAtlas, Pos);
+                mesh.Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 0, Block.Shape.rotateY * GameMath.DEG2RAD, 0);
             }
             else
             {
-                nowTesselatingItem = stack.Item;
-                if (stack.Item.Shape != null)
+                ICoreClientAPI capi = Api as ICoreClientAPI;
+                if (stack.Class == EnumItemClass.Block)
                 {
+                    mesh = capi.TesselatorManager.GetDefaultBlockMesh(stack.Block).Clone();
+                }
+                else
+                {
+                    nowTesselatingObj = stack.Collectible;
                     nowTesselatingShape = capi.TesselatorManager.GetCachedShape(stack.Item.Shape.Base);
+                    capi.Tesselator.TesselateItem(stack.Item, out mesh, this);
+
+                    mesh.RenderPassesAndExtraBits.Fill((short)EnumChunkRenderPass.BlendNoCull);
                 }
+            }
 
-                capi.Tesselator.TesselateItem(stack.Item, out mesh, this);
+            if (stack.Collectible.Attributes?[AttributeTransformCode].Exists == true)
+            {
+                ModelTransform transform = stack.Collectible.Attributes?[AttributeTransformCode].AsObject<ModelTransform>();
+                transform.EnsureDefaultValues();
+                mesh.ModelTransform(transform);
+            }
 
-                if (stack.Collectible.Attributes?[AttributeTransformCode].Exists == true)
-                {
-                    ModelTransform transform = stack.Collectible.Attributes?[AttributeTransformCode].AsObject<ModelTransform>();
-                    transform.EnsureDefaultValues();
-                    mesh.ModelTransform(transform);
-                }
-
-                if (stack.Item.Shape == null || stack.Item.Shape.VoxelizeTexture)
-                {
-                    mesh.Rotate(new Vec3f(0.5f, 0.5f, 0.5f), GameMath.PIHALF, 0, 0);
-                    mesh.Scale(new Vec3f(0.5f, 0.5f, 0.5f), 0.33f, 0.5f, 0.33f);
-                    mesh.Translate(0, -7.5f / 16f, 0f);
-                }
-
-                mesh.RenderPassesAndExtraBits.Fill((byte)EnumChunkRenderPass.BlendNoCull);
-
+            if (stack.Class == EnumItemClass.Item && (stack.Item.Shape == null || stack.Item.Shape.VoxelizeTexture))
+            {
+                mesh.Rotate(new Vec3f(0.5f, 0.5f, 0.5f), GameMath.PIHALF, 0, 0);
+                mesh.Scale(new Vec3f(0.5f, 0.5f, 0.5f), 0.33f, 0.5f, 0.33f);
+                mesh.Translate(0, -7.5f / 16f, 0f);
             }
 
             return mesh;
         }
 
-        protected virtual void translateMesh(MeshData mesh, int index)
+        public virtual void TranslateMesh(MeshData mesh, int index)
         {
 
         }

@@ -56,7 +56,10 @@ namespace Vintagestory.GameContent
                 world.BlockAccessor.SetBlock(nextblock.BlockId, offsetedPos);
             }
 
-            slot.TakeOut(1);
+            if (player.WorldData.CurrentGameMode != EnumGameMode.Creative)
+            {
+                slot.TakeOut(1);
+            }
             slot.MarkDirty();
 
             if (nextblock.Sounds != null)

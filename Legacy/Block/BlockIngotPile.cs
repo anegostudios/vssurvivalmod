@@ -121,14 +121,14 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing)
+        public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing, int rndIndex = -1)
         {
             BlockEntityIngotPile be = capi.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityIngotPile;
-            if (be == null) return base.GetRandomColor(capi, pos, facing);
+            if (be == null) return base.GetRandomColor(capi, pos, facing, rndIndex);
             string metalType = be.MetalType;
-            if (metalType == null) return base.GetRandomColor(capi, pos, facing);
+            if (metalType == null) return base.GetRandomColor(capi, pos, facing, rndIndex);
 
-            return capi.BlockTextureAtlas.GetRandomColor(Textures[be.MetalType].Baked.TextureSubId);
+            return capi.BlockTextureAtlas.GetRandomColor(Textures[be.MetalType].Baked.TextureSubId, rndIndex);
         }
 
 

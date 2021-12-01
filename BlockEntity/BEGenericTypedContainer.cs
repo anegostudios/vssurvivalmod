@@ -18,8 +18,8 @@ namespace Vintagestory.GameContent
         internal InventoryGeneric inventory;
         public string type = "normal-generic";
         public string defaultType;
-
         public int quantitySlots = 16;
+        public int quantityColumns = 4;
         public string inventoryClassName = "chest";
         public string dialogTitleLangCode = "chestcontents";
         public bool retrieveOnly = false;
@@ -164,6 +164,8 @@ namespace Vintagestory.GameContent
 
                 dialogTitleLangCode = block.Attributes["dialogTitleLangCode"][type].AsString(dialogTitleLangCode);
                 quantitySlots = block.Attributes["quantitySlots"][type].AsInt(quantitySlots);
+                quantityColumns = block.Attributes["quantityColumns"][type].AsInt(4);
+
                 retrieveOnly = block.Attributes["retrieveOnly"][type].AsBool(false);
 
                 if (block.Attributes["typedOpenSound"][type].Exists)
@@ -259,7 +261,7 @@ namespace Vintagestory.GameContent
                     BinaryWriter writer = new BinaryWriter(ms);
                     writer.Write("BlockEntityInventory");
                     writer.Write(DialogTitle);
-                    writer.Write((byte)4);
+                    writer.Write((byte)quantityColumns);
                     TreeAttribute tree = new TreeAttribute();
                     inventory.ToTreeAttributes(tree);
                     tree.ToBytes(writer);

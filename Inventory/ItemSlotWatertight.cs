@@ -23,23 +23,27 @@ namespace Vintagestory.GameContent
             return base.CanTake();
         }
 
+
+
         protected override void ActivateSlotLeftClick(ItemSlot sourceSlot, ref ItemStackMoveOperation op)
         {
             IWorldAccessor world = inventory.Api.World;
-            BlockBucket bucketblock = sourceSlot.Itemstack?.Block as BlockBucket;
+            BlockLiquidContainerBase liqCntBlock = sourceSlot.Itemstack?.Block as BlockLiquidContainerBase;
             
-            if (bucketblock != null)
+            if (liqCntBlock != null)
             {
-                ItemStack bucketContents = bucketblock.GetContent(world, sourceSlot.Itemstack);
-                bool stackable = !Empty && itemstack.Equals(world, bucketContents, GlobalConstants.IgnoredStackAttributes);
+                ItemStack contentStack = liqCntBlock.GetContent(sourceSlot.Itemstack);
+                bool stackable = !Empty && itemstack.Equals(world, contentStack, GlobalConstants.IgnoredStackAttributes);
 
-                if ((Empty || stackable) && bucketContents != null)
+                if ((Empty || stackable) && contentStack != null)
                 {
+                    int stacksize = BlockLiquidContainerBase.GetTransferStackSize(liqCntBlock, contentStack, op?.ActingPlayer);
+
                     ItemStack bucketStack = sourceSlot.Itemstack;
-                    ItemStack takenContent = bucketblock.TryTakeContent(world, bucketStack, op.ActingPlayer?.Entity?.Controls.Sneak == true ? 10 : 1);
+                    ItemStack takenContentStack = liqCntBlock.TryTakeContent(bucketStack, stacksize);
                     sourceSlot.Itemstack = bucketStack;
-                    takenContent.StackSize += StackSize;
-                    this.itemstack = takenContent;
+                    takenContentStack.StackSize += StackSize;
+                    this.itemstack = takenContentStack;
                     MarkDirty();
                     return;
                 }
@@ -85,23 +89,25 @@ namespace Vintagestory.GameContent
         protected override void ActivateSlotRightClick(ItemSlot sourceSlot, ref ItemStackMoveOperation op)
         {
             IWorldAccessor world = inventory.Api.World;
-            BlockBucket bucketblock = sourceSlot.Itemstack?.Block as BlockBucket;
+            BlockLiquidContainerBase liqCntBlock = sourceSlot.Itemstack?.Block as BlockLiquidContainerBase;
 
-            if (bucketblock != null)
+            if (liqCntBlock != null)
             {
                 if (Empty) return;
 
-                ItemStack bucketContents = bucketblock.GetContent(world, sourceSlot.Itemstack);
+                ItemStack contentStack = liqCntBlock.GetContent(sourceSlot.Itemstack);
 
-                if (bucketContents == null)
+                float litres = op.ShiftDown ? liqCntBlock.CapacityLitres : liqCntBlock.TransferSizeLitres;
+
+                if (contentStack == null)
                 {
-                    TakeOut(bucketblock.TryPutContent(world, sourceSlot.Itemstack, Itemstack, 1));
+                    TakeOut(liqCntBlock.TryPutLiquid(sourceSlot.Itemstack, Itemstack, litres));
                     MarkDirty();
                 } else
                 {
-                    if (itemstack.Equals(world, bucketContents, GlobalConstants.IgnoredStackAttributes))
+                    if (itemstack.Equals(world, contentStack, GlobalConstants.IgnoredStackAttributes))
                     {
-                        TakeOut(bucketblock.TryPutContent(world, sourceSlot.Itemstack, bucketblock.GetContent(world, sourceSlot.Itemstack), 1));
+                        TakeOut(liqCntBlock.TryPutLiquid(sourceSlot.Itemstack, liqCntBlock.GetContent(sourceSlot.Itemstack), litres));
                         MarkDirty();
                         return;
                     }

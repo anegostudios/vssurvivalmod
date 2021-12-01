@@ -299,7 +299,12 @@ namespace Vintagestory.GameContent
 
 
 
-        public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing)
+        public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing, int rndIndex = -1)
+        {
+            return capi.BlockTextureAtlas.GetRandomColor(Textures["ceramic"].Baked.TextureSubId, rndIndex);
+        }
+
+        public override int GetRandomColor(ICoreClientAPI capi, ItemStack stack)
         {
             return capi.BlockTextureAtlas.GetRandomColor(Textures["ceramic"].Baked.TextureSubId);
         }

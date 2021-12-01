@@ -1,4 +1,5 @@
 ﻿using System;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
@@ -13,7 +14,21 @@ namespace Vintagestory.GameContent
         public override bool CanPlantStay(IBlockAccessor blockAccessor, BlockPos pos)
         {
             Block block = blockAccessor.GetBlock(pos.X, pos.Y - 1, pos.Z);
-            return (block.Fertility > 0) || (block is BlockSeaweed && block.LastCodePart() == "section");
+            return (block.Fertility > 0) || (block is BlockSeaweed && block.Variant["part"] == "section");
+        }
+
+        public override void OnJsonTesselation(ref MeshData sourceMesh, ref int[] lightRgbsByCorner, BlockPos pos, Block[] chunkExtBlocks, int extIndex3d)
+        {
+            int windData =
+                ((api.World.BlockAccessor.GetBlock(pos.X, pos.Y - 1, pos.Z) is BlockSeaweed) ? 1 : 0)
+                + ((api.World.BlockAccessor.GetBlock(pos.X, pos.Y - 2, pos.Z) is BlockSeaweed) ? 1 : 0)
+                + ((api.World.BlockAccessor.GetBlock(pos.X, pos.Y - 3, pos.Z) is BlockSeaweed) ? 1 : 0)
+            ;
+
+            for (int i = 0; i < sourceMesh.FlagsCount; i++)
+            {
+                sourceMesh.Flags[i] = (sourceMesh.Flags[i] & VertexFlags.ClearWindDataBitsMask) | windData;
+            }
         }
 
         public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, LCGRandom worldGenRand)

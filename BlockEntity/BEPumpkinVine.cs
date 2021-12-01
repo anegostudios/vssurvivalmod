@@ -447,10 +447,16 @@ namespace Vintagestory.GameContent
             }
             tree.SetInt("pumpkinGrowthTries", pumpkinGrowthTries);
 
-            tree.SetInt("parentPlantPosX", parentPlantPos.X);
-            tree.SetInt("parentPlantPosY", parentPlantPos.Y);
-            tree.SetInt("parentPlantPosZ", parentPlantPos.Z);
-            tree.SetInt("preferredGrowthDir", preferredGrowthDir.Index);
+            if (parentPlantPos != null)
+            {
+                tree.SetInt("parentPlantPosX", parentPlantPos.X);
+                tree.SetInt("parentPlantPosY", parentPlantPos.Y);
+                tree.SetInt("parentPlantPosZ", parentPlantPos.Z);
+            }
+            if (preferredGrowthDir != null)
+            {
+                tree.SetInt("preferredGrowthDir", preferredGrowthDir.Index);
+            }
             tree.SetInt("internalStage", internalStage);
         }
 

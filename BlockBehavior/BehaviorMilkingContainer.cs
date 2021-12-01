@@ -31,7 +31,7 @@ namespace Vintagestory.GameContent
             EntityBehaviorMilkable bh;
             if (entitySel != null && (bh = entitySel.Entity.GetBehavior<EntityBehaviorMilkable>()) != null)
             {
-                if (lcblock.GetContent(api.World, slot.Itemstack) != null)
+                if (lcblock.GetContent(slot.Itemstack) != null)
                 {
                     if (api is ICoreClientAPI capi)
                     {

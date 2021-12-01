@@ -24,14 +24,8 @@ namespace Vintagestory.GameContent
         {
             base.OnCollectTextures(api, textureDict);
 
-            climateColorMapInt = ClimateColorMap;
-            seasonColorMapInt = SeasonColorMap;
-
-            if (api.Side == EnumAppSide.Client && SeasonColorMap == null)
-            {
-                climateColorMapInt = (api as ICoreClientAPI).TesselatorManager.GetCachedShape(Shape.Base)?.Elements[2].ClimateColorMap;
-                seasonColorMapInt = (api as ICoreClientAPI).TesselatorManager.GetCachedShape(Shape.Base)?.Elements[2].SeasonColorMap;
-            }
+            climateColorMapInt = Attributes["climateColorMapForMap"].AsString();
+            seasonColorMapInt = Attributes["seasonColorMapForMap"].AsString();
         }
 
         public override void OnLoaded(ICoreAPI api)
@@ -150,32 +144,23 @@ namespace Vintagestory.GameContent
 
         public override BlockDropItemStack[] GetDropsForHandbook(ItemStack handbookStack, IPlayer forPlayer)
         {
-            bool isReed = Variant["type"] == "coopersreed";
-            return new BlockDropItemStack[]
-            {
-                new BlockDropItemStack(new ItemStack(api.World.GetItem(new AssetLocation(isReed ? "cattailtops" : "papyrustops")))),
-                new BlockDropItemStack(new ItemStack(api.World.GetItem(new AssetLocation(isReed ? "cattailroot" : "papyrusroot"))))
-            };
+            Block harvestedBlock = api.World.GetBlock(CodeWithVariant("state", "harvested"));
+            Block grownBlock = api.World.GetBlock(CodeWithVariant("state", "normal"));
+
+            return grownBlock.Drops.Append(harvestedBlock.Drops);
         }
 
         public override void OnBlockBroken(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)
         {
             if (world.Side == EnumAppSide.Server && (byPlayer == null || byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative))
             {
-                bool isReed = Variant["type"] == "coopersreed";
-                ItemStack drop = null;
-                if (Variant["state"] == "normal")
+                foreach (var bdrop in Drops)
                 {
-                    drop = new ItemStack(world.GetItem(new AssetLocation(isReed ? "cattailtops" : "papyrustops")));
-                }
-                else
-                {
-                    drop = new ItemStack(world.GetItem(new AssetLocation(isReed ? "cattailroot" : "papyrusroot")));
-                }
-
-                if (drop != null)
-                {
-                    world.SpawnItemEntity(drop, new Vec3d(pos.X + 0.5, pos.Y + 0.5, pos.Z + 0.5), null);
+                    ItemStack drop = bdrop.GetNextItemStack();
+                    if (drop != null)
+                    {
+                        world.SpawnItemEntity(drop, new Vec3d(pos.X + 0.5, pos.Y + 0.5, pos.Z + 0.5), null);
+                    }
                 }
 
                 world.PlaySoundAt(Sounds.GetBreakSound(byPlayer), pos.X, pos.Y, pos.Z, byPlayer);
@@ -241,9 +226,9 @@ namespace Vintagestory.GameContent
             return false;
         }
 
-        public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing)
+        public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing, int rndIndex = -1)
         {
-            return capi.World.ApplyColorMapOnRgba(ClimateColorMapForMap, SeasonColorMapForMap, capi.BlockTextureAtlas.GetRandomColor(Textures.Last().Value.Baked.TextureSubId), pos.X, pos.Y, pos.Z);
+            return capi.World.ApplyColorMapOnRgba(ClimateColorMapForMap, SeasonColorMapForMap, capi.BlockTextureAtlas.GetRandomColor(Textures.Last().Value.Baked.TextureSubId, rndIndex), pos.X, pos.Y, pos.Z);
             //return base.GetRandomColor(capi, pos, facing);
         }
 
@@ -275,9 +260,6 @@ namespace Vintagestory.GameContent
             }
 
             // water -> ice
-
-            if (Variant["type"] == "papyrus") return false;  //TODO: currently we do not have an ice version of Papyrus
-
             if (offThreadRandom.NextDouble() < 0.6)
             {
                 int rainY = world.BlockAccessor.GetRainMapHeightAt(pos);

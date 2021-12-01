@@ -58,10 +58,10 @@ namespace Vintagestory.GameContent
 
                 float dist = GameMath.Sqrt(plrpos.SquareDistanceTo(Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5));
 
-                // 1/log(x + 2) - 0.7
-                //http://fooplot.com/#W3sidHlwZSI6MCwiZXEiOiIxL2xvZyh4KzIpLTAuNyIsImNvbG9yIjoiIzAwMDAwMCJ9LHsidHlwZSI6MTAwMCwid2luZG93IjpbIi0yMi4zOTkzMzg5NDIzMDc2NTgiLCIzOC42MzU4MTczMDc2OTIyNyIsIi0xLjAwMzI5NTg5ODQzNzQ5OSIsIjIuMDQ4NDYxOTE0MDYyNDk4MiJdfV0-
+                // 1/log(x * 0.5)-0.8
+                // http://fooplot.com/#W3sidHlwZSI6MCwiZXEiOiIxL2xvZyh4KjAuNSktMC44IiwiY29sb3IiOiIjMDAwMDAwIn0seyJ0eXBlIjoxMDAwLCJ3aW5kb3ciOlsiMCIsIjUwIiwiMCIsIjEiXSwic2l6ZSI6WzY0OCwzOThdfV0-
 
-                float volume = GameMath.Clamp(1 / (float)Math.Log10(Math.Max(1, dist - 5)) - 0.7f, 0, 1);
+                float volume = GameMath.Clamp(1 / (float)Math.Log10(Math.Max(1, dist * 0.5)) - 0.8f, 0, 1);
 
                 track.Sound.SetVolume(volume);
                 track.Sound.SetPitch(GameMath.Clamp(1 - capi.Render.ShaderUniforms.GlitchStrength, 0.1f, 1));
@@ -121,7 +121,7 @@ namespace Vintagestory.GameContent
             track = (Api as ICoreClientAPI)?.StartTrack(new AssetLocation(trackstring), 99f, EnumSoundType.AmbientGlitchunaffected, onTrackLoaded);
 
             wasStopped = false;
-            Api.World.PlaySoundAt(new AssetLocation("sounds/block/vinyl"), Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5, null, false, 16);
+            Api.World.PlaySoundAt(new AssetLocation("sounds/block/vinyl"), Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5, null, false, 32);
             updateMeshesAndRenderer(Api as ICoreClientAPI);
         }
 

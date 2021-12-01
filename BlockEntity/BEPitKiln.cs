@@ -132,7 +132,7 @@ namespace Vintagestory.GameContent
 
 
 
-        public override bool OnPlayerInteract(IPlayer player, BlockSelection bs)
+        public override bool OnPlayerInteractStart(IPlayer player, BlockSelection bs)
         {
             ItemSlot hotbarSlot = player.InventoryManager.ActiveHotbarSlot;
 
@@ -478,10 +478,6 @@ namespace Vintagestory.GameContent
             Api.World.BlockAccessor.ExchangeBlock(Block.Id, Pos); // Forces a relight of this block
 
             MarkDirty(true);
-
-            
-
-            //Api.World.Logger.Debug(string.Format("Pit kiln @{0}: Ignited.", Pos));
         }
 
         public override string GetBlockName()

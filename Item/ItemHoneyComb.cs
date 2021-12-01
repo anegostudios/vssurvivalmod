@@ -11,9 +11,14 @@ namespace Vintagestory.GameContent
 {
     public class ItemHoneyComb : Item
     {
+        public float ContainedHoneyLitres = 0.25f;
+
         public bool CanSqueezeInto(Block block, BlockPos pos)
         {
-            if (block is BlockBucket || block?.Attributes?["contentItem2BlockCodes"]?["honeyportion"].Exists == true) return true;
+            if (block is BlockLiquidContainerTopOpened blcto)
+            {
+                return pos == null || !blcto.IsFull(pos);
+            }
 
             if (pos != null)
             {
@@ -21,7 +26,7 @@ namespace Vintagestory.GameContent
                 if (beg != null)
                 {
                     ItemSlot squeezeIntoSlot = beg.Inventory.FirstOrDefault(slot => slot.Itemstack?.Block != null && CanSqueezeInto(slot.Itemstack.Block, null));
-                    return squeezeIntoSlot != null;
+                    return squeezeIntoSlot != null && !(squeezeIntoSlot.Itemstack.Block as BlockLiquidContainerTopOpened).IsFull(squeezeIntoSlot.Itemstack);
                 }
             }
 
@@ -113,37 +118,25 @@ namespace Vintagestory.GameContent
             Block block = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
             if (!CanSqueezeInto(block, blockSel.Position)) return;
 
-            BlockBucket blockbucket = block as BlockBucket;
-            if (blockbucket != null)
+            ItemStack honeyStack = new ItemStack(world.GetItem(new AssetLocation("honeyportion")), 99999);
+
+            BlockLiquidContainerTopOpened blockCnt = block as BlockLiquidContainerTopOpened;
+            if (blockCnt != null)
             {
-                if (blockbucket.TryPutContent(world, blockSel.Position, new ItemStack(world.GetItem(new AssetLocation("honeyportion"))), 1) == 0) return;
+                if (blockCnt.TryPutLiquid(blockSel.Position, honeyStack, ContainedHoneyLitres) == 0) return;
             }
             else
             {
-                AssetLocation loc = null;
-
-                if (block.Attributes?["contentItem2BlockCodes"].Exists == true)
+                var beg = api.World.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityGroundStorage;
+                if (beg != null)
                 {
-                    loc = new AssetLocation(block.Attributes?["contentItem2BlockCodes"]["honeyportion"].AsString());
-                }
-
-                if (loc == null)
-                {
-                    var beg = api.World.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityGroundStorage;
-                    if (beg != null)
+                    ItemSlot squeezeIntoSlot = beg.Inventory.FirstOrDefault(gslot => gslot.Itemstack?.Block != null && CanSqueezeInto(gslot.Itemstack.Block, null));
+                    if (squeezeIntoSlot != null)
                     {
-                        ItemSlot squeezeIntoSlot = beg.Inventory.FirstOrDefault(gslot => gslot.Itemstack?.Block != null && CanSqueezeInto(gslot.Itemstack.Block, null));
-                        if (squeezeIntoSlot != null)
-                        {
-                            loc = new AssetLocation(squeezeIntoSlot.Itemstack.ItemAttributes?["contentItem2BlockCodes"]["honeyportion"].AsString());
-                            squeezeIntoSlot.Itemstack = new ItemStack(world.GetBlock(loc));
-                            beg.MarkDirty(true);
-                        }
+                        blockCnt = squeezeIntoSlot.Itemstack.Block as BlockLiquidContainerTopOpened;
+                        blockCnt.TryPutLiquid(squeezeIntoSlot.Itemstack, honeyStack, ContainedHoneyLitres);
+                        beg.MarkDirty(true);
                     }
-                }
-                else
-                {
-                    world.BlockAccessor.SetBlock(world.GetBlock(loc).BlockId, blockSel.Position);
                 }
             }
 

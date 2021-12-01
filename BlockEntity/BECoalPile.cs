@@ -230,13 +230,28 @@ namespace Vintagestory.GameContent
                 haveDoor |= block is BlockCokeOvenDoor && block.Variant["state"] == "closed";
             }
 
-            int brickCount = 0;
+            int centerCount = 0;
+            int cornerCount = 0;
             bl.WalkBlocks(Pos.AddCopy(-1, -1, -1), Pos.AddCopy(1, 1, 1), (block, pos) =>
             {
-                brickCount += block.Attributes?["cokeOvenViable"].AsBool(true) == true ? 1 : 0;
+                int dx = Math.Abs(Pos.X - pos.X);
+                int dz = Math.Abs(Pos.Z - pos.Z);
+                bool corner = dx == 1 && dz == 1;
+
+                bool viable = block.Attributes?["cokeOvenViable"].AsBool(true) == true;
+                if (viable)
+                {
+                    centerCount += !corner ? 1 : 0;
+                    cornerCount += corner ? 1 : 0;
+                }
             });
 
-            return haveDoor && brickCount >= 9 + 7 + 7 && bl.GetBlock(Pos.UpCopy()).Attributes?["cokeOvenViable"].AsBool(true) == true;
+            // bottom: 5 center, 4 corner
+            // mid: 3 center, 1 door, 4 corner
+            // top: 5 center, 4 corner
+            // 13 center, 12 corner. Allow 4 corner blocks to be missing
+
+            return haveDoor && centerCount >= 12 && cornerCount >= 8 && bl.GetBlock(Pos.UpCopy()).Attributes?["cokeOvenViable"].AsBool(true) == true;
         }
 
         public override bool OnPlayerInteract(IPlayer byPlayer)
@@ -469,11 +484,11 @@ namespace Vintagestory.GameContent
             ambientSound?.Dispose();
         }
 
-        public override void OnBlockBroken()
+        public override void OnBlockBroken(IPlayer byPlayer = null)
         {
             if (!burning)
             {
-                base.OnBlockBroken();
+                base.OnBlockBroken(byPlayer);
             }
 
             ambientSound?.Dispose();

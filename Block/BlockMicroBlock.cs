@@ -171,36 +171,39 @@ namespace Vintagestory.GameContent
 
         public override byte[] GetLightHsv(IBlockAccessor blockAccessor, BlockPos pos, ItemStack stack = null)
         {
-            // Causes relighting issues
-            /*int[] matids;
-            float sizerel=1;
-
+            int[] matids;
             if (pos != null)
             {
-                BlockEntityChisel bec = blockAccessor.GetBlockEntity(pos) as BlockEntityChisel;
-                if (bec?.MaterialIds == null)
-                {
-                    return base.GetLightHsv(blockAccessor, pos, stack);
-                }
-
-                matids = bec.MaterialIds;
-                sizerel = bec.sizeRel;
-
-            } else
+                BlockEntityMicroBlock bec = blockAccessor.GetBlockEntity(pos) as BlockEntityMicroBlock;
+                return bec?.LightHsv ?? this.LightHsv;
+            }
+            else
             {
                 matids = (stack.Attributes?["materials"] as IntArrayAttribute)?.value;
             }
 
+            byte[] hsv = new byte[3];
+            int q = 0;
             for (int i = 0; i < matids.Length; i++)
             {
                 Block block = blockAccessor.GetBlock(matids[i]);
                 if (block.LightHsv[2] > 0)
                 {
-                    return new byte[] { block.LightHsv[0], block.LightHsv[1], (byte)(block.LightHsv[2] * sizerel) };
+                    hsv[0] += block.LightHsv[0];
+                    hsv[1] += block.LightHsv[1];
+                    hsv[2] += block.LightHsv[2];
+                    q++;
                 }
-            }*/
+            }
 
-            return base.GetLightHsv(blockAccessor, pos, stack);
+            if (q == 0) return hsv;
+
+            hsv[0] = (byte)(hsv[0] / q);
+            hsv[1] = (byte)(hsv[1] / q);
+            hsv[2] = (byte)(hsv[2] / q);
+
+
+            return hsv;
         }
 
         
@@ -433,7 +436,7 @@ namespace Vintagestory.GameContent
             return base.GetSelectionBoxes(blockAccessor, pos);
         }
 
-        public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing)
+        public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing, int rndIndex = -1)
         {
             BlockEntityMicroBlock be = capi.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityMicroBlock;
             if (be?.MaterialIds != null && be.MaterialIds.Length > 0)
@@ -441,10 +444,10 @@ namespace Vintagestory.GameContent
                 Block block = capi.World.GetBlock(be.MaterialIds[0]);
                 if (block is BlockMicroBlock) return 0; // Prevent-chisel-ception. Happened to WQP, not sure why
 
-                return block.GetRandomColor(capi, pos, facing);
+                return block.GetRandomColor(capi, pos, facing, rndIndex);
             }
 
-            return base.GetRandomColor(capi, pos, facing);
+            return base.GetRandomColor(capi, pos, facing, rndIndex);
         }
 
 

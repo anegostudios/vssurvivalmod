@@ -48,6 +48,25 @@ namespace Vintagestory.GameContent
         public float CbScaleYByLayer = 0;
 
         public int MaxFireable = 9999;
+
+        public GroundStorageProperties Clone()
+        {
+            return new GroundStorageProperties()
+            {
+                Layout = Layout,
+                PlaceRemoveSound = PlaceRemoveSound,
+                RandomizeSoundPitch = RandomizeSoundPitch,
+                StackingCapacity = StackingCapacity,
+                StackingModel = StackingModel,
+                StackingTextures = StackingTextures,
+                MaxStackingHeight = MaxStackingHeight,
+                TransferQuantity = TransferQuantity,
+                BulkTransferQuantity = BulkTransferQuantity,
+                CollisionBox = CollisionBox,
+                CbScaleYByLayer = CbScaleYByLayer,
+                MaxFireable = MaxFireable
+            };
+        }
     }
 
 
@@ -116,7 +135,7 @@ namespace Vintagestory.GameContent
             BlockEntity beAbove = world.BlockAccessor.GetBlockEntity(blockSel.Position.UpCopy());
             if (be is BlockEntityGroundStorage || beAbove is BlockEntityGroundStorage)
             {
-                if (((be as BlockEntityGroundStorage) ?? (beAbove as BlockEntityGroundStorage)).OnPlayerInteract(byPlayer, blockSel))
+                if (((be as BlockEntityGroundStorage) ?? (beAbove as BlockEntityGroundStorage)).OnPlayerInteractStart(byPlayer, blockSel))
                 {
                     handHandling = EnumHandHandling.PreventDefault;
                 }

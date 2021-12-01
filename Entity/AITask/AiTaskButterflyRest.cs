@@ -122,11 +122,13 @@ namespace Vintagestory.GameContent
                 Block block = entity.World.BlockAccessor.GetBlock(tmpPos);
                 if (block.IsLiquid()) return false;
 
+                bool weak = block.VertexFlags?.WindMode == EnumWindBitMode.WeakWind || block.VertexFlags?.WindMode == EnumWindBitMode.TallBend;
+
                 if (block.Attributes?.IsTrue("butterflyFeed") == true)
                 {
                     double topPos = block.Attributes["sitHeight"].AsDouble(block.TopMiddlePos.Y);
 
-                    entity.WatchedAttributes.SetDouble("windWaveIntensity", block.VertexFlags.GrassWindWave ? (block.VertexFlags.WeakWave ? topPos / 2 : topPos) : 0);
+                    entity.WatchedAttributes.SetDouble("windWaveIntensity", block.VertexFlags.WindMode != EnumWindBitMode.NoWind ? (weak ? topPos / 2 : topPos) : 0);
 
                     MainTarget = tmpPos.ToVec3d().Add(block.TopMiddlePos.X, topPos, block.TopMiddlePos.Z);
                     return true;
@@ -135,7 +137,7 @@ namespace Vintagestory.GameContent
                 if (block.SideSolid[BlockFacing.UP.Index])
                 {
                     double topPos = block.TopMiddlePos.Y;
-                    entity.WatchedAttributes.SetDouble("windWaveIntensity", block.VertexFlags?.GrassWindWave == true ? (block.VertexFlags.WeakWave ? topPos / 2 : topPos) : 0);
+                    entity.WatchedAttributes.SetDouble("windWaveIntensity", block.VertexFlags?.WindMode != EnumWindBitMode.NoWind ? (weak ? topPos / 2 : topPos) : 0);
                     MainTarget = tmpPos.ToVec3d().Add(block.TopMiddlePos.X, topPos, block.TopMiddlePos.Z);
                     return true;
                 }

@@ -105,12 +105,7 @@ namespace Vintagestory.GameContent
 
             metalVoxelMesh.XyzFaces = (byte[])CubeMeshUtil.CubeFaceIndices.Clone();
             metalVoxelMesh.XyzFacesCount = 6;
-
-            //metalVoxelMesh.ColorMapIds = new int[6];
-            //metalVoxelMesh.TintsCount = 6;
-
-            for (int i = 0; i < metalVoxelMesh.Rgba.Length; i++) metalVoxelMesh.Rgba[i] = 255;
-            //metalVoxelMesh.Rgba2 = null;
+            metalVoxelMesh.Rgba.Fill((byte)255);
 
 
             MeshData slagVoxelMesh = metalVoxelMesh.Clone();

@@ -12,6 +12,20 @@ namespace Vintagestory.GameContent
             return true;
         }
 
+        public override void OnBlockBroken(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1)
+        {
+            var block = world.BlockAccessor.GetBlock(pos.DownCopy()) as BlockFruitPress;
+            if (block != null) block.OnBlockBroken(world, pos.DownCopy(), byPlayer, dropQuantityMultiplier);
+
+            base.OnBlockBroken(world, pos, byPlayer, dropQuantityMultiplier);
+        }
+
+        public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
+        {
+            var block = world.BlockAccessor.GetBlock(pos.DownCopy()) as BlockFruitPress;
+            if (block != null) return block.OnPickBlock(world, pos.DownCopy());
+            return base.OnPickBlock(world, pos);
+        }
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
@@ -51,5 +65,12 @@ namespace Vintagestory.GameContent
             return base.GetPlacedBlockInteractionHelp(world, selection, forPlayer);
         }
 
+        public override string GetPlacedBlockInfo(IWorldAccessor world, BlockPos pos, IPlayer forPlayer)
+        {
+            var block = world.BlockAccessor.GetBlock(pos.DownCopy()) as BlockFruitPress;
+            if (block != null) return block.GetPlacedBlockInfo(world, pos.DownCopy(), forPlayer);
+
+            return base.GetPlacedBlockInfo(world, pos, forPlayer);
+        }
     }
 }

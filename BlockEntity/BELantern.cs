@@ -41,9 +41,9 @@ namespace Vintagestory.GameContent
             setLightColor(origlightHsv, lightHsv, glass);
         }
 
-        public override void OnBlockBroken()
+        public override void OnBlockBroken(IPlayer byPlayer = null)
         {
-            base.OnBlockBroken();
+            base.OnBlockBroken(byPlayer);
 
             Api.World.BlockAccessor.RemoveBlockLight(lightHsv, Pos);
         }

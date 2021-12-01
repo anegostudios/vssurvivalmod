@@ -26,8 +26,8 @@ namespace Vintagestory.GameContent
 
             for (int i = 0; i < sourceMesh.FlagsCount; i++)
             {
-                sourceMesh.Flags[i] &= VertexFlags.clearNormalBits;
-                sourceMesh.Flags[i] |= VertexFlags.NormalToPackedInt(0, 1, 0) << 15;
+                sourceMesh.Flags[i] &= VertexFlags.ClearNormalBitMask;
+                sourceMesh.Flags[i] |= VertexFlags.PackNormal(0, 1, 0);
             }
         }
     }
@@ -39,6 +39,8 @@ namespace Vintagestory.GameContent
 
         protected bool climateColorMapping = false;
         protected bool tallGrassColorMapping = false;
+
+        int ExtraBend = 0;
 
 
         public override void OnLoaded(ICoreAPI api)
@@ -59,7 +61,7 @@ namespace Vintagestory.GameContent
             climateColorMapping = EntityClass == "Sapling";
             tallGrassColorMapping = Code.Path == "flower-lilyofthevalley-free";
 
-            WaveFlagMinY = 0.5f;
+            ExtraBend = (Attributes?["extraBend"].AsInt(0) ?? 0) << VertexFlags.WindDataBitsPos;
         }
 
         public float AdjustYPosition(Block[] chunkExtBlocks, int extIndex3d)
@@ -70,7 +72,7 @@ namespace Vintagestory.GameContent
 
         public override void OnJsonTesselation(ref MeshData sourceMesh, ref int[] lightRgbsByCorner, BlockPos pos, Block[] chunkExtBlocks, int extIndex3d)
         {
-            if (VertexFlags.GrassWindWave)
+            if (VertexFlags.WindMode == EnumWindBitMode.NormalWind)
             {
                 bool waveOff = (byte)(lightRgbsByCorner[24] >> 24) < 159;  //corresponds with a sunlight level of less than 14
 
@@ -81,8 +83,8 @@ namespace Vintagestory.GameContent
 
         void setLeaveWaveFlags(MeshData sourceMesh, bool off)
         {
-            int grassWave = VertexFlags.All;
-            int clearFlags = VertexFlags.clearWaveBits;
+            int allFlags = VertexFlags.All;
+            int clearFlags = VertexFlags.WindBitsMask;
             int verticesCount = sourceMesh.VerticesCount;
 
             // Iterate over each element face
@@ -92,7 +94,7 @@ namespace Vintagestory.GameContent
 
                 if (!off && sourceMesh.xyz[vertexNum * 3 + 1] > 0.5)
                 {
-                    flag |= grassWave;
+                    flag |= allFlags | ExtraBend;
                 }
                 sourceMesh.Flags[vertexNum] = flag;
             }
@@ -117,7 +119,6 @@ namespace Vintagestory.GameContent
             if (!CanPlantStay(world.BlockAccessor, pos))
             {
                 world.BlockAccessor.BreakBlock(pos, null);
-                //world.BlockAccessor.TriggerNeighbourBlockUpdate(pos); - Why is this here. BreakBlock already updates neighbours
             }
         }
 
@@ -136,16 +137,16 @@ namespace Vintagestory.GameContent
 
         
 
-        public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing)
+        public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing, int rndIndex = -1)
         {
-            if (snowLevel > 0) return snowLayerBlock.GetRandomColor(capi, pos, facing);
+            if (snowLevel > 0) return snowLayerBlock.GetRandomColor(capi, pos, facing, rndIndex);
 
             if (tallGrassColorMapping)
             {
-                return tallGrassBlock.GetRandomColor(capi, pos, BlockFacing.UP);
+                return tallGrassBlock.GetRandomColor(capi, pos, BlockFacing.UP, rndIndex);
             }
 
-            int color = base.GetRandomColor(capi, pos, facing);
+            int color = base.GetRandomColor(capi, pos, facing, rndIndex);
             if (climateColorMapping)
             {
                 color = capi.World.ApplyColorMapOnRgba(ClimateColorMap, SeasonColorMap, color, pos.X, pos.Y, pos.Z);

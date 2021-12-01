@@ -33,10 +33,10 @@ namespace Vintagestory.GameContent
             get { return startDuration - remainingBurnDuration; }
         }
 
-        public API.Common.Action<float> OnFireTick;
-        public API.Common.Action<bool> OnFireDeath;
-        public API.Common.ActionBoolReturn ShouldBurn;
-        public API.Common.ActionBoolReturn<BlockPos> OnCanBurn;
+        public Action<float> OnFireTick;
+        public Action<bool> OnFireDeath;
+        public ActionBoolReturn ShouldBurn;
+        public ActionBoolReturn<BlockPos> OnCanBurn;
 
 
         public bool IsBurning;
@@ -72,13 +72,9 @@ namespace Vintagestory.GameContent
                     Api.World.BlockAccessor.SetBlock(0, FuelPos);
                     Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(FuelPos);
                     TrySpreadTo(FuelPos);
-
-                    //Api.World.Logger.Debug(string.Format("Fire @{0}: Destroy fuel @ {1}.", FirePos, FuelPos));
                 }
 
                 Api.World.BlockAccessor.SetBlock(0, FirePos);
-
-                //Api.World.Logger.Debug(string.Format("Fire @{0}: Destroy fire.", FirePos));
 
                 Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(FirePos);
             };
@@ -214,6 +210,12 @@ namespace Vintagestory.GameContent
                 {
                     entity.Ignite();
                 }
+            }
+
+            if (FuelPos != FirePos && Api.World.BlockAccessor.GetBlock(FirePos).LiquidCode == "water")
+            {
+                KillFire(false);
+                return;
             }
 
             if (Api.World.BlockAccessor.GetRainMapHeightAt(FirePos.X, FirePos.Z) <= FirePos.Y)   // It's more efficient to do this quick check before GetPrecipitation
