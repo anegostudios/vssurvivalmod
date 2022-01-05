@@ -67,7 +67,7 @@ namespace Vintagestory.GameContent
         ITexPositionSource tmpTextureSource;
 
         TextureAtlasPosition labelTexturePos;
-
+        
         public CrateProperties Props;
 
         public string Subtype => Props.VariantByGroup == null ? "" : Variant[Props.VariantByGroup];
@@ -84,7 +84,10 @@ namespace Vintagestory.GameContent
 
                 TextureAtlasPosition pos = tmpTextureSource[curType + "-" + textureCode];
                 if (pos == null) pos = tmpTextureSource[textureCode];
-                if (pos == null) pos = (api as ICoreClientAPI).BlockTextureAtlas.UnknownTexturePosition;
+                if (pos == null)
+                {
+                    pos = (api as ICoreClientAPI).BlockTextureAtlas.UnknownTexturePosition;
+                }
                 return pos;
             }
         }
@@ -104,6 +107,17 @@ namespace Vintagestory.GameContent
             return base.GetSelectionBoxes(blockAccessor, pos);
         }
 
+        Cuboidf[] closedCollBoxes = new Cuboidf[] { new Cuboidf(0.0625f, 0, 0.0625f, 0.9375f, 0.9375f, 0.9375f) };
+        public override Cuboidf[] GetCollisionBoxes(IBlockAccessor blockAccessor, BlockPos pos)
+        {
+            BlockEntityCrate be = blockAccessor.GetBlockEntity(pos) as BlockEntityCrate;
+            if (be != null && be.LidState == "closed") {
+                return closedCollBoxes;
+            }
+
+            return base.GetCollisionBoxes(blockAccessor, pos);
+        }
+
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
@@ -114,6 +128,8 @@ namespace Vintagestory.GameContent
             }
 
             Props = Attributes.AsObject<CrateProperties>(null, Code.Domain);
+
+            PriorityInteract = true;
         }
 
         public override bool DoPlaceBlock(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ItemStack byItemStack)
@@ -178,7 +194,10 @@ namespace Vintagestory.GameContent
                 CompositeShape cshape = Props[type].Shape;
                 var rot = ShapeInventory == null ? null : new Vec3f(ShapeInventory.rotateX, ShapeInventory.rotateY, ShapeInventory.rotateZ);
 
-                var mesh = GenMesh(capi, type, label, lidState, cshape, rot);
+                var contentStacks = GetNonEmptyContents(capi.World, itemstack);
+                var contentStack = contentStacks == null || contentStacks.Length == 0 ? null : contentStacks[0];
+
+                var mesh = GenMesh(capi, contentStack, type, label, lidState, cshape, rot);
                 meshrefs[key] = renderinfo.ModelRef = capi.Render.UploadMesh(mesh);
             }
         }
@@ -221,7 +240,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public MeshData GenMesh(ICoreClientAPI capi, string type, string label, string lidState, CompositeShape cshape, Vec3f rotation = null)
+        public MeshData GenMesh(ICoreClientAPI capi, ItemStack contentStack, string type, string label, string lidState, CompositeShape cshape, Vec3f rotation = null)
         {
             if (lidState == "opened")
             {
@@ -241,6 +260,12 @@ namespace Vintagestory.GameContent
             {
                 var meshLabel = GenLabelMesh(capi, label, tmpTextureSource[labelProps.Texture], false, rotation);
                 mesh.AddMeshData(meshLabel);
+            }
+
+            if (contentStack != null && lidState != "closed")
+            {
+                var contentMesh = genContentMesh(capi, contentStack, rotation);
+                if (contentMesh != null) mesh.AddMeshData(contentMesh);
             }
 
 
@@ -267,6 +292,25 @@ namespace Vintagestory.GameContent
         }
 
 
+        protected MeshData genContentMesh(ICoreClientAPI capi, ItemStack contentStack, Vec3f rotation = null)
+        {
+            float fillHeight;
+
+            var contentSource = BlockBarrel.getContentTexture(capi, contentStack, out fillHeight);
+
+            if (contentSource != null)
+            {
+                Shape shape = capi.Assets.TryGet("shapes/block/wood/crate/contents.json").ToObject<Shape>();
+                MeshData contentMesh;
+                capi.Tesselator.TesselateShape("cratecontents", shape, out contentMesh, contentSource, rotation);
+                contentMesh.Translate(0, fillHeight, 0);
+                return contentMesh;
+            }
+
+            return null;
+        }
+
+
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
         {
             ItemStack stack = new ItemStack(this);
@@ -275,8 +319,11 @@ namespace Vintagestory.GameContent
             if (be != null)
             {
                 stack.Attributes.SetString("type", be.type);
-                stack.Attributes.SetString("label", be.label);
-                stack.Attributes.SetString("lidState", be.lidState);
+                if (be.label != null && be.label.Length > 0)
+                {
+                    stack.Attributes.SetString("label", be.label);
+                }
+                stack.Attributes.SetString("lidState", be.preferredLidState);
             }
             else
             {
@@ -363,17 +410,35 @@ namespace Vintagestory.GameContent
         }
 
 
-
-
-
-
-
-
-
-
-
-
-
+        public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
+        {
+            return base.GetPlacedBlockInteractionHelp(world, selection, forPlayer).Append(new WorldInteraction[] {
+                new WorldInteraction()
+                {
+                    ActionLangCode = "blockhelp-crate-add",
+                    MouseButton = EnumMouseButton.Right,
+                    HotKeyCode = "sneak"
+                },
+                new WorldInteraction()
+                {
+                    ActionLangCode = "blockhelp-crate-addall",
+                    MouseButton = EnumMouseButton.Right,
+                    HotKeyCodes = new string[] { "sneak", "sprint" }
+                },
+                new WorldInteraction()
+                {
+                    ActionLangCode = "blockhelp-crate-remove",
+                    MouseButton = EnumMouseButton.Right,
+                    HotKeyCode = null
+                },
+                new WorldInteraction()
+                {
+                    ActionLangCode = "blockhelp-crate-removeall",
+                    MouseButton = EnumMouseButton.Right,
+                    HotKeyCode = "sprint"
+                }
+            });
+        }
 
     }
 

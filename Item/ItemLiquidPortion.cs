@@ -19,7 +19,7 @@ namespace Vintagestory.GameContent
 
             if (entityItem.World.Side == EnumAppSide.Server)
             {
-                WaterTightContainableProps props = BlockLiquidContainerBase.GetInContainerProps(entityItem.Itemstack);
+                WaterTightContainableProps props = BlockLiquidContainerBase.GetContainableProps(entityItem.Itemstack);
                 float litres = (float)entityItem.Itemstack.StackSize / props.ItemsPerLitre;
 
                 entityItem.World.SpawnCubeParticles(entityItem.SidedPos.XYZ, entityItem.Itemstack, 0.75f, (int)(litres * 2), 0.45f);

@@ -208,6 +208,8 @@ namespace Vintagestory.ServerMods
 
                 float chance = 0.003f * forestNess * bPatch.Chance * bpc.ChanceMultiplier.nextFloat();
 
+                //if (bPatch.blockCodes[0].Path.Contains("mushroom")) chance *= 20; - for debugging
+
                 while (chance-- > rnd.NextDouble())
                 {
                     int dx = rnd.NextInt(2 * radius) - radius;
@@ -228,6 +230,13 @@ namespace Vintagestory.ServerMods
 
                     if (bpc.IsPatchSuitableUnderTree(bPatch, worldheight, climate, y))
                     {
+                        int regionX = pos.X / blockAccessor.RegionSize;
+                        int regionZ = pos.Z / blockAccessor.RegionSize;
+                        if (bPatch.MapCode != null && rnd.NextInt(255) > genPatchesSystem.GetPatchDensity(bPatch.MapCode, tmpPos.X, tmpPos.Z, blockAccessor.GetMapRegion(regionX, regionZ)))
+                        {
+                            continue;
+                        }
+
                         int firstBlockId = 0;
                         bool found = true;
 
@@ -290,12 +299,20 @@ namespace Vintagestory.ServerMods
 
                     if (bpc.IsPatchSuitableUnderTree(blockPatch, worldheight, climate, tmpPos.Y))
                     {
+                        int regionX = pos.X / blockAccessor.RegionSize;
+                        int regionZ = pos.Z / blockAccessor.RegionSize;
+                        if (blockPatch.MapCode != null && rnd.NextInt(255) > genPatchesSystem.GetPatchDensity(blockPatch.MapCode, tmpPos.X, tmpPos.Z, blockAccessor.GetMapRegion(regionX, regionZ)))
+                        {
+                            continue;
+                        }
+
                         int index = rnd.NextInt(blockPatch.Blocks.Length);
                         blockPatch.Blocks[index].TryPlaceBlockForWorldGen(blockAccessor, tmpPos, facing, rnd);
                     }
                 }
             }
         }
+
 
 
         /// <summary>

@@ -190,7 +190,7 @@ namespace Vintagestory.GameContent
 
         public AlloyRecipe GetMatchingAlloy(IWorldAccessor world, ItemStack[] stacks)
         {
-            List<AlloyRecipe> alloys = world.Alloys;
+            List<AlloyRecipe> alloys = api.GetMetalAlloys();
             if (alloys == null) return null;
 
             for (int j = 0; j < alloys.Count; j++)

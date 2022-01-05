@@ -69,7 +69,7 @@ namespace Vintagestory.ServerMods
             }
             IAsset asset = api.Assets.Get("worldgen/blockpatches.json");
             bpc = asset.ToObject<BlockPatchConfig>();
-            bpc.ResolveBlockIds(api, rockstrata);
+            bpc.ResolveBlockIds(api, rockstrata, rnd);
         }
 
 

@@ -31,7 +31,7 @@ namespace Vintagestory.GameContent
 
             if (api.Side == EnumAppSide.Server)
             {
-                GetBehavior<EntityBehaviorTaskAI>().taskManager.OnTaskStarted += EntityGlowingAgent_OnTaskStarted;
+                GetBehavior<EntityBehaviorTaskAI>().TaskManager.OnTaskStarted += EntityGlowingAgent_OnTaskStarted;
             } else
             {
                 WatchedAttributes.RegisterModifiedListener("aggroTime", () => { aggroTime = WatchedAttributes.GetFloat("aggroTime"); });

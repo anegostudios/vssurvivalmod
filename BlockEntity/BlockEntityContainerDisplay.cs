@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -12,6 +13,19 @@ namespace Vintagestory.GameContent
         bool OnContainedInteractStart(BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel);
         bool OnContainedInteractStep(float secondsUsed, BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel);
         void OnContainedInteractStop(float secondsUsed, BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel);
+    }
+
+    public interface IContainedCustomName
+    {
+        string GetContainedInfo(ItemSlot inSlot);
+
+        /// <summary>
+        /// Return null to use default title
+        /// </summary>
+        /// <param name="inSlot"></param>
+        /// <param name="quantity"></param>
+        /// <returns></returns>
+        string GetContainedName(ItemSlot inSlot, int quantity);
     }
 
 
@@ -176,7 +190,11 @@ namespace Vintagestory.GameContent
                 else
                 {
                     nowTesselatingObj = stack.Collectible;
-                    nowTesselatingShape = capi.TesselatorManager.GetCachedShape(stack.Item.Shape.Base);
+                    nowTesselatingShape = null;
+                    if (stack.Item.Shape != null)
+                    {
+                        nowTesselatingShape = capi.TesselatorManager.GetCachedShape(stack.Item.Shape.Base);
+                    }
                     capi.Tesselator.TesselateItem(stack.Item, out mesh, this);
 
                     mesh.RenderPassesAndExtraBits.Fill((short)EnumChunkRenderPass.BlendNoCull);
@@ -187,6 +205,11 @@ namespace Vintagestory.GameContent
             {
                 ModelTransform transform = stack.Collectible.Attributes?[AttributeTransformCode].AsObject<ModelTransform>();
                 transform.EnsureDefaultValues();
+                mesh.ModelTransform(transform);
+
+                transform.Rotation.X = 0;
+                transform.Rotation.Y = Block.Shape.rotateY;
+                transform.Rotation.Z = 0;
                 mesh.ModelTransform(transform);
             }
 

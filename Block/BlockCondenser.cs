@@ -6,6 +6,8 @@ namespace Vintagestory.GameContent
 {
     public class BlockCondenser : BlockLiquidContainerTopOpened
     {
+        public override bool AllowHeldLiquidTransfer => false;
+
 
         public override bool DoParticalSelection(IWorldAccessor world, BlockPos pos)
         {

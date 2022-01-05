@@ -72,7 +72,7 @@ namespace Vintagestory.GameContent
             BlockFacing facing = BlockFacing.FromCode(block.LastCodePart());
             if (facing == null) return;
 
-            float wallOffset = block.LastCodePart(1) == "wall" ? 0.22f : 0;
+            float wallOffset = block.Variant["attachment"] == "wall" ? 0.22f : 0;
 
             switch (facing.Index)
             {

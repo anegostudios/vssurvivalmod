@@ -101,7 +101,7 @@ namespace Vintagestory.GameContent
 
                 float deg45 = GameMath.PIHALF / 2;
                 float roundRad = ((int)Math.Round(angleHor / deg45)) * deg45;
-                bect.MeshAngle = roundRad;
+                bect.MeshAngleRad = roundRad;
             }
 
 

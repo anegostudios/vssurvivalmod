@@ -11,8 +11,13 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockEntityCanvas : BlockEntity
+    public class BlockEntityRiftWard : BlockEntity
     {
+        
+        public BlockEntityRiftWard()
+        {
+        }
+
 
     }
 }

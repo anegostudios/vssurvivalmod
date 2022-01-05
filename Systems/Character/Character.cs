@@ -352,6 +352,23 @@ namespace Vintagestory.GameContent
             return false;
         }
 
+        public bool HasTrait(IPlayer player, string trait)
+        {
+            string classcode = player.Entity.WatchedAttributes.GetString("characterClass");
+            CharacterClass charclass;
+            if (classcode == null) return true;
+
+            if (characterClassesByCode.TryGetValue(classcode, out charclass))
+            {
+                if (charclass.Traits.Contains(trait)) return true;
+
+                string[] extraTraits = player.Entity.WatchedAttributes.GetStringArray("extraTraits");
+                if (extraTraits != null && extraTraits.Contains(trait)) return true;
+            }
+
+            return false;
+        }
+
 
         public override void StartServerSide(ICoreServerAPI api)
         {

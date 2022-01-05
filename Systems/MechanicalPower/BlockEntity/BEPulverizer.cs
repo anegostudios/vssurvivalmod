@@ -110,7 +110,6 @@ namespace Vintagestory.GameContent.Mechanics
             {
                 accumLeft += dt * nwspeed;
 
-                //TODO: instead tie this in with actual strikes from the beBehavior
                 if (accumLeft > 5)
                 {
                     accumLeft = 0;
@@ -198,7 +197,9 @@ namespace Vintagestory.GameContent.Mechanics
             int index = 0;
             result[index++] = pulvFrame;
             for (int i = 0; i < pounders; i++)
+            {
                 result[index++] = new ItemStack(world.GetItem(pounderName));
+            }
             if (hasAxle) result[index] = new ItemStack(world.GetItem(toggleName));
             return result;
         }
@@ -217,7 +218,13 @@ namespace Vintagestory.GameContent.Mechanics
                 TryTake(targetSlot, byPlayer);
             } else
             {
-                if (TryAddPart(handslot, byPlayer)) return true;
+                if (TryAddPart(handslot, byPlayer))
+                {
+                    var pos = Pos.ToVec3d().Add(0.5, 0.25, 0.5);
+                    Api.World.PlaySoundAt(Block.Sounds.Place, pos.X, pos.Y, pos.Z, byPlayer);
+                    (Api as ICoreClientAPI)?.World.Player.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
+                    return true;
+                }
 
                 if (handslot.Itemstack.Collectible.CrushingProps != null)
                 {
@@ -328,16 +335,6 @@ namespace Vintagestory.GameContent.Mechanics
             mesh.Translate(offset.XYZ);
         }
 
-        public override void OnBlockRemoved()
-        {
-            base.OnBlockRemoved();
-        }
-
-        public override void OnBlockUnloaded()
-        {
-            base.OnBlockUnloaded();
-        }
-
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
         {
             base.FromTreeAttributes(tree, worldAccessForResolve);
@@ -366,11 +363,8 @@ namespace Vintagestory.GameContent.Mechanics
                 empty = false;
                 sb.AppendLine("  " + inv[i].StackSize + " x " + inv[i].GetStackName());
             }
-            if (empty) sb.AppendLine("  " + Lang.Get("nothing"));
-        }
 
-        public void onNeighbourChange(BlockPos neibpos)
-        {
+            if (empty) sb.AppendLine("  " + Lang.Get("nothing"));
         }
     }
 

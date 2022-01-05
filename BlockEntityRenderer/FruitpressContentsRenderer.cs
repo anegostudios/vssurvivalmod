@@ -15,12 +15,11 @@ namespace Vintagestory.GameContent
         ICoreClientAPI api;
         BlockPos pos;
         Matrixf ModelMat = new Matrixf();
-
+        MeshRef juiceMeshref;
+        MeshRef mashMeshref;
 
         BlockEntityFruitPress befruitpress;
 
-        MeshRef juiceMeshref;
-        MeshRef mashMeshref;
 
         public double RenderOrder
         {
@@ -65,7 +64,6 @@ namespace Vintagestory.GameContent
                     }
                     else
                     {
-                        //capi.World.Logger.Warning("Mash mesh texture {1} not found.", nowTesselatingBlock.Code, texturePath);
                         texpos = api.BlockTextureAtlas.UnknownTexturePosition;
                     }
                 }
@@ -82,7 +80,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public void reloadMeshes(JuicableProperties props, bool mustReload)
+        public void reloadMeshes(juiceableProperties props, bool mustReload)
         {
             if (befruitpress.Inventory.Empty)
             {
@@ -107,11 +105,11 @@ namespace Vintagestory.GameContent
                 y = GameMath.Clamp(stack.StackSize / 4, 1, 9);
             } else
             {
-                textureLocation = AssetLocation.Create("block/food/pie/fill-" + stack.Collectible.Variant["fruit"], stack.Collectible.Code.Domain);
-                y = GameMath.Clamp(stack.StackSize / props.Quantity, 1, 9);
+                var tex = props.PressedStack.ResolvedItemstack.Item.Textures.First();
+                textureLocation = tex.Value.Base;
+                y = GameMath.Clamp(stack.StackSize, 1, 9);
             }
 
-            
 
             Shape mashShape = api.Assets.TryGet("shapes/block/wood/fruitpress/part-mash-"+y+".json").ToObject<Shape>();
             api.Tesselator.TesselateShape("fruitpress-mash", mashShape, out MeshData mashMesh, this);
@@ -139,7 +137,6 @@ namespace Vintagestory.GameContent
 
                 juiceMeshref = api.Render.UploadMesh(juiceMesh);
             }
-
             
             mashMeshref = api.Render.UploadMesh(mashMesh);
         }
@@ -175,14 +172,14 @@ namespace Vintagestory.GameContent
             Vec4f lightrgbs = api.World.BlockAccessor.GetLightRGBs(pos.X, pos.Y, pos.Z);
             prog.RgbaLightIn = lightrgbs;
 
-            
 
+            double squeezeRel = befruitpress.MashSlot.Itemstack?.Attributes?.GetDouble("squeezeRel", 1) ?? 1;
 
             prog.ModelMatrix = ModelMat
                 .Identity()
                 .Translate(pos.X - camPos.X, pos.Y - camPos.Y, pos.Z - camPos.Z)
                 .Translate(0, 0.8f, 0)
-                .Scale(1, befruitpress.GetSqueezeYScale(), 1)
+                .Scale(1, (float)squeezeRel, 1)
                 .Values
             ;
 

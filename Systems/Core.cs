@@ -142,7 +142,7 @@ namespace Vintagestory.GameContent
 
             api.Event.LevelFinalize += () =>
             {
-                api.World.Calendar.OnGetSolarAltitude = GetSolarAltitude;
+                api.World.Calendar.OnGetSolarSphericalCoords = GetSolarSphericalCoords;
                 api.World.Calendar.OnGetHemisphere = GetHemisphere;
                 applySeasonConfig();
             };
@@ -178,7 +178,7 @@ namespace Vintagestory.GameContent
             api.Event.ServerRunPhase(EnumServerRunPhase.GameReady, () => {
                 applyConfig();
                 config.ResolveStartItems(api.World);
-                api.World.Calendar.OnGetSolarAltitude = GetSolarAltitude;
+                api.World.Calendar.OnGetSolarSphericalCoords = GetSolarSphericalCoords;
                 api.World.Calendar.OnGetHemisphere = GetHemisphere;
             });
 
@@ -218,63 +218,32 @@ namespace Vintagestory.GameContent
         HashSet<string> createdPlayers = new HashSet<string>();
         public float EarthAxialTilt = 23.44f * GameMath.DEG2RAD;
 
-
-
-        /// <summary>
-        /// Returns the solar altitude from -1 to 1 for given latitude
-        /// </summary>
-        /// <param name="latitude">Must be between -1 and 1. -1 is the south pole, 0 is the equater, and 1 is the north pole</param>
-        /// <returns></returns>
-        public float GetSolarAltitude(double posX, double posZ, float yearRel, float dayRel)
+        // This method was contributed by Eliam (Avdudia#0696) on Discord <3
+        public SolarSphericalCoords GetSolarSphericalCoords(double posX, double posZ, float yearRel, float dayRel)
         {
+            // Tyron: For your understanding, this would be the simple most spherical coord calculator - this is how the sun rises and sets if you were standing at the equator and without earth axial tilt
+            // return new SolarSphericalCoords(GameMath.TWOPI * GameMath.Mod(api.World.Calendar.HourOfDay / api.World.Calendar.HoursPerDay, 1f), 0);
+
             float latitude = (float)api.World.Calendar.OnGetLatitude(posZ);
 
-            // https://en.wikipedia.org/wiki/Solar_zenith_angle
-            // theta = sin(phi) * sin(delta) + cos(phi) * cos(delta) * cos(h)
-            // theta: the solar zenith angle
+            float hourAngle = GameMath.TWOPI * (dayRel - 0.5f);
 
-            // phi: the local latitude
-            // h: the hour angle, in the local solar time.
-            // delta: is the current declination of the Sun
-
-            //  the solar hour angle is an expression of time, expressed in angular measurement, usually degrees, from solar noon
-            float h = GameMath.TWOPI * (dayRel - 0.5f);
-
-            float dayOfYear = api.World.Calendar.DayOfYear;
+            float dayOfYear = api.World.Calendar.DayOfYearf;
             float daysPerYear = api.World.Calendar.DaysPerYear;
 
-            // The Sun's declination at any given moment is calculated by: 
-            // delta = arcsin(sin(-23.44°) * sin(EL))
-            // EL is the ecliptic longitude (essentially, the Earth's position in its orbit). Since the Earth's orbital eccentricity is small, its orbit can be approximated as a circle which causes up to 1° of error. 
-            // delta = -23.44° * cos(360° / 365 * (yearRel + 10))
-            // The number 10, in (N+10), is the approximate number of days after the December solstice to January 1
-            float delta = -EarthAxialTilt * GameMath.Cos(GameMath.TWOPI * (dayOfYear + 10) / daysPerYear);
+            // The Sun's declination at any given moment
+            // The number 10 is the approximate number of days after the December solstice to January 1
+            float declination = -EarthAxialTilt * GameMath.Cos(GameMath.TWOPI * (dayOfYear / daysPerYear + 10 / 365f));
 
-            // sin(1.35) * sin(-0.37) + cos(1.35) * cos(-0.37) * cos((x/24 - 0.5) * 3.14159 * 2)
+            float zenithAngle = (float)Math.Acos(GameMath.Sin(latitude * GameMath.PIHALF) * GameMath.Sin(declination) + GameMath.Cos(latitude * GameMath.PIHALF) * GameMath.Cos(declination) * GameMath.Cos(hourAngle));
+            
+            // Added 1.e-10 to prevent division by 0
+            float azimuthAngle = (float)Math.Acos(((GameMath.Sin(latitude * GameMath.PIHALF) * GameMath.Cos(zenithAngle)) - GameMath.Sin(declination)) / (GameMath.Cos(latitude * GameMath.PIHALF) * GameMath.Sin(zenithAngle) + 0.0000001f));
+            // The sign function gives the correct azimuth angle sign depending on the hour without using IF statement (branchless)
+            azimuthAngle = (GameMath.PI + Math.Sign(hourAngle) * azimuthAngle) % GameMath.TWOPI;
 
-            // sample 1
-            // latitude = 0.5 (equator)
-            // day of year = 0.5 (summer)
-            // sin(0.5) * sin(0.5 * -0.4) + cos(0.5) * cos(0.5 * -0.4) * cos((x / 24 - 0.5) * 3.14159 * 2)
-            // http://fooplot.com/#W3sidHlwZSI6MCwiZXEiOiJzaW4oMC41KSpzaW4oMC41Ki0wLjQpK2NvcygwLjUpKmNvcygwLjUqLTAuNCkqY29zKCh4LzI0LTAuNSkqMy4xNDE1OSoyKSIsImNvbG9yIjoiIzAwMDAwMCJ9LHsidHlwZSI6MTAwMCwid2luZG93IjpbIjAiLCIyNCIsIi0xIiwiMSJdfV0-
-
-            // sample 2
-            // latitude = 0.5 (~austria, europe)
-            // day of year = 1 (winter)
-            // sin(3.14159/2 * 0.5) * sin(1 * -0.4) + cos(3.14159/2 * 0.5) * cos(1 * -0.4) * cos((x / 24 - 0.5) * 3.14159 * 2)
-            // http://fooplot.com/#W3sidHlwZSI6MCwiZXEiOiJzaW4oMy4xNDE1OS80KSpzaW4oMSotMC40KStjb3MoMy4xNDE1OS80KSpjb3MoMSotMC40KSpjb3MoKHgvMjQtMC41KSozLjE0MTU5KjIpIiwiY29sb3IiOiIjMDAwMDAwIn0seyJ0eXBlIjoxMDAwLCJ3aW5kb3ciOlsiMCIsIjI0IiwiLTEiLCIxIl19XQ--
-
-            // sample 3
-            // latitude = -1 (south pole)
-            // day of year = 1 (winter)
-            // sin(3.14159/2 * -1) * sin(1 * -0.4) + cos(3.14159/2 * -1) * cos(1 * -0.4) * cos((x / 24 - 0.5) * 3.14159 * 2)
-            // http://fooplot.com/#W3sidHlwZSI6MCwiZXEiOiJzaW4oMy4xNDE1OS8yKi0xKSpzaW4oMSotMC40KStjb3MoMy4xNDE1OS8yKi0xKSpjb3MoMSotMC40KSpjb3MoKHgvMjQtMC41KSozLjE0MTU5KjIpIiwiY29sb3IiOiIjMDAwMDAwIn0seyJ0eXBlIjoxMDAwLCJ3aW5kb3ciOlsiMCIsIjI0IiwiLTEiLCIxIl19XQ--
-
-
-            // So this method is supposed to return the solar zenith or 90 - SolartAltitude, but apparently its inverted, dunno why
-            return GameMath.Sin(latitude * GameMath.PIHALF) * GameMath.Sin(delta) + GameMath.Cos(latitude * GameMath.PIHALF) * GameMath.Cos(delta) * GameMath.Cos(h);
+            return new SolarSphericalCoords(GameMath.TWOPI - zenithAngle, GameMath.TWOPI - azimuthAngle);
         }
-
 
 
 
@@ -543,7 +512,7 @@ namespace Vintagestory.GameContent
             api.RegisterBlockClass("BlockCrate", typeof(BlockCrate));
             api.RegisterBlockClass("BlockDynamicTreeFoliage", typeof(BlockFruitTreeFoliage));
             api.RegisterBlockClass("BlockDynamicTreeBranch", typeof(BlockFruitTreeBranch));
-            api.RegisterBlockClass("BlockMushroomSided", typeof(BlockMushroomSided));
+            api.RegisterBlockClass("BlockPlanks", typeof(BlockPlanks));
         }
 
         
@@ -580,6 +549,7 @@ namespace Vintagestory.GameContent
             api.RegisterBlockBehaviorClass("HeatSource", typeof(BlockBehaviorHeatSource));
             api.RegisterBlockBehaviorClass("BreakSnowFirst", typeof(BlockBehaviorBreakSnowFirst));
             api.RegisterBlockBehaviorClass("RopeTieable", typeof(BlockBehaviorRopeTieable));
+            api.RegisterBlockBehaviorClass("MyceliumHost", typeof(BehaviorMyceliumHost));
         }
 
         private void RegisterDefaultBlockEntityBehaviors()
@@ -673,7 +643,7 @@ namespace Vintagestory.GameContent
             api.RegisterBlockEntityClass("Shelf", typeof(BlockEntityShelf));
             api.RegisterBlockEntityClass("SignPost", typeof(BlockEntitySignPost));
             api.RegisterBlockEntityClass("Torch", typeof(BlockEntityTorch));
-            api.RegisterBlockEntityClass("Canvas", typeof(BlockEntityCanvas));
+            api.RegisterBlockEntityClass("Mycelium", typeof(BlockEntityMycelium));
 
             api.RegisterBlockEntityClass("HelveHammer", typeof(BEHelveHammer));
             api.RegisterBlockEntityClass("Clutch", typeof(BEClutch));
@@ -776,6 +746,7 @@ namespace Vintagestory.GameContent
             api.RegisterItemClass("ItemTreeSeed", typeof(ItemTreeSeed));
             api.RegisterItemClass("ItemDough", typeof(ItemDough));
             api.RegisterItemClass("ItemSling", typeof(ItemSling));
+            api.RegisterItemClass("ItemShield", typeof(ItemShield));
         }
 
 
@@ -806,6 +777,7 @@ namespace Vintagestory.GameContent
             api.RegisterEntityBehaviorClass("bodytemperature", typeof(EntityBehaviorBodyTemperature));
             api.RegisterEntityBehaviorClass("extraskinnable", typeof(EntityBehaviorExtraSkinnable));
             api.RegisterEntityBehaviorClass("ropetieable", typeof(EntityBehaviorRopeTieable));
+            api.RegisterEntityBehaviorClass("commandable", typeof(EntityBehaviorCommandable));
         }
 
 

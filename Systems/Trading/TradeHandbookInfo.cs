@@ -1,9 +1,6 @@
 ﻿using Newtonsoft.Json.Linq;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+ using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -16,6 +13,11 @@ namespace Vintagestory.GameContent
     {
         ICoreClientAPI capi;
 
+        public override double ExecuteOrder()
+        {
+            return 0.15f;
+        }
+
         public override bool ShouldLoad(EnumAppSide forSide)
         {
             return forSide == EnumAppSide.Client;
@@ -23,12 +25,12 @@ namespace Vintagestory.GameContent
 
         public override void StartClientSide(ICoreClientAPI api)
         {
-            capi = api as ICoreClientAPI;
+            capi = api;
 
-            api.Event.BlockTexturesLoaded += Event_BlockTexturesLoaded;
+            api.Event.LevelFinalize += Event_LevelFinalize;
         }
 
-        private void Event_BlockTexturesLoaded()
+        private void Event_LevelFinalize()
         {
             foreach (var entitytype in capi.World.EntityTypes)
             {
@@ -60,13 +62,14 @@ namespace Vintagestory.GameContent
                         if (collobj.Attributes == null) collobj.Attributes = new JsonObject(JToken.Parse("{}"));
 
                         ExtraHandbookSection section;
+                        var bh = collobj.GetBehavior<CollectibleBehaviorHandbookTextAndExtraInfo>();
 
                         string title = Lang.Get("Sold by");
-                        section = collobj.ExtraHandBookSections?.FirstOrDefault(ele => ele.Title == title);
+                        section = bh.ExtraHandBookSections?.FirstOrDefault(ele => ele.Title == title);
                         if (section == null)
                         {
                             section = new ExtraHandbookSection() { Title = title, TextParts = new string[0] };
-                            collobj.ExtraHandBookSections = collobj.ExtraHandBookSections == null ? new ExtraHandbookSection[] { section } : collobj.ExtraHandBookSections.Append(section);
+                            collobj.GetBehavior<CollectibleBehaviorHandbookTextAndExtraInfo>().ExtraHandBookSections = bh.ExtraHandBookSections == null ? new ExtraHandbookSection[] { section } : bh.ExtraHandBookSections.Append(section);
                         }
 
                         section.TextParts = section.TextParts.Append(Lang.Get(entitytype.Code.Domain + ":item-creature-" + entitytype.Code.Path));
@@ -82,13 +85,15 @@ namespace Vintagestory.GameContent
                         if (collobj.Attributes == null) collobj.Attributes = new JsonObject(JToken.Parse("{}"));
 
                         ExtraHandbookSection section;
+                        var bh = collobj.GetBehavior<CollectibleBehaviorHandbookTextAndExtraInfo>();
 
                         string title = Lang.Get("Purchased by");
-                        section = collobj.ExtraHandBookSections?.FirstOrDefault(ele => ele.Title == title);
+                        section = bh?.ExtraHandBookSections?.FirstOrDefault(ele => ele.Title == title);
+
                         if (section == null)
                         {
                             section = new ExtraHandbookSection() { Title = title, TextParts = new string[0] };
-                            collobj.ExtraHandBookSections = collobj.ExtraHandBookSections == null ? new ExtraHandbookSection[] { section } : collobj.ExtraHandBookSections.Append(section);
+                            collobj.GetBehavior<CollectibleBehaviorHandbookTextAndExtraInfo>().ExtraHandBookSections = bh.ExtraHandBookSections == null ? new ExtraHandbookSection[] { section } : bh.ExtraHandBookSections.Append(section);
                         }
 
                         section.TextParts = section.TextParts.Append(Lang.Get(entitytype.Code.Domain + ":item-creature-" + entitytype.Code.Path));

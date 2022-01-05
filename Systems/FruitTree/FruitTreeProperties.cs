@@ -24,6 +24,7 @@ namespace Vintagestory.GameContent
         public NatFloat GrowthStepDays = NatFloat.createUniform(2, 0.5f);
         public BlockDropItemStack[] FruitStacks;
         public EnumTreeCycleType CycleType = EnumTreeCycleType.Deciduous;
+        public bool BlossomParticles = true;
 
         public NatFloat DieBelowTemp = NatFloat.createUniform(-20, -5);
 
@@ -87,6 +88,7 @@ namespace Vintagestory.GameContent
             State = (EnumFruitTreeState)tree.GetInt("rootFruitTreeState", (int)EnumFruitTreeState.Empty);
             lastCheckAtTotalDays = tree.GetDouble("lastCheckAtTotalDays");
             vernalizedHours = tree.GetDouble("vernalizedHours");
+            lastStateChangeTotalDays = tree.GetDouble("lastStateChangeTotalDays");
 
             FloweringDays = tree.GetFloat("floweringDays");
             FruitingDays = tree.GetFloat("fruitingDays");
@@ -114,6 +116,7 @@ namespace Vintagestory.GameContent
         {
             tree.SetInt("rootFruitTreeState", (int)State);
             tree.SetDouble("lastCheckAtTotalDays", lastCheckAtTotalDays);
+            tree.SetDouble("lastStateChangeTotalDays", lastStateChangeTotalDays);
             tree.SetDouble("vernalizedHours", vernalizedHours);
 
             tree.SetFloat("floweringDays", FloweringDays);

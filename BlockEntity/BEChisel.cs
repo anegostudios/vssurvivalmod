@@ -24,7 +24,7 @@ namespace Vintagestory.GameContent
 
 
 
-        public EnumChiselMode ChiselMode(IPlayer player)
+        public EnumChiselMode GetChiselMode(IPlayer player)
         {
             ItemSlot slot = player?.InventoryManager?.ActiveHotbarSlot;
             int? mode = slot?.Itemstack?.Collectible.GetToolMode(slot, player, new BlockSelection() { Position = Pos });
@@ -32,9 +32,9 @@ namespace Vintagestory.GameContent
             return mode == null ? 0 : (EnumChiselMode)mode;
         }
 
-        public int ChiselSize(IPlayer player)
+        public int GetChiselSize(IPlayer player)
         {
-            int mode = (int)ChiselMode(player);
+            int mode = (int)GetChiselMode(player);
             if (mode == 0) return 1;
             if (mode == 1) return 2;
             if (mode == 2) return 4;
@@ -71,7 +71,7 @@ namespace Vintagestory.GameContent
             }
 
             
-            EnumChiselMode mode = ChiselMode(byPlayer);
+            EnumChiselMode mode = GetChiselMode(byPlayer);
 
             bool wasChanged = false;
 
@@ -101,7 +101,7 @@ namespace Vintagestory.GameContent
 
 
                 default:
-                    int size = ChiselSize(byPlayer);
+                    int size = GetChiselSize(byPlayer);
                     Vec3i addAtPos = voxelPos.Clone().Add(size * facing.Normali.X, size * facing.Normali.Y, size * facing.Normali.Z);
 
                     if (isBreak)
@@ -183,6 +183,12 @@ namespace Vintagestory.GameContent
 
         public override void OnReceivedClientPacket(IPlayer player, int packetid, byte[] data)
         {
+            if (!Api.World.Claims.TryAccess(player, Pos, EnumBlockAccessFlags.BuildOrBreak))
+            {
+                player.InventoryManager.ActiveHotbarSlot.MarkDirty();
+                return;
+            }
+
             if (packetid == (int)EnumSignPacketId.SaveText)
             {
                 using (MemoryStream ms = new MemoryStream(data))
@@ -223,7 +229,7 @@ namespace Vintagestory.GameContent
             {
                 if (forPlayer == null) forPlayer = (Api.World as IClientWorldAccessor).Player;
 
-                int nowSize = ChiselSize(forPlayer);
+                int nowSize = GetChiselSize(forPlayer);
                 
                 if (prevSize > 0 && prevSize != nowSize)
                 {
@@ -255,7 +261,7 @@ namespace Vintagestory.GameContent
 
         public bool SetVoxel(Vec3i voxelPos, bool state, IPlayer byPlayer, byte materialId)
         {           
-            int size = ChiselSize(byPlayer);
+            int size = GetChiselSize(byPlayer);
             bool wasChanged = SetVoxel(voxelPos, state, byPlayer, materialId, size);
 
             if (!wasChanged) return false;
@@ -331,7 +337,7 @@ namespace Vintagestory.GameContent
 
             HashSet<Cuboidf> boxes = new HashSet<Cuboidf>();
 
-            int size = ChiselSize(byPlayer);
+            int size = GetChiselSize(byPlayer);
             if (size <= 0) size = 16;
 
             float sx = size / 16f;

@@ -34,11 +34,11 @@ namespace Vintagestory.API.Common
             {
                 int remaining = liquidSlot.Itemstack.Collectible.MaxStackSize - liquidSlot.Itemstack.StackSize;
 
-                WaterTightContainableProps props = BlockLiquidContainerBase.GetInContainerProps(liquidSlot.Itemstack);
+                WaterTightContainableProps props = BlockLiquidContainerBase.GetContainableProps(liquidSlot.Itemstack);
                 if (props != null)
                 {
                     int max = (int)(liquidSlot.CapacityLitres * props.ItemsPerLitre);
-                    int maxOverride = props.MaxStackSize;  //allows 64 rot to be placed in barrel
+                    int maxOverride = props.MaxStackSize;  // allows 64 rot to be placed in barrel
                     remaining = Math.Max(max, maxOverride) - liquidSlot.Itemstack.StackSize;
                 }
 
@@ -80,6 +80,50 @@ namespace Vintagestory.API.Common
             return;
         }
 
+        protected override void ActivateSlotRightClick(ItemSlot sourceSlot, ref ItemStackMoveOperation op)
+        {
+            ItemSlotLiquidOnly liquidSlot = inventory[1] as ItemSlotLiquidOnly;
+            IWorldAccessor world = inventory.Api.World;
+
+            if (sourceSlot?.Itemstack?.Collectible is ILiquidSink sink && !liquidSlot.Empty)
+            {
+                ItemStack liqSlotStack = liquidSlot.Itemstack;
+                var curTargetLiquidStack = sink.GetContent(sourceSlot.Itemstack);
+
+                bool liquidstackable = curTargetLiquidStack==null || liqSlotStack.Equals(world, curTargetLiquidStack, GlobalConstants.IgnoredStackAttributes);
+
+                if (liquidstackable)
+                {
+                    var lprops = BlockLiquidContainerBase.GetContainableProps(liqSlotStack);
+
+                    float curSourceLitres = liqSlotStack.StackSize / lprops.ItemsPerLitre;
+                    float curTargetLitres = sink.GetCurrentLitres(sourceSlot.Itemstack);
+
+                    float toMoveLitres = op.CtrlDown ? sink.TransferSizeLitres : (sink.CapacityLitres - curTargetLitres);
+
+                    toMoveLitres *= sourceSlot.StackSize;
+                    toMoveLitres = Math.Min(curSourceLitres, toMoveLitres);
+
+                    if (toMoveLitres > 0)
+                    {
+                        op.MovedQuantity = sink.TryPutLiquid(sourceSlot.Itemstack, liqSlotStack, toMoveLitres / sourceSlot.StackSize);
+
+                        liquidSlot.Itemstack.StackSize -= op.MovedQuantity * sourceSlot.StackSize;
+                        if (liquidSlot.Itemstack.StackSize <= 0) liquidSlot.Itemstack = null;
+                        liquidSlot.MarkDirty();
+                        sourceSlot.MarkDirty();
+
+                        var pos = op.ActingPlayer?.Entity?.Pos;
+                        if (pos != null) op.World.PlaySoundAt(lprops.PourSound, pos.X, pos.Y, pos.Z);
+                    }
+                }
+
+                return;
+            }
+
+            base.ActivateSlotRightClick(sourceSlot, ref op);
+        }
+
         protected override void ActivateSlotLeftClick(ItemSlot sourceSlot, ref ItemStackMoveOperation op)
         {
             if (sourceSlot.Empty)
@@ -92,7 +136,7 @@ namespace Vintagestory.API.Common
 
             if (sourceSlot.Itemstack.Collectible is ILiquidSource)
             {
-                ItemSlot liquidSlot = inventory[1];
+                ItemSlotLiquidOnly liquidSlot = inventory[1] as ItemSlotLiquidOnly;
                 ILiquidSource source = sourceSlot.Itemstack.Collectible as ILiquidSource;
                 
                 ItemStack bucketContents = source.GetContent(sourceSlot.Itemstack);
@@ -101,13 +145,30 @@ namespace Vintagestory.API.Common
                 if ((liquidSlot.Empty || stackable) && bucketContents != null)
                 {
                     ItemStack bucketStack = sourceSlot.Itemstack;
-                    ItemStack takenContent = source.TryTakeContent(bucketStack, 1);
-                    sourceSlot.Itemstack = bucketStack;
-                    takenContent.StackSize += liquidSlot.StackSize;
-                    liquidSlot.Itemstack = takenContent;
-                    liquidSlot.MarkDirty();
 
-                    op.MovedQuantity = 1;
+                    var lprops = BlockLiquidContainerBase.GetContainableProps(bucketContents);
+
+                    float toMoveLitres = op.CtrlDown ? source.TransferSizeLitres : source.CapacityLitres;
+                    float curLitres = liquidSlot.StackSize / lprops.ItemsPerLitre;
+
+                    toMoveLitres *= bucketStack.StackSize;
+                    toMoveLitres = Math.Min(toMoveLitres, liquidSlot.CapacityLitres - curLitres);
+
+                    if (toMoveLitres > 0)
+                    {
+                        int moveQuantity = (int)(toMoveLitres * lprops.ItemsPerLitre);
+                        ItemStack takenContentStack = source.TryTakeContent(bucketStack, moveQuantity / bucketStack.StackSize);
+
+                        takenContentStack.StackSize *= bucketStack.StackSize;
+                        takenContentStack.StackSize += liquidSlot.StackSize;
+                        
+                        liquidSlot.Itemstack = takenContentStack;
+                        liquidSlot.MarkDirty();
+                        op.MovedQuantity = moveQuantity;
+
+                        var pos = op.ActingPlayer?.Entity?.Pos;
+                        if (pos != null) op.World.PlaySoundAt(lprops.FillSound, pos.X, pos.Y, pos.Z);
+                    }
 
                     return;
                 }

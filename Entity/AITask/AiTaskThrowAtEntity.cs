@@ -12,8 +12,6 @@ namespace Vintagestory.GameContent
 {
     public class AiTaskThrowAtEntity : AiTaskBaseTargetable
     {
-        Entity targetEntity;
-
         int durationMs;
         int releaseAtMs;
         long lastSearchTotalMs;
@@ -31,9 +29,6 @@ namespace Vintagestory.GameContent
         float minTurnAnglePerSec;
         float maxTurnAnglePerSec;
         float curTurnRadPerSec;
-
-        
-
 
         public AiTaskThrowAtEntity(EntityAgent entity) : base(entity)
         {
@@ -68,7 +63,7 @@ namespace Vintagestory.GameContent
             lastSearchTotalMs = entity.World.ElapsedMilliseconds;
             Vec3d ownPos = entity.ServerPos.XYZ;
 
-            targetEntity = partitionUtil.GetNearestEntity(entity.ServerPos.XYZ, range, (e) => isTargetableEntity(e, range));
+            targetEntity = partitionUtil.GetNearestEntity(entity.ServerPos.XYZ, range, (e) => IsTargetableEntity(e, range) && hasDirectContact(e, range, range/2f));
 
             return targetEntity != null;
         }
@@ -80,8 +75,8 @@ namespace Vintagestory.GameContent
 
             if (entity?.Properties.Server?.Attributes != null)
             {
-                minTurnAnglePerSec = (float)entity.Properties.Server.Attributes.GetTreeAttribute("pathfinder").GetFloat("minTurnAnglePerSec", 250);
-                maxTurnAnglePerSec = (float)entity.Properties.Server.Attributes.GetTreeAttribute("pathfinder").GetFloat("maxTurnAnglePerSec", 450);
+                minTurnAnglePerSec = entity.Properties.Server.Attributes.GetTreeAttribute("pathfinder").GetFloat("minTurnAnglePerSec", 250);
+                maxTurnAnglePerSec = entity.Properties.Server.Attributes.GetTreeAttribute("pathfinder").GetFloat("maxTurnAnglePerSec", 450);
             }
             else
             {

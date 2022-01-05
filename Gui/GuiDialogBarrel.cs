@@ -80,7 +80,7 @@ namespace Vintagestory.GameContent
                 if (!Inventory[1].Empty)
                 {
                     ItemStack stack = Inventory[1].Itemstack;
-                    WaterTightContainableProps props = BlockLiquidContainerBase.GetInContainerProps(stack);
+                    WaterTightContainableProps props = BlockLiquidContainerBase.GetContainableProps(stack);
 
                     if (props != null)
                     {
@@ -103,7 +103,7 @@ namespace Vintagestory.GameContent
                 if (bebarrel.CurrentRecipe != null)
                 {
                     ItemStack outStack = bebarrel.CurrentRecipe.Output.ResolvedItemstack;
-                    WaterTightContainableProps props = BlockLiquidContainerBase.GetInContainerProps(outStack);
+                    WaterTightContainableProps props = BlockLiquidContainerBase.GetContainableProps(outStack);
 
                     string timeText = bebarrel.CurrentRecipe.SealHours > 24 ? Lang.Get("{0} days", Math.Round(bebarrel.CurrentRecipe.SealHours / capi.World.Calendar.HoursPerDay, 1)) : Lang.Get("{0} hours", bebarrel.CurrentRecipe.SealHours);
 
@@ -140,7 +140,7 @@ namespace Vintagestory.GameContent
             float itemsPerLitre = 1f;
             int capacity = bebarrel.CapacityLitres;
 
-            WaterTightContainableProps props = BlockLiquidContainerBase.GetInContainerProps(liquidSlot.Itemstack);
+            WaterTightContainableProps props = BlockLiquidContainerBase.GetContainableProps(liquidSlot.Itemstack);
             if (props != null)
             {
                 itemsPerLitre = props.ItemsPerLitre;
@@ -153,7 +153,7 @@ namespace Vintagestory.GameContent
 
             ctx.Rectangle(0, offY, currentBounds.InnerWidth, currentBounds.InnerHeight - offY);
 
-            CompositeTexture tex = props.Texture;
+            CompositeTexture tex = props?.Texture ?? liquidSlot.Itemstack.Collectible.Attributes?["inContainerTexture"].AsObject<CompositeTexture>(null, liquidSlot.Itemstack.Collectible.Code.Domain);
             if (tex != null)
             {
                 ctx.Save();

@@ -162,7 +162,7 @@ namespace Vintagestory.GameContent
                 foreach (BlockFacing facing in BlockFacing.HORIZONTALS)
                 {
                     Vec3d placepos = Pos.ToVec3d().AddCopy(facing).Add(0.5, 0.001, 0.5);
-                    if (!Api.World.CollisionTester.IsColliding(Api.World.BlockAccessor, entityAgent.CollisionBox, placepos, false))
+                    if (!Api.World.CollisionTester.IsColliding(Api.World.BlockAccessor, entityAgent.SelectionBox, placepos, false))
                     {
                         entityAgent.TeleportTo(placepos);
                         break;
@@ -175,7 +175,7 @@ namespace Vintagestory.GameContent
 
         public void DidMount(EntityAgent entityAgent)
         {
-            if (MountedBy != null)
+            if (MountedBy != null && MountedBy != entityAgent)
             {
                 entityAgent.TryUnmount();
                 return;

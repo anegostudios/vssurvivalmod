@@ -34,7 +34,7 @@ namespace Vintagestory.GameContent
 
             // Are we fully attached? => No wave
             Block ablock = chunkExtBlocks[extIndex3d + TileSideEnum.MoveIndex[VineFacing.Opposite.Index]];
-            if (!enableWind || (ablock.Id != 0 && ablock.CanAttachBlockAt(api.World.BlockAccessor, this, tmpPos.Set(pos).Add(VineFacing.Opposite), VineFacing)))
+            if (!enableWind || (ablock.Id != 0 && ablock.CanAttachBlockAt(api.World.BlockAccessor, this, tmpPos.Set(pos).Add(VineFacing.Opposite), VineFacing) && !(ablock is BlockLeaves)))
             {
                 for (int i = 0; i < verticesCount; i++)
                 {
@@ -66,7 +66,7 @@ namespace Vintagestory.GameContent
             if (ublock is BlockVines)
             {
                 Block uablock = chunkExtBlocks[extIndex3d + TileSideEnum.MoveIndex[VineFacing.Opposite.Index] + TileSideEnum.MoveIndex[BlockFacing.UP.Index]];
-                if (uablock.Id != 0 && uablock.CanAttachBlockAt(api.World.BlockAccessor, this, tmpPos.Set(pos).Up().Add(VineFacing.Opposite), VineFacing))
+                if (uablock.Id != 0 && uablock.CanAttachBlockAt(api.World.BlockAccessor, this, tmpPos.Set(pos).Up().Add(VineFacing.Opposite), VineFacing) && !(ablock is BlockLeaves))
                 {
                     for (int i = 0; i < verticesCount; i++)
                     {

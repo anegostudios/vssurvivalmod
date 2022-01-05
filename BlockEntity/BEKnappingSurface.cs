@@ -30,7 +30,7 @@ namespace Vintagestory.GameContent
 
         public KnappingRecipe SelectedRecipe
         {
-            get { return Api.World.KnappingRecipes.FirstOrDefault(r => r.RecipeId == selectedRecipeId); }
+            get { return Api.GetKnappingRecipes().FirstOrDefault(r => r.RecipeId == selectedRecipeId); }
         }
         
 
@@ -534,7 +534,7 @@ namespace Vintagestory.GameContent
             if (packetid == (int)EnumClayFormingPacket.SelectRecipe)
             {
                 int recipeid = SerializerUtil.Deserialize<int>(data);
-                KnappingRecipe recipe = Api.World.KnappingRecipes.FirstOrDefault(r => r.RecipeId == recipeid);
+                KnappingRecipe recipe = Api.GetKnappingRecipes().FirstOrDefault(r => r.RecipeId == recipeid);
 
                 if (recipe == null)
                 {
@@ -572,7 +572,7 @@ namespace Vintagestory.GameContent
         GuiDialog dlg;
         public void OpenDialog(IClientWorldAccessor world, BlockPos pos, ItemStack baseMaterial)
         {
-            List<KnappingRecipe> recipes = world.KnappingRecipes
+            List<KnappingRecipe> recipes = Api.GetKnappingRecipes()
                .Where(r => r.Ingredient.SatisfiesAsIngredient(baseMaterial))
                .OrderBy(r => r.Output.ResolvedItemstack.Collectible.Code) // Cannot sort by name, thats language dependent!
                .ToList()

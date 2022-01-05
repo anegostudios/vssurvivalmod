@@ -89,7 +89,7 @@ namespace Vintagestory.GameContent
                 {
                     byPlayer.Entity.World.PlaySoundAt(new AssetLocation("sounds/effect/anvilhit"), byPlayer, byPlayer);
                 }
-            }, 464);
+            }, 440);
 
 
             handling = EnumHandHandling.PreventDefault;
@@ -122,7 +122,7 @@ namespace Vintagestory.GameContent
 
                 float speed = 5 + 20 * Math.Max(0, secondsUsed - 0.25f);
                 float start = secondsUsed * 120;
-                float rotationY = Math.Min(110, Math.Max(0, secondsUsed - 0.25f) * 90 * speed - start);
+                float rotationY = Math.Min(80, Math.Max(0, secondsUsed - 0.25f) * 90 * speed - start);
 
 
                 tf.Origin.Set(0, 0, 0.5f);

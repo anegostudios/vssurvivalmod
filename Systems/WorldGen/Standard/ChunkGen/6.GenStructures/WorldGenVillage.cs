@@ -236,10 +236,6 @@ namespace Vintagestory.ServerMods
 
         protected BlockSchematicStructure GetGeneratableStructure(VillageSchematic schem, IBlockAccessor blockAccessor, IWorldAccessor worldForCollectibleResolve, BlockPos pos)
         {
-            int chunksize = blockAccessor.ChunkSize;
-            int climate = GameMath.BiLerpRgbColor((float)(pos.X % chunksize) / chunksize, (float)(pos.Z % chunksize) / chunksize, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight);
-
-
             int num = rand.NextInt(schem.Structures.Length);
             BlockSchematicStructure schematic = schem.Structures[num];
 

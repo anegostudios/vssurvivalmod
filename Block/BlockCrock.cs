@@ -13,6 +13,9 @@ namespace Vintagestory.GameContent
 {
     public class BlockCrock : BlockCookedContainerBase, IBlockMealContainer, IContainedMeshSource
     {
+        public override string ContainerNameShort => Lang.Get("crock");
+        public override string ContainerNameShortPlural => Lang.Get("crocks");
+
         public override float GetContainingTransitionModifierContained(IWorldAccessor world, ItemSlot inSlot, EnumTransitionType transType)
         {
             float mul = 1;
@@ -466,7 +469,7 @@ namespace Vintagestory.GameContent
 
             BlockMeal mealblock = world.GetBlock(new AssetLocation("bowl-meal")) as BlockMeal;
 
-            CookingRecipe recipe = world.CookingRecipes.FirstOrDefault((rec) => becrock.RecipeCode == rec.Code);
+            CookingRecipe recipe = api.GetCookingRecipes().FirstOrDefault((rec) => becrock.RecipeCode == rec.Code);
             ItemStack[] stacks = becrock.inventory.Where(slot => !slot.Empty).Select(slot => slot.Itemstack).ToArray();
 
             if (stacks == null || stacks.Length == 0)
@@ -621,7 +624,6 @@ namespace Vintagestory.GameContent
                 capi.ObjectCache.Remove("blockcrockGuiMeshRefs");
             }
         }
-
 
     }
 }

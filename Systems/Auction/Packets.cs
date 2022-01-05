@@ -120,11 +120,11 @@ namespace Vintagestory.GameContent
 
                                 if (waithours > 0)
                                 {
-                                    return Lang.Get("Sold to {0}, en route to <a href=\"{2}\">trader</a>. {1}", BuyerName, prettyHours(waithours, api), traderMapLink);
+                                    return Lang.Get("auctionhouse-sold-enroute-hoursleft", BuyerName, traderMapLink, prettyHours(waithours, api));
                                 }
                                 else
                                 {
-                                    return Lang.Get("Sold to {0}, delievered to <a href=\"{1}\">trader</a>.", BuyerName, traderMapLink);
+                                    return Lang.Get("auctionhouse-sold-delievered", BuyerName, traderMapLink);
                                 }
                             } else
                             {
@@ -132,11 +132,11 @@ namespace Vintagestory.GameContent
 
                                 if (waithours > 0)
                                 {
-                                    return Lang.Get("Sold to {0}, <a href=\"{2}\">preparing pickup</a>. {1}", BuyerName, prettyHours(waithours, api), traderMapLink);
+                                    return Lang.Get("auctionhouse-sold-preparing-hoursleft", BuyerName, traderMapLink, prettyHours(waithours, api));
                                 }
                                 else
                                 {
-                                    return Lang.Get("Sold to {0}, pick up at <a href=\"{1}\">trader</a>.", BuyerName, traderMapLink);
+                                    return Lang.Get("auctionhouse-sold-pickup", BuyerName, traderMapLink);
                                 }
                             }
                         } else
@@ -145,11 +145,11 @@ namespace Vintagestory.GameContent
 
                             if (waithours > 0)
                             {
-                                return Lang.Get("Sold to {0}, en route to trader at {1},{2},{3}. {4}", BuyerName, pos.X, pos.Y, pos.Z, prettyHours(waithours, api));
+                                return Lang.Get("auctionhouse-sold-enroute-nomap-hoursleft", BuyerName, pos.X, pos.Y, pos.Z, prettyHours(waithours, api));
                             }
                             else
                             {
-                                return Lang.Get("Sold to {0}, delievered to trader at {1},{2},{3}.", BuyerName, pos.X, pos.Y, pos.Z);
+                                return Lang.Get("auctionhouse-sold-delievered-nomap", BuyerName, pos.X, pos.Y, pos.Z);
                             }
                         }
                     }

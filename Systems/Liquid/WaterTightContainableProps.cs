@@ -19,6 +19,10 @@ namespace Vintagestory.GameContent
         public bool Containable;
         public float ItemsPerLitre = 1f;  //prevent possible divide by zero if people are not careful to include this in assets...
         public AssetLocation FillSpillSound = new AssetLocation("sounds/block/water");
+
+        public AssetLocation PourSound = new AssetLocation("sounds/effect/water-pour.ogg");
+        public AssetLocation FillSound = new AssetLocation("sounds/effect/water-fill.ogg");
+
         public CompositeTexture Texture;
         public string ClimateColorMap = null;
         public bool AllowSpill = true;

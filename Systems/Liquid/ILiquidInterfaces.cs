@@ -16,6 +16,8 @@ namespace Vintagestory.GameContent
 {
     public interface ILiquidInterface
     {
+        bool AllowHeldLiquidTransfer { get; }
+
         /// <summary>
         /// Liquid Capacity in litres
         /// </summary>

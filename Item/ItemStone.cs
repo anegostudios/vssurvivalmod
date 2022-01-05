@@ -107,6 +107,8 @@ namespace Vintagestory.GameContent
                 world.BlockAccessor.SetBlock(knappingBlock.BlockId, pos);
                 world.BlockAccessor.TriggerNeighbourBlockUpdate(blockSel.Position);
 
+                (api as ICoreClientAPI)?.World.Player.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
+
                 if (knappingBlock.Sounds != null)
                 {
                     world.PlaySoundAt(knappingBlock.Sounds.Place, blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z);
@@ -122,9 +124,7 @@ namespace Vintagestory.GameContent
                     {
                         bec.OpenDialog(world as IClientWorldAccessor, pos, itemslot.Itemstack);
                     }
-
                 }
-                //itemslot.Take(1);
 
                 handling = EnumHandHandling.PreventDefault;
                 byEntity.Attributes.SetInt("aimingCancel", 1);
@@ -161,6 +161,7 @@ namespace Vintagestory.GameContent
                 world.BlockAccessor.TriggerNeighbourBlockUpdate(blockSel.Position);
 
                 if (block.Sounds != null) world.PlaySoundAt(block.Sounds.Place, blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z);
+                (api as ICoreClientAPI)?.World.Player.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
 
                 itemslot.Itemstack.StackSize--;
 

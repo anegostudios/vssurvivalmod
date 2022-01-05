@@ -110,7 +110,7 @@ namespace Vintagestory.GameContent
 
             Composers["confirmauctionpurchase"]
                         .AddSwitch(onDeliveryModeChanged, deliverySwitchBounds, "delivery", 25)
-                        .AddStaticText("Deliver to current trader", CairoFont.WhiteSmallText(), deliveryTextBounds)
+                        .AddStaticText(Lang.Get("Deliver to current trader"), CairoFont.WhiteSmallText(), deliveryTextBounds)
 
 
                         .AddRichtext(deliveryCostComps, deliveryCostBounds, "deliveryCost")

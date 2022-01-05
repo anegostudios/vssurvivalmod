@@ -313,7 +313,6 @@ namespace Vintagestory.GameContent
                 {
                     armorShape.TextureSizes.Add(val.Key, new int[] { armorShape.TextureWidth, armorShape.TextureHeight });
                 }
-                //capi.World.Logger.Warning("Entity wearable shape {0} defines textures but not textures sizes, will probably have a broken texture.", shapePath);
             }
 
             foreach (var val in armorShape.TextureSizes)
@@ -467,7 +466,7 @@ namespace Vintagestory.GameContent
                 if (!(inSlot is ItemSlotCreative))
                 {
                     ensureConditionExists(inSlot);
-                    float condition = inSlot.Itemstack.Attributes.GetFloat("condition");
+                    float condition = inSlot.Itemstack.Attributes.GetFloat("condition", 1);
                     string condStr;
 
                     if (condition > 0.5)
@@ -519,19 +518,22 @@ namespace Vintagestory.GameContent
         {
             ensureConditionExists(inslot);
             float maxWarmth = inslot.Itemstack.ItemAttributes?["warmth"].AsFloat(0) ?? 0;
-            float condition = inslot.Itemstack.Attributes.GetFloat("condition");
+            float condition = inslot.Itemstack.Attributes.GetFloat("condition", 1);
             return Math.Min(maxWarmth, condition * 2 * maxWarmth); 
         }
 
         public void ChangeCondition(ItemSlot slot, float changeVal)
         {
             ensureConditionExists(slot);
-            slot.Itemstack.Attributes.SetFloat("condition", GameMath.Clamp(slot.Itemstack.Attributes.GetFloat("condition") + changeVal, 0, 1));
+            slot.Itemstack.Attributes.SetFloat("condition", GameMath.Clamp(slot.Itemstack.Attributes.GetFloat("condition", 1) + changeVal, 0, 1));
             slot.MarkDirty();
         }
 
         private void ensureConditionExists(ItemSlot slot)
         {
+            // Prevent derp in the handbook
+            if (slot is DummySlot) return;
+
             if (!slot.Itemstack.Attributes.HasAttribute("condition") && api.Side == EnumAppSide.Server)
             {
                 if (slot.Itemstack.ItemAttributes?["warmth"].Exists == true && slot.Itemstack.ItemAttributes?["warmth"].AsFloat() != 0)
@@ -550,6 +552,17 @@ namespace Vintagestory.GameContent
         }
 
 
+        public override void OnCreatedByCrafting(ItemSlot[] allInputslots, ItemSlot outputSlot, GridRecipe byRecipe)
+        {
+            base.OnCreatedByCrafting(allInputslots, outputSlot, byRecipe);
+
+            // Prevent derp in the handbook
+            if (outputSlot is DummySlot) return;
+
+            ensureConditionExists(outputSlot);
+            outputSlot.Itemstack.Attributes.SetFloat("condition", 1);
+        }
+
         public override TransitionState[] UpdateAndGetTransitionStates(IWorldAccessor world, ItemSlot inslot)
         {
             ensureConditionExists(inslot);
@@ -559,7 +572,11 @@ namespace Vintagestory.GameContent
 
         public override TransitionState UpdateAndGetTransitionState(IWorldAccessor world, ItemSlot inslot, EnumTransitionType type)
         {
-            ensureConditionExists(inslot);
+            // Otherwise recipes disappear in the handbook
+            if (type != EnumTransitionType.Perish)
+            {
+                ensureConditionExists(inslot);
+            }
 
             return base.UpdateAndGetTransitionState(world, inslot, type);
         }

@@ -30,7 +30,7 @@ namespace Vintagestory.GameContent
             harvestTime = properties["harvestTime"].AsFloat(0);
             harvestedStack = properties["harvestedStack"].AsObject<BlockDropItemStack>(null);
 
-            string code = properties["harvestingSound"].AsString("game:sounds/block/plant");
+            string code = properties["harvestingSound"].AsString("game:sounds/block/leafy-picking");
             if (code != null) {
                 harvestingSound = AssetLocation.Create(code, block.Code.Domain);
             }
@@ -82,7 +82,7 @@ namespace Vintagestory.GameContent
 
             (byPlayer as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemAttack);
 
-            if (world.Rand.NextDouble() < 0.1)
+            if (world.Rand.NextDouble() < 0.05)
             {
                 world.PlaySoundAt(harvestingSound, blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z, byPlayer);
             }

@@ -127,6 +127,8 @@ namespace Vintagestory.GameContent
                 byte[] hsv = new byte[3];
                 int q = 0;
 
+                if (matids == null) return hsv;
+
                 for (int i = 0; i < matids.Length; i++)
                 {
                     Block block = Api.World.BlockAccessor.GetBlock(matids[i]);
@@ -134,7 +136,7 @@ namespace Vintagestory.GameContent
                     {
                         hsv[0] += block.LightHsv[0];
                         hsv[1] += block.LightHsv[1];
-                        hsv[2] += block.LightHsv[2]; // Should take into account the amount of used voxels, but that then we need to pass the old light hsv to the relighting engine or we'll get lighting bugs
+                        hsv[2] += block.LightHsv[2]; // Should take into account the amount of used voxels, but then we need to pass the old light hsv to the relighting engine or we'll get lighting bugs
                         q++;  
                     }
                 }
@@ -913,6 +915,10 @@ namespace Vintagestory.GameContent
                 FromUint(voxelCuboids[i], cwms[i]);
             }
 
+            var blocks = coreClientAPI.World.Blocks;
+            bool[] matsTransparent = new bool[materials.Length];
+            for (int i = 0; i < materials.Length; i++) matsTransparent[i] = blocks[materials[i]].RenderPass == EnumChunkRenderPass.Transparent;
+
             for (int i = 0; i < voxelCuboids.Count; i++) 
             {
                 CuboidWithMaterial cwm = cwms[i];
@@ -920,8 +926,9 @@ namespace Vintagestory.GameContent
 
                 for (int j = 0; j < voxelCuboids.Count; j++)
                 {
-                    if (i == j) continue;
                     CuboidWithMaterial cwmNeib = cwms[j];
+
+                    if (i == j || matsTransparent[cwmNeib.Material]) continue;
 
                     for (int axis = 0; axis < 3; axis++)
                     {
@@ -1261,6 +1268,11 @@ namespace Vintagestory.GameContent
             }
 
             RegenSelectionBoxes(null);
+            if (noMesh)
+            {
+                MarkDirty(true);
+                noMesh = false;
+            }
         }
 
 
@@ -1341,10 +1353,15 @@ namespace Vintagestory.GameContent
             tree.SetString("blockName", BlockName);
         }
 
+        bool noMesh = false;
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
         {
-            if (Mesh == null) return false;
+            if (Mesh == null)
+            {
+                noMesh = true;
+                return false;
+            }
 
             mesher.AddMeshData(Mesh);
 

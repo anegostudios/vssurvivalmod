@@ -87,10 +87,7 @@ namespace Vintagestory.GameContent
                 {
                     this.type = nowType;
                     InitInventory(Block);
-                    Inventory.LateInitialize(InventoryClassName + "-" + Pos.X + "/" + Pos.Y + "/" + Pos.Z, Api);
-                    Inventory.ResolveBlocksOrItems();
-                    Inventory.OnAcquireTransitionSpeed = Inventory_OnAcquireTransitionSpeed;
-                    MarkDirty();
+                    LateInitInventory(); 
                 }
             }
 
@@ -103,6 +100,7 @@ namespace Vintagestory.GameContent
 
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
+            string prevType = type;
             type = tree.GetString("type", defaultType);
             MeshAngle = tree.GetFloat("meshAngle", MeshAngle);
 
@@ -131,7 +129,12 @@ namespace Vintagestory.GameContent
 
                     InitInventory(null);
                 }
+            } else if (type != prevType)
+            {
+                InitInventory(Block);
+                LateInitInventory();
             }
+
 
             if (Api != null && Api.Side == EnumAppSide.Client)
             {
@@ -201,6 +204,16 @@ namespace Vintagestory.GameContent
             inventory.OnInventoryClosed += OnInvClosed;
             inventory.OnInventoryOpened += OnInvOpened;
         }
+
+
+        public virtual void LateInitInventory()
+        {
+            Inventory.LateInitialize(InventoryClassName + "-" + Pos.X + "/" + Pos.Y + "/" + Pos.Z, Api);
+            Inventory.ResolveBlocksOrItems();
+            Inventory.OnAcquireTransitionSpeed = Inventory_OnAcquireTransitionSpeed;
+            MarkDirty();
+        }
+
 
         private ItemSlot GetAutoPullFromSlot(BlockFacing atBlockFace)
         {

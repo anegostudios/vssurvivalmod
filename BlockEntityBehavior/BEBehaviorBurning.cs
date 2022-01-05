@@ -199,7 +199,7 @@ namespace Vintagestory.GameContent
             for (int i = 0; i < entities.Length; i++)
             {
                 Entity entity = entities[i];
-                if (!CollisionTester.AabbIntersect(entity.CollisionBox, entity.ServerPos.X, entity.ServerPos.Y, entity.ServerPos.Z, fireCuboid, ownPos)) continue;
+                if (!CollisionTester.AabbIntersect(entity.SelectionBox, entity.ServerPos.X, entity.ServerPos.Y, entity.ServerPos.Z, fireCuboid, ownPos)) continue;
 
                 if (entity.Alive)
                 {

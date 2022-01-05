@@ -88,7 +88,7 @@ namespace Vintagestory.GameContent
             double dh = Api.World.Calendar.TotalHours - lastTickTotalHours;
             if (dh > 0.1f)
             {
-                fuelHours -= (float)dh;
+                if (IsBurning) fuelHours -= (float)dh;
                 lastTickTotalHours = Api.World.Calendar.TotalHours;
             }
 
@@ -152,13 +152,11 @@ namespace Vintagestory.GameContent
         {
             if (inventory[0].Empty) return;
             
-            if (InputStackTemp < 80)
+            if (InputStackTemp < 100)
             {
                 InputStackTemp += dt * 2;
             }
         }
-
-
 
         public bool OnInteract(IPlayer byPlayer, BlockSelection blockSel)
         {
@@ -171,7 +169,7 @@ namespace Vintagestory.GameContent
             if (addGrass || addFireWood || reignite)
             {
                 if (!reignite) firepitStage++;
-                else firepitStage = 5;
+                else if (firepitStage == 7) firepitStage = 5;
 
                 MarkDirty(true);
                 hotbarSlot.TakeOut(1);

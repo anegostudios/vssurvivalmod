@@ -4,17 +4,92 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
     public class BlockBoiler : BlockLiquidContainerBase
     {
         Block firepitBlock;
+        WorldInteraction[] boilerinteractions;
 
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
             firepitBlock = api.World.GetBlock(BlockEntityBoiler.firepitShapeBlockCodes[6]);
+
+
+            boilerinteractions = ObjectCacheUtil.GetOrCreate(api, "boilerInteractions", () =>
+            {
+                List<ItemStack> canIgniteStacks = new List<ItemStack>();
+
+                List<ItemStack> tinderStacks = new List<ItemStack>();
+                List<ItemStack> firewoodStacks = new List<ItemStack>();
+
+                foreach (CollectibleObject obj in api.World.Collectibles)
+                {
+                    string firstCodePart = obj.FirstCodePart();
+
+                    if (obj is Block && (obj as Block).HasBehavior<BlockBehaviorCanIgnite>() || obj is ItemFirestarter)
+                    {
+                        List<ItemStack> stacks = obj.GetHandBookStacks(api as ICoreClientAPI);
+                        if (stacks != null) canIgniteStacks.AddRange(stacks);
+                    }
+
+                    if (obj is ItemDryGrass)
+                    {
+                        tinderStacks.Add(new ItemStack(obj));
+                    }
+
+                    if (obj is ItemFirewood)
+                    {
+                        firewoodStacks.Add(new ItemStack(obj));
+                    }
+                }
+
+                return new WorldInteraction[]
+                {
+                    new WorldInteraction()
+                    {
+                        ActionLangCode = "blockhelp-firepit-ignite",
+                        MouseButton = EnumMouseButton.Right,
+                        HotKeyCode = "sneak",
+                        Itemstacks = canIgniteStacks.ToArray(),
+                        GetMatchingStacks = (wi, bs, es) => {
+                            BlockEntityBoiler bef = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityBoiler;
+                            if (bef != null && !bef.IsBurning && bef.fuelHours > 0 && bef.firepitStage >= 5)
+                            {
+                                return wi.Itemstacks;
+                            }
+                            return null;
+                        }
+                    },
+                    new WorldInteraction()
+                    {
+                        ActionLangCode = "blockhelp-boiler-addtinder",
+                        MouseButton = EnumMouseButton.Right,
+                        Itemstacks = tinderStacks.ToArray(),
+                        GetMatchingStacks = (wi, bs, es) =>
+                        {
+                            BlockEntityBoiler bef = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityBoiler;
+                            if (bef != null && bef.firepitStage == 0) return wi.Itemstacks;
+                            return null;
+                        }
+                    },
+                    new WorldInteraction()
+                    {
+                        ActionLangCode = "blockhelp-boiler-addfuel",
+                        MouseButton = EnumMouseButton.Right,
+                        Itemstacks = firewoodStacks.ToArray(),
+                        GetMatchingStacks = (wi, bs, es) =>
+                        {
+                            BlockEntityBoiler bef = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityBoiler;
+                            if (bef != null && bef.firepitStage > 0 && bef.fuelHours <= 6f) return wi.Itemstacks;
+                            return null;
+                        }
+                    }
+                };
+            });
         }
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
@@ -105,6 +180,11 @@ namespace Vintagestory.GameContent
             }
 
             return info;
+        }
+
+        public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
+        {
+            return base.GetPlacedBlockInteractionHelp(world, selection, forPlayer).Append(boilerinteractions);
         }
     }
 }

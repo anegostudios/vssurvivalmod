@@ -36,7 +36,7 @@ namespace Vintagestory.GameContent
         {
             this.pos = pos;
             this.api = api;
-            textureId = api.Render.GetOrLoadTexture(new AssetLocation("block/orecoalmix.png"));
+            textureId = api.Render.GetOrLoadTexture(new AssetLocation("block/coal/orecoalmix.png"));
         }
 
 

@@ -61,7 +61,7 @@ namespace Vintagestory.GameContent
             if (entity.World.Side == EnumAppSide.Client) return;
 
             EntityBehaviorTaskAI taskAi = entity.GetBehavior<EntityBehaviorTaskAI>();
-            taskAi.taskManager.ShouldExecuteTask = (task) => !IsBeingMilked;
+            taskAi.TaskManager.ShouldExecuteTask = (task) => !IsBeingMilked;
 
             // Make sure TotalDaysLastBirth is not a future date (e.g. when exported from an old world and imported into a new world)
             bhmul = entity.GetBehavior<EntityBehaviorMultiply>();
@@ -100,7 +100,7 @@ namespace Vintagestory.GameContent
 
             if (entity.World.Side == EnumAppSide.Server)
             {
-                AiTaskManager tmgr = entity.GetBehavior<EntityBehaviorTaskAI>().taskManager;
+                AiTaskManager tmgr = entity.GetBehavior<EntityBehaviorTaskAI>().TaskManager;
                 tmgr.StopTask(typeof(AiTaskWander));
                 tmgr.StopTask(typeof(AiTaskSeekEntity));
                 tmgr.StopTask(typeof(AiTaskSeekFoodAndEat));
@@ -187,7 +187,7 @@ namespace Vintagestory.GameContent
             if (entity.World.Side == EnumAppSide.Server)
             {
                 ItemStack contentStack = new ItemStack(byEntity.World.GetItem(new AssetLocation("milkportion")));
-                contentStack.StackSize = 10;
+                contentStack.StackSize = 999999;
 
                 if (slot.Itemstack.StackSize == 1)
                 {

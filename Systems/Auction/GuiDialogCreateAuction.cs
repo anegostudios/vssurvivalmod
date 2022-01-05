@@ -75,10 +75,10 @@ namespace Vintagestory.GameContent
                 .BeginChildElements(bgBounds)
                         .AddItemSlotGrid(auctionSlotInv, (p) => { capi.Network.SendPacketClient(p); }, 1, null, slotBounds, "traderSellingSlots")
 
-                        .AddStaticText("Price in rusty gears", CairoFont.WhiteSmallText(), priceLabelBounds)
+                        .AddStaticText(Lang.Get("Price in rusty gears"), CairoFont.WhiteSmallText(), priceLabelBounds)
                         .AddNumberInput(priceBounds, onPriceChanged, CairoFont.WhiteSmallText(), "price")
 
-                        .AddStaticText("Duration", CairoFont.WhiteSmallText(), durationLabelBounds)
+                        .AddStaticText(Lang.Get("Duration"), CairoFont.WhiteSmallText(), durationLabelBounds)
                         .AddDropDown(codes, values, 0, onDurationChanged, dropDownBounds, CairoFont.WhiteSmallText(), "duration")
 
                         .AddDynamicText(Lang.Get("Deposit: {0} rusty gears", 1), CairoFont.WhiteSmallText(), costLabelBounds, "depositText")
@@ -161,7 +161,7 @@ namespace Vintagestory.GameContent
         public override void OnGuiClosed()
         {
             base.OnGuiClosed();
-            auctionSlotInv.Close(capi.World.Player);
+            capi.Network.SendPacketClient(auctionSlotInv.Close(capi.World.Player));
         }
 
         public override void OnMouseMove(MouseEvent args)

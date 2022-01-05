@@ -1,13 +1,18 @@
 ﻿using System;
+using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
     public class BlockFruitPress : Block
     {
         Cuboidf[] particleCollBoxes;
+        WorldInteraction[] interactions;
+
+        public bool RightMouseDown = false;
 
         public override void OnLoaded(ICoreAPI api)
         {
@@ -15,6 +20,47 @@ namespace Vintagestory.GameContent
             particleCollBoxes[0].Y1 = 0.7f;
 
             base.OnLoaded(api);
+
+            if (api.Side == EnumAppSide.Client)
+            {
+                (api as ICoreClientAPI).Input.InWorldAction += Input_InWorldAction;
+            }
+
+            interactions = ObjectCacheUtil.GetOrCreate(api, "fruitPressInteractions", () =>
+            {
+                List<ItemStack> fillableContainers = new List<ItemStack>();
+
+                foreach (CollectibleObject obj in api.World.Collectibles)
+                {
+                    if (obj is BlockLiquidContainerBase blc && blc.IsTopOpened && blc.AllowHeldLiquidTransfer)
+                    {
+                        fillableContainers.Add(new ItemStack(obj));
+                    }
+                }
+
+                return new WorldInteraction[]
+                {
+                    
+                    new WorldInteraction()
+                    {
+                        ActionLangCode = "blockhelp-fruitpress-putremovebucket",
+                        MouseButton = EnumMouseButton.Right,
+                        Itemstacks = fillableContainers.ToArray(),
+                        ShouldApply = (wi, bs, es) => 
+                        {
+                            return bs.SelectionBoxIndex == (int)EnumFruitPressSection.Ground;
+                        }
+                    }
+                };
+            });
+        }
+
+        private void Input_InWorldAction(EnumEntityAction action, bool on, ref EnumHandling handled)
+        {
+            if (action == EnumEntityAction.RightMouseDown && !on)
+            {
+                RightMouseDown = false;
+            }
         }
 
         public override Cuboidf[] GetParticleCollisionBoxes(IBlockAccessor blockAccessor, BlockPos pos)
@@ -62,7 +108,12 @@ namespace Vintagestory.GameContent
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
             var be = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityFruitPress;
-            if (be != null) return be.OnBlockInteractStart(byPlayer, blockSel, blockSel.SelectionBoxIndex == 1 ? EnumFruitPressSection.MashContainer : EnumFruitPressSection.Ground);
+            if (be != null)
+            {
+                var handled = be.OnBlockInteractStart(byPlayer, blockSel, blockSel.SelectionBoxIndex == 1 ? EnumFruitPressSection.MashContainer : EnumFruitPressSection.Ground, !RightMouseDown);
+                RightMouseDown = true;
+                return handled;
+            }
 
             return base.OnBlockInteractStart(world, byPlayer, blockSel);
         }
@@ -91,14 +142,17 @@ namespace Vintagestory.GameContent
             return base.OnBlockInteractCancel(secondsUsed, world, byPlayer, blockSel, cancelReason);
         }
 
+
         public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
         {
-            return base.GetPlacedBlockInteractionHelp(world, selection, forPlayer);
+            return interactions.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
         }
 
         public override string GetPlacedBlockInfo(IWorldAccessor world, BlockPos pos, IPlayer forPlayer)
         {
             return base.GetPlacedBlockInfo(world, pos, forPlayer);
         }
+
+
     }
 }

@@ -32,6 +32,7 @@ namespace Vintagestory.GameContent
     public class ItemChisel : Item
     {
         SkillItem[] toolModes;
+        SkillItem addMatItem;
 
         public override void OnLoaded(ICoreAPI api)
         {
@@ -53,6 +54,13 @@ namespace Vintagestory.GameContent
 
                     return modes;
                 });
+
+                addMatItem = new SkillItem()
+                {
+                    Name = Lang.Get("chisel-addmat"),
+                    Code = new AssetLocation("addmat"),
+                    Enabled = false
+                }.WithIcon(capi, "plus");
             }
         }
 
@@ -63,6 +71,8 @@ namespace Vintagestory.GameContent
             {
                 toolModes[i]?.Dispose();
             }
+
+            addMatItem?.Dispose();
         }
 
         public override void OnHeldAttackStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
@@ -163,6 +173,7 @@ namespace Vintagestory.GameContent
             if (be == null) return;
 
             be.WasPlaced(block, blockName);
+            
             handling = EnumHandHandling.PreventDefaultAction;
         }
 
@@ -230,6 +241,7 @@ namespace Vintagestory.GameContent
             }
         }
 
+        
 
         public override SkillItem[] GetToolModes(ItemSlot slot, IClientPlayer forPlayer, BlockSelection blockSel)
         {
@@ -239,11 +251,12 @@ namespace Vintagestory.GameContent
             {    
                 if (be.MaterialIds.Length <= 1)
                 {
-                    return toolModes;
+                    addMatItem.Linebreak = true;
+                    return toolModes.Append(addMatItem);
                 }
 
-                SkillItem[] mats = new SkillItem[be.MaterialIds.Length];
-                for (int i = 0; i < mats.Length; i++)
+                SkillItem[] mats = new SkillItem[be.MaterialIds.Length + 1];
+                for (int i = 0; i < be.MaterialIds.Length; i++)
                 {
                     Block block = api.World.GetBlock(be.MaterialIds[i]);
                     ItemStack stack = new ItemStack(block);
@@ -251,7 +264,7 @@ namespace Vintagestory.GameContent
                     {
                         Code = block.Code,
                         Data = be.MaterialIds[i],
-                        Linebreak = i==0,
+                        Linebreak = i % 7 == 0,
                         Name = block.GetHeldItemName(stack),
                         RenderHandler = (AssetLocation code, float dt, double atPosX, double atPosY) =>
                         {
@@ -261,6 +274,9 @@ namespace Vintagestory.GameContent
                         }
                     };
                 }
+
+                mats[mats.Length - 1] = addMatItem;
+                addMatItem.Linebreak = (mats.Length - 1) % 7 == 0;
 
                 return toolModes.Append(mats);
             }
@@ -275,6 +291,25 @@ namespace Vintagestory.GameContent
 
         public override void SetToolMode(ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel, int toolMode)
         {
+            if (blockSel == null) return;
+
+            var mouseslot = byPlayer.InventoryManager.MouseItemSlot;
+            if (!mouseslot.Empty && mouseslot.Itemstack.Block != null)
+            {
+                BlockEntityChisel be = api.World.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityChisel;
+                if (IsChiselingAllowedFor(mouseslot.Itemstack.Block, byPlayer) && !be.MaterialIds.Contains(mouseslot.Itemstack.Block.Id))
+                {
+                    var stack = mouseslot.TakeOut(1);
+                    mouseslot.MarkDirty();
+                    be.MaterialIds = be.MaterialIds.Append(stack.Block.Id);
+                    be.MarkDirty();
+
+                    api.Event.PushEvent("reopentoolmodedlg");
+                }
+
+                return;
+            }
+
             if (toolMode > 6)
             {
                 int matNum = toolMode - 7;
@@ -282,6 +317,7 @@ namespace Vintagestory.GameContent
                 if (be != null && be.MaterialIds.Length > matNum)
                 {
                     slot.Itemstack.Attributes.SetInt("materialId", be.MaterialIds[matNum]);
+                    slot.MarkDirty();
                 }
 
                 return;
@@ -289,6 +325,8 @@ namespace Vintagestory.GameContent
 
             slot.Itemstack.Attributes.SetInt("toolMode", toolMode);
         }
+
+        
 
         public void Drawrotate_svg(Context cr, int x, int y, float width, float height, double[] rgba)
         {

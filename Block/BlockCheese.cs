@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -54,6 +55,19 @@ namespace Vintagestory.GameContent
 
         public override void GetDecal(IWorldAccessor world, BlockPos pos, ITexPositionSource decalTexSource, ref MeshData decalModelData, ref MeshData blockModelData)
         {
+            var capi = api as ICoreClientAPI;
+            BECheese bec = world.BlockAccessor.GetBlockEntity(pos) as BECheese;
+            if (bec != null)
+            {
+                var shape = capi.TesselatorManager.GetCachedShape(bec.Inventory[0].Itemstack.Item.Shape.Base);
+                
+                capi.Tesselator.TesselateShape(this, shape, out blockModelData);
+                blockModelData.Scale(new Vec3f(0.5f, 0, 0.5f), 0.75f, 0.75f, 0.75f);
+
+                capi.Tesselator.TesselateShape("cheese decal", shape, out decalModelData, decalTexSource);
+                decalModelData.Scale(new Vec3f(0.5f, 0, 0.5f), 0.75f, 0.75f, 0.75f);
+            }
+
             base.GetDecal(world, pos, decalTexSource, ref decalModelData, ref blockModelData);
         }
 
@@ -79,8 +93,18 @@ namespace Vintagestory.GameContent
 
                 if (bec.Inventory[0].Itemstack?.Collectible.Variant["type"] == "waxedcheddar")
                 {
-                    bec.Inventory[0].Itemstack = new ItemStack(api.World.GetItem(bec.Inventory[0].Itemstack?.Collectible.CodeWithVariant("type", "cheddar")));
+                    var newStack = new ItemStack(api.World.GetItem(bec.Inventory[0].Itemstack?.Collectible.CodeWithVariant("type", "cheddar")));
+
+                    TransitionableProperties[] tprops = newStack.Collectible.GetTransitionableProperties(api.World, newStack, null);
+
+                    var perishProps = tprops.FirstOrDefault(p => p.Type == EnumTransitionType.Perish);
+                    perishProps.TransitionedStack.Resolve(api.World, "pie perished stack");
+
+                    CarryOverFreshness(api, bec.Inventory[0], newStack, perishProps);
+
+                    bec.Inventory[0].Itemstack = newStack;
                     bec.Inventory[0].MarkDirty();
+
                     bec.MarkDirty(true);
                     return true;
                 }

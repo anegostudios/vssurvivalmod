@@ -21,14 +21,13 @@ namespace Vintagestory.GameContent
 
         public string type = "wood-aged";
         public string label = null;
-        public string lidState = "closed";
+        public string preferredLidState = "closed";
         public int quantitySlots = 16;
         public bool retrieveOnly = false;
         float rotAngleY;
 
         MeshData ownMesh;
         MeshData labelMesh;
-        MeshData contentMesh;
         ICoreClientAPI capi;
 
         Cuboidf selBoxCrate;
@@ -62,20 +61,38 @@ namespace Vintagestory.GameContent
             }
         }
 
+        public string LidState
+        {
+            get
+            {
+                if (inventory.Empty) return preferredLidState;
+                var stack = inventory.FirstNonEmptySlot.Itemstack;
+
+                bool? displayInsideCrate = stack.ItemAttributes?["displayInsideCrate"].Exists != true ? null : stack.ItemAttributes?["displayInsideCrate"].AsBool(true);
+
+                bool hasContentTexture = stack.ItemAttributes?["inContainerTexture"].Exists == true || (stack.Block != null && stack.Block.DrawType == EnumDrawType.Cube && displayInsideCrate != false) || displayInsideCrate == true;
+
+                return hasContentTexture ? preferredLidState : "closed";
+            }
+        }
+
         public override void Initialize(ICoreAPI api)
         {
             ownBlock = Block as BlockCrate;
             capi = api as ICoreClientAPI;
 
-            // Newly placed 
-            if (inventory == null)
+            bool isNewlyplaced = inventory == null;
+            if (isNewlyplaced)
             {
                 InitInventory(Block);
-            }            
+            }
 
             base.Initialize(api);
 
-            contentMesh = genContentMesh();
+            if (api.Side == EnumAppSide.Client && !isNewlyplaced)
+            {
+                loadOrCreateMesh();
+            }
         }
 
         public override void OnBlockPlaced(ItemStack byItemStack = null)
@@ -86,11 +103,11 @@ namespace Vintagestory.GameContent
                 string nowLabel = byItemStack.Attributes.GetString("label");
                 string nowLidState = byItemStack.Attributes.GetString("lidState", "closed");
 
-                if (nowType != type || nowLabel != label || nowLidState != lidState)
+                if (nowType != type || nowLabel != label || nowLidState != preferredLidState)
                 {
                     this.label = nowLabel;
                     this.type = nowType;
-                    this.lidState = nowLidState;
+                    this.preferredLidState = nowLidState;
                     InitInventory(Block);
                     Inventory.LateInitialize(InventoryClassName + "-" + Pos.X + "/" + Pos.Y + "/" + Pos.Z, Api);
                     Inventory.ResolveBlocksOrItems();
@@ -110,10 +127,12 @@ namespace Vintagestory.GameContent
             bool take = !put;
             bool bulk = byPlayer.Entity.Controls.Sprint;
 
-            ItemSlot slot = inventory.FirstNonEmptySlot;
+            ItemSlot ownSlot = inventory.FirstNonEmptySlot;
             var hotbarslot = byPlayer.InventoryManager.ActiveHotbarSlot;
 
-            if (put && hotbarslot?.Itemstack?.ItemAttributes?["pigment"]?["color"].Exists == true && blockSel.SelectionBoxIndex == 1)
+            bool drawIconLabel = put && hotbarslot?.Itemstack?.ItemAttributes?["pigment"]?["color"].Exists == true && blockSel.SelectionBoxIndex == 1;
+
+            if (drawIconLabel)
             {
                 if (!inventory.Empty)
                 {
@@ -125,19 +144,22 @@ namespace Vintagestory.GameContent
                     labelColor = ColorUtil.ToRgba(255, (int)GameMath.Clamp(r * 1.2f, 0, 255), (int)GameMath.Clamp(g * 1.2f, 0, 255), (int)GameMath.Clamp(b * 1.2f, 0, 255));
                     labelStack = inventory.FirstNonEmptySlot.Itemstack.Clone();
                     labelMesh = null;
+
+                    byPlayer.Entity.World.PlaySoundAt(new AssetLocation("sounds/player/chalkdraw"), blockSel.Position.X + blockSel.HitPosition.X, blockSel.Position.Y + blockSel.HitPosition.Y, blockSel.Position.Z + blockSel.HitPosition.Z, byPlayer, true, 8);
+
                     MarkDirty(true);
                 }
                 else
                 {
-                    (Api as ICoreClientAPI)?.TriggerIngameError(this, "empty", Lang.Get("Put something inside the crate first"));
+                    (Api as ICoreClientAPI)?.TriggerIngameError(this, "empty", Lang.Get("Can't draw item symbol on an empty crate. Put something inside the crate first"));
                 }
 
                 return true;
             }
 
-            if (take && slot != null)
+            if (take && ownSlot != null)
             {
-                ItemStack stack = bulk ? slot.TakeOutWhole() : slot.TakeOut(1);
+                ItemStack stack = bulk ? ownSlot.TakeOutWhole() : ownSlot.TakeOut(1);
                 if (!byPlayer.InventoryManager.TryGiveItemstack(stack, true))
                 {
                     Api.World.SpawnItemEntity(stack, Pos.ToVec3d().Add(0.5f + blockSel.Face.Normalf.X, 0.5f + blockSel.Face.Normalf.Y, 0.5f + blockSel.Face.Normalf.Z));
@@ -147,15 +169,18 @@ namespace Vintagestory.GameContent
                     didMoveItems(stack, byPlayer);
                 }
 
-                if (inventory.Empty) labelMesh = null;
+                if (inventory.Empty)
+                {
+                    labelMesh = null;
+                }
 
-                slot.MarkDirty();
+                ownSlot.MarkDirty();
                 MarkDirty();
             }
 
             if (put && !hotbarslot.Empty)
             {
-                if (slot == null)
+                if (ownSlot == null)
                 {
                     if (hotbarslot.TryPutInto(Api.World, inventory[0], bulk ? hotbarslot.StackSize : 1) > 0)
                     {
@@ -164,7 +189,7 @@ namespace Vintagestory.GameContent
                 }
                 else
                 {
-                    if (hotbarslot.Itemstack.Equals(Api.World, slot.Itemstack, GlobalConstants.IgnoredStackAttributes))
+                    if (hotbarslot.Itemstack.Equals(Api.World, ownSlot.Itemstack, GlobalConstants.IgnoredStackAttributes))
                     {
                         List<ItemSlot> skipSlots = new List<ItemSlot>();
                         while (hotbarslot.StackSize > 0 && skipSlots.Count < inventory.Count)
@@ -193,7 +218,8 @@ namespace Vintagestory.GameContent
 
         protected void didMoveItems(ItemStack stack, IPlayer byPlayer)
         {
-            contentMesh = genContentMesh();
+            if (Api.Side == EnumAppSide.Client) loadOrCreateMesh();
+
             capi?.World.Player.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
             AssetLocation sound = stack?.Block?.Sounds?.Place;
             Api.World.PlaySoundAt(sound != null ? sound : new AssetLocation("sounds/player/build"), byPlayer.Entity, byPlayer, true, 16);
@@ -203,8 +229,10 @@ namespace Vintagestory.GameContent
         {
             if (block?.Attributes != null)
             {
-                quantitySlots = block.Attributes["quantitySlots"][type].AsInt(quantitySlots);
-                retrieveOnly = block.Attributes["retrieveOnly"][type].AsBool(false);
+                var props = block.Attributes["properties"][type];
+                if (!props.Exists) props = block.Attributes["properties"]["*"];
+                quantitySlots = props["quantitySlots"].AsInt(quantitySlots);
+                retrieveOnly = props["retrieveOnly"].AsBool(false);
             }
 
             inventory = new InventoryGeneric(quantitySlots, null, null, null);
@@ -264,7 +292,7 @@ namespace Vintagestory.GameContent
 
             labelColor = tree.GetInt("labelColor");
             labelStack = tree.GetItemstack("labelStack");
-            lidState = tree.GetString("lidState");
+            preferredLidState = tree.GetString("lidState");
 
             if (labelStack != null && !labelStack.ResolveBlockOrItem(worldForResolving))
             {
@@ -285,7 +313,7 @@ namespace Vintagestory.GameContent
 
             if (Api != null && Api.Side == EnumAppSide.Client)
             {
-                ownMesh = null;
+                loadOrCreateMesh();
                 MarkDirty(true);
             }
 
@@ -304,7 +332,7 @@ namespace Vintagestory.GameContent
             tree.SetString("type", type);
             tree.SetFloat("meshAngle", MeshAngle);
             tree.SetInt("labelColor", labelColor);
-            tree.SetString("lidState", lidState);
+            tree.SetString("lidState", preferredLidState);
 
             tree.SetItemstack("labelStack", labelStack);
         }
@@ -354,7 +382,7 @@ namespace Vintagestory.GameContent
 
         #region Meshing
 
-        private MeshData genMesh()
+        private void loadOrCreateMesh()
         {
             BlockCrate block = Block as BlockCrate;
             if (Block == null)
@@ -362,7 +390,7 @@ namespace Vintagestory.GameContent
                 block = Api.World.BlockAccessor.GetBlock(Pos) as BlockCrate;
                 Block = block;
             }
-            if (block == null) return null;
+            if (block == null) return;
 
             string cacheKey = "crateMeshes" + block.FirstCodePart();
             Dictionary<string, MeshData> meshes = ObjectCacheUtil.GetOrCreate(Api, cacheKey, () => new Dictionary<string, MeshData>());
@@ -372,18 +400,20 @@ namespace Vintagestory.GameContent
             CompositeShape cshape = ownBlock.Props[type].Shape;
             if (cshape?.Base == null)
             {
-                return null;
+                return;
             }
-            
-            string meshKey = type + block.Subtype + "-" + label + "-" + lidState;
-            if (meshes.TryGetValue(meshKey, out mesh))
+
+            var firstStack = inventory.FirstNonEmptySlot?.Itemstack;
+
+            string meshKey = type + block.Subtype + "-" + label + "-" + LidState + "-" + (LidState == "closed" ? null : firstStack?.StackSize + "-" + firstStack?.GetHashCode());
+
+            if (!meshes.TryGetValue(meshKey, out mesh))
             {
-                return mesh;
+                mesh = block.GenMesh(Api as ICoreClientAPI, firstStack, type, label, LidState, cshape, new Vec3f(cshape.rotateX, cshape.rotateY, cshape.rotateZ));
+                meshes[meshKey] = mesh;
             }
 
-            mesh = block.GenMesh(Api as ICoreClientAPI, type, label, lidState, cshape, new Vec3f(cshape.rotateX, cshape.rotateY, cshape.rotateZ));
-
-            return meshes[meshKey] = mesh;  
+            ownMesh = mesh.Clone().Rotate(origin, 0, MeshAngle, 0).Scale(origin, rndScale, rndScale, rndScale);
         }
 
 
@@ -394,7 +424,7 @@ namespace Vintagestory.GameContent
             if (LabelProps?.EditableShape != null && stack != null)
             {
                 var capi = Api as ICoreClientAPI;
-                int hashCode = stack.GetHashCode(GlobalConstants.IgnoredStackAttributes) + labelColor.GetHashCode();
+                int hashCode = stack.GetHashCode(GlobalConstants.IgnoredStackAttributes) + 23*labelColor.GetHashCode();
 
                 if (ownBlock.itemStackRenders.TryGetValue(hashCode, out var val))
                 {
@@ -417,29 +447,6 @@ namespace Vintagestory.GameContent
         }
 
 
-        protected MeshData genContentMesh()
-        {
-            if (lidState == "closed" || Api.Side != EnumAppSide.Client) return null;
-            var slot = inventory.FirstNonEmptySlot;
-            if (slot == null) return null;
-
-            ICoreClientAPI capi = Api as ICoreClientAPI;
-
-            float fillHeight;
-
-            var contentSource = BlockBarrel.getContentTexture(capi, slot?.Itemstack, out fillHeight);
-
-            if (contentSource != null)
-            {
-                Shape shape = capi.Assets.TryGet("shapes/block/wood/crate/contents.json").ToObject<Shape>();
-                MeshData contentMesh;
-                capi.Tesselator.TesselateShape("cratecontents", shape, out contentMesh, contentSource, new Vec3f(0, rotAngleY, 0));
-                contentMesh.Translate(0, fillHeight, 0).Rotate(origin, 0, MeshAngle, 0).Scale(origin, rndScale, rndScale, rndScale);
-                return contentMesh;
-            }
-
-            return null;
-        }
 
         static Vec3f origin = new Vec3f(0.5f, 0f, 0.5f);
         float rndScale => 1 + (GameMath.MurmurHash3Mod(Pos.X, Pos.Y, Pos.Z, 100) - 50) / 1000f;
@@ -459,8 +466,7 @@ namespace Vintagestory.GameContent
             
             if (ownMesh == null)
             {
-                ownMesh = genMesh().Clone().Rotate(origin, 0, MeshAngle, 0).Scale(origin, rndScale, rndScale, rndScale);
-                if (ownMesh == null) return false;
+                return true;
             }
 
             if (labelMesh == null)
@@ -470,7 +476,6 @@ namespace Vintagestory.GameContent
 
             mesher.AddMeshData(ownMesh);
             mesher.AddMeshData(labelMesh);
-            mesher.AddMeshData(contentMesh);
 
             return true;
         }

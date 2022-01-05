@@ -231,7 +231,7 @@ namespace Vintagestory.GameContent
                 // Can bear anything above 10 degrees without clothing, while standing still
                 float hereTemperature = conds.Temperature + clothingBonus + sprintBonus - wetnessDebuff;
 
-                float tempDiff = hereTemperature - GameMath.Clamp(hereTemperature, bodyTemperatureResistance, 30);
+                float tempDiff = hereTemperature - GameMath.Clamp(hereTemperature, bodyTemperatureResistance, 50);
                 // Above 10 degrees, slowly warms up
                 if (tempDiff == 0) tempDiff = Math.Max((hereTemperature - bodyTemperatureResistance), 0);
 
@@ -338,10 +338,6 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void OnEntityReceiveDamage(DamageSource damageSource, float damage)
-        {
-            base.OnEntityReceiveDamage(damageSource, damage);
-        }
 
         public override void OnEntityRevive()
         {

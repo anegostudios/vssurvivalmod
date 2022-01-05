@@ -159,8 +159,8 @@ namespace Vintagestory.GameContent
 
                         int h = 110 + api.World.Rand.Next(15);
                         int v = 100 + api.World.Rand.Next(50);
-                        particlesStab.MinPos = byEntity.SidedPos.XYZ.Add(byEntity.CollisionBox.X1, 0, byEntity.CollisionBox.Z1);
-                        particlesStab.AddPos = new Vec3d(byEntity.CollisionBox.XSize, byEntity.CollisionBox.Y2, byEntity.CollisionBox.ZSize);
+                        particlesStab.MinPos = byEntity.SidedPos.XYZ.Add(byEntity.SelectionBox.X1, 0, byEntity.SelectionBox.Z1);
+                        particlesStab.AddPos = new Vec3d(byEntity.SelectionBox.XSize, byEntity.SelectionBox.Y2, byEntity.SelectionBox.ZSize);
                         particlesStab.Color = ColorUtil.ReverseColorBytes(ColorUtil.HsvToRgba(h, 180, v, 150));
                         api.World.SpawnParticles(particlesStab);
 

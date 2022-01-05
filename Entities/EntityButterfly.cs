@@ -96,7 +96,7 @@ namespace Vintagestory.GameContent
                     if (FeetInLiquid)
                     {
                         EntityPos herepos = Pos;
-                        double width = CollisionBox.XSize * 0.75f;
+                        double width = SelectionBox.XSize * 0.75f;
 
                         SplashParticleProps.BasePos.Set(herepos.X - width / 2, herepos.Y - 0.05, herepos.Z - width / 2);
                         SplashParticleProps.AddPos.Set(width, 0, width);

@@ -49,7 +49,7 @@ namespace Vintagestory.GameContent
 
         public List<SmithingRecipe> GetMatchingRecipes(ItemStack stack)
         {
-            return api.World.SmithingRecipes
+            return api.GetSmithingRecipes()
                 .Where(r => r.Ingredient.SatisfiesAsIngredient(stack))
                 .OrderBy(r => r.Output.ResolvedItemstack.Collectible.Code) // Cannot sort by name, thats language dependent!
                 .ToList()

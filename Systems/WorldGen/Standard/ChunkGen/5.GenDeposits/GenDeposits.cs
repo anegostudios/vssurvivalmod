@@ -1,11 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using Vintagestory.API;
+﻿using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
-using Vintagestory.ServerMods.NoObf;
 
 namespace Vintagestory.ServerMods
 {
@@ -68,7 +65,7 @@ namespace Vintagestory.ServerMods
 
         public override void initWorldGen()
         {
-            this.initWorldGen(true);
+            initWorldGen(true);
         }
 
         public void initWorldGen(bool blockCallbacks) {
@@ -196,20 +193,13 @@ namespace Vintagestory.ServerMods
 
             subDepositsToPlace.Clear();
 
-            float qfac = 1f;// chunks.Length / 8f;
-
             for (int i = 0; i < Deposits.Length; i++)
             {
                 DepositVariant variant = Deposits[i];
 
-                /*if (variant.Code != "sphalerite" || chunkdX != 0 || chunkdZ != 0)
-                {
-                    continue;
-                }*/
-
                 float quantityFactor = variant.WithOreMap ? variant.GetOreMapFactor(fromChunkx, fromChunkz) : 1;
 
-                float qModified = qfac * variant.TriesPerChunk * quantityFactor * chanceMultiplier;
+                float qModified = variant.TriesPerChunk * quantityFactor * chanceMultiplier;
                 int quantity = (int)qModified;
                 quantity += chunkRand.NextInt(100) < 100 * (qModified - quantity) ? 1 : 0;
                 
@@ -235,18 +225,6 @@ namespace Vintagestory.ServerMods
 
         
         
-
-        /// <summary>
-        /// forceInitialPosY is for subdeposits
-        /// </summary>
-        /// <param name="chunks"></param>
-        /// <param name="chunkX"></param>
-        /// <param name="chunkZ"></param>
-        /// <param name="offsetX"></param>
-        /// <param name="offsetZ"></param>
-        /// <param name="variant"></param>
-        /// <param name="forceInitialPosY"></param>
-        /// <returns></returns>
         public virtual void GenDeposit(IServerChunk[] chunks, int chunkX, int chunkZ, BlockPos depoCenterPos, DepositVariant variant)
         {
             int lx = GameMath.Mod(depoCenterPos.X, chunksize);

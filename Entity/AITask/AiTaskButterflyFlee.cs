@@ -170,7 +170,7 @@ namespace Vintagestory.GameContent
         
         bool traversable(Vec3d pos)
         {
-            return !world.CollisionTester.IsColliding(world.BlockAccessor, entity.CollisionBox, pos, false);
+            return !world.CollisionTester.IsColliding(world.BlockAccessor, entity.SelectionBox, pos, false);
         }
 
 

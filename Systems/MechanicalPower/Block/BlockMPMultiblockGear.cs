@@ -75,12 +75,7 @@ namespace Vintagestory.GameContent.Mechanics
             BEMPMultiblock be = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BEMPMultiblock;
             if (be == null || be.Principal == null) return 1f;  //never break
             Block centerBlock = world.BlockAccessor.GetBlock(be.Principal);
-            if (api.Side == EnumAppSide.Client)
-            {
-                //Vintagestory.Client.SystemMouseInWorldInteractions mouse;
-                //mouse.loadOrCreateBlockDamage(bs, centerBlock);
-                //mouse.curBlockDmg.LastBreakEllapsedMs = game.ElapsedMilliseconds;
-            }
+            
             BlockSelection bs = blockSel.Clone();
             bs.Position = be.Principal;
             return centerBlock.OnGettingBroken(player, bs, itemslot, remainingResistance, dt, counter);
@@ -103,7 +98,14 @@ namespace Vintagestory.GameContent.Mechanics
             // being broken by player: break the center block instead
             BlockPos centerPos = be.Principal;
             Block centerBlock = world.BlockAccessor.GetBlock(centerPos);
-            centerBlock.OnBlockBroken(world, centerPos, byPlayer, dropQuantityMultiplier);
+            if (centerBlock.Id != 0)
+            {
+                centerBlock.OnBlockBroken(world, centerPos, byPlayer, dropQuantityMultiplier);
+            }
+            else
+            {
+                base.OnBlockBroken(world, pos, byPlayer, dropQuantityMultiplier);
+            }
 
             // Need to trigger neighbourchange on client side only (because it's normally in the player block breaking code)
             if (api.Side == EnumAppSide.Client)
@@ -128,7 +130,7 @@ namespace Vintagestory.GameContent.Mechanics
             return centerBlock.GetParticleBreakBox(blockAccess, be.Principal, facing);
         }
 
-        //Need to override because this fake block has no texture of its own (no texture gives black breaking particles)
+        // Need to override because this fake block has no texture of its own (no texture gives black breaking particles)
         public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing, int rndIndex = -1)
         {
             IBlockAccessor blockAccess = capi.World.BlockAccessor;

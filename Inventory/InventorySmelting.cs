@@ -40,6 +40,11 @@ namespace Vintagestory.GameContent
             get { return slots[1].Itemstack?.ItemAttributes?.KeyExists("cookingContainerSlots") == true; }
         }
 
+        public float CookingSlotCapacityLitres
+        {
+            get { return slots?[1]?.Itemstack?.ItemAttributes?["cookingSlotCapacityLitres"].AsFloat(6) ?? 6; }
+        }
+
         public int CookingContainerMaxSlotStackSize
         {
             get {
@@ -135,6 +140,7 @@ namespace Vintagestory.GameContent
             {
                 cookingSlots[i].StorageType = (EnumItemStorageFlags)storageType;
                 cookingSlots[i].MaxSlotStackSize = CookingContainerMaxSlotStackSize;
+                (cookingSlots[i] as ItemSlotWatertight).capacityLitres = CookingSlotCapacityLitres;
             }
         }
 
@@ -190,7 +196,7 @@ namespace Vintagestory.GameContent
             if (i == 1) return new ItemSlotInput(this, 2);
             if (i == 2) return new ItemSlotOutput(this);
 
-            return new ItemSlotWatertight(this);
+            return new ItemSlotWatertight(this, CookingSlotCapacityLitres);
         }
 
 

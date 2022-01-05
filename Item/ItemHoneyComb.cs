@@ -11,7 +11,7 @@ namespace Vintagestory.GameContent
 {
     public class ItemHoneyComb : Item
     {
-        public float ContainedHoneyLitres = 0.25f;
+        public float ContainedHoneyLitres = 0.2f;
 
         public bool CanSqueezeInto(Block block, BlockPos pos)
         {

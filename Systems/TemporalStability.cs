@@ -59,6 +59,7 @@ namespace Vintagestory.GameContent
         ICoreServerAPI sapi;
 
         EntityProperties[] drifterTypes;
+        EntityProperties doubleHeadedDrifterType;
         bool temporalStabilityEnabled;
         bool stormsEnabled;
 
@@ -67,6 +68,8 @@ namespace Vintagestory.GameContent
 
         TemporalStormConfig config;
         TemporalStormRunTimeData data = new TemporalStormRunTimeData();
+
+        ModSystemRifts riftSys;
 
         public float modGlitchStrength;
 
@@ -93,6 +96,8 @@ namespace Vintagestory.GameContent
         {
             base.Start(api);
             this.api = api;
+
+            riftSys = api.ModLoader.GetModSystem<ModSystemRifts>();
 
 
             texts = new Dictionary<EnumTempStormStrength, TemporalStormText>()
@@ -354,6 +359,11 @@ namespace Vintagestory.GameContent
                         if (e.Code.Path.Contains("drifter"))
                         {
                             e.Attributes.RemoveAttribute("ignoreDaylightFlee");
+
+                            if (api.World.Rand.NextDouble() < 0.5)
+                            {
+                                sapi.World.DespawnEntity(e, new EntityDespawnReason() { reason = EnumDespawnReason.Expire });
+                            }
                         }
                     }
                 }
@@ -366,7 +376,9 @@ namespace Vintagestory.GameContent
 
             double addStrength = Math.Min(config.StrengthIncreaseCap, config.StrengthIncrease * api.World.Calendar.TotalDays / config.Frequency.avg);
 
-            data.nextStormTotalDays = api.World.Calendar.TotalDays + config.Frequency.nextFloat(1, api.World.Rand) / (1 + addStrength/3);
+            double frequencyMod = api.World.Config.GetDecimal("tempStormFrequencyMul", 1);
+
+            data.nextStormTotalDays = api.World.Calendar.TotalDays + config.Frequency.nextFloat(1, api.World.Rand) / (1 + addStrength/3) / frequencyMod;
 
             double stormStrength = addStrength + (api.World.Rand.NextDouble() * api.World.Rand.NextDouble()) * (float)addStrength * 5f;
 
@@ -374,12 +386,16 @@ namespace Vintagestory.GameContent
             data.nextStormStrength = (EnumTempStormStrength)index;
 
             data.nextStormStrDouble = Math.Max(0, addStrength);
+
+            doubleHeadedDrifterCountByPlayer.Clear();
         }
 
 
         CollisionTester collisionTester = new CollisionTester();
         long spawnBreakUntilMs;
         int nobreakSpawns = 0;
+
+        Dictionary<string, int> doubleHeadedDrifterCountByPlayer = new Dictionary<string, int>();
 
         private void trySpawnDrifters()
         {
@@ -399,16 +415,24 @@ namespace Vintagestory.GameContent
                 spawnBreakUntilMs = api.World.ElapsedMilliseconds + 1000 * api.World.Rand.Next(15);
             }
 
+
             foreach (var val in api.World.AllOnlinePlayers)
             {
-                if (api.World.Rand.NextDouble() < 0.75) continue; 
-                
+                if (api.World.Rand.NextDouble() < 0.75) continue;
+
+                int dHeadedDrifterCount = 0;
+
+
                 int drifterCount = 0;
                 plrPos = val.Entity.ServerPos.XYZ;
                 part.WalkEntities(plrPos, range + 5, (e) => { 
-                    drifterCount += e.Code.Path.Contains("drifter") ? 1 : 0; 
+                    drifterCount += e.Code.Path.Contains("drifter") ? 1 : 0;
+                    dHeadedDrifterCount += e.Code.Path.Contains("drifter-double-headed") ? 1 : 0;
                     return true; 
                 });
+
+                doubleHeadedDrifterCountByPlayer.TryGetValue(val.PlayerUID, out int prevcnt);
+                doubleHeadedDrifterCountByPlayer[val.PlayerUID] = dHeadedDrifterCount + prevcnt;
 
                 if (drifterCount <= 2 + str * 8)
                 {
@@ -420,12 +444,16 @@ namespace Vintagestory.GameContent
                         int index = GameMath.RoundRandom(api.World.Rand, typernd);
                         var type = drifterTypes[GameMath.Clamp(index, 0, drifterTypes.Length - 1)];
 
+                        if ((index == 3 || index == 4) && api.World.Rand.NextDouble() < 0.2 && dHeadedDrifterCount == 0)
+                        {
+                            type = doubleHeadedDrifterType;
+                        }
+
                         int rndx = api.World.Rand.Next(2 * range) - range;
                         int rndy = api.World.Rand.Next(2 * range) - range;
                         int rndz = api.World.Rand.Next(2 * range) - range;
 
                         spawnPos.Set((int)plrPos.X + rndx + 0.5, (int)plrPos.Y + rndy + 0.001, (int)plrPos.Z + rndz + 0.5);
-
                         spawnPosi.Set((int)spawnPos.X, (int)spawnPos.Y, (int)spawnPos.Z);
 
                         while (api.World.BlockAccessor.GetBlock(spawnPosi.X, spawnPosi.Y - 1, spawnPosi.Z).Id == 0 && spawnPos.Y > 0)
@@ -472,6 +500,8 @@ namespace Vintagestory.GameContent
             if (!properties.Code.Path.StartsWithFast("drifter")) return true;
 
             IPlayer plr = api.World.NearestPlayer(spawnPosition.X, spawnPosition.Y, spawnPosition.Z);
+            if (plr == null) return true;
+
             double stab = plr.Entity.WatchedAttributes.GetDouble("temporalStability", 1);
 
             stab = Math.Min(stab, 1 - 1f * data.stormGlitchStrength);
@@ -532,8 +562,9 @@ namespace Vintagestory.GameContent
                 }
 
                 sapi.Event.OnEntityDeath += Event_OnEntityDeath;
-                
 
+
+                doubleHeadedDrifterType = sapi.World.GetEntityType(new AssetLocation("drifter-double-headed"));
                 drifterTypes = new EntityProperties[]
                 {
                     sapi.World.GetEntityType(new AssetLocation("drifter-normal")),
@@ -586,14 +617,27 @@ namespace Vintagestory.GameContent
 
                 mod = Math.Min(mod, Math.Max(0, 1 - 2 * data.stormGlitchStrength));
 
+                int surfaceY = api.World.BlockAccessor.GetTerrainMapheightAt(spawnPosition.AsBlockPos);
+                bool isSurface = spawnPosition.Y >= surfaceY - 5;
+
+                float riftDist = NearestRiftDistance(spawnPosition);
+
                 float minl = GameMath.Mix(0, sc.MinLightLevel, (float)mod);
                 float maxl = GameMath.Mix(32, sc.MaxLightLevel, (float)mod);
                 if (minl > lightLevel || maxl < lightLevel)
                 {
-                    return false;
+                    if (!isSurface || riftDist >= 4 || api.World.Rand.NextDouble() > 0.02)
+                    {
+                        return false;
+                    }
                 }
 
                 double sqdist = byPlayer.Entity.ServerPos.SquareDistanceTo(spawnPosition);
+
+                if (isSurface)
+                {
+                    return riftDist < 24;
+                }
 
                 // Force a maximum distance
                 if (mod < 0.5)
@@ -608,6 +652,17 @@ namespace Vintagestory.GameContent
             if (sc.MinLightLevel > lightLevel || sc.MaxLightLevel < lightLevel) return false;
 
             return byPlayer.Entity.ServerPos.SquareDistanceTo(spawnPosition) > sc.MinDistanceToPlayer * sc.MinDistanceToPlayer;
+        }
+
+        private float NearestRiftDistance(Vec3d pos)
+        {
+            var nrift = riftSys.rifts.Nearest(rift => rift.Position.SquareDistanceTo(pos));
+            if (nrift != null)
+            {
+                return nrift.Position.DistanceTo(pos);
+            }
+
+            return 9999;
         }
 
         public float GetTemporalStability(double x, double y, double z)

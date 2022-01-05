@@ -43,28 +43,13 @@ namespace Vintagestory.GameContent
 
         public virtual ItemStack[] GetContents(IWorldAccessor world, ItemStack itemstack)
         {
-            List<ItemStack> stacks = new List<ItemStack>();
             ITreeAttribute treeAttr = itemstack?.Attributes?.GetTreeAttribute("contents");
             if (treeAttr == null)
             {
-                if (itemstack?.Attributes.HasAttribute("ucontents") == true)
-                {
-                    var attrs = itemstack.Attributes["ucontents"] as TreeArrayAttribute;
-                    foreach (ITreeAttribute stackAttr in attrs.value)
-                    {
-                        stacks.Add(CreateItemStackFromJson(stackAttr, world, itemstack.Collectible.Code.Domain));
-                    }
-                    SetContents(itemstack, stacks.ToArray());
-                    itemstack.Attributes.RemoveAttribute("ucontents");
-
-                    return stacks.ToArray();
-                }
-                else
-                {
-                    return new ItemStack[0];
-                }
+                return ResolveUcontents(world, itemstack);
             }
 
+            List<ItemStack> stacks = new List<ItemStack>();
             foreach (var val in treeAttr)
             {
                 ItemStack stack = (val.Value as ItemstackAttribute).value;
@@ -76,6 +61,35 @@ namespace Vintagestory.GameContent
             return stacks.ToArray();
         }
 
+        public override bool Equals(ItemStack thisStack, ItemStack otherStack, params string[] ignoreAttributeSubTrees)
+        {
+            ResolveUcontents(api.World, thisStack);
+            if (otherStack.Collectible is BlockContainer) ResolveUcontents(api.World, otherStack);
+
+            return base.Equals(thisStack, otherStack, ignoreAttributeSubTrees);
+        }
+
+        protected ItemStack[] ResolveUcontents(IWorldAccessor world, ItemStack itemstack)
+        {
+            if (itemstack?.Attributes.HasAttribute("ucontents") == true)
+            {
+                List<ItemStack> stacks = new List<ItemStack>();
+
+                var attrs = itemstack.Attributes["ucontents"] as TreeArrayAttribute;
+                foreach (ITreeAttribute stackAttr in attrs.value)
+                {
+                    stacks.Add(CreateItemStackFromJson(stackAttr, world, itemstack.Collectible.Code.Domain));
+                }
+                SetContents(itemstack, stacks.ToArray());
+                itemstack.Attributes.RemoveAttribute("ucontents");
+
+                return stacks.ToArray();
+            }
+            else
+            {
+                return new ItemStack[0];
+            }
+        }
 
         public virtual ItemStack CreateItemStackFromJson(ITreeAttribute stackAttr, IWorldAccessor world, string domain)
         {

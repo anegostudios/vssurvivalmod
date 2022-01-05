@@ -40,11 +40,10 @@ namespace Vintagestory.GameContent
                     return;
                 }
 
-                if (bh.TryBeginMilking())
-                {
-                    handling = EnumHandling.PreventDefault;
-                    handHandling = EnumHandHandling.PreventDefault;
-                }
+                bh.TryBeginMilking();
+
+                handling = EnumHandling.PreventDefault;
+                handHandling = EnumHandHandling.PreventDefault;
             }
         }
 

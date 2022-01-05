@@ -64,7 +64,7 @@ namespace Vintagestory.GameContent
                 targetPos.Set(targetEntity.ServerPos.X, targetEntity.ServerPos.Y, targetEntity.ServerPos.Z);
 
                 // Tell the other butterfly to chase us
-                AiTaskManager manager = targetEntity.GetBehavior<EntityBehaviorTaskAI>().taskManager;
+                AiTaskManager manager = targetEntity.GetBehavior<EntityBehaviorTaskAI>().TaskManager;
                 AiTaskButterflyChase othertask = manager.GetTask<AiTaskButterflyChase>();
                 othertask.targetEntity = this.entity as EntityButterfly;
                 othertask.targetPos.Set(entity.ServerPos.X, entity.ServerPos.Y, entity.ServerPos.Z);

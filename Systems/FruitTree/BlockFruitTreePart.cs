@@ -103,7 +103,14 @@ namespace Vintagestory.GameContent
         {
             var be = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityFruitTreePart;
             isWindAffected = true;
-            if (be != null) return be.fruitingSide > 0 && be.LeafParticlesColor != null && be.FruitTreeState == EnumFruitTreeState.EnterDormancy || (be.FruitTreeState == EnumFruitTreeState.Flowering && be.Progress > 0.5);
+            var typeProps = be?.blockBranch?.TypeProps;
+            if (be?.TreeType != null && typeProps?.ContainsKey(be.TreeType) == true)
+            {
+                return
+                    be.fruitingSide > 0 && be.LeafParticlesColor != null && be.FruitTreeState == EnumFruitTreeState.EnterDormancy ||
+                    (be.FruitTreeState == EnumFruitTreeState.Flowering && be.Progress > 0.5 && typeProps[be.TreeType].BlossomParticles)
+                ;
+            }
 
             return false;
         }

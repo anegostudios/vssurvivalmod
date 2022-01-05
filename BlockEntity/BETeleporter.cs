@@ -20,45 +20,42 @@ namespace Vintagestory.GameContent
         public float SecondsPassed;
     }
 
-    public class BlockEntityTeleporter : BlockEntity
+    public abstract class BlockEntityTeleporterBase : BlockEntity
     {
-        TeleporterLocation tpLocation;
-        Dictionary<long, TeleportingEntity> tpingEntities = new Dictionary<long, TeleportingEntity>();
+        protected TeleporterManager manager;
+        protected Dictionary<long, TeleportingEntity> tpingEntities = new Dictionary<long, TeleportingEntity>();
+        protected long lastCollideMsOwnPlayer;
 
-        BlockTeleporter ownBlock;
-        Vec3d posvec;
-        long lastCollideMsOwnPlayer;
+        protected float TeleportWarmupSec = 3;
 
-        TeleporterManager manager;
+        protected abstract BlockPos tpTarget { get; }
 
-        public BlockEntityTeleporter()
+        protected bool somebodyIsTeleporting;
+        protected bool somebodyDidTeleport;
+
+        List<long> toremove = new List<long>();
+        public long lastEntityCollideMs = 0;
+        public long lastOwnPlayerCollideMs = 0;
+
+        ICoreClientAPI capi;
+
+        
+
+
+        public BlockEntityTeleporterBase()
         {
         }
 
         public override void Initialize(ICoreAPI api)
         {
             base.Initialize(api);
+
             manager = api.ModLoader.GetModSystem<TeleporterManager>();
 
-
-            if (api.Side == EnumAppSide.Server)
-            {
-                ICoreServerAPI sapi = api as ICoreServerAPI;
-
-                tpLocation = manager.GetOrCreateLocation(Pos);
-
-                RegisterGameTickListener(OnServerGameTick, 50);
-            } else
-            {
-                RegisterGameTickListener(OnClientGameTick, 50);
-            }
-
-            ownBlock = Block as BlockTeleporter;
-            posvec = new Vec3d(Pos.X, Pos.Y + 1, Pos.Z);
+            capi = api as ICoreClientAPI;
         }
 
-
-        internal void OnEntityCollide(Entity entity)
+        public virtual void OnEntityCollide(Entity entity)
         {
             TeleportingEntity tpe;
             if (!tpingEntities.TryGetValue(entity.EntityId, out tpe))
@@ -70,22 +67,193 @@ namespace Vintagestory.GameContent
             }
 
             tpe.LastCollideMs = Api.World.ElapsedMilliseconds;
-            
-            
+
+
             if (Api.Side == EnumAppSide.Client)
             {
+                lastEntityCollideMs = Api.World.ElapsedMilliseconds;
+
                 if ((Api as ICoreClientAPI).World.Player.Entity == entity)
                 {
-                    lastCollideMsOwnPlayer = Api.World.ElapsedMilliseconds;
-                    manager.lastTeleCollideMsOwnPlayer = lastCollideMsOwnPlayer;
+                    lastOwnPlayerCollideMs = Api.World.ElapsedMilliseconds;
                 }
             }
         }
 
         
+
+        protected virtual void HandleTeleportingServer(float dt)
+        {
+            toremove.Clear();
+
+            bool wasTeleporting = somebodyIsTeleporting;
+
+            somebodyIsTeleporting &= tpingEntities.Count > 0;
+            var sapi = Api as ICoreServerAPI;
+
+            foreach (var val in tpingEntities)
+            {
+                if (val.Value.Entity.Teleporting) continue;
+
+                val.Value.SecondsPassed += Math.Min(0.5f, dt);
+
+                if (Api.World.ElapsedMilliseconds - val.Value.LastCollideMs > 100)
+                {
+                    // Make sure its not just server lag
+                    Block block = Api.World.CollisionTester.GetCollidingBlock(Api.World.BlockAccessor, val.Value.Entity.SelectionBox, val.Value.Entity.Pos.XYZ, true);
+                    if (!(block is BlockStaticTranslocator))
+                    {
+                        toremove.Add(val.Key);
+                        continue;
+                    }
+                }
+
+                if (val.Value.SecondsPassed > 0.1 && !somebodyIsTeleporting)
+                {
+                    somebodyIsTeleporting = true;
+                    MarkDirty();
+                }
+
+                if (val.Value.SecondsPassed > 1.5 && tpTarget != null)
+                {
+                    // Preload the chunk
+                    IWorldChunk chunk = Api.World.BlockAccessor.GetChunkAtBlockPos(tpTarget);
+                    if (chunk != null)
+                    {
+                        chunk.MapChunk.MarkFresh();
+                    }
+                    else
+                    {
+                        sapi.WorldManager.LoadChunkColumnPriority((int)tpTarget.X / Api.World.BlockAccessor.ChunkSize, (int)tpTarget.Z / Api.World.BlockAccessor.ChunkSize, new ChunkLoadOptions()
+                        {
+                            KeepLoaded = false
+                        });
+                    }
+                }
+
+                if (val.Value.SecondsPassed > TeleportWarmupSec && tpTarget != null)
+                {
+                    val.Value.Entity.TeleportTo(tpTarget.ToVec3d().Add(-0.3, 1, -0.3)); // Fugly, need some better exit pos thing
+                    toremove.Add(val.Key);
+
+                    Entity e = val.Value.Entity;
+                    if (e is EntityPlayer)
+                    {
+                        Api.World.Logger.Debug("Teleporting player {0} to {1}", (e as EntityPlayer).GetBehavior<EntityBehaviorNameTag>().DisplayName, tpTarget);
+                    }
+                    else
+                    {
+                        Api.World.Logger.Debug("Teleporting entity {0} to {1}", e.Code, tpTarget);
+                    }
+
+                    didTeleport(val.Value.Entity);
+
+                    somebodyIsTeleporting = false;
+                    somebodyDidTeleport = true;
+
+
+                    MarkDirty();
+                }
+            }
+
+            foreach (long entityid in toremove)
+            {
+                tpingEntities.Remove(entityid);
+            }
+
+            if (wasTeleporting && !somebodyIsTeleporting)
+            {
+                MarkDirty();
+            }
+        }
+
+
+
+
+
+
+
+
+        protected virtual void didTeleport(Entity entity)
+        {
+            
+        }
+
+
+        public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
+        {
+            base.FromTreeAttributes(tree, worldAccessForResolve);
+
+            somebodyIsTeleporting = tree.GetBool("somebodyIsTeleporting");
+        }
+
+        public override void ToTreeAttributes(ITreeAttribute tree)
+        {
+            base.ToTreeAttributes(tree);
+
+            tree.SetBool("somebodyIsTeleporting", somebodyIsTeleporting);
+            tree.SetBool("somebodyDidTeleport", somebodyDidTeleport);
+            somebodyDidTeleport = false;
+        }
+    }
+
+    public class BlockEntityTeleporter : BlockEntityTeleporterBase
+    {
+        BlockTeleporter ownBlock;
+        Vec3d posvec;
+        TeleporterLocation tpLocation;
+        protected override BlockPos tpTarget => tpLocation?.TargetPos;
+
+        public ILoadedSound teleportingSound;
+        float teleSoundVolume = 0;
+        float teleSoundPitch = 0.7f;
+
+
+        public BlockEntityTeleporter()
+        {
+        }
+
+        public override void Initialize(ICoreAPI api)
+        {
+            base.Initialize(api);
+            
+
+            if (api.Side == EnumAppSide.Server)
+            {
+                ICoreServerAPI sapi = api as ICoreServerAPI;
+
+                tpLocation = manager.GetOrCreateLocation(Pos);
+
+                RegisterGameTickListener(OnServerGameTick, 50);
+            } else
+            {
+                RegisterGameTickListener(OnClientGameTick, 50);
+
+                teleportingSound = (api as ICoreClientAPI).World.LoadSound(new SoundParams()
+                {
+                    Location = new AssetLocation("sounds/block/teleporter.ogg"),
+                    ShouldLoop = true,
+                    Position = Pos.ToVec3f(),
+                    RelativePosition = false,
+                    DisposeOnFinish = false,
+                    Volume = 0.5f
+                });
+            }
+
+            ownBlock = Block as BlockTeleporter;
+            posvec = new Vec3d(Pos.X, Pos.Y + 1, Pos.Z);
+
+            
+        }
+
+
+
+        
         private void OnClientGameTick(float dt)
         {
             if (ownBlock == null || Api?.World == null) return;
+
+            HandleSoundClient(dt);
 
             SimpleParticleProperties currentParticles = (Api.World.ElapsedMilliseconds > 100 && Api.World.ElapsedMilliseconds - lastCollideMsOwnPlayer < 100) ? 
                 ownBlock.insideParticles : 
@@ -97,56 +265,54 @@ namespace Vintagestory.GameContent
 
         }
 
-        List<long> toremove = new List<long>();
-        private void OnServerGameTick(float dt)
+        protected virtual void HandleSoundClient(float dt)
         {
-            toremove.Clear();
+            var capi = Api as ICoreClientAPI;
 
-            foreach (var val in tpingEntities)
+            long msEllapsed = capi.World.ElapsedMilliseconds - lastEntityCollideMs;
+
+            if (msEllapsed > 100)
             {
-                if (val.Value.Entity.Teleporting) continue;
+                teleSoundVolume = Math.Max(0, teleSoundVolume - 2 * dt);
+                teleSoundPitch = Math.Max(0.7f, teleSoundPitch - 2 * dt);
+            }
+            else
+            {
+                teleSoundVolume = Math.Min(0.5f, teleSoundVolume + dt / 3);
+                teleSoundPitch = Math.Min(6, teleSoundPitch + dt);
+            }
 
-                val.Value.SecondsPassed += Math.Min(0.5f, dt);
+            if (teleportingSound != null)
+            {
+                teleportingSound.SetVolume(teleSoundVolume);
+                teleportingSound.SetPitch(teleSoundPitch);
 
-                if (Api.World.ElapsedMilliseconds - val.Value.LastCollideMs > 100)
+                if (teleportingSound.IsPlaying)
                 {
-                    // Make sure its not just server lag
-                    Block block = Api.World.CollisionTester.GetCollidingBlock(Api.World.BlockAccessor, val.Value.Entity.CollisionBox, val.Value.Entity.Pos.XYZ, true);
-                    if (!(block is BlockStaticTranslocator))
-                    {
-                        toremove.Add(val.Key);
-                        continue;
-                    }
+                    if (teleSoundVolume <= 0) teleportingSound.Stop();
                 }
-
-                if (val.Value.SecondsPassed > 1.5 && tpLocation?.TargetPos != null)
+                else
                 {
-                    // Preload the chunk
-                    (Api as ICoreServerAPI).WorldManager.LoadChunkColumnPriority((int)tpLocation.TargetPos.X / Api.World.BlockAccessor.ChunkSize, (int)tpLocation.TargetPos.Z / Api.World.BlockAccessor.ChunkSize);
-                }
-
-                if (val.Value.SecondsPassed > 3 && tpLocation?.TargetPos != null)
-                {
-                    val.Value.Entity.TeleportTo(tpLocation.TargetPos.AddCopy(0,1,0));
-
-                    Entity e = val.Value.Entity;
-                    if (e is EntityPlayer)
-                    {
-                        Api.World.Logger.Debug("Teleporting player {0} to {1}", (e as EntityPlayer).GetBehavior<EntityBehaviorNameTag>().DisplayName, tpLocation.TargetPos);
-                    } else
-                    {
-                        Api.World.Logger.Debug("Teleporting entity {0} to {1}", e.Code, tpLocation.TargetPos);
-                    }
-
-                    toremove.Add(val.Key);
+                    if (teleSoundVolume > 0) teleportingSound.Start();
                 }
             }
 
-            foreach(long entityid in toremove)
+        }
+
+        protected override void didTeleport(Entity entity)
+        {
+            if (entity is EntityPlayer)
             {
-                tpingEntities.Remove(entityid);
+                manager.DidTranslocateServer((entity as EntityPlayer).Player as IServerPlayer);
             }
         }
+
+
+        private void OnServerGameTick(float dt)
+        {
+            HandleTeleportingServer(dt);
+        }
+
 
 
         public override void OnBlockRemoved()
@@ -158,6 +324,15 @@ namespace Vintagestory.GameContent
                 ICoreServerAPI sapi = Api as ICoreServerAPI;
                 sapi.ModLoader.GetModSystem<TeleporterManager>().DeleteLocation(Pos);
             }
+
+            teleportingSound?.Dispose();
+        }
+
+        public override void OnBlockUnloaded()
+        {
+            base.OnBlockUnloaded();
+
+            teleportingSound?.Dispose();
         }
 
 

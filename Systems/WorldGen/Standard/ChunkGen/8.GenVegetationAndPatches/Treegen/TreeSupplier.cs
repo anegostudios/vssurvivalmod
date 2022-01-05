@@ -27,7 +27,7 @@ namespace Vintagestory.ServerMods
         Any,
         Decidious,
         Conifer,
-        Kapok,
+        Tropical,
         Acacia
     }
 

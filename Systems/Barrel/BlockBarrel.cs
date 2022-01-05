@@ -16,6 +16,8 @@ namespace Vintagestory.GameContent
     public class BlockBarrel : BlockLiquidContainerBase
     {
 
+        public override bool AllowHeldLiquidTransfer => false;
+
         public override int GetContainerSlotId(BlockPos pos)
         {
             return 1;
@@ -127,12 +129,12 @@ namespace Vintagestory.GameContent
 
         public override int TryPutLiquid(BlockPos pos, ItemStack liquidStack, float desiredLitres)
         {
-            return 0;
+            return base.TryPutLiquid(pos, liquidStack, desiredLitres);
         }
 
         public override int TryPutLiquid(ItemStack containerStack, ItemStack liquidStack, float desiredLitres)
         {
-            return 0;
+            return base.TryPutLiquid(containerStack, liquidStack, desiredLitres);
         }
 
 
@@ -182,7 +184,7 @@ namespace Vintagestory.GameContent
         {
             ICoreClientAPI capi = api as ICoreClientAPI;
 
-            WaterTightContainableProps props = GetInContainerProps(stack);
+            WaterTightContainableProps props = GetContainableProps(stack);
             ITexPositionSource contentSource;
             float fillHeight;
 
@@ -247,7 +249,7 @@ namespace Vintagestory.GameContent
                 if (stack?.Block != null && (stack.Block.DrawType == EnumDrawType.Cube || stack.Block.Shape.Base.Path.Contains("basic/cube")) && capi.BlockTextureAtlas.GetPosition(stack.Block, "up", true) != null)
                 {
                     contentSource = new BlockTopTextureSource(capi, stack.Block);
-                    fillHeight = GameMath.Min(10 / 16f, 0.7f * 1);
+                    fillHeight = GameMath.Min(10 / 16f, 0.7f * stack.StackSize / stack.Collectible.MaxStackSize);
                 }
                 else if (stack != null)
                 {

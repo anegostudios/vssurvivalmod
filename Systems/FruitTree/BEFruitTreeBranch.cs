@@ -177,6 +177,11 @@ namespace Vintagestory.GameContent
             }
         }
 
+        public override void OnBlockUnloaded()
+        {
+            base.OnBlockUnloaded();
+        }
+
 
         static Dictionary<string, int[]> facingRemapByShape = new Dictionary<string, int[]>()
         {
@@ -240,7 +245,7 @@ namespace Vintagestory.GameContent
             MeshData mesh;
             if (meshes.TryGetValue(meshkey, out mesh))
             {
-                //return mesh;
+                return mesh;
             }
 
 
@@ -336,6 +341,8 @@ namespace Vintagestory.GameContent
 
             InitAfterWorldGen = tree.GetBool("initAfterWorldGen");
 
+            lastGrowthAttemptTotalDays = tree.GetDouble("lastGrowthAttemptTotalDays");
+
             if (Api != null)
             {
                 updateProperties();
@@ -372,6 +379,7 @@ namespace Vintagestory.GameContent
 
             tree.SetInt("growTries", GrowTries);
             tree.SetBool("initAfterWorldGen", InitAfterWorldGen);
+            tree.SetDouble("lastGrowthAttemptTotalDays", lastGrowthAttemptTotalDays);
         }
 
 

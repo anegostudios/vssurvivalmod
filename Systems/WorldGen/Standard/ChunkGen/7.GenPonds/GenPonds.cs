@@ -269,6 +269,7 @@ namespace Vintagestory.ServerMods
                     if (ly == 0)
                     {
                         chunkOneBlockBelow = ((IServerChunk)blockAccessor.GetChunk(curChunkX, (pondYPos - 1) / chunksize, curChunkZ));
+                        if (chunkOneBlockBelow == null) return;
                         chunkOneBlockBelow.Unpack();
                     } else
                     {

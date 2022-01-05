@@ -24,7 +24,7 @@ namespace Vintagestory.ServerMods.NoObf
         /// </summary>
         public BlockPatch[] PatchesNonTree;
 
-        internal void ResolveBlockIds(ICoreServerAPI api, RockStrataConfig rockstrata)
+        internal void ResolveBlockIds(ICoreServerAPI api, RockStrataConfig rockstrata, LCGRandom rnd)
         {
             List<BlockPatch> patchesNonTree = new List<BlockPatch>();
 
@@ -38,51 +38,10 @@ namespace Vintagestory.ServerMods.NoObf
                     patchesNonTree.Add(patch);
                 }
 
-                List<Block> blocks = new List<Block>();
-
-                for (int j = 0; j < patch.blockCodes.Length; j++)
-                {
-                    AssetLocation code = patch.blockCodes[j];
-
-                    if (code.Path.Contains("{rocktype}"))
-                    {
-                        if (patch.BlocksByRockType == null) patch.BlocksByRockType = new Dictionary<int, Block[]>();                                
-
-                        for (int k = 0; k < rockstrata.Variants.Length; k++)
-                        {
-                            string rocktype = rockstrata.Variants[k].BlockCode.Path.Split('-')[1];
-                            AssetLocation rocktypedCode = code.CopyWithPath(code.Path.Replace("{rocktype}", rocktype));
-
-                            Block rockBlock = api.World.GetBlock(rockstrata.Variants[k].BlockCode);
-
-                            if (rockBlock != null)
-                            {
-                                patch.BlocksByRockType[rockBlock.BlockId] = new Block[] { api.World.GetBlock(rocktypedCode) };
-                            }
-                        }
-                    }
-                    else
-                    {
-                        Block block = api.World.GetBlock(code);
-                        if (block != null)
-                        {
-                            blocks.Add(block);
-                        } else
-                        {
-                            api.World.Logger.Warning("Block patch Nr. {0}: Unable to resolve block with code {1}. Will ignore.", i, code);
-                        }
-                    }
-                }
-
-                patch.Blocks = blocks.ToArray();
-
-                if (patch.BlockCodeIndex == null)
-                {
-                    patch.BlockCodeIndex = NatFloat.createUniform(0, patch.Blocks.Length);
-                }
+                patch.Init(api, rockstrata, rnd, i);
             }
 
-            this.PatchesNonTree = patchesNonTree.ToArray();
+            PatchesNonTree = patchesNonTree.ToArray();
         }
 
 

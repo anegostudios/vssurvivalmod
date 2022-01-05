@@ -138,7 +138,7 @@ namespace Vintagestory.GameContent
                 {
                     double topPos = block.TopMiddlePos.Y;
                     entity.WatchedAttributes.SetDouble("windWaveIntensity", block.VertexFlags?.WindMode != EnumWindBitMode.NoWind ? (weak ? topPos / 2 : topPos) : 0);
-                    MainTarget = tmpPos.ToVec3d().Add(block.TopMiddlePos.X, topPos, block.TopMiddlePos.Z);
+                    MainTarget = tmpPos.ToVec3d().Add(block.TopMiddlePos.X, topPos - 1, block.TopMiddlePos.Z);
                     return true;
                 }
             }
@@ -168,6 +168,11 @@ namespace Vintagestory.GameContent
 
             if (entity.World.Rand.NextDouble() > 0.05) return true;
 
+            if (taskState == 2)
+            {
+                var block = entity.World.BlockAccessor.GetBlock(entity.Pos.AsBlockPos.Down());
+                if (!block.SideSolid[BlockFacing.UP.Index]) return false;
+            }
 
             switch (reason)
             {

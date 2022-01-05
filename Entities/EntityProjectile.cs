@@ -35,6 +35,8 @@ namespace Vintagestory.GameContent
 
         EntityPartitioning ep;
 
+        
+
 
         public override bool ApplyGravity
         {
@@ -52,16 +54,15 @@ namespace Vintagestory.GameContent
 
             msLaunch = World.ElapsedMilliseconds;
 
-            collisionTestBox = CollisionBox.Clone().OmniGrowBy(0.05f);
+            collisionTestBox = SelectionBox.Clone().OmniGrowBy(0.05f);
 
             if (api.Side == EnumAppSide.Server)
             {
                 GetBehavior<EntityBehaviorPassivePhysics>().OnPhysicsTickCallback = onPhysicsTickCallback;
-
                 ep = api.ModLoader.GetModSystem<EntityPartitioning>();
             }
 
-            
+            GetBehavior<EntityBehaviorPassivePhysics>().collisionYExtra = 0f; // Slightly cheap hax so that stones/arrows don't collid with fences
         }
 
         private void onPhysicsTickCallback(float dtFac)
@@ -71,7 +72,7 @@ namespace Vintagestory.GameContent
             if (ServerPos.Motion.X == 0 && ServerPos.Motion.Y == 0 && ServerPos.Motion.Z == 0) return;  // don't do damage if stuck in ground
 
 
-            Cuboidd projectileBox = CollisionBox.ToDouble().Translate(ServerPos.X, ServerPos.Y, ServerPos.Z);
+            Cuboidd projectileBox = SelectionBox.ToDouble().Translate(ServerPos.X, ServerPos.Y, ServerPos.Z);
 
             if (ServerPos.Motion.X < 0) projectileBox.X1 += ServerPos.Motion.X * dtFac;
             else projectileBox.X2 += ServerPos.Motion.X * dtFac;
@@ -176,7 +177,7 @@ namespace Vintagestory.GameContent
 
             EntityPos pos = SidedPos;
 
-            Cuboidd projectileBox = CollisionBox.ToDouble().Translate(ServerPos.X, ServerPos.Y, ServerPos.Z);
+            Cuboidd projectileBox = SelectionBox.ToDouble().Translate(ServerPos.X, ServerPos.Y, ServerPos.Z);
 
             // We give it a bit of extra leeway of 50% because physics ticks can run twice or 3 times in one game tick 
             if (ServerPos.Motion.X < 0) projectileBox.X1 += 1.5 * ServerPos.Motion.X;
@@ -194,7 +195,7 @@ namespace Vintagestory.GameContent
                     return false;
                 }
 
-                Cuboidd eBox = e.CollisionBox.ToDouble().Translate(e.ServerPos.X, e.ServerPos.Y, e.ServerPos.Z);
+                Cuboidd eBox = e.SelectionBox.ToDouble().Translate(e.ServerPos.X, e.ServerPos.Y, e.ServerPos.Z);
 
                 return eBox.IntersectsOrTouches(projectileBox);
             });

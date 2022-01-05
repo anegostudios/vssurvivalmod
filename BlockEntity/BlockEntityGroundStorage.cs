@@ -15,8 +15,6 @@ using Vintagestory.API.Util;
 namespace Vintagestory.GameContent
 {
 
-    
-
     public class BlockEntityGroundStorage : BlockEntityDisplay, IBlockEntityContainer, ITexPositionSource
     {
         public object inventoryLock = new object(); // Because OnTesselation runs in another thread
@@ -148,12 +146,6 @@ namespace Vintagestory.GameContent
 
             if (StorageProps != null)
             {
-                if (!hotbarSlot.Empty)
-                {
-                    bool layoutEqual = StorageProps.Layout == hotbarSlot.Itemstack.Collectible.GetBehavior<CollectibleBehaviorGroundStorable>()?.StorageProps.Layout;
-                    if (!layoutEqual) return false;
-                }
-
                 if (StorageProps.Layout == EnumGroundStorageLayout.Quadrants && inventory.Empty)
                 {
                     double dx = Math.Abs(bs.HitPosition.X - 0.5);
@@ -428,7 +420,7 @@ namespace Vintagestory.GameContent
                 MarkDirty();
 
                 Cuboidf[] collBoxes = Api.World.BlockAccessor.GetBlock(Pos).GetCollisionBoxes(Api.World.BlockAccessor, Pos);
-                if (collBoxes != null && collBoxes.Length > 0 && CollisionTester.AabbIntersect(collBoxes[0], Pos.X, Pos.Y, Pos.Z, player.Entity.CollisionBox, player.Entity.SidedPos.XYZ))
+                if (collBoxes != null && collBoxes.Length > 0 && CollisionTester.AabbIntersect(collBoxes[0], Pos.X, Pos.Y, Pos.Z, player.Entity.SelectionBox, player.Entity.SidedPos.XYZ))
                 {
                     player.Entity.SidedPos.Y += collBoxes[0].Y2 - (player.Entity.SidedPos.Y - (int)player.Entity.SidedPos.Y);
                 }
@@ -486,10 +478,16 @@ namespace Vintagestory.GameContent
                 }
             }
 
+            ItemSlot hotbarSlot = player.InventoryManager.ActiveHotbarSlot;
+            if (!hotbarSlot.Empty && !inventory.Empty)
+            {
+                bool layoutEqual = StorageProps.Layout == hotbarSlot.Itemstack.Collectible.GetBehavior<CollectibleBehaviorGroundStorable>()?.StorageProps.Layout;
+                if (!layoutEqual) return false;
+            }
+
+
             lock (inventoryLock)
             {
-                ItemSlot hotbarSlot = player.InventoryManager.ActiveHotbarSlot;
-
                 if (ourSlot.Empty)
                 {
                     if (hotbarSlot.Empty) return false;
@@ -587,13 +585,21 @@ namespace Vintagestory.GameContent
             if (props == null || inventory.Empty) return "Empty pile";
 
             string[] contentSummary = getContentSummary();
-            if (contentSummary.Length <= 1)
+            if (contentSummary.Length == 1)
             {
-                if (contentSummary.Length == 1)
+                var firstSlot = inventory.FirstNonEmptySlot;
+
+                ItemStack stack = firstSlot.Itemstack;
+                int sumQ = inventory.Sum(s => s.StackSize);
+
+                if (firstSlot.Itemstack.Collectible is IContainedCustomName ccn)
                 {
-                    ItemStack stack = inventory.FirstNonEmptySlot.Itemstack;
-                    if (inventory.Sum(s => s.StackSize) == 1) return stack.GetName();
+                    string name = ccn.GetContainedName(firstSlot, sumQ);
+                    if (name != null) return name;
                 }
+
+
+                if (sumQ == 1) return stack.GetName();
                 return contentSummary[0];
             }
 
@@ -625,7 +631,14 @@ namespace Vintagestory.GameContent
             {
                 if (slot.Empty) continue;
                 int cnt;
+
                 string stackName = slot.Itemstack.GetName();
+
+                if (slot.Itemstack.Collectible is IContainedCustomName ccn)
+                {
+                    stackName = ccn.GetContainedInfo(slot);
+                }
+
                 if (!dict.TryGetValue(stackName, out cnt)) cnt = 0;
 
                 dict[stackName] = cnt + slot.StackSize;

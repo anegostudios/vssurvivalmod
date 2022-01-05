@@ -151,6 +151,19 @@ namespace Vintagestory.GameContent
             return true;
         }
 
+        public override Vec4f GetSelectionColor(ICoreClientAPI capi, BlockPos pos)
+        {
+            BlockEntityMicroBlock bemc = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityMicroBlock;
+
+            if (bemc?.MaterialIds == null || bemc.MaterialIds.Length == 0) return new Vec4f(0, 0, 0, 0.6f);
+
+            Block block = api.World.GetBlock(bemc.MaterialIds[0]);
+            int col = block.GetColor(capi, pos);
+            float b = ((col & 0xff) + ((col >> 8) & 0xff) + ((col >> 16) & 0xff)) / 3f;
+            if (b < 0.4 * 255) return new Vec4f(1, 1, 1, 0.6f);
+            return new Vec4f(0, 0, 0, 0.5f);
+        }
+
         public override int GetHeatRetention(BlockPos pos, BlockFacing facing)
         {
             BlockEntityMicroBlock bemc = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityMicroBlock;
@@ -423,6 +436,20 @@ namespace Vintagestory.GameContent
         }
 
         public override Cuboidf[] GetCollisionBoxes(IBlockAccessor blockAccessor, BlockPos pos)
+        {
+            BlockEntityMicroBlock bec = blockAccessor.GetBlockEntity(pos) as BlockEntityMicroBlock;
+
+            if (bec != null)
+            {
+                Cuboidf[] selectionBoxes = bec.GetCollisionBoxes(blockAccessor, pos);
+
+                return selectionBoxes;
+            }
+
+            return base.GetSelectionBoxes(blockAccessor, pos);
+        }
+
+        public override Cuboidf[] GetParticleCollisionBoxes(IBlockAccessor blockAccessor, BlockPos pos)
         {
             BlockEntityMicroBlock bec = blockAccessor.GetBlockEntity(pos) as BlockEntityMicroBlock;
 

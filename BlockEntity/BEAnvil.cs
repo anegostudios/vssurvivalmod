@@ -144,7 +144,7 @@ namespace Vintagestory.GameContent
 
         public SmithingRecipe SelectedRecipe
         {
-            get { return Api.World.SmithingRecipes.FirstOrDefault(r => r.RecipeId == SelectedRecipeId); }
+            get { return Api.GetSmithingRecipes().FirstOrDefault(r => r.RecipeId == SelectedRecipeId); }
         }
 
         public bool CanWorkCurrent
@@ -709,7 +709,10 @@ namespace Vintagestory.GameContent
 
         public virtual void OnUpset(Vec3i voxelPos, BlockFacing towardsFace)
         {
+            // Can only move metal
             if (Voxels[voxelPos.X, voxelPos.Y, voxelPos.Z] != (byte)EnumVoxelMaterial.Metal) return;
+            // Can't move if metal is above
+            if (voxelPos.Y < 6 && Voxels[voxelPos.X, voxelPos.Y + 1, voxelPos.Z] != (byte)EnumVoxelMaterial.Empty) return;
 
             Vec3i npos = voxelPos.Clone().Add(towardsFace);
             Vec3i opFaceDir = towardsFace.Opposite.Normali;
@@ -1080,7 +1083,7 @@ namespace Vintagestory.GameContent
             if (packetid == (int)EnumAnvilPacket.SelectRecipe)
             {
                 int recipeid = SerializerUtil.Deserialize<int>(data);
-                SmithingRecipe recipe = Api.World.SmithingRecipes.FirstOrDefault(r => r.RecipeId == recipeid);
+                SmithingRecipe recipe = Api.GetSmithingRecipes().FirstOrDefault(r => r.RecipeId == recipeid);
 
                 if (recipe == null)
                 {

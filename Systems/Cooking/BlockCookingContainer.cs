@@ -22,6 +22,8 @@ namespace Vintagestory.GameContent
             base.OnLoaded(api);
 
             attachmentArea = Attributes?["attachmentArea"].AsObject<Cuboidi>(null);
+
+            MaxServingSize = Attributes?["maxServingSize"].AsInt(6) ?? 6;
         }
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
@@ -72,14 +74,23 @@ namespace Vintagestory.GameContent
             ItemStack[] stacks = GetCookingStacks(cookingSlotsProvider, false);
             for (int i = 0; i < stacks.Length; i++)
             {
-                if (stacks[i].Collectible?.CombustibleProps == null)
+                var stack = stacks[i];
+                int portionSize = stack.StackSize;
+
+                if (stack.Collectible?.CombustibleProps == null)
                 {
-                    duration += 20 * stacks[i].StackSize;
+                    if (stack.Collectible.Attributes?["waterTightContainerProps"].Exists == true)
+                    {
+                        var props = BlockLiquidContainerBase.GetContainableProps(stack);
+                        portionSize = (int)(stack.StackSize / props.ItemsPerLitre);
+                    }
+
+                    duration += 20 * portionSize;
                     continue;
                 }
 
-                float singleDuration = stacks[i].Collectible.GetMeltingDuration(world, cookingSlotsProvider, inputSlot);
-                duration += singleDuration * stacks[i].StackSize / stacks[i].Collectible.CombustibleProps.SmeltedRatio;
+                float singleDuration = stack.Collectible.GetMeltingDuration(world, cookingSlotsProvider, inputSlot);
+                duration += singleDuration * portionSize / stack.Collectible.CombustibleProps.SmeltedRatio;
             }
 
             duration = Math.Max(40, duration / 3);
@@ -234,7 +245,7 @@ namespace Vintagestory.GameContent
 
         public CookingRecipe GetMatchingCookingRecipe(IWorldAccessor world, ItemStack[] stacks)
         {
-            List<CookingRecipe> recipes = world.CookingRecipes;
+            List<CookingRecipe> recipes = world.Api.GetCookingRecipes();
             if (recipes == null) return null;
 
             for (int j = 0; j < recipes.Count; j++)

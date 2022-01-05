@@ -368,8 +368,6 @@ namespace Vintagestory.ServerMods
                     }
                 }
             }
-
-            //Console.WriteLine("placed {0} blocks", placed);
         }
 
         protected virtual bool shouldGenDepositHere(BlockPos depoCenterPos)

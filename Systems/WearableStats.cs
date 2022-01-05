@@ -45,6 +45,7 @@ namespace Vintagestory.GameContent
 
             api.Event.LevelFinalize += Event_LevelFinalize;
 
+
             capi = api;
         }
 
@@ -52,6 +53,8 @@ namespace Vintagestory.GameContent
         {
             capi.World.Player.Entity.OnFootStep += () => onFootStep(capi.World.Player.Entity);
             capi.World.Player.Entity.OnImpact += (motionY) => onFallToGround(capi.World.Player.Entity, motionY);
+            var bh = capi.World.Player.Entity.GetBehavior<EntityBehaviorHealth>();
+            if (bh != null) bh.onDamaged += (dmg, dmgSource) => handleDamaged(capi.World.Player, dmg, dmgSource);
         }
 
         public override void StartServerSide(ICoreServerAPI api)
@@ -109,8 +112,67 @@ namespace Vintagestory.GameContent
 
         private float handleDamaged(IPlayer player, float damage, DamageSource dmgSource)
         {
-            // Does not protect against non-attack damages
             EnumDamageType type = dmgSource.Type;
+            double angleProtectionRange = 120/2 * GameMath.DEG2RAD; 
+
+            // Reduce damage if player holds a shield
+            ItemSlot[] shieldSlots = new ItemSlot[] { player.Entity.LeftHandItemSlot, player.Entity.RightHandItemSlot };
+            foreach (var shieldSlot in shieldSlots)
+            {
+                var attr = shieldSlot.Itemstack?.ItemAttributes?["shield"];
+                if (attr == null || !attr.Exists) continue;
+
+                string usetype = player.Entity.Controls.Sneak ? "active" : "passive";
+
+                float dmgabsorb = attr["damageAbsorption"][usetype].AsFloat(0);
+                float chance = attr["protectionChance"][usetype].AsFloat(0);
+                (player as IServerPlayer)?.SendMessage(GlobalConstants.DamageLogChatGroup, Lang.Get("{0:0.#} of {1:0.#} damage blocked by shield", Math.Min(dmgabsorb, damage), damage), EnumChatType.Notification);
+
+                double dx;
+                double dz;
+                if (dmgSource.HitPosition != null)
+                {
+                    dx = dmgSource.HitPosition.X;
+                    dz = dmgSource.HitPosition.Z;
+                } else if (dmgSource.SourceEntity != null)
+                {
+                    dx = dmgSource.SourceEntity.Pos.X - player.Entity.Pos.X;
+                    dz = dmgSource.SourceEntity.Pos.Z - player.Entity.Pos.Z;
+                } else if (dmgSource.SourcePos != null)
+                {
+                    dx = dmgSource.SourcePos.X - player.Entity.Pos.X;
+                    dz = dmgSource.SourcePos.Z - player.Entity.Pos.Z;
+                } else
+                {
+                    break;
+                }
+
+                double attackYaw = Math.Atan2((double)dx, (double)dz);
+                double playerYaw = player.Entity.Pos.Yaw + GameMath.PIHALF;
+
+                bool inProtectionRange = Math.Abs(GameMath.AngleRadDistance((float)playerYaw, (float)attackYaw)) < angleProtectionRange;
+
+                if (inProtectionRange && api.World.Rand.NextDouble() < chance)
+                {
+                    damage = Math.Max(0, damage - dmgabsorb);
+
+                    var loc = shieldSlot.Itemstack.ItemAttributes["blockSound"].AsString("held/shieldblock");
+                    api.World.PlaySoundAt(AssetLocation.Create(loc, shieldSlot.Itemstack.Collectible.Code.Domain).WithPathPrefixOnce("sounds/").WithPathAppendixOnce(".ogg"), player, null);
+
+                    if (api.Side == EnumAppSide.Server)
+                    {
+                        shieldSlot.Itemstack.Collectible.DamageItem(api.World, dmgSource.SourceEntity, shieldSlot, 1);
+                        shieldSlot.MarkDirty();
+                    }
+                }
+            }
+
+            if (damage <= 0) return 0;
+            // The code below only the server needs to execute
+            if (api.Side == EnumAppSide.Client) return damage; 
+
+            // Does not protect against non-attack damages
+            
             if (type != EnumDamageType.BluntAttack && type != EnumDamageType.PiercingAttack && type != EnumDamageType.SlashingAttack) return damage;
             if (dmgSource.Source == EnumDamageSource.Internal || dmgSource.Source == EnumDamageSource.Suicide) return damage;
 

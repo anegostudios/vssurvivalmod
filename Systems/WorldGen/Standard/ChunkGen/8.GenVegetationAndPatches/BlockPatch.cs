@@ -66,6 +66,10 @@ namespace Vintagestory.ServerMods.NoObf
         public NatFloat BlockCodeIndex = null;
         [JsonProperty]
         public NatFloat Quantity = NatFloat.createGauss(7, 7);
+        [JsonProperty]
+        public string MapCode = null;
+        [JsonProperty]
+        public string[] RandomMapCodePool = null;
 
         /// <summary>
         /// This property is only used if the placement is set to UnderWater. It determines the minimum water depth for this patch
@@ -98,6 +102,58 @@ namespace Vintagestory.ServerMods.NoObf
 
         }
 
+        public void Init(ICoreServerAPI api, RockStrataConfig rockstrata, LCGRandom rnd, int i)
+        {
+            List<Block> blocks = new List<Block>();
+
+            for (int j = 0; j < blockCodes.Length; j++)
+            {
+                AssetLocation code = blockCodes[j];
+
+                if (code.Path.Contains("{rocktype}"))
+                {
+                    if (BlocksByRockType == null) BlocksByRockType = new Dictionary<int, Block[]>();
+
+                    for (int k = 0; k < rockstrata.Variants.Length; k++)
+                    {
+                        string rocktype = rockstrata.Variants[k].BlockCode.Path.Split('-')[1];
+                        AssetLocation rocktypedCode = code.CopyWithPath(code.Path.Replace("{rocktype}", rocktype));
+
+                        Block rockBlock = api.World.GetBlock(rockstrata.Variants[k].BlockCode);
+
+                        if (rockBlock != null)
+                        {
+                            BlocksByRockType[rockBlock.BlockId] = new Block[] { api.World.GetBlock(rocktypedCode) };
+                        }
+                    }
+                }
+                else
+                {
+                    Block block = api.World.GetBlock(code);
+                    if (block != null)
+                    {
+                        blocks.Add(block);
+                    }
+                    else
+                    {
+                        api.World.Logger.Warning("Block patch Nr. {0}: Unable to resolve block with code {1}. Will ignore.", i, code);
+                    }
+                }
+            }
+
+            Blocks = blocks.ToArray();
+
+            if (BlockCodeIndex == null)
+            {
+                BlockCodeIndex = NatFloat.createUniform(0, Blocks.Length);
+            }
+
+            if (RandomMapCodePool != null)
+            {
+                int index = rnd.NextInt(RandomMapCodePool.Length);
+                MapCode = RandomMapCodePool[index];
+            }
+        }
 
         public void Generate(IBlockAccessor blockAccessor, LCGRandom rnd, int posX, int posY, int posZ, int firstBlockId)
         {
@@ -124,20 +180,14 @@ namespace Vintagestory.ServerMods.NoObf
 
                 if (Placement == EnumBlockPatchPlacement.Underground)
                 {
-                    
-                    if (Placement == EnumBlockPatchPlacement.UnderTrees || Placement == EnumBlockPatchPlacement.OnSurfacePlusUnderTrees)
-                    {
-                        pos.Y = rnd.NextInt(Math.Max((ushort)1, chunk.MapChunk.WorldGenTerrainHeightMap[lz * blockAccessor.ChunkSize + lx]));
-                    } else
-                    {
-                        pos.Y = rnd.NextInt(Math.Max(1, chunk.MapChunk.WorldGenTerrainHeightMap[lz * blockAccessor.ChunkSize + lx] - 1));
-                    }
+                    pos.Y = rnd.NextInt(Math.Max(1, chunk.MapChunk.WorldGenTerrainHeightMap[lz * blockAccessor.ChunkSize + lx] - 1));
                 }
                 else
                 {
                     pos.Y = chunk.MapChunk.RainHeightMap[lz * blockAccessor.ChunkSize + lx] + 1;
 
                     if (Math.Abs(pos.Y - posY) > 8 || pos.Y >= blockAccessor.MapSizeY - 1) continue;
+
                     if (Placement == EnumBlockPatchPlacement.UnderWater)
                     {
                         tempPos.Set(pos.X, pos.Y - GameMath.Max(1, MinWaterDepth), pos.Z);

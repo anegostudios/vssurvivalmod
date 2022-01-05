@@ -275,7 +275,7 @@ namespace Vintagestory.GameContent
                         {
                           //  Console.WriteLine(api.World.Side + ", clothid {0}, dropped on ground, now pinned to dropped item.", clothId);
 
-                            p.PinTo(entityItem, new Vec3f(entityItem.CollisionBox.X2 / 2, entityItem.CollisionBox.Y2 / 2, entityItem.CollisionBox.Z2 / 2));
+                            p.PinTo(entityItem, new Vec3f(entityItem.SelectionBox.X2 / 2, entityItem.SelectionBox.Y2 / 2, entityItem.SelectionBox.Z2 / 2));
                         }
                     }
                 }

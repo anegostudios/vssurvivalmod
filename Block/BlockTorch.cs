@@ -10,11 +10,13 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockTorch : Block
+    public class BlockTorch : BlockGroundAndSideAttachable
     {
         bool IsExtinct => Variant["state"] == "extinct";
 
         Dictionary<string, Cuboidi> attachmentAreas;
+
+        WorldInteraction[] interactions;
 
         public Block ExtinctVariant { get; private set; }
 
@@ -33,8 +35,44 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            AssetLocation loc = CodeWithVariant("state", "extinct");
-            ExtinctVariant = api.World.GetBlock(loc);
+            if (Variant.ContainsKey("state"))
+            {
+                AssetLocation loc = CodeWithVariant("state", "extinct");
+                ExtinctVariant = api.World.GetBlock(loc);
+            }
+
+            if (IsExtinct)
+            {
+                interactions = ObjectCacheUtil.GetOrCreate(api, "torchInteractions" + FirstCodePart(), () =>
+                {
+                    List<ItemStack> canIgniteStacks = new List<ItemStack>();
+
+                    foreach (CollectibleObject obj in api.World.Collectibles)
+                    {
+                        string firstCodePart = obj.FirstCodePart();
+
+                        if (obj is Block && (obj as Block).HasBehavior<BlockBehaviorCanIgnite>() || obj is ItemFirestarter)
+                        {
+                            List<ItemStack> stacks = obj.GetHandBookStacks(api as ICoreClientAPI);
+                            if (stacks != null) canIgniteStacks.AddRange(stacks);
+                        }
+                    }
+
+                    return new WorldInteraction[]
+                    {
+                    new WorldInteraction()
+                    {
+                        ActionLangCode = "blockhelp-firepit-ignite",
+                        MouseButton = EnumMouseButton.Right,
+                        HotKeyCode = "sneak",
+                        Itemstacks = canIgniteStacks.ToArray(),
+                        GetMatchingStacks = (wi, bs, es) => {
+                            return wi.Itemstacks;
+                        }
+                    }
+                    };
+                });
+            }
         }
 
         public override void OnHeldIdle(ItemSlot slot, EntityAgent byEntity)
@@ -62,111 +100,6 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override EnumIgniteState OnTryIgniteBlock(EntityAgent byEntity, BlockPos pos, float secondsIgniting)
-        {
-            if (IsExtinct)
-            {
-                return secondsIgniting > 1 ? EnumIgniteState.IgniteNow : EnumIgniteState.Ignitable;
-            }
-
-            return EnumIgniteState.NotIgnitablePreventDefault;
-        }
-
-        public override void OnTryIgniteBlockOver(EntityAgent byEntity, BlockPos pos, float secondsIgniting, ref EnumHandling handling)
-        {
-            if (IsExtinct)
-            {
-                handling = EnumHandling.PreventDefault;
-                AssetLocation loc = CodeWithVariant("state", "lit");
-                Block block = api.World.BlockAccessor.GetBlock(loc);
-                if (block != null)
-                {
-                    api.World.BlockAccessor.SetBlock(block.Id, pos);
-                }
-
-                return;
-            }
-        }
-
-        public override void OnAttackingWith(IWorldAccessor world, Entity byEntity, Entity attackedEntity, ItemSlot itemslot)
-        {
-            base.OnAttackingWith(world, byEntity, attackedEntity, itemslot);
-
-            float stormstr = api.ModLoader.GetModSystem<SystemTemporalStability>().StormStrength;
-
-            if (!IsExtinct && attackedEntity != null && byEntity.World.Side == EnumAppSide.Server && api.World.Rand.NextDouble() < 0.1 + stormstr)
-            {
-                attackedEntity.Ignite();
-            }
-        }
-
-        public override void OnHeldAttackStop(float secondsPassed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSelection, EntitySelection entitySel)
-        {
-            base.OnHeldAttackStop(secondsPassed, slot, byEntity, blockSelection, entitySel);
-
-        }
-
-
-        public override string GetHeldTpIdleAnimation(ItemSlot activeHotbarSlot, Entity forEntity, EnumHand hand)
-        {
-            IPlayer player = (forEntity as EntityPlayer)?.Player;
-
-            if (forEntity.AnimManager.IsAnimationActive("sleep", "wave", "cheer", "shrug", "cry", "nod", "facepalm", "bow", "laugh", "rage", "scythe", "bowaim", "bowhit"))
-            {
-                return null;
-            }
-
-            if (player?.InventoryManager?.ActiveHotbarSlot != null && !player.InventoryManager.ActiveHotbarSlot.Empty && hand == EnumHand.Left)
-            {
-                ItemStack stack = player.InventoryManager.ActiveHotbarSlot.Itemstack;
-                if (stack?.Collectible?.GetHeldTpIdleAnimation(player.InventoryManager.ActiveHotbarSlot, forEntity, EnumHand.Right) != null) return null;
-
-                if (player?.Entity?.Controls.LeftMouseDown == true && stack?.Collectible?.GetHeldTpHitAnimation(player.InventoryManager.ActiveHotbarSlot, forEntity) != null) return null;
-            }
-
-            return hand == EnumHand.Left ? "holdinglanternlefthand" : "holdinglanternrighthand";
-        }
-
-
-        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
-        {
-            if (byPlayer.Entity.Controls.Sneak)
-            {
-                failureCode = "__ignore__";
-                return false;
-            }
-
-            if (!CanPlaceBlock(world, byPlayer, blockSel, ref failureCode))
-            {
-                return false;
-            }
-
-            // Prefer selected block face
-            if (blockSel.Face.IsHorizontal || blockSel.Face == BlockFacing.UP)
-            {
-                if (TryAttachTo(world, blockSel.Position, blockSel.Face)) return true;
-            }
-
-            // Otherwise attach to any possible face
-
-            BlockFacing[] faces = BlockFacing.ALLFACES;
-            for (int i = 0; i < faces.Length; i++)
-            {
-                if (faces[i] == BlockFacing.DOWN) continue;
-
-                if (TryAttachTo(world, blockSel.Position, faces[i])) return true;
-            }
-
-            failureCode = "requireattachable";
-
-            return false;
-        }
-
-        public override BlockDropItemStack[] GetDropsForHandbook(ItemStack handbookStack, IPlayer forPlayer)
-        {
-            return GetHandbookDropsFromBreakDrops(handbookStack, forPlayer);
-        }
-
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)
         {
             if (Variant["state"] == "burnedout") return new ItemStack[0];
@@ -175,89 +108,28 @@ namespace Vintagestory.GameContent
             return new ItemStack[] { new ItemStack(block) };
         }
 
-        public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
+
+        public override EnumIgniteState OnTryIgniteBlock(EntityAgent byEntity, BlockPos pos, float secondsIgniting)
         {
-            Block block = world.BlockAccessor.GetBlock(CodeWithVariant("orientation", "up"));
-            return new ItemStack(block);
+            if (IsExtinct) return secondsIgniting > 1 ? EnumIgniteState.IgniteNow : EnumIgniteState.Ignitable;
+
+            return base.OnTryIgniteBlock(byEntity, pos, secondsIgniting);
         }
 
-
-        public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
+        public override void OnTryIgniteBlockOver(EntityAgent byEntity, BlockPos pos, float secondsIgniting, ref EnumHandling handling)
         {
-            if (HasBehavior<BlockBehaviorUnstableFalling>())
+            handling = EnumHandling.PreventDefault;
+            var block = api.World.GetBlock(CodeWithVariant("state", "lit"));
+            if (block != null)
             {
-                base.OnNeighbourBlockChange(world, pos, neibpos);
-                return;
-            }
-
-            if (!CanTorchStay(world.BlockAccessor, pos))
-            {
-                world.BlockAccessor.BreakBlock(pos, null);
+                api.World.BlockAccessor.SetBlock(block.Id, pos);
             }
         }
 
-        bool TryAttachTo(IWorldAccessor world, BlockPos blockpos, BlockFacing onBlockFace)
+
+        public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
         {
-            BlockFacing onFace = onBlockFace;
-
-            BlockPos attachingBlockPos = blockpos.AddCopy(onBlockFace.Opposite);
-            Block block = world.BlockAccessor.GetBlock(attachingBlockPos);
-
-            Cuboidi attachmentArea = null;
-            attachmentAreas?.TryGetValue(onBlockFace.Opposite.Code, out attachmentArea);
-
-            if (block.CanAttachBlockAt(world.BlockAccessor, this, attachingBlockPos, onFace, attachmentArea))
-            {
-                int blockId = world.BlockAccessor.GetBlock(CodeWithVariant("orientation", onBlockFace.Code)).BlockId;
-                world.BlockAccessor.SetBlock(blockId, blockpos);
-                return true;
-            }
-
-            return false;
-        }
-
-        bool CanTorchStay(IBlockAccessor blockAccessor, BlockPos pos)
-        {
-            BlockFacing facing = BlockFacing.FromCode(Variant["orientation"]);
-            BlockPos attachingBlockPos = pos.AddCopy(facing.Opposite);
-
-            Block block = blockAccessor.GetBlock(attachingBlockPos);
-
-            Cuboidi attachmentArea = null;
-            attachmentAreas?.TryGetValue(facing.Opposite.Code, out attachmentArea);
-
-            return block.CanAttachBlockAt(blockAccessor, this, attachingBlockPos, facing, attachmentArea);
-        }
-
-        public override bool CanAttachBlockAt(IBlockAccessor blockAccessor, Block block, BlockPos pos, BlockFacing blockFace, Cuboidi attachmentArea = null)
-        {
-            return false;
-        }
-
-        public override AssetLocation GetRotatedBlockCode(int angle)
-        {
-            if (Variant["orientation"] == "up") return Code;
-
-            BlockFacing oldFacing = BlockFacing.FromCode(Variant["orientation"]);
-            BlockFacing newFacing = BlockFacing.HORIZONTALS_ANGLEORDER[((360 - angle) / 90 + oldFacing.HorizontalAngleIndex) % 4];
-
-            return CodeWithParts(newFacing.Code);
-        }
-
-        public override AssetLocation GetHorizontallyFlippedBlockCode(EnumAxis axis)
-        {
-            BlockFacing facing = BlockFacing.FromCode(Variant["orientation"]);
-            if (facing.Axis == axis)
-            {
-                return CodeWithVariant("orientation", facing.Opposite.Code);
-            }
-            return Code;
-        }
-
-
-        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, LCGRandom worldGenRand)
-        {
-            return CanTorchStay(blockAccessor, pos) && base.TryPlaceBlockForWorldGen(blockAccessor, pos, onBlockFace, worldGenRand);
+            return base.GetPlacedBlockInteractionHelp(world, selection, forPlayer).Append(interactions);
         }
 
     }

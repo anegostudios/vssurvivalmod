@@ -26,7 +26,7 @@ namespace Vintagestory.GameContent
 
                 foreach (CollectibleObject obj in api.World.Collectibles)
                 {
-                    if (obj.Code.Path.StartsWith("arrow-"))
+                    if (obj is ItemStone)
                     {
                         stacks.Add(new ItemStack(obj));
                     }
@@ -85,7 +85,7 @@ namespace Vintagestory.GameContent
             // Not ideal to code the aiming controls this way. Needs an elegant solution - maybe an event bus?
             byEntity.Attributes.SetInt("aiming", 1);
             byEntity.Attributes.SetInt("aimingCancel", 0);
-            byEntity.AnimManager.StartAnimation("slingaimgreek");
+            byEntity.AnimManager.StartAnimation("slingaimbalearic");
 
             IPlayer byPlayer = null;
             if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
@@ -96,21 +96,27 @@ namespace Vintagestory.GameContent
 
         public override bool OnHeldInteractStep(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
-//            if (byEntity.World is IClientWorldAccessor)
+            int renderVariant = GameMath.Clamp((int)Math.Ceiling(secondsUsed * 4), 0, 3);
+            int prevRenderVariant = slot.Itemstack.Attributes.GetInt("renderVariant", 0);
+
+            slot.Itemstack.TempAttributes.SetInt("renderVariant", renderVariant);
+            slot.Itemstack.Attributes.SetInt("renderVariant", renderVariant);
+
+            if (prevRenderVariant != renderVariant)
             {
-                int renderVariant = GameMath.Clamp((int)Math.Ceiling(secondsUsed * 4), 0, 3);
-                int prevRenderVariant = slot.Itemstack.Attributes.GetInt("renderVariant", 0);
-
-                slot.Itemstack.TempAttributes.SetInt("renderVariant", renderVariant);
-                slot.Itemstack.Attributes.SetInt("renderVariant", renderVariant);
-
-                if (prevRenderVariant != renderVariant)
-                {
-                    (byEntity as EntityPlayer)?.Player?.InventoryManager.BroadcastHotbarSlot();
-                }
+                (byEntity as EntityPlayer)?.Player?.InventoryManager.BroadcastHotbarSlot();
             }
 
-            
+            if (byEntity.World is IClientWorldAccessor)
+            {
+                ModelTransform tf = new ModelTransform();
+                tf.EnsureDefaultValues();
+
+                float rot = (float)Math.Max(0, secondsUsed) * GameMath.TWOPI * 85;
+                tf.Rotation.Set(rot, 0, 0);
+                byEntity.Controls.UsingHeldItemTransformAfter = tf;
+            }
+
             return true;
         }
 
@@ -118,7 +124,7 @@ namespace Vintagestory.GameContent
         public override bool OnHeldInteractCancel(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)
         {
             byEntity.Attributes.SetInt("aiming", 0);
-            byEntity.AnimManager.StopAnimation("slingaimgreek");
+            byEntity.AnimManager.StopAnimation("slingaimbalearic");
 
             if (byEntity.World is IClientWorldAccessor)
             {
@@ -140,14 +146,21 @@ namespace Vintagestory.GameContent
         {
             if (byEntity.Attributes.GetInt("aimingCancel") == 1) return;
             byEntity.Attributes.SetInt("aiming", 0);
-            byEntity.AnimManager.StopAnimation("slingaimgreek");
+            byEntity.AnimManager.StopAnimation("slingaimbalearic");
 
-            if (byEntity.World is IClientWorldAccessor)
+            byEntity.World.RegisterCallback((dt) => slot.Itemstack?.Attributes.SetInt("renderVariant", 2), 250);
+            byEntity.World.RegisterCallback((dt) =>
             {
-                slot.Itemstack.TempAttributes.RemoveAttribute("renderVariant");
-            }
+                if (byEntity.World is IClientWorldAccessor)
+                {
+                    slot.Itemstack?.TempAttributes.RemoveAttribute("renderVariant");
+                }
+                slot.Itemstack?.Attributes.SetInt("renderVariant", 0);
+            }, 450);
 
-            slot.Itemstack.Attributes.SetInt("renderVariant", 0);
+            
+
+            
             (byEntity as EntityPlayer)?.Player?.InventoryManager.BroadcastHotbarSlot();
 
             if (secondsUsed < 0.35f) return;
@@ -155,16 +168,15 @@ namespace Vintagestory.GameContent
             ItemSlot arrowSlot = GetNextMunition(byEntity);
             if (arrowSlot == null) return;
 
-            string arrowMaterial = arrowSlot.Itemstack.Collectible.FirstCodePart(1);
             float damage = 0;
 
-            // Bow damage
+            // Sling damage
             if (slot.Itemstack.Collectible.Attributes != null)
             {
                 damage += slot.Itemstack.Collectible.Attributes["damage"].AsFloat(0);
             }
 
-            // Arrow damage
+            // Stone damage
             if (arrowSlot.Itemstack.Collectible.Attributes != null)
             {
                 damage += arrowSlot.Itemstack.Collectible.Attributes["damage"].AsFloat(0);
@@ -175,10 +187,8 @@ namespace Vintagestory.GameContent
 
             IPlayer byPlayer = null;
             if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
-            byEntity.World.PlaySoundAt(new AssetLocation("sounds/tool/sling1"), byEntity, byPlayer, false, 8, 0.5f);
+            byEntity.World.PlaySoundAt(new AssetLocation("sounds/tool/sling1"), byEntity, byPlayer, false, 8, 0.25f);
 
-            float breakChance = 0.5f;
-            if (stack.ItemAttributes != null) breakChance = stack.ItemAttributes["breakChanceOnImpact"].AsFloat(0.5f);
 
             EntityProperties type = byEntity.World.GetEntityType(new AssetLocation("thrownstone-" + stack.Collectible.Variant["rock"]));
             Entity entity = byEntity.World.ClassRegistry.CreateEntity(type);
@@ -193,7 +203,7 @@ namespace Vintagestory.GameContent
             
             Vec3d pos = byEntity.ServerPos.XYZ.Add(0, byEntity.LocalEyePos.Y, 0);
             Vec3d aheadPos = pos.AheadCopy(1, byEntity.SidedPos.Pitch + rndpitch, byEntity.SidedPos.Yaw + rndyaw);
-            Vec3d velocity = (aheadPos - pos) * byEntity.Stats.GetBlended("bowDrawingStrength");
+            Vec3d velocity = (aheadPos - pos) * byEntity.Stats.GetBlended("bowDrawingStrength") * 0.75f;
 
             
             entity.ServerPos.SetPos(byEntity.SidedPos.BehindCopy(0.21).XYZ.Add(0, byEntity.LocalEyePos.Y, 0));
@@ -208,7 +218,9 @@ namespace Vintagestory.GameContent
 
             slot.Itemstack.Collectible.DamageItem(byEntity.World, byEntity, slot);
 
-            byEntity.AnimManager.StartAnimation("slingthrowgreek");
+            byEntity.AnimManager.StartAnimation("slingthrowbalearic");
+
+            byEntity.World.RegisterCallback((dt) => byEntity.AnimManager.StopAnimation("slingthrowbalearic"), 400);
         }
 
 

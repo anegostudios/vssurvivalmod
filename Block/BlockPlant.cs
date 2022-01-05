@@ -10,7 +10,7 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockFern : BlockPlant
+    public class BlockFern : BlockPlant, ICustomTreeFellingBehavior
     {
         public override void OnLoaded(ICoreAPI api)
         {
@@ -203,6 +203,11 @@ namespace Vintagestory.GameContent
             }
 
             return base.GetSelectionBoxes(blockAccessor, pos);
+        }
+
+        public EnumTreeFellingBehavior GetTreeFellingBehavior(BlockPos pos, Vec3i fromDir, int spreadIndex)
+        {
+            return EnumTreeFellingBehavior.ChopSpreadVertical;
         }
 
     }

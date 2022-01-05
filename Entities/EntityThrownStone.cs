@@ -43,6 +43,8 @@ namespace Vintagestory.GameContent
             {
                 ProjectileStack.ResolveBlockOrItem(World);
             }
+
+            GetBehavior<EntityBehaviorPassivePhysics>().collisionYExtra = 0f; // Slightly cheap hax so that stones/arrows don't collid with fences
         }
 
         public override void OnGameTick(float dt)
@@ -89,7 +91,7 @@ namespace Vintagestory.GameContent
 
                     if (CollidedVertically && motionBeforeCollide.Y <= 0)
                     {
-                        pos.Motion.Y = GameMath.Clamp(motionBeforeCollide.Y * -0.4f, -0.1f, 0.1f);
+                        pos.Motion.Y = GameMath.Clamp(motionBeforeCollide.Y * -0.3f, -0.1f, 0.1f);
                     }
 
                     World.PlaySoundAt(new AssetLocation("sounds/thud"), this, null, false, 32, strength);

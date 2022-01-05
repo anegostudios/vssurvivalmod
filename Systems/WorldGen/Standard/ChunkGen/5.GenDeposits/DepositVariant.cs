@@ -134,27 +134,20 @@ namespace Vintagestory.ServerMods
             int lx = (chunkx * chunksize + chunksize / 2) % regionSize;
             int lz = (chunkz * chunksize + chunksize / 2) % regionSize;
 
-            IntDataMap2D map = null;
+            IntDataMap2D map;
             originMapRegion.OreMaps.TryGetValue(Code, out map);
             if (map != null)
             {
                 float posXInRegionOre = GameMath.Clamp((float)lx / regionSize * noiseSizeOre, 0, noiseSizeOre - 1);
                 float posZInRegionOre = GameMath.Clamp((float)lz / regionSize * noiseSizeOre, 0, noiseSizeOre - 1);
 
-                int oreDist = originMapRegion.OreMaps[Code].GetUnpaddedColorLerped(posXInRegionOre, posZInRegionOre);
+                int oreDist = map.GetUnpaddedColorLerped(posXInRegionOre, posZInRegionOre);
 
                 return (oreDist & 0xff) / 255f;
             }
 
             return 0;
         }
-
-        /*public float GetAbsAvgQuantity()
-        {
-            return GeneratorInst.GetAbsAvgQuantity();
-        }*/
-
-
 
 
         public DepositVariant Clone()

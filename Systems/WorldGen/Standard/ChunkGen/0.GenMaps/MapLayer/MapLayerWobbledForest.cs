@@ -18,13 +18,10 @@ namespace Vintagestory.ServerMods
         NormalizedSimplexNoise noisegenX;
         NormalizedSimplexNoise noisegenY;
 
-        //float wobbleScale;
         float wobbleIntensity;
 
         public MapLayerWobbledForest(long seed, int octaves, float persistence, float scale, float multiplier = 255, int offset = 0) : base(seed)
         {
-            //noisegen = NormalizedPerlinNoise.FromDefaultOctaves(octaves, 1 / scale, persistence, seed);
-
             double[] frequencies = new double[3];
             double[] amplitudes = new double[3];
 

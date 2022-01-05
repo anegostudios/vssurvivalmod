@@ -122,11 +122,11 @@ namespace Vintagestory.GameContent
             ItemSlot[] inputSlots = new ItemSlot[] { inventory[0], inventory[1] };
             CurrentRecipe = null;
 
-            foreach (var recipe in Api.World.BarrelRecipes)
+            foreach (var recipe in Api.GetBarrelRecipes())
             {
                 int outsize;
 
-                if (recipe.Matches(Api.World, inputSlots, out outsize))
+                if (recipe.Matches(inputSlots, out outsize))
                 {
                     ignoreChange = true;
 

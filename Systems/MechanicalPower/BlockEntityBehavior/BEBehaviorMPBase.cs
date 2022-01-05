@@ -194,6 +194,8 @@ namespace Vintagestory.GameContent.Mechanics
         {
             MechanicalNetwork newNetwork;
 
+            if (Api == null) return false;
+
             BlockPos pos = Position.AddCopy(toFacing);
             IMechanicalPowerBlock connectedToBlock = Api.World.BlockAccessor.GetBlock(pos) as IMechanicalPowerBlock;
             if (DEBUG) Api.Logger.Notification("tryConnect at " + this.Position + " towards " + toFacing + " " + pos);

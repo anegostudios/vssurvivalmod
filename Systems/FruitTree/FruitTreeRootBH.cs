@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -11,7 +12,7 @@ namespace Vintagestory.GameContent
         public int BlocksGrown = 0;
         public int BlocksRemoved = 0;
         public double TreePlantedTotalDays;
-        protected double LastRootTickTotalDays;
+        public double LastRootTickTotalDays;
 
         public Dictionary<string, FruitTreeProperties> propsByType = new Dictionary<string, FruitTreeProperties>();
 
@@ -140,6 +141,7 @@ namespace Vintagestory.GameContent
                         double midday = (int)LastRootTickTotalDays + 0.5;
                         temp = Api.World.BlockAccessor.GetClimateAt(be.Pos, EnumGetClimateMode.ForSuppliedDate_TemperatureOnly, midday).Temperature;
                         prevIntDays = (int)LastRootTickTotalDays;
+                        Blockentity.MarkDirty(true);
                     }
 
                     double yearrel = (LastRootTickTotalDays % Api.World.Calendar.DaysPerYear) / Api.World.Calendar.DaysPerYear;
@@ -159,6 +161,14 @@ namespace Vintagestory.GameContent
                         {
                             props.State = EnumFruitTreeState.DormantVernalized;
                             props.lastStateChangeTotalDays = LastRootTickTotalDays;
+                            Blockentity.MarkDirty(true);
+                        }
+
+                        if (temp >= 20 || (temp > 15 && LastRootTickTotalDays - props.lastCheckAtTotalDays > 3))
+                        {
+                            props.State = EnumFruitTreeState.Empty;
+                            props.lastStateChangeTotalDays = LastRootTickTotalDays;
+                            Blockentity.MarkDirty(true);
                         }
                     }
                     else if (props.State == EnumFruitTreeState.DormantVernalized)
@@ -167,6 +177,7 @@ namespace Vintagestory.GameContent
                         {
                             props.State = EnumFruitTreeState.Flowering;
                             props.lastStateChangeTotalDays = LastRootTickTotalDays;
+                            Blockentity.MarkDirty(true);
                         }
                     }
                     else if (props.CycleType == EnumTreeCycleType.Evergreen && (props.State == EnumFruitTreeState.Empty || props.State == EnumFruitTreeState.Young))
@@ -178,6 +189,7 @@ namespace Vintagestory.GameContent
                         {
                             props.State = EnumFruitTreeState.Flowering;
                             props.lastCheckAtTotalDays = LastRootTickTotalDays;
+                            Blockentity.MarkDirty(true);
                         }
                     }
                     else if (props.State == EnumFruitTreeState.Flowering && props.lastStateChangeTotalDays + props.FloweringDays < LastRootTickTotalDays)
@@ -186,26 +198,32 @@ namespace Vintagestory.GameContent
                         props.lastStateChangeTotalDays = LastRootTickTotalDays;
 
                         if (temp < props.EnterDormancyTemp) props.State = EnumFruitTreeState.Empty;
+
+                        Blockentity.MarkDirty(true);
                     }
                     else if (props.State == EnumFruitTreeState.Fruiting && props.lastStateChangeTotalDays + props.FruitingDays < LastRootTickTotalDays)
                     {
                         props.State = EnumFruitTreeState.Ripe;
                         props.lastStateChangeTotalDays = LastRootTickTotalDays;
+                        Blockentity.MarkDirty(true);
                     }
                     else if (props.State == EnumFruitTreeState.Ripe && props.lastStateChangeTotalDays + props.RipeDays < LastRootTickTotalDays)
                     {
                         props.State = EnumFruitTreeState.Empty;
                         props.lastStateChangeTotalDays = LastRootTickTotalDays;
+                        Blockentity.MarkDirty(true);
                     }
                     else if (props.CycleType == EnumTreeCycleType.Deciduous && (props.State == EnumFruitTreeState.Young || props.State == EnumFruitTreeState.Empty) && temp < props.EnterDormancyTemp)
                     {
                         props.State = EnumFruitTreeState.EnterDormancy;
                         props.lastStateChangeTotalDays = LastRootTickTotalDays;
+                        Blockentity.MarkDirty(true);
                     }
                     else if (props.CycleType == EnumTreeCycleType.Deciduous && props.State == EnumFruitTreeState.EnterDormancy && props.lastStateChangeTotalDays + 3 < LastRootTickTotalDays)
                     {
                         props.State = EnumFruitTreeState.Dormant;
                         props.lastStateChangeTotalDays = LastRootTickTotalDays;
+                        Blockentity.MarkDirty(true);
                     }
                 }
 
@@ -213,7 +231,6 @@ namespace Vintagestory.GameContent
                 LastRootTickTotalDays += stateUpdateIntervalDays;
             }
         }
-
 
         public double GetCurrentStateProgress(string treeType)
         {

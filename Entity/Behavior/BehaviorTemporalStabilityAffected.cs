@@ -155,6 +155,7 @@ namespace Vintagestory.GameContent
         }
 
         BlockPos tmpPos = new BlockPos();
+        public double stabilityOffset;
 
         public override void OnGameTick(float deltaTime)
         {
@@ -182,7 +183,7 @@ namespace Vintagestory.GameContent
             float changeSpeed = deltaTime / 3;
 
 
-            double hereStability = tempStabilitySystem.GetTemporalStability(entity.SidedPos.X, entity.SidedPos.Y, entity.SidedPos.Z);
+            double hereStability = stabilityOffset + tempStabilitySystem.GetTemporalStability(entity.SidedPos.X, entity.SidedPos.Y, entity.SidedPos.Z);
 
             entity.Attributes.SetDouble("tempStabChangeVelocity", TempStabChangeVelocity);
 

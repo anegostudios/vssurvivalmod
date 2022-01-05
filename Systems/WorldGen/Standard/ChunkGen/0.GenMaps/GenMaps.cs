@@ -25,20 +25,20 @@ namespace Vintagestory.ServerMods
         ICoreServerAPI sapi;
         ICoreClientAPI capi;
 
-        MapLayerBase climateGen;
-        MapLayerBase flowerGen;
-        MapLayerBase bushGen;
-        MapLayerBase forestGen;
-        MapLayerBase beachGen;
-        MapLayerBase geologicprovinceGen;
-        MapLayerBase landformsGen;
+        public MapLayerBase climateGen;
+        public MapLayerBase flowerGen;
+        public MapLayerBase bushGen;
+        public MapLayerBase forestGen;
+        public MapLayerBase beachGen;
+        public MapLayerBase geologicprovinceGen;
+        public MapLayerBase landformsGen;
 
-        int noiseSizeClimate;
-        int noiseSizeForest;
-        int noiseSizeBeach;
-        int noiseSizeShrubs;
-        int noiseSizeGeoProv;
-        int noiseSizeLandform;
+        public int noiseSizeClimate;
+        public int noiseSizeForest;
+        public int noiseSizeBeach;
+        public int noiseSizeShrubs;
+        public int noiseSizeGeoProv;
+        public int noiseSizeLandform;
 
         LatitudeData latdata = new LatitudeData();
 
@@ -82,8 +82,6 @@ namespace Vintagestory.ServerMods
 
             api.Event.MapRegionGeneration(OnMapRegionGen, "standard");
             api.Event.MapRegionGeneration(OnMapRegionGen, "superflat");
-
-            
 
             api.Event.PlayerJoin += (plr) =>
             {
@@ -156,14 +154,12 @@ namespace Vintagestory.ServerMods
             bushGen = GetForestMapGen(seed + 109, TerraGenConfig.shrubMapScale);
             flowerGen = GetForestMapGen(seed + 223, TerraGenConfig.forestMapScale);
             beachGen = GetBeachMapGen(seed + 2273, TerraGenConfig.beachMapScale);
-
             geologicprovinceGen = GetGeologicProvinceMapGen(seed + 3, sapi);
             landformsGen = GetLandformMapGen(seed + 4, noiseClimate, sapi);
 
             sapi.World.Calendar.OnGetLatitude = getLatitude;
         }
 
-        
 
         private double getLatitude(double posZ)
         {
@@ -231,15 +227,14 @@ namespace Vintagestory.ServerMods
             mapRegion.FlowerMap.Data = flowerGen.GenLayer(regionX * noiseSizeForest, regionZ * noiseSizeForest, noiseSizeForest + 1, noiseSizeForest + 1);
 
 
-
             pad = TerraGenConfig.landformMapPadding;
             mapRegion.LandformMap.Data = landformsGen.GenLayer(regionX * noiseSizeLandform - pad, regionZ * noiseSizeLandform - pad, noiseSizeLandform + 2*pad, noiseSizeLandform + 2*pad);
             mapRegion.LandformMap.Size = noiseSizeLandform + 2 * pad;
             mapRegion.LandformMap.TopLeftPadding = mapRegion.LandformMap.BottomRightPadding = pad;
             
-
             mapRegion.DirtyForSaving = true;
         }
+
 
         public static MapLayerBase GetLightningArcMap(long seed)
         {

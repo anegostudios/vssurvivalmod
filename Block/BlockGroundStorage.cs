@@ -177,7 +177,7 @@ namespace Vintagestory.GameContent
             if (CollisionTester.AabbIntersect(
                 GetCollisionBoxes(world.BlockAccessor, pos)[0],
                 pos.X, pos.Y, pos.Z,
-                player.Entity.CollisionBox,
+                player.Entity.SelectionBox,
                 player.Entity.SidedPos.XYZ
             ))
             {

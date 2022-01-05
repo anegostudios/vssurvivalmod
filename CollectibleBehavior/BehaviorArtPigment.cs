@@ -233,8 +233,8 @@ namespace Vintagestory.GameContent
             handling = EnumHandling.PreventDefault;
             DrawCaveArt(blockSel, blockAccessor, byPlayer);
 
-            // 10% chance to consume the item
-            if (byEntity.World.Side == EnumAppSide.Server && byEntity.World.Rand.NextDouble() < 0.1)
+            // 1/15 chance to consume the item
+            if (byEntity.World.Side == EnumAppSide.Server && byEntity.World.Rand.NextDouble() < 1f/15)
             {
                 slot.TakeOut(1);
                 slot.MarkDirty();

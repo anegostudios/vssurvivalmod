@@ -14,7 +14,7 @@ namespace Vintagestory.GameContent
 
         public override bool CanHold(ItemSlot itemstackFromSourceSlot)
         {
-            WaterTightContainableProps props = BlockLiquidContainerBase.GetInContainerProps(itemstackFromSourceSlot.Itemstack);
+            WaterTightContainableProps props = BlockLiquidContainerBase.GetContainableProps(itemstackFromSourceSlot.Itemstack);
 
             return props != null;
         }
@@ -31,7 +31,7 @@ namespace Vintagestory.GameContent
             ItemStack sourceStack = sourceSlot.Itemstack;
             if (sourceStack == null) return false;
 
-            WaterTightContainableProps props = BlockLiquidContainerBase.GetInContainerProps(sourceStack);
+            WaterTightContainableProps props = BlockLiquidContainerBase.GetContainableProps(sourceStack);
 
             return props != null && (itemstack == null || itemstack.Collectible.GetMergableQuantity(itemstack, sourceStack, priority) > 0) && GetRemainingSlotSpace(sourceStack) > 0;
         }

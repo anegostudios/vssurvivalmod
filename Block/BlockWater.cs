@@ -86,7 +86,7 @@ namespace Vintagestory.GameContent
             {
                 Vec3d pos = entityItem.ServerPos.XYZ;
 
-                WaterTightContainableProps props = BlockLiquidContainerBase.GetInContainerProps(entityItem.Itemstack);
+                WaterTightContainableProps props = BlockLiquidContainerBase.GetContainableProps(entityItem.Itemstack);
                 float litres = (float)entityItem.Itemstack.StackSize / props.ItemsPerLitre;
 
                 entityItem.World.SpawnCubeParticles(pos, entityItem.Itemstack, 0.75f, Math.Min(100, (int)(2 * litres)), 0.45f);

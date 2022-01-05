@@ -46,6 +46,10 @@ namespace Vintagestory.GameContent.Mechanics
         {
             if (++this.powerSetting > 10) this.powerSetting = 1;
             Blockentity.MarkDirty(true);
+
+            var pos = Blockentity.Pos.ToVec3d().Add(0.5, 0, 0.5);
+            Api.World.PlaySoundAt(new AssetLocation("sounds/toggleswitch"), pos.X, pos.Y, pos.Z, byPlayer, false, 16);
+
             return true;
         }
 

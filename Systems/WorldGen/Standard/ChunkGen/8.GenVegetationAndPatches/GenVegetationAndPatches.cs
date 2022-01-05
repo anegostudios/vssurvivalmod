@@ -13,7 +13,7 @@ namespace Vintagestory.ServerMods
 
     public class GenVegetationAndPatches : ModStdWorldGen
     {
-        ICoreServerAPI api;
+        ICoreServerAPI sapi;
         LCGRandom rnd;
         IBlockAccessor blockAccessor;
         WgenTreeSupplier treeSupplier;
@@ -26,6 +26,10 @@ namespace Vintagestory.ServerMods
         float forestMod;
         float shrubMod = 0f;
 
+        public Dictionary<string, MapLayerBase> blockPatchMapGens = new Dictionary<string, MapLayerBase>();
+
+        int noiseSizeDensityMap;
+        int regionSize;
         public override bool ShouldLoad(EnumAppSide side)
         {
             return side == EnumAppSide.Server;
@@ -38,7 +42,7 @@ namespace Vintagestory.ServerMods
 
         public override void StartServerSide(ICoreServerAPI api)
         {
-            this.api = api;
+            this.sapi = api;
             treeSupplier = new WgenTreeSupplier(api);
 
             if (DoDecorationPass)
@@ -46,11 +50,29 @@ namespace Vintagestory.ServerMods
                 api.Event.InitWorldGenerator(initWorldGen, "standard");
                 api.Event.InitWorldGenerator(initWorldGenForSuperflat, "superflat");
                 api.Event.ChunkColumnGeneration(OnChunkColumnGen, EnumWorldGenPass.Vegetation, "standard");
+                api.Event.MapRegionGeneration(OnMapRegionGen, "standard");
+                api.Event.MapRegionGeneration(OnMapRegionGen, "superflat");
                 api.Event.GetWorldgenBlockAccessor(OnWorldGenBlockAccessor);
             }
         }
 
-        
+        private void OnMapRegionGen(IMapRegion mapRegion, int regionX, int regionZ)
+        {
+            int noiseSize = sapi.WorldManager.RegionSize / TerraGenConfig.blockPatchesMapScale;
+
+            foreach (var val in blockPatchMapGens)
+            {
+                var map = IntDataMap2D.CreateEmpty();
+
+                map.Size = noiseSize + 1;
+                map.BottomRightPadding = 1;
+
+                map.Data = val.Value.GenLayer(regionX * noiseSize, regionZ * noiseSize, noiseSize + 1, noiseSize + 1);
+                mapRegion.BlockPatchMaps[val.Key] = map;
+            }
+        }
+
+
         private void OnWorldGenBlockAccessor(IChunkProviderThread chunkProvider)
         {
             blockAccessor = chunkProvider.GetBlockAccessor(true);
@@ -66,39 +88,53 @@ namespace Vintagestory.ServerMods
 
         public void initWorldGen()
         {
-            LoadGlobalConfig(api);
+            regionSize = sapi.WorldManager.RegionSize;
+            chunksize = sapi.World.BlockAccessor.ChunkSize;
+            noiseSizeDensityMap = regionSize / TerraGenConfig.blockPatchesMapScale;
 
-            rnd = new LCGRandom(api.WorldManager.Seed - 87698);
-            chunksize = api.WorldManager.ChunkSize;
+            LoadGlobalConfig(sapi);
+
+            rnd = new LCGRandom(sapi.WorldManager.Seed - 87698);
+            chunksize = sapi.WorldManager.ChunkSize;
 
             treeSupplier.LoadTrees();
 
-            worldheight = api.WorldManager.MapSizeY;
-            chunkMapSizeY = api.WorldManager.MapSizeY / chunksize;
-            regionChunkSize = api.WorldManager.RegionSize / chunksize;
+            worldheight = sapi.WorldManager.MapSizeY;
+            chunkMapSizeY = sapi.WorldManager.MapSizeY / chunksize;
+            regionChunkSize = sapi.WorldManager.RegionSize / chunksize;
 
             RockBlockIdsByType = new Dictionary<string, int>();
-            RockStrataConfig rockstrata = api.Assets.Get("worldgen/rockstrata.json").ToObject<RockStrataConfig>();
+            RockStrataConfig rockstrata = sapi.Assets.Get("worldgen/rockstrata.json").ToObject<RockStrataConfig>();
             for (int i = 0; i < rockstrata.Variants.Length; i++)
             {
-                Block block = api.World.GetBlock(rockstrata.Variants[i].BlockCode);
+                Block block = sapi.World.GetBlock(rockstrata.Variants[i].BlockCode);
                 RockBlockIdsByType[block.LastCodePart()] = block.BlockId;
             }
-            IAsset asset = api.Assets.Get("worldgen/blockpatches.json");
+            IAsset asset = sapi.Assets.Get("worldgen/blockpatches.json");
             bpc = asset.ToObject<BlockPatchConfig>();
 
-            var blockpatchesfiles = api.Assets.GetMany<BlockPatch[]>(api.World.Logger, "worldgen/blockpatches/");
+            var blockpatchesfiles = sapi.Assets.GetMany<BlockPatch[]>(sapi.World.Logger, "worldgen/blockpatches/");
             foreach (var patches in blockpatchesfiles.Values)
             {
                 bpc.Patches = bpc.Patches.Append(patches);
             }
 
-            bpc.ResolveBlockIds(api, rockstrata);
+            bpc.ResolveBlockIds(sapi, rockstrata, rnd);
             treeSupplier.treeGenerators.forestFloorSystem.SetBlockPatches(bpc);
 
 
-            ITreeAttribute worldConfig = api.WorldManager.SaveGame.WorldConfiguration;
+            ITreeAttribute worldConfig = sapi.WorldManager.SaveGame.WorldConfiguration;
             forestMod = worldConfig.GetString("globalForestation").ToFloat(0);
+
+            blockPatchMapGens.Clear();
+            foreach (var patch in bpc.Patches)
+            {
+                if (patch.MapCode == null || blockPatchMapGens.ContainsKey(patch.MapCode)) continue;
+
+                int hs = patch.MapCode.GetHashCode();
+                int seed = sapi.World.Seed + 112897 + hs;
+                blockPatchMapGens[patch.MapCode] = new MapLayerWobbled(seed, 2, 0.9f, TerraGenConfig.forestMapScale, 4000, -3000);
+            }
         }
 
 
@@ -164,7 +200,7 @@ namespace Vintagestory.ServerMods
             
 
             structuresIntersectingChunk.Clear();
-            api.World.BlockAccessor.WalkStructures(chunkBase.Set(chunkX * chunksize, 0, chunkZ * chunksize), chunkend.Set(chunkX * chunksize + chunksize, chunkMapSizeY * chunksize, chunkZ * chunksize + chunksize), (struc) =>
+            sapi.World.BlockAccessor.WalkStructures(chunkBase.Set(chunkX * chunksize, 0, chunkZ * chunksize), chunkend.Set(chunkX * chunksize + chunksize, chunkMapSizeY * chunksize, chunkZ * chunksize + chunksize), (struc) =>
             {
                 if (struc.Code.StartsWith("trader"))
                 {
@@ -187,6 +223,9 @@ namespace Vintagestory.ServerMods
             int dx, dz, x, z;
             Block block;
             int mapsizeY = blockAccessor.MapSizeY;
+
+            var mapregion = sapi?.WorldManager.GetMapRegion((chunkX * chunksize) / regionSize, (chunkZ * chunksize) / regionSize);
+
 
             for (int i = 0; i < bpc.PatchesNonTree.Length; i++)
             {
@@ -219,6 +258,11 @@ namespace Vintagestory.ServerMods
 
                     if (bpc.IsPatchSuitableAt(blockPatch, block, mapsizeY, climate, y, forestRel, shrubRel))
                     {
+                        if (blockPatch.MapCode != null && rnd.NextInt(255) > GetPatchDensity(blockPatch.MapCode, x, z, mapregion))
+                        {
+                            continue;
+                        }
+
                         int firstBlockId = 0;
                         bool found = true;
 
@@ -339,7 +383,6 @@ namespace Vintagestory.ServerMods
                 // Place according to forest value
                 float treeDensity = GameMath.BiLerp(forestUpLeft, forestUpRight, forestBotLeft, forestBotRight, (float)dx / chunksize, (float)dz / chunksize);
                 climate = GameMath.BiLerpRgbColor((float)dx / chunksize, (float)dz / chunksize, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight);
-                //float shrubChance = GameMath.BiLerp(shrubUpLeft, shrubUpRight, shrubBotLeft, shrubBotRight, (float)dx / chunksize, (float)dz / chunksize);
 
                 treeDensity = GameMath.Clamp(treeDensity + forestMod*255, 0, 255);
 
@@ -380,7 +423,37 @@ namespace Vintagestory.ServerMods
             }
         }
 
-        
+
+
+
+        /// <summary>
+        /// Returns 0..255
+        /// </summary>
+        /// <param name="code"></param>
+        /// <param name="posX"></param>
+        /// <param name="posZ"></param>
+        /// <param name="mapregion"></param>
+        /// <returns></returns>
+        public int GetPatchDensity(string code, int posX, int posZ, IMapRegion mapregion)
+        {
+            if (mapregion == null) return 0;
+            int lx = posX % regionSize;
+            int lz = posZ % regionSize;
+
+            IntDataMap2D map;
+            mapregion.BlockPatchMaps.TryGetValue(code, out map);
+            if (map != null)
+            {
+                float posXInRegionOre = GameMath.Clamp((float)lx / regionSize * noiseSizeDensityMap, 0, noiseSizeDensityMap - 1);
+                float posZInRegionOre = GameMath.Clamp((float)lz / regionSize * noiseSizeDensityMap, 0, noiseSizeDensityMap - 1);
+
+                int density = map.GetUnpaddedColorLerped(posXInRegionOre, posZInRegionOre);
+
+                return density;
+            }
+
+            return 0;
+        }
 
 
     }

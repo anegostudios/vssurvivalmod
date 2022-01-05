@@ -1,4 +1,5 @@
-﻿using System;
+﻿using ProtoBuf;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,13 +9,14 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class JuicableProperties
+    public class juiceableProperties
     {
-        public int Quantity;
+        public float? LitresPerItem;
         public JsonItemStack LiquidStack;
         public JsonItemStack PressedStack;
     }
@@ -26,18 +28,22 @@ namespace Vintagestory.GameContent
         Screw
     }
 
-    public enum EnumFruitPressState
+    [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
+    public class FruitPressAnimPacket
     {
-        Prepare = 0,
-        Compressing = 1,
-        CompressedDraining = 2,
-        CompressedDrained = 3,
-        Uncompressing = 4
+        public bool AnimationActive;
+        public float AnimationSpeed;
     }
+
 
     public class BlockEntityFruitPress : BlockEntityContainer, ITerrainMeshPool
     {
-        #region particle
+        const int PacketIdAnimUpdate = 1001;
+        const int PacketIdScrewStart = 1002;
+        const int PacketIdUnscrew = 1003;
+        const int PacketIdScrewContinue = 1004;
+
+        #region Particle
         static SimpleParticleProperties liquidParticles;
         static BlockEntityFruitPress()
         {
@@ -60,11 +66,12 @@ namespace Vintagestory.GameContent
         // Slot 0: Berries / Mash
         // Slot 1: Bucket
         InventoryGeneric inv;
-        
         public override InventoryBase Inventory => inv;
-
         public override string InventoryClassName => "fruitpress";
-
+        BlockEntityAnimationUtil animUtil
+        {
+            get { return GetBehavior<BEBehaviorAnimatable>()?.animUtil; }
+        }
 
         ICoreClientAPI capi;
         BlockFruitPress ownBlock;
@@ -74,9 +81,6 @@ namespace Vintagestory.GameContent
         MeshData bucketMeshTmp;
 
         FruitpressContentsRenderer renderer;
-        EnumFruitPressState state;
-        float squeezeYScale = 1f;
-        double compresssBeginTotalHours = 0f;
 
 
         AnimationMetaData compressAnimMeta = new AnimationMetaData()
@@ -89,17 +93,56 @@ namespace Vintagestory.GameContent
         };
 
 
-        BlockEntityAnimationUtil animUtil
+        long listenerId;
+        double juiceableLitresCapacity = 10;
+
+        public ItemSlot MashSlot => inv[0];
+        public ItemSlot BucketSlot => inv[1];
+        ItemStack mashStack => MashSlot.Itemstack;
+
+        double juiceableLitresLeft
         {
-            get { return GetBehavior<BEBehaviorAnimatable>()?.animUtil; }
+            get
+            {
+                return mashStack?.Attributes.GetDouble("juiceableLitresLeft") ?? 0;
+            }
+            set
+            {
+                mashStack.Attributes.SetDouble("juiceableLitresLeft", value);
+            }
         }
 
+        double juiceableLitresTransfered
+        {
+            get
+            {
+                return mashStack.Attributes.GetDouble("juiceableLitresTransfered");
+            }
+            set
+            {
+                mashStack.Attributes.SetDouble("juiceableLitresTransfered", value);
+            }
+        }
+
+        public bool CompressAnimFinished
+        {
+            get
+            {
+                RunningAnimation anim = animUtil.animator.GetAnimationState("compress");
+                return anim.CurrentFrame >= anim.Animation.QuantityFrames - 1;
+            }
+        }
+        public bool CompressAnimActive => animUtil.activeAnimationsByAnimCode.ContainsKey("compress") || animUtil.animator.GetAnimationState("compress")?.Active == true;
+
+
+        public bool CanScrew => !CompressAnimActive || compressAnimMeta.AnimationSpeed == 0;
+        public bool CanUnscrew => CompressAnimFinished;
+        public bool CanFillRemoveItems => !CompressAnimActive;
 
         public BlockEntityFruitPress()
         {
             inv = new InventoryGeneric(2, "fruitpress-0", null, null);
         }
-
 
         public override void Initialize(ICoreAPI api)
         {
@@ -114,7 +157,7 @@ namespace Vintagestory.GameContent
 
                 if (api.Side == EnumAppSide.Client)
                 {
-                    capi.Tesselator.TesselateShape(ownBlock, shape, out meshMovable);
+                    capi.Tesselator.TesselateShape(ownBlock, shape, out meshMovable, new Vec3f(0, ownBlock.Shape.rotateY, 0));
                     animUtil.InitializeAnimator("fruitpress", new Vec3f(0, ownBlock.Shape.rotateY, 0), shape);
                 } else
                 {
@@ -126,175 +169,107 @@ namespace Vintagestory.GameContent
                     renderer = new FruitpressContentsRenderer(api as ICoreClientAPI, Pos, this);
                     (api as ICoreClientAPI).Event.RegisterRenderer(renderer, EnumRenderStage.Opaque, "fruitpress");
 
-                    renderer.reloadMeshes(getJuicableProps(inv[0].Itemstack), true);
+                    renderer.reloadMeshes(getJuiceableProps(mashStack), true);
                     genBucketMesh();
                 }
             }
         }
 
 
+        double lastLiquidTransferTotalHours;
 
-        bool nowCompress;
-
-        #region ITerrainMeshPool imp to get bucket mesh
-        public void AddMeshData(MeshData data, int lodlevel = 1)
+        private void onTick25msClient(float dt)
         {
-            if (data == null) return;
-            bucketMeshTmp.AddMeshData(data);
-        }
+            double squeezeRel = mashStack?.Attributes.GetDouble("squeezeRel", 1) ?? 1;
 
-        public void AddMeshData(MeshData data, ColorMapData colormapdata, int lodlevel = 1)
-        {
-            if (data == null) return;
-            bucketMeshTmp.AddMeshData(data);
-        }
-        #endregion
+            if (MashSlot.Empty || renderer.juiceTexPos == null || squeezeRel >= 1) return;
 
+            int[] cols = renderer.juiceTexPos.RndColors;
+            var rand = Api.World.Rand;
 
-        void StartOrContinuePressing()
-        {
-            setState(EnumFruitPressState.Compressing);
-            compresssBeginTotalHours = Api.World.Calendar.TotalHours;
-            prevLiquidStackSize = 0;
-            if (!inv[1].Empty)
+            liquidParticles.MinQuantity = (float)juiceableLitresLeft / 10f;
+
+            for (int i = 0; i < 4; i++)
             {
-                ItemStack bucketStack = inv[1].Itemstack;
-                var containerBlock = bucketStack.Collectible as BlockLiquidContainerBase;
-                ItemStack currentLiquidStack = containerBlock.GetContent(bucketStack);
+                BlockFacing face = BlockFacing.HORIZONTALS[i];
 
-                prevLiquidStackSize = currentLiquidStack?.StackSize ?? 0;
-            }
-            
+                liquidParticles.Color = cols[rand.Next(cols.Length)];
 
-            if (listenerId == 0) listenerId = RegisterGameTickListener(onTick50ms, Api.Side == EnumAppSide.Client ? 25 : 50);
-            nowCompress = true;
-        }
+                Vec3d minPos = face.Plane.Startd.Add(-0.5, 0, -0.5);
+                Vec3d maxPos = face.Plane.Endd.Add(-0.5, 0, -0.5);
 
+                minPos.Mul(8 / 16f);
+                maxPos.Mul(8 / 16f);
+                maxPos.Y = 6 / 16f - (1 - squeezeRel) * 0.25f;
 
-        long listenerId;
-        float juiceAccumLitres;
-        double totalFlowHours = 0.25f;
-        int prevLiquidStackSize;
+                minPos.Add(face.Normalf.X * 1.2f / 16f, 0, face.Normalf.Z * 1.2f / 16f);
+                maxPos.Add(face.Normalf.X * 1.2f / 16f, 0, face.Normalf.Z * 1.2f / 16f);
 
-        private void onTick50ms(float dt)
-        {
-            var props = getJuicableProps(inv[0].Itemstack);
-            double totalHours = Api.World.Calendar.TotalHours;
+                liquidParticles.MinPos = minPos;
+                liquidParticles.AddPos = maxPos.Sub(minPos);
+                liquidParticles.MinPos.Add(Pos).Add(0.5, 1, 0.5);
 
-            double hoursPassed = totalHours - compresssBeginTotalHours;
-            double juiceflowSpeed = (totalFlowHours - hoursPassed) * 1.5f;
-
-            if (Api.Side == EnumAppSide.Server && state == EnumFruitPressState.CompressedDraining) {
-
-                float berryFillLevelRel = (float)inv[0].StackSize / (9 * props.Quantity);
-                
-                juiceAccumLitres = (float)(berryFillLevelRel * hoursPassed / totalFlowHours * 10.5);
-                juiceAccumLitres = GameMath.Clamp(juiceAccumLitres, 0, 10);
-
-                ItemStack liquidStack = props.LiquidStack.ResolvedItemstack;
-                var liquidProps = BlockLiquidContainerBase.GetInContainerProps(liquidStack);
-                int juiceStackSize = (int)(liquidProps.ItemsPerLitre * juiceAccumLitres);
-
-                if (!inv[1].Empty && juiceStackSize > 0)
-                {
-                    ItemStack bucketStack = inv[1].Itemstack;
-                    var containerBlock = bucketStack.Collectible as BlockLiquidContainerBase;
-                    ItemStack currentLiquidStack = containerBlock.GetContent(bucketStack);
-
-                    if (currentLiquidStack == null) currentLiquidStack = liquidStack.Clone();
-
-                    if (currentLiquidStack.Equals(Api.World, liquidStack, GlobalConstants.IgnoredStackAttributes))
-                    {
-                        currentLiquidStack.StackSize = prevLiquidStackSize + juiceStackSize;
-                        containerBlock.SetContent(bucketStack, currentLiquidStack);
-                        inv[1].MarkDirty();
-                        MarkDirty(true);
-                    }
-                }
+                Api.World.SpawnParticles(liquidParticles);
             }
 
-
-            if (Api.Side == EnumAppSide.Client)
+            if (squeezeRel < 0.9f)
             {
-                int[] cols = renderer.juiceTexPos.RndColors;
-                var rand = Api.World.Rand;
-
-                liquidParticles.MinQuantity = (float)juiceflowSpeed;
-
-                for (int i = 0; i < 4; i++)
+                liquidParticles.MinPos = Pos.ToVec3d().Add(6 / 16f, 0.7f, 6 / 16f);
+                liquidParticles.AddPos.Set(4 / 16f, 0f, 4 / 16f);
+                for (int i = 0; i < 3; i++)
                 {
-                    BlockFacing face = BlockFacing.HORIZONTALS[i];
-
                     liquidParticles.Color = cols[rand.Next(cols.Length)];
-
-                    Vec3d minPos = face.Plane.Startd.Add(-0.5, 0, -0.5);
-                    Vec3d maxPos = face.Plane.Endd.Add(-0.5, 0, -0.5);
-
-                    minPos.Mul(8 / 16f);
-                    maxPos.Mul(8 / 16f);
-                    maxPos.Y = 6/16f - (1 - squeezeYScale) * 0.25f;
-
-                    minPos.Add(face.Normalf.X * 1.2f / 16f, 0, face.Normalf.Z * 1.2f / 16f);
-                    maxPos.Add(face.Normalf.X * 1.2f / 16f, 0, face.Normalf.Z * 1.2f / 16f);
-
-                    liquidParticles.MinPos = minPos;
-                    liquidParticles.AddPos = maxPos.Sub(minPos);
-                    liquidParticles.MinPos.Add(Pos).Add(0.5, 1, 0.5);
-
                     Api.World.SpawnParticles(liquidParticles);
                 }
+            }
+        }
 
-                if (squeezeYScale < 0.9f)
+        private void onTick100msServer(float dt)
+        {
+            if (MashSlot.Empty) return;
+
+            var juiceProps = getJuiceableProps(mashStack);
+            double totalHours = Api.World.Calendar.TotalHours;
+
+            double squeezeRel = mashStack.Attributes.GetDouble("squeezeRel", 1);
+            double litresToTransfer = Math.Min(juiceableLitresLeft, (totalHours - lastLiquidTransferTotalHours) * 50f);
+
+            if (Api.Side == EnumAppSide.Server && squeezeRel < 1 && totalHours - lastLiquidTransferTotalHours > 0.01)
+            {
+                ItemStack liquidStack = juiceProps.LiquidStack.ResolvedItemstack;
+                liquidStack.StackSize = 999999;
+                BlockLiquidContainerBase cntBlock = BucketSlot?.Itemstack?.Collectible as BlockLiquidContainerBase;
+
+                float litresMoved = (float)litresToTransfer;
+
+                if (cntBlock != null && litresToTransfer > 0)
                 {
-                    liquidParticles.MinPos = Pos.ToVec3d().Add(6 / 16f, 0.7f, 6 / 16f);
-                    liquidParticles.AddPos.Set(4 / 16f, 0f, 4 / 16f);
-                    for (int i = 0; i < 3; i++)
-                    {
-                        liquidParticles.Color = cols[rand.Next(cols.Length)];
-                        Api.World.SpawnParticles(liquidParticles);
-                    }
+                    int itemsmoved = cntBlock.TryPutLiquid(BucketSlot.Itemstack, liquidStack, (float)litresToTransfer);
+                    var props = BlockLiquidContainerBase.GetContainableProps(liquidStack);
+                    litresMoved = itemsmoved / props.ItemsPerLitre;
                 }
+
+                juiceableLitresLeft -= (float)litresMoved;
+                juiceableLitresTransfered += (float)litresMoved;
+                lastLiquidTransferTotalHours = totalHours;
+                MarkDirty(true);
             }
 
-            if (!animUtil.activeAnimationsByAnimCode.ContainsKey("compress") || Api.World.Calendar.TotalHours > compresssBeginTotalHours + totalFlowHours)
+            if (juiceableLitresLeft <= 0.01)
             {
+                // Fugly hack to fix rounding errors
+                BlockLiquidContainerBase cntBlock = BucketSlot?.Itemstack?.Collectible as BlockLiquidContainerBase;
+                if (cntBlock != null)
+                {
+                    float litres = cntBlock.GetCurrentLitres(BucketSlot.Itemstack);
+                    cntBlock.SetCurrentLitres(BucketSlot.Itemstack, (float)Math.Round(10*litres)/10f);
+                }
+
                 UnregisterGameTickListener(listenerId);
                 listenerId = 0;
-                if (Api.World.Calendar.TotalHours > compresssBeginTotalHours + totalFlowHours)
-                {
-                    setState(EnumFruitPressState.CompressedDrained);
-                }
+                MarkDirty(true);
             }
-
-            squeezeYScale = Math.Min(squeezeYScale, GetSqueezeYScale());
         }
-
-        void setState(EnumFruitPressState state)
-        {
-            this.state = state;
-            if (Api.Side == EnumAppSide.Server) MarkDirty(false);
-        }
-
-        public float GetSqueezeYScale()
-        {
-            RunningAnimation anim = animUtil.animator.GetAnimationState("compress");
-            if (anim == null || !anim.Active) return squeezeYScale;
-
-            float ys = GameMath.Clamp(1f - (float)anim.CurrentFrame / anim.Animation.QuantityFrames / 2f, 0.1f, 1f);
-
-            return ys;
-        }
-
-
-        public JuicableProperties getJuicableProps(ItemStack stack)
-        {
-            var props = stack?.ItemAttributes?["juicableProperties"].Exists == true ? stack.ItemAttributes["juicableProperties"].AsObject<JuicableProperties>(null, stack.Collectible.Code.Domain) : null;
-            props?.LiquidStack?.Resolve(Api.World, "juicable properties liquidstack");
-            props?.PressedStack?.Resolve(Api.World, "juicable properties pressedstack");
-
-            return props;
-        }
-
 
 
         // What needs to happen while squeezing:
@@ -303,220 +278,314 @@ namespace Vintagestory.GameContent
         // 1..6 sec: Grow juice quad, spawn particles at the spout
         // 6..12 sec: Shrink juice quad
         // 1..12 sec: Add liquid to bucket
-        public bool OnBlockInteractStart(IPlayer byPlayer, BlockSelection blockSel, EnumFruitPressSection section)
+        public bool OnBlockInteractStart(IPlayer byPlayer, BlockSelection blockSel, EnumFruitPressSection section, bool firstEvent)
         {
-            ItemSlot handslot = byPlayer.InventoryManager.ActiveHotbarSlot;
-            ItemStack handStack = handslot.Itemstack;
-            ItemSlot contentSlot = inv[0];
-
-            if (!animUtil.activeAnimationsByAnimCode.ContainsKey("compress") && (state == EnumFruitPressState.Uncompressing || animUtil.activeAnimationsByAnimCode.Count == 0))
-            {
-                setState(EnumFruitPressState.Prepare);
-            }
+            firstEvent |= Api.Side == EnumAppSide.Server;
 
             if (section == EnumFruitPressSection.MashContainer)
             {
-                if (state != EnumFruitPressState.Prepare) return false;
-
-                if (!handslot.Empty)
-                {
-                    var props = getJuicableProps(handStack);
-                    if (props == null) return false;
-
-                    int leftToPut = props == null ? 0 : props.Quantity * 9 - contentSlot.StackSize;
-
-                    ItemStackMoveOperation op = new ItemStackMoveOperation(Api.World, EnumMouseButton.Left, 0, EnumMergePriority.DirectMerge, Math.Min(props.Quantity, leftToPut));
-
-                    if (props != null && handStack.StackSize >= props.Quantity && handslot.TryPutInto(contentSlot, ref op) > 0 && leftToPut > 0)
-                    {
-                        handslot.MarkDirty();
-                        MarkDirty(true);
-                        renderer?.reloadMeshes(props, true);
-                    }
-                }
-                else
-                {
-                    var props = getJuicableProps(inv[0].Itemstack);
-                    ItemStack stack;
-
-                    
-                    if (squeezeYScale > 0.9f || props == null)
-                    {
-                        stack = contentSlot.TakeOut(props?.Quantity ?? 4);
-                    }
-                    else
-                    {
-                        stack = props.PressedStack.ResolvedItemstack.Clone();
-                        stack.StackSize = contentSlot.StackSize / props.Quantity;
-                        contentSlot.Itemstack = null;
-                    }
-
-                    if (!byPlayer.InventoryManager.TryGiveItemstack(stack, true))
-                    {
-                        Api.World.SpawnItemEntity(stack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
-                    }
-
-                    renderer?.reloadMeshes(props, true);
-
-                    if (Api.Side == EnumAppSide.Server)
-                    {
-                        if (inv[0].Empty) squeezeYScale = 1;
-                        MarkDirty(true);
-                    }
-                }
-
-                return true;
+                return InteractMashContainer(byPlayer, blockSel);
             }
-
-
             if (section == EnumFruitPressSection.Ground)
             {
-                if (handslot.Empty && !inv[1].Empty)
-                {
-                    if (!byPlayer.InventoryManager.TryGiveItemstack(inv[1].Itemstack, true))
-                    {
-                        Api.World.SpawnItemEntity(inv[1].Itemstack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
-                    }
-                    inv[1].Itemstack = null;
-                    MarkDirty(true);
-                    bucketMesh?.Clear();
-                }
-
-                else if (handStack != null && handStack.Collectible is BlockLiquidContainerBase blockLiqCont && blockLiqCont.CapacityLitres > 5 && blockLiqCont.CapacityLitres < 20 && inv[1].Empty)
-                {
-                    bool moved = handslot.TryPutInto(Api.World, inv[1], 1) > 0;
-                    if (moved)
-                    {
-                        handslot.MarkDirty();
-                        MarkDirty(true);
-                        genBucketMesh();
-                    }
-                }
-
-                return true;
+                return InteractGround(byPlayer, blockSel);
             }
-
-
-            if (state == EnumFruitPressState.CompressedDraining && listenerId != 0) return false;
-
-            if (animUtil.activeAnimationsByAnimCode.ContainsKey("compress"))
+            if (section == EnumFruitPressSection.Screw)
             {
-                RunningAnimation anim = animUtil.animator.GetAnimationState("compress");
-
-                if (anim.CurrentFrame >= anim.Animation.QuantityFrames - 1)
-                {
-                    animUtil.StopAnimation("compress");
-                    setState(EnumFruitPressState.Uncompressing);
-                    return true;
-                }
-                else
-                {
-                    compressAnimMeta.AnimationSpeed = 0.5f;
-                }
-
-                StartOrContinuePressing();
-                return true;
+                return InteractScrew(byPlayer, blockSel, firstEvent);
             }
 
+            return false;
+        }
 
-            StartOrContinuePressing();
+        private bool InteractScrew(IPlayer byPlayer, BlockSelection blockSel, bool firstEvent)
+        {
+            if (Api.Side == EnumAppSide.Server) return true; // We let the client control this
 
-            
-            if (animUtil.activeAnimationsByAnimCode.ContainsKey("compress"))
-            {
-                animUtil.StopAnimation("compress");
-                setState(EnumFruitPressState.Uncompressing);
-            }
-            else
+            // Start
+            if (!CompressAnimActive && firstEvent)
             {
                 compressAnimMeta.AnimationSpeed = 0.5f;
                 animUtil.StartAnimation(compressAnimMeta);
 
-                if (!contentSlot.Empty)
+                if (!MashSlot.Empty && juiceableLitresLeft > 0)
                 {
                     Api.World.PlaySoundAt(new AssetLocation("sounds/player/wetclothsqueeze.ogg"), Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5, byPlayer, false);
                 }
+
+                (Api as ICoreClientAPI).Network.SendBlockEntityPacket(Pos, PacketIdScrewStart);
+
+                if (listenerId == 0)
+                {
+                    listenerId = RegisterGameTickListener(onTick25msClient, 25);
+                }
+
+                return true;
             }
 
+            // Unscrew
+            if (CanUnscrew && firstEvent)
+            {
+                compressAnimMeta.AnimationSpeed = 1.5f;
+                animUtil.StopAnimation("compress");
+                (Api as ICoreClientAPI).Network.SendBlockEntityPacket(Pos, PacketIdUnscrew);
+                return true;
+            }
+
+            // Continue
+            if (compressAnimMeta.AnimationSpeed == 0)
+            {
+                compressAnimMeta.AnimationSpeed = 0.5f;
+                (Api as ICoreClientAPI).Network.SendBlockEntityPacket(Pos, PacketIdScrewContinue);
+                return true;
+            }
+
+
+            return false;
+        }
+
+        private bool InteractMashContainer(IPlayer byPlayer, BlockSelection blockSel)
+        {
+            ItemSlot handslot = byPlayer.InventoryManager.ActiveHotbarSlot;
+            ItemStack handStack = handslot.Itemstack;
+
+            if (CompressAnimActive)
+            {
+                (Api as ICoreClientAPI)?.TriggerIngameError(this, "compressing", "Release the screw first to add/remove fruit");
+                return false;
+            }
+
+            // Put items
+            if (!handslot.Empty)
+            {
+                var hprops = getJuiceableProps(handStack);
+                if (hprops == null) return false;
+
+                var pressedStack = hprops.PressedStack.ResolvedItemstack.Clone();
+                if (MashSlot.Empty) MashSlot.Itemstack = pressedStack;
+                else if (mashStack.StackSize >= 10)
+                {
+                    (Api as ICoreClientAPI)?.TriggerIngameError(this, "fullcontainer", "Container is full, press out juice and remove the mash before adding more");
+                    return false;
+                }
+
+                if (!mashStack.Equals(Api.World, pressedStack, GlobalConstants.IgnoredStackAttributes.Append("juiceableLitresLeft", "juiceableLitresTransfered", "squeezeRel")))
+                {
+                    (Api as ICoreClientAPI)?.TriggerIngameError(this, "fullcontainer", "Cannot mix fruit");
+                    return false;
+                }
+
+
+                float transferableLitres;
+                int removeItems;
+                if (hprops.LitresPerItem == null)
+                {
+                    float availableLitres = (float)handStack.Attributes.GetDecimal("juiceableLitresLeft");
+                    transferableLitres = (float)Math.Min(availableLitres, juiceableLitresCapacity - juiceableLitresLeft);
+
+                    float litresPerItem = availableLitres / handStack.StackSize;
+
+                    // Round down to closest full stack sizes
+
+                    removeItems = (int)(transferableLitres / litresPerItem);
+                    transferableLitres = removeItems * litresPerItem;
+
+                    if (transferableLitres > 0) handStack.Attributes.SetDouble("juiceableLitresLeft", availableLitres - transferableLitres);
+
+                } else
+                {  
+                    float desiredTransferSizeLitres = byPlayer.Entity.Controls.Sneak ? (float)hprops.LitresPerItem : 4 * (float)hprops.LitresPerItem;
+                    transferableLitres = (float)Math.Min(desiredTransferSizeLitres, juiceableLitresCapacity - juiceableLitresLeft);
+
+                    removeItems = (int)(transferableLitres / hprops.LitresPerItem);
+                }
+
+                if (transferableLitres > 0) {
+                    handslot.TakeOut(removeItems);
+
+                    mashStack.Attributes.SetDouble("juiceableLitresLeft", juiceableLitresLeft += transferableLitres);
+                    mashStack.StackSize = (int)(juiceableLitresLeft + juiceableLitresTransfered);
+                    handslot.MarkDirty();
+                    MarkDirty(true);
+                    renderer?.reloadMeshes(hprops, true);
+                    (byPlayer as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
+                }
+
+                return true;
+            }
+
+            // Take out mash
+            if (MashSlot.Empty) return false;
+
+            mashStack.Attributes.RemoveAttribute("juiceableLitresTransfered");
+            if (!byPlayer.InventoryManager.TryGiveItemstack(mashStack, true))
+            {
+                Api.World.SpawnItemEntity(mashStack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
+            }
+
+            MashSlot.Itemstack = null;
+            renderer?.reloadMeshes(null, true);
+
+            if (Api.Side == EnumAppSide.Server)
+            {
+                MarkDirty(true);
+            }
 
             return true;
         }
 
-        private void genBucketMesh()
+        private bool InteractGround(IPlayer byPlayer, BlockSelection blockSel)
         {
-            if (inv[1].Empty) return;
+            ItemSlot handslot = byPlayer.InventoryManager.ActiveHotbarSlot;
+            ItemStack handStack = handslot.Itemstack;
 
-            // Haxy, but works ¯\_(ツ)_/¯
-            if (inv[1].Itemstack.Block?.EntityClass != null && Api.Side == EnumAppSide.Client)
+            if (handslot.Empty && !BucketSlot.Empty)
             {
-                if (bucketMeshTmp == null)
+                if (!byPlayer.InventoryManager.TryGiveItemstack(BucketSlot.Itemstack, true))
                 {
-                    bucketMeshTmp = new MeshData(4, 3, false, true, true, true);
-
-                    // Liquid mesh
-                    bucketMeshTmp.CustomInts = new CustomMeshDataPartInt(bucketMeshTmp.FlagsCount);
-                    bucketMeshTmp.CustomInts.Count = bucketMeshTmp.FlagsCount;
-                    bucketMeshTmp.CustomInts.Values.Fill(0x4000000); // light foam only
-
-                    bucketMeshTmp.CustomFloats = new CustomMeshDataPartFloat(bucketMeshTmp.FlagsCount * 2);
-                    bucketMeshTmp.CustomFloats.Count = bucketMeshTmp.FlagsCount * 2;
+                    Api.World.SpawnItemEntity(BucketSlot.Itemstack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
                 }
-                bucketMeshTmp.Clear();
-                var be = Api.ClassRegistry.CreateBlockEntity(inv[1].Itemstack.Block.EntityClass);
-                be.Pos = new BlockPos(0, 0, 0);
-                be.Block = inv[1].Itemstack.Block;
-                be.Initialize(Api);
-                be.OnBlockPlaced(inv[1].Itemstack);
-                be.OnTesselation(this, capi.Tesselator);
-                be.OnBlockRemoved();
-                bucketMesh = bucketMeshTmp.Clone();
+
+                if (BucketSlot.Itemstack.Block != null) Api.World.PlaySoundAt(BucketSlot.Itemstack.Block.Sounds.Place, Pos.X + 0.5, Pos.Y, Pos.Z + 0.5, byPlayer);
+
+                BucketSlot.Itemstack = null;
+                MarkDirty(true);
+                bucketMesh?.Clear();
             }
+
+            else if (handStack != null && handStack.Collectible is BlockLiquidContainerBase blockLiqCont && blockLiqCont.AllowHeldLiquidTransfer && blockLiqCont.IsTopOpened && blockLiqCont.CapacityLitres > 5 && blockLiqCont.CapacityLitres < 20 && BucketSlot.Empty)
+            {
+                bool moved = handslot.TryPutInto(Api.World, BucketSlot, 1) > 0;
+                if (moved)
+                {
+                    handslot.MarkDirty();
+                    MarkDirty(true);
+                    genBucketMesh();
+                    Api.World.PlaySoundAt(handStack.Block.Sounds.Place, Pos.X + 0.5, Pos.Y, Pos.Z + 0.5, byPlayer);
+                }
+            }
+
+            return true;
         }
+
 
         public bool OnBlockInteractStep(float secondsUsed, IPlayer byPlayer, EnumFruitPressSection section)
         {
             if (section != EnumFruitPressSection.Screw) return false;
-            compresssBeginTotalHours = Api.World.Calendar.TotalHours;
 
-            return nowCompress && secondsUsed < 4;
+            if (mashStack != null)
+            {
+                RunningAnimation anim = animUtil.animator.GetAnimationState("compress");
+                if (anim != null)
+                {
+                    double squeezeRel = GameMath.Clamp(1f - anim.CurrentFrame / anim.Animation.QuantityFrames / 2f, 0.1f, 1f);
+                    float selfHeight = mashStack.StackSize / 10f;
+
+                    squeezeRel += Math.Max(0, 0.9f - selfHeight);
+                    squeezeRel = GameMath.Clamp(Math.Min(mashStack.Attributes.GetDouble("squeezeRel", 1), squeezeRel), 0.1f, 1f);
+
+                    mashStack.Attributes.SetDouble("squeezeRel", squeezeRel);
+                }
+            }
+
+            return CompressAnimActive && secondsUsed < 5.5f;
         }
 
 
         public void OnBlockInteractStop(float secondsUsed, IPlayer byPlayer)
         {
-            if (secondsUsed >= 3 && !inv[0].Empty)
-            {
-                var props = getJuicableProps(inv[0].Itemstack);
-                if (props != null)
-                {
-                    setState(EnumFruitPressState.CompressedDraining);
-                }
+            if (!CompressAnimActive) return;
 
-                if (animUtil.activeAnimationsByAnimCode.ContainsKey("compress"))
-                {
-                    compressAnimMeta.AnimationSpeed = 0f;
-                    // Fast forward the server
-                    RunningAnimation anim = animUtil.animator.GetAnimationState("compress");
-                    anim.CurrentFrame = anim.Animation.QuantityFrames - 1;
-                }
+            if (secondsUsed >= 5.2f)
+            {
+                compressAnimMeta.AnimationSpeed = 0f;
+                // Fast forward the server
+                RunningAnimation anim = animUtil.animator.GetAnimationState("compress");
+                anim.CurrentFrame = anim.Animation.QuantityFrames - 1;
+
+                (Api as ICoreServerAPI)?.Network.BroadcastBlockEntityPacket(Pos, PacketIdAnimUpdate, new FruitPressAnimPacket() { AnimationActive = true, AnimationSpeed = 0f });
             }
         }
 
 
         public bool OnBlockInteractCancel(float secondsUsed, IPlayer byPlayer)
         {
-            if (animUtil.activeAnimationsByAnimCode.ContainsKey("compress"))
+            if (CompressAnimActive)
             {
                 compressAnimMeta.AnimationSpeed = 0f;
+                (Api as ICoreServerAPI)?.Network.BroadcastBlockEntityPacket(Pos, PacketIdAnimUpdate, new FruitPressAnimPacket() { AnimationActive = true, AnimationSpeed = 0f });
             }
 
             return true;
         }
 
 
+        public override void OnReceivedClientPacket(IPlayer fromPlayer, int packetid, byte[] data)
+        {
+            switch (packetid)
+            {
+                case PacketIdScrewStart:
+                    compressAnimMeta.AnimationSpeed = 0.5f;
+                    animUtil.StartAnimation(compressAnimMeta);
+                    lastLiquidTransferTotalHours = Api.World.Calendar.TotalHours;
+                    if (listenerId == 0) listenerId = RegisterGameTickListener(onTick100msServer, 25);
+                    (Api as ICoreServerAPI)?.Network.BroadcastBlockEntityPacket(Pos, PacketIdAnimUpdate, new FruitPressAnimPacket() { AnimationActive = true, AnimationSpeed = 0.5f });
+                    break;
+                case PacketIdScrewContinue:
+                    compressAnimMeta.AnimationSpeed = 0.5f;
+                    (Api as ICoreServerAPI)?.Network.BroadcastBlockEntityPacket(Pos, PacketIdAnimUpdate, new FruitPressAnimPacket() { AnimationActive = true, AnimationSpeed = 0.5f });
+                    break;
+                case PacketIdUnscrew:
+                    compressAnimMeta.AnimationSpeed = 1.5f;
+                    animUtil.StopAnimation("compress");
+                    (Api as ICoreServerAPI)?.Network.BroadcastBlockEntityPacket(Pos, PacketIdAnimUpdate, new FruitPressAnimPacket() { AnimationActive = false, AnimationSpeed = 1.5f });
+                    break;
+            }
+
+            base.OnReceivedClientPacket(fromPlayer, packetid, data);
+        }
+
+        public override void OnReceivedServerPacket(int packetid, byte[] data)
+        {
+            if (packetid == PacketIdAnimUpdate)
+            {
+                var packet = SerializerUtil.Deserialize<FruitPressAnimPacket>(data);
+
+                compressAnimMeta.AnimationSpeed = packet.AnimationSpeed;
+
+                if (packet.AnimationActive)
+                {
+                    if (!MashSlot.Empty && juiceableLitresLeft > 0 && !CompressAnimActive)
+                    {
+                        Api.World.PlaySoundAt(new AssetLocation("sounds/player/wetclothsqueeze.ogg"), Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5, null, false);
+                    }
+
+                    animUtil.StartAnimation(compressAnimMeta);
+                    if (listenerId == 0) listenerId = RegisterGameTickListener(onTick25msClient, 25);
+                }
+                else
+                {
+                    animUtil.StopAnimation("compress");
+                    if (listenerId != 0) { UnregisterGameTickListener(listenerId); listenerId = 0; }
+                }
+            }
+
+            base.OnReceivedServerPacket(packetid, data);
+        }
+
+        public juiceableProperties getJuiceableProps(ItemStack stack)
+        {
+            var props = stack?.ItemAttributes?["juiceableProperties"].Exists == true ? stack.ItemAttributes["juiceableProperties"].AsObject<juiceableProperties>(null, stack.Collectible.Code.Domain) : null;
+            props?.LiquidStack?.Resolve(Api.World, "juiceable properties liquidstack");
+            props?.PressedStack?.Resolve(Api.World, "juiceable properties pressedstack");
+
+            return props;
+        }
+
+
         public override void OnBlockBroken(IPlayer byPlayer = null)
         {
-            //base.OnBlockBroken(); - don't drop contents
+            base.OnBlockBroken();
         }
 
         public override void OnBlockRemoved()
@@ -538,14 +607,18 @@ namespace Vintagestory.GameContent
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
             bool wasEmpty = Inventory.Empty;
-            state = (EnumFruitPressState)tree.GetInt("state", 0);
-            squeezeYScale = tree.GetFloat("squeezeYScale", 1);
+            ItemStack beforeStack = mashStack;
 
             base.FromTreeAttributes(tree, worldForResolving);
 
             if (worldForResolving.Side == EnumAppSide.Client)
             {
-                renderer?.reloadMeshes(getJuicableProps(inv[0].Itemstack), wasEmpty != Inventory.Empty);
+                if (listenerId > 0 && juiceableLitresLeft <= 0)
+                {
+                    UnregisterGameTickListener(listenerId);
+                    listenerId = 0;
+                }
+                renderer?.reloadMeshes(getJuiceableProps(mashStack), wasEmpty != Inventory.Empty || (beforeStack != null && mashStack != null && !beforeStack.Equals(Api.World, mashStack, GlobalConstants.IgnoredStackAttributes)));
                 genBucketMesh();
             }
         }
@@ -553,9 +626,6 @@ namespace Vintagestory.GameContent
         public override void ToTreeAttributes(ITreeAttribute tree)
         {
             base.ToTreeAttributes(tree);
-
-            tree.SetInt("state", (int)state);
-            tree.SetFloat("squeezeYScale", squeezeYScale);
         }
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
@@ -574,13 +644,61 @@ namespace Vintagestory.GameContent
         {
             base.GetBlockInfo(forPlayer, dsc);
 
-            if (!inv[1].Empty)
+            if (!BucketSlot.Empty)
             {
-                BlockLiquidContainerBase block = inv[1].Itemstack.Collectible as BlockLiquidContainerBase;
+                BlockLiquidContainerBase block = BucketSlot.Itemstack.Collectible as BlockLiquidContainerBase;
                 dsc.Append("Bucket: ");
-                block.GetContentInfo(inv[1], dsc, Api.World);
+                block.GetContentInfo(BucketSlot, dsc, Api.World);
             }
         }
 
+
+
+        private void genBucketMesh()
+        {
+            if (BucketSlot.Empty) return;
+
+            // Haxy, but works ¯\_(ツ)_/¯
+            if (BucketSlot.Itemstack.Block?.EntityClass != null && Api.Side == EnumAppSide.Client)
+            {
+                if (bucketMeshTmp == null)
+                {
+                    bucketMeshTmp = new MeshData(4, 3, false, true, true, true);
+
+                    // Liquid mesh
+                    bucketMeshTmp.CustomInts = new CustomMeshDataPartInt(bucketMeshTmp.FlagsCount);
+                    bucketMeshTmp.CustomInts.Count = bucketMeshTmp.FlagsCount;
+                    bucketMeshTmp.CustomInts.Values.Fill(0x4000000); // light foam only
+
+                    bucketMeshTmp.CustomFloats = new CustomMeshDataPartFloat(bucketMeshTmp.FlagsCount * 2);
+                    bucketMeshTmp.CustomFloats.Count = bucketMeshTmp.FlagsCount * 2;
+                }
+                bucketMeshTmp.Clear();
+                var be = Api.ClassRegistry.CreateBlockEntity(BucketSlot.Itemstack.Block.EntityClass);
+                be.Pos = new BlockPos(0, 0, 0);
+                be.Block = BucketSlot.Itemstack.Block;
+                be.Initialize(Api);
+                be.OnBlockPlaced(BucketSlot.Itemstack);
+                be.OnTesselation(this, capi.Tesselator);
+                be.OnBlockRemoved();
+                bucketMesh = bucketMeshTmp.Clone();
+            }
+        }
+
+
+        #region ITerrainMeshPool imp to get bucket mesh
+        public void AddMeshData(MeshData data, int lodlevel = 1)
+        {
+            if (data == null) return;
+            bucketMeshTmp.AddMeshData(data);
+        }
+
+        public void AddMeshData(MeshData data, ColorMapData colormapdata, int lodlevel = 1)
+        {
+            if (data == null) return;
+            bucketMeshTmp.AddMeshData(data);
+        }
+        #endregion
     }
 }
+    

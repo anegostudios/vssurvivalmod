@@ -129,7 +129,7 @@ namespace Vintagestory.GameContent
             double easinLevel = Math.Min(1, 24 * (Api.World.Calendar.TotalDays - burningStartTotalDays));
             double easeoutLevel = Math.Min(1, 24 * (burningUntilTotalDays - Api.World.Calendar.TotalDays));
 
-            double glowLevel = Math.Max(0, Math.Min(easinLevel, easeoutLevel) * 128);
+            double glowLevel = Math.Max(0, Math.Min(easinLevel, easeoutLevel) * 250);
 
             renderer.glowLevel = burning ? (int)glowLevel : 0;
         }

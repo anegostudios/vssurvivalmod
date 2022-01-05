@@ -9,7 +9,7 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockCookedContainerBase : BlockContainer, IBlockMealContainer, IContainedInteractable
+    public class BlockCookedContainerBase : BlockContainer, IBlockMealContainer, IContainedInteractable, IContainedCustomName
     {
         public void SetContents(string recipeCode, float servings, ItemStack containerStack, ItemStack[] stacks)
         {
@@ -51,7 +51,7 @@ namespace Vintagestory.GameContent
 
         public CookingRecipe GetCookingRecipe(IWorldAccessor world, ItemStack containerStack)
         {
-            return world.CookingRecipes.FirstOrDefault(rec => rec.Code == GetRecipeCode(world, containerStack));
+            return api.GetCookingRecipes().FirstOrDefault(rec => rec.Code == GetRecipeCode(world, containerStack));
         }
 
         public string GetRecipeCode(IWorldAccessor world, ItemStack containerStack)
@@ -90,7 +90,7 @@ namespace Vintagestory.GameContent
         public CookingRecipe GetMealRecipe(IWorldAccessor world, ItemStack containerStack)
         {
             string recipecode = GetRecipeCode(world, containerStack);
-            return world.CookingRecipes.FirstOrDefault((rec) => recipecode == rec.Code);
+            return api.GetCookingRecipes().FirstOrDefault((rec) => recipecode == rec.Code);
         }
 
 
@@ -303,13 +303,55 @@ namespace Vintagestory.GameContent
             return true;
         }
 
+        public virtual string ContainerNameShort => Lang.Get("pot");
+        public virtual string ContainerNameShortPlural => Lang.Get("pots");
 
+
+        public string GetContainedName(ItemSlot inSlot, int quantity)
+        {
+            return quantity == 1 ? Lang.Get("{0} {1}", quantity, ContainerNameShort) : Lang.Get("{0} {1}", quantity, ContainerNameShortPlural);
+        }
+
+        public string GetContainedInfo(ItemSlot inSlot)
+        {
+            var world = api.World;
+
+            CookingRecipe recipe = GetMealRecipe(world, inSlot.Itemstack);
+            float servings = inSlot.Itemstack.Attributes.GetFloat("quantityServings");
+
+            ItemStack[] stacks = GetNonEmptyContents(world, inSlot.Itemstack);
+
+            if (stacks.Length == 0)
+            {
+                return Lang.Get("Empty {0}", ContainerNameShort);
+            }
+
+            if (recipe != null)
+            {
+                if (servings == 1)
+                {
+                    return Lang.Get("{0} serving of {1} in {2}", Math.Round(servings, 1), recipe.GetOutputName(world, stacks), ContainerNameShort);
+                }
+                else
+                {
+                    return Lang.Get("{0:0.#} servings of {1} in {2}", Math.Round(servings, 1), recipe.GetOutputName(world, stacks), ContainerNameShort);
+                }
+            }
+
+            StringBuilder sb = new StringBuilder();
+            foreach (var stack in stacks)
+            {
+                if (sb.Length > 0) sb.Append(", ");
+                sb.Append(stack.GetName());
+            }
+            sb.Append(Lang.Get(" in {0}", ContainerNameShort));
+
+            return sb.ToString();
+        }
 
 
         public bool OnContainedInteractStart(BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
         {
-            if (!byPlayer.Entity.Controls.Sneak) return false;
-
             var targetSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
             if (targetSlot.Empty) return false;
 
@@ -349,6 +391,8 @@ namespace Vintagestory.GameContent
         {
 
         }
+
+        
     }
 
 }

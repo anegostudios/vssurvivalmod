@@ -286,7 +286,7 @@ namespace Vintagestory.GameContent.Mechanics
             {
                 Block toPlaceBlock = world.GetBlock(new AssetLocation(FirstCodePart() + "-" + orient[0]));
                 ((BlockMPBase)toPlaceBlock).ExchangeBlockAt(world, pos);
-                BEBehaviorMPAngledGears beg = world.BlockAccessor.GetBlockEntity(pos).GetBehavior<BEBehaviorMPAngledGears>();
+                BEBehaviorMPAngledGears beg = world.BlockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorMPAngledGears>();
                 beg?.ClearLargeGear();
 
                 //#TODO: do a firstface/second face axle check as in TryPlaceBlock()

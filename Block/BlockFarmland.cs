@@ -13,7 +13,7 @@ namespace Vintagestory.GameContent
             if (byItemStack != null)
             {
                 BlockEntityFarmland befarmland = world.BlockAccessor.GetBlockEntity(blockPos) as BlockEntityFarmland;
-                befarmland?.CreatedFromSoil(byItemStack.Block);
+                befarmland?.OnCreatedFromSoil(byItemStack.Block);
             }
         }
 

@@ -5,6 +5,7 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
@@ -94,7 +95,9 @@ namespace Vintagestory.GameContent
                 {
                     bdstack.Resolve(api.World, "fruit tree FruitStacks");
                 }
-            }
+
+                (api as ICoreServerAPI)?.RegisterTreeGenerator(new AssetLocation("fruittree-" + prop.Key), (blockAccessor, pos, skipForestFloor, s, v, o, t) => GrowTree(blockAccessor, pos, prop.Key));
+            }  
         }
 
 
@@ -172,6 +175,31 @@ namespace Vintagestory.GameContent
             }
         }
 
+        public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
+        {
+            var stack = base.OnPickBlock(world, pos);
+            var be = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityFruitTreeBranch;
+
+            stack.Attributes.SetString("type", be?.TreeType ?? "pinkapple");
+
+            return stack;
+        }
+
+        public override BlockDropItemStack[] GetDropsForHandbook(ItemStack handbookStack, IPlayer forPlayer)
+        {
+            var drops = base.GetDropsForHandbook(handbookStack, forPlayer);
+
+            foreach (var drop in drops)
+            {
+                if (drop.ResolvedItemstack.Collectible is BlockFruitTreeBranch)
+                {
+                    drop.ResolvedItemstack.Attributes.SetString("type", handbookStack.Attributes.GetString("type") ?? "pinkapple");
+                }
+            }
+
+            return drops;
+        }
+
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1)
         {
             ItemStack[] stacks = base.GetDrops(world, pos, byPlayer, dropQuantityMultiplier);
@@ -211,7 +239,7 @@ namespace Vintagestory.GameContent
             if (bebranch.PartType != EnumTreePartType.Branch) return EnumTreeFellingBehavior.Chop;
             else
             {
-                if (bebranch.GrowthDir.IsVertical) return EnumTreeFellingBehavior.ChopSpreadVerticalOnly;
+                if (bebranch.GrowthDir.IsVertical) return EnumTreeFellingBehavior.Chop;
                 else return EnumTreeFellingBehavior.NoChop;
             }
         }
@@ -242,7 +270,7 @@ namespace Vintagestory.GameContent
                 string code = "fruittree-branch-";
 
                 if (bebranch.PartType == EnumTreePartType.Cutting) code = "fruittree-cutting-";
-                if (bebranch.PartType == EnumTreePartType.Stem || rootbh != null) code = "fruittree-stem-";
+                else if (bebranch.PartType == EnumTreePartType.Stem || rootbh != null) code = "fruittree-stem-";
 
 
                 return Lang.Get(code + bebranch.TreeType);
@@ -287,9 +315,17 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            
-
             return false;
+        }
+
+        public void GrowTree(IBlockAccessor blockAccessor, BlockPos pos, string type)
+        {
+            blockAccessor.SetBlock(BlockId, pos);
+            blockAccessor.SpawnBlockEntity(EntityClass, pos);
+            var be = blockAccessor.GetBlockEntity(pos) as BlockEntityFruitTreeBranch;
+
+            be.TreeType = type;
+            be.InitAfterWorldGen = true;
         }
     }
 }

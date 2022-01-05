@@ -327,7 +327,9 @@ namespace Vintagestory.GameContent
                     
                     if (!createAuctionSlotByPlayer.ContainsKey(fromPlayer.PlayerUID))
                     {
-                        createAuctionSlotByPlayer[fromPlayer.PlayerUID] = new InventoryGeneric(1, "auctionslot-" + fromPlayer.PlayerUID, sapi);
+                        var ainv = createAuctionSlotByPlayer[fromPlayer.PlayerUID] = new InventoryGeneric(1, "auctionslot-" + fromPlayer.PlayerUID, sapi);
+
+                        ainv.OnInventoryClosed += (plr) => ainv.DropAll(plr.Entity.Pos.XYZ);
                     }
                     createAuctionSlotByPlayer[fromPlayer.PlayerUID].Open(fromPlayer);
                     fromPlayer.InventoryManager.OpenInventory(createAuctionSlotByPlayer[fromPlayer.PlayerUID]);

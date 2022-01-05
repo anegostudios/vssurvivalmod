@@ -18,6 +18,8 @@ namespace Vintagestory.GameContent
         public Dictionary<string, CompositeTexture> Textures;
         public CompositeTexture LeafParticlesTexture;
         public CompositeTexture BlossomParticlesTexture;
+        public string SeasonColorMap = "seasonalFoliage";
+        public string ClimateColorMap = "climatePlantTint";
 
         public void Rebase(DynFoliageProperties props)
         {
@@ -76,7 +78,7 @@ namespace Vintagestory.GameContent
         protected string foliageDictCacheKey;
 
         protected BlockFruitTreeFoliage blockFoliage;
-        protected BlockFruitTreeBranch blockBranch;
+        public BlockFruitTreeBranch blockBranch;
 
         public BlockFacing GrowthDir = BlockFacing.UP;
         public EnumTreePartType PartType = EnumTreePartType.Cutting;
@@ -171,8 +173,10 @@ namespace Vintagestory.GameContent
                
             if (Api?.Side == EnumAppSide.Server || TreeType == null || TreeType == "") return false;
 
-            LeafParticlesColor = getOrCreateTexPos(blockFoliage.foliageProps[TreeType].LeafParticlesTexture.Base).RndColors;
-            BlossomParticlesColor = getOrCreateTexPos(blockFoliage.foliageProps[TreeType].BlossomParticlesTexture.Base).RndColors;
+            var foliageProps = blockFoliage.foliageProps[TreeType];
+
+            LeafParticlesColor = getOrCreateTexPos(foliageProps.LeafParticlesTexture.Base).RndColors;
+            BlossomParticlesColor = getOrCreateTexPos(foliageProps.BlossomParticlesTexture.Base).RndColors;
 
 
             Dictionary<int, MeshData[]> meshesByKey = ObjectCacheUtil.GetOrCreate(Api, foliageDictCacheKey, () => new Dictionary<int, MeshData[]>());
@@ -216,8 +220,15 @@ namespace Vintagestory.GameContent
                 }
 
                 selectiveElements.Clear();
-                if (FoliageState == EnumFoliageState.Flowering) selectiveElements.Add("blossom/*");
-                if (FoliageState != EnumFoliageState.Dead && FoliageState != EnumFoliageState.DormantNoLeaves && (FoliageState != EnumFoliageState.Flowering || everGreen)) selectiveElements.Add("leaves/*");
+                if (FoliageState == EnumFoliageState.Flowering)
+                {
+                    selectiveElements.Add("blossom/*");
+                }
+                if (FoliageState != EnumFoliageState.Dead && FoliageState != EnumFoliageState.DormantNoLeaves && (FoliageState != EnumFoliageState.Flowering || everGreen))
+                {
+                    nowTesselatingShape.WalkElements("leaves/*", (elem) => { elem.SeasonColorMap = foliageProps.SeasonColorMap; elem.ClimateColorMap = foliageProps.ClimateColorMap; } );
+                    selectiveElements.Add("leaves/*");
+                }
 
                 float rndydeg = GameMath.MurmurHash3Mod(Pos.X, Pos.Y, Pos.Z, 3) * 22.5f - 22.5f;
                 capi.Tesselator.TesselateShape("fruittreefoliage", nowTesselatingShape, out meshes[1], this, new Vec3f(shapeData.CShape.rotateX, shapeData.CShape.rotateY + rndydeg, shapeData.CShape.rotateZ), 0, 0, 0, null, selectiveElements.ToArray());
@@ -295,7 +306,12 @@ namespace Vintagestory.GameContent
                 var be = Api.World.BlockAccessor.GetBlockEntity(Pos.AddCopy(RootOff)) as BlockEntityFruitTreeBranch;
                 rootBh = be?.GetBehavior<FruitTreeRootBH>();
             }
-            
+
+            if (TreeType == null)
+            {
+                Api.World.Logger.Error("Coding error. Fruit tree without fruit tree type @" + Pos);
+                return false;
+            }
 
             if (rootBh != null && rootBh.propsByType.TryGetValue(TreeType, out var val))
             {
@@ -442,6 +458,26 @@ namespace Vintagestory.GameContent
             if (FoliageState == EnumFoliageState.Dead && PartType != EnumTreePartType.Cutting)
             {
                 dsc.AppendLine("<font color=\"#ff8080\">"+Lang.Get("Dead tree.")+"</font>");
+            }
+
+            if (rootBh != null && TreeType != null && PartType != EnumTreePartType.Cutting)
+            {
+                var props = rootBh?.propsByType[TreeType];
+                if (props.State == EnumFruitTreeState.Ripe)
+                {
+                    double days = props.lastStateChangeTotalDays + props.RipeDays - rootBh.LastRootTickTotalDays;
+                    dsc.AppendLine(Lang.Get("Fresh fruit for about {0:0.#} days.", days));
+                }
+                if (props.State == EnumFruitTreeState.Fruiting)
+                {
+                    double days = props.lastStateChangeTotalDays + props.FruitingDays - rootBh.LastRootTickTotalDays;
+                    dsc.AppendLine(Lang.Get("Ripe in about {0:0.#} days, weather permitting.", days));
+                }
+                if (props.State == EnumFruitTreeState.Flowering)
+                {
+                    double days = props.lastStateChangeTotalDays + props.FloweringDays - rootBh.LastRootTickTotalDays;
+                    dsc.AppendLine(Lang.Get("Flowering for about {0:0.#} days, weather permitting.", days));
+                }
             }
 
             base.GetBlockInfo(forPlayer, dsc);

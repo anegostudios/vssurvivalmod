@@ -78,7 +78,7 @@ namespace Vintagestory.GameContent
         {
             ItemStack itemstack = inSlot.Itemstack;
 
-            WaterTightContainableProps props = BlockLiquidContainerBase.GetInContainerProps(itemstack);
+            WaterTightContainableProps props = BlockLiquidContainerBase.GetContainableProps(itemstack);
 
             capi.Render.RenderMesh(renderInfo.ModelRef);
 
@@ -97,15 +97,16 @@ namespace Vintagestory.GameContent
                 
                 float mul = size / (float)GuiElement.scaled(32 * 0.8f);
 
-                var texttex = GetOrCreateLitreTexture(litres, mul);
+                var texttex = GetOrCreateLitreTexture(litres, size, mul);
 
                 capi.Render.GlToggleBlend(true, EnumBlendMode.PremultipliedAlpha);
 
                 capi.Render.Render2DLoadedTexture(texttex,
                     (int)(posX + size + 1 - texttex.Width - GuiElement.scaled(1)),
-                    (int)(posY + mul * GuiElement.scaled(3)),
+                    (int)(posY + size - texttex.Height + mul * GuiElement.scaled(3) - GuiElement.scaled(5)),
                     (int)posZ + 60
                 );
+                
                 capi.Render.GlToggleBlend(true, EnumBlendMode.Standard);
             }
 
@@ -113,13 +114,18 @@ namespace Vintagestory.GameContent
 
 
 
-        public LoadedTexture GetOrCreateLitreTexture(string litres, float fontSizeMultiplier = 1f)
+        public LoadedTexture GetOrCreateLitreTexture(string litres, float size, float fontSizeMultiplier = 1f)
         {
-            string key = litres + "-" + fontSizeMultiplier;
+            string key = litres + "-" + fontSizeMultiplier + "-1";
             if (!litreTextTextures.TryGetValue(key, out var texture))
             {
                 CairoFont font = stackSizeFont.Clone();
                 font.UnscaledFontsize *= fontSizeMultiplier;
+
+                double width = font.GetTextExtents(litres).Width;
+                double ratio = Math.Min(1, 1.5f * size / width);
+                font.UnscaledFontsize *= ratio;
+
                 return litreTextTextures[key] = capi.Gui.TextTexture.GenTextTexture(litres, font);
             }
 

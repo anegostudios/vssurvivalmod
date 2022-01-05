@@ -143,7 +143,7 @@ namespace Vintagestory.GameContent
             BlockEntity be = byEntity.World.BlockAccessor.GetBlockEntity(pos);
             if (be is BlockEntityFarmland)
             {
-                ((BlockEntityFarmland)be).CreatedFromSoil(block);
+                ((BlockEntityFarmland)be).OnCreatedFromSoil(block);
             }
 
             byEntity.World.BlockAccessor.MarkBlockDirty(pos);

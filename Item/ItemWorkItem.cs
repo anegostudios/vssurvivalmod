@@ -192,7 +192,7 @@ namespace Vintagestory.GameContent
             base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
 
             int recipeId = inSlot.Itemstack.Attributes.GetInt("selectedRecipeId");
-            SmithingRecipe recipe = api.World.SmithingRecipes.FirstOrDefault(r => r.RecipeId == recipeId);
+            SmithingRecipe recipe = api.GetSmithingRecipes().FirstOrDefault(r => r.RecipeId == recipeId);
 
             if (recipe == null)
             {
@@ -228,7 +228,7 @@ namespace Vintagestory.GameContent
         {
             stack = GetBaseMaterial(stack);
 
-            return api.World.SmithingRecipes
+            return api.GetSmithingRecipes()
                 .Where(r => r.Ingredient.SatisfiesAsIngredient(stack))
                 .OrderBy(r => r.Output.ResolvedItemstack.Collectible.Code) // Cannot sort by name, thats language dependent!
                 .ToList()

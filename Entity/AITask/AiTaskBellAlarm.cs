@@ -98,7 +98,7 @@ namespace Vintagestory.GameContent
             if (whenNotInEmotionState != null && bhEmo?.IsInEmotionState(whenNotInEmotionState) == true) return false;
 
             float range = seekingRange;
-            bool listening = entity.GetBehavior<EntityBehaviorTaskAI>().taskManager.IsTaskActive("listen");
+            bool listening = entity.GetBehavior<EntityBehaviorTaskAI>().TaskManager.IsTaskActive("listen");
             if (!listening)
             {
                 range /= 3;

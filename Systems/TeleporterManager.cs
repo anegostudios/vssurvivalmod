@@ -57,8 +57,6 @@ namespace Vintagestory.GameContent
         float translocVolume;
         float translocPitch;
 
-        public ILoadedSound teleportingSound;
-        public ILoadedSound translocatingSound;
         public long lastTeleCollideMsOwnPlayer = 0;
         public long lastTranslocateCollideMsOwnPlayer = 0;
         public long lastTranslocateCollideMsOtherPlayer = 0;
@@ -70,7 +68,7 @@ namespace Vintagestory.GameContent
 
         internal TeleporterLocation GetOrCreateLocation(BlockPos pos)
         {
-            TeleporterLocation loc = null;
+            TeleporterLocation loc;
             if (Locations.TryGetValue(pos, out loc))
             {
                 return loc;
@@ -180,97 +178,8 @@ namespace Vintagestory.GameContent
                .SetMessageHandler<TpLocations>(OnLocationsReceived)
                .SetMessageHandler<DidTeleport>(OnTranslocateClient)
             ;
-
-
-            api.Event.BlockTexturesLoaded += Event_BlockTexturesLoaded;
-            api.Event.RegisterGameTickListener(OnClientTick, 50);
-            api.Event.LeaveWorld += () => teleportingSound?.Dispose();
         }
 
-        private void Event_BlockTexturesLoaded()
-        {
-            if (teleportingSound == null)
-            {
-                teleportingSound = capi.World.LoadSound(new SoundParams()
-                {
-                    Location = new AssetLocation("sounds/block/teleporter.ogg"),
-                    ShouldLoop = true,
-                    Position = null,
-                    RelativePosition = true,
-                    DisposeOnFinish = false,
-                    Volume = 0.5f
-                });
-            }
-
-            if (translocatingSound == null)
-            {
-                translocatingSound = capi.World.LoadSound(new SoundParams()
-                {
-                    Location = new AssetLocation("sounds/effect/translocate-active.ogg"),
-                    ShouldLoop = true,
-                    Position = null,
-                    RelativePosition = true,
-                    DisposeOnFinish = false,
-                    Volume = 0.5f
-                });
-            }
-        }
-
-        private void OnClientTick(float dt)
-        {
-            if (capi.World.ElapsedMilliseconds - lastTeleCollideMsOwnPlayer > 100)
-            {
-                teleVolume = Math.Max(0, teleVolume - 2 * dt);
-            }
-            else
-            {
-                teleVolume = Math.Min(0.5f, teleVolume + dt / 3);
-            }
-
-            if (teleportingSound != null)
-            {
-                teleportingSound.SetVolume(teleVolume);
-
-                if (teleportingSound.IsPlaying)
-                {
-                    if (teleVolume <= 0) teleportingSound.Stop();
-                }
-                else
-                {
-                    if (teleVolume > 0) teleportingSound.Start();
-                }
-            }
-            
-            bool ownTranslocate = !(capi.World.ElapsedMilliseconds - lastTranslocateCollideMsOwnPlayer > 200);
-            bool otherTranslocate = !(capi.World.ElapsedMilliseconds - lastTranslocateCollideMsOtherPlayer > 200);
-            
-            if (ownTranslocate || otherTranslocate)
-            {
-                translocVolume = Math.Min(0.5f, translocVolume + dt / 3);
-                translocPitch = Math.Min(translocPitch + dt / 3, 2.5f);
-                if (ownTranslocate) capi.World.AddCameraShake(0.0575f);
-            }
-            else
-            {
-                translocVolume = Math.Max(0, translocVolume - 2 * dt);
-                translocPitch = Math.Max(translocPitch - dt, 0.5f);
-            }
-
-
-            if (translocatingSound.IsPlaying)
-            {
-                translocatingSound.SetVolume(translocVolume);
-                translocatingSound.SetPitch(translocPitch);
-                if (translocVolume <= 0) translocatingSound.Stop();
-            }
-            else
-            {
-                if (translocVolume > 0) translocatingSound.Start();
-            }
-
-
-
-        }
 
         private void OnLocationsReceived(TpLocations networkMessage)
         {

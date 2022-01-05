@@ -40,7 +40,7 @@ namespace Vintagestory.GameContent
         {
             ItemStack basemat = new ItemStack(api.World.GetItem(new AssetLocation("ingot-" + Variant["metal"])));
 
-            return api.World.SmithingRecipes
+            return api.GetSmithingRecipes()
                 .Where(r => r.Ingredient.SatisfiesAsIngredient(basemat))
                 .OrderBy(r => r.Output.ResolvedItemstack.Collectible.Code) // Cannot sort by name, thats language dependent!
                 .ToList()

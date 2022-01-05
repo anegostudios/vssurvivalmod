@@ -653,7 +653,7 @@ namespace Vintagestory.GameContent
         public CookingRecipe GetCookingRecipe(IWorldAccessor world, ItemStack containerStack)
         {
             string recipecode = GetRecipeCode(world, containerStack);
-            return world.CookingRecipes.FirstOrDefault((rec) => recipecode == rec.Code);
+            return api.GetCookingRecipes().FirstOrDefault((rec) => recipecode == rec.Code);
         }
 
 

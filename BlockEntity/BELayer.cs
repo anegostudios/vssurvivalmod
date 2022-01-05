@@ -42,7 +42,7 @@ namespace Vintagestory.GameContent
                     Entity entity = entities[i];
                     Cuboidd eBox = new Cuboidd();
                     EntityPos pos = entity.Pos;
-                    eBox.Set(entity.CollisionBox).Translate(pos.X, pos.Y, pos.Z);
+                    eBox.Set(entity.SelectionBox).Translate(pos.X, pos.Y, pos.Z);
 
                     Cuboidf bBox = new Cuboidf();
                     bBox.Set(this.Block.CollisionBoxes[0]);

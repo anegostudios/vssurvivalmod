@@ -7,6 +7,7 @@ using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
 using Vintagestory.GameContent;
 
 namespace Vintagestory.GameContent
@@ -90,10 +91,48 @@ namespace Vintagestory.GameContent
                 sleepLevel = GameMath.Clamp(sleepLevel + dt * (sleeping && AllSleeping ? 0.1f : -0.35f), 0, 0.99f);
             }
 
+            if (AllSleeping)
+            {
+                int tempStormSleep = api.World.Config.GetString("temporalStormSleeping", "0").ToInt();
+                if (tempStormSleep == 0 && api.ModLoader.GetModSystem<SystemTemporalStability>().StormStrength > 0)
+                {
+                    WakeAllPlayers();
+                    return;
+                }
+            }
+
             if (GameSpeedBoost <= 0 && !AllSleeping) return;
 
             GameSpeedBoost = GameMath.Clamp(GameSpeedBoost + dt * (AllSleeping ? 400 : -2000), 0, 17000);
             api.World.Calendar.SetTimeSpeedModifier("sleeping", (int)GameSpeedBoost);
+        }
+
+
+        public void WakeAllPlayers()
+        {
+            GameSpeedBoost = 0;
+            api.World.Calendar.SetTimeSpeedModifier("sleeping", (int)GameSpeedBoost);
+
+            if (api.Side == EnumAppSide.Client)
+            {
+                capi.World.Player?.Entity.TryUnmount();
+                AllSleeping = false;
+                return;
+            }
+
+            foreach (IPlayer player in sapi.World.AllOnlinePlayers)
+            {
+                IServerPlayer splr = player as IServerPlayer;
+                if (splr.ConnectionState != EnumClientState.Playing || splr.WorldData.CurrentGameMode == EnumGameMode.Spectator) continue;
+
+                IMountable mount = player.Entity?.MountedOn;
+                if (mount != null && mount is BlockEntityBed)
+                {
+                    player.Entity.TryUnmount();
+                }
+            }
+
+            AllSleeping = false;
         }
 
         private void ServerSlowTick(float dt)
@@ -225,8 +264,6 @@ void main () {
             eyeShaderProg.FragmentShader.Code = FragmentShaderCode;
 
             capi.Shader.RegisterMemoryShaderProgram("sleepoverlay", eyeShaderProg);
-            //eyeShaderProg.PrepareUniformLocations("level");
-            
 
             if (renderer != null) renderer.eyeShaderProg = eyeShaderProg;
 

@@ -123,7 +123,7 @@ namespace Vintagestory.GameContent
             {
                 EntityBehaviorTaskAI taskAi = GetBehavior<EntityBehaviorTaskAI>();
 
-                taskAi.taskManager.ShouldExecuteTask =
+                taskAi.TaskManager.ShouldExecuteTask =
                     (task) => tradingWith == null || (task is AiTaskIdle || task is AiTaskSeekEntity || task is AiTaskGotoEntity);
 
                 if (TradeProps != null)
@@ -148,7 +148,7 @@ namespace Vintagestory.GameContent
             if (Api.Side == EnumAppSide.Server)
             {
                 EntityBehaviorTaskAI taskAi = GetBehavior<EntityBehaviorTaskAI>();
-                taskAi.taskManager.ShouldExecuteTask =
+                taskAi.TaskManager.ShouldExecuteTask =
                     (task) => tradingWith == null || (task is AiTaskIdle || task is AiTaskSeekEntity || task is AiTaskGotoEntity);
             }
         }
@@ -206,7 +206,7 @@ namespace Vintagestory.GameContent
                 if (newsellItems.Count >= sellingQuantity) break;
 
                 TradeItem item = TradeProps.Selling.List[i];
-                item.Resolve(World, "tradeItem resolver");
+                if (!item.Resolve(World, "tradeItem resolver")) continue;
                 
                 bool alreadySelling = sellingSlots.Any((slot) => slot?.Itemstack != null && slot.TradeItem.Stock > 0 && item.ResolvedItemstack?.Equals(World, slot.Itemstack, ignoredAttributes) == true);
 
@@ -221,7 +221,7 @@ namespace Vintagestory.GameContent
                 if (newBuyItems.Count >= buyingQuantity) break;
 
                 TradeItem item = TradeProps.Buying.List[i];
-                item.Resolve(World, "tradeItem resolver");
+                if (!item.Resolve(World, "tradeItem resolver")) continue;
 
                 bool alreadySelling = buyingSlots.Any((slot) => slot?.Itemstack != null && slot.TradeItem.Stock > 0 && item.ResolvedItemstack?.Equals(World, slot.Itemstack, ignoredAttributes) == true);
 
@@ -251,7 +251,7 @@ namespace Vintagestory.GameContent
 
                 TradeItem newTradeItem = newItems.Pop();
 
-                int slotIndex = slots.IndexOf((bslot) => bslot.Itemstack != null && bslot.TradeItem.Stock == 0 && newTradeItem.ResolvedItemstack.Equals(World, bslot.Itemstack, GlobalConstants.IgnoredStackAttributes));
+                int slotIndex = slots.IndexOf((bslot) => bslot.Itemstack != null && bslot.TradeItem.Stock == 0 && newTradeItem?.ResolvedItemstack.Equals(World, bslot.Itemstack, GlobalConstants.IgnoredStackAttributes) == true);
 
                 ItemSlotTrade intoSlot;
 
@@ -325,7 +325,7 @@ namespace Vintagestory.GameContent
             if (World.Side == EnumAppSide.Server)
             {
                 // Make the trader walk towards the player
-                AiTaskManager tmgr = GetBehavior<EntityBehaviorTaskAI>().taskManager;
+                AiTaskManager tmgr = GetBehavior<EntityBehaviorTaskAI>().TaskManager;
                 tmgr.StopTask(typeof(AiTaskWander));
 
                 AiTaskGotoEntity task = new AiTaskGotoEntity(this, entityplr);

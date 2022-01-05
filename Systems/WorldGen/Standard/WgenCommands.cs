@@ -733,12 +733,15 @@ namespace Vintagestory.ServerMods
 
             NoiseClimatePatchy noiseClimate = new NoiseClimatePatchy(seed);
 
-            MapLayerBase climateGen = GenMaps.GetClimateMapGen(seed + 1, noiseClimate);
-            MapLayerBase forestGen = GenMaps.GetForestMapGen(seed + 2, TerraGenConfig.forestMapScale);
-            MapLayerBase bushGen = GenMaps.GetForestMapGen(seed + 109, TerraGenConfig.shrubMapScale);
-            MapLayerBase flowerGen = GenMaps.GetForestMapGen(seed + 223, TerraGenConfig.forestMapScale);
-            MapLayerBase geologicprovinceGen = GenMaps.GetGeologicProvinceMapGen(seed + 3, api);
-            MapLayerBase landformsGen = GenMaps.GetLandformMapGen(seed + 4, noiseClimate, api);
+            var genmapsSys = api.ModLoader.GetModSystem<GenMaps>();
+            genmapsSys.initWorldGen();
+            MapLayerBase climateGen = genmapsSys.climateGen;
+            MapLayerBase forestGen = genmapsSys.forestGen;
+            MapLayerBase bushGen = genmapsSys.bushGen;
+            MapLayerBase flowerGen = genmapsSys.flowerGen;
+            MapLayerBase geologicprovinceGen = genmapsSys.geologicprovinceGen;
+            MapLayerBase landformsGen = genmapsSys.landformsGen;
+            
             
             int regionX = pos.X / api.WorldManager.RegionSize;
             int regionZ = pos.Z / api.WorldManager.RegionSize;
@@ -768,6 +771,17 @@ namespace Vintagestory.ServerMods
                     }
                     break;
 
+                case "mushroom":
+                    {
+                        int startX = regionX * noiseSizeForest - 256;
+                        int startZ = regionZ * noiseSizeForest - 256;
+
+                        var gen = new MapLayerWobbled(api.World.Seed + 112897, 2, 0.9f, TerraGenConfig.forestMapScale, 4000, -3000);
+                        gen.DebugDrawBitmap(DebugDrawMode.FirstByteGrayscale, startX, startZ, "mushroom");
+
+                        player.SendMessage(groupId, "Mushroom maps generated", EnumChatType.CommandSuccess);
+                    }
+                    break;
                     
                 case "ore":
                     {
@@ -882,9 +896,17 @@ namespace Vintagestory.ServerMods
                     DrawMapRegion(DebugDrawMode.FirstByteGrayscale, player, mapRegion.OreMapVerticalDistortTop, "oretopdistort", dolerp, regionX, regionZ, TerraGenConfig.depositVerticalDistortScale);
                     break;
 
-                //case "depdist":
-                //DrawMapRegion(0, player, mapRegion.DepositDistortionMap, "depositdistortion", dolerp, regionX, regionZ, TerraGenConfig.depositDistortionScale);
-                //break;
+
+                case "patches":
+                    {
+                        foreach (var val in mapRegion.BlockPatchMaps)
+                        {
+                            DrawMapRegion(DebugDrawMode.FirstByteGrayscale, player, val.Value, val.Key, dolerp, regionX, regionZ, TerraGenConfig.forestMapScale);
+                        }
+
+                        player.SendMessage(groupId, "Patch maps generated", EnumChatType.CommandSuccess);
+                    }
+                    break;
 
                 case "rockstrata":
 

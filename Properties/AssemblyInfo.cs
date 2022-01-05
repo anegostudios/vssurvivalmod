@@ -101,7 +101,8 @@ using Vintagestory.API.Config;
                     harshWinters: ""false"",
                     allowUndergroundFarming: ""true"",
                     temporalGearRespawnUses: ""-1"",
-                    temporalStormSleeping: ""1""
+                    temporalStormSleeping: ""1"",
+                    classExclusiveRecipes: ""false""
                 }
 			},
             {
@@ -154,7 +155,7 @@ using Vintagestory.API.Config;
             { category: ""spawnndeath"", code: ""deathPunishment"", dataType: ""dropdown"", values: [""drop"", ""keep""], names: [""Drop inventory contents"", ""Keep inventory contents""], default: ""drop"" },
 
             { category: ""survivalchallenges"", code: ""seasons"", dataType: ""dropdown"", values: [""enabled"", ""spring""], names: [""Enabled"", ""Off, always spring""], default: ""enabled"" },
-            { category: ""survivalchallenges"", code: ""playerlives"", dataType: ""dropdown"", values: [""1"", ""2"", ""3"", ""4"", ""5"", ""10"", ""20"", ""infinite""], names: [""1"", ""2"", ""3"", ""4"", ""5"", ""10"", ""20"", ""-1""], default: ""-1"" },
+            { category: ""survivalchallenges"", code: ""playerlives"", dataType: ""dropdown"", values: [""1"", ""2"", ""3"", ""4"", ""5"", ""10"", ""20"", ""-1""], names: [""1"", ""2"", ""3"", ""4"", ""5"", ""10"", ""20"", ""infinite""], default: ""-1"" },
             { category: ""survivalchallenges"", code: ""daysPerMonth"", dataType: ""dropdown"", values: [""30"", ""20"", ""12"", ""9"", ""6"", ""3""], names: [""30 days (24 real life hours)"", ""20 days (16 real life hours)"", ""12 days (9.6 real life hours)"", ""9 days (7.2 real life hours)"", ""6 days (4.8 real life hours)"", ""3 days (2.4 real life hours)""], default: ""9"" },
             { category: ""survivalchallenges"", code: ""harshWinters"", dataType: ""dropdown"", values: [""true"", ""false""], names: [""Enabled"", ""Disabled""], default: ""true"" },
             { category: ""survivalchallenges"", code: ""blockGravity"", dataType: ""dropdown"", values: [""sandgravel"", ""sandgravelsoil""], names: [""Sand and gravel"", ""Sand, gravel and soil with sideways instability""], default: ""sandgravel"" },
@@ -183,7 +184,7 @@ using Vintagestory.API.Config;
 
             { category: ""worldgen"", code: ""worldClimate"", dataType: ""dropdown"", values: [""realistic"", ""patchy""], names: [""Realistic"", ""Patchy""], default: ""realistic"", onlyDuringWorldCreate: true },
             { category: ""worldgen"", code: ""worldWidth"", dataType: ""dropdown"", values: [""1024000"", ""600000"", ""512000"", ""256000"", ""102400"", ""51200"", ""25600"", ""10240"", ""5120"", ""1024"", ""512"", ""384"", ""256"", ""128"", ""64"", ""32"" ], names: [""1 mil blocks"", ""600k blocks"", ""512k blocks"", ""256k blocks"", ""102k blocks"", ""51k blocks"", ""25k blocks"", ""10k blocks"", ""5120 blocks"", ""1024 blocks"", ""512 blocks"", ""384 blocks"", ""256 blocks"", ""128 blocks"", ""64 blocks"", ""32 blocks""], default: ""1024000"", onlyDuringWorldCreate: true },
-            { category: ""worldgen"", code: ""worldLength"", dataType: ""dropdown"", values: [""1024000"", ""600000"", ""512000"", ""256000"", ""102400"", ""51200"", ""10240"", ""5120"", ""1024"", ""512"", ""384"", ""256"", ""128"", ""64"", ""32"" ], names: [""1 mil blocks"", ""600k blocks"", ""512k blocks"", ""256k blocks"", ""102k blocks"", ""51k blocks"", ""10k blocks"", ""5120 blocks"", ""1024 blocks"", ""512 blocks"", ""384 blocks"", ""256 blocks"", ""128 blocks"", ""64 blocks"", ""32 blocks""], default: ""1024000"", onlyDuringWorldCreate: true },
+            { category: ""worldgen"", code: ""worldLength"", dataType: ""dropdown"", values: [""1024000"", ""600000"", ""512000"", ""256000"", ""102400"", ""51200"", ""25600"", ""10240"", ""5120"", ""1024"", ""512"", ""384"", ""256"", ""128"", ""64"", ""32"" ], names: [""1 mil blocks"", ""600k blocks"", ""512k blocks"", ""256k blocks"", ""102k blocks"", ""51k blocks"", ""25k blocks"", ""10k blocks"", ""5120 blocks"", ""1024 blocks"", ""512 blocks"", ""384 blocks"", ""256 blocks"", ""128 blocks"", ""64 blocks"", ""32 blocks""], default: ""1024000"", onlyDuringWorldCreate: true },
             { category: ""worldgen"", code: ""worldEdge"", dataType: ""dropdown"", values: [""blocked"", ""traversable"" ], names: [""Blocked"", ""Traversable (Can fall down)""], default: ""traversable"" },
             { category: ""worldgen"", code: ""polarEquatorDistance"", dataType: ""dropdown"", values: [""800000"", ""400000"", ""200000"", ""100000"", ""50000"", ""25000"", ""15000"", ""10000"", ""5000""], names: [""800k blocks"", ""400k blocks"", ""200k blocks"", ""100k blocks"", ""50k blocks"", ""25k blocks"", ""15k blocks"", ""10k blocks"", ""5000 blocks""], default: ""50000"", onlyDuringWorldCreate: true },
             { category: ""worldgen"", code: ""globalTemperature"", dataType: ""dropdown"", values: [""4"", ""2"", ""1.5"", ""1"", ""0.75"", ""0.5"", ""0.25""], names: [""Scorching hot"", ""Very hot"", ""Hot"", ""Normal"", ""Cold"", ""Very Cold"", ""Snowball earth""], default: ""1"", onlyDuringWorldCreate: true },
@@ -195,6 +196,7 @@ using Vintagestory.API.Config;
             
 
             { category: ""multiplayer"", code: ""allowLandClaiming"", dataType: ""bool"", default: ""true"" },
+            { category: ""multiplayer"", code: ""classExclusiveRecipes"", dataType: ""bool"", default: ""true"" },
             { category: ""multiplayer"", code: ""auctionHouse"", dataType: ""bool"", default: ""true"" },
 
 	    ]

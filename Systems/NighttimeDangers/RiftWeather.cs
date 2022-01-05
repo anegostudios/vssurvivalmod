@@ -13,7 +13,7 @@ using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 using Vintagestory.GameContent;
 
-namespace Vintagestory.ServerMods
+namespace Vintagestory.GameContent
 {
     [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
     public class SpawnPatternPacket
@@ -21,32 +21,18 @@ namespace Vintagestory.ServerMods
         public CurrentPattern Pattern;
     }
 
+    public class RiftWeatherConfig
+    {
+        public SpawnPattern[] Patterns;
+    }
+
     public class SpawnPattern
     {
-        public static SpawnPattern[] Patterns = new SpawnPattern[]
-        {
-            new SpawnPattern("calm", 0.25f, 0, NatFloat.createUniform(15, 10), 240),
-            new SpawnPattern("low", 0.15f, 0.2f, NatFloat.createUniform(15, 10), 72),
-            new SpawnPattern("medium", 0.3f, 1, NatFloat.createUniform(15, 10), 0),
-            new SpawnPattern("high", 0.1f, 1.5f, NatFloat.createUniform(9, 5), 72),
-            new SpawnPattern("veryhigh", 0.05f, 2f, NatFloat.createUniform(7, 3), 480),
-            new SpawnPattern("apocalyptic", 0.02f, 4f, NatFloat.createUniform(4, 2), 720)
-        };
-
         public string Code;
         public float Chance;
-        public float MaxQuantityMul;
+        public float MobSpawnMul;
         public NatFloat DurationHours;
         public double StartTotalHours;
-
-        public SpawnPattern(string code, float chance, float maxQMul, NatFloat durationHours, double startTotalHours)
-        {
-            this.Code = code;
-            this.MaxQuantityMul = maxQMul;
-            this.DurationHours = durationHours;
-            this.Chance = chance;
-            this.StartTotalHours = startTotalHours;
-        }
     }
 
     [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
@@ -73,8 +59,11 @@ namespace Vintagestory.ServerMods
         Dictionary<string, int> defaultSpawnCaps = new Dictionary<string, int>();
 
         CurrentPattern curPattern;
-
+        RiftWeatherConfig config;
         Dictionary<string, SpawnPattern> patternsByCode = new Dictionary<string, SpawnPattern>();
+
+        public SpawnPattern CurrentPattern => patternsByCode[curPattern.Code];
+        public double CurrentPatternUntilHours => curPattern.UntilTotalHours;
 
         public override bool ShouldLoad(EnumAppSide forSide)
         {
@@ -106,7 +95,9 @@ namespace Vintagestory.ServerMods
 
         public override void StartServerSide(ICoreServerAPI api)
         {
-            foreach (var p in SpawnPattern.Patterns)
+            config = api.Assets.Get("config/riftweather.json").ToObject<RiftWeatherConfig>();
+
+            foreach (var p in config.Patterns)
             {
                 patternsByCode[p.Code] = p;
             }
@@ -171,9 +162,9 @@ namespace Vintagestory.ServerMods
 
             double totalHours = sapi.World.Calendar.TotalHours;
 
-            for (int i = 0; i < SpawnPattern.Patterns.Length; i++)
+            for (int i = 0; i < config.Patterns.Length; i++)
             {
-                SpawnPattern pattern = SpawnPattern.Patterns[i];
+                SpawnPattern pattern = config.Patterns[i];
                 if (pattern.StartTotalHours < totalHours)
                 {
                     patterns.Add(pattern);
@@ -218,7 +209,7 @@ namespace Vintagestory.ServerMods
             if (drifterProps == null) return;
 
             var pattern = patternsByCode[curPattern.Code];
-            float qmul = pattern.MaxQuantityMul;
+            float qmul = pattern.MobSpawnMul;
 
             foreach (var val in drifterProps)
             {

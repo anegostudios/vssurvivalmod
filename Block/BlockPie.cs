@@ -488,6 +488,12 @@ namespace Vintagestory.GameContent
             return bep.OnInteract(byPlayer);
         }
 
+        public override void OnBlockInteractStop(float secondsUsed, IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
+        {
+            // Don't call eating stuff from blockmeal
+            //base.OnBlockInteractStop(secondsUsed, world, byPlayer, blockSel);
+        }
+
         public override int GetRandomContentColor(ICoreClientAPI capi, ItemStack[] stacks)
         {
             ItemStack[] cstacks = GetContents(capi.World, stacks[0]);

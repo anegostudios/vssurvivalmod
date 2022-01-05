@@ -62,7 +62,14 @@ namespace Vintagestory.GameContent
 
                 entity.Attributes.SetString("origin", "playerplaced");
 
-                //entity.WatchedAttributes.SetInt("generation", 10);
+                if (Attributes?.IsTrue("setGuardedEntityAttribute") == true)
+                {
+                    entity.WatchedAttributes.SetLong("guardedEntityId", byEntity.EntityId);
+                    if (byEntity is EntityPlayer eplr)
+                    {
+                        entity.WatchedAttributes.SetString("guardedPlayerUid", eplr.PlayerUID);
+                    }
+                }
 
                 byEntity.World.SpawnEntity(entity);
                 handHandling = EnumHandHandling.PreventDefaultAction;

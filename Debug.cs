@@ -28,7 +28,7 @@ namespace Vintagestory.ServerMods
         public override void StartServerSide(ICoreServerAPI api)
         {
             this.api = api;
-
+            
             //api.RegisterCommand("anvildebug", "Anvil debug info", "", onAnvilDebug, "worldedit");
         }
 

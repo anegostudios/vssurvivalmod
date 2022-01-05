@@ -42,7 +42,7 @@ namespace Vintagestory.GameContent
 
         public ClayFormingRecipe SelectedRecipe
         {
-            get { return Api != null ? Api.World.ClayFormingRecipes.FirstOrDefault(r => r.RecipeId == selectedRecipeId) : null; }
+            get { return Api != null ? Api.GetClayformingRecipes().FirstOrDefault(r => r.RecipeId == selectedRecipeId) : null; }
         }
 
         public bool CanWorkCurrent
@@ -111,6 +111,7 @@ namespace Vintagestory.GameContent
                 CreateInitialWorkItem();
                 workItemStack = new ItemStack(Api.World.GetItem(new AssetLocation("clayworkitem-" + slot.Itemstack.Collectible.LastCodePart())));
                 baseMaterial = slot.Itemstack.Clone();
+                baseMaterial.StackSize = 1;
             }
 
             AvailableVoxels += 25;
@@ -600,7 +601,7 @@ namespace Vintagestory.GameContent
             if (packetid == (int)EnumClayFormingPacket.SelectRecipe)
             {
                 int recipeid = SerializerUtil.Deserialize<int>(data);
-                ClayFormingRecipe recipe = Api.World.ClayFormingRecipes.FirstOrDefault(r => r.RecipeId == recipeid);
+                ClayFormingRecipe recipe = Api.GetClayformingRecipes().FirstOrDefault(r => r.RecipeId == recipeid);
 
                 if (recipe == null)
                 {
@@ -642,7 +643,7 @@ namespace Vintagestory.GameContent
                 ingredient = new ItemStack(world.GetItem(new AssetLocation("clay-" + ingredient.Collectible.LastCodePart())));
             }
 
-            List<ClayFormingRecipe> recipes = world.ClayFormingRecipes
+            List<ClayFormingRecipe> recipes = Api.GetClayformingRecipes()
                 .Where(r => r.Ingredient.SatisfiesAsIngredient(ingredient))
                 .OrderBy(r => r.Output.ResolvedItemstack.Collectible.Code) // Cannot sort by name, thats language dependent!
                 .ToList();

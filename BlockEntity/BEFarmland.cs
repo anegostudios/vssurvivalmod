@@ -134,7 +134,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public void CreatedFromSoil(Block block)
+        public void OnCreatedFromSoil(Block block)
         {
             string fertility = block.LastCodePart(1);
             if (block is BlockFarmland)
@@ -622,7 +622,7 @@ namespace Vintagestory.GameContent
             return cropProps == null ? 1.0f : GetGrowthRate(cropProps.RequiredNutrient);
         }
 
-        public float DeathChance(int nutrientIndex)
+        public float GetDeathChance(int nutrientIndex)
         {
             if (nutrients[nutrientIndex] <= 5) return 0.5f;
             return 0f;
@@ -656,13 +656,13 @@ namespace Vintagestory.GameContent
         public bool HasUnripeCrop()
         {
             Block block = GetCrop();
-            return block != null && CropStage(block) < block.CropProps.GrowthStages;
+            return block != null && GetCropStage(block) < block.CropProps.GrowthStages;
         }
 
         public bool HasRipeCrop()
         {
             Block block = GetCrop();
-            return block != null && CropStage(block) >= block.CropProps.GrowthStages;
+            return block != null && GetCropStage(block) >= block.CropProps.GrowthStages;
         }
 
         public bool TryGrowCrop(double currentTotalHours)
@@ -670,7 +670,7 @@ namespace Vintagestory.GameContent
             Block block = GetCrop();
             if (block == null) return false;
 
-            int currentGrowthStage = CropStage(block);
+            int currentGrowthStage = GetCropStage(block);
             if (currentGrowthStage < block.CropProps.GrowthStages)
             {
                 int newGrowthStage = currentGrowthStage + 1;
@@ -721,7 +721,7 @@ namespace Vintagestory.GameContent
             // that in v1.10 they slowly restore to their original fertility blocks and then in v1.11 we remove the ExchangeBlock altogether
 
 
-            int nowLevel = FertilityLevel((originalFertility[0] + originalFertility[1] + originalFertility[2]) / 3);// FertilityLevel((nutrients[0] + nutrients[1] + nutrients[2]) / 3);
+            int nowLevel = GetFertilityLevel((originalFertility[0] + originalFertility[1] + originalFertility[2]) / 3);// FertilityLevel((nutrients[0] + nutrients[1] + nutrients[2]) / 3);
             Block farmlandBlock = Api.World.BlockAccessor.GetBlock(base.Pos);
             Block nextFarmlandBlock = Api.World.GetBlock(farmlandBlock.CodeWithParts(IsVisiblyMoist ? "moist" : "dry", Fertilities.GetKeyAtIndex(nowLevel)));
 
@@ -740,7 +740,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        internal int FertilityLevel(float fertiltyValue)
+        internal int GetFertilityLevel(float fertiltyValue)
         {
             int i = 0;
             foreach (var val in Fertilities)
@@ -759,9 +759,9 @@ namespace Vintagestory.GameContent
         }
 
 
-        internal int CropStage(Block block)
+        internal int GetCropStage(Block block)
         {
-            int stage = 0;
+            int stage;
             int.TryParse(block.LastCodePart(), out stage);
             return stage;
         }
@@ -868,7 +868,7 @@ namespace Vintagestory.GameContent
             if (cropProps != null)
             {
                 dsc.AppendLine(Lang.Get("Required Nutrient: {0}", cropProps.RequiredNutrient));
-                dsc.AppendLine(Lang.Get("Growth Stage: {0} / {1}", CropStage(GetCrop()), cropProps.GrowthStages));
+                dsc.AppendLine(Lang.Get("Growth Stage: {0} / {1}", GetCropStage(GetCrop()), cropProps.GrowthStages));
                 dsc.AppendLine();
             }
 

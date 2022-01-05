@@ -30,7 +30,6 @@ namespace Vintagestory.GameContent
             if (properties["drop"].Exists)
             {
                 drop = properties["drop"].AsObject<JsonItemStack>(null, block.Code.Domain);
-                
             }
         }
 

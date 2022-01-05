@@ -41,6 +41,7 @@ namespace Vintagestory.GameContent.Mechanics
         private void CheckWindSpeed(float dt)
         {
             windSpeed = weatherSystem.WeatherDataSlowAccess.GetWindSpeed(Blockentity.Pos.ToVec3d());
+            if (Api.World.BlockAccessor.GetLightLevel(Blockentity.Pos, EnumLightLevelType.OnlySunLight) < 5 && Api.World.Config.GetString("undergroundWindmills", "false") != "true") windSpeed = 0;
 
             if (Api.Side == EnumAppSide.Server && sailLength > 0 && Api.World.Rand.NextDouble() < 0.2)
             {

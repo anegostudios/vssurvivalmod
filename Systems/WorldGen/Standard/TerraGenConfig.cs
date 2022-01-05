@@ -40,6 +40,9 @@ namespace Vintagestory.ServerMods
 
         public static int shrubMapScale = 16;
         public static int forestMapScale = 32;
+
+        public static int blockPatchesMapScale = 32;
+
         public static int forestMapPadding = 0;
 
         public static int beachMapScale = 16;

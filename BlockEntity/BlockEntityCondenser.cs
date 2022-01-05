@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -22,7 +21,6 @@ namespace Vintagestory.GameContent
         MeshData bucketMeshTmp;
 
         long lastReceivedDistillateTotalMs = -99999;
-        float distillationRatio;
         ItemStack lastReceivedDistillate;
 
         Vec3f spoutPos;
@@ -44,6 +42,8 @@ namespace Vintagestory.GameContent
                 currentMesh = GenMesh();
                 MarkDirty(true);
                 RegisterGameTickListener(clientTick, 200, Api.World.Rand.Next(50));
+
+                if (!inventory[1].Empty && bucketMesh == null) genBucketMesh();
             }
 
             Matrixf mat = new Matrixf();
@@ -188,12 +188,12 @@ namespace Vintagestory.GameContent
             }
             if (inventory[1].Empty)
             {
-                lastReceivedDistillateTotalMs = -99999;
+                lastReceivedDistillateTotalMs = Api.World.ElapsedMilliseconds;
+                lastReceivedDistillate = props.DistilledStack.ResolvedItemstack.Clone();
                 return false;
             }
 
             ItemStack distilledStack = props.DistilledStack.ResolvedItemstack.Clone();
-            distillationRatio = props.Ratio;
 
             lastReceivedDistillate = distilledStack.Clone();
 

@@ -69,7 +69,7 @@ namespace Vintagestory.GameContent
 
         public void GrowTree(IBlockAccessor blockAccessor, BlockPos pos, bool skipForestFloor, float sizeModifier = 1, float vineGrowthChance = 0, float forestDensity = 0, int treesInChunkGenerated = 0)
         {
-            int quantity = 2 + (int)((1 + rand.NextDouble() * 4) * (1 - forestDensity) * (1 - forestDensity));
+            int quantity = 1 + (int)((1 + rand.NextDouble() * 3) * (1 - forestDensity) * (1 - forestDensity));
 
             while (quantity-- > 0)
             {
@@ -84,7 +84,7 @@ namespace Vintagestory.GameContent
                 for (int y = 2; y >= -2; y--)
                 {
                     Block block = blockAccessor.GetBlock(pos.X, pos.Y + y, pos.Z);
-                    if (block.Fertility > 0)
+                    if (block.Fertility > 0 && !blockAccessor.GetBlock(pos.X, pos.Y + y + 1, pos.Z).IsLiquid())
                     {
                         pos.Y = pos.Y + y;
                         foundSuitableBlock = true;
@@ -110,7 +110,7 @@ namespace Vintagestory.GameContent
                 if (i == height - 1) toplaceblock = foliage;
                 if (i == height - 2) toplaceblock = trunkTop;
 
-                if (!blockAccessor.GetBlock(upos).IsReplacableBy(toplaceblock)) return;
+                if (!blockAccessor.GetBlock(upos.X, upos.Y + i, upos.Z).IsReplacableBy(toplaceblock)) return;
             }
 
             for (int i = 0; i < height; i++)

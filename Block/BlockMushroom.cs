@@ -21,6 +21,8 @@ namespace Vintagestory.GameContent
         public static readonly string harvestedCodePart = "harvested";
 
 
+        public ICoreAPI Api => api;
+
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
@@ -68,7 +70,7 @@ namespace Vintagestory.GameContent
         {
             base.OnBlockBroken(world, pos, byPlayer, dropQuantityMultiplier);
 
-            if (byPlayer != null)
+            /*if (byPlayer != null)
             {
                 EnumTool? tool = byPlayer.InventoryManager.ActiveTool;
                 if (IsGrown() && tool == EnumTool.Knife)
@@ -76,7 +78,7 @@ namespace Vintagestory.GameContent
                     Block harvestedBlock = GetHarvestedBlock(world);
                     world.BlockAccessor.SetBlock(harvestedBlock.BlockId, pos);
                 }
-            }
+            }*/
         }
 
         public override BlockDropItemStack[] GetDropsForHandbook(ItemStack handbookStack, IPlayer forPlayer)
@@ -124,6 +126,24 @@ namespace Vintagestory.GameContent
         public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
         {
             return interactions.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
+        }
+
+        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, LCGRandom worldGenRand)
+        {
+            BlockPos rootPos = onBlockFace.IsHorizontal ? pos.AddCopy(onBlockFace) : pos.AddCopy(onBlockFace.Opposite);
+
+            var block = blockAccessor.GetBlock(rootPos);
+
+            if (!block.HasBehavior<BehaviorMyceliumHost>())
+            {
+                rootPos.Down();
+                block = blockAccessor.GetBlock(rootPos);
+                if (!block.HasBehavior<BehaviorMyceliumHost>()) return false;
+            }
+
+            blockAccessor.SpawnBlockEntity("Mycelium", rootPos);
+            (blockAccessor.GetBlockEntity(rootPos) as BlockEntityMycelium).OnGenerated(blockAccessor, worldGenRand, this);
+            return true;
         }
 
     }

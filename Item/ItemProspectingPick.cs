@@ -317,6 +317,11 @@ namespace Vintagestory.GameContent
                 throw new NotImplementedException();
             }
 
+            public T GetModdata<T>(string key, T defaultValue = default(T))
+            {
+                throw new NotImplementedException();
+            }
+
             #endregion
         }
     }

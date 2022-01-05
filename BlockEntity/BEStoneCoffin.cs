@@ -323,8 +323,6 @@ namespace Vintagestory.GameContent
                 Vec3d pos = Pos.ToVec3d().Add(0.5, 0.5, 0.5).Add(blockScs.Orientation.Opposite.Normalf.X, 0, blockScs.Orientation.Opposite.Normalf.Z);
                 Entity[] entities = Api.World.GetEntitiesAround(pos, 2.5f, 1, e => e.Alive && e is EntityAgent);
 
-                //Api.World.SpawnParticles(10, ColorUtil.WhiteArgb, pos, pos, new Vec3f(), new Vec3f(), 4, 0, 3);
-
                 foreach (var entity in entities) entity.ReceiveDamage(new DamageSource() { DamageTier = 1, SourcePos = pos, SourceBlock = Block, Type = EnumDamageType.Fire }, 4);
             }
 

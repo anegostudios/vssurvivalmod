@@ -14,7 +14,7 @@ using Vintagestory.API.Server;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockBamboo : Block, ITreeGenerator
+    public class BlockBamboo : Block, ITreeGenerator, ICustomTreeFellingBehavior
     {
         Block greenSeg1;
         Block greenSeg2;
@@ -398,5 +398,9 @@ namespace Vintagestory.GameContent
             }
         }
 
+        public EnumTreeFellingBehavior GetTreeFellingBehavior(BlockPos pos, Vec3i fromDir, int spreadIndex)
+        {
+            return EnumTreeFellingBehavior.ChopSpreadVertical;
+        }
     }
 }
