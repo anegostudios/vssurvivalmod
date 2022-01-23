@@ -108,10 +108,7 @@ namespace Vintagestory.GameContent
                     AssetLocation sound = inventory[1].Itemstack?.Block?.Sounds?.Place;
                     Api.World.PlaySoundAt(sound != null ? sound : new AssetLocation("sounds/player/build"), byPlayer.Entity, byPlayer, true, 16);
 
-                    var sounds = inventory[1].Itemstack.Block?.Sounds;
-                    if (sounds != null)
-
-                        if (!byPlayer.InventoryManager.TryGiveItemstack(inventory[1].Itemstack, true))
+                    if (!byPlayer.InventoryManager.TryGiveItemstack(inventory[1].Itemstack, true))
                     {
                         Api.World.SpawnItemEntity(inventory[1].Itemstack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
                     }
@@ -141,6 +138,11 @@ namespace Vintagestory.GameContent
             return false;
         }
 
+
+        public override void OnBlockBroken(IPlayer byPlayer = null)
+        {
+            base.OnBlockBroken(byPlayer);
+        }
 
         private void genBucketMesh()
         {

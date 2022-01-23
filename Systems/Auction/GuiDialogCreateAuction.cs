@@ -15,7 +15,7 @@ namespace Vintagestory.GameContent
     public class GuiDialogCreateAuction : GuiDialog
     {
         int lastPrice = 1;
-        InventoryGeneric auctionSlotInv;
+        
         ModSystemAuction auctionSys;
         EntityAgent owningEntity;
 
@@ -24,19 +24,21 @@ namespace Vintagestory.GameContent
 
         public override bool UnregisterOnClose => true;
 
-        public GuiDialogCreateAuction(ICoreClientAPI capi, EntityAgent owningEntity) : base(capi)
+        InventoryGeneric auctionSlotInv;
+
+        public GuiDialogCreateAuction(ICoreClientAPI capi, EntityAgent owningEntity, InventoryGeneric auctionSlotInv) : base(capi)
         {
             this.owningEntity = owningEntity;
+            this.auctionSlotInv = auctionSlotInv;
 
             auctionSys = capi.ModLoader.GetModSystem<ModSystemAuction>();
-
-            auctionSys.createAuctionSlotByPlayer[capi.World.Player.PlayerUID] = auctionSlotInv = new InventoryGeneric(1, "auctionslot-" + capi.World.Player.PlayerUID, capi);
-            auctionSlotInv.Open(capi.World.Player);
 
             Init();
         }
 
         public override string ToggleKeyCombinationCode => null;
+
+        protected string gearIcon = "<itemstack type='item' code='gear-rusty' rsize='1.75' offy='2'>";
 
         ElementBounds dialogBounds;
 
@@ -57,23 +59,32 @@ namespace Vintagestory.GameContent
             ElementBounds leftButton = ElementBounds.Fixed(EnumDialogArea.LeftFixed, 0, 0, 0, 0).WithFixedPadding(10, 1);
             ElementBounds rightButton = ElementBounds.Fixed(EnumDialogArea.RightFixed, 0, 0, 0, 0).WithFixedPadding(10, 1);
 
-            ElementBounds priceLabelBounds = ElementBounds.Fixed(0, 0, 150, 25).FixedUnder(slotBounds, 20);
-            ElementBounds priceBounds = ElementBounds.Fixed(0, 0, 150, 30).FixedUnder(priceLabelBounds, 0);
-            ElementBounds durationLabelBounds = ElementBounds.Fixed(0, 0, 150, 25).FixedUnder(priceBounds, 20);
-            ElementBounds dropDownBounds = ElementBounds.Fixed(0, 0, 100, 25).FixedUnder(durationLabelBounds, 0);
+            ElementBounds priceLabelBounds = ElementBounds.Fixed(0, 0, 250, 25).FixedUnder(slotBounds, 20);
+            ElementBounds priceBounds = ElementBounds.Fixed(0, 0, 100, 30).FixedUnder(priceLabelBounds, 0);
+            ElementBounds durationLabelBounds = ElementBounds.Fixed(0, 0, 250, 25).FixedUnder(priceBounds, 20);
+            ElementBounds dropDownBounds = ElementBounds.Fixed(0, 0, 150, 25).FixedUnder(durationLabelBounds, 0);
 
             ElementBounds costLabelBounds = ElementBounds.Fixed(0, 0, 300, 25).FixedUnder(dropDownBounds, 20);
             ElementBounds cutLabelBounds = ElementBounds.Fixed(0, 0, 300, 25).FixedUnder(costLabelBounds, 0);
 
-            string[] codes = new string[] { "1", "2", "3", "4", "5" };
-            string[] values = new string[] { Lang.Get("1 week"), Lang.Get("2 weeks"), Lang.Get("3 weeks"), Lang.Get("4 weeks"), Lang.Get("5 weeks") };
+            int[] weeks = new int[] {1,2,3,4,5 };
+            string[] codes = new string[5];
+            string[] values = new string[5];
+            for (int i = 0; i < weeks.Length; i++)
+            {
+                weeks[i] *= auctionSys.DurationWeeksMul;
+                codes[i] = "" + weeks[i];
+                values[i] = weeks[i] == 1 ? Lang.Get("{0} week", weeks[i]) : Lang.Get("{0} weeks", weeks[i]);
+            }
 
             Composers["tradercreateauction"] = capi.Gui
                 .CreateCompo("tradercreateauction-" + owningEntity.EntityId, dialogBounds)
                 .AddShadedDialogBG(bgBounds, true)
                 .AddDialogTitleBar(Lang.Get("Create Auction"), OnCreateAuctionClose)
                 .BeginChildElements(bgBounds)
-                        .AddItemSlotGrid(auctionSlotInv, (p) => { capi.Network.SendPacketClient(p); }, 1, null, slotBounds, "traderSellingSlots")
+                        .AddItemSlotGrid(auctionSlotInv, (p) => { 
+                            capi.Network.SendPacketClient(p); 
+                        }, 1, null, slotBounds, "traderSellingSlots")
 
                         .AddStaticText(Lang.Get("Price in rusty gears"), CairoFont.WhiteSmallText(), priceLabelBounds)
                         .AddNumberInput(priceBounds, onPriceChanged, CairoFont.WhiteSmallText(), "price")
@@ -81,8 +92,8 @@ namespace Vintagestory.GameContent
                         .AddStaticText(Lang.Get("Duration"), CairoFont.WhiteSmallText(), durationLabelBounds)
                         .AddDropDown(codes, values, 0, onDurationChanged, dropDownBounds, CairoFont.WhiteSmallText(), "duration")
 
-                        .AddDynamicText(Lang.Get("Deposit: {0} rusty gears", 1), CairoFont.WhiteSmallText(), costLabelBounds, "depositText")
-                        .AddDynamicText(Lang.Get("Trader cut on sale (10%): {0} rusty gears", 1), CairoFont.WhiteSmallText(), cutLabelBounds, "cutText")
+                        .AddRichtext(Lang.Get("Deposit: {0}", 1) + " " + gearIcon, CairoFont.WhiteSmallText(), costLabelBounds, "depositText")
+                        .AddRichtext(Lang.Get("Trader cut on sale (10%): {0}" + " " + gearIcon, 1), CairoFont.WhiteSmallText(), cutLabelBounds, "cutText")
 
                         .AddSmallButton(Lang.Get("Cancel"), OnCancelAuctionClose, leftButton.FixedUnder(cutLabelBounds, 20).WithFixedPadding(8, 5))
                         .AddSmallButton(Lang.Get("Create Auction"), OnCreateAuctionConfirm, rightButton.FixedUnder(cutLabelBounds, 20).WithFixedPadding(8, 5), EnumButtonStyle.Normal, EnumTextOrientation.Left, "buysellButton")
@@ -97,13 +108,13 @@ namespace Vintagestory.GameContent
         {
             int cost = Composers["tradercreateauction"].GetNumberInput("price").GetText().ToInt(1);
             float gearcut = cost * auctionSys.SalesCutRate + auctionSys.debtClient;
-            Composers["tradercreateauction"].GetDynamicText("cutText").SetNewText(Lang.Get("Trader cut on sale (10%): {0} rusty gears", (int)gearcut));
+            Composers["tradercreateauction"].GetRichtext("cutText").SetNewText(Lang.Get("Trader cut on sale (10%): {0}" + " " + gearIcon, (int)gearcut), CairoFont.WhiteSmallText());
         }
 
         private void onDurationChanged(string code, bool selected)
         {
-            int cost = code.ToInt(1);
-            Composers["tradercreateauction"].GetDynamicText("depositText").SetNewText(cost > 1 ? Lang.Get("Deposit: {0} rusty gears", cost) : Lang.Get("Deposit: {0} rusty gear", cost));
+            int cost = code.ToInt(1) / auctionSys.DurationWeeksMul;
+            Composers["tradercreateauction"].GetRichtext("depositText").SetNewText(Lang.Get("Deposit: {0}x", cost) + " " + gearIcon, CairoFont.WhiteSmallText());
         }
 
         private bool OnCancelAuctionClose()
@@ -125,7 +136,7 @@ namespace Vintagestory.GameContent
                 return true;
             }
 
-            if (monehs < auctionSys.GetDepositCost(auctionSlotInv[0]) * weeks)
+            if (monehs < auctionSys.GetDepositCost(auctionSlotInv[0]) * weeks / auctionSys.DurationWeeksMul)
             {
                 capi.TriggerIngameError(this, "notenoughgears", Lang.Get("Not enough gears to pay the deposit"));
                 return true;
@@ -161,7 +172,6 @@ namespace Vintagestory.GameContent
         public override void OnGuiClosed()
         {
             base.OnGuiClosed();
-            capi.Network.SendPacketClient(auctionSlotInv.Close(capi.World.Player));
         }
 
         public override void OnMouseMove(MouseEvent args)

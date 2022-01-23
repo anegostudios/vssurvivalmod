@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -32,7 +33,7 @@ namespace Vintagestory.GameContent
         {
             if (!Empty && !sourceSlot.Itemstack.Equals(be.Api.World, itemstack, GlobalConstants.IgnoredStackAttributes)) return false;
 
-            ContentConfig[] contentConfigs = be.ContentConfig;
+            ContentConfig[] contentConfigs = be.contentConfigs;
             ContentConfig config = getContentConfig(be.Api.World, contentConfigs, sourceSlot);
 
             return config != null && config.MaxFillLevels * config.QuantityPerFillLevel > StackSize;
@@ -45,9 +46,17 @@ namespace Vintagestory.GameContent
             
             for (int i = 0; i < contentConfigs.Length; i++)
             {
-                if (sourceSlot.Itemstack.Equals(world, contentConfigs[i].Content.ResolvedItemstack, GlobalConstants.IgnoredStackAttributes))
+                var cfg = contentConfigs[i];
+
+                if (cfg.Content.Code.Path.Contains("*"))
                 {
-                    return contentConfigs[i];
+                    if (WildcardUtil.Match(cfg.Content.Code, sourceSlot.Itemstack.Collectible.Code)) return cfg;
+                    continue;
+                }
+
+                if (sourceSlot.Itemstack.Equals(world, cfg.Content.ResolvedItemstack, GlobalConstants.IgnoredStackAttributes))
+                {
+                    return cfg;
                 }
             }
 

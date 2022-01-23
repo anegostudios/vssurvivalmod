@@ -28,6 +28,7 @@ namespace Vintagestory.GameContent
 
     public class ModSystemAuction : ModSystem
     {
+        protected ICoreAPI api;
         protected ICoreServerAPI sapi;
         protected ICoreClientAPI capi;
 
@@ -50,6 +51,18 @@ namespace Vintagestory.GameContent
         /// </summary>
         public float DeliveryPriceMul = 1f;
 
+        /// <summary>
+        /// For modders, change this value if you want to increase auction times, does not affect cost
+        /// </summary>
+        public int DurationWeeksMul = 3;
+
+        /// <summary>
+        /// The % cut the trader takes from the profits (default is 0.1 which is 10%)
+        /// </summary>
+        public float SalesCutRate = 0.1f;
+
+
+
         public int DeliveryCostsByDistance(Vec3d src, Vec3d dst)
         {
             return DeliveryCostsByDistance(src.DistanceTo(dst));
@@ -62,7 +75,7 @@ namespace Vintagestory.GameContent
             return (int)Math.Ceiling(5 * Math.Log((distance-200) / 10000 + 1) * DeliveryPriceMul);
         }
 
-        public float SalesCutRate = 0.1f;
+        
 
         public ItemStack SingleCurrencyStack;
 
@@ -74,6 +87,7 @@ namespace Vintagestory.GameContent
         public override void Start(ICoreAPI api)
         {
             base.Start(api);
+            this.api = api;
 
             api.Network
                 .RegisterChannel("auctionHouse")
@@ -82,6 +96,13 @@ namespace Vintagestory.GameContent
                 .RegisterMessageType<AuctionActionResponsePacket>()
                 .RegisterMessageType<DebtPacket>();
             ;
+        }
+
+        public void loadPricingConfig()
+        {
+            DeliveryPriceMul = api.World.Config.GetFloat("auctionHouseDeliveryPriceMul", 1);
+            DurationWeeksMul = api.World.Config.GetInt("auctionHouseDurationWeeksMul", 3);
+            SalesCutRate = api.World.Config.GetFloat("auctionHouseSalesCutRate", 0.1f);
         }
 
         #region Client
@@ -106,6 +127,7 @@ namespace Vintagestory.GameContent
         private void Event_BlockTexturesLoaded()
         {
             SingleCurrencyStack = new ItemStack(capi.World.GetItem(new AssetLocation("gear-rusty")));
+            loadPricingConfig();
         }
 
         private void onAuctionActionResponse(AuctionActionResponsePacket pkt)
@@ -273,6 +295,7 @@ namespace Vintagestory.GameContent
             int readyPurchasedAuctions = 0;
             int enroutePurchasedAuctions = 0;
             int soldAuctions = 0;
+
             foreach (var auction in auctionsData.auctions.Values)
             {
                 if (auction.BuyerUid == byPlayer.PlayerUID)
@@ -301,8 +324,6 @@ namespace Vintagestory.GameContent
 
                 byPlayer.SendMessage(GlobalConstants.GeneralChatGroup, sb.ToString(), EnumChatType.Notification);
             }
-
-
         }
 
         private void Event_PlayerDisconnect(IServerPlayer byPlayer)
@@ -373,8 +394,10 @@ namespace Vintagestory.GameContent
                             break;
                         }
 
+                        pkt.DurationWeeks = Math.Max(1, pkt.DurationWeeks);
+
                         var auctioneerEntity = sapi.World.GetEntityById(pkt.AtAuctioneerEntityId);
-                        PlaceAuction(inv[0], inv[0].StackSize, pkt.Price, pkt.DurationWeeks * 7 * 24, pkt.DurationWeeks, fromPlayer.Entity, auctioneerEntity, out string failureCode);
+                        PlaceAuction(inv[0], inv[0].StackSize, pkt.Price, pkt.DurationWeeks * 7 * 24, pkt.DurationWeeks / DurationWeeksMul, fromPlayer.Entity, auctioneerEntity, out string failureCode);
 
                         if (failureCode != null)
                         {
@@ -538,7 +561,7 @@ namespace Vintagestory.GameContent
                 }
 
                 InventoryTrader.DeductFromEntity(sapi, buyerEntity, totalcost);
-                (auctioneerEntity as EntityTrader).Inventory?.GiveToTrader(totalcost);
+                (auctioneerEntity as EntityTrader).Inventory?.GiveToTrader((int)(auction.Price * SalesCutRate + deliveryCosts));
 
                 string buyerName = buyerEntity.GetBehavior<EntityBehaviorNameTag>()?.DisplayName;
                 if (buyerName == null) buyerName = buyerEntity.Properties.Code.ToShortString();
@@ -735,6 +758,8 @@ namespace Vintagestory.GameContent
                     auction.ItemStack?.ResolveBlockOrItem(sapi.World);
                 }
             }
+
+            loadPricingConfig();
         }
         #endregion
     }

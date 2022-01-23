@@ -417,11 +417,11 @@ namespace Vintagestory.GameContent
                 {
                     if (servings == 1)
                     {
-                        dsc.AppendLine(Lang.Get("{0} serving of {1}", servings, recipe.GetOutputName(world, stacks)));
+                        dsc.AppendLine(Lang.Get("{0} serving of {1}", Math.Round(servings, 1), recipe.GetOutputName(world, stacks)));
                     }
                     else
                     {
-                        dsc.AppendLine(Lang.Get("{0} servings of {1}", servings, recipe.GetOutputName(world, stacks)));
+                        dsc.AppendLine(Lang.Get("{0} servings of {1}", Math.Round(servings, 1), recipe.GetOutputName(world, stacks)));
                     }
                 }
 

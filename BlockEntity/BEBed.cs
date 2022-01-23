@@ -62,6 +62,7 @@ namespace Vintagestory.GameContent
             }
         }
 
+        public IMountableSupplier MountSupplier => null;
 
         public override void Initialize(ICoreAPI api)
         {

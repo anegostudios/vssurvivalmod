@@ -153,6 +153,8 @@ namespace Vintagestory.GameContent
 
         public override Vec4f GetSelectionColor(ICoreClientAPI capi, BlockPos pos)
         {
+            if (!(capi.World.Player.InventoryManager.ActiveHotbarSlot?.Itemstack?.Item is ItemChisel)) return base.GetSelectionColor(capi, pos);
+
             BlockEntityMicroBlock bemc = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityMicroBlock;
 
             if (bemc?.MaterialIds == null || bemc.MaterialIds.Length == 0) return new Vec4f(0, 0, 0, 0.6f);
@@ -194,8 +196,11 @@ namespace Vintagestory.GameContent
             {
                 matids = (stack.Attributes?["materials"] as IntArrayAttribute)?.value;
             }
-
             byte[] hsv = new byte[3];
+
+            if (matids == null) return hsv;
+
+            
             int q = 0;
             for (int i = 0; i < matids.Length; i++)
             {

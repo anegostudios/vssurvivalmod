@@ -134,7 +134,6 @@ namespace Vintagestory.GameContent
             ItemSlot slot = byPlayer.InventoryManager.ActiveHotbarSlot;
             if (slot.Empty) return false;
 
-            bool result = false;
             CollectibleObject obj = slot.Itemstack.Collectible;
             if (obj.FirstCodePart() == "glass" && obj.Variant.ContainsKey("color"))
             {
@@ -158,8 +157,7 @@ namespace Vintagestory.GameContent
                 Api.World.BlockAccessor.ExchangeBlock(Block.Id, Pos); // Forces a lighting update
 
                 MarkDirty(true);
-                
-                
+                return true;
             }
 
             if (lining == null || lining == "plain" && obj is ItemMetalPlate && (obj.Variant["metal"] == "gold" || obj.Variant["metal"] == "silver")) 
@@ -171,10 +169,10 @@ namespace Vintagestory.GameContent
 
                 slot.TakeOut(1);
                 MarkDirty(true);
-                result = true;
+                return true;
             }
 
-            return result;
+            return false;
         }
 
 

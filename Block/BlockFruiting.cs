@@ -20,6 +20,16 @@ namespace Vintagestory.GameContent
         double[] FruitPoints { get; set; }
 
 
+        public override void OnLoaded(ICoreAPI api)
+        {
+            base.OnLoaded(api);
+        }
+
+        public override int GetColor(ICoreClientAPI capi, BlockPos pos)
+        {
+            return base.GetColor(capi, pos);
+        }
+
         public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
         {
             if (Attributes?["pickPrompt"].AsBool(false) != true)

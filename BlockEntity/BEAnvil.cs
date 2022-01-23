@@ -712,7 +712,7 @@ namespace Vintagestory.GameContent
             // Can only move metal
             if (Voxels[voxelPos.X, voxelPos.Y, voxelPos.Z] != (byte)EnumVoxelMaterial.Metal) return;
             // Can't move if metal is above
-            if (voxelPos.Y < 6 && Voxels[voxelPos.X, voxelPos.Y + 1, voxelPos.Z] != (byte)EnumVoxelMaterial.Empty) return;
+            if (voxelPos.Y < 5 && Voxels[voxelPos.X, voxelPos.Y + 1, voxelPos.Z] != (byte)EnumVoxelMaterial.Empty) return;
 
             Vec3i npos = voxelPos.Clone().Add(towardsFace);
             Vec3i opFaceDir = towardsFace.Opposite.Normali;

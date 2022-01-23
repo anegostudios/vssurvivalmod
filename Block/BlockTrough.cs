@@ -1,24 +1,100 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Common.Entities;
-using Vintagestory.API.Config;
-using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockTrough : Block
+    public class BlockTroughBase : Block
+    {
+        public ContentConfig[] contentConfigs;
+        public WorldInteraction[] placeInteractionHelp;
+
+        public BlockPos RootOffset = new BlockPos();
+
+        public void init()
+        {
+            CanStep = false;
+
+            contentConfigs = ObjectCacheUtil.GetOrCreate(api, "troughContentConfigs-" + Code, () =>
+            {
+                var cfgs = Attributes?["contentConfig"]?.AsObject<ContentConfig[]>();
+                if (cfgs == null) return null;
+
+                foreach (var val in cfgs)
+                {
+                    if (!val.Content.Code.Path.Contains("*"))
+                    {
+                        val.Content.Resolve(api.World, "troughcontentconfig");
+                    }
+                }
+
+                return cfgs;
+            });
+
+
+            List<ItemStack> allowedstacks = new List<ItemStack>();
+            foreach (var val in contentConfigs)
+            {
+                if (val.Content.Code.Path.Contains("*"))
+                {
+                    if (val.Content.Type == EnumItemClass.Block)
+                    {
+                        allowedstacks.AddRange(api.World.SearchBlocks(val.Content.Code).Select(block => new ItemStack(block, val.QuantityPerFillLevel)));
+                    }
+                    else
+                    {
+                        allowedstacks.AddRange(api.World.SearchItems(val.Content.Code).Select(item => new ItemStack(item, val.QuantityPerFillLevel)));
+                    }
+                }
+                else
+                {
+                    var stack = val.Content.ResolvedItemstack.Clone();
+                    stack.StackSize = val.QuantityPerFillLevel;
+                    allowedstacks.Add(stack);
+                }
+            }
+
+            placeInteractionHelp = new WorldInteraction[]
+            {
+                new WorldInteraction()
+                {
+                    ActionLangCode = "blockhelp-trough-addfeed",
+                    MouseButton = EnumMouseButton.Right,
+                    Itemstacks = allowedstacks.ToArray(),
+                    GetMatchingStacks = (wi, bs, es) => {
+                        BlockEntityTrough betr = api.World.BlockAccessor.GetBlockEntity(bs.Position + RootOffset) as BlockEntityTrough;
+                        if (betr?.IsFull != false) return null;
+
+                        ItemStack[] stacks = betr.GetNonEmptyContentStacks();
+                        if (stacks != null && stacks.Length != 0) return stacks;
+
+                        return wi.Itemstacks;
+                    }
+                }
+            };
+
+        }
+
+
+        public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
+        {
+            return placeInteractionHelp.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
+        }
+    }
+
+
+    public class BlockTrough : BlockTroughBase
     {
 
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
-
-            CanStep = false;
+            init();
         }
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
@@ -67,13 +143,6 @@ namespace Vintagestory.GameContent
             return Code;
         }
 
-        public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
-        {
-            base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
-
-            
-        }
-
         public override string GetPlacedBlockInfo(IWorldAccessor world, BlockPos pos, IPlayer forPlayer)
         {
             if (LastCodePart(1) == "feet")
@@ -106,36 +175,6 @@ namespace Vintagestory.GameContent
             return capi.BlockTextureAtlas.GetAverageColor(texSubId);
         }
 
-        public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
-        {
-            BlockEntityTrough betr = world.BlockAccessor.GetBlockEntity(selection.Position) as BlockEntityTrough;
-            if (betr == null) return base.GetPlacedBlockInteractionHelp(world, selection, forPlayer);
-
-            ItemStack[] stacks = betr.GetNonEmptyContentStacks();
-            
-            if (stacks == null || stacks.Length == 0)
-            {
-                List<ItemStack> allowedstacks = new List<ItemStack>();
-
-                foreach (var val in betr.ContentConfig)
-                {
-                    allowedstacks.Add(val.Content.ResolvedItemstack);
-                }
-
-                stacks = allowedstacks.ToArray();
-            }
-
-            return new WorldInteraction[]
-            {
-                new WorldInteraction()
-                {
-                    ActionLangCode = "blockhelp-trough-addfeed",
-                    MouseButton = EnumMouseButton.Right,
-                    Itemstacks = stacks,
-                    GetMatchingStacks = (wi, bs, es) => betr.IsFull ? null : wi.Itemstacks
-                }
-            }.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
-        }
 
     }
 }

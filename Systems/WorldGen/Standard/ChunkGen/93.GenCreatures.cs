@@ -88,7 +88,7 @@ namespace Vintagestory.ServerMods
 
                 for (int j = 0; j < companions.Length; j++)
                 {
-                    EntityProperties cptype = null;
+                    EntityProperties cptype;
                     if (entityTypesByCode.TryGetValue(companions[j], out cptype))
                     {
                         grouptypes.Add(cptype);
@@ -179,20 +179,16 @@ namespace Vintagestory.ServerMods
         private void TrySpawnGroupAt(BlockPos origin, Vec3d posAsVec, EntityProperties entityType, EntityProperties[] grouptypes)
         {
             BlockPos pos = origin.Copy();
-
-            float xRel = (float)(posAsVec.X % chunksize) / chunksize;
-            float zRel = (float)(posAsVec.Z % chunksize) / chunksize;
-
-            int climate = GameMath.BiLerpRgbColor(xRel, zRel, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight);
-            float temp = TerraGenConfig.GetScaledAdjustedTemperatureFloat((climate >> 16) & 0xff, (int)posAsVec.Y - TerraGenConfig.seaLevel);
-            float rain = ((climate >> 8) & 0xff) / 255f;
-            float forestDensity = GameMath.BiLerp(forestUpLeft, forestUpRight, forestBotLeft, forestBotRight, xRel, zRel);
-            float shrubDensity = GameMath.BiLerp(shrubsUpLeft, shrubsUpRight, shrubsBotLeft, shrubsBotRight, xRel, zRel);
+            int climate;
+            float temp;
+            float rain;
+            float forestDensity;
+            float shrubDensity;
+            float xRel, zRel;
 
             int spawned = 0;
 
             WorldGenSpawnConditions sc = entityType.Server.SpawnConditions.Worldgen;
-            bool hasCompanions = sc.Companions != null && sc.Companions.Length > 0;
 
             spawnPositions.Clear();
 
@@ -203,8 +199,8 @@ namespace Vintagestory.ServerMods
                 float val = sc.HerdSize.nextFloat();
                 nextGroupSize = (int)val + ((val - (int)val) > rnd.NextDouble() ? 1 : 0);
             }
-
             
+
             for (int i = 0; i < nextGroupSize*4 + 5; i++)
             {
                 if (spawned >= nextGroupSize) break;
@@ -230,7 +226,7 @@ namespace Vintagestory.ServerMods
 
                     pos.Y =
                         sc.TryOnlySurface ?
-                        heightMap[((int)pos.Z % chunksize) * chunksize + ((int)pos.X % chunksize)] + 1 :
+                        heightMap[(pos.Z % chunksize) * chunksize + (pos.X % chunksize)] + 1 :
                         pos.Y
                     ;
 

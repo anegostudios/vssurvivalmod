@@ -12,6 +12,13 @@ namespace Vintagestory.GameContent
             return "left";
         }
 
+        public override void OnLoaded(ICoreAPI api)
+        {
+            base.OnLoaded(api);
+
+            CanStep = false;
+        }
+
         public override BlockFacing GetDirection()
         {
             return BlockFacing.FromFirstLetter(Variant["type"]);

@@ -9,34 +9,16 @@ namespace Vintagestory.GameContent
 {
     public class BlockFence : Block
     {
-        ICoreClientAPI capi;
-        Block snowLayerBlock;
-
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
 
-            capi = api as ICoreClientAPI;
-
-            snowLayerBlock = api.World.GetBlock(new AssetLocation("snowlayer-1"));
+            CanStep = false;
         }
 
         public override void OnJsonTesselation(ref MeshData sourceMesh, ref int[] lightRgbsByCorner, BlockPos pos, Block[] chunkExtBlocks, int extIndex3d)
         {
-            // Todo: make this work
-            /*            int nBlockId = chunkExtIds[extIndex3d + TileSideEnum.MoveIndex[TileSideEnum.Up]];
-                        Block upblock = api.World.Blocks[nBlockId];
-
-                        if (upblock.snowLevel >= 1 && snowLayerBlock != null)
-                        {
-                            sourceMesh = sourceMesh.Clone();
-                            sourceMesh.AddMeshData(capi.TesselatorManager.GetDefaultBlockMesh(snowLayerBlock));
-                            return;
-                        }*/
-
             return;  // no windwave for solid fences!
-
-            //base.OnJsonTesselation(ref sourceMesh, ref lightRgbsByCorner, pos, chunkExtIds, chunkLightExt, extIndex3d);
         }
 
         public string GetOrientations(IWorldAccessor world, BlockPos pos)

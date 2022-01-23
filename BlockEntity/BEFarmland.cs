@@ -194,7 +194,8 @@ namespace Vintagestory.GameContent
 
         public ItemStack[] GetDrops(ItemStack[] drops)
         {
-            bool isDead = Api.World.BlockAccessor.GetBlock(upPos) == Api.World.GetBlock(new AssetLocation("deadcrop"));
+            BlockEntityDeadCrop beDeadCrop = Api.World.BlockAccessor.GetBlockEntity(upPos) as BlockEntityDeadCrop;
+            bool isDead = beDeadCrop != null;
 
             if (!ripeCropColdDamaged && !unripeCropColdDamaged && !unripeHeatDamaged && !isDead) return drops;
             if (!Api.World.Config.GetString("harshWinters").ToBool(true)) return drops;
@@ -207,7 +208,7 @@ namespace Vintagestory.GameContent
             float mul = 1f;
             if (ripeCropColdDamaged) mul = cropProps.ColdDamageRipeMul;
             if (unripeHeatDamaged || unripeCropColdDamaged) mul = cropProps.DamageGrowthStuntMul;
-            if (isDead) mul = Math.Max(cropProps.ColdDamageRipeMul, cropProps.DamageGrowthStuntMul);
+            if (isDead) mul = beDeadCrop.deathReason == EnumCropStressType.Eaten ? 0 : Math.Max(cropProps.ColdDamageRipeMul, cropProps.DamageGrowthStuntMul);
 
             for (int i = 0; i < drops.Length; i++)
             {
@@ -1037,8 +1038,11 @@ namespace Vintagestory.GameContent
             Block cropBlock = GetCrop();
             if (cropBlock == null) return 0;
 
-            Api.World.BlockAccessor.BreakBlock(upPos, null);
-
+            Block deadCropBlock = Api.World.GetBlock(new AssetLocation("deadcrop"));
+            Api.World.BlockAccessor.SetBlock(deadCropBlock.Id, upPos);
+            var be = Api.World.BlockAccessor.GetBlockEntity(upPos) as BlockEntityDeadCrop;
+            be.Inventory[0].Itemstack = new ItemStack(cropBlock);
+            be.deathReason = EnumCropStressType.Eaten;
             return 1f;
         }
 

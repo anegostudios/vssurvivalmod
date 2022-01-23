@@ -98,7 +98,17 @@ namespace Vintagestory.GameContent
 
         public override AssetLocation GetRotatedBlockCode(int angle)
         {
-            return angle == 90 || angle == -90 ? OrientedAsset(Orientation == BlockFacing.NORTH ? "ew" : "ns") : Code;
+            BlockFacing nowFacing = BlockFacing.FromFirstLetter(Variant["type"][0] + "");
+            BlockFacing rotatedFacing = BlockFacing.HORIZONTALS_ANGLEORDER[(nowFacing.HorizontalAngleIndex + angle / 90) % 4];
+
+            string type = Variant["type"];
+
+            if (nowFacing.Axis != rotatedFacing.Axis)
+            {
+                type = type == "ns" ? "ew" : "ns";
+            }
+
+            return CodeWithVariant("type", type);
         }
 
         public override int GetHeatRetention(BlockPos pos, BlockFacing facing)

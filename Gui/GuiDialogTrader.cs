@@ -31,6 +31,7 @@ namespace Vintagestory.GameContent
 
         
         ModSystemAuction auctionSys;
+        InventoryGeneric auctionSlotInv;
 
         bool auctionHouseEnabled => capi.World.Config.GetBool("auctionHouse", true);
 
@@ -54,6 +55,13 @@ namespace Vintagestory.GameContent
             this.owningEntity = owningEntity;
             this.rows = rows;
             this.cols = cols;
+
+            if (!auctionSys.createAuctionSlotByPlayer.TryGetValue(capi.World.Player.PlayerUID, out auctionSlotInv))
+            {
+                auctionSys.createAuctionSlotByPlayer[capi.World.Player.PlayerUID] = auctionSlotInv = new InventoryGeneric(1, "auctionslot-" + capi.World.Player.PlayerUID, capi);
+            }
+
+            capi.Network.SendPacketClient(auctionSlotInv.Open(capi.World.Player));
 
             Compose();
         }
@@ -332,7 +340,7 @@ namespace Vintagestory.GameContent
                 return true;
             }
 
-            var dlg = new GuiDialogCreateAuction(capi, owningEntity);
+            var dlg = new GuiDialogCreateAuction(capi, owningEntity, auctionSlotInv);
             dlg.TryOpen();
             return true;
         }
@@ -458,7 +466,7 @@ namespace Vintagestory.GameContent
             SingleComposer.GetSlotGrid("traderBuyingSlots")?.OnGuiClosed(capi);
             SingleComposer.GetSlotGrid("playerSellingSlots")?.OnGuiClosed(capi);
 
-            
+            capi.Network.SendPacketClient(auctionSlotInv.Close(capi.World.Player));
 
             auctionSys.DidLeaveAuctionHouse();
         }

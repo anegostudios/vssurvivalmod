@@ -140,6 +140,7 @@
     <Compile Include="Block\BlockPlanks.cs" />
     <Compile Include="Block\BlockGroundAndSideAttachable.cs" />
     <Compile Include="Entity\Behavior\BehaviorCommandable.cs" />
+    <Compile Include="Item\ItemPressedMash.cs" />
     <Compile Include="Item\ItemShield.cs" />
     <Compile Include="Systems\Barrel\BEBarrel.cs" />
     <Compile Include="BlockEntity\BEAnvilPart.cs" />

@@ -10,13 +10,19 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockTroughDoubleBlock : Block
+    public class BlockTroughDoubleBlock : BlockTroughBase
     {
 
         public override void OnLoaded(ICoreAPI api)
         {
+            if (LastCodePart(1) == "feet")
+            {
+                BlockFacing facing = BlockFacing.FromCode(LastCodePart()).Opposite;
+                RootOffset = new BlockPos(facing.Normali);
+            }
+
             base.OnLoaded(api);
-            CanStep = false;
+            init();
         }
 
 
@@ -64,13 +70,7 @@ namespace Vintagestory.GameContent
             if (blockSel != null) {
                 BlockPos pos = blockSel.Position;
 
-                if (LastCodePart(1) == "feet")
-                {
-                    BlockFacing facing = BlockFacing.FromCode(LastCodePart()).Opposite;
-                    pos = pos.AddCopy(facing);
-                }
-
-                BlockEntityTrough betr = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityTrough;
+                BlockEntityTrough betr = world.BlockAccessor.GetBlockEntity(pos + RootOffset) as BlockEntityTrough;
                 
                 bool ok = betr?.OnInteract(byPlayer, blockSel) == true;
                 if (ok && world.Side == EnumAppSide.Client)
@@ -181,44 +181,5 @@ namespace Vintagestory.GameContent
             return capi.BlockTextureAtlas.GetAverageColor(texSubId);
         }
 
-
-        public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
-        {
-            BlockPos pos = selection.Position;
-
-            if (LastCodePart(1) == "feet")
-            {
-                BlockFacing facing = BlockFacing.FromCode(LastCodePart()).Opposite;
-                pos = pos.AddCopy(facing);
-            }
-
-            BlockEntityTrough betr = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityTrough;
-            if (betr == null) return base.GetPlacedBlockInteractionHelp(world, selection, forPlayer);
-
-            ItemStack[] stacks = betr.GetNonEmptyContentStacks();
-
-            if (stacks == null || stacks.Length == 0)
-            {
-                List<ItemStack> allowedstacks = new List<ItemStack>();
-
-                foreach (var val in betr.ContentConfig)
-                {
-                    allowedstacks.Add(val.Content.ResolvedItemstack);
-                }
-
-                stacks = allowedstacks.ToArray();
-            }
-
-            return new WorldInteraction[]
-            {
-                new WorldInteraction()
-                {
-                    ActionLangCode = "blockhelp-trough-addfeed",
-                    MouseButton = EnumMouseButton.Right,
-                    Itemstacks = stacks,
-                    GetMatchingStacks = (wi, bs, es) => betr.IsFull ? null : wi.Itemstacks
-                }
-            }.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
-        }
     }
 }

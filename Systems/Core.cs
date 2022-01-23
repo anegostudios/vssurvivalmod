@@ -513,6 +513,8 @@ namespace Vintagestory.GameContent
             api.RegisterBlockClass("BlockDynamicTreeFoliage", typeof(BlockFruitTreeFoliage));
             api.RegisterBlockClass("BlockDynamicTreeBranch", typeof(BlockFruitTreeBranch));
             api.RegisterBlockClass("BlockPlanks", typeof(BlockPlanks));
+            api.RegisterBlockClass("BlockGenericTypedContainerTrunk", typeof(BlockGenericTypedContainerTrunk));
+
         }
 
         
@@ -747,6 +749,8 @@ namespace Vintagestory.GameContent
             api.RegisterItemClass("ItemDough", typeof(ItemDough));
             api.RegisterItemClass("ItemSling", typeof(ItemSling));
             api.RegisterItemClass("ItemShield", typeof(ItemShield));
+
+            api.RegisterItemClass("ItemPressedMash", typeof(ItemPressedMash));
         }
 
 

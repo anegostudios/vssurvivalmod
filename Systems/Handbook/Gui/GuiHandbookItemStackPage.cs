@@ -16,7 +16,8 @@ namespace Vintagestory.GameContent
     {
         public ItemStack Stack;
         public LoadedTexture Texture;
-        public string TextCache;
+        public string TextCacheTitle;
+        public string TextCacheAll;
 
         public int PageNumber;
 
@@ -37,7 +38,8 @@ namespace Vintagestory.GameContent
             unspoilableInventory = new CreativeInventoryTab(1, "not-used", null);
             dummySlot = new DummySlot(stack, unspoilableInventory);
 
-            TextCache = stack.GetName() + " " + stack.GetDescription(capi.World, dummySlot, false);
+            TextCacheTitle = stack.GetName();
+            TextCacheAll = stack.GetName() + " " + stack.GetDescription(capi.World, dummySlot, false);
             isDuplicate = stack.Collectible.Attributes?["handbook"]?["isDuplicate"].AsBool(false) == true;
         }
 
@@ -110,11 +112,11 @@ namespace Vintagestory.GameContent
 
         public override float TextMatchWeight(string searchText)
         {
-            string title = Stack.GetName();
+            string title = TextCacheTitle;
             if (title.Equals(searchText, StringComparison.InvariantCultureIgnoreCase)) return 3;
             if (title.StartsWith(searchText, StringComparison.InvariantCultureIgnoreCase)) return 2.5f;
             if (title.CaseInsensitiveContains(searchText)) return 2;
-            if (TextCache.CaseInsensitiveContains(searchText)) return 1;
+            if (TextCacheAll.CaseInsensitiveContains(searchText)) return 1;
             return 0;
         }
     }

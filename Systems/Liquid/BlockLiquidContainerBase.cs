@@ -15,7 +15,7 @@ namespace Vintagestory.GameContent
     /// <summary>
     /// For liquid containers that are open on the top and thus need render their contents
     /// </summary>
-    public class BlockLiquidContainerTopOpened : BlockLiquidContainerBase, IContainedMeshSource
+    public class BlockLiquidContainerTopOpened : BlockLiquidContainerBase, IContainedMeshSource, IContainedCustomName
     {
         LiquidTopOpenContainerProps Props;
         protected virtual string meshRefsCacheKey => Code.ToShortString() + "meshRefs";
@@ -191,6 +191,28 @@ namespace Vintagestory.GameContent
             return s;
         }
 
+        public string GetContainedInfo(ItemSlot inSlot)
+        {
+            float litres = GetCurrentLitres(inSlot.Itemstack);
+            ItemStack contentStack = GetContent(inSlot.Itemstack);
+
+            if (litres <= 0) return Lang.Get("{0} (Empty)", inSlot.Itemstack.GetName());
+
+            string incontainername = Lang.Get("incontainer-" + contentStack.Class.ToString().ToLowerInvariant() + "-" + contentStack.Collectible.Code.Path);
+            
+            if (litres == 1)
+            {
+                return Lang.Get("{0} ({1} litre of {2})", inSlot.Itemstack.GetName(), litres, incontainername);
+            }
+
+            return Lang.Get("{0} ({1} litres of {2})", inSlot.Itemstack.GetName(), litres, incontainername);
+        }
+
+        public string GetContainedName(ItemSlot inSlot, int quantity)
+        {
+            return inSlot.Itemstack.GetName();
+        }
+
         #endregion
     }
 
@@ -217,7 +239,14 @@ namespace Vintagestory.GameContent
 
         public override void OnHandbookRecipeRender(ICoreClientAPI capi, GridRecipe gridRecipe, ItemSlot dummyslot, double x, double y, double size)
         {
-            if (gridRecipe.Attributes?["liquidContainerProps"].Exists != true)
+            // 1.16.0: Fugly (but backwards compatible) hack: We temporarily store the ingredient index in an unused field of ItemSlot so that OnHandbookRecipeRender() has access to that number. Proper solution would be to alter the method signature to pass on this value.
+            int rindex = dummyslot.BackgroundIcon.ToInt();
+            var ingredient = gridRecipe.resolvedIngredients[rindex];
+
+            JsonObject rprops = ingredient.RecipeAttributes;
+            if (rprops?.Exists != true || rprops?["requiresContent"].Exists != true) rprops = gridRecipe.Attributes?["liquidContainerProps"];
+
+            if (rprops?.Exists != true)
             {
                 base.OnHandbookRecipeRender(capi, gridRecipe, dummyslot, x, y, size);
                 return;
@@ -545,7 +574,7 @@ namespace Vintagestory.GameContent
         {
             ItemStack[] stacks = GetContents(api.World, containerStack);
             int id = GetContainerSlotId(containerStack);
-            return (stacks != null && stacks.Length > 0) ? stacks[id] : null;
+            return (stacks != null && stacks.Length > 0) ? stacks[Math.Min(stacks.Length - 1, id)] : null;
         }
 
         /// <summary>
@@ -806,7 +835,7 @@ namespace Vintagestory.GameContent
             if (player == null) return;
 
             WaterTightContainableProps props = GetContainableProps(contentStack);
-            float litresMoved = (float)moved / props.ItemsPerLitre;
+            float litresMoved = moved / props.ItemsPerLitre;
 
             (player as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
             api.World.PlaySoundAt(dir == EnumLiquidDirection.Fill ? props.FillSound : props.PourSound, player.Entity, player, true, 16, GameMath.Clamp(litresMoved / 5f, 0.35f, 1f));
@@ -1251,8 +1280,6 @@ namespace Vintagestory.GameContent
 
             if (!sinkContent.Equals(op.World, sourceContent, GlobalConstants.IgnoredStackAttributes)) { op.MovableQuantity = 0; return; }
 
-            WaterTightContainableProps props = GetContainableProps(sourceContent);
-
             float sourceLitres = GetCurrentLitres(op.SourceSlot.Itemstack);
             float sinkLitres = GetCurrentLitres(op.SourceSlot.Itemstack);
 
@@ -1275,7 +1302,8 @@ namespace Vintagestory.GameContent
 
             if (op.CurrentPriority == EnumMergePriority.DirectMerge)
             {
-                int moved = TryPutLiquid(op.SinkSlot.Itemstack, sinkContent, CapacityLitres);
+                float movableLitres = Math.Min(sinkCapLitres - sinkLitres, sourceLitres);
+                int moved = TryPutLiquid(op.SinkSlot.Itemstack, sinkContent, movableLitres);
                 DoLiquidMovedEffects(op.ActingPlayer, sinkContent, moved, EnumLiquidDirection.Pour);
 
                 TryTakeContent(op.SourceSlot.Itemstack, moved);
@@ -1289,19 +1317,22 @@ namespace Vintagestory.GameContent
 
         public override bool MatchesForCrafting(ItemStack inputStack, GridRecipe gridRecipe, CraftingRecipeIngredient ingredient)
         {
-            if (gridRecipe.Attributes?["liquidContainerProps"].Exists != true)
+            JsonObject rprops = ingredient.RecipeAttributes;
+            if (rprops?.Exists != true || rprops?["requiresContent"].Exists != true) rprops = gridRecipe.Attributes?["liquidContainerProps"];
+
+            if (rprops?.Exists != true)
             {
                 return base.MatchesForCrafting(inputStack, gridRecipe, ingredient);
             }
 
-            string contentCode = gridRecipe.Attributes["liquidContainerProps"]["requiresContent"]["code"].AsString();
-            string contentType = gridRecipe.Attributes["liquidContainerProps"]["requiresContent"]["type"].AsString();
+            string contentCode = rprops["requiresContent"]["code"].AsString();
+            string contentType = rprops["requiresContent"]["type"].AsString();
 
             ItemStack contentStack = GetContent(inputStack);
 
             if (contentStack == null) return false;
 
-            float litres = gridRecipe.Attributes["liquidContainerProps"]["requiresLitres"].AsFloat();
+            float litres = rprops["requiresLitres"].AsFloat();
             var props = GetContainableProps(contentStack);
             int q = (int)(props.ItemsPerLitre * litres) / inputStack.StackSize;
 
@@ -1314,14 +1345,17 @@ namespace Vintagestory.GameContent
 
         public override void OnConsumedByCrafting(ItemSlot[] allInputSlots, ItemSlot stackInSlot, GridRecipe gridRecipe, CraftingRecipeIngredient fromIngredient, IPlayer byPlayer, int quantity)
         {
-            if (gridRecipe.Attributes?["liquidContainerProps"].Exists != true)
+            JsonObject rprops = fromIngredient.RecipeAttributes;
+            if (rprops?.Exists != true || rprops?["requiresContent"].Exists != true) rprops = gridRecipe.Attributes?["liquidContainerProps"];
+
+            if (rprops?.Exists != true)
             {
                 base.OnConsumedByCrafting(allInputSlots, stackInSlot, gridRecipe, fromIngredient, byPlayer, quantity);
                 return;
             }
 
             ItemStack contentStack = GetContent(stackInSlot.Itemstack);
-            float litres = gridRecipe.Attributes["liquidContainerProps"]["requiresLitres"].AsFloat();
+            float litres = rprops["requiresLitres"].AsFloat();
             var props = GetContainableProps(contentStack);
             int q = (int)(props.ItemsPerLitre * litres / stackInSlot.StackSize);
 

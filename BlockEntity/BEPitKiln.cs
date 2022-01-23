@@ -70,7 +70,7 @@ namespace Vintagestory.GameContent
             bh.OnFireTick = (dt) => {
                 if (api.World.Calendar.TotalHours >= BurningUntilTotalHours)
                 {
-                    if (IsAreaLoaded()) // Wait until nearby chunks area loaded befire firing fully
+                    if (IsAreaLoaded()) // Wait until nearby chunks area loaded before firing fully
                     {
                         OnFired();
                     }

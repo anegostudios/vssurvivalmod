@@ -52,7 +52,10 @@ namespace Vintagestory.GameContent
         {
             if (Api.World.Side == EnumAppSide.Client && DetailingMode)
             {
-                Cuboidf box = GetOrCreateVoxelSelectionBoxes(byPlayer)[blockSel.SelectionBoxIndex];
+                var boxes = GetOrCreateVoxelSelectionBoxes(byPlayer);
+                if (blockSel.SelectionBoxIndex >= boxes.Length) return;
+
+                Cuboidf box = boxes[blockSel.SelectionBoxIndex];
                 Vec3i voxelPos = new Vec3i((int)(16 * box.X1), (int)(16 * box.Y1), (int)(16 * box.Z1));
 
                 UpdateVoxel(byPlayer, byPlayer.InventoryManager.ActiveHotbarSlot, voxelPos, blockSel.Face, isBreak);

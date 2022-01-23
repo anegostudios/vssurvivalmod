@@ -102,7 +102,7 @@ namespace Vintagestory.GameContent
 
         internal void Resolve(ItemSlot intoslot, IWorldAccessor worldForResolve)
         {
-            object dval = null;
+            object dval;
             worldForResolve.Api.ObjectCache.TryGetValue("donotResolveImports", out dval);
             if (dval is bool && (bool)dval) return;
 

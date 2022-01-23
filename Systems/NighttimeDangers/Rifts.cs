@@ -41,6 +41,9 @@ namespace Vintagestory.GameContent
 
         ModSystemRiftWeather modRiftWeather;
 
+
+        string riftMode;
+
         public override bool ShouldLoad(EnumAppSide forSide)
         {
             return true;
@@ -102,7 +105,7 @@ namespace Vintagestory.GameContent
 
         private void OnServerTick100ms(float dt)
         {
-            if (!riftsEnabled) return;
+            if (riftMode != "visible") return;
 
             foreach (IServerPlayer plr in sapi.World.AllOnlinePlayers)
             {
@@ -193,11 +196,17 @@ namespace Vintagestory.GameContent
                     pos.Y = api.World.BlockAccessor.GetTerrainMapheightAt(pos);
 
                     var block = api.World.BlockAccessor.GetBlock(pos);
+                    if (block.Replaceable < 6000)
+                    {
+                        pos.Up();
+                        block = api.World.BlockAccessor.GetBlock(pos);
+                    }
                     if (block.IsLiquid() && api.World.Rand.NextDouble() > 0.1) continue;
 
                     // Don't spawn near bases
                     int blocklight = api.World.BlockAccessor.GetLightLevel(pos, EnumLightLevelType.OnlyBlockLight);
-                    if (blocklight >= 3) continue;
+                    int blocklightup = api.World.BlockAccessor.GetLightLevel(pos.UpCopy(), EnumLightLevelType.OnlyBlockLight);
+                    if (blocklight >= 3 || blocklightup >= 3) continue;
 
                     float size = 2 + (float)api.World.Rand.NextDouble() * 4f;
 
@@ -295,7 +304,8 @@ namespace Vintagestory.GameContent
 
         private void Event_SaveGameLoaded()
         {
-            riftsEnabled = api.World.Config.GetString("temporalStorms") != "off";
+            riftMode = api.World.Config.GetString("temporalRifts", "visible");
+            riftsEnabled = riftMode != "off";
             if (!riftsEnabled) return;
 
             try
@@ -314,6 +324,8 @@ namespace Vintagestory.GameContent
 
         public void BroadCastRifts(IPlayer onlyToPlayer = null)
         {
+            if (riftMode != "visible") return;
+
             List<Rift> plrLists = new List<Rift>();
             float minDistSq = (float)Math.Pow(despawnDistance + 10, 2);
 

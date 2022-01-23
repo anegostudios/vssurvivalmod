@@ -14,6 +14,16 @@ namespace Vintagestory.GameContent
             return true;
         }
 
+
+        public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
+        {
+            var stack = base.OnPickBlock(world, pos);
+
+            SetContents(stack, null);
+
+            return stack;
+        }
+
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
             BlockEntityCondenser be = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityCondenser;

@@ -7,6 +7,14 @@ namespace Vintagestory.GameContent
 {
     public class BlockFenceGate : BlockBaseDoor
     {
+
+        public override void OnLoaded(ICoreAPI api)
+        {
+            base.OnLoaded(api);
+
+            CanStep = false;
+        }
+
         public override string GetKnobOrientation()
         {
             return GetKnobOrientation(this);

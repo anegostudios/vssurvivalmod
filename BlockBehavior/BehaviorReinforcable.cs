@@ -79,13 +79,19 @@ namespace Vintagestory.GameContent
                 BlockReinforcement bre = modBre.GetReinforcment(pos);
                 if (bre == null) return null;
 
-                if (bre.Locked)
+                StringBuilder sb = new StringBuilder();
+
+                if (bre.GroupUid != 0)
                 {
-                    return Lang.Get("Has been locked and reinforced by {0}.", bre.LastPlayername) + "\n" + Lang.Get("Strength: {0}", bre.Strength) + "\n";
+                    sb.AppendLine(Lang.Get(bre.Locked ? "Has been locked and reinforced by group {0}." : "Has been reinforced by group {0}.", bre.LastGroupname));
                 } else
                 {
-                    return Lang.Get("Has been reinforced by {0}.", bre.LastPlayername) + "\n" + Lang.Get("Strength: {0}", bre.Strength) + "\n";
+                    sb.AppendLine(Lang.Get(bre.Locked ? "Has been locked and reinforced by {0}." : "Has been reinforced by {0}.", bre.LastPlayername));
                 }
+
+                sb.AppendLine(Lang.Get("Strength: {0}", bre.Strength));
+
+                return sb.ToString();
             }
 
             return null;

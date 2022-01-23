@@ -139,7 +139,6 @@ namespace Vintagestory.GameContent
 
             // To popuplate the smokeLocations
             FindHoleInPit();
-
         }
 
         void ConvertPit()
@@ -253,7 +252,6 @@ namespace Vintagestory.GameContent
             int charcoalPitBlockId = Api.World.GetBlock(new AssetLocation("charcoalpit")).BlockId;
 
             int maxHalfSize = 6;
-            
 
             while (bfsQueue.Count > 0)
             {
@@ -265,12 +263,11 @@ namespace Vintagestory.GameContent
                 smokeLocations.TryGetValue(bposGround, out yMax);
                 smokeLocations[bposGround] = Math.Max(yMax, bpos.Y);
 
-
                 foreach (BlockFacing facing in BlockFacing.ALLFACES)
                 {
                     BlockPos npos = bpos.AddCopy(facing);
                     IWorldChunk chunk = Api.World.BlockAccessor.GetChunkAtBlockPos(npos);
-                    if (chunk == null) continue; // Maybe at the endge of the loaded chunk
+                    if (chunk == null) return null;
 
                     Block nBlock = chunk.GetLocalBlockAtBlockPos(Api.World, npos);
 

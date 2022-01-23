@@ -400,7 +400,7 @@ namespace Vintagestory.GameContent
                 MarkDirty();
             }
 
-            if (progress >= 1.0)
+            if (progress >= 0.995)
             {
                 int stacksize = inv[1].Itemstack.StackSize;
 

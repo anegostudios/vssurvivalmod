@@ -513,6 +513,8 @@ namespace Vintagestory.GameContent
 
         private void FilterItemsBySearchText(string text)
         {
+            if (currentSearchText == text) return;
+
             currentSearchText = text;
             FilterItems();
         }

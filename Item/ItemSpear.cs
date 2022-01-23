@@ -171,8 +171,8 @@ namespace Vintagestory.GameContent
                 if (secondsPassed > 0.4f) sum = Math.Max(0, sum - easeout);
                 ztranslation = Math.Max(0, ztranslation - easeout);
 
-                tf.Translation.Set(-0.5f * sum, ztranslation * 0.4f, -sum * 0.8f * 2.6f);
-                tf.Rotation.Set(-sum * 9, sum * 10, -sum*10);
+                tf.Translation.Set(-1f * sum, ztranslation * 0.4f, -sum * 0.8f * 2.6f);
+                tf.Rotation.Set(-sum * 9, sum * 30, -sum*30);
 
                 byEntity.Controls.UsingHeldItemTransformAfter = tf;
                 

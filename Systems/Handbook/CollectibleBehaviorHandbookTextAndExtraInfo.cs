@@ -338,7 +338,7 @@ namespace Vintagestory.GameContent
                         string ratio = " " + Lang.Get("alloy-ratio-from-to", (int)(ingred.MinRatio * 100), (int)(ingred.MaxRatio * 100));
                         components.Add(new RichTextComponent(capi, ratio, CairoFont.WhiteSmallText()));
                         ItemstackComponentBase comp = new ItemstackTextComponent(capi, ingred.ResolvedItemstack, 30, 5, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
-                        comp.offY = 8;
+                        comp.offY = GuiElement.scaled(7);
                         components.Add(comp);
                     }
 
@@ -405,7 +405,7 @@ namespace Vintagestory.GameContent
             }
 
             // Juices into
-            juiceableProperties jprops = getjuiceableProps(inSlot.Itemstack);
+            JuiceableProperties jprops = getjuiceableProps(inSlot.Itemstack);
             if (jprops != null)
             {
                 if (haveText) components.Add(new ClearFloatTextComponent(capi, marginTop));
@@ -1024,7 +1024,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            juiceableProperties jprops = getjuiceableProps(inSlot.Itemstack);
+            JuiceableProperties jprops = getjuiceableProps(inSlot.Itemstack);
             if (jprops != null)
             {
                 float litres;
@@ -1038,15 +1038,15 @@ namespace Vintagestory.GameContent
 
                 if (litres > 0.01)
                 {
-                    dsc.AppendLine(Lang.Get("When juiced: Turns into {0}l {1}", litres, jprops.LiquidStack.ResolvedItemstack.GetName()));
+                    dsc.AppendLine(Lang.Get("When juiced: Turns into {0:0.#}l {1}", litres, jprops.LiquidStack.ResolvedItemstack.GetName()));
                 }
             }
 
         }
 
-        public juiceableProperties getjuiceableProps(ItemStack stack)
+        public JuiceableProperties getjuiceableProps(ItemStack stack)
         {
-            var props = stack?.ItemAttributes?["juiceableProperties"].Exists == true ? stack.ItemAttributes["juiceableProperties"].AsObject<juiceableProperties>(null, stack.Collectible.Code.Domain) : null;
+            var props = stack?.ItemAttributes?["juiceableProperties"].Exists == true ? stack.ItemAttributes["juiceableProperties"].AsObject<JuiceableProperties>(null, stack.Collectible.Code.Domain) : null;
             props?.LiquidStack?.Resolve(Api.World, "juiceable properties liquidstack");
             props?.PressedStack?.Resolve(Api.World, "juiceable properties pressedstack");
 

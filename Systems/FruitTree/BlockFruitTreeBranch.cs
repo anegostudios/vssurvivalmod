@@ -133,7 +133,7 @@ namespace Vintagestory.GameContent
             base.OnNeighbourBlockChange(world, pos, neibpos);
 
             var bebranch = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityFruitTreeBranch;
-            bebranch.OnNeighbourBlockChange(neibpos);
+            bebranch?.OnNeighbourBlockChange(neibpos);
         }
 
         public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)

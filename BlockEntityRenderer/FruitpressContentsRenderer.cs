@@ -79,8 +79,9 @@ namespace Vintagestory.GameContent
             this.befruitpress = befruitpress;
         }
 
+        public int heightMode = 0;
 
-        public void reloadMeshes(juiceableProperties props, bool mustReload)
+        public void reloadMeshes(JuiceableProperties props, bool mustReload)
         {
             if (befruitpress.Inventory.Empty)
             {
@@ -107,7 +108,17 @@ namespace Vintagestory.GameContent
             {
                 var tex = props.PressedStack.ResolvedItemstack.Item.Textures.First();
                 textureLocation = tex.Value.Base;
-                y = GameMath.Clamp(stack.StackSize, 1, 9);
+
+                if (stack.Attributes.HasAttribute("juiceableLitresLeft"))
+                {
+                    float availableLitres = (float)stack.Attributes.GetDecimal("juiceableLitresLeft") + (float)stack.Attributes.GetDecimal("juiceableLitresTransfered");
+                    y = (int)GameMath.Clamp(availableLitres, 1, 9);
+                    heightMode = 0;
+                } else
+                {
+                    y = (int)GameMath.Clamp(stack.StackSize, 1, 9);
+                    heightMode = 1;
+                }
             }
 
 

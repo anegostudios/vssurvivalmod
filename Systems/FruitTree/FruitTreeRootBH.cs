@@ -140,6 +140,8 @@ namespace Vintagestory.GameContent
                         
                         double midday = (int)LastRootTickTotalDays + 0.5;
                         temp = Api.World.BlockAccessor.GetClimateAt(be.Pos, EnumGetClimateMode.ForSuppliedDate_TemperatureOnly, midday).Temperature;
+                        temp = applyGreenhouseTempBonus(temp);
+
                         prevIntDays = (int)LastRootTickTotalDays;
                         Blockentity.MarkDirty(true);
                     }
@@ -257,18 +259,22 @@ namespace Vintagestory.GameContent
 
 
         void updateVernalizedHours(FruitTreeProperties props, float temp) {
-            if (Api.World.BlockAccessor.GetRainMapHeightAt(be.Pos) > be.Pos.Y) // Fast pre-check
-            {
-                Room room = roomreg?.GetRoomForPosition(be.Pos);
-                int roomness = (room != null && room.SkylightCount > room.NonSkylightCount && room.ExitCount == 0) ? 1 : 0;
-
-                if (roomness > 0) temp += 5;
-            }
-
             if (temp <= props.VernalizationTemp)
             {
                 props.vernalizedHours += stateUpdateIntervalDays * Api.World.Calendar.HoursPerDay;
             }
+        }
+
+        public float applyGreenhouseTempBonus(float temp)
+        {
+            if (Api.World.BlockAccessor.GetRainMapHeightAt(be.Pos) > be.Pos.Y) // Fast pre-check
+            {
+                Room room = roomreg?.GetRoomForPosition(be.Pos);
+                int roomness = (room != null && room.SkylightCount > room.NonSkylightCount && room.ExitCount == 0) ? 1 : 0;
+                if (roomness > 0) temp += 5;
+            }
+
+            return temp;
         }
 
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)

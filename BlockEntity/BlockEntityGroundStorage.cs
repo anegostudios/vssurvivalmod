@@ -613,7 +613,8 @@ namespace Vintagestory.GameContent
             string[] contentSummary = getContentSummary();
 
             ItemStack stack = inventory.FirstNonEmptySlot.Itemstack;
-            if (contentSummary.Length == 1 && stack.Class == EnumItemClass.Block && ((Block)stack.Collectible).EntityClass == null)  // Only add supplemental info for non-BlockEntities (otherwise it will be wrong or will get into a recursive loop, because right now this BEGroundStorage is the BlockEntity)
+            // Only add supplemental info for non-BlockEntities (otherwise it will be wrong or will get into a recursive loop, because right now this BEGroundStorage is the BlockEntity)
+            if (contentSummary.Length == 1 && !(stack.Collectible is IContainedCustomName) && stack.Class == EnumItemClass.Block && ((Block)stack.Collectible).EntityClass == null)  
             {
                 string detailedInfo = stack.Block.GetPlacedBlockInfo(Api.World, Pos, forPlayer);
                 if (detailedInfo != null && detailedInfo.Length > 0) dsc.Append(detailedInfo);

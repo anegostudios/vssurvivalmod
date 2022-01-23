@@ -85,7 +85,7 @@ namespace Vintagestory.API.Common
             ItemSlotLiquidOnly liquidSlot = inventory[1] as ItemSlotLiquidOnly;
             IWorldAccessor world = inventory.Api.World;
 
-            if (sourceSlot?.Itemstack?.Collectible is ILiquidSink sink && !liquidSlot.Empty)
+            if (sourceSlot?.Itemstack?.Collectible is ILiquidSink sink && !liquidSlot.Empty && sink.AllowHeldLiquidTransfer)
             {
                 ItemStack liqSlotStack = liquidSlot.Itemstack;
                 var curTargetLiquidStack = sink.GetContent(sourceSlot.Itemstack);
@@ -134,10 +134,9 @@ namespace Vintagestory.API.Common
 
             IWorldAccessor world = inventory.Api.World;
 
-            if (sourceSlot.Itemstack.Collectible is ILiquidSource)
+            if (sourceSlot.Itemstack.Collectible is ILiquidSource source && source.AllowHeldLiquidTransfer)
             {
                 ItemSlotLiquidOnly liquidSlot = inventory[1] as ItemSlotLiquidOnly;
-                ILiquidSource source = sourceSlot.Itemstack.Collectible as ILiquidSource;
                 
                 ItemStack bucketContents = source.GetContent(sourceSlot.Itemstack);
                 bool stackable = !liquidSlot.Empty && liquidSlot.Itemstack.Equals(world, bucketContents, GlobalConstants.IgnoredStackAttributes);
@@ -149,10 +148,13 @@ namespace Vintagestory.API.Common
                     var lprops = BlockLiquidContainerBase.GetContainableProps(bucketContents);
 
                     float toMoveLitres = op.CtrlDown ? source.TransferSizeLitres : source.CapacityLitres;
-                    float curLitres = liquidSlot.StackSize / lprops.ItemsPerLitre;
+                    float curSourceLitres = bucketContents.StackSize / lprops.ItemsPerLitre * bucketStack.StackSize;
+                    float curDestLitres = liquidSlot.StackSize / lprops.ItemsPerLitre;
 
-                    toMoveLitres *= bucketStack.StackSize;
-                    toMoveLitres = Math.Min(toMoveLitres, liquidSlot.CapacityLitres - curLitres);
+                    // Cap by source amount
+                    toMoveLitres = Math.Min(toMoveLitres, curSourceLitres);
+                    // Cap by target capacity
+                    toMoveLitres = Math.Min(toMoveLitres, liquidSlot.CapacityLitres - curDestLitres);
 
                     if (toMoveLitres > 0)
                     {

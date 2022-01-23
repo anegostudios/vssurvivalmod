@@ -398,7 +398,7 @@ namespace Vintagestory.GameContent
 
                 int index = capi.World.Rand.Next(skinpart.Variants.Length);
 
-                if ((skinpart.Code == "mustache" || skinpart.Code == "beard") && capi.World.Rand.NextDouble() < 0.5)
+                if ((skinpart.Code == "mustache" || skinpart.Code == "beard") && capi.World.Rand.NextDouble() < 0.65)
                 {
                     index = 0;
                 }

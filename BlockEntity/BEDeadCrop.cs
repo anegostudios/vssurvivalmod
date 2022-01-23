@@ -17,9 +17,7 @@ namespace Vintagestory.GameContent
         Unknown = 0,
         TooHot = 1,
         TooCold = 2,
-        /*Disease,
-        TooDry,
-        TooWet*/
+        Eaten = 3
     }
 
     public class BlockEntityDeadCrop : BlockEntityContainer
@@ -105,9 +103,7 @@ namespace Vintagestory.GameContent
             {
                 case EnumCropStressType.TooHot: dsc.AppendLine(Lang.Get("Died from too high temperatues.")); break;
                 case EnumCropStressType.TooCold: dsc.AppendLine(Lang.Get("Died from too low temperatures.")); break;
-                //case EnumCropStressType.Disease: dsc.AppendLine(Lang.Get("Died from disease.")); break;
-                //case EnumCropStressType.TooDry: dsc.AppendLine(Lang.Get("Died from to little moisture.")); break;
-                //case EnumCropStressType.TooWet: dsc.AppendLine(Lang.Get("Died from to much moisture.")); break;
+                case EnumCropStressType.Eaten: dsc.AppendLine(Lang.Get("Eaten by wild animals.")); break;
             }
 
             if (!inv[0].Empty) dsc.Append(inv[0].Itemstack.Block.GetPlacedBlockInfo(Api.World, Pos, forPlayer));

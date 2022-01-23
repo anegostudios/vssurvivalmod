@@ -415,6 +415,7 @@ namespace Vintagestory.ServerMods
                         false,
                         treegenParams.size,
                         treegenParams.vinesGrowthChance,
+                        1,
                         treesGenerated
                     );
 

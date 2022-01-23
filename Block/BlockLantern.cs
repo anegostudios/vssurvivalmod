@@ -257,7 +257,9 @@ namespace Vintagestory.GameContent
             {
                 BELantern bel = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BELantern;
                 if (bel.Interact(byPlayer))
+                {
                     return true;
+                }
                 // if Interact returned false, the player had an empty slot so revert to base: right-click pickup
             }
 

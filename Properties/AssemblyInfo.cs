@@ -139,7 +139,8 @@ using Vintagestory.API.Config;
                     allowUndergroundFarming: ""false"",
                     spawnRadius: ""5000"",
                     temporalGearRespawnUses: ""2"",
-                    temporalStormSleeping: ""0""
+                    temporalStormSleeping: ""0"",
+                    temporalRifts: ""invisible""
 			    }
 		    }
 	    ],
@@ -179,6 +180,7 @@ using Vintagestory.API.Config;
             { category: ""temporalstability"", code: ""temporalStorms"", dataType: ""dropdown"", values: [""off"", ""veryrare"", ""rare"", ""sometimes"", ""often"", ""veryoften""], names: [""Off"", ""Every 30-40 days, increase strength/frequency by 2.5% each time, capped at +25%"", ""Approx. every 20-30 days, increase strength/frequency by 5% each time, capped at +50%"", ""Approx. every 10-20 days, increase strength/frequency by +10% each time, capped at 100%"", ""Approx. every 5-10 days, increase strength/frequency by 15% each time, capped at +150%"", ""Approx. every 3-6 days, increase strength/frequency by 20% each time, capped at +200%""], default: ""sometimes"" },
             { category: ""temporalstability"", code: ""tempstormDurationMul"", dataType: ""dropdown"", values: [""2"", ""1.5"", ""1.25"", ""1"", ""0.75"", ""0.5"", ""0.25""], names: [""Much longer (200%)"", ""Longer (150%)"", ""Slightly longer (125%)"", ""Normal (100%)"", ""Slightly shorter (75%)"", ""Shorter (50%)"", ""Much Shorter (25%)""], default: ""1"" },
             { category: ""temporalstability"", code: ""temporalStability"", dataType: ""bool"", default: ""true"" },
+            { category: ""temporalstability"", code: ""temporalRifts"", dataType: ""dropdown"", values: [""off"", ""invisible"", ""visible""], names: [""Off"", ""Invisible"", ""Visible""], default: ""visible"" },
             { category: ""temporalstability"", code: ""temporalGearRespawnUses"", dataType: ""dropdown"", values: [""-1"", ""20"", ""10"", ""5"", ""4"", ""3"", ""2"", ""1""], names: [""Infinite"", ""20 times"", ""10 times"", ""5 times"", ""4 times"", ""3 times"", ""2 times"", ""One time""], default: ""1"" },
             { category: ""temporalstability"", code: ""temporalStormSleeping"", dataType: ""dropdown"", values: [""0"", ""1""], names: [""Disallowed"", ""Allowed""], default: ""1"" },
 

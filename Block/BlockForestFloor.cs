@@ -7,6 +7,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
 using Vintagestory.ServerMods;
 using Vintagestory.ServerMods.NoObf;
 
@@ -29,6 +30,8 @@ namespace Vintagestory.GameContent
 
         int mapColorTextureSubId;
 
+        
+        CompositeTexture grassTex;
 
 
         public int CurrentLevel()
@@ -47,7 +50,16 @@ namespace Vintagestory.GameContent
             {
                 Block fullCoverBlock = api.World.GetBlock(this.CodeWithParts("7"));
                 mapColorTextureSubId = fullCoverBlock.Textures["specialSecondTexture"].Baked.TextureSubId;
+
+                var soilBlock = api.World.GetBlock(new AssetLocation("soil-low-normal"));
+                if (soilBlock.Textures == null || !soilBlock.Textures.TryGetValue("specialSecondTexture", out grassTex))
+                {
+                    grassTex = soilBlock.Textures?.First().Value;
+                }
+
             }
+
+
         }
 
         // A bit clunky / hard-coded still, find a better way to do this
@@ -63,17 +75,6 @@ namespace Vintagestory.GameContent
             return result;
         }
 
-        public override void OnServerGameTick(IWorldAccessor world, BlockPos pos, object extra = null)
-        {
-            base.OnServerGameTick(world, pos, extra);
-
-            //GrassTick tick = extra as GrassTick;
-            //world.BlockAccessor.SetBlock(tick.Grass.BlockId, pos);
-            //if (tick.TallGrass != null && world.BlockAccessor.GetBlock(pos.UpCopy()).BlockId == 0)
-            //{
-            //    world.BlockAccessor.SetBlock(tick.TallGrass.BlockId, pos.UpCopy());
-            //}
-        }
 
         public override bool ShouldReceiveServerGameTicks(IWorldAccessor world, BlockPos pos, Random offThreadRandom, out object extra)
         {
@@ -86,30 +87,6 @@ namespace Vintagestory.GameContent
                 return false;
             }
 
-            //bool isGrowing = false;
-
-            //Block grass;
-            //BlockPos upPos = pos.UpCopy();
-            
-            //bool lowLightLevel = world.BlockAccessor.GetLightLevel(pos, EnumLightLevelType.MaxLight) < growthLightLevel;
-            //if (lowLightLevel || isSmotheringBlock(world, upPos))
-            //{
-            //    grass = tryGetBlockForDying(world);
-            //}
-            //else
-            //{
-            //    isGrowing = true;
-            //    grass = tryGetBlockForGrowing(world, pos);
-            //}
-
-            //if (grass != null)
-            //{
-            //    extra = new GrassTick()
-            //    {
-            //        Grass = grass,
-            //        TallGrass = isGrowing ? getTallGrassBlock(world, upPos, offThreadRandom) : null
-            //    };
-            //}
             return extra != null;
         }
 
@@ -138,7 +115,26 @@ namespace Vintagestory.GameContent
 
         public override int GetColor(ICoreClientAPI capi, BlockPos pos)
         {
-            return base.GetColor(capi, pos);
+            float grassLevel = Variant["grass"].ToInt() / 7f;
+            
+            if (grassLevel == 0) return base.GetColorWithoutTint(capi, pos);
+         
+            int? textureSubId = grassTex?.Baked.TextureSubId;
+            if (textureSubId == null)
+            {
+                return ColorUtil.WhiteArgb;
+            }
+
+            int grassColor = capi.BlockTextureAtlas.GetAverageColor((int)textureSubId);
+
+            if (ClimateColorMapResolved != null)
+            {
+                grassColor = capi.World.ApplyColorMapOnRgba(ClimateColorMapResolved, SeasonColorMapResolved, grassColor, pos.X, pos.Y, pos.Z, false);
+            }
+
+            int soilColor = capi.BlockTextureAtlas.GetAverageColor((int)Textures["up"].Baked.TextureSubId);
+
+            return ColorUtil.ColorOverlay(soilColor, grassColor, grassLevel);
         }
 
 

@@ -26,6 +26,7 @@ namespace Vintagestory.GameContent
             get { return angleRad; }
             set
             {
+                bool changed = angleRad != value;
                 angleRad = value;
                 colSelBox = new Cuboidf[] { Block.CollisionBoxes[0].RotatedCopy(0, value * GameMath.RAD2DEG, 0, new Vec3d(0.5, 0.5, 0.5)) };
                 if (signRenderer != null && Block.Variant["attachment"] != "wall")
@@ -35,6 +36,7 @@ namespace Vintagestory.GameContent
                     signRenderer.translateZ = 8f/16f;
                     signRenderer.offsetZ = -1.51f / 16f;
                 }
+                if (changed) MarkDirty(true);
             }
         }
 

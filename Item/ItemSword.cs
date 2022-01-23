@@ -9,20 +9,9 @@ namespace Vintagestory.GameContent
 {
     public class ItemSword : Item
     {
-        public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
-        {
-            if (blockSel == null)
-            {
-                handling = EnumHandHandling.PreventDefault;
-                return;
-            }
 
-            base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handling);
-        }
         public override void OnHeldAttackStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
         {
-            if (blockSel != null) return;
-
             byEntity.Attributes.SetInt("didattack", 0);
 
             byEntity.World.RegisterCallback((dt) =>
@@ -32,9 +21,9 @@ namespace Vintagestory.GameContent
 
                 if (byEntity.Controls.HandUse == EnumHandInteract.HeldItemAttack)
                 {
-                    byPlayer.Entity.World.PlaySoundAt(new AssetLocation("sounds/player/strike"), byPlayer, byPlayer);
+                    byPlayer.Entity.World.PlaySoundAt(new AssetLocation("sounds/player/strike"), byPlayer.Entity, byPlayer, 0.9f + (float)api.World.Rand.NextDouble() * 0.2f, 16, 0.5f);
                 }
-            }, 464);
+            }, (int)(400 / 1.25f));
 
             handling = EnumHandHandling.PreventDefault;
         }
@@ -46,8 +35,10 @@ namespace Vintagestory.GameContent
 
         public override bool OnHeldAttackStep(float secondsPassed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSelection, EntitySelection entitySel)
         {
+            secondsPassed *= 1.25f;
+
             float backwards = -Math.Min(0.35f, 2 * secondsPassed);
-            float stab = Math.Min(1.2f, 20 * Math.Max(0, secondsPassed - 0.35f)); // + Math.Max(0, 5*(secondsPassed - 0.5f));
+            float stab = Math.Min(1.2f, 20 * Math.Max(0, secondsPassed - 0.35f));
 
             if (byEntity.World.Side == EnumAppSide.Client)
             {
@@ -56,16 +47,15 @@ namespace Vintagestory.GameContent
                 tf.EnsureDefaultValues();
 
                 float sum = stab + backwards;
-                float ztranslation = Math.Min(0.2f, 1.5f * secondsPassed);
-                float easeout = Math.Max(0, 10 * (secondsPassed - 1));
+                float easeout = Math.Max(0, 2 * (secondsPassed - 1));
 
                 if (secondsPassed > 0.4f) sum = Math.Max(0, sum - easeout);
-                ztranslation = Math.Max(0, ztranslation - easeout);
 
-                tf.Translation.Set(sum * 0.8f, 2.5f * sum / 3, -ztranslation);
-                tf.Rotation.Set(sum * 10, sum * 2, sum * 25);
+                tf.Translation.Set(-1.4f * sum, 0, -sum * 0.8f * 2.6f);
+                tf.Rotation.Set(-sum * 90, 0, sum * 10);
 
-                byEntity.Controls.UsingHeldItemTransformBefore = tf;
+                byEntity.Controls.UsingHeldItemTransformAfter = tf;
+
 
                 if (stab > 1.15f && byEntity.Attributes.GetInt("didattack") == 0)
                 {

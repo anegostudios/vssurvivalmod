@@ -92,9 +92,11 @@ namespace Vintagestory.GameContent
                 int interval = 10000;
                 RegisterGameTickListener(onServerTick, interval, -api.World.Rand.Next(interval));
                 
-                setMushroomBlock(Api.World.GetBlock(mushroomBlockCode));
-
-                
+                if (!setMushroomBlock(Api.World.GetBlock(mushroomBlockCode)))
+                {
+                    api.Logger.Error("Invalid mycelium mushroom type '{0}' at {1}. Will delete block entity.", mushroomBlockCode, Pos);
+                    Api.Event.EnqueueMainThreadTask(() => Api.World.BlockAccessor.RemoveBlockEntity(Pos), "deletemyceliumBE");
+                }
             }
         }
 
@@ -184,19 +186,23 @@ namespace Vintagestory.GameContent
             grownMushroomOffsets = new Vec3i[0];
         }
 
-        void setMushroomBlock(Block block)
+        bool setMushroomBlock(Block block)
         {
             this.mushroomBlock = block;
             this.mushroomBlockCode = block.Code;
 
             if (Api != null)
             {
+                if (block?.Attributes?["mushroomProps"].Exists != true) return false;
+
                 if (block != null) props = block.Attributes["mushroomProps"].AsObject<MushroomProps>();
                 MyceliumSystem.lcgrnd.InitPositionSeed(mushroomBlockCode.GetHashCode(), (int)Api.World.Calendar.GetHemisphere(Pos) + 5);
 
                 fruitingDays = 20 + MyceliumSystem.lcgrnd.NextDouble() * 20;
                 growingDays = 10 + MyceliumSystem.lcgrnd.NextDouble() * 10;
             }
+
+            return true;
         }
 
         public void OnGenerated(IBlockAccessor blockAccessor, LCGRandom rnd, BlockMushroom block)

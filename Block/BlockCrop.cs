@@ -43,10 +43,7 @@ namespace Vintagestory.GameContent
             }
 
             tickGrowthProbability = Attributes?["tickGrowthProbability"] != null ? Attributes["tickGrowthProbability"].AsFloat(defaultGrowthProbability) : defaultGrowthProbability;
-            //roomreg = api.ModLoader.GetModSystem<RoomRegistry>();
-
-
-
+       
             if (api.Side == EnumAppSide.Client)
             {
                 if (this.RandomDrawOffset > 0)

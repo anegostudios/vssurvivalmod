@@ -49,6 +49,7 @@ namespace Vintagestory.GameContent
                     }
                 };
             });
+
         }
 
 
@@ -74,8 +75,18 @@ namespace Vintagestory.GameContent
             if (resSlot == null) return;
 
             int strength = resSlot.Itemstack.ItemAttributes["reinforcementStrength"].AsInt(0);
-            
-            if (!bre.StrengthenBlock(blockSel.Position, player, strength))
+
+            int toolMode = slot.Itemstack.Attributes.GetInt("toolMode");
+            int groupUid = 0;
+            var groups = player.GetGroups();
+            if (toolMode > 0 && toolMode - 1 < groups.Length)
+            {
+                groupUid = groups[toolMode - 1].GroupUid;
+            }
+
+            bool didStrengthen = groupUid > 0 ? bre.StrengthenBlock(blockSel.Position, player, strength, groupUid) : bre.StrengthenBlock(blockSel.Position, player, strength);
+
+            if (!didStrengthen)
             {
                 (player as IServerPlayer).SendIngameError("alreadyreinforced", "Cannot reinforce block, it's already reinforced!");
                 return;
@@ -117,10 +128,10 @@ namespace Vintagestory.GameContent
             {
                 if (errorCode == "notownblock")
                 {
-                    (player as IServerPlayer).SendIngameError("cantremove", "Cannot remove reinforcement. This block does not belong to you");
+                    player.SendIngameError("cantremove", "Cannot remove reinforcement. This block does not belong to you");
                 } else
                 {
-                    (player as IServerPlayer).SendIngameError("cantremove", "Cannot remove reinforcement. It's not reinforced");
+                    player.SendIngameError("cantremove", "Cannot remove reinforcement. It's not reinforced");
                 }
                 
                 return;
@@ -141,6 +152,40 @@ namespace Vintagestory.GameContent
 
             handling = EnumHandHandling.PreventDefaultAction;
         }
+
+
+
+        public override void SetToolMode(ItemSlot slot, IPlayer byPlayer, BlockSelection blockSelection, int toolMode)
+        {
+            slot.Itemstack.Attributes.SetInt("toolMode", toolMode);
+        }
+
+
+        public override int GetToolMode(ItemSlot slot, IPlayer byPlayer, BlockSelection blockSelection)
+        {
+            return Math.Min(1 + byPlayer.GetGroups().Length - 1, slot.Itemstack.Attributes.GetInt("toolMode"));
+        }
+
+        public override SkillItem[] GetToolModes(ItemSlot slot, IClientPlayer forPlayer, BlockSelection blockSel)
+        {
+            var groups = forPlayer.GetGroups();
+            SkillItem[] modes = new SkillItem[1 + groups.Length];
+            var capi = api as ICoreClientAPI;
+            int seed = 1;
+            int addLines = 1;
+            var texture = capi.Gui.Icons.GenTexture(48, 48, (ctx, surface) => { capi.Gui.Icons.DrawRandomSymbol(ctx, 0, 0, 48, GuiStyle.MacroIconColor, 2, seed, addLines); });
+            modes[0] = new SkillItem() { Code = new AssetLocation("self"), Name = Lang.Get("Reinforce for yourself") }.WithIcon(capi, texture);
+            for (int i = 0; i < groups.Length; i++)
+            {
+                addLines++;
+                seed++;
+                texture = capi.Gui.Icons.GenTexture(48, 48, (ctx, surface) => { capi.Gui.Icons.DrawRandomSymbol(ctx, 0, 0, 48, GuiStyle.MacroIconColor, 2, seed, addLines); });
+                modes[i + 1] = new SkillItem() { Code = new AssetLocation("group"), Name = Lang.Get("Reinforce for group " + groups[i].GroupName) }.WithIcon(capi, texture);
+            }
+
+            return modes;
+        }
+
 
         public override WorldInteraction[] GetHeldInteractionHelp(ItemSlot inSlot)
         {

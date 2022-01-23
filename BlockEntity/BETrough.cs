@@ -61,16 +61,14 @@ namespace Vintagestory.GameContent
         public Vec3d Position => Pos.ToVec3d().Add(0.5, 0.5, 0.5);
         public string Type => "food";
         
-        BlockFacing facing;
         MeshData currentMesh;
-
-        ContentConfig[] contentConfigs;
 
         string contentCode = "";
 
         DoubleTroughPoiDummy dummypoi;
 
-        public ContentConfig[] ContentConfig => contentConfigs;
+        public ContentConfig[] contentConfigs => Api.ObjectCache["troughContentConfigs-" + Block.Code] as ContentConfig[];
+
 
         public bool IsFull
         {
@@ -143,19 +141,6 @@ namespace Vintagestory.GameContent
         public override void Initialize(ICoreAPI api)
         {
             base.Initialize(api);
-
-            facing = BlockFacing.FromCode(Block.LastCodePart());
-
-            if (contentConfigs == null)
-            {
-                contentConfigs = Block.Attributes?["contentConfig"]?.AsObject<ContentConfig[]>();
-                if (contentConfigs == null) return;
-
-                foreach (var val in contentConfigs)
-                {
-                    val.Content.Resolve(Api.World, "troughcontentconfig");
-                }
-            }
 
             if (Api.Side == EnumAppSide.Client)
             {

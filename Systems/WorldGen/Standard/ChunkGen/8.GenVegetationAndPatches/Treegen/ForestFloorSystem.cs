@@ -22,7 +22,6 @@ namespace Vintagestory.ServerMods
         ThreadLocal<short[]> outlineThreadSafe = new ThreadLocal<short[]>(() => new short[1089]);
 
         int[] forestBlocks;
-        int sticksBlockId;
 
         List<BlockPatch> underTreePatches;
         List<BlockPatch> onTreePatches;
@@ -45,8 +44,6 @@ namespace Vintagestory.ServerMods
 
         public void SetBlockPatches(BlockPatchConfig bpc)
         {
-            sticksBlockId = worldAccessor.GetBlock(new AssetLocation("loosestick-free")).Id;
-
             forestBlocks = BlockForestFloor.InitialiseForestBlocks(worldAccessor);
 
             underTreePatches = new List<BlockPatch>();
@@ -75,11 +72,10 @@ namespace Vintagestory.ServerMods
 
         internal void CreateForestFloor(IBlockAccessor blockAccessor, TreeGenConfig config, BlockPos pos, LCGRandom rnd, int treesInChunkGenerated)
         {
-            // Skip the forest floor system in tropical regions  (lush vegetation everywhere)
-            if (config.isTropical) return;
-
+            int grassLevelOffset = 0;
+            // More grass coverage for jungles
             ClimateCondition climate = blockAccessor.GetClimateAt(pos, EnumGetClimateMode.WorldGenValues);
-            if (climate.Temperature > 25) return;
+            if (climate.Temperature > 24 && climate.Rainfall > 160) grassLevelOffset = 2;
 
             short[] outline = outlineThreadSafe.Value;
             this.api = blockAccessor;
@@ -173,8 +169,8 @@ namespace Vintagestory.ServerMods
             BlockPos currentPos = new BlockPos();
             for (int canopyIndex = 0; canopyIndex < outline.Length; canopyIndex++)
             {
-                int blockCount = outline[canopyIndex];
-                if (blockCount == 0) continue;
+                int intensity = outline[canopyIndex];
+                if (intensity == 0) continue;
 
                 int dz = canopyIndex / 33 - 16;
                 int dx = canopyIndex % 33 - 16;
@@ -183,7 +179,7 @@ namespace Vintagestory.ServerMods
 
                 if (currentPos.Y - pos.Y < 4)  //Don't place forest floor above approximate height of the canopy of this tree
                 {
-                    CheckAndReplaceForestFloor(config, currentPos, blockCount, rnd, climate.Fertility, treesInChunkGenerated);
+                    CheckAndReplaceForestFloor(currentPos, intensity, grassLevelOffset);
                 }
             }
 
@@ -198,7 +194,8 @@ namespace Vintagestory.ServerMods
             int radius = 5;
             int worldheight = blockAccessor.MapSizeY;
 
-            for (int i = 0; i < underTreePatches.Count; i++)
+            int cnt = underTreePatches?.Count ?? 0;
+            for (int i = 0; i < cnt; i++)
             {
                 BlockPatch bPatch = underTreePatches[i];
                 if (bPatch.TreeType != EnumTreeType.Any && bPatch.TreeType != treetype)
@@ -260,8 +257,8 @@ namespace Vintagestory.ServerMods
                 }
             }
 
-
-            for (int i = 0; i < onTreePatches.Count; i++)
+            cnt = onTreePatches?.Count ?? 0;
+            for (int i = 0; i < cnt; i++)
             {
                 BlockPatch blockPatch = onTreePatches[i];
 
@@ -320,7 +317,7 @@ namespace Vintagestory.ServerMods
         /// Remove all plants (flowers and tallgrass)
         /// </summary>
         /// <returns>True if a plant was removed (indicating nothing more to do in this x,z position), otherwise false</returns>
-        private void CheckAndReplaceForestFloor(TreeGenConfig config, BlockPos pos, int intensity, LCGRandom rnd, float fertility, int treesInChunkGenerated)
+        private void CheckAndReplaceForestFloor(BlockPos pos, int intensity, int grassLevelOffset)
         {
             if (forestBlocks == null) return;
 
@@ -338,7 +335,7 @@ namespace Vintagestory.ServerMods
 
                 // Set forest soil blocks according to canopy thickness and therefore shade level
                 int forestFloorBlockId;
-                int level = intensity / 18;
+                int level = grassLevelOffset + intensity / 18;
                 if (level >= forestBlocks.Length - 1)
                 {
                     forestFloorBlockId = forestBlocks[level > forestBlocks.Length ? 0 : 1];

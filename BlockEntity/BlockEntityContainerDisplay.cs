@@ -33,6 +33,11 @@ namespace Vintagestory.GameContent
     {
         MeshData GenMesh(ItemStack itemstack, ITextureAtlasAPI targetAtlas, BlockPos atBlockPos);
 
+        /// <summary>
+        /// Needs to return a unique identifier for this itemstack
+        /// </summary>
+        /// <param name="itemstack"></param>
+        /// <returns></returns>
         string GetMeshCacheKey(ItemStack itemstack);
     }
 

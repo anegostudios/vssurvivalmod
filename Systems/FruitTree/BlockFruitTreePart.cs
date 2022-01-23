@@ -77,7 +77,7 @@ namespace Vintagestory.GameContent
 
             var be = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityFruitTreePart;
 
-            if (be.LeafParticlesColor == null) return;
+            if (be?.LeafParticlesColor == null) return;
 
             if (be.FruitTreeState == EnumFruitTreeState.EnterDormancy)
             {
@@ -94,7 +94,7 @@ namespace Vintagestory.GameContent
             }
 
             foliageParticles.LifeLength = 7f - GlobalConstants.CurrentWindSpeedClient.X * 3f;
-            
+            foliageParticles.WindAffectednes = 1f;
             foliageParticles.MinPos.Set(pos);
             manager.Spawn(foliageParticles);
         }

@@ -17,7 +17,7 @@ namespace Vintagestory.GameContent
         public override void OnLoaded(ICoreAPI api)
         {
             particleCollBoxes = new Cuboidf[] { CollisionBoxes[0].Clone() };
-            particleCollBoxes[0].Y1 = 0.7f;
+            particleCollBoxes[0].Y1 = 0.6875f;
 
             base.OnLoaded(api);
 
@@ -26,33 +26,37 @@ namespace Vintagestory.GameContent
                 (api as ICoreClientAPI).Input.InWorldAction += Input_InWorldAction;
             }
 
-            interactions = ObjectCacheUtil.GetOrCreate(api, "fruitPressInteractions", () =>
+            // This needs to happen a frame later because accessing blc.CapacityLitres requires the OnLoaded() method to be called on the other blocks.
+            api.Event.EnqueueMainThreadTask(() =>
             {
-                List<ItemStack> fillableContainers = new List<ItemStack>();
-
-                foreach (CollectibleObject obj in api.World.Collectibles)
+                interactions = ObjectCacheUtil.GetOrCreate(api, "fruitPressInteractions", () =>
                 {
-                    if (obj is BlockLiquidContainerBase blc && blc.IsTopOpened && blc.AllowHeldLiquidTransfer)
+                    List<ItemStack> fillableContainers = new List<ItemStack>();
+
+                    foreach (CollectibleObject obj in api.World.Collectibles)
                     {
-                        fillableContainers.Add(new ItemStack(obj));
+                        if (obj is BlockLiquidContainerBase blc && blc.IsTopOpened && blc.AllowHeldLiquidTransfer && blc.CapacityLitres < 20)
+                        {
+                            fillableContainers.Add(new ItemStack(obj));
+                        }
                     }
-                }
 
-                return new WorldInteraction[]
-                {
-                    
+                    return new WorldInteraction[]
+                    {
+
                     new WorldInteraction()
                     {
                         ActionLangCode = "blockhelp-fruitpress-putremovebucket",
                         MouseButton = EnumMouseButton.Right,
                         Itemstacks = fillableContainers.ToArray(),
-                        ShouldApply = (wi, bs, es) => 
+                        ShouldApply = (wi, bs, es) =>
                         {
                             return bs.SelectionBoxIndex == (int)EnumFruitPressSection.Ground;
                         }
                     }
-                };
-            });
+                    };
+                });
+            }, "initFruitPressInteractions");
         }
 
         private void Input_InWorldAction(EnumEntityAction action, bool on, ref EnumHandling handled)

@@ -97,7 +97,7 @@ namespace Vintagestory.GameContent
         {
             base.StartClientSide(api);
 
-            capi = api as ICoreClientAPI;
+            capi = api;
 
             api.Event.LeaveWorld += Event_LeaveWorld;
             api.Event.BlockTexturesLoaded += Event_BlockTexturesLoaded;
@@ -290,7 +290,9 @@ namespace Vintagestory.GameContent
         public MeshData GenMealInContainerMesh(Block containerBlock, CookingRecipe forRecipe, ItemStack[] contentStacks, Vec3f foodTranslate = null)
         {
             CompositeShape cShape = containerBlock.Shape;
-            Shape shape = capi.Assets.TryGet("shapes/" + cShape.Base.Path + ".json").ToObject<Shape>();
+            var loc = cShape.Base.Clone().WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json");
+
+            Shape shape = capi.Assets.TryGet(loc).ToObject<Shape>();
             MeshData wholeMesh;
             capi.Tesselator.TesselateShape("meal", shape, out wholeMesh, capi.Tesselator.GetTexSource(containerBlock), new Vec3f(cShape.rotateX, cShape.rotateY, cShape.rotateZ));
 
@@ -379,13 +381,14 @@ namespace Vintagestory.GameContent
         {
             MeshData mergedmesh = null;
             MealTextureSource texSource = new MealTextureSource(capi, mealtextureSourceBlock);
-            string shapePath = "shapes/" + recipe.Shape.Base.Path + ".json";
+
+            var shapePath = recipe.Shape.Base.Clone().WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json");
+
             bool rotten = ContentsRotten(contentStacks);
             if (rotten)
             {
-                shapePath = "shapes/block/food/meal/rot.json";
+                shapePath = new AssetLocation("shapes/block/food/meal/rot.json");
             }
-            
 
             Shape shape = capi.Assets.TryGet(shapePath).ToObject<Shape>();
             Dictionary<CookingRecipeIngredient, int> usedIngredQuantities = new Dictionary<CookingRecipeIngredient, int>();

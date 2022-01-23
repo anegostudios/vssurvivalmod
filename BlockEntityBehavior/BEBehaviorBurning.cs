@@ -347,20 +347,27 @@ namespace Vintagestory.GameContent
         public override void OnBlockRemoved()
         {
             base.OnBlockRemoved();
+            killAmbientSound();
+        }
 
+        public override void OnBlockUnloaded()
+        {
+            base.OnBlockUnloaded();
+            killAmbientSound();
+        }
+
+        ~BEBehaviorBurning()
+        {
+            killAmbientSound();
+        }
+
+        void killAmbientSound()
+        {
             if (ambientSound != null)
             {
                 ambientSound?.Stop();
                 ambientSound?.Dispose();
                 ambientSound = null;
-            }
-        }
-
-        ~BEBehaviorBurning()
-        {
-            if (ambientSound != null)
-            {
-                ambientSound?.Dispose();
             }
         }
 
