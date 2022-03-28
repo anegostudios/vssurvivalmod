@@ -67,9 +67,22 @@ namespace Vintagestory.GameContent
             {
                 JsonObject attr = slot.Itemstack.Collectible.Attributes;
                 float health = attr["health"].AsFloat();
-                byEntity.ReceiveDamage(new DamageSource()
+
+                var source = byEntity is EntityPlayer ? EnumDamageSource.Player : EnumDamageSource.Entity;
+                var entityToHeal = entitySel?.Entity;
+                if (entityToHeal == null)
                 {
-                    Source = EnumDamageSource.Internal,
+                    entityToHeal = byEntity;
+                    source = EnumDamageSource.Internal;
+                }
+
+                if (entityToHeal == null)
+                    return;
+
+                entityToHeal.ReceiveDamage(new DamageSource()
+                {
+                    Source = source,
+                    SourceEntity = source == EnumDamageSource.Internal ? null : byEntity,
                     Type = health > 0 ? EnumDamageType.Heal : EnumDamageType.Poison
                 }, Math.Abs(health));
 
