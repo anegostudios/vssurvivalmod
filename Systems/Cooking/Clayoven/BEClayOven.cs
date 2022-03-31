@@ -12,7 +12,7 @@ using Vintagestory.GameContent;
 
 namespace Vintagestory.GameContent
 {
-    class BlockEntityOven : BlockEntityDisplay, IHeatSource
+    public class BlockEntityOven : BlockEntityDisplay, IHeatSource
     {
         // One Vec3f object only, for performance
         static readonly Vec3f centre = new Vec3f(0.5f, 0, 0.5f);
