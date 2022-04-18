@@ -290,7 +290,7 @@ namespace Vintagestory.GameContent
             if (blockSel == null) return;
 
             var mouseslot = byPlayer.InventoryManager.MouseItemSlot;
-            if (!mouseslot.Empty && mouseslot.Itemstack.Block != null)
+            if (!mouseslot.Empty && mouseslot.Itemstack.Block != null && !(mouseslot.Itemstack.Block is BlockChisel))
             {
                 BlockEntityChisel be = api.World.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityChisel;
                 if (IsChiselingAllowedFor(mouseslot.Itemstack.Block, byPlayer) && !be.MaterialIds.Contains(mouseslot.Itemstack.Block.Id))

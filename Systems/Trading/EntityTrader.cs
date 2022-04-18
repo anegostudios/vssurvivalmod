@@ -269,10 +269,12 @@ namespace Vintagestory.GameContent
                     refreshedSlots.Add(i);
                 }
 
-                //if (newTradeItem.Name == null) newTradeItem.Name = i + "";
-
-                intoSlot.SetTradeItem(newTradeItem.Resolve(World));
-                intoSlot.MarkDirty();
+                var titem = newTradeItem.Resolve(World);
+                if (titem.Stock > 0)
+                {
+                    intoSlot.SetTradeItem(titem);
+                    intoSlot.MarkDirty();
+                }
             }
         }
 

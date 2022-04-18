@@ -57,7 +57,7 @@ namespace Vintagestory.GameContent
             if (mode == EnumGetClimateMode.WorldGenValues) return;
 
             double yearRel = totalDays / api.World.Calendar.DaysPerYear % 1;
-            double hourOfDay = totalDays / api.World.Calendar.HoursPerDay % 1;
+            double hourOfDay = (totalDays % 1) * api.World.Calendar.HoursPerDay;
 
             updateTemperature(ref climate, pos, yearRel, hourOfDay, totalDays);
         }

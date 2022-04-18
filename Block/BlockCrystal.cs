@@ -64,6 +64,9 @@ namespace Vintagestory.GameContent
                     world.SpawnItemEntity(drop, new Vec3d(pos.X + 0.5, pos.Y + 0.5, pos.Z + 0.5), null);
                 }
             }
+
+            // The explosion code uses the bulk block accessor for greater performance
+            world.BulkBlockAccessor.SetBlock(0, pos);
         }
 
         public override double GetBlastResistance(IWorldAccessor world, BlockPos pos, Vec3f blastDirectionVector, EnumBlastType blastType)

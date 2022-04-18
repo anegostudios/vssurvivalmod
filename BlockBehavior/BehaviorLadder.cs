@@ -267,7 +267,7 @@ namespace Vintagestory.GameContent
             {
                 handling = EnumHandling.PreventSubsequent;
                 world.BlockAccessor.BreakBlock(pos, null);
-                world.BlockAccessor.TriggerNeighbourBlockUpdate(pos);
+                world.BlockAccessor.TriggerNeighbourBlockUpdate(pos.Copy());
                 return;
             }
 

@@ -131,16 +131,6 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public void OnNeighbourBlockChange(BlockPos neibpos)
-        {
-            var bh = GetBehavior<FruitTreeGrowingBranchBH>();
-            if (bh != null)
-            {
-                bh.OnNeighbourBlockChange(BlockFacing.FromNormal((neibpos - Pos).ToVec3i()));
-            }
-        }
-
-
         public override void OnBlockBroken(IPlayer byPlayer)
         {
             base.OnBlockBroken(byPlayer);
@@ -162,6 +152,22 @@ namespace Vintagestory.GameContent
                     }
 
                     if (!isSupported) Api.World.BlockAccessor.BreakBlock(npos, byPlayer);
+                }
+
+                if (nblock is BlockFruitTreeBranch && facing.IsHorizontal)
+                {
+                    var be = Api.World.BlockAccessor.GetBlockEntity(npos);
+                    if (be == null) continue;
+
+                    var bh = be.GetBehavior<FruitTreeGrowingBranchBH>();
+                    if (bh == null)
+                    {
+                        bh = new FruitTreeGrowingBranchBH(this);
+                        bh.Initialize(Api, null);
+                        be.Behaviors.Add(bh);
+                    }
+
+                    bh.OnNeighbourBranchRemoved(facing.Opposite);
                 }
             }
         }

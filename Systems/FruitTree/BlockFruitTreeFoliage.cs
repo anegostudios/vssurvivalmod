@@ -75,5 +75,18 @@ namespace Vintagestory.GameContent
         }
 
 
+        public override int GetColor(ICoreClientAPI capi, BlockPos pos)
+        {
+            int color = base.GetColorWithoutTint(capi, pos);
+
+            // Not all treetypes have the standard climatePlantTint, so take the tint from the foliageProps
+            BlockEntityFruitTreeFoliage bef = capi.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityFruitTreeFoliage;
+            string tint = null;
+            if (bef != null && bef.TreeType?.Length > 0) tint = foliageProps[bef.TreeType].ClimateColorMap;
+            if (tint == null) tint = "climatePlantTint";
+
+            return capi.World.ApplyColorMapOnRgba(tint, SeasonColorMap, color, pos.X, pos.Y, pos.Z, false);
+        }
+
     }
 }

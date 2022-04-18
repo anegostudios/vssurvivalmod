@@ -92,6 +92,11 @@ namespace Vintagestory.GameContent
             });
         }
 
+        public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
+        {
+            return new ItemStack(this, 1);
+        }
+
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
             BlockEntityBoiler be = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityBoiler;

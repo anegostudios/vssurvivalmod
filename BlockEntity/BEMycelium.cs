@@ -1,11 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
@@ -77,7 +72,7 @@ namespace Vintagestory.GameContent
         MushroomProps props;
         Block mushroomBlock;
 
-        double fruitingDays = 30;
+        double fruitingDays = 20;
         double growingDays = 20;
         int growRange = 7;
 
@@ -92,7 +87,7 @@ namespace Vintagestory.GameContent
                 int interval = 10000;
                 RegisterGameTickListener(onServerTick, interval, -api.World.Rand.Next(interval));
                 
-                if (!setMushroomBlock(Api.World.GetBlock(mushroomBlockCode)))
+                if (mushroomBlockCode != null && !setMushroomBlock(Api.World.GetBlock(mushroomBlockCode)))
                 {
                     api.Logger.Error("Invalid mycelium mushroom type '{0}' at {1}. Will delete block entity.", mushroomBlockCode, Pos);
                     Api.Event.EnqueueMainThreadTask(() => Api.World.BlockAccessor.RemoveBlockEntity(Pos), "deletemyceliumBE");

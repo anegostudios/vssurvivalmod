@@ -70,9 +70,15 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            if (ownBe.GrowTries > 60 || ownBe.FoliageState == EnumFoliageState.Dead) return;
-
             double totalDays = Api.World.Calendar.TotalDays;
+
+            if (ownBe.GrowTries > 60 || ownBe.FoliageState == EnumFoliageState.Dead)
+            {
+                ownBe.lastGrowthAttemptTotalDays = totalDays;
+                return;
+            }
+
+            
             ownBe.lastGrowthAttemptTotalDays = Math.Max(ownBe.lastGrowthAttemptTotalDays, totalDays - Api.World.Calendar.DaysPerYear * 4); // Don't simulate more than 4 years
 
             if (totalDays - ownBe.lastGrowthAttemptTotalDays < 0.5) return;
@@ -113,11 +119,11 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public void OnNeighbourBlockChange(BlockFacing facing)
+        public void OnNeighbourBranchRemoved(BlockFacing facing)
         {
             if ((ownBe.SideGrowth & (1<<facing.Index)) > 0)
             {
-                ownBe.GrowTries -= 5;
+                ownBe.GrowTries = Math.Min(55, ownBe.GrowTries - 5);
                 HDrive++;
             }
         }
@@ -139,6 +145,24 @@ namespace Vintagestory.GameContent
                         if (upBlock2 == leavesBlock)
                         {
                             TryGrowTo(EnumTreePartType.Branch, BlockFacing.UP, 1);
+                        } else
+                        {
+                            var faces = ((BlockFacing[])BlockFacing.ALLFACES.Clone()).Shuffle(Api.World.Rand);
+                            foreach (var facing in faces)
+                            {
+                                if ((ownBe.SideGrowth & (1 << facing.Index)) > 0)
+                                {
+                                    Block nblock = Api.World.BlockAccessor.GetBlock(ownBe.Pos.AddCopy(facing));
+
+                                    if (nblock == leavesBlock)
+                                    {
+                                        TryGrowTo(EnumTreePartType.Branch, facing, 1, 1);
+                                    } else
+                                    {
+                                        if (nblock.Id == 0) TryGrowTo(EnumTreePartType.Leaves, facing, 1);
+                                    }
+                                }
+                            }
                         }
                     }
                     break;
@@ -279,7 +303,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        private bool TryGrowTo(EnumTreePartType partType, BlockFacing facing, int len = 1)
+        private bool TryGrowTo(EnumTreePartType partType, BlockFacing facing, int len = 1, float? hdrive = null)
         {
             var pos = ownBe.Pos.AddCopy(facing, len);
             var block = stemBlock;
@@ -295,7 +319,8 @@ namespace Vintagestory.GameContent
             ;
             if (!replaceable) return false;
 
-            var rootBe = Api.World.BlockAccessor.GetBlockEntity(ownBe.Pos.AddCopy(ownBe.RootOff)) as BlockEntityFruitTreeBranch;
+            var rootPos = ownBe.Pos.AddCopy(ownBe.RootOff);
+            var rootBe = Api.World.BlockAccessor.GetBlockEntity(rootPos) as BlockEntityFruitTreeBranch;
             if (rootBe == null) return false;
 
             var bh = rootBe.GetBehavior<FruitTreeRootBH>();
@@ -304,12 +329,14 @@ namespace Vintagestory.GameContent
 
             Api.World.BlockAccessor.SetBlock(block.Id, pos);
 
-            var beb = (Api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityFruitTreeBranch);
+            var beb = Api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityFruitTreeBranch;
             var beh = beb?.GetBehavior<FruitTreeGrowingBranchBH>();
             if (beh != null)
             {
                 beh.VDrive = VDrive - (facing.IsVertical ? 1 : 0);
-                beh.HDrive = HDrive - (facing.IsHorizontal ? 1 : 0);
+
+                float hd = hdrive == null ? HDrive - (facing.IsHorizontal ? 1 : 0) : (float)hdrive;
+                beh.HDrive = hd;
                 beb.ParentOff = facing.Normali.Clone();
                 beb.lastGrowthAttemptTotalDays = ownBe.lastGrowthAttemptTotalDays;
             }
@@ -325,14 +352,9 @@ namespace Vintagestory.GameContent
                 be.GrowthDir = facing;
                 be.TreeType = ownBe.TreeType;
                 be.PartType = partType;
-                be.RootOff = ownBe.RootOff.Clone().Add(facing.Opposite, len);
+                be.RootOff = (rootPos - pos).ToVec3i();
                 be.Height = ownBe.Height + facing.Normali.Y;
                 be.OnGrown();
-            }
-
-            if (beh != null)
-            {
-                //beh.OnTick(0);
             }
 
             return true;
@@ -345,6 +367,11 @@ namespace Vintagestory.GameContent
             if (ownBe.PartType == EnumTreePartType.Cutting)
             {
                 dsc.AppendLine(ownBe.FoliageState == EnumFoliageState.Dead ? "<font color=\"#ff8080\">" + Lang.Get("Dead tree cutting") + "</font>" : Lang.Get("Establishing tree cutting"));
+
+                if (ownBe.FoliageState != EnumFoliageState.Dead && branchBlock.TypeProps.TryGetValue(ownBe.TreeType, out var typeprops))
+                {
+                    dsc.AppendLine(Lang.Get("{0}% survival chance", 100 * (ownBe.GrowthDir.IsVertical ? typeprops.CuttingRootingChance : typeprops.CuttingGraftChance)));
+                }
             }
         }
 

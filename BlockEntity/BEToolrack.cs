@@ -55,6 +55,7 @@ namespace Vintagestory.GameContent
 
             inventory.LateInitialize("toolrack-" + Pos.ToString(), api);
             inventory.ResolveBlocksOrItems();
+            inventory.OnAcquireTransitionSpeed = Inventory_OnAcquireTransitionSpeed;
 
             if (api is ICoreClientAPI)
             {
@@ -62,13 +63,18 @@ namespace Vintagestory.GameContent
             }
         }
 
+        protected virtual float Inventory_OnAcquireTransitionSpeed(EnumTransitionType transType, ItemStack stack, float baseMul)
+        {
+            float positionAwarePerishRate = 1;
+            if (transType == EnumTransitionType.Dry) positionAwarePerishRate = 0.75f;
+
+            return baseMul * positionAwarePerishRate;
+        }
 
         void loadToolMeshes()
         {
             BlockFacing facing = getFacing().GetCCW();
             if (facing == null) return;
-
-            Vec3f facingNormal = facing.Normalf;
 
             Vec3f origin = new Vec3f(0.5f, 0.5f, 0.5f);
 
@@ -183,7 +189,6 @@ namespace Vintagestory.GameContent
             Api.World.PlaySoundAt(new AssetLocation("sounds/player/buildhigh"), Pos.X, Pos.Y, Pos.Z, player, false);
             if (Api is ICoreClientAPI) loadToolMeshes();
             MarkDirty(true);
-            //player.InventoryManager.BroadcastHotbarSlot();
         }
 
 

@@ -176,6 +176,7 @@ namespace Vintagestory.GameContent
             prog.RgbaTint = ColorUtil.WhiteArgbVec;
             prog.NormalShaded = 1;
             prog.ExtraGodray = 0;
+            prog.ExtraGlow = 0;
             prog.SsaoAttn = 0;
             prog.AlphaTest = 0.05f;
             prog.OverlayOpacity = 0;

@@ -79,7 +79,7 @@ namespace Vintagestory.GameContent
         protected virtual float Inventory_OnAcquireTransitionSpeed(EnumTransitionType transType, ItemStack stack, float baseMul)
         {
             float positionAwarePerishRate = Api != null && transType == EnumTransitionType.Perish ? GetPerishRate() : 1;
-            if (transType == EnumTransitionType.Dry) positionAwarePerishRate = 0;
+            if (transType == EnumTransitionType.Dry) positionAwarePerishRate = 0.25f;
 
             return baseMul * positionAwarePerishRate;
         }
@@ -87,13 +87,9 @@ namespace Vintagestory.GameContent
 
         public virtual float GetPerishRate()
         {
-            // ##TODO: for performance the cond.Temperature can be saved in a field for each BlockEntityContainer, worldgen climage values at a position will not change
-            // ##TODO: for performance, perishRate can be cached instead of being re-calculated for each separate slot which is updated
-
             BlockPos sealevelpos = Pos.Copy();
             sealevelpos.Y = Api.World.SeaLevel;
 
-            // ##TODO: this ought to be season specific, i.e. perishrate should rise on a hot summer day
             ClimateCondition cond = Api.World.BlockAccessor.GetClimateAt(sealevelpos);
             if (cond == null) return 1;
 
@@ -129,8 +125,6 @@ namespace Vintagestory.GameContent
 
 
             // Lets say deep soil temperature is a constant 5°C
-            // ##TODO: this ought to depend on worldgen climate: in the Arctic for example, deep soil temperature is going to be lower ...
-            // ##TODO: this ought to be based on depth below worldgen original world surface
             float cellarTemp = 5;
 
             // How good of a cellar it is depends on how much rock or soil was used on he cellars walls

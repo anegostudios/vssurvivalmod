@@ -122,7 +122,8 @@ namespace Vintagestory.GameContent
 
             if (handled == EnumHandling.PreventDefault) return;
 
-
+            // The explosion code uses the bulk block accessor for greater performance
+            world.BulkBlockAccessor.SetBlock(0, pos);
 
             double dropChancce = ExplosionDropChance(world, pos, blastType);
 

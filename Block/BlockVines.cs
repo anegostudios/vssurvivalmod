@@ -3,6 +3,7 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Client.Tesselation;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
@@ -210,7 +211,7 @@ namespace Vintagestory.GameContent
         bool CanVineStay(IWorldAccessor world, BlockPos pos)
         {
             BlockPos apos = pos.AddCopy(VineFacing.Opposite);
-            Block block = world.BlockAccessor.GetBlock(world.BlockAccessor.GetBlockId(apos));
+            Block block = world.BlockAccessor.GetBlock(apos);
 
             return block.CanAttachBlockAt(world.BlockAccessor, this, apos, VineFacing) || world.BlockAccessor.GetBlock(pos.UpCopy()) is BlockVines;
         }
@@ -220,5 +221,47 @@ namespace Vintagestory.GameContent
             BlockFacing newFacing = BlockFacing.HORIZONTALS_ANGLEORDER[(angle / 90 + BlockFacing.FromCode(LastCodePart()).HorizontalAngleIndex) % 4];
             return CodeWithParts(newFacing.Code);
         }
+
+
+        public override bool ShouldReceiveServerGameTicks(IWorldAccessor world, BlockPos pos, Random offThreadRandom, out object extra)
+        {
+            extra = null;
+            if (offThreadRandom.NextDouble() > 0.1) return false;
+
+            var attachFace = VineFacing.Opposite;
+            BlockPos npos = pos.AddCopy(attachFace);
+            Block block = world.BlockAccessor.GetBlock(npos);
+            if (block.CanAttachBlockAt(world.BlockAccessor, this, npos, VineFacing) || block is BlockLeaves) return false;
+
+            npos.Set(pos);
+            int i = 0;
+            for (; i < 5; i++)
+            {
+                npos.Y++;
+                var upblock = world.BlockAccessor.GetBlock(npos.X, npos.Y, npos.Z);
+
+                if (upblock is BlockLeaves || upblock.CanAttachBlockAt(world.BlockAccessor, this, npos, BlockFacing.DOWN)) return false;
+
+                if (upblock is BlockVines)
+                {
+                    var ablock = world.BlockAccessor.GetBlock(npos.X + attachFace.Normali.X, npos.Y, npos.Z + attachFace.Normali.Z);
+
+                    if (ablock.CanAttachBlockAt(world.BlockAccessor, this, npos, VineFacing)) return false;
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            return i < 5;
+        }
+
+
+        public override void OnServerGameTick(IWorldAccessor world, BlockPos pos, object extra = null)
+        {
+            world.BlockAccessor.SetBlock(0, pos);
+        }
+
     }
 }

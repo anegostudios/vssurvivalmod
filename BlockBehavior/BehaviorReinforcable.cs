@@ -40,6 +40,23 @@ namespace Vintagestory.GameContent
             }
         }
 
+        public override void OnBlockExploded(IWorldAccessor world, BlockPos pos, BlockPos explosionCenter, EnumBlastType blastType, ref EnumHandling handling)
+        {
+            ModSystemBlockReinforcement modBre;
+            modBre = world.Api.ModLoader.GetModSystem<ModSystemBlockReinforcement>();
+            BlockReinforcement bre = modBre.GetReinforcment(pos);
+
+            if (bre != null && bre.Strength > 0)
+            {
+                modBre.ConsumeStrength(pos, 2);
+                world.BlockAccessor.MarkBlockDirty(pos);
+                handling = EnumHandling.PreventDefault;
+                return;
+            }
+
+            base.OnBlockExploded(world, pos, explosionCenter, blastType, ref handling);
+        }
+
 
         public override float GetMiningSpeedModifier(IWorldAccessor world, BlockPos pos, IPlayer byPlayer)
         {

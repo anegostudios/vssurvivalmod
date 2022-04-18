@@ -111,6 +111,8 @@ namespace Vintagestory.GameContent
 
         public override EnumIgniteState OnTryIgniteBlock(EntityAgent byEntity, BlockPos pos, float secondsIgniting)
         {
+            if (Variant["state"] == "burnedout") return EnumIgniteState.NotIgnitablePreventDefault;
+
             if (IsExtinct) return secondsIgniting > 1 ? EnumIgniteState.IgniteNow : EnumIgniteState.Ignitable;
 
             return base.OnTryIgniteBlock(byEntity, pos, secondsIgniting);
@@ -123,6 +125,18 @@ namespace Vintagestory.GameContent
             if (block != null)
             {
                 api.World.BlockAccessor.SetBlock(block.Id, pos);
+            }
+        }
+
+        public override void OnAttackingWith(IWorldAccessor world, Entity byEntity, Entity attackedEntity, ItemSlot itemslot)
+        {
+            base.OnAttackingWith(world, byEntity, attackedEntity, itemslot);
+
+            float stormstr = api.ModLoader.GetModSystem<SystemTemporalStability>().StormStrength;
+
+            if (!IsExtinct && attackedEntity != null && byEntity.World.Side == EnumAppSide.Server && api.World.Rand.NextDouble() < 0.1 + stormstr)
+            {
+                attackedEntity.Ignite();
             }
         }
 

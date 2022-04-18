@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Client.Tesselation;
@@ -16,6 +17,11 @@ namespace Vintagestory.GameContent
         private static readonly float defaultGrowthProbability = 0.8f;
 
         private float tickGrowthProbability;
+
+        /// <summary>
+        /// Applied to produce drop count when this is a wild crop
+        /// </summary>
+        public static float WildCropDropMul = 0.5f;
 
         public int CurrentCropStage
         {
@@ -155,6 +161,22 @@ namespace Vintagestory.GameContent
 
             ItemStack[] drops = base.GetDrops(world, pos, byPlayer, dropQuantityMultiplier);
 
+            if (befarmland == null)
+            {
+                List<ItemStack> moddrops = new List<ItemStack>();
+                foreach (var drop in drops)
+                {
+                    if (!(drop.Item is ItemPlantableSeed))
+                    {
+                        drop.StackSize = GameMath.RoundRandom(world.Rand, WildCropDropMul * drop.StackSize);
+                    }
+
+                    if (drop.StackSize > 0) moddrops.Add(drop);
+                }
+
+                drops = moddrops.ToArray();
+            }
+            
             
             if (befarmland != null)
             {

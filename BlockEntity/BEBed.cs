@@ -16,7 +16,6 @@ namespace Vintagestory.GameContent
     public class BlockEntityBed : BlockEntity, IMountable
     {
         float sleepEfficiency = 0.5f;
-        Dictionary<string, long> playerSittingMs = new Dictionary<string, long>();
         BlockFacing facing;
         
         float y2 = 0.5f;
@@ -24,6 +23,11 @@ namespace Vintagestory.GameContent
         double hoursTotal;
 
         public EntityAgent MountedBy;
+
+
+        bool blockBroken;
+        long mountedByEntityId;
+        string mountedByPlayerUid;
 
         public Vec3d MountPosition
         {
@@ -71,12 +75,20 @@ namespace Vintagestory.GameContent
             controls.OnAction = onControls;
             if (Block.Attributes != null) sleepEfficiency = Block.Attributes["sleepEfficiency"].AsFloat(0.5f);
 
-            
-
             Cuboidf[] collboxes = Block.GetCollisionBoxes(api.World.BlockAccessor, Pos);
             if (collboxes!=null && collboxes.Length > 0) y2 = collboxes[0].Y2;
 
             facing = BlockFacing.FromCode(Block.LastCodePart());
+
+
+            if (MountedBy == null && (mountedByEntityId != 0 || mountedByPlayerUid != null))
+            {
+                var entity = mountedByPlayerUid != null ? api.World.PlayerByUid(mountedByPlayerUid)?.Entity : api.World.GetEntityById(mountedByEntityId) as EntityAgent;
+                if (entity != null)
+                {
+                    entity.TryMount(this);
+                }
+            }
         }
 
         private void onControls(EnumEntityAction action, bool on, ref EnumHandling handled)
@@ -85,6 +97,7 @@ namespace Vintagestory.GameContent
             {
                 MountedBy?.TryUnmount();
                 controls.StopAllMovement();
+                handled = EnumHandling.PassThrough;
             }
         }
 
@@ -119,7 +132,6 @@ namespace Vintagestory.GameContent
             }
         }
 
-        bool blockBroken;
 
         public override void OnBlockBroken(IPlayer byPlayer = null)
         {
@@ -130,17 +142,23 @@ namespace Vintagestory.GameContent
         }
 
 
-
+        
 
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
             base.FromTreeAttributes(tree, worldForResolving);
+
+            mountedByEntityId = tree.GetLong("mountedByEntityId");
+            mountedByPlayerUid = tree.GetString("mountedByPlayerUid");
         }
 
 
         public override void ToTreeAttributes(ITreeAttribute tree)
         {
             base.ToTreeAttributes(tree);
+
+            tree.SetLong("mountedByEntityId", mountedByEntityId);
+            tree.SetString("mountedByPlayerUid", mountedByPlayerUid);
         }
         
 
@@ -171,6 +189,9 @@ namespace Vintagestory.GameContent
                 }
             }
 
+            mountedByEntityId = 0;
+            mountedByPlayerUid = null;
+
             base.OnBlockRemoved();
         }
 
@@ -182,7 +203,16 @@ namespace Vintagestory.GameContent
                 return;
             }
 
+            if (MountedBy == entityAgent)
+            {
+                // Already mounted
+                return;
+            }
+
             MountedBy = entityAgent;
+            mountedByPlayerUid = (entityAgent as EntityPlayer)?.PlayerUID;
+            mountedByEntityId = MountedBy.EntityId;
+
             if (Api.Side == EnumAppSide.Server)
             {
                 RegisterGameTickListener(RestPlayer, 200);

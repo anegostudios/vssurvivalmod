@@ -217,7 +217,7 @@ namespace Vintagestory.GameContent
                 LootItem.Item(0.1f, 1, 1, "scythe-copper"),
                 LootItem.Item(0.1f, 1, 1, "knife-copper", "knife-copper", "knife-tinbronze"),
                 LootItem.Item(0.1f, 1, 1, "longblade-copper", "longblade-copper", "longblade-tinbronze"),
-                LootItem.Item(0.1f, 1, 4, "gear-rusty")
+                LootItem.Item(0.1f, 2, 4, "gear-rusty")
             );
 
             lootLists["farming"] = LootList.Create(2.5f,
@@ -229,7 +229,21 @@ namespace Vintagestory.GameContent
                 LootItem.Item(0.75f, 2, 4, "seeds-cabbage"),
                 LootItem.Item(0.75f, 5, 10, "cattailtops"),
                 LootItem.Item(0.1f, 1, 1, "scythe-copper", "scythe-tinbronze")
-            );    
+            );
+
+            lootLists["arcticsupplies"] = LootList.Create(2.5f,
+                LootItem.Item(1.5f, 6, 24, "cattailtops"),
+                LootItem.Item(1.5f, 6, 16, "drygrass"),
+                LootItem.Item(1, 4, 7, "flint"),
+                LootItem.Item(1, 6, 12, "stick"),
+                LootItem.Item(1, 10, 24, "stone-andesite", "stone-chalk", "stone-granite", "stone-basalt"),
+                LootItem.Block(1, 4, 24, "soil-medium-none"),
+                LootItem.Item(1, 4, 24, "clay-blue", "clay-fire"),
+                LootItem.Item(0.5f, 1, 4, "poultice-linen-horsetail"),
+                LootItem.Item(0.5f, 1, 12, "flaxfibers"),
+                LootItem.Item(0.3f, 1, 3, "honeycomb"),
+                LootItem.Item(0.1f, 2, 4, "gear-rusty")
+            );
         }
 
         public override BlockDropItemStack[] GetDropsForHandbook(ItemStack handbookStack, IPlayer forPlayer)

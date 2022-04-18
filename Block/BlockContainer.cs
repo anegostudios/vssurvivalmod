@@ -78,7 +78,7 @@ namespace Vintagestory.GameContent
                 var attrs = itemstack.Attributes["ucontents"] as TreeArrayAttribute;
                 foreach (ITreeAttribute stackAttr in attrs.value)
                 {
-                    stacks.Add(CreateItemStackFromJson(stackAttr, world, itemstack.Collectible.Code.Domain));
+                    stacks.Add(CreateItemStackFromJson(stackAttr, world, Code.Domain));
                 }
                 SetContents(itemstack, stacks.ToArray());
                 itemstack.Attributes.RemoveAttribute("ucontents");
@@ -91,10 +91,10 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public virtual ItemStack CreateItemStackFromJson(ITreeAttribute stackAttr, IWorldAccessor world, string domain)
+        public virtual ItemStack CreateItemStackFromJson(ITreeAttribute stackAttr, IWorldAccessor world, string defaultDomain)
         {
             CollectibleObject collObj;
-            var loc = AssetLocation.Create(stackAttr.GetString("code"), domain);
+            var loc = AssetLocation.Create(stackAttr.GetString("code"), defaultDomain);
             if (stackAttr.GetString("type") == "item")
             {
                 collObj = world.GetItem(loc);
@@ -104,7 +104,7 @@ namespace Vintagestory.GameContent
                 collObj = world.GetBlock(loc);
             }
 
-            ItemStack stack = new ItemStack(collObj, stackAttr.GetInt("quantity"));
+            ItemStack stack = new ItemStack(collObj, (int)stackAttr.GetDecimal("quantity", 1));
             var attr = (stackAttr["attributes"] as TreeAttribute)?.Clone();
             if (attr != null) stack.Attributes = attr;
 
@@ -189,6 +189,8 @@ namespace Vintagestory.GameContent
 
         public override TransitionState[] UpdateAndGetTransitionStates(IWorldAccessor world, ItemSlot inslot)
         {
+            if (inslot is ItemSlotCreative) return base.UpdateAndGetTransitionStates(world, inslot);
+
             ItemStack[] stacks = GetContents(world, inslot.Itemstack);
 
             for (int i = 0; stacks != null && i < stacks.Length; i++)

@@ -928,6 +928,12 @@ namespace Vintagestory.GameContent
                 {
                     CuboidWithMaterial cwmNeib = cwms[j];
 
+                    if (cwmNeib.Material >= matsTransparent.Length)
+                    {
+                        coreClientAPI.Logger.Error("Microblock at {0} corrupted. A cuboid has material index {1}, but there's only {2} materials. Block will be invisible.", posForRnd, cwmNeib.Material, matsTransparent.Length);
+                        return mesh;
+                    }
+
                     if (i == j || matsTransparent[cwmNeib.Material]) continue;
 
                     for (int axis = 0; axis < 3; axis++)

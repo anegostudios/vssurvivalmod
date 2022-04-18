@@ -524,6 +524,8 @@ namespace Vintagestory.GameContent
 
         public void ChangeCondition(ItemSlot slot, float changeVal)
         {
+            if (changeVal == 0) return;
+
             ensureConditionExists(slot);
             slot.Itemstack.Attributes.SetFloat("condition", GameMath.Clamp(slot.Itemstack.Attributes.GetFloat("condition", 1) + changeVal, 0, 1));
             slot.MarkDirty();

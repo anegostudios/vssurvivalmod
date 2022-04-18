@@ -17,7 +17,6 @@ namespace Vintagestory.GameContent
         public override string ClimateColorMapForMap => climateColorMapInt;
         public override string SeasonColorMapForMap => seasonColorMapInt;
 
-        int moveIndex7Up;
 
         public override void OnCollectTextures(ICoreAPI api, ITextureLocationDictionary textureDict)
         {
@@ -32,8 +31,6 @@ namespace Vintagestory.GameContent
                 climateColorMapInt = (api as ICoreClientAPI).TesselatorManager.GetCachedShape(Shape.Base)?.Elements[0].ClimateColorMap;
                 seasonColorMapInt = (api as ICoreClientAPI).TesselatorManager.GetCachedShape(Shape.Base)?.Elements[0].SeasonColorMap;
             }
-
-            moveIndex7Up = TileSideEnum.MoveIndex[TileSideEnum.Up] * 7;
         }
 
 

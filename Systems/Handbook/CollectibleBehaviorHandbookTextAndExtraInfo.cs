@@ -219,7 +219,7 @@ namespace Vintagestory.GameContent
 
             if (collObj.Attributes?["hostRockFor"].Exists == true)
             {
-                ushort[] blockids = collObj.Attributes?["hostRockFor"].AsArray<ushort>();
+                int[] blockids = collObj.Attributes?["hostRockFor"].AsArray<int>();
 
                 OrderedDictionary<string, List<ItemStack>> blocks = new OrderedDictionary<string, List<ItemStack>>();
 

@@ -15,11 +15,8 @@ namespace Vintagestory.ServerMods
         ICoreServerAPI api;
         int regionSize;
         int regionChunkSize;
-        float chunkRatio;
 
         public int rockBlockId;
-        int worldHeight;
-        Random rand;
 
         internal RockStrataConfig strata;
 
@@ -75,12 +72,9 @@ namespace Vintagestory.ServerMods
 
             chunksize = api.WorldManager.ChunkSize;
             regionSize = api.WorldManager.RegionSize;
-            chunkRatio = (float)chunksize / regionSize;
 
             // Unpadded region noise size in chunks
             regionChunkSize = regionSize / chunksize;
-
-            rand = new Random(api.WorldManager.Seed + seedDiff);
 
             // Unpadded region noise size in blocks
             int geoProvRegionNoiseSize = regionSize / TerraGenConfig.geoProvMapScale;
@@ -89,7 +83,6 @@ namespace Vintagestory.ServerMods
             regionMapSize = api.WorldManager.MapSizeX / (chunksize * geoProvRegionNoiseSize);
 
             rockBlockId = (ushort)api.WorldManager.GetBlockId(new AssetLocation("rock-granite"));
-            worldHeight = api.WorldManager.MapSizeY;
             
             distort2dx = new SimplexNoise(new double[] { 14, 9, 6, 3 }, new double[] { 1 / 100.0, 1 / 50.0, 1 / 25.0, 1 / 12.5 }, api.World.SeaLevel + 9876 + seedDiff);
             distort2dz = new SimplexNoise(new double[] { 14, 9, 6, 3 }, new double[] { 1 / 100.0, 1 / 50.0, 1 / 25.0, 1 / 12.5 }, api.World.SeaLevel + 9877 + seedDiff);
@@ -241,7 +234,7 @@ namespace Vintagestory.ServerMods
                 if (--strataThickness <= 0)
                 {
                     rockStrataId++;
-                    if (rockStrataId >= strata.Variants.Length)
+                    if (rockStrataId >= strata.Variants.Length || rockStrataId >= mapChunk.MapRegion.RockStrata.Length)
                     {
                         break;
                     }

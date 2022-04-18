@@ -121,6 +121,11 @@ namespace Vintagestory.GameContent
             if (contentStack != null)
             {
                 WaterTightContainableProps props = GetContainableProps(contentStack);
+                if (props == null)
+                {
+                    capi.World.Logger.Error("Contents ('{0}') has no liquid properties, contents of liquid container {1} will be invisible.", contentStack.GetName(), Code);
+                    return bucketmesh;
+                }
 
                 ContainerTextureSource contentSource = new ContainerTextureSource(capi, contentStack, props.Texture);
 
@@ -198,7 +203,7 @@ namespace Vintagestory.GameContent
 
             if (litres <= 0) return Lang.Get("{0} (Empty)", inSlot.Itemstack.GetName());
 
-            string incontainername = Lang.Get("incontainer-" + contentStack.Class.ToString().ToLowerInvariant() + "-" + contentStack.Collectible.Code.Path);
+            string incontainername = Lang.Get(contentStack.Collectible.Code.Domain + ":incontainer-" + contentStack.Class.ToString().ToLowerInvariant() + "-" + contentStack.Collectible.Code.Path);
             
             if (litres == 1)
             {
@@ -847,11 +852,25 @@ namespace Vintagestory.GameContent
 
         #region Held Interact
 
+        protected override void tryEatBegin(ItemSlot slot, EntityAgent byEntity, ref EnumHandHandling handling, string eatSound = "eat", int eatSoundRepeats = 1)
+        {
+            base.tryEatBegin(slot, byEntity, ref handling, "drink", 4);
+        }
+
         public override void OnHeldInteractStart(ItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handHandling)
         {
             if (blockSel == null || byEntity.Controls.Sneak)
             {
-                base.OnHeldInteractStart(itemslot, byEntity, blockSel, entitySel, firstEvent, ref handHandling);
+                if (byEntity.Controls.Sneak) base.OnHeldInteractStart(itemslot, byEntity, blockSel, entitySel, firstEvent, ref handHandling);
+
+                if (handHandling != EnumHandHandling.PreventDefaultAction && CanDrinkFrom && GetNutritionProperties(byEntity.World, itemslot.Itemstack, byEntity) != null)
+                {
+                    tryEatBegin(itemslot, byEntity, ref handHandling, "drink", 4);
+                    return;
+                }
+
+                if (!byEntity.Controls.Sneak) base.OnHeldInteractStart(itemslot, byEntity, blockSel, entitySel, firstEvent, ref handHandling);
+
                 return;
             }
 
@@ -893,13 +912,10 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            if (CanDrinkFrom)
+            if (CanDrinkFrom && GetNutritionProperties(byEntity.World, itemslot.Itemstack, byEntity) != null)
             {
-                if (GetNutritionProperties(byEntity.World, itemslot.Itemstack, byEntity) != null)
-                {
-                    tryEatBegin(itemslot, byEntity, ref handHandling, "drink", 4);
-                    return;
-                }
+                tryEatBegin(itemslot, byEntity, ref handHandling, "drink", 4);
+                return;
             }
 
             if (AllowHeldLiquidTransfer || CanDrinkFrom)
@@ -920,12 +936,15 @@ namespace Vintagestory.GameContent
 
             if (byEntity.World is IServerWorldAccessor && nutriProps != null && secondsUsed >= 0.95f)
             {
-                float litres = GetCurrentLitres(slot.Itemstack);
-                float litresToDrink = Math.Min(1, litres);
-                if (litres > 1)
+                float drinkCapLitres = 1f;
+
+                float litresEach = GetCurrentLitres(slot.Itemstack);
+                float litresTotal = litresEach * slot.StackSize;
+
+                if (litresEach > drinkCapLitres)
                 {
-                    nutriProps.Satiety /= litres;
-                    nutriProps.Health /= litres;
+                    nutriProps.Satiety /= litresEach;
+                    nutriProps.Health /= litresEach;
                 }
 
                 TransitionState state = UpdateAndGetTransitionState(api.World, slot, EnumTransitionType.Perish);
@@ -939,7 +958,10 @@ namespace Vintagestory.GameContent
                 IPlayer player = null;
                 if (byEntity is EntityPlayer) player = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
 
-                splitStackAndPerformAction(byEntity, slot, (stack) => TryTakeLiquid(stack, litresToDrink)?.StackSize ?? 0);
+                float litresToDrink = Math.Min(drinkCapLitres, litresTotal);
+                TryTakeLiquid(slot.Itemstack, litresToDrink / slot.Itemstack.StackSize);
+
+                //splitStackAndPerformAction(byEntity, slot, (stack) => TryTakeLiquid(stack, litresToDrink)?.StackSize ?? 0);
 
                 float healthChange = nutriProps.Health * healthLossMul;
 
@@ -1029,8 +1051,8 @@ namespace Vintagestory.GameContent
             bool canFill = contentStack == null || (contentStack.Equals(world, whenFilledStack, GlobalConstants.IgnoredStackAttributes) && GetCurrentLitres(byEntityItem.Itemstack) < CapacityLitres);
             if (!canFill) return;
 
-            contentStack.StackSize = 999999;
-            int moved = splitStackAndPerformAction(byEntityItem, byEntityItem.Slot, (stack) => TryPutLiquid(stack, contentStack, CapacityLitres));
+            whenFilledStack.StackSize = 999999;
+            int moved = splitStackAndPerformAction(byEntityItem, byEntityItem.Slot, (stack) => TryPutLiquid(stack, whenFilledStack, CapacityLitres));
             if (moved > 0)
             {
                 world.PlaySoundAt(props.FillSound, pos.X, pos.Y, pos.Z, null);
@@ -1225,7 +1247,7 @@ namespace Vintagestory.GameContent
 
             if (litres <= 0) return Lang.Get("Empty");
 
-            string incontainername = Lang.Get("incontainer-" + contentStack.Class.ToString().ToLowerInvariant() + "-" + contentStack.Collectible.Code.Path);
+            string incontainername = Lang.Get(contentStack.Collectible.Code.Domain + ":incontainer-" + contentStack.Class.ToString().ToLowerInvariant() + "-" + contentStack.Collectible.Code.Path);
             string text = Lang.Get("Contents:") + "\n" + Lang.Get("{0} litres of {1}", litres, incontainername);
             if (litres == 1)
             {
@@ -1248,16 +1270,14 @@ namespace Vintagestory.GameContent
 
             else
             {
-                string incontainerrname = Lang.Get("incontainer-" + contentStack.Class.ToString().ToLowerInvariant() + "-" + contentStack.Collectible.Code.Path);
+                string incontainerrname = Lang.Get(contentStack.Collectible.Code.Domain + ":incontainer-" + contentStack.Class.ToString().ToLowerInvariant() + "-" + contentStack.Collectible.Code.Path);
                 if (litres == 1)
                 {
-                    dsc.Append(Lang.Get("Contents: {0} litre of {1}", litres, incontainerrname));
+                    dsc.Append(Lang.Get("{0} litre of {1}", litres, incontainerrname));
                 } else
                 {
-                    dsc.Append(Lang.Get("Contents: {0} litres of {1}", litres, incontainerrname));
+                    dsc.Append(Lang.Get("{0} litres of {1}", litres, incontainerrname));
                 }
-
-                
             }
         }
 
@@ -1280,11 +1300,11 @@ namespace Vintagestory.GameContent
 
             if (!sinkContent.Equals(op.World, sourceContent, GlobalConstants.IgnoredStackAttributes)) { op.MovableQuantity = 0; return; }
 
-            float sourceLitres = GetCurrentLitres(op.SourceSlot.Itemstack);
-            float sinkLitres = GetCurrentLitres(op.SourceSlot.Itemstack);
+            float sourceLitres = GetCurrentLitres(op.SourceSlot.Itemstack) * op.SourceSlot.StackSize;
+            float sinkLitres = GetCurrentLitres(op.SinkSlot.Itemstack) * op.SinkSlot.StackSize;
 
-            float sourceCapLitres = (op.SourceSlot.Itemstack.Collectible as BlockLiquidContainerBase)?.CapacityLitres ?? 0;
-            float sinkCapLitres = (op.SinkSlot.Itemstack.Collectible as BlockLiquidContainerBase)?.CapacityLitres ?? 0;
+            float sourceCapLitres = op.SourceSlot.StackSize * (op.SourceSlot.Itemstack.Collectible as BlockLiquidContainerBase)?.CapacityLitres ?? 0;
+            float sinkCapLitres = op.SinkSlot.StackSize * (op.SinkSlot.Itemstack.Collectible as BlockLiquidContainerBase)?.CapacityLitres ?? 0;
 
             if (sourceCapLitres == 0 || sinkCapLitres == 0)
             {
@@ -1292,21 +1312,25 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            if (sourceLitres >= sourceCapLitres && sinkLitres >= sinkCapLitres)
+            if (sinkLitres == sinkCapLitres)
             {
-                // Full buckets are not stackable
-                //op.MovableQuantity = 0;
-                base.TryMergeStacks(op);
+                if (op.MovableQuantity > 0)
+                {
+                    base.TryMergeStacks(op);
+                    return;
+                }
+                
+                op.MovedQuantity = 0;
                 return;
             }
 
             if (op.CurrentPriority == EnumMergePriority.DirectMerge)
             {
                 float movableLitres = Math.Min(sinkCapLitres - sinkLitres, sourceLitres);
-                int moved = TryPutLiquid(op.SinkSlot.Itemstack, sinkContent, movableLitres);
+                int moved = TryPutLiquid(op.SinkSlot.Itemstack, sinkContent, movableLitres / op.SinkSlot.StackSize);
                 DoLiquidMovedEffects(op.ActingPlayer, sinkContent, moved, EnumLiquidDirection.Pour);
 
-                TryTakeContent(op.SourceSlot.Itemstack, moved);
+                TryTakeContent(op.SourceSlot.Itemstack, moved / op.SourceSlot.StackSize);
                 op.SourceSlot.MarkDirty();
                 op.SinkSlot.MarkDirty();
             }

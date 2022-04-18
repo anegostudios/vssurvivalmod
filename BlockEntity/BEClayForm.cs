@@ -82,7 +82,8 @@ namespace Vintagestory.GameContent
                 capi.Event.RegisterRenderer(workitemRenderer = new ClayFormRenderer(Pos, capi), EnumRenderStage.Opaque);
                 capi.Event.RegisterRenderer(workitemRenderer, EnumRenderStage.AfterFinalComposition);
 
-                RegenMeshAndSelectionBoxes();
+                int layer = NextNotMatchingRecipeLayer();
+                RegenMeshAndSelectionBoxes(layer);
             }
         }
 
@@ -119,7 +120,8 @@ namespace Vintagestory.GameContent
             slot.TakeOut(1);
             slot.MarkDirty();
 
-            RegenMeshAndSelectionBoxes();
+            int layer = NextNotMatchingRecipeLayer();
+            RegenMeshAndSelectionBoxes(layer);
             MarkDirty();
         }
 
@@ -155,9 +157,11 @@ namespace Vintagestory.GameContent
             OnUseOver(byPlayer, voxelPos, facing, mouseBreakMode);
         }
 
-
+        
         public void OnUseOver(IPlayer byPlayer, Vec3i voxelPos, BlockFacing facing, bool mouseBreakMode)
         {
+            Api.World.FrameProfiler.Mark("clayform-onuseover-begin");
+
             if (SelectedRecipe == null) return;
             if (voxelPos == null)
             {
@@ -177,23 +181,32 @@ namespace Vintagestory.GameContent
             int toolMode = slot.Itemstack.Collectible.GetToolMode(slot, byPlayer, new BlockSelection() { Position = Pos });
             bool didmodify = false;
 
+            int layer = NextNotMatchingRecipeLayer();
+
+
             if (toolMode == 3)
             {
-                if (!mouseBreakMode) didmodify = OnCopyLayer();
+                if (!mouseBreakMode) didmodify = OnCopyLayer(layer);
                 else toolMode = 1;
             }
 
             if (toolMode != 3)
             {
-                didmodify = mouseBreakMode ? OnRemove(voxelPos, facing, toolMode) : OnAdd(voxelPos, facing, toolMode);
+                didmodify = mouseBreakMode ? OnRemove(layer, voxelPos, facing, toolMode) : OnAdd(layer, voxelPos, facing, toolMode);
             }                
 
             if (didmodify)
             {
                 Api.World.PlaySoundAt(new AssetLocation("sounds/player/clayform.ogg"), byPlayer, byPlayer, true, 8);
             }
-                
-            RegenMeshAndSelectionBoxes();
+
+            Api.World.FrameProfiler.Mark("clayform-modified");
+
+            layer = NextNotMatchingRecipeLayer(layer);
+            RegenMeshAndSelectionBoxes(layer);
+
+            Api.World.FrameProfiler.Mark("clayform-regenmesh");
+
             Api.World.BlockAccessor.MarkBlockDirty(Pos);
             Api.World.BlockAccessor.MarkBlockEntityDirty(Pos);
 
@@ -205,14 +218,17 @@ namespace Vintagestory.GameContent
                 return;
             }
            
-            CheckIfFinished(byPlayer);
+            CheckIfFinished(byPlayer, layer);
+
+            Api.World.FrameProfiler.Mark("clayform-checkfinished");
+
             MarkDirty();
         }
 
 
-        public void CheckIfFinished(IPlayer byPlayer)
+        public void CheckIfFinished(IPlayer byPlayer, int layer)
         {
-            if (MatchesRecipe() && Api.World is IServerWorldAccessor)
+            if (MatchesRecipe(layer) && Api.World is IServerWorldAccessor)
             {
                 workItemStack = null;
                 Voxels = new bool[16, 16, 16];
@@ -252,25 +268,25 @@ namespace Vintagestory.GameContent
             }
         }
 
-        private bool MatchesRecipe()
+        private bool MatchesRecipe(int layer)
         {
             if (SelectedRecipe == null) return false;
-            return NextNotMatchingRecipeLayer() >= SelectedRecipe.Pattern.Length;
+            return NextNotMatchingRecipeLayer(layer) >= SelectedRecipe.Pattern.Length;
         }
 
 
-        private int NextNotMatchingRecipeLayer()
+        private int NextNotMatchingRecipeLayer(int layerStart = 0)
         {
             if (SelectedRecipe == null) return 0;
 
-            for (int layer = 0; layer < 16; layer++)
+            for (int layer = layerStart; layer < 16; layer++)
             {
                 for (int x = 0; x < 16; x++)
                 {
                     for (int z = 0; z < 16; z++)
                     {
                         if (Voxels[x, layer, z] != SelectedRecipe.Voxels[x, layer, z])
-                        {                            
+                        {
                             return layer;
                         }
                     }
@@ -329,10 +345,9 @@ namespace Vintagestory.GameContent
             return voxelPos.X >= bounds.X1 && voxelPos.X <= bounds.X2 && voxelPos.Y >= 0 && voxelPos.Y < 16 && voxelPos.Z >= bounds.Z1 && voxelPos.Z <= bounds.Z2;
         }
 
-        private bool OnRemove(Vec3i voxelPos, BlockFacing facing, int radius)
+        private bool OnRemove(int layer, Vec3i voxelPos, BlockFacing facing, int radius)
         {
             bool didremove = false;
-            int layer = NextNotMatchingRecipeLayer();
             if (voxelPos.Y != layer) return didremove;
 
             for (int dx = -(int)Math.Ceiling(radius/2f); dx <= radius /2; dx++)
@@ -355,9 +370,8 @@ namespace Vintagestory.GameContent
             return didremove;
         }
 
-        private bool OnCopyLayer()
+        private bool OnCopyLayer(int layer)
         {
-            int layer = NextNotMatchingRecipeLayer();
             if (layer == 0) return false;
 
             bool didplace = false;
@@ -383,13 +397,11 @@ namespace Vintagestory.GameContent
         }
 
 
-        private bool OnAdd(Vec3i voxelPos, BlockFacing facing, int radius)
+        private bool OnAdd(int layer, Vec3i voxelPos, BlockFacing facing, int radius)
         {
-            int layer = NextNotMatchingRecipeLayer();
-
             if (voxelPos.Y == layer && facing.IsVertical)
             {
-                return OnAdd(voxelPos, radius, layer);
+                return OnAdd(layer, voxelPos, radius);
             }
 
             if (Voxels[voxelPos.X, voxelPos.Y, voxelPos.Z])
@@ -397,18 +409,18 @@ namespace Vintagestory.GameContent
                 Vec3i offPoss = voxelPos.AddCopy(facing);
                 if (InBounds(offPoss, layer))
                 {
-                    return OnAdd(offPoss, radius, layer);
+                    return OnAdd(layer, offPoss, radius);
                 }
             }
             else
             {
-                return OnAdd(voxelPos, radius, layer);
+                return OnAdd(layer, voxelPos, radius);
             }
 
             return false;
         }
         
-        bool OnAdd(Vec3i voxelPos, int radius, int layer)
+        bool OnAdd(int layer, Vec3i voxelPos, int radius)
         {
             bool didadd = false;
 
@@ -432,14 +444,11 @@ namespace Vintagestory.GameContent
             return didadd;
         }
 
-
-        void RegenMeshAndSelectionBoxes()
+        void RegenMeshAndSelectionBoxes(int layer)
         {
-            int layer = NextNotMatchingRecipeLayer();
-
-            if (workitemRenderer != null)
-            {    
-                if (layer != 16) workitemRenderer.RegenMesh(workItemStack, Voxels, SelectedRecipe, layer);
+            if (workitemRenderer != null && layer != 16)
+            {
+                workitemRenderer.RegenMesh(workItemStack, Voxels, SelectedRecipe, layer);
             }
 
             List<Cuboidf> boxes = new List<Cuboidf>();
@@ -493,7 +502,7 @@ namespace Vintagestory.GameContent
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
             base.FromTreeAttributes(tree, worldForResolving);
-            deserializeVoxels(tree.GetBytes("voxels"));
+            bool modified = deserializeVoxels(tree.GetBytes("voxels"));
             workItemStack = tree.GetItemstack("workItemStack");
             baseMaterial = tree.GetItemstack("baseMaterial");
             AvailableVoxels = tree.GetInt("availableVoxels");
@@ -505,7 +514,11 @@ namespace Vintagestory.GameContent
                 baseMaterial = new ItemStack(Api.World.GetItem(new AssetLocation("clay-" + workItemStack.Collectible.LastCodePart())));
             }
 
-            RegenMeshAndSelectionBoxes();
+            if (modified)
+            {
+                int layer = NextNotMatchingRecipeLayer();
+                RegenMeshAndSelectionBoxes(layer);
+            }
         }
 
         public override void ToTreeAttributes(ITreeAttribute tree)
@@ -540,13 +553,19 @@ namespace Vintagestory.GameContent
             return data;
         }
 
-        void deserializeVoxels(byte[] data)
+        bool deserializeVoxels(byte[] data)
         {
-            Voxels = new bool[16, 16, 16];
+            if (data == null || data.Length < 16 * 16 * 16 / 8)
+            {
+                Voxels = new bool[16, 16, 16];
+                return true;
+            }
 
-            if (data == null || data.Length < 16 * 16 * 16 / 8) return;
+            if (Voxels == null) Voxels = new bool[16, 16, 16];
+
 
             int pos = 0;
+            bool modified = false;
 
             for (int x = 0; x < 16; x++)
             {
@@ -555,11 +574,16 @@ namespace Vintagestory.GameContent
                     for (int z = 0; z < 16; z++)
                     {
                         int bitpos = pos % 8;
-                        Voxels[x, y, z] = (data[pos / 8] & (1 << bitpos)) > 0;
+                        bool voxel = (data[pos / 8] & (1 << bitpos)) > 0;
+                        modified |= Voxels[x, y, z] != voxel;
+
+                        Voxels[x, y, z] = voxel;
                         pos++;
                     }
                 }
             }
+
+            return modified;
         }
 
 
@@ -665,6 +689,9 @@ namespace Vintagestory.GameContent
 
                     selectedRecipeId = recipes[selectedIndex].RecipeId;
                     capi.Network.SendBlockEntityPacket(pos.X, pos.Y, pos.Z, (int)EnumClayFormingPacket.SelectRecipe, SerializerUtil.Serialize(recipes[selectedIndex].RecipeId));
+
+                    int layer = NextNotMatchingRecipeLayer();
+                    RegenMeshAndSelectionBoxes(layer);
                 },
                 () => {
                     capi.Network.SendBlockEntityPacket(pos.X, pos.Y, pos.Z, (int)EnumClayFormingPacket.CancelSelect);

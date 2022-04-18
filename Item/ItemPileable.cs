@@ -32,8 +32,10 @@ namespace Vintagestory.GameContent
             if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
             if (byPlayer == null) return;
 
-            if (!byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            if (!byEntity.World.Claims.TryAccess(byPlayer, onBlockPos, EnumBlockAccessFlags.BuildOrBreak))
             {
+                api.World.BlockAccessor.MarkBlockEntityDirty(onBlockPos.AddCopy(blockSel.Face));
+                api.World.BlockAccessor.MarkBlockDirty(onBlockPos.AddCopy(blockSel.Face));
                 return;
             }
 
@@ -52,6 +54,12 @@ namespace Vintagestory.GameContent
                     return;
                 }
             }
+
+            if (!byEntity.World.Claims.TryAccess(byPlayer, onBlockPos.AddCopy(blockSel.Face), EnumBlockAccessFlags.BuildOrBreak))
+            {
+                return;
+            }
+
 
             be = byEntity.World.BlockAccessor.GetBlockEntity(onBlockPos.AddCopy(blockSel.Face));
             if (be is IBlockEntityItemPile)

@@ -59,7 +59,8 @@ namespace Vintagestory.GameContent
             this.sapi = api;
 
             api.Event.RegisterGameTickListener(ServerSlowTick, 200);
-            api.Event.ServerRunPhase(EnumServerRunPhase.Shutdown, OnServerShutDown);
+            
+            api.Event.SaveGameLoaded += Event_SaveGameLoaded;
             api.Event.RegisterGameTickListener(FastTick, 20);
             
             serverChannel =
@@ -69,16 +70,10 @@ namespace Vintagestory.GameContent
             
         }
 
-
-        private void OnServerShutDown()
+        private void Event_SaveGameLoaded()
         {
-            bool nowAllSleeping = AreAllPlayersSleeping();
-
-            if (!nowAllSleeping)
-            {
-                api.World.Calendar?.RemoveTimeSpeedModifier("sleeping");
-                GameSpeedBoost = 0;
-            }
+            api.World.Calendar?.RemoveTimeSpeedModifier("sleeping");
+            GameSpeedBoost = 0;
         }
 
         private void FastTick(float dt)

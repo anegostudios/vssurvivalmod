@@ -118,8 +118,8 @@ namespace Vintagestory.GameContent
                 var srcProps = BlockLiquidContainerBase.GetContainableProps(Itemstack);
                 float availableLitres = StackSize / (srcProps?.ItemsPerLitre ?? 1);
 
-                toMoveLitres = Math.Min(toMoveLitres, availableLitres);
                 toMoveLitres *= sourceSlot.Itemstack.StackSize;
+                toMoveLitres = Math.Min(toMoveLitres, availableLitres);
 
                 if (contentStack == null)
                 {

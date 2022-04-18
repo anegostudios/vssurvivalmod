@@ -11,9 +11,9 @@ namespace Vintagestory.GameContent
 {
     public class EntityGlowingAgent : EntityAgent
     {
-        float aggroTime;
-        bool onlyWhenAggroed;
-        byte[] lightHsv = new byte[] { 10, 5, 10 };
+        protected float aggroTime;
+        protected bool onlyWhenAggroed;
+        protected byte[] lightHsv = new byte[] { 10, 5, 10 };
 
         public override byte[] LightHsv
         {
@@ -38,7 +38,7 @@ namespace Vintagestory.GameContent
             }
 
             aggroTime = WatchedAttributes.GetFloat("aggroTime");
-            lightHsv = properties.Attributes["lightHsv"].AsObject<byte[]>(new byte[] { 10, 5, 10 });
+            lightHsv = properties.Attributes["lightHsv"].AsObject(new byte[] { 10, 5, 10 });
             onlyWhenAggroed = properties.Attributes["onlyWhenAggroed"].AsBool(true);
         }
 

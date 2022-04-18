@@ -75,23 +75,9 @@ namespace Vintagestory.GameContent
             lastIsMilkingStateTotalMs = entity.World.ElapsedMilliseconds;
 
             bhmul = entity.GetBehavior<EntityBehaviorMultiply>();
-            // Can not be milked when stressed (= caused by aggressive or fleeing emotion states)
-            float stressLevel = entity.WatchedAttributes.GetFloat("stressLevel");
-            if (stressLevel > 0.1)
-            {
-                if (entity.World.Api is ICoreClientAPI capi)
-                {
-                    capi.TriggerIngameError(this, "notready", Lang.Get("Currently too stressed to be milkable"));
-                }
-                return false;
-            }
 
-            // Can only be milked for 21 days after giving birth
-            double daysSinceBirth = Math.Max(0, entity.World.Calendar.TotalDays - bhmul.TotalDaysLastBirth);
-            if (bhmul != null && daysSinceBirth >= lactatingDaysAfterBirth) return false;
+            if (!CanMilk()) return false;
 
-            // Can only be milked once every day
-            if (entity.World.Calendar.TotalHours - lastMilkedTotalHours < entity.World.Calendar.HoursPerDay) return false;
             int generation = entity.WatchedAttributes.GetInt("generation", 0);
             aggroChance = Math.Min(1 - generation / 3f, 0.95f);
             aggroTested = false;
@@ -126,8 +112,35 @@ namespace Vintagestory.GameContent
             return true;
         }
 
+
+        protected bool CanMilk()
+        {
+            bhmul = entity.GetBehavior<EntityBehaviorMultiply>();
+            // Can not be milked when stressed (= caused by aggressive or fleeing emotion states)
+            float stressLevel = entity.WatchedAttributes.GetFloat("stressLevel");
+            if (stressLevel > 0.1)
+            {
+                if (entity.World.Api is ICoreClientAPI capi)
+                {
+                    capi.TriggerIngameError(this, "notready", Lang.Get("Currently too stressed to be milkable"));
+                }
+                return false;
+            }
+
+            // Can only be milked for 21 days after giving birth
+            double daysSinceBirth = Math.Max(0, entity.World.Calendar.TotalDays - bhmul.TotalDaysLastBirth);
+            if (bhmul != null && daysSinceBirth >= lactatingDaysAfterBirth) return false;
+
+            // Can only be milked once every day
+            if (entity.World.Calendar.TotalHours - lastMilkedTotalHours < entity.World.Calendar.HoursPerDay) return false;
+
+            return true;
+        }
+
         public bool CanContinueMilking(IPlayer milkingPlayer, float secondsUsed)
         {
+            if (!CanMilk()) return false;
+
             lastIsMilkingStateTotalMs = entity.World.ElapsedMilliseconds;
             
             if (entity.World.Side == EnumAppSide.Client)

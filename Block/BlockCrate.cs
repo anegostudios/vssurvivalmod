@@ -210,7 +210,7 @@ namespace Vintagestory.GameContent
             ICoreClientAPI capi = api as ICoreClientAPI;
             if (capi == null) return;
 
-            string key = "genericTypedContainerMeshRefs" + FirstCodePart() + SubtypeInventory;
+            string key = "crateMeshRefs" + FirstCodePart() + SubtypeInventory;
             Dictionary<string, MeshRef> meshrefs = ObjectCacheUtil.TryGet<Dictionary<string, MeshRef>>(api, key);
 
             if (meshrefs != null)
@@ -284,6 +284,7 @@ namespace Vintagestory.GameContent
 
             nowTeselatingLabel = labelProps;
             labelTexturePos = texPos;
+            tmpTextureSource = capi.Tesselator.GetTexSource(this, 0, true);
 
             capi.Tesselator.TesselateShape("cratelabel", shape, out var meshLabel, this, rot);
             nowTeselatingLabel = null;

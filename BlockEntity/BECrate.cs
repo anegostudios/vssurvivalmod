@@ -93,6 +93,11 @@ namespace Vintagestory.GameContent
             {
                 loadOrCreateMesh();
             }
+
+            if (Api.Side == EnumAppSide.Server)
+            {
+                inventory.SlotModified += Inventory_SlotModified;
+            }
         }
 
         public override void OnBlockPlaced(ItemStack byItemStack = null)
@@ -239,7 +244,7 @@ namespace Vintagestory.GameContent
             inventory.BaseWeight = 1f;
             inventory.OnGetSuitability = (sourceSlot, targetSlot, isMerge) => (isMerge ? (inventory.BaseWeight + 3) : (inventory.BaseWeight + 1)) + (sourceSlot.Inventory is InventoryBasePlayer ? 1 : 0);
             inventory.OnGetAutoPullFromSlot = GetAutoPullFromSlot;
-
+            inventory.OnGetAutoPushIntoSlot = GetAutoPushIntoSlot;
 
             if (block?.Attributes != null)
             {
@@ -259,6 +264,11 @@ namespace Vintagestory.GameContent
             inventory.OnInventoryOpened += OnInvOpened;
         }
 
+
+        private void Inventory_SlotModified(int obj)
+        {
+            MarkDirty(false);
+        }
 
         public Cuboidf[] GetSelectionBoxes()
         {
@@ -368,6 +378,18 @@ namespace Vintagestory.GameContent
             return null;
         }
 
+        private ItemSlot GetAutoPushIntoSlot(BlockFacing atBlockFace, ItemSlot fromSlot)
+        {
+            var slot = inventory.FirstNonEmptySlot;
+            if (slot == null) return inventory[0];
+
+            if (slot.Itemstack.Equals(Api.World, fromSlot.Itemstack, GlobalConstants.IgnoredStackAttributes))
+            {
+                return slot;
+            }
+
+            return null;
+        }
 
         protected virtual void OnInvOpened(IPlayer player)
         {

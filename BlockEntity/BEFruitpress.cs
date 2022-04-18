@@ -402,7 +402,7 @@ namespace Vintagestory.GameContent
 
                 } else
                 {  
-                    float desiredTransferSizeLitres = byPlayer.Entity.Controls.Sneak ? (float)hprops.LitresPerItem : 4 * (float)hprops.LitresPerItem;
+                    float desiredTransferSizeLitres = byPlayer.Entity.Controls.Sneak ? (float)hprops.LitresPerItem : Math.Min(handStack.StackSize, 4) * (float)hprops.LitresPerItem;
                     transferableLitres = (float)Math.Min(desiredTransferSizeLitres, juiceableLitresCapacity - juiceableLitresLeft);
 
                     removeItems = (int)(transferableLitres / hprops.LitresPerItem);
@@ -668,8 +668,20 @@ namespace Vintagestory.GameContent
             if (!BucketSlot.Empty)
             {
                 BlockLiquidContainerBase block = BucketSlot.Itemstack.Collectible as BlockLiquidContainerBase;
-                dsc.Append("Bucket: ");
+                dsc.Append(Lang.Get("Bucket: "));
                 block.GetContentInfo(BucketSlot, dsc, Api.World);
+                dsc.AppendLine();
+            }
+
+            if (!MashSlot.Empty)
+            {
+                if (juiceableLitresLeft > 0)
+                {
+                    dsc.AppendLine(Lang.Get("Mash produces {0:0.##} litres of juice when squeeezed", juiceableLitresLeft));
+                } else
+                {
+                    dsc.AppendLine(Lang.Get("Dry Mash"));
+                }
             }
         }
 

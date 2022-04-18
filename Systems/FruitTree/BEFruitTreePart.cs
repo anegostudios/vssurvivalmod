@@ -84,6 +84,7 @@ namespace Vintagestory.GameContent
         public EnumTreePartType PartType = EnumTreePartType.Cutting;
         public AssetLocation harvestingSound;
 
+        protected bool harvested;
 
         public TextureAtlasPosition this[string textureCode]
         {
@@ -318,10 +319,10 @@ namespace Vintagestory.GameContent
                 switch (val.State)
                 {
                     case EnumFruitTreeState.EnterDormancy: FoliageState = EnumFoliageState.Plain; break;                    
-                    case EnumFruitTreeState.Dormant: FoliageState = EnumFoliageState.DormantNoLeaves; break;
-                    case EnumFruitTreeState.Flowering: FoliageState = EnumFoliageState.Flowering; break;
-                    case EnumFruitTreeState.Fruiting: FoliageState = EnumFoliageState.Fruiting; break;
-                    case EnumFruitTreeState.Ripe: FoliageState = EnumFoliageState.Ripe; break;
+                    case EnumFruitTreeState.Dormant: FoliageState = EnumFoliageState.DormantNoLeaves; harvested = false; break;
+                    case EnumFruitTreeState.Flowering: FoliageState = EnumFoliageState.Flowering; harvested = false; break;
+                    case EnumFruitTreeState.Fruiting: FoliageState = EnumFoliageState.Fruiting; harvested = false; break;
+                    case EnumFruitTreeState.Ripe: if (!harvested) FoliageState = EnumFoliageState.Ripe; break;
                     case EnumFruitTreeState.Empty: FoliageState = EnumFoliageState.Plain; break;
                     case EnumFruitTreeState.Young: FoliageState = EnumFoliageState.Plain; break;
                     
@@ -344,11 +345,11 @@ namespace Vintagestory.GameContent
         {
             switch (nowState)
             {
-                case EnumFruitTreeState.EnterDormancy: FoliageState = EnumFoliageState.Plain; break;
-                case EnumFruitTreeState.Dormant: FoliageState = EnumFoliageState.DormantNoLeaves; break;
-                case EnumFruitTreeState.Flowering: FoliageState = EnumFoliageState.Flowering; break;
-                case EnumFruitTreeState.Fruiting: FoliageState = EnumFoliageState.Fruiting; break;
-                case EnumFruitTreeState.Ripe: FoliageState = EnumFoliageState.Ripe; break;
+                case EnumFruitTreeState.EnterDormancy: FoliageState = EnumFoliageState.Plain; harvested = false; break;
+                case EnumFruitTreeState.Dormant: FoliageState = EnumFoliageState.DormantNoLeaves; harvested = false; break;
+                case EnumFruitTreeState.Flowering: FoliageState = EnumFoliageState.Flowering; harvested = false; break;
+                case EnumFruitTreeState.Fruiting: FoliageState = EnumFoliageState.Fruiting; harvested = false; break;
+                case EnumFruitTreeState.Ripe: if (!harvested) FoliageState = EnumFoliageState.Ripe; break;
                 case EnumFruitTreeState.Empty: FoliageState = EnumFoliageState.Plain; break;
                 case EnumFruitTreeState.Young: FoliageState = EnumFoliageState.Plain; break;
                 case EnumFruitTreeState.Dead: FoliageState = EnumFoliageState.Dead; break;
@@ -410,10 +411,10 @@ namespace Vintagestory.GameContent
             {
                 FoliageState = EnumFoliageState.Plain;
                 MarkDirty(true);
-                
+                harvested = true;
+
                 var loc = AssetLocation.Create(Block.Attributes["branchBlock"].AsString(), Block.Code.Domain);
                 var block = Api.World.GetBlock(loc) as BlockFruitTreeBranch;
-
                 var drops = block.TypeProps[TreeType].FruitStacks;
 
                 foreach (var drop in drops)
@@ -478,6 +479,8 @@ namespace Vintagestory.GameContent
                     double days = props.lastStateChangeTotalDays + props.FloweringDays - rootBh.LastRootTickTotalDays;
                     dsc.AppendLine(Lang.Get("Flowering for about {0:0.#} days, weather permitting.", days));
                 }
+
+                dsc.AppendLine("Tree state: " + props.State);
             }
 
             base.GetBlockInfo(forPlayer, dsc);
@@ -495,6 +498,7 @@ namespace Vintagestory.GameContent
             TreeType = tree.GetString("treeType");
             Height = tree.GetInt("height");
             fruitingSide = tree.GetInt("fruitingSide", fruitingSide);
+            harvested = tree.GetBool("harvested");
 
             if (tree.HasAttribute("rootOffX"))
             {
@@ -517,6 +521,7 @@ namespace Vintagestory.GameContent
             tree.SetString("treeType", TreeType);
             tree.SetInt("height", Height);
             tree.SetInt("fruitingSide", fruitingSide);
+            tree.SetBool("harvested", harvested);
 
             if (RootOff != null)
             {

@@ -47,7 +47,7 @@ namespace Vintagestory.GameContent
                 float perishRate = GetPerishRate();
                 if (transType == EnumTransitionType.Ripen)
                 {
-                    return GameMath.Clamp(((1 - perishRate) - 0.5f) * 3, 0, 1);
+                    return GameMath.Clamp((1 - perishRate - 0.5f) * 3, 0, 1);
                 }
 
                 return baseMul * perishRate;

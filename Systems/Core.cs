@@ -236,15 +236,16 @@ namespace Vintagestory.GameContent
             float declination = -EarthAxialTilt * GameMath.Cos(GameMath.TWOPI * (dayOfYear / daysPerYear + 10 / 365f));
 
             float zenithAngle = (float)Math.Acos(GameMath.Sin(latitude * GameMath.PIHALF) * GameMath.Sin(declination) + GameMath.Cos(latitude * GameMath.PIHALF) * GameMath.Cos(declination) * GameMath.Cos(hourAngle));
-            
+
             // Added 1.e-10 to prevent division by 0
-            float azimuthAngle = (float)Math.Acos(((GameMath.Sin(latitude * GameMath.PIHALF) * GameMath.Cos(zenithAngle)) - GameMath.Sin(declination)) / (GameMath.Cos(latitude * GameMath.PIHALF) * GameMath.Sin(zenithAngle) + 0.0000001f));
+            float b = ((GameMath.Sin(latitude * GameMath.PIHALF) * GameMath.Cos(zenithAngle)) - GameMath.Sin(declination)) / (GameMath.Cos(latitude * GameMath.PIHALF) * GameMath.Sin(zenithAngle) + 0.0000001f);
+            float azimuthAngle = (float)Math.Acos(GameMath.Clamp(b, -1, 1));
+
             // The sign function gives the correct azimuth angle sign depending on the hour without using IF statement (branchless)
             azimuthAngle = (GameMath.PI + Math.Sign(hourAngle) * azimuthAngle) % GameMath.TWOPI;
 
             return new SolarSphericalCoords(GameMath.TWOPI - zenithAngle, GameMath.TWOPI - azimuthAngle);
         }
-
 
 
 

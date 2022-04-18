@@ -16,11 +16,11 @@ namespace Vintagestory.GameContent
         float counter;
         ICoreClientAPI capi;
         IShaderProgram prog;
-        public List<Rift> rifts;
+        public Dictionary<int, Rift> rifts;
         ModSystemRifts modsys;
 
 
-        public RiftRenderer(ICoreClientAPI capi, List<Rift> rifts)
+        public RiftRenderer(ICoreClientAPI capi, Dictionary<int, Rift> rifts)
         {
             this.capi = capi;
             this.rifts = rifts;
@@ -92,6 +92,13 @@ namespace Vintagestory.GameContent
             capi.Render.GLDepthMask(false);
 
             prog.Use();
+            prog.Uniform("rgbaFogIn", capi.Render.FogColor);
+            prog.Uniform("fogMinIn", capi.Render.FogMin);
+            prog.Uniform("fogDensityIn", capi.Render.FogDensity);
+            prog.Uniform("rgbaAmbientIn", capi.Render.AmbientColor);
+            prog.Uniform("rgbaLightIn", new Vec4f(1,1,1,1));
+
+
             prog.BindTexture2D("primaryFb", capi.Render.FrameBuffers[(int)EnumFrameBuffer.Primary].ColorTextureIds[0], 0);
             prog.BindTexture2D("depthTex", capi.Render.FrameBuffers[(int)EnumFrameBuffer.Primary].DepthTextureId, 1);
             prog.UniformMatrix("projectionMatrix", capi.Render.CurrentProjectionMatrix);
@@ -108,7 +115,7 @@ namespace Vintagestory.GameContent
 
             cnt = (cnt + 1) % 3;
 
-            foreach (var rift in rifts)
+            foreach (var rift in rifts.Values)
             {
                 if (cnt == 0)
                 {
@@ -141,6 +148,7 @@ namespace Vintagestory.GameContent
                 matrixf.Scale(size, size, size);
 
                 prog.UniformMatrix("modelViewMatrix", matrixf.Values);
+                prog.Uniform("worldPos", new Vec4f(dx, dy, dz, 0));
                 prog.Uniform("riftIndex", riftIndex);
 
                 capi.Render.RenderMesh(meshref);

@@ -124,12 +124,7 @@ namespace Vintagestory.ServerMods
             pondDensity -= Math.Max(0, 5-sealeveltemp);
 
             float maxTries = pondDensity * 10;
-
             int dx, dz;
-
-            int baseX = chunkX * chunksize;
-            int baseZ = chunkZ * chunksize;
-
 
             while (maxTries-- > 0)
             {
@@ -169,7 +164,6 @@ namespace Vintagestory.ServerMods
 
                     if (blockID != 0)
                     {
-                        //blockAccessor.SetBlock(63, new BlockPos(dx + baseX, pondYPos, dz + baseZ));
                         TryPlacePondAt(dx, pondYPos, dz, chunkX, chunkZ);
                     }
                 }

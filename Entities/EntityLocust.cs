@@ -15,6 +15,22 @@ namespace Vintagestory.GameContent
     {
         double mul1, mul2;
 
+        bool lightEmitting;
+
+        public override void Initialize(API.Common.Entities.EntityProperties properties, ICoreAPI api, long InChunkIndex3d)
+        {
+            base.Initialize(properties, api, InChunkIndex3d);
+
+            lightEmitting = !this.Code.Path.Contains("sawblade");
+        }
+
+        public override byte[] LightHsv
+        {
+            get {
+                return lightEmitting ? base.LightHsv : null; 
+            }
+        }
+
         /// <summary>
         /// Gets the walk speed multiplier.
         /// </summary>

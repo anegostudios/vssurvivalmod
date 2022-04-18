@@ -18,6 +18,10 @@ namespace Vintagestory.GameContent
 
             float dmg = inSlot.Itemstack.Collectible.Attributes["damage"].AsFloat(0);
             if (dmg != 0) dsc.AppendLine((dmg > 0 ? "+" : "") + dmg + Lang.Get("piercing-damage"));
+
+            float breakChanceOnImpact = inSlot.Itemstack.Collectible.Attributes["breakChanceOnImpact"].AsFloat(0.5f);
+            dsc.AppendLine(Lang.Get("breakchanceonimpact", (int)(breakChanceOnImpact * 100)));
+
         }
     }
 }

@@ -40,8 +40,8 @@ namespace Vintagestory.GameContent
             base.LoadConfig(taskConfig, aiConfig);
 
             spawnRange = taskConfig["spawnRange"]?.AsInt(12) ?? 12;
-            spawnIntervalMsMin = taskConfig["spawnIntervalMsMin"]?.AsInt(2000) ?? 2000;
-            spawnIntervalMsMax = taskConfig["spawnIntervalMsMax"]?.AsInt(15000) ?? 15000;
+            spawnIntervalMsMin = taskConfig["spawnIntervalMsMin"]?.AsInt(2500) ?? 2500;
+            spawnIntervalMsMax = taskConfig["spawnIntervalMsMax"]?.AsInt(12000) ?? 12000;
             spawnMaxQuantity = taskConfig["spawnMaxQuantity"]?.AsInt(5) ?? 5;
             seekingRange = taskConfig["seekingRange"]?.AsFloat(12) ?? 12;
 
@@ -124,8 +124,6 @@ namespace Vintagestory.GameContent
                 }
 
 
-                
-
                 return false;
             });
 
@@ -156,7 +154,9 @@ namespace Vintagestory.GameContent
 
             if (spawnAccum > nextSpawnIntervalMs/1000f)
             {
-                trySpawnCreatures(spawnMaxQuantity, spawnRange);
+                float playerScaling = sapi.World.GetPlayersAround(entity.ServerPos.XYZ, 15, 10, (plr) => plr.Entity.Alive).Length * sapi.Server.Config.SpawnCapPlayerScaling;
+
+                trySpawnCreatures(GameMath.RoundRandom(sapi.World.Rand, spawnMaxQuantity * playerScaling), spawnRange);
 
                 nextSpawnIntervalMs = spawnIntervalMsMin + entity.World.Rand.Next(spawnIntervalMsMax - spawnIntervalMsMin);
 
@@ -210,7 +210,7 @@ namespace Vintagestory.GameContent
 
             if (cnt <= maxquantity)
             {
-                int tries = 15;
+                int tries = 25;
                 int spawned = 0;
                 while (tries-- > 0 && spawned < 1)
                 {
@@ -237,7 +237,6 @@ namespace Vintagestory.GameContent
 
                     DoSpawn(type, spawnPos, 0);
                     spawned++;
-                    
                 }
             }
             

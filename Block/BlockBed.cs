@@ -70,6 +70,7 @@ namespace Vintagestory.GameContent
             if (ebt != null && ebt.Tiredness <= 8)
             {
                 if (world.Side == EnumAppSide.Client) (api as ICoreClientAPI).TriggerIngameError(this, "nottiredenough", Lang.Get("not-tired-enough"));
+                else byPlayer.Entity.TryUnmount();
                 return false;
             }
 
@@ -77,6 +78,8 @@ namespace Vintagestory.GameContent
             if (tempStormSleep == 0 && api.ModLoader.GetModSystem<SystemTemporalStability>().StormStrength > 0)
             {
                 if (world.Side == EnumAppSide.Client) (api as ICoreClientAPI).TriggerIngameError(this, "cantsleep-tempstorm", Lang.Get("cantsleep-tempstorm"));
+                else byPlayer.Entity.TryUnmount();
+
                 return false;
             }
 

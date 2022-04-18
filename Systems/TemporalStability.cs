@@ -622,11 +622,12 @@ namespace Vintagestory.GameContent
 
                 float riftDist = NearestRiftDistance(spawnPosition);
 
+                // Still allow some drifters to spawn during daylight, but therefore must be very close to the rift
                 float minl = GameMath.Mix(0, sc.MinLightLevel, (float)mod);
                 float maxl = GameMath.Mix(32, sc.MaxLightLevel, (float)mod);
                 if (minl > lightLevel || maxl < lightLevel)
                 {
-                    if (!isSurface || riftDist >= 4 || api.World.Rand.NextDouble() > 0.02)
+                    if (!isSurface || riftDist >= 5 || api.World.Rand.NextDouble() > 0.05)
                     {
                         return false;
                     }
@@ -656,7 +657,7 @@ namespace Vintagestory.GameContent
 
         private float NearestRiftDistance(Vec3d pos)
         {
-            var nrift = riftSys.rifts.Nearest(rift => rift.Position.SquareDistanceTo(pos));
+            var nrift = riftSys.riftsById.Values.Nearest(rift => rift.Position.SquareDistanceTo(pos));
             if (nrift != null)
             {
                 return nrift.Position.DistanceTo(pos);

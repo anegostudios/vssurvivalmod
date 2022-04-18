@@ -84,6 +84,12 @@ namespace Vintagestory.GameContent
                 groupUid = groups[toolMode - 1].GroupUid;
             }
 
+            if (!api.World.BlockAccessor.GetBlock(blockSel.Position).HasBehavior<BlockBehaviorReinforcable>())
+            {
+                (player as IServerPlayer).SendIngameError("notreinforcable", "This block can not be reinforced!");
+                return;
+            }
+
             bool didStrengthen = groupUid > 0 ? bre.StrengthenBlock(blockSel.Position, player, strength, groupUid) : bre.StrengthenBlock(blockSel.Position, player, strength);
 
             if (!didStrengthen)

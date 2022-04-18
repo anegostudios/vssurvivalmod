@@ -128,13 +128,6 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
-        {
-            base.OnNeighbourBlockChange(world, pos, neibpos);
-
-            var bebranch = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityFruitTreeBranch;
-            bebranch?.OnNeighbourBlockChange(neibpos);
-        }
 
         public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
         {
@@ -236,7 +229,7 @@ namespace Vintagestory.GameContent
         public EnumTreeFellingBehavior GetTreeFellingBehavior(BlockPos pos, Vec3i fromDir, int spreadIndex)
         {
             var bebranch = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityFruitTreeBranch;
-            if (bebranch.PartType != EnumTreePartType.Branch) return EnumTreeFellingBehavior.Chop;
+            if (bebranch == null || bebranch.PartType != EnumTreePartType.Branch) return EnumTreeFellingBehavior.Chop;
             else
             {
                 if (bebranch.GrowthDir.IsVertical) return EnumTreeFellingBehavior.Chop;

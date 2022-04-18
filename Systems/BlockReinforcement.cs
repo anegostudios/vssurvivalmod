@@ -376,6 +376,11 @@ namespace Vintagestory.GameContent
 
         }
 
+        /// <summary>
+        /// If true, limits reinforcing of blocks to reasonable block materials (e.g. not plants, not snow, not leaves, not sand, etc.)
+        /// </summary>
+        public bool reasonableReinforcements = true;
+
 
         #region Reinforcing and Locking
         private void addReinforcementBehavior()
@@ -383,24 +388,36 @@ namespace Vintagestory.GameContent
             foreach (Block block in api.World.Blocks)
             {
                 if (block.Code == null || block.Id == 0) continue;
-                if (block.BlockMaterial == EnumBlockMaterial.Plant ||
-                    block.BlockMaterial == EnumBlockMaterial.Liquid ||
-                    block.BlockMaterial == EnumBlockMaterial.Snow ||
-                    block.BlockMaterial == EnumBlockMaterial.Leaves ||
-                    block.BlockMaterial == EnumBlockMaterial.Lava ||
-                    block.BlockMaterial == EnumBlockMaterial.Sand ||
-                    block.BlockMaterial == EnumBlockMaterial.Gravel)
-                {
-                    // Do not allow reinforcement of soft blocks, unless positively given the attribute reinforcable == true
-                    if (block.Attributes == null || block.Attributes["reinforcable"].AsBool(false) != true) continue;
-                }
-                // For other blocks, allow reinforcement unless positively given the attribute reinforcable == false
-                if (block.Attributes == null || block.Attributes["reinforcable"].AsBool(true) != false)
+
+                if (IsReinforcable(block))
                 {
                     block.BlockBehaviors = block.BlockBehaviors.Append(new BlockBehaviorReinforcable(block));
                     block.CollectibleBehaviors = block.CollectibleBehaviors.Append(new BlockBehaviorReinforcable(block));
                 }
             }
+        }
+
+        protected bool IsReinforcable(Block block)
+        {
+            if (!reasonableReinforcements && (block.BlockMaterial == EnumBlockMaterial.Plant ||
+                    block.BlockMaterial == EnumBlockMaterial.Liquid ||
+                    block.BlockMaterial == EnumBlockMaterial.Snow ||
+                    block.BlockMaterial == EnumBlockMaterial.Leaves ||
+                    block.BlockMaterial == EnumBlockMaterial.Lava ||
+                    block.BlockMaterial == EnumBlockMaterial.Sand ||
+                    block.BlockMaterial == EnumBlockMaterial.Gravel))
+            {
+                // Do not allow reinforcement of soft blocks, unless positively given the attribute reinforcable == true
+                if (block.Attributes == null || block.Attributes["reinforcable"].AsBool(false) != true) return false;
+            }
+
+            // For other blocks, allow reinforcement unless positively given the attribute reinforcable == false
+            if (block.Attributes == null || block.Attributes["reinforcable"].AsBool(true) != false)
+            {
+                return true;
+            }
+
+            return false;
         }
 
 
@@ -616,6 +633,8 @@ namespace Vintagestory.GameContent
         {
             if (api.Side == EnumAppSide.Client) return false;
 
+            if (!api.World.BlockAccessor.GetBlock(pos).HasBehavior<BlockBehaviorReinforcable>()) return false;
+
             Dictionary<int, BlockReinforcement> reinforcmentsOfChunk = getOrCreateReinforcmentsAt(pos);
 
             int index3d = toLocalIndex(pos);
@@ -681,7 +700,7 @@ namespace Vintagestory.GameContent
 
                     } catch (Exception e2)
                     {
-                        api.World.Logger.Error("Failed reading block reinforcments at block position {0}, will discard, sorry. Exception: {1}", pos, e2);
+                        api.World.Logger.VerboseDebug("Failed reading block reinforcments at block position {0}, will discard, sorry. Exception: {1}", pos, e2);
                     }
 
                     reinforcmentsOfChunk = new Dictionary<int, BlockReinforcement>();

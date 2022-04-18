@@ -25,7 +25,7 @@ namespace Vintagestory.GameContent
         ICoreServerAPI sapi;
         RiftRenderer renderer;
 
-        public List<Rift> rifts = new List<Rift>();
+        public Dictionary<int, Rift> riftsById = new Dictionary<int, Rift>();
         public ILoadedSound[] riftSounds = new ILoadedSound[4];
         public Rift[] nearestRifts;
 
@@ -66,7 +66,7 @@ namespace Vintagestory.GameContent
 
             capi = api;
 
-            renderer = new RiftRenderer(api, rifts);
+            renderer = new RiftRenderer(api, riftsById);
 
             api.Event.BlockTexturesLoaded += Event_BlockTexturesLoaded;
             api.Event.LeaveWorld += Event_LeaveWorld;
@@ -77,7 +77,26 @@ namespace Vintagestory.GameContent
 
         private void onRifts(RiftList riftlist)
         {
-            renderer.rifts = this.rifts = riftlist.rifts;
+            HashSet<int> toRemove = new HashSet<int>();
+            toRemove.AddRange(this.riftsById.Keys);
+
+            foreach (var rift in riftlist.rifts)
+            {
+                toRemove.Remove(rift.RiftId);
+
+                if (riftsById.TryGetValue(rift.RiftId, out var existingRift))
+                {
+                    existingRift.SetFrom(rift);
+                } else
+                {
+                    riftsById[rift.RiftId] = rift;
+                }
+            }
+
+            foreach (var id in toRemove)
+            {
+                riftsById.Remove(id);
+            }
         }
 
         public override void StartServerSide(ICoreServerAPI api)
@@ -116,7 +135,7 @@ namespace Vintagestory.GameContent
                 bh.stabilityOffset = 0;
 
                 var plrPos = plr.Entity.Pos.XYZ;
-                Rift rift = rifts.Nearest((r) => r.Position.SquareDistanceTo(plrPos));
+                Rift rift = riftsById.Values.Nearest((r) => r.Position.SquareDistanceTo(plrPos));
                 if (rift == null) continue;
 
                 float dist = Math.Max(0, GameMath.Sqrt(plrPos.SquareDistanceTo(rift.Position)) - 2 - rift.Size / 2f);
@@ -213,13 +232,14 @@ namespace Vintagestory.GameContent
                     riftPos.Y = pos.Y + size / 2f + 1;
                     var rift = new Rift()
                     {
+                        RiftId = NextRiftId,
                         Position = riftPos,
                         Size = size,
                         SpawnedTotalHours = api.World.Calendar.TotalHours,
                         DieAtTotalHours = api.World.Calendar.TotalHours + 8 + api.World.Rand.NextDouble() * 48
                     };
 
-                    rifts.Add(rift);
+                    riftsById[rift.RiftId] = rift;
                     riftsSpawned++;
 
                     // Update the list as we go, so we don't spawn overlapping amounts of rifts around players
@@ -252,13 +272,13 @@ namespace Vintagestory.GameContent
             double totalHours = api.World.Calendar.TotalHours;
             var players = sapi.World.AllOnlinePlayers;
 
-            for (int i = 0; i < rifts.Count; i++)
+            HashSet<int> toRemove = new HashSet<int>();
+
+            foreach (var rift in riftsById.Values)
             {
-                var rift = rifts[i];
                 if (rift.DieAtTotalHours <= totalHours)
                 {
-                    rifts.RemoveAt(i);
-                    i--;
+                    toRemove.Add(rift.RiftId);
                     riftModified = true;
                     continue;
                 }
@@ -277,6 +297,8 @@ namespace Vintagestory.GameContent
                     nearbyRiftsByPlayerUid[plr.PlayerUID].Add(rift);
                 }
             }
+
+            foreach (var id in toRemove) riftsById.Remove(id);
 
             foreach (var val in nearbyRiftsByPlayerUid)
             {
@@ -299,7 +321,7 @@ namespace Vintagestory.GameContent
 
         private void Event_GameWorldSave()
         {
-            sapi.WorldManager.SaveGame.StoreData("rifts", rifts);
+            sapi.WorldManager.SaveGame.StoreData("rifts", riftsById);
         }
 
         private void Event_SaveGameLoaded()
@@ -310,15 +332,22 @@ namespace Vintagestory.GameContent
 
             try
             {
-                rifts = sapi.WorldManager.SaveGame.GetData<List<Rift>>("rifts");
+                var rifts = sapi.WorldManager.SaveGame.GetData<List<Rift>>("rifts");
+                if (rifts != null)
+                {
+                    foreach (var rift in rifts)
+                    {
+                        riftsById[rift.RiftId] = rift;
+                    }
+                }
             }
             catch (Exception) {
                 
             }
 
-            if (rifts == null)
+            if (riftsById == null)
             {
-                rifts = new List<Rift>();
+                riftsById = new Dictionary<int, Rift>();
             }
         }
 
@@ -338,7 +367,7 @@ namespace Vintagestory.GameContent
                 var splr = plr as IServerPlayer;
                 var plrPos = splr.Entity.Pos.XYZ;
 
-                foreach (var rift in rifts)
+                foreach (var rift in riftsById.Values)
                 {
                     if (rift.Position.SquareDistanceTo(plrPos) < minDistSq)
                     {
@@ -362,21 +391,27 @@ namespace Vintagestory.GameContent
         {
             if (!riftsEnabled) return;
 
-            Vec3d plrPos = capi.World.Player.Entity.Pos.XYZ;
+            Vec3d plrPos = capi.World.Player.Entity.Pos.XYZ.Add(capi.World.Player.Entity.LocalEyePos);
 
-            nearestRifts = rifts.OrderBy(rift => rift.Position.SquareDistanceTo(plrPos)).ToArray();
+            nearestRifts = riftsById.Values.OrderBy(rift => rift.Position.SquareDistanceTo(plrPos) + (rift.HasLineOfSight ? 0 : 20*20)).ToArray();
 
             for (int i = 0; i < Math.Min(4, nearestRifts.Length); i++)
             {
                 Rift rift = nearestRifts[i];
+
+                rift.OnNearTick(capi, dt);
+
                 ILoadedSound sound = riftSounds[i];
+
                 if (!sound.IsPlaying)
                 {
                     sound.Start();
                     sound.PlaybackPosition = sound.SoundLengthSeconds * (float)capi.World.Rand.NextDouble();
                 }
 
-                sound.SetVolume(GameMath.Clamp(rift.GetNowSize(capi) / 3f, 0.1f, 1f));
+                float vol = GameMath.Clamp(rift.GetNowSize(capi) / 3f, 0.1f, 1f);
+                
+                sound.SetVolume(vol * rift.VolumeMul);
                 sound.SetPosition((float)rift.Position.X, (float)rift.Position.Y, (float)rift.Position.Z);
             }
 
@@ -415,6 +450,9 @@ namespace Vintagestory.GameContent
             }
         }
 
+        int riftId;
+        public int NextRiftId => riftId++;
+
         private void onCmdRiftTest(IServerPlayer player, int groupId, CmdArgs args)
         {
             Vec3d pos = player.Entity.Pos.XYZ;
@@ -423,18 +461,18 @@ namespace Vintagestory.GameContent
 
             if (cmd == null)
             {
-                player.SendMessage(groupId, rifts.Count + " rifts loaded", EnumChatType.Notification);
+                player.SendMessage(groupId, riftsById.Count + " rifts loaded", EnumChatType.Notification);
                 return;
             }
 
             if (cmd == "clear")
             {
-                rifts.Clear();
+                riftsById.Clear();
             }
 
             if (cmd == "fade")
             {
-                foreach (var rift in rifts)
+                foreach (var rift in riftsById.Values)
                 {
                     rift.DieAtTotalHours = Math.Min(rift.DieAtTotalHours, api.World.Calendar.TotalHours + 0.2);
                 }
@@ -442,7 +480,8 @@ namespace Vintagestory.GameContent
 
             if (cmd == "spawn")
             {
-                for (int i = 0; i < 200; i++)
+                int cnt = (int)args.PopInt(200);
+                for (int i = 0; i < cnt; i++)
                 {
                     double distance = spawnMinDistance + api.World.Rand.NextDouble() * spawnAddDistance;
                     double angle = api.World.Rand.NextDouble() * GameMath.TWOPI;
@@ -461,11 +500,35 @@ namespace Vintagestory.GameContent
                     float size = 2 + (float)api.World.Rand.NextDouble() * 4f;
 
                     riftPos.Y = bpos.Y + size / 2f + 1;
-                    rifts.Add(new Rift() { Position = riftPos, Size = size,
+
+                    var rift = new Rift()
+                    {
+                        RiftId = NextRiftId,
+                        Position = riftPos,
+                        Size = size,
                         SpawnedTotalHours = api.World.Calendar.TotalHours,
                         DieAtTotalHours = api.World.Calendar.TotalHours + 8 + api.World.Rand.NextDouble() * 48
-                    });
+                    };
+
+                    riftsById[rift.RiftId] = rift;
                 }
+            }
+
+            if (cmd == "spawnhere")
+            {
+                var riftPos = player.Entity.Pos.XYZ.Add(player.Entity.LocalEyePos);
+                float size = 3;
+
+                var rift = new Rift()
+                {
+                    RiftId = NextRiftId,
+                    Position = riftPos,
+                    Size = size,
+                    SpawnedTotalHours = api.World.Calendar.TotalHours,
+                    DieAtTotalHours = api.World.Calendar.TotalHours + 8 + api.World.Rand.NextDouble() * 48
+                };
+
+                riftsById[rift.RiftId] = rift;
             }
 
             BroadCastRifts();

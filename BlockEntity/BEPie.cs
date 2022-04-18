@@ -166,13 +166,13 @@ namespace Vintagestory.GameContent
 
         public bool OnInteract(IPlayer byPlayer)
         {
+            var pieBlock = inv[0].Itemstack.Block as BlockPie;
+
             ItemSlot hotbarSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
 
             EnumTool? tool = hotbarSlot?.Itemstack?.Collectible.Tool;
             if (tool == EnumTool.Knife || tool == EnumTool.Sword)
             {
-                var pieBlock = inv[0].Itemstack.Block as BlockPie;
-
                 if (pieBlock.State != "raw")
                 {
                     if (Api.Side == EnumAppSide.Server)
@@ -183,6 +183,7 @@ namespace Vintagestory.GameContent
                             Api.World.SpawnItemEntity(slicestack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
                         }
                     }
+
                 } else
                 {
                     // Cycle top crust type
@@ -195,11 +196,11 @@ namespace Vintagestory.GameContent
                     }
                 }
 
-
                 return true;
             }
 
-            
+
+            if (pieBlock.State != "raw") return true;
 
             // Filling rules:
             // 1. get inPieProperties

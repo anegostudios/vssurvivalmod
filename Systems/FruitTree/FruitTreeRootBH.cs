@@ -289,6 +289,7 @@ namespace Vintagestory.GameContent
             }
 
             LastRootTickTotalDays = tree.GetDouble("lastRootTickTotalDays");
+            TreePlantedTotalDays = tree.GetDouble("treePlantedTotalDays");
         }
 
         public override void ToTreeAttributes(ITreeAttribute tree)
@@ -297,6 +298,7 @@ namespace Vintagestory.GameContent
             tree["dynproprs"] = subtree;
 
             tree.SetDouble("lastRootTickTotalDays", LastRootTickTotalDays);
+            tree.SetDouble("treePlantedTotalDays", TreePlantedTotalDays);
 
             foreach (var val in propsByType)
             {

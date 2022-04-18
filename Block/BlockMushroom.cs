@@ -81,6 +81,12 @@ namespace Vintagestory.GameContent
             }*/
         }
 
+        public override void OnServerGameTick(IWorldAccessor world, BlockPos pos, object extra = null)
+        {
+            // Prevent the legacy mushrooms from removing/adding snow coverage
+            //base.OnServerGameTick(world, pos, extra);
+        }
+
         public override BlockDropItemStack[] GetDropsForHandbook(ItemStack handbookStack, IPlayer forPlayer)
         {
             return new BlockDropItemStack[] { new BlockDropItemStack(handbookStack) };

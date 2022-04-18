@@ -21,10 +21,9 @@ namespace Vintagestory.GameContent
 
             if ((inSlot.Itemstack.Attributes["materials"] as StringArrayAttribute)?.value.Length > 1 || (inSlot.Itemstack.Attributes["materials"] as IntArrayAttribute)?.value.Length > 1)
             {
-                dsc.AppendLine(Lang.Get("<font color=\"lightblue\">Multimaterial chiseled block</a>"));
+                dsc.AppendLine(Lang.Get("<font color=\"lightblue\">Multimaterial chiseled block</font>"));
             }
         }
-
 
     }
 }

@@ -71,11 +71,20 @@ namespace Vintagestory.GameContent
             return mul;
         }
 
+        string[] vegetableLabels = new string[] { "carrot", "cabbage", "onion", "parsnip", "turnip", "pumpkin", "soybean" };
 
         public AssetLocation LabelForContents(string recipeCode, ItemStack[] contents)
         {
+            string label;
+
             if (recipeCode != null && recipeCode.Length > 0)
             {
+                var code = getMostCommonMealIngredient(contents);
+                if (code != null && (label = CodeToLabel(code)) != null)
+                {
+                    return AssetLocation.Create("shapes/block/clay/crock/label-" + label + ".json", Code.Domain);
+                }
+
                 return AssetLocation.Create("shapes/block/clay/crock/label-meal.json", Code.Domain);
             }
             if (contents == null || contents.Length == 0 || contents[0] == null)
@@ -83,41 +92,41 @@ namespace Vintagestory.GameContent
                 return AssetLocation.Create("shapes/block/clay/crock/label-empty.json", Code.Domain);
             }
 
-            string contentCode = contents[0].Collectible.Code.Path;
-            string type = "empty";
+            label = CodeToLabel(contents[0].Collectible.Code) ?? "empty";
 
-            if (contentCode.Contains("carrot"))
-            {
-                type = "carrot";
-            }
-            else if (contentCode.Contains("cabbage"))
-            {
-                type = "cabbage";
-            }
-            else if (contentCode.Contains("onion"))
-            {
-                type = "onion";
-            }
-            else if (contentCode.Contains("parsnip"))
-            {
-                type = "parsnip";
-            }
-            else if (contentCode.Contains("turnip"))
-            {
-                type = "turnip";
-            }
-            else if (contentCode.Contains("pumpkin"))
-            {
-                type = "pumpkin";
-            }
-            else if (contentCode.Contains("soybean"))
-            {
-                type = "soybean";
-            }
-
-            return AssetLocation.Create("shapes/block/clay/crock/label-" + type + ".json", Code.Domain);
+            return AssetLocation.Create("shapes/block/clay/crock/label-" + label + ".json", Code.Domain);
         }
 
+        public string CodeToLabel(AssetLocation loc)
+        {
+            string type = null;
+
+            foreach (var label in vegetableLabels)
+            {
+                if (loc.Path.Contains(label))
+                {
+                    type = label;
+                    break;
+                }
+            }
+
+            return type;
+        }
+
+        private AssetLocation getMostCommonMealIngredient(ItemStack[] contents)
+        {
+            Dictionary<AssetLocation, int> sdf = new Dictionary<AssetLocation, int>();
+
+            foreach (var stack in contents)
+            {
+                sdf.TryGetValue(stack.Collectible.Code, out int cnt);
+                sdf[stack.Collectible.Code] = 1 + cnt;
+            }
+
+            var key = sdf.Aggregate((l, r) => l.Value > r.Value ? l : r).Key;
+
+            return sdf[key] >= 3 ? key : null;
+        }
 
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
         {
