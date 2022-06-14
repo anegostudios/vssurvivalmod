@@ -43,7 +43,10 @@ namespace Vintagestory.GameContent
 
             if (api.Side == EnumAppSide.Server)
             {
-                Blockentity.RegisterGameTickListener(onRootTick, 5000, api.World.Rand.Next(5000));
+                if (Api.World.Config.GetBool("processCrops", true))
+                {
+                    Blockentity.RegisterGameTickListener(onRootTick, 5000, api.World.Rand.Next(5000));
+                }
             }
 
             roomreg = api.ModLoader.GetModSystem<RoomRegistry>();

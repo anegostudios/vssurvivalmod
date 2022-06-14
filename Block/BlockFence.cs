@@ -3,6 +3,7 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Client.Tesselation;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
@@ -94,7 +95,6 @@ namespace Vintagestory.GameContent
         }
 
 
-
         public bool ShouldConnectAt(IWorldAccessor world, BlockPos ownPos, BlockFacing side)
         {
             Block block = world.BlockAccessor.GetBlock(ownPos.AddCopy(side));
@@ -105,11 +105,22 @@ namespace Vintagestory.GameContent
                 return block.Attributes["fenceConnect"][side.Code].AsBool(true);
             }
 
+            Cuboidi[] attachAreaBySide = new Cuboidi[]
+            {
+                new RotatableCube(6, 0, 15, 10, 14, 15).ToHitboxCuboidi(180),
+                new RotatableCube(6, 0, 15, 10, 14, 15).ToHitboxCuboidi(270),
+                new RotatableCube(6, 0, 15, 10, 14, 15).ToHitboxCuboidi(0),
+                new RotatableCube(6, 0, 15, 10, 14, 15).ToHitboxCuboidi(90)
+            };
+        
+            Cuboidi attachArea = attachAreaBySide[side.Index];
+            
+
             return
                 block is BlockFence ||
                 (block is BlockFenceGate gate && gate.GetDirection() != side && gate.GetDirection() != side.Opposite) ||   //Allow any type of fence to connect to any other type of fence or door - better than leaving gaps!  Modded fences will still work fine so long as they use BlockFence as the base class, if they don't want to do that then they can use the fenceConnect attribute instead
                 (block is BlockFenceGateRoughHewn gate1 && gate1.GetDirection() != side && gate1.GetDirection() != side.Opposite) ||
-                block.SideSolid[side.Opposite.Index];
+                block.CanAttachBlockAt(world.BlockAccessor, this, ownPos.AddCopy(side), side.Opposite, attachArea);
             ;
         }
 

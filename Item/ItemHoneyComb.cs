@@ -59,7 +59,7 @@ namespace Vintagestory.GameContent
                     new WorldInteraction()
                     {
                         ActionLangCode = "heldhelp-squeeze",
-                        HotKeyCode = "sneak",
+                        HotKeyCode = "shift",
                         MouseButton = EnumMouseButton.Right,
                         Itemstacks = stacks.ToArray()
                     }
@@ -71,7 +71,7 @@ namespace Vintagestory.GameContent
 
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
-            if (blockSel == null || !byEntity.Controls.Sneak) return;
+            if (blockSel == null || !byEntity.Controls.ShiftKey) return;
 
             Block block = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
 
@@ -87,7 +87,7 @@ namespace Vintagestory.GameContent
 
         public override bool OnHeldInteractStep(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
-            if (blockSel == null || !byEntity.Controls.Sneak) return false;
+            if (blockSel == null || !byEntity.Controls.ShiftKey) return false;
 
             if (byEntity.World is IClientWorldAccessor)
             {

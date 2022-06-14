@@ -21,6 +21,10 @@ namespace Vintagestory.GameContent
         /// </summary>
         Halves,
         /// <summary>
+        /// Needs a wall behind
+        /// </summary>
+        WallHalves,
+        /// <summary>
         /// One item in each 4 corners
         /// </summary>
         Quadrants,
@@ -34,6 +38,7 @@ namespace Vintagestory.GameContent
     public class GroundStorageProperties
     {
         public EnumGroundStorageLayout Layout = EnumGroundStorageLayout.SingleCenter;
+        public int WallOffY = 1;
         public AssetLocation PlaceRemoveSound = new AssetLocation("sounds/player/build");
         public bool RandomizeSoundPitch;
         public AssetLocation StackingModel;
@@ -43,8 +48,10 @@ namespace Vintagestory.GameContent
         public int StackingCapacity = 1;
         public int TransferQuantity = 1;
         public int BulkTransferQuantity = 4;
+        public bool SprintKey;
 
         public Cuboidf CollisionBox;
+        public Cuboidf SelectionBox;
         public float CbScaleYByLayer = 0;
 
         public int MaxFireable = 9999;
@@ -54,6 +61,7 @@ namespace Vintagestory.GameContent
             return new GroundStorageProperties()
             {
                 Layout = Layout,
+                WallOffY = WallOffY,
                 PlaceRemoveSound = PlaceRemoveSound,
                 RandomizeSoundPitch = RandomizeSoundPitch,
                 StackingCapacity = StackingCapacity,
@@ -63,8 +71,10 @@ namespace Vintagestory.GameContent
                 TransferQuantity = TransferQuantity,
                 BulkTransferQuantity = BulkTransferQuantity,
                 CollisionBox = CollisionBox,
+                SelectionBox = SelectionBox,
                 CbScaleYByLayer = CbScaleYByLayer,
-                MaxFireable = MaxFireable
+                MaxFireable = MaxFireable,
+                SprintKey = SprintKey
             };
         }
     }
@@ -102,7 +112,7 @@ namespace Vintagestory.GameContent
             {
                 new WorldInteraction
                 {
-                    HotKeyCode = "sneak",
+                    HotKeyCode = "shift",
                     ActionLangCode = "heldhelp-place",
                     MouseButton = EnumMouseButton.Right
                 }
@@ -115,7 +125,7 @@ namespace Vintagestory.GameContent
         {
             IWorldAccessor world = byEntity?.World;
 
-            if (blockSel == null || world == null || !byEntity.Controls.Sneak) return;
+            if (blockSel == null || world == null || !byEntity.Controls.ShiftKey) return;
 
 
             IPlayer byPlayer = null;

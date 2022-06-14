@@ -155,7 +155,7 @@ namespace Vintagestory.GameContent
 
             if (ownBlock != null)
             {
-                Shape shape = api.Assets.TryGet("shapes/block/wood/fruitpress/part-movable.json").ToObject<Shape>();
+                Shape shape = API.Common.Shape.TryGet(api, "shapes/block/wood/fruitpress/part-movable.json");
 
                 if (api.Side == EnumAppSide.Client)
                 {
@@ -186,7 +186,6 @@ namespace Vintagestory.GameContent
 
             if (MashSlot.Empty || renderer.juiceTexPos == null || squeezeRel >= 1) return;
 
-            int[] cols = renderer.juiceTexPos.RndColors;
             var rand = Api.World.Rand;
 
             liquidParticles.MinQuantity = (float)juiceableLitresLeft / 10f;
@@ -195,7 +194,7 @@ namespace Vintagestory.GameContent
             {
                 BlockFacing face = BlockFacing.HORIZONTALS[i];
 
-                liquidParticles.Color = cols[rand.Next(cols.Length)];
+                liquidParticles.Color = capi.BlockTextureAtlas.GetRandomColor(renderer.juiceTexPos, rand.Next(TextureAtlasPosition.RndColorsLength));
                 
                 Vec3d minPos = face.Plane.Startd.Add(-0.5, 0, -0.5);
                 Vec3d maxPos = face.Plane.Endd.Add(-0.5, 0, -0.5);
@@ -220,7 +219,7 @@ namespace Vintagestory.GameContent
                 liquidParticles.AddPos.Set(4 / 16f, 0f, 4 / 16f);
                 for (int i = 0; i < 3; i++)
                 {
-                    liquidParticles.Color = cols[rand.Next(cols.Length)];
+                    liquidParticles.Color = capi.BlockTextureAtlas.GetRandomColor(renderer.juiceTexPos, rand.Next(TextureAtlasPosition.RndColorsLength));
                     Api.World.SpawnParticles(liquidParticles);
                 }
             }
@@ -402,7 +401,7 @@ namespace Vintagestory.GameContent
 
                 } else
                 {  
-                    float desiredTransferSizeLitres = byPlayer.Entity.Controls.Sneak ? (float)hprops.LitresPerItem : Math.Min(handStack.StackSize, 4) * (float)hprops.LitresPerItem;
+                    float desiredTransferSizeLitres = byPlayer.Entity.Controls.ShiftKey ? (float)hprops.LitresPerItem : Math.Min(handStack.StackSize, 4) * (float)hprops.LitresPerItem;
                     transferableLitres = (float)Math.Min(desiredTransferSizeLitres, juiceableLitresCapacity - juiceableLitresLeft);
 
                     removeItems = (int)(transferableLitres / hprops.LitresPerItem);
@@ -597,8 +596,8 @@ namespace Vintagestory.GameContent
         public JuiceableProperties getJuiceableProps(ItemStack stack)
         {
             var props = stack?.ItemAttributes?["juiceableProperties"].Exists == true ? stack.ItemAttributes["juiceableProperties"].AsObject<JuiceableProperties>(null, stack.Collectible.Code.Domain) : null;
-            props?.LiquidStack?.Resolve(Api.World, "juiceable properties liquidstack");
-            props?.PressedStack?.Resolve(Api.World, "juiceable properties pressedstack");
+            props?.LiquidStack?.Resolve(Api.World, "juiceable properties liquidstack", stack.Collectible.Code);
+            props?.PressedStack?.Resolve(Api.World, "juiceable properties pressedstack", stack.Collectible.Code);
 
             return props;
         }

@@ -39,7 +39,7 @@ namespace Vintagestory.GameContent
 
                     Block block = Api.World.BlockAccessor.GetBlock(Pos);
 
-                    Shape shape = Api.Assets.TryGet("shapes/block/wood/firewoodpile.json").ToObject<Shape>();
+                    Shape shape = Shape.TryGet(Api, "shapes/block/wood/firewoodpile.json");
 
                     ITesselatorAPI mesher = ((ICoreClientAPI)Api).Tesselator;
 

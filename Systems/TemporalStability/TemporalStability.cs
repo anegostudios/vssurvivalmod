@@ -304,7 +304,7 @@ namespace Vintagestory.GameContent
 
             if (nextStormDaysLeft <= 0)
             {
-                float tempstormDurationMul = api.World.Config.GetFloat("tempstormDurationMul", 1);
+                float tempstormDurationMul = (float)api.World.Config.GetDecimal("tempstormDurationMul", 1);
                 double stormActiveDays = (0.1f + data.nextStormStrDouble * 0.1f) * tempstormDurationMul;
 
                 // Happens when time is fast forwarded
@@ -610,7 +610,7 @@ namespace Vintagestory.GameContent
             // Moved from EntitySpawner to here. Make drifters spawn at any light level if temporally unstable. A bit of an ugly hack, i know
             int lightLevel = api.World.BlockAccessor.GetLightLevel((int)spawnPosition.X, (int)spawnPosition.Y, (int)spawnPosition.Z, sc.LightLevelType);
 
-            if (api.World.Config.GetBool("temporalStability", true) && type.Attributes?["spawnCloserDuringLowStability"].AsBool() == true)
+            if (temporalStabilityEnabled && type.Attributes?["spawnCloserDuringLowStability"].AsBool() == true)
             {
                 // Below 25% begin reducing range
                 double mod = Math.Min(1, 4 * byPlayer.Entity.WatchedAttributes.GetDouble("temporalStability", 1));

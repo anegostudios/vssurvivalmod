@@ -236,8 +236,7 @@ namespace Vintagestory.GameContent
                 Block block = Api.World.BlockAccessor.GetBlock(candidatePos);
                 if (!CanReplace(block)) continue;
                 
-                Block supportBlock = Api.World.BlockAccessor.GetBlock(candidatePos.DownCopy());
-                if (CanSupportPumpkin(supportBlock))
+                if (PumpkinCropBehavior.CanSupportPumpkin(Api, candidatePos.DownCopy()))
                 {
                     Api.World.BlockAccessor.SetBlock(pumpkinBlock.BlockId, candidatePos);
                     pumpkinTotalHoursForNextStage[facing] = curTotalHours + pumpkinHoursToGrow;
@@ -309,11 +308,6 @@ namespace Vintagestory.GameContent
             return block == null || (block.Replaceable >= 6000 && !block.Code.GetName().Contains("pumpkin"));
         }
 
-        private bool CanSupportPumpkin(Block underBlock)
-        {
-            return underBlock != null && !underBlock.IsLiquid() && underBlock.Replaceable <= 5000;
-        }
-
         private void SetVineStage(Block block, int toStage)
         {
             try
@@ -353,9 +347,10 @@ namespace Vintagestory.GameContent
             Block blockToReplace = Api.World.BlockAccessor.GetBlock(newVinePos);
 
             if (!IsReplaceable(blockToReplace)) return;
-            
-            Block supportBlock = Api.World.BlockAccessor.GetBlock(newVinePos.DownCopy());
-            if (!CanGrowOn(supportBlock)) return;
+
+            newVinePos.Y--;
+            if (!CanGrowOn(Api, newVinePos)) return;
+            newVinePos.Y++;
 
             Api.World.BlockAccessor.SetBlock(stage1VineBlock.BlockId, newVinePos);
 
@@ -367,9 +362,9 @@ namespace Vintagestory.GameContent
         }
         
 
-        private bool CanGrowOn(Block block)
+        private bool CanGrowOn(ICoreAPI api, BlockPos pos)
         {
-            return block != null && !block.IsLiquid() && block.SideSolid[BlockFacing.UP.Index];
+            return api.World.BlockAccessor.GetSolidBlock(pos.X, pos.Y, pos.Z).CanAttachBlockAt(api.World.BlockAccessor, stage1VineBlock, pos, BlockFacing.UP);
         }
 
         private bool IsReplaceable(Block block)

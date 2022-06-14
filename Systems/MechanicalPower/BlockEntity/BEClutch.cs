@@ -183,7 +183,7 @@ namespace Vintagestory.GameContent.Mechanics
         {
             lightRbs = Api.World.BlockAccessor.GetLightRGBs(Pos);
             ICoreClientAPI capi = Api as ICoreClientAPI;
-            Shape shape = capi.Assets.TryGet("shapes/block/wood/mechanics/clutch-rest.json").ToObject<Shape>();
+            Shape shape = API.Common.Shape.TryGet(capi, "shapes/block/wood/mechanics/clutch-rest.json");
             float rotateY = 0f;
             switch(Facing.Index)
             {

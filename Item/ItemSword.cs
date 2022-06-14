@@ -9,7 +9,10 @@ namespace Vintagestory.GameContent
 {
     public class ItemSword : Item
     {
-
+        public override string GetHeldTpUseAnimation(ItemSlot activeHotbarSlot, Entity byEntity)
+        {
+            return "interactstatic";
+        }
         public override void OnHeldAttackStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
         {
             byEntity.Attributes.SetInt("didattack", 0);

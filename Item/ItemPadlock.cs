@@ -38,7 +38,7 @@ namespace Vintagestory.GameContent
                     new WorldInteraction()
                     {
                         ActionLangCode = "heldhelp-lock",
-                        HotKeyCode = "sneak",
+                        HotKeyCode = "shift",
                         MouseButton = EnumMouseButton.Right,
                         Itemstacks = stacks.ToArray()
                     }

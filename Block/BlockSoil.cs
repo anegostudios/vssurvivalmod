@@ -136,8 +136,10 @@ namespace Vintagestory.GameContent
 
         protected bool isSmotheringBlock(IWorldAccessor world, BlockPos pos)
         {
-            Block block = world.BlockAccessor.GetBlock(pos);
-            return block.SideSolid[BlockFacing.DOWN.Index] && block.SideOpaque[BlockFacing.DOWN.Index];
+            Block block = world.BlockAccessor.GetLiquidBlock(pos);
+            if (block is BlockLakeIce || block.LiquidLevel > 1) return true;
+            block = world.BlockAccessor.GetBlock(pos);
+            return block.SideSolid[BlockFacing.DOWN.Index] && block.SideOpaque[BlockFacing.DOWN.Index] || block is BlockLava;
         }
 
         protected Block tryGetBlockForGrowing(IWorldAccessor world, BlockPos pos)
@@ -204,7 +206,7 @@ namespace Vintagestory.GameContent
 
             if (!isFullyGrown &&
                 world.BlockAccessor.GetLightLevel(pos, EnumLightLevelType.MaxLight) >= growthLightLevel &&
-                world.BlockAccessor.GetBlock(pos.UpCopy()).SideSolid[BlockFacing.DOWN.Index] == false)
+                world.BlockAccessor.IsSideSolid(pos.X, pos.Y + 1, pos.Z, BlockFacing.DOWN) == false)
             {
                 return getClimateSuitedGrowthStage(world, pos, world.BlockAccessor.GetClimateAt(pos, EnumGetClimateMode.WorldGenValues)) != CurrentStage();
             }

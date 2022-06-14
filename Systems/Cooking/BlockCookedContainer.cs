@@ -350,7 +350,7 @@ namespace Vintagestory.GameContent
                 Block selectedBlock = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
                 if (selectedBlock?.Attributes?.IsTrue("mealContainer") == true)
                 {
-                    if (!byEntity.Controls.Sneak) return;
+                    if (!byEntity.Controls.ShiftKey) return;
                     ServeIntoBowl(selectedBlock, blockSel.Position, slot, byEntity.World);
                     handHandling = EnumHandHandling.PreventDefault;
                     return;
@@ -360,7 +360,7 @@ namespace Vintagestory.GameContent
                 float quantityServings = (float)slot.Itemstack.Attributes.GetDecimal("quantityServings");
                 if (block is BlockGroundStorage)
                 {
-                    if (!byEntity.Controls.Sneak) return;
+                    if (!byEntity.Controls.ShiftKey) return;
                     var begs = api.World.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityGroundStorage;
                     ItemSlot gsslot = begs.GetSlotAt(blockSel);
                     if (gsslot == null || gsslot.Empty) return;

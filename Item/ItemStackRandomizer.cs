@@ -63,8 +63,6 @@ namespace Vintagestory.GameContent
             this.Stacks = Attributes["stacks"].AsObject<RandomStack[]>();
             float totalchance = 0;
 
-            string code = this.Code.Path;
-
             for (int i = 0; i < Stacks.Length; i++)
             {
                 totalchance += Stacks[i].Chance;

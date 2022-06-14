@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
@@ -58,6 +59,17 @@ namespace Vintagestory.GameContent
         }
 
         public override Cuboidf[] GetCollisionBoxes(IBlockAccessor blockAccessor, BlockPos pos)
+        {
+            BlockEntity be = blockAccessor.GetBlockEntity(pos);
+            if (be is BlockEntityGroundStorage beg)
+            {
+                return beg.GetCollisionBoxes();
+            }
+
+            return base.GetCollisionBoxes(blockAccessor, pos);
+        }
+
+        public override Cuboidf[] GetParticleCollisionBoxes(IBlockAccessor blockAccessor, BlockPos pos)
         {
             BlockEntity be = blockAccessor.GetBlockEntity(pos);
             if (be is BlockEntityGroundStorage beg)
@@ -165,11 +177,50 @@ namespace Vintagestory.GameContent
             Block belowBlock = world.BlockAccessor.GetBlock(pos.DownCopy());
             if (!belowBlock.CanAttachBlockAt(world.BlockAccessor, this, pos.DownCopy(), BlockFacing.UP) && (belowBlock != this || FillLevel(world.BlockAccessor, pos.DownCopy()) != 1)) return false;
 
+            var storageProps = player.InventoryManager.ActiveHotbarSlot.Itemstack.Collectible.GetBehavior<CollectibleBehaviorGroundStorable>()?.StorageProps;
+            if (storageProps != null &&  storageProps.SprintKey && !player.Entity.Controls.CtrlKey)
+            {
+                return false;
+            }
+
+            BlockPos targetPos = blockSel.DidOffset ? blockSel.Position.AddCopy(blockSel.Face.Opposite) : blockSel.Position;
+            double dx = player.Entity.Pos.X - (targetPos.X + blockSel.HitPosition.X);
+            double dz = (float)player.Entity.Pos.Z - (targetPos.Z + blockSel.HitPosition.Z);
+            float angleHor = (float)Math.Atan2(dx, dz);
+
+            float deg90 = GameMath.PIHALF;
+            float roundRad = ((int)Math.Round(angleHor / deg90)) * deg90;
+
+            if (storageProps.Layout == EnumGroundStorageLayout.WallHalves)
+            {
+                BlockFacing attachFace = null;
+
+                foreach (var face in BlockFacing.HORIZONTALS)
+                {
+                    var npos = pos.AddCopy(face).UpCopy(storageProps.WallOffY - 1);
+                    var block = world.BlockAccessor.GetBlock(npos);
+                    if (block.CanAttachBlockAt(world.BlockAccessor, this, npos, face.Opposite))
+                    {
+                        attachFace = face;
+                        break;
+                    }
+                }
+
+                if (attachFace == null)
+                {
+                    (api as ICoreClientAPI)?.TriggerIngameError(this, "requireswall", Lang.Get("placefailure-requireswall"));
+                    return false;
+                }
+
+                roundRad = (float)Math.Atan2(attachFace.Normali.X, attachFace.Normali.Z); ;
+            }
+
             world.BlockAccessor.SetBlock(BlockId, pos);
 
             BlockEntity be = world.BlockAccessor.GetBlockEntity(pos);
             if (be is BlockEntityGroundStorage beg)
             {
+                beg.MeshAngle = roundRad;
                 beg.OnPlayerInteractStart(player, blockSel);
                 beg.MarkDirty(true);
             }
@@ -188,6 +239,24 @@ namespace Vintagestory.GameContent
 
             
             return true;
+        }
+
+        public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
+        {
+            base.OnNeighbourBlockChange(world, pos, neibpos);
+
+            BlockEntity be = world.BlockAccessor.GetBlockEntity(pos);
+            if (be is BlockEntityGroundStorage beg && beg.StorageProps != null)
+            {
+                if (beg.StorageProps.Layout == EnumGroundStorageLayout.WallHalves)
+                {
+                    var bpos = pos.AddCopy((int)Math.Round(Math.Cos(beg.MeshAngle - GameMath.PIHALF)), 0, (int)Math.Round(Math.Sin(beg.MeshAngle - GameMath.PIHALF)));
+                    if (bpos == neibpos)
+                    {
+                        world.BlockAccessor.BreakBlock(pos, null);
+                    }
+                }
+            }
         }
 
 
@@ -265,7 +334,7 @@ namespace Vintagestory.GameContent
                         {
                             ActionLangCode = "blockhelp-groundstorage-addone",
                             MouseButton = EnumMouseButton.Right,
-                            HotKeyCode = "sneak",
+                            HotKeyCode = "shift",
                             Itemstacks = new ItemStack[] { new ItemStack(collObj, 1) }
                         },
                         new WorldInteraction()
@@ -279,13 +348,13 @@ namespace Vintagestory.GameContent
                         {
                             ActionLangCode = "blockhelp-groundstorage-addbulk",
                             MouseButton = EnumMouseButton.Right,
-                            HotKeyCodes = new string[] {"sprint", "sneak" },
+                            HotKeyCodes = new string[] {"ctrl", "shift" },
                             Itemstacks = new ItemStack[] { new ItemStack(collObj, bulkquantity) }
                         },
                         new WorldInteraction()
                         {
                             ActionLangCode = "blockhelp-groundstorage-removebulk",
-                            HotKeyCode = "sprint",
+                            HotKeyCode = "ctrl",
                             MouseButton = EnumMouseButton.Right
                         }
 
@@ -313,7 +382,7 @@ namespace Vintagestory.GameContent
                         {
                             ActionLangCode = "blockhelp-groundstorage-add",
                             MouseButton = EnumMouseButton.Right,
-                            HotKeyCode = "sneak",
+                            HotKeyCode = "shift",
                             Itemstacks = beg.StorageProps.Layout == EnumGroundStorageLayout.Halves ? groundStorablesHalves : groundStorablesQuadrants
                         },
                         new WorldInteraction()

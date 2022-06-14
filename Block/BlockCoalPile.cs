@@ -47,25 +47,14 @@ namespace Vintagestory.GameContent
 
             interactions = ObjectCacheUtil.GetOrCreate(api, "coalBlockInteractions", () =>
             {
-                List<ItemStack> canIgniteStacks = new List<ItemStack>();
-
-                foreach (CollectibleObject obj in api.World.Collectibles)
-                {
-                    string firstCodePart = obj.FirstCodePart();
-
-                    if (obj is Block && (obj as Block).HasBehavior<BlockBehaviorCanIgnite>())
-                    {
-                        List<ItemStack> stacks = obj.GetHandBookStacks(capi);
-                        if (stacks != null) canIgniteStacks.AddRange(stacks);
-                    }
-                }
+                List<ItemStack> canIgniteStacks = BlockBehaviorCanIgnite.CanIgniteStacks(api, false);
 
                 return new WorldInteraction[] {
                     new WorldInteraction()
                     {
                         ActionLangCode = "blockhelp-coalpile-addcoal",
                         MouseButton = EnumMouseButton.Right,
-                        HotKeyCode = "sneak",
+                        HotKeyCode = "shift",
                         Itemstacks = new ItemStack[] { new ItemStack(api.World.GetItem(new AssetLocation("charcoal")), 2) }
                     },
                     new WorldInteraction()
@@ -77,7 +66,7 @@ namespace Vintagestory.GameContent
                     new WorldInteraction()
                     {
                         ActionLangCode = "blockhelp-forge-ignite",
-                        HotKeyCode = "sneak",
+                        HotKeyCode = "shift",
                         MouseButton = EnumMouseButton.Right,
                         Itemstacks = canIgniteStacks.ToArray(),
                         GetMatchingStacks = (wi, bs, es) => {
@@ -258,7 +247,7 @@ namespace Vintagestory.GameContent
                 BlockEntityCoalPile pile = (BlockEntityCoalPile)be;
                 if (player == null || player.WorldData.CurrentGameMode != EnumGameMode.Creative)
                 {
-                    pile.inventory[0].Itemstack = (ItemStack)slot.TakeOut(player?.Entity.Controls.Sprint == true ? pile.BulkTakeQuantity : pile.DefaultTakeQuantity);
+                    pile.inventory[0].Itemstack = (ItemStack)slot.TakeOut(player?.Entity.Controls.CtrlKey == true ? pile.BulkTakeQuantity : pile.DefaultTakeQuantity);
                     slot.MarkDirty();
                 }
                 else

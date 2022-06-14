@@ -25,9 +25,8 @@ namespace Vintagestory.GameContent
             this.capi = capi;
             this.rifts = rifts;
 
-            capi.Event.RegisterRenderer(this, EnumRenderStage.AfterBlit, "rendertest");
+            capi.Event.RegisterRenderer(this, EnumRenderStage.AfterBlit, "riftrenderer");
             MeshData mesh = QuadMeshUtil.GetQuad();
-
             meshref = capi.Render.UploadMesh(mesh);
             matrixf = new Matrixf();
 

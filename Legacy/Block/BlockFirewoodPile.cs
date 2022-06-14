@@ -95,7 +95,7 @@ namespace Vintagestory.GameContent
                 BlockEntityFirewoodPile pile = (BlockEntityFirewoodPile)be;
                 if (player == null || player.WorldData.CurrentGameMode != EnumGameMode.Creative)
                 {
-                    pile.inventory[0].Itemstack = (ItemStack)slot.TakeOut(player.Entity.Controls.Sprint ? pile.BulkTakeQuantity : pile.DefaultTakeQuantity);
+                    pile.inventory[0].Itemstack = (ItemStack)slot.TakeOut(player.Entity.Controls.CtrlKey ? pile.BulkTakeQuantity : pile.DefaultTakeQuantity);
                     slot.MarkDirty();
                 } else
                 {
@@ -140,7 +140,7 @@ namespace Vintagestory.GameContent
                 {
                     ActionLangCode = "blockhelp-firewoodpile-addlog",
                     MouseButton = EnumMouseButton.Right,
-                    HotKeyCode = "sneak",
+                    HotKeyCode = "shift",
                     Itemstacks = new ItemStack[] { new ItemStack(world.GetItem(new AssetLocation("firewood")), 2) }
                 },
                 new WorldInteraction()
@@ -154,13 +154,13 @@ namespace Vintagestory.GameContent
                 {
                     ActionLangCode = "blockhelp-firewoodpile-8addlog",
                     MouseButton = EnumMouseButton.Right,
-                    HotKeyCodes = new string[] {"sprint", "sneak" },
+                    HotKeyCodes = new string[] {"ctrl", "shift" },
                     Itemstacks = new ItemStack[] { new ItemStack(world.GetItem(new AssetLocation("firewood")), 8) }
                 },
                 new WorldInteraction()
                 {
                     ActionLangCode = "blockhelp-firewoodpile-8removelog",
-                    HotKeyCode = "sprint",
+                    HotKeyCode = "ctrl",
                     MouseButton = EnumMouseButton.Right
                 }
 

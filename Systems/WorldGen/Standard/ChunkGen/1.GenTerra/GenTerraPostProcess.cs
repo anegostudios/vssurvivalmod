@@ -5,6 +5,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
 using Vintagestory.ServerMods.NoObf;
 
 namespace Vintagestory.ServerMods
@@ -12,10 +13,10 @@ namespace Vintagestory.ServerMods
     public class GenTerraPostProcess : ModStdWorldGen
     {
         ICoreServerAPI api;
-        IBlockAccessor blockAccessor;
+        IWorldGenBlockAccessor blockAccessor;
 
-        HashSet<VisitNode> chunkVisitedNodes = new HashSet<VisitNode>();
-        HashSet<VisitNode> curVisitedNodes = new HashSet<VisitNode>();
+        HashSet<int> chunkVisitedNodes = new HashSet<int>();
+        List<int> solidNodes = new List<int>(20);
 
         public override bool ShouldLoad(EnumAppSide side)
         {
@@ -50,127 +51,197 @@ namespace Vintagestory.ServerMods
 
         private void OnChunkColumnGen(IServerChunk[] chunks, int chunkX, int chunkZ, ITreeAttribute chunkGenParams = null)
         {
+            blockAccessor.BeginColumn();
             int seaLevel = TerraGenConfig.seaLevel - 1;
+            int chunksize = this.chunksize;
+            int chunksizeSquared = chunksize * chunksize;
             int chunkY = seaLevel / chunksize;
+            int yMax = chunks[0].MapChunk.YMax;
+            int cyMax = yMax / chunksize + 1;
             chunkVisitedNodes.Clear();
 
-            for (int cy = chunkY; cy < chunks.Length; cy++)
+            for (int cy = chunkY; cy < cyMax; cy++)
             {
-                IServerChunk chunk = chunks[cy];
-                int index3d = 0;
-                if (cy * chunksize < seaLevel)
+                IChunkBlocks chunkdata = chunks[cy].Blocks;
+
+                int yStart = cy == 0 ? 1 : 0;  // Prevents attempts to get a blockbelow with y == -1 - impossible unless seaLeavel is set to 0
+                int baseY = cy * chunksize;
+                if (baseY < seaLevel)
                 {
-                    index3d = (seaLevel - cy * chunksize) * chunksize * chunksize;
+                    yStart = seaLevel - baseY;  // Can't be more than chunksize below seaLevel, because of chunkY's initial value
+                }
+                int yEnd = chunksize - 1;
+                if (baseY + yEnd > yMax)
+                {
+                    yEnd = yMax - baseY;
                 }
 
-                for (; index3d < chunk.Blocks.Length; index3d++)
+                for (int baseindex3d = 0; baseindex3d < chunksizeSquared; baseindex3d++)
                 {
-                    int blockId = chunk.Blocks[index3d];
-                    if (blockId == 0) continue;
+                    int blockIdBelow;
+                    int index3d = baseindex3d + (yStart - 1) * chunksizeSquared;
 
-                    
-                    // Check up to 5 blocks below if there is air
-                    for (int i = 1; i < 5; i++)
+                    if (yStart == 0)
                     {
-                        int index3dBelow = index3d - chunksize * chunksize;
-                        int curcy = cy;
+                        blockIdBelow = chunks[cy - 1].Blocks.GetBlockIdUnsafe(index3d + chunksize * chunksizeSquared);
+                    }
+                    else
+                    {
+                        blockIdBelow = chunkdata.GetBlockIdUnsafe(index3d);
+                    }
 
-                        if (index3dBelow < 0) {
-                            index3dBelow += chunksize * chunksize * chunksize;
-                            curcy--;
-                        }
-
-                        blockId = chunks[curcy].Blocks[index3dBelow];
-
-                        if (blockId == 0)
+                    for (int y = yStart; y <= yEnd; y++)
+                    {
+                        index3d += chunksizeSquared;
+                        int blockId = chunkdata.GetBlockIdUnsafe(index3d);
+                        if (blockId != 0 && blockIdBelow == 0) 
                         {
-                            deletePotentialFloatingBlocks(index3d, chunkX, cy, chunkZ);
-                            break;
+                            int x = baseindex3d % chunksize;
+                            int z = baseindex3d / chunksize;
+                            if (!chunkVisitedNodes.Contains(index3d)) deletePotentialFloatingBlocks(chunkX * chunksize + x, baseY + y, chunkZ * chunksize + z);
                         }
+                        blockIdBelow = blockId;  // ready for the next iteration in the loop
                     }
                 }
             }
         }
 
 
-        
-        private void deletePotentialFloatingBlocks(int index3d, int chunkX, int chunkY, int chunkZ)
+
+        QueueOfInt bfsQueue = new QueueOfInt();
+        const int ARRAYSIZE = 41;  // Note if this constant is increased beyond 64, the bitshifts for compressedPos in the bfsQueue.Enqueue() and .Dequeue() calls may need updating
+        readonly int[] currentVisited = new int[ARRAYSIZE * ARRAYSIZE * ARRAYSIZE];
+        int iteration = 0;
+
+        /// <summary>
+        /// Very similar to RoomRegistry room search code: we will search for contiguous islands of blocks, surrounded by air on all sides
+        /// </summary>
+        private void deletePotentialFloatingBlocks(int X, int Y, int Z)
         {
-            curVisitedNodes.Clear();
+            int halfSize = (ARRAYSIZE - 1) / 2;
+            solidNodes.Clear();
+            bfsQueue.Clear();
+            int compressedPos = halfSize << 12 | halfSize << 6 | halfSize;
+            bfsQueue.Enqueue(compressedPos);
+            solidNodes.Add(compressedPos);
 
-            //blockAccessor.SetBlock(61, new BlockPos(dx + chunkX * chunksize, dy + chunkY * chunksize, dz + chunkZ * chunksize));
-            int baseX = chunkX * chunksize;
-            int baseY = chunkY * chunksize;
-            int baseZ = chunkZ * chunksize;
+            int iteration = ++this.iteration;
+            int visitedIndex = (halfSize * ARRAYSIZE + halfSize) * ARRAYSIZE + halfSize; // Center node
+            currentVisited[visitedIndex] = iteration;
 
-            int dx = index3d % chunksize;
-            int dy = index3d / chunksize / chunksize;
-            int dz = (index3d / chunksize) % chunksize;
+            int baseX = X - halfSize;
+            int baseY = Y - halfSize;
+            int baseZ = Z - halfSize;
+            BlockPos npos = new BlockPos();
+            int dx, dy, dz;
 
-            VisitNode basenode = new VisitNode(baseX + dx, baseY + dy, baseZ + dz);
-            if (chunkVisitedNodes.Contains(basenode)) return;
-
-            Queue<VisitNode> toVisit = new Queue<VisitNode>();
-            toVisit.Enqueue(basenode);
-
-            int foundBlocks = 0;
-
-
-            while (toVisit.Count > 0)
+            int curVisitedNodes = 1;
+            while (bfsQueue.Count > 0)
             {
-                VisitNode node = toVisit.Dequeue();
-                foundBlocks++;
+                compressedPos = bfsQueue.Dequeue();
+                dx = compressedPos >> 12;
+                dy = (compressedPos >> 6) & 0x3f;
+                dz = compressedPos & 0x3f;
+                npos.Set(baseX + dx, baseY + dy, baseZ + dz);
 
-                curVisitedNodes.Add(node);
-                
-                for (int faceIndex = 0; faceIndex < BlockFacing.NumberOfFaces; faceIndex++)
+                foreach (BlockFacing facing in BlockFacing.ALLFACES)
                 {
-                    Vec3i vec = BlockFacing.ALLFACES[faceIndex].Normali;
-                    VisitNode nnode = new VisitNode(node.X + vec.X, node.Y + vec.Y, node.Z + vec.Z);
+                    facing.IterateThruFacingOffsets(npos);  // This must be the first command in the loop, to ensure all facings will be properly looped through regardless of any 'continue;' statements
 
-                    if (curVisitedNodes.Contains(nnode)) continue;
-                    if (chunkVisitedNodes.Contains(nnode)) return;
+                    // Compute the new dx, dy, dz offsets for npos
+                    dx = npos.X - baseX;
+                    dy = npos.Y - baseY;
+                    dz = npos.Z - baseZ;
 
-                    if (blockAccessor.GetBlockId(nnode.X, nnode.Y, nnode.Z) != 0)
+                    visitedIndex = (dx * ARRAYSIZE + dy) * ARRAYSIZE + dz;
+                    if (currentVisited[visitedIndex] == iteration) continue;   // continue if block position was already visited
+                    currentVisited[visitedIndex] = iteration;  // mark this as visited so we don't check it more than once
+
+                    int nBlock = blockAccessor.GetBlockId(npos.X, npos.Y, npos.Z);
+                    if (nBlock == 0)
                     {
-                        toVisit.Enqueue(nnode);
+                        continue;   // continue if air, we are looking for solid blocks only  (NOTE: accessing outside generating chunks will also look like air here)
                     }
-                }
 
-                if (curVisitedNodes.Count > 20)
-                {
-                    foreach (var val in curVisitedNodes) chunkVisitedNodes.Add(val);
-                    return;
+                    int newCompressedPos = dx << 12 | dy << 6 | dz;
+
+                    // If more than 20 solid blocks together, either it is connected to base terrain or it's a large floating island which is OK
+                    if (++curVisitedNodes > 20)
+                    {
+                        // Cheap test on block below - no point in adding to chunkVisitedNodes if solid block below, as chunkVisitedNodes will be tested only when there is air below
+                        if (!solidNodes.Contains(newCompressedPos - 64))
+                        {
+                            AddToChunkVisitedNodesIfSameChunk(npos.X, npos.Y, npos.Z, X, Y, Z);
+                        }
+                        foreach (int compPos in solidNodes)
+                        {
+                            // Again, no point in adding to chunkVisitedNodes if solid block below
+                            if (!solidNodes.Contains(compPos - 64))
+                            {
+                                dx = compPos >> 12;
+                                dy = (compPos >> 6) & 0x3f;
+                                dz = compPos & 0x3f;
+                                AddToChunkVisitedNodesIfSameChunk(baseX + dx, baseY + dy, baseZ + dz, X, Y, Z);
+                            }
+                        }
+                        return;
+                    }
+
+                    // Solid block: continue iterating, and add this block for further action
+                    solidNodes.Add(newCompressedPos);
+                    bfsQueue.Enqueue(newCompressedPos);
                 }
             }
 
-            // We found a free floating section of blocks that's less that 10 blocks
-            if (curVisitedNodes.Count < 20)
-            {
-                foreach (VisitNode fnode in curVisitedNodes)
-                {
-                    blockAccessor.SetBlock(0, new BlockPos(fnode.X, fnode.Y, fnode.Z));
-                }
 
+            // We found a free floating section of blocks that's less that 20 blocks
+            foreach (int compPos in solidNodes)
+            {
+                dx = compPos >> 12;
+                dy = (compPos >> 6) & 0x3f;
+                dz = compPos & 0x3f;
+
+                npos.Set(baseX + dx, baseY + dy, baseZ + dz);
+                blockAccessor.SetBlock(0, npos);
             }
         }
 
-
-        struct VisitNode : IEquatable<VisitNode>
+        private void AddToChunkVisitedNodesIfSameChunk(int nposX, int nposY, int nposZ, int origX, int origY, int origZ)
         {
-            public int X, Y, Z;
-
-            public VisitNode(int x, int y, int z)
+            // Only if this solid block is above x,y,z position, or on same level and north or east, add to chunkVisitedNodes to be filtered out of future testing
+            if (nposY < origY) return;
+            if (nposY == origY)
             {
-                this.X = x;
-                this.Y = y;
-                this.Z = z;
+                if (nposZ < origZ) return;
+                if (nposZ == origZ && nposX < origX) return;
             }
 
-            public bool Equals(VisitNode other)
-            {
-                return X == other.X && Y == other.Y && Z == other.Z;
-            }
+            // Don't add anything unless it is in the current chunk
+            int chunkMask = ~(chunksize - 1);
+            if (((nposX ^ origX) & chunkMask) != 0) return;
+            if (((nposZ ^ origZ) & chunkMask) != 0) return;
+            if (((nposY ^ origY) & chunkMask) != 0) return;
+
+            chunkMask = chunksize - 1;
+            int index3d = ((nposY & chunkMask) * chunksize + (nposZ & chunkMask)) * chunksize + (nposX & chunkMask);
+            chunkVisitedNodes.Add(index3d);
         }
+
+        //struct VisitNode : IEquatable<VisitNode>
+        //{
+        //    public int X, Y, Z;
+
+        //    public VisitNode(int x, int y, int z)
+        //    {
+        //        this.X = x;
+        //        this.Y = y;
+        //        this.Z = z;
+        //    }
+
+        //    public bool Equals(VisitNode other)
+        //    {
+        //        return X == other.X && Y == other.Y && Z == other.Z;
+        //    }
+        //}
     }
 }

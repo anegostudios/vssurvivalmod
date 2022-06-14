@@ -47,25 +47,22 @@ namespace Vintagestory.GameContent
             smallMetalSparks.SizeEvolve = new EvolvingNatFloat(EnumTransformFunction.LINEAR, -0.05f);
             smallMetalSparks.ParticleModel = EnumParticleModel.Quad;
             smallMetalSparks.LifeLength = 0.03f;
-            smallMetalSparks.MinVelocity = new Vec3f(-1f, 1f, -1f);
-            smallMetalSparks.AddVelocity = new Vec3f(2f, 2f, 2f);
-            smallMetalSparks.MinQuantity = 4;
-            smallMetalSparks.AddQuantity = 6;
+            smallMetalSparks.MinVelocity = new Vec3f(-2f, 1f, -2f);
+            smallMetalSparks.AddVelocity = new Vec3f(4f, 2f, 4f);
+            smallMetalSparks.MinQuantity = 6;
+            smallMetalSparks.AddQuantity = 12;
             smallMetalSparks.MinSize = 0.1f;
             smallMetalSparks.MaxSize = 0.1f;
             smallMetalSparks.SizeEvolve = new EvolvingNatFloat(EnumTransformFunction.LINEAR, -0.1f);
 
 
 
-           
-
-
             bigMetalSparks = new SimpleParticleProperties(
-                2, 8,
+                4, 8,
                 ColorUtil.ToRgba(255, 255, 233, 83),
                 new Vec3d(), new Vec3d(),
-                new Vec3f(-1f, 0.5f, -1f),
-                new Vec3f(2f, 1.5f, 2f),
+                new Vec3f(-1.5f, 0.9f, -1.5f),
+                new Vec3f(3f, 2f, 3f),
                 0.5f,
                 1f,
                 0.25f, 0.25f
@@ -194,10 +191,10 @@ namespace Vintagestory.GameContent
         {
             if (byPlayer.InventoryManager.ActiveHotbarSlot.Itemstack?.Collectible.Tool == EnumTool.Hammer)
             {
-                return RotateWorkItem(byPlayer.Entity.Controls.Sneak);
+                return RotateWorkItem(byPlayer.Entity.Controls.ShiftKey);
             }
 
-            if (byPlayer.Entity.Controls.Sneak)
+            if (byPlayer.Entity.Controls.ShiftKey)
             {
                 return TryPut(world, byPlayer, blockSel);
             } else
@@ -404,11 +401,16 @@ namespace Vintagestory.GameContent
                 bigMetalSparks.MinPos = Pos.ToVec3d().AddCopy(voxelPos.X / 16f, voxYOff + voxelPos.Y / 16f + 0.0625f, voxelPos.Z / 16f);
                 bigMetalSparks.AddPos.Set(1 / 16f, 0, 1 / 16f);
                 bigMetalSparks.VertexFlags = (byte)GameMath.Clamp((int)(temp - 700) / 2, 32, 128);
+                bigMetalSparks.Bounciness = 0.7f;
                 Api.World.SpawnParticles(bigMetalSparks, byPlayer);
 
+                
                 smallMetalSparks.MinPos = Pos.ToVec3d().AddCopy(voxelPos.X / 16f, voxYOff + voxelPos.Y / 16f + 0.0625f, voxelPos.Z / 16f);
                 smallMetalSparks.VertexFlags = (byte)GameMath.Clamp((int)(temp - 770) / 3, 32, 128);
                 smallMetalSparks.AddPos.Set(1 / 16f, 0, 1 / 16f);
+
+                
+
                 Api.World.SpawnParticles(smallMetalSparks, byPlayer);
             }
 
@@ -1194,11 +1196,11 @@ namespace Vintagestory.GameContent
             {
                 if (workItemStack.Class == EnumItemClass.Item)
                 {
-                    blockIdMapping[workItemStack.Id] = workItemStack.Item.Code;
+                    itemIdMapping[workItemStack.Id] = workItemStack.Item.Code;
                 }
                 else
                 {
-                    itemIdMapping[workItemStack.Id] = workItemStack.Block.Code;
+                    blockIdMapping[workItemStack.Id] = workItemStack.Block.Code;
                 }
             }
         }

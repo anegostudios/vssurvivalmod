@@ -148,7 +148,7 @@ namespace Vintagestory.GameContent
             if (item.Attributes != null && item.Attributes["onGround"].AsBool(false)) onGround = true;
             AssetLocation loc = shapeLoc.Base.Clone().WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json");
 
-            Shape shape = capi.Assets.TryGet(loc).ToObject<Shape>();
+            Shape shape = API.Common.Shape.TryGet(capi, loc);
             Vec3f rot = new Vec3f(shapeLoc.rotateX, shapeLoc.rotateY, shapeLoc.rotateZ);
 
             capi.Tesselator.TesselateShape(item, shape, out itemMesh, rot, null, shapeLoc.SelectiveElements);

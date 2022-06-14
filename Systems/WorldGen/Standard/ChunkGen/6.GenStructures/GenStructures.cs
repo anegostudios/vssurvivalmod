@@ -105,6 +105,7 @@ namespace Vintagestory.ServerMods
         private void OnChunkColumnGenPostPass(IServerChunk[] chunks, int chunkX, int chunkZ, ITreeAttribute chunkGenParams = null)
         {
             if (!TerraGenConfig.GenerateStructures) return;
+            worldgenBlockAccessor.BeginColumn();
 
             IMapRegion region = chunks[0].MapChunk.MapRegion;
 
@@ -115,6 +116,7 @@ namespace Vintagestory.ServerMods
         private void OnChunkColumnGen(IServerChunk[] chunks, int chunkX, int chunkZ, ITreeAttribute chunkGenParams = null)
         {
             if (!TerraGenConfig.GenerateStructures) return;
+            worldgenBlockAccessor.BeginColumn();
 
             IMapRegion region = chunks[0].MapChunk.MapRegion;
 
@@ -190,7 +192,7 @@ namespace Vintagestory.ServerMods
                 }
 
 
-                while (chance-- > strucRand.NextDouble() && toGenerate > 0)
+                while (chance-- > strucRand.NextFloat() && toGenerate > 0)
                 {
                     int dx = strucRand.NextInt(chunksize);
                     int dz = strucRand.NextInt(chunksize);
@@ -205,9 +207,8 @@ namespace Vintagestory.ServerMods
                         }
                         else
                         {
-                            pos.Set(chunkX * chunksize + dx, 8 + strucRand.NextInt(ySurface - 8 - 5), chunkZ * chunksize + dz);
+                            pos.Set(chunkX * chunksize + dx, 8 + strucRand.NextInt(Math.Max(1, ySurface - 8 - 5)), chunkZ * chunksize + dz);
                         }
-
                     }
                     else
                     {
@@ -259,7 +260,7 @@ namespace Vintagestory.ServerMods
 
                 float chance = struc.Chance * vcfg.ChanceMultiplier;
 
-                while (chance-- > strucRand.NextDouble())
+                while (chance-- > strucRand.NextFloat())
                 {
                     int dx = strucRand.NextInt(chunksize);
                     int dz = strucRand.NextInt(chunksize);

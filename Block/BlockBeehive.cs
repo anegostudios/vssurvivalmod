@@ -34,6 +34,13 @@ namespace Vintagestory.GameContent
 
         BlockPos atPos = new BlockPos();
 
+        Cuboidf[] nocoll = new Cuboidf[0];
+
+        public override Cuboidf[] GetParticleCollisionBoxes(IBlockAccessor blockAccessor, BlockPos pos)
+        {
+            return nocoll;
+        }
+
         public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, LCGRandom worldgenRand)
         {
             //blockAccessor.SetBlock(blockAccessor.GetBlock(new AssetLocation("creativeblock-60")).BlockId, pos);

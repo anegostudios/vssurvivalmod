@@ -212,7 +212,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            if (FuelPos != FirePos && Api.World.BlockAccessor.GetBlock(FirePos).LiquidCode == "water")
+            if (FuelPos != FirePos && Api.World.BlockAccessor.GetLiquidBlock(FirePos).LiquidCode == "water")
             {
                 KillFire(false);
                 return;

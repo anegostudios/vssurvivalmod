@@ -19,7 +19,8 @@ namespace Vintagestory.ServerMods
         // Used by forest floor system: reusable array, and various blockIDs for tall grass etc.
 
         // Make the reusable array threadsafe, in case worldgen is ever called from 2 different threads (?background gen, and command execution for regen?)
-        ThreadLocal<short[]> outlineThreadSafe = new ThreadLocal<short[]>(() => new short[1089]);
+        [ThreadStatic]
+        private static short[] outlineThreadSafe;
 
         int[] forestBlocks;
 
@@ -34,12 +35,11 @@ namespace Vintagestory.ServerMods
             this.worldAccessor = sapi.World;
 
             genPatchesSystem = sapi.ModLoader.GetModSystem<GenVegetationAndPatches>();
-            
         }
 
         internal short[] GetOutline()
         {
-            return outlineThreadSafe.Value;
+            return outlineThreadSafe ?? (outlineThreadSafe = new short[1089]);
         }
 
         public void SetBlockPatches(BlockPatchConfig bpc)
@@ -66,7 +66,7 @@ namespace Vintagestory.ServerMods
         internal void ClearOutline()
         {
             // Clear the re-usable outline array
-            short[] outline = outlineThreadSafe.Value;
+            short[] outline = GetOutline();
             for (int i = 0; i < outline.Length; i++) outline[i] = 0;
         }
 
@@ -77,7 +77,7 @@ namespace Vintagestory.ServerMods
             ClimateCondition climate = blockAccessor.GetClimateAt(pos, EnumGetClimateMode.WorldGenValues);
             if (climate.Temperature > 24 && climate.Rainfall > 160) grassLevelOffset = 2;
 
-            short[] outline = outlineThreadSafe.Value;
+            short[] outline = GetOutline();
             this.api = blockAccessor;
 
             float forestness = climate.ForestDensity * climate.ForestDensity * 4 * (climate.Fertility + 0.25f);
@@ -207,7 +207,7 @@ namespace Vintagestory.ServerMods
 
                 //if (bPatch.blockCodes[0].Path.Contains("mushroom")) chance *= 20; - for debugging
 
-                while (chance-- > rnd.NextDouble())
+                while (chance-- > rnd.NextFloat())
                 {
                     int dx = rnd.NextInt(2 * radius) - radius;
                     int dz = rnd.NextInt(2 * radius) - radius;
@@ -264,7 +264,7 @@ namespace Vintagestory.ServerMods
 
                 float chance = 3 * forestNess * blockPatch.Chance * bpc.ChanceMultiplier.nextFloat();
 
-                while (chance-- > rnd.NextDouble())
+                while (chance-- > rnd.NextFloat())
                 {
                     int dx = 1 - rnd.NextInt(2) * 2;
                     int dy = rnd.NextInt(5);

@@ -5,6 +5,7 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
+using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
 namespace Vintagestory.GameContent
@@ -140,7 +141,10 @@ namespace Vintagestory.GameContent
             base.GetBlockInfo(forPlayer, dsc);
         }
 
-
+        public override void DropContents(Vec3d atPos)
+        {
+            Inventory.DropAll(atPos);
+        }
 
     }
 }

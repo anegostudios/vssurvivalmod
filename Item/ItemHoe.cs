@@ -49,6 +49,13 @@ namespace Vintagestory.GameContent
         public override void OnHeldInteractStart(ItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handHandling)
         {
             if (blockSel == null) return;
+
+            if (byEntity.Controls.ShiftKey && byEntity.Controls.CtrlKey)
+            {
+                base.OnHeldInteractStart(itemslot, byEntity, blockSel, entitySel, firstEvent, ref handHandling);
+                return;
+            }
+
             BlockPos pos = blockSel.Position;
             Block block = byEntity.World.BlockAccessor.GetBlock(pos);
 
@@ -64,6 +71,7 @@ namespace Vintagestory.GameContent
         public override bool OnHeldInteractStep(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
             if (blockSel == null) return false;
+            if (byEntity.Controls.ShiftKey && byEntity.Controls.CtrlKey) return false;
 
             IPlayer byPlayer = (byEntity as EntityPlayer).Player;
 

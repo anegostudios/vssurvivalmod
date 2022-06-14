@@ -10,7 +10,7 @@ namespace Vintagestory.GameContent
     {
         public override void OnHeldInteractStart(ItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handHandling)
         {
-            if (blockSel == null || byEntity?.World == null || !byEntity.Controls.Sneak) return;
+            if (blockSel == null || byEntity?.World == null || !byEntity.Controls.ShiftKey) return;
 
             IWorldAccessor world = byEntity.World;
             Block firepitBlock = world.GetBlock(new AssetLocation("firepit-construct1"));
@@ -63,7 +63,7 @@ namespace Vintagestory.GameContent
             return new WorldInteraction[] {
                 new WorldInteraction()
                 {
-                    HotKeyCode = "sneak",
+                    HotKeyCode = "shift",
                     ActionLangCode = "heldhelp-createfirepit",
                     MouseButton = EnumMouseButton.Right,
                 }

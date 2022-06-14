@@ -5,6 +5,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
 using Vintagestory.ServerMods.NoObf;
 
 namespace Vintagestory.ServerMods
@@ -14,22 +15,20 @@ namespace Vintagestory.ServerMods
         ICoreServerAPI api;
         LCGRandom rand;
         int mapheight;
-        IBlockAccessor blockAccessor;
-        Queue<Vec2i> searchPositionsDeltas = new Queue<Vec2i>();
-        Queue<Vec2i> pondPositions = new Queue<Vec2i>();
+        IWorldGenBlockAccessor blockAccessor;
+        readonly QueueOfInt searchPositionsDeltas = new QueueOfInt();
+        readonly QueueOfInt pondPositions = new QueueOfInt();
         int searchSize;
         int mapOffset;
         int minBoundary;
         int maxBoundary;
 
-        int ndx, ndz;
-        int pondYPos;
-
         int climateUpLeft;
         int climateUpRight;
         int climateBotLeft;
         int climateBotRight;
-        bool[] didCheckPosition;
+        int[] didCheckPosition;
+        int iteration;
 
         LakeBedLayerProperties lakebedLayerConfig;
 
@@ -76,7 +75,7 @@ namespace Vintagestory.ServerMods
             minBoundary = -chunksize + 1;
             maxBoundary = 2 * chunksize - 1;
             mapheight = api.WorldManager.MapSizeY;
-            didCheckPosition = new bool[searchSize * searchSize];
+            didCheckPosition = new int[searchSize * searchSize];
 
             IAsset asset = api.Assets.Get("worldgen/rockstrata.json");
             RockStrataConfig rockstrata = asset.ToObject<RockStrataConfig>();
@@ -90,7 +89,12 @@ namespace Vintagestory.ServerMods
 
         private void OnChunkColumnGen(IServerChunk[] chunks, int chunkX, int chunkZ, ITreeAttribute chunkGenParams = null)
         {
+            blockAccessor.BeginColumn();
+            LCGRandom rand = this.rand;
             rand.InitPositionSeed(chunkX, chunkZ);
+            int chunksize = this.chunksize;
+            int maxHeight = mapheight - 1;
+            int pondYPos;
 
             ushort[] heightmap = chunks[0].MapChunk.RainHeightMap;
 
@@ -112,47 +116,46 @@ namespace Vintagestory.ServerMods
             // 0-7 bits = Blue = humidity
 
             int rain = (climateMid >> 8) & 0xff;
-            int humidity = climateMid & 0xff;
             int temp = (climateMid >> 16) & 0xff;
 
             // Lake density at chunk center
-            float pondDensity = 4 * (rain + humidity) / 255f;
+            float pondDensity = Math.Max(0, 4 * (rain - 10) / 255f);
 
             float sealeveltemp = TerraGenConfig.GetScaledAdjustedTemperatureFloat(temp, 0);
 
             // Less lakes where its below -5 degrees
-            pondDensity -= Math.Max(0, 5-sealeveltemp);
+            pondDensity -= Math.Max(0, 5 - sealeveltemp);
 
             float maxTries = pondDensity * 10;
             int dx, dz;
 
-            while (maxTries-- > 0)
+            // Surface ponds: starts the attempt at heightmap + 1
+            while (maxTries-- > 0f)
             {
-                if (maxTries < 1 && rand.NextDouble() > maxTries) break;
+                if (maxTries < 1f && rand.NextFloat() > maxTries) break;
 
                 dx = rand.NextInt(chunksize);
                 dz = rand.NextInt(chunksize);
 
                 pondYPos = heightmap[dz * chunksize + dx] + 1;
-                if (pondYPos <= 0 || pondYPos >= mapheight - 1) return;
+                if (pondYPos <= 0 || pondYPos >= maxHeight) return;
 
                 TryPlacePondAt(dx, pondYPos, dz, chunkX, chunkZ);
             }
 
-            maxTries = 600;
-            while (maxTries-- > 0)
+            // Look for underground airblocks and attempt to place an underground pond
+            int iMaxTries = 600;
+            while (iMaxTries-- > 0)
             {
-                if (maxTries < 1 && rand.NextDouble() > maxTries) break;
-
                 dx = rand.NextInt(chunksize);
                 dz = rand.NextInt(chunksize);
 
-                pondYPos = (int)(rand.NextDouble() * heightmap[dz * chunksize + dx]);
-                if (pondYPos <= 0 || pondYPos >= mapheight - 1) return;
+                pondYPos = (int)(rand.NextFloat() * heightmap[dz * chunksize + dx]);
+                if (pondYPos <= 0 || pondYPos >= maxHeight) return;  //randomly exits, e.g. 1/96 of the time pondYPos will be 0
 
                 int chunkY = pondYPos / chunksize;
                 int dy = pondYPos % chunksize;
-                int blockID = chunks[chunkY].Blocks[(dy * chunksize + dz) * chunksize + dx];
+                int blockID = chunks[chunkY].Blocks.GetBlockIdUnsafe((dy * chunksize + dz) * chunksize + dx);
 
                 while (blockID == 0 && pondYPos > 20)
                 {
@@ -160,7 +163,7 @@ namespace Vintagestory.ServerMods
 
                     chunkY = pondYPos / chunksize;
                     dy = pondYPos % chunksize;
-                    blockID = chunks[chunkY].Blocks[(dy * chunksize + dz) * chunksize + dx];
+                    blockID = chunks[chunkY].Blocks.GetBlockIdUnsafe((dy * chunksize + dz) * chunksize + dx);
 
                     if (blockID != 0)
                     {
@@ -171,67 +174,82 @@ namespace Vintagestory.ServerMods
         }
 
 
-
+        /// <summary>
+        /// Spreads one water layer of a pond - all at the same y-height.  This starts from the bottom of the pond.  Blocks below must all be solid, or water.<br/>
+        /// It will not place any water if the pond would overflow - no solid base or larger than 3*chunksize
+        /// </summary>
         public void TryPlacePondAt(int dx, int pondYPos, int dz, int chunkX, int chunkZ, int depth = 0)
         {
+            int chunksize = this.chunksize;
+            int mapOffset = this.mapOffset;
+            int searchSize = this.searchSize;
+            int minBoundary = this.minBoundary;
+            int maxBoundary = this.maxBoundary;
+            int waterID = GlobalConfig.waterBlockId;
+            int ndx, ndz;
             searchPositionsDeltas.Clear();
             pondPositions.Clear();
-
-            // Clear Array
-            for (int i = 0; i < didCheckPosition.Length; i++) didCheckPosition[i] = false;
-
 
             int basePosX = chunkX * chunksize;
             int basePosZ = chunkZ * chunksize;
             Vec2i tmp = new Vec2i();
 
-
-            searchPositionsDeltas.Enqueue(new Vec2i(dx, dz));
-            pondPositions.Enqueue(new Vec2i(basePosX + dx, basePosZ + dz));
-            didCheckPosition[(dz + mapOffset) * searchSize + dx + mapOffset] = true;
+            // The starting block is an air block
+            int arrayIndex = (dz + mapOffset) * searchSize + dx + mapOffset;
+            searchPositionsDeltas.Enqueue(arrayIndex);
+            pondPositions.Enqueue(arrayIndex);
+            int iteration = ++this.iteration;
+            didCheckPosition[arrayIndex] = iteration;
 
 
             while (searchPositionsDeltas.Count > 0)
             {
-                Vec2i p = searchPositionsDeltas.Dequeue();
-               
-                foreach (BlockFacing facing in BlockFacing.HORIZONTALS)
+                int p = searchPositionsDeltas.Dequeue();
+                int px = p % searchSize - mapOffset;
+                int pz = p / searchSize - mapOffset;
+
+                foreach (Vec3i facing in BlockFacing.HORIZONTAL_NORMALI)
                 {
-                    ndx = p.X + facing.Normali.X;
-                    ndz = p.Y + facing.Normali.Z;
+                    ndx = px + facing.X;
+                    ndz = pz + facing.Z;
 
-                    tmp.Set(chunkX * chunksize + ndx, chunkZ * chunksize + ndz);
+                    arrayIndex = (ndz + mapOffset) * searchSize + ndx + mapOffset;
 
-                    Block belowBlock = blockAccessor.GetBlock(tmp.X, pondYPos - 1, tmp.Y);
-
-                    bool inBoundary = ndx > minBoundary && ndz > minBoundary && ndx < maxBoundary && ndz < maxBoundary;
-
-                    // Only continue when within our 3x3 chunk search area and having a more or less solid block below (or water)
-                    if (inBoundary && (belowBlock.Replaceable < 6000 || belowBlock.BlockId == GlobalConfig.waterBlockId))
+                    // If not already checked, see if we can spread water into this position (queue it) - or do nothing if it's a pond border
+                    if (didCheckPosition[arrayIndex] != iteration)
                     {
-                        int arrayIndex = (ndz + mapOffset) * searchSize + ndx + mapOffset;
-                        
-                        // Already checked or did we reach a pond border? 
-                        if (!didCheckPosition[arrayIndex] && blockAccessor.GetBlock(tmp.X, pondYPos, tmp.Y).Replaceable >= 6000)
-                        {
-                            searchPositionsDeltas.Enqueue(new Vec2i(ndx, ndz));
-                            pondPositions.Enqueue(tmp.Copy());
+                        didCheckPosition[arrayIndex] = iteration;
 
-                            didCheckPosition[arrayIndex] = true;
+                        tmp.Set(basePosX + ndx, basePosZ + ndz);
+
+                        Block belowBlock = blockAccessor.GetBlock(tmp.X, pondYPos - 1, tmp.Y);
+
+                        bool inBoundary = ndx > minBoundary && ndz > minBoundary && ndx < maxBoundary && ndz < maxBoundary;
+
+                        // Only continue when every position is within our 3x3 chunk search area and has a more or less solid block below (or water)
+                        // Note from radfast: this actually runs this check on the edges as well (i.e. it is unnecessarily checking the banks have a solid block below them!) - but changing this could slightly alter worldgen
+                        if (inBoundary && (belowBlock.Replaceable < 6000 || belowBlock.BlockId == waterID))   // This test is OK even for waterID, as GetBlock will correctly return the liquid block if the solid blocks 'layer' is air
+                        {
+                            // If it's not a bank, spread water into it and queue for further checks from here
+                            if (blockAccessor.GetBlock(tmp.X, pondYPos, tmp.Y).Replaceable >= 6000)
+                            {
+                                searchPositionsDeltas.Enqueue(arrayIndex);
+                                pondPositions.Enqueue(arrayIndex);
+                            }
                         }
 
-                    }
-                    else
-                    {
-                        pondPositions.Clear();
-                        searchPositionsDeltas.Clear();
-                        return;
+                        // Exit if those conditions were failed - it means the pond is leaking from the bottom, or the sides (extends beyond min/max boundary)
+                        else
+                        {
+                            pondPositions.Clear();
+                            searchPositionsDeltas.Clear();
+                            return;
+                        }
                     }
                 }
             }
 
-            if (pondPositions.Count == 0) return;
-
+            // Now place water into the pondPositions
 
             int curChunkX, curChunkZ;
             int prevChunkX=-1, prevChunkZ=-1;
@@ -242,16 +260,19 @@ namespace Vintagestory.ServerMods
 
             int ly = GameMath.Mod(pondYPos, chunksize);
 
-            bool extraPondDepth = rand.NextDouble() > 0.5;
+            bool extraPondDepth = rand.NextFloat() > 0.5f;
             bool withSeabed = extraPondDepth || pondPositions.Count > 16;
 
-            foreach (Vec2i p in pondPositions)
+            while (pondPositions.Count > 0)
             {
-                curChunkX = p.X / chunksize;
-                curChunkZ = p.Y / chunksize;
+                int p = pondPositions.Dequeue();
+                int px = p % searchSize - mapOffset + basePosX;
+                int pz = p / searchSize - mapOffset + basePosZ;
+                curChunkX = px / chunksize;
+                curChunkZ = pz / chunksize;
 
-                int lx = GameMath.Mod(p.X, chunksize);
-                int lz = GameMath.Mod(p.Y, chunksize);
+                int lx = GameMath.Mod(px, chunksize);
+                int lz = GameMath.Mod(pz, chunksize);
 
                 // Get correct chunk and correct climate data if we don't have it already
                 if (curChunkX != prevChunkX || curChunkZ != prevChunkZ)
@@ -290,16 +311,19 @@ namespace Vintagestory.ServerMods
                 }
 
 
-                // Raise heightmap by 1
-                mapchunk.RainHeightMap[lz * chunksize + lx] = Math.Max(mapchunk.RainHeightMap[lz * chunksize + lx], (ushort)pondYPos);
+                // Raise heightmap by 1 (only relevant for above-ground ponds)
+                if (mapchunk.RainHeightMap[lz * chunksize + lx] < pondYPos) mapchunk.RainHeightMap[lz * chunksize + lx] = (ushort)pondYPos;
 
-                // Identify correct climate at this position
+                // Identify correct climate at this position - could be optimised if we place water into ponds in columns instead of layers
                 int climate = GameMath.BiLerpRgbColor((float)lx / chunksize, (float)lz / chunksize, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight);
                 float temp = TerraGenConfig.GetScaledAdjustedTemperatureFloat((climate >> 16) & 0xff, pondYPos - TerraGenConfig.seaLevel);
 
 
-                // 1. Place water or ice block 
-                chunk.Blocks[(ly * chunksize + lz) * chunksize + lx] = temp < -5 ? GlobalConfig.lakeIceBlockId : GlobalConfig.waterBlockId;
+                // 1. Place water or ice block
+                int index3d = (ly * chunksize + lz) * chunksize + lx;
+                Block existing = api.World.GetBlock(chunk.Blocks[index3d]);
+                if (existing.BlockMaterial == EnumBlockMaterial.Plant) chunk.Blocks.SetBlockAir(index3d);
+                chunk.Blocks.SetLiquid(index3d, temp < -5 ? GlobalConfig.lakeIceBlockId : waterID);
 
 
                 // 2. Let's make a nice muddy gravely sea bed
@@ -311,7 +335,8 @@ namespace Vintagestory.ServerMods
                     (((ly - 1) * chunksize + lz) * chunksize + lx)
                 ;
                 
-                Block belowBlock = api.World.Blocks[chunkOneBlockBelow.Blocks[index]];
+                // again this would be more efficient if we place water in columns
+                Block belowBlock = api.World.Blocks[chunkOneBlockBelow.Blocks.GetLiquid(index)];
 
                 // Water below? Seabed already placed
                 if (belowBlock.IsLiquid()) continue;
@@ -319,19 +344,20 @@ namespace Vintagestory.ServerMods
                 float rainRel = TerraGenConfig.GetRainFall((climate >> 8) & 0xff, pondYPos) / 255f;
                 int rockBlockId = mapchunk.TopRockIdMap[lz * chunksize + lx];
                 if (rockBlockId == 0) continue;
-                
-                for (int i = 0; i < lakebedLayerConfig.BlockCodeByMin.Length; i++)
+
+                LakeBedBlockCodeByMin[] codes = lakebedLayerConfig.BlockCodeByMin;
+                for (int i = 0; i < codes.Length; i++)
                 {
-                    if (lakebedLayerConfig.BlockCodeByMin[i].Suitable(temp, rainRel, (float)pondYPos / mapheight, rand))
+                    if (codes[i].Suitable(temp, rainRel, (float)pondYPos / mapheight, rand))
                     {
-                        chunkOneBlockBelow.Blocks[index] = lakebedLayerConfig.BlockCodeByMin[i].GetBlockForMotherRock(rockBlockId);
+                        chunkOneBlockBelow.Blocks[index] = codes[i].GetBlockForMotherRock(rockBlockId);
                         break;
                     }
                 }
             }
 
 
-            if (pondPositions.Count > 0 && extraPondDepth)
+            if (extraPondDepth)
             {
                 TryPlacePondAt(dx, pondYPos+1, dz, chunkX, chunkZ, depth + 1);
             }

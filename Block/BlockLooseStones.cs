@@ -6,39 +6,19 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockLooseStones : Block
+    public class BlockLooseStones : BlockLooseRock
     {
-        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, LCGRandom worldGenRand)
+        protected override void generate(IBlockAccessor blockAccessor, Block block, BlockPos pos, LCGRandom worldGenRand)
         {
-            if (!HasSolidGround(blockAccessor, pos))
-            {
-                return false;
-            }
-
-            int blockId = BlockId;
-
             if (worldGenRand.NextDouble() <= 0.20)
             {
-                blockId = blockAccessor.GetBlock(CodeWithPath("looseflints-" + Variant["rock"] + "-free")).BlockId;
+                block = blockAccessor.GetBlock(block.CodeWithPath("looseflints-" + block.Variant["rock"] + "-" + block.Variant["cover"]));
             }
 
-            Block block = blockAccessor.GetBlock(pos);
-            if (block.IsReplacableBy(this) && !block.IsLiquid())
-            {
-                blockAccessor.SetBlock(blockId, pos);
-                return true;
-            }
-
-            return false;
+            blockAccessor.SetBlock(block.Id, pos);
         }
 
-        internal virtual bool HasSolidGround(IBlockAccessor blockAccessor, BlockPos pos)
-        {
-            Block block = blockAccessor.GetBlock(pos.DownCopy());
-            return block.SideSolid[BlockFacing.UP.Index];
-        }
 
-        
         public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
         {
             ItemStack[] stacks = GetDrops(world, selection.Position, forPlayer);
@@ -54,7 +34,7 @@ namespace Vintagestory.GameContent
                 new WorldInteraction()
                 {
                     ActionLangCode = "blockhelp-knappingsurface-knap",
-                    HotKeyCode = "sneak",
+                    HotKeyCode = "shift",
                     Itemstacks = stacks,
                     MouseButton = EnumMouseButton.Right,
                 }

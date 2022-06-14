@@ -234,7 +234,7 @@ namespace Vintagestory.GameContent
             tmpTextureSource = tesselator.GetTexSource(this, 0, true);
 
             AssetLocation shapeloc = cshape.Base.WithPathAppendixOnce(".json").WithPathPrefixOnce("shapes/");
-            Shape shape = capi.Assets.TryGet(shapeloc)?.ToObject<Shape>();
+            Shape shape = API.Common.Shape.TryGet(capi, shapeloc);
             curType = type;
             return shape;
         }
@@ -278,7 +278,7 @@ namespace Vintagestory.GameContent
             if (Props == null) throw new ArgumentException("No label props found for this label");
 
             AssetLocation shapeloc = (editableVariant ? labelProps.EditableShape : labelProps.Shape).Base.Clone().WithPathAppendixOnce(".json").WithPathPrefixOnce("shapes/");
-            Shape shape = capi.Assets.TryGet(shapeloc)?.ToObject<Shape>();
+            Shape shape = API.Common.Shape.TryGet(capi, shapeloc);
 
             var rot = rotation == null ? new Vec3f(labelProps.Shape.rotateX, labelProps.Shape.rotateY, labelProps.Shape.rotateZ) : rotation;
 
@@ -301,10 +301,10 @@ namespace Vintagestory.GameContent
 
             if (contentSource != null)
             {
-                Shape shape = capi.Assets.TryGet("shapes/block/wood/crate/contents.json").ToObject<Shape>();
+                Shape shape = API.Common.Shape.TryGet(api, "shapes/block/wood/crate/contents.json");
                 MeshData contentMesh;
                 capi.Tesselator.TesselateShape("cratecontents", shape, out contentMesh, contentSource, rotation);
-                contentMesh.Translate(0, fillHeight, 0);
+                contentMesh.Translate(0, fillHeight * 1.1f, 0);
                 return contentMesh;
             }
 
@@ -418,13 +418,13 @@ namespace Vintagestory.GameContent
                 {
                     ActionLangCode = "blockhelp-crate-add",
                     MouseButton = EnumMouseButton.Right,
-                    HotKeyCode = "sneak"
+                    HotKeyCode = "shift"
                 },
                 new WorldInteraction()
                 {
                     ActionLangCode = "blockhelp-crate-addall",
                     MouseButton = EnumMouseButton.Right,
-                    HotKeyCodes = new string[] { "sneak", "sprint" }
+                    HotKeyCodes = new string[] { "shift", "ctrl" }
                 },
                 new WorldInteraction()
                 {
@@ -436,7 +436,7 @@ namespace Vintagestory.GameContent
                 {
                     ActionLangCode = "blockhelp-crate-removeall",
                     MouseButton = EnumMouseButton.Right,
-                    HotKeyCode = "sprint"
+                    HotKeyCode = "ctrl"
                 }
             });
         }

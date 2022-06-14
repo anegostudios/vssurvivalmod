@@ -24,16 +24,7 @@ namespace Vintagestory.GameContent
 
             interactions = ObjectCacheUtil.GetOrCreate(api, "bombInteractions", () =>
             {
-                List<ItemStack> canIgniteStacks = new List<ItemStack>();
-
-                foreach (CollectibleObject obj in api.World.Collectibles)
-                {
-                    if (obj is Block && (obj as Block).HasBehavior<BlockBehaviorCanIgnite>())
-                    {
-                        List<ItemStack> stacks = obj.GetHandBookStacks(capi);
-                        if (stacks != null) canIgniteStacks.AddRange(stacks);
-                    }
-                }
+                List<ItemStack> canIgniteStacks = BlockBehaviorCanIgnite.CanIgniteStacks(api, false);
 
                 return new WorldInteraction[] {
                     new WorldInteraction()

@@ -200,8 +200,9 @@ namespace Vintagestory.GameContent
         public MeshData GenMesh(ICoreClientAPI capi, AssetLocation labelLoc, Vec3f rot = null)
         {
             var tesselator = capi.Tesselator;
-            Shape baseshape = capi.Assets.TryGet(AssetLocation.Create("shapes/block/clay/crock/base.json", Code.Domain)).ToObject<Shape>();
-            Shape labelshape = capi.Assets.TryGet(labelLoc).ToObject<Shape>();
+
+            Shape baseshape = API.Common.Shape.TryGet(capi, AssetLocation.Create("shapes/block/clay/crock/base.json", Code.Domain));
+            Shape labelshape = API.Common.Shape.TryGet(capi, labelLoc);
 
             MeshData mesh, labelmesh;
             tesselator.TesselateShape(this, baseshape, out mesh, rot);
@@ -239,7 +240,7 @@ namespace Vintagestory.GameContent
 
             if (block?.Attributes?.IsTrue("mealContainer") == true)
             {
-                if (!byEntity.Controls.Sneak) return;
+                if (!byEntity.Controls.ShiftKey) return;
                 if (quantityServings > 0)
                 {
                     ServeIntoBowl(block, blockSel.Position, slot, byEntity.World);
@@ -251,7 +252,7 @@ namespace Vintagestory.GameContent
 
             if (block is BlockGroundStorage)
             {
-                if (!byEntity.Controls.Sneak) return;
+                if (!byEntity.Controls.ShiftKey) return;
                 var begs = api.World.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityGroundStorage;
                 ItemSlot gsslot = begs.GetSlotAt(blockSel);
                 if (gsslot == null || gsslot.Empty) return;

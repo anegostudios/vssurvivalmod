@@ -34,15 +34,15 @@ namespace Vintagestory.GameContent
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
-            /*var bebranch = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityFruitTreeBranch;
-            if (bebranch?.PartType == EnumTreePartType.Stem)
+            var bebranch = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityFruitTreeBranch;
+            if (bebranch?.RootOff?.Equals(Vec3i.Zero)==true && byPlayer.WorldData.CurrentGameMode == EnumGameMode.Creative)
             {
                 if (world.Side == EnumAppSide.Server)
                 {
                     bebranch?.InteractDebug();
                 }
                 return true;
-            }*/
+            }
 
             var be = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityFruitTreePart;
             if (be != null) return be.OnBlockInteractStart(byPlayer, blockSel);

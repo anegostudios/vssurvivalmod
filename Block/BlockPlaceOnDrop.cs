@@ -65,15 +65,15 @@ namespace Vintagestory.GameContent
         bool TryPlace(EntityItem entityItem, int offX, int offY, int offZ)
         {
             IWorldAccessor world = entityItem.World;
-            BlockPos pos = entityItem.ServerPos.AsBlockPos.Add(offX, offY, offZ);
-            Block block = world.BlockAccessor.GetBlock(pos.DownCopy());
-            if (!block.SideSolid[BlockFacing.UP.Index]) return false;
+            EntityPos pos = entityItem.ServerPos;
+            BlockPos bpos = pos.AsBlockPos.Add(offX, offY - 1, offZ);
+            if (!world.BlockAccessor.GetSolidBlock(bpos.X, bpos.Y, bpos.Z).CanAttachBlockAt(world.BlockAccessor, this, bpos, BlockFacing.UP)) return false;
 
             string useless = "";
 
             bool ok = TryPlaceBlock(world, null, entityItem.Itemstack, new BlockSelection()
             {
-                Position = pos,
+                Position = bpos,
                 Face = BlockFacing.UP,
                 HitPosition = new Vec3d(0.5, 1, 0.5)
             }, ref useless);

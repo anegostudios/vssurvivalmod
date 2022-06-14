@@ -26,27 +26,23 @@ namespace Vintagestory.GameContent
             {
                 List<ItemStack> heatableStacklist = new List<ItemStack>();
                 List<ItemStack> fuelStacklist = new List<ItemStack>();
-                List<ItemStack> canIgniteStacks = new List<ItemStack>();
+                List<ItemStack> canIgniteStacks = BlockBehaviorCanIgnite.CanIgniteStacks(api, false);
 
                 foreach (CollectibleObject obj in api.World.Collectibles)
                 {
-                    if (obj.CombustibleProps?.SmeltedStack != null && obj.CombustibleProps.MeltingPoint < 1500)
+                    if (obj.CombustibleProps == null) continue;
+                    if (obj.CombustibleProps.SmeltedStack != null && obj.CombustibleProps.MeltingPoint < 1500)
                     {
                         List<ItemStack> stacks = obj.GetHandBookStacks(capi);
                         if (stacks != null) heatableStacklist.AddRange(stacks);
-                    } else
+                    }
+                    else
                     {
-                        if (obj.CombustibleProps?.BurnTemperature >= 1200 && obj.CombustibleProps.BurnDuration > 30)
+                        if (obj.CombustibleProps.BurnTemperature >= 1200 && obj.CombustibleProps.BurnDuration > 30)
                         {
                             List<ItemStack> stacks = obj.GetHandBookStacks(capi);
                             if (stacks != null) fuelStacklist.AddRange(stacks);
                         }
-                    }
-
-                    if (obj is Block && (obj as Block).HasBehavior<BlockBehaviorCanIgnite>())
-                    {
-                        List<ItemStack> stacks = obj.GetHandBookStacks(capi);
-                        if (stacks != null) canIgniteStacks.AddRange(stacks);
                     }
                 }
 
@@ -62,7 +58,7 @@ namespace Vintagestory.GameContent
                     new WorldInteraction()
                     {
                         ActionLangCode = "blockhelp-bloomery-heatablex4",
-                        HotKeyCode = "sneak",
+                        HotKeyCode = "ctrl",
                         MouseButton = EnumMouseButton.Right,
                         Itemstacks = heatableStacklist.ToArray(),
                         GetMatchingStacks = getMatchingStacks
@@ -78,7 +74,7 @@ namespace Vintagestory.GameContent
                     new WorldInteraction()
                     {
                         ActionLangCode = "blockhelp-bloomery-ignite",
-                        HotKeyCode = "sneak",
+                        HotKeyCode = "shift",
                         MouseButton = EnumMouseButton.Right,
                         Itemstacks = canIgniteStacks.ToArray(),
                         GetMatchingStacks = (wi, bs, es) => {
@@ -153,7 +149,7 @@ namespace Vintagestory.GameContent
             {
                 
                 if (hotbarstack == null) return true;
-                if (beb.TryAdd(byPlayer, byPlayer.Entity.Controls.Sneak ? 5 : 1))
+                if (beb.TryAdd(byPlayer, byPlayer.Entity.Controls.CtrlKey ? 5 : 1))
                 {
                     if (world.Side == EnumAppSide.Client) (byPlayer as IClientPlayer).TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
                 }

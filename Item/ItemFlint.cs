@@ -29,7 +29,7 @@ namespace Vintagestory.GameContent
             if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
 
 
-            if (byEntity.Controls.Sneak && blockSel != null)
+            if (byEntity.Controls.ShiftKey && blockSel != null)
             {
                 IWorldAccessor world = byEntity.World;
                 Block knappingBlock = world.GetBlock(new AssetLocation("knappingsurface"));
@@ -164,7 +164,7 @@ namespace Vintagestory.GameContent
                 new WorldInteraction()
                 {
                     ActionLangCode = "heldhelp-placetoknap",
-                    HotKeyCode = "sneak",
+                    HotKeyCode = "shift",
                     MouseButton = EnumMouseButton.Right,
                 }
             }.Append(base.GetHeldInteractionHelp(inSlot));

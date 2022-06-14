@@ -16,7 +16,6 @@ namespace Vintagestory.ServerMods
         public override double ExecuteOrder() { return 0.2; }
 
 
-        int noiseSizeClimate;
         int regionSize;
 
         float chanceMultiplier;
@@ -31,6 +30,7 @@ namespace Vintagestory.ServerMods
         Dictionary<BlockPos, DepositVariant> subDepositsToPlace = new Dictionary<BlockPos, DepositVariant>();
         MapLayerBase verticalDistortTop;
         MapLayerBase verticalDistortBottom;
+        public bool addHandbookAttributes = true;
 
         public override bool ShouldLoad(EnumAppSide side)
         {
@@ -104,7 +104,6 @@ namespace Vintagestory.ServerMods
             depositShapeDistortNoise = NormalizedSimplexNoise.FromDefaultOctaves(3, 1 / 10f, 0.9f, 1);
 
             regionSize = api.WorldManager.RegionSize;
-            noiseSizeClimate = regionSize / TerraGenConfig.climateMapScale;
             
             
             int seed = api.WorldManager.Seed;
@@ -115,6 +114,7 @@ namespace Vintagestory.ServerMods
             for (int i = 0; i < Deposits.Length; i++)
             {
                 DepositVariant variant = Deposits[i];
+                variant.addHandbookAttributes = addHandbookAttributes;
                 variant.Init(api, depositRand, depositShapeDistortNoise);
 
                 if (variant.WithOreMap)
@@ -137,9 +137,11 @@ namespace Vintagestory.ServerMods
             
             verticalDistortBottom = GenMaps.GetDepositVerticalDistort(seed + 12);
             verticalDistortTop = GenMaps.GetDepositVerticalDistort(seed + 28);
+
+            api.Logger.VerboseDebug("Initialised GenDeposits");
         }
 
-        
+
         MapLayerBase getOrCreateMapLayer(int seed, string oremapCode, Dictionary<string, MapLayerBase> maplayersByCode, float scaleMul, float contrastMul, float sub)
         {
             MapLayerBase ml;
@@ -180,11 +182,13 @@ namespace Vintagestory.ServerMods
 
         protected override void GenChunkColumn(IServerChunk[] chunks, int chunkX, int chunkZ, ITreeAttribute chunkGenParams = null)
         {
+            if (blockAccessor is IWorldGenBlockAccessor wgba) wgba.BeginColumn();
             base.GenChunkColumn(chunks, chunkX, chunkZ);
         }
 
         public override void GeneratePartial(IServerChunk[] chunks, int chunkX, int chunkZ, int chunkdX, int chunkdZ)
         {
+            LCGRandom chunkRand = this.chunkRand;
             int fromChunkx = chunkX + chunkdX;
             int fromChunkz = chunkZ + chunkdZ;
 
@@ -227,6 +231,7 @@ namespace Vintagestory.ServerMods
         
         public virtual void GenDeposit(IServerChunk[] chunks, int chunkX, int chunkZ, BlockPos depoCenterPos, DepositVariant variant)
         {
+            int chunksize = this.chunksize;
             int lx = GameMath.Mod(depoCenterPos.X, chunksize);
             int lz = GameMath.Mod(depoCenterPos.Z, chunksize);
 
@@ -241,14 +246,17 @@ namespace Vintagestory.ServerMods
 
                 IntDataMap2D climateMap = blockAccessor.GetMapRegion(depoCenterPos.X / regionSize, depoCenterPos.Z / regionSize).ClimateMap;
 
-                float posXInRegionClimate = ((float)lx / regionSize - (float)lx / regionSize) * noiseSizeClimate;
-                float posZInRegionClimate = ((float)lz / regionSize - (float)lz / regionSize) * noiseSizeClimate;
+                int noiseSizeClimate = climateMap.InnerSize;
+                float posXInRegionClimate = (float)depoCenterPos.X / regionSize % 1f * noiseSizeClimate;
+                float posZInRegionClimate = (float)depoCenterPos.Z / regionSize % 1f * noiseSizeClimate;
 
                 int climate = climateMap.GetUnpaddedColorLerped(posXInRegionClimate, posZInRegionClimate);
-                float temp = TerraGenConfig.GetScaledAdjustedTemperatureFloat((climate >> 16) & 0xff, depoCenterPos.Y - TerraGenConfig.seaLevel);
-                float rainRel = TerraGenConfig.GetRainFall((climate >> 8) & 0xff, depoCenterPos.Y) / 255f;
 
-                if (rainRel < variant.Climate.MinRain || rainRel > variant.Climate.MaxRain || temp < variant.Climate.MinTemp || temp > variant.Climate.MaxTemp) return;
+                float rainRel = TerraGenConfig.GetRainFall((climate >> 8) & 0xff, depoCenterPos.Y) / 255f;
+                if (rainRel < variant.Climate.MinRain || rainRel > variant.Climate.MaxRain) return;
+
+                float temp = TerraGenConfig.GetScaledAdjustedTemperatureFloat((climate >> 16) & 0xff, depoCenterPos.Y - TerraGenConfig.seaLevel);
+                if (temp < variant.Climate.MinTemp || temp > variant.Climate.MaxTemp) return;
             }
 
             variant.GeneratorInst?.GenDeposit(blockAccessor, chunks, chunkX, chunkZ, depoCenterPos, ref subDepositsToPlace);

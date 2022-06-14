@@ -13,7 +13,7 @@ namespace Vintagestory.GameContent
 
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handHandling)
         {
-            if (blockSel == null || byEntity?.World == null || !byEntity.Controls.Sneak) return;
+            if (blockSel == null || byEntity?.World == null || !byEntity.Controls.ShiftKey) return;
 
             IWorldAccessor world = byEntity.World;
 
@@ -78,7 +78,7 @@ namespace Vintagestory.GameContent
             return new WorldInteraction[] {
                 new WorldInteraction()
                 {
-                    HotKeyCode = "sneak",
+                    HotKeyCode = "shift",
                     ActionLangCode = "heldhelp-place",
                     MouseButton = EnumMouseButton.Right,
                 }

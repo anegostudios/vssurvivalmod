@@ -23,7 +23,7 @@ namespace Vintagestory.GameContent
             string owneruid = WatchedAttributes.GetString("ownerUid", null);
             string agentUid = (byEntity as EntityPlayer)?.PlayerUID;
 
-            if (agentUid != null && (owneruid == null || owneruid == "" || owneruid == agentUid) && byEntity.Controls.Sneak)
+            if (agentUid != null && (owneruid == null || owneruid == "" || owneruid == agentUid) && byEntity.Controls.ShiftKey)
             {
                 ItemStack stack = new ItemStack(byEntity.World.GetItem(new AssetLocation("strawdummy")));
                 if (!byEntity.TryGiveItemStack(stack))

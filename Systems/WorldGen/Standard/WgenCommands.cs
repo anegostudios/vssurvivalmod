@@ -400,7 +400,7 @@ namespace Vintagestory.ServerMods
             {
                 // so that resends arrive after all deletes
                 int leftToLoad = coords.Count;
-
+                bool sent = false;
                 api.WorldManager.SendChunks = false;
 
                 foreach (Vec2i coord in coords)
@@ -411,14 +411,22 @@ namespace Vintagestory.ServerMods
                     api.WorldManager.LoadChunkColumnPriority(coord.X, coord.Y, new ChunkLoadOptions()
                     {
                         OnLoaded = () => {
-                            for (int cy = 0; cy < api.WorldManager.MapSizeY / api.WorldManager.ChunkSize; cy++)
+                            leftToLoad--;
+
+                            if (leftToLoad <= 0 && !sent)
                             {
-                                api.WorldManager.BroadcastChunk(cx, cy, cz, true);
-                                leftToLoad--;
-                                if (leftToLoad <= 1)
+                                sent = true;
+                                player.SendMessage(groupId, "Regen complete", EnumChatType.CommandSuccess);
+
+                                foreach (Vec2i ccoord in coords)
                                 {
-                                    api.WorldManager.SendChunks = true;
+                                    for (int cy = 0; cy < api.WorldManager.MapSizeY / api.WorldManager.ChunkSize; cy++)
+                                    {
+                                        api.WorldManager.BroadcastChunk(cx, cy, cz, true);
+                                    }
                                 }
+
+                                api.WorldManager.SendChunks = true;
                             }
                         }
                     });

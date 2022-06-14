@@ -82,7 +82,7 @@ namespace Vintagestory.GameContent
 
             if (IsBuyingSlot)
             {
-                if (itemstack.Collectible.GetDurability(itemstack) > 1)
+                if (itemstack.Collectible.GetMaxDurability(itemstack) > 1)
                 {
                     return Lang.Get("tradeitem-demand-withdurability", TradeItem.Price, TradeItem.Stock) + "\n\n" + base.GetStackDescription(world, extendedDebugInfo);
                 } else

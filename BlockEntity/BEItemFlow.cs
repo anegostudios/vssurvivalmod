@@ -27,6 +27,9 @@ namespace Vintagestory.GameContent
 
         public BlockFacing LastReceivedFromDir;
 
+
+        public int MaxHorizontalTravel = 3;
+
         int checkRateMs;
         float itemFlowAccum;
 
@@ -106,7 +109,7 @@ namespace Vintagestory.GameContent
         {
             if (PushFaces.Contains(atBlockFace))
             {
-                return inventory[0];
+                //return inventory[0];
             }
 
             return null;
@@ -176,7 +179,7 @@ namespace Vintagestory.GameContent
                 BlockFacing outputFace = PushFaces[Api.World.Rand.Next(PushFaces.Length)];
                 int dir = stack.Attributes.GetInt("chuteDir", -1);
                 BlockFacing desiredDir = dir >= 0 && PushFaces.Contains(BlockFacing.ALLFACES[dir]) ? BlockFacing.ALLFACES[dir] : null;
-
+                
                 // If we have a desired dir, try to go there
                 if (desiredDir != null)
                 {
@@ -184,12 +187,25 @@ namespace Vintagestory.GameContent
                     if (!TrySpitOut(desiredDir))
                     {
                         // Then try push it in there,
-                        if (!TryPushInto(desiredDir) && outputFace != desiredDir.Opposite)
+                        if (!TryPushInto(desiredDir))
                         {
                             // Otherwise try spit it out in a random face, but only if its not back where it came frome
                             if (!TrySpitOut(outputFace))
                             {
-                                TryPushInto(outputFace);
+                                if (outputFace != desiredDir.Opposite)
+                                {
+                                    if (!TryPushInto(outputFace))
+                                    {
+                                        BlockFacing pullFace = PullFaces[Api.World.Rand.Next(PullFaces.Length)];
+                                        if (pullFace.IsHorizontal)
+                                        {
+                                            if (!TryPushInto(pullFace))
+                                            {
+                                                TrySpitOut(pullFace);
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -200,7 +216,21 @@ namespace Vintagestory.GameContent
                     if (!TrySpitOut(outputFace))
                     {
                         // Then try push it anywhere next
-                        TryPushInto(outputFace);
+                        if (!TryPushInto(outputFace))
+                        {
+                            // Then try push it into side faces
+                            if (PullFaces != null && PullFaces.Length > 0)
+                            {
+                                BlockFacing pullFace = PullFaces[Api.World.Rand.Next(PullFaces.Length)];
+                                if (pullFace.IsHorizontal)
+                                {
+                                    if (!TryPushInto(pullFace))
+                                    {
+                                        TrySpitOut(pullFace);
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -238,7 +268,7 @@ namespace Vintagestory.GameContent
                     ItemStackMoveOperation op = new ItemStackMoveOperation(Api.World, EnumMouseButton.Left, 0, EnumMergePriority.DirectMerge, (int)itemFlowAccum);
 
                     int horTravelled = sourceSlot.Itemstack.Attributes.GetInt("chuteQHTravelled");
-                    if (horTravelled < 2)
+                    if (horTravelled < MaxHorizontalTravel)
                     {
                         int qmoved = sourceSlot.TryPutInto(targetSlot, ref op);
                         if (qmoved > 0)
@@ -281,13 +311,16 @@ namespace Vintagestory.GameContent
 
                 int horTravelled = sourceSlot.Itemstack.Attributes.GetInt("chuteQHTravelled");
                 int chuteDir = sourceSlot.Itemstack.Attributes.GetInt("chuteDir");
+
+                if (outputFace.IsHorizontal && horTravelled >= MaxHorizontalTravel) return false;  //chutes can't move items more than 1 block horizontally without a drop
+
+                // why is this here? this cases endless back and forth. Because GetAutoPushIntoSlot() will always fail then
                 sourceSlot.Itemstack.Attributes.RemoveAttribute("chuteQHTravelled");
                 sourceSlot.Itemstack.Attributes.RemoveAttribute("chuteDir");
 
-                if (horTravelled >= 2) return false;  //chutes can't move items more than 1 block horizontally without a drop
-
                 ItemSlot targetSlot = beContainer.Inventory.GetAutoPushIntoSlot(outputFace.Opposite, sourceSlot);
                 BlockEntityItemFlow beFlow = beContainer as BlockEntityItemFlow;
+
 
                 if (targetSlot != null && (beFlow == null || targetSlot.Empty))
                 {
@@ -336,7 +369,7 @@ namespace Vintagestory.GameContent
 
         private bool TrySpitOut(BlockFacing outputFace)
         {
-            if (!PushFaces.Contains(outputFace)) return false;
+            //if (!PushFaces.Contains(outputFace)) return false;
 
             if (Api.World.BlockAccessor.GetBlock(Pos.AddCopy(outputFace)).Replaceable >= 6000)
             {
@@ -460,21 +493,36 @@ namespace Vintagestory.GameContent
         {
             if (Api.World is IServerWorldAccessor)
             {
-                Vec3d epos = Pos.ToVec3d().Add(0.5, 0.5, 0.5);
-                foreach (var slot in inventory)
-                {
-                    if (slot.Itemstack == null) continue;
-
-                    slot.Itemstack.Attributes.RemoveAttribute("chuteQHTravelled");
-                    slot.Itemstack.Attributes.RemoveAttribute("chuteDir");
-
-                    Api.World.SpawnItemEntity(slot.Itemstack, epos);
-                    slot.Itemstack = null;
-                    slot.MarkDirty();
-                }
+                DropContents();
             }
 
             base.OnBlockBroken(byPlayer);
+        }
+
+        private void DropContents()
+        {
+            Vec3d epos = Pos.ToVec3d().Add(0.5, 0.5, 0.5);
+            foreach (var slot in inventory)
+            {
+                if (slot.Itemstack == null) continue;
+
+                slot.Itemstack.Attributes.RemoveAttribute("chuteQHTravelled");
+                slot.Itemstack.Attributes.RemoveAttribute("chuteDir");
+
+                Api.World.SpawnItemEntity(slot.Itemstack, epos);
+                slot.Itemstack = null;
+                slot.MarkDirty();
+            }
+        }
+
+        public override void OnBlockRemoved()
+        {
+            if (Api.World is IServerWorldAccessor)
+            {
+                DropContents();
+            }
+
+            base.OnBlockRemoved();
         }
 
     }

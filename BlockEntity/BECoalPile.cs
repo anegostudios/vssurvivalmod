@@ -17,26 +17,45 @@ namespace Vintagestory.GameContent
     public class BlockEntityCoalPile : BlockEntityItemPile, ITexPositionSource, IHeatSource
     {
         static SimpleParticleProperties smokeParticles;
+        static SimpleParticleProperties smallMetalSparks;
 
         static BlockEntityCoalPile()
         {
             smokeParticles = new SimpleParticleProperties(
-                   1, 1,
-                   ColorUtil.ToRgba(150, 80, 80, 80),
-                   new Vec3d(),
-                   new Vec3d(1, 0, 1),
-                   new Vec3f(-1 / 32f, 0.1f, -1 / 32f),
-                   new Vec3f(1 / 32f, 0.1f, 1 / 32f),
-                   2f,
-                   -0.025f / 4,
-                   0.2f,
-                   1f,
-                   EnumParticleModel.Quad
-               );
+                1, 1,
+                ColorUtil.ToRgba(150, 40, 40, 40),
+                new Vec3d(),
+                new Vec3d(1, 0, 1),
+                new Vec3f(-1 / 32f, 0.1f, -1 / 32f),
+                new Vec3f(1 / 32f, 0.1f, 1 / 32f),
+                2f,
+                -0.025f / 4,
+                0.2f,
+                1f,
+                EnumParticleModel.Quad
+            );
 
             smokeParticles.SizeEvolve = new EvolvingNatFloat(EnumTransformFunction.LINEAR, -0.25f);
             smokeParticles.SelfPropelled = true;
             smokeParticles.AddPos.Set(1, 0, 1);
+
+
+            smallMetalSparks = new SimpleParticleProperties(
+                0.2f, 1,
+                ColorUtil.ToRgba(255, 255, 150, 0),
+                new Vec3d(), new Vec3d(),
+                new Vec3f(-2f, 2f, -2f),
+                new Vec3f(2f, 5f, 2f),
+                0.04f,
+                1f,
+                0.2f, 0.25f,
+                EnumParticleModel.Cube
+            );
+
+            smallMetalSparks.WithTerrainCollision = false;
+            smallMetalSparks.VertexFlags = 150;
+            smallMetalSparks.SizeEvolve = new EvolvingNatFloat(EnumTransformFunction.LINEAR, -0.2f);
+            smallMetalSparks.SelfPropelled = true;
         }
 
 
@@ -126,14 +145,40 @@ namespace Vintagestory.GameContent
             }
         }
 
+        public static void SpawnBurningCoalParticles(ICoreAPI api, Vec3d pos, float addX = 1f, float addZ=1f)
+        {
+            smokeParticles.MinQuantity = 0.25f;
+            smokeParticles.OpacityEvolve = EvolvingNatFloat.create(EnumTransformFunction.QUADRATIC, -15);
+            smokeParticles.AddQuantity = 0;
+            smokeParticles.MinPos.Set(pos.X, pos.Y - 0.1f, pos.Z);
+            smokeParticles.AddPos.Set(addX, 0, addZ);
+
+            smallMetalSparks.MinPos.Set(pos.X, pos.Y, pos.Z);
+            smallMetalSparks.AddPos.Set(addX, 0.1f, addZ);
+            api.World.SpawnParticles(smallMetalSparks, null);
+
+            int g = 30 + api.World.Rand.Next(30);
+            smokeParticles.Color = ColorUtil.ToRgba(150, g, g, g);
+            api.World.SpawnParticles(smokeParticles);
+        }
+
         private void onBurningTickClient(float dt)
         {
-            if (isCokable && burning && Api.World.Rand.NextDouble() < 0.13)
+            if (burning && Api.World.Rand.NextDouble() < 0.93)
             {
-                smokeParticles.MinPos.Set(Pos.X, Pos.Y + 2 + 1 / 16f, Pos.Z);
-                int g = 50 + Api.World.Rand.Next(50);
-                smokeParticles.Color = ColorUtil.ToRgba(150, g, g, g);
-                Api.World.SpawnParticles(smokeParticles);
+                if (isCokable)
+                {
+                    smokeParticles.MinQuantity = 1;
+                    smokeParticles.AddQuantity = 0;
+                    smokeParticles.MinPos.Set(Pos.X, Pos.Y + 2 + 1 / 16f, Pos.Z);
+                    int g = 30 + Api.World.Rand.Next(30);
+                    smokeParticles.Color = ColorUtil.ToRgba(150, g, g, g);
+                    Api.World.SpawnParticles(smokeParticles);
+
+                } else
+                {
+                    SpawnBurningCoalParticles(Api, Pos.ToVec3d().Add(0, Layers / 8f, 0));
+                }
             }
         }
 
@@ -232,10 +277,10 @@ namespace Vintagestory.GameContent
 
             int centerCount = 0;
             int cornerCount = 0;
-            bl.WalkBlocks(Pos.AddCopy(-1, -1, -1), Pos.AddCopy(1, 1, 1), (block, pos) =>
+            bl.WalkBlocks(Pos.AddCopy(-1, -1, -1), Pos.AddCopy(1, 1, 1), (block, x, y, z) =>
             {
-                int dx = Math.Abs(Pos.X - pos.X);
-                int dz = Math.Abs(Pos.Z - pos.Z);
+                int dx = Math.Abs(Pos.X - x);
+                int dz = Math.Abs(Pos.Z - z);
                 bool corner = dx == 1 && dz == 1;
 
                 bool viable = block.Attributes?["cokeOvenViable"].AsBool(true) == true;
@@ -256,7 +301,7 @@ namespace Vintagestory.GameContent
 
         public override bool OnPlayerInteract(IPlayer byPlayer)
         {
-            if (burning && !byPlayer.Entity.Controls.Sneak) return false;
+            if (burning && !byPlayer.Entity.Controls.ShiftKey) return false;
 
             bool ok = base.OnPlayerInteract(byPlayer);
 

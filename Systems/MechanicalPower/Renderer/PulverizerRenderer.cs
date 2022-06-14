@@ -55,7 +55,7 @@ namespace Vintagestory.GameContent.Mechanics
 
 
             AssetLocation loc = new AssetLocation("shapes/block/wood/mechanics/pulverizer-moving.json");
-            Shape shape = capi.Assets.TryGet(loc).ToObject<Shape>();
+            Shape shape = API.Common.Shape.TryGet(capi, loc);
             Vec3f rot = new Vec3f(shapeLoc.rotateX, shapeLoc.rotateY + 90F, shapeLoc.rotateZ);
             capi.Tesselator.TesselateShape(textureSoureBlock, shape, out toggleMesh, rot);
             toggleMesh.CustomFloats = matrixAndLightFloatsAxle = createCustomFloats(count);
@@ -65,8 +65,8 @@ namespace Vintagestory.GameContent.Mechanics
             AssetLocation locPounderL = new AssetLocation("shapes/block/wood/mechanics/pulverizer-pounder-l.json");
             AssetLocation locPounderR = new AssetLocation("shapes/block/wood/mechanics/pulverizer-pounder-r.json"); 
             
-            Shape shapel = capi.Assets.TryGet(locPounderL).ToObject<Shape>();
-            Shape shaper = capi.Assets.TryGet(locPounderR).ToObject<Shape>();
+            Shape shapel = API.Common.Shape.TryGet(capi, locPounderL);
+            Shape shaper = API.Common.Shape.TryGet(capi, locPounderR);
 
             texSource = capi.Tesselator.GetTexSource(textureSoureBlock);
 
@@ -120,7 +120,7 @@ namespace Vintagestory.GameContent.Mechanics
                 quantityAxles++;
             }
 
-            if ((dev.Block as BlockPulverizer).InvertPoundersOnRender) rot = -rot;
+            //if ((dev.Block as BlockPulverizer).InvertPoundersOnRender) rot = -rot; - creates inverted animation. This should instead rather cause tons of resistance 
             if (bhpu.isRotationReversed()) rot = -rot;
 
             // Pounder-left

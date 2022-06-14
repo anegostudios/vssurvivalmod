@@ -15,6 +15,8 @@ namespace Vintagestory.GameContent
 
     public class BlockToolRack : Block
     {
+        private static bool collectedToolTextures;
+
         public static Dictionary<Item, ToolTextures> ToolTextureSubIds(ICoreAPI api)
         {
             Dictionary<Item, ToolTextures> toolTextureSubIds;
@@ -37,6 +39,8 @@ namespace Vintagestory.GameContent
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
+
+            collectedToolTextures = false;
 
             if (api.Side != EnumAppSide.Client) return;
             ICoreClientAPI capi = api as ICoreClientAPI;
@@ -91,26 +95,31 @@ namespace Vintagestory.GameContent
         {
             base.OnCollectTextures(api, textureDict);
 
-            for (int i = 0; i < api.World.Items.Count; i++)
+            if (collectedToolTextures) return;   // The tool texture gathering is called once per client game session, reset in the first OnLoaded() call for this block type
+            collectedToolTextures = true;
+
+            var toolTexturesDict = ToolTextureSubIds(api);
+            toolTexturesDict.Clear();
+            IList<Item> Items = api.World.Items;
+            for (int i = 0; i < Items.Count; i++)
             {
-                Item item = api.World.Items[i];
+                Item item = Items[i];   // item is never null, client side
                 if (item.Tool == null && item.Attributes?["rackable"].AsBool() != true) continue;
 
                 ToolTextures tt = new ToolTextures();
 
-
                 if (item.Shape != null)
                 {
-                    IAsset asset = api.Assets.TryGet(item.Shape.Base.Clone().WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json"));
-                    if (asset != null)
+                    Shape shape = (api as ICoreClientAPI).TesselatorManager.GetCachedShape(item.Shape.Base);
+                    // Have to add the item textures to the block textureatlas as well, because when tesselating blocks we only look at the block textureatlas!
+                    if (shape != null)
                     {
-                        Shape shape = asset.ToObject<Shape>();
                         foreach (var val in shape.Textures)
                         {
                             CompositeTexture ctex = new CompositeTexture(val.Value.Clone());
                             ctex.Bake(api.Assets);
 
-                            textureDict.AddTextureLocation(new AssetLocationAndSource(ctex.Baked.BakedName, "Shape code ", item.Shape.Base));
+                            textureDict.GetOrAddTextureLocation(new AssetLocationAndSource(ctex.Baked.BakedName, "Shape code ", item.Shape.Base));
                             tt.TextureSubIdsByCode[val.Key] = textureDict[new AssetLocationAndSource(ctex.Baked.BakedName)];
                         }
                     }
@@ -119,13 +128,13 @@ namespace Vintagestory.GameContent
                 foreach (var val in item.Textures)
                 {
                     val.Value.Bake(api.Assets);
-                    textureDict.AddTextureLocation(new AssetLocationAndSource(val.Value.Baked.BakedName, "Item code ", item.Code));
+                    textureDict.GetOrAddTextureLocation(new AssetLocationAndSource(val.Value.Baked.BakedName, "Item code ", item.Code));
                     tt.TextureSubIdsByCode[val.Key] = textureDict[new AssetLocationAndSource(val.Value.Baked.BakedName)];
                 }
 
 
 
-                ToolTextureSubIds(api)[item] = tt;
+                toolTexturesDict[item] = tt;
             }
         }
 

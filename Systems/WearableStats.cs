@@ -55,6 +55,7 @@ namespace Vintagestory.GameContent
             capi.World.Player.Entity.OnImpact += (motionY) => onFallToGround(capi.World.Player.Entity, motionY);
             var bh = capi.World.Player.Entity.GetBehavior<EntityBehaviorHealth>();
             if (bh != null) bh.onDamaged += (dmg, dmgSource) => handleDamaged(capi.World.Player, dmg, dmgSource);
+            capi.Logger.VerboseDebug("Done wearable stats");
         }
 
         public override void StartServerSide(ICoreServerAPI api)
@@ -203,7 +204,7 @@ namespace Vintagestory.GameContent
             }
 
             // Apply full damage if no armor is in this slot
-            if (armorSlot.Empty || !(armorSlot.Itemstack.Item is ItemWearable))
+            if (armorSlot.Empty || !(armorSlot.Itemstack.Item is ItemWearable) || armorSlot.Itemstack.Collectible.GetRemainingDurability(armorSlot.Itemstack) <= 0)
             {
                 EnumCharacterDressType[] dressTargets = clothingDamageTargetsByAttackTacket[attackTarget];
                 EnumCharacterDressType target = dressTargets[api.World.Rand.Next(dressTargets.Length)];

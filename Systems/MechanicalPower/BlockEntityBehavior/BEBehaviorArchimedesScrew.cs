@@ -46,7 +46,7 @@ namespace Vintagestory.GameContent.Mechanics
 
             return ObjectCacheUtil.GetOrCreate(Api, "archimedesscrew-mesh-" + cshape.Base.Path + "-" + cshape.rotateX + "-" + cshape.rotateY + "-" + cshape.rotateZ, () =>
             {
-                Shape shape = capi.Assets.TryGet(cshape.Base).ToObject<Shape>();
+                Shape shape = API.Common.Shape.TryGet(capi, cshape.Base);
                 MeshData mesh;
                 capi.Tesselator.TesselateShape(Block, shape, out mesh);
 

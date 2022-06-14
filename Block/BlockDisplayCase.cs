@@ -22,18 +22,10 @@ namespace Vintagestory.GameContent
             if (api.Side != EnumAppSide.Client) return;
             ICoreClientAPI capi = api as ICoreClientAPI;
 
+            // NOTE: this currently has no effect, because a BlockEntityDisplayCase is not a BlockEntityBomb
             interactions = ObjectCacheUtil.GetOrCreate(api, "displayCaseInteractions", () =>
             {
-                List<ItemStack> canIgniteStacks = new List<ItemStack>();
-
-                foreach (CollectibleObject obj in api.World.Collectibles)
-                {
-                    if (obj is Block && (obj as Block).HasBehavior<BlockBehaviorCanIgnite>())
-                    {
-                        List<ItemStack> stacks = obj.GetHandBookStacks(capi);
-                        if (stacks != null) canIgniteStacks.AddRange(stacks);
-                    }
-                }
+                List<ItemStack> canIgniteStacks = BlockBehaviorCanIgnite.CanIgniteStacks(api, false);
 
                 return new WorldInteraction[] {
                     new WorldInteraction()

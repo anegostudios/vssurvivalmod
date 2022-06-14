@@ -17,6 +17,12 @@ namespace Vintagestory.GameContent
         InventoryGeneric gearInv;
         public override IInventory GearInventory => gearInv;
 
+        int CurPose
+        {
+            get { return WatchedAttributes.GetInt("curPose"); }
+            set { WatchedAttributes.SetInt("curPose", value); }
+        }
+
         public EntityArmorStand()
         {
             
@@ -102,7 +108,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-
+        string[] poses = new string[] { "idle", "lefthandup", "righthandup", "twohandscross" };
 
         public override void OnInteract(EntityAgent byEntity, ItemSlot slot, Vec3d hitPosition, EnumInteractMode mode)
         {
@@ -111,6 +117,14 @@ namespace Vintagestory.GameContent
             {
                 plr.InventoryManager.ActiveHotbarSlot.MarkDirty();
                 WatchedAttributes.MarkAllDirty();
+                return;
+            }
+
+            if (mode == EnumInteractMode.Interact && byEntity.RightHandItemSlot?.Itemstack?.Collectible is ItemWrench)
+            {
+                AnimManager.StopAnimation(poses[CurPose]);
+                CurPose = (CurPose + 1) % poses.Length; 
+                AnimManager.StartAnimation(new AnimationMetaData() { Animation = poses[CurPose], Code = poses[CurPose] }.Init());
                 return;
             }
 
@@ -134,7 +148,10 @@ namespace Vintagestory.GameContent
                 {
                     if (slot.Itemstack.Collectible.Tool != null || slot.Itemstack.ItemAttributes?["toolrackTransform"].Exists == true)
                     {
-                        handslot.TryPutInto(byEntity.World, RightHandItemSlot);
+                        if (handslot.TryPutInto(byEntity.World, RightHandItemSlot) == 0)
+                        {
+                            handslot.TryPutInto(byEntity.World, LeftHandItemSlot);
+                        }
                         return;
                     }
 
@@ -162,7 +179,7 @@ namespace Vintagestory.GameContent
                     empty &= gslot.Empty;
                 }
 
-                if (empty && byEntity.Controls.Sneak)
+                if (empty && byEntity.Controls.ShiftKey)
                 {
                     ItemStack stack = new ItemStack(byEntity.World.GetItem(new AssetLocation("armorstand")));
                     if (!byEntity.TryGiveItemStack(stack))

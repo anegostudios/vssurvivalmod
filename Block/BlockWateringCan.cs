@@ -36,7 +36,7 @@ namespace Vintagestory.GameContent
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handHandling)
         {
             if (blockSel == null) return;
-            if (byEntity.Controls.Sneak) return;
+            if (byEntity.Controls.ShiftKey) return;
 
             
             slot.Itemstack.TempAttributes.SetFloat("secondsUsed", 0);
@@ -44,7 +44,7 @@ namespace Vintagestory.GameContent
             IPlayer byPlayer = null;
             if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
 
-            Block block = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
+            Block block = byEntity.World.BlockAccessor.GetLiquidBlock(blockSel.Position);
             if (block.LiquidCode == "water")
             {
                 BlockPos pos = blockSel.Position;
@@ -216,10 +216,14 @@ namespace Vintagestory.GameContent
 
             Block block = world.BlockAccessor.GetBlock(blockSel.Position);
             bool notOnSolidblock = false;
-            if ((block.CollisionBoxes == null || block.CollisionBoxes.Length == 0) && !block.IsLiquid())
+            if (block.CollisionBoxes == null || block.CollisionBoxes.Length == 0)
             {
-                notOnSolidblock = true;
-                targetPos = targetPos.DownCopy();
+                block = world.BlockAccessor.GetLiquidBlock(blockSel.Position);
+                if ((block.CollisionBoxes == null || block.CollisionBoxes.Length == 0) && !block.IsLiquid())
+                {
+                    notOnSolidblock = true;
+                    targetPos = targetPos.DownCopy();
+                }
             }
 
             BlockEntityFarmland be = world.BlockAccessor.GetBlockEntity(targetPos) as BlockEntityFarmland;

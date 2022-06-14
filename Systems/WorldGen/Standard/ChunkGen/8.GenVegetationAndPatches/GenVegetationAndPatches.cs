@@ -15,7 +15,7 @@ namespace Vintagestory.ServerMods
     {
         ICoreServerAPI sapi;
         LCGRandom rnd;
-        IBlockAccessor blockAccessor;
+        IWorldGenBlockAccessor blockAccessor;
         WgenTreeSupplier treeSupplier;
         int worldheight;
         int chunkMapSizeY;
@@ -163,6 +163,7 @@ namespace Vintagestory.ServerMods
 
         private void OnChunkColumnGen(IServerChunk[] chunks, int chunkX, int chunkZ, ITreeAttribute chunkGenParams = null)
         {
+            blockAccessor.BeginColumn();
             rnd.InitPositionSeed(chunkX, chunkZ);
 
             IMapChunk mapChunk = chunks[0].MapChunk;
@@ -221,7 +222,7 @@ namespace Vintagestory.ServerMods
         void genPatches(int chunkX, int chunkZ, bool postPass)
         {
             int dx, dz, x, z;
-            Block block;
+            Block liquidBlock;
             int mapsizeY = blockAccessor.MapSizeY;
 
             var mapregion = sapi?.WorldManager.GetMapRegion((chunkX * chunksize) / regionSize, (chunkZ * chunksize) / regionSize);
@@ -234,7 +235,7 @@ namespace Vintagestory.ServerMods
 
                 float chance = blockPatch.Chance * bpc.ChanceMultiplier.nextFloat();
 
-                while (chance-- > rnd.NextDouble())
+                while (chance-- > rnd.NextFloat())
                 {
                     dx = rnd.NextInt(chunksize);
                     dz = rnd.NextInt(chunksize);
@@ -245,7 +246,7 @@ namespace Vintagestory.ServerMods
                     if (y <= 0 || y >= worldheight - 15) continue;
 
                     tmpPos.Set(x, y, z);
-                    block = blockAccessor.GetBlock(tmpPos);
+                    liquidBlock = blockAccessor.GetLiquidBlock(tmpPos);
 
                     // Place according to forest value
                     float forestRel = GameMath.BiLerp(forestUpLeft, forestUpRight, forestBotLeft, forestBotRight, (float)dx / chunksize, (float)dz / chunksize) / 255f;
@@ -256,7 +257,7 @@ namespace Vintagestory.ServerMods
 
                     int climate = GameMath.BiLerpRgbColor((float)dx / chunksize, (float)dz / chunksize, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight);
 
-                    if (bpc.IsPatchSuitableAt(blockPatch, block, mapsizeY, climate, y, forestRel, shrubRel))
+                    if (bpc.IsPatchSuitableAt(blockPatch, liquidBlock, mapsizeY, climate, y, forestRel, shrubRel))
                     {
                         if (blockPatch.MapCode != null && rnd.NextInt(255) > GetPatchDensity(blockPatch.MapCode, x, z, mapregion))
                         {
@@ -315,7 +316,7 @@ namespace Vintagestory.ServerMods
                 float shrubChance = GameMath.BiLerp(shrubUpLeft, shrubUpRight, shrubBotLeft, shrubBotRight, (float)dx / chunksize, (float)dz / chunksize);
                 shrubChance = GameMath.Clamp(shrubChance + 255*forestMod, 0, 255);
 
-                if (rnd.NextDouble() > (shrubChance / 255f) * (shrubChance / 255f)) continue;
+                if (rnd.NextFloat() > (shrubChance / 255f) * (shrubChance / 255f)) continue;
                 TreeGenForClimate treegenParams = treeSupplier.GetRandomShrubGenForClimate(climate, (int)shrubChance, y);
 
                 if (treegenParams != null)
@@ -348,9 +349,10 @@ namespace Vintagestory.ServerMods
         {
             int climate = GameMath.BiLerpRgbColor((float)0.5f, (float)0.5f, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight);
             float wetrel = TerraGenConfig.GetRainFall((climate >> 8) & 0xff, heightmap[(chunksize / 2) * chunksize + chunksize/2]) / 255f;
+            float temprel = ((climate>>16) & 0xff) / 255f;
             float dryrel = 1 - wetrel;
 
-            float drypenalty = 1 - GameMath.Clamp(2f * (dryrel - 0.5f), 0, 0.8f); // Reduce tree generation by up to 70% in low rain places
+            float drypenalty = 1 - GameMath.Clamp(2f * (dryrel - 0.5f + 1.5f*Math.Max(temprel - 0.6f, 0)), 0, 0.8f); // Reduce tree generation by up to 70% in low rain places
             float wetboost = 1 + 3 * Math.Max(0, wetrel - 0.75f);
 
             int triesTrees = (int)(treeSupplier.treeGenProps.treesPerChunk.nextFloat() * drypenalty * wetboost);
@@ -373,11 +375,11 @@ namespace Vintagestory.ServerMods
                 bool underwater = false;
 
                 tmpPos.Set(x, y, z);
-                block = blockAccessor.GetBlock(tmpPos);
+                block = blockAccessor.GetLiquidBlock(tmpPos);
                 
-                if (block.IsLiquid()) { underwater = true; tmpPos.Y--; block = blockAccessor.GetBlock(tmpPos); }
-                if (block.IsLiquid()) { underwater = true; tmpPos.Y--; block = blockAccessor.GetBlock(tmpPos); }
+                if (block.IsLiquid()) { underwater = true; tmpPos.Y--; block = blockAccessor.GetLiquidBlock(tmpPos); if (block.IsLiquid()) tmpPos.Y--; }
 
+                block = blockAccessor.GetBlock(tmpPos);
                 if (block.Fertility == 0) continue;
 
                 // Place according to forest value
@@ -392,7 +394,7 @@ namespace Vintagestory.ServerMods
 
                 // 1 in 400 chance to always spawn a tree
                 // otherwise go by tree density using a quadratic drop off to create clearer forest edges
-                if (rnd.NextDouble() > Math.Max(0.0025, treeDensityNormalized * treeDensityNormalized) || forestMod <= -1) continue;
+                if (rnd.NextFloat() > Math.Max(0.0025f, treeDensityNormalized * treeDensityNormalized) || forestMod <= -1) continue;
                 TreeGenForClimate treegenParams = treeSupplier.GetRandomTreeGenForClimate(climate, (int)treeDensity, y, underwater);
 
                 if (treegenParams != null)

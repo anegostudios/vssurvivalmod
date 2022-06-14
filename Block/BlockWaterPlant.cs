@@ -10,19 +10,18 @@ namespace Vintagestory.GameContent
 
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
         {
-            Block block = world.BlockAccessor.GetBlock(blockSel.Position);
-
             if (!CanPlaceBlock(world, byPlayer, blockSel, ref failureCode))
             {
                 return false;
             }
 
             Block blockToPlace = this;
+            Block block = world.BlockAccessor.GetLiquidBlock(blockSel.Position);
             bool inWater = block.IsLiquid() && block.LiquidLevel == 7 && block.LiquidCode.Contains("water");
 
             if (inWater)
             {
-                blockToPlace = world.GetBlock(CodeWithParts("water"));
+                blockToPlace = world.GetBlock(CodeWithParts("water"));    // may be unnecessary, but let's not change this, to minimise changes to existing world saves
                 if (blockToPlace == null) blockToPlace = this;
             } else
             {
@@ -46,11 +45,11 @@ namespace Vintagestory.GameContent
         {
             base.OnBlockBroken(world, pos, byPlayer, dropQuantityMultiplier);
 
-            if (LastCodePart() != "free")
-            {
-                world.BlockAccessor.SetBlock(world.GetBlock(new AssetLocation("water-still-7")).BlockId, pos);
-                world.BlockAccessor.GetBlock(pos).OnNeighbourBlockChange(world, pos, pos);
-            }
+            //if (LastCodePart() != "free")
+            //{
+            //    world.BlockAccessor.SetBlock(world.GetBlock(new AssetLocation("water-still-7")).BlockId, pos);
+            //    world.BlockAccessor.GetBlock(pos).OnNeighbourBlockChange(world, pos, pos);
+            //}
         }
 
 
@@ -72,7 +71,7 @@ namespace Vintagestory.GameContent
                 return true;
             }
 
-            if (belowBlock.LiquidCode == "water")
+            if (belowBlock.LiquidCode == "water")   // This should be OK, as in worldgen blocks are either still water only, or not water at all
             {
                 return TryPlaceBlockInWater(blockAccessor, pos);
             }

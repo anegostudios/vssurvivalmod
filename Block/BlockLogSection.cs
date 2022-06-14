@@ -59,7 +59,7 @@ namespace Vintagestory.GameContent
         {
             BlockLogSection[] around = new BlockLogSection[6];
             string rotation = GetBlocksAround(around, world.BlockAccessor, blockSel.Position.Copy());
-            if (rotation == null || byPlayer?.Entity.Controls.Sneak == true)
+            if (rotation == null || byPlayer?.Entity.Controls.ShiftKey == true)
             {
                 switch (blockSel.Face.Axis)
                 {

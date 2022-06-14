@@ -216,7 +216,7 @@ namespace Vintagestory.GameContent
                 LootItem.Item(0.1f, 1, 1, "pickaxe-copper"),
                 LootItem.Item(0.1f, 1, 1, "scythe-copper"),
                 LootItem.Item(0.1f, 1, 1, "knife-copper", "knife-copper", "knife-tinbronze"),
-                LootItem.Item(0.1f, 1, 1, "longblade-copper", "longblade-copper", "longblade-tinbronze"),
+                LootItem.Item(0.1f, 1, 1, "blade-falx-copper", "blade-falx-copper", "blade-falx-tinbronze"),
                 LootItem.Item(0.1f, 2, 4, "gear-rusty")
             );
 

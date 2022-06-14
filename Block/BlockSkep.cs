@@ -10,6 +10,8 @@ namespace Vintagestory.GameContent
 {
     public class BlockSkep : Block
     {
+        float beemobSpawnChance = 0.4f;
+
         public bool IsEmpty()
         {
             return Variant["type"] == "empty";
@@ -45,11 +47,20 @@ namespace Vintagestory.GameContent
         }
 
 
+        public override void OnLoaded(ICoreAPI api)
+        {
+            base.OnLoaded(api);
+
+            beemobSpawnChance = Attributes?["beemobSpawnChance"].AsFloat(0.4f) ?? 0.4f;
+        }
+
+        
+
         public override void OnBlockBroken(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1)
         {
             base.OnBlockBroken(world, pos, byPlayer, dropQuantityMultiplier);
 
-            if (!IsEmpty() && world.Rand.NextDouble() < 0.4)
+            if (!IsEmpty() && world.Rand.NextDouble() < beemobSpawnChance)
             {
                 EntityProperties type = world.GetEntityType(new AssetLocation("beemob"));
                 Entity entity = world.ClassRegistry.CreateEntity(type);

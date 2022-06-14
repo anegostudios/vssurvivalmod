@@ -58,7 +58,7 @@ namespace Vintagestory.GameContent.Mechanics
             base.OnTesselation(mesher, tesselator);
 
             ICoreClientAPI capi = Api as ICoreClientAPI;
-            Shape shape = capi.Assets.TryGet("shapes/block/metal/mechanics/creativerotor-frame.json").ToObject<Shape>();
+            Shape shape = API.Common.Shape.TryGet(capi, "shapes/block/metal/mechanics/creativerotor-frame.json");
             float rotateY = 0f;
             switch (BlockFacing.FromCode(Block.Variant["side"]).Index)
             {

@@ -41,21 +41,24 @@ namespace Vintagestory.GameContent
                 List<ItemStack> fillStacks = new List<ItemStack>();
                 List<ItemStack> doughStacks = new List<ItemStack>();
 
-                foreach (CollectibleObject obj in api.World.Collectibles)
+                if (knifeStacks.Count == 0 && fillStacks.Count == 0 && doughStacks.Count == 0)
                 {
-                    if (obj.Tool == EnumTool.Knife || obj.Tool == EnumTool.Sword)
+                    foreach (CollectibleObject obj in api.World.Collectibles)
                     {
-                        knifeStacks.Add(new ItemStack(obj));
-                    }
-                    if (obj is ItemDough)
-                    {
-                        doughStacks.Add(new ItemStack(obj, 2));
-                    }
+                        if (obj.Tool == EnumTool.Knife || obj.Tool == EnumTool.Sword)
+                        {
+                            knifeStacks.Add(new ItemStack(obj));
+                        }
+                        if (obj is ItemDough)
+                        {
+                            doughStacks.Add(new ItemStack(obj, 2));
+                        }
 
-                    var pieProps = obj.Attributes?["inPieProperties"]?.AsObject<InPieProperties>(null, obj.Code.Domain);
-                    if (pieProps != null && !(obj is ItemDough))
-                    {
-                        fillStacks.Add(new ItemStack(obj, 2));
+                        var pieProps = obj.Attributes?["inPieProperties"]?.AsObject<InPieProperties>(null, obj.Code.Domain);
+                        if (pieProps != null && !(obj is ItemDough))
+                        {
+                            fillStacks.Add(new ItemStack(obj, 2));
+                        }
                     }
                 }
 

@@ -8,6 +8,8 @@ namespace Vintagestory.GameContent
 {
     public class BlockSeaweed : BlockWaterPlant
     {
+        public override string RemapToLiquidsLayer { get { return "water-still-7"; } }
+
         Random random = new Random();
         Block[] blocks;
 
@@ -27,7 +29,7 @@ namespace Vintagestory.GameContent
 
             for (int i = 0; i < sourceMesh.FlagsCount; i++)
             {
-                sourceMesh.Flags[i] = (sourceMesh.Flags[i] & VertexFlags.ClearWindDataBitsMask) | windData;
+                sourceMesh.Flags[i] = (sourceMesh.Flags[i] & VertexFlags.ClearWindDataBitsMask) | (windData << VertexFlags.WindDataBitsPos);
             }
         }
 
@@ -35,7 +37,7 @@ namespace Vintagestory.GameContent
         {
             BlockPos belowPos = pos.DownCopy();
 
-            Block block = blockAccessor.GetBlock(belowPos);
+            Block block = blockAccessor.GetLiquidBlock(belowPos);
             if (block.LiquidCode != "water") return false;
 
             int depth = 1;

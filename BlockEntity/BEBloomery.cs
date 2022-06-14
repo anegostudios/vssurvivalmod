@@ -41,7 +41,16 @@ namespace Vintagestory.GameContent
             smallMetalSparks.WithTerrainCollision = false;
             smallMetalSparks.VertexFlags = 128;
             smallMetalSparks.AddPos.Set(1 / 16f, 0, 1 / 16f);
-            smallMetalSparks.SizeEvolve = new EvolvingNatFloat(EnumTransformFunction.LINEAR, -0.05f);
+            smallMetalSparks.SizeEvolve = new EvolvingNatFloat(EnumTransformFunction.QUADRATIC, -0.5f);
+            smallMetalSparks.AddPos.Set(4 / 16.0, 3 / 16.0, 4 / 16.0);
+            smallMetalSparks.ParticleModel = EnumParticleModel.Cube;
+            smallMetalSparks.LifeLength = 0.04f;
+            smallMetalSparks.MinQuantity = 1;
+            smallMetalSparks.AddQuantity = 1;
+            smallMetalSparks.MinSize = 0.2f;
+            smallMetalSparks.MaxSize = 0.2f;
+            smallMetalSparks.GravityEffect = 0f;
+
 
             breakSparks = new SimpleParticleProperties(
                 40, 80,
@@ -203,19 +212,10 @@ namespace Vintagestory.GameContent
                 particlePos.Sub(dir.X * (6/16.0) + 2/16f, 0, dir.Z * (6 / 16.0) + 2/16f);
                 
                 smallMetalSparks.MinPos = particlePos;
-                smallMetalSparks.AddPos.Set(4 / 16.0, 3 / 16.0, 4 / 16.0);
                 smallMetalSparks.VertexFlags = (byte)renderer.glowLevel;
-                smallMetalSparks.ParticleModel = EnumParticleModel.Cube;
-                smallMetalSparks.LifeLength = 0.04f;
                 smallMetalSparks.MinVelocity = new Vec3f(-0.5f - dir.X, -0.3f, -0.5f - dir.Z);
-                smallMetalSparks.AddVelocity = new Vec3f(1f - dir.X, 0.6f, 1f - dir.Z);
-                smallMetalSparks.MinQuantity = 1;
-                smallMetalSparks.AddQuantity = 1;
-                smallMetalSparks.MinSize = 0.2f;
-                smallMetalSparks.MaxSize = 0.2f;
-                smallMetalSparks.GravityEffect = 0f;
+                smallMetalSparks.AddVelocity = new Vec3f(1f - dir.X, 0.6f, 1f - dir.Z);                
                 
-                smallMetalSparks.SizeEvolve = new EvolvingNatFloat(EnumTransformFunction.QUADRATIC, -0.5f);
                 Api.World.SpawnParticles(smallMetalSparks, null);
             }
         }

@@ -19,7 +19,6 @@ namespace Vintagestory.GameContent
         {
             if (slot.Itemstack?.Collectible == this)
             {
-                if ((byEntity as EntityAgent)?.Controls.FloorSitting == true) return "knapsitting";
                 return "knap";
             }
 
@@ -53,7 +52,7 @@ namespace Vintagestory.GameContent
 
             IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
 
-            if (byEntity.Controls.Sneak && blockSel != null)
+            if (byEntity.Controls.ShiftKey && blockSel != null)
             {
                 Block block = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
                 haveKnappableStone = 
@@ -131,7 +130,7 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            if (blockSel != null && byEntity?.World != null && byEntity.Controls.Sneak)
+            if (blockSel != null && byEntity?.World != null && byEntity.Controls.ShiftKey)
             {
                 IWorldAccessor world = byEntity.World;
                 Block block = world.GetBlock(CodeWithPath("loosestones-" + LastCodePart() + "-free"));
@@ -141,9 +140,11 @@ namespace Vintagestory.GameContent
                 }
                 if (block == null) return;
 
-                if (!world.BlockAccessor.GetBlock(blockSel.Position).SideSolid[BlockFacing.UP.Index]) return;
-
                 BlockPos targetpos = blockSel.Position.AddCopy(blockSel.Face);
+                targetpos.Y--;
+                if (!world.BlockAccessor.GetSolidBlock(targetpos.X, targetpos.Y, targetpos.Z).CanAttachBlockAt(world.BlockAccessor, block, targetpos, BlockFacing.UP)) return;
+                targetpos.Y++;
+
                 BlockSelection placeSel = blockSel.Clone();
                 placeSel.Position = targetpos;
                 placeSel.DidOffset = true;
@@ -170,7 +171,7 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            if (byEntity.Controls.Sneak) return;
+            if (byEntity.Controls.ShiftKey) return;
 
         
             // Not ideal to code the aiming controls this way. Needs an elegant solution - maybe an event bus?
@@ -365,7 +366,7 @@ namespace Vintagestory.GameContent
                 new WorldInteraction()
                 {
                     ActionLangCode = "heldhelp-place",
-                    HotKeyCode = "sneak",
+                    HotKeyCode = "shift",
                     MouseButton = EnumMouseButton.Right,
                 }
             }.Append(base.GetHeldInteractionHelp(inSlot));

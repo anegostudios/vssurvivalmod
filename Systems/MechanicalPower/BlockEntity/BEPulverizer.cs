@@ -159,7 +159,7 @@ namespace Vintagestory.GameContent.Mechanics
             MeshData meshTop = ObjectCacheUtil.GetOrCreate(capi, "pulverizertopmesh-"+rotateY, () =>
             {
                 MeshData mesh;
-                Shape shapeTop = capi.Assets.TryGet("shapes/block/wood/mechanics/pulverizer-top.json").ToObject<Shape>();
+                Shape shapeTop = API.Common.Shape.TryGet(capi, "shapes/block/wood/mechanics/pulverizer-top.json");
                 capi.Tesselator.TesselateShape(Block, shapeTop, out mesh, new Vec3f(0, rotateY, 0));
 
                 return mesh;
@@ -168,7 +168,7 @@ namespace Vintagestory.GameContent.Mechanics
             MeshData meshBase = ObjectCacheUtil.GetOrCreate(capi, "pulverizerbasemesh-" + rotateY, () =>
             {
                 MeshData mesh;
-                Shape shapeBase = capi.Assets.TryGet("shapes/block/wood/mechanics/pulverizer-base.json").ToObject<Shape>();
+                Shape shapeBase = API.Common.Shape.TryGet(capi, "shapes/block/wood/mechanics/pulverizer-base.json");
                 capi.Tesselator.TesselateShape(Block, shapeBase, out mesh, new Vec3f(0, rotateY, 0));
 
                 return mesh;
@@ -240,8 +240,11 @@ namespace Vintagestory.GameContent.Mechanics
         {
             if (!hasAxle && slot.Itemstack.Collectible.Code.Path == "pulverizertoggle-oak")
             {
-                slot.TakeOut(1);
-                slot.MarkDirty();
+                if (toPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
+                {
+                    slot.TakeOut(1);
+                    slot.MarkDirty();
+                }
                 hasAxle = true;
                 MarkDirty(true);
                 return true;
@@ -249,8 +252,11 @@ namespace Vintagestory.GameContent.Mechanics
 
             if ((!hasLPounder || !hasRPounder) && slot.Itemstack.Collectible.Code.Path == "pounder-oak")
             {
-                slot.TakeOut(1);
-                slot.MarkDirty();
+                if (toPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
+                {
+                    slot.TakeOut(1);
+                    slot.MarkDirty();
+                }
                 if (hasLPounder) hasRPounder = true;
                 hasLPounder = true;
                 MarkDirty(true);

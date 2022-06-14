@@ -54,14 +54,14 @@ namespace Vintagestory.GameContent
             if (!inv[1].Empty && FluxMeshRef == null)
             {
                 MeshData meshdata;
-                capi.Tesselator.TesselateShape(Block, Api.Assets.TryGet("shapes/block/metal/anvil/build-flux.json")?.ToObject<Shape>(), out meshdata);
+                capi.Tesselator.TesselateShape(Block, API.Common.Shape.TryGet(Api, "shapes/block/metal/anvil/build-flux.json"), out meshdata);
                 FluxMeshRef = capi.Render.UploadMesh(meshdata);
             }
             
             if (!inv[2].Empty && TopMeshRef == null)
             {
                 MeshData meshdata;
-                capi.Tesselator.TesselateShape(Block, Api.Assets.TryGet("shapes/block/metal/anvil/build-top.json")?.ToObject<Shape>(), out meshdata);
+                capi.Tesselator.TesselateShape(Block, API.Common.Shape.TryGet(Api, "shapes/block/metal/anvil/build-top.json"), out meshdata);
                 TopMeshRef = capi.Render.UploadMesh(meshdata);
             }
         }

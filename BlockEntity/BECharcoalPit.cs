@@ -359,7 +359,7 @@ namespace Vintagestory.GameContent
                     MeshData mesh;
 
                     ITesselatorAPI tess = ((ICoreClientAPI)Api).Tesselator;
-                    tess.TesselateShape(Block, Api.Assets.TryGet("shapes/block/wood/firepit/cold-normal.json")?.ToObject<Shape>(), out mesh);
+                    tess.TesselateShape(Block, API.Common.Shape.TryGet(Api, "shapes/block/wood/firepit/cold-normal.json"), out mesh);
 
                     return mesh;
                 });

@@ -184,7 +184,7 @@ namespace Vintagestory.GameContent
                                 BlockFacing face = BlockFacing.ALLFACES[i];
 
                                 spawnBlockPos.Set(spawnPos).Add(face.Normali);
-                                haveWall = Api.World.BlockAccessor.GetBlock(spawnBlockPos).SideSolid[face.Opposite.Index];
+                                haveWall = Api.World.BlockAccessor.IsSideSolid(spawnBlockPos.X, spawnBlockPos.Y, spawnBlockPos.Z, face.Opposite);
                                 if (haveWall)
                                 {
                                     Cuboidd entityPos = collisionBox2.ToDouble().Translate(spawnPos);

@@ -33,6 +33,8 @@ namespace Vintagestory.GameContent
 
         public double TempStabChangeVelocity { get; set; }
 
+        public double GlichEffectStrength => glitchEffectStrength;
+
         bool requireInitSounds;
         bool enabled = true;
         bool isSelf;
@@ -58,6 +60,7 @@ namespace Vintagestory.GameContent
             {
                 requireInitSounds = true;
                 precipParticleSys = entity.Api.ModLoader.GetModSystem<WeatherSystemClient>().simParticles;
+
             }
 
             enabled = entity.Api.World.Config.GetBool("temporalStability", true);
@@ -76,6 +79,8 @@ namespace Vintagestory.GameContent
             capi = entity.Api as ICoreClientAPI;
             isSelf = capi.World.Player.Entity.EntityId == entity.EntityId;
             if (!isSelf) return;
+
+            capi.Event.RegisterAsyncParticleSpawner(asyncParticleSpawn);
 
             // Effects
             fogNoise = NormalizedSimplexNoise.FromDefaultOctaves(4, 1, 0.9, 123);
@@ -144,6 +149,66 @@ namespace Vintagestory.GameContent
             
         }
 
+        private bool asyncParticleSpawn(float dt, IAsyncParticleManager manager)
+        {
+            if (isSelf && (fogEffectStrength > 0.05 || glitchEffectStrength > 0.05))
+            {
+                tmpPos.Set((int)entity.Pos.X, (int)entity.Pos.Y, (int)entity.Pos.Z);
+                float sunb = capi.World.BlockAccessor.GetLightLevel(tmpPos, EnumLightLevelType.OnlySunLight) / 22f;
+
+                float strength = Math.Min(1, (float)(glitchEffectStrength));
+
+                double fognoise = fogEffectStrength * Math.Abs(fogNoise.Noise(0, capi.InWorldEllapsedMilliseconds / 1000f)) / 60f;
+
+                rainfogAmbient.FogDensity.Value = 0.05f + (float)fognoise;
+
+                rainfogAmbient.AmbientColor.Weight = strength;
+                rainfogAmbient.FogColor.Weight = strength;
+                rainfogAmbient.FogDensity.Weight = (float)Math.Pow(strength, 2);
+
+                rainfogAmbient.FogColor.Value[0] = sunb * 116 / 255f;
+                rainfogAmbient.FogColor.Value[1] = sunb * 77 / 255f;
+                rainfogAmbient.FogColor.Value[2] = sunb * 49 / 255f;
+
+                rainfogAmbient.AmbientColor.Value[0] = 0.5f * 116 / 255f;
+                rainfogAmbient.AmbientColor.Value[1] = 0.5f * 77 / 255f;
+                rainfogAmbient.AmbientColor.Value[2] = 0.5f * 49 / 255f;
+
+                rustParticles.Color = ColorUtil.ToRgba((int)(strength * 150), 50, 25, 15);
+                rustParticles.MaxSize = 0.25f;
+                rustParticles.RandomVelocityChange = false;
+
+                
+
+                rustParticles.MinVelocity.Set(0, 1, 0);
+                rustParticles.AddVelocity.Set(0, 5, 0);
+
+                rustParticles.LifeLength = 0.75f;
+
+                Vec3d position = new Vec3d();
+                EntityPos plrPos = capi.World.Player.Entity.Pos;
+
+                float tries = 120 * strength;
+
+                while (tries-- > 0)
+                {
+                    float offX = (float)capi.World.Rand.NextDouble() * 24 - 12;
+                    float offY = (float)capi.World.Rand.NextDouble() * 24 - 12;
+                    float offZ = (float)capi.World.Rand.NextDouble() * 24 - 12;
+
+                    position.Set(plrPos.X + offX, plrPos.Y + offY, plrPos.Z + offZ);
+                    BlockPos pos = new BlockPos((int)position.X, (int)position.Y, (int)position.Z);
+
+                    if (!capi.World.BlockAccessor.IsValidPos(pos)) continue;
+
+                    rustParticles.MinPos = position;
+                    capi.World.SpawnParticles(rustParticles);
+                }
+            }
+
+            return true;
+        }
+
         internal void AddStability(double amount)
         {
             OwnStability += amount;
@@ -156,6 +221,9 @@ namespace Vintagestory.GameContent
 
         BlockPos tmpPos = new BlockPos();
         public double stabilityOffset;
+
+        float jitterOffset;
+        float jitterOffsetedDuration;
 
         public override void OnGameTick(float deltaTime)
         {
@@ -182,7 +250,6 @@ namespace Vintagestory.GameContent
 
             float changeSpeed = deltaTime / 3;
 
-
             double hereStability = stabilityOffset + tempStabilitySystem.GetTemporalStability(entity.SidedPos.X, entity.SidedPos.Y, entity.SidedPos.Z);
 
             entity.Attributes.SetDouble("tempStabChangeVelocity", TempStabChangeVelocity);
@@ -202,7 +269,7 @@ namespace Vintagestory.GameContent
 
             double targetFogEffectStrength = Math.Max(0, Math.Max(0, (0.3f - ownStability) * 1 / 0.3f) + glitchEffectExtraStrength);
             fogEffectStrength += (targetFogEffectStrength - fogEffectStrength) * changeSpeed;
-            fogEffectStrength = GameMath.Clamp(fogEffectStrength, 0, 1.1f);
+            fogEffectStrength = GameMath.Clamp(fogEffectStrength, 0, 0.9f);
 
             double targetRustPrecipStrength = Math.Max(0, Math.Max(0, (0.3f - ownStability) * 1 / 0.3f) + glitchEffectExtraStrength);
             rustPrecipColorStrength += (targetRustPrecipStrength - rustPrecipColorStrength) * changeSpeed;
@@ -245,8 +312,36 @@ namespace Vintagestory.GameContent
             {
                 capi.Render.ShaderUniforms.GlitchStrength = (float)glitchEffectStrength;
                 capi.Render.ShaderUniforms.GlobalWorldWarp = (float)(capi.World.Rand.NextDouble() < 0.015 ? (Math.Max(0, glitchEffectStrength - 0.05f) * capi.World.Rand.NextDouble() * capi.World.Rand.NextDouble()) : 0);
-                capi.Render.ShaderUniforms.WindWaveCounter += (float)(capi.World.Rand.NextDouble() < 0.015 ? 9 * capi.World.Rand.NextDouble() : 0);
-                capi.Render.ShaderUniforms.WaterWaveCounter += (float)(capi.World.Rand.NextDouble() < 0.015 ? 9 * capi.World.Rand.NextDouble() : 0);
+
+                float tempStormJitterStrength = 9;
+                if (capi.Settings.Float.Exists("tempStormJitterStrength"))
+                {
+                    tempStormJitterStrength = capi.Settings.Float["tempStormJitterStrength"];
+                }
+
+                if (capi.World.Rand.NextDouble() < 0.015 && jitterOffset==0)
+                {
+                    jitterOffset = tempStormJitterStrength * (float)capi.World.Rand.NextDouble() + 3;
+                    jitterOffsetedDuration = 0.25f + (float)capi.World.Rand.NextDouble() / 2f;
+
+                    capi.Render.ShaderUniforms.WindWaveCounter += jitterOffset;// (float)(capi.World.Rand.NextDouble() < 0.015 ? tempStormJitterStrength * capi.World.Rand.NextDouble() : 0);
+                    capi.Render.ShaderUniforms.WaterWaveCounter += jitterOffset;// (float)(capi.World.Rand.NextDouble() < 0.015 ? tempStormJitterStrength * capi.World.Rand.NextDouble() : 0);
+                }
+
+                if (jitterOffset > 0)
+                {
+                    capi.Render.ShaderUniforms.WindWaveCounter += (float)capi.World.Rand.NextDouble() / 2f - 1/4f;
+
+                    jitterOffsetedDuration -= deltaTime;
+                    if (jitterOffsetedDuration <= 0)
+                    {
+                        //capi.Render.ShaderUniforms.WindWaveCounter -= jitterOffset;
+                        //capi.Render.ShaderUniforms.WaterWaveCounter -= jitterOffset;
+                        jitterOffset = 0;
+                    }
+                }
+
+                
 
                 if (capi.World.Rand.NextDouble() < 0.002)
                 {
@@ -254,55 +349,8 @@ namespace Vintagestory.GameContent
                     capi.Input.MousePitch += (float)capi.World.Rand.NextDouble() * 0.125f - 0.125f/2;
                 }
 
-                tmpPos.Set((int)entity.Pos.X, (int)entity.Pos.Y, (int)entity.Pos.Z);
-                float sunb = capi.World.BlockAccessor.GetLightLevel(tmpPos, EnumLightLevelType.OnlySunLight) / 22f;
-
-                float strength = Math.Min(1, (float)(glitchEffectStrength));
-
                 double fognoise = fogEffectStrength * Math.Abs(fogNoise.Noise(0, capi.InWorldEllapsedMilliseconds/1000f)) / 60f;
-
                 rainfogAmbient.FogDensity.Value = 0.05f + (float)fognoise;
-
-                rainfogAmbient.AmbientColor.Weight = strength;
-                rainfogAmbient.FogColor.Weight = strength;
-                rainfogAmbient.FogDensity.Weight = (float)Math.Pow(strength, 2);
-
-                rainfogAmbient.FogColor.Value[0] = sunb * 116 / 255f;
-                rainfogAmbient.FogColor.Value[1] = sunb * 77 / 255f;
-                rainfogAmbient.FogColor.Value[2] = sunb * 49 / 255f;
-
-                rainfogAmbient.AmbientColor.Value[0] = 0.5f * 116 / 255f;
-                rainfogAmbient.AmbientColor.Value[1] = 0.5f * 77 / 255f;
-                rainfogAmbient.AmbientColor.Value[2] = 0.5f * 49 / 255f;
-                
-                rustParticles.MinVelocity.Set(-0.1f, 0.1f, 0.1f);
-                rustParticles.AddVelocity.Set(0.2f, 0.2f, 0.2f);
-                rustParticles.Color = ColorUtil.ToRgba((int)(strength * 150), 50, 25, 15);
-                rustParticles.MaxSize = 0.25f;
-                rustParticles.RandomVelocityChange = false;
-                rustParticles.MinVelocity.Set(0, 0, 0);
-                rustParticles.AddVelocity.Set(0, 1, 0);
-
-
-                Vec3d position = new Vec3d();
-                EntityPos plrPos = capi.World.Player.Entity.Pos;
-
-                float tries = 20 * strength;
-
-                while (tries-- > 0)
-                {
-                    float offX = (float)capi.World.Rand.NextDouble() * 24 - 12;
-                    float offY = (float)capi.World.Rand.NextDouble() * 24 - 12;
-                    float offZ = (float)capi.World.Rand.NextDouble() * 24 - 12;
-
-                    position.Set(plrPos.X + offX, plrPos.Y + offY, plrPos.Z + offZ);
-                    BlockPos pos = new BlockPos((int)position.X, (int)position.Y, (int)position.Z);
-
-                    if (!capi.World.BlockAccessor.IsValidPos(pos)) continue;
-
-                    rustParticles.MinPos = position;
-                    capi.World.SpawnParticles(rustParticles);
-                }
             }
         }
 

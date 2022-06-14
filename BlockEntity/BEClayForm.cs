@@ -511,7 +511,13 @@ namespace Vintagestory.GameContent
             if (Api != null && workItemStack != null)
             {
                 workItemStack.ResolveBlockOrItem(Api.World);
-                baseMaterial = new ItemStack(Api.World.GetItem(new AssetLocation("clay-" + workItemStack.Collectible.LastCodePart())));
+                var item = Api.World.GetItem(new AssetLocation("clay-" + workItemStack.Collectible.LastCodePart()));
+                if (item == null)
+                {
+                    Api.World.Logger.Notification("Clay form base mat is null! Clay form @ {0}/{1}/{2} corrupt. Will reset to blue clay", Pos.X, Pos.Y, Pos.Z);
+                    item = Api.World.GetItem(new AssetLocation("clay-blue"));
+                }
+                baseMaterial = new ItemStack(item);
             }
 
             if (modified)

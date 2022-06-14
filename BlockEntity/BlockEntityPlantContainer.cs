@@ -44,11 +44,6 @@ namespace Vintagestory.GameContent
             return 0;
         }
 
-        /*protected override float Inventory_OnAcquireTransitionSpeed(EnumTransitionType transType, ItemStack stack, float baseMul)
-        {
-            return 0;
-        }*/
-
         protected override void OnTick(float dt)
         {
             // Don't tick inventory contents
@@ -229,15 +224,15 @@ namespace Vintagestory.GameContent
             if (hasSoil && Block.Attributes != null)
             {
                 CompositeShape compshape = Block.Attributes["filledShape"].AsObject<CompositeShape>(null, Block.Code.Domain);
-                IAsset asset = null; 
+                Shape shape = null; 
                 if (compshape != null)
                 {
-                    asset = Api.Assets.TryGet(compshape.Base.WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json"));
+                    shape = Shape.TryGet(Api, compshape.Base.WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json"));
                 }
 
-                if (asset != null)
+                if (shape != null)
                 {
-                    tesselator.TesselateShape(Block, asset.ToObject<Shape>(), out mesh);
+                    tesselator.TesselateShape(Block, shape, out mesh);
                 } else
                 {
                     Api.World.Logger.Error("Plant container, asset {0} not found,", compshape?.Base.WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json"));
@@ -289,7 +284,7 @@ namespace Vintagestory.GameContent
             List<IAsset> assets;
             if (compoShape.Base.Path.EndsWith("*"))
             {
-                assets = Api.Assets.GetMany(compoShape.Base.WithPathPrefixOnce("shapes/").Path.Substring(0, compoShape.Base.Path.Length - 1), compoShape.Base.Domain);
+                assets = Api.Assets.GetManyInCategory("shapes", compoShape.Base.Path.Substring(0, compoShape.Base.Path.Length - 1), compoShape.Base.Domain);
             }
             else
             {
@@ -299,6 +294,7 @@ namespace Vintagestory.GameContent
 
             if (assets != null && assets.Count > 0)
             {
+                ShapeElement.locationForLogging = compoShape.Base;
                 meshwithVariants = new MeshData[assets.Count];
 
                 for (int i = 0; i < assets.Count; i++)
@@ -319,23 +315,6 @@ namespace Vintagestory.GameContent
                     { 
                         Api.Logger.Error(e.Message + " (when tesselating " + compoShape.Base.WithPathPrefixOnce("shapes/") + ")"); meshwithVariants = null; break; 
                     }
-
-                    // WTF is this here for? It breaks mycelium overlay
-                    /*for (int j = 0; j < mesh.RenderPassCount; j++)
-                    {
-                        mesh.RenderPassesAndExtraBits[j] = (int)EnumChunkRenderPass.OpaqueNoCull;
-                    }*/
-
-                    //Block block = GetContents()?.Block;
-                    /*int clearBitMask = VertexFlags.ClearWindModeBitsMask;
-                    for (int vertexNum = 0; vertexNum < mesh.GetVerticesCount(); vertexNum++)
-                    {                      
-                        float y = mesh.xyz[vertexNum * 3 + 1];
-                        if (y <= block.WaveFlagMinY)
-                        {
-                            mesh.Flags[vertexNum] &= clearBitMask;
-                        }
-                    }*/
 
                     mesh.ModelTransform(transform);
                     meshwithVariants[i] = mesh;

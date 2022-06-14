@@ -99,6 +99,8 @@ namespace Vintagestory.GameContent
 
             api.RegisterItemClass("ItemPlumbAndSquare", typeof(ItemPlumbAndSquare));
             api.RegisterBlockBehaviorClass("Reinforcable", typeof(BlockBehaviorReinforcable));
+
+            if (api is ICoreServerAPI sapi) sapi.Event.AssetsFinalizers += addReinforcementBehavior;  // Needs to be done before assets are ready because it rewrites Behavior and CollectibleBehavior
         }
 
         public override void StartClientSide(ICoreClientAPI api)
@@ -116,7 +118,6 @@ namespace Vintagestory.GameContent
 
         public override void StartServerSide(ICoreServerAPI api)
         {
-            api.Event.ServerRunPhase(EnumServerRunPhase.ModsAndConfigReady, addReinforcementBehavior);
             api.Event.SaveGameLoaded += Event_SaveGameLoaded;
             api.Event.GameWorldSave += Event_GameWorldSave;
             api.Event.PlayerJoin += Event_PlayerJoin;

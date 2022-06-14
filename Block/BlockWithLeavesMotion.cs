@@ -79,8 +79,51 @@ namespace Vintagestory.GameContent
 
             bool enableWind = (byte)(lightRgbsByCorner[24] >> 24) >= 159;  //corresponds with a sunlight level of less than 14
             int groundOffset = 1;
-            int sideDisableWindwave = 0;  //any bit set to 1 means no Wave on that tileSide
+            int sideDisableWindshear = 0;  //any bit set to 1 means no height-based wind shear on that tileSide (because adjoining solid block)
 
+
+            if (enableWind)
+            {
+                for (int tileSide = 0; tileSide < TileSideEnum.SideCount; tileSide++)
+                {
+                    Block nblock = chunkExtBlocks[extIndex3d + TileSideEnum.MoveIndex[tileSide]];
+                    if (nblock.BlockMaterial != EnumBlockMaterial.Leaves && nblock.SideSolid[TileSideEnum.GetOpposite(tileSide)]) sideDisableWindshear |= (1 << tileSide);
+                }
+
+                int downMoveIndex = TileSideEnum.MoveIndex[TileSideEnum.Down];
+                int movedIndex3d = extIndex3d + downMoveIndex;  // add downMoveIndex because groundOffset now starts at 1 (no point checking this block itself!)
+                Block block;
+                for (; groundOffset < 8; groundOffset++)
+                {
+                    if (movedIndex3d >= 0)
+                    {
+                        block = chunkExtBlocks[movedIndex3d];
+                    }
+                    else
+                    {
+                        block = api.World.BlockAccessor.GetBlock(pos.X, pos.Y - groundOffset, pos.Z);
+                    }
+
+                    if (block.VertexFlags.WindMode == EnumWindBitMode.NoWind && block.SideSolid[TileSideEnum.Up])
+                    {
+                        break;
+                    }
+
+                    movedIndex3d += downMoveIndex;
+                }
+            }
+
+            ToggleWindModeSetWindData(sourceMesh, sideDisableWindshear, enableWind, groundOffset, origFlags);
+        }
+
+
+        public override int OnInstancedTesselation(int light, BlockPos pos, Block[] chunkExtBlocks, int extIndex3d, out int sideDisableWindwave)
+        {
+            sideDisableWindwave = 0;  //any bit set to 1 means no Wave on that tileSide
+            if (VertexFlags.WindMode == EnumWindBitMode.NoWind) return 0;
+
+            bool enableWind = (byte)(light >> 24) >= 159;  //corresponds with a sunlight level of less than 14
+            int groundOffset = 1;
 
             if (enableWind)
             {
@@ -112,11 +155,13 @@ namespace Vintagestory.GameContent
                     movedIndex3d += downMoveIndex;
                 }
             }
+            else
+            {
+                sideDisableWindwave = 0x3f;
+            }
 
-            ToggleWindModeSetWindData(sourceMesh, sideDisableWindwave, enableWind, groundOffset, origFlags);
+            return groundOffset - 1;
         }
-
-
 
 
     }

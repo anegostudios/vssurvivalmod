@@ -51,6 +51,7 @@ namespace Vintagestory.GameContent
                     RegisterLiquidStackRenderer(obj);
                 }
             }
+            capi.Logger.VerboseDebug("Done scanning for liquid containers ");
         }
 
 

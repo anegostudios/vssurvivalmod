@@ -117,7 +117,7 @@ namespace Vintagestory.ServerMods
                         }
 
                         Block oldBlock = blockAccessor.GetBlock(curPos);
-                        int p = handler(blockAccessor, curPos, oldBlock, newBlock);
+                        int p = handler(blockAccessor, curPos, newBlock);
                         placed += p;
 
                         if (p > 0 && !newBlock.RainPermeable)
@@ -227,7 +227,7 @@ namespace Vintagestory.ServerMods
                     }
                 }
 
-                placed += handler(blockAccessor, curPos, oldBlock, newBlock);
+                placed += handler(blockAccessor, curPos, newBlock);
 
                 if (newBlock.LightHsv[2] > 0 && blockAccessor is IWorldGenBlockAccessor)
                 {

@@ -208,11 +208,13 @@ namespace Vintagestory.GameContent
 
             if (buildStages != null)
             {
-                colSelBoxes[0].X1 = 0;
-                colSelBoxes[0].X2 = 1;
-                colSelBoxes[0].Z1 = 0;
-                colSelBoxes[0].Z2 = 1;
-                colSelBoxes[0].Y2 = Math.Max(colSelBoxes[0].Y2, buildStages[Math.Min(buildStages.Length - 1, currentBuildStage)].MinHitboxY2 / 16f);
+                colBoxes[0].X1 = 0;
+                colBoxes[0].X2 = 1;
+                colBoxes[0].Z1 = 0;
+                colBoxes[0].Z2 = 1;
+                colBoxes[0].Y2 = Math.Max(colBoxes[0].Y2, buildStages[Math.Min(buildStages.Length - 1, currentBuildStage)].MinHitboxY2 / 16f);
+
+                selBoxes[0] = colBoxes[0];
             }
         }
 
@@ -373,11 +375,13 @@ namespace Vintagestory.GameContent
 
             
 
-            colSelBoxes[0].X1 = 0;
-            colSelBoxes[0].X2 = 1;
-            colSelBoxes[0].Z1 = 0;
-            colSelBoxes[0].Z2 = 1;
-            colSelBoxes[0].Y2 = Math.Max(colSelBoxes[0].Y2, buildStages[Math.Min(buildStages.Length - 1, currentBuildStage)].MinHitboxY2 / 16f);
+            colBoxes[0].X1 = 0;
+            colBoxes[0].X2 = 1;
+            colBoxes[0].Z1 = 0;
+            colBoxes[0].Z2 = 1;
+            colBoxes[0].Y2 = Math.Max(colBoxes[0].Y2, buildStages[Math.Min(buildStages.Length - 1, currentBuildStage)].MinHitboxY2 / 16f);
+
+            selBoxes[0] = colBoxes[0];
         }
 
 

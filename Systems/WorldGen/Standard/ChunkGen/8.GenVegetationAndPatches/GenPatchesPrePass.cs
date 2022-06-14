@@ -105,7 +105,7 @@ namespace Vintagestory.ServerMods
         void genPatches(int chunkX, int chunkZ)
         {
             int dx, dz, x, z;
-            Block block;
+            Block liquidBlock;
 
             for (int i = 0; i < bpc.Patches.Length; i++)
             {
@@ -114,7 +114,7 @@ namespace Vintagestory.ServerMods
 
                 float chance = blockPatch.Chance * bpc.ChanceMultiplier.nextFloat();
 
-                while (chance-- > rnd.NextDouble())
+                while (chance-- > rnd.NextFloat())
                 {
                     dx = rnd.NextInt(chunksize);
                     dz = rnd.NextInt(chunksize);
@@ -125,12 +125,12 @@ namespace Vintagestory.ServerMods
                     if (y <= 0 || y >= worldheight - 15) continue;
 
                     tmpPos.Set(x, y, z);
-                    block = blockAccessor.GetBlock(tmpPos);
+                    liquidBlock = blockAccessor.GetLiquidBlock(tmpPos);
 
                     // Place according to forest value
                     int climate = GameMath.BiLerpRgbColor((float)dx / chunksize, (float)dz / chunksize, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight);
 
-                    if (bpc.IsPatchSuitableAt(blockPatch, block, api.WorldManager.MapSizeY, climate, y, 0, 0))
+                    if (bpc.IsPatchSuitableAt(blockPatch, liquidBlock, api.WorldManager.MapSizeY, climate, y, 0, 0))
                     {
                         int firstBlockId = 0;
                         bool found = true;

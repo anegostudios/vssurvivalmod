@@ -202,7 +202,7 @@ namespace Vintagestory.GameContent
 
         private MeshData createNeedleMesh(ICoreClientAPI capi)
         {
-            Shape shape = capi.Assets.TryGet("shapes/block/wood/echochamber-needle.json").ToObject<Shape>();
+            Shape shape = API.Common.Shape.TryGet(capi, "shapes/block/wood/echochamber-needle.json");
             MeshData needleMesh;
             capi.Tesselator.TesselateShape(capi.World.BlockAccessor.GetBlock(Pos), shape, out needleMesh);
 
@@ -211,7 +211,7 @@ namespace Vintagestory.GameContent
 
         private MeshData createBaseMesh(ICoreClientAPI capi)
         {
-            Shape shape = capi.Assets.TryGet("shapes/block/wood/echochamber-base.json").ToObject<Shape>();
+            Shape shape = API.Common.Shape.TryGet(capi, "shapes/block/wood/echochamber-base.json");
             MeshData mesh;
             capi.Tesselator.TesselateShape(capi.World.BlockAccessor.GetBlock(Pos), shape, out mesh, new Vec3f(0, getRotation(), 0));
 

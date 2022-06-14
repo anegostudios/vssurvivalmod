@@ -20,6 +20,9 @@ namespace Vintagestory.GameContent
         public string[] PushFaces => Attributes["pushFaces"].AsArray<string>(new string[0]);
         public string[] AcceptFaces => Attributes["acceptFromFaces"].AsArray<string>(new string[0]);
 
+
+        
+
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
@@ -27,6 +30,7 @@ namespace Vintagestory.GameContent
             this.Side = Variant["side"] is string s ? string.Intern(s) : null;
             this.Vertical = Variant["vertical"] is string v ? string.Intern(v) : null;
         }
+
 
         public bool HasItemFlowConnectorAt(BlockFacing facing)
         {

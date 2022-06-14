@@ -105,14 +105,9 @@ namespace Vintagestory.GameContent
 
             if (world.Side == EnumAppSide.Client) return;
 
-            // Would be real nice if we could do this but it causes duplication, because the block is not instantly removed
-            //world.RegisterCallbackUnique((hereworld, herepos, dt) =>
-            //{
-                EnumHandling bla = EnumHandling.PassThrough;
-                string bla2 = "";
-                TryFalling(world, pos, ref bla, ref bla2);
-            //}, pos, world.Rand.Next(30));
-            
+            EnumHandling bla = EnumHandling.PassThrough;
+            string bla2 = "";
+            TryFalling(world, pos, ref bla, ref bla2);
         }
 
         private bool TryFalling(IWorldAccessor world, BlockPos pos, ref EnumHandling handling, ref string failureCode)

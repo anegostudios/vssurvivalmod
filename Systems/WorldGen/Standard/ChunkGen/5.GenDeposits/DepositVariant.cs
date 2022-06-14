@@ -63,6 +63,7 @@ namespace Vintagestory.ServerMods
         int chunksize;
         ICoreServerAPI api;
         internal DepositVariant parentDeposit;
+        public bool addHandbookAttributes;
 
         public void InitWithoutGenerator(ICoreServerAPI api)
         {

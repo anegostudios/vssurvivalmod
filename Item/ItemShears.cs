@@ -23,7 +23,7 @@ namespace Vintagestory.GameContent
         public override float OnBlockBreaking(IPlayer player, BlockSelection blockSel, ItemSlot itemslot, float remainingResistance, float dt, int counter)
         {
             float newResist = base.OnBlockBreaking(player, blockSel, itemslot, remainingResistance, dt, counter);
-            int leftDurability = itemslot.Itemstack.Attributes.GetInt("durability", Durability);
+            int leftDurability = itemslot.Itemstack.Collectible.GetRemainingDurability(itemslot.Itemstack);
             DamageNearbyBlocks(player, blockSel, remainingResistance - newResist, leftDurability);
 
             return newResist;
@@ -73,7 +73,7 @@ namespace Vintagestory.GameContent
             Vec3d hitPos = blockSel.Position.ToVec3d().Add(blockSel.HitPosition);
             var orderedPositions = GetNearblyMultibreakables(world, blockSel.Position, hitPos).OrderBy(x => x.Value);
 
-            int leftDurability = itemslot.Itemstack.Attributes.GetInt("durability", Durability);
+            int leftDurability = itemslot.Itemstack.Collectible.GetRemainingDurability(itemslot.Itemstack);
             int q = 0;
 
             

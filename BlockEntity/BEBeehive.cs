@@ -58,6 +58,8 @@ namespace Vintagestory.GameContent
                 0.5f, 0.5f,
                 EnumParticleModel.Cube
             );
+
+            Bees.RandomVelocityChange = true;
         }
 
 
@@ -91,7 +93,7 @@ namespace Vintagestory.GameContent
                 MeshData mesh;
                 capi.Tesselator.TesselateShape(
                     fullSkep, 
-                    api.Assets.TryGet("shapes/block/beehive/skep-harvestable.json").ToObject<Shape>(), 
+                    API.Common.Shape.TryGet(api, "shapes/block/beehive/skep-harvestable.json"), 
                     out mesh, 
                     new Vec3f(0, BlockFacing.FromCode(orientation).HorizontalAngleIndex * 90 - 90, 0)
                 );
@@ -127,7 +129,7 @@ namespace Vintagestory.GameContent
                 Bees.MinPos = startPos;
                 Bees.MinVelocity = minVelo;
                 Bees.LifeLength = 1f;
-                Bees.WithTerrainCollision = false;
+                Bees.WithTerrainCollision = true;
             }
 
             // Go back to hive
@@ -229,7 +231,7 @@ namespace Vintagestory.GameContent
             Block wildhive2 = Api.World.GetBlock(new AssetLocation("wildbeehive-large"));
             
 
-            Api.World.BlockAccessor.WalkBlocks(Pos.AddCopy(minX, -5, minZ), Pos.AddCopy(minX + size - 1, 5, minZ + size - 1), (block, pos) =>
+            Api.World.BlockAccessor.WalkBlocks(Pos.AddCopy(minX, -5, minZ), Pos.AddCopy(minX + size - 1, 5, minZ + size - 1), (block, x, y, z) =>
             {
                 if (block.Id == 0) return;
 
@@ -237,7 +239,7 @@ namespace Vintagestory.GameContent
 
                 if (block == emptySkepN || block == emptySkepE || block == emptySkepS || block == emptySkepW)
                 {
-                    scanEmptySkeps.Add(pos.Copy());
+                    scanEmptySkeps.Add(new BlockPos(x, y, z));
                 }
                 if (block == fullSkepN || block == fullSkepE || block == fullSkepS || block == fullSkepW || block == wildhive1 || block == wildhive2)
                 {
@@ -517,12 +519,11 @@ namespace Vintagestory.GameContent
 
 
         #region IAnimalFoodSource impl
-        public bool IsSuitableFor(Entity entity)
+        public bool IsSuitableFor(Entity entity, string[] diet)
         {
-            if (isWildHive || !Harvestable) return false;
-
-            string[] diet = entity.Properties.Attributes?["blockDiet"]?.AsArray<string>();
             if (diet == null) return false;
+
+            if (isWildHive || !Harvestable) return false;
 
             return diet.Contains("Honey");
         }

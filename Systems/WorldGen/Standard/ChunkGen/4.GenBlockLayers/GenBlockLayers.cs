@@ -164,14 +164,48 @@ namespace Vintagestory.ServerMods
                     float tempRel = TerraGenConfig.GetAdjustedTemperature(tempUnscaled, posY - TerraGenConfig.seaLevel + rnd) / 255f;
                     float rainRel = TerraGenConfig.GetRainFall((climate >> 8) & 0xff, posY + rnd) / 255f;
                     float forestRel = GameMath.BiLerp(forestUpLeft, forestUpRight, forestBotLeft, forestBotRight, (float)x / chunksize, (float)z / chunksize) / 255f;
-                    float beachRel = GameMath.BiLerp(beachUpLeft, beachUpRight, beachBotLeft, beachBotRight, (float)x / chunksize, (float)z / chunksize) / 255f;
 
                     int prevY = posY;
-                    
-                    posY = PutLayers(transitionRand, x, posY, z, chunks, rainRel, temp, tempUnscaled, heightMap);
-                    int blockID = chunks[0].MapChunk.TopRockIdMap[z * chunksize + x];
 
-                    GenBeach(x, prevY, z, chunks, rainRel, temp, beachRel, blockID);
+                    int rocky = chunks[0].MapChunk.WorldGenTerrainHeightMap[z * chunksize + x];
+                    int chunkY = (rocky) / chunksize;
+                    int lY = (rocky) % chunksize;
+                    int index3d = (chunksize * lY + z) * chunksize + x;
+
+                    int rockblockID = chunks[chunkY].Blocks.GetBlockIdUnsafe(index3d);
+
+                    if (rocky < TerraGenConfig.seaLevel)
+                    {
+                        // If rain below 50%, raise by up to 12 blocks
+                        float raise = Math.Max(0, (0.5f - rainRel) * 24);
+
+                        int sealevelrise = (int)Math.Min(raise, TerraGenConfig.seaLevel - rocky);
+                        chunks[0].MapChunk.WorldGenTerrainHeightMap[z * chunksize + x] += (ushort)sealevelrise;
+
+                        while (sealevelrise-- > 0)
+                        {
+                            chunkY = rocky / chunksize;
+                            lY = rocky % chunksize;
+                            index3d = (chunksize * lY + z) * chunksize + x;
+
+                            IChunkBlocks chunkdata = chunks[chunkY].Blocks;
+                            chunkdata.SetBlockUnsafe(index3d, rockblockID);
+                            chunkdata.SetLiquid(index3d, 0);
+
+                            rocky++;
+                        }
+                    }
+
+                    posY = PutLayers(transitionRand, x, posY, z, chunks, rainRel, temp, tempUnscaled, heightMap);
+
+                    if (prevY == TerraGenConfig.seaLevel - 1)
+                    {
+                        float beachRel = GameMath.BiLerp(beachUpLeft, beachUpRight, beachBotLeft, beachBotRight, (float)x / chunksize, (float)z / chunksize) / 255f;
+                        GenBeach(x, prevY, z, chunks, rainRel, temp, beachRel, rockblockID);
+                    }
+
+                    
+
                     PlaceTallGrass(x, prevY, z, chunks, rainRel, tempRel, temp, forestRel);
 
                     
@@ -179,10 +213,10 @@ namespace Vintagestory.ServerMods
                     int foundAir = 0;
                     while (posY >= TerraGenConfig.seaLevel - 1)
                     {
-                        int chunkY = posY / chunksize;
-                        int lY = posY % chunksize;
-                        int index3d = (chunksize * lY + z) * chunksize + x;
-                        int blockId = chunks[chunkY].Blocks[index3d];
+                        chunkY = posY / chunksize;
+                        lY = posY % chunksize;
+                        index3d = (chunksize * lY + z) * chunksize + x;
+                        int blockId = chunks[chunkY].Blocks.GetBlockIdUnsafe(index3d);
 
                         if (blockId == 0)
                         {
@@ -191,7 +225,6 @@ namespace Vintagestory.ServerMods
                         {
                             if (foundAir >= 8)
                             {
-
                                 //temp = TerraGenConfig.GetScaledAdjustedTemperatureFloat(tempUnscaled, posY - TerraGenConfig.seaLevel);
                                 //rainRel = TerraGenConfig.GetRainFall((climate >> 8) & 0xff, posY) / 255f;
                                 //PutLayers(transitionRand, x, posY, z, chunks, rainRel, temp, tempUnscaled, null);
@@ -227,7 +260,8 @@ namespace Vintagestory.ServerMods
                 int chunkY = posY / chunksize;
                 int lY = posY % chunksize;
                 int index3d = (chunksize * lY + z) * chunksize + x;
-                int blockId = chunks[chunkY].Blocks[index3d];
+                int blockId = chunks[chunkY].Blocks.GetBlockIdUnsafe(index3d);
+                if (blockId == 0) blockId = chunks[chunkY].Blocks.GetLiquid(index3d);
 
                 posY--;
 
@@ -261,9 +295,11 @@ namespace Vintagestory.ServerMods
                     }
 
 
-                    chunks[chunkY].Blocks[index3d] = underWater ? layersUnderWater[j++] : BlockLayersIds[i++];
-
-                } else
+                    IChunkBlocks chunkdata = chunks[chunkY].Blocks;
+                    chunkdata.SetBlockUnsafe(index3d, underWater ? layersUnderWater[j++] : BlockLayersIds[i++]);
+                    chunkdata.SetLiquid(index3d, 0);
+                }
+                else
                 {
                     if(i > 0 || j > 0) return posY;
                 }
@@ -284,9 +320,15 @@ namespace Vintagestory.ServerMods
                 return;
             }
 
-            if (posY == TerraGenConfig.seaLevel-1 && beachRel > 0.5 && chunks[posY / chunksize].Blocks[(chunksize * (posY % chunksize) + z) * chunksize + x] != GlobalConfig.waterBlockId)
+            int index3d = (chunksize * (posY % chunksize) + z) * chunksize + x;
+            if (beachRel > 0.5)
             {
-                chunks[posY / chunksize].Blocks[(chunksize * (posY % chunksize) + z) * chunksize + x] = sandBlockId;
+                IChunkBlocks chunkdata = chunks[posY / chunksize].Blocks;
+                if (chunkdata.GetLiquid(index3d) != GlobalConfig.waterBlockId)
+                {
+                    chunkdata.SetBlockUnsafe(index3d, sandBlockId);
+                    chunkdata.SetLiquid(index3d, 0);
+                }
             }
         }
 
@@ -327,7 +369,7 @@ namespace Vintagestory.ServerMods
 
             float depthf = TerraGenConfig.SoilThickness(rainRel, temperature, posY - TerraGenConfig.seaLevel, 1f);
             int depth = (int)depthf;
-            depth += (int)((depthf - depth) * rnd.NextDouble());
+            if (depthf - depth > rnd.NextFloat()) depth++;
 
             BlockLayersIds.Clear();
             for (int j = 0; j < blockLayerConfig.Blocklayers.Length; j++)

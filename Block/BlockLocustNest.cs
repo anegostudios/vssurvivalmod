@@ -75,7 +75,7 @@ namespace Vintagestory.GameContent
             if (cavepos == null) return false;
 
             int dy = 0;
-            while (dy < 15 && !blockAccessor.GetBlock(cavepos.X, cavepos.Y + dy, cavepos.Z).SideSolid[BlockFacing.UP.Index])
+            while (dy < 15 && !blockAccessor.IsSideSolid(cavepos.X, cavepos.Y + dy, cavepos.Z, BlockFacing.UP))
             {
                 dy++;
             }
@@ -117,8 +117,7 @@ namespace Vintagestory.GameContent
             {
                 blockPos.Y--;
                 Block block = blockAccessor.GetBlock(blockPos);
-                if (block.IsLiquid()) return;
-                if (block.SideSolid[BlockFacing.DOWN.Index])
+                if (block.SideSolid[BlockFacing.UP.Index])
                 {
                     blockPos.Y++;
                     blockAccessor.SetBlock(DecoBlocksFloor[worldGenRand.NextInt(DecoBlocksFloor.Length)].BlockId, blockPos);
@@ -136,7 +135,6 @@ namespace Vintagestory.GameContent
             {
                 blockPos.Y++;
                 Block block = blockAccessor.GetBlock(blockPos);
-                if (block.IsLiquid()) return;
                 if (block.SideSolid[BlockFacing.DOWN.Index])
                 {
                     blockPos.Y--;

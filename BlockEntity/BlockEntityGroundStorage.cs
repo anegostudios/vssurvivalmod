@@ -29,7 +29,8 @@ namespace Vintagestory.GameContent
         public int BulkTransferQuantity => StorageProps.Layout == EnumGroundStorageLayout.Stacking ? StorageProps.BulkTransferQuantity : 1;
 
         protected virtual int invSlotCount => 4;
-        protected Cuboidf[] colSelBoxes;
+        protected Cuboidf[] colBoxes;
+        protected Cuboidf[] selBoxes;
 
         ItemSlot isUsingSlot;
 
@@ -69,6 +70,8 @@ namespace Vintagestory.GameContent
 
         public override string AttributeTransformCode => "groundStorageTransform";
 
+        public float MeshAngle { get; set; }
+
         public override TextureAtlasPosition this[string textureCode]
         {
             get
@@ -97,7 +100,8 @@ namespace Vintagestory.GameContent
                 slot.StorageType |= EnumItemStorageFlags.Backpack;
             }
 
-            colSelBoxes = new Cuboidf[] { new Cuboidf(0, 0, 0, 1, 0.25f, 1) };
+            colBoxes = new Cuboidf[] { new Cuboidf(0, 0, 0, 1, 0.125f, 1) };
+            selBoxes = new Cuboidf[] { new Cuboidf(0, 0, 0, 1, 0.001f, 1) };
         }
 
 
@@ -118,18 +122,278 @@ namespace Vintagestory.GameContent
             if (capi != null)
             {
                 updateMeshes();
+
+                //initMealRandomizer();
             }
+
+            
         }
+
+
+
+        /*void initMealRandomizer()
+        {
+            RegisterGameTickListener(Every50ms, 150);
+
+            IWorldAccessor w = Api.World;
+            rndMeals = new RndMeal[]
+            {
+                    new RndMeal()
+                    {
+                        recipeCode = "jam",
+                        stacks = new ItemStack[][] {
+                            gs("honeyportion"),
+                            gs("honeyportion"),
+                            anyFruit(),
+                            anyFruitOrNothing(),
+                        }
+                    },
+                    new RndMeal()
+                    {
+                        recipeCode = "porridge",
+                        stacks = new ItemStack[][] {
+                            gs("grain-spelt"),
+                            gs("grain-spelt"),
+                            anyFruitOrNothing(),
+                            anyFruitOrNothing(),
+                            anyVegetableOrNothing(),
+                            anyVegetableOrNothing(),
+                            honeyOrNothing()
+                        }
+                    },
+                    new RndMeal()
+                    {
+                        recipeCode = "porridge",
+                        stacks = new ItemStack[][] {
+                            gs("grain-flax"),
+                            gs("grain-flax"),
+                            anyFruitOrNothing(),
+                            anyFruitOrNothing(),
+                            anyVegetableOrNothing(),
+                            anyVegetableOrNothing(),
+                            honeyOrNothing()
+                        }
+                    },
+                    new RndMeal()
+                    {
+                        recipeCode = "porridge",
+                        stacks = new ItemStack[][] {
+                            gs("grain-rice"),
+                            gs("grain-rice"),
+                            anyFruitOrNothing(),
+                            anyFruitOrNothing(),
+                            anyVegetableOrNothing(),
+                            anyVegetableOrNothing(),
+                            honeyOrNothing()
+                        }
+                    },
+                    new RndMeal()
+                    {
+                        recipeCode = "porridge",
+                        stacks = new ItemStack[][] {
+                            gs("grain-sunflower"),
+                            gs("grain-sunflower"),
+                            anyFruitOrNothing(),
+                            anyFruitOrNothing(),
+                            anyVegetableOrNothing(),
+                            anyVegetableOrNothing(),
+                            honeyOrNothing()
+                        }
+                    },
+                    new RndMeal()
+                    {
+                        recipeCode = "soup",
+                        stacks = new ItemStack[][]
+                        {
+                            gs("waterportion"),
+                            anyVegetable(),
+                            anyVegetableOrNothing(),
+                            anyVegetableOrNothing(),
+                            anyMeatOrEggOrNothing()
+                        }
+                    },
+                    new RndMeal()
+                    {
+                        recipeCode = "vegetablestew",
+                        stacks = new ItemStack[][]
+                        {
+                            anyVegetable(),
+                            anyVegetable(),
+                            anyVegetableOrNothing(),
+                            anyVegetableOrNothing(),
+                            anyMeatOrEggOrNothing()
+                        }
+                    },
+                    new RndMeal()
+                    {
+                        recipeCode = "meatystew",
+                        stacks = new ItemStack[][]
+                        {
+                            gs("redmeat-raw"),
+                            gs("redmeat-raw"),
+                            eggOrNothing(),
+                            anyMeatOrEggOrNothing(),
+                            anyVegetableOrNothing(),
+                            anyVegetableOrNothing(),
+                            anyFruitOrNothing(),
+                            honeyOrNothing()
+                        }
+                    },
+                    new RndMeal()
+                    {
+                        recipeCode = "meatystew",
+                        stacks = new ItemStack[][]
+                        {
+                            gs("poultry-raw"),
+                            gs("poultry-raw"),
+                            eggOrNothing(),
+                            anyMeatOrEggOrNothing(),
+                            anyVegetableOrNothing(),
+                            anyVegetableOrNothing(),
+                            anyFruitOrNothing(),
+                            honeyOrNothing()
+                        }
+                    },
+                    new RndMeal()
+                    {
+                        recipeCode = "scrambledeggs",
+                        stacks = new ItemStack[][]
+                        {
+                            gs("egg-chicken-raw"),
+                            gs("egg-chicken-raw"),
+                            anyCheeserNothing(),
+                            anyCheeserNothing(),
+                            anyVegetableOrNothing(),
+                            anyVegetableOrNothing(),
+                        }
+                    },
+            };
+        }
+
+
+
+        ItemStack[] anyFruitOrNothing()
+        {
+            return gs(null, "fruit-blueberry", "fruit-cranberry", "fruit-redcurrant", "fruit-whitecurrant", "fruit-blackcurrant", "fruit-saguaro", "fruit-pomegrante", "fruit-lychee", "fruit-breadfuit", "fruit-redapple", "fruit-pinkapple", "fruit-yellowapple", "fruit-cherry", "fruit-olive", "fruit-peach", "fruit-pear", "fruit-orange", "fruit-mango");
+        }
+
+        ItemStack[] anyCheeserNothing()
+        {
+            return gs(null, "cheese-cheddar-1slice", "cheese-blue-1slice");
+        }
+
+
+        ItemStack[] anyFruit()
+        {
+            return gs("fruit-blueberry", "fruit-cranberry", "fruit-redcurrant", "fruit-whitecurrant", "fruit-blackcurrant", "fruit-saguaro", "fruit-pomegrante", "fruit-lychee", "fruit-breadfuit", "fruit-redapple", "fruit-pinkapple", "fruit-yellowapple", "fruit-cherry", "fruit-olive", "fruit-peach", "fruit-pear", "fruit-orange", "fruit-mango");
+        }
+
+        ItemStack[] anyVegetableOrNothing()
+        {
+            return gs(null, "vegetable-carrot", "vegetable-cabbage", "vegetable-onion", "vegetable-turnip", "vegetable-parsnip", "vegetable-pumpkin", "mushroom-kingbolete-normal", "mushroom-fieldmushroom-normal");
+        }
+
+        ItemStack[] anyVegetable()
+        {
+            return gs("vegetable-carrot", "vegetable-cabbage", "vegetable-onion", "vegetable-turnip", "vegetable-parsnip", "vegetable-pumpkin", "mushroom-kingbolete-normal", "mushroom-fieldmushroom-normal");
+        }
+
+        ItemStack[] anyMeatOrEggOrNothing()
+        {
+            return gs(null, "redmeat-raw", "poultry-raw", "egg-chicken-raw");
+        }
+
+        ItemStack[] eggOrNothing()
+        {
+            return gs(null, "egg-chicken-raw");
+        }
+
+
+        ItemStack[] honeyOrNothing()
+        {
+            return gs(null, "honeyportion");
+        }
+
+        ItemStack[] gs(params string[] codes)
+        {
+            int index = 0;
+            ItemStack[] stacks = new ItemStack[codes.Length];
+            for (int i = 0; i < stacks.Length; i++)
+            {
+                if (codes[i] == null)
+                {
+                    continue;
+                }
+
+                Item item = Api.World.GetItem(new AssetLocation(codes[i]));
+                if (item == null)
+                {
+                    Block block = Api.World.GetBlock(new AssetLocation(codes[i]));
+                    if (block == null)
+                    {
+                        continue;
+                    }
+
+                    stacks[index++] = new ItemStack(block);
+                }
+                else
+                {
+                    stacks[index++] = new ItemStack(item);
+                }
+            }
+
+            return stacks;
+        }
+
+        class RndMeal
+        {
+            public string recipeCode;
+            public ItemStack[][] stacks;
+        }
+
+        RndMeal[] rndMeals;
+
+        private void Every50ms(float t1)
+        {
+            foreach (var slot in inventory)
+            {
+                IBlockMealContainer blockMeal = slot.Itemstack?.Collectible as IBlockMealContainer;
+                if (blockMeal == null) continue;
+                
+                RndMeal rndMeal = rndMeals[Api.World.Rand.Next(rndMeals.Length)];
+                
+                var istacks = new ItemStack[rndMeal.stacks.Length];
+
+                int index = 0;
+                for (int i = 0; i < rndMeal.stacks.Length; i++)
+                {
+                    ItemStack[] stacks = rndMeal.stacks[i];
+                    ItemStack stack = stacks[Api.World.Rand.Next(stacks.Length)];
+
+                    if (stack == null) continue;
+                    istacks[index++] = stack;
+
+                    if (index == 4) break;
+                }
+
+                blockMeal.SetContents(rndMeal.recipeCode, slot.Itemstack, istacks, 1);
+            }
+
+            updateMeshes();
+            MarkDirty(true);
+        }*/
+
+
 
 
         public Cuboidf[] GetSelectionBoxes()
         {
-            return colSelBoxes;
+            return selBoxes;
         }
 
         public Cuboidf[] GetCollisionBoxes()
         {
-            return colSelBoxes;
+            return colBoxes;
         }
 
         public virtual bool OnPlayerInteractStart(IPlayer player, BlockSelection bs)
@@ -146,10 +410,14 @@ namespace Vintagestory.GameContent
 
             if (StorageProps != null)
             {
+                if (!hotbarSlot.Empty && StorageProps.SprintKey && !player.Entity.Controls.CtrlKey) return false;
+
+                var hitPos = rotatedOffset(bs.HitPosition.ToVec3f(), MeshAngle);
+
                 if (StorageProps.Layout == EnumGroundStorageLayout.Quadrants && inventory.Empty)
                 {
-                    double dx = Math.Abs(bs.HitPosition.X - 0.5);
-                    double dz = Math.Abs(bs.HitPosition.X - 0.5);
+                    double dx = Math.Abs(hitPos.X - 0.5);
+                    double dz = Math.Abs(hitPos.Z - 0.5);
                     if (dx < 2 / 16f && dz < 2 / 16f)
                     {
                         overrideLayout = EnumGroundStorageLayout.SingleCenter;
@@ -164,8 +432,9 @@ namespace Vintagestory.GameContent
                         break;
 
 
+                    case EnumGroundStorageLayout.WallHalves:
                     case EnumGroundStorageLayout.Halves:
-                        if (bs.HitPosition.X < 0.5)
+                        if (hitPos.X < 0.5)
                         {
                             ok = putOrGetItemSingle(inventory[0], player, bs);
                         }
@@ -176,7 +445,7 @@ namespace Vintagestory.GameContent
                         break;
 
                     case EnumGroundStorageLayout.Quadrants:
-                        int pos = ((bs.HitPosition.X > 0.5) ? 2 : 0) + ((bs.HitPosition.Z > 0.5) ? 1 : 0);
+                        int pos = ((hitPos.X > 0.5) ? 2 : 0) + ((hitPos.Z > 0.5) ? 1 : 0);
                         ok = putOrGetItemSingle(inventory[pos], player, bs);
                         break;
 
@@ -192,7 +461,11 @@ namespace Vintagestory.GameContent
                 updateMeshes();
             }
 
-            if (inventory.Empty) Api.World.BlockAccessor.SetBlock(0, Pos);
+            if (inventory.Empty)
+            {
+                Api.World.BlockAccessor.SetBlock(0, Pos);
+                Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(Pos);
+            }
 
             return ok;
         }
@@ -236,6 +509,7 @@ namespace Vintagestory.GameContent
                     return inventory[0];
 
                 case EnumGroundStorageLayout.Halves:
+                case EnumGroundStorageLayout.WallHalves:
                     if (bs.HitPosition.X < 0.5)
                     {
                         return inventory[0];
@@ -297,19 +571,24 @@ namespace Vintagestory.GameContent
 
             if (StorageProps.CollisionBox != null)
             {
-                colSelBoxes[0] = StorageProps.CollisionBox.Clone();
+                colBoxes[0] = StorageProps.CollisionBox.Clone();
             } else
             {
                 if (sourceStack?.Block != null)
                 {
-                    colSelBoxes[0] = sourceStack.Block.CollisionBoxes[0].Clone();
+                    colBoxes[0] = sourceStack.Block.CollisionBoxes[0].Clone();
                 }
-                
             }
+
+            if (StorageProps.SelectionBox != null)
+            {
+                selBoxes[0] = StorageProps.SelectionBox.Clone();
+            }
+
             if (StorageProps.CbScaleYByLayer != 0)
             {
-                colSelBoxes[0] = colSelBoxes[0].Clone();
-                colSelBoxes[0].Y2 *= ((int)Math.Ceiling(StorageProps.CbScaleYByLayer * inventory[0].StackSize) * 8) / 8;
+                colBoxes[0] = colBoxes[0].Clone();
+                colBoxes[0].Y2 *= ((int)Math.Ceiling(StorageProps.CbScaleYByLayer * inventory[0].StackSize) * 8) / 8;
             }
 
             if (overrideLayout != null)
@@ -330,7 +609,7 @@ namespace Vintagestory.GameContent
                 return beg.OnPlayerInteractStart(byPlayer, bs);
             }
 
-            bool sneaking = byPlayer.Entity.Controls.Sneak;
+            bool sneaking = byPlayer.Entity.Controls.ShiftKey;
 
 
             ItemSlot hotbarSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
@@ -395,7 +674,7 @@ namespace Vintagestory.GameContent
 
             if (invSlot.Itemstack.Equals(Api.World, hotbarSlot.Itemstack, GlobalConstants.IgnoredStackAttributes))
             {
-                bool putBulk = player.Entity.Controls.Sprint;
+                bool putBulk = player.Entity.Controls.CtrlKey;
 
                 int q = GameMath.Min(hotbarSlot.StackSize, putBulk ? BulkTransferQuantity : TransferQuantity, Capacity - TotalStackSize);
 
@@ -435,7 +714,7 @@ namespace Vintagestory.GameContent
 
         public bool TryTakeItem(IPlayer player)
         {
-            bool takeBulk = player.Entity.Controls.Sprint;
+            bool takeBulk = player.Entity.Controls.CtrlKey;
             int q = GameMath.Min(takeBulk ? BulkTransferQuantity : TransferQuantity, TotalStackSize);
 
             if (inventory[0]?.Itemstack != null)
@@ -549,6 +828,8 @@ namespace Vintagestory.GameContent
             {
                 updateMeshes();
             }
+
+            MeshAngle = tree.GetFloat("meshAngle");
         }
 
 
@@ -565,6 +846,8 @@ namespace Vintagestory.GameContent
             {
                 tree.SetInt("overrideLayout", (int)overrideLayout);
             }
+
+            tree.SetFloat("meshAngle", MeshAngle);
         }
 
 
@@ -661,6 +944,7 @@ namespace Vintagestory.GameContent
                 switch (StorageProps.Layout)
                 {
                     case EnumGroundStorageLayout.Halves:
+                    case EnumGroundStorageLayout.WallHalves:
                         // Right
                         meshdata.AddMeshData(meshes[1]);
                         return false;
@@ -696,6 +980,7 @@ namespace Vintagestory.GameContent
                         return;
 
                     case EnumGroundStorageLayout.Halves:
+                    case EnumGroundStorageLayout.WallHalves:
                         // Left
                         meshes[0] = getOrCreateMesh(inventory[0], new Vec3f(-0.25f, 0, 0));
                         // Right
@@ -721,6 +1006,13 @@ namespace Vintagestory.GameContent
         }
 
         
+        Vec3f rotatedOffset(Vec3f offset, float radY)
+        {
+            Matrixf mat = new Matrixf();
+            mat.Translate(0.5f, 0.5f, 0.5f).RotateY(radY).Translate(-0.5f, -0.5f, -0.5f);
+            return mat.TransformVector(new Vec4f(offset.X, offset.Y, offset.Z, 1)).XYZ;
+        }
+
 
         MeshData getOrCreateMesh(ItemSlot itemSlot, Vec3f offset = null)
         {
@@ -729,11 +1021,11 @@ namespace Vintagestory.GameContent
 
             Dictionary<string, MeshData> gmeshes = ObjectCacheUtil.GetOrCreate(capi, "groundStorageMeshes", () => new Dictionary<string, MeshData>());
 
-            string key = StorageProps.Layout + (StorageProps.TessQuantityElements > 0 ? itemSlot.StackSize : 1) + "x" + itemSlot.Itemstack.Collectible.Code.ToShortString() + offset;
+            string key = StorageProps.Layout + (StorageProps.TessQuantityElements > 0 ? itemSlot.StackSize : 1) + "x" + itemSlot.Itemstack.Collectible.Code.ToShortString() + "-" + offset + "-" + (int)(GameMath.RAD2DEG * MeshAngle);
 
             if (itemSlot.Itemstack.Collectible is IContainedMeshSource ics)
             {
-                key = ics.GetMeshCacheKey(itemSlot.Itemstack) + StorageProps.Layout + offset;
+                key = ics.GetMeshCacheKey(itemSlot.Itemstack) + StorageProps.Layout + "-" + offset + "-" + (int)(GameMath.RAD2DEG * MeshAngle);
             }
 
             MeshData mesh;
@@ -746,7 +1038,7 @@ namespace Vintagestory.GameContent
             if (StorageProps.Layout == EnumGroundStorageLayout.Stacking)
             {
                 var loc = StorageProps.StackingModel.Clone().WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json");
-                nowTesselatingShape = capi.Assets.TryGet(loc)?.ToObject<Shape>();
+                nowTesselatingShape = API.Common.Shape.TryGet(capi, loc);
                 if (nowTesselatingShape == null)
                 {
                     capi.Logger.Error("Stacking model shape for collectible " + itemSlot.Itemstack.Collectible.Code + " not found. Block will be invisible!");
@@ -760,7 +1052,12 @@ namespace Vintagestory.GameContent
                 mesh = genMesh(itemSlot.Itemstack);
             }
 
-            mesh.Translate(offset);
+            mesh.Rotate(new Vec3f(0.5f, 0, 0.5f), 0, MeshAngle, 0);
+
+            Matrixf mat = new Matrixf();
+            mat.RotateY(-MeshAngle);
+            var vec = mat.TransformVector(new Vec4f(offset.X, offset.Y, offset.Z, 0)).XYZ;
+            mesh.Translate(vec);
 
             gmeshes[key] = mesh;
             return mesh;

@@ -17,7 +17,6 @@ namespace Vintagestory.GameContent
     public class ModTemperature : ModSystem
     {
         ICoreAPI api;
-        SurvivalCoreSystem coreSys;
 
         
         public SimplexNoise YearlyTemperatureNoise;
@@ -32,8 +31,6 @@ namespace Vintagestory.GameContent
         {
             this.api = api;
             api.Event.OnGetClimate += Event_OnGetClimate;
-
-            coreSys = api.ModLoader.GetModSystem<SurvivalCoreSystem>();
 
             YearlyTemperatureNoise = SimplexNoise.FromDefaultOctaves(3, 0.001, 0.95, api.World.Seed + 12109);
             DailyTemperatureNoise = SimplexNoise.FromDefaultOctaves(3, 1, 0.95, api.World.Seed + 128109);
@@ -94,11 +91,8 @@ namespace Vintagestory.GameContent
             // 3. diurnal temperature variation:
             // https://en.wikipedia.org/wiki/Diurnal_temperature_variation
 
-            // Lets define the variation strength as 5 + rainFall * 10
-            double diurnalVariationAmplitude = 20 - climate.Rainfall * 8;
-
-            // variation is then further reduced by the distance from the equator (because at the equator the day/night cycle is most intense, and thus the warming/cooling effects more pronounced)
-            diurnalVariationAmplitude *= (0.2 + 0.8 * Math.Abs(latitude));
+            // Variation is higher in dry areas
+            double diurnalVariationAmplitude = 18 - climate.Rainfall * 13;
 
             // just before sunrise is the coldest time. We have no time zones in VS
             // lets just hardcode 6 am for this for now

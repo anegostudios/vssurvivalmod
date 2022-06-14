@@ -18,7 +18,8 @@ namespace Vintagestory.GameContent
         public override string ClimateColorMapForMap => climateColorMapInt;
         public override string SeasonColorMapForMap => seasonColorMapInt;
 
-        private int habitat = EnumReedsHabitat.Land;
+        string habitat = null;
+        public override string RemapToLiquidsLayer { get => habitat; }
 
         public override void OnCollectTextures(ICoreAPI api, ITextureLocationDictionary textureDict)
         {
@@ -32,9 +33,10 @@ namespace Vintagestory.GameContent
         {
             base.OnLoaded(api);
 
-            string habitat = Variant["habitat"];
-            if (habitat == "water") this.habitat = EnumReedsHabitat.Water;
-            else if (habitat == "ice") this.habitat = EnumReedsHabitat.Ice;
+            string hab = Variant["habitat"];
+            if (hab == "water") habitat = "water-still-7";
+            else if (hab == "ice") habitat = "lakeice";
+
             if (LastCodePart() == "harvested") return;
 
             interactions = ObjectCacheUtil.GetOrCreate(api, "reedsBlockInteractions", () =>
@@ -70,42 +72,17 @@ namespace Vintagestory.GameContent
                 return false;
             }
 
-            Block block = world.BlockAccessor.GetBlock(blockSel.Position);
-            Block blockToPlace = this;
-
-            bool inWater = block.IsLiquid() && block.LiquidLevel == 7 && block.LiquidCode.Contains("water");
-
-            if (inWater)
+            if (CanPlantStay(world.BlockAccessor, blockSel.Position))
             {
-                blockToPlace = world.GetBlock(CodeWithVariant("habitat", "water"));
-                if (blockToPlace == null) blockToPlace = this;
+                world.BlockAccessor.SetBlock(BlockId, blockSel.Position);
             }
             else
             {
-                if (habitat != 0)
-                {
-                    failureCode = "requirefullwater";
-                    return false;
-                }
+                failureCode = "requirefertileground";
+                return false;
             }
 
-
-            if (blockToPlace != null)
-            {
-                if (CanPlantStay(world.BlockAccessor, blockSel.Position))
-                {
-                    world.BlockAccessor.SetBlock(blockToPlace.BlockId, blockSel.Position);
-                }
-                else
-                {
-                    failureCode = "requirefertileground";
-                    return false;
-                }
-
-                return true;
-            }
-
-            return false;
+            return true;
         }
 
         public override float OnGettingBroken(IPlayer player, BlockSelection blockSel, ItemSlot itemslot, float remainingResistance, float dt, int counter)
@@ -168,19 +145,12 @@ namespace Vintagestory.GameContent
 
             if (byPlayer != null && Variant["state"] == "normal" && (byPlayer.InventoryManager.ActiveTool == EnumTool.Knife || byPlayer.InventoryManager.ActiveTool == EnumTool.Sickle || byPlayer.InventoryManager.ActiveTool == EnumTool.Scythe))
             {
-                world.BlockAccessor.SetBlock(world.GetBlock(this.habitat == EnumReedsHabitat.Ice ? CodeWithVariants(new string[] { "habitat", "state" }, new string[] { "water", "harvested" })  : CodeWithVariant("state", "harvested")).BlockId, pos);
+                world.BlockAccessor.SetBlock(world.GetBlock(CodeWithVariants(new string[] { "habitat", "state" }, new string[] { "land", "harvested" })).BlockId, pos);
                 return;
             }
 
-            if (habitat != 0)
-            {
-                world.BlockAccessor.SetBlock(world.GetBlock(new AssetLocation("water-still-7")).BlockId, pos);
-                world.BlockAccessor.GetBlock(pos).OnNeighbourBlockChange(world, pos, pos);
-            }
-            else
-            {
-                world.BlockAccessor.SetBlock(0, pos);
-            }
+            SpawnBlockBrokenParticles(pos);
+            world.BlockAccessor.SetBlock(0, pos);
         }
 
 
@@ -196,11 +166,6 @@ namespace Vintagestory.GameContent
             Block belowBlock = blockAccessor.GetBlock(pos.X, pos.Y - 1, pos.Z);
             if (belowBlock.Fertility > 0)
             {
-                if (block.LiquidCode == "water")
-                {
-                    return TryPlaceBlockInWater(blockAccessor, pos.UpCopy());
-                }
-
                 Block placingBlock = blockAccessor.GetBlock(CodeWithVariant("habitat", "land"));
                 if (placingBlock == null) return false;
                 blockAccessor.SetBlock(placingBlock.BlockId, pos);
@@ -209,20 +174,17 @@ namespace Vintagestory.GameContent
 
             if (belowBlock.LiquidCode == "water")
             {
-                return TryPlaceBlockInWater(blockAccessor, pos);
+                belowBlock = blockAccessor.GetBlock(pos.X, pos.Y - 2, pos.Z);
+                if (belowBlock.Fertility > 0)
+                {
+                    Block placingBlock = blockAccessor.GetBlock(CodeWithVariant("habitat", "land"));
+                    if (placingBlock == null) return false;
+                    blockAccessor.SetBlock(placingBlock.BlockId, pos.DownCopy());
+                    return true;
+                }
             }
 
-            return false;
-        }
 
-        protected virtual bool TryPlaceBlockInWater(IBlockAccessor blockAccessor, BlockPos pos)
-        {
-            Block belowBlock = blockAccessor.GetBlock(pos.X, pos.Y - 2, pos.Z);
-            if (belowBlock.Fertility > 0)
-            {
-                blockAccessor.SetBlock(blockAccessor.GetBlock(CodeWithVariant("habitat", "water")).BlockId, pos.AddCopy(0, -1, 0));
-                return true;
-            }
             return false;
         }
 
@@ -236,68 +198,6 @@ namespace Vintagestory.GameContent
         {
             return interactions.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
         }
-
-        public override bool ShouldMergeFace(int facingIndex, Block neighbourIce, int intraChunkIndex3d)
-        {
-            return BlockMaterial == neighbourIce.BlockMaterial;
-        }
-
-        #region ice variant
-
-        public override bool ShouldReceiveServerGameTicks(IWorldAccessor world, BlockPos pos, Random offThreadRandom, out object extra)
-        {
-            extra = null;
-            if (!GlobalConstants.MeltingFreezingEnabled) return false;
-            if (habitat == EnumReedsHabitat.Land) return false;
-
-            if (habitat == EnumReedsHabitat.Ice)  // ice -> water
-            {
-                ClimateCondition conds = world.BlockAccessor.GetClimateAt(pos, EnumGetClimateMode.NowValues);
-                if (conds == null) return false;
-
-                float chance = GameMath.Clamp((conds.Temperature - 2f) / 20f, 0, 1);
-                return offThreadRandom.NextDouble() < chance;
-            }
-
-            // water -> ice
-            if (offThreadRandom.NextDouble() < 0.6)
-            {
-                int rainY = world.BlockAccessor.GetRainMapHeightAt(pos);
-                if (rainY <= pos.Y)
-                {
-                    for (int i = 0; i < BlockFacing.HORIZONTALS.Length; i++)
-                    {
-                        BlockFacing facing = BlockFacing.HORIZONTALS[i];
-                        if (world.BlockAccessor.GetBlock(pos.AddCopy(facing)).Replaceable < 6000)
-                        {
-                            ClimateCondition conds = world.BlockAccessor.GetClimateAt(pos, EnumGetClimateMode.NowValues);
-                            if (conds != null && conds.Temperature < -4)
-                            {
-                                return true;
-                            }
-                        }
-                    }
-                }
-            }
-
-            return false;
-        }
-
-        public override void OnServerGameTick(IWorldAccessor world, BlockPos pos, object extra = null)
-        {
-            Block iceBlock = api.World.GetBlock(CodeWithVariant("habitat", habitat == EnumReedsHabitat.Water ? "ice" : "water"));
-            world.BlockAccessor.SetBlock(iceBlock.Id, pos);
-        }
-
-        #endregion
-
-    }
-
-    public class EnumReedsHabitat
-    {
-        public const int Land = 0;
-        public const int Water = 1;
-        public const int Ice = 2;
     }
 
 }

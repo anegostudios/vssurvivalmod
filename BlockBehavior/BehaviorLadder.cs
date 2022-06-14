@@ -39,7 +39,7 @@ namespace Vintagestory.GameContent
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ref EnumHandling handling)
         {
-            if (isFlexible && !byPlayer.Entity.Controls.Sneak)
+            if (isFlexible && !byPlayer.Entity.Controls.ShiftKey)
             {
                 TryCollectLowest(byPlayer, world, blockSel.Position);
                 handling = EnumHandling.PreventDefault;
@@ -58,7 +58,7 @@ namespace Vintagestory.GameContent
         {
             handled = EnumHandling.PreventDefault;
 
-            if (isFlexible && !byPlayer.Entity.Controls.Sneak)
+            if (isFlexible && !byPlayer.Entity.Controls.ShiftKey)
             {
                 failureCode = "sneaktoplace";
                 return false;

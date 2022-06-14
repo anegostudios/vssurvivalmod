@@ -105,7 +105,10 @@ namespace Vintagestory.GameContent
 
             if (api is ICoreServerAPI)
             {
-                RegisterGameTickListener(Update, 3300 + rand.Next(400));
+                if (Api.World.Config.GetBool("processCrops", true))
+                {
+                    RegisterGameTickListener(Update, 3300 + rand.Next(400));
+                }
                 api.ModLoader.GetModSystem<POIRegistry>().AddPOI(this);
                 roomreg = Api.ModLoader.GetModSystem<RoomRegistry>();
             }
@@ -242,7 +245,7 @@ namespace Vintagestory.GameContent
             float waterDistance = 99;
             farmlandIsAtChunkEdge = false;
 
-            Api.World.BlockAccessor.SearchBlocks(
+            Api.World.BlockAccessor.SearchLiquidBlocks(
                 new BlockPos(Pos.X - 4, Pos.Y, Pos.Z - 4),
                 new BlockPos(Pos.X + 4, Pos.Y, Pos.Z + 4),
                 (block, pos) =>
@@ -349,6 +352,8 @@ namespace Vintagestory.GameContent
 
         private void Update(float dt)
         {
+            if (!(Api as ICoreServerAPI).World.IsFullyLoadedChunk(Pos)) return;
+
             double hoursNextStage = GetHoursForNextStage();
             bool nearbyWaterTested = false;
 
@@ -592,7 +597,21 @@ namespace Vintagestory.GameContent
             Block block = GetCrop();
             if (block == null) return 99999999;
 
-            float stageHours = Api.World.Calendar.HoursPerDay * block.CropProps.TotalGrowthDays / block.CropProps.GrowthStages;
+            var totalDays = block.CropProps.TotalGrowthDays;
+            // Backwards compatibility, if days are provided we convert it to months using the default configuration timescale
+            // After, we convert it to the currently configured timescale
+            // For example, if something is set to grow in 6 days and the amount of days per month has been changed to 30, the new growth time will be 15 days.
+            if (totalDays > 0)
+            {
+                var defaultTimeInMonths = totalDays / 12;
+                totalDays = defaultTimeInMonths * Api.World.Calendar.DaysPerMonth;
+            }
+            else
+            {
+                totalDays = block.CropProps.TotalGrowthMonths * Api.World.Calendar.DaysPerMonth;
+            }
+
+            float stageHours = Api.World.Calendar.HoursPerDay * totalDays / block.CropProps.GrowthStages;
 
             stageHours *= 1 / GetGrowthRate(block.CropProps.RequiredNutrient);
 
@@ -1017,13 +1036,12 @@ namespace Vintagestory.GameContent
 
 
         #region IAnimalFoodSource impl
-        public bool IsSuitableFor(Entity entity)
+        public bool IsSuitableFor(Entity entity, string[] diet)
         {
+            if (diet == null) return false;
+
             Block cropBlock = GetCrop();
             if (cropBlock == null) return false;
-
-            AssetLocation[] diet = entity.Properties.Attributes?["blockDiet"]?.AsArray<AssetLocation>();
-            if (diet == null) return false;
 
             for (int i = 0; i < diet.Length; i++)
             {

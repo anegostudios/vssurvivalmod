@@ -50,12 +50,8 @@ namespace Vintagestory.GameContent
                 foliageBlock.foliageProps.TryGetValue(curTreeType, out var props);
                 if (props != null)
                 {
-                    string key = textureCode;
-                    if (props.Textures.TryGetValue(key, out var ctex2))
-                    {
-                        capi.BlockTextureAtlas.InsertTextureCached(ctex2, out _, out var texPos);
-                        return texPos;
-                    }
+                    TextureAtlasPosition texPos = props.GetOrLoadTexture(capi, textureCode);
+                    if (texPos != null) return texPos;
                 }
 
                 // Prio 2: Get from currently tesselating shape
@@ -85,19 +81,19 @@ namespace Vintagestory.GameContent
 
             foreach (var val in shapeFiles)
             {
-                IAsset asset = api.Assets.TryGet(val.Value.Base.WithPathAppendixOnce(".json").WithPathPrefixOnce("shapes/"), true);
-                Shapes[val.Key] = new FruitTreeShape() { Shape = asset?.ToObject<Shape>(), CShape = val.Value };
+                Shape shape = API.Common.Shape.TryGet(api, val.Value.Base.WithPathAppendixOnce(".json").WithPathPrefixOnce("shapes/"));
+                Shapes[val.Key] = new FruitTreeShape() { Shape = shape, CShape = val.Value };
             }
 
             foreach (var prop in TypeProps)
             {
                 foreach (var bdstack in prop.Value.FruitStacks)
                 {
-                    bdstack.Resolve(api.World, "fruit tree FruitStacks");
+                    bdstack.Resolve(api.World, "fruit tree FruitStacks ", Code);
                 }
 
-                (api as ICoreServerAPI)?.RegisterTreeGenerator(new AssetLocation("fruittree-" + prop.Key), (blockAccessor, pos, skipForestFloor, s, v, o, t) => GrowTree(blockAccessor, pos, prop.Key));
-            }  
+                (api as ICoreServerAPI)?.RegisterTreeGenerator(new AssetLocation("fruittree-" + prop.Key), (blockAccessor, pos, skipForestFloor, size, v, o, t) => GrowTree(blockAccessor, pos, prop.Key, size));
+            }
         }
 
 
@@ -302,7 +298,7 @@ namespace Vintagestory.GameContent
                     var be = blockAccessor.GetBlockEntity(pos) as BlockEntityFruitTreeBranch;
                     
                     be.TreeType = conds.Type;
-                    be.InitAfterWorldGen = true;
+                    be.FastForwardGrowth = worldgenRandom.NextFloat();
 
                     return true;
                 }
@@ -311,14 +307,32 @@ namespace Vintagestory.GameContent
             return false;
         }
 
-        public void GrowTree(IBlockAccessor blockAccessor, BlockPos pos, string type)
+        public void GrowTree(IBlockAccessor blockAccessor, BlockPos pos, string type, float growthRel)
         {
+            pos = pos.UpCopy();
             blockAccessor.SetBlock(BlockId, pos);
-            blockAccessor.SpawnBlockEntity(EntityClass, pos);
-            var be = blockAccessor.GetBlockEntity(pos) as BlockEntityFruitTreeBranch;
 
+            BlockEntityFruitTreeBranch be = api.ClassRegistry.CreateBlockEntity(EntityClass) as BlockEntityFruitTreeBranch;
+            be.Pos = pos.Copy();
             be.TreeType = type;
-            be.InitAfterWorldGen = true;
+            be.FastForwardGrowth = growthRel;
+
+            blockAccessor.SpawnBlockEntity(be);
+        }
+
+        public override void OnBlockPlaced(IWorldAccessor world, BlockPos blockPos, ItemStack byItemStack = null)
+        {
+            BlockEntityFruitTreeBranch be = world.BlockAccessor.GetBlockEntity(blockPos) as BlockEntityFruitTreeBranch;
+            if (be != null && be.FastForwardGrowth != null)
+            {
+                be.CreateBehaviors(this, api.World);
+                be.Initialize(api);
+                be.MarkDirty(true);
+
+                return;
+            }
+
+            base.OnBlockPlaced(world, blockPos, byItemStack);
         }
     }
 }

@@ -49,7 +49,7 @@ namespace Vintagestory.GameContent
 
                 if (textByCardinalDirection.Length > 0) signRenderer.SetNewText(textByCardinalDirection, color);
 
-                Shape shape = api.Assets.TryGet(AssetLocation.Create("shapes/block/wood/signpost/sign.json")).ToObject<Shape>();
+                Shape shape = API.Common.Shape.TryGet(api, AssetLocation.Create("shapes/block/wood/signpost/sign.json"));
                 if (shape != null)
                 {
                     (api as ICoreClientAPI).Tesselator.TesselateShape(Block, shape, out signMesh);
@@ -194,7 +194,7 @@ namespace Vintagestory.GameContent
 
         public void OnRightClick(IPlayer byPlayer)
         {
-            if (byPlayer?.Entity?.Controls?.Sneak == true)
+            if (byPlayer?.Entity?.Controls?.ShiftKey == true)
             {
                 ItemSlot hotbarSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
                 if (hotbarSlot?.Itemstack?.ItemAttributes?["pigment"]?["color"].Exists == true)

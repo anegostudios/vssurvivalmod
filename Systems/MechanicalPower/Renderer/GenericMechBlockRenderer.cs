@@ -20,7 +20,7 @@ namespace Vintagestory.GameContent.Mechanics
 
             AssetLocation loc = shapeLoc.Base.Clone().WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json");
 
-            Shape shape = capi.Assets.TryGet(loc).ToObject<Shape>();
+            Shape shape = API.Common.Shape.TryGet(capi, loc);
             Vec3f rot = new Vec3f(shapeLoc.rotateX, shapeLoc.rotateY, shapeLoc.rotateZ);
 
             capi.Tesselator.TesselateShape(textureSoureBlock, shape, out blockMesh, rot);
@@ -33,7 +33,7 @@ namespace Vintagestory.GameContent.Mechanics
                     CompositeShape ovShapeCmp = shapeLoc.Overlays[i];
                     rot = new Vec3f(ovShapeCmp.rotateX, ovShapeCmp.rotateY, ovShapeCmp.rotateZ);
                     
-                    Shape ovshape = capi.Assets.TryGet(ovShapeCmp.Base.Clone().WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json")).ToObject<Shape>();
+                    Shape ovshape = API.Common.Shape.TryGet(capi, ovShapeCmp.Base.Clone().WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json"));
                     capi.Tesselator.TesselateShape(textureSoureBlock, ovshape, out overlayMesh, rot);
                     blockMesh.AddMeshData(overlayMesh);
                 }

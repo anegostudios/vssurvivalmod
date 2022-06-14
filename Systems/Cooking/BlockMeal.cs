@@ -112,7 +112,7 @@ namespace Vintagestory.GameContent
 
         protected virtual bool tryHeldBeginEatMeal(ItemSlot slot, EntityAgent byEntity, ref EnumHandHandling handHandling)
         {
-            if (!byEntity.Controls.Sneak && GetContentNutritionProperties(api.World, slot, byEntity) != null)
+            if (!byEntity.Controls.ShiftKey && GetContentNutritionProperties(api.World, slot, byEntity) != null)
             {
                 byEntity.World.RegisterCallback((dt) =>
                 {
@@ -197,7 +197,7 @@ namespace Vintagestory.GameContent
 
         protected bool tryPlacedContinueEatMeal(float secondsUsed, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
         {
-            if (!byPlayer.Entity.Controls.Sneak) return false;
+            if (!byPlayer.Entity.Controls.ShiftKey) return false;
             if (GetContentNutritionProperties(api.World, slot, byPlayer.Entity) == null) return false;
 
             ItemStack stack = slot.Itemstack;
@@ -338,14 +338,14 @@ namespace Vintagestory.GameContent
 
         public bool OnContainedInteractStart(BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
         {
-            if (!byPlayer.Entity.Controls.Sneak) return false;
+            if (!byPlayer.Entity.Controls.ShiftKey) return false;
 
             return tryPlacedBeginEatMeal(slot, byPlayer);
         }
 
         public bool OnContainedInteractStep(float secondsUsed, BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
         {
-            if (!byPlayer.Entity.Controls.Sneak) return false;
+            if (!byPlayer.Entity.Controls.ShiftKey) return false;
 
             return tryPlacedContinueEatMeal(secondsUsed, slot, byPlayer, blockSel);
         }
@@ -369,7 +369,7 @@ namespace Vintagestory.GameContent
             
             ItemStack stack = OnPickBlock(world, blockSel.Position);
 
-            if (!byPlayer.Entity.Controls.Sneak)
+            if (!byPlayer.Entity.Controls.ShiftKey)
             {
                 if (byPlayer.InventoryManager.TryGiveItemstack(stack, true))
                 {
@@ -390,7 +390,7 @@ namespace Vintagestory.GameContent
         public override bool OnBlockInteractStep(float secondsUsed, IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
             if (!PlacedBlockEating) return base.OnBlockInteractStep(secondsUsed, world, byPlayer, blockSel);
-            if (!byPlayer.Entity.Controls.Sneak) return false;
+            if (!byPlayer.Entity.Controls.ShiftKey) return false;
 
             ItemStack stack = OnPickBlock(world, blockSel.Position);
             return tryPlacedContinueEatMeal(secondsUsed, new DummySlot(stack), byPlayer, blockSel);
@@ -400,7 +400,7 @@ namespace Vintagestory.GameContent
         public override void OnBlockInteractStop(float secondsUsed, IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
             if (!PlacedBlockEating) base.OnBlockInteractStop(secondsUsed, world, byPlayer, blockSel);
-            if (!byPlayer.Entity.Controls.Sneak) return;
+            if (!byPlayer.Entity.Controls.ShiftKey) return;
 
             BlockEntityMeal bemeal = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityMeal;
             ItemStack stack = OnPickBlock(world, blockSel.Position);
@@ -877,7 +877,7 @@ namespace Vintagestory.GameContent
                 {
                     ActionLangCode = "blockhelp-meal-eat",
                     MouseButton = EnumMouseButton.Right,
-                    HotKeyCode = "sneak"
+                    HotKeyCode = "shift"
                 }
             }.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
         }

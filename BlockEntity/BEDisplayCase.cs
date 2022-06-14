@@ -99,7 +99,7 @@ namespace Vintagestory.GameContent
             return false;
         }
 
-
+            
 
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder sb)
         {
@@ -124,7 +124,9 @@ namespace Vintagestory.GameContent
             float z = (index > 1) ? 11 / 16f : 5 / 16f;
 
             mesh.Scale(new Vec3f(0.5f, 0, 0.5f), 0.75f, 0.75f, 0.75f);
-            mesh.Rotate(new Vec3f(0.5f, 0, 0.5f), 0, 45 * GameMath.DEG2RAD, 0);
+            
+            float degY = (45 + GameMath.MurmurHash3Mod(Pos.X, Pos.Y + index * 50, Pos.Z, 30) - 15);
+            mesh.Rotate(new Vec3f(0.5f, 0, 0.5f), 0, degY * GameMath.DEG2RAD, 0);
             mesh.Translate(x - 0.5f, y, z - 0.5f);
         }
     }

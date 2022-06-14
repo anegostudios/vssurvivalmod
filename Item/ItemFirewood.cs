@@ -12,7 +12,7 @@ namespace Vintagestory.GameContent
 
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
-            if (blockSel == null || byEntity?.World == null || !byEntity.Controls.Sneak) return;
+            if (blockSel == null || byEntity?.World == null || !byEntity.Controls.ShiftKey) return;
 
             BlockPos onBlockPos = blockSel.Position;
             Block block = byEntity.World.BlockAccessor.GetBlock(onBlockPos);

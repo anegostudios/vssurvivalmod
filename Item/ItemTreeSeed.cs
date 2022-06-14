@@ -43,7 +43,7 @@ namespace Vintagestory.GameContent
                     {
                         ActionLangCode = "heldhelp-plant",
                         MouseButton = EnumMouseButton.Right,
-                        HotKeyCode = "sneak",
+                        HotKeyCode = "shift",
                         Itemstacks = stacks.ToArray()
                     }
                 };
@@ -69,7 +69,7 @@ namespace Vintagestory.GameContent
 
         public override void OnHeldInteractStart(ItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handHandling)
         {
-            if (blockSel == null || !byEntity.Controls.Sneak)
+            if (blockSel == null || !byEntity.Controls.ShiftKey)
             {
                 base.OnHeldInteractStart(itemslot, byEntity, blockSel, entitySel, firstEvent, ref handHandling);
                 return;

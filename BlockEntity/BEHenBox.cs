@@ -141,9 +141,9 @@ namespace Vintagestory.GameContent
                     childEntity.ServerPos.Motion.Z += (rand.NextDouble() - 0.5f) / 200f;
 
                     childEntity.Pos.SetFrom(childEntity.ServerPos);
-                    Api.World.SpawnEntity(childEntity);
                     childEntity.Attributes.SetString("origin", "reproduction");
                     childEntity.WatchedAttributes.SetInt("generation", generation + 1);
+                    Api.World.SpawnEntity(childEntity);
                 }
 
 

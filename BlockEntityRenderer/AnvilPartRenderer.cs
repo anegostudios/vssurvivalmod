@@ -58,15 +58,19 @@ namespace Vintagestory.GameContent
             prog.ExtraGlow = extraGlow;
             prog.ViewMatrix = rpi.CameraMatrixOriginf;
             prog.ProjectionMatrix = rpi.CurrentProjectionMatrix;
-            rpi.RenderMesh(beAnvil.BaseMeshRef);
 
-            if (beAnvil.FluxMeshRef != null)
+            if (beAnvil.BaseMeshRef != null && !beAnvil.BaseMeshRef.Disposed)
+            {
+                rpi.RenderMesh(beAnvil.BaseMeshRef);
+            }
+
+            if (beAnvil.FluxMeshRef != null && !beAnvil.FluxMeshRef.Disposed)
             {
                 prog.ExtraGlow = 0;
                 rpi.RenderMesh(beAnvil.FluxMeshRef);
             }
 
-            if (beAnvil.TopMeshRef != null)
+            if (beAnvil.TopMeshRef != null && !beAnvil.TopMeshRef.Disposed)
             {
                 temp = (int)beAnvil.Inventory[2].Itemstack.Collectible.GetTemperature(capi.World, beAnvil.Inventory[2].Itemstack);
                 lightrgbs = capi.World.BlockAccessor.GetLightRGBs(beAnvil.Pos.X, beAnvil.Pos.Y, beAnvil.Pos.Z);

@@ -6,18 +6,19 @@ using System.Threading.Tasks;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockWater : Block, IBlockFlowing
+    public class BlockWater : BlockForLiquidsLayer, IBlockFlowing
     {
         public string Flow { get; set; }
         public Vec3i FlowNormali { get; set; }
         public bool IsLava => false;
 
-        public string Height { get; set; }
+        public int Height { get; set; }
 
         bool freezable;
         Block iceBlock;
@@ -25,11 +26,11 @@ namespace Vintagestory.GameContent
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
-            Flow = Variant["flow"] is string f ? string.Intern(f) : null; ;
+            Flow = Variant["flow"] is string f ? string.Intern(f) : null;
             FlowNormali = Flow != null ? Cardinal.FromInitial(Flow)?.Normali : null;
-            Height = Variant["height"] is string h ? string.Intern(h) : null; ;
+            Height = Variant["height"] is string h ? h.ToInt() : 7;
 
-            freezable = Flow == "still" && Height == "7";
+            freezable = Flow == "still" && Height == 7;
             iceBlock = api.World.GetBlock(new AssetLocation("lakeice"));
         }
 
@@ -38,8 +39,8 @@ namespace Vintagestory.GameContent
         {
             // Play water wave sound when above is air and below is a solid block
             return
-                world.BlockAccessor.GetBlock(pos.X, pos.Y + 1, pos.Z).Id == 0 &&
-                world.BlockAccessor.GetBlock(pos.X, pos.Y - 1, pos.Z).SideSolid[BlockFacing.UP.Index];
+                world.BlockAccessor.GetBlockId(pos.X, pos.Y + 1, pos.Z) == 0 &&
+                world.BlockAccessor.IsSideSolid(pos.X, pos.Y - 1, pos.Z, BlockFacing.UP);
         }
 
 
@@ -55,10 +56,11 @@ namespace Vintagestory.GameContent
                 int rainY = world.BlockAccessor.GetRainMapHeightAt(pos);
                 if (rainY <= pos.Y)
                 {
+                    BlockPos nPos = pos.Copy();
                     for (int i = 0; i < BlockFacing.HORIZONTALS.Length; i++)
                     {
-                        BlockFacing facing = BlockFacing.HORIZONTALS[i];
-                        if (world.BlockAccessor.GetBlock(pos.AddCopy(facing)).Replaceable < 6000)
+                        BlockFacing.HORIZONTALS[i].IterateThruFacingOffsets(nPos);
+                        if (world.BlockAccessor.GetLiquidBlock(nPos) is BlockLakeIce || world.BlockAccessor.GetBlock(nPos).Replaceable < 6000)
                         {
                             ClimateCondition conds = world.BlockAccessor.GetClimateAt(pos, EnumGetClimateMode.NowValues);
                             if (conds != null && conds.Temperature < -4)
@@ -75,7 +77,7 @@ namespace Vintagestory.GameContent
 
         public override void OnServerGameTick(IWorldAccessor world, BlockPos pos, object extra = null)
         {
-            world.BlockAccessor.SetBlock(iceBlock.Id, pos);
+            world.BlockAccessor.SetLiquidBlock(iceBlock.Id, pos);
         }
 
         public override void OnGroundIdle(EntityItem entityItem)
@@ -95,7 +97,7 @@ namespace Vintagestory.GameContent
                 BlockEntityFarmland bef = api.World.BlockAccessor.GetBlockEntity(pos.AsBlockPos) as BlockEntityFarmland;
                 if (bef != null)
                 {
-                    bef.WaterFarmland(Height.ToInt() / 6f, false);
+                    bef.WaterFarmland(Height / 6f, false);
                     bef.MarkDirty(true);
                 }
             }
@@ -103,6 +105,50 @@ namespace Vintagestory.GameContent
             
 
             base.OnGroundIdle(entityItem);
+        }
+
+
+
+        public override bool CanPlaceBlock(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ref string failureCode)
+        {
+            Block oldBlock = world.BlockAccessor.GetBlock(blockSel.Position);
+            if (oldBlock.SideSolid.OnSidesAndBase() && !oldBlock.IsReplacableBy(this))
+            {
+                failureCode = "notreplaceable";
+                return false;
+            }
+
+            bool result = true;
+
+            if (byPlayer != null && !world.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            {
+                // Probably good idea to do so, so lets do it :P
+                byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
+
+                failureCode = "claimed";
+                return false;
+            }
+
+            bool preventDefault = false;
+
+            foreach (BlockBehavior behavior in BlockBehaviors)
+            {
+                EnumHandling handled = EnumHandling.PassThrough;
+
+                bool behaviorResult = behavior.CanPlaceBlock(world, byPlayer, blockSel, ref handled, ref failureCode);
+
+                if (handled != EnumHandling.PassThrough)
+                {
+                    result &= behaviorResult;
+                    preventDefault = true;
+                }
+
+                if (handled == EnumHandling.PreventSubsequent) return result;
+            }
+
+            if (preventDefault) return result;
+
+            return true;
         }
     }
 }

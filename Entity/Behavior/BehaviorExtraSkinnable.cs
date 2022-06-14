@@ -412,6 +412,12 @@ namespace Vintagestory.GameContent
             VoicePitch = voicePitch;
 
             if (entity is EntityPlayer plr && plr.talkUtil != null && voiceType != null) {
+
+                if (!availVoices.VariantsByCode.ContainsKey(voiceType))
+                {
+                    voiceType = availVoices.Variants[0].Code;
+                }
+
                 plr.talkUtil.soundName = availVoices.VariantsByCode[voiceType].Sound;
                 
                 float pitchMod = 1;
@@ -425,7 +431,7 @@ namespace Vintagestory.GameContent
                 }
 
                 plr.talkUtil.pitchModifier = pitchMod;
-                plr.talkUtil.talkSpeedModifier = 1.1f;
+                plr.talkUtil.chordDelayMul = 1.1f;
 
                 if (testTalk)
                 {
@@ -463,23 +469,12 @@ namespace Vintagestory.GameContent
             {
                 shapePath = part.Shape.Base.CopyWithPath("shapes/" + part.Shape.Base.Path + ".json");
             }
-            IAsset asset = api.Assets.TryGet(shapePath);
 
-            if (asset == null)
-            {
-                api.World.Logger.Warning("Entity skin shape {0} defined in entity config {1} not found, was supposed to be at {2}. Skin part will be invisible.", shapePath, entity.Properties.Code, shapePath);
-                return null;
-            }
 
-            Shape partShape;
-
-            try
+            Shape partShape = Shape.TryGet(api, shapePath);
+            if (partShape == null)
             {
-                partShape = asset.ToObject<Shape>();
-            }
-            catch (Exception e)
-            {
-                api.World.Logger.Warning("Exception thrown when trying to load entity armor shape {0} defined in {1}. Skin part will be invisible. Exception: {2}", shapePath, entity.Properties.Code, e);
+                api.World.Logger.Warning("Entity skin shape {0} defined in entity config {1} not found or errored, was supposed to be at {2}. Skin part will be invisible.", shapePath, entity.Properties.Code, shapePath);
                 return null;
             }
 
@@ -516,9 +511,9 @@ namespace Vintagestory.GameContent
                 val.SetJointIdRecursive(elem.JointId);
                 val.WalkRecursive((el) =>
                 {
-                    foreach (var face in el.Faces)
+                    foreach (var face in el.FacesResolved)
                     {
-                        face.Value.Texture = "#" + "skinpart-" + face.Value.Texture.TrimStart('#');
+                        if (face != null) face.Texture = "skinpart-" + face.Texture;
                     }
                 });
 

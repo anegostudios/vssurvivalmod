@@ -17,7 +17,7 @@ namespace Vintagestory.GameContent
 
         public override bool CanPlaceBlock(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ref EnumHandling handling, ref string failureCode)
         {
-            if (!byPlayer.Entity.Controls.Sneak)
+            if (!byPlayer.Entity.Controls.ShiftKey)
             {
                 handling = EnumHandling.PreventDefault;
                 failureCode = "onlywhensneaking";

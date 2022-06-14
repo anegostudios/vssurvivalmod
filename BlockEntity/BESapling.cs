@@ -38,7 +38,7 @@ namespace Vintagestory.GameContent
                 {
                     MeshData mesh = null;
 
-                    Shape shape = capi.Assets.TryGet(AssetLocation.Create("shapes/block/plant/dirtmound.json", Block.Code.Domain))?.ToObject<Shape>();
+                    Shape shape = API.Common.Shape.TryGet(capi, AssetLocation.Create("shapes/block/plant/dirtmound.json", Block.Code.Domain));
                     capi.Tesselator.TesselateShape(Block, shape, out mesh);
 
                     return mesh;

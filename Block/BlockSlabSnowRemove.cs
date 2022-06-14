@@ -51,9 +51,7 @@ namespace Vintagestory.GameContent
         {
             if (testGroundSnowRemoval)
             {
-                Block nblock = chunkExtBlocks[extIndex3d + TileSideEnum.MoveIndex[TileSideEnum.Down]];
-
-                if (!nblock.SideSolid[BlockFacing.UP.Index])
+                if (!SolidBlockBelow(chunkExtBlocks, extIndex3d, pos))
                 {
                     if (groundSnowLessMesh == null)
                     {
@@ -66,11 +64,11 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            if (testGroundSnowAdd && chunkExtBlocks[extIndex3d + TileSideEnum.MoveIndex[rot.Opposite.Index]].BlockMaterial == EnumBlockMaterial.Snow && chunkExtBlocks[extIndex3d + TileSideEnum.MoveIndex[5]].SideSolid[BlockFacing.UP.Index] == true)
+            if (testGroundSnowAdd && chunkExtBlocks[extIndex3d + TileSideEnum.MoveIndex[rot.Opposite.Index]].BlockMaterial == EnumBlockMaterial.Snow && SolidBlockBelow(chunkExtBlocks, extIndex3d, pos))
             {
                 if (groundSnowedMesh == null)
                 {
-                    Shape shape = api.Assets.Get("shapes/block/basic/slab/snow-" + Variant["rot"] + ".json").ToObject<Shape>();
+                    Shape shape = API.Common.Shape.TryGet(api, "shapes/block/basic/slab/snow-" + Variant["rot"] + ".json");
                     (api as ICoreClientAPI).Tesselator.TesselateShape("slab snow cover", shape, out groundSnowedMesh, this);
 
                     // No idea why this is needed
@@ -84,6 +82,14 @@ namespace Vintagestory.GameContent
 
                 sourceMesh = groundSnowedMesh;
             }
+        }
+
+        private bool SolidBlockBelow(Block[] chunkExtBlocks, int extIndex3d, BlockPos pos)
+        {
+            Block nblock = chunkExtBlocks[extIndex3d + TileSideEnum.MoveIndex[TileSideEnum.Down]];
+            if (nblock.SideSolid[BlockFacing.UP.Index]) return true;
+            nblock = api.World.BlockAccessor.GetLiquidBlock(pos.DownCopy());
+            return nblock.SideSolid[BlockFacing.UP.Index];
         }
     }
 }

@@ -4,14 +4,56 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockLakeIce : Block
+    public class BlockLakeIce : BlockForLiquidsLayer
     {
+        int waterBlock;
+
+        public override void OnLoaded(ICoreAPI api)
+        {
+            base.OnLoaded(api);
+            waterBlock = api.World.GetBlock(new AssetLocation("water-still-7")).BlockId;
+        }
+
         public override void OnBlockBroken(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1)
         {
-            base.OnBlockBroken(world, pos, byPlayer, dropQuantityMultiplier);
-            Block waterBlock = world.GetBlock(new AssetLocation("water-still-7"));
-            world.BlockAccessor.SetBlock(waterBlock.Id, pos);
-            world.BlockAccessor.MarkBlockDirty(pos);
+            bool preventDefault = false;
+            foreach (BlockBehavior behavior in BlockBehaviors)
+            {
+                EnumHandling handled = EnumHandling.PassThrough;
+
+                behavior.OnBlockBroken(world, pos, byPlayer, ref handled);
+                if (handled == EnumHandling.PreventDefault) preventDefault = true;
+                if (handled == EnumHandling.PreventSubsequent) return;
+            }
+
+            if (preventDefault) return;
+
+            if (world.Side == EnumAppSide.Server && (byPlayer == null || byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative))
+            {
+                ItemStack[] drops = GetDrops(world, pos, byPlayer, dropQuantityMultiplier);
+
+                if (drops != null)
+                {
+                    for (int i = 0; i < drops.Length; i++)
+                    {
+                        if (SplitDropStacks)
+                        {
+                            for (int k = 0; k < drops[i].StackSize; k++)
+                            {
+                                ItemStack stack = drops[i].Clone();
+                                stack.StackSize = 1;
+                                world.SpawnItemEntity(stack, new Vec3d(pos.X + 0.5, pos.Y + 0.5, pos.Z + 0.5), null);
+                            }
+                        }
+
+                    }
+                }
+
+                world.PlaySoundAt(Sounds?.GetBreakSound(byPlayer), pos.X, pos.Y, pos.Z, byPlayer);
+            }
+
+            SpawnBlockBrokenParticles(pos);
+            world.BlockAccessor.SetLiquidBlock(waterBlock, pos);
         }
 
         public override bool ShouldReceiveServerGameTicks(IWorldAccessor world, BlockPos pos, Random offThreadRandom, out object extra)
@@ -25,8 +67,7 @@ namespace Vintagestory.GameContent
 
         public override void OnServerGameTick(IWorldAccessor world, BlockPos pos, object extra = null)
         {
-            Block waterBlock = world.GetBlock(new AssetLocation("water-still-7"));
-            world.BlockAccessor.SetBlock(waterBlock.Id, pos);
+            world.BlockAccessor.SetLiquidBlock(waterBlock, pos);
         }
 
         public override bool ShouldMergeFace(int facingIndex, Block neighbourIce, int intraChunkIndex3d)

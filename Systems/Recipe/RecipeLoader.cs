@@ -23,29 +23,24 @@ namespace Vintagestory.ServerMods
         }
 
 
-        public override void StartServerSide(ICoreServerAPI api)
-        {
-            this.api = api;
-
-            api.Event.SaveGameLoaded += OnSaveGameLoaded;
-        }
-
         bool classExclusiveRecipes = true;
-
-        public void OnSaveGameLoaded()
+        public override void AssetsLoaded(ICoreAPI api)
         {
-            classExclusiveRecipes = api.World.Config.GetBool("classExclusiveRecipes", true);
+            if (!(api is ICoreServerAPI sapi)) return;
+            this.api = sapi;
+
+            classExclusiveRecipes = sapi.World.Config.GetBool("classExclusiveRecipes", true);
 
             LoadAlloyRecipes();
             
-            LoadRecipes<SmithingRecipe>("smithing recipe", "recipes/smithing", (r) => api.RegisterSmithingRecipe(r));
-            api.World.Logger.StoryEvent(Lang.Get("Burning sparks..."));
-            LoadRecipes<ClayFormingRecipe>("clay forming recipe", "recipes/clayforming", (r) => api.RegisterClayFormingRecipe(r));
-            api.World.Logger.StoryEvent(Lang.Get("Molded forms..."));
-            LoadRecipes<KnappingRecipe>("knapping recipe", "recipes/knapping", (r) => api.RegisterKnappingRecipe(r));
-            api.World.Logger.StoryEvent(Lang.Get("Simple tools..."));
+            LoadRecipes<SmithingRecipe>("smithing recipe", "recipes/smithing", (r) => sapi.RegisterSmithingRecipe(r));
+            sapi.World.Logger.StoryEvent(Lang.Get("Burning sparks..."));
+            LoadRecipes<ClayFormingRecipe>("clay forming recipe", "recipes/clayforming", (r) => sapi.RegisterClayFormingRecipe(r));
+            sapi.World.Logger.StoryEvent(Lang.Get("Molded forms..."));
+            LoadRecipes<KnappingRecipe>("knapping recipe", "recipes/knapping", (r) => sapi.RegisterKnappingRecipe(r));
+            sapi.World.Logger.StoryEvent(Lang.Get("Simple tools..."));
 
-            LoadRecipes<BarrelRecipe>("barrel recipe", "recipes/barrel", (r) => api.RegisterBarrelRecipe(r));
+            LoadRecipes<BarrelRecipe>("barrel recipe", "recipes/barrel", (r) => sapi.RegisterBarrelRecipe(r));
         }
 
 

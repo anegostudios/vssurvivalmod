@@ -130,7 +130,7 @@ namespace Vintagestory.GameContent
                 if (stalagBlock == null) continue;
 
                 Block block = blockAccessor.GetBlock(pos);
-                if (!block.IsLiquid() && (block.Replaceable >= 6000 || (block as BlockStalagSection)?.ThicknessInt < stalagBlock.ThicknessInt))
+                if (block.Replaceable >= 6000 || (block as BlockStalagSection)?.ThicknessInt < stalagBlock.ThicknessInt)
                 {
                     blockAccessor.SetBlock(stalagBlock.BlockId, pos);
                 }
@@ -147,7 +147,7 @@ namespace Vintagestory.GameContent
                 if (stalagBlock == null) continue;
 
                 Block block = blockAccessor.GetBlock(pos);
-                if (!block.IsLiquid() && block.Replaceable >= 6000)
+                if (block.Replaceable >= 6000)
                 {
                     blockAccessor.SetBlock(stalagBlock.BlockId, pos);
                 }

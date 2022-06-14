@@ -143,7 +143,7 @@ namespace Vintagestory.GameContent
         {
             ICoreClientAPI capi = api as ICoreClientAPI;
 
-            Shape shape = capi.Assets.TryGet("shapes/block/wood/barrel/"+ (issealed ? "closed" : "empty") +".json").ToObject<Shape>();
+            Shape shape = API.Common.Shape.TryGet(capi, "shapes/block/wood/barrel/"+ (issealed ? "closed" : "empty") +".json");
             MeshData barrelMesh;
             capi.Tesselator.TesselateShape(this, shape, out barrelMesh);
 
@@ -203,7 +203,7 @@ namespace Vintagestory.GameContent
 
             if (stack != null && contentSource != null)
             {
-                Shape shape = capi.Assets.TryGet("shapes/block/wood/barrel/" + shapefilename).ToObject<Shape>();
+                Shape shape = API.Common.Shape.TryGet(capi, "shapes/block/wood/barrel/" + shapefilename);
                 MeshData contentMesh;
                 capi.Tesselator.TesselateShape("barrel", shape, out contentMesh, contentSource, new Vec3f(Shape.rotateX, Shape.rotateY, Shape.rotateZ));
 
@@ -242,14 +242,14 @@ namespace Vintagestory.GameContent
             if (obj != null && obj.Exists)
             {
                 contentSource = new ContainerTextureSource(capi, stack, obj.AsObject<CompositeTexture>());
-                fillHeight = GameMath.Min(10 / 16f, 0.7f * stack.StackSize / stack.Collectible.MaxStackSize);
+                fillHeight = GameMath.Min(12 / 16f, 0.7f * stack.StackSize / stack.Collectible.MaxStackSize);
             }
             else
             {
                 if (stack?.Block != null && (stack.Block.DrawType == EnumDrawType.Cube || stack.Block.Shape.Base.Path.Contains("basic/cube")) && capi.BlockTextureAtlas.GetPosition(stack.Block, "up", true) != null)
                 {
                     contentSource = new BlockTopTextureSource(capi, stack.Block);
-                    fillHeight = GameMath.Min(10 / 16f, 0.7f * stack.StackSize / stack.Collectible.MaxStackSize);
+                    fillHeight = GameMath.Min(12 / 16f, 0.7f * stack.StackSize / stack.Collectible.MaxStackSize);
                 }
                 else if (stack != null)
                 {
@@ -268,7 +268,7 @@ namespace Vintagestory.GameContent
                     }
 
 
-                    fillHeight = GameMath.Min(10 / 16f, 0.7f * stack.StackSize / stack.Collectible.MaxStackSize);
+                    fillHeight = GameMath.Min(12 / 16f, 0.7f * stack.StackSize / stack.Collectible.MaxStackSize);
                 }
             }
 
@@ -284,7 +284,7 @@ namespace Vintagestory.GameContent
                 new WorldInteraction()
                 {
                     ActionLangCode = "heldhelp-place",
-                    HotKeyCode = "sneak",
+                    HotKeyCode = "shift",
                     MouseButton = EnumMouseButton.Right,
                     ShouldApply = (wi, bs, es) => {
                         return true;
@@ -338,7 +338,7 @@ namespace Vintagestory.GameContent
                     {
                         ActionLangCode = "blockhelp-barrel-takecottagecheese",
                         MouseButton = EnumMouseButton.Right,
-                        HotKeyCode = "sneak",
+                        HotKeyCode = "shift",
                         Itemstacks = linenStack,
                         GetMatchingStacks = (wi, bs, ws) =>
                         {
@@ -349,6 +349,18 @@ namespace Vintagestory.GameContent
                     }
                 };
             });
+        }
+
+        public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection blockSel, IPlayer forPlayer)
+        {
+            BlockEntityBarrel bebarrel = null;
+            if (blockSel.Position != null)
+            {
+                bebarrel = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityBarrel;
+            }
+            if (bebarrel != null && bebarrel.Sealed) return new WorldInteraction[0];   // No interactions shown if the barrel is sealed
+
+            return base.GetPlacedBlockInteractionHelp(world, blockSel, forPlayer);
         }
 
 
@@ -373,7 +385,7 @@ namespace Vintagestory.GameContent
 
             bool handled = base.OnBlockInteractStart(world, byPlayer, blockSel);
 
-            if (!handled && !byPlayer.WorldData.EntityControls.Sneak && blockSel.Position != null)
+            if (!handled && !byPlayer.WorldData.EntityControls.ShiftKey && blockSel.Position != null)
             {
                 if (bebarrel != null)
                 {

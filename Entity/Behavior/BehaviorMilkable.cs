@@ -61,7 +61,7 @@ namespace Vintagestory.GameContent
             if (entity.World.Side == EnumAppSide.Client) return;
 
             EntityBehaviorTaskAI taskAi = entity.GetBehavior<EntityBehaviorTaskAI>();
-            taskAi.TaskManager.ShouldExecuteTask = (task) => !IsBeingMilked;
+            taskAi.TaskManager.OnShouldExecuteTask += (task) => !IsBeingMilked;
 
             // Make sure TotalDaysLastBirth is not a future date (e.g. when exported from an old world and imported into a new world)
             bhmul = entity.GetBehavior<EntityBehaviorMultiply>();

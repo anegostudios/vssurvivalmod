@@ -124,7 +124,6 @@ namespace Vintagestory.GameContent
                 {
                     updateStorageTypeFromContainer(slot.Itemstack);
                 }
-       
             }
         }
 

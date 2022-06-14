@@ -10,7 +10,6 @@ namespace Vintagestory.GameContent
 {
     public class EntityPlayerBot : EntityAnimalBot
     {
-        //public override double EyeHeight => base.Properties.EyeHeight - (controls.Sneak ? 0.1 : 0.0);
 
         protected InventoryBase inv;
        
@@ -29,12 +28,8 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override ItemSlot RightHandItemSlot {
-            get
-            {
-                return inv[15];
-            }
-        }
+        public override ItemSlot RightHandItemSlot => inv[15];
+        public override ItemSlot LeftHandItemSlot => inv[16];
 
         public EntityPlayerBot() : base()
         {
@@ -58,18 +53,112 @@ namespace Vintagestory.GameContent
             {
                 (Properties.Client.Renderer as EntityShapeRenderer).DoRenderHeldItem = true;
             }
-
         }
-        
 
-
-
-
-        /*public override void SetName(string playername)
+        public override void OnGameTick(float dt)
         {
-            base.SetName(playername);
-            this.Name = playername;
-        }*/
+            base.OnGameTick(dt);
+
+            var curCommand = WatchedAttributes.GetString("currentCommand", "");
+            if (curCommand != "")
+            {
+                AnimManager.StopAnimation("idle");
+                AnimManager.StopAnimation("idle1");
+            }
+
+
+            HandleHandAnimations(dt);
+        }
+
+
+
+
+        protected string lastRunningHeldUseAnimation;
+        protected string lastRunningRightHeldIdleAnimation;
+        protected string lastRunningLeftHeldIdleAnimation;
+        protected string lastRunningHeldHitAnimation;
+
+        protected override void HandleHandAnimations(float dt)
+        {
+            ItemStack rightstack = RightHandItemSlot?.Itemstack;
+
+            EnumHandInteract interact = servercontrols.HandUse;
+
+            bool nowUseStack = (interact == EnumHandInteract.BlockInteract || interact == EnumHandInteract.HeldItemInteract) || (servercontrols.RightMouseDown && !servercontrols.LeftMouseDown);
+            bool wasUseStack = lastRunningHeldUseAnimation != null && AnimManager.ActiveAnimationsByAnimCode.ContainsKey(lastRunningHeldUseAnimation);
+
+            bool nowHitStack = interact == EnumHandInteract.HeldItemAttack || (servercontrols.LeftMouseDown);
+            bool wasHitStack = lastRunningHeldHitAnimation != null && AnimManager.ActiveAnimationsByAnimCode.ContainsKey(lastRunningHeldHitAnimation);
+
+
+            string nowHeldRightUseAnim = rightstack?.Collectible.GetHeldTpUseAnimation(RightHandItemSlot, this);
+            string nowHeldRightHitAnim = rightstack?.Collectible.GetHeldTpHitAnimation(RightHandItemSlot, this);
+            string nowHeldRightIdleAnim = rightstack?.Collectible.GetHeldTpIdleAnimation(RightHandItemSlot, this, EnumHand.Right);
+            string nowHeldLeftIdleAnim = LeftHandItemSlot?.Itemstack?.Collectible.GetHeldTpIdleAnimation(LeftHandItemSlot, this, EnumHand.Left);
+
+            bool nowRightIdleStack = nowHeldRightIdleAnim != null && !nowUseStack && !nowHitStack;
+            bool wasRightIdleStack = lastRunningRightHeldIdleAnimation != null && AnimManager.ActiveAnimationsByAnimCode.ContainsKey(lastRunningRightHeldIdleAnimation);
+
+            bool nowLeftIdleStack = nowHeldLeftIdleAnim != null;
+            bool wasLeftIdleStack = lastRunningLeftHeldIdleAnimation != null && AnimManager.ActiveAnimationsByAnimCode.ContainsKey(lastRunningLeftHeldIdleAnimation);
+
+            if (rightstack == null)
+            {
+                nowHeldRightHitAnim = "breakhand";
+                nowHeldRightUseAnim = "interactstatic";
+            }
+
+            if (nowUseStack != wasUseStack || (lastRunningHeldUseAnimation != null && nowHeldRightUseAnim != lastRunningHeldUseAnimation))
+            {
+                AnimManager.StopAnimation(lastRunningHeldUseAnimation);
+                lastRunningHeldUseAnimation = null;
+
+                if (nowUseStack)
+                {
+                    AnimManager.StopAnimation(lastRunningRightHeldIdleAnimation);
+                    AnimManager.StartAnimation(lastRunningHeldUseAnimation = nowHeldRightUseAnim);
+                }
+            }
+
+            if (nowHitStack != wasHitStack || (lastRunningHeldHitAnimation != null && nowHeldRightHitAnim != lastRunningHeldHitAnimation))
+            {
+                AnimManager.StopAnimation(lastRunningHeldHitAnimation);
+                lastRunningHeldHitAnimation = null;
+
+
+                if (nowHitStack)
+                {
+                    AnimManager.StopAnimation(lastRunningLeftHeldIdleAnimation);
+                    AnimManager.StopAnimation(lastRunningRightHeldIdleAnimation);
+                    AnimManager.StartAnimation(lastRunningHeldHitAnimation = nowHeldRightHitAnim);
+                }
+            }
+
+            if (nowRightIdleStack != wasRightIdleStack || (lastRunningRightHeldIdleAnimation != null && nowHeldRightIdleAnim != lastRunningRightHeldIdleAnimation))
+            {
+                AnimManager.StopAnimation(lastRunningRightHeldIdleAnimation);
+                lastRunningRightHeldIdleAnimation = null;
+
+                if (nowRightIdleStack)
+                {
+                    AnimManager.StartAnimation(lastRunningRightHeldIdleAnimation = nowHeldRightIdleAnim);
+                }
+            }
+
+            if (nowLeftIdleStack != wasLeftIdleStack || (lastRunningLeftHeldIdleAnimation != null && nowHeldLeftIdleAnim != lastRunningLeftHeldIdleAnimation))
+            {
+                AnimManager.StopAnimation(lastRunningLeftHeldIdleAnimation);
+
+                lastRunningLeftHeldIdleAnimation = null;
+
+                if (nowLeftIdleStack)
+                {
+                    AnimManager.StartAnimation(lastRunningLeftHeldIdleAnimation = nowHeldLeftIdleAnim);
+                }
+            }
+        }
+
+
 
         public override void ToBytes(BinaryWriter writer, bool forClient)
         {
@@ -96,7 +185,16 @@ namespace Vintagestory.GameContent
 
             if ((byEntity as EntityPlayer)?.Controls.Sneak == true && mode == EnumInteractMode.Interact && byEntity.World.Side == EnumAppSide.Server)
             {
-                inv.DiscardAll();
+                if (!LeftHandItemSlot.Empty || !RightHandItemSlot.Empty)
+                {
+                    LeftHandItemSlot.Itemstack = null;
+                    RightHandItemSlot.Itemstack = null;
+                }
+                else
+                {
+                    inv.DiscardAll();
+                }
+
                 WatchedAttributes.MarkAllDirty();
             }
         }
@@ -112,13 +210,13 @@ namespace Vintagestory.GameContent
 
         public InventoryGear(string className, string id, ICoreAPI api) : base(className, id, api)
         {
-            slots = GenEmptySlots(16);
+            slots = GenEmptySlots(19);
             baseWeight = 2.5f;
         }
 
         public InventoryGear(string inventoryId, ICoreAPI api) : base(inventoryId, api)
         {
-            slots = GenEmptySlots(16);
+            slots = GenEmptySlots(19);
             baseWeight = 2.5f;
         }
 
@@ -167,7 +265,11 @@ namespace Vintagestory.GameContent
 
         protected override ItemSlot NewSlot(int slotId)
         {
-            if (slotId == 15) return new ItemSlotSurvival(this);
+            if (slotId == 15 || slotId == 16) return new ItemSlotSurvival(this);
+            if (slotId > 16)
+            {
+                return new ItemSlotBackpack(this);
+            }
 
             EnumCharacterDressType type = (EnumCharacterDressType)slotId;
             ItemSlotCharacter slot = new ItemSlotCharacter(type, this);
@@ -184,6 +286,7 @@ namespace Vintagestory.GameContent
                 DidModifyItemSlot(this[i]);
             }
         }
+
 
         public override void OnOwningEntityDeath(Vec3d pos)
         {

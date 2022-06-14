@@ -28,7 +28,7 @@ namespace Vintagestory.GameContent
             Block block = blockAccessor.GetBlock(pos);
             
 
-            if (block.IsReplacableBy(this) && block.SideSolid[BlockFacing.UP.Index])
+            if (block.IsReplacableBy(this) && block.SideSolid[BlockFacing.UP.Index])   // this looks weird, surely it should test the sidesolid on the block BELOW?
             {
                 blockAccessor.SetBlock(rndGearBlock().BlockId, pos);
                 return true;

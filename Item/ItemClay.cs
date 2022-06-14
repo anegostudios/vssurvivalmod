@@ -49,7 +49,7 @@ namespace Vintagestory.GameContent
             BlockEntityClayForm bec = byEntity.World.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityClayForm;
             if (bec != null && bec.BaseMaterial.Collectible.Variant["type"] != Variant["type"]) return;
 
-            if (byEntity.Controls.Sneak)
+            if (byEntity.Controls.ShiftKey)
             {
                 IPlayer player = byEntity.World.PlayerByUid((byEntity as EntityPlayer)?.PlayerUID);
                 BlockPos placePos = blockSel.Position.AddCopy(blockSel.Face);
@@ -1522,7 +1522,7 @@ namespace Vintagestory.GameContent
                 new WorldInteraction()
                 {
                     ActionLangCode = "heldhelp-placetoclayform",
-                    HotKeyCode = "sneak",
+                    HotKeyCode = "shift",
                     MouseButton = EnumMouseButton.Right,
                 }
             }.Append(base.GetHeldInteractionHelp(inSlot));

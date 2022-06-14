@@ -61,7 +61,7 @@ namespace Vintagestory.GameContent.Mechanics
 
                 double totalIngameSeconds = Api.World.Calendar.TotalHours * 60 * 2;
 
-                double adjust = 0;
+                double adjust;
                 switch (facing.Index)
                 {
                     case 3:
@@ -101,7 +101,7 @@ namespace Vintagestory.GameContent.Mechanics
 
                     if (Api.Side == EnumAppSide.Client && targetAnvil != null)
                     {
-                        Api.World.PlaySoundAt(new AssetLocation("sounds/effect/anvilhit"), Pos.X + facing.Normali.X * 3 + 0.5f, Pos.Y + 0.5f, Pos.Z + facing.Normali.Z * 3 + 0.5f, null, 0.3f + (float)Api.World.Rand.NextDouble() * 0.2f, 8, 1);
+                        Api.World.PlaySoundAt(new AssetLocation("sounds/effect/anvilhit"), Pos.X + facing.Normali.X * 3 + 0.5f, Pos.Y + 0.5f, Pos.Z + facing.Normali.Z * 3 + 0.5f, null, 0.3f + (float)Api.World.Rand.NextDouble() * 0.2f, 12, 1);
                         targetAnvil.OnHelveHammerHit();
                     }
                 }
@@ -156,11 +156,7 @@ namespace Vintagestory.GameContent.Mechanics
             anvilPos = Pos.AddCopy(dir.X * 3, 0, dir.Z * 3);
             togglePos = Pos.AddCopy(dir);
 
-
             RegisterGameTickListener(onEvery25ms, 25);
-
-
-
 
             capi = api as ICoreClientAPI;
 
@@ -211,7 +207,7 @@ namespace Vintagestory.GameContent.Mechanics
             if (block.BlockId == 0) return null;
             MeshData mesh;
             ITesselatorAPI mesher = ((ICoreClientAPI)Api).Tesselator;
-            Shape shape = Api.Assets.TryGet("shapes/block/wood/mechanics/helvehammer.json").ToObject<Shape>();
+            Shape shape = API.Common.Shape.TryGet(Api, "shapes/block/wood/mechanics/helvehammer.json");
             mesher.TesselateShape("helvehammerhead", shape, out mesh, this, new Vec3f(0, block.Shape.rotateY, 0));
 
             return mesh;
@@ -265,7 +261,29 @@ namespace Vintagestory.GameContent.Mechanics
             {
                 Block block = Api.World.BlockAccessor.GetBlock(npos);
                 Cuboidf[] collboxes = block.GetCollisionBoxes(Api.World.BlockAccessor, npos);
-                if (collboxes != null && collboxes.Length > 0)
+
+                bool obst = collboxes != null && collboxes.Length > 0;
+
+                if (obst && i == 0)
+                {
+                    obst = false;
+                    for (int j = 0; j < collboxes.Length; j++)
+                    {
+                        var b = collboxes[j].Y1 < 0.2f;
+                        switch(facing.Index)
+                        {
+                            case 0: b = b && collboxes[j].Z1 < 0.5; break;
+                            case 1: b = b && collboxes[j].X2 > 0.5; break;
+                            case 2: b = b && collboxes[j].Z2 > 0.5; break;
+                            case 3: b = b && collboxes[j].X1 < 0.5; break;
+
+                        }
+
+                        obst |= b;
+                    }
+                }
+
+                if (obst)
                 {
                     obstructed = true;
                     if (renderer != null) renderer.Obstructed = true;

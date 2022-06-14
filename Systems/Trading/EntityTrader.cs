@@ -21,10 +21,10 @@ namespace Vintagestory.GameContent
     {
         public static OrderedDictionary<string, TraderPersonality> Personalities = new OrderedDictionary<string, TraderPersonality>()
         {
-            { "formal", new TraderPersonality(1, 1, 0.9f) },
-            { "balanced", new TraderPersonality(1.2f, 0.9f, 1.1f) },
-            { "lazy", new TraderPersonality(1.65f, 0.7f, 0.9f) },
-            { "rowdy", new TraderPersonality(0.75f, 1f, 1.8f) },
+            { "formal", new TraderPersonality(1 * 1.5f, 1, 0.9f) },
+            { "balanced", new TraderPersonality(1.2f * 1.5f, 0.9f, 1.1f) },
+            { "lazy", new TraderPersonality(1.65f * 1.5f, 0.7f, 0.9f) },
+            { "rowdy", new TraderPersonality(0.75f * 1.5f, 1f, 1.8f) },
         };
 
         public InventoryTrader Inventory;
@@ -41,7 +41,7 @@ namespace Vintagestory.GameContent
             get { return WatchedAttributes.GetString("personality", "formal"); }
             set {
                 WatchedAttributes.SetString("personality", value);
-                talkUtil?.SetModifiers(Personalities[value].TalkSpeedModifier, Personalities[value].PitchModifier, Personalities[value].VolumneModifier);
+                talkUtil?.SetModifiers(Personalities[value].ChorldDelayMul, Personalities[value].PitchModifier, Personalities[value].VolumneModifier);
             }
         }
 
@@ -92,7 +92,6 @@ namespace Vintagestory.GameContent
             } else
             {
                 talkUtil = new EntityTalkUtil(api as ICoreClientAPI, this);
-
             }
             
             try
@@ -123,7 +122,7 @@ namespace Vintagestory.GameContent
             {
                 EntityBehaviorTaskAI taskAi = GetBehavior<EntityBehaviorTaskAI>();
 
-                taskAi.TaskManager.ShouldExecuteTask =
+                taskAi.TaskManager.OnShouldExecuteTask +=
                     (task) => tradingWith == null || (task is AiTaskIdle || task is AiTaskSeekEntity || task is AiTaskGotoEntity);
 
                 if (TradeProps != null)
@@ -148,7 +147,7 @@ namespace Vintagestory.GameContent
             if (Api.Side == EnumAppSide.Server)
             {
                 EntityBehaviorTaskAI taskAi = GetBehavior<EntityBehaviorTaskAI>();
-                taskAi.TaskManager.ShouldExecuteTask =
+                taskAi.TaskManager.OnShouldExecuteTask +=
                     (task) => tradingWith == null || (task is AiTaskIdle || task is AiTaskSeekEntity || task is AiTaskGotoEntity);
             }
         }

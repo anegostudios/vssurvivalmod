@@ -110,6 +110,7 @@ namespace Vintagestory.ServerMods
 
                 strataNoises[i] = new MapLayerCustomPerlin(api.World.Seed + 23423 + i + seedDiff, ampls, freq, th);
             }
+            api.Logger.VerboseDebug("Initialised GenRockStrata");
         }
 
 
@@ -147,24 +148,18 @@ namespace Vintagestory.ServerMods
         int rdx;
         int rdz;
 
-        int rockStrataId;
-        RockStratum stratum = null;
-        IntDataMap2D rockMap;
-        float step = 0;
-        float strataThickness = 0;
-
         LerpedWeightedIndex2DMap map;
         float lerpMapInv;
         float chunkInRegionX;
         float chunkInRegionZ;
 
         GeologicProvinces provinces = NoiseGeoProvince.provinces;
-        int grp = 0;
         #endregion
 
         internal void GenChunkColumn(IServerChunk[] chunks, int chunkX, int chunkZ, ITreeAttribute chunkGenParams = null)
         {
             preLoad(chunks, chunkX, chunkZ);
+            int chunksize = this.chunksize;
 
             for (int x = 0; x < chunksize; x++)
             {
@@ -182,56 +177,55 @@ namespace Vintagestory.ServerMods
             rdx = chunkX % regionChunkSize;
             rdz = chunkZ % regionChunkSize;
 
-            stratum = null;
-            step = 0;
-            strataThickness = 0;
-
             map = GetOrLoadLerpedProvinceMap(chunks[0].MapChunk, chunkX, chunkZ);
             lerpMapInv = 1f / TerraGenConfig.geoProvMapScale;
             chunkInRegionX = (chunkX % regionChunkSize) * lerpMapInv * chunksize;
             chunkInRegionZ = (chunkZ % regionChunkSize) * lerpMapInv * chunksize;
 
             provinces = NoiseGeoProvince.provinces;
-            grp = 0;
         }
 
         public void genBlockColumn(IServerChunk[] chunks, int chunkX, int chunkZ, int lx, int lz)
         {
+            int chunksize = this.chunksize;
             int surfaceY = heightMap[lz * chunksize + lx];
             int ylower = 1;
             int yupper = surfaceY;
-            strataThickness = 0;
+            int rockBlockId = this.rockBlockId;
+
+            rockGroupMaxThickness[0] = rockGroupMaxThickness[1] = rockGroupMaxThickness[2] = rockGroupMaxThickness[3] = 0;
+            rockGroupCurrentThickness[0] = rockGroupCurrentThickness[1] = rockGroupCurrentThickness[2] = rockGroupCurrentThickness[3] = 0;
 
             WeightedIndex[] indices = map[
                 chunkInRegionX + lx * lerpMapInv,
                 chunkInRegionZ + lz * lerpMapInv
             ];
-            rockGroupMaxThickness[0] = rockGroupMaxThickness[1] = rockGroupMaxThickness[2] = rockGroupMaxThickness[3] = 0;
-            rockGroupCurrentThickness[0] = rockGroupCurrentThickness[1] = rockGroupCurrentThickness[2] = rockGroupCurrentThickness[3] = 0;
-
             for (int i = 0; i < indices.Length; i++)
             {
                 float w = indices[i].Weight;
 
-                GeologicProvinceVariant var = provinces.Variants[indices[i].Index];
+                GeologicProvinceRockStrata[] localstrata = provinces.Variants[indices[i].Index].RockStrataIndexed;
 
-                rockGroupMaxThickness[0] += var.RockStrataIndexed[0].MaxThickness * w;
-                rockGroupMaxThickness[1] += var.RockStrataIndexed[1].MaxThickness * w;
-                rockGroupMaxThickness[2] += var.RockStrataIndexed[2].MaxThickness * w;
-                rockGroupMaxThickness[3] += var.RockStrataIndexed[3].MaxThickness * w;
+                rockGroupMaxThickness[0] += localstrata[0].MaxThickness * w;
+                rockGroupMaxThickness[1] += localstrata[1].MaxThickness * w;
+                rockGroupMaxThickness[2] += localstrata[2].MaxThickness * w;
+                rockGroupMaxThickness[3] += localstrata[3].MaxThickness * w;
             }
-
-
 
             float distx = (float)distort2dx.Noise(chunkX * chunksize + lx, chunkZ * chunksize + lz);
             float distz = (float)distort2dz.Noise(chunkX * chunksize + lx, chunkZ * chunksize + lz);
+            float thicknessDistort = GameMath.Clamp((distx + distz) / 30f, 0.9f, 1.1f);
 
-
-            rockStrataId = -1;
+            int rockStrataId = -1;
+            RockStratum stratum = null;
+            IntDataMap2D rockMap;
+            float step;
+            int grp = 0;
+            float strataThickness = 0;
 
             while (ylower <= yupper)
             {
-                if (--strataThickness <= 0)
+                if (--strataThickness <= 0f)
                 {
                     rockStrataId++;
                     if (rockStrataId >= strata.Variants.Length || rockStrataId >= mapChunk.MapRegion.RockStrata.Length)
@@ -244,17 +238,30 @@ namespace Vintagestory.ServerMods
 
                     grp = (int)stratum.RockGroup;
 
-                    float thicknessDistort = GameMath.Clamp((distx + distz) / 30, 0.9f, 1.1f);
-
                     float allowedThickness = rockGroupMaxThickness[grp] * thicknessDistort - rockGroupCurrentThickness[grp];
 
                     strataThickness = Math.Min(allowedThickness, rockMap.GetIntLerpedCorrectly(rdx * step + step * (float)(lx + distx) / chunksize, rdz * step + step * (float)(lz + distz) / chunksize));
 
-                    strataThickness -= (stratum.RockGroup == EnumRockGroup.Sedimentary) ? Math.Max(0, yupper - TerraGenConfig.seaLevel) * 0.5f : 0;
+                    if (stratum.RockGroup == EnumRockGroup.Sedimentary) strataThickness -= Math.Max(0, yupper - TerraGenConfig.seaLevel) * 0.5f;
 
-                    if (strataThickness < 2)
+                    if (strataThickness < 2f)
                     {
-                        strataThickness = -1;
+                        strataThickness = -1f;
+                        continue;
+                    }
+
+                    if (stratum.BlockId == rockBlockId) // Special case for granite : no need to replace granite with granite!
+                    {
+                        int thickness = (int)strataThickness;
+                        rockGroupCurrentThickness[grp] += thickness;
+                        if (stratum.GenDir == EnumStratumGenDir.BottomUp)
+                        {
+                            ylower += thickness;
+                        }
+                        else
+                        {
+                            yupper -= thickness;
+                        }
                         continue;
                     }
                 }
@@ -267,9 +274,10 @@ namespace Vintagestory.ServerMods
                     int lY = ylower - chunkY * chunksize;
                     int localIndex3D = (chunksize * lY + lz) * chunksize + lx;
 
-                    if (chunks[chunkY].Blocks[localIndex3D] == rockBlockId)
+                    IChunkBlocks chunkBlockData = chunks[chunkY].Blocks;
+                    if (chunkBlockData.GetBlockIdUnsafe(localIndex3D) == rockBlockId)
                     {
-                        chunks[chunkY].Blocks[localIndex3D] = stratum.BlockId;
+                        chunkBlockData.SetBlockUnsafe(localIndex3D, stratum.BlockId);
                     }
 
                     ylower++;
@@ -282,9 +290,10 @@ namespace Vintagestory.ServerMods
                     int lY = yupper - chunkY * chunksize;
                     int localIndex3D = (chunksize * lY + lz) * chunksize + lx;
 
-                    if (chunks[chunkY].Blocks[localIndex3D] == rockBlockId)
+                    IChunkBlocks chunkBlockData = chunks[chunkY].Blocks;
+                    if (chunkBlockData.GetBlockIdUnsafe(localIndex3D) == rockBlockId)      // Even if we found rock already in this column, it could be overhang or something, so have to keep checking
                     {
-                        chunks[chunkY].Blocks[localIndex3D] = stratum.BlockId;
+                        chunkBlockData.SetBlockUnsafe(localIndex3D, stratum.BlockId);
                     }
 
                     yupper--;

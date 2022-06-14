@@ -212,8 +212,6 @@ namespace Vintagestory.GameContent
             capi.Gui.Icons.DrawArrowRight(ctx, 2);
 
             double cookingRel = Attributes.GetFloat("oreCookingTime") / Attributes.GetFloat("maxOreCookingTime", 1);
-
-            
             ctx.Rectangle(5, 0, 125 * cookingRel, 100);
             ctx.Clip();
             gradient = new LinearGradient(0, 0, 200, 0);

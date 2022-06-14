@@ -214,7 +214,7 @@ namespace Vintagestory.GameContent
                 AnimManager.StopAnimation("glide");
 
                 (Properties.Client.Renderer as EntityShapeRenderer).AddRenderFlags = EnumWindBitModeMask.Bend;
-                (Properties.Client.Renderer as EntityShapeRenderer).WindWaveIntensity = WatchedAttributes.GetDouble("windWaveIntensity");
+                (Properties.Client.Renderer as EntityShapeRenderer).AddRenderFlags |= 1 << VertexFlags.WindDataBitsPos;
             } else
             {
                 (Properties.Client.Renderer as EntityShapeRenderer).AddRenderFlags = 0;

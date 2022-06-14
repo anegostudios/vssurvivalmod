@@ -41,7 +41,6 @@ namespace Vintagestory.ServerMods
         protected int chunksize;
         protected int worldheight;
 
-        protected BlockPos targetPos = new BlockPos();
         protected int radiusX, radiusZ;
 
 
@@ -76,6 +75,7 @@ namespace Vintagestory.ServerMods
         {
             int radius = Math.Min(64, (int)Radius.nextFloat(1, DepositRand));
             if (radius <= 0) return;
+            int chunksize = this.chunksize;
 
             // Let's deform that perfect circle a bit (+/- 25%)
             float deform = GameMath.Clamp(DepositRand.NextFloat() - 0.5f, -0.25f, 0.25f);
@@ -95,13 +95,12 @@ namespace Vintagestory.ServerMods
             
             // Ok generate
             float th = Thickness.nextFloat(1, DepositRand);
-            float depoitThickness = (int)th + (DepositRand.NextFloat() < th - (int)th ? 1 : 0);
+            float depositThickness = (int)th + (DepositRand.NextFloat() < th - (int)th ? 1 : 0);
 
             float xRadSqInv = 1f / (radiusX * radiusX);
             float zRadSqInv = 1f / (radiusZ * radiusZ);
 
-            int lx = GameMath.Mod(depoCenterPos.X, chunksize);
-            int lz = GameMath.Mod(depoCenterPos.Z, chunksize);
+            int lx, lz;
             int distx, distz;
 
             // No need to go search far beyond chunk boundaries
@@ -114,75 +113,77 @@ namespace Vintagestory.ServerMods
             maxx = GameMath.Clamp(depoCenterPos.X + radiusX, minx, maxx);
             minz = GameMath.Clamp(depoCenterPos.Z - radiusZ, minz, maxz);
             maxz = GameMath.Clamp(depoCenterPos.Z + radiusZ, minz, maxz);
+            if (minx < baseX) minx = baseX;
+            if (maxx > baseX + chunksize) maxx = baseX + chunksize;
+            if (minz < baseZ) minz = baseZ;
+            if (maxz > baseZ + chunksize) maxz = baseZ + chunksize;
 
-            float invChunkAreaSize = 1f / (chunksize * chunksize);
-            double val = 1;
+            //float invChunkAreaSize = 1f / (chunksize * chunksize);
+            double val;
 
             IList<Block> blocktypes = Api.World.Blocks;
 
             bool doGravel = DepositRand.NextFloat() > 0.33;
 
+            int posy;
+            int rockblockCached = -1;
+            Block alluvialblock = null;
+
             for (int posx = minx; posx < maxx; posx++)
             {
-                targetPos.X = posx;
-                lx = targetPos.X - baseX;
+                lx = posx - baseX;
                 distx = posx - depoCenterPos.X;
 
                 float xSq = distx * distx * xRadSqInv;
 
                 for (int posz = minz; posz < maxz; posz++)
                 {
-                    targetPos.Z = posz;
-                    lz = targetPos.Z - baseZ;
+                    lz = posz - baseZ;
                     distz = posz - depoCenterPos.Z;
+
+                    posy = heremapchunk.WorldGenTerrainHeightMap[lz * chunksize + lx];
+                    if (posy >= worldheight) continue;
+
+                    // Some deposits may not appear all over cliffs
+                    if (Math.Abs(depoCenterPos.Y - posy) > MaxYRoughness) continue;
+
+                    int rockblockid = heremapchunk.TopRockIdMap[lz * chunksize + lx];
+                    if (rockblockid != rockblockCached)
+                    {
+                        rockblockCached = rockblockid;
+                        Block rockblock = blocktypes[rockblockid];
+                        if (!rockblock.Variant.ContainsKey("rock"))
+                        {
+                            alluvialblock = null;
+                        }
+                        else
+                        {
+                            alluvialblock = Api.World.GetBlock(new AssetLocation((doGravel ? "gravel-" : "sand-") + rockblock.Variant["rock"]));
+                        }
+                    }
+                    if (alluvialblock == null) continue;
 
                     // Kinda weird mathematically speaking, but seems to work as a means to distort the perfect circleness of deposits ¯\_(ツ)_/¯
                     // Also not very efficient to use direct perlin noise in here :/
                     // But after ~10 hours of failing (=weird lines of missing deposit material) with a pre-generated 2d distortion map i give up >.>
-                    val = 1 - DistortNoiseGen.Noise(targetPos.X / 3.0, targetPos.Z / 3.0) * 1.5 + 0.15;
+                    val = 1.0 - DistortNoiseGen.Noise(posx / 3.0, posz / 3.0) * 1.5 + 0.15;
                     double distanceToEdge = val - (xSq + distz * distz * zRadSqInv);
+                    if (distanceToEdge < 0.0) continue;
 
-                    if (distanceToEdge < 0 || lx < 0 || lz < 0 || lx >= chunksize || lz >= chunksize) continue;
-
-                    targetPos.Y = heremapchunk.WorldGenTerrainHeightMap[lz * chunksize + lx];
-
-                    // Some deposits may not appear all over cliffs
-                    if (Math.Abs(depoCenterPos.Y - targetPos.Y) > MaxYRoughness) continue;
-
-                    int rockblockid = heremapchunk.TopRockIdMap[lz * chunksize + lx];
-
-                    Block rockblock = blocktypes[rockblockid];
-                    if (!rockblock.Variant.ContainsKey("rock")) continue;
-
-                    Block alluvialblock;
-
-                    if (doGravel)
+                    for (int yy = 0; yy < depositThickness; yy++)
                     {
-                        alluvialblock = Api.World.GetBlock(new AssetLocation("gravel-" + rockblock.Variant["rock"]));
-                    }
-                    else
-                    {
-                        alluvialblock = Api.World.GetBlock(new AssetLocation("sand-" + rockblock.Variant["rock"]));
-                    }
-                    
+                        if (posy <= 1) continue;
 
-                    for (int y = 0; y < depoitThickness; y++)
-                    {
-                        if (targetPos.Y <= 1 || targetPos.Y >= worldheight) continue;
-
-                        int index3d = ((targetPos.Y % chunksize) * chunksize + lz) * chunksize + lx;
-                        int blockId = chunks[targetPos.Y / chunksize].Blocks[index3d];
+                        int index3d = ((posy % chunksize) * chunksize + lz) * chunksize + lx;
+                        IChunkBlocks chunkdata = chunks[posy / chunksize].Blocks;
+                        int blockId = chunkdata.GetBlockIdUnsafe(index3d);
 
                         Block block = blocktypes[blockId];
-
                         if (block.BlockMaterial != EnumBlockMaterial.Soil) continue;
 
-                        if (alluvialblock != null)
-                        {
-                            chunks[targetPos.Y / chunksize].Blocks[index3d] = alluvialblock.BlockId;
-                        }
-
-                        targetPos.Y--;
+                        chunkdata.SetBlockUnsafe(index3d, alluvialblock.BlockId);
+                        chunkdata.SetLiquid(index3d, 0);
+                        posy--;
                     }
                 }
             }

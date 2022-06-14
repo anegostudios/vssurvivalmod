@@ -107,14 +107,12 @@ namespace Vintagestory.GameContent
 
         public MeshData GenMesh(ICoreClientAPI capi, ItemStack contentStack, BlockPos forBlockPos = null)
         {
-            var asset = capi.Assets.TryGet(emptyShapeLoc.WithPathAppendixOnce(".json").WithPathPrefixOnce("shapes/"));
-            if (asset == null)
+            Shape shape = API.Common.Shape.TryGet(capi, emptyShapeLoc.WithPathAppendixOnce(".json").WithPathPrefixOnce("shapes/"));
+            if (shape == null)
             {
                 capi.World.Logger.Error("Empty shape {0} not found. Liquid container {1} will be invisible.", emptyShapeLoc, Code);
                 return new MeshData();
             }
-
-            Shape shape = asset.ToObject<Shape>();
             MeshData bucketmesh;
             capi.Tesselator.TesselateShape(this, shape, out bucketmesh, new Vec3f(Shape.rotateX, Shape.rotateY, Shape.rotateZ));
 
@@ -130,15 +128,14 @@ namespace Vintagestory.GameContent
                 ContainerTextureSource contentSource = new ContainerTextureSource(capi, contentStack, props.Texture);
 
                 var loc = props.IsOpaque ? contentShapeLoc : liquidContentShapeLoc;
-                asset = capi.Assets.TryGet(loc.WithPathAppendixOnce(".json").WithPathPrefixOnce("shapes/"));
+                shape = API.Common.Shape.TryGet(capi, loc.WithPathAppendixOnce(".json").WithPathPrefixOnce("shapes/"));
 
-                if (asset == null)
+                if (shape == null)
                 {
                     capi.World.Logger.Error("Content shape {0} not found. Contents of liquid container {1} will be invisible.", loc, Code);
                     return bucketmesh;
                 }
 
-                shape = asset.ToObject<Shape>();
                 MeshData contentMesh;
                 capi.Tesselator.TesselateShape(GetType().Name, shape, out contentMesh, contentSource, new Vec3f(Shape.rotateX, Shape.rotateY, Shape.rotateZ));
 
@@ -146,10 +143,14 @@ namespace Vintagestory.GameContent
 
                 if (props.ClimateColorMap != null)
                 {
-                    int col = capi.World.ApplyColorMapOnRgba(props.ClimateColorMap, null, ColorUtil.WhiteArgb, 196, 128, false);
+                    int col;
                     if (forBlockPos != null)
                     {
                         col = capi.World.ApplyColorMapOnRgba(props.ClimateColorMap, null, ColorUtil.WhiteArgb, forBlockPos.X, forBlockPos.Y, forBlockPos.Z, false);
+                    }
+                    else
+                    {
+                        col = capi.World.ApplyColorMapOnRgba(props.ClimateColorMap, null, ColorUtil.WhiteArgb, 196, 128, false);
                     }
 
                     byte[] rgba = ColorUtil.ToBGRABytes(col);
@@ -370,14 +371,14 @@ namespace Vintagestory.GameContent
                     {
                         ActionLangCode = "blockhelp-bucket-rightclick-sneak",
                         MouseButton = EnumMouseButton.Right,
-                        HotKeyCode = "sneak",
+                        HotKeyCode = "shift",
                         Itemstacks = lcstacks
                     },
                     new WorldInteraction()
                     {
                         ActionLangCode = "blockhelp-bucket-rightclick-sprint",
                         MouseButton = EnumMouseButton.Right,
-                        HotKeyCode = "sprint",
+                        HotKeyCode = "ctrl",
                         Itemstacks = lcstacks
                     }
                 };
@@ -405,7 +406,7 @@ namespace Vintagestory.GameContent
                 new WorldInteraction()
                 {
                     ActionLangCode = "heldhelp-empty",
-                    HotKeyCode = "sprint",
+                    HotKeyCode = "ctrl",
                     MouseButton = EnumMouseButton.Right,
                     ShouldApply = (wi, bs, es) => {
                         return GetCurrentLitres(inSlot.Itemstack) > 0;
@@ -414,7 +415,7 @@ namespace Vintagestory.GameContent
                 new WorldInteraction()
                 {
                     ActionLangCode = "heldhelp-place",
-                    HotKeyCode = "sneak",
+                    HotKeyCode = "shift",
                     MouseButton = EnumMouseButton.Right,
                     ShouldApply = (wi, bs, es) => {
                         return true;
@@ -479,7 +480,7 @@ namespace Vintagestory.GameContent
 
         public static int GetTransferStackSize(ILiquidInterface containerBlock, ItemStack contentStack, IPlayer player = null)
         {
-            return GetTransferStackSize(containerBlock, contentStack, player?.Entity?.Controls.Sneak == true);
+            return GetTransferStackSize(containerBlock, contentStack, player?.Entity?.Controls.ShiftKey == true);
         }
 
         public static int GetTransferStackSize(ILiquidInterface containerBlock, ItemStack contentStack, bool maxCapacity)
@@ -782,8 +783,8 @@ namespace Vintagestory.GameContent
 
             CollectibleObject obj = hotbarSlot.Itemstack.Collectible;
 
-            bool singleTake = byPlayer.WorldData.EntityControls.Sneak;
-            bool singlePut = byPlayer.WorldData.EntityControls.Sprint;
+            bool singleTake = byPlayer.WorldData.EntityControls.ShiftKey;
+            bool singlePut = byPlayer.WorldData.EntityControls.CtrlKey;
 
             if (obj is ILiquidSource objLso && !singleTake)
             {
@@ -859,9 +860,9 @@ namespace Vintagestory.GameContent
 
         public override void OnHeldInteractStart(ItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handHandling)
         {
-            if (blockSel == null || byEntity.Controls.Sneak)
+            if (blockSel == null || byEntity.Controls.ShiftKey)
             {
-                if (byEntity.Controls.Sneak) base.OnHeldInteractStart(itemslot, byEntity, blockSel, entitySel, firstEvent, ref handHandling);
+                if (byEntity.Controls.ShiftKey) base.OnHeldInteractStart(itemslot, byEntity, blockSel, entitySel, firstEvent, ref handHandling);
 
                 if (handHandling != EnumHandHandling.PreventDefaultAction && CanDrinkFrom && GetNutritionProperties(byEntity.World, itemslot.Itemstack, byEntity) != null)
                 {
@@ -869,7 +870,7 @@ namespace Vintagestory.GameContent
                     return;
                 }
 
-                if (!byEntity.Controls.Sneak) base.OnHeldInteractStart(itemslot, byEntity, blockSel, entitySel, firstEvent, ref handHandling);
+                if (!byEntity.Controls.ShiftKey) base.OnHeldInteractStart(itemslot, byEntity, blockSel, entitySel, firstEvent, ref handHandling);
 
                 return;
             }
@@ -904,7 +905,7 @@ namespace Vintagestory.GameContent
                     }
                     else
                     {
-                        if (byEntity.Controls.Sprint)
+                        if (byEntity.Controls.CtrlKey)
                         {
                             SpillContents(itemslot, byEntity, blockSel);
                         }
@@ -1145,6 +1146,7 @@ namespace Vintagestory.GameContent
 
         private int splitStackAndPerformAction(Entity byEntity, ItemSlot slot, System.Func<ItemStack, int> action)
         {
+            if (slot.Itemstack == null) return 0;
             if (slot.Itemstack.StackSize == 1)
             {
                 int moved = action(slot.Itemstack);

@@ -26,13 +26,19 @@ namespace Vintagestory.GameContent
         MeshData branchMesh;
         Cuboidf[] colSelBoxes;
 
-        public bool InitAfterWorldGen;
+        /// <summary>
+        /// A value of 0..1. Zero being just a single leaves block, 1 being fully grown tree
+        /// </summary>
+        public float? FastForwardGrowth;
 
 
         bool initialized;
 
         public override void Initialize(ICoreAPI api)
         {
+            this.Api = api;
+            if (Block?.Attributes?["foliageBlock"].Exists != true) return;
+
             blockFoliage = api.World.GetBlock(AssetLocation.Create(Block.Attributes["foliageBlock"].AsString(), Block.Code.Domain)) as BlockFruitTreeFoliage;
             blockBranch = Block as BlockFruitTreeBranch;
 
@@ -40,11 +46,11 @@ namespace Vintagestory.GameContent
 
             base.Initialize(api);
 
-            if (InitAfterWorldGen && Api.Side == EnumAppSide.Server)
+            if (FastForwardGrowth != null && Api.Side == EnumAppSide.Server)
             {
-                lastGrowthAttemptTotalDays = Api.World.Calendar.TotalDays - 20 - Api.World.Rand.Next(600);
+                lastGrowthAttemptTotalDays = Api.World.Calendar.TotalDays - 20 - ((float)FastForwardGrowth * 600);
                 InitTreeRoot(TreeType, true);
-                InitAfterWorldGen = false;
+                FastForwardGrowth = null;
             }
 
             updateProperties();
@@ -176,7 +182,7 @@ namespace Vintagestory.GameContent
         {
             base.OnBlockRemoved();
 
-            var rootBe = (Api.World.BlockAccessor.GetBlockEntity(Pos.AddCopy(RootOff)) as BlockEntityFruitTreeBranch)?.GetBehavior<FruitTreeRootBH>();
+            var rootBe = (Api?.World.BlockAccessor.GetBlockEntity(Pos.AddCopy(RootOff)) as BlockEntityFruitTreeBranch)?.GetBehavior<FruitTreeRootBH>();
             if (rootBe != null)
             {
                 rootBe.BlocksRemoved++;
@@ -255,9 +261,10 @@ namespace Vintagestory.GameContent
             }
 
 
-            var cshape = Block.Attributes["shapes"][shapekey].AsObject<CompositeShape>(null, Block.Code.Domain);
-            IAsset asset = Api.Assets.TryGet(cshape.Base.WithPathAppendixOnce(".json").WithPathPrefixOnce("shapes/"), true);
-            nowTesselatingShape = asset?.ToObject<Shape>();
+            var cshape = Block?.Attributes["shapes"][shapekey].AsObject<CompositeShape>(null, Block.Code.Domain);
+            if (cshape == null) return null;
+
+            nowTesselatingShape = Shape.TryGet(Api, cshape.Base.WithPathAppendixOnce(".json").WithPathPrefixOnce("shapes/"));
             if (nowTesselatingShape == null) return null;
 
             List<string> selectiveElements = null;
@@ -345,7 +352,11 @@ namespace Vintagestory.GameContent
                 ParentOff = new Vec3i(tree.GetInt("parentX"), tree.GetInt("parentY"), tree.GetInt("parentZ"));
             }
 
-            InitAfterWorldGen = tree.GetBool("initAfterWorldGen");
+            FastForwardGrowth = null;
+            if (tree.HasAttribute("fastForwardGrowth"))
+            {
+                FastForwardGrowth = tree.GetFloat("fastForwardGrowth");
+            }
 
             lastGrowthAttemptTotalDays = tree.GetDouble("lastGrowthAttemptTotalDays");
 
@@ -384,7 +395,11 @@ namespace Vintagestory.GameContent
             }
 
             tree.SetInt("growTries", GrowTries);
-            tree.SetBool("initAfterWorldGen", InitAfterWorldGen);
+
+            if (FastForwardGrowth != null) {
+                tree.SetFloat("fastForwardGrowth", (float)FastForwardGrowth);
+            }
+
             tree.SetDouble("lastGrowthAttemptTotalDays", lastGrowthAttemptTotalDays);
         }
 

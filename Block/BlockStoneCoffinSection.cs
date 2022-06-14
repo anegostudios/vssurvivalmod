@@ -67,7 +67,7 @@ namespace Vintagestory.GameContent
             Block blockToPlace = this;
 
             // sneak overrides any placement AI  [##TODO roll this out to other blocks with placement AI, e.g. Chute, MP]
-            if (byPlayer?.Entity.Controls.Sneak == false)
+            if (byPlayer?.Entity.Controls.ShiftKey == false)
             {
                 // see if any neighbours are incomplete stone coffins and facing this - if so, snap to face them
                 foreach (BlockFacing face in BlockFacing.HORIZONTALS)

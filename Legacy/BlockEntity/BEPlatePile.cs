@@ -37,7 +37,7 @@ namespace Vintagestory.GameContent
 
             tmpBlock = Api.World.BlockAccessor.GetBlock(Pos);
             tmpTextureSource = ((ICoreClientAPI)Api).Tesselator.GetTexSource(tmpBlock);
-            Shape shape = Api.Assets.TryGet("shapes/block/metal/platepile.json").ToObject<Shape>();
+            Shape shape = API.Common.Shape.TryGet(Api, "shapes/block/metal/platepile.json");
             MetalProperty metals = Api.Assets.TryGet("worldproperties/block/metal.json").ToObject<MetalProperty>();
 
             for (int i = 0; i < metals.Variants.Length; i++)

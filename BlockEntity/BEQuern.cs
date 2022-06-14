@@ -437,7 +437,7 @@ namespace Vintagestory.GameContent
             MeshData mesh;
             ITesselatorAPI mesher = ((ICoreClientAPI)Api).Tesselator;
 
-            mesher.TesselateShape(block, Api.Assets.TryGet("shapes/block/stone/quern/" + type + ".json").ToObject<Shape>(), out mesh);
+            mesher.TesselateShape(block, API.Common.Shape.TryGet(Api, "shapes/block/stone/quern/" + type + ".json"), out mesh);
 
             return mesh;
         }

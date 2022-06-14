@@ -156,9 +156,10 @@ namespace Vintagestory.GameContent
 
                     var nblock = blockAccessor.GetBlock(bpos);
 
-                    if (nblock.Replaceable >= shootBlock.Replaceable && !nblock.IsLiquid() && blockAccessor.GetBlock(bpos.X, bpos.Y - 1, bpos.Z).Fertility > 0)
+                    if (nblock.Replaceable >= shootBlock.Replaceable && blockAccessor.GetBlock(bpos.X, bpos.Y - 1, bpos.Z).Fertility > 0)
                     {
-                        blockAccessor.SetBlock(shootBlock.BlockId, bpos);
+                        var lblock = blockAccessor.GetLiquidBlock(bpos);
+                        if (lblock.BlockId == 0) blockAccessor.SetBlock(shootBlock.BlockId, bpos);
                     }
                 }
             }

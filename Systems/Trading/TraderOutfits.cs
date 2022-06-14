@@ -30,7 +30,10 @@ namespace Vintagestory.GameContent
         public override void Start(ICoreAPI api)
         {
             this.api = api;
+        }
 
+        public override void AssetsLoaded(ICoreAPI api)
+        {
             props = api.Assets.TryGet(new AssetLocation("config/traderaccessories.json"))?.ToObject<TraderWearableProperties>();
             if (props == null) throw new FileNotFoundException("config/traderaccessories.json is missing.");
 

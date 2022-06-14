@@ -21,7 +21,7 @@ namespace Vintagestory.GameContent
         {
             this.capi = api;
 
-            api.Input.RegisterHotKey("handbook", "Show VS Handbook", GlKeys.H, HotkeyType.GUIOrOtherControls);
+            api.Input.RegisterHotKeyFirst("handbook", "Show Handbook", GlKeys.H, HotkeyType.HelpAndOverlays);
             api.Input.SetHotKeyHandler("handbook", OnHelpHotkey);
 
             api.Event.LevelFinalize += Event_LevelFinalize;
@@ -48,6 +48,7 @@ namespace Vintagestory.GameContent
         private void Event_LevelFinalize()
         {
             dialog = new GuiDialogHandbook(capi);
+            capi.Logger.VerboseDebug("Done initialising handbook");
         }
 
         private bool OnHelpHotkey(KeyCombination key)
@@ -72,7 +73,7 @@ namespace Vintagestory.GameContent
                     }
                 }
 
-                if (capi.World.Player.Entity.Controls.Sneak && capi.World.Player.CurrentBlockSelection != null)
+                if (capi.World.Player.Entity.Controls.ShiftKey && capi.World.Player.CurrentBlockSelection != null)
                 {
                     BlockPos pos = capi.World.Player.CurrentBlockSelection.Position;
                     ItemStack stack = capi.World.BlockAccessor.GetBlock(pos).OnPickBlock(capi.World, pos);
@@ -93,6 +94,7 @@ namespace Vintagestory.GameContent
         {
             base.Dispose();
             dialog?.Dispose();
+            capi?.Input.HotKeys.Remove("handbook");
         }
 
     }

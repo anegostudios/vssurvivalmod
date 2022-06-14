@@ -141,7 +141,7 @@ namespace Vintagestory.GameContent
 
         public bool OnPlayerInteract(IPlayer byPlayer, BlockFacing onFace, Vec3d hitPosition)
         {
-            bool sneaking = byPlayer.Entity.Controls.Sneak;
+            bool sneaking = byPlayer.Entity.Controls.ShiftKey;
 
             if (!sneaking)
             {

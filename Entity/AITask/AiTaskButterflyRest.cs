@@ -113,9 +113,10 @@ namespace Vintagestory.GameContent
                 tmpPos.Set((int)(entity.ServerPos.X + dx), 0, (int)(entity.ServerPos.Z + dz));
                 tmpPos.Y = entity.World.BlockAccessor.GetTerrainMapheightAt(tmpPos) + i;
 
-                Block block = entity.World.BlockAccessor.GetBlock(tmpPos);
-                if (block.IsLiquid()) return false;
+                Block liquidBlock = entity.World.BlockAccessor.GetLiquidBlock(tmpPos);
+                if (liquidBlock.BlockId != 0) continue;   // If it's non-zero, the target is currently underwater or encased in ice!
 
+                Block block = entity.World.BlockAccessor.GetBlock(tmpPos);
                 bool weak = block.VertexFlags?.WindMode == EnumWindBitMode.WeakWind || block.VertexFlags?.WindMode == EnumWindBitMode.TallBend;
 
                 if (block.Attributes?.IsTrue("butterflyFeed") == true)

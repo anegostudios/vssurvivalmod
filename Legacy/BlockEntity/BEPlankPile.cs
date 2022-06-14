@@ -37,7 +37,7 @@ namespace Vintagestory.GameContent
 
             tmpBlock = Api.World.BlockAccessor.GetBlock(Pos);
             tmpTextureSource = ((ICoreClientAPI)Api).Tesselator.GetTexSource(tmpBlock);
-            Shape shape = Api.Assets.TryGet("shapes/block/wood/plankpile.json").ToObject<Shape>();
+            Shape shape = API.Common.Shape.TryGet(Api, "shapes/block/wood/plankpile.json");
             MetalProperty woodtpyes = Api.Assets.TryGet("worldproperties/block/wood.json").ToObject<MetalProperty>();
 
             woodtpyes.Variants = woodtpyes.Variants.Append(new MetalPropertyVariant() { Code = new AssetLocation("aged") });

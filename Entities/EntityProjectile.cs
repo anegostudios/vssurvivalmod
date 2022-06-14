@@ -152,7 +152,7 @@ namespace Vintagestory.GameContent
                         ProjectileStack.Collectible.DamageItem(World, this, new DummySlot(ProjectileStack));
                     }
 
-                    int leftDurability = ProjectileStack == null ? 1 : ProjectileStack.Attributes.GetInt("durability", 1);
+                    int leftDurability = ProjectileStack == null ? 1 : ProjectileStack.Collectible.GetRemainingDurability(ProjectileStack);
                     if (leftDurability <= 0)
                     {
                         Die();
@@ -257,7 +257,7 @@ namespace Vintagestory.GameContent
                     ProjectileStack.Collectible.DamageItem(entity.World, entity, new DummySlot(ProjectileStack));
                 }
 
-                int leftDurability = ProjectileStack == null ? 1 : ProjectileStack.Attributes.GetInt("durability", 1);
+                int leftDurability = ProjectileStack == null ? 1 : ProjectileStack.Collectible.GetRemainingDurability(ProjectileStack);
 
 
                 if (World.Rand.NextDouble() < DropOnImpactChance && leftDurability > 0)

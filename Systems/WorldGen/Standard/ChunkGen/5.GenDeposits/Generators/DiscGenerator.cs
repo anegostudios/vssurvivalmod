@@ -146,11 +146,13 @@ namespace Vintagestory.ServerMods
                     string key = InBlock.Name;
                     string value = WildcardUtil.GetWildcardValue(InBlock.Code, block.Code);
 
-                    placeBlockByInBlockId[block.BlockId] = PlaceBlock.Resolve(variant.fromFile, Api, block, key, value);
+                    ResolvedDepositBlock depositBlocks = placeBlockByInBlockId[block.BlockId] = PlaceBlock.Resolve(variant.fromFile, Api, block, key, value);
                     if (SurfaceBlock != null)
                     {
                         surfaceBlockByInBlockId[block.BlockId] = SurfaceBlock.Resolve(variant.fromFile, Api, block, key, value);
                     }
+
+                    Block[] placeBlocks = depositBlocks.Blocks;
 
                     if (variant.ChildDeposits != null)
                     {
@@ -164,7 +166,7 @@ namespace Vintagestory.ServerMods
                             }
 
                             
-                            foreach (Block depositblock in placeBlockByInBlockId[block.BlockId].Blocks)
+                            foreach (Block depositblock in placeBlocks)
                             {
                                 (val.GeneratorInst as ChildDepositGenerator).ResolveAdd(depositblock, key, value);
                             }
@@ -174,15 +176,14 @@ namespace Vintagestory.ServerMods
                     }
 
                     // Host rock for
-                    if (block.Id != 0)
+                    if (block.Id != 0 && variant.addHandbookAttributes)
                     {
                         if (block.Attributes == null) block.Attributes = new JsonObject(JToken.Parse("{}"));
                         int[] oreIds = block.Attributes["hostRockFor"].AsArray<int>(new int[0]);
-                        oreIds = oreIds.Append(placeBlockByInBlockId[block.BlockId].Blocks.Select(b => b.BlockId).ToArray());
+                        oreIds = oreIds.Append(placeBlocks.Select(b => b.BlockId).ToArray());
                         block.Attributes.Token["hostRockFor"] = JToken.FromObject(oreIds);
 
                         // In host rock
-                        Block[] placeBlocks = placeBlockByInBlockId[block.BlockId].Blocks;
                         for (int i = 0; i < placeBlocks.Length; i++)
                         {
                             Block pblock = placeBlocks[i];
@@ -209,11 +210,11 @@ namespace Vintagestory.ServerMods
 
         public override void GenDeposit(IBlockAccessor blockAccessor, IServerChunk[] chunks, int chunkX, int chunkZ, BlockPos depoCenterPos, ref Dictionary<BlockPos, DepositVariant> subDepositsToPlace)
         {
-            int depositGradeIndex = PlaceBlock.MaxGrade == 0 ? 0 : DepositRand.NextInt(PlaceBlock.MaxGrade);
-
             int radius = Math.Min(64, (int)Radius.nextFloat(1, DepositRand));
             if (radius <= 0) return;
 
+            int depositGradeIndex = PlaceBlock.MaxGrade == 0 ? 0 : DepositRand.NextInt(PlaceBlock.MaxGrade);
+            int chunksize = this.chunksize;
 
             // Let's deform that perfect circle a bit (+/- 25%)
             float deform = GameMath.Clamp(DepositRand.NextFloat() - 0.5f, -0.25f, 0.25f);
@@ -262,51 +263,54 @@ namespace Vintagestory.ServerMods
             maxx = GameMath.Clamp(depoCenterPos.X + radiusX, minx, maxx);
             minz = GameMath.Clamp(depoCenterPos.Z - radiusZ, minz, maxz);
             maxz = GameMath.Clamp(depoCenterPos.Z + radiusZ, minz, maxz);
+            if (minx < baseX) minx = baseX;
+            if (maxx > baseX + chunksize) maxx = baseX + chunksize;
+            if (minz < baseZ) minz = baseZ;
+            if (maxz > baseZ + chunksize) maxz = baseZ + chunksize;
 
             //int placed = 0;
 
             float invChunkAreaSize = 1f / (chunksize * chunksize);
-            double val = 1;
-            
+            double val;
+
+            int posy;
             for (int posx = minx; posx < maxx; posx++)
             {
-                targetPos.X = posx;
-                lx = targetPos.X - baseX;
+                lx = posx - baseX;
                 distx = posx - depoCenterPos.X;
 
                 float xSq = distx * distx * xRadSqInv;
 
                 for (int posz = minz; posz < maxz; posz++)
                 {
-
-                    targetPos.Y = depoCenterPos.Y;
-                    targetPos.Z = posz;
-                    lz = targetPos.Z - baseZ;
+                    posy = depoCenterPos.Y;
+                    lz = posz - baseZ;
                     distz = posz - depoCenterPos.Z;
 
 
                     // Kinda weird mathematically speaking, but seems to work as a means to distort the perfect circleness of deposits ¯\_(ツ)_/¯
                     // Also not very efficient to use direct perlin noise in here :/
                     // But after ~10 hours of failing (=weird lines of missing deposit material) with a pre-generated 2d distortion map i give up >.>
-                    val = 1 - (radius > 3 ? DistortNoiseGen.Noise(targetPos.X / 3.0, targetPos.Z / 3.0) * 0.2 : 0);
+                    val = 1 - (radius > 3 ? DistortNoiseGen.Noise(posx / 3.0, posz / 3.0) * 0.2 : 0);
                     double distanceToEdge = val - (xSq + distz * distz * zRadSqInv);
+                    if (distanceToEdge < 0) continue;
 
-                    if (distanceToEdge < 0 || lx < 0 || lz < 0 || lx >= chunksize || lz >= chunksize) continue;
-
-                    
+                    targetPos.Set(posx, posy, posz);
                     loadYPosAndThickness(heremapchunk, lx, lz, targetPos, distanceToEdge);
+                    posy = targetPos.Y;
+                    if (posy >= worldheight) continue;
 
 
                     // Some deposits may not appear all over cliffs
-                    if (Math.Abs(depoCenterPos.Y - targetPos.Y) > MaxYRoughness) continue;
+                    if (Math.Abs(depoCenterPos.Y - posy) > MaxYRoughness) continue;
 
 
                     for (int y = 0; y < hereThickness; y++)
                     {
-                        if (targetPos.Y <= 1 || targetPos.Y >= worldheight) continue;
+                        if (posy <= 1) continue;
 
-                        int index3d = ((targetPos.Y % chunksize) * chunksize + lz) * chunksize + lx;
-                        int blockId = chunks[targetPos.Y / chunksize].Blocks[index3d];
+                        int index3d = ((posy % chunksize) * chunksize + lz) * chunksize + lx;
+                        int blockId = chunks[posy / chunksize].Blocks.GetBlockIdUnsafe(index3d);
 
 
                         if (!IgnoreParentTestPerBlock || !parentBlockOk)
@@ -322,25 +326,29 @@ namespace Vintagestory.ServerMods
 
                             if (variant.WithBlockCallback || (WithLastLayerBlockCallback && y == hereThickness-1))
                             {
-                                placeblock.TryPlaceBlockForWorldGen(blockAccessor, targetPos.Copy(), BlockFacing.UP, DepositRand);
+                                targetPos.Y = posy;
+                                placeblock.TryPlaceBlockForWorldGen(blockAccessor, targetPos, BlockFacing.UP, DepositRand);
                             }
                             else
                             {
-                                chunks[targetPos.Y / chunksize].Blocks[index3d] = placeblock.BlockId;
+                                IChunkBlocks chunkdata = chunks[posy / chunksize].Blocks;
+                                chunkdata.SetBlockUnsafe(index3d, placeblock.BlockId);
+                                chunkdata.SetLiquid(index3d, 0);
                             }
 
-                            if (variant.ChildDeposits != null)
+                            DepositVariant[] childDeposits = variant.ChildDeposits;
+                            if (childDeposits != null)
                             {
-                                for (int i = 0; i < variant.ChildDeposits.Length; i++)
+                                for (int i = 0; i < childDeposits.Length; i++)
                                 {
                                     float rndVal = DepositRand.NextFloat();
-                                    float quantity = variant.ChildDeposits[i].TriesPerChunk * invChunkAreaSize;
+                                    float quantity = childDeposits[i].TriesPerChunk * invChunkAreaSize;
 
                                     if (quantity > rndVal)
                                     {
-                                        if (ShouldPlaceAdjustedForOreMap(variant.ChildDeposits[i], targetPos.X, targetPos.Z, quantity, rndVal))
+                                        if (ShouldPlaceAdjustedForOreMap(childDeposits[i], posx, posz, quantity, rndVal))
                                         {
-                                            subDepositsToPlace[targetPos.Copy()] = variant.ChildDeposits[i];
+                                            subDepositsToPlace[new BlockPos(posx, posy, posz)] = childDeposits[i];
                                         }
                                     }
                                 }
@@ -349,22 +357,25 @@ namespace Vintagestory.ServerMods
                             if (shouldGenSurfaceDeposit)
                             {
                                 int surfaceY = heremapchunk.RainHeightMap[lz * chunksize + lx];
-                                int depth = surfaceY - targetPos.Y;
+                                int depth = surfaceY - posy;
                                 float chance = SurfaceBlockChance * Math.Max(0, 1.11f - depth / 9f);
                                 if (surfaceY < worldheight - 1 && DepositRand.NextFloat() < chance)
                                 {
-                                    Block belowBlock = Api.World.Blocks[chunks[surfaceY / chunksize].Blocks[((surfaceY % chunksize) * chunksize + lz) * chunksize + lx]];
-
-                                    index3d = (((surfaceY + 1) % chunksize) * chunksize + lz) * chunksize + lx;
-                                    if (belowBlock.SideSolid[BlockFacing.UP.Index] && chunks[(surfaceY + 1) / chunksize].Blocks[index3d] == 0)
+                                    Block belowBlock = Api.World.Blocks[chunks[surfaceY / chunksize].Blocks.GetBlockIdUnsafe(((surfaceY % chunksize) * chunksize + lz) * chunksize + lx)];
+                                    if (belowBlock.SideSolid[BlockFacing.UP.Index])
                                     {
-                                        chunks[(surfaceY + 1) / chunksize].Blocks[index3d] = surfaceBlockByInBlockId[blockId].Blocks[0].BlockId;
+                                        index3d = (((surfaceY + 1) % chunksize) * chunksize + lz) * chunksize + lx;
+                                        IChunkBlocks chunkBlockData = chunks[(surfaceY + 1) / chunksize].Blocks;
+                                        if (chunkBlockData.GetBlockIdUnsafe(index3d) == 0)
+                                        {
+                                            chunkBlockData[index3d] = surfaceBlockByInBlockId[blockId].Blocks[0].BlockId;
+                                        }
                                     }
                                 }
                             }
                         }
 
-                        targetPos.Y--;
+                        posy--;
                     }
                 }
             }

@@ -79,7 +79,7 @@ namespace Vintagestory.GameContent
                     new WorldInteraction()
                     {
                         ActionLangCode = "blockhelp-ingotmold-pour",
-                        HotKeyCode = "sneak",
+                        HotKeyCode = "shift",
                         MouseButton = EnumMouseButton.Right,
                         Itemstacks = smeltedContainerStacks.ToArray(),
                         GetMatchingStacks = (wi, bs, es) =>
@@ -114,7 +114,7 @@ namespace Vintagestory.GameContent
                     new WorldInteraction()
                     {
                         ActionLangCode = "blockhelp-ingotmold-placemold",
-                        HotKeyCode = "sneak",
+                        HotKeyCode = "shift",
                         Itemstacks = new ItemStack[] { new ItemStack(this) },
                         MouseButton = EnumMouseButton.Right,
                         GetMatchingStacks = (wi, bs, es) =>
@@ -144,7 +144,7 @@ namespace Vintagestory.GameContent
                     new WorldInteraction()
                     {
                         ActionLangCode = "blockhelp-ingotmold-pour",
-                        HotKeyCode = "sneak",
+                        HotKeyCode = "shift",
                         MouseButton = EnumMouseButton.Right,
                         Itemstacks = smeltedContainerStacks.ToArray(),
                         GetMatchingStacks = (wi, bs, es) =>
@@ -240,7 +240,7 @@ namespace Vintagestory.GameContent
         
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
         {
-            if (!byPlayer.Entity.Controls.Sneak)
+            if (!byPlayer.Entity.Controls.ShiftKey)
             {
                 failureCode = "onlywhensneaking";
                 return false;

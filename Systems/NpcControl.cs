@@ -30,7 +30,7 @@ namespace Vintagestory.ServerMods
 
             sapi = api;
             api.RegisterCommand("npc", "Npc control", "[list|enqueue or enq|upd|start|clear|exec]", OnCmdNpc, Privilege.controlserver);
-            api.RegisterCommand("npcs", "Npc control", "[startall|stopall]", OnCmdNpcs, Privilege.controlserver);
+            api.RegisterCommand("npcs", "Npc control", "[startall|stopall|loopall]", OnCmdNpcs, Privilege.controlserver);
 
             api.Event.OnPlayerInteractEntity += Event_OnPlayerInteractEntity;
         }
@@ -47,37 +47,61 @@ namespace Vintagestory.ServerMods
         private void OnCmdNpcs(IServerPlayer player, int groupId, CmdArgs args)
         {
             string cmd = args.PopWord();
-            bool exec = cmd == "startall" || cmd == "startallrandom";
+            bool start = cmd == "startall" || cmd == "startallrandom";
 
-            if (cmd != "startall" && cmd == "stopall" || cmd=="startallrandom")
+            if (cmd != "startall" && cmd != "stopall" && cmd != "startallrandom" && cmd != "loopall")
             {
                 player.SendMessage(groupId, "Unknown command", EnumChatType.Notification);
+                return;
             }
+
+            bool loop = (bool)args.PopBool(false);
 
             foreach (var val in sapi.World.LoadedEntities)
             {
                 EntityAnimalBot npc = val.Value as EntityAnimalBot;
                 if (npc != null)
                 {
-                    if (exec)
+                    if (start)
                     {
                         if (cmd == "startallrandom")
                         {
                             sapi.Event.RegisterCallback((dt) => npc.StartExecuteCommands(), (int)(sapi.World.Rand.NextDouble() * 200));
-                        } else
+                        }
+                        else
                         {
                             npc.StartExecuteCommands();
                         }
 
                     }
-                    else npc.StopExecuteCommands();
+                    else
+                    {
+                        if (cmd == "loopall")
+                        {
+                            npc.LoopCommands = loop;
+                        }
+                        else npc.StopExecuteCommands();
+                    }
                 }
+            }
+            switch (cmd)
+            {
+                case "startall":
+                case "startallrandom":
+                    player.SendMessage(groupId, "Command lists started", EnumChatType.Notification);
+                    break;
+                case "stopall":
+                    player.SendMessage(groupId, "Command lists stopped", EnumChatType.Notification);
+                    break;
+                case "loopall":
+                    player.SendMessage(groupId, "Command list looping is now " + (loop ? "on" : "off"), EnumChatType.Notification);
+                    break;
             }
         }
 
         private void OnCmdNpc(IServerPlayer player, int groupId, CmdArgs args)
         {
-            long entityid = 0;
+            long entityid;
 
             currentEntityIdByPlayerUid.TryGetValue(player.PlayerUID, out entityid);
 
@@ -102,6 +126,37 @@ namespace Vintagestory.ServerMods
 
             switch (cmd)
             {
+                case "setname":
+
+                    entity.GetBehavior<EntityBehaviorNameTag>()?.SetName(args.PopWord());
+                    player.SendMessage(groupId, "Name set.", EnumChatType.Notification);
+
+                    break;
+
+                case "copyskin":
+                    var selfskin = player.Entity.GetBehavior<EntityBehaviorExtraSkinnable>();
+                    var botskin = entityNpc.GetBehavior<EntityBehaviorExtraSkinnable>();
+
+                    if (selfskin == null)
+                    {
+                        player.SendMessage(groupId, "Can't copy, player is not skinnable", EnumChatType.Notification);
+                        return;
+                    }
+
+                    if (botskin == null)
+                    {
+                        player.SendMessage(groupId, "Can't copy, bot is not skinnable", EnumChatType.Notification);
+                        return;
+                    }
+
+                    foreach (var val in selfskin.AppliedSkinParts)
+                    {
+                        botskin.selectSkinPart(val.PartCode, val.Code, false);
+                    }
+
+                    entityNpc.WatchedAttributes.MarkPathDirty("skinConfig");
+
+                    break;
 
                 case "start":
                     entityNpc.StartExecuteCommands();
@@ -172,13 +227,12 @@ namespace Vintagestory.ServerMods
                         return;
                     }
 
-
                 case "exec":
                     {
                         string subcmd = args.PopWord();
                         if (subcmd == null)
                         {
-                            player.SendMessage(groupId, "Syntax: /npc enq [tp|goto|upd|playanim]", EnumChatType.Notification);
+                            player.SendMessage(groupId, "Syntax: /npc exec [tp|goto|upd|playanim]", EnumChatType.Notification);
                             return;
                         }
 
@@ -190,6 +244,11 @@ namespace Vintagestory.ServerMods
                             Vec3d spawnpos = sapi.World.DefaultSpawnPosition.XYZ;
                             spawnpos.Y = 0;
                             target = args.PopFlexiblePos(player.Entity.Pos.XYZ, spawnpos);
+                            if (target == null)
+                            {
+                                player.SendMessage(groupId, "Syntax: /npc exec [tp|goto] x y z", EnumChatType.Notification);
+                                return;
+                            }
                         }
                         if (subcmd == "goto")
                         {

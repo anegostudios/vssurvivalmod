@@ -68,7 +68,7 @@ namespace Vintagestory.GameContent
                 return false;
             }
 
-            if (!byPlayer.Entity.Controls.Sneak)
+            if (!byPlayer.Entity.Controls.ShiftKey)
             {
                 if (world.Side == EnumAppSide.Server && BlockBehaviorReinforcable.AllowRightClickPickup(world, blockSel.Position, byPlayer)) {
                     bool blockToBreak = true;

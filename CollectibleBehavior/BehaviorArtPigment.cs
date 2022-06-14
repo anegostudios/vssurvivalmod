@@ -200,7 +200,7 @@ namespace Vintagestory.GameContent
 
             IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
             if (!byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak)) return;
-            if (byPlayer == null || !byPlayer.Entity.Controls.Sprint) return;
+            if (byPlayer == null || !byPlayer.Entity.Controls.CtrlKey) return;
             if (!SuitablePosition(byEntity.World.BlockAccessor, blockSel)) return;
 
             handHandling = EnumHandHandling.PreventDefault;
@@ -212,7 +212,7 @@ namespace Vintagestory.GameContent
 
             IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
             if (!byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak)) return false;
-            if (byPlayer == null || !byPlayer.Entity.Controls.Sprint) return false;
+            if (byPlayer == null || !byPlayer.Entity.Controls.CtrlKey) return false;
             if (!SuitablePosition(byEntity.World.BlockAccessor, blockSel)) return false;
 
             handling = EnumHandling.PreventSubsequent;
@@ -225,7 +225,7 @@ namespace Vintagestory.GameContent
 
             IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
             if (!byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak)) return;
-            if (byPlayer == null || !byPlayer.Entity.Controls.Sprint) return;
+            if (byPlayer == null || !byPlayer.Entity.Controls.CtrlKey) return;
 
             IBlockAccessor blockAccessor = byEntity.World.BlockAccessor;
             if (!SuitablePosition(blockAccessor, blockSel)) return;
@@ -356,7 +356,7 @@ namespace Vintagestory.GameContent
             {
                 new WorldInteraction
                 {
-                    HotKeyCode = "sprint",
+                    HotKeyCode = "ctrl",
                     ActionLangCode = "heldhelp-draw",
                     MouseButton = EnumMouseButton.Right
                 }

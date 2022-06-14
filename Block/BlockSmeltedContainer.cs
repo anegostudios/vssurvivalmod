@@ -22,7 +22,7 @@ namespace Vintagestory.GameContent
         {
             smokeHeld = new SimpleParticleProperties(
                 1, 1,
-                ColorUtil.ToRgba(50, 220, 220, 220),
+                ColorUtil.ToRgba(50, 180, 180, 180),
                 new Vec3d(),
                 new Vec3d(),
                 new Vec3f(-0.25f, 0.1f, -0.25f),
@@ -37,7 +37,7 @@ namespace Vintagestory.GameContent
 
             smokePouring = new SimpleParticleProperties(
                 1, 2,
-                ColorUtil.ToRgba(50, 220, 220, 220),
+                ColorUtil.ToRgba(50, 180, 180, 180),
                 new Vec3d(),
                 new Vec3d(),
                 new Vec3f(-0.5f, 0f, -0.5f),
@@ -52,7 +52,7 @@ namespace Vintagestory.GameContent
 
             bigMetalSparks = new SimpleParticleProperties(
                 1, 1,
-                ColorUtil.ToRgba(255, 255, 233, 83),
+                ColorUtil.ToRgba(255, 255, 169, 83),
                 new Vec3d(), new Vec3d(),
                 new Vec3f(-3f, 1f, -3f),
                 new Vec3f(3f, 8f, 3f),
@@ -63,6 +63,10 @@ namespace Vintagestory.GameContent
             bigMetalSparks.VertexFlags = 128;
         }
 
+        public override string GetHeldTpUseAnimation(ItemSlot activeHotbarSlot, Entity forEntity)
+        {
+            return "pour";
+        }
 
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
         {
@@ -188,6 +192,9 @@ namespace Vintagestory.GameContent
             float speed = 1.5f;
             float temp = GetTemperature(byEntity.World, slot.Itemstack);
 
+            EntityPlayer eplr = byEntity as EntityPlayer;
+            var player = eplr.Player;
+
             if (byEntity.World is IClientWorldAccessor)
             {
                 ModelTransform tf = new ModelTransform();
@@ -198,14 +205,18 @@ namespace Vintagestory.GameContent
                 tf.Scale = 1f + Math.Min(0.25f, speed * secondsUsed / 4);
                 tf.Rotation.X = Math.Max(-110, -secondsUsed * 90 * speed);
                 byEntity.Controls.UsingHeldItemTransformBefore = tf;
+
+                
             }
-
-            IPlayer byPlayer = null;
-            if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
-
 
             if (secondsUsed > 1 / speed)
             {
+                if (!slot.Itemstack.Attributes.HasAttribute("nowPouringEntityId"))
+                {
+                    slot.Itemstack.Attributes.SetLong("nowPouringEntityId", byEntity.EntityId);
+                    slot.MarkDirty();
+                }
+
                 if ((int)(30 * secondsUsed) % 3 == 1)
                 {
                     Vec3d pos = 
@@ -221,15 +232,6 @@ namespace Vintagestory.GameContent
 
                     bigMetalSparks.MinQuantity = Math.Max(0.2f, 1 - (secondsUsed - 1) / 4);
 
-                    if ((int)(30 * secondsUsed) % 7 == 1)
-                    {
-                        bigMetalSparks.MinPos = pos;
-                        bigMetalSparks.MinVelocity.Set(-2, -1, -2);
-                        bigMetalSparks.AddVelocity.Set(4, 1, 4);
-                        byEntity.World.SpawnParticles(bigMetalSparks, byPlayer);
-
-                        byEntity.World.SpawnParticles(smokePouring, byPlayer);
-                    }
 
                     float y2 = 0;
                     Block block = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
@@ -245,21 +247,21 @@ namespace Vintagestory.GameContent
                     bigMetalSparks.MinPos = blockpos.AddCopy(-0.25, y2 - 2/16f, -0.25);
                     bigMetalSparks.AddPos.Set(0.5, 0, 0.5);
                     bigMetalSparks.VertexFlags = (byte)GameMath.Clamp((int)temp - 770, 48, 128);
-                    byEntity.World.SpawnParticles(bigMetalSparks, byPlayer);
+                    byEntity.World.SpawnParticles(bigMetalSparks, player);
 
                     // Smoke on the mold
                     byEntity.World.SpawnParticles(
                         Math.Max(1, 12 - (secondsUsed-1) * 6),
-                        ColorUtil.ToRgba(50, 220, 220, 220),
+                        ColorUtil.ToRgba(50, 180, 180, 180),
                         blockpos.AddCopy(-0.5, y2 - 2 / 16f, -0.5),
                         blockpos.Add(0.5, y2 - 2 / 16f + 0.15, 0.5),
                         new Vec3f(-0.5f, 0f, -0.5f),
                         new Vec3f(0.5f, 0f, 0.5f),
                         1.5f,
                         -0.05f,
-                        0.75f,
+                        0.4f,
                         EnumParticleModel.Quad,
-                        byPlayer
+                        player
                     );
 
                 }
@@ -290,14 +292,106 @@ namespace Vintagestory.GameContent
         }
 
 
+        public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
+        {
+            base.OnBeforeRender(capi, itemstack, target, ref renderinfo);
+
+            if (target == EnumItemRenderTarget.HandTp)
+            {
+                long eid = itemstack.Attributes.GetLong("nowPouringEntityId");
+                if (eid != 0)
+                {
+                    var entity = capi.World.GetEntityById(eid) as EntityAgent;
+                    if (entity == null) return;
+
+                    if (eid != capi.World.Player.Entity.EntityId || capi.World.Player.CameraMode != EnumCameraMode.FirstPerson || capi.Settings.Bool["immersiveFpMode"])
+                    {
+                        SpawnPouringParticles(entity);
+                    }
+                }
+
+            }
+        }
+
+        void SpawnPouringParticles(EntityAgent byEntity)
+        {
+            EntityPlayer eplr = byEntity as EntityPlayer;
+            var player = eplr.Player;
+
+            AttachmentPointAndPose apap = byEntity.AnimManager.Animator.GetAttachmentPointPose("RightHand");
+            if (apap != null && api.World.Rand.NextDouble() < 0.25)
+            {
+                AttachmentPoint ap = apap.AttachPoint;
+
+                float bodyYaw = eplr.BodyYaw;
+                float rotX = eplr.Properties.Client.Shape != null ? eplr.Properties.Client.Shape.rotateX : 0;
+                float rotY = eplr.Properties.Client.Shape != null ? eplr.Properties.Client.Shape.rotateY : 0;
+                float rotZ = eplr.Properties.Client.Shape != null ? eplr.Properties.Client.Shape.rotateZ : 0;
+                float bodyPitch = eplr.WalkPitch;
+
+
+                var mat = new Matrixf()
+                    .RotateX(eplr.SidedPos.Roll + rotX * GameMath.DEG2RAD)
+                    .RotateY(bodyYaw + (180 + rotY) * GameMath.DEG2RAD)
+                    .RotateZ(bodyPitch + rotZ * GameMath.DEG2RAD)
+                    .Scale(eplr.Properties.Client.Size, eplr.Properties.Client.Size, eplr.Properties.Client.Size)
+                    .Translate(-0.5f, 0, -0.5f)
+                    .RotateX(eplr.sidewaysSwivelAngle)
+                    .Translate(ap.PosX / 16f, ap.PosY / 16f, ap.PosZ / 16f)
+                    .Mul(apap.AnimModelMatrix)
+                    .Translate(-0.15f, 0.0f, 0.15f)
+                ;
+
+                float[] pos = new float[4] { 0, 0f, 0, 1 };
+                float[] endVec = Mat4f.MulWithVec4(mat.Values, pos);
+
+                bigMetalSparks.GravityEffect = 0.5f;
+                bigMetalSparks.Bounciness = 0.6f;
+                bigMetalSparks.MinQuantity = 1;
+                bigMetalSparks.AddQuantity = 1;
+                bigMetalSparks.MinPos = new Vec3d(eplr.Pos.X + endVec[0], eplr.Pos.Y + endVec[1], eplr.Pos.Z + endVec[2]);
+                bigMetalSparks.AddPos.Set(0, 0, 0);
+                bigMetalSparks.MinSize = 0.75f;
+
+                float dx = (float)Math.Sin(bodyYaw + GameMath.PIHALF) / 2f;
+                float dz = (float)Math.Cos(bodyYaw + GameMath.PIHALF) / 2f;
+
+                bigMetalSparks.MinVelocity.Set(-0.1f + dx, -1, -0.1f + dz);
+                bigMetalSparks.AddVelocity.Set(0.2f + dz, 1, 0.2f + dz);
+                byEntity.World.SpawnParticles(bigMetalSparks, eplr?.Player);
+
+                byEntity.World.SpawnParticles(
+                    4,
+                    ColorUtil.ToRgba(50, 180, 180, 180),
+                    bigMetalSparks.MinPos,
+                    bigMetalSparks.MinPos.AddCopy(dx / 5f, -0.3, dz / 5f),
+                    new Vec3f(-0.5f, 0f, -0.5f),
+                    new Vec3f(0.5f, 0f, 0.5f),
+                    1.5f,
+                    -0.05f,
+                    0.4f,
+                    EnumParticleModel.Quad,
+                    eplr.Player
+                );
+            }
+        }
+
         public override void OnHeldInteractStop(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
+            slot.Itemstack?.Attributes.RemoveAttribute("nowPouringEntityId");
             slot.MarkDirty();
 
             if (blockSel == null) return;
                  
             ILiquidMetalSink be = byEntity.World.BlockAccessor.GetBlockEntity(blockSel.Position) as ILiquidMetalSink;
             be?.OnPourOver();
+        }
+
+        public override bool OnHeldInteractCancel(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)
+        {
+            slot.Itemstack?.Attributes.RemoveAttribute("nowPouringEntityId");
+
+            return base.OnHeldInteractCancel(secondsUsed, slot, byEntity, blockSel, entitySel, cancelReason);
         }
 
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)

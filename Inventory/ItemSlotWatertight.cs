@@ -43,7 +43,7 @@ namespace Vintagestory.GameContent
                 {
                     ItemStack bucketStack = sourceSlot.Itemstack;
 
-                    float toMoveLitres = (op?.ActingPlayer?.Entity.Controls.Sneak ?? false) ? liqCntBlock.CapacityLitres : liqCntBlock.TransferSizeLitres;
+                    float toMoveLitres = (op?.ActingPlayer?.Entity.Controls.ShiftKey ?? false) ? liqCntBlock.CapacityLitres : liqCntBlock.TransferSizeLitres;
                     float curDestLitres = StackSize / liqProps.ItemsPerLitre;
                     float curSrcLitres = contentStack.StackSize / liqProps.ItemsPerLitre;
 

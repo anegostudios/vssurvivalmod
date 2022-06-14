@@ -119,7 +119,7 @@ namespace Vintagestory.GameContent
             if (firstCodePart == "metalplate")
             {
                 tmpTextureSource = capi.Tesselator.GetTexSource(capi.World.GetBlock(new AssetLocation("platepile")));
-                shape = capi.Assets.TryGet("shapes/block/stone/forge/platepile.json").ToObject<Shape>();
+                shape = API.Common.Shape.TryGet(capi, "shapes/block/stone/forge/platepile.json");
                 textureId = tmpTextureSource[tmpMetal].atlasTextureId;
                 capi.Tesselator.TesselateShape("block-fcr", shape, out mesh, this, null, 0, 0, 0, stack.StackSize);
 
@@ -127,14 +127,17 @@ namespace Vintagestory.GameContent
             else if (firstCodePart == "workitem")
             {
                 MeshData workItemMesh = ItemWorkItem.GenMesh(capi, stack, ItemWorkItem.GetVoxels(stack), out textureId);
-                workItemMesh.Scale(new Vec3f(0.5f, 0.5f, 0.5f), 0.75f, 0.75f, 0.75f); 
-                workItemMesh.Translate(0, -9f/16f, 0);
-                workItemMeshRef = capi.Render.UploadMesh(workItemMesh);
+                if (workItemMesh != null)
+                {
+                    workItemMesh.Scale(new Vec3f(0.5f, 0.5f, 0.5f), 0.75f, 0.75f, 0.75f);
+                    workItemMesh.Translate(0, -9f / 16f, 0);
+                    workItemMeshRef = capi.Render.UploadMesh(workItemMesh);
+                }
             }
             else if (firstCodePart == "ingot")
             {
                 tmpTextureSource = capi.Tesselator.GetTexSource(capi.World.GetBlock(new AssetLocation("ingotpile")));
-                shape = capi.Assets.TryGet("shapes/block/stone/forge/ingotpile.json").ToObject<Shape>();
+                shape = API.Common.Shape.TryGet(capi, "shapes/block/stone/forge/ingotpile.json");
                 textureId = tmpTextureSource[tmpMetal].atlasTextureId;
                 capi.Tesselator.TesselateShape("block-fcr", shape, out mesh, this, null, 0, 0, 0, stack.StackSize);
             }
@@ -214,9 +217,17 @@ namespace Vintagestory.GameContent
             {
                 Vec4f lightrgbs = capi.World.BlockAccessor.GetLightRGBs(pos.X, pos.Y, pos.Z);
 
+                long seed = capi.World.ElapsedMilliseconds + pos.GetHashCode();
+                float flicker = (float)(Math.Sin(seed / 40.0) * 0.2f + Math.Sin(seed / 220.0) * 0.6f + Math.Sin(seed / 100.0) + 1) / 2f;
+
                 if (burning)
                 {
                     float[] glowColor = ColorUtil.GetIncandescenceColorAsColor4f(1200);
+
+                    glowColor[0] *= 1f - flicker * 0.15f;
+                    glowColor[1] *= 1f - flicker * 0.15f;
+                    glowColor[2] *= 1f - flicker * 0.15f;
+
                     prog.RgbaGlowIn = new Vec4f(glowColor[0], glowColor[1], glowColor[2], 1);
                 } else
                 {
@@ -225,8 +236,10 @@ namespace Vintagestory.GameContent
 
                 prog.NormalShaded = 0;
                 prog.RgbaLightIn = lightrgbs;
+
+                int glow = 255 - (int)(flicker * 50);
                 
-                prog.ExtraGlow = burning ? 255 : 0;
+                prog.ExtraGlow = burning ? glow : 0;
 
                 // The coal or embers
                 rpi.BindTexture2d(burning ? embertexpos.atlasTextureId : coaltexpos.atlasTextureId);

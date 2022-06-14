@@ -15,6 +15,7 @@ namespace Vintagestory.GameContent
     public class ItemPlumbAndSquare : Item
     {
         WorldInteraction[] interactions;
+        List<LoadedTexture> symbols;
 
         public override void OnLoaded(ICoreAPI api)
         {
@@ -50,6 +51,17 @@ namespace Vintagestory.GameContent
                 };
             });
 
+            symbols = new List<LoadedTexture>();
+            symbols.Add(GenTexture(1, 1));
+        }
+
+        public override void OnUnloaded(ICoreAPI api)
+        {
+            base.OnUnloaded(api);
+            if (api is ICoreClientAPI && symbols != null)
+            {
+                foreach (var texture in symbols) texture.Dispose();
+            }
         }
 
 
@@ -178,18 +190,30 @@ namespace Vintagestory.GameContent
             SkillItem[] modes = new SkillItem[1 + groups.Length];
             var capi = api as ICoreClientAPI;
             int seed = 1;
-            int addLines = 1;
-            var texture = capi.Gui.Icons.GenTexture(48, 48, (ctx, surface) => { capi.Gui.Icons.DrawRandomSymbol(ctx, 0, 0, 48, GuiStyle.MacroIconColor, 2, seed, addLines); });
+            var texture = FetchOrCreateTexture(seed);
             modes[0] = new SkillItem() { Code = new AssetLocation("self"), Name = Lang.Get("Reinforce for yourself") }.WithIcon(capi, texture);
             for (int i = 0; i < groups.Length; i++)
             {
-                addLines++;
-                seed++;
-                texture = capi.Gui.Icons.GenTexture(48, 48, (ctx, surface) => { capi.Gui.Icons.DrawRandomSymbol(ctx, 0, 0, 48, GuiStyle.MacroIconColor, 2, seed, addLines); });
+                texture = FetchOrCreateTexture(++seed);
                 modes[i + 1] = new SkillItem() { Code = new AssetLocation("group"), Name = Lang.Get("Reinforce for group " + groups[i].GroupName) }.WithIcon(capi, texture);
             }
 
             return modes;
+        }
+
+        private LoadedTexture FetchOrCreateTexture(int seed)
+        {
+            if (symbols.Count <= seed) return symbols[seed - 1];
+
+            var newTexture = GenTexture(seed, seed);
+            symbols.Add(newTexture);
+            return newTexture;
+        }
+
+        private LoadedTexture GenTexture(int seed, int addLines)
+        {
+            var capi = api as ICoreClientAPI;
+            return capi.Gui.Icons.GenTexture(48, 48, (ctx, surface) => { capi.Gui.Icons.DrawRandomSymbol(ctx, 0, 0, 48, GuiStyle.MacroIconColor, 2, seed, addLines); });
         }
 
 

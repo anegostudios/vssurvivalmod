@@ -128,9 +128,9 @@ namespace Vintagestory.GameContent
 
         public bool OnBlockInteractStart(IPlayer byPlayer, BlockSelection blockSel)
         {
-            bool put = byPlayer.Entity.Controls.Sneak;
+            bool put = byPlayer.Entity.Controls.ShiftKey;
             bool take = !put;
-            bool bulk = byPlayer.Entity.Controls.Sprint;
+            bool bulk = byPlayer.Entity.Controls.CtrlKey;
 
             ItemSlot ownSlot = inventory.FirstNonEmptySlot;
             var hotbarslot = byPlayer.InventoryManager.ActiveHotbarSlot;
@@ -542,7 +542,7 @@ namespace Vintagestory.GameContent
             if (labelStack != null)
             {
                 int hashCode = labelStack.GetHashCode(GlobalConstants.IgnoredStackAttributes) + labelColor.GetHashCode();
-                if (ownBlock.itemStackRenders.TryGetValue(hashCode, out var val))
+                if (ownBlock !=null && ownBlock.itemStackRenders.TryGetValue(hashCode, out var val))
                 {
                     val.UsedCounter.Remove(Pos.GetHashCode());
                     if (val.UsedCounter.Count == 0)

@@ -252,6 +252,13 @@ namespace Vintagestory.GameContent
                 ITexPositionSource texSource = capi.Tesselator.GetTextureSource(itemstack.Item);
                 var mesh = genMesh(capi, itemstack, texSource);
                 renderinfo.ModelRef = armorMeshrefs[key] = mesh == null ? renderinfo.ModelRef : capi.Render.UploadMesh(mesh);
+
+                
+            }
+
+            if (Attributes["visibleDamageEffect"].AsBool())
+            {
+                renderinfo.DamageEffect = Math.Max(0, 1 - (float)GetRemainingDurability(itemstack) / GetMaxDurability(itemstack) * 1.1f);
             }
         }
 
@@ -285,23 +292,10 @@ namespace Vintagestory.GameContent
 
             AssetLocation shapePath = compArmorShape.Base.CopyWithPath("shapes/" + compArmorShape.Base.Path + ".json");
 
-            IAsset asset = capi.Assets.TryGet(shapePath);
-
-            if (asset == null)
+            Shape armorShape = API.Common.Shape.TryGet(capi, shapePath);
+            if (armorShape == null)
             {
-                capi.World.Logger.Warning("Entity wearable shape {0} defined in {1} {2} not found, was supposed to be at {3}. Armor piece will be invisible.", compArmorShape.Base, itemstack.Class, itemstack.Collectible.Code, shapePath);
-                return null;
-            }
-
-            Shape armorShape;
-
-            try
-            {
-                armorShape = asset.ToObject<Shape>();
-            }
-            catch (Exception e)
-            {
-                capi.World.Logger.Warning("Exception thrown when trying to load entity armor shape {0} defined in {1} {2}. Armor piece will be invisible. Exception: {3}", compArmorShape.Base, itemstack.Class, itemstack.Collectible.Code, e);
+                capi.World.Logger.Warning("Entity wearable shape {0} defined in {1} {2} not found or errored, was supposed to be at {3}. Armor piece will be invisible.", compArmorShape.Base, itemstack.Class, itemstack.Collectible.Code, shapePath);
                 return null;
             }
 
@@ -363,7 +357,7 @@ namespace Vintagestory.GameContent
 
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handHandling)
         {
-            if (byEntity.Controls.Sneak)
+            if (byEntity.Controls.ShiftKey)
             {
                 base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handHandling);
                 return;
@@ -447,7 +441,7 @@ namespace Vintagestory.GameContent
 
             if (ProtectionModifiers?.HighDamageTierResistant == true)
             {
-                dsc.AppendLine(Lang.Get("<font color=\"#86aad0\">High damage tier resistant.</font> When damaged by a higher tier attack, the loss of protection is only half as much."));
+                dsc.AppendLine("<font color=\"#86aad0\">" + Lang.Get("High damage tier resistant") + "</font> " + Lang.Get("When damaged by a higher tier attack, the loss of protection is only half as much."));
             }
 
             // Condition: Useless (0-10%)
@@ -494,17 +488,18 @@ namespace Vintagestory.GameContent
                         condStr = Lang.Get("clothingcondition-terrible", (int)(condition * 100));
                     }
 
-                    dsc.Append(Lang.Get("Condition: "));
+                    dsc.Append(Lang.Get("Condition:") + " ");
                     float warmth = GetWarmth(inSlot);
 
                     string color = ColorUtil.Int2Hex(GuiStyle.DamageColorGradient[(int)Math.Min(99, condition * 200)]);
 
                     if (warmth < 0.05)
                     {
-                        dsc.AppendLine(Lang.Get("<font color=\"" + color + "\">{0}</font>, <font color=\"#ff8484\">+{1:0.#}°C</font>", condStr, warmth));
-                    } else
+                        dsc.AppendLine("<font color=\"" + color + "\">" + condStr + "</font>, <font color=\"#ff8484\">" + Lang.Get("+{0:0.#}°C", warmth) + "</font>");
+                    }
+                    else
                     {
-                        dsc.AppendLine(Lang.Get("<font color=\"" + color + "\">{0}</font>, <font color=\"#84ff84\">+{1:0.#}°C</font>", condStr, warmth));
+                        dsc.AppendLine("<font color=\"" + color + "\">" + condStr + "</font>, <font color=\"#84ff84\">" + Lang.Get("+{0:0.#}°C", warmth) + "</font>");
                     }
                 }
 
@@ -563,6 +558,52 @@ namespace Vintagestory.GameContent
 
             ensureConditionExists(outputSlot);
             outputSlot.Itemstack.Attributes.SetFloat("condition", 1);
+
+            if (byRecipe.Name.Path.Contains("repair"))
+            {
+                var stack = outputSlot.Itemstack;
+                var matStack = allInputslots.FirstOrDefault(slot => !slot.Empty && slot.Itemstack.Collectible != this).Itemstack;
+
+                var origMatCount = 0;
+
+                foreach (var recipe in api.World.GridRecipes)
+                {
+                    if ((recipe.Output.ResolvedItemstack?.Satisfies(stack) ?? false) && !recipe.Name.Path.Contains("repair"))
+                    {
+                        foreach (var ingred in recipe.resolvedIngredients)
+                        {
+                            if (ingred?.ResolvedItemstack.Equals(api.World, matStack, GlobalConstants.IgnoredStackAttributes) == true)
+                            {
+                                origMatCount += ingred.ResolvedItemstack.StackSize;
+                            }
+                        }
+                    }
+                }
+
+                // Repairing costs half as many materials as newly creating it
+                float repairValue = (float)matStack.StackSize / origMatCount * 2;
+
+                int curDur = outputSlot.Itemstack.Collectible.GetRemainingDurability(outputSlot.Itemstack);
+                int maxDur = GetMaxDurability(outputSlot.Itemstack);
+
+                outputSlot.Itemstack.Attributes.SetInt("durability", Math.Min(maxDur, (int)(curDur + maxDur * repairValue)));
+            }
+        }
+
+        public override bool ConsumeCraftingIngredients(ItemSlot[] slots, ItemSlot outputSlot, GridRecipe recipe)
+        {
+            // Consume all materials in the input grid
+            if (recipe.Name.Path.Contains("repair"))
+            {
+                foreach (var islot in slots)
+                {
+                    if (islot.Empty) continue;
+
+                    islot.Itemstack = null;
+                }
+            }
+
+            return true;
         }
 
         public override TransitionState[] UpdateAndGetTransitionStates(IWorldAccessor world, ItemSlot inslot)
@@ -585,6 +626,12 @@ namespace Vintagestory.GameContent
 
         public override void DamageItem(IWorldAccessor world, Entity byEntity, ItemSlot itemslot, int amount = 1)
         {
+            if (Variant["construction"] == "improvised")
+            {
+                base.DamageItem(world, byEntity, itemslot, amount);
+                return;
+            }
+
             float amountf = amount;
 
             if (byEntity is EntityPlayer && (DressType == EnumCharacterDressType.ArmorHead || DressType == EnumCharacterDressType.ArmorBody || DressType == EnumCharacterDressType.ArmorLegs))
@@ -592,7 +639,17 @@ namespace Vintagestory.GameContent
                 amountf *= byEntity.Stats.GetBlended("armorDurabilityLoss");
             }
 
-            base.DamageItem(world, byEntity, itemslot, GameMath.RoundRandom(world.Rand, amountf));
+            amount = GameMath.RoundRandom(world.Rand, amountf);
+
+            int leftDurability = itemslot.Itemstack.Attributes.GetInt("durability", GetMaxDurability(itemslot.Itemstack));
+
+            if (leftDurability > 0 && leftDurability - amount < 0)
+            {
+                world.PlaySoundAt(new AssetLocation("sounds/effect/toolbreak"), byEntity.SidedPos.X, byEntity.SidedPos.Y, byEntity.SidedPos.Z, (byEntity as EntityPlayer)?.Player);
+            }
+
+            itemslot.Itemstack.Attributes.SetInt("durability", Math.Max(0, leftDurability - amount));
+            itemslot.MarkDirty();
         }
 
         public override WorldInteraction[] GetHeldInteractionHelp(ItemSlot inSlot)

@@ -99,10 +99,13 @@ namespace Vintagestory.GameContent
 
         public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
         {
-            if (!world.BlockAccessor.GetBlock(pos.DownCopy()).SideSolid[BlockFacing.UP.Index])
+            pos.Y--;
+            if (!world.BlockAccessor.GetSolidBlock(pos.X, pos.Y, pos.Z).CanAttachBlockAt(world.BlockAccessor, this, pos, BlockFacing.UP))
             {
+                pos.Y++;
                 world.BlockAccessor.BreakBlock(pos, null);
             }
+            else pos.Y++;
         }
 
         public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)

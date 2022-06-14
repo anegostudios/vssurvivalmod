@@ -27,6 +27,7 @@ namespace Vintagestory.GameContent
         float slowaccum;
         float veryslowaccum;
         BlockPos plrpos = new BlockPos();
+        BlockPos tmpPos = new BlockPos();
 
         bool inEnclosedRoom;
         
@@ -76,6 +77,7 @@ namespace Vintagestory.GameContent
 
 
         public float NormalBodyTemperature;
+        bool firstTick;
 
         public EntityBehaviorBodyTemperature(Entity entity) : base(entity)
         {
@@ -111,8 +113,33 @@ namespace Vintagestory.GameContent
             bodyTemperatureResistance = entity.World.Config.GetString("bodyTemperatureResistance").ToFloat(0);
         }
 
+
+        public override void OnEntityDespawn(EntityDespawnReason despawn)
+        {
+            blockAccess?.Dispose();
+            blockAccess = null;
+        }
+
+
         public override void OnGameTick(float deltaTime)
         {
+            if (!firstTick)
+            {
+                if (api.Side == EnumAppSide.Client && entity.Properties.Client.Renderer is EntityShapeRenderer esr)
+                {
+                    esr.getFrostAlpha = () =>
+                    {
+                        float temp = api.World.BlockAccessor.GetClimateAt(entity.Pos.AsBlockPos, EnumGetClimateMode.ForSuppliedDate_TemperatureOnly, api.World.Calendar.TotalDays).Temperature;
+                        float freezestrength = GameMath.Clamp((NormalBodyTemperature - CurBodyTemperature) / 4f - 0.5f, 0, 1);
+
+                        return GameMath.Clamp((Math.Max(0, -temp) - 5) / 5f, 0, 1) * freezestrength;
+                    };
+                }
+            }
+            firstTick = true;
+
+            updateFreezingAnimState();
+
             accum += deltaTime;
             slowaccum += deltaTime;
             veryslowaccum += deltaTime;
@@ -175,13 +202,14 @@ namespace Vintagestory.GameContent
                     }
 
                     blockAccess.Begin();
-                    blockAccess.WalkBlocks(min, max, (block, pos) =>
+                    blockAccess.WalkBlocks(min, max, (block, x, y, z) =>
                     {
                         BlockBehavior src;
                         if ((src = block.GetBehavior(typeof(IHeatSource), true)) != null)
                         {
-                            float factor = Math.Min(1f, 9 / (8 + (float)Math.Pow(pos.DistanceSqToNearerEdge(px, py, pz), proximityPower)));
-                            nearHeatSourceStrength += (src as IHeatSource).GetHeatStrength(api.World, pos, plrpos) * factor;
+                            tmpPos.Set(x, y, z);
+                            float factor = Math.Min(1f, 9 / (8 + (float)Math.Pow(tmpPos.DistanceSqToNearerEdge(px, py, pz), proximityPower)));
+                            nearHeatSourceStrength += (src as IHeatSource).GetHeatStrength(api.World, tmpPos, plrpos) * factor;
                         }
                     });
                 }
@@ -193,18 +221,19 @@ namespace Vintagestory.GameContent
 
             if (accum > 1)
             {
-                IPlayer plr = (entity as EntityPlayer)?.Player;
-
+                var eplr = entity as EntityPlayer;
+                IPlayer plr = eplr?.Player;
+                
                 if (entity.World.Side == EnumAppSide.Server && (plr as IServerPlayer)?.ConnectionState != EnumClientState.Playing) return;
 
-                if ((plr?.WorldData.CurrentGameMode == EnumGameMode.Creative || plr?.WorldData.CurrentGameMode == EnumGameMode.Spectator))
+                if (plr?.WorldData.CurrentGameMode == EnumGameMode.Creative || plr?.WorldData.CurrentGameMode == EnumGameMode.Spectator)
                 {
                     CurBodyTemperature = NormalBodyTemperature;
                     entity.WatchedAttributes.SetFloat("freezingEffectStrength", 0);
                     return;
                 }
 
-                if (plr.Entity.Controls.TriesToMove || plr.Entity.Controls.Jump || plr.Entity.Controls.LeftMouseDown || plr.Entity.Controls.RightMouseDown)
+                if (plr != null && (eplr.Controls.TriesToMove || eplr.Controls.Jump || eplr.Controls.LeftMouseDown || eplr.Controls.RightMouseDown))
                 {
                     lastMoveMs = entity.World.ElapsedMilliseconds;
                 }
@@ -265,7 +294,9 @@ namespace Vintagestory.GameContent
 
                     BodyTempUpdateTotalHours = api.World.Calendar.TotalHours;
 
-                    entity.WatchedAttributes.SetFloat("freezingEffectStrength", GameMath.Clamp((NormalBodyTemperature - CurBodyTemperature) / 4f - 0.5f, 0, 1));
+                    float str = GameMath.Clamp((NormalBodyTemperature - CurBodyTemperature) / 4f - 0.5f, 0, 1);
+
+                    entity.WatchedAttributes.SetFloat("freezingEffectStrength", str);
 
                     if (NormalBodyTemperature - CurBodyTemperature > 4)
                     {
@@ -275,6 +306,36 @@ namespace Vintagestory.GameContent
                         damagingFreezeHours = 0;
                     }
                     
+                }
+            }
+        }
+
+        private void updateFreezingAnimState()
+        {
+            float str = entity.WatchedAttributes.GetFloat("freezingEffectStrength");
+            bool held = (entity as EntityAgent)?.LeftHandItemSlot?.Itemstack != null || (entity as EntityAgent)?.RightHandItemSlot?.Itemstack != null;
+            var mode = (entity as EntityPlayer)?.Player?.WorldData?.CurrentGameMode;
+
+            bool freezing = (damagingFreezeHours > 0 || str > 0.4) && mode != EnumGameMode.Creative && mode != EnumGameMode.Spectator && entity.Alive;
+
+            if (freezing)
+            {
+                if (held)
+                {
+                    entity.StartAnimation("coldidleheld");
+                    entity.StopAnimation("coldidle");
+                } else
+                {
+                    entity.StartAnimation("coldidle");
+                    entity.StopAnimation("coldidleheld");
+                }
+            }
+            else
+            {
+                if (entity.AnimManager.ActiveAnimationsByAnimCode.ContainsKey("coldidle") || entity.AnimManager.ActiveAnimationsByAnimCode.ContainsKey("coldidleheld"))
+                {
+                    entity.StopAnimation("coldidle");
+                    entity.StopAnimation("coldidleheld");
                 }
             }
         }

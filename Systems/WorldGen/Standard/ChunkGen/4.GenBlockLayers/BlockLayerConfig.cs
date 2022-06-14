@@ -123,7 +123,7 @@ namespace Vintagestory.ServerMods
         public bool Suitable(float temp, float rain, float yRel, LCGRandom rnd)
         {
             float transDistance = MinTemp - temp + transSize;
-            return rain >= MinRain && rain <= MaxRain && MinY <= yRel && MaxY >= yRel && transDistance <= rnd.NextDouble() * transSize;
+            return rain >= MinRain && rain <= MaxRain && MinY <= yRel && MaxY >= yRel && transDistance <= rnd.NextFloat() * transSize;
         }
 
         public int GetBlockForMotherRock(int rockBlockid)

@@ -15,7 +15,7 @@ namespace Vintagestory.GameContent
 
         public override double ExecuteOrder()
         {
-            return 0.15f;
+            return 0.15;
         }
 
         public override bool ShouldLoad(EnumAppSide forSide)
@@ -53,52 +53,41 @@ namespace Vintagestory.GameContent
                 }
                 if (tradeProps == null) continue;
 
+                string traderName = Lang.Get(entitytype.Code.Domain + ":item-creature-" + entitytype.Code.Path);
+                string handbookTitle = Lang.Get("Sold by");
                 foreach (var val in tradeProps.Selling.List)
                 {
-                    if (val.Resolve(capi.World, "tradehandbookinfo", true))
-                    {
-                        var collobj = val.ResolvedItemstack.Collectible;
-
-                        if (collobj.Attributes == null) collobj.Attributes = new JsonObject(JToken.Parse("{}"));
-
-                        ExtraHandbookSection section;
-                        var bh = collobj.GetBehavior<CollectibleBehaviorHandbookTextAndExtraInfo>();
-
-                        string title = Lang.Get("Sold by");
-                        section = bh.ExtraHandBookSections?.FirstOrDefault(ele => ele.Title == title);
-                        if (section == null)
-                        {
-                            section = new ExtraHandbookSection() { Title = title, TextParts = new string[0] };
-                            collobj.GetBehavior<CollectibleBehaviorHandbookTextAndExtraInfo>().ExtraHandBookSections = bh.ExtraHandBookSections == null ? new ExtraHandbookSection[] { section } : bh.ExtraHandBookSections.Append(section);
-                        }
-
-                        section.TextParts = section.TextParts.Append(Lang.Get(entitytype.Code.Domain + ":item-creature-" + entitytype.Code.Path));
-                    }
+                    AddTraderHandbookInfo(val, traderName, handbookTitle);
                 }
 
+                handbookTitle = Lang.Get("Purchased by");
                 foreach (var val in tradeProps.Buying.List)
                 {
-                    if (val.Resolve(capi.World, "tradehandbookinfo", true))
-                    {
-                        var collobj = val.ResolvedItemstack.Collectible;
-
-                        if (collobj.Attributes == null) collobj.Attributes = new JsonObject(JToken.Parse("{}"));
-
-                        ExtraHandbookSection section;
-                        var bh = collobj.GetBehavior<CollectibleBehaviorHandbookTextAndExtraInfo>();
-
-                        string title = Lang.Get("Purchased by");
-                        section = bh?.ExtraHandBookSections?.FirstOrDefault(ele => ele.Title == title);
-
-                        if (section == null)
-                        {
-                            section = new ExtraHandbookSection() { Title = title, TextParts = new string[0] };
-                            collobj.GetBehavior<CollectibleBehaviorHandbookTextAndExtraInfo>().ExtraHandBookSections = bh.ExtraHandBookSections == null ? new ExtraHandbookSection[] { section } : bh.ExtraHandBookSections.Append(section);
-                        }
-
-                        section.TextParts = section.TextParts.Append(Lang.Get(entitytype.Code.Domain + ":item-creature-" + entitytype.Code.Path));
-                    }
+                    AddTraderHandbookInfo(val, traderName, handbookTitle);
                 }
+            }
+            capi.Logger.VerboseDebug("Done traders handbook stuff");
+        }
+
+        private void AddTraderHandbookInfo(TradeItem val, string traderName, string title)
+        {
+            if (val.Resolve(capi.World, "tradehandbookinfo", true))
+            {
+                var collobj = val.ResolvedItemstack.Collectible;
+
+                if (collobj.Attributes == null) collobj.Attributes = new JsonObject(JToken.Parse("{}"));
+
+                var bh = collobj.GetBehavior<CollectibleBehaviorHandbookTextAndExtraInfo>();
+
+                ExtraHandbookSection section = bh.ExtraHandBookSections?.FirstOrDefault(ele => ele.Title == title);
+                if (section == null)
+                {
+                    section = new ExtraHandbookSection() { Title = title, TextParts = new string[0] };
+                    if (bh.ExtraHandBookSections != null) bh.ExtraHandBookSections.Append(section);
+                    else bh.ExtraHandBookSections = new ExtraHandbookSection[] { section };
+                }
+
+                section.TextParts = section.TextParts.Append(traderName);
             }
         }
     }

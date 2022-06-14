@@ -288,5 +288,9 @@ namespace Vintagestory.GameContent
             dsc.AppendLine(Lang.Get("Stored food perish speed: {0}x", Math.Round(rate, 2)));
         }
 
+        public virtual void DropContents(Vec3d atPos)
+        {
+            
+        }
     }
 }

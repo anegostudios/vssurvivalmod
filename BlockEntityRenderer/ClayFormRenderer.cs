@@ -136,13 +136,6 @@ namespace Vintagestory.GameContent
             singleVoxelMesh.XyzFaces = (byte[])CubeMeshUtil.CubeFaceIndices.Clone();
             singleVoxelMesh.XyzFacesCount = 6;
 
-            for (int i = 0; i < 6; i++)
-            {
-                singleVoxelMesh.Flags[i * 4] = singleVoxelMesh.Flags[i * 4 + 1] = singleVoxelMesh.Flags[i * 4 + 2] = singleVoxelMesh.Flags[i * 4 + 3] = VertexFlags.PackNormal(BlockFacing.ALLFACES[i].Normali);
-            }
-
-
-
             singleVoxelMesh.SeasonColorMapIds = new byte[6];
             singleVoxelMesh.ClimateColorMapIds = new byte[6];
             singleVoxelMesh.ColorMapIdsCount = 6;

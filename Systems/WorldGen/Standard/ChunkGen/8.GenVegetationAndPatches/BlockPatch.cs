@@ -165,7 +165,7 @@ namespace Vintagestory.ServerMods.NoObf
 
             while (quantity-- > 0)
             {
-                if (quantity < 1 && rnd.NextDouble() > quantity) break;
+                if (quantity < 1 && rnd.NextFloat() > quantity) break;
 
                 pos.X = posX + (int)OffsetX.nextFloat();
                 pos.Z = posZ + (int)OffsetZ.nextFloat();
@@ -191,8 +191,8 @@ namespace Vintagestory.ServerMods.NoObf
                     if (Placement == EnumBlockPatchPlacement.UnderWater)
                     {
                         tempPos.Set(pos.X, pos.Y - GameMath.Max(1, MinWaterDepth), pos.Z);
-                        Block downBlock = blockAccessor.GetBlock(tempPos);
-                        if (downBlock == null || downBlock.LiquidCode != "water") continue;
+                        Block downBlock = blockAccessor.GetLiquidBlock(tempPos);
+                        if (downBlock.LiquidCode != "water") continue;
                     }
                 }
 

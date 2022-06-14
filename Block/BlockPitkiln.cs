@@ -56,23 +56,12 @@ namespace Vintagestory.GameContent
 
             Dictionary<string, BuildStageMaterial[]> resolvedMats = new Dictionary<string, BuildStageMaterial[]>();
 
-            List<ItemStack> canIgniteStacks = new List<ItemStack>();
-            foreach (CollectibleObject obj in api.World.Collectibles)
-            {
-                string firstCodePart = obj.FirstCodePart();
-
-                if (obj is Block && (obj as Block).HasBehavior<BlockBehaviorCanIgnite>() || obj is ItemFirestarter)
-                {
-                    List<ItemStack> stacks = obj.GetHandBookStacks(api as ICoreClientAPI);
-                    if (stacks != null) canIgniteStacks.AddRange(stacks);
-                }
-            }
-
+            List<ItemStack> canIgniteStacks = BlockBehaviorCanIgnite.CanIgniteStacks(api, true);
             ingiteInteraction = new WorldInteraction[] { new WorldInteraction()
             {
                 ActionLangCode = "blockhelp-firepit-ignite",
                 MouseButton = EnumMouseButton.Right,
-                HotKeyCode = "sneak",
+                HotKeyCode = "shift",
                 Itemstacks = canIgniteStacks.ToArray(),
                 GetMatchingStacks = (wi, bs, es) =>
                 {
@@ -119,7 +108,7 @@ namespace Vintagestory.GameContent
                 }
 
                 var loc = val.Value.Shape.Base.Clone().WithPathAppendixOnce(".json").WithPathPrefixOnce("shapes/");
-                Shape shape = api.Assets.TryGet(loc)?.ToObject<Shape>();
+                Shape shape = API.Common.Shape.TryGet(api, loc);
                 if (shape == null)
                 {
                     api.World.Logger.Error("Pit kiln model configs: Shape file {0} not found. Will ignore this config.", val.Value.Shape.Base);
@@ -156,7 +145,6 @@ namespace Vintagestory.GameContent
             }
         }
 
-        
 
         public override byte[] GetLightHsv(IBlockAccessor blockAccessor, BlockPos pos, ItemStack stack = null)
         {
@@ -264,7 +252,7 @@ namespace Vintagestory.GameContent
                 {
                     begs.Inventory[i] = prevInv[i];
                 }
-
+                begs.MeshAngle = beg.MeshAngle;
                 begs.OnCreated(byPlayer);
                 begs.updateMeshes();
                 begs.MarkDirty(true);
@@ -310,7 +298,7 @@ namespace Vintagestory.GameContent
                     return new WorldInteraction[] { new WorldInteraction() {
                         ActionLangCode = "blockhelp-pitkiln-build",
                         MouseButton = EnumMouseButton.Right,
-                        HotKeyCode = "sneak",
+                        HotKeyCode = "shift",
                         Itemstacks = stacks.ToArray(),
                         GetMatchingStacks = (wi, bs, es) => {
                             return stacks;

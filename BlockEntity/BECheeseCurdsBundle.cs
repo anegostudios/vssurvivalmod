@@ -24,7 +24,7 @@ namespace Vintagestory.GameContent
         static BECheeseCurdsBundle()
         {
             props = new SimpleParticleProperties(
-                0.3f,
+                0.5f,
                 1.3f,
                 ColorUtil.ColorFromRgba(248, 243, 227, 255),
                 new Vec3d(), new Vec3d(),
@@ -44,6 +44,17 @@ namespace Vintagestory.GameContent
         EnumCurdsBundleState state;
 
         public override string InventoryClassName => "curdsbundle";
+
+        float meshangle;
+        public virtual float MeshAngle
+        {
+            get { return meshangle; }
+            set
+            {
+                meshangle = value;
+                animRot.Y = value * GameMath.RAD2DEG;
+            }
+        }
 
         public bool Squuezed => squeezed;
         public EnumCurdsBundleState State
@@ -65,6 +76,7 @@ namespace Vintagestory.GameContent
             inv = new InventoryGeneric(1, null, null);
         }
 
+        Vec3f animRot = new Vec3f();
         public override void Initialize(ICoreAPI api)
         {
             base.Initialize(api);
@@ -72,7 +84,7 @@ namespace Vintagestory.GameContent
 
             if (api.Side == EnumAppSide.Client)
             {
-                animUtil?.InitializeAnimator("curdbundle", null, (Block as BlockCheeseCurdsBundle).GetShape(EnumCurdsBundleState.BundledStick));
+                animUtil?.InitializeAnimator("curdbundle", animRot, (Block as BlockCheeseCurdsBundle).GetShape(EnumCurdsBundleState.BundledStick));
             }
         }
 
@@ -97,14 +109,10 @@ namespace Vintagestory.GameContent
 
             if (Api.Side == EnumAppSide.Client)
             {
-                animUtil.StartAnimation(new AnimationMetaData()
-                {
-                    Animation = "twist",
-                    Code = "twist",
-                    AnimationSpeed = 0.25f,
-                    EaseOutSpeed = 3,
-                    EaseInSpeed = 3
-                });
+                startSqueezeAnim();
+            } else
+            {
+                (Api as ICoreServerAPI).Network.BroadcastBlockEntityPacket(Pos.X, Pos.Y, Pos.Z, 1010);
             }
 
             Api.World.PlaySoundAt(new AssetLocation("sounds/player/wetclothsqueeze.ogg"), Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5, byPlayer, false);
@@ -113,15 +121,32 @@ namespace Vintagestory.GameContent
             secondsPassed = 0;
         }
 
+        private void startSqueezeAnim()
+        {
+            animUtil.StartAnimation(new AnimationMetaData()
+            {
+                Animation = "twist",
+                Code = "twist",
+                AnimationSpeed = 0.25f,
+                EaseOutSpeed = 3,
+                EaseInSpeed = 3
+            });
+        }
+
+        public override void OnReceivedServerPacket(int packetid, byte[] data)
+        {
+            if (packetid == 1010)
+            {
+                startSqueezeAnim();
+            }
+
+            base.OnReceivedServerPacket(packetid, data);
+        }
+
         float secondsPassed;
         private void onSqueezing(float dt)
         {
             secondsPassed += dt;
-
-            if (Api.Side == EnumAppSide.Client)
-            {
-                RunningAnimation anim = animUtil.animator.RunningAnimations[0];
-            }
 
             if (secondsPassed > 5)
             {
@@ -165,6 +190,8 @@ namespace Vintagestory.GameContent
             squeezed = tree.GetBool("squeezezd");
             state = (EnumCurdsBundleState)tree.GetInt("state");
 
+            MeshAngle = tree.GetFloat("meshAngle", MeshAngle);
+
         }
 
         public override void ToTreeAttributes(ITreeAttribute tree)
@@ -173,6 +200,8 @@ namespace Vintagestory.GameContent
 
             tree.SetBool("squeezezd", squeezed);
             tree.SetInt("state", (int)state);
+
+            tree.SetFloat("meshAngle", MeshAngle);
         }
 
 
@@ -183,7 +212,7 @@ namespace Vintagestory.GameContent
 
             if (!skipMesh)
             {
-                mesher.AddMeshData((Block as BlockCheeseCurdsBundle).GetMesh(state));
+                mesher.AddMeshData((Block as BlockCheeseCurdsBundle).GetMesh(state, meshangle));
             }
 
             return true;

@@ -80,15 +80,17 @@ namespace Vintagestory.GameContent
             tmpPos.Y = entity.World.BlockAccessor.GetTerrainMapheightAt(tmpPos) + 1;
 
             Block block = entity.World.BlockAccessor.GetBlock(tmpPos);
-            if (block.IsLiquid() || block.Attributes == null) return false;
+            if (block.Attributes == null) return false;
 
             if (block.Attributes["butterflyFeed"].AsBool() == true)
             {
+                Block liquidBlock = entity.World.BlockAccessor.GetLiquidBlock(tmpPos);
+                if (liquidBlock.BlockId != 0) return false;   // If it's non-zero, the butterfly food is currently underwater or encased in ice!
+
                 double topPos = block.Attributes["sitHeight"].AsDouble(block.TopMiddlePos.Y);
 
-                bool weak = block.VertexFlags.WindMode == EnumWindBitMode.WeakWind || block.VertexFlags.WindMode == EnumWindBitMode.TallBend;
-
-                entity.WatchedAttributes.SetDouble("windWaveIntensity", block.VertexFlags.WindMode != EnumWindBitMode.NoWind ? (weak ? topPos / 2 : topPos) : 0);
+                EnumWindBitMode windMode = (EnumWindBitMode)block.Attributes["butteflyWindMode"].AsInt((int)EnumWindBitMode.NormalWind);
+                entity.WatchedAttributes.SetInt("windMode", (int)windMode);
 
                 MainTarget = tmpPos.ToVec3d().Add(block.TopMiddlePos.X, topPos, block.TopMiddlePos.Z);
                 return true;

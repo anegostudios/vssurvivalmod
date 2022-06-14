@@ -14,7 +14,7 @@ namespace Vintagestory.ServerMods
         Random rnd;
         int worldheight;
 
-        IBlockAccessor blockAccessor;
+        IWorldGenBlockAccessor blockAccessor;
         BlockLayerConfig blockLayerConfig;
 
         int transSize;
@@ -72,6 +72,7 @@ namespace Vintagestory.ServerMods
 
         private void OnChunkColumnGen(IServerChunk[] chunks, int chunkX, int chunkZ, ITreeAttribute chunkGenParams = null)
         {
+            blockAccessor.BeginColumn();
             IntDataMap2D climateMap = chunks[0].MapChunk.MapRegion.ClimateMap;
             ushort[] heightMap = chunks[0].MapChunk.RainHeightMap;
 
@@ -119,14 +120,17 @@ namespace Vintagestory.ServerMods
                 return false;
             }
 
-            while (posY < worldheight - 1 && chunks[(posY+1) / chunksize].Blocks[(chunksize * ((posY + 1) % chunksize) + lz) * chunksize + lx] != 0)
+            while (posY < worldheight - 1 && chunks[(posY+1) / chunksize].Blocks.GetBlockIdUnsafe((chunksize * ((posY + 1) % chunksize) + lz) * chunksize + lx) != 0)
             {
                 posY++;
             }
 
             if (posY >= worldheight - 1) return false;
 
-            int blockId = chunks[posY / chunksize].Blocks[(chunksize * (posY % chunksize) + lz) * chunksize + lx];
+            int index3d = (chunksize * (posY % chunksize) + lz) * chunksize + lx;
+            IServerChunk chunk = chunks[posY / chunksize];
+            int blockId = chunk.Blocks.GetLiquid(index3d);
+            if (blockId == 0) blockId = chunk.Blocks.GetBlockIdUnsafe(index3d);
             Block block = api.World.Blocks[blockId];
             if (block.SideSolid[BlockFacing.UP.Index])
             {

@@ -88,6 +88,12 @@ namespace Vintagestory.GameContent
 
             FruitTreeProperties props = null;
 
+            if (ownBe.TreeType == null)
+            {
+                Api.World.BlockAccessor.SetBlock(0, ownBe.Pos);
+                return;
+            }
+
             var rootBh = rootBe.GetBehavior<FruitTreeRootBH>();
             if (rootBh?.propsByType.TryGetValue(ownBe.TreeType, out props) != true)
             {

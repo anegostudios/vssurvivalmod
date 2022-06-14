@@ -43,9 +43,9 @@ namespace Vintagestory.GameContent
             return be.ConsumeOnePortion();
         }
 
-        public bool IsSuitableFor(Entity entity)
+        public bool IsSuitableFor(Entity entity, string[] diet)
         {
-            return be.IsSuitableFor(entity);
+            return be.IsSuitableFor(entity, diet);
         }
     }
 
@@ -101,7 +101,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public bool IsSuitableFor(Entity entity)
+        public bool IsSuitableFor(Entity entity, string[] diet)
         {
             ContentConfig config = contentConfigs.FirstOrDefault(c => c.Code == contentCode);
             if (config == null) return false;
@@ -248,7 +248,7 @@ namespace Vintagestory.GameContent
             MeshData meshadd;
 
             blockTexPosSource = capi.Tesselator.GetTexSource(Block);
-            Shape shape = Api.Assets.TryGet("shapes/" + shapeLoc + ".json").ToObject<Shape>();
+            Shape shape = API.Common.Shape.TryGet(Api, "shapes/" + shapeLoc + ".json");
             capi.Tesselator.TesselateShape("betroughcontentsleft", shape, out meshbase, this, rotation);
 
             BlockTroughDoubleBlock doubleblock = Block as BlockTroughDoubleBlock;

@@ -39,13 +39,13 @@ namespace Vintagestory.GameContent
             {
                 List<ItemStack> workableStacklist = new List<ItemStack>();
                 List<ItemStack> hammerStacklist = new List<ItemStack>();
-                
 
+
+                bool viableTier = metalsByCode.ContainsKey(metalType) && metalsByCode[metalType].Tier <= ownMetalTier + 1;
                 foreach (Item item in api.World.Items)
                 {
                     if (item.Code == null) continue;
 
-                    bool viableTier = metalsByCode.ContainsKey(metalType) && metalsByCode[metalType].Tier <= ownMetalTier + 1;
                     if (item is ItemIngot && viableTier)
                     {
                         workableStacklist.Add(new ItemStack(item));
@@ -71,7 +71,7 @@ namespace Vintagestory.GameContent
                     new WorldInteraction()
                     {
                         ActionLangCode = "blockhelp-anvil-placeworkable",
-                        HotKeyCode = "sneak",
+                        HotKeyCode = "shift",
                         MouseButton = EnumMouseButton.Right,
                         Itemstacks = workableStacklist.ToArray(),
                         GetMatchingStacks = (wi, bs, es) => {
@@ -113,7 +113,7 @@ namespace Vintagestory.GameContent
                     new WorldInteraction()
                     {
                         ActionLangCode = "blockhelp-anvil-addvoxels",
-                        HotKeyCode = "sneak",
+                        HotKeyCode = "shift",
                         MouseButton = EnumMouseButton.Right,
                         Itemstacks = workableStacklist.ToArray(),
                         GetMatchingStacks = (wi, bs, es) => {

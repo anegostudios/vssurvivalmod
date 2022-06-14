@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
@@ -43,6 +44,7 @@ namespace Vintagestory.GameContent
         private readonly int tempLossPerMeter = 100;
 
         private Block blockFire;
+        AdvancedParticleProperties[] fireParticles;
 
         public BlockLava() : base()
         {
@@ -53,14 +55,29 @@ namespace Vintagestory.GameContent
             }
         }
 
+        public override void OnLoaded(ICoreAPI api)
+        {
+            base.OnLoaded(api);
+
+            if (blockFire == null)
+            {
+                blockFire = api.World.GetBlock(new AssetLocation("fire"));
+
+                fireParticles = new AdvancedParticleProperties[blockFire.ParticleProperties.Length];
+                for (int i = 0; i < fireParticles.Length; i++)
+                {
+                    fireParticles[i] = blockFire.ParticleProperties[i].Clone();
+                }
+
+                fireParticles[2].HsvaColor[2].avg += 60;
+                fireParticles[2].LifeLength.avg += 3;
+            }
+        }
+
         public override void OnServerGameTick(IWorldAccessor world, BlockPos pos, object extra = null)
         {
             base.OnServerGameTick(world, pos, extra);
 
-            if (blockFire == null)
-            {
-                blockFire = world.GetBlock(new AssetLocation("fire"));
-            }
             FireLocation fireLocation = (FireLocation)extra;
             world.BlockAccessor.SetBlock(blockFire.BlockId,fireLocation.firePos);
             BlockEntity befire = world.BlockAccessor.GetBlockEntity(fireLocation.firePos);
@@ -185,6 +202,26 @@ namespace Vintagestory.GameContent
             isWindAffected = false;
             Block block = world.BlockAccessor.GetBlock(pos.X, pos.Y + 1, pos.Z);
             return !block.IsLiquid() && (block.CollisionBoxes == null || block.CollisionBoxes.Length == 0);
+        }
+
+        public override void OnAsyncClientParticleTick(IAsyncParticleManager manager, BlockPos pos, float windAffectednessAtPos, float secondsTicking)
+        {
+            if (GameMath.MurmurHash3Mod(pos.X, pos.Y, pos.Z, 100) < 2)
+            {
+                for (int i = 0; i < fireParticles.Length; i++)
+                {
+                    AdvancedParticleProperties bps = fireParticles[i];
+                    bps.Quantity.avg = i * 0.3f; // No cubes, medium fire, double smoke
+                    bps.WindAffectednesAtPos = windAffectednessAtPos;
+                    bps.basePos.X = pos.X + TopMiddlePos.X;
+                    bps.basePos.Y = pos.Y + TopMiddlePos.Y;
+                    bps.basePos.Z = pos.Z + TopMiddlePos.Z;
+
+                    manager.Spawn(bps);
+                }
+            }
+
+            base.OnAsyncClientParticleTick(manager, pos, windAffectednessAtPos, secondsTicking);
         }
     }
 }

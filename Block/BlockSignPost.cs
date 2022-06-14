@@ -17,7 +17,7 @@ namespace Vintagestory.GameContent
 
             if (api.Side != EnumAppSide.Client) return;
 
-            interactions = ObjectCacheUtil.GetOrCreate(api, "signpostBlockInteractions", () =>
+            interactions = ObjectCacheUtil.GetOrCreate(api, "signBlockInteractions", () =>
             {
                 List<ItemStack> stacksList = new List<ItemStack>();
 
@@ -32,7 +32,7 @@ namespace Vintagestory.GameContent
                 return new WorldInteraction[] { new WorldInteraction()
                     {
                         ActionLangCode = "blockhelp-sign-write",
-                        HotKeyCode = "sneak",
+                        HotKeyCode = "shift",
                         MouseButton = EnumMouseButton.Right,
                         Itemstacks = stacksList.ToArray()
                     }

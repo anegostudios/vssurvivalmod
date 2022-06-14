@@ -95,7 +95,7 @@ namespace Vintagestory.ServerMods
 
                 if (schem.Path.EndsWith("*"))
                 {
-                    assets = api.Assets.GetMany("worldgen/schematics/" + schem.Path.Substring(0, schem.Path.Length - 1)).ToArray();
+                    assets = api.Assets.GetManyInCategory("worldgen", "schematics/" + schem.Path.Substring(0, schem.Path.Length - 1)).ToArray();
                 }
                 else
                 {
@@ -180,7 +180,7 @@ namespace Vintagestory.ServerMods
 
             while (cnt-- > 0)
             {
-                if (cnt < 1 && rand.NextDouble() > cnt) break;
+                if (cnt < 1 && rand.NextFloat() > cnt) break;
 
                 int tries = 30;
                 while (tries-- > 0)
@@ -269,43 +269,43 @@ namespace Vintagestory.ServerMods
 
             // Ensure not floating on water
             tmpPos.Set(pos.X - widthHalf, pos.Y - 1, pos.Z - lengthHalf);
-            if (blockAccessor.GetBlock(tmpPos).IsLiquid()) return null;
+            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return null;
 
             tmpPos.Set(pos.X + widthHalf, pos.Y - 1, pos.Z - lengthHalf);
-            if (blockAccessor.GetBlock(tmpPos).IsLiquid()) return null;
+            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return null;
 
             tmpPos.Set(pos.X - widthHalf, pos.Y - 1, pos.Z + lengthHalf);
-            if (blockAccessor.GetBlock(tmpPos).IsLiquid()) return null;
+            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return null;
 
             tmpPos.Set(pos.X + widthHalf, pos.Y - 1, pos.Z + lengthHalf);
-            if (blockAccessor.GetBlock(tmpPos).IsLiquid()) return null;
+            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return null;
 
             // Ensure not submerged in water
             tmpPos.Set(pos.X - widthHalf, pos.Y, pos.Z - lengthHalf);
-            if (blockAccessor.GetBlock(tmpPos).IsLiquid()) return null;
+            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return null;
 
             tmpPos.Set(pos.X + widthHalf, pos.Y, pos.Z - lengthHalf);
-            if (blockAccessor.GetBlock(tmpPos).IsLiquid()) return null;
+            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return null;
 
             tmpPos.Set(pos.X - widthHalf, pos.Y, pos.Z + lengthHalf);
-            if (blockAccessor.GetBlock(tmpPos).IsLiquid()) return null;
+            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return null;
 
             tmpPos.Set(pos.X + widthHalf, pos.Y, pos.Z + lengthHalf);
-            if (blockAccessor.GetBlock(tmpPos).IsLiquid()) return null;
+            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return null;
 
 
 
             tmpPos.Set(pos.X - widthHalf, pos.Y + 1, pos.Z - lengthHalf);
-            if (blockAccessor.GetBlock(tmpPos).IsLiquid()) return null;
+            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return null;
 
             tmpPos.Set(pos.X + widthHalf, pos.Y + 1, pos.Z - lengthHalf);
-            if (blockAccessor.GetBlock(tmpPos).IsLiquid()) return null;
+            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return null;
 
             tmpPos.Set(pos.X - widthHalf, pos.Y + 1, pos.Z + lengthHalf);
-            if (blockAccessor.GetBlock(tmpPos).IsLiquid()) return null;
+            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return null;
 
             tmpPos.Set(pos.X + widthHalf, pos.Y + 1, pos.Z + lengthHalf);
-            if (blockAccessor.GetBlock(tmpPos).IsLiquid()) return null;
+            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return null;
 
             if (!TestUndergroundCheckPositions(blockAccessor, pos, schematic.UndergroundCheckPositions)) return null;
 

@@ -17,7 +17,8 @@ namespace Vintagestory.ServerMods
         float vineGrowthChance; // 0..1
         float otherBlockChance; // 0..1
 
-        static ThreadLocal<Random> rand = new ThreadLocal<Random>(() => new Random(Environment.TickCount));
+        [ThreadStatic]
+        private static Random rand;
 
         List<TreeGenBranch> branchesByDepth = new List<TreeGenBranch>();
         ThreadLocal<LCGRandom> lcgrandTL;
@@ -36,7 +37,7 @@ namespace Vintagestory.ServerMods
 
         public void GrowTree(IBlockAccessor api, BlockPos pos, bool isShrubLayer, float sizeModifier = 1f, float vineGrowthChance = 0, float otherBlockChance = 1f, int treesInChunkGenerated = 0)
         {
-            Random rnd = rand.Value;
+            Random rnd = rand ?? (rand = new Random(Environment.TickCount));
             lcgrandTL.Value.InitPositionSeed(pos.X, pos.Z);
 
             this.api = api;
@@ -278,7 +279,7 @@ namespace Vintagestory.ServerMods
 
         internal bool TriggerRandomOtherBlock()
         {
-            return rand.Value.NextDouble() < otherBlockChance * config.treeBlocks.otherLogChance;
+            return rand.NextDouble() < otherBlockChance * config.treeBlocks.otherLogChance;
         }
 
 

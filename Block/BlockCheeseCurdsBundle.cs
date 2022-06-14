@@ -1,4 +1,6 @@
-﻿using System.Text;
+﻿using System;
+using System.Collections.Generic;
+using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -11,7 +13,7 @@ namespace Vintagestory.GameContent
 {
     public class BlockCheeseCurdsBundle : Block
     {
-        public MeshData[] meshes = new MeshData[4];
+        public Dictionary<string, MeshData> meshes = new Dictionary<string, MeshData>();
 
         WorldInteraction[] interactions;
 
@@ -82,27 +84,52 @@ namespace Vintagestory.GameContent
         {
             string path = "shapes/block/food/curdbundle-plain.json";
             if (state == EnumCurdsBundleState.BundledStick) path = "shapes/block/food/curdbundle-stick.json";
-            if (state == EnumCurdsBundleState.Opened) path = "shapes/item/food/dairy/cheese/linen-raw.json";
-            if (state == EnumCurdsBundleState.OpenedSalted) path = "shapes/item/food/dairy/cheese/linen-salted.json";
+            else if (state == EnumCurdsBundleState.Opened) path = "shapes/item/food/dairy/cheese/linen-raw.json";
+            else if (state == EnumCurdsBundleState.OpenedSalted) path = "shapes/item/food/dairy/cheese/linen-salted.json";
 
-            return api.Assets.Get(new AssetLocation(path)).ToObject<Shape>();
+            return API.Common.Shape.TryGet(api, path);
         }
 
 
-        public MeshData GetMesh(EnumCurdsBundleState state)
+        public MeshData GetMesh(EnumCurdsBundleState state, float angle)
         {
-            if (meshes[(int)state] == null)
+            string key = (int)state + "-" + angle;
+            if (!meshes.ContainsKey(key))
             {
                 Shape shape = GetShape(state);
                 ICoreClientAPI capi = api as ICoreClientAPI;
                 MeshData mesh;
-                capi.Tesselator.TesselateShape(this, shape, out mesh);
+                capi.Tesselator.TesselateShape(this, shape, out mesh, new Vec3f(0, angle * GameMath.RAD2DEG, 0));
 
-                meshes[(int)state] = mesh;
+                meshes[key] = mesh;
             }
 
-            return meshes[(int)state];
+            return meshes[key];
         }
+
+        public override bool DoPlaceBlock(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ItemStack byItemStack)
+        {
+            bool val = base.DoPlaceBlock(world, byPlayer, blockSel, byItemStack);
+
+            if (val)
+            {
+                BECheeseCurdsBundle bect = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BECheeseCurdsBundle;
+                if (bect != null)
+                {
+                    BlockPos targetPos = blockSel.DidOffset ? blockSel.Position.AddCopy(blockSel.Face.Opposite) : blockSel.Position;
+                    double dx = byPlayer.Entity.Pos.X - (targetPos.X + blockSel.HitPosition.X);
+                    double dz = (float)byPlayer.Entity.Pos.Z - (targetPos.Z + blockSel.HitPosition.Z);
+                    float angleHor = (float)Math.Atan2(dx, dz);
+
+                    float deg22dot5rad = GameMath.PIHALF / 4;
+                    float roundRad = ((int)Math.Round(angleHor / deg22dot5rad)) * deg22dot5rad;
+                    bect.MeshAngle = roundRad;
+                }
+            }
+
+            return val;
+        }
+
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {

@@ -9,7 +9,7 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockWaterfall : Block
+    public class BlockWaterfall : BlockForLiquidsLayer
     {
         float particleQuantity = 0.2f;
 
@@ -20,12 +20,12 @@ namespace Vintagestory.GameContent
             if (api.Side == EnumAppSide.Client)
             {
                 ICoreClientAPI capi = api as ICoreClientAPI;
-                capi.Settings.Int.AddWatcher("particleLevel", OnParticelLevelChanged);
-                OnParticelLevelChanged(0);
+                capi.Settings.Int.AddWatcher("particleLevel", OnParticleLevelChanged);
+                OnParticleLevelChanged(0);
             }
         }
 
-        private void OnParticelLevelChanged(int newValue)
+        private void OnParticleLevelChanged(int newValue)
         {
             particleQuantity = 0.2f * (api as ICoreClientAPI).Settings.Int["particleLevel"] / 100f;
         }
@@ -36,9 +36,10 @@ namespace Vintagestory.GameContent
             {
                 BlockFacing facing = BlockFacing.HORIZONTALS[i];
                 Block block = world.BlockAccessor.GetBlock(pos.X + facing.Normali.X, pos.Y, pos.Z + facing.Normali.Z);
-                if (block.Replaceable >= 6000 && !block.IsLiquid())
+                if (block.Replaceable >= 6000)   // This is a kind of rough "transparent to sound" test
                 {
-                    return true;
+                    block = world.BlockAccessor.GetLiquidBlock(pos.X + facing.Normali.X, pos.Y, pos.Z + facing.Normali.Z);
+                    if (!block.IsLiquid()) return true;
                 }
             }
 
@@ -67,7 +68,9 @@ namespace Vintagestory.GameContent
 
                     BlockFacing facing = BlockFacing.HORIZONTALS[i];
                     Block block = manager.BlockAccess.GetBlock(pos.X + facing.Normali.X, pos.Y, pos.Z + facing.Normali.Z);
-                    if (block.IsLiquid() || block.SideSolid[facing.Opposite.Index]) continue;
+                    if (block.SideSolid[facing.Opposite.Index]) continue;
+                    block = manager.BlockAccess.GetLiquidBlock(pos.X + facing.Normali.X, pos.Y, pos.Z + facing.Normali.Z);
+                    if (block.BlockId != 0) continue;   // No particles if neighbouring liquid or ice
 
                     AdvancedParticleProperties bps = ParticleProperties[i];
                     bps.basePos.X = pos.X + TopMiddlePos.X;

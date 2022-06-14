@@ -14,13 +14,13 @@ namespace Vintagestory.GameContent
     {
         public override void OnHeldInteractStart(ItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handHandling)
         {
-            if (blockSel == null || byEntity?.World == null || !byEntity.Controls.Sneak)
+            if (blockSel == null || byEntity?.World == null || !byEntity.Controls.ShiftKey)
             {
                 base.OnHeldInteractStart(itemslot, byEntity, blockSel, entitySel, firstEvent, ref handHandling);
                 return;
             }
 
-            bool waterBlock = byEntity.World.BlockAccessor.GetBlock(blockSel.Position.AddCopy(blockSel.Face)).LiquidCode == "water";
+            bool waterBlock = byEntity.World.BlockAccessor.GetLiquidBlock(blockSel.Position.AddCopy(blockSel.Face)).LiquidCode == "water";
             Block block;
 
             if (this.Code.Path.Contains("papyrus"))
@@ -61,7 +61,7 @@ namespace Vintagestory.GameContent
             return new WorldInteraction[] {
                 new WorldInteraction()
                 {
-                    HotKeyCode = "sneak",
+                    HotKeyCode = "shift",
                     ActionLangCode = "heldhelp-plant",
                     MouseButton = EnumMouseButton.Right,
                 }

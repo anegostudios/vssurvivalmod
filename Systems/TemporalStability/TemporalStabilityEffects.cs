@@ -20,8 +20,8 @@ namespace Vintagestory.GameContent
         public bool SlomoActive;
     }
 
-    
-    public class GameEffects : ModSystem, IRenderer
+
+    public class TemporalStabilityEffects : ModSystem, IRenderer
     {
         bool rainAndFogActive;
         bool slowmoModeActive;
@@ -48,9 +48,8 @@ namespace Vintagestory.GameContent
 
         AmbientModifier rainfogAmbient;
 
-        public override void Dispose()
-        {
-        }
+
+        GearRenderer renderer;
 
 
         public override bool ShouldLoad(EnumAppSide forSide)
@@ -60,6 +59,8 @@ namespace Vintagestory.GameContent
 
         public override void StartClientSide(ICoreClientAPI api)
         {
+            this.capi = api;
+
             this.capi = api;
             this.api = api;
 
@@ -87,6 +88,27 @@ namespace Vintagestory.GameContent
             blackAirParticles.OpacityEvolve = EvolvingNatFloat.create(EnumTransformFunction.QUADRATIC, -8);
 
             api.Event.RegisterRenderer(this, EnumRenderStage.Before, "gameeffects");
+
+
+
+            renderer = new GearRenderer(capi);
+
+            api.RegisterCommand("geartest", "", "", onCmdGearTest);
+
+            api.Event.LevelFinalize += Event_LevelFinalize;
+        }
+
+
+        public override void StartServerSide(ICoreServerAPI api)
+        {
+            this.api = api;
+
+            api.Event.RegisterGameTickListener(OnServerTick, 20);
+
+            serverChannel =
+               api.Network.RegisterChannel("gameeffects")
+               .RegisterMessageType(typeof(GameEffectsPacket))
+            ;
         }
 
         private void OnGameEffectToggle(GameEffectsPacket msg)
@@ -100,56 +122,6 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void StartServerSide(ICoreServerAPI api)
-        {
-            this.api = api;
-
-            api.Event.RegisterGameTickListener(OnServerTick, 20);
-
-            //api.RegisterCommand("slomo", "", "", OnCmdSlomoToggleServer, Privilege.controlserver);
-            //api.RegisterCommand("glitch", "", "", OnCmdGlitchToggle, Privilege.controlserver);
-            //api.RegisterCommand("rain", "", "", OnCmdRainToggle, Privilege.controlserver);
-
-
-            serverChannel =
-               api.Network.RegisterChannel("gameeffects")
-               .RegisterMessageType(typeof(GameEffectsPacket))
-            ;
-        }
-
-
-
-        private void OnCmdSlomoToggleServer(IServerPlayer player, int groupId, CmdArgs args)
-        {
-            slowmoModeActive = !slowmoModeActive;
-            ResetSlomo();
-            UpdateClients();
-        }
-
-        private void OnCmdGlitchToggle(IServerPlayer player, int groupId, CmdArgs args)
-        {
-            glitchPresent = !glitchPresent;
-            ResetGlitch();
-            UpdateClients();
-        }
-
-        private void OnCmdRainToggle(IServerPlayer player, int groupId, CmdArgs args)
-        {
-            rainAndFogActive = !rainAndFogActive;
-            ResetRainFog();
-            UpdateClients();
-        }
-
-        void UpdateClients()
-        {
-            serverChannel.BroadcastPacket(new GameEffectsPacket()
-            {
-                SlomoActive = slowmoModeActive,
-                RainAndFogActive = rainAndFogActive,
-                GlitchPresent = glitchPresent
-            });
-        }
-
 
         void ResetRainFog()
         {
@@ -158,8 +130,8 @@ namespace Vintagestory.GameContent
                 float b = 0.5f;
                 capi.Ambient.CurrentModifiers["brownrainandfog"] = rainfogAmbient = new AmbientModifier()
                 {
-                    AmbientColor = new WeightedFloatArray(new float[] { b*132 / 255f, b * 115 / 255f, b * 112f / 255f, 1 }, 0),
-                    FogColor = new WeightedFloatArray(new float[] { b*132/255f, b * 115 /255f, b * 112f /255f, 1 }, 0),
+                    AmbientColor = new WeightedFloatArray(new float[] { b * 132 / 255f, b * 115 / 255f, b * 112f / 255f, 1 }, 0),
+                    FogColor = new WeightedFloatArray(new float[] { b * 132 / 255f, b * 115 / 255f, b * 112f / 255f, 1 }, 0),
                     FogDensity = new WeightedFloat(0.035f, 0),
                 }.EnsurePopulated();
             }
@@ -184,25 +156,37 @@ namespace Vintagestory.GameContent
                 capi.Ambient.CurrentModifiers.Remove("glitch");
             }
 
-            secondsPassedSlowGlitchMode = 0;            
+            secondsPassedSlowGlitchMode = 0;
         }
+
+
+        void UpdateClients()
+        {
+            serverChannel.BroadcastPacket(new GameEffectsPacket()
+            {
+                SlomoActive = slowmoModeActive,
+                RainAndFogActive = rainAndFogActive,
+                GlitchPresent = glitchPresent
+            });
+        }
+
 
         private void OnServerTick(float dt)
         {
             if (glitchPresent)
             {
                 warp = GameMath.Clamp(warp + dt * 40, 0, 30);
-               // secondsPassedGlitchMode = GameMath.Clamp(secondsPassedGlitchMode - dt * 30, -60, 60);
+                // secondsPassedGlitchMode = GameMath.Clamp(secondsPassedGlitchMode - dt * 30, -60, 60);
             }
 
             if (slowmoModeActive)
             {
                 secondsPassedSlowMoMode += dt / 3;
                 GlobalConstants.OverallSpeedMultiplier = 1 - GameMath.SmoothStep(Math.Min(1, secondsPassedSlowMoMode));
-                api.World.Calendar.SetTimeSpeedModifier("slomo", -60 * (1-GlobalConstants.OverallSpeedMultiplier));
+                api.World.Calendar.SetTimeSpeedModifier("slomo", -60 * (1 - GlobalConstants.OverallSpeedMultiplier));
             }
         }
-        
+
 
 
         public void OnRenderFrame(float deltaTime, EnumRenderStage stage)
@@ -212,7 +196,7 @@ namespace Vintagestory.GameContent
                 secondsPassedSlowMoMode += deltaTime / 3;
                 GlobalConstants.OverallSpeedMultiplier = 1 - GameMath.SmoothStep(Math.Min(1, secondsPassedSlowMoMode));
 
-                capi.World.Calendar.SetTimeSpeedModifier("slomo", -60* (1-GlobalConstants.OverallSpeedMultiplier));
+                capi.World.Calendar.SetTimeSpeedModifier("slomo", -60 * (1 - GlobalConstants.OverallSpeedMultiplier));
             }
 
             if (rainAndFogActive)
@@ -239,9 +223,11 @@ namespace Vintagestory.GameContent
 
                     blackAirParticles.WithTerrainCollision = false;
                     blackAirParticles.MinPos = position;
+                    blackAirParticles.SelfPropelled = true;
+
                     capi.World.SpawnParticles(blackAirParticles);
                 }
-                
+
             }
 
             if (glitchPresent)
@@ -261,16 +247,17 @@ namespace Vintagestory.GameContent
                 {
                     capi.Ambient.CurrentModifiers["glitch"] = new AmbientModifier()
                     {
-                        AmbientColor = new WeightedFloatArray(new float[] { 0.458f, 0.223f, 0.129f, 1}, 1),
+                        AmbientColor = new WeightedFloatArray(new float[] { 0.458f, 0.223f, 0.129f, 1 }, 1),
                         FogColor = new WeightedFloatArray(new float[] { 0.458f * 0.5f, 0.223f * 0.5f, 0.129f * 0.5f, 1 }, 1),
                         FogDensity = new WeightedFloat(0.04f, 1),
-                        
+
                     }.EnsurePopulated();
 
                     glitchActive -= deltaTime;
-                    warp = 100;// + GameMath.Sin(glitchActive/2 % GameMath.TWOPI) * 5;
-                    
-                } else
+                    warp = 100;
+
+                }
+                else
                 {
                     capi.Ambient.CurrentModifiers.Remove("glitch");
                     if (wasActive) capi.World.ReduceCameraShake(0.2f);
@@ -280,6 +267,28 @@ namespace Vintagestory.GameContent
             }
 
         }
+
+
+
+
+
+        private void Event_LevelFinalize()
+        {
+            renderer.Init();
+            capi.Logger.VerboseDebug("Done init huge gears");
+        }
+
+        private void onCmdGearTest(int groupId, CmdArgs args)
+        {
+            renderer.Init();
+        }
+
+
+
+
+
+
+
 
     }
 }

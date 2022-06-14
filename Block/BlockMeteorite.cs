@@ -111,7 +111,7 @@ namespace Vintagestory.GameContent
                         tmpPos.Y = surfaceY - i;
                         int id = i == (int)q ? surfaceblock.BlockId : 0;
 
-                        Block bblock = blAcc.GetBlock(tmpPos);
+                        Block bblock = blAcc.GetLiquidBlock(tmpPos);
                         if (!bblock.IsLiquid())
                         {
                             blAcc.SetBlock(id, tmpPos);
@@ -139,7 +139,7 @@ namespace Vintagestory.GameContent
                 );
                 tmpPos.Y = blAcc.GetTerrainMapheightAt(tmpPos) + 1;
 
-                if (!blAcc.GetBlock(tmpPos.X, tmpPos.Y-1, tmpPos.Z).SideSolid[BlockFacing.UP.Index]) continue;
+                if (!blAcc.IsSideSolid(tmpPos.X, tmpPos.Y-1, tmpPos.Z, BlockFacing.UP)) continue;
 
                 if (worldgenRand.NextDouble() < 0.3)
                 {
@@ -158,7 +158,7 @@ namespace Vintagestory.GameContent
 
         private bool IsSolid(IBlockAccessor blAcc, int x, int y, int z)
         {
-            return blAcc.GetBlock(x, y, z).SideSolid[BlockFacing.UP.Index];
+            return blAcc.IsSideSolid(x, y, z, BlockFacing.UP);
         }
     }
 }

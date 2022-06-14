@@ -65,17 +65,19 @@ namespace Vintagestory.GameContent
             int posx = tempAttr.GetInt("lastposX", -1);
             int posy = tempAttr.GetInt("lastposY", -1);
             int posz = tempAttr.GetInt("lastposZ", -1);
-            float treeResistance = tempAttr.GetFloat("treeResistance", 1);
+            float treeResistance;
 
             BlockPos pos = blockSel.Position;
 
             if (pos.X != posx || pos.Y != posy || pos.Z != posz || counter % 30 == 0)
             {
-                Stack<BlockPos> foundPositions = FindTree(player.Entity.World, pos);
-                treeResistance = (float)Math.Max(1, Math.Sqrt(foundPositions.Count));
+                FindTree(player.Entity.World, pos, out int baseResistance, out int woodTier);
+                if (ToolTier < woodTier - 3) return remainingResistance;   // stone axe cannot cut tropical woods except Kapok (which is soft); copper/scrap axe cannot cut ebony
+                treeResistance = (float)Math.Max(1, Math.Sqrt(baseResistance / 1.45));
 
                 tempAttr.SetFloat("treeResistance", treeResistance);
             }
+            else treeResistance = tempAttr.GetFloat("treeResistance", 1);
 
             tempAttr.SetInt("lastposX", pos.X);
             tempAttr.SetInt("lastposY", pos.Y);
@@ -92,7 +94,7 @@ namespace Vintagestory.GameContent
 
             double windspeed = api.ModLoader.GetModSystem<WeatherSystemBase>()?.WeatherDataSlowAccess.GetWindSpeed(byEntity.SidedPos.XYZ) ?? 0;            
 
-            Stack<BlockPos> foundPositions = FindTree(world, blockSel.Position);
+            Stack<BlockPos> foundPositions = FindTree(world, blockSel.Position, out int _, out int woodTier);
             
             if (foundPositions.Count == 0)
             {
@@ -164,12 +166,22 @@ namespace Vintagestory.GameContent
         }
 
 
-
-        public Stack<BlockPos> FindTree(IWorldAccessor world, BlockPos startPos)
+        /// <summary>
+        /// Resistance is based on 1 for leaves, 2 for branchy leaves, and 4-8 for logs depending on woodTier.
+        /// WoodTier is 3 for softwoods (Janka hardness up to about 1000), 4 for temperate hardwoods (Janka hardness 1000-2000), 5 for tropical hardwoods (Janka hardness 2000-3000), and 6 for ebony (Janka hardness over 3000)
+        /// </summary>
+        /// <param name="world"></param>
+        /// <param name="startPos"></param>
+        /// <param name="resistance"></param>
+        /// <param name="woodTier"></param>
+        /// <returns></returns>
+        public Stack<BlockPos> FindTree(IWorldAccessor world, BlockPos startPos, out int resistance, out int woodTier)
         {
             Queue<Vec4i> queue = new Queue<Vec4i>();
             HashSet<BlockPos> checkedPositions = new HashSet<BlockPos>();
             Stack<BlockPos> foundPositions = new Stack<BlockPos>();
+            resistance = 0;
+            woodTier = 0;
             
             Block block = world.BlockAccessor.GetBlock(startPos);
             if (block.Code == null) return foundPositions;
@@ -183,7 +195,11 @@ namespace Vintagestory.GameContent
             if (block is ICustomTreeFellingBehavior ctfbh)
             {
                 bh = ctfbh.GetTreeFellingBehavior(startPos, null, spreadIndex);
-                if (bh == EnumTreeFellingBehavior.NoChop) return foundPositions;
+                if (bh == EnumTreeFellingBehavior.NoChop)
+                {
+                    resistance = foundPositions.Count;
+                    return foundPositions;
+                }
             }
 
 
@@ -242,6 +258,8 @@ namespace Vintagestory.GameContent
 
                     if (bh == EnumTreeFellingBehavior.ChopSpreadVertical && !facing.Equals(0, 1, 0) && nspreadIndex > 0) continue;
 
+                    resistance += nspreadIndex + 1;      // leaves -> 1; branchyleaves -> 2; softwood -> 4 etc.
+                    if (woodTier == 0) woodTier = nspreadIndex;
                     foundPositions.Push(neibPos.Copy());
                     queue.Enqueue(new Vec4i(neibPos.X, neibPos.Y, neibPos.Z, nspreadIndex));
                 }

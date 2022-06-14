@@ -246,11 +246,11 @@ namespace Vintagestory.GameContent
 
             tmpTextureSource = tesselator.GetTexSource(this, altTexNumber);
 
-            AssetLocation shapeloc = AssetLocation.Create(shapename, Code.Domain).WithPathPrefix("shapes/");
-            Shape shape = capi.Assets.TryGet(shapeloc + ".json")?.ToObject<Shape>();
+            AssetLocation shapeloc = AssetLocation.Create(shapename, Code.Domain).WithPathPrefixOnce("shapes/");
+            Shape shape = API.Common.Shape.TryGet(capi, shapeloc + ".json");
             if (shape == null)
             {
-                shape = capi.Assets.TryGet(shapeloc + "1.json")?.ToObject<Shape>();
+                shape = API.Common.Shape.TryGet(capi, shapeloc + "1.json");
             }
 
             curType = type;
@@ -286,11 +286,11 @@ namespace Vintagestory.GameContent
 
                 blockModelData = GenMesh(capi, be.type, shapename);
 
-                AssetLocation shapeloc = new AssetLocation(shapename).WithPathPrefix("shapes/");
-                Shape shape = capi.Assets.TryGet(shapeloc + ".json")?.ToObject<Shape>();
+                AssetLocation shapeloc = new AssetLocation(shapename).WithPathPrefixOnce("shapes/");
+                Shape shape = API.Common.Shape.TryGet(capi, shapeloc + ".json");
                 if (shape == null)
                 {
-                    shape = capi.Assets.TryGet(shapeloc + "1.json").ToObject<Shape>();
+                    shape = API.Common.Shape.TryGet(capi, shapeloc + "1.json");
                 }
 
                 MeshData md;

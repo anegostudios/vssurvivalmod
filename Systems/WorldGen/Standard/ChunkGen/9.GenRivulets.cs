@@ -49,6 +49,7 @@ namespace Vintagestory.ServerMods
 
         private void OnChunkColumnGen(IServerChunk[] chunks, int chunkX, int chunkZ, ITreeAttribute chunkGenParams = null)
         {
+            blockAccessor.BeginColumn();
             IntDataMap2D climateMap = chunks[0].MapChunk.MapRegion.ClimateMap;
             int regionChunkSize = api.WorldManager.RegionSize / chunksize;
             float fac = (float)climateMap.InnerSize / regionChunkSize;
@@ -93,7 +94,7 @@ namespace Vintagestory.ServerMods
                     fz = dz + facing.Normali.Z;
 
                     Block block = api.World.Blocks[
-                        chunks[fy / chunksize].Blocks[(chunksize * (fy % chunksize) + fz) * chunksize + fx]
+                        chunks[fy / chunksize].Blocks.GetBlockIdUnsafe((chunksize * (fy % chunksize) + fz) * chunksize + fx)
                     ];
 
                     bool solid = block.BlockMaterial == EnumBlockMaterial.Stone;
@@ -105,7 +106,10 @@ namespace Vintagestory.ServerMods
 
                 if (quantitySolid != 5 || quantityAir != 1) continue;
 
-                chunks[y / chunksize].Blocks[(chunksize * (y % chunksize) + dz) * chunksize + dx] = y < 24 ? GlobalConfig.lavaBlockId : GlobalConfig.waterBlockId;
+                var chunk = chunks[y / chunksize];
+                var index = (chunksize * (y % chunksize) + dz) * chunksize + dx;
+                chunk.Blocks.SetBlockAir(index);
+                chunk.Blocks.SetLiquid(index, y < 24 ? GlobalConfig.lavaBlockId : GlobalConfig.waterBlockId);
 
                 BlockPos pos = new BlockPos(chunkX * chunksize + dx, y, chunkZ * chunksize + dz);
                 blockAccessor.ScheduleBlockUpdate(pos);

@@ -58,7 +58,7 @@ namespace Vintagestory.GameContent
         {
             get
             {
-                Dictionary<string, CompositeTexture> textures = nowTesselatingObj is Item item ? item.Textures : (nowTesselatingObj as Block).Textures;
+                IDictionary<string, CompositeTexture> textures = nowTesselatingObj is Item item ? item.Textures : (nowTesselatingObj as Block).Textures;
                 AssetLocation texturePath = null;
                 CompositeTexture tex;
 
@@ -105,7 +105,7 @@ namespace Vintagestory.GameContent
                 }
                 else
                 {
-                    capi.World.Logger.Warning("For render in block " + Block.Code + ", item {0} defined texture {1}, not no such texture found.", nowTesselatingObj.Code, texturePath);
+                    capi.World.Logger.Warning("For render in block " + Block.Code + ", item {0} defined texture {1}, no such texture found.", nowTesselatingObj.Code, texturePath);
                 }
             }
 

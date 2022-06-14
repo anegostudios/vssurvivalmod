@@ -81,13 +81,13 @@ namespace Vintagestory.GameContent
 
     public class TraderPersonality
     {
-        public float TalkSpeedModifier = 1;
+        public float ChorldDelayMul = 1;
         public float PitchModifier = 1;
         public float VolumneModifier = 1;
 
-        public TraderPersonality(float talkSpeedModifier, float pitchModifier, float volumneModifier)
+        public TraderPersonality(float chordDelayMul, float pitchModifier, float volumneModifier)
         {
-            TalkSpeedModifier = talkSpeedModifier;
+            ChorldDelayMul = chordDelayMul;
             PitchModifier = pitchModifier;
             VolumneModifier = volumneModifier;
         }

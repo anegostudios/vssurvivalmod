@@ -47,7 +47,7 @@ namespace Vintagestory.GameContent
         {
             base.OnLoaded(api);
 
-            harvestedStack?.Resolve(api.World, string.Format("harvestedStack of block {0}", block.Code));
+            harvestedStack?.Resolve(api.World, "harvestedStack of block ", block.Code);
 
             harvestedBlock = api.World.GetBlock(harvestedBlockCode);
             if (harvestedBlock == null)

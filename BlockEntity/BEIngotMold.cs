@@ -154,10 +154,10 @@ namespace Vintagestory.GameContent
             ITexPositionSource tmpTextureSource = ((ICoreClientAPI)Api).Tesselator.GetTexSource(Block);
             ITesselatorAPI mesher = ((ICoreClientAPI)Api).Tesselator;
 
-            Shape shape = Api.Assets.TryGet("shapes/block/clay/mold/ingot-1middle.json").ToObject<Shape>();
+            Shape shape = API.Common.Shape.TryGet(Api, "shapes/block/clay/mold/ingot-1middle.json");
             mesher.TesselateShape("ingotPile", shape, out meshesByQuantity[0], tmpTextureSource);
 
-            shape = Api.Assets.TryGet("shapes/block/clay/mold/ingot-2.json").ToObject<Shape>();
+            shape = API.Common.Shape.TryGet(Api, "shapes/block/clay/mold/ingot-2.json");
             mesher.TesselateShape("ingotPile", shape, out meshesByQuantity[1], tmpTextureSource);
         }
 
@@ -194,7 +194,7 @@ namespace Vintagestory.GameContent
         public bool OnPlayerInteract(IPlayer byPlayer, BlockFacing onFace, Vec3d hitPosition)
         {
             bool moldInHands = HasMoldInHands(byPlayer);
-            bool sneaking = byPlayer.Entity.Controls.Sneak;
+            bool sneaking = byPlayer.Entity.Controls.ShiftKey;
             
             if (!sneaking)
             {

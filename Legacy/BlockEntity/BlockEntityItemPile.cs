@@ -97,7 +97,7 @@ namespace Vintagestory.GameContent
                 return ((BlockEntityItemPile)be).OnPlayerInteract(byPlayer);
             }
 
-            bool sneaking = byPlayer.Entity.Controls.Sneak;
+            bool sneaking = byPlayer.Entity.Controls.ShiftKey;
 
           
             ItemSlot hotbarSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
@@ -161,7 +161,7 @@ namespace Vintagestory.GameContent
 
             if (invSlot.Itemstack.Equals(Api.World, hotbarSlot.Itemstack, GlobalConstants.IgnoredStackAttributes))
             {
-                bool putBulk = player.Entity.Controls.Sprint;
+                bool putBulk = player.Entity.Controls.CtrlKey;
 
                 int q = GameMath.Min(hotbarSlot.StackSize, putBulk ? BulkTakeQuantity : DefaultTakeQuantity, MaxStackSize - OwnStackSize);
 
@@ -201,7 +201,7 @@ namespace Vintagestory.GameContent
 
         public bool TryTakeItem(IPlayer player)
         {
-            bool takeBulk = player.Entity.Controls.Sprint;
+            bool takeBulk = player.Entity.Controls.CtrlKey;
             int q = GameMath.Min(takeBulk ? BulkTakeQuantity : DefaultTakeQuantity, OwnStackSize);
 
             if (inventory[0]?.Itemstack != null)

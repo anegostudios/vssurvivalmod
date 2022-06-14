@@ -27,7 +27,7 @@ namespace Vintagestory.GameContent
             {
                 List<ItemStack> heatableStacklist = new List<ItemStack>();
                 List<ItemStack> fuelStacklist = new List<ItemStack>();
-                List<ItemStack> canIgniteStacks = new List<ItemStack>();
+                List<ItemStack> canIgniteStacks = BlockBehaviorCanIgnite.CanIgniteStacks(api, false);
 
                 foreach (CollectibleObject obj in api.World.Collectibles)
                 {
@@ -46,19 +46,13 @@ namespace Vintagestory.GameContent
                             if (stacks != null) fuelStacklist.AddRange(stacks);
                         }
                     }
-
-                    if (obj is Block && (obj as Block).HasBehavior<BlockBehaviorCanIgnite>())
-                    {
-                        List<ItemStack> stacks = obj.GetHandBookStacks(capi);
-                        if (stacks != null) canIgniteStacks.AddRange(stacks);
-                    }
                 }
 
                 return new WorldInteraction[] {
                     new WorldInteraction()
                     {
                         ActionLangCode = "blockhelp-forge-addworkitem",
-                        HotKeyCode = "sneak",
+                        HotKeyCode = "shift",
                         MouseButton = EnumMouseButton.Right,
                         Itemstacks = heatableStacklist.ToArray(),
                         GetMatchingStacks = (wi, bs, es) =>
@@ -90,7 +84,7 @@ namespace Vintagestory.GameContent
                     new WorldInteraction()
                     {
                         ActionLangCode = "blockhelp-forge-fuel",
-                        HotKeyCode = "sneak",
+                        HotKeyCode = "shift",
                         MouseButton = EnumMouseButton.Right,
                         Itemstacks = fuelStacklist.ToArray(),
                         GetMatchingStacks = (wi, bs, es) =>
@@ -106,7 +100,7 @@ namespace Vintagestory.GameContent
                     new WorldInteraction()
                     {
                         ActionLangCode = "blockhelp-forge-ignite",
-                        HotKeyCode = "sneak",
+                        HotKeyCode = "shift",
                         MouseButton = EnumMouseButton.Right,
                         Itemstacks = canIgniteStacks.ToArray(),
                         GetMatchingStacks = (wi, bs, es) => {

@@ -88,8 +88,7 @@ namespace Vintagestory.GameContent
                 Block block = api.World.BlockAccessor.GetBlock(candidatePos);
                 if (CanReplace(block))
                 {
-                    Block supportBlock = api.World.BlockAccessor.GetBlock(candidatePos.DownCopy());
-                    if(IsSolid(supportBlock))
+                    if(CanSupportPumpkin(api, candidatePos.DownCopy()))
                     {
                         DoSpawnVine(api, candidatePos, motherplantPos, facing, currentTotalHours);
                         return true;
@@ -124,9 +123,12 @@ namespace Vintagestory.GameContent
             return block.Replaceable >= 6000 && !block.Code.GetName().Contains("pumpkin");
         }
 
-        private bool IsSolid(Block block)
+        public static bool CanSupportPumpkin(ICoreAPI api, BlockPos pos)
         {
-            return block != null && !block.IsLiquid();
+            Block underblock = api.World.BlockAccessor.GetLiquidBlock(pos);
+            if (underblock.IsLiquid()) return false;
+            underblock = api.World.BlockAccessor.GetBlock(pos);
+            return underblock.Replaceable <= 5000;
         }
     }
 }

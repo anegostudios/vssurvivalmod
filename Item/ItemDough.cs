@@ -13,20 +13,28 @@ namespace Vintagestory.GameContent
 {
     public class ItemDough : Item
     {
-        ItemStack[] tableStacks;
+        static ItemStack[] tableStacks;
 
         public override void OnLoaded(ICoreAPI api)
         {
-            List<ItemStack> tableStacks = new List<ItemStack>();
-            foreach (CollectibleObject obj in api.World.Collectibles)
+            if (tableStacks == null)
             {
-                if (obj is Block && (obj as Block).Attributes?.IsTrue("pieFormingSurface") == true)
+                List<ItemStack> foundStacks = new List<ItemStack>();
+                api.World.Collectibles.ForEach(obj =>
                 {
-                    tableStacks.Add(new ItemStack(obj));
-                }
-            }
+                    if (obj is Block block && block.Attributes?.IsTrue("pieFormingSurface") == true)
+                    {
+                        foundStacks.Add(new ItemStack(obj));
+                    }
+                });
 
-            this.tableStacks = tableStacks.ToArray();
+                tableStacks = foundStacks.ToArray();
+            }
+        }
+
+        public override void OnUnloaded(ICoreAPI api)
+        {
+            tableStacks = null;
         }
 
 
@@ -62,7 +70,7 @@ namespace Vintagestory.GameContent
                 {
                     ActionLangCode = "heldhelp-makepie",
                     Itemstacks = tableStacks,
-                    HotKeyCode = "sneak",
+                    HotKeyCode = "shift",
                     MouseButton = EnumMouseButton.Right,
                 }
             }.Append(base.GetHeldInteractionHelp(inSlot));

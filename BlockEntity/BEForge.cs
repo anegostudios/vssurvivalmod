@@ -23,30 +23,6 @@ namespace Vintagestory.GameContent
         public ItemStack Contents => contents;
         public float FuelLevel => fuelLevel;
 
-        static SimpleParticleProperties smokeParticles;
-
-        static BlockEntityForge()
-        {
-            smokeParticles = new SimpleParticleProperties(
-                   1, 1,
-                   ColorUtil.ToRgba(150, 80, 80, 80),
-                   new Vec3d(),
-                   new Vec3d(0.75, 0, 0.75),
-                   new Vec3f(-1 / 32f, 0.1f, -1 / 32f),
-                   new Vec3f(1 / 32f, 0.1f, 1 / 32f),
-                   2f,
-                   -0.025f / 4,
-                   0.2f,
-                   0.4f,
-                   EnumParticleModel.Quad
-               );
-
-            smokeParticles.SizeEvolve = new EvolvingNatFloat(EnumTransformFunction.LINEAR, -0.25f);
-            smokeParticles.SelfPropelled = true;
-            smokeParticles.AddPos.Set(8 / 16.0, 0, 8 / 16.0);
-        }
-
-
 
         public override void Initialize(ICoreAPI api)
         {
@@ -109,11 +85,9 @@ namespace Vintagestory.GameContent
 
             if (burning && Api.World.Rand.NextDouble() < 0.13)
             {
-                smokeParticles.MinPos.Set(Pos.X + 4 / 16f, Pos.Y + 14 / 16f, Pos.Z + 4 / 16f);
-                int g = 50 + Api.World.Rand.Next(50);
-                smokeParticles.Color = ColorUtil.ToRgba(150, g, g, g);
-                Api.World.SpawnParticles(smokeParticles);
+                BlockEntityCoalPile.SpawnBurningCoalParticles(Api, Pos.ToVec3d().Add(4 / 16f, 14 / 16f, 4 / 16f), 8/16f, 8/16f);
             }
+
             if (renderer != null)
             {
                 renderer.SetContents(contents, fuelLevel, burning, false);
@@ -214,7 +188,7 @@ namespace Vintagestory.GameContent
         {
             ItemSlot slot = byPlayer.InventoryManager.ActiveHotbarSlot;
 
-            if (!byPlayer.Entity.Controls.Sneak)
+            if (!byPlayer.Entity.Controls.ShiftKey)
             {
                 if (contents == null) return false;
                 ItemStack split = contents.Clone();

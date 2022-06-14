@@ -200,9 +200,13 @@ namespace Vintagestory.GameContent
 
         public void Start()
         {
-            if (!entity.AnimManager.StartAnimation(AnimCode))
+            if (AnimSpeed != 1 || !entity.AnimManager.StartAnimation(AnimCode))
             {
-                entity.AnimManager.StartAnimation(new AnimationMetaData() { Animation = AnimCode, Code = AnimCode, AnimationSpeed = AnimSpeed });
+                entity.AnimManager.StartAnimation(new AnimationMetaData() { 
+                    Animation = AnimCode, 
+                    Code = AnimCode, 
+                    AnimationSpeed = AnimSpeed 
+                }.Init());
             }
         }
 
@@ -338,9 +342,13 @@ namespace Vintagestory.GameContent
 
             if (ExecutingCommands.Count > 0)
             {
-                ExecutingCommands.Peek().Start();
+                var cmd = ExecutingCommands.Peek();
+                cmd.Start();
+                WatchedAttributes.SetString("currentCommand", cmd.Type);
             }
+
             commandQueueActive = true;
+            
         }
 
         public void StopExecuteCommands()
@@ -348,6 +356,7 @@ namespace Vintagestory.GameContent
             if (ExecutingCommands.Count > 0) ExecutingCommands.Peek().Stop();
             ExecutingCommands.Clear();
             commandQueueActive = false;
+            WatchedAttributes.SetString("currentCommand", "");
         }
 
         public override void OnGameTick(float dt)
@@ -363,6 +372,8 @@ namespace Vintagestory.GameContent
                     INpcCommand nowCommand = ExecutingCommands.Peek();
                     if (nowCommand.IsFinished())
                     {
+                        WatchedAttributes.SetString("currentCommand", "");
+
                         ExecutingCommands.Dequeue();
                         if (ExecutingCommands.Count > 0) ExecutingCommands.Peek().Start();
                         else
@@ -379,9 +390,10 @@ namespace Vintagestory.GameContent
                 }
             }
 
+            World.FrameProfiler.Mark("entityAnimalBot-pathfinder-and-commands");
         }
 
-        
+
         public override void ToBytes(BinaryWriter writer, bool forClient)
         {
             if (!forClient)
@@ -403,6 +415,8 @@ namespace Vintagestory.GameContent
                     commands["cmd" + i] = attr;
                     i++;
                 }
+
+                WatchedAttributes.SetBool("loop", LoopCommands);
             }
 
             base.ToBytes(writer, forClient);
@@ -444,6 +458,8 @@ namespace Vintagestory.GameContent
                     command.FromAttribute(attr);
                     Commands.Add(command);
                 }
+
+                LoopCommands = WatchedAttributes.GetBool("loop");
             }
         }
     }

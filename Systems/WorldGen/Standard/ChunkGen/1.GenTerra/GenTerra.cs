@@ -23,17 +23,24 @@ namespace Vintagestory.ServerMods
         SimplexNoise distort2dx;
         SimplexNoise distort2dz;
 
-        int lerpHor;
-        int lerpVer;
+        // We generate the whole terrain here so we instantly know the heightmap
+        const int lerpHor = TerraGenConfig.lerpHorizontal;
+        const int lerpVer = TerraGenConfig.lerpVertical;
         int noiseWidth;
         int paddedNoiseWidth;
         int paddedNoiseHeight;
         int noiseHeight;
-        float lerpDeltaHor;
-        float lerpDeltaVert;
+        const float lerpDeltaHor = 1f / lerpHor;
+        const float lerpDeltaVert = 1f / lerpVer;
 
         double[] noiseTemp;
         float horizontalScale;
+
+        float[] terrainThresholdsX0;
+        float[] terrainThresholdsX1;
+        float[] terrainThresholdsX2;
+        float[] terrainThresholdsX3;
+
 
         public override bool ShouldLoad(EnumAppSide side)
         {
@@ -85,19 +92,11 @@ namespace Vintagestory.ServerMods
                 TerraGenConfig.terrainGenOctaves, 0.002 / horizontalScale, 0.9, api.WorldManager.Seed
             );
 
-            // We generate the whole terrain here so we instantly know the heightmap
-            lerpHor = TerraGenConfig.lerpHorizontal;
-            lerpVer = TerraGenConfig.lerpVertical;
-
-
             noiseWidth = chunksize / lerpHor;
             noiseHeight = api.WorldManager.MapSizeY / lerpVer;
 
             paddedNoiseWidth = noiseWidth + 1;
             paddedNoiseHeight = noiseHeight + 1;
-
-            lerpDeltaHor = 1f / lerpHor;
-            lerpDeltaVert = 1f / lerpVer;
 
             noiseTemp = new double[paddedNoiseWidth * paddedNoiseWidth * paddedNoiseHeight];
 
@@ -114,6 +113,13 @@ namespace Vintagestory.ServerMods
                 distort2dx = new SimplexNoise(new double[] { 55, 40, 30, 10 }, new double[] { 1 / 500.0, 1 / 250.0, 1 / 125.0, 1 / 65 }, api.World.SeaLevel + 9876 + 0);
                 distort2dz = new SimplexNoise(new double[] { 55, 40, 30, 10 }, new double[] { 1 / 500.0, 1 / 250.0, 1 / 125.0, 1 / 65 }, api.World.SeaLevel + 9877 + 0);
             }
+
+            terrainThresholdsX0 = new float[api.WorldManager.MapSizeY];
+            terrainThresholdsX1 = new float[api.WorldManager.MapSizeY];
+            terrainThresholdsX2 = new float[api.WorldManager.MapSizeY];
+            terrainThresholdsX3 = new float[api.WorldManager.MapSizeY];
+
+            api.Logger.VerboseDebug("Initialised GenTerra");
         }
 
 
@@ -125,6 +131,7 @@ namespace Vintagestory.ServerMods
         {
             landforms = NoiseLandforms.landforms;
             IMapChunk mapchunk = chunks[0].MapChunk;
+            int chunksize = this.chunksize;
 
             int climateUpLeft;
             int climateUpRight;
@@ -143,6 +150,8 @@ namespace Vintagestory.ServerMods
             climateBotRight = climateMap.GetUnpaddedInt((int)(rlX * fac + fac), (int)(rlZ * fac + fac));
 
             int freezingTemp = -17;
+            int waterID = GlobalConfig.waterBlockId;
+            int rockID = GlobalConfig.defaultRockId;
 
 
             IntDataMap2D landformMap = mapchunk.MapRegion.LandformMap;
@@ -199,10 +208,6 @@ namespace Vintagestory.ServerMods
             double thNoiseGainZ0;
             double thNoiseZ0;
 
-            float[] terrainThresholdsX0 = new float[api.WorldManager.MapSizeY];
-            float[] terrainThresholdsX1 = new float[api.WorldManager.MapSizeY];
-            float[] terrainThresholdsX2 = new float[api.WorldManager.MapSizeY];
-            float[] terrainThresholdsX3 = new float[api.WorldManager.MapSizeY];
 
 
 
@@ -235,88 +240,114 @@ namespace Vintagestory.ServerMods
                             int posY = yN * lerpVer + y;
                             int chunkY = posY / chunksize;
                             int localY = posY % chunksize;
+                            IChunkBlocks chunkBlockData = chunks[chunkY].Blocks;
 
-                            // For Terrain noise 
-                            double tnoiseX0 = tnoiseY0;
-                            double tnoiseX1 = tnoiseY1;
-
-                            double tnoiseGainX0 = (tnoiseY2 - tnoiseY0) * lerpDeltaHor;
-                            double tnoiseGainX1 = (tnoiseY3 - tnoiseY1) * lerpDeltaHor;
-
-                            // Landform thresholds lerp
-                            thNoiseX0 = terrainThresholdsX0[posY];
-                            thNoiseX1 = terrainThresholdsX2[posY];
-
-                            thNoiseGainX0 = (terrainThresholdsX1[posY] - thNoiseX0) * lerpDeltaHor;
-                            thNoiseGainX1 = (terrainThresholdsX3[posY] - thNoiseX1) * lerpDeltaHor;
-
-                            for (int x = 0; x < lerpHor; x++)
+                            if (posY == 0)
                             {
-                                // For terrain noise
-                                double tnoiseZ0 = tnoiseX0;
-                                double tnoiseGainZ0 = (tnoiseX1 - tnoiseX0) * lerpDeltaHor;
+                                int chunkIndex = ChunkIndex3d(xN * lerpHor, localY, zN * lerpHor);
+                                chunkBlockData.SetBlockBulk(chunkIndex, lerpHor, lerpHor, GlobalConfig.mantleBlockId);
+                            }
+                            else
+                            {
+                                // For Terrain noise 
+                                double tnoiseX0 = tnoiseY0;
+                                double tnoiseX1 = tnoiseY1;
 
-                                // Landform
-                                thNoiseZ0 = thNoiseX0;
-                                thNoiseGainZ0 = (thNoiseX1 - thNoiseX0) * lerpDeltaHor;
+                                double tnoiseGainX0 = (tnoiseY2 - tnoiseY0) * lerpDeltaHor;
+                                double tnoiseGainX1 = (tnoiseY3 - tnoiseY1) * lerpDeltaHor;
 
-                                for (int z = 0; z < lerpHor; z++)
+                                // Landform thresholds lerp
+                                thNoiseX0 = terrainThresholdsX0[posY];
+                                thNoiseX1 = terrainThresholdsX2[posY];
+                                double thNoiseY2 = terrainThresholdsX1[posY];
+                                double thNoiseY3 = terrainThresholdsX3[posY];
+
+                                // Whole Y slice is rock
+                                if (Math.Min(Math.Min(tnoiseY0, tnoiseY1), Math.Min(tnoiseY2, tnoiseY3)) > Math.Max(Math.Max(thNoiseX0, thNoiseX1), Math.Max(thNoiseY2, thNoiseY3)))
                                 {
-                                    int lX = xN * lerpHor + x;
-                                    int lZ = zN * lerpHor + z;
-                                    
-                                    int mapIndex = ChunkIndex2d(lX, lZ);
-                                    int chunkIndex = ChunkIndex3d(lX, localY, lZ);
+                                    int chunkIndex = ChunkIndex3d(xN * lerpHor, localY, zN * lerpHor);
+                                    chunkBlockData.SetBlockBulk(chunkIndex, lerpHor, lerpHor, rockID);
 
-                                    chunks[chunkY].Blocks[chunkIndex] = 0;
-
-                                    if (posY == 0)
+                                    for (int x = 0; x < lerpHor; x++)
                                     {
-                                        chunks[chunkY].Blocks[chunkIndex] = GlobalConfig.mantleBlockId;
-                                        continue;
-                                    }
-                                    
-
-                                    if (tnoiseZ0 > thNoiseZ0)
-                                    {
-                                        terrainheightmap[mapIndex] = rainheightmap[mapIndex] = (ushort)Math.Max(rainheightmap[mapIndex], posY);
-
-                                        chunks[chunkY].Blocks[chunkIndex] = GlobalConfig.defaultRockId;
-                                    }
-                                    else
-                                    {
-                                        if (posY < TerraGenConfig.seaLevel)
+                                        for (int z = 0; z < lerpHor; z++)
                                         {
-                                            terrainheightmap[mapIndex] = rainheightmap[mapIndex] = (ushort)Math.Max(rainheightmap[mapIndex], posY);
-
-                                            if (posY == TerraGenConfig.seaLevel - 1)
-                                            {
-                                                int temp = (GameMath.BiLerpRgbColor(((float)lX) / chunksize, ((float)lZ) / chunksize, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight) >> 16) & 0xff;
-                                                float distort = (float)distort2dx.Noise(chunkX * chunksize + lX, chunkZ * chunksize + lZ) / 20f;
-                                                float tempf = TerraGenConfig.GetScaledAdjustedTemperatureFloat(temp, 0) + distort;
-
-                                                chunks[chunkY].Blocks[chunkIndex] = (tempf < freezingTemp) ? GlobalConfig.lakeIceBlockId : GlobalConfig.waterBlockId;
-                                            } else
-                                            {
-                                                chunks[chunkY].Blocks[chunkIndex] = GlobalConfig.waterBlockId;
-                                            }
-                                            
-                                        }
-                                        else
-                                        {
-                                            chunks[chunkY].Blocks[chunkIndex] = 0;
+                                            int lX = xN * lerpHor + x;
+                                            int lZ = zN * lerpHor + z;
+                                            int mapIndex = ChunkIndex2d(lX, lZ);
+                                            terrainheightmap[mapIndex] = rainheightmap[mapIndex] = (ushort)posY;
                                         }
                                     }
-                                    
-                                    tnoiseZ0 += tnoiseGainZ0;
-                                    thNoiseZ0 += thNoiseGainZ0;
                                 }
+                                else if (posY >= TerraGenConfig.seaLevel && Math.Max(Math.Max(tnoiseY0, tnoiseY1), Math.Max(tnoiseY2, tnoiseY3)) <= Math.Min(Math.Min(thNoiseX0, thNoiseX1), Math.Min(thNoiseY2, thNoiseY3)))
+                                {
+                                    // Nothing to do: whole slice is air
+                                }
+                                else
+                                {
+                                    thNoiseGainX0 = (thNoiseY2 - thNoiseX0) * lerpDeltaHor;
+                                    thNoiseGainX1 = (thNoiseY3 - thNoiseX1) * lerpDeltaHor;
 
-                                tnoiseX0 += tnoiseGainX0;
-                                tnoiseX1 += tnoiseGainX1;
+                                    for (int x = 0; x < lerpHor; x++)
+                                    {
+                                        // For terrain noise
+                                        double tnoiseZ0 = tnoiseX0;
+                                        double tnoiseGainZ0 = (tnoiseX1 - tnoiseX0) * lerpDeltaHor;
 
-                                thNoiseX0 += thNoiseGainX0;
-                                thNoiseX1 += thNoiseGainX1;
+                                        // Landform
+                                        thNoiseZ0 = thNoiseX0;
+                                        thNoiseGainZ0 = (thNoiseX1 - thNoiseX0) * lerpDeltaHor;
+
+                                        for (int z = 0; z < lerpHor; z++)
+                                        {
+                                            int lX = xN * lerpHor + x;
+                                            int lZ = zN * lerpHor + z;
+
+                                            if (tnoiseZ0 > thNoiseZ0)
+                                            {
+                                                int mapIndex = ChunkIndex2d(lX, lZ);
+                                                terrainheightmap[mapIndex] = Math.Max(terrainheightmap[mapIndex], (ushort)posY);
+                                                rainheightmap[mapIndex] = Math.Max(rainheightmap[mapIndex], (ushort)posY);
+
+                                                chunkBlockData[ChunkIndex3d(lX, localY, lZ)] = rockID;
+                                            }
+                                            else if (posY < TerraGenConfig.seaLevel)
+                                            {
+                                                int mapIndex = ChunkIndex2d(lX, lZ);
+                                                /*terrainheightmap[mapIndex] = */rainheightmap[mapIndex] = Math.Max(rainheightmap[mapIndex], (ushort)posY);
+
+                                                int blockId;
+                                                if (posY == TerraGenConfig.seaLevel - 1)
+                                                {
+                                                    int temp = (GameMath.BiLerpRgbColor(((float)lX) / chunksize, ((float)lZ) / chunksize, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight) >> 16) & 0xff;
+                                                    float distort = (float)distort2dx.Noise(chunkX * chunksize + lX, chunkZ * chunksize + lZ) / 20f;
+                                                    float tempf = TerraGenConfig.GetScaledAdjustedTemperatureFloat(temp, 0) + distort;
+
+                                                    blockId = (tempf < freezingTemp) ? GlobalConfig.lakeIceBlockId : waterID;
+                                                }
+                                                else
+                                                {
+                                                    blockId = waterID;
+                                                }
+
+                                                chunkBlockData.SetLiquid(ChunkIndex3d(lX, localY, lZ), blockId);
+                                            }
+                                            else
+                                            {
+                                                //blockId = 0;
+                                            }
+
+                                            tnoiseZ0 += tnoiseGainZ0;
+                                            thNoiseZ0 += thNoiseGainZ0;
+                                        }
+
+                                        tnoiseX0 += tnoiseGainX0;
+                                        tnoiseX1 += tnoiseGainX1;
+
+                                        thNoiseX0 += thNoiseGainX0;
+                                        thNoiseX1 += thNoiseGainX1;
+                                    }
+                                }
                             }
 
                             tnoiseY0 += tnoiseGainY0;

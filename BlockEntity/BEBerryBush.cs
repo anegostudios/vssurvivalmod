@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using System.Text;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
@@ -21,6 +22,9 @@ namespace Vintagestory.GameContent
         RoomRegistry roomreg;
         public int roomness;
 
+        public bool Pruned;
+        public double LastPrunedTotalDays;
+
         public BlockEntityBerryBush() : base()
         {
 
@@ -38,7 +42,10 @@ namespace Vintagestory.GameContent
                     lastCheckAtTotalDays = api.World.Calendar.TotalDays;
                 }
 
-                RegisterGameTickListener(CheckGrow, 8000);
+                if (Api.World.Config.GetBool("processCrops", true))
+                {
+                    RegisterGameTickListener(CheckGrow, 8000);
+                }
 
                 api.ModLoader.GetModSystem<POIRegistry>().AddPOI(this);
                 roomreg = Api.ModLoader.GetModSystem<RoomRegistry>();
@@ -50,9 +57,17 @@ namespace Vintagestory.GameContent
             }
         }
 
+        internal void Prune()
+        {
+            Pruned = true;
+            LastPrunedTotalDays = Api.World.Calendar.TotalDays;
+            MarkDirty(true);
+        }
 
         private void CheckGrow(float dt)
         {
+            if (!(Api as ICoreServerAPI).World.IsFullyLoadedChunk(Pos)) return;
+
             if (Block.Attributes == null)
                 {
 #if DEBUG
@@ -169,7 +184,12 @@ namespace Vintagestory.GameContent
         }
 
         bool DoGrow()
-        { 
+        {
+            if (Api.World.Calendar.TotalDays - LastPrunedTotalDays > Api.World.Calendar.DaysPerYear)
+            {
+                Pruned = false;
+            }
+
             Block block = Api.World.BlockAccessor.GetBlock(Pos);
             string nowCodePart = block.LastCodePart();
             string nextCodePart = (nowCodePart == "empty") ? "flowering" : ((nowCodePart == "flowering") ? "ripe" : "empty");
@@ -208,6 +228,8 @@ namespace Vintagestory.GameContent
             lastCheckAtTotalDays = tree.GetDouble("lastCheckAtTotalDays");
 
             roomness = tree.GetInt("roomness");
+            Pruned = tree.GetBool("pruned");
+            LastPrunedTotalDays = tree.GetDecimal("lastPrunedTotalDays");
         }
 
         public override void ToTreeAttributes(ITreeAttribute tree)
@@ -216,8 +238,9 @@ namespace Vintagestory.GameContent
 
             tree.SetDouble("transitionHoursLeft", transitionHoursLeft);
             tree.SetDouble("lastCheckAtTotalDays", lastCheckAtTotalDays);
-
+            tree.SetBool("pruned", Pruned);
             tree.SetInt("roomness", roomness);
+            tree.SetDouble("lastPrunedTotalDays", LastPrunedTotalDays);
         }
 
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder sb)
@@ -255,14 +278,15 @@ namespace Vintagestory.GameContent
 
 
         #region IAnimalFoodSource impl
-        public bool IsSuitableFor(Entity entity)
+        public bool IsSuitableFor(Entity entity, string[] diet)
         {
-            if (!IsRipe()) return false;
-
-            string[] diet = entity.Properties.Attributes?["blockDiet"]?.AsArray<string>();
             if (diet == null) return false;
 
-            return diet.Contains("Berry");
+            if (!diet.Contains("Berry")) return false;
+
+            if (!IsRipe()) return false;
+
+            return true;
         }
 
         public float ConsumeOnePortion()
@@ -315,6 +339,17 @@ namespace Vintagestory.GameContent
             {
                 Api.ModLoader.GetModSystem<POIRegistry>().RemovePOI(this);
             }
+        }
+
+        public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
+        {
+            if (Pruned)
+            {
+                mesher.AddMeshData((Block as BlockBerryBush).GetPrunedMesh(Pos));
+                return true;
+            }
+
+            return base.OnTesselation(mesher, tessThreadTesselator);
         }
     }
 }

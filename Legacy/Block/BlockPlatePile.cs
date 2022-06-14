@@ -105,7 +105,7 @@ namespace Vintagestory.GameContent
             if (be is BlockEntityPlatePile)
             {
                 BlockEntityPlatePile pile = (BlockEntityPlatePile)be;
-                int q = player.Entity.Controls.Sprint ? pile.BulkTakeQuantity : pile.DefaultTakeQuantity;
+                int q = player.Entity.Controls.CtrlKey ? pile.BulkTakeQuantity : pile.DefaultTakeQuantity;
 
                 pile.inventory[0].Itemstack = (ItemStack)slot.Itemstack.Clone();
                 pile.inventory[0].Itemstack.StackSize = Math.Min(slot.StackSize, q);
@@ -140,7 +140,7 @@ namespace Vintagestory.GameContent
                 {
                     ActionLangCode = "blockhelp-platepile-add",
                     MouseButton = EnumMouseButton.Right,
-                    HotKeyCode = "sneak",
+                    HotKeyCode = "shift",
                     Itemstacks = new ItemStack[] { new ItemStack(this) },
                     GetMatchingStacks = (wi, bs, es) =>
                     {
@@ -165,7 +165,7 @@ namespace Vintagestory.GameContent
                 {
                     ActionLangCode = "blockhelp-platepile-4add",
                     MouseButton = EnumMouseButton.Right,
-                    HotKeyCodes = new string[] {"sprint", "sneak" },
+                    HotKeyCodes = new string[] {"ctrl", "shift" },
                     Itemstacks = new ItemStack[] { new ItemStack(this) },
                     GetMatchingStacks = (wi, bs, es) =>
                     {
@@ -184,7 +184,7 @@ namespace Vintagestory.GameContent
                 new WorldInteraction()
                 {
                     ActionLangCode = "blockhelp-platepile-4remove",
-                    HotKeyCode = "sprint",
+                    HotKeyCode = "ctrl",
                     MouseButton = EnumMouseButton.Right
                 }
             };

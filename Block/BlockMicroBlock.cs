@@ -425,6 +425,8 @@ namespace Vintagestory.GameContent
             base.GetDecal(world, pos, decalTexSource, ref decalModelData, ref blockModelData);
         }
 
+        Cuboidf[] defaultBoxes = new Cuboidf[] { Cuboidf.Default() };
+
 
         public override Cuboidf[] GetSelectionBoxes(IBlockAccessor blockAccessor, BlockPos pos)
         {

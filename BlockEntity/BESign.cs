@@ -185,7 +185,7 @@ namespace Vintagestory.GameContent
 
         public void OnRightClick(IPlayer byPlayer)
         {
-            if (byPlayer?.Entity?.Controls?.Sneak == true)
+            if (byPlayer?.Entity?.Controls?.ShiftKey == true)
             {
                 ItemSlot hotbarSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
                 if (hotbarSlot?.Itemstack?.ItemAttributes?["pigment"]?["color"].Exists == true)

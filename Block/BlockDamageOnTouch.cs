@@ -12,7 +12,16 @@ using Vintagestory.ServerMods;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockMetalSpikes : Block
+    public class BlockPlantDamageOnTouch : BlockDamageOnTouch
+    {
+        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, LCGRandom worldgenRandom)
+        {
+            Block block = blockAccessor.GetBlock(pos.X, pos.Y - 1, pos.Z);
+            return block.Fertility > 0 && base.TryPlaceBlockForWorldGen(blockAccessor, pos, onBlockFace, worldgenRandom);
+        }
+    }
+
+    public class BlockDamageOnTouch : Block
     {
         float sprintIntoDamage = 1;
         float fallIntoDamageMul = 30;

@@ -51,11 +51,12 @@ namespace Vintagestory.ServerMods
         {
             IMapChunk heremapchunk = chunks[0].MapChunk;
 
-            int depositGradeIndex = PlaceBlock.AllowedVariants != null ? DepositRand.NextInt(PlaceBlock.AllowedVariants.Length) : 0;
-
             int radius = Math.Min(64, (int)Radius.nextFloat(1, DepositRand));
             if (radius <= 0) return;
             radius++;
+
+            int depositGradeIndex = PlaceBlock.AllowedVariants != null ? DepositRand.NextInt(PlaceBlock.AllowedVariants.Length) : 0;
+            int chunksize = this.chunksize;
 
             bool shouldGenSurfaceDeposit = DepositRand.NextFloat() > 0.35f && SurfaceBlock != null;
             float tries = RandomTries.nextFloat(1, DepositRand);
@@ -74,7 +75,7 @@ namespace Vintagestory.ServerMods
                 if (targetPos.Y <= 1 || targetPos.Y >= worldheight || lx < 0 || lz < 0 || lx >= chunksize || lz >= chunksize) continue;
                 
                 int index3d = ((targetPos.Y % chunksize) * chunksize + lz) * chunksize + lx;
-                int blockId = chunks[targetPos.Y / chunksize].Blocks[index3d];
+                int blockId = chunks[targetPos.Y / chunksize].Blocks.GetBlockIdUnsafe(index3d);
                 
                 ResolvedDepositBlock resolvedPlaceBlock;
 
@@ -98,13 +99,15 @@ namespace Vintagestory.ServerMods
                         float chance = SurfaceBlockChance * Math.Max(0, 1 - depth / 8f);
                         if (surfaceY < worldheight && DepositRand.NextFloat() < chance)
                         {
-                            index3d = (((surfaceY + 1) % chunksize) * chunksize + lz) * chunksize + lx;
-
-                            Block belowBlock = Api.World.Blocks[chunks[surfaceY / chunksize].Blocks[((surfaceY % chunksize) * chunksize + lz) * chunksize + lx]];
-
-                            if (belowBlock.SideSolid[BlockFacing.UP.Index] && chunks[(surfaceY + 1) / chunksize].Blocks[index3d] == 0)
+                            Block belowBlock = Api.World.Blocks[chunks[surfaceY / chunksize].Blocks.GetBlockIdUnsafe(((surfaceY % chunksize) * chunksize + lz) * chunksize + lx)];
+                            if (belowBlock.SideSolid[BlockFacing.UP.Index])
                             {
-                                chunks[(surfaceY + 1) / chunksize].Blocks[index3d] = surfaceBlockByInBlockId[blockId].Blocks[0].BlockId;
+                                index3d = (((surfaceY + 1) % chunksize) * chunksize + lz) * chunksize + lx;
+                                IChunkBlocks chunkBlockData = chunks[(surfaceY + 1) / chunksize].Blocks;
+                                if (chunkBlockData.GetBlockIdUnsafe(index3d) == 0)
+                                {
+                                    chunkBlockData[index3d] = surfaceBlockByInBlockId[blockId].Blocks[0].BlockId;
+                                }
                             }
                         }
                     }

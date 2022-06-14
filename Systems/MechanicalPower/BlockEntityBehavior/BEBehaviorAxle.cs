@@ -63,7 +63,7 @@ namespace Vintagestory.GameContent.Mechanics
         {
             return ObjectCacheUtil.GetOrCreate(Api, "axle-" + orient + "-stand", () =>
             {
-                Shape shape = capi.Assets.TryGet("shapes/block/wood/mechanics/axle-stand-" + orient + ".json").ToObject<Shape>();
+                Shape shape = API.Common.Shape.TryGet(capi, "shapes/block/wood/mechanics/axle-stand-" + orient + ".json");
                 MeshData mesh;
                 capi.Tesselator.TesselateShape(Block, shape, out mesh);
                 return mesh;
@@ -167,6 +167,8 @@ namespace Vintagestory.GameContent.Mechanics
                 return false;
 #endif
             }
+
+            return true;
         }
 
         private MeshData rotStand(MeshData mesh)

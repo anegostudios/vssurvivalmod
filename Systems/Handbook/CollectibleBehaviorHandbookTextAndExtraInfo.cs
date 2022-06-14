@@ -598,7 +598,7 @@ namespace Vintagestory.GameContent
 
             foreach (var val in capi.World.GridRecipes)
             {
-                if (val.Output.ResolvedItemstack?.Satisfies(stack) ?? false)
+                if (val.ShowInCreatedBy && (val.Output.ResolvedItemstack?.Satisfies(stack) ?? false))
                 {
                     grecipes.Add(val);
                 }
@@ -944,7 +944,7 @@ namespace Vintagestory.GameContent
                     foreach (var val in grouped)
                     {
                         var comp = new SlideshowGridRecipeTextComponent(capi, val.Value.ToArray(), 40, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)), allStacks);
-                        comp.PaddingLeft = 8;
+                        comp.PaddingRight = 8;   
                         comp.UnscaledMarginTop = 8;
                         components.Add(comp);
                     }

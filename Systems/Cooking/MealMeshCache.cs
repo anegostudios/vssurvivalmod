@@ -235,7 +235,7 @@ namespace Vintagestory.GameContent
             AssetLocation shapeloc = isComplete ? pieShapeBySize[pieSize - 1] : pieShapeLocByFillLevel[fillLevel];
 
             shapeloc.WithPathAppendixOnce(".json").WithPathPrefixOnce("shapes/");
-            Shape shape = capi.Assets.TryGet(shapeloc).ToObject<Shape>();
+            Shape shape = API.Common.Shape.TryGet(capi, shapeloc);
             MeshData mesh;
 
             int topCrustType = pieStack.Attributes.GetInt("topCrustType");
@@ -292,7 +292,7 @@ namespace Vintagestory.GameContent
             CompositeShape cShape = containerBlock.Shape;
             var loc = cShape.Base.Clone().WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json");
 
-            Shape shape = capi.Assets.TryGet(loc).ToObject<Shape>();
+            Shape shape = API.Common.Shape.TryGet(capi, loc);
             MeshData wholeMesh;
             capi.Tesselator.TesselateShape("meal", shape, out wholeMesh, capi.Tesselator.GetTexSource(containerBlock), new Vec3f(cShape.rotateX, cShape.rotateY, cShape.rotateZ));
 
@@ -323,7 +323,7 @@ namespace Vintagestory.GameContent
                 bool rotten = ContentsRotten(contentStacks);
                 if (rotten)
                 {
-                    Shape contentShape = capi.Assets.TryGet("shapes/block/food/meal/rot.json").ToObject<Shape>();
+                    Shape contentShape = API.Common.Shape.TryGet(capi, "shapes/block/food/meal/rot.json");
 
                     MeshData contentMesh;
                     capi.Tesselator.TesselateShape("rotcontents", contentShape, out contentMesh, source);
@@ -346,7 +346,7 @@ namespace Vintagestory.GameContent
 
                         CompositeShape cshape = contentStacks[0]?.ItemAttributes?["inBowlShape"].AsObject<CompositeShape>(new CompositeShape() { Base = new AssetLocation("shapes/block/food/meal/pickled.json") });
 
-                        Shape contentShape = capi.Assets.TryGet(cshape.Base.WithPathAppendixOnce(".json").WithPathPrefixOnce("shapes/")).ToObject<Shape>();
+                        Shape contentShape = API.Common.Shape.TryGet(capi, cshape.Base.WithPathAppendixOnce(".json").WithPathPrefixOnce("shapes/"));
                         MeshData contentMesh;
                         capi.Tesselator.TesselateShape("picklednmealcontents", contentShape, out contentMesh, source);
 
@@ -390,7 +390,7 @@ namespace Vintagestory.GameContent
                 shapePath = new AssetLocation("shapes/block/food/meal/rot.json");
             }
 
-            Shape shape = capi.Assets.TryGet(shapePath).ToObject<Shape>();
+            Shape shape = API.Common.Shape.TryGet(capi, shapePath);
             Dictionary<CookingRecipeIngredient, int> usedIngredQuantities = new Dictionary<CookingRecipeIngredient, int>();
 
             if (rotten)

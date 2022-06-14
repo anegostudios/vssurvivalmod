@@ -45,18 +45,7 @@ namespace Vintagestory.GameContent
             {
                 interactions = ObjectCacheUtil.GetOrCreate(api, "torchInteractions" + FirstCodePart(), () =>
                 {
-                    List<ItemStack> canIgniteStacks = new List<ItemStack>();
-
-                    foreach (CollectibleObject obj in api.World.Collectibles)
-                    {
-                        string firstCodePart = obj.FirstCodePart();
-
-                        if (obj is Block && (obj as Block).HasBehavior<BlockBehaviorCanIgnite>() || obj is ItemFirestarter)
-                        {
-                            List<ItemStack> stacks = obj.GetHandBookStacks(api as ICoreClientAPI);
-                            if (stacks != null) canIgniteStacks.AddRange(stacks);
-                        }
-                    }
+                    List<ItemStack> canIgniteStacks = BlockBehaviorCanIgnite.CanIgniteStacks(api, true);
 
                     return new WorldInteraction[]
                     {
@@ -64,7 +53,7 @@ namespace Vintagestory.GameContent
                     {
                         ActionLangCode = "blockhelp-firepit-ignite",
                         MouseButton = EnumMouseButton.Right,
-                        HotKeyCode = "sneak",
+                        HotKeyCode = "shift",
                         Itemstacks = canIgniteStacks.ToArray(),
                         GetMatchingStacks = (wi, bs, es) => {
                             return wi.Itemstacks;

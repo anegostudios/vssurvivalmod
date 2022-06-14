@@ -24,7 +24,7 @@ namespace Vintagestory.ServerMods
         IWorldGenBlockAccessor wgenBlockAccessor;
         CollisionTester collisionTester = new CollisionTester();
 
-       
+
         Dictionary<EntityProperties, EntityProperties[]> entityTypeGroups = new Dictionary<EntityProperties, EntityProperties[]>();
 
 
@@ -118,6 +118,7 @@ namespace Vintagestory.ServerMods
 
         private void OnChunkColumnGen(IServerChunk[] chunks, int chunkX, int chunkZ, ITreeAttribute chunkGenParams = null)
         {
+            wgenBlockAccessor.BeginColumn();
             IntDataMap2D climateMap = chunks[0].MapChunk.MapRegion.ClimateMap;
             ushort[] heightMap = chunks[0].MapChunk.WorldGenTerrainHeightMap;
 
@@ -161,9 +162,9 @@ namespace Vintagestory.ServerMods
 
                     pos.Set(chunkX * chunksize + dx, 0, chunkZ * chunksize + dz);
 
-                    pos.Y = 
-                        entitytype.Server.SpawnConditions.Worldgen.TryOnlySurface ? 
-                        heightMap[dz * chunksize + dx] + 1: 
+                    pos.Y =
+                        entitytype.Server.SpawnConditions.Worldgen.TryOnlySurface ?
+                        heightMap[dz * chunksize + dx] + 1 :
                         rnd.Next(worldheight)
                     ;
                     posAsVec.Set(pos.X + 0.5, pos.Y + 0.005, pos.Z + 0.5);
@@ -197,11 +198,14 @@ namespace Vintagestory.ServerMods
             while (nextGroupSize <= 0 && tries-- > 0)
             {
                 float val = sc.HerdSize.nextFloat();
+#if PERFTEST
+                val *= 40;
+#endif
                 nextGroupSize = (int)val + ((val - (int)val) > rnd.NextDouble() ? 1 : 0);
             }
-            
 
-            for (int i = 0; i < nextGroupSize*4 + 5; i++)
+
+            for (int i = 0; i < nextGroupSize * 4 + 5; i++)
             {
                 if (spawned >= nextGroupSize) break;
 
@@ -215,35 +219,36 @@ namespace Vintagestory.ServerMods
                     typeToSpawn = grouptypes[1 + rnd.Next(grouptypes.Length - 1)];
                 }
 
-                posAsVec.Set(pos.X + 0.5, pos.Y + 0.005, pos.Z + 0.5);
-
                 IBlockAccessor blockAccesssor = wgenBlockAccessor.GetChunkAtBlockPos(pos.X, pos.Y, pos.Z) == null ? api.World.BlockAccessor : wgenBlockAccessor;
 
                 IMapChunk mapchunk = blockAccesssor.GetMapChunkAtBlockPos(pos);
                 if (mapchunk != null)
                 {
-                    ushort[] heightMap = mapchunk.WorldGenTerrainHeightMap;
-
-                    pos.Y =
-                        sc.TryOnlySurface ?
-                        heightMap[(pos.Z % chunksize) * chunksize + (pos.X % chunksize)] + 1 :
-                        pos.Y
-                    ;
-
-                    xRel = (float)(posAsVec.X % chunksize) / chunksize;
-                    zRel = (float)(posAsVec.Z % chunksize) / chunksize;
-
-                    climate = GameMath.BiLerpRgbColor(xRel, zRel, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight);
-                    temp = TerraGenConfig.GetScaledAdjustedTemperatureFloat((climate >> 16) & 0xff, (int)posAsVec.Y - TerraGenConfig.seaLevel);
-                    rain = ((climate >> 8) & 0xff) / 255f;
-                    forestDensity = GameMath.BiLerp(forestUpLeft, forestUpRight, forestBotLeft, forestBotRight, xRel, zRel) / 255f;
-                    shrubDensity = GameMath.BiLerp(shrubsUpLeft, shrubsUpRight, shrubsBotLeft, shrubsBotRight, xRel, zRel) / 255f;
-
-
-                    if (CanSpawnAt(blockAccesssor, typeToSpawn, pos, posAsVec, sc, rain, temp, forestDensity, shrubDensity))
+                    if (sc.TryOnlySurface)
                     {
-                        spawnPositions.Add(new SpawnOppurtunity() { ForType = typeToSpawn, Pos = posAsVec.Clone() });
-                        spawned++;
+                        ushort[] heightMap = mapchunk.WorldGenTerrainHeightMap;
+                        pos.Y = heightMap[(pos.Z % chunksize) * chunksize + (pos.X % chunksize)] + 1;
+                    }
+
+                    if (CanSpawnAtPosition(blockAccesssor, typeToSpawn, pos, sc))
+                    {
+                        posAsVec.Set(pos.X + 0.5, pos.Y + 0.005, pos.Z + 0.5);
+
+                        xRel = (float)(posAsVec.X % chunksize) / chunksize;
+                        zRel = (float)(posAsVec.Z % chunksize) / chunksize;
+
+                        climate = GameMath.BiLerpRgbColor(xRel, zRel, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight);
+                        temp = TerraGenConfig.GetScaledAdjustedTemperatureFloat((climate >> 16) & 0xff, (int)posAsVec.Y - TerraGenConfig.seaLevel);
+                        rain = ((climate >> 8) & 0xff) / 255f;
+                        forestDensity = GameMath.BiLerp(forestUpLeft, forestUpRight, forestBotLeft, forestBotRight, xRel, zRel) / 255f;
+                        shrubDensity = GameMath.BiLerp(shrubsUpLeft, shrubsUpRight, shrubsBotLeft, shrubsBotRight, xRel, zRel) / 255f;
+
+
+                        if (CanSpawnAtConditions(blockAccesssor, typeToSpawn, pos, posAsVec, sc, rain, temp, forestDensity, shrubDensity))
+                        {
+                            spawnPositions.Add(new SpawnOppurtunity() { ForType = typeToSpawn, Pos = posAsVec.Clone() });
+                            spawned++;
+                        }
                     }
                 }
 
@@ -274,7 +279,7 @@ namespace Vintagestory.ServerMods
                         wgenBlockAccessor.AddEntity(ent);
                     }
                 }
-                
+
             }
         }
 
@@ -294,10 +299,27 @@ namespace Vintagestory.ServerMods
 
 
 
-        private bool CanSpawnAt(IBlockAccessor blockAccessor, EntityProperties type, BlockPos pos, Vec3d posAsVec, BaseSpawnConditions sc, float rain, float temp, float forestDensity, float shrubsDensity)
+        private bool CanSpawnAtPosition(IBlockAccessor blockAccessor, EntityProperties type, BlockPos pos, BaseSpawnConditions sc)
         {
-            if (!api.World.BlockAccessor.IsValidPos(pos)) return false;
+            if (!blockAccessor.IsValidPos(pos)) return false;
+            Block block = blockAccessor.GetBlock(pos);
+            if (!sc.CanSpawnInside(block)) return false;
 
+            pos.Y--;
+
+            Block belowBlock = blockAccessor.GetBlock(pos);
+            if (!belowBlock.CanCreatureSpawnOn(blockAccessor, pos, type, sc))
+            {
+                pos.Y++;
+                return false;
+            }
+
+            pos.Y++;
+            return true;
+        }
+
+        private bool CanSpawnAtConditions(IBlockAccessor blockAccessor, EntityProperties type, BlockPos pos, Vec3d posAsVec, BaseSpawnConditions sc, float rain, float temp, float forestDensity, float shrubsDensity)
+        {
             float? lightLevel = blockAccessor.GetLightLevel(pos, EnumLightLevelType.MaxLight);
 
             if (lightLevel == null) return false;
@@ -308,16 +330,6 @@ namespace Vintagestory.ServerMods
             if (sc.MinShrubs > shrubsDensity || sc.MaxShrubs < shrubsDensity) return false;
             if (sc.MinForestOrShrubs > Math.Max(forestDensity, shrubsDensity)) return false;
             
-
-            Block belowBlock = blockAccessor.GetBlock(pos.X, pos.Y - 1, pos.Z);
-            if (!belowBlock.CanCreatureSpawnOn(blockAccessor, pos.DownCopy(), type, sc))
-            { 
-                return false;
-            }
-
-            Block block = blockAccessor.GetBlock(pos);
-            if (!sc.CanSpawnInside(block)) return false;
-
             Cuboidf collisionBox = type.SpawnCollisionBox.OmniNotDownGrowBy(0.1f);
 
             return !IsColliding(collisionBox, posAsVec);

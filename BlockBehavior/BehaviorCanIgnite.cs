@@ -12,9 +12,50 @@ namespace Vintagestory.GameContent
 {
     public class BlockBehaviorCanIgnite : BlockBehavior
     {
+        static List<ItemStack> canIgniteStacks = new List<ItemStack>();
+        static List<ItemStack> canIgniteStacksWithFirestarter = new List<ItemStack>();
+
+        static public List<ItemStack> CanIgniteStacks(ICoreAPI api, bool withFirestarter)
+        {
+            if (canIgniteStacks.Count == 0)
+            {
+                foreach (CollectibleObject obj in api.World.Collectibles)
+                {
+                    if (obj is Block block)
+                    {
+                        if (block.HasBehavior<BlockBehaviorCanIgnite>())
+                        {
+                            List<ItemStack> stacks = obj.GetHandBookStacks(api as ICoreClientAPI);
+                            if (stacks != null)
+                            {
+                                canIgniteStacks.AddRange(stacks);
+                                canIgniteStacksWithFirestarter.AddRange(stacks);
+                            }
+                        }
+                    }
+                    else if (obj is ItemFirestarter)
+                    {
+                        List<ItemStack> stacks = obj.GetHandBookStacks(api as ICoreClientAPI);
+                        canIgniteStacksWithFirestarter.AddRange(stacks);
+                    }
+                }
+            }
+
+            return withFirestarter ? canIgniteStacksWithFirestarter : canIgniteStacks;
+        }
+
+        public override void OnUnloaded(ICoreAPI api)
+        {
+            canIgniteStacks.Clear();
+            canIgniteStacksWithFirestarter.Clear();
+        }
+
+
         public BlockBehaviorCanIgnite(Block block) : base(block)
         {
         }
+
+
 
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handHandling, ref EnumHandling blockHandling)
         {
@@ -35,7 +76,7 @@ namespace Vintagestory.GameContent
                 handHandling = EnumHandHandling.PreventDefault;
             }
 
-            if (!byEntity.Controls.Sneak && state != EnumIgniteState.Ignitable)
+            if (!byEntity.Controls.ShiftKey && state != EnumIgniteState.Ignitable)
             {
                 return;
             }           
@@ -145,7 +186,7 @@ namespace Vintagestory.GameContent
             {
                 new WorldInteraction
                 {
-                    HotKeyCode = "sneak",
+                    HotKeyCode = "shift",
                     ActionLangCode = "heldhelp-igniteblock",
                     MouseButton = EnumMouseButton.Right
                 }

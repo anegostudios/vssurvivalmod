@@ -44,7 +44,7 @@ namespace Vintagestory.GameContent
                     loc.Path = loc.Path.Replace("-top", "");
                     loc.WithPathAppendixOnce(".json");
                     loc.WithPathPrefixOnce("shapes/");
-                    Shape shape = capi.Assets.TryGet(loc).ToObject<Shape>();
+                    Shape shape = API.Common.Shape.TryGet(capi, loc);
 
                     CompositeTexture ct = Textures["wall"];
                     int prevSubid = ct.Baked.TextureSubId;

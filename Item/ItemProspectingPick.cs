@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -34,11 +35,15 @@ namespace Vintagestory.GameContent
 
             rockStrataGen = new GenRockStrataNew();
             rockStrataGen.setApi(sapi);
-            rockStrataGen.initWorldGen();
 
-            depositGen = new GenDeposits();
-            depositGen.setApi(sapi);
-            depositGen.initWorldGen(false);
+            TyronThreadPool.QueueTask(() => {   // Initialise off-thread, instead of adding 1-2 seconds to game launch time
+                rockStrataGen.initWorldGen();
+                GenDeposits deposits = new GenDeposits();
+                deposits.addHandbookAttributes = false;
+                deposits.setApi(sapi);
+                deposits.initWorldGen(false);
+                depositGen = deposits;
+            });
 
             sapi.Event.ServerRunPhase(EnumServerRunPhase.RunGame, () =>
             {
@@ -76,6 +81,23 @@ namespace Vintagestory.GameContent
             });
         }
 
+
+        public void Dispose(ICoreAPI api)
+        {
+            if (sapi != null)
+            {
+                pageCodes = null;
+                depositsByCode = null;
+                rockStrataGen?.Dispose();
+                rockStrataGen = null;
+                depositGen?.Dispose();
+                depositGen = null;
+
+                sapi = null;
+            }
+        }
+
+
         // Tyrons Brute force way of getting the correct reading for a rock strata column
         public virtual int[] GetRockColumn(int posX, int posZ)
         {
@@ -108,6 +130,13 @@ namespace Vintagestory.GameContent
             rockStrataGen.preLoad(chunks, chunkX, chunkZ);
             rockStrataGen.genBlockColumn(chunks, chunkX, chunkZ, lx, lz);
 
+            if (depositGen == null)
+            {
+                // Wait for off-thread initialisation to finish (should be well finished by the time any player is able to use a ProPick, but let's make sure)
+                int timeOutCount = 100;
+                while (depositGen == null && timeOutCount-- > 0) Thread.Sleep(30);
+                if (depositGen == null) throw new NullReferenceException("Prospecting Pick internal ore generator was not initialised, likely due to an exception during earlier off-thread worldgen");
+            }
             depositGen.GeneratePartial(chunks, chunkX, chunkZ, 0, 0);
 
 
@@ -130,6 +159,7 @@ namespace Vintagestory.GameContent
             public int chunkY;
             public IMapChunk MapChunk { get; set; }
             IChunkBlocks IWorldChunk.Blocks => Blocks;
+            IChunkLight IWorldChunk.Lighting => throw new NotImplementedException();
             public IChunkBlocks Blocks;
 
             public DummyChunk(int chunksize)
@@ -151,14 +181,48 @@ namespace Vintagestory.GameContent
 
                 public int Length => blocks.Length;
 
+                public void ClearBlocks()
+                {
+                    for (int i = 0; i < blocks.Length; i++) blocks[i] = 0;
+                }
 
+                public void ClearBlocksAndPrepare()
+                {
+                    ClearBlocks();
+                }
+
+                public int GetBlockIdUnsafe(int index3d)
+                {
+                    return this[index3d];
+                }
+
+                public int GetLiquid(int index3d)
+                {
+                    throw new NotImplementedException();
+                }
+
+                public void SetBlockAir(int index3d)
+                {
+                    this[index3d] = 0;
+                }
+
+                public void SetBlockBulk(int chunkIndex, int v, int mantleBlockId, int mantleBlockId1)
+                {
+                    throw new NotImplementedException();
+                }
+
+                public void SetBlockUnsafe(int index3d, int value)
+                {
+                    this[index3d] = value;
+                }
+
+                public void SetLiquid(int index3d, int value)
+                {
+                    throw new NotImplementedException();
+                }
             }
 
             #region unused by rockstrata gen
-            public ushort[] Light { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
-			public ushort[] Light_Buffered { get => throw new NotImplementedException(); }
-			public ushort[] Light_SecondBuffer { get => throw new NotImplementedException(); }
-			public byte[] LightSat { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
             public Entity[] Entities => throw new NotImplementedException();
             public int EntitiesCount => throw new NotImplementedException();
             public BlockEntity[] BlockEntities { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
@@ -173,7 +237,9 @@ namespace Vintagestory.GameContent
 
 			public IChunkBlocks MaybeBlocks => throw new NotImplementedException();
 
-			public void AddEntity(Entity entity)
+            public bool NotAtEdge => throw new NotImplementedException();
+
+            public void AddEntity(Entity entity)
             {
                 throw new NotImplementedException();
             }
@@ -221,8 +287,17 @@ namespace Vintagestory.GameContent
 			{
 				throw new NotImplementedException();
 			}
+            public ushort Unpack_AndReadLight(int index, out int lightSat)
+            {
+                throw new NotImplementedException();
+            }
 
-			public Block GetLocalBlockAtBlockPos(IWorldAccessor world, BlockPos position)
+            public Block GetLocalLiquidOrBlockAtBlockPos(IWorldAccessor world, BlockPos position)
+            {
+                throw new NotImplementedException();
+            }
+
+            public Block GetLocalBlockAtBlockPos(IWorldAccessor world, BlockPos position)
             {
                 throw new NotImplementedException();
             }
@@ -318,6 +393,11 @@ namespace Vintagestory.GameContent
             }
 
             public T GetModdata<T>(string key, T defaultValue = default(T))
+            {
+                throw new NotImplementedException();
+            }
+
+            public int GetLightAbsorptionAt(int index3d, BlockPos blockPos, IList<Block> blockTypes)
             {
                 throw new NotImplementedException();
             }
@@ -452,7 +532,7 @@ namespace Vintagestory.GameContent
 
 			Dictionary<string, int> quantityFound = new Dictionary<string, int>();
 
-			api.World.BlockAccessor.WalkBlocks(pos.AddCopy(radius, radius, radius), pos.AddCopy(-radius, -radius, -radius), (nblock, bp) =>
+			api.World.BlockAccessor.WalkBlocks(pos.AddCopy(radius, radius, radius), pos.AddCopy(-radius, -radius, -radius), (nblock, x, y, z) =>
 			{
 				if (nblock.BlockMaterial == EnumBlockMaterial.Ore && nblock.Variant.ContainsKey("type"))
 				{
@@ -700,7 +780,14 @@ namespace Vintagestory.GameContent
 
 		public override void OnUnloaded(ICoreAPI api)
 		{
-			for (int i = 0; toolModes != null && i < toolModes.Length; i++)
+            base.OnUnloaded(api);
+            if (api is ICoreServerAPI sapi)
+            {
+                ppws?.Dispose(api);
+                sapi.ObjectCache.Remove("propickworkspace");   // Unnecessary on registered items beyond the first, but does no harm
+            }
+
+            for (int i = 0; toolModes != null && i < toolModes.Length; i++)
 			{
 				toolModes[i]?.Dispose();
 			}

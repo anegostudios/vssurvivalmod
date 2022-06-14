@@ -611,8 +611,7 @@ namespace Vintagestory.GameContent
                     }
 
                     MeshData meshdata;
-                    IAsset asset = Api.Assets.TryGet(new AssetLocation("shapes/block/machine/statictranslocator/" + shapeCode + ".json"));
-                    Shape shape = asset.ToObject<Shape>();
+                    Shape shape = Shape.TryGet(Api, "shapes/block/machine/statictranslocator/" + shapeCode + ".json");
 
                     tessThreadTesselator.TesselateShape(ownBlock, shape, out meshdata, new Vec3f(0, rotY, 0));
 

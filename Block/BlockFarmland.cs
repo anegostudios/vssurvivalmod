@@ -22,6 +22,7 @@ namespace Vintagestory.GameContent
         {
             if ((block is BlockCrop || block is BlockDeadCrop) && blockFace == BlockFacing.UP) return true;
 
+            if (blockFace.IsHorizontal) return false;
             return base.CanAttachBlockAt(world, block, pos, blockFace, attachmentArea);
         }
 

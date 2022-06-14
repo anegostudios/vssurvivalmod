@@ -37,20 +37,24 @@ namespace Vintagestory.GameContent
                     val.Value.Rebase(baseProps);
                     foliageProps[val.Key] = val.Value;
 
-                    foreach (var tex in val.Value.Textures.Values)
+                    if (api is ICoreClientAPI capi)
                     {
-                        tex.Base.WithPathPrefixOnce(val.Value.TexturesBasePath);
-                        if (tex.Overlays != null)
+                        foreach (var tex in val.Value.Textures.Values)
                         {
-                            foreach (var otex in tex.Overlays)
+                            tex.Base.WithPathPrefixOnce(val.Value.TexturesBasePath);
+                            if (tex.Overlays != null)
                             {
-                                otex.WithPathPrefixOnce(val.Value.TexturesBasePath);
+                                foreach (var otex in tex.Overlays)
+                                {
+                                    otex.WithPathPrefixOnce(val.Value.TexturesBasePath);
+                                }
                             }
                         }
-                    }
 
-                    val.Value.LeafParticlesTexture?.Base.WithPathPrefixOnce(val.Value.TexturesBasePath);
-                    val.Value.BlossomParticlesTexture?.Base.WithPathPrefixOnce(val.Value.TexturesBasePath);
+                        val.Value.LeafParticlesTexture?.Base.WithPathPrefixOnce(val.Value.TexturesBasePath);
+                        val.Value.BlossomParticlesTexture?.Base.WithPathPrefixOnce(val.Value.TexturesBasePath);
+                        val.Value.GetOrLoadTexture(capi, "largeleaves-plain");   // preload this so that off-thread building of ChunkMapLayer does not try to load a texture off-thread
+                    }
                 }
             } else
             {
@@ -77,16 +81,54 @@ namespace Vintagestory.GameContent
 
         public override int GetColor(ICoreClientAPI capi, BlockPos pos)
         {
-            int color = base.GetColorWithoutTint(capi, pos);
+            int color = 0x989898;   // a basic default color similar to oak leaves
 
             // Not all treetypes have the standard climatePlantTint, so take the tint from the foliageProps
             BlockEntityFruitTreeFoliage bef = capi.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityFruitTreeFoliage;
-            string tint = null;
-            if (bef != null && bef.TreeType?.Length > 0) tint = foliageProps[bef.TreeType].ClimateColorMap;
-            if (tint == null) tint = "climatePlantTint";
+            string climateTint = null;
+            string seasonTint = null;
 
-            return capi.World.ApplyColorMapOnRgba(tint, SeasonColorMap, color, pos.X, pos.Y, pos.Z, false);
+            DynFoliageProperties props;
+            if (bef != null && bef.TreeType?.Length > 0)
+            {
+                props = foliageProps[bef.TreeType];
+                climateTint = props.ClimateColorMap;
+                seasonTint = props.SeasonColorMap;
+                TextureAtlasPosition texPos = bef["largeleaves-plain"];
+                if (texPos != null) color = texPos.AvgColor;
+            }
+            if (climateTint == null) climateTint = "climatePlantTint";
+            if (seasonTint == null) seasonTint = "seasonalFoliage";
+
+            int newcol = capi.World.ApplyColorMapOnRgba(climateTint, seasonTint, color, pos.X, pos.Y, pos.Z);
+            return newcol;
         }
 
+        public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing, int rndIndex = -1)
+        {
+            BlockEntityFruitTreeFoliage bef = capi.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityFruitTreeFoliage;
+            string climateTint = null;
+            string seasonTint = null;
+            int texSubId = 0;
+
+            DynFoliageProperties props;
+            if (bef != null && bef.TreeType?.Length > 0)
+            {
+                props = foliageProps[bef.TreeType];
+                climateTint = props.ClimateColorMap;
+                seasonTint = props.SeasonColorMap;
+                if (props.Textures.TryGetValue("largeleaves-plain", out var ctex))
+                {
+                    texSubId = ctex.Baked.TextureSubId;
+                }
+            }
+            if (climateTint == null) climateTint = "climatePlantTint";
+            if (seasonTint == null) seasonTint = "seasonalFoliage";
+
+            int color = capi.BlockTextureAtlas.GetRandomColor(texSubId, rndIndex);
+            color = capi.World.ApplyColorMapOnRgba(climateTint, seasonTint, color, pos.X, pos.Y, pos.Z);
+
+            return color;
+        }
     }
 }

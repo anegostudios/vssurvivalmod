@@ -91,7 +91,7 @@ namespace Vintagestory.GameContent.Mechanics
             }
 
             AssetLocation shapeloc = AssetLocation.Create("shapes/block/wood/mechanics/brake-stand-opened.json", Block.Code.Domain);
-            Shape shape = Api.Assets.TryGet(shapeloc)?.ToObject<Shape>();
+            Shape shape = API.Common.Shape.TryGet(Api, shapeloc);
             tesselator.TesselateShape(Block, shape, out mesh, new Vec3f(0, rotY, 0));
 
             return meshes["" + rotY] = mesh;

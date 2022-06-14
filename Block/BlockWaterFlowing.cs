@@ -9,7 +9,7 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockWaterflowing : Block
+    public class BlockWaterflowing : BlockForLiquidsLayer
     {
         float particleQuantity = 0.2f;
 
@@ -35,7 +35,12 @@ namespace Vintagestory.GameContent
         public override bool ShouldPlayAmbientSound(IWorldAccessor world, BlockPos pos)
         {
             Block block = world.BlockAccessor.GetBlock(pos.X, pos.Y + 1, pos.Z);
-            return block.Replaceable >= 6000 && !block.IsLiquid();
+            if (block.Replaceable >= 6000)   // This is a kind of rough "transparent to sound" test
+            {
+                block = world.BlockAccessor.GetLiquidBlock(pos.X, pos.Y + 1, pos.Z);
+                if (!block.IsLiquid()) return true;
+            }
+            return false;
         }
 
         public override bool ShouldReceiveClientParticleTicks(IWorldAccessor world, IPlayer player, BlockPos pos, out bool isWindAffected)

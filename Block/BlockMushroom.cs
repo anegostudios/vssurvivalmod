@@ -148,7 +148,7 @@ namespace Vintagestory.GameContent
             }
 
             blockAccessor.SpawnBlockEntity("Mycelium", rootPos);
-            (blockAccessor.GetBlockEntity(rootPos) as BlockEntityMycelium).OnGenerated(blockAccessor, worldGenRand, this);
+            (blockAccessor.GetBlockEntity(rootPos) as BlockEntityMycelium)?.OnGenerated(blockAccessor, worldGenRand, this);
             return true;
         }
 

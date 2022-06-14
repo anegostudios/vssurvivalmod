@@ -117,7 +117,7 @@ namespace Vintagestory.GameContent
 
         public bool Interact(IPlayer byPlayer, bool preferThis)
         {
-            bool sneaking = byPlayer.WorldData.EntityControls.Sneak;
+            bool sneaking = byPlayer.WorldData.EntityControls.ShiftKey;
 
             int damagedTiles = 0;
             int wrongTiles = 0;

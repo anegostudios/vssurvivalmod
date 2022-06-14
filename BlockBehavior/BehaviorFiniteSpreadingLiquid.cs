@@ -76,60 +76,63 @@ namespace Vintagestory.GameContent
             SpreadAndUpdateLiquidLevels(world, pos);
             world.BulkBlockAccessor.Commit();
 
-            Block block = world.BlockAccessor.GetBlock(pos);
+            Block block = world.BlockAccessor.GetLiquidBlock(pos);
             if (block.HasBehavior<BlockBehaviorFiniteSpreadingLiquid>()) updateOwnFlowDir(block, world, pos);
         }
 
         private void SpreadAndUpdateLiquidLevels(IWorldAccessor world, BlockPos pos)
         {
             // Slightly weird hack 
-            // 1. We call this method also for other blocks, so can't rely on this.bock
+            // 1. We call this method also for other blocks, so can't rely on this.block
             // 2. our own liquid level might have changed from other nearby liquid sources
-            Block block = world.BlockAccessor.GetBlock(pos);
+            Block ourBlock = world.BlockAccessor.GetLiquidBlock(pos);
 
-            int liquidLevel = block.LiquidLevel;
+            int liquidLevel = ourBlock.LiquidLevel;
             if (liquidLevel > 0)
             {
                 // Lower liquid if not connected to source block
-                if (!TryLoweringLiquidLevel(block, world, pos)) 
+                if (!TryLoweringLiquidLevel(ourBlock, world, pos)) 
                 {
-                    Block downBlock = world.BlockAccessor.GetBlock(pos.DownCopy());
-                    bool onSolidGround = downBlock.Replaceable < ReplacableThreshold;
+                    pos.Y--;
+                    // nasty slow check, but supports chiselled blocks for good physics
+                    bool onSolidGround = world.BlockAccessor.GetSolidBlock(pos.X, pos.Y, pos.Z).CanAttachBlockAt(world.BlockAccessor, ourBlock, pos, BlockFacing.UP);
+                    pos.Y++;
                     if (!onSolidGround)
                     {
                         TrySpreadDownwards(world, pos);
                     }
                     else if (liquidLevel > 1) // Can we still spread somewhere
                     {
-                        List<PosAndDist> downwardPaths = FindDownwardPaths(world, pos, block);
+                        List<PosAndDist> downwardPaths = FindDownwardPaths(world, pos, ourBlock);
                         if (downwardPaths.Count > 0) // Prefer flowing to downward paths rather than outward
                         {
-                            FlowTowardDownwardPaths(downwardPaths, block, world);
+                            FlowTowardDownwardPaths(downwardPaths, ourBlock, pos, world);
                         }
                         else
                         {
-                            TrySpreadHorizontal(block, world, pos);
+                            TrySpreadHorizontal(ourBlock, world, pos);
 
                             // Turn into water source block if surrounded by 3 other sources
-                            if (!IsLiquidSourceBlock(block))
+                            if (!IsLiquidSourceBlock(ourBlock))
                             {
                                 int nearbySourceBlockCount = 0;
+                                BlockPos qpos = pos.Copy();
                                 for (int i = 0; i < BlockFacing.HORIZONTALS.Length; i++)
                                 {
-                                    BlockFacing face = BlockFacing.HORIZONTALS[i];
-                                    Block nblock = world.BlockAccessor.GetBlock(pos.X + face.Normali.X, pos.Y, pos.Z + face.Normali.Z);
-                                    if (IsSameLiquid(block, nblock) && IsLiquidSourceBlock(nblock)) nearbySourceBlockCount++;
+                                    BlockFacing.HORIZONTALS[i].IterateThruFacingOffsets(qpos);
+                                    Block nblock = world.BlockAccessor.GetLiquidBlock(qpos);
+                                    if (IsSameLiquid(ourBlock, nblock) && IsLiquidSourceBlock(nblock)) nearbySourceBlockCount++;
                                 }
 
                                 if (nearbySourceBlockCount >= 3)
                                 {
-                                    world.BlockAccessor.SetBlock(GetMoreLiquidBlockId(world, pos, block), pos);
+                                    world.BlockAccessor.SetLiquidBlock(GetMoreLiquidBlockId(world, pos, ourBlock), pos);
 
+                                    BlockPos npos = pos.Copy();
                                     for (int i = 0; i < BlockFacing.HORIZONTALS.Length; i++)
                                     {
-                                        BlockFacing face = BlockFacing.HORIZONTALS[i];
-                                        BlockPos npos = pos.AddCopy(face);
-                                        Block nblock = world.BlockAccessor.GetBlock(npos);
+                                        BlockFacing.HORIZONTALS[i].IterateThruFacingOffsets(npos);
+                                        Block nblock = world.BlockAccessor.GetLiquidBlock(npos);
                                         if (nblock.HasBehavior<BlockBehaviorFiniteSpreadingLiquid>()) updateOwnFlowDir(nblock, world, npos);
                                     }
                                 }
@@ -143,20 +146,20 @@ namespace Vintagestory.GameContent
         }
 
 
-        private void FlowTowardDownwardPaths(List<PosAndDist> downwardPaths, Block block, IWorldAccessor world)
+        private void FlowTowardDownwardPaths(List<PosAndDist> downwardPaths, Block liquidBlock, BlockPos pos, IWorldAccessor world)
         {
             foreach (PosAndDist pod in downwardPaths)
             {
-                if (CanSpreadIntoBlock(block, pod.pos, world))
+                if (CanSpreadIntoBlock(liquidBlock, pod.pos, pod.pos.FacingFrom(pos), world))
                 {
-                    Block neighborBlock = world.BlockAccessor.GetBlock(pod.pos);
-                    if (IsDifferentCollidableLiquid(block, neighborBlock))
+                    Block neighborLiquid = world.BlockAccessor.GetLiquidBlock(pod.pos);
+                    if (IsDifferentCollidableLiquid(liquidBlock, neighborLiquid))
                     {
-                        ReplaceLiquidBlock(neighborBlock, pod.pos, world);
+                        ReplaceLiquidBlock(neighborLiquid, pod.pos, world);
                     }
                     else
                     {
-                        SpreadLiquid(GetLessLiquidBlockId(world, pod.pos, block), pod.pos, world);
+                        SpreadLiquid(GetLessLiquidBlockId(world, pod.pos, liquidBlock), pod.pos, world);
                     }
                 }
             }
@@ -166,12 +169,12 @@ namespace Vintagestory.GameContent
         {
             BlockPos npos = pos.DownCopy();
 
-            Block neighborBlock = world.BlockAccessor.GetBlock(npos);
-            if (CanSpreadIntoBlock(block, neighborBlock, world))
+            if (CanSpreadIntoBlock(block, npos, BlockFacing.DOWN, world))
             {
-                if (IsDifferentCollidableLiquid(block, neighborBlock))
+                Block neighborLiquid = world.BlockAccessor.GetLiquidBlock(npos);
+                if (IsDifferentCollidableLiquid(block, neighborLiquid))
                 {
-                    ReplaceLiquidBlock(neighborBlock, npos, world);
+                    ReplaceLiquidBlock(neighborLiquid, npos, world);
                     TryFindSourceAndSpread(npos, world);
                 }
                 else
@@ -185,7 +188,7 @@ namespace Vintagestory.GameContent
         {
             foreach (BlockFacing facing in BlockFacing.HORIZONTALS)
             {
-                TrySpreadIntoBlock(ourblock, pos.AddCopy(facing), world);
+                TrySpreadIntoBlock(ourblock, pos.AddCopy(facing), facing, world);
             }
         }
 
@@ -211,15 +214,8 @@ namespace Vintagestory.GameContent
 
         private void SpreadLiquid(int blockId, BlockPos pos, IWorldAccessor world)
         {
-            Block block = world.BulkBlockAccessor.GetBlock(pos);
-            if (block.Id != 0 && block.LiquidCode == null)
-            {
-                world.SpawnCubeParticles(pos, new Vec3d(pos.X + 0.5, pos.Y + 0.5, pos.Z + 0.5), 0.7f, 25, 0.75f);
-
-                world.BulkBlockAccessor.BreakBlock(pos, null);
-            }
-
-            world.BulkBlockAccessor.SetBlock(blockId, pos);
+            //                world.SpawnCubeParticles(pos, new Vec3d(pos.X + 0.5, pos.Y + 0.5, pos.Z + 0.5), 0.7f, 25, 0.75f);
+            world.BulkBlockAccessor.SetLiquidBlock(blockId, pos);
             world.RegisterCallbackUnique(OnDelayedWaterUpdateCheck, pos, spreadDelay);
 
             Block ourBlock = world.GetBlock(blockId);
@@ -231,7 +227,7 @@ namespace Vintagestory.GameContent
             int blockId = GetLiquidBlockId(world, pos, block, block.LiquidLevel);
             if (block.BlockId != blockId)
             {
-                world.BlockAccessor.SetBlock(blockId, pos);
+                world.BlockAccessor.SetLiquidBlock(blockId, pos);
             }
         }
 
@@ -244,10 +240,11 @@ namespace Vintagestory.GameContent
         /// <param name="world"></param>
         private void TryReplaceNearbyLiquidBlocks(Block ourBlock, BlockPos pos, IWorldAccessor world)
         {
+            BlockPos npos = pos.Copy();
             foreach (BlockFacing facing in BlockFacing.HORIZONTALS)
             {
-                BlockPos npos = pos.AddCopy(facing);
-                Block neib = world.BlockAccessor.GetBlock(npos);
+                facing.IterateThruFacingOffsets(npos);
+                Block neib = world.BlockAccessor.GetLiquidBlock(npos);
                 if (IsDifferentCollidableLiquid(ourBlock, neib))
                 {
                     ReplaceLiquidBlock(ourBlock, npos, world);
@@ -264,7 +261,7 @@ namespace Vintagestory.GameContent
         private bool TryFindSourceAndSpread(BlockPos startingPos, IWorldAccessor world)
         {
             BlockPos sourceBlockPos = startingPos.UpCopy();
-            Block sourceBlock = world.BlockAccessor.GetBlock(sourceBlockPos);
+            Block sourceBlock = world.BlockAccessor.GetLiquidBlock(sourceBlockPos);
             while (sourceBlock.IsLiquid())
             {
                 if (IsLiquidSourceBlock(sourceBlock))
@@ -273,7 +270,7 @@ namespace Vintagestory.GameContent
                     return true;
                 }
                 sourceBlockPos.Add(0, 1, 0);
-                sourceBlock = world.BlockAccessor.GetBlock(sourceBlockPos);
+                sourceBlock = world.BlockAccessor.GetLiquidBlock(sourceBlockPos);
             }
             return false;
         }
@@ -313,7 +310,7 @@ namespace Vintagestory.GameContent
             foreach (BlockFacing facing in BlockFacing.ALLFACES)
             {
                 BlockPos npos = pos.AddCopy(facing);
-                Block neib = world.BlockAccessor.GetBlock(npos);
+                Block neib = world.BlockAccessor.GetLiquidBlock(npos);
                 neib.OnNeighbourBlockChange(world, npos, pos);
             }
         }
@@ -378,22 +375,24 @@ namespace Vintagestory.GameContent
         {
             SpreadLiquid(GetLessLiquidBlockId(world, pos, block), pos, world);
 
+            BlockPos npos = pos.Copy();
             for (int i = 0; i < BlockFacing.NumberOfFaces; i++)
             {
-                BlockPos npos = pos.AddCopy(BlockFacing.ALLFACES[i]);
-                world.BlockAccessor.GetBlock(npos).OnNeighbourBlockChange(world, npos, pos);
+                BlockFacing.ALLFACES[i].IterateThruFacingOffsets(npos);
+                Block liquidBlock = world.BlockAccessor.GetLiquidBlock(npos);
+                if (liquidBlock.BlockId != 0) liquidBlock.OnNeighbourBlockChange(world, npos, pos);
             }
         }
 
-        private void TrySpreadIntoBlock(Block ourblock, BlockPos npos, IWorldAccessor world)
+        private void TrySpreadIntoBlock(Block ourblock, BlockPos npos, BlockFacing facing, IWorldAccessor world)
         {
-            IBlockAccessor blockAccess = world.BulkBlockAccessor;
-            Block neighborBlock = world.BlockAccessor.GetBlock(npos);
-            if (CanSpreadIntoBlock(ourblock, neighborBlock, world))
+            //IBlockAccessor blockAccess = world.BulkBlockAccessor;
+            if (CanSpreadIntoBlock(ourblock, npos, facing, world))
             {
-                if (IsDifferentCollidableLiquid(block, neighborBlock))
+                Block neighborLiquid = world.BlockAccessor.GetLiquidBlock(npos);   // A bit inefficient because CanSpreadIntoBlock is already calling .GetLiquidBlock(npos)
+                if (IsDifferentCollidableLiquid(ourblock, neighborLiquid))
                 {
-                    ReplaceLiquidBlock(neighborBlock, npos, world);
+                    ReplaceLiquidBlock(neighborLiquid, npos, world);
                 }
                 else
                 {
@@ -419,9 +418,11 @@ namespace Vintagestory.GameContent
             Vec3i dir = new Vec3i();
             bool anySideFree = false;
 
+            BlockPos npos = pos.Copy();
             foreach (var val in Cardinal.ALL)
             {
-                Block nblock = world.BlockAccessor.GetBlock(pos.X + val.Normali.X, pos.Y, pos.Z + val.Normali.Z);
+                npos.Set(pos.X + val.Normali.X, pos.Y, pos.Z + val.Normali.Z);
+                Block nblock = world.BlockAccessor.GetLiquidBlock(npos);
                 if (nblock.LiquidLevel == liquidLevel || nblock.Replaceable < 6000 || !nblock.IsLiquid()) continue;
 
                 Vec3i normal = nblock.LiquidLevel < liquidLevel ? val.Normali : val.Opposite.Normali;
@@ -439,8 +440,11 @@ namespace Vintagestory.GameContent
 
             if (flowDir == null)
             {
-                Block downBlock = world.BlockAccessor.GetBlock(pos.X, pos.Y - 1, pos.Z);
-                Block upBlock = world.BlockAccessor.GetBlock(pos.X, pos.Y + 1, pos.Z);
+                pos.Y--;
+                Block downBlock = world.BlockAccessor.GetLiquidBlock(pos);
+                pos.Y += 2;
+                Block upBlock = world.BlockAccessor.GetLiquidBlock(pos);
+                pos.Y--;
                 bool downLiquid = IsSameLiquid(downBlock, block);
                 bool upLiquid = IsSameLiquid(upBlock, block);
 
@@ -468,27 +472,28 @@ namespace Vintagestory.GameContent
 
         public int GetMaxNeighbourLiquidLevel(Block ourblock, IWorldAccessor world, BlockPos pos)
         {
-            Block ublock = world.BlockAccessor.GetBlock(pos.X, pos.Y + 1, pos.Z);
+            BlockPos npos = pos.Copy();
+            npos.Y++;
+            Block ublock = world.BlockAccessor.GetLiquidBlock(npos);
+            npos.Y--;
             if (IsSameLiquid(ourblock, ublock))
             {
                 return 7;
             }
             else
             {
-                Block nblock = world.BlockAccessor.GetBlock(pos.X + 1, pos.Y, pos.Z);
-                Block eblock = world.BlockAccessor.GetBlock(pos.X, pos.Y, pos.Z + 1);
-                Block sblock = world.BlockAccessor.GetBlock(pos.X - 1, pos.Y, pos.Z);
-                Block wblock = world.BlockAccessor.GetBlock(pos.X, pos.Y, pos.Z - 1);
-
                 int level = 0;
-                if (IsSameLiquid(ourblock, nblock)) level = Math.Max(level, nblock.LiquidLevel);
-                if (IsSameLiquid(ourblock, eblock)) level = Math.Max(level, eblock.LiquidLevel);
-                if (IsSameLiquid(ourblock, sblock)) level = Math.Max(level, sblock.LiquidLevel);
-                if (IsSameLiquid(ourblock, wblock)) level = Math.Max(level, wblock.LiquidLevel);
+                for (int i = 0; i < BlockFacing.HORIZONTALS.Length; i++)
+                {
+                    BlockFacing.HORIZONTALS[i].IterateThruFacingOffsets(npos);
+                    Block nblock = world.BlockAccessor.GetLiquidBlock(npos);
+                    if (IsSameLiquid(ourblock, nblock)) level = Math.Max(level, nblock.LiquidLevel);
+                }
                 return level;
             }
         }
 
+        [Obsolete("Instead Use CanSpreadIntoBlock(Block, BlockPos, IWorldAccessor) to read from the liquid layer correctly, as well as the block layer")]
         public bool CanSpreadIntoBlock(Block ourblock, Block neighborBlock, IWorldAccessor world)
         {
             bool isSameLiquid = neighborBlock.LiquidCode == ourblock.LiquidCode;
@@ -501,11 +506,18 @@ namespace Vintagestory.GameContent
             ;
         }
 
-        public bool CanSpreadIntoBlock(Block ourblock, BlockPos npos, IWorldAccessor world)
+        public bool CanSpreadIntoBlock(Block ourblock, BlockPos npos, BlockFacing facing, IWorldAccessor world)
         {
-            Block block = world.BlockAccessor.GetBlock(npos);
+            Block neighborLiquid = world.BlockAccessor.GetLiquidBlock(npos);
 
-            return CanSpreadIntoBlock(ourblock, block, world);
+            bool isSameLiquid = ourblock.LiquidCode == neighborLiquid.LiquidCode;
+
+            if (isSameLiquid) return neighborLiquid.LiquidLevel < ourblock.LiquidLevel;
+
+            if (neighborLiquid.BlockId != 0) return neighborLiquid.Replaceable >= ourblock.Replaceable;    // New physics: the more replaceable liquid can be overcome by the less replaceable
+
+            Block neighborBlock = world.BlockAccessor.GetBlock(npos);
+            return !neighborBlock.SideSolid.Opposite(facing.Index);
         }
 
         public override bool IsReplacableBy(Block byBlock, ref EnumHandling handled)
@@ -520,14 +532,19 @@ namespace Vintagestory.GameContent
             Queue<BlockPos> uncheckedPositions = new Queue<BlockPos>();
             int shortestPath = 99;
 
+            BlockPos npos = new BlockPos();
             for (int i = 0; i < downPaths.Length; i++)
             {
                 Vec2i offset = downPaths[i];
 
-                Block block = world.BlockAccessor.GetBlock(pos.X + offset.X, pos.Y - 1, pos.Z + offset.Y);
-                Block aboveblock = world.BlockAccessor.GetBlock(pos.X + offset.X, pos.Y, pos.Z + offset.Y);
+                npos.Set(pos.X + offset.X, pos.Y - 1, pos.Z + offset.Y);
+                Block block = world.BlockAccessor.GetBlock(npos);
+                npos.Y++;
+                Block aboveliquid = world.BlockAccessor.GetLiquidBlock(npos);
+                Block aboveblock = world.BlockAccessor.GetBlock(npos);
 
-                if (aboveblock.LiquidLevel < ourBlock.LiquidLevel && block.Replaceable >= ReplacableThreshold && aboveblock.Replaceable >= ReplacableThreshold)
+                // This needs rewriting :<
+                if (aboveliquid.LiquidLevel < ourBlock.LiquidLevel && block.Replaceable >= ReplacableThreshold && aboveblock.Replaceable >= ReplacableThreshold)
                 {
                     uncheckedPositions.Enqueue(new BlockPos(pos.X + offset.X, pos.Y, pos.Z + offset.Y));
 
@@ -571,16 +588,15 @@ namespace Vintagestory.GameContent
                 pos = uncheckedPositions.Dequeue();
                 int curDist = pos.ManhattenDistance(target);
 
+                npos.Set(pos);
                 for (int i = 0; i < BlockFacing.HORIZONTALS.Length; i++)
                 {
-                    BlockFacing facing = BlockFacing.HORIZONTALS[i];
-                    npos.Set(pos.X + facing.Normali.X, target.Y, pos.Z + facing.Normali.Z);
+                    BlockFacing.HORIZONTALS[i].IterateThruFacingOffsets(npos);
                     if (npos.ManhattenDistance(target) > curDist) continue;
 
                     if (npos.Equals(target)) return pos;
 
-                    Block block = world.BlockAccessor.GetBlock(npos);
-                    if (!block.IsLiquid() && block.Replaceable < ReplacableThreshold) continue;
+                    if (world.BlockAccessor.IsSideSolid(npos.X, npos.Y, npos.Z, BlockFacing.HORIZONTALS[i].Opposite)) continue;
 
                     uncheckedPositions.Enqueue(npos.Copy());
                 }

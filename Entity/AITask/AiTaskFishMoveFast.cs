@@ -147,7 +147,7 @@ namespace Vintagestory.GameContent
 
                 Block block;
 
-                block = entity.World.BlockAccessor.GetBlock((int)curTarget.X, (int)curTarget.Y, (int)curTarget.Z);
+                block = entity.World.BlockAccessor.GetLiquidBlock((int)curTarget.X, (int)curTarget.Y, (int)curTarget.Z);
                 if (!block.IsLiquid()) curTarget.W = 0;
                 else curTarget.W = 1 / (Math.Abs(dy) + 1);  //prefer not too much vertical change when underwater
 

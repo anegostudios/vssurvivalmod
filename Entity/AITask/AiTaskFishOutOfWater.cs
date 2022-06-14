@@ -66,7 +66,6 @@ namespace Vintagestory.GameContent
             int tries = 9;
             Vec4d bestTarget = null;
             Vec4d curTarget = new Vec4d();
-            BlockPos tmpPos = new BlockPos();
 
             if (FailedConsecutivePathfinds > 10)
             {
@@ -96,7 +95,7 @@ namespace Vintagestory.GameContent
 
                 Block block;
 
-                block = entity.World.BlockAccessor.GetBlock((int)curTarget.X, (int)curTarget.Y, (int)curTarget.Z);
+                block = entity.World.BlockAccessor.GetLiquidBlock((int)curTarget.X, (int)curTarget.Y, (int)curTarget.Z);
                 if (!block.IsLiquid()) curTarget.W = 0;
                 else curTarget.W = 1 / Math.Sqrt((dx - 1.0) * (dx - 1.0) + (dz - 1.0) * (dz - 1.0) + 1);  //prefer target approx 1 block away
 

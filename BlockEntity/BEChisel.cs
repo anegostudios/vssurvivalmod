@@ -6,6 +6,7 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
+using VSSurvivalMod.Systems.ChiselModes;
 
 namespace Vintagestory.GameContent
 {
@@ -22,29 +23,37 @@ namespace Vintagestory.GameContent
             }
         }
 
-
-
-        public EnumChiselMode GetChiselMode(IPlayer player)
+        public SkillItem GetChiselMode(IPlayer player)
         {
-            ItemSlot slot = player?.InventoryManager?.ActiveHotbarSlot;
-            int? mode = slot?.Itemstack?.Collectible.GetToolMode(slot, player, new BlockSelection() { Position = Pos });
+            if (Api.Side != EnumAppSide.Client) return null;
 
-            return mode == null ? 0 : (EnumChiselMode)mode;
+            var clientApi = (ICoreClientAPI)Api;
+            ItemSlot slot = player?.InventoryManager?.ActiveHotbarSlot;
+            var chisel = (ItemChisel)slot?.Itemstack.Collectible;
+            int? mode = chisel.GetToolMode(slot, player, new BlockSelection() { Position = Pos });
+
+            if (!mode.HasValue) return null;
+
+            var modes = chisel.GetToolModes(slot, clientApi.World.Player, new BlockSelection() { Position = Pos });
+
+            return modes[mode.Value];
+        }
+
+        public ChiselMode GetChiselModeData(IPlayer player)
+        {
+            var slot = player?.InventoryManager?.ActiveHotbarSlot;
+            var chisel = (ItemChisel)slot?.Itemstack.Collectible;
+            int? mode = chisel.GetToolMode(slot, player, new BlockSelection() { Position = Pos });
+
+            if (!mode.HasValue) return null;
+
+            return (ChiselMode)chisel.ToolModes[mode.Value].Data;
         }
 
         public int GetChiselSize(IPlayer player)
         {
-            int mode = (int)GetChiselMode(player);
-            if (mode == 0) return 1;
-            if (mode == 1) return 2;
-            if (mode == 2) return 4;
-            if (mode == 3) return 8;
-
-            if (mode == 4) return 1;
-            if (mode == 5) return 1;
-            if (mode == 6) return 1;
-
-            return 0;
+            var mode = GetChiselModeData(player);
+            return mode == null ? 0 : mode.ChiselSize;
         }
 
 
@@ -62,9 +71,6 @@ namespace Vintagestory.GameContent
             }
         }
 
-
-        
-
         internal void UpdateVoxel(IPlayer byPlayer, ItemSlot itemslot, Vec3i voxelPos, BlockFacing facing, bool isBreak)
         {
             if (!Api.World.Claims.TryAccess(byPlayer, Pos, EnumBlockAccessFlags.Use))
@@ -73,55 +79,9 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            
-            EnumChiselMode mode = GetChiselMode(byPlayer);
+            var modeData = GetChiselModeData(byPlayer);
 
-            bool wasChanged = false;
-
-            byte[] lightHsv = this.LightHsv;
-
-            switch (mode)
-            {
-                case EnumChiselMode.Rename:
-                    IClientWorldAccessor clientWorld = (IClientWorldAccessor)Api.World;
-
-                    string prevName = BlockName;
-                    GuiDialogBlockEntityTextInput dlg = new GuiDialogBlockEntityTextInput(Lang.Get("Block name"), Pos, BlockName, Api as ICoreClientAPI, 500);
-                    dlg.OnTextChanged = (text) => BlockName = text;
-                    dlg.OnCloseCancel = () => BlockName = prevName;
-                    dlg.TryOpen();
-                    break;
-
-                case EnumChiselMode.Flip:
-                    FlipVoxels(Block.SuggestedHVOrientation(byPlayer, new BlockSelection() { Position = Pos.Copy(), HitPosition = new Vec3d(voxelPos.X/16.0, voxelPos.Y/16.0, voxelPos.Z/16.0) })[0]);
-                    wasChanged = true;
-                    break;
-
-                case EnumChiselMode.Rotate:
-                    RotateModel(isBreak ? 90 : -90, null);
-                    wasChanged = true;
-                    break;
-
-
-                default:
-                    int size = GetChiselSize(byPlayer);
-                    Vec3i addAtPos = voxelPos.Clone().Add(size * facing.Normali.X, size * facing.Normali.Y, size * facing.Normali.Z);
-
-                    if (isBreak)
-                    {
-                        wasChanged = SetVoxel(voxelPos, false, byPlayer, nowmaterialIndex);
-                    }
-                    else
-                    {
-                        if (addAtPos.X >= 0 && addAtPos.X < 16 && addAtPos.Y >= 0 && addAtPos.Y < 16 && addAtPos.Z >= 0 && addAtPos.Z < 16)
-                        {
-                            wasChanged = SetVoxel(addAtPos, true, byPlayer, nowmaterialIndex);
-                        }
-                    }
-
-                    break;
-            }
-
+            var wasChanged = modeData.Apply(this, byPlayer, voxelPos, facing, isBreak, nowmaterialIndex);
 
             if (!wasChanged) return;
 
@@ -158,7 +118,6 @@ namespace Vintagestory.GameContent
                 return;
             }
         }
-
 
         public void SendUseOverPacket(IPlayer byPlayer, Vec3i voxelPos, BlockFacing facing, bool isBreak)
         {

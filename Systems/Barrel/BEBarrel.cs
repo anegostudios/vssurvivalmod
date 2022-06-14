@@ -261,11 +261,24 @@ namespace Vintagestory.GameContent
                         (Api as ICoreClientAPI).Network.SendBlockEntityPacket(Pos.X, Pos.Y, Pos.Z, (int)EnumBlockEntityPacketId.Close, null);
                         byPlayer.InventoryManager.CloseInventory(inventory);
                     };
+
+                    if (invDialog.TryOpen())
+                    {
+                        Api.World.PlaySoundAt(AssetLocation.Create("sounds/block/barrelopen", Block.Code.Domain), Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5, byPlayer, false);
+                    }
+
+                    (Api as ICoreClientAPI).Network.SendPacketClient(inventory.Open(byPlayer));
+                }
+                else
+                {
+                    if (invDialog.TryClose())
+                    {
+                        Api.World.PlaySoundAt(AssetLocation.Create("sounds/block/barrelclose", Block.Code.Domain), Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5, byPlayer, false);
+                    }
+
+                    (Api as ICoreClientAPI).Network.SendPacketClient(inventory.Close(byPlayer));
                 }
 
-                invDialog.TryOpen();
-                
-                (Api as ICoreClientAPI).Network.SendPacketClient(inventory.Open(byPlayer));
             } else
             {
                 byPlayer.InventoryManager.OpenInventory(inventory);

@@ -69,8 +69,6 @@ namespace Vintagestory.GameContent
 
     public class RecipeRegistrySystem : ModSystem
     {
-        ICoreServerAPI sapi;
-
         /// <summary>
         /// List of all loaded cooking recipes
         /// </summary>
@@ -96,6 +94,12 @@ namespace Vintagestory.GameContent
         /// </summary>
         public List<ClayFormingRecipe> ClayFormingRecipes = new List<ClayFormingRecipe>();
 
+
+        public override double ExecuteOrder()
+        {
+            return 0.6;
+        }
+
         public override void Start(ICoreAPI api)
         {
             CookingRecipes = api.RegisterRecipeRegistry<RecipeRegistryGeneric<CookingRecipe>>("cookingrecipes").Recipes;
@@ -108,19 +112,9 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void StartServerSide(ICoreServerAPI api)
+        public override void AssetsLoaded(ICoreAPI api)
         {
-            sapi = api;
-            api.Event.SaveGameLoaded += OnSaveGameLoaded;
-        }
-
-        private void OnSaveGameLoaded()
-        {
-            LoadCookingRecipes();
-        }
-
-        public void LoadCookingRecipes()
-        {
+            if (!(api is ICoreServerAPI sapi)) return;
             Dictionary<AssetLocation, CookingRecipe> recipes = sapi.Assets.GetMany<CookingRecipe>(sapi.Server.Logger, "recipes/cooking");
 
             foreach (var val in recipes)

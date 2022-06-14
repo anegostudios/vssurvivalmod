@@ -111,6 +111,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BlockBehavior\BehaviorWrenchOrientable.cs" />
     <Compile Include="BlockBehavior\BehaviorCanAttach.cs" />
     <Compile Include="BlockBehavior\BehaviorMyceliumHost.cs" />
     <Compile Include="BlockBehavior\BehaviorCollectFrom.cs" />
@@ -124,6 +125,7 @@
     <Compile Include="BlockBehavior\BehaviorMilkingContainer.cs" />
     <Compile Include="BlockBehavior\BehaviorReinforcable.cs" />
     <Compile Include="BlockBehavior\BehaviorHeatSource.cs" />
+    <Compile Include="BlockEntityBehavior\BEBehaviorAttractsLightning.cs" />
     <Compile Include="BlockEntityBehavior\BEBehaviorBurning.cs" />
     <Compile Include="BlockEntityBehavior\BEBehaviorFirepitAmbient.cs" />
     <Compile Include="BlockEntityRenderer\AnvilPartRenderer.cs" />
@@ -136,10 +138,24 @@
     <Compile Include="BlockEntityRenderer\PotInFirepitRenderer.cs" />
     <Compile Include="BlockEntityRenderer\HelveHammerRenderer.cs" />
     <Compile Include="BlockEntityRenderer\QuernTopRenderer.cs" />
+    <Compile Include="BlockEntity\BEBookshelf.cs" />
+    <Compile Include="BlockEntity\BEClutter.cs" />
+    <Compile Include="BlockEntity\BELightningRod.cs" />
+    <Compile Include="BlockEntity\BlockEntityShapeFromAttributes.cs" />
     <Compile Include="BlockEntity\BERiftWard.cs" />
+    <Compile Include="Block\BlockTermiteMound.cs" />
+    <Compile Include="Block\BlockClutter.cs" />
+    <Compile Include="Block\BlockBough.cs" />
+    <Compile Include="Block\BlockLightningRod.cs" />
+    <Compile Include="Block\BlockBookshelf.cs" />
+    <Compile Include="Block\BlockVariheight.cs" />
     <Compile Include="Block\BlockPlanks.cs" />
     <Compile Include="Block\BlockGroundAndSideAttachable.cs" />
+    <Compile Include="Entities\EntityDrifter.cs" />
     <Compile Include="Entity\Behavior\BehaviorCommandable.cs" />
+    <Compile Include="Entity\Behavior\BehaviorPettable.cs" />
+    <Compile Include="Item\ItemCreatureInventory.cs" />
+    <Compile Include="Item\ItemWrench.cs" />
     <Compile Include="Item\ItemPressedMash.cs" />
     <Compile Include="Item\ItemShield.cs" />
     <Compile Include="Systems\Barrel\BEBarrel.cs" />
@@ -166,6 +182,14 @@
     <Compile Include="Systems\Auction\Auction.cs" />
     <Compile Include="Systems\Auction\AuctionCellEntry.cs" />
     <Compile Include="Systems\Auction\Packets.cs" />
+    <Compile Include="Systems\ChiselModes\ChiselMode.cs" />
+    <Compile Include="Systems\ChiselModes\EightByChiselMode.cs" />
+    <Compile Include="Systems\ChiselModes\FlipChiselMode.cs" />
+    <Compile Include="Systems\ChiselModes\FourByChiselMode.cs" />
+    <Compile Include="Systems\ChiselModes\OneByChiselMode.cs" />
+    <Compile Include="Systems\ChiselModes\RenameChiselMode.cs" />
+    <Compile Include="Systems\ChiselModes\RotateChiselMode.cs" />
+    <Compile Include="Systems\ChiselModes\TwoByChiselMode.cs" />
     <Compile Include="Systems\Handbook\CollectibleBehaviorHandbookTextAndExtraInfo.cs" />
     <Compile Include="Systems\Handbook\Gui\GuiDialogHandbook.cs" />
     <Compile Include="Systems\Handbook\Gui\GuiElementFlatList.cs" />
@@ -180,6 +204,7 @@
     <Compile Include="Systems\Liquid\LiquidItemStackRenderer.cs" />
     <Compile Include="Systems\Liquid\WaterTightContainableProps.cs" />
     <Compile Include="Systems\NighttimeDangers\Rift.cs" />
+    <Compile Include="Systems\TemporalStability\GearRenderer.cs" />
     <Compile Include="Systems\Recipe\AlloyRecipe.cs" />
     <Compile Include="Systems\Recipe\BarrelRecipe.cs" />
     <Compile Include="Systems\Cooking\Clayoven\OvenItemData.cs" />
@@ -233,7 +258,7 @@
     <Compile Include="Block\BlockGroundStorage.cs" />
     <Compile Include="Block\BlockLogSection.cs" />
     <Compile Include="Block\BlockWithLeavesMotion.cs" />
-    <Compile Include="Block\BlockBough.cs" />
+    <Compile Include="Block\BlockShapeFromAttributes.cs" />
     <Compile Include="Block\BlockClayOven.cs" />
     <Compile Include="Block\BlockLeavesNarrow.cs" />
     <Compile Include="Block\BlockStoneCoffinLid.cs" />
@@ -278,7 +303,7 @@
     <Compile Include="Block\BlockLooseOres.cs" />
     <Compile Include="Block\BlockLupine.cs" />
     <Compile Include="Block\BlockMetalPartPile.cs" />
-    <Compile Include="Block\BlockMetalSpikes.cs" />
+    <Compile Include="Block\BlockDamageOnTouch.cs" />
     <Compile Include="Block\BlockMeteorite.cs" />
     <Compile Include="Legacy\Block\BlockPlankPile.cs" />
     <Compile Include="Block\BlockRequireSolidGround.cs" />
@@ -346,7 +371,7 @@
     <Compile Include="Systems\Trading\TraderAnimationManager.cs" />
     <Compile Include="Entity\AITask\AiTaskButterflyFlee.cs" />
     <Compile Include="Entity\AITask\AiTaskButterflyRest.cs" />
-    <Compile Include="Entity\Behavior\BehaviorTemporalStabilityAffected.cs" />
+    <Compile Include="Systems\TemporalStability\BehaviorTemporalStabilityAffected.cs" />
     <Compile Include="Gui\HudSeason.cs" />
     <Compile Include="Item\ItemCleaver.cs" />
     <Compile Include="Item\ItemFirestarter.cs" />
@@ -531,7 +556,7 @@
     <Compile Include="Systems\MechanicalPower\Renderer\MechBlockRenderer.cs" />
     <Compile Include="Systems\MechanicalPower\Renderer\TransmissionBlockRenderer.cs" />
     <Compile Include="Systems\CustomSpawnConditions.cs" />
-    <Compile Include="Systems\TemporalStability.cs" />
+    <Compile Include="Systems\TemporalStability\TemporalStability.cs" />
     <Compile Include="Systems\Trading\ResolvedTradeItem.cs" />
     <Compile Include="Systems\Trading\TradeClasses.cs" />
     <Compile Include="Systems\Trading\TradeItem.cs" />
@@ -644,7 +669,7 @@
     <Compile Include="Item\ItemTemporalGear.cs" />
     <Compile Include="Item\ItemWorkItem.cs" />
     <Compile Include="Item\ItemStackRandomizer.cs" />
-    <Compile Include="Systems\GameEffects.cs" />
+    <Compile Include="Systems\TemporalStability\TemporalStabilityEffects.cs" />
     <Compile Include="Systems\Journal.cs" />
     <Compile Include="Systems\LootRandomizer.cs" />
     <Compile Include="Systems\MechanicalPower\Network\IMechanicalPowerDevice.cs" />

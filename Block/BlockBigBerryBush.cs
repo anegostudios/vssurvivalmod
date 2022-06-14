@@ -1,12 +1,58 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
     public class BlockBerryBush : BlockPlant
     {
+        MeshData[] prunedmeshes;
+
+        public string State => Variant["state"];
+        public string Type => Variant["type"];
+
+        public MeshData GetPrunedMesh(BlockPos pos)
+        {
+            if (api == null) return null;
+            if (prunedmeshes == null) genPrunedMeshes();
+
+            int rnd = RandomizeAxes == EnumRandomizeAxes.XYZ ? GameMath.MurmurHash3Mod(pos.X, pos.Y, pos.Z, prunedmeshes.Length) : GameMath.MurmurHash3Mod(pos.X, 0, pos.Z, prunedmeshes.Length);
+
+            return prunedmeshes[rnd];
+        }
+
+        private void genPrunedMeshes()
+        {
+            var capi = api as ICoreClientAPI;
+
+            prunedmeshes = new MeshData[Shape.BakedAlternates.Length];
+
+            var selems = new string[] { "Berries", "branchesN", "branchesS", "Leaves" };
+            if (State == "empty") selems = selems.Remove("Berries");
+
+            for (int i = 0; i < Shape.BakedAlternates.Length; i++)
+            {
+                var cshape = Shape.BakedAlternates[i];
+                var shape = capi.TesselatorManager.GetCachedShape(cshape.Base);
+                capi.Tesselator.TesselateShape(this, shape, out prunedmeshes[i], this.Shape.RotateXYZCopy, null, selems);
+            }
+        }
+
+        public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
+        {
+            if (byPlayer?.InventoryManager?.ActiveHotbarSlot?.Itemstack?.Collectible?.Tool == EnumTool.Shears)
+            {
+                BlockEntityBerryBush bebush = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityBerryBush;
+                bebush.Prune();
+                return true;
+            }
+
+            return base.OnBlockInteractStart(world, byPlayer, blockSel);
+        }
+
         public override bool CanPlantStay(IBlockAccessor blockAccessor, BlockPos pos)
         {
             Block belowBlock = blockAccessor.GetBlock(pos.DownCopy());
@@ -25,7 +71,7 @@ namespace Vintagestory.GameContent
             if (tex == null) return 0;
 
             int color = capi.BlockTextureAtlas.GetRandomColor(tex.TextureSubId, rndIndex);
-            color = capi.World.ApplyColorMapOnRgba("climatePlantTint", SeasonColorMap, color, pos.X, pos.Y, pos.Z);
+            color = capi.World.ApplyColorMapOnRgba("climatePlantTint", "seasonalFoliage", color, pos.X, pos.Y, pos.Z);
             return color;
         }
 
@@ -34,7 +80,9 @@ namespace Vintagestory.GameContent
         {
             int color = base.GetColorWithoutTint(capi, pos);
 
-            return capi.World.ApplyColorMapOnRgba("climatePlantTint", SeasonColorMap, color, pos.X, pos.Y, pos.Z, false);
+            return capi.World.ApplyColorMapOnRgba("climatePlantTint", "seasonalFoliage", color, pos.X, pos.Y, pos.Z);
         }
+
+        
     }
 }

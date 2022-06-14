@@ -24,8 +24,8 @@ namespace Vintagestory.GameContent.Mechanics
 
             MeshData gearboxCageMesh;
             MeshData gearboxPegMesh;
-            capi.Tesselator.TesselateShape(textureSoureBlock, capi.Assets.TryGet("shapes/block/wood/mechanics/angledgearbox-cage.json").ToObject<Shape>(), out gearboxCageMesh, rot);
-            capi.Tesselator.TesselateShape(textureSoureBlock, capi.Assets.TryGet("shapes/block/wood/mechanics/angledgearbox-peg.json").ToObject<Shape>(), out gearboxPegMesh, rot);
+            capi.Tesselator.TesselateShape(textureSoureBlock, API.Common.Shape.TryGet(capi, "shapes/block/wood/mechanics/angledgearbox-cage.json"), out gearboxCageMesh, rot);
+            capi.Tesselator.TesselateShape(textureSoureBlock, API.Common.Shape.TryGet(capi, "shapes/block/wood/mechanics/angledgearbox-peg.json"), out gearboxPegMesh, rot);
 
             
             // 16 floats matrix, 4 floats light rgbs

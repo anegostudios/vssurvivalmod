@@ -152,7 +152,7 @@ namespace Vintagestory.GameContent
             renderinfo.ModelRef = ObjectCacheUtil.GetOrCreate<MeshRef>(capi, key, () =>
             {
                 AssetLocation shapeloc = new AssetLocation("shapes/block/wood/pan/filled.json");
-                Shape shape = capi.Assets.TryGet(shapeloc).ToObject<Shape>();
+                Shape shape = API.Common.Shape.TryGet(capi, shapeloc);
                 MeshData meshdata;
 
                 Block block = capi.World.GetBlock(new AssetLocation(blockMaterialCode));
@@ -313,7 +313,6 @@ namespace Vintagestory.GameContent
 
                 RemoveMaterial(slot);
                 slot.MarkDirty();
-                //(byEntity as EntityPlayer)?.Player?.InventoryManager.BroadcastHotbarSlot();
 
                 byEntity.GetBehavior<EntityBehaviorHunger>()?.ConsumeSaturation(4f);
             }
@@ -398,20 +397,20 @@ namespace Vintagestory.GameContent
                     return;
                 }
 
-                if (block.Variant.ContainsKey("layer"))
+                string layer = block.Variant["layer"];
+                if (layer != null)
                 {
-                    string baseCode = block.Code.Path.Substring(0, block.Code.Path.Length - 2);
+                    string baseCode = block.FirstCodePart() + "-" + block.FirstCodePart(1);
                     Block origblock = api.World.GetBlock(new AssetLocation(baseCode));
                     SetMaterial(slot, origblock);
                     
-                    string layer = block.Variant["layer"];
-
                     if (layer == "1")
                     {
                         api.World.BlockAccessor.SetBlock(0, position);
                     } else
                     {
-                        Block reducedBlock = api.World.GetBlock(new AssetLocation(baseCode + "-" + (int.Parse(layer) - 1)));
+                        var code = block.CodeWithVariant("layer", "" + (int.Parse(layer) - 1));
+                        Block reducedBlock = api.World.GetBlock(code);
                         api.World.BlockAccessor.SetBlock(reducedBlock.BlockId, position);
                     }
 
@@ -420,10 +419,27 @@ namespace Vintagestory.GameContent
                 }
                 else
                 {
-                    SetMaterial(slot, block);
-                    Block reducedBlock = api.World.GetBlock(new AssetLocation(block.Code.Path + "-7"));
-                    api.World.BlockAccessor.SetBlock(reducedBlock.BlockId, position);
-                    api.World.BlockAccessor.TriggerNeighbourBlockUpdate(position);
+                    Block reducedBlock;
+                    string pannedBlock = block.Attributes["pannedBlock"].AsString();
+                    if (pannedBlock != null)
+                    {
+                        reducedBlock = api.World.GetBlock(AssetLocation.Create(pannedBlock, block.Code.Domain));
+                    }
+                    else
+                    {
+                        reducedBlock = api.World.GetBlock(block.CodeWithVariant("layer", "7"));
+                    }
+
+                    if (reducedBlock != null)
+                    {
+                        SetMaterial(slot, block);
+                        api.World.BlockAccessor.SetBlock(reducedBlock.BlockId, position);
+                        api.World.BlockAccessor.TriggerNeighbourBlockUpdate(position);
+                    }
+                    else
+                    {
+                        api.Logger.Warning("Missing \"pannedBlock\" attribute for pannable block " + block.Code.ToShortString());
+                    }
                 }
 
                 slot.MarkDirty();

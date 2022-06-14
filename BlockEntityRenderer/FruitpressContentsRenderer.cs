@@ -122,7 +122,7 @@ namespace Vintagestory.GameContent
             }
 
 
-            Shape mashShape = api.Assets.TryGet("shapes/block/wood/fruitpress/part-mash-"+y+".json").ToObject<Shape>();
+            Shape mashShape = API.Common.Shape.TryGet(api, "shapes/block/wood/fruitpress/part-mash-"+y+".json");
             api.Tesselator.TesselateShape("fruitpress-mash", mashShape, out MeshData mashMesh, this);
 
             juiceTexPos = api.BlockTextureAtlas[textureLocation];
@@ -130,7 +130,7 @@ namespace Vintagestory.GameContent
             // Juice
             if (stack.Collectible.Code.Path != "rot")
             {
-                Shape juiceShape = api.Assets.TryGet("shapes/block/wood/fruitpress/part-juice.json").ToObject<Shape>();
+                Shape juiceShape = API.Common.Shape.TryGet(api, "shapes/block/wood/fruitpress/part-juice.json");
 
                 var loc = AssetLocation.Create("juiceportion-" + stack.Collectible.Variant["fruit"], stack.Collectible.Code.Domain);
                 Item item = api.World.GetItem(loc);

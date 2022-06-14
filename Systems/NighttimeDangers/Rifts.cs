@@ -218,8 +218,8 @@ namespace Vintagestory.GameContent
                     if (block.Replaceable < 6000)
                     {
                         pos.Up();
-                        block = api.World.BlockAccessor.GetBlock(pos);
                     }
+                    block = api.World.BlockAccessor.GetLiquidBlock(pos);
                     if (block.IsLiquid() && api.World.Rand.NextDouble() > 0.1) continue;
 
                     // Don't spawn near bases
@@ -494,7 +494,7 @@ namespace Vintagestory.GameContent
                     BlockPos bpos = new BlockPos((int)riftPos.X, 0, (int)riftPos.Z);
                     bpos.Y = api.World.BlockAccessor.GetTerrainMapheightAt(bpos);
 
-                    var block = api.World.BlockAccessor.GetBlock(bpos);
+                    var block = api.World.BlockAccessor.GetLiquidBlock(bpos);
                     if (block.IsLiquid() && api.World.Rand.NextDouble() > 0.1) continue;
 
                     float size = 2 + (float)api.World.Rand.NextDouble() * 4f;

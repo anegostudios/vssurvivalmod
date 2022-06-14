@@ -120,7 +120,7 @@ namespace Vintagestory.ServerMods
 
                 if (Schematics[i].EndsWith("*"))
                 {
-                    assets = api.Assets.GetMany("worldgen/schematics/" + Schematics[i].Substring(0, Schematics[i].Length - 1)).ToArray();
+                    assets = api.Assets.GetManyInCategory("worldgen", "schematics/" + Schematics[i].Substring(0, Schematics[i].Length - 1)).ToArray();
                 } else
                 {
                     assets = new IAsset[] { api.Assets.Get("worldgen/schematics/" + Schematics[i] + ".json") };
@@ -297,19 +297,19 @@ namespace Vintagestory.ServerMods
             pos.Y = minY;
 
 
-            // Ensure not deeply submerged in water
+            // Ensure not deeply submerged in water  =>  actually, that's now OK!
 
             tmpPos.Set(pos.X, pos.Y + 1 + OffsetY, pos.Z);
-            if (blockAccessor.GetBlock(tmpPos).IsLiquid()) return false;
+            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return false;
 
             tmpPos.Set(pos.X + wdt, pos.Y + 1 + OffsetY, pos.Z);
-            if (blockAccessor.GetBlock(tmpPos).IsLiquid()) return false;
+            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return false;
 
             tmpPos.Set(pos.X, pos.Y + 1 + OffsetY, pos.Z + len);
-            if (blockAccessor.GetBlock(tmpPos).IsLiquid()) return false;
+            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return false;
 
             tmpPos.Set(pos.X + wdt, pos.Y + 1 + OffsetY, pos.Z + len);
-            if (blockAccessor.GetBlock(tmpPos).IsLiquid()) return false;
+            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return false;
 
 
             pos.Y--;
@@ -362,51 +362,51 @@ namespace Vintagestory.ServerMods
 
             // Ensure not floating on water
             tmpPos.Set(pos.X + wdthalf, pos.Y - 1, pos.Z + lenhalf);
-            if (blockAccessor.GetBlock(tmpPos).IsLiquid()) return false;
+            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return false;
 
        
             tmpPos.Set(pos.X, pos.Y - 1, pos.Z);
-            if (blockAccessor.GetBlock(tmpPos).IsLiquid()) return false;
+            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return false;
 
             tmpPos.Set(pos.X + wdt, pos.Y - 1, pos.Z);
-            if (blockAccessor.GetBlock(tmpPos).IsLiquid()) return false;
+            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return false;
 
             tmpPos.Set(pos.X, pos.Y - 1, pos.Z + len);
-            if (blockAccessor.GetBlock(tmpPos).IsLiquid()) return false;
+            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return false;
 
             tmpPos.Set(pos.X + wdt, pos.Y - 1, pos.Z + len);
-            if (blockAccessor.GetBlock(tmpPos).IsLiquid()) return false;
+            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return false;
 
             // Ensure not submerged in water
             tmpPos.Set(pos.X, pos.Y, pos.Z);
-            if (blockAccessor.GetBlock(tmpPos).IsLiquid()) return false;
+            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return false;
 
 
             tmpPos.Set(pos.X + wdt, pos.Y - 1, pos.Z + len);
-            if (blockAccessor.GetBlock(tmpPos).IsLiquid()) return false;
+            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return false;
 
             tmpPos.Set(pos.X + wdt, pos.Y, pos.Z);
-            if (blockAccessor.GetBlock(tmpPos).IsLiquid()) return false;
+            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return false;
 
             tmpPos.Set(pos.X, pos.Y, pos.Z + len);
-            if (blockAccessor.GetBlock(tmpPos).IsLiquid()) return false;
+            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return false;
 
             tmpPos.Set(pos.X + wdt, pos.Y, pos.Z + len);
-            if (blockAccessor.GetBlock(tmpPos).IsLiquid()) return false;
+            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return false;
 
 
 
             tmpPos.Set(pos.X, pos.Y + 1, pos.Z);
-            if (blockAccessor.GetBlock(tmpPos).IsLiquid()) return false;
+            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return false;
 
             tmpPos.Set(pos.X + wdt, pos.Y + 1, pos.Z);
-            if (blockAccessor.GetBlock(tmpPos).IsLiquid()) return false;
+            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return false;
 
             tmpPos.Set(pos.X, pos.Y + 1, pos.Z + len);
-            if (blockAccessor.GetBlock(tmpPos).IsLiquid()) return false;
+            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return false;
 
             tmpPos.Set(pos.X + wdt, pos.Y + 1, pos.Z + len);
-            if (blockAccessor.GetBlock(tmpPos).IsLiquid()) return false;
+            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return false;
 
 
             if (!satisfiesMinDistance(pos, worldForCollectibleResolve)) return false;

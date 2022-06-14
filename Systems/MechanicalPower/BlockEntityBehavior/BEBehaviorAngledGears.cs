@@ -143,7 +143,7 @@ namespace Vintagestory.GameContent.Mechanics
                     this.turnDir2 = BlockFacing.WEST;
                     break;
 
-                case "sd":  //OK
+                case "sd":
                     AxisSign = new int[6] { 0, 0, -1, 0, -1, 0 };
                     axis1 = null;
                     axis2 = null; // BlockFacing.NORTH;

@@ -345,12 +345,11 @@ namespace Vintagestory.GameContent
         {
             base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
 
-            string type = inSlot.Itemstack.Attributes.GetString("type", "");
-
             dsc.AppendLine(GetWordedSection(inSlot, world));
 
             if (withDebugInfo)
             {
+                string type = inSlot.Itemstack.Attributes.GetString("type", "");
                 dsc.AppendLine(type);
             }
         }

@@ -60,7 +60,7 @@ namespace Vintagestory.GameContent
 
 
             // Detach
-            if (!byEntity.Controls.Sneak)
+            if (!byEntity.Controls.ShiftKey)
             {
                 if (clothId != 0)
                 {

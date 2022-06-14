@@ -74,7 +74,7 @@ namespace Vintagestory.GameContent
                     pile.inventory[0].Itemstack.StackSize = 1;
                 } else
                 {
-                    pile.inventory[0].Itemstack = slot.TakeOut(player.Entity.Controls.Sprint ? pile.BulkTakeQuantity : pile.DefaultTakeQuantity);
+                    pile.inventory[0].Itemstack = slot.TakeOut(player.Entity.Controls.CtrlKey ? pile.BulkTakeQuantity : pile.DefaultTakeQuantity);
                 }
                 
                 pile.MarkDirty();
@@ -158,7 +158,7 @@ namespace Vintagestory.GameContent
                 {
                     ActionLangCode = "blockhelp-ingotpile-add",
                     MouseButton = EnumMouseButton.Right,
-                    HotKeyCode = "sneak",
+                    HotKeyCode = "shift",
                     Itemstacks = new ItemStack[] { new ItemStack(this) },
                     GetMatchingStacks = (wi, bs, es) =>
                     {
@@ -183,7 +183,7 @@ namespace Vintagestory.GameContent
                 {
                     ActionLangCode = "blockhelp-ingotpile-4add",
                     MouseButton = EnumMouseButton.Right,
-                    HotKeyCodes = new string[] {"sprint", "sneak" },
+                    HotKeyCodes = new string[] {"ctrl", "shift" },
                     Itemstacks = new ItemStack[] { new ItemStack(this) },
                     GetMatchingStacks = (wi, bs, es) =>
                     {
@@ -200,7 +200,7 @@ namespace Vintagestory.GameContent
                 new WorldInteraction()
                 {
                     ActionLangCode = "blockhelp-ingotpile-4remove",
-                    HotKeyCode = "sprint",
+                    HotKeyCode = "ctrl",
                     MouseButton = EnumMouseButton.Right
                 }
 

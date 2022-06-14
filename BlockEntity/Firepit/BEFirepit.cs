@@ -214,7 +214,7 @@ namespace Vintagestory.GameContent
         }
 
 
-
+        public float emptyFirepitBurnTimeMulBonus = 4f;
 
         private void OnBurnTick(float dt)
         {
@@ -232,7 +232,7 @@ namespace Vintagestory.GameContent
             {
                 bool lowFuelConsumption = Math.Abs(furnaceTemperature - maxTemperature) < 50 && inputSlot.Empty;
 
-                fuelBurnTime -= dt / (lowFuelConsumption ? 3 : 1);
+                fuelBurnTime -= dt / (lowFuelConsumption ? emptyFirepitBurnTimeMulBonus : 1);
 
                 if (fuelBurnTime <= 0)
                 {
@@ -945,6 +945,7 @@ namespace Vintagestory.GameContent
             string burnState = Block.Variant["burnstate"];
             string contentState = CurrentModel.ToString().ToLowerInvariant();
             if (burnState == "cold" && fuelSlot.Empty) burnState = "extinct";
+            if (burnState == null) return true;
 
             mesher.AddMeshData(getOrCreateMesh(burnState, contentState));
 
@@ -1042,7 +1043,7 @@ namespace Vintagestory.GameContent
                 MeshData[] meshes = new MeshData[17];
                 ITesselatorAPI mesher = ((ICoreClientAPI)Api).Tesselator;
 
-                mesher.TesselateShape(block, Api.Assets.TryGet("shapes/block/wood/firepit/" + key + ".json")?.ToObject<Shape>(), out meshdata);
+                mesher.TesselateShape(block, API.Common.Shape.TryGet(Api, "shapes/block/wood/firepit/" + key + ".json"), out meshdata);
             }
 
             return meshdata;

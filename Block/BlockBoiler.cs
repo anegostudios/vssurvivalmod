@@ -12,36 +12,31 @@ namespace Vintagestory.GameContent
     {
         Block firepitBlock;
         WorldInteraction[] boilerinteractions;
+        Cuboidf[] partCollBoxes;
 
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
             firepitBlock = api.World.GetBlock(BlockEntityBoiler.firepitShapeBlockCodes[6]);
 
+            partCollBoxes = (Cuboidf[])CollisionBoxes.Clone();
+            partCollBoxes[0].Y1 = 7/16f;
 
             boilerinteractions = ObjectCacheUtil.GetOrCreate(api, "boilerInteractions", () =>
             {
-                List<ItemStack> canIgniteStacks = new List<ItemStack>();
+                List<ItemStack> canIgniteStacks = BlockBehaviorCanIgnite.CanIgniteStacks(api, true);
 
                 List<ItemStack> tinderStacks = new List<ItemStack>();
                 List<ItemStack> firewoodStacks = new List<ItemStack>();
 
-                foreach (CollectibleObject obj in api.World.Collectibles)
+                foreach (CollectibleObject obj in api.World.Items)
                 {
-                    string firstCodePart = obj.FirstCodePart();
-
-                    if (obj is Block && (obj as Block).HasBehavior<BlockBehaviorCanIgnite>() || obj is ItemFirestarter)
-                    {
-                        List<ItemStack> stacks = obj.GetHandBookStacks(api as ICoreClientAPI);
-                        if (stacks != null) canIgniteStacks.AddRange(stacks);
-                    }
-
                     if (obj is ItemDryGrass)
                     {
                         tinderStacks.Add(new ItemStack(obj));
                     }
 
-                    if (obj is ItemFirewood)
+                    if (obj.Attributes != null && obj.Attributes.IsTrue("isFirewood"))
                     {
                         firewoodStacks.Add(new ItemStack(obj));
                     }
@@ -53,7 +48,7 @@ namespace Vintagestory.GameContent
                     {
                         ActionLangCode = "blockhelp-firepit-ignite",
                         MouseButton = EnumMouseButton.Right,
-                        HotKeyCode = "sneak",
+                        HotKeyCode = "shift",
                         Itemstacks = canIgniteStacks.ToArray(),
                         GetMatchingStacks = (wi, bs, es) => {
                             BlockEntityBoiler bef = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityBoiler;
@@ -119,6 +114,12 @@ namespace Vintagestory.GameContent
             return base.GetLightHsv(blockAccessor, pos, stack);
         }
 
+        
+        public override Cuboidf[] GetParticleCollisionBoxes(IBlockAccessor blockAccessor, BlockPos pos)
+        {
+            return partCollBoxes;
+        }
+
         public override bool ShouldReceiveClientParticleTicks(IWorldAccessor world, IPlayer player, BlockPos pos, out bool isWindAffected)
         {
             isWindAffected = true;
@@ -134,7 +135,23 @@ namespace Vintagestory.GameContent
             BlockEntityBoiler be = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityBoiler;
             if (be != null && be.firepitStage == 6)
             {
-                firepitBlock.OnAsyncClientParticleTick(manager, pos, windAffectednessAtPos, secondsTicking);
+                //firepitBlock.OnAsyncClientParticleTick(manager, pos, windAffectednessAtPos, secondsTicking);
+                var props = firepitBlock.ParticleProperties;
+
+                if (props != null && props.Length > 0)
+                {
+                    for (int i = 0; i < props.Length; i++)
+                    {
+                        AdvancedParticleProperties bps = props[i];
+                        bps.WindAffectednesAtPos = windAffectednessAtPos;
+                        bps.basePos.X = pos.X + firepitBlock.TopMiddlePos.X;
+                        bps.basePos.Y = pos.Y + firepitBlock.TopMiddlePos.Y;
+                        bps.basePos.Z = pos.Z + firepitBlock.TopMiddlePos.Z;
+
+                        manager.Spawn(bps);
+                    }
+                }
+
                 return;
             }
 

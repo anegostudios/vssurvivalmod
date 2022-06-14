@@ -95,8 +95,8 @@ namespace Vintagestory.GameContent
             MeshRef meshref;
             if (!meshrefs.TryGetValue(key, out meshref))
             {
-                AssetLocation shapeloc = Shape.Base.Clone().WithPathPrefix("shapes/").WithPathAppendix(".json");
-                Shape shape = capi.Assets.TryGet(shapeloc).ToObject<Shape>();
+                AssetLocation shapeloc = Shape.Base.CopyWithPathPrefixAndAppendixOnce("shapes/", ".json");
+                Shape shape = API.Common.Shape.TryGet(capi, shapeloc);
 
                 MeshData mesh = GenMesh(capi, material, lining, glass, shape);
                 meshrefs[key] = meshref = capi.Render.UploadMesh(mesh);
@@ -134,7 +134,7 @@ namespace Vintagestory.GameContent
 
             if (shape == null)
             {
-                shape = capi.Assets.TryGet("shapes/" + this.Shape.Base.Path + ".json")?.ToObject<Shape>();
+                shape = API.Common.Shape.TryGet(capi, "shapes/" + this.Shape.Base.Path + ".json");
             }
 
             if (shape == null)
@@ -253,7 +253,7 @@ namespace Vintagestory.GameContent
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
-            if (!byPlayer.Entity.Controls.Sneak)
+            if (!byPlayer.Entity.Controls.ShiftKey)
             {
                 BELantern bel = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BELantern;
                 if (bel.Interact(byPlayer))

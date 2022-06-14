@@ -56,7 +56,7 @@ namespace Vintagestory.GameContent
             {
                 List<ItemStack> bakeableStacklist = new List<ItemStack>();
                 List<ItemStack> fuelStacklist = new List<ItemStack>();
-                List<ItemStack> canIgniteStacks = new List<ItemStack>();
+                List<ItemStack> canIgniteStacks = BlockBehaviorCanIgnite.CanIgniteStacks(api, true);
 
                 foreach (CollectibleObject obj in api.World.Collectibles)
                 {
@@ -70,14 +70,6 @@ namespace Vintagestory.GameContent
                     {
                         List<ItemStack> stacks = obj.GetHandBookStacks(capi);
                         if (stacks != null) bakeableStacklist.AddRange(stacks);
-                    }
-                    else if (obj is Block)
-                    {
-                        if ((obj as Block).HasBehavior<BlockBehaviorCanIgnite>() || obj is ItemFirestarter)
-                        {
-                            List<ItemStack> stacks = obj.GetHandBookStacks(capi);
-                            if (stacks != null) canIgniteStacks.AddRange(stacks);
-                        }
                     }
                 }
 
@@ -110,7 +102,7 @@ namespace Vintagestory.GameContent
                     {
                         ActionLangCode = "blockhelp-oven-ignite",
                         MouseButton = EnumMouseButton.Right,
-                        HotKeyCode = "sneak",
+                        HotKeyCode = "shift",
                         Itemstacks = canIgniteStacks.ToArray(),
                         GetMatchingStacks = (wi, bs, es) => {
                             if (wi.Itemstacks.Length == 0) return null;

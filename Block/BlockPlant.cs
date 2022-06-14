@@ -32,7 +32,7 @@ namespace Vintagestory.GameContent
         }
     }
 
-    public class BlockPlant : Block, IDrawYAdjustable
+    public class BlockPlant : Block, IDrawYAdjustable, IWithDrawnHeight
     {
         Block snowLayerBlock;
         Block tallGrassBlock;
@@ -41,6 +41,7 @@ namespace Vintagestory.GameContent
         protected bool tallGrassColorMapping = false;
 
         int ExtraBend = 0;
+        public int drawnHeight { get; set; }
 
 
         public override void OnLoaded(ICoreAPI api)
@@ -62,6 +63,7 @@ namespace Vintagestory.GameContent
             tallGrassColorMapping = Code.Path == "flower-lilyofthevalley-free";
 
             ExtraBend = (Attributes?["extraBend"].AsInt(0) ?? 0) << VertexFlags.WindDataBitsPos;
+            drawnHeight = Attributes?["drawnHeight"]?.AsInt(48) ?? 48;
         }
 
         public float AdjustYPosition(Block[] chunkExtBlocks, int extIndex3d)
@@ -103,6 +105,11 @@ namespace Vintagestory.GameContent
 
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
         {
+            if (Variant.ContainsKey("side"))
+            {
+                return base.TryPlaceBlock(world, byPlayer, itemstack, blockSel, ref failureCode);
+            }
+
             if (CanPlantStay(world.BlockAccessor, blockSel.Position))
             {
                 return base.TryPlaceBlock(world, byPlayer, itemstack, blockSel, ref failureCode);
@@ -120,12 +127,26 @@ namespace Vintagestory.GameContent
             {
                 world.BlockAccessor.BreakBlock(pos, null);
             }
+            base.OnNeighbourBlockChange(world, pos, neibpos);
         }
 
         public virtual bool CanPlantStay(IBlockAccessor blockAccessor, BlockPos pos)
         {
-            Block block = blockAccessor.GetBlock(pos.X, pos.Y - 1, pos.Z);
-            return block.Fertility > 0;
+            if (Variant.ContainsKey("side"))
+            {
+                var facing = BlockFacing.FromCode(Variant["side"]);
+                
+                var npos = pos.AddCopy(facing);
+                var block = blockAccessor.GetBlock(npos);
+                return block.CanAttachBlockAt(blockAccessor, this, npos, facing.Opposite);
+            }
+            else
+            {
+                Block block = blockAccessor.GetBlock(pos.X, pos.Y - 1, pos.Z);
+                if (block.Fertility <= 0) return false;
+                block = blockAccessor.GetLiquidBlock(pos);
+                return block.LiquidLevel < 7 && !block.SideSolid.Any();
+            }
         }
 
 

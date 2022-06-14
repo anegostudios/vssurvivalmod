@@ -17,7 +17,7 @@ namespace Vintagestory.GameContent
         {
             handHandling = EnumHandHandling.PreventDefault;
 
-            if (blockSel == null || byEntity?.World == null || !byEntity.Controls.Sneak) return;
+            if (blockSel == null || byEntity?.World == null || !byEntity.Controls.ShiftKey) return;
 
             IPlayer byPlayer = null;
             if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
@@ -75,7 +75,7 @@ namespace Vintagestory.GameContent
             {
                 new WorldInteraction
                 {
-                    HotKeyCode = "sneak",
+                    HotKeyCode = "shift",
                     ActionLangCode = "heldhelp-place",
                     MouseButton = EnumMouseButton.Right
                 }

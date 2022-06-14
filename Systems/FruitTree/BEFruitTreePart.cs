@@ -36,6 +36,22 @@ namespace Vintagestory.GameContent
             LeafParticlesTexture = props.LeafParticlesTexture?.Clone();
             BlossomParticlesTexture = props.BlossomParticlesTexture?.Clone();
         }
+
+        public TextureAtlasPosition GetOrLoadTexture(ICoreClientAPI capi, string key)
+        {
+            if (Textures.TryGetValue(key, out var ctex))
+            {
+                if (ctex.Baked != null)
+                {
+                    int textureSubId = ctex.Baked.TextureSubId;
+                    if (textureSubId > 0) return capi.BlockTextureAtlas.Positions[textureSubId];
+                }
+                capi.BlockTextureAtlas.InsertTextureCached(ctex, out int newSubId, out var texPos);
+                ctex.Baked.TextureSubId = newSubId;
+                return texPos;
+            }
+            return null;
+        }
     }
 
     public abstract class BlockEntityFruitTreePart: BlockEntity, ITexPositionSource
@@ -67,7 +83,7 @@ namespace Vintagestory.GameContent
 
         public double Progress => rootBh.GetCurrentStateProgress(TreeType);
 
-        public string TreeType = "";
+        public string TreeType = null;
         public int Height = 0;
         public Vec3i RootOff = null;
 
@@ -90,7 +106,7 @@ namespace Vintagestory.GameContent
         {
             get
             {
-                Dictionary<string, CompositeTexture> textures = Block.Textures;
+                IDictionary<string, CompositeTexture> textures = Block.Textures;
                 AssetLocation texturePath = null;
                 CompositeTexture tex;
 
@@ -104,18 +120,10 @@ namespace Vintagestory.GameContent
                 if (props != null)
                 {
                     string key = textureCode + "-" + FoliageUtil.FoliageStates[(int)FoliageState];
-                    if (props.Textures.TryGetValue(key, out var ctex))
-                    {
-                        capi.BlockTextureAtlas.InsertTextureCached(ctex, out _, out var texPos);
-                        return texPos;
-                    }
-
-                    key = textureCode;
-                    if (props.Textures.TryGetValue(key, out var ctex2))
-                    {
-                        capi.BlockTextureAtlas.InsertTextureCached(ctex2, out _, out var texPos);
-                        return texPos;
-                    }
+                    TextureAtlasPosition texPos = props.GetOrLoadTexture(capi, key);
+                    if (texPos != null) return texPos;
+                    texPos = props.GetOrLoadTexture(capi, textureCode);
+                    if (texPos != null) return texPos;
                 }
 
                 // Prio 2: Get from collectible textures
@@ -176,8 +184,8 @@ namespace Vintagestory.GameContent
 
             var foliageProps = blockFoliage.foliageProps[TreeType];
 
-            LeafParticlesColor = getOrCreateTexPos(foliageProps.LeafParticlesTexture.Base).RndColors;
-            BlossomParticlesColor = getOrCreateTexPos(foliageProps.BlossomParticlesTexture.Base).RndColors;
+            LeafParticlesColor = capi.BlockTextureAtlas.GetRandomColors(getOrCreateTexPos(foliageProps.LeafParticlesTexture.Base));
+            BlossomParticlesColor = capi.BlockTextureAtlas.GetRandomColors(getOrCreateTexPos(foliageProps.BlossomParticlesTexture.Base));
 
 
             Dictionary<int, MeshData[]> meshesByKey = ObjectCacheUtil.GetOrCreate(Api, foliageDictCacheKey, () => new Dictionary<int, MeshData[]>());
@@ -241,8 +249,12 @@ namespace Vintagestory.GameContent
             // Fruit shape 
             if (FoliageState == EnumFoliageState.Fruiting || FoliageState == EnumFoliageState.Ripe) { 
                 string shapekey = "fruit-" + TreeType;
+                FruitTreeShape shapeData;
 
-                if (!blockBranch.Shapes.TryGetValue(shapekey, out var shapeData)) return false;
+                if (FoliageState != EnumFoliageState.Ripe || !blockBranch.Shapes.TryGetValue(shapekey + "-ripe", out shapeData))
+                {
+                    if (!blockBranch.Shapes.TryGetValue(shapekey, out shapeData)) return false;
+                }
 
                 nowTesselatingShape = shapeData.Shape;
 

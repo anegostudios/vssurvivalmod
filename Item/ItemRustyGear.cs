@@ -19,7 +19,7 @@ namespace Vintagestory.GameContent
         {
             IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
 
-            if (blockSel == null || !byEntity.Controls.Sneak)
+            if (blockSel == null || !byEntity.Controls.ShiftKey)
             {
                 base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handling);
                 return;
@@ -57,8 +57,10 @@ namespace Vintagestory.GameContent
 
             block = byEntity.World.BlockAccessor.GetBlock(placePos);
             Block gearBlock = byEntity.World.GetBlock(new AssetLocation("loosegears-1"));
-            if (block.IsReplacableBy(gearBlock) && byEntity.World.BlockAccessor.GetBlock(placePos.DownCopy()).SideSolid[BlockFacing.UP.Index])
+            placePos.Y--;
+            if (block.IsReplacableBy(gearBlock) && byEntity.World.BlockAccessor.GetSolidBlock(placePos.X, placePos.Y, placePos.Z).CanAttachBlockAt(byEntity.World.BlockAccessor, gearBlock, placePos, BlockFacing.UP))
             {
+                placePos.Y++;
                 byEntity.World.BlockAccessor.SetBlock(gearBlock.BlockId, placePos);
                 slot.TakeOut(1);
                 byEntity.World.PlaySoundAt(block.Sounds.Place, blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z, byPlayer);
@@ -75,7 +77,7 @@ namespace Vintagestory.GameContent
             {
                 new WorldInteraction
                 {
-                    HotKeyCode = "sneak",
+                    HotKeyCode = "shift",
                     ActionLangCode = "heldhelp-place",
                     MouseButton = EnumMouseButton.Right
                 }

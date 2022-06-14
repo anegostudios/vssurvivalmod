@@ -101,8 +101,8 @@ namespace Vintagestory.GameContent.Mechanics
             if (orientations == "ns" || orientations == "we")
             {
                 return 
-                    Api.World.BlockAccessor.GetBlock(Position.X, Position.Y - 1, Position.Z).SideSolid[BlockFacing.UP.Index] ||
-                    Api.World.BlockAccessor.GetBlock(Position.X, Position.Y + 1, Position.Z).SideSolid[BlockFacing.DOWN.Index]
+                    Api.World.BlockAccessor.IsSideSolid(Position.X, Position.Y - 1, Position.Z, BlockFacing.UP) ||
+                    Api.World.BlockAccessor.IsSideSolid(Position.X, Position.Y + 1, Position.Z, BlockFacing.DOWN)
                 ;
             }
 
@@ -114,7 +114,7 @@ namespace Vintagestory.GameContent.Mechanics
         {
             return ObjectCacheUtil.GetOrCreate(Api, "toggle-" + orient + "-stand", () =>
             {
-                Shape shape = capi.Assets.TryGet("shapes/block/wood/mechanics/toggle-stand.json").ToObject<Shape>();
+                Shape shape = API.Common.Shape.TryGet(capi, "shapes/block/wood/mechanics/toggle-stand.json");
                 MeshData mesh;
                 capi.Tesselator.TesselateShape(Block, shape, out mesh);
 
