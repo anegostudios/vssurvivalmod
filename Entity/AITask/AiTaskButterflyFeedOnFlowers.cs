@@ -84,7 +84,7 @@ namespace Vintagestory.GameContent
 
             if (block.Attributes["butterflyFeed"].AsBool() == true)
             {
-                Block liquidBlock = entity.World.BlockAccessor.GetLiquidBlock(tmpPos);
+                Block liquidBlock = entity.World.BlockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid);
                 if (liquidBlock.BlockId != 0) return false;   // If it's non-zero, the butterfly food is currently underwater or encased in ice!
 
                 double topPos = block.Attributes["sitHeight"].AsDouble(block.TopMiddlePos.Y);

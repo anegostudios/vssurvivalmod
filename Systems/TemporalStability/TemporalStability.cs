@@ -495,7 +495,7 @@ namespace Vintagestory.GameContent
 
 
 
-        private bool Event_OnTrySpawnEntity(ref EntityProperties properties, Vec3d spawnPosition, long herdId)
+        private bool Event_OnTrySpawnEntity(IBlockAccessor blockAccessor, ref EntityProperties properties, Vec3d spawnPosition, long herdId)
         {
             if (!properties.Code.Path.StartsWithFast("drifter")) return true;
 

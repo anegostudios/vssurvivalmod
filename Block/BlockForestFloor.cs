@@ -92,7 +92,7 @@ namespace Vintagestory.GameContent
 
         protected bool isSmotheringBlock(IWorldAccessor world, BlockPos pos)
         {
-            Block block = world.BlockAccessor.GetLiquidBlock(pos);
+            Block block = world.BlockAccessor.GetBlock(pos, BlockLayersAccess.Fluid);
             if (block is BlockLakeIce || block.LiquidLevel > 1) return true;
             block = world.BlockAccessor.GetBlock(pos);
             return block.SideSolid[BlockFacing.DOWN.Index] && block.SideOpaque[BlockFacing.DOWN.Index] || block is BlockLava;

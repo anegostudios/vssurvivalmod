@@ -9,7 +9,7 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockWaterflowing : BlockForLiquidsLayer
+    public class BlockWaterflowing : BlockForFluidsLayer
     {
         float particleQuantity = 0.2f;
 
@@ -37,7 +37,7 @@ namespace Vintagestory.GameContent
             Block block = world.BlockAccessor.GetBlock(pos.X, pos.Y + 1, pos.Z);
             if (block.Replaceable >= 6000)   // This is a kind of rough "transparent to sound" test
             {
-                block = world.BlockAccessor.GetLiquidBlock(pos.X, pos.Y + 1, pos.Z);
+                block = world.BlockAccessor.GetBlock(pos.X, pos.Y + 1, pos.Z, BlockLayersAccess.Fluid);
                 if (!block.IsLiquid()) return true;
             }
             return false;

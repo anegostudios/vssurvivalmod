@@ -160,13 +160,13 @@ namespace Vintagestory.ServerMods
             worldEdit.sapi.World.BlockAccessor.SetBlock(oldBlockId, blockSel.Position);
             blockSel.Position.Add(blockSel.Face.Opposite); // - prevented trees from growing o.O   - seems to work again and with this disabled trees float in the air 0.O
 
-            blockAccessRev.ReadFromStagedByDefault = true;
+            ba.ReadFromStagedByDefault = true;
 
             treeGenerators.ReloadTreeGenerators();
-            treeGenerators.RunGenerator(new AssetLocation(TreeVariant), blockAccessRev, blockSel.Position, MinTreeSize + (float)rand.NextDouble() * (MaxTreeSize - MinTreeSize));
+            treeGenerators.RunGenerator(new AssetLocation(TreeVariant), ba, blockSel.Position, MinTreeSize + (float)rand.NextDouble() * (MaxTreeSize - MinTreeSize));
 
-            blockAccessRev.SetHistoryStateBlock(blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z, oldBlockId, blockAccessRev.GetStagedBlockId(blockSel.Position));
-            blockAccessRev.Commit();
+            ba.SetHistoryStateBlock(blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z, oldBlockId, ba.GetStagedBlockId(blockSel.Position));
+            ba.Commit();
         }
 
     }

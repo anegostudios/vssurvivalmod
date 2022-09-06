@@ -99,6 +99,13 @@ namespace Vintagestory.GameContent
             api.Event.RegisterEventBusListener(OnConfigEventServer, 0.5, "configTeleporter");
             api.RegisterCommand("settlpos", "Set translocator target teleport position of currently looked at translocator", "[position]", onSetTlPos, Privilege.setspawn);
 
+            /*api.Command
+                .GetOrCreate("settlpos")
+                .WithDesc("Set translocator target teleport position of currently looked at translocator")
+                .RequiresPriv(Privilege.setspawn)
+                .HandleWith(onSetTlPos)
+            ;*/
+
             serverChannel =
                api.Network.RegisterChannel("tpManager")
                .RegisterMessageType(typeof(TpLocations))

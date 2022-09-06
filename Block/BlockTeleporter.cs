@@ -18,7 +18,7 @@ namespace Vintagestory.GameContent
 
             idleParticles = new SimpleParticleProperties(
                 1, 1,
-                ColorUtil.ToRgba(150, 34, 47, 44),
+                ColorUtil.ToRgba(255, 34, 47, 44),
                 new Vec3d(),
                 new Vec3d(),
                 new Vec3f(-0.1f, -0.1f, -0.1f),
@@ -37,7 +37,7 @@ namespace Vintagestory.GameContent
 
             insideParticles = new SimpleParticleProperties(
                 1, 1,
-                ColorUtil.ToRgba(150, 92, 111, 107),
+                ColorUtil.ToRgba(255, 92, 111, 107),
                 new Vec3d(),
                 new Vec3d(),
                 new Vec3f(-0.2f, -0.2f, -0.2f),

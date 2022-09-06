@@ -247,7 +247,9 @@ namespace Vintagestory.GameContent
         public override Cuboidf[] GetCollisionBoxes(IBlockAccessor blockAccessor, BlockPos pos)
         {
             BlockEntityShapeFromAttributes bect = blockAccessor.GetBlockEntity(pos) as BlockEntityShapeFromAttributes;
-            var cprops = GetTypeProps(bect?.Type, null, bect);
+            if (bect == null) return base.GetCollisionBoxes(blockAccessor, pos);
+
+            var cprops = GetTypeProps(bect.Type, null, bect);
             if (cprops?.ColSelBoxes == null) return base.GetCollisionBoxes(blockAccessor, pos);
 
             if (colSelBoxEditMode)
@@ -425,7 +427,7 @@ namespace Vintagestory.GameContent
         public override string GetPlacedBlockInfo(IWorldAccessor world, BlockPos pos, IPlayer forPlayer)
         {
             BlockEntityShapeFromAttributes bec = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityShapeFromAttributes;
-            return Lang.GetMatching(Code.Domain + ":" + ClassType + "desc-" + bec?.Type?.Replace("/", "-"));
+            return Lang.GetMatchingIfExists(Code.Domain + ":" + ClassType + "desc-" + bec?.Type?.Replace("/", "-"));
         }
 
         public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)

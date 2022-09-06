@@ -191,7 +191,7 @@ namespace Vintagestory.ServerMods.NoObf
                     if (Placement == EnumBlockPatchPlacement.UnderWater)
                     {
                         tempPos.Set(pos.X, pos.Y - GameMath.Max(1, MinWaterDepth), pos.Z);
-                        Block downBlock = blockAccessor.GetLiquidBlock(tempPos);
+                        Block downBlock = blockAccessor.GetBlock(tempPos, BlockLayersAccess.Fluid);
                         if (downBlock.LiquidCode != "water") continue;
                     }
                 }

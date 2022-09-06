@@ -55,6 +55,7 @@ namespace Vintagestory.GameContent
             if (haveCookingContainer == newHaveCookingContainer && SingleComposer != null)
             {
                 outputTextElem = SingleComposer.GetDynamicText("outputText");
+                outputTextElem.Font.WithFontSize(14);
                 outputTextElem.SetNewText(newOutputText, true);
                 SingleComposer.GetCustomDraw("symbolDrawer").Redraw();
 
@@ -66,6 +67,8 @@ namespace Vintagestory.GameContent
                 if (outputTextElem.QuantityTextLines > 2)
                 {
                     outputTextElem.Bounds.fixedOffsetY = -outputTextElem.Font.GetFontExtents().Height / RuntimeEnv.GUIScale * 0.65;
+                    outputTextElem.Font.WithFontSize(12);
+                    outputTextElem.RecomposeText();
                 }
 
                 outputTextElem.Bounds.CalcWorldBounds();

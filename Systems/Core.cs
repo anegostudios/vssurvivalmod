@@ -149,6 +149,13 @@ namespace Vintagestory.GameContent
             }
         }
 
+        public override void AssetsFinalize(ICoreAPI api)
+        {
+            // loadConfig (which calls applyConfig) are called after the end of all mods' AssetsLoaded() stages. Cannot be called sooner (e.g. in this ModSystem's AssetsLoaded() method) because the globmodifiers.json patch will not have been applied yet, in that case.  This ModSystem loads before JsonPatchLoader.
+            // Also it seems best to apply the toolDurability multiplier only after mods have done anything they need to to the tools
+            loadConfig();
+        }
+
         public override void StartClientSide(ICoreClientAPI api)
         {
             capi = api;
@@ -181,10 +188,7 @@ namespace Vintagestory.GameContent
             api.Event.PlayerNowPlaying += Event_PlayerPlaying;
             api.Event.PlayerJoin += Event_PlayerJoin;
             
-            api.Event.ServerRunPhase(EnumServerRunPhase.ModsAndConfigReady, loadConfig);
-
             api.Event.ServerRunPhase(EnumServerRunPhase.GameReady, () => {
-                applyConfig();
                 config.ResolveStartItems(api.World);
                 api.World.Calendar.OnGetSolarSphericalCoords = GetSolarSphericalCoords;
                 api.World.Calendar.OnGetHemisphere = GetHemisphere;
@@ -294,8 +298,9 @@ namespace Vintagestory.GameContent
                 config = new SurvivalConfig();
             }
 
+            applyConfig();
 
-            // Called on both sides
+            // [1.17.0-pre.4] currently called on server-side only, should it be on both sides?
         }
 
 
@@ -570,6 +575,7 @@ namespace Vintagestory.GameContent
             api.RegisterBlockBehaviorClass("RopeTieable", typeof(BlockBehaviorRopeTieable));
             api.RegisterBlockBehaviorClass("MyceliumHost", typeof(BehaviorMyceliumHost));
             api.RegisterBlockBehaviorClass("WrenchOrientable", typeof(BlockBehaviorWrenchOrientable));
+            api.RegisterBlockBehaviorClass("RainDrip", typeof(BehaviorRainDrip));
         }
 
         private void RegisterDefaultBlockEntityBehaviors()

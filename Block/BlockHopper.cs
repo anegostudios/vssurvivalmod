@@ -27,13 +27,13 @@ namespace Vintagestory.GameContent
         {
             base.OnEntityCollide(world, entity, pos, facing, collideSpeed, isImpact);
 
-            if (facing == BlockFacing.UP && entity is EntityItem inWorldItem)
+            if (facing == BlockFacing.UP && entity is EntityItem inWorldItem && world.Side == EnumAppSide.Server)
             {
                 // Don't suck up everything instantly
                 if (world.Rand.NextDouble() < 0.9) return;
 
                 BlockEntity blockEntity = world.BlockAccessor.GetBlockEntity(pos);
-                if (blockEntity is BlockEntityItemFlow beItemFlow)
+                if (inWorldItem.Alive && blockEntity is BlockEntityItemFlow beItemFlow)
                 {
                     WeightedSlot ws = beItemFlow.inventory.GetBestSuitedSlot(inWorldItem.Slot);
 
@@ -43,6 +43,7 @@ namespace Vintagestory.GameContent
                         if (inWorldItem.Slot.StackSize <= 0)
                         {
                             inWorldItem.Itemstack = null;
+                            inWorldItem.Alive = false;
                         }
                     }
                 }

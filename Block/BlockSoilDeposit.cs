@@ -62,9 +62,9 @@ namespace Vintagestory.GameContent
 
             bool isGrowing = false;
 
-            Block grass = null;
+            Block grass;
             BlockPos upPos = pos.UpCopy();
-            string grasscoverage = LastCodePart();
+            
             bool lowLightLevel = world.BlockAccessor.GetLightLevel(pos, EnumLightLevelType.MaxLight) < growthLightLevel;
             if (lowLightLevel || isSmotheringBlock(world, upPos))
             {

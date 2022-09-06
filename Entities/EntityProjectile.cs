@@ -56,7 +56,7 @@ namespace Vintagestory.GameContent
 
             collisionTestBox = SelectionBox.Clone().OmniGrowBy(0.05f);
 
-            if (api.Side == EnumAppSide.Server)
+            //if (api.Side == EnumAppSide.Server) - why only server side? This makes arrows fly through entities on the client
             {
                 GetBehavior<EntityBehaviorPassivePhysics>().OnPhysicsTickCallback = onPhysicsTickCallback;
                 ep = api.ModLoader.GetModSystem<EntityPartitioning>();
@@ -66,22 +66,25 @@ namespace Vintagestory.GameContent
         }
 
         private void onPhysicsTickCallback(float dtFac)
-        {
+        {   
             if (ShouldDespawn || !Alive) return;
-            if (World is IClientWorldAccessor || World.ElapsedMilliseconds <= msCollide + 500) return;
-            if (ServerPos.Motion.X == 0 && ServerPos.Motion.Y == 0 && ServerPos.Motion.Z == 0) return;  // don't do damage if stuck in ground
+            if (World.ElapsedMilliseconds <= msCollide + 500) return;
+
+            var pos = SidedPos;
+
+            if (pos.Motion.X == 0 && pos.Motion.Y == 0 && pos.Motion.Z == 0) return;  // don't do damage if stuck in ground
 
 
-            Cuboidd projectileBox = SelectionBox.ToDouble().Translate(ServerPos.X, ServerPos.Y, ServerPos.Z);
+            Cuboidd projectileBox = SelectionBox.ToDouble().Translate(pos.X, pos.Y, pos.Z);
 
-            if (ServerPos.Motion.X < 0) projectileBox.X1 += ServerPos.Motion.X * dtFac;
-            else projectileBox.X2 += ServerPos.Motion.X * dtFac;
-            if (ServerPos.Motion.Y < 0) projectileBox.Y1 += ServerPos.Motion.Y * dtFac;
-            else projectileBox.Y2 += ServerPos.Motion.Y * dtFac;
-            if (ServerPos.Motion.Z < 0) projectileBox.Z1 += ServerPos.Motion.Z * dtFac;
-            else projectileBox.Z2 += ServerPos.Motion.Z * dtFac;
+            if (pos.Motion.X < 0) projectileBox.X1 += pos.Motion.X * dtFac;
+            else projectileBox.X2 += pos.Motion.X * dtFac;
+            if (pos.Motion.Y < 0) projectileBox.Y1 += pos.Motion.Y * dtFac;
+            else projectileBox.Y2 += pos.Motion.Y * dtFac;
+            if (pos.Motion.Z < 0) projectileBox.Z1 += pos.Motion.Z * dtFac;
+            else projectileBox.Z2 += pos.Motion.Z * dtFac;
             
-            ep.WalkEntities(ServerPos.XYZ, 5f, (e) => {
+            ep.WalkEntities(pos.XYZ, 5f, (e) => {
                 if (e.EntityId == this.EntityId || !e.IsInteractable || (FiredBy != null && e.EntityId == FiredBy.EntityId && World.ElapsedMilliseconds - msLaunch < 500)) return true;
 
                 Cuboidd eBox = e.SelectionBox.ToDouble().Translate(e.ServerPos.X, e.ServerPos.Y, e.ServerPos.Z);
@@ -104,14 +107,19 @@ namespace Vintagestory.GameContent
 
             EntityPos pos = SidedPos;
 
-            stuck = Collided || collTester.IsColliding(World.BlockAccessor, collisionTestBox, pos.XYZ);
+            stuck = Collided || collTester.IsColliding(World.BlockAccessor, collisionTestBox, pos.XYZ) || WatchedAttributes.GetBool("stuck");
+            if (Api.Side == EnumAppSide.Server) WatchedAttributes.SetBool("stuck", stuck);
 
             double impactSpeed = Math.Max(motionBeforeCollide.Length(), pos.Motion.Length());
 
             if (stuck)
             {
+                if (Api.Side == EnumAppSide.Client) ServerPos.SetFrom(Pos);
                 IsColliding(pos, impactSpeed);
                 return;
+            } else
+            {
+                SetRotation();
             }
 
             if (TryAttackEntity(impactSpeed))
@@ -121,7 +129,6 @@ namespace Vintagestory.GameContent
 
             beforeCollided = false;
             motionBeforeCollide.Set(pos.Motion.X, pos.Motion.Y, pos.Motion.Z);
-            SetRotation();
         }
 
 
@@ -150,12 +157,11 @@ namespace Vintagestory.GameContent
                     if (DamageStackOnImpact)
                     {
                         ProjectileStack.Collectible.DamageItem(World, this, new DummySlot(ProjectileStack));
-                    }
-
-                    int leftDurability = ProjectileStack == null ? 1 : ProjectileStack.Collectible.GetRemainingDurability(ProjectileStack);
-                    if (leftDurability <= 0)
-                    {
-                        Die();
+                        int leftDurability = ProjectileStack == null ? 1 : ProjectileStack.Collectible.GetRemainingDurability(ProjectileStack);
+                        if (leftDurability <= 0)
+                        {
+                            Die();
+                        }
                     }
                 }
 
@@ -235,10 +241,13 @@ namespace Vintagestory.GameContent
             }
 
             msCollide = World.ElapsedMilliseconds;
-            World.PlaySoundAt(new AssetLocation("sounds/arrow-impact"), this, null, false, 24);
 
-            if (canDamage)
+            pos.Motion.Set(0, 0, 0);
+
+            if (canDamage && World.Side == EnumAppSide.Server)
             {
+                World.PlaySoundAt(new AssetLocation("sounds/arrow-impact"), this, null, false, 24);
+
                 float dmg = Damage;
                 if (FiredBy != null) dmg *= FiredBy.Stats.GetBlended("rangedWeaponsDamage");
 
@@ -252,17 +261,16 @@ namespace Vintagestory.GameContent
                 float kbresist = entity.Properties.KnockbackResistance;
                 entity.SidedPos.Motion.Add(kbresist * pos.Motion.X * Weight, kbresist * pos.Motion.Y * Weight, kbresist * pos.Motion.Z * Weight);
 
+                int leftDurability = 1;
                 if (DamageStackOnImpact)
                 {
                     ProjectileStack.Collectible.DamageItem(entity.World, entity, new DummySlot(ProjectileStack));
+                    leftDurability = ProjectileStack == null ? 1 : ProjectileStack.Collectible.GetRemainingDurability(ProjectileStack);
                 }
-
-                int leftDurability = ProjectileStack == null ? 1 : ProjectileStack.Collectible.GetRemainingDurability(ProjectileStack);
-
 
                 if (World.Rand.NextDouble() < DropOnImpactChance && leftDurability > 0)
                 {
-                    pos.Motion.Set(0, 0, 0);
+                    
                 }
                 else
                 {
@@ -273,12 +281,6 @@ namespace Vintagestory.GameContent
                 {
                     World.PlaySoundFor(new AssetLocation("sounds/player/projectilehit"), (FiredBy as EntityPlayer).Player, false, 24);
                 }
-
-
-            }
-            else
-            {
-                pos.Motion.Set(0, 0, 0);
             }
         }
 

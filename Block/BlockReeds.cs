@@ -18,8 +18,8 @@ namespace Vintagestory.GameContent
         public override string ClimateColorMapForMap => climateColorMapInt;
         public override string SeasonColorMapForMap => seasonColorMapInt;
 
-        string habitat = null;
-        public override string RemapToLiquidsLayer { get => habitat; }
+        string habitatBlockCode = null;
+        public override string RemapToLiquidsLayer { get => habitatBlockCode; }
 
         public override void OnCollectTextures(ICoreAPI api, ITextureLocationDictionary textureDict)
         {
@@ -34,8 +34,8 @@ namespace Vintagestory.GameContent
             base.OnLoaded(api);
 
             string hab = Variant["habitat"];
-            if (hab == "water") habitat = "water-still-7";
-            else if (hab == "ice") habitat = "lakeice";
+            if (hab == "water") habitatBlockCode = "water-still-7";
+            else if (hab == "ice") habitatBlockCode = "lakeice";
 
             if (LastCodePart() == "harvested") return;
 
@@ -191,7 +191,6 @@ namespace Vintagestory.GameContent
         public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing, int rndIndex = -1)
         {
             return capi.World.ApplyColorMapOnRgba(ClimateColorMapForMap, SeasonColorMapForMap, capi.BlockTextureAtlas.GetRandomColor(Textures.Last().Value.Baked.TextureSubId, rndIndex), pos.X, pos.Y, pos.Z);
-            //return base.GetRandomColor(capi, pos, facing);
         }
 
         public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)

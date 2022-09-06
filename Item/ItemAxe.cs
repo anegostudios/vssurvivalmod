@@ -153,7 +153,7 @@ namespace Vintagestory.GameContent
                 if (itemslot.Itemstack == null) return true;
 
                 if (isLeaves && leavesMul > 0.03f) leavesMul *= 0.85f;
-                if (isBranchy && leavesBranchyMul > 0.015f) leavesBranchyMul *= 0.6f;
+                if (isBranchy && leavesBranchyMul > 0.015f) leavesBranchyMul *= 0.7f;
             }
 
             if (blocksbroken > 35)

@@ -24,12 +24,6 @@ namespace Vintagestory.GameContent
             base.OnHeldInteractStart(itemslot, byEntity, blockSel, entitySel, firstEvent, ref handling);
             if (handling == EnumHandHandling.PreventDefault) return;
 
-
-            if (!byEntity.Controls.TriesToMove && byEntity.Controls.Sprint)
-            {
-                return;
-            }
-
             handling = EnumHandHandling.PreventDefault;
 
             // Not ideal to code the aiming controls this way. Needs an elegant solution - maybe an event bus?
@@ -130,8 +124,8 @@ namespace Vintagestory.GameContent
 
             if (byEntity is EntityPlayer) RefillSlotIfEmpty(slot, byEntity, (itemstack) => itemstack.Collectible is ItemSpear);
 
-            //byPlayer.Entity.World.PlaySoundAt(new AssetLocation("sounds/player/strike"), byPlayer.Entity, byPlayer, 0.9f + (float)api.World.Rand.NextDouble() * 0.2f, 16, 0.5f);
-            (byEntity as EntityPlayer).talkUtil.Talk(EnumTalkType.Thrust);
+            var pitch = (byEntity as EntityPlayer).talkUtil.pitchModifier;
+            byPlayer.Entity.World.PlaySoundAt(new AssetLocation("sounds/player/strike"), byPlayer.Entity, byPlayer, pitch * 0.9f + (float)api.World.Rand.NextDouble() * 0.2f, 16, 0.35f);
         }
 
 
@@ -148,10 +142,10 @@ namespace Vintagestory.GameContent
 
                 if (byEntity.Controls.HandUse == EnumHandInteract.HeldItemAttack)
                 {
-                    //byPlayer.Entity.World.PlaySoundAt(new AssetLocation("sounds/player/strike"), byPlayer.Entity, byPlayer, 0.9f + (float)api.World.Rand.NextDouble() * 0.2f, 16, 0.5f);
-                    (byEntity as EntityPlayer).talkUtil.Talk(EnumTalkType.Thrust);
+                    var pitch = (byEntity as EntityPlayer).talkUtil.pitchModifier;
+                    byPlayer.Entity.World.PlaySoundAt(new AssetLocation("sounds/player/strike"), byPlayer.Entity, byPlayer, pitch * 0.9f + (float)api.World.Rand.NextDouble() * 0.2f, 16, 0.35f);
                 }
-            }, /*464*/ 200);
+            }, 464);
 
             handling = EnumHandHandling.PreventDefault;
         }

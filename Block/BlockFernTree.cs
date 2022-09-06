@@ -85,7 +85,7 @@ namespace Vintagestory.GameContent
                 for (int y = 2; y >= -2; y--)
                 {
                     Block block = blockAccessor.GetBlock(pos.X, pos.Y + y, pos.Z);
-                    if (block.Fertility > 0 && !blockAccessor.GetLiquidBlock(pos.X, pos.Y + y + 1, pos.Z).IsLiquid())
+                    if (block.Fertility > 0 && !blockAccessor.GetBlock(pos.X, pos.Y + y + 1, pos.Z, BlockLayersAccess.Fluid).IsLiquid())
                     {
                         pos.Y = pos.Y + y;
                         foundSuitableBlock = true;

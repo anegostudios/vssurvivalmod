@@ -125,7 +125,7 @@ namespace Vintagestory.ServerMods
                     if (y <= 0 || y >= worldheight - 15) continue;
 
                     tmpPos.Set(x, y, z);
-                    liquidBlock = blockAccessor.GetLiquidBlock(tmpPos);
+                    liquidBlock = blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid);
 
                     // Place according to forest value
                     int climate = GameMath.BiLerpRgbColor((float)dx / chunksize, (float)dz / chunksize, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight);

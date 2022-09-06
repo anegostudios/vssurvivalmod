@@ -47,8 +47,7 @@ namespace Vintagestory.GameContent
         protected Shape nowTesselatingShape;
         protected ICoreClientAPI capi;
         protected MeshData[] meshes;
-        protected MealMeshCache ms;
-
+        
 
         public Size2i AtlasSize => capi.BlockTextureAtlas.Size;
 
@@ -100,8 +99,7 @@ namespace Vintagestory.GameContent
                 IAsset texAsset = capi.Assets.TryGet(texturePath.Clone().WithPathPrefixOnce("textures/").WithPathAppendixOnce(".png"));
                 if (texAsset != null)
                 {
-                    BitmapRef bmp = texAsset.ToBitmap(capi);
-                    capi.BlockTextureAtlas.InsertTextureCached(texturePath, bmp, out _, out texpos);
+                    capi.BlockTextureAtlas.GetOrInsertTexture(texturePath, out _, out texpos, () => texAsset.ToBitmap(capi));
                 }
                 else
                 {
@@ -117,7 +115,6 @@ namespace Vintagestory.GameContent
         public override void Initialize(ICoreAPI api)
         {
             base.Initialize(api);
-            this.ms = api.ModLoader.GetModSystem<MealMeshCache>();
 
             capi = api as ICoreClientAPI;
             if (capi != null)
@@ -178,11 +175,11 @@ namespace Vintagestory.GameContent
         protected virtual MeshData genMesh(ItemStack stack)
         {
             MeshData mesh;
-            var dynBlock = stack.Collectible as IContainedMeshSource;
+            var meshSource = stack.Collectible as IContainedMeshSource;
 
-            if (dynBlock != null)
+            if (meshSource != null)
             {
-                mesh = dynBlock.GenMesh(stack, capi.BlockTextureAtlas, Pos);
+                mesh = meshSource.GenMesh(stack, capi.BlockTextureAtlas, Pos);
                 mesh.Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 0, Block.Shape.rotateY * GameMath.DEG2RAD, 0);
             }
             else

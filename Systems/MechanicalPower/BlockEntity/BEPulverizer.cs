@@ -133,7 +133,16 @@ namespace Vintagestory.GameContent.Mechanics
         private void Crush(int slot, int capTier, double xOffset)
         {
             ItemStack inputStack = inv[slot].TakeOut(1);
-            ItemStack outputStack = inputStack.Collectible.CrushingProps?.CrushedStack?.ResolvedItemstack.Clone();
+            var props = inputStack.Collectible.CrushingProps;
+            ItemStack outputStack = null;
+
+            if (props != null) {
+                outputStack = props.CrushedStack?.ResolvedItemstack.Clone();
+                if (outputStack != null)
+                {
+                    outputStack.StackSize = GameMath.RoundRandom(Api.World.Rand, props.Quantity.nextFloat(outputStack.StackSize, Api.World.Rand));
+                }
+            }
 
             Vec3d position = mat.TransformVector(new Vec4d(xOffset * 0.999, 0.1, 0.8, 0)).XYZ.Add(Pos).Add(0.5, 0, 0.5);
             double lengthways = Api.World.Rand.NextDouble() * 0.07 - 0.035;

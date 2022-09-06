@@ -128,7 +128,7 @@ namespace Vintagestory.GameContent
 
             ItemStack[] contentStacks = (pieStack.Block as BlockPie).GetContents(capi.World, pieStack);
 
-            string extrakey = "ct" + pieStack.Attributes.GetInt("topCrustType") + "-bl" + pieStack.Attributes.GetInt("bakeLevel", 0) + "-ps" + pieStack.Attributes.GetInt("pieSize");
+            string extrakey = "ct" + pieStack.Attributes.GetAsInt("topCrustType") + "-bl" + pieStack.Attributes.GetAsInt("bakeLevel", 0) + "-ps" + pieStack.Attributes.GetAsInt("pieSize");
 
             int mealhashcode = GetMealHashCode(pieStack.Block, contentStacks, null, extrakey);
 
@@ -157,7 +157,7 @@ namespace Vintagestory.GameContent
 
             contentStacks = nowTesselatingBlock.GetContents(capi.World, pieStack);
 
-            int pieSize = pieStack.Attributes.GetInt("pieSize");
+            int pieSize = pieStack.Attributes.GetAsInt("pieSize");
 
 
             // At this spot we have to determine the textures for "dough" and "filling"
@@ -178,7 +178,7 @@ namespace Vintagestory.GameContent
 
             var stackprops = contentStacks.Select(stack => stack?.ItemAttributes?["inPieProperties"]?.AsObject<InPieProperties>(null, stack.Collectible.Code.Domain)).ToArray();
 
-            int bakeLevel = pieStack.Attributes.GetInt("bakeLevel", 0);
+            int bakeLevel = pieStack.Attributes.GetAsInt("bakeLevel", 0);
 
             if (stackprops.Length == 0) return null;
 
@@ -238,7 +238,7 @@ namespace Vintagestory.GameContent
             Shape shape = API.Common.Shape.TryGet(capi, shapeloc);
             MeshData mesh;
 
-            int topCrustType = pieStack.Attributes.GetInt("topCrustType");
+            int topCrustType = pieStack.Attributes.GetAsInt("topCrustType");
             string[] topCrusts = new string[] { "origin/base/top crust full/*", "origin/base/top crust square/*", "origin/base/top crust diagonal/*" };
             string[] selectiveElements = new string[] { "origin/base/crust regular/*", "origin/base/filling/*", "origin/base/base-quarter/*", "origin/base/fillingquarter/*", topCrusts[topCrustType] };
 
@@ -390,7 +390,7 @@ namespace Vintagestory.GameContent
                 shapePath = new AssetLocation("shapes/block/food/meal/rot.json");
             }
 
-            Shape shape = API.Common.Shape.TryGet(capi, shapePath);
+            Shape shape = Shape.TryGet(capi, shapePath);
             Dictionary<CookingRecipeIngredient, int> usedIngredQuantities = new Dictionary<CookingRecipeIngredient, int>();
 
             if (rotten)
@@ -483,7 +483,7 @@ namespace Vintagestory.GameContent
 
             if (stack.Block is BlockPie)
             {
-                extraKey += "ct" + stack.Attributes.GetInt("topCrustType") + "-bl" + stack.Attributes.GetInt("bakeLevel", 0) + "-ps" + stack.Attributes.GetInt("pieSize");
+                extraKey += "ct" + stack.Attributes.GetAsInt("topCrustType") + "-bl" + stack.Attributes.GetAsInt("bakeLevel", 0) + "-ps" + stack.Attributes.GetAsInt("pieSize");
             }
 
             return GetMealHashCode(stack.Block, contentStacks, translate, extraKey);

@@ -131,7 +131,7 @@ namespace Vintagestory.GameContent
             int deliveryCosts = (int)Math.Ceiling((traderEntity.Pos.XYZ.DistanceTo(auction.SrcAuctioneerEntityPos) - 200) / 2000f);
             var rtele = Composers["confirmauctionpurchase"].GetRichtext("totalCost");
 
-            (rtele.Components[0] as RichTextComponent).displayText = Lang.Get("Total Cost: {0}", auction.Price + (on ? deliveryCosts : 0));
+            (rtele.Components[0] as RichTextComponent).DisplayText = Lang.Get("Total Cost: {0}", auction.Price + (on ? deliveryCosts : 0));
             rtele.RecomposeText();
         }
 

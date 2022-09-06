@@ -3,9 +3,6 @@ using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Vintagestory.API;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -78,7 +75,6 @@ namespace Vintagestory.ServerMods
         // Resolved values
         protected Dictionary<int, ResolvedDepositBlock> placeBlockByInBlockId = new Dictionary<int, ResolvedDepositBlock>();
         protected Dictionary<int, ResolvedDepositBlock> surfaceBlockByInBlockId = new Dictionary<int, ResolvedDepositBlock>();
-        //protected Dictionary<int, ChildDepositGenerator> childGeneratorsByInBlockId = new Dictionary<int, ChildDepositGenerator>();
 
         public MapLayerBase OreMap;
 
@@ -97,7 +93,6 @@ namespace Vintagestory.ServerMods
         protected int depoitThickness;
         protected int hereThickness;
 
-        //LCGRandom childDepositRand;
         double absAvgQuantity;
 
 
@@ -179,7 +174,8 @@ namespace Vintagestory.ServerMods
                     if (block.Id != 0 && variant.addHandbookAttributes)
                     {
                         if (block.Attributes == null) block.Attributes = new JsonObject(JToken.Parse("{}"));
-                        int[] oreIds = block.Attributes["hostRockFor"].AsArray<int>(new int[0]);
+                        int[] oreIds = block.Attributes["hostRockFor"].AsArray(new int[0]);
+
                         oreIds = oreIds.Append(placeBlocks.Select(b => b.BlockId).ToArray());
                         block.Attributes.Token["hostRockFor"] = JToken.FromObject(oreIds);
 
@@ -188,12 +184,11 @@ namespace Vintagestory.ServerMods
                         {
                             Block pblock = placeBlocks[i];
                             if (pblock.Attributes == null) pblock.Attributes = new JsonObject(JToken.Parse("{}"));
-                            oreIds = pblock.Attributes["hostRock"].AsArray<int>(new int[0]);
+                            oreIds = pblock.Attributes["hostRock"].AsArray(new int[0]);
                             oreIds = oreIds.Append(block.BlockId);
                             pblock.Attributes.Token["hostRock"] = JToken.FromObject(oreIds);
                         }
                     }
-
                 }
             }
             else
@@ -310,7 +305,7 @@ namespace Vintagestory.ServerMods
                         if (posy <= 1) continue;
 
                         int index3d = ((posy % chunksize) * chunksize + lz) * chunksize + lx;
-                        int blockId = chunks[posy / chunksize].Blocks.GetBlockIdUnsafe(index3d);
+                        int blockId = chunks[posy / chunksize].Data.GetBlockIdUnsafe(index3d);
 
 
                         if (!IgnoreParentTestPerBlock || !parentBlockOk)
@@ -331,9 +326,9 @@ namespace Vintagestory.ServerMods
                             }
                             else
                             {
-                                IChunkBlocks chunkdata = chunks[posy / chunksize].Blocks;
+                                IChunkBlocks chunkdata = chunks[posy / chunksize].Data;
                                 chunkdata.SetBlockUnsafe(index3d, placeblock.BlockId);
-                                chunkdata.SetLiquid(index3d, 0);
+                                chunkdata.SetFluid(index3d, 0);
                             }
 
                             DepositVariant[] childDeposits = variant.ChildDeposits;
@@ -361,11 +356,11 @@ namespace Vintagestory.ServerMods
                                 float chance = SurfaceBlockChance * Math.Max(0, 1.11f - depth / 9f);
                                 if (surfaceY < worldheight - 1 && DepositRand.NextFloat() < chance)
                                 {
-                                    Block belowBlock = Api.World.Blocks[chunks[surfaceY / chunksize].Blocks.GetBlockIdUnsafe(((surfaceY % chunksize) * chunksize + lz) * chunksize + lx)];
+                                    Block belowBlock = Api.World.Blocks[chunks[surfaceY / chunksize].Data.GetBlockIdUnsafe(((surfaceY % chunksize) * chunksize + lz) * chunksize + lx)];
                                     if (belowBlock.SideSolid[BlockFacing.UP.Index])
                                     {
                                         index3d = (((surfaceY + 1) % chunksize) * chunksize + lz) * chunksize + lx;
-                                        IChunkBlocks chunkBlockData = chunks[(surfaceY + 1) / chunksize].Blocks;
+                                        IChunkBlocks chunkBlockData = chunks[(surfaceY + 1) / chunksize].Data;
                                         if (chunkBlockData.GetBlockIdUnsafe(index3d) == 0)
                                         {
                                             chunkBlockData[index3d] = surfaceBlockByInBlockId[blockId].Blocks[0].BlockId;

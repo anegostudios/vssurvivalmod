@@ -200,20 +200,6 @@ namespace Vintagestory.GameContent
         }
 
 
-        private void CookStacks(ItemStack[] stacks)
-        {
-            for (int i = 0; i < stacks.Length; i++)
-            {
-                if (stacks[i] == null) continue;
-                CollectibleObject obj = stacks[i].Collectible;
-                if (obj.CombustibleProps != null && obj.CombustibleProps.SmeltedStack != null)
-                {
-                    stacks[i] = obj.CombustibleProps.SmeltedStack.ResolvedItemstack;
-                }
-            }
-        }
-
-
         public string GetOutputText(IWorldAccessor world, ISlotProvider cookingSlotsProvider, ItemSlot inputSlot)
         {
             if (inputSlot.Itemstack == null) return null;

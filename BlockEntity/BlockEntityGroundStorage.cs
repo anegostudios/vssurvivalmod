@@ -71,6 +71,7 @@ namespace Vintagestory.GameContent
         public override string AttributeTransformCode => "groundStorageTransform";
 
         public float MeshAngle { get; set; }
+        public BlockFacing AttachFace { get; set; }
 
         public override TextureAtlasPosition this[string textureCode]
         {
@@ -100,10 +101,22 @@ namespace Vintagestory.GameContent
                 slot.StorageType |= EnumItemStorageFlags.Backpack;
             }
 
-            colBoxes = new Cuboidf[] { new Cuboidf(0, 0, 0, 1, 0.125f, 1) };
-            selBoxes = new Cuboidf[] { new Cuboidf(0, 0, 0, 1, 0.001f, 1) };
+            inventory.OnGetAutoPushIntoSlot = GetAutoPushIntoSlot;
+            inventory.OnGetAutoPullFromSlot = GetAutoPullFromSlot;
+
+            colBoxes = new Cuboidf[] { new Cuboidf(0, 0, 0, 1, 0.25f, 1) };
+            selBoxes = new Cuboidf[] { new Cuboidf(0, 0, 0, 1, 0.25f, 1) };
         }
 
+        private ItemSlot GetAutoPullFromSlot(BlockFacing atBlockFace)
+        {
+            return null;
+        }
+
+        private ItemSlot GetAutoPushIntoSlot(BlockFacing atBlockFace, ItemSlot fromSlot)
+        {
+            return null;
+        }
 
         public void ForceStorageProps(GroundStorageProperties storageProps)
         {
@@ -122,15 +135,11 @@ namespace Vintagestory.GameContent
             if (capi != null)
             {
                 updateMeshes();
-
                 //initMealRandomizer();
             }
-
-            
         }
 
-
-
+        // For trailer making
         /*void initMealRandomizer()
         {
             RegisterGameTickListener(Every50ms, 150);
@@ -571,12 +580,12 @@ namespace Vintagestory.GameContent
 
             if (StorageProps.CollisionBox != null)
             {
-                colBoxes[0] = StorageProps.CollisionBox.Clone();
+                colBoxes[0] = selBoxes[0] = StorageProps.CollisionBox.Clone();
             } else
             {
                 if (sourceStack?.Block != null)
                 {
-                    colBoxes[0] = sourceStack.Block.CollisionBoxes[0].Clone();
+                    colBoxes[0] = selBoxes[0] = sourceStack.Block.CollisionBoxes[0].Clone();
                 }
             }
 
@@ -589,6 +598,8 @@ namespace Vintagestory.GameContent
             {
                 colBoxes[0] = colBoxes[0].Clone();
                 colBoxes[0].Y2 *= ((int)Math.Ceiling(StorageProps.CbScaleYByLayer * inventory[0].StackSize) * 8) / 8;
+
+                selBoxes[0] = colBoxes[0];
             }
 
             if (overrideLayout != null)
@@ -613,6 +624,8 @@ namespace Vintagestory.GameContent
 
 
             ItemSlot hotbarSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
+
+            if (sneaking && hotbarSlot.Empty) return false;
 
             if (sneaking && TotalStackSize >= Capacity)
             {
@@ -830,6 +843,7 @@ namespace Vintagestory.GameContent
             }
 
             MeshAngle = tree.GetFloat("meshAngle");
+            AttachFace = BlockFacing.ALLFACES[tree.GetInt("attachFace")];
         }
 
 
@@ -848,6 +862,7 @@ namespace Vintagestory.GameContent
             }
 
             tree.SetFloat("meshAngle", MeshAngle);
+            tree.SetInt("attachFace", AttachFace?.Index ?? 0);
         }
 
 

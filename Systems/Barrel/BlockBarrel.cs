@@ -205,7 +205,7 @@ namespace Vintagestory.GameContent
             {
                 Shape shape = API.Common.Shape.TryGet(capi, "shapes/block/wood/barrel/" + shapefilename);
                 MeshData contentMesh;
-                capi.Tesselator.TesselateShape("barrel", shape, out contentMesh, contentSource, new Vec3f(Shape.rotateX, Shape.rotateY, Shape.rotateZ));
+                capi.Tesselator.TesselateShape("barrel", shape, out contentMesh, contentSource, new Vec3f(Shape.rotateX, Shape.rotateY, Shape.rotateZ), props?.GlowLevel ?? 0);
 
                 contentMesh.Translate(0, fillHeight, 0);
 
@@ -389,7 +389,7 @@ namespace Vintagestory.GameContent
             {
                 if (bebarrel != null)
                 {
-                    bebarrel.OnBlockInteract(byPlayer);
+                    bebarrel.OnPlayerRightClick(byPlayer);
                 }
 
                 return true;

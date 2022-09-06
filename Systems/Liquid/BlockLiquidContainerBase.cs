@@ -137,7 +137,7 @@ namespace Vintagestory.GameContent
                 }
 
                 MeshData contentMesh;
-                capi.Tesselator.TesselateShape(GetType().Name, shape, out contentMesh, contentSource, new Vec3f(Shape.rotateX, Shape.rotateY, Shape.rotateZ));
+                capi.Tesselator.TesselateShape(GetType().Name, shape, out contentMesh, contentSource, new Vec3f(Shape.rotateX, Shape.rotateY, Shape.rotateZ), props.GlowLevel);
 
                 contentMesh.Translate(0, GameMath.Min(liquidMaxYTranslate, contentStack.StackSize / props.ItemsPerLitre * liquidYTranslatePerLitre), 0);
 
@@ -243,7 +243,7 @@ namespace Vintagestory.GameContent
 
         Dictionary<string, ItemStack[]> recipeLiquidContents = new Dictionary<string, ItemStack[]>();
 
-        public override void OnHandbookRecipeRender(ICoreClientAPI capi, GridRecipe gridRecipe, ItemSlot dummyslot, double x, double y, double size)
+        public override void OnHandbookRecipeRender(ICoreClientAPI capi, GridRecipe gridRecipe, ItemSlot dummyslot, double x, double y, double z, double size)
         {
             // 1.16.0: Fugly (but backwards compatible) hack: We temporarily store the ingredient index in an unused field of ItemSlot so that OnHandbookRecipeRender() has access to that number. Proper solution would be to alter the method signature to pass on this value.
             int rindex = dummyslot.BackgroundIcon.ToInt();
@@ -254,7 +254,7 @@ namespace Vintagestory.GameContent
 
             if (rprops?.Exists != true)
             {
-                base.OnHandbookRecipeRender(capi, gridRecipe, dummyslot, x, y, size);
+                base.OnHandbookRecipeRender(capi, gridRecipe, dummyslot, x, y, z, size);
                 return;
             }
 
@@ -307,7 +307,7 @@ namespace Vintagestory.GameContent
                 dummyslot,
                 x,
                 y,
-                100, (float)size * 0.58f, ColorUtil.WhiteArgb,
+                z, (float)size * 0.58f, ColorUtil.WhiteArgb,
                 true, false, true
             );
         }
@@ -1008,7 +1008,7 @@ namespace Vintagestory.GameContent
             IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
             IBlockAccessor blockAcc = byEntity.World.BlockAccessor;
 
-            Block block = blockAcc.GetBlock(pos);
+            Block block = blockAcc.GetBlock(pos, BlockLayersAccess.FluidOrSolid);
             if (block.Attributes?["waterTightContainerProps"].Exists == false) return false;
 
             WaterTightContainableProps props = block.Attributes?["waterTightContainerProps"]?.AsObject<WaterTightContainableProps>();
@@ -1098,19 +1098,21 @@ namespace Vintagestory.GameContent
                 }
 
                 Block currentblock = blockAcc.GetBlock(pos);
-                if (currentblock.Replaceable >= 6000)
+                if (!currentblock.DisplacesLiquids(blockAcc, pos))
                 {
-                    blockAcc.SetBlock(waterBlock.BlockId, pos);
+                    blockAcc.SetBlock(waterBlock.BlockId, pos, BlockLayersAccess.Fluid);
                     blockAcc.TriggerNeighbourBlockUpdate(pos);
-                    blockAcc.MarkBlockDirty(pos);
+                    waterBlock.OnNeighbourBlockChange(byEntity.World, pos, secondPos);
+                    blockAcc.MarkBlockDirty(pos);   // Maybe unnecessary to call this server side as this code will be called client-side anyhow
                 }
                 else
                 {
-                    if (blockAcc.GetBlock(secondPos).Replaceable >= 6000)
+                    if (!blockAcc.GetBlock(secondPos).DisplacesLiquids(blockAcc, pos))
                     {
-                        blockAcc.SetBlock(waterBlock.BlockId, secondPos);
-                        blockAcc.TriggerNeighbourBlockUpdate(pos);
-                        blockAcc.MarkBlockDirty(secondPos);
+                        blockAcc.SetBlock(waterBlock.BlockId, secondPos, BlockLayersAccess.Fluid);
+                        blockAcc.TriggerNeighbourBlockUpdate(secondPos);
+                        waterBlock.OnNeighbourBlockChange(byEntity.World, secondPos, pos);
+                        blockAcc.MarkBlockDirty(secondPos);   // Maybe unnecessary to call this server side as this code will be called client-side anyhow
                     }
                     else
                     {
@@ -1308,13 +1310,15 @@ namespace Vintagestory.GameContent
             float sourceCapLitres = op.SourceSlot.StackSize * (op.SourceSlot.Itemstack.Collectible as BlockLiquidContainerBase)?.CapacityLitres ?? 0;
             float sinkCapLitres = op.SinkSlot.StackSize * (op.SinkSlot.Itemstack.Collectible as BlockLiquidContainerBase)?.CapacityLitres ?? 0;
 
+            // Containers are empty, can do a classic merge
             if (sourceCapLitres == 0 || sinkCapLitres == 0)
             {
                 base.TryMergeStacks(op);
                 return;
             }
 
-            if (sinkLitres == sinkCapLitres)
+            // Containers are equally full, can do a classic merge
+            if (GetCurrentLitres(op.SourceSlot.Itemstack) == GetCurrentLitres(op.SinkSlot.Itemstack))
             {
                 if (op.MovableQuantity > 0)
                 {

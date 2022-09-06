@@ -37,22 +37,24 @@ namespace Vintagestory.GameContent
                     val.Value.Rebase(baseProps);
                     foliageProps[val.Key] = val.Value;
 
+                    var texturesBasePath = new AssetLocation(val.Value.TexturesBasePath);
+
                     if (api is ICoreClientAPI capi)
                     {
                         foreach (var tex in val.Value.Textures.Values)
                         {
-                            tex.Base.WithPathPrefixOnce(val.Value.TexturesBasePath);
+                            tex.Base.WithLocationPrefixOnce(texturesBasePath);
                             if (tex.Overlays != null)
                             {
                                 foreach (var otex in tex.Overlays)
                                 {
-                                    otex.WithPathPrefixOnce(val.Value.TexturesBasePath);
+                                    otex.WithLocationPrefixOnce(texturesBasePath);
                                 }
                             }
                         }
 
-                        val.Value.LeafParticlesTexture?.Base.WithPathPrefixOnce(val.Value.TexturesBasePath);
-                        val.Value.BlossomParticlesTexture?.Base.WithPathPrefixOnce(val.Value.TexturesBasePath);
+                        val.Value.LeafParticlesTexture?.Base.WithLocationPrefixOnce(texturesBasePath);
+                        val.Value.BlossomParticlesTexture?.Base.WithLocationPrefixOnce(texturesBasePath);
                         val.Value.GetOrLoadTexture(capi, "largeleaves-plain");   // preload this so that off-thread building of ChunkMapLayer does not try to load a texture off-thread
                     }
                 }

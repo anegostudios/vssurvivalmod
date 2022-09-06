@@ -246,7 +246,7 @@ namespace Vintagestory.ServerMods
                     if (y <= 0 || y >= worldheight - 15) continue;
 
                     tmpPos.Set(x, y, z);
-                    liquidBlock = blockAccessor.GetLiquidBlock(tmpPos);
+                    liquidBlock = blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid);
 
                     // Place according to forest value
                     float forestRel = GameMath.BiLerp(forestUpLeft, forestUpRight, forestBotLeft, forestBotRight, (float)dx / chunksize, (float)dz / chunksize) / 255f;
@@ -375,9 +375,9 @@ namespace Vintagestory.ServerMods
                 bool underwater = false;
 
                 tmpPos.Set(x, y, z);
-                block = blockAccessor.GetLiquidBlock(tmpPos);
+                block = blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid);
                 
-                if (block.IsLiquid()) { underwater = true; tmpPos.Y--; block = blockAccessor.GetLiquidBlock(tmpPos); if (block.IsLiquid()) tmpPos.Y--; }
+                if (block.IsLiquid()) { underwater = true; tmpPos.Y--; block = blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid); if (block.IsLiquid()) tmpPos.Y--; }
 
                 block = blockAccessor.GetBlock(tmpPos);
                 if (block.Fertility == 0) continue;

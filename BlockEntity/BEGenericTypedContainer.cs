@@ -132,6 +132,8 @@ namespace Vintagestory.GameContent
             } else if (type != prevType)
             {
                 InitInventory(Block);
+
+                if (Api == null) this.Api = worldForResolving.Api; // LateInitInventory needs the api
                 LateInitInventory();
             }
 

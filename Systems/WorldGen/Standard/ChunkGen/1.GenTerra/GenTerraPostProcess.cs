@@ -62,7 +62,7 @@ namespace Vintagestory.ServerMods
 
             for (int cy = chunkY; cy < cyMax; cy++)
             {
-                IChunkBlocks chunkdata = chunks[cy].Blocks;
+                IChunkBlocks chunkdata = chunks[cy].Data;
 
                 int yStart = cy == 0 ? 1 : 0;  // Prevents attempts to get a blockbelow with y == -1 - impossible unless seaLeavel is set to 0
                 int baseY = cy * chunksize;
@@ -83,7 +83,7 @@ namespace Vintagestory.ServerMods
 
                     if (yStart == 0)
                     {
-                        blockIdBelow = chunks[cy - 1].Blocks.GetBlockIdUnsafe(index3d + chunksize * chunksizeSquared);
+                        blockIdBelow = chunks[cy - 1].Data.GetBlockIdUnsafe(index3d + chunksize * chunksizeSquared);
                     }
                     else
                     {
@@ -94,7 +94,7 @@ namespace Vintagestory.ServerMods
                     {
                         index3d += chunksizeSquared;
                         int blockId = chunkdata.GetBlockIdUnsafe(index3d);
-                        if (blockId != 0 && blockIdBelow == 0) 
+                        if (blockId != 0 && blockIdBelow == 0)
                         {
                             int x = baseindex3d % chunksize;
                             int z = baseindex3d / chunksize;

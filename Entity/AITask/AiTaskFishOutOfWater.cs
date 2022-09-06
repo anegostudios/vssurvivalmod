@@ -7,17 +7,14 @@ namespace Vintagestory.GameContent
 {
     public class AiTaskFishOutOfWater : AiTaskBase
     {
-        // TODO: look for direct (no obstacle) paths to water
-        // TODO: animate transition between this and a regular (upright) in-water fish - see death animation
-
-        // TODO: need fish idle task which prevents going on land
-
-
         internal Vec3d targetPos = new Vec3d();
         protected float seekingRange = 2;
 
         public JsonObject taskConfig;
         private float moveSpeed = 0.03f;
+
+        float searchWaterAccum;
+        float outofWaterAccum;
 
         public float WanderRangeMul
         {
@@ -56,9 +53,7 @@ namespace Vintagestory.GameContent
         {
             if (!entity.OnGround || entity.Swimming) return false;
 
-            targetPos = nearbyWaterOrRandomTarget();
-
-            return targetPos != null;
+            return true;
         }
 
         private Vec3d nearbyWaterOrRandomTarget()
@@ -95,12 +90,9 @@ namespace Vintagestory.GameContent
 
                 Block block;
 
-                block = entity.World.BlockAccessor.GetLiquidBlock((int)curTarget.X, (int)curTarget.Y, (int)curTarget.Z);
+                block = entity.World.BlockAccessor.GetBlock((int)curTarget.X, (int)curTarget.Y, (int)curTarget.Z, BlockLayersAccess.Fluid);
                 if (!block.IsLiquid()) curTarget.W = 0;
                 else curTarget.W = 1 / Math.Sqrt((dx - 1.0) * (dx - 1.0) + (dz - 1.0) * (dz - 1.0) + 1);  //prefer target approx 1 block away
-
-                //TODO: reject (or de-weight) targets not in direct line of sight (avoiding terrain)
-
 
                 if (bestTarget == null || curTarget.W > bestTarget.W)
                 {
@@ -123,12 +115,20 @@ namespace Vintagestory.GameContent
         public override void StartExecute()
         {
             base.StartExecute();
-            bool ok = pathTraverser.WalkTowards(targetPos, moveSpeed, 0.12f, OnGoalReached, OnStuck);
+
+            searchWaterAccum = 0;
+            outofWaterAccum = 0;
+
+            targetPos = nearbyWaterOrRandomTarget();
+            if (targetPos != null)
+            {
+                pathTraverser.WalkTowards(targetPos, moveSpeed, 0.12f, OnGoalReached, OnStuck);
+            }
         }
 
         private void OnStuck()
         {
-            //stuck = true;
+            
         }
 
         private void OnGoalReached()
@@ -137,13 +137,31 @@ namespace Vintagestory.GameContent
 
         public override bool ContinueExecute(float dt)
         {
-            //TODO implement the fish becoming exhausted
-
             if (entity.Swimming) return false;
 
-            if (world.Rand.NextDouble() < 0.2)
+            outofWaterAccum += dt;
+            if (outofWaterAccum > 30)
             {
-                //updateTargetPos();
+                entity.Die(EnumDespawnReason.Death, new DamageSource() { Type = EnumDamageType.Suffocation });
+                return false;
+            }
+
+            if (targetPos == null)
+            {
+                searchWaterAccum += dt;
+                if (searchWaterAccum >= 2)
+                {
+                    targetPos = nearbyWaterOrRandomTarget();
+                    if (targetPos != null)
+                    {
+                        pathTraverser.WalkTowards(targetPos, moveSpeed, 0.12f, OnGoalReached, OnStuck);
+                    }
+                    searchWaterAccum = 0;
+                }
+            }
+
+            if (targetPos != null && world.Rand.NextDouble() < 0.2)
+            {
                 pathTraverser.CurrentTarget.X = targetPos.X;
                 pathTraverser.CurrentTarget.Y = targetPos.Y;
                 pathTraverser.CurrentTarget.Z = targetPos.Z;

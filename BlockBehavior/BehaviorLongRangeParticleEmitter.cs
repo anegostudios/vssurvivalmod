@@ -10,7 +10,7 @@ namespace Vintagestory.GameContent
         {
         }
 
-        public override bool ShouldReceiveClientGameTicks(IWorldAccessor world, IPlayer byPlayer, BlockPos pos, ref EnumHandling handling)
+        public override bool ShouldReceiveClientParticleTicks(IWorldAccessor world, IPlayer byPlayer, BlockPos pos, ref EnumHandling handling)
         {
             return false;
         }

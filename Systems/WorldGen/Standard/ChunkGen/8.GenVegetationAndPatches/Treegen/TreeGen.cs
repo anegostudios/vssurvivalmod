@@ -308,7 +308,7 @@ namespace Vintagestory.ServerMods
 
     }
 
-    enum PlaceResumeState
+    public enum PlaceResumeState
     {
         CannotPlace,
         CanPlace,

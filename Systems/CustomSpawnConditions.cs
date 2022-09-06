@@ -33,7 +33,7 @@ namespace Vintagestory.GameContent
             sapi.Event.OnTrySpawnEntity += Event_OnTrySpawnEntity;
         }
 
-        private bool Event_OnTrySpawnEntity(ref EntityProperties properties, Vec3d spawnPosition, long herdId)
+        private bool Event_OnTrySpawnEntity(IBlockAccessor blockAccessor, ref EntityProperties properties, Vec3d spawnPosition, long herdId)
         {
             if (properties.Code.Path.StartsWithFast("raccoon"))
             {
@@ -42,19 +42,19 @@ namespace Vintagestory.GameContent
                     BlockFacing facing = BlockFacing.HORIZONTALS[i];
                     Vec3i dir = facing.Normali;
 
-                    Block block = sapi.World.BlockAccessor.GetBlock((int)spawnPosition.X + dir.X, (int)spawnPosition.Y, (int)spawnPosition.Z + dir.Z);
+                    Block block = blockAccessor.GetBlock((int)spawnPosition.X + dir.X, (int)spawnPosition.Y, (int)spawnPosition.Z + dir.Z);
                     if (block is BlockLog)
                     {
                         return true;
                     }
 
-                    block = sapi.World.BlockAccessor.GetBlock((int)spawnPosition.X + dir.X + dir.X, (int)spawnPosition.Y, (int)spawnPosition.Z + dir.Z + dir.Z);
+                    block = blockAccessor.GetBlock((int)spawnPosition.X + dir.X + dir.X, (int)spawnPosition.Y, (int)spawnPosition.Z + dir.Z + dir.Z);
                     if (block is BlockLog)
                     {
                         return true;
                     }
 
-                    block = sapi.World.BlockAccessor.GetBlock((int)spawnPosition.X + dir.X + dir.X, (int)spawnPosition.Y + 1, (int)spawnPosition.Z + dir.Z + dir.Z);
+                    block = blockAccessor.GetBlock((int)spawnPosition.X + dir.X + dir.X, (int)spawnPosition.Y + 1, (int)spawnPosition.Z + dir.Z + dir.Z);
                     if (block is BlockLog)
                     {
                         return true;
@@ -68,7 +68,7 @@ namespace Vintagestory.GameContent
 
             if (properties.Code.Path.StartsWithFast("butterfly"))
             {
-                ClimateCondition climate = sapi.World.BlockAccessor.GetClimateAt(new BlockPos((int)spawnPosition.X, (int)spawnPosition.Y, (int)spawnPosition.Z), EnumGetClimateMode.NowValues);
+                ClimateCondition climate = blockAccessor.GetClimateAt(new BlockPos((int)spawnPosition.X, (int)spawnPosition.Y, (int)spawnPosition.Z), EnumGetClimateMode.NowValues);
                 if (climate.Temperature < 10) return false;
             }
 
@@ -78,6 +78,19 @@ namespace Vintagestory.GameContent
                 var month = sapi.World.Calendar.MonthName;
                 if (harshWinters && (month == EnumMonth.December || month == EnumMonth.January || month == EnumMonth.February)) return false;
             }
+
+            // Don't spawn bears in the first 4 days
+            if (properties.Code.Path.StartsWithFast("bear") && sapi.World.Calendar.ElapsedDays < 4)
+            {
+                return false;
+            }
+
+            // Don't spawn wolves in the first 4 hours
+            if (properties.Code.Path.StartsWithFast("wolf") && sapi.World.Calendar.ElapsedHours < 4)
+            {
+                return false;
+            }
+
 
             return true;
         }

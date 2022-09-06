@@ -15,10 +15,12 @@ namespace Vintagestory.GameContent
         OpenInventory = 5000
     }
 
+    public delegate GuiDialogBlockEntity CreateDialogDelegate();
+
 
     public abstract class BlockEntityOpenableContainer : BlockEntityContainer, IBlockEntityContainer
     {
-        protected GuiDialogBlockEntityInventory invDialog;
+        protected GuiDialogBlockEntity invDialog;
 
         public virtual AssetLocation OpenSound { get; set; } = new AssetLocation("sounds/block/chestopen");
         public virtual AssetLocation CloseSound { get; set; } = new AssetLocation("sounds/block/chestclose");
@@ -41,6 +43,30 @@ namespace Vintagestory.GameContent
             CloseSound = closesound ?? this.CloseSound;
         }
 
+        protected void toggleInventoryDialogClient(IPlayer byPlayer, CreateDialogDelegate onCreateDialog)
+        {
+            if (invDialog == null)
+            {
+                ICoreClientAPI capi = Api as ICoreClientAPI;
+                invDialog = onCreateDialog();
+                invDialog.OnClosed += () =>
+                {
+                    invDialog = null;
+                    capi.Network.SendBlockEntityPacket(Pos.X, Pos.Y, Pos.Z, (int)EnumBlockEntityPacketId.Close, null);
+                    capi.Network.SendPacketClient(Inventory.Close(byPlayer));
+                };
+
+                invDialog.TryOpen();
+                capi.Network.SendPacketClient(Inventory.Open(byPlayer));
+                capi.Network.SendBlockEntityPacket(Pos.X, Pos.Y, Pos.Z, (int)EnumBlockEntityPacketId.Open, null);
+            }
+            else
+            {
+                invDialog.TryClose();
+            }
+        }
+
+
 
         public override void OnReceivedClientPacket(IPlayer player, int packetid, byte[] data)
         {
@@ -56,10 +82,12 @@ namespace Vintagestory.GameContent
 
             if (packetid == (int)EnumBlockEntityPacketId.Close)
             {
-                if (player.InventoryManager != null)
-                {
-                    player.InventoryManager.CloseInventory(Inventory);
-                }
+                player.InventoryManager?.CloseInventory(Inventory);
+            }
+
+            if (packetid == (int)EnumBlockEntityPacketId.Open)
+            {
+                player.InventoryManager?.OpenInventory(Inventory);
             }
 
         }

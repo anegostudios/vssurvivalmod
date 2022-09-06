@@ -167,7 +167,7 @@ namespace Vintagestory.GameContent
 
         protected bool canEat(ItemSlot slot) {
             return
-                slot.Itemstack.Attributes.GetInt("pieSize") == 1
+                slot.Itemstack.Attributes.GetAsInt("pieSize") == 1
                 && State != "raw"
             ;
         }
@@ -195,7 +195,7 @@ namespace Vintagestory.GameContent
         {
             base.OnBeforeRender(capi, itemstack, target, ref renderinfo);
 
-            if (itemstack.Attributes.GetInt("pieSize") == 1)
+            if (itemstack.Attributes.GetAsInt("pieSize") == 1)
             {
                 if (target == EnumItemRenderTarget.Gui)
                 {
@@ -231,9 +231,9 @@ namespace Vintagestory.GameContent
         {
             // Copy over properties and bake the contents
             newStack.Attributes["contents"] = oldStack.Attributes["contents"];
-            newStack.Attributes.SetInt("pieSize", oldStack.Attributes.GetInt("pieSize"));
-            newStack.Attributes.SetInt("topCrustType", oldStack.Attributes.GetInt("topCrustType"));
-            newStack.Attributes.SetInt("bakeLevel", oldStack.Attributes.GetInt("bakeLevel", 0) + 1);
+            newStack.Attributes.SetInt("pieSize", oldStack.Attributes.GetAsInt("pieSize"));
+            newStack.Attributes.SetInt("topCrustType", oldStack.Attributes.GetAsInt("topCrustType"));
+            newStack.Attributes.SetInt("bakeLevel", oldStack.Attributes.GetAsInt("bakeLevel", 0) + 1);
 
             ItemStack[] stacks = GetContents(api.World, newStack);
 
@@ -349,7 +349,7 @@ namespace Vintagestory.GameContent
 
         public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
         {
-            int pieSie = inSlot.Itemstack.Attributes.GetInt("pieSize");
+            int pieSie = inSlot.Itemstack.Attributes.GetAsInt("pieSize");
             ItemStack pieStack = inSlot.Itemstack;
             float servingsLeft = GetQuantityServings(world, inSlot.Itemstack);
             if (!inSlot.Itemstack.Attributes.HasAttribute("quantityServings")) servingsLeft = 1;
@@ -453,12 +453,15 @@ namespace Vintagestory.GameContent
                 }
                 ITreeAttribute attr = (ITreeAttribute)cstack.Attributes["transitionstate"];
 
-                attr.SetDouble("createdTotalHours", world.Calendar.TotalHours);
-                attr.SetDouble("lastUpdatedTotalHours", world.Calendar.TotalHours);
-                var transitionedHours = (attr["transitionedHours"] as FloatArrayAttribute)?.value;
-                for (int j = 0; transitionedHours != null && j < transitionedHours.Length; j++)
+                if (attr.HasAttribute("createdTotalHours"))
                 {
-                    transitionedHours[j] = 0;
+                    attr.SetDouble("createdTotalHours", world.Calendar.TotalHours);
+                    attr.SetDouble("lastUpdatedTotalHours", world.Calendar.TotalHours);
+                    var transitionedHours = (attr["transitionedHours"] as FloatArrayAttribute)?.value;
+                    for (int j = 0; transitionedHours != null && j < transitionedHours.Length; j++)
+                    {
+                        transitionedHours[j] = 0;
+                    }
                 }
             }
         }
@@ -487,8 +490,12 @@ namespace Vintagestory.GameContent
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
             BlockEntityPie bep = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityPie;
+            if (!bep.OnInteract(byPlayer))
+            {
+                return base.OnBlockInteractStart(world, byPlayer, blockSel);
+            }
 
-            return bep.OnInteract(byPlayer);
+            return true;
         }
 
         public override void OnBlockInteractStop(float secondsUsed, IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)

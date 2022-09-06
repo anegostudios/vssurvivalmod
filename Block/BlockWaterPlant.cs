@@ -16,7 +16,7 @@ namespace Vintagestory.GameContent
             }
 
             Block blockToPlace = this;
-            Block block = world.BlockAccessor.GetLiquidBlock(blockSel.Position);
+            Block block = world.BlockAccessor.GetBlock(blockSel.Position, BlockLayersAccess.Fluid);
             bool inWater = block.IsLiquid() && block.LiquidLevel == 7 && block.LiquidCode.Contains("water");
 
             if (inWater)

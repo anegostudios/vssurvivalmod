@@ -383,7 +383,9 @@ namespace Vintagestory.GameContent
                 string state = IsLiquid ? Lang.Get("liquid") : (IsHardened ? Lang.Get("hardened") : Lang.Get("soft"));
 
                 string temp = Temperature < 21 ? Lang.Get("Cold") : Lang.Get("{0}°C", (int)Temperature);
-                contents = Lang.Get("{0}/{4} units of {1} {2} ({3})", fillLevel, state, this.metalContent.GetName(), temp, requiredUnits) + "\n";
+                string matkey = "material-" + metalContent.Collectible.Variant["metal"];
+                string mat = Lang.HasTranslation(matkey) ? Lang.Get(matkey) : Lang.Get(metalContent.GetName());
+                contents = Lang.Get("{0}/{4} units of {1} {2} ({3})", fillLevel, state, mat, temp, requiredUnits) + "\n";
             }
             else
             {

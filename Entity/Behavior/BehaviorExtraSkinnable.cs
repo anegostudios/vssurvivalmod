@@ -172,7 +172,7 @@ namespace Vintagestory.GameContent
                         bmp.Dispose();
 
                         c = Math.Max(1, c);
-                        variant.Color = ColorUtil.ColorFromRgba((int)(r/c), (int)(g/c), (int)(b/c), 255);
+                        variant.Color = ColorUtil.ColorFromRgba((int)(b/c), (int)(g/c), (int)(r/c), 255);
                         val.VariantsByCode[variant.Code] = variant;
                     }
                 } else
@@ -190,7 +190,7 @@ namespace Vintagestory.GameContent
                 {
                     string partCode = val.Code;
                     string variantCode = val.Variants[entity.World.Rand.Next(val.Variants.Length)].Code;
-                    selectSkinPart(partCode, variantCode, false);
+                    selectSkinPart(partCode, variantCode, false, false);
                 }
             }
 
@@ -369,7 +369,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public void selectSkinPart(string partCode, string variantCode, bool retesselateShape = true)
+        public void selectSkinPart(string partCode, string variantCode, bool retesselateShape = true, bool playVoice = true)
         {
             AvailableSkinPartsByCode.TryGetValue(partCode, out var part);
 
@@ -392,7 +392,7 @@ namespace Vintagestory.GameContent
                     VoicePitch = variantCode;
                 }
 
-                ApplyVoice(VoiceType, VoicePitch, true);
+                ApplyVoice(VoiceType, VoicePitch, playVoice);
                 return;
             }
 

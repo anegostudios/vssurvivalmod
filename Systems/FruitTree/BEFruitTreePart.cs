@@ -180,7 +180,7 @@ namespace Vintagestory.GameContent
             foliageMesh = null;
             sticksMesh = null;
                
-            if (Api?.Side == EnumAppSide.Server || TreeType == null || TreeType == "") return false;
+            if (Api?.Side == EnumAppSide.Server || TreeType == null || TreeType == "" || blockFoliage?.foliageProps == null) return false;
 
             var foliageProps = blockFoliage.foliageProps[TreeType];
 
@@ -282,6 +282,7 @@ namespace Vintagestory.GameContent
             return (GrowthDir.Code[0] + "-" + TreeType + "-" + FoliageState + "-" + fruitingSide + "-" + (GameMath.MurmurHash3Mod(Pos.X, Pos.Y, Pos.Z, 3) * 22.5f - 22.5f)).GetHashCode();
         }
 
+        long listenerId = 0;
         public override void Initialize(ICoreAPI api)
         {
             base.Initialize(api);
@@ -290,9 +291,9 @@ namespace Vintagestory.GameContent
 
             capi = api as ICoreClientAPI;
 
-            if (!getRootBhSetupListener())
+            if (TreeType == null)
             {
-                RegisterDelayedCallback((dt) => getRootBhSetupListener(), 1000);
+                listenerId = RegisterGameTickListener(trySetup, 1000);
             }
 
             if (api.Side == EnumAppSide.Client)
@@ -307,6 +308,17 @@ namespace Vintagestory.GameContent
             }
         }
 
+        private void trySetup(float dt)
+        {
+            if (RootOff != null && !RootOff.IsZero)
+            {
+                // Chunk in which the root resides in is not loaded yet, try a second later
+                if (Api.World.BlockAccessor.GetChunkAtBlockPos(Pos.AddCopy(RootOff)) == null) return;
+            }
+
+            getRootBhSetupListener();
+            UnregisterGameTickListener(listenerId);
+        }
 
         FruitTreeRootBH rootBh;
         protected bool getRootBhSetupListener()
@@ -397,7 +409,7 @@ namespace Vintagestory.GameContent
 
         public bool OnBlockInteractStart(IPlayer byPlayer, BlockSelection blockSel)
         {
-            if (FoliageState == EnumFoliageState.Ripe)
+            if (FoliageState == EnumFoliageState.Ripe && PartType != EnumTreePartType.Stem)
             {
                 Api.World.PlaySoundAt(harvestingSound, blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z, byPlayer);
                 return true;
@@ -408,6 +420,8 @@ namespace Vintagestory.GameContent
 
         public bool OnBlockInteractStep(float secondsUsed, IPlayer byPlayer, BlockSelection blockSel)
         {
+            if (PartType == EnumTreePartType.Stem) return false;
+
             (byPlayer as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemAttack);
             if (Api.World.Rand.NextDouble() < 0.1)
             {

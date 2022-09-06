@@ -24,7 +24,8 @@ namespace Vintagestory.GameContent
 
                 if (byEntity.Controls.HandUse == EnumHandInteract.HeldItemAttack)
                 {
-                    byPlayer.Entity.World.PlaySoundAt(new AssetLocation("sounds/player/strike"), byPlayer.Entity, byPlayer, 0.9f + (float)api.World.Rand.NextDouble() * 0.2f, 16, 0.5f);
+                    var pitch = (byEntity as EntityPlayer).talkUtil.pitchModifier;
+                    byPlayer.Entity.World.PlaySoundAt(new AssetLocation("sounds/player/strike"), byPlayer.Entity, byPlayer, pitch * 0.9f + (float)api.World.Rand.NextDouble() * 0.2f, 16, 0.35f);
                 }
             }, (int)(400 / 1.25f));
 

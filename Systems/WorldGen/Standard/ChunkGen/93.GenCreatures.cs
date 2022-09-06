@@ -270,6 +270,8 @@ namespace Vintagestory.ServerMods
                         (ent as EntityAgent).HerdId = herdId;
                     }
 
+                    if (!api.Event.TriggerTrySpawnEntity(wgenBlockAccessor, ref so.ForType, so.Pos, herdId)) continue;
+
                     if (wgenBlockAccessor.GetChunkAtBlockPos(pos.X, pos.Y, pos.Z) == null)
                     {
                         api.World.SpawnEntity(ent);
@@ -371,7 +373,7 @@ namespace Vintagestory.ServerMods
                         if (chunk == null) return true;
 
                         int index = ((y % chunksize) * chunksize + (z % chunksize)) * chunksize + (x % chunksize);
-                        Block block = api.World.Blocks[chunk.Unpack_AndReadBlock(index)];
+                        Block block = api.World.Blocks[chunk.UnpackAndReadBlock(index, BlockLayersAccess.Default)];
 
                         blockPos.Set(x, y, z);
                         blockPosAsVec.Set(x, y, z);

@@ -120,7 +120,7 @@ namespace Vintagestory.ServerMods
                 return false;
             }
 
-            while (posY < worldheight - 1 && chunks[(posY+1) / chunksize].Blocks.GetBlockIdUnsafe((chunksize * ((posY + 1) % chunksize) + lz) * chunksize + lx) != 0)
+            while (posY < worldheight - 1 && chunks[(posY+1) / chunksize].Data.GetBlockIdUnsafe((chunksize * ((posY + 1) % chunksize) + lz) * chunksize + lx) != 0)
             {
                 posY++;
             }
@@ -129,12 +129,12 @@ namespace Vintagestory.ServerMods
 
             int index3d = (chunksize * (posY % chunksize) + lz) * chunksize + lx;
             IServerChunk chunk = chunks[posY / chunksize];
-            int blockId = chunk.Blocks.GetLiquid(index3d);
-            if (blockId == 0) blockId = chunk.Blocks.GetBlockIdUnsafe(index3d);
+            int blockId = chunk.Data.GetFluid(index3d);
+            if (blockId == 0) blockId = chunk.Data.GetBlockIdUnsafe(index3d);
             Block block = api.World.Blocks[blockId];
             if (block.SideSolid[BlockFacing.UP.Index])
             {
-                chunks[(posY + 1) / chunksize].Blocks[(chunksize * ((posY + 1) % chunksize) + lz) * chunksize + lx] = blockLayerConfig.SnowLayer.BlockId;
+                chunks[(posY + 1) / chunksize].Data[(chunksize * ((posY + 1) % chunksize) + lz) * chunksize + lx] = blockLayerConfig.SnowLayer.BlockId;
                 return true;
             }
 

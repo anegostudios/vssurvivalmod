@@ -495,6 +495,8 @@ namespace Vintagestory.GameContent
         {
             foreach (ItemStack stack in allstacks)
             {
+                if (capi.IsShuttingDown) break;
+
                 GuiHandbookItemStackPage elem = new GuiHandbookItemStackPage(capi, stack)
                 {
                     Visible = true

@@ -383,7 +383,7 @@ namespace Vintagestory.GameContent
 
                 if (!HasAnyMetalVoxel())
                 {
-                    workItemStack = null;
+                    clearWorkSpace();
                     return;
                 }
             }
@@ -625,9 +625,13 @@ namespace Vintagestory.GameContent
                 Api.World.SpawnItemEntity(ditchedStack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
             }
 
+            clearWorkSpace();
+        }
+
+        protected void clearWorkSpace()
+        {
             workItemStack = null;
             Voxels = new byte[16, 6, 16];
-
             RegenMeshAndSelectionBoxes();
             MarkDirty();
             rotation = 0;

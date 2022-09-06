@@ -9,7 +9,7 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockWaterfall : BlockForLiquidsLayer
+    public class BlockWaterfall : BlockForFluidsLayer
     {
         float particleQuantity = 0.2f;
 
@@ -38,7 +38,7 @@ namespace Vintagestory.GameContent
                 Block block = world.BlockAccessor.GetBlock(pos.X + facing.Normali.X, pos.Y, pos.Z + facing.Normali.Z);
                 if (block.Replaceable >= 6000)   // This is a kind of rough "transparent to sound" test
                 {
-                    block = world.BlockAccessor.GetLiquidBlock(pos.X + facing.Normali.X, pos.Y, pos.Z + facing.Normali.Z);
+                    block = world.BlockAccessor.GetBlock(pos.X + facing.Normali.X, pos.Y, pos.Z + facing.Normali.Z, BlockLayersAccess.Fluid);
                     if (!block.IsLiquid()) return true;
                 }
             }
@@ -69,7 +69,7 @@ namespace Vintagestory.GameContent
                     BlockFacing facing = BlockFacing.HORIZONTALS[i];
                     Block block = manager.BlockAccess.GetBlock(pos.X + facing.Normali.X, pos.Y, pos.Z + facing.Normali.Z);
                     if (block.SideSolid[facing.Opposite.Index]) continue;
-                    block = manager.BlockAccess.GetLiquidBlock(pos.X + facing.Normali.X, pos.Y, pos.Z + facing.Normali.Z);
+                    block = manager.BlockAccess.GetBlock(pos.X + facing.Normali.X, pos.Y, pos.Z + facing.Normali.Z, BlockLayersAccess.Fluid);
                     if (block.BlockId != 0) continue;   // No particles if neighbouring liquid or ice
 
                     AdvancedParticleProperties bps = ParticleProperties[i];

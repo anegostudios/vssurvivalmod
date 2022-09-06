@@ -139,10 +139,8 @@ namespace Vintagestory.GameContent
         public override EnumIgniteState OnTryIgniteBlock(EntityAgent byEntity, BlockPos pos, float secondsIgniting)
         {
             BlockEntityFirepit bef = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityFirepit;
-            if (bef != null && bef.fuelSlot.Empty) return EnumIgniteState.NotIgnitablePreventDefault;
-            if (bef != null && bef.IsBurning) return EnumIgniteState.NotIgnitablePreventDefault;
-
-            return secondsIgniting > 3 ? EnumIgniteState.IgniteNow : EnumIgniteState.Ignitable;
+            if (bef == null) return EnumIgniteState.NotIgnitable;
+            return bef.GetIgnitableState(secondsIgniting);
         }
 
         public override void OnTryIgniteBlockOver(EntityAgent byEntity, BlockPos pos, float secondsIgniting, ref EnumHandling handling)
@@ -204,7 +202,7 @@ namespace Vintagestory.GameContent
             {
                 BlockEntityFirepit bef = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityFirepit;
                 
-                if (bef!=null && stack?.Block != null && stack.Block.HasBehavior<BlockBehaviorCanIgnite>())
+                if (bef!=null && stack?.Block != null && stack.Block.HasBehavior<BlockBehaviorCanIgnite>() && bef.GetIgnitableState(0) == EnumIgniteState.Ignitable)
                 {
                     return false;
                 }
@@ -274,7 +272,10 @@ namespace Vintagestory.GameContent
 
                     } else
                     {
-                        return false;
+                        if (!bef.inputSlot.Empty || byPlayer.InventoryManager.ActiveHotbarSlot.TryPutInto(api.World, bef.inputSlot, 1) == 0)
+                        {
+                            bef.OnPlayerRightClick(byPlayer, blockSel);
+                        }
                     }
 
                     return true;

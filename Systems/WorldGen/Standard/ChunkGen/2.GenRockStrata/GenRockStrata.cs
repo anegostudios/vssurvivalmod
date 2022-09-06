@@ -274,7 +274,7 @@ namespace Vintagestory.ServerMods
                     int lY = ylower - chunkY * chunksize;
                     int localIndex3D = (chunksize * lY + lz) * chunksize + lx;
 
-                    IChunkBlocks chunkBlockData = chunks[chunkY].Blocks;
+                    IChunkBlocks chunkBlockData = chunks[chunkY].Data;
                     if (chunkBlockData.GetBlockIdUnsafe(localIndex3D) == rockBlockId)
                     {
                         chunkBlockData.SetBlockUnsafe(localIndex3D, stratum.BlockId);
@@ -290,7 +290,7 @@ namespace Vintagestory.ServerMods
                     int lY = yupper - chunkY * chunksize;
                     int localIndex3D = (chunksize * lY + lz) * chunksize + lx;
 
-                    IChunkBlocks chunkBlockData = chunks[chunkY].Blocks;
+                    IChunkBlocks chunkBlockData = chunks[chunkY].Data;
                     if (chunkBlockData.GetBlockIdUnsafe(localIndex3D) == rockBlockId)      // Even if we found rock already in this column, it could be overhang or something, so have to keep checking
                     {
                         chunkBlockData.SetBlockUnsafe(localIndex3D, stratum.BlockId);

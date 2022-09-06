@@ -14,7 +14,7 @@ namespace Vintagestory.GameContent
 {
     public class BlockEntityBomb : BlockEntity
     {
-        float remainingSeconds = 0;
+        public float RemainingSeconds = 0;
         bool lit;
         string ignitedByPlayerUid;
 
@@ -25,6 +25,8 @@ namespace Vintagestory.GameContent
 
         ILoadedSound fuseSound;
         public static SimpleParticleProperties smallSparks;
+
+        public bool CascadeLit { get; set; }
 
         static BlockEntityBomb()
         {
@@ -96,9 +98,9 @@ namespace Vintagestory.GameContent
         {
             if (lit)
             {
-                remainingSeconds -= dt;
+                RemainingSeconds -= dt;
 
-                if (Api.Side == EnumAppSide.Server && remainingSeconds <= 0)
+                if (Api.Side == EnumAppSide.Server && RemainingSeconds <= 0)
                 {
                     Combust(dt);
                 }
@@ -111,7 +113,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        void Combust(float dt)
+        public void Combust(float dt)
         {
             if (nearToClaimedLand())
             {
@@ -141,9 +143,10 @@ namespace Vintagestory.GameContent
         {
             if (Api.Side == EnumAppSide.Server)
             {
-                if ((!lit || remainingSeconds > 0.3) && !nearToClaimedLand())
+                if ((!lit || RemainingSeconds > 0.3) && !nearToClaimedLand())
                 {
                     Api.World.RegisterCallback(Combust, 250);
+                    CascadeLit = true;
                 }
                 
             }
@@ -160,7 +163,7 @@ namespace Vintagestory.GameContent
 
             if (Api.Side == EnumAppSide.Client) fuseSound.Start();
             lit = true;
-            remainingSeconds = FuseTimeSeconds;
+            RemainingSeconds = FuseTimeSeconds;
             ignitedByPlayerUid = byPlayer?.PlayerUID;
             MarkDirty();
         }
@@ -168,7 +171,7 @@ namespace Vintagestory.GameContent
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
             base.FromTreeAttributes(tree, worldForResolving);
-            remainingSeconds = tree.GetFloat("remainingSeconds", 0);
+            RemainingSeconds = tree.GetFloat("remainingSeconds", 0);
             lit = tree.GetInt("lit") > 0;
             ignitedByPlayerUid = tree.GetString("ignitedByPlayerUid");
 
@@ -181,7 +184,7 @@ namespace Vintagestory.GameContent
         public override void ToTreeAttributes(ITreeAttribute tree)
         {
             base.ToTreeAttributes(tree);
-            tree.SetFloat("remainingSeconds", remainingSeconds);
+            tree.SetFloat("remainingSeconds", RemainingSeconds);
             tree.SetInt("lit", lit ? 1 : 0);
             tree.SetString("ignitedByPlayerUid", ignitedByPlayerUid);
         }

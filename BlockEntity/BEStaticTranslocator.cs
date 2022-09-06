@@ -459,7 +459,7 @@ namespace Vintagestory.GameContent
                         int lz = z % chunksize;
 
                         int index3d = (ly * chunksize + lz) * chunksize + lx;
-                        Block block = Api.World.Blocks[chunk.Blocks[index3d]];
+                        Block block = Api.World.Blocks[chunk.Data[index3d]];
 
                         BlockStaticTranslocator transBlock = block as BlockStaticTranslocator;
                         if (transBlock != null && !transBlock.Repaired)

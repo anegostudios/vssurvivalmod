@@ -167,7 +167,7 @@ namespace Vintagestory.GameContent
             if (slowaccum > 3)
             {
                 // No need to call this on the client, because we sync nearHeatSourceStrength
-                if (api.World.Side == EnumAppSide.Server)
+                if (api.Side == EnumAppSide.Server)
                 {
                     Room room = api.ModLoader.GetModSystem<RoomRegistry>().GetRoomForPosition(plrpos);
                     // Check whether it is a proper room, or something like a room i.e. with a roof, for exaample a natural cave
@@ -219,12 +219,12 @@ namespace Vintagestory.GameContent
                 slowaccum = 0;
             }
 
-            if (accum > 1)
+            if (accum > 1 && api.Side == EnumAppSide.Server) // Don't run on the server, it messes with freezingEffectStrength
             {
                 var eplr = entity as EntityPlayer;
                 IPlayer plr = eplr?.Player;
                 
-                if (entity.World.Side == EnumAppSide.Server && (plr as IServerPlayer)?.ConnectionState != EnumClientState.Playing) return;
+                if (api.Side == EnumAppSide.Server && (plr as IServerPlayer)?.ConnectionState != EnumClientState.Playing) return;
 
                 if (plr?.WorldData.CurrentGameMode == EnumGameMode.Creative || plr?.WorldData.CurrentGameMode == EnumGameMode.Spectator)
                 {

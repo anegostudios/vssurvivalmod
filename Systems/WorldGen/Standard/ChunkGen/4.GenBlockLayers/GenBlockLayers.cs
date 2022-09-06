@@ -172,7 +172,7 @@ namespace Vintagestory.ServerMods
                     int lY = (rocky) % chunksize;
                     int index3d = (chunksize * lY + z) * chunksize + x;
 
-                    int rockblockID = chunks[chunkY].Blocks.GetBlockIdUnsafe(index3d);
+                    int rockblockID = chunks[chunkY].Data.GetBlockIdUnsafe(index3d);
 
                     if (rocky < TerraGenConfig.seaLevel)
                     {
@@ -180,7 +180,8 @@ namespace Vintagestory.ServerMods
                         float raise = Math.Max(0, (0.5f - rainRel) * 24);
 
                         int sealevelrise = (int)Math.Min(raise, TerraGenConfig.seaLevel - rocky);
-                        chunks[0].MapChunk.WorldGenTerrainHeightMap[z * chunksize + x] += (ushort)sealevelrise;
+                        int curSealevel = chunks[0].MapChunk.WorldGenTerrainHeightMap[z * chunksize + x];
+                        chunks[0].MapChunk.WorldGenTerrainHeightMap[z * chunksize + x] = (ushort)Math.Max(rocky + sealevelrise - 1, curSealevel);
 
                         while (sealevelrise-- > 0)
                         {
@@ -188,9 +189,9 @@ namespace Vintagestory.ServerMods
                             lY = rocky % chunksize;
                             index3d = (chunksize * lY + z) * chunksize + x;
 
-                            IChunkBlocks chunkdata = chunks[chunkY].Blocks;
+                            IChunkBlocks chunkdata = chunks[chunkY].Data;
                             chunkdata.SetBlockUnsafe(index3d, rockblockID);
-                            chunkdata.SetLiquid(index3d, 0);
+                            chunkdata.SetFluid(index3d, 0);
 
                             rocky++;
                         }
@@ -216,7 +217,7 @@ namespace Vintagestory.ServerMods
                         chunkY = posY / chunksize;
                         lY = posY % chunksize;
                         index3d = (chunksize * lY + z) * chunksize + x;
-                        int blockId = chunks[chunkY].Blocks.GetBlockIdUnsafe(index3d);
+                        int blockId = chunks[chunkY].Data.GetBlockIdUnsafe(index3d);
 
                         if (blockId == 0)
                         {
@@ -260,8 +261,8 @@ namespace Vintagestory.ServerMods
                 int chunkY = posY / chunksize;
                 int lY = posY % chunksize;
                 int index3d = (chunksize * lY + z) * chunksize + x;
-                int blockId = chunks[chunkY].Blocks.GetBlockIdUnsafe(index3d);
-                if (blockId == 0) blockId = chunks[chunkY].Blocks.GetLiquid(index3d);
+                int blockId = chunks[chunkY].Data.GetBlockIdUnsafe(index3d);
+                if (blockId == 0) blockId = chunks[chunkY].Data.GetFluid(index3d);
 
                 posY--;
 
@@ -295,9 +296,9 @@ namespace Vintagestory.ServerMods
                     }
 
 
-                    IChunkBlocks chunkdata = chunks[chunkY].Blocks;
+                    IChunkBlocks chunkdata = chunks[chunkY].Data;
                     chunkdata.SetBlockUnsafe(index3d, underWater ? layersUnderWater[j++] : BlockLayersIds[i++]);
-                    chunkdata.SetLiquid(index3d, 0);
+                    chunkdata.SetFluid(index3d, 0);
                 }
                 else
                 {
@@ -323,11 +324,11 @@ namespace Vintagestory.ServerMods
             int index3d = (chunksize * (posY % chunksize) + z) * chunksize + x;
             if (beachRel > 0.5)
             {
-                IChunkBlocks chunkdata = chunks[posY / chunksize].Blocks;
-                if (chunkdata.GetLiquid(index3d) != GlobalConfig.waterBlockId)
+                IChunkBlocks chunkdata = chunks[posY / chunksize].Data;
+                if (chunkdata.GetFluid(index3d) != GlobalConfig.waterBlockId)
                 {
                     chunkdata.SetBlockUnsafe(index3d, sandBlockId);
-                    chunkdata.SetLiquid(index3d, 0);
+                    chunkdata.SetFluid(index3d, 0);
                 }
             }
         }
@@ -340,7 +341,7 @@ namespace Vintagestory.ServerMods
 
             if (rndVal <= GameMath.Clamp(forestRel - extraGrass, 0.05, 0.99) || posY >= mapheight - 1 || posY < 1) return;
             
-            int blockId = chunks[posY / chunksize].Blocks[(chunksize * (posY % chunksize) + z) * chunksize + x];
+            int blockId = chunks[posY / chunksize].Data[(chunksize * (posY % chunksize) + z) * chunksize + x];
 
             if (api.World.Blocks[blockId].Fertility <= rnd.NextInt(100)) return;
 
@@ -353,7 +354,7 @@ namespace Vintagestory.ServerMods
 
                 if (forestRel <= bcbymin.MaxForest && rainRel >= bcbymin.MinRain && temp >= bcbymin.MinTemp)
                 {
-                    chunks[(posY + 1) / chunksize].Blocks[(chunksize * ((posY + 1) % chunksize) + z) * chunksize + x] = bcbymin.BlockId;
+                    chunks[(posY + 1) / chunksize].Data[(chunksize * ((posY + 1) % chunksize) + z) * chunksize + x] = bcbymin.BlockId;
                     return;
                 }
             }

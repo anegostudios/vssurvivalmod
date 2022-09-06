@@ -92,6 +92,9 @@ namespace Vintagestory.GameContent
         bool allowundergroundfarming;
         bool allowcropDeath;
 
+        float fertilityRecoverySpeed = 0.25f;
+        float growthRateMul = 1f;
+
         public override void Initialize(ICoreAPI api)
         {
             base.Initialize(api);
@@ -102,6 +105,8 @@ namespace Vintagestory.GameContent
             wsys = api.ModLoader.GetModSystem<WeatherSystemBase>();
             allowundergroundfarming = Api.World.Config.GetBool("allowUndergroundFarming", false);
             allowcropDeath = Api.World.Config.GetBool("allowCropDeath", true);
+            fertilityRecoverySpeed = Api.World.Config.GetFloat("fertilityRecoverySpeed", fertilityRecoverySpeed);
+            growthRateMul = (float)Api.World.Config.GetDecimal("cropGrowthRateMul", growthRateMul);
 
             if (api is ICoreServerAPI)
             {
@@ -245,7 +250,7 @@ namespace Vintagestory.GameContent
             float waterDistance = 99;
             farmlandIsAtChunkEdge = false;
 
-            Api.World.BlockAccessor.SearchLiquidBlocks(
+            Api.World.BlockAccessor.SearchFluidBlocks(
                 new BlockPos(Pos.X - 4, Pos.Y, Pos.Z - 4),
                 new BlockPos(Pos.X + 4, Pos.Y, Pos.Z + 4),
                 (block, pos) =>
@@ -515,9 +520,9 @@ namespace Vintagestory.GameContent
 
                 // Rule 1: Fertility increase up to original levels by 1 every 3-4 ingame hours
                 // Rule 2: Fertility does not increase with a ripe crop on it
-                npkRegain[0] = ripe ? 0 : 0.33f;
-                npkRegain[1] = ripe ? 0 : 0.33f;
-                npkRegain[2] = ripe ? 0 : 0.33f;
+                npkRegain[0] = ripe ? 0 : fertilityRecoverySpeed;
+                npkRegain[1] = ripe ? 0 : fertilityRecoverySpeed;
+                npkRegain[2] = ripe ? 0 : fertilityRecoverySpeed;
 
                 // Rule 3: Fertility increase up 3 times slower for the currently growing crop
                 if (currentlyConsumedNutrient != null)
@@ -532,7 +537,7 @@ namespace Vintagestory.GameContent
                     // Rule 4: Slow release fertilizer can fertilize up to 100 fertility
                     if (slowReleaseNutrients[i] > 0)
                     {
-                        float release = Math.Min(0.33f, slowReleaseNutrients[i]);
+                        float release = Math.Min(fertilityRecoverySpeed, slowReleaseNutrients[i]);
 
                         nutrients[i] = Math.Min(100, nutrients[i] + release);
                         slowReleaseNutrients[i] = Math.Max(0, slowReleaseNutrients[i] - release);
@@ -540,7 +545,6 @@ namespace Vintagestory.GameContent
                     else
                     {
                         // Rule 5: Once the slow release fertilizer is consumed, the soil will slowly return to its original fertility
-
                         if (nutrients[i] > originalFertility[i])
                         {
                             nutrients[i] = Math.Max(originalFertility[i], nutrients[i] - 0.05f);
@@ -618,7 +622,7 @@ namespace Vintagestory.GameContent
             // Add a bit random to it (+/- 10%)
             stageHours *= (float)(0.9 + 0.2 * rand.NextDouble());
 
-            return stageHours;
+            return stageHours / growthRateMul;
         }
 
         public float GetGrowthRate(EnumSoilNutrient nutrient)

@@ -178,7 +178,7 @@ namespace Vintagestory.GameContent
             if (!belowBlock.CanAttachBlockAt(world.BlockAccessor, this, pos.DownCopy(), BlockFacing.UP) && (belowBlock != this || FillLevel(world.BlockAccessor, pos.DownCopy()) != 1)) return false;
 
             var storageProps = player.InventoryManager.ActiveHotbarSlot.Itemstack.Collectible.GetBehavior<CollectibleBehaviorGroundStorable>()?.StorageProps;
-            if (storageProps != null &&  storageProps.SprintKey && !player.Entity.Controls.CtrlKey)
+            if (storageProps != null && storageProps.SprintKey && !player.Entity.Controls.CtrlKey)
             {
                 return false;
             }
@@ -190,25 +190,39 @@ namespace Vintagestory.GameContent
 
             float deg90 = GameMath.PIHALF;
             float roundRad = ((int)Math.Round(angleHor / deg90)) * deg90;
+            BlockFacing attachFace = null;
 
             if (storageProps.Layout == EnumGroundStorageLayout.WallHalves)
             {
-                BlockFacing attachFace = null;
+                attachFace = SuggestedHVOrientation(player, blockSel)[0];
 
-                foreach (var face in BlockFacing.HORIZONTALS)
+                var npos = pos.AddCopy(attachFace).Up(storageProps.WallOffY - 1);
+                var block = world.BlockAccessor.GetBlock(npos);
+                if (!block.CanAttachBlockAt(world.BlockAccessor, this, npos, attachFace.Opposite))
                 {
-                    var npos = pos.AddCopy(face).UpCopy(storageProps.WallOffY - 1);
-                    var block = world.BlockAccessor.GetBlock(npos);
-                    if (block.CanAttachBlockAt(world.BlockAccessor, this, npos, face.Opposite))
+                    attachFace = null;
+                    foreach (var face in BlockFacing.HORIZONTALS)
                     {
-                        attachFace = face;
-                        break;
+                        npos = pos.AddCopy(face).Up(storageProps.WallOffY - 1);
+                        block = world.BlockAccessor.GetBlock(npos);
+                        if (block.CanAttachBlockAt(world.BlockAccessor, this, npos, face.Opposite))
+                        {
+                            attachFace = face;
+                            break;
+                        }
                     }
                 }
 
                 if (attachFace == null)
                 {
-                    (api as ICoreClientAPI)?.TriggerIngameError(this, "requireswall", Lang.Get("placefailure-requireswall"));
+                    if (storageProps.WallOffY > 1)
+                    {
+                        (api as ICoreClientAPI)?.TriggerIngameError(this, "requireswall", Lang.Get("placefailure-requirestallwall", storageProps.WallOffY));
+                    }
+                    else
+                    {
+                        (api as ICoreClientAPI)?.TriggerIngameError(this, "requireswall", Lang.Get("placefailure-requireswall"));
+                    }
                     return false;
                 }
 
@@ -221,6 +235,7 @@ namespace Vintagestory.GameContent
             if (be is BlockEntityGroundStorage beg)
             {
                 beg.MeshAngle = roundRad;
+                beg.AttachFace = attachFace;
                 beg.OnPlayerInteractStart(player, blockSel);
                 beg.MarkDirty(true);
             }
@@ -250,8 +265,11 @@ namespace Vintagestory.GameContent
             {
                 if (beg.StorageProps.Layout == EnumGroundStorageLayout.WallHalves)
                 {
-                    var bpos = pos.AddCopy((int)Math.Round(Math.Cos(beg.MeshAngle - GameMath.PIHALF)), 0, (int)Math.Round(Math.Sin(beg.MeshAngle - GameMath.PIHALF)));
-                    if (bpos == neibpos)
+                    var facing = beg.AttachFace;
+                    var bpos = pos.AddCopy(facing.Normali.X, beg.StorageProps.WallOffY - 1, facing.Normali.Z);
+                    var block = world.BlockAccessor.GetBlock(bpos);
+
+                    if (!block.CanAttachBlockAt(world.BlockAccessor, this, bpos, facing))
                     {
                         world.BlockAccessor.BreakBlock(pos, null);
                     }

@@ -286,20 +286,23 @@ namespace Vintagestory.GameContent
                 StatModifiers statmod = (slot.Itemstack.Item as ItemWearable).StatModifers;
                 if (statmod == null) continue;
 
+                // No positive effects when broken
+                bool broken = slot.Itemstack.Collectible.GetRemainingDurability(slot.Itemstack) == 0;
+
                 allmod.canEat &= statmod.canEat;
-                allmod.healingeffectivness += statmod.healingeffectivness;
-                allmod.hungerrate += statmod.hungerrate;
+                allmod.healingeffectivness += broken ? Math.Min(0, statmod.healingeffectivness) : statmod.healingeffectivness;
+                allmod.hungerrate += broken ? Math.Max(0, statmod.hungerrate) : statmod.hungerrate;
 
                 if (statmod.walkSpeed < 0)
                 {
                     allmod.walkSpeed += statmod.walkSpeed * walkSpeedmul;
                 } else
                 {
-                    allmod.walkSpeed += statmod.walkSpeed;
+                    allmod.walkSpeed += broken ? 0 : statmod.walkSpeed;
                 }
                 
-                allmod.rangedWeaponsAcc += statmod.rangedWeaponsAcc;
-                allmod.rangedWeaponsSpeed += statmod.rangedWeaponsSpeed;
+                allmod.rangedWeaponsAcc += broken ? Math.Min(0, statmod.rangedWeaponsAcc) : statmod.rangedWeaponsAcc;
+                allmod.rangedWeaponsSpeed += broken ? Math.Min(0, statmod.rangedWeaponsSpeed) : statmod.rangedWeaponsSpeed;
             }
 
             EntityPlayer entity = player.Entity;
@@ -312,8 +315,6 @@ namespace Vintagestory.GameContent
             ;
 
             entity.WatchedAttributes.SetBool("canEat", allmod.canEat);
-
-            
         }
 
     }

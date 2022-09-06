@@ -99,8 +99,12 @@ namespace Vintagestory.GameContent
 
             api.RegisterItemClass("ItemPlumbAndSquare", typeof(ItemPlumbAndSquare));
             api.RegisterBlockBehaviorClass("Reinforcable", typeof(BlockBehaviorReinforcable));
+        }
 
-            if (api is ICoreServerAPI sapi) sapi.Event.AssetsFinalizers += addReinforcementBehavior;  // Needs to be done before assets are ready because it rewrites Behavior and CollectibleBehavior
+        public override void AssetsFinalize(ICoreAPI api)
+        {
+            // Needs to be done before assets are ready because it rewrites Behavior and CollectibleBehavior
+            addReinforcementBehavior();
         }
 
         public override void StartClientSide(ICoreClientAPI api)

@@ -2,44 +2,23 @@
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
-using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
     public class BlockSticksLayer : Block
     {
         public BlockFacing Orientation { get; set; }
-        private Random random;
-        protected WeatherSystemBase weatherSystem;
-        protected static readonly AssetLocation drip;
-        protected static readonly SimpleParticleProperties waterParticles = null;
-        protected readonly static Vec3d center = new Vec3d(0.5, 0.125, 0.5);
+        
 
         static BlockSticksLayer()
         {
-            drip = new AssetLocation("sounds/environment/drip");
 
-            waterParticles = new SimpleParticleProperties(
-                1, 1, WeatherSimulationParticles.waterColor, new Vec3d(), new Vec3d(),
-                new Vec3f(0f, 0.02f, 0f), new Vec3f(0f, -0.1f, 0f), 0.6f, 1f, 0.6f, 0.8f, EnumParticleModel.Cube
-            );
-            waterParticles.MinPos = new Vec3d(0.0, -0.05, 0.0);
-            waterParticles.AddPos = new Vec3d(1.0, 0.04, 1.0);
-            waterParticles.SizeEvolve = new EvolvingNatFloat(EnumTransformFunction.LINEAR, -0.01f);
-            waterParticles.ClimateColorMap = "climateWaterTint";
-            waterParticles.AddQuantity = 1;
         }
 
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
             this.Orientation = BlockFacing.FromFirstLetter(Variant["facing"][0]);
-            this.random = new Random();
-
-            if (api is ICoreClientAPI capi)
-            {
-                this.weatherSystem = capi.ModLoader.GetModSystem<WeatherSystemClient>();
-            }
         }
 
         protected AssetLocation OrientedAsset(string orientation)
@@ -115,6 +94,7 @@ namespace Vintagestory.GameContent
             BlockPos pos = bs.Position;
             BlockPos down = pos.DownCopy();
             IBlockAccessor blockAccess = world.BlockAccessor;
+
             //TODO: in future wattle walls directly below can also support this
             if (!CanSupportThis(blockAccess, down, null))
             {
@@ -172,38 +152,5 @@ namespace Vintagestory.GameContent
             return OrientedAsset(Orientation == BlockFacing.NORTH ? "ew" : "ns");
         }
 
-        public override bool ShouldReceiveClientParticleTicks(IWorldAccessor world, IPlayer player, BlockPos pos, out bool isWindAffected)
-        {
-            // Do client particle ticks if exposed to the rain
-            if (world.BlockAccessor.GetRainMapHeightAt(pos) <= pos.Y)
-            {
-                isWindAffected = false;
-                return true;
-            }
-
-            return base.ShouldReceiveClientParticleTicks(world, player, pos, out isWindAffected);
-        }
-
-        public override void OnAsyncClientParticleTick(IAsyncParticleManager manager, BlockPos pos, float windAffectednessAtPos, float secondsTicking)
-        {
-            double rand = random.NextDouble() * 50d;
-            if (rand > 1d) return;
-
-            double rainLevel = ((WeatherSystemClient)weatherSystem).GetActualRainLevel(pos, true);
-
-            IBlockAccessor accessor = manager.BlockAccess;
-            double count = 1d;
-            count += accessor.GetBlock(pos.NorthCopy()) is BlockSticksLayer ? 0.25 : 0;
-            count += accessor.GetBlock(pos.SouthCopy()) is BlockSticksLayer ? 0.25 : 0;
-            count += accessor.GetBlock(pos.WestCopy()) is BlockSticksLayer ? 0.25 : 0;
-            count += accessor.GetBlock(pos.EastCopy()) is BlockSticksLayer ? 0.25 : 0;
-            // Reduced drips if similar blocks adjacent, otherwise there can be a lot of drops on a large roof
-
-            if (rainLevel > rand * count)
-            {
-                waterParticles.MinPos.Set(pos.X, pos.Y - 0.05, pos.Z);
-                manager.Spawn(waterParticles);
-            }
-        }
     }
 }

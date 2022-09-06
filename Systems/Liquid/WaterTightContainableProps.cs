@@ -30,6 +30,7 @@ namespace Vintagestory.GameContent
         public WhenSpilledProps WhenSpilled;
         public WhenFilledProps WhenFilled;
         public int MaxStackSize;
+        public int GlowLevel;
         public FoodNutritionProperties NutritionPropsPerLitre;
 
         public enum EnumSpilledAction { PlaceBlock, DropContents };

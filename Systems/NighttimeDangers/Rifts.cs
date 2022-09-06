@@ -219,13 +219,14 @@ namespace Vintagestory.GameContent
                     {
                         pos.Up();
                     }
-                    block = api.World.BlockAccessor.GetLiquidBlock(pos);
+                    block = api.World.BlockAccessor.GetBlock(pos, BlockLayersAccess.Fluid);
                     if (block.IsLiquid() && api.World.Rand.NextDouble() > 0.1) continue;
 
                     // Don't spawn near bases
                     int blocklight = api.World.BlockAccessor.GetLightLevel(pos, EnumLightLevelType.OnlyBlockLight);
                     int blocklightup = api.World.BlockAccessor.GetLightLevel(pos.UpCopy(), EnumLightLevelType.OnlyBlockLight);
-                    if (blocklight >= 3 || blocklightup >= 3) continue;
+                    int blocklightup2 = api.World.BlockAccessor.GetLightLevel(pos.UpCopy(2), EnumLightLevelType.OnlyBlockLight);
+                    if (blocklight >= 3 || blocklightup >= 3 || blocklightup2 >= 3) continue;
 
                     float size = 2 + (float)api.World.Rand.NextDouble() * 4f;
 
@@ -494,7 +495,7 @@ namespace Vintagestory.GameContent
                     BlockPos bpos = new BlockPos((int)riftPos.X, 0, (int)riftPos.Z);
                     bpos.Y = api.World.BlockAccessor.GetTerrainMapheightAt(bpos);
 
-                    var block = api.World.BlockAccessor.GetLiquidBlock(bpos);
+                    var block = api.World.BlockAccessor.GetBlock(bpos, BlockLayersAccess.Fluid);
                     if (block.IsLiquid() && api.World.Rand.NextDouble() > 0.1) continue;
 
                     float size = 2 + (float)api.World.Rand.NextDouble() * 4f;

@@ -45,6 +45,9 @@ namespace Vintagestory.GameContent
 
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
+            base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handling);
+            if (handling == EnumHandHandling.PreventDefault) return;
+
             byEntity.Attributes.SetBool("isInsertGear", false);
 
             if (byEntity.LeftHandItemSlot?.Itemstack?.Collectible is ItemTemporalGear && byEntity.GetBehavior<EntityBehaviorTemporalStabilityAffected>() != null)

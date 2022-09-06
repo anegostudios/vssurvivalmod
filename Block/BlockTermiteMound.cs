@@ -12,6 +12,12 @@ namespace Vintagestory.GameContent
 
         bool islarge;
 
+        public override void OnUnloaded(ICoreAPI api)
+        {
+            mediumTermiteBlockCodeByRockid.Clear();
+            largeTermiteBlockCodeByRockid.Clear();
+        }
+
         public override void OnLoaded(ICoreAPI api)
         {
             islarge = Variant["size"] == "large";

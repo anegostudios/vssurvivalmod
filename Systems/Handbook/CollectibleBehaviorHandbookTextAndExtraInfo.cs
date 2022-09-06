@@ -476,10 +476,9 @@ namespace Vintagestory.GameContent
 
                     if (ingred != null && ingred.SatisfiesAsIngredient(maxstack) && !recipestacks.Any(s => s.Equals(capi.World, recval.Output.ResolvedItemstack, GlobalConstants.IgnoredStackAttributes)))
                     {
-                        ItemStack outstack = recval.Output.ResolvedItemstack;
-                        DummySlot outSlot = new DummySlot(outstack);
-
+                        DummySlot outSlot = new DummySlot();
                         DummySlot[] inSlots = new DummySlot[recval.Width * recval.Height];
+
                         for (int x = 0; x < recval.Width; x++)
                         {
                             for (int y = 0; y < recval.Height; y++)
@@ -492,8 +491,7 @@ namespace Vintagestory.GameContent
                             }
                         }
 
-
-                        outstack.Collectible.OnCreatedByCrafting(inSlots, outSlot, recval);
+                        recval.GenerateOutputStack(inSlots, outSlot);
                         recipestacks.Add(outSlot.Itemstack);
                     }
                 }
@@ -689,7 +687,7 @@ namespace Vintagestory.GameContent
 
 
             List<RichTextComponentBase> barrelRecipestext = new List<RichTextComponentBase>();
-            Dictionary<string, List<BarrelRecipe>> brecipesbyName = new Dictionary<string, List<BarrelRecipe>>();
+            Dictionary<string, List<BarrelRecipe>> brecipesbyCode = new Dictionary<string, List<BarrelRecipe>>();
             foreach (var recipe in capi.GetBarrelRecipes())
             {
                 ItemStack mixdStack = recipe.Output.ResolvedItemstack;
@@ -698,9 +696,9 @@ namespace Vintagestory.GameContent
                 {
                     List<BarrelRecipe> tmp;
 
-                    if (!brecipesbyName.TryGetValue(recipe.Code, out tmp))
+                    if (!brecipesbyCode.TryGetValue(recipe.Code, out tmp))
                     {
-                        brecipesbyName[recipe.Code] = tmp = new List<BarrelRecipe>();
+                        brecipesbyCode[recipe.Code] = tmp = new List<BarrelRecipe>();
                     }
 
                     tmp.Add(recipe);
@@ -709,7 +707,7 @@ namespace Vintagestory.GameContent
 
 
 
-            foreach (var recipes in brecipesbyName.Values)
+            foreach (var recipes in brecipesbyCode.Values)
             {
                 int ingredientsLen = recipes[0].Ingredients.Length;
                 ItemStack[][] ingstacks = new ItemStack[ingredientsLen][];
@@ -922,7 +920,10 @@ namespace Vintagestory.GameContent
                 {
                     components.Add(new ClearFloatTextComponent(capi, marginTop));
                     components.Add(new RichTextComponent(capi, "• " + Lang.Get("Baking (in oven)") + "\n", CairoFont.WhiteSmallText()));
-                    components.Add(new ItemstackTextComponent(capi, new ItemStack(capi.World.GetItem(new AssetLocation(bakingInitialIngredient))), 40, 10, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs))));
+                    CollectibleObject cobj = capi.World.GetItem(new AssetLocation(bakingInitialIngredient));
+                    if (cobj == null) cobj = capi.World.GetBlock(new AssetLocation(bakingInitialIngredient));
+
+                    components.Add(new ItemstackTextComponent(capi, new ItemStack(cobj), 40, 10, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs))));
                 }
 
                 if (grecipes.Count > 0)
@@ -944,6 +945,7 @@ namespace Vintagestory.GameContent
                     foreach (var val in grouped)
                     {
                         var comp = new SlideshowGridRecipeTextComponent(capi, val.Value.ToArray(), 40, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)), allStacks);
+                        comp.VerticalAlign = EnumVerticalAlign.Top;
                         comp.PaddingRight = 8;   
                         comp.UnscaledMarginTop = 8;
                         components.Add(comp);
@@ -1000,6 +1002,54 @@ namespace Vintagestory.GameContent
             }
 
             #endregion
+
+
+
+            #region Storable in
+
+            List<RichTextComponentBase> storableComps = new List<RichTextComponentBase>();
+
+
+            if (stack.ItemAttributes?["moldrackable"].Exists == true)
+            {
+                storableComps.Add(new ClearFloatTextComponent(capi, marginTop));
+                storableComps.AddRange(VtmlUtil.Richtextify(capi, Lang.Get("handbook-storable-moldrack"), CairoFont.WhiteSmallText()));
+            }
+            if (stack.ItemAttributes?["shelvable"].Exists == true)
+            {
+                storableComps.Add(new ClearFloatTextComponent(capi, marginTop));
+                storableComps.AddRange(VtmlUtil.Richtextify(capi, Lang.Get("handbook-storable-shelves"), CairoFont.WhiteSmallText()));
+            }
+            if (stack.ItemAttributes?["displaycaseable"].Exists == true)
+            {
+                storableComps.Add(new ClearFloatTextComponent(capi, marginTop));
+                storableComps.AddRange(VtmlUtil.Richtextify(capi, Lang.Get("handbook-storable-displaycase"), CairoFont.WhiteSmallText()));
+            }
+            if (stack.Collectible.Tool != null || stack.ItemAttributes?["rackable"].AsBool() == true)
+            {
+                storableComps.Add(new ClearFloatTextComponent(capi, marginTop));
+                storableComps.AddRange(VtmlUtil.Richtextify(capi, Lang.Get("handbook-storable-toolrack"), CairoFont.WhiteSmallText()));
+            }
+            if (stack.Collectible.HasBehavior<CollectibleBehaviorGroundStorable>())
+            {
+                storableComps.Add(new ClearFloatTextComponent(capi, marginTop));
+                storableComps.AddRange(VtmlUtil.Richtextify(capi, Lang.Get("handbook-storable-ground"), CairoFont.WhiteSmallText()));
+            }
+            if (stack.ItemAttributes?["waterTightContainerProps"].Exists == true)
+            {
+                storableComps.Add(new ClearFloatTextComponent(capi, marginTop));
+                storableComps.AddRange(VtmlUtil.Richtextify(capi, Lang.Get("handbook-storable-barrel"), CairoFont.WhiteSmallText()));
+            }
+
+            if (storableComps.Count > 0)
+            {
+                components.Add(new ClearFloatTextComponent(capi, marginTop));
+                components.Add(new RichTextComponent(capi, Lang.Get("Storable in/on") + "\n", CairoFont.WhiteSmallText().WithWeight(FontWeight.Bold)));
+                components.AddRange(storableComps);
+            }
+
+            #endregion
+
 
             return components.ToArray();
         }

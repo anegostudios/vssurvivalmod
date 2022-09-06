@@ -112,7 +112,7 @@ namespace Vintagestory.GameContent
             {
                 new WorldInteraction
                 {
-                    HotKeyCode = "shift",
+                    HotKeyCodes = StorageProps.SprintKey ? new string[] {"ctrl", "shift" } : new string[] {"shift"},
                     ActionLangCode = "heldhelp-place",
                     MouseButton = EnumMouseButton.Right
                 }

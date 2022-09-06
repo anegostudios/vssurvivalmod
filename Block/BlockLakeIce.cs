@@ -4,7 +4,7 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockLakeIce : BlockForLiquidsLayer
+    public class BlockLakeIce : BlockForFluidsLayer
     {
         int waterBlock;
 
@@ -53,7 +53,7 @@ namespace Vintagestory.GameContent
             }
 
             SpawnBlockBrokenParticles(pos);
-            world.BlockAccessor.SetLiquidBlock(waterBlock, pos);
+            world.BlockAccessor.SetBlock(waterBlock, pos, BlockLayersAccess.Fluid);
         }
 
         public override bool ShouldReceiveServerGameTicks(IWorldAccessor world, BlockPos pos, Random offThreadRandom, out object extra)
@@ -67,7 +67,7 @@ namespace Vintagestory.GameContent
 
         public override void OnServerGameTick(IWorldAccessor world, BlockPos pos, object extra = null)
         {
-            world.BlockAccessor.SetLiquidBlock(waterBlock, pos);
+            world.BlockAccessor.SetBlock(waterBlock, pos, BlockLayersAccess.Fluid);
         }
 
         public override bool ShouldMergeFace(int facingIndex, Block neighbourIce, int intraChunkIndex3d)

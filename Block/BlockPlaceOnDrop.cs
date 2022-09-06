@@ -67,7 +67,7 @@ namespace Vintagestory.GameContent
             IWorldAccessor world = entityItem.World;
             EntityPos pos = entityItem.ServerPos;
             BlockPos bpos = pos.AsBlockPos.Add(offX, offY - 1, offZ);
-            if (!world.BlockAccessor.GetSolidBlock(bpos.X, bpos.Y, bpos.Z).CanAttachBlockAt(world.BlockAccessor, this, bpos, BlockFacing.UP)) return false;
+            if (!world.BlockAccessor.GetMostSolidBlock(bpos.X, bpos.Y, bpos.Z).CanAttachBlockAt(world.BlockAccessor, this, bpos, BlockFacing.UP)) return false;
 
             string useless = "";
 

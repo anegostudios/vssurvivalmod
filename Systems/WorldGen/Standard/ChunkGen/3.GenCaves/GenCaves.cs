@@ -155,7 +155,7 @@ namespace Vintagestory.ServerMods
                 if (chunk == null) return false;
 
                 chunk.Unpack();
-                chunk.Blocks.ClearBlocks();
+                chunk.Data.ClearBlocks();
                 chunk.MarkModified();
             }
 
@@ -524,7 +524,7 @@ namespace Vintagestory.ServerMods
 
                         int ly = y % chunksize;
 
-                        if (chunks[y / chunksize].Blocks.GetLiquid((ly * chunksize + lz) * chunksize + lx) == waterID)
+                        if (chunks[y / chunksize].Data.GetFluid((ly * chunksize + lz) * chunksize + lx) == waterID)
                         {
                             return false;
                         }
@@ -573,7 +573,7 @@ namespace Vintagestory.ServerMods
                             rainheightmap[lz * chunksize + lx]--;
                         }
 
-                        IChunkBlocks chunkBlockData = chunks[y / chunksize].Blocks;
+                        IChunkBlocks chunkBlockData = chunks[y / chunksize].Data;
                         int index3d = ((y % chunksize) * chunksize + lz) * chunksize + lx;
 
                         if (y == 11)
@@ -586,14 +586,16 @@ namespace Vintagestory.ServerMods
                             }
                             else
                             {
-                                chunkBlockData[index3d] = GlobalConfig.lavaBlockId;
+                                chunkBlockData[index3d] = 0;
+                                chunkBlockData.SetFluid(index3d, GlobalConfig.lavaBlockId);
                                 worldgenBlockAccessor.ScheduleBlockLightUpdate(new BlockPos(chunkX * chunksize + lx, y, chunkZ * chunksize + lz), airBlockId, GlobalConfig.lavaBlockId);
                             }
 
                         }
                         else if (y < 12)
                         {
-                            chunkBlockData[index3d] = GlobalConfig.lavaBlockId;
+                            chunkBlockData[index3d] = 0;
+                            chunkBlockData.SetFluid(index3d, GlobalConfig.lavaBlockId);
                         }
                         else
                         {

@@ -18,6 +18,8 @@ namespace Vintagestory.GameContent.Mechanics
         ICoreClientAPI capi;
         string orientations;
 
+        AssetLocation axleStandLocWest, axleStandLocEast;
+
         public BEBehaviorMPAxle(BlockEntity blockentity) : base(blockentity)
         {
         }
@@ -25,6 +27,21 @@ namespace Vintagestory.GameContent.Mechanics
         public override void Initialize(ICoreAPI api, JsonObject properties)
         {
             base.Initialize(api, properties);
+
+            axleStandLocWest = AssetLocation.Create("block/wood/mechanics/axle-stand-west", Block.Code?.Domain);
+            axleStandLocEast = AssetLocation.Create("block/wood/mechanics/axle-stand-east", Block.Code?.Domain);
+
+            if (Block.Attributes?["axleStandLocWest"].Exists == true)
+            {
+                axleStandLocWest = Block.Attributes["axleStandLocWest"].AsObject<AssetLocation>();
+            }
+            if (Block.Attributes?["axleStandLocEast"].Exists == true)
+            {
+                axleStandLocEast = Block.Attributes["axleStandLocEast"].AsObject<AssetLocation>();
+            }
+            axleStandLocWest.WithPathAppendixOnce(".json").WithPathPrefixOnce("shapes/");
+            axleStandLocEast.WithPathAppendixOnce(".json").WithPathPrefixOnce("shapes/");
+
 
             if (api.Side == EnumAppSide.Client)
             {
@@ -61,9 +78,9 @@ namespace Vintagestory.GameContent.Mechanics
 
         protected virtual MeshData getStandMesh(string orient)
         {
-            return ObjectCacheUtil.GetOrCreate(Api, "axle-" + orient + "-stand", () =>
+            return ObjectCacheUtil.GetOrCreate(Api, Block.Code + "-" + orient + "-stand", () =>
             {
-                Shape shape = API.Common.Shape.TryGet(capi, "shapes/block/wood/mechanics/axle-stand-" + orient + ".json");
+                Shape shape = API.Common.Shape.TryGet(capi, orient == "west" ? axleStandLocWest : axleStandLocEast);
                 MeshData mesh;
                 capi.Tesselator.TesselateShape(Block, shape, out mesh);
                 return mesh;
@@ -154,7 +171,7 @@ namespace Vintagestory.GameContent.Mechanics
                     return true;
                 }
 
-                if (IsAttachedToBlock(Api.World.BlockAccessor, block, sidePos)) return false;
+                if (bempaxle.orientations == orientations && IsAttachedToBlock(Api.World.BlockAccessor, block, sidePos)) return false;
                 return bempaxle.RequiresStand(sidePos, vector);
             }
             catch (Exception e)

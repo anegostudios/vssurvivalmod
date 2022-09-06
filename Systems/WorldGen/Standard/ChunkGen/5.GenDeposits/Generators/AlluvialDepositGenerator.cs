@@ -175,14 +175,14 @@ namespace Vintagestory.ServerMods
                         if (posy <= 1) continue;
 
                         int index3d = ((posy % chunksize) * chunksize + lz) * chunksize + lx;
-                        IChunkBlocks chunkdata = chunks[posy / chunksize].Blocks;
+                        IChunkBlocks chunkdata = chunks[posy / chunksize].Data;
                         int blockId = chunkdata.GetBlockIdUnsafe(index3d);
 
                         Block block = blocktypes[blockId];
                         if (block.BlockMaterial != EnumBlockMaterial.Soil) continue;
 
                         chunkdata.SetBlockUnsafe(index3d, alluvialblock.BlockId);
-                        chunkdata.SetLiquid(index3d, 0);
+                        chunkdata.SetFluid(index3d, 0);
                         posy--;
                     }
                 }

@@ -15,8 +15,6 @@ namespace Vintagestory.ServerMods
 
         public Block[,,] blocksByPos;
         public Dictionary<int, Block> blockRemap = new Dictionary<int, Block>();
-        RockStrataVariant dummyRock = new RockStrataVariant() { SoilpH = 6.5f, WeatheringFactor = 1f };
-        Random rnd = new Random();
         public BlockLayerConfig blockLayerConfig;
         int mapheight;
 
@@ -49,19 +47,19 @@ namespace Vintagestory.ServerMods
             switch (ReplaceMode)
             {
                 case EnumReplaceMode.ReplaceAll:
-                    handler = PlaceReplaceAllReplaceMeta;
+                    handler = PlaceReplaceAll;
                     break;
 
                 case EnumReplaceMode.Replaceable:
-                    handler = PlaceReplaceableReplaceMeta;
+                    handler = PlaceReplaceable;
                     break;
 
                 case EnumReplaceMode.ReplaceAllNoAir:
-                    handler = PlaceReplaceAllNoAirReplaceMeta;
+                    handler = PlaceReplaceAllNoAir;
                     break;
 
                 case EnumReplaceMode.ReplaceOnlyAir:
-                    handler = PlaceReplaceOnlyAirReplaceMeta;
+                    handler = PlaceReplaceOnlyAir;
                     break;
             }
         }
@@ -113,11 +111,22 @@ namespace Vintagestory.ServerMods
 
                                 newBlock = GetBlockLayerBlock((climate >> 8) & 0xff, (climate >> 16) & 0xff, startPos.Y, rockblockid, depth, newBlock, worldForCollectibleResolve.Blocks);
                             }
+
                             depth++;
                         }
 
-                        Block oldBlock = blockAccessor.GetBlock(curPos);
-                        int p = handler(blockAccessor, curPos, newBlock);
+                        int p = handler(blockAccessor, curPos, newBlock, true);
+
+                        if (newBlock.Id != 0 && !newBlock.SideSolid.All())
+                        {
+                            var aboveLiqBlock = blockAccessor.GetBlock(curPos.X, curPos.Y + 1, curPos.Z, BlockLayersAccess.Fluid);
+                            if (aboveLiqBlock.Id != 0)
+                            {
+                                blockAccessor.SetBlock(aboveLiqBlock.BlockId, curPos, BlockLayersAccess.Fluid);
+                            }
+                        }
+
+
                         placed += p;
 
                         if (p > 0 && !newBlock.RainPermeable)
@@ -137,6 +146,7 @@ namespace Vintagestory.ServerMods
 
                         if (lightHsv[2] > 0 && blockAccessor is IWorldGenBlockAccessor)
                         {
+                            Block oldBlock = blockAccessor.GetBlock(curPos);
                             ((IWorldGenBlockAccessor)blockAccessor).ScheduleBlockLightUpdate(curPos.Copy(), oldBlock.BlockId, newBlock.BlockId);
                         }
                     }
@@ -178,23 +188,19 @@ namespace Vintagestory.ServerMods
             switch (ReplaceMode)
             {
                 case EnumReplaceMode.ReplaceAll:
-                    if (replaceMetaBlocks) handler = PlaceReplaceAllReplaceMeta;
-                    else handler = PlaceReplaceAllKeepMeta;
+                    handler = PlaceReplaceAll;
                     break;
 
                 case EnumReplaceMode.Replaceable:
-                    if (replaceMetaBlocks) handler = PlaceReplaceableReplaceMeta;
-                    else handler = PlaceReplaceableKeepMeta;
+                    handler = PlaceReplaceable;
                     break;
 
                 case EnumReplaceMode.ReplaceAllNoAir:
-                    if (replaceMetaBlocks) handler = PlaceReplaceAllNoAirReplaceMeta;
-                    else handler = PlaceReplaceAllNoAirKeepMeta;
+                    handler = PlaceReplaceAllNoAir;
                     break;
 
                 case EnumReplaceMode.ReplaceOnlyAir:
-                    if (replaceMetaBlocks) handler = PlaceReplaceOnlyAirReplaceMeta;
-                    else handler = PlaceReplaceOnlyAirKeepMeta;
+                    handler = PlaceReplaceOnlyAir;
                     break;
             }
 
@@ -227,7 +233,7 @@ namespace Vintagestory.ServerMods
                     }
                 }
 
-                placed += handler(blockAccessor, curPos, newBlock);
+                placed += handler(blockAccessor, curPos, newBlock, replaceMetaBlocks);
 
                 if (newBlock.LightHsv[2] > 0 && blockAccessor is IWorldGenBlockAccessor)
                 {

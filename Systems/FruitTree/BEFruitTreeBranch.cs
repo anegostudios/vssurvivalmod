@@ -210,7 +210,14 @@ namespace Vintagestory.GameContent
             {
                 float rotX = GrowthDir.Axis == EnumAxis.Z ? 90 : 0;
                 float rotZ = GrowthDir.Axis == EnumAxis.X ? 90 : 0;
-                colSelBoxes = new Cuboidf[] { Block.CollisionBoxes[0].Clone().RotatedCopy(rotX, 0, rotZ, new Vec3d(0.5, 0.5, 0.5)) };
+                if (Block == null || Block.CollisionBoxes == null)
+                {
+                    Api?.World.Logger.Warning("BEFruitTreeBranch:updatedProperties() Block {0} or its collision box is null? Block might have incorrect hitboxes now.", Block?.Code);
+                }
+                else
+                {
+                    colSelBoxes = new Cuboidf[] { Block.CollisionBoxes[0].Clone().RotatedCopy(rotX, 0, rotZ, new Vec3d(0.5, 0.5, 0.5)) };
+                }
             }
 
             GenMesh();
@@ -261,7 +268,7 @@ namespace Vintagestory.GameContent
             }
 
 
-            var cshape = Block?.Attributes["shapes"][shapekey].AsObject<CompositeShape>(null, Block.Code.Domain);
+            var cshape = Block?.Attributes?["shapes"][shapekey].AsObject<CompositeShape>(null, Block.Code.Domain);
             if (cshape == null) return null;
 
             nowTesselatingShape = Shape.TryGet(Api, cshape.Base.WithPathAppendixOnce(".json").WithPathPrefixOnce("shapes/"));

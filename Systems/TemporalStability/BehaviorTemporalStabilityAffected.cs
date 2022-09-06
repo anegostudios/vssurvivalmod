@@ -60,7 +60,6 @@ namespace Vintagestory.GameContent
             {
                 requireInitSounds = true;
                 precipParticleSys = entity.Api.ModLoader.GetModSystem<WeatherSystemClient>().simParticles;
-
             }
 
             enabled = entity.Api.World.Config.GetBool("temporalStability", true);
@@ -71,8 +70,66 @@ namespace Vintagestory.GameContent
             }
         }
 
+        public override void OnEntityLoaded()
+        {
+            capi = entity.Api as ICoreClientAPI;
+            if (capi == null) return;
 
+            // capi.World.Player is not initialized yet
+            bool isself = (entity as EntityPlayer)?.PlayerUID == capi.Settings.String["playeruid"];
 
+            if (isself)
+            {
+                capi.Event.RegisterEventBusListener(onChatKeyDown, 1, "chatkeydownpre");
+            }
+        }
+
+        private void onChatKeyDown(string eventName, ref EnumHandling handling, IAttribute data)
+        {
+            var treeAttr = data as TreeAttribute;
+            int keyCode = (treeAttr["key"] as IntAttribute).value;
+            string text = (treeAttr["text"] as StringAttribute).value;
+
+            if (keyCode != (int)GlKeys.BackSpace && capi.Render.ShaderUniforms.GlitchStrength > 0.5f && (text.Length == 0 || (text[0] != '.' && text[0] != '/')))
+            {
+                float str = (capi.Render.ShaderUniforms.GlitchStrength - 0.5f) * 2;
+
+                //those always stay in the middle
+                char[] zalgo_mid = new char[] {
+                    '\u0315', /*     ̕     */		'\u031b', /*     ̛     */		'\u0340', /*     ̀     */		'\u0341', /*     ́     */
+                    '\u0358', /*     ͘     */		'\u0321', /*     ̡     */		'\u0322', /*     ̢     */		'\u0327', /*     ̧     */
+                    '\u0328', /*     ̨     */		'\u0334', /*     ̴     */		'\u0335', /*     ̵     */		'\u0336', /*     ̶     */
+                    '\u034f', /*     ͏     */		'\u035c', /*     ͜     */		'\u035d', /*     ͝     */		'\u035e', /*     ͞     */
+                    '\u035f', /*     ͟     */		'\u0360', /*     ͠     */		'\u0362', /*     ͢     */		'\u0338', /*     ̸     */
+                    '\u0337', /*     ̷     */		'\u0361', /*     ͡     */		'\u0489' /*     ҉_     */
+                };
+
+                string text3 = "";
+                for (int i = 0; i < text.Length; i++)
+                {
+                    text3 += text[i];
+
+                    if (i < text.Length - 1 && zalgo_mid.Contains(text[i + 1]))
+                    {
+                        text3 += text[i + 1];
+                        i++;
+                        continue;
+                    }
+
+                    if (zalgo_mid.Contains(text[i]))
+                    {
+                        continue;
+                    }
+
+                    if (capi.World.Rand.NextDouble() < str)
+                    {
+                        text3 += zalgo_mid[capi.World.Rand.Next(zalgo_mid.Length)];
+                    }
+                }
+
+                (treeAttr["text"] as StringAttribute).value = text3;
+            }
+        }
 
         void initSoundsAndEffects()
         {

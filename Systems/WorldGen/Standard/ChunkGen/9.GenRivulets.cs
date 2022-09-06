@@ -94,7 +94,7 @@ namespace Vintagestory.ServerMods
                     fz = dz + facing.Normali.Z;
 
                     Block block = api.World.Blocks[
-                        chunks[fy / chunksize].Blocks.GetBlockIdUnsafe((chunksize * (fy % chunksize) + fz) * chunksize + fx)
+                        chunks[fy / chunksize].Data.GetBlockIdUnsafe((chunksize * (fy % chunksize) + fz) * chunksize + fx)
                     ];
 
                     bool solid = block.BlockMaterial == EnumBlockMaterial.Stone;
@@ -108,8 +108,8 @@ namespace Vintagestory.ServerMods
 
                 var chunk = chunks[y / chunksize];
                 var index = (chunksize * (y % chunksize) + dz) * chunksize + dx;
-                chunk.Blocks.SetBlockAir(index);
-                chunk.Blocks.SetLiquid(index, y < 24 ? GlobalConfig.lavaBlockId : GlobalConfig.waterBlockId);
+                chunk.Data.SetBlockAir(index);
+                chunk.Data.SetFluid(index, y < 24 ? GlobalConfig.lavaBlockId : GlobalConfig.waterBlockId);
 
                 BlockPos pos = new BlockPos(chunkX * chunksize + dx, y, chunkZ * chunksize + dz);
                 blockAccessor.ScheduleBlockUpdate(pos);

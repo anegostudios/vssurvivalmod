@@ -12,7 +12,7 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockWater : BlockForLiquidsLayer, IBlockFlowing
+    public class BlockWater : BlockForFluidsLayer, IBlockFlowing
     {
         public string Flow { get; set; }
         public Vec3i FlowNormali { get; set; }
@@ -60,7 +60,7 @@ namespace Vintagestory.GameContent
                     for (int i = 0; i < BlockFacing.HORIZONTALS.Length; i++)
                     {
                         BlockFacing.HORIZONTALS[i].IterateThruFacingOffsets(nPos);
-                        if (world.BlockAccessor.GetLiquidBlock(nPos) is BlockLakeIce || world.BlockAccessor.GetBlock(nPos).Replaceable < 6000)
+                        if (world.BlockAccessor.GetBlock(nPos, BlockLayersAccess.Fluid) is BlockLakeIce || world.BlockAccessor.GetBlock(nPos).Replaceable < 6000)
                         {
                             ClimateCondition conds = world.BlockAccessor.GetClimateAt(pos, EnumGetClimateMode.NowValues);
                             if (conds != null && conds.Temperature < -4)
@@ -77,7 +77,7 @@ namespace Vintagestory.GameContent
 
         public override void OnServerGameTick(IWorldAccessor world, BlockPos pos, object extra = null)
         {
-            world.BlockAccessor.SetLiquidBlock(iceBlock.Id, pos);
+            world.BlockAccessor.SetBlock(iceBlock.Id, pos, BlockLayersAccess.Fluid);
         }
 
         public override void OnGroundIdle(EntityItem entityItem)
@@ -112,7 +112,7 @@ namespace Vintagestory.GameContent
         public override bool CanPlaceBlock(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ref string failureCode)
         {
             Block oldBlock = world.BlockAccessor.GetBlock(blockSel.Position);
-            if (oldBlock.SideSolid.OnSidesAndBase() && !oldBlock.IsReplacableBy(this))
+            if (oldBlock.DisplacesLiquids(world.BlockAccessor, blockSel.Position) && !oldBlock.IsReplacableBy(this))
             {
                 failureCode = "notreplaceable";
                 return false;

@@ -37,7 +37,7 @@ namespace Vintagestory.GameContent
         {
             BlockPos belowPos = pos.DownCopy();
 
-            Block block = blockAccessor.GetLiquidBlock(belowPos);
+            Block block = blockAccessor.GetBlock(belowPos, BlockLayersAccess.Fluid);
             if (block.LiquidCode != "water") return false;
 
             int depth = 1;

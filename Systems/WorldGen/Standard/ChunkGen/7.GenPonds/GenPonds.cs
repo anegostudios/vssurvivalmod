@@ -155,7 +155,7 @@ namespace Vintagestory.ServerMods
 
                 int chunkY = pondYPos / chunksize;
                 int dy = pondYPos % chunksize;
-                int blockID = chunks[chunkY].Blocks.GetBlockIdUnsafe((dy * chunksize + dz) * chunksize + dx);
+                int blockID = chunks[chunkY].Data.GetBlockIdUnsafe((dy * chunksize + dz) * chunksize + dx);
 
                 while (blockID == 0 && pondYPos > 20)
                 {
@@ -163,7 +163,7 @@ namespace Vintagestory.ServerMods
 
                     chunkY = pondYPos / chunksize;
                     dy = pondYPos % chunksize;
-                    blockID = chunks[chunkY].Blocks.GetBlockIdUnsafe((dy * chunksize + dz) * chunksize + dx);
+                    blockID = chunks[chunkY].Data.GetBlockIdUnsafe((dy * chunksize + dz) * chunksize + dx);
 
                     if (blockID != 0)
                     {
@@ -321,9 +321,9 @@ namespace Vintagestory.ServerMods
 
                 // 1. Place water or ice block
                 int index3d = (ly * chunksize + lz) * chunksize + lx;
-                Block existing = api.World.GetBlock(chunk.Blocks[index3d]);
-                if (existing.BlockMaterial == EnumBlockMaterial.Plant) chunk.Blocks.SetBlockAir(index3d);
-                chunk.Blocks.SetLiquid(index3d, temp < -5 ? GlobalConfig.lakeIceBlockId : waterID);
+                Block existing = api.World.GetBlock(chunk.Data[index3d]);
+                if (existing.BlockMaterial == EnumBlockMaterial.Plant) chunk.Data.SetBlockAir(index3d);
+                chunk.Data.SetFluid(index3d, temp < -5 ? GlobalConfig.lakeIceBlockId : waterID);
 
 
                 // 2. Let's make a nice muddy gravely sea bed
@@ -336,7 +336,7 @@ namespace Vintagestory.ServerMods
                 ;
                 
                 // again this would be more efficient if we place water in columns
-                Block belowBlock = api.World.Blocks[chunkOneBlockBelow.Blocks.GetLiquid(index)];
+                Block belowBlock = api.World.Blocks[chunkOneBlockBelow.Data.GetFluid(index)];
 
                 // Water below? Seabed already placed
                 if (belowBlock.IsLiquid()) continue;
@@ -350,7 +350,7 @@ namespace Vintagestory.ServerMods
                 {
                     if (codes[i].Suitable(temp, rainRel, (float)pondYPos / mapheight, rand))
                     {
-                        chunkOneBlockBelow.Blocks[index] = codes[i].GetBlockForMotherRock(rockBlockId);
+                        chunkOneBlockBelow.Data[index] = codes[i].GetBlockForMotherRock(rockBlockId);
                         break;
                     }
                 }

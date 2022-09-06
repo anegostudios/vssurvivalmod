@@ -60,6 +60,9 @@ namespace Vintagestory.GameContent
 
         protected void OnTick(float dt)
         {
+            // Not fully set up yet in BlockEntityFruitTreePart
+            if (ownBe.RootOff == null) return;
+
             var rootBe = Api.World.BlockAccessor.GetBlockEntity(ownBe.Pos.AddCopy(ownBe.RootOff)) as BlockEntityFruitTreeBranch;
             if (rootBe == null)
             {

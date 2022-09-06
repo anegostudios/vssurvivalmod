@@ -194,7 +194,7 @@ namespace Vintagestory.GameContent
                             {
                                 if (outputFace != desiredDir.Opposite)
                                 {
-                                    if (!TryPushInto(outputFace))
+                                    if (!TryPushInto(outputFace) && PullFaces.Length > 0)
                                     {
                                         BlockFacing pullFace = PullFaces[Api.World.Rand.Next(PullFaces.Length)];
                                         if (pullFace.IsHorizontal)

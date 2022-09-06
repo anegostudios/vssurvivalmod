@@ -1,6 +1,7 @@
 ﻿using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -249,8 +250,8 @@ namespace Vintagestory.GameContent
                         type2 = stack.Attributes.GetString("type2");
                     }
 
-                    var t1 = vgroup.typesByCode[type1];
-                    var t2 = vgroup.typesByCode[type1];
+                    if (!vgroup.typesByCode.TryGetValue(type1, out var t1)) t1 = vgroup.typesByCode.First((ele)=>true).Value;
+                    if (!vgroup.typesByCode.TryGetValue(type2, out var t2)) t2 = t1;
 
                     return new BookShelfTypeProps()
                     {

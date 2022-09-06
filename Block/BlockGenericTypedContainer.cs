@@ -267,7 +267,17 @@ namespace Vintagestory.GameContent
 
             curType = type;
             MeshData mesh;
-            tesselator.TesselateShape("typedcontainer", shape, out mesh, this, rotation == null ? new Vec3f(Shape.rotateX, Shape.rotateY, Shape.rotateZ) : rotation);
+
+            TesselationMetaData meta = new TesselationMetaData()
+            {
+                TexSource = this,
+                WithJointIds = true,
+                WithDamageEffect = true,
+                TypeForLogging = "typedcontainer",
+                Rotation = rotation == null ? new Vec3f(Shape.rotateX, Shape.rotateY, Shape.rotateZ) : rotation
+            };
+
+            tesselator.TesselateShape(meta, shape, out mesh);
             return mesh;
         }
         

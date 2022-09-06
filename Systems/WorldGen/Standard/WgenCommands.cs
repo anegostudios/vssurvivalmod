@@ -248,12 +248,12 @@ namespace Vintagestory.ServerMods
                     if (chunk == null) continue;
 
                     chunk.Unpack();
-                    for (int i = 0; i < chunk.Blocks.Length; i++)
+                    for (int i = 0; i < chunk.Data.Length; i++)
                     {
-                        Block block = blocks[chunk.Blocks[i]];
+                        Block block = blocks[chunk.Data[i]];
                         if (block.BlockMaterial == EnumBlockMaterial.Stone || block.BlockMaterial == EnumBlockMaterial.Liquid || block.BlockMaterial == EnumBlockMaterial.Soil)
                         {
-                            chunk.Blocks[i] = 0;
+                            chunk.Data[i] = 0;
                         }
                     }
 
@@ -350,7 +350,8 @@ namespace Vintagestory.ServerMods
                     api.ModLoader.GetModSystem<GenPonds>().initWorldGen();
                     api.ModLoader.GetModSystem<GenBlockLayers>().InitWorldGen();
                     api.ModLoader.GetModSystem<GenCaves>().initWorldGen();
-                    api.ModLoader.GetModSystem<GenDeposits>().initWorldGen();
+                    api.ModLoader.GetModSystem<GenDeposits>().reloadWorldGen();
+                    api.ModLoader.GetModSystem<GenStructures>().initWorldGen();
                 }
 
                 Regen(player, arguments, false, aroundPlayer);

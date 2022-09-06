@@ -111,7 +111,7 @@ namespace Vintagestory.GameContent
                         tmpPos.Y = surfaceY - i;
                         int id = i == (int)q ? surfaceblock.BlockId : 0;
 
-                        Block bblock = blAcc.GetLiquidBlock(tmpPos);
+                        Block bblock = blAcc.GetBlock(tmpPos, BlockLayersAccess.Fluid);
                         if (!bblock.IsLiquid())
                         {
                             blAcc.SetBlock(id, tmpPos);

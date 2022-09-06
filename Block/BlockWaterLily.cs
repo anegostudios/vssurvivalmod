@@ -24,8 +24,9 @@ namespace Vintagestory.GameContent
 
         public override bool CanPlantStay(IBlockAccessor blockAccessor, BlockPos pos)
         {
-            Block block = blockAccessor.GetLiquidBlock(pos.DownCopy());
-            return block.IsLiquid() && block.LiquidLevel == 7 && block.LiquidCode.Contains("water");
+            Block block = blockAccessor.GetBlock(pos.DownCopy(), BlockLayersAccess.Fluid);
+            Block upblock = blockAccessor.GetBlock(pos, BlockLayersAccess.Fluid);
+            return block.IsLiquid() && block.LiquidLevel == 7 && block.LiquidCode.Contains("water") && upblock.Id==0;
         }
 
         public override int GetColor(ICoreClientAPI capi, BlockPos pos)

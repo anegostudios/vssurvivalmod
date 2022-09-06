@@ -167,12 +167,6 @@ namespace Vintagestory.GameContent
         {
             base.Initialize(api);
 
-            if (MaterialIds != null)
-            {
-                //if (api.Side == EnumAppSide.Client) RegenMesh();
-                //RegenSelectionBoxes(null);
-            }
-
             SnowLevel = (int)Block.snowLevel;
             snowLayerBlockId = (Block as BlockMicroBlock)?.snowLayerBlockId ?? 0;            
         }
@@ -446,6 +440,8 @@ namespace Vintagestory.GameContent
                     sideAlmostSolid[i] = prevAlmostSolid[GameMath.Mod(i + shift, 6)];
                 }
             }
+
+            Api?.World.BlockAccessor.TriggerNeighbourBlockUpdate(Pos);
         }
 
 
@@ -501,6 +497,7 @@ namespace Vintagestory.GameContent
             if (!wasChanged) return false;
 
             RebuildCuboidList(Voxels, VoxelMaterial);
+            Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(Pos);
 
             return true;
         }
@@ -657,6 +654,16 @@ namespace Vintagestory.GameContent
             this.sizeRel = voxelCount / (16f * 16f * 16f);
 
             buildSnowCuboids(Voxels);
+
+            if (DisplacesLiquid())
+            {
+                Api.World.BlockAccessor.SetBlock(0, Pos, BlockLayersAccess.Fluid);
+            }
+        }
+
+        public bool DisplacesLiquid()
+        {
+            return sideAlmostSolid[0] && sideAlmostSolid[1] && sideAlmostSolid[2] && sideAlmostSolid[3] && sideAlmostSolid[5];
         }
 
 
@@ -907,6 +914,7 @@ namespace Vintagestory.GameContent
             {
                 SnowMesh = CreateMesh(Api as ICoreClientAPI, SnowCuboids, new int[] { snowLayerBlockId }, Pos);
                 SnowMesh.Translate(0, 1 / 16f, 0);
+                SnowMesh.Scale(new Vec3f(0.5f, 0, 0.5f), 0.999f, 1, 0.999f);
 
                 if (Api.World.BlockAccessor.IsSideSolid(Pos.X, Pos.Y - 1, Pos.Z, BlockFacing.UP))
                 {

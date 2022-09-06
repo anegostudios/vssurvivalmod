@@ -76,6 +76,21 @@ namespace Vintagestory.GameContent
             bebomb?.OnBlockExploded(pos);
         }
 
+        public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1)
+        {
+            BlockEntityBomb bebomb = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityBomb;
+            if (bebomb.CascadeLit) return new ItemStack[0];
+
+            var stacks = base.GetDrops(world, pos, byPlayer, dropQuantityMultiplier);
+            
+            return stacks;
+        }
+
+        public override void OnBlockBroken(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1)
+        {
+            base.OnBlockBroken(world, pos, byPlayer, dropQuantityMultiplier);
+        }
+
         public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
         {
             return interactions.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));

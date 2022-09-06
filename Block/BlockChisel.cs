@@ -12,7 +12,7 @@ using Vintagestory.ServerMods;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockChisel : BlockMicroBlock
+    public class BlockChisel : BlockMicroBlock, IWrenchOrientable
     {
 
         public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
@@ -25,5 +25,11 @@ namespace Vintagestory.GameContent
             }
         }
 
+        public void Rotate(EntityAgent byEntity, BlockSelection blockSel, int dir)
+        {
+            var bechisel = api.World.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityChisel;
+            bechisel.RotateModel(dir > 0 ? 90 : -90, null);
+            bechisel.MarkDirty(true);
+        }
     }
 }

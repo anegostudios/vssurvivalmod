@@ -125,7 +125,7 @@ namespace Vintagestory.GameContent
 
         public static bool CanSupportPumpkin(ICoreAPI api, BlockPos pos)
         {
-            Block underblock = api.World.BlockAccessor.GetLiquidBlock(pos);
+            Block underblock = api.World.BlockAccessor.GetBlock(pos, BlockLayersAccess.Fluid);
             if (underblock.IsLiquid()) return false;
             underblock = api.World.BlockAccessor.GetBlock(pos);
             return underblock.Replaceable <= 5000;

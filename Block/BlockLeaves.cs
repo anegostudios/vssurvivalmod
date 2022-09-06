@@ -56,5 +56,10 @@ namespace Vintagestory.GameContent
             return new ItemStack(world.GetBlock(CodeWithParts("placed", LastCodePart())));
         }
 
+
+        public override bool DisplacesLiquids(IBlockAccessor blockAccess, BlockPos pos)
+        {
+            return false;  //Needed for branchy leaves (which have solid sides, perhaps they shouldn't?)
+        }
     }
 }

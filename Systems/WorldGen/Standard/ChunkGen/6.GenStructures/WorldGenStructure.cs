@@ -106,10 +106,20 @@ namespace Vintagestory.ServerMods
 
         LCGRandom rand;
 
+        int unscaledMinRain;
+        int unscaledMaxRain;
+        int unscaledMinTemp;
+        int unscaledMaxTemp;
+
 
         public void Init(ICoreServerAPI api, BlockLayerConfig config, RockStrataConfig rockstrata, LCGRandom rand)
         {
             this.rand = rand;
+
+            unscaledMinRain = (int)(MinRain * 255);
+            unscaledMaxRain = (int)(MaxRain * 255);
+            unscaledMinTemp = (int)TerraGenConfig.DescaleTemperature(MinTemp);
+            unscaledMaxTemp = (int)TerraGenConfig.DescaleTemperature(MaxTemp);
 
             List<BlockSchematicStructure[]> schematics = new List<BlockSchematicStructure[]>();
 
@@ -204,10 +214,7 @@ namespace Vintagestory.ServerMods
 
                 foreach (var val in ReplaceWithRockType)
                 {
-                    int sourceBlockId = api.World.GetBlock(val.Key).Id;
-
                     Dictionary<int, int> blockIdByRockId = new Dictionary<int, int>();
-
                     foreach (var strat in rockstrata.Variants)
                     {
                         Block rockBlock = api.World.GetBlock(strat.BlockCode);
@@ -225,11 +232,13 @@ namespace Vintagestory.ServerMods
                                 blockIdByRockId[quartzBlock.Id] = resolvedBlock.Id;
                             }
                         }
-
-
                     }
 
-                    resolvedReplaceWithRocktype[sourceBlockId] = blockIdByRockId;
+                    Block[] sourceBlocks = api.World.SearchBlocks(val.Key);
+                    foreach (var sourceBlock in sourceBlocks)
+                    {
+                        resolvedReplaceWithRocktype[sourceBlock.Id] = blockIdByRockId;
+                    }
                 }
             }
 
@@ -247,7 +256,13 @@ namespace Vintagestory.ServerMods
             this.climateUpRight = climateUpRight;
             this.climateBotLeft = climateBotLeft;
             this.climateBotRight = climateBotRight;
-            
+            int chunksize = blockAccessor.ChunkSize;
+
+            int climate = GameMath.BiLerpRgbColor((float)(startPos.X % chunksize) / chunksize, (float)(startPos.Z % chunksize) / chunksize, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight);
+            int unscaledrain = (climate >> 8) & 0xff;
+            int unscaledtemp = (climate >> 16) & 0xff;
+            if (unscaledrain < unscaledMinRain || unscaledrain > unscaledMaxRain || unscaledtemp < unscaledMinTemp || unscaledtemp > unscaledMaxTemp) return false;
+
             startPos.Y += OffsetY;
 
             rand.InitPositionSeed(startPos.X, startPos.Z);
@@ -300,16 +315,16 @@ namespace Vintagestory.ServerMods
             // Ensure not deeply submerged in water  =>  actually, that's now OK!
 
             tmpPos.Set(pos.X, pos.Y + 1 + OffsetY, pos.Z);
-            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return false;
+            if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return false;
 
             tmpPos.Set(pos.X + wdt, pos.Y + 1 + OffsetY, pos.Z);
-            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return false;
+            if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return false;
 
             tmpPos.Set(pos.X, pos.Y + 1 + OffsetY, pos.Z + len);
-            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return false;
+            if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return false;
 
             tmpPos.Set(pos.X + wdt, pos.Y + 1 + OffsetY, pos.Z + len);
-            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return false;
+            if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return false;
 
 
             pos.Y--;
@@ -353,60 +368,60 @@ namespace Vintagestory.ServerMods
             tmpPos.Set(pos.X + wdt, 0, pos.Z + len);
             int botRightY = blockAccessor.GetTerrainMapheightAt(tmpPos);
 
-
+            // Is the ground flat?
             int diff = GameMath.Max(centerY, topLeftY, topRightY, botLeftY, botRightY) - GameMath.Min(centerY, topLeftY, topRightY, botLeftY, botRightY);
             if (diff != 0) return false;
 
-            pos.Y += centerY - pos.Y + 1 + OffsetY;
+            pos.Y = centerY + 1 + OffsetY;
 
 
             // Ensure not floating on water
             tmpPos.Set(pos.X + wdthalf, pos.Y - 1, pos.Z + lenhalf);
-            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return false;
+            if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return false;
 
        
             tmpPos.Set(pos.X, pos.Y - 1, pos.Z);
-            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return false;
+            if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return false;
 
             tmpPos.Set(pos.X + wdt, pos.Y - 1, pos.Z);
-            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return false;
+            if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return false;
 
             tmpPos.Set(pos.X, pos.Y - 1, pos.Z + len);
-            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return false;
+            if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return false;
 
             tmpPos.Set(pos.X + wdt, pos.Y - 1, pos.Z + len);
-            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return false;
+            if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return false;
 
             // Ensure not submerged in water
             tmpPos.Set(pos.X, pos.Y, pos.Z);
-            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return false;
+            if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return false;
 
-
-            tmpPos.Set(pos.X + wdt, pos.Y - 1, pos.Z + len);
-            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return false;
-
-            tmpPos.Set(pos.X + wdt, pos.Y, pos.Z);
-            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return false;
-
-            tmpPos.Set(pos.X, pos.Y, pos.Z + len);
-            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return false;
 
             tmpPos.Set(pos.X + wdt, pos.Y, pos.Z + len);
-            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return false;
+            if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return false;
+
+            tmpPos.Set(pos.X + wdt, pos.Y, pos.Z);
+            if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return false;
+
+            tmpPos.Set(pos.X, pos.Y, pos.Z + len);
+            if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return false;
+
+            tmpPos.Set(pos.X + wdt, pos.Y, pos.Z + len);
+            if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return false;
 
 
 
             tmpPos.Set(pos.X, pos.Y + 1, pos.Z);
-            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return false;
+            if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return false;
 
             tmpPos.Set(pos.X + wdt, pos.Y + 1, pos.Z);
-            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return false;
+            if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return false;
 
             tmpPos.Set(pos.X, pos.Y + 1, pos.Z + len);
-            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return false;
+            if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return false;
 
             tmpPos.Set(pos.X + wdt, pos.Y + 1, pos.Z + len);
-            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return false;
+            if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return false;
 
 
             if (!satisfiesMinDistance(pos, worldForCollectibleResolve)) return false;

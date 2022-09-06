@@ -81,7 +81,7 @@ namespace Vintagestory.GameContent
                         {
                             BinaryWriter writer = new BinaryWriter(ms);
                             writer.Write("BlockEntityTextInput");
-                            writer.Write("Edit chest label text");
+                            writer.Write(Lang.Get("Edit chest label text"));
                             writer.Write(text);
                             data = ms.ToArray();
                         }

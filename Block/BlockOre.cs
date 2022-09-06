@@ -83,6 +83,7 @@ namespace Vintagestory.GameContent
                 world.PlaySoundAt(Sounds.GetBreakSound(byPlayer), pos.X, pos.Y, pos.Z, byPlayer);
             }
 
+            SpawnBlockBrokenParticles(pos);
             world.BlockAccessor.SetBlock(0, pos);
 
 

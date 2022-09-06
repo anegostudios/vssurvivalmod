@@ -20,7 +20,7 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            bool waterBlock = byEntity.World.BlockAccessor.GetLiquidBlock(blockSel.Position.AddCopy(blockSel.Face)).LiquidCode == "water";
+            bool waterBlock = byEntity.World.BlockAccessor.GetBlock(blockSel.Position.AddCopy(blockSel.Face), BlockLayersAccess.Fluid).LiquidCode == "water";
             Block block;
 
             if (this.Code.Path.Contains("papyrus"))

@@ -85,6 +85,28 @@ namespace Vintagestory.GameContent
             return bec?.GetSounds() ?? base.GetSounds(blockAccessor, pos, stack);
         }
 
+        public override bool DisplacesLiquids(IBlockAccessor blockAccess, BlockPos pos)
+        {
+            BlockEntityMicroBlock bec = blockAccess.GetBlockEntity(pos) as BlockEntityMicroBlock;
+            if (bec != null)
+            {
+                return bec.DisplacesLiquid();
+            }
+
+            return base.DisplacesLiquids(blockAccess, pos);
+        }
+
+        public override float LiquidBarrierHeightOnSide(BlockFacing face, BlockPos pos)
+        {
+            BlockEntityMicroBlock bec = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityMicroBlock;
+            if (bec != null)
+            {
+                return bec.sideAlmostSolid[face.Index] ? 1 : 0;
+            }
+
+            return base.LiquidBarrierHeightOnSide(face, pos);
+        }
+
         public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
         {
             // We cannot call the base method, otherwise we'll destroy the chiseled block

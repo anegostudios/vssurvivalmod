@@ -7,6 +7,7 @@ using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -28,14 +29,19 @@ namespace Vintagestory.GameContent
             {
                 bool changed = angleRad != value;
                 angleRad = value;
-                colSelBox = new Cuboidf[] { Block.CollisionBoxes[0].RotatedCopy(0, value * GameMath.RAD2DEG, 0, new Vec3d(0.5, 0.5, 0.5)) };
-                if (signRenderer != null && Block.Variant["attachment"] != "wall")
+                if (Block?.CollisionBoxes != null)
+                {
+                    colSelBox = new Cuboidf[] { Block.CollisionBoxes[0].RotatedCopy(0, value * GameMath.RAD2DEG, 0, new Vec3d(0.5, 0.5, 0.5)) };
+                }
+
+                if (signRenderer != null && Block?.Variant["attachment"] != "wall")
                 {
                     signRenderer.rotY = 180 + angleRad * GameMath.RAD2DEG;
-                    signRenderer.translateX = 8f/16f;
-                    signRenderer.translateZ = 8f/16f;
+                    signRenderer.translateX = 8f / 16f;
+                    signRenderer.translateZ = 8f / 16f;
                     signRenderer.offsetZ = -1.51f / 16f;
                 }
+
                 if (changed) MarkDirty(true);
             }
         }
@@ -239,17 +245,23 @@ namespace Vintagestory.GameContent
             {
                 return base.OnTesselation(mesher, tessThreadTesselator);
             }
-            
-            if (mesh == null)
+
+            ensureMeshExists();
+            mesher.AddMeshData(mesh);
+
+            return true;
+        }
+
+
+        private void ensureMeshExists()
+        {
+            mesh = ObjectCacheUtil.GetOrCreate(Api, "signmesh" + Block.Shape.Base + "/" + MeshAngleRad, () =>
             {
                 ICoreClientAPI capi = Api as ICoreClientAPI;
                 var shape = capi.TesselatorManager.GetCachedShape(Block.Shape.Base);
                 capi.Tesselator.TesselateShape(Block, shape, out mesh, new Vec3f(0, MeshAngleRad * GameMath.RAD2DEG, 0));
-            }
-
-            mesher.AddMeshData(mesh);
-
-            return true;
+                return mesh;
+            });
         }
     }
 

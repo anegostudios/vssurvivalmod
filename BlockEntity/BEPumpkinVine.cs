@@ -364,7 +364,7 @@ namespace Vintagestory.GameContent
 
         private bool CanGrowOn(ICoreAPI api, BlockPos pos)
         {
-            return api.World.BlockAccessor.GetSolidBlock(pos.X, pos.Y, pos.Z).CanAttachBlockAt(api.World.BlockAccessor, stage1VineBlock, pos, BlockFacing.UP);
+            return api.World.BlockAccessor.GetMostSolidBlock(pos.X, pos.Y, pos.Z).CanAttachBlockAt(api.World.BlockAccessor, stage1VineBlock, pos, BlockFacing.UP);
         }
 
         private bool IsReplaceable(Block block)

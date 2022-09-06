@@ -118,7 +118,7 @@ namespace Vintagestory.GameContent
             get
             {
                 if (inv[0].Empty) return 0;
-                return inv[0].Itemstack.Attributes.GetInt("pieSize");
+                return inv[0].Itemstack.Attributes.GetAsInt("pieSize");
             }
         }
 
@@ -126,23 +126,27 @@ namespace Vintagestory.GameContent
         {
             if (inv[0].Empty) return null;
 
-            int size = inv[0].Itemstack.Attributes.GetInt("pieSize");
+            int size = inv[0].Itemstack.Attributes.GetAsInt("pieSize");
             MarkDirty(true);
 
             ItemStack stack = inv[0].Itemstack.Clone();
-            stack.Attributes.SetInt("pieSize", 1);
-            stack.Attributes.SetFloat("quantityServings", 0.25f);
-            stack.Attributes.SetBool("bakeable", false);
 
             if (size <= 1)
             {
+                if (!stack.Attributes.HasAttribute("quantityServings"))
+                {
+                    stack.Attributes.SetFloat("quantityServings", 0.25f);
+                }
                 inv[0].Itemstack = null;
                 Api.World.BlockAccessor.SetBlock(0, Pos);
-
             }
             else
             {
                 inv[0].Itemstack.Attributes.SetInt("pieSize", size - 1);
+
+                stack.Attributes.SetInt("pieSize", 1);
+                stack.Attributes.SetFloat("quantityServings", 0.25f);
+                stack.Attributes.SetBool("bakeable", false);
             }
 
             loadMesh(); 
@@ -191,7 +195,7 @@ namespace Vintagestory.GameContent
                     if (HasAnyFilling && cStacks[5] != null)
                     {
                         ItemStack stack = inv[0].Itemstack;
-                        stack.Attributes.SetInt("topCrustType", (stack.Attributes.GetInt("topCrustType") + 1) % 3);
+                        stack.Attributes.SetInt("topCrustType", (stack.Attributes.GetAsInt("topCrustType") + 1) % 3);
                         MarkDirty(true);
                     }
                 }
@@ -200,7 +204,10 @@ namespace Vintagestory.GameContent
             }
 
 
-            if (pieBlock.State != "raw") return true;
+            if (pieBlock.State != "raw")
+            {
+                return false;
+            }
 
             // Filling rules:
             // 1. get inPieProperties
@@ -279,7 +286,7 @@ namespace Vintagestory.GameContent
                     } else
                     {
                         ItemStack stack = inv[0].Itemstack;
-                        stack.Attributes.SetInt("topCrustType", (stack.Attributes.GetInt("topCrustType") + 1) % 3);
+                        stack.Attributes.SetInt("topCrustType", (stack.Attributes.GetAsInt("topCrustType") + 1) % 3);
                     }
                     return true;
                 }

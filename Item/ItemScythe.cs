@@ -19,7 +19,7 @@ namespace Vintagestory.GameContent
     {
         string[] allowedPrefixes;
         string[] disallowedSuffixes;
-        SkillItem[] skillItems;
+        SkillItem[] modes;
 
         public override int MultiBreakQuantity { get { return 5; } }
 
@@ -29,19 +29,29 @@ namespace Vintagestory.GameContent
             allowedPrefixes = Attributes["codePrefixes"].AsArray<string>();
             disallowedSuffixes = Attributes["disallowedSuffixes"].AsArray<string>();
 
-            skillItems = new SkillItem[]
+            var capi = api as ICoreClientAPI;
+
+            modes = new SkillItem[]
             {
                 new SkillItem()
                 {
                     Code = new AssetLocation("trim grass"),
                     Name = Lang.Get("Trim grass")
-                }.WithLetterIcon(api as ICoreClientAPI, "T"),
+                },
                 new SkillItem()
                 {
                     Code = new AssetLocation("remove grass"),
                     Name = Lang.Get("Remove grass")
-                }.WithLetterIcon(api as ICoreClientAPI, "R"),
+                },
             };
+
+            if (capi != null)
+            {
+                modes[0].WithIcon(capi, capi.Gui.LoadSvgWithPadding(new AssetLocation("textures/icons/scythetrim.svg"), 48, 48, 5, ColorUtil.WhiteArgb));
+                modes[0].TexturePremultipliedAlpha = false;
+                modes[1].WithIcon(capi, capi.Gui.LoadSvgWithPadding(new AssetLocation("textures/icons/scytheremove.svg"), 48, 48, 5, ColorUtil.WhiteArgb));
+                modes[1].TexturePremultipliedAlpha = false;
+            }
         }
 
         
@@ -197,7 +207,7 @@ namespace Vintagestory.GameContent
 
         public override SkillItem[] GetToolModes(ItemSlot slot, IClientPlayer forPlayer, BlockSelection blockSel)
         {
-            return skillItems;
+            return modes;
         }
 
         public override void SetToolMode(ItemSlot slot, IPlayer byPlayer, BlockSelection blockSelection, int toolMode)
@@ -213,9 +223,9 @@ namespace Vintagestory.GameContent
 
         public override void OnUnloaded(ICoreAPI api)
         {
-            for (int i = 0; skillItems != null && i < skillItems.Length; i++)
+            for (int i = 0; modes != null && i < modes.Length; i++)
             {
-                skillItems[i]?.Dispose();
+                modes[i]?.Dispose();
             }
         }
 

@@ -676,7 +676,7 @@ namespace Vintagestory.GameContent
             {
                 if (juiceableLitresLeft > 0)
                 {
-                    dsc.AppendLine(Lang.Get("Mash produces {0:0.##} litres of juice when squeeezed", juiceableLitresLeft));
+                    dsc.AppendLine(Lang.Get("Mash produces {0:0.##} litres of juice when squeezed", juiceableLitresLeft));
                 } else
                 {
                     dsc.AppendLine(Lang.Get("Dry Mash"));

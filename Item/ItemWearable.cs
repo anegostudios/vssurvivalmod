@@ -263,6 +263,25 @@ namespace Vintagestory.GameContent
         }
 
 
+        public override void OnHandbookRecipeRender(ICoreClientAPI capi, GridRecipe recipe, ItemSlot dummyslot, double x, double y, double z, double size)
+        {
+            bool isRepairRecipe = recipe.Name.Path.Contains("repair");
+            int prevDura = 0;
+            if (isRepairRecipe)
+            {
+                prevDura = dummyslot.Itemstack.Collectible.GetRemainingDurability(dummyslot.Itemstack);
+                dummyslot.Itemstack.Attributes.SetInt("durability", 0);
+            }
+            
+            base.OnHandbookRecipeRender(capi, recipe, dummyslot, x, y, z, size);
+
+            if (isRepairRecipe)
+            {
+                dummyslot.Itemstack.Attributes.SetInt("durability", prevDura);
+            }
+        }
+
+
         private MeshData genMesh(ICoreClientAPI capi, ItemStack itemstack, ITexPositionSource texSource)
         {
             JsonObject attrObj = itemstack.Collectible.Attributes;
@@ -549,9 +568,9 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void OnCreatedByCrafting(ItemSlot[] allInputslots, ItemSlot outputSlot, GridRecipe byRecipe)
+        public override void OnCreatedByCrafting(ItemSlot[] inSlots, ItemSlot outputSlot, GridRecipe byRecipe)
         {
-            base.OnCreatedByCrafting(allInputslots, outputSlot, byRecipe);
+            base.OnCreatedByCrafting(inSlots, outputSlot, byRecipe);
 
             // Prevent derp in the handbook
             if (outputSlot is DummySlot) return;
@@ -561,27 +580,7 @@ namespace Vintagestory.GameContent
 
             if (byRecipe.Name.Path.Contains("repair"))
             {
-                var stack = outputSlot.Itemstack;
-                var matStack = allInputslots.FirstOrDefault(slot => !slot.Empty && slot.Itemstack.Collectible != this).Itemstack;
-
-                var origMatCount = 0;
-
-                foreach (var recipe in api.World.GridRecipes)
-                {
-                    if ((recipe.Output.ResolvedItemstack?.Satisfies(stack) ?? false) && !recipe.Name.Path.Contains("repair"))
-                    {
-                        foreach (var ingred in recipe.resolvedIngredients)
-                        {
-                            if (ingred?.ResolvedItemstack.Equals(api.World, matStack, GlobalConstants.IgnoredStackAttributes) == true)
-                            {
-                                origMatCount += ingred.ResolvedItemstack.StackSize;
-                            }
-                        }
-                    }
-                }
-
-                // Repairing costs half as many materials as newly creating it
-                float repairValue = (float)matStack.StackSize / origMatCount * 2;
+                CalculateRepairValue(inSlots, outputSlot, out float repairValue, out int matCostPerMatType);
 
                 int curDur = outputSlot.Itemstack.Collectible.GetRemainingDurability(outputSlot.Itemstack);
                 int maxDur = GetMaxDurability(outputSlot.Itemstack);
@@ -590,20 +589,130 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override bool ConsumeCraftingIngredients(ItemSlot[] slots, ItemSlot outputSlot, GridRecipe recipe)
+        public override bool ConsumeCraftingIngredients(ItemSlot[] inSlots, ItemSlot outputSlot, GridRecipe recipe)
         {
-            // Consume all materials in the input grid
+            // Consume as much materials in the input grid as needed
             if (recipe.Name.Path.Contains("repair"))
             {
-                foreach (var islot in slots)
+                CalculateRepairValue(inSlots, outputSlot, out float repairValue, out int matCostPerMatType);
+
+                foreach (var islot in inSlots)
                 {
                     if (islot.Empty) continue;
 
-                    islot.Itemstack = null;
+                    if (islot.Itemstack.Collectible == this) { islot.Itemstack = null; continue; }
+
+                    islot.TakeOut(matCostPerMatType);
+                }
+
+                return true;
+            }
+
+            return false;
+        }
+
+
+        public void CalculateRepairValue(ItemSlot[] inSlots, ItemSlot outputSlot, out float repairValue, out int matCostPerMatType)
+        {
+            var origMatCount = GetOrigMatCount(inSlots, outputSlot);
+            var armorSlot = inSlots.FirstOrDefault(slot => slot.Itemstack?.Collectible is ItemWearable);
+            int curDur = outputSlot.Itemstack.Collectible.GetRemainingDurability(armorSlot.Itemstack);
+            int maxDur = GetMaxDurability(outputSlot.Itemstack);
+
+            // How much 1x mat repairs in %
+            float repairValuePerItem = 2f / origMatCount;
+            // How much the mat repairs in durability
+            float repairDurabilityPerItem = repairValuePerItem * maxDur;
+            // Divide missing durability by repair per item = items needed for full repair 
+            int fullRepairMatCount = (int)Math.Max(1, Math.Round((maxDur - curDur) / repairDurabilityPerItem));
+            // Limit repair value to smallest stack size of all repair mats
+            var minMatStackSize = GetInputRepairCount(inSlots);
+            // Divide the cost amongst all mats
+            var matTypeCount = GetRepairMatTypeCount(inSlots);
+
+            var availableRepairMatCount = Math.Min(fullRepairMatCount, minMatStackSize * matTypeCount);
+            matCostPerMatType = Math.Min(fullRepairMatCount, minMatStackSize);
+
+            // Repairing costs half as many materials as newly creating it
+            repairValue = (float)availableRepairMatCount / origMatCount * 2;
+        }
+
+
+        private int GetRepairMatTypeCount(ItemSlot[] slots)
+        {
+            List<ItemStack> stackTypes = new List<ItemStack>();
+            foreach (var slot in slots)
+            {
+                if (slot.Empty) continue;
+                bool found = false;
+                if (slot.Itemstack.Collectible is ItemWearable) continue;
+
+                foreach (var stack in stackTypes)
+                {
+                    if (slot.Itemstack.Satisfies(stack))
+                    {
+                        found = true;
+                        break;
+                    }
+                }
+
+                if (!found)
+                {
+                    stackTypes.Add(slot.Itemstack);
                 }
             }
 
-            return true;
+            return stackTypes.Count;
+        }
+
+        public int GetInputRepairCount(ItemSlot[] inputSlots)
+        {
+            OrderedDictionary<int, int> matcounts = new OrderedDictionary<int, int>();
+            foreach (var slot in inputSlots)
+            {
+                if (slot.Empty || slot.Itemstack.Collectible is ItemWearable) continue;
+                var hash = slot.Itemstack.GetHashCode();
+                int cnt = 0;
+                matcounts.TryGetValue(hash, out cnt);
+                matcounts[hash] = cnt + slot.StackSize;
+            }
+            return matcounts.Values.Min();
+        }
+
+        public int GetOrigMatCount(ItemSlot[] inputSlots, ItemSlot outputSlot)
+        {
+            var stack = outputSlot.Itemstack;
+            var matStack = inputSlots.FirstOrDefault(slot => !slot.Empty && slot.Itemstack.Collectible != this).Itemstack;
+
+            var origMatCount = 0;
+
+            foreach (var recipe in api.World.GridRecipes)
+            {
+                if ((recipe.Output.ResolvedItemstack?.Satisfies(stack) ?? false) && !recipe.Name.Path.Contains("repair"))
+                {
+                    foreach (var ingred in recipe.resolvedIngredients)
+                    {
+                        if (ingred == null) continue;
+
+                        if (ingred.RecipeAttributes?["repairMat"].Exists == true)
+                        {
+                            var jstack = ingred.RecipeAttributes["repairMat"].AsObject<JsonItemStack>();
+                            jstack.Resolve(api.World, string.Format("recipe '{0}' repair mat", recipe.Name));
+                            if (jstack.ResolvedItemstack != null)
+                            {
+                                origMatCount += jstack.ResolvedItemstack.StackSize;
+                            }
+                        } else
+                        {
+                            origMatCount += ingred.Quantity;
+                        }
+                    }
+
+                    break;
+                }
+            }
+
+            return origMatCount;
         }
 
         public override TransitionState[] UpdateAndGetTransitionStates(IWorldAccessor world, ItemSlot inslot)

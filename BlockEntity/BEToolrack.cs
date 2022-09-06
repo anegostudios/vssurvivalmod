@@ -78,22 +78,31 @@ namespace Vintagestory.GameContent
 
             Vec3f origin = new Vec3f(0.5f, 0.5f, 0.5f);
 
-            ICoreClientAPI clientApi = (ICoreClientAPI)Api;
+            ICoreClientAPI capi = (ICoreClientAPI)Api;
 
             for (int i = 0; i < 4; i++)
             {
                 toolMeshes[i] = null;
-                IItemStack stack = inventory[i].Itemstack;
+                ItemStack stack = inventory[i].Itemstack;
                 if (stack == null) continue;
 
                 tmpItem = stack.Collectible;
 
-                if (stack.Class == EnumItemClass.Item)
+                var meshSource = stack.Collectible as IContainedMeshSource;
+                if (meshSource != null)
                 {
-                    clientApi.Tesselator.TesselateItem(stack.Item, out toolMeshes[i], this);
-                } else
+                    toolMeshes[i] = meshSource.GenMesh(stack, capi.BlockTextureAtlas, Pos);
+                }
+                else
                 {
-                    clientApi.Tesselator.TesselateBlock(stack.Block, out toolMeshes[i]);
+                    if (stack.Class == EnumItemClass.Item)
+                    {
+                        capi.Tesselator.TesselateItem(stack.Item, out toolMeshes[i], this);
+                    }
+                    else
+                    {
+                        capi.Tesselator.TesselateBlock(stack.Block, out toolMeshes[i]);
+                    }
                 }
 
 
@@ -101,10 +110,8 @@ namespace Vintagestory.GameContent
                 {
                     ModelTransform transform = tmpItem.Attributes["toolrackTransform"].AsObject<ModelTransform>();
                     transform.EnsureDefaultValues();
-
                     toolMeshes[i].ModelTransform(transform);
                 }
-
 
                 float yOff = i > 1 ? (-1.8f / 16f) : 0;
 

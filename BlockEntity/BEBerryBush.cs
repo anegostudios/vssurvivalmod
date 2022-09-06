@@ -25,6 +25,8 @@ namespace Vintagestory.GameContent
         public bool Pruned;
         public double LastPrunedTotalDays;
 
+        float growthRateMul = 1f;
+
         public BlockEntityBerryBush() : base()
         {
 
@@ -33,6 +35,8 @@ namespace Vintagestory.GameContent
         public override void Initialize(ICoreAPI api)
         {
             base.Initialize(api);
+
+            growthRateMul = (float)Api.World.Config.GetDecimal("cropGrowthRateMul", growthRateMul);
 
             if (api is ICoreServerAPI)
             {
@@ -54,6 +58,8 @@ namespace Vintagestory.GameContent
                 {
                     transitionHoursLeft = ((double)totalDaysForNextStageOld - Api.World.Calendar.TotalDays) * Api.World.Calendar.HoursPerDay;
                 }
+
+                
             }
         }
 
@@ -172,9 +178,9 @@ namespace Vintagestory.GameContent
 
         public double GetHoursForNextStage()
         {
-            if (IsRipe()) return (4 * (5 + rand.NextDouble()) * 0.8) * Api.World.Calendar.HoursPerDay;
+            if (IsRipe()) return 4 * (5 + rand.NextDouble()) * 1.6 * Api.World.Calendar.HoursPerDay;
 
-            return ((5 + rand.NextDouble()) * 0.8) * Api.World.Calendar.HoursPerDay;
+            return (5 + rand.NextDouble()) * 1.6 * Api.World.Calendar.HoursPerDay / growthRateMul;
         }
 
         public bool IsRipe()

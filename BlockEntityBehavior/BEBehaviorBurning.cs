@@ -212,7 +212,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            if (FuelPos != FirePos && Api.World.BlockAccessor.GetLiquidBlock(FirePos).LiquidCode == "water")
+            if (FuelPos != FirePos && Api.World.BlockAccessor.GetBlock(FirePos, BlockLayersAccess.Fluid).LiquidCode == "water")
             {
                 KillFire(false);
                 return;
@@ -320,7 +320,7 @@ namespace Vintagestory.GameContent
 
             // 3. Land claim test
             IPlayer player = Api.World.PlayerByUid(startedByPlayerUid);            
-            if (player != null && Api.World.Claims.TestAccess(player, pos, EnumBlockAccessFlags.BuildOrBreak) != EnumWorldAccessResponse.Granted) {
+            if (player != null && (Api.World.Claims.TestAccess(player, pos, EnumBlockAccessFlags.BuildOrBreak) != EnumWorldAccessResponse.Granted || Api.World.Claims.TestAccess(player, npos, EnumBlockAccessFlags.BuildOrBreak) != EnumWorldAccessResponse.Granted)) {
                 return false;
             }
 

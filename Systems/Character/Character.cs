@@ -417,7 +417,7 @@ namespace Vintagestory.GameContent
         private void onCharacterSelection(IServerPlayer fromPlayer, CharacterSelectionPacket p)
         {
             bool didSelectBefore = SerializerUtil.Deserialize(fromPlayer.GetModdata("createCharacter"), false);
-            if (didSelectBefore && fromPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
+            if (didSelectBefore && (fromPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative))
             {
                 fromPlayer.BroadcastPlayerData(true);
                 fromPlayer.Entity.WatchedAttributes.MarkPathDirty("skinConfig");

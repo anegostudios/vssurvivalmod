@@ -20,10 +20,12 @@ namespace Vintagestory.GameContent
             if (Variant["state"] == "closed")
             {
                 world.BlockAccessor.SetBlock(world.GetBlock(CodeWithVariant("state", "opened")).Id, pos);
+                if (world.Side == EnumAppSide.Server) world.BlockAccessor.TriggerNeighbourBlockUpdate(pos);
                 world.PlaySoundAt(new AssetLocation("sounds/block/cokeovendoor-open"), pos.X + 0.5, pos.Y + 0.5, pos.Z + 0.5, byPlayer, true);
             } else
             {
                 world.BlockAccessor.SetBlock(world.GetBlock(CodeWithVariant("state", "closed")).Id, pos);
+                if (world.Side == EnumAppSide.Server) world.BlockAccessor.TriggerNeighbourBlockUpdate(pos);
                 world.PlaySoundAt(new AssetLocation("sounds/block/cokeovendoor-close"), pos.X + 0.5, pos.Y + 0.5, pos.Z + 0.5, byPlayer, true);
             }
 

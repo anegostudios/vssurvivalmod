@@ -151,6 +151,8 @@ namespace Vintagestory.GameContent
 
             world.BlockAccessor.ExchangeBlock(newBlock.BlockId, position);
             world.BlockAccessor.MarkBlockDirty(position);
+            if (world.Side == EnumAppSide.Server) world.BlockAccessor.TriggerNeighbourBlockUpdate(position);
+
 
             BlockPos otherPos = position.AddCopy(0, IsUpperHalf() ? -1 : 1, 0);
             Block otherPart = world.BlockAccessor.GetBlock(otherPos);
@@ -184,6 +186,17 @@ namespace Vintagestory.GameContent
             if (!airtight) return 0;
             return open ? 3 : 1;
         }
+
+        public override float LiquidBarrierHeightOnSide(BlockFacing face, BlockPos pos)
+        {
+            if (open) return 0f;
+            if (face != GetDirection().Opposite) return 0f;
+
+            if (!airtight) return 0f;
+
+            return IsUpperHalf() ? 0.0f : 1.0f;
+        }
+
     }
 }
 

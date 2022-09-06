@@ -269,43 +269,43 @@ namespace Vintagestory.ServerMods
 
             // Ensure not floating on water
             tmpPos.Set(pos.X - widthHalf, pos.Y - 1, pos.Z - lengthHalf);
-            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return null;
+            if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return null;
 
             tmpPos.Set(pos.X + widthHalf, pos.Y - 1, pos.Z - lengthHalf);
-            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return null;
+            if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return null;
 
             tmpPos.Set(pos.X - widthHalf, pos.Y - 1, pos.Z + lengthHalf);
-            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return null;
+            if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return null;
 
             tmpPos.Set(pos.X + widthHalf, pos.Y - 1, pos.Z + lengthHalf);
-            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return null;
+            if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return null;
 
             // Ensure not submerged in water
             tmpPos.Set(pos.X - widthHalf, pos.Y, pos.Z - lengthHalf);
-            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return null;
+            if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return null;
 
             tmpPos.Set(pos.X + widthHalf, pos.Y, pos.Z - lengthHalf);
-            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return null;
+            if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return null;
 
             tmpPos.Set(pos.X - widthHalf, pos.Y, pos.Z + lengthHalf);
-            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return null;
+            if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return null;
 
             tmpPos.Set(pos.X + widthHalf, pos.Y, pos.Z + lengthHalf);
-            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return null;
+            if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return null;
 
 
 
             tmpPos.Set(pos.X - widthHalf, pos.Y + 1, pos.Z - lengthHalf);
-            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return null;
+            if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return null;
 
             tmpPos.Set(pos.X + widthHalf, pos.Y + 1, pos.Z - lengthHalf);
-            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return null;
+            if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return null;
 
             tmpPos.Set(pos.X - widthHalf, pos.Y + 1, pos.Z + lengthHalf);
-            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return null;
+            if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return null;
 
             tmpPos.Set(pos.X + widthHalf, pos.Y + 1, pos.Z + lengthHalf);
-            if (blockAccessor.GetLiquidBlock(tmpPos).IsLiquid()) return null;
+            if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return null;
 
             if (!TestUndergroundCheckPositions(blockAccessor, pos, schematic.UndergroundCheckPositions)) return null;
 

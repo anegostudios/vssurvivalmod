@@ -41,7 +41,8 @@ namespace Vintagestory.GameContent
                 GenDeposits deposits = new GenDeposits();
                 deposits.addHandbookAttributes = false;
                 deposits.setApi(sapi);
-                deposits.initWorldGen(false);
+                deposits.initAssets(sapi, false);
+                deposits.initWorldGen();
                 depositGen = deposits;
             });
 
@@ -158,7 +159,7 @@ namespace Vintagestory.GameContent
         {
             public int chunkY;
             public IMapChunk MapChunk { get; set; }
-            IChunkBlocks IWorldChunk.Blocks => Blocks;
+            IChunkBlocks IWorldChunk.Data => Blocks;
             IChunkLight IWorldChunk.Lighting => throw new NotImplementedException();
             public IChunkBlocks Blocks;
 
@@ -191,12 +192,17 @@ namespace Vintagestory.GameContent
                     ClearBlocks();
                 }
 
+                public int GetBlockId(int index3d, int layer)
+                {
+                    return blocks[index3d];
+                }
+
                 public int GetBlockIdUnsafe(int index3d)
                 {
                     return this[index3d];
                 }
 
-                public int GetLiquid(int index3d)
+                public int GetFluid(int index3d)
                 {
                     throw new NotImplementedException();
                 }
@@ -216,9 +222,9 @@ namespace Vintagestory.GameContent
                     this[index3d] = value;
                 }
 
-                public void SetLiquid(int index3d, int value)
+                public void SetFluid(int index3d, int value)
                 {
-                    throw new NotImplementedException();
+                    
                 }
             }
 
@@ -238,6 +244,8 @@ namespace Vintagestory.GameContent
 			public IChunkBlocks MaybeBlocks => throw new NotImplementedException();
 
             public bool NotAtEdge => throw new NotImplementedException();
+
+            IChunkBlocks IWorldChunk.Blocks => throw new NotImplementedException();
 
             public void AddEntity(Entity entity)
             {
@@ -279,7 +287,7 @@ namespace Vintagestory.GameContent
 			{
 				throw new NotImplementedException();
 			}
-			public int Unpack_AndReadBlock(int index)
+			public int UnpackAndReadBlock(int index, int layer) 
 			{
 				throw new NotImplementedException();
 			}
@@ -292,10 +300,6 @@ namespace Vintagestory.GameContent
                 throw new NotImplementedException();
             }
 
-            public Block GetLocalLiquidOrBlockAtBlockPos(IWorldAccessor world, BlockPos position)
-            {
-                throw new NotImplementedException();
-            }
 
             public Block GetLocalBlockAtBlockPos(IWorldAccessor world, BlockPos position)
             {
@@ -398,6 +402,11 @@ namespace Vintagestory.GameContent
             }
 
             public int GetLightAbsorptionAt(int index3d, BlockPos blockPos, IList<Block> blockTypes)
+            {
+                throw new NotImplementedException();
+            }
+
+            public Block GetLocalBlockAtBlockPos(IWorldAccessor world, int posX, int posY, int posZ, int layer)
             {
                 throw new NotImplementedException();
             }
@@ -549,17 +558,17 @@ namespace Vintagestory.GameContent
 
 			if (resultsOrderedDesc.Count == 0)
 			{
-				splr.SendMessage(GlobalConstants.InfoLogChatGroup, Lang.Get("No ore node nearby"), EnumChatType.Notification);
+				splr.SendMessage(GlobalConstants.InfoLogChatGroup, Lang.GetL(splr.LanguageCode, "No ore node nearby"), EnumChatType.Notification);
 			} else
 			{
-				splr.SendMessage(GlobalConstants.InfoLogChatGroup, Lang.Get("Found the following ore nodes"), EnumChatType.Notification);
+				splr.SendMessage(GlobalConstants.InfoLogChatGroup, Lang.GetL(splr.LanguageCode, "Found the following ore nodes"), EnumChatType.Notification);
 				foreach (var val in resultsOrderedDesc)
 				{
-					string orename = Lang.Get(val.Key);
+					string orename = Lang.GetL(splr.LanguageCode, val.Key);
 
-					string resultText = Lang.Get(resultTextByQuantity(val.Value), Lang.Get(val.Key));
+					string resultText = Lang.GetL(splr.LanguageCode, resultTextByQuantity(val.Value), Lang.Get(val.Key));
 
-					splr.SendMessage(GlobalConstants.InfoLogChatGroup, Lang.Get(resultText, orename), EnumChatType.Notification);
+					splr.SendMessage(GlobalConstants.InfoLogChatGroup, Lang.GetL(splr.LanguageCode, resultText, orename), EnumChatType.Notification);
 				}
 			}
 		}
@@ -619,7 +628,7 @@ namespace Vintagestory.GameContent
                 itemslot.Itemstack.Attributes["probePositions"] = attr = new IntArrayAttribute();
                 attr.AddInt(blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z);
 
-                splr.SendMessage(GlobalConstants.InfoLogChatGroup, Lang.Get("Ok, need 2 more samples"), EnumChatType.Notification);
+                splr.SendMessage(GlobalConstants.InfoLogChatGroup, Lang.GetL(splr.LanguageCode, "Ok, need 2 more samples"), EnumChatType.Notification);
             }
             else
             {
@@ -652,7 +661,7 @@ namespace Vintagestory.GameContent
 
                         if (mindist > 20)
                         {
-                            splr.SendMessage(GlobalConstants.InfoLogChatGroup, Lang.Get("Sample too far away from initial reading. Sampling around this point now, need 2 more samples."), EnumChatType.Notification);
+                            splr.SendMessage(GlobalConstants.InfoLogChatGroup, Lang.GetL(splr.LanguageCode, "Sample too far away from initial reading. Sampling around this point now, need 2 more samples."), EnumChatType.Notification);
                             attr.value = new int[] { blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z };
                             return;
                         }
@@ -662,7 +671,7 @@ namespace Vintagestory.GameContent
                 if (requiredSamples > 0)
                 {
                     int q = (int)Math.Ceiling(requiredSamples);
-                    splr.SendMessage(GlobalConstants.InfoLogChatGroup, q > 1 ? Lang.Get("propick-xsamples", q) : Lang.Get("propick-1sample"), EnumChatType.Notification);
+                    splr.SendMessage(GlobalConstants.InfoLogChatGroup, q > 1 ? Lang.GetL(splr.LanguageCode, "propick-xsamples", q) : Lang.GetL(splr.LanguageCode, "propick-1sample"), EnumChatType.Notification);
                 }
                 else
                 {
@@ -676,7 +685,7 @@ namespace Vintagestory.GameContent
         }
 
 
-		protected virtual void PrintProbeResults(IWorldAccessor world, IServerPlayer byPlayer, ItemSlot itemslot, BlockPos pos)
+		protected virtual void PrintProbeResults(IWorldAccessor world, IServerPlayer splr, ItemSlot itemslot, BlockPos pos)
         {
             DepositVariant[] deposits = api.ModLoader.GetModSystem<GenDeposits>()?.Deposits;
             if (deposits == null) return;
@@ -713,7 +722,7 @@ namespace Vintagestory.GameContent
 
 				if (!ppws.depositsByCode.ContainsKey(val.Key))
 				{
-					string text = Lang.Get("propick-reading-unknown", val.Key);
+					string text = Lang.GetL(splr.LanguageCode, "propick-reading-unknown", val.Key);
 					readouts.Add(new KeyValuePair<double, string>(1, text));
 					continue;
 				}
@@ -725,7 +734,7 @@ namespace Vintagestory.GameContent
                 if (totalFactor > 0.025)
                 {
                     string pageCode = ppws.pageCodes[val.Key];
-                    string text = Lang.Get("propick-reading", Lang.Get(names[(int)GameMath.Clamp(totalFactor * 7.5f, 0, 5)]), pageCode, Lang.Get("ore-"+val.Key), ppt.ToString("0.#"));
+                    string text = Lang.GetL(splr.LanguageCode, "propick-reading", Lang.GetL(splr.LanguageCode, names[(int)GameMath.Clamp(totalFactor * 7.5f, 0, 5)]), pageCode, Lang.GetL(splr.LanguageCode, "ore-" + val.Key), ppt.ToString("0.#"));
                     readouts.Add(new KeyValuePair<double, string>(totalFactor, text));
                 } else if (totalFactor > 0.002)
                 {
@@ -735,12 +744,11 @@ namespace Vintagestory.GameContent
 
             StringBuilder sb = new StringBuilder();
 
-            IServerPlayer splr = byPlayer as IServerPlayer;
             if (readouts.Count >= 0 || traceamounts.Count > 0)
             {
                 var elems = readouts.OrderByDescending(val => val.Key);
                 
-                sb.AppendLine(Lang.Get("propick-reading-title", readouts.Count));
+                sb.AppendLine(Lang.GetL(splr.LanguageCode, "propick-reading-title", readouts.Count));
                 foreach (var elem in elems) sb.AppendLine(elem.Value);
 
                 if (traceamounts.Count > 0)
@@ -751,18 +759,18 @@ namespace Vintagestory.GameContent
                     {
                         if (i > 0) sbTrace.Append(", ");
                         string pageCode = ppws.pageCodes[val];
-                        string text = string.Format("<a href=\"handbook://{0}\">{1}</a>", pageCode, Lang.Get("ore-" + val));
+                        string text = string.Format("<a href=\"handbook://{0}\">{1}</a>", pageCode, Lang.GetL(splr.LanguageCode, "ore-" + val));
                         sbTrace.Append(text);
                         i++;
                     }
 
-                    sb.Append(Lang.Get("Miniscule amounts of {0}", sbTrace.ToString()));
+                    sb.Append(Lang.GetL(splr.LanguageCode, "Miniscule amounts of {0}", sbTrace.ToString()));
                     sb.AppendLine();
                 }
             }
             else
             {
-                sb.Append(Lang.Get("propick-noreading"));
+                sb.Append(Lang.GetL(splr.LanguageCode, "propick-noreading"));
             }
 
             splr.SendMessage(GlobalConstants.InfoLogChatGroup, sb.ToString(), EnumChatType.Notification);
@@ -792,5 +800,18 @@ namespace Vintagestory.GameContent
 				toolModes[i]?.Dispose();
 			}
 		}
-	}
+
+        public override WorldInteraction[] GetHeldInteractionHelp(ItemSlot inSlot)
+        {
+            return new WorldInteraction[] { 
+                new WorldInteraction()
+                {
+                    ActionLangCode = Lang.Get("Change tool mode"),
+                    HotKeyCodes = new string[] { "toolmodeselect" },
+                    MouseButton = EnumMouseButton.None
+                }
+            };
+
+        }
+    }
 }

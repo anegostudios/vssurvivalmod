@@ -142,7 +142,7 @@ namespace Vintagestory.GameContent
 
                 BlockPos targetpos = blockSel.Position.AddCopy(blockSel.Face);
                 targetpos.Y--;
-                if (!world.BlockAccessor.GetSolidBlock(targetpos.X, targetpos.Y, targetpos.Z).CanAttachBlockAt(world.BlockAccessor, block, targetpos, BlockFacing.UP)) return;
+                if (!world.BlockAccessor.GetMostSolidBlock(targetpos.X, targetpos.Y, targetpos.Z).CanAttachBlockAt(world.BlockAccessor, block, targetpos, BlockFacing.UP)) return;
                 targetpos.Y++;
 
                 BlockSelection placeSel = blockSel.Clone();

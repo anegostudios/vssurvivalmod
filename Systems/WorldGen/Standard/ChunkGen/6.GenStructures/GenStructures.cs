@@ -93,13 +93,16 @@ namespace Vintagestory.ServerMods
 
             IAsset asset = api.Assets.Get("worldgen/structures.json");
             scfg = asset.ToObject<WorldGenStructuresConfig>();
+
+            shuffledStructures = new WorldGenStructure[scfg.Structures.Length];
+
             scfg.Init(api);
 
             asset = api.Assets.Get("worldgen/villages.json");
             vcfg = asset.ToObject<WorldGenVillageConfig>();
             vcfg.Init(api);
 
-            shuffledStructures = new WorldGenStructure[scfg.Structures.Length];
+            
         }
 
         private void OnChunkColumnGenPostPass(IServerChunk[] chunks, int chunkX, int chunkZ, ITreeAttribute chunkGenParams = null)

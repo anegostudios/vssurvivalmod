@@ -21,7 +21,7 @@ namespace Vintagestory.GameContent
         /// <summary>
         /// Applied to produce drop count when this is a wild crop
         /// </summary>
-        public static float WildCropDropMul = 0.5f;
+        public static float WildCropDropMul = 0.25f;
 
         public int CurrentCropStage
         {

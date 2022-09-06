@@ -93,7 +93,7 @@ namespace Vintagestory.GameContent
             dsc.AppendLine(Lang.Get("soil-nutrition-requirement") + cropBlock.CropProps.RequiredNutrient);
             dsc.AppendLine(Lang.Get("soil-nutrition-consumption") + cropBlock.CropProps.NutrientConsumption);
 
-            var totalDays = cropBlock.CropProps.TotalGrowthDays;
+            double totalDays = cropBlock.CropProps.TotalGrowthDays;
             if (totalDays > 0)
             {
                 var defaultTimeInMonths = totalDays / 12;
@@ -102,6 +102,8 @@ namespace Vintagestory.GameContent
             {
                 totalDays = cropBlock.CropProps.TotalGrowthMonths * world.Calendar.DaysPerMonth;
             }
+
+            totalDays /= api.World.Config.GetDecimal("cropGrowthRateMul", 1);
 
             dsc.AppendLine(Lang.Get("soil-growth-time") + Math.Round(totalDays, 1) + " days");
             dsc.AppendLine(Lang.Get("crop-coldresistance", Math.Round(cropBlock.CropProps.ColdDamageBelow, 1)));

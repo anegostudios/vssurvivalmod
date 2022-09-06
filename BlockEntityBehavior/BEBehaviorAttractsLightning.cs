@@ -74,6 +74,8 @@ namespace Vintagestory.GameContent
                 yDiff *= configProps.ElevationAttractivenessMultiplier;
             }
 
+            yDiff = GameMath.Min(40, yDiff);
+
             var posA = new Vec2d(Blockentity.Pos.X, Blockentity.Pos.Z);
             if (posA.DistanceTo(impactPos.X, impactPos.Z) > yDiff) return;
 

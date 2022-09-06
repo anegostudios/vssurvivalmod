@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -55,27 +56,28 @@ namespace Vintagestory.ServerMods
             }
         }
 
-
-
+        public override void AssetsFinalize(ICoreAPI api)
+        {
+            initAssets(api as ICoreServerAPI, true);
+        }
 
         private void OnWorldGenBlockAccessor(IChunkProviderThread chunkProvider)
         {
             blockAccessor = chunkProvider.GetBlockAccessor(true);
         }
 
-        public override void initWorldGen()
+        public void reloadWorldGen()
         {
-            initWorldGen(true);
+            initAssets(api, true);
+            initWorldGen();
         }
 
-        public void initWorldGen(bool blockCallbacks) {
-            base.initWorldGen();
-
+        public void initAssets(ICoreServerAPI api, bool blockCallbacks)
+        {
             chanceMultiplier = api.Assets.Get("worldgen/deposits.json").ToObject<Deposits>().ChanceMultiplier;
 
             Dictionary<AssetLocation, DepositVariant[]> depositFiles = api.Assets.GetMany<DepositVariant[]>(api.World.Logger, "worldgen/deposits/");
             List<DepositVariant> variants = new List<DepositVariant>();
-
 
             foreach (var val in depositFiles)
             {
@@ -100,22 +102,29 @@ namespace Vintagestory.ServerMods
 
             Deposits = variants.ToArray();
 
-            
             depositShapeDistortNoise = NormalizedSimplexNoise.FromDefaultOctaves(3, 1 / 10f, 0.9f, 1);
-
             regionSize = api.WorldManager.RegionSize;
-            
-            
-            int seed = api.WorldManager.Seed;
-            depositRand = new LCGRandom(api.WorldManager.Seed + 34613);
 
-            Dictionary<string, MapLayerBase> maplayersByCode = new Dictionary<string, MapLayerBase>();
+            depositRand = new LCGRandom(api.WorldManager.Seed + 34613);
 
             for (int i = 0; i < Deposits.Length; i++)
             {
                 DepositVariant variant = Deposits[i];
                 variant.addHandbookAttributes = addHandbookAttributes;
                 variant.Init(api, depositRand, depositShapeDistortNoise);
+            }
+        }
+
+        public override void initWorldGen()
+        {
+            base.initWorldGen();
+
+            int seed = api.WorldManager.Seed;
+            Dictionary<string, MapLayerBase> maplayersByCode = new Dictionary<string, MapLayerBase>();
+
+            for (int i = 0; i < Deposits.Length; i++)
+            {
+                DepositVariant variant = Deposits[i];
 
                 if (variant.WithOreMap)
                 {
@@ -138,7 +147,7 @@ namespace Vintagestory.ServerMods
             verticalDistortBottom = GenMaps.GetDepositVerticalDistort(seed + 12);
             verticalDistortTop = GenMaps.GetDepositVerticalDistort(seed + 28);
 
-            api.Logger.VerboseDebug("Initialised GenDeposits");
+            api.Logger?.VerboseDebug("Initialised GenDeposits");
         }
 
 
@@ -244,7 +253,8 @@ namespace Vintagestory.ServerMods
 
                 depoCenterPos.Y = originMapchunk.RainHeightMap[lz * chunksize + lx];
 
-                IntDataMap2D climateMap = blockAccessor.GetMapRegion(depoCenterPos.X / regionSize, depoCenterPos.Z / regionSize).ClimateMap;
+                IntDataMap2D climateMap = blockAccessor.GetMapRegion(depoCenterPos.X / regionSize, depoCenterPos.Z / regionSize)?.ClimateMap;
+                if (climateMap == null) return;
 
                 int noiseSizeClimate = climateMap.InnerSize;
                 float posXInRegionClimate = (float)depoCenterPos.X / regionSize % 1f * noiseSizeClimate;

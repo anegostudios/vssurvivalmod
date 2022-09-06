@@ -17,6 +17,7 @@ namespace Vintagestory.GameContent.Mechanics
 
         ICoreClientAPI capi;
         string orientations;
+        AssetLocation toggleStandLoc;
 
         public BEBehaviorMPToggle(BlockEntity blockentity) : base(blockentity)
         {
@@ -25,6 +26,13 @@ namespace Vintagestory.GameContent.Mechanics
         public override void Initialize(ICoreAPI api, JsonObject properties)
         {
             base.Initialize(api, properties);
+
+            toggleStandLoc = AssetLocation.Create("block/wood/mechanics/toggle-stand.json", Block.Code?.Domain);
+            if (Block.Attributes?["toggleStandLoc"].Exists == true)
+            {
+                toggleStandLoc = Block.Attributes?["toggleStandLoc"].AsObject<AssetLocation>();
+            }
+            toggleStandLoc.WithPathAppendixOnce(".json").WithPathPrefixOnce("shapes/");
 
             if (api.Side == EnumAppSide.Client)
             {
@@ -112,9 +120,9 @@ namespace Vintagestory.GameContent.Mechanics
 
         MeshData getStandMesh(string orient)
         {
-            return ObjectCacheUtil.GetOrCreate(Api, "toggle-" + orient + "-stand", () =>
+            return ObjectCacheUtil.GetOrCreate(Api, Block.Code + "-" + orient + "-stand", () =>
             {
-                Shape shape = API.Common.Shape.TryGet(capi, "shapes/block/wood/mechanics/toggle-stand.json");
+                Shape shape = API.Common.Shape.TryGet(capi, toggleStandLoc);
                 MeshData mesh;
                 capi.Tesselator.TesselateShape(Block, shape, out mesh);
 
@@ -125,8 +133,8 @@ namespace Vintagestory.GameContent.Mechanics
 
                 return mesh;
             });
-            
         }
+
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
         {

@@ -88,7 +88,7 @@ namespace Vintagestory.GameContent
         {
             Block nblock = chunkExtBlocks[extIndex3d + TileSideEnum.MoveIndex[TileSideEnum.Down]];
             if (nblock.SideSolid[BlockFacing.UP.Index]) return true;
-            nblock = api.World.BlockAccessor.GetLiquidBlock(pos.DownCopy());
+            nblock = api.World.BlockAccessor.GetBlock(pos.DownCopy(), BlockLayersAccess.Fluid);
             return nblock.SideSolid[BlockFacing.UP.Index];
         }
     }

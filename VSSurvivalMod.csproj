@@ -85,8 +85,8 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="0Harmony, Version=2.0.0.8, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Lib.Harmony.2.0.0.8\lib\net45\0Harmony.dll</HintPath>
+    <Reference Include="0Harmony, Version=2.2.2.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Lib.Harmony.2.2.2.0\lib\net45\0Harmony.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Newtonsoft.Json">
@@ -111,6 +111,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BlockBehavior\BehaviorRainDrip.cs" />
     <Compile Include="BlockBehavior\BehaviorWrenchOrientable.cs" />
     <Compile Include="BlockBehavior\BehaviorCanAttach.cs" />
     <Compile Include="BlockBehavior\BehaviorMyceliumHost.cs" />
@@ -141,6 +142,7 @@
     <Compile Include="BlockEntity\BEBookshelf.cs" />
     <Compile Include="BlockEntity\BEClutter.cs" />
     <Compile Include="BlockEntity\BELightningRod.cs" />
+    <Compile Include="BlockEntity\BEWildCrop.cs" />
     <Compile Include="BlockEntity\BlockEntityShapeFromAttributes.cs" />
     <Compile Include="BlockEntity\BERiftWard.cs" />
     <Compile Include="Block\BlockTermiteMound.cs" />

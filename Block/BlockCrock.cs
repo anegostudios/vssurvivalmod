@@ -71,7 +71,7 @@ namespace Vintagestory.GameContent
             return mul;
         }
 
-        string[] vegetableLabels = new string[] { "carrot", "cabbage", "onion", "parsnip", "turnip", "pumpkin", "soybean" };
+        string[] vegetableLabels = new string[] { "carrot", "cabbage", "onion", "parsnip", "turnip", "pumpkin", "soybean", "bellpepper", "cassava", "mushroom", "redmeat", "poultry", "porridge" };
 
         public AssetLocation LabelForContents(string recipeCode, ItemStack[] contents)
         {
@@ -87,9 +87,15 @@ namespace Vintagestory.GameContent
 
                 return AssetLocation.Create("shapes/block/clay/crock/label-meal.json", Code.Domain);
             }
+
             if (contents == null || contents.Length == 0 || contents[0] == null)
             {
                 return AssetLocation.Create("shapes/block/clay/crock/label-empty.json", Code.Domain);
+            }
+
+            if (MealMeshCache.ContentsRotten(contents))
+            {
+                return AssetLocation.Create("shapes/block/clay/crock/label-rot.json", Code.Domain);
             }
 
             label = CodeToLabel(contents[0].Collectible.Code) ?? "empty";

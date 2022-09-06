@@ -297,6 +297,15 @@ namespace Vintagestory.GameContent
         }
 
 
+        public EnumIgniteState GetIgnitableState(float secondsIgniting)
+        {
+            if (fuelSlot.Empty) return EnumIgniteState.NotIgnitablePreventDefault;
+            if (IsBurning) return EnumIgniteState.NotIgnitablePreventDefault;
+
+            return secondsIgniting > 3 ? EnumIgniteState.IgniteNow : EnumIgniteState.Ignitable;
+        }
+
+
 
 
         public float changeTemperature(float fromTemp, float toTemp, float dt)
@@ -563,33 +572,39 @@ namespace Vintagestory.GameContent
 
         public override bool OnPlayerRightClick(IPlayer byPlayer, BlockSelection blockSel)
         {
-            if (Api.World is IServerWorldAccessor)
+            if (Api.Side == EnumAppSide.Client)
             {
-                byte[] data;
-
-                using (MemoryStream ms = new MemoryStream())
-                {
-                    BinaryWriter writer = new BinaryWriter(ms);
-                    writer.Write("BlockEntityStove");
-                    writer.Write(DialogTitle);
-                    TreeAttribute tree = new TreeAttribute();
-                    inventory.ToTreeAttributes(tree);
-                    tree.ToBytes(writer);
-                    data = ms.ToArray();
-                }
-
-                ((ICoreServerAPI)Api).Network.SendBlockEntityPacket(
-                    (IServerPlayer)byPlayer,
-                    Pos.X, Pos.Y, Pos.Z,
-                    (int)EnumBlockStovePacket.OpenGUI,
-                    data
-                );
-
-                byPlayer.InventoryManager.OpenInventory(inventory);
+                toggleInventoryDialogClient(byPlayer, () => {
+                    SyncedTreeAttribute dtree = new SyncedTreeAttribute();
+                    SetDialogValues(dtree);
+                    clientDialog = new GuiDialogBlockEntityFirepit(DialogTitle, Inventory, Pos, dtree, Api as ICoreClientAPI);
+                    return clientDialog;
+                 });
             }
 
             return true;
         }
+
+
+
+
+        public override void OnReceivedClientPacket(IPlayer player, int packetid, byte[] data)
+        {
+            base.OnReceivedClientPacket(player, packetid, data);
+        }
+
+        public override void OnReceivedServerPacket(int packetid, byte[] data)
+        {
+            if (packetid == (int)EnumBlockEntityPacketId.Close)
+            {
+                (Api.World as IClientWorldAccessor).Player.InventoryManager.CloseInventory(Inventory);
+                invDialog?.TryClose();
+                invDialog?.Dispose();
+                invDialog = null;
+            }
+        }
+
+
 
 
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
@@ -723,8 +738,6 @@ namespace Vintagestory.GameContent
         {
             base.OnBlockRemoved();
 
-            
-
             renderer?.Dispose();
             renderer = null;
 
@@ -742,69 +755,6 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void OnReceivedClientPacket(IPlayer player, int packetid, byte[] data)
-        {
-            if (packetid < 1000)
-            {
-                Inventory.InvNetworkUtil.HandleClientPacket(player, packetid, data);
-
-                // Tell server to save this chunk to disk again
-                Api.World.BlockAccessor.GetChunkAtBlockPos(Pos.X, Pos.Y, Pos.Z).MarkModified();
-
-                return;
-            }
-
-            if (packetid == (int)EnumBlockStovePacket.CloseGUI)
-            {
-                if (player.InventoryManager != null)
-                {
-                    player.InventoryManager.CloseInventory(Inventory);
-                }
-            }
-        }
-
-        public override void OnReceivedServerPacket(int packetid, byte[] data)
-        {
-            if (packetid == (int)EnumBlockStovePacket.OpenGUI)
-            {
-                using (MemoryStream ms = new MemoryStream(data))
-                {
-                    BinaryReader reader = new BinaryReader(ms);
-
-                    string dialogClassName = reader.ReadString();
-                    string dialogTitle = reader.ReadString();
-
-                    TreeAttribute tree = new TreeAttribute();
-                    tree.FromBytes(reader);
-                    Inventory.FromTreeAttributes(tree);
-                    Inventory.ResolveBlocksOrItems();
-
-                    IClientWorldAccessor clientWorld = (IClientWorldAccessor)Api.World;
-
-                    SyncedTreeAttribute dtree = new SyncedTreeAttribute();
-                    SetDialogValues(dtree);
-
-                    if (clientDialog != null)
-                    {
-                        clientDialog.TryClose();
-                        clientDialog = null;
-                    } else
-                    {
-                        clientDialog = new GuiDialogBlockEntityFirepit(dialogTitle, Inventory, Pos, dtree, Api as ICoreClientAPI);
-                        clientDialog.OnClosed += () => { clientDialog?.Dispose(); clientDialog = null; };
-                        clientDialog.TryOpen();
-
-                    }
-
-                }
-            }
-
-            if (packetid == (int)EnumBlockEntityPacketId.Close)
-            {
-                IClientWorldAccessor clientWorld = (IClientWorldAccessor)Api.World;
-                clientWorld.Player.InventoryManager.CloseInventory(Inventory);
-            }
-        }
 
         #endregion
 

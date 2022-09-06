@@ -113,7 +113,7 @@ namespace Vintagestory.GameContent
                 tmpPos.Set((int)(entity.ServerPos.X + dx), 0, (int)(entity.ServerPos.Z + dz));
                 tmpPos.Y = entity.World.BlockAccessor.GetTerrainMapheightAt(tmpPos) + i;
 
-                Block liquidBlock = entity.World.BlockAccessor.GetLiquidBlock(tmpPos);
+                Block liquidBlock = entity.World.BlockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid);
                 if (liquidBlock.BlockId != 0) continue;   // If it's non-zero, the target is currently underwater or encased in ice!
 
                 Block block = entity.World.BlockAccessor.GetBlock(tmpPos);

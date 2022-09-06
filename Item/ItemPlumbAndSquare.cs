@@ -67,6 +67,9 @@ namespace Vintagestory.GameContent
 
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
+            base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handling);
+            if (handling == EnumHandHandling.PreventDefault) return;
+
             if (byEntity.World.Side == EnumAppSide.Client)
             {
                 handling = EnumHandHandling.PreventDefaultAction;
@@ -203,7 +206,7 @@ namespace Vintagestory.GameContent
 
         private LoadedTexture FetchOrCreateTexture(int seed)
         {
-            if (symbols.Count <= seed) return symbols[seed - 1];
+            if (symbols.Count >= seed) return symbols[seed - 1];
 
             var newTexture = GenTexture(seed, seed);
             symbols.Add(newTexture);

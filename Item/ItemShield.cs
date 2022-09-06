@@ -15,13 +15,15 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class ItemShield : Item, ITexPositionSource
+    public class ItemShield : Item, ITexPositionSource, IContainedMeshSource
     {
         float offY;
         float curOffY = 0;
         ICoreClientAPI capi;
 
-        public Size2i AtlasSize => capi.BlockTextureAtlas.Size;
+        ITextureAtlasAPI targetAtlas;
+
+        public Size2i AtlasSize => targetAtlas.Size;
 
         Dictionary<string, AssetLocation> tmpTextures = new Dictionary<string, AssetLocation>();
 
@@ -41,15 +43,14 @@ namespace Vintagestory.GameContent
 
         protected TextureAtlasPosition getOrCreateTexPos(AssetLocation texturePath)
         {
-            TextureAtlasPosition texpos = capi.ItemTextureAtlas[texturePath];
+            TextureAtlasPosition texpos = targetAtlas[texturePath];
 
             if (texpos == null)
             {
                 IAsset texAsset = capi.Assets.TryGet(texturePath.Clone().WithPathPrefixOnce("textures/").WithPathAppendixOnce(".png"));
                 if (texAsset != null)
                 {
-                    BitmapRef bmp = texAsset.ToBitmap(capi);
-                    capi.ItemTextureAtlas.InsertTextureCached(texturePath, bmp, out _, out texpos);
+                    targetAtlas.GetOrInsertTexture(texturePath, out _, out texpos, () => texAsset.ToBitmap(capi));
                 }
                 else
                 {
@@ -97,12 +98,9 @@ namespace Vintagestory.GameContent
             List<JsonItemStack> stacks = new List<JsonItemStack>();
 
             var vg = Attributes["variantGroups"].AsObject<Dictionary<string, string[]>>();
-            bool goldSilver;
 
             foreach (var metal in vg["metal"])
             {
-                goldSilver = metal == "gold" || metal == "silver";
-
                 switch (Construction)
                 {
                     case "woodmetal":
@@ -110,22 +108,13 @@ namespace Vintagestory.GameContent
                         {
                             stacks.Add(genJstack(string.Format("{{ wood: \"{0}\", metal: \"{1}\", deco: \"none\" }}", wood, metal)));
                         }
-
-                        if (goldSilver)
-                        {
-                            foreach (var color in vg["color"])
-                            {
-                                if (color == "redblack") continue;
-                                stacks.Add(genJstack(string.Format("{{ wood: \"{0}\", metal: \"{1}\", color: \"{2}\", deco: \"ornate\" }}", "generic", metal, color)));
-                            }
-                        }
                         break;
 
                     case "woodmetalleather":
                         foreach (var color in vg["color"])
                         {
                             stacks.Add(genJstack(string.Format("{{ wood: \"{0}\", metal: \"{1}\", color: \"{2}\", deco: \"none\" }}", "generic", metal, color)));
-                            if (goldSilver && color != "redblack") stacks.Add(genJstack(string.Format("{{ wood: \"{0}\", metal: \"{1}\", color: \"{2}\", deco: \"ornate\" }}", "generic", metal, color)));
+                            if (color != "redblack") stacks.Add(genJstack(string.Format("{{ wood: \"{0}\", metal: \"{1}\", color: \"{2}\", deco: \"ornate\" }}", "generic", metal, color)));
                         }
                         break;
 
@@ -135,7 +124,7 @@ namespace Vintagestory.GameContent
                         foreach (var color in vg["color"])
                         {
                             
-                            if (goldSilver && color != "redblack") stacks.Add(genJstack(string.Format("{{ wood: \"{0}\", metal: \"{1}\", color: \"{2}\", deco: \"ornate\" }}", "generic", metal, color)));
+                            if (color != "redblack") stacks.Add(genJstack(string.Format("{{ wood: \"{0}\", metal: \"{1}\", color: \"{2}\", deco: \"ornate\" }}", "generic", metal, color)));
                         }
 
                         break;
@@ -144,7 +133,7 @@ namespace Vintagestory.GameContent
 
             this.CreativeInventoryStacks = new CreativeTabAndStackList[]
             {
-                new CreativeTabAndStackList() { Stacks = stacks.ToArray(), Tabs = new string[]{ "general", "decorative" } }
+                new CreativeTabAndStackList() { Stacks = stacks.ToArray(), Tabs = new string[]{ "general", "items", "tools" } }
             };
         }
 
@@ -180,7 +169,7 @@ namespace Vintagestory.GameContent
             if (meshrefid == 0 || !meshrefs.TryGetValue(meshrefid, out renderinfo.ModelRef))
             {
                 int id = meshrefs.Count+1;
-                var modelref = capi.Render.UploadMesh(GenMesh(itemstack));
+                var modelref = capi.Render.UploadMesh(GenMesh(itemstack, capi.ItemTextureAtlas));
                 renderinfo.ModelRef = meshrefs[id] = modelref;
 
                 itemstack.TempAttributes.SetInt("meshRefId", id);
@@ -191,8 +180,10 @@ namespace Vintagestory.GameContent
 
 
 
-        public MeshData GenMesh(ItemStack itemstack)
+        public MeshData GenMesh(ItemStack itemstack, ITextureAtlasAPI targetAtlas)
         {
+            this.targetAtlas = targetAtlas;
+
             MeshData mesh;
             tmpTextures.Clear();
 
@@ -205,12 +196,22 @@ namespace Vintagestory.GameContent
 
             if (wood == null && metal == null && Construction != "crude" && Construction != "blackguard") return new MeshData();
 
+            if (wood == null || wood == "") wood = "generic";
+
             tmpTextures["front"] = tmpTextures["back"] = tmpTextures["handle"] = new AssetLocation("block/wood/planks/generic.png");
+
+            var shape = capi.TesselatorManager.GetCachedShape(this.Shape.Base);
+
+            foreach (var ctex in shape.Textures)
+            {
+                tmpTextures[ctex.Key] = ctex.Value;
+            }
 
             switch (Construction)
             {
                 case "crude":
-                    texSource = capi.Tesselator.GetTextureSource(this);
+                    break;
+                case "blackguard":
                     break;
                 case "woodmetal":
                     if (wood != "generic")
@@ -248,9 +249,6 @@ namespace Vintagestory.GameContent
                         tmpTextures["front"] = new AssetLocation("item/tool/shield/ornate/" + color + ".png");
                     }
                     break;
-                case "blackguard":
-                    texSource = capi.Tesselator.GetTextureSource(this);
-                    break;
             }
 
             capi.Tesselator.TesselateItem(this, out mesh, texSource);
@@ -275,11 +273,15 @@ namespace Vintagestory.GameContent
                     {
                         return ornate ? Lang.Get("Ornate wooden shield") : Lang.Get("Wooden shield");
                     }
+                    if (wood == "aged")
+                    {
+                        return ornate ? Lang.Get("Aged ornate shield") : Lang.Get("Aged wooden shield");
+                    }
                     return ornate ? Lang.Get("Ornate {0} shield", Lang.Get("material-" + wood)) : Lang.Get("{0} shield", Lang.Get("material-" + wood));
                 case "woodmetalleather":
                     return ornate ? Lang.Get("Ornate leather reinforced wooden shield") : Lang.Get("Leather reinforced wooden shield");
                 case "metal":
-                    return ornate ? Lang.Get("{0} Ornate {1} shield", Lang.Get("color-" + color), Lang.Get("material-" + metal)) : Lang.Get("{0} shield", Lang.Get("material-" + metal));
+                    return ornate ? Lang.Get("shield-ornatemetal", Lang.Get("color-" + color), Lang.Get("material-" + metal)) : Lang.Get("shield-withmaterial", Lang.Get("material-" + metal));
                 case "blackguard":
                     return Lang.Get("Blackguard shield");
             }
@@ -317,6 +319,21 @@ namespace Vintagestory.GameContent
             }
 
             
+        }
+
+        public MeshData GenMesh(ItemStack itemstack, ITextureAtlasAPI targetAtlas, BlockPos atBlockPos)
+        {
+            return GenMesh(itemstack, targetAtlas);
+        }
+
+        public string GetMeshCacheKey(ItemStack itemstack)
+        {
+            string wood = itemstack.Attributes.GetString("wood");
+            string metal = itemstack.Attributes.GetString("metal");
+            string color = itemstack.Attributes.GetString("color");
+            string deco = itemstack.Attributes.GetString("deco");
+
+            return Code.ToShortString() + "-" + wood + "-" + metal + "-" + color + "-" + deco;
         }
     }
 }

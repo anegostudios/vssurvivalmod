@@ -30,8 +30,9 @@ namespace Vintagestory.GameContent
             WaterParticles.SizeEvolve = new EvolvingNatFloat(EnumTransformFunction.LINEAR, -1f);
             WaterParticles.ClimateColorMap = "climateWaterTint";
             WaterParticles.AddQuantity = 1;
-        }
-        
+
+            CapacitySeconds = Attributes?["capacitySeconds"].AsFloat(32) ?? 32;
+        }       
 
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handHandling)
         {
@@ -44,7 +45,7 @@ namespace Vintagestory.GameContent
             IPlayer byPlayer = null;
             if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
 
-            Block block = byEntity.World.BlockAccessor.GetLiquidBlock(blockSel.Position);
+            Block block = byEntity.World.BlockAccessor.GetBlock(blockSel.Position, BlockLayersAccess.Fluid);
             if (block.LiquidCode == "water")
             {
                 BlockPos pos = blockSel.Position;
@@ -218,7 +219,7 @@ namespace Vintagestory.GameContent
             bool notOnSolidblock = false;
             if (block.CollisionBoxes == null || block.CollisionBoxes.Length == 0)
             {
-                block = world.BlockAccessor.GetLiquidBlock(blockSel.Position);
+                block = world.BlockAccessor.GetBlock(blockSel.Position, BlockLayersAccess.Fluid);
                 if ((block.CollisionBoxes == null || block.CollisionBoxes.Length == 0) && !block.IsLiquid())
                 {
                     notOnSolidblock = true;

@@ -90,9 +90,11 @@ namespace Vintagestory.GameContent
 
             GrassTick tick = extra as GrassTick;
             world.BlockAccessor.SetBlock(tick.Grass.BlockId, pos);
-            if (tick.TallGrass != null && world.BlockAccessor.GetBlock(pos.UpCopy()).BlockId == 0)
+            BlockPos upPos = pos.UpCopy();
+
+            if (tick.TallGrass != null && world.BlockAccessor.GetBlock(upPos).BlockId == 0)
             {
-                world.BlockAccessor.SetBlock(tick.TallGrass.BlockId, pos.UpCopy());
+                world.BlockAccessor.SetBlock(tick.TallGrass.BlockId, upPos);
             }
         }
 
@@ -136,7 +138,7 @@ namespace Vintagestory.GameContent
 
         protected bool isSmotheringBlock(IWorldAccessor world, BlockPos pos)
         {
-            Block block = world.BlockAccessor.GetLiquidBlock(pos);
+            Block block = world.BlockAccessor.GetBlock(pos, BlockLayersAccess.Fluid);
             if (block is BlockLakeIce || block.LiquidLevel > 1) return true;
             block = world.BlockAccessor.GetBlock(pos);
             return block.SideSolid[BlockFacing.DOWN.Index] && block.SideOpaque[BlockFacing.DOWN.Index] || block is BlockLava;

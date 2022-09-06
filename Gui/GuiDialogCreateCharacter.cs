@@ -229,67 +229,12 @@ namespace Vintagestory.GameContent
                 changeClass(0);
             }
 
-            /*if (curTab == 2) {
-
-                ElementBounds leftPrevButtonBounds = ElementBounds.Fixed(0, ypos + 52, 19, slotsize - 4).WithFixedPadding(2);
-                ElementBounds leftNextButtonBounds = ElementBounds.Fixed(0, ypos + 52, 19, slotsize - 4).WithFixedPadding(2).FixedRightOf(leftPrevButtonBounds, 6);
-
-                ElementBounds leftSlotBounds = ElementStdBounds.SlotGrid(EnumDialogArea.None, 0, ypos, 1, rows).FixedGrow(2 * pad, 2 * pad).FixedRightOf(leftNextButtonBounds, 8);
-                insetSlotBounds = ElementBounds.Fixed(0, ypos + 25, 220, leftSlotBounds.fixedHeight - 2 * pad - 4 + 25).FixedRightOf(leftSlotBounds, 10);
-                ElementBounds rightSlotBounds = ElementStdBounds.SlotGrid(EnumDialogArea.None, 0, ypos, 1, rows).FixedGrow(2 * pad, 2 * pad).FixedRightOf(insetSlotBounds, 10);
-
-                ElementBounds rightPrevButtonBounds = ElementBounds.Fixed(20, ypos + 1, 19, slotsize - 4).WithFixedPadding(2).FixedRightOf(rightSlotBounds, 6);
-                ElementBounds rightNextButtonBounds = ElementBounds.Fixed(20, ypos + 1, 19, slotsize - 4).WithFixedPadding(2).FixedRightOf(rightPrevButtonBounds, 6);
-
-
-
-                Composers["createcharacter"]
-                    .AddItemSlotGrid(characterInv, SendInvPacket, 1, new int[] { 0, 1, 2, 11, 3, 4 }, leftSlotBounds, "leftSlots")
-
-                        // Shoulder
-                        .AddIconButton("left", (on) => OnPrevious(1), leftPrevButtonBounds.FlatCopy())
-                        .AddIconButton("right", (on) => OnNext(1), leftNextButtonBounds.FlatCopy())
-
-                        // Upper body 
-                        .AddIconButton("left", (on) => OnPrevious(2), leftPrevButtonBounds = leftPrevButtonBounds.BelowCopy(0, 3))
-                        .AddIconButton("right", (on) => OnNext(2), leftNextButtonBounds = leftNextButtonBounds.BelowCopy(0, 3))
-
-                        // Trousers
-                        .AddIconButton("left", (on) => OnPrevious(3), leftPrevButtonBounds = leftPrevButtonBounds.BelowCopy(0, 3).BelowCopy(0, 3))
-                        .AddIconButton("right", (on) => OnNext(3), leftNextButtonBounds = leftNextButtonBounds.BelowCopy(0, 3).BelowCopy(0, 3))
-
-                        // Shoes
-                        .AddIconButton("left", (on) => OnPrevious(4), leftPrevButtonBounds = leftPrevButtonBounds.BelowCopy(0, 3))
-                        .AddIconButton("right", (on) => OnNext(4), leftNextButtonBounds = leftNextButtonBounds.BelowCopy(0, 3))
-
-                        // Gloves (on the right)
-                        //  .AddIconButton("left", (on) => OnPrevious(5), rightPrevButtonBounds = rightPrevButtonBounds.BelowCopy(0, 3).BelowCopy(0, 3).BelowCopy(0, 3).BelowCopy(0, 3))
-                        // .AddIconButton("right", (on) => OnNext(5), rightNextButtonBounds = rightNextButtonBounds.BelowCopy(0, 3).BelowCopy(0, 3).BelowCopy(0, 3).BelowCopy(0, 3))
-
-                        .AddInset(insetSlotBounds, 2)
-                        //.AddItemSlotGrid(characterInv, SendInvPacket, 1, new int[] { 6, 7, 8, 10, 5, 9 }, rightSlotBounds, "rightSlots")
-
-                        .AddSmallButton(Lang.Get("Randomize"), OnRandomizeClothes, ElementBounds.Fixed(0, 0).FixedUnder(rightSlotBounds, 20).WithAlignment(EnumDialogArea.LeftFixed).WithFixedPadding(10, 4), EnumButtonStyle.Normal, EnumTextOrientation.Center)
-                        .AddSmallButton(Lang.Get("Confirm Selection"), OnConfirm, ElementBounds.Fixed(0, 0).FixedUnder(rightSlotBounds, 20).WithAlignment(EnumDialogArea.RightFixed).WithFixedPadding(10, 4), EnumButtonStyle.Normal, EnumTextOrientation.Center)
-
-                    .EndChildElements()
-                ;
-            }*/
-
-
             var tabElem = Composers["createcharacter"].GetHorizontalTabs("tabs");
             tabElem.unscaledTabSpacing = 20;
             tabElem.unscaledTabPadding = 10;
             tabElem.activeElement = curTab;
 
             Composers["createcharacter"].Compose();
-
-
-            /*if (curTab == 2)
-            {
-                Composers["createcharacter"].GetSlotGrid("leftSlots").CanClickSlot = (slotid) => { return false; };
-                //Composers["createcharacter"].GetSlotGrid("rightSlots").CanClickSlot = (slotid) => { return false; };
-            }*/
         }
 
         private void OnToggleDressOnOff(bool on)

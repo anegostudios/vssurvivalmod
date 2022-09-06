@@ -200,20 +200,80 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void OnReceivedClientPacket(IPlayer fromPlayer, int packetid, byte[] data)
+        public void SealBarrel()
         {
-            if (packetid <= 1000)
+            if (Sealed) return;
+
+            Sealed = true;
+            SealedSinceTotalHours = Api.World.Calendar.TotalHours;
+            MarkDirty(true);
+        }
+
+
+
+
+        public void OnPlayerRightClick(IPlayer byPlayer)
+        {
+            if (Sealed) return;
+
+            FindMatchingRecipe();
+
+            if (Api.Side == EnumAppSide.Client)
             {
-                inventory.InvNetworkUtil.HandleClientPacket(fromPlayer, packetid, data);
+                toggleInventoryDialogClient(byPlayer);
+            }
+        }
+
+
+        protected void toggleInventoryDialogClient(IPlayer byPlayer)
+        {
+            if (invDialog == null)
+            {
+                ICoreClientAPI capi = Api as ICoreClientAPI;
+                invDialog = new GuiDialogBarrel("Barrel", Inventory, Pos, Api as ICoreClientAPI);
+                invDialog.OnClosed += () =>
+                {
+                    invDialog = null;
+                    capi.Network.SendBlockEntityPacket(Pos.X, Pos.Y, Pos.Z, (int)EnumBlockEntityPacketId.Close, null);
+                    capi.Network.SendPacketClient(Inventory.Close(byPlayer));
+                };
+                invDialog.OpenSound = AssetLocation.Create("sounds/block/barrelopen", Block.Code.Domain);
+                invDialog.CloseSound = AssetLocation.Create("sounds/block/barrelclose", Block.Code.Domain);
+
+                invDialog.TryOpen();
+                capi.Network.SendPacketClient(Inventory.Open(byPlayer));
+                capi.Network.SendBlockEntityPacket(Pos.X, Pos.Y, Pos.Z, (int)EnumBlockEntityPacketId.Open, null);
+            }
+            else
+            {
+                invDialog.TryClose();
+            }
+        }
+
+        public override void OnReceivedClientPacket(IPlayer player, int packetid, byte[] data)
+        {
+            base.OnReceivedClientPacket(player, packetid, data);
+
+            if (packetid < 1000)
+            {
+                Inventory.InvNetworkUtil.HandleClientPacket(player, packetid, data);
+
+                // Tell server to save this chunk to disk again
+                Api.World.BlockAccessor.GetChunkAtBlockPos(Pos.X, Pos.Y, Pos.Z).MarkModified();
+
+                return;
             }
 
             if (packetid == (int)EnumBlockEntityPacketId.Close)
             {
-                if (fromPlayer.InventoryManager != null)
-                {
-                    fromPlayer.InventoryManager.CloseInventory(Inventory);
-                }
+                player.InventoryManager?.CloseInventory(Inventory);
             }
+
+            if (packetid == (int)EnumBlockEntityPacketId.Open)
+            {
+                player.InventoryManager?.OpenInventory(Inventory);
+            }
+
 
             if (packetid == 1337)
             {
@@ -234,56 +294,6 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public void SealBarrel()
-        {
-            if (Sealed) return;
-
-            Sealed = true;
-            SealedSinceTotalHours = Api.World.Calendar.TotalHours;
-            MarkDirty(true);
-        }
-
-
-        public void OnBlockInteract(IPlayer byPlayer)
-        {
-            if (Sealed) return;
-
-            FindMatchingRecipe();
-
-            if (Api.Side == EnumAppSide.Client)
-            {
-                if (invDialog == null)
-                {
-                    invDialog = new GuiDialogBarrel("Barrel", Inventory, Pos, Api as ICoreClientAPI);
-                    invDialog.OnClosed += () =>
-                    {
-                        invDialog = null;
-                        (Api as ICoreClientAPI).Network.SendBlockEntityPacket(Pos.X, Pos.Y, Pos.Z, (int)EnumBlockEntityPacketId.Close, null);
-                        byPlayer.InventoryManager.CloseInventory(inventory);
-                    };
-
-                    if (invDialog.TryOpen())
-                    {
-                        Api.World.PlaySoundAt(AssetLocation.Create("sounds/block/barrelopen", Block.Code.Domain), Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5, byPlayer, false);
-                    }
-
-                    (Api as ICoreClientAPI).Network.SendPacketClient(inventory.Open(byPlayer));
-                }
-                else
-                {
-                    if (invDialog.TryClose())
-                    {
-                        Api.World.PlaySoundAt(AssetLocation.Create("sounds/block/barrelclose", Block.Code.Domain), Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5, byPlayer, false);
-                    }
-
-                    (Api as ICoreClientAPI).Network.SendPacketClient(inventory.Close(byPlayer));
-                }
-
-            } else
-            {
-                byPlayer.InventoryManager.OpenInventory(inventory);
-            }
-        }
 
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {

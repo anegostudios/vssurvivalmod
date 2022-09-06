@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using Vintagestory.API;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
@@ -57,11 +56,18 @@ namespace Vintagestory.ServerMods
         {
             this.api = api;
 
+            api.Event.ServerRunPhase(EnumServerRunPhase.ModsAndConfigReady, loadGamePre);
             api.Event.InitWorldGenerator(initWorldGen, "standard");
             api.Event.ChunkColumnGeneration(OnChunkColumnGen, EnumWorldGenPass.Terrain, "standard");
         }
 
-
+        private void loadGamePre()
+        {
+            if (api.WorldManager.SaveGame.WorldType != "standard") return;
+            
+            TerraGenConfig.seaLevel = (int)(0.4313725490196078 * api.WorldManager.MapSizeY);
+            api.WorldManager.SetSeaLevel(TerraGenConfig.seaLevel);
+        }
 
         public void initWorldGen()
         {
@@ -100,8 +106,7 @@ namespace Vintagestory.ServerMods
 
             noiseTemp = new double[paddedNoiseWidth * paddedNoiseWidth * paddedNoiseHeight];
 
-            TerraGenConfig.seaLevel = (int)(0.4313725490196078 * api.WorldManager.MapSizeY);
-            api.WorldManager.SetSeaLevel(TerraGenConfig.seaLevel);
+            
 
             if (GameVersion.IsAtLeastVersion(api.WorldManager.SaveGame.CreatedGameVersion, "1.12.0-dev.1"))
             {
@@ -240,7 +245,7 @@ namespace Vintagestory.ServerMods
                             int posY = yN * lerpVer + y;
                             int chunkY = posY / chunksize;
                             int localY = posY % chunksize;
-                            IChunkBlocks chunkBlockData = chunks[chunkY].Blocks;
+                            IChunkBlocks chunkBlockData = chunks[chunkY].Data;
 
                             if (posY == 0)
                             {
@@ -330,7 +335,7 @@ namespace Vintagestory.ServerMods
                                                     blockId = waterID;
                                                 }
 
-                                                chunkBlockData.SetLiquid(ChunkIndex3d(lX, localY, lZ), blockId);
+                                                chunkBlockData.SetFluid(ChunkIndex3d(lX, localY, lZ), blockId);
                                             }
                                             else
                                             {

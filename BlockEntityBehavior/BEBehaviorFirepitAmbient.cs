@@ -84,7 +84,7 @@ namespace Vintagestory.GameContent
         {
             base.Initialize(api, properties);
 
-            if (Blockentity.Api.Side == EnumAppSide.Client)
+            if (Blockentity.Api.Side == EnumAppSide.Client && befirepit != null)
             {
                 Blockentity.RegisterGameTickListener(OnTick3s, 3000);
             }
