@@ -193,7 +193,7 @@ namespace Vintagestory.GameContent
                 {
                     nowTesselatingObj = stack.Collectible;
                     nowTesselatingShape = null;
-                    if (stack.Item.Shape != null)
+                    if (stack.Item.Shape?.Base != null)
                     {
                         nowTesselatingShape = capi.TesselatorManager.GetCachedShape(stack.Item.Shape.Base);
                     }

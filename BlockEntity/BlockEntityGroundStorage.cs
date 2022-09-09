@@ -529,7 +529,8 @@ namespace Vintagestory.GameContent
                     }
 
                 case EnumGroundStorageLayout.Quadrants:
-                    int pos = ((bs.HitPosition.X > 0.5) ? 2 : 0) + ((bs.HitPosition.Z > 0.5) ? 1 : 0);
+                    var hitPos = rotatedOffset(bs.HitPosition.ToVec3f(), MeshAngle);
+                    int pos = ((hitPos.X > 0.5) ? 2 : 0) + ((hitPos.Z > 0.5) ? 1 : 0);
                     return inventory[pos];
 
                 case EnumGroundStorageLayout.Stacking:

@@ -39,7 +39,7 @@ namespace Vintagestory.GameContent
         {
             if (petDurationS >= 0.6)
             {
-                Console.WriteLine("getting pet");
+                //Console.WriteLine("getting pet");
                 return false;
             }
 
@@ -53,7 +53,7 @@ namespace Vintagestory.GameContent
 
             if (byEntity is EntityPlayer && byEntity.Controls.RightMouseDown && byEntity.RightHandItemSlot.Empty && byEntity.Pos.DistanceTo(entity.Pos) < 1.2)
             {
-                Console.WriteLine(entity.World.Side + " " + petDurationS);
+                //Console.WriteLine(entity.World.Side + " " + petDurationS);
                 if (entity.World.ElapsedMilliseconds - lastPetTotalMs < 500)
                 {
                     petDurationS += (entity.World.ElapsedMilliseconds - lastPetTotalMs) / 1000f;

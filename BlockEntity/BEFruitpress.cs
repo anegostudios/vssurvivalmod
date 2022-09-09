@@ -241,31 +241,37 @@ namespace Vintagestory.GameContent
                 squeezeSoundPlayed = true;
             }
 
+            BlockLiquidContainerBase cntBlock = BucketSlot?.Itemstack?.Collectible as BlockLiquidContainerBase;
+
             if (Api.Side == EnumAppSide.Server && squeezeRel < 1 && totalHours - lastLiquidTransferTotalHours > 0.01)
             {
                 ItemStack liquidStack = juiceProps.LiquidStack.ResolvedItemstack;
                 liquidStack.StackSize = 999999;
-                BlockLiquidContainerBase cntBlock = BucketSlot?.Itemstack?.Collectible as BlockLiquidContainerBase;
+
+                float beforelitres = cntBlock.GetCurrentLitres(BucketSlot.Itemstack);
 
                 if (cntBlock != null && litresToTransfer > 0)
                 {
                     cntBlock.TryPutLiquid(BucketSlot.Itemstack, liquidStack, (float)litresToTransfer);
                 }
 
-                juiceableLitresLeft -= (float)litresToTransfer;
-                juiceableLitresTransfered += (float)litresToTransfer;
+                float litres = cntBlock.GetCurrentLitres(BucketSlot.Itemstack);
+                float actuallyTransfered = litres - beforelitres;
+
+                juiceableLitresLeft -= actuallyTransfered;
+                juiceableLitresTransfered += actuallyTransfered;
                 lastLiquidTransferTotalHours = totalHours;
                 MarkDirty(true);
             }
 
+
             if (juiceableLitresLeft <= 0.01)
             {
-                // Fugly hack to fix rounding errors
-                BlockLiquidContainerBase cntBlock = BucketSlot?.Itemstack?.Collectible as BlockLiquidContainerBase;
+                // Hack to fix rounding errors
                 if (cntBlock != null)
                 {
                     float litres = cntBlock.GetCurrentLitres(BucketSlot.Itemstack);
-                    cntBlock.SetCurrentLitres(BucketSlot.Itemstack, (float)Math.Round(10*litres)/10f);
+                    cntBlock.SetCurrentLitres(BucketSlot.Itemstack, (float)Math.Round(100 * litres) / 100f);
                 }
 
                 UnregisterGameTickListener(listenerId);

@@ -408,7 +408,10 @@ namespace Vintagestory.GameContent
 
             if (slotid == 0)
             {
-                inputGrindTime = 0.0f; //reset the progress to 0 if the item is removed.
+                if (InputSlot.Empty)
+                {
+                    inputGrindTime = 0.0f; // reset the progress to 0 if the item is removed.
+                }
                 MarkDirty();
 
                 if (clientDialog != null && clientDialog.IsOpened())

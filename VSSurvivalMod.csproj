@@ -473,7 +473,7 @@
     <Compile Include="Block\BlockTroughDoubleBlock.cs" />
     <Compile Include="Block\BlockBed.cs" />
     <Compile Include="Block\BlockBeehive.cs" />
-    <Compile Include="Block\BlockBigBerryBush.cs" />
+    <Compile Include="Block\BlockBerryBush.cs" />
     <Compile Include="Block\BlockBloomery.cs" />
     <Compile Include="Block\BlockBomb.cs" />
     <Compile Include="Block\BlockBucket.cs" />

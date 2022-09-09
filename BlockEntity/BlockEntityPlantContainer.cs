@@ -256,9 +256,11 @@ namespace Vintagestory.GameContent
                 return new Dictionary<string, MeshData[]>();
             });
 
+            float fillHeight = Block.Attributes["fillHeight"].AsFloat(0.4f);
+
             MeshData[] meshwithVariants;
             string containersize = this.ContainerSize;
-            string key = content?.ToString() + "-" + containersize;
+            string key = content?.ToString() + "-" + containersize + "f" + fillHeight;
 
             if (meshes.TryGetValue(key, out meshwithVariants))
             {
@@ -277,7 +279,7 @@ namespace Vintagestory.GameContent
             if (transform == null)
             {
                 transform = new ModelTransform().EnsureDefaultValues();
-                transform.Translation.Y = Block.Attributes["fillHeight"].AsFloat(0.4f);
+                transform.Translation.Y = fillHeight;
             }
 
             contentTexSource = content.Class == EnumItemClass.Block ? capi.Tesselator.GetTexSource(content.Block) : capi.Tesselator.GetTextureSource(content.Item);
