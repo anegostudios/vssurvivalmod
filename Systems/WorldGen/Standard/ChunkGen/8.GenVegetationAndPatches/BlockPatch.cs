@@ -123,7 +123,9 @@ namespace Vintagestory.ServerMods.NoObf
 
                         if (rockBlock != null)
                         {
-                            BlocksByRockType[rockBlock.BlockId] = new Block[] { api.World.GetBlock(rocktypedCode) };
+                            var block = api.World.GetBlock(rocktypedCode);
+
+                            BlocksByRockType[rockBlock.BlockId] = new Block[] { block };
                         }
                     }
                 }

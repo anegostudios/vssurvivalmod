@@ -17,6 +17,7 @@ namespace Vintagestory.ServerMods
             IAsset asset = api.Assets.Get("worldgen/geologicprovinces.json");
             provinces = asset.ToObject<GeologicProvinces>();
 
+            int mapsizey = api.WorldManager.MapSizeY;
 
             for (int i = 0; i < provinces.Variants.Length; i++)
             {
@@ -25,7 +26,7 @@ namespace Vintagestory.ServerMods
 
                 weightSum += provinces.Variants[i].Weight;
 
-                provinces.Variants[i].init();
+                provinces.Variants[i].init(mapsizey);
             }
             
         }

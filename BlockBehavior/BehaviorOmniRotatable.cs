@@ -323,6 +323,20 @@ namespace Vintagestory.ServerMods
 
             handling = EnumHandling.PreventDefault;
             BlockFacing newFacing = BlockFacing.HORIZONTALS_ANGLEORDER[((360 - angle) / 90 + curFacing.HorizontalAngleIndex) % 4];
+
+
+            if (rotateV4)
+            {
+                string v = block.Variant["v"];
+                if (angle == 90 && (curFacing == BlockFacing.WEST || curFacing == BlockFacing.EAST) || (angle == 270 && curFacing == BlockFacing.SOUTH))
+                {
+                    if (block.Variant["v"] == "left") v = "right";  
+                    if (block.Variant["v"] == "right") v = "left";
+                }
+
+                return block.CodeWithVariants(new string[] { "rot", "v" }, new string[] { newFacing.Code, v });
+            }
+
             return block.CodeWithVariant("rot", newFacing.Code);
         }
 

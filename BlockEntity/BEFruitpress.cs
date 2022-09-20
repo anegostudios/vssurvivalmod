@@ -247,16 +247,23 @@ namespace Vintagestory.GameContent
             {
                 ItemStack liquidStack = juiceProps.LiquidStack.ResolvedItemstack;
                 liquidStack.StackSize = 999999;
+                float actuallyTransfered;
 
-                float beforelitres = cntBlock.GetCurrentLitres(BucketSlot.Itemstack);
-
-                if (cntBlock != null && litresToTransfer > 0)
+                if (cntBlock != null)
                 {
-                    cntBlock.TryPutLiquid(BucketSlot.Itemstack, liquidStack, (float)litresToTransfer);
-                }
+                    float beforelitres = cntBlock.GetCurrentLitres(BucketSlot.Itemstack);
 
-                float litres = cntBlock.GetCurrentLitres(BucketSlot.Itemstack);
-                float actuallyTransfered = litres - beforelitres;
+                    if (litresToTransfer > 0)
+                    {
+                        cntBlock.TryPutLiquid(BucketSlot.Itemstack, liquidStack, (float)litresToTransfer);
+                    }
+
+                    float litres = cntBlock.GetCurrentLitres(BucketSlot.Itemstack);
+                    actuallyTransfered = litres - beforelitres;
+                } else
+                {
+                    actuallyTransfered = (float)litresToTransfer;
+                }
 
                 juiceableLitresLeft -= actuallyTransfered;
                 juiceableLitresTransfered += actuallyTransfered;

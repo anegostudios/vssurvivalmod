@@ -24,8 +24,10 @@ namespace Vintagestory.ServerMods.NoObf
 
         public GeologicProvinceRockStrata[] RockStrataIndexed;
 
-        public void init()
+        public void init(int mapsizey)
         {
+            float mul = mapsizey / 256f;
+
             RockStrataIndexed = new GeologicProvinceRockStrata[Enum.GetValues(typeof(EnumRockGroup)).Length];
 
             foreach (var val in Enum.GetValues(typeof(EnumRockGroup)))
@@ -34,7 +36,8 @@ namespace Vintagestory.ServerMods.NoObf
 
                 if (Rockstrata.ContainsKey(""+val))
                 {
-                    RockStrataIndexed[(int)val] = Rockstrata["" + val];
+                    var r = RockStrataIndexed[(int)val] = Rockstrata["" + val];
+                    r.ScaledMaxThickness = mul * r.MaxThickness;
                 }
             }
         }

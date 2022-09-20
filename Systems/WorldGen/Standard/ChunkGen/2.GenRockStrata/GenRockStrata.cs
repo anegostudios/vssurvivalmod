@@ -206,10 +206,10 @@ namespace Vintagestory.ServerMods
 
                 GeologicProvinceRockStrata[] localstrata = provinces.Variants[indices[i].Index].RockStrataIndexed;
 
-                rockGroupMaxThickness[0] += localstrata[0].MaxThickness * w;
-                rockGroupMaxThickness[1] += localstrata[1].MaxThickness * w;
-                rockGroupMaxThickness[2] += localstrata[2].MaxThickness * w;
-                rockGroupMaxThickness[3] += localstrata[3].MaxThickness * w;
+                rockGroupMaxThickness[0] += localstrata[0].ScaledMaxThickness * w;
+                rockGroupMaxThickness[1] += localstrata[1].ScaledMaxThickness * w;
+                rockGroupMaxThickness[2] += localstrata[2].ScaledMaxThickness * w;
+                rockGroupMaxThickness[3] += localstrata[3].ScaledMaxThickness * w;
             }
 
             float distx = (float)distort2dx.Noise(chunkX * chunksize + lx, chunkZ * chunksize + lz);

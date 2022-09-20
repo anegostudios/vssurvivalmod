@@ -47,6 +47,12 @@ namespace Vintagestory.GameContent
             BlockEntity be = world.BlockAccessor.GetBlockEntity(blockSel.Position);
             if (be is BlockEntityPlatePile)
             {
+                if (!world.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+                {
+                    byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
+                    return false;
+                }
+
                 BlockEntityPlatePile pile = (BlockEntityPlatePile)be;
                 return pile.OnPlayerInteract(byPlayer);
             }
@@ -94,6 +100,13 @@ namespace Vintagestory.GameContent
 
         internal bool Construct(ItemSlot slot, IWorldAccessor world, BlockPos pos, IPlayer player)
         {
+            if (!world.Claims.TryAccess(player, pos, EnumBlockAccessFlags.BuildOrBreak))
+            {
+                player.InventoryManager.ActiveHotbarSlot.MarkDirty();
+                return false;
+            }
+
+
             Block belowBlock = world.BlockAccessor.GetBlock(pos.DownCopy());
             if (!belowBlock.CanAttachBlockAt(world.BlockAccessor, this, pos.DownCopy(), BlockFacing.UP) && (belowBlock != this || FillLevel(world.BlockAccessor, pos.DownCopy()) != 16)) return false;
 

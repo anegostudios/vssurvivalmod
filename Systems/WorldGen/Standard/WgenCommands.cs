@@ -1298,10 +1298,10 @@ namespace Vintagestory.ServerMods
 
                             GeologicProvinceVariant var = NoiseGeoProvince.provinces.Variants[indices[i].Index];
 
-                            rockGroupMaxThickness[0] += var.RockStrataIndexed[0].MaxThickness * w;
-                            rockGroupMaxThickness[1] += var.RockStrataIndexed[1].MaxThickness * w;
-                            rockGroupMaxThickness[2] += var.RockStrataIndexed[2].MaxThickness * w;
-                            rockGroupMaxThickness[3] += var.RockStrataIndexed[3].MaxThickness * w;
+                            rockGroupMaxThickness[0] += var.RockStrataIndexed[0].ScaledMaxThickness * w;
+                            rockGroupMaxThickness[1] += var.RockStrataIndexed[1].ScaledMaxThickness * w;
+                            rockGroupMaxThickness[2] += var.RockStrataIndexed[2].ScaledMaxThickness * w;
+                            rockGroupMaxThickness[3] += var.RockStrataIndexed[3].ScaledMaxThickness * w;
                         }
 
                         System.Text.StringBuilder sb = new System.Text.StringBuilder();

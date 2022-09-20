@@ -180,7 +180,6 @@ namespace Vintagestory.GameContent
             if (meshSource != null)
             {
                 mesh = meshSource.GenMesh(stack, capi.BlockTextureAtlas, Pos);
-                mesh.Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 0, Block.Shape.rotateY * GameMath.DEG2RAD, 0);
             }
             else
             {
@@ -209,18 +208,23 @@ namespace Vintagestory.GameContent
                 transform.EnsureDefaultValues();
                 mesh.ModelTransform(transform);
 
-                transform.Rotation.X = 0;
+                /*transform.Rotation.X = 0;
                 transform.Rotation.Y = Block.Shape.rotateY;
                 transform.Rotation.Z = 0;
-                mesh.ModelTransform(transform);
+                mesh.ModelTransform(transform);*/
+            } else
+            {
+                
             }
 
             if (stack.Class == EnumItemClass.Item && (stack.Item.Shape == null || stack.Item.Shape.VoxelizeTexture))
             {
                 mesh.Rotate(new Vec3f(0.5f, 0.5f, 0.5f), GameMath.PIHALF, 0, 0);
-                mesh.Scale(new Vec3f(0.5f, 0.5f, 0.5f), 0.33f, 0.5f, 0.33f);
+                mesh.Scale(new Vec3f(0.5f, 0.5f, 0.5f), 0.33f, 0.33f, 0.33f);
                 mesh.Translate(0, -7.5f / 16f, 0f);
             }
+
+            mesh.Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 0, Block.Shape.rotateY * GameMath.DEG2RAD, 0);
 
             return mesh;
         }

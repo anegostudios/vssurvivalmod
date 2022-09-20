@@ -141,6 +141,11 @@ namespace Vintagestory.GameContent
         {
             var rnd = Api.World.Rand;
 
+            if (ownBe.TreeType == "" || ownBe.TreeType == null)
+            {
+                return;
+            }
+
             switch (ownBe.PartType)
             {
                 case EnumTreePartType.Stem:

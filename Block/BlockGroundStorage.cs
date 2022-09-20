@@ -95,6 +95,12 @@ namespace Vintagestory.GameContent
         {
             if (api.Side == EnumAppSide.Client && IsUsingContainedBlock) return false;
 
+            if (!world.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            {
+                byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
+                return false;
+            }
+
             BlockEntity be = world.BlockAccessor.GetBlockEntity(blockSel.Position);
             if (be is BlockEntityGroundStorage beg) 
             { 
@@ -166,6 +172,12 @@ namespace Vintagestory.GameContent
 
         public bool CreateStorage(IWorldAccessor world, BlockSelection blockSel, IPlayer player)
         {
+            if (!world.Claims.TryAccess(player, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            {
+                player.InventoryManager.ActiveHotbarSlot.MarkDirty();
+                return false;
+            }
+
             BlockPos pos;
             if (blockSel.Face == null)
             {

@@ -201,6 +201,7 @@ namespace Vintagestory.ServerMods
             int iteration = ++this.iteration;
             didCheckPosition[arrayIndex] = iteration;
 
+            BlockPos tmpPos = new BlockPos();
 
             while (searchPositionsDeltas.Count > 0)
             {
@@ -208,10 +209,11 @@ namespace Vintagestory.ServerMods
                 int px = p % searchSize - mapOffset;
                 int pz = p / searchSize - mapOffset;
 
-                foreach (Vec3i facing in BlockFacing.HORIZONTAL_NORMALI)
+                foreach (BlockFacing facing in BlockFacing.HORIZONTALS)
                 {
-                    ndx = px + facing.X;
-                    ndz = pz + facing.Z;
+                    Vec3i facingNormal = facing.Normali;
+                    ndx = px + facingNormal.X;
+                    ndz = pz + facingNormal.Z;
 
                     arrayIndex = (ndz + mapOffset) * searchSize + ndx + mapOffset;
 
@@ -222,16 +224,19 @@ namespace Vintagestory.ServerMods
 
                         tmp.Set(basePosX + ndx, basePosZ + ndz);
 
-                        Block belowBlock = blockAccessor.GetBlock(tmp.X, pondYPos - 1, tmp.Y);
+                        tmpPos.Set(tmp.X, pondYPos - 1, tmp.Y);
+                        Block belowBlock = blockAccessor.GetBlock(tmpPos);
 
                         bool inBoundary = ndx > minBoundary && ndz > minBoundary && ndx < maxBoundary && ndz < maxBoundary;
 
                         // Only continue when every position is within our 3x3 chunk search area and has a more or less solid block below (or water)
                         // Note from radfast: this actually runs this check on the edges as well (i.e. it is unnecessarily checking the banks have a solid block below them!) - but changing this could slightly alter worldgen
-                        if (inBoundary && (belowBlock.Replaceable < 6000 || belowBlock.BlockId == waterID))   // This test is OK even for waterID, as GetBlock will correctly return the liquid block if the solid blocks 'layer' is air
+                        if (inBoundary && (belowBlock.LiquidBarrierHeightOnSide(BlockFacing.UP, tmpPos) >= 1.0 || belowBlock.BlockId == waterID))   // This test is OK even for waterID, as GetBlock will correctly return the liquid block if the solid blocks 'layer' is air
                         {
                             // If it's not a bank, spread water into it and queue for further checks from here
-                            if (blockAccessor.GetBlock(tmp.X, pondYPos, tmp.Y).Replaceable >= 6000)
+                            //if (blockAccessor.GetBlock(tmp.X, pondYPos, tmp.Y).Replaceable >= 6000)
+                            tmpPos.Set(tmp.X, pondYPos, tmp.Y);
+                            if (blockAccessor.GetBlock(tmpPos).LiquidBarrierHeightOnSide(facing.Opposite, tmpPos) < 0.9)
                             {
                                 searchPositionsDeltas.Enqueue(arrayIndex);
                                 pondPositions.Enqueue(arrayIndex);

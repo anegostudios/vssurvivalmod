@@ -135,6 +135,7 @@ namespace Vintagestory.GameContent
             if (!world.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
             {
                 itemslot.MarkDirty();
+                world.BlockAccessor.MarkBlockDirty(blockSel.Position.UpCopy());
                 return;
             }
 

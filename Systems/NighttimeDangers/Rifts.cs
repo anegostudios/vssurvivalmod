@@ -27,7 +27,7 @@ namespace Vintagestory.GameContent
 
         public Dictionary<int, Rift> riftsById = new Dictionary<int, Rift>();
         public ILoadedSound[] riftSounds = new ILoadedSound[4];
-        public Rift[] nearestRifts;
+        public Rift[] nearestRifts = new Rift[0];
 
         public IServerNetworkChannel schannel;
 

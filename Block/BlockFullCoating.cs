@@ -155,9 +155,13 @@ namespace Vintagestory.GameContent
 
         public bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace)
         {
-            if (pos.Y < 16 && (api == null || api.World.SeaLevel > 40)) return false;
+            float thup = 70f / 255 * api.World.BlockAccessor.MapSizeY;
+            float thdown = 16f / 255 * api.World.BlockAccessor.MapSizeY;
 
-            if (blockAccessor.GetBlock(pos).Replaceable < 6000) return false; // Don't place where there's solid blocks
+            if (pos.Y < thdown || pos.Y > thup || blockAccessor.GetLightLevel(pos, EnumLightLevelType.OnlySunLight) > 15) return false;
+
+            var hblock = blockAccessor.GetBlock(pos);
+            if (hblock.Replaceable < 6000 || hblock.IsLiquid()) return false; // Don't place where there's solid blocks
 
             string facings = getSolidFacesAtPos(blockAccessor, pos);
 
