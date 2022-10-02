@@ -680,7 +680,7 @@ namespace Vintagestory.GameContent
             if (!BucketSlot.Empty)
             {
                 BlockLiquidContainerBase block = BucketSlot.Itemstack.Collectible as BlockLiquidContainerBase;
-                dsc.Append(Lang.Get("Bucket: "));
+                dsc.Append(Lang.Get("Container: "));
                 block.GetContentInfo(BucketSlot, dsc, Api.World);
                 dsc.AppendLine();
             }
@@ -701,31 +701,21 @@ namespace Vintagestory.GameContent
 
         private void genBucketMesh()
         {
-            if (BucketSlot.Empty) return;
+            if (BucketSlot.Empty || capi == null) return;
 
-            // Haxy, but works ¯\_(ツ)_/¯
-            if (BucketSlot.Itemstack.Block?.EntityClass != null && Api.Side == EnumAppSide.Client)
+            var stack = BucketSlot.Itemstack;
+            var meshSource = stack.Collectible as IContainedMeshSource;
+            if (meshSource != null)
             {
-                if (bucketMeshTmp == null)
-                {
-                    bucketMeshTmp = new MeshData(4, 3, false, true, true, true);
+                bucketMeshTmp = meshSource.GenMesh(stack, capi.BlockTextureAtlas, Pos);
+                // Liquid mesh part
+                bucketMeshTmp.CustomInts = new CustomMeshDataPartInt(bucketMeshTmp.FlagsCount);
+                bucketMeshTmp.CustomInts.Count = bucketMeshTmp.FlagsCount;
+                bucketMeshTmp.CustomInts.Values.Fill(0x4000000); // light foam only
 
-                    // Liquid mesh
-                    bucketMeshTmp.CustomInts = new CustomMeshDataPartInt(bucketMeshTmp.FlagsCount);
-                    bucketMeshTmp.CustomInts.Count = bucketMeshTmp.FlagsCount;
-                    bucketMeshTmp.CustomInts.Values.Fill(0x4000000); // light foam only
+                bucketMeshTmp.CustomFloats = new CustomMeshDataPartFloat(bucketMeshTmp.FlagsCount * 2);
+                bucketMeshTmp.CustomFloats.Count = bucketMeshTmp.FlagsCount * 2;
 
-                    bucketMeshTmp.CustomFloats = new CustomMeshDataPartFloat(bucketMeshTmp.FlagsCount * 2);
-                    bucketMeshTmp.CustomFloats.Count = bucketMeshTmp.FlagsCount * 2;
-                }
-                bucketMeshTmp.Clear();
-                var be = Api.ClassRegistry.CreateBlockEntity(BucketSlot.Itemstack.Block.EntityClass);
-                be.Pos = new BlockPos(0, 0, 0);
-                be.Block = BucketSlot.Itemstack.Block;
-                be.Initialize(Api);
-                be.OnBlockPlaced(BucketSlot.Itemstack);
-                be.OnTesselation(this, capi.Tesselator);
-                be.OnBlockRemoved();
                 bucketMesh = bucketMeshTmp.Clone();
             }
         }

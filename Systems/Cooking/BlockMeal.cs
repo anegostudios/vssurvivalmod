@@ -35,7 +35,7 @@ namespace Vintagestory.GameContent
         void MarkDirty(bool redrawonclient, IPlayer skipPlayer = null);
     }
 
-    public class BlockMeal : BlockContainer, IBlockMealContainer, IContainedMeshSource, IContainedInteractable
+    public class BlockMeal : BlockContainer, IBlockMealContainer, IContainedMeshSource, IContainedInteractable, IContainedCustomName
     {
         protected virtual bool PlacedBlockEating => true;
         MealMeshCache meshCache;
@@ -755,8 +755,23 @@ namespace Vintagestory.GameContent
                     dsc.Append(facts);
                 }
             }
+        }
 
+
+
+        public string GetContainedName(ItemSlot inSlot, int quantity)
+        {
+            return GetHeldItemName(inSlot.Itemstack);
+        }
+
+        public string GetContainedInfo(ItemSlot inSlot)
+        {
+            CookingRecipe recipe = GetCookingRecipe(api.World, inSlot.Itemstack);
+            if (recipe == null) return GetHeldItemName(inSlot.Itemstack) + PerishableInfoCompactContainer(api, inSlot);
+
+            ItemStack[] stacks = GetNonEmptyContents(api.World, inSlot.Itemstack);
             
+            return recipe.GetOutputName(api.World, stacks).UcFirst() + PerishableInfoCompactContainer(api, inSlot);
         }
 
 

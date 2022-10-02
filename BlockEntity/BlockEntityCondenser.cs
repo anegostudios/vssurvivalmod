@@ -146,31 +146,20 @@ namespace Vintagestory.GameContent
 
         private void genBucketMesh()
         {
-            if (inventory.Count < 2 || inventory[1].Empty) return;
+            if (inventory.Count < 2 || inventory[1].Empty || Api.Side == EnumAppSide.Server) return;
 
-            // Haxy, but works ¯\_(ツ)_/¯
-            if (inventory[1].Itemstack.Block?.EntityClass != null && Api.Side == EnumAppSide.Client)
+            var stack = inventory[1].Itemstack;
+            var meshSource = stack.Collectible as IContainedMeshSource;
+            if (meshSource != null)
             {
-                if (bucketMeshTmp == null)
-                {
-                    bucketMeshTmp = new MeshData(4, 3, false, true, true, true);
+                bucketMeshTmp = meshSource.GenMesh(stack, (Api as ICoreClientAPI).BlockTextureAtlas, Pos);
+                // Liquid mesh part
+                bucketMeshTmp.CustomInts = new CustomMeshDataPartInt(bucketMeshTmp.FlagsCount);
+                bucketMeshTmp.CustomInts.Count = bucketMeshTmp.FlagsCount;
+                bucketMeshTmp.CustomInts.Values.Fill(0x4000000); // light foam only
 
-                    // Liquid mesh
-                    bucketMeshTmp.CustomInts = new CustomMeshDataPartInt(bucketMeshTmp.FlagsCount);
-                    bucketMeshTmp.CustomInts.Count = bucketMeshTmp.FlagsCount;
-                    bucketMeshTmp.CustomInts.Values.Fill(0x4000000); // light foam only
-
-                    bucketMeshTmp.CustomFloats = new CustomMeshDataPartFloat(bucketMeshTmp.FlagsCount * 2);
-                    bucketMeshTmp.CustomFloats.Count = bucketMeshTmp.FlagsCount * 2;
-                }
-                bucketMeshTmp.Clear();
-                var be = Api.ClassRegistry.CreateBlockEntity(inventory[1].Itemstack.Block.EntityClass);
-                be.Pos = new BlockPos(0, 0, 0);
-                be.Block = inventory[1].Itemstack.Block;
-                be.Initialize(Api);
-                be.OnBlockPlaced(inventory[1].Itemstack);
-                be.OnTesselation(this, (Api as ICoreClientAPI).Tesselator);
-                be.OnBlockRemoved();
+                bucketMeshTmp.CustomFloats = new CustomMeshDataPartFloat(bucketMeshTmp.FlagsCount * 2);
+                bucketMeshTmp.CustomFloats.Count = bucketMeshTmp.FlagsCount * 2;
 
                 bucketMesh = bucketMeshTmp
                     .Clone()

@@ -428,7 +428,7 @@ namespace Vintagestory.GameContent
 
             
             // Sync to client every 500ms
-            if (++syncCount % 5 == 0 && (IsBurning || prevOvenTemperature != ovenTemperature || !Inventory.Empty))
+            if (++syncCount % 5 == 0 && (IsBurning || prevOvenTemperature != ovenTemperature || !Inventory[0].Empty || !Inventory[1].Empty || !Inventory[2].Empty || !Inventory[3].Empty))
             {
                 MarkDirty();
                 prevOvenTemperature = ovenTemperature;

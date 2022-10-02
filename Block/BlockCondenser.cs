@@ -1,5 +1,6 @@
 ﻿using System.Text;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
@@ -42,7 +43,7 @@ namespace Vintagestory.GameContent
             if (be?.Inventory[1].Empty == false)
             {
                 BlockLiquidContainerBase block = be.Inventory[1].Itemstack.Collectible as BlockLiquidContainerBase;
-                dsc.Append("Bucket: ");
+                dsc.Append(Lang.Get("Container: "));
                 block.GetContentInfo(be.Inventory[1], dsc, world);
             }
 

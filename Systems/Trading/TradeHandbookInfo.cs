@@ -40,7 +40,7 @@ namespace Vintagestory.GameContent
                 {
                     try
                     {
-                        tradeProps = entitytype.Attributes["tradeProps"].AsObject<TradeProperties>();
+                        tradeProps = entitytype.Attributes["tradeProps"].AsObject<TradeProperties>(null, entitytype.Code.Domain);
                     }
                     catch (Exception e)
                     {

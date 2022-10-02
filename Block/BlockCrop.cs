@@ -159,6 +159,8 @@ namespace Vintagestory.GameContent
                 dropQuantityMultiplier *= byPlayer?.Entity.Stats.GetBlended("wildCropDropRate")?? 1;
             }
 
+            SplitDropStacks = false;
+
             ItemStack[] drops = base.GetDrops(world, pos, byPlayer, dropQuantityMultiplier);
 
             if (befarmland == null)

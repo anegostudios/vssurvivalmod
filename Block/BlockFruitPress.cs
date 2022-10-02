@@ -35,6 +35,7 @@ namespace Vintagestory.GameContent
 
                     foreach (CollectibleObject obj in api.World.Collectibles)
                     {
+                        //else if (handStack.Collectible is BlockLiquidContainerBase blockLiqCont && blockLiqCont.AllowHeldLiquidTransfer && blockLiqCont.IsTopOpened && blockLiqCont.CapacityLitres < 20 && BucketSlot.Empty)
                         if (obj is BlockLiquidContainerBase blc && blc.IsTopOpened && blc.AllowHeldLiquidTransfer && blc.CapacityLitres < 20)
                         {
                             fillableContainers.Add(new ItemStack(obj));

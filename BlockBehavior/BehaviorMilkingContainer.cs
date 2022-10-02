@@ -92,6 +92,7 @@ namespace Vintagestory.GameContent
             if (secondsUsed > 2.95f && entitySel != null && (bh = entitySel.Entity.GetBehavior<EntityBehaviorMilkable>()) != null) 
             {
                 bh.MilkingComplete(slot, byEntity);
+                handling = EnumHandling.PreventDefault;
             }
             
         }

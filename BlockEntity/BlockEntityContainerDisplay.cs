@@ -96,14 +96,15 @@ namespace Vintagestory.GameContent
 
             if (texpos == null)
             {
-                IAsset texAsset = capi.Assets.TryGet(texturePath.Clone().WithPathPrefixOnce("textures/").WithPathAppendixOnce(".png"));
-                if (texAsset != null)
+                bool ok = capi.BlockTextureAtlas.GetOrInsertTexture(texturePath, out _, out texpos, () =>
                 {
-                    capi.BlockTextureAtlas.GetOrInsertTexture(texturePath, out _, out texpos, () => texAsset.ToBitmap(capi));
-                }
-                else
+                    return capi.BlockTextureAtlas.LoadCompositeBitmap(texturePath);
+                });
+
+                if (!ok)
                 {
                     capi.World.Logger.Warning("For render in block " + Block.Code + ", item {0} defined texture {1}, no such texture found.", nowTesselatingObj.Code, texturePath);
+                    return capi.BlockTextureAtlas.UnknownTexturePosition;
                 }
             }
 

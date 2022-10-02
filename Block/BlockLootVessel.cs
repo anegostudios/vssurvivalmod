@@ -76,7 +76,7 @@ namespace Vintagestory.GameContent
 
             float qfloat = dropQuantityMul * (minQuantity + ((float)world.Rand.NextDouble() * (maxQuantity - minQuantity)));
 
-            int quantity = (int)qfloat;
+            int quantity = (int)GameMath.RoundRandom(world.Rand, qfloat);
 
             if (quantity <= 0) return null;
 

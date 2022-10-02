@@ -261,5 +261,23 @@ namespace Vintagestory.GameContent
             base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
         }
 
+        public string PerishableInfoCompactContainer(ICoreAPI api, ItemSlot inSlot)
+        {
+            var world = api.World;
+            ItemStack[] stacks = GetNonEmptyContents(world, inSlot.Itemstack);
+            DummyInventory dummyInv = new DummyInventory(api);
+            ItemSlot slot = BlockCrock.GetDummySlotForFirstPerishableStack(api.World, stacks, null, dummyInv);
+            dummyInv.OnAcquireTransitionSpeed = (transType, stack, mul) =>
+            {
+                float val = mul * GetContainingTransitionModifierContained(world, inSlot, transType);
+
+                val *= inSlot.Inventory.GetTransitionSpeedMul(transType, inSlot.Itemstack);
+
+                return val;
+            };
+
+            return BlockEntityShelf.PerishableInfoCompact(api, slot, 0, false).Replace("\r\n", "");
+        }
+
     }
 }
