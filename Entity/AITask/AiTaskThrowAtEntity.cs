@@ -20,6 +20,7 @@ namespace Vintagestory.GameContent
         float minDist = 3f;
         float maxDist = 15f;
 
+        protected int searchWaitMs = 2000;
 
         EntityPartitioning partitionUtil;
 
@@ -56,12 +57,12 @@ namespace Vintagestory.GameContent
 
             if (whenInEmotionState != null && bhEmo?.IsInEmotionState(whenInEmotionState) != true) return false;
             if (whenNotInEmotionState != null && bhEmo?.IsInEmotionState(whenNotInEmotionState) == true) return false;
+            if (lastSearchTotalMs + searchWaitMs > entity.World.ElapsedMilliseconds) return false;
             if (whenInEmotionState == null && rand.NextDouble() > 0.5f) return false;
             if (cooldownUntilMs > entity.World.ElapsedMilliseconds) return false;
 
             float range = maxDist;
             lastSearchTotalMs = entity.World.ElapsedMilliseconds;
-            Vec3d ownPos = entity.ServerPos.XYZ;
 
             targetEntity = partitionUtil.GetNearestEntity(entity.ServerPos.XYZ, range, (e) => IsTargetableEntity(e, range) && hasDirectContact(e, range, range/2f));
 
@@ -75,8 +76,12 @@ namespace Vintagestory.GameContent
 
             if (entity?.Properties.Server?.Attributes != null)
             {
-                minTurnAnglePerSec = entity.Properties.Server.Attributes.GetTreeAttribute("pathfinder").GetFloat("minTurnAnglePerSec", 250);
-                maxTurnAnglePerSec = entity.Properties.Server.Attributes.GetTreeAttribute("pathfinder").GetFloat("maxTurnAnglePerSec", 450);
+                ITreeAttribute pathfinder = entity.Properties.Server.Attributes.GetTreeAttribute("pathfinder");
+                if (pathfinder != null)
+                {
+                    minTurnAnglePerSec = pathfinder.GetFloat("minTurnAnglePerSec", 250);
+                    maxTurnAnglePerSec = pathfinder.GetFloat("maxTurnAnglePerSec", 450);
+                }
             }
             else
             {

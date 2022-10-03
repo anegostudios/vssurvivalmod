@@ -330,11 +330,11 @@ namespace Vintagestory.GameContent
             {
                 if (servings == 1)
                 {
-                    return Lang.Get("{0} serving of {1} in {2}", Math.Round(servings, 1), recipe.GetOutputName(world, stacks), ContainerNameShort, PerishableInfoCompactContainer(api, inSlot));
+                    return Lang.Get("contained-food-servings-singular", Math.Round(servings, 1), recipe.GetOutputName(world, stacks), ContainerNameShort, PerishableInfoCompactContainer(api, inSlot));
                 }
                 else
                 {
-                    return Lang.Get("{0:0.#} servings of {1} in {2}{3}", Math.Round(servings, 1), recipe.GetOutputName(world, stacks), ContainerNameShort, PerishableInfoCompactContainer(api, inSlot));
+                    return Lang.Get("contained-food-servings-plural", Math.Round(servings, 1), recipe.GetOutputName(world, stacks), ContainerNameShort, PerishableInfoCompactContainer(api, inSlot));
                 }
             }
 

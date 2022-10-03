@@ -146,7 +146,7 @@ namespace Vintagestory.GameContent
 
         private void genBucketMesh()
         {
-            if (inventory.Count < 2 || inventory[1].Empty || Api.Side == EnumAppSide.Server) return;
+            if (inventory.Count < 2 || inventory[1].Empty || Api == null || Api.Side == EnumAppSide.Server) return;
 
             var stack = inventory[1].Itemstack;
             var meshSource = stack.Collectible as IContainedMeshSource;
