@@ -152,6 +152,9 @@ namespace Vintagestory.GameContent
                         .AddFlatList(stackListBounds, onLeftClickListElement, shownHandbookPages, "stacklist")
                     .EndClip()
                     .AddVerticalScrollbar(OnNewScrollbarvalueOverviewPage, scrollbarBounds, "scrollbar")
+                    .AddIf(capi.IsSinglePlayer && !capi.OpenedToLan)
+                        .AddToggleButton("Pause game", CairoFont.WhiteDetailText(), onTogglePause, ElementBounds.Fixed(360, -15, 100, 22), "pausegame")
+                    .EndIf()
                     .AddSmallButton(Lang.Get("general-back"), OnButtonBack, backButtonBounds, EnumButtonStyle.Normal, EnumTextOrientation.Center, "backButton")
                     .AddSmallButton(Lang.Get("Close Handbook"), OnButtonClose, closeButtonBounds)
                 .EndChildElements()
@@ -167,10 +170,19 @@ namespace Vintagestory.GameContent
 
             overviewGui.GetVerticalTab("verticalTabs").SetValue(curTab, false);
 
+            var btn = overviewGui.GetToggleButton("pausegame");
+            if (btn != null) btn.SetValue(!capi.Settings.Bool["noHandbookPause"]);
+
             overviewGui.FocusElement(overviewGui.GetTextInput("searchField").TabIndex);
 
             if (curTab == 0) currentCatgoryCode = null;
             else currentCatgoryCode = categoryCodes[curTab - 1];
+        }
+
+        private void onTogglePause(bool on)
+        {
+            capi.PauseGame(on);
+            capi.Settings.Bool["noHandbookPause"] = !on;
         }
 
         GuiTab[] genTabs(out int curTab)
