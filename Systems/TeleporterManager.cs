@@ -123,7 +123,7 @@ namespace Vintagestory.GameContent
 
             if (bet == null)
             {
-                player.SendMessage(groupId, "Not looking at a translocator. Must look at one to set its target", EnumChatType.CommandError);
+                player.SendMessage(groupId, "Not looking at a repaired translocator. Must look at one to set its target", EnumChatType.CommandError);
                 return;
             }
 

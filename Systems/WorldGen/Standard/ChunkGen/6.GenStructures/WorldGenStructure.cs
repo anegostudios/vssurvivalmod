@@ -486,7 +486,7 @@ namespace Vintagestory.ServerMods
                 // 3. Random pathway
                 found = false;
                 int pathwayNum = rand.NextInt(schematicStruc[0].PathwayStarts.Length);
-                int targetOrientation = 0;
+                int targetOrientation;
                 int targetDistance = -1;
                 BlockFacing targetFacing = null;
                 BlockPos[] pathway=null;

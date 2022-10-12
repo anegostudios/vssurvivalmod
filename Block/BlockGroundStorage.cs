@@ -270,22 +270,23 @@ namespace Vintagestory.GameContent
 
         public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
         {
-            base.OnNeighbourBlockChange(world, pos, neibpos);
+            BlockEntityGroundStorage beg = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityGroundStorage;
+            bool isWallHalves = beg?.StorageProps != null && beg.StorageProps.Layout == EnumGroundStorageLayout.WallHalves;
 
-            BlockEntity be = world.BlockAccessor.GetBlockEntity(pos);
-            if (be is BlockEntityGroundStorage beg && beg.StorageProps != null)
+            if (isWallHalves)
             {
-                if (beg.StorageProps.Layout == EnumGroundStorageLayout.WallHalves)
-                {
-                    var facing = beg.AttachFace;
-                    var bpos = pos.AddCopy(facing.Normali.X, beg.StorageProps.WallOffY - 1, facing.Normali.Z);
-                    var block = world.BlockAccessor.GetBlock(bpos);
+                var facing = beg.AttachFace;
+                var bpos = pos.AddCopy(facing.Normali.X, beg.StorageProps.WallOffY - 1, facing.Normali.Z);
+                var block = world.BlockAccessor.GetBlock(bpos);
 
-                    if (!block.CanAttachBlockAt(world.BlockAccessor, this, bpos, facing))
-                    {
-                        world.BlockAccessor.BreakBlock(pos, null);
-                    }
+                if (!block.CanAttachBlockAt(world.BlockAccessor, this, bpos, facing))
+                {
+                    world.BlockAccessor.BreakBlock(pos, null);
                 }
+            } else
+            {
+                // Don't run falling behavior for wall halves
+                base.OnNeighbourBlockChange(world, pos, neibpos);
             }
         }
 

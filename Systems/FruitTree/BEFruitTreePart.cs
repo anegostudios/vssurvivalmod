@@ -110,7 +110,7 @@ namespace Vintagestory.GameContent
                 AssetLocation texturePath = null;
                 CompositeTexture tex;
 
-                if (this is BlockEntityFruitTreeBranch && FoliageState == EnumFoliageState.Dead && (textureCode == "bark" || textureCode == "treetrunk"))
+                if ((this is BlockEntityFruitTreeBranch || this is BlockEntityFruitTreeFoliage) && FoliageState == EnumFoliageState.Dead && (textureCode == "bark" || textureCode == "treetrunk"))
                 {
                     textureCode = "deadtree";
                 }
@@ -156,16 +156,15 @@ namespace Vintagestory.GameContent
 
             if (texpos == null)
             {
-                IAsset texAsset = capi.Assets.TryGet(texturePath.Clone().WithPathPrefixOnce("textures/").WithPathAppendixOnce(".png"));
-                if (texAsset != null)
+                bool ok = capi.BlockTextureAtlas.GetOrInsertTexture(texturePath, out _, out texpos, () =>
                 {
-                    BitmapRef bmp = texAsset.ToBitmap(capi);
-                    capi.BlockTextureAtlas.InsertTextureCached(texturePath, bmp, out _, out texpos);
-                }
-                else
+                    return capi.BlockTextureAtlas.LoadCompositeBitmap(texturePath);
+                });
+
+                if (!ok)
                 {
-                    capi.World.Logger.Warning("For render in block " + Block.Code + ", item {0} defined texture {1}, not no such texture found.", Block.Code, texturePath);
-                    texpos = capi.BlockTextureAtlas.UnknownTexturePosition;
+                    capi.World.Logger.Warning("For render in fruit tree block " + Block.Code + ", defined texture {1}, no such texture found.", texturePath);
+                    return capi.BlockTextureAtlas.UnknownTexturePosition;
                 }
             }
 
@@ -247,7 +246,7 @@ namespace Vintagestory.GameContent
             }
 
             // Fruit shape 
-            if (FoliageState == EnumFoliageState.Fruiting || FoliageState == EnumFoliageState.Ripe) { 
+            if (FoliageState == EnumFoliageState.Fruiting || FoliageState == EnumFoliageState.Ripe) {
                 string shapekey = "fruit-" + TreeType;
                 FruitTreeShape shapeData;
 
@@ -291,10 +290,7 @@ namespace Vintagestory.GameContent
 
             capi = api as ICoreClientAPI;
 
-            if (TreeType == null)
-            {
-                listenerId = RegisterGameTickListener(trySetup, 1000);
-            }
+            listenerId = RegisterGameTickListener(trySetup, 1000);
 
             if (api.Side == EnumAppSide.Client)
             {
@@ -344,6 +340,7 @@ namespace Vintagestory.GameContent
                 {
                     case EnumFruitTreeState.EnterDormancy: FoliageState = EnumFoliageState.Plain; break;                    
                     case EnumFruitTreeState.Dormant: FoliageState = EnumFoliageState.DormantNoLeaves; harvested = false; break;
+                    case EnumFruitTreeState.DormantVernalized: FoliageState = EnumFoliageState.DormantNoLeaves; harvested = false; break;
                     case EnumFruitTreeState.Flowering: FoliageState = EnumFoliageState.Flowering; harvested = false; break;
                     case EnumFruitTreeState.Fruiting: FoliageState = EnumFoliageState.Fruiting; harvested = false; break;
                     case EnumFruitTreeState.Ripe: if (!harvested) FoliageState = EnumFoliageState.Ripe; break;
@@ -371,6 +368,7 @@ namespace Vintagestory.GameContent
             {
                 case EnumFruitTreeState.EnterDormancy: FoliageState = EnumFoliageState.Plain; harvested = false; break;
                 case EnumFruitTreeState.Dormant: FoliageState = EnumFoliageState.DormantNoLeaves; harvested = false; break;
+                case EnumFruitTreeState.DormantVernalized: FoliageState = EnumFoliageState.DormantNoLeaves; harvested = false; break;
                 case EnumFruitTreeState.Flowering: FoliageState = EnumFoliageState.Flowering; harvested = false; break;
                 case EnumFruitTreeState.Fruiting: FoliageState = EnumFoliageState.Fruiting; harvested = false; break;
                 case EnumFruitTreeState.Ripe: if (!harvested) FoliageState = EnumFoliageState.Ripe; break;

@@ -118,11 +118,13 @@ namespace Vintagestory.GameContent
                     break;
                 case 4: // U
                     origin = new Vec3f(0.5f, 0f, 0.5f);
+                    rndoffy = 0;
                     break;
-
             }
 
-            return mesh?.Clone().Translate(rndoffx, rndoffy, rndoffz).Rotate(origin, branchAngle1, 0, branchAngle2);
+            var rotmesh = mesh?.Clone().Translate(rndoffx, rndoffy, rndoffz).Rotate(origin, branchAngle1, 0, branchAngle2);
+
+            return rotmesh;
         }
              
 

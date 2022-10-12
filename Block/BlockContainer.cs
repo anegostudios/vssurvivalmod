@@ -195,51 +195,52 @@ namespace Vintagestory.GameContent
 
             for (int i = 0; stacks != null && i < stacks.Length; i++)
             {
-                DummySlot slot = null;
+                var stack = stacks[i];
+                if (stack == null) continue;
 
-                if (inslot.Inventory == null)
+                ItemSlot dummySlot = GetContentInDummySlot(inslot, stack);
+                stack.Collectible.UpdateAndGetTransitionStates(world, dummySlot);
+                if (dummySlot.Itemstack == null)
                 {
-                    DummyInventory dummyInv = new DummyInventory(api);
-                    slot = new DummySlot(stacks[i], dummyInv);
-
-                    dummyInv.OnAcquireTransitionSpeed = (transType, stack, mul) =>
-                    {
-                        return mul * GetContainingTransitionModifierContained(world, slot, transType);
-                    };
-
-                    stacks[i]?.Collectible.UpdateAndGetTransitionStates(world, slot);
-                }
-                else {
-                    slot = new DummySlot(stacks[i], inslot.Inventory);
-
-                    var pref = inslot.Inventory.OnAcquireTransitionSpeed;
-                    inslot.Inventory.OnAcquireTransitionSpeed = (EnumTransitionType transType, ItemStack stack, float mulByConfig) =>
-                    {
-                        float mul = mulByConfig;
-                        if (pref != null)
-                        {
-                            mul = pref(transType, stack, mulByConfig);
-                        }
-
-                        return GetContainingTransitionModifierContained(world, inslot, transType) * mul;
-                    };
-
-                    slot.MarkedDirty += () => { inslot.Inventory.DidModifyItemSlot(inslot); return true; };
-
-                    stacks[i]?.Collectible.UpdateAndGetTransitionStates(world, slot);
-
-                    if (slot.Itemstack == null)
-                    {
-                        stacks[i] = null;
-                    }
-
-                    inslot.Inventory.OnAcquireTransitionSpeed = pref;
+                    stacks[i] = null;
                 }
             }
 
             SetContents(inslot.Itemstack, stacks);
 
             return base.UpdateAndGetTransitionStates(world, inslot);
+        }
+
+        /// <summary>
+        /// Puts supplied stack in a dummy slot that respects the spoilage rate of this container as well as the inventory this container resides in
+        /// </summary>
+        /// <param name="inslot"></param>
+        /// <param name="itemstack"></param>
+        /// <returns></returns>
+        protected virtual ItemSlot GetContentInDummySlot(ItemSlot inslot, ItemStack itemstack)
+        {
+            ItemSlot dummySlot;
+
+            var pref = inslot.Inventory?.OnAcquireTransitionSpeed;
+
+            DummyInventory dummyInv = new DummyInventory(api);
+            dummySlot = new DummySlot(itemstack, dummyInv);
+            dummySlot.MarkedDirty += () => { inslot.Inventory?.DidModifyItemSlot(inslot); return true; };
+
+            dummyInv.OnAcquireTransitionSpeed = (transType, stack, mulByConfig) =>
+            {
+                float mul = mulByConfig;
+                if (pref != null)
+                {
+                    mul = pref(transType, stack, mulByConfig);
+                }
+
+                return mul * GetContainingTransitionModifierContained(api.World, dummySlot, transType);
+            };
+
+            
+
+            return dummySlot;
         }
 
 

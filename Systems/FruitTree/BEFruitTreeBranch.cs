@@ -197,10 +197,18 @@ namespace Vintagestory.GameContent
 
         static Dictionary<string, int[]> facingRemapByShape = new Dictionary<string, int[]>()
         {
-            {  "branch-ud", new int[] { 0, 1, 2, 3, 4, 5 } },
             {  "stem", new int[] { 0, 1, 2, 3, 4, 5 } },
-            {  "branch-ns", new int[] { 4, 3, 5, 1, 0, 2 } },
-            {  "branch-we", new int[] { 0, 5, 2, 4, 3, 1 } },
+            {  "branch-ud", new int[] { 0, 1, 2, 3, 4, 5 } },
+            {  "branch-n", new int[] { 4, 3, 5, 1, 0, 2 } },
+            {  "branch-s", new int[] { 4, 3, 5, 1, 0, 2 } },
+            {  "branch-w", new int[] { 0, 5, 2, 4, 3, 1 } },
+            {  "branch-e", new int[] { 0, 5, 2, 4, 3, 1 } },
+
+            {  "branch-ud-end", new int[] { 0, 1, 2, 3, 4, 5 } },
+            {  "branch-n-end", new int[] { 4, 3, 5, 1, 0, 2 } },
+            {  "branch-s-end", new int[] { 4, 3, 5, 1, 0, 2 } },
+            {  "branch-w-end", new int[] { 0, 5, 2, 4, 3, 1 } },
+            {  "branch-e-end", new int[] { 0, 5, 2, 4, 3, 1 } }
         };
         
 
@@ -230,7 +238,8 @@ namespace Vintagestory.GameContent
 
         public MeshData GenMeshes()
         {
-            if (Api?.Side != EnumAppSide.Client || TreeType == null || TreeType == "") return null;
+            if (capi == null) return null;
+            if (Api.Side != EnumAppSide.Client || TreeType == null || TreeType == "") return null;
 
             string cacheKey = "fruitTreeMeshes" + Block.Code.ToShortString();
             Dictionary<int, MeshData> meshes = ObjectCacheUtil.GetOrCreate(Api, cacheKey, () => new Dictionary<int, MeshData>());
@@ -251,8 +260,13 @@ namespace Vintagestory.GameContent
                     break;
                 case EnumTreePartType.Branch:
                     if (GrowthDir.Axis == EnumAxis.Y) shapekey = "branch-ud";
-                    if (GrowthDir.Axis == EnumAxis.X) shapekey = "branch-we";
-                    if (GrowthDir.Axis == EnumAxis.Z) shapekey = "branch-ns";
+                    else shapekey = "branch-" + GrowthDir.Code[0];
+
+                    if (!(Api.World.BlockAccessor.GetBlock(Pos.AddCopy(GrowthDir)) is BlockFruitTreeBranch))
+                    {
+                        shapekey += "-end";
+                    }
+
                     break;
                 case EnumTreePartType.Leaves:
                     shapekey = "leaves";

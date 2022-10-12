@@ -388,12 +388,16 @@ namespace Vintagestory.GameContent
             initOverviewGui();
             FilterItems();
             base.OnGuiOpened();
+
+            if (capi.IsSinglePlayer && !capi.OpenedToLan && !capi.Settings.Bool["noHandbookPause"]) capi.PauseGame(true);
         }
 
         public override void OnGuiClosed()
         {
             browseHistory.Clear();
             overviewGui.GetTextInput("searchField").SetValue("");
+
+            if (capi.IsSinglePlayer && !capi.OpenedToLan && !capi.Settings.Bool["noHandbookPause"]) capi.PauseGame(false);
 
             base.OnGuiClosed();
         }

@@ -85,6 +85,8 @@ namespace Vintagestory.GameContent
         });
         protected static CuboidWithMaterial[] tmpCuboids => tmpCuboidTL.Value;
 
+        protected static uint[] defaultOriginalVoxelCuboids => new uint[] { ToUint(0,0,0,16,16,16, 0) };
+
         // bits 0..3 = xmin
         // bits 4..7 = xmax
         // bits 8..11 = ymin
@@ -93,6 +95,9 @@ namespace Vintagestory.GameContent
         // bits 20..23 = zmas
         // bits 24..31 = materialindex
         public List<uint> VoxelCuboids = new List<uint>();
+        protected uint[] originalCuboids;
+        public uint[] OriginalVoxelCuboids => originalCuboids == null ? defaultOriginalVoxelCuboids : originalCuboids;
+
 
         public int SnowLevel = 0;
         public int PrevSnowLevel = 0;
@@ -270,10 +275,14 @@ namespace Vintagestory.GameContent
             {
                 Cuboidf[] collboxes = block.GetCollisionBoxes(Api.World.BlockAccessor, Pos);
 
+                originalCuboids = new uint[collboxes.Length];
+
                 for (int i = 0; i < collboxes.Length; i++)
                 {
                     Cuboidf box = collboxes[i];
-                    VoxelCuboids.Add(ToUint((int)(16 * box.X1), (int)(16 * box.Y1), (int)(16 * box.Z1), (int)(16 * box.X2), (int)(16 * box.Y2), (int)(16 * box.Z2), 0));
+                    var uintbox = ToUint((int)(16 * box.X1), (int)(16 * box.Y1), (int)(16 * box.Z1), (int)(16 * box.X2), (int)(16 * box.Y2), (int)(16 * box.Z2), 0);
+                    VoxelCuboids.Add(uintbox);
+                    originalCuboids[i] = uintbox;
                 }
             }
 
@@ -904,7 +913,7 @@ namespace Vintagestory.GameContent
         #region Mesh generation
         public void RegenMesh()
         {
-            Mesh = CreateMesh(Api as ICoreClientAPI, VoxelCuboids, MaterialIds, Pos);
+            Mesh = CreateMesh(Api as ICoreClientAPI, VoxelCuboids, MaterialIds, OriginalVoxelCuboids, Pos);
             GenSnowMesh();
         }
 
@@ -912,13 +921,13 @@ namespace Vintagestory.GameContent
         {
             if (SnowCuboids.Count > 0 && SnowLevel > 0)
             {
-                SnowMesh = CreateMesh(Api as ICoreClientAPI, SnowCuboids, new int[] { snowLayerBlockId }, Pos);
+                SnowMesh = CreateMesh(Api as ICoreClientAPI, SnowCuboids, new int[] { snowLayerBlockId }, OriginalVoxelCuboids, Pos);
                 SnowMesh.Translate(0, 1 / 16f, 0);
                 SnowMesh.Scale(new Vec3f(0.5f, 0, 0.5f), 0.999f, 1, 0.999f);
 
                 if (Api.World.BlockAccessor.IsSideSolid(Pos.X, Pos.Y - 1, Pos.Z, BlockFacing.UP))
                 {
-                    SnowMesh.AddMeshData(CreateMesh(Api as ICoreClientAPI, GroundSnowCuboids, new int[] { snowLayerBlockId }, Pos));
+                    SnowMesh.AddMeshData(CreateMesh(Api as ICoreClientAPI, GroundSnowCuboids, new int[] { snowLayerBlockId }, OriginalVoxelCuboids, Pos));
                 }
             }
             else
@@ -929,7 +938,7 @@ namespace Vintagestory.GameContent
 
         public void RegenMesh(ICoreClientAPI capi)
         {
-            Mesh = CreateMesh(capi, VoxelCuboids, MaterialIds, Pos);
+            Mesh = CreateMesh(capi, VoxelCuboids, MaterialIds, OriginalVoxelCuboids, Pos);
         }
 
         static int[] drawFaceIndexLookup = new int[]
@@ -943,6 +952,11 @@ namespace Vintagestory.GameContent
         };
 
         public static MeshData CreateMesh(ICoreClientAPI coreClientAPI, List<uint> voxelCuboids, int[] materials, BlockPos posForRnd = null)
+        {
+            return CreateMesh(coreClientAPI, voxelCuboids, materials, defaultOriginalVoxelCuboids, posForRnd);
+        }
+
+        public static MeshData CreateMesh(ICoreClientAPI coreClientAPI, List<uint> voxelCuboids, int[] materials, uint[] originalVoxelCuboids, BlockPos posForRnd = null)
         {
             MeshData mesh = new MeshData(24, 36, false).WithColorMaps().WithRenderpasses().WithXyzFaces();
             if (voxelCuboids == null || materials == null) return mesh;
@@ -1014,7 +1028,9 @@ namespace Vintagestory.GameContent
                     coreClientAPI.Tesselator.GetTexSource(block, altNum, true),
                     subPixelPaddingx,
                     subPixelPaddingy,
-                    block
+                    block,
+                    originalVoxelCuboids
+
                 );
 
                 AddMeshData(mesh, cuboidmesh, skipFace);
@@ -1077,10 +1093,10 @@ namespace Vintagestory.GameContent
 
         public MeshData CreateDecalMesh(ITexPositionSource decalTexSource)
         {
-            return CreateDecalMesh(Api as ICoreClientAPI, VoxelCuboids, decalTexSource);
+            return CreateDecalMesh(Api as ICoreClientAPI, VoxelCuboids, decalTexSource, OriginalVoxelCuboids);
         }
 
-        public static MeshData CreateDecalMesh(ICoreClientAPI coreClientAPI, List<uint> voxelCuboids, ITexPositionSource decalTexSource)
+        public static MeshData CreateDecalMesh(ICoreClientAPI coreClientAPI, List<uint> voxelCuboids, ITexPositionSource decalTexSource, uint[] originalVoxelCuboids)
         {
             MeshData mesh = new MeshData(24, 36, false).WithColorMaps().WithRenderpasses().WithXyzFaces();
 
@@ -1116,7 +1132,8 @@ namespace Vintagestory.GameContent
                     decalTexSource,
                     0,
                     0,
-                    coreClientAPI.World.GetBlock(0)
+                    coreClientAPI.World.GetBlock(0),
+                    originalVoxelCuboids
                 );
 
                 AddMeshData(mesh, cuboidmesh, skipFace);
@@ -1166,8 +1183,24 @@ namespace Vintagestory.GameContent
 
 
 
+        
 
         protected static MeshData genCube(int voxelX, int voxelY, int voxelZ, int width, int height, int length, ICoreClientAPI capi, ITexPositionSource texSource, float subPixelPaddingx, float subPixelPaddingy, Block block)
+        {
+            return genCube(voxelX, voxelY, voxelZ, width, height, length, capi, texSource, subPixelPaddingx, subPixelPaddingy, block, defaultOriginalVoxelCuboids);
+        }
+
+
+        // N = Z1      tocuboid.Z1 = (int)((val >> 8) & 15);
+        // E = X2      tocuboid.X2 = (int)(((val) >> 12) & 15) + 1;
+        // S = Z2      tocuboid.Z2 = (int)(((val) >> 20) & 15) + 1;
+        // W = X1      tocuboid.X1 = (int)((val) & 15);
+        // U = Y2      tocuboid.Y2 = (int)(((val) >> 16) & 15) + 1;
+        // D = Y1      tocuboid.Y1 = (int)((val >> 4) & 15);
+        static int[] neswudShift = new int[] { 8, 12, 20, 0, 16, 4 };
+        static int[] neswudShiftOffset = new int[] { 0, 1, 1, 0, 1, 0 };
+
+        protected static MeshData genCube(int voxelX, int voxelY, int voxelZ, int width, int height, int length, ICoreClientAPI capi, ITexPositionSource texSource, float subPixelPaddingx, float subPixelPaddingy, Block block, uint[] originalVoxelCuboids)
         {
             short renderpass = (short)block.RenderPass;
             int renderFlags = block.VertexFlags.All;
@@ -1181,6 +1214,8 @@ namespace Vintagestory.GameContent
             }
 
             int k = 0;
+            int[] cubeEnds = new int[] { voxelZ, voxelX + width, voxelZ + length, voxelX, voxelY + height, voxelY };
+
             for (int i = 0; i < 6; i++)
             {
                 BlockFacing facing = BlockFacing.ALLFACES[i];
@@ -1193,7 +1228,7 @@ namespace Vintagestory.GameContent
                 mesh.Flags[i * 4 + 2] |= normal;
                 mesh.Flags[i * 4 + 3] |= normal;
 
-                bool isOutside =
+                /*bool isOutside =
                     (
                         (facing == BlockFacing.NORTH && voxelZ == 0) ||
                         (facing == BlockFacing.EAST && voxelX + width == 16) ||
@@ -1202,8 +1237,11 @@ namespace Vintagestory.GameContent
                         (facing == BlockFacing.UP && voxelY + height == 16) ||
                         (facing == BlockFacing.DOWN && voxelY == 0)
                     )
-                ;
-                 
+                ;*/
+
+                // Index 0 is not exactly correct, but will do for now
+                int coord = (int)((originalVoxelCuboids[0] >> neswudShift[i]) & 15) + neswudShiftOffset[i];
+                bool isOutside = coord == cubeEnds[i];
 
                 TextureAtlasPosition tpos = isOutside ? texSource[facing.Code] : texSource["inside-" + facing.Code];
                 if (tpos == null)
@@ -1299,6 +1337,10 @@ namespace Vintagestory.GameContent
                 GameMath.BoolsFromInt(this.sideAlmostSolid, sideAlmostSolid[0]);
             }
 
+            if (tree.HasAttribute("originalCuboids"))
+            {
+                originalCuboids = (tree["originalCuboids"] as IntArrayAttribute)?.AsUint;
+            }
 
             if (worldAccessForResolve.Side == EnumAppSide.Client)
             {
@@ -1397,6 +1439,11 @@ namespace Vintagestory.GameContent
             tree.SetBytes("sideAlmostSolid", new byte[] { (byte) GameMath.IntFromBools(sideAlmostSolid) });
 
             tree.SetString("blockName", BlockName);
+
+            if (originalCuboids != null)
+            {
+                tree["originalCuboids"] = new IntArrayAttribute(originalCuboids);
+            }
         }
 
         bool noMesh = false;

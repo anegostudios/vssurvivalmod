@@ -142,6 +142,11 @@ namespace Vintagestory.GameContent.Mechanics
                 {
                     outputStack.StackSize = GameMath.RoundRandom(Api.World.Rand, props.Quantity.nextFloat(outputStack.StackSize, Api.World.Rand));
                 }
+
+                if (outputStack.StackSize <= 0)
+                {
+                    return;
+                }
             }
 
             Vec3d position = mat.TransformVector(new Vec4d(xOffset * 0.999, 0.1, 0.8, 0)).XYZ.Add(Pos).Add(0.5, 0, 0.5);

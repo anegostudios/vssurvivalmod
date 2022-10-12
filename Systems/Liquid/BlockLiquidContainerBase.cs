@@ -1282,6 +1282,19 @@ namespace Vintagestory.GameContent
                 {
                     dsc.Append(Lang.Get("{0} litres of {1}", litres, incontainerrname));
                 }
+
+                var dummyslot = GetContentInDummySlot(inSlot, contentStack);
+                TransitionState[] states = contentStack.Collectible.UpdateAndGetTransitionStates(api.World, dummyslot);
+                if (states != null && !dummyslot.Empty)
+                {
+                    dsc.AppendLine();
+                    bool nowSpoiling = false;
+                    foreach (var state in states)
+                    {
+                        nowSpoiling |= AppendPerishableInfoText(dummyslot, dsc, world, state, nowSpoiling) > 0;
+                    }
+                }
+                
             }
         }
 

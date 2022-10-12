@@ -101,7 +101,7 @@ namespace Vintagestory.GameContent
                 {
                     // Make sure its not just server lag
                     Block block = Api.World.CollisionTester.GetCollidingBlock(Api.World.BlockAccessor, val.Value.Entity.SelectionBox, val.Value.Entity.Pos.XYZ, true);
-                    if (!(block is BlockStaticTranslocator))
+                    if (!(block is BlockStaticTranslocator) && !(block is BlockTeleporter))
                     {
                         toremove.Add(val.Key);
                         continue;

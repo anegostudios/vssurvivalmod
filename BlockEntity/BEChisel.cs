@@ -222,7 +222,17 @@ namespace Vintagestory.GameContent
         #region Voxel math
 
         public bool SetVoxel(Vec3i voxelPos, bool state, IPlayer byPlayer, byte materialId)
-        {           
+        {
+            if (state)
+            {
+                CuboidWithMaterial cwm = new CuboidWithMaterial();
+                foreach (var cubint in OriginalVoxelCuboids)
+                {
+                    FromUint(cubint, cwm);
+                    if (!cwm.Contains(voxelPos.X, voxelPos.Y, voxelPos.Z)) return false;
+                }
+            }
+
             int size = GetChiselSize(byPlayer);
             bool wasChanged = SetVoxel(voxelPos, state, byPlayer, materialId, size);
 

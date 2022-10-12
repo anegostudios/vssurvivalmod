@@ -150,6 +150,8 @@ namespace Vintagestory.GameContent
             }
         }
 
+        public bool AllowHalloweenEvent = true;
+
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
             base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handling);
@@ -178,6 +180,29 @@ namespace Vintagestory.GameContent
             {
                 byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
                 return;
+            }
+
+            bool carvingTime = false;
+
+            if (block is BlockGroundStorage)
+            {
+                BlockEntityGroundStorage begs = api.World.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityGroundStorage;
+                var neslot = begs.Inventory.FirstNonEmptySlot;
+                if (neslot != null && neslot.Itemstack.Block != null && IsChiselingAllowedFor(neslot.Itemstack.Block, byPlayer))
+                {
+                    block = neslot.Itemstack.Block;
+                }
+
+                if (AllowHalloweenEvent && block.Code.Path == "pumpkin-fruit-4")
+                {
+                    carvingTime = DateTime.Now.Month == 10 || DateTime.Now.Month == 11;
+                    if (!carvingTime)
+                    {
+                        byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
+                        api.World.BlockAccessor.MarkBlockDirty(blockSel.Position);
+                        return;
+                    }
+                }
             }
 
             if (!IsChiselingAllowedFor(block, byPlayer))
@@ -220,6 +245,11 @@ namespace Vintagestory.GameContent
             if (be == null) return;
 
             be.WasPlaced(block, blockName);
+
+            if (carvingTime)
+            {
+                be.MaterialIds = be.MaterialIds.Append(api.World.GetBlock(new AssetLocation("creativeglow-35")).Id);
+            }
             
             handling = EnumHandHandling.PreventDefaultAction;
         }
