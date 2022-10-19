@@ -267,10 +267,21 @@ namespace Vintagestory.GameContent
         public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
         {
             Block belowBlock = world.BlockAccessor.GetBlock(pos.DownCopy());
-            if (!belowBlock.CanAttachBlockAt(world.BlockAccessor, this, pos.DownCopy(), BlockFacing.UP) /*&& (belowBlock != this || FillLevel(world.BlockAccessor, pos.DownCopy()) < 4)*/)
+            if (!belowBlock.CanAttachBlockAt(world.BlockAccessor, this, pos.DownCopy(), BlockFacing.UP))
             {
                 world.BlockAccessor.BreakBlock(pos, null);
+                return;
             }
+      
+            Block neibBlock = world.BlockAccessor.GetBlock(neibpos);
+            Block neibliqBlock = world.BlockAccessor.GetBlock(neibpos, BlockLayersAccess.Fluid);
+            if (neibBlock.Attributes?.IsTrue("smothersFire") == true || neibliqBlock.Attributes?.IsTrue("smothersFire") == true)
+            {
+                var becp = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityCoalPile;
+                becp?.Extinguish();
+            }
+
+            base.OnNeighbourBlockChange(world, pos, neibpos);
         }
 
 

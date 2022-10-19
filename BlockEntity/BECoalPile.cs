@@ -103,7 +103,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        internal void TryIgnite()
+        public void TryIgnite()
         {
             if (burning) return;
 
@@ -113,6 +113,17 @@ namespace Vintagestory.GameContent
 
             updateBurningState();
         }
+
+        public void Extinguish()
+        {
+            if (!burning) return;
+
+            burning = false;
+            UnregisterGameTickListener(listenerId);
+            MarkDirty(true);
+            Api.World.PlaySoundAt(new AssetLocation("sounds/effect/extinguish"), Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5, null, false, 16);
+        }
+
 
         void updateBurningState()
         {

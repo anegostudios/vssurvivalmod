@@ -212,13 +212,14 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            if (FuelPos != FirePos && Api.World.BlockAccessor.GetBlock(FirePos, BlockLayersAccess.Fluid).LiquidCode == "water")
+            var bl = Api.World.BlockAccessor;
+            if (FuelPos != FirePos && (bl.GetBlock(FirePos, BlockLayersAccess.Fluid).Attributes?.IsTrue("smothersFire") == true || bl.GetBlock(FuelPos, BlockLayersAccess.Fluid).Attributes?.IsTrue("smothersFire") == true))
             {
                 KillFire(false);
                 return;
             }
 
-            if (Api.World.BlockAccessor.GetRainMapHeightAt(FirePos.X, FirePos.Z) <= FirePos.Y)   // It's more efficient to do this quick check before GetPrecipitation
+            if (bl.GetRainMapHeightAt(FirePos.X, FirePos.Z) <= FirePos.Y)   // It's more efficient to do this quick check before GetPrecipitation
             {
                 // Die on rainfall
                 tmpPos.Set(FirePos.X + 0.5, FirePos.Y + 0.5, FirePos.Z + 0.5);

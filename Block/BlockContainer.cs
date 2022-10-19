@@ -235,7 +235,7 @@ namespace Vintagestory.GameContent
                     mul = pref(transType, stack, mulByConfig);
                 }
 
-                return mul * GetContainingTransitionModifierContained(api.World, dummySlot, transType);
+                return mul * GetContainingTransitionModifierContained(api.World, inslot, transType);
             };
 
             
