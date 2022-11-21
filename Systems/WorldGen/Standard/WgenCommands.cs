@@ -207,7 +207,7 @@ namespace Vintagestory.ServerMods
 
         private void DelChunks(IServerPlayer player, CmdArgs arguments)
         {
-            Regen(player, arguments, true);
+            Regen(player, arguments, onlydelete: true, aroundPlayer:true);
         }
 
 
