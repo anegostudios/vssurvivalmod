@@ -309,7 +309,7 @@ namespace Vintagestory.GameContent
                 {
                     Vec3i offPos = voxelPos.AddCopy(dx, 0, dz);
                     
-                    if (voxelPos.X >= 0 && voxelPos.X < 16 && voxelPos.Z >= 0 && voxelPos.Z < 16 && Voxels[offPos.X, offPos.Z])
+                    if (offPos.X >= 0 && offPos.X < 16 && offPos.Z >= 0 && offPos.Z < 16 && Voxels[offPos.X, offPos.Z])
                     {
                         Voxels[offPos.X, offPos.Z] = false;
 
