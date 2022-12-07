@@ -71,7 +71,11 @@ namespace Vintagestory.GameContent
 
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
-            if (blockSel == null || !byEntity.Controls.ShiftKey) return;
+            if (blockSel == null || !byEntity.Controls.ShiftKey)
+            {
+                base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handling);
+                return;
+            }
 
             Block block = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
 
@@ -87,7 +91,7 @@ namespace Vintagestory.GameContent
 
         public override bool OnHeldInteractStep(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
-            if (blockSel == null || !byEntity.Controls.ShiftKey) return false;
+            if (blockSel == null || !byEntity.Controls.ShiftKey) return base.OnHeldInteractStep(secondsUsed, slot, byEntity, blockSel, entitySel);
 
             if (byEntity.World is IClientWorldAccessor)
             {
@@ -110,20 +114,32 @@ namespace Vintagestory.GameContent
 
         public override void OnHeldInteractStop(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
-            if (blockSel == null) return;
-            if (secondsUsed < 1.9f) return;
-
+            if (blockSel == null || secondsUsed < 1.9f)
+            {
+                base.OnHeldInteractStop(secondsUsed, slot, byEntity, blockSel, entitySel);
+                return;
+            }
+            
             IWorldAccessor world = byEntity.World;
 
             Block block = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
-            if (!CanSqueezeInto(block, blockSel.Position)) return;
+
+            if (!CanSqueezeInto(block, blockSel.Position))
+            {
+                base.OnHeldInteractStop(secondsUsed, slot, byEntity, blockSel, entitySel);
+                return;
+            }
 
             ItemStack honeyStack = new ItemStack(world.GetItem(new AssetLocation("honeyportion")), 99999);
 
             BlockLiquidContainerTopOpened blockCnt = block as BlockLiquidContainerTopOpened;
             if (blockCnt != null)
             {
-                if (blockCnt.TryPutLiquid(blockSel.Position, honeyStack, ContainedHoneyLitres) == 0) return;
+                if (blockCnt.TryPutLiquid(blockSel.Position, honeyStack, ContainedHoneyLitres) == 0)
+                {
+                    base.OnHeldInteractStop(secondsUsed, slot, byEntity, blockSel, entitySel);
+                    return;
+                }
             }
             else
             {
