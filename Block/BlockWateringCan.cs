@@ -36,7 +36,12 @@ namespace Vintagestory.GameContent
 
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handHandling)
         {
-            if (blockSel == null) return;
+            if (blockSel == null)
+            {
+               base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handHandling);
+               return;
+            }
+
             if (byEntity.Controls.ShiftKey) return;
 
             
@@ -88,6 +93,7 @@ namespace Vintagestory.GameContent
             }
 
             handHandling = EnumHandHandling.PreventDefault;
+            base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handHandling);
         }
 
         private void After350ms(float dt)
@@ -165,8 +171,8 @@ namespace Vintagestory.GameContent
 
         public override bool OnHeldInteractStep(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
-            if (blockSel == null) return false;
-            if (slot.Itemstack.TempAttributes.GetInt("refilled") > 0) return false;
+            if (blockSel == null) return base.OnHeldInteractStep(secondsUsed, slot, byEntity, blockSel, entitySel);
+            if (slot.Itemstack.TempAttributes.GetInt("refilled") > 0) return base.OnHeldInteractStep(secondsUsed, slot, byEntity, blockSel, entitySel);
 
             float prevsecondsused = slot.Itemstack.TempAttributes.GetFloat("secondsUsed");
             slot.Itemstack.TempAttributes.SetFloat("secondsUsed", secondsUsed);
@@ -175,7 +181,7 @@ namespace Vintagestory.GameContent
             SetRemainingWateringSeconds(slot.Itemstack, remainingwater-= secondsUsed - prevsecondsused);
             
 
-            if (remainingwater <= 0) return false;
+            if (remainingwater <= 0) return base.OnHeldInteractStep(secondsUsed, slot, byEntity, blockSel, entitySel);
 
             IWorldAccessor world = byEntity.World;
 
@@ -258,7 +264,7 @@ namespace Vintagestory.GameContent
                 byEntity.World.SpawnParticles(WaterParticles, byPlayer);
             }
 
-            return true;
+            return base.OnHeldInteractStep(secondsUsed, slot, byEntity, blockSel, entitySel);
         }
 
         public override bool OnHeldInteractCancel(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)
