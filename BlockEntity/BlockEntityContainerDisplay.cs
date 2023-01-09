@@ -173,6 +173,8 @@ namespace Vintagestory.GameContent
             meshes[index] = mesh;
         }
 
+        protected bool legacyDisableShapeRotate = false;
+
         protected virtual MeshData genMesh(ItemStack stack)
         {
             MeshData mesh;
@@ -225,7 +227,7 @@ namespace Vintagestory.GameContent
                 mesh.Translate(0, -7.5f / 16f, 0f);
             }
 
-            mesh.Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 0, Block.Shape.rotateY * GameMath.DEG2RAD, 0);
+            if (!legacyDisableShapeRotate) mesh.Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 0, Block.Shape.rotateY * GameMath.DEG2RAD, 0);
 
             return mesh;
         }

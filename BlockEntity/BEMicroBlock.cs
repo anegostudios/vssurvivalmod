@@ -1202,7 +1202,7 @@ namespace Vintagestory.GameContent
 
         protected static MeshData genCube(int voxelX, int voxelY, int voxelZ, int width, int height, int length, ICoreClientAPI capi, ITexPositionSource texSource, float subPixelPaddingx, float subPixelPaddingy, Block block, uint[] originalVoxelCuboids)
         {
-            short renderpass = (short)block.RenderPass;
+            short renderpass = (short)(block.RenderPass == EnumChunkRenderPass.TopSoil ? EnumChunkRenderPass.Opaque : block.RenderPass);
             int renderFlags = block.VertexFlags.All;
 
             MeshData mesh = GetCubeMeshFast(width / 32f, height / 32f, length / 32f, new Vec3f(voxelX / 16f, voxelY / 16f, voxelZ / 16f));

@@ -144,6 +144,10 @@ namespace Vintagestory.GameContent
                     nowTesselatingShape?.Textures.TryGetValue(textureCode, out texturePath);
                 }
 
+                if (texturePath == null)
+                {
+                    return capi.BlockTextureAtlas.UnknownTexturePosition;
+                }
 
                 return getOrCreateTexPos(texturePath);
             }

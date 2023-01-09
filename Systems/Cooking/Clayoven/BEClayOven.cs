@@ -126,6 +126,8 @@ namespace Vintagestory.GameContent
             RegisterGameTickListener(OnBurnTick, 100);
             this.prng = new Random((int)(this.Pos.GetHashCode()));
             this.SetRotation();
+
+            legacyDisableShapeRotate = true;
         }
 
         private void SetRotation()
@@ -730,7 +732,7 @@ namespace Vintagestory.GameContent
         #endregion
 
 
-        #region Rendering
+        #region Mesh
 
 
         protected override void updateMesh(int index)
