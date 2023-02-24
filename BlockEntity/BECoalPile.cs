@@ -199,9 +199,7 @@ namespace Vintagestory.GameContent
         public float GetHoursLeft(double startTotalHours)
         {
             double totalHoursPassed = startTotalHours - burnStartTotalHours;
-
             double burnHourTimeLeft = inventory[0].StackSize / 2 * BurnHoursPerLayer;
-
             return (float)(burnHourTimeLeft - totalHoursPassed);
         }
         

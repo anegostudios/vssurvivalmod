@@ -15,21 +15,19 @@ namespace Vintagestory.GameContent
         int durationMs;
         int releaseAtMs;
         long lastSearchTotalMs;
-
-        float minVertDist = 2f;
-        float minDist = 3f;
         float maxDist = 15f;
-
         protected int searchWaitMs = 2000;
-
-        EntityPartitioning partitionUtil;
-
         float accum = 0;
         bool didThrow;
-
         float minTurnAnglePerSec;
         float maxTurnAnglePerSec;
         float curTurnRadPerSec;
+        float projectileDamage;
+        AssetLocation projectileCode;
+        float maxTurnAngleRad;
+        float maxOffAngleThrowRad;
+        float spawnAngleRad;
+        bool immobile;
 
         public AiTaskThrowAtEntity(EntityAgent entity) : base(entity)
         {
@@ -37,16 +35,17 @@ namespace Vintagestory.GameContent
 
         public override void LoadConfig(JsonObject taskConfig, JsonObject aiConfig)
         {
-            partitionUtil = entity.Api.ModLoader.GetModSystem<EntityPartitioning>();
-
             base.LoadConfig(taskConfig, aiConfig);
-
             this.durationMs = taskConfig["durationMs"].AsInt(1500);
             this.releaseAtMs = taskConfig["releaseAtMs"].AsInt(1000);
-            this.minDist = taskConfig["minDist"].AsFloat(3f);
-            this.minVertDist = taskConfig["minVertDist"].AsFloat(2f);
+            this.projectileDamage = taskConfig["projectileDamage"].AsFloat(1f);
             this.maxDist = taskConfig["maxDist"].AsFloat(15f);
+			this.projectileCode = AssetLocation.Create(taskConfig["projectileCode"].AsString("thrownstone-{rock}"), entity.Code.Domain);
 
+            this.immobile = taskConfig["immobile"].AsBool(false);
+            maxTurnAngleRad = taskConfig["maxTurnAngleDeg"].AsFloat(360) * GameMath.DEG2RAD;
+            maxOffAngleThrowRad = taskConfig["maxOffAngleThrowDeg"].AsFloat(0) * GameMath.DEG2RAD;
+            spawnAngleRad = entity.Attributes.GetFloat("spawnAngleRad");
         }
 
 
@@ -64,13 +63,24 @@ namespace Vintagestory.GameContent
             float range = maxDist;
             lastSearchTotalMs = entity.World.ElapsedMilliseconds;
 
-            targetEntity = partitionUtil.GetNearestEntity(entity.ServerPos.XYZ, range, (e) => IsTargetableEntity(e, range) && hasDirectContact(e, range, range/2f));
+            targetEntity = partitionUtil.GetNearestEntity(entity.ServerPos.XYZ, range, (e) => IsTargetableEntity(e, range) && hasDirectContact(e, range, range/2f) && aimableDirection(e));
 
             return targetEntity != null;
         }
 
+        private bool aimableDirection(Entity e)
+        {
+            if (!immobile) return true;
+
+            float aimYaw = getAimYaw(e);
+
+            return aimYaw > spawnAngleRad - maxTurnAngleRad - maxOffAngleThrowRad && aimYaw < spawnAngleRad + maxTurnAngleRad + maxOffAngleThrowRad;
+        }
+
         public override void StartExecute()
         {
+            base.StartExecute();
+
             accum = 0;
             didThrow = false;
 
@@ -97,21 +107,12 @@ namespace Vintagestory.GameContent
 
         public override bool ContinueExecute(float dt)
         {
-            Vec3f targetVec = new Vec3f();
-
-            targetVec.Set(
-                (float)(targetEntity.ServerPos.X - entity.ServerPos.X),
-                (float)(targetEntity.ServerPos.Y - entity.ServerPos.Y),
-                (float)(targetEntity.ServerPos.Z - entity.ServerPos.Z)
-            );
-
-            float desiredYaw = (float)Math.Atan2(targetVec.X, targetVec.Z);
+            float desiredYaw = getAimYaw(targetEntity);
+            desiredYaw = GameMath.Clamp(desiredYaw, spawnAngleRad - maxTurnAngleRad, spawnAngleRad + maxTurnAngleRad);
 
             float yawDist = GameMath.AngleRadDistance(entity.ServerPos.Yaw, desiredYaw);
             entity.ServerPos.Yaw += GameMath.Clamp(yawDist, -curTurnRadPerSec * dt, curTurnRadPerSec * dt);
             entity.ServerPos.Yaw = entity.ServerPos.Yaw % GameMath.TWOPI;
-
-            if (Math.Abs(yawDist) > 0.02) return true;
 
             if (animMeta != null)
             {
@@ -126,18 +127,33 @@ namespace Vintagestory.GameContent
             {
                 didThrow = true;
 
-                EntityProperties type = entity.World.GetEntityType(new AssetLocation("thrownstone-granite"));
+                var loc = projectileCode.Clone();
+                string rocktype = "granite";
+                var ba = entity.World.BlockAccessor;
+                var mc = ba.GetMapChunkAtBlockPos(entity.Pos.AsBlockPos);
+                if (mc != null)
+                {
+                    int chunksize = ba.ChunkSize;
+                    int lz = (int)entity.Pos.Z % chunksize;
+                    int lx = (int)entity.Pos.X % chunksize;
+                    var rockBlock = entity.World.Blocks[mc.TopRockIdMap[lz * chunksize + lx]];
+                    rocktype = rockBlock.Variant["rock"] ?? "granite";
+                }
+                loc.Path = loc.Path.Replace("{rock}", rocktype);
+
+
+                EntityProperties type = entity.World.GetEntityType(loc);
                 Entity entitypr = entity.World.ClassRegistry.CreateEntity(type);
                 ((EntityThrownStone)entitypr).FiredBy = entity;
-                ((EntityThrownStone)entitypr).Damage = 1;
+                ((EntityThrownStone)entitypr).Damage = projectileDamage;
                 ((EntityThrownStone)entitypr).ProjectileStack = new ItemStack(entity.World.GetItem(new AssetLocation("stone-granite")));
                 ((EntityThrownStone)entitypr).NonCollectible = true;
 
                 Vec3d pos = entity.ServerPos.XYZ.Add(0, entity.LocalEyePos.Y, 0);
-                Vec3d aheadPos = targetEntity.ServerPos.XYZ.Add(0, targetEntity.LocalEyePos.Y, 0);
+                Vec3d targetPos = targetEntity.ServerPos.XYZ.Add(0, targetEntity.LocalEyePos.Y, 0) + targetEntity.ServerPos.Motion * 8;
 
-                double distf = Math.Pow(pos.SquareDistanceTo(aheadPos), 0.1);
-                Vec3d velocity = (aheadPos - pos).Normalize() * GameMath.Clamp(distf - 1f, 0.1f, 1f);
+                double distf = Math.Pow(pos.SquareDistanceTo(targetPos), 0.1);
+                Vec3d velocity = (targetPos - pos).Normalize() * GameMath.Clamp(distf - 1f, 0.1f, 1f);
 
                 entitypr.ServerPos.SetPos(
                     entity.ServerPos.BehindCopy(0.21).XYZ.Add(0, entity.LocalEyePos.Y, 0)
@@ -153,8 +169,20 @@ namespace Vintagestory.GameContent
             return accum < durationMs / 1000f;
         }
 
+        private float getAimYaw(Entity targetEntity)
+        {
+            Vec3f targetVec = new Vec3f();
 
+            targetVec.Set(
+                (float)(targetEntity.ServerPos.X - entity.ServerPos.X),
+                (float)(targetEntity.ServerPos.Y - entity.ServerPos.Y),
+                (float)(targetEntity.ServerPos.Z - entity.ServerPos.Z)
+            );
 
+            float desiredYaw = (float)Math.Atan2(targetVec.X, targetVec.Z);
+            
+            return desiredYaw;
+        }
 
         public override void FinishExecute(bool cancelled)
         {

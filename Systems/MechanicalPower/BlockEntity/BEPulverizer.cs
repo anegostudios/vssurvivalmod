@@ -47,11 +47,12 @@ namespace Vintagestory.GameContent.Mechanics
 
         public bool IsComplete => hasAxle && hasLPounder && hasRPounder && hasPounderCaps;
 
+        public override int DisplayedItems => 2;
+
         public BEPulverizer()
         {
             inv = new InventoryPulverizer(this, 3);
             inv.SlotModified += Inv_SlotModified;
-            meshes = new MeshData[2];
         }
 
         private void Inv_SlotModified(int t1)
@@ -127,7 +128,6 @@ namespace Vintagestory.GameContent.Mechanics
                     Crush(1, CapMetalTierR, 4 / 16d);
                 }
             }
-
         }
 
         private void Crush(int slot, int capTier, double xOffset)
@@ -346,13 +346,28 @@ namespace Vintagestory.GameContent.Mechanics
             base.updateMeshes();
         }
 
-        public override void TranslateMesh(MeshData mesh, int index)
-        {
-            float x = (index % 2 == 0) ? 11.5f / 16f : 4.5f / 16f;
 
-            Vec4f offset = mat.TransformVector(new Vec4f(x - 0.5f, 4/16f, -4.5f/16f, 0f));
-            mesh.Scale(new Vec3f(0.5f, 0f, 0.5f), 0.5f, 0.5f, 0.5f);
-            mesh.Translate(offset.XYZ);
+        protected override float[][] genTransformationMatrices()
+        {
+            float[][] tfMatrices = new float[2][];
+
+            for (int index = 0; index < 2; index++)
+            {
+                float x = (index % 2 == 0) ? 11.5f / 16f : 4.5f / 16f;
+
+                Matrixf mat = new Matrixf().Set(this.mat.Values);
+
+                mat.Translate(x - 0.5f, 4 / 16f, -4.5f / 16f);
+                mat.Translate(0.5f, 0, 0.5f);
+                mat.Scale(0.6f, 0.6f, 0.6f);
+                mat.Translate(-0.5f, 0, -0.5f);
+
+                tfMatrices[index] = mat.Values;
+            }
+
+            
+
+            return tfMatrices;
         }
 
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)

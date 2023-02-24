@@ -157,13 +157,10 @@ namespace Vintagestory.GameContent
                 }
                 slot.Itemstack?.Attributes.SetInt("renderVariant", 0);
             }, 450);
-
-            
-
             
             (byEntity as EntityPlayer)?.Player?.InventoryManager.BroadcastHotbarSlot();
 
-            if (secondsUsed < 0.35f) return;
+            if (secondsUsed < 0.75f) return;
 
             ItemSlot arrowSlot = GetNextMunition(byEntity);
             if (arrowSlot == null) return;
@@ -187,7 +184,7 @@ namespace Vintagestory.GameContent
 
             IPlayer byPlayer = null;
             if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
-            byEntity.World.PlaySoundAt(new AssetLocation("sounds/tool/sling1"), byEntity, byPlayer, false, 8, 0.25f);
+            if (api.Side == EnumAppSide.Server) byEntity.World.PlaySoundAt(new AssetLocation("sounds/tool/sling1"), byEntity, null, false, 8, 0.25f);
 
 
             EntityProperties type = byEntity.World.GetEntityType(new AssetLocation("thrownstone-" + stack.Collectible.Variant["rock"]));
@@ -203,7 +200,7 @@ namespace Vintagestory.GameContent
             
             Vec3d pos = byEntity.ServerPos.XYZ.Add(0, byEntity.LocalEyePos.Y, 0);
             Vec3d aheadPos = pos.AheadCopy(1, byEntity.SidedPos.Pitch + rndpitch, byEntity.SidedPos.Yaw + rndyaw);
-            Vec3d velocity = (aheadPos - pos) * byEntity.Stats.GetBlended("bowDrawingStrength") * 0.75f;
+            Vec3d velocity = (aheadPos - pos) * byEntity.Stats.GetBlended("bowDrawingStrength") * 0.8f;
 
             
             entity.ServerPos.SetPos(byEntity.SidedPos.BehindCopy(0.21).XYZ.Add(0, byEntity.LocalEyePos.Y, 0));

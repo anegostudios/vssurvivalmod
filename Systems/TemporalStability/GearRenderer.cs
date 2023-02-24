@@ -20,13 +20,20 @@ namespace Vintagestory.GameContent
         public double RenderOrder => 1;
         public int RenderRange => 100;
 
-        MeshRef meshref;
+        MeshRef gearMeshref;
         Matrixf matrixf;
         float counter;
         ICoreClientAPI capi;
         IShaderProgram prog;
 
         List<MachineGear> mgears = new List<MachineGear>();
+
+        AnimationUtil tripodAnim;
+        Vec3d tripodPos = new Vec3d();
+        double tripodAccum;
+        LoadedTexture rustTexture;
+
+        EntityBehaviorTemporalStabilityAffected bh;
 
         public GearRenderer(ICoreClientAPI capi)
         {
@@ -42,12 +49,33 @@ namespace Vintagestory.GameContent
 
         public void Init()
         {
-            var shape = API.Common.Shape.TryGet(capi, "shapes/block/machine/machinegear2.json");
+            var shape = Shape.TryGet(capi, "shapes/block/machine/machinegear2.json");
             var block = capi.World.GetBlock(new AssetLocation("platepile"));
             capi.Tesselator.TesselateShape(block, shape, out var mesh);
-            meshref = capi.Render.UploadMesh(mesh);
-
+            gearMeshref = capi.Render.UploadMesh(mesh);
             genGears();
+
+
+            rustTexture = new LoadedTexture(capi);
+            var loc = new AssetLocation("textures/block/metal/tarnished/rust.png");
+            capi.Render.GetOrLoadTexture(loc, ref rustTexture);
+
+            shape = Shape.TryGet(capi, "shapes/entity/supermech/thunderlord.json");
+
+            tripodAnim = new AnimationUtil(capi, tripodPos);
+            tripodAnim.InitializeShapeAndAnimator("tripod", shape, capi.Tesselator.GetTextureSource(block), null, out var _);
+            tripodAnim.StartAnimation(new AnimationMetaData() { Animation = "walk", Code = "walk", BlendMode = EnumAnimationBlendMode.Average, AnimationSpeed = 0.1f });
+            tripodAnim.renderer.ScaleX = 30;
+            tripodAnim.renderer.ScaleY = 30;
+            tripodAnim.renderer.ScaleZ = 30;
+            tripodAnim.renderer.FogAffectedness = 0.15f;
+            tripodAnim.renderer.LightAffected = false;
+            tripodAnim.renderer.StabilityAffected = false;
+            tripodAnim.renderer.ShouldRender = true;
+            tripodAnim.renderer.textureId = rustTexture.TextureId;
+
+
+            bh = capi.World.Player.Entity.GetBehavior<EntityBehaviorTemporalStabilityAffected>();
         }
 
         void genGears()
@@ -96,34 +124,71 @@ namespace Vintagestory.GameContent
         }
 
 
-        float raiseyRel;
+        float raiseyRelGears;
+        float raiseyRelTripod;
 
         public void OnRenderFrame(float deltaTime, EnumRenderStage stage)
         {
-            var plrPos = capi.World.Player.Entity.Pos;
-            var bh = capi.World.Player.Entity.GetBehavior<EntityBehaviorTemporalStabilityAffected>();
+            if (capi.IsGamePaused) deltaTime = 0;
 
-            float targetRaiseyRel = 0; 
-            if (bh !=null) targetRaiseyRel = GameMath.Clamp((float)bh.GlichEffectStrength * 5f - 3f, 0, 1);
             
-            raiseyRel += (targetRaiseyRel - raiseyRel) * deltaTime;
 
-            if (raiseyRel <= 0.01f) return;
+            float targetRaiseyRel = 0;
+            if (bh != null) targetRaiseyRel = GameMath.Clamp((float)bh.GlichEffectStrength * 5f - 3f, 0, 1);
+            raiseyRelGears += (targetRaiseyRel - raiseyRelGears) * deltaTime;
 
             capi.Render.GlToggleBlend(true);
 
+            if (raiseyRelGears >= 0.01f)
+            {
+                renderGears(deltaTime);
+            }
+
+            if (!capi.IsGamePaused)
+            {
+                tripodAnim.renderer.ShouldRender = raiseyRelTripod > 0;
+                updateSuperMechState(deltaTime, stage);
+            }
+
+            capi.Render.GlToggleBlend(false);
+        }
+
+        private void updateSuperMechState(float deltaTime, EnumRenderStage stage)
+        {
+            float targetRaiseyRel = 0;
+            if (bh != null) targetRaiseyRel = GameMath.Clamp((float)bh.GlichEffectStrength * 5f - 1.75f, 0, 1);
+            raiseyRelTripod += (targetRaiseyRel - raiseyRelTripod) * deltaTime/3f;
+
+            var plrPos = capi.World.Player.Entity.Pos;
+
+            tripodAccum += deltaTime / 50.0 * 2f;
+            tripodAccum = tripodAccum % 500000d;
+
+            float d = (1 - raiseyRelTripod) * 900;
+
+            tripodPos.X = plrPos.X + Math.Sin(tripodAccum) * (300d + d);
+            tripodPos.Y = capi.World.SeaLevel;
+            tripodPos.Z = plrPos.Z + Math.Cos(tripodAccum) * (300d + d);
+            tripodAnim.renderer.rotationDeg.Y = (float)((tripodAccum % GameMath.TWOPI) + GameMath.PI) * GameMath.RAD2DEG;
+            tripodAnim.renderer.renderColor.Set(0.5f, 0.5f, 0.5f, 1f);
+            tripodAnim.renderer.FogAffectedness = 1f - GameMath.Clamp(raiseyRelGears * 2.2f - 0.5f, 0, 0.9f);
+
+            tripodAnim.OnRenderFrame(deltaTime, stage);
+        }
+
+        private void renderGears(float deltaTime)
+        {
             prog.Use();
             prog.Uniform("rgbaFogIn", capi.Render.FogColor);
             prog.Uniform("fogMinIn", capi.Render.FogMin);
             prog.Uniform("fogDensityIn", capi.Render.FogDensity);
             prog.Uniform("rgbaAmbientIn", capi.Render.AmbientColor);
-            prog.Uniform("rgbaLightIn", new Vec4f(1,1,1,1));
-            prog.UniformMatrix("projectionMatrix", capi.Render.CurrentProjectionMatrix);            
+            prog.Uniform("rgbaLightIn", new Vec4f(1, 1, 1, 1));
+            prog.UniformMatrix("projectionMatrix", capi.Render.CurrentProjectionMatrix);
             prog.Uniform("counter", counter);
 
-            
-
             int riftIndex = 0;
+            var plrPos = capi.World.Player.Entity.Pos;
 
             foreach (var gear in mgears)
             {
@@ -133,7 +198,7 @@ namespace Vintagestory.GameContent
                 gear.Position.Y = Math.Max(gear.Position.Y, capi.World.BlockAccessor.GetTerrainMapheightAt(new BlockPos((int)(gear.Position.X + plrPos.X), 0, (int)(gear.Position.Z + plrPos.Z))));
 
                 float dx = (float)(gear.Position.X);
-                float dy = (float)(gear.Position.Y - plrPos.Y - (1 - raiseyRel) * gear.Size * 1.5f);
+                float dy = (float)(gear.Position.Y - plrPos.Y - (1 - raiseyRelGears) * gear.Size * 1.5f);
                 float dz = (float)(gear.Position.Z);
 
                 float dist = GameMath.Sqrt(dx * dx + dz * dz);
@@ -158,21 +223,17 @@ namespace Vintagestory.GameContent
                 prog.Uniform("worldPos", new Vec4f(dx, dy, dz, 0));
                 prog.Uniform("riftIndex", riftIndex);
 
-                capi.Render.RenderMesh(meshref);
+                capi.Render.RenderMesh(gearMeshref);
             }
-
 
             counter = GameMath.Mod(counter + deltaTime, GameMath.TWOPI * 100f);
 
             prog.Stop();
-
-            capi.Render.GlToggleBlend(false);
         }
-
 
         public void Dispose()
         {
-            meshref?.Dispose();
+            gearMeshref?.Dispose();
         }
 
     }

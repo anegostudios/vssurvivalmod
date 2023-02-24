@@ -62,7 +62,7 @@ namespace Vintagestory.ServerMods
 
 
 
-        public void LoadRecipes<T>(string name, string path, System.Action<T> RegisterMethod) where T : IRecipeBase<T>
+        public void LoadRecipes<T>(string name, string path, Action<T> RegisterMethod) where T : IRecipeBase<T>
         {
             Dictionary<AssetLocation, JToken> files = api.Assets.GetMany<JToken>(api.Server.Logger, path);
             int recipeQuantity = 0;
@@ -90,7 +90,7 @@ namespace Vintagestory.ServerMods
         }
 
 
-        void LoadGenericRecipe<T>(string className, AssetLocation path, T recipe, System.Action<T> RegisterMethod, ref int quantityRegistered, ref int quantityIgnored) where T : IRecipeBase<T>
+        void LoadGenericRecipe<T>(string className, AssetLocation path, T recipe, Action<T> RegisterMethod, ref int quantityRegistered, ref int quantityIgnored) where T : IRecipeBase<T>
         {
             if (!recipe.Enabled) return;
             if (recipe.Name == null) recipe.Name = path;

@@ -124,7 +124,7 @@ namespace Vintagestory.GameContent
 
             IStandardShaderProgram prog = rpi.StandardShader;
             prog.Use();
-            prog.Tex2D = api.ItemTextureAtlas.AtlasTextureIds[0];
+            prog.Tex2D = api.ItemTextureAtlas.AtlasTextures[0].TextureId;
             prog.DontWarpVertices = 0;
             prog.AddRenderFlags = 0;
             prog.RgbaAmbientIn = rpi.AmbientColor;
@@ -148,13 +148,12 @@ namespace Vintagestory.GameContent
             prog.RgbaLightIn = lightrgbs;
             
             prog.ExtraGlow = (int)GameMath.Clamp((temp - 500) / 4, 0, 255);
-
             
             prog.ModelMatrix = ModelMat
                 .Identity()
                 .Translate(pos.X - camPos.X + transform.Translation.X, pos.Y - camPos.Y + transform.Translation.Y, pos.Z - camPos.Z + transform.Translation.Z)
                 .Translate(transform.Origin.X, 0.6f + transform.Origin.Y, transform.Origin.Z)
-                .RotateX((90 + transform.Rotation.X) * GameMath.DEG2RAD)
+                .RotateX(transform.Rotation.X * GameMath.DEG2RAD)
                 .RotateY(transform.Rotation.Y * GameMath.DEG2RAD)
                 .RotateZ(transform.Rotation.Z * GameMath.DEG2RAD)
                 .Scale(transform.ScaleXYZ.X, transform.ScaleXYZ.Y, transform.ScaleXYZ.Z)

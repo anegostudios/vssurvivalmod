@@ -18,6 +18,7 @@ namespace Vintagestory.GameContent
         public LoadedTexture Texture;
         public string TextCacheTitle;
         public string TextCacheAll;
+        public float searchWeightOffset;
 
         public int PageNumber;
 
@@ -41,6 +42,8 @@ namespace Vintagestory.GameContent
             TextCacheTitle = stack.GetName();
             TextCacheAll = stack.GetName() + " " + stack.GetDescription(capi.World, dummySlot, false);
             isDuplicate = stack.Collectible.Attributes?["handbook"]?["isDuplicate"].AsBool(false) == true;
+
+            searchWeightOffset = stack.Collectible.Attributes?["handbook"]?["searchWeightOffset"].AsFloat(0) ?? 0;
         }
 
         public static string PageCodeForStack(ItemStack stack)
@@ -70,7 +73,7 @@ namespace Vintagestory.GameContent
             scissorBounds.ParentBounds = capi.Gui.WindowBounds;
         }
 
-        public override void RenderTo(ICoreClientAPI capi, double x, double y)
+        public override void RenderListEntryTo(ICoreClientAPI capi, float dt, double x, double y, double cellWidth, double cellHeight)
         {
             float size = (float)GuiElement.scaled(25);
             float pad = (float)GuiElement.scaled(10);
@@ -105,18 +108,25 @@ namespace Vintagestory.GameContent
             Texture = null;
         }
 
-        public override RichTextComponentBase[] GetPageText(ICoreClientAPI capi, ItemStack[] allStacks, ActionConsumable<string> openDetailPageFor)
+        public override void ComposePage(GuiComposer detailViewGui, ElementBounds textBounds, ItemStack[] allstacks, ActionConsumable<string> openDetailPageFor)
+        {
+            RichTextComponentBase[] cmps = GetPageText(detailViewGui.Api, allstacks, openDetailPageFor);
+            detailViewGui.AddRichtext(cmps, textBounds, "richtext");
+        }
+
+        protected virtual RichTextComponentBase[] GetPageText(ICoreClientAPI capi, ItemStack[] allStacks, ActionConsumable<string> openDetailPageFor)
         {
             return Stack.Collectible.GetBehavior<CollectibleBehaviorHandbookTextAndExtraInfo>()?.GetHandbookInfo(dummySlot, capi, allStacks, openDetailPageFor) ?? new RichTextComponentBase[0];
         }
 
-        public override float TextMatchWeight(string searchText)
+        public override float GetTextMatchWeight(string searchText)
         {
             string title = TextCacheTitle;
-            if (title.Equals(searchText, StringComparison.InvariantCultureIgnoreCase)) return 3;
-            if (title.StartsWith(searchText, StringComparison.InvariantCultureIgnoreCase)) return 2.5f;
-            if (title.CaseInsensitiveContains(searchText)) return 2;
-            if (TextCacheAll.CaseInsensitiveContains(searchText)) return 1;
+            if (title.Equals(searchText, StringComparison.InvariantCultureIgnoreCase)) return searchWeightOffset + 3;
+            if (title.StartsWith(searchText + " ", StringComparison.InvariantCultureIgnoreCase)) return searchWeightOffset + 2.75f + Math.Max(0, 15 - title.Length) / 100f;
+            if (title.StartsWith(searchText, StringComparison.InvariantCultureIgnoreCase)) return searchWeightOffset + 2.5f + Math.Max(0, 15 - title.Length) / 100f;
+            if (title.CaseInsensitiveContains(searchText)) return searchWeightOffset + 2;
+            if (TextCacheAll.CaseInsensitiveContains(searchText)) return searchWeightOffset + 1;
             return 0;
         }
     }

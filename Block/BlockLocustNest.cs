@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.ServerMods;
@@ -56,6 +57,27 @@ namespace Vintagestory.GameContent
         }
 
 
+        public override string GetHeldItemName(ItemStack itemStack)
+        {
+            if (itemStack?.Attributes?.GetBool("spawnOnlyAfterImport", false) == true)
+            {
+                return base.GetHeldItemName(itemStack) + " " + Lang.Get("(delayed spawn)");
+            }
+
+            return base.GetHeldItemName(itemStack);
+        }
+
+        public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
+        {
+            base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
+
+            if (inSlot.Itemstack?.Attributes?.GetBool("spawnOnlyAfterImport", false) == true)
+            {
+                dsc.AppendLine(Lang.Get("Spawns locust nests only after import/world generation"));
+            }
+        }
+
+
         public override float OnGettingBroken(IPlayer player, BlockSelection blockSel, ItemSlot itemslot, float remainingResistance, float dt, int counter)
         {
             BlockEntityLocustNest bel = api.World.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityLocustNest;
@@ -66,7 +88,7 @@ namespace Vintagestory.GameContent
 
         public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, LCGRandom worldGenRand)
         {
-            if (blockAccessor.GetBlockId(pos) != 0) return false;
+            if (blockAccessor.GetBlockId(pos.X, pos.Y, pos.Z) != 0) return false;
 
             int surfaceY = blockAccessor.GetTerrainMapheightAt(pos);
             if (surfaceY - pos.Y < 30 || pos.Y < 25) return false;
@@ -80,7 +102,7 @@ namespace Vintagestory.GameContent
                 dy++;
             }
             if (dy >= 15) return false;
-            blockAccessor.SetBlock(this.BlockId, cavepos.AddCopy(0,dy,0));
+            blockAccessor.SetBlock(BlockId, cavepos.AddCopy(0,dy,0));
             if (EntityClass != null)
             {
                 blockAccessor.SpawnBlockEntity(EntityClass, cavepos.AddCopy(0, dy, 0));
@@ -110,7 +132,7 @@ namespace Vintagestory.GameContent
 
         private void tryPlaceDecoDown(BlockPos blockPos, IBlockAccessor blockAccessor, LCGRandom worldGenRand)
         {
-            if (blockAccessor.GetBlockId(blockPos) != 0) return;
+            if (blockAccessor.GetBlock(blockPos).Id != 0) return;
 
             int tries = 7;
             while (tries-- > 0)
@@ -128,7 +150,7 @@ namespace Vintagestory.GameContent
 
         private void tryPlaceDecoUp(BlockPos blockPos, IBlockAccessor blockAccessor, LCGRandom worldgenRand)
         {
-            if (blockAccessor.GetBlockId(blockPos) != 0) return;
+            if (blockAccessor.GetBlock(blockPos).Id != 0) return;
 
             int tries = 7;
             while (tries-- > 0)

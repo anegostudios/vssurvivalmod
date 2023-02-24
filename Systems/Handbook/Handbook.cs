@@ -5,13 +5,22 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
+
+    public delegate void InitCustomPagesDelegate(List<GuiHandbookPage> pages);
+
     public class ModSystemHandbook : ModSystem
     {
         ICoreClientAPI capi;
-
         GuiDialogHandbook dialog;
 
-     
+        public event InitCustomPagesDelegate OnInitCustomPages;
+
+        internal void TriggerOnInitCustomPages(List<GuiHandbookPage> pages)
+        {
+            OnInitCustomPages?.Invoke(pages);
+        }
+
+
         public override bool ShouldLoad(EnumAppSide side)
         {
             return side == EnumAppSide.Client;
@@ -40,6 +49,10 @@ namespace Vintagestory.GameContent
         private void onHandBookLinkClicked(LinkTextComponent comp)
         {
             string target = comp.Href.Substring("handbook://".Length);
+
+            // Seems to fix links like thos not working: block-labeledchest-east-{{ \"type\": \\\"normal-labeled\\\" }}
+            target = target.Replace("\\", "");
+
             if (!dialog.IsOpened()) dialog.TryOpen();
 
             dialog.OpenDetailPageFor(target);

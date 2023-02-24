@@ -8,6 +8,8 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
+using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -48,6 +50,11 @@ namespace Vintagestory.GameContent
 
             handling = EnumHandling.PreventDefault;
 
+            return DoExchange(world, byPlayer, blockSel.Position);
+        }
+
+        private bool DoExchange(IWorldAccessor world, IPlayer byPlayer, BlockPos pos)
+        {
             int index = -1;
             for (int i = 0; i < blockCodes.Length; i++)
             {
@@ -59,21 +66,30 @@ namespace Vintagestory.GameContent
             }
             if (index == -1) return false;
 
-            AssetLocation loc = block.WildCardReplace(blockCodes[index], blockCodes[(index + 1) % blockCodes.Length]);
+            AssetLocation loc = block.Code.WildCardReplace(blockCodes[index], blockCodes[(index + 1) % blockCodes.Length]);
             Block nextBlock = world.GetBlock(loc);
 
             if (nextBlock == null) return false;
 
-            world.BlockAccessor.ExchangeBlock(nextBlock.BlockId, blockSel.Position);
+            world.BlockAccessor.ExchangeBlock(nextBlock.BlockId, pos);
 
             if (sound != null)
             {
-                world.PlaySoundAt(new AssetLocation("sounds/" + sound), blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z, byPlayer);
+                world.PlaySoundAt(new AssetLocation("sounds/" + sound), pos.X, pos.Y, pos.Z, byPlayer);
             }
 
             (byPlayer as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
 
             return true;
+        }
+
+        public override void Activate(IWorldAccessor world, Caller caller, BlockSelection blockSel, ITreeAttribute activationArgs, ref EnumHandling handled)
+        {
+            if (activationArgs != null && activationArgs.HasAttribute("opened"))
+            {
+                if (activationArgs.GetBool("opened") == block.Code.Path.Contains("opened")) return;   // do nothing if already in the required state: NOTE this is only effective if the required state is "opened", works for trapdoors but might not work for something else
+            }
+            DoExchange(world, caller.Player, blockSel.Position);
         }
 
         public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer, ref EnumHandling handled)

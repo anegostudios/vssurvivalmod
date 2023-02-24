@@ -42,8 +42,6 @@ namespace Vintagestory.GameContent
     {
         public ItemStack forContents;
         private ICoreClientAPI capi;
-
-        TextureAtlasPosition contentTextPos;
         CompositeTexture contentTexture;
 
         public ContainerTextureSource(ICoreClientAPI capi, ItemStack forContents, CompositeTexture contentTexture)
@@ -51,38 +49,15 @@ namespace Vintagestory.GameContent
             this.capi = capi;
             this.forContents = forContents;
             this.contentTexture = contentTexture;
+
+            contentTexture.Bake(capi.Assets);
         }
 
         public TextureAtlasPosition this[string textureCode]
         {
             get
             {
-                if (contentTextPos == null)
-                {
-                    int textureSubId;
-
-                    textureSubId = ObjectCacheUtil.GetOrCreate<int>(capi, "contenttexture-" + contentTexture.ToString() + "-" + contentTexture.Alpha, () =>
-                    {
-                        TextureAtlasPosition texPos;
-                        int id = 0;
-
-                        BitmapRef bmp = capi.Assets.TryGet(contentTexture.Base.Clone().WithPathPrefixOnce("textures/").WithPathAppendixOnce(".png"))?.ToBitmap(capi);
-                        if (bmp != null)
-                        {
-                            if (contentTexture.Alpha != 255)
-                            {
-                                bmp.MulAlpha(contentTexture.Alpha);
-                            }
-                            capi.BlockTextureAtlas.InsertTexture(bmp, out id, out texPos);
-                            bmp.Dispose();
-                        }
-
-                        return id;
-                    });
-
-                    contentTextPos = capi.BlockTextureAtlas.Positions[textureSubId];
-                }
-
+                capi.BlockTextureAtlas.GetOrInsertTexture(contentTexture.Baked.BakedName, out _, out var contentTextPos);
                 return contentTextPos;
             }
         }

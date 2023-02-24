@@ -87,6 +87,11 @@ namespace Vintagestory.GameContent
                 world.PlaySoundAt(harvestingSound, blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z, byPlayer);
             }
 
+            if (world.Side == EnumAppSide.Client && world.Rand.NextDouble() < 0.25)
+            {
+                world.SpawnCubeParticles(blockSel.Position.ToVec3d().Add(blockSel.HitPosition), harvestedStack.ResolvedItemstack, 0.25f, 1, 0.5f, byPlayer, new Vec3f(0, 1, 0));
+            }
+
             return world.Side == EnumAppSide.Client || secondsUsed < harvestTime;
         }
 
@@ -105,11 +110,17 @@ namespace Vintagestory.GameContent
                 }
 
                 ItemStack stack = harvestedStack.GetNextItemStack(dropRate);
+                var origStack = stack.Clone();
 
                 if (!byPlayer.InventoryManager.TryGiveItemstack(stack))
                 {
                     world.SpawnItemEntity(stack, blockSel.Position.ToVec3d().Add(0.5, 0.5, 0.5));
                 }
+
+                TreeAttribute tree = new TreeAttribute();
+                tree["itemstack"] = new ItemstackAttribute(origStack.Clone());
+                tree["byentityid"] = new LongAttribute(byPlayer.Entity.EntityId);
+                world.Api.Event.PushEvent("onitemcollected", tree);
 
                 if (harvestedBlock != null)
                 {

@@ -44,11 +44,11 @@ namespace Vintagestory.GameContent
                         foreach (var tex in val.Value.Textures.Values)
                         {
                             tex.Base.WithLocationPrefixOnce(texturesBasePath);
-                            if (tex.Overlays != null)
+                            if (tex.BlendedOverlays != null)
                             {
-                                foreach (var otex in tex.Overlays)
+                                foreach (var otex in tex.BlendedOverlays)
                                 {
-                                    otex.WithLocationPrefixOnce(texturesBasePath);
+                                    otex.Base.WithLocationPrefixOnce(texturesBasePath);
                                 }
                             }
                         }

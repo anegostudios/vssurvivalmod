@@ -51,7 +51,7 @@ namespace Vintagestory.GameContent
             base.OnGameTick(dt);
         }
 
-        public override void OnEntityDespawn(EntityDespawnReason despawn)
+        public override void OnEntityDespawn(EntityDespawnData despawn)
         {
             buzzSound?.Stop();
             buzzSound?.Dispose();

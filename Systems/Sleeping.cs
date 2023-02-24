@@ -110,7 +110,11 @@ namespace Vintagestory.GameContent
 
             if (api.Side == EnumAppSide.Client)
             {
-                capi.World.Player?.Entity.TryUnmount();
+                var bh = capi.World.Player.Entity.GetBehavior<EntityBehaviorTiredness>();
+                if (bh?.IsSleeping == true)
+                {
+                    capi.World.Player?.Entity.TryUnmount();
+                }
                 AllSleeping = false;
                 return;
             }
@@ -120,8 +124,9 @@ namespace Vintagestory.GameContent
                 IServerPlayer splr = player as IServerPlayer;
                 if (splr.ConnectionState != EnumClientState.Playing || splr.WorldData.CurrentGameMode == EnumGameMode.Spectator) continue;
 
+                var bh = splr.Entity.GetBehavior<EntityBehaviorTiredness>();
                 IMountable mount = player.Entity?.MountedOn;
-                if (mount != null && mount is BlockEntityBed)
+                if (bh?.IsSleeping == true && mount != null)
                 {
                     player.Entity.TryUnmount();
                 }
@@ -174,8 +179,8 @@ namespace Vintagestory.GameContent
                 IServerPlayer splr = player as IServerPlayer;
                 if (splr.ConnectionState != EnumClientState.Playing || splr.WorldData.CurrentGameMode == EnumGameMode.Spectator) continue;
 
-                IMountable mount = player.Entity?.MountedOn;
-                if (mount != null && mount is BlockEntityBed)
+                var bh = splr.Entity.GetBehavior<EntityBehaviorTiredness>();
+                if (bh?.IsSleeping == true)
                 {
                     quantitySleeping++;
                 } else

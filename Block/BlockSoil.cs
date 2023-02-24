@@ -50,10 +50,8 @@ namespace Vintagestory.GameContent
             return 0;
         }
 
-        int CurrentStage()
-        {
-            return GrowthStage(Variant["grasscoverage"]);
-        }
+        protected int currentStage;
+
 
 
         public override void OnLoaded(ICoreAPI api)
@@ -82,6 +80,8 @@ namespace Vintagestory.GameContent
             }
 
             chunksize = api.World.BlockAccessor.ChunkSize;
+
+            currentStage = GrowthStage(Variant["grasscoverage"]);
         }
 
         public override void OnServerGameTick(IWorldAccessor world, BlockPos pos, object extra = null)
@@ -111,18 +111,23 @@ namespace Vintagestory.GameContent
 
             bool isGrowing = false;
 
-            Block grass;
+            Block grass = null;
             BlockPos upPos = pos.UpCopy();
             
-            bool lowLightLevel = world.BlockAccessor.GetLightLevel(pos, EnumLightLevelType.MaxLight) < growthLightLevel;
-            if (lowLightLevel || isSmotheringBlock(world, upPos))
+            bool lowLightLevel = world.BlockAccessor.GetLightLevel(pos, EnumLightLevelType.MaxLight) < growthLightLevel && (world.BlockAccessor.GetLightLevel(upPos, EnumLightLevelType.MaxLight) < growthLightLevel || world.BlockAccessor.GetBlock(upPos).SideSolid[BlockFacing.DOWN.Index]);
+            bool smothering = isSmotheringBlock(world, upPos);
+
+            if ((lowLightLevel || smothering) && currentStage > 0)
             {
                 grass = tryGetBlockForDying(world);
             }
             else
             {
-                isGrowing = true;
-                grass = tryGetBlockForGrowing(world, pos);
+                if (!smothering && !lowLightLevel && currentStage < MaxStage)
+                {
+                    isGrowing = true;
+                    grass = tryGetBlockForGrowing(world, pos);
+                }
             }
 
             if (grass != null)
@@ -139,6 +144,7 @@ namespace Vintagestory.GameContent
         protected bool isSmotheringBlock(IWorldAccessor world, BlockPos pos)
         {
             Block block = world.BlockAccessor.GetBlock(pos, BlockLayersAccess.Fluid);
+
             if (block is BlockLakeIce || block.LiquidLevel > 1) return true;
             block = world.BlockAccessor.GetBlock(pos);
             return block.SideSolid[BlockFacing.DOWN.Index] && block.SideOpaque[BlockFacing.DOWN.Index] || block is BlockLava;
@@ -147,8 +153,7 @@ namespace Vintagestory.GameContent
         protected Block tryGetBlockForGrowing(IWorldAccessor world, BlockPos pos)
         {
             int targetStage;
-            int currentStage = CurrentStage();
-            if (currentStage != MaxStage && (targetStage = getClimateSuitedGrowthStage(world, pos, world.BlockAccessor.GetClimateAt(pos, EnumGetClimateMode.WorldGenValues))) != CurrentStage())
+            if (currentStage != MaxStage && (targetStage = getClimateSuitedGrowthStage(world, pos, world.BlockAccessor.GetClimateAt(pos, EnumGetClimateMode.WorldGenValues))) != currentStage)
             {
                 int nextStage = GameMath.Clamp(targetStage, currentStage - 1, currentStage + 1);
 
@@ -160,8 +165,8 @@ namespace Vintagestory.GameContent
 
         protected Block tryGetBlockForDying(IWorldAccessor world)
         {
-            int nextStage = Math.Max(CurrentStage() - 1, 0);
-            if (nextStage != CurrentStage())
+            int nextStage = Math.Max(currentStage - 1, 0);
+            if (nextStage != currentStage)
             {
                 return world.GetBlock(CodeWithParts(growthStages[nextStage]));
             }
@@ -210,7 +215,7 @@ namespace Vintagestory.GameContent
                 world.BlockAccessor.GetLightLevel(pos, EnumLightLevelType.MaxLight) >= growthLightLevel &&
                 world.BlockAccessor.IsSideSolid(pos.X, pos.Y + 1, pos.Z, BlockFacing.DOWN) == false)
             {
-                return getClimateSuitedGrowthStage(world, pos, world.BlockAccessor.GetClimateAt(pos, EnumGetClimateMode.WorldGenValues)) != CurrentStage();
+                return getClimateSuitedGrowthStage(world, pos, world.BlockAccessor.GetClimateAt(pos, EnumGetClimateMode.WorldGenValues)) != currentStage;
             }
             return false;
         }
@@ -219,7 +224,7 @@ namespace Vintagestory.GameContent
 
         protected int getClimateSuitedGrowthStage(IWorldAccessor world, BlockPos pos, ClimateCondition climate)
         {
-            if (climate == null) return CurrentStage();  // Can occasionally be null, e.g. during running /wgen regen command
+            if (climate == null) return currentStage;  // Can occasionally be null, e.g. during running /wgen regen command
 
             ICoreServerAPI api = (ICoreServerAPI)world.Api;
             int mapheight = api.WorldManager.MapSizeY;
@@ -228,11 +233,11 @@ namespace Vintagestory.GameContent
             for (int j = 0; j < blocklayerconfig.Blocklayers.Length; j++)
             {
                 BlockLayer bl = blocklayerconfig.Blocklayers[j];
-
+                float yrel = (float)pos.Y / mapheight;
                 float tempDist = Math.Abs(climate.Temperature - GameMath.Clamp(climate.Temperature, bl.MinTemp, bl.MaxTemp));
-                float rainDist = Math.Abs(climate.WorldgenRainfall - GameMath.Clamp(climate.WorldgenRainfall, bl.MinRain, bl.MaxRain));
-                float fertDist = Math.Abs(climate.Fertility - GameMath.Clamp(climate.Fertility, bl.MinFertility, bl.MaxFertility));
-                float yDist = Math.Abs((float)pos.Y / mapheight - GameMath.Min((float)pos.Y / mapheight, bl.MaxY));
+                float rainDist = Math.Abs(climate.WorldgenRainfall - GameMath.Clamp(climate.WorldgenRainfall, bl.MinRain, bl.MaxRain)) * 10f;
+                float fertDist = Math.Abs(climate.Fertility - GameMath.Clamp(climate.Fertility, bl.MinFertility, bl.MaxFertility)) * 10f;
+                float yDist = Math.Abs(yrel - GameMath.Clamp(yrel, bl.MinY, bl.MaxY)) * 10f;
 
                 double posRand = (double)GameMath.MurmurHash3(pos.X, 1, pos.Z) / int.MaxValue;
                 posRand = (posRand + 1) * transitionSize;
@@ -248,7 +253,7 @@ namespace Vintagestory.GameContent
                     Block block = world.Blocks[blockId];
                     if (block is BlockSoil)
                     {
-                        return (block as BlockSoil).CurrentStage();
+                        return (block as BlockSoil).currentStage;
                     }
                 }
             }

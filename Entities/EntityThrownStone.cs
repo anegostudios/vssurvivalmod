@@ -23,10 +23,17 @@ namespace Vintagestory.GameContent
 
         public Entity FiredBy;
         public float Damage;
+        public int DamageTier = 0;
         public ItemStack ProjectileStack;
 
         public bool NonCollectible;
         public float collidedAccum;
+
+        public float VerticalImpactBreakChance = 0f;
+        public float HorizontalImpactBreakChance = 0.8f;
+
+        public float ImpactParticleSize = 1f;
+        public int ImpactParticleCount = 20;
 
         public override bool IsInteractable
         {
@@ -71,39 +78,6 @@ namespace Vintagestory.GameContent
                 pos.Yaw = (World.ElapsedMilliseconds / 400f) % GameMath.TWOPI;
             }
 
-            if (stuck)
-            {
-                if (!beforeCollided && World is IServerWorldAccessor)
-                {
-                    float strength = GameMath.Clamp((float)motionBeforeCollide.Length() * 4, 0, 1);
-
-                    if (CollidedHorizontally)
-                    {
-                        pos.Motion.X = motionBeforeCollide.X * 0.8f;
-                        pos.Motion.Z = motionBeforeCollide.Z * 0.8f;
-
-                        if (strength > 0.08f && World.Rand.NextDouble() > 0.2f)
-                        {
-                            World.SpawnCubeParticles(SidedPos.XYZ.OffsetCopy(0, 0.2, 0), ProjectileStack, 0.2f, 20);
-                            Die();
-                        }
-                    }
-
-                    if (CollidedVertically && motionBeforeCollide.Y <= 0)
-                    {
-                        pos.Motion.Y = GameMath.Clamp(motionBeforeCollide.Y * -0.3f, -0.1f, 0.1f);
-                    }
-
-                    World.PlaySoundAt(new AssetLocation("sounds/thud"), this, null, false, 32, strength);
-
-                    // Resend position to client
-                    WatchedAttributes.MarkAllDirty();
-                }
-
-                beforeCollided = true;
-                return;
-            }
-
 
             if (World is IServerWorldAccessor)
             {
@@ -119,9 +93,15 @@ namespace Vintagestory.GameContent
 
                 if (entity != null)
                 {
-                    bool didDamage = entity.ReceiveDamage(new DamageSource() { Source = EnumDamageSource.Entity, SourceEntity = FiredBy == null ? this : FiredBy, Type = EnumDamageType.BluntAttack }, Damage);
+                    bool didDamage = entity.ReceiveDamage(new DamageSource() { 
+                        Source = EnumDamageSource.Entity, 
+                        SourceEntity = this, 
+                        CauseEntity = FiredBy, 
+                        Type = EnumDamageType.BluntAttack,
+                        DamageTier = DamageTier
+                    }, Damage);
                     World.PlaySoundAt(new AssetLocation("sounds/thud"), this, null, false, 32);
-                    World.SpawnCubeParticles(entity.SidedPos.XYZ.OffsetCopy(0, 0.2, 0), ProjectileStack, 0.2f, 20);
+                    World.SpawnCubeParticles(entity.SidedPos.XYZ.OffsetCopy(0, 0.2, 0), ProjectileStack, 0.2f, ImpactParticleCount, ImpactParticleSize);
 
                     if (FiredBy is EntityPlayer && didDamage)
                     {
@@ -135,6 +115,51 @@ namespace Vintagestory.GameContent
 
             beforeCollided = false;
             motionBeforeCollide.Set(pos.Motion.X, pos.Motion.Y, pos.Motion.Z);
+        }
+
+
+        public override void OnCollided()
+        {
+            EntityPos pos = SidedPos;
+
+            if (!beforeCollided && World is IServerWorldAccessor)
+            {
+                float strength = GameMath.Clamp((float)motionBeforeCollide.Length() * 4, 0, 1);
+
+                if (CollidedHorizontally)
+                {
+                    float xdir = pos.Motion.X == 0 ? -1 : 1;
+                    float zdir = pos.Motion.Z == 0 ? -1 : 1;
+
+                    pos.Motion.X = xdir * motionBeforeCollide.X * 0.4f;
+                    pos.Motion.Z = zdir * motionBeforeCollide.Z * 0.4f;
+
+                    if (strength > 0.1f && World.Rand.NextDouble() > 1 - HorizontalImpactBreakChance)
+                    {
+                        World.SpawnCubeParticles(SidedPos.XYZ.OffsetCopy(0, 0.2, 0), ProjectileStack, 0.5f, ImpactParticleCount, ImpactParticleSize, null, new Vec3f(xdir * (float)motionBeforeCollide.X * 8, 0, zdir * (float)motionBeforeCollide.Z * 8));
+                        Die();
+                    }
+                }
+
+                if (CollidedVertically && motionBeforeCollide.Y <= 0)
+                {
+                    pos.Motion.Y = GameMath.Clamp(motionBeforeCollide.Y * -0.3f, -0.1f, 0.1f);
+
+                    if (strength > 0.1f && World.Rand.NextDouble() > 1 - VerticalImpactBreakChance)
+                    {
+                        World.SpawnCubeParticles(SidedPos.XYZ.OffsetCopy(0, 0.25, 0), ProjectileStack, 0.5f, ImpactParticleCount, ImpactParticleSize, null, new Vec3f((float)motionBeforeCollide.X * 8, (float)-motionBeforeCollide.Y * 6, (float)motionBeforeCollide.Z * 8));
+                        Die();
+                    }
+                }
+
+                World.PlaySoundAt(new AssetLocation("sounds/thud"), this, null, false, 32, strength);
+
+                // Resend position to client
+                WatchedAttributes.MarkAllDirty();
+            }
+
+            beforeCollided = true;
+            return;
         }
 
 

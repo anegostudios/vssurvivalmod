@@ -1,6 +1,7 @@
 ﻿using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
@@ -11,10 +12,10 @@ namespace Vintagestory.GameContent
         protected InventoryGeneric inventory;
         public override InventoryBase Inventory => inventory;
 
+
         public BlockEntityDisplayCase()
         {
             inventory = new InventoryDisplayed(this, 4, "displaycase-0", null, null);
-            meshes = new MeshData[4];
         }
 
         internal bool OnInteract(IPlayer byPlayer, BlockSelection blockSel)
@@ -44,10 +45,10 @@ namespace Vintagestory.GameContent
 
                     return false;
                 }
+
+                (Api as ICoreClientAPI)?.TriggerIngameError(this, "doesnotfit", Lang.Get("This item does not fit into the display case."));
+                return true;
             }
-
-
-            return false;
         }
 
 
@@ -117,18 +118,41 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override void TranslateMesh(MeshData mesh, int index)
+        protected override float[][] genTransformationMatrices()
         {
-            float x = (index % 2 == 0) ? 5 / 16f : 11 / 16f;
-            float y = 1.01f / 16f;
-            float z = (index > 1) ? 11 / 16f : 5 / 16f;
+            float[][] tfMatrices = new float[4][];
 
-            mesh.Scale(new Vec3f(0.5f, 0, 0.5f), 0.75f, 0.75f, 0.75f);
-            
-            float degY = (45 + GameMath.MurmurHash3Mod(Pos.X, Pos.Y + index * 50, Pos.Z, 30) - 15);
-            mesh.Rotate(new Vec3f(0.5f, 0, 0.5f), 0, degY * GameMath.DEG2RAD, 0);
-            mesh.Translate(x - 0.5f, y, z - 0.5f);
+            for (int index = 0; index < 4; index++)
+            {
+                float x = (index % 2 == 0) ? 5 / 16f : 11 / 16f;
+                float y = 1.01f / 16f;
+                float z = (index > 1) ? 11 / 16f : 5 / 16f;
+
+                int rnd = GameMath.MurmurHash3Mod(Pos.X, Pos.Y + index * 50, Pos.Z, 30) - 15;
+                var collObjAttr = inventory[index]?.Itemstack?.Collectible?.Attributes;
+                if (collObjAttr != null && collObjAttr["randomizeInDisplayCase"].AsBool(true) == false)
+                {
+                    rnd = 0;
+                }
+
+                float degY = (45 + rnd);
+
+                tfMatrices[index] = 
+                    new Matrixf()
+                    .Translate(0.5f, 0, 0.5f)
+                    .Translate(x - 0.5f, y, z - 0.5f)
+                    .RotateYDeg(degY)
+                    .Scale(0.75f, 0.75f, 0.75f)
+                    .Translate(-0.5f, 0, -0.5f)
+                    .Values
+                ;
+            }
+
+            return tfMatrices;
         }
+
+
+        
     }
 
 }

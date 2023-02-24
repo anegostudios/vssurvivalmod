@@ -184,8 +184,6 @@ namespace Vintagestory.GameContent.Mechanics
                 return false;
 #endif
             }
-
-            return true;
         }
 
         private MeshData rotStand(MeshData mesh)

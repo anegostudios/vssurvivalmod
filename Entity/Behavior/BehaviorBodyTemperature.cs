@@ -1,8 +1,6 @@
 ﻿using System;
-using Vintagestory.API;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
-using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
@@ -10,12 +8,10 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-
     public interface IHeatSource
     {
         float GetHeatStrength(IWorldAccessor world, BlockPos heatSourcePos, BlockPos heatReceiverPos);
     }
-
 
     public class EntityBehaviorBodyTemperature : EntityBehavior
     {
@@ -114,7 +110,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void OnEntityDespawn(EntityDespawnReason despawn)
+        public override void OnEntityDespawn(EntityDespawnData despawn)
         {
             blockAccess?.Dispose();
             blockAccess = null;

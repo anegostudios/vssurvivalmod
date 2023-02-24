@@ -95,7 +95,7 @@ namespace Vintagestory.GameContent
         {
             if (api.Side == EnumAppSide.Client && IsUsingContainedBlock) return false;
 
-            if (!world.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            if (!world.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.Use))
             {
                 byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
                 return false;

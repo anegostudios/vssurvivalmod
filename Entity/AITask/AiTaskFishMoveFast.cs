@@ -16,29 +16,20 @@ namespace Vintagestory.GameContent
     /// </summary>
     public class AiTaskFishMoveFast : AiTaskBase
     {
-        //TODO: add a cooldown to temporarily disable this after use (fish is tired)
-        //? always include some change of direction
-
         public Vec3d MainTarget;
-
         bool done;
         float moveSpeed = 0.06f;
         float wanderChance = 0.04f;
-        float maxHeight = 7f;
         float? preferredLightLevel;
         float targetDistance = 0.12f;
 
-        bool awaitReached = true;
 
         NatFloat wanderRangeHorizontal = NatFloat.createStrongerInvexp(3, 40);
         NatFloat wanderRangeVertical = NatFloat.createStrongerInvexp(3, 10);
 
-        BlockPos tmpPos = new BlockPos();
 
         public bool TeleportWhenOutOfRange = true;
         public double TeleportInGameHours = 1;
-
-        long lastTimeInRangeMs;
 
         public float WanderRangeMul
         {
@@ -94,22 +85,11 @@ namespace Vintagestory.GameContent
             wanderRangeHorizontal = NatFloat.createStrongerInvexp(wanderRangeMin, wanderRangeMax);
 
 
-            if (taskConfig["maxHeight"] != null)
-            {
-                maxHeight = taskConfig["maxHeight"].AsFloat(7f);
-            }
-
             if (taskConfig["preferredLightLevel"] != null)
             {
                 preferredLightLevel = taskConfig["preferredLightLevel"].AsFloat(-99);
                 if (preferredLightLevel < 0) preferredLightLevel = null;
             }
-
-            if (taskConfig["awaitReached"] != null)
-            {
-                awaitReached = taskConfig["awaitReached"].AsBool(true);
-            }
-            
         }
 
 

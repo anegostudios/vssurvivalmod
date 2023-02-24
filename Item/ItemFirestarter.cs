@@ -18,17 +18,15 @@ namespace Vintagestory.GameContent
             Block block = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
 
             IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
-            if (!byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            if (!byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.Use))
             {
                 return;
             }
 
-
-            EnumIgniteState igniteState = block.OnTryIgniteBlock(byEntity, blockSel.Position, 0);
-            if (igniteState == EnumIgniteState.NotIgnitable)
+            if (!(block is IIgnitable ign) || ign.OnTryIgniteBlock(byEntity, blockSel.Position, 0) == EnumIgniteState.NotIgnitable)
             {
                 return;
-            }
+            }                        
 
             handling = EnumHandHandling.PreventDefault;
 
@@ -48,7 +46,7 @@ namespace Vintagestory.GameContent
             }
 
             IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
-            if (!byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            if (!byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.Use))
             {
                 api.Event.UnregisterCallback(ObjectCacheUtil.TryGet<long>(api, "firestartersound"));
                 return false;
@@ -58,7 +56,9 @@ namespace Vintagestory.GameContent
             Block block = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
 
 
-            EnumIgniteState igniteState = block.OnTryIgniteBlock(byEntity, blockSel.Position, secondsUsed);
+            EnumIgniteState igniteState = EnumIgniteState.NotIgnitable;
+            if (block is IIgnitable ign) igniteState = ign.OnTryIgniteBlock(byEntity, blockSel.Position, secondsUsed);
+
             if (igniteState == EnumIgniteState.NotIgnitable || igniteState == EnumIgniteState.NotIgnitablePreventDefault)
             {
                 api.Event.UnregisterCallback(ObjectCacheUtil.TryGet<long>(api, "firestartersound"));
@@ -113,7 +113,11 @@ namespace Vintagestory.GameContent
             if (api.World.Rand.NextDouble() > 0.25) return;
 
             Block block = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
-            EnumIgniteState igniteState = block.OnTryIgniteBlock(byEntity, blockSel.Position, secondsUsed);
+            
+            EnumIgniteState igniteState = EnumIgniteState.NotIgnitable;
+            var ign = block as IIgnitable;
+            if (ign != null) igniteState = ign.OnTryIgniteBlock(byEntity, blockSel.Position, secondsUsed);
+
             if (igniteState != EnumIgniteState.IgniteNow)
             {
                 api.Event.UnregisterCallback(ObjectCacheUtil.TryGet<long>(api, "firestartersound"));
@@ -123,14 +127,14 @@ namespace Vintagestory.GameContent
             DamageItem(api.World, byEntity, slot);
 
             IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
-            if (!byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            if (!byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.Use))
             {
                 return;
             }
 
 
             EnumHandling handled = EnumHandling.PassThrough;
-            block.OnTryIgniteBlockOver(byEntity, blockSel.Position, secondsUsed, ref handled);
+            ign.OnTryIgniteBlockOver(byEntity, blockSel.Position, secondsUsed, ref handled);
         }
 
 

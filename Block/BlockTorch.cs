@@ -1,16 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text;
 using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockTorch : BlockGroundAndSideAttachable
+    public class BlockTorch : BlockGroundAndSideAttachable, IIgnitable
     {
         bool IsExtinct => Variant["state"] == "extinct";
 
@@ -98,16 +100,16 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override EnumIgniteState OnTryIgniteBlock(EntityAgent byEntity, BlockPos pos, float secondsIgniting)
+        public EnumIgniteState OnTryIgniteBlock(EntityAgent byEntity, BlockPos pos, float secondsIgniting)
         {
             if (Variant["state"] == "burnedout") return EnumIgniteState.NotIgnitablePreventDefault;
 
             if (IsExtinct) return secondsIgniting > 1 ? EnumIgniteState.IgniteNow : EnumIgniteState.Ignitable;
 
-            return base.OnTryIgniteBlock(byEntity, pos, secondsIgniting);
+            return EnumIgniteState.NotIgnitable;
         }
 
-        public override void OnTryIgniteBlockOver(EntityAgent byEntity, BlockPos pos, float secondsIgniting, ref EnumHandling handling)
+        public void OnTryIgniteBlockOver(EntityAgent byEntity, BlockPos pos, float secondsIgniting, ref EnumHandling handling)
         {
             handling = EnumHandling.PreventDefault;
             var block = api.World.GetBlock(CodeWithVariant("state", "lit"));
@@ -133,6 +135,18 @@ namespace Vintagestory.GameContent
         public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
         {
             return base.GetPlacedBlockInteractionHelp(world, selection, forPlayer).Append(interactions);
+        }
+
+
+        public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
+        {
+            base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
+
+            if (Attributes != null && Variant["state"] == "lit")
+            {
+                dsc.AppendLine();
+                dsc.AppendLine(Lang.Get("Burns for {0} hours when placed.", Attributes["transientProps"]["inGameHours"].AsFloat()));
+            }
         }
 
     }

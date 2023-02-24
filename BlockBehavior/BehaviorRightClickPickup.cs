@@ -74,10 +74,17 @@ namespace Vintagestory.GameContent
                     bool blockToBreak = true;
                     foreach (var stack in dropStacks)
                     {
+                        var origStack = stack.Clone();
+
                         if (!byPlayer.InventoryManager.TryGiveItemstack(stack, true))
                         {
                             world.SpawnItemEntity(stack, blockSel.Position.ToVec3d().AddCopy(0.5, 0.1, 0.5));
                         }
+
+                        TreeAttribute tree = new TreeAttribute();
+                        tree["itemstack"] = new ItemstackAttribute(origStack.Clone());
+                        tree["byentityid"] = new LongAttribute(byPlayer.Entity.EntityId);
+                        world.Api.Event.PushEvent("onitemcollected", tree);
 
                         if (blockToBreak)
                         {

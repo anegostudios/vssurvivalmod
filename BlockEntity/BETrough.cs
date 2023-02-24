@@ -98,6 +98,12 @@ namespace Vintagestory.GameContent
         public BlockEntityTrough()
         {
             inventory = new InventoryGeneric(4, null, null, (id, inv) => new ItemSlotTrough(this, inv));
+            inventory.OnGetAutoPushIntoSlot = (face, slot) =>
+            {
+                if (IsFull) return null;
+                WeightedSlot wslot = inventory.GetBestSuitedSlot(slot);
+                return wslot.slot;
+            };
         }
 
 
@@ -247,7 +253,7 @@ namespace Vintagestory.GameContent
             MeshData meshbase;
             MeshData meshadd;
 
-            blockTexPosSource = capi.Tesselator.GetTexSource(Block);
+            blockTexPosSource = capi.Tesselator.GetTextureSource(Block);
             Shape shape = API.Common.Shape.TryGet(Api, "shapes/" + shapeLoc + ".json");
             capi.Tesselator.TesselateShape("betroughcontentsleft", shape, out meshbase, this, rotation);
 
@@ -363,5 +369,6 @@ namespace Vintagestory.GameContent
             if (contentsStack != null) dsc.AppendLine(Lang.Get(contentsStack.GetName()));
             if (config.FoodForDesc != null) dsc.AppendLine(Lang.Get(config.FoodForDesc));
         }
+
     }
 }

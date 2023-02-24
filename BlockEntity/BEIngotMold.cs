@@ -41,11 +41,11 @@ namespace Vintagestory.GameContent
 
         public float TemperatureLeft
         {
-            get { return contentsLeft.Collectible.GetTemperature(Api.World, contentsLeft); }
+            get { return contentsLeft?.Collectible.GetTemperature(Api.World, contentsLeft) ?? 0; }
         }
         public float TemperatureRight
         {
-            get { return contentsRight.Collectible.GetTemperature(Api.World, contentsRight); }
+            get { return contentsRight?.Collectible.GetTemperature(Api.World, contentsRight) ?? 0; }
         }
 
         public bool IsHardenedLeft
@@ -151,7 +151,7 @@ namespace Vintagestory.GameContent
         {
             meshesByQuantity = new MeshData[2];
             
-            ITexPositionSource tmpTextureSource = ((ICoreClientAPI)Api).Tesselator.GetTexSource(Block);
+            ITexPositionSource tmpTextureSource = ((ICoreClientAPI)Api).Tesselator.GetTextureSource(Block);
             ITesselatorAPI mesher = ((ICoreClientAPI)Api).Tesselator;
 
             Shape shape = API.Common.Shape.TryGet(Api, "shapes/block/clay/mold/ingot-1middle.json");

@@ -42,7 +42,11 @@ namespace Vintagestory.GameContent
         public AssetLocation PlaceRemoveSound = new AssetLocation("sounds/player/build");
         public bool RandomizeSoundPitch;
         public AssetLocation StackingModel;
-        public int? TessQuantityElements;
+
+        [Obsolete("Use ModelItemsToStackSizeRatio instead, which is now a float instead of int?")]
+        public int? TessQuantityElements { set { ModelItemsToStackSizeRatio = value ?? 0; } get { return (int)ModelItemsToStackSizeRatio; } }
+
+        public float ModelItemsToStackSizeRatio = 1;
         public Dictionary<string, AssetLocation> StackingTextures;
         public int MaxStackingHeight = 1;
         public int StackingCapacity = 1;

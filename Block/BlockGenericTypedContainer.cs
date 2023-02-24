@@ -12,7 +12,7 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockGenericTypedContainerTrunk : BlockGenericTypedContainer, IMultiBlockMonolithicSmall
+    public class BlockGenericTypedContainerTrunk : BlockGenericTypedContainer, IMultiBlockMonolithicBasic
     {
         Cuboidf[] mirroredColBox;
         public override void OnLoaded(ICoreAPI api)
@@ -244,7 +244,7 @@ namespace Vintagestory.GameContent
             if (shapename == null) return null;
             if (tesselator == null) tesselator = capi.Tesselator;
 
-            tmpTextureSource = tesselator.GetTexSource(this, altTexNumber);
+            tmpTextureSource = tesselator.GetTextureSource(this, altTexNumber);
 
             AssetLocation shapeloc = AssetLocation.Create(shapename, Code.Domain).WithPathPrefixOnce("shapes/");
             Shape shape = API.Common.Shape.TryGet(capi, shapeloc + ".json");
@@ -263,7 +263,11 @@ namespace Vintagestory.GameContent
         {
             Shape shape = GetShape(capi, type, shapename, tesselator, altTexNumber);
             if (tesselator == null) tesselator = capi.Tesselator;
-            if (shape == null) return new MeshData();
+            if (shape == null)
+            {
+                capi.Logger.Warning("Container block {0}, type: {1}: Shape file {2} not found!", Code, type, shapename);
+                return new MeshData();
+            }
 
             curType = type;
             MeshData mesh;

@@ -26,12 +26,7 @@ namespace Vintagestory.GameContent
     // - BlockBucket has methods for placing/taking liquids from a bucket stack or a placed bucket block
     public class BlockBucket : BlockLiquidContainerTopOpened
     {
-        public override float CapacityLitres => 10;
         protected override string meshRefsCacheKey => "bucketMeshRefs";
-        protected override AssetLocation emptyShapeLoc => new AssetLocation("shapes/block/wood/bucket/empty.json");
-        protected override AssetLocation contentShapeLoc => new AssetLocation("shapes/block/wood/bucket/contents.json");
-
-        protected override float liquidMaxYTranslate => 7 / 16f;
 
 
         public override void OnLoaded(ICoreAPI api)

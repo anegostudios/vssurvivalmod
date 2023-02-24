@@ -8,17 +8,19 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
+    public enum EnumOvenContentMode
+    {
+        Firewood,
+        SingleCenter,
+        Quadrants
+    }
+
     public class BlockEntityOven : BlockEntityDisplay, IHeatSource
     {
-        // One Vec3f object only, for performance
-        static readonly Vec3f centre = new Vec3f(0.5f, 0, 0.5f);
-
         /// <summary>
         /// The number of times to re-render the baked item in the rising stage
         /// </summary>
         public static int BakingStageThreshold = 100; // Every 1% growth, retesselate
-
-
 
         /// <summary>
         /// The maximum baking (or smelting) temperature of items which this oven will accept to be placed
@@ -33,7 +35,7 @@ namespace Vintagestory.GameContent
         /// <summary>
         /// The number of "regular" bread items the oven can accept
         /// </summary>
-        public virtual int itemCapacity => 4;
+        public virtual int bakeableCapacity => 4;
         /// <summary>
         /// The number of logs of firewood the oven can accept
         /// </summary>
@@ -65,53 +67,62 @@ namespace Vintagestory.GameContent
         /// Data about the level of browning/baking reached for the baked items
         /// </summary>
         private readonly OvenItemData[] bakingData;
-        /// <summary>
-        /// Some random numbers for the fuel logs (they are not exactly orthogonal): stored in an array to ensure consistency from state to state
-        /// </summary>
-        private int[] woodrand;
-        private bool woodrandDone = false;
         private ItemStack lastRemoved = null;
         /// <summary>
         /// For rendering: degrees of rotation of contents depending on block variant - 0 is east
         /// </summary>
-        private int rotation;
+        private int rotationDeg;
         Random prng;
         private int syncCount;
 
         ILoadedSound ambientSound;
 
         /// <summary>
-        /// Slots 0-3: Baking items  -~-  Slot 4: Fuel
+        /// Slots 0-3: Baking items. Slot 0: Fuel
         /// </summary>
         internal InventoryOven ovenInv;
 
+        EnumOvenContentMode OvenContentMode
+        {
+            get
+            {
+                var slot = ovenInv.FirstNonEmptySlot;
+                if (slot == null) return EnumOvenContentMode.Firewood;
+
+                BakingProperties bakingProps = BakingProperties.ReadFrom(slot.Itemstack);
+                if (bakingProps == null) return EnumOvenContentMode.Firewood;
+
+                return bakingProps.LargeItem ? EnumOvenContentMode.SingleCenter : EnumOvenContentMode.Quadrants;
+            }
+        }
+
         public BlockEntityOven()
         {
-            bakingData = new OvenItemData[itemCapacity];
-            for (int i = 0; i < itemCapacity; i++)
+            bakingData = new OvenItemData[bakeableCapacity];
+            for (int i = 0; i < bakeableCapacity; i++)
             {
                 bakingData[i] = new OvenItemData();
             }
-            woodrand = new int[fuelitemCapacity];
-            ovenInv = new InventoryOven("oven-0", itemCapacity, fuelitemCapacity);
-            meshes = new MeshData[itemCapacity + fuelitemCapacity];
+            ovenInv = new InventoryOven("oven-0", bakeableCapacity);
         }
 
         public override InventoryBase Inventory => ovenInv;
 
         public override string InventoryClassName => "oven";
 
-        public ItemSlot FuelSlot { get { return ovenInv[itemCapacity]; } }
+        public ItemSlot FuelSlot { get { return ovenInv[0]; } }
+
+        public bool HasFuel => FuelSlot.Itemstack?.Collectible?.Attributes?.IsTrue("isClayOvenFuel") == true;
 
         public bool IsBurning { get { return burning; } }
 
-        public bool HasItems
+        public bool HasBakeables
         {
             get
             {
-                for (int i = 0; i < itemCapacity; i++)
+                for (int i = 0; i < bakeableCapacity; i++)
                 {
-                    if (!ovenInv[i].Empty) return true;
+                    if (!ovenInv[i].Empty && (i != 0 || !HasFuel)) return true;
                 }
                 return false;
             }
@@ -126,8 +137,6 @@ namespace Vintagestory.GameContent
             RegisterGameTickListener(OnBurnTick, 100);
             this.prng = new Random((int)(this.Pos.GetHashCode()));
             this.SetRotation();
-
-            legacyDisableShapeRotate = true;
         }
 
         private void SetRotation()
@@ -135,27 +144,22 @@ namespace Vintagestory.GameContent
             switch (Block.Variant["side"])
             {
                 case "south":
-                    this.rotation = 270;
+                    this.rotationDeg = 270;
                     break;
                 case "west":
-                    this.rotation = 180;
+                    this.rotationDeg = 180;
                     break;
                 case "east":
-                    this.rotation = 0;
+                    this.rotationDeg = 0;
                     break;
                 default:
-                    this.rotation = 90;
+                    this.rotationDeg = 90;
                     break;
             }
         }
 
-        public float GetHeatStrength(IWorldAccessor world, BlockPos heatSourcePos, BlockPos heatReceiverPos)
-        {
-            return Math.Max((this.ovenTemperature - 20f) / (this.maxTemperature - 20f) * 8f, 0f);
-        }
-
-
-        #region Interaction: AI for placing and taking items
+        
+        #region Interaction: Code for placing and taking items
 
         public virtual bool OnInteract(IPlayer byPlayer, BlockSelection bs)
         {
@@ -173,9 +177,9 @@ namespace Vintagestory.GameContent
             else
             {
                 CollectibleObject colObj = slot.Itemstack.Collectible;
-                if (colObj.Attributes?.IsTrue("isFirewood") == true)
+                if (colObj.Attributes?.IsTrue("isClayOvenFuel") == true)
                 {
-                    if (TryFuel(slot))
+                    if (TryAddFuel(slot))
                     {
                         AssetLocation sound = slot.Itemstack?.Block?.Sounds?.Place;
                         Api.World.PlaySoundAt(sound != null ? sound : new AssetLocation("sounds/player/build"), byPlayer.Entity, byPlayer, true, 16);
@@ -232,9 +236,9 @@ namespace Vintagestory.GameContent
             return false;
         }
 
-        protected virtual bool TryFuel(ItemSlot slot)
+        protected virtual bool TryAddFuel(ItemSlot slot)
         {
-            if (IsBurning || HasItems) return false;
+            if (IsBurning || HasBakeables) return false;
 
             if (FuelSlot.Empty || FuelSlot.Itemstack.StackSize < fuelitemCapacity)
             {
@@ -242,6 +246,7 @@ namespace Vintagestory.GameContent
 
                 if (moved > 0)
                 {
+                    updateMesh(0);
                     MarkDirty(true);
                     lastRemoved = null;
                 }
@@ -254,27 +259,19 @@ namespace Vintagestory.GameContent
 
         protected virtual bool TryPut(ItemSlot slot)
         {
-            if (IsBurning || !FuelSlot.Empty) return false;
+            if (IsBurning || HasFuel) return false;
 
             BakingProperties bakingProps = BakingProperties.ReadFrom(slot.Itemstack);
             if (bakingProps == null) return false;
 
             if (slot.Itemstack.Attributes.GetBool("bakeable", true) == false) return false;
 
-            // For large items (pies) check all 4 oven slots are empty before adding the item
-
-            if (bakingProps.LargeItem)
+            if (bakingProps.LargeItem && !ovenInv.Empty)
             {
-                for (int index = 0; index < itemCapacity; index++)
-                {
-                    if (!ovenInv[index].Empty)
-                    {
-                        return false;
-                    }
-                }
+                return false;
             }
 
-            for (int index = 0; index < itemCapacity; index++)
+            for (int index = 0; index < bakeableCapacity; index++)
             {
                 if (ovenInv[index].Empty)
                 {
@@ -295,9 +292,8 @@ namespace Vintagestory.GameContent
                 else if (index == 0)
                 {
                     // Disallow other items from being inserted if slot 0 holds a large item (a pie)
-
-                    BakingProperties slot0Props = BakingProperties.ReadFrom(ovenInv[index].Itemstack);
-                    if (slot0Props != null && slot0Props.LargeItem) return false;
+                    BakingProperties props = BakingProperties.ReadFrom(ovenInv[0].Itemstack);
+                    if (props != null && props.LargeItem) return false;
                 }
             }
             return false;
@@ -305,16 +301,16 @@ namespace Vintagestory.GameContent
 
         protected virtual bool TryTake(IPlayer byPlayer)
         {
-            for (int index = itemCapacity; index >= 0; index--)
+            for (int index = bakeableCapacity; index >= 0; index--)
             {
-                if (index == itemCapacity && !FuelSlot.Empty && FuelSlot.Itemstack.Collectible.Attributes?.IsTrue("isFirewood") == true)
+                if (index == bakeableCapacity && !FuelSlot.Empty && FuelSlot.Itemstack.Collectible.Attributes?.IsTrue("isClayOvenFuel") == true)
                     continue;
 
                 if (!ovenInv[index].Empty)
                 {
                     ItemStack stack = ovenInv[index].TakeOut(1);
                     lastRemoved = stack == null ? null : stack.Clone();
-                    if (byPlayer.InventoryManager.TryGiveItemstack(stack))  //TODO GENERALLY ##  this behaviour is annoying if the player has a different hotbar slot highlighted
+                    if (byPlayer.InventoryManager.TryGiveItemstack(stack))
                     {
                         AssetLocation sound = stack.Block?.Sounds?.Place;
                         Api.World.PlaySoundAt(sound != null ? sound : new AssetLocation("sounds/player/throw"), byPlayer.Entity, byPlayer, true, 16);
@@ -340,7 +336,7 @@ namespace Vintagestory.GameContent
             if (IsBurning) return null;
             if (!FuelSlot.Empty) return null;
             if (ovenTemperature <= EnvironmentTemperature() + 25) return null;   // Don't invite player to insert bakeable items in a cold oven - 25 degrees allows some hysteresis if SEASONS causes changes in enviro temperature
-            for (int i = 0; i < itemCapacity; i++)
+            for (int i = 0; i < bakeableCapacity; i++)
             {
                 if (ovenInv[i].Empty) return itemstacks;
             }
@@ -350,7 +346,7 @@ namespace Vintagestory.GameContent
         public virtual ItemStack[] CanAddAsFuel(ItemStack[] itemstacks)
         {
             if (IsBurning) return null;
-            for (int i = 0; i < itemCapacity; i++)
+            for (int i = 0; i < bakeableCapacity; i++)
             {
                 if (!ovenInv[i].Empty) return null;
             }
@@ -374,6 +370,12 @@ namespace Vintagestory.GameContent
         }
 
         #endregion
+
+        #region Heating, Cooling
+        public float GetHeatStrength(IWorldAccessor world, BlockPos heatSourcePos, BlockPos heatReceiverPos)
+        {
+            return Math.Max((this.ovenTemperature - 20f) / (this.maxTemperature - 20f) * 8f, 0f);
+        }
 
 
         protected virtual void OnBurnTick(float dt)
@@ -400,7 +402,7 @@ namespace Vintagestory.GameContent
                     if (props?.SmeltedStack == null)
                     {
                         FuelSlot.Itemstack = null;
-                        for (int i = 0; i < itemCapacity; i++) bakingData[i].CurHeightMul = 1;
+                        for (int i = 0; i < bakeableCapacity; i++) bakingData[i].CurHeightMul = 1;
                     }
                     else
                     {
@@ -439,7 +441,7 @@ namespace Vintagestory.GameContent
 
         protected virtual void HeatInput(float dt)
         {
-            for (int slotIndex = 0; slotIndex < itemCapacity; slotIndex++)
+            for (int slotIndex = 0; slotIndex < bakeableCapacity; slotIndex++)
             {
                 ItemStack stack = ovenInv[slotIndex].Itemstack;
                 if (stack != null)
@@ -583,15 +585,12 @@ namespace Vintagestory.GameContent
             }
         }
 
-
-
-
         /// <summary>
         /// Resting temperature - note it can change
         /// </summary>
         protected virtual int EnvironmentTemperature()
         {
-            var conds = Api.World.BlockAccessor.GetClimateAt(Pos, EnumGetClimateMode.NowValues);   //TODO: Is there a performance issue here?
+            var conds = Api.World.BlockAccessor.GetClimateAt(Pos, EnumGetClimateMode.NowValues);
             return conds == null ? 20 : (int)conds.Temperature;
         }
 
@@ -614,6 +613,7 @@ namespace Vintagestory.GameContent
             }
             return fromTemp + dt;
         }
+        #endregion
 
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
@@ -621,11 +621,11 @@ namespace Vintagestory.GameContent
 
             ovenInv.FromTreeAttributes(tree);
             burning = tree.GetInt("burn") > 0;
-            rotation = tree.GetInt("rota");
+            rotationDeg = tree.GetInt("rota");
             ovenTemperature = tree.GetFloat("temp");
             fuelBurnTime = tree.GetFloat("tfuel");
 
-            for (int i = 0; i < itemCapacity; i++)
+            for (int i = 0; i < bakeableCapacity; i++)
             {
                 bakingData[i] = OvenItemData.ReadFromTree(tree, i);
             }
@@ -648,11 +648,11 @@ namespace Vintagestory.GameContent
 
             ovenInv.ToTreeAttributes(tree);
             tree.SetInt("burn", burning ? 1 : 0);
-            tree.SetInt("rota", rotation);
+            tree.SetInt("rota", rotationDeg);
             tree.SetFloat("temp", ovenTemperature);
             tree.SetFloat("tfuel", fuelBurnTime);
 
-            for (int i = 0; i < itemCapacity; i++)
+            for (int i = 0; i < bakeableCapacity; i++)
             {
                 bakingData[i].WriteToTree(tree, i);
             }
@@ -675,7 +675,7 @@ namespace Vintagestory.GameContent
 
             sb.AppendLine();
 
-            for (int index = 0; index < itemCapacity; index++)
+            for (int index = 0; index < bakeableCapacity; index++)
             {
                 if (!ovenInv[index].Empty)
                 {
@@ -732,118 +732,112 @@ namespace Vintagestory.GameContent
         #endregion
 
 
-        #region Mesh
+        #region Meshing
 
-
-        protected override void updateMesh(int index)
+        public override int DisplayedItems
         {
-            if (Api == null || Api.Side == EnumAppSide.Server) return;
-            ItemStack stack;
-            bool isWood = false;
-            float scaleY = 0;
-            if (index < itemCapacity)
+            get
             {
-                if (Inventory[index].Empty)
-                {
-                    meshes[index] = null;
-                    return;
-                }
-                stack = Inventory[index].Itemstack;
-
-                scaleY = bakingData[index].CurHeightMul;
-            }
-            else
-            {
-                int count = FuelSlot.Empty ? 0 : FuelSlot.Itemstack.StackSize;
-                if (count <= index - itemCapacity)
-                {
-                    meshes[index] = null;
-                    return;
-                }
-                stack = FuelSlot.Itemstack.Clone();
-                stack.StackSize = 1;
-                isWood = stack.Collectible.Attributes?.IsTrue("isFirewood") == true;
-            }
-
-            bool isLargeItem = false;
-            if (index == 0)
-            {
-                BakingProperties props = BakingProperties.ReadFrom(stack);
-                if (props == null) return;
-                isLargeItem = props.LargeItem;
-            }
-            MeshData mesh = genMesh(stack);
-            if (mesh != null)
-            {
-                translateMesh(mesh, index, isWood, isLargeItem, scaleY);
-                meshes[index] = mesh;
+                if (OvenContentMode == EnumOvenContentMode.Quadrants) return 4;
+                return 1;
             }
         }
 
-        /// <summary>
-        /// Adjust the mesh of the in-oven item, whether it is firewood, bread or pie
-        /// </summary>
-        /// <param name="mesh"></param>
-        /// <param name="index"></param>
-        /// <param name="isWood"></param>
-        /// <param name="scaleY">Adjustment to the rendered height of the item, in arbitrary units determined by RISING_RENDER_MAX</param>
-        protected void translateMesh(MeshData mesh, int index, bool isWood, bool isLargeItem, float scaleY)
+        protected override float[][] genTransformationMatrices()
         {
-            float x, y, z, scaleDown;
+            float[][] tfMatrices = new float[DisplayedItems][];
+            Vec3f[] offs = new Vec3f[DisplayedItems];
 
-            if (isWood)
+            switch (OvenContentMode)
             {
-                if (!woodrandDone) WoodRandomiserSetup();
-                scaleDown = 0.46f;
-                scaleY = 1f;
-                float deg = (woodrand[index - itemCapacity] - 4) * 0.6f;
-                float offsetRandom = (woodrand[fuelitemCapacity - 1 - index + itemCapacity] - 4) / 256f;
-                if (index < itemCapacity + 3)
-                {
-                    x = 13 / 32f + offsetRandom;
-                    y = -1.49f / 16f;
-                    z = ((index - 5) * 3 + 8) / 16f;
-                    deg += 90f;
-                    mesh.Rotate(centre, 0, deg * GameMath.DEG2RAD, 0);
-                }
-                else
-                {
-                    x = ((8 - index) * 3 + 7) / 16f;
-                    y = 0.31f / 16f;
-                    z = 16 / 32f + offsetRandom;
-                    mesh.Rotate(centre, 0, deg * GameMath.DEG2RAD, 0);
-                }
-            }
-            else
-            {
-                // Standard size baked goods e.g. dough
-                woodrandDone = false;
-                x = (index % 2 == 0) ? 21 / 32f : 11 / 32f;
-                y = 1.01f / 16f;
-                z = (index > 1) ? 42 / 64f : 22 / 64f;
-                if (isLargeItem)
-                {
-                    x = 0.5f;
-                    z = 0.5f;
-                }
-
-                scaleDown = 0.78f;
+                case EnumOvenContentMode.Firewood:
+                    offs[0] = new Vec3f();
+                    break;
+                case EnumOvenContentMode.Quadrants:
+                    // Top left
+                    offs[0] = new Vec3f(-2/16f, 1 / 16f, -2.5f / 16f);
+                    // Top right
+                    offs[1] = new Vec3f(-2 / 16f, 1 / 16f, 2.5f / 16f);
+                    // Bot left
+                    offs[2] = new Vec3f(3 / 16f, 1 / 16f, -2.5f / 16f);
+                    // Bot right
+                    offs[3] = new Vec3f(3 / 16f, 1 / 16f, 2.5f / 16f);
+                    break;
+                case EnumOvenContentMode.SingleCenter:
+                    offs[0] = new Vec3f(0, 1/16f, 0);
+                    break;
             }
 
-            mesh.Scale(centre, scaleDown, scaleDown * scaleY, scaleDown);
-            mesh.Translate(x - 0.5f, y, z - 0.5f);
-            if (this.rotation > 0) mesh.Rotate(centre, 0, rotation * GameMath.DEG2RAD, 0);
+            for (int i = 0; i < tfMatrices.Length; i++)
+            {
+                Vec3f off = offs[i];
+
+                float scaleY = OvenContentMode == EnumOvenContentMode.Firewood ? 0.9f : bakingData[i].CurHeightMul;
+
+                tfMatrices[i] =
+                    new Matrixf()
+                    .Translate(off.X, off.Y, off.Z)
+                    .Translate(0.5f, 0, 0.5f)
+                    .RotateYDeg(rotationDeg)
+                    .Scale(0.9f, scaleY, 0.9f)
+                    .Translate(-0.5f, 0, -0.5f)
+                    .Values
+                ;
+            }
+
+            return tfMatrices;
         }
 
-        protected virtual void WoodRandomiserSetup()
+        protected override string getMeshCacheKey(ItemStack stack)
         {
-            Random rng = new Random(this.Pos.GetHashCode());
-            for (int i = 0; i < fuelitemCapacity; i++)
+            string scaleY = "";
+            for (int i = 0; i < bakingData.Length; i++)
             {
-                woodrand[i] = rng.Next(0, 9);
+                if (Inventory[i].Itemstack == stack)
+                {
+                    scaleY = "-" + bakingData[i].CurHeightMul;
+                    break;
+                }
             }
-            woodrandDone = true;
+
+            return (OvenContentMode == EnumOvenContentMode.Firewood ? stack.StackSize + "x" : "") + base.getMeshCacheKey(stack) + scaleY;
         }
+
+        public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
+        {
+            tfMatrices = genTransformationMatrices();
+
+            return base.OnTesselation(mesher, tessThreadTesselator);
+        }
+
+        protected override MeshData getOrCreateMesh(ItemStack stack, int index)
+        {
+            if (OvenContentMode == EnumOvenContentMode.Firewood)
+            {
+                MeshData mesh = getMesh(stack);
+                if (mesh != null) return mesh;
+
+                var loc = AssetLocation.Create(Block.Attributes["ovenFuelShape"].AsString(), Block.Code.Domain).WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json");
+                nowTesselatingShape = Shape.TryGet(capi, loc);
+                nowTesselatingObj = stack.Collectible;
+
+                if (nowTesselatingShape == null)
+                {
+                    capi.Logger.Error("Stacking model shape for collectible " + stack.Collectible.Code + " not found. Block will be invisible!");
+                    return null;
+                }
+
+                capi.Tesselator.TesselateShape("ovenFuelShape", nowTesselatingShape, out mesh, this, null, 0, 0, 0, stack.StackSize);
+
+                string key = getMeshCacheKey(stack);
+                MeshCache[key] = mesh;
+
+                return mesh;
+            }
+
+            return base.getOrCreateMesh(stack, index);
+        }
+
 
         public virtual void RenderParticleTick(IAsyncParticleManager manager, BlockPos pos, float windAffectednessAtPos, float secondsTicking, AdvancedParticleProperties[] particles)
         {
@@ -866,7 +860,7 @@ namespace Vintagestory.GameContent
                 //adjust flames to the number of logs, if less than 3 logs
                 if (i >= 4 && logsCount < 3)
                 {
-                    bool rotated = this.rotation >= 180;
+                    bool rotated = this.rotationDeg >= 180;
                     if (!rotated && z[i % 2] > logsCount * 0.2f + 0.14f) continue;
                     if (rotated && z[i % 2] < (3 - logsCount) * 0.2f + 0.14f) continue;
                 }
@@ -880,12 +874,12 @@ namespace Vintagestory.GameContent
                 //i >= 4 is flames; i < 4 is smoke
                 if (i >= 4)
                 {
-                    bool rotate = this.rotation % 180 > 0;
+                    bool rotate = this.rotationDeg % 180 > 0;
                     if (fireFull) rotate = !rotate;
                     bps.basePos.Z += rotate ? x[i % 2] : z[i % 2];
                     bps.basePos.X += rotate ? z[i % 2] : x[i % 2];
                     bps.basePos.Y += (fireFull ? 4 : 3) / 32f;
-                    switch (this.rotation)
+                    switch (this.rotationDeg)
                     {
                         case 0:
                             bps.basePos.X -= fireFull ? 0.08f : 0.12f;

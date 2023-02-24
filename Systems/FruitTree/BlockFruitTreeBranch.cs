@@ -1,5 +1,7 @@
-﻿using System;
+﻿using Cairo;
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -26,7 +28,7 @@ namespace Vintagestory.GameContent
         public float Chance = 1;
     }
 
-    public class BlockFruitTreeBranch : BlockFruitTreePart, ITexPositionSource, ICustomTreeFellingBehavior
+    public class BlockFruitTreeBranch : BlockFruitTreePart, ITexPositionSource, ICustomTreeFellingBehavior, ICustomHandbookPageContent
     {
         Block branchBlock;
         BlockFruitTreeFoliage foliageBlock;
@@ -92,9 +94,11 @@ namespace Vintagestory.GameContent
                     bdstack.Resolve(api.World, "fruit tree FruitStacks ", Code);
                 }
 
-                (api as ICoreServerAPI)?.RegisterTreeGenerator(new AssetLocation("fruittree-" + prop.Key), (blockAccessor, pos, skipForestFloor, size, v, o, t) => GrowTree(blockAccessor, pos, prop.Key, size));
+                (api as ICoreServerAPI)?.RegisterTreeGenerator(new AssetLocation("fruittree-" + prop.Key), (blockAccessor, pos, treegenParams) => GrowTree(blockAccessor, pos, prop.Key, treegenParams.size));
             }
         }
+
+
 
 
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
@@ -333,6 +337,43 @@ namespace Vintagestory.GameContent
             }
 
             base.OnBlockPlaced(world, blockPos, byItemStack);
+        }
+
+
+        public void OnHandbookPageComposed(List<RichTextComponentBase> components, ItemSlot inSlot, ICoreClientAPI capi, ItemStack[] allStacks, ActionConsumable<string> openDetailPageFor)
+        {
+            string type = inSlot.Itemstack.Attributes?.GetString("type", "unknown") ?? "unknown";
+            if (TypeProps.TryGetValue(type, out var props))
+            {
+                StringBuilder sb = new StringBuilder();
+                if (props.CycleType == EnumTreeCycleType.Deciduous)
+                {
+                    sb.AppendLine(Lang.Get("Must experience {0} game hours below {1}°C in the cold season to bear fruit in the following year.", props.VernalizationHours.avg, props.VernalizationTemp.avg));
+                    sb.AppendLine(Lang.Get("Will die if exposed to {0}°C or colder", props.DieBelowTemp.avg));
+                } else
+                {
+                    sb.AppendLine(Lang.Get("Evergreen tree. Will die if exposed to {0} °C or colder", props.DieBelowTemp.avg));
+                }
+
+                sb.AppendLine();
+                sb.AppendLine("Values are averages, as they can vary slightly for each tree.");
+
+                float marginTop = 7;
+
+                components.Add(new ClearFloatTextComponent(capi, marginTop));
+                components.Add(new RichTextComponent(capi, Lang.Get("Growing properties") + "\n", CairoFont.WhiteSmallText().WithWeight(FontWeight.Bold)));
+                components.Add(new RichTextComponent(capi, sb.ToString(), CairoFont.WhiteSmallText()));
+
+                components.Add(new ClearFloatTextComponent(capi, marginTop));
+                components.Add(new RichTextComponent(capi, Lang.Get("Produces") + "\n", CairoFont.WhiteSmallText().WithWeight(FontWeight.Bold)));
+
+                foreach (var stack in props.FruitStacks)
+                {
+                    components.Add(new ItemstackTextComponent(capi, stack.ResolvedItemstack, 40, 0, EnumFloat.Inline));
+                }
+
+                
+            }
         }
     }
 }

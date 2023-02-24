@@ -2,9 +2,6 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -16,8 +13,17 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
+    public enum EnumTradeDirection
+    {
+        Buy, Sell
+    }
 
-    public class EntityTrader : EntityHumanoid
+    public interface ITalkUtil
+    {
+        EntityTalkUtil TalkUtil { get; }
+    }
+
+    public class EntityTrader : EntityHumanoid, ITalkUtil
     {
         public static OrderedDictionary<string, TraderPersonality> Personalities = new OrderedDictionary<string, TraderPersonality>()
         {
@@ -31,10 +37,11 @@ namespace Vintagestory.GameContent
         public TradeProperties TradeProps;
 
         
-        public EntityPlayer tradingWith;
+        public EntityPlayer tradingWithPlayer;
         GuiDialog dlg;
 
         public EntityTalkUtil talkUtil;
+        EntityBehaviorConversable ConversableBh => GetBehavior<EntityBehaviorConversable>();
 
         public string Personality
         {
@@ -54,16 +61,24 @@ namespace Vintagestory.GameContent
             }
         }
 
+        public EntityTalkUtil TalkUtil => talkUtil;
 
         public EntityTrader()
         {
-            AllowDespawn = false;
             AnimManager = new TraderAnimationManager();
         }
 
         public override void Initialize(EntityProperties properties, ICoreAPI api, long InChunkIndex3d)
         {
             base.Initialize(properties, api, InChunkIndex3d);
+            var bh = GetBehavior<EntityBehaviorConversable>();
+            if (bh != null)
+            {
+                bh.onControllerCreated += (controller) =>
+                {
+                    controller.DialogTriggers += Dialog_DialogTriggers;
+                };
+            }
 
             if (Inventory == null)
             {
@@ -120,10 +135,7 @@ namespace Vintagestory.GameContent
 
             if (World.Api.Side == EnumAppSide.Server)
             {
-                EntityBehaviorTaskAI taskAi = GetBehavior<EntityBehaviorTaskAI>();
-
-                taskAi.TaskManager.OnShouldExecuteTask +=
-                    (task) => tradingWith == null || (task is AiTaskIdle || task is AiTaskSeekEntity || task is AiTaskGotoEntity);
+                setupTaskBlocker();
 
                 if (TradeProps != null)
                 {
@@ -146,10 +158,16 @@ namespace Vintagestory.GameContent
 
             if (Api.Side == EnumAppSide.Server)
             {
-                EntityBehaviorTaskAI taskAi = GetBehavior<EntityBehaviorTaskAI>();
-                taskAi.TaskManager.OnShouldExecuteTask +=
-                    (task) => tradingWith == null || (task is AiTaskIdle || task is AiTaskSeekEntity || task is AiTaskGotoEntity);
+                setupTaskBlocker();
             }
+        }
+
+        void setupTaskBlocker()
+        {
+            EntityBehaviorTaskAI taskAi = GetBehavior<EntityBehaviorTaskAI>();
+
+            taskAi.TaskManager.OnShouldExecuteTask +=
+               (task) => ConversableBh == null || ConversableBh.ControllerByPlayer.Count == 0 || (task is AiTaskIdle || task is AiTaskSeekEntity || task is AiTaskGotoEntity);
         }
 
 
@@ -231,15 +249,15 @@ namespace Vintagestory.GameContent
             }
             #endregion
 
-            replaceTradeItems(newBuyItems, buyingSlots, buyingQuantity, refreshChance);
-            replaceTradeItems(newsellItems, sellingSlots, sellingQuantity, refreshChance);
+            replaceTradeItems(newBuyItems, buyingSlots, buyingQuantity, refreshChance, EnumTradeDirection.Buy);
+            replaceTradeItems(newsellItems, sellingSlots, sellingQuantity, refreshChance, EnumTradeDirection.Sell);
 
             ITreeAttribute tree = GetOrCreateTradeStore();
             Inventory.ToTreeAttributes(tree);
             WatchedAttributes.MarkAllDirty();
         }
 
-        private void replaceTradeItems(Stack<TradeItem> newItems, ItemSlotTrade[] slots, int quantity, float refreshChance)
+        private void replaceTradeItems(Stack<TradeItem> newItems, ItemSlotTrade[] slots, int quantity, float refreshChance, EnumTradeDirection tradeDir)
         {
             HashSet<int> refreshedSlots = new HashSet<int>();
 
@@ -250,15 +268,24 @@ namespace Vintagestory.GameContent
 
                 TradeItem newTradeItem = newItems.Pop();
 
-                int slotIndex = slots.IndexOf((bslot) => bslot.Itemstack != null && bslot.TradeItem.Stock == 0 && newTradeItem?.ResolvedItemstack.Equals(World, bslot.Itemstack, GlobalConstants.IgnoredStackAttributes) == true);
+                if (newTradeItem.ResolvedItemstack.Collectible is ITradeableCollectible itc)
+                {
+                    if (!itc.ShouldTrade(this, newTradeItem, tradeDir))
+                    {
+                        i--;
+                        continue;
+                    }
+                }
+
+                int duplSlotIndex = slots.IndexOf((bslot) => bslot.Itemstack != null && bslot.TradeItem.Stock == 0 && newTradeItem?.ResolvedItemstack.Equals(World, bslot.Itemstack, GlobalConstants.IgnoredStackAttributes) == true);
 
                 ItemSlotTrade intoSlot;
 
                 // The trader already sells this but is out of stock - replace
-                if (slotIndex != -1)
+                if (duplSlotIndex != -1)
                 {
-                    intoSlot = slots[slotIndex];
-                    refreshedSlots.Add(slotIndex);
+                    intoSlot = slots[duplSlotIndex];
+                    refreshedSlots.Add(duplSlotIndex);
                 }
                 else
                 {
@@ -277,28 +304,42 @@ namespace Vintagestory.GameContent
             }
         }
 
+
+
+
         public override void OnInteract(EntityAgent byEntity, ItemSlot slot, Vec3d hitPosition, EnumInteractMode mode)
         {
-            if (mode != EnumInteractMode.Interact || !(byEntity is EntityPlayer))
+            if (ConversableBh != null)
             {
-                base.OnInteract(byEntity, slot, hitPosition, mode);
-                return;
+                ConversableBh.GetOrCreateController(byEntity as EntityPlayer);
             }
 
+            base.OnInteract(byEntity, slot, hitPosition, mode);
+        }
+
+        private int Dialog_DialogTriggers(EntityAgent triggeringEntity, string value, JsonObject data)
+        {
+            if (value == "opentrade")
+            {
+                ConversableBh.Dialog?.TryClose();
+                TryOpenTradeDialog(triggeringEntity);
+                return 0;
+            }
+
+            return -1;
+        }
+
+        void TryOpenTradeDialog(EntityAgent forEntity)
+        {
             if (!Alive) return;
-
-            EntityPlayer entityplr = byEntity as EntityPlayer;
-            IPlayer player = World.PlayerByUid(entityplr.PlayerUID);
-            
-
-            tradingWith = entityplr;
-
-
             if (World.Side == EnumAppSide.Client)
             {
+                EntityPlayer entityplr = forEntity as EntityPlayer;
+                IPlayer player = World.PlayerByUid(entityplr.PlayerUID);
+
                 ICoreClientAPI capi = (ICoreClientAPI)Api;
 
-                if (tradingWith.Pos.SquareDistanceTo(this.Pos) <= 5 && dlg?.IsOpened() != true)
+                if (forEntity.Pos.SquareDistanceTo(this.Pos) <= 5 && dlg?.IsOpened() != true)
                 {
                     // Will break all kinds of things if we allow multiple concurrent of these dialogs
                     if (capi.Gui.OpenedGuis.FirstOrDefault(dlg => dlg is GuiDialogTrader && dlg.IsOpened()) == null)
@@ -308,7 +349,8 @@ namespace Vintagestory.GameContent
 
                         dlg = new GuiDialogTrader(Inventory, this, World.Api as ICoreClientAPI);
                         dlg.TryOpen();
-                    } else
+                    }
+                    else
                     {
                         capi.TriggerIngameError(this, "onlyonedialog", Lang.Get("Can only trade with one trader at a time"));
                     }
@@ -316,39 +358,17 @@ namespace Vintagestory.GameContent
                 else
                 {
                     // Ensure inventory promptly closed server-side if the client didn't open the GUI
-                    
                     capi.Network.SendPacketClient(capi.World.Player.InventoryManager.CloseInventory(Inventory));
                 }
-
-                talkUtil.Talk(EnumTalkType.Meet);
-            }
-
-            if (World.Side == EnumAppSide.Server)
-            {
-                // Make the trader walk towards the player
-                AiTaskManager tmgr = GetBehavior<EntityBehaviorTaskAI>().TaskManager;
-                tmgr.StopTask(typeof(AiTaskWander));
-
-                AiTaskGotoEntity task = new AiTaskGotoEntity(this, entityplr);
-                if (task.TargetReached())
-                {
-                    tmgr.ExecuteTask(new AiTaskLookAtEntity(this, entityplr), 1);
-                }
-                else
-                {
-                    tmgr.ExecuteTask(task, 1);
-                }
-
-                AnimManager.StartAnimation(new AnimationMetaData() { Animation = "welcome", Code = "welcome", Weight = 10, EaseOutSpeed = 10000, EaseInSpeed = 10000 });
-                AnimManager.StopAnimation("idle");
             }
         }
 
 
 
-
         public override void OnReceivedClientPacket(IServerPlayer player, int packetid, byte[] data)
         {
+            base.OnReceivedClientPacket(player, packetid, data);
+
             if (packetid < 1000)
             {
                 Inventory.InvNetworkUtil.HandleClientPacket(player, packetid, data);
@@ -429,7 +449,7 @@ namespace Vintagestory.GameContent
                     double lastRefreshTotalDays = WatchedAttributes.GetDouble("lastRefreshTotalDays", World.Calendar.TotalDays - 10);
                     int maxRefreshes = 10;
 
-                    while (World.Calendar.TotalDays - lastRefreshTotalDays > doubleRefreshIntervalDays && tradingWith == null && maxRefreshes-- > 0)
+                    while (World.Calendar.TotalDays - lastRefreshTotalDays > doubleRefreshIntervalDays && tradingWithPlayer == null && maxRefreshes-- > 0)
                     {
                         int traderAssets = Inventory.GetTraderAssets();
                         double giveRel = 0.07 + World.Rand.NextDouble() * 0.21;
@@ -454,10 +474,10 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            if (tradingWith != null && (tradingWith.Pos.SquareDistanceTo(this.Pos) > 5 || Inventory.openedByPlayerGUIds.Count == 0 || !Alive))
+            if (tradingWithPlayer != null && (tradingWithPlayer.Pos.SquareDistanceTo(this.Pos) > 5 || Inventory.openedByPlayerGUIds.Count == 0 || !Alive))
             {
                 dlg?.TryClose();
-                IPlayer tradingPlayer = tradingWith?.Player;
+                IPlayer tradingPlayer = tradingWithPlayer?.Player;
                 if (tradingPlayer != null) Inventory.Close(tradingPlayer);
             }
         }

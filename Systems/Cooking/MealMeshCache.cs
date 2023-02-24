@@ -294,7 +294,7 @@ namespace Vintagestory.GameContent
 
             Shape shape = API.Common.Shape.TryGet(capi, loc);
             MeshData wholeMesh;
-            capi.Tesselator.TesselateShape("meal", shape, out wholeMesh, capi.Tesselator.GetTexSource(containerBlock), new Vec3f(cShape.rotateX, cShape.rotateY, cShape.rotateZ));
+            capi.Tesselator.TesselateShape("meal", shape, out wholeMesh, capi.Tesselator.GetTextureSource(containerBlock), new Vec3f(cShape.rotateX, cShape.rotateY, cShape.rotateZ));
 
             MeshData mealMesh = GenMealMesh(forRecipe, contentStacks, foodTranslate);
             if (mealMesh != null)

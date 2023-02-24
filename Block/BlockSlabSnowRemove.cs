@@ -1,14 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Vintagestory.API.Client;
+﻿using Vintagestory.API.Client;
 using Vintagestory.API.Client.Tesselation;
 using Vintagestory.API.Common;
-using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
-using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -26,7 +19,7 @@ namespace Vintagestory.GameContent
 
         public Size2i AtlasSize => capi.BlockTextureAtlas.Size;
 
-        public TextureAtlasPosition this[string textureCode] => capi.BlockTextureAtlas[snowLoc];
+        public TextureAtlasPosition this[string textureCode] => capi.BlockTextureAtlas[snowLoc] ?? capi.BlockTextureAtlas.UnknownTexturePosition;
 
         public override void OnLoaded(ICoreAPI api)
         {

@@ -344,7 +344,9 @@ namespace Vintagestory.GameContent
                 if (sb.Length > 0) sb.Append(", ");
                 sb.Append(stack.GetName());
             }
-            sb.Append(Lang.Get(" in {0}", ContainerNameShort));
+            var str = Lang.Get("contained-foodstacks-insideof", sb.ToString(), ContainerNameShort);
+            sb.Clear();
+            sb.Append(str);
 
             sb.Append(PerishableInfoCompactContainer(api, inSlot));
 

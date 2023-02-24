@@ -10,11 +10,19 @@ namespace Vintagestory.GameContent
     {
         public override void OnHeldInteractStart(ItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handHandling)
         {
-            if (blockSel == null || byEntity?.World == null || !byEntity.Controls.ShiftKey) return;
+            if (blockSel == null || byEntity?.World == null || !byEntity.Controls.ShiftKey)
+            {
+                base.OnHeldInteractStart(itemslot, byEntity, blockSel, entitySel, firstEvent, ref handHandling);
+                return;
+            }
 
             IWorldAccessor world = byEntity.World;
             Block firepitBlock = world.GetBlock(new AssetLocation("firepit-construct1"));
-            if (firepitBlock == null) return;
+            if (firepitBlock == null)
+            {
+                base.OnHeldInteractStart(itemslot, byEntity, blockSel, entitySel, firstEvent, ref handHandling);
+                return;
+            }
 
 
             BlockPos onPos = blockSel.DidOffset ? blockSel.Position : blockSel.Position.AddCopy(blockSel.Face);
@@ -24,8 +32,6 @@ namespace Vintagestory.GameContent
             {
                 return;
             }
-
-            
 
             Block block = world.BlockAccessor.GetBlock(onPos.DownCopy());
             Block aimedBlock = world.BlockAccessor.GetBlock(blockSel.Position);

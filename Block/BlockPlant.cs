@@ -16,7 +16,7 @@ namespace Vintagestory.GameContent
         {
             base.OnLoaded(api);
 
-            WaveFlagMinY = 0.25f;
+            waveFlagMinY = 0.25f;
             tallGrassColorMapping = true;
         }
 
@@ -32,6 +32,20 @@ namespace Vintagestory.GameContent
         }
     }
 
+    public class BlockTallGrass : BlockPlant
+    {
+        public override void OnBlockBroken(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1)
+        {
+            base.OnBlockBroken(world, pos, byPlayer, dropQuantityMultiplier);
+
+            if (byPlayer?.InventoryManager.ActiveTool == EnumTool.Knife && Variant["tallgrass"] != null && Variant["tallgrass"] != "eaten")
+            {
+                world.BlockAccessor.SetBlock(world.GetBlock(CodeWithVariant("tallgrass", "eaten")).Id, pos);
+            }
+
+        }
+    }
+
     public class BlockPlant : Block, IDrawYAdjustable, IWithDrawnHeight
     {
         Block snowLayerBlock;
@@ -42,6 +56,8 @@ namespace Vintagestory.GameContent
 
         int ExtraBend = 0;
         public int drawnHeight { get; set; }
+
+        protected bool disappearOnSoilRemoved = false;
 
 
         public override void OnLoaded(ICoreAPI api)
@@ -58,6 +74,8 @@ namespace Vintagestory.GameContent
                     if (overrider?.Exists == true) this.RandomDrawOffset = overrider.AsInt(1);
                 }
             }
+
+            disappearOnSoilRemoved = Attributes?["disappearOnSoilRemoved"].AsBool(false) ?? false;
 
             climateColorMapping = EntityClass == "Sapling";
             tallGrassColorMapping = Code.Path == "flower-lilyofthevalley-free";
@@ -125,7 +143,8 @@ namespace Vintagestory.GameContent
         {
             if (!CanPlantStay(world.BlockAccessor, pos))
             {
-                world.BlockAccessor.BreakBlock(pos, null);
+                if (world.BlockAccessor.GetBlock(pos.DownCopy()).Id == 0 && disappearOnSoilRemoved) world.BlockAccessor.SetBlock(0, pos);
+                else world.BlockAccessor.BreakBlock(pos, null);
             }
             base.OnNeighbourBlockChange(world, pos, neibpos);
         }

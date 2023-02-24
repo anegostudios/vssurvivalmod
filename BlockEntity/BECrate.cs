@@ -512,10 +512,10 @@ namespace Vintagestory.GameContent
 
             
             if (stacksize > 0) {
-                dsc.AppendLine("Contents: " + stacksize + "x " + inventory.FirstNonEmptySlot.GetStackName());
+                dsc.AppendLine(Lang.Get("Contents: {0}x{1}", stacksize, inventory.FirstNonEmptySlot.GetStackName()));
             } else
             {
-                dsc.AppendLine("Empty");
+                dsc.AppendLine(Lang.Get("Empty"));
             }
 
             base.GetBlockInfo(forPlayer, dsc);

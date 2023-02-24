@@ -12,7 +12,7 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockForge : Block
+    public class BlockForge : Block, IIgnitable
     {
         WorldInteraction[] interactions;
 
@@ -117,7 +117,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override EnumIgniteState OnTryIgniteBlock(EntityAgent byEntity, BlockPos pos, float secondsIgniting)
+        public EnumIgniteState OnTryIgniteBlock(EntityAgent byEntity, BlockPos pos, float secondsIgniting)
         {
             BlockEntityForge bea = byEntity.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityForge;
 
@@ -153,7 +153,7 @@ namespace Vintagestory.GameContent
             return EnumIgniteState.Ignitable;
         }
 
-        public override void OnTryIgniteBlockOver(EntityAgent byEntity, BlockPos pos, float secondsIgniting, ref EnumHandling handling)
+        public void OnTryIgniteBlockOver(EntityAgent byEntity, BlockPos pos, float secondsIgniting, ref EnumHandling handling)
         {
             if (secondsIgniting < 1.45f) return;
 

@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Vintagestory.API;
+﻿using System.IO;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -49,7 +43,7 @@ namespace Vintagestory.GameContent
 
                 if (textByCardinalDirection.Length > 0) signRenderer.SetNewText(textByCardinalDirection, color);
 
-                Shape shape = API.Common.Shape.TryGet(api, AssetLocation.Create("shapes/block/wood/signpost/sign.json"));
+                Shape shape = Shape.TryGet(api, AssetLocation.Create("shapes/block/wood/signpost/sign.json"));
                 if (shape != null)
                 {
                     (api as ICoreClientAPI).Tesselator.TesselateShape(Block, shape, out signMesh);

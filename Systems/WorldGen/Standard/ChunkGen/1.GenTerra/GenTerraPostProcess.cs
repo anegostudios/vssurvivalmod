@@ -16,7 +16,7 @@ namespace Vintagestory.ServerMods
         IWorldGenBlockAccessor blockAccessor;
 
         HashSet<int> chunkVisitedNodes = new HashSet<int>();
-        List<int> solidNodes = new List<int>(20);
+        List<int> solidNodes = new List<int>(40);
 
         public override bool ShouldLoad(EnumAppSide side)
         {
@@ -33,7 +33,7 @@ namespace Vintagestory.ServerMods
         {
             this.api = api;
 
-            if (DoDecorationPass)
+            if (TerraGenConfig.DoDecorationPass)
             {
                 api.Event.ChunkColumnGeneration(OnChunkColumnGen, EnumWorldGenPass.TerrainFeatures, "standard");
                 api.Event.GetWorldgenBlockAccessor(OnWorldGenBlockAccessor);
@@ -57,7 +57,7 @@ namespace Vintagestory.ServerMods
             int chunksizeSquared = chunksize * chunksize;
             int chunkY = seaLevel / chunksize;
             int yMax = chunks[0].MapChunk.YMax;
-            int cyMax = yMax / chunksize + 1;
+            int cyMax = Math.Min(yMax / chunksize + 1, api.World.BlockAccessor.MapSizeY / chunksize);
             chunkVisitedNodes.Clear();
 
             for (int cy = chunkY; cy < cyMax; cy++)
@@ -135,6 +135,7 @@ namespace Vintagestory.ServerMods
             BlockPos npos = new BlockPos();
             int dx, dy, dz;
 
+            int worldHeight = api.World.BlockAccessor.MapSizeY;
             int curVisitedNodes = 1;
             while (bfsQueue.Count > 0)
             {
@@ -147,6 +148,7 @@ namespace Vintagestory.ServerMods
                 foreach (BlockFacing facing in BlockFacing.ALLFACES)
                 {
                     facing.IterateThruFacingOffsets(npos);  // This must be the first command in the loop, to ensure all facings will be properly looped through regardless of any 'continue;' statements
+                    if (npos.Y >= worldHeight) continue;
 
                     // Compute the new dx, dy, dz offsets for npos
                     dx = npos.X - baseX;
@@ -165,8 +167,8 @@ namespace Vintagestory.ServerMods
 
                     int newCompressedPos = dx << 12 | dy << 6 | dz;
 
-                    // If more than 20 solid blocks together, either it is connected to base terrain or it's a large floating island which is OK
-                    if (++curVisitedNodes > 20)
+                    // If more than 40 solid blocks together, either it is connected to base terrain or it's a large floating island which is OK
+                    if (++curVisitedNodes > 40)
                     {
                         // Cheap test on block below - no point in adding to chunkVisitedNodes if solid block below, as chunkVisitedNodes will be tested only when there is air below
                         if (!solidNodes.Contains(newCompressedPos - 64))

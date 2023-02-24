@@ -162,7 +162,7 @@ namespace Vintagestory.GameContent.Mechanics
 
             if (capi != null)
             {
-                blockTexSource = capi.Tesselator.GetTexSource(Block);
+                blockTexSource = capi.Tesselator.GetTextureSource(Block);
             }
 
             setRenderer();

@@ -39,9 +39,10 @@ namespace Vintagestory.GameContent
                 return;
             }
 
+            var atblock = byEntity.World.BlockAccessor.GetBlock(onBlockPos);
             BlockEntity be = byEntity.World.BlockAccessor.GetBlockEntity(onBlockPos);
 
-            if (be is BlockEntityLabeledChest || be is BlockEntitySignPost || be is BlockEntitySign || be is BlockEntityBloomery || be is BlockEntityFirepit || be is BlockEntityForge || be is BlockEntityCrate) return;
+            if (be is BlockEntityLabeledChest || be is BlockEntitySignPost || be is BlockEntitySign || be is BlockEntityBloomery || be is BlockEntityFirepit || be is BlockEntityForge || be is BlockEntityCrate || atblock.HasBehavior<BlockBehaviorJonasGasifier>()) return;
 
             if (be is IBlockEntityItemPile)
             {

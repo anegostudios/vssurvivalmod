@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
-using Vintagestory.API;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
@@ -9,7 +8,6 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
-using Vintagestory.GameContent;
 using Vintagestory.ServerMods.NoObf;
 
 namespace Vintagestory.ServerMods
@@ -81,6 +79,10 @@ namespace Vintagestory.ServerMods
 
             switch (cmd)
             {
+                case "decopass":
+                    TerraGenConfig.DoDecorationPass = (bool)args.PopBool(false);
+                    player.SendMessage(groupId, "Decopass now " + (TerraGenConfig.DoDecorationPass ? "on" : "off"), EnumChatType.CommandError);
+                    break;
                 case "autogen":
                     api.WorldManager.AutoGenerateChunks = (bool)args.PopBool(false);
                     player.SendMessage(groupId, "Autogen now " + (api.WorldManager.AutoGenerateChunks ? "on" : "off"), EnumChatType.CommandError);
@@ -121,6 +123,10 @@ namespace Vintagestory.ServerMods
 
                 case "del":
                     DelChunks(player, args);
+                    break;
+
+                case "delrange":
+                    DelChunkRange(player, args);
                     break;
 
                 case "tree":
@@ -207,7 +213,33 @@ namespace Vintagestory.ServerMods
 
         private void DelChunks(IServerPlayer player, CmdArgs arguments)
         {
-            Regen(player, arguments, true);
+            Regen(player, arguments, true, true);
+        }
+
+        private void DelChunkRange(IServerPlayer player, CmdArgs args)
+        {
+            if (args.Length == 0)
+            {
+                player.SendMessage(GlobalConstants.CurrentChatGroup, "Chunks in deletion queue: " + api.WorldManager.ChunkDeletionsInQueue, EnumChatType.CommandError);
+            }
+
+            if (args.Length < 4)
+            {
+                player.SendMessage(GlobalConstants.CurrentChatGroup, "Syntax: /wgen delrange xs zs xe ze.", EnumChatType.CommandError);
+            }
+
+            Vec2i start = new Vec2i((int)args.PopInt(), (int)args.PopInt());
+            Vec2i end = new Vec2i((int)args.PopInt(), (int)args.PopInt());
+
+            for (int x = start.X; x <= end.X; x++)
+            {
+                for (int z = start.Y; z <= end.Y; z++)
+                {
+                    api.WorldManager.DeleteChunkColumn(x, z);
+                }
+            }
+
+            player.SendMessage(groupId, "Ok, chunk deletions enqueued, might take a while to process. Run command without args to see queue size", EnumChatType.CommandSuccess);
         }
 
 
@@ -344,7 +376,7 @@ namespace Vintagestory.ServerMods
                 api.ModLoader.GetModSystem<GenMaps>().initWorldGen();
                 api.ModLoader.GetModSystem<GenRockStrataNew>().initWorldGen(seedDiff);
 
-                if (ModStdWorldGen.DoDecorationPass)
+                if (TerraGenConfig.DoDecorationPass)
                 {
                     api.ModLoader.GetModSystem<GenVegetationAndPatches>().initWorldGen();
                     api.ModLoader.GetModSystem<GenPonds>().initWorldGen();
@@ -361,7 +393,6 @@ namespace Vintagestory.ServerMods
             }
 
             api.Server.ResumeThread("chunkdbthread");
-            player.CurrentChunkSentRadius = 0;
         }
 
         void Regen(IServerPlayer player, CmdArgs arguments, bool onlydelete, bool aroundPlayer = false)
@@ -399,6 +430,31 @@ namespace Vintagestory.ServerMods
 
             if (!onlydelete)
             {
+                TreeAttribute tree = null;
+                if (arguments.PeekWord() != null)
+                {
+                    tree = new TreeAttribute();
+
+                    string name = arguments.PopAll();
+                    var list = NoiseLandforms.landforms.LandFormsByIndex;
+                    int index = -1;
+                    for (int i = 0; i < list.Length; i++)
+                    {
+                        if (list[i].Code.Path.Equals(name))
+                        {
+                            index = i;
+                            break;
+                        }
+                    }
+                    if (index < 0)
+                    {
+                        player.SendMessage(GlobalConstants.CurrentChatGroup, "No such landform exists", EnumChatType.CommandError);
+                        return;
+                    }
+
+                    tree.SetInt("forceLandform", index);
+                }
+
                 // so that resends arrive after all deletes
                 int leftToLoad = coords.Count;
                 bool sent = false;
@@ -406,9 +462,6 @@ namespace Vintagestory.ServerMods
 
                 foreach (Vec2i coord in coords)
                 {
-                    int cx = coord.X;
-                    int cz = coord.Y;
-
                     api.WorldManager.LoadChunkColumnPriority(coord.X, coord.Y, new ChunkLoadOptions()
                     {
                         OnLoaded = () => {
@@ -419,17 +472,20 @@ namespace Vintagestory.ServerMods
                                 sent = true;
                                 player.SendMessage(groupId, "Regen complete", EnumChatType.CommandSuccess);
 
+                                player.CurrentChunkSentRadius = 0;
+                                api.WorldManager.SendChunks = true;
+
                                 foreach (Vec2i ccoord in coords)
                                 {
                                     for (int cy = 0; cy < api.WorldManager.MapSizeY / api.WorldManager.ChunkSize; cy++)
                                     {
-                                        api.WorldManager.BroadcastChunk(cx, cy, cz, true);
+                                        api.WorldManager.BroadcastChunk(ccoord.X, cy, ccoord.Y, true);
                                     }
                                 }
 
-                                api.WorldManager.SendChunks = true;
                             }
-                        }
+                        },
+                        ChunkGenParams = tree
                     });
                 }
             }
@@ -524,7 +580,7 @@ namespace Vintagestory.ServerMods
                 return;
             }
 
-            treeGenerators.RunGenerator(loc, blockAccessor, pos, size);
+            treeGenerators.RunGenerator(loc, blockAccessor, pos, new TreeGenParams() { size = size, skipForestFloor=true });
 
             blockAccessor.Commit();
 
@@ -560,11 +616,12 @@ namespace Vintagestory.ServerMods
                 }
             }
 
-
+            var pa = new TreeGenParams() { size = 1 };
             treeGenerators.ReloadTreeGenerators();
-            treeGenerators.RunGenerator(loc, blockAccessor, center.AddCopy(0, -1, 0));
-            treeGenerators.RunGenerator(loc, blockAccessor, center.AddCopy(-9, -1, 0));
-            treeGenerators.RunGenerator(loc, blockAccessor, center.AddCopy(9, -1, 0));
+
+            treeGenerators.RunGenerator(loc, blockAccessor, center.AddCopy(0, -1, 0), pa);
+            treeGenerators.RunGenerator(loc, blockAccessor, center.AddCopy(-9, -1, 0), pa);
+            treeGenerators.RunGenerator(loc, blockAccessor, center.AddCopy(9, -1, 0), pa);
 
             blockAccessor.Commit();
         }
@@ -595,6 +652,23 @@ namespace Vintagestory.ServerMods
                         player.SendMessage(groupId, "Patchy climate map generated", EnumChatType.CommandSuccess);
                     }
                     break;
+
+                case "geoact":
+                    {
+                        int polarEquatorDistance = worldConfig.GetString("polarEquatorDistance", "50000").ToInt(50000);
+
+                        int spawnMinTemp = 6;
+                        int spawnMaxTemp = 14;
+                        NoiseBase.Debug = true;
+                        NoiseClimateRealistic noiseClimate = new NoiseClimateRealistic(seed, api.World.BlockAccessor.MapSizeZ / TerraGenConfig.climateMapScale / TerraGenConfig.climateMapSubScale, polarEquatorDistance, spawnMinTemp, spawnMaxTemp);
+                        MapLayerBase climate = GenMaps.GetClimateMapGen(seed, noiseClimate);
+
+                        NoiseBase.DebugDrawBitmap(DebugDrawMode.FirstByteGrayscale, climate.GenLayer(0, 0, 128, 2048), 128, 2048, "geoactivity");
+
+                        player.SendMessage(groupId, "Geologic activity map generated", EnumChatType.CommandSuccess);
+                        break;
+                    }
+
 
                 case "climater":
                     {
@@ -650,6 +724,13 @@ namespace Vintagestory.ServerMods
                         forest.DebugDrawBitmap(DebugDrawMode.FirstByteGrayscale, 0, 0, "Forest 1 - Forest");
                         player.SendMessage(groupId, "Forest map generated", EnumChatType.CommandSuccess);
                     }
+                    break;
+
+                case "upheavel":
+                    var map = GenMaps.GetGeoUpheavelMapGen(seed + 873, TerraGenConfig.geoUpheavelMapScale);
+                    NoiseBase.Debug = true;
+                    map.DebugDrawBitmap(DebugDrawMode.FirstByteGrayscale, 0, 0, "Geoupheavel 1");
+                    player.SendMessage(groupId, "Geo upheavel map generated", EnumChatType.CommandSuccess);
                     break;
 
 
@@ -731,21 +812,21 @@ namespace Vintagestory.ServerMods
                 return;
             }
 
-            int seed = api.World.Seed;
             BlockPos pos = player.Entity.ServerPos.XYZ.AsBlockPos;
 
             int noiseSizeClimate = api.WorldManager.RegionSize / TerraGenConfig.climateMapScale;
             int noiseSizeForest = api.WorldManager.RegionSize / TerraGenConfig.forestMapScale;
+            int noiseSizeUpheavel = api.WorldManager.RegionSize / TerraGenConfig.geoUpheavelMapScale;
             int noiseSizeShrubs = api.WorldManager.RegionSize / TerraGenConfig.shrubMapScale;
             int noiseSizeGeoProv = api.WorldManager.RegionSize / TerraGenConfig.geoProvMapScale;
             int noiseSizeLandform = api.WorldManager.RegionSize / TerraGenConfig.landformMapScale;
 
-            NoiseClimatePatchy noiseClimate = new NoiseClimatePatchy(seed);
 
             var genmapsSys = api.ModLoader.GetModSystem<GenMaps>();
             genmapsSys.initWorldGen();
             MapLayerBase climateGen = genmapsSys.climateGen;
             MapLayerBase forestGen = genmapsSys.forestGen;
+            MapLayerBase upheavelGen = genmapsSys.upheavelGen;
             MapLayerBase bushGen = genmapsSys.bushGen;
             MapLayerBase flowerGen = genmapsSys.flowerGen;
             MapLayerBase geologicprovinceGen = genmapsSys.geologicprovinceGen;
@@ -766,8 +847,19 @@ namespace Vintagestory.ServerMods
                     {
                         int startX = regionX * noiseSizeClimate - 256;
                         int startZ = regionZ * noiseSizeClimate - 256;
-                        climateGen.DebugDrawBitmap(DebugDrawMode.RGB, startX, startZ, "climatemap");
-                        player.SendMessage(groupId, "Climate map generated", EnumChatType.CommandSuccess);
+                        if (arguments.Length > 0)
+                        {
+                            float fac = (float)arguments.PopFloat(1);
+                            (((climateGen as MapLayerPerlinWobble).parent as MapLayerClimate).noiseMap as NoiseClimateRealistic).GeologicActivityStrength = fac;
+                            climateGen.DebugDrawBitmap(DebugDrawMode.FirstByteGrayscale, startX, startZ, "climatemap-" + fac);
+                            player.SendMessage(groupId, "Geo activity map generated", EnumChatType.CommandSuccess);
+                        } else
+                        {
+                            climateGen.DebugDrawBitmap(DebugDrawMode.RGB, startX, startZ, "climatemap");
+                            player.SendMessage(groupId, "Climate map generated", EnumChatType.CommandSuccess);
+                        }
+                        
+                        
                     }
                     break;
 
@@ -777,6 +869,16 @@ namespace Vintagestory.ServerMods
                         int startZ = regionZ * noiseSizeForest - 256;
                         forestGen.DebugDrawBitmap(DebugDrawMode.FirstByteGrayscale, startX, startZ, "forestmap");
                         player.SendMessage(groupId, "Forest map generated", EnumChatType.CommandSuccess);
+                    }
+                    break;
+
+                case "upheavel":
+                    {
+                        int startX = regionX * noiseSizeUpheavel - 256;
+                        int startZ = regionZ * noiseSizeUpheavel - 256;
+                        int size = (int)arguments.PopInt(512);
+                        upheavelGen.DebugDrawBitmap(DebugDrawMode.FirstByteGrayscale, startX, startZ, size, "upheavelmap");
+                        player.SendMessage(groupId, "Upheavel map generated", EnumChatType.CommandSuccess);
                     }
                     break;
 
@@ -898,6 +1000,10 @@ namespace Vintagestory.ServerMods
 
                 case "forest":
                     DrawMapRegion(DebugDrawMode.FirstByteGrayscale, player, mapRegion.ForestMap, "forest", dolerp, regionX, regionZ, TerraGenConfig.forestMapScale);
+                    break;
+
+                case "upheavel":
+                    DrawMapRegion(DebugDrawMode.FirstByteGrayscale, player, mapRegion.UpheavelMap, "upheavel", dolerp, regionX, regionZ, TerraGenConfig.geoUpheavelMapScale);
                     break;
 
 
@@ -1408,7 +1514,7 @@ namespace Vintagestory.ServerMods
                             if (text.Length > 0)
                                 text += ", ";
 
-                            text += (100 * windex.Weight).ToString("#.#") + "% " + landforms[windex.Index].Code;
+                            text += (100 * windex.Weight).ToString("#.#") + "% " + landforms[windex.Index].Code.ToShortString();
                         }
 
                         player.SendMessage(groupId, text, EnumChatType.CommandSuccess);
@@ -1419,13 +1525,17 @@ namespace Vintagestory.ServerMods
                 case "climate":
                     {
                         ClimateCondition climate = api.World.BlockAccessor.GetClimateAt(pos);
-                        ClimateCondition climate2 = api.World.BlockAccessor.GetClimateAt(pos, EnumGetClimateMode.NowValues);
 
                         string text = string.Format(
-                            "Temperature: {0}°, Rainfall: {1}%, Fertility: {2}%, Forest: {3}%, Shrub: {4}%, Sealevel dist: {5}%, Now temp: {6}, Season: {7}, Hemisphere: {8}", 
-                            climate.Temperature.ToString("0.#"), (int)(climate.WorldgenRainfall * 100f), (int)(climate.Fertility * 100f), 
-                            (int)(climate.ForestDensity * 100f), (int)(climate.ShrubDensity * 100f), (int)(100f * pos.Y / 255f), climate2.Temperature.ToString("0.#"),
-                            api.World.Calendar.GetSeason(pos), api.World.Calendar.GetHemisphere(pos)
+                            "Temperature: {0}°C, Year avg: {1}°C, Avg. Rainfall: {2}%, Geologic Activity: {3}%, Fertility: {4}%, Forest: {5}%, Shrub: {6}%, Sealevel dist: {7}%, Season: {8}, Hemisphere: {9}", 
+                            climate.Temperature.ToString("0.#"), 
+                            climate.WorldGenTemperature.ToString("0.#"), 
+                            (int)(climate.WorldgenRainfall * 100f),
+                            (int)(climate.GeologicActivity * 100),
+                            (int)(climate.Fertility * 100f), 
+                            (int)(climate.ForestDensity * 100f), (int)(climate.ShrubDensity * 100f), (int)(100f * pos.Y / 255f),
+                            api.World.Calendar.GetSeason(pos), 
+                            api.World.Calendar.GetHemisphere(pos)
                         );
 
                         player.SendMessage(groupId, text, EnumChatType.CommandSuccess);
@@ -1433,6 +1543,7 @@ namespace Vintagestory.ServerMods
 
                         break;
                     }
+
 
             }
         }

@@ -70,7 +70,7 @@ namespace Vintagestory.GameContent
         bool CanLayerStay(IWorldAccessor world, BlockPos pos)
         {
             BlockPos belowPos = pos.DownCopy();
-            Block block = world.BlockAccessor.GetBlock(world.BlockAccessor.GetBlockId(belowPos));
+            Block block = world.BlockAccessor.GetBlock(belowPos);
 
             return block.CanAttachBlockAt(world.BlockAccessor, this, belowPos, BlockFacing.UP);
         }

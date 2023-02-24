@@ -15,7 +15,7 @@ namespace Vintagestory.GameContent
     {
         public string pageCode;
         public string Title;
-        public string Text;
+        public string Text = "";
         public string categoryCode = "guide";
 
         public LoadedTexture Texture;
@@ -48,29 +48,28 @@ namespace Vintagestory.GameContent
             titleCached = Lang.Get(Title);
         }
 
-        public override RichTextComponentBase[] GetPageText(ICoreClientAPI capi, ItemStack[] allStacks, ActionConsumable<string> openDetailPageFor)
+        public override void ComposePage(GuiComposer detailViewGui, ElementBounds textBounds, ItemStack[] allstacks, ActionConsumable<string> openDetailPageFor)
         {
-            return comps;
+            detailViewGui.AddRichtext(comps, textBounds, "richtext");
         }
 
         public void Recompose(ICoreClientAPI capi)
         {
             Texture?.Dispose();
             Texture = new TextTextureUtil(capi).GenTextTexture(Lang.Get(Title), CairoFont.WhiteSmallText());
-
-            
         }
 
-        public override float TextMatchWeight(string searchText)
+        public override float GetTextMatchWeight(string searchText)
         {
-            if (titleCached.Equals(searchText, StringComparison.InvariantCultureIgnoreCase)) return 3;
-            if (titleCached.StartsWith(searchText, StringComparison.InvariantCultureIgnoreCase)) return 2.5f;
-            if (titleCached.CaseInsensitiveContains(searchText)) return 2;
-            if (Text.CaseInsensitiveContains(searchText)) return 1;
+            if (titleCached.Equals(searchText, StringComparison.InvariantCultureIgnoreCase)) return 4;
+            if (titleCached.StartsWith(searchText + " ", StringComparison.InvariantCultureIgnoreCase)) return 3.5f;
+            if (titleCached.StartsWith(searchText, StringComparison.InvariantCultureIgnoreCase)) return 3f;
+            if (titleCached.CaseInsensitiveContains(searchText)) return 2.75f;
+            if (Text.CaseInsensitiveContains(searchText)) return 1.25f;
             return 0;
         }
 
-        public override void RenderTo(ICoreClientAPI capi, double x, double y)
+        public override void RenderListEntryTo(ICoreClientAPI capi, float dt, double x, double y, double cellWidth, double cellHeight)
         {
             float size = (float)GuiElement.scaled(25);
             float pad = (float)GuiElement.scaled(10);

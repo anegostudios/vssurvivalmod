@@ -130,7 +130,7 @@ namespace Vintagestory.GameContent
         {
             if (tesselator == null) tesselator = capi.Tesselator;
 
-            tmpTextureSource = tesselator.GetTexSource(this);
+            tmpTextureSource = tesselator.GetTextureSource(this);
 
             if (shape == null)
             {
@@ -147,7 +147,7 @@ namespace Vintagestory.GameContent
             curLining = lining;
 
             Block glassBlock = capi.World.GetBlock(new AssetLocation("glass-" + glassMaterial));
-            glassTextureSource = tesselator.GetTexSource(glassBlock);
+            glassTextureSource = tesselator.GetTextureSource(glassBlock);
             MeshData mesh;
             tesselator.TesselateShape("blocklantern", shape, out mesh, this, new Vec3f(Shape.rotateX, Shape.rotateY, Shape.rotateZ));
             return mesh;

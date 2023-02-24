@@ -166,7 +166,7 @@ namespace Vintagestory.GameContent
 
             IStandardShaderProgram prog = rpi.StandardShader;
             prog.Use();
-            prog.Tex2D = api.BlockTextureAtlas.AtlasTextureIds[0];
+            prog.Tex2D = api.BlockTextureAtlas.AtlasTextures[0].TextureId;
             prog.DontWarpVertices = 0;
             prog.AddRenderFlags = 0;
             prog.RgbaAmbientIn = rpi.AmbientColor;

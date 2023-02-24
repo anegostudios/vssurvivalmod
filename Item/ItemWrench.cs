@@ -1,26 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Cairo;
-using Vintagestory.API.Client;
+﻿using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Common.Entities;
-using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
-using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public interface IWrenchOrientable
-    {
-        void Rotate(EntityAgent byEntity, BlockSelection blockSel, int dir);
-    }
 
     public class ItemWrench : Item
-    {
-        
+    {       
 
         public override void OnHeldAttackStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
         {
@@ -28,7 +14,10 @@ namespace Vintagestory.GameContent
 
             if (rotate(byEntity, blockSel, 1))
             {
-                DamageItem(api.World, byEntity, slot);
+                if ((byEntity as EntityPlayer)?.Player.WorldData.CurrentGameMode != EnumGameMode.Creative)
+                {
+                    DamageItem(api.World, byEntity, slot);
+                }
             }
 
             handling = EnumHandHandling.PreventDefault;
@@ -43,7 +32,10 @@ namespace Vintagestory.GameContent
 
             if (rotate(byEntity, blockSel, -1))
             {
-                DamageItem(api.World, byEntity, slot);
+                if ((byEntity as EntityPlayer)?.Player.WorldData.CurrentGameMode != EnumGameMode.Creative)
+                {
+                    DamageItem(api.World, byEntity, slot);
+                }
             }
 
             handling = EnumHandHandling.PreventDefault;
@@ -62,12 +54,10 @@ namespace Vintagestory.GameContent
             }
 
             var block = api.World.BlockAccessor.GetBlock(blockSel.Position);
-            if (block is IWrenchOrientable iwre)
+            var iwre = api.World.BlockAccessor.GetInterface<IWrenchOrientable>(blockSel.Position);
+            if (iwre != null)
             {
-                api.World.PlaySoundAt(block.Sounds.Place, blockSel.Position.X + 0.5f, blockSel.Position.Y + 0.5f, blockSel.Position.Z + 0.5f, byPlayer);
-                (api.World as IClientWorldAccessor)?.Player.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
-
-                iwre.Rotate(byEntity, blockSel, dir);
+                Rotate(blockSel, dir, byPlayer, block, iwre);
                 return true;
             }
 
@@ -89,6 +79,14 @@ namespace Vintagestory.GameContent
             (api.World as IClientWorldAccessor)?.Player.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
 
             return true;
+        }
+
+        private void Rotate(BlockSelection blockSel, int dir, IPlayer byPlayer, Block block, IWrenchOrientable iwre)
+        {
+            api.World.PlaySoundAt(block.Sounds.Place, blockSel.Position.X + 0.5f, blockSel.Position.Y + 0.5f, blockSel.Position.Z + 0.5f, byPlayer);
+            (api.World as IClientWorldAccessor)?.Player.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
+
+            iwre.Rotate(byPlayer.Entity, blockSel, dir);
         }
     }
 }

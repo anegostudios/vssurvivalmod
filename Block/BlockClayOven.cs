@@ -11,7 +11,7 @@ namespace Vintagestory.GameContent
         void OnBaked(ItemStack oldStack, ItemStack newStack);
     }
 
-    public class BlockClayOven : Block
+    public class BlockClayOven : Block, IIgnitable
     {
         /*
          * TODO: Potential visual enhancements
@@ -128,7 +128,7 @@ namespace Vintagestory.GameContent
             return base.OnBlockInteractStart(world, byPlayer, bs);
         }
 
-        public override EnumIgniteState OnTryIgniteBlock(EntityAgent byEntity, BlockPos pos, float secondsIgniting)
+        public EnumIgniteState OnTryIgniteBlock(EntityAgent byEntity, BlockPos pos, float secondsIgniting)
         {
             BlockEntityOven beo = byEntity.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityOven;
             if (beo == null || !beo.CanIgnite()) return EnumIgniteState.NotIgnitablePreventDefault;
@@ -136,7 +136,7 @@ namespace Vintagestory.GameContent
             return secondsIgniting > 4 ? EnumIgniteState.IgniteNow : EnumIgniteState.Ignitable;
         }
 
-        public override void OnTryIgniteBlockOver(EntityAgent byEntity, BlockPos pos, float secondsIgniting, ref EnumHandling handling)
+        public void OnTryIgniteBlockOver(EntityAgent byEntity, BlockPos pos, float secondsIgniting, ref EnumHandling handling)
         {
             handling = EnumHandling.PreventDefault;
 

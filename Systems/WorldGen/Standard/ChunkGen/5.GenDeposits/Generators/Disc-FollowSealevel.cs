@@ -11,13 +11,18 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.ServerMods
 {
- 
+    /// <summary>
+    /// YPosRel<br/>
+    /// 0 => y=0<br/>
+    /// 1 => y=sealevel<br/>
+    /// </summary>
     public class FollowSealevelDiscGenerator : DiscDepositGenerator
     {
         [JsonProperty]
         public NatFloat YPosRel;
 
         float step;
+        
 
         public FollowSealevelDiscGenerator(ICoreServerAPI api, DepositVariant variant, LCGRandom depositRand, NormalizedSimplexNoise noiseGen) : base(api, variant, depositRand, noiseGen)
         {
@@ -60,6 +65,8 @@ namespace Vintagestory.ServerMods
         {
             ypos = YPosRel.nextFloat(1, DepositRand);
             posyi = (int)ypos;
+
+            currentRelativeDepth = ypos / TerraGenConfig.seaLevel;
 
             targetPos.Y = posyi;
 

@@ -37,7 +37,7 @@ namespace Vintagestory.GameContent
     }
 
 
-    public class BlockEntityFruitPress : BlockEntityContainer, ITerrainMeshPool
+    public class BlockEntityFruitPress : BlockEntityContainer
     {
         const int PacketIdAnimUpdate = 1001;
         const int PacketIdScrewStart = 1002;
@@ -155,12 +155,12 @@ namespace Vintagestory.GameContent
 
             if (ownBlock != null)
             {
-                Shape shape = API.Common.Shape.TryGet(api, "shapes/block/wood/fruitpress/part-movable.json");
+                Shape shape = Shape.TryGet(api, "shapes/block/wood/fruitpress/part-movable.json");
 
                 if (api.Side == EnumAppSide.Client)
                 {
                     capi.Tesselator.TesselateShape(ownBlock, shape, out meshMovable, new Vec3f(0, ownBlock.Shape.rotateY, 0));
-                    animUtil.InitializeAnimator("fruitpress", new Vec3f(0, ownBlock.Shape.rotateY, 0), shape);
+                    animUtil.InitializeAnimator("fruitpress", shape, null, new Vec3f(0, ownBlock.Shape.rotateY, 0));
                 } else
                 {
                     animUtil.InitializeAnimatorServer("fruitpress", shape);
@@ -369,7 +369,7 @@ namespace Vintagestory.GameContent
 
             if (CompressAnimActive)
             {
-                (Api as ICoreClientAPI)?.TriggerIngameError(this, "compressing", "Release the screw first to add/remove fruit");
+                (Api as ICoreClientAPI)?.TriggerIngameError(this, "compressing", Lang.Get("Release the screw first to add/remove fruit"));
                 return false;
             }
 
@@ -383,13 +383,13 @@ namespace Vintagestory.GameContent
                 if (MashSlot.Empty) MashSlot.Itemstack = pressedStack;
                 else if (mashStack.StackSize >= 10)
                 {
-                    (Api as ICoreClientAPI)?.TriggerIngameError(this, "fullcontainer", "Container is full, press out juice and remove the mash before adding more");
+                    (Api as ICoreClientAPI)?.TriggerIngameError(this, "fullcontainer", Lang.Get("Container is full, press out juice and remove the mash before adding more"));
                     return false;
                 }
 
                 if (!mashStack.Equals(Api.World, pressedStack, GlobalConstants.IgnoredStackAttributes.Append("juiceableLitresLeft", "juiceableLitresTransfered", "squeezeRel")))
                 {
-                    (Api as ICoreClientAPI)?.TriggerIngameError(this, "fullcontainer", "Cannot mix fruit");
+                    (Api as ICoreClientAPI)?.TriggerIngameError(this, "fullcontainer", Lang.Get("Cannot mix fruit"));
                     return false;
                 }
 
@@ -719,21 +719,6 @@ namespace Vintagestory.GameContent
                 bucketMesh = bucketMeshTmp.Clone();
             }
         }
-
-
-        #region ITerrainMeshPool imp to get bucket mesh
-        public void AddMeshData(MeshData data, int lodlevel = 1)
-        {
-            if (data == null) return;
-            bucketMeshTmp.AddMeshData(data);
-        }
-
-        public void AddMeshData(MeshData data, ColorMapData colormapdata, int lodlevel = 1)
-        {
-            if (data == null) return;
-            bucketMeshTmp.AddMeshData(data);
-        }
-        #endregion
     }
 }
     

@@ -23,7 +23,7 @@ namespace Vintagestory.GameContent
 
         public override string PageCode => Name;
 
-        public override void RenderTo(ICoreClientAPI capi, double x, double y)
+        public override void RenderListEntryTo(ICoreClientAPI capi, float dt, double x, double y, double cellWidth, double cellHeight)
         {
             float size = (float)GuiElement.scaled(25);
             float pad = (float)GuiElement.scaled(10);
@@ -48,7 +48,7 @@ namespace Vintagestory.GameContent
             );
         }
 
-        public override RichTextComponentBase[] GetPageText(ICoreClientAPI capi, ItemStack[] allStacks, ActionConsumable<string> openDetailPageFor)
+        protected override RichTextComponentBase[] GetPageText(ICoreClientAPI capi, ItemStack[] allStacks, ActionConsumable<string> openDetailPageFor)
         {
             dummySlot.Itemstack = Stacks[0];
 

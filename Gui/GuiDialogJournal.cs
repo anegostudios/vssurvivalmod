@@ -53,7 +53,7 @@ namespace Vintagestory.GameContent
             for (int i = 0; i < journalitems.Count; i++)
             {
                 int page = i;
-                Composers["loreList"].AddButton(Lang.Get(journalitems[i].Title), () => { return onClickItem(page); }, button, CairoFont.WhiteSmallText(), EnumButtonStyle.None, EnumTextOrientation.Left, "button-"+i);
+                Composers["loreList"].AddButton(Lang.Get(journalitems[i].Title), () => { return onClickItem(page); }, button, CairoFont.WhiteSmallText(), EnumButtonStyle.None, "button-"+i);
 
                 Composers["loreList"].GetButton("button-" + i).PlaySound = false;
 

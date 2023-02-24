@@ -8,20 +8,6 @@ using Vintagestory.ServerMods.NoObf;
 
 namespace Vintagestory.ServerMods
 {
-    public class TreeGenForClimate
-    {
-        public ITreeGenerator treeGen;
-        public float size;
-        public float vinesGrowthChance;
-
-        public TreeGenForClimate(ITreeGenerator treeGen, float size, float vinesGrowthChance)
-        {
-            this.treeGen = treeGen;
-            this.size = size;
-            this.vinesGrowthChance = vinesGrowthChance;
-        }
-    }
-
     public enum EnumTreeType
     {
         Any,
@@ -29,6 +15,15 @@ namespace Vintagestory.ServerMods
         Conifer,
         Tropical,
         Acacia
+    }
+
+    public class TreeGenInstance : TreeGenParams
+    {
+        public ITreeGenerator treeGen;
+        public void GrowTree(IBlockAccessor blockAccessor, BlockPos pos)
+        {
+            treeGen.GrowTree(blockAccessor, pos, this);
+        }
     }
 
 
@@ -67,20 +62,21 @@ namespace Vintagestory.ServerMods
         }
 
 
-        public TreeGenForClimate GetRandomTreeGenForClimate(int climate, int forest, int y, bool isUnderwater)
+        public TreeGenInstance GetRandomTreeGenForClimate(int climate, int forest, int y, bool isUnderwater)
         {
             return GetRandomGenForClimate(treeGenProps.TreeGens, climate, forest, y, isUnderwater);
         }
 
-        public TreeGenForClimate GetRandomShrubGenForClimate(int climate, int forest, int y)
+        public TreeGenInstance GetRandomShrubGenForClimate(int climate, int forest, int y)
         {
             return GetRandomGenForClimate(treeGenProps.ShrubGens, climate, forest, y, false);
         }
 
-        public TreeGenForClimate GetRandomGenForClimate(TreeVariant[] gens, int climate, int forest, int y, bool isUnderwater)
+        public TreeGenInstance GetRandomGenForClimate(TreeVariant[] gens, int climate, int forest, int y, bool isUnderwater)
         {
             int rain = TerraGenConfig.GetRainFall((climate >> 8) & 0xff, y);
-            int temp = TerraGenConfig.GetScaledAdjustedTemperature((climate >> 16) & 0xff, y - TerraGenConfig.seaLevel);
+            int unscaledTemp = (climate >> 16) & 0xff;
+            int temp = TerraGenConfig.GetScaledAdjustedTemperature(unscaledTemp, y - TerraGenConfig.seaLevel);
             float heightRel = ((float)y - TerraGenConfig.seaLevel) / ((float)api.WorldManager.MapSizeY - TerraGenConfig.seaLevel);
             int fertility = TerraGenConfig.GetFertility(rain, temp, heightRel);
 
@@ -133,11 +129,22 @@ namespace Vintagestory.ServerMods
                     float suitabilityBonus = GameMath.Clamp(0.7f - val.Value, 0f, 0.7f) * 1 / 0.7f * val.Key.SuitabilitySizeBonus;
 
                     float size = val.Key.MinSize + (float)random.NextDouble() * (val.Key.MaxSize - val.Key.MinSize) + suitabilityBonus;
+                    float descaledTemp = TerraGenConfig.DescaleTemperature(temp);
 
                     float rainVal = Math.Max(0, (rain / 255f - treeGenProps.vinesMinRain) / (1 - treeGenProps.vinesMinRain));
-                    float tempVal = Math.Max(0, (TerraGenConfig.DescaleTemperature(temp) / 255f - treeGenProps.descVineMinTempRel) / (1 - treeGenProps.descVineMinTempRel));
+                    float tempVal = Math.Max(0, (descaledTemp / 255f - treeGenProps.descVineMinTempRel) / (1 - treeGenProps.descVineMinTempRel));
+
+                    float rainValMoss = rain / 255f;
+                    float tempValMoss = descaledTemp / 255f;
 
                     float vinesGrowthChance = 1.5f * rainVal * tempVal + 0.5f * rainVal * GameMath.Clamp((tempVal + 0.33f) / 1.33f, 0, 1);
+
+                    // https://www.math3d.org/IyFcWuzED
+                    // min(1,max(0, 2.25 * x - 128/255 + y^0.5 * 1.5 max(-0.5, 128/255-y)))
+                    var mossGrowChance = 2.25 * rainValMoss - 0.5 + Math.Sqrt(tempValMoss) * 3 * Math.Max(-0.5, 0.5 - tempValMoss);
+                    float mossGrowthChance = GameMath.Clamp((float)mossGrowChance, 0, 1);
+
+                    //float mossGrowthChance = 1.5f * rainValMoss * tempValMoss + 1f * rainValMoss * GameMath.Clamp((tempValMoss + 0.33f) / 1.33f, 0, 1);
 
                     ITreeGenerator treegen = treeGenerators.GetGenerator(val.Key.Generator);
 
@@ -148,7 +155,13 @@ namespace Vintagestory.ServerMods
                     }
 
 
-                    return new TreeGenForClimate(treegen, size, vinesGrowthChance);
+                    return new TreeGenInstance()
+                    {
+                        treeGen = treegen,
+                        size = size,
+                        vinesGrowthChance = vinesGrowthChance,
+                        mossGrowthChance = mossGrowthChance
+                    };
                 }
             }
 
@@ -164,6 +177,26 @@ namespace Vintagestory.ServerMods
         {
             return source.OrderBy(x => rand.Next())
                .ToDictionary(item => item.Key, item => item.Value);
+        }
+
+
+        /// <summary>
+        /// Creates a shallow copy of the dictionary, i.e. the keys and values are not cloned
+        /// </summary>
+        /// <typeparam name="TKey"></typeparam>
+        /// <typeparam name="TValue"></typeparam>
+        /// <param name="source"></param>
+        /// <returns></returns>
+        public static Dictionary<TKey, TValue> ShallowClone<TKey, TValue>(
+           this Dictionary<TKey, TValue> source)
+        {
+            var cloned = new Dictionary<TKey, TValue>();
+            foreach (var val in source)
+            {
+                cloned[val.Key] = val.Value;
+            }
+
+            return cloned;
         }
     }
 }

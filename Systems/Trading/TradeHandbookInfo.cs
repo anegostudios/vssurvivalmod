@@ -71,7 +71,7 @@ namespace Vintagestory.GameContent
 
         private void AddTraderHandbookInfo(TradeItem val, string traderName, string title)
         {
-            if (val.Resolve(capi.World, "tradehandbookinfo", true))
+            if (val.Resolve(capi.World, "tradehandbookinfo " + traderName, true))
             {
                 var collobj = val.ResolvedItemstack.Collectible;
 

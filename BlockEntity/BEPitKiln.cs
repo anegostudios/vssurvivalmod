@@ -452,7 +452,7 @@ namespace Vintagestory.GameContent
             if (mesh == null)
             {
                 nowTesselatingKiln = true;
-                blockTexPos = tesselator.GetTexSource(Block);
+                blockTexPos = tesselator.GetTextureSource(Block);
                 tesselator.TesselateShape("pitkiln", shape, out mesh, this, null, 0, 0, 0, null, selectiveElements);
                 nowTesselatingKiln = false;
                 mesh.Scale(new Vec3f(0.5f, 0.5f, 0.5f), 1.005f, 1.005f, 1.005f);

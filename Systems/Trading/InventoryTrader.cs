@@ -280,10 +280,34 @@ namespace Vintagestory.GameContent
                 return EnumTransactionResult.Success;
             }
 
-            // Take care of the money first
+            // Make sure all buying and selling items can be sold/bought
+            for (int i = 0; i < 4; i++)
+            {
+                ItemSlotTrade slot = GetBuyingCartSlot(i);
+                if (slot.Itemstack?.Collectible is ITradeableCollectible itc)
+                {
+                    var result = itc.OnTryTrade(traderEntity, slot, EnumTradeDirection.Buy);
+                    if (result != EnumTransactionResult.Success) return result;
+                }
+
+            }
+
+            for (int i = 0; i < 4; i++)
+            {
+                ItemSlot slot = GetSellingCartSlot(i);
+                if (slot.Itemstack?.Collectible is ITradeableCollectible itc)
+                {
+                    var result = itc.OnTryTrade(traderEntity, slot, EnumTradeDirection.Sell);
+                    if (result != EnumTransactionResult.Success) return result;
+                }
+            }
+
+
+            // 2. Take care of the money first
             if (!HandleMoneyTransaction(buyingPlayer)) return EnumTransactionResult.Failure;
 
-            // Now hand over buying cart contents
+
+            // 3. Now hand over buying cart contents
             for (int i = 0; i < 4; i++)
             {
                 ItemSlotTrade slot = GetBuyingCartSlot(i);
@@ -296,7 +320,7 @@ namespace Vintagestory.GameContent
                 slot.MarkDirty();
             }
 
-            // And delete selling cart contents
+            // 4. And delete selling cart contents
             for (int i = 0; i < 4; i++)
             {
                 ItemSlot slot = GetSellingCartSlot(i);
@@ -308,7 +332,10 @@ namespace Vintagestory.GameContent
                 int q = slot.Itemstack.StackSize / tradeItem.Stack.StackSize;
 
                 tradeItem.Stock -= q;
-                slot.TakeOut(q * tradeItem.Stack.StackSize);
+                var stack = slot.TakeOut(q * tradeItem.Stack.StackSize);
+
+                if (stack.Collectible is ITradeableCollectible itc) itc.OnDidTrade(traderEntity, stack, EnumTradeDirection.Buy);
+
                 slot.MarkDirty();
             }
 
@@ -453,7 +480,7 @@ namespace Vintagestory.GameContent
                 GiveToTrader(deduct);
             } else
             {
-                GiveOrDrop(buyingPlayer.Entity, new ItemStack(Api.World.GetItem(new AssetLocation("gear-rusty"))), -deduct);
+                GiveOrDrop(buyingPlayer.Entity, new ItemStack(Api.World.GetItem(new AssetLocation("gear-rusty"))), -deduct, null);
                 DeductFromTrader(-deduct);
             }
 
@@ -556,7 +583,7 @@ namespace Vintagestory.GameContent
             // ...and return single value gears 
             if (totalUnitsToDeduct < 0)
             {
-                GiveOrDrop(eagent, new ItemStack(api.World.GetItem(new AssetLocation("gear-rusty"))), -totalUnitsToDeduct);
+                GiveOrDrop(eagent, new ItemStack(api.World.GetItem(new AssetLocation("gear-rusty"))), -totalUnitsToDeduct, null);
             }
         }
 
@@ -564,10 +591,10 @@ namespace Vintagestory.GameContent
         {
             if (stack == null) return;
 
-            GiveOrDrop(eagent, stack, stack.StackSize);
+            GiveOrDrop(eagent, stack, stack.StackSize, traderEntity);
         }
 
-        public static void GiveOrDrop(EntityAgent eagent, ItemStack stack, int quantity)
+        public static void GiveOrDrop(EntityAgent eagent, ItemStack stack, int quantity, EntityTrader entityTrader)
         {
             if (stack == null) return;
 
@@ -579,11 +606,12 @@ namespace Vintagestory.GameContent
                 ItemStack stackPart = stack.Clone();
                 stackPart.StackSize = stacksize;
 
+                if (entityTrader != null && stackPart.Collectible is ITradeableCollectible itc) itc.OnDidTrade(entityTrader, stackPart, EnumTradeDirection.Sell);
+
                 if (!eagent.TryGiveItemStack(stackPart))
                 {
                     eagent.World.SpawnItemEntity(stackPart, eagent.Pos.XYZ);
                 }
-
                 quantity -= stacksize;
             }
         }
@@ -752,7 +780,7 @@ namespace Vintagestory.GameContent
                 slots[i + 36].Itemstack = null;
             }
 
-            traderEntity.tradingWith = null;
+            traderEntity.tradingWithPlayer = null;
             return p;
         }
 

@@ -40,7 +40,7 @@ namespace Vintagestory.GameContent
             if (Api.Side != EnumAppSide.Client) return;
 
             tmpBlock = Api.World.BlockAccessor.GetBlock(Pos);
-            tmpTextureSource = ((ICoreClientAPI)Api).Tesselator.GetTexSource(tmpBlock);
+            tmpTextureSource = ((ICoreClientAPI)Api).Tesselator.GetTextureSource(tmpBlock);
 
             Shape shape = ObjectCacheUtil.GetOrCreate(Api, "ingotpileshape", () => API.Common.Shape.TryGet(Api, "shapes/block/metal/ingotpile.json"));
             if (shape == null) return;

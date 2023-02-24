@@ -67,14 +67,14 @@ namespace Vintagestory.GameContent
         }
 
 
-        public void GrowTree(IBlockAccessor blockAccessor, BlockPos pos, bool skipForestFloor, float sizeModifier = 1, float vineGrowthChance = 0, float otherBlockChance = 1, int treesInChunkGenerated = 0)
+        public void GrowTree(IBlockAccessor blockAccessor, BlockPos pos, TreeGenParams treeGenParams)
         {
-            float f = otherBlockChance == 0 ? 1 + (float)rand.NextDouble() * 2.5f : 1.5f + (float)rand.NextDouble() * 4;
+            float f = treeGenParams.otherBlockChance == 0 ? 1 + (float)rand.NextDouble() * 2.5f : 1.5f + (float)rand.NextDouble() * 4;
             int quantity = GameMath.RoundRandom(rand, f);
 
             while (quantity-- > 0)
             {
-                GrowOneFern(blockAccessor, pos.UpCopy(), sizeModifier, vineGrowthChance);
+                GrowOneFern(blockAccessor, pos.UpCopy(), treeGenParams.size, treeGenParams.vinesGrowthChance);
 
                 // Potentially grow another one nearby
                 pos.X += rand.Next(8) - 4;

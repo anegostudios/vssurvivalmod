@@ -14,9 +14,12 @@ namespace Vintagestory.GameContent
 {
     public class BlockCrop : Block, IDrawYAdjustable
     {
-        private static readonly float defaultGrowthProbability = 0.8f;
+        protected static readonly float defaultGrowthProbability = 0.8f;
+        protected float tickGrowthProbability;
+        protected float onFarmlandVerticalOffset = -0.0625f;
 
-        private float tickGrowthProbability;
+        protected MeshData onFarmLandMesh;
+        protected CompositeShape onFarmlandCshape;
 
         /// <summary>
         /// Applied to produce drop count when this is a wild crop
@@ -27,31 +30,32 @@ namespace Vintagestory.GameContent
         {
             get
             {
-                int stage = 0;
+                int stage;
                 int.TryParse(LastCodePart(), out stage);
                 return stage;
             }
         }
 
-
-        //RoomRegistry roomreg;
-
+        
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
 
             if (Code.Path.Contains("sunflower"))
             {
-                WaveFlagMinY = 0.1f;
+                waveFlagMinY = 0.1f;
             } else
             {
-                WaveFlagMinY = 0.5f;
+                waveFlagMinY = 0.5f;
             }
 
             tickGrowthProbability = Attributes?["tickGrowthProbability"] != null ? Attributes["tickGrowthProbability"].AsFloat(defaultGrowthProbability) : defaultGrowthProbability;
-       
+            
             if (api.Side == EnumAppSide.Client)
             {
+                onFarmlandVerticalOffset = (float)Attributes?["onFarmlandVerticalOffset"].AsFloat(-0.0625f);
+                onFarmlandCshape = Attributes?["onFarmlandShape"].AsObject<CompositeShape>();
+
                 if (this.RandomDrawOffset > 0)
                 {
                     JsonObject overrider = Attributes?["overrideRandomDrawOffset"];
@@ -64,20 +68,25 @@ namespace Vintagestory.GameContent
         public float AdjustYPosition(Block[] chunkExtBlocks, int extIndex3d)
         {
             Block nblock = chunkExtBlocks[extIndex3d + TileSideEnum.MoveIndex[TileSideEnum.Down]];
-            return nblock is BlockFarmland ? -0.0625f : 0f;
+            return nblock is BlockFarmland ? onFarmlandVerticalOffset : 0f;
         }
 
 
         public override void OnJsonTesselation(ref MeshData sourceMesh, ref int[] lightRgbsByCorner, BlockPos pos, Block[] chunkExtBlocks, int extIndex3d)
         {
-            /*if ((byte)(lightRgbsByCorner[24] >> 24) >= 159)
+            if (onFarmlandCshape != null)
             {
-                SetWindFlag(sourceMesh, (int)VertexFlags.WindMode);
+                if (onFarmLandMesh == null)
+                {
+                    var shape = api.Assets.TryGet(onFarmlandCshape.Base).ToObject<Shape>();
+                    if (shape == null) { onFarmlandCshape = null; return; }
+
+                    onFarmlandVerticalOffset = 0;
+                    (api as ICoreClientAPI).Tesselator.TesselateShape(this, shape, out onFarmLandMesh);
+                }
+
+                sourceMesh = onFarmLandMesh;
             }
-            else
-            {
-                ClearWindFlags(sourceMesh);
-            }*/
         }
 
         public override void OnDecalTesselation(IWorldAccessor world, MeshData decalMesh, BlockPos pos)
@@ -85,10 +94,10 @@ namespace Vintagestory.GameContent
             int sunLightLevel = world.BlockAccessor.GetLightLevel(pos, EnumLightLevelType.OnlySunLight);
             if (sunLightLevel >= 14)
             {
-                SetWindFlag(decalMesh, (int)VertexFlags.WindMode);
+                decalMesh.SetWindFlag(waveFlagMinY, (int)VertexFlags.WindMode);
             } else
             {
-                ClearWindFlags(decalMesh);
+                decalMesh.ClearWindFlags();
             }
         }
 

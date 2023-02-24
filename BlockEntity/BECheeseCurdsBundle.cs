@@ -84,7 +84,7 @@ namespace Vintagestory.GameContent
 
             if (api.Side == EnumAppSide.Client)
             {
-                animUtil?.InitializeAnimator("curdbundle", animRot, (Block as BlockCheeseCurdsBundle).GetShape(EnumCurdsBundleState.BundledStick));
+                animUtil?.InitializeAnimator("curdbundle", (Block as BlockCheeseCurdsBundle).GetShape(EnumCurdsBundleState.BundledStick), null, animRot);
             }
         }
 

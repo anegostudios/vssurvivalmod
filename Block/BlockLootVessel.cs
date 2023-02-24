@@ -210,12 +210,12 @@ namespace Vintagestory.GameContent
             lootLists["tool"] = LootList.Create(2.2f, 
                 LootItem.Item(1, 1, 1, "axe-flint"),
                 LootItem.Item(1, 1, 1, "shovel-flint"),
-                LootItem.Item(1, 1, 1, "knife-flint"),
-                LootItem.Item(0.1f, 1, 1, "axe-copper", "axe-copper", "axe-tinbronze"),
+                LootItem.Item(1, 1, 1, "knife-generic-flint"),
+                LootItem.Item(0.1f, 1, 1, "axe-felling-copper", "axe-felling-copper", "axe-felling-tinbronze"),
                 LootItem.Item(0.1f, 1, 1, "shovel-copper", "shovel-copper", "shovel-tinbronze"),
                 LootItem.Item(0.1f, 1, 1, "pickaxe-copper"),
                 LootItem.Item(0.1f, 1, 1, "scythe-copper"),
-                LootItem.Item(0.1f, 1, 1, "knife-copper", "knife-copper", "knife-tinbronze"),
+                LootItem.Item(0.1f, 1, 1, "knife-generic-copper", "knife-generic-copper", "knife-generic-tinbronze"),
                 LootItem.Item(0.1f, 1, 1, "blade-falx-copper", "blade-falx-copper", "blade-falx-tinbronze"),
                 LootItem.Item(0.1f, 2, 4, "gear-rusty")
             );
@@ -255,7 +255,15 @@ namespace Vintagestory.GameContent
             {
                 for (int i = 0; i < val.codes.Length; i++)
                 {
-                    BlockDropItemStack stack = new BlockDropItemStack(val.GetItemStack(api.World, i, 1));
+                    var lstack = val.GetItemStack(api.World, i, 1);
+                    if (lstack == null)
+                    {
+                        AssetLocation code = val.codes[i % val.codes.Length];
+                        api.World.Logger.Warning("Unable to resolve loot vessel drop {0}, item wont drop.", code);
+                        continue;
+                    }
+
+                    BlockDropItemStack stack = new BlockDropItemStack(lstack);
                     if (stack == null) continue;
                     
                     stack.Quantity.avg = val.chance / list.TotalChance / val.codes.Length;

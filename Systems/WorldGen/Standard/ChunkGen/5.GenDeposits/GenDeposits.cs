@@ -48,7 +48,7 @@ namespace Vintagestory.ServerMods
         {
             base.StartServerSide(api);
 
-            if (DoDecorationPass)
+            if (TerraGenConfig.DoDecorationPass)
             {
                 api.Event.ChunkColumnGeneration(GenChunkColumn, EnumWorldGenPass.TerrainFeatures, "standard");
                 api.Event.GetWorldgenBlockAccessor(OnWorldGenBlockAccessor);
@@ -164,7 +164,7 @@ namespace Vintagestory.ServerMods
         }
 
 
-        public void OnMapRegionGen(IMapRegion mapRegion, int regionX, int regionZ)
+        public void OnMapRegionGen(IMapRegion mapRegion, int regionX, int regionZ, ITreeAttribute chunkGenParams = null)
         {
             int pad = 2;
             TerraGenConfig.depositVerticalDistortScale = 2;
@@ -206,13 +206,15 @@ namespace Vintagestory.ServerMods
 
             subDepositsToPlace.Clear();
 
+            float scaleAdjustMul = (float)api.WorldManager.MapSizeY / 256;
+
             for (int i = 0; i < Deposits.Length; i++)
             {
                 DepositVariant variant = Deposits[i];
 
                 float quantityFactor = variant.WithOreMap ? variant.GetOreMapFactor(fromChunkx, fromChunkz) : 1;
 
-                float qModified = variant.TriesPerChunk * quantityFactor * chanceMultiplier;
+                float qModified = variant.TriesPerChunk * quantityFactor * chanceMultiplier * (variant.ScaleWithWorldheight ? scaleAdjustMul : 1);
                 int quantity = (int)qModified;
                 quantity += chunkRand.NextInt(100) < 100 * (qModified - quantity) ? 1 : 0;
                 

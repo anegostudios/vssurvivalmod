@@ -118,7 +118,7 @@ namespace Vintagestory.GameContent
             string firstCodePart = stack.Collectible.FirstCodePart();
             if (firstCodePart == "metalplate")
             {
-                tmpTextureSource = capi.Tesselator.GetTexSource(capi.World.GetBlock(new AssetLocation("platepile")));
+                tmpTextureSource = capi.Tesselator.GetTextureSource(capi.World.GetBlock(new AssetLocation("platepile")));
                 shape = API.Common.Shape.TryGet(capi, "shapes/block/stone/forge/platepile.json");
                 textureId = tmpTextureSource[tmpMetal].atlasTextureId;
                 capi.Tesselator.TesselateShape("block-fcr", shape, out mesh, this, null, 0, 0, 0, stack.StackSize);
@@ -136,7 +136,7 @@ namespace Vintagestory.GameContent
             }
             else if (firstCodePart == "ingot")
             {
-                tmpTextureSource = capi.Tesselator.GetTexSource(capi.World.GetBlock(new AssetLocation("ingotpile")));
+                tmpTextureSource = capi.Tesselator.GetTextureSource(capi.World.GetBlock(new AssetLocation("ingotpile")));
                 shape = API.Common.Shape.TryGet(capi, "shapes/block/stone/forge/ingotpile.json");
                 textureId = tmpTextureSource[tmpMetal].atlasTextureId;
                 capi.Tesselator.TesselateShape("block-fcr", shape, out mesh, this, null, 0, 0, 0, stack.StackSize);
@@ -146,11 +146,11 @@ namespace Vintagestory.GameContent
                 if (stack.Class == EnumItemClass.Block)
                 {
                     mesh = capi.TesselatorManager.GetDefaultBlockMesh(stack.Block).Clone();
-                    textureId = capi.BlockTextureAtlas.AtlasTextureIds[0];
+                    textureId = capi.BlockTextureAtlas.AtlasTextures[0].TextureId;
                 } else
                 {
                     capi.Tesselator.TesselateItem(stack.Item, out mesh);
-                    textureId = capi.ItemTextureAtlas.AtlasTextureIds[0];
+                    textureId = capi.ItemTextureAtlas.AtlasTextures[0].TextureId;
                 }
 
                 ModelTransform tf = stack.Collectible.Attributes["inForgeTransform"].AsObject<ModelTransform>();

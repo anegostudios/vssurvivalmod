@@ -18,15 +18,14 @@ namespace Vintagestory.GameContent
         readonly int cookingSize;
         public BlockPos pos;
 
-        public InventoryOven(string inventoryID, int cookingSize, int fuelSize) : base(inventoryID, null)
+        public InventoryOven(string inventoryID, int bakeableSlots) : base(inventoryID, null)
         {
-            slots = GenEmptySlots(cookingSize + 1);
-            this.cookingSize = cookingSize;
-            CookingSlots = new ItemSlot[cookingSize];
-            for (int i = 0; i < cookingSize; i++)
+            slots = GenEmptySlots(bakeableSlots + 1);
+            this.cookingSize = bakeableSlots;
+            CookingSlots = new ItemSlot[bakeableSlots];
+            for (int i = 0; i < bakeableSlots; i++)
             {
                 CookingSlots[i] = slots[i];
-                slots[i].MaxSlotStackSize = 1;
             }
         }
 
@@ -55,14 +54,6 @@ namespace Vintagestory.GameContent
             List<ItemSlot> modifiedSlots = new List<ItemSlot>();
             slots = SlotsFromTreeAttributes(tree, slots, modifiedSlots);
             for (int i = 0; i < modifiedSlots.Count; i++) MarkSlotDirty(GetSlotId(modifiedSlots[i]));
-
-            if (Api != null)
-            {
-                for (int i = 0; i < CookingSlots.Length; i++)
-                {
-                    CookingSlots[i].MaxSlotStackSize = 1;
-                }
-            }
         }
 
         public override void ToTreeAttributes(ITreeAttribute tree)

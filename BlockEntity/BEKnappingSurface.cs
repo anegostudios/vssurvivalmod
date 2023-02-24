@@ -103,7 +103,6 @@ namespace Vintagestory.GameContent
         {
             if (voxelPos == null)
             {
-               // DidBeginUse = Math.Max(0, DidBeginUse - 1);
                 return;
             }
 
@@ -117,53 +116,43 @@ namespace Vintagestory.GameContent
             ItemSlot slot = byPlayer.InventoryManager.ActiveHotbarSlot;
             if (slot.Itemstack == null)
             {
-          //      DidBeginUse = Math.Max(0, DidBeginUse - 1);
                 return;
             }
 
-            int toolMode = slot.Itemstack.Collectible.GetToolMode(slot, byPlayer, new BlockSelection() { Position = Pos });
+            bool didRemove = mouseMode && OnRemove(voxelPos, 0);
 
-            //float yaw = GameMath.Mod(byPlayer.Entity.Pos.Yaw, 2 * GameMath.PI);
-            //BlockFacing towardsFace = BlockFacing.HorizontalFromAngle(yaw);
-            
-
-            //if (DidBeginUse > 0)
+            if (didRemove)
             {
-                bool didRemove = mouseMode && OnRemove(voxelPos, toolMode);
-                
-                if (didRemove)
+                for (int i = 0; i < BlockFacing.HORIZONTALS.Length; i++)
                 {
-                    for (int i = 0; i < BlockFacing.HORIZONTALS.Length; i++)
-                    {
-                        BlockFacing face = BlockFacing.HORIZONTALS[i];
-                        Vec3i nnode = voxelPos.AddCopy(face);
+                    BlockFacing face = BlockFacing.HORIZONTALS[i];
+                    Vec3i nnode = voxelPos.AddCopy(face);
 
-                        if (!Voxels[nnode.X, nnode.Z]) continue;
-                        if (SelectedRecipe.Voxels[nnode.X, 0, nnode.Z]) continue;
+                    if (!Voxels[nnode.X, nnode.Z]) continue;
+                    if (SelectedRecipe.Voxels[nnode.X, 0, nnode.Z]) continue;
 
-                        tryBfsRemove(nnode.X, nnode.Z);
-                    }
+                    tryBfsRemove(nnode.X, nnode.Z);
                 }
+            }
 
-                if (mouseMode && (didRemove || Voxels[voxelPos.X, voxelPos.Z]))
-                {
-                    Api.World.PlaySoundAt(new AssetLocation("sounds/player/knap" + (Api.World.Rand.Next(2) > 0 ? 1 : 2)), lastRemovedLocalPos.X, lastRemovedLocalPos.Y, lastRemovedLocalPos.Z, byPlayer, true, 12, 1);
-                }
+            if (mouseMode && (didRemove || Voxels[voxelPos.X, voxelPos.Z]))
+            {
+                Api.World.PlaySoundAt(new AssetLocation("sounds/player/knap" + (Api.World.Rand.Next(2) > 0 ? 1 : 2)), lastRemovedLocalPos.X, lastRemovedLocalPos.Y, lastRemovedLocalPos.Z, byPlayer, true, 12, 1);
+            }
 
-                if (didRemove && Api.Side == EnumAppSide.Client)
-                {
-                    spawnParticles(lastRemovedLocalPos);
-                }
+            if (didRemove && Api.Side == EnumAppSide.Client)
+            {
+                spawnParticles(lastRemovedLocalPos);
+            }
 
-                RegenMeshAndSelectionBoxes();
-                Api.World.BlockAccessor.MarkBlockDirty(Pos);
-                Api.World.BlockAccessor.MarkBlockEntityDirty(Pos);
+            RegenMeshAndSelectionBoxes();
+            Api.World.BlockAccessor.MarkBlockDirty(Pos);
+            Api.World.BlockAccessor.MarkBlockEntityDirty(Pos);
 
-                if (!HasAnyVoxel())
-                {
-                    Api.World.BlockAccessor.SetBlock(0, Pos);
-                    return;
-                }
+            if (!HasAnyVoxel())
+            {
+                Api.World.BlockAccessor.SetBlock(0, Pos);
+                return;
             }
 
             CheckIfFinished(byPlayer);
@@ -191,6 +180,11 @@ namespace Vintagestory.GameContent
                     ItemStack dropStack = outstack.Clone();
                     dropStack.StackSize = Math.Min(outstack.StackSize, outstack.Collectible.MaxStackSize);
                     outstack.StackSize -= dropStack.StackSize;
+
+                    TreeAttribute tree = new TreeAttribute();
+                    tree["itemstack"] = new ItemstackAttribute(dropStack);
+                    tree["byentityid"] = new LongAttribute(byPlayer.Entity.EntityId);
+                    Api.Event.PushEvent("onitemknapped", tree);
 
                     if (byPlayer.InventoryManager.TryGiveItemstack(dropStack))
                     {
@@ -309,7 +303,7 @@ namespace Vintagestory.GameContent
                 {
                     Vec3i offPos = voxelPos.AddCopy(dx, 0, dz);
                     
-                    if (voxelPos.X >= 0 && voxelPos.X < 16 && voxelPos.Z >= 0 && voxelPos.Z < 16 && Voxels[offPos.X, offPos.Z])
+                    if (offPos.X >= 0 && offPos.X < 16 && offPos.Z >= 0 && offPos.Z < 16 && Voxels[offPos.X, offPos.Z])
                     {
                         Voxels[offPos.X, offPos.Z] = false;
 

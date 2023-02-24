@@ -398,9 +398,9 @@ namespace Vintagestory.GameContent
                     }
                 }
 
-                
 
-                if (capi.World.Rand.NextDouble() < 0.002)
+
+                if (capi.World.Rand.NextDouble() < 0.002 && capi.World.Player.WorldData.CurrentGameMode == EnumGameMode.Survival)
                 {
                     capi.Input.MouseYaw += (float)capi.World.Rand.NextDouble() * 0.125f - 0.125f/2;
                     capi.Input.MousePitch += (float)capi.World.Rand.NextDouble() * 0.125f - 0.125f/2;

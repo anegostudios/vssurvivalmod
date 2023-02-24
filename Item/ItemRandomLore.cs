@@ -1,42 +1,34 @@
-﻿using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using Vintagestory.API;
+﻿using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
-using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
-using Vintagestory.ServerMods;
 
 namespace Vintagestory.GameContent
 {
-    public class ItemRandomLore : Item
+    public class ItemRandomLore : ItemBook
     {
 
         public override void OnHeldInteractStart(ItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
-            if (byEntity.World.Side != EnumAppSide.Server)
+            if (byEntity.World.Side == EnumAppSide.Server)
             {
-                handling = EnumHandHandling.PreventDefault;
-                return;
+                IPlayer byPlayer = null;
+                if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
+
+                if (!(byPlayer is IServerPlayer)) return;
+
+                TreeAttribute tree = new TreeAttribute();
+                tree.SetString("playeruid", byPlayer?.PlayerUID);
+                tree.SetString("category", itemslot.Itemstack.Attributes.GetString("category"));
+                tree.SetItemstack("itemstack", itemslot.Itemstack.Clone());
+
+                api.Event.PushEvent("loreDiscovery", tree);
             }
 
-            IPlayer byPlayer = null;
-            if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
-
-            if (!(byPlayer is IServerPlayer)) return;
-
-            TreeAttribute tree = new TreeAttribute();
-            tree.SetString("playeruid", byPlayer?.PlayerUID);
-            tree.SetString("category", itemslot.Itemstack.Attributes.GetString("category"));
-            tree.SetItemstack("itemstack", itemslot.Itemstack.Clone());
-
-            api.Event.PushEvent("loreDiscovery", tree);
-            
+            base.OnHeldInteractStart(itemslot, byEntity, blockSel, entitySel, firstEvent, ref handling);
             handling = EnumHandHandling.PreventDefault;
         }
 

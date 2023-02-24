@@ -1,16 +1,8 @@
-﻿using ProtoBuf;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using Vintagestory.API.Client;
-using Vintagestory.API.Common;
+﻿using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
-using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
-using Vintagestory.GameContent.Mechanics;
-using Vintagestory.ServerMods;
 
 namespace Vintagestory.GameContent
 {
@@ -61,7 +53,6 @@ namespace Vintagestory.GameContent
                     }
                 }
 
-
                 return false;
             }
 
@@ -69,7 +60,7 @@ namespace Vintagestory.GameContent
             if (properties.Code.Path.StartsWithFast("butterfly"))
             {
                 ClimateCondition climate = blockAccessor.GetClimateAt(new BlockPos((int)spawnPosition.X, (int)spawnPosition.Y, (int)spawnPosition.Z), EnumGetClimateMode.NowValues);
-                if (climate.Temperature < 10) return false;
+                if (climate == null || climate.Temperature < 10) return false;
             }
 
             if (properties.Code.Path.StartsWithFast("sheep") || properties.Code.Path.StartsWithFast("boar"))

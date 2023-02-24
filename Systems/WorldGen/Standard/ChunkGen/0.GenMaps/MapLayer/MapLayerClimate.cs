@@ -4,12 +4,12 @@ namespace Vintagestory.ServerMods
 {
     class MapLayerClimate : MapLayerBase
     {
-        private NoiseClimate map;
+        public NoiseClimate noiseMap;
 
 
         public MapLayerClimate(long seed, NoiseClimate map) : base(seed)
         {
-            this.map = map;
+            this.noiseMap = map;
         }
 
         public override int[] GenLayer(int xCoord, int zCoord, int sizeX, int sizeZ)
@@ -25,7 +25,7 @@ namespace Vintagestory.ServerMods
             {
                 for (int z = 0; z < sizeZ; z++)
                 {
-                    result[z*sizeX + x] = map.GetLerpedClimateAt(
+                    result[z*sizeX + x] = noiseMap.GetLerpedClimateAt(
                         x / (double)TerraGenConfig.climateMapSubScale, 
                         z / (double)TerraGenConfig.climateMapSubScale, 
                         climateCache, 
@@ -46,7 +46,7 @@ namespace Vintagestory.ServerMods
             {
                 for (int z = 0; z < climateCacheSizeZ; z++)
                 {
-                    climateCache[z * climateCacheSizeX + x] = map.GetClimateAt(coordX + x, coordZ + z);
+                    climateCache[z * climateCacheSizeX + x] = noiseMap.GetClimateAt(coordX + x, coordZ + z);
                 }
             }
 

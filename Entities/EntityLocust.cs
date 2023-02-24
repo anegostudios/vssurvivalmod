@@ -41,7 +41,6 @@ namespace Vintagestory.GameContent
 
             if (FeetInLiquid) multiplier /= 2.5;
 
-
             multiplier *= mul1 * mul2;
 
             // Apply walk speed modifiers.
@@ -68,6 +67,13 @@ namespace Vintagestory.GameContent
                 mul1 = belowBlock.Code == null || belowBlock.Code.Path.Contains("metalspike") ? 1 : belowBlock.WalkSpeedMultiplier;
                 mul2 = insideblock.Code == null || insideblock.Code.Path.Contains("metalspike") ? 1 : insideblock.WalkSpeedMultiplier;
             }
+        }
+
+        public override bool ReceiveDamage(DamageSource damageSource, float damage)
+        {
+            if (damageSource.SourceEntity is EntityEidolon) return false;
+
+            return base.ReceiveDamage(damageSource, damage);
         }
     }
 }

@@ -51,7 +51,7 @@ namespace Vintagestory.GameContent
             fleeFromEntity = entity.World.GetNearestEntity(entity.ServerPos.XYZ, seekingRange, seekingRange, (e) => {
                 if (!e.Alive || e.EntityId == this.entity.EntityId) return false;
 
-                if (e is EntityPlayer && (e as EntityPlayer).Player?.WorldData.CurrentGameMode != EnumGameMode.Creative && (e as EntityPlayer).Player?.WorldData.CurrentGameMode != EnumGameMode.Spectator)
+                if (e is EntityPlayer eplr && !eplr.ServerControls.Sneak && eplr.Player?.WorldData.CurrentGameMode != EnumGameMode.Creative && eplr.Player?.WorldData.CurrentGameMode != EnumGameMode.Spectator)
                 {
                     return true;
                 }

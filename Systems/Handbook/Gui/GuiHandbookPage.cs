@@ -23,12 +23,19 @@ namespace Vintagestory.GameContent
 
         public abstract string CategoryCode { get; }
 
-        public abstract void RenderTo(ICoreClientAPI capi, double x, double y);
+        /// <summary>
+        /// Render the list item
+        /// </summary>
+        /// <param name="capi"></param>
+        /// <param name="x"></param>
+        /// <param name="y"></param>
+        public abstract void RenderListEntryTo(ICoreClientAPI capi, float dt, double x, double y, double cellWdith, double cellHeight);
         public abstract void Dispose();
         public bool Visible { get; set; } = true;
 
-        public abstract RichTextComponentBase[] GetPageText(ICoreClientAPI capi, ItemStack[] allStacks, ActionConsumable<string> openDetailPageFor);
-        public abstract float TextMatchWeight(string text);
+        public abstract float GetTextMatchWeight(string text);
         public abstract bool IsDuplicate { get; }
+
+        public abstract void ComposePage(GuiComposer detailViewGui, ElementBounds textBounds, ItemStack[] allstacks, ActionConsumable<string> openDetailPageFor);
     }
 }

@@ -1,7 +1,6 @@
-﻿using Vintagestory.API;
+﻿using System;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
@@ -10,11 +9,11 @@ namespace Vintagestory.GameContent
 {
     public class BlockEntitySignRenderer : IRenderer
     {
-        protected static int TextWidth = 200;
-        protected static int TextHeight = 100;
+        protected int TextWidth = 200;
+        protected int TextHeight = 100;
 
-        protected static float QuadWidth = 0.9f;
-        protected static float QuadHeight = 0.45f;
+        protected float QuadWidth = 14/16f;
+        protected float QuadHeight = 6.5f/16f;
 
 
         protected CairoFont font;
@@ -26,15 +25,16 @@ namespace Vintagestory.GameContent
         public Matrixf ModelMat = new Matrixf();
 
         public float rotY = 0;
-        public float translateX = 0;
-        public float translateY = 0.5625f;
-        public float translateZ = 0;
+        protected float translateX = 0;
+        protected float translateY = 0;
+        protected float translateZ = 0;
 
-        public float offsetX;
-        public float offsetY;
-        public float offsetZ;
+        protected float offsetX;
+        protected float offsetY;
+        protected float offsetZ;
 
-        float fontSize=20;
+        public float fontSize =20;
+        EnumVerticalAlign verticalAlign;
 
         public double RenderOrder
         {
@@ -46,11 +46,20 @@ namespace Vintagestory.GameContent
             get { return 24; }
         }
 
-        public BlockEntitySignRenderer(BlockPos pos, ICoreClientAPI api)
+        public BlockEntitySignRenderer(BlockPos pos, ICoreClientAPI api, TextAreaConfig config)
         {
             this.api = api;
             this.pos = pos;
-            font = new CairoFont(fontSize, GuiStyle.StandardFontName, new double[] { 0, 0, 0, 0.8 });
+            if (config == null) config = new TextAreaConfig();
+
+            this.fontSize = config.FontSize;
+            this.QuadWidth = config.textVoxelWidth / 16f;
+            this.QuadHeight = config.textVoxelHeight / 16f;
+            this.verticalAlign = config.VerticalAlign;
+            this.TextWidth = config.MaxWidth;
+
+            font = new CairoFont(this.fontSize, config.FontName, new double[] { 0, 0, 0, 0.8 });
+            if (config.BoldFont) font.WithWeight(Cairo.FontWeight.Bold);
             font.LineHeightMultiplier = 0.9f;
 
             api.Event.RegisterRenderer(this, EnumRenderStage.Opaque, "sign");
@@ -74,6 +83,8 @@ namespace Vintagestory.GameContent
 
             float wallOffset = block.Variant["attachment"] == "wall" ? 0.22f : 0;
 
+            translateY = 9 / 16f;
+
             switch (facing.Index)
             {
                 case 0: // N
@@ -89,18 +100,25 @@ namespace Vintagestory.GameContent
                 case 2: // S
                     translateX = 0.5f;
                     translateZ = 0.71f + wallOffset;
-
                     break;
                 case 3: // W
                     translateX = 1 - 0.71f - wallOffset;
                     translateZ = 0.5f;
                     rotY = 270;
-
                     break;
-                    
             }
 
-            
+            this.offsetX += config.textVoxelOffsetX / 16f;
+            this.offsetY += config.textVoxelOffsetY / 16f;
+            this.offsetZ += config.textVoxelOffsetZ / 16f;
+        }
+
+        public void SetFreestanding(float angleRad)
+        {
+            rotY = 180 + angleRad * GameMath.RAD2DEG;
+            translateX = 8f / 16f;
+            translateZ = 8f / 16f;
+            offsetZ = -1.51f / 16f;
         }
 
         public virtual void SetNewText(string text, int color)
@@ -112,7 +130,23 @@ namespace Vintagestory.GameContent
             if (text.Length > 0)
             {
                 font.UnscaledFontsize = fontSize / RuntimeEnv.GUIScale;
-                loadedTexture = api.Gui.TextTexture.GenTextTexture(text, font, TextWidth, TextHeight, null, EnumTextOrientation.Center, false);
+
+                double verPadding = verticalAlign == EnumVerticalAlign.Middle ? (TextHeight - api.Gui.Text.GetMultilineTextHeight(font, text, TextWidth)) : 0;
+                var bg = new TextBackground() { 
+                    VerPadding = (int)verPadding / 2,
+                    //FillColor = new double[] { 0, 0, 0, 0.35 }
+                };
+
+                
+                loadedTexture = api.Gui.TextTexture.GenTextTexture(
+                    text, 
+                    font, 
+                    TextWidth, 
+                    TextHeight,
+                    bg, 
+                    EnumTextOrientation.Center, 
+                    false
+                );
             }
         }
 
@@ -132,6 +166,7 @@ namespace Vintagestory.GameContent
 
             IStandardShaderProgram prog = rpi.PreparedStandardShader(pos.X, pos.Y, pos.Z);
 
+
             prog.Tex2D = loadedTexture.TextureId;
             prog.NormalShaded = 0;
             prog.ModelMatrix = ModelMat
@@ -140,7 +175,7 @@ namespace Vintagestory.GameContent
                 .Translate(translateX, translateY, translateZ)
                 .RotateY(rotY * GameMath.DEG2RAD)
                 .Translate(offsetX, offsetY, offsetZ)
-                .Scale(0.45f * QuadWidth, 0.45f * QuadHeight, 0.45f * QuadWidth)
+                .Scale(0.5f * QuadWidth, 0.5f * QuadHeight, 0.5f * QuadWidth)
                 .Values
             ;
 
@@ -161,7 +196,6 @@ namespace Vintagestory.GameContent
         public void Dispose()
         {
             api.Event.UnregisterRenderer(this, EnumRenderStage.Opaque);
-
             loadedTexture?.Dispose();
             quadModelRef?.Dispose();
         }

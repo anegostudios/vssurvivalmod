@@ -3,12 +3,127 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Vintagestory.API.Client;
+using Vintagestory.API.Client.Tesselation;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
+    public class BlockSmoothTextureTransition : Block
+    {
+        Dictionary<string, MeshData> sludgeMeshByNESWFlag = null;
+        ICoreClientAPI capi;
+
+        public Dictionary<string, HashSet<string>> cornersByNEWSFlag = new Dictionary<string, HashSet<string>>()
+        {
+            { "flat", new HashSet<string>(new string[] { "wn", "ne", "es", "sw" }) },
+
+            { "n", new HashSet<string>(new string[] { "es", "sw" }) },
+            { "e", new HashSet<string>(new string[] { "wn", "sw"  }) },
+            { "s", new HashSet<string>(new string[] { "wn", "ne" }) },
+            { "w", new HashSet<string>(new string[] { "ne", "es" }) },
+
+            { "sw", new HashSet<string>(new string[] { "ne" }) },
+            { "nw", new HashSet<string>(new string[] { "se" }) },
+            { "ne", new HashSet<string>(new string[] { "sw" }) },
+            { "es", new HashSet<string>(new string[] { "nw" }) },
+        };
+
+        string[] cornerCodes = new string[] { "wn", "ne", "es", "sw" };
+        int[] cornerOffest = new int[] { 
+            -1 * TileSideEnum.MoveIndex[1] -1 * TileSideEnum.MoveIndex[2], 
+            1 * TileSideEnum.MoveIndex[1] -1 * TileSideEnum.MoveIndex[2],
+            1 * TileSideEnum.MoveIndex[1] + 1 * TileSideEnum.MoveIndex[2],
+            -1 * TileSideEnum.MoveIndex[1] + 1 * TileSideEnum.MoveIndex[2]
+        };
+
+        public override void OnLoaded(ICoreAPI api)
+        {
+            capi = api as ICoreClientAPI;
+            base.OnLoaded(api);
+        }
+
+        public override void OnJsonTesselation(ref MeshData sourceMesh, ref int[] lightRgbsByCorner, BlockPos pos, Block[] chunkExtBlocks, int extIndex3d)
+        {
+            if (sludgeMeshByNESWFlag == null) genMeshes();
+
+            string flags = getNESWFlag(chunkExtBlocks, extIndex3d);
+
+            if (cornersByNEWSFlag.TryGetValue(flags, out var corners))
+            {
+                string cornerFlags = getCornerFlags(corners, chunkExtBlocks, extIndex3d);
+                if (cornerFlags.Length > 0) flags += "-cornercut-" + cornerFlags;
+            }
+
+            if (sludgeMeshByNESWFlag.TryGetValue(flags, out var mesh))
+            {
+                sourceMesh = mesh;
+                return;
+            }
+
+            base.OnJsonTesselation(ref sourceMesh, ref lightRgbsByCorner, pos, chunkExtBlocks, extIndex3d);
+        }
+
+        private string getCornerFlags(HashSet<string> corners, Block[] chunkExtBlocks, int extIndex3d)
+        {
+            string cornerflags = "";
+            for (int i = 0; i < cornerOffest.Length; i++)
+            {
+                if (!corners.Contains(cornerCodes[i])) continue;
+
+                Block cBlock = chunkExtBlocks[extIndex3d + cornerOffest[i]];
+                if (!cBlock.SideSolid[BlockFacing.UP.Index])
+                {
+                    cornerflags += cornerCodes[i];
+                }
+            }
+
+            return cornerflags;
+        }
+
+        private void genMeshes()
+        {
+            sludgeMeshByNESWFlag = new Dictionary<string, MeshData>();
+
+            var sludgeShapeByNESWFlag = Attributes["shapeByOrient"].AsObject<Dictionary<string, CompositeShape>>();
+
+            foreach (var val in sludgeShapeByNESWFlag)
+            {
+                var shape = capi.Assets.TryGet(val.Value.Base.WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json")).ToObject<Shape>();
+                if (shape == null)
+                {
+                    api.Logger.Warning("Smooth texture transition shape for block {0}: Shape {1} not found. Block will be invisible.", Code.Path, val.Value.Base);
+                    continue;
+                }
+
+                capi.Tesselator.TesselateShape(this, shape, out var mesh, new Vec3f(val.Value.rotateX, val.Value.rotateY, val.Value.rotateZ));
+                sludgeMeshByNESWFlag[val.Key] = mesh;
+            }
+        }
+
+        public string getNESWFlag(Block[] chunkExtBlocks, int extIndex3d)
+        {
+            string flags = "";
+            for (int i = 0; i < BlockFacing.ALLFACES.Length; i++)
+            {
+                var face = BlockFacing.ALLFACES[i];
+                int moveindex = face.Normali.X * TileSideEnum.MoveIndex[1] + face.Normali.Z * TileSideEnum.MoveIndex[2];
+
+                Block nblock = chunkExtBlocks[extIndex3d + moveindex];
+                if (!nblock.SideSolid[BlockFacing.UP.Index])
+                {
+                    flags += face.Code[0];
+                }
+            }
+
+            return flags.Length == 0 ? "flat" : flags;
+        }
+    }
+
+
+
     public class BlockFullCoating : Block
     {
         BlockFacing[] ownFacings;

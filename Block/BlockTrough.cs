@@ -18,7 +18,7 @@ namespace Vintagestory.GameContent
 
         public void init()
         {
-            CanStep = false;
+            CanStep = false; // Prevent creatures from walking on troughs
 
             contentConfigs = ObjectCacheUtil.GetOrCreate(api, "troughContentConfigs-" + Code, () =>
             {

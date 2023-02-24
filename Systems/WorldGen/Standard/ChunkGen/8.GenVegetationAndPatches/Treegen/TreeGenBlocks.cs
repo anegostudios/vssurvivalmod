@@ -12,18 +12,18 @@ namespace Vintagestory.ServerMods.NoObf
     {
         [JsonProperty]
         public AssetLocation logBlockCode = null;
-
         [JsonProperty]
         public AssetLocation otherLogBlockCode = null;
         [JsonProperty]
         public double otherLogChance = 0.01;
-
         [JsonProperty]
         public AssetLocation leavesBlockCode = null;
         [JsonProperty]
         public AssetLocation leavesBranchyBlockCode = null;
         [JsonProperty]
         public AssetLocation vinesBlockCode = null;
+        [JsonProperty]
+        public AssetLocation mossDecorCode = null;
         [JsonProperty]
         public AssetLocation vinesEndBlockCode = null;
         [JsonProperty]
@@ -33,6 +33,7 @@ namespace Vintagestory.ServerMods.NoObf
         [JsonProperty]
         public int leavesLevels = 0;
 
+        public Block mossDecorBlock;
         public Block vinesBlock;
         public Block vinesEndBlock;
         public int logBlockId;
@@ -93,10 +94,18 @@ namespace Vintagestory.ServerMods.NoObf
                 if (vinesBlockId == -1)
                 {
                     api.Server.LogWarning("Tree gen tree " + treeName + ": No block found with the blockcode " + vinesBlockCode);
-                    vinesBlockId = 0;
                 } else
                 {
                     this.vinesBlock = api.World.Blocks[vinesBlockId];
+                }
+            }
+
+            if (mossDecorCode != null)
+            {
+                this.mossDecorBlock = api.World.GetBlock(mossDecorCode);
+                if (mossDecorBlock == null)
+                {
+                    api.Server.LogWarning("Tree gen tree " + treeName + ": No decor block found with the blockcode " + mossDecorCode);
                 }
             }
 
@@ -106,7 +115,6 @@ namespace Vintagestory.ServerMods.NoObf
                 if (vinesEndBlockId == -1)
                 {
                     api.Server.LogWarning("Tree gen tree " + treeName + ": No block found with the blockcode " + vinesEndBlockCode);
-                    vinesEndBlockId = 0;
                 } else
                 {
                     this.vinesEndBlock = api.World.Blocks[vinesEndBlockId];

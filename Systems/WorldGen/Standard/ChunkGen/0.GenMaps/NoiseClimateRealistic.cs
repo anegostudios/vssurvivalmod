@@ -11,6 +11,9 @@ namespace Vintagestory.ServerMods
     public class NoiseClimateRealistic : NoiseClimatePatchy
     {
         double halfRange;
+        float geologicActivityInv = 10;
+
+        public float GeologicActivityStrength { set { geologicActivityInv = 1 / value; } }
 
         /// <summary>
         /// Distance from the north pole
@@ -85,7 +88,7 @@ namespace Vintagestory.ServerMods
         // 0-7 bits = Blue = unused 
         int GetRandomClimate(double posX, double posZ)
         {
-            int tempRnd = NextInt(51) - 30;
+            int tempRnd = NextInt(51) - 35;
 
             // https://stackoverflow.com/a/22400799/1873041
             // y = (A / P) * (P - abs(x % (2 * P) - P))
@@ -100,9 +103,10 @@ namespace Vintagestory.ServerMods
             int preTemp = (int)((A / P) * (P - Math.Abs(Math.Abs(z) % (2 * P) - P))) + tempRnd;
             int temperature = GameMath.Clamp((int)(preTemp * tempMul), 0, 255);
             int rain = Math.Min(255, (int)(NextInt(256) * rainMul));
-            int humidity = 0;
-            
-            return (temperature << 16) + (rain << 8) + (humidity);
+            int hereGeologicActivity = (int)Math.Max(0, Math.Pow(NextInt(256)/255f, geologicActivityInv) * 255);
+            //int hereGeologicActivity = (int)Math.Max(0, (NextInt(256) - 128) * 2);
+
+            return (temperature << 16) + (rain << 8) + (hereGeologicActivity);
         }
     }
 }

@@ -68,7 +68,7 @@ namespace Vintagestory.GameContent.Mechanics
             Shape shapel = API.Common.Shape.TryGet(capi, locPounderL);
             Shape shaper = API.Common.Shape.TryGet(capi, locPounderR);
 
-            texSource = capi.Tesselator.GetTexSource(textureSoureBlock);
+            texSource = capi.Tesselator.GetTextureSource(textureSoureBlock);
 
             
 

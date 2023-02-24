@@ -1,9 +1,7 @@
-﻿using System;
+﻿using ProtoBuf;
 using System.IO;
-using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
@@ -11,6 +9,15 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
+    [ProtoContract]
+    public class EditSignPacket
+    {
+        [ProtoMember(1)]
+        public string Text;
+        [ProtoMember(2)]
+        public float FontSize;
+    }
+
     public class BlockEntitySign : BlockEntity
     {
         public string text = "";
@@ -19,8 +26,11 @@ namespace Vintagestory.GameContent
         int tempColor;
         ItemStack tempStack;
         float angleRad;
+        float fontSize = 20;
 
         public Cuboidf[] colSelBox;
+
+        BlockSign blockSign;
 
         public virtual float MeshAngleRad
         {
@@ -36,10 +46,7 @@ namespace Vintagestory.GameContent
 
                 if (signRenderer != null && Block?.Variant["attachment"] != "wall")
                 {
-                    signRenderer.rotY = 180 + angleRad * GameMath.RAD2DEG;
-                    signRenderer.translateX = 8f / 16f;
-                    signRenderer.translateZ = 8f / 16f;
-                    signRenderer.offsetZ = -1.51f / 16f;
+                    signRenderer.SetFreestanding(angleRad);
                 }
 
                 if (changed) MarkDirty(true);
@@ -50,18 +57,18 @@ namespace Vintagestory.GameContent
         {
             base.Initialize(api);
 
+            blockSign = Block as BlockSign;
+
             if (api is ICoreClientAPI)
             {
-                signRenderer = new BlockEntitySignRenderer(Pos, (ICoreClientAPI)api);
-                
+                signRenderer = new BlockEntitySignRenderer(Pos, (ICoreClientAPI)api, blockSign?.signConfig.CopyWithFontSize(this.fontSize));
+                signRenderer.fontSize = this.fontSize;
+
                 if (text.Length > 0) signRenderer.SetNewText(text, color);
 
                 if (Block.Variant["attachment"] != "wall")
                 {
-                    signRenderer.rotY = 180 + angleRad * GameMath.RAD2DEG;
-                    signRenderer.translateX = 8f / 16f;
-                    signRenderer.translateZ = 8f / 16f;
-                    signRenderer.offsetZ = -1.51f / 16f;
+                    signRenderer.SetFreestanding(angleRad);
                 }
             }
         }
@@ -91,6 +98,8 @@ namespace Vintagestory.GameContent
             }
 
             signRenderer?.SetNewText(text, color);
+
+            fontSize = tree.GetFloat("fontSize", blockSign?.signConfig?.FontSize ?? 20);
         }
 
         public override void ToTreeAttributes(ITreeAttribute tree)
@@ -99,6 +108,7 @@ namespace Vintagestory.GameContent
             tree.SetInt("color", color);
             tree.SetString("text", text);
             tree.SetFloat("meshAngle", MeshAngleRad);
+            tree.SetFloat("fontSize", fontSize);
         }
 
         public override void OnReceivedClientPacket(IPlayer player, int packetid, byte[] data)
@@ -111,12 +121,9 @@ namespace Vintagestory.GameContent
 
             if (packetid == (int)EnumSignPacketId.SaveText)
             {
-                using (MemoryStream ms = new MemoryStream(data))
-                {
-                    BinaryReader reader = new BinaryReader(ms);
-                    text = reader.ReadString();
-                    if (text == null) text = "";
-                }
+                var packet = SerializerUtil.Deserialize<EditSignPacket>(data);
+                this.text = packet.Text;
+                this.fontSize = packet.FontSize;
 
                 color = tempColor;
 
@@ -139,45 +146,32 @@ namespace Vintagestory.GameContent
             }
         }
 
+
+        GuiDialogBlockEntityTextInput editDialog;
         public override void OnReceivedServerPacket(int packetid, byte[] data)
         {
             if (packetid == (int)EnumSignPacketId.OpenDialog)
             {
-                using (MemoryStream ms = new MemoryStream(data))
+                if (editDialog != null && editDialog.IsOpened()) return;
+
+                editDialog = new GuiDialogBlockEntityTextInput("Edit Sign text", Pos, text, Api as ICoreClientAPI, blockSign?.signConfig.CopyWithFontSize(this.fontSize));
+                editDialog.OnTextChanged = DidChangeTextClientSide;
+                editDialog.OnCloseCancel = () =>
                 {
-                    BinaryReader reader = new BinaryReader(ms);
-
-                    string dialogClassName = reader.ReadString();
-                    string dialogTitle = reader.ReadString();
-                    text = reader.ReadString();
-                    if (text == null) text = "";
-
-                    IClientWorldAccessor clientWorld = (IClientWorldAccessor)Api.World;
-
-                    GuiDialogBlockEntityTextInput dlg = new GuiDialogBlockEntityTextInput(dialogTitle, Pos, text, Api as ICoreClientAPI, 160);
-                    dlg.OnTextChanged = DidChangeTextClientSide;
-                    dlg.OnCloseCancel = () =>
-                    {
-                        signRenderer.SetNewText(text, color);
-                        (Api as ICoreClientAPI).Network.SendBlockEntityPacket(Pos.X, Pos.Y, Pos.Z, (int)EnumSignPacketId.CancelEdit, null);
-                    };
-                    dlg.TryOpen();
-                }
+                    signRenderer.SetNewText(text, color);
+                    (Api as ICoreClientAPI).Network.SendBlockEntityPacket(Pos.X, Pos.Y, Pos.Z, (int)EnumSignPacketId.CancelEdit, null);
+                };
+                editDialog.TryOpen();
             }
 
 
             if (packetid == (int)EnumSignPacketId.NowText)
             {
-                using (MemoryStream ms = new MemoryStream(data))
+                var packet = SerializerUtil.Deserialize<EditSignPacket>(data);
+                if (signRenderer != null)
                 {
-                    BinaryReader reader = new BinaryReader(ms);
-                    text = reader.ReadString();
-                    if (text == null) text = "";
-                    
-                    if (signRenderer != null)
-                    {
-                        signRenderer.SetNewText(text, color);
-                    }
+                    signRenderer.fontSize = packet.FontSize;
+                    signRenderer.SetNewText(packet.Text, color);
                 }
             }
         }
@@ -185,6 +179,9 @@ namespace Vintagestory.GameContent
 
         private void DidChangeTextClientSide(string text)
         {
+            if (editDialog == null) return;
+            this.fontSize = editDialog.FontSize;
+            signRenderer.fontSize = this.fontSize;
             signRenderer?.SetNewText(text, tempColor);
         }
 
@@ -205,25 +202,12 @@ namespace Vintagestory.GameContent
                     tempStack = hotbarSlot.TakeOut(1);
                     hotbarSlot.MarkDirty();
 
-
-                    if (Api.World is IServerWorldAccessor)
+                    if (Api is ICoreServerAPI sapi)
                     {
-                        byte[] data;
-
-                        using (MemoryStream ms = new MemoryStream())
-                        {
-                            BinaryWriter writer = new BinaryWriter(ms);
-                            writer.Write("BlockEntityTextInput");
-                            writer.Write("Sign Text");
-                            writer.Write(text);
-                            data = ms.ToArray();
-                        }
-
-                        ((ICoreServerAPI)Api).Network.SendBlockEntityPacket(
+                        sapi.Network.SendBlockEntityPacket(
                             (IServerPlayer)byPlayer,
                             Pos.X, Pos.Y, Pos.Z,
-                            (int)EnumSignPacketId.OpenDialog,
-                            data
+                            (int)EnumSignPacketId.OpenDialog
                         );
                     }
                 }

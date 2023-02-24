@@ -3,13 +3,14 @@ using System.Globalization;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Server;
 using Vintagestory.ServerMods.WorldEdit;
 
 namespace Vintagestory.ServerMods
 {
-    public static class RegisterUtil
+    public static class TreeToolRegisterUtil
     {
-        public static void RegisterTool(ModSystem mod)
+        public static void Register(ModSystem mod)
         {
             ((WorldEdit.WorldEdit)mod).RegisterTool("TreeGen", typeof(TreeGenTool));
         }
@@ -39,13 +40,26 @@ namespace Vintagestory.ServerMods
             set { workspace.StringValues["std.treeToolTreeVariant"] = value; }
         }
 
+        public int WithForestFloor
+        {
+            get { return workspace.IntValues["std.treeToolWithForestFloor"]; }
+            set { workspace.IntValues["std.treeToolWithForestFloor"] = value; }
+        }
+
+        public float VinesGrowthChance
+        {
+            get { return workspace.FloatValues["std.treeToolVinesGrowthChance"]; }
+            set { workspace.FloatValues["std.treeToolVinesGrowthChance"] = value; }
+        }
+
         public TreeGenTool(WorldEditWorkspace workspace, IBlockAccessorRevertable blockAccess) : base(workspace, blockAccess)
         {
             if (!workspace.FloatValues.ContainsKey("std.treeToolMinTreeSize")) MinTreeSize = 0.7f;
             if (!workspace.FloatValues.ContainsKey("std.treeToolMaxTreeSize")) MaxTreeSize = 1.3f;
             if (!workspace.StringValues.ContainsKey("std.treeToolTreeVariant")) TreeVariant = null;
 
-            
+            if (!workspace.FloatValues.ContainsKey("std.treeToolVinesGrowthChance")) VinesGrowthChance = 0;
+            if (!workspace.IntValues.ContainsKey("std.treeToolWithForestFloor")) WithForestFloor = 0;
         }
 
         public override Vec3i Size
@@ -104,8 +118,21 @@ namespace Vintagestory.ServerMods
                 case "trnd":
                     return true;
 
+                case "tforestfloor":
+                    var on = args.PopBool(false);
+                    this.WithForestFloor = on==true ? 1 : 0;
+                    worldEdit.Good("Forest floor generation now {0}.", on == true ? "on": "off");
+                    return true;
+
+                case "tvines":
+                    float chance = (float)args.PopFloat(0);
+                    this.VinesGrowthChance = chance;
+                    worldEdit.Good("Vines growth chance now at {0}.", chance);
+                    return true;
+
+
                 case "tv":
-                    int index = 0;
+                    int index;
 
                     string variant = args.PopWord();
 
@@ -163,7 +190,16 @@ namespace Vintagestory.ServerMods
             ba.ReadFromStagedByDefault = true;
 
             treeGenerators.ReloadTreeGenerators();
-            treeGenerators.RunGenerator(new AssetLocation(TreeVariant), ba, blockSel.Position, MinTreeSize + (float)rand.NextDouble() * (MaxTreeSize - MinTreeSize));
+            var gen = treeGenerators.GetGenerator(new AssetLocation(TreeVariant));
+
+            var treeParams = new TreeGenParams()
+            {
+                skipForestFloor = WithForestFloor == 0,
+                size = MinTreeSize + (float)rand.NextDouble() * (MaxTreeSize - MinTreeSize),
+                vinesGrowthChance = VinesGrowthChance
+            };
+
+            gen.GrowTree(ba, blockSel.Position, treeParams);
 
             ba.SetHistoryStateBlock(blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z, oldBlockId, ba.GetStagedBlockId(blockSel.Position));
             ba.Commit();

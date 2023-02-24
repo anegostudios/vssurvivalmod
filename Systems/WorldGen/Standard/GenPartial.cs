@@ -15,11 +15,6 @@ namespace Vintagestory.ServerMods
 
         protected LCGRandom chunkRand;
 
-        public override bool ShouldLoad(EnumAppSide side)
-        {
-            return side == EnumAppSide.Server;
-        }
-
         public override void StartServerSide(ICoreServerAPI api)
         {
             this.api = api;

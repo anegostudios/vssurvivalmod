@@ -1,10 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -342,7 +340,7 @@ namespace Vintagestory.GameContent
             {
                 if (animUtil != null && animUtil.renderer == null)
                 {
-                    animUtil.InitializeAnimator(type + "-" + key, mesh, shape, rendererRot);
+                    animUtil.InitializeAnimator(type + "-" + key + "-" + block.Subtype, mesh, shape, rendererRot);
                 }
 
                 return mesh;
@@ -355,7 +353,7 @@ namespace Vintagestory.GameContent
             {
                 if (animUtil.renderer == null) 
                 { 
-                    mesh = animUtil.InitializeAnimator(type + "-" + key, shape, block, rendererRot);
+                    mesh = animUtil.InitializeAnimator(type + "-" + key + "-" + block.Subtype, shape, block, rendererRot);
                 }
 
                 return meshes[meshKey] = mesh;

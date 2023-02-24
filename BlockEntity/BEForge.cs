@@ -342,10 +342,10 @@ namespace Vintagestory.GameContent
                 int temp = (int)contents.Collectible.GetTemperature(Api.World, contents);
                 if (temp <= 25)
                 {
-                    dsc.AppendLine(string.Format("Contents: {0}x {1}\nTemperature: {2}", contents.StackSize, contents.GetName(), Lang.Get("Cold")));
+                    dsc.AppendLine(Lang.Get("forge-contentsandtemp-cold", contents.StackSize, contents.GetName()));
                 } else
                 {
-                    dsc.AppendLine(string.Format("Contents: {0}x {1}\nTemperature: {2}°C", contents.StackSize, contents.GetName(), temp));
+                    dsc.AppendLine(Lang.Get("forge-contentsandtemp", contents.StackSize, contents.GetName(), temp));
                 }
                 
             }

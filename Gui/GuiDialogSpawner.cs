@@ -19,7 +19,7 @@ namespace Vintagestory.GameContent
         public BESpawnerData spawnerData = new BESpawnerData();
         BlockPos blockEntityPos;
         bool updating;
-        HashSet<string> codes;
+        List<string> codes = new List<string>();
 
         public GuiDialogSpawner(BlockPos blockEntityPos, ICoreClientAPI capi) : base("Spawner config", capi)
         {
@@ -37,10 +37,7 @@ namespace Vintagestory.GameContent
             ClearComposers();
 
             ElementBounds creatureTextBounds = ElementBounds.Fixed(0, 30, 400, 25);
-
             ElementBounds dropDownBounds = ElementBounds.Fixed(0, 0, 400, 28).FixedUnder(creatureTextBounds, 0);
-
-
             ElementBounds areaTextBounds = ElementBounds.Fixed(0, 30, 400, 25).FixedUnder(dropDownBounds, 0);
 
             ElementBounds closeButtonBounds = ElementBounds
@@ -66,13 +63,26 @@ namespace Vintagestory.GameContent
 
             List<string> entityCodes = new List<string>();
             List<string> entityNames = new List<string>();
-            
 
-            foreach (EntityProperties type in capi.World.EntityTypes)
+            var entityProps = capi.World
+                .SearchItems(new AssetLocation("creature*"))
+                .Select(item => new AssetLocation(item.Code.Domain, item.CodeEndWithoutParts(1)))
+                .Select(location => capi.World.GetEntityType(location))
+                .OfType<EntityProperties>()
+                .OrderBy(type => Lang.Get("item-creature-" + type.Code.Path))
+                .OrderBy(type => type.Code.FirstCodePart())
+            ;
+
+            foreach (var type in entityProps)
             {
+                // Quick very ugly hack for now: We have like 150 butterflies, but the drop down system is not designed for large lists. Lets ignore them for now
+                if (type.Code.Path.Contains("butterfly")) continue;
+
                 entityCodes.Add(type.Code.ToString());
                 entityNames.Add(Lang.Get("item-creature-" + type.Code.Path));
             }
+
+            if (entityNames.Count == 0) return;
 
 
             ElementBounds tmpBoundsDim1;
@@ -84,7 +94,7 @@ namespace Vintagestory.GameContent
                 .AddShadedDialogBG(bgBounds, true)
                 .AddDialogTitleBar(DialogTitle, OnTitleBarClose)
                 .AddStaticText("Entities to spawn", CairoFont.WhiteDetailText(), creatureTextBounds)
-                .AddMultiSelectDropDown(entityCodes.ToArray(), entityNames.ToArray(), 0, didSelectEntity, dropDownBounds, "entityCode")
+                .AddMultiSelectDropDown(entityCodes.ToArray(), entityNames.ToArray(), 0, null, dropDownBounds, "entityCode")
 
                 .AddStaticText("Spawn area dimensions", CairoFont.WhiteDetailText(), tmpBoundsDim1 = dropDownBounds.BelowCopy(0, 10))
                 .AddStaticText("X1", CairoFont.WhiteDetailText(), tmpBoundsDim1 = tmpBoundsDim1.BelowCopy(0, 7).WithFixedSize(20, 29))
@@ -101,18 +111,39 @@ namespace Vintagestory.GameContent
                 .AddStaticText("Z2", CairoFont.WhiteDetailText(), tmpBoundsDim2 = tmpBoundsDim2.RightCopy(10, 7).WithFixedSize(20, 29))
                 .AddNumberInput(tmpBoundsDim2 = tmpBoundsDim2.RightCopy(5, -7).WithFixedSize(60, 29), OnDimensionsChanged, CairoFont.WhiteDetailText(), "z2")
 
-                .AddStaticText("Interval (ingame hours)", CairoFont.WhiteDetailText(), tmpBoundsDim3 = dropDownBounds.FlatCopy().WithFixedSize(400, 30).FixedUnder(tmpBoundsDim2, -40))
-                .AddNumberInput(tmpBoundsDim3 = tmpBoundsDim3.BelowCopy(0, -10).WithFixedSize(100, 29), OnIntervalChanged, CairoFont.WhiteDetailText(), "interval")
+                .AddStaticText("Player range mode", CairoFont.WhiteDetailText(), tmpBoundsDim3 = dropDownBounds.FlatCopy().WithFixedSize(400, 30).FixedUnder(tmpBoundsDim2, -40))
+                .AddDropDown(
+                    new string[] { "0", "1", "2", "3" }, 
+                    new string[] { "Ignore player", "Spawn only when player is within minum range", "Spawn only when player is outside maximum range", "Spawn only when player is outside minimum range but within maximum range" }, 
+                    0, null, tmpBoundsDim3 = tmpBoundsDim3.BelowCopy(0, -10).WithFixedSize(300, 29), CairoFont.WhiteDetailText(), "playerRangeMode"
+                )
+
+                .AddStaticText("Minimum player range", CairoFont.WhiteDetailText(), tmpBoundsDim3 = tmpBoundsDim3.BelowCopy(0,10).WithFixedSize(200, 30))
+                .AddStaticText("Maximum player range", CairoFont.WhiteDetailText(), tmpBoundsDim3.RightCopy(20, 0).WithFixedSize(200, 30))
+
+                .AddNumberInput(tmpBoundsDim3 = tmpBoundsDim3.BelowCopy(0, -10).WithFixedSize(100, 29), null, CairoFont.WhiteDetailText(), "minPlayerRange")
+                .AddNumberInput(tmpBoundsDim3.RightCopy(120, 0).WithFixedSize(100, 29), null, CairoFont.WhiteDetailText(), "maxPlayerRange")
+
+                .AddStaticText("Spawn Interval (ingame hours)", CairoFont.WhiteDetailText(), tmpBoundsDim3 = tmpBoundsDim3.BelowCopy(0, 10).WithFixedSize(400, 30))
+                .AddNumberInput(tmpBoundsDim3 = tmpBoundsDim3.BelowCopy(0, -10).WithFixedSize(100, 29), null, CairoFont.WhiteDetailText(), "interval")
 
                 .AddStaticText("Max concurrent entities to spawn", CairoFont.WhiteDetailText(), tmpBoundsDim3 = tmpBoundsDim3.BelowCopy(0, 10).WithFixedSize(400, 30))
-                .AddNumberInput(tmpBoundsDim3 = tmpBoundsDim3.BelowCopy(0, -10).WithFixedSize(100, 29), OnMaxChanged, CairoFont.WhiteDetailText(), "maxentities")
+                .AddNumberInput(tmpBoundsDim3 = tmpBoundsDim3.BelowCopy(0, -10).WithFixedSize(100, 29), null, CairoFont.WhiteDetailText(), "maxentities")
 
                 .AddStaticText("Spawn 'x' entities, then remove block (0 for infinite)", CairoFont.WhiteDetailText(), tmpBoundsDim3 = tmpBoundsDim3.BelowCopy(0, 10).WithFixedSize(400, 30))
-                .AddNumberInput(tmpBoundsDim3 = tmpBoundsDim3.BelowCopy(0, -10).WithFixedSize(100, 29), OnCountChanged, CairoFont.WhiteDetailText(), "spawncount")
+                .AddNumberInput(tmpBoundsDim3 = tmpBoundsDim3.BelowCopy(0, -10).WithFixedSize(100, 29), null, CairoFont.WhiteDetailText(), "spawncount")
 
-                .AddStaticText("Begin spawning only after being imported", CairoFont.WhiteDetailText(), tmpBoundsDim3 = tmpBoundsDim3.BelowCopy(0, 10).WithFixedSize(400, 30))
-                .AddSwitch(onTogglePrimer, tmpBoundsDim3 = tmpBoundsDim3.BelowCopy(0, -10), "primerSwitch", 20)
+                .AddSwitch(null, tmpBoundsDim3 = tmpBoundsDim3.BelowCopy(0, 10), "primerSwitch", 20)
+                .AddStaticText("Begin spawning only after being imported", CairoFont.WhiteDetailText(), tmpBoundsDim3.RightCopy(10, 0).WithFixedSize(400, 30))
 
+                .AddSwitch(null, tmpBoundsDim3 = tmpBoundsDim3.BelowCopy(0, 10), "rechargeMode", 20)
+                .AddStaticText("Slowly recharge before spawning more entities", CairoFont.WhiteDetailText(), tmpBoundsDim3.RightCopy(10, 0).WithFixedSize(400, 30))
+
+                .AddStaticText("Max charge", CairoFont.WhiteDetailText(), tmpBoundsDim3 = tmpBoundsDim3.BelowCopy(0, 10).WithFixedSize(100, 30))
+                .AddStaticText("Recharge rate per hour", CairoFont.WhiteDetailText(), tmpBoundsDim3.RightCopy(75, 0).WithFixedSize(200, 30))
+
+                .AddNumberInput(tmpBoundsDim3 = tmpBoundsDim3.BelowCopy(0, -10).WithFixedSize(75, 29), null, CairoFont.WhiteDetailText(), "chargeCapacity")
+                .AddNumberInput(tmpBoundsDim3.RightCopy(100, 0).WithFixedSize(75, 29), null, CairoFont.WhiteDetailText(), "rechargePerHour")
 
                 .AddSmallButton("Close", OnButtonClose, closeButtonBounds.FixedUnder(tmpBoundsDim3, 20))
                 .AddSmallButton("Save", OnButtonSave, saveButtonBounds.FixedUnder(tmpBoundsDim3, 20))
@@ -122,29 +153,6 @@ namespace Vintagestory.GameContent
             UpdateFromServer(this.spawnerData);
         }
 
-        private void onTogglePrimer(bool on)
-        {
-            spawnerData.SpawnOnlyAfterImport = on;
-        }
-
-        private void OnMaxChanged(string t1)
-        {
-            float max = SingleComposer.GetNumberInput("maxentities").GetValue();
-            spawnerData.MaxCount = (int)max;
-        }
-
-        private void OnCountChanged(string t1)
-        {
-            float count = SingleComposer.GetNumberInput("spawncount").GetValue();
-            spawnerData.RemoveAfterSpawnCount = (int)count;
-        }
-
-        private void OnIntervalChanged(string t1)
-        {
-            float interval = SingleComposer.GetNumberInput("interval").GetValue();
-            spawnerData.InGameHourInterval = interval;
-            
-        }
 
         private void OnDimensionsChanged(string val)
         {
@@ -169,18 +177,6 @@ namespace Vintagestory.GameContent
             );
         }
 
-        private void didSelectEntity(string code, bool selected)
-        {
-            if (selected)
-            {
-                codes.Add(code);
-            } else
-            {
-                codes.Remove(code);
-            }
-
-            spawnerData.EntityCodes = codes.ToArray();
-        }
 
         public void UpdateFromServer(BESpawnerData data)
         {
@@ -194,20 +190,18 @@ namespace Vintagestory.GameContent
             SingleComposer.GetNumberInput("z2").SetValue(data.SpawnArea.Z2);
             SingleComposer.GetNumberInput("maxentities").SetValue(data.MaxCount);
             SingleComposer.GetNumberInput("spawncount").SetValue(data.RemoveAfterSpawnCount);
+            SingleComposer.GetNumberInput("minPlayerRange").SetValue(data.MinPlayerRange);
+            SingleComposer.GetNumberInput("maxPlayerRange").SetValue(data.MaxPlayerRange);
 
             SingleComposer.GetSwitch("primerSwitch").SetValue(data.SpawnOnlyAfterImport);
 
             SingleComposer.GetNumberInput("interval").SetValue(data.InGameHourInterval);
             SingleComposer.GetDropDown("entityCode").SetSelectedValue(data.EntityCodes);
 
-            if (spawnerData.EntityCodes == null)
-            {
-                codes = new HashSet<string>();
-            } else
-            {
-                codes = new HashSet<string>(spawnerData.EntityCodes);
-            }
-            
+            SingleComposer.GetSwitch("rechargeMode").On = data.InternalCapacity > 0;
+            SingleComposer.GetNumberInput("chargeCapacity").SetValue(data.InternalCapacity);
+            SingleComposer.GetNumberInput("rechargePerHour").SetValue((float)data.RechargePerHour);
+            SingleComposer.GetDropDown("playerRangeMode").SetSelectedIndex((int)data.SpawnRangeMode);
 
             capi.World.HighlightBlocks(capi.World.Player, (int)EnumHighlightSlot.Spawner, new List<BlockPos>() {
                 spawnerData.SpawnArea.Start.AsBlockPos.Add(blockEntityPos), spawnerData.SpawnArea.End.AsBlockPos.Add(blockEntityPos)
@@ -216,21 +210,6 @@ namespace Vintagestory.GameContent
             updating = false;
         }
 
-
-
-        private void OnTextChanged(string value)
-        {
-            GuiElementDynamicText logtextElem = SingleComposer.GetDynamicText("text");
-            SingleComposer.GetScrollbar("scrollbar").SetNewTotalHeight((float)logtextElem.Bounds.fixedHeight);
-        }
-
-        private void OnNewScrollbarvalue(float value)
-        {
-            GuiElementDynamicText logtextElem = SingleComposer.GetDynamicText("text");
-
-            logtextElem.Bounds.fixedY = 3 - value;
-            logtextElem.Bounds.CalcWorldBounds();
-        }
 
 
         private void OnTitleBarClose()
@@ -246,6 +225,24 @@ namespace Vintagestory.GameContent
 
         private bool OnButtonSave()
         {
+            spawnerData.SpawnArea.X1 = (int)SingleComposer.GetNumberInput("x1").GetValue();
+            spawnerData.SpawnArea.Y1 = (int)SingleComposer.GetNumberInput("y1").GetValue();
+            spawnerData.SpawnArea.Z1 = (int)SingleComposer.GetNumberInput("z1").GetValue();
+            spawnerData.SpawnArea.X2 = (int)SingleComposer.GetNumberInput("x2").GetValue();
+            spawnerData.SpawnArea.Y2 = (int)SingleComposer.GetNumberInput("y2").GetValue();
+            spawnerData.SpawnArea.Z2 = (int)SingleComposer.GetNumberInput("z2").GetValue();
+            spawnerData.MinPlayerRange = (int)SingleComposer.GetNumberInput("minPlayerRange").GetValue();
+            spawnerData.MaxPlayerRange = (int)SingleComposer.GetNumberInput("maxPlayerRange").GetValue();
+            spawnerData.MaxCount = (int)SingleComposer.GetNumberInput("maxentities").GetValue();
+            spawnerData.RemoveAfterSpawnCount = (int)SingleComposer.GetNumberInput("spawncount").GetValue();
+            spawnerData.SpawnOnlyAfterImport = SingleComposer.GetSwitch("primerSwitch").On;
+            spawnerData.InGameHourInterval = (float)SingleComposer.GetNumberInput("interval").GetValue();
+            bool rechargeOn = SingleComposer.GetSwitch("rechargeMode").On;
+            spawnerData.InternalCapacity = rechargeOn ? (int)SingleComposer.GetNumberInput("chargeCapacity").GetValue() : 0;
+            spawnerData.RechargePerHour = SingleComposer.GetNumberInput("rechargePerHour").GetValue();
+            spawnerData.SpawnRangeMode = (EnumSpawnRangeMode)SingleComposer.GetDropDown("playerRangeMode").SelectedValue.ToInt();
+            spawnerData.EntityCodes = SingleComposer.GetDropDown("entityCode").SelectedValues;
+
             byte[] data = SerializerUtil.Serialize(spawnerData);
             capi.Network.SendBlockEntityPacket(blockEntityPos.X, blockEntityPos.Y, blockEntityPos.Z, 1001, data);
             

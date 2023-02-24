@@ -61,6 +61,8 @@ namespace Vintagestory.ServerMods
         public float MinY = 0;
         [JsonProperty]
         public float MaxY = 1;
+        [JsonProperty]
+        public int Thickness = 1;
 
         [JsonProperty]
         public double[] NoiseAmplitudes;
@@ -69,17 +71,10 @@ namespace Vintagestory.ServerMods
 
         public int BlockId;
        
-        ClampedSimplexNoise noise;
-
         public Dictionary<int, int> BlockIdMapping;
 
         public void Init(ICoreServerAPI api, RockStrataConfig rockstrata, Random rnd)
         {
-            if (NoiseAmplitudes != null && NoiseFrequencies != null)
-            {
-                noise = new ClampedSimplexNoise(NoiseAmplitudes, NoiseFrequencies, rnd.Next());
-            }
-
             ResolveBlockIds(api, rockstrata);
         }
 

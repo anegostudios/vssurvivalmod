@@ -231,8 +231,6 @@ namespace Vintagestory.GameContent
 
         private void generateUpGrowingMushrooms(IBlockAccessor blockAccessor, IRandom rnd)
         {
-            if (mushroomBlock == null) return;
-
             int cnt = 2 + rnd.NextInt(11);
             BlockPos pos = new BlockPos();
             int chunkSize = blockAccessor.ChunkSize;

@@ -20,21 +20,40 @@ namespace Vintagestory.ServerMods
         Underground
     }
 
-    public class WorldGenStructure
+    public class WorldGenStoryStructure : WorldGenStructureBase
     {
         [JsonProperty]
-        public string Code;
+        public string Group;
         [JsonProperty]
-        public string Name;
+        public string RequireLandform;
+        [JsonProperty]
+        public int LandformSizeX;
+        [JsonProperty]
+        public int LandformSizeZ;
+        [JsonProperty]
+        public int MinSpawnDist;
+        [JsonProperty]
+        public int MaxSpawnDist;
+        [JsonProperty]
+        public float MinY;
+        [JsonProperty]
+        public float MaxY;
 
+        internal BlockSchematicPartial schematicData;
+
+        public void Init(ICoreServerAPI api, LCGRandom rand)
+        {
+            schematicData = LoadSchematics<BlockSchematicPartial>(api, Schematics, null)[0];
+            schematicData.InitMetaBlocks(api.World.BlockAccessor);
+        }
+    }
+
+    public class WorldGenStructure : WorldGenStructureBase
+    {
         [JsonProperty]
         public string Group;
         [JsonProperty]
         public int MinGroupDistance = 0;
-
-        [JsonProperty]
-        public string[] Schematics;
-
         [JsonProperty]
         public float Chance = 0.05f;
         [JsonProperty]
@@ -54,10 +73,6 @@ namespace Vintagestory.ServerMods
         [JsonProperty]
         public float MaxY = 1;
         [JsonProperty]
-        public EnumStructurePlacement Placement = EnumStructurePlacement.SurfaceRuin;
-        [JsonProperty]
-        public NatFloat Depth = null;
-        [JsonProperty]
         public NatFloat OffsetX = NatFloat.createGauss(0, 5);
         [JsonProperty]
         public int OffsetY = 0;
@@ -66,30 +81,16 @@ namespace Vintagestory.ServerMods
         [JsonProperty]
         public NatFloat BlockCodeIndex = null;
         [JsonProperty]
-        public NatFloat Quantity = NatFloat.createGauss(7, 7);
-        [JsonProperty]
         public AssetLocation[] ReplaceWithBlocklayers;
         [JsonProperty]
-        public bool BuildProtected = false;
-        [JsonProperty]
         public bool PostPass = false;
-        [JsonProperty]
-        public string BuildProtectionDesc = null;
-        [JsonProperty]
-        public string BuildProtectionName = null;
-        [JsonProperty]
-        public Dictionary<AssetLocation, AssetLocation> ReplaceWithRockType = null;
-        [JsonProperty]
-        public AssetLocation[] InsideBlockCodes;
-        [JsonProperty]
-        public EnumOrigin Origin = EnumOrigin.StartPos;
 
 
         internal BlockSchematicStructure[][] schematicDatas;
         internal int[] replaceblockids = new int[0];
         internal HashSet<int> insideblockids = new HashSet<int>();
 
-        internal Dictionary<int, Dictionary<int, int>> resolvedReplaceWithRocktype = null;
+        internal Dictionary<int, Dictionary<int, int>> resolvedRockTypeRemaps = null;
 
         TryGenerateHandler[] Generators;
 
@@ -111,68 +112,21 @@ namespace Vintagestory.ServerMods
         int unscaledMinTemp;
         int unscaledMaxTemp;
 
+        GenStructures genStructuresSys;
 
-        public void Init(ICoreServerAPI api, BlockLayerConfig config, RockStrataConfig rockstrata, LCGRandom rand)
+        public void Init(ICoreServerAPI api, BlockLayerConfig config, RockStrataConfig rockstrata, WorldGenStructuresConfigBase structureConfig, LCGRandom rand)
         {
             this.rand = rand;
+
+            genStructuresSys = api.ModLoader.GetModSystem<GenStructures>();
 
             unscaledMinRain = (int)(MinRain * 255);
             unscaledMaxRain = (int)(MaxRain * 255);
             unscaledMinTemp = (int)TerraGenConfig.DescaleTemperature(MinTemp);
             unscaledMaxTemp = (int)TerraGenConfig.DescaleTemperature(MaxTemp);
 
-            List<BlockSchematicStructure[]> schematics = new List<BlockSchematicStructure[]>();
 
-            for (int i = 0; i < Schematics.Length; i++)
-            {
-                string error = "";
-                IAsset[] assets;
-
-                if (Schematics[i].EndsWith("*"))
-                {
-                    assets = api.Assets.GetManyInCategory("worldgen", "schematics/" + Schematics[i].Substring(0, Schematics[i].Length - 1)).ToArray();
-                } else
-                {
-                    assets = new IAsset[] { api.Assets.Get("worldgen/schematics/" + Schematics[i] + ".json") };
-                }
-
-                for (int j = 0; j < assets.Length; j++)
-                {
-                    IAsset asset = assets[j];
-
-                    BlockSchematicStructure schematic = asset.ToObject<BlockSchematicStructure>();
-
-
-                    if (schematic == null)
-                    {
-                        api.World.Logger.Warning("Could not load {0}: {1}", Schematics[i], error);
-                        continue;
-                    }
-
-
-                    schematic.FromFileName = asset.Name;
-
-                    BlockSchematicStructure[] rotations = new BlockSchematicStructure[4];
-                    rotations[0] = schematic;
-
-                    for (int k = 0; k < 4; k++)
-                    {
-                        if (k > 0)
-                        {
-                            rotations[k] = rotations[0].Clone();
-                            rotations[k].TransformWhilePacked(api.World, EnumOrigin.BottomCenter, k * 90);
-                        }
-                        rotations[k].blockLayerConfig = config;
-                        rotations[k].Init(api.World.BlockAccessor);
-                        rotations[k].LoadMetaInformationAndValidate(api.World.BlockAccessor, api.World, schematic.FromFileName);
-                    }
-
-                    schematics.Add(rotations);
-                }
-            }
-
-            this.schematicDatas = schematics.ToArray();
-
+            this.schematicDatas = LoadSchematicsWithRotations<BlockSchematicStructure>(api, Schematics, config);
 
             if (ReplaceWithBlocklayers != null)
             {
@@ -208,41 +162,30 @@ namespace Vintagestory.ServerMods
                 }
             }
 
-            if (ReplaceWithRockType != null)
+            if (RockTypeRemapGroup != null)
             {
-                resolvedReplaceWithRocktype = new Dictionary<int, Dictionary<int, int>>();
+                resolvedRockTypeRemaps = structureConfig.resolvedRocktypeRemapGroups[RockTypeRemapGroup];
+            }
 
-                foreach (var val in ReplaceWithRockType)
+            if (RockTypeRemaps != null)
+            {
+                if (resolvedRockTypeRemaps != null)
                 {
-                    Dictionary<int, int> blockIdByRockId = new Dictionary<int, int>();
-                    foreach (var strat in rockstrata.Variants)
+                    var ownRemaps = WorldGenStructuresConfigBase.ResolveRockTypeRemaps(RockTypeRemaps, rockstrata, api);
+                    foreach (var val in resolvedRockTypeRemaps)
                     {
-                        Block rockBlock = api.World.GetBlock(strat.BlockCode);
-                        AssetLocation resolvedLoc = val.Value.Clone();
-                        resolvedLoc.Path = resolvedLoc.Path.Replace("{rock}", rockBlock.LastCodePart());
-
-                        Block resolvedBlock = api.World.GetBlock(resolvedLoc);
-                        if (resolvedBlock != null)
-                        {
-                            blockIdByRockId[rockBlock.Id] = resolvedBlock.Id;
-
-                            Block quartzBlock = api.World.GetBlock(new AssetLocation("ore-quartz-" + rockBlock.LastCodePart()));
-                            if (quartzBlock != null)
-                            {
-                                blockIdByRockId[quartzBlock.Id] = resolvedBlock.Id;
-                            }
-                        }
+                        ownRemaps[val.Key] = val.Value;
                     }
-
-                    Block[] sourceBlocks = api.World.SearchBlocks(val.Key);
-                    foreach (var sourceBlock in sourceBlocks)
-                    {
-                        resolvedReplaceWithRocktype[sourceBlock.Id] = blockIdByRockId;
-                    }
+                    resolvedRockTypeRemaps = ownRemaps;
+                } else
+                {
+                    resolvedRockTypeRemaps = WorldGenStructuresConfigBase.ResolveRockTypeRemaps(RockTypeRemaps, rockstrata, api);
                 }
+                
             }
 
         }
+
 
 
         BlockPos tmpPos = new BlockPos();
@@ -259,15 +202,64 @@ namespace Vintagestory.ServerMods
             int chunksize = blockAccessor.ChunkSize;
 
             int climate = GameMath.BiLerpRgbColor((float)(startPos.X % chunksize) / chunksize, (float)(startPos.Z % chunksize) / chunksize, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight);
-            int unscaledrain = (climate >> 8) & 0xff;
-            int unscaledtemp = (climate >> 16) & 0xff;
-            if (unscaledrain < unscaledMinRain || unscaledrain > unscaledMaxRain || unscaledtemp < unscaledMinTemp || unscaledtemp > unscaledMaxTemp) return false;
+
+            int rain = TerraGenConfig.GetRainFall((climate >> 8) & 0xff, startPos.Y);
+            int unscaledtempsealevel = (climate >> 16) & 0xff;
+
+            int temp = TerraGenConfig.GetScaledAdjustedTemperature(unscaledtempsealevel, startPos.Y - TerraGenConfig.seaLevel);
+            int unscaledtemp = TerraGenConfig.DescaleTemperature(temp);
+
+            if (rain < unscaledMinRain || rain > unscaledMaxRain || unscaledtemp < unscaledMinTemp || unscaledtemp > unscaledMaxTemp) return false;
 
             startPos.Y += OffsetY;
 
+            // Hardcoding crime here. Please don't look. Prevent generation of schematics on glaciers
+            if (unscaledtemp < 20 && startPos.Y > worldForCollectibleResolve.SeaLevel + 15) return false;
+            
             rand.InitPositionSeed(startPos.X, startPos.Z);
 
-            return Generators[(int)Placement](blockAccessor, worldForCollectibleResolve, startPos);
+            bool generated = Generators[(int)Placement](blockAccessor, worldForCollectibleResolve, startPos);
+
+            if (generated && Placement == EnumStructurePlacement.SurfaceRuin)
+            {
+                float rainValMoss = Math.Max(0, (rain - 50) / 255f);
+                float tempValMoss = Math.Max(0, (unscaledtemp - 50) / 255f);
+                float mossGrowthChance = 1.5f * rainValMoss * tempValMoss + 1f * rainValMoss * GameMath.Clamp((tempValMoss + 0.33f) / 1.33f, 0, 1);
+
+                int mossTries = (int)(10 * mossGrowthChance * GameMath.Sqrt(LastPlacedSchematicLocation.SizeXYZ));
+                int sizex = LastPlacedSchematic.SizeX;
+                int sizey = LastPlacedSchematic.SizeY;
+                int sizez = LastPlacedSchematic.SizeZ;
+                BlockPos tmpPos = new BlockPos();
+
+                Block mossDecor = blockAccessor.GetBlock(new AssetLocation("attachingplant-spottymoss"));
+
+                while (mossTries-- > 0)
+                {
+                    int dx = rand.NextInt(sizex);
+                    int dy = rand.NextInt(sizey);
+                    int dz = rand.NextInt(sizez);
+                    tmpPos.Set(startPos.X + dx, startPos.Y + dy, startPos.Z + dz);
+                    var block = blockAccessor.GetBlock(tmpPos);
+                    if (block.BlockMaterial == EnumBlockMaterial.Stone)
+                    {
+                        for (int i = 0; i < 6; i++)
+                        {
+                            var face = BlockFacing.ALLFACES[i];
+                            if (!block.SideSolid[i]) continue;
+
+                            var nblock = blockAccessor.GetBlock(tmpPos.X + face.Normali.X, tmpPos.Y + face.Normali.Y, tmpPos.Z + face.Normali.Z);
+                            if (!nblock.SideSolid[face.Opposite.Index])
+                            {
+                                blockAccessor.SetDecor(mossDecor, tmpPos, face);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            return generated;
         }
 
 
@@ -330,11 +322,12 @@ namespace Vintagestory.ServerMods
             pos.Y--;
 
             if (!satisfiesMinDistance(pos, worldForCollectibleResolve)) return false;
-            if (isStructureAt(pos, worldForCollectibleResolve)) return false;
+            if (WouldOverlapAt(pos, schematic, worldForCollectibleResolve)) return false;
 
             LastPlacedSchematicLocation.Set(pos.X, pos.Y, pos.Z, pos.X + schematic.SizeX, pos.Y + schematic.SizeY, pos.Z + schematic.SizeZ);
             LastPlacedSchematic = schematic;
-            schematic.PlaceRespectingBlockLayers(blockAccessor, worldForCollectibleResolve, pos, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight, replaceblockids);
+
+            schematic.PlaceRespectingBlockLayers(blockAccessor, worldForCollectibleResolve, pos, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight, resolvedRockTypeRemaps, replaceblockids);
 
             return true;
         }
@@ -425,11 +418,11 @@ namespace Vintagestory.ServerMods
 
 
             if (!satisfiesMinDistance(pos, worldForCollectibleResolve)) return false;
-            if (isStructureAt(pos, worldForCollectibleResolve)) return false;
+            if (WouldOverlapAt(pos, schematic, worldForCollectibleResolve)) return false;
 
             LastPlacedSchematicLocation.Set(pos.X, pos.Y, pos.Z, pos.X + schematic.SizeX, pos.Y + schematic.SizeY, pos.Z + schematic.SizeZ);
             LastPlacedSchematic = schematic;
-            schematic.PlaceRespectingBlockLayers(blockAccessor, worldForCollectibleResolve, pos, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight, replaceblockids);
+            schematic.PlaceRespectingBlockLayers(blockAccessor, worldForCollectibleResolve, pos, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight, resolvedRockTypeRemaps, replaceblockids);
             return true;
         }
 
@@ -514,10 +507,11 @@ namespace Vintagestory.ServerMods
                     -pathwayStart.Z - targetFacing.Normali.Z * targetDistance
                 );
 
-                if (!TestUndergroundCheckPositions(blockAccessor, targetPos, schematicStruc[targetOrientation].UndergroundCheckPositions)) return false;
-                if (isStructureAt(targetPos, worldForCollectibleResolve)) return false;
-
                 schematic = schematicStruc[targetOrientation];
+
+                if (!TestUndergroundCheckPositions(blockAccessor, targetPos, schematic.UndergroundCheckPositions)) return false;
+                if (WouldOverlapAt(targetPos, schematic, worldForCollectibleResolve)) return false;
+
                 LastPlacedSchematicLocation.Set(targetPos.X, targetPos.Y, targetPos.Z, targetPos.X + schematic.SizeX, targetPos.Y + schematic.SizeY, targetPos.Z + schematic.SizeZ);
                 schematic.Place(blockAccessor, worldForCollectibleResolve, targetPos);
 
@@ -550,22 +544,18 @@ namespace Vintagestory.ServerMods
             if (insideblockids.Count > 0 && !insideblockids.Contains(blockAccessor.GetBlock(targetPos).Id)) return false;
             if (!TestUndergroundCheckPositions(blockAccessor, placePos, schematic.UndergroundCheckPositions)) return false;
             if (!satisfiesMinDistance(pos, worldForCollectibleResolve)) return false;
-            if (isStructureAt(pos, worldForCollectibleResolve)) return false;
+            if (WouldOverlapAt(pos, schematic, worldForCollectibleResolve)) return false;
 
-            if (resolvedReplaceWithRocktype != null)
+            if (resolvedRockTypeRemaps != null)
             {
-                //Console.WriteLine(schematic.FromFileName + " place at " + targetPos +", offseted to " + placePos);
-
-                schematic.PlaceReplacingBlocks(blockAccessor, worldForCollectibleResolve, placePos, schematic.ReplaceMode, resolvedReplaceWithRocktype);
+                schematic.PlaceReplacingBlocks(blockAccessor, worldForCollectibleResolve, placePos, schematic.ReplaceMode, resolvedRockTypeRemaps);
                 
             } else
             {
                 schematic.Place(blockAccessor, worldForCollectibleResolve, targetPos);
             }
 
-            
-
-            return false;
+            return true;
         }
 
         
@@ -615,9 +605,11 @@ namespace Vintagestory.ServerMods
 
             return -1;
         }
-        
 
-        public bool isStructureAt(BlockPos pos, IWorldAccessor world)
+
+        static Cuboidi tmpLoc = new Cuboidi();
+
+        public bool WouldOverlapAt(BlockPos pos, BlockSchematic schematic, IWorldAccessor world)
         {
             int rx = pos.X / world.BlockAccessor.RegionSize;
             int rz = pos.Z / world.BlockAccessor.RegionSize;
@@ -625,13 +617,17 @@ namespace Vintagestory.ServerMods
             IMapRegion mapregion = world.BlockAccessor.GetMapRegion(rx, rz);
             if (mapregion == null) return false;
 
+            tmpLoc.Set(pos.X, pos.Y, pos.Z, pos.X + schematic.SizeX, pos.Y + schematic.SizeY, pos.Z + schematic.SizeZ);
+
             foreach (var val in mapregion.GeneratedStructures)
             {
-                if (val.Location.Contains(pos) || val.Location.Contains(pos.X, pos.Y - 3, pos.Z))
+                if (val.Location.Intersects(tmpLoc))
                 {
                     return true;
                 }
             }
+
+            if (!genStructuresSys.WouldSchematicOverlapAt(pos, tmpLoc)) return false;
 
             return false;
         }

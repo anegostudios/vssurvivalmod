@@ -1,15 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
-using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
-using Vintagestory.ServerMods;
 
 namespace Vintagestory.GameContent
 {
@@ -45,7 +41,6 @@ namespace Vintagestory.GameContent
 
             string entityCode = "locust-bronze";
             
-
             if (Api.World.Rand.NextDouble() < corrupLocustNestChance)
             {
                 entityCode = "locust-corrupt";
@@ -58,9 +53,10 @@ namespace Vintagestory.GameContent
                 MaxCount = Api.World.Rand.Next(7) + 3,
                 SpawnArea = new Cuboidi(-5, -5, -5, 5, 2, 5),
                 GroupSize = 2 + Api.World.Rand.Next(4),
-                SpawnOnlyAfterImport = false,
+                SpawnOnlyAfterImport = byItemStack?.Attributes?.GetBool("spawnOnlyAfterImport", false) ?? false,
                 InitialSpawnQuantity = 4 + Api.World.Rand.Next(7),
-                MinPlayerRange = 36
+                MinPlayerRange = 36,
+                SpawnRangeMode = EnumSpawnRangeMode.WhenInRange
             };
         }
 
@@ -159,6 +155,18 @@ namespace Vintagestory.GameContent
             base.ToTreeAttributes(tree);
             tree.SetLong("herdId", herdId);
             tree.SetInt("insideLocustCount", insideLocustCount);
+        }
+
+        public override void OnLoadCollectibleMappings(IWorldAccessor worldForNewMappings, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, int schematicSeed)
+        {
+            base.OnLoadCollectibleMappings(worldForNewMappings, oldBlockIdMapping, oldItemIdMapping, schematicSeed);
+
+            object dval;
+            worldForNewMappings.Api.ObjectCache.TryGetValue("donotResolveImports", out dval);
+            if (dval is bool && (bool)dval) return;
+
+            Data.WasImported = true;
+            Data.LastSpawnTotalHours = 0;
         }
     }
 }

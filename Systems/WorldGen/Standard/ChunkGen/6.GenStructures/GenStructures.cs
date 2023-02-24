@@ -1,15 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Vintagestory.API;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
-using Vintagestory.ServerMods.NoObf;
 
 namespace Vintagestory.ServerMods
 {
@@ -21,30 +16,29 @@ namespace Vintagestory.ServerMods
 
         public override void StartServerSide(ICoreServerAPI api)
         {
-            if (DoDecorationPass)
+            if (TerraGenConfig.DoDecorationPass)
             {
                 api.Event.ChunkColumnGeneration(handler, EnumWorldGenPass.TerrainFeatures, "standard");
             }
         }
     }
 
+    public delegate bool PeventSchematicAtDelegate(BlockPos pos, Cuboidi schematicLocation);
+
     public class GenStructures : ModStdWorldGen
     {
         ICoreServerAPI api;
 
         int worldheight;
-        int chunkMapSizeY;
         int regionChunkSize;
 
         ushort[] heightmap;
-        int forestUpLeft;
-        int forestUpRight;
-        int forestBotLeft;
-        int forestBotRight;
         int climateUpLeft;
         int climateUpRight;
         int climateBotLeft;
         int climateBotRight;
+
+        public event PeventSchematicAtDelegate OnPreventSchematicPlaceAt;
 
         WorldGenStructuresConfig scfg;
 
@@ -64,7 +58,7 @@ namespace Vintagestory.ServerMods
             this.api = api;
             base.StartServerSide(api);
 
-            if (DoDecorationPass)
+            if (TerraGenConfig.DoDecorationPass)
             {
                 api.Event.InitWorldGenerator(initWorldGen, "standard");
                 api.Event.ChunkColumnGeneration(OnChunkColumnGen, EnumWorldGenPass.TerrainFeatures, "standard");
@@ -79,14 +73,25 @@ namespace Vintagestory.ServerMods
             worldgenBlockAccessor = chunkProvider.GetBlockAccessor(false);
         }
 
-       
+        public bool WouldSchematicOverlapAt(BlockPos pos, Cuboidi schematicLocation)
+        {
+            if (OnPreventSchematicPlaceAt != null)
+            {
+                var deles = OnPreventSchematicPlaceAt.GetInvocationList();
+                foreach (PeventSchematicAtDelegate dele in deles)
+                {
+                    if (dele(pos, schematicLocation)) return true;
+                }
+            }
+
+            return false;
+        }
 
 
         internal void initWorldGen()
         {
             chunksize = api.WorldManager.ChunkSize;
             worldheight = api.WorldManager.MapSizeY;
-            chunkMapSizeY = api.WorldManager.MapSizeY / chunksize;
             regionChunkSize = api.WorldManager.RegionSize / chunksize;
 
             strucRand = new LCGRandom(api.WorldManager.Seed + 1090);
@@ -122,8 +127,6 @@ namespace Vintagestory.ServerMods
             worldgenBlockAccessor.BeginColumn();
 
             IMapRegion region = chunks[0].MapChunk.MapRegion;
-
-            IntDataMap2D forestMap = region.ForestMap;
             IntDataMap2D climateMap = region.ClimateMap;
             int rlX = chunkX % regionChunkSize;
             int rlZ = chunkZ % regionChunkSize;
@@ -134,11 +137,6 @@ namespace Vintagestory.ServerMods
             // rlX, rlZ goes from 0..16 pixel
             // facF = 16/16 = 1
             // Get 4 pixels for chunkx, chunkz, chunkx+1 and chunkz+1 inside the map
-            float facF = (float)forestMap.InnerSize / regionChunkSize;
-            forestUpLeft = forestMap.GetUnpaddedInt((int)(rlX * facF), (int)(rlZ * facF));
-            forestUpRight = forestMap.GetUnpaddedInt((int)(rlX * facF + facF), (int)(rlZ * facF));
-            forestBotLeft = forestMap.GetUnpaddedInt((int)(rlX * facF), (int)(rlZ * facF + facF));
-            forestBotRight = forestMap.GetUnpaddedInt((int)(rlX * facF + facF), (int)(rlZ * facF + facF));
 
             float facC = (float)climateMap.InnerSize / regionChunkSize;
             climateUpLeft = climateMap.GetUnpaddedInt((int)(rlX * facC), (int)(rlZ * facC));
@@ -275,7 +273,7 @@ namespace Vintagestory.ServerMods
                     struc.TryGenerate(worldgenBlockAccessor, api.World, pos, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight, (loc, schematic) =>
                     {
                         string code = struc.Code + (schematic == null ? "" : "/" + schematic.FromFileName);
-
+                        
                         region.GeneratedStructures.Add(new GeneratedStructure() { Code = code, Group = struc.Group, Location = loc.Clone() });
                         region.DirtyForSaving = true;
 
@@ -294,5 +292,6 @@ namespace Vintagestory.ServerMods
                 }
             }
         }
+
     }
 }

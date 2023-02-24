@@ -43,7 +43,7 @@ namespace Vintagestory.ServerMods
         {
             this.api = api;
 
-            if (DoDecorationPass)
+            if (TerraGenConfig.DoDecorationPass)
             {
                 this.api.Event.InitWorldGenerator(InitWorldGen, "standard");
                 this.api.Event.InitWorldGenerator(InitWorldGen, "superflat"); // Just the Init so that BlockSoil can grow grass
@@ -57,7 +57,7 @@ namespace Vintagestory.ServerMods
             distort2dz = new SimplexNoise(new double[] { 14, 9, 6, 3 }, new double[] { 1 / 100.0, 1 / 50.0, 1 / 25.0, 1 / 12.5 }, api.World.SeaLevel + 20981);
         }
 
-        private void OnMapRegionGen(IMapRegion mapRegion, int regionX, int regionZ)
+        private void OnMapRegionGen(IMapRegion mapRegion, int regionX, int regionZ, ITreeAttribute chunkGenParams = null)
         {
             /*int noiseSize = api.WorldManager.RegionSize / TerraGenConfig.rockStrataScale;
             int pad = 2;
@@ -152,6 +152,7 @@ namespace Vintagestory.ServerMods
                     double transitionRand = (posRand + 1) * transitionSize;
 
                     int posY = heightMap[z * chunksize + x];
+                    if (posY >= mapheight) continue;
 
                     int climate = climateMap.GetUnpaddedColorLerped(
                         rdx * climateStep + climateStep * (float)(x + distx) / chunksize, 
@@ -173,6 +174,11 @@ namespace Vintagestory.ServerMods
                     int index3d = (chunksize * lY + z) * chunksize + x;
 
                     int rockblockID = chunks[chunkY].Data.GetBlockIdUnsafe(index3d);
+                    var hereblock = api.World.Blocks[rockblockID];
+                    if (hereblock.BlockMaterial == EnumBlockMaterial.Soil || hereblock.BlockMaterial == EnumBlockMaterial.Gravel)
+                    {
+                        continue;
+                    }
 
                     if (rocky < TerraGenConfig.seaLevel)
                     {
@@ -255,6 +261,7 @@ namespace Vintagestory.ServerMods
             bool underWater = false;
             bool first = true;
             int startPosY = posY;
+            int boilingWaterBlockId = api.World.GetBlock(new AssetLocation("boilingwater-still-7")).Id;
 
             while (posY > 0)
             {
@@ -266,7 +273,7 @@ namespace Vintagestory.ServerMods
 
                 posY--;
 
-                if (blockId == GlobalConfig.waterBlockId)
+                if (blockId == GlobalConfig.waterBlockId || blockId == boilingWaterBlockId)
                 {
                     underWater = true;   
                     continue;
@@ -302,7 +309,8 @@ namespace Vintagestory.ServerMods
                 }
                 else
                 {
-                    if(i > 0 || j > 0) return posY;
+                    if ((i > 0 && temp > -18) || j > 0) return posY;
+                    //                 ^ Hardcoding crime here. Please don't look. Makes deep layers of ice work
                 }
             }
 
@@ -325,7 +333,8 @@ namespace Vintagestory.ServerMods
             if (beachRel > 0.5)
             {
                 IChunkBlocks chunkdata = chunks[posY / chunksize].Data;
-                if (chunkdata.GetFluid(index3d) != GlobalConfig.waterBlockId)
+                int blockId = chunkdata.GetBlockIdUnsafe(index3d);
+                if (chunkdata.GetFluid(index3d) != GlobalConfig.waterBlockId && blockId != GlobalConfig.lakeIceBlockId && blockId != 0)
                 {
                     chunkdata.SetBlockUnsafe(index3d, sandBlockId);
                     chunkdata.SetFluid(index3d, 0);
@@ -372,29 +381,48 @@ namespace Vintagestory.ServerMods
             int depth = (int)depthf;
             if (depthf - depth > rnd.NextFloat()) depth++;
 
+            // Hardcoding crime here. Please don't look. Makes deep layers of ice work
+            if (temperature < -16) depth += 10;
+
             BlockLayersIds.Clear();
             for (int j = 0; j < blockLayerConfig.Blocklayers.Length; j++)
             {
                 BlockLayer bl = blockLayerConfig.Blocklayers[j];
 
-                float tempDist = Math.Abs(temperature - GameMath.Clamp(temperature, bl.MinTemp, bl.MaxTemp));
+                /*float tempDist = Math.Abs(temperature - GameMath.Clamp(temperature, bl.MinTemp, bl.MaxTemp));
                 float rainDist = Math.Abs(rainRel - GameMath.Clamp(rainRel, bl.MinRain, bl.MaxRain));
                 float fertDist = Math.Abs(fertilityRel - GameMath.Clamp(fertilityRel, bl.MinFertility, bl.MaxFertility));
-                float yDist = Math.Abs((float)posY / mapheight - GameMath.Min((float)posY / mapheight, bl.MaxY));
-                
+                float yDist = Math.Abs((float)posY / mapheight - GameMath.Min((float)posY / mapheight, bl.MaxY));*/
 
-                if (tempDist + rainDist + fertDist + yDist <= posRand)
+                float yrel = (float)posY / mapheight;
+                float tempDist = Math.Abs(temperature - GameMath.Clamp(temperature, bl.MinTemp, bl.MaxTemp));
+                float rainDist = Math.Abs(rainRel - GameMath.Clamp(rainRel, bl.MinRain, bl.MaxRain)) * 10f;
+                float fertDist = Math.Abs(fertilityRel - GameMath.Clamp(fertilityRel, bl.MinFertility, bl.MaxFertility)) * 10f;
+                float yDist = Math.Abs(yrel - GameMath.Clamp(yrel, bl.MinY, bl.MaxY)) * 10f;
+
+
+                float trfDist = tempDist + rainDist + fertDist;
+
+                if (trfDist + yDist <= posRand)
                 {
                     int blockId = bl.GetBlockId(posRand, temperature, rainRel, fertilityRel, firstBlockId);
                     if (blockId != 0)
                     {
                         BlockLayersIds.Add(blockId);
+                        if (bl.Thickness > 1)
+                        {
+                            for (int i = 1; i < bl.Thickness * (1 - trfDist * yDist); i++)
+                            {
+                                BlockLayersIds.Add(blockId);
+                                yDist = Math.Abs((float)posY-- / mapheight - GameMath.Min((float)posY-- / mapheight, bl.MaxY));
+                            }
+                        }
 
-                        // Would be correct, but doesn't seem to cause noticable problems
-                        // so lets not add it for faster chunk gen
                         posY--;
                         temperature = TerraGenConfig.GetScaledAdjustedTemperatureFloat(unscaledTemp, posY - TerraGenConfig.seaLevel);
-                      //  rainRel = TerraGenConfig.GetRainFall(unscaledRain, posY) / 255f;
+                        // Would be correct, but doesn't seem to cause noticable problems
+                        // so lets not add it for faster chunk gen
+                        //  rainRel = TerraGenConfig.GetRainFall(unscaledRain, posY) / 255f;
                         heightRel = ((float)posY - TerraGenConfig.seaLevel) / ((float)api.WorldManager.MapSizeY - TerraGenConfig.seaLevel);
                         fertilityRel = TerraGenConfig.GetFertilityFromUnscaledTemp((int)(rainRel * 255), unscaledTemp, heightRel) / 255f;
                     }

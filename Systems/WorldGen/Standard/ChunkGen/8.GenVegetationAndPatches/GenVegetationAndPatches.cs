@@ -43,9 +43,9 @@ namespace Vintagestory.ServerMods
         public override void StartServerSide(ICoreServerAPI api)
         {
             this.sapi = api;
-            treeSupplier = new WgenTreeSupplier(api);
+            
 
-            if (DoDecorationPass)
+            if (TerraGenConfig.DoDecorationPass)
             {
                 api.Event.InitWorldGenerator(initWorldGen, "standard");
                 api.Event.InitWorldGenerator(initWorldGenForSuperflat, "superflat");
@@ -56,7 +56,7 @@ namespace Vintagestory.ServerMods
             }
         }
 
-        private void OnMapRegionGen(IMapRegion mapRegion, int regionX, int regionZ)
+        private void OnMapRegionGen(IMapRegion mapRegion, int regionX, int regionZ, ITreeAttribute chunkGenParams = null)
         {
             int noiseSize = sapi.WorldManager.RegionSize / TerraGenConfig.blockPatchesMapScale;
 
@@ -75,6 +75,7 @@ namespace Vintagestory.ServerMods
 
         private void OnWorldGenBlockAccessor(IChunkProviderThread chunkProvider)
         {
+            treeSupplier = new WgenTreeSupplier(sapi);
             blockAccessor = chunkProvider.GetBlockAccessor(true);
         }
 
@@ -317,7 +318,7 @@ namespace Vintagestory.ServerMods
                 shrubChance = GameMath.Clamp(shrubChance + 255*forestMod, 0, 255);
 
                 if (rnd.NextFloat() > (shrubChance / 255f) * (shrubChance / 255f)) continue;
-                TreeGenForClimate treegenParams = treeSupplier.GetRandomShrubGenForClimate(climate, (int)shrubChance, y);
+                TreeGenInstance treegenParams = treeSupplier.GetRandomShrubGenForClimate(climate, (int)shrubChance, y);
 
                 if (treegenParams != null)
                 {
@@ -333,13 +334,8 @@ namespace Vintagestory.ServerMods
                         tmpPos.Y--;
                     }
 
-                    treegenParams.treeGen.GrowTree(
-                        blockAccessor,
-                        tmpPos,
-                        true,
-                        treegenParams.size,
-                        treegenParams.vinesGrowthChance
-                    );
+                    treegenParams.skipForestFloor = true;
+                    treegenParams.GrowTree(blockAccessor, tmpPos);
                 }
             }
 
@@ -359,6 +355,8 @@ namespace Vintagestory.ServerMods
             int dx, dz, x, z;
             Block block;
             int treesGenerated = 0;
+
+            EnumHemisphere hemisphere = sapi.World.Calendar.GetHemisphere(new BlockPos(chunkX * chunksize + chunksize / 2, 0, chunkZ * chunksize + chunksize / 2));
 
             while (triesTrees > 0)
             {
@@ -395,7 +393,7 @@ namespace Vintagestory.ServerMods
                 // 1 in 400 chance to always spawn a tree
                 // otherwise go by tree density using a quadratic drop off to create clearer forest edges
                 if (rnd.NextFloat() > Math.Max(0.0025f, treeDensityNormalized * treeDensityNormalized) || forestMod <= -1) continue;
-                TreeGenForClimate treegenParams = treeSupplier.GetRandomTreeGenForClimate(climate, (int)treeDensity, y, underwater);
+                TreeGenInstance treegenParams = treeSupplier.GetRandomTreeGenForClimate(climate, (int)treeDensity, y, underwater);
 
                 if (treegenParams != null)
                 {
@@ -411,15 +409,11 @@ namespace Vintagestory.ServerMods
                         tmpPos.Y--;
                     }
 
-                    treegenParams.treeGen.GrowTree(
-                        blockAccessor,
-                        tmpPos,
-                        false,
-                        treegenParams.size,
-                        treegenParams.vinesGrowthChance,
-                        1,
-                        treesGenerated
-                    );
+                    treegenParams.skipForestFloor = false;
+                    treegenParams.hemisphere = hemisphere;
+                    treegenParams.treesInChunkGenerated = treesGenerated;
+
+                    treegenParams.GrowTree(blockAccessor,tmpPos);
 
                     treesGenerated++;
                 }

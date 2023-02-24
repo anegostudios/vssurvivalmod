@@ -94,7 +94,7 @@ namespace Vintagestory.ServerMods
 
                     if (shouldGenSurfaceDeposit)
                     {
-                        int surfaceY = heremapchunk.RainHeightMap[lz * chunksize + lx];
+                        int surfaceY = Math.Min(heremapchunk.RainHeightMap[lz * chunksize + lx], Api.World.BlockAccessor.MapSizeY - 2);
                         int depth = surfaceY - targetPos.Y;
                         float chance = SurfaceBlockChance * Math.Max(0, 1 - depth / 8f);
                         if (surfaceY < worldheight && DepositRand.NextFloat() < chance)

@@ -1,16 +1,7 @@
-﻿
-using Newtonsoft.Json.Linq;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Vintagestory.API;
+﻿using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
-using Vintagestory.API.Config;
-using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
@@ -237,7 +228,23 @@ namespace Vintagestory.GameContent
             return false;
         }
 
-        
+        public override void OnEntityCollide(IWorldAccessor world, Entity entity, BlockPos pos, BlockFacing facing, Vec3d collideSpeed, bool isImpact)
+        {
+            if (world.Rand.NextDouble() > 0.05)
+            {
+                base.OnEntityCollide(world, entity, pos, facing, collideSpeed, isImpact);
+                return;
+            }
+
+            var be = GetBlockEntity<BlockEntityIngotMold>(pos);
+            if (be?.TemperatureLeft > 300 || be.TemperatureRight > 300)
+            {
+                entity.ReceiveDamage(new DamageSource() { Source = EnumDamageSource.Block, SourceBlock = this, Type = EnumDamageType.Fire, SourcePos = pos.ToVec3d() }, 0.5f);
+            }
+
+            base.OnEntityCollide(world, entity, pos, facing, collideSpeed, isImpact);
+        }
+
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
         {
             if (!byPlayer.Entity.Controls.ShiftKey)

@@ -12,6 +12,14 @@ namespace Vintagestory.ServerMods
 {
     public class ForestFloorSystem
     {
+        /// <summary>
+        /// The maximum range in blocks that a tree trunk can influence forest floor generation near to the tree
+        /// </summary>
+        public const int Range = 16;
+        /// <summary>
+        /// The size of one row in the grid representing a tree's canopy outline (the grid is 33 x 33, the trunk is in the center i.e. at position (16, 16))
+        /// </summary>
+        public const int GridRowSize = 2 * Range + 1;
         private ICoreServerAPI sapi;
         IServerWorldAccessor worldAccessor;
         private IBlockAccessor api;
@@ -39,7 +47,7 @@ namespace Vintagestory.ServerMods
 
         internal short[] GetOutline()
         {
-            return outlineThreadSafe ?? (outlineThreadSafe = new short[1089]);
+            return outlineThreadSafe ?? (outlineThreadSafe = new short[GridRowSize * GridRowSize]);
         }
 
         public void SetBlockPatches(BlockPatchConfig bpc)
@@ -94,16 +102,17 @@ namespace Vintagestory.ServerMods
             {
                 bool noChange = true;
 
-                for (int x = 0; x < 16; x++)
+                for (int x = 0; x < Range; x++)
                 {
-                    for (int z = 0; z < 16; z++)
+                    for (int z = 0; z < Range; z++)
                     {
                         if (x == 0 && z == 0) continue;
-                        int o = Math.Min((int)outline[(16 + z) * 33 + (16 + x)], 18 * 9);
+                        int zBase = (Range + z) * GridRowSize;
+                        int o = Math.Min((int)outline[zBase + (Range + x)], 18 * 9);
                         if (o == 0) continue;
 
-                        int n1 = (17 + z) * 33 + (16 + x);
-                        int n2 = (16 + z) * 33 + (17 + x);
+                        int n1 = zBase + GridRowSize + (Range + x);
+                        int n2 = zBase + (Range + 1 + x);
                         if (outline[n1] < o - 18)
                         {
                             outline[n1] = (short)(o - 18);
@@ -115,9 +124,10 @@ namespace Vintagestory.ServerMods
                             noChange = false;
                         }
 
-                        o = Math.Min((int)outline[(16 - z) * 33 + (16 + x)], 18 * 9);
-                        n1 = (15 - z) * 33 + (16 + x);
-                        n2 = (16 - z) * 33 + (17 + x);
+                        zBase = (Range - z) * GridRowSize;
+                        o = Math.Min((int)outline[zBase + (Range + x)], 18 * 9);
+                        n1 = zBase - GridRowSize + (Range + x);
+                        n2 = zBase + (Range + 1 + x);
                         if (outline[n1] < o - 18)
                         {
                             outline[n1] = (short)(o - 18);
@@ -130,12 +140,13 @@ namespace Vintagestory.ServerMods
                         }
                     }
 
-                    for (int z = 0; z < 16; z++)
+                    for (int z = 0; z < Range; z++)
                     {
                         if (x == 0 && z == 0) continue;
-                        int o = Math.Min((int)outline[(16 + z) * 33 + (16 - x)], 18 * 9);
-                        int n1 = (17 + z) * 33 + (16 - x);
-                        int n2 = (16 + z) * 33 + (15 - x);
+                        int zBase = (Range + z) * GridRowSize;
+                        int o = Math.Min((int)outline[zBase + (Range - x)], 18 * 9);
+                        int n1 = zBase + GridRowSize + (Range - x);
+                        int n2 = zBase + (Range - 1 - x);
                         if (outline[n1] < o - 18)
                         {
                             outline[n1] = (short)(o - 18);
@@ -147,9 +158,10 @@ namespace Vintagestory.ServerMods
                             noChange = false;
                         }
 
-                        o = Math.Min((int)outline[(16 - z) * 33 + (16 - x)], 18 * 9);
-                        n1 = (15 - z) * 33 + (16 - x);
-                        n2 = (16 - z) * 33 + (15 - x);
+                        zBase = (Range - z) * GridRowSize;
+                        o = Math.Min((int)outline[zBase + (Range - x)], 18 * 9);
+                        n1 = zBase - GridRowSize + (Range - x);
+                        n2 = zBase + (Range - 1 - x);
                         if (outline[n1] < o - 18)
                         {
                             outline[n1] = (short)(o - 18);
@@ -172,8 +184,8 @@ namespace Vintagestory.ServerMods
                 int intensity = outline[canopyIndex];
                 if (intensity == 0) continue;
 
-                int dz = canopyIndex / 33 - 16;
-                int dx = canopyIndex % 33 - 16;
+                int dz = canopyIndex / GridRowSize - Range;
+                int dx = canopyIndex % GridRowSize - Range;
                 currentPos.Set(pos.X + dx, pos.Y, pos.Z + dz);
                 currentPos.Y = blockAccessor.GetTerrainMapheightAt(currentPos);
 

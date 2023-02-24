@@ -26,20 +26,28 @@ namespace Vintagestory.GameContent
 
         public BEBehaviorAttractsLightning(BlockEntity blockentity) : base(blockentity) { }
 
+        bool registered = false;
         public override void Initialize(ICoreAPI api, JsonObject properties)
         {
             base.Initialize(api, properties);
 
             configProps = properties.AsObject<ConfigurationProperties>();
+
+            if (Api.Side == EnumAppSide.Server && !registered)
+            {
+                weatherSystem.OnLightningImpactBegin += OnLightningStart;
+                registered = true;
+            }
         }
 
-        public override void OnBlockPlaced()
+        public override void OnBlockPlaced(ItemStack byItemstack = null)
         {
             base.OnBlockPlaced();
 
-            if (Api.Side == EnumAppSide.Client) return;
-
-            weatherSystem.OnLightningImpactBegin += OnLightningStart;
+            if (Api.Side == EnumAppSide.Server && !registered)
+            {
+                weatherSystem.OnLightningImpactBegin += OnLightningStart;
+            }
         }
 
         public override void OnBlockRemoved()

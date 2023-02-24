@@ -13,8 +13,10 @@ namespace Vintagestory.GameContent
     public class ItemKnife : Item
     {
         public static SimpleParticleProperties particlesStab;
+                
+        // Knife harvesting speed is equivalent to 50% of the plant breaking speed bonus
+        public float KnifeHarvestingSpeed => 1f / ((MiningSpeed[EnumBlockMaterial.Plant] - 1) * 0.5f + 1);
 
-        string Material => Variant["material"];
 
         static ItemKnife()
         {
@@ -180,7 +182,6 @@ namespace Vintagestory.GameContent
 
 
 
-
             EntityBehaviorHarvestable bh;
             if (entitySel != null && (bh = entitySel.Entity.GetBehavior<EntityBehaviorHarvestable>()) != null && bh.Harvestable)
             {
@@ -201,14 +202,14 @@ namespace Vintagestory.GameContent
 
                     byEntity.Controls.UsingHeldItemTransformBefore = tf;
                 }
-
-                //byEntity.World.Logger.Debug("{0} knife interact step: Seconds: {1}/{2}", byEntity.World.Side, secondsUsed, bh.HarvestDuration );
-
-                return secondsUsed < bh.GetHarvestDuration(byEntity) + 0.15f;
+                 
+                return secondsUsed < KnifeHarvestingSpeed * bh.GetHarvestDuration(byEntity) + 0.15f;
             }
 
             return false;
         }
+
+        
 
         public override void OnHeldInteractStop(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
@@ -223,7 +224,7 @@ namespace Vintagestory.GameContent
             EntityBehaviorHarvestable bh = entitySel.Entity.GetBehavior<EntityBehaviorHarvestable>();
             //byEntity.World.Logger.Debug("{0} knife interact stop, seconds used {1} / {2}, entity: {3}", byEntity.World.Side, secondsUsed, bh?.HarvestDuration, entitySel.Entity);
 
-            if (bh != null && bh.Harvestable && secondsUsed >= bh.GetHarvestDuration(byEntity) - 0.1f)
+            if (bh != null && bh.Harvestable && secondsUsed >= KnifeHarvestingSpeed * bh.GetHarvestDuration(byEntity) - 0.1f)
             {
                 bh.SetHarvested((byEntity as EntityPlayer)?.Player);
                 slot?.Itemstack?.Collectible.DamageItem(byEntity.World, byEntity, slot, 3);

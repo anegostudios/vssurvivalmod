@@ -102,7 +102,7 @@ namespace Vintagestory.GameContent
 
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
-        {
+        { 
             MeshData mesh = getMesh(tesselator);
 
             if (mesh == null) return false;
@@ -122,10 +122,10 @@ namespace Vintagestory.GameContent
         {
             if (lining == "plain")
             {
-                sb.AppendLine(Lang.Get("{0} with {1} lining and glass panels", Lang.Get("material-" + material), glass));
+                sb.AppendLine(Lang.Get("lantern-materialwithpanels", Lang.Get("material-" + material), Lang.Get("block-glass-" + glass)));
             } else
             {
-                sb.AppendLine(Lang.Get("{0} with {1} glass panels", Lang.Get("material-" + material), glass));
+                sb.AppendLine(Lang.Get("lantern-materialwithliningandpanels", Lang.Get("material-" + material), lining, Lang.Get("block-glass-"+glass)));
             }
         }
 

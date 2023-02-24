@@ -100,7 +100,7 @@ namespace Vintagestory.ServerMods
             LandformVariant[] mutations = landforms.Variants[parentIndex].Mutations;
             if (mutations != null && mutations.Length > 0)
             {
-                InitPositionSeed(unscaledXpos, unscaledZpos);
+                InitPositionSeed(unscaledXpos/2, unscaledZpos/2);
                 float chance = NextInt(101) / 100f;
 
                 for (int i = 0; i < mutations.Length; i++)

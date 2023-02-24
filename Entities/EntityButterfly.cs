@@ -1,15 +1,44 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Server;
 
 namespace Vintagestory.GameContent
 {
+    public class ModsystemButterflySpawnCondsExtra : ModSystem {
+        ICoreServerAPI sapi;
+
+        public override bool ShouldLoad(EnumAppSide forSide)
+        {
+            return forSide == EnumAppSide.Server;
+        }
+
+
+        public override void StartServerSide(ICoreServerAPI api)
+        {
+            base.StartServerSide(api);
+            this.sapi = api;
+
+            sapi.Event.OnTrySpawnEntity += Event_OnTrySpawnEntity;
+        }
+
+        BlockPos tmpPos = new BlockPos();
+        ClimateCondition tmpCond = new ClimateCondition();
+
+        private bool Event_OnTrySpawnEntity(IBlockAccessor blockAccessor, ref EntityProperties properties, Vec3d spawnPosition, long herdId)
+        {
+            if (properties.Server.SpawnConditions?.Runtime?.MaxQuantityByGroup?.Code.Path == "butterfly-*")
+            {
+                tmpPos.Set((int)spawnPosition.X, (int)spawnPosition.Y, (int)spawnPosition.Z);
+                blockAccessor.GetClimateAt(tmpPos, tmpCond, EnumGetClimateMode.ForSuppliedDate_TemperatureOnly, sapi.World.Calendar.TotalDays);
+                if (tmpCond.Temperature < 0) return false;
+            }
+
+            return true;
+        }
+    }
+
     public class EntityButterfly : EntityAgent
     {
         //double sitHeight = 1;
@@ -57,6 +86,15 @@ namespace Vintagestory.GameContent
                 return;
             }
 
+            if (FeetInLiquid)
+            {
+                (Properties.Client.Renderer as EntityShapeRenderer).AddRenderFlags |= 6 << 25;
+            }
+            else
+            {
+                (Properties.Client.Renderer as EntityShapeRenderer).AddRenderFlags &= ~(6 << 25);
+            }
+
             if (!AnimManager.ActiveAnimationsByAnimCode.ContainsKey("feed") && !AnimManager.ActiveAnimationsByAnimCode.ContainsKey("rest"))
             {
                 if (ServerPos.Y < Pos.Y - 0.05 && !Collided)
@@ -67,14 +105,6 @@ namespace Vintagestory.GameContent
                 if ((ServerPos.Y > Pos.Y - 0.02 || Collided) && !FeetInLiquid)
                 {
                     SetAnimation("fly", 2.5f);
-                }
-
-                if (FeetInLiquid)
-                {
-                    (Properties.Client.Renderer as EntityShapeRenderer).AddRenderFlags |= 1 << 12; 
-                } else
-                {
-                    (Properties.Client.Renderer as EntityShapeRenderer).AddRenderFlags &= ~(1 << 12);
                 }
                 
                 if (FeetInLiquid && flapPauseDt <= 0 && Api.World.Rand.NextDouble() < 0.07)
@@ -223,5 +253,7 @@ namespace Vintagestory.GameContent
             
 
         }
+
+        
     }
 }

@@ -168,7 +168,7 @@ namespace Vintagestory.GameContent
         {
             // fix for tropical vines (e.g. wildvine-tropical-section-east) to drop regular vine block
             string[] parts = Code.Path.Split('-');
-            Block block = world.BlockAccessor.GetBlock(new AssetLocation(parts[0] + "-" + parts[parts.Length - 2] + "-north"));
+            Block block = world.BlockAccessor.GetBlock(new AssetLocation(parts[0] + "-" + parts[parts.Length - 2].Replace("end", "section") + "-north"));
             return new ItemStack[] { new ItemStack(block) };
         }
 
@@ -185,7 +185,7 @@ namespace Vintagestory.GameContent
         bool TryAttachTo(IBlockAccessor blockAccessor, BlockPos blockpos, BlockFacing onBlockFace)
         {
             BlockPos attachingBlockPos = blockpos.AddCopy(onBlockFace.Opposite);
-            Block block = blockAccessor.GetBlock(blockAccessor.GetBlockId(attachingBlockPos));
+            Block block = blockAccessor.GetBlock(attachingBlockPos);
 
             if (block.CanAttachBlockAt(blockAccessor, this, attachingBlockPos, onBlockFace))
             {

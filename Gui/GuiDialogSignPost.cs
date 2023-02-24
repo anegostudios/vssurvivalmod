@@ -68,8 +68,8 @@ namespace Vintagestory.GameContent
                     .AddStaticText("Northwest", CairoFont.WhiteDetailText(), line = line.BelowCopy(0, textLineY).WithFixedWidth(width))
                     .AddTextInput(input = input.BelowCopy(0, inputLineY).WithFixedWidth(width), OnTextChangedDlg, CairoFont.WhiteSmallText(), "text7")
 
-                    .AddSmallButton(Lang.Get("Cancel"), OnButtonCancel, input = input.BelowCopy(0, 20).WithFixedSize(100, 20).WithAlignment(EnumDialogArea.LeftFixed).WithFixedPadding(10, 2), EnumButtonStyle.Normal, EnumTextOrientation.Center)
-                    .AddSmallButton(Lang.Get("Save"), OnButtonSave, input = input.FlatCopy().WithFixedSize(100, 20).WithAlignment(EnumDialogArea.RightFixed).WithFixedPadding(10, 2), EnumButtonStyle.Normal, EnumTextOrientation.Center)
+                    .AddSmallButton(Lang.Get("Cancel"), OnButtonCancel, input = input.BelowCopy(0, 20).WithFixedSize(100, 20).WithAlignment(EnumDialogArea.LeftFixed).WithFixedPadding(10, 2), EnumButtonStyle.Normal)
+                    .AddSmallButton(Lang.Get("Save"), OnButtonSave, input = input.FlatCopy().WithFixedSize(100, 20).WithAlignment(EnumDialogArea.RightFixed).WithFixedPadding(10, 2), EnumButtonStyle.Normal)
                 .EndChildElements()
                 .Compose()
             ;

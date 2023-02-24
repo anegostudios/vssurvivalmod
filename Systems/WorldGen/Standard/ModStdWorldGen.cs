@@ -7,10 +7,13 @@ namespace Vintagestory.ServerMods
 {
     public abstract class ModStdWorldGen : ModSystem
     {
-        public static bool DoDecorationPass = true;
-
         public GlobalConfig GlobalConfig;
         public int chunksize;
+
+        public override bool ShouldLoad(EnumAppSide side)
+        {
+            return side == EnumAppSide.Server;
+        }
 
         public void LoadGlobalConfig(ICoreServerAPI api)
         {

@@ -11,6 +11,7 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -21,8 +22,9 @@ namespace Vintagestory.GameContent
         int color;
         int tempColor;
         ItemStack tempStack;
+        float fontSize = 20;
 
-        GuiDialogBlockEntityTextInput textdialog;
+        GuiDialogBlockEntityTextInput editDialog;
 
         public override float MeshAngle { 
             get => base.MeshAngle; 
@@ -73,24 +75,12 @@ namespace Vintagestory.GameContent
                     tempStack = hotbarSlot.TakeOut(1);
                     hotbarSlot.MarkDirty();
 
-                    if (Api.World is IServerWorldAccessor)
+                    if (Api is ICoreServerAPI sapi)
                     {
-                        byte[] data;
-
-                        using (MemoryStream ms = new MemoryStream())
-                        {
-                            BinaryWriter writer = new BinaryWriter(ms);
-                            writer.Write("BlockEntityTextInput");
-                            writer.Write(Lang.Get("Edit chest label text"));
-                            writer.Write(text);
-                            data = ms.ToArray();
-                        }
-
-                        ((ICoreServerAPI)Api).Network.SendBlockEntityPacket(
+                        sapi.Network.SendBlockEntityPacket(
                             (IServerPlayer)byPlayer,
                             Pos.X, Pos.Y, Pos.Z,
-                            (int)EnumSignPacketId.OpenDialog,
-                            data
+                            (int)EnumSignPacketId.OpenDialog
                         );
                     }
 
@@ -110,13 +100,10 @@ namespace Vintagestory.GameContent
         {
             if (packetid == (int)EnumSignPacketId.SaveText)
             {
-                using (MemoryStream ms = new MemoryStream(data))
-                {
-                    BinaryReader reader = new BinaryReader(ms);
-                    text = reader.ReadString();
-                    if (text == null) text = "";
-                }
+                var packet = SerializerUtil.Deserialize<EditSignPacket>(data);
+                this.text = packet.Text;
 
+                this.fontSize = packet.FontSize;
                 color = tempColor;
                 
                 MarkDirty(true);
@@ -140,45 +127,31 @@ namespace Vintagestory.GameContent
             base.OnReceivedClientPacket(player, packetid, data);
         }
 
+
         public override void OnReceivedServerPacket(int packetid, byte[] data)
         {
             if (packetid == (int)EnumSignPacketId.OpenDialog)
             {
-                using (MemoryStream ms = new MemoryStream(data))
+                if (editDialog != null && editDialog.IsOpened()) return;
+
+                editDialog = new GuiDialogBlockEntityTextInput("Edit Label text", Pos, text, Api as ICoreClientAPI, new TextAreaConfig() { MaxWidth = 130, MaxHeight = 160 }.CopyWithFontSize(this.fontSize));
+                editDialog.OnTextChanged = DidChangeTextClientSide;
+                editDialog.OnCloseCancel = () =>
                 {
-                    BinaryReader reader = new BinaryReader(ms);
-
-                    string dialogClassName = reader.ReadString();
-                    string dialogTitle = reader.ReadString();
-                    text = reader.ReadString();
-                    if (text == null) text = "";
-
-                    IClientWorldAccessor clientWorld = (IClientWorldAccessor)Api.World;
-
-                    textdialog = new GuiDialogBlockEntityTextInput(dialogTitle, Pos, text, Api as ICoreClientAPI, 115, 4);
-                    textdialog.OnTextChanged = DidChangeTextClientSide;
-                    textdialog.OnCloseCancel = () =>
-                    {
-                        labelrenderer?.SetNewText(text, color);
-                        (Api as ICoreClientAPI).Network.SendBlockEntityPacket(Pos.X, Pos.Y, Pos.Z, (int)EnumSignPacketId.CancelEdit, null);
-                    };
-                    textdialog.TryOpen();
-                }
+                    labelrenderer?.SetNewText(text, color);
+                    (Api as ICoreClientAPI).Network.SendBlockEntityPacket(Pos.X, Pos.Y, Pos.Z, (int)EnumSignPacketId.CancelEdit, null);
+                };
+                editDialog.TryOpen();
             }
 
 
             if (packetid == (int)EnumSignPacketId.NowText)
             {
-                using (MemoryStream ms = new MemoryStream(data))
+                var packet = SerializerUtil.Deserialize<EditSignPacket>(data);
+                if (labelrenderer != null)
                 {
-                    BinaryReader reader = new BinaryReader(ms);
-                    text = reader.ReadString();
-                    if (text == null) text = "";
-
-                    if (labelrenderer != null)
-                    {
-                        labelrenderer.SetNewText(text, color);
-                    }
+                    labelrenderer.fontSize = packet.FontSize;
+                    labelrenderer.SetNewText(packet.Text, color);
                 }
             }
 
@@ -188,6 +161,9 @@ namespace Vintagestory.GameContent
 
         private void DidChangeTextClientSide(string text)
         {
+            if (editDialog == null) return;
+            this.fontSize = editDialog.FontSize;
+            labelrenderer.fontSize = this.fontSize;
             labelrenderer?.SetNewText(text, tempColor);
         }
 
@@ -199,6 +175,7 @@ namespace Vintagestory.GameContent
 
             color = tree.GetInt("color");
             text = tree.GetString("text");
+            fontSize = tree.GetFloat("fontSize", 20);
 
             labelrenderer?.SetNewText(text, color);
         }
@@ -209,6 +186,7 @@ namespace Vintagestory.GameContent
 
             tree.SetInt("color", color);
             tree.SetString("text", text);
+            tree.SetFloat("fontSize", fontSize);
         }
 
         public override void OnBlockRemoved()
@@ -221,8 +199,8 @@ namespace Vintagestory.GameContent
                 labelrenderer = null;
             }
 
-            textdialog?.TryClose();
-            textdialog?.Dispose();
+            editDialog?.TryClose();
+            editDialog?.Dispose();
         }
 
         public override void OnBlockBroken(IPlayer byPlayer = null)
@@ -237,8 +215,8 @@ namespace Vintagestory.GameContent
 
             labelrenderer?.Dispose();
 
-            textdialog?.TryClose();
-            textdialog?.Dispose();
+            editDialog?.TryClose();
+            editDialog?.Dispose();
         }
 
 

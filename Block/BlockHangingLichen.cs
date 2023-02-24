@@ -15,18 +15,11 @@ namespace Vintagestory.GameContent
             base.OnLoaded(api);
         }
 
-        int[] origWindMode;
-
+        
         public override void OnJsonTesselation(ref MeshData sourceMesh, ref int[] lightRgbsByCorner, BlockPos pos, Block[] chunkExtBlocks, int extIndex3d)
         {
             if (VertexFlags.WindMode == EnumWindBitMode.NoWind) return;
-            if (origWindMode == null)
-            {
-                origWindMode = (int[])sourceMesh.Flags.Clone();
-                int cnt = sourceMesh.FlagsCount;
-                for (int i = 0; i < cnt; i++) origWindMode[i] &= VertexFlags.WindModeBitsMask;
-            }
-
+            
             int sideDisableWindWave = 0;  // Any bit set to 1 means no Wave on that tileSide
 
             // Disable motion if top side touching a solid block
@@ -44,7 +37,7 @@ namespace Vintagestory.GameContent
                 groundOffset = 1;
             }
 
-            ToggleWindModeSetWindData(sourceMesh, sideDisableWindWave, enableWind, groundOffset, origWindMode);
+            sourceMesh.ToggleWindModeSetWindData(sideDisableWindWave, enableWind, groundOffset);
         }
 
 
@@ -121,7 +114,7 @@ namespace Vintagestory.GameContent
             if (!onBlockFace.IsVertical) return false;
 
             BlockPos attachingBlockPos = blockpos.AddCopy(onBlockFace.Opposite);
-            Block block = blockAccessor.GetBlock(blockAccessor.GetBlockId(attachingBlockPos));
+            Block block = blockAccessor.GetBlock(attachingBlockPos);
 
             if (block.CanAttachBlockAt(blockAccessor, this, attachingBlockPos, onBlockFace))
             {

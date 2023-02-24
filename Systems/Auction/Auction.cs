@@ -1,9 +1,6 @@
-﻿using ProtoBuf;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Runtime.Serialization;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -23,8 +20,6 @@ namespace Vintagestory.GameContent
         SoldRetrieved = 2,
         Expired = 3
     }
-
-
 
     public class ModSystemAuction : ModSystem
     {

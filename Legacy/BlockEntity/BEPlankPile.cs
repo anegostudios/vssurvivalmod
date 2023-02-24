@@ -36,7 +36,7 @@ namespace Vintagestory.GameContent
             Dictionary<AssetLocation, MeshData[]> meshesByType = new Dictionary<AssetLocation, MeshData[]>();
 
             tmpBlock = Api.World.BlockAccessor.GetBlock(Pos);
-            tmpTextureSource = ((ICoreClientAPI)Api).Tesselator.GetTexSource(tmpBlock);
+            tmpTextureSource = ((ICoreClientAPI)Api).Tesselator.GetTextureSource(tmpBlock);
             Shape shape = API.Common.Shape.TryGet(Api, "shapes/block/wood/plankpile.json");
             MetalProperty woodtpyes = Api.Assets.TryGet("worldproperties/block/wood.json").ToObject<MetalProperty>();
 

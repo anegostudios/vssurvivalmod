@@ -20,13 +20,10 @@ namespace Vintagestory.ServerMods
         {
             this.climateNoise = climateNoise;
 
-            float scale = TerraGenConfig.landformMapScale;
+            float scale = TerraGenConfig.landformMapScale * 1.2f;
 
-            if (GameVersion.IsAtLeastVersion(api.WorldManager.SaveGame.CreatedGameVersion, "1.11.0-dev.1"))
-            {
-                scale *= Math.Max(1, api.WorldManager.MapSizeY / 256f);
-            }
-
+            scale *= Math.Max(1, api.WorldManager.MapSizeY / 256f);
+            
             noiseLandforms = new NoiseLandforms(seed, api, scale);
 
             int woctaves = 2;
@@ -46,8 +43,8 @@ namespace Vintagestory.ServerMods
             {
                 for (int z = 0; z < sizeZ; z++)
                 {
-                    int offsetX = (int)(wobbleIntensity * noisegenX.Noise(xCoord + x, zCoord + z));
-                    int offsetY = (int)(wobbleIntensity * noisegenY.Noise(xCoord + x, zCoord + z));
+                    int offsetX = (int)(wobbleIntensity * noisegenX.Noise(xCoord + x, zCoord + z)*1.2f);
+                    int offsetY = (int)(wobbleIntensity * noisegenY.Noise(xCoord + x, zCoord + z)*1.2f);
 
                     int finalX = (xCoord + x + offsetX);
                     int finalZ = (zCoord + z + offsetY);

@@ -139,7 +139,7 @@ namespace Vintagestory.GameContent
                 deliveryTextFont.Color[3] *= 0.7;
 
                 SingleComposer
-                    .AddStaticText(daysLeftString, deliveryTextFont, ElementBounds.Fixed(pad, 20 + pad, 500, 25))
+                    .AddStaticText(daysLeftString, deliveryTextFont, ElementBounds.Fixed(pad, 20 + pad, 430, 25))
 
                     .AddStaticText(Lang.Get("You can Buy"), CairoFont.WhiteDetailText(), ElementBounds.Fixed(pad, 50 + pad, 200, 25))
                     .AddStaticText(Lang.Get("You can Sell"), CairoFont.WhiteDetailText(), ElementBounds.Fixed(leftTopSlotBounds.fixedWidth + pad + 20, 50 + pad, 200, 25))
@@ -163,7 +163,7 @@ namespace Vintagestory.GameContent
                     .AddDynamicText("", CairoFont.WhiteDetailText(), traderMoneyBounds, "traderMoneyText")
 
                     .AddSmallButton(Lang.Get("Goodbye!"), OnByeClicked, leftButton.FixedUnder(playerMoneyBounds, 20))
-                    .AddSmallButton(Lang.Get("Buy / Sell"), OnBuySellClicked, rightButton.FixedUnder(traderMoneyBounds, 20), EnumButtonStyle.Normal, EnumTextOrientation.Left, "buysellButton")
+                    .AddSmallButton(Lang.Get("Buy / Sell"), OnBuySellClicked, rightButton.FixedUnder(traderMoneyBounds, 20), EnumButtonStyle.Normal, "buysellButton")
 
                     .EndChildElements()
                     .Compose()
@@ -193,7 +193,7 @@ namespace Vintagestory.GameContent
                     .AddVerticalScrollbar(OnNewScrollbarValue, scrollbarBounds, "scrollbar")
 
                     .AddSmallButton(Lang.Get("Goodbye!"), OnByeClicked, leftButton.FixedUnder(clipBounds, 20))
-                    .AddSmallButton(Lang.Get("Buy"), OnBuyAuctionClicked, rightButton.FixedUnder(clipBounds, 20), EnumButtonStyle.Normal, EnumTextOrientation.Left, "buyauction")
+                    .AddSmallButton(Lang.Get("Buy"), OnBuyAuctionClicked, rightButton.FixedUnder(clipBounds, 20), EnumButtonStyle.Normal, "buyauction")
                 ;
             }
 
@@ -216,10 +216,10 @@ namespace Vintagestory.GameContent
                     .AddVerticalScrollbar(OnNewScrollbarValue, scrollbarBounds, "scrollbar")
 
                     .AddSmallButton(Lang.Get("Goodbye!"), OnByeClicked, leftButton.FixedUnder(clipBounds, 20))
-                    .AddSmallButton(Lang.Get("Place Auction"), OnCreateAuction, rightButton.FixedUnder(clipBounds, 20), EnumButtonStyle.Normal, EnumTextOrientation.Left, "placeAuction")
-                    .AddSmallButton(cancelStr, OnCancelAuction, button.FlatCopy().FixedUnder(clipBounds, 20).WithFixedAlignmentOffset(-placelen, 0), EnumButtonStyle.Normal, EnumTextOrientation.Center, "cancelAuction")
-                    .AddSmallButton(Lang.Get("Collect Funds"), OnCollectFunds, button.FlatCopy().FixedUnder(clipBounds, 20).WithFixedAlignmentOffset(-placelen, 0), EnumButtonStyle.Normal, EnumTextOrientation.Center, "collectFunds")
-                    .AddSmallButton(Lang.Get("Retrieve Items"), OnRetrieveItems, button.FixedUnder(clipBounds, 20).WithFixedAlignmentOffset(-placelen, 0), EnumButtonStyle.Normal, EnumTextOrientation.Center, "retrieveItems")
+                    .AddSmallButton(Lang.Get("Place Auction"), OnCreateAuction, rightButton.FixedUnder(clipBounds, 20), EnumButtonStyle.Normal, "placeAuction")
+                    .AddSmallButton(cancelStr, OnCancelAuction, button.FlatCopy().FixedUnder(clipBounds, 20).WithFixedAlignmentOffset(-placelen, 0), EnumButtonStyle.Normal, "cancelAuction")
+                    .AddSmallButton(Lang.Get("Collect Funds"), OnCollectFunds, button.FlatCopy().FixedUnder(clipBounds, 20).WithFixedAlignmentOffset(-placelen, 0), EnumButtonStyle.Normal, "collectFunds")
+                    .AddSmallButton(Lang.Get("Retrieve Items"), OnRetrieveItems, button.FixedUnder(clipBounds, 20).WithFixedAlignmentOffset(-placelen, 0), EnumButtonStyle.Normal, "retrieveItems")
                 ;
             }
 

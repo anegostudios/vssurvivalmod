@@ -11,6 +11,11 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.ServerMods
 {
+    /// <summary>
+    /// YPosRel<br/>
+    /// 0 => y=0<br/>
+    /// 1 => y=map height<br/>
+    /// </summary>
     public class AnywhereDiscGenerator : DiscDepositGenerator
     {
         [JsonProperty]
@@ -36,6 +41,8 @@ namespace Vintagestory.ServerMods
             posyi = (int)ypos;
 
             targetPos.Y = posyi;
+
+            currentRelativeDepth = ypos / Api.WorldManager.MapSizeY;
 
             step = (float)mapChunk.MapRegion.OreMapVerticalDistortTop.InnerSize / regionChunkSize;
             

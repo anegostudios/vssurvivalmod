@@ -11,6 +11,11 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.ServerMods
 {
+    /// <summary>
+    /// YPosRel<br/>
+    /// 0 => y=0<br/>
+    /// 1 => y=surface<br/>
+    /// </summary>
     public class FollowSurfaceDiscGenerator : DiscDepositGenerator
     {
         [JsonProperty]
@@ -25,8 +30,11 @@ namespace Vintagestory.ServerMods
         protected override void beforeGenDeposit(IMapChunk mapChunk, BlockPos pos)
         {
             ypos = YPosRel.nextFloat(1, DepositRand);
-
             pos.Y = (int)ypos;
+
+            int lx = pos.X % chunksize;
+            int lz = pos.Z % chunksize;
+            currentRelativeDepth = ypos / mapChunk.WorldGenTerrainHeightMap[lz * chunksize + lx];
 
             step = (float)mapChunk.MapRegion.OreMapVerticalDistortTop.InnerSize / regionChunkSize;
         }

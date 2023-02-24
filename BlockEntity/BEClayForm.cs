@@ -249,6 +249,11 @@ namespace Vintagestory.GameContent
                     dropStack.StackSize = Math.Min(outstack.StackSize, outstack.Collectible.MaxStackSize);
                     outstack.StackSize -= dropStack.StackSize;
 
+                    TreeAttribute tree = new TreeAttribute();
+                    tree["itemstack"] = new ItemstackAttribute(dropStack);
+                    tree["byentityid"] = new LongAttribute(byPlayer.Entity.EntityId);
+                    Api.Event.PushEvent("onitemclayformed", tree);
+
                     if (byPlayer.InventoryManager.TryGiveItemstack(dropStack))
                     {
                         Api.World.PlaySoundAt(new AssetLocation("sounds/player/collect"), byPlayer);
@@ -668,6 +673,8 @@ namespace Vintagestory.GameContent
 
         public void OpenDialog(IClientWorldAccessor world, BlockPos pos, ItemStack ingredient)
         {
+            if (dlg != null && dlg.IsOpened()) return;
+
             if (ingredient.Collectible is ItemWorkItem)
             {
                 ingredient = new ItemStack(world.GetItem(new AssetLocation("clay-" + ingredient.Collectible.LastCodePart())));
@@ -686,7 +693,9 @@ namespace Vintagestory.GameContent
             ;
 
             ICoreClientAPI capi = Api as ICoreClientAPI;
+
             
+
             dlg = new GuiDialogBlockEntityRecipeSelector(
                 Lang.Get("Select recipe"), 
                 stacks.ToArray(), 

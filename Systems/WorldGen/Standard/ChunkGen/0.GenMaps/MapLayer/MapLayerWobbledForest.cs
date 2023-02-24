@@ -1,14 +1,49 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Vintagestory.API;
 using Vintagestory.API.MathTools;
 
 namespace Vintagestory.ServerMods
 {
-    class MapLayerWobbledForest : MapLayerBase
+    public class MapLayerPerlinUpheavel : MapLayerBase
+    {
+        NormalizedSimplexNoise superLowResNoiseGen;
+
+        float multiplier;
+        int offset;
+        public float noiseOffset;
+        public float wobbleIntensity;
+
+        public MapLayerPerlinUpheavel(long seed, float noiseOffset, float scale, float multiplier = 255, int offset = 0) : base(seed)
+        {
+            superLowResNoiseGen = new NormalizedSimplexNoise(new double[] { 1, 0.5 }, new double[] { 1 / scale / 2, 1 / scale / 1 }, seed + 1685);
+
+            this.noiseOffset = 1 - noiseOffset;
+            this.offset = offset;
+            this.multiplier = multiplier;
+        }
+
+        public override int[] GenLayer(int xCoord, int zCoord, int sizeX, int sizeZ)
+        {
+            int[] outData = new int[sizeX * sizeZ];
+
+            for (int z = 0; z < sizeZ; ++z)
+            {
+                for (int x = 0; x < sizeX; ++x)
+                {
+                    double lowresvalue = GameMath.Clamp((superLowResNoiseGen.Noise(xCoord + x, zCoord + z) - noiseOffset) * 15, 0, 1);
+
+                    double outvalue = offset + multiplier;
+                    outData[z * sizeX + x] = (int)GameMath.Clamp(lowresvalue * outvalue, 0, 255);
+                }
+            }
+
+            return outData;
+        }
+    }
+
+
+
+
+    public class MapLayerWobbledForest : MapLayerBase
     {
         NormalizedSimplexNoise noisegen;
 
@@ -18,7 +53,7 @@ namespace Vintagestory.ServerMods
         NormalizedSimplexNoise noisegenX;
         NormalizedSimplexNoise noisegenY;
 
-        float wobbleIntensity;
+        public float wobbleIntensity;
 
         public MapLayerWobbledForest(long seed, int octaves, float persistence, float scale, float multiplier = 255, int offset = 0) : base(seed)
         {
@@ -71,7 +106,5 @@ namespace Vintagestory.ServerMods
 
             return outData;
         }
-        
-
     }
 }

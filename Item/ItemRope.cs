@@ -7,6 +7,7 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
+
     public enum EnumPinPart
     {
         Start,
@@ -83,8 +84,6 @@ namespace Vintagestory.GameContent
                 Vec3d lpos = new Vec3d(0, byEntity.LocalEyePos.Y - 0.3f, 0);
                 Vec3d aheadPos = lpos.AheadCopy(0.1f, byEntity.SidedPos.Pitch, byEntity.SidedPos.Yaw).AheadCopy(0.4f, byEntity.SidedPos.Pitch, byEntity.SidedPos.Yaw - GameMath.PIHALF);
                 EntityPos pos = byEntity.SidedPos;
-
-                //Console.WriteLine(api.World.Side + ", clothid {0}, new cloth. attach to self", sys.ClothId);
 
                 sys.FirstPoint.PinTo(byEntity, aheadPos.ToVec3f());
 

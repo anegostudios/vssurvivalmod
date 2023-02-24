@@ -489,7 +489,7 @@ namespace Vintagestory.GameContent
                 dsc.AppendLine("<font color=\"#ff8080\">"+Lang.Get("Dead tree.")+"</font>");
             }
 
-            if (rootBh != null && TreeType != null && PartType != EnumTreePartType.Cutting)
+            if (rootBh != null && rootBh.propsByType.Count > 0 && TreeType != null && PartType != EnumTreePartType.Cutting)
             {
                 var props = rootBh?.propsByType[TreeType];
                 if (props.State == EnumFruitTreeState.Ripe)
@@ -508,7 +508,7 @@ namespace Vintagestory.GameContent
                     dsc.AppendLine(Lang.Get("Flowering for about {0:0.#} days, weather permitting.", days));
                 }
 
-                dsc.AppendLine("Tree state: " + props.State);
+                dsc.AppendLine(Lang.Get("treestate", Lang.Get("treestate-" + props.State.ToString().ToLowerInvariant())));
             }
 
             base.GetBlockInfo(forPlayer, dsc);

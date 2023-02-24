@@ -166,10 +166,7 @@ namespace Vintagestory.GameContent
             Block belowBlock = blockAccessor.GetBlock(pos.X, pos.Y - 1, pos.Z);
             if (belowBlock.Fertility > 0)
             {
-                Block placingBlock = blockAccessor.GetBlock(CodeWithVariant("habitat", "land"));
-                if (placingBlock == null) return false;
-                blockAccessor.SetBlock(placingBlock.BlockId, pos);
-                return true;
+                return TryGen(blockAccessor, pos);
             }
 
             if (belowBlock.LiquidCode == "water")
@@ -177,15 +174,20 @@ namespace Vintagestory.GameContent
                 belowBlock = blockAccessor.GetBlock(pos.X, pos.Y - 2, pos.Z);
                 if (belowBlock.Fertility > 0)
                 {
-                    Block placingBlock = blockAccessor.GetBlock(CodeWithVariant("habitat", "land"));
-                    if (placingBlock == null) return false;
-                    blockAccessor.SetBlock(placingBlock.BlockId, pos.DownCopy());
-                    return true;
+                    return TryGen(blockAccessor, pos.DownCopy());
                 }
             }
 
 
             return false;
+        }
+
+        private bool TryGen(IBlockAccessor blockAccessor, BlockPos pos)
+        {
+            Block placingBlock = blockAccessor.GetBlock(CodeWithVariant("habitat", "land"));
+            if (placingBlock == null) return false;
+            blockAccessor.SetBlock(placingBlock.BlockId, pos);
+            return true;
         }
 
         public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing, int rndIndex = -1)

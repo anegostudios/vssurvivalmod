@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Vintagestory.API.Client;
+﻿using Vintagestory.API.Client;
 using Vintagestory.API.MathTools;
 using Vintagestory.GameContent.Mechanics;
 
@@ -74,7 +69,7 @@ namespace Vintagestory.GameContent
             if (stage == EnumRenderStage.Opaque)
             {
                 IStandardShaderProgram prog = rpi.PreparedStandardShader(pos.X, pos.Y, pos.Z);
-                prog.Tex2D = api.BlockTextureAtlas.AtlasTextureIds[0];
+                prog.Tex2D = api.BlockTextureAtlas.AtlasTextures[0].TextureId;
 
                 prog.ModelMatrix = ModelMat.Values;
                 prog.ViewMatrix = rpi.CameraMatrixOriginf;
@@ -88,7 +83,7 @@ namespace Vintagestory.GameContent
                 IRenderAPI rapi = api.Render;
                 shadowMvpMat.Set(rapi.CurrentProjectionMatrix).Mul(rapi.CurrentModelviewMatrix).Mul(ModelMat.Values);
 
-                rapi.CurrentActiveShader.BindTexture2D("tex2d", api.BlockTextureAtlas.AtlasTextureIds[0], 0);
+                rapi.CurrentActiveShader.BindTexture2D("tex2d", api.BlockTextureAtlas.AtlasTextures[0].TextureId, 0);
                 rapi.CurrentActiveShader.UniformMatrix("mvpMatrix", shadowMvpMat.Values);
                 rapi.CurrentActiveShader.Uniform("origin", new Vec3f());
 

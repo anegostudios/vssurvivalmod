@@ -1,12 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
-using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
@@ -26,8 +21,6 @@ namespace Vintagestory.GameContent
         IFirePit befirepit;
         BlockEntity be;
         bool fadingOut;
-
-        BlockPos Pos => be.Pos;
 
         public BEBehaviorFirepitAmbient(BlockEntity blockentity) : base(blockentity)
         {

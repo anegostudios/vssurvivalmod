@@ -86,7 +86,7 @@ namespace Vintagestory.ServerMods
         protected virtual int GetRandomClimate()
         {
             int rnd = NextIntFast(127);
-            int humidity = 0;
+            int geologicActivity = Math.Max(0, NextInt(256) - 128) * 2;
             int temperature;
             int rain;
             
@@ -96,7 +96,7 @@ namespace Vintagestory.ServerMods
                 temperature = Math.Min(255, (int)(gaussRnd3(60) * tempMul));
                 rain = Math.Min(255, (int)(gaussRnd3(130) * rainMul));
 
-                return (temperature << 16) + (rain << 8) + (humidity);
+                return (temperature << 16) + (rain << 8) + (geologicActivity);
             }
 
             // Low chance for very hot and dry areas
@@ -104,7 +104,7 @@ namespace Vintagestory.ServerMods
             {
                 temperature = Math.Min(255, (int)((220 + gaussRnd3(75)) * tempMul));
                 rain = Math.Min(255, (int)(gaussRnd3(20) * rainMul));
-                return (temperature << 16) + (rain << 8) + (humidity);
+                return (temperature << 16) + (rain << 8) + (geologicActivity);
             }
 
             // Low chance for very hot and very wet areas
@@ -113,7 +113,7 @@ namespace Vintagestory.ServerMods
                 temperature = Math.Min(255, (int)((220 + gaussRnd3(75)) * tempMul));
                 rain = Math.Min(255, (int)((220 + NextInt(35)) * rainMul));
 
-                return (temperature << 16) + (rain << 8) + (humidity);
+                return (temperature << 16) + (rain << 8) + (geologicActivity);
             }
 
             // Very low chance for temperate very wet
@@ -122,7 +122,7 @@ namespace Vintagestory.ServerMods
                 temperature = Math.Min(255, (int)((120 + NextInt(60)) * tempMul));
                 rain = Math.Min(255, (int)((200 + NextInt(50)) * rainMul));
 
-                return (temperature << 16) + (rain << 8) + (humidity);
+                return (temperature << 16) + (rain << 8) + (geologicActivity);
             }
 
 
@@ -130,7 +130,7 @@ namespace Vintagestory.ServerMods
             temperature = Math.Min(255, (int)((100 + gaussRnd2(165)) * tempMul));
             rain = Math.Min(255, (int)(gaussRnd3(210 - (150 - temperature)) * rainMul));
 
-            return (temperature << 16) + (rain << 8) + (humidity);
+            return (temperature << 16) + (rain << 8) + (geologicActivity);
         }
     }
 }

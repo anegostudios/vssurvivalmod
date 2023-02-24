@@ -71,13 +71,16 @@ namespace Vintagestory.ServerMods
         public string BuildProtectionDesc = null;
         [JsonProperty]
         public string BuildProtectionName = null;
-
+        [JsonProperty]
+        public Dictionary<AssetLocation, AssetLocation> RockTypeRemaps = null;
 
         internal int[] replaceblockids = new int[0];
+        internal Dictionary<int, Dictionary<int, int>> resolvedRockTypeRemaps = null;
+
         LCGRandom rand;
         double totalWeight;
 
-        public void Init(ICoreServerAPI api, BlockLayerConfig config, LCGRandom rand)
+        public void Init(ICoreServerAPI api, BlockLayerConfig config, RockStrataConfig rockstrata, LCGRandom rand)
         {
             this.rand = rand;
             totalWeight = 0;
@@ -124,7 +127,7 @@ namespace Vintagestory.ServerMods
                     {
                         if (k > 0)
                         {
-                            rotations[k] = rotations[0].Clone();
+                            rotations[k] = rotations[0].ClonePacked() as BlockSchematicStructure;
                             rotations[k].TransformWhilePacked(api.World, EnumOrigin.BottomCenter, k * 90);
                         }
                         rotations[k].blockLayerConfig = config;
@@ -154,6 +157,11 @@ namespace Vintagestory.ServerMods
                         replaceblockids[i] = (ushort)block.Id;
                     }
                 }
+            }
+
+            if (RockTypeRemaps != null)
+            {
+                resolvedRockTypeRemaps = WorldGenStructuresConfigBase.ResolveRockTypeRemaps(RockTypeRemaps, rockstrata, api);
             }
         }
 
@@ -225,7 +233,7 @@ namespace Vintagestory.ServerMods
             {
                 foreach (var val in generatables)
                 {
-                    val.struc.PlaceRespectingBlockLayers(blockAccessor, worldForCollectibleResolve, val.pos, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight, replaceblockids);
+                    val.struc.PlaceRespectingBlockLayers(blockAccessor, worldForCollectibleResolve, val.pos, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight, resolvedRockTypeRemaps, replaceblockids);
                     didGenerateStructure(val.location, val.struc);
                 }
             }

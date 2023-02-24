@@ -44,8 +44,6 @@ namespace Vintagestory.ServerMods
             this.botRightPadding = dataBotRightPadding;
             groups = new WeightedIndex[rawScalarValues.Length][];
 
-
-
             Dictionary<int, float> indices = new Dictionary<int, float>();
 
             for (int x = 0; x < sizeX; x++)

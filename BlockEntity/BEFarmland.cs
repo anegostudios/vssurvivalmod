@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -28,14 +27,9 @@ namespace Vintagestory.GameContent
     // - Each crop has different total growth speed
     // - Each crop can have any amounts of growth stages
     // - Some crops can be harvested with right click, without destroying the crop
-    public class BlockEntityFarmland : BlockEntity, IFarmlandBlockEntity, IAnimalFoodSource
+    public class BlockEntityFarmland : BlockEntity, IFarmlandBlockEntity, IAnimalFoodSource, ITexPositionSource
     {
         protected static Random rand = new Random();
-        protected static CodeAndChance[] weedNames;
-
-
-        protected static float totalWeedChance;
-
         public static OrderedDictionary<string, float> Fertilities = new OrderedDictionary<string, float>{
             { "verylow", 5 },
             { "low", 25 },
@@ -44,65 +38,69 @@ namespace Vintagestory.GameContent
             { "high", 80 },
         };
 
+        
         protected HashSet<string> PermaBoosts = new HashSet<string>();
-
         // How many hours this block can retain water before becoming dry
         protected double totalHoursWaterRetention = 24.5;
-
         protected BlockPos upPos;
         // Total game hours from where on it can enter the next growth stage
         protected double totalHoursForNextStage;
         // The last time fertility increase was checked
         protected double totalHoursLastUpdate;
-
         // Stored values
         protected float[] nutrients = new float[3];
         protected float[] slowReleaseNutrients = new float[3];
+        protected Dictionary<string, float> fertilizerOverlayStrength = null;
+
         // 0 = bone dry, 1 = completely soggy
         protected float moistureLevel = 0;
         protected double lastWaterSearchedTotalHours;
+        protected TreeAttribute cropAttrs = new TreeAttribute();
 
         // The fertility the soil will recover to (the soil from which the farmland was made of)
         public int[] originalFertility = new int[3];
 
-        protected TreeAttribute cropAttrs = new TreeAttribute();
-
-        protected int delayGrowthBelowSunLight = 19;
-        protected float lossPerLevel = 0.1f;
-
-
-        bool unripeCropColdDamaged;
-        bool unripeHeatDamaged;
-        bool ripeCropColdDamaged;
+        protected bool unripeCropColdDamaged;
+        protected bool unripeHeatDamaged;
+        protected bool ripeCropColdDamaged;
 
         // 0 = Unknown
         // 1 = too hot
         // 2 = too cold
-        float[] damageAccum = new float[Enum.GetValues(typeof(EnumCropStressType)).Length];
+        protected float[] damageAccum = new float[Enum.GetValues(typeof(EnumCropStressType)).Length];
 
-        WeatherSystemBase wsys;
-        Vec3d tmpPos = new Vec3d();
-        float lastWaterDistance = 99;
-        double lastMoistureLevelUpdateTotalDays;
 
-        RoomRegistry roomreg;
+        BlockFarmland blockFarmland;
+        
+        protected Vec3d tmpPos = new Vec3d();
+        protected float lastWaterDistance = 99;
+        protected double lastMoistureLevelUpdateTotalDays;
+
         public int roomness;
 
 
-        bool allowundergroundfarming;
-        bool allowcropDeath;
+        protected bool allowundergroundfarming;
+        protected bool allowcropDeath;
 
-        float fertilityRecoverySpeed = 0.25f;
-        float growthRateMul = 1f;
+        protected float fertilityRecoverySpeed = 0.25f;
+        protected float growthRateMul = 1f;
+
+        protected MeshData fertilizerQuad;
+        protected TextureAtlasPosition fertilizerTexturePos;
+        ICoreClientAPI capi;
 
         public override void Initialize(ICoreAPI api)
         {
             base.Initialize(api);
 
-            totalHoursWaterRetention = Api.World.Calendar.HoursPerDay + 0.5;
+            blockFarmland = Block as BlockFarmland;
+            if (blockFarmland == null) return;
 
+            capi = api as ICoreClientAPI;
+
+            totalHoursWaterRetention = Api.World.Calendar.HoursPerDay + 0.5;
             upPos = base.Pos.UpCopy();
-            wsys = api.ModLoader.GetModSystem<WeatherSystemBase>();
+            
             allowundergroundfarming = Api.World.Config.GetBool("allowUndergroundFarming", false);
             allowcropDeath = Api.World.Config.GetBool("allowCropDeath", true);
             fertilityRecoverySpeed = Api.World.Config.GetFloat("fertilityRecoverySpeed", fertilityRecoverySpeed);
@@ -114,25 +112,11 @@ namespace Vintagestory.GameContent
                 {
                     RegisterGameTickListener(Update, 3300 + rand.Next(400));
                 }
+
                 api.ModLoader.GetModSystem<POIRegistry>().AddPOI(this);
-                roomreg = Api.ModLoader.GetModSystem<RoomRegistry>();
             }
 
-
-            if (Block.Attributes != null)
-            {
-                delayGrowthBelowSunLight = Block.Attributes["delayGrowthBelowSunLight"].AsInt(19);
-                lossPerLevel = Block.Attributes["lossPerLevel"].AsFloat(0.1f);
-
-                if (weedNames == null)
-                {
-                    weedNames = Block.Attributes["weedBlockCodes"].AsObject<CodeAndChance[]>();
-                    for (int i = 0; weedNames != null && i < weedNames.Length; i++)
-                    {
-                        totalWeedChance += weedNames[i].Chance;
-                    }
-                }
-            }
+            updateFertilizerQuad();
         }
 
 
@@ -164,14 +148,19 @@ namespace Vintagestory.GameContent
 
         public bool OnBlockInteract(IPlayer byPlayer)
         {
-            JsonObject obj = byPlayer.InventoryManager.ActiveHotbarSlot.Itemstack?.Collectible?.Attributes?["fertilizerProps"];
+            var stack = byPlayer.InventoryManager.ActiveHotbarSlot.Itemstack;
+            JsonObject obj = stack?.Collectible?.Attributes?["fertilizerProps"];
             if (obj == null || !obj.Exists) return false;
             FertilizerProps props = obj.AsObject<FertilizerProps>();
             if (props == null) return false;
 
-            slowReleaseNutrients[0] = Math.Min(150, slowReleaseNutrients[0] + props.N);
-            slowReleaseNutrients[1] = Math.Min(150, slowReleaseNutrients[1] + props.P);
-            slowReleaseNutrients[2] = Math.Min(150, slowReleaseNutrients[2] + props.K);
+            float nAdd = Math.Min(Math.Max(0, 150 - slowReleaseNutrients[0]), props.N);
+            float pAdd = Math.Min(Math.Max(0, 150 - slowReleaseNutrients[1]), props.P);
+            float kAdd = Math.Min(Math.Max(0, 150 - slowReleaseNutrients[2]), props.K);
+
+            slowReleaseNutrients[0] += nAdd;
+            slowReleaseNutrients[1] += pAdd;
+            slowReleaseNutrients[2] += kAdd;
 
             if (props.PermaBoost != null && !PermaBoosts.Contains(props.PermaBoost.Code))
             {
@@ -180,6 +169,16 @@ namespace Vintagestory.GameContent
                 originalFertility[2] += props.PermaBoost.K;
                 PermaBoosts.Add(props.PermaBoost.Code);
             }
+
+            string fertCode = stack.Collectible.Attributes["fertilizerTextureCode"].AsString();
+            if (fertCode != null)
+            {
+                if (fertilizerOverlayStrength == null) fertilizerOverlayStrength = new Dictionary<string, float>();
+                fertilizerOverlayStrength.TryGetValue(fertCode, out var prevValue);
+                fertilizerOverlayStrength[fertCode] = prevValue + Math.Max(nAdd, Math.Max(kAdd, pAdd));
+            }
+
+            updateFertilizerQuad();
 
             byPlayer.InventoryManager.ActiveHotbarSlot.TakeOut(1);
             byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
@@ -343,7 +342,7 @@ namespace Vintagestory.GameContent
                 if (baseClimate == null && hoursPassed > 0) baseClimate = Api.World.BlockAccessor.GetClimateAt(Pos, EnumGetClimateMode.WorldGenValues, totalDays - hoursPassed * Api.World.Calendar.HoursPerDay / 2);
                 while (hoursPassed > 0)
                 {
-                    double rainLevel = wsys.GetPrecipitation(Pos, totalDays - hoursPassed * Api.World.Calendar.HoursPerDay, baseClimate);
+                    double rainLevel = blockFarmland.wsys.GetPrecipitation(Pos, totalDays - hoursPassed * Api.World.Calendar.HoursPerDay, baseClimate);
                     moistureLevel = GameMath.Clamp(moistureLevel + (float)rainLevel / 3f, 0, 1);
                     hoursPassed--;
                 }
@@ -383,7 +382,7 @@ namespace Vintagestory.GameContent
             }
 
             int sunlight = Api.World.BlockAccessor.GetLightLevel(upPos, EnumLightLevelType.MaxLight);
-            double lightGrowthSpeedFactor = GameMath.Clamp(1 - (delayGrowthBelowSunLight - sunlight - lightpenalty) * lossPerLevel, 0, 1);
+            double lightGrowthSpeedFactor = GameMath.Clamp(1 - (blockFarmland.DelayGrowthBelowSunLight - sunlight - lightpenalty) * blockFarmland.LossPerLevel, 0, 1);
 
             Block upblock = Api.World.BlockAccessor.GetBlock(upPos);
             Block deadCropBlock = Api.World.GetBlock(new AssetLocation("deadcrop"));
@@ -413,7 +412,7 @@ namespace Vintagestory.GameContent
 
             if (!skyExposed) // Fast pre-check
             {
-                Room room = roomreg?.GetRoomForPosition(upPos);
+                Room room = blockFarmland.roomreg?.GetRoomForPosition(upPos);
                 roomness = (room != null && room.SkylightCount > room.NonSkylightCount && room.ExitCount == 0) ? 1 : 0;
             }
             else
@@ -552,6 +551,16 @@ namespace Vintagestory.GameContent
                     }
                 }
 
+                if (fertilizerOverlayStrength != null && fertilizerOverlayStrength.Count > 0)
+                {
+                    var codes = fertilizerOverlayStrength.Keys.ToArray();
+                    foreach (var code in codes)
+                    {
+                        var newStr = fertilizerOverlayStrength[code] - fertilityRecoverySpeed;
+                        if (newStr < 0) fertilizerOverlayStrength.Remove(code);
+                        else fertilizerOverlayStrength[code] = newStr;
+                    }
+                }
 
 
 
@@ -575,27 +584,29 @@ namespace Vintagestory.GameContent
 
             if (growTallGrass && upblock.BlockMaterial == EnumBlockMaterial.Air)
             {
-                double rnd = rand.NextDouble() * totalWeedChance;
-                for (int i = 0; i < weedNames.Length; i++)
+                double rnd = rand.NextDouble() * blockFarmland.TotalWeedChance;
+                for (int i = 0; i < blockFarmland.WeedNames.Length; i++)
                 {
-                    rnd -= weedNames[i].Chance;
+                    rnd -= blockFarmland.WeedNames[i].Chance;
                     if (rnd <= 0)
                     {
-                        Block weedsBlock = Api.World.GetBlock(weedNames[i].Code);
+                        Block weedsBlock = Api.World.GetBlock(blockFarmland.WeedNames[i].Code);
                         if (weedsBlock != null)
                         {
                             Api.World.BlockAccessor.SetBlock(weedsBlock.BlockId, upPos);
                         }
+
                         break;
                     }
                 }
             }
 
-
+            updateFertilizerQuad();
             UpdateFarmlandBlock();
             Api.World.BlockAccessor.MarkBlockEntityDirty(Pos);
         }
 
+        
         public double GetHoursForNextStage()
         {
             Block block = GetCrop();
@@ -791,6 +802,52 @@ namespace Vintagestory.GameContent
         }
 
 
+        private void updateFertilizerQuad()
+        {
+            if (capi == null) return;
+            AssetLocation loc = new AssetLocation();
+
+            if (fertilizerOverlayStrength == null || fertilizerOverlayStrength.Count == 0)
+            {
+                bool dirty = fertilizerQuad != null;
+                fertilizerQuad = null;
+                if (dirty) MarkDirty(true);
+                return;
+            }
+
+            int i = 0;
+            foreach (var val in fertilizerOverlayStrength)
+            {
+                string intensity = "low";
+                if (val.Value > 50) intensity = "med";
+                if (val.Value > 100) intensity = "high";
+
+                if (i > 0) loc.Path += "++0~";
+                loc.Path += "block/soil/farmland/fertilizer/" + val.Key + "-" + intensity;
+                i++;
+            }
+
+            capi.BlockTextureAtlas.GetOrInsertTexture(loc, out _, out var newFertilizerTexturePos);
+
+            if (fertilizerTexturePos != newFertilizerTexturePos)
+            {
+                this.fertilizerTexturePos = newFertilizerTexturePos;
+                genFertilizerQuad();
+                MarkDirty(true);
+            }
+        }
+
+        private void genFertilizerQuad()
+        {
+            var shape = capi.Assets.TryGet(new AssetLocation("shapes/block/farmland-fertilizer.json")).ToObject<Shape>();
+
+            capi.Tesselator.TesselateShape(new TesselationMetaData() { 
+                TypeForLogging = "farmland fertilizer quad",
+                TexSource = this,
+
+            }, shape, out fertilizerQuad);
+        }
+
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
             base.FromTreeAttributes(tree, worldForResolving);
@@ -848,6 +905,19 @@ namespace Vintagestory.GameContent
             {
                 PermaBoosts.AddRange(permaboosts);
             }
+
+            ITreeAttribute ftree = tree.GetTreeAttribute("fertilizerOverlayStrength");
+
+            if (ftree != null)
+            {
+                fertilizerOverlayStrength = new Dictionary<string, float>();
+                foreach (var val in ftree)
+                {
+                    fertilizerOverlayStrength[val.Key] = (val.Value as FloatAttribute).value;
+                }
+            } else fertilizerOverlayStrength = null;
+
+            updateFertilizerQuad();
         }
 
 
@@ -882,6 +952,16 @@ namespace Vintagestory.GameContent
             tree.SetInt("roomness", roomness);
 
             tree["cropAttrs"] = cropAttrs;
+
+            if (fertilizerOverlayStrength != null)
+            {
+                var ftree = new TreeAttribute();
+                tree["fertilizerOverlayStrength"] = ftree;
+                foreach (var val in fertilizerOverlayStrength)
+                {
+                    ftree.SetFloat(val.Key, val.Value);
+                }
+            }
         }
 
 
@@ -1074,8 +1154,12 @@ namespace Vintagestory.GameContent
 
         BlockPos IFarmlandBlockEntity.Pos => this.Pos;
 
+        public Size2i AtlasSize => capi.BlockTextureAtlas.Size;
+        public TextureAtlasPosition this[string textureCode] => fertilizerTexturePos;
+
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
         {
+            mesher.AddMeshData(fertilizerQuad);
             return false;
 
             // Just doesn't look right anymore when fertilized soil turns its texture into compost or terra preta

@@ -29,7 +29,7 @@ namespace Vintagestory.GameContent
         MeshData[] GenMeshes()
         {
             tmpBlock = Api.World.BlockAccessor.GetBlock(Pos);
-            tmpTextureSource = ((ICoreClientAPI)Api).Tesselator.GetTexSource(tmpBlock);
+            tmpTextureSource = ((ICoreClientAPI)Api).Tesselator.GetTextureSource(tmpBlock);
             Shape shape = API.Common.Shape.TryGet(Api, "shapes/block/peatpile.json");
 
             ITesselatorAPI mesher = ((ICoreClientAPI)Api).Tesselator;

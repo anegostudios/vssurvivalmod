@@ -1,14 +1,4 @@
-﻿using Newtonsoft.Json;
-using ProtoBuf;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Vintagestory.API.Client;
-using Vintagestory.API.Common;
-using Vintagestory.API.MathTools;
+﻿using Vintagestory.API.Common;
 using Vintagestory.API.Server;
 using Vintagestory.GameContent;
 

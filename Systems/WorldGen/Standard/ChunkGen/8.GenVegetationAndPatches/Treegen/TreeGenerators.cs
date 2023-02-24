@@ -4,6 +4,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
 using Vintagestory.ServerMods.NoObf;
 
 namespace Vintagestory.ServerMods
@@ -53,6 +54,8 @@ namespace Vintagestory.ServerMods
                 treetypes[val.Code.Path] = val.TreeType;
             }
 
+            bool potatoeMode = sapi.World.Config.GetAsString("potatoeMode", "false").ToBool() == true;
+
             string names = "";
             foreach (var val in TreeGenModelsByTree)
             {
@@ -68,7 +71,12 @@ namespace Vintagestory.ServerMods
                 name.Path = val.Key.Path.Substring("worldgen/treegen/".Length);
                 name.RemoveEnding();
 
+                if (potatoeMode)
+                {
+                    val.Value.treeBlocks.mossDecorCode = null;
+                }
                 val.Value.Init(val.Key, sapi.Server.Logger);
+
 
                 sapi.RegisterTreeGenerator(name, new TreeGen(val.Value, sapi.WorldManager.Seed, forestFloorSystem));
                 val.Value.treeBlocks.ResolveBlockNames(sapi, name.Path);
@@ -98,9 +106,9 @@ namespace Vintagestory.ServerMods
             return new KeyValuePair<AssetLocation, ITreeGenerator>(null, null);
         }
 
-        public void RunGenerator(AssetLocation treeName, IBlockAccessor api, BlockPos pos, float size = 1)
+        public void RunGenerator(AssetLocation treeName, IBlockAccessor api, BlockPos pos, TreeGenParams treeGenParams)
         {
-            sapi.World.TreeGenerators[treeName].GrowTree(api, pos, true, size);
+            sapi.World.TreeGenerators[treeName].GrowTree(api, pos, treeGenParams);
         }
     }
 }

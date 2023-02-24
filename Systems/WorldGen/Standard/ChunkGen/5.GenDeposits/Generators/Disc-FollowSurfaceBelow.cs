@@ -23,6 +23,10 @@ namespace Vintagestory.ServerMods
         {
             ypos = Depth.nextFloat(1, DepositRand);
             posyi = (int)ypos;
+
+            int lx = pos.X % chunksize;
+            int lz = pos.Z % chunksize;
+            currentRelativeDepth = ypos / mapChunk.WorldGenTerrainHeightMap[lz * chunksize + lx];
         }
 
         public override void GetYMinMax(BlockPos pos, out double miny, out double maxy)

@@ -66,6 +66,7 @@ namespace Vintagestory.GameContent
             ItemStack contentStack = GetContent(itemstack);
             if (contentStack == null) return;
 
+
             int hashcode = GetStackCacheHashCode(contentStack);
 
             if (!meshrefs.TryGetValue(hashcode, out MeshRef meshRef))
@@ -73,6 +74,7 @@ namespace Vintagestory.GameContent
                 MeshData meshdata = GenMesh(capi, contentStack);
                 meshrefs[hashcode] = meshRef = capi.Render.UploadMesh(meshdata);
             }
+
 
             renderinfo.ModelRef = meshRef;
         }
@@ -105,16 +107,24 @@ namespace Vintagestory.GameContent
             }
         }
 
+        MeshData origcontainermesh;
+        Shape contentShape;
+        Shape liquidContentShape;
+
         public MeshData GenMesh(ICoreClientAPI capi, ItemStack contentStack, BlockPos forBlockPos = null)
         {
-            Shape shape = API.Common.Shape.TryGet(capi, emptyShapeLoc.WithPathAppendixOnce(".json").WithPathPrefixOnce("shapes/"));
-            if (shape == null)
+            if (origcontainermesh == null)
             {
-                capi.World.Logger.Error("Empty shape {0} not found. Liquid container {1} will be invisible.", emptyShapeLoc, Code);
-                return new MeshData();
+                Shape shape = API.Common.Shape.TryGet(capi, emptyShapeLoc.WithPathAppendixOnce(".json").WithPathPrefixOnce("shapes/"));
+                if (shape == null)
+                {
+                    capi.World.Logger.Error("Empty shape {0} not found. Liquid container {1} will be invisible.", emptyShapeLoc, Code);
+                    return new MeshData();
+                }
+                capi.Tesselator.TesselateShape(this, shape, out origcontainermesh, new Vec3f(Shape.rotateX, Shape.rotateY, Shape.rotateZ));
             }
-            MeshData bucketmesh;
-            capi.Tesselator.TesselateShape(this, shape, out bucketmesh, new Vec3f(Shape.rotateX, Shape.rotateY, Shape.rotateZ));
+
+            MeshData containerMesh = origcontainermesh.Clone();
 
             if (contentStack != null)
             {
@@ -122,18 +132,25 @@ namespace Vintagestory.GameContent
                 if (props == null)
                 {
                     capi.World.Logger.Error("Contents ('{0}') has no liquid properties, contents of liquid container {1} will be invisible.", contentStack.GetName(), Code);
-                    return bucketmesh;
+                    return containerMesh;
                 }
 
                 ContainerTextureSource contentSource = new ContainerTextureSource(capi, contentStack, props.Texture);
 
+                var shape = props.IsOpaque ? contentShape : liquidContentShape;
                 var loc = props.IsOpaque ? contentShapeLoc : liquidContentShapeLoc;
-                shape = API.Common.Shape.TryGet(capi, loc.WithPathAppendixOnce(".json").WithPathPrefixOnce("shapes/"));
+                if (shape == null)
+                {
+                    shape = API.Common.Shape.TryGet(capi, loc.WithPathAppendixOnce(".json").WithPathPrefixOnce("shapes/"));
+
+                    if (props.IsOpaque) this.contentShape = shape;
+                    else this.liquidContentShape = shape;
+                }
 
                 if (shape == null)
                 {
                     capi.World.Logger.Error("Content shape {0} not found. Contents of liquid container {1} will be invisible.", loc, Code);
-                    return bucketmesh;
+                    return containerMesh;
                 }
 
                 MeshData contentMesh;
@@ -166,22 +183,22 @@ namespace Vintagestory.GameContent
                     contentMesh.Flags[i] = contentMesh.Flags[i] & ~(1 << 12); // Remove water waving flag
                 }
 
-                bucketmesh.AddMeshData(contentMesh);
+                containerMesh.AddMeshData(contentMesh);
 
                 // Water flags
                 if (forBlockPos != null)
                 {
-                    bucketmesh.CustomInts = new CustomMeshDataPartInt(bucketmesh.FlagsCount);
-                    bucketmesh.CustomInts.Count = bucketmesh.FlagsCount;
-                    bucketmesh.CustomInts.Values.Fill(0x4000000); // light foam only
+                    containerMesh.CustomInts = new CustomMeshDataPartInt(containerMesh.FlagsCount);
+                    containerMesh.CustomInts.Count = containerMesh.FlagsCount;
+                    containerMesh.CustomInts.Values.Fill(0x4000000); // light foam only
 
-                    bucketmesh.CustomFloats = new CustomMeshDataPartFloat(bucketmesh.FlagsCount * 2);
-                    bucketmesh.CustomFloats.Count = bucketmesh.FlagsCount * 2;
+                    containerMesh.CustomFloats = new CustomMeshDataPartFloat(containerMesh.FlagsCount * 2);
+                    containerMesh.CustomFloats.Count = containerMesh.FlagsCount * 2;
                 }
             }
 
 
-            return bucketmesh;
+            return containerMesh;
         }
 
         public MeshData GenMesh(ItemStack itemstack, ITextureAtlasAPI targetAtlas, BlockPos forBlockPos = null)

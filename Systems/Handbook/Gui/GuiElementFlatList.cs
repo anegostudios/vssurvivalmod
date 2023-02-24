@@ -1,20 +1,22 @@
 ﻿using System.Collections.Generic;
 using Cairo;
-using Vintagestory.API.MathTools;
 using Vintagestory.API.Client;
-using Vintagestory.API.Config;
-using Vintagestory.API.Common;
 using System;
 using System.Linq;
-using Vintagestory.API.Util;
-using Vintagestory.API.Datastructures;
 
 namespace Vintagestory.GameContent
 {
+    public interface IFlatListItemInteractable : IFlatListItem
+    {
+        void OnMouseMove(ICoreClientAPI api, MouseEvent args);
+        void OnMouseDown(ICoreClientAPI api, MouseEvent mouse);
+        void OnMouseUp(ICoreClientAPI api, MouseEvent args);
+    }
+
     public interface IFlatListItem
     {
         bool Visible { get; }
-        void RenderTo(ICoreClientAPI capi, double x, double y);
+        void RenderListEntryTo(ICoreClientAPI capi, float dt, double x, double y, double cellWidth, double cellHeight);
 
         void Dispose();
     }
@@ -94,11 +96,9 @@ namespace Vintagestory.GameContent
             wasMouseDownOnElement = false;
 
             int i = 0;
-
             int mx = api.Input.MouseX;
             int my = api.Input.MouseY;
             double posY = insideBounds.absY;
-
 
             foreach (IFlatListItem element in Elements)
             {
@@ -109,7 +109,6 @@ namespace Vintagestory.GameContent
                 }
 
                 float y = (float)(5 + Bounds.absY + posY);
-
                 double ypad = GuiElement.scaled(unscalledYPad);
 
                 if (mx > Bounds.absX && mx <= Bounds.absX + Bounds.InnerWidth && my >= y - ypad && my <= y + scaled(unscaledCellHeight) - ypad)
@@ -125,6 +124,71 @@ namespace Vintagestory.GameContent
             }
         }
 
+        public override void OnMouseMove(ICoreClientAPI api, MouseEvent args)
+        {
+            if (!Bounds.ParentBounds.PointInside(args.X, args.Y)) return;
+
+            EachVisibleElem(elem =>
+            {
+                if (elem is IFlatListItemInteractable iflii)
+                {
+                    iflii.OnMouseMove(api, args);
+                }
+            });
+        }
+
+        public override void OnMouseDown(ICoreClientAPI api, MouseEvent args)
+        {
+            if (!Bounds.ParentBounds.PointInside(args.X, args.Y)) return;
+
+            EachVisibleElem(elem =>
+            {
+                if (elem is IFlatListItemInteractable iflii)
+                {
+                    iflii.OnMouseDown(api, args);
+                }
+            });
+
+            if (!args.Handled)
+            {
+                base.OnMouseDown(api, args);
+            }
+        }
+
+        public override void OnMouseUp(ICoreClientAPI api, MouseEvent args)
+        {
+            if (!Bounds.ParentBounds.PointInside(args.X, args.Y)) return;
+
+            EachVisibleElem(elem =>
+            {
+                if (elem is IFlatListItemInteractable iflii)
+                {
+                    iflii.OnMouseUp(api, args);
+                }
+            });
+
+            if (!args.Handled)
+            {
+                base.OnMouseUp(api, args);
+            }
+            
+        }
+
+        protected void EachVisibleElem(Action<IFlatListItem> onElem)
+        {
+            foreach (IFlatListItem element in Elements)
+            {
+                if (!element.Visible)
+                {
+                    continue;
+                }
+
+                onElem(element);
+            }
+        }
+
+        
+
         public override void RenderInteractiveElements(float deltaTime)
         {
             int mx = api.Input.MouseX;
@@ -133,6 +197,7 @@ namespace Vintagestory.GameContent
 
             double posY = insideBounds.absY;
             double ypad = GuiElement.scaled(unscalledYPad);
+            double height = scaled(unscaledCellHeight);
 
             foreach (IFlatListItem element in Elements)
             {
@@ -140,15 +205,14 @@ namespace Vintagestory.GameContent
 
                 float y = (float)(5 + Bounds.absY + posY);
                 
-
-                if (inbounds && mx > Bounds.absX && mx <= Bounds.absX + Bounds.InnerWidth && my >= y-ypad && my <= y + scaled(unscaledCellHeight)- ypad)
+                if (inbounds && mx > Bounds.absX && mx <= Bounds.absX + Bounds.InnerWidth && my >= y-ypad && my <= y + height - ypad)
                 {
                     api.Render.Render2DLoadedTexture(hoverOverlayTexture, (float)Bounds.absX, y - (float)ypad);
                 }
 
                 if (posY > -50 && posY < Bounds.OuterHeight + 50)
                 {
-                    element.RenderTo(api, Bounds.absX, y);
+                    element.RenderListEntryTo(api, deltaTime, Bounds.absX, y, Bounds.InnerWidth, height);
                 }
 
                 posY += scaled(unscaledCellHeight + unscaledCellSpacing);

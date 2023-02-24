@@ -20,20 +20,17 @@ namespace Vintagestory.GameContent
         public override string InventoryClassName => "shelf";
 
         Block block;
-        Matrixf mat = new Matrixf();
 
+        static int slotCount = 8;
 
         public BlockEntityShelf()
         {
-            inv = new InventoryGeneric(8, "shelf-0", null, null);
-            meshes = new MeshData[8];
+            inv = new InventoryGeneric(slotCount, "shelf-0", null, null);
         }
 
         public override void Initialize(ICoreAPI api)
         {
             block = api.World.BlockAccessor.GetBlock(Pos);
-            mat.RotateYDeg(block.Shape.rotateY);
-
             base.Initialize(api);
         }
 
@@ -106,6 +103,8 @@ namespace Vintagestory.GameContent
                     int moved = slot.TryPutInto(Api.World, inv[i]);
                     updateMeshes();
                     MarkDirty(true);
+                    (Api as ICoreClientAPI)?.World.Player.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
+
                     return moved > 0;
                 }
             }
@@ -136,6 +135,8 @@ namespace Vintagestory.GameContent
                     {
                         Api.World.SpawnItemEntity(stack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
                     }
+
+                    (Api as ICoreClientAPI)?.World.Player.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
                     MarkDirty(true);
                     updateMeshes();
                     return true;
@@ -145,17 +146,31 @@ namespace Vintagestory.GameContent
             return false;
         }
 
-
-
-        public override void TranslateMesh(MeshData mesh, int index)
+        protected override float[][] genTransformationMatrices()
         {
-            float x = ((index % 4) >= 2) ? 12 / 16f : 4 / 16f;
-            float y = index >= 4 ? 10 / 16f : 2 / 16f;
-            float z = (index % 2 == 0) ? 4 / 16f : 10 / 16f;
+            float[][] tfMatrices = new float[slotCount][];
 
-            Vec4f offset = mat.TransformVector(new Vec4f(x - 0.5f, y, z - 0.5f, 0));
-            mesh.Translate(offset.XYZ);
+            for (int index = 0; index < slotCount; index++)
+            {
+                float x = ((index % 4) >= 2) ? 12 / 16f : 4 / 16f;
+                float y = index >= 4 ? 10 / 16f : 2 / 16f;
+                float z = (index % 2 == 0) ? 4 / 16f : 10 / 16f;
+
+                tfMatrices[index] = 
+                    new Matrixf()
+                    .Translate(0.5f, 0, 0.5f)
+                    .RotateYDeg(block.Shape.rotateY)
+                    .Translate(x - 0.5f, y, z - 0.5f)
+                    .Translate(-0.5f, 0, -0.5f)
+                    .Values
+                ;
+            }
+
+            return tfMatrices;
         }
+
+
+        #region Block info
 
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder sb)
         {
@@ -409,5 +424,6 @@ namespace Vintagestory.GameContent
             return dsc.ToString();
         }
 
+        #endregion
     }
 }

@@ -411,6 +411,16 @@ namespace Vintagestory.GameContent
                 throw new NotImplementedException();
             }
 
+            public bool SetDecor(Block block, int index3d, BlockFacing onFace)
+            {
+                throw new NotImplementedException();
+            }
+
+            public bool SetDecor(Block block, int index3d, int decorIndex)
+            {
+                throw new NotImplementedException();
+            }
+
             #endregion
         }
     }

@@ -42,7 +42,7 @@ namespace Vintagestory.GameContent
         public string MatCode;
     }
 
-    public class BlockPitkiln : BlockGroundStorage
+    public class BlockPitkiln : BlockGroundStorage, IIgnitable
     {
         public Dictionary<string, BuildStage[]> BuildStagesByBlock = new Dictionary<string, BuildStage[]>();
         public Dictionary<string, Shape> ShapesByBlock = new Dictionary<string, Shape>();
@@ -266,7 +266,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override EnumIgniteState OnTryIgniteBlock(EntityAgent byEntity, BlockPos pos, float secondsIgniting)
+        public EnumIgniteState OnTryIgniteBlock(EntityAgent byEntity, BlockPos pos, float secondsIgniting)
         {
             BlockEntityPitKiln beb = byEntity.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityPitKiln;
             if (!beb.CanIgnite()) return EnumIgniteState.NotIgnitablePreventDefault;
@@ -276,7 +276,7 @@ namespace Vintagestory.GameContent
             return secondsIgniting > 4 ? EnumIgniteState.IgniteNow : EnumIgniteState.Ignitable;
         }
 
-        public override void OnTryIgniteBlockOver(EntityAgent byEntity, BlockPos pos, float secondsIgniting, ref EnumHandling handling)
+        public void OnTryIgniteBlockOver(EntityAgent byEntity, BlockPos pos, float secondsIgniting, ref EnumHandling handling)
         {
             handling = EnumHandling.PreventDefault;
 

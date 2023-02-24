@@ -97,21 +97,18 @@ namespace Vintagestory.GameContent
         protected TextureAtlasPosition getOrCreateTexPos(AssetLocation texturePath)
         {
             var capi = api as ICoreClientAPI;
-            TextureAtlasPosition texpos = curAtlas[texturePath];
 
-            if (texpos == null)
+            curAtlas.GetOrInsertTexture(texturePath, out _, out var texpos, () =>
             {
                 IAsset texAsset = capi.Assets.TryGet(texturePath.Clone().WithPathPrefixOnce("textures/").WithPathAppendixOnce(".png"));
                 if (texAsset != null)
                 {
-                    BitmapRef bmp = texAsset.ToBitmap(capi);
-                    curAtlas.InsertTextureCached(texturePath, bmp, out _, out texpos, 0.1f);
+                    return texAsset.ToBitmap(capi);
                 }
-                else
-                {
-                    capi.World.Logger.Warning("Item {0} defined texture {1}, not no such texture found.", Code, texturePath);
-                }
-            }
+
+                capi.World.Logger.Warning("Item {0} defined texture {1}, not no such texture found.", Code, texturePath);
+                return null;
+            }, 0.1f);
 
             return texpos;
         }

@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Vintagestory.API.Client;
+﻿using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
@@ -31,7 +26,7 @@ namespace Vintagestory.GameContent
                 slot.MarkDirty();
             }
             
-            EntityProperties type = byEntity.World.GetEntityType(new AssetLocation("armorstand"));
+            EntityProperties type = byEntity.World.GetEntityType(this.Code);
             Entity entity = byEntity.World.ClassRegistry.CreateEntity(type);
 
             if (entity != null)

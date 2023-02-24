@@ -104,7 +104,10 @@ namespace Vintagestory.GameContent
         public override void AssetsFinalize(ICoreAPI api)
         {
             // Needs to be done before assets are ready because it rewrites Behavior and CollectibleBehavior
-            addReinforcementBehavior();
+            if (api.Side == EnumAppSide.Server) // No need to add it twice on the client
+            {
+                addReinforcementBehavior();
+            }
         }
 
         public override void StartClientSide(ICoreClientAPI api)

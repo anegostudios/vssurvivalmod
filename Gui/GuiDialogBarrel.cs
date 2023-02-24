@@ -58,7 +58,7 @@ namespace Vintagestory.GameContent
                 .AddDialogTitleBar(DialogTitle, OnTitleBarClose)
                 .BeginChildElements(bgBounds)
                     .AddItemSlotGrid(Inventory, SendInvPacket, 1, new int[] { 0 }, inputSlotBounds, "inputSlot")
-                    .AddSmallButton("Seal", onSealClick, ElementBounds.Fixed(0, 100, 80, 25), EnumButtonStyle.Normal, EnumTextOrientation.Center)
+                    .AddSmallButton("Seal", onSealClick, ElementBounds.Fixed(0, 100, 80, 25), EnumButtonStyle.Normal)
 
                     .AddInset(fullnessMeterBounds.ForkBoundingParent(2,2,2,2), 2)
                     .AddDynamicCustomDraw(fullnessMeterBounds, fullnessMeterDraw, "liquidBar")

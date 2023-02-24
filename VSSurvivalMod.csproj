@@ -41,7 +41,7 @@
     <UseVSHostingProcess>false</UseVSHostingProcess>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
-    <LangVersion>7</LangVersion>
+    <LangVersion>7.3</LangVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -69,7 +69,7 @@
     <PlatformTarget>AnyCPU</PlatformTarget>
     <UseVSHostingProcess>false</UseVSHostingProcess>
     <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
-    <LangVersion>7</LangVersion>
+    <LangVersion>7.3</LangVersion>
     <ErrorReport>prompt</ErrorReport>
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
@@ -85,10 +85,6 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="0Harmony, Version=2.2.2.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Lib.Harmony.2.2.2.0\lib\net45\0Harmony.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
     <Reference Include="Newtonsoft.Json">
       <HintPath>..\Lib\Newtonsoft.Json.dll</HintPath>
       <Private>False</Private>
@@ -100,6 +96,10 @@
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Drawing" />
+    <Reference Include="System.Runtime.CompilerServices.Unsafe, Version=4.0.4.1, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Runtime.CompilerServices.Unsafe.4.5.3\lib\net461\System.Runtime.CompilerServices.Unsafe.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="System.Xml.Linq" />
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Data" />
@@ -111,7 +111,9 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="BlockBehavior\BehaviorRainDrip.cs" />
+    <Compile Include="BlockBehavior\BehaviorJonasBoiler.cs" />
+    <Compile Include="BlockBehavior\BehaviorDoor.cs" />
+    <Compile Include="BlockBehavior\BlockBehaviorRainDrip.cs" />
     <Compile Include="BlockBehavior\BehaviorWrenchOrientable.cs" />
     <Compile Include="BlockBehavior\BehaviorCanAttach.cs" />
     <Compile Include="BlockBehavior\BehaviorMyceliumHost.cs" />
@@ -126,37 +128,104 @@
     <Compile Include="BlockBehavior\BehaviorMilkingContainer.cs" />
     <Compile Include="BlockBehavior\BehaviorReinforcable.cs" />
     <Compile Include="BlockBehavior\BehaviorHeatSource.cs" />
+    <Compile Include="BlockEntity\BlockEntityWorldgenHook.cs" />
+    <Compile Include="Block\BlockWorldgenHook.cs" />
+    <Compile Include="Lore\ResoArchives\BEBehaviorClutterBookshelfWithLore.cs" />
+    <Compile Include="Lore\ResoArchives\BEBehaviorControlPointLampNode.cs" />
+    <Compile Include="Lore\ResoArchives\BEBehaviorJonasBoilerDoor.cs" />
+    <Compile Include="Lore\ResoArchives\BEBehaviorControlPointAnimatable.cs" />
     <Compile Include="BlockEntityBehavior\BEBehaviorAttractsLightning.cs" />
     <Compile Include="BlockEntityBehavior\BEBehaviorBurning.cs" />
     <Compile Include="BlockEntityBehavior\BEBehaviorFirepitAmbient.cs" />
+    <Compile Include="BlockEntityBehavior\BEBehaviorDoor.cs" />
+    <Compile Include="BlockEntity\BlockEntityGuiConfigurableCommands.cs" />
+    <Compile Include="BlockEntity\BlockEntityConditional.cs" />
+    <Compile Include="BlockEntity\BlockEntityTicker.cs" />
+    <Compile Include="Block\BlockCommand.cs" />
+    <Compile Include="Block\BlockTicker.cs" />
+    <Compile Include="Lore\ResoArchives\BEBehaviorJonasGasifier.cs" />
+    <Compile Include="Lore\ResoArchives\BEBehaviorJonasHydraulicPump.cs" />
+    <Compile Include="Lore\ResoArchives\BlockEntityMusicTrigger.cs" />
+    <Compile Include="Lore\ResoArchives\BlockBehaviorJonasGasifier.cs" />
+    <Compile Include="Lore\ResoArchives\BlockBehaviorJonasHydraulicPump.cs" />
+    <Compile Include="Lore\ResoArchives\BlockClutterBookshelfWithLore.cs" />
+    <Compile Include="Lore\ResoArchives\BookShelfTypeProps.cs" />
+    <Compile Include="Lore\ResoArchives\BookShelfVariantGroup.cs" />
+    <Compile Include="Lore\ResoArchives\ClutterBookshelfUtil.cs" />
+    <Compile Include="Lore\ResoArchives\EchoChamberRenderer.cs" />
+    <Compile Include="Gui\GuiDialogBlockEntityCommand.cs" />
+    <Compile Include="Gui\GuiDialogBlockEntityCondtional.cs" />
+    <Compile Include="Gui\GuiDialogBlockEntityTicker.cs" />
+    <Compile Include="Item\ItemMeasuringRope.cs" />
+    <Compile Include="Item\ItemOar.cs" />
+    <Compile Include="Item\ItemTextureFlipper.cs" />
+    <Compile Include="Lore\ResoArchives\EntityEchoChamber.cs" />
+    <Compile Include="Lore\ResoArchives\ModSystemResoArchiveConfigurator.cs" />
+    <Compile Include="Systems\Boats\BoatSeat.cs" />
+    <Compile Include="Systems\Boats\Core.cs" />
+    <Compile Include="Systems\Boats\EntityBoat.cs" />
+    <Compile Include="Systems\Boats\ItemBoat.cs" />
+    <Compile Include="Systems\Microblock\BEBehaviorMicroblockSnowCover.cs" />
     <Compile Include="BlockEntityRenderer\AnvilPartRenderer.cs" />
     <Compile Include="BlockEntityRenderer\BlockEntitySignPostRenderer.cs" />
     <Compile Include="BlockEntityRenderer\ChestLabelRenderer.cs" />
-    <Compile Include="BlockEntityRenderer\EchoChamberRenderer.cs" />
+    <Compile Include="BlockEntityRenderer\ResonatorRenderer.cs" />
     <Compile Include="BlockEntityRenderer\FruitpressContentsRenderer.cs" />
     <Compile Include="BlockEntityRenderer\FirepitContentsRenderer.cs" />
     <Compile Include="BlockEntityRenderer\FruitRenderer.cs" />
     <Compile Include="BlockEntityRenderer\PotInFirepitRenderer.cs" />
     <Compile Include="BlockEntityRenderer\HelveHammerRenderer.cs" />
     <Compile Include="BlockEntityRenderer\QuernTopRenderer.cs" />
-    <Compile Include="BlockEntity\BEBookshelf.cs" />
-    <Compile Include="BlockEntity\BEClutter.cs" />
+    <Compile Include="BlockEntity\BEOmokTable.cs" />
+    <Compile Include="BlockEntityBehavior\BEBehaviorSupportBeam.cs" />
+    <Compile Include="Lore\ResoArchives\BEBehaviorClutterBookshelf.cs" />
     <Compile Include="BlockEntity\BELightningRod.cs" />
-    <Compile Include="BlockEntity\BEWildCrop.cs" />
-    <Compile Include="BlockEntity\BlockEntityShapeFromAttributes.cs" />
+    <Compile Include="BlockEntity\BEBookshelf.cs" />
+    <Compile Include="BlockEntity\Unfinished\BEWildCrop.cs" />
+    <Compile Include="BlockEntityBehavior\BEBehaviorShapeFromAttributes.cs" />
     <Compile Include="BlockEntity\BERiftWard.cs" />
+    <Compile Include="Block\BlockOmokTable.cs" />
+    <Compile Include="Block\BlockSupportBeam.cs" />
+    <Compile Include="Block\BlockRiftWard.cs" />
     <Compile Include="Block\BlockTermiteMound.cs" />
     <Compile Include="Block\BlockClutter.cs" />
     <Compile Include="Block\BlockBough.cs" />
     <Compile Include="Block\BlockLightningRod.cs" />
-    <Compile Include="Block\BlockBookshelf.cs" />
+    <Compile Include="Lore\ResoArchives\BlockClutterBookshelf.cs" />
     <Compile Include="Block\BlockVariheight.cs" />
-    <Compile Include="Block\BlockPlanks.cs" />
     <Compile Include="Block\BlockGroundAndSideAttachable.cs" />
+    <Compile Include="Block\BlockBookShelf.cs" />
+    <Compile Include="Lore\ResoArchives\Eidolon\AiTaskEidolonMeleeAttack.cs" />
+    <Compile Include="Lore\ResoArchives\Eidolon\AiTaskEidolonSlam.cs" />
     <Compile Include="Entities\EntityDrifter.cs" />
+    <Compile Include="Lore\ResoArchives\Eidolon\EntityEidolon.cs" />
     <Compile Include="Entity\Behavior\BehaviorCommandable.cs" />
+    <Compile Include="Entity\Behavior\EntityBehaviorBoss.cs" />
     <Compile Include="Entity\Behavior\BehaviorPettable.cs" />
+    <Compile Include="Gui\HudBosshealthBars.cs" />
+    <Compile Include="Item\ItemBugnet.cs" />
+    <Compile Include="Item\ItemGlider.cs" />
+    <Compile Include="Systems\Microblock\CuboidWithMaterial.cs" />
+    <Compile Include="Systems\Microblock\IMicroblockBehavior.cs" />
+    <Compile Include="Systems\Microblock\ModSystemDetailModeSync.cs" />
+    <Compile Include="Systems\Microblock\RefList.cs" />
+    <Compile Include="Systems\Microblock\Voxel.cs" />
+    <Compile Include="Systems\Microblock\VoxelMaterial.cs" />
+    <Compile Include="Systems\Microblock\XYZ.cs" />
+    <Compile Include="Lore\ResoArchives\ControlPoints.cs" />
+    <Compile Include="Systems\TiledDungeon\DungeonTileSide.cs" />
+    <Compile Include="Systems\TiledDungeon\DungeonTile.cs" />
+    <Compile Include="Systems\TiledDungeon\TiledDungeonGenerator.cs" />
+    <Compile Include="Systems\TiledDungeon\TiledDungeon.cs" />
+    <Compile Include="Systems\TiledDungeon\TiledDungeonConfig.cs" />
+    <Compile Include="Systems\WorldGen\Standard\ChunkGen\6.GenStructures\GenDungeons.cs" />
+    <Compile Include="Systems\WorldGen\Standard\ChunkGen\7.GenPonds\GenHotSprings.cs" />
+    <Compile Include="Systems\WorldGen\Standard\Datastructures\BlockSchematicPartial.cs" />
+    <Compile Include="Systems\WritingSystem\GuiDialogEditableBook.cs" />
+    <Compile Include="Systems\WritingSystem\GuiDialogReadonlyBook.cs" />
+    <Compile Include="Systems\WritingSystem\ItemBook.cs" />
     <Compile Include="Item\ItemCreatureInventory.cs" />
+    <Compile Include="Item\ItemDeadButterfly.cs" />
     <Compile Include="Item\ItemWrench.cs" />
     <Compile Include="Item\ItemPressedMash.cs" />
     <Compile Include="Item\ItemShield.cs" />
@@ -165,10 +234,10 @@
     <Compile Include="BlockEntityBehavior\BEBehaviorFruiting.cs" />
     <Compile Include="BlockEntity\BECrate.cs" />
     <Compile Include="BlockEntity\BETorchTorchholder.cs" />
-    <Compile Include="BlockEntity\BlockEntityLiquidContainer.cs" />
+    <Compile Include="BlockEntity\BELiquidContainer.cs" />
     <Compile Include="BlockEntity\BEMycelium.cs" />
-    <Compile Include="BlockEntity\BlockEntityCondenser.cs" />
-    <Compile Include="BlockEntity\BlockEntityBoiler.cs" />
+    <Compile Include="BlockEntity\BECondenser.cs" />
+    <Compile Include="BlockEntity\BEBoiler.cs" />
     <Compile Include="BlockEntity\BEFruitpress.cs" />
     <Compile Include="BlockEntity\BEDeadCrop.cs" />
     <Compile Include="BlockEntity\BEPie.cs" />
@@ -183,15 +252,25 @@
     <Compile Include="Item\ItemSling.cs" />
     <Compile Include="Systems\Auction\Auction.cs" />
     <Compile Include="Systems\Auction\AuctionCellEntry.cs" />
-    <Compile Include="Systems\Auction\Packets.cs" />
-    <Compile Include="Systems\ChiselModes\ChiselMode.cs" />
-    <Compile Include="Systems\ChiselModes\EightByChiselMode.cs" />
-    <Compile Include="Systems\ChiselModes\FlipChiselMode.cs" />
-    <Compile Include="Systems\ChiselModes\FourByChiselMode.cs" />
-    <Compile Include="Systems\ChiselModes\OneByChiselMode.cs" />
-    <Compile Include="Systems\ChiselModes\RenameChiselMode.cs" />
-    <Compile Include="Systems\ChiselModes\RotateChiselMode.cs" />
-    <Compile Include="Systems\ChiselModes\TwoByChiselMode.cs" />
+    <Compile Include="Systems\Auction\AuctionPackets.cs" />
+    <Compile Include="Systems\Microblock\ChiselMode\ChiselMode.cs" />
+    <Compile Include="Systems\Microblock\ChiselMode\EightByChiselMode.cs" />
+    <Compile Include="Systems\Microblock\ChiselMode\FlipChiselMode.cs" />
+    <Compile Include="Systems\Microblock\ChiselMode\FourByChiselMode.cs" />
+    <Compile Include="Systems\Microblock\ChiselMode\OneByChiselMode.cs" />
+    <Compile Include="Systems\Microblock\ChiselMode\RenameChiselMode.cs" />
+    <Compile Include="Systems\Microblock\ChiselMode\RotateChiselMode.cs" />
+    <Compile Include="Systems\Microblock\ChiselMode\TwoByChiselMode.cs" />
+    <Compile Include="Systems\Dialogue\BehaviorConversable.cs" />
+    <Compile Include="Systems\Dialogue\Component\DialogueComponentConverter.cs" />
+    <Compile Include="Systems\Dialogue\DialogueController.cs" />
+    <Compile Include="Systems\Dialogue\DialogueSystem.cs" />
+    <Compile Include="Systems\Dialogue\Component\DlgConditionComponent.cs" />
+    <Compile Include="Systems\Dialogue\Component\DlgGenericComponent.cs" />
+    <Compile Include="Systems\Dialogue\Component\DlgJumpComponent.cs" />
+    <Compile Include="Systems\Dialogue\Component\DlgTalkComponent.cs" />
+    <Compile Include="Systems\Dialogue\GuiDialogueDialog.cs" />
+    <Compile Include="Systems\Dialogue\Component\DialogueComponent.cs" />
     <Compile Include="Systems\Handbook\CollectibleBehaviorHandbookTextAndExtraInfo.cs" />
     <Compile Include="Systems\Handbook\Gui\GuiDialogHandbook.cs" />
     <Compile Include="Systems\Handbook\Gui\GuiElementFlatList.cs" />
@@ -199,13 +278,24 @@
     <Compile Include="Systems\Handbook\Gui\GuiHandbookItemStackPage.cs" />
     <Compile Include="Systems\Handbook\Gui\GuiHandbookPage.cs" />
     <Compile Include="Systems\Handbook\Gui\GuiHandbookTextPage.cs" />
+    <Compile Include="Systems\Handbook\Tutorial\GuiHandbookTutorialPage.cs" />
     <Compile Include="Systems\Handbook\Handbook.cs" />
+    <Compile Include="Systems\Handbook\Tutorial\HudTutorial.cs" />
+    <Compile Include="Systems\Handbook\Tutorial\ModSystemTutorial.cs" />
+    <Compile Include="Systems\Handbook\Tutorial\PlayerMilestoneWatcherBase.cs" />
+    <Compile Include="Systems\Handbook\Tutorial\PlayerReceiveItemWatcher.cs" />
+    <Compile Include="Systems\Handbook\Tutorial\FirstStepsTutorial.cs" />
+    <Compile Include="Systems\Handbook\Tutorial\TutorialBase.cs" />
+    <Compile Include="Systems\Handbook\Tutorial\TutorialStepBase.cs" />
+    <Compile Include="Systems\Handbook\Tutorial\TutorialStepReceive.cs" />
     <Compile Include="Systems\Liquid\BlockLiquidContainerBase.cs" />
     <Compile Include="Systems\Liquid\ContainerTextureSource.cs" />
     <Compile Include="Systems\Liquid\ILiquidInterfaces.cs" />
     <Compile Include="Systems\Liquid\LiquidItemStackRenderer.cs" />
     <Compile Include="Systems\Liquid\WaterTightContainableProps.cs" />
-    <Compile Include="Systems\NighttimeDangers\Rift.cs" />
+    <Compile Include="Systems\LocatorMaps\ItemLocatorMap.cs" />
+    <Compile Include="Systems\LocatorMaps\StructureLocator.cs" />
+    <Compile Include="Systems\Rifts\Rift.cs" />
     <Compile Include="Systems\TemporalStability\GearRenderer.cs" />
     <Compile Include="Systems\Recipe\AlloyRecipe.cs" />
     <Compile Include="Systems\Recipe\BarrelRecipe.cs" />
@@ -214,14 +304,14 @@
     <Compile Include="Systems\Cooking\Clayoven\BEClayOven.cs" />
     <Compile Include="BlockEntity\BEPitKiln.cs" />
     <Compile Include="BlockEntity\BELayer.cs" />
-    <Compile Include="BlockEntity\BEMicroBlock.cs" />
+    <Compile Include="Systems\Microblock\BEMicroBlock.cs" />
     <Compile Include="BlockEntity\BECoalPile.cs" />
     <Compile Include="BlockEntity\BECheese.cs" />
     <Compile Include="BlockEntity\BECheeseCurdsBundle.cs" />
     <Compile Include="BlockEntity\BEChute.cs" />
     <Compile Include="BlockEntity\BEDisplayCase.cs" />
-    <Compile Include="BlockEntity\BEEchoChamber.cs" />
-    <Compile Include="BlockEntity\BEMoldRack.cs" />
+    <Compile Include="BlockEntity\BEResonator.cs" />
+    <Compile Include="BlockEntity\BEVerticalRack.cs" />
     <Compile Include="Block\BlockFruiting.cs" />
     <Compile Include="Block\BlockFruitpressTop.cs" />
     <Compile Include="Block\BlockFruitPress.cs" />
@@ -241,8 +331,8 @@
     <Compile Include="Legacy\BlockEntity\BEPlankPile.cs" />
     <Compile Include="BlockEntity\BEStoneCoffin.cs" />
     <Compile Include="BlockEntity\BEHenBox.cs" />
-    <Compile Include="BlockEntity\BlockEntityGroundStorage.cs" />
-    <Compile Include="BlockEntity\BlockEntityPlantContainer.cs" />
+    <Compile Include="BlockEntity\BEGroundStorage.cs" />
+    <Compile Include="BlockEntity\BEPlantContainer.cs" />
     <Compile Include="BlockEntity\BEShelf.cs" />
     <Compile Include="BlockEntity\BESignPost.cs" />
     <Compile Include="BlockEntity\BEStaticTranslocator.cs" />
@@ -255,7 +345,7 @@
     <Compile Include="BlockEntity\BEMeal.cs" />
     <Compile Include="BlockEntity\BESapling.cs" />
     <Compile Include="BlockEntity\BECrock.cs" />
-    <Compile Include="BlockEntity\BlockEntityContainerDisplay.cs" />
+    <Compile Include="BlockEntity\BEContainerDisplay.cs" />
     <Compile Include="Block\BlockFenceStackAware.cs" />
     <Compile Include="Block\BlockGroundStorage.cs" />
     <Compile Include="Block\BlockLogSection.cs" />
@@ -273,7 +363,7 @@
     <Compile Include="Block\BlockRefractoryBrick.cs" />
     <Compile Include="Block\BlockSticksLayer.cs" />
     <Compile Include="Block\BlockGlassPane.cs" />
-    <Compile Include="Block\BlockMicroBlock.cs" />
+    <Compile Include="Systems\Microblock\BlockMicroBlock.cs" />
     <Compile Include="Block\BlockCoalPile.cs" />
     <Compile Include="Block\BlockCheese.cs" />
     <Compile Include="Block\BlockCheeseCurdsBundle.cs" />
@@ -287,13 +377,13 @@
     <Compile Include="Block\BlockCharcoalPit.cs" />
     <Compile Include="Block\BlockChute.cs" />
     <Compile Include="Block\BlockLinen.cs" />
-    <Compile Include="Block\BlockMoldRack.cs" />
+    <Compile Include="Block\BlockVerticalRack.cs" />
     <Compile Include="Block\BlockSnowLayer.cs" />
     <Compile Include="Block\BlockLakeIce.cs" />
     <Compile Include="Block\BlockSlabSnowRemove.cs" />
     <Compile Include="Block\BlockTapestry.cs" />
     <Compile Include="Block\BlockDisplayCase.cs" />
-    <Compile Include="Block\BlockEchoChamber.cs" />
+    <Compile Include="Block\BlockResonator.cs" />
     <Compile Include="Block\BlockGlowworms.cs" />
     <Compile Include="Block\BlockHopper.cs" />
     <Compile Include="Block\BlockShell.cs" />
@@ -315,7 +405,6 @@
     <Compile Include="Block\BlockStalagSection.cs" />
     <Compile Include="Block\BlockSoilDeposit.cs" />
     <Compile Include="Block\BlockStaticTranslocator.cs" />
-    <Compile Include="Block\BlockThermalDifference.cs" />
     <Compile Include="Block\BlockWater.cs" />
     <Compile Include="Block\BlockWaterfall.cs" />
     <Compile Include="Block\BlockWaterFlowing.cs" />
@@ -339,7 +428,7 @@
     <Compile Include="Item\ItemRope.cs" />
     <Compile Include="Item\ItemScrapWeaponKit.cs" />
     <Compile Include="Systems\Character\Trait.cs" />
-    <Compile Include="Systems\ChiselBlockBulkSetMaterial.cs" />
+    <Compile Include="Systems\Microblock\MicroblockTool.cs" />
     <Compile Include="Systems\Character\Character.cs" />
     <Compile Include="Systems\Cooking\CookingRecipe.cs" />
     <Compile Include="Systems\Cooking\CookingRecipeIngredient.cs" />
@@ -366,10 +455,11 @@
     <Compile Include="Systems\Recipe\MetalAlloyIngredient.cs" />
     <Compile Include="Systems\Recipe\RecipeLoader.cs" />
     <Compile Include="Systems\Recipe\SmithingRecipe.cs" />
+    <Compile Include="Systems\Trading\ITradeableCollectible.cs" />
     <Compile Include="Systems\Trading\TradeHandbookInfo.cs" />
-    <Compile Include="Systems\NighttimeDangers\RiftRenderer.cs" />
-    <Compile Include="Systems\NighttimeDangers\Rifts.cs" />
-    <Compile Include="Systems\NighttimeDangers\RiftWeather.cs" />
+    <Compile Include="Systems\Rifts\RiftRenderer.cs" />
+    <Compile Include="Systems\Rifts\Rifts.cs" />
+    <Compile Include="Systems\Rifts\RiftWeather.cs" />
     <Compile Include="Systems\Trading\TraderAnimationManager.cs" />
     <Compile Include="Entity\AITask\AiTaskButterflyFlee.cs" />
     <Compile Include="Entity\AITask\AiTaskButterflyRest.cs" />
@@ -401,9 +491,9 @@
     <Compile Include="Systems\MechanicalPower\BlockEntityBehavior\BEBehaviorAxle.cs" />
     <Compile Include="BlockEntity\BEGenericContainer.cs" />
     <Compile Include="BlockEntity\BEBed.cs" />
-    <Compile Include="BlockEntity\BEBellows.cs" />
+    <Compile Include="BlockEntity\Unfinished\BEBellows.cs" />
     <Compile Include="BlockEntity\BEBerryBush.cs" />
-    <Compile Include="BlockEntity\BEBlastFurnace.cs" />
+    <Compile Include="BlockEntity\Unfinished\BEBlastFurnace.cs" />
     <Compile Include="BlockEntity\BEBloomery.cs" />
     <Compile Include="BlockEntity\BEBomb.cs" />
     <Compile Include="BlockEntity\BECharcoalPit.cs" />
@@ -420,8 +510,8 @@
     <Compile Include="Legacy\BlockEntity\BEPlatePile.cs" />
     <Compile Include="BlockEntity\BEPumpkinVine.cs" />
     <Compile Include="BlockEntity\BESign.cs" />
-    <Compile Include="BlockEntity\BESpawner.cs" />
-    <Compile Include="BlockEntity\BEStove.cs" />
+    <Compile Include="BlockEntity\BlockEntitySpawner.cs" />
+    <Compile Include="BlockEntity\Unfinished\BEStove.cs" />
     <Compile Include="BlockEntity\BETeleporter.cs" />
     <Compile Include="BlockEntity\BEToolMold.cs" />
     <Compile Include="BlockEntity\BEToolrack.cs" />
@@ -430,11 +520,11 @@
     <Compile Include="Systems\MechanicalPower\BlockEntityBehavior\BEBehaviorMPConsumer.cs" />
     <Compile Include="Systems\MechanicalPower\BlockEntityBehavior\BEBehaviorTransmission.cs" />
     <Compile Include="Systems\MechanicalPower\BlockEntityBehavior\BEBehaviorWindmillRotor.cs" />
-    <Compile Include="BlockEntity\BEChisel.cs" />
+    <Compile Include="Systems\Microblock\BEChisel.cs" />
     <Compile Include="BlockEntity\BEBucket.cs" />
-    <Compile Include="BlockEntity\BlockEntityContainer.cs" />
+    <Compile Include="BlockEntity\BEContainer.cs" />
     <Compile Include="Systems\Cooking\BECookedContainer.cs" />
-    <Compile Include="BlockEntity\BlockEntityOpenableContainer.cs" />
+    <Compile Include="BlockEntity\BEOpenableContainer.cs" />
     <Compile Include="Legacy\BlockEntity\BlockEntityItemPile.cs" />
     <Compile Include="BlockEntityRenderer\AnvilWorkItemRenderer.cs" />
     <Compile Include="BlockEntityRenderer\BloomeryContentsRenderer.cs" />
@@ -484,7 +574,7 @@
     <Compile Include="Systems\Cooking\BlockCookingContainer.cs" />
     <Compile Include="Block\BlockCrop.cs" />
     <Compile Include="Block\BlockBaseDoor.cs" />
-    <Compile Include="Block\BlockDoor.cs" />
+    <Compile Include="Legacy\BlockDoor.cs" />
     <Compile Include="Block\BlockFence.cs" />
     <Compile Include="Block\BlockFenceGate.cs" />
     <Compile Include="Block\BlockFirepit.cs" />
@@ -531,7 +621,7 @@
     <Compile Include="Block\BlockWateringCan.cs" />
     <Compile Include="Block\BlockWaterLily.cs" />
     <Compile Include="Block\BlockWaterPlant.cs" />
-    <Compile Include="Block\BlockChisel.cs" />
+    <Compile Include="Systems\Microblock\BlockChisel.cs" />
     <Compile Include="Block\BlockWithGrassOverlay.cs" />
     <Compile Include="Systems\MechanicalPower\Block\BlockAngledGears.cs" />
     <Compile Include="Systems\MechanicalPower\Block\BlockAxle.cs" />
@@ -557,7 +647,7 @@
     <Compile Include="Systems\MechanicalPower\Renderer\GenericMechBlockRenderer.cs" />
     <Compile Include="Systems\MechanicalPower\Renderer\MechBlockRenderer.cs" />
     <Compile Include="Systems\MechanicalPower\Renderer\TransmissionBlockRenderer.cs" />
-    <Compile Include="Systems\CustomSpawnConditions.cs" />
+    <Compile Include="Lore\ResoArchives\ResoArchivesSpawnConditions.cs" />
     <Compile Include="Systems\TemporalStability\TemporalStability.cs" />
     <Compile Include="Systems\Trading\ResolvedTradeItem.cs" />
     <Compile Include="Systems\Trading\TradeClasses.cs" />
@@ -575,6 +665,8 @@
     <Compile Include="Systems\WorldGen\Standard\ChunkGen\5.GenDeposits\Generators\Disc-Anywhere.cs" />
     <Compile Include="Systems\WorldGen\Standard\ChunkGen\5.GenDeposits\Generators\Disc-FollowSurface.cs" />
     <Compile Include="Systems\WorldGen\Standard\ChunkGen\5.GenDeposits\DepositGeneratorRegistry.cs" />
+    <Compile Include="Systems\WorldGen\Standard\ChunkGen\6.GenStructures\GenStoryStructures.cs" />
+    <Compile Include="Systems\WorldGen\Standard\ChunkGen\6.GenStructures\WorldGenStructureBase.cs" />
     <Compile Include="Systems\WorldGen\Standard\ChunkGen\8.GenVegetationAndPatches\GenHugePatches.cs" />
     <Compile Include="Systems\WorldGen\Standard\ChunkGen\8.GenVegetationAndPatches\GenPatchesPrePass.cs" />
     <Compile Include="Systems\WorldGen\Standard\ChunkGen\2.GenRockStrata\GenRockStrata.cs" />
@@ -630,7 +722,7 @@
     <Compile Include="Systems\Trading\ItemSlotTrade.cs" />
     <Compile Include="Systems\WearableStats.cs" />
     <Compile Include="Systems\BlockReinforcement.cs" />
-    <Compile Include="Systems\ChiselBlockModelCache.cs" />
+    <Compile Include="Systems\Microblock\MicroBlockModelCache.cs" />
     <Compile Include="Entities\EntityBeeMob.cs" />
     <Compile Include="Entities\EntityPlayerBot.cs" />
     <Compile Include="Entities\EntityProjectile.cs" />
@@ -677,7 +769,6 @@
     <Compile Include="Systems\MechanicalPower\Network\IMechanicalPowerDevice.cs" />
     <Compile Include="Systems\MechanicalPower\Renderer\MechNetworkRenderer.cs" />
     <Compile Include="Systems\NpcControl.cs" />
-    <Compile Include="Systems\SaplingControl.cs" />
     <Compile Include="Systems\Sleeping.cs" />
     <Compile Include="Systems\TeleporterManager.cs" />
     <Compile Include="Systems\WorldGen\Standard\ChunkGen\8.GenVegetationAndPatches\Treegen\ForestFloorSystem.cs" />
@@ -755,6 +846,7 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Debug.cs" />
     <Compile Include="Legacy\UpgradeTasks.cs" />
+    <Compile Include="Systems\WritingSystem\ModSystemEditableBook.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Cairo\Cairo.csproj">
@@ -789,6 +881,9 @@
       <ProductName>.NET Framework 3.5 SP1</ProductName>
       <Install>false</Install>
     </BootstrapperPackage>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

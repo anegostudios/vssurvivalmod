@@ -148,7 +148,16 @@ namespace Vintagestory.GameContent
             Api.World.BulkBlockAccessor.ReadFromStagedByDefault = true;
             float size = 0.6f + (float)Api.World.Rand.NextDouble() * 0.5f;
 
-            sapi.World.TreeGenerators[code].GrowTree(Api.World.BulkBlockAccessor, Pos.DownCopy(), true, size, 0, 0);
+            TreeGenParams pa = new TreeGenParams()
+            {
+                skipForestFloor = true,
+                size = size,
+                otherBlockChance = 0,
+                vinesGrowthChance = 0,
+                mossGrowthChance = 0
+            };
+
+            sapi.World.TreeGenerators[code].GrowTree(Api.World.BulkBlockAccessor, Pos.DownCopy(), pa);
 
             Api.World.BulkBlockAccessor.Commit();
         }

@@ -1,8 +1,10 @@
 ﻿using ProtoBuf;
 using System;
+using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
+using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
@@ -16,11 +18,20 @@ namespace Vintagestory.ServerMods
         public int polarEquatorDistance;
     }
 
+    public class ForceLandform
+    {
+        public string LandformCode;
+        public Rectanglei Area;
+
+        internal int landFormIndex;
+    }
+
     public class GenMaps : ModSystem
     {
         ICoreServerAPI sapi;
         ICoreClientAPI capi;
 
+        public MapLayerBase upheavelGen;
         public MapLayerBase climateGen;
         public MapLayerBase flowerGen;
         public MapLayerBase bushGen;
@@ -29,6 +40,7 @@ namespace Vintagestory.ServerMods
         public MapLayerBase geologicprovinceGen;
         public MapLayerBase landformsGen;
 
+        public int noiseSizeUpheavel;
         public int noiseSizeClimate;
         public int noiseSizeForest;
         public int noiseSizeBeach;
@@ -37,6 +49,13 @@ namespace Vintagestory.ServerMods
         public int noiseSizeLandform;
 
         LatitudeData latdata = new LatitudeData();
+        List<ForceLandform> forceLandforms = new List<ForceLandform>();
+
+        NormalizedSimplexNoise noisegenX;
+        NormalizedSimplexNoise noisegenZ;
+
+        public static float upheavelCommonness;
+
 
         public override bool ShouldLoad(EnumAppSide side)
         {
@@ -50,13 +69,32 @@ namespace Vintagestory.ServerMods
             ;
         }
 
+        /// <summary>
+        /// Forces a specific landform in a specified area. Area position are block positions. e.g. new Rectanglei(410000, 410000, 300, 300)
+        /// </summary>
+        /// <param name="landform"></param>
+        public void ForceLandformAt(ForceLandform landform)
+        {
+            forceLandforms.Add(landform);
+            var list = NoiseLandforms.landforms.LandFormsByIndex;
+            
+            for (int i = 0; i < list.Length; i++)
+            {
+                if (list[i].Code.Path == landform.LandformCode)
+                {
+                    landform.landFormIndex = i;
+                    return;
+                }
+            }
+
+            throw new ArgumentException("No landform with code " + landform.LandformCode + " found.");
+        }
+
         public override void StartClientSide(ICoreClientAPI api)
         {
             api.Network.GetChannel("latitudedata").SetMessageHandler<LatitudeData>(onLatitudeDataReceived);
             api.Event.LevelFinalize += Event_LevelFinalize;
-
             capi = api;
-            
         }
 
         private void Event_LevelFinalize()
@@ -89,6 +127,7 @@ namespace Vintagestory.ServerMods
         public void initWorldGen()
         {
             long seed = sapi.WorldManager.Seed;
+            noiseSizeUpheavel = sapi.WorldManager.RegionSize / TerraGenConfig.climateMapScale;
             noiseSizeClimate = sapi.WorldManager.RegionSize / TerraGenConfig.climateMapScale;
             noiseSizeForest = sapi.WorldManager.RegionSize / TerraGenConfig.forestMapScale;
             noiseSizeShrubs = sapi.WorldManager.RegionSize / TerraGenConfig.shrubMapScale;
@@ -103,6 +142,7 @@ namespace Vintagestory.ServerMods
             float tempModifier = worldConfig.GetString("globalTemperature", "1").ToFloat(1);
             float rainModifier = worldConfig.GetString("globalPrecipitation", "1").ToFloat(1);
             latdata.polarEquatorDistance = worldConfig.GetString("polarEquatorDistance", "50000").ToInt(50000);
+            upheavelCommonness = worldConfig.GetString("upheavelCommonness", "0.6").ToFloat(0.6f);
 
             switch (climate)
             {
@@ -132,6 +172,8 @@ namespace Vintagestory.ServerMods
                     }
 
                     noiseClimate = new NoiseClimateRealistic(seed, (double)sapi.WorldManager.MapSizeZ / TerraGenConfig.climateMapScale / TerraGenConfig.climateMapSubScale, latdata.polarEquatorDistance, spawnMinTemp, spawnMaxTemp);
+                    (noiseClimate as NoiseClimateRealistic).GeologicActivityStrength = worldConfig.GetString("geologicActivity").ToFloat(0.05f);
+
                     latdata.isRealisticClimate = true;
                     latdata.ZOffset = (noiseClimate as NoiseClimateRealistic).ZOffset;
                     break;
@@ -146,6 +188,7 @@ namespace Vintagestory.ServerMods
 
 
             climateGen = GetClimateMapGen(seed + 1, noiseClimate);
+            upheavelGen = GetGeoUpheavelMapGen(seed + 873, TerraGenConfig.geoUpheavelMapScale);
             forestGen = GetForestMapGen(seed + 2, TerraGenConfig.forestMapScale);
             bushGen = GetForestMapGen(seed + 109, TerraGenConfig.shrubMapScale);
             flowerGen = GetForestMapGen(seed + 223, TerraGenConfig.forestMapScale);
@@ -154,6 +197,13 @@ namespace Vintagestory.ServerMods
             landformsGen = GetLandformMapGen(seed + 4, noiseClimate, sapi);
 
             sapi.World.Calendar.OnGetLatitude = getLatitude;
+
+
+            int woctaves = 2;
+            float wscale = 2f * TerraGenConfig.landformMapScale;
+            float wpersistence = 0.9f;
+            noisegenX = NormalizedSimplexNoise.FromDefaultOctaves(woctaves, 1 / wscale, wpersistence, seed + 2);
+            noisegenZ = NormalizedSimplexNoise.FromDefaultOctaves(woctaves, 1 / wscale, wpersistence, seed + 1231296);
         }
 
 
@@ -178,7 +228,9 @@ namespace Vintagestory.ServerMods
             return latitude;
         }
 
-        private void OnMapRegionGen(IMapRegion mapRegion, int regionX, int regionZ)
+        
+
+        private void OnMapRegionGen(IMapRegion mapRegion, int regionX, int regionZ, ITreeAttribute chunkGenParams = null)
         {
             int pad = TerraGenConfig.geoProvMapPadding;
             mapRegion.GeologicProvinceMap.Data = geologicprovinceGen.GenLayer(
@@ -206,6 +258,10 @@ namespace Vintagestory.ServerMods
             forestGen.SetInputMap(mapRegion.ClimateMap, mapRegion.ForestMap);
             mapRegion.ForestMap.Data = forestGen.GenLayer(regionX * noiseSizeForest, regionZ * noiseSizeForest, noiseSizeForest+1, noiseSizeForest+1);
 
+            mapRegion.UpheavelMap.Size = noiseSizeUpheavel + 1;
+            mapRegion.UpheavelMap.BottomRightPadding = 1;
+            mapRegion.UpheavelMap.Data = upheavelGen.GenLayer(regionX * noiseSizeUpheavel, regionZ * noiseSizeUpheavel, noiseSizeUpheavel + 1, noiseSizeUpheavel + 1);
+
 
             mapRegion.BeachMap.Size = noiseSizeBeach + 1;
             mapRegion.BeachMap.BottomRightPadding = 1;
@@ -227,7 +283,79 @@ namespace Vintagestory.ServerMods
             mapRegion.LandformMap.Data = landformsGen.GenLayer(regionX * noiseSizeLandform - pad, regionZ * noiseSizeLandform - pad, noiseSizeLandform + 2*pad, noiseSizeLandform + 2*pad);
             mapRegion.LandformMap.Size = noiseSizeLandform + 2 * pad;
             mapRegion.LandformMap.TopLeftPadding = mapRegion.LandformMap.BottomRightPadding = pad;
-            
+
+            if (chunkGenParams?.HasAttribute("forceLandform")==true)
+            {
+                var index = chunkGenParams.GetInt("forceLandform");
+                for (int i = 0; i < mapRegion.LandformMap.Data.Length; i++)
+                {
+                    mapRegion.LandformMap.Data[i] = index;
+                }
+            }
+
+            int regionsize = sapi.WorldManager.RegionSize;
+            foreach (var fl in forceLandforms)
+            {
+                var rec = fl.Area;
+
+                int mapsize = mapRegion.LandformMap.InnerSize;
+                /*float padRel = (float)pad / noiseSizeLandform;
+
+                float min = -padRel * mapsize;
+                float max = (1 + padRel) * mapsize;
+
+                float startX = GameMath.Clamp((float)rec.X1 / regionsize - regionX, -padRel, 1 + padRel) * mapsize;
+                float endX = GameMath.Clamp((float)rec.X2 / regionsize - regionX, -padRel, 1 + padRel) * mapsize;
+                float startY = GameMath.Clamp((float)rec.Y1 / regionsize - regionZ, -padRel, 1 + padRel) * mapsize;
+                float endY = GameMath.Clamp((float)rec.Y2 / regionsize - regionZ, -padRel, 1 + padRel) * mapsize;
+
+                if (endX >= min && startX <= max && endY >= min && startY <= max)
+                {
+                    for (int x = (int)startX; x < endX; x++)
+                    {
+                        for (int y = (int)startY; y < endY; y++)
+                        {
+                            mapRegion.LandformMap.SetInt(x + pad, y + pad, fl.landFormIndex);
+                        }
+                    }
+                }*/
+
+                float wobbleIntensityBlocks = 50;
+                float wobbleIntensityPixels = wobbleIntensityBlocks / regionsize * mapsize;
+                float padRel_wobblepad = (float)pad / noiseSizeLandform + wobbleIntensityBlocks / regionsize;
+
+                float min = -padRel_wobblepad * mapsize;
+                float max = (1 + padRel_wobblepad) * mapsize;
+
+                float startX = GameMath.Clamp((float)rec.X1 / regionsize - regionX, -padRel_wobblepad, 1 + padRel_wobblepad) * mapsize;
+                float endX = GameMath.Clamp((float)rec.X2 / regionsize - regionX, -padRel_wobblepad, 1 + padRel_wobblepad) * mapsize;
+                float startZ = GameMath.Clamp((float)rec.Y1 / regionsize - regionZ, -padRel_wobblepad, 1 + padRel_wobblepad) * mapsize;
+                float endZ = GameMath.Clamp((float)rec.Y2 / regionsize - regionZ, -padRel_wobblepad, 1 + padRel_wobblepad) * mapsize;
+
+                if (endX >= min && startX <= max && endZ >= min && startZ <= max)
+                {
+                    for (int x = (int)startX; x < endX; x++)
+                    {
+                        for (int z = (int)startZ; z < endZ; z++)
+                        {
+                            double nx = x + regionX * mapsize;
+                            double nz = z + regionZ * mapsize;
+
+                            int offsetX = (int)(wobbleIntensityPixels * noisegenX.Noise(nx, nz));
+                            int offsetZ = (int)(wobbleIntensityPixels * noisegenZ.Noise(nx, nz));
+
+                            int finalX = x + offsetX + pad;
+                            int finalZ = z + offsetZ + pad;
+
+                            if (finalX >= 0 && finalX < mapRegion.LandformMap.Size && finalZ >= 0 && finalZ < mapRegion.LandformMap.Size)
+                            {
+                                mapRegion.LandformMap.SetInt(finalX, finalZ, fl.landFormIndex);
+                            }
+                        }
+                    }
+                }
+            }
+
             mapRegion.DirtyForSaving = true;
         }
 
@@ -291,18 +419,20 @@ namespace Vintagestory.ServerMods
         public static MapLayerBase GetForestMapGen(long seed, int scale)
         {
             MapLayerBase forest = new MapLayerWobbledForest(seed + 1, 3, 0.9f, scale, 600, -100);
-            //forest.DebugDrawBitmap(1, 0, 0, "Forest 1 - PerlinWobbleClimate"); - Requires climate  map
-
-
             return forest;
+        }
+
+        public static MapLayerBase GetGeoUpheavelMapGen(long seed, int scale)
+        {
+            var map = new MapLayerPerlinUpheavel(seed, upheavelCommonness, scale, 600, -300);
+            map.wobbleIntensity = scale / 2f;
+            return map;
         }
 
         public static MapLayerBase GetBeachMapGen(long seed, int scale)
         {
             MapLayerPerlin layer = new MapLayerPerlin(seed + 1, 6, 0.9f, scale/3, 255, new double[] { 0.2f, 0.2f, 0.2f, 0.2f, 0.2f, 0.2f });
-
             MapLayerBase beach = new MapLayerPerlinWobble(seed + 986876, layer, 4, 0.9f, scale / 2);
-            //forest.DebugDrawBitmap(1, 0, 0, "Forest 1 - PerlinWobbleClimate"); - Requires climate  map
 
             return beach;
         }

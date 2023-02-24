@@ -31,7 +31,7 @@ namespace Vintagestory.GameContent
 
         public float Temperature
         {
-            get { return metalContent.Collectible.GetTemperature(Api.World, metalContent); }
+            get { return metalContent?.Collectible.GetTemperature(Api.World, metalContent) ?? 0; }
         }
 
         public bool IsHardened

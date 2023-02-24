@@ -180,7 +180,7 @@ namespace Vintagestory.GameContent
             base.FinishExecute(cancelled);
         }
 
-        public override void OnEntityDespawn(EntityDespawnReason reason)
+        public override void OnEntityDespawn(EntityDespawnData reason)
         {
             sapi.Network.BroadcastEntityPacket(entity.EntityId, 1026);
 

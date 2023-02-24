@@ -231,7 +231,7 @@ namespace Vintagestory.GameContent
             if (cshape?.Base == null) return null;
             var tesselator = capi.Tesselator;
 
-            tmpTextureSource = tesselator.GetTexSource(this, 0, true);
+            tmpTextureSource = tesselator.GetTextureSource(this, 0, true);
 
             AssetLocation shapeloc = cshape.Base.WithPathAppendixOnce(".json").WithPathPrefixOnce("shapes/");
             Shape shape = API.Common.Shape.TryGet(capi, shapeloc);
@@ -284,7 +284,7 @@ namespace Vintagestory.GameContent
 
             nowTeselatingLabel = labelProps;
             labelTexturePos = texPos;
-            tmpTextureSource = capi.Tesselator.GetTexSource(this, 0, true);
+            tmpTextureSource = capi.Tesselator.GetTextureSource(this, 0, true);
 
             capi.Tesselator.TesselateShape("cratelabel", shape, out var meshLabel, this, rot);
             nowTeselatingLabel = null;

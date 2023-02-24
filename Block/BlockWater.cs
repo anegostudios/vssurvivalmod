@@ -1,12 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
-using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
@@ -22,6 +17,7 @@ namespace Vintagestory.GameContent
 
         bool freezable;
         Block iceBlock;
+        float freezingPoint = -4;
 
         public override void OnLoaded(ICoreAPI api)
         {
@@ -31,7 +27,17 @@ namespace Vintagestory.GameContent
             Height = Variant["height"] is string h ? h.ToInt() : 7;
 
             freezable = Flow == "still" && Height == 7;
-            iceBlock = api.World.GetBlock(new AssetLocation("lakeice"));
+            if (Attributes != null)
+            {
+                freezable &= Attributes["freezable"].AsBool(true);
+
+                iceBlock = api.World.GetBlock(AssetLocation.Create(Attributes["iceBlockCode"].AsString("lakeice"), Code.Domain));
+                freezingPoint = Attributes["freezingPoint"].AsFloat(-4);
+            }
+            else
+            {
+                iceBlock = api.World.GetBlock(AssetLocation.Create("lakeice", Code.Domain));
+            }
         }
 
 
@@ -43,7 +49,13 @@ namespace Vintagestory.GameContent
                 world.BlockAccessor.IsSideSolid(pos.X, pos.Y - 1, pos.Z, BlockFacing.UP);
         }
 
-
+        public override void OnAsyncClientParticleTick(IAsyncParticleManager manager, BlockPos pos, float windAffectednessAtPos, float secondsTicking)
+        {
+            foreach (BlockBehavior behavior in BlockBehaviors)
+            {
+                behavior.OnAsyncClientParticleTick(manager, pos, windAffectednessAtPos, secondsTicking);
+            }
+        }
 
 
         public override bool ShouldReceiveServerGameTicks(IWorldAccessor world, BlockPos pos, Random offThreadRandom, out object extra)
@@ -63,7 +75,7 @@ namespace Vintagestory.GameContent
                         if (world.BlockAccessor.GetBlock(nPos, BlockLayersAccess.Fluid) is BlockLakeIce || world.BlockAccessor.GetBlock(nPos).Replaceable < 6000)
                         {
                             ClimateCondition conds = world.BlockAccessor.GetClimateAt(pos, EnumGetClimateMode.NowValues);
-                            if (conds != null && conds.Temperature < -4)
+                            if (conds != null && conds.Temperature <= freezingPoint)
                             {
                                 return true;
                             }

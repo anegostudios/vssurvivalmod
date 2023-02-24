@@ -6,7 +6,7 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockCharcoalPit : Block
+    public class BlockCharcoalPit : Block, IIgnitable
     { 
         //Vec3f[] basePos;
         WorldInteraction[] interactions;
@@ -41,7 +41,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override EnumIgniteState OnTryIgniteBlock(EntityAgent byEntity, BlockPos pos, float secondsIgniting)
+        public EnumIgniteState OnTryIgniteBlock(EntityAgent byEntity, BlockPos pos, float secondsIgniting)
         {
             BlockEntityCharcoalPit becp = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityCharcoalPit;
             if (becp == null || becp.Lit) return EnumIgniteState.NotIgnitablePreventDefault;
@@ -49,7 +49,7 @@ namespace Vintagestory.GameContent
             return secondsIgniting > 3 ? EnumIgniteState.IgniteNow : EnumIgniteState.Ignitable;
         }
 
-        public override void OnTryIgniteBlockOver(EntityAgent byEntity, BlockPos pos, float secondsIgniting, ref EnumHandling handling)
+        public void OnTryIgniteBlockOver(EntityAgent byEntity, BlockPos pos, float secondsIgniting, ref EnumHandling handling)
         {
             BlockEntityCharcoalPit becp = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityCharcoalPit;
 

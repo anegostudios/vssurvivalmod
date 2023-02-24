@@ -39,7 +39,7 @@ namespace Vintagestory.GameContent
             wsys = entity.Api.ModLoader.GetModSystem<WeatherSystemServer>();
         }
 
-        public override void OnEntityDespawn(EntityDespawnReason reason)
+        public override void OnEntityDespawn(EntityDespawnData reason)
         {
             (entity.Api as ICoreServerAPI).Event.DidBreakBlock -= Event_DidBreakBlock;
         }

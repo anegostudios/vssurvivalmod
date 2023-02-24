@@ -26,7 +26,7 @@ namespace Vintagestory.GameContent
             
             this.textureSourceBlock = textureSourceBlock;
 
-            blockTextureSource = capi.Tesselator.GetTexSource(textureSourceBlock);
+            blockTextureSource = capi.Tesselator.GetTextureSource(textureSourceBlock);
         }
 
         // Problem description

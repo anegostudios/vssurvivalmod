@@ -6,10 +6,9 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class ItemFirewood : ItemPileable
+    public class ItemFirewood : Item
     {
-        protected override AssetLocation PileBlockCode => new AssetLocation("firewoodpile");
-
+        
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
             if (blockSel == null || byEntity?.World == null || !byEntity.Controls.ShiftKey) return;

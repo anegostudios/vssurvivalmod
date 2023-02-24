@@ -2,176 +2,61 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
+using Vintagestory.ServerMods;
 
 namespace Vintagestory.GameContent
 {
-    public class BookShelfTypeProps : IShapeTypeProps
+    public class BlockBookshelf : Block
     {
-        public BookShelfVariantGroup group;
-        static Random rnd = new Random();
+        string[] types;
+        string[] materials;
+        Dictionary<string, CompositeTexture> textures;
+        CompositeShape cshape;
+        public Dictionary<string, int[]> UsableSlots;
 
-        public string Code { get; set; }
-
-        public string Type1 { get; set; }
-        public string Type2 { get; set; }
-
-        public string Variant { get; set; }
-
-        public Vec3f Rotation => group.Rotation;
-        public Cuboidf[] ColSelBoxes { get { return group.ColSelBoxes; } set { group.ColSelBoxes = value; } }
-        public ModelTransform GuiTf { get { return group.GuiTf; } set { group.GuiTf = value; } }
-        public ModelTransform FpTf { get { return group.FpTf; } set { group.FpTf = value; } }
-        public ModelTransform TpTf { get { return group.TpTf; } set { group.TpTf = value; } }
-        public ModelTransform GroundTf { get { return group.GroundTf; } set { group.GroundTf = value; } }
-        public string RotInterval { get { return group.RotInterval; } set { group.RotInterval = value; } }
-
-        public string firstTexture { get; set; }
-        public TextureAtlasPosition texPos { get; set; }
-        public Dictionary<int, Cuboidf[]> ColSelBoxesByDeg { get { return group.ColSelBoxesByDeg; } set { group.ColSelBoxesByDeg = value; } }
-
-        public AssetLocation ShapePath
+        public override void OnLoaded(ICoreAPI api)
         {
-            get
-            {
-                if (Variant.Contains("doublesided"))
-                {
-                    if (Type1 == null)
-                    {
-                        int rndindex = rnd.Next(group.typesByCode.Count);
-                        Type1 = group.typesByCode.GetKeyAtIndex(rndindex);
-                    }
-                    return AssetLocation.Create("shapes/" + group.block.basePath + "/" + Type1 + ".json", group.block.Code.Domain);
-                }
-
-                return AssetLocation.Create("shapes/" + group.block.basePath + "/" + Code + ".json", group.block.Code.Domain);
-            }
+            base.OnLoaded(api);
+            LoadTypes();
         }
-        public AssetLocation ShapePath2 { 
-            get
-            {
-                if (Variant.Contains("doublesided"))
-                {
-                    if (Type2 == null)
-                    {
-                        int rndindex = rnd.Next(group.typesByCode.Count);
-                        Type2 = group.typesByCode.GetKeyAtIndex(rndindex);
-                    }
-                    return AssetLocation.Create("shapes/" + group.block.basePath + "/" + Type2 + ".json", group.block.Code.Domain);
-                }
 
-                return ShapePath;
-            }
-        }
-        public Shape ShapeResolved { get; set; }
-        public Shape ShapeResolved2 { get; set; }
-
-        public string HashKey => Code + "-" + Type1 + "-" + Type2 + "-" + Variant;
-    }
-
-    public class BookShelfVariantGroup
-    {
-        public bool DoubleSided;
-        public BookShelfTypeProps[] types;
-
-        public TextureAtlasPosition texPos { get; set; }
-
-        public OrderedDictionary<string, BookShelfTypeProps> typesByCode = new OrderedDictionary<string, BookShelfTypeProps>();
-        public BlockBookShelf block;
-
-        public Vec3f Rotation { get; set; } = new Vec3f();
-        public Cuboidf[] ColSelBoxes { get; set; }
-        public ModelTransform GuiTf { get; set; } = ModelTransform.BlockDefaultGui().EnsureDefaultValues().WithRotation(new Vec3f(-22.6f, -45 - 0.3f - 90, 0));
-        public ModelTransform FpTf { get; set; }
-        public ModelTransform TpTf { get; set; }
-        public ModelTransform GroundTf { get; set; }
-        public string RotInterval { get; set; } = "22.5deg";
-
-        public Dictionary<int, Cuboidf[]> ColSelBoxesByDeg { get; set; } = new Dictionary<int, Cuboidf[]>();
-    }
-
-    public class BlockBookShelf : BlockShapeFromAttributes
-    {
-        public override string ClassType => "bookshelf";
-
-        public OrderedDictionary<string, BookShelfVariantGroup> variantGroupsByCode = new OrderedDictionary<string, BookShelfVariantGroup>();
-        public override IEnumerable<IShapeTypeProps> AllTypes
+        public void LoadTypes()
         {
-            get
+            types = Attributes["types"].AsArray<string>();
+            cshape = Attributes["shape"].AsObject<CompositeShape>();
+            textures = Attributes["textures"].AsObject<Dictionary<string, CompositeTexture>>(null);
+            var grp = Attributes["materials"].AsObject<RegistryObjectVariantGroup>();
+
+            UsableSlots = Attributes["usableSlots"].AsObject<Dictionary<string, int[]>>();
+
+            materials = grp.States;
+            if (grp.LoadFromProperties != null)
             {
-                var result = new List<IShapeTypeProps>();
-                foreach (var variant in variantGroupsByCode.Values)
-                {
-                    result.AddRange(variant.typesByCode.Values);
-                }
-                return result;
+                var prop = api.Assets.TryGet(grp.LoadFromProperties.WithPathPrefixOnce("worldproperties/").WithPathAppendixOnce(".json"))?.ToObject< StandardWorldProperty>();
+                materials = prop.Variants.Select(p => p.Code.Path).ToArray().Append(materials);
             }
-        }
-        public string basePath;
-
-        AssetLocation woodbackPanelShapePath;
-
-        public override void LoadTypes()
-        {
-            variantGroupsByCode = Attributes["variantGroups"].AsObject<OrderedDictionary<string, BookShelfVariantGroup>>();
-            basePath = Attributes["shapeBasePath"].AsString();
 
             List<JsonItemStack> stacks = new List<JsonItemStack>();
 
-            woodbackPanelShapePath = AssetLocation.Create("shapes/" + basePath + "/" + Attributes["woodbackPanelShapePath"].AsString() + ".json", Code.Domain);
-
-            foreach (var variant in variantGroupsByCode)
+            foreach (var type in types)
             {
-                variant.Value.block = this;
-                
-                if (variant.Value.DoubleSided)
+                foreach (var material in materials)
                 {
-                    var jstackd = new JsonItemStack()
-                    {
-                        Code = this.Code,
-                        Type = EnumItemClass.Block,
-                        Attributes = new JsonObject(JToken.Parse("{ \"variant\": \""+variant.Key+"\" }"))
-                    };
-
-                    jstackd.Resolve(api.World, ClassType + " type");
-                    stacks.Add(jstackd);
-
-                    foreach (var btype in variant.Value.types)
-                    {
-                        variant.Value.typesByCode[btype.Code] = btype;
-                        btype.Variant = variant.Key;
-                        btype.group = variant.Value;
-                    }
-
-                    variant.Value.types = null;
-
-                    continue;
-                }
-
-                foreach (var btype in variant.Value.types)
-                {
-                    variant.Value.typesByCode[btype.Code] = btype;
-                    btype.Variant = variant.Key;
-                    btype.group = variant.Value;
-
                     var jstack = new JsonItemStack()
                     {
                         Code = this.Code,
                         Type = EnumItemClass.Block,
-                        Attributes = new JsonObject(JToken.Parse("{ \"type\": \"" + btype.Code + "\", \"variant\": \""+btype.Variant+"\" }"))
+                        Attributes = new JsonObject(JToken.Parse("{ \"type\": \"" + type + "\", \"material\": \""+material+"\" }"))
                     };
 
-                    jstack.Resolve(api.World, ClassType + " type");
+                    jstack.Resolve(api.World, Code + " type");
                     stacks.Add(jstack);
                 }
-
-                variant.Value.types = null;
             }
 
             this.CreativeInventoryStacks = new CreativeTabAndStackList[]
@@ -180,170 +65,154 @@ namespace Vintagestory.GameContent
             };
         }
 
-        public override bool CanAttachBlockAt(IBlockAccessor blockAccessor, Block block, BlockPos pos, BlockFacing blockFace, Cuboidi attachmentArea = null)
+
+        public override Cuboidf[] GetSelectionBoxes(IBlockAccessor blockAccessor, BlockPos pos)
         {
-            var bec = blockAccessor.GetBlockEntity(pos) as BlockEntityBookshelf;
+            var beshelf = blockAccessor.GetBlockEntity(pos) as BlockEntityBookshelf;
 
-            if (bec != null)
+            if (beshelf != null)
             {
-                variantGroupsByCode.TryGetValue(bec.Variant, out var grp);
-                if (grp?.DoubleSided == true)
-                {
-                    int angle = (int)(bec.MeshAngleRad * GameMath.RAD2DEG);
-                    if (angle < 0) angle += 360;
+                List<Cuboidf> cubs = new List<Cuboidf>();
 
-                    if (angle == 0 || angle == 180)
-                    {
-                        return blockFace.IsAxisWE;
+                cubs.Add(new Cuboidf(0, 0, 0, 1, 1, 0.1f));
+                cubs.Add(new Cuboidf(0, 0, 0, 1, 1/16f, 0.5f));
+                cubs.Add(new Cuboidf(0, 15/16f, 0, 1, 1, 0.5f));
+                cubs.Add(new Cuboidf(0, 0, 0, 1/16f, 1, 0.5f));
+                cubs.Add(new Cuboidf(15/16f, 0, 0, 1, 1, 0.5f));
+
+
+                for (int i = 0; i < 14; i++)
+                {
+                    if (!beshelf.UsableSlots.Contains(i)) { 
+                        cubs.Add(new Cuboidf());
+                        continue;
                     }
-                    if (angle == 90 || angle == 270)
-                    {
-                        return blockFace.IsAxisNS;
-                    }
+
+                    float x = (i % 7) * 2f / 16f + 1.1f / 16f;
+                    float y = (i / 7) * 7.5f / 16f;
+                    float z = 6.5f / 16f;
+                    var cub = new Cuboidf(x, y + 1f/16f, 1/16f, x + 1.9f/16f, y + 7/16f, z);
+                    
+                    
+
+                    cubs.Add(cub);
+                }
+
+                for (int i = 0; i < cubs.Count; i++) cubs[i] = cubs[i].RotatedCopy(0, (beshelf?.MeshAngleRad ?? 0) * GameMath.RAD2DEG, 0, new Vec3d(0.5, 0.5, 0.5));
+
+                return cubs.ToArray();
+            }
+
+            return new Cuboidf[] { new Cuboidf(0, 0, 0, 1, 1, 0.5f).RotatedCopy(0, (beshelf?.MeshAngleRad ?? 0) * GameMath.RAD2DEG, 0, new Vec3d(0.5, 0.5, 0.5)) };
+        }
+
+        public override Cuboidf[] GetCollisionBoxes(IBlockAccessor blockAccessor, BlockPos pos)
+        {
+            var beshelf = blockAccessor.GetBlockEntity(pos) as BlockEntityBookshelf;
+
+            return new Cuboidf[] { new Cuboidf(0, 0, 0, 1, 1, 0.5f).RotatedCopy(0, (beshelf?.MeshAngleRad ?? 0) * GameMath.RAD2DEG, 0, new Vec3d(0.5, 0.5, 0.5)) };
+        }
+
+        public override bool DoPlaceBlock(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ItemStack byItemStack)
+        {
+            bool val = base.DoPlaceBlock(world, byPlayer, blockSel, byItemStack);
+
+            if (val)
+            {
+                BlockEntityBookshelf bect = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityBookshelf;
+                if (bect != null)
+                {
+                    BlockPos targetPos = blockSel.DidOffset ? blockSel.Position.AddCopy(blockSel.Face.Opposite) : blockSel.Position;
+                    double dx = byPlayer.Entity.Pos.X - (targetPos.X + blockSel.HitPosition.X);
+                    double dz = (float)byPlayer.Entity.Pos.Z - (targetPos.Z + blockSel.HitPosition.Z);
+                    float angleHor = (float)Math.Atan2(dx, dz);
+
+                    float intervalRad = GameMath.PIHALF;
+                    float roundRad = ((int)Math.Round(angleHor / intervalRad)) * intervalRad;
+                    bect.MeshAngleRad = roundRad;
+                    bect.OnBlockPlaced(byItemStack); // call again to regen mesh
                 }
             }
 
-            return base.CanAttachBlockAt(blockAccessor, block, pos, blockFace, attachmentArea);
+            return val;
         }
 
-
-        public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
+        public virtual MeshData GenMesh(string type, string material)
         {
-            var stack = base.OnPickBlock(world, pos);
-
-            var bec = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityBookshelf;
-            if (bec != null) {
-
-                stack.Attributes.SetString("type", bec.Type);
-                stack.Attributes.SetString("variant", bec.Variant);
-            }
-
-            return stack;
-        }
-
-        public override IShapeTypeProps GetTypeProps(string code, ItemStack stack, BlockEntityShapeFromAttributes be)
-        {
-            if (code == null) return null;
-
-            string variant = stack == null ? (be as BlockEntityBookshelf).Variant : stack.Attributes.GetString("variant");
-            if (variant == null) return null;
-
-            if (variantGroupsByCode.TryGetValue(variant, out var vgroup))
-            {
-                if (vgroup.DoubleSided)
-                {
-                    string type1;
-                    string type2;
-
-                    if (be != null)
-                    {
-                        type1 = (be as BlockEntityBookshelf).Type;
-                        type2 = (be as BlockEntityBookshelf).Type2;
-                    } else
-                    {
-                        if (!stack.Attributes.HasAttribute("type1"))
-                        {
-                            stack.Attributes.SetString("type1", RandomType(variant));
-                            stack.Attributes.SetString("type2", RandomType(variant));
-                        }
-                        type1 = stack.Attributes.GetString("type1");
-                        type2 = stack.Attributes.GetString("type2");
-                    }
-
-                    if (!vgroup.typesByCode.TryGetValue(type1, out var t1)) t1 = vgroup.typesByCode.First((ele)=>true).Value;
-                    if (!vgroup.typesByCode.TryGetValue(type2, out var t2)) t2 = t1;
-
-                    return new BookShelfTypeProps()
-                    {
-                        group = vgroup,
-                        Code = variant,
-                        Type1 = type1,
-                        Type2 = type2,
-                        ShapeResolved = t1.ShapeResolved,
-                        ShapeResolved2 = t2.ShapeResolved,
-                        Variant = variant,
-                        texPos = vgroup.texPos
-                    };
-                }
-
-                vgroup.typesByCode.TryGetValue(code, out var bprops);
-                return bprops;
-            }
-
-            return null;
-        }
-
-        public override MeshData GenMesh(IShapeTypeProps cprops)
-        {
-            var cMeshes = ObjectCacheUtil.GetOrCreate(api, ClassType + "Meshes", () => new Dictionary<string, MeshData>());
+            var cMeshes = ObjectCacheUtil.GetOrCreate(api, "BookshelfMeshes", () => new Dictionary<string, MeshData>());
             ICoreClientAPI capi = api as ICoreClientAPI;
-
-            var bprops = cprops as BookShelfTypeProps;
             
-            if (cMeshes.TryGetValue(bprops.HashKey, out var mesh))
+            string key = type + "-" + material;
+            if (!cMeshes.TryGetValue(key, out var mesh))
             {
-                return mesh;
+                mesh = new MeshData(4, 3);
+
+                var rcshape = this.cshape.Clone();
+                rcshape.Base.Path = rcshape.Base.Path.Replace("{type}", type).Replace("{material}", material);
+                rcshape.Base.WithPathAppendixOnce(".json").WithPathPrefixOnce("shapes/");
+
+                var shape = capi.Assets.TryGet(rcshape.Base)?.ToObject<Shape>();
+
+                var texSource = new ShapeTextureSource(capi, shape);
+                foreach (var val in textures) {
+                    var ctex = val.Value.Clone();
+                    ctex.Base.Path = ctex.Base.Path.Replace("{type}", type).Replace("{material}", material);
+                    ctex.Bake(capi.Assets);
+
+                    texSource.textures[val.Key] = ctex;
+                }
+                if (shape == null) return mesh;
+
+                capi.Tesselator.TesselateShape("Bookshelf block", shape, out mesh, texSource);
+
+                /*if (cprops.texPos == null)
+                {
+                    api.Logger.Warning("No texture previously loaded for clutter block " + key);
+                    cprops.texPos = texSource.firstTexPos;
+                    cprops.texPos.RndColors = new int[TextureAtlasPosition.RndColorsLength];
+                }*/
+
+                cMeshes[key] = mesh;
             }
-            
-            mesh = new MeshData(4, 3);
-            var shape = cprops.ShapeResolved;
-            var texSource = new ShapeTextureSource(capi, shape);
 
-            if (shape == null) return mesh;
-
-            capi.Tesselator.TesselateShape(ClassType + "block", shape, out mesh, texSource);
-
-            if (bprops.Variant == "full" || bprops.group.DoubleSided)
-            {
-                mesh.Translate(0, 0, 0.5f);
-
-                shape = bprops.Variant == "full" ? capi.Assets.TryGet(woodbackPanelShapePath)?.ToObject<Shape>() : bprops.ShapeResolved2;
-                texSource = new ShapeTextureSource(capi, shape);
-                capi.Tesselator.TesselateShape(ClassType + "block", shape, out var mesh2, texSource);
-
-                mesh2.Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 0, GameMath.PI, 0).Translate(0, 0, -0.5f);
-
-                mesh.AddMeshData(mesh2);
-            }
-
-            if (cprops.texPos == null)
-            {
-                api.Logger.Warning("No texture previously loaded for bookshelf block " + cprops.Code);
-                cprops.texPos = texSource.firstTexPos;
-                cprops.texPos.RndColors = new int[TextureAtlasPosition.RndColorsLength];
-            }
-            if (bprops.group.texPos == null) bprops.group.texPos = cprops.texPos;
-
-            cMeshes[bprops.HashKey] = mesh;
-            
             return mesh;
         }
 
-        public string RandomType(string variant)
+        public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
         {
-            var vgroup = variantGroupsByCode[variant];
+            base.OnBeforeRender(capi, itemstack, target, ref renderinfo);
 
-            int rndindex = api.World.Rand.Next(vgroup.typesByCode.Count);
-            return vgroup.typesByCode.GetKeyAtIndex(rndindex);
+            Dictionary<string, MeshRef> meshRefs;
+            meshRefs = ObjectCacheUtil.GetOrCreate(capi, "BookshelfMeshesInventory", () => new Dictionary<string, MeshRef>());
+            MeshRef meshref;
+
+            string type = itemstack.Attributes.GetString("type", "");
+            string material = itemstack.Attributes.GetString("material", "");
+            string key = type + "-" + material;
+
+            if (!meshRefs.TryGetValue(key, out meshref))
+            {
+                MeshData mesh = GenMesh(type, material);
+                meshref = capi.Render.UploadMesh(mesh);
+                meshRefs[key] = meshref;
+            }
+
+            renderinfo.ModelRef = meshref;
         }
 
-        public override string GetHeldItemName(ItemStack itemStack)
+
+
+        public override bool DoParticalSelection(IWorldAccessor world, BlockPos pos)
         {
-            string type = itemStack.Attributes.GetString("type", "");
-            string variant = itemStack.Attributes.GetString("variant", "");
-            return Lang.GetMatching(Code.Domain + ":" + (type.Length == 0 ? "bookshelf-" + variant : type.Replace("/", "-")));
+            return true;
         }
 
-        public override string GetPlacedBlockName(IWorldAccessor world, BlockPos pos)
+        public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
-            BlockEntityShapeFromAttributes bec = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityShapeFromAttributes;
-            return Lang.GetMatching(Code.Domain + ":" + (bec?.Type?.Replace("/", "-") ?? "unknown"));
-        }
+            var beshelf = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityBookshelf;
+            if (beshelf != null) return beshelf.OnInteract(byPlayer, blockSel);
 
-        public override string GetPlacedBlockInfo(IWorldAccessor world, BlockPos pos, IPlayer forPlayer)
-        {
-            BlockEntityShapeFromAttributes bec = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityShapeFromAttributes;
-            return Lang.GetMatching(Code.Domain + ":" + (bec?.Type?.Replace("/", "-") ?? "unknown"));
+            return base.OnBlockInteractStart(world, byPlayer, blockSel);
         }
     }
 }

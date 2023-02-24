@@ -19,7 +19,12 @@ namespace Vintagestory.ServerMods
         /// <summary>
         /// Amount of octaves used by terrain gen
         /// </summary>
-        public static int terrainGenOctaves = 9;
+        protected static int terrainGenOctaves = 9;
+
+        public static int GetTerrainOctaveCount(int worldheight)
+        {
+            return terrainGenOctaves + (worldheight - 256) / 128;
+        }
 
         /// <summary>
         /// Horizontal lerp of the 3d terrain noise
@@ -30,7 +35,7 @@ namespace Vintagestory.ServerMods
         /// </summary>
         public const int lerpVertical = 8;
 
-
+        public static int WaterFreezingTempOnGen = -15;
         
 
         public static double terrainNoiseVerticalScale = 2.0;
@@ -40,6 +45,7 @@ namespace Vintagestory.ServerMods
 
         public static int shrubMapScale = 16;
         public static int forestMapScale = 32;
+        public static int geoUpheavelMapScale = 64;
 
         public static int blockPatchesMapScale = 32;
 
@@ -75,10 +81,13 @@ namespace Vintagestory.ServerMods
 
         internal static bool GenerateVegetation = true;
         internal static bool GenerateStructures = true;
+        internal static bool DoDecorationPass = true;
 
         //internal static int depositDistortionScale = 2;
 
         #endregion
+
+        
 
 
         public static int DescaleTemperature(float temperature)

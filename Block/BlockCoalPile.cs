@@ -22,7 +22,7 @@ namespace Vintagestory.GameContent
         bool OnPlayerInteract(IPlayer byPlayer);
     }
 
-    public class BlockCoalPile : Block, IBlockItemPile
+    public class BlockCoalPile : Block, IBlockItemPile, IIgnitable
     {
         Cuboidf[][] CollisionBoxesByFillLevel;
 
@@ -178,7 +178,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override EnumIgniteState OnTryIgniteBlock(EntityAgent byEntity, BlockPos pos, float secondsIgniting)
+        public EnumIgniteState OnTryIgniteBlock(EntityAgent byEntity, BlockPos pos, float secondsIgniting)
         {
             BlockEntityCoalPile bea = byEntity.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityCoalPile;
 
@@ -214,7 +214,7 @@ namespace Vintagestory.GameContent
             return EnumIgniteState.Ignitable;
         }
 
-        public override void OnTryIgniteBlockOver(EntityAgent byEntity, BlockPos pos, float secondsIgniting, ref EnumHandling handling)
+        public void OnTryIgniteBlockOver(EntityAgent byEntity, BlockPos pos, float secondsIgniting, ref EnumHandling handling)
         {
             if (secondsIgniting < 1.45f) return;
 

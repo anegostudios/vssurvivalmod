@@ -1,8 +1,6 @@
 ﻿using ProtoBuf;
 using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -10,7 +8,6 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
-using Vintagestory.GameContent.Mechanics;
 using Vintagestory.ServerMods;
 
 namespace Vintagestory.GameContent
@@ -49,6 +46,8 @@ namespace Vintagestory.GameContent
         public double nextStormStrDouble;
     }
 
+    public delegate float GetTemporalStabilityDelegate(float stability, double x, double y, double z);
+
     public class SystemTemporalStability : ModSystem
     {
         IServerNetworkChannel serverChannel;
@@ -72,6 +71,8 @@ namespace Vintagestory.GameContent
         ModSystemRifts riftSys;
 
         public float modGlitchStrength;
+
+        public event GetTemporalStabilityDelegate OnGetTemporalStability;
 
 
         string worldConfigStorminess;
@@ -176,12 +177,12 @@ namespace Vintagestory.GameContent
                 bool prepNextStorm = sapi.WorldManager.SaveGame.IsNew;
 
                 // Init old saves
-                if (!sapi.World.Config.HasAttribute("temmporalStability"))
+                if (!sapi.World.Config.HasAttribute("temporalStability"))
                 {
                     string playstyle = sapi.WorldManager.SaveGame.PlayStyle;
                     if (playstyle == "surviveandbuild" || playstyle == "wildernesssurvival")
                     {
-                        sapi.WorldManager.SaveGame.WorldConfiguration.SetBool("temmporalStability", true);
+                        sapi.WorldManager.SaveGame.WorldConfiguration.SetBool("temporalStability", true);
                     }
                 }
 
@@ -362,7 +363,7 @@ namespace Vintagestory.GameContent
 
                             if (api.World.Rand.NextDouble() < 0.5)
                             {
-                                sapi.World.DespawnEntity(e, new EntityDespawnReason() { reason = EnumDespawnReason.Expire });
+                                sapi.World.DespawnEntity(e, new EntityDespawnData() { Reason = EnumDespawnReason.Expire });
                             }
                         }
                     }
@@ -608,7 +609,7 @@ namespace Vintagestory.GameContent
         public bool CanSpawnNearby(IPlayer byPlayer, EntityProperties type, Vec3d spawnPosition, RuntimeSpawnConditions sc)
         {
             // Moved from EntitySpawner to here. Make drifters spawn at any light level if temporally unstable. A bit of an ugly hack, i know
-            int lightLevel = api.World.BlockAccessor.GetLightLevel((int)spawnPosition.X, (int)spawnPosition.Y, (int)spawnPosition.Z, sc.LightLevelType);
+            int herelightLevel = api.World.BlockAccessor.GetLightLevel((int)spawnPosition.X, (int)spawnPosition.Y, (int)spawnPosition.Z, sc.LightLevelType);
 
             if (temporalStabilityEnabled && type.Attributes?["spawnCloserDuringLowStability"].AsBool() == true)
             {
@@ -625,7 +626,7 @@ namespace Vintagestory.GameContent
                 // Still allow some drifters to spawn during daylight, but therefore must be very close to the rift
                 float minl = GameMath.Mix(0, sc.MinLightLevel, (float)mod);
                 float maxl = GameMath.Mix(32, sc.MaxLightLevel, (float)mod);
-                if (minl > lightLevel || maxl < lightLevel)
+                if (minl > herelightLevel || maxl < herelightLevel)
                 {
                     if (!isSurface || riftDist >= 5 || api.World.Rand.NextDouble() > 0.05)
                     {
@@ -650,7 +651,7 @@ namespace Vintagestory.GameContent
                 return sqdist > sc.MinDistanceToPlayer * sc.MinDistanceToPlayer * mod;
             }
 
-            if (sc.MinLightLevel > lightLevel || sc.MaxLightLevel < lightLevel) return false;
+            if (sc.MinLightLevel > herelightLevel || sc.MaxLightLevel < herelightLevel) return false;
 
             return byPlayer.Entity.ServerPos.SquareDistanceTo(spawnPosition) > sc.MinDistanceToPlayer * sc.MinDistanceToPlayer;
         }
@@ -687,7 +688,14 @@ namespace Vintagestory.GameContent
 
             float extraStr = 1.5f * GetGlitchEffectExtraStrength();
             
-            return GameMath.Clamp(noiseval - extraStr, 0, 1.5f);
+            var stability = GameMath.Clamp(noiseval - extraStr, 0, 1.5f);
+
+            if (OnGetTemporalStability != null)
+            {
+                stability = OnGetTemporalStability.Invoke(stability, x, y, z);
+            }
+
+            return stability;
         }
 
 

@@ -96,15 +96,15 @@ namespace Vintagestory.GameContent
         }
 
 
-        public void GrowTree(IBlockAccessor blockAccessor, BlockPos pos, bool skipForestFloor, float sizeModifier = 1, float vineGrowthChance = 0, float otherBlockChance = 1, int treesInChunkGenerated = 0)
+        public void GrowTree(IBlockAccessor blockAccessor, BlockPos pos, TreeGenParams treegenParams)
         {
-            float f = otherBlockChance == 0 ? (3 + (float)rand.NextDouble() * 6) : (3 + (float)rand.NextDouble() * 4) * 3 * 3;
+            float f = treegenParams.otherBlockChance == 0 ? (3 + (float)rand.NextDouble() * 6) : (3 + (float)rand.NextDouble() * 4) * 3 * 3;
 
             int quantity = GameMath.RoundRandom(rand, f);
 
             BlockPos npos = pos.Copy();
 
-            sizeModifier = GameMath.Mix(sizeModifier, 1, 0.5f);
+            float sizeModifier = GameMath.Mix(treegenParams.size, 1, 0.5f);
 
             sizeModifier *= 1 + ((float)rand.NextDouble() * 0.5f);
 
@@ -112,7 +112,7 @@ namespace Vintagestory.GameContent
             {
                 float dist = Math.Max(1, pos.DistanceTo(npos) - 2);
 
-                GrowStalk(blockAccessor, npos.UpCopy(), dist, sizeModifier, vineGrowthChance);
+                GrowStalk(blockAccessor, npos.UpCopy(), dist, sizeModifier, treegenParams.vinesGrowthChance);
 
                 // Potentially grow another one nearby
                 npos.Set(pos);

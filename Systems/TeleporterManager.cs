@@ -2,12 +2,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Config;
+using Vintagestory.API.Common.CommandAbbr;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
@@ -53,9 +50,6 @@ namespace Vintagestory.GameContent
         GuiJsonDialog dialog;
         JsonDialogSettings dialogSettings;
         TeleporterLocation forLocation = new TeleporterLocation();
-        float teleVolume;
-        float translocVolume;
-        float translocPitch;
 
         public long lastTeleCollideMsOwnPlayer = 0;
         public long lastTranslocateCollideMsOwnPlayer = 0;
@@ -97,14 +91,15 @@ namespace Vintagestory.GameContent
             api.Event.GameWorldSave += OnSaveGame;
 
             api.Event.RegisterEventBusListener(OnConfigEventServer, 0.5, "configTeleporter");
-            api.RegisterCommand("settlpos", "Set translocator target teleport position of currently looked at translocator", "[position]", onSetTlPos, Privilege.setspawn);
 
-            /*api.Command
+            var parsers = api.ChatCommands.Parsers;
+            api.ChatCommands
                 .GetOrCreate("settlpos")
                 .WithDesc("Set translocator target teleport position of currently looked at translocator")
-                .RequiresPriv(Privilege.setspawn)
-                .HandleWith(onSetTlPos)
-            ;*/
+                .RequiresPrivilege(Privilege.setspawn)
+                .WithArgs(parsers.WorldPosition("translocator position"), parsers.WorldPosition("target position"), parsers.OptionalBool("relative"))
+                .HandleWith(handleSetTlPos)
+            ;
 
             serverChannel =
                api.Network.RegisterChannel("tpManager")
@@ -116,30 +111,33 @@ namespace Vintagestory.GameContent
 
         }
 
-        private void onSetTlPos(IServerPlayer player, int groupId, CmdArgs args)
+        private TextCommandResult handleSetTlPos(TextCommandCallingArgs args)
         {
-            BlockPos pos = player.CurrentBlockSelection.Position;
-            BlockEntityStaticTranslocator bet = sapi.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityStaticTranslocator;
+            var tlpos = (args[0] as Vec3d).AsBlockPos;
+            var block = sapi.World.BlockAccessor.GetBlock(tlpos);
+            if (block is BlockStaticTranslocator && block.Variant["state"] == "broken")
+            {
+                sapi.World.BlockAccessor.SetBlock(sapi.World.GetBlock(block.CodeWithVariant("state", "normal")).Id, tlpos);
+            }
+            BlockEntityStaticTranslocator bet = sapi.World.BlockAccessor.GetBlockEntity(tlpos) as BlockEntityStaticTranslocator;
 
             if (bet == null)
             {
-                player.SendMessage(groupId, "Not looking at a repaired translocator. Must look at one to set its target", EnumChatType.CommandError);
-                return;
+                return TextCommandResult.Error("Supplied position does not contain a translocator. You can use l[] to use the looked at position.");
             }
 
-            Vec3d spawnpos = sapi.World.DefaultSpawnPosition.XYZ;
-            spawnpos.Y = 0;
-            Vec3d targetpos = args.PopFlexiblePos(player.Entity.Pos.XYZ, spawnpos);
-
-            if (targetpos == null)
+            bool wasRepaired = bet.FullyRepaired;
+            if (!wasRepaired)
             {
-                player.SendMessage(groupId, "Invalid position supplied. Syntax: [coord] [coord] [coord] or =[abscoord] =[abscoord] =[abscoord]", EnumChatType.CommandError);
-                return;
+                bet.findNextChunk = false;
+                bet.repairState = bet.RepairInteractionsRequired;
             }
+            bet.tpLocation = (args[1] as Vec3d).AsBlockPos;
+            bet.tpLocationIsOffset = args.Parsers[2].IsMissing ? false : (bool)args[2];
+            if (!wasRepaired) bet.setupGameTickers();
+            bet.DoActivate();
 
-            bet.tpLocation = targetpos.AsBlockPos;
-            bet.MarkDirty(true);
-            player.SendMessage(groupId, "Target position set.", EnumChatType.CommandError);
+            return TextCommandResult.Success("Target position set.");
         }
 
         private void OnSetLocationReceived(IServerPlayer fromPlayer, TeleporterLocation networkMessage)

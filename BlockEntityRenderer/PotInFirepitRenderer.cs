@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Vintagestory.API.Client;
+﻿using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
@@ -15,7 +10,6 @@ namespace Vintagestory.GameContent
         public int RenderRange => 20;
 
         ICoreClientAPI capi;
-        ItemStack stack;
         MeshRef potWithFoodRef;
         MeshRef potRef;
         MeshRef lidRef;
@@ -30,7 +24,6 @@ namespace Vintagestory.GameContent
         public PotInFirepitRenderer(ICoreClientAPI capi, ItemStack stack, BlockPos pos, bool isInOutputSlot)
         {
             this.capi = capi;
-            this.stack = stack;
             this.pos = pos;
             this.isInOutputSlot = isInOutputSlot;
 
@@ -45,13 +38,11 @@ namespace Vintagestory.GameContent
             else
             {
                 MeshData potMesh;
-                capi.Tesselator.TesselateShape(potBlock, API.Common.Shape.TryGet(capi, "shapes/block/clay/pot-opened-empty.json"), out potMesh);
-                //potMesh.Rgba2 = null;
+                capi.Tesselator.TesselateShape(potBlock, Shape.TryGet(capi, "shapes/block/clay/pot-opened-empty.json"), out potMesh);
                 potRef = capi.Render.UploadMesh(potMesh);
 
                 MeshData lidMesh;
-                capi.Tesselator.TesselateShape(potBlock, API.Common.Shape.TryGet(capi, "shapes/block/clay/pot-part-lid.json"), out lidMesh);
-                //lidMesh.Rgba2 = null;
+                capi.Tesselator.TesselateShape(potBlock, Shape.TryGet(capi, "shapes/block/clay/pot-part-lid.json"), out lidMesh);
                 lidRef = capi.Render.UploadMesh(lidMesh);
             }
         }
@@ -75,7 +66,7 @@ namespace Vintagestory.GameContent
 
             IStandardShaderProgram prog = rpi.PreparedStandardShader(pos.X, pos.Y, pos.Z);
 
-            prog.Tex2D = capi.BlockTextureAtlas.AtlasTextureIds[0];
+            prog.Tex2D = capi.BlockTextureAtlas.AtlasTextures[0].TextureId;
             prog.DontWarpVertices = 0;
             prog.AddRenderFlags = 0;
             prog.RgbaAmbientIn = rpi.AmbientColor;
@@ -174,13 +165,7 @@ namespace Vintagestory.GameContent
                     cookingSound.Dispose();
                     cookingSound = null;
                 }
-
             }
-
         }
-
-
-
-
     }
 }

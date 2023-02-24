@@ -25,10 +25,10 @@ namespace Vintagestory.GameContent
 
         ICoreServerAPI sapi;
 
-        int repairState = 0;
+        public int repairState = 0;
         bool activated;
         bool canTeleport = false;
-        bool findNextChunk = true;
+        public bool findNextChunk = true;
         public ILoadedSound translocatingSound;
         float particleAngle = 0;
         float translocVolume = 0;
@@ -78,7 +78,7 @@ namespace Vintagestory.GameContent
             if (api.World.Side == EnumAppSide.Client)
             {
                 float rotY = Block.Shape.rotateY;
-                animUtil.InitializeAnimator("translocator", new Vec3f(0, rotY, 0));
+                animUtil.InitializeAnimator("translocator", null, null, new Vec3f(0, rotY, 0));
 
                 translocatingSound = (api as ICoreClientAPI).World.LoadSound(new SoundParams()
                 {
@@ -95,6 +95,7 @@ namespace Vintagestory.GameContent
         public void DoActivate()
         {
             activated = true;
+            canTeleport = true;
             MarkDirty(true);
         }
 
@@ -546,6 +547,7 @@ namespace Vintagestory.GameContent
             repairState = tree.GetInt("repairState");
             findNextChunk = tree.GetBool("findNextChunk", true);
             activated = tree.GetBool("activated");
+            tpLocationIsOffset = tree.GetBool("tpLocationIsOffset");
 
             if (canTeleport) {
                 tpLocation = new BlockPos(tree.GetInt("teleX"), tree.GetInt("teleY"), tree.GetInt("teleZ"));
@@ -575,7 +577,8 @@ namespace Vintagestory.GameContent
             tree.SetBool("canTele", canTeleport);
             tree.SetInt("repairState", repairState);
             tree.SetBool("findNextChunk", findNextChunk);
-            tree.SetBool("activated", activated);                
+            tree.SetBool("activated", activated);
+            tree.SetBool("tpLocationIsOffset", tpLocationIsOffset);
 
             if (tpLocation != null)
             {
@@ -649,7 +652,9 @@ namespace Vintagestory.GameContent
             if (forPlayer.WorldData.CurrentGameMode == EnumGameMode.Creative)
             {
                 BlockPos pos = Api.World.DefaultSpawnPosition.AsBlockPos;
-                dsc.AppendLine(Lang.Get("Teleports to {0}", tpLocation.Copy().Sub(pos.X, 0, pos.Z)));
+                var targetpos = tpLocation.Copy().Sub(pos.X, 0, pos.Z);
+                if (tpLocationIsOffset) targetpos.Add(Pos.X, pos.Y, pos.Z);
+                dsc.AppendLine(Lang.Get("Teleports to {0}", targetpos));
             }
             else
             {

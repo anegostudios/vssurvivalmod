@@ -60,8 +60,7 @@ namespace Vintagestory.GameContent
         {
             extra = null;
             ClimateCondition conds = world.BlockAccessor.GetClimateAt(pos, EnumGetClimateMode.NowValues);
-
-            float chance = GameMath.Clamp((conds.Temperature - 2f) / 20f, 0, 1);
+            float chance = conds == null ? 0 : GameMath.Clamp((conds.Temperature - 2f) / 20f, 0, 1);
             return offThreadRandom.NextDouble() < chance;
         }
 

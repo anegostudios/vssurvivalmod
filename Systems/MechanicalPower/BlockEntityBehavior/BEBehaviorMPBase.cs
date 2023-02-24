@@ -94,8 +94,6 @@ namespace Vintagestory.GameContent.Mechanics
         public MechanicalNetwork Network => network;
         public virtual BlockFacing OutFacingForNetworkDiscovery { get; protected set; } = null;
 
-        public virtual Block Block => Blockentity.Block;
-
         protected BlockFacing propagationDir = BlockFacing.NORTH;
         private float gearedRatio = 1.0f;
         public float GearedRatio { get { return gearedRatio; } set { gearedRatio = value;} }

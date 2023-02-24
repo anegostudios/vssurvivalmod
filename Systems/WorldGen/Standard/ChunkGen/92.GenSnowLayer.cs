@@ -37,7 +37,7 @@ namespace Vintagestory.ServerMods
         {
             this.api = api;
 
-            if (DoDecorationPass)
+            if (TerraGenConfig.DoDecorationPass)
             {
                 api.Event.InitWorldGenerator(initWorldGen, "standard");
                 api.Event.ChunkColumnGeneration(OnChunkColumnGen, EnumWorldGenPass.NeighbourSunLightFlood, "standard");

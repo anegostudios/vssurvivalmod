@@ -1,5 +1,6 @@
 ﻿using System.Linq;
 using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent.Mechanics
@@ -47,6 +48,17 @@ namespace Vintagestory.GameContent.Mechanics
             if (be != null) return be.OnInteract(byPlayer);
 
             return base.OnBlockInteractStart(world, byPlayer, blockSel);
+        }
+
+        public override void Activate(IWorldAccessor world, Caller caller, BlockSelection blockSel, ITreeAttribute activationArgs)
+        {
+            BEClutch be = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BEClutch;
+            if (be == null) return;;
+            if (activationArgs != null && activationArgs.HasAttribute("engaged"))
+            {
+                if (activationArgs.GetBool("engaged") == be.Engaged) return;   // do nothing if already in the required state
+            }
+            be.OnInteract(caller.Player);
         }
 
         public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)

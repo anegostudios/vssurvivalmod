@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
@@ -7,7 +8,6 @@ namespace Vintagestory.ServerMods
 {
     public class GenCaves : GenPartial
     {
-        
         protected override int chunkRange { get { return 5; } }
 
         public override double ExecuteOrder() { return 0.3; }
@@ -17,22 +17,26 @@ namespace Vintagestory.ServerMods
 
         NormalizedSimplexNoise basaltNoise;
         NormalizedSimplexNoise heightvarNoise;
-
+        int regionsize;
 
         public override void StartServerSide(ICoreServerAPI api)
         {
             base.StartServerSide(api);
 
-            if (DoDecorationPass)
+            if (TerraGenConfig.DoDecorationPass)
             {
                 api.Event.ChunkColumnGeneration(GenChunkColumn, EnumWorldGenPass.Terrain, "standard");
+
                 api.Event.GetWorldgenBlockAccessor(OnWorldGenBlockAccessor);
 
                 api.RegisterCommand("gencaves", "Cave generator test tool. Deletes all chunks in the area and generates inverse caves around the world middle", "", CmdCaveGenTest, Privilege.controlserver);
 
-                api.Event.MapChunkGeneration(OnMapChunkGen, "standard");
-                api.Event.MapChunkGeneration(OnMapChunkGen, "superflat");
-                api.Event.InitWorldGenerator(initWorldGen, "superflat");
+                if (TerraGenConfig.DoDecorationPass)
+                {
+                    api.Event.MapChunkGeneration(OnMapChunkGen, "standard");
+                    api.Event.MapChunkGeneration(OnMapChunkGen, "superflat");
+                    api.Event.InitWorldGenerator(initWorldGen, "superflat");
+                }
             }
         }
 
@@ -43,6 +47,8 @@ namespace Vintagestory.ServerMods
             caveRand = new LCGRandom(api.WorldManager.Seed + 123128);
             basaltNoise = NormalizedSimplexNoise.FromDefaultOctaves(2, 1f / 3.5f, 0.9f, api.World.Seed + 12);
             heightvarNoise = NormalizedSimplexNoise.FromDefaultOctaves(3, 1f / 20f, 0.9f, api.World.Seed + 12);
+
+            regionsize = api.World.BlockAccessor.RegionSize;
         }
 
 
@@ -147,8 +153,7 @@ namespace Vintagestory.ServerMods
         }
 
         private bool ClearChunkColumn(IServerChunk[] chunks)
-        {
-            
+        {   
             for (int i = 0; i < chunks.Length; i++)
             {
                 IServerChunk chunk = chunks[i];
@@ -174,33 +179,42 @@ namespace Vintagestory.ServerMods
             int chunksize = this.chunksize;
             int quantityCaves = chunkRand.NextInt(100) < TerraGenConfig.CavesPerChunkColumn*100 ? 1 : 0;
 
+            int rndSize = chunksize * chunksize * (worldheight - 20);
             while (quantityCaves-- > 0)
             {
-                int posX = cdx * chunksize + chunkRand.NextInt(chunksize);
-                int posY = chunkRand.NextInt(worldheight - 20) + 8;
-                int posZ = cdz * chunksize + chunkRand.NextInt(chunksize);
+                int rnd = chunkRand.NextInt(rndSize);
+                int posX = cdx * chunksize + rnd % chunksize;
+                rnd /= chunksize;
+                int posZ = cdz * chunksize + rnd % chunksize;
+                rnd /= chunksize;
+                int posY = rnd + 8;
 
                 float horAngle = chunkRand.NextFloat() * GameMath.TWOPI;
                 float vertAngle = (chunkRand.NextFloat() - 0.5f) * 0.25f;
                 float horizontalSize = chunkRand.NextFloat() * 2 + chunkRand.NextFloat();
                 float verticalSize = 0.75f + chunkRand.NextFloat() * 0.4f;
 
-                if (chunkRand.NextFloat() < 0.04f)
+                rnd = chunkRand.NextInt(100 * 50 * 1000 * 100);
+                if (rnd % 100 < 4)    // 4% chance
                 {
                     horizontalSize = chunkRand.NextFloat() * 2 + chunkRand.NextFloat() + chunkRand.NextFloat();
                     verticalSize = 0.25f + chunkRand.NextFloat() * 0.2f;
                 }
                 else
-                if (chunkRand.NextFloat() < 0.01f)
+                if (rnd % 100 == 4)   // 1% chance
                 {
                     horizontalSize = 0.75f + chunkRand.NextFloat();
                     verticalSize = chunkRand.NextFloat() * 2 + chunkRand.NextFloat();
                 }
+                rnd /= 100;   // range of rnd is now 0 - 4,999,999
 
-                bool extraBranchy = (posY < TerraGenConfig.seaLevel / 2) ? chunkRand.NextFloat() < 0.02f : false;
-                bool largeNearLavaLayer = chunkRand.NextFloat() < 0.3f;
+                bool extraBranchy = (posY < TerraGenConfig.seaLevel / 2) ? rnd % 50 == 0 : false;     // 2% chance
+                rnd /= 50;   // range of rnd is now 0 - 99,999
+                int rnd1000 = rnd % 1000;
+                rnd /= 1000;  // range of rnd is  now 0 - 99
+                bool largeNearLavaLayer = rnd1000 % 10 < 3;   // 0.3 chance
 
-                float curviness = chunkRand.NextFloat() < 0.01f ? 0.035f : (chunkRand.NextFloat() < 0.03f ? 0.5f : 0.1f);
+                float curviness = rnd == 0 ? 0.035f : (rnd1000 < 30 ? 0.5f : 0.1f);    // 0.01 chance;  0.03 chance)
 
                 int maxIterations = chunkRange * chunksize - chunksize / 2;
                 maxIterations = maxIterations - chunkRand.NextInt(maxIterations / 4);
@@ -266,14 +280,15 @@ namespace Vintagestory.ServerMods
 
                 vertAngle *= 0.8f;
 
-
-
-                if (caveRand.NextInt(80) == 0)
+                int rrnd = caveRand.NextInt(800000);
+                if (rrnd / 10000 == 0)   // chance 1/80
                 {
                     sizeChangeSpeedGain = (caveRand.NextFloat() * caveRand.NextFloat())/2;
                 }
 
-                int rnd = caveRand.NextInt(10000); // Calls to caveRand are not too cheap, so lets just use one for all those random variation changes
+                bool genHotSpring=false;
+
+                int rnd = rrnd % 10000; // Calls to caveRand are not too cheap, so lets just use one for all those random variation changes
                 // 1/330 * 10k = 30
                 // 1/130 * 10k = 76
                 // 1/100 * 10k = 100
@@ -332,6 +347,11 @@ namespace Vintagestory.ServerMods
                     }
                 }
 
+                if (posY > -5 && posY < 16 && horRadius > 4 && vertRadius > 2)
+                {
+                    genHotSpring = true;
+                }
+
                 sizeChangeSpeedAccum = Math.Max(0.1f, sizeChangeSpeedAccum + sizeChangeSpeedGain * 0.05f);
                 sizeChangeSpeedGain -= 0.02f;
 
@@ -351,12 +371,11 @@ namespace Vintagestory.ServerMods
                 vertAngle += curviness * vertAngleChange;
 
 
-                
-                vertAngleChange = 0.9f * vertAngleChange + (caveRand.NextFloat() - caveRand.NextFloat()) * caveRand.NextFloat() * 3f;
-                horAngleChange = 0.9f * horAngleChange + (caveRand.NextFloat() - caveRand.NextFloat()) * caveRand.NextFloat() * 1f;
-                
+                // somewhat costly
+                vertAngleChange = 0.9f * vertAngleChange + caveRand.NextFloatMinusToPlusOne() * caveRand.NextFloat() * 3f;
+                horAngleChange = 0.9f * horAngleChange + caveRand.NextFloatMinusToPlusOne() * caveRand.NextFloat();
 
-                if (caveRand.NextInt(140) == 0)
+                if (rrnd % 140 == 0)
                 {
                     horAngleChange *= caveRand.NextFloat() * 6;
                 }
@@ -402,13 +421,13 @@ namespace Vintagestory.ServerMods
 
 
                 
-                if (horRadius >= 2 && caveRand.NextInt(5) == 0) continue;
+                if (horRadius >= 2 && rrnd % 5 == 0) continue;
 
                 // Check just to prevent unnecessary calculations
                 // As long as we are outside the currently generating chunk, we don't need to generate anything
                 if (posX <= -horRadius * 2 || posX >= chunksize + horRadius * 2 || posZ <= -horRadius * 2 || posZ >= chunksize + horRadius * 2) continue;
 
-                SetBlocks(chunks, horRadius, vertRadius + verHeightGainAccum, posX, posY + verHeightGainAccum / 2, posZ, terrainheightmap, rainheightmap, chunkX, chunkZ);
+                SetBlocks(chunks, horRadius, vertRadius + verHeightGainAccum, posX, posY + verHeightGainAccum / 2, posZ, terrainheightmap, rainheightmap, chunkX, chunkZ, genHotSpring);
             }
         }
 
@@ -443,8 +462,6 @@ namespace Vintagestory.ServerMods
                 vertAngle += 0.1f * vertAngleChange;
                 vertAngleChange = 0.9f * vertAngleChange + (caveRand.NextFloat() - caveRand.NextFloat()) * caveRand.NextFloat() / 3;
 
-                
-
                 // Horizontal branch
                 if (maxIterations - currentIteration < 10)
                 {
@@ -474,21 +491,21 @@ namespace Vintagestory.ServerMods
                 // As long as we are outside the currently generating chunk, we don't need to generate anything
                 if (posX <= -horRadius * 2 || posX >= chunksize + horRadius * 2 || posZ <= -horRadius * 2 || posZ >= chunksize + horRadius * 2) continue;
 
-                SetBlocks(chunks, horRadius, vertRadius, posX, posY, posZ, terrainheightmap, rainheightmap, chunkX, chunkZ);
+                SetBlocks(chunks, horRadius, vertRadius, posX, posY, posZ, terrainheightmap, rainheightmap, chunkX, chunkZ, false);
             }
         }
 
 
 
 
-        private bool SetBlocks(IServerChunk[] chunks, float horRadius, float vertRadius, double centerX, double centerY, double centerZ, ushort[] terrainheightmap, ushort[] rainheightmap, int chunkX, int chunkZ)
+        private bool SetBlocks(IServerChunk[] chunks, float horRadius, float vertRadius, double centerX, double centerY, double centerZ, ushort[] terrainheightmap, ushort[] rainheightmap, int chunkX, int chunkZ, bool genHotSpring)
         {
             IMapChunk mapchunk = chunks[0].MapChunk;
             int chunksize = this.chunksize;
 
             // One extra size for checking if we run into water
             horRadius++;
-            vertRadius++;
+            vertRadius+=2;
 
             int mindx = (int)GameMath.Clamp(centerX - horRadius, 0, chunksize - 1);
             int maxdx = (int)GameMath.Clamp(centerX + horRadius + 1, 0, chunksize - 1);
@@ -503,6 +520,7 @@ namespace Vintagestory.ServerMods
             double distortStrength = GameMath.Clamp(vertRadius / 4.0, 0, 0.1);
 
             int waterID = GlobalConfig.waterBlockId;
+
             for (int lx = mindx; lx <= maxdx; lx++)
             {
                 xdistRel = (lx - centerX) * (lx - centerX) / hRadiusSq;
@@ -523,8 +541,8 @@ namespace Vintagestory.ServerMods
                         if (xdistRel + ydistRel + zdistRel > 1.0 || y > worldheight - 1) continue;
 
                         int ly = y % chunksize;
-
-                        if (chunks[y / chunksize].Data.GetFluid((ly * chunksize + lz) * chunksize + lx) == waterID)
+                        int blockId = chunks[y / chunksize].Data.GetFluid((ly * chunksize + lz) * chunksize + lx);
+                        if (blockId == waterID)
                         {
                             return false;
                         }
@@ -532,8 +550,9 @@ namespace Vintagestory.ServerMods
                 }
             }
 
+
             horRadius--;
-            vertRadius--;
+            vertRadius-=2;
 
             mindx = (int)GameMath.Clamp(centerX - horRadius, 0, chunksize - 1);
             maxdx = (int)GameMath.Clamp(centerX + horRadius + 1, 0, chunksize - 1);
@@ -545,6 +564,20 @@ namespace Vintagestory.ServerMods
 
             hRadiusSq = horRadius * horRadius;
             vRadiusSq = vertRadius * vertRadius;
+
+            
+            int geoActivity = getGeologicActivity(chunkX * chunksize + (int)centerX, chunkZ * chunksize + (int)centerZ);
+            genHotSpring &= geoActivity > 128;
+            
+            if (genHotSpring && centerX >= 0 && centerX < 32 && centerZ >= 0 && centerZ < 32)
+            {
+                var data = mapchunk.GetModdata<Dictionary<Vec3i, HotSpringGenData>>("hotspringlocations");
+                if (data == null) data = new Dictionary<Vec3i, HotSpringGenData>();
+                data[new Vec3i((int)centerX, (int)centerY, (int)centerZ)] = new HotSpringGenData() { horRadius = horRadius };
+                mapchunk.SetModdata("hotspringlocations", data);
+            }
+
+            int yLavaStart = (geoActivity * 16) / 128;
             
 
             for (int lx = mindx; lx <= maxdx; lx++)
@@ -587,15 +620,29 @@ namespace Vintagestory.ServerMods
                             else
                             {
                                 chunkBlockData[index3d] = 0;
-                                chunkBlockData.SetFluid(index3d, GlobalConfig.lavaBlockId);
-                                worldgenBlockAccessor.ScheduleBlockLightUpdate(new BlockPos(chunkX * chunksize + lx, y, chunkZ * chunksize + lz), airBlockId, GlobalConfig.lavaBlockId);
+                                if (y > yLavaStart)
+                                {
+                                    chunkBlockData[index3d] = GlobalConfig.basaltBlockId;
+                                } else
+                                {
+                                    chunkBlockData.SetFluid(index3d, GlobalConfig.lavaBlockId);
+                                }
+                                
+                                if (y <= yLavaStart) worldgenBlockAccessor.ScheduleBlockLightUpdate(new BlockPos(chunkX * chunksize + lx, y, chunkZ * chunksize + lz), airBlockId, GlobalConfig.lavaBlockId);
                             }
 
                         }
                         else if (y < 12)
                         {
                             chunkBlockData[index3d] = 0;
-                            chunkBlockData.SetFluid(index3d, GlobalConfig.lavaBlockId);
+                            if (y > yLavaStart)
+                            {
+                                chunkBlockData[index3d] = GlobalConfig.basaltBlockId;
+                            }
+                            else
+                            {
+                                chunkBlockData.SetFluid(index3d, GlobalConfig.lavaBlockId);
+                            }
                         }
                         else
                         {
@@ -605,10 +652,20 @@ namespace Vintagestory.ServerMods
                 }
             }
 
-            
-
             return true;
         }
-        
+
+        private int getGeologicActivity(int posx, int posz)
+        {
+            var climateMap = worldgenBlockAccessor.GetMapRegion(posx / regionsize, posz / regionsize)?.ClimateMap;
+            if (climateMap == null) return 0;
+            int regionChunkSize = regionsize / chunksize;
+            float fac = (float)climateMap.InnerSize / regionChunkSize;
+            int rlX = (posx / chunksize) % regionChunkSize;
+            int rlZ = (posz / chunksize) % regionChunkSize;
+
+            return climateMap.GetUnpaddedInt((int)(rlX * fac), (int)(rlZ * fac)) & 0xff;
+        }
+
     }
 }

@@ -230,7 +230,7 @@ namespace Vintagestory.GameContent
             init();
         }
 
-        public override void OnEntityDespawn(EntityDespawnReason despawn)
+        public override void OnEntityDespawn(EntityDespawnData despawn)
         {
             base.OnEntityDespawn(despawn);
 

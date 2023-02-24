@@ -12,10 +12,9 @@ namespace Vintagestory.ServerMods
     public class TreeGen : ITreeGenerator
     {
         // "Temporary Values" linked to currently generated tree
-        IBlockAccessor api;
+        IBlockAccessor blockAccessor;
+        TreeGenParams treeGenParams;
         float size;
-        float vineGrowthChance; // 0..1
-        float otherBlockChance; // 0..1
 
         [ThreadStatic]
         private static Random rand;
@@ -28,6 +27,7 @@ namespace Vintagestory.ServerMods
         private readonly ForestFloorSystem forestFloor;
 
 
+
         public TreeGen(TreeGenConfig config, int seed, ForestFloorSystem ffs)
         {
             this.config = config;
@@ -35,15 +35,14 @@ namespace Vintagestory.ServerMods
             lcgrandTL = new ThreadLocal<LCGRandom>(() => new LCGRandom(seed));
         }
 
-        public void GrowTree(IBlockAccessor api, BlockPos pos, bool isShrubLayer, float sizeModifier = 1f, float vineGrowthChance = 0, float otherBlockChance = 1f, int treesInChunkGenerated = 0)
+        public void GrowTree(IBlockAccessor ba, BlockPos pos, TreeGenParams treeGenParams)
         {
             Random rnd = rand ?? (rand = new Random(Environment.TickCount));
             lcgrandTL.Value.InitPositionSeed(pos.X, pos.Z);
 
-            this.api = api;
-            this.size = sizeModifier * config.sizeMultiplier + config.sizeVar.nextFloat(1, rnd);
-            this.vineGrowthChance = vineGrowthChance;
-            this.otherBlockChance = otherBlockChance;
+            this.blockAccessor = ba;
+            this.treeGenParams = treeGenParams;
+            this.size = treeGenParams.size * config.sizeMultiplier + config.sizeVar.nextFloat(1, rnd);
 
             pos.Up(config.yOffset);
 
@@ -77,9 +76,9 @@ namespace Vintagestory.ServerMods
                 }
             }
 
-            if (!isShrubLayer)
+            if (!treeGenParams.skipForestFloor)
             {
-                forestFloor.CreateForestFloor(api, config, pos, lcgrandTL.Value, treesInChunkGenerated);
+                forestFloor.CreateForestFloor(ba, config, pos, lcgrandTL.Value, treeGenParams.treesInChunkGenerated);
             }
         }
 
@@ -153,40 +152,59 @@ namespace Vintagestory.ServerMods
 
                 if (state == PlaceResumeState.CanPlace)
                 {
-                    api.SetBlock(blockId, currentPos);
+                    blockAccessor.SetBlock(blockId, currentPos);
+
+                    if (blockAccessor.GetBlock(blockId).BlockMaterial == EnumBlockMaterial.Wood && treeGenParams.mossGrowthChance > 0 && config.treeBlocks.mossDecorBlock != null)
+                    {
+                        var rnd = rand.NextDouble();
+                        int faceIndex = treeGenParams.hemisphere == EnumHemisphere.North ? 0 : 2; // Prefer north face on the northern hemisphere, and south otherwise (= the shady spot)
+                        for (int i = 2; i >= 0; i--)
+                        {
+                            if (rnd > treeGenParams.mossGrowthChance * i) break;
+                            var face = BlockFacing.HORIZONTALS[faceIndex % 4];
+                            var block = blockAccessor.GetBlock(currentPos.X + face.Normali.X, currentPos.Y, currentPos.Z + face.Normali.Z);
+                            if (!block.SideSolid[face.Opposite.Index])
+                            {
+                                blockAccessor.SetDecor(config.treeBlocks.mossDecorBlock, currentPos, face);
+                            }
+                            faceIndex += rand.Next(4);
+                        }
+                    }
+
+
 
                     // Update the canopy outline of the tree for this block position
-                    int idz = (int)(dz + 16);
-                    int idx = (int)(dx + 16);
-                    if (idz > 1 && idz < 31 && idx > 1 && idx < 31)
+                    int idz = (int)(dz + ForestFloorSystem.Range);
+                    int idx = (int)(dx + ForestFloorSystem.Range);
+                    if (idz > 1 && idz < ForestFloorSystem.GridRowSize - 2 && idx > 1 && idx < ForestFloorSystem.GridRowSize - 2)
                     {
-                        int canopyIndex = idz * 33 + idx;
-                        outline[canopyIndex - 68]++;
-                        outline[canopyIndex - 67]++;  //bias canopy shading towards the North (- z direction) for sun effects
-                        outline[canopyIndex - 66]++;
-                        outline[canopyIndex - 65]++;
-                        outline[canopyIndex - 64]++;
-                        outline[canopyIndex - 35]++;
-                        outline[canopyIndex - 34] += 2;
-                        outline[canopyIndex - 33] += 2;
-                        outline[canopyIndex - 32] += 2;
-                        outline[canopyIndex - 31]++;
+                        int canopyIndex = idz * ForestFloorSystem.GridRowSize + idx;
+                        outline[canopyIndex - 2 * ForestFloorSystem.GridRowSize - 2]++;
+                        outline[canopyIndex - 2 * ForestFloorSystem.GridRowSize - 1]++;  //bias canopy shading towards the North (- z direction) for sun effects
+                        outline[canopyIndex - 2 * ForestFloorSystem.GridRowSize + 0]++;
+                        outline[canopyIndex - 2 * ForestFloorSystem.GridRowSize + 1]++;
+                        outline[canopyIndex - 2 * ForestFloorSystem.GridRowSize + 2]++;
+                        outline[canopyIndex - ForestFloorSystem.GridRowSize - 2]++;
+                        outline[canopyIndex - ForestFloorSystem.GridRowSize - 1] += 2;
+                        outline[canopyIndex - ForestFloorSystem.GridRowSize + 0] += 2;
+                        outline[canopyIndex - ForestFloorSystem.GridRowSize + 1] += 2;
+                        outline[canopyIndex - ForestFloorSystem.GridRowSize + 2]++;
                         outline[canopyIndex - 2]++;
                         outline[canopyIndex - 1] += 2;
                         outline[canopyIndex + 0] += 3;
                         outline[canopyIndex + 1] += 2;
                         outline[canopyIndex + 2]++;
-                        outline[canopyIndex + 33]++;
+                        outline[canopyIndex + ForestFloorSystem.GridRowSize]++;
                     }
 
-                    if (vineGrowthChance > 0 && rand.NextDouble() < vineGrowthChance && config.treeBlocks.vinesBlock != null)
+                    if (treeGenParams.vinesGrowthChance > 0 && rand.NextDouble() < treeGenParams.vinesGrowthChance && config.treeBlocks.vinesBlock != null)
                     {
                         BlockFacing facing = BlockFacing.HORIZONTALS[rand.Next(4)];
 
                         BlockPos vinePos = currentPos.AddCopy(facing);
-                        float cnt = 1 + rand.Next(11) * (vineGrowthChance + 0.2f);
+                        float cnt = 1 + rand.Next(11) * (treeGenParams.vinesGrowthChance + 0.2f);
 
-                        while (api.GetBlockId(vinePos) == 0 && cnt-- > 0)
+                        while (blockAccessor.GetBlockId(vinePos) == 0 && cnt-- > 0)
                         {
                             Block block = config.treeBlocks.vinesBlock;
 
@@ -195,7 +213,7 @@ namespace Vintagestory.ServerMods
                                 block = config.treeBlocks.vinesEndBlock;
                             }
 
-                            block.TryPlaceBlockForWorldGen(api, vinePos, facing, lcgrand);
+                            block.TryPlaceBlockForWorldGen(blockAccessor, vinePos, facing, lcgrand);
                             vinePos.Down();
                         }
                     }
@@ -279,22 +297,20 @@ namespace Vintagestory.ServerMods
 
         internal bool TriggerRandomOtherBlock()
         {
-            return rand.NextDouble() < otherBlockChance * config.treeBlocks.otherLogChance;
+            return rand.NextDouble() < treeGenParams.otherBlockChance * config.treeBlocks.otherLogChance;
         }
 
 
         PlaceResumeState getPlaceResumeState(BlockPos targetPos, int desiredblockId, bool wideTrunk)
         {
-            if (targetPos.X < 0 || targetPos.Y < 0 || targetPos.Z < 0 || targetPos.X >= api.MapSizeX || targetPos.Y >= api.MapSizeY || targetPos.Z >= api.MapSizeZ) return PlaceResumeState.Stop;
+            if (targetPos.X < 0 || targetPos.Y < 0 || targetPos.Z < 0 || targetPos.X >= blockAccessor.MapSizeX || targetPos.Y >= blockAccessor.MapSizeY || targetPos.Z >= blockAccessor.MapSizeZ) return PlaceResumeState.Stop;
 
-            // Should be like this but seems to work just fine anyway? o.O
-            //int currentblockId = (api is IBulkBlockAccessor) ? ((IBulkBlockAccessor)api).GetStagedBlockId(targetPos) : api.GetBlockId(targetPos);
-            int currentblockId = api.GetBlockId(targetPos);
+            int currentblockId = blockAccessor.GetBlockId(targetPos);
             if (currentblockId == -1) return PlaceResumeState.CannotPlace;
             if (currentblockId == 0) return PlaceResumeState.CanPlace;
 
-            Block currentBlock = api.GetBlock(currentblockId);
-            Block desiredBock = api.GetBlock(desiredblockId);
+            Block currentBlock = blockAccessor.GetBlock(currentblockId);
+            Block desiredBock = blockAccessor.GetBlock(desiredblockId);
 
             // For everything except redwood trunks, abort the treegen if it encounters a non-replaceable, non-soil, non-same-tree block.  Redwood trunks continue regardless, otherwise we get 3/4 chunks because of some other random worldgen block near the base etc.
             if ((currentBlock.Fertility == 0 || desiredBock.BlockMaterial != EnumBlockMaterial.Wood) && currentBlock.Replaceable < 6000 && !wideTrunk && !config.treeBlocks.blockIds.Contains(currentBlock.BlockId) /* Allow logs to replace soil */)

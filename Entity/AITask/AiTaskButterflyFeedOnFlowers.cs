@@ -28,7 +28,7 @@ namespace Vintagestory.GameContent
             (entity.Api as ICoreServerAPI).Event.DidBreakBlock += Event_DidBreakBlock;
         }
 
-        public override void OnEntityDespawn(EntityDespawnReason reason)
+        public override void OnEntityDespawn(EntityDespawnData reason)
         {
             (entity.Api as ICoreServerAPI).Event.DidBreakBlock -= Event_DidBreakBlock;
         }

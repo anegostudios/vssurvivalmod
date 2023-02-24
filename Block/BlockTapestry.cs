@@ -48,45 +48,38 @@ namespace Vintagestory.GameContent
                     cachedPath.Path += "++" + rotLoc.Path;
                 }
 
-                TextureAtlasPosition texpos = capi.BlockTextureAtlas[cachedPath];
-                
-                if (texpos == null)
+                capi.BlockTextureAtlas.GetOrInsertTexture(cachedPath, out _, out var texpos, () =>
                 {
                     IAsset texAsset = capi.Assets.TryGet(texturePath.Clone().WithPathPrefixOnce("textures/").WithPathAppendixOnce(".png"));
-                    if (texAsset != null)
-                    {
-                        BitmapRef bmp = texAsset.ToBitmap(capi);
-
-                        if (rotten)
-                        {
-                            BakedBitmap bakedBmp = new BakedBitmap() { Width = bmp.Width, Height = bmp.Height };
-                            bakedBmp.TexturePixels = bmp.Pixels;
-
-                            int[] texturePixelsOverlay = capi.Assets.TryGet(rotLoc.WithPathPrefixOnce("textures/").WithPathAppendixOnce(".png"))?.ToBitmap(capi)?.Pixels;
-                            if (texturePixelsOverlay == null)
-                            {
-                                throw new Exception("Texture file " + rotLoc + " is missing");
-                            }
-
-                            for (int p = 0; p < bakedBmp.TexturePixels.Length; p++)
-                            {
-                                bakedBmp.TexturePixels[p] = ColorUtil.ColorOver(texturePixelsOverlay[p], bakedBmp.TexturePixels[p]);
-                            }
-
-                            capi.BlockTextureAtlas.InsertTextureCached(cachedPath, bakedBmp, out _, out texpos);
-                        }
-                        else
-                        {
-                            capi.BlockTextureAtlas.InsertTextureCached(cachedPath, bmp, out _, out texpos);
-                        }
-
-
-                    }
-                    else
+                    if (texAsset == null)
                     {
                         capi.World.Logger.Warning("Tapestry type '{0}' defined texture '{1}', but no such texture found.", type, texturePath);
+                        return null;
                     }
-                }
+                    
+                    BitmapRef bmp = texAsset.ToBitmap(capi);
+
+                    if (rotten)
+                    {
+                        BakedBitmap bakedBmp = new BakedBitmap() { Width = bmp.Width, Height = bmp.Height };
+                        bakedBmp.TexturePixels = bmp.Pixels;
+
+                        int[] texturePixelsOverlay = capi.Assets.TryGet(rotLoc.WithPathPrefixOnce("textures/").WithPathAppendixOnce(".png"))?.ToBitmap(capi)?.Pixels;
+                        if (texturePixelsOverlay == null)
+                        {
+                            throw new Exception("Texture file " + rotLoc + " is missing");
+                        }
+
+                        for (int p = 0; p < bakedBmp.TexturePixels.Length; p++)
+                        {
+                            bakedBmp.TexturePixels[p] = ColorUtil.ColorOver(texturePixelsOverlay[p], bakedBmp.TexturePixels[p]);
+                        }
+
+                        return bakedBmp;
+                    }
+                        
+                    return bmp;
+                });
 
                 if (texpos == null)
                 {
@@ -230,7 +223,7 @@ namespace Vintagestory.GameContent
                     if (!jour.DidDiscoverLore(byPlayer.PlayerUID, LoreCode, GetLoreChapterId(baseCode)))
                     {
                         var splr = byPlayer as IServerPlayer;
-                        jour.DiscoverLore(new LoreDiscovery() { Code = LoreCode, ChapterIds = new List<int>() { GetLoreChapterId(baseCode) } }, splr);
+                        jour.DiscoverLore(new LoreDiscovery() { Code = LoreCode, ChapterIds = new List<int>() { GetLoreChapterId(baseCode) } }, splr, null);
                     }
                 }
             }

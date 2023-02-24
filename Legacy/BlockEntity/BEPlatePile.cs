@@ -1,11 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
@@ -36,7 +32,7 @@ namespace Vintagestory.GameContent
             Dictionary<AssetLocation, MeshData[]> meshesByType = new Dictionary<AssetLocation, MeshData[]>();
 
             tmpBlock = Api.World.BlockAccessor.GetBlock(Pos);
-            tmpTextureSource = ((ICoreClientAPI)Api).Tesselator.GetTexSource(tmpBlock);
+            tmpTextureSource = ((ICoreClientAPI)Api).Tesselator.GetTextureSource(tmpBlock);
             Shape shape = API.Common.Shape.TryGet(Api, "shapes/block/metal/platepile.json");
             MetalProperty metals = Api.Assets.TryGet("worldproperties/block/metal.json").ToObject<MetalProperty>();
 

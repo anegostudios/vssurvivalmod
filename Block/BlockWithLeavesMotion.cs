@@ -53,29 +53,30 @@ namespace Vintagestory.GameContent
                 }
             }
 
-
-            int[] origFlags;
+            // Tyron 27.11.22: WTF does this code do. origFlags wasn't even assigned here
+            /*int[] origFlags;
             if (!windModeByFlagCount.TryGetValue(decalMesh.FlagsCount, out origFlags))
             {
                 var flags = windModeByFlagCount[decalMesh.FlagsCount] = new int[decalMesh.FlagsCount];
                 for (int i = 0; i < flags.Length; i++) flags[i] = decalMesh.Flags[i] & VertexFlags.WindModeBitsMask;
-            }
+            }*/
 
-            ToggleWindModeSetWindData(decalMesh, sideDisableWindwave, enableWind, groundOffset, origFlags);
+            decalMesh.ToggleWindModeSetWindData(sideDisableWindwave, enableWind, groundOffset);
         }
 
 
-        Dictionary<int, int[]> windModeByFlagCount = new Dictionary<int, int[]>();
+        //Dictionary<int, int[]> windModeByFlagCount = new Dictionary<int, int[]>();
         public override void OnJsonTesselation(ref MeshData sourceMesh, ref int[] lightRgbsByCorner, BlockPos pos, Block[] chunkExtBlocks, int extIndex3d)
         {
             if (VertexFlags.WindMode == EnumWindBitMode.NoWind) return;
 
-            int[] origFlags;
+            // Tyron 27.11.22: WTF does this code do. origFlags wasn't even assigned here
+            /*int[] origFlags;
             if (!windModeByFlagCount.TryGetValue(sourceMesh.FlagsCount, out origFlags))
             {
                 var flags = windModeByFlagCount[sourceMesh.FlagsCount] = new int[sourceMesh.FlagsCount];
                 for (int i = 0; i < flags.Length; i++) flags[i] = sourceMesh.Flags[i] & VertexFlags.WindModeBitsMask;
-            }
+            }*/
 
             bool enableWind = (byte)(lightRgbsByCorner[24] >> 24) >= 159;  //corresponds with a sunlight level of less than 14
             int groundOffset = 1;
@@ -113,7 +114,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            ToggleWindModeSetWindData(sourceMesh, sideDisableWindshear, enableWind, groundOffset, origFlags);
+            sourceMesh.ToggleWindModeSetWindData(sideDisableWindshear, enableWind, groundOffset);
         }
 
 

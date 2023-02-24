@@ -1,21 +1,64 @@
 ﻿using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
-using System.Linq;
 using Vintagestory.API.Util;
 using System;
 
 namespace Vintagestory.GameContent
 {
+    public class TextAreaConfig
+    {
+        public int MaxWidth = 160;
+        public int MaxHeight = 165;
+        public float FontSize = 20;
+        public bool BoldFont = false;
+        public EnumVerticalAlign VerticalAlign = EnumVerticalAlign.Top;
+        public string FontName = GuiStyle.StandardFontName;
+
+        public float textVoxelOffsetX;
+        public float textVoxelOffsetY;
+        public float textVoxelOffsetZ;
+        public float textVoxelWidth = 14f;
+        public float textVoxelHeight = 6.5f;
+
+        public bool WithScrollbar = false;
+
+        public TextAreaConfig CopyWithFontSize(float fontSize)
+        {
+            return new TextAreaConfig()
+            {
+                MaxWidth = MaxWidth,
+                MaxHeight = MaxHeight,
+                FontSize = fontSize,
+                BoldFont = BoldFont,
+                FontName = FontName,
+                textVoxelWidth = textVoxelWidth,
+                textVoxelHeight = textVoxelHeight,
+                textVoxelOffsetX = textVoxelOffsetX,
+                textVoxelOffsetY = textVoxelOffsetY,
+                textVoxelOffsetZ = textVoxelOffsetZ,
+                WithScrollbar = WithScrollbar,
+                VerticalAlign = VerticalAlign
+            };
+        }
+    }
+
     public class BlockSign : Block
     {
         WorldInteraction[] interactions;
 
+        public TextAreaConfig signConfig;
+
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
+
+            signConfig = new TextAreaConfig();
+            if (Attributes != null)
+            {
+                signConfig = this.Attributes.AsObject<TextAreaConfig>(signConfig);
+            }
 
             if (api.Side != EnumAppSide.Client) return;
 
@@ -112,12 +155,14 @@ namespace Vintagestory.GameContent
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)
         {
             Block block = world.BlockAccessor.GetBlock(CodeWithParts("ground", "north"));
+            if (block == null) block = world.BlockAccessor.GetBlock(CodeWithParts("wall", "north"));
             return new ItemStack[] { new ItemStack(block) };
         }
 
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
         {
             Block block = world.BlockAccessor.GetBlock(CodeWithParts("ground", "north"));
+            if (block == null) block = world.BlockAccessor.GetBlock(CodeWithParts("wall", "north"));
             return new ItemStack(block);
         }
 

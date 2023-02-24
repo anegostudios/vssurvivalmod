@@ -102,11 +102,17 @@ namespace Vintagestory.GameContent
             base.FromBytes(reader, forClient);
 
             ITreeAttribute tree = WatchedAttributes["inventory"] as ITreeAttribute;
-            if (gearInv != null && tree != null)
+            if (tree != null)
             {
+                if (gearInv == null)
+                {
+                    gearInv = new InventoryGeneric(17, "gear-" + EntityId, Api, onNewSlot);
+                    gearInv.SlotModified += GearInv_SlotModified;
+                }
                 gearInv.FromTreeAttributes(tree);
             }
         }
+
 
         string[] poses = new string[] { "idle", "lefthandup", "righthandup", "twohandscross" };
 

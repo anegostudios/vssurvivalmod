@@ -1,11 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
@@ -69,7 +65,14 @@ namespace Vintagestory.GameContent
             }
 
 
-            EnumIgniteState state = block.OnTryIgniteBlock(byEntity, blockSel.Position, 0);
+            EnumIgniteState state = EnumIgniteState.NotIgnitable;
+
+            IIgnitable ign = block.GetInterface<IIgnitable>(byEntity.World, blockSel.Position);
+            if (ign != null)
+            {
+                state = ign.OnTryIgniteBlock(byEntity, blockSel.Position, 0);
+            }
+
             if (state == EnumIgniteState.NotIgnitablePreventDefault)
             {
                 blockHandling = EnumHandling.PreventDefault;
@@ -99,7 +102,11 @@ namespace Vintagestory.GameContent
 
 
             Block block = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
-            EnumIgniteState igniteState = block.OnTryIgniteBlock(byEntity, blockSel.Position, secondsUsed);
+
+            EnumIgniteState igniteState = EnumIgniteState.NotIgnitable;
+
+            IIgnitable ign = block.GetInterface<IIgnitable>(byEntity.World, blockSel.Position);
+            if (ign != null) igniteState = ign.OnTryIgniteBlock(byEntity, blockSel.Position, secondsUsed);
             if (igniteState == EnumIgniteState.NotIgnitablePreventDefault) return false;
 
             handling = EnumHandling.PreventDefault;
@@ -152,7 +159,8 @@ namespace Vintagestory.GameContent
 
             EnumHandling handled = EnumHandling.PassThrough;
             Block block = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
-            block.OnTryIgniteBlockOver(byEntity, blockSel.Position, secondsUsed, ref handled);
+            IIgnitable ign = block.GetInterface<IIgnitable>(byEntity.World, blockSel.Position);
+            ign?.OnTryIgniteBlockOver(byEntity, blockSel.Position, secondsUsed, ref handled);
 
             if (handled != EnumHandling.PassThrough)
             {

@@ -67,8 +67,9 @@ using Vintagestory.API.Config;
                     harshWinters: ""true"",
                     daysPerMonth: ""9"",
                     saplingGrowthRate: ""2"",
+                    propickNodeSearchRadius: ""6"",
                     allowUndergroundFarming: ""false"",
-                    temporalGearRespawnUses: ""-1"",
+                    temporalGearRespawnUses: ""20"",
                     temporalStormSleeping: ""0""
 			    }
 		    },
@@ -140,6 +141,44 @@ using Vintagestory.API.Config;
                     harshWinters: ""true"",
                     daysPerMonth: ""9"",
                     allowUndergroundFarming: ""false"",
+                    temporalGearRespawnUses: ""0"",
+                    temporalStormSleeping: ""0"",
+                    temporalRifts: ""off"",
+                    temporalStability: ""off""
+			    }
+		    },
+            {
+                code: ""historical"",
+                playListCode: ""survival"",
+                langcode: ""preset-historical"",
+			    requestMods: [""game"", ""survival""],
+                listOrder: 7,
+			    worldType: ""standard"",
+			    worldConfig: {
+				    worldClimate: ""realistic"",
+				    gameMode: ""survival"",
+                    deathPunishment: ""drop"",
+                    bodyTemperatureResistance: ""5"",
+                    blockGravity: ""sandgravelsoil"",
+                    creatureHostility: ""aggressive"",
+                    playerHealthPoints: ""10"",
+                    creatureStrength: ""1.5"",
+                    playerHungerSpeed: ""1"",
+                    lungCapacity: ""30000"",
+                    foodSpoilSpeed: ""1.25"",
+                    graceTimer: ""0"",
+                    allowCoordinateHud: ""false"",
+                    allowMap: ""false"",
+                    allowLandClaiming: ""false"",
+                    surfaceCopperDeposits: ""0.05"",
+                    surfaceTinDeposits: ""0"",
+                    saplingGrowthRate: ""3"",
+                    temporalStability: ""false"",
+                    temporalStorms: ""off"",
+                    polarEquatorDistance: ""100000"",
+                    harshWinters: ""true"",
+                    daysPerMonth: ""9"",
+                    allowUndergroundFarming: ""false"",
                     spawnRadius: ""5000"",
                     temporalGearRespawnUses: ""2"",
                     temporalStormSleeping: ""0"",
@@ -180,6 +219,7 @@ using Vintagestory.API.Config;
             { category: ""survivalchallenges"", code: ""microblockChiseling"", dataType: ""dropdown"", values: [""off"", ""stonewood"", ""all""], names: [""Off"", ""Stone and Wood"", ""Most cubic blocks""], default: ""stonewood"" },
             { category: ""survivalchallenges"", code: ""allowCoordinateHud"", dataType: ""bool"", default: ""true"" },
             { category: ""survivalchallenges"", code: ""allowMap"", dataType: ""bool"", default: ""true"" },
+            { category: ""survivalchallenges"", code: ""loreContent"", dataType: ""bool"", default: ""true"" },
             
             { category: ""temporalstability"", code: ""temporalStorms"", dataType: ""dropdown"", values: [""off"", ""veryrare"", ""rare"", ""sometimes"", ""often"", ""veryoften""], names: [""Off"", ""Every 30-40 days, increase strength/frequency by 2.5% each time, capped at +25%"", ""Approx. every 20-30 days, increase strength/frequency by 5% each time, capped at +50%"", ""Approx. every 10-20 days, increase strength/frequency by +10% each time, capped at 100%"", ""Approx. every 5-10 days, increase strength/frequency by 15% each time, capped at +150%"", ""Approx. every 3-6 days, increase strength/frequency by 20% each time, capped at +200%""], default: ""sometimes"" },
             { category: ""temporalstability"", code: ""tempstormDurationMul"", dataType: ""dropdown"", values: [""2"", ""1.5"", ""1.25"", ""1"", ""0.75"", ""0.5"", ""0.25""], names: [""Much longer (200%)"", ""Longer (150%)"", ""Slightly longer (125%)"", ""Normal (100%)"", ""Slightly shorter (75%)"", ""Shorter (50%)"", ""Much Shorter (25%)""], default: ""1"" },
@@ -189,8 +229,13 @@ using Vintagestory.API.Config;
             { category: ""temporalstability"", code: ""temporalStormSleeping"", dataType: ""dropdown"", values: [""0"", ""1""], names: [""Disallowed"", ""Allowed""], default: ""1"" },
 
             { category: ""worldgen"", code: ""worldClimate"", dataType: ""dropdown"", values: [""realistic"", ""patchy""], names: [""Realistic"", ""Patchy""], default: ""realistic"", onlyDuringWorldCreate: true },
-            { category: ""worldgen"", code: ""worldWidth"", dataType: ""dropdown"", values: [""1024000"", ""600000"", ""512000"", ""256000"", ""102400"", ""51200"", ""25600"", ""10240"", ""5120"", ""1024"", ""512"", ""384"", ""256"", ""128"", ""64"", ""32"" ], names: [""1 mil blocks"", ""600k blocks"", ""512k blocks"", ""256k blocks"", ""102k blocks"", ""51k blocks"", ""25k blocks"", ""10k blocks"", ""5120 blocks"", ""1024 blocks"", ""512 blocks"", ""384 blocks"", ""256 blocks"", ""128 blocks"", ""64 blocks"", ""32 blocks""], default: ""1024000"", onlyDuringWorldCreate: true },
-            { category: ""worldgen"", code: ""worldLength"", dataType: ""dropdown"", values: [""1024000"", ""600000"", ""512000"", ""256000"", ""102400"", ""51200"", ""25600"", ""10240"", ""5120"", ""1024"", ""512"", ""384"", ""256"", ""128"", ""64"", ""32"" ], names: [""1 mil blocks"", ""600k blocks"", ""512k blocks"", ""256k blocks"", ""102k blocks"", ""51k blocks"", ""25k blocks"", ""10k blocks"", ""5120 blocks"", ""1024 blocks"", ""512 blocks"", ""384 blocks"", ""256 blocks"", ""128 blocks"", ""64 blocks"", ""32 blocks""], default: ""1024000"", onlyDuringWorldCreate: true },
+            { category: ""worldgen"", code: ""oceanessStrength"", dataType: ""dropdown"", values: [""0"", ""0.15"", ""0.35"", ""0.75""], names: [""No oceans"", ""Very large lakes"", ""Continental"", ""Island world""], default: ""0"", onlyDuringWorldCreate: true },
+            { category: ""worldgen"", code: ""upheavelCommonness"", dataType: ""dropdown"", values: [""0"", ""0.2"", ""0.4"", ""0.6"", ""0.8"", ""1""], names: [""None"", ""Very rare"", ""Rare"", ""Uncommon"", ""Somewhat common"", ""Common""], default: ""0.6"", onlyDuringWorldCreate: true },
+            { category: ""worldgen"", code: ""geologicActivity"", dataType: ""dropdown"", values: [""0"", ""0.05"", ""0.1"", ""0.2"", ""0.4""], names: [""None"", ""Rare"", ""Uncommon"", ""Common"", ""Very Common""], default: ""0.05"", onlyDuringWorldCreate: true },
+
+
+            { category: ""worldgen"", code: ""worldWidth"", dataType: ""dropdown"", values: [""8192000"", ""4096000"", ""2048000"", ""1024000"", ""600000"", ""512000"", ""256000"", ""102400"", ""51200"", ""25600"", ""10240"", ""5120"", ""1024"", ""512"", ""384"", ""256"", ""128"", ""64"", ""32"" ], names: [""8 mil blocks (Experimental)"", ""4 mil blocks (Experimental)"", ""2 mil blocks (Experimental)"", ""1 mil blocks"", ""600k blocks"", ""512k blocks"", ""256k blocks"", ""102k blocks"", ""51k blocks"", ""25k blocks"", ""10k blocks"", ""5120 blocks"", ""1024 blocks"", ""512 blocks"", ""384 blocks"", ""256 blocks"", ""128 blocks"", ""64 blocks"", ""32 blocks""], default: ""1024000"", onlyDuringWorldCreate: true },
+            { category: ""worldgen"", code: ""worldLength"", dataType: ""dropdown"", values: [""8192000"", ""4096000"", ""2048000"", ""1024000"", ""600000"", ""512000"", ""256000"", ""102400"", ""51200"", ""25600"", ""10240"", ""5120"", ""1024"", ""512"", ""384"", ""256"", ""128"", ""64"", ""32"" ], names: [""8 mil blocks (Experimental)"", ""4 mil blocks (Experimental)"", ""2 mil blocks (Experimental)"", ""1 mil blocks"", ""600k blocks"", ""512k blocks"", ""256k blocks"", ""102k blocks"", ""51k blocks"", ""25k blocks"", ""10k blocks"", ""5120 blocks"", ""1024 blocks"", ""512 blocks"", ""384 blocks"", ""256 blocks"", ""128 blocks"", ""64 blocks"", ""32 blocks""], default: ""1024000"", onlyDuringWorldCreate: true },
             { category: ""worldgen"", code: ""worldEdge"", dataType: ""dropdown"", values: [""blocked"", ""traversable"" ], names: [""Blocked"", ""Traversable (Can fall down)""], default: ""traversable"" },
             { category: ""worldgen"", code: ""polarEquatorDistance"", dataType: ""dropdown"", values: [""800000"", ""400000"", ""200000"", ""100000"", ""50000"", ""25000"", ""15000"", ""10000"", ""5000""], names: [""800k blocks"", ""400k blocks"", ""200k blocks"", ""100k blocks"", ""50k blocks"", ""25k blocks"", ""15k blocks"", ""10k blocks"", ""5000 blocks""], default: ""50000"", onlyDuringWorldCreate: true },
             { category: ""worldgen"", code: ""globalTemperature"", dataType: ""dropdown"", values: [""4"", ""2"", ""1.5"", ""1"", ""0.75"", ""0.5"", ""0.25""], names: [""Scorching hot"", ""Very hot"", ""Hot"", ""Normal"", ""Cold"", ""Very Cold"", ""Snowball earth""], default: ""1"", onlyDuringWorldCreate: true },
@@ -203,7 +248,7 @@ using Vintagestory.API.Config;
 
             { category: ""multiplayer"", code: ""allowLandClaiming"", dataType: ""bool"", default: ""true"" },
             { category: ""multiplayer"", code: ""classExclusiveRecipes"", dataType: ""bool"", default: ""true"" },
-            { category: ""multiplayer"", code: ""auctionHouse"", dataType: ""bool"", default: ""true"" },
+            { category: ""multiplayer"", code: ""auctionHouse"", dataType: ""bool"", default: ""true"" }
 
 	    ]
     }"

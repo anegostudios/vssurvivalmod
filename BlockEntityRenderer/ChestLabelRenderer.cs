@@ -12,7 +12,7 @@ namespace Vintagestory.GameContent
     public class ChestLabelRenderer : BlockEntitySignRenderer
     {
         
-        public ChestLabelRenderer(BlockPos pos, ICoreClientAPI api) : base(pos, api)
+        public ChestLabelRenderer(BlockPos pos, ICoreClientAPI api) : base(pos, api, null)
         {
             TextWidth = 200;
         }

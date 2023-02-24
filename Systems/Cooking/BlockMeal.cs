@@ -477,8 +477,9 @@ namespace Vintagestory.GameContent
 
                 float mul = servingsToEat;
                 float sat = mul * nutriProps.Satiety;
+                float satLossDelay = Math.Min(1.3f, mul * 3) * 10 + sat / 70f * 60f;
 
-                eatingPlayer.Entity.ReceiveSaturation(sat, nutriProps.FoodCategory, 10 + sat / 70f * 60f, 1f);
+                eatingPlayer.Entity.ReceiveSaturation(sat, nutriProps.FoodCategory, satLossDelay, 1f);
 
                 if (nutriProps.EatenStack?.ResolvedItemstack != null)
                 {

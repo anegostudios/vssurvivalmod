@@ -54,6 +54,8 @@ namespace Vintagestory.ServerMods
         [JsonProperty]
         public DepositVariant[] ChildDeposits;
 
+        [JsonProperty]
+        public bool ScaleWithWorldheight = true;
 
         public DepositGeneratorBase GeneratorInst;
         public MapLayerBase OreMapLayer;
@@ -64,6 +66,7 @@ namespace Vintagestory.ServerMods
         ICoreServerAPI api;
         internal DepositVariant parentDeposit;
         public bool addHandbookAttributes;
+        
 
         public void InitWithoutGenerator(ICoreServerAPI api)
         {
@@ -165,6 +168,7 @@ namespace Vintagestory.ServerMods
                 Climate = Climate?.Clone(),
                 ChildDeposits = ChildDeposits == null ? null : (DepositVariant[])ChildDeposits.Clone(),
                 OreMapLayer = OreMapLayer,
+                ScaleWithWorldheight = ScaleWithWorldheight
             };
 
             foreach (var val in ChildDeposits) val.parentDeposit = var;

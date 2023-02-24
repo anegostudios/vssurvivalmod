@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
@@ -43,14 +39,18 @@ namespace Vintagestory.GameContent
             return false;
         }
 
-        public override bool ShouldReceiveClientParticleTicks(IWorldAccessor world, IPlayer player, BlockPos pos, out bool isWindAffected)
-        {
-            return base.ShouldReceiveClientParticleTicks(world, player, pos, out isWindAffected);
-        }
 
         public override void OnAsyncClientParticleTick(IAsyncParticleManager manager, BlockPos pos, float windAffectednessAtPos, float secondsTicking)
         {
-            if (api.World.Rand.NextDouble() > particleQuantity) return;
+            foreach (BlockBehavior behavior in BlockBehaviors)
+            {
+                behavior.OnAsyncClientParticleTick(manager, pos, windAffectednessAtPos, secondsTicking);
+            }
+
+            if (api.World.Rand.NextDouble() > particleQuantity)
+            {
+                return;
+            }
 
             AdvancedParticleProperties bps = ParticleProperties[0];
 

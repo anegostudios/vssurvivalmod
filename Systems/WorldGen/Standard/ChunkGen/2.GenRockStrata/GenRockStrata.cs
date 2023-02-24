@@ -115,7 +115,7 @@ namespace Vintagestory.ServerMods
 
 
 
-        private void OnMapRegionGen(IMapRegion mapRegion, int regionX, int regionZ)
+        private void OnMapRegionGen(IMapRegion mapRegion, int regionX, int regionZ, ITreeAttribute chunkGenParams = null)
         {
             int noiseSize = api.WorldManager.RegionSize / TerraGenConfig.rockStrataScale;
             int pad = 2;

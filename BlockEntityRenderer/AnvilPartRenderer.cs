@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Vintagestory.API.Client;
+﻿using Vintagestory.API.Client;
 using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
@@ -44,7 +39,7 @@ namespace Vintagestory.GameContent
             rpi.GlToggleBlend(true);
 
             IStandardShaderProgram prog = rpi.PreparedStandardShader(beAnvil.Pos.X, beAnvil.Pos.Y, beAnvil.Pos.Z);
-            prog.Tex2D = capi.BlockTextureAtlas.AtlasTextureIds[0];
+            prog.Tex2D = capi.BlockTextureAtlas.AtlasTextures[0].TextureId;
 
 
             prog.ModelMatrix = ModelMat

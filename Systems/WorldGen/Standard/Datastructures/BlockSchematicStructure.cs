@@ -11,14 +11,18 @@ namespace Vintagestory.ServerMods
 {
     public class BlockSchematicStructure : BlockSchematic
     {
+        public Dictionary<int, AssetLocation> BlockCodesTmpForRemap = new Dictionary<int, AssetLocation>();
+
         public string FromFileName;
+        public Dictionary<AssetLocation, AssetLocation> Remaps;
 
         public Block[,,] blocksByPos;
-        public Dictionary<int, Block> blockRemap = new Dictionary<int, Block>();
         public BlockLayerConfig blockLayerConfig;
         int mapheight;
 
         PlaceBlockDelegate handler = null;
+
+        
 
         public override void Init(IBlockAccessor blockAccessor)
         {
@@ -27,6 +31,20 @@ namespace Vintagestory.ServerMods
             mapheight = blockAccessor.MapSizeY;
 
             blocksByPos = new Block[SizeX + 1, SizeY + 1, SizeZ + 1];
+
+            if (Remaps != null && Remaps.Count > 0)
+            {
+                foreach (var storedId in BlockCodes.Keys.ToArray())
+                {
+                    foreach (var remap in Remaps)
+                    {
+                        if (remap.Equals(BlockCodes[storedId].Path))
+                        {
+                            BlockCodes[storedId] = remap.Value;
+                        }
+                    }
+                }
+            }
 
             for (int i = 0; i < Indices.Count; i++)
             {
@@ -76,21 +94,29 @@ namespace Vintagestory.ServerMods
         /// <param name="climateBotRight"></param>
         /// <param name="replaceblockids"></param>
         /// <returns></returns>
-        public int PlaceRespectingBlockLayers(IBlockAccessor blockAccessor, IWorldAccessor worldForCollectibleResolve, BlockPos startPos, int climateUpLeft, int climateUpRight, int climateBotLeft, int climateBotRight, int[] replaceblockids, bool replaceMetaBlocks = true)
+        public int PlaceRespectingBlockLayers(IBlockAccessor blockAccessor, IWorldAccessor worldForCollectibleResolve, BlockPos startPos, int climateUpLeft, int climateUpRight, int climateBotLeft, int climateBotRight, Dictionary<int, Dictionary<int, int>> replaceBlocks, int[] replaceblockids, bool replaceMetaBlocks = true, bool replaceBlockEntities = false)
         {
             BlockPos curPos = new BlockPos();
             int placed = 0;
             int chunksize = blockAccessor.ChunkSize;
-            
+
+
+            curPos.Set(SizeX / 2 + startPos.X, startPos.Y, SizeZ / 2 + startPos.Z);
+            IMapChunk mapchunk = blockAccessor.GetMapChunkAtBlockPos(curPos);
+            int centerrockblockid = mapchunk.TopRockIdMap[(curPos.Z % chunksize) * chunksize + curPos.X % chunksize];
+
+            resolveReplaceRemapsForBlockEntities(blockAccessor, worldForCollectibleResolve, replaceBlocks, centerrockblockid);
 
             for (int x = 0; x < SizeX; x++)
             {
                 for (int z = 0; z < SizeZ; z++)
                 {
                     curPos.Set(x + startPos.X, startPos.Y, z + startPos.Z);
-                    IMapChunk mapchunk = blockAccessor.GetMapChunkAtBlockPos(curPos);
-                    int rockblockid = mapchunk.TopRockIdMap[(curPos.Z % chunksize) * chunksize + curPos.X % chunksize];                    
-                    int depth = 0;
+                    var aboveLiqBlock = blockAccessor.GetBlock(curPos.X, curPos.Y + 1, curPos.Z, BlockLayersAccess.Fluid);
+
+                    mapchunk = blockAccessor.GetMapChunkAtBlockPos(curPos);
+                    int rockblockid = mapchunk.TopRockIdMap[(curPos.Z % chunksize) * chunksize + curPos.X % chunksize];
+                    int depth = aboveLiqBlock.Id != 0 ? 1 : 0;
 
                     int maxY = -1;
 
@@ -115,11 +141,24 @@ namespace Vintagestory.ServerMods
                             depth++;
                         }
 
+                        if (replaceBlocks != null)
+                        {
+                            Dictionary<int, int> replaceByBlock;
+                            if (replaceBlocks.TryGetValue(newBlock.Id, out replaceByBlock))
+                            {
+                                int newBlockId;
+                                if (replaceByBlock.TryGetValue(centerrockblockid, out newBlockId))
+                                {
+                                    newBlock = blockAccessor.GetBlock(newBlockId);
+                                }
+                            }
+                        }
+
                         int p = handler(blockAccessor, curPos, newBlock, true);
 
                         if (newBlock.Id != 0 && !newBlock.SideSolid.All())
                         {
-                            var aboveLiqBlock = blockAccessor.GetBlock(curPos.X, curPos.Y + 1, curPos.Z, BlockLayersAccess.Fluid);
+                            aboveLiqBlock = blockAccessor.GetBlock(curPos.X, curPos.Y + 1, curPos.Z, BlockLayersAccess.Fluid);
                             if (aboveLiqBlock.Id != 0)
                             {
                                 blockAccessor.SetBlock(aboveLiqBlock.BlockId, curPos, BlockLayersAccess.Fluid);
@@ -136,11 +175,13 @@ namespace Vintagestory.ServerMods
                                 int lx = curPos.X % chunksize;
                                 int lz = curPos.Z % chunksize;
                                 if (mapchunk.RainHeightMap[lz * chunksize + lx] == curPos.Y) mapchunk.RainHeightMap[lz * chunksize + lx]--;
-                            } else {
+                            }
+                            else
+                            {
                                 maxY = Math.Max(curPos.Y, maxY);
                             }
                         }
-                        
+
 
                         byte[] lightHsv = newBlock.GetLightHsv(blockAccessor, curPos);
 
@@ -162,9 +203,36 @@ namespace Vintagestory.ServerMods
                 }
             }
 
-            PlaceEntitiesAndBlockEntities(blockAccessor, worldForCollectibleResolve, startPos);
-            
+            PlaceDecors(blockAccessor, startPos);
+            PlaceEntitiesAndBlockEntities(blockAccessor, worldForCollectibleResolve, startPos, BlockCodesTmpForRemap, ItemCodes, replaceBlockEntities);
+
             return placed;
+        }
+
+        private void resolveReplaceRemapsForBlockEntities(IBlockAccessor blockAccessor, IWorldAccessor worldForCollectibleResolve, Dictionary<int, Dictionary<int, int>> replaceBlocks, int centerrockblockid)
+        {
+            if (replaceBlocks == null)
+            {
+                BlockCodesTmpForRemap = BlockCodes;
+                return;
+            }
+
+            foreach (var val in BlockCodes)
+            {
+                Block origBlock = worldForCollectibleResolve.GetBlock(val.Value);
+                if (origBlock == null) continue; // Invalid blocks
+
+                BlockCodesTmpForRemap[val.Key] = val.Value;
+
+                if (replaceBlocks.TryGetValue(origBlock.Id, out var replaceByBlock))
+                {
+                    int newBlockId;
+                    if (replaceByBlock.TryGetValue(centerrockblockid, out newBlockId))
+                    {
+                        BlockCodesTmpForRemap[val.Key] = blockAccessor.GetBlock(newBlockId).Code;
+                    }
+                }
+            }
         }
 
 
@@ -183,6 +251,13 @@ namespace Vintagestory.ServerMods
         {
             BlockPos curPos = new BlockPos();
             int placed = 0;
+
+            int chunksize = blockAccessor.ChunkSize;
+            curPos.Set(SizeX / 2 + startPos.X, startPos.Y, SizeZ / 2 + startPos.Z);
+            IMapChunk mapchunk = blockAccessor.GetMapChunkAtBlockPos(curPos);
+            int centerrockblockid = mapchunk.TopRockIdMap[(curPos.Z % chunksize) * chunksize + curPos.X % chunksize];
+            resolveReplaceRemapsForBlockEntities(blockAccessor, worldForCollectibleResolve, replaceBlocks, centerrockblockid);
+
 
             PlaceBlockDelegate handler = null;
             switch (ReplaceMode)
@@ -222,7 +297,6 @@ namespace Vintagestory.ServerMods
                 curPos.Set(dx + startPos.X, dy + startPos.Y, dz + startPos.Z);
 
                 Block oldBlock = blockAccessor.GetBlock(curPos);
-
                 Dictionary<int, int> replaceByBlock;
                 if (replaceBlocks.TryGetValue(newBlock.Id, out replaceByBlock))
                 {
@@ -243,7 +317,7 @@ namespace Vintagestory.ServerMods
 
             if (!(blockAccessor is IBlockAccessorRevertable))
             {
-                PlaceEntitiesAndBlockEntities(blockAccessor, worldForCollectibleResolve, startPos);
+                PlaceEntitiesAndBlockEntities(blockAccessor, worldForCollectibleResolve, startPos, BlockCodesTmpForRemap, ItemCodes);
             }
 
             return placed;
@@ -282,8 +356,7 @@ namespace Vintagestory.ServerMods
             return defaultBlock;
         }
 
-
-        public BlockSchematicStructure Clone()
+        public override BlockSchematic ClonePacked()
         {
             BlockSchematicStructure cloned = new BlockSchematicStructure();
 

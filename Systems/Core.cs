@@ -3,7 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
-using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -153,12 +152,22 @@ namespace Vintagestory.GameContent
         {
             // loadConfig (which calls applyConfig) are called after the end of all mods' AssetsLoaded() stages. Cannot be called sooner (e.g. in this ModSystem's AssetsLoaded() method) because the globmodifiers.json patch will not have been applied yet, in that case.  This ModSystem loads before JsonPatchLoader.
             // Also it seems best to apply the toolDurability multiplier only after mods have done anything they need to to the tools
-            loadConfig();
+            if (api.Side == EnumAppSide.Server)
+            {
+                loadConfig();
+            }
+
+            if (api.ModLoader.IsModSystemEnabled("Vintagestory.ServerMods.WorldEdit.WorldEdit"))
+            {
+                ChiselToolRegisterUtil.RegisterChiselBlockBehavior(api);
+            }
         }
 
         public override void StartClientSide(ICoreClientAPI api)
         {
             capi = api;
+
+            api.RegisterEntityRendererClass("EchoChamber", typeof(EchoChamberRenderer));
 
             api.Event.LevelFinalize += () =>
             {
@@ -181,7 +190,8 @@ namespace Vintagestory.GameContent
 
             if (api.ModLoader.IsModSystemEnabled("Vintagestory.ServerMods.WorldEdit.WorldEdit"))
             {
-                RegisterUtil.RegisterTool(api.ModLoader.GetModSystem("Vintagestory.ServerMods.WorldEdit.WorldEdit"));
+                TreeToolRegisterUtil.Register(api.ModLoader.GetModSystem("Vintagestory.ServerMods.WorldEdit.WorldEdit"));
+                ChiselToolRegisterUtil.Register(api.ModLoader.GetModSystem("Vintagestory.ServerMods.WorldEdit.WorldEdit"));
             }
 
             api.Event.PlayerCreate += Event_PlayerCreate;
@@ -227,7 +237,6 @@ namespace Vintagestory.GameContent
         }
 
 
-        HashSet<string> createdPlayers = new HashSet<string>();
         public float EarthAxialTilt = 23.44f * GameMath.DEG2RAD;
 
         // This method was contributed by Eliam (Avdudia#0696) on Discord <3
@@ -240,12 +249,9 @@ namespace Vintagestory.GameContent
 
             float hourAngle = GameMath.TWOPI * (dayRel - 0.5f);
 
-            float dayOfYear = api.World.Calendar.DayOfYearf;
-            float daysPerYear = api.World.Calendar.DaysPerYear;
-
             // The Sun's declination at any given moment
             // The number 10 is the approximate number of days after the December solstice to January 1
-            float declination = -EarthAxialTilt * GameMath.Cos(GameMath.TWOPI * (dayOfYear / daysPerYear + 10 / 365f));
+            float declination = -EarthAxialTilt * GameMath.Cos(GameMath.TWOPI * (yearRel + 10 / 365f));
 
             float zenithAngle = (float)Math.Acos(GameMath.Sin(latitude * GameMath.PIHALF) * GameMath.Sin(declination) + GameMath.Cos(latitude * GameMath.PIHALF) * GameMath.Cos(declination) * GameMath.Cos(hourAngle));
 
@@ -260,7 +266,7 @@ namespace Vintagestory.GameContent
         }
 
 
-
+        HashSet<string> createdPlayers = new HashSet<string>();
         private void Event_PlayerPlaying(IServerPlayer byPlayer)
         {
             if (createdPlayers.Contains(byPlayer.PlayerUID))
@@ -354,6 +360,7 @@ namespace Vintagestory.GameContent
             api.RegisterBlockClass("BlockLayered", typeof(BlockLayered));
             api.RegisterBlockClass("BlockVines", typeof(BlockVines));
             api.RegisterBlockClass("BlockPlant", typeof(BlockPlant));
+            api.RegisterBlockClass("BlockTallGrass", typeof(BlockTallGrass));
             api.RegisterBlockClass("BlockRails", typeof(BlockRails));
             api.RegisterBlockClass("BlockCactus", typeof(BlockCactus));
             api.RegisterBlockClass("BlockSlab", typeof(BlockSlab));
@@ -449,7 +456,7 @@ namespace Vintagestory.GameContent
             api.RegisterBlockClass("BlockWaterfall", typeof(BlockWaterfall));
             api.RegisterBlockClass("BlockLupine", typeof(BlockLupine));
 
-            api.RegisterBlockClass("BlockEchoChamber", typeof(BlockEchoChamber));
+            api.RegisterBlockClass("BlockResonator", typeof(BlockResonator));
             api.RegisterBlockClass("BlockMeteorite", typeof(BlockMeteorite));
 
             api.RegisterBlockClass("BlockChandelier", typeof(BlockChandelier));
@@ -470,7 +477,6 @@ namespace Vintagestory.GameContent
             api.RegisterBlockClass("BlockWaterflowing", typeof(BlockWaterflowing));
             api.RegisterBlockClass("BlockShelf", typeof(BlockShelf));
             api.RegisterBlockClass("BlockCrock", typeof(BlockCrock));
-            api.RegisterBlockClass("BlockThermalDiff", typeof(BlockThermalDifference));
             api.RegisterBlockClass("BlockSignPost", typeof(BlockSignPost));
             api.RegisterBlockClass("BlockHenbox", typeof(BlockHenbox));
 
@@ -530,16 +536,30 @@ namespace Vintagestory.GameContent
             api.RegisterBlockClass("BlockCrate", typeof(BlockCrate));
             api.RegisterBlockClass("BlockDynamicTreeFoliage", typeof(BlockFruitTreeFoliage));
             api.RegisterBlockClass("BlockDynamicTreeBranch", typeof(BlockFruitTreeBranch));
-            api.RegisterBlockClass("BlockPlanks", typeof(BlockPlanks));
             api.RegisterBlockClass("BlockGenericTypedContainerTrunk", typeof(BlockGenericTypedContainerTrunk));
 
             api.RegisterBlockClass("BlockClutter", typeof(BlockClutter));
-            api.RegisterBlockClass("BlockBookshelf", typeof(BlockBookShelf));
+            api.RegisterBlockClass("BlockClutterBookshelf", typeof(BlockClutterBookshelf));
+            
+            
+            api.RegisterBlockClass("BlockBookshelf", typeof(BlockBookshelf));
+            api.RegisterBlockClass("BlockClutterBookshelfWithLore", typeof(BlockClutterBookshelfWithLore));
             api.RegisterBlockClass("BlockLooseRock", typeof(BlockLooseRock));
             api.RegisterBlockClass("BlockTermiteMound", typeof(BlockTermiteMound));
+            api.RegisterBlockClass("BlockRiftWard", typeof(BlockRiftWard));
+
+            api.RegisterBlockClass("BlockSmoothTextureTransition", typeof(BlockSmoothTextureTransition));
+            api.RegisterBlockClass("BlockSupportBeam", typeof(BlockSupportBeam));
+            api.RegisterBlockClass("BlockOmokTable", typeof(BlockOmokTable));
+
+            api.RegisterBlockClass("BlockGeneric", typeof(BlockGeneric));
+
+            api.RegisterBlockClass("BlockCommand", typeof(BlockCommand));
+            api.RegisterBlockClass("BlockTicker", typeof(BlockTicker));
+            api.RegisterBlockClass("BlockWorldgenHook", typeof(BlockWorldgenHook));
         }
 
-        
+
         private void RegisterDefaultBlockBehaviors()
         {
             api.RegisterBlockBehaviorClass("HorizontalAttachable", typeof(BlockBehaviorHorizontalAttachable));
@@ -575,7 +595,15 @@ namespace Vintagestory.GameContent
             api.RegisterBlockBehaviorClass("RopeTieable", typeof(BlockBehaviorRopeTieable));
             api.RegisterBlockBehaviorClass("MyceliumHost", typeof(BehaviorMyceliumHost));
             api.RegisterBlockBehaviorClass("WrenchOrientable", typeof(BlockBehaviorWrenchOrientable));
-            api.RegisterBlockBehaviorClass("RainDrip", typeof(BehaviorRainDrip));
+            api.RegisterBlockBehaviorClass("RainDrip", typeof(BlockBehaviorRainDrip));
+            api.RegisterBlockBehaviorClass("WorldEditFixGhostBlockPlace", typeof(BlockBehaviorWorldEditFixGhostBlockPlace));
+            api.RegisterBlockBehaviorClass("Steaming", typeof(BlockBehaviorSteaming));
+            api.RegisterBlockBehaviorClass("BlockEntityInteract", typeof(BlockBehaviorBlockEntityInteract));
+            api.RegisterBlockBehaviorClass("Door", typeof(BlockBehaviorDoor));
+
+            api.RegisterBlockBehaviorClass("JonasBoilerDoor", typeof(BlockBehaviorJonasBoilerDoor));
+            api.RegisterBlockBehaviorClass("JonasHydraulicPump", typeof(BlockBehaviorJonasHydraulicPump));
+            api.RegisterBlockBehaviorClass("JonasGasifier", typeof(BlockBehaviorJonasGasifier));
         }
 
         private void RegisterDefaultBlockEntityBehaviors()
@@ -598,6 +626,19 @@ namespace Vintagestory.GameContent
             api.RegisterBlockEntityBehaviorClass("Burning", typeof(BEBehaviorBurning));
             api.RegisterBlockEntityBehaviorClass("FirepitAmbient", typeof(BEBehaviorFirepitAmbient));
             api.RegisterBlockEntityBehaviorClass("Fruiting", typeof(BEBehaviorFruiting));
+            api.RegisterBlockEntityBehaviorClass("SupportBeam", typeof(BEBehaviorSupportBeam));
+            api.RegisterBlockEntityBehaviorClass("Door", typeof(BEBehaviorDoor));
+            api.RegisterBlockEntityBehaviorClass("ShapeFromAttributes", typeof(BEBehaviorShapeFromAttributes));
+            api.RegisterBlockEntityBehaviorClass("ClutterBookshelf", typeof(BEBehaviorClutterBookshelf));
+            api.RegisterBlockEntityBehaviorClass("MicroblockSnowCover", typeof(BEBehaviorMicroblockSnowCover));
+            api.RegisterBlockEntityBehaviorClass("ControlPointAnimatable", typeof(BEBehaviorControlPointAnimatable));
+
+            api.RegisterBlockEntityBehaviorClass("JonasBoilerDoor", typeof(BEBehaviorJonasBoilerDoor));
+            api.RegisterBlockEntityBehaviorClass("JonasHydraulicPump", typeof(BEBehaviorJonasHydraulicPump));
+            api.RegisterBlockEntityBehaviorClass("JonasGasifier", typeof(BEBehaviorJonasGasifier));
+            api.RegisterBlockEntityBehaviorClass("ControlPointLampNode", typeof(BEBehaviorControlPointLampNode));
+
+            api.RegisterBlockEntityBehaviorClass("ClutterBookshelfWithLore", typeof(BEBehaviorClutterBookshelfWithLore));
         }
 
         private void RegisterDefaultCollectibleBehaviors()
@@ -610,6 +651,7 @@ namespace Vintagestory.GameContent
 
         private void RegisterDefaultBlockEntities()
         {
+            api.RegisterBlockEntityClass("Sapling", typeof(BlockEntitySapling));
             api.RegisterBlockEntityClass("GenericContainer", typeof(BlockEntityGenericContainer));
             api.RegisterBlockEntityClass("GenericTypedContainer", typeof(BlockEntityGenericTypedContainer));
             api.RegisterBlockEntityClass("Sign", typeof(BlockEntitySign));
@@ -662,7 +704,7 @@ namespace Vintagestory.GameContent
             api.RegisterBlockEntityClass("HenBox", typeof(BlockEntityHenBox));
 
             api.RegisterBlockEntityClass("StaticTranslocator", typeof(BlockEntityStaticTranslocator));
-            api.RegisterBlockEntityClass("EchoChamber", typeof(BlockEntityEchoChamber));
+            api.RegisterBlockEntityClass("Resonator", typeof(BlockEntityResonator));
 
             api.RegisterBlockEntityClass("LocustNest", typeof(BlockEntityLocustNest));
             api.RegisterBlockEntityClass("LabeledChest", typeof(BlockEntityLabeledChest));
@@ -708,8 +750,17 @@ namespace Vintagestory.GameContent
 
             api.RegisterBlockEntityClass("TorchHolder", typeof(BlockEntityTorchHolder));
 
-            api.RegisterBlockEntityClass("Clutter", typeof(BlockEntityClutter));
             api.RegisterBlockEntityClass("Bookshelf", typeof(BlockEntityBookshelf));
+            api.RegisterBlockEntityClass("RiftWard", typeof(BlockEntityRiftWard));
+            
+            api.RegisterBlockEntityClass("OmokTable", typeof(BlockEntityOmokTable));
+
+            api.RegisterBlockEntityClass("GuiConfigurableCommands", typeof(BlockEntityGuiConfigurableCommands));
+            api.RegisterBlockEntityClass("Commands", typeof(BlockEntityCommands));
+            api.RegisterBlockEntityClass("Conditional", typeof(BlockEntityConditional));
+            api.RegisterBlockEntityClass("Ticker", typeof(BlockEntityTicker));
+            api.RegisterBlockEntityClass("WorldgenHook", typeof(BlockEntityWorldgenHook));
+            api.RegisterBlockEntityClass("MusicTrigger", typeof(BlockEntityMusicTrigger));
         }
 
 
@@ -739,7 +790,7 @@ namespace Vintagestory.GameContent
             api.RegisterItemClass("ItemShears", typeof(ItemShears));
             api.RegisterItemClass("ItemCattailRoot", typeof(ItemCattailRoot));
             api.RegisterItemClass("ItemClay", typeof(ItemClay));
-            api.RegisterItemClass("ItemLore", typeof(ItemRandomLore));
+            api.RegisterItemClass("ItemRandomLore", typeof(ItemRandomLore));
             api.RegisterItemClass("ItemFlint", typeof(ItemFlint));
             api.RegisterItemClass("ItemSpear", typeof(ItemSpear));
             api.RegisterItemClass("ItemAxe", typeof(ItemAxe));
@@ -776,6 +827,7 @@ namespace Vintagestory.GameContent
             api.RegisterItemClass("ItemCheese", typeof(ItemCheese));
             api.RegisterItemClass("ItemCoal", typeof(ItemCoal));
             api.RegisterItemClass("ItemRope", typeof(ItemRope));
+            api.RegisterItemClass("ItemMeasuringRope", typeof(ItemMeasuringRope));
             api.RegisterItemClass("ItemTreeSeed", typeof(ItemTreeSeed));
             api.RegisterItemClass("ItemDough", typeof(ItemDough));
             api.RegisterItemClass("ItemSling", typeof(ItemSling));
@@ -783,6 +835,15 @@ namespace Vintagestory.GameContent
 
             api.RegisterItemClass("ItemPressedMash", typeof(ItemPressedMash));
             api.RegisterItemClass("ItemCreatureInventory", typeof(ItemCreatureInventory));
+
+            api.RegisterItemClass("ItemLocatorMap", typeof(ItemLocatorMap));
+            api.RegisterItemClass("ItemBook", typeof(ItemBook));
+            api.RegisterItemClass("ItemDeadButterfly", typeof(ItemDeadButterfly));
+            api.RegisterItemClass("ItemBugnet", typeof(ItemBugnet));
+            api.RegisterItemClass("ItemGlider", typeof(ItemGlider));
+            api.RegisterItemClass("ItemOar", typeof(ItemOar));
+            api.RegisterItemClass("ItemTextureFlipper", typeof(ItemTextureFlipper));
+            
         }
 
 
@@ -804,6 +865,8 @@ namespace Vintagestory.GameContent
             api.RegisterEntity("EntityBell", typeof(EntityBell));
             api.RegisterEntity("EntityFish", typeof(EntityFish));
             api.RegisterEntity("EntityDrifter", typeof(EntityDrifter));
+            api.RegisterEntity("EntityEidolon", typeof(EntityEidolon));
+            api.RegisterEntity("EntityEchoChamber", typeof(EntityEchoChamber));
         }
 
 
@@ -816,6 +879,8 @@ namespace Vintagestory.GameContent
             api.RegisterEntityBehaviorClass("extraskinnable", typeof(EntityBehaviorExtraSkinnable));
             api.RegisterEntityBehaviorClass("ropetieable", typeof(EntityBehaviorRopeTieable));
             api.RegisterEntityBehaviorClass("commandable", typeof(EntityBehaviorCommandable));
+            api.RegisterEntityBehaviorClass("conversable", typeof(EntityBehaviorConversable));
+            api.RegisterEntityBehaviorClass("boss", typeof(EntityBehaviorBoss));
         }
 
 

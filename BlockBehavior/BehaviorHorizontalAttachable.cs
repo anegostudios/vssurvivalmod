@@ -1,4 +1,5 @@
-﻿using Vintagestory.API;
+﻿using System.Collections.Generic;
+using Vintagestory.API;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
@@ -11,6 +12,7 @@ namespace Vintagestory.GameContent
         bool handleDrops = true;
         string dropBlockFace = "north";
         string dropBlock = null;
+        Dictionary<string, Cuboidi> attachmentAreas;
 
         public BlockBehaviorHorizontalAttachable(Block block) : base(block)
         {
@@ -29,6 +31,21 @@ namespace Vintagestory.GameContent
             if (properties["dropBlock"].Exists)
             {
                 dropBlock = properties["dropBlock"].AsString();
+            }
+
+            var areas = properties["attachmentAreas"].AsObject<Dictionary<string, RotatableCube>>(null);
+            attachmentAreas = new Dictionary<string, Cuboidi>();
+            if (areas != null)
+            {
+                foreach (var val in areas)
+                {
+                    val.Value.Origin.Set(8, 8, 8);
+                    attachmentAreas[val.Key] = val.Value.RotatedCopy().ConvertToCuboidi();
+                }
+            }
+            else
+            {
+                attachmentAreas["up"] = properties["attachmentArea"].AsObject<Cuboidi>(null);
             }
         }
 
@@ -104,10 +121,13 @@ namespace Vintagestory.GameContent
             BlockFacing oppositeFace = blockSel.Face.Opposite;
 
             BlockPos attachingBlockPos = blockSel.Position.AddCopy(oppositeFace);
-            Block attachingBlock = world.BlockAccessor.GetBlock(world.BlockAccessor.GetBlockId(attachingBlockPos));
+            Block attachingBlock = world.BlockAccessor.GetBlock(attachingBlockPos);
             Block orientedBlock = world.BlockAccessor.GetBlock(block.CodeWithParts(oppositeFace.Code));
 
-            if (attachingBlock.CanAttachBlockAt(world.BlockAccessor, block, attachingBlockPos, blockSel.Face) && orientedBlock.CanPlaceBlock(world, player, blockSel, ref failureCode))
+            Cuboidi attachmentArea = null;
+            attachmentAreas?.TryGetValue(oppositeFace.Code, out attachmentArea);
+
+            if (attachingBlock.CanAttachBlockAt(world.BlockAccessor, block, attachingBlockPos, blockSel.Face, attachmentArea) && orientedBlock.CanPlaceBlock(world, player, blockSel, ref failureCode))
             {
                 orientedBlock.DoPlaceBlock(world, player, blockSel, itemstack);
                 return true;
@@ -120,11 +140,12 @@ namespace Vintagestory.GameContent
         {
             string[] parts = block.Code.Path.Split('-');
             BlockFacing facing = BlockFacing.FromCode(parts[parts.Length - 1]);
-            int blockId = world.BlockAccessor.GetBlockId(pos.AddCopy(facing));
+            Block attachingblock = world.BlockAccessor.GetBlock(pos.AddCopy(facing));
 
-            Block attachingblock = world.BlockAccessor.GetBlock(blockId);
+            Cuboidi attachmentArea = null;
+            attachmentAreas?.TryGetValue(facing.Code, out attachmentArea);
 
-            return attachingblock.CanAttachBlockAt(world.BlockAccessor, block, pos.AddCopy(facing), facing.Opposite);
+            return attachingblock.CanAttachBlockAt(world.BlockAccessor, block, pos.AddCopy(facing), facing.Opposite, attachmentArea);
         }
 
 

@@ -188,13 +188,6 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void OnEntityInside(IWorldAccessor world, Entity entity, BlockPos pos)
-        {
-            if (world.Side == EnumAppSide.Server)
-            {
-                entity.ReceiveDamage(new DamageSource() { Type = EnumDamageType.Fire, Source = EnumDamageSource.Block, SourceBlock = this, SourcePos = pos.ToVec3d() }, 3f);
-            }   
-        }
 
 
         public override bool ShouldReceiveClientParticleTicks(IWorldAccessor world, IPlayer player, BlockPos pos, out bool isWindAffected)

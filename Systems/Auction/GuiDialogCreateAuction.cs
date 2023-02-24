@@ -96,7 +96,7 @@ namespace Vintagestory.GameContent
                         .AddRichtext(Lang.Get("Trader cut on sale (10%): {0}" + " " + gearIcon, 1), CairoFont.WhiteSmallText(), cutLabelBounds, "cutText")
 
                         .AddSmallButton(Lang.Get("Cancel"), OnCancelAuctionClose, leftButton.FixedUnder(cutLabelBounds, 20).WithFixedPadding(8, 5))
-                        .AddSmallButton(Lang.Get("Create Auction"), OnCreateAuctionConfirm, rightButton.FixedUnder(cutLabelBounds, 20).WithFixedPadding(8, 5), EnumButtonStyle.Normal, EnumTextOrientation.Left, "buysellButton")
+                        .AddSmallButton(Lang.Get("Create Auction"), OnCreateAuctionConfirm, rightButton.FixedUnder(cutLabelBounds, 20).WithFixedPadding(8, 5), EnumButtonStyle.Normal, "buysellButton")
                 .EndChildElements()
                 .Compose()
             ;

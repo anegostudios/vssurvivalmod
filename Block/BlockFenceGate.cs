@@ -1,5 +1,6 @@
 ﻿using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
@@ -117,6 +118,15 @@ namespace Vintagestory.GameContent
             AssetLocation newCode = CodeWithVariant("state", IsOpened() ? "closed" : "opened");
 
             world.BlockAccessor.ExchangeBlock(world.BlockAccessor.GetBlock(newCode).BlockId, pos);
+        }
+
+        public override void Activate(IWorldAccessor world, Caller caller, BlockSelection blockSel, ITreeAttribute activationArgs)
+        {
+            if (activationArgs != null && activationArgs.HasAttribute("opened")) 
+            {
+                if (activationArgs.GetBool("opened") == IsOpened()) return;   // do nothing if already in the required state
+            }
+            Open(world, caller.Player, blockSel.Position);
         }
 
         protected override BlockPos TryGetConnectedDoorPos(BlockPos pos)

@@ -4,6 +4,7 @@ using System;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Common;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.ServerMods.NoObf
 {
@@ -62,37 +63,53 @@ namespace Vintagestory.ServerMods.NoObf
         // give us ripples or dents in the terrain
         // Should probably only be taken into calculation if the base thresholds is a above a certain value (e.g. so only hills/mountains are affected)
 
-
+        static Random rnd = new Random();
 
         public void Init(IWorldManagerAPI api, int index)
         {
             this.index = index;
+
+            expandOctaves(api);
+
             LerpThresholds(api.MapSizeY);
-            ColorInt = int.Parse(HexColor.TrimStart('#'), System.Globalization.NumberStyles.HexNumber);
-            LoadAndNormalizeAmplitudes();
+            this.ColorInt = rnd.Next(int.MaxValue) | (255 << 24);
         }
 
-
-        internal virtual void LoadAndNormalizeAmplitudes()
+        // Adds additional octaves to prevent super smooth worldgen on large world heights
+        protected void expandOctaves(IWorldManagerAPI api)
         {
-            //double normalizationValue = 0;
-
-            /*for (int i = 0; i < TerrainOctaves.Length; i++)
+            int octaves = TerraGenConfig.GetTerrainOctaveCount(api.MapSizeY);
+            int m = octaves - TerrainOctaves.Length;
+            if (m > 0)
             {
-                // Our noise gen doesn't exactly generate noise between 0..1 so NormalizedNoise.cs uses some heuristics to achieve that
-                normalizationValue += TerrainOctaves[i]; // * Math.Pow(0.74 - 0.1, i + 1); 
+                var ext = new double[m].Fill(TerrainOctaves[TerrainOctaves.Length - 1]);
+                double addSum = 0;
+                
+                for (int i = 0; i < ext.Length; i++)
+                {
+                    var val = Math.Pow(0.8, i + 1);
+                    ext[i] *= val;
+                    addSum += val;
+                }
+
+                double prevSum = 0;
+                for (int i = 0; i < TerrainOctaves.Length; i++)
+                {
+                    prevSum += TerrainOctaves[i];
+                }
+                for (int i = 0; i < TerrainOctaves.Length; i++)
+                {
+                    TerrainOctaves[i] *= (prevSum + addSum) / prevSum;
+                }
+
+                TerrainOctaves = TerrainOctaves.Append(ext);
             }
-
-            double[] scaledAmplitudes = new double[TerraGenConfig.terrainGenOctaves];
-
-            for (int i = 0; i < Math.Min(scaledAmplitudes.Length, TerrainOctaves.Length); i++)
+            int n = octaves - TerrainOctaveThresholds.Length;
+            if (n > 0)
             {
-                scaledAmplitudes[i] = TerrainOctaves[i] / normalizationValue;
-            }*/
-
-            //TerrainOctaves = scaledAmplitudes;
+                TerrainOctaveThresholds = TerrainOctaveThresholds.Append(new double[n].Fill(TerrainOctaveThresholds[TerrainOctaveThresholds.Length - 1]));
+            }
         }
-
 
 
         void LerpThresholds(int mapSizeY)
@@ -143,7 +160,6 @@ namespace Vintagestory.ServerMods.NoObf
                 
                 TerrainYThresholds[y] = 1 - GameMath.Lerp(curThreshold, nextThreshold, distance); // We need inverted lerped value
             }
-            
         }
 
 

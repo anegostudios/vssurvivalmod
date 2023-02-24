@@ -247,41 +247,11 @@ namespace Vintagestory.GameContent
         {
             int toolMode = GetToolMode(null, byPlayer, blockSel);
             Block blockToPlace = (Block)toolModes[toolMode].Data;
-            blockAccessor.SetDecor(blockToPlace, blockSel.Position, BlockSelectionToSubPosition(blockSel));
+            blockAccessor.SetDecor(blockToPlace, blockSel.Position, blockSel.ToDecorIndex());
         }
 
 
-        public static int BlockSelectionToSubPosition(BlockSelection blockSel)
-        {
-            int x = (int)(blockSel.HitPosition.X * 16);
-            int y = 15 - (int)(blockSel.HitPosition.Y * 16);
-            int z = (int)(blockSel.HitPosition.Z * 16);
-            int offset = 0;
 
-            switch (blockSel.Face.Index)
-            {
-                case 0:
-                    offset = (15 - x) + y * 16;
-                    break;
-                case 1:
-                    offset = (15 - z) + y * 16;
-                    break;
-                case 2:
-                    offset = x + y * 16;
-                    break;
-                case 3:
-                    offset = z + y * 16;
-                    break;
-                case 4:
-                    offset = x + z * 16;
-                    break;
-                case 5:
-                    offset = x + (15 - z) * 16;
-                    break;
-            }
-
-            return blockSel.Face.Index + 6 * (1 + offset);
-        }
 
         public static int BlockSelectionToSubPosition(BlockFacing face, Vec3i voxelPos)
         {

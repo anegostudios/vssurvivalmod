@@ -78,7 +78,7 @@ namespace Vintagestory.GameContent
             BlockFacing oppositeFace = onBlockFace.Opposite;
 
             BlockPos attachingBlockPos = blockpos.AddCopy(oppositeFace);
-            Block block = world.BlockAccessor.GetBlock(world.BlockAccessor.GetBlockId(attachingBlockPos));
+            Block block = world.BlockAccessor.GetBlock(attachingBlockPos);
 
             if (block.CanAttachBlockAt(world.BlockAccessor, this, attachingBlockPos, onBlockFace))
             {
@@ -94,9 +94,7 @@ namespace Vintagestory.GameContent
         {
             string[] parts = Code.Path.Split('-');
             BlockFacing facing = BlockFacing.FromCode(parts[parts.Length - 1]);
-            int blockId = world.BlockAccessor.GetBlockId(pos.AddCopy(facing));
-
-            Block block = world.BlockAccessor.GetBlock(blockId);
+            Block block = world.BlockAccessor.GetBlock(pos.AddCopy(facing));
 
             return block.CanAttachBlockAt(world.BlockAccessor, this, pos.AddCopy(facing), facing.Opposite);
         }

@@ -56,8 +56,8 @@ namespace Vintagestory.GameContent
 
 
             GuiTab[] tabs = new GuiTab[] { 
-                new GuiTab() { Name = "Skin & Voice", DataInt = 0 },
-                new GuiTab() { Name = "Class", DataInt = 1 },
+                new GuiTab() { Name = Lang.Get("tab-skinandvoice"), DataInt = 0 },
+                new GuiTab() { Name = Lang.Get("tab-charclass"), DataInt = 1 },
               //  new GuiTab() { Name = "Outfit", DataInt = 2 }
             };
 
@@ -180,8 +180,8 @@ namespace Vintagestory.GameContent
                 Composers["createcharacter"]
                     .AddInset(insetSlotBounds, 2)
                     .AddToggleButton(Lang.Get("Show dressed"), smallfont, OnToggleDressOnOff, toggleButtonBounds, "showdressedtoggle")
-                    .AddSmallButton(Lang.Get("Randomize"), OnRandomizeSkin, ElementBounds.Fixed(0, dlgHeight - 30).WithAlignment(EnumDialogArea.LeftFixed).WithFixedPadding(12, 6), EnumButtonStyle.Normal, EnumTextOrientation.Center)
-                    .AddSmallButton(Lang.Get("Confirm Skin"), OnNext, ElementBounds.Fixed(0, dlgHeight - 30).WithAlignment(EnumDialogArea.RightFixed).WithFixedPadding(12, 6), EnumButtonStyle.Normal, EnumTextOrientation.Center)
+                    .AddSmallButton(Lang.Get("Randomize"), OnRandomizeSkin, ElementBounds.Fixed(0, dlgHeight - 30).WithAlignment(EnumDialogArea.LeftFixed).WithFixedPadding(12, 6), EnumButtonStyle.Normal)
+                    .AddSmallButton(Lang.Get("Confirm Skin"), OnNext, ElementBounds.Fixed(0, dlgHeight - 30).WithAlignment(EnumDialogArea.RightFixed).WithFixedPadding(12, 6), EnumButtonStyle.Normal)
                 ;
 
                 Composers["createcharacter"].GetToggleButton("showdressedtoggle").SetValue(!charNaked);
@@ -223,7 +223,7 @@ namespace Vintagestory.GameContent
                     .AddIconButton("right", (on) => changeClass(1), nextButtonBounds.FlatCopy())
 
                     .AddRichtext("", CairoFont.WhiteDetailText(), charTextBounds, "characterDesc")
-                    .AddSmallButton(Lang.Get("Confirm Class"), OnConfirm, ElementBounds.Fixed(0, dlgHeight - 30).WithAlignment(EnumDialogArea.RightFixed).WithFixedPadding(12, 6), EnumButtonStyle.Normal, EnumTextOrientation.Center)
+                    .AddSmallButton(Lang.Get("Confirm Class"), OnConfirm, ElementBounds.Fixed(0, dlgHeight - 30).WithAlignment(EnumDialogArea.RightFixed).WithFixedPadding(12, 6), EnumButtonStyle.Normal)
                 ;
 
                 changeClass(0);
@@ -339,11 +339,13 @@ namespace Vintagestory.GameContent
             var essr = capi.World.Player.Entity.Properties.Client.Renderer as EntitySkinnableShapeRenderer;
             essr.doReloadShapeAndSkin = false;
 
+            bool mustached = capi.World.Rand.NextDouble() < 0.25;
+
             foreach (var skinpart in skinMod.AvailableSkinParts) {
 
                 int index = capi.World.Rand.Next(skinpart.Variants.Length);
 
-                if ((skinpart.Code == "mustache" || skinpart.Code == "beard") && capi.World.Rand.NextDouble() < 0.65)
+                if ((skinpart.Code == "mustache" || skinpart.Code == "beard") && !mustached)
                 {
                     index = 0;
                 }

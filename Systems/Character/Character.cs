@@ -322,6 +322,8 @@ namespace Vintagestory.GameContent
             {
                 createCharDlg = new GuiDialogCreateCharacter(capi, this);
                 createCharDlg.PrepAndOpen();
+                createCharDlg.OnClosed += () => capi.PauseGame(false);
+                capi.Event.EnqueueMainThreadTask(() => capi.PauseGame(true), "pausegame");
             }
         }
 

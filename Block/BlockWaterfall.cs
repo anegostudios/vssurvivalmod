@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
@@ -53,8 +49,7 @@ namespace Vintagestory.GameContent
 
             return
                     pos.Y >= 2 &&
-                    world.BlockAccessor.GetBlock(pos.X, pos.Y - 1, pos.Z).Replaceable >= ReplacableThreshold/* &&
-                    world.BlockAccessor.GetBlock(pos.X, pos.Y - 2, pos.Z).Replaceable >= ReplacableThreshold*/
+                    world.BlockAccessor.GetBlock(pos.X, pos.Y - 1, pos.Z).Replaceable >= ReplacableThreshold
                 ;
         }
 

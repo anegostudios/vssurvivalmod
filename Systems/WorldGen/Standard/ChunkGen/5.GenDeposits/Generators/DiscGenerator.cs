@@ -11,6 +11,12 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.ServerMods
 {
+    public enum EnumGradeDistribution
+    {
+        Random,
+        RandomPlusDepthBonus
+    }
+
     [JsonObject(MemberSerialization.OptIn)]
     public abstract class DiscDepositGenerator : DepositGeneratorBase
     {
@@ -69,6 +75,9 @@ namespace Vintagestory.ServerMods
         [JsonProperty]
         public bool WithLastLayerBlockCallback;
 
+        [JsonProperty]
+        public EnumGradeDistribution GradeDistribution = EnumGradeDistribution.Random;
+        protected float currentRelativeDepth;
 
 
 
@@ -100,8 +109,6 @@ namespace Vintagestory.ServerMods
         {
             chunksize = api.World.BlockAccessor.ChunkSize;
             worldheight = api.World.BlockAccessor.MapSizeY;
-
-            
 
             regionSize = api.WorldManager.RegionSize;
             regionChunkSize = api.WorldManager.RegionSize / chunksize;
@@ -208,29 +215,27 @@ namespace Vintagestory.ServerMods
             int radius = Math.Min(64, (int)Radius.nextFloat(1, DepositRand));
             if (radius <= 0) return;
 
-            int depositGradeIndex = PlaceBlock.MaxGrade == 0 ? 0 : DepositRand.NextInt(PlaceBlock.MaxGrade);
-            int chunksize = this.chunksize;
-
             // Let's deform that perfect circle a bit (+/- 25%)
             float deform = GameMath.Clamp(DepositRand.NextFloat() - 0.5f, -0.25f, 0.25f);
             radiusX = radius - (int)(radius * deform);
             radiusZ = radius + (int)(radius * deform);
             
-            
             int baseX = chunkX * chunksize;
             int baseZ = chunkZ * chunksize;
-
 
             // No need to caluclate further if this deposit won't be part of this chunk
             if (depoCenterPos.X + radiusX < baseX - 6 || depoCenterPos.Z + radiusZ < baseZ - 6 || depoCenterPos.X - radiusX >= baseX + chunksize + 6 || depoCenterPos.Z - radiusZ >= baseZ + chunksize + 6) return;
 
             IMapChunk heremapchunk = chunks[0].MapChunk;
 
-            
             beforeGenDeposit(heremapchunk, depoCenterPos);
 
             if (!shouldGenDepositHere(depoCenterPos)) return;
-            
+
+
+            int extraGrade = GradeDistribution == EnumGradeDistribution.RandomPlusDepthBonus ? GameMath.RoundRandom(DepositRand, GameMath.Clamp(1 - currentRelativeDepth, 0, 1)) : 0;
+            int depositGradeIndex = PlaceBlock.MaxGrade == 0 ? 0 : Math.Min(PlaceBlock.MaxGrade - 1, DepositRand.NextInt(PlaceBlock.MaxGrade) + extraGrade);
+
             // Ok generate
             float th = Thickness.nextFloat(1, DepositRand);
             depoitThickness = (int)th + (DepositRand.NextFloat() < th - (int)th ? 1 : 0);

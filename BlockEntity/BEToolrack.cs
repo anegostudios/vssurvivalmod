@@ -27,7 +27,7 @@ namespace Vintagestory.GameContent
         public TextureAtlasPosition this[string textureCode]
         {
             get {
-                ToolTextures tt = null;
+                ToolTextures tt;
 
                 if (BlockToolRack.ToolTextureSubIds(Api).TryGetValue((Item)tmpItem, out tt))
                 {
@@ -40,7 +40,7 @@ namespace Vintagestory.GameContent
                     return ((ICoreClientAPI)Api).BlockTextureAtlas.Positions[tt.TextureSubIdsByCode.First().Value];
                 }
 
-                return null;
+                return ((ICoreClientAPI)Api).BlockTextureAtlas.UnknownTexturePosition;
             }
         }
 

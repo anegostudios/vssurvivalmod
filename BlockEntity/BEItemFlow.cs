@@ -369,8 +369,6 @@ namespace Vintagestory.GameContent
 
         private bool TrySpitOut(BlockFacing outputFace)
         {
-            //if (!PushFaces.Contains(outputFace)) return false;
-
             if (Api.World.BlockAccessor.GetBlock(Pos.AddCopy(outputFace)).Replaceable >= 6000)
             {
                 ItemSlot sourceSlot = inventory.FirstOrDefault(slot => !slot.Empty);

@@ -17,6 +17,8 @@ namespace Vintagestory.GameContent
 
         public override void OnLoaded(ICoreAPI api)
         {
+            CanStep = false; // Prevent creatures from walking stalagmites/-ctites
+
             ThicknessInt = int.Parse(Variant["thickness"]);
             base.OnLoaded(api);
         }

@@ -973,6 +973,7 @@ namespace Vintagestory.GameContent
             {
                 InFirePitProps props = contentStack.ItemAttributes["inFirePitProps"].AsObject<InFirePitProps>();
                 props.Transform.EnsureDefaultValues();
+
                 return props;
             }
             return null;

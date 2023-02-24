@@ -158,7 +158,7 @@ namespace Vintagestory.GameContent
                 Block block = capi.World.GetBlock(new AssetLocation(blockMaterialCode));
                 AtlasSize = capi.BlockTextureAtlas.Size;
                 matTexPosition = capi.BlockTextureAtlas.GetPosition(block, "up");
-                ownTextureSource = capi.Tesselator.GetTexSource(this);
+                ownTextureSource = capi.Tesselator.GetTextureSource(this);
 
                 capi.Tesselator.TesselateShape("filledpan", shape, out meshdata, this);
 

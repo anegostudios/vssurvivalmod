@@ -38,8 +38,9 @@ namespace Vintagestory.GameContent
         public long lastOwnPlayerCollideMs = 0;
 
         ICoreClientAPI capi;
+        public bool tpLocationIsOffset;
 
-        
+
 
 
         public BlockEntityTeleporterBase()
@@ -116,15 +117,18 @@ namespace Vintagestory.GameContent
 
                 if (val.Value.SecondsPassed > 1.5 && tpTarget != null)
                 {
+                    var targetPos = tpTarget.Copy();
+                    if (tpLocationIsOffset) targetPos.Add(Pos.X, Pos.Y, Pos.Z);
+
                     // Preload the chunk
-                    IWorldChunk chunk = Api.World.BlockAccessor.GetChunkAtBlockPos(tpTarget);
+                    IWorldChunk chunk = Api.World.BlockAccessor.GetChunkAtBlockPos(targetPos);
                     if (chunk != null)
                     {
                         chunk.MapChunk.MarkFresh();
                     }
                     else
                     {
-                        sapi.WorldManager.LoadChunkColumnPriority((int)tpTarget.X / Api.World.BlockAccessor.ChunkSize, (int)tpTarget.Z / Api.World.BlockAccessor.ChunkSize, new ChunkLoadOptions()
+                        sapi.WorldManager.LoadChunkColumnPriority((int)targetPos.X / Api.World.BlockAccessor.ChunkSize, (int)targetPos.Z / Api.World.BlockAccessor.ChunkSize, new ChunkLoadOptions()
                         {
                             KeepLoaded = false
                         });
@@ -133,7 +137,9 @@ namespace Vintagestory.GameContent
 
                 if (val.Value.SecondsPassed > TeleportWarmupSec && tpTarget != null)
                 {
-                    val.Value.Entity.TeleportTo(tpTarget.ToVec3d().Add(-0.3, 1, -0.3)); // Fugly, need some better exit pos thing
+                    var targetPos = tpTarget.ToVec3d().Add(-0.3, 1, -0.3);
+                    if (tpLocationIsOffset) targetPos.Add(Pos.X, Pos.Y, Pos.Z);
+                    val.Value.Entity.TeleportTo(targetPos); // Fugly, need some better exit pos thing
                     toremove.Add(val.Key);
 
                     Entity e = val.Value.Entity;

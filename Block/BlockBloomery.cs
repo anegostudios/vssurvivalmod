@@ -11,7 +11,7 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockBloomery : Block
+    public class BlockBloomery : Block, IIgnitable
     {
         WorldInteraction[] interactions;
 
@@ -104,7 +104,7 @@ namespace Vintagestory.GameContent
             return matchStacks.ToArray();
         }
 
-        public override EnumIgniteState OnTryIgniteBlock(EntityAgent byEntity, BlockPos pos, float secondsIgniting)
+        public EnumIgniteState OnTryIgniteBlock(EntityAgent byEntity, BlockPos pos, float secondsIgniting)
         {
             BlockEntityBloomery beb = byEntity.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityBloomery;
             if (!beb.CanIgnite()) return EnumIgniteState.NotIgnitablePreventDefault;
@@ -112,7 +112,7 @@ namespace Vintagestory.GameContent
             return secondsIgniting > 4 ? EnumIgniteState.IgniteNow : EnumIgniteState.Ignitable;
         }
 
-        public override void OnTryIgniteBlockOver(EntityAgent byEntity, BlockPos pos, float secondsIgniting, ref EnumHandling handling)
+        public void OnTryIgniteBlockOver(EntityAgent byEntity, BlockPos pos, float secondsIgniting, ref EnumHandling handling)
         {
             handling = EnumHandling.PreventDefault;
 

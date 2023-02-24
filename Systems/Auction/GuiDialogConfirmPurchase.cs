@@ -117,7 +117,7 @@ namespace Vintagestory.GameContent
                         .AddRichtext(totalCostComps, totalCostBounds, "totalCost")
 
                         .AddSmallButton(Lang.Get("Cancel"), OnCancel, leftButton)
-                        .AddSmallButton(Lang.Get("Purchase"), OnPurchase, rightButton, EnumButtonStyle.Normal, EnumTextOrientation.Left, "buysellButton")
+                        .AddSmallButton(Lang.Get("Purchase"), OnPurchase, rightButton, EnumButtonStyle.Normal, "buysellButton")
                 .EndChildElements()
                 .Compose()
             ;

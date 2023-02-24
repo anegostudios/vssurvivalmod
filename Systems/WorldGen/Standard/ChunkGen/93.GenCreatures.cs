@@ -43,7 +43,7 @@ namespace Vintagestory.ServerMods
         {
             this.api = api;
 
-            if (DoDecorationPass)
+            if (TerraGenConfig.DoDecorationPass)
             {
                 api.Event.InitWorldGenerator(initWorldGen, "standard");
                 api.Event.ChunkColumnGeneration(OnChunkColumnGen, EnumWorldGenPass.PreDone, "standard");
@@ -72,6 +72,8 @@ namespace Vintagestory.ServerMods
                 entityTypesByCode[api.World.EntityTypes[i].Code] = api.World.EntityTypes[i];
             }
 
+            Dictionary<AssetLocation, Block[]> searchCache = new Dictionary<AssetLocation, Block[]>();
+
             for (int i = 0; i < api.World.EntityTypes.Count; i++)
             {
                 EntityProperties type = api.World.EntityTypes[i];
@@ -81,7 +83,7 @@ namespace Vintagestory.ServerMods
                 List<EntityProperties> grouptypes = new List<EntityProperties>();
                 grouptypes.Add(type);
 
-                conds.Initialise(api.World, type.Code.ToShortString());
+                conds.Initialise(api.World, type.Code.ToShortString(), searchCache);
 
                 AssetLocation[] companions = conds.Companions;
                 if (companions == null) continue;

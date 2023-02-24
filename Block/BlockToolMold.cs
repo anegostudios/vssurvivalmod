@@ -1,14 +1,8 @@
 ﻿using Newtonsoft.Json.Linq;
-using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
-using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
@@ -129,7 +123,15 @@ namespace Vintagestory.GameContent
             });
         }
 
+        public override void OnEntityCollide(IWorldAccessor world, Entity entity, BlockPos pos, BlockFacing facing, Vec3d collideSpeed, bool isImpact)
+        {
+            if (world.Rand.NextDouble() < 0.05 && GetBlockEntity<BlockEntityToolMold>(pos)?.Temperature > 300)
+            {
+                entity.ReceiveDamage(new DamageSource() { Source = EnumDamageSource.Block, SourceBlock = this, Type = EnumDamageType.Fire, SourcePos = pos.ToVec3d() }, 0.5f);
+            }
 
+            base.OnEntityCollide(world, entity, pos, facing, collideSpeed, isImpact);
+        }
 
         public override void OnHeldInteractStart(ItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handHandling)
         {
@@ -155,11 +157,9 @@ namespace Vintagestory.GameContent
             if (blockSel == null) return false;
 
             BlockEntityToolMold be = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityToolMold;
-            bool handled = false;
-
             if (be != null)
             {
-                handled = be.OnPlayerInteract(byPlayer, blockSel.Face, blockSel.HitPosition);
+                be.OnPlayerInteract(byPlayer, blockSel.Face, blockSel.HitPosition);
             }
             
 

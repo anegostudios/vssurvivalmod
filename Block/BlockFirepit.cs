@@ -1,12 +1,13 @@
 ﻿using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockFirepit : Block
+    public class BlockFirepit : Block, IIgnitable
     {
         public int Stage { get {
             switch (LastCodePart())
@@ -136,14 +137,25 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override EnumIgniteState OnTryIgniteBlock(EntityAgent byEntity, BlockPos pos, float secondsIgniting)
+        public override void OnEntityInside(IWorldAccessor world, Entity entity, BlockPos pos)
+        {
+            if (world.Rand.NextDouble() < 0.05 && GetBlockEntity<BlockEntityFirepit>(pos)?.IsBurning == true)
+            {
+                entity.ReceiveDamage(new DamageSource() { Source = EnumDamageSource.Block, SourceBlock = this, Type = EnumDamageType.Fire, SourcePos = pos.ToVec3d() }, 0.5f);
+            }
+
+            base.OnEntityInside(world, entity, pos);
+        }
+
+
+        public EnumIgniteState OnTryIgniteBlock(EntityAgent byEntity, BlockPos pos, float secondsIgniting)
         {
             BlockEntityFirepit bef = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityFirepit;
             if (bef == null) return EnumIgniteState.NotIgnitable;
             return bef.GetIgnitableState(secondsIgniting);
         }
 
-        public override void OnTryIgniteBlockOver(EntityAgent byEntity, BlockPos pos, float secondsIgniting, ref EnumHandling handling)
+        public void OnTryIgniteBlockOver(EntityAgent byEntity, BlockPos pos, float secondsIgniting, ref EnumHandling handling)
         {
             BlockEntityFirepit bef = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityFirepit;
             if (bef != null && !bef.canIgniteFuel)

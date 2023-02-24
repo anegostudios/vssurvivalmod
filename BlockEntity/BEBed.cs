@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -29,15 +30,19 @@ namespace Vintagestory.GameContent
         long mountedByEntityId;
         string mountedByPlayerUid;
 
-        public Vec3d MountPosition
+        EntityPos mountPos = new EntityPos();
+        public EntityPos MountPosition
         {
             get {
                 BlockFacing facing = this.facing.Opposite;
 
-                if (facing == BlockFacing.NORTH) return Pos.ToVec3d().Add(0.5, y2, 1);
-                if (facing == BlockFacing.EAST) return Pos.ToVec3d().Add(0, y2, 0.5);
-                if (facing == BlockFacing.SOUTH) return Pos.ToVec3d().Add(0.5, y2, 0);
-                if (facing == BlockFacing.WEST) return Pos.ToVec3d().Add(1, y2, 0.5);
+                mountPos.SetPos(this.Pos);
+                mountPos.Yaw = facing.HorizontalAngleIndex * GameMath.PIHALF;
+
+                if (facing == BlockFacing.NORTH) return mountPos.Add(0.5, y2, 1);
+                if (facing == BlockFacing.EAST) return mountPos.Add(0, y2, 0.5);
+                if (facing == BlockFacing.SOUTH) return mountPos.Add(0.5, y2, 0);
+                if (facing == BlockFacing.WEST) return mountPos.Add(1, y2, 0.5);
 
                 return null;
             }
@@ -56,17 +61,15 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public float? MountYaw
-        {
-            get
-            {
-                if (facing == null) return null;
-
-                return facing.HorizontalAngleIndex * GameMath.PIHALF;
-            }
-        }
 
         public IMountableSupplier MountSupplier => null;
+        public EnumMountAngleMode AngleMode => EnumMountAngleMode.FixateYaw;
+
+        static Vec3f eyePos = new Vec3f(0, 0.3f, 0);
+        public Vec3f LocalEyePos => eyePos;
+        Entity IMountable.MountedBy => MountedBy;
+
+        public bool CanControl => false;
 
         public override void Initialize(ICoreAPI api)
         {

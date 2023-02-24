@@ -26,30 +26,19 @@ namespace Vintagestory.GameContent
         public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, LCGRandom worldGenRand)
         {
             Block block = blockAccessor.GetBlock(pos);
-            
+            if (block.Id != 0) return false;
 
-            if (block.IsReplacableBy(this) && block.SideSolid[BlockFacing.UP.Index])   // this looks weird, surely it should test the sidesolid on the block BELOW?
+            for (int i = 1; i < 5; i++)
             {
-                blockAccessor.SetBlock(rndGearBlock().BlockId, pos);
-                return true;
-            }
+                block = blockAccessor.GetBlock(pos.X, pos.Y - i, pos.Z);
 
-            pos = pos.DownCopy();
-            block = blockAccessor.GetBlock(pos);
+                if (block.SideSolid[BlockFacing.UP.Index])
+                {
+                    blockAccessor.SetBlock(rndGearBlock().BlockId, pos.DownCopy(i-1));
+                    return true;
+                }
 
-            if (block.IsReplacableBy(this) && block.SideSolid[BlockFacing.UP.Index])
-            {
-                blockAccessor.SetBlock(rndGearBlock().BlockId, pos);
-                return true;
-            }
-
-            pos.Down();
-            block = blockAccessor.GetBlock(pos);
-
-            if (block.IsReplacableBy(this) && block.SideSolid[BlockFacing.UP.Index])
-            {
-                blockAccessor.SetBlock(rndGearBlock().BlockId, pos);
-                return true;
+                if (block.Id != 0) return false;
             }
 
             return false;
