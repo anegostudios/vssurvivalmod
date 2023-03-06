@@ -6,7 +6,7 @@ using Vintagestory.API.Server;
 
 namespace Vintagestory.GameContent
 {
-    public class ModSystemResoArchiveConfigurator : ModSystem
+    public class ModSystemResoArchiveCommands : ModSystem
     {
         ICoreServerAPI sapi;
         public override bool ShouldLoad(EnumAppSide forSide) => forSide == EnumAppSide.Server;
@@ -17,38 +17,69 @@ namespace Vintagestory.GameContent
             var parsers = api.ChatCommands.Parsers;
             api.ChatCommands
                 .GetOrCreate("dev")
+                .WithDesc("Gamedev tools")
                 .RequiresPrivilege(Privilege.controlserver)
+                .BeginSub("setmbname")
+                    .WithDesc("Set the name of a microblock")
+                    .WithArgs(parsers.WorldPosition("micro block position"), parsers.All("name"))
+                    .HandleWith(onSetMicroBlockName)
+                .EndSub()
                 .BeginSub("setlorecode")
+                    .WithDesc("Set the lore code of a bookshelf with lore")
                     .WithArgs(parsers.OptionalWord("lorecode"))
                     .HandleWith(onSetLoreCode)
                 .EndSub()
                 .BeginSub("lampncfg")
+                    .WithDesc("Set the network code of a light source")
                     .WithArgs(parsers.OptionalWord("networkcode"))
                     .HandleWith(onLampNodeConfig)
                 .EndSub()
                 .BeginSub("pumponcmd")
+                    .WithDesc("Set command to run when the pump is on")
                     .WithArgs(parsers.OptionalAll("command"))
                     .HandleWith(args => onSetCmd(args, true))
                 .EndSub()
                 .BeginSub("pumpoffcmd")
+                    .WithDesc("Set command to run when the pump is off")
                     .WithArgs(parsers.OptionalAll("command"))
                     .HandleWith(args => onSetCmd(args, false))
                 .EndSub()
                 .BeginSub("musictrigger")
+                    .WithDesc("Configure the music trigger meta block")
                     .RequiresPlayer()
                     .BeginSub("setarea")
+                        .WithDesc("Define trigger area")
                         .WithArgs(parsers.Int("minX"), parsers.Int("minY"), parsers.Int("minZ"), parsers.Int("maxX"), parsers.Int("maxY"), parsers.Int("maxZ"))
                         .HandleWith(onSetMusicTriggerArea)
                     .EndSub()
                     .BeginSub("hidearea")
+                        .WithDesc("Hide trigger preview")
                         .HandleWith(onMusicTriggerHideArea)
                     .EndSub()
                     .BeginSub("settrack")
+                        .WithDesc("Set track file")
                         .WithArgs(parsers.Word("track file location"))
                         .HandleWith(onMusicTriggerSetTrack)
                     .EndSub()
                 .EndSub()
+                .Validate()
             ;
+        }
+
+        private TextCommandResult onSetMicroBlockName(TextCommandCallingArgs args)
+        {
+            BlockPos pos = (args[0] as Vec3d).AsBlockPos;
+            string name = args[1] as string;
+
+            var be = sapi.World.BlockAccessor.GetBlockEntity<BlockEntityMicroBlock>(pos);
+            if (be == null)
+            {
+                return TextCommandResult.Error("Not looking at a microblock");
+            }
+
+            be.BlockName = name;
+            be.MarkDirty(true);
+            return TextCommandResult.Success("Microblock name set.");
         }
 
         private TextCommandResult onMusicTriggerSetTrack(TextCommandCallingArgs args)

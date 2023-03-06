@@ -94,6 +94,8 @@ namespace Vintagestory.GameContent
 
         public override void OnBlockRemoved(IWorldAccessor world, BlockPos pos)
         {
+            base.OnBlockRemoved(world, pos);
+
             BlockPos otherPos = pos.AddCopy(0, IsUpperHalf() ? -1 : 1, 0);
             Block otherPart = world.BlockAccessor.GetBlock(otherPos);
 

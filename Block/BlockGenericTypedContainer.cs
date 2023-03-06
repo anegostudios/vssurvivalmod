@@ -33,11 +33,26 @@ namespace Vintagestory.GameContent
         }
     }
 
-    public class BlockGenericTypedContainer : Block, ITexPositionSource
+    public class GenericContainerTextureSource : ITexPositionSource
     {
-        public Size2i AtlasSize { get { return tmpTextureSource.AtlasSize; } }
-        ITexPositionSource tmpTextureSource;
+        public Size2i AtlasSize { get { return blockTextureSource.AtlasSize; } }
+        public ITexPositionSource blockTextureSource;
+        public string curType;
+        public GenericContainerTextureSource()
+        {
+        }
 
+        public TextureAtlasPosition this[string textureCode]
+        {
+            get
+            {
+                return blockTextureSource[curType + "-" + textureCode];
+            }
+        }
+    }
+
+    public class BlockGenericTypedContainer : Block
+    {
         string curType;
         string defaultType;
         string variantByGroup;
@@ -58,14 +73,6 @@ namespace Vintagestory.GameContent
             get
             {
                 return variantByGroupInventory == null ? "" : Variant[variantByGroupInventory];
-            }
-        }
-
-        public TextureAtlasPosition this[string textureCode]
-        {
-            get
-            {
-                return tmpTextureSource[curType + "-" + textureCode];
             }
         }
 
@@ -244,7 +251,7 @@ namespace Vintagestory.GameContent
             if (shapename == null) return null;
             if (tesselator == null) tesselator = capi.Tesselator;
 
-            tmpTextureSource = tesselator.GetTextureSource(this, altTexNumber);
+            
 
             AssetLocation shapeloc = AssetLocation.Create(shapename, Code.Domain).WithPathPrefixOnce("shapes/");
             Shape shape = API.Common.Shape.TryGet(capi, shapeloc + ".json");
@@ -272,9 +279,15 @@ namespace Vintagestory.GameContent
             curType = type;
             MeshData mesh;
 
+            var texSource = new GenericContainerTextureSource()
+            {
+                blockTextureSource = tesselator.GetTextureSource(this, altTexNumber),
+                curType = type
+            };
+
             TesselationMetaData meta = new TesselationMetaData()
             {
-                TexSource = this,
+                TexSource = texSource,
                 WithJointIds = true,
                 WithDamageEffect = true,
                 TypeForLogging = "typedcontainer",

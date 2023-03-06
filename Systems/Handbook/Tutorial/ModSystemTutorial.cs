@@ -86,6 +86,7 @@ namespace Vintagestory.GameContent
             hud.TryClose();
             CurrentTutorial = null;
             currentTutorialInst = null;
+            tutorialModeActiveForPlayers.Remove(capi.World.Player.PlayerUID);
         }
 
         public override void StartClientSide(ICoreClientAPI api)
@@ -160,6 +161,8 @@ namespace Vintagestory.GameContent
             hud.TryOpen();
             hud.loadHud(currentTutorialInst.PageCode);
             capi.Network.GetChannel("tutorial").SendPacket(new ActivateTutorialPacket() { Code = code });
+
+            tutorialModeActiveForPlayers.Add(capi.World.Player.PlayerUID);
         }
 
         private void toggleHud()
@@ -205,7 +208,6 @@ namespace Vintagestory.GameContent
         private void onActivateTutorial(IServerPlayer fromPlayer, ActivateTutorialPacket packet)
         {
             ActivateTutorialMode(fromPlayer.PlayerUID);
-            
         }
 
         private void Event_PlayerJoin(IServerPlayer byPlayer)

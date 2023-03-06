@@ -328,7 +328,7 @@ namespace Vintagestory.GameContent
                 {
                     return new Dictionary<string, Shape>();
                 });
-                string skey = Block.FirstCodePart() + block.Subtype + "-" + "-" + shapename + "-" + rndTexNum;
+                string skey = Block.FirstCodePart() + type + block.Subtype + "-" + "-" + shapename + "-" + rndTexNum;
                 if (!shapes.TryGetValue(skey, out shape))
                 {
                     shapes[skey] = shape = block.GetShape(Api as ICoreClientAPI, type, shapename, tesselator, rndTexNum);
@@ -352,8 +352,14 @@ namespace Vintagestory.GameContent
             if (animUtil != null)
             {
                 if (animUtil.renderer == null) 
-                { 
-                    mesh = animUtil.InitializeAnimator(type + "-" + key + "-" + block.Subtype, shape, block, rendererRot);
+                {
+                    var texSource = new GenericContainerTextureSource()
+                    {
+                        blockTextureSource = tesselator.GetTextureSource(Block, rndTexNum),
+                        curType = type
+                    };
+
+                    mesh = animUtil.InitializeAnimator(type + "-" + key + "-" + block.Subtype, shape, texSource, rendererRot);
                 }
 
                 return meshes[meshKey] = mesh;

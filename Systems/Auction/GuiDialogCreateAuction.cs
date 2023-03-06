@@ -141,8 +141,6 @@ namespace Vintagestory.GameContent
                 capi.TriggerIngameError(this, "notenoughgears", Lang.Get("Not enough gears to pay the deposit"));
                 return true;
             }
-
-            
             
             auctionSys.PlaceAuctionClient(owningEntity, price, weeks);
             OnCreateAuctionClose();

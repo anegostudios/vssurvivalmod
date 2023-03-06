@@ -84,7 +84,7 @@ namespace Vintagestory.GameContent
 
                     if (props != null)
                     {
-                        string incontainername = Lang.Get("incontainer-" + stack.Class.ToString().ToLowerInvariant() + "-" + stack.Collectible.Code.Path);
+                        string incontainername = Lang.Get(stack.Collectible.Code.Domain + ":incontainer-" + stack.Class.ToString().ToLowerInvariant() + "-" + stack.Collectible.Code.Path);
                         contents += "\n" + Lang.Get(props.MaxStackSize > 0 ? "{0}x of {1}" : "{0} litres of {1}", (float)stack.StackSize / props.ItemsPerLitre, incontainername);
                     }
                     else
@@ -109,7 +109,7 @@ namespace Vintagestory.GameContent
 
                     if (props != null)
                     {
-                        string incontainername = Lang.Get("incontainer-" + outStack.Class.ToString().ToLowerInvariant() + "-" + outStack.Collectible.Code.Path);
+                        string incontainername = Lang.Get(outStack.Collectible.Code.Domain + "incontainer-" + outStack.Class.ToString().ToLowerInvariant() + "-" + outStack.Collectible.Code.Path);
                         float litres = (float)bebarrel.CurrentOutSize / props.ItemsPerLitre;
                         contents += "\n\n" + Lang.Get("Will turn into {0} litres of {1} after {2} of sealing.", litres, incontainername, timeText);
                     }

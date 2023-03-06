@@ -98,13 +98,13 @@ namespace Vintagestory.GameContent
             if (!IsRepaired)
             {
                 var slot = byPlayer.InventoryManager.ActiveHotbarSlot;
-                if (slot.Itemstack?.Collectible.Code.Path == "largegear-temporal")
+                if (slot.Itemstack?.Collectible.Code.Path == "largegear-temporal" && !hasTempGear)
                 {
                     if (byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative) slot.TakeOut(1);
                     hasTempGear = true;
                     Api.World.PlaySoundAt(new AssetLocation("sounds/effect/latch"), Pos.X + 0.5, Pos.Y, Pos.Z + 0.5, null, true, 16);
                 }
-                if (slot.Itemstack?.Collectible.Code.Path == "jonasparts-flywheel")
+                if (slot.Itemstack?.Collectible.Code.Path == "jonasparts-flywheel" && !hasFlywheel)
                 {
                     if (byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative) slot.TakeOut(1);
                     hasFlywheel = true;
@@ -188,6 +188,7 @@ namespace Vintagestory.GameContent
                 dsc.AppendLine("offcommand:" + offcommands);
             }
 
+            if (!ReceivesPower) dsc.AppendLine(Lang.Get("No power."));
             if (!hasTempGear) dsc.AppendLine(Lang.Get("Missing large temporal gear."));
             if (!hasFlywheel) dsc.AppendLine(Lang.Get("Missing pump head."));
         }

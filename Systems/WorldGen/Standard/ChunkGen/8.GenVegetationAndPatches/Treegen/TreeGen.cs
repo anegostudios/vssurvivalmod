@@ -38,6 +38,7 @@ namespace Vintagestory.ServerMods
         public void GrowTree(IBlockAccessor ba, BlockPos pos, TreeGenParams treeGenParams)
         {
             Random rnd = rand ?? (rand = new Random(Environment.TickCount));
+            int treeSubType = rnd.Next(8);
             lcgrandTL.Value.InitPositionSeed(pos.X, pos.Z);
 
             this.blockAccessor = ba;
@@ -67,7 +68,7 @@ namespace Vintagestory.ServerMods
 
                     growBranch(
                         rnd,
-                        0, pos, trunk.dx, 0f, trunk.dz,
+                        0, pos, treeSubType, trunk.dx, 0f, trunk.dz,
                         trunk.angleVert.nextFloat(1, rnd),
                         trunk.angleHori.nextFloat(1, rnd),
                         size * trunk.widthMultiplier,
@@ -83,7 +84,7 @@ namespace Vintagestory.ServerMods
         }
 
 
-        private void growBranch(Random rand, int depth, BlockPos pos, float dx, float dy, float dz, float angleVerStart, float angleHorStart, float curWidth, float dieAt, float trunkWidthLoss, bool wideTrunk)
+        private void growBranch(Random rand, int depth, BlockPos pos, int treeSubType, float dx, float dy, float dz, float angleVerStart, float angleHorStart, float curWidth, float dieAt, float trunkWidthLoss, bool wideTrunk)
         {
             if (depth > 30) { Console.WriteLine("TreeGen.growBranch() aborted, too many branches!"); return; }
 
@@ -143,7 +144,7 @@ namespace Vintagestory.ServerMods
                 dy += Math.Min(1, Math.Max(-1, GameMath.FastCos(angleVer) - ddrag));
                 dz += sinAngleVer * sinAngleHor / Math.Max(1, Math.Abs(ddrag));
 
-                int blockId = branch.getBlockId(curWidth, config.treeBlocks, this);
+                int blockId = branch.getBlockId(curWidth, config.treeBlocks, this, treeSubType);
                 if (blockId == 0) return;
 
                 currentPos.Set(pos.X + dx, pos.Y + dy, pos.Z + dz);
@@ -279,7 +280,8 @@ namespace Vintagestory.ServerMods
                         growBranch(
                             rand,
                             depth + 1, 
-                            pos, dx + trunkOffsetX, dy, dz + trunkOffsetZ, 
+                            pos, treeSubType,
+                            dx + trunkOffsetX, dy, dz + trunkOffsetZ, 
                             branch.branchVerticalAngle.nextFloat(1, rand), 
                             horAngle,
                             branchWidth,

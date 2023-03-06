@@ -817,7 +817,6 @@ namespace Vintagestory.ServerMods
             int noiseSizeClimate = api.WorldManager.RegionSize / TerraGenConfig.climateMapScale;
             int noiseSizeForest = api.WorldManager.RegionSize / TerraGenConfig.forestMapScale;
             int noiseSizeUpheavel = api.WorldManager.RegionSize / TerraGenConfig.geoUpheavelMapScale;
-            int noiseSizeShrubs = api.WorldManager.RegionSize / TerraGenConfig.shrubMapScale;
             int noiseSizeGeoProv = api.WorldManager.RegionSize / TerraGenConfig.geoProvMapScale;
             int noiseSizeLandform = api.WorldManager.RegionSize / TerraGenConfig.landformMapScale;
 
@@ -827,15 +826,12 @@ namespace Vintagestory.ServerMods
             MapLayerBase climateGen = genmapsSys.climateGen;
             MapLayerBase forestGen = genmapsSys.forestGen;
             MapLayerBase upheavelGen = genmapsSys.upheavelGen;
-            MapLayerBase bushGen = genmapsSys.bushGen;
-            MapLayerBase flowerGen = genmapsSys.flowerGen;
             MapLayerBase geologicprovinceGen = genmapsSys.geologicprovinceGen;
             MapLayerBase landformsGen = genmapsSys.landformsGen;
             
             
             int regionX = pos.X / api.WorldManager.RegionSize;
             int regionZ = pos.Z / api.WorldManager.RegionSize;
-            int chunkSize = api.WorldManager.ChunkSize;
             
 
             NoiseBase.Debug = true;

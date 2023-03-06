@@ -50,8 +50,7 @@ namespace Vintagestory.GameContent
 
             OnCanBurn = (pos) =>
             {
-                Block block = Api.World.BlockAccessor.GetBlock(pos);
-                return block?.CombustibleProps != null && block.CombustibleProps.BurnDuration > 0;
+                return getBurnDuration(pos) > 0;
             };
             ShouldBurn = () => true;
             OnFireTick = (dt) =>
@@ -78,6 +77,15 @@ namespace Vintagestory.GameContent
 
                 Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(FirePos);
             };
+        }
+
+        float getBurnDuration(BlockPos pos)
+        {
+            Block block = Api.World.BlockAccessor.GetBlock(pos);
+            if (block.CombustibleProps != null) return block.CombustibleProps.BurnDuration;
+
+            int firewoodq = BlockFirepit.GetFireWoodQuanity(Api.World, pos); // Currently hardcoded, awaiting combustible rewrite as a blockbehavior or as interface
+            return firewoodq > 0 ? 35 : 0;
         }
 
         public override void Initialize(ICoreAPI api, JsonObject properties)
@@ -112,11 +120,10 @@ namespace Vintagestory.GameContent
                 foreach (BlockFacing facing in BlockFacing.ALLFACES)
                 {
                     BlockPos npos = FirePos.AddCopy(facing);
-                    fuelBlock = Api.World.BlockAccessor.GetBlock(npos);
                     if (canBurn(npos))
                     {
                         FuelPos = npos;
-                        startDuration = remainingBurnDuration = fuelBlock.CombustibleProps.BurnDuration;
+                        startDuration = remainingBurnDuration = getBurnDuration(npos);
                         return;
                     }
                 }
@@ -127,11 +134,10 @@ namespace Vintagestory.GameContent
             }
             else
             {
-                fuelBlock = Api.World.BlockAccessor.GetBlock(FuelPos);
-
-                if (fuelBlock.CombustibleProps != null)
+                float bdur = getBurnDuration(fuelPos);
+                if (bdur > 0)
                 {
-                    startDuration = remainingBurnDuration = fuelBlock.CombustibleProps.BurnDuration;
+                    startDuration = remainingBurnDuration = bdur;
                 }
             }
 

@@ -1,7 +1,9 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -60,9 +62,63 @@ namespace Vintagestory.GameContent
 
         private void Event_LevelFinalize()
         {
-            dialog = new GuiDialogHandbook(capi);
+            var allstacks = SetupBehaviorAndGetItemStacks();
+            this.allstacks = allstacks.ToArray();
+
+            dialog = new GuiDialogHandbook(capi, onCreatePagesAsync, onComposePage);
             capi.Logger.VerboseDebug("Done initialising handbook");
         }
+
+        private List<GuiHandbookPage> onCreatePagesAsync()
+        {
+            var pages = new List<GuiHandbookPage>();
+            foreach (ItemStack stack in allstacks)
+            {
+                if (capi.IsShuttingDown) break;
+
+                GuiHandbookItemStackPage elem = new GuiHandbookItemStackPage(capi, stack)
+                {
+                    Visible = true
+                };
+
+                pages.Add(elem);
+            }
+
+            return pages;
+        }
+
+        private void onComposePage(GuiHandbookPage page, GuiComposer detailViewGui, ElementBounds textBounds, ActionConsumable<string> openDetailPageFor)
+        {
+            page.ComposePage(detailViewGui, textBounds, allstacks, openDetailPageFor);
+        }
+
+
+        protected ItemStack[] allstacks;
+        protected List<ItemStack> SetupBehaviorAndGetItemStacks()
+        {
+            List<ItemStack> allstacks = new List<ItemStack>();
+
+            foreach (CollectibleObject obj in capi.World.Collectibles)
+            {
+                if (!obj.HasBehavior<CollectibleBehaviorHandbookTextAndExtraInfo>())
+                {
+                    var bh = new CollectibleBehaviorHandbookTextAndExtraInfo(obj);
+                    bh.OnLoaded(capi);
+                    obj.CollectibleBehaviors = obj.CollectibleBehaviors.Append(bh);
+                }
+
+                List<ItemStack> stacks = obj.GetHandBookStacks(capi);
+                if (stacks == null) continue;
+
+                foreach (ItemStack stack in stacks)
+                {
+                    allstacks.Add(stack);
+                }
+            }
+
+            return allstacks;
+        }
+
 
         private bool OnHelpHotkey(KeyCombination key)
         {

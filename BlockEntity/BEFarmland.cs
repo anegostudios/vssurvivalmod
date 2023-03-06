@@ -536,7 +536,7 @@ namespace Vintagestory.GameContent
                     // Rule 4: Slow release fertilizer can fertilize up to 100 fertility
                     if (slowReleaseNutrients[i] > 0)
                     {
-                        float release = Math.Min(fertilityRecoverySpeed, slowReleaseNutrients[i]);
+                        float release = Math.Min(0.25f, slowReleaseNutrients[i]); // Don't use fertilityRecoverySpeed value as min here, doesn't look meaningful to do that here
 
                         nutrients[i] = Math.Min(100, nutrients[i] + release);
                         slowReleaseNutrients[i] = Math.Max(0, slowReleaseNutrients[i] - release);

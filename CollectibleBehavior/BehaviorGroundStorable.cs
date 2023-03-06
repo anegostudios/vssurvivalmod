@@ -53,6 +53,7 @@ namespace Vintagestory.GameContent
         public int TransferQuantity = 1;
         public int BulkTransferQuantity = 4;
         public bool SprintKey;
+        public bool UpSolid = false;
 
         public Cuboidf CollisionBox;
         public Cuboidf SelectionBox;
@@ -78,7 +79,8 @@ namespace Vintagestory.GameContent
                 SelectionBox = SelectionBox,
                 CbScaleYByLayer = CbScaleYByLayer,
                 MaxFireable = MaxFireable,
-                SprintKey = SprintKey
+                SprintKey = SprintKey,
+                UpSolid = UpSolid
             };
         }
     }

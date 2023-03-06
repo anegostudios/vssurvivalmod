@@ -30,7 +30,7 @@ namespace Vintagestory.GameContent
                         ActionLangCode = "blockhelp-forge-addcoal",
                         MouseButton = EnumMouseButton.Right,
                         HotKeyCode = "shift",
-                        Itemstacks = new ItemStack[] { new ItemStack(api.World.GetItem(new AssetLocation("charcoal")), 2) }
+                        Itemstacks = new ItemStack[] { new ItemStack(api.World.GetItem(new AssetLocation("charcoal")), 1) }
                     },
                     new WorldInteraction()
                     {

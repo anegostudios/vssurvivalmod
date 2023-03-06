@@ -37,6 +37,11 @@ namespace Vintagestory.GameContent
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
+            if (blockSel != null && !world.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.Use))
+            {
+                return false;
+            }
+
             BlockEntityQuern beQuern = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityQuern;
 
             if (beQuern != null && beQuern.CanGrind() && (blockSel.SelectionBoxIndex == 1 || beQuern.Inventory.openedByPlayerGUIds.Contains(byPlayer.PlayerUID)))

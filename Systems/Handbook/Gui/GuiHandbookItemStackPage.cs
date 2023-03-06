@@ -5,7 +5,6 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Config;
 using Vintagestory.API.Common;
 using System;
-using System.Linq;
 using Vintagestory.API.Util;
 using Vintagestory.API.Datastructures;
 
@@ -20,7 +19,7 @@ namespace Vintagestory.GameContent
         public string TextCacheAll;
         public float searchWeightOffset;
 
-        public int PageNumber;
+        
 
         public override string PageCode => PageCodeForStack(Stack);
 

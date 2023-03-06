@@ -122,6 +122,11 @@ namespace Vintagestory.GameContent
 
                 Vec3f nowEndOffset = getEndOffset(eplr.Player, ws);
 
+                if (nowEndOffset.DistanceTo(ws.startOffset) < 0.01f)
+                {
+                    return;
+                }
+                     
                 if (eplr.Player.WorldData.CurrentGameMode != EnumGameMode.Creative)
                 {
                     int len = (int)Math.Ceiling(nowEndOffset.DistanceTo(ws.startOffset));
@@ -214,32 +219,34 @@ namespace Vintagestory.GameContent
             nowEndOffset = snapToGrid(vec, ws.GridSize);
 
 
+            double dX = nowEndOffset.X - ws.startOffset.X;
+            double dY = nowEndOffset.Y - ws.startOffset.Y;
+            double dZ = nowEndOffset.Z - ws.startOffset.Z;
+            double len = Math.Sqrt(dZ * dZ + dY * dY + dX * dX);
+            double horlen = Math.Sqrt(dZ * dZ + dX * dX);
+
+            float yaw = -GameMath.PIHALF - (float)Math.Atan2(-dX, -dZ);
+            float pitch = (float)Math.Atan2(horlen, dY);
+
             if (player.Entity.Controls.Sneak)
             {
-                double dX = nowEndOffset.X - ws.startOffset.X;
-                double dY = nowEndOffset.Y - ws.startOffset.Y;
-                double dZ = nowEndOffset.Z - ws.startOffset.Z;
-                double len = Math.Sqrt(dZ * dZ + dY * dY + dX * dX);
-                double horlen = Math.Sqrt(dZ * dZ + dX * dX);
-
-                float yaw = -GameMath.PIHALF - (float)Math.Atan2(-dX, -dZ);
-                float pitch = (float)Math.Atan2(horlen, dY);
-
                 float rotSnap = 15f;
                 yaw = (float)Math.Round(yaw * GameMath.RAD2DEG / rotSnap) * (float)rotSnap * GameMath.DEG2RAD;
                 pitch = (float)Math.Round(pitch * GameMath.RAD2DEG / rotSnap) * (float)rotSnap * GameMath.DEG2RAD;
-
-                double cosYaw = Math.Cos(yaw);
-                double sinYaw = Math.Sin(yaw);
-                double cosPitch = Math.Cos(pitch);
-                double sinPitch = Math.Sin(pitch);
-
-                nowEndOffset = new Vec3f(
-                    ws.startOffset.X + (float)(len * sinPitch * cosYaw),
-                    ws.startOffset.Y + (float)(len * cosPitch),
-                    ws.startOffset.Z + (float)(len * sinPitch * sinYaw)
-                );
             }
+
+            double cosYaw = Math.Cos(yaw);
+            double sinYaw = Math.Sin(yaw);
+            double cosPitch = Math.Cos(pitch);
+            double sinPitch = Math.Sin(pitch);
+
+            len = Math.Min(len, 20);
+
+            nowEndOffset = new Vec3f(
+                ws.startOffset.X + (float)(len * sinPitch * cosYaw),
+                ws.startOffset.Y + (float)(len * cosPitch),
+                ws.startOffset.Z + (float)(len * sinPitch * sinYaw)
+            );
 
             return nowEndOffset;
         }
@@ -249,11 +256,11 @@ namespace Vintagestory.GameContent
             var ws = getWorkSpace(capi.World.Player.PlayerUID);
             ws.currentMeshRef?.Dispose();
 
-            var mesh = generateMesh(ws.startOffset, ws.endOffset, ws.onFacing, ws.currentMesh);
+            var mesh = generateMesh(ws.startOffset, ws.endOffset, ws.onFacing, ws.currentMesh, ws.block.Attributes?["slumpPerMeter"].AsFloat(0) ?? 0);
             ws.currentMeshRef = capi.Render.UploadMesh(mesh);
         }
 
-        public static MeshData generateMesh(Vec3f start, Vec3f end, BlockFacing facing, MeshData origMesh)
+        public static MeshData generateMesh(Vec3f start, Vec3f end, BlockFacing facing, MeshData origMesh, float slumpPerMeter)
         {
             var outMesh = new MeshData(4, 6).WithRenderpasses().WithXyzFaces().WithColorMaps();
 
@@ -268,23 +275,29 @@ namespace Vintagestory.GameContent
             var normalize = 1 / Math.Max(1, len);
             var dir = new Vec3f((float)(dX * normalize), (float)(dY * normalize), (float)(dZ * normalize));
             float yaw = (float)Math.Atan2(-dX, -dZ) + GameMath.PIHALF;
-            float pitch = (float)Math.Atan2(horlen, -dY) + GameMath.PIHALF;
+            float basepitch = (float)Math.Atan2(horlen, -dY) + GameMath.PIHALF;
 
             // Sin and Cos are both 1 at 45 deg.
             float yawExtend = Math.Abs((float)(Math.Sin(yaw) * Math.Cos(yaw)));
-            float pitchExtend = Math.Abs((float)(Math.Sin(pitch) * Math.Cos(pitch)));
+            float pitchExtend = Math.Abs((float)(Math.Sin(basepitch) * Math.Cos(basepitch)));
 
             float distTo45Deg = Math.Max(yawExtend, pitchExtend);
             float extend = 1 / 16f * distTo45Deg * 4;
 
+            float slump = 0;
             len += extend;
             for (float r = -extend; r < len; r++)
             {
                 double sectionLen = Math.Min(1, len - r);
                 var sectionStart = start + r * dir;
 
+                var distance = (float)(r - len / 2);
+                float pitch = basepitch + distance * slumpPerMeter;
+
+                slump += (float)Math.Sin(distance * slumpPerMeter);
+
                 Mat4f.Identity(mat);
-                Mat4f.Translate(mat, mat, sectionStart.X, sectionStart.Y, sectionStart.Z);
+                Mat4f.Translate(mat, mat, sectionStart.X, sectionStart.Y + slump, sectionStart.Z);
                 Mat4f.RotateY(mat, mat, yaw);
                 Mat4f.RotateZ(mat, mat, pitch);
                 Mat4f.Scale(mat, mat, new float[] { (float)sectionLen, 1, 1 });

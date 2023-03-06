@@ -729,9 +729,8 @@ namespace Vintagestory.GameContent
                 float maxItems = sink.CapacityLitres * props.ItemsPerLitre;
                 int placeableItems = (int)(maxItems - (float)stack.StackSize);
 
-                stack.StackSize += Math.Min(placeableItems, desiredItems);
-
-                return Math.Min(placeableItems, desiredItems);
+                stack.StackSize += GameMath.Min(availItems, placeableItems, desiredItems);
+                return GameMath.Min(availItems, placeableItems, desiredItems);
             }
         }
 

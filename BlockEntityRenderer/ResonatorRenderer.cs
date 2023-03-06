@@ -82,8 +82,10 @@ namespace Vintagestory.GameContent
             prog.NormalShaded = 0;
             prog.ModelMatrix = ModelMat
                 .Identity()
-                .Translate(pos.X - camPos.X + discPos.X, pos.Y - camPos.Y + discPos.Y, pos.Z - camPos.Z + discPos.Z)
+                .Translate(pos.X - camPos.X, pos.Y - camPos.Y, pos.Z - camPos.Z)
                 .Translate(-origx, 0, -origz)
+                .RotateYDeg(blockRotation)
+                .Translate(discPos.X, discPos.Y, discPos.Z)
                 .Rotate(discRotRad)
                 .Scale(0.9f, 0.9f, 0.9f)
                 .Translate(origx, origy, origz)

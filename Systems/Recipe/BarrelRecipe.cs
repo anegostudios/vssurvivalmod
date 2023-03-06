@@ -424,7 +424,7 @@ namespace Vintagestory.GameContent
                     }
                 }
 
-                mappings[ingred.Name] = codes.ToArray();
+                mappings[ingred.Name ?? "wildcard"+mappings.Count] = codes.ToArray();
             }
 
             return mappings;

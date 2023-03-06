@@ -210,7 +210,7 @@ namespace Vintagestory.GameContent
 
             if (cnt <= maxquantity)
             {
-                int tries = 25;
+                int tries = 50;
                 int spawned = 0;
                 while (tries-- > 0 && spawned < 1)
                 {

@@ -23,10 +23,7 @@ namespace Vintagestory.GameContent
             set { WatchedAttributes.SetInt("curPose", value); }
         }
 
-        public EntityArmorStand()
-        {
-            
-        }
+        public EntityArmorStand() { }
 
         public override ItemSlot LeftHandItemSlot => gearInv[15];
         public override ItemSlot RightHandItemSlot => gearInv[16];
@@ -40,6 +37,9 @@ namespace Vintagestory.GameContent
             {
                 gearInv = new InventoryGeneric(17, "gear-" + EntityId, api, onNewSlot);
                 gearInv.SlotModified += GearInv_SlotModified;
+            } else
+            {
+                gearInv.LateInitialize("gear-" + EntityId, api);
             }
 
             if (api.Side == EnumAppSide.Client) {
@@ -144,6 +144,7 @@ namespace Vintagestory.GameContent
                     {
                         ItemSlot gslot = GearInventory[i];
                         if (gslot.Empty) continue;
+                        if (gslot.Itemstack.Collectible?.Code == null) { gslot.Itemstack = null; continue; }
 
                         if (gslot.TryPutInto(byEntity.World, handslot) > 0)
                         {
@@ -176,7 +177,6 @@ namespace Vintagestory.GameContent
                     handslot.TryPutInto(byEntity.World, sinkslot.slot);
                     return;
                 }
-
                 
                 bool empty = true;
                 for (int i = 0; i < GearInventory.Count; i++)
@@ -187,7 +187,7 @@ namespace Vintagestory.GameContent
 
                 if (empty && byEntity.Controls.ShiftKey)
                 {
-                    ItemStack stack = new ItemStack(byEntity.World.GetItem(new AssetLocation("armorstand")));
+                    ItemStack stack = new ItemStack(byEntity.World.GetItem(Code));
                     if (!byEntity.TryGiveItemStack(stack))
                     {
                         byEntity.World.SpawnItemEntity(stack, ServerPos.XYZ);

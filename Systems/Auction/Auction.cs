@@ -251,7 +251,7 @@ namespace Vintagestory.GameContent
 
         public void PlaceAuctionClient(Entity traderEntity, int price, int durationWeeks = 1)
         {
-            clientCh.SendPacket(new AuctionActionPacket() { Action = EnumAuctionAction.PlaceAuction, AtAuctioneerEntityId = traderEntity.EntityId, Price = price, DurationWeeks= durationWeeks });
+            clientCh.SendPacket(new AuctionActionPacket() { Action = EnumAuctionAction.PlaceAuction, AtAuctioneerEntityId = traderEntity.EntityId, Price = price, DurationWeeks = durationWeeks });
         }
 
         public void BuyAuctionClient(Entity traderEntity, long auctionId, bool withDelivery)
@@ -485,6 +485,13 @@ namespace Vintagestory.GameContent
                 failureCode = "notenoughgears";
                 return;
             }
+
+            if (price < 1)
+            {
+                failureCode = "atleast1gear";
+                return;
+            }
+
 
             failureCode = null;
             InventoryTrader.DeductFromEntity(sapi, sellerEntity, depositCost);

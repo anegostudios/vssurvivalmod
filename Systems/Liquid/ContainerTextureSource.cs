@@ -34,8 +34,6 @@ namespace Vintagestory.GameContent
                 return pos;
             }
         }
-
-
     }
 
     public class ContainerTextureSource : ITexPositionSource

@@ -104,6 +104,10 @@ namespace Vintagestory.GameContent
             }
         }
 
+        public bool CanAttachBlockAt(BlockFacing blockFace, Cuboidi attachmentArea)
+        {
+            return blockFace == BlockFacing.UP && StorageProps.Layout == EnumGroundStorageLayout.Stacking && inventory[0].StackSize == Capacity && StorageProps.UpSolid;
+        }
 
         public BlockEntityGroundStorage() : base()
         {
@@ -626,6 +630,12 @@ namespace Vintagestory.GameContent
 
         protected bool putOrGetItemStacking(IPlayer byPlayer, BlockSelection bs)
         {
+            if (Api.Side == EnumAppSide.Client)
+            {
+                (byPlayer as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
+                return true;
+            }
+
             BlockPos abovePos = Pos.UpCopy();
             BlockEntity be = Api.World.BlockAccessor.GetBlockEntity(abovePos);
             if (be is BlockEntityGroundStorage beg)
@@ -693,7 +703,7 @@ namespace Vintagestory.GameContent
             {
                 if (hotbarSlot.TryPutInto(Api.World, invSlot, TransferQuantity) > 0)
                 {
-                    Api.World.PlaySoundAt(StorageProps.PlaceRemoveSound.WithPathPrefixOnce("sounds/"), Pos.X, Pos.Y, Pos.Z, player, 0.88f + (float)Api.World.Rand.NextDouble() * 0.24f, 16);
+                    Api.World.PlaySoundAt(StorageProps.PlaceRemoveSound.WithPathPrefixOnce("sounds/"), Pos.X, Pos.Y, Pos.Z, null, 0.88f + (float)Api.World.Rand.NextDouble() * 0.24f, 16);
                 }
                 return true;
             }
@@ -720,7 +730,7 @@ namespace Vintagestory.GameContent
                     hotbarSlot.OnItemSlotModified(null);
                 }
 
-                Api.World.PlaySoundAt(StorageProps.PlaceRemoveSound.WithPathPrefixOnce("sounds/"), Pos.X, Pos.Y, Pos.Z, player, 0.88f + (float)Api.World.Rand.NextDouble() * 0.24f, 16);
+                Api.World.PlaySoundAt(StorageProps.PlaceRemoveSound.WithPathPrefixOnce("sounds/"), Pos.X, Pos.Y, Pos.Z, null, 0.88f + (float)Api.World.Rand.NextDouble() * 0.24f, 16);
 
                 MarkDirty();
 
@@ -730,7 +740,7 @@ namespace Vintagestory.GameContent
                     player.Entity.SidedPos.Y += collBoxes[0].Y2 - (player.Entity.SidedPos.Y - (int)player.Entity.SidedPos.Y);
                 }
 
-                (player as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
+                
 
                 return true;
             }

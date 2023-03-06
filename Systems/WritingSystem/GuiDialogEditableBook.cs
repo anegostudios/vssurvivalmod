@@ -22,7 +22,7 @@ namespace Vintagestory.GameContent
         protected override void Compose()
         {
             ElementBounds titleBounds = ElementBounds.Fixed(0, 30, maxWidth, 24);
-            ElementBounds textAreaBounds = ElementBounds.Fixed(0, 0, 300, maxLines * 21.2f).FixedUnder(titleBounds, 5);
+            ElementBounds textAreaBounds = ElementBounds.Fixed(0, 0, 400, maxLines * 21.2f).FixedUnder(titleBounds, 5);
 
             ElementBounds prevButtonBounds = ElementBounds.FixedSize(60, 30).FixedUnder(textAreaBounds, 5).WithAlignment(EnumDialogArea.LeftFixed).WithFixedPadding(10, 2);
             ElementBounds pageLabelBounds = ElementBounds.FixedSize(80, 30).FixedUnder(textAreaBounds, 2 * 5 + 7).WithAlignment(EnumDialogArea.CenterFixed).WithFixedPadding(10, 2);

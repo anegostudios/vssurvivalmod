@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 using Vintagestory.API.Client;
+using Vintagestory.API.Config;
 
 namespace Vintagestory.GameContent
 {
@@ -96,6 +97,20 @@ namespace Vintagestory.GameContent
                     MouseButton = EnumMouseButton.Right,
                 }
             }.Append(base.GetHeldInteractionHelp(inSlot));
+        }
+
+        public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
+        {
+            if (FirstCodePart(1) == "butterfly")
+            {
+                base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
+                dsc.Insert(0, "<font color=\"#ccc\"><i>");
+                dsc.Append("</i></font>");
+                dsc.AppendLine(Lang.Get("itemdesc-creature-butterfly-all"));
+                return;
+            }
+
+            base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
         }
     }
 }

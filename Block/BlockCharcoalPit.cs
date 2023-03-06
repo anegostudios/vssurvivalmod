@@ -8,7 +8,6 @@ namespace Vintagestory.GameContent
 {
     public class BlockCharcoalPit : Block, IIgnitable
     { 
-        //Vec3f[] basePos;
         WorldInteraction[] interactions;
 
         public override void OnLoaded(ICoreAPI api)

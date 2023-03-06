@@ -109,9 +109,9 @@ namespace Vintagestory.ServerMods
 
                     if (variantMut.UseClimateMap)
                     {
-                        int distRain = rain - GameMath.Clamp(rain, landforms.Variants[i].MinRain, landforms.Variants[i].MaxRain);
-                        double distTemp = temp - GameMath.Clamp(temp, landforms.Variants[i].MinTemp, landforms.Variants[i].MaxTemp);
-                        if (distRain > 0 || distTemp > 0) continue;
+                        int distRain = rain - GameMath.Clamp(rain, variantMut.MinRain, variantMut.MaxRain);
+                        double distTemp = temp - GameMath.Clamp(temp, variantMut.MinTemp, variantMut.MaxTemp);
+                        if (distRain != 0 || distTemp != 0) continue;
                     }
 
 
@@ -141,7 +141,7 @@ namespace Vintagestory.ServerMods
                 {
                     int distRain = rain - GameMath.Clamp(rain, landforms.Variants[i].MinRain, landforms.Variants[i].MaxRain);
                     double distTemp = temp - GameMath.Clamp(temp, landforms.Variants[i].MinTemp, landforms.Variants[i].MaxTemp);
-                    if (distRain > 0 || distTemp > 0) weight = 0;
+                    if (distRain != 0 || distTemp != 0) weight = 0;
                 }
 
                 landforms.Variants[i].WeightTmp = weight;

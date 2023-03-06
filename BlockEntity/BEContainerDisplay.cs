@@ -145,11 +145,6 @@ namespace Vintagestory.GameContent
                 updateMesh(i);
             }
 
-            if (tfMatrices == null || tfMatrices.Length != DisplayedItems)
-            {
-                tfMatrices = genTransformationMatrices();
-            }
-
             tfMatrices = genTransformationMatrices();
         }
 

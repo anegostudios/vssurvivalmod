@@ -24,6 +24,11 @@ namespace Vintagestory.GameContent
 
             climateColorMapInt = ClimateColorMap;
             seasonColorMapInt = SeasonColorMap;
+            string grown = Code.SecondCodePart();
+            if (grown.StartsWith("grown"))
+            {
+                if (!int.TryParse(grown.Substring(5), out ExtraColorBits)) ExtraColorBits = 0;
+            }
 
             // Branchy leaves
             if (api.Side == EnumAppSide.Client && SeasonColorMap == null)

@@ -19,6 +19,7 @@ namespace Vintagestory.GameContent
 
     public abstract class GuiHandbookPage : IFlatListItem
     {
+        public int PageNumber;
         public abstract string PageCode { get; }
 
         public abstract string CategoryCode { get; }

@@ -2,6 +2,7 @@
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
@@ -9,7 +10,9 @@ namespace Vintagestory.GameContent
     public class EchoChamberRenderer : EntityRenderer, ITexPositionSource
     {
         protected int renderRange = 999;
-        protected MeshRef meshRefOpaque;
+        protected MeshRef meshRef1;
+        protected MeshRef meshRef2;
+        protected MeshRef meshRef3;
         protected Vec4f color = new Vec4f(1, 1, 1, 1);
         public Vec3f OriginPos = new Vec3f();
         public float[] ModelMat = Mat4f.Create();
@@ -18,11 +21,14 @@ namespace Vintagestory.GameContent
         protected bool shapeFresh;
         Vec4f lightrgbs;
 
-        LoadedTexture echoTexture;
-        Size2i echoTextureSize = new Size2i(144,144);
+        LoadedTexture echoTexture1;
+        LoadedTexture echoTexture2;
+        LoadedTexture echoTexture3;
+
+        Size2i echoTextureSize = new Size2i(256,256);
         TextureAtlasPosition texPos = new TextureAtlasPosition() { x1=0, y1=0, y2 = 20, x2 = 20 };
 
-        public Size2i AtlasSize { get { return echoTextureSize;/*capi.EntityTextureAtlas.Size; */} }
+        public Size2i AtlasSize { get { return echoTextureSize;} }
         protected TextureAtlasPosition skinTexPos;
         public virtual TextureAtlasPosition this[string textureCode]
         {
@@ -61,83 +67,72 @@ namespace Vintagestory.GameContent
             }
 
             shapeFresh = true;
-            CompositeShape compositeShape = entity.Properties.Client.Shape;
+            meshRef1?.Dispose();
+            meshRef2?.Dispose();
+            meshRef3?.Dispose();
 
-            Shape entityShape = entity.Properties.Client.LoadedShapeForEntity;
+            meshRef1 = tesselate(
+                new CompositeShape() { Base = new AssetLocation("entity/structure/echochamber1") }, 
+                new AssetLocation("textures/entity/echochamber/echochamber1.png"), 
+                out echoTexture1
+            );
 
-            if (entityShape == null)
-            {
-                return;
-            }
+            meshRef2 = tesselate(
+                new CompositeShape() { Base = new AssetLocation("entity/structure/echochamber2") },
+                new AssetLocation("textures/entity/echochamber/echochamber2.png"),
+                out echoTexture2
+            );
 
-            entity.OnTesselation(ref entityShape, compositeShape.Base.ToString());
+            meshRef3 = tesselate(
+                new CompositeShape() { Base = new AssetLocation("entity/structure/echochamber3") },
+                new AssetLocation("textures/entity/echochamber/echochamber3.png"),
+                out echoTexture3
+            );
 
-
-            TyronThreadPool.QueueTask(() =>
-            {
-                MeshData meshdata;
-
-                try
-                {
-                    TesselationMetaData meta = new TesselationMetaData()
-                    {
-                        QuantityElements = compositeShape.QuantityElements,
-                        SelectiveElements = compositeShape.SelectiveElements,
-                        TexSource = this,
-                        WithJointIds = false,
-                        WithDamageEffect = true,
-                        TypeForLogging = "entity",
-                        Rotation = new Vec3f(compositeShape.rotateX, compositeShape.rotateY, compositeShape.rotateZ)
-                    };
-
-                    capi.Tesselator.TesselateShape(meta, entityShape, out meshdata);
-
-                    meshdata.Translate(compositeShape.offsetX, compositeShape.offsetY, compositeShape.offsetZ);
-
-                }
-                catch (Exception e)
-                {
-                    capi.World.Logger.Fatal("Failed tesselating entity {0} with id {1}. Entity will probably be invisible!. The teselator threw {2}", entity.Code, entity.EntityId, e);
-                    return;
-                }
-
-                MeshData opaqueMesh = meshdata.Clone().Clear();
-                opaqueMesh.AddMeshData(meshdata, EnumChunkRenderPass.Opaque);
-
-                capi.Event.EnqueueMainThreadTask(() =>
-                {
-                    if (meshRefOpaque != null)
-                    {
-                        meshRefOpaque.Dispose();
-                        meshRefOpaque = null;
-                    }
-
-                    if (capi.IsShuttingDown)
-                    {
-                        return;
-                    }
-
-                    if (opaqueMesh.VerticesCount > 0)
-                    {
-                        meshRefOpaque = capi.Render.UploadMesh(opaqueMesh);
-                    }
-
-                    echoTexture?.Dispose();
-                    echoTexture = new LoadedTexture(capi);
-                    byte[] assetData = capi.Assets.TryGet(new AssetLocation("textures/entity/echochamber.png"))?.Data;
-                    if (assetData == null) return;
-                    BitmapRef bmp = capi.Render.BitmapCreateFromPng(assetData);
-                    capi.Render.LoadTexture(bmp, ref echoTexture, false, 2, true);
-                    bmp.Dispose();
-
-                }, "uploadentitymesh");
-
-                capi.TesselatorManager.ThreadDispose();
-            });
         }
 
+        private MeshRef tesselate(CompositeShape compositeShape, AssetLocation textureLoc, out LoadedTexture partTexture)
+        {
+            partTexture = null;
+            Shape entityShape = capi.Assets.TryGet(compositeShape.Base.WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json")).ToObject<Shape>();
+            entity.OnTesselation(ref entityShape, compositeShape.ToString());
 
+            MeshData meshdata;
 
+            try
+            {
+                TesselationMetaData meta = new TesselationMetaData()
+                {
+                    QuantityElements = compositeShape.QuantityElements,
+                    SelectiveElements = compositeShape.SelectiveElements,
+                    TexSource = this,
+                    WithJointIds = false,
+                    WithDamageEffect = true,
+                    TypeForLogging = "entity",
+                    Rotation = new Vec3f(compositeShape.rotateX, compositeShape.rotateY, compositeShape.rotateZ)
+                };
+
+                capi.Tesselator.TesselateShape(meta, entityShape, out meshdata);
+
+                meshdata.Translate(compositeShape.offsetX, compositeShape.offsetY, compositeShape.offsetZ);
+
+            }
+            catch (Exception e)
+            {
+                capi.World.Logger.Fatal("Failed tesselating entity {0} with id {1}. Entity will probably be invisible!. The teselator threw {2}", entity.Code, entity.EntityId, e);
+                return null;
+            }
+
+            partTexture?.Dispose();
+            partTexture = new LoadedTexture(capi);
+            byte[] assetData = capi.Assets.TryGet(textureLoc)?.Data;
+            if (assetData == null) return null;
+            BitmapRef bmp = capi.Render.BitmapCreateFromPng(assetData);
+            capi.Render.LoadTexture(bmp, ref partTexture, false, 2, true);
+            bmp.Dispose();
+
+            return capi.Render.UploadMesh(meshdata);
+        }
 
         public override void BeforeRender(float dt)
         {
@@ -163,7 +158,7 @@ namespace Vintagestory.GameContent
 
         public override void DoRender3DOpaque(float dt, bool isShadowPass)
         {
-            if (meshRefOpaque == null) return;
+            if (meshRef1 == null) return;
             if (isShadowPass) return;
 
             loadModelMatrix(entity);
@@ -183,10 +178,8 @@ namespace Vintagestory.GameContent
             prog.Uniform("fogMinIn", capi.Render.FogMin);
             prog.Uniform("fogDensityIn", capi.Render.FogDensity);
             prog.UniformMatrix("projectionMatrix", capi.Render.CurrentProjectionMatrix);
-            prog.BindTexture2D("entityTex", echoTexture.TextureId/*capi.EntityTextureAtlas.AtlasTextureIds[0]*/, 0);
-            prog.Uniform("alphaTest", 0.5f);
+            prog.Uniform("alphaTest", 0.05f);
             prog.Uniform("lightPosition", capi.Render.ShaderUniforms.LightPosition3D);
-
 
             prog.Uniform("rgbaLightIn", lightrgbs);
             prog.Uniform("extraGlow", entity.Properties.Client.GlowLevel);
@@ -201,6 +194,12 @@ namespace Vintagestory.GameContent
             prog.Uniform("frostAlpha", 0f);
             prog.Uniform("waterWaveCounter", 0f);
 
+            prog.UniformMatrices4x3(
+                "elementTransforms",
+                GlobalConstants.MaxAnimatedElements,
+                entity.AnimManager.Animator.Matrices4x3
+            );
+
             color[0] = (entity.RenderColor >> 16 & 0xff) / 255f;
             color[1] = ((entity.RenderColor >> 8) & 0xff) / 255f;
             color[2] = ((entity.RenderColor >> 0) & 0xff) / 255f;
@@ -210,24 +209,16 @@ namespace Vintagestory.GameContent
 
             capi.Render.GlPopMatrix();
 
-            /*double stab = entity.WatchedAttributes.GetDouble("temporalStability", 1);
-            double plrStab = capi.World.Player.Entity.WatchedAttributes.GetDouble("temporalStability", 1);
-            double stabMin = Math.Min(stab, plrStab);
-
-            float strength = (float)(glitchAffected ? Math.Max(0, 1 - 1 / 0.4f * stabMin) : 0);
-            prog.Uniform("glitchEffectStrength", strength);*/
-
-
-
-            /*prog.UniformMatrices4x3(
-                "elementTransforms", 
-                GlobalConstants.MaxAnimatedElements, 
-                entity.AnimManager.Animator.Matrices4x3
-            );*/
-
-            if (meshRefOpaque != null)
+            if (meshRef1 != null)
             {
-                capi.Render.RenderMesh(meshRefOpaque);
+                prog.BindTexture2D("entityTex", echoTexture1.TextureId, 0);
+                capi.Render.RenderMesh(meshRef1);
+
+                prog.BindTexture2D("entityTex", echoTexture2.TextureId, 0);
+                capi.Render.RenderMesh(meshRef2);
+
+                prog.BindTexture2D("entityTex", echoTexture3.TextureId, 0);
+                capi.Render.RenderMesh(meshRef3);
             }
 
             prog.Stop();
@@ -249,12 +240,12 @@ namespace Vintagestory.GameContent
 
         public override void Dispose()
         {
-            if (meshRefOpaque != null)
-            {
-                meshRefOpaque.Dispose();
-                meshRefOpaque = null;
-            }
-
+            meshRef1?.Dispose();
+            meshRef1 = null;
+            meshRef2?.Dispose();
+            meshRef2 = null;
+            meshRef3?.Dispose();
+            meshRef3 = null;
             capi.Event.ReloadShapes -= MarkShapeModified;
         }
 

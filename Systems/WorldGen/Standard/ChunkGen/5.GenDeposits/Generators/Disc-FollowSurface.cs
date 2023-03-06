@@ -34,7 +34,8 @@ namespace Vintagestory.ServerMods
 
             int lx = pos.X % chunksize;
             int lz = pos.Z % chunksize;
-            currentRelativeDepth = ypos / mapChunk.WorldGenTerrainHeightMap[lz * chunksize + lx];
+            if (lx < 0 || lz < 0) currentRelativeDepth = 0;
+            else currentRelativeDepth = ypos / mapChunk.WorldGenTerrainHeightMap[lz * chunksize + lx];
 
             step = (float)mapChunk.MapRegion.OreMapVerticalDistortTop.InnerSize / regionChunkSize;
         }

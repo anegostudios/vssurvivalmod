@@ -49,6 +49,7 @@ namespace Vintagestory.GameContent
                 double hoursPassed = Api.World.Calendar.TotalHours - burnStartTotalHours;
                 if (hoursPassed > 4)
                 {
+                    burnStartTotalHours = Api.World.Calendar.TotalHours;
                     inventory[0].TakeOut(1);
                     if (inventory.Empty)
                     {

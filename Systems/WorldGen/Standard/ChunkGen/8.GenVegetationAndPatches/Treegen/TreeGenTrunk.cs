@@ -35,10 +35,10 @@ namespace Vintagestory.ServerMods.NoObf
             if (angleVert == null) angleVert = NatFloat.createUniform(GameMath.PI, 0);
         }
 
-        public override int getBlockId(float width, TreeGenBlocks blocks, TreeGen gen)
+        public override int getBlockId(float width, TreeGenBlocks blocks, TreeGen gen, int treeSubType)
         {
             if (segment != 0 && width >= 0.3f) return blocks.trunkSegmentBlockIds[segment - 1];
-            return base.getBlockId(width, blocks, gen);
+            return base.getBlockId(width, blocks, gen, treeSubType);
         }
     }
 }

@@ -1,9 +1,6 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -207,6 +204,7 @@ namespace Vintagestory.GameContent
             if (spreadIndex < 2) return foundPositions;
             if (treeFellingGroupCode == null) return foundPositions;
 
+            string treeFellingGroupLeafCode = null;
             queue.Enqueue(new Vec4i(startPos.X, startPos.Y, startPos.Z, spreadIndex));
             foundPositions.Push(startPos);
             checkedPositions.Add(startPos);
@@ -246,9 +244,21 @@ namespace Vintagestory.GameContent
                     if (block.Code == null || block.Id == 0) continue;
 
                     string ngcode = block.Attributes?["treeFellingGroupCode"].AsString();
-                    
+
                     // Only break the same type tree blocks
-                    if (ngcode != treeFellingGroupCode) continue;
+                    if (ngcode != treeFellingGroupCode)
+                    {
+                        if (ngcode == null) continue;
+                        // Leaves now can carry treeSubType value of 1-7 therefore do a separate check for the leaves
+                        if (ngcode != treeFellingGroupLeafCode)
+                        {
+                            if (treeFellingGroupLeafCode == null && block.BlockMaterial == EnumBlockMaterial.Leaves && ngcode.Length == treeFellingGroupCode.Length + 1 && ngcode.EndsWith(treeFellingGroupCode))
+                            {
+                                treeFellingGroupLeafCode = ngcode;
+                            }
+                            else continue;
+                        }
+                    }
 
                     // Only spread from "high to low". i.e. spread from log to leaves, but not from leaves to logs
                     int nspreadIndex = block.Attributes?["treeFellingGroupSpreadIndex"].AsInt(0) ?? 0;

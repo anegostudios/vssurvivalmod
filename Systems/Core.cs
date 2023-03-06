@@ -843,7 +843,7 @@ namespace Vintagestory.GameContent
             api.RegisterItemClass("ItemGlider", typeof(ItemGlider));
             api.RegisterItemClass("ItemOar", typeof(ItemOar));
             api.RegisterItemClass("ItemTextureFlipper", typeof(ItemTextureFlipper));
-            
+
         }
 
 

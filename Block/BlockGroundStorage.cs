@@ -82,13 +82,23 @@ namespace Vintagestory.GameContent
 
         public override Cuboidf[] GetSelectionBoxes(IBlockAccessor blockAccessor, BlockPos pos)
         {
-            BlockEntity be = blockAccessor.GetBlockEntity(pos);
-            if (be is BlockEntityGroundStorage beg)
+            var be = blockAccessor.GetBlockEntity<BlockEntityGroundStorage>(pos);
+            if (be != null)
             {
-                return beg.GetSelectionBoxes();
+                return be.GetSelectionBoxes();
             }
 
             return base.GetSelectionBoxes(blockAccessor, pos);
+        }
+
+        public override bool CanAttachBlockAt(IBlockAccessor blockAccessor, Block block, BlockPos pos, BlockFacing blockFace, Cuboidi attachmentArea = null)
+        {
+            var be = blockAccessor.GetBlockEntity<BlockEntityGroundStorage>(pos);
+            if (be != null)
+            {
+                return be.CanAttachBlockAt(blockFace, attachmentArea);
+            }
+            return base.CanAttachBlockAt(blockAccessor, block, pos, blockFace, attachmentArea);
         }
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)

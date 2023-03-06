@@ -11,7 +11,7 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockLabeledChest : BlockGenericTypedContainer, ITexPositionSource
+    public class BlockLabeledChest : BlockGenericTypedContainer
     {
         WorldInteraction[] interactions;
 

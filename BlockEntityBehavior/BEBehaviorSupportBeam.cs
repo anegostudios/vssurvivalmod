@@ -21,7 +21,17 @@ namespace Vintagestory.GameContent
         [ProtoMember(4)]
         public int FacingIndex;
 
-        public Block block;
+        private Block block;
+        public Block Block
+        {
+            get { return block; }
+            set
+            {
+                this.block = value;
+                this.SlumpPerMeter = block.Attributes?["slumpPerMeter"].AsFloat(0) ?? 0;
+            }
+        }
+        public float SlumpPerMeter;
     }
 
     public class BEBehaviorSupportBeam : BlockEntityBehavior, IRotatable, IMaterialExchangeable
@@ -46,7 +56,7 @@ namespace Vintagestory.GameContent
             if (Beams != null) {
                 foreach (var beam in Beams)
                 {
-                    beam.block = Api.World.GetBlock(beam.BlockId);
+                    beam.Block = Api.World.GetBlock(beam.BlockId);
                 }
             }
         }
@@ -59,8 +69,8 @@ namespace Vintagestory.GameContent
                 Start = start.Clone(), 
                 End = end.Clone(),
                 FacingIndex = onFacing.Index,
-                BlockId = block.Id, 
-                block = block 
+                BlockId = block.Id,
+                Block = block
             });
             collBoxes = null;
         }
@@ -97,7 +107,7 @@ namespace Vintagestory.GameContent
                 {
                     foreach (var beam in Beams)
                     {
-                        beam.block = Api.World.GetBlock(beam.BlockId);
+                        beam.Block = Api.World.GetBlock(beam.BlockId);
                     }
                 }
 
@@ -132,7 +142,7 @@ namespace Vintagestory.GameContent
                     }
 
                     Beams[i].BlockId = block.Id;
-                    Beams[i].block = block;
+                    Beams[i].Block = block;
                 }
                 else
                 {
@@ -163,8 +173,8 @@ namespace Vintagestory.GameContent
                 var beam = Beams[i];
                 var start = beam.Start;
                 var end = beam.End;
-                var meshData = sbp.getOrCreateBeamMesh(beam.block);
-                var mesh = ModSystemSupportBeamPlacer.generateMesh(start, end, BlockFacing.ALLFACES[beam.FacingIndex], meshData);
+                var meshData = sbp.getOrCreateBeamMesh(beam.Block);
+                var mesh = ModSystemSupportBeamPlacer.generateMesh(start, end, BlockFacing.ALLFACES[beam.FacingIndex], meshData, beam.SlumpPerMeter);
 
                 float x = GameMath.MurmurHash3Mod(pos.X + i * 100, pos.Y + i * 100, pos.Z + i * 100, 500) / 50000f;
                 float y = GameMath.MurmurHash3Mod(pos.X - i * 100, pos.Y + i * 100, pos.Z + i * 100, 500) / 50000f;
@@ -220,7 +230,7 @@ namespace Vintagestory.GameContent
             List<ItemStack> drops = new List<ItemStack>();
             foreach (var beam in Beams)
             {
-                drops.Add(new ItemStack(beam.block, (int)Math.Ceiling(beam.End.DistanceTo(beam.Start))));
+                drops.Add(new ItemStack(beam.Block, (int)Math.Ceiling(beam.End.DistanceTo(beam.Start))));
             }
 
             return drops.ToArray();
@@ -236,7 +246,7 @@ namespace Vintagestory.GameContent
             {
                 if (beam.BlockId == fromblock.Id)
                 {
-                    beam.block = toblock;
+                    beam.Block = toblock;
                     beam.BlockId = toblock.Id;
                 }
             }

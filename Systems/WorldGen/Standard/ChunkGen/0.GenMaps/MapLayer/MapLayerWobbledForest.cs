@@ -14,7 +14,7 @@ namespace Vintagestory.ServerMods
 
         public MapLayerPerlinUpheavel(long seed, float noiseOffset, float scale, float multiplier = 255, int offset = 0) : base(seed)
         {
-            superLowResNoiseGen = new NormalizedSimplexNoise(new double[] { 1, 0.5 }, new double[] { 1 / scale / 2, 1 / scale / 1 }, seed + 1685);
+            superLowResNoiseGen = new NormalizedSimplexNoise(new double[] { 1, 0.5, 0.25, 0.15 }, new double[] { 0.5 / scale, 1 / scale, 2 / scale, 4 / scale }, seed + 1685);
 
             this.noiseOffset = 1 - noiseOffset;
             this.offset = offset;

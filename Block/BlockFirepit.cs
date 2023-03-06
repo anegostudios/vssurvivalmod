@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -207,6 +208,11 @@ namespace Vintagestory.GameContent
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
+            if (blockSel != null && !world.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.Use))
+            {
+                return false;
+            }
+
             int stage = Stage;
             ItemStack stack = byPlayer.InventoryManager.ActiveHotbarSlot?.Itemstack;
 
@@ -319,7 +325,7 @@ namespace Vintagestory.GameContent
 
             if (stage == 5) return false;
 
-            if (stage == 4 && world.BlockAccessor.GetBlock(pos.DownCopy()).Code.Path.Equals("firewoodpile"))
+            if (stage == 4 && IsFirewoodPile(world, pos.DownCopy()))
             {
                 Block charcoalPitBlock = world.GetBlock(new AssetLocation("charcoalpit"));
                 if (charcoalPitBlock != null)
@@ -354,6 +360,17 @@ namespace Vintagestory.GameContent
             return true;
         }
 
+        public static bool IsFirewoodPile(IWorldAccessor world, BlockPos pos)
+        {
+            var beg = world.BlockAccessor.GetBlockEntity<BlockEntityGroundStorage>(pos);
+            return beg != null && beg.Inventory[0]?.Itemstack.Collectible is ItemFirewood;
+        }
+
+        public static int GetFireWoodQuanity(IWorldAccessor world, BlockPos pos)
+        {
+            var beg = world.BlockAccessor.GetBlockEntity<BlockEntityGroundStorage>(pos);
+            return beg?.Inventory[0]?.StackSize ?? 0;
+        }
 
         public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
         {

@@ -140,11 +140,10 @@ using Vintagestory.API.Config;
                     polarEquatorDistance: ""100000"",
                     harshWinters: ""true"",
                     daysPerMonth: ""9"",
+                    spawnRadius: ""5000"",
                     allowUndergroundFarming: ""false"",
-                    temporalGearRespawnUses: ""0"",
+                    temporalGearRespawnUses: ""3"",
                     temporalStormSleeping: ""0"",
-                    temporalRifts: ""off"",
-                    temporalStability: ""off""
 			    }
 		    },
             {
@@ -175,14 +174,15 @@ using Vintagestory.API.Config;
                     saplingGrowthRate: ""3"",
                     temporalStability: ""false"",
                     temporalStorms: ""off"",
-                    polarEquatorDistance: ""100000"",
+                    polarEquatorDistance: ""200000"",
                     harshWinters: ""true"",
                     daysPerMonth: ""9"",
                     allowUndergroundFarming: ""false"",
                     spawnRadius: ""5000"",
-                    temporalGearRespawnUses: ""2"",
+                    temporalGearRespawnUses: ""0"",
                     temporalStormSleeping: ""0"",
-                    temporalRifts: ""invisible""
+                    temporalRifts: ""off"",
+                    temporalStability: ""off""
 			    }
 		    }
 	    ],

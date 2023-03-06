@@ -44,7 +44,7 @@ namespace Vintagestory.ServerMods.NoObf
         public int[] trunkSegmentBlockIds;
 
         private float leafLevelFactor = 5f;
-        private int[] leavesByLevel = new int[2];
+        private int[][] leavesByLevel = new int[2][];
 
         public HashSet<int> blockIds = new HashSet<int>();
 
@@ -134,19 +134,42 @@ namespace Vintagestory.ServerMods.NoObf
 
             if (leavesLevels == 0)
             {
-                leavesByLevel[0] = leavesBlockId;
-                leavesByLevel[1] = leavesBranchyBlockId;
-                blockIds.Add(leavesBlockId);
-                blockIds.Add(leavesBranchyBlockId);
+                if (leavesBlockCode.SecondCodePart() == "grown" && leavesBranchyBlockCode.Path != "log-grown-baldcypress-ud")   // Temporary for testing/fine tuning.  Final code should specify all the leavesSubTypeCodes in each treegen JSON file, to give per-species control of how much we allow this effect - e.g. maple could be 1-5 instead of 1-7
+                {
+                    int[] leavesSubTypeIds = new int[7];
+                    int[] branchySubTypeIds = new int[7];
+                    for (int j = 1; j < 8; j++)
+                    {
+                        leavesSubTypeIds[j - 1] = api.WorldManager.GetBlockId(new AssetLocation(leavesBlockCode.Domain, leavesBlockCode.FirstCodePart() + "-grown" + j + "-" + leavesBlockCode.CodePartsAfterSecond()));
+                        branchySubTypeIds[j - 1] = api.WorldManager.GetBlockId(new AssetLocation(leavesBranchyBlockCode.Domain, leavesBranchyBlockCode.FirstCodePart() + "-grown" + j + "-" + leavesBranchyBlockCode.CodePartsAfterSecond()));
+                    }
+                    leavesByLevel[0] = new int[7];
+                    leavesByLevel[1] = new int[7];
+                    for (int j = 0; j < 7; j++)
+                    {
+                        leavesByLevel[0][j] = leavesSubTypeIds[j];
+                        leavesByLevel[1][j] = branchySubTypeIds[j];
+                    }
+
+                }
+                else
+                {
+                    leavesByLevel[0] = new int[1];
+                    leavesByLevel[1] = new int[1];
+                    leavesByLevel[0][0] = leavesBlockId;
+                    leavesByLevel[1][0] = leavesBranchyBlockId;
+                    blockIds.Add(leavesBlockId);
+                    blockIds.Add(leavesBranchyBlockId);
+                }
             }
             else
             {
-                leavesByLevel = new int[leavesLevels];
+                leavesByLevel = new int[leavesLevels][];
                 Block baseBlock = api.World.Blocks[leavesBlockId];
                 for (int i = 0; i < leavesLevels; i++)
                 {
-                    leavesByLevel[i] = api.WorldManager.GetBlockId(baseBlock.CodeWithParts((i + 1).ToString()));
-                    blockIds.Add(leavesByLevel[i]);
+                    leavesByLevel[i] = new int[] { api.WorldManager.GetBlockId(baseBlock.CodeWithParts((i + 1).ToString())) };
+                    blockIds.Add(leavesByLevel[i][0]);
                 }
                 leafLevelFactor = (leavesLevels - 0.5f) / 0.3f;
             }
@@ -155,9 +178,10 @@ namespace Vintagestory.ServerMods.NoObf
             if (otherLogBlockId != 0) blockIds.Add(otherLogBlockId);
         }
 
-        public int GetLeaves(float width)
+        public int GetLeaves(float width, int treeSubType)
         {
-            return leavesByLevel[Math.Min(leavesByLevel.Length - 1, (int)(width * leafLevelFactor + 0.5f))];
+            int[] lbl = leavesByLevel[Math.Min(leavesByLevel.Length - 1, (int)(width * leafLevelFactor + 0.5f))];
+            return lbl[treeSubType % lbl.Length];
         }
     }
 }

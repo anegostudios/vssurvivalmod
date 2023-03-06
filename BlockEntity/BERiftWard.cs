@@ -73,12 +73,12 @@ namespace Vintagestory.GameContent
                     if (ambientSound != null)
                     {
                         ambientSound.Start();
-                        ambientSound.FadeIn(1f, (s)=> { });
+                        ambientSound.FadeTo(0.5f, 1f, (s)=> { });
                         ambientSound.PlaybackPosition = ambientSound.SoundLengthSeconds * (float)Api.World.Rand.NextDouble();
                     }
                 } else
                 {
-                    if (ambientSound.IsPlaying) ambientSound.FadeIn(1f, (s) => { });
+                    if (ambientSound.IsPlaying) ambientSound.FadeTo(0.5f, 1f, (s) => { });
                 }
             }
             else
@@ -139,7 +139,7 @@ namespace Vintagestory.GameContent
 
             if (slot.Itemstack.ItemAttributes?.IsTrue("riftwardFuel") == true && fuelDays < 0.5)
             {
-                fuelDays += 14;
+                fuelDays += slot.Itemstack.ItemAttributes["rifwardfuelDays"].AsDouble(14);
                 slot.TakeOut(1);
                 (Api as ICoreClientAPI)?.World.Player.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
                 Activate();

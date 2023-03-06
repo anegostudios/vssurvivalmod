@@ -138,10 +138,10 @@ namespace Vintagestory.ServerMods.NoObf
         }
 
 
-        public virtual int getBlockId(float width, TreeGenBlocks blocks, TreeGen gen)
+        public virtual int getBlockId(float width, TreeGenBlocks blocks, TreeGen gen, int treeSubType)
         {
             return
-                width < 0.3f || NoLogs ? blocks.GetLeaves(width) :
+                width < 0.3f || NoLogs ? blocks.GetLeaves(width, treeSubType) :
                     (blocks.otherLogBlockCode != null && gen.TriggerRandomOtherBlock() ? blocks.otherLogBlockId : blocks.logBlockId)
             ;
         }

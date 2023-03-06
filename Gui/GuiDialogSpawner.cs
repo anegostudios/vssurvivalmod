@@ -65,7 +65,7 @@ namespace Vintagestory.GameContent
             List<string> entityNames = new List<string>();
 
             var entityProps = capi.World
-                .SearchItems(new AssetLocation("creature*"))
+                .SearchItems(new AssetLocation("*", "creature*"))
                 .Select(item => new AssetLocation(item.Code.Domain, item.CodeEndWithoutParts(1)))
                 .Select(location => capi.World.GetEntityType(location))
                 .OfType<EntityProperties>()

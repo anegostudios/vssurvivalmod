@@ -30,7 +30,7 @@ namespace Vintagestory.GameContent
             inventory = new InventoryGeneric(1, null, null);
         }
 
-        Vec3f animRot = new Vec3f();
+        
         public override void Initialize(ICoreAPI api)
         {
             base.Initialize(api);
@@ -41,7 +41,7 @@ namespace Vintagestory.GameContent
                 updateMeshesAndRenderer(api as ICoreClientAPI);
 
                 RegisterGameTickListener(OnClientTick, 50);
-                animUtil?.InitializeAnimator("resonator", null, null, animRot);
+                animUtil?.InitializeAnimator("resonator", null, null, new Vec3f(0, getRotation(), 0));
             }
         }
 
@@ -204,14 +204,6 @@ namespace Vintagestory.GameContent
             return discMesh;
         }
 
-        private MeshData createBaseMesh(ICoreClientAPI capi)
-        {
-            Shape shape = Shape.TryGet(capi, "shapes/block/machine/resonator.json");
-            MeshData mesh;
-            capi.Tesselator.TesselateShape(capi.World.BlockAccessor.GetBlock(Pos), shape, out mesh, new Vec3f(0, getRotation(), 0));
-
-            return mesh;
-        }
 
         int getRotation()
         {

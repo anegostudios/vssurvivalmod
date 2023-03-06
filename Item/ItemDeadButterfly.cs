@@ -14,8 +14,11 @@ namespace Vintagestory.GameContent
 
         public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
         {
-            dsc.AppendLine(Lang.Get("Butterfly"));
             base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
+
+            string descLangCode = Code?.Domain + AssetLocation.LocationSeparator + "itemdesc-creature-butterfly-" + Variant["type"];
+            dsc.AppendLine("<font color=\"#ccc\"><i>" + Lang.Get(descLangCode) + "</i></font>");
+            dsc.AppendLine(Lang.Get("Butterfly"));            
         }
     }
 }

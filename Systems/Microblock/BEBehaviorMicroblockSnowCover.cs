@@ -161,6 +161,14 @@ namespace Vintagestory.GameContent
 
         private void GenSnowMesh()
         {
+            bool[,,] Voxels;
+            byte[,,] VoxelMaterial;
+            if (beMicroBlock != null)
+            {
+                beMicroBlock.ConvertToVoxels(out Voxels, out VoxelMaterial);
+                buildSnowCuboids(Voxels);
+            }
+
             if (SnowCuboids.Count > 0 && SnowLevel > 0)
             {
                 SnowMesh = BlockEntityMicroBlock.CreateMesh(Api as ICoreClientAPI, SnowCuboids, new int[] { snowLayerBlockId }, beMicroBlock.OriginalVoxelCuboids, Pos);
@@ -253,13 +261,7 @@ namespace Vintagestory.GameContent
             }
             else
             {
-                bool[,,] Voxels;
-                byte[,,] VoxelMaterial;
-                if (beMicroBlock != null)
-                {
-                    beMicroBlock.ConvertToVoxels(out Voxels, out VoxelMaterial);
-                    buildSnowCuboids(Voxels);
-                }
+                this.SnowMesh = null;
             }
         }
 

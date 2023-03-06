@@ -478,15 +478,20 @@ namespace Vintagestory.GameContent
             if (notifyPlayerMoneyTextSeconds > 0)
             {
                 notifyPlayerMoneyTextSeconds -= deltaTime;
+                var elem = SingleComposer.GetDynamicText("playerMoneyText");
 
-                if (notifyPlayerMoneyTextSeconds <= 0)
+                if (elem != null)
                 {
-                    SingleComposer.GetDynamicText("playerMoneyText").Bounds.absFixedX = prevPlrAbsFixedX;
-                    SingleComposer.GetDynamicText("playerMoneyText").Bounds.absFixedY = prevPlrAbsFixedY;
-                } else
-                {
-                    SingleComposer.GetDynamicText("playerMoneyText").Bounds.absFixedX = prevPlrAbsFixedX + notifyPlayerMoneyTextSeconds * (capi.World.Rand.NextDouble() * 4 - 2);
-                    SingleComposer.GetDynamicText("playerMoneyText").Bounds.absFixedY = prevPlrAbsFixedY + notifyPlayerMoneyTextSeconds * (capi.World.Rand.NextDouble() * 4 - 2);
+                    if (notifyPlayerMoneyTextSeconds <= 0)
+                    {
+                        elem.Bounds.absFixedX = prevPlrAbsFixedX;
+                        elem.Bounds.absFixedY = prevPlrAbsFixedY;
+                    }
+                    else
+                    {
+                        elem.Bounds.absFixedX = prevPlrAbsFixedX + notifyPlayerMoneyTextSeconds * (capi.World.Rand.NextDouble() * 4 - 2);
+                        elem.Bounds.absFixedY = prevPlrAbsFixedY + notifyPlayerMoneyTextSeconds * (capi.World.Rand.NextDouble() * 4 - 2);
+                    }
                 }
             }
 
@@ -494,16 +499,20 @@ namespace Vintagestory.GameContent
             if (notifyTraderMoneyTextSeconds > 0)
             {
                 notifyTraderMoneyTextSeconds -= deltaTime;
+                var elem = SingleComposer.GetDynamicText("traderMoneyText");
 
-                if (notifyTraderMoneyTextSeconds <= 0)
+                if (elem != null)
                 {
-                    SingleComposer.GetDynamicText("traderMoneyText").Bounds.absFixedX = prevPlrAbsFixedX;
-                    SingleComposer.GetDynamicText("traderMoneyText").Bounds.absFixedY = prevPlrAbsFixedY;
-                }
-                else
-                {
-                    SingleComposer.GetDynamicText("traderMoneyText").Bounds.absFixedX = prevTdrAbsFixedX + notifyTraderMoneyTextSeconds * (capi.World.Rand.NextDouble() * 4 - 2);
-                    SingleComposer.GetDynamicText("traderMoneyText").Bounds.absFixedY = prevTdrAbsFixedY + notifyTraderMoneyTextSeconds * (capi.World.Rand.NextDouble() * 4 - 2);
+                    if (notifyTraderMoneyTextSeconds <= 0)
+                    {
+                        elem.Bounds.absFixedX = prevPlrAbsFixedX;
+                        elem.Bounds.absFixedY = prevPlrAbsFixedY;
+                    }
+                    else
+                    {
+                        elem.Bounds.absFixedX = prevTdrAbsFixedX + notifyTraderMoneyTextSeconds * (capi.World.Rand.NextDouble() * 4 - 2);
+                        elem.Bounds.absFixedY = prevTdrAbsFixedY + notifyTraderMoneyTextSeconds * (capi.World.Rand.NextDouble() * 4 - 2);
+                    }
                 }
             }
 

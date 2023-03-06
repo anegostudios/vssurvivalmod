@@ -406,10 +406,10 @@ namespace Vintagestory.GameContent
                 bool[] prevSolid = (bool[])sidecenterSolid.Clone();
                 bool[] prevAlmostSolid = (bool[])sideAlmostSolid.Clone();
 
-                for (int i = 0; i < 6; i++)
+                for (int i = 0; i < 4; i++)
                 {
-                    sidecenterSolid[i] = prevSolid[GameMath.Mod(i + shift, 6)];
-                    sideAlmostSolid[i] = prevAlmostSolid[GameMath.Mod(i + shift, 6)];
+                    sidecenterSolid[i] = prevSolid[GameMath.Mod(i + shift, 4)];
+                    sideAlmostSolid[i] = prevAlmostSolid[GameMath.Mod(i + shift, 4)];
                 }
             }
 
@@ -1052,12 +1052,6 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            if (mesh.VerticesCount == 60 && mesh.UvCount == 72)
-            {
-                int a = 1;
-                mesh = CreateMesh(Api as ICoreClientAPI, VoxelCuboids, MaterialIds, OriginalVoxelCuboids, Pos);
-            }
-
             withColorMapData = Api.World.Blocks[MaterialIds[0]].ClimateColorMapResolved != null;
 
             return mesh;
@@ -1599,7 +1593,7 @@ namespace Vintagestory.GameContent
                 }
                 targetMesh.AddXyzFace(facing.MeshDataIndex);
                 targetMesh.AddColorMapIndex(material.ClimateMapIndex, material.SeasonMapIndex);
-                targetMesh.AddRenderPass((short)material.RenderPass);
+                targetMesh.AddRenderPass((short)(material.RenderPass == EnumChunkRenderPass.TopSoil ? EnumChunkRenderPass.Opaque : material.RenderPass));
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]

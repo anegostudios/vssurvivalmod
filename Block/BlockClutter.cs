@@ -159,6 +159,21 @@ namespace Vintagestory.GameContent
             clutterByCode.TryGetValue(code, out var cprops);
             return cprops;
         }
+
+        public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1)
+        {
+            var bec = GetBEBehavior<BEBehaviorShapeFromAttributes>(pos);
+
+            if ((bec == null || !bec.Collected) && world.Rand.NextDouble() < 0.5)
+            {
+                world.PlaySoundAt(new AssetLocation("sounds/effect/toolbreak"), pos.X + 0.5, pos.Y + 0.5, pos.Z + 0.5, null, false, 12);
+                return new ItemStack[0];
+            }
+
+            var stack = OnPickBlock(world, pos);
+            stack.Attributes.SetBool("collected", true);
+            return new ItemStack[] { stack };
+        }
     }
 
 }

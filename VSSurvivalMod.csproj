@@ -160,7 +160,7 @@
     <Compile Include="Item\ItemOar.cs" />
     <Compile Include="Item\ItemTextureFlipper.cs" />
     <Compile Include="Lore\ResoArchives\EntityEchoChamber.cs" />
-    <Compile Include="Lore\ResoArchives\ModSystemResoArchiveConfigurator.cs" />
+    <Compile Include="Lore\ResoArchives\ResoArchiveCommands.cs" />
     <Compile Include="Systems\Boats\BoatSeat.cs" />
     <Compile Include="Systems\Boats\Core.cs" />
     <Compile Include="Systems\Boats\EntityBoat.cs" />

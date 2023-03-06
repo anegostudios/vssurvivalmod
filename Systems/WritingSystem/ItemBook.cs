@@ -1,7 +1,9 @@
-﻿using System.Text;
+﻿using System.Collections.Generic;
+using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -16,6 +18,7 @@ namespace Vintagestory.GameContent
         int maxPageCount;
         bool editable;
         ICoreClientAPI capi;
+        WorldInteraction[] interactions;
 
         public override void OnLoaded(ICoreAPI api)
         {
@@ -24,6 +27,43 @@ namespace Vintagestory.GameContent
             editable = Attributes["editable"].AsBool(false);
             maxPageCount = Attributes["maxPageCount"].AsInt(90);
             bookModSys = api.ModLoader.GetModSystem<ModSystemEditableBook>();
+
+            interactions = ObjectCacheUtil.GetOrCreate(api, "bookInteractions", () =>
+            {
+                List<ItemStack> writableStacks = new List<ItemStack>();
+                foreach (var collobj in api.World.Collectibles)
+                {
+                    if (collobj.Attributes != null && collobj.Attributes.IsTrue("writingTool"))
+                    {
+                        writableStacks.Add(new ItemStack(collobj));
+                    }
+                }
+
+                return new WorldInteraction[]
+                {
+                    new WorldInteraction
+                    {
+                        MouseButton = EnumMouseButton.Right,
+                        ActionLangCode = "heldhelp-read",
+                        ShouldApply =  (wi, bs, es) => {
+                            var slot = capi.World.Player.InventoryManager.ActiveHotbarSlot;
+                            return isReadable(slot) && (slot.Itemstack.Attributes.HasAttribute("text") || slot.Itemstack.Attributes.HasAttribute("textCodes"));
+                        }
+                    },
+                    new WorldInteraction
+                    {
+                        MouseButton = EnumMouseButton.Right,
+                        Itemstacks = writableStacks.ToArray(),
+                        ActionLangCode = "heldhelp-write",
+                        GetMatchingStacks =  (wi, bs, es) => {
+                            var inSlot = capi.World.Player.InventoryManager.ActiveHotbarSlot;
+                            string signedby = inSlot.Itemstack.Attributes.GetString("signedby");
+                            return signedby != null ? null : wi.Itemstacks;
+                        }
+                    }
+                };
+            });
+
         }
 
 
@@ -128,6 +168,11 @@ namespace Vintagestory.GameContent
         public static bool isWritingTool(ItemSlot slot)
         {
             return slot.Itemstack?.Collectible.Attributes?.IsTrue("writingTool") == true;
+        }
+
+        public override WorldInteraction[] GetHeldInteractionHelp(ItemSlot inSlot)
+        {
+            return interactions.Append(base.GetHeldInteractionHelp(inSlot));
         }
     }
 }
