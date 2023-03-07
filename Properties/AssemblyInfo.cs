@@ -229,8 +229,8 @@ using Vintagestory.API.Config;
             { category: ""temporalstability"", code: ""temporalStormSleeping"", dataType: ""dropdown"", values: [""0"", ""1""], names: [""Disallowed"", ""Allowed""], default: ""1"" },
 
             { category: ""worldgen"", code: ""worldClimate"", dataType: ""dropdown"", values: [""realistic"", ""patchy""], names: [""Realistic"", ""Patchy""], default: ""realistic"", onlyDuringWorldCreate: true },
-            { category: ""worldgen"", code: ""oceanessStrength"", dataType: ""dropdown"", values: [""0"", ""0.15"", ""0.35"", ""0.75""], names: [""No oceans"", ""Very large lakes"", ""Continental"", ""Island world""], default: ""0"", onlyDuringWorldCreate: true },
-            { category: ""worldgen"", code: ""upheavelCommonness"", dataType: ""dropdown"", values: [""0"", ""0.2"", ""0.4"", ""0.6"", ""0.8"", ""1""], names: [""None"", ""Very rare"", ""Rare"", ""Uncommon"", ""Somewhat common"", ""Common""], default: ""0.6"", onlyDuringWorldCreate: true },
+            { category: ""worldgen"", code: ""oceanicity"", dataType: ""dropdown"", values: [""0"", ""0.3"", ""0.6"", ""0.85""], names: [""No oceans"", ""Very large lakes"", ""Continental"", ""Island world""], default: ""0"", onlyDuringWorldCreate: true },
+            { category: ""worldgen"", code: ""upheavelCommonness"", dataType: ""dropdown"", values: [""0"", ""0.1"", ""0.2"", ""0.3"", ""0.4"", ""0.5"", ""0.6"", ""0.7"", ""0.8"", ""0.9"", ""1""], names: [""None"", ""10%"", ""20%"", ""30%"", ""40%"", ""50%"", ""60%"", ""70%"", ""80%"", ""90%"", ""100%""], default: ""0.4"", onlyDuringWorldCreate: true },
             { category: ""worldgen"", code: ""geologicActivity"", dataType: ""dropdown"", values: [""0"", ""0.05"", ""0.1"", ""0.2"", ""0.4""], names: [""None"", ""Rare"", ""Uncommon"", ""Common"", ""Very Common""], default: ""0.05"", onlyDuringWorldCreate: true },
 
 

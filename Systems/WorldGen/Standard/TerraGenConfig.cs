@@ -1,11 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Vintagestory.API;
 using Vintagestory.API.MathTools;
-using Vintagestory.ServerMods.NoObf;
 
 namespace Vintagestory.ServerMods
 {
@@ -46,6 +40,7 @@ namespace Vintagestory.ServerMods
         public static int shrubMapScale = 16;
         public static int forestMapScale = 32;
         public static int geoUpheavelMapScale = 64;
+        public static int oceanMapScale = 32;
 
         public static int blockPatchesMapScale = 32;
 
@@ -180,10 +175,10 @@ namespace Vintagestory.ServerMods
         public static float[] GetSoilFertility(RockStrataVariant rock, int forest, int climate, int yPos, int worldHeight)
         {
             float SoilpH = rock.SoilpH - 0.8f * forest / 255;
-            float NonOrganicMaterialThickness = rock.WeatheringFactor * ((climate & 0xff + ((climate >> 8) & 0xff) + ((climate >> 16) & 0xff))) / 256;
+            //float NonOrganicMaterialThickness = rock.WeatheringFactor * ((climate & 0xff + ((climate >> 8) & 0xff) + ((climate >> 16) & 0xff))) / 256;
             float RelativeSeaLevelDistance = (yPos - TerraGenConfig.seaLevel) / (float)worldHeight;
 
-            NonOrganicMaterialThickness *= Math.Max(0.2f, 1 - RelativeSeaLevelDistance);
+            //NonOrganicMaterialThickness *= Math.Max(0.2f, 1 - RelativeSeaLevelDistance);
 
             float HumusThickness = 3 * (SoilpH < 6.5f ? Math.Max(0, SoilpH / 2.5f - 1.6f) : Math.Max(0, 5.33f - SoilpH / 1.5f));
             HumusThickness *= Math.Max(0.2f, 1 - RelativeSeaLevelDistance);

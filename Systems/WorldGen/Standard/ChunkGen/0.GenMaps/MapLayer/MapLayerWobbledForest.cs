@@ -10,7 +10,6 @@ namespace Vintagestory.ServerMods
         float multiplier;
         int offset;
         public float noiseOffset;
-        public float wobbleIntensity;
 
         public MapLayerPerlinUpheavel(long seed, float noiseOffset, float scale, float multiplier = 255, int offset = 0) : base(seed)
         {
@@ -30,7 +29,6 @@ namespace Vintagestory.ServerMods
                 for (int x = 0; x < sizeX; ++x)
                 {
                     double lowresvalue = GameMath.Clamp((superLowResNoiseGen.Noise(xCoord + x, zCoord + z) - noiseOffset) * 15, 0, 1);
-
                     double outvalue = offset + multiplier;
                     outData[z * sizeX + x] = (int)GameMath.Clamp(lowresvalue * outvalue, 0, 255);
                 }

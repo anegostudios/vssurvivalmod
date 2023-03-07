@@ -15,18 +15,15 @@ namespace Vintagestory.ServerMods
         
         List<int> BlockLayersIds = new List<int>();
         int[] layersUnderWater = new int[0];
-
         LCGRandom rnd;
         int mapheight;
         ClampedSimplexNoise grassDensity;
         ClampedSimplexNoise grassHeight;
-
-
         RockStrataVariant dummyRock;
         public BlockLayerConfig blockLayerConfig;
-
         SimplexNoise distort2dx;
         SimplexNoise distort2dz;
+        int boilingWaterBlockId;
 
 
         public override bool ShouldLoad(EnumAppSide side)
@@ -99,6 +96,8 @@ namespace Vintagestory.ServerMods
             grassHeight = new ClampedSimplexNoise(new double[] { 1.5 }, new double[] { 0.5 }, rnd.NextInt());
 
             mapheight = api.WorldManager.MapSizeY;
+
+            boilingWaterBlockId = api.World.GetBlock(new AssetLocation("boilingwater-still-7")).Id;
         }
 
         
@@ -134,21 +133,24 @@ namespace Vintagestory.ServerMods
             int beachBotRight = beachMap.GetUnpaddedInt((int)(rdx * beachStep + beachStep), (int)(rdz * beachStep + beachStep));
 
 
-            // increasing x -> left to right  
+            // increasing x -> left to right
             // increasing z -> top to bottom
-
             float transitionSize = blockLayerConfig.blockLayerTransitionSize;
-            
+            BlockPos herePos = new BlockPos();
+
 
             for (int x = 0; x < chunksize; x++)
             {
                 for (int z = 0; z < chunksize; z++)
                 {
+                    herePos.Set(chunkX * chunksize + x, 1, chunkZ * chunksize + z);
                     // Some weird randomnes stuff to hide fundamental bugs in the climate transition system :D T_T   (maybe not bugs but just fundamental shortcomings of using lerp on a very low resolution map)
-                    float distx = (float)distort2dx.Noise(chunkX * chunksize + x, chunkZ * chunksize + z);
-                    float distz = (float)distort2dz.Noise(chunkX * chunksize + x, chunkZ * chunksize + z);
+                    float distx = (float)distort2dx.Noise(herePos.X, herePos.Z);
+                    float distz = (float)distort2dz.Noise(herePos.X, herePos.Z);
 
-                    double posRand = (double)GameMath.MurmurHash3(x + chunkX * chunksize, 1, z + chunkZ * chunksize)/int.MaxValue;
+                    int disty = (int)(distort2dx.Noise(-herePos.X, -herePos.Z) / 4.0);
+
+                    double posRand = (double)GameMath.MurmurHash3(herePos.X, 1, herePos.Z)/int.MaxValue;
                     double transitionRand = (posRand + 1) * transitionSize;
 
                     int posY = heightMap[z * chunksize + x];
@@ -169,8 +171,8 @@ namespace Vintagestory.ServerMods
                     int prevY = posY;
 
                     int rocky = chunks[0].MapChunk.WorldGenTerrainHeightMap[z * chunksize + x];
-                    int chunkY = (rocky) / chunksize;
-                    int lY = (rocky) % chunksize;
+                    int chunkY = rocky / chunksize;
+                    int lY = rocky % chunksize;
                     int index3d = (chunksize * lY + z) * chunksize + x;
 
                     int rockblockID = chunks[chunkY].Data.GetBlockIdUnsafe(index3d);
@@ -198,20 +200,18 @@ namespace Vintagestory.ServerMods
                             IChunkBlocks chunkdata = chunks[chunkY].Data;
                             chunkdata.SetBlockUnsafe(index3d, rockblockID);
                             chunkdata.SetFluid(index3d, 0);
-
                             rocky++;
                         }
                     }
 
-                    posY = PutLayers(transitionRand, x, posY, z, chunks, rainRel, temp, tempUnscaled, heightMap);
+                    herePos.Y = posY;
+                    posY = PutLayers(transitionRand, x, z, disty, herePos, chunks, rainRel, temp, tempUnscaled, heightMap);
 
                     if (prevY == TerraGenConfig.seaLevel - 1)
                     {
                         float beachRel = GameMath.BiLerp(beachUpLeft, beachUpRight, beachBotLeft, beachBotRight, (float)x / chunksize, (float)z / chunksize) / 255f;
                         GenBeach(x, prevY, z, chunks, rainRel, temp, beachRel, rockblockID);
                     }
-
-                    
 
                     PlaceTallGrass(x, prevY, z, chunks, rainRel, tempRel, temp, forestRel);
 
@@ -253,25 +253,25 @@ namespace Vintagestory.ServerMods
         }
 
 
-        private int PutLayers(double posRand, int x, int posY, int z, IServerChunk[] chunks, float rainRel, float temp, int unscaledTemp, ushort[] heightMap)
+        private int PutLayers(double posRand, int lx, int lz, int posyoffs, BlockPos pos, IServerChunk[] chunks, float rainRel, float temp, int unscaledTemp, ushort[] heightMap)
         {
             int i = 0;
             int j = 0;
             
             bool underWater = false;
             bool first = true;
-            int startPosY = posY;
-            int boilingWaterBlockId = api.World.GetBlock(new AssetLocation("boilingwater-still-7")).Id;
+            int startPosY = pos.Y;
+            
 
-            while (posY > 0)
+            while (pos.Y > 0)
             {
-                int chunkY = posY / chunksize;
-                int lY = posY % chunksize;
-                int index3d = (chunksize * lY + z) * chunksize + x;
+                int chunkY = pos.Y / chunksize;
+                int lY = pos.Y % chunksize;
+                int index3d = (chunksize * lY + lz) * chunksize + lx;
                 int blockId = chunks[chunkY].Data.GetBlockIdUnsafe(index3d);
                 if (blockId == 0) blockId = chunks[chunkY].Data.GetFluid(index3d);
 
-                posY--;
+                pos.Y--;
 
                 if (blockId == GlobalConfig.waterBlockId || blockId == boilingWaterBlockId)
                 {
@@ -289,17 +289,17 @@ namespace Vintagestory.ServerMods
                 {
                     if (heightMap != null && first)
                     {
-                        chunks[0].MapChunk.TopRockIdMap[z * chunksize + x] = blockId;
+                        chunks[0].MapChunk.TopRockIdMap[lz * chunksize + lx] = blockId;
 
-                        LoadBlockLayers(posRand, rainRel, temp, unscaledTemp, startPosY, blockId);
+                        LoadBlockLayers(posRand, rainRel, temp, unscaledTemp, startPosY + posyoffs, pos, blockId);
                         first = false;
 
-                        if (!underWater) heightMap[z * chunksize + x] = (ushort)(posY + 1);
+                        if (!underWater) heightMap[lz * chunksize + lx] = (ushort)(pos.Y + 1);
                     }
 
                     if (i >= BlockLayersIds.Count || (underWater && j >= layersUnderWater.Length))
                     {
-                        return posY;
+                        return pos.Y;
                     }
 
 
@@ -309,12 +309,12 @@ namespace Vintagestory.ServerMods
                 }
                 else
                 {
-                    if ((i > 0 && temp > -18) || j > 0) return posY;
+                    if ((i > 0 && temp > -18) || j > 0) return pos.Y;
                     //                 ^ Hardcoding crime here. Please don't look. Makes deep layers of ice work
                 }
             }
 
-            return posY;
+            return pos.Y;
         }
 
 
@@ -370,13 +370,11 @@ namespace Vintagestory.ServerMods
         }
 
 
-        private void LoadBlockLayers(double posRand, float rainRel, float temperature, int unscaledTemp, int posY, int firstBlockId)
+        private void LoadBlockLayers(double posRand, float rainRel, float temperature, int unscaledTemp, int posY, BlockPos pos, int firstBlockId)
         {
             float heightRel = ((float)posY - TerraGenConfig.seaLevel) / ((float)api.WorldManager.MapSizeY - TerraGenConfig.seaLevel);
             float fertilityRel = TerraGenConfig.GetFertilityFromUnscaledTemp((int)(rainRel * 255), unscaledTemp, heightRel) / 255f;
             
-            
-
             float depthf = TerraGenConfig.SoilThickness(rainRel, temperature, posY - TerraGenConfig.seaLevel, 1f);
             int depth = (int)depthf;
             if (depthf - depth > rnd.NextFloat()) depth++;
@@ -389,23 +387,16 @@ namespace Vintagestory.ServerMods
             {
                 BlockLayer bl = blockLayerConfig.Blocklayers[j];
 
-                /*float tempDist = Math.Abs(temperature - GameMath.Clamp(temperature, bl.MinTemp, bl.MaxTemp));
-                float rainDist = Math.Abs(rainRel - GameMath.Clamp(rainRel, bl.MinRain, bl.MaxRain));
-                float fertDist = Math.Abs(fertilityRel - GameMath.Clamp(fertilityRel, bl.MinFertility, bl.MaxFertility));
-                float yDist = Math.Abs((float)posY / mapheight - GameMath.Min((float)posY / mapheight, bl.MaxY));*/
-
                 float yrel = (float)posY / mapheight;
                 float tempDist = Math.Abs(temperature - GameMath.Clamp(temperature, bl.MinTemp, bl.MaxTemp));
                 float rainDist = Math.Abs(rainRel - GameMath.Clamp(rainRel, bl.MinRain, bl.MaxRain)) * 10f;
                 float fertDist = Math.Abs(fertilityRel - GameMath.Clamp(fertilityRel, bl.MinFertility, bl.MaxFertility)) * 10f;
                 float yDist = Math.Abs(yrel - GameMath.Clamp(yrel, bl.MinY, bl.MaxY)) * 10f;
-
-
                 float trfDist = tempDist + rainDist + fertDist;
 
                 if (trfDist + yDist <= posRand)
                 {
-                    int blockId = bl.GetBlockId(posRand, temperature, rainRel, fertilityRel, firstBlockId);
+                    int blockId = bl.GetBlockId(posRand, temperature, rainRel, fertilityRel, firstBlockId, pos);
                     if (blockId != 0)
                     {
                         BlockLayersIds.Add(blockId);

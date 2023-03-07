@@ -135,7 +135,7 @@ namespace Vintagestory.ServerMods
                             {
                                 int climate = GameMath.BiLerpRgbColor((float)x / chunksize, (float)z / chunksize, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight);
 
-                                newBlock = GetBlockLayerBlock((climate >> 8) & 0xff, (climate >> 16) & 0xff, startPos.Y, rockblockid, depth, newBlock, worldForCollectibleResolve.Blocks);
+                                newBlock = GetBlockLayerBlock((climate >> 8) & 0xff, (climate >> 16) & 0xff, startPos.Y, rockblockid, depth, newBlock, worldForCollectibleResolve.Blocks, curPos);
                             }
 
                             depth++;
@@ -327,7 +327,7 @@ namespace Vintagestory.ServerMods
 
 
 
-        private Block GetBlockLayerBlock(int unscaledRain, int unscaledTemp, int posY, int firstBlockId, int forDepth, Block defaultBlock, IList<Block> blocks)
+        private Block GetBlockLayerBlock(int unscaledRain, int unscaledTemp, int posY, int firstBlockId, int forDepth, Block defaultBlock, IList<Block> blocks, BlockPos pos)
         {
             float temperature = TerraGenConfig.GetScaledAdjustedTemperatureFloat(unscaledTemp, posY - TerraGenConfig.seaLevel);
             float rainRel = TerraGenConfig.GetRainFall(unscaledRain, posY) / 255f;
@@ -345,7 +345,7 @@ namespace Vintagestory.ServerMods
                     (float)posY / mapheight <= bl.MaxY
                 )
                 {
-                    int blockId = bl.GetBlockId(0.1, temperature, rainRel, fertilityRel, firstBlockId);
+                    int blockId = bl.GetBlockId(0.1, temperature, rainRel, fertilityRel, firstBlockId, pos);
                     if (blockId != 0)
                     {
                         return blocks[blockId];

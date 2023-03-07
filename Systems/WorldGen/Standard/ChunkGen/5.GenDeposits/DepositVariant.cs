@@ -199,10 +199,11 @@ namespace Vintagestory.ServerMods
 
         [JsonProperty]
         public float MaxRain = 1;
-        
 
         [JsonProperty]
-        public float MaxY = 1;
+        public float MinY = 0;
+        [JsonProperty]
+        public float MaxY = 2;
 
         public ClimateConditions Clone()
         {
@@ -212,6 +213,7 @@ namespace Vintagestory.ServerMods
                 MinTemp = MinTemp,
                 MaxRain = MaxRain,
                 MaxTemp = MaxTemp,
+                MinY = MinY,
                 MaxY = MaxY
             };
         }

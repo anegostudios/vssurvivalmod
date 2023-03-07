@@ -118,12 +118,12 @@ namespace Vintagestory.ServerMods
             if (minz < baseZ) minz = baseZ;
             if (maxz > baseZ + chunksize) maxz = baseZ + chunksize;
 
-            //float invChunkAreaSize = 1f / (chunksize * chunksize);
             double val;
 
             IList<Block> blocktypes = Api.World.Blocks;
 
-            bool doGravel = DepositRand.NextFloat() > 0.33;
+            double sandMaxY = Api.World.BlockAccessor.MapSizeY * 0.8;
+            bool doGravel = depoCenterPos.Y > sandMaxY || DepositRand.NextFloat() > 0.33;
 
             int posy;
             int rockblockCached = -1;
@@ -179,7 +179,7 @@ namespace Vintagestory.ServerMods
                         int blockId = chunkdata.GetBlockIdUnsafe(index3d);
 
                         Block block = blocktypes[blockId];
-                        if (block.BlockMaterial != EnumBlockMaterial.Soil) continue;
+                        if (alluvialblock.BlockMaterial == EnumBlockMaterial.Soil && block.BlockMaterial != EnumBlockMaterial.Soil) continue;
 
                         chunkdata.SetBlockUnsafe(index3d, alluvialblock.BlockId);
                         chunkdata.SetFluid(index3d, 0);

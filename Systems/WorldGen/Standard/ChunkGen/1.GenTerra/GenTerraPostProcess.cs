@@ -35,8 +35,8 @@ namespace Vintagestory.ServerMods
 
             if (TerraGenConfig.DoDecorationPass)
             {
-                api.Event.ChunkColumnGeneration(OnChunkColumnGen, EnumWorldGenPass.TerrainFeatures, "standard");
-                api.Event.GetWorldgenBlockAccessor(OnWorldGenBlockAccessor);
+                //api.Event.ChunkColumnGeneration(OnChunkColumnGen, EnumWorldGenPass.TerrainFeatures, "standard");
+                //api.Event.GetWorldgenBlockAccessor(OnWorldGenBlockAccessor);
             }
         }
         

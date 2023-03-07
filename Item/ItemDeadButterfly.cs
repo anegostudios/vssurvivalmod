@@ -18,7 +18,7 @@ namespace Vintagestory.GameContent
 
             string descLangCode = Code?.Domain + AssetLocation.LocationSeparator + "itemdesc-creature-butterfly-" + Variant["type"];
             dsc.AppendLine("<font color=\"#ccc\"><i>" + Lang.Get(descLangCode) + "</i></font>");
-            dsc.AppendLine(Lang.Get("Butterfly"));            
+            dsc.AppendLine(Lang.Get("Butterfly"));
         }
     }
 }

@@ -24,10 +24,6 @@ namespace Vintagestory.ServerMods
         public float MinFertility = 0;
         [JsonProperty]
         public float MaxFertility = 1;
-        //[JsonProperty]
-        //public float MinY = 1;
-        //[JsonProperty]
-        //public float MaxY = 1;
 
         public int BlockId;
 
@@ -68,6 +64,10 @@ namespace Vintagestory.ServerMods
         public double[] NoiseAmplitudes;
         [JsonProperty]
         public double[] NoiseFrequencies;
+        [JsonProperty]
+        public double NoiseThreshold = 0.5;
+
+        NormalizedSimplexNoise noiseGen;
 
         public int BlockId;
        
@@ -76,6 +76,16 @@ namespace Vintagestory.ServerMods
         public void Init(ICoreServerAPI api, RockStrataConfig rockstrata, Random rnd)
         {
             ResolveBlockIds(api, rockstrata);
+
+            if (NoiseAmplitudes != null)
+            {
+                noiseGen = new NormalizedSimplexNoise(NoiseAmplitudes, NoiseFrequencies, rnd.Next());
+            }
+        }
+
+        public bool NoiseOk(BlockPos pos)
+        {
+            return noiseGen == null || noiseGen.Noise(pos.X / 10.0, pos.Y / 10.0, pos.Z / 10.0) > NoiseThreshold;
         }
 
         void ResolveBlockIds(ICoreServerAPI api, RockStrataConfig rockstrata)
@@ -136,8 +146,13 @@ namespace Vintagestory.ServerMods
             }
         }
 
-        public int GetBlockId(double posRand, float temp, float rainRel, float fertilityRel, int firstBlockId)
+        public int GetBlockId(double posRand, float temp, float rainRel, float fertilityRel, int firstBlockId, BlockPos pos)
         {
+            if (noiseGen != null && noiseGen.Noise(pos.X / 20.0, pos.Y / 20.0, pos.Z / 20.0) < NoiseThreshold)
+            {   
+                return 0;
+            }
+
             if (BlockCode != null)
             {
                 int mapppedBlockId = BlockId;

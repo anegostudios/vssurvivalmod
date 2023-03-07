@@ -636,11 +636,13 @@ namespace Vintagestory.ServerMods
                 return;
             }
 
-            Random rnd = new Random();
+            //Random rnd = new Random();
             long seed = 1239123912;// rnd.Next();
 
             string subcmd = arguments.PopWord();
             ITreeAttribute worldConfig = api.WorldManager.SaveGame.WorldConfiguration;
+
+            int size = (int)arguments.PopInt(512);
 
             switch (subcmd)
             {
@@ -663,7 +665,7 @@ namespace Vintagestory.ServerMods
                         NoiseClimateRealistic noiseClimate = new NoiseClimateRealistic(seed, api.World.BlockAccessor.MapSizeZ / TerraGenConfig.climateMapScale / TerraGenConfig.climateMapSubScale, polarEquatorDistance, spawnMinTemp, spawnMaxTemp);
                         MapLayerBase climate = GenMaps.GetClimateMapGen(seed, noiseClimate);
 
-                        NoiseBase.DebugDrawBitmap(DebugDrawMode.FirstByteGrayscale, climate.GenLayer(0, 0, 128, 2048), 128, 2048, "geoactivity");
+                        NoiseBase.DebugDrawBitmap(DebugDrawMode.FirstByteGrayscale, climate.GenLayer(0, 0, 128, 2048), 128, size, "geoactivity");
 
                         player.SendMessage(groupId, "Geologic activity map generated", EnumChatType.CommandSuccess);
                         break;
@@ -727,12 +729,22 @@ namespace Vintagestory.ServerMods
                     break;
 
                 case "upheavel":
-                    var map = GenMaps.GetGeoUpheavelMapGen(seed + 873, TerraGenConfig.geoUpheavelMapScale);
-                    NoiseBase.Debug = true;
-                    map.DebugDrawBitmap(DebugDrawMode.FirstByteGrayscale, 0, 0, "Geoupheavel 1");
-                    player.SendMessage(groupId, "Geo upheavel map generated", EnumChatType.CommandSuccess);
-                    break;
+                    {
+                        var map = GenMaps.GetGeoUpheavelMapGen(seed + 873, TerraGenConfig.geoUpheavelMapScale);
+                        NoiseBase.Debug = true;
+                        map.DebugDrawBitmap(DebugDrawMode.FirstByteGrayscale, 0, 0, size, "Geoupheavel 1");
+                        player.SendMessage(groupId, "Geo upheavel map generated", EnumChatType.CommandSuccess);
+                        break;
+                    }
 
+                case "ocean":
+                    {
+                        var map = GenMaps.GetOceanMapGen(seed + 1873, TerraGenConfig.oceanMapScale);
+                        NoiseBase.Debug = true;
+                        map.DebugDrawBitmap(DebugDrawMode.FirstByteGrayscale, 0, 0, size,"Ocean 1");
+                        player.SendMessage(groupId, "Ocean map generated", EnumChatType.CommandSuccess);
+                        break;
+                    }
 
                 case "ore":
                     {
@@ -819,6 +831,7 @@ namespace Vintagestory.ServerMods
             int noiseSizeUpheavel = api.WorldManager.RegionSize / TerraGenConfig.geoUpheavelMapScale;
             int noiseSizeGeoProv = api.WorldManager.RegionSize / TerraGenConfig.geoProvMapScale;
             int noiseSizeLandform = api.WorldManager.RegionSize / TerraGenConfig.landformMapScale;
+            int noiseSizeOcean = api.WorldManager.RegionSize / TerraGenConfig.oceanMapScale;
 
 
             var genmapsSys = api.ModLoader.GetModSystem<GenMaps>();
@@ -828,8 +841,9 @@ namespace Vintagestory.ServerMods
             MapLayerBase upheavelGen = genmapsSys.upheavelGen;
             MapLayerBase geologicprovinceGen = genmapsSys.geologicprovinceGen;
             MapLayerBase landformsGen = genmapsSys.landformsGen;
-            
-            
+            MapLayerBase oceanGen = genmapsSys.oceanGen;
+
+
             int regionX = pos.X / api.WorldManager.RegionSize;
             int regionZ = pos.Z / api.WorldManager.RegionSize;
             
@@ -1000,6 +1014,10 @@ namespace Vintagestory.ServerMods
 
                 case "upheavel":
                     DrawMapRegion(DebugDrawMode.FirstByteGrayscale, player, mapRegion.UpheavelMap, "upheavel", dolerp, regionX, regionZ, TerraGenConfig.geoUpheavelMapScale);
+                    break;
+
+                case "ocean":
+                    DrawMapRegion(DebugDrawMode.FirstByteGrayscale, player, mapRegion.OceanMap, "ocean", dolerp, regionX, regionZ, TerraGenConfig.oceanMapScale);
                     break;
 
 

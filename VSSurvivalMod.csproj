@@ -668,7 +668,6 @@
     <Compile Include="Systems\WorldGen\Standard\ChunkGen\6.GenStructures\GenStoryStructures.cs" />
     <Compile Include="Systems\WorldGen\Standard\ChunkGen\6.GenStructures\WorldGenStructureBase.cs" />
     <Compile Include="Systems\WorldGen\Standard\ChunkGen\8.GenVegetationAndPatches\GenHugePatches.cs" />
-    <Compile Include="Systems\WorldGen\Standard\ChunkGen\8.GenVegetationAndPatches\GenPatchesPrePass.cs" />
     <Compile Include="Systems\WorldGen\Standard\ChunkGen\2.GenRockStrata\GenRockStrata.cs" />
     <Compile Include="Systems\WorldGen\Standard\ChunkGen\1.GenTerra\GenTerraPostProcess.cs" />
     <Compile Include="Systems\WorldGen\Standard\ChunkGen\0.GenMaps\MapLayer\MapLayerCustomPerlin.cs" />

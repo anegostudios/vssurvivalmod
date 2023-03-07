@@ -32,7 +32,7 @@ namespace Vintagestory.GameContent
             {
                 tmpPos.Set(pos.X, pos.Y - 1 - i, pos.Z);
                 Block belowBlock = blockAccessor.GetBlock(tmpPos);
-                if (belowBlock.CanAttachBlockAt(blockAccessor, this, tmpPos, BlockFacing.UP))
+                if (belowBlock.BlockMaterial != EnumBlockMaterial.Ice && belowBlock.BlockMaterial != EnumBlockMaterial.Snow && belowBlock.CanAttachBlockAt(blockAccessor, this, tmpPos, BlockFacing.UP))
                 {
                     tmpPos.Y++;
                     Block atBlock = blockAccessor.GetBlock(tmpPos);

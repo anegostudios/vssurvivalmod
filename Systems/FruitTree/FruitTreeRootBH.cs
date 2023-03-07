@@ -142,7 +142,10 @@ namespace Vintagestory.GameContent
                         // For roughly daily average temps
                         
                         double midday = (int)LastRootTickTotalDays + 0.5;
-                        temp = Api.World.BlockAccessor.GetClimateAt(be.Pos, EnumGetClimateMode.ForSuppliedDate_TemperatureOnly, midday).Temperature;
+                        var climate = Api.World.BlockAccessor.GetClimateAt(be.Pos, EnumGetClimateMode.ForSuppliedDate_TemperatureOnly, midday);
+                        if (climate == null) return;
+
+                        temp = climate.Temperature;
                         temp = applyGreenhouseTempBonus(temp);
 
                         prevIntDays = (int)LastRootTickTotalDays;

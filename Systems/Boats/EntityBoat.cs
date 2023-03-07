@@ -472,9 +472,14 @@ namespace Vintagestory.GameContent
             return !Seats.Any(seat => seat.Passenger != null);
         }
 
+        public override WorldInteraction[] GetInteractionHelp(IClientWorldAccessor world, EntitySelection es, IClientPlayer player)
+        {
+            return base.GetInteractionHelp(world, es, player);
+        }
+
         public void Dispose()
         {
-
+            throw new NotImplementedException();
         }
     }
 

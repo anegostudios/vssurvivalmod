@@ -211,7 +211,6 @@ namespace Vintagestory.ServerMods
             for (int i = 0; i < Deposits.Length; i++)
             {
                 DepositVariant variant = Deposits[i];
-
                 float quantityFactor = variant.WithOreMap ? variant.GetOreMapFactor(fromChunkx, fromChunkz) : 1;
 
                 float qModified = variant.TriesPerChunk * quantityFactor * chanceMultiplier * (variant.ScaleWithWorldheight ? scaleAdjustMul : 1);
@@ -269,6 +268,18 @@ namespace Vintagestory.ServerMods
 
                 float temp = TerraGenConfig.GetScaledAdjustedTemperatureFloat((climate >> 16) & 0xff, depoCenterPos.Y - TerraGenConfig.seaLevel);
                 if (temp < variant.Climate.MinTemp || temp > variant.Climate.MaxTemp) return;
+
+                double seaLevel = TerraGenConfig.seaLevel;
+                double yRel =
+                    depoCenterPos.Y > seaLevel ?
+                    1 + (depoCenterPos.Y - seaLevel) / (api.World.BlockAccessor.MapSizeY - seaLevel) :
+                    depoCenterPos.Y / seaLevel
+                ;
+
+                if (yRel < variant.Climate.MinY || yRel > variant.Climate.MaxY)
+                {
+                    return;
+                }
             }
 
             variant.GeneratorInst?.GenDeposit(blockAccessor, chunks, chunkX, chunkZ, depoCenterPos, ref subDepositsToPlace);
