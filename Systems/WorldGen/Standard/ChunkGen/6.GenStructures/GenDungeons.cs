@@ -3,6 +3,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.ServerMods
 {
@@ -16,6 +17,7 @@ namespace Vintagestory.ServerMods
         Dictionary<long, List<DungeonPlaceTask>> dungeonPlaceTasksByRegion = new Dictionary<long, List<DungeonPlaceTask>>();
 
         int regionSize;
+        bool genDungeons;
 
         public override double ExecuteOrder() { return 0.12; }
 
@@ -41,6 +43,9 @@ namespace Vintagestory.ServerMods
 
         private void OnWorldGenBlockAccessor(IChunkProviderThread chunkProvider)
         {
+            genDungeons = api.World.Config.GetAsString("loreContent", "true").ToBool(true);
+            if (!genDungeons) return;
+
             worldgenBlockAccessor = chunkProvider.GetBlockAccessor(false);
             rand = new LCGRandom(api.WorldManager.Seed ^ 8991827198);
             chunksize = api.World.BlockAccessor.ChunkSize;
@@ -78,7 +83,7 @@ namespace Vintagestory.ServerMods
             {
                 int posx = regionX * size + rand.NextInt(size);
                 int posz = regionZ * size + rand.NextInt(size);
-                int posy = rand.NextInt(api.World.SeaLevel);
+                int posy = rand.NextInt(api.World.SeaLevel - 10);
 
                 var dungeons = dungeonGen.Tcfg.Dungeons;
                 var dungeon = dungeons[rand.NextInt(dungeons.Length)];

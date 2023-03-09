@@ -739,9 +739,19 @@ namespace Vintagestory.ServerMods
 
                 case "ocean":
                     {
-                        var map = GenMaps.GetOceanMapGen(seed + 1873, TerraGenConfig.oceanMapScale);
+                        float landcover = worldConfig.GetString("landcover", "1").ToFloat(1f);
+                        float oceanscale = worldConfig.GetString("oceanscale", "1").ToFloat(1f);
+
+                        var noiseSizeOcean = api.WorldManager.RegionSize / TerraGenConfig.oceanMapScale;
+                        int centerRegX = api.WorldManager.MapSizeX / api.WorldManager.RegionSize / 2;
+                        int centerRegZ = api.WorldManager.MapSizeZ / api.WorldManager.RegionSize / 2;
+            
+                        var list = new List<XZ>();
+                        list.Add(new XZ(centerRegX * noiseSizeOcean, centerRegZ * noiseSizeOcean));
+
+                        var map = GenMaps.GetOceanMapGen(seed + 1873, landcover, TerraGenConfig.oceanMapScale, oceanscale, list);
                         NoiseBase.Debug = true;
-                        map.DebugDrawBitmap(DebugDrawMode.FirstByteGrayscale, 0, 0, size,"Ocean 1");
+                        map.DebugDrawBitmap(DebugDrawMode.FirstByteGrayscale, 0, 0, size, "Ocean 1");
                         player.SendMessage(groupId, "Ocean map generated", EnumChatType.CommandSuccess);
                         break;
                     }
@@ -935,6 +945,15 @@ namespace Vintagestory.ServerMods
                     }
                     break;
 
+                case "ocean":
+                    {
+                        int startX = regionX * noiseSizeOcean - 256;
+                        int startZ = regionZ * noiseSizeOcean - 256;
+
+                        oceanGen.DebugDrawBitmap(DebugDrawMode.FirstByteGrayscale, startX, startZ, "oceanmap");
+                        player.SendMessage(groupId, "Ocean map generated", EnumChatType.CommandSuccess);
+                    }
+                    break;
 
                 default:
                     player.SendMessage(groupId, "/wgen testmap [climate|forest|wind|gprov]", EnumChatType.CommandError);

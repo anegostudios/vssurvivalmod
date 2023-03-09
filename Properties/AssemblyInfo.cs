@@ -147,9 +147,9 @@ using Vintagestory.API.Config;
 			    }
 		    },
             {
-                code: ""historical"",
+                code: ""homosapiens"",
                 playListCode: ""survival"",
-                langcode: ""preset-historical"",
+                langcode: ""preset-homosapiens"",
 			    requestMods: [""game"", ""survival""],
                 listOrder: 7,
 			    worldType: ""standard"",
@@ -172,7 +172,6 @@ using Vintagestory.API.Config;
                     surfaceCopperDeposits: ""0.05"",
                     surfaceTinDeposits: ""0"",
                     saplingGrowthRate: ""3"",
-                    temporalStability: ""false"",
                     temporalStorms: ""off"",
                     polarEquatorDistance: ""200000"",
                     harshWinters: ""true"",
@@ -182,7 +181,8 @@ using Vintagestory.API.Config;
                     temporalGearRespawnUses: ""0"",
                     temporalStormSleeping: ""0"",
                     temporalRifts: ""off"",
-                    temporalStability: ""off""
+                    temporalStability: ""false"",
+                    loreContent: ""false""
 			    }
 		    }
 	    ],
@@ -229,8 +229,9 @@ using Vintagestory.API.Config;
             { category: ""temporalstability"", code: ""temporalStormSleeping"", dataType: ""dropdown"", values: [""0"", ""1""], names: [""Disallowed"", ""Allowed""], default: ""1"" },
 
             { category: ""worldgen"", code: ""worldClimate"", dataType: ""dropdown"", values: [""realistic"", ""patchy""], names: [""Realistic"", ""Patchy""], default: ""realistic"", onlyDuringWorldCreate: true },
-            { category: ""worldgen"", code: ""oceanicity"", dataType: ""dropdown"", values: [""0"", ""0.3"", ""0.6"", ""0.85""], names: [""No oceans"", ""Very large lakes"", ""Continental"", ""Island world""], default: ""0"", onlyDuringWorldCreate: true },
-            { category: ""worldgen"", code: ""upheavelCommonness"", dataType: ""dropdown"", values: [""0"", ""0.1"", ""0.2"", ""0.3"", ""0.4"", ""0.5"", ""0.6"", ""0.7"", ""0.8"", ""0.9"", ""1""], names: [""None"", ""10%"", ""20%"", ""30%"", ""40%"", ""50%"", ""60%"", ""70%"", ""80%"", ""90%"", ""100%""], default: ""0.4"", onlyDuringWorldCreate: true },
+            { category: ""worldgen"", code: ""landcover"", dataType: ""dropdown"", values: [""0"", ""0.1"", ""0.2"", ""0.3"", ""0.4"", ""0.5"", ""0.6"", ""0.7"", ""0.8"", ""0.9"", ""1""], names: [""~0%"", ""10%"", ""20%"", ""30%"", ""40%"", ""50%"", ""60%"", ""70%"", ""80%"", ""90%"", ""100%""], default: ""1"", onlyDuringWorldCreate: true },
+            { category: ""worldgen"", code: ""oceanscale"", dataType: ""dropdown"", values: [""0.1"", ""0.25"", ""0.5"", ""0.75"", ""1"", ""1.25"", ""1.5"", ""1.75"", ""2"", ""3"", ""4""], names: [""10%"", ""25%"", ""50%"", ""75%"", ""100%"", ""125%"", ""150%"", ""175%"", ""200%"", ""300%"", ""400%""], default: ""1"", onlyDuringWorldCreate: true },
+            { category: ""worldgen"", code: ""upheavelCommonness"", dataType: ""dropdown"", values: [""0"", ""0.1"", ""0.2"", ""0.3"", ""0.4"", ""0.5"", ""0.6"", ""0.7"", ""0.8"", ""0.9"", ""1""], names: [""0%"", ""10%"", ""20%"", ""30%"", ""40%"", ""50%"", ""60%"", ""70%"", ""80%"", ""90%"", ""100%""], default: ""0.4"", onlyDuringWorldCreate: true },
             { category: ""worldgen"", code: ""geologicActivity"", dataType: ""dropdown"", values: [""0"", ""0.05"", ""0.1"", ""0.2"", ""0.4""], names: [""None"", ""Rare"", ""Uncommon"", ""Common"", ""Very Common""], default: ""0.05"", onlyDuringWorldCreate: true },
 
 

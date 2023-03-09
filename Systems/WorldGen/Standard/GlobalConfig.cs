@@ -13,6 +13,8 @@ namespace Vintagestory.ServerMods.NoObf
     {
         [JsonProperty]
         public AssetLocation waterBlockCode;
+        [JsonProperty]
+        public AssetLocation saltWaterBlockCode;
 
         [JsonProperty]
         public AssetLocation lakeIceBlockCode;
@@ -31,6 +33,7 @@ namespace Vintagestory.ServerMods.NoObf
 
 
         public int waterBlockId;
+        public int saltWaterBlockId;
         public int lakeIceBlockId;
         public int lavaBlockId;
         public int basaltBlockId;

@@ -55,8 +55,9 @@ namespace Vintagestory.GameContent
         float angleRange = 90 * GameMath.DEG2RAD;
 
         LCGRandom rand;
-
         ICoreServerAPI api;
+
+        bool genStoryStructures;
 
 
         public override double ExecuteOrder() { return 0.92; }
@@ -85,6 +86,9 @@ namespace Vintagestory.GameContent
 
         public void initWorldGen()
         {
+            genStoryStructures = api.World.Config.GetAsString("loreContent", "true").ToBool(true);
+            if (!genStoryStructures) return;
+
             chunksize = api.World.BlockAccessor.ChunkSize;
             strucRand = new LCGRandom(api.WorldManager.Seed + 1095);
             IAsset asset = api.Assets.Get("worldgen/storystructures.json");
@@ -216,6 +220,7 @@ namespace Vintagestory.GameContent
 
         private void onChunkColumnGen(IServerChunk[] chunks, int chunkX, int chunkZ, ITreeAttribute chunkGenParams)
         {
+            if (!genStoryStructures) return;
             if (structureLocations == null) return;
 
             tmpCuboid.Set(chunkX * chunksize, 0, chunkZ * chunksize, chunkX * chunksize + chunksize, chunks.Length * chunksize, chunkZ * chunksize + chunksize);

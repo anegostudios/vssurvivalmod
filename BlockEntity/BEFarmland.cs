@@ -63,10 +63,12 @@ namespace Vintagestory.GameContent
         protected bool unripeCropColdDamaged;
         protected bool unripeHeatDamaged;
         protected bool ripeCropColdDamaged;
+        protected bool saltExposed;
 
         // 0 = Unknown
         // 1 = too hot
         // 2 = too cold
+        // 3 = saltwater
         protected float[] damageAccum = new float[Enum.GetValues(typeof(EnumCropStressType)).Length];
 
 
@@ -243,11 +245,13 @@ namespace Vintagestory.GameContent
 
         bool farmlandIsAtChunkEdge = false;
 
-        protected float GetNearbyWaterDistance(out EnumWaterSearchResult result)
+        protected float GetNearbyWaterDistance(out EnumWaterSearchResult result, float hoursPassed)
         {
             // 1. Watered check
             float waterDistance = 99;
             farmlandIsAtChunkEdge = false;
+
+            bool saltWater = false;
 
             Api.World.BlockAccessor.SearchFluidBlocks(
                 new BlockPos(Pos.X - 4, Pos.Y, Pos.Z - 4),
@@ -258,10 +262,17 @@ namespace Vintagestory.GameContent
                     {
                         waterDistance = Math.Min(waterDistance, Math.Max(Math.Abs(pos.X - Pos.X), Math.Abs(pos.Z - Pos.Z)));
                     }
+                    if (block.LiquidCode == "saltwater")
+                    {
+                        saltWater = true;
+                    }
+
                     return true;
                 },
                 (cx, cy, cz) => farmlandIsAtChunkEdge = true
             );
+
+            if (saltWater) damageAccum[(int)(EnumCropStressType.Salt)] += hoursPassed;
 
             result = EnumWaterSearchResult.Deferred;
             if (farmlandIsAtChunkEdge) return 99;
@@ -291,7 +302,7 @@ namespace Vintagestory.GameContent
             if (searchNearbyWater)
             {
                 EnumWaterSearchResult res;
-                dist = GetNearbyWaterDistance(out res);
+                dist = GetNearbyWaterDistance(out res, 0);
                 if (res == EnumWaterSearchResult.Deferred) return false; // Wait with updating until neighbouring chunks are loaded
                 if (res != EnumWaterSearchResult.Found) dist = 99;
 
@@ -430,7 +441,7 @@ namespace Vintagestory.GameContent
                 if (!nearbyWaterTested)
                 {
                     EnumWaterSearchResult res;
-                    waterDistance = GetNearbyWaterDistance(out res);
+                    waterDistance = GetNearbyWaterDistance(out res, (float)hourIntervall);
                     if (res == EnumWaterSearchResult.Deferred) return; // Wait with updating until neighbouring chunks are loaded
                     if (res == EnumWaterSearchResult.NotFound) waterDistance = 99;
                     nearbyWaterTested = true;
@@ -897,6 +908,7 @@ namespace Vintagestory.GameContent
             unripeCropColdDamaged = tree.GetBool("unripeCropExposedToFrost");
             ripeCropColdDamaged = tree.GetBool("ripeCropExposedToFrost");
             unripeHeatDamaged = tree.GetBool("unripeHeatDamaged");
+            saltExposed = tree.GetBool("saltExposed");
 
             roomness = tree.GetInt("roomness");
 
@@ -946,6 +958,7 @@ namespace Vintagestory.GameContent
             tree.SetBool("ripeCropExposedToFrost", ripeCropColdDamaged);
             tree.SetBool("unripeCropExposedToFrost", unripeCropColdDamaged);
             tree.SetBool("unripeHeatDamaged", unripeHeatDamaged);
+            tree.SetBool("saltExposed", damageAccum[(int)EnumCropStressType.Salt] > 1);
 
             (tree as TreeAttribute).SetStringArray("permaBoosts", PermaBoosts.ToArray());
 
@@ -1036,6 +1049,11 @@ namespace Vintagestory.GameContent
             if (roomness > 0)
             {
                 dsc.AppendLine(Lang.Get("greenhousetempbonus"));
+            }
+
+            if (saltExposed)
+            {
+                dsc.AppendLine(Lang.Get("farmland-saltdamage"));
             }
 
 

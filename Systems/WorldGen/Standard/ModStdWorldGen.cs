@@ -24,6 +24,7 @@ namespace Vintagestory.ServerMods
 
             GlobalConfig.defaultRockId = api.World.GetBlock(GlobalConfig.defaultRockCode).BlockId;
             GlobalConfig.waterBlockId = api.World.GetBlock(GlobalConfig.waterBlockCode).BlockId;
+            GlobalConfig.saltWaterBlockId = api.World.GetBlock(GlobalConfig.saltWaterBlockCode).BlockId;
             GlobalConfig.lakeIceBlockId = api.World.GetBlock(GlobalConfig.lakeIceBlockCode).BlockId;
             GlobalConfig.lavaBlockId = api.World.GetBlock(GlobalConfig.lavaBlockCode).BlockId;
             GlobalConfig.basaltBlockId = api.World.GetBlock(GlobalConfig.basaltBlockCode).BlockId;

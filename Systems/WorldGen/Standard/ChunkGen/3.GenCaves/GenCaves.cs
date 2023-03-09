@@ -519,8 +519,6 @@ namespace Vintagestory.ServerMods
             double vRadiusSq = vertRadius * vertRadius;
             double distortStrength = GameMath.Clamp(vertRadius / 4.0, 0, 0.1);
 
-            int waterID = GlobalConfig.waterBlockId;
-
             for (int lx = mindx; lx <= maxdx; lx++)
             {
                 xdistRel = (lx - centerX) * (lx - centerX) / hRadiusSq;
@@ -541,8 +539,8 @@ namespace Vintagestory.ServerMods
                         if (xdistRel + ydistRel + zdistRel > 1.0 || y > worldheight - 1) continue;
 
                         int ly = y % chunksize;
-                        int blockId = chunks[y / chunksize].Data.GetFluid((ly * chunksize + lz) * chunksize + lx);
-                        if (blockId == waterID)
+                        var block = api.World.Blocks[chunks[y / chunksize].Data.GetFluid((ly * chunksize + lz) * chunksize + lx)];
+                        if (block.LiquidCode != null)
                         {
                             return false;
                         }

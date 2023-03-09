@@ -273,7 +273,7 @@ namespace Vintagestory.ServerMods
 
                 pos.Y--;
 
-                if (blockId == GlobalConfig.waterBlockId || blockId == boilingWaterBlockId)
+                if (blockId == GlobalConfig.waterBlockId || blockId == boilingWaterBlockId || blockId == GlobalConfig.saltWaterBlockId)
                 {
                     underWater = true;   
                     continue;

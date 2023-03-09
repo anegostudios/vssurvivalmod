@@ -486,7 +486,7 @@ namespace Vintagestory.GameContent
 
         protected void LoadPages_Async()
         {
-            allHandbookPages = createPageHandlerAsync();
+            allHandbookPages.AddRange(createPageHandlerAsync());
             for (int i = 0; i < allHandbookPages.Count; i++)
             {
                 var page = allHandbookPages[i];

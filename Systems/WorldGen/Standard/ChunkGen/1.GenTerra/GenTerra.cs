@@ -27,8 +27,6 @@ namespace Vintagestory.ServerMods
         float noiseScale;
         int terrainGenOctaves = 9;
 
-        float oceanicityStrengthInv;
-
         NormalizedSimplexNoise terrainNoise;
         SimplexNoise distort2dx;
         SimplexNoise distort2dz;
@@ -36,18 +34,6 @@ namespace Vintagestory.ServerMods
 
         double[] lerpedAmps;
         double[] lerpedTh;
-
-        // Used only by GridTrilerp mode
-        const int lerpHor = TerraGenConfig.lerpHorizontal;
-        const int lerpVer = TerraGenConfig.lerpVertical;
-        const float lerpDeltaHor = 1f / lerpHor;
-        const float lerpDeltaVert = 1f / lerpVer;
-        int noiseWidth;
-        int noiseHeight;
-        int paddedNoiseWidth;
-        int paddedNoiseHeight;
-        double[] noiseTemp;
-        float[] distY;
 
 
         public override bool ShouldLoad(EnumAppSide side)
@@ -67,20 +53,6 @@ namespace Vintagestory.ServerMods
             api.Event.ServerRunPhase(EnumServerRunPhase.ModsAndConfigReady, loadGamePre);
             api.Event.InitWorldGenerator(initWorldGen, "standard");
             api.Event.ChunkColumnGeneration(OnChunkColumnGen, EnumWorldGenPass.Terrain, "standard");
-
-            api.Event.SaveGameLoaded += Event_SaveGameLoaded;
-        }
-
-        private void Event_SaveGameLoaded()
-        {
-            ITreeAttribute worldConfig = api.WorldManager.SaveGame.WorldConfiguration;
-            float str = worldConfig.GetString("oceanessStrength", "0").ToFloat(0);
-
-            // oceanicityStrengthInv = 0       => everywhere ocean
-            // oceanicityStrengthInv = 0.65    => common oceans
-            // oceanicityStrengthInv = 0.85    => rare
-            // oceanicityStrengthInv = 1       => no oceans
-            oceanicityStrengthInv = GameMath.Clamp(1 - str, 0, 1);
         }
 
         private void loadGamePre()
@@ -188,8 +160,9 @@ namespace Vintagestory.ServerMods
                 upheavalMapBotRight = upheavalMap.GetUnpaddedInt((int)(rlX * ufac + ufac), (int)(rlZ * ufac + ufac));
             }
 
-            int waterID = GlobalConfig.waterBlockId;
+            
             int rockID = GlobalConfig.defaultRockId;
+            float oceanicityFac = api.WorldManager.MapSizeY / 256 * 0.33333f; // At a mapheight of 255, submerge land by up to 85 blocks
 
             IntDataMap2D landformMap = mapchunk.MapRegion.LandformMap;
             // # of pixels for each chunk (probably 1, 2, or 4) in the land form map
@@ -247,8 +220,10 @@ namespace Vintagestory.ServerMods
 
                     // Get Y distortion from oceanicity and upheaval
                     float upHeavalStrength = GameMath.BiLerp(upheavalMapUpLeft, upheavalMapUpRight, upheavalMapBotLeft, upheavalMapBotRight, lX * chunkBlockDelta, lZ * chunkBlockDelta);
-                    float oceanicity = GameMath.BiLerp(oceanUpLeft, oceanUpRight, oceanBotLeft, oceanBotRight, lX * chunkBlockDelta, lZ * chunkBlockDelta) / 2f;
+                    float oceanicity = GameMath.BiLerp(oceanUpLeft, oceanUpRight, oceanBotLeft, oceanBotRight, lX * chunkBlockDelta, lZ * chunkBlockDelta) * oceanicityFac;
                     float distY = oceanicity + ComputeOceanAndUpheavalDistY(upHeavalStrength, worldX, worldZ, distGeo);
+
+                    int waterID = oceanicity > 1 ? GlobalConfig.saltWaterBlockId : GlobalConfig.waterBlockId;
 
                     /*if (Math.Abs(distY) > 10)
                     {
@@ -319,7 +294,7 @@ namespace Vintagestory.ServerMods
                                 int temp = (GameMath.BiLerpRgbColor(lX * chunkBlockDelta, lZ * chunkBlockDelta, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight) >> 16) & 0xFF;
                                 float distort = (float)distort2dx.Noise(worldX, worldZ) / 20f;
                                 float tempf = TerraGenConfig.GetScaledAdjustedTemperatureFloat(temp, 0) + distort;
-                                blockId = (tempf < TerraGenConfig.WaterFreezingTempOnGen) ? GlobalConfig.lakeIceBlockId : waterID;
+                                blockId = (tempf < TerraGenConfig.WaterFreezingTempOnGen && waterID != GlobalConfig.saltWaterBlockId) ? GlobalConfig.lakeIceBlockId : waterID;
                             }
                             else
                             {

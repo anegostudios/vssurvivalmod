@@ -17,7 +17,8 @@ namespace Vintagestory.GameContent
         Unknown = 0,
         TooHot = 1,
         TooCold = 2,
-        Eaten = 3
+        Eaten = 3,
+        Salt = 4
     }
 
     public class BlockEntityDeadCrop : BlockEntityContainer

@@ -218,6 +218,8 @@
     <Compile Include="Systems\TiledDungeon\TiledDungeonGenerator.cs" />
     <Compile Include="Systems\TiledDungeon\TiledDungeon.cs" />
     <Compile Include="Systems\TiledDungeon\TiledDungeonConfig.cs" />
+    <Compile Include="Systems\WorldGen\Standard\ChunkGen\0.GenMaps\MapLayer\MapLayerOceans.cs" />
+    <Compile Include="Systems\WorldGen\Standard\ChunkGen\0.GenMaps\NoiseOcean.cs" />
     <Compile Include="Systems\WorldGen\Standard\ChunkGen\6.GenStructures\GenDungeons.cs" />
     <Compile Include="Systems\WorldGen\Standard\ChunkGen\7.GenPonds\GenHotSprings.cs" />
     <Compile Include="Systems\WorldGen\Standard\Datastructures\BlockSchematicPartial.cs" />

@@ -3,6 +3,7 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.ServerMods
 {
+
     public class MapLayerPerlinUpheavel : MapLayerBase
     {
         NormalizedSimplexNoise superLowResNoiseGen;
@@ -10,7 +11,6 @@ namespace Vintagestory.ServerMods
         float multiplier;
         int offset;
         public float noiseOffset;
-
         public MapLayerPerlinUpheavel(long seed, float noiseOffset, float scale, float multiplier = 255, int offset = 0) : base(seed)
         {
             superLowResNoiseGen = new NormalizedSimplexNoise(new double[] { 1, 0.5, 0.25, 0.15 }, new double[] { 0.5 / scale, 1 / scale, 2 / scale, 4 / scale }, seed + 1685);
