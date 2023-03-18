@@ -49,8 +49,12 @@ namespace Vintagestory.ServerMods
 
 
 
-        private void OnChunkColumnGen(IServerChunk[] chunks, int chunkX, int chunkZ, ITreeAttribute chunkGenParams = null)
+        private void OnChunkColumnGen(IChunkColumnGenerateRequest request)
         {
+            var chunks = request.Chunks;
+            int chunkX = request.ChunkX;
+            int chunkZ = request.ChunkZ;
+
             blockAccessor.BeginColumn();
             int seaLevel = TerraGenConfig.seaLevel - 1;
             int chunksize = this.chunksize;

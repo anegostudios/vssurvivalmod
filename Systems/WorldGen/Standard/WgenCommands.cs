@@ -1,6 +1,8 @@
-﻿using System;
+﻿using Cairo;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.IO;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
@@ -133,6 +135,10 @@ namespace Vintagestory.ServerMods
                     TestTree(player, args);
                     break;
 
+                case "treemap":
+                    PrintTreeCoverageMap(player, args);
+                    break;
+
                 case "treelineup":
                     TreeLineup(player, args);
                     break;
@@ -209,6 +215,119 @@ namespace Vintagestory.ServerMods
                     break;
             }
 
+        }
+
+        private void PrintTreeCoverageMap(IServerPlayer player, CmdArgs args)
+        {
+            var asset = api.Assets.TryGet(new AssetLocation("textures/environment/planttint.png"));
+            Bitmap bmpt;
+            using (MemoryStream ms = new MemoryStream(asset.Data, 0, asset.Data.Length))
+            {
+                bmpt = new Bitmap(ms);
+            }
+            int chs = 3;
+            byte[] tintPixels = new byte[bmpt.Width * bmpt.Height * chs];
+            bmpt.SetPixels(tintPixels, chs);
+
+            byte[] pixels = new byte[256 * 512 * chs];
+            int w = 256;
+            int tw = 264;
+            for (int x = 0; x < 256; x++)
+            {
+                for (int y = 0; y < 256; y++)
+                {
+                    pixels[(y * w + x) * chs + 0] = 255;// tintPixels[((y + 4) * tw + x + y) * chs];
+                    pixels[(y * w + x) * chs + 1] = 255;// tintPixels[((y + 4) * tw + x + y) * chs + 1];
+                    pixels[(y * w + x) * chs + 2] = 255;// tintPixels[((y + 4) * tw + x + y) * chs + 2];
+                }
+            }
+
+
+            var treeSupplier = new WgenTreeSupplier(api);
+            treeSupplier.LoadTrees();
+            TreeVariant[] gens = treeSupplier.treeGenProps.TreeGens;
+
+            Random rnd = new Random(123);
+
+            int[] colors = new int[gens.Length];
+            for (int i = 0; i < colors.Length;i++)
+            {
+                colors[i] = rnd.Next() | (128 << 24);
+            }
+
+            /*for (int x = 0; x < size; x++) 
+            {
+                for (int y = 0; y < size; y++)
+                {
+                    int color = 0;
+                    int rain = y;
+                    int unscaledTemp = x;
+                    int temp = TerraGenConfig.GetScaledAdjustedTemperature(unscaledTemp, 0);
+                    float heightRel = 0;
+                    int fertility = TerraGenConfig.GetFertility(rain, temp, heightRel);
+
+                    float fertDist, rainDist, tempDist, forestDist, heightDist;
+
+                    for (int i = 0; i < gens.Length; i++)
+                    {
+                        TreeVariant variant = gens[i];
+
+                        fertDist = Math.Abs(fertility - variant.FertMid) / variant.FertRange;
+                        rainDist = Math.Abs(rain - variant.RainMid) / variant.RainRange;
+                        tempDist = Math.Abs(temp - variant.TempMid) / variant.TempRange;
+                        forestDist = 0;
+                        heightDist = 0;
+
+
+                        double distSq =
+                            Math.Max(0, 1.2f * fertDist * fertDist - 1) +
+                            Math.Max(0, 1.2f * rainDist * rainDist - 1) +
+                            Math.Max(0, 1.2f * tempDist * tempDist - 1) +
+                            Math.Max(0, 1.2f * forestDist * forestDist - 1) +
+                            Math.Max(0, 1.2f * heightDist * heightDist - 1)
+                        ;
+
+                        if (distSq < 1)
+                        {
+                            int overColor = colors[i];
+                            color = ColorUtil.ColorOver(color, overColor);
+                        }
+                    }
+
+                    int col = ColorUtil.ColorOver(
+                        pixels[(y * 512 + x) * 4 + 0] | (pixels[(y * 512 + x) * 4 + 1] << 8) | (pixels[(y * 512 + x) * 4 + 2] << 16) | (pixels[(y * 512 + x) * 4 + 3] << 24),
+                        color
+                    );
+                    
+                    pixels[(y * 512 + x) * 4 + 0] = (byte)(col & 0xff);
+                    pixels[(y * 512 + x) * 4 + 1] = (byte)(((col >> 8) & 0xff) << 8);
+                    pixels[(y * 512 + x) * 4 + 2] = (byte)(((col >> 16) & 0xff) << 16);
+                }
+            }*/
+
+            ImageSurface surface = (ImageSurface)ImageSurface.CreateForImage(pixels, Format.Rgb24, 256, 512);
+            Context ctx = new Context(surface);
+
+            //ctx.MoveTo((int)0, 300);
+            //ctx.ShowText("test");
+
+            surface.WriteToPng("treecoveragemap.png");
+
+            ctx.Dispose();
+            surface.Dispose();
+            player.SendMessage(groupId, "treecoveragemap.png created.", EnumChatType.CommandSuccess);
+        }
+
+        public static unsafe void IntToByte(int[] ints, byte[] output)
+        {
+            fixed (byte* pByte = output)
+            {
+                int* pInt = (int*)pByte;
+                for (int i = 0; i < ints.Length; i++)
+                {
+                    pInt[i] = ints[i];
+                }
+            }
         }
 
         private void DelChunks(IServerPlayer player, CmdArgs arguments)
@@ -542,7 +661,7 @@ namespace Vintagestory.ServerMods
                     max = Math.Max((float)value, max);
 
                     int light = (int)(value * 255);
-                    bmp.SetPixel(x, y, Color.FromArgb(255, light, light, light));
+                    bmp.SetPixel(x, y, System.Drawing.Color.FromArgb(255, light, light, light));
                 }
             }
 
@@ -1371,7 +1490,7 @@ namespace Vintagestory.ServerMods
                         for (int z = 0; z < chunkSize; z++)
                         {
                             byte color = mapchunk.CaveHeightDistort[z * chunkSize + x];
-                            bmp.SetPixel(x, z, Color.FromArgb((color >> 16) & 0xff, (color >> 8) & 0xff, color & 0xff));
+                            bmp.SetPixel(x, z, System.Drawing.Color.FromArgb((color >> 16) & 0xff, (color >> 8) & 0xff, color & 0xff));
                         }
                     }
 

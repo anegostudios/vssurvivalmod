@@ -218,11 +218,14 @@ namespace Vintagestory.GameContent
 
 
 
-        private void onChunkColumnGen(IServerChunk[] chunks, int chunkX, int chunkZ, ITreeAttribute chunkGenParams)
+        private void onChunkColumnGen(IChunkColumnGenerateRequest request)
         {
             if (!genStoryStructures) return;
             if (structureLocations == null) return;
 
+            var chunks = request.Chunks;
+            int chunkX = request.ChunkX;
+            int chunkZ = request.ChunkZ;
             tmpCuboid.Set(chunkX * chunksize, 0, chunkZ * chunksize, chunkX * chunksize + chunksize, chunks.Length * chunksize, chunkZ * chunksize + chunksize);
 
             for (int i = 0; i < structureLocations.Length; i++)

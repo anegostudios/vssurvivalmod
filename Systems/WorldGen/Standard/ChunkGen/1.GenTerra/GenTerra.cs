@@ -1,6 +1,10 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Runtime.CompilerServices;
+using System.Threading;
+using System.Threading.Tasks;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
@@ -27,14 +31,32 @@ namespace Vintagestory.ServerMods
         float noiseScale;
         int terrainGenOctaves = 9;
 
-        NormalizedSimplexNoise terrainNoise;
+        NewNormalizedSimplexFractalNoise terrainNoise;
         SimplexNoise distort2dx;
         SimplexNoise distort2dz;
         NormalizedSimplexNoise geoUpheavalNoise;
+        WeightedTaper[] taperMap;
 
-        double[] lerpedAmps;
-        double[] lerpedTh;
+        struct ThreadLocalTempData
+        {
+            public double[] LerpedAmplitudes;
+            public double[] LerpedThresholds;
+        }
+        ThreadLocal<ThreadLocalTempData> tempDataThreadLocal;
 
+        struct WeightedTaper
+        {
+            public float TerrainYPos;
+            public float Weight;
+        }
+
+        struct ColumnResult
+        {
+            public BitArray ColumnBlockSolidities;
+            public int WaterBlockID;
+        }
+        ColumnResult[] columnResults;
+        int[] borderIndicesByCardinal;
 
         public override bool ShouldLoad(EnumAppSide side)
         {
@@ -73,12 +95,8 @@ namespace Vintagestory.ServerMods
             noiseScale = Math.Max(1, api.WorldManager.MapSizeY / 256f);
             terrainGenOctaves = TerraGenConfig.GetTerrainOctaveCount(api.WorldManager.MapSizeY);
 
-            lerpedAmps = new double[terrainGenOctaves];
-            lerpedTh = new double[terrainGenOctaves];
-
-
-            terrainNoise = NormalizedSimplexNoise.FromDefaultOctaves(
-                terrainGenOctaves, 0.0005 / noiseScale, 0.9, api.WorldManager.Seed
+            terrainNoise = NewNormalizedSimplexFractalNoise.FromDefaultOctaves(
+                terrainGenOctaves, 0.0005 * NewSimplexNoiseLayer.OldToNewFrequency / noiseScale, 0.9, api.WorldManager.Seed
             );
             distort2dx = new SimplexNoise(
                 new double[] { 55, 40, 30, 10 },
@@ -102,6 +120,21 @@ namespace Vintagestory.ServerMods
                 }, noiseScale),
                 api.World.Seed + 9876 + 1
             );
+
+            tempDataThreadLocal = new ThreadLocal<ThreadLocalTempData>(() => new ThreadLocalTempData
+            {
+                LerpedAmplitudes = new double[terrainGenOctaves],
+                LerpedThresholds = new double[terrainGenOctaves]
+            });
+            columnResults = new ColumnResult[chunksize * chunksize];
+            taperMap = new WeightedTaper[chunksize * chunksize];
+            for (int i = 0; i < chunksize * chunksize; i++) columnResults[i].ColumnBlockSolidities = new BitArray(api.WorldManager.MapSizeY);
+
+            borderIndicesByCardinal = new int[8];
+            borderIndicesByCardinal[Cardinal.NorthEast.Index] = (chunksize - 1) * chunksize + 0;
+            borderIndicesByCardinal[Cardinal.SouthEast.Index] = 0 + 0;
+            borderIndicesByCardinal[Cardinal.SouthWest.Index] = 0 + chunksize - 1;
+            borderIndicesByCardinal[Cardinal.NorthWest.Index] = (chunksize - 1) * chunksize + chunksize - 1;
         }
 
         private double[] scaleAdjustedFreqs(double[] vs, float horizontalScale)
@@ -115,7 +148,121 @@ namespace Vintagestory.ServerMods
         }
 
 
-        private void OnChunkColumnGen(IServerChunk[] chunks, int chunkX, int chunkZ, ITreeAttribute chunkGenParams = null)
+       
+
+        private void OnChunkColumnGen(IChunkColumnGenerateRequest request)
+        {   
+            if (request.RequiresChunkBorderSmoothing)
+            {
+                var neibHeightMaps = request.NeighbourTerrainHeight;
+
+                // Ignore diagonals if direct adjacent faces are available, otherwise the corners get weighted too strongly
+                if (neibHeightMaps[Cardinal.North.Index] != null)
+                {
+                    neibHeightMaps[Cardinal.NorthEast.Index] = null;
+                    neibHeightMaps[Cardinal.NorthWest.Index] = null;
+                }
+                if (neibHeightMaps[Cardinal.East.Index] != null)
+                {
+                    neibHeightMaps[Cardinal.NorthEast.Index] = null;
+                    neibHeightMaps[Cardinal.SouthEast.Index] = null;
+                }
+                if (neibHeightMaps[Cardinal.South.Index] != null)
+                {
+                    neibHeightMaps[Cardinal.SouthWest.Index] = null;
+                    neibHeightMaps[Cardinal.SouthEast.Index] = null;
+                }
+                if (neibHeightMaps[Cardinal.West.Index] != null)
+                {
+                    neibHeightMaps[Cardinal.SouthWest.Index] = null;
+                    neibHeightMaps[Cardinal.NorthWest.Index] = null;
+                }
+
+                //Bitmap bmp = new Bitmap(32, 32);
+
+                string sides = "";
+                for (int i = 0; i < Cardinal.ALL.Length; i++)
+                {
+                    var neibMap = neibHeightMaps[i];
+                    if (neibMap == null) continue;
+
+                    sides += Cardinal.ALL[i].Code + "_";
+                }
+
+                for (int dx = 0; dx < chunksize; dx++)
+                {
+                    borderIndicesByCardinal[Cardinal.North.Index] = (chunksize - 1) * chunksize + dx;
+                    borderIndicesByCardinal[Cardinal.South.Index] = 0 + dx;
+
+                    for (int dz = 0; dz < chunksize; dz++)
+                    {
+                        double sumWeight = 0;
+                        double ypos = 0;
+                        float maxWeight = 0;
+
+                        borderIndicesByCardinal[Cardinal.East.Index] = dz * chunksize + 0;
+                        borderIndicesByCardinal[Cardinal.West.Index] = dz * chunksize + chunksize - 1;
+
+                        for (int i = 0; i < Cardinal.ALL.Length; i++)
+                        {
+                            var neibMap = neibHeightMaps[i];
+                            if (neibMap == null) continue;
+
+                            float distToEdge=0;
+
+                            switch (i)
+                            {
+                                case 0: // N: Negative Z
+                                    distToEdge = (float)dz / chunksize;
+                                    break;
+                                case 1: // NE: Positive X, negative Z
+                                    distToEdge = (1 - (float)dx / chunksize) + (float)dz / chunksize;
+                                    break;
+                                case 2: // E: Positive X
+                                    distToEdge = 1 - (float)dx / chunksize;
+                                    break;
+                                case 3: // SE: Positive X, positive Z
+                                    distToEdge = (1 - (float)dx / chunksize) + (1 - (float)dz / chunksize);
+                                    break;
+                                case 4: // S: Positive Z
+                                    distToEdge = 1 - (float)dz / chunksize;
+                                    break;
+                                case 5: // SW: Negative X, positive Z
+                                    distToEdge = (float)dx / chunksize + 1 - (float)dz / chunksize;
+                                    break;
+                                case 6: // W: Negative X
+                                    distToEdge = (float)dx / chunksize;
+                                    break;
+                                case 7: // Negative X, negative Z
+                                    distToEdge = (float)dx / chunksize + (float)dz / chunksize;
+                                    break;
+                            }
+
+                            
+                            float cardinalWeight = (float)Math.Pow((float)(1 - GameMath.Clamp(distToEdge, 0, 1)), 2);
+                            var neibYPos = neibMap[borderIndicesByCardinal[i]] + 0.5f;
+
+                            ypos += neibYPos * Math.Max(0.0001, cardinalWeight);
+                            sumWeight += cardinalWeight;
+                            maxWeight = Math.Max(maxWeight, cardinalWeight);
+                        }
+
+                        taperMap[dz * chunksize + dx] = new WeightedTaper() { TerrainYPos = (float)(ypos / Math.Max(0.0001, sumWeight)), Weight = maxWeight };
+
+                        /// East: Positive X
+                        /// South: Positive Z
+                        //bmp.SetPixel(dx, dz, Color.FromArgb(255, (int)(maxWeight * 255), 0, 0));
+                    }
+                }
+
+                // bmp.Save("chunk-" + request.ChunkX + "-" + request.ChunkZ + "-"+sides+".png");
+            }
+
+
+            generate(request.Chunks, request.ChunkX, request.ChunkZ, request.RequiresChunkBorderSmoothing);
+        }
+
+        private void generate(IServerChunk[] chunks, int chunkX, int chunkZ, bool requiresChunkBorderSmoothing)
         {
             landforms = NoiseLandforms.landforms;
             IMapChunk mapchunk = chunks[0].MapChunk;
@@ -135,7 +282,7 @@ namespace Vintagestory.ServerMods
             IntDataMap2D oceanMap = chunks[0].MapChunk.MapRegion.OceanMap;
             int regionChunkSize = api.WorldManager.RegionSize / chunksize;
             float cfac = (float)climateMap.InnerSize / regionChunkSize;
-            float ofac = (float)oceanMap.InnerSize / regionChunkSize;
+            
             int rlX = chunkX % regionChunkSize;
             int rlZ = chunkZ % regionChunkSize;
 
@@ -144,11 +291,18 @@ namespace Vintagestory.ServerMods
             climateBotLeft = climateMap.GetUnpaddedInt((int)(rlX * cfac), (int)(rlZ * cfac + cfac));
             climateBotRight = climateMap.GetUnpaddedInt((int)(rlX * cfac + cfac), (int)(rlZ * cfac + cfac));
 
-            int oceanUpLeft = oceanMap.GetUnpaddedInt((int)(rlX * ofac), (int)(rlZ * ofac));
-            int oceanUpRight = oceanMap.GetUnpaddedInt((int)(rlX * ofac + ofac), (int)(rlZ * ofac));
-            int oceanBotLeft = oceanMap.GetUnpaddedInt((int)(rlX * ofac), (int)(rlZ * ofac + ofac));
-            int oceanBotRight = oceanMap.GetUnpaddedInt((int)(rlX * ofac + ofac), (int)(rlZ * ofac + ofac));
-
+            int oceanUpLeft=0;
+            int oceanUpRight=0;
+            int oceanBotLeft=0;
+            int oceanBotRight=0;
+            if (oceanMap != null && oceanMap.Data.Length > 0)
+            {
+                float ofac = (float)oceanMap.InnerSize / regionChunkSize;
+                oceanUpLeft = oceanMap.GetUnpaddedInt((int)(rlX * ofac), (int)(rlZ * ofac));
+                oceanUpRight = oceanMap.GetUnpaddedInt((int)(rlX * ofac + ofac), (int)(rlZ * ofac));
+                oceanBotLeft = oceanMap.GetUnpaddedInt((int)(rlX * ofac), (int)(rlZ * ofac + ofac));
+                oceanBotRight = oceanMap.GetUnpaddedInt((int)(rlX * ofac + ofac), (int)(rlZ * ofac + ofac));
+            }
 
             IntDataMap2D upheavalMap = chunks[0].MapChunk.MapRegion.UpheavelMap;
             if (upheavalMap != null)
@@ -160,7 +314,7 @@ namespace Vintagestory.ServerMods
                 upheavalMapBotRight = upheavalMap.GetUnpaddedInt((int)(rlX * ufac + ufac), (int)(rlZ * ufac + ufac));
             }
 
-            
+
             int rockID = GlobalConfig.defaultRockId;
             float oceanicityFac = api.WorldManager.MapSizeY / 256 * 0.33333f; // At a mapheight of 255, submerge land by up to 85 blocks
 
@@ -197,88 +351,121 @@ namespace Vintagestory.ServerMods
             float chunkPixelBlockStep = chunkPixelSize * chunkBlockDelta;
             double verticalNoiseRelativeFrequency = 0.5 / TerraGenConfig.terrainNoiseVerticalScale;
 
-            for (int lZ = 0; lZ < chunksize; lZ++)
-            {
+            Parallel.For(0, chunksize * chunksize, chunkIndex2d => {
+                int lX = chunkIndex2d % chunksize;
+                int lZ = chunkIndex2d / chunksize;
+                int worldX = chunkX * chunksize + lX;
                 int worldZ = chunkZ * chunksize + lZ;
-                for (int lX = 0; lX < chunksize; lX++)
-                {
-                    int worldX = chunkX * chunksize + lX;
+                BitArray columnBlockSolidities = columnResults[chunkIndex2d].ColumnBlockSolidities;
+                double[] lerpedAmps = tempDataThreadLocal.Value.LerpedAmplitudes;
+                double[] lerpedTh = tempDataThreadLocal.Value.LerpedThresholds;
 
-                    WeightedIndex[] columnWeightedIndices = landLerpMap[baseX + lX * chunkPixelBlockStep, baseZ + lZ * chunkPixelBlockStep];
-                    for (int i = 0; i < terrainGenOctaves; i++)
+                WeightedIndex[] columnWeightedIndices = landLerpMap[baseX + lX * chunkPixelBlockStep, baseZ + lZ * chunkPixelBlockStep];
+                for (int i = 0; i < terrainGenOctaves; i++)
+                {
+                    lerpedAmps[i] = GameMath.BiLerp(octNoiseX0[i], octNoiseX1[i], octNoiseX2[i], octNoiseX3[i], lX * chunkBlockDelta, lZ * chunkBlockDelta);
+                    lerpedTh[i] = GameMath.BiLerp(octThX0[i], octThX1[i], octThX2[i], octThX3[i], lX * chunkBlockDelta, lZ * chunkBlockDelta);
+                }
+
+                // Create that directional compression effect.
+                VectorXZ dist = NewDistortionNoise(worldX, worldZ);
+                VectorXZ distTerrain = ApplyIsotropicDistortionThreshold(dist * terrainDistortionMultiplier, terrainDistortionThreshold,
+                    terrainDistortionMultiplier * maxDistortionAmount);
+                VectorXZ distGeo = ApplyIsotropicDistortionThreshold(dist * geoDistortionMultiplier, geoDistortionThreshold,
+                    geoDistortionMultiplier * maxDistortionAmount);
+
+                // Get Y distortion from oceanicity and upheaval
+                float upHeavalStrength = GameMath.BiLerp(upheavalMapUpLeft, upheavalMapUpRight, upheavalMapBotLeft, upheavalMapBotRight, lX * chunkBlockDelta, lZ * chunkBlockDelta);
+                float oceanicity = GameMath.BiLerp(oceanUpLeft, oceanUpRight, oceanBotLeft, oceanBotRight, lX * chunkBlockDelta, lZ * chunkBlockDelta) * oceanicityFac;
+                float distY = oceanicity + ComputeOceanAndUpheavalDistY(upHeavalStrength, worldX, worldZ, distGeo);
+
+                columnResults[chunkIndex2d].WaterBlockID = oceanicity > 1 ? GlobalConfig.saltWaterBlockId : GlobalConfig.waterBlockId;
+
+                /*if (Math.Abs(distY) > 10)
+                {
+                    int chunkIndex = ChunkIndex3d(lX, 250 % 32, lZ);
+                    chunks[250 / 32].Data[chunkIndex] = cblockId;
+                }*/
+
+                // Prepare the noise for the entire column.
+                NewNormalizedSimplexFractalNoise.ColumnNoise columnNoise = terrainNoise.ForColumn(verticalNoiseRelativeFrequency, lerpedAmps, lerpedTh, worldX + distTerrain.X, worldZ + distTerrain.Z);
+
+                WeightedTaper wtaper = taperMap[chunkIndex2d];
+
+                for (int posY = 1; posY < mapsizeY - 1; posY++)
+                {
+                    // Setup a lerp between threshold values, so that distortY can be applied continuously there.
+                    StartSampleDisplacedYThreshold(posY + distY, mapsizeYm2, out int distortedPosYBase, out float distortedPosYSlide);
+
+                    // Value starts as the landform Y threshold.
+                    double threshold = 0;
+                    for (int i = 0; i < columnWeightedIndices.Length; i++)
                     {
-                        lerpedAmps[i] = GameMath.BiLerp(octNoiseX0[i], octNoiseX1[i], octNoiseX2[i], octNoiseX3[i], lX * chunkBlockDelta, lZ * chunkBlockDelta);
-                        lerpedTh[i] = GameMath.BiLerp(octThX0[i], octThX1[i], octThX2[i], octThX3[i], lX * chunkBlockDelta, lZ * chunkBlockDelta);
+                        // Sample the two values to lerp between. The value of distortedPosYBase is clamped in such a way that this always works.
+                        // Underflow and overflow of distortedPosY result in linear extrapolation.
+                        float[] thresholds = landforms.LandFormsByIndex[columnWeightedIndices[i].Index].TerrainYThresholds;
+                        float thresholdValue = ContinueSampleDisplacedYThreshold(distortedPosYBase, distortedPosYSlide, thresholds);
+                        threshold += thresholdValue * columnWeightedIndices[i].Weight;
                     }
 
-                    // Create that directional compression effect.
-                    VectorXZ dist = NewDistortionNoise(worldX, worldZ);
-                    VectorXZ distTerrain = ApplyIsotropicDistortionThreshold(dist * terrainDistortionMultiplier, terrainDistortionThreshold,
-                        terrainDistortionMultiplier * maxDistortionAmount);
-                    VectorXZ distGeo = ApplyIsotropicDistortionThreshold(dist * geoDistortionMultiplier, geoDistortionThreshold,
-                        geoDistortionMultiplier * maxDistortionAmount);
+                    // Geo Upheaval modifier for threshold
+                    double geoUpheavalTaper = ComputeGeoUpheavalTaper(posY, distY, taperThreshold, geoUpheavalAmplitude, mapsizeY);
+                    threshold += geoUpheavalTaper;
 
-                    // Get Y distortion from oceanicity and upheaval
-                    float upHeavalStrength = GameMath.BiLerp(upheavalMapUpLeft, upheavalMapUpRight, upheavalMapBotLeft, upheavalMapBotRight, lX * chunkBlockDelta, lZ * chunkBlockDelta);
-                    float oceanicity = GameMath.BiLerp(oceanUpLeft, oceanUpRight, oceanBotLeft, oceanBotRight, lX * chunkBlockDelta, lZ * chunkBlockDelta) * oceanicityFac;
-                    float distY = oceanicity + ComputeOceanAndUpheavalDistY(upHeavalStrength, worldX, worldZ, distGeo);
-
-                    int waterID = oceanicity > 1 ? GlobalConfig.saltWaterBlockId : GlobalConfig.waterBlockId;
-
-                    /*if (Math.Abs(distY) > 10)
+                    if (requiresChunkBorderSmoothing)
                     {
-                        int chunkIndex = ChunkIndex3d(lX, 250 % 32, lZ);
-                        chunks[250 / 32].Data[chunkIndex] = cblockId;
-                    }*/
+                        double th = posY > wtaper.TerrainYPos ? 1 : -1;
 
-                    // Prepare the noise for the entire column.
-                    NormalizedSimplexNoise.ColumnNoise columnNoise = terrainNoise.ForColumn(verticalNoiseRelativeFrequency, lerpedAmps, lerpedTh, worldX + distTerrain.X, worldZ + distTerrain.Z);
+                        var ydiff = Math.Abs(posY - wtaper.TerrainYPos);
+                        var noise = ydiff > 10 ? 0 : distort2dx.Noise(-(chunkX * chunksize + lX) / 10.0, posY / 10.0, -(chunkZ * chunksize + lZ) / 10.0) / Math.Max(1, ydiff / 2.0);
 
-                    int chunkY = 0;
-                    int lY = 1;
-                    IChunkBlocks chunkBlockData = chunks[chunkY].Data;
-                    chunks[0].Data[ChunkIndex3d(lX, 0, lZ)] = GlobalConfig.mantleBlockId;
-                    for (int posY = 1; posY < mapsizeY - 1; posY++)
+                        noise *= GameMath.Clamp(2*(1 - wtaper.Weight), 0, 1) * 0.1;
+
+                        threshold = GameMath.Lerp(threshold, th + noise, wtaper.Weight);
+                    }
+
+                    // Often we don't need to calculate the noise.
+                    // First case also catches NaN if it were to ever happen.
+                    double noiseSign;
+                    if (!(threshold < columnNoise.BoundMax)) noiseSign = double.NegativeInfinity;
+                    else if (threshold <= columnNoise.BoundMin) noiseSign = double.PositiveInfinity;
+
+                    // But sometimes we do.
+                    else
                     {
-                        // Setup a lerp between threshold values, so that distortY can be applied continuously there.
-                        StartSampleDisplacedYThreshold(posY + distY, mapsizeYm2, out int distortedPosYBase, out float distortedPosYSlide);
+                        noiseSign = -NormalizedSimplexNoise.NoiseValueCurveInverse(threshold);
+                        noiseSign = columnNoise.NoiseSign(posY, noiseSign);
 
-                        // Value starts as the landform Y threshold.
-                        double threshold = 0;
-                        for (int i = 0; i < columnWeightedIndices.Length; i++)
-                        {
-                            // Sample the two values to lerp between. The value of distortedPosYBase is clamped in such a way that this always works.
-                            // Underflow and overflow of distortedPosY result in linear extrapolation.
-                            float[] thresholds = landforms.LandFormsByIndex[columnWeightedIndices[i].Index].TerrainYThresholds;
-                            float thresholdValue = ContinueSampleDisplacedYThreshold(distortedPosYBase, distortedPosYSlide, thresholds);
-                            threshold += thresholdValue * columnWeightedIndices[i].Weight;
-                        }
+                        // If it ever comes up to change the noise formula to one that's less trivial to layer-skip-optimize,
+                        // Replace the above-two lines with the one below.
+                        //noiseSign = columnNoise.Noise(posY) - threshold;
+                    }
 
-                        // Geo Upheaval modifier for threshold
-                        double geoUpheavalTaper = ComputeGeoUpheavalTaper(posY, distY, taperThreshold, geoUpheavalAmplitude, mapsizeY);
-                        threshold += geoUpheavalTaper;
+                    columnBlockSolidities[posY] = (noiseSign > 0);
+                }
+            });
 
-                        // Often we don't need to calculate the noise.
-                        // First case also catches NaN if it were to ever happen.
-                        double noiseSign;
-                        if (!(threshold < columnNoise.BoundMax)) noiseSign = double.NegativeInfinity;
-                        else if (threshold <= columnNoise.BoundMin) noiseSign = double.PositiveInfinity;
-
-                        // But sometimes we do.
-                        else
-                        {
-                            noiseSign = -NormalizedSimplexNoise.NoiseValueCurveInverse(threshold);
-                            noiseSign = columnNoise.NoiseSign(posY, noiseSign);
-
-                            // If it ever comes up to change the noise formula to one that's less trivial to layer-skip-optimize,
-                            // Replace the above-two lines with the one below.
-                            //noiseSign = columnNoise.Noise(posY) - threshold;
-                        }
+            int chunkY = 0;
+            int lY = 1;
+            IChunkBlocks chunkBlockData = chunks[chunkY].Data;
+            chunkBlockData.SetBlockBulk(0, chunksize, chunksize, GlobalConfig.mantleBlockId);
+            for (int posY = 1; posY < mapsizeY - 1; posY++)
+            {
+                for (int lZ = 0; lZ < chunksize; lZ++)
+                {
+                    int worldZ = chunkZ * chunksize + lZ;
+                    for (int lX = 0; lX < chunksize; lX++)
+                    {
+                        int worldX = chunkX * chunksize + lX;
 
                         int mapIndex = ChunkIndex2d(lX, lZ);
                         int chunkIndex = ChunkIndex3d(lX, lY, lZ);
 
-                        if (noiseSign > 0)
+                        ColumnResult columnResult = columnResults[mapIndex];
+                        bool isSolid = columnResult.ColumnBlockSolidities[posY];
+                        int waterID = columnResult.WaterBlockID;
+
+                        if (isSolid)
                         {
                             terrainheightmap[mapIndex] = (ushort)posY;
                             rainheightmap[mapIndex] = (ushort)posY;
@@ -303,15 +490,15 @@ namespace Vintagestory.ServerMods
 
                             chunkBlockData.SetFluid(chunkIndex, blockId);
                         }
-
-                        lY++;
-                        if (lY == chunksize)
-                        {
-                            lY = 0;
-                            chunkY++;
-                            chunkBlockData = chunks[chunkY].Data;
-                        }
                     }
+                }
+
+                lY++;
+                if (lY == chunksize)
+                {
+                    lY = 0;
+                    chunkY++;
+                    chunkBlockData = chunks[chunkY].Data;
                 }
             }
 
@@ -320,6 +507,7 @@ namespace Vintagestory.ServerMods
             {
                 ymax = Math.Max(ymax, rainheightmap[i]);
             }
+
             chunks[0].MapChunk.YMax = ymax;
         }
 
@@ -392,7 +580,7 @@ namespace Vintagestory.ServerMods
             {
                 double upheavalAmount = GameMath.Clamp(-distY, posY - mapSizeY, posY);
                 double ceilingDelta = posY - taperThreshold;
-                return (ceilingDelta * upheavalAmount) / (AMPLITUDE_MODIFIER * geoUpheavalAmplitude);
+                return ceilingDelta * upheavalAmount / (AMPLITUDE_MODIFIER * geoUpheavalAmplitude);
             }
             return 0;
         }
@@ -434,8 +622,6 @@ namespace Vintagestory.ServerMods
             }
             return dist;
         }
-
-
 
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

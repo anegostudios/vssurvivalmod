@@ -56,7 +56,10 @@ namespace Vintagestory.GameContent
                 SpawnOnlyAfterImport = byItemStack?.Attributes?.GetBool("spawnOnlyAfterImport", false) ?? false,
                 InitialSpawnQuantity = 4 + Api.World.Rand.Next(7),
                 MinPlayerRange = 36,
-                SpawnRangeMode = EnumSpawnRangeMode.WhenInRange
+                SpawnRangeMode = EnumSpawnRangeMode.WhenInRange,
+                RechargePerHour = 0.1f,
+                InternalCapacity = 10,
+                InternalCharge = 10
             };
         }
 
@@ -93,6 +96,8 @@ namespace Vintagestory.GameContent
                         Y2 = type.CollisionBoxSize.Y
                     }.OmniNotDownGrowBy(0.1f);
 
+                    bool spawned = false;
+
                     Vec3d spawnPos = new Vec3d();
                     for (int tries = 0; tries < 15; tries++)
                     {
@@ -107,11 +112,12 @@ namespace Vintagestory.GameContent
                             if (herdId == 0) herdId = GetNextHerdId();
 
                             DoSpawn(type, spawnPos, herdId);
+                            spawned = true;
                             break;
                         }
                     }
 
-                    insideLocustCount--;
+                    if (spawned) insideLocustCount--;
                 }
             }
         }

@@ -61,7 +61,7 @@ namespace Vintagestory.GameContent
                     (stack) => stack.Collectible.Tool == EnumTool.Knife, 1
                 ),
                 TutorialStepBase.Collect(capi,
-                    "getcattails", "Welcome to the stone age! With your knife in hands, hold <icon>leftmousebutton</icon> to harvest {0} <itemstack type=\"item\">papyrusroot|cattailtops</itemstack> from <itemstack type=\"block\">tallplant-coopersreed-land-normal-free|tallplant-papyrus-land-normal-free</itemstack> cattails or papyrus",                    (stack) => stack.Collectible.Code.Path == "papyrustops" || stack.Collectible.Code.Path == "cattailtops", 10
+                    "getcattails", "Welcome to the stone age! With your knife in hands, hold <icon>leftmousebutton</icon> to harvest {0} <itemstack type=\"item\">papyrusroot|cattailtops</itemstack> from <itemstack type=\"block\">tallplant-coopersreed-land-normal-free|tallplant-papyrus-land-normal-free</itemstack> cattails or papyrus", (stack) => stack.Collectible.Code.Path == "papyrustops" || stack.Collectible.Code.Path == "cattailtops", 10
                 ),
                 TutorialStepBase.Craft(capi,
                     "craftbasket", "Storage time! Using 10 reeds or papyrus, craft a <itemstack type=\"item\">basket</itemstack> <a href=\"handbook://block-basket\">basket</a> in your inventory (<hk>inventorydialog</hk>). Ultimately you'd want to have 4 of them.",
@@ -108,7 +108,7 @@ namespace Vintagestory.GameContent
                         return befirepit.IsBurning;
                     }
                 ),
-                TutorialStepBase.Collect(capi, "finished", "You have discovered fire! \\o/<br>Use it to create torches and to boil meat, cattail roots or to make meals. This tutorial is now complete.", (stack) => false, 1)
+                TutorialStepBase.Collect(capi, "finished", "You have discovered fire! \\o/<br>Use it to create torches and to boil meat, cattail roots or to make meals. Craft a <itemstack type=\"block\">torch-basic-extinct-up</itemstack> torch next.", (stack) => false, 1)
             );
         }
 

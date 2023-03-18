@@ -67,95 +67,95 @@ namespace Vintagestory.GameContent
 
         void buildSnowCuboids(bool[,,] Voxels)
         {
-            SnowCuboids.Clear();
-            GroundSnowCuboids.Clear();
+            List<uint> snowCuboids = new List<uint>();
+            List<uint> groundSnowCuboids = new List<uint>();
 
             var aboveBe = Api?.World.BlockAccessor.GetBlockEntity(Pos.UpCopy()) as BlockEntityMicroBlock;
-            aboveCuboids = null;
+            CuboidWithMaterial[] newAboveCuboids = null;
 
-            //if (SnowLevel > 0) - always generate this
+           
+            bool[,] snowVoxelVisited = new bool[16, 16];
+
+            for (int dy = 15; dy >= 0; dy--)
             {
-                bool[,] snowVoxelVisited = new bool[16, 16];
-
-                for (int dy = 15; dy >= 0; dy--)
+                for (int dx = 0; dx < 16; dx++)
                 {
-                    //if (dy != 0) continue;
-
-                    for (int dx = 0; dx < 16; dx++)
+                    for (int dz = 0; dz < 16; dz++)
                     {
-                        for (int dz = 0; dz < 16; dz++)
+                        if (snowVoxelVisited[dx, dz]) continue;
+                        bool ground = dy == 0 && !Voxels[dx, dy, dz];
+                        bool search = ground || Voxels[dx, dy, dz];
+
+                        if (!search) continue;
+
+                        if (dy == 15)
                         {
-                            if (snowVoxelVisited[dx, dz]) continue;
-                            bool ground = dy == 0 && !Voxels[dx, dy, dz];
-                            bool search = ground || Voxels[dx, dy, dz];
-
-                            if (!search) continue;
-
-                            if (dy == 15)
+                            if (aboveBe != null)
                             {
-                                if (aboveBe != null)
+                                if (newAboveCuboids == null)
                                 {
-                                    if (aboveCuboids == null)
+                                    newAboveCuboids = new CuboidWithMaterial[aboveBe.VoxelCuboids.Count];
+                                    for (int i = 0; i < newAboveCuboids.Length; i++)
                                     {
-                                        aboveCuboids = new CuboidWithMaterial[aboveBe.VoxelCuboids.Count];
-                                        for (int i = 0; i < aboveCuboids.Length; i++)
-                                        {
-                                            BlockEntityMicroBlock.FromUint(aboveBe.VoxelCuboids[i], aboveCuboids[i] = new CuboidWithMaterial());
-                                        }
-                                    }
-
-                                    for (int i = 0; i < aboveCuboids.Length; i++)
-                                    {
-                                        if (aboveCuboids[i].Contains(dx, dy, dz)) continue;
+                                        BlockEntityMicroBlock.FromUint(aboveBe.VoxelCuboids[i], newAboveCuboids[i] = new CuboidWithMaterial());
                                     }
                                 }
 
-                            }
-
-                            CuboidWithMaterial cub = new CuboidWithMaterial()
-                            {
-                                Material = 0,
-                                X1 = dx,
-                                Y1 = dy,
-                                Z1 = dz,
-                                X2 = dx + 0,
-                                Y2 = dy + 1,
-                                Z2 = dz + 0
-                            };
-
-                            // Try grow this cuboid for as long as we can
-                            bool didGrowAny = true;
-                            while (didGrowAny)
-                            {
-                                didGrowAny = false;
-                                didGrowAny |= TrySnowableSurfaceGrowX(cub, Voxels, snowVoxelVisited, ground);
-                                didGrowAny |= TrySnowableSurfaceGrowZ(cub, Voxels, snowVoxelVisited, ground);
-                            }
-
-                            if (cub.SizeX == 0 || cub.SizeZ == 0) continue;
-
-                            for (int z = cub.Z1; z < cub.Z2; z++)
-                            {
-                                for (int x = cub.X1; x < cub.X2; x++)
+                                for (int i = 0; i < newAboveCuboids.Length; i++)
                                 {
-                                    snowVoxelVisited[x, z] = true;
+                                    if (newAboveCuboids[i].Contains(dx, dy, dz)) continue;
                                 }
                             }
 
-                            if (ground)
-                            {
-                                GroundSnowCuboids.Add(BlockEntityMicroBlock.ToUint(cub));
-                            }
-                            else
-                            {
-                                SnowCuboids.Add(BlockEntityMicroBlock.ToUint(cub));
-                            }
-
-                            break;
                         }
+
+                        CuboidWithMaterial cub = new CuboidWithMaterial()
+                        {
+                            Material = 0,
+                            X1 = dx,
+                            Y1 = dy,
+                            Z1 = dz,
+                            X2 = dx + 0,
+                            Y2 = dy + 1,
+                            Z2 = dz + 0
+                        };
+
+                        // Try grow this cuboid for as long as we can
+                        bool didGrowAny = true;
+                        while (didGrowAny)
+                        {
+                            didGrowAny = false;
+                            didGrowAny |= TrySnowableSurfaceGrowX(cub, Voxels, snowVoxelVisited, ground);
+                            didGrowAny |= TrySnowableSurfaceGrowZ(cub, Voxels, snowVoxelVisited, ground);
+                        }
+
+                        if (cub.SizeX == 0 || cub.SizeZ == 0) continue;
+
+                        for (int z = cub.Z1; z < cub.Z2; z++)
+                        {
+                            for (int x = cub.X1; x < cub.X2; x++)
+                            {
+                                snowVoxelVisited[x, z] = true;
+                            }
+                        }
+
+                        if (ground)
+                        {
+                            groundSnowCuboids.Add(BlockEntityMicroBlock.ToUint(cub));
+                        }
+                        else
+                        {
+                            snowCuboids.Add(BlockEntityMicroBlock.ToUint(cub));
+                        }
+
+                        break;
                     }
                 }
             }
+
+            this.aboveCuboids = newAboveCuboids;
+            this.GroundSnowCuboids = groundSnowCuboids;
+            this.SnowCuboids = snowCuboids;
         }
 
 
@@ -196,7 +196,10 @@ namespace Vintagestory.GameContent
             for (int z = cub.Z1; z < cub.Z2; z++)
             {
                 z = Math.Min(15, z);
-                if (aboveCuboids != null) for (int i = 0; i < aboveCuboids.Length; i++) if (aboveCuboids[i].Contains(cub.X2, 0, z)) return false;
+                if (aboveCuboids != null)
+                {
+                    for (int i = 0; i < aboveCuboids.Length; i++) if (aboveCuboids[i].Contains(cub.X2, 0, z)) return false;
+                }
 
                 if (voxels[cub.X2, cub.Y1, z] == ground || voxelVisited[cub.X2, z] || (cub.Y1 < 15 && voxels[cub.X2, cub.Y1 + 1, z])) return false;
             }
@@ -212,7 +215,10 @@ namespace Vintagestory.GameContent
             for (int x = cub.X1; x < cub.X2; x++)
             {
                 x = Math.Min(15, x);
-                if (aboveCuboids != null) for (int i = 0; i < aboveCuboids.Length; i++) if (aboveCuboids[i].Contains(x, 0, cub.Z2)) return false;
+                if (aboveCuboids != null)
+                {
+                    for (int i = 0; i < aboveCuboids.Length; i++) if (aboveCuboids[i].Contains(x, 0, cub.Z2)) return false;
+                }
 
                 if (voxels[x, cub.Y1, cub.Z2] == ground || voxelVisited[x, cub.Z2] || (cub.Y1 < 15 && voxels[x, cub.Y1 + 1, cub.Z2])) return false;
             }

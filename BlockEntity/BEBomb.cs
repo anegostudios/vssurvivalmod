@@ -113,8 +113,10 @@ namespace Vintagestory.GameContent
             }
         }
 
+        bool combusted = false;
         public void Combust(float dt)
         {
+            if (combusted) return;
             if (nearToClaimedLand())
             {
                 Api.World.PlaySoundAt(new AssetLocation("sounds/effect/extinguish"), Pos.X + 0.5, Pos.Y, Pos.Z + 0.5, null, false, 16);
@@ -123,6 +125,7 @@ namespace Vintagestory.GameContent
                 return;
             }
 
+            combusted = true;
             Api.World.BlockAccessor.SetBlock(0, Pos);
             ((IServerWorldAccessor)Api.World).CreateExplosion(Pos, BlastType, BlastRadius, InjureRadius);
         }

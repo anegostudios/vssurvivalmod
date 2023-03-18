@@ -189,7 +189,7 @@ namespace Vintagestory.GameContent
             return open ? 3 : 1;
         }
 
-        public override float LiquidBarrierHeightOnSide(BlockFacing face, BlockPos pos)
+        public override float GetLiquidBarrierHeightOnSide(BlockFacing face, BlockPos pos)
         {
             if (open) return 0f;
             if (face != GetDirection().Opposite) return 0f;

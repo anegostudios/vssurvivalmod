@@ -74,9 +74,9 @@ namespace Vintagestory.ServerMods
 
         public static int seaLevel = 110;
 
-        internal static bool GenerateVegetation = true;
-        internal static bool GenerateStructures = true;
-        internal static bool DoDecorationPass = true;
+        public static bool GenerateVegetation = true;
+        public static bool GenerateStructures = true;
+        public static bool DoDecorationPass = true;
 
         //internal static int depositDistortionScale = 2;
 

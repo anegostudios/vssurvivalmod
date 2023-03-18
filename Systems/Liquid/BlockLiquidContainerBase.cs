@@ -1418,7 +1418,20 @@ namespace Vintagestory.GameContent
             var props = GetContainableProps(contentStack);
             int q = (int)(props.ItemsPerLitre * litres / stackInSlot.StackSize);
 
-            TryTakeContent(stackInSlot.Itemstack, q);
+            if (rprops.IsTrue("consumeContainer"))
+            {
+                stackInSlot.Itemstack.StackSize -= quantity;
+
+                if (stackInSlot.Itemstack.StackSize <= 0)
+                {
+                    stackInSlot.Itemstack = null;
+                    stackInSlot.MarkDirty();
+                }
+            }
+            else
+            {
+                TryTakeContent(stackInSlot.Itemstack, q);
+            }
         }
 
         public static string PerishableInfoCompact(ICoreAPI Api, ItemSlot contentSlot, float ripenRate, bool withStackName = true)

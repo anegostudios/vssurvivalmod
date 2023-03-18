@@ -32,8 +32,12 @@ namespace Vintagestory.ServerMods
         }
 
 
-        protected virtual void GenChunkColumn(IServerChunk[] chunks, int chunkX, int chunkZ, ITreeAttribute chunkGenParams = null)
+        protected virtual void GenChunkColumn(IChunkColumnGenerateRequest request)
         {
+            var chunks = request.Chunks;
+            int chunkX = request.ChunkX;
+            int chunkZ = request.ChunkZ;
+
             for (int dx = -chunkRange; dx <= chunkRange; dx++)
             {
                 for (int dz = -chunkRange; dz <= chunkRange; dz++)

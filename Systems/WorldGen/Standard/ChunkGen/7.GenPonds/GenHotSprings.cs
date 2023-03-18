@@ -64,13 +64,13 @@ namespace Vintagestory.ServerMods
 
 
 
-        private void GenChunkColumn(IServerChunk[] chunks, int chunkX, int chunkZ, API.Datastructures.ITreeAttribute chunkGenParams)
+        private void GenChunkColumn(IChunkColumnGenerateRequest request)
         {
-            var data = chunks[0].MapChunk.GetModdata<Dictionary<Vec3i, HotSpringGenData>>("hotspringlocations");
+            var data = request.Chunks[0].MapChunk.GetModdata<Dictionary<Vec3i, HotSpringGenData>>("hotspringlocations");
             if (data == null) return;
 
-            int baseX = chunkX * chunksize;
-            int baseZ = chunkZ * chunksize;
+            int baseX = request.ChunkX * chunksize;
+            int baseZ = request.ChunkZ * chunksize;
 
             foreach (var keyval in data)
             {

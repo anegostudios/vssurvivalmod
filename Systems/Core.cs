@@ -129,6 +129,7 @@ namespace Vintagestory.GameContent
                 sapi.WorldManager.SetBlockLightLevels(config.BlockLightLevels);
                 sapi.WorldManager.SetSunLightLevels(config.SunLightLevels);
                 sapi.WorldManager.SetSunBrightness(config.SunBrightness);
+                sapi.Event.SaveGameLoaded += applySeasonConfig;
             }
             else
             {
@@ -334,11 +335,24 @@ namespace Vintagestory.GameContent
 
         void applySeasonConfig()
         {
+            if (api.World.Calendar == null) return; // Server side this gets called too early during AssetFinalize (it gets called again later)
             ITreeAttribute worldConfig = api.World.Config;
             string seasons = worldConfig.GetString("seasons");
             if (seasons == "spring")
             {
                 api.World.Calendar.SetSeasonOverride(0.33f);
+            }
+            if (seasons == "summer")
+            {
+                api.World.Calendar.SetSeasonOverride(0.6f);
+            }
+            if (seasons == "fall")
+            {
+                api.World.Calendar.SetSeasonOverride(0.77f);
+            }
+            if (seasons == "winter")
+            {
+                api.World.Calendar.SetSeasonOverride(0.05f);
             }
         }
 
@@ -844,6 +858,10 @@ namespace Vintagestory.GameContent
             api.RegisterItemClass("ItemOar", typeof(ItemOar));
             api.RegisterItemClass("ItemTextureFlipper", typeof(ItemTextureFlipper));
 
+            api.RegisterItemClass("ItemBaseReturnTeleporter", typeof(ItemBaseReturnTeleporter));
+            api.RegisterItemClass("ItemCorpseReturnTeleporter", typeof(ItemCorpseReturnTeleporter));
+            api.RegisterItemClass("ItemNightvisiondevice", typeof(ItemNightvisiondevice));
+            api.RegisterItemClass("ItemMechHelper", typeof(ItemMechHelper));
         }
 
 
@@ -867,6 +885,7 @@ namespace Vintagestory.GameContent
             api.RegisterEntity("EntityDrifter", typeof(EntityDrifter));
             api.RegisterEntity("EntityEidolon", typeof(EntityEidolon));
             api.RegisterEntity("EntityEchoChamber", typeof(EntityEchoChamber));
+            api.RegisterEntity("EntityMechHelper", typeof(EntityMechHelper));
         }
 
 

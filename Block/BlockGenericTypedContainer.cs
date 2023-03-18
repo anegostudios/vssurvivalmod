@@ -12,7 +12,7 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockGenericTypedContainerTrunk : BlockGenericTypedContainer, IMultiBlockMonolithicBasic
+    public class BlockGenericTypedContainerTrunk : BlockGenericTypedContainer, IMultiBlockColSelBoxes
     {
         Cuboidf[] mirroredColBox;
         public override void OnLoaded(ICoreAPI api)
@@ -313,7 +313,7 @@ namespace Vintagestory.GameContent
 
                 blockModelData = GenMesh(capi, be.type, shapename);
 
-                AssetLocation shapeloc = new AssetLocation(shapename).WithPathPrefixOnce("shapes/");
+                AssetLocation shapeloc = AssetLocation.Create(shapename, Code.Domain).WithPathPrefixOnce("shapes/");
                 Shape shape = API.Common.Shape.TryGet(capi, shapeloc + ".json");
                 if (shape == null)
                 {

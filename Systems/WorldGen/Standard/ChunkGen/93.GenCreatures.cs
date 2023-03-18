@@ -22,11 +22,7 @@ namespace Vintagestory.ServerMods
         Random rnd;
         int worldheight;
         IWorldGenBlockAccessor wgenBlockAccessor;
-        CollisionTester collisionTester = new CollisionTester();
-
-
         Dictionary<EntityProperties, EntityProperties[]> entityTypeGroups = new Dictionary<EntityProperties, EntityProperties[]>();
-
 
         public override bool ShouldLoad(EnumAppSide side)
         {
@@ -117,9 +113,12 @@ namespace Vintagestory.ServerMods
         int shrubsBotLeft;
         int shrubsBotRight;
 
-
-        private void OnChunkColumnGen(IServerChunk[] chunks, int chunkX, int chunkZ, ITreeAttribute chunkGenParams = null)
+        private void OnChunkColumnGen(IChunkColumnGenerateRequest request)
         {
+            var chunks = request.Chunks;
+            int chunkX = request.ChunkX;
+            int chunkZ = request.ChunkZ;
+
             wgenBlockAccessor.BeginColumn();
             IntDataMap2D climateMap = chunks[0].MapChunk.MapRegion.ClimateMap;
             ushort[] heightMap = chunks[0].MapChunk.WorldGenTerrainHeightMap;
@@ -147,7 +146,6 @@ namespace Vintagestory.ServerMods
             shrubsUpRight = shrubMap.GetUnpaddedInt((int)(rlX * facS + facS), (int)(rlZ * facS));
             shrubsBotLeft = shrubMap.GetUnpaddedInt((int)(rlX * facS), (int)(rlZ * facS + facS));
             shrubsBotRight = shrubMap.GetUnpaddedInt((int)(rlX * facS + facS), (int)(rlZ * facS + facS));
-
 
             Vec3d posAsVec = new Vec3d();
             BlockPos pos = new BlockPos();

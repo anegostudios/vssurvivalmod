@@ -98,7 +98,7 @@ namespace Vintagestory.GameContent
 
         protected bool IsConditionMet(string variable, string isValue, bool invertCheck)
         {
-            string[] parts = variable.Split('.');
+            string[] parts = variable.Split(new char[] { '.' }, 2);
             string curValue = null;
 
             if (parts[0] == "global")

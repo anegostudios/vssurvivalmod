@@ -248,9 +248,11 @@ namespace Vintagestory.GameContent
         {
             ItemSlot slot = byPlayer.InventoryManager.ActiveHotbarSlot;
             if (slot.Itemstack == null) return false;
-
             ItemStack stack = slot.Itemstack;
+
             IAnvilWorkable workableobj = stack.Collectible as IAnvilWorkable;
+
+            
 
             if (workableobj == null) return false;
             int requiredTier = workableobj.GetRequiredAnvilTier(stack);
@@ -1094,8 +1096,18 @@ namespace Vintagestory.GameContent
                 if (recipe == null)
                 {
                     Api.World.Logger.Error("Client tried to selected smithing recipe with id {0}, but no such recipe exists!");
+                    ditchWorkItemStack(player);
                     return;
                 }
+
+                var list = (WorkItemStack?.Collectible as ItemWorkItem)?.GetMatchingRecipes(workItemStack);
+                if (list == null || list.FirstOrDefault(r => r.RecipeId == recipeid) == null)
+                {
+                    Api.World.Logger.Error("Client tried to selected smithing recipe with id {0}, but it is not a valid one for the given work item stack!", recipe.RecipeId);
+                    ditchWorkItemStack(player);
+                    return;
+                }
+
 
                 SelectedRecipeId = recipe.RecipeId;
 

@@ -1,8 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -211,15 +208,6 @@ namespace Vintagestory.GameContent
             foreach (var val in facings)
             {
                 BlockPos npos = Pos.AddCopy(val);
-                /*var combprops = Api.World.BlockAccessor.GetBlock(npos).CombustibleProps;
-                if (combprops != null)
-                {
-                    Api.World.BlockAccessor.SetBlock(Api.World.GetBlock(new AssetLocation("fire")).BlockId, npos);
-                    BlockEntityFire befire = byEntity.World.BlockAccessor.GetBlockEntity(bpos) as BlockEntityFire;
-                    if (befire != null) befire.Init(blockSel.Face, (byEntity as EntityPlayer).PlayerUID);
-
-                    continue;
-                }*/
 
                 var becp = Api.World.BlockAccessor.GetBlockEntity(npos) as BlockEntityCoalPile;
                 becp?.TryIgnite();
@@ -334,23 +322,24 @@ namespace Vintagestory.GameContent
                 BlockPos npos = Pos.AddCopy(face);
                 Block nblock = Api.World.BlockAccessor.GetBlock(npos);
                 BlockCoalPile nblockcoalpile = Api.World.BlockAccessor.GetBlock(npos) as BlockCoalPile;
-                int nblockcoalpilelayers = nblockcoalpile == null ? 0 : nblockcoalpile.GetLayercount(Api.World, npos);
-
+                
                 // When should it collapse?
-                // When there layers > 3 and nearby is air or replacable
-                // When nearby is coal and herelayers - neiblayers > 3
-                // When there is coal below us, the neighbour below us is coal, nearby is air or replaceable, and owncoal+belowcoal - neibbelowcoal > 3
+                int neighbourLayers = nblockcoalpile?.GetLayercount(Api.World, npos) ?? 0;
 
-                int layerdiff = Math.Max(nblock.Replaceable > 6000 ? Math.Max(0, Layers - maxSteepness) : 0, (nblockcoalpile != null ? Layers - nblockcoalpilelayers - maxSteepness : 0));
+                // 1. When our own layer count exceeds maxSteepness
+                int nearbyCollapsibleCount = nblock.Replaceable > 6000 ? Layers - maxSteepness : 0;
 
-                if (belowwlayers > 0)
-                {
-                    BlockCoalPile nbelowblockcoalpile = Api.World.BlockAccessor.GetBlock(npos.DownCopy()) as BlockCoalPile;
-                    int nbelowwlayers = nbelowblockcoalpile == null ? 0 : nbelowblockcoalpile.GetLayercount(Api.World, npos.DownCopy());
-                    layerdiff = Math.Max(layerdiff, (nbelowblockcoalpile != null ? Layers + belowwlayers - nbelowwlayers - maxSteepness : 0));
-                }
+                // 2. Nearby coal pile is maxsteepness smaller
+                int nearbyToPileCollapsibleCount = nblockcoalpile != null ? (Layers - neighbourLayers) - maxSteepness : 0;
 
-                if (Api.World.Rand.NextDouble() < layerdiff / (float)maxSteepness)
+                // 3. We are a 2 tall pile that is collapsible onto another pile
+                BlockCoalPile nbelowblockcoalpile = Api.World.BlockAccessor.GetBlock(npos.DownCopy()) as BlockCoalPile;
+                int nbelowwlayers = nbelowblockcoalpile == null ? 0 : nbelowblockcoalpile.GetLayercount(Api.World, npos.DownCopy());
+                int selfTallPileCollapsibleCount = belowcoalpile != null && nbelowblockcoalpile != null ? (Layers + belowwlayers - nbelowwlayers - maxSteepness) : 0;
+
+                int collapsibleLayerCount = GameMath.Max(nearbyCollapsibleCount, nearbyToPileCollapsibleCount, selfTallPileCollapsibleCount);
+
+                if (Api.World.Rand.NextDouble() < collapsibleLayerCount / (float)maxSteepness)
                 {
                     if (TryPartialCollapse(npos.UpCopy(), 2)) return;
                 }

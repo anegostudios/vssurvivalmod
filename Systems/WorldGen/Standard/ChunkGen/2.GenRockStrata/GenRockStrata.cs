@@ -156,8 +156,12 @@ namespace Vintagestory.ServerMods
         GeologicProvinces provinces = NoiseGeoProvince.provinces;
         #endregion
 
-        internal void GenChunkColumn(IServerChunk[] chunks, int chunkX, int chunkZ, ITreeAttribute chunkGenParams = null)
+        internal void GenChunkColumn(IChunkColumnGenerateRequest request)
         {
+            var chunks = request.Chunks;
+            int chunkX = request.ChunkX;
+            int chunkZ = request.ChunkZ;
+
             preLoad(chunks, chunkX, chunkZ);
             int chunksize = this.chunksize;
 

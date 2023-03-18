@@ -70,7 +70,7 @@ namespace Vintagestory.GameContent
         {
             var beshelf = blockAccessor.GetBlockEntity(pos) as BlockEntityBookshelf;
 
-            if (beshelf != null)
+            if (beshelf?.UsableSlots != null)
             {
                 List<Cuboidf> cubs = new List<Cuboidf>();
 

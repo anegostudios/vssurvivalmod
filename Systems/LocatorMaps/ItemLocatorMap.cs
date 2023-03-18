@@ -70,44 +70,59 @@ namespace Vintagestory.GameContent
             {   
                 return;
             }
-
             var wml = api.ModLoader.GetModSystem<WorldMapManager>().MapLayers.FirstOrDefault(ml => ml is WaypointMapLayer) as WaypointMapLayer;
-            if (wml != null)
+
+
+            var attr = slot.Itemstack.Attributes;
+            Vec3d pos = null;
+            if (attr.HasAttribute("structureIndex"))
             {
-                var attr = slot.Itemstack.Attributes;
-                Vec3d pos = null;
-                if (attr.HasAttribute("structureIndex"))
+                pos = getStructureCenter(attr);
+            } else
+            {
+                foreach (var val in storyStructures.storyStructureInstances)
                 {
-                    pos = getStructureCenter(attr);
-                } else
-                {
-                    foreach (var val in storyStructures.storyStructureInstances)
+                    if (val.Key == props.SchematicCode)
                     {
-                        if (val.Key == props.SchematicCode)
-                        {
-                            pos = val.Value.CenterPos.ToVec3d().Add(0.5, 0.5, 0.5);
-                        }
+                        pos = val.Value.CenterPos.ToVec3d().Add(0.5, 0.5, 0.5);
                     }
                 }
-                
-                if (pos == null)
-                {
-                    player.SendMessage(GlobalConstants.GeneralChatGroup, Lang.Get("No location found on this map"), EnumChatType.Notification);
-                    return;
-                }
-
-                wml.AddWaypoint(new Waypoint()
-                {
-                    Color = ColorUtil.ColorFromRgba((int)(props.WaypointColor[0] * 255), (int)(props.WaypointColor[1] * 255), (int)(props.WaypointColor[2] * 255), (int)(props.WaypointColor[3] * 255)),
-                    Icon = props.WaypointIcon,
-                    Pinned = true,
-                    Position = pos,
-                    OwningPlayerUid = (byEntity as EntityPlayer).PlayerUID,
-                    Title = Lang.Get(props.WaypointText),
-                }, player);
-
-                player.SendMessage(GlobalConstants.GeneralChatGroup, Lang.Get("{0} location added to your world map", Lang.Get(props.WaypointText)), EnumChatType.Notification);
             }
+                
+            if (pos == null)
+            {
+                player.SendMessage(GlobalConstants.GeneralChatGroup, Lang.Get("No location found on this map"), EnumChatType.Notification);
+                return;
+            }
+
+
+            if (byEntity.World.Config.GetBool("allowMap", true) != true || wml == null)
+            {
+                var vec = pos.Sub(byEntity.Pos.XYZ);
+                vec.Y = 0;
+                player.SendMessage(GlobalConstants.GeneralChatGroup, Lang.Get("{0} blocks distance", (int)vec.Length()), EnumChatType.Notification);
+                return;
+            }
+
+
+
+            if (wml.Waypoints.FirstOrDefault(wp => wp.Position == pos) != null)
+            {
+                player.SendMessage(GlobalConstants.GeneralChatGroup, Lang.Get("Location already marked on your map"), EnumChatType.Notification);
+                return;
+            }
+
+            wml.AddWaypoint(new Waypoint()
+            {
+                Color = ColorUtil.ColorFromRgba((int)(props.WaypointColor[0] * 255), (int)(props.WaypointColor[1] * 255), (int)(props.WaypointColor[2] * 255), (int)(props.WaypointColor[3] * 255)),
+                Icon = props.WaypointIcon,
+                Pinned = true,
+                Position = pos,
+                OwningPlayerUid = (byEntity as EntityPlayer).PlayerUID,
+                Title = Lang.Get(props.WaypointText),
+            }, player);
+
+            player.SendMessage(GlobalConstants.GeneralChatGroup, Lang.Get("{0} location added to your world map", Lang.Get(props.WaypointText)), EnumChatType.Notification);
         }
 
         private Vec3d getStructureCenter(API.Datastructures.ITreeAttribute attr)

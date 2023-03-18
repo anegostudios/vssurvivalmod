@@ -96,7 +96,7 @@ namespace Vintagestory.GameContent
             return base.DisplacesLiquids(blockAccess, pos);
         }
 
-        public override float LiquidBarrierHeightOnSide(BlockFacing face, BlockPos pos)
+        public override float GetLiquidBarrierHeightOnSide(BlockFacing face, BlockPos pos)
         {
             BlockEntityMicroBlock bec = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityMicroBlock;
             if (bec != null)
@@ -104,7 +104,7 @@ namespace Vintagestory.GameContent
                 return bec.sideAlmostSolid[face.Index] ? 1 : 0;
             }
 
-            return base.LiquidBarrierHeightOnSide(face, pos);
+            return base.GetLiquidBarrierHeightOnSide(face, pos);
         }
 
         public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
@@ -263,6 +263,8 @@ namespace Vintagestory.GameContent
         public override void OnCreatedByCrafting(ItemSlot[] allInputslots, ItemSlot outputSlot, GridRecipe byRecipe)
         {
             List<int> matids = new List<int>();
+            List<int> matquantities = new List<int>();
+
             bool first = false;
             foreach (var val in allInputslots)
             {
@@ -285,10 +287,13 @@ namespace Vintagestory.GameContent
                         if (block != null) matids.Add(block.Id);
                     }
                 }
+
+                int[] mq = (val.Itemstack.Attributes?["availMaterialQuantities"] as IntArrayAttribute)?.value;
+                if (mq != null) matquantities.AddRange(mq);
             }
 
-            IntArrayAttribute attr = new IntArrayAttribute(matids.ToArray());
-            outputSlot.Itemstack.Attributes["materials"] = attr;
+            outputSlot.Itemstack.Attributes["materials"] = new IntArrayAttribute(matids.ToArray());
+            outputSlot.Itemstack.Attributes["availMaterialQuantities"] = new IntArrayAttribute(matquantities.ToArray());
 
             base.OnCreatedByCrafting(allInputslots, outputSlot, byRecipe);
         }

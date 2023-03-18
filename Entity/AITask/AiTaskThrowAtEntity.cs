@@ -143,11 +143,15 @@ namespace Vintagestory.GameContent
 
 
                 EntityProperties type = entity.World.GetEntityType(loc);
-                Entity entitypr = entity.World.ClassRegistry.CreateEntity(type);
-                ((EntityThrownStone)entitypr).FiredBy = entity;
-                ((EntityThrownStone)entitypr).Damage = projectileDamage;
-                ((EntityThrownStone)entitypr).ProjectileStack = new ItemStack(entity.World.GetItem(new AssetLocation("stone-granite")));
-                ((EntityThrownStone)entitypr).NonCollectible = true;
+                if (type == null)
+                {
+                    throw new Exception("No such projectile exists - " + loc);
+                }
+                var entitypr = entity.World.ClassRegistry.CreateEntity(type) as EntityThrownStone;
+                entitypr.FiredBy = entity;
+                entitypr.Damage = projectileDamage;
+                entitypr.ProjectileStack = new ItemStack(entity.World.GetItem(new AssetLocation("stone-granite")));
+                entitypr.NonCollectible = true;
 
                 Vec3d pos = entity.ServerPos.XYZ.Add(0, entity.LocalEyePos.Y, 0);
                 Vec3d targetPos = targetEntity.ServerPos.XYZ.Add(0, targetEntity.LocalEyePos.Y, 0) + targetEntity.ServerPos.Motion * 8;

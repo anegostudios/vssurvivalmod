@@ -45,7 +45,7 @@ namespace Vintagestory.ServerMods
                 this.api.Event.InitWorldGenerator(InitWorldGen, "standard");
                 this.api.Event.InitWorldGenerator(InitWorldGen, "superflat"); // Just the Init so that BlockSoil can grow grass
                 this.api.Event.MapRegionGeneration(OnMapRegionGen, "standard");
-                this.api.Event.ChunkColumnGeneration(this.OnChunkColumnGeneration, EnumWorldGenPass.Terrain, "standard");
+                this.api.Event.ChunkColumnGeneration(OnChunkColumnGeneration, EnumWorldGenPass.Terrain, "standard");
             }
 
             dummyRock = new RockStrataVariant() { SoilpH = 6.5f, WeatheringFactor = 1f };
@@ -102,8 +102,12 @@ namespace Vintagestory.ServerMods
 
         
 
-        private void OnChunkColumnGeneration(IServerChunk[] chunks, int chunkX, int chunkZ, ITreeAttribute chunkGenParams = null)
+        private void OnChunkColumnGeneration(IChunkColumnGenerateRequest request)
         {
+            var chunks = request.Chunks;
+            int chunkX = request.ChunkX;
+            int chunkZ = request.ChunkZ;
+
             rnd.InitPositionSeed(chunkX, chunkZ);
 
             IntDataMap2D forestMap = chunks[0].MapChunk.MapRegion.ForestMap;

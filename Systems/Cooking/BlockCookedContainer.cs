@@ -207,16 +207,20 @@ namespace Vintagestory.GameContent
                 {
                     for (int i = 0; i < stacks.Length; i++)
                     {
-                        if (stacks[i] != null && stacks[i].StackSize > 0 && stacks[i].Collectible.Code.Path == "rot") 
+                        if (stacks[i] != null && stacks[i].StackSize > 0 && stacks[i].Collectible.Code.Path == "rot")
                         {
                             world.SpawnItemEntity(stacks[i], entityItem.ServerPos.XYZ);
                         }
                     }
-
-                    Block emptyPotBlock = world.GetBlock(new AssetLocation(Attributes["emptiedBlockCode"].AsString()));
-                    entityItem.Itemstack = new ItemStack(emptyPotBlock);
-                    entityItem.WatchedAttributes.MarkPathDirty("itemstack");
+                } else
+                {
+                    ItemStack rndStack = stacks[world.Rand.Next(stacks.Length)];
+                    world.SpawnCubeParticles(entityItem.ServerPos.XYZ, rndStack, 0.3f, 25, 1, null);
                 }
+
+                Block emptyPotBlock = world.GetBlock(new AssetLocation(Attributes["emptiedBlockCode"].AsString()));
+                entityItem.Itemstack = new ItemStack(emptyPotBlock);
+                entityItem.WatchedAttributes.MarkPathDirty("itemstack");
             }
         }
 

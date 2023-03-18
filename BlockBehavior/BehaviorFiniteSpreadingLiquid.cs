@@ -482,7 +482,7 @@ namespace Vintagestory.GameContent
             npos.Y++;
             Block ublock = world.BlockAccessor.GetBlock(npos, BlockLayersAccess.Fluid);
             npos.Y--;
-            if (IsSameLiquid(ourblock, ublock) && ourSolid.LiquidBarrierHeightOnSide(BlockFacing.UP, pos) == 0.0)
+            if (IsSameLiquid(ourblock, ublock) && ourSolid.GetLiquidBarrierHeightOnSide(BlockFacing.UP, pos) == 0.0)
             {
                 return MAXLEVEL;
             }
@@ -496,9 +496,9 @@ namespace Vintagestory.GameContent
                     if (IsSameLiquid(ourblock, nblock))
                     {
                         int nLevel = nblock.LiquidLevel;
-                        if (ourSolid.LiquidBarrierHeightOnSide(BlockFacing.HORIZONTALS[i], pos) >= nLevel / MAXLEVEL_float) continue;
+                        if (ourSolid.GetLiquidBarrierHeightOnSide(BlockFacing.HORIZONTALS[i], pos) >= nLevel / MAXLEVEL_float) continue;
                         Block neibSolid = world.BlockAccessor.GetBlock(npos, BlockLayersAccess.SolidBlocks);
-                        if (neibSolid.LiquidBarrierHeightOnSide(BlockFacing.HORIZONTALS[i].Opposite, npos) >= nLevel / MAXLEVEL_float) continue;
+                        if (neibSolid.GetLiquidBarrierHeightOnSide(BlockFacing.HORIZONTALS[i].Opposite, npos) >= nLevel / MAXLEVEL_float) continue;
                         level = Math.Max(level, nLevel);
                     }
                 }
@@ -521,9 +521,9 @@ namespace Vintagestory.GameContent
 
         public bool CanSpreadIntoBlock(Block ourblock, Block ourSolid, BlockPos pos, BlockPos npos, BlockFacing facing, IWorldAccessor world)
         {
-            if (ourSolid.LiquidBarrierHeightOnSide(facing, pos) >= ourblock.LiquidLevel / MAXLEVEL_float) return false;
+            if (ourSolid.GetLiquidBarrierHeightOnSide(facing, pos) >= ourblock.LiquidLevel / MAXLEVEL_float) return false;
             Block neighborSolid = world.BlockAccessor.GetBlock(npos, BlockLayersAccess.SolidBlocks);
-            if (neighborSolid.LiquidBarrierHeightOnSide(facing.Opposite, npos) >= ourblock.LiquidLevel / MAXLEVEL_float) return false;
+            if (neighborSolid.GetLiquidBarrierHeightOnSide(facing.Opposite, npos) >= ourblock.LiquidLevel / MAXLEVEL_float) return false;
 
             Block neighborLiquid = world.BlockAccessor.GetBlock(npos, BlockLayersAccess.Fluid);
 
@@ -615,7 +615,7 @@ namespace Vintagestory.GameContent
                     if (npos.Equals(target)) return pos;
 
                     Block b = world.BlockAccessor.GetMostSolidBlock(npos.X, npos.Y, npos.Z);
-                    if (b.LiquidBarrierHeightOnSide(BlockFacing.HORIZONTALS[i].Opposite, npos) >= (ourBlock.LiquidLevel - pos.ManhattenDistance(origin)) / MAXLEVEL_float) continue;
+                    if (b.GetLiquidBarrierHeightOnSide(BlockFacing.HORIZONTALS[i].Opposite, npos) >= (ourBlock.LiquidLevel - pos.ManhattenDistance(origin)) / MAXLEVEL_float) continue;
                     // TODO:  check this adjustment to liquidLevel is appropriate
 
                     uncheckedPositions.Enqueue(npos.Copy());

@@ -121,6 +121,7 @@ namespace Vintagestory.GameContent
                 capi.Network.SendEntityPacket(controller.NPCEntity.EntityId, EntityBehaviorConversable.SelectAnswerPacketId, SerializerUtil.Serialize(index));
             }
 
+            dialog?.ClearDialogue();
             jumpTo(Text[index].JumpTo);
         }
 

@@ -8,16 +8,19 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockBehaviorDoor : StrongBlockBehavior, IMultiBlockMonolithicBasic
+    public class BlockBehaviorDoor : StrongBlockBehavior, IMultiBlockColSelBoxes, IMultiBlockBlockProperties
     {
         public AssetLocation OpenSound;
         public AssetLocation CloseSound;
         public int width;
         public int height;
         public bool handopenable;
+        public bool airtight;
+        ICoreAPI api;
 
         public BlockBehaviorDoor(Block block) : base(block)
         {
+            airtight = block.Attributes["airtight"].AsBool(true);
             width = block.Attributes["width"].AsInt(1);
             height = block.Attributes["height"].AsInt(1);
             handopenable = block.Attributes["handopenable"].AsBool(true);
@@ -25,6 +28,7 @@ namespace Vintagestory.GameContent
 
         public override void OnLoaded(ICoreAPI api)
         {
+            this.api = api;
             OpenSound = CloseSound = AssetLocation.Create(block.Attributes["triggerSound"].AsString("sounds/block/door"));
 
             if (block.Attributes["openSound"].Exists) OpenSound = AssetLocation.Create(block.Attributes["openSound"].AsString("sounds/block/door"));
@@ -279,9 +283,6 @@ namespace Vintagestory.GameContent
             base.GetDecal(world, pos, decalTexSource, ref decalModelData, ref blockModelData, ref handled);
         }
 
-
-
-
         public override void GetHeldItemName(StringBuilder sb, ItemStack itemStack)
         {
             doorNameWithMaterial(sb);
@@ -300,6 +301,60 @@ namespace Vintagestory.GameContent
                 sb.Clear();
                 sb.Append(Lang.Get("doorname-with-material", doorname, Lang.Get("material-" + block.Variant["wood"])));
             }
+        }
+
+        public override float GetLiquidBarrierHeightOnSide(BlockFacing face, BlockPos pos, ref EnumHandling handled)
+        {
+            handled = EnumHandling.PreventDefault;
+            var beh = block.GetBEBehavior<BEBehaviorDoor>(pos);
+
+            if (beh.Opened) return 0f; // - should also check for orientation!
+            //if (face != beh.RotateYRad.Opposite) return 0f; - needs to be implemented still
+
+            if (block.Variant["style"] == "sleek-windowed") return 1.0f;
+
+            if (!airtight) return 0f;
+
+            return 1f;
+        }
+
+        public float MBGetLiquidBarrierHeightOnSide(BlockFacing face, BlockPos pos, Vec3i offset)
+        {
+            var beh = block.GetBEBehavior<BEBehaviorDoor>(pos.AddCopy(offset.X, offset.Y, offset.Z));
+
+            if (beh.Opened) return 0f; // - should also check for orientation!
+            //if (face != beh.RotateYRad.Opposite) return 0f; - needs to be implemented still
+
+            if (block.Variant["style"] == "sleek-windowed") return offset.Y == -1 ? 0.0f : 1.0f;
+
+            if (!airtight) return 0f;
+
+            return 1f;
+        }
+
+        public override int GetHeatRetention(BlockPos pos, BlockFacing facing, ref EnumHandling handled)
+        {
+            handled = EnumHandling.PreventDefault;
+            var beh = block.GetBEBehavior<BEBehaviorDoor>(pos);
+            if (beh == null) return 0;
+
+            if (!airtight) return 0;
+            return beh.Opened ? 3 : 1;
+        }
+
+
+        public int MBGetHeatRetention(BlockPos pos, BlockFacing facing, Vec3i offset)
+        {
+            var beh = block.GetBEBehavior< BEBehaviorDoor>(pos.AddCopy(offset.X, offset.Y, offset.Z));
+            if (beh == null) return 0;
+
+            if (!airtight) return 0;
+            return beh.Opened ? 3 : 1; 
+        }
+
+        public bool MBCanAttachBlockAt(IBlockAccessor blockAccessor, Block block, BlockPos pos, BlockFacing blockFace, Cuboidi attachmentArea, Vec3i offsetInv)
+        {
+            return false;
         }
     }
 }

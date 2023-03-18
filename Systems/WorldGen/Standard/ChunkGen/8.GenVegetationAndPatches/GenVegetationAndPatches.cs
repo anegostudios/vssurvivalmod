@@ -150,20 +150,22 @@ namespace Vintagestory.ServerMods
         int shrubBotLeft;
         int shrubBotRight;
 
-
         int climateUpLeft;
         int climateUpRight;
         int climateBotLeft;
         int climateBotRight;
 
         BlockPos tmpPos = new BlockPos();
-
         BlockPos chunkBase = new BlockPos();
         BlockPos chunkend = new BlockPos();
         List<Cuboidi> structuresIntersectingChunk = new List<Cuboidi>();
 
-        private void OnChunkColumnGen(IServerChunk[] chunks, int chunkX, int chunkZ, ITreeAttribute chunkGenParams = null)
+        private void OnChunkColumnGen(IChunkColumnGenerateRequest request)
         {
+            var chunks = request.Chunks;
+            int chunkX = request.ChunkX;
+            int chunkZ = request.ChunkZ;
+
             blockAccessor.BeginColumn();
             rnd.InitPositionSeed(chunkX, chunkZ);
 

@@ -110,20 +110,29 @@ namespace Vintagestory.ServerMods
             
         }
 
-        private void OnChunkColumnGenPostPass(IServerChunk[] chunks, int chunkX, int chunkZ, ITreeAttribute chunkGenParams = null)
+        private void OnChunkColumnGenPostPass(IChunkColumnGenerateRequest request)
         {
             if (!TerraGenConfig.GenerateStructures) return;
+
+            var chunks = request.Chunks;
+            int chunkX = request.ChunkX;
+            int chunkZ = request.ChunkZ;
+
             worldgenBlockAccessor.BeginColumn();
 
             IMapRegion region = chunks[0].MapChunk.MapRegion;
 
-            DoGenStructures(region, chunkX, chunkZ, true, chunkGenParams);
-            DoGenVillages(region, chunkX, chunkZ, true, chunkGenParams);
+            DoGenStructures(region, chunkX, chunkZ, true, request.ChunkGenParams);
+            DoGenVillages(region, chunkX, chunkZ, true, request.ChunkGenParams);
         }
 
-        private void OnChunkColumnGen(IServerChunk[] chunks, int chunkX, int chunkZ, ITreeAttribute chunkGenParams = null)
+        private void OnChunkColumnGen(IChunkColumnGenerateRequest request)
         {
             if (!TerraGenConfig.GenerateStructures) return;
+
+            var chunks = request.Chunks;
+            int chunkX = request.ChunkX;
+            int chunkZ = request.ChunkZ;
             worldgenBlockAccessor.BeginColumn();
 
             IMapRegion region = chunks[0].MapChunk.MapRegion;
@@ -147,8 +156,8 @@ namespace Vintagestory.ServerMods
             heightmap = chunks[0].MapChunk.WorldGenTerrainHeightMap;
             
             
-            DoGenStructures(region, chunkX, chunkZ, false, chunkGenParams);
-            DoGenVillages(region, chunkX, chunkZ, false, chunkGenParams);
+            DoGenStructures(region, chunkX, chunkZ, false, request.ChunkGenParams);
+            DoGenVillages(region, chunkX, chunkZ, false, request.ChunkGenParams);
         }
 
         private void DoGenStructures(IMapRegion region, int chunkX, int chunkZ, bool postPass, ITreeAttribute chunkGenParams = null)

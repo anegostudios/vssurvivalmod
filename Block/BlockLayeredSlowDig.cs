@@ -1,43 +1,40 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Vintagestory.API.Common;
-using Vintagestory.API.Common.Entities;
+﻿using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
     public class BlockLayeredSlowDig : Block
     {
-        public int Layers()
+        protected string layerGroupCode = "height";
+        protected AssetLocation fullBlockCode = new AssetLocation("air");
+
+        public override void OnLoaded(ICoreAPI api)
         {
-            int layer = 0;
-            int.TryParse(Code.Path.Split('-')[1], out layer);
+            if (Attributes != null)
+            {
+                layerGroupCode = Attributes["layerGroupCode"].AsString("height");
+                fullBlockCode = AssetLocation.Create(Attributes["fullBlockCode"].AsString("air"), Code.Domain);
+            }
+        }
+
+        public int CountLayers()
+        {
+            int.TryParse(Variant[layerGroupCode], out int layer);
             return layer;
         }
 
         public Block GetPrevLayer(IWorldAccessor world)
         {
-            int layer = 0;
-            int.TryParse(Code.Path.Split('-')[1], out layer);
-
-            string basecode = CodeWithoutParts(1);
-
-            if (layer > 1) return world.BlockAccessor.GetBlock(CodeWithPath(basecode + "-" + (layer - 1)));
+            int layer = CountLayers();
+            if (layer > 1) return world.BlockAccessor.GetBlock(CodeWithVariant(layerGroupCode, "" + (layer-1)));
             return null;
         }
 
         public Block GetNextLayer(IWorldAccessor world)
         {
-            int layer = 0;
-            int.TryParse(Code.Path.Split('-')[1], out layer);
-
-            string basecode = CodeWithoutParts(1);
-
-            if (layer < 7) return world.BlockAccessor.GetBlock(CodeWithPath(basecode + "-" + (layer + 1)));
-            return world.BlockAccessor.GetBlock(CodeWithPath(basecode.Replace("layer", "block")));
+            int layer = CountLayers();
+            if (layer < 7) return world.BlockAccessor.GetBlock(CodeWithVariant(layerGroupCode, "" + (layer + 1)));
+            return world.BlockAccessor.GetBlock(fullBlockCode);
         }
 
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
@@ -51,18 +48,14 @@ namespace Vintagestory.GameContent
 
             Block block = world.BlockAccessor.GetBlock(blockSel.Position.AddCopy(blockSel.Face.Opposite));
 
-            if (block is BlockLayeredSlowDig)
+            if (block is BlockLayeredSlowDig blocklsd)
             {
-                Block nextBlock = ((BlockLayeredSlowDig)block).GetNextLayer(world);
+                Block nextBlock = blocklsd.GetNextLayer(world);
                 if (nextBlock == null) return false;
 
                 world.BlockAccessor.SetBlock(nextBlock.BlockId, blockSel.Position.AddCopy(blockSel.Face.Opposite));
-
                 return true;
             }
-
-            block = world.BlockAccessor.GetBlock(blockSel.Position);
-            
 
             base.TryPlaceBlock(world, byPlayer, itemstack, blockSel, ref failureCode);
             return true;

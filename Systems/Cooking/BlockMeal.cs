@@ -582,7 +582,7 @@ namespace Vintagestory.GameContent
                 FoodNutritionProperties prop = props[i];
                 if (prop == null) continue;
 
-                float sat = 0;
+                float sat;
                 totalSaturation.TryGetValue(prop.FoodCategory, out sat);
 
                 DummySlot slot = new DummySlot(contentStacks[i], inSlotorFirstSlot.Inventory);
@@ -787,7 +787,8 @@ namespace Vintagestory.GameContent
             {
                 ItemStack[] stacks = GetContents(world, entityItem.Itemstack);
 
-                if (MealMeshCache.ContentsRotten(stacks)) {
+                if (MealMeshCache.ContentsRotten(stacks))
+                {
                     for (int i = 0; i < stacks.Length; i++)
                     {
                         if (stacks[i] != null && stacks[i].StackSize > 0 && stacks[i].Collectible.Code.Path == "rot")
@@ -795,11 +796,15 @@ namespace Vintagestory.GameContent
                             world.SpawnItemEntity(stacks[i], entityItem.ServerPos.XYZ);
                         }
                     }
-
-                    Block block = world.GetBlock(new AssetLocation(Attributes["eatenBlock"].AsString()));
-                    entityItem.Itemstack = new ItemStack(block);
-                    entityItem.WatchedAttributes.MarkPathDirty("itemstack");
+                } else
+                {
+                    ItemStack rndStack = stacks[world.Rand.Next(stacks.Length)];
+                    world.SpawnCubeParticles(entityItem.ServerPos.XYZ, rndStack, 0.3f, 25, 1, null);
                 }
+
+                Block block = world.GetBlock(new AssetLocation(Attributes["eatenBlock"].AsString()));
+                entityItem.Itemstack = new ItemStack(block);
+                entityItem.WatchedAttributes.MarkPathDirty("itemstack");
             }
         }
 

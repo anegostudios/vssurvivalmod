@@ -87,8 +87,12 @@ namespace Vintagestory.ServerMods
             lakebedLayerConfig = blockLayerConfig.LakeBedLayer;
         }
 
-        private void OnChunkColumnGen(IServerChunk[] chunks, int chunkX, int chunkZ, ITreeAttribute chunkGenParams = null)
+        private void OnChunkColumnGen(IChunkColumnGenerateRequest request)
         {
+            var chunks = request.Chunks;
+            int chunkX = request.ChunkX;
+            int chunkZ = request.ChunkZ;
+
             blockAccessor.BeginColumn();
             LCGRandom rand = this.rand;
             rand.InitPositionSeed(chunkX, chunkZ);
@@ -231,12 +235,12 @@ namespace Vintagestory.ServerMods
 
                         // Only continue when every position is within our 3x3 chunk search area and has a more or less solid block below (or water)
                         // Note from radfast: this actually runs this check on the edges as well (i.e. it is unnecessarily checking the banks have a solid block below them!) - but changing this could slightly alter worldgen
-                        if (inBoundary && (belowBlock.LiquidBarrierHeightOnSide(BlockFacing.UP, tmpPos) >= 1.0 || belowBlock.BlockId == waterID))   // This test is OK even for waterID, as GetBlock will correctly return the liquid block if the solid blocks 'layer' is air
+                        if (inBoundary && (belowBlock.GetLiquidBarrierHeightOnSide(BlockFacing.UP, tmpPos) >= 1.0 || belowBlock.BlockId == waterID))   // This test is OK even for waterID, as GetBlock will correctly return the liquid block if the solid blocks 'layer' is air
                         {
                             // If it's not a bank, spread water into it and queue for further checks from here
                             //if (blockAccessor.GetBlock(tmp.X, pondYPos, tmp.Y).Replaceable >= 6000)
                             tmpPos.Set(tmp.X, pondYPos, tmp.Y);
-                            if (blockAccessor.GetBlock(tmpPos).LiquidBarrierHeightOnSide(facing.Opposite, tmpPos) < 0.9)
+                            if (blockAccessor.GetBlock(tmpPos).GetLiquidBarrierHeightOnSide(facing.Opposite, tmpPos) < 0.9)
                             {
                                 searchPositionsDeltas.Enqueue(arrayIndex);
                                 pondPositions.Enqueue(arrayIndex);

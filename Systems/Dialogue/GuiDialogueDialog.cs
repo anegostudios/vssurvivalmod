@@ -31,6 +31,10 @@ namespace Vintagestory.GameContent
             TryOpen();
         }
 
+        public void ClearDialogue()
+        {
+            textElem.SetNewText(new RichTextComponent[0]);
+        }
 
         public void EmitDialogue(RichTextComponent[] cmps)
         {
@@ -80,8 +84,9 @@ namespace Vintagestory.GameContent
                 .AutosizedMainDialog.WithAlignment(EnumDialogArea.RightMiddle)
                 .WithFixedAlignmentOffset(-GuiStyle.DialogToScreenPadding, 0);
 
-
-            ElementBounds textBounds = ElementBounds.Fixed(0, 30, 600, 250);
+            int w = 600;
+            int h = 250;
+            ElementBounds textBounds = ElementBounds.Fixed(0, 30, w, h);
 
             clipBounds = textBounds.ForkBoundingParent();
             ElementBounds insetBounds = textBounds.FlatCopy().FixedGrow(3).WithFixedOffset(0, 0);
@@ -102,7 +107,7 @@ namespace Vintagestory.GameContent
 
                 .BeginClip(clipBounds)
                     .AddInset(insetBounds, 3)
-                    .AddRichtext("", CairoFont.WhiteSmallText(), textBounds, "dialogueText")
+                    .AddRichtext("", CairoFont.WhiteSmallText(), textBounds.WithFixedPadding(5).WithFixedSize(w-10, h-10), "dialogueText")
                 .EndClip()
                 .AddVerticalScrollbar(OnNewScrollbarValue, scrollbarBounds, "scrollbar")
 

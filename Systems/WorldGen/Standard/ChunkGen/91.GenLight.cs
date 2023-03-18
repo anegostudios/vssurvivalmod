@@ -35,16 +35,16 @@ namespace Vintagestory.ServerMods
             return 0.95;
         }
 
-        private void OnChunkColumnGeneration(IServerChunk[] chunks, int chunkX, int chunkZ, ITreeAttribute chunkGenParams = null)
+        private void OnChunkColumnGeneration(IChunkColumnGenerateRequest request)
         {
             blockAccessor.BeginColumn();
-            api.WorldManager.SunFloodChunkColumnForWorldGen(chunks, chunkX, chunkZ);
+            api.WorldManager.SunFloodChunkColumnForWorldGen(request.Chunks, request.ChunkX, request.ChunkZ);
             blockAccessor.RunScheduledBlockLightUpdates();
         }
 
-        private void OnChunkColumnGenerationFlood(IServerChunk[] chunks, int chunkX, int chunkZ, ITreeAttribute chunkGenParams = null)
+        private void OnChunkColumnGenerationFlood(IChunkColumnGenerateRequest request)
         {
-            api.WorldManager.SunFloodChunkColumnNeighboursForWorldGen(chunks, chunkX, chunkZ);
+            api.WorldManager.SunFloodChunkColumnNeighboursForWorldGen(request.Chunks, request.ChunkX, request.ChunkZ);
         }
 
      

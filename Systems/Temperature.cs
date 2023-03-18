@@ -75,17 +75,28 @@ namespace Vintagestory.GameContent
 
             heretemp -= seasonalVariationAmplitude / 2;
 
-            // 1 to 0 => january is coldest month
-            // 0 to -1 => july is coldest month
-            if (latitude > 0)
+            float? seasonOverride = api.World.Calendar.SeasonOverride;
+
+            if (seasonOverride != null)
             {
-                double distanceToJanuary = GameMath.Smootherstep(Math.Abs(GameMath.CyclicValueDistance(0.5f, yearRel * 12, 12) / 6f));
+                double distanceToJanuary = GameMath.Smootherstep(Math.Abs(GameMath.CyclicValueDistance(0.5f, (float)seasonOverride * 12, 12) / 6f));
                 heretemp += seasonalVariationAmplitude * distanceToJanuary;
             }
             else
             {
-                double distanceToJuly = GameMath.Smootherstep(Math.Abs(GameMath.CyclicValueDistance(6.5f, yearRel * 12, 12) / 6f));
-                heretemp += seasonalVariationAmplitude * distanceToJuly;
+
+                // 1 to 0 => january is coldest month
+                // 0 to -1 => july is coldest month
+                if (latitude > 0)
+                {
+                    double distanceToJanuary = GameMath.Smootherstep(Math.Abs(GameMath.CyclicValueDistance(0.5f, yearRel * 12, 12) / 6f));
+                    heretemp += seasonalVariationAmplitude * distanceToJanuary;
+                }
+                else
+                {
+                    double distanceToJuly = GameMath.Smootherstep(Math.Abs(GameMath.CyclicValueDistance(6.5f, yearRel * 12, 12) / 6f));
+                    heretemp += seasonalVariationAmplitude * distanceToJuly;
+                }
             }
 
             // 3. diurnal temperature variation:

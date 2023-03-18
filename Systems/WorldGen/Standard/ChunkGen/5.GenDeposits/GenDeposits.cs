@@ -189,10 +189,10 @@ namespace Vintagestory.ServerMods
         }
 
 
-        protected override void GenChunkColumn(IServerChunk[] chunks, int chunkX, int chunkZ, ITreeAttribute chunkGenParams = null)
+        protected override void GenChunkColumn(IChunkColumnGenerateRequest request)
         {
             if (blockAccessor is IWorldGenBlockAccessor wgba) wgba.BeginColumn();
-            base.GenChunkColumn(chunks, chunkX, chunkZ);
+            base.GenChunkColumn(request);
         }
 
         public override void GeneratePartial(IServerChunk[] chunks, int chunkX, int chunkZ, int chunkdX, int chunkdZ)

@@ -180,7 +180,7 @@ namespace Vintagestory.GameContent
 
             if (asset == null)
             {
-                world.Logger.Error("entity behavior conversable for entity " + entity.Code + ", dialogue asset "+loc+" not found. Won't load dialogue.");
+                world.Logger.Error("Entitybehavior conversable for entity " + entity.Code + ", dialogue asset "+loc+" not found. Won't load dialogue.");
                 return null;
             }
 
@@ -189,7 +189,7 @@ namespace Vintagestory.GameContent
                 return asset.ToObject<DialogueConfig>();
             } catch (Exception e)
             {
-                world.Logger.Error("entity behavior conversable for entity " + entity.Code + ", dialogue asset is invalid: " + e);
+                world.Logger.Error("Entitybehavior conversable for entity {0}, dialogue asset is invalid: {1}", entity.Code, e);
                 return null;
             }
         }

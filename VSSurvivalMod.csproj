@@ -130,6 +130,7 @@
     <Compile Include="BlockBehavior\BehaviorHeatSource.cs" />
     <Compile Include="BlockEntity\BlockEntityWorldgenHook.cs" />
     <Compile Include="Block\BlockWorldgenHook.cs" />
+    <Compile Include="Item\Jonas\ItemBaseReturnTeleporter.cs" />
     <Compile Include="Lore\ResoArchives\BEBehaviorClutterBookshelfWithLore.cs" />
     <Compile Include="Lore\ResoArchives\BEBehaviorControlPointLampNode.cs" />
     <Compile Include="Lore\ResoArchives\BEBehaviorJonasBoilerDoor.cs" />

@@ -49,8 +49,12 @@ namespace Vintagestory.ServerMods
             rnd = new Random(api.WorldManager.Seed);
         }
 
-        private void OnChunkColumnGen(IServerChunk[] chunks, int chunkX, int chunkZ, ITreeAttribute chunkGenParams = null)
+        private void OnChunkColumnGen(IChunkColumnGenerateRequest request)
         {
+            var chunks = request.Chunks;
+            int chunkX = request.ChunkX;
+            int chunkZ = request.ChunkZ;
+
             blockAccessor.BeginColumn();
             var mapChunk = chunks[0].MapChunk;
             IntDataMap2D climateMap = mapChunk.MapRegion.ClimateMap;
