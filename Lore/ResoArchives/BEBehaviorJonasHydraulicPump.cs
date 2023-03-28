@@ -16,9 +16,9 @@ namespace Vintagestory.GameContent
         public string offcommands;
 
         bool hasTempGear;
-        bool hasFlywheel;
+        bool hasPumphead;
 
-        bool IsRepaired => hasTempGear && hasFlywheel;
+        bool IsRepaired => hasTempGear && hasPumphead;
         bool ReceivesPower => (animControlPoint?.ControlData as AnimationMetaData)?.AnimationSpeed > 0;
 
         protected override Shape AnimationShape {
@@ -84,7 +84,7 @@ namespace Vintagestory.GameContent
                 if (byPlayer.Entity.Controls.Sneak)
                 {
                     hasTempGear = false;
-                    hasFlywheel = false;
+                    hasPumphead = false;
                 } else
                 {
                     on = !on;
@@ -104,10 +104,10 @@ namespace Vintagestory.GameContent
                     hasTempGear = true;
                     Api.World.PlaySoundAt(new AssetLocation("sounds/effect/latch"), Pos.X + 0.5, Pos.Y, Pos.Z + 0.5, null, true, 16);
                 }
-                if (slot.Itemstack?.Collectible.Code.Path == "jonasparts-flywheel" && !hasFlywheel)
+                if (slot.Itemstack?.Collectible.Code.Path == "jonasparts-pumphead" && !hasPumphead)
                 {
                     if (byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative) slot.TakeOut(1);
-                    hasFlywheel = true;
+                    hasPumphead = true;
                     Api.World.PlaySoundAt(new AssetLocation("sounds/effect/latch"), Pos.X + 0.5, Pos.Y, Pos.Z + 0.5, null, true, 16);
                 }
 
@@ -153,7 +153,7 @@ namespace Vintagestory.GameContent
         {
             base.FromTreeAttributes(tree, worldAccessForResolve);
 
-            hasFlywheel = tree.GetBool("hasFlywheel");
+            hasPumphead = tree.GetBool("hasPumpHead");
             hasTempGear = tree.GetBool("hasTempGear");
             on = tree.GetBool("on");
             networkCode = tree.GetString("networkCode");
@@ -169,7 +169,7 @@ namespace Vintagestory.GameContent
             base.ToTreeAttributes(tree);
 
             tree.SetBool("hasTempGear", hasTempGear);
-            tree.SetBool("hasFlywheel", hasFlywheel);
+            tree.SetBool("hasPumpHead", hasPumphead);
             tree.SetBool("on", on);
             tree.SetString("networkCode", networkCode);
             tree.SetString("oncommands", oncommands);
@@ -190,7 +190,7 @@ namespace Vintagestory.GameContent
 
             if (!ReceivesPower) dsc.AppendLine(Lang.Get("No power."));
             if (!hasTempGear) dsc.AppendLine(Lang.Get("Missing large temporal gear."));
-            if (!hasFlywheel) dsc.AppendLine(Lang.Get("Missing pump head."));
+            if (!hasPumphead) dsc.AppendLine(Lang.Get("Missing pump head."));
         }
 
 
@@ -198,7 +198,7 @@ namespace Vintagestory.GameContent
         {
             if (animUtil.activeAnimationsByAnimCode.Count == 0)
             {
-                if (hasFlywheel)
+                if (hasPumphead)
                 {
                     mesher.AddMeshData(genMesh(new AssetLocation("shapes/block/machine/jonas/pumphead1-flywheel.json")));
                 }

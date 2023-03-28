@@ -763,7 +763,7 @@ namespace Vintagestory.GameContent
                 {
                     if (i > 0)
                     {
-                        RichTextComponent cmp = new RichTextComponent(capi, "+", CairoFont.WhiteMediumText());
+                        RichTextComponent cmp = new RichTextComponent(capi, " + ", CairoFont.WhiteMediumText());
                         cmp.VerticalAlign = EnumVerticalAlign.Middle;
                         barrelRecipestext.Add(cmp);
                     }
@@ -773,8 +773,11 @@ namespace Vintagestory.GameContent
                     barrelRecipestext.Add(scmp);
                 }
 
-                barrelRecipestext.Add(new RichTextComponent(capi, "=", CairoFont.WhiteMediumText()));
+                var eqcomp = new RichTextComponent(capi, " = ", CairoFont.WhiteMediumText());
+                eqcomp.VerticalAlign = EnumVerticalAlign.Middle;
+                barrelRecipestext.Add(eqcomp);
                 var ocmp = new SlideshowItemstackTextComponent(capi, outstacks, 40, EnumFloat.Inline);
+                
                 ocmp.ShowStackSize = true;
                 barrelRecipestext.Add(ocmp);
 

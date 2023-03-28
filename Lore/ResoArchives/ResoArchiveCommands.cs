@@ -1,8 +1,10 @@
 ﻿using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.CommandAbbr;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -62,9 +64,106 @@ namespace Vintagestory.GameContent
                         .HandleWith(onMusicTriggerSetTrack)
                     .EndSub()
                 .EndSub()
+                 .BeginSub("chiselfix")
+                    .WithDesc("Fixes game: chiseled blocks")
+                    .HandleWith(onChiselFix)
+                .EndSub()
+                .BeginSub("chiselsearchreplace")
+                    .WithDesc("Search&Replace chiseled block names in (worldedit) marked area. Wildcard (but no spaces) are allowed in the serach part")
+                    .WithArgs(parsers.Word("search"), parsers.All("replace"))
+                    .HandleWith((args) => onSearchReplace(args, false))
+                .EndSub()
+                .BeginSub("chiselsearchreplacedry")
+                    .WithDesc("Search&Replace chiseled block names in (worldedit) marked area. Dry run, will only print the finds.")
+                    .WithArgs(parsers.Word("search"))
+                    .HandleWith((args) => onSearchReplace(args, true))
+                .EndSub()
                 .Validate()
             ;
         }
+
+        private TextCommandResult onChiselFix(TextCommandCallingArgs args)
+        {
+            var start = sapi.ObjectCache.Get("weStartMarker-" + args.Caller.Player.PlayerUID, null) as BlockPos;
+            var end = sapi.ObjectCache.Get("weEndMarker-" + args.Caller.Player.PlayerUID, null) as BlockPos;
+
+            if (start == null || end == null)
+            {
+                return TextCommandResult.Error("No area marked");
+            }
+
+            HashSet<string> foundtypes = new HashSet<string>();
+            int foundtotal = 0;
+
+            sapi.World.BlockAccessor.WalkBlocks(start, end, (block, x, y, z) =>
+            {
+                if (block is BlockChisel)
+                {
+                    var be = sapi.World.BlockAccessor.GetBlockEntity<BlockEntityChisel>(new BlockPos(x, y, z));
+                    if (WildcardUtil.Match("game:*", be.BlockName))
+                    {
+                        foundtotal++;
+                        foundtypes.Add(be.BlockName);
+                        be.BlockName = sapi.World.Blocks[be.MaterialIds[0]].GetPlacedBlockName(sapi.World, new BlockPos(x,y,z));
+                        be.MarkDirty(true);
+                    }
+                }
+            });
+
+            return TextCommandResult.Success(Lang.GetL(args.LanguageCode, "{0} chiseled block names replaced.", foundtotal));
+        }
+
+        private TextCommandResult onSearchReplace(TextCommandCallingArgs args, bool dryrun)
+        {
+            var start = sapi.ObjectCache.Get("weStartMarker-" + args.Caller.Player.PlayerUID, null) as BlockPos;
+            var end = sapi.ObjectCache.Get("weEndMarker-" + args.Caller.Player.PlayerUID, null) as BlockPos;
+
+            if (start == null || end == null)
+            {
+                return TextCommandResult.Error("No area marked");
+            }
+
+            string search = (string)args[0];
+            string replace = dryrun ? "" : (string)args[1];
+
+            HashSet<string> foundtypes = new HashSet<string>();
+            int foundtotal = 0;
+
+            sapi.World.BlockAccessor.WalkBlocks(start, end, (block, x, y, z) =>
+            {
+                if (block is BlockChisel)
+                {
+                    var be = sapi.World.BlockAccessor.GetBlockEntity<BlockEntityChisel>(new BlockPos(x, y, z));
+                    if (WildcardUtil.Match(search, be.BlockName))
+                    {
+                        foundtotal++;
+                        foundtypes.Add(be.BlockName);
+                        if (!dryrun)
+                        {
+                            be.BlockName = replace;
+                            be.MarkDirty(true);
+                        }
+                    }
+                }
+            });
+
+            if (dryrun)
+            {
+                if (foundtypes.Count < 20)
+                {
+                    sapi.Logger.Notification(string.Join(", ", foundtypes));
+                    return TextCommandResult.Success(Lang.GetL(args.LanguageCode, "{0} chiseled blocks match your search. Names: {1}", foundtotal, string.Join(", ", foundtypes)));
+                } else
+                {
+                    sapi.Logger.Notification(string.Join(", ", foundtypes));
+                    return TextCommandResult.Success(Lang.GetL(args.LanguageCode, "{0} chiseled blocks match your search. Names logged to server-main.txt.", foundtotal));
+                }
+            } else
+            {
+                return TextCommandResult.Success(Lang.GetL(args.LanguageCode, "{0} chiseled block names replaced.", foundtotal));
+            }
+        }
+            
 
         private TextCommandResult onSetMicroBlockName(TextCommandCallingArgs args)
         {
@@ -74,7 +173,7 @@ namespace Vintagestory.GameContent
             var be = sapi.World.BlockAccessor.GetBlockEntity<BlockEntityMicroBlock>(pos);
             if (be == null)
             {
-                return TextCommandResult.Error("Not looking at a microblock");
+                return TextCommandResult.Error("Target block is not a microblock");
             }
 
             be.BlockName = name;

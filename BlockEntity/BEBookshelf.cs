@@ -32,6 +32,9 @@ namespace Vintagestory.GameContent
         string type, material;
         float[] mat;
 
+        public string Type => type;
+        public string Material => material;
+
         public int[] UsableSlots {
             get {
                 (block as BlockBookshelf).UsableSlots.TryGetValue(type, out var slots); 
@@ -50,7 +53,7 @@ namespace Vintagestory.GameContent
 
             if (Api.Side == EnumAppSide.Client)
             {
-                mesh = (Block as BlockBookshelf).GenMesh(type, material);
+                mesh = (Block as BlockBookshelf).GetOrCreateMesh(type, material);
                 mat = Matrixf.Create().Translate(0.5f, 0.5f, 0.5f).RotateY(MeshAngleRad).Translate(-0.5f, -0.5f, -0.5f).Values;
             }
 

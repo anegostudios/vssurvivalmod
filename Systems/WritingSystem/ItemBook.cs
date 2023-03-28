@@ -9,7 +9,7 @@ namespace Vintagestory.GameContent
 {
     public class PagePosition
     {
-        public int Start, Length;
+        public int Start, Length, LineCount;
     }
 
     public class ItemBook : Item, IBookShelvable

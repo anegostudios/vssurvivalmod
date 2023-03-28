@@ -197,9 +197,6 @@ namespace Vintagestory.GameContent
                 ElementBounds leftColBounds = ElementBounds.Fixed(0, ypos, 0, dlgHeight - 47).FixedGrow(2 * pad, 2 * pad);
                 insetSlotBounds = ElementBounds.Fixed(0, ypos + 25, 190, leftColBounds.fixedHeight - 2 * pad + 10).FixedRightOf(leftColBounds, 10);
 
-                //ElementBounds leftSlotBounds = ElementStdBounds.SlotGrid(EnumDialogArea.None, 0, ypos, 0, rows).FixedGrow(2 * pad, 2 * pad);
-                //insetSlotBounds = ElementBounds.Fixed(0, ypos + 25, 190, leftSlotBounds.fixedHeight - 2 * pad + 8 + 25).FixedRightOf(leftSlotBounds, 10);
-
                 ElementBounds rightSlotBounds = ElementStdBounds.SlotGrid(EnumDialogArea.None, 0, ypos, 1, rows).FixedGrow(2 * pad, 2 * pad).FixedRightOf(insetSlotBounds, 10);
 
                 ElementBounds prevButtonBounds = ElementBounds.Fixed(0, ypos + 25, 35, slotsize - 4).WithFixedPadding(2).FixedRightOf(insetSlotBounds, 20);
@@ -528,6 +525,11 @@ namespace Vintagestory.GameContent
         public override void OnRenderGUI(float deltaTime)
         {
             base.OnRenderGUI(deltaTime);
+
+            if (capi.IsGamePaused)
+            {
+                capi.World.Player.Entity.talkUtil.OnGameTick(deltaTime);
+            }
             
             capi.Render.GlPushMatrix();
 

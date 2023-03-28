@@ -54,7 +54,10 @@ namespace Vintagestory.GameContent
             maxY = tree.GetInt("maxY");
             maxZ = tree.GetInt("maxZ");
 
-            musicTrackLocation = new AssetLocation(tree.GetString("musicTrackLocation"));
+            if (tree.HasAttribute("musicTrackLocation"))
+            {
+                musicTrackLocation = new AssetLocation(tree.GetString("musicTrackLocation"));
+            }
         }
 
         public override void ToTreeAttributes(ITreeAttribute tree)
@@ -69,7 +72,10 @@ namespace Vintagestory.GameContent
             tree.SetInt("maxY", maxY);
             tree.SetInt("maxZ", maxZ);
 
-            tree.SetString("musicTrackLocation", musicTrackLocation.ToShortString());
+            if (musicTrackLocation != null)
+            {
+                tree.SetString("musicTrackLocation", musicTrackLocation.ToShortString());
+            }
         }
 
 

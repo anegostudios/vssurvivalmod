@@ -28,15 +28,35 @@ namespace Vintagestory.GameContent
     public class HookGeneratedStructure
     {
         [JsonProperty]
-        public string mainPath;
+        public StructureAndOffset[] mainElements;
         [JsonProperty]
-        public string endPath;
+        public StructureAndOffset endElement;
         [JsonProperty]
         public int offsetX;
         [JsonProperty]
         public int offsetY;
         [JsonProperty]
         public int offsetZ;
+        [JsonProperty]
+        public int endOffsetY;
+        [JsonProperty]
+        public AssetLocation[] ReplaceWithBlocklayers;
+        [JsonProperty]
+        public int mainsizeX;
+        [JsonProperty]
+        public int mainsizeZ;
+    }
+
+    public class StructureAndOffset
+    {
+        [JsonProperty]
+        public string path;
+        [JsonProperty]
+        public int dx;
+        [JsonProperty]
+        public int dy;
+        [JsonProperty]
+        public int dz;
     }
 
     public class GenStoryStructures : ModStdWorldGen
@@ -58,7 +78,7 @@ namespace Vintagestory.GameContent
         ICoreServerAPI api;
 
         bool genStoryStructures;
-
+        BlockLayerConfig blockLayerConfig;
 
         public override double ExecuteOrder() { return 0.92; }
 
@@ -93,7 +113,11 @@ namespace Vintagestory.GameContent
             strucRand = new LCGRandom(api.WorldManager.Seed + 1095);
             IAsset asset = api.Assets.Get("worldgen/storystructures.json");
             scfg = asset.ToObject<WorldGenStoryStructuresConfig>();
-            scfg.Init(api, strucRand);
+            RockStrataConfig rockstrata = scfg.Init(api, strucRand);
+
+            asset = api.Assets.Get("worldgen/blocklayers.json");
+            blockLayerConfig = asset.ToObject<BlockLayerConfig>();
+            blockLayerConfig.ResolveBlockIds(api, rockstrata);
 
             if (api.WorldManager.SaveGame.IsNew)
             {
@@ -227,6 +251,7 @@ namespace Vintagestory.GameContent
             int chunkX = request.ChunkX;
             int chunkZ = request.ChunkZ;
             tmpCuboid.Set(chunkX * chunksize, 0, chunkZ * chunksize, chunkX * chunksize + chunksize, chunks.Length * chunksize, chunkZ * chunksize + chunksize);
+            worldgenBlockAccessor.BeginColumn();
 
             for (int i = 0; i < structureLocations.Length; i++)
             {
@@ -278,64 +303,166 @@ namespace Vintagestory.GameContent
             IAsset assetMain = api.Assets.TryGet(code.WithPathPrefixOnce("worldgen/hookgeneratedstructures/").WithPathAppendixOnce(".json"));
             if (assetMain == null || mapchunk == null)
             {
-                api.Logger.Notification("Worldgen hook event failed: " + (mapchunk == null ? "bad coordinates" : code + "* not found"));
+                api.Logger.Error("Worldgen hook event failed: " + (mapchunk == null ? "bad coordinates" : code + "* not found"));
                 return;
             }
-            HookGeneratedStructure main = assetMain.ToObject<HookGeneratedStructure>();
+            HookGeneratedStructure hookStruct = assetMain.ToObject<HookGeneratedStructure>();
+            int mainsizeX = hookStruct.mainsizeX;
+            int mainsizeZ = hookStruct.mainsizeZ;
 
-            List<IAsset> assets = api.Assets.GetManyInCategory("worldgen", main.mainPath, code.Domain); 
-            if (assets.Count == 0 || mapchunk == null)
-            {
-                api.Logger.Notification("Worldgen hook event failed: " + main.mainPath + "* not found");
-                return;
-            }
-
-            pos = pos.AddCopy(main.offsetX, main.offsetY, main.offsetZ);
-            BlockSchematicStructure[] structures = new BlockSchematicStructure[assets.Count];
-            int i = 0;
-            foreach (IAsset asset in assets)
-            {
-                var structure = asset.ToObject<BlockSchematicStructure>();
-                structure.Init(blockAccessor);
-                structures[i++] = structure;
-            }
-
-            int minX = pos.X - 2;
-            int maxX = pos.X + 3;
-            int minZ = pos.Z - 2;
-            int maxZ = pos.Z + 3;
+            int minX = pos.X - mainsizeX / 2;
+            int maxX = pos.X + mainsizeX / 2;
+            int minZ = pos.Z - mainsizeZ / 2;
+            int maxZ = pos.Z + mainsizeZ / 2;
             int height = 65535;
             int maxheight = 0;
-            for (int x = minX; x < maxX; x++)
+            int weightedHeight = 0;   // used to detect whether downwards slope is East-West or West-East
+            for (int x = minX; x <= maxX; x++)
             {
-                for (int z = minZ; z < maxZ; z++)
+                for (int z = minZ; z <= maxZ; z++)
                 {
                     mapchunk = blockAccessor.GetMapChunk(x / chunksize, z / chunksize);
                     int h = mapchunk.WorldGenTerrainHeightMap[(z % chunksize) * chunksize + (x % chunksize)];
                     height = Math.Min(height, h);
                     maxheight = Math.Max(maxheight, h);
+                    weightedHeight += h * (x - pos.X);
                 }
             }
-            
-            if (maxheight > height + 1) height+= (maxheight - height) / 3;  // Put the top higher in sloping areas
+            bool rotate = weightedHeight < 0;
 
-            Random rand = api.World.Rand;
-            while (pos.Y < height - 1)
+            if (hookStruct.mainElements.Length > 0)
             {
-                var struc = structures[rand.Next(structures.Length)];
-                struc.PlaceRespectingBlockLayers(blockAccessor, api.World, pos, 0, 0, 0, 0, null, new int[0], true, true);
-                pos.Y += struc.SizeY;
+                pos = pos.AddCopy(hookStruct.offsetX, hookStruct.offsetY, hookStruct.offsetZ);
+                Vec3i[] offsets = new Vec3i[hookStruct.mainElements.Length];
+                BlockSchematicStructure[] structures = new BlockSchematicStructure[hookStruct.mainElements.Length];
+                int i = 0;
+                foreach (var el in hookStruct.mainElements)
+                {
+                    IAsset asset = api.Assets.TryGet(new AssetLocation(code.Domain, "worldgen/" + el.path + ".json"));
+                    if (asset == null)
+                    {
+                        api.Logger.Error("Worldgen hook event failed: path not found: " + el.path);
+                        return;
+                    }
+                    var structure = asset.ToObject<BlockSchematicStructure>();
+                    if (rotate) structure.TransformWhilePacked(api.World, EnumOrigin.BottomCenter, 180);
+                    structure.Init(blockAccessor);
+                    structures[i] = structure;
+                    offsets[i++] = new Vec3i(rotate ? -(structure.SizeX + el.dx - mainsizeX) : el.dx, el.dy, rotate ? -(structure.SizeZ + el.dz - mainsizeZ) : el.dz);
+                }
+
+                //                if (maxheight > height + 1) height += (maxheight - height) / 3;  // Put the top higher in sloping areas
+                height += hookStruct.endOffsetY;
+
+                Random rand = api.World.Rand;
+                List<int> indices = new List<int>();
+                List<int> bestIndices = new List<int>();
+                int bestDiff = int.MaxValue;
+                int testHeight;
+
+                //minX = int.MaxValue;
+                //minZ = int.MaxValue;
+                //for (i = 0; i < structures.Length; i++)
+                //{
+                //    var struc = structures[i];
+                //    if (struc.SizeX < minX) minX = struc.SizeX;
+                //    if (struc.SizeZ < minZ) minZ = struc.SizeZ;
+                //}
+
+                for (int j = 0; j < 25; j++)
+                {
+                    indices.Clear();
+                    testHeight = pos.Y;
+                    while (testHeight < height)
+                    {
+                        i = rand.Next(structures.Length);
+                        int h = structures[i].SizeY;
+                        if (testHeight + h > height)
+                        {
+                            if (testHeight + h - height > height - testHeight)  // is the one below closer to height than the one above?
+                            {
+                                h = (height - testHeight) * 2;   // fix the newDiff to be (height - testHeight) in this case;
+                            }
+                            else
+                            {
+                                indices.Add(i);
+                            }
+
+                            int newDiff = testHeight + h - height;
+                            if (newDiff < bestDiff)
+                            {
+                                bestDiff = newDiff;
+                                bestIndices.Clear();
+                                foreach (int ix in indices) bestIndices.Add(ix);
+                                if (bestDiff == 0) i = 25;  // early exit if we already have an optimal set of indices, by fast-forwarding outer loop;
+                            }
+
+                            break;
+                        }
+
+                        indices.Add(i);
+                        testHeight += h;
+                    }
+                }
+
+                foreach (int ix in bestIndices)
+                {
+                    var struc = structures[ix];
+                    var offset = offsets[ix];
+                    BlockPos posPlace = pos.AddCopy(offset.X, offset.Y, offset.Z);
+                    struc.PlaceRespectingBlockLayers(blockAccessor, api.World, posPlace, 0, 0, 0, 0, null, new int[0], true, true);
+                    pos.Y += struc.SizeY;
+                }
             }
 
-            IAsset assetTop = api.Assets.Get(new AssetLocation(code.Domain, main.endPath));
+            IAsset assetTop = api.Assets.Get(new AssetLocation(code.Domain, hookStruct.endElement.path));
             var structTop = assetTop?.ToObject<BlockSchematicStructure>();
             if (structTop == null)
             {
-                api.Logger.Notification("Worldgen hook event incomplete: " + main.endPath + " not found");
+                api.Logger.Notification("Worldgen hook event incomplete: " + hookStruct.endElement.path + " not found");
                 return;
             }
+
+            int[] replaceblockids;
+            if (hookStruct.ReplaceWithBlocklayers != null)
+            {
+                replaceblockids = new int[hookStruct.ReplaceWithBlocklayers.Length];
+                for (int i = 0; i < replaceblockids.Length; i++)
+                {
+                    Block block = api.World.GetBlock(hookStruct.ReplaceWithBlocklayers[i]);
+                    if (block == null)
+                    {
+                        api.Logger.Error(string.Format("Hook structure with code {0} has replace block layer {1} defined, but no such block found!", code, hookStruct.ReplaceWithBlocklayers[i]));
+                        return;
+                    }
+                    else
+                    {
+                        replaceblockids[i] = block.Id;
+                    }
+
+                }
+            }
+            else replaceblockids = new int[0];
+
+            int climateUpLeft, climateUpRight, climateBotLeft, climateBotRight;
+            IMapRegion region = mapchunk.MapRegion;
+            IntDataMap2D climateMap = region.ClimateMap;
+            int regionChunkSize = api.WorldManager.RegionSize / chunksize;
+            int rlX = pos.X / chunksize % regionChunkSize;
+            int rlZ = pos.Z / chunksize % regionChunkSize;
+            float facC = (float)climateMap.InnerSize / regionChunkSize;
+            climateUpLeft = climateMap.GetUnpaddedInt((int)(rlX * facC), (int)(rlZ * facC));
+            climateUpRight = climateMap.GetUnpaddedInt((int)(rlX * facC + facC), (int)(rlZ * facC));
+            climateBotLeft = climateMap.GetUnpaddedInt((int)(rlX * facC), (int)(rlZ * facC + facC));
+            climateBotRight = climateMap.GetUnpaddedInt((int)(rlX * facC + facC), (int)(rlZ * facC + facC));
+
+            if (rotate) structTop.TransformWhilePacked(api.World, EnumOrigin.BottomCenter, 180);
+            structTop.blockLayerConfig = blockLayerConfig;   // For other structures this is done by WorldGenStructureBase at loading time
             structTop.Init(blockAccessor);
-            structTop.PlaceRespectingBlockLayers(blockAccessor, api.World, pos, 0, 0, 0, 0, null, new int[0], true, true);
+
+            var ele = hookStruct.endElement;
+            pos.Add(rotate ? -(structTop.SizeX + ele.dx - mainsizeX) : ele.dx, ele.dy, rotate ? -(structTop.SizeZ + ele.dz - mainsizeZ) : ele.dz);
+            structTop.PlaceRespectingBlockLayers(blockAccessor, api.World, pos, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight, null, replaceblockids, true, true, true);
         }
 
     }

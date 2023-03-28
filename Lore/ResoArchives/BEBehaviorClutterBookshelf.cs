@@ -46,7 +46,7 @@ namespace Vintagestory.GameContent
             IShapeTypeProps cprops = clutterBlock.GetTypeProps(Type, null, this);
             if (cprops == null) return;
 
-            mesh = clutterBlock.GenMesh(cprops).Clone().Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 0, rotateY + cprops.Rotation.Y * GameMath.DEG2RAD, 0);
+            mesh = clutterBlock.GetOrCreateMesh(cprops).Clone().Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 0, rotateY + cprops.Rotation.Y * GameMath.DEG2RAD, 0);
         }
 
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)

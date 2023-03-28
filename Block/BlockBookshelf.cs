@@ -137,13 +137,13 @@ namespace Vintagestory.GameContent
             return val;
         }
 
-        public virtual MeshData GenMesh(string type, string material)
+        public virtual MeshData GetOrCreateMesh(string type, string material, ITexPositionSource overrideTexturesource = null)
         {
             var cMeshes = ObjectCacheUtil.GetOrCreate(api, "BookshelfMeshes", () => new Dictionary<string, MeshData>());
             ICoreClientAPI capi = api as ICoreClientAPI;
             
             string key = type + "-" + material;
-            if (!cMeshes.TryGetValue(key, out var mesh))
+            if (overrideTexturesource != null || !cMeshes.TryGetValue(key, out var mesh))
             {
                 mesh = new MeshData(4, 3);
 
@@ -153,13 +153,19 @@ namespace Vintagestory.GameContent
 
                 var shape = capi.Assets.TryGet(rcshape.Base)?.ToObject<Shape>();
 
-                var texSource = new ShapeTextureSource(capi, shape);
-                foreach (var val in textures) {
-                    var ctex = val.Value.Clone();
-                    ctex.Base.Path = ctex.Base.Path.Replace("{type}", type).Replace("{material}", material);
-                    ctex.Bake(capi.Assets);
+                var texSource = overrideTexturesource;
+                if (texSource == null)
+                {
+                    var stexSource = new ShapeTextureSource(capi, shape);
+                    texSource = stexSource;
+                    foreach (var val in textures)
+                    {
+                        var ctex = val.Value.Clone();
+                        ctex.Base.Path = ctex.Base.Path.Replace("{type}", type).Replace("{material}", material);
+                        ctex.Bake(capi.Assets);
 
-                    texSource.textures[val.Key] = ctex;
+                        stexSource.textures[val.Key] = ctex;
+                    }
                 }
                 if (shape == null) return mesh;
 
@@ -172,11 +178,30 @@ namespace Vintagestory.GameContent
                     cprops.texPos.RndColors = new int[TextureAtlasPosition.RndColorsLength];
                 }*/
 
-                cMeshes[key] = mesh;
+                if (overrideTexturesource == null)
+                {
+                    cMeshes[key] = mesh;
+                }
             }
 
             return mesh;
         }
+
+        public override void GetDecal(IWorldAccessor world, BlockPos pos, ITexPositionSource decalTexSource, ref MeshData decalModelData, ref MeshData blockModelData)
+        {
+            var beb = GetBlockEntity<BlockEntityBookshelf>(pos);
+            if (beb != null)
+            {
+                var mat = Matrixf.Create().Translate(0.5f, 0.5f, 0.5f).RotateY(beb.MeshAngleRad).Translate(-0.5f, -0.5f, -0.5f).Values;
+                blockModelData = GetOrCreateMesh(beb.Type, beb.Material).Clone().MatrixTransform(mat);
+                decalModelData = GetOrCreateMesh(beb.Type, beb.Material, decalTexSource).Clone().MatrixTransform(mat);
+                return;
+            }
+
+            base.GetDecal(world, pos, decalTexSource, ref decalModelData, ref blockModelData);
+        }
+
+
 
         public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
         {
@@ -192,7 +217,7 @@ namespace Vintagestory.GameContent
 
             if (!meshRefs.TryGetValue(key, out meshref))
             {
-                MeshData mesh = GenMesh(type, material);
+                MeshData mesh = GetOrCreateMesh(type, material);
                 meshref = capi.Render.UploadMesh(mesh);
                 meshRefs[key] = meshref;
             }
@@ -213,6 +238,24 @@ namespace Vintagestory.GameContent
             if (beshelf != null) return beshelf.OnInteract(byPlayer, blockSel);
 
             return base.OnBlockInteractStart(world, byPlayer, blockSel);
+        }
+
+        public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
+        {
+            var stack = base.OnPickBlock(world, pos);
+            var beshelf = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityBookshelf;
+            if (beshelf != null)
+            {
+                stack.Attributes.SetString("type", beshelf.Type);
+                stack.Attributes.SetString("material", beshelf.Material);
+            }
+
+            return stack;
+        }
+
+        public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1)
+        {
+            return new ItemStack[] { OnPickBlock(world, pos) };
         }
     }
 }

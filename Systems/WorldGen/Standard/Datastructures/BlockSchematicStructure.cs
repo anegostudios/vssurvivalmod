@@ -94,7 +94,7 @@ namespace Vintagestory.ServerMods
         /// <param name="climateBotRight"></param>
         /// <param name="replaceblockids"></param>
         /// <returns></returns>
-        public int PlaceRespectingBlockLayers(IBlockAccessor blockAccessor, IWorldAccessor worldForCollectibleResolve, BlockPos startPos, int climateUpLeft, int climateUpRight, int climateBotLeft, int climateBotRight, Dictionary<int, Dictionary<int, int>> replaceBlocks, int[] replaceblockids, bool replaceMetaBlocks = true, bool replaceBlockEntities = false)
+        public int PlaceRespectingBlockLayers(IBlockAccessor blockAccessor, IWorldAccessor worldForCollectibleResolve, BlockPos startPos, int climateUpLeft, int climateUpRight, int climateBotLeft, int climateBotRight, Dictionary<int, Dictionary<int, int>> replaceBlocks, int[] replaceblockids, bool replaceMetaBlocks = true, bool replaceBlockEntities = false, bool suppressSoilIfAirBelow = false)
         {
             BlockPos curPos = new BlockPos();
             int placed = 0;
@@ -131,8 +131,24 @@ namespace Vintagestory.ServerMods
 
                         if (newBlock.Replaceable < 1000)
                         {
-                            if (replaceblockids.Length > depth && newBlock.BlockId == replaceblockids[depth])
+                            if (replaceblockids.Contains(newBlock.BlockId))
                             {
+                                if (suppressSoilIfAirBelow && (y == 0 || blocksByPos[x, y - 1, z] == null)) // only check this on the bottom layer and if current newBlock is soil: any block in replaceblockids is assumed to be soil
+                                {
+                                    Block belowBlock = blockAccessor.GetBlock(curPos.X, curPos.Y - 1, curPos.Z, BlockLayersAccess.SolidBlocks);
+                                    if (belowBlock.Replaceable > 3000)
+                                    {
+                                        int yy = y + 1;
+                                        while (yy < SizeY)    // clear any soil in the column above this
+                                        {
+                                            Block placedBlock = blocksByPos[x, yy, z];
+                                            if (placedBlock == null || !replaceblockids.Contains(placedBlock.BlockId)) break;
+                                            blockAccessor.SetBlock(0, new BlockPos(curPos.X, startPos.Y + yy, curPos.Z), BlockLayersAccess.Solid);
+                                            yy++;
+                                        }
+                                        continue;
+                                    }
+                                }
                                 int climate = GameMath.BiLerpRgbColor((float)x / chunksize, (float)z / chunksize, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight);
 
                                 newBlock = GetBlockLayerBlock((climate >> 8) & 0xff, (climate >> 16) & 0xff, startPos.Y, rockblockid, depth, newBlock, worldForCollectibleResolve.Blocks, curPos);

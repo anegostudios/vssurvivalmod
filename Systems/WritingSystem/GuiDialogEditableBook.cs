@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -21,8 +22,9 @@ namespace Vintagestory.GameContent
 
         protected override void Compose()
         {
+            double lineHeight = font.GetFontExtents().Height * font.LineHeightMultiplier / RuntimeEnv.GUIScale;
             ElementBounds titleBounds = ElementBounds.Fixed(0, 30, maxWidth, 24);
-            ElementBounds textAreaBounds = ElementBounds.Fixed(0, 0, 400, maxLines * 21.2f).FixedUnder(titleBounds, 5);
+            ElementBounds textAreaBounds = ElementBounds.Fixed(0, 0, 400, maxLines * lineHeight + 1).FixedUnder(titleBounds, 5);
 
             ElementBounds prevButtonBounds = ElementBounds.FixedSize(60, 30).FixedUnder(textAreaBounds, 5).WithAlignment(EnumDialogArea.LeftFixed).WithFixedPadding(10, 2);
             ElementBounds pageLabelBounds = ElementBounds.FixedSize(80, 30).FixedUnder(textAreaBounds, 2 * 5 + 7).WithAlignment(EnumDialogArea.CenterFixed).WithFixedPadding(10, 2);
@@ -67,8 +69,21 @@ namespace Vintagestory.GameContent
 
             SingleComposer.GetTextArea("text").OnCaretPositionChanged = onCaretPositionChanged;
             SingleComposer.GetTextArea("text").Autoheight = false;
-
+            SingleComposer.GetTextArea("text").OnTryTextChangeText = onTryTextChange;
             updatePage();   
+        }
+
+        private bool onTryTextChange(List<string> lines)
+        {
+            int totalLineCount = 0;
+            bool hasMoreLinesNow = lines.Count > Pages[curPage].LineCount;
+            for (int i = 0; i < Pages.Count; i++)
+            {
+                totalLineCount = i == curPage ? lines.Count : Pages[i].LineCount;
+            }
+
+            if (totalLineCount > maxPageCount * maxLines && hasMoreLinesNow) return false;
+            return true;
         }
 
         private bool OnButtonSign()
@@ -122,11 +137,12 @@ namespace Vintagestory.GameContent
             if (ignoreTextChange) return;
             ignoreTextChange = true;
 
-            if (posLine >= maxLines)
+            if (posLine >= maxLines && curPage+1 < maxPageCount && Pages.Count > curPage+1)
             {
                 var elem = SingleComposer.GetTextArea("text");
                 StoreCurrentPage();
                 curPage = Math.Min(curPage + 1, Pages.Count);
+                
                 updatePage();
                 elem.SetCaretPos(posInLine, posLine - maxLines);
             }
@@ -172,12 +188,15 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        private void StoreCurrentPage()
+        private bool StoreCurrentPage()
         {
             var curPagePos = Pages[curPage];
             string pageText = SingleComposer.GetTextArea("text").GetText();
+
             AllPagesText = AllPagesText.Substring(0, curPagePos.Start) + pageText + AllPagesText.Substring(Math.Min(AllPagesText.Length, curPagePos.Start + curPagePos.Length));
             Pages = Pageize(AllPagesText, font, textAreaWidth, maxLines);
+
+            return true;
         }
 
         protected bool OnPreviousPage()
@@ -188,6 +207,64 @@ namespace Vintagestory.GameContent
             updatePage();
             ignoreTextChange = false;
             return true;
+        }
+
+        public override void OnKeyDown(KeyEvent args)
+        {
+            var textArea = SingleComposer.GetTextArea("text");
+            if (args.KeyCode == (int)GlKeys.BackSpace && textArea.CaretPosInLine == 0 && textArea.CaretPosLine == 0 && curPage > 0)
+            {
+                StoreCurrentPage();
+                curPage--;
+                ignoreTextChange = true;
+                updatePage(true);
+                ignoreTextChange = false;
+            }
+            if (args.KeyCode == (int)GlKeys.Left && textArea.CaretPosInLine == 0 && textArea.CaretPosLine == 0 && curPage > 0)
+            {
+                StoreCurrentPage();
+                curPage--;
+                ignoreTextChange = true;
+                updatePage(true);
+                ignoreTextChange = false;
+                return;
+            }
+
+            if (args.KeyCode == (int)GlKeys.Right && curPage < Pages.Count && textArea.CaretPosWithoutLineBreaks == textArea.GetText().Length)
+            {
+                StoreCurrentPage();
+                curPage++;
+                ignoreTextChange = true;
+                updatePage(false);
+                textArea.SetCaretPos((int)0, 0);
+                ignoreTextChange = false;
+                return;
+            }
+
+            if (args.KeyCode == (int)GlKeys.Down && textArea.CaretPosLine + 1 >= maxLines && curPage < Pages.Count)
+            {
+                var pos = textArea.CaretPosInLine;
+                StoreCurrentPage();
+                curPage++;
+                ignoreTextChange = true;
+                updatePage(false);
+                textArea.SetCaretPos((int)pos, 0);
+                ignoreTextChange = false;
+                return;
+            }
+
+            if (args.KeyCode == (int)GlKeys.Up && curPage > 0 && textArea.CaretPosLine == 0)
+            {
+                StoreCurrentPage();
+                curPage--;
+                ignoreTextChange = true;
+                updatePage(true);
+                args.Handled = true;
+                ignoreTextChange = false;
+                return;
+            }
+
+            base.OnKeyDown(args);
         }
     }
 }

@@ -16,7 +16,7 @@ namespace Vintagestory.ServerMods
         public WorldGenStoryStructure[] Structures;
 
 
-        public void Init(ICoreServerAPI api, LCGRandom rand)
+        public RockStrataConfig Init(ICoreServerAPI api, LCGRandom rand)
         {
             IAsset asset = api.Assets.Get("worldgen/rockstrata.json");
             RockStrataConfig rockstrata = asset.ToObject<RockStrataConfig>();
@@ -26,6 +26,8 @@ namespace Vintagestory.ServerMods
             {
                 struc.Init(api, rand);
             }
+
+            return rockstrata;
         }
 
     }

@@ -1,6 +1,5 @@
 ﻿using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
@@ -58,19 +57,8 @@ namespace Vintagestory.GameContent
         {
             if (byEntity.World is IClientWorldAccessor)
             {
-                
                 FpHandTransform.Rotation.Y = GameMath.Mod(-byEntity.World.ElapsedMilliseconds / 50f, 360);
                 TpHandTransform.Rotation.Y = GameMath.Mod(-byEntity.World.ElapsedMilliseconds / 50f, 360);
-
-                /*IRenderAPI rapi = (byEntity.World.Api as ICoreClientAPI).Render;
-                Vec3d aboveHeadPos = byEntity.Pos.XYZ.Add(0, byEntity.EyeHeight() - 0.1f, 0);
-                Vec3d pos = MatrixToolsd.Project(aboveHeadPos, rapi.PerspectiveProjectionMat, rapi.PerspectiveViewMat, rapi.ScreenWidth, rapi.ScreenHeight);
-
-                
-                particlesHeld.minSize = 0.05f;
-                particlesHeld.minSize = 0.15f;
-
-                SpawnParticles(byEntity.World, pos);*/
             }
 
         }
@@ -161,7 +149,6 @@ namespace Vintagestory.GameContent
 
             slot.TakeOut(1);
             slot.MarkDirty();
-            //(byEntity as EntityPlayer)?.Player?.InventoryManager.BroadcastHotbarSlot();
 
             if (byEntity.World.Side == EnumAppSide.Client)
             {

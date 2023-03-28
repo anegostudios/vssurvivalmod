@@ -1,6 +1,7 @@
 ﻿using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -173,6 +174,19 @@ namespace Vintagestory.GameContent
             var stack = OnPickBlock(world, pos);
             stack.Attributes.SetBool("collected", true);
             return new ItemStack[] { stack };
+        }
+
+        public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
+        {
+            base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
+
+            string type = inSlot.Itemstack.Attributes.GetString("type", "");
+            if (type.StartsWithFast("banner-"))
+            {
+                string[] parts = type.Split('-');
+                dsc.AppendLine(Lang.Get("Pattern: {0}", Lang.Get("bannerpattern-" + parts[1])));
+                dsc.AppendLine(Lang.Get("Segment: {0}", Lang.Get("bannersegment-" + parts[3])));
+            }
         }
     }
 

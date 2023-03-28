@@ -170,7 +170,7 @@ namespace Vintagestory.GameContent
 
         public float xangle = 0, yangle = 0, zangle = 0;
 
-        public void OnRenderFrame(float dt, EnumRenderStage stage)
+        public virtual void OnRenderFrame(float dt, EnumRenderStage stage)
         {
             // Client side we update every frame for smoother turning
             if (capi.IsGamePaused) return;
@@ -271,7 +271,7 @@ namespace Vintagestory.GameContent
 
         }
 
-        private void updateBoatAngleAndMotion(float dt)
+        protected virtual void updateBoatAngleAndMotion(float dt)
         {
             if (!Swimming) return;
 
@@ -366,7 +366,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public bool IsMountedBy(Entity entity)
+        public virtual bool IsMountedBy(Entity entity)
         {
             foreach (var seat in Seats)
             {
@@ -375,7 +375,7 @@ namespace Vintagestory.GameContent
             return false;
         }
 
-        public Vec3f GetMountOffset(Entity entity)
+        public virtual Vec3f GetMountOffset(Entity entity)
         {
             foreach (var seat in Seats)
             {
@@ -467,7 +467,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public bool IsEmpty()
+        public virtual bool IsEmpty()
         {
             return !Seats.Any(seat => seat.Passenger != null);
         }
@@ -479,8 +479,7 @@ namespace Vintagestory.GameContent
 
         public void Dispose()
         {
-            throw new NotImplementedException();
+            
         }
     }
-
 }

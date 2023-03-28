@@ -335,7 +335,7 @@ namespace Vintagestory.GameContent
 
             if (!clutterMeshRefs.TryGetValue(hashkey, out meshref))
             {
-                MeshData mesh = GenMesh(cprops, otcode);
+                MeshData mesh = GetOrCreateMesh(cprops, null, otcode);
                 mesh = mesh.Clone().Rotate(new Vec3f(0.5f, 0.5f, 0.5f), rotX, rotY, rotZ);
                 meshref = capi.Render.UploadMesh(mesh);
                 clutterMeshRefs[hashkey] = meshref;
@@ -410,47 +410,66 @@ namespace Vintagestory.GameContent
             return val;
         }
 
+        public override void GetDecal(IWorldAccessor world, BlockPos pos, ITexPositionSource decalTexSource, ref MeshData decalModelData, ref MeshData blockModelData)
+        {
+            var bes = GetBEBehavior< BEBehaviorShapeFromAttributes>(pos);
+            if (bes != null)
+            {
+                var cprops = GetTypeProps(bes.Type, null, bes);
+                blockModelData = GetOrCreateMesh(cprops, null, bes.overrideTextureCode).Clone().Rotate(new Vec3f(0.5f, 0.5f, 0.5f), bes.rotateX, bes.rotateY + cprops.Rotation.Y * GameMath.DEG2RAD, bes.rotateZ);
+                decalModelData = GetOrCreateMesh(cprops, decalTexSource, bes.overrideTextureCode).Clone().Rotate(new Vec3f(0.5f, 0.5f, 0.5f), bes.rotateX, bes.rotateY + cprops.Rotation.Y * GameMath.DEG2RAD, bes.rotateZ);
+                return;
+            }
 
-        public virtual MeshData GenMesh(IShapeTypeProps cprops, string overrideTextureCode = null) {
+            base.GetDecal(world, pos, decalTexSource, ref decalModelData, ref blockModelData);
+        }
+
+        public virtual MeshData GetOrCreateMesh(IShapeTypeProps cprops, ITexPositionSource overrideTexturesource = null, string overrideTextureCode = null) {
             var cMeshes = ObjectCacheUtil.GetOrCreate(api, ClassType+"Meshes", () => new Dictionary<string, MeshData>());
             ICoreClientAPI capi = api as ICoreClientAPI;
 
-            if (!cMeshes.TryGetValue(cprops.Code + "-" + overrideTextureCode, out var mesh))
+            if (overrideTexturesource != null || !cMeshes.TryGetValue(cprops.Code + "-" + overrideTextureCode, out var mesh))
             {
                 mesh = new MeshData(4, 3);
                 var shape = cprops.ShapeResolved;
-                
+
+                ITexPositionSource texSource = overrideTexturesource;
+
                 // Prio 0: Shape textures
-                var texSource = new ShapeTextureSource(capi, shape);
-
-                // Prio 1: Block wide custom textures
-                if (blockTextures != null)
+                if (texSource == null)
                 {
-                    foreach (var val in blockTextures)
+                    var stexSource = new ShapeTextureSource(capi, shape);
+                    texSource = stexSource;
+
+                    // Prio 1: Block wide custom textures
+                    if (blockTextures != null)
                     {
-                        if (val.Value.Baked == null) val.Value.Bake(capi.Assets);
-                        texSource.textures[val.Key] = val.Value;
+                        foreach (var val in blockTextures)
+                        {
+                            if (val.Value.Baked == null) val.Value.Bake(capi.Assets);
+                            stexSource.textures[val.Key] = val.Value;
+                        }
                     }
-                }
 
-                // Prio 2: Variant textures
-                if (cprops.Textures != null)
-                {
-                    foreach (var val in cprops.Textures)
+                    // Prio 2: Variant textures
+                    if (cprops.Textures != null)
                     {
-                        var ctex = val.Value.Clone();
-                        ctex.Bake(capi.Assets);
-                        texSource.textures[val.Key] = ctex;
+                        foreach (var val in cprops.Textures)
+                        {
+                            var ctex = val.Value.Clone();
+                            ctex.Bake(capi.Assets);
+                            stexSource.textures[val.Key] = ctex;
+                        }
                     }
-                }
 
-                // Prio 3: Override texture
-                if (overrideTextureCode != null && cprops.TextureFlipCode != null)
-                {
-                    if (OverrideTextureGroups[cprops.TextureFlipGroupCode].TryGetValue(overrideTextureCode, out var ctex))
+                    // Prio 3: Override texture
+                    if (overrideTextureCode != null && cprops.TextureFlipCode != null)
                     {
-                        texSource.textures[cprops.TextureFlipCode] = ctex;
-                        ctex.Bake(capi.Assets);
+                        if (OverrideTextureGroups[cprops.TextureFlipGroupCode].TryGetValue(overrideTextureCode, out var ctex))
+                        {
+                            stexSource.textures[cprops.TextureFlipCode] = ctex;
+                            ctex.Bake(capi.Assets);
+                        }
                     }
                 }
 
@@ -461,11 +480,14 @@ namespace Vintagestory.GameContent
                 if (cprops.TexPos == null)
                 {
                     api.Logger.Warning("No texture previously loaded for clutter block " + cprops.Code);
-                    cprops.TexPos = texSource.firstTexPos;
+                    cprops.TexPos = (texSource as ShapeTextureSource)?.firstTexPos;
                     cprops.TexPos.RndColors = new int[TextureAtlasPosition.RndColorsLength];
                 }
 
-                cMeshes[cprops.Code + "-" + overrideTextureCode] = mesh;
+                if (overrideTexturesource == null)
+                {
+                    cMeshes[cprops.Code + "-" + overrideTextureCode] = mesh;
+                }
             }
 
             return mesh;
@@ -553,7 +575,9 @@ namespace Vintagestory.GameContent
         {
             base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
 
-            dsc.AppendLine(Lang.Get(Code.Domain + ":block-" + ClassType));
+            string type = inSlot.Itemstack.Attributes.GetString("type", "");
+            string desc = Lang.GetIfExists(Code.Domain + ":" + ClassType + "desc-" + type.Replace("/", "-"));
+            if (desc != null) dsc.AppendLine(desc);
         }
 
         public void Rotate(EntityAgent byEntity, BlockSelection blockSel, int dir)

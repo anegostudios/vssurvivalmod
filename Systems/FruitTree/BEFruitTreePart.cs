@@ -207,7 +207,7 @@ namespace Vintagestory.GameContent
             // Foliage shape
             {
                 string shapekey = "foliage-ver";
-                if (GrowthDir.IsHorizontal)
+                if (GrowthDir?.IsHorizontal == true)
                 {
                     shapekey = "foliage-hor-" + GrowthDir.Code[0];
                 }

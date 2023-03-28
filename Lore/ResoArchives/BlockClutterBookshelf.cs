@@ -197,14 +197,14 @@ namespace Vintagestory.GameContent
             return null;
         }
 
-        public override MeshData GenMesh(IShapeTypeProps cprops, string overrideTextureCode = null)
+        public override MeshData GetOrCreateMesh(IShapeTypeProps cprops, ITexPositionSource overrideTexturesource = null, string overrideTextureCode = null)
         {
             var cMeshes = ObjectCacheUtil.GetOrCreate(api, ClassType + "Meshes", () => new Dictionary<string, MeshData>());
             ICoreClientAPI capi = api as ICoreClientAPI;
 
             var bprops = cprops as BookShelfTypeProps;
             
-            if (cMeshes.TryGetValue(bprops.HashKey, out var mesh))
+            if (overrideTexturesource == null && cMeshes.TryGetValue(bprops.HashKey, out var mesh))
             {
                 return mesh;
             }
@@ -213,16 +213,22 @@ namespace Vintagestory.GameContent
             var shape = cprops.ShapeResolved;
             if (shape == null) return mesh;
 
-            // Prio 0: Shape textures
-            var texSource = new ShapeTextureSource(capi, shape);
-
-            // Prio 1: Block wide custom textures
-            if (blockTextures != null)
+            var texSource = overrideTexturesource;
+            ShapeTextureSource stexSource=null;
+            if (texSource == null)
             {
-                foreach (var val in blockTextures)
+                // Prio 0: Shape textures
+                stexSource = new ShapeTextureSource(capi, shape);
+                texSource = stexSource;
+
+                // Prio 1: Block wide custom textures
+                if (blockTextures != null)
                 {
-                    if (val.Value.Baked == null) val.Value.Bake(capi.Assets);
-                    texSource.textures[val.Key] = val.Value;
+                    foreach (var val in blockTextures)
+                    {
+                        if (val.Value.Baked == null) val.Value.Bake(capi.Assets);
+                        stexSource.textures[val.Key] = val.Value;
+                    }
                 }
             }
 
@@ -235,12 +241,12 @@ namespace Vintagestory.GameContent
                 shape = bprops.Variant == "full" ? capi.Assets.TryGet(woodbackPanelShapePath)?.ToObject<Shape>() : bprops.ShapeResolved2;
                 texSource = new ShapeTextureSource(capi, shape);
                 // Prio 1: Block wide custom textures
-                if (blockTextures != null)
+                if (blockTextures != null && stexSource != null)
                 {
                     foreach (var val in blockTextures)
                     {
                         if (val.Value.Baked == null) val.Value.Bake(capi.Assets);
-                        texSource.textures[val.Key] = val.Value;
+                        stexSource.textures[val.Key] = val.Value;
                     }
                 }
 
@@ -254,12 +260,15 @@ namespace Vintagestory.GameContent
             if (cprops.TexPos == null)
             {
                 api.Logger.Warning("No texture previously loaded for bookshelf block " + cprops.Code); // dafuq does this mean
-                cprops.TexPos = texSource.firstTexPos;
+                cprops.TexPos = (texSource as ShapeTextureSource)?.firstTexPos;
                 cprops.TexPos.RndColors = new int[TextureAtlasPosition.RndColorsLength];
             }
             if (bprops.group.texPos == null) bprops.group.texPos = cprops.TexPos;
 
-            cMeshes[bprops.HashKey] = mesh;
+            if (overrideTexturesource == null)
+            {
+                cMeshes[bprops.HashKey] = mesh;
+            }
             
             return mesh;
         }

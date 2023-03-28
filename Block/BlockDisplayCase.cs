@@ -10,10 +10,13 @@ namespace Vintagestory.GameContent
     public class BlockDisplayCase : Block
     {
         WorldInteraction[] interactions;
+        public float height;
 
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
+
+            height = Attributes["height"].AsFloat(0.5f);
 
             if (api.Side != EnumAppSide.Client) return;
             ICoreClientAPI capi = api as ICoreClientAPI;

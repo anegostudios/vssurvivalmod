@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -81,11 +80,8 @@ namespace Vintagestory.GameContent
 
                 if (currentPageLines > 0)
                 {
-                    pages.Add(new PagePosition() { Start = start, Length = curLen });
+                    pages.Add(new PagePosition() { Start = start, Length = curLen, LineCount = currentPageLines });
                     start += curLen;
-
-                    string page = AllPagesText.Substring(start, Math.Min(AllPagesText.Length - start, curLen)).TrimStart(' ');
-                    Console.WriteLine(page);
                 }
 
                 curLen = 0;
@@ -93,13 +89,15 @@ namespace Vintagestory.GameContent
 
             if (pages.Count == 0) pages.Add(new PagePosition() { Start = 0, Length = 0 });
 
+
             return pages;
         }
 
 
         protected virtual void Compose()
         {
-            ElementBounds textAreaBounds = ElementBounds.Fixed(0, 30, maxWidth, maxLines * 21.2f);
+            double lineHeight = font.GetFontExtents().Height * font.LineHeightMultiplier / RuntimeEnv.GUIScale;
+            ElementBounds textAreaBounds = ElementBounds.Fixed(0, 30, maxWidth, maxLines * lineHeight + 1);
 
             ElementBounds prevButtonBounds = ElementBounds.FixedSize(60, 30).FixedUnder(textAreaBounds, 18 + 5).WithAlignment(EnumDialogArea.LeftFixed).WithFixedPadding(10, 2);
             ElementBounds pageLabelBounds = ElementBounds.FixedSize(80, 30).FixedUnder(textAreaBounds, 18 + 2 * 5 + 5).WithAlignment(EnumDialogArea.CenterFixed).WithFixedPadding(10, 2);
@@ -158,7 +156,6 @@ namespace Vintagestory.GameContent
 
         private bool prevPage()
         {
-            
             curPage = Math.Max(curPage - 1, 0);
             updatePage();
             return true;
@@ -179,7 +176,14 @@ namespace Vintagestory.GameContent
         protected bool KeyboardNavigation = true;
 
 
-        public string CurPageText => Pages[curPage].Start >= AllPagesText.Length ? "" : AllPagesText.Substring(Pages[curPage].Start, Math.Min(AllPagesText.Length - Pages[curPage].Start, Pages[curPage].Length)).TrimStart(' ');
+        public string CurPageText
+        {
+            get
+            {
+                if (curPage >= Pages.Count) return "";
+                return Pages[curPage].Start >= AllPagesText.Length ? "" : AllPagesText.Substring(Pages[curPage].Start, Math.Min(AllPagesText.Length - Pages[curPage].Start, Pages[curPage].Length)).TrimStart(' ');
+            }
+        }
 
         public override void OnKeyDown(KeyEvent args)
         {

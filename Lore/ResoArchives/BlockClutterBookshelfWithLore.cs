@@ -53,7 +53,7 @@ namespace Vintagestory.GameContent
 
             if (cachedRefs.TryGetValue(type, out var meshref)) return meshref;
             
-            var mesh = GenMesh(GetTypeProps(type, itemstack, null));
+            var mesh = GetOrCreateMesh(GetTypeProps(type, itemstack, null));
             var loc = new AssetLocation("shapes/block/clutter/" + type + "-book.json");
             var shape = api.Assets.TryGet(loc).ToObject<Shape>();
             (api as ICoreClientAPI).Tesselator.TesselateShape(this, shape, out var bookmesh);

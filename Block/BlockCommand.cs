@@ -63,7 +63,10 @@ namespace Vintagestory.GameContent
             if (bec != null)
             {
                 stack.Attributes.SetString("commands", bec.Commands);
-                stack.Attributes["callingPrivileges"] = new StringArrayAttribute(bec.CallingPrivileges);
+                if (bec.CallingPrivileges != null)
+                {
+                    stack.Attributes["callingPrivileges"] = new StringArrayAttribute(bec.CallingPrivileges);
+                }
             }
 
             return stack;
