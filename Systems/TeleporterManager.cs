@@ -137,7 +137,7 @@ namespace Vintagestory.GameContent
             if (!wasRepaired) bet.setupGameTickers();
             bet.DoActivate();
 
-            return TextCommandResult.Success("Target position set.");
+            return TextCommandResult.Success((bet.tpLocationIsOffset ? "Relative " : "") + "Target position set.");
         }
 
         private void OnSetLocationReceived(IServerPlayer fromPlayer, TeleporterLocation networkMessage)

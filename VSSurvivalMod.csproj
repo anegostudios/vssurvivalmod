@@ -130,7 +130,10 @@
     <Compile Include="BlockBehavior\BehaviorHeatSource.cs" />
     <Compile Include="BlockEntity\BlockEntityWorldgenHook.cs" />
     <Compile Include="Block\BlockWorldgenHook.cs" />
-    <Compile Include="Item\Jonas\ItemBaseReturnTeleporter.cs" />
+    <Compile Include="Systems\JonasDevices\EntityMechHelper.cs" />
+    <Compile Include="Systems\JonasDevices\ItemNightVisionDevice.cs" />
+    <Compile Include="Systems\JonasDevices\BlockCorpseReturnTeleporter.cs" />
+    <Compile Include="Systems\JonasDevices\BlockResonator.cs" />
     <Compile Include="Lore\ResoArchives\BEBehaviorClutterBookshelfWithLore.cs" />
     <Compile Include="Lore\ResoArchives\BEBehaviorControlPointLampNode.cs" />
     <Compile Include="Lore\ResoArchives\BEBehaviorJonasBoilerDoor.cs" />
@@ -187,7 +190,7 @@
     <Compile Include="BlockEntity\BERiftWard.cs" />
     <Compile Include="Block\BlockOmokTable.cs" />
     <Compile Include="Block\BlockSupportBeam.cs" />
-    <Compile Include="Block\BlockRiftWard.cs" />
+    <Compile Include="Systems\JonasDevices\BlockRiftWard.cs" />
     <Compile Include="Block\BlockTermiteMound.cs" />
     <Compile Include="Block\BlockClutter.cs" />
     <Compile Include="Block\BlockBough.cs" />
@@ -386,7 +389,7 @@
     <Compile Include="Block\BlockSlabSnowRemove.cs" />
     <Compile Include="Block\BlockTapestry.cs" />
     <Compile Include="Block\BlockDisplayCase.cs" />
-    <Compile Include="Block\BlockResonator.cs" />
+    <Compile Include="Systems\JonasDevices\BlockBaseReturnTeleporter.cs" />
     <Compile Include="Block\BlockGlowworms.cs" />
     <Compile Include="Block\BlockHopper.cs" />
     <Compile Include="Block\BlockShell.cs" />
@@ -407,7 +410,7 @@
     <Compile Include="Block\BlockSnow.cs" />
     <Compile Include="Block\BlockStalagSection.cs" />
     <Compile Include="Block\BlockSoilDeposit.cs" />
-    <Compile Include="Block\BlockStaticTranslocator.cs" />
+    <Compile Include="Systems\JonasDevices\BlockStaticTranslocator.cs" />
     <Compile Include="Block\BlockWater.cs" />
     <Compile Include="Block\BlockWaterfall.cs" />
     <Compile Include="Block\BlockWaterFlowing.cs" />

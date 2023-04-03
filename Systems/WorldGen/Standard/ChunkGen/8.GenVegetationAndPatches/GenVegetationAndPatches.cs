@@ -230,7 +230,6 @@ namespace Vintagestory.ServerMods
 
             var mapregion = sapi?.WorldManager.GetMapRegion((chunkX * chunksize) / regionSize, (chunkZ * chunksize) / regionSize);
 
-
             for (int i = 0; i < bpc.PatchesNonTree.Length; i++)
             {
                 BlockPatch blockPatch = bpc.PatchesNonTree[i];
@@ -249,6 +248,9 @@ namespace Vintagestory.ServerMods
                     if (y <= 0 || y >= worldheight - 15) continue;
 
                     tmpPos.Set(x, y, z);
+
+                    if (SkipGenerationAt(tmpPos, EnumWorldGenPass.Vegetation)) continue;
+
                     liquidBlock = blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid);
 
                     // Place according to forest value
@@ -311,6 +313,9 @@ namespace Vintagestory.ServerMods
                 if (y <= 0 || y >= worldheight - 15) continue;
 
                 tmpPos.Set(x, y, z);
+
+                if (SkipGenerationAt(tmpPos, EnumWorldGenPass.Vegetation)) continue;
+
                 block = blockAccessor.GetBlock(tmpPos);
                 if (block.Fertility == 0) continue;
 
@@ -375,6 +380,8 @@ namespace Vintagestory.ServerMods
                 bool underwater = false;
 
                 tmpPos.Set(x, y, z);
+                if (SkipGenerationAt(tmpPos, EnumWorldGenPass.Vegetation)) continue;
+
                 block = blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid);
                 
                 if (block.IsLiquid()) { underwater = true; tmpPos.Y--; block = blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid); if (block.IsLiquid()) tmpPos.Y--; }

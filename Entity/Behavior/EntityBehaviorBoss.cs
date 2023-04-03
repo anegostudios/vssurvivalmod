@@ -68,7 +68,8 @@ namespace Vintagestory.GameContent
 
         void StartMusic()
         {
-            if (track != null || capi == null || musicTrackLocation == null) return;
+            if (capi == null || musicTrackLocation == null) return;
+            if (track?.IsActive == true) return;
 
             startLoadingMs = capi.World.ElapsedMilliseconds;
             track = capi.StartTrack(musicTrackLocation, 99f, EnumSoundType.AmbientGlitchunaffected, onTrackLoaded);
@@ -95,6 +96,7 @@ namespace Vintagestory.GameContent
             }
             if (sound == null) return;
 
+            sound.SetLooping(true);
             track.Sound = sound;
 
             // Needed so that the music engine does not dispose the sound

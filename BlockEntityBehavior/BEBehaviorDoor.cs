@@ -260,6 +260,11 @@ namespace Vintagestory.GameContent
             rightDoorOffset = tree.GetVec3i("rightDoorPos");
 
             if (opened != beforeOpened && animUtil != null) ToggleDoorWing(opened);
+            if (Api != null && Api.Side is EnumAppSide.Client)
+            {
+                SetupRotationsAndColSelBoxes(true);
+                Api.World.BlockAccessor.MarkBlockDirty(Pos);
+            }
         }
 
         public override void ToTreeAttributes(ITreeAttribute tree)

@@ -24,11 +24,8 @@ namespace Vintagestory.GameContent
     {
         protected TeleporterManager manager;
         protected Dictionary<long, TeleportingEntity> tpingEntities = new Dictionary<long, TeleportingEntity>();
-        protected long lastCollideMsOwnPlayer;
-
         protected float TeleportWarmupSec = 3;
-
-        protected abstract BlockPos tpTarget { get; }
+        protected abstract Vec3d GetTarget(Entity forEntity);
 
         protected bool somebodyIsTeleporting;
         protected bool somebodyDidTeleport;
@@ -115,13 +112,15 @@ namespace Vintagestory.GameContent
                     MarkDirty();
                 }
 
+                var tpTarget = GetTarget(val.Value.Entity);
+
                 if (val.Value.SecondsPassed > 1.5 && tpTarget != null)
                 {
-                    var targetPos = tpTarget.Copy();
+                    var targetPos = tpTarget.Clone();
                     if (tpLocationIsOffset) targetPos.Add(Pos.X, Pos.Y, Pos.Z);
 
                     // Preload the chunk
-                    IWorldChunk chunk = Api.World.BlockAccessor.GetChunkAtBlockPos(targetPos);
+                    IWorldChunk chunk = Api.World.BlockAccessor.GetChunkAtBlockPos(targetPos.AsBlockPos);
                     if (chunk != null)
                     {
                         chunk.MapChunk.MarkFresh();
@@ -137,7 +136,7 @@ namespace Vintagestory.GameContent
 
                 if (val.Value.SecondsPassed > TeleportWarmupSec && tpTarget != null)
                 {
-                    var targetPos = tpTarget.ToVec3d().Add(-0.3, 1, -0.3);
+                    var targetPos = tpTarget.Clone();
                     if (tpLocationIsOffset) targetPos.Add(Pos.X, Pos.Y, Pos.Z);
                     val.Value.Entity.TeleportTo(targetPos); // Fugly, need some better exit pos thing
                     toremove.Add(val.Key);
@@ -208,7 +207,12 @@ namespace Vintagestory.GameContent
         BlockTeleporter ownBlock;
         Vec3d posvec;
         TeleporterLocation tpLocation;
-        protected override BlockPos tpTarget => tpLocation?.TargetPos;
+
+
+        protected override Vec3d GetTarget(Entity forEntity)
+        {
+            return tpLocation?.TargetPos.ToVec3d().Add(-0.3, 1, -0.3);
+        }
 
         public ILoadedSound teleportingSound;
         float teleSoundVolume = 0;
@@ -261,7 +265,7 @@ namespace Vintagestory.GameContent
 
             HandleSoundClient(dt);
 
-            SimpleParticleProperties currentParticles = (Api.World.ElapsedMilliseconds > 100 && Api.World.ElapsedMilliseconds - lastCollideMsOwnPlayer < 100) ? 
+            SimpleParticleProperties currentParticles = (Api.World.ElapsedMilliseconds > 100 && Api.World.ElapsedMilliseconds - lastOwnPlayerCollideMs < 100) ? 
                 ownBlock.insideParticles : 
                 ownBlock.idleParticles
             ;

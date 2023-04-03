@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
+using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
@@ -16,7 +17,7 @@ namespace Vintagestory.GameContent
         public AssetLocation musicTrackLocation;
         public float priority = 4.5f;
         public float fadeInDuration = 0.1f;
-        public int minX, minY, minZ, maxX, maxY, maxZ;
+        public Cuboidi[] areas;
 
         public override void Initialize(ICoreAPI api)
         {
@@ -31,13 +32,17 @@ namespace Vintagestory.GameContent
 
         private void onTick1s(float dt)
         {
-            if (musicTrackLocation == null) return;
+            if (musicTrackLocation == null || areas == null) return;
 
             int dx = (int)capi.World.Player.Entity.Pos.X - Pos.X;
             int dy = (int)capi.World.Player.Entity.Pos.Y - Pos.Y;
             int dz = (int)capi.World.Player.Entity.Pos.Z - Pos.Z;
+            bool isInRange = false;
 
-            bool isInRange = dx >= minX && dx <= maxX && dy >= minY && dy <= maxY && dz >= minZ && dz <= maxZ;
+            foreach (var area in areas)
+            {
+                isInRange |= area.ContainsOrTouches(dx, dy, dz);
+            }
 
             if (isInRange) StartMusic();
             else StopMusic();
@@ -47,12 +52,16 @@ namespace Vintagestory.GameContent
         {
             base.FromTreeAttributes(tree, worldAccessForResolve);
 
-            minX = tree.GetInt("minX");
-            minY = tree.GetInt("minY");
-            minZ = tree.GetInt("minZ");
-            maxX = tree.GetInt("maxX");
-            maxY = tree.GetInt("maxY");
-            maxZ = tree.GetInt("maxZ");
+            var atree = tree["areas"] as TreeAttribute;
+            if (atree != null)
+            {
+                List<Cuboidi> cubs = new List<Cuboidi>();
+                foreach (var val in atree.Values)
+                {
+                    cubs.Add(new Cuboidi((val as IntArrayAttribute).value));
+                }
+                this.areas = cubs.ToArray();
+            }
 
             if (tree.HasAttribute("musicTrackLocation"))
             {
@@ -64,13 +73,16 @@ namespace Vintagestory.GameContent
         {
             base.ToTreeAttributes(tree);
 
-            tree.SetInt("minX", minX);
-            tree.SetInt("minY", minY);
-            tree.SetInt("minZ", minZ);
+            if (areas != null)
+            {
+                var atree = new TreeAttribute();
+                tree["areas"] = atree;
 
-            tree.SetInt("maxX", maxX);
-            tree.SetInt("maxY", maxY);
-            tree.SetInt("maxZ", maxZ);
+                for (int i = 0; i < areas.Length; i++)
+                {
+                    atree["" + i] = new IntArrayAttribute(areas[i].Coordinates);
+                }
+            }
 
             if (musicTrackLocation != null)
             {

@@ -50,7 +50,7 @@ namespace Vintagestory.GameContent
             var facing = BlockFacing.FromCode(this.Block.Variant["side"]);
             var a = Pos.AddCopy(facing);
             var b = blockSel.Position.UpCopy();
-            if ((a == b || a == blockSel.Position) && player.InventoryManager.ActiveHotbarSlot.Itemstack?.Collectible.Code.Path == "charcoal")
+            if ((a == b || a == blockSel.Position) && player.InventoryManager.ActiveHotbarSlot.Itemstack?.Collectible is ItemCoal)
             {
                 return EnumWorldAccessResponse.Granted;
             }

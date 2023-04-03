@@ -1,11 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
@@ -15,6 +12,8 @@ namespace Vintagestory.GameContent
     public class BlockForge : Block, IIgnitable
     {
         WorldInteraction[] interactions;
+
+        public List<ItemStack> coalStacklist = new List<ItemStack>();
 
         public override void OnLoaded(ICoreAPI api)
         {
@@ -26,7 +25,6 @@ namespace Vintagestory.GameContent
             interactions = ObjectCacheUtil.GetOrCreate(api, "forgeBlockInteractions", () =>
             {
                 List<ItemStack> heatableStacklist = new List<ItemStack>();
-                List<ItemStack> fuelStacklist = new List<ItemStack>();
                 List<ItemStack> canIgniteStacks = BlockBehaviorCanIgnite.CanIgniteStacks(api, false);
 
                 foreach (CollectibleObject obj in api.World.Collectibles)
@@ -43,7 +41,7 @@ namespace Vintagestory.GameContent
                         if (obj.CombustibleProps?.BurnTemperature > 1000)
                         {
                             List<ItemStack> stacks = obj.GetHandBookStacks(capi);
-                            if (stacks != null) fuelStacklist.AddRange(stacks);
+                            if (stacks != null) coalStacklist.AddRange(stacks);
                         }
                     }
                 }
@@ -86,7 +84,7 @@ namespace Vintagestory.GameContent
                         ActionLangCode = "blockhelp-forge-fuel",
                         HotKeyCode = "shift",
                         MouseButton = EnumMouseButton.Right,
-                        Itemstacks = fuelStacklist.ToArray(),
+                        Itemstacks = coalStacklist.ToArray(),
                         GetMatchingStacks = (wi, bs, es) =>
                         {
                             BlockEntityForge bef = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityForge;

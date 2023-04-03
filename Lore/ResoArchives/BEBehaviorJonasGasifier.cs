@@ -89,7 +89,7 @@ namespace Vintagestory.GameContent
             var slot = byPlayer.InventoryManager.ActiveHotbarSlot;
             if (slot.Empty) return;
 
-            if (slot.Itemstack.Collectible.Code.Path == "charcoal")
+            if (slot.Itemstack.Collectible.CombustibleProps != null && slot.Itemstack.Collectible.CombustibleProps.BurnTemperature >= 1100)
             {
                 int moved = slot.TryPutInto(Api.World, inventory[0]);
                 if (moved > 0)

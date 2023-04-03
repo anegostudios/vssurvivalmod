@@ -20,6 +20,8 @@ namespace Vintagestory.GameContent
             if (api.Side != EnumAppSide.Client) return;
             ICoreClientAPI capi = api as ICoreClientAPI;
 
+            BlockForge forgeBlock = api.World.GetBlock(new AssetLocation("forge")) as BlockForge;
+
             interactions = ObjectCacheUtil.GetOrCreate(api, "gasifierBlockInteractions", () =>
             {
                 List<ItemStack> canIgniteStacks = BlockBehaviorCanIgnite.CanIgniteStacks(api, false);
@@ -27,10 +29,10 @@ namespace Vintagestory.GameContent
                 return new WorldInteraction[] {
                     new WorldInteraction()
                     {
-                        ActionLangCode = "blockhelp-forge-addcoal",
+                        ActionLangCode = "blockhelp-coalpile-addcoal",
                         MouseButton = EnumMouseButton.Right,
                         HotKeyCode = "shift",
-                        Itemstacks = new ItemStack[] { new ItemStack(api.World.GetItem(new AssetLocation("charcoal")), 1) }
+                        Itemstacks = forgeBlock.coalStacklist.ToArray()
                     },
                     new WorldInteraction()
                     {
@@ -71,4 +73,4 @@ namespace Vintagestory.GameContent
             return true;
         }
     }
-}
+} 

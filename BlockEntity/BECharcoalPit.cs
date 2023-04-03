@@ -55,7 +55,7 @@ namespace Vintagestory.GameContent
 
         private void OnClientTick(float dt)
         {
-            if (!lit) return;
+            if (!lit || Block?.ParticleProperties == null) return;
 
             BlockPos pos = new BlockPos();
             foreach (var val in smokeLocations)
@@ -87,7 +87,6 @@ namespace Vintagestory.GameContent
             }
 
             if (state == 0) return;
-
 
             BlockPos holePos = FindHoleInPit();
 

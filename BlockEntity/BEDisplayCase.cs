@@ -141,6 +141,7 @@ namespace Vintagestory.GameContent
             if (forPlayer?.CurrentBlockSelection == null) return;
 
             int index = forPlayer.CurrentBlockSelection.SelectionBoxIndex;
+            if (index >= inventory.Count) return; // Why can this happen o.O
 
             if (!inventory[index].Empty)
             {

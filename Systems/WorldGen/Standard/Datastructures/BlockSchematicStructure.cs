@@ -149,6 +149,12 @@ namespace Vintagestory.ServerMods
                                         continue;
                                     }
                                 }
+                                if (depth == 0 && replaceblockids.Length > 1)   // do not place top surface (typically grassy soil) directly beneath solid blocks other than logs, snow, ice
+                                {
+                                    Block aboveBlock = blockAccessor.GetBlock(curPos.X, curPos.Y + 1, curPos.Z, BlockLayersAccess.SolidBlocks);
+                                    if (aboveBlock.SideSolid[BlockFacing.DOWN.Index] && aboveBlock.BlockMaterial != EnumBlockMaterial.Wood && aboveBlock.BlockMaterial != EnumBlockMaterial.Snow && aboveBlock.BlockMaterial != EnumBlockMaterial.Ice) depth++;
+                                }
+
                                 int climate = GameMath.BiLerpRgbColor((float)x / chunksize, (float)z / chunksize, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight);
 
                                 newBlock = GetBlockLayerBlock((climate >> 8) & 0xff, (climate >> 16) & 0xff, startPos.Y, rockblockid, depth, newBlock, worldForCollectibleResolve.Blocks, curPos);
@@ -181,20 +187,24 @@ namespace Vintagestory.ServerMods
                             }
                         }
 
-
-                        placed += p;
-
-                        if (p > 0 && !newBlock.RainPermeable)
+                        if (p > 0)
                         {
-                            if (newBlock == fillerBlock || newBlock == pathwayBlock)
+                            Block aboveBlock = blockAccessor.GetBlock(curPos.X, curPos.Y + 1, curPos.Z, BlockLayersAccess.Solid);
+                            aboveBlock.OnNeighbourBlockChange(worldForCollectibleResolve, curPos.UpCopy(), curPos);
+                            placed += p;
+
+                            if (!newBlock.RainPermeable)
                             {
-                                int lx = curPos.X % chunksize;
-                                int lz = curPos.Z % chunksize;
-                                if (mapchunk.RainHeightMap[lz * chunksize + lx] == curPos.Y) mapchunk.RainHeightMap[lz * chunksize + lx]--;
-                            }
-                            else
-                            {
-                                maxY = Math.Max(curPos.Y, maxY);
+                                if (newBlock == fillerBlock || newBlock == pathwayBlock)
+                                {
+                                    int lx = curPos.X % chunksize;
+                                    int lz = curPos.Z % chunksize;
+                                    if (mapchunk.RainHeightMap[lz * chunksize + lx] == curPos.Y) mapchunk.RainHeightMap[lz * chunksize + lx]--;
+                                }
+                                else
+                                {
+                                    maxY = Math.Max(curPos.Y, maxY);
+                                }
                             }
                         }
 

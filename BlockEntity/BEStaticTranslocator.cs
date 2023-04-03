@@ -33,9 +33,12 @@ namespace Vintagestory.GameContent
         float particleAngle = 0;
         float translocVolume = 0;
         float translocPitch = 0;
+        long somebodyIsTeleportingReceivedTotalMs;
 
-
-        protected override BlockPos tpTarget => tpLocation;
+        protected override Vec3d GetTarget(Entity forEntity)
+        {
+            return tpLocation.ToVec3d().Add(-0.3, 1, -0.3);
+        }
 
         public bool Activated
         {
@@ -163,7 +166,7 @@ namespace Vintagestory.GameContent
 
             HandleSoundClient(dt);
 
-            bool selfInside = (Api.World.ElapsedMilliseconds > 100 && Api.World.ElapsedMilliseconds - lastCollideMsOwnPlayer < 100);
+            bool selfInside = (Api.World.ElapsedMilliseconds > 100 && Api.World.ElapsedMilliseconds - lastOwnPlayerCollideMs < 100);
             bool playerInside = selfInside || somebodyIsTeleporting;
             bool active = animUtil.activeAnimationsByAnimCode.ContainsKey("teleport");
 
@@ -189,13 +192,11 @@ namespace Vintagestory.GameContent
             }
 
 
-            if (animUtil.activeAnimationsByAnimCode.Count > 0 && Api.World.ElapsedMilliseconds - lastCollideMsOwnPlayer > 10000 && Api.World.ElapsedMilliseconds - manager.lastTranslocateCollideMsOtherPlayer > 10000)
+            if (animUtil.activeAnimationsByAnimCode.Count > 0 && Api.World.ElapsedMilliseconds - lastOwnPlayerCollideMs > 10000 && Api.World.ElapsedMilliseconds - manager.lastTranslocateCollideMsOtherPlayer > 10000)
             {
                 animUtil.StopAnimation("idle");
             }
 
-
-            //int color = temporalGearStack.Collectible.GetRandomColor(api as ICoreClientAPI, temporalGearStack); - not working o.O
 
             int r = 53;
             int g = 221;
@@ -537,7 +538,7 @@ namespace Vintagestory.GameContent
             translocatingSound?.Dispose();
         }
 
-        long somebodyIsTeleportingReceivedTotalMs;
+        
 
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
         {

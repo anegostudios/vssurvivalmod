@@ -137,13 +137,18 @@ namespace Vintagestory.ServerMods
             }
 
             if (quantitySolid != 5 || quantityAir != 1) return;
+            
+            BlockPos pos = new BlockPos(chunkX * chunksize + dx, y, chunkZ * chunksize + dz); 
+            if (SkipGenerationAt(pos, EnumWorldGenPass.Vegetation)) return;
 
             var chunk = chunks[y / chunksize];
             var index = (chunksize * (y % chunksize) + dz) * chunksize + dx;
             chunk.Data.SetBlockAir(index);
             chunk.Data.SetFluid(index, y < geoActivityYThreshold ? GlobalConfig.lavaBlockId : GlobalConfig.waterBlockId);
 
-            BlockPos pos = new BlockPos(chunkX * chunksize + dx, y, chunkZ * chunksize + dz);
+            
+            
+
             blockAccessor.ScheduleBlockUpdate(pos);
         }
 

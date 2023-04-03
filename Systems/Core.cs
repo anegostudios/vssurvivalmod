@@ -571,6 +571,9 @@ namespace Vintagestory.GameContent
             api.RegisterBlockClass("BlockCommand", typeof(BlockCommand));
             api.RegisterBlockClass("BlockTicker", typeof(BlockTicker));
             api.RegisterBlockClass("BlockWorldgenHook", typeof(BlockWorldgenHook));
+
+            api.RegisterBlockClass("BlockBaseReturnTeleporter", typeof(BlockBaseReturnTeleporter));
+            api.RegisterBlockClass("BlockCorpseReturnTeleporter", typeof(BlockCorpseReturnTeleporter));
         }
 
 
@@ -775,6 +778,10 @@ namespace Vintagestory.GameContent
             api.RegisterBlockEntityClass("Ticker", typeof(BlockEntityTicker));
             api.RegisterBlockEntityClass("WorldgenHook", typeof(BlockEntityWorldgenHook));
             api.RegisterBlockEntityClass("MusicTrigger", typeof(BlockEntityMusicTrigger));
+
+            api.RegisterBlockEntityClass("CorpseReturnTeleporter", typeof(BlockEntityCorpseReturnTeleporter));
+            api.RegisterBlockEntityClass("BaseReturnTeleporter", typeof(BlockEntityBaseReturnTeleporter));
+
         }
 
 
@@ -858,8 +865,6 @@ namespace Vintagestory.GameContent
             api.RegisterItemClass("ItemOar", typeof(ItemOar));
             api.RegisterItemClass("ItemTextureFlipper", typeof(ItemTextureFlipper));
 
-            api.RegisterItemClass("ItemBaseReturnTeleporter", typeof(ItemBaseReturnTeleporter));
-            api.RegisterItemClass("ItemCorpseReturnTeleporter", typeof(ItemCorpseReturnTeleporter));
             api.RegisterItemClass("ItemNightvisiondevice", typeof(ItemNightvisiondevice));
             api.RegisterItemClass("ItemMechHelper", typeof(ItemMechHelper));
         }
