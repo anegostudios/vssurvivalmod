@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
@@ -12,6 +13,9 @@ namespace Vintagestory.GameContent
         public string WaypointText;
         public string WaypointIcon;
         public double[] WaypointColor;
+        public Vec3d Offset;
+        public float RandomX;
+        public float RandomZ;
     }
 
     public class ItemLocatorMap : Item, ITradeableCollectible
@@ -88,13 +92,27 @@ namespace Vintagestory.GameContent
                     }
                 }
             }
-                
+
             if (pos == null)
             {
                 player.SendMessage(GlobalConstants.GeneralChatGroup, Lang.Get("No location found on this map"), EnumChatType.Notification);
                 return;
             }
 
+            if (props.Offset != null)
+            {
+                pos.Add(props.Offset);
+            }
+
+            if (!attr.HasAttribute("randomX"))
+            {
+                var rnd = new Random(api.World.Seed + Code.GetHashCode());
+                attr.SetFloat("randomX", (float)rnd.NextDouble() * props.RandomX * 2 - props.RandomX);
+                attr.SetFloat("randomZ", (float)rnd.NextDouble() * props.RandomZ * 2 - props.RandomZ);
+            }
+
+            pos.X += attr.GetFloat("randomX");
+            pos.Z += attr.GetFloat("randomZ");
 
             if (byEntity.World.Config.GetBool("allowMap", true) != true || wml == null)
             {
@@ -122,7 +140,7 @@ namespace Vintagestory.GameContent
                 Title = Lang.Get(props.WaypointText),
             }, player);
 
-            player.SendMessage(GlobalConstants.GeneralChatGroup, Lang.Get("{0} location added to your world map", Lang.Get(props.WaypointText)), EnumChatType.Notification);
+            player.SendMessage(GlobalConstants.GeneralChatGroup, Lang.Get("Approximate location of {0} added to your world map", Lang.Get(props.WaypointText)), EnumChatType.Notification);
         }
 
         private Vec3d getStructureCenter(API.Datastructures.ITreeAttribute attr)

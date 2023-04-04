@@ -35,7 +35,7 @@ namespace Vintagestory.GameContent
         float translocPitch = 0;
         long somebodyIsTeleportingReceivedTotalMs;
 
-        protected override Vec3d GetTarget(Entity forEntity)
+        public override Vec3d GetTarget(Entity forEntity)
         {
             return tpLocation.ToVec3d().Add(-0.3, 1, -0.3);
         }

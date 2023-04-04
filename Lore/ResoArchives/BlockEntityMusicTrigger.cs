@@ -137,6 +137,7 @@ namespace Vintagestory.GameContent
             if (sound == null) return;
 
             track.Sound = sound;
+            track.Sound.SetLooping(true);
 
             // Needed so that the music engine does not dispose the sound
             track.ManualDispose = true;

@@ -89,7 +89,7 @@ namespace Vintagestory.GameContent
             ElementBounds textBounds = ElementBounds.Fixed(0, 30, w, h);
 
             clipBounds = textBounds.ForkBoundingParent();
-            ElementBounds insetBounds = textBounds.FlatCopy().FixedGrow(3).WithFixedOffset(0, 0);
+            ElementBounds insetBounds = textBounds.FlatCopy().FixedGrow(3).WithFixedOffset(-2, -2);
 
             ElementBounds scrollbarBounds = insetBounds.CopyOffsetedSibling(3 + textBounds.fixedWidth + 7).WithFixedWidth(20);
 

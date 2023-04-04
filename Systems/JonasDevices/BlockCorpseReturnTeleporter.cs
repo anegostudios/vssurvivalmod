@@ -35,7 +35,7 @@ namespace Vintagestory.GameContent
             canTeleport = true;
         }
 
-        protected override Vec3d GetTarget(Entity forEntity)
+        public override Vec3d GetTarget(Entity forEntity)
         {
             if (forEntity is EntityPlayer eplr)
             {

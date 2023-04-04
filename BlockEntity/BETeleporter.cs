@@ -25,7 +25,7 @@ namespace Vintagestory.GameContent
         protected TeleporterManager manager;
         protected Dictionary<long, TeleportingEntity> tpingEntities = new Dictionary<long, TeleportingEntity>();
         protected float TeleportWarmupSec = 3;
-        protected abstract Vec3d GetTarget(Entity forEntity);
+        public abstract Vec3d GetTarget(Entity forEntity);
 
         protected bool somebodyIsTeleporting;
         protected bool somebodyDidTeleport;
@@ -34,7 +34,7 @@ namespace Vintagestory.GameContent
         public long lastEntityCollideMs = 0;
         public long lastOwnPlayerCollideMs = 0;
 
-        ICoreClientAPI capi;
+        
         public bool tpLocationIsOffset;
 
 
@@ -49,8 +49,6 @@ namespace Vintagestory.GameContent
             base.Initialize(api);
 
             manager = api.ModLoader.GetModSystem<TeleporterManager>();
-
-            capi = api as ICoreClientAPI;
         }
 
         public virtual void OnEntityCollide(Entity entity)
@@ -209,7 +207,7 @@ namespace Vintagestory.GameContent
         TeleporterLocation tpLocation;
 
 
-        protected override Vec3d GetTarget(Entity forEntity)
+        public override Vec3d GetTarget(Entity forEntity)
         {
             return tpLocation?.TargetPos.ToVec3d().Add(-0.3, 1, -0.3);
         }
