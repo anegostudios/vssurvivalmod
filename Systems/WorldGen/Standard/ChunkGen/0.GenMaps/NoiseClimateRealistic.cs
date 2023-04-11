@@ -104,7 +104,6 @@ namespace Vintagestory.ServerMods
             int temperature = GameMath.Clamp((int)(preTemp * tempMul), 0, 255);
             int rain = Math.Min(255, (int)(NextInt(256) * rainMul));
             int hereGeologicActivity = (int)Math.Max(0, Math.Pow(NextInt(256)/255f, geologicActivityInv) * 255);
-            //int hereGeologicActivity = (int)Math.Max(0, (NextInt(256) - 128) * 2);
 
             return (temperature << 16) + (rain << 8) + (hereGeologicActivity);
         }

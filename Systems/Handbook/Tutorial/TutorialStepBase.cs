@@ -219,6 +219,10 @@ namespace Vintagestory.GameContent
 
         }
 
+        public static TutorialStepReceive Grab(ICoreClientAPI capi, string code, string text, ItemStackMatcherDelegate matcher, int goal)
+        {
+            return new TutorialStepReceive(capi, text, matcher, EnumReceiveType.Grab, goal) { code = code };
+        }
         public static TutorialStepReceive Collect(ICoreClientAPI capi, string code, string text, ItemStackMatcherDelegate matcher, int goal)
         {
             return new TutorialStepReceive(capi, text, matcher, EnumReceiveType.Collect, goal) { code = code };

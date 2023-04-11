@@ -53,7 +53,7 @@ namespace Vintagestory.API.Common
                 return;
             }
 
-            if (itemstack.Collectible.Attributes?.IsTrue("barrelMoveToLiquidSlot") == true || itemstack.Collectible.Attributes?["waterTightContainerProps"].Exists == true)
+            if (itemstack.Collectible.Attributes?.IsTrue("barrelMoveToLiquidSlot") == true || (stackable && itemstack.Collectible.Attributes?["waterTightContainerProps"].Exists == true))
             {
                 if (stackable)
                 {

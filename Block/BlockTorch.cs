@@ -14,7 +14,7 @@ namespace Vintagestory.GameContent
 {
     public class BlockTorch : BlockGroundAndSideAttachable, IIgnitable
     {
-        bool IsExtinct => Variant["state"] == "extinct";
+        public bool IsExtinct => Variant["state"] == "extinct";
 
         Dictionary<string, Cuboidi> attachmentAreas;
 

@@ -61,7 +61,7 @@ namespace Vintagestory.GameContent
                     (stack) => stack.Collectible.Tool == EnumTool.Knife, 1
                 ),
                 TutorialStepBase.Collect(capi,
-                    "getcattails", "Welcome to the stone age! With your knife in hands, hold <icon>leftmousebutton</icon> to harvest {0} <itemstack type=\"item\">papyrusroot|cattailtops</itemstack> from <itemstack type=\"block\">tallplant-coopersreed-land-normal-free|tallplant-papyrus-land-normal-free</itemstack> cattails or papyrus", (stack) => stack.Collectible.Code.Path == "papyrustops" || stack.Collectible.Code.Path == "cattailtops", 10
+                    "getcattails", "Welcome to the stone age! With your knife in hands, hold <icon>leftmousebutton</icon> to harvest {0} <itemstack type=\"item\">papyrustops|cattailtops</itemstack> from <itemstack type=\"block\">tallplant-coopersreed-land-normal-free|tallplant-papyrus-land-normal-free</itemstack> cattails or papyrus", (stack) => stack.Collectible.Code.Path == "papyrustops" || stack.Collectible.Code.Path == "cattailtops", 10
                 ),
                 TutorialStepBase.Craft(capi,
                     "craftbasket", "Storage time! Using 10 reeds or papyrus, craft a <itemstack type=\"item\">basket</itemstack> <a href=\"handbook://block-basket\">basket</a> in your inventory (<hk>inventorydialog</hk>). Ultimately you'd want to have 4 of them.",
@@ -93,7 +93,7 @@ namespace Vintagestory.GameContent
                 ),
                 TutorialStepBase.LookAt(capi,
                     "finishfirepit", "Add 4 firewood to your firepit with <icon>rightmousebutton</icon>.",
-                    (blocksel) => blocksel.Block is BlockFirepit
+                    (blocksel) => (blocksel.Block as BlockFirepit)?.Stage == 5
                 ),
                 TutorialStepBase.Craft(capi,
                     "createfirestarter", "Craft a <itemstack type=\"item\">firestarter</itemstack> <a href=\"handbook://item-firestarter\">fire starter</a>.",
@@ -108,7 +108,21 @@ namespace Vintagestory.GameContent
                         return befirepit.IsBurning;
                     }
                 ),
-                TutorialStepBase.Collect(capi, "finished", "You have discovered fire! \\o/<br>Use it to create torches and to boil meat, cattail roots or to make meals. Craft a <itemstack type=\"block\">torch-basic-extinct-up</itemstack> torch next.", (stack) => false, 1)
+                TutorialStepBase.Craft(capi, 
+                    "maketorch", "You have discovered fire! \\o/<br>Use it to create torches and to boil meat, cattail roots or to make meals. Craft a <itemstack type=\"block\">torch-basic-extinct-up</itemstack> <a href=\"handbook://block-torch-basic-extinct-up\">torch</a> next.",
+                    (stack) => stack.Collectible is BlockTorch,
+                    1
+                ),
+                TutorialStepBase.Grab(capi,
+                    "ignitetorch", "Place the torch in the cooking slot of your firepit and give it a couple of seconds. Pick up a <itemstack type=\"block\">torch-basic-lit-up</itemstack> lit torch from your firepit.",
+                    (stack) => (stack.Collectible as BlockTorch)?.IsExtinct == false,
+                    1
+                ),
+                TutorialStepBase.Collect(capi,
+                    "finished", "Congratulations! Now you know the basics of Vintage Story. This starter tutorial is now finished. More tutorials to follow soon. Until then, check out the <a href=\"handbook://craftinginfo-starterguide\">starter guide</a>",
+                    (stack) => false,
+                    1
+                )
             );
         }
 

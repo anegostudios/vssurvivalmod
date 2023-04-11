@@ -40,7 +40,7 @@ namespace Vintagestory.ServerMods
         public MapLayerBase beachGen;
         public MapLayerBase geologicprovinceGen;
         public MapLayerBase landformsGen;
-
+        
         public int noiseSizeUpheavel;
         public int noiseSizeOcean;
         public int noiseSizeClimate;
@@ -311,7 +311,6 @@ namespace Vintagestory.ServerMods
                 regionZ * noiseSizeOcean - opad, 
                 noiseSizeOcean + 2*opad, noiseSizeOcean + 2 * opad
             );
-
 
             mapRegion.BeachMap.Size = noiseSizeBeach + 1;
             mapRegion.BeachMap.BottomRightPadding = 1;

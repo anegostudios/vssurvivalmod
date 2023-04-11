@@ -105,18 +105,13 @@ namespace Vintagestory.GameContent
                 {
                     var jstack = data.AsObject<JsonItemStack>();
                     jstack.Resolve(entity.World, "conversable giveitem trigger");
-                    ItemStack itemstack = jstack.ResolvedItemstack;
-
-                    triggeringEntity.WalkInventory((slot) =>
+                    ItemStack wantStack = jstack.ResolvedItemstack;
+                    var slot = DlgTalkComponent.FindDesiredItem(triggeringEntity, wantStack);
+                    if (slot != null)
                     {
-                        if (!slot.Empty && slot.Itemstack.Satisfies(jstack.ResolvedItemstack))
-                        {
-                            slot.TakeOut(jstack.Quantity);
-                            slot.MarkDirty();
-                            return false;
-                        }
-                        return true;
-                    });
+                        slot.TakeOut(jstack.Quantity);
+                        slot.MarkDirty();
+                    }
                 }
 
                 return -1;

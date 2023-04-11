@@ -173,6 +173,16 @@ namespace Vintagestory.ServerMods
                     ReadChunk(player, args);
                     break;
 
+                case "stitch":
+                    if (api.Server.Config.HostedMode)
+                    {
+                        player.SendMessage(groupId, Lang.Get("Can't access this feature, server is in hosted mode"), EnumChatType.CommandError);
+                        return;
+                    }
+
+                    StitchRegion(player, args);
+                    break;
+
                 case "region":
                     if (api.Server.Config.HostedMode)
                     {
@@ -620,10 +630,6 @@ namespace Vintagestory.ServerMods
             
         }
 
-
-
-
-
         private void TestNoise(IServerPlayer player, CmdArgs arguments)
         {
             bool use3d = false;
@@ -706,10 +712,6 @@ namespace Vintagestory.ServerMods
             player.SendMessage(groupId, loc + " size " + size + " generated.", EnumChatType.CommandError);
         }
 
-
-        
-
-
         void TreeLineup(IServerPlayer player, CmdArgs arguments)
         {
             if (arguments.Length < 1)
@@ -744,8 +746,6 @@ namespace Vintagestory.ServerMods
 
             blockAccessor.Commit();
         }
-
-
 
         void TestMap(IServerPlayer player, CmdArgs arguments)
         {
@@ -1096,6 +1096,91 @@ namespace Vintagestory.ServerMods
             }
         }
 
+        private void StitchRegion(IServerPlayer player, CmdArgs arguments)
+        {
+            if (arguments.Length == 0)
+            {
+                player.SendMessage(groupId, "/wgen region [climate|ore|forest|wind|gprov|gprovi|landform|landformi]", EnumChatType.CommandError);
+                return;
+            }
+
+            BlockPos pos = player.Entity.Pos.AsBlockPos;
+            IServerChunk serverchunk = api.WorldManager.GetChunk(pos);
+            if (serverchunk == null)
+            {
+                player.SendMessage(groupId, "Can't check here, beyond chunk boundaries!", EnumChatType.CommandError);
+                return;
+            }
+
+            IMapRegion mapRegion = serverchunk.MapChunk.MapRegion;
+
+
+            int regionX = pos.X / regionSize;
+            int regionZ = pos.Z / regionSize;
+
+            string arg = arguments.PopWord();
+
+            string subarg = arguments.PopWord();
+            bool dolerp = subarg == "nolerp";
+
+            var climateGen = api.ModLoader.GetModSystem<GenMaps>().climateGen;
+
+            NoiseBase.Debug = true;
+
+            int size = mapRegion.ClimateMap.InnerSize;
+            int stitchSize = size * 3;
+
+            int[] stitchedMap = new int[stitchSize * stitchSize];
+
+            switch (arg)
+            {
+                case "climate":
+                    for (int dx = -1; dx <= 1; dx++)
+                    {
+                        for (int dz = -1; dz <= 1; dz++)
+                        {
+                            var map = OnMapRegionGen(regionX + dx, regionZ + dz, climateGen);
+
+                            for (int px = 0; px < size; px++)
+                            {
+                                for (int py = 0; py < size; py++)
+                                {
+                                    int col = map.GetUnpaddedInt(px, py);
+                                    int y = (dz+1) * size + py;
+                                    int x = (dx+1) * size + px;
+
+                                    stitchedMap[y * stitchSize + x] = col;
+                                }
+                            }
+                            
+                        }
+                    }
+
+                    break;
+            }
+
+            NoiseBase.DebugDrawBitmap(DebugDrawMode.RGB, stitchedMap, stitchSize, "climated-3x3-stitch");
+            NoiseBase.Debug = false;
+        }
+
+
+        private IntDataMap2D OnMapRegionGen(int regionX, int regionZ, MapLayerBase climateGen)
+        {
+            int pad = 2;
+            int noiseSizeClimate = api.WorldManager.RegionSize / TerraGenConfig.climateMapScale;
+
+            var map = new IntDataMap2D();
+            map.Data = climateGen.GenLayer(
+                regionX * noiseSizeClimate - pad,
+                regionZ * noiseSizeClimate - pad,
+                noiseSizeClimate + 2 * pad,
+                noiseSizeClimate + 2 * pad
+            );
+            map.Size = noiseSizeClimate + 2 * pad;
+            map.TopLeftPadding = map.BottomRightPadding = pad;
+            return map;
+        }
+
 
 
         private void ReadRegion(IServerPlayer player, CmdArgs arguments)
@@ -1283,10 +1368,6 @@ namespace Vintagestory.ServerMods
             NoiseBase.Debug = false;
         }
 
-
-
-
-
         private void ReadRegions(IServerPlayer player, CmdArgs arguments)
         {
             if (arguments.Length == 0)
@@ -1391,8 +1472,6 @@ namespace Vintagestory.ServerMods
         }
 
 
-
-
         void DrawMapRegion(DebugDrawMode mode, IServerPlayer player, IntDataMap2D map, string prefix, bool lerp, int regionX, int regionZ, int scale)
         {
 
@@ -1408,8 +1487,6 @@ namespace Vintagestory.ServerMods
                 player.SendMessage(groupId, "Original " + prefix + " map generated.", EnumChatType.CommandSuccess);
             }
         }
-
-
 
         void ReadPos(IServerPlayer player, CmdArgs arguments)
         {

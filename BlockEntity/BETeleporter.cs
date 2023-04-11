@@ -209,7 +209,7 @@ namespace Vintagestory.GameContent
 
         public override Vec3d GetTarget(Entity forEntity)
         {
-            return tpLocation?.TargetPos.ToVec3d().Add(-0.3, 1, -0.3);
+            return tpLocation?.TargetPos?.ToVec3d().Add(-0.3, 1, -0.3);
         }
 
         public ILoadedSound teleportingSound;

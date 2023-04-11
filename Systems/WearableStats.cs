@@ -124,7 +124,6 @@ namespace Vintagestory.GameContent
             IInventory inv = player.InventoryManager.GetOwnInventory(GlobalConstants.characterInvClassName);
             double rnd = api.World.Rand.NextDouble();
 
-
             int attackTarget;
 
             if ((rnd -= 0.2) < 0)

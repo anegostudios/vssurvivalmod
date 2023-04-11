@@ -26,6 +26,8 @@ namespace Vintagestory.ServerMods
 
             int lx = pos.X % chunksize;
             int lz = pos.Z % chunksize;
+            if (lx < 0 || lz < 0) return;
+                 
             currentRelativeDepth = ypos / mapChunk.WorldGenTerrainHeightMap[lz * chunksize + lx];
         }
 

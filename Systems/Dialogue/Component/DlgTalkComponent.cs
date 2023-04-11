@@ -99,18 +99,39 @@ namespace Vintagestory.GameContent
                     return false;
                 }
 
-                bool found = false;
-                controller.PlayerEntity.WalkInventory((slot) =>
-                {
-                    if (!slot.Empty && slot.Itemstack.Satisfies(jstack.ResolvedItemstack)) { found = true; return false; }
-                    return true;
-                });
-
-                return found;
+                ItemStack wantStack = jstack.ResolvedItemstack;
+                var slot = FindDesiredItem(controller.PlayerEntity, wantStack);
+                return slot != null;
             }
 
             if (IsConditionMet(cond.Variable, cond.IsValue, cond.Invert)) return true;
             return false;
+        }
+
+
+        public static ItemSlot FindDesiredItem(EntityAgent eagent, ItemStack wantStack)
+        {
+            ItemSlot foundSlot = null;
+            string[] ignoredAttrs = GlobalConstants.IgnoredStackAttributes.Append("backpack").Append("condition").Append("durability");
+
+            eagent.WalkInventory((slot) =>
+            {
+                if (slot.Empty) return true;
+                var giveStack = slot.Itemstack;
+
+                if (wantStack.Equals(eagent.World, giveStack, ignoredAttrs) || giveStack.Satisfies(wantStack))
+                {
+                    if (giveStack.Collectible.IsReasonablyFresh(eagent.World, giveStack))
+                    {
+                        foundSlot = slot;
+                        return false;
+                    }
+                }
+
+                return true;
+            });
+
+            return foundSlot;
         }
 
         public void SelectAnswer(int index)

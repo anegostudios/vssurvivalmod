@@ -188,6 +188,10 @@ namespace Vintagestory.GameContent
                     lightHsv[0] = 42;
                     lightHsv[1] = 4;
                     break;
+                case "pink":
+                    lightHsv[0] = 54;
+                    lightHsv[1] = 4;
+                    break;
                 case "violet":
                     lightHsv[0] = 48;
                     lightHsv[1] = 4;

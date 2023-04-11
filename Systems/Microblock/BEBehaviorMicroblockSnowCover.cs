@@ -243,6 +243,8 @@ namespace Vintagestory.GameContent
                 {
                     SnowLevel = (int)abovebe.Block.snowLevel;
                 }
+
+                if (SnowLevel == 0) return false;
             }
 
             if (PrevSnowLevel != SnowLevel || SnowMesh == null)
@@ -290,7 +292,19 @@ namespace Vintagestory.GameContent
 
         public void RegenMesh()
         {
-             GenSnowMesh();
+            SnowLevel = (int)Block.snowLevel;
+            if (SnowLevel == 0)
+            {
+                var abovebe = Api.World.BlockAccessor.GetBlockEntity(Pos.UpCopy()) as BlockEntityMicroBlock;
+                if (abovebe != null && abovebe.Block.snowLevel > 0 && abovebe.VolumeRel < 1 / 16f)
+                {
+                    SnowLevel = (int)abovebe.Block.snowLevel;
+                }
+
+                if (SnowLevel == 0) return;
+            }
+
+            GenSnowMesh();
         }
     }
 }

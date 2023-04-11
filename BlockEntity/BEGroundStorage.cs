@@ -780,7 +780,7 @@ namespace Vintagestory.GameContent
 
 
 
-        bool putOrGetItemSingle(ItemSlot ourSlot, IPlayer player, BlockSelection bs)
+        public bool putOrGetItemSingle(ItemSlot ourSlot, IPlayer player, BlockSelection bs)
         {
             isUsingSlot = null;
             if (!ourSlot.Empty && ourSlot.Itemstack.Collectible is IContainedInteractable collIci)

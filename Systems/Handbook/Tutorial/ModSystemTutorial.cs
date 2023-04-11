@@ -157,6 +157,7 @@ namespace Vintagestory.GameContent
         public void StartTutorial(string code)
         {
             currentTutorialInst = tutorials[code];
+            currentTutorialInst.Load();
             CurrentTutorial = code;
             hud.TryOpen();
             hud.loadHud(currentTutorialInst.PageCode);
@@ -266,7 +267,7 @@ namespace Vintagestory.GameContent
 
 
 
-        HashSet<string> eventNames = new HashSet<string>() { "onitemcollected", "onitemcrafted", "onitemknapped", "onitemclayformed" };
+        HashSet<string> eventNames = new HashSet<string>() { "onitemcollected", "onitemcrafted", "onitemknapped", "onitemclayformed", "onitemgrabbed" };
 
         private void Event_DidPlaceBlock(IServerPlayer byPlayer, int oldblockId, BlockSelection blockSel, ItemStack withItemStack)
         {

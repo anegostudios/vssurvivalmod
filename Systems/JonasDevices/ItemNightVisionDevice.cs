@@ -119,10 +119,10 @@ namespace Vintagestory.GameContent
             base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
 
             float fuelLeft = GetFuelLeft(inSlot.Itemstack);
-            dsc.Append(Lang.Get("Has fuel for {0:0.#} hours", fuelLeft));
+            dsc.AppendLine(Lang.Get("Has fuel for {0:0.#} hours", fuelLeft));
             if (fuelLeft < 0.1)
             {
-                dsc.Append(Lang.Get("Add temporal gear to fuel"));
+                dsc.AppendLine(Lang.Get("Add temporal gear to fuel"));
             }
         }
     }

@@ -1084,8 +1084,10 @@ namespace Vintagestory.GameContent
         public const int VOXELS_PER_SIDE = 18;// 16 per self and one for each neighbor
         public const int VOXELS_SQ = VOXELS_PER_SIDE * VOXELS_PER_SIDE;
 
-        public static readonly ThreadLocal<CuboidInfo[]> tmpVoxels = new ThreadLocal<CuboidInfo[]>(() => new CuboidInfo[VOXELS_PER_SIDE * VOXELS_PER_SIDE * VOXELS_PER_SIDE]);
-        public static readonly ThreadLocal<RefList<VoxelMaterial>> tmpMaterials = new ThreadLocal<RefList<VoxelMaterial>>(() => new RefList<VoxelMaterial>());
+        [ThreadStatic]
+        public static CuboidInfo[] tmpVoxels;
+        [ThreadStatic]
+        public static RefList<VoxelMaterial> tmpMaterials;
 
         private static readonly SizeConverter ConvertPlaneX = ConvertPlaneXImpl;
         private static readonly SizeConverter ConvertPlaneY = ConvertPlaneYImpl;
@@ -1093,6 +1095,15 @@ namespace Vintagestory.GameContent
 
         private static readonly int[] shiftOffsetByFace = new int[6] { 0, 1, 1, 0, 1, 0 };
 
+        private static RefList<VoxelMaterial> getTmpMaterials()
+        {
+            return tmpMaterials ?? (tmpMaterials = new RefList<VoxelMaterial>());
+        }
+
+        private static CuboidInfo[] getTmpVoxels()
+        {
+            return tmpVoxels ?? (tmpVoxels = new CuboidInfo[VOXELS_PER_SIDE * VOXELS_PER_SIDE * VOXELS_PER_SIDE]);
+        }
 
         public unsafe static MeshData CreateMesh(ICoreClientAPI capi, List<uint> voxelCuboids, int[] materials, uint[] originalVoxelCuboids, BlockPos posForRnd = null)
         {
@@ -1104,10 +1115,10 @@ namespace Vintagestory.GameContent
 
             //coreClientAPI.World.FrameProfiler.Mark("patched-microblock-gen");
 
-            var matList = tmpMaterials.Value;
+            var matList = getTmpMaterials();
             matList.Clear();
 
-            var voxels = tmpVoxels.Value;
+            var voxels = getTmpVoxels();
             fixed (CuboidInfo* ptr = voxels)
             {
                 Unsafe.InitBlockUnaligned(ptr, 255, (uint)(sizeof(CuboidInfo) * voxels.Length));// 255 means "-1" for material field
@@ -1174,7 +1185,7 @@ namespace Vintagestory.GameContent
                 return mesh;
             }
 
-            var matList = tmpMaterials.Value;
+            var matList = getTmpMaterials();
             matList.Clear();
             matList.Add(VoxelMaterial.FromTexSource(capi, decalTexSource, true));
 
@@ -1187,7 +1198,7 @@ namespace Vintagestory.GameContent
             int** originalBoundsByFace = stackalloc int*[1] { origVoxelBounds };
 
             var count = voxelCuboids.Count;
-            var voxels = tmpVoxels.Value;
+            var voxels = getTmpVoxels();
             fixed (CuboidInfo* ptr = voxels)
             {
                 Unsafe.InitBlockUnaligned(ptr, 255, (uint)(sizeof(CuboidInfo) * voxels.Length));
@@ -1553,9 +1564,9 @@ namespace Vintagestory.GameContent
                 posX = xyz[0] * V2F;
                 posY = xyz[1] * V2F;
                 posZ = xyz[2] * V2F;
-                centerX = xyz[0] * V2F + halfSizeX;
-                centerY = xyz[1] * V2F + halfSizeY;
-                centerZ = xyz[2] * V2F + halfSizeZ;
+                centerX = posX + halfSizeX;
+                centerY = posY + halfSizeY;
+                centerZ = posZ + halfSizeZ;
 
                 InitMaterial(material);
                 InitUV();
@@ -1570,20 +1581,17 @@ namespace Vintagestory.GameContent
                         targetMesh.GrowVertexBuffer();
                         targetMesh.GrowNormalsBuffer();
                     }
-                    targetMesh.xyz[targetMesh.XyzCount] = CubeMeshUtil.CubeVertices[ind * 3] * halfSizeX + centerX;
-                    targetMesh.xyz[targetMesh.XyzCount + 1] = CubeMeshUtil.CubeVertices[ind * 3 + 1] * halfSizeY + centerY;
-                    targetMesh.xyz[targetMesh.XyzCount + 2] = CubeMeshUtil.CubeVertices[ind * 3 + 2] * halfSizeZ + centerZ;
+                    int index = targetMesh.XyzCount;
+                    targetMesh.xyz[index] = CubeMeshUtil.CubeVertices[ind * 3] * halfSizeX + centerX;
+                    targetMesh.xyz[index + 1] = CubeMeshUtil.CubeVertices[ind * 3 + 1] * halfSizeY + centerY;
+                    targetMesh.xyz[index + 2] = CubeMeshUtil.CubeVertices[ind * 3 + 2] * halfSizeZ + centerZ;
 
                     GetScaledUV(ind * 2, out float u, out float v);
-                    targetMesh.Uv[targetMesh.UvCount] = tpos.x1 + u * texWidth - subPixelPaddingx;
-                    targetMesh.Uv[targetMesh.UvCount + 1] = tpos.y1 + v * texHeight - subPixelPaddingy;
+                    index = targetMesh.UvCount;
+                    targetMesh.Uv[index] = tpos.x1 + u * texWidth - subPixelPaddingx;
+                    targetMesh.Uv[index + 1] = tpos.y1 + v * texHeight - subPixelPaddingy;
 
-                    targetMesh.Rgba[targetMesh.RgbaCount] = 255;
-                    targetMesh.Rgba[targetMesh.RgbaCount + 1] = 255;
-                    targetMesh.Rgba[targetMesh.RgbaCount + 2] = 255;
-                    targetMesh.Rgba[targetMesh.RgbaCount + 3] = 255;
-                    targetMesh.Flags[targetMesh.VerticesCount] = flags;
-                    targetMesh.VerticesCount++;
+                    targetMesh.Flags[targetMesh.VerticesCount++] = flags;
                 }
 
                 int faceOffset = face * 6;

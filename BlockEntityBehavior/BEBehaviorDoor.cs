@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -15,6 +16,22 @@ namespace Vintagestory.GameContent
         protected MeshData mesh;
         protected MeshData origMesh;
         protected Cuboidf[] boxesClosed, boxesOpened;
+
+        public BlockFacing facingWhenClosed
+        {
+            get
+            {
+                int face = ((int)(RotateYRad / (GameMath.PIHALF - 0.00001F)) % 4 + 4) % 4;
+                switch (face)
+                {
+                    case 0: return BlockFacing.SOUTH;
+                    case 1: return BlockFacing.EAST;
+                    case 2: return BlockFacing.NORTH;
+                    case 3: return BlockFacing.WEST;
+                    default: return BlockFacing.SOUTH;
+                }
+            }
+        }
 
         BEBehaviorDoor leftDoor
         {
@@ -35,7 +52,7 @@ namespace Vintagestory.GameContent
         public Cuboidf[] ColSelBoxes => opened ? boxesOpened : boxesClosed;
         public bool Opened => opened;
         public bool InvertHandles => invertHandles;
-        
+
         public BEBehaviorDoor(BlockEntity blockentity) : base(blockentity)
         {
             boxesClosed = blockentity.Block.CollisionBoxes;
@@ -91,7 +108,7 @@ namespace Vintagestory.GameContent
             }
 
             if (initalSetup)
-            {   
+            {
                 if (leftDoor != null && !leftDoor.invertHandles)
                 {
                     invertHandles = true;
@@ -125,29 +142,39 @@ namespace Vintagestory.GameContent
             }
 
             if (Api.Side == EnumAppSide.Client)
-            {               
+            {
                 origMesh = animUtil.InitializeAnimator("door-" + Blockentity.Block.Variant["style"], null, null);
-                mesh = origMesh.Clone();
-                if (RotateYRad != 0)
-                {
-                    float rot = invertHandles ? -RotateYRad : RotateYRad;
-                    mesh = mesh.Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 0, rot, 0);
-                    animUtil.renderer.rotationDeg.Y = rot * GameMath.RAD2DEG;
-                }
 
-                if (invertHandles)
-                {
-                    // We need a full matrix transform for this to update the normals as well
-                    Matrixf matf = new Matrixf();
-                    matf.Translate(0.5f, 0.5f, 0.5f).Scale(-1, 1, 1).Translate(-0.5f, -0.5f, -0.5f);
-                    mesh.MatrixTransform(matf.Values);
-                    
-                    animUtil.renderer.backfaceCulling = false;
-                    animUtil.renderer.ScaleX = -1;
-                }
+                UpdateMeshAndAnimations();
             }
 
-            
+            UpdateHitBoxes();
+        }
+
+        protected virtual void UpdateMeshAndAnimations()
+        {
+            mesh = origMesh.Clone();
+            if (RotateYRad != 0)
+            {
+                float rot = invertHandles ? -RotateYRad : RotateYRad;
+                mesh = mesh.Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 0, rot, 0);
+                animUtil.renderer.rotationDeg.Y = rot * GameMath.RAD2DEG;
+            }
+
+            if (invertHandles)
+            {
+                // We need a full matrix transform for this to update the normals as well
+                Matrixf matf = new Matrixf();
+                matf.Translate(0.5f, 0.5f, 0.5f).Scale(-1, 1, 1).Translate(-0.5f, -0.5f, -0.5f);
+                mesh.MatrixTransform(matf.Values);
+
+                animUtil.renderer.backfaceCulling = false;
+                animUtil.renderer.ScaleX = -1;
+            }
+        }
+
+        protected virtual void UpdateHitBoxes()
+        {
             if (RotateYRad != 0)
             {
                 boxesClosed = Blockentity.Block.CollisionBoxes;
@@ -172,7 +199,7 @@ namespace Vintagestory.GameContent
         public virtual void OnBlockPlaced(ItemStack byItemStack, IPlayer byPlayer, BlockSelection blockSel)
         {
             if (byItemStack == null) return; // Placed by worldgen
-            
+
             RotateYRad = getRotateYRad(byPlayer, blockSel);
             SetupRotationsAndColSelBoxes(true);
         }
@@ -188,7 +215,7 @@ namespace Vintagestory.GameContent
             return ((int)Math.Round(angleHor / deg90)) * deg90;
         }
 
-        
+
 
         public bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ref EnumHandling handling)
         {
@@ -220,6 +247,42 @@ namespace Vintagestory.GameContent
             if (rightDoor != null) rightDoor.ToggleDoorWing(opened);
 
             be.MarkDirty(true);
+
+            if (Api.Side == EnumAppSide.Server)
+            {
+                BlockPos tempPos = new BlockPos();
+                for (int y = 0; y < doorBh.height; y++)
+                {
+                    tempPos.Set(Pos).Add(0, y, 0);
+                    BlockFacing sideMove;
+                    int face = ((int)(RotateYRad / (GameMath.PIHALF - 0.00001F)) % 4 + 4) % 4;
+                    switch (face)
+                    {
+                        case 0:
+                            sideMove = BlockFacing.EAST;
+                            break;
+                        case 1:
+                            sideMove = BlockFacing.NORTH;
+                            break;
+                        case 2:
+                            sideMove = BlockFacing.WEST;
+                            break;
+                        case 3:
+                            sideMove = BlockFacing.SOUTH;
+                            break;
+                        default:
+                            sideMove = BlockFacing.EAST;
+                            break;
+                    }
+                    if (invertHandles) sideMove = sideMove.Opposite;
+
+                    for (int x = 0; x < doorBh.width; x++)
+                    {
+                        Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(tempPos);
+                        tempPos.Add(sideMove);
+                    }
+                }
+            }
         }
 
         private void ToggleDoorWing(bool opened)
@@ -260,11 +323,16 @@ namespace Vintagestory.GameContent
             rightDoorOffset = tree.GetVec3i("rightDoorPos");
 
             if (opened != beforeOpened && animUtil != null) ToggleDoorWing(opened);
-            /*if (Api != null && Api.Side is EnumAppSide.Client)
+            if (Api != null && Api.Side is EnumAppSide.Client)
             {
-                SetupRotationsAndColSelBoxes(true);
+                UpdateMeshAndAnimations();
+                if (opened && !beforeOpened && animUtil != null && !animUtil.activeAnimationsByAnimCode.ContainsKey("opened"))
+                {
+                    ToggleDoorWing(true);
+                }
+                UpdateHitBoxes();
                 Api.World.BlockAccessor.MarkBlockDirty(Pos);
-            }*/
+            }
         }
 
         public override void ToTreeAttributes(ITreeAttribute tree)
@@ -276,6 +344,23 @@ namespace Vintagestory.GameContent
             tree.SetBool("invertHandles", invertHandles);
             if (leftDoorOffset != null) tree.SetVec3i("leftDoorPos", leftDoorOffset);
             if (rightDoorOffset != null) tree.SetVec3i("rightDoorPos", rightDoorOffset);
+        }
+
+        public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
+        {
+            if (Api is ICoreClientAPI capi)
+            {
+                if (capi.Settings.Bool["extendedDebugInfo"] == true)
+                {
+                    dsc.AppendLine("" + facingWhenClosed + (invertHandles ? "-inv " : " ") + (opened ? "open" : "closed"));
+                    dsc.AppendLine("" + doorBh.height + "x" + doorBh.width + (leftDoorOffset != null ? " leftdoor at:" + leftDoorOffset : " ") + (rightDoorOffset != null ? " rightdoor at:" + rightDoorOffset : " "));
+                    EnumHandling h = EnumHandling.PassThrough;
+                    if (doorBh.GetLiquidBarrierHeightOnSide(BlockFacing.NORTH, Pos, ref h) > 0) dsc.AppendLine("Barrier to liquid on side: North");
+                    if (doorBh.GetLiquidBarrierHeightOnSide(BlockFacing.EAST, Pos, ref h) > 0) dsc.AppendLine("Barrier to liquid on side: East");
+                    if (doorBh.GetLiquidBarrierHeightOnSide(BlockFacing.SOUTH, Pos, ref h) > 0) dsc.AppendLine("Barrier to liquid on side: South");
+                    if (doorBh.GetLiquidBarrierHeightOnSide(BlockFacing.WEST, Pos, ref h) > 0) dsc.AppendLine("Barrier to liquid on side: West");
+                }
+            }
         }
     }
 }

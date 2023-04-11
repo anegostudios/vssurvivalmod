@@ -109,7 +109,7 @@ namespace Vintagestory.GameContent
             {
                 if (mpos == blockSel.Position) return true;
 
-                Block mblock = world.BlockAccessor.GetBlock(mpos);
+                Block mblock = world.BlockAccessor.GetBlock(mpos, BlockLayersAccess.Solid);
                 if (!mblock.IsReplacableBy(block))
                 {
                     blocked = true;
@@ -135,7 +135,7 @@ namespace Vintagestory.GameContent
             BlockPos pos = blockSel.Position;
             IBlockAccessor ba = world.BlockAccessor;
 
-            if (ba.GetBlock(pos).Id == 0 && block.CanPlaceBlock(world, byPlayer, blockSel, ref failureCode))
+            if (ba.GetBlock(pos, BlockLayersAccess.Solid).Id == 0 && block.CanPlaceBlock(world, byPlayer, blockSel, ref failureCode))
             {
                 return placeDoor(world, byPlayer, itemstack, blockSel, pos, ba);
             }
@@ -308,8 +308,8 @@ namespace Vintagestory.GameContent
             handled = EnumHandling.PreventDefault;
             var beh = block.GetBEBehavior<BEBehaviorDoor>(pos);
 
-            if (beh.Opened) return 0f; // - should also check for orientation!
-            //if (face != beh.RotateYRad.Opposite) return 0f; - needs to be implemented still
+            if (beh.Opened) return 0f;
+            if (face != beh.facingWhenClosed) return 0f;
 
             if (block.Variant["style"] == "sleek-windowed") return 1.0f;
 
@@ -321,9 +321,9 @@ namespace Vintagestory.GameContent
         public float MBGetLiquidBarrierHeightOnSide(BlockFacing face, BlockPos pos, Vec3i offset)
         {
             var beh = block.GetBEBehavior<BEBehaviorDoor>(pos.AddCopy(offset.X, offset.Y, offset.Z));
-
-            if (beh.Opened) return 0f; // - should also check for orientation!
-            //if (face != beh.RotateYRad.Opposite) return 0f; - needs to be implemented still
+            if (beh == null) return 0f;
+            if (beh.Opened) return 0f;
+            if (face != beh.facingWhenClosed) return 0f;
 
             if (block.Variant["style"] == "sleek-windowed") return offset.Y == -1 ? 0.0f : 1.0f;
 

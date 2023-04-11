@@ -190,7 +190,7 @@ namespace Vintagestory.GameContent
         {
             bool alive = entity.GetBehavior<EntityBehaviorHealth>()?.Health > 0; // entity.Alive is false on despawn? o.o
             // Despawning entity recharges the internal capacity
-            if (alive && (despawnData.Reason == EnumDespawnReason.Unload || despawnData.Reason == EnumDespawnReason.Expire))
+            if (alive && (despawnData == null || despawnData.Reason == EnumDespawnReason.Unload || despawnData.Reason == EnumDespawnReason.Expire))
             {
                 if (spawnedEntities.Contains(entity.EntityId))
                 {

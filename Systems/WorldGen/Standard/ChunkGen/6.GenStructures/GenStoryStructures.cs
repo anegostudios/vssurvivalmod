@@ -158,6 +158,8 @@ namespace Vintagestory.GameContent
 
         public bool IsInStoryStructure(Vec3d position)
         {
+            if (structureLocations == null) return false;
+
             for (int i = 0; i < structureLocations.Length; i++)
             {
                 var loc = structureLocations[i];
@@ -169,6 +171,8 @@ namespace Vintagestory.GameContent
 
         public bool IsInStoryStructure(BlockPos position)
         {
+            if (structureLocations == null) return false;
+
             for (int i = 0; i < structureLocations.Length; i++)
             {
                 var loc = structureLocations[i];

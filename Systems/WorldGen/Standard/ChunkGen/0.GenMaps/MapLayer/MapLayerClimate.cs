@@ -19,7 +19,11 @@ namespace Vintagestory.ServerMods
             int cacheSizeX = (int)Math.Ceiling((float)sizeX / TerraGenConfig.climateMapSubScale) + 1;
             int cacheSizeZ = (int)Math.Ceiling((float)sizeZ / TerraGenConfig.climateMapSubScale) + 1;
 
-            int[] climateCache = getClimateCache (xCoord / TerraGenConfig.climateMapSubScale, zCoord / TerraGenConfig.climateMapSubScale, cacheSizeX, cacheSizeZ);
+            int[] climateCache = getClimateCache (
+                (int)Math.Floor((float)xCoord / TerraGenConfig.climateMapSubScale),
+                (int)Math.Floor((float)zCoord / TerraGenConfig.climateMapSubScale),
+                cacheSizeX, cacheSizeZ
+            );
 
             for (int x = 0; x < sizeX; x++)
             {

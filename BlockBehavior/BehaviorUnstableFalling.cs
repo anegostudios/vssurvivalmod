@@ -24,9 +24,10 @@ namespace Vintagestory.GameContent
 
         AssetLocation fallSound;
         float impactDamageMul;
-        Dictionary<string, Cuboidi> attachmentAreas;
+        Cuboidi[] attachmentAreas;
 
         BlockFacing[] attachableFaces;
+        bool fallingAllowedOnServer;
 
         public BlockBehaviorUnstableFalling(Block block) : base(block)
         {
@@ -37,7 +38,7 @@ namespace Vintagestory.GameContent
             base.Initialize(properties);
 
 
-            attachableFaces = new BlockFacing[] { BlockFacing.DOWN };
+            attachableFaces = null;
 
             if (properties["attachableFaces"].Exists)
             {
@@ -51,17 +52,18 @@ namespace Vintagestory.GameContent
             }
             
             var areas = properties["attachmentAreas"].AsObject<Dictionary<string, RotatableCube>>(null);
-            attachmentAreas = new Dictionary<string, Cuboidi>();
+            attachmentAreas = new Cuboidi[6];
             if (areas != null)
             {
                 foreach (var val in areas)
                 {
                     val.Value.Origin.Set(8, 8, 8);
-                    attachmentAreas[val.Key] = val.Value.RotatedCopy().ConvertToCuboidi();
+                    BlockFacing face = BlockFacing.FromFirstLetter(val.Key[0]);
+                    attachmentAreas[face.Index] = val.Value.RotatedCopy().ConvertToCuboidi();
                 }
             } else
             {
-                attachmentAreas["up"] = properties["attachmentArea"].AsObject<Cuboidi>(null);
+                attachmentAreas[4] = properties["attachmentArea"].AsObject<Cuboidi>(null);
             }
 
             ignorePlaceTest = properties["ignorePlaceTest"].AsBool(false);
@@ -84,8 +86,7 @@ namespace Vintagestory.GameContent
             handling = EnumHandling.PassThrough;
             if (ignorePlaceTest) return true;
 
-            Cuboidi attachmentArea = null;
-            attachmentAreas?.TryGetValue(BlockFacing.UP.Code, out attachmentArea);
+            Cuboidi attachmentArea = attachmentAreas[4];
 
             BlockPos pos = blockSel.Position.DownCopy();
             Block onBlock = world.BlockAccessor.GetBlock(pos);
@@ -124,7 +125,7 @@ namespace Vintagestory.GameContent
                 // Prevents duplication
                 Entity entity = world.GetNearestEntity(pos.ToVec3d().Add(0.5, 0.5, 0.5), 1, 1.5f, (e) =>
                 {
-                    return e is EntityBlockFalling && ((EntityBlockFalling)e).initialPos.Equals(pos);
+                    return e is EntityBlockFalling ebf && ebf.initialPos.Equals(pos);
                 });
 
                 if (entity == null)
@@ -149,16 +150,23 @@ namespace Vintagestory.GameContent
 
         public virtual bool IsAttached(IBlockAccessor blockAccessor, BlockPos pos)
         {
+            BlockPos tmpPos;
+
+            if (attachableFaces == null)    // shorter code path for no attachableFaces specified (common case) - we test only the block below
+            {
+                tmpPos = pos.DownCopy();
+                Block block = blockAccessor.GetBlock(tmpPos);
+                return block.CanAttachBlockAt(blockAccessor, this.block, tmpPos, BlockFacing.UP, attachmentAreas[5]);
+            }
+
+            tmpPos = new BlockPos();
             for (int i = 0; i < attachableFaces.Length; i++)
             {
                 BlockFacing face = attachableFaces[i];
 
-                Block block = blockAccessor.GetBlock(pos.AddCopy(face));
-
-                Cuboidi attachmentArea = null;
-                attachmentAreas?.TryGetValue(face.Code, out attachmentArea);
-
-                if (block.CanAttachBlockAt(blockAccessor, this.block, pos.AddCopy(face), face.Opposite, attachmentArea))
+                tmpPos.Set(pos).Add(face);
+                Block block = blockAccessor.GetBlock(tmpPos);
+                if (block.CanAttachBlockAt(blockAccessor, this.block, tmpPos, face.Opposite, attachmentAreas[face.Index]))
                 {
                     return true;
                 }
@@ -174,11 +182,13 @@ namespace Vintagestory.GameContent
                 BlockFacing facing = BlockFacing.HORIZONTALS[i];
 
                 Block nBlock = world.BlockAccessor.GetBlockOrNull(pos.X + facing.Normali.X, pos.Y + facing.Normali.Y, pos.Z + facing.Normali.Z);
-                Block nBBlock = world.BlockAccessor.GetBlockOrNull(pos.X + facing.Normali.X, pos.Y + facing.Normali.Y - 1, pos.Z + facing.Normali.Z);
-
-                if (nBlock != null && nBBlock != null && nBlock.Replaceable >= 6000 && nBBlock.Replaceable >= 6000)
+                if (nBlock != null && nBlock.Replaceable >= 6000)
                 {
-                    return true;
+                    nBlock = world.BlockAccessor.GetBlockOrNull(pos.X + facing.Normali.X, pos.Y + facing.Normali.Y - 1, pos.Z + facing.Normali.Z);
+                    if (nBlock != null && nBlock.Replaceable >= 6000)
+                    {
+                        return true;
+                    }
                 }
             }
 
@@ -188,7 +198,7 @@ namespace Vintagestory.GameContent
         private bool IsReplacableBeneath(IWorldAccessor world, BlockPos pos)
         {
             Block bottomBlock = world.BlockAccessor.GetBlock(pos.X, pos.Y - 1, pos.Z);
-            return (bottomBlock != null && bottomBlock.Replaceable > 6000);
+            return bottomBlock.Replaceable > 6000;
         }
     }
 }

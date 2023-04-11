@@ -416,6 +416,12 @@ namespace Vintagestory.GameContent
             if (bes != null)
             {
                 var cprops = GetTypeProps(bes.Type, null, bes);
+                if (cprops == null)
+                {
+                    base.GetDecal(world, pos, decalTexSource, ref decalModelData, ref blockModelData);
+                    return;
+                }
+
                 blockModelData = GetOrCreateMesh(cprops, null, bes.overrideTextureCode).Clone().Rotate(new Vec3f(0.5f, 0.5f, 0.5f), bes.rotateX, bes.rotateY + cprops.Rotation.Y * GameMath.DEG2RAD, bes.rotateZ);
                 decalModelData = GetOrCreateMesh(cprops, decalTexSource, bes.overrideTextureCode).Clone().Rotate(new Vec3f(0.5f, 0.5f, 0.5f), bes.rotateX, bes.rotateY + cprops.Rotation.Y * GameMath.DEG2RAD, bes.rotateZ);
                 return;

@@ -21,12 +21,12 @@ namespace Vintagestory.GameContent
                 {
                     seleBoxes[dz * size + dx] = new Cuboidf()
                     {
-                        X1 = (1.5f + dx) / 16f,
+                        X1 = (0.5f + dx) / 16f,
                         Y1 = 1 / 16f,
-                        Z1 = (1.5f + dz) / 16f,
-                        X2 = (2.5f + dx) / 16f,
+                        Z1 = (0.5f + dz) / 16f,
+                        X2 = (1.5f + dx) / 16f,
                         Y2 = 2 / 16f,
-                        Z2 = (2.5f + dz) / 16f,
+                        Z2 = (1.5f + dz) / 16f,
                     };
                 }
             }

@@ -70,6 +70,7 @@ namespace Vintagestory.GameContent
             { EnumReceiveType.Craft, "onitemcrafted" },
             { EnumReceiveType.Knap, "onitemknapped" },
             { EnumReceiveType.Clayform, "onitemclayformed" },
+            { EnumReceiveType.Grab, "onitemgrabbed" },
         };
 
         PlayerReceiveItemWatcher rwatcher;
