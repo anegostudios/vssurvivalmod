@@ -253,9 +253,9 @@ namespace Vintagestory.GameContent
                     inventory.PerishableFactorByFoodCategory = block.Attributes["spoilSpeedMulByFoodCat"][type].AsObject<Dictionary<EnumFoodCategory, float>>();
                 }
 
-                if (block.Attributes["transitionSpeedMulByType"][type].Exists == true)
+                if (block.Attributes["transitionSpeedMul"][type].Exists == true)
                 {
-                    inventory.TransitionableSpeedMulByType = block.Attributes["transitionSpeedMulByType"][type].AsObject<Dictionary<EnumTransitionType, float>>();
+                    inventory.TransitionableSpeedMulByType = block.Attributes["transitionSpeedMul"][type].AsObject<Dictionary<EnumTransitionType, float>>();
                 }
             }
 

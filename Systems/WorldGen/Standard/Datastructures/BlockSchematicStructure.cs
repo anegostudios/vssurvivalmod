@@ -120,6 +120,7 @@ namespace Vintagestory.ServerMods
 
                     int maxY = -1;
 
+                    bool highestBlockinCol = true;
                     for (int y = SizeY - 1; y >= 0; y--)
                     {
                         curPos.Set(x + startPos.X, y + startPos.Y, z + startPos.Z);
@@ -189,8 +190,13 @@ namespace Vintagestory.ServerMods
 
                         if (p > 0)
                         {
-                            Block aboveBlock = blockAccessor.GetBlock(curPos.X, curPos.Y + 1, curPos.Z, BlockLayersAccess.Solid);
-                            aboveBlock.OnNeighbourBlockChange(worldForCollectibleResolve, curPos.UpCopy(), curPos);
+                            if (highestBlockinCol)
+                            {
+                                // Make any plants, tallgrass etc above this schematic fall, but do not do this test in lower blocks in the schematic (e.g. tables in trader caravan)
+                                Block aboveBlock = blockAccessor.GetBlock(curPos.X, curPos.Y + 1, curPos.Z, BlockLayersAccess.Solid);
+                                aboveBlock.OnNeighbourBlockChange(worldForCollectibleResolve, curPos.UpCopy(), curPos);
+                                highestBlockinCol = false;
+                            }
                             placed += p;
 
                             if (!newBlock.RainPermeable)

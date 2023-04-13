@@ -363,7 +363,7 @@ namespace Vintagestory.ServerMods
 
             // Is the ground flat?
             int diff = GameMath.Max(centerY, topLeftY, topRightY, botLeftY, botRightY) - GameMath.Min(centerY, topLeftY, topRightY, botLeftY, botRightY);
-            if (diff != 0) return false;
+            if (diff > 1) return false;
 
             pos.Y = centerY + 1 + OffsetY;
 

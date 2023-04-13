@@ -54,6 +54,20 @@ namespace Vintagestory.GameContent
             }
         }
 
+        bool IsAsleep
+        {
+            get
+            {
+                var tm = GetBehavior<EntityBehaviorTaskAI>()?.TaskManager;
+                if (tm == null) return false;
+                foreach (var val in tm.ActiveTasksBySlot)
+                {
+                    if (val?.Id == "inactive") return true;
+                }
+                return false;
+            }
+        }
+
         public override void OnGameTick(float dt)
         {
             if (Api is ICoreClientAPI capi)
@@ -124,6 +138,9 @@ namespace Vintagestory.GameContent
             {
                 return false;
             }
+            // Invulnerable when asleep
+            if (IsAsleep) return false;
+
 
             if (World.Side == EnumAppSide.Server)
             {

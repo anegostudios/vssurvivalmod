@@ -34,11 +34,6 @@ namespace Vintagestory.GameContent
             RegisterGameTickListener(OnTick, 10000);
 
             roomReg = Api.ModLoader.GetModSystem<RoomRegistry>();
-
-            if (api.Side == EnumAppSide.Server)
-            {
-                room = roomReg.GetRoomForPosition(Pos);
-            }
         }
 
         private void Inventory_OnInventoryOpenedClient(IPlayer player)

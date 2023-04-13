@@ -14,6 +14,8 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
+    
+
     // Aaaaah protobuf sux. v1.9.6 format:
     [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
     public class BlockReinforcementOld
@@ -33,6 +35,7 @@ namespace Vintagestory.GameContent
         }
     }
 
+    // Tyron Apr13-2023: ImplicitFields can be removed by adding [ProtoMember(x)] in alphabetical order. If we want to add new fields here, we can do it this way without breaking backwards compatibility again
     [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
     public class BlockReinforcement {
         public int Strength;

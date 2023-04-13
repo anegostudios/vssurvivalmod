@@ -27,7 +27,6 @@ namespace Vintagestory.GameContent
         Cuboidi[] attachmentAreas;
 
         BlockFacing[] attachableFaces;
-        bool fallingAllowedOnServer;
 
         public BlockBehaviorUnstableFalling(Block block) : base(block)
         {
