@@ -378,7 +378,7 @@ namespace Vintagestory.GameContent
                 ItemStack stack = bloomeryInv[i].Itemstack;
                 if (stack != null)
                 {
-                    if (dsc.Length == 0) dsc.AppendLine("Contents:");
+                    if (dsc.Length == 0) dsc.AppendLine(Lang.Get("Contents:"));
                     dsc.AppendLine("  " + stack.StackSize + "x " + stack.GetName());
                 }
             }

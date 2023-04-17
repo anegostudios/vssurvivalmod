@@ -2,6 +2,7 @@
 using System.IO;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
@@ -154,7 +155,7 @@ namespace Vintagestory.GameContent
             {
                 if (editDialog != null && editDialog.IsOpened()) return;
 
-                editDialog = new GuiDialogBlockEntityTextInput("Edit Sign text", Pos, text, Api as ICoreClientAPI, blockSign?.signConfig.CopyWithFontSize(this.fontSize));
+                editDialog = new GuiDialogBlockEntityTextInput(Lang.Get("Edit Sign text"), Pos, text, Api as ICoreClientAPI, blockSign?.signConfig.CopyWithFontSize(this.fontSize));
                 editDialog.OnTextChanged = DidChangeTextClientSide;
                 editDialog.OnCloseCancel = () =>
                 {

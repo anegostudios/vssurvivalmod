@@ -458,7 +458,7 @@ namespace Vintagestory.GameContent
                 }
                 else
                 {
-                    dsc.AppendLine("Contents:");
+                    dsc.AppendLine(Lang.Get("Contents:"));
                     foreach (var stack in stacks)
                     {
                         if (stack == null) continue;

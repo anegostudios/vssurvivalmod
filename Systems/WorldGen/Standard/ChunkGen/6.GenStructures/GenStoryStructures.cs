@@ -102,6 +102,65 @@ namespace Vintagestory.GameContent
             api.ModLoader.GetModSystem<GenStructures>().OnPreventSchematicPlaceAt += OnPreventSchematicPlaceAt;
 
             api.RegisterCommand("tpstoryloc", "", "", onTpStoryLoc, Privilege.controlserver);
+
+            api.ChatCommands
+                .Create("setstorystrucpos")
+                .WithDescription("Set the location of a story structure")
+                .RequiresPrivilege(Privilege.controlserver)
+                .WithArgs(api.ChatCommands.Parsers.Word("code"), api.ChatCommands.Parsers.WorldPosition("position"), api.ChatCommands.Parsers.OptionalBool("confirm"))
+                .HandleWith(onSetStoryStructurePos)
+                .Validate()
+            ;
+        }
+
+        private TextCommandResult onSetStoryStructurePos(TextCommandCallingArgs args)
+        {
+            var storyStruc = scfg.Structures.FirstOrDefault(st => st.Code == (string)args[0]);
+            if (storyStruc == null)
+            {
+                return TextCommandResult.Error("No such story structure exist in assets");
+            }
+
+            if ((bool)args[2] != true)
+            {
+                return TextCommandResult.Success("Ok, will move the story structure location to this position. Make sure that there is a lot of unoccupied chunks all around. Add 'true' to the command to confirm. After this is done, you will have to regenerate chunks in this area, e.g. via /wgen regenr 7 to recreate 192x192 blocks in all directions");
+            }
+
+            var pos = ((Vec3d)args[1]).AsBlockPos;
+            pos.Y = 1; // Lets hardcode RA y-pos for now
+            GenMaps genmaps = api.ModLoader.GetModSystem<GenMaps>();
+
+            foreach (var val in scfg.Structures)
+            {
+                float angle = genAngle + rand.NextFloat() * angleRange - angleRange / 2;
+                float distance = val.MinSpawnDist + rand.NextFloat() * (val.MaxSpawnDist - val.MinSpawnDist);
+
+                var schem = val.schematicData;
+                int minX = pos.X - schem.SizeX / 2;
+                int minZ = pos.Z - schem.SizeZ / 2;
+                var cub = new Cuboidi(minX, pos.Y, minZ, minX + schem.SizeX - 1, pos.Y + schem.SizeY - 1, minZ + schem.SizeZ - 1);
+                storyStructureInstances[val.Code] = new StoryStructureLocation()
+                {
+                    Code = val.Code,
+                    CenterPos = pos,
+                    Location = cub
+                };
+
+                if (val.RequireLandform != null)
+                {
+                    Rectanglei areacuboid = new Rectanglei(pos.X - val.LandformSizeX / 2, pos.Z - val.LandformSizeZ / 2, val.LandformSizeX, val.LandformSizeZ);
+
+                    genmaps.ForceLandformAt(new ForceLandform()
+                    {
+                        Area = areacuboid,
+                        LandformCode = val.RequireLandform
+                    });
+                }
+            }
+
+            this.structureLocations = storyStructureInstances.Select(val => val.Value.Location).ToArray();
+
+            return TextCommandResult.Success("Ok, story structure location moved to this position. Regenerating chunks at the location should make it appear now.");
         }
 
         public void initWorldGen()
@@ -342,6 +401,7 @@ namespace Vintagestory.GameContent
             int maxZ = pos.Z + mainsizeZ / 2 + 2;
             List<int> heights = new List<int>((maxX - minX + 1) * (maxZ - minZ + 1));
             int maxheight = 0;
+            int minheight = int.MaxValue;
             int x, z;
             for (x = minX; x <= maxX; x++)
             {
@@ -351,6 +411,7 @@ namespace Vintagestory.GameContent
                     int h = mapchunk.WorldGenTerrainHeightMap[(z % chunksize) * chunksize + (x % chunksize)];
                     heights.Add(h);
                     maxheight = Math.Max(maxheight, h);
+                    minheight = Math.Min(minheight, h);
                 }
             }
             x = Math.Max(mainsizeX, mainsizeZ);   // make the next test square
@@ -425,6 +486,7 @@ namespace Vintagestory.GameContent
                 int height = 0;
                 for (int j = 0; j < n; j++) height += heights[j];
                 height = (height / n) + hookStruct.endOffsetY;
+                if (maxheight - minheight < 5 && height - minheight < 2) height++;  // place it one block higher on relatively flat ground
 
                 for (int j = 0; j < 25; j++)
                 {

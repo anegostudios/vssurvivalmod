@@ -206,7 +206,7 @@ namespace Vintagestory.ServerMods
             structuresIntersectingChunk.Clear();
             sapi.World.BlockAccessor.WalkStructures(chunkBase.Set(chunkX * chunksize, 0, chunkZ * chunksize), chunkend.Set(chunkX * chunksize + chunksize, chunkMapSizeY * chunksize, chunkZ * chunksize + chunksize), (struc) =>
             {
-                if (struc.Code.StartsWith("trader"))
+                if (struc.SuppressTreesAndShrubs)
                 {
                     structuresIntersectingChunk.Add(struc.Location.Clone().GrowBy(1,1,1));
                 }
@@ -249,8 +249,6 @@ namespace Vintagestory.ServerMods
 
                     tmpPos.Set(x, y, z);
 
-                    if (SkipGenerationAt(tmpPos, EnumWorldGenPass.Vegetation)) continue;
-
                     liquidBlock = blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid);
 
                     // Place according to forest value
@@ -264,6 +262,8 @@ namespace Vintagestory.ServerMods
 
                     if (bpc.IsPatchSuitableAt(blockPatch, liquidBlock, mapsizeY, climate, y, forestRel, shrubRel))
                     {
+                        if (SkipGenerationAt(tmpPos, EnumWorldGenPass.Vegetation)) continue;
+
                         if (blockPatch.MapCode != null && rnd.NextInt(255) > GetPatchDensity(blockPatch.MapCode, x, z, mapregion))
                         {
                             continue;
@@ -314,8 +314,6 @@ namespace Vintagestory.ServerMods
 
                 tmpPos.Set(x, y, z);
 
-                if (SkipGenerationAt(tmpPos, EnumWorldGenPass.Vegetation)) continue;
-
                 block = blockAccessor.GetBlock(tmpPos);
                 if (block.Fertility == 0) continue;
 
@@ -335,6 +333,7 @@ namespace Vintagestory.ServerMods
                         if (structuresIntersectingChunk[i].Contains(tmpPos)) { canGen = false; break; }
                     }
                     if (!canGen) continue;
+                    if (SkipGenerationAt(tmpPos, EnumWorldGenPass.Vegetation)) continue;
 
                     if (blockAccessor.GetBlock(tmpPos.X, tmpPos.Y, tmpPos.Z).Replaceable >= 6000)
                     {
@@ -380,7 +379,6 @@ namespace Vintagestory.ServerMods
                 bool underwater = false;
 
                 tmpPos.Set(x, y, z);
-                if (SkipGenerationAt(tmpPos, EnumWorldGenPass.Vegetation)) continue;
 
                 block = blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid);
                 
@@ -412,6 +410,7 @@ namespace Vintagestory.ServerMods
                         if (structuresIntersectingChunk[i].Contains(tmpPos)) { canGen = false; break; }
                     }
                     if (!canGen) continue;
+                    if (SkipGenerationAt(tmpPos, EnumWorldGenPass.Vegetation)) continue;
 
                     if (blockAccessor.GetBlock(tmpPos.X, tmpPos.Y, tmpPos.Z).Replaceable >= 6000)
                     {

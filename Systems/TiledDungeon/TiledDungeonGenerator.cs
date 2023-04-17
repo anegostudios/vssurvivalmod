@@ -128,7 +128,8 @@ namespace Vintagestory.ServerMods
             gennedStructures.Add(new GeneratedStructure()
             {
                 Code = btile.Code,
-                Location = loc
+                Location = loc,
+                SuppressRivulets = true
             });
 
             int tries = minTiles * 10;
@@ -204,7 +205,8 @@ namespace Vintagestory.ServerMods
                         gennedStructures.Add(new GeneratedStructure()
                         {
                             Code = tile.Code,
-                            Location = loc
+                            Location = loc,
+                            SuppressRivulets = true
                         });
 
                         break;

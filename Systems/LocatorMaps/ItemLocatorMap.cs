@@ -140,7 +140,9 @@ namespace Vintagestory.GameContent
                 Title = Lang.Get(props.WaypointText),
             }, player);
 
-            player.SendMessage(GlobalConstants.GeneralChatGroup, Lang.Get("Approximate location of {0} added to your world map", Lang.Get(props.WaypointText)), EnumChatType.Notification);
+            var msg = attr.HasAttribute("randomX") ? Lang.Get("Approximate location of {0} added to your world map", Lang.Get(props.WaypointText)) : Lang.Get("Location of {0} added to your world map", Lang.Get(props.WaypointText));
+
+            player.SendMessage(GlobalConstants.GeneralChatGroup, msg, EnumChatType.Notification);
         }
 
         private Vec3d getStructureCenter(API.Datastructures.ITreeAttribute attr)

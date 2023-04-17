@@ -230,7 +230,7 @@ namespace Vintagestory.GameContent
             if (invDialog == null)
             {
                 ICoreClientAPI capi = Api as ICoreClientAPI;
-                invDialog = new GuiDialogBarrel("Barrel", Inventory, Pos, Api as ICoreClientAPI);
+                invDialog = new GuiDialogBarrel(Lang.Get("Barrel"), Inventory, Pos, Api as ICoreClientAPI);
                 invDialog.OnClosed += () =>
                 {
                     invDialog = null;

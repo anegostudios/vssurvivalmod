@@ -148,7 +148,7 @@ namespace Vintagestory.ServerMods
 
                 string code = "dungeon/" + tile.Code + (schematic == null ? "" : "/" + schematic.FromFileName);
 
-                region.GeneratedStructures.Add(new GeneratedStructure() { Code = code, Group = dungeonPlaceTask.Code, Location = new Cuboidi(placeTask.Pos, placeTask.Pos.AddCopy(schematic.SizeX, schematic.SizeY, schematic.SizeZ)) });
+                region.GeneratedStructures.Add(new GeneratedStructure() { Code = code, Group = dungeonPlaceTask.Code, Location = new Cuboidi(placeTask.Pos, placeTask.Pos.AddCopy(schematic.SizeX, schematic.SizeY, schematic.SizeZ)), SuppressTreesAndShrubs = true, SuppressRivulets = true });
                 region.DirtyForSaving = true;
 
                 /*if (placeTask.BuildProtected)

@@ -416,7 +416,7 @@ namespace Vintagestory.GameContent
 
             if (chclass.Traits.Length == 0)
             {
-                fulldesc.AppendLine("No positive or negative traits");
+                fulldesc.AppendLine(Lang.Get("No positive or negative traits"));
             }
 
             Composers["createcharacter"].GetRichtext("characterDesc").SetNewText(fulldesc.ToString(), CairoFont.WhiteDetailText());

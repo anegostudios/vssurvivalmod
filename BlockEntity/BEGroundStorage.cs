@@ -106,6 +106,7 @@ namespace Vintagestory.GameContent
 
         public bool CanAttachBlockAt(BlockFacing blockFace, Cuboidi attachmentArea)
         {
+            if (StorageProps == null) return false;
             return blockFace == BlockFacing.UP && StorageProps.Layout == EnumGroundStorageLayout.Stacking && inventory[0].StackSize == Capacity && StorageProps.UpSolid;
         }
 
@@ -769,7 +770,7 @@ namespace Vintagestory.GameContent
                 Api.World.BlockAccessor.SetBlock(0, Pos);
             }
 
-            Api.World.PlaySoundAt(StorageProps.PlaceRemoveSound, Pos.X, Pos.Y, Pos.Z, player, 0.88f + (float)Api.World.Rand.NextDouble() * 0.24f, 16);
+            Api.World.PlaySoundAt(StorageProps.PlaceRemoveSound, Pos.X, Pos.Y, Pos.Z, null, 0.88f + (float)Api.World.Rand.NextDouble() * 0.24f, 16);
 
             MarkDirty();
 

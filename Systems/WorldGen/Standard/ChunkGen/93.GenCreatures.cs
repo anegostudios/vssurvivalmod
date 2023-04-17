@@ -331,10 +331,11 @@ namespace Vintagestory.ServerMods
             if (sc.MinForest > forestDensity || sc.MaxForest < forestDensity) return false;
             if (sc.MinShrubs > shrubsDensity || sc.MaxShrubs < shrubsDensity) return false;
             if (sc.MinForestOrShrubs > Math.Max(forestDensity, shrubsDensity)) return false;
+
             double yRel =
                 pos.Y > TerraGenConfig.seaLevel ?
-                1 + (pos.Y - TerraGenConfig.seaLevel) / (api.World.BlockAccessor.MapSizeY - TerraGenConfig.seaLevel) :
-                pos.Y / TerraGenConfig.seaLevel
+                1 + ((double)pos.Y - TerraGenConfig.seaLevel) / (api.World.BlockAccessor.MapSizeY - TerraGenConfig.seaLevel) :
+                (double)pos.Y / TerraGenConfig.seaLevel
             ;
             if (sc.MinY > yRel || sc.MaxY < yRel) return false;
 

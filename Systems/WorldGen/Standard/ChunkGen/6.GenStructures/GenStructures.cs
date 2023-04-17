@@ -10,7 +10,7 @@ namespace Vintagestory.ServerMods
 {
     public class GenStructuresPosPass : ModStdWorldGen
     {
-        public override double ExecuteOrder() { return 0.5; }
+        public override double ExecuteOrder() { return 0.5; }   // This "PostPass" of GenStructures is done after GenPonds, which has an ExecuteOrder of 0.5; normal (pre-pass) GenStructures has 0.3
 
         public ChunkColumnGenerationDelegate handler;
 
@@ -231,7 +231,7 @@ namespace Vintagestory.ServerMods
                         
                         string code = struc.Code + (struc.LastPlacedSchematic == null ? "" : "/" + struc.LastPlacedSchematic.FromFileName);
 
-                        region.GeneratedStructures.Add(new GeneratedStructure() { Code = code, Group = struc.Group, Location = loc.Clone() });
+                        region.GeneratedStructures.Add(new GeneratedStructure() { Code = code, Group = struc.Group, Location = loc.Clone(), SuppressTreesAndShrubs = struc.SuppressTrees, SuppressRivulets = struc.SuppressWaterfalls });
                         region.DirtyForSaving = true;
 
                         if (struc.BuildProtected)

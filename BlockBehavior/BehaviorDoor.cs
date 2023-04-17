@@ -307,6 +307,7 @@ namespace Vintagestory.GameContent
         {
             handled = EnumHandling.PreventDefault;
             var beh = block.GetBEBehavior<BEBehaviorDoor>(pos);
+            if (beh == null) return 0f;
 
             if (beh.Opened) return 0f;
             if (face != beh.facingWhenClosed) return 0f;

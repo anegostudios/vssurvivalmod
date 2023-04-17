@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using Vintagestory.API;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -13,6 +14,10 @@ namespace Vintagestory.ServerMods
         Random rnd;
         IWorldGenBlockAccessor blockAccessor;
         int regionsize;
+        int chunkMapSizeY;
+        BlockPos chunkBase = new BlockPos();
+        BlockPos chunkend = new BlockPos();
+        List<Cuboidi> structuresIntersectingChunk = new List<Cuboidi>();
 
         public override bool ShouldLoad(EnumAppSide side)
         {
@@ -47,6 +52,7 @@ namespace Vintagestory.ServerMods
         {
             LoadGlobalConfig(api);
             rnd = new Random(api.WorldManager.Seed);
+            chunkMapSizeY = api.WorldManager.MapSizeY / chunksize;
         }
 
         private void OnChunkColumnGen(IChunkColumnGenerateRequest request)
@@ -69,6 +75,15 @@ namespace Vintagestory.ServerMods
             int climateBotRight = climateMap.GetUnpaddedInt((int)(rlX * fac + fac), (int)(rlZ * fac + fac));
 
             int climateMid = GameMath.BiLerpRgbColor(0.5f, 0.5f, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight);
+
+            structuresIntersectingChunk.Clear();
+            api.World.BlockAccessor.WalkStructures(chunkBase.Set(chunkX * chunksize, 0, chunkZ * chunksize), chunkend.Set(chunkX * chunksize + chunksize, chunkMapSizeY * chunksize, chunkZ * chunksize + chunksize), (struc) =>
+            {
+                if (struc.SuppressRivulets)
+                {
+                    structuresIntersectingChunk.Add(struc.Location.Clone().GrowBy(1, 1, 1));
+                }
+            });
 
             // 16-23 bits = Red = temperature
             // 8-15 bits = Green = rain
@@ -133,12 +148,25 @@ namespace Vintagestory.ServerMods
                 quantitySolid += solid ? 1 : 0;
                 quantityAir += (block.BlockMaterial == EnumBlockMaterial.Air) ? 1 : 0;
 
-                if (!solid && facing == BlockFacing.UP) quantitySolid = 0;
+                if (!solid)
+                {
+                    if (facing == BlockFacing.UP) quantitySolid = 0;   // We don't place rivulets on flat ground!
+                    else if (facing == BlockFacing.DOWN)   // Nor in 1-block thick ceilings
+                    {
+                        fy = y + 1;
+                        block = api.World.Blocks[chunks[fy / chunksize].Data.GetBlockIdUnsafe((chunksize * (fy % chunksize) + fz) * chunksize + fx)];
+                        if (block.BlockMaterial != EnumBlockMaterial.Stone) quantitySolid = 0;
+                    }
+                }
             }
 
             if (quantitySolid != 5 || quantityAir != 1) return;
             
-            BlockPos pos = new BlockPos(chunkX * chunksize + dx, y, chunkZ * chunksize + dz); 
+            BlockPos pos = new BlockPos(chunkX * chunksize + dx, y, chunkZ * chunksize + dz);
+            for (int i = 0; i < structuresIntersectingChunk.Count; i++)
+            {
+                if (structuresIntersectingChunk[i].Contains(pos)) return;
+            }
             if (SkipGenerationAt(pos, EnumWorldGenPass.Vegetation)) return;
 
             var chunk = chunks[y / chunksize];

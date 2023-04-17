@@ -31,6 +31,30 @@ namespace Vintagestory.GameContent
 
         public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
         {
+            if (!itemstack.Attributes.HasAttribute("voxels"))
+            {
+                // Probably displayed in the hand book, which calls .Clone() each frame - cannot store any meshref id here
+                CachedMeshRef ccmr = ObjectCacheUtil.GetOrCreate(capi, "clearWorkItem" + Variant["metal"], () =>
+                {
+                    int textureid;
+                    byte[,,] voxels = new byte[16, 6, 16];
+                    ItemIngot.CreateVoxelsFromIngot(capi, ref voxels);
+                    MeshData mesh = GenMesh(capi, itemstack, voxels, out textureid);
+
+                    return new CachedMeshRef()
+                    {
+                        meshref = capi.Render.UploadMesh(mesh),
+                        TextureId = textureid
+                    };
+                });
+
+                renderinfo.ModelRef = ccmr.meshref;
+                renderinfo.TextureId = ccmr.TextureId;
+
+                base.OnBeforeRender(capi, itemstack, target, ref renderinfo);
+                return;
+            }
+
             int meshrefId = itemstack.Attributes.GetInt("meshRefId");
 
             if (!itemstack.Attributes.HasAttribute("meshRefId"))
@@ -88,7 +112,7 @@ namespace Vintagestory.GameContent
             }
             else
             {
-                tposMetal = capi.BlockTextureAtlas.GetPosition(capi.World.GetBlock(new AssetLocation("ingotpile")), workitemStack.Collectible.LastCodePart());
+                tposMetal = capi.BlockTextureAtlas.GetPosition(capi.World.GetBlock(new AssetLocation("ingotpile")), workitemStack.Collectible.Variant["metal"]);
                 tposSlag = tposMetal;
             }
 

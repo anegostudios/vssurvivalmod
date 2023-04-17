@@ -111,6 +111,7 @@ namespace Vintagestory.ServerMods
                     if (xzdist < 1)
                     {
                         var mc = wgenBlockAccessor.GetMapChunk((baseX + lx) / chunksize, (baseZ + lz) / chunksize);
+                        if (mc == null) return;
                         int surfaceY = mc.WorldGenTerrainHeightMap[GameMath.Mod(lz, chunksize) * chunksize + GameMath.Mod(lx, chunksize)];
                         minSurfaceY = Math.Min(minSurfaceY, surfaceY);
                         maxSurfaceY = Math.Max(maxSurfaceY, surfaceY);

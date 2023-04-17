@@ -3,6 +3,7 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -59,7 +60,6 @@ namespace Vintagestory.GameContent
         {
             long meshid = forStack.Attributes.GetLong("meshId", 0);
             
-
             if (!cachedModels.ContainsKey(meshid))
             {
                 MeshRef meshref = CreateModel(forStack);
@@ -106,6 +106,7 @@ namespace Vintagestory.GameContent
             }
 
             MeshData mesh = BlockEntityMicroBlock.CreateMesh(capi, voxelCuboids, materials, null, originalCuboids);
+            mesh.Rgba.Fill((byte)255);
 
             return capi.Render.UploadMesh(mesh);
         }

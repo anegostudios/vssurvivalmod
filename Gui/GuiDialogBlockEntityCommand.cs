@@ -1,5 +1,6 @@
 ﻿using ProtoBuf;
 using Vintagestory.API.Client;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
@@ -68,11 +69,11 @@ namespace Vintagestory.GameContent
                     .AddVerticalScrollbar(OnNewCmdScrollbarvalue, scrollbarBounds, "scrollbar")
 
                     .AddSwitch(null, textAreaBounds.BelowCopy(0, 10).WithFixedSize(30, 30), "silentSwitch", 25, 3)
-                    .AddStaticText("Execute silently", CairoFont.WhiteSmallText(), textAreaBounds.BelowCopy(30, 13).WithFixedSize(150, 30))
-                    .AddSmallButton("Copy to clipboard", OnCopy, toClipboardBounds)
+                    .AddStaticText(Lang.Get("Execute silently"), CairoFont.WhiteSmallText(), textAreaBounds.BelowCopy(30, 13).WithFixedSize(150, 30))
+                    .AddSmallButton(Lang.Get("Copy to clipboard"), OnCopy, toClipboardBounds)
 
-                    .AddSmallButton("Cancel", OnCancel, cancelBounds)
-                    .AddSmallButton("Save", OnSave, saveBounds)
+                    .AddSmallButton(Lang.Get("Cancel"), OnCancel, cancelBounds)
+                    .AddSmallButton(Lang.Get("Save"), OnSave, saveBounds)
                 .EndChildElements()
                 .Compose()
             ;

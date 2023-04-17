@@ -58,7 +58,7 @@ namespace Vintagestory.GameContent
                 .AddDialogTitleBar(DialogTitle, OnTitleBarClose)
                 .BeginChildElements(bgBounds)
                     .AddItemSlotGrid(Inventory, SendInvPacket, 1, new int[] { 0 }, inputSlotBounds, "inputSlot")
-                    .AddSmallButton("Seal", onSealClick, ElementBounds.Fixed(0, 100, 80, 25), EnumButtonStyle.Normal)
+                    .AddSmallButton(Lang.Get("barrel-seal"), onSealClick, ElementBounds.Fixed(0, 100, 80, 25), EnumButtonStyle.Normal)
 
                     .AddInset(fullnessMeterBounds.ForkBoundingParent(2,2,2,2), 2)
                     .AddDynamicCustomDraw(fullnessMeterBounds, fullnessMeterDraw, "liquidBar")
@@ -72,9 +72,9 @@ namespace Vintagestory.GameContent
 
         string getContentsText()
         {
-            string contents = "Contents:";
+            string contents = Lang.Get("Contents:");
 
-            if (Inventory[0].Empty && Inventory[1].Empty) contents += "\nNone.";
+            if (Inventory[0].Empty && Inventory[1].Empty) contents +="\n" + Lang.Get("nobarrelcontents");
             else
             {
                 if (!Inventory[1].Empty)
@@ -85,18 +85,18 @@ namespace Vintagestory.GameContent
                     if (props != null)
                     {
                         string incontainername = Lang.Get(stack.Collectible.Code.Domain + ":incontainer-" + stack.Class.ToString().ToLowerInvariant() + "-" + stack.Collectible.Code.Path);
-                        contents += "\n" + Lang.Get(props.MaxStackSize > 0 ? "{0}x of {1}" : "{0} litres of {1}", (float)stack.StackSize / props.ItemsPerLitre, incontainername);
+                        contents += "\n" + Lang.Get(props.MaxStackSize > 0 ? "barrelcontents-items" : "barrelcontents-liquid", (float)stack.StackSize / props.ItemsPerLitre, incontainername);
                     }
                     else
                     {
-                        contents += "\n" + Lang.Get("{0}x of {1}", stack.StackSize, stack.GetName());
+                        contents += "\n" + Lang.Get("barrelcontents-items", stack.StackSize, stack.GetName());
                     }
                 }
 
                 if (!Inventory[0].Empty)
                 {
                     ItemStack stack = Inventory[0].Itemstack;
-                    contents += "\n" + Lang.Get("{0}x of {1}", stack.StackSize, stack.GetName());
+                    contents += "\n" + Lang.Get("barrelcontents-items", stack.StackSize, stack.GetName());
                 }
 
                 BlockEntityBarrel bebarrel = capi.World.BlockAccessor.GetBlockEntity(BlockEntityPosition) as BlockEntityBarrel;

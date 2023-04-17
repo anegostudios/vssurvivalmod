@@ -168,7 +168,7 @@ namespace Vintagestory.GameContent
                     .EndClip()
                     .AddVerticalScrollbar(OnNewScrollbarvalueOverviewPage, scrollbarBounds, "scrollbar")
                     .AddIf(capi.IsSinglePlayer && !capi.OpenedToLan)
-                        .AddToggleButton("Pause game", CairoFont.WhiteDetailText(), onTogglePause, ElementBounds.Fixed(360, -15, 100, 22), "pausegame")
+                        .AddToggleButton(Lang.Get("Pause game"), CairoFont.WhiteDetailText(), onTogglePause, ElementBounds.Fixed(360, -15, 100, 22), "pausegame")
                     .EndIf()
                     .AddSmallButton(Lang.Get("general-back"), OnButtonBack, backButtonBounds, EnumButtonStyle.Normal, "backButton")
                     .AddSmallButton(Lang.Get("Close Handbook"), OnButtonClose, closeButtonBounds)

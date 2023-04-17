@@ -187,5 +187,19 @@ namespace Vintagestory.ServerMods
 
             return 0;
         }
+
+        public float CalcTrfDistance(float temperature, float rainRel, float fertilityRel)
+        {
+            float tempDist = Math.Abs(temperature - GameMath.Clamp(temperature, MinTemp, MaxTemp));
+            float rainDist = Math.Abs(rainRel - GameMath.Clamp(rainRel, MinRain, MaxRain)) * 10f;
+            float fertDist = Math.Abs(fertilityRel - GameMath.Clamp(fertilityRel, MinFertility, MaxFertility)) * 10f;
+            return tempDist + rainDist + fertDist;
+        }
+
+        public float CalcYDistance(int posY, int mapheight)
+        {
+            float yrel = (float)posY / mapheight;
+            return Math.Abs(yrel - GameMath.Clamp(yrel, MinY, MaxY)) * 10f;
+        }
     }
 }

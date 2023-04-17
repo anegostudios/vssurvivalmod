@@ -1035,7 +1035,9 @@ namespace Vintagestory.GameContent
             if (GetCurrentLitres(itemslot.Itemstack) >= CapacityLitres) return false;
 
 
-            var contentStack = props.WhenFilled.Stack.ResolvedItemstack.Clone();
+            var contentStack = props.WhenFilled.Stack.ResolvedItemstack;
+            if (contentStack == null) return false;
+            contentStack = contentStack.Clone();
             var cprops = GetContainableProps(contentStack);
             contentStack.StackSize = 999999;
 

@@ -228,7 +228,7 @@ namespace Vintagestory.GameContent
             if (inSlot.Itemstack.Collectible.Attributes == null) return;
 
             float dmg = inSlot.Itemstack.Collectible.Attributes["damage"].AsFloat(0);
-            if (dmg != 0) dsc.AppendLine(dmg + Lang.Get("piercing-damage"));
+            if (dmg != 0) dsc.AppendLine(Lang.Get("sling-piercingdamage", dmg));
         }
 
 

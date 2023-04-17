@@ -21,7 +21,7 @@ namespace Vintagestory.ServerMods
         ClampedSimplexNoise grassHeight;
         RockStrataVariant dummyRock;
         public BlockLayerConfig blockLayerConfig;
-        SimplexNoise distort2dx;
+        public SimplexNoise distort2dx;
         SimplexNoise distort2dz;
         int boilingWaterBlockId;
 
@@ -376,7 +376,7 @@ namespace Vintagestory.ServerMods
 
         private void LoadBlockLayers(double posRand, float rainRel, float temperature, int unscaledTemp, int posY, BlockPos pos, int firstBlockId)
         {
-            float heightRel = ((float)posY - TerraGenConfig.seaLevel) / ((float)api.WorldManager.MapSizeY - TerraGenConfig.seaLevel);
+            float heightRel = ((float)posY - TerraGenConfig.seaLevel) / ((float)mapheight - TerraGenConfig.seaLevel);
             float fertilityRel = TerraGenConfig.GetFertilityFromUnscaledTemp((int)(rainRel * 255), unscaledTemp, heightRel) / 255f;
             
             float depthf = TerraGenConfig.SoilThickness(rainRel, temperature, posY - TerraGenConfig.seaLevel, 1f);
@@ -390,13 +390,8 @@ namespace Vintagestory.ServerMods
             for (int j = 0; j < blockLayerConfig.Blocklayers.Length; j++)
             {
                 BlockLayer bl = blockLayerConfig.Blocklayers[j];
-
-                float yrel = (float)posY / mapheight;
-                float tempDist = Math.Abs(temperature - GameMath.Clamp(temperature, bl.MinTemp, bl.MaxTemp));
-                float rainDist = Math.Abs(rainRel - GameMath.Clamp(rainRel, bl.MinRain, bl.MaxRain)) * 10f;
-                float fertDist = Math.Abs(fertilityRel - GameMath.Clamp(fertilityRel, bl.MinFertility, bl.MaxFertility)) * 10f;
-                float yDist = Math.Abs(yrel - GameMath.Clamp(yrel, bl.MinY, bl.MaxY)) * 10f;
-                float trfDist = tempDist + rainDist + fertDist;
+                float yDist = bl.CalcYDistance(posY, mapheight);
+                float trfDist = bl.CalcTrfDistance(temperature, rainRel, fertilityRel);
 
                 if (trfDist + yDist <= posRand)
                 {

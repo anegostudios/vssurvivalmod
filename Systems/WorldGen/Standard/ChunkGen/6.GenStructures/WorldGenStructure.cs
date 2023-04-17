@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -84,6 +84,10 @@ namespace Vintagestory.ServerMods
         public AssetLocation[] ReplaceWithBlocklayers;
         [JsonProperty]
         public bool PostPass = false;
+        [JsonProperty]
+        public bool SuppressTrees = false;
+        [JsonProperty]
+        public bool SuppressWaterfalls = false;
 
 
         internal BlockSchematicStructure[][] schematicDatas;
@@ -363,7 +367,7 @@ namespace Vintagestory.ServerMods
 
             // Is the ground flat?
             int diff = GameMath.Max(centerY, topLeftY, topRightY, botLeftY, botRightY) - GameMath.Min(centerY, topLeftY, topRightY, botLeftY, botRightY);
-            if (diff > 1) return false;
+            if (diff != 0) return false;
 
             pos.Y = centerY + 1 + OffsetY;
 
@@ -611,19 +615,32 @@ namespace Vintagestory.ServerMods
 
         public bool WouldOverlapAt(BlockPos pos, BlockSchematic schematic, IWorldAccessor world)
         {
-            int rx = pos.X / world.BlockAccessor.RegionSize;
-            int rz = pos.Z / world.BlockAccessor.RegionSize;
+            int regSize = world.BlockAccessor.RegionSize;
 
-            IMapRegion mapregion = world.BlockAccessor.GetMapRegion(rx, rz);
-            if (mapregion == null) return false;
+            int mapRegionSizeX = world.BlockAccessor.MapSizeX / regSize;
+            int mapRegionSizeZ = world.BlockAccessor.MapSizeZ / regSize;
+
+            int minrx = GameMath.Clamp(pos.X / regSize, 0, mapRegionSizeX);
+            int minrz = GameMath.Clamp(pos.Z / regSize, 0, mapRegionSizeZ);
+
+            int maxrx = GameMath.Clamp(pos.X + schematic.SizeX / regSize, 0, mapRegionSizeX);
+            int maxrz = GameMath.Clamp(pos.Z + schematic.SizeZ / regSize, 0, mapRegionSizeZ);
+            
 
             tmpLoc.Set(pos.X, pos.Y, pos.Z, pos.X + schematic.SizeX, pos.Y + schematic.SizeY, pos.Z + schematic.SizeZ);
-
-            foreach (var val in mapregion.GeneratedStructures)
+            for (int rx = minrx; rx <= maxrx; rx++)
             {
-                if (val.Location.Intersects(tmpLoc))
+                for (int rz = minrz; rz <= maxrz; rz++)
                 {
-                    return true;
+                    IMapRegion mapregion = world.BlockAccessor.GetMapRegion(rx, rz);
+                    if (mapregion == null) continue;
+                    foreach (var val in mapregion.GeneratedStructures)
+                    {
+                        if (val.Location.Intersects(tmpLoc))
+                        {
+                            return true;
+                        }
+                    }
                 }
             }
 

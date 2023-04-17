@@ -21,8 +21,8 @@ namespace Vintagestory.ServerMods
         int mapheight;
 
         PlaceBlockDelegate handler = null;
+        GenBlockLayers genBlockLayers;
 
-        
 
         public override void Init(IBlockAccessor blockAccessor)
         {
@@ -96,6 +96,8 @@ namespace Vintagestory.ServerMods
         /// <returns></returns>
         public int PlaceRespectingBlockLayers(IBlockAccessor blockAccessor, IWorldAccessor worldForCollectibleResolve, BlockPos startPos, int climateUpLeft, int climateUpRight, int climateBotLeft, int climateBotRight, Dictionary<int, Dictionary<int, int>> replaceBlocks, int[] replaceblockids, bool replaceMetaBlocks = true, bool replaceBlockEntities = false, bool suppressSoilIfAirBelow = false)
         {
+            if (genBlockLayers == null) genBlockLayers = worldForCollectibleResolve.Api.ModLoader.GetModSystem<GenBlockLayers>();
+
             BlockPos curPos = new BlockPos();
             int placed = 0;
             int chunksize = blockAccessor.ChunkSize;
@@ -158,7 +160,7 @@ namespace Vintagestory.ServerMods
 
                                 int climate = GameMath.BiLerpRgbColor((float)x / chunksize, (float)z / chunksize, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight);
 
-                                newBlock = GetBlockLayerBlock((climate >> 8) & 0xff, (climate >> 16) & 0xff, startPos.Y, rockblockid, depth, newBlock, worldForCollectibleResolve.Blocks, curPos);
+                                newBlock = GetBlockLayerBlock((climate >> 8) & 0xff, (climate >> 16) & 0xff, curPos.Y - 1, rockblockid, depth, newBlock, worldForCollectibleResolve.Blocks, curPos);
                             }
 
                             depth++;
@@ -359,29 +361,31 @@ namespace Vintagestory.ServerMods
 
 
 
-        private Block GetBlockLayerBlock(int unscaledRain, int unscaledTemp, int posY, int firstBlockId, int forDepth, Block defaultBlock, IList<Block> blocks, BlockPos pos)
+        private Block GetBlockLayerBlock(int unscaledRain, int unscaledTemp, int posY, int rockBlockId, int forDepth, Block defaultBlock, IList<Block> blocks, BlockPos pos)
         {
-            float temperature = TerraGenConfig.GetScaledAdjustedTemperatureFloat(unscaledTemp, posY - TerraGenConfig.seaLevel);
+            posY -= forDepth;
+            float distx = (float)genBlockLayers.distort2dx.Noise(pos.X, pos.Z);
+            float temperature = TerraGenConfig.GetScaledAdjustedTemperatureFloat(unscaledTemp, posY - TerraGenConfig.seaLevel + (int)(distx / 5));
             float rainRel = TerraGenConfig.GetRainFall(unscaledRain, posY) / 255f;
             float heightRel = ((float)posY - TerraGenConfig.seaLevel) / ((float)mapheight - TerraGenConfig.seaLevel);
             float fertilityRel = TerraGenConfig.GetFertilityFromUnscaledTemp((int)(rainRel * 255), unscaledTemp, heightRel) / 255f;
 
-            for (int j = forDepth; j < blockLayerConfig.Blocklayers.Length; j++)
+            double posRand = (double)GameMath.MurmurHash3(pos.X, 1, pos.Z) / int.MaxValue;
+            posRand = (posRand + 1) * blockLayerConfig.blockLayerTransitionSize;
+
+            for (int j = 0; j < blockLayerConfig.Blocklayers.Length; j++)
             {
                 BlockLayer bl = blockLayerConfig.Blocklayers[j];
+                float yDist = bl.CalcYDistance(posY, mapheight);
+                float trfDist = bl.CalcTrfDistance(temperature, rainRel, fertilityRel);
 
-                if (
-                    temperature >= bl.MinTemp && temperature <= bl.MaxTemp &&
-                    rainRel >= bl.MinRain && rainRel <= bl.MaxRain &&
-                    fertilityRel >= bl.MinFertility && fertilityRel <= bl.MaxFertility &&
-                    (float)posY / mapheight <= bl.MaxY
-                )
+                if (trfDist + yDist > posRand) continue;
+
+                int blockId = bl.GetBlockId(posRand, temperature, rainRel, fertilityRel, rockBlockId, pos);
+                if (blockId != 0)
                 {
-                    int blockId = bl.GetBlockId(0.1, temperature, rainRel, fertilityRel, firstBlockId, pos);
-                    if (blockId != 0)
-                    {
-                        return blocks[blockId];
-                    }
+                    if (forDepth-- > 0) continue;
+                    return blocks[blockId];
                 }
             }
 

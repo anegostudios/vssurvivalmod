@@ -99,6 +99,10 @@ namespace Vintagestory.ServerMods
                     RegenChunksAroundPlayer(player, args, false);
                     break;
 
+                case "regenf":
+                    RegenChunksAroundPlayer(player, args, false, true);
+                    break;
+
                 case "pregen":
                     PregenerateChunksAroundPlayer(player, args);
                     break;
@@ -485,12 +489,12 @@ namespace Vintagestory.ServerMods
             }
         }
 
-        private void RegenChunksAroundPlayer(IServerPlayer player, CmdArgs arguments, bool randomSeed)
+        private void RegenChunksAroundPlayer(IServerPlayer player, CmdArgs arguments, bool randomSeed, bool deleteRegion = false)
         {
-            RegenChunks(player, arguments, true, randomSeed);
+            RegenChunks(player, arguments, true, randomSeed, deleteRegion);
         }
 
-        private void RegenChunks(IServerPlayer player, CmdArgs arguments, bool aroundPlayer = false, bool randomSeed = false)
+        private void RegenChunks(IServerPlayer player, CmdArgs arguments, bool aroundPlayer = false, bool randomSeed = false, bool deleteRegion = false)
         {
             int seedDiff = randomSeed ? api.World.Rand.Next(100000) : 0;
             if (randomSeed) player.SendMessage(GlobalConstants.CurrentChatGroup, "Using random seed diff " + seedDiff, EnumChatType.Notification);
@@ -515,7 +519,7 @@ namespace Vintagestory.ServerMods
                     api.ModLoader.GetModSystem<GenStructures>().initWorldGen();
                 }
 
-                Regen(player, arguments, false, aroundPlayer);
+                Regen(player, arguments, false, aroundPlayer, deleteRegion);
             } else
             {
                 player.SendMessage(GlobalConstants.CurrentChatGroup, "Unable to regenerate chunks. Was not able to pause the chunk gen thread", EnumChatType.Notification);
@@ -524,7 +528,7 @@ namespace Vintagestory.ServerMods
             api.Server.ResumeThread("chunkdbthread");
         }
 
-        void Regen(IServerPlayer player, CmdArgs arguments, bool onlydelete, bool aroundPlayer = false)
+        void Regen(IServerPlayer player, CmdArgs arguments, bool onlydelete, bool aroundPlayer = false, bool deleteRegion = false)
         {
             int chunkMidX = api.WorldManager.MapSizeX / api.WorldManager.ChunkSize / 2;
             int chunkMidZ = api.WorldManager.MapSizeZ / api.WorldManager.ChunkSize / 2;
@@ -536,6 +540,7 @@ namespace Vintagestory.ServerMods
             }
 
             List<Vec2i> coords = new List<Vec2i>();
+            HashSet<Vec2i> regCoords = new HashSet<Vec2i>();                
 
             int rad = (int)arguments.PopInt(2);
 
@@ -544,17 +549,26 @@ namespace Vintagestory.ServerMods
                 player.SendMessage(GlobalConstants.CurrentChatGroup, "Cannot generate a radius above 50. It would kill the server.", EnumChatType.CommandError);
             }
 
+            int regionChunkSize = api.WorldManager.RegionSize / api.WorldManager.ChunkSize;
             for (int x = -rad; x <= rad; x++)
             {
                 for (int z = -rad; z <= rad; z++)
                 {
                     coords.Add(new Vec2i(chunkMidX + x, chunkMidZ + z));
+                    regCoords.Add(new Vec2i((chunkMidX + x) / regionChunkSize, (chunkMidZ + z) / regionChunkSize));
                 }
             }
 
             foreach (Vec2i coord in coords)
             {
                 api.WorldManager.DeleteChunkColumn(coord.X, coord.Y);
+            }
+            if (deleteRegion)
+            {
+                foreach (Vec2i coord in regCoords)
+                {
+                    api.WorldManager.DeleteMapRegion(coord.X, coord.Y);
+                }
             }
 
             if (!onlydelete)
@@ -622,10 +636,10 @@ namespace Vintagestory.ServerMods
             int diam = 2 * rad + 1;
             if (onlydelete)
             {
-                player.SendMessage(groupId, "Deleted " + diam + "x" + diam + " columns", EnumChatType.CommandSuccess);
+                player.SendMessage(groupId, "Deleted " + diam + "x" + diam + " columns" + (deleteRegion ? " and regions" : ""), EnumChatType.CommandSuccess);
             } else
             {
-                player.SendMessage(groupId, "Reloaded landforms and regenerating " + diam + "x" + diam + " columns", EnumChatType.CommandSuccess);
+                player.SendMessage(groupId, "Reloaded landforms and regenerating " + diam + "x" + diam + " columns" + (deleteRegion ? " and regions" : ""), EnumChatType.CommandSuccess);
             }
             
         }

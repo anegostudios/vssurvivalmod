@@ -17,7 +17,6 @@ namespace Vintagestory.GameContent
         public ILoadedSound translocatingSound;
 
         bool HasFuel = true;
-        ICoreServerAPI sapi;
         BlockCorpseReturnTeleporter ownBlock;
         bool canTeleport = false;
         long somebodyIsTeleportingReceivedTotalMs;
@@ -60,7 +59,7 @@ namespace Vintagestory.GameContent
             if (api.World.Side == EnumAppSide.Client)
             {
                 float rotY = Block.Shape.rotateY;
-                animUtil.InitializeAnimator("translocator", null, null, new Vec3f(0, rotY, 0));
+                animUtil.InitializeAnimator("corpsereturnteleporter", null, null, new Vec3f(0, rotY, 0));
 
                 translocatingSound = (api as ICoreClientAPI).World.LoadSound(new SoundParams()
                 {
@@ -79,7 +78,6 @@ namespace Vintagestory.GameContent
         {
             if (Api.Side == EnumAppSide.Server)
             {
-                sapi = Api as ICoreServerAPI;
                 RegisterGameTickListener(OnServerGameTick, 250);
             }
             else
@@ -133,7 +131,6 @@ namespace Vintagestory.GameContent
 
             bool selfInside = (Api.World.ElapsedMilliseconds > 100 && Api.World.ElapsedMilliseconds - lastOwnPlayerCollideMs < 100);
             bool playerInside = selfInside || somebodyIsTeleporting;
-            bool active = animUtil.activeAnimationsByAnimCode.ContainsKey("teleport");
 
             if (!selfInside && playerInside)
             {

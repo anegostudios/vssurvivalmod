@@ -970,7 +970,7 @@ namespace Vintagestory.GameContent
                     components.Add(new ClearFloatTextComponent(capi, marginTop));
                     components.Add(new RichTextComponent(capi, "• " + Lang.Get("Crafting") + "\n", CairoFont.WhiteSmallText()));
 
-                    Dictionary<int, List<GridRecipe>> grouped = new Dictionary<int, List<GridRecipe>>();
+                    OrderedDictionary<int, List<GridRecipe>> grouped = new OrderedDictionary<int, List<GridRecipe>>();
 
                     ItemStack[] outputStacks = new ItemStack[grecipes.Count];
                     int i= 0;
@@ -1146,7 +1146,7 @@ namespace Vintagestory.GameContent
 
                 if (litres > 0.01)
                 {
-                    dsc.AppendLine(Lang.Get("When juiced: Turns into {0:0.##}l {1}", litres, jprops.LiquidStack.ResolvedItemstack.GetName()));
+                    dsc.AppendLine(Lang.Get("collectibleinfo-juicingproperties", litres, jprops.LiquidStack.ResolvedItemstack.GetName()));
                 }
             }
 
