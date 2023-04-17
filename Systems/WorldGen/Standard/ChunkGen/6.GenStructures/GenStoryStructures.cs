@@ -181,6 +181,9 @@ namespace Vintagestory.GameContent
             if (api.WorldManager.SaveGame.IsNew)
             {
                 determineStoryStructures();
+            } else
+            {
+                setupForceLandform();
             }
         }
 
@@ -247,8 +250,6 @@ namespace Vintagestory.GameContent
             // Needs a better solution than hardcoding map middle
             BlockPos spawnPos = new BlockPos(api.World.BlockAccessor.MapSizeX / 2, 0, api.World.BlockAccessor.MapSizeZ / 2);
 
-            GenMaps genmaps = api.ModLoader.GetModSystem<GenMaps>();
-
             List<Cuboidi> occupiedLocations = new List<Cuboidi>();
 
             foreach (var val in scfg.Structures)
@@ -275,19 +276,32 @@ namespace Vintagestory.GameContent
 
                 occupiedLocations.Add(cub);
 
-                if (val.RequireLandform != null)
-                {
-                    Rectanglei areacuboid = new Rectanglei(pos.X - val.LandformSizeX / 2, pos.Z - val.LandformSizeZ / 2, val.LandformSizeX, val.LandformSizeZ);
-
-                    genmaps.ForceLandformAt(new ForceLandform()
-                    {
-                        Area = areacuboid,
-                        LandformCode = val.RequireLandform
-                    });
-                }
+                
             }
 
             this.structureLocations = occupiedLocations.ToArray();
+            setupForceLandform();
+        }
+
+        private void setupForceLandform()
+        {
+            GenMaps genmaps = api.ModLoader.GetModSystem<GenMaps>();
+
+            foreach (var val in scfg.Structures)
+            {
+                if (val.RequireLandform == null) continue;
+                if (!storyStructureInstances.ContainsKey(val.Code)) continue;
+
+                var pos = storyStructureInstances[val.Code].CenterPos;
+                Rectanglei areacuboid = new Rectanglei(pos.X - val.LandformSizeX / 2, pos.Z - val.LandformSizeZ / 2, val.LandformSizeX, val.LandformSizeZ);
+
+                genmaps.ForceLandformAt(new ForceLandform()
+                {
+                    Area = areacuboid,
+                    LandformCode = val.RequireLandform
+                });
+                
+            }
         }
 
         private void Event_GameWorldSave()
@@ -305,7 +319,6 @@ namespace Vintagestory.GameContent
             else
             {
                 storyStructureInstances = strucs;
-
                 this.structureLocations = storyStructureInstances.Select(val => val.Value.Location).ToArray();
             }
 
