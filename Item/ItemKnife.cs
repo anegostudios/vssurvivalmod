@@ -136,7 +136,6 @@ namespace Vintagestory.GameContent
                     }
                     byEntity.Controls.LeftUsingHeldItemTransformBefore = tfleft;
 
-
                     return true;
                 }
                 else
@@ -145,7 +144,7 @@ namespace Vintagestory.GameContent
                     {
                         api.World.Logger.Notification("Server did hurt");
 
-                        byEntity.ReceiveDamage(new DamageSource() { DamageTier = 0, Source = EnumDamageSource.Internal, Type = EnumDamageType.PiercingAttack }, 2);
+                        byEntity.ReceiveDamage(new DamageSource() { DamageTier = 0, Source = EnumDamageSource.Internal, Type = EnumDamageType.Injury }, 2);
                         slot?.Itemstack?.Collectible.DamageItem(byEntity.World, byEntity, slot, 1);
 
                         byEntity.Attributes.SetBool("didHurt", true);

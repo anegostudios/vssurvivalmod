@@ -146,8 +146,9 @@ namespace Vintagestory.GameContent
 
                 stack.Attributes.SetInt("pieSize", 1);
                 stack.Attributes.SetFloat("quantityServings", 0.25f);
-                stack.Attributes.SetBool("bakeable", false);
             }
+
+            stack.Attributes.SetBool("bakeable", false);
 
             loadMesh(); 
             MarkDirty(true);

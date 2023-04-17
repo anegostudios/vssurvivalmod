@@ -122,9 +122,8 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-
-
-            if (wml.Waypoints.FirstOrDefault(wp => wp.Position == pos) != null)
+            var puid = (byEntity as EntityPlayer).PlayerUID;
+            if (wml.Waypoints.Where(wp => wp.OwningPlayerUid == puid).FirstOrDefault(wp => wp.Position == pos) != null)
             {
                 player.SendMessage(GlobalConstants.GeneralChatGroup, Lang.Get("Location already marked on your map"), EnumChatType.Notification);
                 return;
@@ -136,7 +135,7 @@ namespace Vintagestory.GameContent
                 Icon = props.WaypointIcon,
                 Pinned = true,
                 Position = pos,
-                OwningPlayerUid = (byEntity as EntityPlayer).PlayerUID,
+                OwningPlayerUid = puid,
                 Title = Lang.Get(props.WaypointText),
             }, player);
 

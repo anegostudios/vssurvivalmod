@@ -17,7 +17,7 @@ namespace Vintagestory.GameContent
 
     }
 
-    public class BlockEntityBookshelf : BlockEntityDisplay
+    public class BlockEntityBookshelf : BlockEntityDisplay, IRotatable
     {
         public override InventoryBase Inventory => inv;
         public override string InventoryClassName => "bookshelf";
@@ -261,6 +261,13 @@ namespace Vintagestory.GameContent
             {
                 sb.AppendLine(slot.Itemstack.GetName());
             }
+        }
+
+        public void OnTransformed(ITreeAttribute tree, int degreeRotation, EnumAxis? flipAxis)
+        {
+            MeshAngleRad = tree.GetFloat("meshAngleRad");
+            MeshAngleRad -= degreeRotation * GameMath.DEG2RAD;
+            tree.SetFloat("meshAngleRad", MeshAngleRad);
         }
     }
 }

@@ -10,7 +10,7 @@ using Vintagestory.API.MathTools;
 namespace Vintagestory.GameContent
 {
 
-    public class BlockEntityGroundStorage : BlockEntityDisplay, IBlockEntityContainer, ITexPositionSource
+    public class BlockEntityGroundStorage : BlockEntityDisplay, IBlockEntityContainer, ITexPositionSource, IRotatable
     {
         public object inventoryLock = new object(); // Because OnTesselation runs in another thread
 
@@ -1090,6 +1090,17 @@ namespace Vintagestory.GameContent
             }
 
             return true;
+        }
+
+        public void OnTransformed(ITreeAttribute tree, int degreeRotation, EnumAxis? flipAxis)
+        {
+            MeshAngle = tree.GetFloat("meshAngle");
+            MeshAngle -= degreeRotation * GameMath.DEG2RAD;
+            tree.SetFloat("meshAngle", MeshAngle);
+
+            AttachFace = BlockFacing.ALLFACES[tree.GetInt("attachFace")];
+            AttachFace = AttachFace.FaceWhenRotatedBy(0, -degreeRotation * GameMath.DEG2RAD, 0);
+            tree.SetInt("attachFace", AttachFace?.Index ?? 0);
         }
 
     }

@@ -258,7 +258,7 @@ namespace Vintagestory.GameContent
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
             BlockEntityCorpseReturnTeleporter be = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityCorpseReturnTeleporter;
-            be.OnInteract(byPlayer);
+            be?.OnInteract(byPlayer);
             return true;
         }
 

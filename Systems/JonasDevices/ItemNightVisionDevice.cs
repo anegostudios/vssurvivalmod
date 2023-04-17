@@ -40,7 +40,7 @@ namespace Vintagestory.GameContent
         {
             if (gearInv == null) return;
 
-            var headSlot = gearInv[(int)EnumCharacterDressType.Head];
+            var headSlot = gearInv[(int)EnumCharacterDressType.ArmorHead];
             var stack = headSlot?.Itemstack;
             var itemnvd = stack?.Collectible as ItemNightvisiondevice;
             var fuelLeft = itemnvd == null ? 0 : itemnvd.GetFuelLeft(stack);
@@ -67,6 +67,8 @@ namespace Vintagestory.GameContent
 
     public class ItemNightvisiondevice : ItemWearable
     {
+        protected float fuelHoursCapacity = 24;
+
         public float GetFuelLeft(ItemStack stack)
         {
             return stack.Attributes.GetFloat("fuel");
@@ -99,9 +101,9 @@ namespace Vintagestory.GameContent
             {
                 float fuel = GetStackFuel(op.SourceSlot.Itemstack);
 
-                if (fuel > 0 && GetFuelLeft(op.SinkSlot.Itemstack) < 1)
+                if (fuel > 0 && GetFuelLeft(op.SinkSlot.Itemstack) < fuelHoursCapacity)
                 {
-                    SetFuelLeft(op.SinkSlot.Itemstack, Math.Min(1, GetFuelLeft(op.SinkSlot.Itemstack) + fuel));
+                    SetFuelLeft(op.SinkSlot.Itemstack, Math.Min(fuelHoursCapacity, GetFuelLeft(op.SinkSlot.Itemstack) + fuel));
                     op.MovedQuantity = 1;
                     op.SourceSlot.TakeOut(1);
                     op.SinkSlot.MarkDirty();
