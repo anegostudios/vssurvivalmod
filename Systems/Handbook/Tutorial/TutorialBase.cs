@@ -91,7 +91,8 @@ namespace Vintagestory.GameContent
         {
             for (int i = 0; i < steps.Length; i++)
             {
-                steps[i].text = (i + 1) + ". " + steps[i].text;
+                //steps[i].text = (i + 1) + ". " + steps[i].text;
+                steps[i].index = i;
             }
 
             this.steps.AddRange(steps);

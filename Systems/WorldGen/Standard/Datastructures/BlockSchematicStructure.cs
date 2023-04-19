@@ -406,6 +406,7 @@ namespace Vintagestory.ServerMods
             cloned.BlockEntities = new Dictionary<uint, string>(BlockEntities);
             cloned.ReplaceMode = ReplaceMode;
             cloned.FromFileName = FromFileName;
+            cloned.EntranceRotation = EntranceRotation;
 
             return cloned;
         }

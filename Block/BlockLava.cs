@@ -4,6 +4,7 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -15,8 +16,9 @@ namespace Vintagestory.GameContent
     public class BlockLava : BlockForFluidsLayer, IBlockFlowing
     {
         public string Flow { get; set; }
-        public Vec3i FlowNormali { get => null; set {} }
+        public Vec3i FlowNormali { get; set; }
         public bool IsLava => true;
+        public int Height { get; set; }
 
         /// <summary>
         /// Data structure returned to the tick system to be used by this block in order to
@@ -58,6 +60,10 @@ namespace Vintagestory.GameContent
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
+
+            Flow = Variant["flow"] is string f ? string.Intern(f) : null;
+            FlowNormali = Flow != null ? Cardinal.FromInitial(Flow)?.Normali : null;
+            Height = Variant["height"] is string h ? h.ToInt() : 7;
 
             if (blockFire == null)
             {

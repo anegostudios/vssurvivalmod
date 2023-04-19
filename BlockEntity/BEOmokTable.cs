@@ -138,7 +138,7 @@ namespace Vintagestory.GameContent
                 mat.Identity();
                 int dx = i % size;
                 int dz = i / size;
-                mat.Translate((1.6f + dx) / 16f, 0, (1.6f + dz) / 16f);
+                mat.Translate((0.6f + dx) / 16f, 0, (0.6f + dz) / 16f);
                 mesher.AddMeshData(getMesh(slot.Itemstack), mat.Values);
             }
 

@@ -998,6 +998,7 @@ namespace Vintagestory.GameContent
                         var ecomp = new RichTextComponent(capi, "=", CairoFont.WhiteMediumText());
                         ecomp.VerticalAlign = EnumVerticalAlign.Middle;
                         var ocomp = new SlideshowItemstackTextComponent(capi, outputStacks, 40, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
+                        ocomp.overrideCurrentItemStack = () => comp.CurrentVisibleRecipe.Recipe.Output.ResolvedItemstack;
                         ocomp.VerticalAlign = EnumVerticalAlign.Middle;
                         ocomp.ShowStackSize = true;
 

@@ -308,14 +308,13 @@ namespace Vintagestory.GameContent
             switch (Construction)
             {
                 case "woodmetal":
-                    dsc.AppendLine(Lang.Get("shield-woodtype", inSlot.Itemstack.Attributes.GetString("wood")));
-                    dsc.AppendLine(Lang.Get("shield-metaltype", inSlot.Itemstack.Attributes.GetString("metal")));
+                    dsc.AppendLine(Lang.Get("shield-woodtype", Lang.Get("material-" + inSlot.Itemstack.Attributes.GetString("wood"))));
+                    dsc.AppendLine(Lang.Get("shield-metaltype", Lang.Get("material-" + inSlot.Itemstack.Attributes.GetString("metal"))));
                     break;
 
                 case "woodmetalleather":
-                    dsc.AppendLine(Lang.Get("shield-metaltype", inSlot.Itemstack.Attributes.GetString("metal")));
+                    dsc.AppendLine(Lang.Get("shield-metaltype", Lang.Get("material-" + inSlot.Itemstack.Attributes.GetString("metal"))));
                     break;
-
             }
 
             

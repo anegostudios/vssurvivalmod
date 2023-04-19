@@ -266,6 +266,172 @@ namespace Vintagestory.ServerMods
             return generated;
         }
 
+        /// <summary>
+        /// Finds the side with lowest summed height values along the border of the to be placed schematic.
+        /// The search is done on each side +2.
+        /// Requires <see cref="BlockSchematic.EntranceRotation"/>
+        /// </summary>
+        /// <param name="blockAccessor"></param>
+        /// <param name="schematics">array of schematics[4] N=0, E=1, S=2, W=3</param>
+        /// <param name="pos">start position</param>
+        /// <returns>The index for the rotation of the desired side to pick from the <see cref="schematicDatas"/>[num][rotation] North=0 East=1 South=2 West=3</returns>
+        private int FindClearEntranceRotation(IBlockAccessor blockAccessor, BlockSchematicStructure[] schematics,  BlockPos pos)
+        {
+            var chunksize = blockAccessor.ChunkSize;
+            var schematic = schematics[0];
+            var entranceRot = GameMath.Clamp(schematics[0].EntranceRotation / 90, 0, 3);
+            // pos is in the corner and not centered
+            var minX = pos.X-2;
+            var maxX = pos.X + schematic.SizeX+2;
+            var minZ = pos.Z-2;
+            var maxZ = pos.Z + schematic.SizeZ+2;
+
+            // used to detect whether downwards slope is East-West etc
+            int weightedHeightW = 1, weightedHeightE = 1, weightedHeightN = 1, weightedHeightS = 1;
+            var x = minX;
+            int z;
+            
+            IMapChunk mapchunk;
+            int lowSide;
+            // entrance is east or west
+            if (entranceRot == 1 || entranceRot == 3)
+            {
+                for (z = minZ; z <= maxZ; z++)
+                {
+                    mapchunk = blockAccessor.GetMapChunk(x / chunksize, z / chunksize);
+                    int h = mapchunk.WorldGenTerrainHeightMap[(z % chunksize) * chunksize + (x % chunksize)];
+                    weightedHeightW += h;
+                }
+
+                x = maxX;
+                for (z = minZ; z <= maxZ; z++)
+                {
+                    mapchunk = blockAccessor.GetMapChunk(x / chunksize, z / chunksize);
+                    int h = mapchunk.WorldGenTerrainHeightMap[(z % chunksize) * chunksize + (x % chunksize)];
+                    weightedHeightE += h;
+                }
+            } else if (entranceRot == 0 || entranceRot == 2) // entrance is north or south
+            {
+                z = minZ;
+                for (x = minX; x <= maxX; x++)
+                {
+                    mapchunk = blockAccessor.GetMapChunk(x / chunksize, z / chunksize);
+                    int h = mapchunk.WorldGenTerrainHeightMap[(z % chunksize) * chunksize + (x % chunksize)];
+                    weightedHeightN += h;
+                }
+
+                z = maxZ;
+                for (x = minX; x <= maxX; x++)
+                {
+                    mapchunk = blockAccessor.GetMapChunk(x / chunksize, z / chunksize);
+                    int h = mapchunk.WorldGenTerrainHeightMap[(z % chunksize) * chunksize + (x % chunksize)];
+                    weightedHeightS += h;
+                }
+            }
+            
+            // check 2nd rot - rotate the schematic once by 90
+            schematic = schematics[1];
+            var entranceRot2 = GameMath.Clamp(schematic.EntranceRotation / 90, 0, 3);
+            // pos is in the corner and not centered
+            minX = pos.X-2;
+            maxX = pos.X + schematic.SizeX+2;
+            minZ = pos.Z-2;
+            maxZ = pos.Z + schematic.SizeZ+2;
+            int weightedHeightW2 = 1, weightedHeightE2 = 1, weightedHeightN2 = 1, weightedHeightS2 = 1;
+
+            // entrance is east or west
+            if (entranceRot2 == 1 || entranceRot2 == 3)
+            {
+                for (z = minZ; z <= maxZ; z++)
+                {
+                    mapchunk = blockAccessor.GetMapChunk(x / chunksize, z / chunksize);
+                    int h = mapchunk.WorldGenTerrainHeightMap[(z % chunksize) * chunksize + (x % chunksize)];
+                    weightedHeightW2 += h;
+                }
+
+                x = maxX;
+                for (z = minZ; z <= maxZ; z++)
+                {
+                    mapchunk = blockAccessor.GetMapChunk(x / chunksize, z / chunksize);
+                    int h = mapchunk.WorldGenTerrainHeightMap[(z % chunksize) * chunksize + (x % chunksize)];
+                    weightedHeightE2 += h;
+                }
+            } else if (entranceRot2 == 0 || entranceRot2 == 2) // entrance is north or south
+            {
+                z = minZ;
+                for (x = minX; x <= maxX; x++)
+                {
+                    mapchunk = blockAccessor.GetMapChunk(x / chunksize, z / chunksize);
+                    int h = mapchunk.WorldGenTerrainHeightMap[(z % chunksize) * chunksize + (x % chunksize)];
+                    weightedHeightN2 += h;
+                }
+
+                z = maxZ;
+                for (x = minX; x <= maxX; x++)
+                {
+                    mapchunk = blockAccessor.GetMapChunk(x / chunksize, z / chunksize);
+                    int h = mapchunk.WorldGenTerrainHeightMap[(z % chunksize) * chunksize + (x % chunksize)];
+                    weightedHeightS2 += h;
+                }
+            }
+            
+            // entranceRot E/W
+            if (entranceRot == 1 || entranceRot == 3)
+            {
+                // so entranceRot2 must be N/S
+                if (weightedHeightE < weightedHeightW)
+                {
+                    if (weightedHeightN2 < weightedHeightS2)
+                    {
+                        lowSide = weightedHeightE < weightedHeightN2 ? 1 : 0;
+                    }
+                    else
+                    {
+                        lowSide = weightedHeightE < weightedHeightS2 ? 1 : 2;
+                    }
+                }
+                else // weightedHeightE > weightedHeightW
+                {
+                    if (weightedHeightN2 < weightedHeightS2)
+                    {
+                        lowSide = weightedHeightW < weightedHeightN2 ? 3 : 0;
+                    }
+                    else
+                    {
+                        lowSide = weightedHeightW < weightedHeightS2 ? 3 : 2;
+                    }
+                }
+            }
+            else // entranceRot N/S
+            {
+                // so entranceRot2 must be E/W
+                if (weightedHeightN < weightedHeightS)
+                {
+                    if (weightedHeightE2 < weightedHeightW2)
+                    {
+                        lowSide = weightedHeightN < weightedHeightE2 ? 0 : 1;
+                    }
+                    else // weightedHeightE2 > weightedHeightW2
+                    {
+                        lowSide = weightedHeightN < weightedHeightW2 ? 0 : 3;
+                    }
+                }
+                else // weightedHeightN > weightedHeightS
+                {
+                    if (weightedHeightE2 < weightedHeightW2)
+                    {
+                        lowSide = weightedHeightS < weightedHeightE2 ? 2 : 1;
+                    }
+                    else
+                    {
+                        lowSide = weightedHeightS < weightedHeightW2 ? 0 : 3;
+                    }
+                }
+            }
+
+            // calculate the index to get the correct rotation offset by entranceRot (eg. entranceRot = 1, lowestSide = 2 => 1, e: 3, l: 2 => 3)
+            return (4 + lowSide - entranceRot) % 4;
+        }
 
         internal bool TryGenerateRuinAtSurface(IBlockAccessor blockAccessor, IWorldAccessor worldForCollectibleResolve, BlockPos pos)
         {
@@ -273,6 +439,11 @@ namespace Vintagestory.ServerMods
             int orient = rand.NextInt(4);
             BlockSchematicStructure schematic = schematicDatas[num][orient];
 
+            if (schematic.EntranceRotation != -1)
+            {
+                orient = FindClearEntranceRotation(blockAccessor, schematicDatas[num], pos);
+                schematic = schematicDatas[num][orient];
+            }
 
             int wdthalf = (int)Math.Ceiling(schematic.SizeX / 2f);
             int lenhalf = (int)Math.Ceiling(schematic.SizeZ / 2f);
@@ -342,6 +513,12 @@ namespace Vintagestory.ServerMods
             int num = rand.NextInt(schematicDatas.Length);
             int orient = rand.NextInt(4);
             BlockSchematicStructure schematic = schematicDatas[num][orient];
+
+            if (schematic.EntranceRotation != -1)
+            {
+                orient = FindClearEntranceRotation(blockAccessor, schematicDatas[num], pos);
+                schematic = schematicDatas[num][orient];
+            }
             
             int wdthalf = (int)Math.Ceiling(schematic.SizeX / 2f);
             int lenhalf = (int)Math.Ceiling(schematic.SizeZ / 2f);

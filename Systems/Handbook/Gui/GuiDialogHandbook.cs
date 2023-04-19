@@ -181,7 +181,7 @@ namespace Vintagestory.GameContent
                 (float)overviewGui.GetFlatList("stacklist").insideBounds.fixedHeight
             );
 
-            overviewGui.GetTextInput("searchField").SetPlaceHolderText("Search...");
+            overviewGui.GetTextInput("searchField").SetPlaceHolderText(Lang.Get("Search..."));
 
             overviewGui.GetVerticalTab("verticalTabs").SetValue(curTab, false);
 
@@ -321,7 +321,7 @@ namespace Vintagestory.GameContent
                     .EndClip()
                     .AddVerticalScrollbar(OnNewScrollbarvalueDetailPage, scrollbarBounds, "scrollbar")
                     .AddIf(capi.IsSinglePlayer && !capi.OpenedToLan)
-                        .AddToggleButton("Pause game", CairoFont.WhiteDetailText(), onTogglePause, ElementBounds.Fixed(370, -5, 100, 22), "pausegame")
+                        .AddToggleButton(Lang.Get("Pause game"), CairoFont.WhiteDetailText(), onTogglePause, ElementBounds.Fixed(370, -5, 100, 22), "pausegame")
                     .EndIf()
 
                     .AddSmallButton(Lang.Get("general-back"), OnButtonBack, backButtonBounds)

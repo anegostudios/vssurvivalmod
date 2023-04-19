@@ -95,7 +95,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            string vtmlCode = Lang.Get(text, hotkeyvtml.ToArray());
+            string vtmlCode = Lang.Get("tutorialstep-numbered", index+1, Lang.Get(text, hotkeyvtml.ToArray()));
 
             return VtmlUtil.Richtextify(capi, vtmlCode, font);
         }
@@ -186,6 +186,7 @@ namespace Vintagestory.GameContent
     {
         protected string code;
         public string text;
+        public int index;
 
         public abstract RichTextComponentBase[] GetText(CairoFont font);
 

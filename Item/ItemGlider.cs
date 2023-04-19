@@ -34,6 +34,7 @@ namespace Vintagestory.GameContent
                 if (plr.Entity.Controls.Gliding)
                 {
                     glidingAccum = Math.Min(3.01f / speed, glidingAccum + dt);
+                    if (!HasGilder) plr.Entity.Controls.Gliding = false;
                 }
                 else
                 {

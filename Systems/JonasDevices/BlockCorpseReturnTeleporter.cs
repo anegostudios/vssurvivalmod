@@ -118,6 +118,8 @@ namespace Vintagestory.GameContent
             translocatingSound?.Dispose();
         }
 
+
+        float teleportAccum = 0;
         private void OnClientGameTick(float dt)
         {
             if (ownBlock == null || Api?.World == null || !canTeleport) return;
@@ -137,23 +139,28 @@ namespace Vintagestory.GameContent
                 manager.lastTranslocateCollideMsOtherPlayer = Api.World.ElapsedMilliseconds;
             }
 
-
-
             if (playerInside)
             {
-                var meta = new AnimationMetaData() { Animation = "teleport", Code = "teleport", AnimationSpeed = 1, EaseInSpeed = 1, EaseOutSpeed = 2, Weight = 1, BlendMode = EnumAnimationBlendMode.Add };
-                animUtil.StartAnimation(meta);
-                animUtil.StartAnimation(new AnimationMetaData() { Animation = "idle", Code = "idle", AnimationSpeed = 1, EaseInSpeed = 1, EaseOutSpeed = 1, Weight = 1, BlendMode = EnumAnimationBlendMode.Average });
+                teleportAccum += dt;
+                if (teleportAccum > 1)
+                {
+                    var meta = new AnimationMetaData() { Animation = "teleport", Code = "teleport", AnimationSpeed = 1, EaseInSpeed = 1, EaseOutSpeed = 2, Weight = 1, BlendMode = EnumAnimationBlendMode.Add };
+                    animUtil.StartAnimation(meta);
+                }
+                animUtil.StartAnimation(new AnimationMetaData() { Animation = "deploy", Code = "deploy", AnimationSpeed = 1.25f, EaseInSpeed = 2, EaseOutSpeed = 30, Weight = 1, BlendMode = EnumAnimationBlendMode.Add });
             }
             else
             {
                 animUtil.StopAnimation("teleport");
+                animUtil.StopAnimation("deploy");
+                teleportAccum = 0;
             }
 
 
             if (animUtil.activeAnimationsByAnimCode.Count > 0 && Api.World.ElapsedMilliseconds - lastOwnPlayerCollideMs > 10000 && Api.World.ElapsedMilliseconds - manager.lastTranslocateCollideMsOtherPlayer > 10000)
             {
-                animUtil.StopAnimation("idle");
+                animUtil.StopAnimation("deploy");
+                animUtil.StopAnimation("teleport");
             }
         }
 
@@ -226,9 +233,9 @@ namespace Vintagestory.GameContent
 
         public bool OnInteract(IPlayer byPlayer)
         {
-            if (!HasFuel)
-            {
-                var slot = byPlayer.InventoryManager.ActiveHotbarSlot;
+            var slot = byPlayer.InventoryManager.ActiveHotbarSlot;
+            if (!HasFuel && !slot.Empty)
+            {   
                 if (slot.Itemstack.ItemAttributes?.IsTrue("corpseReturnFuel") == true)
                 {
                     HasFuel = true;
