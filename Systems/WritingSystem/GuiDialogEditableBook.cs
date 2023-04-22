@@ -69,8 +69,8 @@ namespace Vintagestory.GameContent
 
             SingleComposer.GetTextArea("text").OnCaretPositionChanged = onCaretPositionChanged;
             SingleComposer.GetTextArea("text").Autoheight = false;
+            updatePage(false);
             SingleComposer.GetTextArea("text").OnTryTextChangeText = onTryTextChange;
-            updatePage();   
         }
 
         private bool onTryTextChange(List<string> lines)

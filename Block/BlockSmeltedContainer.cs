@@ -431,10 +431,10 @@ namespace Vintagestory.GameContent
 
             if (HasSolidifed(itemStack, contents.Key, api.World))
             {
-                return Lang.Get("Crucible (Contains solidified {0})", mat == null ? itemStack.GetName() : Lang.Get("material-" + mat));
+                return Lang.Get("Crucible (Contains solidified {0})", mat == null ? contents.Key?.GetName() : Lang.Get("material-" + mat));
             } else
             {
-                return Lang.Get("Crucible (Contains molten {0})", mat == null ? itemStack.GetName() : Lang.Get("material-" + mat));
+                return Lang.Get("Crucible (Contains molten {0})", mat == null ? contents.Key?.GetName() : Lang.Get("material-" + mat));
             }
         }
 

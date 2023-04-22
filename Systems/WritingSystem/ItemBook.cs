@@ -135,7 +135,7 @@ namespace Vintagestory.GameContent
         public override string GetHeldItemName(ItemStack itemStack)
         {
             string title = itemStack.Attributes.GetString("title");
-            if (title != null) return title;
+            if (title != null && title.Length > 0) return title;
 
             return base.GetHeldItemName(itemStack);
         }

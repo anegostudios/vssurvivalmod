@@ -258,19 +258,19 @@ namespace Vintagestory.GameContent
         public override Cuboidf[] GetCollisionBoxes(IBlockAccessor blockAccessor, BlockPos pos, ref EnumHandling handled)
         {
             handled = EnumHandling.PreventSubsequent;
-            return blockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorDoor>().ColSelBoxes ?? null;
+            return blockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorDoor>()?.ColSelBoxes ?? null;
         }
 
         public override Cuboidf[] GetSelectionBoxes(IBlockAccessor blockAccessor, BlockPos pos, ref EnumHandling handled)
         {
             handled = EnumHandling.PreventSubsequent;
-            return blockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorDoor>().ColSelBoxes ?? null;
+            return blockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorDoor>()?.ColSelBoxes ?? null;
         }
 
         public override Cuboidf[] GetParticleCollisionBoxes(IBlockAccessor blockAccessor, BlockPos pos, ref EnumHandling handled)
         {
             handled = EnumHandling.PreventSubsequent;
-            return blockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorDoor>().ColSelBoxes ?? null;
+            return blockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorDoor>()?.ColSelBoxes ?? null;
         }
 
         public override Cuboidf GetParticleBreakBox(IBlockAccessor blockAccess, BlockPos pos, BlockFacing facing, ref EnumHandling handled)

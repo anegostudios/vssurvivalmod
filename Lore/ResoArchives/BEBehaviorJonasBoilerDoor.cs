@@ -26,11 +26,11 @@ namespace Vintagestory.GameContent
         {
             base.Initialize(api, properties);
 
+            api.Event.OnTestBlockAccess += Event_OnTestBlockAccess;
+
             if (api.Side == EnumAppSide.Server)
             {
                 Blockentity.RegisterGameTickListener(checkFireServer, 1000, 12);
-
-                (api as ICoreServerAPI).Event.OnTestBlockAccess += Event_OnTestBlockAccess;
             }
 
             animData = properties["animData"].AsObject<AnimationMetaData>();
