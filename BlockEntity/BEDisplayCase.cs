@@ -1,14 +1,14 @@
 ﻿using System;
-using System.Linq;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockEntityDisplayCase : BlockEntityDisplay
+    public class BlockEntityDisplayCase : BlockEntityDisplay, IRotatable
     {
         public override string InventoryClassName => "displaycase";
         protected InventoryGeneric inventory;
@@ -214,6 +214,32 @@ namespace Vintagestory.GameContent
         }
 
 
-    }
+        public void OnTransformed(ITreeAttribute tree, int degreeRotation, EnumAxis? flipAxis)
+        {
+            var rot = new int[]{0, 1, 3, 2};
+            var rots = new float[4];
+            var treeAttribute = tree.GetTreeAttribute("inventory");
+            inventory.FromTreeAttributes(treeAttribute);
+            var inv = new ItemSlot[4];
+            var start = (degreeRotation / 90) % 4;
 
+            for (var i = 0; i < 4; i++)
+            {
+                rots[i] = tree.GetFloat("rotation" + i);
+                inv[i] = inventory[i];
+            }
+            
+            for (var i = 0; i < 4; i++)
+            {
+                var index = GameMath.Mod(i - start, 4);
+                // swap inventory and rotations with the new ones
+                rotations[rot[i]] = rots[rot[index]] - degreeRotation * GameMath.DEG2RAD;
+                inventory[rot[i]] = inv[rot[index]];
+                tree.SetFloat("rotation"+rot[i], rotations[rot[i]]);
+            }
+
+            inventory.ToTreeAttributes(treeAttribute);
+            tree["inventory"] = treeAttribute;
+        }
+    }
 }

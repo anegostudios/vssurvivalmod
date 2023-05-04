@@ -176,6 +176,11 @@ namespace Vintagestory.GameContent
             return new ItemStack[] { stack };
         }
 
+        public override BlockDropItemStack[] GetDropsForHandbook(ItemStack handbookStack, IPlayer forPlayer)
+        {
+            return new BlockDropItemStack[] { new BlockDropItemStack(handbookStack) };
+        }
+
         public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
         {
             base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);

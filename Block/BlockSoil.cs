@@ -89,7 +89,7 @@ namespace Vintagestory.GameContent
             base.OnServerGameTick(world, pos, extra);
 
             GrassTick tick = extra as GrassTick;
-            world.BlockAccessor.SetBlock(tick.Grass.BlockId, pos);
+            world.BlockAccessor.ExchangeBlock(tick.Grass.BlockId, pos);
             BlockPos upPos = pos.UpCopy();
 
             if (tick.TallGrass != null && world.BlockAccessor.GetBlock(upPos).BlockId == 0)

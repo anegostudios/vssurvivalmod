@@ -270,7 +270,15 @@ namespace Vintagestory.GameContent
 
         public override AssetLocation GetRotatedBlockCode(int angle)
         {
-            return base.GetRotatedBlockCode(angle);
+            string[] angles = { "ns", "we" };
+            int index = angle / 90;
+            var lastCodePart = LastCodePart();
+            if (lastCodePart == "ud")
+            {
+                return Code;
+            }
+            if (lastCodePart == "we" ) index++;
+            return CodeWithParts(angles[index % 2]);
         }
 
         public override AssetLocation GetHorizontallyFlippedBlockCode(EnumAxis axis)

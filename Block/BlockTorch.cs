@@ -14,7 +14,9 @@ namespace Vintagestory.GameContent
 {
     public class BlockTorch : BlockGroundAndSideAttachable, IIgnitable
     {
-        public bool IsExtinct => Variant["state"] == "extinct";
+        public bool IsExtinct => isExtinct;
+        private bool isExtinct;
+        private bool isLit;
 
         Dictionary<string, Cuboidi> attachmentAreas;
 
@@ -41,6 +43,8 @@ namespace Vintagestory.GameContent
             {
                 AssetLocation loc = CodeWithVariant("state", "extinct");
                 ExtinctVariant = api.World.GetBlock(loc);
+                isExtinct = Variant["state"] == "extinct";
+                isLit = Variant["state"] == "lit";
             }
 
             if (IsExtinct)
@@ -142,11 +146,37 @@ namespace Vintagestory.GameContent
         {
             base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
 
-            if (Attributes != null && Variant["state"] == "lit")
+            if (Attributes != null && isLit)
             {
                 dsc.AppendLine();
                 dsc.AppendLine(Lang.Get("Burns for {0} hours when placed.", Attributes["transientProps"]["inGameHours"].AsFloat()));
             }
+        }
+
+        public override void OnBlockPlaced(IWorldAccessor world, BlockPos blockPos, ItemStack byItemStack = null)
+        {
+            base.OnBlockPlaced(world, blockPos, byItemStack);
+            if (isLit) ReplaceWithBurnedOut(world.BlockAccessor, blockPos);
+        }
+
+        protected void ReplaceWithBurnedOut(IBlockAccessor blockAccessor, BlockPos pos)
+        {
+            Block liquid = blockAccessor.GetBlock(pos, BlockLayersAccess.Fluid);
+            if (liquid.IsLiquid() && liquid.LiquidLevel > 3)
+            {
+                var block = api.World.GetBlock(CodeWithVariant("state", "burnedout"));
+                if (block != null)
+                {
+                    api.World.BlockAccessor.SetBlock(block.Id, pos);
+                }
+            }
+        }
+
+        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, LCGRandom worldgenRandom)
+        {
+            if (!base.TryPlaceBlockForWorldGen(blockAccessor, pos, onBlockFace, worldgenRandom)) return false;
+            if (isLit) ReplaceWithBurnedOut(blockAccessor, pos);
+            return true;
         }
 
     }

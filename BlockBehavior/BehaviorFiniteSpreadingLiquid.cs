@@ -102,11 +102,8 @@ namespace Vintagestory.GameContent
                     pos.Y++;
                     Block ourSolid = world.BlockAccessor.GetBlock(pos, BlockLayersAccess.SolidBlocks);
 
-                    if (!onSolidGround)
-                    {
-                        TrySpreadDownwards(world, ourSolid, pos);
-                    }
-                    else if (liquidLevel > 1) // Can we still spread somewhere
+                    // First try spreading downwards, if not on solid ground
+                    if ((onSolidGround || !TrySpreadDownwards(world, ourSolid, ourBlock, pos)) && liquidLevel > 1) // Can we still spread somewhere
                     {
                         List<PosAndDist> downwardPaths = FindDownwardPaths(world, pos, ourBlock);
                         if (downwardPaths.Count > 0) // Prefer flowing to downward paths rather than outward
@@ -120,14 +117,7 @@ namespace Vintagestory.GameContent
                             // Turn into water source block if surrounded by 3 other sources
                             if (!IsLiquidSourceBlock(ourBlock))
                             {
-                                int nearbySourceBlockCount = 0;
-                                BlockPos qpos = pos.Copy();
-                                for (int i = 0; i < BlockFacing.HORIZONTALS.Length; i++)
-                                {
-                                    BlockFacing.HORIZONTALS[i].IterateThruFacingOffsets(qpos);
-                                    Block nblock = world.BlockAccessor.GetBlock(qpos, BlockLayersAccess.Fluid);
-                                    if (IsSameLiquid(ourBlock, nblock) && IsLiquidSourceBlock(nblock)) nearbySourceBlockCount++;
-                                }
+                                int nearbySourceBlockCount = CountNearbySourceBlocks(world.BlockAccessor, pos, ourBlock);
 
                                 if (nearbySourceBlockCount >= 3)
                                 {
@@ -150,6 +140,18 @@ namespace Vintagestory.GameContent
             }
         }
 
+        private int CountNearbySourceBlocks(IBlockAccessor blockAccessor, BlockPos pos, Block ourBlock)
+        {
+            BlockPos qpos = pos.Copy();
+            int nearbySourceBlockCount = 0;
+            for (int i = 0; i < BlockFacing.HORIZONTALS.Length; i++)
+            {
+                BlockFacing.HORIZONTALS[i].IterateThruFacingOffsets(qpos);
+                Block nblock = blockAccessor.GetBlock(qpos, BlockLayersAccess.Fluid);
+                if (IsSameLiquid(ourBlock, nblock) && IsLiquidSourceBlock(nblock)) nearbySourceBlockCount++;
+            }
+            return nearbySourceBlockCount;
+        }
 
         private void FlowTowardDownwardPaths(List<PosAndDist> downwardPaths, Block liquidBlock, Block solidBlock, BlockPos pos, IWorldAccessor world)
         {
@@ -170,23 +172,45 @@ namespace Vintagestory.GameContent
             }
         }
 
-        private void TrySpreadDownwards(IWorldAccessor world, Block ourSolid, BlockPos pos)
+        private bool TrySpreadDownwards(IWorldAccessor world, Block ourSolid, Block ourBlock, BlockPos pos)
         {
             BlockPos npos = pos.DownCopy();
 
-            if (CanSpreadIntoBlock(block, ourSolid, pos, npos, BlockFacing.DOWN, world))
+            Block belowLiquid = world.BlockAccessor.GetBlock(npos, BlockLayersAccess.Fluid);
+            if (CanSpreadIntoBlock(ourBlock, ourSolid, pos, npos, BlockFacing.DOWN, world))
             {
-                Block neighborLiquid = world.BlockAccessor.GetBlock(npos, BlockLayersAccess.Fluid);
-                if (IsDifferentCollidableLiquid(block, neighborLiquid))
+                if (IsDifferentCollidableLiquid(ourBlock, belowLiquid))
                 {
-                    ReplaceLiquidBlock(neighborLiquid, npos, world);
+                    ReplaceLiquidBlock(belowLiquid, npos, world);
                     TryFindSourceAndSpread(npos, world);
                 }
                 else
                 {
-                    SpreadLiquid(GetFallingLiquidBlockId(block, world), npos, world);
+                    bool fillWithSource = false;
+                    // If the block above is a source, and either this has at least 1 horizontal neighbour which is a source, or the block above has at least 2 source neighbours and the block below here is solid ground or a source, then heal - we are in the middle of a lake or similar!)
+                    if (IsLiquidSourceBlock(ourBlock))
+                    {
+                        if (CountNearbySourceBlocks(world.BlockAccessor, npos, ourBlock) > 1) fillWithSource = true;
+                        else
+                        {
+                            npos.Y--;
+                            Block blockBelow = world.BlockAccessor.GetBlock(npos, BlockLayersAccess.MostSolid);
+                            bool onSolidGround = blockBelow.CanAttachBlockAt(world.BlockAccessor, ourBlock, npos, BlockFacing.UP);
+                            if (onSolidGround || IsLiquidSourceBlock(world.BlockAccessor.GetBlock(npos, BlockLayersAccess.Fluid)))
+                            {
+                                int count = CountNearbySourceBlocks(world.BlockAccessor, pos, ourBlock);
+                                fillWithSource = count >= 2;
+                            }
+                            npos.Y++;
+                        }
+                    }
+                    SpreadLiquid(fillWithSource ? ourBlock.BlockId : GetFallingLiquidBlockId(ourBlock, world), npos, world);
                 }
+
+                return true;
             }
+
+            return !IsLiquidSourceBlock(ourBlock) || !IsLiquidSourceBlock(belowLiquid);  // return false if this is water source above water source (then surface blocks of (>1 deep) lakes can spread sideways)
         }
 
         private void TrySpreadHorizontal(Block ourblock, Block ourSolid, IWorldAccessor world, BlockPos pos)

@@ -30,22 +30,13 @@ namespace Vintagestory.GameContent
         public override void LoadConfig(JsonObject taskConfig, JsonObject aiConfig)
         {
             base.LoadConfig(taskConfig, aiConfig);
-            
-            if (taskConfig["movespeed"] != null)
-            {
-                moveSpeed = taskConfig["movespeed"].AsFloat(0.03f);
-            }
 
-            if (taskConfig["maxHeight"] != null)
-            {
-                maxHeight = taskConfig["maxHeight"].AsFloat(7f);
-            }
+            moveSpeed = taskConfig["movespeed"].AsFloat(0.03f);
 
-            if (taskConfig["preferredLightLevel"] != null)
-            {
-                preferredLightLevel = taskConfig["preferredLightLevel"].AsFloat(-99);
-                if (preferredLightLevel < 0) preferredLightLevel = null;
-            }
+            maxHeight = taskConfig["maxHeight"].AsFloat(7f);
+
+            preferredLightLevel = taskConfig["preferredLightLevel"].AsFloat(-99);
+            if (preferredLightLevel < 0) preferredLightLevel = null;
 
 
             if (entity?.Properties?.Server?.Attributes != null)

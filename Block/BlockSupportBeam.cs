@@ -113,6 +113,13 @@ namespace Vintagestory.GameContent
                 var beh = be?.GetBehavior<BEBehaviorSupportBeam>();
                 if (beh == null)
                 {
+                    var hereBlock = api.World.BlockAccessor.GetBlock(ws.startPos);
+                    if (hereBlock.Replaceable < 6000)
+                    {
+                        (api as ICoreClientAPI)?.TriggerIngameError(this, "notplaceablehere", Lang.Get("Cannot place here, a block is in the way"));
+                        return;
+                    }
+
                     api.World.BlockAccessor.SetBlock(ws.block.Id, ws.startPos);
                     be = api.World.BlockAccessor.GetBlockEntity(ws.startPos);
                     beh = be?.GetBehavior<BEBehaviorSupportBeam>();

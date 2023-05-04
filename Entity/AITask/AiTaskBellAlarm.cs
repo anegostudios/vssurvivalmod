@@ -39,13 +39,13 @@ namespace Vintagestory.GameContent
         {
             base.LoadConfig(taskConfig, aiConfig);
 
-            spawnRange = taskConfig["spawnRange"]?.AsInt(12) ?? 12;
-            spawnIntervalMsMin = taskConfig["spawnIntervalMsMin"]?.AsInt(2500) ?? 2500;
-            spawnIntervalMsMax = taskConfig["spawnIntervalMsMax"]?.AsInt(12000) ?? 12000;
-            spawnMaxQuantity = taskConfig["spawnMaxQuantity"]?.AsInt(5) ?? 5;
-            seekingRange = taskConfig["seekingRange"]?.AsFloat(12) ?? 12;
+            spawnRange = taskConfig["spawnRange"].AsInt(12);
+            spawnIntervalMsMin = taskConfig["spawnIntervalMsMin"].AsInt(2500);
+            spawnIntervalMsMax = taskConfig["spawnIntervalMsMax"].AsInt(12000);
+            spawnMaxQuantity = taskConfig["spawnMaxQuantity"].AsInt(5);
+            seekingRange = taskConfig["seekingRange"].AsFloat(12);
 
-            var spawnMobLocs = taskConfig["spawnMobs"]?.AsObject<AssetLocation[]>() ?? new AssetLocation[0];
+            var spawnMobLocs = taskConfig["spawnMobs"].AsObject<AssetLocation[]>(new AssetLocation[0]);
             List<EntityProperties> props = new List<EntityProperties>();
             foreach (var val in spawnMobLocs)
             {
@@ -61,25 +61,24 @@ namespace Vintagestory.GameContent
 
             spawnMobs = props.ToArray();
 
-            repeatSoundLoc = taskConfig["repeatSound"] == null ? null : AssetLocation.Create(taskConfig["repeatSound"].AsString(), entity.Code.Domain).WithPathPrefixOnce("sounds/");
+            repeatSoundLoc = !taskConfig["repeatSound"].Exists ? null : AssetLocation.Create(taskConfig["repeatSound"].AsString(), entity.Code.Domain).WithPathPrefixOnce("sounds/");
 
-            if (taskConfig["onNearbyEntityCodes"] != null)
+
+            string[] codes = taskConfig["onNearbyEntityCodes"].AsArray<string>(new string[] { "player" });
+
+            List<string> exact = new List<string>();
+            List<string> beginswith = new List<string>();
+
+            for (int i = 0; i < codes.Length; i++)
             {
-                string[] codes = taskConfig["onNearbyEntityCodes"].AsArray<string>(new string[] { "player" });
-
-                List<string> exact = new List<string>();
-                List<string> beginswith = new List<string>();
-
-                for (int i = 0; i < codes.Length; i++)
-                {
-                    string code = codes[i];
-                    if (code.EndsWith("*")) beginswith.Add(code.Substring(0, code.Length - 1));
-                    else exact.Add(code);
-                }
-
-                seekEntityCodesExact = exact.ToArray();
-                seekEntityCodesBeginsWith = beginswith.ToArray();
+                string code = codes[i];
+                if (code.EndsWith("*")) beginswith.Add(code.Substring(0, code.Length - 1));
+                else exact.Add(code);
             }
+
+            seekEntityCodesExact = exact.ToArray();
+            seekEntityCodesBeginsWith = beginswith.ToArray();
+
 
             cooldownUntilTotalHours = entity.World.Calendar.TotalHours + mincooldownHours + entity.World.Rand.NextDouble() * (maxcooldownHours - mincooldownHours);
         }

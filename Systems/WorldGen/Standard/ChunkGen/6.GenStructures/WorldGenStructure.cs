@@ -435,6 +435,7 @@ namespace Vintagestory.ServerMods
 
         internal bool TryGenerateRuinAtSurface(IBlockAccessor blockAccessor, IWorldAccessor worldForCollectibleResolve, BlockPos pos)
         {
+            if (schematicDatas.Length == 0) return false;
             int num = rand.NextInt(schematicDatas.Length);
             int orient = rand.NextInt(4);
             BlockSchematicStructure schematic = schematicDatas[num][orient];

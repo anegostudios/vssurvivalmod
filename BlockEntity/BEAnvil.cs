@@ -21,7 +21,7 @@ namespace Vintagestory.GameContent
         Placeholder1 = 3,
     }
 
-    public class BlockEntityAnvil : BlockEntity
+    public class BlockEntityAnvil : BlockEntity, IRotatable
     {
         #region Particle
         
@@ -1234,6 +1234,12 @@ namespace Vintagestory.GameContent
             return true;
         }
 
+        public void OnTransformed(ITreeAttribute tree, int degreeRotation, EnumAxis? flipAxis)
+        {
+            MeshAngle = tree.GetFloat("meshAngle");
+            MeshAngle -= degreeRotation * GameMath.DEG2RAD;
+            tree.SetFloat("meshAngle", MeshAngle);  
+        }
     }
 
     public enum EnumAnvilPacket

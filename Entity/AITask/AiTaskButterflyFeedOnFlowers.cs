@@ -46,27 +46,15 @@ namespace Vintagestory.GameContent
             base.LoadConfig(taskConfig, aiConfig);
 
 
-            if (taskConfig["targetDistance"] != null)
-            {
-                targetDistance = taskConfig["targetDistance"].AsFloat(0.07f);
-            }
+            targetDistance = taskConfig["targetDistance"].AsFloat(0.07f);
 
-            if (taskConfig["movespeed"] != null)
-            {
-                moveSpeed = taskConfig["movespeed"].AsFloat(0.03f);
-            }
+            moveSpeed = taskConfig["movespeed"].AsFloat(0.03f);
 
-            if (taskConfig["searchFrequency"] != null)
-            {
-                searchFrequency = taskConfig["searchFrequency"].AsFloat(0.07f);
-            }
+            searchFrequency = taskConfig["searchFrequency"].AsFloat(0.07f);
 
-            if (taskConfig["awaitReached"] != null)
-            {
-                awaitReached = taskConfig["awaitReached"].AsBool(true);
-            }
+            awaitReached = taskConfig["awaitReached"].AsBool(true);
 
-            
+
         }
 
         public override bool ShouldExecute()

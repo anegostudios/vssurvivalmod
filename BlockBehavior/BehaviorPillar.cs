@@ -70,6 +70,7 @@ namespace Vintagestory.GameContent
             if (block.LastCodePart() == "ud") return block.Code;
 
             string[] angles = { "ns", "we" };
+            if (angle < 0) angle += 360;
             int index = angle / 90;
             if (block.LastCodePart() == "we") index++;
 

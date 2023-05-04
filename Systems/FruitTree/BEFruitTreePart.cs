@@ -209,10 +209,10 @@ namespace Vintagestory.GameContent
                 string shapekey = "foliage-ver";
                 if (GrowthDir?.IsHorizontal == true)
                 {
-                    shapekey = "foliage-hor-" + GrowthDir.Code[0];
+                    shapekey = "foliage-hor-" + GrowthDir?.Code[0];
                 }
 
-                if (!blockBranch.Shapes.TryGetValue(shapekey, out var shapeData)) return false;
+                if (blockBranch?.Shapes == null || !blockBranch.Shapes.TryGetValue(shapekey, out var shapeData)) return false;
                 
                 nowTesselatingShape = shapeData.Shape;
                

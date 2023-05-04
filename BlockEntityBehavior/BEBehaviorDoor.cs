@@ -8,7 +8,7 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
-    public class BEBehaviorDoor : BEBehaviorAnimatable, IInteractable
+    public class BEBehaviorDoor : BEBehaviorAnimatable, IInteractable, IRotatable
     {
         public float RotateYRad;
         protected bool opened;
@@ -361,6 +361,13 @@ namespace Vintagestory.GameContent
                     if (doorBh.GetLiquidBarrierHeightOnSide(BlockFacing.WEST, Pos, ref h) > 0) dsc.AppendLine("Barrier to liquid on side: West");
                 }
             }
+        }
+
+        public void OnTransformed(ITreeAttribute tree, int degreeRotation, EnumAxis? flipAxis)
+        {
+            RotateYRad = tree.GetFloat("rotateYRad");
+            RotateYRad = (RotateYRad - degreeRotation * GameMath.DEG2RAD) % GameMath.TWOPI;
+            tree.SetFloat("rotateYRad", RotateYRad);
         }
     }
 }

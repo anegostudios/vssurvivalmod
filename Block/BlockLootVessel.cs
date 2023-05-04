@@ -183,7 +183,7 @@ namespace Vintagestory.GameContent
 
             lootLists["food"] = LootList.Create(1, 
                 LootItem.Item(3, 8, 15, "grain-spelt", "grain-rice", "grain-flax", "grain-rye"),
-                LootItem.Item(0.1f, 1, 1, "resonancearchive-1", "resonancearchive-2", "resonancearchive-3", "resonancearchive-4", "resonancearchive-5", "resonancearchive-6", "resonancearchive-7", "resonancearchive-8", "resonancearchive-9")
+                LootItem.Item(0.1f, 1, 1, "tuningcylinder-1", "tuningcylinder-2", "tuningcylinder-3", "tuningcylinder-4", "tuningcylinder-5", "tuningcylinder-6", "tuningcylinder-7", "tuningcylinder-8", "tuningcylinder-9")
             );
 
             lootLists["forage"] = LootList.Create(2.5f, 

@@ -80,22 +80,45 @@ namespace Vintagestory.GameContent
 
             if (isself)
             {
-                capi.Event.RegisterEventBusListener(onChatKeyDown, 1, "chatkeydownpre");
+                capi.Event.RegisterEventBusListener(onChatKeyDownPre, 1, "chatkeydownpre");
+                capi.Event.RegisterEventBusListener(onChatKeyDownPost, 1, "chatkeydownpost");
             }
         }
 
-        private void onChatKeyDown(string eventName, ref EnumHandling handling, IAttribute data)
+        bool isCommand;
+
+        private void onChatKeyDownPost(string eventName, ref EnumHandling handling, IAttribute data)
+        {
+            var treeAttr = data as TreeAttribute;
+            string text = (treeAttr["text"] as StringAttribute).value;
+
+            // User is trying to cheese the system
+            if (isCommand && text.Length > 0 && text[0] != '.' && text[0] != '/')
+            {
+                float str = (capi.Render.ShaderUniforms.GlitchStrength - 0.5f) * 2;
+                (treeAttr["text"] as StringAttribute).value = destabilizeText(text, str);
+            }
+        }
+
+        private void onChatKeyDownPre(string eventName, ref EnumHandling handling, IAttribute data)
         {
             var treeAttr = data as TreeAttribute;
             int keyCode = (treeAttr["key"] as IntAttribute).value;
             string text = (treeAttr["text"] as StringAttribute).value;
 
-            if (keyCode != (int)GlKeys.BackSpace && capi.Render.ShaderUniforms.GlitchStrength > 0.5f && (text.Length == 0 || (text[0] != '.' && text[0] != '/')))
+            isCommand = text.Length > 0 && (text[0] == '.' || text[0] == '/');
+
+            if (keyCode != (int)GlKeys.BackSpace && capi.Render.ShaderUniforms.GlitchStrength > 0.5f && (text.Length == 0 || !isCommand))
             {
                 float str = (capi.Render.ShaderUniforms.GlitchStrength - 0.5f) * 2;
+                (treeAttr["text"] as StringAttribute).value = destabilizeText(text, str);
+            }
+        }
 
-                //those always stay in the middle
-                char[] zalgo_mid = new char[] {
+        private string destabilizeText(string text, float str)
+        {
+            //those always stay in the middle
+            char[] zalgo_mid = new char[] {
                     '\u0315', /*     ̕     */		'\u031b', /*     ̛     */		'\u0340', /*     ̀     */		'\u0341', /*     ́     */
                     '\u0358', /*     ͘     */		'\u0321', /*     ̡     */		'\u0322', /*     ̢     */		'\u0327', /*     ̧     */
                     '\u0328', /*     ̨     */		'\u0334', /*     ̴     */		'\u0335', /*     ̵     */		'\u0336', /*     ̶     */
@@ -104,31 +127,30 @@ namespace Vintagestory.GameContent
                     '\u0337', /*     ̷     */		'\u0361', /*     ͡     */		'\u0489' /*     ҉_     */
                 };
 
-                string text3 = "";
-                for (int i = 0; i < text.Length; i++)
+            string text3 = "";
+            for (int i = 0; i < text.Length; i++)
+            {
+                text3 += text[i];
+
+                if (i < text.Length - 1 && zalgo_mid.Contains(text[i + 1]))
                 {
-                    text3 += text[i];
-
-                    if (i < text.Length - 1 && zalgo_mid.Contains(text[i + 1]))
-                    {
-                        text3 += text[i + 1];
-                        i++;
-                        continue;
-                    }
-
-                    if (zalgo_mid.Contains(text[i]))
-                    {
-                        continue;
-                    }
-
-                    if (capi.World.Rand.NextDouble() < str)
-                    {
-                        text3 += zalgo_mid[capi.World.Rand.Next(zalgo_mid.Length)];
-                    }
+                    text3 += text[i + 1];
+                    i++;
+                    continue;
                 }
 
-                (treeAttr["text"] as StringAttribute).value = text3;
+                if (zalgo_mid.Contains(text[i]))
+                {
+                    continue;
+                }
+
+                if (capi.World.Rand.NextDouble() < str)
+                {
+                    text3 += zalgo_mid[capi.World.Rand.Next(zalgo_mid.Length)];
+                }
             }
+
+            return text3;
         }
 
         void initSoundsAndEffects()

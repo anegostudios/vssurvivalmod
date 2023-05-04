@@ -107,6 +107,8 @@ namespace Vintagestory.ServerMods
             IMapChunk mapchunk = blockAccessor.GetMapChunkAtBlockPos(curPos);
             int centerrockblockid = mapchunk.TopRockIdMap[(curPos.Z % chunksize) * chunksize + curPos.X % chunksize];
 
+            IWorldAccessor worldgenWorldAccessor = blockAccessor is IWorldGenBlockAccessor wgba ? wgba.WorldgenWorldAccessor : worldForCollectibleResolve;
+
             resolveReplaceRemapsForBlockEntities(blockAccessor, worldForCollectibleResolve, replaceBlocks, centerrockblockid);
 
             for (int x = 0; x < SizeX; x++)
@@ -196,7 +198,10 @@ namespace Vintagestory.ServerMods
                             {
                                 // Make any plants, tallgrass etc above this schematic fall, but do not do this test in lower blocks in the schematic (e.g. tables in trader caravan)
                                 Block aboveBlock = blockAccessor.GetBlock(curPos.X, curPos.Y + 1, curPos.Z, BlockLayersAccess.Solid);
-                                aboveBlock.OnNeighbourBlockChange(worldForCollectibleResolve, curPos.UpCopy(), curPos);
+                                if (aboveBlock.Id > 0)
+                                {
+                                    aboveBlock.OnNeighbourBlockChange(worldgenWorldAccessor, curPos.UpCopy(), curPos);
+                                }
                                 highestBlockinCol = false;
                             }
                             placed += p;

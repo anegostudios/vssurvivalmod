@@ -139,7 +139,7 @@ namespace Vintagestory.GameContent
                 return false;
             }
             // Invulnerable when asleep
-            if (IsAsleep) return false;
+            if (IsAsleep && damageSource.Type != EnumDamageType.Heal) return false;
 
 
             if (World.Side == EnumAppSide.Server)

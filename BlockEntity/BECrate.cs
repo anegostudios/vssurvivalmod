@@ -14,7 +14,7 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockEntityCrate : BlockEntityContainer
+    public class BlockEntityCrate : BlockEntityContainer, IRotatable
     {
         InventoryGeneric inventory;
         BlockCrate ownBlock;
@@ -551,6 +551,14 @@ namespace Vintagestory.GameContent
                     }
                 }
             }
+        }
+
+        public void OnTransformed(ITreeAttribute tree, int degreeRotation, EnumAxis? flipAxis)
+        {
+            ownMesh = null;
+            MeshAngle = tree.GetFloat("meshAngle");
+            MeshAngle -= degreeRotation * GameMath.DEG2RAD;
+            tree.SetFloat("meshAngle", MeshAngle);
         }
     }
 }

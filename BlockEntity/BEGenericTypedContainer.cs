@@ -11,7 +11,7 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockEntityGenericTypedContainer : BlockEntityOpenableContainer
+    public class BlockEntityGenericTypedContainer : BlockEntityOpenableContainer, IRotatable
     {
         internal InventoryGeneric inventory;
         public string type = "normal-generic";
@@ -389,6 +389,13 @@ namespace Vintagestory.GameContent
             }
 
             return true;
+        }
+
+        public void OnTransformed(ITreeAttribute tree, int degreeRotation, EnumAxis? flipAxis)
+        {
+            MeshAngle = tree.GetFloat("meshAngle");
+            MeshAngle -= degreeRotation * GameMath.DEG2RAD;
+            tree.SetFloat("meshAngle", MeshAngle);
         }
     }
 }

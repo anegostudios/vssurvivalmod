@@ -33,11 +33,12 @@ namespace Vintagestory.GameContent
 
         protected RichTextComponent[] genText()
         {
-            var font = CairoFont.WhiteSmallText().WithLineHeightMultiplier(1.2);
-
             List<RichTextComponent> comps = new List<RichTextComponent>();
-
             var api = controller.NPCEntity.Api;
+
+            if (api.Side == EnumAppSide.Client) return comps.ToArray();
+
+            var font = CairoFont.WhiteSmallText().WithLineHeightMultiplier(1.2);
 
             if (IsPlayer)
             {

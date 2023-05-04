@@ -47,9 +47,9 @@ namespace Vintagestory.GameContent
             if (lit)
             {
                 double hoursPassed = Math.Min(2400, Api.World.Calendar.TotalHours - burnStartTotalHours);
-                while (hoursPassed > 4)
+                while (hoursPassed > 8)
                 {
-                    burnStartTotalHours += 4;
+                    burnStartTotalHours += 8;
                     inventory[0].TakeOut(1);
                     if (inventory.Empty)
                     {

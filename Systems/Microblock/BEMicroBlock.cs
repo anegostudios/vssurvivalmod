@@ -41,6 +41,8 @@ namespace Vintagestory.GameContent
         /// List of block ids for the materials used
         /// </summary>
         public int[] MaterialIds;
+        protected int[] MaterialIdsRotated;
+        public int rotated;
 
         public MeshData Mesh;
         protected Cuboidf[] selectionBoxesNoMeta = null;
@@ -1041,8 +1043,9 @@ namespace Vintagestory.GameContent
         public MeshData GenMesh()
         {
             if (MaterialIds == null) return null;
+            GenRotatedMaterialIds();
 
-            var mesh = CreateMesh(Api as ICoreClientAPI, VoxelCuboids, MaterialIds, OriginalVoxelCuboids, Pos);
+            var mesh = CreateMesh(Api as ICoreClientAPI, VoxelCuboids, MaterialIdsRotated, OriginalVoxelCuboids, Pos);
 
             foreach (var val in Behaviors)
             {
@@ -1057,10 +1060,30 @@ namespace Vintagestory.GameContent
             return mesh;
         }
 
+        private void GenRotatedMaterialIds()
+        {
+            if (rotationY == 0)
+            {
+                // Early exit in the most common case where there is no rotation
+                MaterialIdsRotated = MaterialIds;
+                return;
+            }
+
+            if (MaterialIdsRotated == null || MaterialIdsRotated.Length < MaterialIds.Length) MaterialIdsRotated = new int[MaterialIds.Length];
+            for (var i = 0; i < MaterialIds.Length; i++)
+            {
+                int id = MaterialIds[i];
+                Block block = Api.World.GetBlock(id);
+                var rotatedBlockCode = block.GetRotatedBlockCode(rotationY);
+                Block rotatedBlock = rotatedBlockCode == null ? null : Api.World.GetBlock(rotatedBlockCode);
+                MaterialIdsRotated[i] = rotatedBlock == null ? id : rotatedBlock.Id;
+            }
+        }
 
         public void RegenMesh(ICoreClientAPI capi)
         {
-            Mesh = CreateMesh(capi, VoxelCuboids, MaterialIds, OriginalVoxelCuboids, Pos);
+            GenRotatedMaterialIds();
+            Mesh = CreateMesh(capi, VoxelCuboids, MaterialIdsRotated, OriginalVoxelCuboids, Pos);
         }
 
         public static MeshData CreateMesh(ICoreClientAPI capi, List<uint> voxelCuboids, int[] materials, BlockPos posForRnd = null, uint[] originalCuboids = null)

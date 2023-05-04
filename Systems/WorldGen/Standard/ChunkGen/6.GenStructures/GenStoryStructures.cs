@@ -500,6 +500,7 @@ namespace Vintagestory.GameContent
                 for (int j = 0; j < n; j++) height += heights[j];
                 height = (height / n) + hookStruct.endOffsetY;
                 if (maxheight - minheight < 5 && height - minheight < 2) height++;  // place it one block higher on relatively flat ground
+                if (height < api.World.SeaLevel) height = api.World.SeaLevel;
 
                 for (int j = 0; j < 25; j++)
                 {
