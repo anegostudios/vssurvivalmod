@@ -929,7 +929,8 @@ namespace Vintagestory.ServerMods
                     {
                         NoiseBase.Debug = true;
                         NoiseClimatePatchy noiseClimate = new NoiseClimatePatchy(seed);
-                        MapLayerBase landforms = GenMaps.GetLandformMapGen(seed + 1, noiseClimate, api);
+                        float landformScale = worldConfig.GetString("landformScale", "1").ToFloat(1f);
+                        MapLayerBase landforms = GenMaps.GetLandformMapGen(seed + 1, noiseClimate, api, landformScale);
 
                         player.SendMessage(groupId, "Landforms map generated", EnumChatType.CommandSuccess);
                     }

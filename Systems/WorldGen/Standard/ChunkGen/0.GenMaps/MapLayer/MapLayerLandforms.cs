@@ -1,13 +1,10 @@
 ﻿using System;
-using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
 namespace Vintagestory.ServerMods
 {
-
-
-    class MapLayerLandforms: MapLayerBase
+    public class MapLayerLandforms: MapLayerBase
     {
         private NoiseLandforms noiseLandforms;
         NoiseClimate climateNoise;
@@ -18,14 +15,14 @@ namespace Vintagestory.ServerMods
 
         public float landFormHorizontalScale = 1f;
 
-        public MapLayerLandforms(long seed, NoiseClimate climateNoise, ICoreServerAPI api) : base(seed)
+        public MapLayerLandforms(long seed, NoiseClimate climateNoise, ICoreServerAPI api, float landformScale) : base(seed)
         {
             this.climateNoise = climateNoise;
 
-            float scale = TerraGenConfig.landformMapScale * 1.2f;
+            float scale = TerraGenConfig.landformMapScale * landformScale;
 
             scale *= Math.Max(1, api.WorldManager.MapSizeY / 256f);
-            
+
             noiseLandforms = new NoiseLandforms(seed, api, scale);
 
             int woctaves = 2;

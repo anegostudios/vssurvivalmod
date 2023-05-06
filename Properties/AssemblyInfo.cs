@@ -70,7 +70,9 @@ using Vintagestory.API.Config;
                     propickNodeSearchRadius: ""6"",
                     allowUndergroundFarming: ""false"",
                     temporalGearRespawnUses: ""20"",
-                    temporalStormSleeping: ""0""
+                    temporalStormSleeping: ""0"",
+                    upheavelCommonness: ""0.3"",
+                    landformScale: ""1""
 			    }
 		    },
 		    {
@@ -231,8 +233,9 @@ using Vintagestory.API.Config;
             { category: ""worldgen"", code: ""worldClimate"", dataType: ""dropdown"", values: [""realistic"", ""patchy""], names: [""Realistic"", ""Patchy""], default: ""realistic"", onlyDuringWorldCreate: true },
             { category: ""worldgen"", code: ""landcover"", dataType: ""dropdown"", values: [""0"", ""0.1"", ""0.2"", ""0.3"", ""0.4"", ""0.5"", ""0.6"", ""0.7"", ""0.8"", ""0.9"", ""1""], names: [""~0%"", ""10%"", ""20%"", ""30%"", ""40%"", ""50%"", ""60%"", ""70%"", ""80%"", ""90%"", ""100%""], default: ""1"", onlyDuringWorldCreate: true },
             { category: ""worldgen"", code: ""oceanscale"", dataType: ""dropdown"", values: [""0.1"", ""0.25"", ""0.5"", ""0.75"", ""1"", ""1.25"", ""1.5"", ""1.75"", ""2"", ""3"", ""4""], names: [""10%"", ""25%"", ""50%"", ""75%"", ""100%"", ""125%"", ""150%"", ""175%"", ""200%"", ""300%"", ""400%""], default: ""1"", onlyDuringWorldCreate: true },
-            { category: ""worldgen"", code: ""upheavelCommonness"", dataType: ""dropdown"", values: [""0"", ""0.1"", ""0.2"", ""0.3"", ""0.4"", ""0.5"", ""0.6"", ""0.7"", ""0.8"", ""0.9"", ""1""], names: [""0%"", ""10%"", ""20%"", ""30%"", ""40%"", ""50%"", ""60%"", ""70%"", ""80%"", ""90%"", ""100%""], default: ""0.4"", onlyDuringWorldCreate: true },
+            { category: ""worldgen"", code: ""upheavelCommonness"", dataType: ""dropdown"", values: [""0"", ""0.1"", ""0.2"", ""0.3"", ""0.4"", ""0.5"", ""0.6"", ""0.7"", ""0.8"", ""0.9"", ""1""], names: [""0%"", ""10%"", ""20%"", ""30%"", ""40%"", ""50%"", ""60%"", ""70%"", ""80%"", ""90%"", ""100%""], default: ""0.3"", onlyDuringWorldCreate: true },
             { category: ""worldgen"", code: ""geologicActivity"", dataType: ""dropdown"", values: [""0"", ""0.05"", ""0.1"", ""0.2"", ""0.4""], names: [""None"", ""Rare"", ""Uncommon"", ""Common"", ""Very Common""], default: ""0.05"", onlyDuringWorldCreate: true },
+            { category: ""worldgen"", code: ""landformScale"", dataType: ""dropdown"", values: [""0.5"", ""0.6"", ""0.7"", ""0.8"", ""0.9"", ""1.0"", ""1.1"", ""1.2"", ""1.3"", ""1.4"", ""1.5""], names: [""50%"", ""60%"", ""70%"", ""80%"", ""90%"", ""100%"", ""110%"", ""120%"", ""130%"", ""140%"", ""150%""], default: ""1"", onlyDuringWorldCreate: true },
 
 
             { category: ""worldgen"", code: ""worldWidth"", dataType: ""dropdown"", values: [""8192000"", ""4096000"", ""2048000"", ""1024000"", ""600000"", ""512000"", ""256000"", ""102400"", ""51200"", ""25600"", ""10240"", ""5120"", ""1024"", ""512"", ""384"", ""256"", ""128"", ""64"", ""32"" ], names: [""8 mil blocks (Experimental)"", ""4 mil blocks (Experimental)"", ""2 mil blocks (Experimental)"", ""1 mil blocks"", ""600k blocks"", ""512k blocks"", ""256k blocks"", ""102k blocks"", ""51k blocks"", ""25k blocks"", ""10k blocks"", ""5120 blocks"", ""1024 blocks"", ""512 blocks"", ""384 blocks"", ""256 blocks"", ""128 blocks"", ""64 blocks"", ""32 blocks""], default: ""1024000"", onlyDuringWorldCreate: true },

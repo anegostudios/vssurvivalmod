@@ -81,8 +81,14 @@ namespace Vintagestory.GameContent
             Vec3d pos = null;
             if (attr.HasAttribute("structureIndex"))
             {
-                pos = getStructureCenter(attr);
-            } else
+                try
+                {
+                    pos = getStructureCenter(attr);
+                }
+                catch (Exception e) { api.Logger.Error(e); }
+            }
+
+            if (pos == null)
             {
                 foreach (var val in storyStructures.storyStructureInstances)
                 {

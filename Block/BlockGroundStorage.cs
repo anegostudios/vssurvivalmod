@@ -248,7 +248,7 @@ namespace Vintagestory.GameContent
                     return false;
                 }
 
-                roundRad = (float)Math.Atan2(attachFace.Normali.X, attachFace.Normali.Z); ;
+                roundRad = (float)Math.Atan2(attachFace.Normali.X, attachFace.Normali.Z);
             }
 
             world.BlockAccessor.SetBlock(BlockId, pos);

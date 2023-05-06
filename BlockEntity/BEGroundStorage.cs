@@ -438,7 +438,9 @@ namespace Vintagestory.GameContent
             {
                 if (!hotbarSlot.Empty && StorageProps.SprintKey && !player.Entity.Controls.CtrlKey) return false;
 
-                var hitPos = rotatedOffset(bs.HitPosition.ToVec3f(), MeshAngle);
+                // fix RAD rotation being CCW - since n=0, e=-PiHalf, s=Pi, w=PiHalf so we swap east and west by inverting sign
+                // changed since > 1.18.1 since east west on WE rotation was broken, to allow upgrading/downgrading without issues we invert the sign for all* usages instead of saving new value 
+                var hitPos = rotatedOffset(bs.HitPosition.ToVec3f(), -MeshAngle);
 
                 if (StorageProps.Layout == EnumGroundStorageLayout.Quadrants && inventory.Empty)
                 {
@@ -546,7 +548,7 @@ namespace Vintagestory.GameContent
                     }
 
                 case EnumGroundStorageLayout.Quadrants:
-                    var hitPos = rotatedOffset(bs.HitPosition.ToVec3f(), MeshAngle);
+                    var hitPos = rotatedOffset(bs.HitPosition.ToVec3f(),-MeshAngle);
                     int pos = ((hitPos.X > 0.5) ? 2 : 0) + ((hitPos.Z > 0.5) ? 1 : 0);
                     return inventory[pos];
 
@@ -1032,7 +1034,7 @@ namespace Vintagestory.GameContent
             for (int i = 0; i < tfMatrices.Length; i++)
             {
                 Vec3f off = offs[i];
-                off = new Matrixf().RotateY(-MeshAngle).TransformVector(off.ToVec4f(0)).XYZ;
+                off = new Matrixf().RotateY(MeshAngle).TransformVector(off.ToVec4f(0)).XYZ;
 
                 tfMatrices[i] =
                     new Matrixf()

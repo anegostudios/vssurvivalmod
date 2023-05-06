@@ -378,7 +378,7 @@ namespace Vintagestory.ServerMods
 
                 columnResults[chunkIndex2d].WaterBlockID = oceanicity > 1 ? GlobalConfig.saltWaterBlockId : GlobalConfig.waterBlockId;
 
-                /*if (Math.Abs(distY) > 10)
+                /*if (Math.Abs(distY) > 1)
                 {
                     int chunkIndex = ChunkIndex3d(lX, 250 % 32, lZ);
                     chunks[250 / 32].Data[chunkIndex] = cblockId;

@@ -172,6 +172,7 @@ namespace Vintagestory.ServerMods
             upheavelCommonness = worldConfig.GetString("upheavelCommonness", "0.4").ToFloat(0.4f);
             float landcover = worldConfig.GetString("landcover", "1").ToFloat(1f);
             float oceanscale = worldConfig.GetString("oceanscale", "1").ToFloat(1f);
+            float landformScale = worldConfig.GetString("landformScale", "1.2f").ToFloat(1.2f);
 
             switch (climate)
             {
@@ -227,7 +228,7 @@ namespace Vintagestory.ServerMods
             flowerGen = GetForestMapGen(seed + 223, TerraGenConfig.forestMapScale);
             beachGen = GetBeachMapGen(seed + 2273, TerraGenConfig.beachMapScale);
             geologicprovinceGen = GetGeologicProvinceMapGen(seed + 3, sapi);
-            landformsGen = GetLandformMapGen(seed + 4, noiseClimate, sapi);
+            landformsGen = GetLandformMapGen(seed + 4, noiseClimate, sapi, landformScale);
 
             sapi.World.Calendar.OnGetLatitude = getLatitude;
 
@@ -482,13 +483,14 @@ namespace Vintagestory.ServerMods
         }
 
 
-        public static MapLayerBase GetLandformMapGen(long seed, NoiseClimate climateNoise, ICoreServerAPI api)
+        public static MapLayerBase GetLandformMapGen(long seed, NoiseClimate climateNoise, ICoreServerAPI api, float landformScale)
         {
-            MapLayerBase landforms = new MapLayerLandforms(seed + 12, climateNoise, api);
+            MapLayerBase landforms = new MapLayerLandforms(seed + 12, climateNoise, api, landformScale);
             landforms.DebugDrawBitmap(DebugDrawMode.LandformRGB, 0, 0, "Landforms 1 - Wobble Landforms");
 
             return landforms;
         }
+
 
     }
     
