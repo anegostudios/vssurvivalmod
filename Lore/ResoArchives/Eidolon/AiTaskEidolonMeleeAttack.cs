@@ -19,7 +19,7 @@ namespace Vintagestory.GameContent
         {
             var pos = entity.Pos.XYZ;
             // Damage and knockback all nearby creatures
-            partitionUtil.WalkEntities(pos, 6f, (e) =>
+            partitionUtil.WalkInteractableEntities(pos, 6f, (e) =>
             {
                 if (e.EntityId == entity.EntityId || !e.IsInteractable) return true;
                 if (!e.Alive) return true;

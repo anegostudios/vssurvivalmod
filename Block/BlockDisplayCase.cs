@@ -1,7 +1,5 @@
-﻿using System.Collections.Generic;
-using Vintagestory.API.Client;
+﻿using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
@@ -37,19 +35,6 @@ namespace Vintagestory.GameContent
                     }
                 };
             });
-
-            if (capi != null)
-            {
-                capi.Event.RegisterEventBusListener(OnEventBusEvent);
-            }
-        }
-
-        private void OnEventBusEvent(string eventName, ref EnumHandling handling, IAttribute data)
-        {
-            if (eventName == "oncloseedittransforms")
-            {
-                ObjectCacheUtil.GetOrCreate(api, "meshesDisplay-" + "displaycase", () => new Dictionary<string, MeshData>()).Clear();
-            }
         }
 
         public override bool DoParticalSelection(IWorldAccessor world, BlockPos pos)

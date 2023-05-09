@@ -32,6 +32,29 @@ namespace Vintagestory.GameContent
             block = api.World.BlockAccessor.GetBlock(Pos);
             mat.RotateYDeg(block.Shape.rotateY);
             base.Initialize(api);
+            
+            if (api is ICoreClientAPI)
+            {
+                api.Event.RegisterEventBusListener(OnEventBusEvent);
+            }
+        }
+        
+
+        private void OnEventBusEvent(string eventname, ref EnumHandling handling, IAttribute data)
+        {
+            if (eventname != "genjsontransform" && eventname != "oncloseedittransforms" &&
+                eventname != "onapplytransforms") return;
+            if (Inventory.Empty) return;
+
+            for (var i = 0; i < DisplayedItems; i++)
+            {
+                if (Inventory[i].Empty) continue;
+                var key = getMeshCacheKey(Inventory[i].Itemstack);
+                MeshCache.Remove(key);
+            }
+
+            updateMeshes();
+            MarkDirty(true);
         }
 
         internal bool OnInteract(IPlayer byPlayer, BlockSelection blockSel)

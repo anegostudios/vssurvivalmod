@@ -20,13 +20,14 @@ namespace Vintagestory.GameContent
 
             if (IsPlayer)
             {
-                dialog?.EmitDialogue(comps);
+                if (comps.Length > 0) dialog?.EmitDialogue(comps);
                 return null;
-            } else
+            }
+            else
             {
                 var rnd = controller.NPCEntity.World.Rand;
 
-                dialog?.EmitDialogue(new RichTextComponent[] { comps[rnd.Next(comps.Length)] });
+                if (comps.Length > 0) dialog?.EmitDialogue(new RichTextComponent[] { comps[rnd.Next(comps.Length)] });
                 return JumpTo != null ? JumpTo : "next";
             }
         }
@@ -36,7 +37,7 @@ namespace Vintagestory.GameContent
             List<RichTextComponent> comps = new List<RichTextComponent>();
             var api = controller.NPCEntity.Api;
 
-            if (api.Side == EnumAppSide.Client) return comps.ToArray();
+            if (api.Side != EnumAppSide.Client) return comps.ToArray();
 
             var font = CairoFont.WhiteSmallText().WithLineHeightMultiplier(1.2);
 

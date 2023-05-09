@@ -26,7 +26,7 @@ namespace Vintagestory.Client.NoObf
         {
             List<EntityAgent> foundBosses = new List<EntityAgent>();
 
-            partUtil.WalkEntities(capi.World.Player.Entity.Pos.XYZ, 30, (e) => {
+            partUtil.WalkInteractableEntities(capi.World.Player.Entity.Pos.XYZ, 30, (e) => {
                 EntityBehaviorBoss bh;
                 if (e.Alive && (bh = e.GetBehavior<EntityBehaviorBoss>()) != null)
                 {

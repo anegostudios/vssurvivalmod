@@ -130,7 +130,7 @@ namespace Vintagestory.GameContent
             float range = maxDist;
             lastSearchTotalMs = entity.World.ElapsedMilliseconds;
 
-            targetEntity = partitionUtil.GetNearestEntity(entity.ServerPos.XYZ, range, (e) => IsTargetableEntity(e, range));
+            targetEntity = partitionUtil.GetNearestInteractableEntity(entity.ServerPos.XYZ, range, (e) => IsTargetableEntity(e, range));
 
             return targetEntity != null;
         }
@@ -170,7 +170,7 @@ namespace Vintagestory.GameContent
                 if (entity.World.Rand.NextDouble() < creatureSpawnChance)
                 {
                     int count = 0;
-                    partitionUtil.WalkEntities(pos, 7f, (e) => { if (e.Code.Equals(creatureCode) && e.Alive) count++; return true; });
+                    partitionUtil.WalkInteractableEntities(pos, 7f, (e) => { if (e.Code.Equals(creatureCode) && e.Alive) count++; return true; });
 
                     creaturesLeftToSpawn = Math.Max(0, GameMath.RoundRandom(entity.World.Rand, creatureSpawnCount) - count);
                 }
@@ -184,7 +184,7 @@ namespace Vintagestory.GameContent
                 }
 
                 // Damage and knockback nearby creatures
-                partitionUtil.WalkEntities(pos, 9f, (e) =>
+                partitionUtil.WalkInteractableEntities(pos, 9f, (e) =>
                 {
                     if (e.EntityId == entity.EntityId || !e.IsInteractable) return true;
                     if (!e.Alive || !e.OnGround) return true;

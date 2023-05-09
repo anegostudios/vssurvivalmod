@@ -1,10 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
@@ -60,7 +58,18 @@ namespace Vintagestory.GameContent
             if (api is ICoreClientAPI)
             {
                 loadToolMeshes();
+                api.Event.RegisterEventBusListener(OnEventBusEvent);
             }
+        }
+        
+
+        private void OnEventBusEvent(string eventname, ref EnumHandling handling, IAttribute data)
+        {
+            if (eventname != "genjsontransform" && eventname != "oncloseedittransforms" &&
+                eventname != "onapplytransforms") return;
+            
+            loadToolMeshes();
+            MarkDirty(true);
         }
 
         protected virtual float Inventory_OnAcquireTransitionSpeed(EnumTransitionType transType, ItemStack stack, float baseMul)

@@ -333,6 +333,7 @@ namespace Vintagestory.GameContent
                 .Set("rangedWeaponsAcc", "wearablemod", allmod.rangedWeaponsAcc, true)
                 .Set("rangedWeaponsSpeed", "wearablemod", allmod.rangedWeaponsSpeed, true)
             ;
+            entity.walkSpeed = entity.Stats.GetBlended("walkspeed");
 
             entity.WatchedAttributes.SetBool("canEat", allmod.canEat);
         }

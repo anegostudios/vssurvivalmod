@@ -288,7 +288,7 @@ namespace Vintagestory.GameContent
         private bool SuitablePosition(IBlockAccessor blockAccessor, BlockSelection blockSel)
         {
             Block attachingBlock = blockAccessor.GetBlock(blockSel.Position);
-            if (attachingBlock.SideSolid[blockSel.Face.Index] || (attachingBlock is BlockMicroBlock && (blockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityMicroBlock).sideAlmostSolid[blockSel.Face.Index]))
+            if (attachingBlock.SideSolid[blockSel.Face.Index] || (attachingBlock is BlockMicroBlock && (blockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityMicroBlock)?.sideAlmostSolid[blockSel.Face.Index] == true))
             {
                 EnumBlockMaterial targetMaterial = attachingBlock.GetBlockMaterial(blockAccessor, blockSel.Position);
                 for (int i = 0; i < paintableOnBlockMaterials.Length; i++) if (targetMaterial == paintableOnBlockMaterials[i]) return true;
