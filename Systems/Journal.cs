@@ -154,7 +154,7 @@ namespace Vintagestory.GameContent
         {
             this.capi = api;
 
-            capi.Input.RegisterHotKey("journal", "Journal", GlKeys.J, HotkeyType.CharacterControls);
+            capi.Input.RegisterHotKey("journal", Lang.Get("Journal"), GlKeys.J, HotkeyType.CharacterControls);
             capi.Input.SetHotKeyHandler("journal", OnHotkeyJournal);
 
             clientChannel =

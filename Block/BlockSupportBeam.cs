@@ -120,6 +120,13 @@ namespace Vintagestory.GameContent
                         return;
                     }
 
+                    var player = (byEntity as EntityPlayer)?.Player;
+                    if (!api.World.Claims.TryAccess(player, ws.startPos, EnumBlockAccessFlags.BuildOrBreak))
+                    {
+                        player.InventoryManager.ActiveHotbarSlot.MarkDirty();
+                        return;
+                    }
+
                     api.World.BlockAccessor.SetBlock(ws.block.Id, ws.startPos);
                     be = api.World.BlockAccessor.GetBlockEntity(ws.startPos);
                     beh = be?.GetBehavior<BEBehaviorSupportBeam>();
@@ -131,6 +138,7 @@ namespace Vintagestory.GameContent
 
                 if (nowEndOffset.DistanceTo(ws.startOffset) < 0.01f)
                 {
+                    
                     return;
                 }
                      

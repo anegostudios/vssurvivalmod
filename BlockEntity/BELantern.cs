@@ -125,7 +125,7 @@ namespace Vintagestory.GameContent
                 sb.AppendLine(Lang.Get("lantern-materialwithpanels", Lang.Get("material-" + material), Lang.Get("block-glass-" + glass)));
             } else
             {
-                sb.AppendLine(Lang.Get("lantern-materialwithliningandpanels", Lang.Get("material-" + material), lining, Lang.Get("block-glass-"+glass)));
+                sb.AppendLine(Lang.Get("lantern-materialwithliningandpanels", Lang.Get("material-" + material), Lang.Get("material-" + lining), Lang.Get("block-glass-"+glass)));
             }
         }
 

@@ -48,7 +48,7 @@ namespace Vintagestory.GameContent
             SingleComposer = capi.Gui
                 .CreateCompo("blockentitytexteditordialog", dialogBounds)
                 .AddShadedDialogBG(bgBounds)
-                .AddDialogTitleBar("Edit book", OnTitleBarClose)
+                .AddDialogTitleBar(Lang.Get("Edit book"), OnTitleBarClose)
                 .BeginChildElements(bgBounds)
                     .AddTextInput(titleBounds, null, CairoFont.TextInput().WithFontSize(18), "title")
                     .AddTextArea(textAreaBounds, onTextChanged, font, "text")

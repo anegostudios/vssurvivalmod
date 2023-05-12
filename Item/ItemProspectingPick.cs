@@ -542,7 +542,7 @@ namespace Vintagestory.GameContent
 			Block block = world.BlockAccessor.GetBlock(blockSel.Position);
 			block.OnBlockBroken(world, blockSel.Position, byPlayer, 0);
 
-			if (!block.Code.Path.StartsWith("rock") && !block.Code.Path.StartsWith("ore")) return;
+            if (!isPropickable(block)) return;
 
 			IServerPlayer splr = byPlayer as IServerPlayer;
 			if (splr == null) return;
@@ -583,7 +583,12 @@ namespace Vintagestory.GameContent
 			}
 		}
 
-		protected virtual string resultTextByQuantity(int value)
+        private bool isPropickable(Block block)
+        {
+            return block?.Attributes?["propickable"].AsBool(false) == true;
+        }
+
+        protected virtual string resultTextByQuantity(int value)
 		{
 			if (value < 10)
 			{
@@ -620,7 +625,7 @@ namespace Vintagestory.GameContent
 
             block.OnBlockBroken(world, blockSel.Position, byPlayer, dropMul);
 
-            if (!block.Code.Path.StartsWith("rock") && !block.Code.Path.StartsWith("ore")) return;
+            if (!isPropickable(block)) return;
 
             IServerPlayer splr = byPlayer as IServerPlayer;
 

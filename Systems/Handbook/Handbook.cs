@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
@@ -32,7 +33,7 @@ namespace Vintagestory.GameContent
         {
             this.capi = api;
 
-            api.Input.RegisterHotKeyFirst("handbook", "Show Handbook", GlKeys.H, HotkeyType.HelpAndOverlays);
+            api.Input.RegisterHotKeyFirst("handbook", Lang.Get("Show Handbook"), GlKeys.H, HotkeyType.HelpAndOverlays);
             api.Input.SetHotKeyHandler("handbook", OnHelpHotkey);
 
             api.Event.LevelFinalize += Event_LevelFinalize;
