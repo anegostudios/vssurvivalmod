@@ -455,7 +455,7 @@ namespace Vintagestory.GameContent
                 hourIntervall = 3 + rand.NextDouble();
 
                 baseClimate.Temperature = baseTemperature;
-                ClimateCondition conds = Api.World.BlockAccessor.GetClimateAt(Pos, baseClimate, EnumGetClimateMode.ForSuppliedDate_TemperatureOnly, totalHoursLastUpdate / Api.World.Calendar.HoursPerDay);
+                ClimateCondition conds = Api.World.BlockAccessor.GetClimateAt(Pos, baseClimate, EnumGetClimateMode.ForSuppliedDate_TemperatureRainfallOnly, totalHoursLastUpdate / Api.World.Calendar.HoursPerDay);
 
                 if (roomness > 0)
                 {
