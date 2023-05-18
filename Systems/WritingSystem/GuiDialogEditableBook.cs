@@ -137,13 +137,12 @@ namespace Vintagestory.GameContent
             if (ignoreTextChange) return;
             ignoreTextChange = true;
 
-            if (posLine >= maxLines && curPage+1 < maxPageCount && Pages.Count > curPage+1)
+            if (posLine >= maxLines && curPage + 1 < maxPageCount && Pages.Count - 1 > curPage + 1)
             {
                 var elem = SingleComposer.GetTextArea("text");
                 StoreCurrentPage();
-                curPage = Math.Min(curPage + 1, Pages.Count);
-                
-                updatePage();
+                nextPage();
+
                 elem.SetCaretPos(posInLine, posLine - maxLines);
             }
 
@@ -230,7 +229,7 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            if (args.KeyCode == (int)GlKeys.Right && curPage < Pages.Count && textArea.CaretPosWithoutLineBreaks == textArea.GetText().Length)
+            if (args.KeyCode == (int)GlKeys.Right && curPage < Pages.Count - 1 && textArea.CaretPosWithoutLineBreaks == textArea.GetText().Length)
             {
                 StoreCurrentPage();
                 curPage++;
@@ -241,7 +240,7 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            if (args.KeyCode == (int)GlKeys.Down && textArea.CaretPosLine + 1 >= maxLines && curPage < Pages.Count)
+            if (args.KeyCode == (int)GlKeys.Down && textArea.CaretPosLine + 1 >= maxLines && curPage < Pages.Count - 1)
             {
                 var pos = textArea.CaretPosInLine;
                 StoreCurrentPage();

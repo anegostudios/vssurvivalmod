@@ -19,6 +19,11 @@ namespace Vintagestory.GameContent
         RoomRegistry roomReg;
         protected Room room;
 
+        /// <summary>
+        /// On the server, we calculate the temperature only once each tick, to save repeating the same costly calculation.  A value -999 or less signifies not fresh and requires re-calculation
+        /// </summary>
+        protected float temperatureCached = -1000f;
+
         public override void Initialize(ICoreAPI api)
         {
             base.Initialize(api);
@@ -49,6 +54,9 @@ namespace Vintagestory.GameContent
                 return;
             }
 
+            temperatureCached = -1000f;     // reset the cached temperature; it will be updated by the first perishable in the loop below, if there is one
+            if (!HasTransitionables()) return;   // Skip the room check if this container currently has no transitionables
+
             room = roomReg.GetRoomForPosition(Pos);
             if (room.AnyChunkUnloaded != 0)  return;
 
@@ -64,8 +72,21 @@ namespace Vintagestory.GameContent
                     MarkDirty(true);
                 }
             }
+            temperatureCached = -1000f;      // reset the cached temperature in case any code needs to call GetPerishRate() between ticks of this entity
         }
-        
+
+        protected virtual bool HasTransitionables()
+        {
+            foreach (ItemSlot slot in Inventory)
+            {
+                ItemStack stack = slot.Itemstack;
+                if (stack == null) continue;
+
+                var props = stack.Collectible.GetTransitionableProperties(Api.World, stack, null);
+                if (props != null && props.Length > 0) return true;
+            }
+            return false;
+        }
 
         protected virtual float Inventory_OnAcquireTransitionSpeed(EnumTransitionType transType, ItemStack stack, float baseMul)
         {
@@ -81,8 +102,12 @@ namespace Vintagestory.GameContent
             BlockPos sealevelpos = Pos.Copy();
             sealevelpos.Y = Api.World.SeaLevel;
 
-            ClimateCondition cond = Api.World.BlockAccessor.GetClimateAt(sealevelpos);
-            if (cond == null) return 1;
+            float temperature = temperatureCached;
+            if (temperature < -999f)
+            {
+                temperature = Api.World.BlockAccessor.GetClimateAt(sealevelpos, EnumGetClimateMode.ForSuppliedDate_TemperatureOnly, Api.World.Calendar.TotalDays).Temperature;
+                if (Api.Side == EnumAppSide.Server) temperatureCached = temperature;   // Cache the temperature for the remainder of this tick
+            }
 
             if (room == null)
             {
@@ -112,7 +137,7 @@ namespace Vintagestory.GameContent
             // light outside rooms (e.g. chests on world surface) has low impact but still warms them above base air temperature
             else lightImportance += 0.5f * skyLightProportion;
             lightImportance = GameMath.Clamp(lightImportance, 0f, 1.5f);
-            float airTemp = cond.Temperature + GameMath.Clamp(lightlevel - 11, 0, 10) * lightImportance;
+            float airTemp = temperature + GameMath.Clamp(lightlevel - 11, 0, 10) * lightImportance;
 
 
             // Lets say deep soil temperature is a constant 5°C

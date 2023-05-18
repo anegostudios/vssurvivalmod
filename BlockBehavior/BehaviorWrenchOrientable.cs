@@ -28,7 +28,16 @@ namespace Vintagestory.GameContent
                 Item[] wrenches = world.SearchItems(new AssetLocation("wrench-*"));
                 foreach(Item item in wrenches) wrenchItems.Add(new ItemStack(item));
             }
-            if (wrenchItems.Count > 0)
+
+            bool notProtected = true;
+
+            if (world.Claims != null && world is IClientWorldAccessor clientWorld && clientWorld.Player?.WorldData.CurrentGameMode == EnumGameMode.Survival)
+            {
+                EnumWorldAccessResponse resp = world.Claims.TestAccess(clientWorld.Player, selection.Position, EnumBlockAccessFlags.BuildOrBreak);
+                if (resp != EnumWorldAccessResponse.Granted) notProtected = false;
+            }
+
+            if (wrenchItems.Count > 0 && notProtected)
             {
                 return new WorldInteraction[] { new WorldInteraction()
                 {

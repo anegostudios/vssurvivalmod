@@ -25,6 +25,7 @@ namespace Vintagestory.GameContent
         // Permanent data
         ItemStack workItemStack;
         int selectedRecipeId = -1;
+        ClayFormingRecipe selectedRecipe;
         public int AvailableVoxels;
         public bool[,,] Voxels = new bool[16, 16, 16];
 
@@ -42,7 +43,7 @@ namespace Vintagestory.GameContent
 
         public ClayFormingRecipe SelectedRecipe
         {
-            get { return Api != null ? Api.GetClayformingRecipes().FirstOrDefault(r => r.RecipeId == selectedRecipeId) : null; }
+            get { return selectedRecipe; }
         }
 
         public bool CanWorkCurrent
@@ -62,6 +63,7 @@ namespace Vintagestory.GameContent
         public override void Initialize(ICoreAPI api)
         {
             base.Initialize(api);
+            setSelectedRecipe(selectedRecipeId);
 
             if (workItemStack != null)
             {
@@ -97,7 +99,7 @@ namespace Vintagestory.GameContent
         {
             return selectionBoxes;
         }
-        
+
 
 
         public void PutClay(ItemSlot slot)
@@ -125,7 +127,7 @@ namespace Vintagestory.GameContent
             MarkDirty();
         }
 
-        
+
 
         public void OnBeginUse(IPlayer byPlayer, BlockSelection blockSel)
         {
@@ -137,10 +139,10 @@ namespace Vintagestory.GameContent
                 {
                     OpenDialog(Api.World as IClientWorldAccessor, Pos, byPlayer.InventoryManager.ActiveHotbarSlot.Itemstack);
                 }
-                
+
                 return;
             }
-            
+
         }
 
 
@@ -154,14 +156,14 @@ namespace Vintagestory.GameContent
 
             Vec3i voxelPos = new Vec3i((int)(16 * box.X1), (int)(16 * box.Y1), (int)(16 * box.Z1));
 
+            Api.World.FrameProfiler.Enter("clayforming");
             OnUseOver(byPlayer, voxelPos, facing, mouseBreakMode);
+            Api.World.FrameProfiler.Leave();
         }
 
-        
+
         public void OnUseOver(IPlayer byPlayer, Vec3i voxelPos, BlockFacing facing, bool mouseBreakMode)
         {
-            Api.World.FrameProfiler.Mark("clayform-onuseover-begin");
-
             if (SelectedRecipe == null) return;
             if (voxelPos == null)
             {
@@ -180,9 +182,11 @@ namespace Vintagestory.GameContent
 
             int toolMode = slot.Itemstack.Collectible.GetToolMode(slot, byPlayer, new BlockSelection() { Position = Pos });
             bool didmodify = false;
+            Api.World.FrameProfiler.Mark("clayform-modified1");
 
             int layer = NextNotMatchingRecipeLayer();
 
+            Api.World.FrameProfiler.Mark("clayform-modified2");
 
             if (toolMode == 3)
             {
@@ -193,14 +197,16 @@ namespace Vintagestory.GameContent
             if (toolMode != 3)
             {
                 didmodify = mouseBreakMode ? OnRemove(layer, voxelPos, facing, toolMode) : OnAdd(layer, voxelPos, facing, toolMode);
-            }                
+            }
+
+            Api.World.FrameProfiler.Mark("clayform-modified3");
 
             if (didmodify)
             {
                 Api.World.PlaySoundAt(new AssetLocation("sounds/player/clayform.ogg"), byPlayer, byPlayer, true, 8);
+                Api.World.FrameProfiler.Mark("clayform-playsound");
             }
 
-            Api.World.FrameProfiler.Mark("clayform-modified");
 
             layer = NextNotMatchingRecipeLayer(layer);
             RegenMeshAndSelectionBoxes(layer);
@@ -217,7 +223,7 @@ namespace Vintagestory.GameContent
                 Api.World.BlockAccessor.SetBlock(0, Pos);
                 return;
             }
-           
+
             CheckIfFinished(byPlayer, layer);
 
             Api.World.FrameProfiler.Mark("clayform-checkfinished");
@@ -235,6 +241,7 @@ namespace Vintagestory.GameContent
                 AvailableVoxels = 0;
                 ItemStack outstack = SelectedRecipe.Output.ResolvedItemstack.Clone();
                 selectedRecipeId = -1;
+                selectedRecipe = null;
 
                 if (outstack.StackSize == 1 && outstack.Class == EnumItemClass.Block)
                 {
@@ -341,12 +348,19 @@ namespace Vintagestory.GameContent
             return false;
         }
 
+
+        [Obsolete("retained only for mod compatibility, for performance please cache the bounds and use the other overload")]
         public bool InBounds(Vec3i voxelPos, int layer)
         {
             if (layer < 0 || layer >= 16) return false;
 
             Cuboidi bounds = LayerBounds(layer);
 
+            return InBounds(voxelPos, bounds);
+        }
+
+        public bool InBounds(Vec3i voxelPos, Cuboidi bounds)
+        {
             return voxelPos.X >= bounds.X1 && voxelPos.X <= bounds.X2 && voxelPos.Y >= 0 && voxelPos.Y < 16 && voxelPos.Z >= bounds.Z1 && voxelPos.Z <= bounds.Z2;
         }
 
@@ -354,20 +368,26 @@ namespace Vintagestory.GameContent
         {
             bool didremove = false;
             if (voxelPos.Y != layer) return didremove;
+            if (layer < 0 || layer >= 16) return didremove;
 
-            for (int dx = -(int)Math.Ceiling(radius/2f); dx <= radius /2; dx++)
+            Vec3i offPos = voxelPos.Clone();
+            for (int dx = -(int)Math.Ceiling(radius / 2f); dx <= radius / 2; dx++)
             {
+                offPos.X = voxelPos.X + dx;
+                if (offPos.X < 0 || offPos.X >= 16) continue;
+
                 for (int dz = -(int)Math.Ceiling(radius / 2f); dz <= radius / 2; dz++)
                 {
-                    Vec3i offPos = voxelPos.AddCopy(dx, 0, dz);
-                    
-                    if (offPos.X >= 0 && offPos.X < 16 && offPos.Y >= 0 && offPos.Y <= 16 && offPos.Z >= 0 && offPos.Z < 16)
-                    {
-                        bool hadVoxel = Voxels[offPos.X, offPos.Y, offPos.Z];
-                        didremove |= hadVoxel;
+                    offPos.Z = voxelPos.Z + dz;
 
-                        Voxels[offPos.X, offPos.Y, offPos.Z] = false;
-                        if(hadVoxel) AvailableVoxels++;
+                    if (offPos.Z >= 0 && offPos.Z < 16)
+                    {
+                        if (Voxels[offPos.X, offPos.Y, offPos.Z])
+                        {
+                            didremove = true;
+                            Voxels[offPos.X, offPos.Y, offPos.Z] = false;
+                            AvailableVoxels++;
+                        }
                     }
                 }
             }
@@ -412,7 +432,7 @@ namespace Vintagestory.GameContent
             if (Voxels[voxelPos.X, voxelPos.Y, voxelPos.Z])
             {
                 Vec3i offPoss = voxelPos.AddCopy(facing);
-                if (InBounds(offPoss, layer))
+                if (layer >= 0 && layer < 16 && InBounds(offPoss, LayerBounds(layer)))
                 {
                     return OnAdd(layer, offPoss, radius);
                 }
@@ -424,24 +444,29 @@ namespace Vintagestory.GameContent
 
             return false;
         }
-        
+
         bool OnAdd(int layer, Vec3i voxelPos, int radius)
         {
             bool didadd = false;
+            if (voxelPos.Y != layer) return didadd;
+            if (layer < 0 || layer >= 16) return didadd;
+            Cuboidi bounds = LayerBounds(layer);    // Create the Cuboidi for the InBounds check only once instead of potentially 9 times
 
+            Vec3i offPos = voxelPos.Clone();
             for (int dx = -(int)Math.Ceiling(radius / 2f); dx <= radius / 2; dx++)
             {
+                offPos.X = voxelPos.X + dx;
                 for (int dz = -(int)Math.Ceiling(radius / 2f); dz <= radius / 2; dz++)
                 {
-                    Vec3i offPos = voxelPos.AddCopy(dx, 0, dz);
-                    if (InBounds(offPos, layer) && offPos.Y == layer)
+                    offPos.Z = voxelPos.Z + dz;
+                    if (InBounds(offPos, bounds))
                     {
                         if (!Voxels[offPos.X, offPos.Y, offPos.Z])
                         {
                             AvailableVoxels--;
                             didadd = true;
+                            Voxels[offPos.X, offPos.Y, offPos.Z] = true;
                         }
-                        Voxels[offPos.X, offPos.Y, offPos.Z] = true;
                     }
                 }
             }
@@ -466,7 +491,7 @@ namespace Vintagestory.GameContent
                 {
                     for (int z = 0; z < 16; z++)
                     {
-                        if (y == 0 || Voxels[x, y, z] || (recipeVoxels!=null && y == layer && recipeVoxels[x, y, z]))
+                        if (y == 0 || Voxels[x, y, z] || (recipeVoxels != null && y == layer && recipeVoxels[x, y, z]))
                         {
                             boxes.Add(new Cuboidf(x / 16f, y / 16f, z / 16f, x / 16f + 1 / 16f, y / 16f + 1 / 16f, z / 16f + 1 / 16f));
                         }
@@ -511,7 +536,7 @@ namespace Vintagestory.GameContent
             workItemStack = tree.GetItemstack("workItemStack");
             baseMaterial = tree.GetItemstack("baseMaterial");
             AvailableVoxels = tree.GetInt("availableVoxels");
-            selectedRecipeId = tree.GetInt("selectedRecipeId", -1);
+            setSelectedRecipe(tree.GetInt("selectedRecipeId", -1));
 
             if (Api != null && workItemStack != null)
             {
@@ -597,6 +622,15 @@ namespace Vintagestory.GameContent
             return modified;
         }
 
+        protected void setSelectedRecipe(int newId)
+        {
+            if (selectedRecipeId == newId && (selectedRecipe != null || newId < 0)) return;
+
+            if (newId == -1) selectedRecipe = null;
+            else selectedRecipe = Api != null ? Api.GetClayformingRecipes().FirstOrDefault(r => r.RecipeId == newId) : null;
+
+            selectedRecipeId = newId;
+        }
 
 
         public void SendUseOverPacket(IPlayer byPlayer, Vec3i voxelPos, BlockFacing facing, bool mouseMode)
@@ -641,9 +675,12 @@ namespace Vintagestory.GameContent
                 if (recipe == null)
                 {
                     Api.World.Logger.Error("Client tried to selected clayforming recipe with id {0}, but no such recipe exists!");
+                    selectedRecipe = null;
+                    selectedRecipeId = -1;
                     return;
                 }
 
+                selectedRecipe = recipe;
                 selectedRecipeId = recipe.RecipeId;
                 // Tell server to save this chunk to disk again
                 MarkDirty();
@@ -664,7 +701,9 @@ namespace Vintagestory.GameContent
 
                 }
 
+                Api.World.FrameProfiler.Enter("clayforming");
                 OnUseOver(player, voxelPos, facing, mouseMode);
+                Api.World.FrameProfiler.Leave();
             }
         }
 
@@ -702,7 +741,8 @@ namespace Vintagestory.GameContent
                 (selectedIndex) => {
                     capi.Logger.VerboseDebug("Select clay from recipe {0}, have {1} recipes.", selectedIndex, recipes.Count);
 
-                    selectedRecipeId = recipes[selectedIndex].RecipeId;
+                    selectedRecipe = recipes[selectedIndex];
+                    selectedRecipeId = selectedRecipe.RecipeId;
                     capi.Network.SendBlockEntityPacket(pos.X, pos.Y, pos.Z, (int)EnumClayFormingPacket.SelectRecipe, SerializerUtil.Serialize(recipes[selectedIndex].RecipeId));
 
                     int layer = NextNotMatchingRecipeLayer();

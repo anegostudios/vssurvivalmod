@@ -50,12 +50,28 @@ namespace Vintagestory.GameContent
                 else return new ItemSlotLiquidOnly(self, 50);
             });
             inventory.BaseWeight = 1;
-            inventory.OnGetSuitability = (sourceSlot, targetSlot, isMerge) => (isMerge ? (inventory.BaseWeight + 3) : (inventory.BaseWeight + 1)) + (sourceSlot.Inventory is InventoryBasePlayer ? 1 : 0);
+            inventory.OnGetSuitability = GetSuitability;
 
 
             inventory.SlotModified += Inventory_SlotModified;
         }
 
+        private float GetSuitability(ItemSlot sourceSlot, ItemSlot targetSlot, bool isMerge)
+        {
+            // prevent for example rot overflowing into the liquid slot, on a shift-click, when slot[0] is already full of 64 x rot.   Rot can be accepted in the liquidOnly slot because it has containableProps (perhaps it shouldn't?)
+            if (targetSlot == inventory[1])
+            {
+                if (inventory[0].StackSize > 0)
+                {
+                    ItemStack currentStack = inventory[0].Itemstack;
+                    ItemStack testStack = sourceSlot.Itemstack;
+                    if (currentStack.Collectible.Equals(currentStack, testStack, GlobalConstants.IgnoredStackAttributes)) return -1;
+                }
+            }
+
+            // normal behavior
+            return (isMerge ? (inventory.BaseWeight + 3) : (inventory.BaseWeight + 1)) + (sourceSlot.Inventory is InventoryBasePlayer ? 1 : 0);
+        }
 
         protected override float Inventory_OnAcquireTransitionSpeed(EnumTransitionType transType, ItemStack stack, float baseMul)
         {
@@ -299,6 +315,7 @@ namespace Vintagestory.GameContent
         {
             base.FromTreeAttributes(tree, worldForResolving);
 
+            Sealed = tree.GetBool("sealed");      // Update Sealed status before we generate the new mesh!
             if (Api?.Side == EnumAppSide.Client)
             {
                 currentMesh = GenMesh();
@@ -306,7 +323,6 @@ namespace Vintagestory.GameContent
                 invDialog?.UpdateContents();
             }
 
-            Sealed = tree.GetBool("sealed");
             SealedSinceTotalHours = tree.GetDouble("sealedSinceTotalHours");
 
             if (Api != null)

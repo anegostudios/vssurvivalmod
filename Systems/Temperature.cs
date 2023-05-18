@@ -62,7 +62,7 @@ namespace Vintagestory.GameContent
         private void updateTemperature(ref ClimateCondition climate, BlockPos pos, double yearRel, double hourOfDay, double totalDays)
         {
             // 1. Global average temperature at this location
-            double heretemp = climate.Temperature;
+            double heretemp = climate.WorldGenTemperature;
 
             // 2. season based temperature
             // - Near the equator the variation seems to be only 5-10 degrees
@@ -106,11 +106,9 @@ namespace Vintagestory.GameContent
             double diurnalVariationAmplitude = 18 - climate.Rainfall * 13;
 
             // just before sunrise is the coldest time. We have no time zones in VS
-            // lets just hardcode 6 am for this for now
-            double distanceTo6Am = GameMath.SmoothStep(Math.Abs(GameMath.CyclicValueDistance(6, hourOfDay, 24) / 12f));
-
-            heretemp -= diurnalVariationAmplitude / 2;
-            heretemp += distanceTo6Am * diurnalVariationAmplitude;
+            // lets just hardcode 4 am for this for now, making 4pm the warmest time
+            double distanceTo6Am = GameMath.SmoothStep(Math.Abs(GameMath.CyclicValueDistance(4, hourOfDay, 24) / 12f));
+            heretemp += (distanceTo6Am - 0.5) * diurnalVariationAmplitude;
 
             // 4. Yearly random noise
             heretemp += YearlyTemperatureNoise.Noise(totalDays, 0) * 3;

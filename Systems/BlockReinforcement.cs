@@ -410,7 +410,7 @@ namespace Vintagestory.GameContent
 
         protected bool IsReinforcable(Block block)
         {
-            if (!reasonableReinforcements && (block.BlockMaterial == EnumBlockMaterial.Plant ||
+            if (reasonableReinforcements && (block.BlockMaterial == EnumBlockMaterial.Plant ||
                     block.BlockMaterial == EnumBlockMaterial.Liquid ||
                     block.BlockMaterial == EnumBlockMaterial.Snow ||
                     block.BlockMaterial == EnumBlockMaterial.Leaves ||
@@ -644,7 +644,7 @@ namespace Vintagestory.GameContent
         {
             if (api.Side == EnumAppSide.Client) return false;
 
-            if (!api.World.BlockAccessor.GetBlock(pos).HasBehavior<BlockBehaviorReinforcable>()) return false;
+            if (!api.World.BlockAccessor.GetBlock(pos, BlockLayersAccess.Solid).HasBehavior<BlockBehaviorReinforcable>()) return false;
 
             Dictionary<int, BlockReinforcement> reinforcmentsOfChunk = getOrCreateReinforcmentsAt(pos);
 

@@ -347,7 +347,7 @@ namespace Vintagestory.GameContent
                     case EnumFruitTreeState.DormantVernalized: FoliageState = EnumFoliageState.DormantNoLeaves; harvested = false; break;
                     case EnumFruitTreeState.Flowering: FoliageState = EnumFoliageState.Flowering; harvested = false; break;
                     case EnumFruitTreeState.Fruiting: FoliageState = EnumFoliageState.Fruiting; harvested = false; break;
-                    case EnumFruitTreeState.Ripe: if (!harvested) FoliageState = EnumFoliageState.Ripe; break;
+                    case EnumFruitTreeState.Ripe: FoliageState = harvested ? EnumFoliageState.Plain : EnumFoliageState.Ripe; break;
                     case EnumFruitTreeState.Empty: FoliageState = EnumFoliageState.Plain; break;
                     case EnumFruitTreeState.Young: FoliageState = EnumFoliageState.Plain; break;
                     

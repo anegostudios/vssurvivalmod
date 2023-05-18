@@ -271,6 +271,9 @@ namespace Vintagestory.ServerMods
                     }
 
                     if (!api.Event.TriggerTrySpawnEntity(wgenBlockAccessor, ref so.ForType, so.Pos, herdId)) continue;
+#if DEBUG
+                    api.Logger.VerboseDebug("worldgen spawned one " + so.ForType.Code.Path);
+#endif
 
                     if (wgenBlockAccessor.GetChunkAtBlockPos(pos.X, pos.Y, pos.Z) == null)
                     {

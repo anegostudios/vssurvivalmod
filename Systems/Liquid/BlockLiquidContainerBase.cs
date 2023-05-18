@@ -1249,10 +1249,8 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
+        public override void AddExtraHeldItemInfoPostMaterial(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world)
         {
-            base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
-
             GetContentInfo(inSlot, dsc, world);
         }
 
@@ -1260,26 +1258,39 @@ namespace Vintagestory.GameContent
         {
             float litres = GetCurrentLitres(pos);
 
+            StringBuilder sb = new StringBuilder();
             BlockEntityContainer becontainer = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityContainer;
-            if (becontainer == null) return "";
-
-            ItemSlot slot = becontainer.Inventory[GetContainerSlotId(pos)];
-            ItemStack contentStack = slot.Itemstack;
-
-
-            if (litres <= 0) return Lang.Get("Empty");
-
-            string incontainername = Lang.Get(contentStack.Collectible.Code.Domain + ":incontainer-" + contentStack.Class.ToString().ToLowerInvariant() + "-" + contentStack.Collectible.Code.Path);
-            string text = Lang.Get("Contents:") + "\n" + Lang.Get("{0} litres of {1}", litres, incontainername);
-            if (litres == 1)
+            if (becontainer != null)
             {
-                text = Lang.Get("Contents:") + "\n" + Lang.Get("{0} litre of {1}", litres, incontainername);
+                if (litres <= 0)
+                {
+                    sb.AppendLine(Lang.Get("Empty"));
+                }
+                else
+                {
+                    ItemSlot slot = becontainer.Inventory[GetContainerSlotId(pos)];
+                    ItemStack contentStack = slot.Itemstack;
+
+                    string incontainername = Lang.Get(contentStack.Collectible.Code.Domain + ":incontainer-" + contentStack.Class.ToString().ToLowerInvariant() + "-" + contentStack.Collectible.Code.Path);
+                    sb.AppendLine(Lang.Get("Contents:"));
+                    sb.AppendLine(" " + Lang.Get("{0} litres of {1}", litres, incontainername));
+                    string perishableInfo = PerishableInfoCompact(api, slot, 0, false);
+                    if (perishableInfo.Length > 2) sb.AppendLine(perishableInfo.Substring(2));
+                }
             }
-            
 
-            text += PerishableInfoCompact(api, slot, 0, false);
+            StringBuilder sb2 = new StringBuilder();
+            foreach (BlockBehavior bh in BlockBehaviors)
+            {
+                sb2.Append(bh.GetPlacedBlockInfo(world, pos, forPlayer));
+            }
+            if (sb2.Length > 0)
+            {
+                sb.AppendLine();             // Insert a blank line if there is more to add (e.g. reinforceable)
+                sb.Append(sb2.ToString());
+            }
 
-            return text;
+            return sb.ToString();
         }
 
 
@@ -1288,31 +1299,24 @@ namespace Vintagestory.GameContent
             float litres = GetCurrentLitres(inSlot.Itemstack);
             ItemStack contentStack = GetContent(inSlot.Itemstack);
 
-            if (litres <= 0) dsc.Append(Lang.Get("Empty"));
+            if (litres <= 0) dsc.AppendLine(Lang.Get("Empty"));
 
             else
             {
                 string incontainerrname = Lang.Get(contentStack.Collectible.Code.Domain + ":incontainer-" + contentStack.Class.ToString().ToLowerInvariant() + "-" + contentStack.Collectible.Code.Path);
-                if (litres == 1)
-                {
-                    dsc.Append(Lang.Get("{0} litre of {1}", litres, incontainerrname));
-                } else
-                {
-                    dsc.Append(Lang.Get("{0} litres of {1}", litres, incontainerrname));
-                }
+                dsc.AppendLine(Lang.Get("{0} litres of {1}", litres, incontainerrname));
 
                 var dummyslot = GetContentInDummySlot(inSlot, contentStack);
                 TransitionState[] states = contentStack.Collectible.UpdateAndGetTransitionStates(api.World, dummyslot);
                 if (states != null && !dummyslot.Empty)
                 {
-                    dsc.AppendLine();
                     bool nowSpoiling = false;
                     foreach (var state in states)
                     {
                         nowSpoiling |= AppendPerishableInfoText(dummyslot, dsc, world, state, nowSpoiling) > 0;
                     }
                 }
-                
+
             }
         }
 
@@ -1467,10 +1471,10 @@ namespace Vintagestory.GameContent
                     {
                         case EnumTransitionType.Perish:
 
-
+                            dsc.Append(comma);
                             if (transitionLevel > 0)
                             {
-                                dsc.Append(comma + Lang.Get("{0}% spoiled", (int)Math.Round(transitionLevel * 100)));
+                                dsc.Append(Lang.Get("{0}% spoiled", (int)Math.Round(transitionLevel * 100)));
                             }
                             else
                             {
@@ -1478,24 +1482,25 @@ namespace Vintagestory.GameContent
 
                                 if (freshHoursLeft / hoursPerday >= Api.World.Calendar.DaysPerYear)
                                 {
-                                    dsc.Append(comma + Lang.Get("fresh for {0} years", Math.Round(freshHoursLeft / hoursPerday / Api.World.Calendar.DaysPerYear, 1)));
+                                    dsc.Append(Lang.Get("fresh for {0} years", Math.Round(freshHoursLeft / hoursPerday / Api.World.Calendar.DaysPerYear, 1)));
                                 }
                                 else if (freshHoursLeft > hoursPerday)
                                 {
-                                    dsc.Append(comma + Lang.Get("fresh for {0} days", Math.Round(freshHoursLeft / hoursPerday, 1)));
+                                    dsc.Append(Lang.Get("fresh for {0} days", Math.Round(freshHoursLeft / hoursPerday, 1)));
                                 }
                                 else
                                 {
-                                    dsc.Append(comma + Lang.Get("fresh for {0} hours", Math.Round(freshHoursLeft, 1)));
+                                    dsc.Append(Lang.Get("fresh for {0} hours", Math.Round(freshHoursLeft, 1)));
                                 }
                             }
                             break;
 
                         case EnumTransitionType.Ripen:
 
+                            dsc.Append(comma);
                             if (transitionLevel > 0)
                             {
-                                dsc.Append(comma + Lang.Get("{1:0.#} days left to ripen ({0}%)", (int)Math.Round(transitionLevel * 100), (state.TransitionHours - state.TransitionedHours) / Api.World.Calendar.HoursPerDay / ripenRate));
+                                dsc.Append(Lang.Get("{1:0.#} days left to ripen ({0}%)", (int)Math.Round(transitionLevel * 100), (state.TransitionHours - state.TransitionedHours) / Api.World.Calendar.HoursPerDay / ripenRate));
                             }
                             else
                             {
@@ -1503,15 +1508,15 @@ namespace Vintagestory.GameContent
 
                                 if (freshHoursLeft / hoursPerday >= Api.World.Calendar.DaysPerYear)
                                 {
-                                    dsc.Append(comma + Lang.Get("will ripen in {0} years", Math.Round(freshHoursLeft / hoursPerday / Api.World.Calendar.DaysPerYear, 1)));
+                                    dsc.Append(Lang.Get("will ripen in {0} years", Math.Round(freshHoursLeft / hoursPerday / Api.World.Calendar.DaysPerYear, 1)));
                                 }
                                 else if (freshHoursLeft > hoursPerday)
                                 {
-                                    dsc.Append(comma + Lang.Get("will ripen in {0} days", Math.Round(freshHoursLeft / hoursPerday, 1)));
+                                    dsc.Append(Lang.Get("will ripen in {0} days", Math.Round(freshHoursLeft / hoursPerday, 1)));
                                 }
                                 else
                                 {
-                                    dsc.Append(comma + Lang.Get("will ripen in {0} hours", Math.Round(freshHoursLeft, 1)));
+                                    dsc.Append(Lang.Get("will ripen in {0} hours", Math.Round(freshHoursLeft, 1)));
                                 }
                             }
                             break;

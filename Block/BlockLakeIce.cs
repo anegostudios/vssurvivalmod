@@ -59,8 +59,8 @@ namespace Vintagestory.GameContent
         public override bool ShouldReceiveServerGameTicks(IWorldAccessor world, BlockPos pos, Random offThreadRandom, out object extra)
         {
             extra = null;
-            ClimateCondition conds = world.BlockAccessor.GetClimateAt(pos, EnumGetClimateMode.NowValues);
-            float chance = conds == null ? 0 : GameMath.Clamp((conds.Temperature - 2f) / 20f, 0, 1);
+            float temperature = world.BlockAccessor.GetClimateAt(pos, EnumGetClimateMode.ForSuppliedDate_TemperatureOnly, api.World.Calendar.TotalDays).Temperature;
+            float chance = GameMath.Clamp((temperature - 2f) / 20f, 0, 1);
             return offThreadRandom.NextDouble() < chance;
         }
 

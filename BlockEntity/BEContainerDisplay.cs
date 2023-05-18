@@ -237,6 +237,15 @@ namespace Vintagestory.GameContent
                 transform.EnsureDefaultValues();
                 mesh.ModelTransform(transform);
             }
+            else if (AttributeTransformCode == "onshelfTransform") // fallback to onDisplayTransform for onshelfTransform if it does not exist
+            {
+                if (stack.Collectible.Attributes?["onDisplayTransform"].Exists == true)
+                {
+                    ModelTransform transform = stack.Collectible.Attributes?["onDisplayTransform"].AsObject<ModelTransform>();
+                    transform.EnsureDefaultValues();
+                    mesh.ModelTransform(transform);
+                }
+            }
 
             if (stack.Class == EnumItemClass.Item && (stack.Item.Shape == null || stack.Item.Shape.VoxelizeTexture))
             {

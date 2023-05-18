@@ -26,8 +26,9 @@ namespace Vintagestory.GameContent
         public BlockCoalPile()
         {
             CollisionBoxesByFillLevel = new Cuboidf[9][];
+            CollisionBoxesByFillLevel[0] = new Cuboidf[0];
 
-            for (int i = 0; i <= 8; i++)
+            for (int i = 1; i < CollisionBoxesByFillLevel.Length; i++)
             {
                 CollisionBoxesByFillLevel[i] = new Cuboidf[] { new Cuboidf(0, 0, 0, 1, i * 0.125f, 1) };
             }
@@ -103,25 +104,24 @@ namespace Vintagestory.GameContent
 
         public int GetLayercount(IWorldAccessor world, BlockPos pos)
         {
-            BlockEntityCoalPile bea = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityCoalPile;
-            if (bea != null) return bea.Layers;
+            return GetLayercount(world.BlockAccessor, pos);
+        }
+
+        protected int GetLayercount(IBlockAccessor blockAccessor, BlockPos pos)
+        {
+            BlockEntityCoalPile bea = blockAccessor.GetBlockEntity(pos) as BlockEntityCoalPile;
+            if (bea != null && bea.inventory != null) return Math.Min(bea.Layers, CollisionBoxesByFillLevel.Length - 1);
             return 0;
         }
 
         public override Cuboidf[] GetCollisionBoxes(IBlockAccessor blockAccessor, BlockPos pos)
         {
-            BlockEntityCoalPile bea = blockAccessor.GetBlockEntity(pos) as BlockEntityCoalPile;
-            if (bea == null) return new Cuboidf[0];
-
-            return CollisionBoxesByFillLevel[bea.Layers];
+            return CollisionBoxesByFillLevel[GetLayercount(blockAccessor, pos)];
         }
 
         public override Cuboidf[] GetSelectionBoxes(IBlockAccessor blockAccessor, BlockPos pos)
         {
-            BlockEntityCoalPile bea = blockAccessor.GetBlockEntity(pos) as BlockEntityCoalPile;
-            if (bea == null) return new Cuboidf[0];
-
-            return CollisionBoxesByFillLevel[bea.Layers];
+            return CollisionBoxesByFillLevel[GetLayercount(blockAccessor, pos)];
         }
 
 

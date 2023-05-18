@@ -127,6 +127,7 @@ namespace Vintagestory.GameContent
             if (currentTutorialInst == null)
             {
                 capi.ShowChatMessage("No current tutorial selected.");
+                return;
             }
 
             string subcmd = args.PopWord();

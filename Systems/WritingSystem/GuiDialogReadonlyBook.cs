@@ -147,7 +147,7 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        private bool nextPage()
+        protected bool nextPage()
         {
             curPage = Math.Min(curPage + 1, Pages.Count - 1);
             updatePage();

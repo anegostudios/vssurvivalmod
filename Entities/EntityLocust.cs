@@ -71,7 +71,7 @@ namespace Vintagestory.GameContent
 
         public override bool ReceiveDamage(DamageSource damageSource, float damage)
         {
-            if (damageSource.SourceEntity is EntityEidolon) return false;
+            if (damageSource.GetCauseEntity() is EntityEidolon) return false;
 
             return base.ReceiveDamage(damageSource, damage);
         }

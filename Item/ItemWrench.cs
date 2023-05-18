@@ -72,8 +72,7 @@ namespace Vintagestory.GameContent
             var newcode = types[GameMath.Mod(index + dir, types.Count)];
             var newblock = api.World.GetBlock(newcode);
 
-            api.World.BlockAccessor.SetBlock(0, blockSel.Position);
-            api.World.BlockAccessor.SetBlock(newblock.Id, blockSel.Position);
+            api.World.BlockAccessor.ExchangeBlock(newblock.Id, blockSel.Position);
 
             api.World.PlaySoundAt(newblock.Sounds.Place, blockSel.Position.X + 0.5f, blockSel.Position.Y + 0.5f, blockSel.Position.Z + 0.5f, byPlayer);
             (api.World as IClientWorldAccessor)?.Player.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);

@@ -590,8 +590,8 @@ namespace Vintagestory.GameContent
         /// </summary>
         protected virtual int EnvironmentTemperature()
         {
-            var conds = Api.World.BlockAccessor.GetClimateAt(Pos, EnumGetClimateMode.NowValues);
-            return conds == null ? 20 : (int)conds.Temperature;
+            float temperature = Api.World.BlockAccessor.GetClimateAt(Pos, EnumGetClimateMode.ForSuppliedDate_TemperatureOnly, Api.World.Calendar.TotalDays).Temperature;
+            return (int)temperature;
         }
 
         public virtual float ChangeTemperature(float fromTemp, float toTemp, float dt)

@@ -165,10 +165,9 @@ namespace Vintagestory.GameContent
 
         private void TestHarvestable(float dt)
         {
-            ClimateCondition conds = Api.World.BlockAccessor.GetClimateAt(Pos, EnumGetClimateMode.NowValues);
-            if (conds == null) return;
+            float temp = Api.World.BlockAccessor.GetClimateAt(Pos, EnumGetClimateMode.ForSuppliedDate_TemperatureOnly, Api.World.Calendar.TotalDays).Temperature;
 
-            float temp = conds.Temperature + (roomness > 0 ? 5 : 0);
+            if (roomness > 0 ) temp += 5;
             actvitiyLevel = GameMath.Clamp(temp / 5f, 0f, 1f);
 
             // Reset timers during winter

@@ -24,15 +24,14 @@ namespace Vintagestory.GameContent
         }
 
         BlockPos tmpPos = new BlockPos();
-        ClimateCondition tmpCond = new ClimateCondition();
 
         private bool Event_OnTrySpawnEntity(IBlockAccessor blockAccessor, ref EntityProperties properties, Vec3d spawnPosition, long herdId)
         {
             if (properties.Server.SpawnConditions?.Runtime?.MaxQuantityByGroup?.Code.Path == "butterfly-*")
             {
                 tmpPos.Set((int)spawnPosition.X, (int)spawnPosition.Y, (int)spawnPosition.Z);
-                blockAccessor.GetClimateAt(tmpPos, tmpCond, EnumGetClimateMode.ForSuppliedDate_TemperatureOnly, sapi.World.Calendar.TotalDays);
-                if (tmpCond.Temperature < 0) return false;
+                float temperature = blockAccessor.GetClimateAt(tmpPos, EnumGetClimateMode.ForSuppliedDate_TemperatureOnly, sapi.World.Calendar.TotalDays).Temperature;
+                if (temperature < 0) return false;
             }
 
             return true;
@@ -68,8 +67,8 @@ namespace Vintagestory.GameContent
             }
 
 
-            ClimateCondition conds = api.World.BlockAccessor.GetClimateAt(Pos.AsBlockPos, EnumGetClimateMode.NowValues);
-            if (conds != null && conds.Temperature < 0)
+            float temperature = api.World.BlockAccessor.GetClimateAt(Pos.AsBlockPos, EnumGetClimateMode.ForSuppliedDate_TemperatureOnly, api.World.Calendar.TotalDays).Temperature;
+            if (temperature < 0)
             {
                 Die(EnumDespawnReason.Removed);
             }

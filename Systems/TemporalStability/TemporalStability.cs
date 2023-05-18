@@ -590,12 +590,13 @@ namespace Vintagestory.GameContent
 
         private void Event_OnEntityDeath(Entity entity, DamageSource damageSource)
         {
-            if (damageSource?.SourceEntity == null || !damageSource.SourceEntity.WatchedAttributes.HasAttribute("temporalStability")) return;
+            var damagedBy = damageSource?.GetCauseEntity();
+            if (damagedBy == null || !damagedBy.WatchedAttributes.HasAttribute("temporalStability")) return;
             if (entity.Properties.Attributes == null) return;
 
             float stabrecovery = entity.Properties.Attributes["onDeathStabilityRecovery"].AsFloat(0);
-            double ownstab = damageSource.SourceEntity.WatchedAttributes.GetDouble("temporalStability", 1);
-            damageSource.SourceEntity.WatchedAttributes.SetDouble("temporalStability", Math.Min(1, ownstab + stabrecovery));
+            double ownstab = damagedBy.WatchedAttributes.GetDouble("temporalStability", 1);
+            damagedBy.WatchedAttributes.SetDouble("temporalStability", Math.Min(1, ownstab + stabrecovery));
         }
 
         public float GetTemporalStability(BlockPos pos)

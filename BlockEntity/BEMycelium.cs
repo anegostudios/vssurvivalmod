@@ -100,9 +100,8 @@ namespace Vintagestory.GameContent
             bool isFruiting = grownMushroomOffsets.Length > 0;
             if (isFruiting && props.DieWhenTempBelow > -99)
             {
-                var conds = Api.World.BlockAccessor.GetClimateAt(Pos, EnumGetClimateMode.ForSuppliedDate_TemperatureOnly, Api.World.Calendar.TotalDays);
-                if (conds == null) return;
-                if (props.DieWhenTempBelow > conds.Temperature)
+                float temperature = Api.World.BlockAccessor.GetClimateAt(Pos, EnumGetClimateMode.ForSuppliedDate_TemperatureOnly, Api.World.Calendar.TotalDays).Temperature;
+                if (temperature < props.DieWhenTempBelow)
                 {
                     DestroyGrownMushrooms();
                     return;
@@ -121,10 +120,9 @@ namespace Vintagestory.GameContent
 
                 while (Api.World.Calendar.TotalDays - lastUpdateTotalDays > 1)
                 {
-                    var conds = Api.World.BlockAccessor.GetClimateAt(Pos, EnumGetClimateMode.ForSuppliedDate_TemperatureOnly, lastUpdateTotalDays + 0.5);
-                    if (conds == null) return;
+                    float temperature = Api.World.BlockAccessor.GetClimateAt(Pos, EnumGetClimateMode.ForSuppliedDate_TemperatureOnly, lastUpdateTotalDays + 0.5).Temperature;
 
-                    if (conds.Temperature > 5)
+                    if (temperature > 5)
                     {
                         mushroomsGrowingDays += Api.World.Calendar.TotalDays - lastUpdateTotalDays;
                     }

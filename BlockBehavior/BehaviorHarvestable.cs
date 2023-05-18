@@ -110,6 +110,7 @@ namespace Vintagestory.GameContent
                 }
 
                 ItemStack stack = harvestedStack.GetNextItemStack(dropRate);
+                if (stack == null) return;
                 var origStack = stack.Clone();
 
                 if (!byPlayer.InventoryManager.TryGiveItemstack(stack))
@@ -136,7 +137,15 @@ namespace Vintagestory.GameContent
         {
             if (harvestedStack != null)
             {
-                return new WorldInteraction[]
+                bool notProtected = true;
+
+                if (world.Claims != null && world is IClientWorldAccessor clientWorld && clientWorld.Player?.WorldData.CurrentGameMode == EnumGameMode.Survival)
+                {
+                    EnumWorldAccessResponse resp = world.Claims.TestAccess(clientWorld.Player, selection.Position, EnumBlockAccessFlags.Use);
+                    if (resp != EnumWorldAccessResponse.Granted) notProtected = false;
+                }
+
+                if (notProtected) return new WorldInteraction[]
                 {
                     new WorldInteraction()
                     {

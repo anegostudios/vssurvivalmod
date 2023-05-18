@@ -357,13 +357,13 @@ namespace Vintagestory.GameContent
             string t = secondary ? "secondary" : "primary";
             string langcode = $"meal-ingredient-{code}-{t}-{getInternalName(itemstack)}";
 
-            if (Lang.HasTranslation(langcode))
+            if (Lang.HasTranslation(langcode, true))
             {
-                return Lang.Get(langcode);
+                return Lang.GetMatching(langcode);
             }
 
             langcode = $"meal-ingredient-{code}-{t}-{itemstack.Collectible.FirstCodePart()}";
-            return Lang.Get(langcode);
+            return Lang.GetMatching(langcode);
         }
 
         private string getInternalName(ItemStack itemstack)

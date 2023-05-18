@@ -66,6 +66,7 @@ namespace Vintagestory.GameContent
 
         public event FruitingStateChangeDelegate OnFruitingStateChange;
         protected EnumFruitTreeState state = EnumFruitTreeState.Young;
+        public EnumFruitTreeState workingState;
 
         public EnumFruitTreeState State
         {

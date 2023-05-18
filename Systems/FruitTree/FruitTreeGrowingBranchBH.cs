@@ -112,10 +112,11 @@ namespace Vintagestory.GameContent
             double growthStepDays = props.GrowthStepDays;
 
 
+            var baseClimate = Api.World.BlockAccessor.GetClimateAt(ownBe.Pos, EnumGetClimateMode.WorldGenValues);
             while (totalDays - ownBe.lastGrowthAttemptTotalDays > growthStepDays)
             {
                 // Get midday temperature for testing (which is roughly the daily average)
-                float temp = Api.World.BlockAccessor.GetClimateAt(ownBe.Pos, EnumGetClimateMode.ForSuppliedDate_TemperatureOnly, (int)ownBe.lastGrowthAttemptTotalDays + hoursPerDay/2f)?.Temperature ?? 0;
+                float temp = Api.World.BlockAccessor.GetClimateAt(ownBe.Pos, baseClimate, EnumGetClimateMode.ForSuppliedDate_TemperatureOnly, (int)ownBe.lastGrowthAttemptTotalDays + hoursPerDay/2f).Temperature;
                 if (temp < 12)
                 {
                     ownBe.lastGrowthAttemptTotalDays += growthStepDays;

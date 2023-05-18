@@ -73,8 +73,8 @@ namespace Vintagestory.GameContent
                         BlockFacing.HORIZONTALS[i].IterateThruFacingOffsets(nPos);
                         if (world.BlockAccessor.GetBlock(nPos, BlockLayersAccess.Fluid) is BlockLakeIce || world.BlockAccessor.GetBlock(nPos).Replaceable < 6000)
                         {
-                            ClimateCondition conds = world.BlockAccessor.GetClimateAt(pos, EnumGetClimateMode.NowValues);
-                            if (conds != null && conds.Temperature <= freezingPoint)
+                            float temperature = world.BlockAccessor.GetClimateAt(pos, EnumGetClimateMode.ForSuppliedDate_TemperatureOnly, api.World.Calendar.TotalDays).Temperature;
+                            if (temperature <= freezingPoint)
                             {
                                 return true;
                             }

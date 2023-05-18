@@ -94,15 +94,9 @@ namespace Vintagestory.GameContent
         {
             if (Api.World.Calendar.TotalHours < totalHoursTillGrowth) return;
 
-            ClimateCondition conds = Api.World.BlockAccessor.GetClimateAt(Pos, EnumGetClimateMode.NowValues);
-            if (conds == null || conds.Temperature < 5)
+            float temperature = Api.World.BlockAccessor.GetClimateAt(Pos, EnumGetClimateMode.ForSuppliedDate_TemperatureOnly, Api.World.Calendar.TotalDays).Temperature;
+            if (temperature < 5)
             {
-                return;
-            }
-
-            if (conds.Temperature < 0)
-            {
-                totalHoursTillGrowth = Api.World.Calendar.TotalHours + (float)Api.World.Rand.NextDouble() * 72 * GrowthRateMod;
                 return;
             }
 
@@ -157,7 +151,7 @@ namespace Vintagestory.GameContent
                 mossGrowthChance = 0
             };
 
-            sapi.World.TreeGenerators[code].GrowTree(Api.World.BulkBlockAccessor, Pos.DownCopy(), pa);
+            gen.GrowTree(Api.World.BulkBlockAccessor, Pos.DownCopy(), pa);
 
             Api.World.BulkBlockAccessor.Commit();
         }

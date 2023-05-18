@@ -89,7 +89,13 @@ namespace Vintagestory.GameContent
 
                 if (entity != null)
                 {
-                    entity.ReceiveDamage(new DamageSource() { Source = EnumDamageSource.Entity, SourceEntity = this, Type = EnumDamageType.BluntAttack }, Damage);
+                    entity.ReceiveDamage(new DamageSource
+                    {
+                        Source = EnumDamageSource.Entity, 
+                        SourceEntity = this, 
+                        CauseEntity = FiredBy, 
+                        Type = EnumDamageType.BluntAttack 
+                    }, Damage);
                     OnImpact();
                     return;
                 }

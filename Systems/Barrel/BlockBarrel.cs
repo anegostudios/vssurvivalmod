@@ -94,6 +94,20 @@ namespace Vintagestory.GameContent
         // Override to drop the barrel empty and drop its contents instead
         public override void OnBlockBroken(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1)
         {
+            // First, check for behaviors preventing default, for example Reinforcement system
+            bool preventDefault = false;
+            foreach (BlockBehavior behavior in BlockBehaviors)
+            {
+                EnumHandling handled = EnumHandling.PassThrough;
+
+                behavior.OnBlockBroken(world, pos, byPlayer, ref handled);
+                if (handled == EnumHandling.PreventDefault) preventDefault = true;
+                if (handled == EnumHandling.PreventSubsequent) return;
+            }
+
+            if (preventDefault) return;
+
+
             if (world.Side == EnumAppSide.Server && (byPlayer == null || byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative))
             {
                 ItemStack[] drops = new ItemStack[] { new ItemStack(this) };
@@ -422,8 +436,16 @@ namespace Vintagestory.GameContent
         public override string GetPlacedBlockInfo(IWorldAccessor world, BlockPos pos, IPlayer forPlayer)
         {
             string text = base.GetPlacedBlockInfo(world, pos, forPlayer);
+            string aftertext = "";
+            int j = text.IndexOf(Environment.NewLine + Environment.NewLine);
+            if (j > 0)
+            {
+                aftertext = text.Substring(j);
+                text = text.Substring(0, j);
+            }
 
             float litres = GetCurrentLitres(pos);
+
             if (litres <= 0) text = "";
 
             BlockEntityBarrel bebarrel = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityBarrel;
@@ -432,8 +454,8 @@ namespace Vintagestory.GameContent
                 ItemSlot slot = bebarrel.Inventory[0];
                 if (!slot.Empty)
                 {
-                    if (text.Length > 0) text += "\n";
-                    else text += Lang.Get("Contents:") + "\n";
+                    if (text.Length > 0) text += " ";
+                    else text += Lang.Get("Contents:") + "\n ";
 
                     text += Lang.Get("{0}x {1}", slot.Itemstack.StackSize, slot.Itemstack.GetName());
 
@@ -443,15 +465,14 @@ namespace Vintagestory.GameContent
                 if (bebarrel.Sealed && bebarrel.CurrentRecipe != null)
                 {
                     double hoursPassed = world.Calendar.TotalHours - bebarrel.SealedSinceTotalHours;
-                    string timePassedText = hoursPassed > 24 ? Lang.Get("{0} days", Math.Round(hoursPassed / api.World.Calendar.HoursPerDay, 1)) : Lang.Get("{0} hours", Math.Round(hoursPassed));
+                    if (hoursPassed < 3) hoursPassed = Math.Max(0, hoursPassed + 0.2);  // Small addition to deal with possible server/client calendar desync
+                    string timePassedText = hoursPassed > 24 ? Lang.Get("{0} days", Math.Floor(hoursPassed / api.World.Calendar.HoursPerDay * 10) / 10) : Lang.Get("{0} hours", Math.Floor(hoursPassed));
                     string timeTotalText = bebarrel.CurrentRecipe.SealHours > 24 ? Lang.Get("{0} days", Math.Round(bebarrel.CurrentRecipe.SealHours / api.World.Calendar.HoursPerDay, 1)) : Lang.Get("{0} hours", Math.Round(bebarrel.CurrentRecipe.SealHours));
                     text += "\n" + Lang.Get("Sealed for {0} / {1}", timePassedText, timeTotalText);
                 }
-                
             }
 
-
-            return text;
+            return text + aftertext;
         }
 
 

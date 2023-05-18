@@ -94,7 +94,7 @@ namespace Vintagestory.GameContent
                 if (entity != null)
                 {
                     bool didDamage = entity.ReceiveDamage(new DamageSource() { 
-                        Source = EnumDamageSource.Entity, 
+                        Source = FiredBy is EntityPlayer ? EnumDamageSource.Player : EnumDamageSource.Entity, 
                         SourceEntity = this, 
                         CauseEntity = FiredBy, 
                         Type = EnumDamageType.BluntAttack,

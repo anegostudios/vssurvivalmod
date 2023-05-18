@@ -193,7 +193,12 @@ namespace Vintagestory.GameContent
             {
                 if (spawnedEntities.Contains(entity.EntityId))
                 {
-                    bool alive = entity.GetBehavior<EntityBehaviorHealth>()?.Health > 0; // entity.Alive is false on despawn? o.o
+                    bool alive = false;
+                    try
+                    {
+                        alive = entity.GetBehavior<EntityBehaviorHealth>()?.Health > 0; // entity.Alive is false on despawn? o.o
+                    }
+                    catch (Exception) { }
 
                     if (alive) Data.InternalCharge++;
                 }

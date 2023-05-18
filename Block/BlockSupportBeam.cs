@@ -93,13 +93,32 @@ namespace Vintagestory.GameContent
                 var beh = be?.GetBehavior<BEBehaviorSupportBeam>();
                 if (beh == null)
                 {
-                    ws.startPos = blockSel.Position.AddCopy(blockSel.Face);
-                    var face = blockSel.Face;
-                    ws.startOffset = snapToGrid(blockSel.HitPosition, ws.GridSize).Sub(face.Normali);
+                    var startPosBlock = api.World.BlockAccessor.GetBlock(blockSel.Position);
+                    if (startPosBlock.Replaceable >= 6000)
+                    {
+                        ws.startPos = blockSel.Position.Copy();
+                        ws.startOffset = snapToGrid(blockSel.HitPosition, ws.GridSize);
+                    }
+                    else
+                    {
+                        var blockSelFace = blockSel.Face;
+                        var wsStartPos = blockSel.Position.AddCopy(blockSelFace);
+                        startPosBlock = api.World.BlockAccessor.GetBlock(wsStartPos);
+                        be = api.World.BlockAccessor.GetBlockEntity(wsStartPos);
+                        beh = be?.GetBehavior<BEBehaviorSupportBeam>();
+                            
+                        if (beh == null && startPosBlock.Replaceable < 6000)
+                        {
+                            (api as ICoreClientAPI)?.TriggerIngameError(this, "notplaceablehere", Lang.Get("Cannot place here, a block is in the way"));
+                            return;
+                        }
+                        ws.startPos = wsStartPos;
+                        ws.startOffset = snapToGrid(blockSel.HitPosition, ws.GridSize).Sub(blockSel.Face.Normali);
+                    }
                 } else
                 {
                     ws.startPos = blockSel.Position.Copy();
-                    ws.startOffset = snapToGrid(blockSel.HitPosition, ws.GridSize);
+                    ws.startOffset = snapToGrid(blockSel.HitPosition, ws.GridSize).Sub(blockSel.Face.Normali);
                 }
                 
                 ws.endOffset = null;
@@ -111,6 +130,17 @@ namespace Vintagestory.GameContent
                 ws.nowBuilding = false;
                 var be = api.World.BlockAccessor.GetBlockEntity(ws.startPos);
                 var beh = be?.GetBehavior<BEBehaviorSupportBeam>();
+                
+                var eplr = (byEntity as EntityPlayer);
+                
+                Vec3f nowEndOffset = getEndOffset(eplr.Player, ws);
+
+                if (nowEndOffset.DistanceTo(ws.startOffset) < 0.01f)
+                {
+                    
+                    return;
+                }
+                
                 if (beh == null)
                 {
                     var hereBlock = api.World.BlockAccessor.GetBlock(ws.startPos);
@@ -127,21 +157,22 @@ namespace Vintagestory.GameContent
                         return;
                     }
 
+                    if (eplr.Player.WorldData.CurrentGameMode != EnumGameMode.Creative)
+                    {
+                        int len = (int)Math.Ceiling(nowEndOffset.DistanceTo(ws.startOffset));
+                        if (slot.StackSize < len)
+                        {
+                            (api as ICoreClientAPI)?.TriggerIngameError(this, "notenoughitems",
+                                Lang.Get("You need {0} beams to place a beam at this lenth", len));
+                            return;
+                        }
+                    }
+
                     api.World.BlockAccessor.SetBlock(ws.block.Id, ws.startPos);
                     be = api.World.BlockAccessor.GetBlockEntity(ws.startPos);
                     beh = be?.GetBehavior<BEBehaviorSupportBeam>();
                 }
-
-                var eplr = (byEntity as EntityPlayer);
-
-                Vec3f nowEndOffset = getEndOffset(eplr.Player, ws);
-
-                if (nowEndOffset.DistanceTo(ws.startOffset) < 0.01f)
-                {
                     
-                    return;
-                }
-                     
                 if (eplr.Player.WorldData.CurrentGameMode != EnumGameMode.Creative)
                 {
                     int len = (int)Math.Ceiling(nowEndOffset.DistanceTo(ws.startOffset));

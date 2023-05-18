@@ -25,6 +25,13 @@ namespace Vintagestory.GameContent
         public bool Pruned;
         public double LastPrunedTotalDays;
 
+        float resetBelowTemperature = 0;
+        float resetAboveTemperature = 0;
+        float stopBelowTemperature = 0;
+        float stopAboveTemperature = 0;
+        float revertBlockBelowTemperature = 0;
+        float revertBlockAboveTemperature = 0;
+
         float growthRateMul = 1f;
 
         public BlockEntityBerryBush() : base()
@@ -99,16 +106,8 @@ namespace Vintagestory.GameContent
 
             bool changed = false;
             float oneHour = 1f / Api.World.Calendar.HoursPerDay;
-            float resetBelowTemperature = 0, resetAboveTemperature = 0, stopBelowTemperature = 0, stopAboveTemperature = 0, revertBlockBelowTemperature = 0, revertBlockAboveTemperature = 0;
             if (daysToCheck > oneHour)
             {
-                resetBelowTemperature = Block.Attributes["resetBelowTemperature"].AsFloat(-999);
-                resetAboveTemperature = Block.Attributes["resetAboveTemperature"].AsFloat(999);
-                stopBelowTemperature = Block.Attributes["stopBelowTemperature"].AsFloat(-999);
-                stopAboveTemperature = Block.Attributes["stopAboveTemperature"].AsFloat(999);
-                revertBlockBelowTemperature = Block.Attributes["revertBlockBelowTemperature"].AsFloat(-999);
-                revertBlockAboveTemperature = Block.Attributes["revertBlockAboveTemperature"].AsFloat(999);
-
                 if (Api.World.BlockAccessor.GetRainMapHeightAt(Pos) > Pos.Y) // Fast pre-check
                 {
                     Room room = roomreg?.GetRoomForPosition(Pos);
@@ -174,6 +173,29 @@ namespace Vintagestory.GameContent
             }
 
             if (changed) MarkDirty(false);
+        }
+
+        public override void OnExchanged(Block block)
+        {
+            base.OnExchanged(block);
+            UpdateTransitionsFromBlock();
+        }
+
+        public override void CreateBehaviors(Block block, IWorldAccessor worldForResolve)
+        {
+            base.CreateBehaviors(block, worldForResolve);
+            UpdateTransitionsFromBlock();
+        }
+
+        protected void UpdateTransitionsFromBlock()
+        {
+            // These Attributes lookups are costly because Newtonsoft JSON lib ~~sucks~~ uses a weird approximation to a Dictionary in JToken.TryGetValue() but it can ignore case
+            resetBelowTemperature = Block.Attributes["resetBelowTemperature"].AsFloat(-999);
+            resetAboveTemperature = Block.Attributes["resetAboveTemperature"].AsFloat(999);
+            stopBelowTemperature = Block.Attributes["stopBelowTemperature"].AsFloat(-999);
+            stopAboveTemperature = Block.Attributes["stopAboveTemperature"].AsFloat(999);
+            revertBlockBelowTemperature = Block.Attributes["revertBlockBelowTemperature"].AsFloat(-999);
+            revertBlockAboveTemperature = Block.Attributes["revertBlockAboveTemperature"].AsFloat(999);
         }
 
         public double GetHoursForNextStage()

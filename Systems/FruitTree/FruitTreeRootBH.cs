@@ -28,6 +28,7 @@ namespace Vintagestory.GameContent
         double stateUpdateIntervalDays = 1 / 3.0;
 
         public double nonFloweringYoungDays = 30;
+        private float greenhouseTempBonus;
 
         public bool IsYoung => Api?.World.Calendar.TotalDays - TreePlantedTotalDays < nonFloweringYoungDays;
 
@@ -127,116 +128,168 @@ namespace Vintagestory.GameContent
 
             int prevIntDays = -99;
             float temp = 0;
+            bool markDirty = false;
+
+            var baseClimate = Api.World.BlockAccessor.GetClimateAt(be.Pos, EnumGetClimateMode.WorldGenValues);
+            greenhouseTempBonus = getGreenhouseTempBonus();
+
+            // Set up working state, used for efficiency if we are fast-forwarding, to avoid multiple redundant calls to RootBh_OnFruitingStateChange
+            foreach (var props in propsByType.Values)
+            {
+                props.workingState = props.State;
+            }
 
             while (totalDays - LastRootTickTotalDays >= stateUpdateIntervalDays)
             {
+                int intDays = (int)LastRootTickTotalDays;
                 foreach (var val in propsByType)
                 {
                     var props = val.Value;
 
-                    if (props.State == EnumFruitTreeState.Dead) continue;
+                    if (props.workingState == EnumFruitTreeState.Dead) continue;
 
                     // Avoid reading the same temp over and over again
-                    if (prevIntDays != (int)LastRootTickTotalDays)
+                    if (prevIntDays != intDays)
                     {
                         // For roughly daily average temps
                         
-                        double midday = (int)LastRootTickTotalDays + 0.5;
-                        var climate = Api.World.BlockAccessor.GetClimateAt(be.Pos, EnumGetClimateMode.ForSuppliedDate_TemperatureOnly, midday);
-                        if (climate == null) return;
-
-                        temp = climate.Temperature;
+                        double midday = intDays + 0.5;
+                        temp = Api.World.BlockAccessor.GetClimateAt(be.Pos, baseClimate, EnumGetClimateMode.ForSuppliedDate_TemperatureOnly, midday).Temperature;
                         temp = applyGreenhouseTempBonus(temp);
 
-                        prevIntDays = (int)LastRootTickTotalDays;
-                        Blockentity.MarkDirty(true);
+                        prevIntDays = intDays;
                     }
 
-                    double yearrel = (LastRootTickTotalDays % Api.World.Calendar.DaysPerYear) / Api.World.Calendar.DaysPerYear;
-
-                    if (props.DieBelowTemp > temp)
+                    if (props.DieBelowTemp > temp + (props.workingState == EnumFruitTreeState.Dormant ? 3 : 0))
                     {
-                        props.State = EnumFruitTreeState.Dead;
+                        props.workingState = EnumFruitTreeState.Dead;
                         props.lastStateChangeTotalDays = Api.World.Calendar.TotalDays;
+                        markDirty = true;
                         break;
                     }
 
-                    if (props.State == EnumFruitTreeState.Dormant && props.CycleType == EnumTreeCycleType.Deciduous)
+                    switch (props.workingState)
                     {
-                        updateVernalizedHours(props, temp);
+                        case EnumFruitTreeState.Young:
+                            if (props.CycleType == EnumTreeCycleType.Evergreen)
+                            {
+                                if ((LastRootTickTotalDays - TreePlantedTotalDays) < nonFloweringYoungDays) continue;
 
-                        if (props.vernalizedHours > props.VernalizationHours)
-                        {
-                            props.State = EnumFruitTreeState.DormantVernalized;
-                            props.lastStateChangeTotalDays = LastRootTickTotalDays;
-                            Blockentity.MarkDirty(true);
-                        }
+                                double yearRel = (LastRootTickTotalDays / Api.World.Calendar.DaysPerYear) % 1.0;
+                                if (Math.Abs(yearRel - props.BlossomAtYearRel) < 0.125)
+                                {
+                                    props.workingState = EnumFruitTreeState.Flowering;
+                                    props.lastStateChangeTotalDays = LastRootTickTotalDays;
+                                    markDirty = true;
+                                }
+                            }
+                            else if (props.CycleType == EnumTreeCycleType.Deciduous && temp < props.EnterDormancyTemp)
+                            {
+                                props.workingState = EnumFruitTreeState.EnterDormancy;
+                                props.lastStateChangeTotalDays = LastRootTickTotalDays;
+                                markDirty = true;
+                            }
+                            break;
+                        case EnumFruitTreeState.Flowering:
+                            if (props.lastStateChangeTotalDays + props.FloweringDays < LastRootTickTotalDays)
+                            {
+                                props.workingState = (temp < props.EnterDormancyTemp) ? EnumFruitTreeState.Empty : EnumFruitTreeState.Fruiting;
+                                props.lastStateChangeTotalDays = LastRootTickTotalDays;
+                                markDirty = true;
 
-                        if (temp >= 20 || (temp > 15 && LastRootTickTotalDays - props.lastCheckAtTotalDays > 3))
-                        {
-                            props.State = EnumFruitTreeState.Empty;
-                            props.lastStateChangeTotalDays = LastRootTickTotalDays;
-                            Blockentity.MarkDirty(true);
-                        }
-                    }
-                    else if (props.State == EnumFruitTreeState.DormantVernalized)
-                    {
-                        if (temp >= 20 || (temp > 15 && LastRootTickTotalDays - props.lastCheckAtTotalDays > 3))
-                        {
-                            props.State = EnumFruitTreeState.Flowering;
-                            props.lastStateChangeTotalDays = LastRootTickTotalDays;
-                            Blockentity.MarkDirty(true);
-                        }
-                    }
-                    else if (props.CycleType == EnumTreeCycleType.Evergreen && (props.State == EnumFruitTreeState.Empty || props.State == EnumFruitTreeState.Young))
-                    {
-                        if (props.State == EnumFruitTreeState.Young && (LastRootTickTotalDays - TreePlantedTotalDays) < nonFloweringYoungDays) continue;
+                            }
+                            break;
+                        case EnumFruitTreeState.Fruiting:
+                            if (props.lastStateChangeTotalDays + props.FruitingDays < LastRootTickTotalDays)
+                            {
+                                props.workingState = EnumFruitTreeState.Ripe;
+                                props.lastStateChangeTotalDays = LastRootTickTotalDays;
+                                markDirty = true;
+                            }
+                            break;
+                        case EnumFruitTreeState.Ripe:
+                            if (props.lastStateChangeTotalDays + props.RipeDays < LastRootTickTotalDays)
+                            {
+                                props.workingState = EnumFruitTreeState.Empty;
+                                props.lastStateChangeTotalDays = LastRootTickTotalDays;
+                                markDirty = true;
+                            }
+                            break;
+                        case EnumFruitTreeState.Empty:
+                            if (props.CycleType == EnumTreeCycleType.Evergreen)
+                            {
+                                double yearRel = (LastRootTickTotalDays / Api.World.Calendar.DaysPerYear) % 1.0;
+                                if (Math.Abs(yearRel - props.BlossomAtYearRel) < 0.125)
+                                {
+                                    props.workingState = EnumFruitTreeState.Flowering;
+                                    props.lastStateChangeTotalDays = LastRootTickTotalDays;
+                                    markDirty = true;
+                                }
+                            }
+                            else if (props.CycleType == EnumTreeCycleType.Deciduous && temp < props.EnterDormancyTemp)
+                            {
+                                props.workingState = EnumFruitTreeState.EnterDormancy;
+                                props.lastStateChangeTotalDays = LastRootTickTotalDays;
+                                markDirty = true;
+                            }
+                            break;
+                        case EnumFruitTreeState.EnterDormancy:
+                            if (props.CycleType == EnumTreeCycleType.Deciduous && props.lastStateChangeTotalDays + 3 < LastRootTickTotalDays)
+                            {
+                                props.workingState = EnumFruitTreeState.Dormant;
+                                props.lastStateChangeTotalDays = LastRootTickTotalDays;
+                                markDirty = true;
+                            }
+                            break;
+                        case EnumFruitTreeState.Dormant:
+                            if (props.CycleType == EnumTreeCycleType.Deciduous)
+                            {
+                                updateVernalizedHours(props, temp);
 
-                        double yearRel = (LastRootTickTotalDays / Api.World.Calendar.DaysPerYear) % 1.0;
-                        if (Math.Abs(yearRel - props.BlossomAtYearRel) < 0.125)
-                        {
-                            props.State = EnumFruitTreeState.Flowering;
-                            props.lastCheckAtTotalDays = LastRootTickTotalDays;
-                            Blockentity.MarkDirty(true);
-                        }
+                                if (temp >= 20 || (temp > 15 && LastRootTickTotalDays - props.lastCheckAtTotalDays > 3))   // if very warm, go immediately to Empty, skip vernalization (but misses flowering?)
+                                {
+                                    props.workingState = EnumFruitTreeState.Empty;
+                                    props.lastStateChangeTotalDays = LastRootTickTotalDays;
+                                    markDirty = true;
+                                }
+                                else if (props.vernalizedHours > props.VernalizationHours)
+                                {
+                                    props.workingState = EnumFruitTreeState.DormantVernalized;
+                                    props.lastStateChangeTotalDays = LastRootTickTotalDays;
+                                    markDirty = true;
+                                }
+                            }
+                            break;
+                        case EnumFruitTreeState.DormantVernalized:
+                            {
+                                if (temp >= 15 || (temp > 10 && LastRootTickTotalDays - props.lastCheckAtTotalDays > 3))
+                                {
+                                    props.workingState = EnumFruitTreeState.Flowering;
+                                    props.lastStateChangeTotalDays = LastRootTickTotalDays;
+                                    markDirty = true;
+                                }
+                            }
+                            break;
+                        case EnumFruitTreeState.Dead:
+                            break;
                     }
-                    else if (props.State == EnumFruitTreeState.Flowering && props.lastStateChangeTotalDays + props.FloweringDays < LastRootTickTotalDays)
-                    {
-                        props.State = EnumFruitTreeState.Fruiting;
-                        props.lastStateChangeTotalDays = LastRootTickTotalDays;
 
-                        if (temp < props.EnterDormancyTemp) props.State = EnumFruitTreeState.Empty;
-
-                        Blockentity.MarkDirty(true);
-                    }
-                    else if (props.State == EnumFruitTreeState.Fruiting && props.lastStateChangeTotalDays + props.FruitingDays < LastRootTickTotalDays)
-                    {
-                        props.State = EnumFruitTreeState.Ripe;
-                        props.lastStateChangeTotalDays = LastRootTickTotalDays;
-                        Blockentity.MarkDirty(true);
-                    }
-                    else if (props.State == EnumFruitTreeState.Ripe && props.lastStateChangeTotalDays + props.RipeDays < LastRootTickTotalDays)
-                    {
-                        props.State = EnumFruitTreeState.Empty;
-                        props.lastStateChangeTotalDays = LastRootTickTotalDays;
-                        Blockentity.MarkDirty(true);
-                    }
-                    else if (props.CycleType == EnumTreeCycleType.Deciduous && (props.State == EnumFruitTreeState.Young || props.State == EnumFruitTreeState.Empty) && temp < props.EnterDormancyTemp)
-                    {
-                        props.State = EnumFruitTreeState.EnterDormancy;
-                        props.lastStateChangeTotalDays = LastRootTickTotalDays;
-                        Blockentity.MarkDirty(true);
-                    }
-                    else if (props.CycleType == EnumTreeCycleType.Deciduous && props.State == EnumFruitTreeState.EnterDormancy && props.lastStateChangeTotalDays + 3 < LastRootTickTotalDays)
-                    {
-                        props.State = EnumFruitTreeState.Dormant;
-                        props.lastStateChangeTotalDays = LastRootTickTotalDays;
-                        Blockentity.MarkDirty(true);
-                    }
+                    props.lastCheckAtTotalDays = LastRootTickTotalDays;
                 }
 
                 
                 LastRootTickTotalDays += stateUpdateIntervalDays;
+            }
+
+            if (markDirty)
+            {
+                // Now write the workingState to all the props
+                foreach (var props in propsByType.Values)
+                {
+                    props.State = props.workingState;
+                }
+
+                Blockentity.MarkDirty(true);
             }
         }
 
@@ -271,16 +324,20 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public float applyGreenhouseTempBonus(float temp)
+        protected float getGreenhouseTempBonus()
         {
             if (Api.World.BlockAccessor.GetRainMapHeightAt(be.Pos) > be.Pos.Y) // Fast pre-check
             {
                 Room room = roomreg?.GetRoomForPosition(be.Pos);
                 int roomness = (room != null && room.SkylightCount > room.NonSkylightCount && room.ExitCount == 0) ? 1 : 0;
-                if (roomness > 0) temp += 5;
+                if (roomness > 0) return 5;
             }
+            return 0;
+        }
 
-            return temp;
+        public float applyGreenhouseTempBonus(float temp)
+        {
+            return temp + greenhouseTempBonus;
         }
 
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)

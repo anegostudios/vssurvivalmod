@@ -28,7 +28,7 @@ namespace Vintagestory.GameContent
                     byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
 
                     Block filledBlock = world.GetBlock(CodeWithVariant("state", "filled"));
-                    world.BlockAccessor.SetBlock(filledBlock.BlockId, blockSel.Position);
+                    world.BlockAccessor.ExchangeBlock(filledBlock.BlockId, blockSel.Position);
 
                     if (Sounds?.Place != null)
                     {
@@ -43,7 +43,7 @@ namespace Vintagestory.GameContent
                 if (byPlayer.InventoryManager.TryGiveItemstack(stack, true))
                 {
                     Block filledBlock = world.GetBlock(CodeWithVariant("state", "empty"));
-                    world.BlockAccessor.SetBlock(filledBlock.BlockId, blockSel.Position);
+                    world.BlockAccessor.ExchangeBlock(filledBlock.BlockId, blockSel.Position);
 
                     if (Sounds?.Place != null)
                     {
