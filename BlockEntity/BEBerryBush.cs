@@ -178,17 +178,24 @@ namespace Vintagestory.GameContent
         public override void OnExchanged(Block block)
         {
             base.OnExchanged(block);
-            UpdateTransitionsFromBlock();
+            if (Api?.Side == EnumAppSide.Server) UpdateTransitionsFromBlock();
         }
 
         public override void CreateBehaviors(Block block, IWorldAccessor worldForResolve)
         {
             base.CreateBehaviors(block, worldForResolve);
-            UpdateTransitionsFromBlock();
+            if (worldForResolve.Side == EnumAppSide.Server) UpdateTransitionsFromBlock();
         }
 
         protected void UpdateTransitionsFromBlock()
         {
+            // In case we have a Block which is not a BerryBush block (why does this happen?)
+            if (Block?.Attributes == null)
+            {
+                resetBelowTemperature = stopBelowTemperature = revertBlockBelowTemperature = -999;
+                resetAboveTemperature = stopAboveTemperature = revertBlockAboveTemperature = 999;
+                return;
+            }
             // These Attributes lookups are costly because Newtonsoft JSON lib ~~sucks~~ uses a weird approximation to a Dictionary in JToken.TryGetValue() but it can ignore case
             resetBelowTemperature = Block.Attributes["resetBelowTemperature"].AsFloat(-999);
             resetAboveTemperature = Block.Attributes["resetAboveTemperature"].AsFloat(999);
