@@ -225,10 +225,10 @@ namespace Vintagestory.GameContent
             
             if (litres == 1)
             {
-                return Lang.Get("{0} ({1} litre of {2})", inSlot.Itemstack.GetName(), litres, incontainername);
+                return Lang.Get("{0} ({1:G} litre of {2})", inSlot.Itemstack.GetName(), litres, incontainername);
             }
 
-            return Lang.Get("{0} ({1} litres of {2})", inSlot.Itemstack.GetName(), litres, incontainername);
+            return Lang.Get("{0} ({1:G} litres of {2})", inSlot.Itemstack.GetName(), litres, incontainername);
         }
 
         public string GetContainedName(ItemSlot inSlot, int quantity)
