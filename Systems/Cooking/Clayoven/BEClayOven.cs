@@ -398,7 +398,7 @@ namespace Vintagestory.GameContent
                 {
                     fuelBurnTime = 0;
                     burning = false;
-                    CombustibleProperties props = FuelSlot.Itemstack.Collectible.CombustibleProps;
+                    CombustibleProperties props = FuelSlot.Itemstack?.Collectible.CombustibleProps;
                     if (props?.SmeltedStack == null)
                     {
                         FuelSlot.Itemstack = null;

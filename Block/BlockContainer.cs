@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -280,5 +281,15 @@ namespace Vintagestory.GameContent
             return BlockEntityShelf.PerishableInfoCompact(api, slot, 0, false).Replace("\r\n", "");
         }
 
+        public override bool RequiresTransitionableTicking(IWorldAccessor world, ItemStack itemstack)
+        {
+            ItemStack[] stacks = GetNonEmptyContents(world, itemstack);
+            for (int i = 0; i < stacks.Length; i++)
+            {
+                var props = stacks[i].Collectible.GetTransitionableProperties(world, stacks[i], null);
+                if (props != null && props.Length > 0) return true;
+            }
+            return base.RequiresTransitionableTicking(world, itemstack);
+        }
     }
 }

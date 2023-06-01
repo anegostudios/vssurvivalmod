@@ -82,8 +82,7 @@ namespace Vintagestory.GameContent
                 ItemStack stack = slot.Itemstack;
                 if (stack == null) continue;
 
-                var props = stack.Collectible.GetTransitionableProperties(Api.World, stack, null);
-                if (props != null && props.Length > 0) return true;
+                if (stack.Collectible.RequiresTransitionableTicking(Api.World, stack)) return true;
             }
             return false;
         }

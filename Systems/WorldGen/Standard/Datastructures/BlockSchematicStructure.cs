@@ -404,14 +404,18 @@ namespace Vintagestory.ServerMods
             cloned.SizeX = SizeX;
             cloned.SizeY = SizeY;
             cloned.SizeZ = SizeZ;
+            cloned.GameVersion = GameVersion;
             cloned.BlockCodes = new Dictionary<int, AssetLocation>(BlockCodes);
             cloned.ItemCodes = new Dictionary<int, AssetLocation>(ItemCodes);
             cloned.Indices = new List<uint>(Indices);
             cloned.BlockIds = new List<int>(BlockIds);
             cloned.BlockEntities = new Dictionary<uint, string>(BlockEntities);
+            cloned.Entities = new List<string>(Entities);
             cloned.ReplaceMode = ReplaceMode;
             cloned.FromFileName = FromFileName;
             cloned.EntranceRotation = EntranceRotation;
+            cloned.DecorIndices = new List<uint>(DecorIndices);
+            cloned.DecorIds = new List<int>(DecorIds);
 
             return cloned;
         }

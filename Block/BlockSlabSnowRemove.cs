@@ -15,7 +15,7 @@ namespace Vintagestory.GameContent
 
         BlockFacing rot;
         ICoreClientAPI capi;
-        AssetLocation snowLoc = new AssetLocation("block/snow/normal1");
+        AssetLocation snowLoc = new AssetLocation("block/liquid/snow/normal1");   // Hardcoded yuk
 
         public Size2i AtlasSize => capi.BlockTextureAtlas.Size;
 

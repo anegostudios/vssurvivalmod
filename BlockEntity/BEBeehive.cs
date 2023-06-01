@@ -215,35 +215,22 @@ namespace Vintagestory.GameContent
             int minZ = -8 + 8 * (scanIteration % 2);
             int size = 8;
 
-            Block emptySkepN = Api.World.GetBlock(new AssetLocation("skep-empty-north"));
-            Block emptySkepE = Api.World.GetBlock(new AssetLocation("skep-empty-east"));
-            Block emptySkepS = Api.World.GetBlock(new AssetLocation("skep-empty-south"));
-            Block emptySkepW = Api.World.GetBlock(new AssetLocation("skep-empty-west"));
-
-            Block fullSkepN = Api.World.GetBlock(new AssetLocation("skep-populated-north"));
-            Block fullSkepE = Api.World.GetBlock(new AssetLocation("skep-populated-east"));
-            Block fullSkepS = Api.World.GetBlock(new AssetLocation("skep-populated-south"));
-            Block fullSkepW = Api.World.GetBlock(new AssetLocation("skep-populated-west"));
-
-
-            Block wildhive1 = Api.World.GetBlock(new AssetLocation("wildbeehive-medium"));
-            Block wildhive2 = Api.World.GetBlock(new AssetLocation("wildbeehive-large"));
-            
-
             Api.World.BlockAccessor.WalkBlocks(Pos.AddCopy(minX, -5, minZ), Pos.AddCopy(minX + size - 1, 5, minZ + size - 1), (block, x, y, z) =>
             {
                 if (block.Id == 0) return;
 
-                if (block.Attributes?.IsTrue("beeFeed") == true) scanQuantityNearbyFlowers++;
+                // Only do costly Attributes check if the block is a plant or a plant container
+                if (block.BlockMaterial == EnumBlockMaterial.Plant || block is BlockPlantContainer)
+                {
+                    if (block.Attributes?.IsTrue("beeFeed") == true) scanQuantityNearbyFlowers++;
+                    return;
+                }
 
-                if (block == emptySkepN || block == emptySkepE || block == emptySkepS || block == emptySkepW)
-                {
-                    scanEmptySkeps.Add(new BlockPos(x, y, z));
-                }
-                if (block == fullSkepN || block == fullSkepE || block == fullSkepS || block == fullSkepW || block == wildhive1 || block == wildhive2)
-                {
-                    scanQuantityNearbyHives++;
-                }
+                if (block.BlockMaterial != EnumBlockMaterial.Other) return;   // All types of skep and wildbeehive have BlockMaterial: "Other"
+
+                string blockcode = block.Code.Path;
+                if (blockcode.StartsWith("skep-empty")) scanEmptySkeps.Add(new BlockPos(x, y, z));
+                else if (blockcode.StartsWith("skep-populated") || blockcode.StartsWith("wildbeehive")) scanQuantityNearbyHives++;
             });
 
             scanIteration++;

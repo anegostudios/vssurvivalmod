@@ -44,7 +44,7 @@ namespace Vintagestory.GameContent
                 deposits.initAssets(sapi, false);
                 deposits.initWorldGen();
                 depositGen = deposits;
-            });
+            }, "propickonloaded");
 
             sapi.Event.ServerRunPhase(EnumServerRunPhase.RunGame, () =>
             {

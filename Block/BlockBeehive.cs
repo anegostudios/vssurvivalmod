@@ -16,6 +16,8 @@ namespace Vintagestory.GameContent
         {
             base.OnBlockBroken(world, pos, byPlayer, dropQuantityMultiplier);
 
+            if (world.Side == EnumAppSide.Client) return;   // Only spawn the entity on the server side
+
             EntityProperties type = world.GetEntityType(new AssetLocation("beemob"));
             Entity entity = world.ClassRegistry.CreateEntity(type);
 

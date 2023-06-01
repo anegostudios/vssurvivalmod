@@ -60,7 +60,7 @@ namespace Vintagestory.GameContent
         {
             base.OnBlockBroken(world, pos, byPlayer, dropQuantityMultiplier);
 
-            if (!IsEmpty() && world.Rand.NextDouble() < beemobSpawnChance)
+            if (world.Side == EnumAppSide.Server && !IsEmpty() && world.Rand.NextDouble() < beemobSpawnChance)     // Only test the chance and spawn the entity on the server side
             {
                 EntityProperties type = world.GetEntityType(new AssetLocation("beemob"));
                 Entity entity = world.ClassRegistry.CreateEntity(type);
