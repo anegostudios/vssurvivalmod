@@ -36,8 +36,8 @@ namespace Vintagestory.GameContent
             get {
                 BlockFacing facing = this.facing.Opposite;
 
-                mountPos.SetPos(this.Pos);
-                mountPos.Yaw = facing.HorizontalAngleIndex * GameMath.PIHALF;
+                mountPos.SetPos(Pos);
+                mountPos.Yaw = this.facing.HorizontalAngleIndex * GameMath.PIHALF;
 
                 if (facing == BlockFacing.NORTH) return mountPos.Add(0.5, y2, 1);
                 if (facing == BlockFacing.EAST) return mountPos.Add(0, y2, 0.5);

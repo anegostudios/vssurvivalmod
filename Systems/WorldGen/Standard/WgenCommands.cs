@@ -233,15 +233,16 @@ namespace Vintagestory.ServerMods
 
         private void PrintTreeCoverageMap(IServerPlayer player, CmdArgs args)
         {
-            var asset = api.Assets.TryGet(new AssetLocation("textures/environment/planttint.png"));
-            Bitmap bmpt;
-            using (MemoryStream ms = new MemoryStream(asset.Data, 0, asset.Data.Length))
-            {
-                bmpt = new Bitmap(ms);
-            }
             int chs = 3;
-            byte[] tintPixels = new byte[bmpt.Width * bmpt.Height * chs];
-            bmpt.SetPixels(tintPixels, chs);
+
+            //var asset = api.Assets.TryGet(new AssetLocation("textures/environment/planttint.png"));
+            //BitmapExternal bmpt;
+            //using (MemoryStream ms = new MemoryStream(asset.Data, 0, asset.Data.Length))
+            //{
+            //    bmpt = new BitmapExternal(ms);
+            //}
+            //byte[] tintPixels = new byte[bmpt.Width * bmpt.Height * chs];
+            //bmpt.SetPixels(tintPixels, chs);
 
             byte[] pixels = new byte[256 * 512 * chs];
             int w = 256;
@@ -942,7 +943,7 @@ namespace Vintagestory.ServerMods
                         GenRockStrataNew mod = api.ModLoader.GetModSystem<GenRockStrataNew>();
                         for (int i = 0; i < mod.strataNoises.Length; i++)
                         {
-                            mod.strataNoises[i].DebugDrawBitmap(DebugDrawMode.FirstByteGrayscale, 0, 0, "Rockstrata-" + mod.strata.Variants[i].BlockCode);
+                            mod.strataNoises[i].DebugDrawBitmap(DebugDrawMode.FirstByteGrayscale, 0, 0, "Rockstrata-" + mod.strata.Variants[i].BlockCode.ToShortString().Replace(":", "-"));
                         }
 
                         player.SendMessage(groupId, "Rockstrata maps generated", EnumChatType.CommandSuccess);

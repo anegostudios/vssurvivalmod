@@ -109,9 +109,12 @@ namespace Vintagestory.GameContent
                     op.SinkSlot.MarkDirty();
                     return;
                 }
-            }
 
-            base.TryMergeStacks(op);
+                if (api.Side == EnumAppSide.Client)
+                {
+                    (api as ICoreClientAPI)?.TriggerIngameError(this, "maskfull", Lang.Get("ingameerror-mask-full"));
+                }
+            }
         }
 
 

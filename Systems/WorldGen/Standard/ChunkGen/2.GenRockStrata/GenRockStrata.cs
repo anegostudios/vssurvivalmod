@@ -98,7 +98,7 @@ namespace Vintagestory.ServerMods
 
                 if (ampls.Length != freq.Length || ampls.Length != th.Length)
                 {
-                    throw new ArgumentException(string.Format("Bug in Rock stratum {0}: The list of amplitudes ({1} elements), frequencies ({2} elements) and thresholds ({3} elements) are not of the same length!", i, ampls.Length, freq.Length, th.Length));
+                    throw new ArgumentException(string.Format("Bug in rockstrata.json, variant {0}: The list of amplitudes ({1} elements), frequencies ({2} elements) and thresholds ({3} elements) are not of the same length!", i, ampls.Length, freq.Length, th.Length));
                 }
 
                 for (int j = 0; j < freq.Length; j++)

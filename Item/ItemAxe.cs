@@ -104,13 +104,16 @@ namespace Vintagestory.GameContent
             float leavesBranchyMul = 0.8f;
             int blocksbroken = 0;
 
+            bool axeHasDurability = true;
             while (foundPositions.Count > 0) {
                 BlockPos pos = foundPositions.Pop();
-                blocksbroken++;
 
                 Block block = world.BlockAccessor.GetBlock(pos);
 
                 bool isLog = block.BlockMaterial == EnumBlockMaterial.Wood;
+                if (isLog && !axeHasDurability) continue;
+
+                blocksbroken++;
                 bool isBranchy = block.Code.Path.Contains("branchy");
                 bool isLeaves = block.BlockMaterial == EnumBlockMaterial.Leaves;
 
@@ -145,15 +148,14 @@ namespace Vintagestory.GameContent
                 if (damageable && isLog)
                 {
                     DamageItem(world, byEntity, itemslot);
+                    if (itemslot.Itemstack == null) axeHasDurability = false;
                 }
-
-                if (itemslot.Itemstack == null) return true;
 
                 if (isLeaves && leavesMul > 0.03f) leavesMul *= 0.85f;
                 if (isBranchy && leavesBranchyMul > 0.015f) leavesBranchyMul *= 0.7f;
             }
 
-            if (blocksbroken > 35)
+            if (blocksbroken > 35 && axeHasDurability)
             {
                 Vec3d pos = blockSel.Position.ToVec3d().Add(0.5, 0.5, 0.5);
                 api.World.PlaySoundAt(new AssetLocation("sounds/effect/treefell"), pos.X, pos.Y, pos.Z, byPlayer, false, 32, GameMath.Clamp(blocksbroken / 100f, 0.25f, 1));

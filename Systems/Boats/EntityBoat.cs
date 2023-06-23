@@ -122,7 +122,7 @@ namespace Vintagestory.GameContent
         }
 
         /// <summary>
-        /// The speed this boad can reach at full power
+        /// The speed this boat can reach at full power
         /// </summary>
         public virtual float SpeedMultiplier => 0.75f;
 
@@ -333,7 +333,16 @@ namespace Vintagestory.GameContent
                     continue;
                 } else
                 {
-                    seat.Passenger.AnimManager?.StartAnimation(controls.Backward ? "crudeOarBackward" : "crudeOarForward");
+                    if (controls.Right && !controls.Backward && !controls.Forward)
+                    {
+                        seat.Passenger.AnimManager?.StartAnimation("crudeOarBackward");
+                        seat.Passenger.AnimManager?.StopAnimation("crudeOarForward");
+                    }
+                    else
+                    {
+                        seat.Passenger.AnimManager?.StartAnimation(controls.Backward ? "crudeOarBackward" : "crudeOarForward");
+                        seat.Passenger.AnimManager?.StopAnimation(!controls.Backward ? "crudeOarBackward" : "crudeOarForward");
+                    }
                     seat.Passenger.AnimManager?.StopAnimation("crudeOarReady");
                 }
 
