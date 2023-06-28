@@ -105,14 +105,14 @@ namespace Vintagestory.GameContent
             On = true;
             lastUpdateTotalDays = Api.World.Calendar.TotalDays;
 
-            animUtil.StartAnimation(new AnimationMetaData() { Animation = "on-spin", Code = "on-spin", EaseInSpeed = 1, EaseOutSpeed = 2, AnimationSpeed = 1f });
+            animUtil?.StartAnimation(new AnimationMetaData() { Animation = "on-spin", Code = "on-spin", EaseInSpeed = 1, EaseOutSpeed = 2, AnimationSpeed = 1f });
             MarkDirty(true);
             ToggleAmbientSound(true);
         }
 
         public void Deactivate()
         {
-            animUtil.StopAnimation("on-spin");
+            animUtil?.StopAnimation("on-spin");
             On = false;
             ToggleAmbientSound(false);
             MarkDirty(true);

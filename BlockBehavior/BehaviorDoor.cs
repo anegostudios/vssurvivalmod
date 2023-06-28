@@ -290,7 +290,7 @@ namespace Vintagestory.GameContent
 
         public override void GetPlacedBlockName(StringBuilder sb, IWorldAccessor world, BlockPos pos)
         {
-            doorNameWithMaterial(sb);
+            // Already set in Block.GetPlacedBlockName()
         }
 
         private void doorNameWithMaterial(StringBuilder sb)

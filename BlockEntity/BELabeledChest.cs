@@ -134,7 +134,7 @@ namespace Vintagestory.GameContent
             {
                 if (editDialog != null && editDialog.IsOpened()) return;
 
-                editDialog = new GuiDialogBlockEntityTextInput("Edit Label text", Pos, text, Api as ICoreClientAPI, new TextAreaConfig() { MaxWidth = 130, MaxHeight = 160 }.CopyWithFontSize(this.fontSize));
+                editDialog = new GuiDialogBlockEntityTextInput(Lang.Get("Edit Label text"), Pos, text, Api as ICoreClientAPI, new TextAreaConfig() { MaxWidth = 130, MaxHeight = 160 }.CopyWithFontSize(this.fontSize));
                 editDialog.OnTextChanged = DidChangeTextClientSide;
                 editDialog.OnCloseCancel = () =>
                 {

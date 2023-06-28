@@ -44,28 +44,28 @@ namespace Vintagestory.GameContent
                 .AddDialogTitleBar(DialogTitle, OnTitleBarClose)
                 .BeginChildElements(bgBounds)
 
-                    .AddStaticText("North", CairoFont.WhiteDetailText(), line = line.BelowCopy(0, 0).WithFixedWidth(width))
+                    .AddStaticText(Lang.Get("North"), CairoFont.WhiteDetailText(), line = line.BelowCopy(0, 0).WithFixedWidth(width))
                     .AddTextInput(input = input.BelowCopy(0, 0).WithFixedWidth(width), OnTextChangedDlg, CairoFont.WhiteSmallText(), "text0")
 
-                    .AddStaticText("Northeast", CairoFont.WhiteDetailText(), line = line.BelowCopy(0, textLineY).WithFixedWidth(width))
+                    .AddStaticText(Lang.Get("Northeast"), CairoFont.WhiteDetailText(), line = line.BelowCopy(0, textLineY).WithFixedWidth(width))
                     .AddTextInput(input = input.BelowCopy(0, inputLineY).WithFixedWidth(width), OnTextChangedDlg, CairoFont.WhiteSmallText(), "text1")
 
-                    .AddStaticText("East", CairoFont.WhiteDetailText(), line = line.BelowCopy(0, textLineY).WithFixedWidth(width))
+                    .AddStaticText(Lang.Get("East"), CairoFont.WhiteDetailText(), line = line.BelowCopy(0, textLineY).WithFixedWidth(width))
                     .AddTextInput(input = input.BelowCopy(0, inputLineY).WithFixedWidth(width), OnTextChangedDlg, CairoFont.WhiteSmallText(), "text2")
 
-                    .AddStaticText("Southeast", CairoFont.WhiteDetailText(), line = line.BelowCopy(0, textLineY).WithFixedWidth(width))
+                    .AddStaticText(Lang.Get("Southeast"), CairoFont.WhiteDetailText(), line = line.BelowCopy(0, textLineY).WithFixedWidth(width))
                     .AddTextInput(input = input.BelowCopy(0, inputLineY).WithFixedWidth(width), OnTextChangedDlg, CairoFont.WhiteSmallText(), "text3")
 
-                    .AddStaticText("South", CairoFont.WhiteDetailText(), line = line.BelowCopy(0, textLineY).WithFixedWidth(width))
+                    .AddStaticText(Lang.Get("South"), CairoFont.WhiteDetailText(), line = line.BelowCopy(0, textLineY).WithFixedWidth(width))
                     .AddTextInput(input = input.BelowCopy(0, inputLineY).WithFixedWidth(width), OnTextChangedDlg, CairoFont.WhiteSmallText(), "text4")
 
-                    .AddStaticText("Southwest", CairoFont.WhiteDetailText(), line = line.BelowCopy(0, textLineY).WithFixedWidth(width))
+                    .AddStaticText(Lang.Get("Southwest"), CairoFont.WhiteDetailText(), line = line.BelowCopy(0, textLineY).WithFixedWidth(width))
                     .AddTextInput(input = input.BelowCopy(0, inputLineY).WithFixedWidth(width), OnTextChangedDlg, CairoFont.WhiteSmallText(), "text5")
 
-                    .AddStaticText("West", CairoFont.WhiteDetailText(), line = line.BelowCopy(0, textLineY).WithFixedWidth(width))
+                    .AddStaticText(Lang.Get("West"), CairoFont.WhiteDetailText(), line = line.BelowCopy(0, textLineY).WithFixedWidth(width))
                     .AddTextInput(input = input.BelowCopy(0, inputLineY).WithFixedWidth(width), OnTextChangedDlg, CairoFont.WhiteSmallText(), "text6")
 
-                    .AddStaticText("Northwest", CairoFont.WhiteDetailText(), line = line.BelowCopy(0, textLineY).WithFixedWidth(width))
+                    .AddStaticText(Lang.Get("Northwest"), CairoFont.WhiteDetailText(), line = line.BelowCopy(0, textLineY).WithFixedWidth(width))
                     .AddTextInput(input = input.BelowCopy(0, inputLineY).WithFixedWidth(width), OnTextChangedDlg, CairoFont.WhiteSmallText(), "text7")
 
                     .AddSmallButton(Lang.Get("Cancel"), OnButtonCancel, input = input.BelowCopy(0, 20).WithFixedSize(100, 20).WithAlignment(EnumDialogArea.LeftFixed).WithFixedPadding(10, 2), EnumButtonStyle.Normal)

@@ -1,6 +1,7 @@
 ﻿using System.IO;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
@@ -211,7 +212,7 @@ namespace Vintagestory.GameContent
                         {
                             BinaryWriter writer = new BinaryWriter(ms);
                             writer.Write("BlockEntityTextInput");
-                            writer.Write("Sign Text");
+                            writer.Write(Lang.Get("Edit Sign Text"));
                             for (int i = 0; i < 8; i++)
                             {
                                 writer.Write(textByCardinalDirection[i]);
