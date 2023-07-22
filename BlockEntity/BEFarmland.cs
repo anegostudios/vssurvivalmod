@@ -332,28 +332,27 @@ namespace Vintagestory.GameContent
         {
             tmpPos.Set(Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5);
 
+            float minMoisture = GameMath.Clamp(1 - waterDistance / 4f, 0, 1);
+            
             double hoursPassed = Math.Min((totalDays - lastMoistureLevelUpdateTotalDays) * Api.World.Calendar.HoursPerDay, 48);
             if (hoursPassed < 0.03f)
             {
                 // Get wet from a water source
-                moistureLevel = Math.Max(moistureLevel, GameMath.Clamp(1 - waterDistance / 4f, 0, 1));
+                moistureLevel = Math.Max(moistureLevel, minMoisture);
 
                 return false;
             }
 
             // Dry out
-            moistureLevel = Math.Max(0, moistureLevel - (float)hoursPassed / 48f);
-
-            // Get wet from a water source
-            moistureLevel = Math.Max(moistureLevel, GameMath.Clamp(1 - waterDistance / 4f, 0, 1));
+            moistureLevel = Math.Max(minMoisture, moistureLevel - (float)hoursPassed / 48f);
 
             // Get wet from all the rainfall since last update
             if (skyExposed)
             {
-                if (baseClimate == null && hoursPassed > 0) baseClimate = Api.World.BlockAccessor.GetClimateAt(Pos, EnumGetClimateMode.WorldGenValues, totalDays - hoursPassed * Api.World.Calendar.HoursPerDay / 2);
+                if (baseClimate == null && hoursPassed > 0) baseClimate = Api.World.BlockAccessor.GetClimateAt(Pos, EnumGetClimateMode.WorldGenValues, totalDays - hoursPassed / Api.World.Calendar.HoursPerDay / 2);
                 while (hoursPassed > 0)
                 {
-                    double rainLevel = blockFarmland.wsys.GetPrecipitation(Pos, totalDays - hoursPassed * Api.World.Calendar.HoursPerDay, baseClimate);
+                    double rainLevel = blockFarmland.wsys.GetPrecipitation(Pos, totalDays - hoursPassed / Api.World.Calendar.HoursPerDay, baseClimate);
                     moistureLevel = GameMath.Clamp(moistureLevel + (float)rainLevel / 3f, 0, 1);
                     hoursPassed--;
                 }
