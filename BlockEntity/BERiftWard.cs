@@ -111,7 +111,9 @@ namespace Vintagestory.GameContent
         }
 
         public void Deactivate()
-        {
+        {   
+            if (Api == null) return;
+            
             animUtil?.StopAnimation("on-spin");
             On = false;
             ToggleAmbientSound(false);
