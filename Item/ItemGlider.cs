@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -73,7 +74,7 @@ namespace Vintagestory.GameContent
             get
             {
                 var inv = capi.World.Player.InventoryManager.GetOwnInventory(GlobalConstants.backpackInvClassName);
-                foreach (var slot in inv)
+                foreach (var slot in inv.Take(4))
                 {
                     if (slot.Itemstack?.Collectible is ItemGlider)
                     {
