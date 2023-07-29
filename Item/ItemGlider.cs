@@ -35,7 +35,7 @@ namespace Vintagestory.GameContent
                 if (plr.Entity.Controls.Gliding)
                 {
                     glidingAccum = Math.Min(3.01f / speed, glidingAccum + dt);
-                    if (!HasGilder) plr.Entity.Controls.Gliding = false;
+                    if (!HasGlider) plr.Entity.Controls.Gliding = false;
                 }
                 else
                 {
@@ -57,7 +57,7 @@ namespace Vintagestory.GameContent
         private void Input_InWorldAction(EnumEntityAction action, bool on, ref EnumHandling handled)
         {
             var eplr = capi.World.Player.Entity;
-            if (action == EnumEntityAction.Jump && on && !eplr.OnGround && HasGilder && !eplr.Controls.IsFlying)
+            if (action == EnumEntityAction.Jump && on && !eplr.OnGround && HasGlider && !eplr.Controls.IsFlying)
             {
                 eplr.Controls.Gliding = true;
                 eplr.Controls.IsFlying = true;
@@ -70,7 +70,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        bool HasGilder {  
+        bool HasGlider {  
             get
             {
                 var inv = capi.World.Player.InventoryManager.GetOwnInventory(GlobalConstants.backpackInvClassName);
