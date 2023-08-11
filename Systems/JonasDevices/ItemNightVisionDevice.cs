@@ -2,10 +2,9 @@
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
-using Vintagestory.API.Util;
+using Vintagestory.API.Server;
 
 namespace Vintagestory.GameContent
 {
@@ -17,18 +16,47 @@ namespace Vintagestory.GameContent
 
         IInventory gearInv;
         ICoreClientAPI capi;
-        double hoursPassedLastFuelCheck;
+        ICoreServerAPI sapi;
 
-        public override bool ShouldLoad(EnumAppSide forSide)
-        {
-            return forSide == EnumAppSide.Client;
-        }
+        public override bool ShouldLoad(EnumAppSide forSide) => true;
 
         public override void StartClientSide(ICoreClientAPI api)
         {
             capi = api;
             api.Event.RegisterRenderer(this, EnumRenderStage.Before, "nightvision");
             api.Event.LevelFinalize += Event_LevelFinalize;
+        }
+
+        public override void StartServerSide(ICoreServerAPI api)
+        {
+            base.StartServerSide(api);
+            sapi = api;
+            api.Event.RegisterGameTickListener(onTickServer1s, 1000, 200);
+        }
+
+        double lastCheckTotalHours;
+        private void onTickServer1s(float dt)
+        {
+            double totalHours = sapi.World.Calendar.TotalHours;
+            double hoursPassed = totalHours - lastCheckTotalHours;
+
+            if (hoursPassed > 0.05)
+            {
+                foreach (var plr in sapi.World.AllOnlinePlayers)
+                {
+                    var inv = plr.InventoryManager.GetOwnInventory(GlobalConstants.characterInvClassName);
+                    if (inv == null) continue;
+
+                    var headArmorSlot = inv[(int)EnumCharacterDressType.ArmorHead];
+                    if (headArmorSlot.Itemstack?.Collectible is ItemNightvisiondevice invd)
+                    {
+                        invd.AddFuelHours(headArmorSlot.Itemstack, -hoursPassed);
+                        headArmorSlot.MarkDirty();
+                    }
+                }
+
+                lastCheckTotalHours = totalHours;
+            }
         }
 
         private void Event_LevelFinalize()
@@ -43,19 +71,11 @@ namespace Vintagestory.GameContent
             var headSlot = gearInv[(int)EnumCharacterDressType.ArmorHead];
             var stack = headSlot?.Itemstack;
             var itemnvd = stack?.Collectible as ItemNightvisiondevice;
-            var fuelLeft = itemnvd == null ? 0 : itemnvd.GetFuelLeft(stack);
+            var fuelLeft = itemnvd == null ? 0 : itemnvd.GetFuelHours(stack);
 
             if (itemnvd != null)
             {
-                capi.Render.ShaderUniforms.NightVisonStrength = (float)Math.Min(fuelLeft * 20, 0.8);
-
-                double totalHours = capi.World.Calendar.TotalHours;
-
-                if (hoursPassedLastFuelCheck - totalHours > 1)
-                {
-                    itemnvd.SetFuelLeft(stack, itemnvd.GetFuelLeft(stack) - 1 / 24f);
-                    hoursPassedLastFuelCheck = totalHours;
-                }
+                capi.Render.ShaderUniforms.NightVisonStrength = (float)GameMath.Clamp(fuelLeft * 20, 0, 0.8);
             }
             else
             {
@@ -69,13 +89,17 @@ namespace Vintagestory.GameContent
     {
         protected float fuelHoursCapacity = 24;
 
-        public float GetFuelLeft(ItemStack stack)
+        public double GetFuelHours(ItemStack stack)
         {
-            return stack.Attributes.GetFloat("fuel");
+            return Math.Max(0, stack.Attributes.GetDecimal("fuelHours"));
         }
-        public void SetFuelLeft(ItemStack stack, float amount)
+        public void SetFuelHours(ItemStack stack, double fuelHours)
         {
-            stack.Attributes.SetFloat("fuel", amount);
+            stack.Attributes.SetDouble("fuelHours", fuelHours);
+        }
+        public void AddFuelHours(ItemStack stack, double fuelHours)
+        {
+            stack.Attributes.SetDouble("fuelHours", Math.Max(0, fuelHours + GetFuelHours(stack)));
         }
 
         public float GetStackFuel(ItemStack stack)
@@ -100,10 +124,10 @@ namespace Vintagestory.GameContent
             if (op.CurrentPriority == EnumMergePriority.DirectMerge)
             {
                 float fuel = GetStackFuel(op.SourceSlot.Itemstack);
-
-                if (fuel > 0 && GetFuelLeft(op.SinkSlot.Itemstack) < fuelHoursCapacity)
+                double fuelHoursLeft = GetFuelHours(op.SinkSlot.Itemstack);
+                if (fuel > 0 && fuelHoursLeft + fuel/2 < fuelHoursCapacity)
                 {
-                    SetFuelLeft(op.SinkSlot.Itemstack, Math.Min(fuelHoursCapacity, GetFuelLeft(op.SinkSlot.Itemstack) + fuel));
+                    SetFuelHours(op.SinkSlot.Itemstack, fuel + fuelHoursLeft);
                     op.MovedQuantity = 1;
                     op.SourceSlot.TakeOut(1);
                     op.SinkSlot.MarkDirty();
@@ -118,17 +142,17 @@ namespace Vintagestory.GameContent
         }
 
 
-
         public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
         {
             base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
 
-            float fuelLeft = GetFuelLeft(inSlot.Itemstack);
+            double fuelLeft = GetFuelHours(inSlot.Itemstack);
             dsc.AppendLine(Lang.Get("Has fuel for {0:0.#} hours", fuelLeft));
-            if (fuelLeft < 0.1)
+            if (fuelLeft <= 0)
             {
-                dsc.AppendLine(Lang.Get("Add temporal gear to fuel"));
+                dsc.AppendLine(Lang.Get("Add temporal gear to refuel"));
             }
         }
+
     }
 }

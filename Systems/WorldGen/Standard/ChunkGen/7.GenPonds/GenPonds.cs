@@ -330,8 +330,16 @@ namespace Vintagestory.ServerMods
 
                 // 1. Place water or ice block
                 int index3d = (ly * chunksize + lz) * chunksize + lx;
-                Block existing = api.World.GetBlock(chunk.Data[index3d]);
-                if (existing.BlockMaterial == EnumBlockMaterial.Plant) chunk.Data.SetBlockAir(index3d);
+                Block existing = api.World.GetBlock(chunk.Data.GetBlockId(index3d, BlockLayersAccess.Solid));
+                if (existing.BlockMaterial == EnumBlockMaterial.Plant)
+                {
+                    chunk.Data.SetBlockAir(index3d);
+                    if (existing.EntityClass != null)
+                    {
+                        tmpPos.Set(curChunkX * chunksize + lx, pondYPos, curChunkZ * chunksize + lz);
+                        chunk.RemoveBlockEntity(tmpPos);
+                    }
+                }
                 chunk.Data.SetFluid(index3d, temp < -5 ? GlobalConfig.lakeIceBlockId : waterID);
 
 

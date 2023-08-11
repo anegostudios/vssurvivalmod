@@ -12,6 +12,8 @@ namespace Vintagestory.GameContent
 {
     public class ItemAxe : Item
     {
+        const int LeafGroups = 7;
+
         static SimpleParticleProperties dustParticles = new SimpleParticleProperties()
         {
             MinPos = new Vec3d(),
@@ -177,6 +179,7 @@ namespace Vintagestory.GameContent
         public Stack<BlockPos> FindTree(IWorldAccessor world, BlockPos startPos, out int resistance, out int woodTier)
         {
             Queue<Vec4i> queue = new Queue<Vec4i>();
+            Queue<Vec4i> leafqueue = new Queue<Vec4i>();
             HashSet<BlockPos> checkedPositions = new HashSet<BlockPos>();
             Stack<BlockPos> foundPositions = new Stack<BlockPos>();
             resistance = 0;
@@ -206,80 +209,103 @@ namespace Vintagestory.GameContent
             if (spreadIndex < 2) return foundPositions;
             if (treeFellingGroupCode == null) return foundPositions;
 
-            string treeFellingGroupLeafCode = null;
             queue.Enqueue(new Vec4i(startPos.X, startPos.Y, startPos.Z, spreadIndex));
-            foundPositions.Push(startPos);
             checkedPositions.Add(startPos);
+            int[] adjacentLeafGroupsCounts = new int[LeafGroups];
 
             while (queue.Count > 0)
             {
-                if (foundPositions.Count > 2500)
-                {
-                    break;
-                }
-
                 Vec4i pos = queue.Dequeue();
+                foundPositions.Push(new BlockPos(pos));
+                resistance += pos.W + 1;      // leaves -> 1; branchyleaves -> 2; softwood -> 4 etc.
+                if (woodTier == 0) woodTier = pos.W;
+                if (foundPositions.Count > 2500) break;
 
-                block = world.BlockAccessor.GetBlock(pos.X, pos.Y, pos.Z);
-
+                block = world.BlockAccessor.GetBlock(pos.X, pos.Y, pos.Z, BlockLayersAccess.Solid);
                 if (block is ICustomTreeFellingBehavior ctfbhh)
                 {
                     bh = ctfbhh.GetTreeFellingBehavior(startPos, null, spreadIndex);
                 }
                 if (bh == EnumTreeFellingBehavior.NoChop) continue;
 
+                onTreeBlock(pos, world.BlockAccessor, checkedPositions, startPos, bh == EnumTreeFellingBehavior.ChopSpreadVertical, treeFellingGroupCode, queue, leafqueue, adjacentLeafGroupsCounts);
+            }
 
-                for (int i = 0; i < Vec3i.DirectAndIndirectNeighbours.Length; i++)
+            // Find which is the most prevalent of the 7 possible adjacentLeafGroups
+            int maxCount = 0;
+            int maxI = -1;
+            for (int i = 0; i < adjacentLeafGroupsCounts.Length; i++)
+            {
+                if (adjacentLeafGroupsCounts[i] > maxCount)
                 {
-                    Vec3i facing = Vec3i.DirectAndIndirectNeighbours[i];
-                    BlockPos neibPos = new BlockPos(pos.X + facing.X , pos.Y + facing.Y, pos.Z + facing.Z);
-                    
-                    float hordist = GameMath.Sqrt(neibPos.HorDistanceSqTo(startPos.X, startPos.Z));
-                    float vertdist = (neibPos.Y - startPos.Y);
-
-                    // "only breaks blocks inside an upside down square base pyramid"
-                    float f = bh == EnumTreeFellingBehavior.ChopSpreadVertical ? 0.5f : 2;
-                    if (hordist - 1 >= f * vertdist) continue;
-                    if (checkedPositions.Contains(neibPos)) continue;
-
-                    block = world.BlockAccessor.GetBlock(neibPos);
-                    if (block.Code == null || block.Id == 0) continue;
-
-                    string ngcode = block.Attributes?["treeFellingGroupCode"].AsString();
-
-                    // Only break the same type tree blocks
-                    if (ngcode != treeFellingGroupCode)
-                    {
-                        if (ngcode == null) continue;
-                        // Leaves now can carry treeSubType value of 1-7 therefore do a separate check for the leaves
-                        if (ngcode != treeFellingGroupLeafCode)
-                        {
-                            if (treeFellingGroupLeafCode == null && block.BlockMaterial == EnumBlockMaterial.Leaves && ngcode.Length == treeFellingGroupCode.Length + 1 && ngcode.EndsWith(treeFellingGroupCode))
-                            {
-                                treeFellingGroupLeafCode = ngcode;
-                            }
-                            else continue;
-                        }
-                    }
-
-                    // Only spread from "high to low". i.e. spread from log to leaves, but not from leaves to logs
-                    int nspreadIndex = block.Attributes?["treeFellingGroupSpreadIndex"].AsInt(0) ?? 0;
-                    if (pos.W < nspreadIndex) continue;
-
-                    checkedPositions.Add(neibPos);
-
-                    if (bh == EnumTreeFellingBehavior.ChopSpreadVertical && !facing.Equals(0, 1, 0) && nspreadIndex > 0) continue;
-
-                    resistance += nspreadIndex + 1;      // leaves -> 1; branchyleaves -> 2; softwood -> 4 etc.
-                    if (woodTier == 0) woodTier = nspreadIndex;
-                    foundPositions.Push(neibPos.Copy());
-                    queue.Enqueue(new Vec4i(neibPos.X, neibPos.Y, neibPos.Z, nspreadIndex));
+                    maxCount = adjacentLeafGroupsCounts[i];
+                    maxI = i;
                 }
+            }
+            // If we found adjacentleaves using the leafgroup system, update the treeFellingGroupCode for the leaves search, using the most commonly found group
+            // The purpose of this is to avoid chopping the "wrong" leaf in those cases where trees are growing close together and one of tree 2's leaves is the first leaf found when chopping tree 1
+            if (maxI >= 0) treeFellingGroupCode = (maxI + 1) + treeFellingGroupCode;
+
+            while (leafqueue.Count > 0)
+            {
+                Vec4i pos = leafqueue.Dequeue();
+                foundPositions.Push(new BlockPos(pos));
+                resistance += pos.W + 1;      // leaves -> 1; branchyleaves -> 2; softwood -> 4 etc.
+                if (foundPositions.Count > 2500) break;
+
+                onTreeBlock(pos, world.BlockAccessor, checkedPositions, startPos, bh == EnumTreeFellingBehavior.ChopSpreadVertical, treeFellingGroupCode, leafqueue, null, null);
             }
 
             return foundPositions;
         }
 
+        private void onTreeBlock(Vec4i pos, IBlockAccessor blockAccessor, HashSet<BlockPos> checkedPositions, BlockPos startPos, bool chopSpreadVertical, string treeFellingGroupCode, Queue<Vec4i> queue, Queue<Vec4i> leafqueue, int[] adjacentLeaves)
+        {
+            Queue<Vec4i> outqueue = null;
+            for (int i = 0; i < Vec3i.DirectAndIndirectNeighbours.Length; i++)
+            {
+                Vec3i facing = Vec3i.DirectAndIndirectNeighbours[i];
+                BlockPos neibPos = new BlockPos(pos.X + facing.X, pos.Y + facing.Y, pos.Z + facing.Z);
+
+                float hordist = GameMath.Sqrt(neibPos.HorDistanceSqTo(startPos.X, startPos.Z));
+                float vertdist = (neibPos.Y - startPos.Y);
+
+                // "only breaks blocks inside an upside down square base pyramid"
+                float f = chopSpreadVertical ? 0.5f : 2;
+                if (hordist - 1 >= f * vertdist) continue;
+                if (checkedPositions.Contains(neibPos)) continue;
+
+                Block block = blockAccessor.GetBlock(neibPos, BlockLayersAccess.Solid);
+                if (block.Code == null || block.Id == 0) continue;   // Skip air blocks
+
+                string ngcode = block.Attributes?["treeFellingGroupCode"].AsString();
+
+                // Only break the same type tree blocks
+                if (ngcode != treeFellingGroupCode)
+                {
+                    if (ngcode == null || leafqueue == null) continue;
+                    // Leaves now can carry treeSubType value of 1-7 therefore do a separate check for the leaves
+                    if (block.BlockMaterial == EnumBlockMaterial.Leaves && ngcode.Length == treeFellingGroupCode.Length + 1 && ngcode.EndsWith(treeFellingGroupCode))
+                    {
+                        outqueue = leafqueue;
+                        int leafGroup = GameMath.Clamp(ngcode[0] - '0', 1, 7);
+                        adjacentLeaves[leafGroup - 1]++;
+                    }
+                    else continue;
+                }
+                else outqueue = queue;
+
+                // Only spread from "high to low". i.e. spread from log to leaves, but not from leaves to logs
+                int nspreadIndex = block.Attributes?["treeFellingGroupSpreadIndex"].AsInt(0) ?? 0;
+                if (pos.W < nspreadIndex) continue;
+
+                checkedPositions.Add(neibPos);
+
+                if (chopSpreadVertical && !facing.Equals(0, 1, 0) && nspreadIndex > 0) continue;
+
+                outqueue.Enqueue(new Vec4i(neibPos.X, neibPos.Y, neibPos.Z, nspreadIndex));
+            }
+        }
     }
 
 

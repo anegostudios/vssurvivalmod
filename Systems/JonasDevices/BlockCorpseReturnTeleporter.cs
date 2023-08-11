@@ -16,7 +16,7 @@ namespace Vintagestory.GameContent
     {
         public ILoadedSound translocatingSound;
 
-        bool HasFuel = true;
+        bool HasFuel = false;
         BlockCorpseReturnTeleporter ownBlock;
         bool canTeleport = false;
         long somebodyIsTeleportingReceivedTotalMs;

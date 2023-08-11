@@ -1,5 +1,4 @@
 ﻿using System;
-using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -225,7 +224,6 @@ namespace Vintagestory.GameContent
                 SoundType = EnumSoundType.SoundGlitchunaffected,
                 Volume = 0f
             });
-            
         }
 
         private bool asyncParticleSpawn(float dt, IAsyncParticleManager manager)
@@ -487,7 +485,5 @@ namespace Vintagestory.GameContent
                 tempStabSoundVeryLow.FadeTo(0, 0.95f * fadeSpeed, (s) => { tempStabSoundVeryLow.Stop(); });
             }
         }
-
-
     }
 }

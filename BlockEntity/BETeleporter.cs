@@ -80,6 +80,9 @@ namespace Vintagestory.GameContent
 
         protected virtual void HandleTeleportingServer(float dt)
         {
+            if (toremove == null) throw new Exception("BETeleporterBase: toremove is null, it shouldn't be!");
+            if (tpingEntities == null) throw new Exception("BETeleporterBase: tpingEntities is null, it shouldn't be!");
+            if (Api == null) throw new Exception("BETeleporterBase: Api is null, it shouldn't be!");
             toremove.Clear();
 
             bool wasTeleporting = somebodyIsTeleporting;
@@ -89,6 +92,8 @@ namespace Vintagestory.GameContent
 
             foreach (var val in tpingEntities)
             {
+                if (val.Value == null) throw new Exception("BETeleporterBase: val.Value is null, it shouldn't be!");
+                if (val.Value.Entity == null) throw new Exception("BETeleporterBase: val.Value.Entity is null, it shouldn't be!");
                 if (val.Value.Entity.Teleporting) continue;
 
                 val.Value.SecondsPassed += Math.Min(0.5f, dt);
@@ -318,7 +323,15 @@ namespace Vintagestory.GameContent
 
         private void OnServerGameTick(float dt)
         {
-            HandleTeleportingServer(dt);
+            try
+            {
+                HandleTeleportingServer(dt);
+            }
+            catch (Exception e)
+            {
+                Api.Logger.Warning("Exception when ticking Teleporter at {0}", Pos);
+                Api.Logger.Error(e);
+            }
         }
 
 

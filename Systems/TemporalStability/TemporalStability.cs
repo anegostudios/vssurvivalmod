@@ -5,6 +5,7 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
@@ -326,10 +327,10 @@ namespace Vintagestory.GameContent
 
                     serverChannel.BroadcastPacket(data);
 
-                    var list = (api.World as IServerWorldAccessor).LoadedEntities.Values;
+                    var list = ((CachingConcurrentDictionary<long, Entity>)(api.World as IServerWorldAccessor).LoadedEntities).Values;
                     foreach (var e in list)
                     {
-                        if (e.Code.Path.Contains("drifter"))
+                        if (e is EntityHumanoid && e.Code.Path.Contains("drifter"))
                         {
                             e.Attributes.SetBool("ignoreDaylightFlee", true);
                         }
@@ -354,10 +355,10 @@ namespace Vintagestory.GameContent
 
                     serverChannel.BroadcastPacket(data);
 
-                    var list = (api.World as IServerWorldAccessor).LoadedEntities.Values;
+                    var list = ((CachingConcurrentDictionary<long,Entity>)(api.World as IServerWorldAccessor).LoadedEntities).Values;
                     foreach (var e in list)
                     {
-                        if (e.Code.Path.Contains("drifter"))
+                        if (e is EntityHumanoid && e.Code.Path.Contains("drifter"))
                         {
                             e.Attributes.RemoveAttribute("ignoreDaylightFlee");
 
@@ -495,6 +496,9 @@ namespace Vintagestory.GameContent
 
             entity.WatchedAttributes.SetDouble("temporalStability", GameMath.Clamp((1 - 1.5f * StormStrength), 0, 1));
             entity.Attributes.SetBool("ignoreDaylightFlee", true);
+            var bh = entity.GetBehavior("timeddespawn");   // Gradually despawn the storm-spawned entities after the storm ends - maximum time 2.4 in-game hours for maximum strength storm
+            if (bh is ITimedDespawn bhDespawn) bhDespawn.SetForcedCalendarDespawn(data.stormActiveTotalDays + 0.1 * StormStrength * api.World.Rand.NextDouble());
+
         }
 
 

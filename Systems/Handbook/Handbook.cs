@@ -1,6 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
 using Vintagestory.API.Client;
+using System;
+using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
@@ -166,6 +166,5 @@ namespace Vintagestory.GameContent
             dialog?.Dispose();
             capi?.Input.HotKeys.Remove("handbook");
         }
-
     }
 }

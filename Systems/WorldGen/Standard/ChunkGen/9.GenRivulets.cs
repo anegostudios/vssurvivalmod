@@ -171,6 +171,11 @@ namespace Vintagestory.ServerMods
 
             var chunk = chunks[y / chunksize];
             var index = (chunksize * (y % chunksize) + dz) * chunksize + dx;
+            Block existing = api.World.GetBlock(chunk.Data.GetBlockId(index, BlockLayersAccess.Solid));
+            if (existing.EntityClass != null)
+            {
+                chunk.RemoveBlockEntity(pos);
+            }
             chunk.Data.SetBlockAir(index);
             chunk.Data.SetFluid(index, y < geoActivityYThreshold ? GlobalConfig.lavaBlockId : GlobalConfig.waterBlockId);
 

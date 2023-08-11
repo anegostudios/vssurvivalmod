@@ -118,9 +118,11 @@ namespace Vintagestory.GameContent
 
                 if (worldGenRand.NextDouble() < 0.4)
                 {
+                    if (offX == 0 && offZ == 0 && offY <= dy) continue;  // Don't overwrite self
                     tryPlaceDecoUp(tmppos.Set(cavepos.X + offX, cavepos.Y + offY, cavepos.Z + offZ), blockAccessor, worldGenRand);
                 } else
                 {
+                    if (offX == 0 && offZ == 0 && offY >= dy) continue;  // Don't overwrite self
                     tryPlaceDecoDown(tmppos.Set(cavepos.X + offX, cavepos.Y + offY, cavepos.Z + offZ), blockAccessor, worldGenRand);
                 }
 

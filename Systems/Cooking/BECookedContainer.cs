@@ -240,13 +240,13 @@ namespace Vintagestory.GameContent
 
                 MarkDirty(true);
 
-            } catch (NullReferenceException e)
+            } catch (NullReferenceException)
             {
                 Api.World.Logger.Error("NRE in BECookedContainer.");
                 Api.World.Logger.Error("slot: " + slot?.Itemstack?.GetName());
                 Api.World.Logger.Error("slot cap: " + slot?.Itemstack?.Collectible?.Attributes?["servingCapacity"]);
                 
-                throw e;
+                throw;
             }
 
             return true;

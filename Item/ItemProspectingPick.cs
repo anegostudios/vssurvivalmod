@@ -226,6 +226,14 @@ namespace Vintagestory.GameContent
                 {
                     
                 }
+
+                public void TakeBulkReadLock()
+                {
+                }
+
+                public void ReleaseBulkReadLock()
+                {
+                }
             }
 
             #region unused by rockstrata gen
@@ -411,12 +419,32 @@ namespace Vintagestory.GameContent
                 throw new NotImplementedException();
             }
 
+            public Block GetLocalBlockAtBlockPos_LockFree(IWorldAccessor world, BlockPos pos, int layer = BlockLayersAccess.Default)
+            {
+                throw new NotImplementedException();
+            }
+
             public bool SetDecor(Block block, int index3d, BlockFacing onFace)
             {
                 throw new NotImplementedException();
             }
 
             public bool SetDecor(Block block, int index3d, int decorIndex)
+            {
+                throw new NotImplementedException();
+            }
+
+            public bool RemoveBlockEntity(BlockPos pos)
+            {
+                throw new NotImplementedException();
+            }
+
+            public void AcquireBlockReadLock()
+            {
+                throw new NotImplementedException();
+            }
+
+            public void ReleaseBlockReadLock()
             {
                 throw new NotImplementedException();
             }

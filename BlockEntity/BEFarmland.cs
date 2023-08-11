@@ -332,28 +332,27 @@ namespace Vintagestory.GameContent
         {
             tmpPos.Set(Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5);
 
+            float minMoisture = GameMath.Clamp(1 - waterDistance / 4f, 0, 1);
+
             double hoursPassed = Math.Min((totalDays - lastMoistureLevelUpdateTotalDays) * Api.World.Calendar.HoursPerDay, 48);
             if (hoursPassed < 0.03f)
             {
                 // Get wet from a water source
-                moistureLevel = Math.Max(moistureLevel, GameMath.Clamp(1 - waterDistance / 4f, 0, 1));
+                moistureLevel = Math.Max(moistureLevel, minMoisture);
 
                 return false;
             }
 
             // Dry out
-            moistureLevel = Math.Max(0, moistureLevel - (float)hoursPassed / 48f);
-
-            // Get wet from a water source
-            moistureLevel = Math.Max(moistureLevel, GameMath.Clamp(1 - waterDistance / 4f, 0, 1));
+            moistureLevel = Math.Max(minMoisture, moistureLevel - (float)hoursPassed / 48f);
 
             // Get wet from all the rainfall since last update
             if (skyExposed)
             {
-                if (baseClimate == null && hoursPassed > 0) baseClimate = Api.World.BlockAccessor.GetClimateAt(Pos, EnumGetClimateMode.WorldGenValues, totalDays - hoursPassed * Api.World.Calendar.HoursPerDay / 2);
+                if (baseClimate == null && hoursPassed > 0) baseClimate = Api.World.BlockAccessor.GetClimateAt(Pos, EnumGetClimateMode.WorldGenValues, totalDays - hoursPassed / Api.World.Calendar.HoursPerDay / 2);
                 while (hoursPassed > 0)
                 {
-                    double rainLevel = blockFarmland.wsys.GetPrecipitation(Pos, totalDays - hoursPassed * Api.World.Calendar.HoursPerDay, baseClimate);
+                    double rainLevel = blockFarmland.wsys.GetPrecipitation(Pos, totalDays - hoursPassed / Api.World.Calendar.HoursPerDay, baseClimate);
                     moistureLevel = GameMath.Clamp(moistureLevel + (float)rainLevel / 3f, 0, 1);
                     hoursPassed--;
                 }
@@ -369,9 +368,6 @@ namespace Vintagestory.GameContent
         {
             if (!(Api as ICoreServerAPI).World.IsFullyLoadedChunk(Pos)) return;
 
-            double hoursNextStage = GetHoursForNextStage();
-            bool nearbyWaterTested = false;
-
             double nowTotalHours = Api.World.Calendar.TotalHours;
             double hourIntervall = 3 + rand.NextDouble();
 
@@ -381,8 +377,20 @@ namespace Vintagestory.GameContent
 
             if ((nowTotalHours - totalHoursLastUpdate) < hourIntervall)
             {
-                if (updateMoistureLevel(Api.World.Calendar.TotalDays, lastWaterDistance, skyExposed)) UpdateFarmlandBlock();
-                return;
+                if (totalHoursLastUpdate > nowTotalHours)
+                {
+                    // We need to rollback time because the blockEntity saved date is ahead of the calendar date: can happen if a schematic is imported
+                    double rollback = totalHoursLastUpdate - nowTotalHours; 
+                    totalHoursForNextStage -= rollback;
+                    lastMoistureLevelUpdateTotalDays -= rollback;
+                    lastWaterSearchedTotalHours -= rollback;
+                    totalHoursLastUpdate = nowTotalHours;
+                }
+                else
+                {
+                    if (updateMoistureLevel(nowTotalHours, lastWaterDistance, skyExposed)) UpdateFarmlandBlock();
+                    return;
+                }
             }
 
             // Slow down growth on bad light levels
@@ -399,6 +407,7 @@ namespace Vintagestory.GameContent
             Block deadCropBlock = Api.World.GetBlock(new AssetLocation("deadcrop"));
 
 
+            double hoursNextStage = GetHoursForNextStage();
             double lightHoursPenalty = hoursNextStage / lightGrowthSpeedFactor - hoursNextStage;
 
             double totalHoursNextGrowthState = totalHoursForNextStage + lightHoursPenalty;
@@ -419,7 +428,7 @@ namespace Vintagestory.GameContent
             // Don't update more than a year
             totalHoursLastUpdate = Math.Max(totalHoursLastUpdate, nowTotalHours - Api.World.Calendar.DaysPerYear * Api.World.Calendar.HoursPerDay);
 
-            bool hasRipeCrop = HasRipeCrop();
+            bool hasRipeCrop =  HasRipeCrop();
 
             if (!skyExposed) // Fast pre-check
             {
@@ -431,9 +440,8 @@ namespace Vintagestory.GameContent
                 roomness = 0;
             }
 
-            ClimateCondition baseClimate = Api.World.BlockAccessor.GetClimateAt(Pos, EnumGetClimateMode.WorldGenValues);
-            if (baseClimate == null) return;
-            float baseTemperature = baseClimate.Temperature;
+            bool nearbyWaterTested = false;
+            ClimateCondition conds = null;
 
             // Fast forward in 3-4 hour intervalls
             while ((nowTotalHours - totalHoursLastUpdate) > hourIntervall)
@@ -449,13 +457,20 @@ namespace Vintagestory.GameContent
                     lastWaterDistance = waterDistance;
                 }
 
-                updateMoistureLevel(totalHoursLastUpdate / Api.World.Calendar.HoursPerDay, waterDistance, skyExposed, baseClimate);
-
                 totalHoursLastUpdate += hourIntervall;
                 hourIntervall = 3 + rand.NextDouble();
 
-                baseClimate.Temperature = baseTemperature;
-                ClimateCondition conds = Api.World.BlockAccessor.GetClimateAt(Pos, baseClimate, EnumGetClimateMode.ForSuppliedDate_TemperatureRainfallOnly, totalHoursLastUpdate / Api.World.Calendar.HoursPerDay);
+                if (conds == null)
+                {
+                    conds = Api.World.BlockAccessor.GetClimateAt(Pos, EnumGetClimateMode.ForSuppliedDate_TemperatureRainfallOnly, totalHoursLastUpdate / Api.World.Calendar.HoursPerDay);
+                    if (conds == null) break;
+                }
+                else
+                {
+                    Api.World.BlockAccessor.GetClimateAt(Pos, conds, EnumGetClimateMode.ForSuppliedDate_TemperatureRainfallOnly, totalHoursLastUpdate / Api.World.Calendar.HoursPerDay);
+                }
+
+                updateMoistureLevel(totalHoursLastUpdate / Api.World.Calendar.HoursPerDay, waterDistance, skyExposed, conds);
 
                 if (roomness > 0)
                 {
@@ -526,13 +541,11 @@ namespace Vintagestory.GameContent
 
                 growTallGrass |= rand.NextDouble() < 0.006;
 
-                bool ripe = HasRipeCrop();
-
                 // Rule 1: Fertility increase up to original levels by 1 every 3-4 ingame hours
                 // Rule 2: Fertility does not increase with a ripe crop on it
-                npkRegain[0] = ripe ? 0 : fertilityRecoverySpeed;
-                npkRegain[1] = ripe ? 0 : fertilityRecoverySpeed;
-                npkRegain[2] = ripe ? 0 : fertilityRecoverySpeed;
+                npkRegain[0] = hasRipeCrop ? 0 : fertilityRecoverySpeed;
+                npkRegain[1] = hasRipeCrop ? 0 : fertilityRecoverySpeed;
+                npkRegain[2] = hasRipeCrop ? 0 : fertilityRecoverySpeed;
 
                 // Rule 3: Fertility increase up 3 times slower for the currently growing crop
                 if (currentlyConsumedNutrient != null)
@@ -584,6 +597,7 @@ namespace Vintagestory.GameContent
                 if (totalHoursNextGrowthState <= totalHoursLastUpdate)
                 {
                     TryGrowCrop(totalHoursForNextStage);
+                    hasRipeCrop = HasRipeCrop();
                     totalHoursForNextStage += hoursNextStage;
                     totalHoursNextGrowthState = totalHoursForNextStage + lightHoursPenalty;
 

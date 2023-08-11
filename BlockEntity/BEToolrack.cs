@@ -27,7 +27,8 @@ namespace Vintagestory.GameContent
             get {
                 ToolTextures tt;
 
-                if (BlockToolRack.ToolTextureSubIds(Api).TryGetValue((Item)tmpItem, out tt))
+                var toolTextureSubIds = BlockToolRack.ToolTextureSubIds(Api);
+                if (toolTextureSubIds.TryGetValue((Item)tmpItem, out tt))
                 {
                     int textureSubId = 0;
                     if (tt.TextureSubIdsByCode.TryGetValue(textureCode, out textureSubId))
@@ -38,6 +39,7 @@ namespace Vintagestory.GameContent
                     return ((ICoreClientAPI)Api).BlockTextureAtlas.Positions[tt.TextureSubIdsByCode.First().Value];
                 }
 
+                Api.Logger.Debug("Could not get item texture! textureCode: {0} Item: {1} toolTextureSubIds: [{2}] {3}",textureCode, tmpItem.Code, toolTextureSubIds.Count, string.Join(",",toolTextureSubIds.Select(x => x.Key.Code)));
                 return ((ICoreClientAPI)Api).BlockTextureAtlas.UnknownTexturePosition;
             }
         }
@@ -61,7 +63,6 @@ namespace Vintagestory.GameContent
                 api.Event.RegisterEventBusListener(OnEventBusEvent);
             }
         }
-        
 
         private void OnEventBusEvent(string eventname, ref EnumHandling handling, IAttribute data)
         {
@@ -114,7 +115,6 @@ namespace Vintagestory.GameContent
                     }
                 }
 
-
                 if (tmpItem.Attributes?["toolrackTransform"].Exists == true)
                 {
                     ModelTransform transform = tmpItem.Attributes["toolrackTransform"].AsObject<ModelTransform>();
@@ -150,7 +150,6 @@ namespace Vintagestory.GameContent
 
             }
         }
-
         
         internal bool OnPlayerInteract(IPlayer byPlayer, Vec3d hit)
         {
@@ -185,7 +184,6 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-
         bool TakeFromSlot(IPlayer player, int slot)
         {
             ItemStack stack = inventory[slot].TakeOutWhole();
@@ -198,7 +196,6 @@ namespace Vintagestory.GameContent
             didInteract(player);
             return true;
         }
-        
 
         void didInteract(IPlayer player)
         {
@@ -206,8 +203,6 @@ namespace Vintagestory.GameContent
             if (Api is ICoreClientAPI) loadToolMeshes();
             MarkDirty(true);
         }
-
-
 
         public override void OnBlockRemoved()
         {
@@ -250,11 +245,6 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-
-
-
-
-
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
             base.FromTreeAttributes(tree, worldForResolving);
@@ -279,9 +269,6 @@ namespace Vintagestory.GameContent
             inventory.ToTreeAttributes(invtree);
             tree["inventory"] = invtree;
         }
-
-
-
 
         public override void OnStoreCollectibleMappings(Dictionary<int, AssetLocation> blockIdMapping, Dictionary<int, AssetLocation> itemIdMapping)
         {

@@ -1,15 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Drawing;
-using System.Text;
-using Vintagestory.API;
+using SkiaSharp;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
-using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
-using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
@@ -159,12 +155,12 @@ namespace Vintagestory.GameContent
                         for (int i = 0; i < 8; i++)
                         {
                             Vec2d vec = GameMath.R2Sequence2D(i);
-                            Color col2 = bmp.GetPixelRel((float)vec.X, (float)vec.Y);
-                            if (col2.A > 0.5)
+                            SKColor col2 = bmp.GetPixelRel((float)vec.X, (float)vec.Y);
+                            if (col2.Alpha > 0.5)
                             {
-                                r += col2.R;
-                                g += col2.G;
-                                b += col2.B;
+                                r += col2.Red;
+                                g += col2.Green;
+                                b += col2.Blue;
                                 c++;
                             }
                         }
@@ -597,8 +593,5 @@ namespace Vintagestory.GameContent
         {
             return "skinnableplayer";
         }
-
-
-        
     }
 }

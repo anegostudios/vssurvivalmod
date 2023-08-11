@@ -208,7 +208,7 @@ namespace Vintagestory.GameContent
 
             if (meshSource != null)
             {
-                mesh = meshSource.GenMesh(stack, stack.Class == EnumItemClass.Item ? (ITextureAtlasAPI) capi.ItemTextureAtlas : capi.BlockTextureAtlas, Pos);
+                mesh = meshSource.GenMesh(stack, capi.BlockTextureAtlas, Pos);
             }
             
             if (mesh == null)

@@ -22,6 +22,8 @@ namespace Vintagestory.ServerMods
         const double geoDistortionThreshold = 10.0;
         const double maxDistortionAmount = (55 + 40 + 30 + 10) * SimplexNoiseOctave.MAX_VALUE_2D_WARP;
 
+        int maxThreads;
+
         LandformsWorldProperty landforms;
         Dictionary<int, LerpedWeightedIndex2DMap> LandformMapByRegion = new Dictionary<int, LerpedWeightedIndex2DMap>(10);
         int regionMapSize;
@@ -86,6 +88,8 @@ namespace Vintagestory.ServerMods
         {
             LoadGlobalConfig(api);
             LandformMapByRegion.Clear();
+
+            maxThreads = Math.Min(Environment.ProcessorCount, api.Server.Config.HostedMode ? 4 : 10);
 
             chunksize = api.WorldManager.ChunkSize;
             regionMapSize = (int)Math.Ceiling((double)api.WorldManager.MapSizeX / api.WorldManager.RegionSize);
@@ -348,7 +352,8 @@ namespace Vintagestory.ServerMods
             float chunkPixelBlockStep = chunkPixelSize * chunkBlockDelta;
             double verticalNoiseRelativeFrequency = 0.5 / TerraGenConfig.terrainNoiseVerticalScale;
 
-            Parallel.For(0, chunksize * chunksize, chunkIndex2d => {
+            
+            Parallel.For(0, chunksize * chunksize, new ParallelOptions() { MaxDegreeOfParallelism = maxThreads }, chunkIndex2d => {
                 int lX = chunkIndex2d % chunksize;
                 int lZ = chunkIndex2d / chunksize;
                 int worldX = chunkX * chunksize + lX;

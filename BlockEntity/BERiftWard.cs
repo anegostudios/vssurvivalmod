@@ -48,7 +48,7 @@ namespace Vintagestory.GameContent
 
         public void ToggleAmbientSound(bool on)
         {
-            if (Api.Side != EnumAppSide.Client) return;
+            if (Api?.Side != EnumAppSide.Client) return;
 
             if (on)
             {

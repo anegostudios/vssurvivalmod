@@ -1,9 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using SkiaSharp;
+using Vintagestory.API.Util;
 using Vintagestory.ServerMods.NoObf;
 
 namespace Vintagestory.ServerMods
@@ -106,53 +102,48 @@ namespace Vintagestory.ServerMods
 
         public static void DebugDrawBitmap(DebugDrawMode mode, int[] values, int sizeX, int sizeZ, string name)
         {
-            if (!Debug) return;
-
-            Bitmap bmp = new Bitmap(sizeX, sizeZ);
-            int color;
-            for (int x = 0; x < sizeX; x++)
+            if (!Debug)
             {
-                for (int z = 0; z < sizeZ; z++)
-                {
-                    color = values[z * sizeX + x];
+                return;
+            }
 
+            SKBitmap bitmap = new SKBitmap(sizeX, sizeZ);
+            for (int i = 0; i < sizeX; i++)
+            {
+                for (int j = 0; j < sizeZ; j++)
+                {
+                    int num = values[j * sizeX + i];
                     if (mode == DebugDrawMode.FirstByteGrayscale)
                     {
-                        int val = color & 0xff;
-                        color = (val) | (val << 8) | (val << 16);
+                        int num2 = num & 0xFF;
+                        num = num2 | (num2 << 8) | (num2 << 16);
                     }
 
                     if (mode == DebugDrawMode.LandformRGB)
                     {
-                        LandformVariant[] landformsByIndex = NoiseLandforms.landforms.LandFormsByIndex;
-
-                        if (landformsByIndex.Length > color)
+                        LandformVariant[] landFormsByIndex = NoiseLandforms.landforms.LandFormsByIndex;
+                        if (landFormsByIndex.Length > num)
                         {
-                            color = landformsByIndex[color].ColorInt;
+                            num = landFormsByIndex[num].ColorInt;
                         }
-
                     }
 
                     if (mode == DebugDrawMode.ProvinceRGB)
                     {
-                        GeologicProvinceVariant[] provincesByIndex = NoiseGeoProvince.provinces.Variants;
-
-                        if (provincesByIndex.Length > color)
+                        GeologicProvinceVariant[] variants = NoiseGeoProvince.provinces.Variants;
+                        if (variants.Length > num)
                         {
-                            color = provincesByIndex[color].ColorInt;
+                            num = variants[num].ColorInt;
                         }
-
                     }
 
-                    bmp.SetPixel(x, z, Color.FromArgb((color >> 16) & 0xff, (color >> 8) & 0xff, color & 0xff));
+                    bitmap.SetPixel(i, j,
+                        new SKColor((byte)((num >> 16) & 0xFF), (byte)((num >> 8) & 0xFF), (byte)(num & 0xFF)));
                 }
             }
 
-            bmp.Save("map-" + name + ".png");
+            bitmap.Save("map-" + name + ".png");
         }
-
-
-
 
         public int[] CutMargins(int[] inInts, int sizeX, int sizeZ, int margin)
         {

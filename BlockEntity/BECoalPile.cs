@@ -69,7 +69,7 @@ namespace Vintagestory.GameContent
         public override int BulkTakeQuantity => 2;
 
 
-        public int Layers => inventory[0].StackSize / 2;
+        public int Layers => inventory[0].StackSize == 1 ? 1 : inventory[0].StackSize / 2 ;
 
         float cokeConversionRate = 0f;
 
@@ -196,7 +196,7 @@ namespace Vintagestory.GameContent
         public float GetHoursLeft(double startTotalHours)
         {
             double totalHoursPassed = startTotalHours - burnStartTotalHours;
-            double burnHourTimeLeft = inventory[0].StackSize / 2 * BurnHoursPerLayer;
+            double burnHourTimeLeft = inventory[0].StackSize / 2f * BurnHoursPerLayer;
             return (float)(burnHourTimeLeft - totalHoursPassed);
         }
         
@@ -239,10 +239,10 @@ namespace Vintagestory.GameContent
             }
 
             bool changed = false;
-            while (Api.World.Calendar.TotalHours - burnStartTotalHours > BurnHoursPerLayer)
+            while (Api.World.Calendar.TotalHours - burnStartTotalHours > BurnHoursPerLayer / 2)
             {
-                burnStartTotalHours += BurnHoursPerLayer;
-                inventory[0].TakeOut(2);
+                burnStartTotalHours += BurnHoursPerLayer / 2 ;
+                inventory[0].TakeOut(1);
 
                 if (inventory[0].Empty)
                 {
@@ -280,7 +280,7 @@ namespace Vintagestory.GameContent
                 int dz = Math.Abs(Pos.Z - z);
                 bool corner = dx == 1 && dz == 1;
 
-                bool viable = block.Attributes?["cokeOvenViable"].AsBool(true) == true;
+                bool viable = block.Attributes?["cokeOvenViable"].AsBool() == true;
                 if (viable)
                 {
                     centerCount += !corner ? 1 : 0;
@@ -293,7 +293,7 @@ namespace Vintagestory.GameContent
             // top: 5 center, 4 corner
             // 13 center, 12 corner. Allow 4 corner blocks to be missing
 
-            return haveDoor && centerCount >= 12 && cornerCount >= 8 && bl.GetBlock(Pos.UpCopy()).Attributes?["cokeOvenViable"].AsBool(true) == true;
+            return haveDoor && centerCount >= 12 && cornerCount >= 8 && bl.GetBlock(Pos.UpCopy()).Attributes?["cokeOvenViable"].AsBool() == true;
         }
 
         public override bool OnPlayerInteract(IPlayer byPlayer)

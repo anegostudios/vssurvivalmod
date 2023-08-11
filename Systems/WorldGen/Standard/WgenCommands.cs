@@ -1,8 +1,7 @@
 ﻿using Cairo;
 using System;
 using System.Collections.Generic;
-using System.Drawing;
-using System.IO;
+using SkiaSharp;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
@@ -236,17 +235,14 @@ namespace Vintagestory.ServerMods
             int chs = 3;
 
             //var asset = api.Assets.TryGet(new AssetLocation("textures/environment/planttint.png"));
-            //BitmapExternal bmpt;
-            //using (MemoryStream ms = new MemoryStream(asset.Data, 0, asset.Data.Length))
-            //{
-            //    bmpt = new BitmapExternal(ms);
-            //}
-            //byte[] tintPixels = new byte[bmpt.Width * bmpt.Height * chs];
-            //bmpt.SetPixels(tintPixels, chs);
+            //BitmapExternal bmpt = new BitmapExternal(asset.Data, asset.Data.Length, api.Logger);
+            //int[] tintPixels = new int[bmpt.Width * bmpt.Height * chs];
+            //bmpt.bmp.SetPixels(tintPixels);
+
 
             byte[] pixels = new byte[256 * 512 * chs];
             int w = 256;
-            int tw = 264;
+            // int tw = 264;
             for (int x = 0; x < 256; x++)
             {
                 for (int y = 0; y < 256; y++)
@@ -437,8 +433,18 @@ namespace Vintagestory.ServerMods
 
         private void PregenerateChunksAroundPlayer(IServerPlayer player, CmdArgs arguments)
         {
-            int chunkMidX = (int)player.Entity.Pos.X / api.WorldManager.ChunkSize;
-            int chunkMidZ = (int)player.Entity.Pos.Z / api.WorldManager.ChunkSize;
+            int chunkMidX;
+            int chunkMidZ;
+            if (player.PlayerUID.Equals("console"))
+            {
+                chunkMidX = api.WorldManager.MapSizeX / api.WorldManager.ChunkSize / 2;
+                chunkMidZ = api.WorldManager.MapSizeX / api.WorldManager.ChunkSize / 2;
+            }
+            else
+            {
+                chunkMidX = (int)player.Entity.Pos.X / api.WorldManager.ChunkSize;
+                chunkMidZ = (int)player.Entity.Pos.Z / api.WorldManager.ChunkSize;
+            }
             
             List<Vec2i> coords = new List<Vec2i>();
 
@@ -655,7 +661,7 @@ namespace Vintagestory.ServerMods
 
             NormalizedSimplexNoise noise = NormalizedSimplexNoise.FromDefaultOctaves(octaves, 5, 0.7, seed);
             int size = 800;
-            Bitmap bmp = new Bitmap(size, size);
+            SKBitmap bitmap = new SKBitmap(size, size);
 
             int underflows = 0;
             int overflows = 0;
@@ -681,12 +687,12 @@ namespace Vintagestory.ServerMods
                     min = Math.Min((float)value, min);
                     max = Math.Max((float)value, max);
 
-                    int light = (int)(value * 255);
-                    bmp.SetPixel(x, y, System.Drawing.Color.FromArgb(255, light, light, light));
+                    byte light = (byte)(value * 255);
+                    bitmap.SetPixel(x, y, new SKColor(light, light, light,255));
                 }
             }
 
-            bmp.Save("noise.png");
+            bitmap.Save("noise.png");
             player.SendMessage(groupId, (use3d ? "3D" : "2D") + " Noise (" + octaves + " Octaves) saved to noise.png. Overflows: " + overflows + ", Underflows: " + underflows, EnumChatType.CommandSuccess);
             player.SendMessage(groupId, "Noise min = " + min.ToString("0.##") +", max= " + max.ToString("0.##"), EnumChatType.CommandSuccess);
         }
@@ -1576,14 +1582,14 @@ namespace Vintagestory.ServerMods
 
 
                 case "cavedistort":
-                    Bitmap bmp = new Bitmap(chunkSize, chunkSize);
+                    SKBitmap bmp = new SKBitmap(chunkSize, chunkSize);
 
                     for (int x = 0; x < chunkSize; x++)
                     {
                         for (int z = 0; z < chunkSize; z++)
                         {
                             byte color = mapchunk.CaveHeightDistort[z * chunkSize + x];
-                            bmp.SetPixel(x, z, System.Drawing.Color.FromArgb((color >> 16) & 0xff, (color >> 8) & 0xff, color & 0xff));
+                            bmp.SetPixel(x, z, new SKColor((byte)((color >> 16) & 0xFF), (byte)((color >> 8) & 0xFF), (byte)(color & 0xFF)));
                         }
                     }
 

@@ -302,7 +302,15 @@ namespace Vintagestory.GameContent
 
             if (canTeleport && Activated)
             {
-                HandleTeleportingServer(dt);
+                try
+                {
+                    HandleTeleportingServer(dt);
+                }
+                catch (Exception e)
+                {
+                    Api.Logger.Warning("Exception when ticking Static Translocator at {0}", Pos);
+                    Api.Logger.Error(e);
+                }
             }
         }
 

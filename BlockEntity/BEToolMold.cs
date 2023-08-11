@@ -330,10 +330,10 @@ namespace Vintagestory.GameContent
 
                     return stacks.ToArray();
                 }
-            } catch (JsonReaderException e)
+            } catch (JsonReaderException)
             {
                 Api.World.Logger.Error("Failed getting molded stacks from tool mold of block {0}, probably unable to parse drop or drops attribute", Block.Code);
-                throw e;
+                throw;
             }
         }
 

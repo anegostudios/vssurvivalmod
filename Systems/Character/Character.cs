@@ -421,8 +421,8 @@ namespace Vintagestory.GameContent
             bool didSelectBefore = SerializerUtil.Deserialize(fromPlayer.GetModdata("createCharacter"), false);
             if (didSelectBefore && (fromPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative))
             {
-                fromPlayer.BroadcastPlayerData(true);
                 fromPlayer.Entity.WatchedAttributes.MarkPathDirty("skinConfig");
+                fromPlayer.BroadcastPlayerData(true);
                 return;
             }
 

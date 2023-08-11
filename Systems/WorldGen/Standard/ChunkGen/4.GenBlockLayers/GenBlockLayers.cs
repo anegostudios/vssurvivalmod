@@ -338,10 +338,14 @@ namespace Vintagestory.ServerMods
             {
                 IChunkBlocks chunkdata = chunks[posY / chunksize].Data;
                 int blockId = chunkdata.GetBlockIdUnsafe(index3d);
-                if (chunkdata.GetFluid(index3d) != GlobalConfig.waterBlockId && blockId != GlobalConfig.lakeIceBlockId && blockId != 0)
+                if (blockId != 0)
                 {
-                    chunkdata.SetBlockUnsafe(index3d, sandBlockId);
-                    chunkdata.SetFluid(index3d, 0);
+                    int fluidId = chunkdata.GetFluid(index3d);
+                    if (fluidId != GlobalConfig.waterBlockId && fluidId != GlobalConfig.lakeIceBlockId)
+                    {
+                        chunkdata.SetBlockUnsafe(index3d, sandBlockId);
+                        if (fluidId != 0) chunkdata.SetFluid(index3d, 0);
+                    }
                 }
             }
         }

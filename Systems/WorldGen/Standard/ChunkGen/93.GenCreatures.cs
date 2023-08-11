@@ -155,6 +155,9 @@ namespace Vintagestory.ServerMods
                 EntityProperties entitytype = val.Key;
                 float tries = entitytype.Server.SpawnConditions.Worldgen.TriesPerChunk.nextFloat(1, rnd);
 
+                var scRuntime = entitytype.Server.SpawnConditions.Runtime;   // the Group ("hostile"/"neutral"/"passive") is only held in the Runtime spawn conditions
+                if (scRuntime == null || scRuntime.Group != "hostile") tries *= GlobalConfig.neutralCreatureSpawnMultiplier;
+
                 while (tries-- > rnd.NextDouble())
                 {
                     int dx = rnd.Next(chunksize);

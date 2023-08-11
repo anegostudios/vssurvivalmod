@@ -121,8 +121,12 @@ namespace Vintagestory.GameContent
                     mapchunk.WorldGenTerrainHeightMap[(tmpPos.Z % chunksize) * chunksize + (tmpPos.X % chunksize)] -= (ushort)q;
                     
                     tmpPos.Y = blAcc.GetTerrainMapheightAt(tmpPos) + 1;
-                    
-                    blAcc.SetBlock(abovesurfaceblock.BlockId, tmpPos);
+
+                    if (abovesurfaceblock.BlockId > 0)
+                    {
+                        blAcc.SetBlock(abovesurfaceblock.BlockId, tmpPos);
+                        if (abovesurfaceblock.EntityClass != null) blAcc.SpawnBlockEntity(abovesurfaceblock.EntityClass, tmpPos);   // Restore its blockEntity if appropriate
+                    }
                 }
             }
 

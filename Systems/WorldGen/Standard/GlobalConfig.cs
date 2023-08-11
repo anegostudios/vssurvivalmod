@@ -31,6 +31,8 @@ namespace Vintagestory.ServerMods.NoObf
         [JsonProperty]
         public AssetLocation defaultRockCode;
 
+        [JsonProperty]
+        public float neutralCreatureSpawnMultiplier = 1f;
 
         public int waterBlockId;
         public int saltWaterBlockId;

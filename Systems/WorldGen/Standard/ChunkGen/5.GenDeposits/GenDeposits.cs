@@ -257,11 +257,10 @@ namespace Vintagestory.ServerMods
                 IntDataMap2D climateMap = blockAccessor.GetMapRegion(depoCenterPos.X / regionSize, depoCenterPos.Z / regionSize)?.ClimateMap;
                 if (climateMap == null) return;
 
-                int noiseSizeClimate = climateMap.InnerSize;
-                float posXInRegionClimate = (float)depoCenterPos.X / regionSize % 1f * noiseSizeClimate;
-                float posZInRegionClimate = (float)depoCenterPos.Z / regionSize % 1f * noiseSizeClimate;
+                float normXInRegionClimate = (float)((double)depoCenterPos.X / regionSize % 1.0);
+                float normZInRegionClimate = (float)((double)depoCenterPos.Z / regionSize % 1.0);
 
-                int climate = climateMap.GetUnpaddedColorLerped(posXInRegionClimate, posZInRegionClimate);
+                int climate = climateMap.GetUnpaddedColorLerpedForNormalizedPos(normXInRegionClimate, normZInRegionClimate);
 
                 float rainRel = TerraGenConfig.GetRainFall((climate >> 8) & 0xff, depoCenterPos.Y) / 255f;
                 if (rainRel < variant.Climate.MinRain || rainRel > variant.Climate.MaxRain) return;
