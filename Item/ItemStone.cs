@@ -30,6 +30,7 @@ namespace Vintagestory.GameContent
             if (blockSel != null && byEntity.World.BlockAccessor.GetBlock(blockSel.Position) is BlockDisplayCase)
             {
                 handling = EnumHandHandling.NotHandled;
+                base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handling);
                 return;
             }
 
@@ -44,6 +45,7 @@ namespace Vintagestory.GameContent
             if (bhHandHandling != EnumHandHandling.NotHandled)
             {
                 handling = bhHandHandling;
+                base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handling);
                 return;
             }
 
@@ -69,18 +71,26 @@ namespace Vintagestory.GameContent
                     {
                         (this.api as ICoreClientAPI).TriggerIngameError(this, "toosoft", Lang.Get("This type of stone is too soft to be used for knapping."));
                     }
+
+                    base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handling);
                     return;
                 }
 
                 if (!byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.Use))
                 {
                     itemslot.MarkDirty();
+
+                    base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handling);
                     return;
                 }
 
                 IWorldAccessor world = byEntity.World;
                 Block knappingBlock = world.GetBlock(new AssetLocation("knappingsurface"));
-                if (knappingBlock == null) return;
+                if (knappingBlock == null)
+                {
+                    base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handling);
+                    return;
+                }
 
                 string failCode = "";
 
@@ -100,6 +110,7 @@ namespace Vintagestory.GameContent
 
                     (api as ICoreClientAPI).TriggerIngameError(this, "cantplace", err);
 
+                    base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handling);
                     return;
                 }
 
@@ -127,6 +138,7 @@ namespace Vintagestory.GameContent
 
                 handling = EnumHandHandling.PreventDefault;
                 byEntity.Attributes.SetInt("aimingCancel", 1);
+                base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handling);
                 return;
             }
 
@@ -138,7 +150,12 @@ namespace Vintagestory.GameContent
                 {
                     block = world.GetBlock(CodeWithPath("loosestones-" + LastCodePart(1) + "-" + LastCodePart(0) + "-free"));
                 }
-                if (block == null) return;
+                if (block == null)
+                {
+                    base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handling);
+                    return;
+                }
+                
 
                 BlockPos targetpos = blockSel.Position.AddCopy(blockSel.Face);
                 targetpos.Y--;
@@ -156,7 +173,10 @@ namespace Vintagestory.GameContent
                     {
                         (api as ICoreClientAPI).TriggerIngameError(this, "cantplace", Lang.Get("placefailure-" + error));
                     }
+
+                    base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handling);
                     return;
+
                 }
 
                 world.BlockAccessor.TriggerNeighbourBlockUpdate(blockSel.Position);
@@ -168,10 +188,18 @@ namespace Vintagestory.GameContent
 
                 handling = EnumHandHandling.PreventDefault;
                 byEntity.Attributes.SetInt("aimingCancel", 1);
+
+                base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handling);
                 return;
+
             }
 
-            if (byEntity.Controls.ShiftKey) return;
+            if (byEntity.Controls.ShiftKey)
+            {
+                base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handling);
+                return;
+            }
+            
 
         
             // Not ideal to code the aiming controls this way. Needs an elegant solution - maybe an event bus?
@@ -201,7 +229,10 @@ namespace Vintagestory.GameContent
             }
             if (preventDefault) return result;
 
-            if (byEntity.Attributes.GetInt("aimingCancel") == 1) return false;
+            if (byEntity.Attributes.GetInt("aimingCancel") == 1)
+            {
+                return base.OnHeldInteractStep(secondsUsed, slot, byEntity, blockSel, entitySel);
+            }
 
             if (byEntity.World is IClientWorldAccessor)
             {
@@ -216,8 +247,7 @@ namespace Vintagestory.GameContent
                 byEntity.Controls.UsingHeldItemTransformBefore = tf;
             }
 
-
-            return true;
+            return base.OnHeldInteractStep(secondsUsed, slot, byEntity, blockSel, entitySel);
         }
 
         
@@ -231,7 +261,7 @@ namespace Vintagestory.GameContent
                 byEntity.Attributes.SetInt("aimingCancel", 1);
             }
 
-            return true;
+            return base.OnHeldInteractCancel(secondsUsed, slot, byEntity, blockSel, entitySel, cancelReason);
         }
 
         public override void OnHeldInteractStop(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)

@@ -499,6 +499,8 @@ namespace Vintagestory.GameContent
 
             if (Lit) dsc.AppendLine(Lang.Get("Lit"));
             else dsc.AppendLine(Lang.Get("Unlit"));
+
+            base.GetBlockInfo(forPlayer, dsc);
         }
 
 
