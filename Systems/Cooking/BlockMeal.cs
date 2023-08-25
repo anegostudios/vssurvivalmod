@@ -802,7 +802,9 @@ namespace Vintagestory.GameContent
                     world.SpawnCubeParticles(entityItem.ServerPos.XYZ, rndStack, 0.3f, 25, 1, null);
                 }
 
-                Block block = world.GetBlock(new AssetLocation(Attributes["eatenBlock"].AsString()));
+                var eatenBlock = Attributes["eatenBlock"].AsString();
+                if (eatenBlock == null) return;
+                Block block = world.GetBlock(new AssetLocation(eatenBlock));
                 entityItem.Itemstack = new ItemStack(block);
                 entityItem.WatchedAttributes.MarkPathDirty("itemstack");
             }
