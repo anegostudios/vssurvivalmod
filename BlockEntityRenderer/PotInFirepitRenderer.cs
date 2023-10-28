@@ -10,9 +10,9 @@ namespace Vintagestory.GameContent
         public int RenderRange => 20;
 
         ICoreClientAPI capi;
-        MeshRef potWithFoodRef;
-        MeshRef potRef;
-        MeshRef lidRef;
+        MultiTextureMeshRef potWithFoodRef;
+        MultiTextureMeshRef potRef;
+        MultiTextureMeshRef lidRef;
         BlockPos pos;
         float temp;
 
@@ -39,11 +39,11 @@ namespace Vintagestory.GameContent
             {
                 MeshData potMesh;
                 capi.Tesselator.TesselateShape(potBlock, Shape.TryGet(capi, "shapes/block/clay/pot-opened-empty.json"), out potMesh);
-                potRef = capi.Render.UploadMesh(potMesh);
+                potRef = capi.Render.UploadMultiTextureMesh(potMesh);
 
                 MeshData lidMesh;
                 capi.Tesselator.TesselateShape(potBlock, Shape.TryGet(capi, "shapes/block/clay/pot-part-lid.json"), out lidMesh);
-                lidRef = capi.Render.UploadMesh(lidMesh);
+                lidRef = capi.Render.UploadMultiTextureMesh(lidMesh);
             }
         }
 
@@ -91,7 +91,7 @@ namespace Vintagestory.GameContent
             prog.ViewMatrix = rpi.CameraMatrixOriginf;
             prog.ProjectionMatrix = rpi.CurrentProjectionMatrix;
 
-            rpi.RenderMesh(potRef == null ? potWithFoodRef : potRef);
+            rpi.RenderMultiTextureMesh(potRef == null ? potWithFoodRef : potRef);
 
             if (!isInOutputSlot)
             {
@@ -114,7 +114,7 @@ namespace Vintagestory.GameContent
                 prog.ProjectionMatrix = rpi.CurrentProjectionMatrix;
 
 
-                rpi.RenderMesh(lidRef);
+                rpi.RenderMultiTextureMesh(lidRef);
             }
 
             prog.Stop();

@@ -2,10 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -31,16 +29,16 @@ namespace Vintagestory.GameContent
         #region Render
         public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
         {
-            Dictionary<int, MeshRef> meshrefs;
+            Dictionary<int, MultiTextureMeshRef> meshrefs;
 
             object obj;
             if (capi.ObjectCache.TryGetValue("barrelMeshRefs", out obj))
             {
-                meshrefs = obj as Dictionary<int, MeshRef>;
+                meshrefs = obj as Dictionary<int, MultiTextureMeshRef>;
             }
             else
             {
-                capi.ObjectCache["barrelMeshRefs"] = meshrefs = new Dictionary<int, MeshRef>();
+                capi.ObjectCache["barrelMeshRefs"] = meshrefs = new Dictionary<int, MultiTextureMeshRef>();
             }
 
             ItemStack[] contentStacks = GetContents(capi.World, itemstack);
@@ -50,12 +48,12 @@ namespace Vintagestory.GameContent
 
             int hashcode = GetBarrelHashCode(contentStacks[0], contentStacks.Length > 1 ? contentStacks[1] : null);
 
-            MeshRef meshRef;
+            MultiTextureMeshRef meshRef;
 
             if (!meshrefs.TryGetValue(hashcode, out meshRef))
             {
                 MeshData meshdata = GenMesh(contentStacks[0], contentStacks.Length > 1 ? contentStacks[1] : null, issealed);
-                meshrefs[hashcode] = meshRef = capi.Render.UploadMesh(meshdata);
+                meshrefs[hashcode] = meshRef = capi.Render.UploadMultiTextureMesh(meshdata);
             }
 
             renderinfo.ModelRef = meshRef;
@@ -79,7 +77,7 @@ namespace Vintagestory.GameContent
             object obj;
             if (capi.ObjectCache.TryGetValue("barrelMeshRefs", out obj))
             {
-                Dictionary<int, MeshRef> meshrefs = obj as Dictionary<int, MeshRef>;
+                Dictionary<int, MultiTextureMeshRef> meshrefs = obj as Dictionary<int, MultiTextureMeshRef>;
 
                 foreach (var val in meshrefs)
                 {

@@ -1,28 +1,14 @@
-﻿using System;
+﻿using ProtoBuf;
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Common.CommandAbbr;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
-using Vintagestory.API.Server;
 
 namespace Vintagestory.GameContent
 {
-    public class BeamPlacerWorkSpace {
-        public BlockPos startPos;
-        public BlockFacing onFacing;
-        public Vec3f startOffset;
-        public Vec3f endOffset;
-        public MeshData currentMesh;
-        public MeshRef currentMeshRef;
-        public bool nowBuilding;
-        public Block block;
-
-        public int GridSize = 4;
-    }
-
-
     public class ModSystemSupportBeamPlacer : ModSystem, IRenderer
     {
         public override bool ShouldLoad(EnumAppSide forSide) => true;
@@ -84,111 +70,124 @@ namespace Vintagestory.GameContent
 
             if (!ws.nowBuilding)
             {
-                if (byEntity.Controls.Sprint) ws.GridSize = 16;
-                else ws.GridSize = 4;
-
-                ws.currentMesh = getOrCreateBeamMesh(block);
-
-                var be = api.World.BlockAccessor.GetBlockEntity(blockSel.Position);
-                var beh = be?.GetBehavior<BEBehaviorSupportBeam>();
-                if (beh == null)
-                {
-                    var startPosBlock = api.World.BlockAccessor.GetBlock(blockSel.Position);
-                    if (startPosBlock.Replaceable >= 6000)
-                    {
-                        ws.startPos = blockSel.Position.Copy();
-                        ws.startOffset = snapToGrid(blockSel.HitPosition, ws.GridSize);
-                    }
-                    else
-                    {
-                        var blockSelFace = blockSel.Face;
-                        var wsStartPos = blockSel.Position.AddCopy(blockSelFace);
-                        startPosBlock = api.World.BlockAccessor.GetBlock(wsStartPos);
-                        be = api.World.BlockAccessor.GetBlockEntity(wsStartPos);
-                        beh = be?.GetBehavior<BEBehaviorSupportBeam>();
-                            
-                        if (beh == null && startPosBlock.Replaceable < 6000)
-                        {
-                            (api as ICoreClientAPI)?.TriggerIngameError(this, "notplaceablehere", Lang.Get("Cannot place here, a block is in the way"));
-                            return;
-                        }
-                        ws.startPos = wsStartPos;
-                        ws.startOffset = snapToGrid(blockSel.HitPosition, ws.GridSize).Sub(blockSel.Face.Normali);
-                    }
-                } else
-                {
-                    ws.startPos = blockSel.Position.Copy();
-                    ws.startOffset = snapToGrid(blockSel.HitPosition, ws.GridSize).Sub(blockSel.Face.Normali);
-                }
-                
-                ws.endOffset = null;
-                ws.nowBuilding = true;
-                ws.block = block;
-                ws.onFacing = blockSel.Face;
+                beginPlace(ws, block, byEntity, blockSel);
             } else
             {
-                ws.nowBuilding = false;
-                var be = api.World.BlockAccessor.GetBlockEntity(ws.startPos);
-                var beh = be?.GetBehavior<BEBehaviorSupportBeam>();
-                
-                var eplr = (byEntity as EntityPlayer);
-                
-                Vec3f nowEndOffset = getEndOffset(eplr.Player, ws);
+                completePlace(ws, byEntity, slot);
+            }
+        }
 
-                if (nowEndOffset.DistanceTo(ws.startOffset) < 0.01f)
+
+        private void beginPlace(BeamPlacerWorkSpace ws, Block block, EntityAgent byEntity, BlockSelection blockSel)
+        {
+            ws.GridSize = byEntity.Controls.Sprint ? 16 : 4;
+
+            ws.currentMesh = getOrCreateBeamMesh(block);
+
+            var be = api.World.BlockAccessor.GetBlockEntity(blockSel.Position);
+            var beh = be?.GetBehavior<BEBehaviorSupportBeam>();
+            if (beh == null)
+            {
+                var startPosBlock = api.World.BlockAccessor.GetBlock(blockSel.Position);
+                if (startPosBlock.Replaceable >= 6000)
                 {
-                    
-                    return;
+                    ws.startPos = blockSel.Position.Copy();
+                    ws.startOffset = snapToGrid(blockSel.HitPosition, ws.GridSize);
                 }
-                
-                if (beh == null)
+                else
                 {
-                    var hereBlock = api.World.BlockAccessor.GetBlock(ws.startPos);
-                    if (hereBlock.Replaceable < 6000)
+                    var blockSelFace = blockSel.Face;
+                    var wsStartPos = blockSel.Position.AddCopy(blockSelFace);
+                    startPosBlock = api.World.BlockAccessor.GetBlock(wsStartPos);
+                    be = api.World.BlockAccessor.GetBlockEntity(wsStartPos);
+                    beh = be?.GetBehavior<BEBehaviorSupportBeam>();
+
+                    if (beh == null && startPosBlock.Replaceable < 6000)
                     {
                         (api as ICoreClientAPI)?.TriggerIngameError(this, "notplaceablehere", Lang.Get("Cannot place here, a block is in the way"));
                         return;
                     }
-
-                    var player = (byEntity as EntityPlayer)?.Player;
-                    if (!api.World.Claims.TryAccess(player, ws.startPos, EnumBlockAccessFlags.BuildOrBreak))
-                    {
-                        player.InventoryManager.ActiveHotbarSlot.MarkDirty();
-                        return;
-                    }
-
-                    if (eplr.Player.WorldData.CurrentGameMode != EnumGameMode.Creative)
-                    {
-                        int len = (int)Math.Ceiling(nowEndOffset.DistanceTo(ws.startOffset));
-                        if (slot.StackSize < len)
-                        {
-                            (api as ICoreClientAPI)?.TriggerIngameError(this, "notenoughitems",
-                                Lang.Get("You need {0} beams to place a beam at this lenth", len));
-                            return;
-                        }
-                    }
-
-                    api.World.BlockAccessor.SetBlock(ws.block.Id, ws.startPos);
-                    be = api.World.BlockAccessor.GetBlockEntity(ws.startPos);
-                    beh = be?.GetBehavior<BEBehaviorSupportBeam>();
+                    ws.startPos = wsStartPos;
+                    ws.startOffset = snapToGrid(blockSel.HitPosition, ws.GridSize).Sub(blockSel.Face.Normali);
                 }
-                    
+            }
+            else
+            {
+                ws.startPos = blockSel.Position.Copy();
+                ws.startOffset = snapToGrid(blockSel.HitPosition, ws.GridSize);
+            }
+
+            ws.endOffset = null;
+            ws.nowBuilding = true;
+            ws.block = block;
+            ws.onFacing = blockSel.Face;
+        }
+
+
+        private void completePlace(BeamPlacerWorkSpace ws, EntityAgent byEntity, ItemSlot slot)
+        {
+            ws.nowBuilding = false;
+            var be = api.World.BlockAccessor.GetBlockEntity(ws.startPos);
+            var beh = be?.GetBehavior<BEBehaviorSupportBeam>();
+
+            var eplr = (byEntity as EntityPlayer);
+
+            Vec3f nowEndOffset = getEndOffset(eplr.Player, ws);
+
+            if (nowEndOffset.DistanceTo(ws.startOffset) < 0.01f)
+            {
+
+                return;
+            }
+
+            if (beh == null)
+            {
+                var hereBlock = api.World.BlockAccessor.GetBlock(ws.startPos);
+                if (hereBlock.Replaceable < 6000)
+                {
+                    (api as ICoreClientAPI)?.TriggerIngameError(this, "notplaceablehere", Lang.Get("Cannot place here, a block is in the way"));
+                    return;
+                }
+
+                var player = (byEntity as EntityPlayer)?.Player;
+                if (!api.World.Claims.TryAccess(player, ws.startPos, EnumBlockAccessFlags.BuildOrBreak))
+                {
+                    player.InventoryManager.ActiveHotbarSlot.MarkDirty();
+                    return;
+                }
+
                 if (eplr.Player.WorldData.CurrentGameMode != EnumGameMode.Creative)
                 {
                     int len = (int)Math.Ceiling(nowEndOffset.DistanceTo(ws.startOffset));
                     if (slot.StackSize < len)
                     {
-                        (api as ICoreClientAPI)?.TriggerIngameError(this, "notenoughitems", Lang.Get("You need {0} beams to place a beam at this lenth", len));
+                        (api as ICoreClientAPI)?.TriggerIngameError(this, "notenoughitems",
+                            Lang.Get("You need {0} beams to place a beam at this lenth", len));
                         return;
                     }
-                    slot.TakeOut(len);
-                    slot.MarkDirty();
                 }
 
-                beh.AddBeam(ws.startOffset, nowEndOffset, ws.onFacing, ws.block);
-                be.MarkDirty(true);
+                api.World.BlockAccessor.SetBlock(ws.block.Id, ws.startPos);
+                be = api.World.BlockAccessor.GetBlockEntity(ws.startPos);
+                beh = be?.GetBehavior<BEBehaviorSupportBeam>();
             }
+
+            if (eplr.Player.WorldData.CurrentGameMode != EnumGameMode.Creative)
+            {
+                int len = (int)Math.Ceiling(nowEndOffset.DistanceTo(ws.startOffset));
+                if (slot.StackSize < len)
+                {
+                    (api as ICoreClientAPI)?.TriggerIngameError(this, "notenoughitems", Lang.Get("You need {0} beams to place a beam at this lenth", len));
+                    return;
+                }
+                slot.TakeOut(len);
+                slot.MarkDirty();
+            }
+
+            beh.AddBeam(ws.startOffset, nowEndOffset, ws.onFacing, ws.block);
+            be.MarkDirty(true);
         }
+
 
         public MeshData getOrCreateBeamMesh(Block block)
         {
@@ -396,88 +395,139 @@ namespace Vintagestory.GameContent
             return workspaceByPlayer[playerUID] = new BeamPlacerWorkSpace();
         }
 
-        
-    }
-
-    public class BlockSupportBeam : Block
-    {
-        ModSystemSupportBeamPlacer bp;
-
-        public override void OnLoaded(ICoreAPI api)
+        public void OnBeamRemoved(Vec3d start, Vec3d end)
         {
-            base.OnLoaded(api);
-            bp = api.ModLoader.GetModSystem<ModSystemSupportBeamPlacer>();
+            var startend = new StartEnd() { Start=start, End=end };
+            chunkremove(start.AsBlockPos, startend);
+            chunkremove(end.AsBlockPos, startend);
         }
 
-        public override Cuboidf[] GetSelectionBoxes(IBlockAccessor blockAccessor, BlockPos pos)
+        public void OnBeamAdded(Vec3d start, Vec3d end)
         {
-            var be = api.World.BlockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorSupportBeam>();
-            if (be != null) return be.GetCollisionBoxes();
-
-            return base.GetSelectionBoxes(blockAccessor, pos);
+            var startend = new StartEnd() { Start = start, End = end };
+            chunkadd(start.AsBlockPos, startend);
+            chunkadd(end.AsBlockPos, startend);
         }
 
-        public override Cuboidf[] GetCollisionBoxes(IBlockAccessor blockAccessor, BlockPos pos)
+        private void chunkadd(BlockPos blockpos, StartEnd startend)
         {
-            var be = api.World.BlockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorSupportBeam>();
-            if (be != null) return be.GetCollisionBoxes();
-
-            return base.GetCollisionBoxes(blockAccessor, pos);
+            var sbdata = GetSbData(blockpos);
+            sbdata?.Beams.Add(startend);
         }
 
-        public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
+        private void chunkremove(BlockPos blockpos, StartEnd startend)
         {
-            handling = EnumHandHandling.PreventDefault;
-            bp.OnInteract(this, slot, byEntity, blockSel);
+            var sbdata = GetSbData(blockpos);
+            sbdata?.Beams.Remove(startend);
         }
 
-        public override void OnHeldAttackStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
+        public double GetStableMostBeam(BlockPos blockpos, out StartEnd beamstartend)
         {
-            if (bp.CancelPlace(this, byEntity))
+            var sbdata = GetSbData(blockpos);
+            if (sbdata.Beams == null || sbdata.Beams.Count == 0)
             {
-                handling = EnumHandHandling.PreventDefault;
-                return;
+                beamstartend = null;
+                return 99999;
             }
 
-            base.OnHeldAttackStart(slot, byEntity, blockSel, entitySel, ref handling);
-        }
+            double minDistance = 99999;
+            StartEnd nearestBeam = null;
 
-
-        public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1)
-        {
-            var be = api.World.BlockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorSupportBeam>();
-            if (be != null) return be.GetDrops(byPlayer);
-
-            return base.GetDrops(world, pos, byPlayer, dropQuantityMultiplier);
-        }
-
-
-        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
-        {
-            return false;
-        }
-
-        public override WorldInteraction[] GetHeldInteractionHelp(ItemSlot inSlot)
-        {
-            return new WorldInteraction[]
+            Vec3d point = blockpos.ToVec3d();
+            foreach (var beam in sbdata.Beams)
             {
-                new WorldInteraction()
-                {
-                    ActionLangCode = Lang.Get("Set Beam Start/End Point (Snap to 4x4 grid)"),
-                    MouseButton = EnumMouseButton.Right
-                },
-                new WorldInteraction()
-                {
-                    ActionLangCode = Lang.Get("Set Beam Start/End Point (Snap to 16x16 grid)"),
-                    MouseButton = EnumMouseButton.Right,
-                    HotKeyCode = "sprint"
-                },
-                new WorldInteraction()
-                {
-                    ActionLangCode = Lang.Get("Cancel placement"),
-                    MouseButton = EnumMouseButton.Left
-                },
-            };
+                double len = (beam.Start - beam.End).Length();
+                bool mostlyVertical = len * 1.5 < Math.Abs(beam.End.Y - beam.Start.Y);
+
+                bool stable = mostlyVertical ? (isBeamStableAt(beam.Start) || isBeamStableAt(beam.End)) : (isBeamStableAt(beam.Start) && isBeamStableAt(beam.End));
+                if (!stable) continue;
+
+                double dist = DistanceToLine(point, beam.Start, beam.End);
+                if (dist < minDistance) minDistance = dist;
+            }
+
+            beamstartend = nearestBeam;
+            return minDistance;
+        }
+
+        static double DistanceToLine(Vec3d point, Vec3d start, Vec3d end)
+        {
+            Vec3d bc = end - start;
+            double length = bc.Length();
+            double param = 0.0;
+            if (length != 0.0) param = Math.Clamp((point - start).Dot(bc) / (length * length), 0.0, 1.0);
+            return point.DistanceTo(start + bc * param);
+        }
+
+        private bool isBeamStableAt(Vec3d start)
+        {
+            return 
+                BlockBehaviorUnstableRock.getVerticalSupportStrength(api.World, start.AsBlockPos) > 0 ||
+                BlockBehaviorUnstableRock.getVerticalSupportStrength(api.World, start.Add(-1/16.0, 0, -1 / 16.0).AsBlockPos) > 0 ||
+                BlockBehaviorUnstableRock.getVerticalSupportStrength(api.World, start.Add(1 / 16.0, 0, 1 / 16.0).AsBlockPos) > 0
+            ;
+        }
+
+        public SupportBeamsData GetSbData(BlockPos pos)
+        {
+            int chunksize = api.World.BlockAccessor.ChunkSize;
+            return GetSbData(pos.X / chunksize, pos.Y / chunksize, pos.Z / chunksize);
+        }
+
+        public SupportBeamsData GetSbData(int chunkx, int chunky, int chunkz)
+        {
+            var chunk = api.World.BlockAccessor.GetChunk(chunkx, chunky, chunkz);
+            if (chunk == null) return null;
+
+            SupportBeamsData sbdata;
+            if (chunk.LiveModData.TryGetValue("supportbeams", out var data))
+            {
+                sbdata = (SupportBeamsData)data;
+            }
+            else
+            {
+                sbdata = chunk.GetModdata<SupportBeamsData>("supportbeams");
+            }
+
+            if (sbdata == null)
+            {
+                chunk.LiveModData["supportbeams"] = sbdata = new SupportBeamsData();
+            }
+
+            return sbdata;
+        }
+
+    }
+
+    [ProtoContract]
+    public class SupportBeamsData
+    {
+        [ProtoMember(1)]
+        public HashSet<StartEnd> Beams = new HashSet<StartEnd>();
+    }
+
+    [ProtoContract]
+    public class StartEnd : IEquatable<StartEnd>
+    {
+        [ProtoMember(1)]
+        public Vec3d Start;
+        [ProtoMember(2)]
+        public Vec3d End;
+
+        public bool Equals(StartEnd other)
+        {
+            return other != null && Start.Equals(other.Start) && End.Equals(other.End);
+        }
+
+        public override bool Equals(object obj)
+        {
+            return Equals(obj as StartEnd);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Start, End);
         }
     }
 }
+ 

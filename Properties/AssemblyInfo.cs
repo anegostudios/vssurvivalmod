@@ -1,7 +1,6 @@
 ﻿using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using Vintagestory.API;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 
@@ -89,6 +88,7 @@ using Vintagestory.API.Config;
                     creatureHostility: ""passive"",
                     playerHealthPoints: ""20"",
                     playerHungerSpeed: ""0.5"",
+                    playerHealthRegenSpeed: ""1"",
                     foodSpoilSpeed: ""0.5"",
                     lungCapacity: ""120000"",
                     toolDurability: ""2"",
@@ -121,11 +121,12 @@ using Vintagestory.API.Config;
                     microblockChiseling: ""off"",
                     deathPunishment: ""drop"",
                     bodyTemperatureResistance: ""10"",
-                    blockGravity: ""sandgravelsoil"",
+                    blockGravity: ""sandgravelsoilcaveins"",
                     creatureHostility: ""aggressive"",
                     playerHealthPoints: ""10"",
                     creatureStrength: ""1.5"",
                     playerHungerSpeed: ""1.25"",
+                    playerHealthRegenSpeed: ""1"",
                     lungCapacity: ""20000"",
                     foodSpoilSpeed: ""1.25"",
                     graceTimer: ""0"",
@@ -163,6 +164,7 @@ using Vintagestory.API.Config;
                     playerHealthPoints: ""10"",
                     creatureStrength: ""1.5"",
                     playerHungerSpeed: ""1"",
+                    playerHealthRegenSpeed: ""1"",
                     lungCapacity: ""30000"",
                     foodSpoilSpeed: ""1.25"",
                     graceTimer: ""0"",
@@ -196,19 +198,21 @@ using Vintagestory.API.Config;
             { category: ""spawnndeath"", code: ""spawnRadius"", dataType: ""dropdown"", values: [""10000"", ""5000"", ""2500"", ""1000"", ""500"", ""250"", ""100"", ""50"", ""25"", ""0""], names: [""10000 blocks"", ""5000 blocks"", ""2500 blocks"", ""1000 blocks"", ""500 blocks"", ""250 blocks"", ""100 blocks"", ""50 blocks"", ""25 blocks"",""0 blocks""], default: ""50"" },
             { category: ""spawnndeath"", code: ""graceTimer"", dataType: ""dropdown"", values: [""10"", ""5"", ""4"", ""3"", ""2"", ""1"", ""0""], names: [""10 days before monsters appear"", ""5 days before monsters appear"", ""4 days before monsters appear"", ""3 days before monsters appear"", ""2 days before monsters appear"", ""1 day before monsters appear"", ""No timer. Monsters spawn right away.""], default: ""0"", onlyDuringWorldCreate: true },
             { category: ""spawnndeath"", code: ""deathPunishment"", dataType: ""dropdown"", values: [""drop"", ""keep""], names: [""Drop inventory contents"", ""Keep inventory contents""], default: ""drop"" },
+            { category: ""spawnndeath"", code: ""droppedItemsTimer"", dataType: ""dropdown"", values: [""300"", ""600"", ""1200"", ""1800"", ""3600""], names: [""5 minutes"", ""10 minutes"", ""20 minutes"", ""30 minutes"", ""1 hour""], default: ""600"" },
 
             { category: ""survivalchallenges"", code: ""seasons"", dataType: ""dropdown"", values: [""enabled"", ""spring"", ""summer"", ""fall"", ""winter""], names: [""Enabled"", ""Off, always spring"", ""Off, always summer"", ""Off, always fall"", ""Off, always winter""], default: ""enabled"" },
             { category: ""survivalchallenges"", code: ""playerlives"", dataType: ""dropdown"", values: [""1"", ""2"", ""3"", ""4"", ""5"", ""10"", ""20"", ""-1""], names: [""1"", ""2"", ""3"", ""4"", ""5"", ""10"", ""20"", ""infinite""], default: ""-1"" },
             { category: ""survivalchallenges"", code: ""lungCapacity"", dataType: ""dropdown"", values: [""10000"", ""20000"", ""40000"", ""60000"", ""120000"", ""3600000""], names: [""10 seconds"", ""20 seconds"", ""40 seconds"", ""60 seconds"", ""2 minutes"", ""60 minutes""], default: ""40000"" },
             { category: ""survivalchallenges"", code: ""daysPerMonth"", dataType: ""dropdown"", values: [""30"", ""20"", ""12"", ""9"", ""6"", ""3""], names: [""30 days (24 real life hours)"", ""20 days (16 real life hours)"", ""12 days (9.6 real life hours)"", ""9 days (7.2 real life hours)"", ""6 days (4.8 real life hours)"", ""3 days (2.4 real life hours)""], default: ""9"" },
             { category: ""survivalchallenges"", code: ""harshWinters"", dataType: ""dropdown"", values: [""true"", ""false""], names: [""Enabled"", ""Disabled""], default: ""true"" },
-            { category: ""survivalchallenges"", code: ""blockGravity"", dataType: ""dropdown"", values: [""sandgravel"", ""sandgravelsoil""], names: [""Sand and gravel"", ""Sand, gravel and soil with sideways instability""], default: ""sandgravel"" },
+            { category: ""survivalchallenges"", code: ""blockGravity"", dataType: ""dropdown"", values: [""sandgravel"", ""sandgravelsoil"", ""sandgravelsoilcaveins""], names: [""Sand and gravel"", ""Sand, gravel and soil with sideways instability"", ""Sand, gravel and soil with sideways instability and cave ins""], default: ""sandgravel"" },
             { category: ""survivalchallenges"", code: ""allowUndergroundFarming"", dataType: ""bool"", default: ""false"" },
             { category: ""survivalchallenges"", code: ""bodyTemperatureResistance"", dataType: ""dropdown"", values: [""-40"", ""-30"", ""-25"", ""-20"", ""-15"", ""-10"", ""-5"", ""0"", ""5"", ""10"", ""15"", ""20""], names: [""-40"", ""-30"", ""-25"", ""-20"", ""-15"", ""-10"", ""-5"", ""0"", ""5"", ""10"", ""15"", ""20""], default: ""0"" },
             { category: ""survivalchallenges"", code: ""creatureHostility"", dataType: ""dropdown"", values: [""aggressive"", ""passive"", ""off""], names: [""Aggressive"", ""Passive"", ""Never hostile""], default: ""aggressive"" },
             { category: ""survivalchallenges"", code: ""creatureStrength"", dataType: ""dropdown"", values: [""4"", ""2"", ""1.5"", ""1"", ""0.5"", ""0.25""], names: [""Deadly (400%)"", ""Very Strong (200%)"", ""Strong (150%)"", ""Normal (100%)"", ""Weak (50%)"", ""Very weak (25%)""], default: ""1"" },
             { category: ""survivalchallenges"", code: ""playerHealthPoints"", dataType: ""dropdown"", values: [""5"", ""10"", ""15"", ""20"", ""25"", ""30"", ""35""], names: [""5 hp"", ""10 hp"", ""15 hp"", ""20 hp"", ""25 hp"", ""30 hp"", ""35 hp""], default: ""15"" },
             { category: ""survivalchallenges"", code: ""playerHungerSpeed"", dataType: ""dropdown"", values: [""2"", ""1.5"", ""1.25"", ""1"", ""0.75"", ""0.5"", ""0.25""], names: [""Very fast (200%)"", ""Fast (150%)"", ""Slightly faster (125%)"", ""Normal (100%)"", ""Slightly slower (75%)"", ""Slower (50%)"", ""Much slower (25%)""], default: ""1"" },
+            { category: ""survivalchallenges"", code: ""playerHealthRegenSpeed"", dataType: ""dropdown"", values: [""2"", ""1.5"", ""1.25"", ""1"", ""0.75"", ""0.5"", ""0.25""], names: [""Very fast (200%)"", ""Fast (150%)"", ""Slightly faster (125%)"", ""Normal (100%)"", ""Slightly slower (75%)"", ""Slower (50%)"", ""Much slower (25%)""], default: ""1"" },
             { category: ""survivalchallenges"", code: ""playerMoveSpeed"", dataType: ""dropdown"", values: [""2"", ""1.75"", ""1.5"", ""1.25"", ""1"", ""0.75""], names: [""Fast"", ""Slightly faster"", ""Normal"", ""Slightly slower"", ""Slower"", ""Much slower""], default: ""1.5"" },
             { category: ""survivalchallenges"", code: ""foodSpoilSpeed"", dataType: ""dropdown"", values: [""4"", ""3"", ""2"", ""1.5"", ""1.25"", ""1"", ""0.75"", ""0.5"", ""0.25""], names: [""400%"", ""300%"", ""200%"", ""150%"", ""125%"", ""100%"", ""75%"", ""50%"", ""25%""], default: ""1"" },
             { category: ""survivalchallenges"", code: ""saplingGrowthRate"", dataType: ""dropdown"", values: [""16"", ""8"", ""4"", ""2"", ""1.5"", ""1"", ""0.75"", ""0.5"", ""0.25""], names: [""Extremely slow (16x)"", ""Much slower (8x)"", ""Slower (4x)"", ""Somewhat slower (2x)"", ""Slightly slower (1.5x)"", ""Normal (1x)"", ""Slightly faster (0.75x)"", ""Faster (0.5x)"", ""Much faster (0.25x)""], default: ""2"" },
@@ -236,8 +240,8 @@ using Vintagestory.API.Config;
             { category: ""worldgen"", code: ""landformScale"", dataType: ""dropdown"", values: [""0.5"", ""0.6"", ""0.7"", ""0.8"", ""0.9"", ""1.0"", ""1.1"", ""1.2"", ""1.3"", ""1.4"", ""1.5""], names: [""50%"", ""60%"", ""70%"", ""80%"", ""90%"", ""100%"", ""110%"", ""120%"", ""130%"", ""140%"", ""150%""], default: ""1.0"", onlyDuringWorldCreate: true },
 
 
-            { category: ""worldgen"", code: ""worldWidth"", dataType: ""dropdown"", values: [""8192000"", ""4096000"", ""2048000"", ""1024000"", ""600000"", ""512000"", ""256000"", ""102400"", ""51200"", ""25600"", ""10240"", ""5120"", ""1024"", ""512"", ""384"", ""256"", ""128"", ""64"", ""32"" ], names: [""8 mil blocks (Experimental)"", ""4 mil blocks (Experimental)"", ""2 mil blocks (Experimental)"", ""1 mil blocks"", ""600k blocks"", ""512k blocks"", ""256k blocks"", ""102k blocks"", ""51k blocks"", ""25k blocks"", ""10k blocks"", ""5120 blocks"", ""1024 blocks"", ""512 blocks"", ""384 blocks"", ""256 blocks"", ""128 blocks"", ""64 blocks"", ""32 blocks""], default: ""1024000"", onlyDuringWorldCreate: true },
-            { category: ""worldgen"", code: ""worldLength"", dataType: ""dropdown"", values: [""8192000"", ""4096000"", ""2048000"", ""1024000"", ""600000"", ""512000"", ""256000"", ""102400"", ""51200"", ""25600"", ""10240"", ""5120"", ""1024"", ""512"", ""384"", ""256"", ""128"", ""64"", ""32"" ], names: [""8 mil blocks (Experimental)"", ""4 mil blocks (Experimental)"", ""2 mil blocks (Experimental)"", ""1 mil blocks"", ""600k blocks"", ""512k blocks"", ""256k blocks"", ""102k blocks"", ""51k blocks"", ""25k blocks"", ""10k blocks"", ""5120 blocks"", ""1024 blocks"", ""512 blocks"", ""384 blocks"", ""256 blocks"", ""128 blocks"", ""64 blocks"", ""32 blocks""], default: ""1024000"", onlyDuringWorldCreate: true },
+            { category: ""worldgen"", code: ""worldWidth"", dataType: ""dropdown"", values: [""8192000"", ""4096000"", ""2048000"", ""1024000"", ""600000"", ""512000"", ""384000"", ""256000"", ""102400"", ""51200"", ""25600"", ""10240"", ""5120"", ""1024"", ""512"", ""384"", ""256"", ""128"", ""64"", ""32"" ], names: [""8 mil blocks"", ""4 mil blocks"", ""2 mil blocks"", ""1 mil blocks"", ""600k blocks"", ""512k blocks"", ""256k blocks"", ""102k blocks"", ""51k blocks"", ""25k blocks"", ""10k blocks"", ""5120 blocks"", ""1024 blocks"", ""512 blocks"", ""384 blocks"", ""256 blocks"", ""128 blocks"", ""64 blocks"", ""32 blocks""], default: ""1024000"", onlyDuringWorldCreate: true },
+            { category: ""worldgen"", code: ""worldLength"", dataType: ""dropdown"", values: [""8192000"", ""4096000"", ""2048000"", ""1024000"", ""600000"", ""512000"", ""384000"", ""256000"", ""102400"", ""51200"", ""25600"", ""10240"", ""5120"", ""1024"", ""512"", ""384"", ""256"", ""128"", ""64"", ""32"" ], names: [""8 mil blocks"", ""4 mil blocks"", ""2 mil blocks"", ""1 mil blocks"", ""600k blocks"", ""512k blocks"", ""256k blocks"", ""102k blocks"", ""51k blocks"", ""25k blocks"", ""10k blocks"", ""5120 blocks"", ""1024 blocks"", ""512 blocks"", ""384 blocks"", ""256 blocks"", ""128 blocks"", ""64 blocks"", ""32 blocks""], default: ""1024000"", onlyDuringWorldCreate: true },
             { category: ""worldgen"", code: ""worldEdge"", dataType: ""dropdown"", values: [""blocked"", ""traversable"" ], names: [""Blocked"", ""Traversable (Can fall down)""], default: ""traversable"" },
             { category: ""worldgen"", code: ""polarEquatorDistance"", dataType: ""dropdown"", values: [""800000"", ""400000"", ""200000"", ""100000"", ""50000"", ""25000"", ""15000"", ""10000"", ""5000""], names: [""800k blocks"", ""400k blocks"", ""200k blocks"", ""100k blocks"", ""50k blocks"", ""25k blocks"", ""15k blocks"", ""10k blocks"", ""5000 blocks""], default: ""50000"", onlyDuringWorldCreate: true },
             { category: ""worldgen"", code: ""globalTemperature"", dataType: ""dropdown"", values: [""4"", ""2"", ""1.5"", ""1"", ""0.75"", ""0.5"", ""0.25""], names: [""Scorching hot"", ""Very hot"", ""Hot"", ""Normal"", ""Cold"", ""Very Cold"", ""Snowball earth""], default: ""1"", onlyDuringWorldCreate: true },

@@ -219,10 +219,12 @@ namespace Vintagestory.GameContent
             if (unripeHeatDamaged || unripeCropColdDamaged) mul = cropProps.DamageGrowthStuntMul;
             if (isDead) mul = beDeadCrop.deathReason == EnumCropStressType.Eaten ? 0 : Math.Max(cropProps.ColdDamageRipeMul, cropProps.DamageGrowthStuntMul);
 
+            string[] debuffUnaffectedDrops = Block.Attributes?["debuffUnaffectedDrops"].AsArray<string>();
+
             for (int i = 0; i < drops.Length; i++)
             {
                 ItemStack stack = drops[i];
-                if (stack.Collectible.NutritionProps == null)
+                if (WildcardUtil.Match(debuffUnaffectedDrops, stack.Collectible.Code.ToShortString()))
                 {
                     stacks.Add(stack);
                     continue;
@@ -334,6 +336,13 @@ namespace Vintagestory.GameContent
 
             float minMoisture = GameMath.Clamp(1 - waterDistance / 4f, 0, 1);
 
+            if (lastMoistureLevelUpdateTotalDays > Api.World.Calendar.TotalDays)
+            {
+                // We need to rollback time when the blockEntity saved date is ahead of the calendar date: can happen if a schematic is imported
+                lastMoistureLevelUpdateTotalDays = Api.World.Calendar.TotalDays;
+                return false;
+            }
+
             double hoursPassed = Math.Min((totalDays - lastMoistureLevelUpdateTotalDays) * Api.World.Calendar.HoursPerDay, 48);
             if (hoursPassed < 0.03f)
             {
@@ -379,7 +388,7 @@ namespace Vintagestory.GameContent
             {
                 if (totalHoursLastUpdate > nowTotalHours)
                 {
-                    // We need to rollback time because the blockEntity saved date is ahead of the calendar date: can happen if a schematic is imported
+                    // We need to rollback time when the blockEntity saved date is ahead of the calendar date: can happen if a schematic is imported
                     double rollback = totalHoursLastUpdate - nowTotalHours; 
                     totalHoursForNextStage -= rollback;
                     lastMoistureLevelUpdateTotalDays -= rollback;
@@ -388,7 +397,7 @@ namespace Vintagestory.GameContent
                 }
                 else
                 {
-                    if (updateMoistureLevel(nowTotalHours, lastWaterDistance, skyExposed)) UpdateFarmlandBlock();
+                    if (updateMoistureLevel(nowTotalHours / Api.World.Calendar.HoursPerDay, lastWaterDistance, skyExposed)) UpdateFarmlandBlock();
                     return;
                 }
             }
@@ -751,9 +760,13 @@ namespace Vintagestory.GameContent
                 }
 
                 if (Api.World.BlockAccessor.GetBlockEntity(upPos) == null)
+                {
                     Api.World.BlockAccessor.SetBlock(nextBlock.BlockId, upPos);    //create any blockEntity if necessary (e.g. Bell Pepper and other fruiting crops)
+                }
                 else
+                {
                     Api.World.BlockAccessor.ExchangeBlock(nextBlock.BlockId, upPos);    //do not destroy existing blockEntity (e.g. Bell Pepper and other fruiting crops)
+                }
                 ConsumeNutrients(block);
                 return true;
             }
@@ -1077,6 +1090,7 @@ namespace Vintagestory.GameContent
 
         public void WaterFarmland(float dt, bool waterNeightbours = true)
         {
+            float prevLevel = moistureLevel;
             moistureLevel = Math.Min(1, moistureLevel + dt / 2);
 
             if (waterNeightbours)
@@ -1091,6 +1105,8 @@ namespace Vintagestory.GameContent
 
             updateMoistureLevel(Api.World.Calendar.TotalDays, lastWaterDistance);
             UpdateFarmlandBlock();
+
+            if (moistureLevel - prevLevel > 0.05) MarkDirty(true);
         }
 
         public double TotalHoursForNextStage

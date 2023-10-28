@@ -1,13 +1,8 @@
-﻿using System.Collections.Generic;
-using Cairo;
-using Vintagestory.API.MathTools;
-using Vintagestory.API.Client;
+﻿using Vintagestory.API.Client;
 using Vintagestory.API.Config;
 using Vintagestory.API.Common;
 using System;
-using System.Linq;
 using Vintagestory.API.Util;
-using Vintagestory.API.Datastructures;
 
 namespace Vintagestory.GameContent
 {
@@ -26,7 +21,6 @@ namespace Vintagestory.GameContent
         public override void Dispose() { Texture?.Dispose(); Texture = null; }
 
         RichTextComponentBase[] comps;
-        public int PageNumber;
 
         string titleCached;
         public override bool IsDuplicate => false;
@@ -45,7 +39,7 @@ namespace Vintagestory.GameContent
             
             comps = VtmlUtil.Richtextify(capi, Text, CairoFont.WhiteSmallText().WithLineHeightMultiplier(1.2));
 
-            titleCached = Lang.Get(Title);
+            titleCached = Lang.Get(Title).RemoveDiacritics();
         }
 
         public override void ComposePage(GuiComposer detailViewGui, ElementBounds textBounds, ItemStack[] allstacks, ActionConsumable<string> openDetailPageFor)

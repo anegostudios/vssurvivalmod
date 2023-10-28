@@ -1,7 +1,5 @@
 ﻿using Cairo;
-using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -135,13 +133,13 @@ namespace Vintagestory.GameContent
             {
                 curTreeType = itemstack.Attributes.GetString("type");
 
-                var dict = ObjectCacheUtil.GetOrCreate(capi, "cuttingMeshRefs", () => new Dictionary<string, MeshRef>());
+                var dict = ObjectCacheUtil.GetOrCreate(capi, "cuttingMeshRefs", () => new Dictionary<string, MultiTextureMeshRef>());
 
                 if (!dict.TryGetValue(curTreeType, out var meshref))
                 {
                     curTessShape = capi.TesselatorManager.GetCachedShape(this.Shape.Base);
                     capi.Tesselator.TesselateShape("fruittreecutting", curTessShape, out var meshdata, this);
-                    dict[curTreeType] = renderinfo.ModelRef = capi.Render.UploadMesh(meshdata);
+                    dict[curTreeType] = renderinfo.ModelRef = capi.Render.UploadMultiTextureMesh(meshdata);
                 } else
                 {
                     renderinfo.ModelRef = meshref;
@@ -157,7 +155,7 @@ namespace Vintagestory.GameContent
 
             if (capi != null)
             {
-                var dict = ObjectCacheUtil.GetOrCreate(capi, "cuttingMeshRefs", () => new Dictionary<string, MeshRef>());
+                var dict = ObjectCacheUtil.GetOrCreate(capi, "cuttingMeshRefs", () => new Dictionary<string, MultiTextureMeshRef>());
                 if (dict != null)
                 {
                     foreach (var val in dict)

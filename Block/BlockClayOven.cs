@@ -128,6 +128,13 @@ namespace Vintagestory.GameContent
             return base.OnBlockInteractStart(world, byPlayer, bs);
         }
 
+        EnumIgniteState IIgnitable.OnTryIgniteStack(EntityAgent byEntity, BlockPos pos, ItemSlot slot, float secondsIgniting)
+        {
+            BlockEntityOven beo = byEntity.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityOven;
+            if (beo.IsBurning) return secondsIgniting > 2 ? EnumIgniteState.IgniteNow : EnumIgniteState.Ignitable;
+            return EnumIgniteState.NotIgnitable;
+        }
+
         public EnumIgniteState OnTryIgniteBlock(EntityAgent byEntity, BlockPos pos, float secondsIgniting)
         {
             BlockEntityOven beo = byEntity.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityOven;

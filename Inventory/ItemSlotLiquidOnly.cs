@@ -1,5 +1,4 @@
 ﻿using Vintagestory.API.Common;
-using Vintagestory.GameContent;
 
 namespace Vintagestory.GameContent
 {

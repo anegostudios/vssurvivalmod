@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Vintagestory.API;
+﻿using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -116,7 +111,7 @@ namespace Vintagestory.GameContent
                 int z = Pos.Z + dir.Z * chunksize;
 
                 // Not at world edge and chunk is not loaded? We must be at the edge of loaded chunks. Wait until more chunks are generated
-                if (Api.World.BlockAccessor.IsValidPos(x, Pos.Y, z) && Api.World.BlockAccessor.GetChunkAtBlockPos(x, Pos.Y, z) == null) return;
+                if (Api.World.BlockAccessor.IsValidPos(x, Pos.InternalY, z) && Api.World.BlockAccessor.GetChunkAtBlockPos(x, Pos.InternalY, z) == null) return;
             }
 
             Block block = Api.World.BlockAccessor.GetBlock(Pos);

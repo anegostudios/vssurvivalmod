@@ -44,9 +44,9 @@ namespace Vintagestory.GameContent
             base.OnBeforeRender(capi, itemstack, target, ref renderinfo);
         }
 
-        private MeshRef genCombinedMesh(ItemStack itemstack)
+        private MultiTextureMeshRef genCombinedMesh(ItemStack itemstack)
         {
-            var cachedRefs = ObjectCacheUtil.GetOrCreate(api, "combinedBookShelfWithLoreMeshRef", () => new Dictionary<string, MeshRef>());
+            var cachedRefs = ObjectCacheUtil.GetOrCreate(api, "combinedBookShelfWithLoreMeshRef", () => new Dictionary<string, MultiTextureMeshRef>());
 
             string type = itemstack.Attributes.GetString("type", itemstack.Attributes.GetString("type1"));
             if (type == null) return null;
@@ -60,7 +60,7 @@ namespace Vintagestory.GameContent
 
             mesh.AddMeshData(bookmesh);
 
-            return cachedRefs[type] = (api as ICoreClientAPI).Render.UploadMesh(mesh);
+            return cachedRefs[type] = (api as ICoreClientAPI).Render.UploadMultiTextureMesh(mesh);
         }
 
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)

@@ -3,8 +3,6 @@ using Vintagestory.API.Common.Entities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 using Vintagestory.API.Client;
@@ -83,7 +81,7 @@ namespace Vintagestory.GameContent
 
         public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
         {
-            var meshrefs = ObjectCacheUtil.GetOrCreate(capi, "itemcreatureinventorymeshes", () => new Dictionary<string, MeshRef>());
+            var meshrefs = ObjectCacheUtil.GetOrCreate(capi, "itemcreatureinventorymeshes", () => new Dictionary<string, MultiTextureMeshRef>());
             string code = itemstack.Attributes.GetString("type");
 
             if (!meshrefs.ContainsKey(code))
@@ -102,7 +100,7 @@ namespace Vintagestory.GameContent
                         meshdata.ModelTransform(tf);
                     }
 
-                    renderinfo.ModelRef = meshrefs[code] = capi.Render.UploadMesh(meshdata);
+                    renderinfo.ModelRef = meshrefs[code] = capi.Render.UploadMultiTextureMesh(meshdata);
                 }
             } else
             {

@@ -14,13 +14,16 @@ namespace Vintagestory.GameContent
             public readonly int BlockId;
             public readonly TextureAtlasPosition[] Texture;// Texture per face
             public readonly TextureAtlasPosition[] TextureInside;
+            public readonly TextureAtlasPosition TextureTopSoil;
+
             public readonly EnumChunkRenderPass RenderPass;
             public readonly int Flags;
+            
             public readonly bool CullBetweenTransparents;
             public readonly byte ClimateMapIndex;
             public readonly byte SeasonMapIndex;
 
-            public VoxelMaterial(int blockId, TextureAtlasPosition[] texture, TextureAtlasPosition[] textureInside,
+            public VoxelMaterial(int blockId, TextureAtlasPosition[] texture, TextureAtlasPosition[] textureInside, TextureAtlasPosition textureTopSoil,
                 EnumChunkRenderPass renderPass, int flags, byte climateMapIndex, byte seasonMapIndex, bool cullBetweenTransparents)
             {
                 ClimateMapIndex = climateMapIndex;
@@ -30,6 +33,7 @@ namespace Vintagestory.GameContent
                 TextureInside = textureInside;
                 RenderPass = renderPass;
                 Flags = flags;
+                TextureTopSoil = textureTopSoil;
                 CullBetweenTransparents = cullBetweenTransparents;
             }
 
@@ -76,7 +80,13 @@ namespace Vintagestory.GameContent
                 byte climateColorMapId = block.ClimateColorMapResolved == null ? (byte)0 : (byte)(block.ClimateColorMapResolved.RectIndex + 1);
                 byte seasonColorMapId = block.SeasonColorMapResolved == null ? (byte)0 : (byte)(block.SeasonColorMapResolved.RectIndex + 1);
 
-                return new VoxelMaterial(block.Id, texture, textureInside, block.RenderPass, block.VertexFlags.All, climateColorMapId, seasonColorMapId, cullBetweenTransparents);
+                TextureAtlasPosition grasscoverexPos = null;
+                if (block.RenderPass == EnumChunkRenderPass.TopSoil)
+                {
+                    grasscoverexPos = capi.BlockTextureAtlas[block.Textures["specialSecondTexture"].Baked.BakedName];
+                }
+
+                return new VoxelMaterial(block.Id, texture, textureInside, grasscoverexPos, block.RenderPass, block.VertexFlags.All, climateColorMapId, seasonColorMapId, cullBetweenTransparents);
             }
 
             public static VoxelMaterial FromTexSource(ICoreClientAPI capi, ITexPositionSource texSource, bool cullBetweenTransparents = false)
@@ -89,7 +99,7 @@ namespace Vintagestory.GameContent
                     texture[i] = texSource[facing.Code] ?? capi.BlockTextureAtlas.UnknownTexturePosition;
                     textureInside[i] = texSource["inside-" + facing.Code] ?? texSource[facing.Code] ?? capi.BlockTextureAtlas.UnknownTexturePosition;
                 }
-                return new VoxelMaterial(0, texture, textureInside, EnumChunkRenderPass.Opaque, 0, 0, 0, cullBetweenTransparents);
+                return new VoxelMaterial(0, texture, textureInside, null, EnumChunkRenderPass.Opaque, 0, 0, 0, cullBetweenTransparents);
             }
         }
 

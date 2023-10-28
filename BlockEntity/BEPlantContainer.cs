@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -315,7 +313,10 @@ namespace Vintagestory.GameContent
                     }
                     catch (Exception e)
                     { 
-                        Api.Logger.Error(e.Message + " (when tesselating " + compoShape.Base.WithPathPrefixOnce("shapes/") + ")"); meshwithVariants = null; break; 
+                        Api.Logger.Error(e.Message + " (when tesselating " + compoShape.Base.WithPathPrefixOnce("shapes/") + ")");
+                        Api.Logger.Error(e);
+                        meshwithVariants = null;
+                        break; 
                     }
 
                     mesh.ModelTransform(transform);

@@ -266,7 +266,7 @@ namespace Vintagestory.GameContent
             else
             {
                 Block parentBlock = Api.World.BlockAccessor.GetBlock(parentPlantPos);
-                if (!IsValidParentBlock(parentBlock) && Api.World.BlockAccessor.GetChunkAtBlockPos(parentPlantPos.X, parentPlantPos.Y, parentPlantPos.Z) != null)
+                if (!IsValidParentBlock(parentBlock) && Api.World.BlockAccessor.GetChunkAtBlockPos(parentPlantPos) != null)
                 {
                     Die();
                     return true;

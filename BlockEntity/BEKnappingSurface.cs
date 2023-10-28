@@ -5,7 +5,6 @@ using System.Linq;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -540,7 +539,7 @@ namespace Vintagestory.GameContent
 
                 // Tell server to save this chunk to disk again
                 MarkDirty();
-                Api.World.BlockAccessor.GetChunkAtBlockPos(Pos.X, Pos.Y, Pos.Z).MarkModified();
+                Api.World.BlockAccessor.GetChunkAtBlockPos(Pos).MarkModified();
             }
 
             if (packetid == (int)EnumClayFormingPacket.OnUserOver)

@@ -1,6 +1,4 @@
-﻿using System.Collections.Generic;
-using Cairo;
-using Vintagestory.API.MathTools;
+﻿using Vintagestory.API.MathTools;
 using Vintagestory.API.Client;
 using Vintagestory.API.Config;
 using Vintagestory.API.Common;
@@ -10,7 +8,7 @@ using Vintagestory.API.Datastructures;
 
 namespace Vintagestory.GameContent
 {
- 
+
     public class GuiHandbookItemStackPage : GuiHandbookPage
     {
         public ItemStack Stack;
@@ -38,7 +36,7 @@ namespace Vintagestory.GameContent
             unspoilableInventory = new CreativeInventoryTab(1, "not-used", null);
             dummySlot = new DummySlot(stack, unspoilableInventory);
 
-            TextCacheTitle = stack.GetName();
+            TextCacheTitle = stack.GetName().RemoveDiacritics();
             TextCacheAll = stack.GetName() + " " + stack.GetDescription(capi.World, dummySlot, false);
             isDuplicate = stack.Collectible.Attributes?["handbook"]?["isDuplicate"].AsBool(false) == true;
 

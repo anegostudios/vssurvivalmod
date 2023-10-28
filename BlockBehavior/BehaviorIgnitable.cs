@@ -30,6 +30,18 @@ namespace Vintagestory.GameContent
         /// <param name="secondsIgniting"></param>
         /// <param name="handling"></param>
         void OnTryIgniteBlockOver(EntityAgent byEntity, BlockPos pos, float secondsIgniting, ref EnumHandling handling);
+
+
+        /// <summary>
+        /// Called while the given entity holds an item over this block.
+        /// </summary>
+        /// <param name="byEntity"></param>
+        /// <param name="pos"></param>
+        /// <param name="secondsIgniting"></param>
+        /// <returns>true when this block is ignitable</returns>
+        EnumIgniteState OnTryIgniteStack(EntityAgent byEntity, BlockPos pos, ItemSlot slot, float secondsIgniting);
+
+
     }
 
 

@@ -1113,7 +1113,7 @@ namespace Vintagestory.GameContent
 
                 // Tell server to save this chunk to disk again
                 MarkDirty();
-                Api.World.BlockAccessor.GetChunkAtBlockPos(Pos.X, Pos.Y, Pos.Z).MarkModified();
+                Api.World.BlockAccessor.GetChunkAtBlockPos(Pos).MarkModified();
             }
 
             if (packetid == (int)EnumAnvilPacket.CancelSelect)

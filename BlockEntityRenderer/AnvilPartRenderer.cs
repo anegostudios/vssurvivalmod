@@ -56,13 +56,13 @@ namespace Vintagestory.GameContent
 
             if (beAnvil.BaseMeshRef != null && !beAnvil.BaseMeshRef.Disposed)
             {
-                rpi.RenderMesh(beAnvil.BaseMeshRef);
+                rpi.RenderMultiTextureMesh(beAnvil.BaseMeshRef);
             }
 
             if (beAnvil.FluxMeshRef != null && !beAnvil.FluxMeshRef.Disposed)
             {
                 prog.ExtraGlow = 0;
-                rpi.RenderMesh(beAnvil.FluxMeshRef);
+                rpi.RenderMultiTextureMesh(beAnvil.FluxMeshRef);
             }
 
             if (beAnvil.TopMeshRef != null && !beAnvil.TopMeshRef.Disposed)
@@ -83,7 +83,7 @@ namespace Vintagestory.GameContent
                 prog.ExtraGlow = extraGlow;
 
 
-                rpi.RenderMesh(beAnvil.TopMeshRef);
+                rpi.RenderMultiTextureMesh(beAnvil.TopMeshRef);
             }
 
             prog.Stop();

@@ -1,5 +1,4 @@
 using Vintagestory.API.Client;
-using System;
 using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -8,10 +7,9 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-
     public delegate void InitCustomPagesDelegate(List<GuiHandbookPage> pages);
 
-    public class ModSystemHandbook : ModSystem
+    public class ModSystemSurvivalHandbook : ModSystem
     {
         ICoreClientAPI capi;
         GuiDialogHandbook dialog;
@@ -23,7 +21,6 @@ namespace Vintagestory.GameContent
             OnInitCustomPages?.Invoke(pages);
         }
 
-
         public override bool ShouldLoad(EnumAppSide side)
         {
             return side == EnumAppSide.Client;
@@ -33,8 +30,8 @@ namespace Vintagestory.GameContent
         {
             this.capi = api;
 
-            api.Input.RegisterHotKeyFirst("handbook", Lang.Get("Show Handbook"), GlKeys.H, HotkeyType.HelpAndOverlays);
-            api.Input.SetHotKeyHandler("handbook", OnHelpHotkey);
+            api.Input.RegisterHotKeyFirst("handbook", Lang.Get("Show Survival handbook"), GlKeys.H, HotkeyType.HelpAndOverlays);
+            api.Input.SetHotKeyHandler("handbook", OnSurvivalHandbookHotkey);
 
             api.Event.LevelFinalize += Event_LevelFinalize;
             api.RegisterLinkProtocol("handbook", onHandBookLinkClicked);
@@ -46,7 +43,7 @@ namespace Vintagestory.GameContent
             string text = comp.Href.Substring("handbooksearch://".Length);
             if (!dialog.IsOpened()) dialog.TryOpen();
 
-            dialog.Search(text);            
+            dialog.Search(text);
         }
 
         private void onHandBookLinkClicked(LinkTextComponent comp)
@@ -55,6 +52,13 @@ namespace Vintagestory.GameContent
 
             // Seems to fix links like thos not working: block-labeledchest-east-{{ \"type\": \\\"normal-labeled\\\" }}
             target = target.Replace("\\", "");
+
+            if (target.StartsWith("tab-"))
+            {
+                if (!dialog.IsOpened()) dialog.TryOpen();
+                dialog.selectTab(target.Substring(4));
+                return;
+            }
 
             if (!dialog.IsOpened()) dialog.TryOpen();
 
@@ -66,7 +70,7 @@ namespace Vintagestory.GameContent
             var allstacks = SetupBehaviorAndGetItemStacks();
             this.allstacks = allstacks.ToArray();
 
-            dialog = new GuiDialogHandbook(capi, onCreatePagesAsync, onComposePage);
+            dialog = new GuiDialogSurvivalHandbook(capi, onCreatePagesAsync, onComposePage);
             capi.Logger.VerboseDebug("Done initialising handbook");
         }
 
@@ -121,12 +125,13 @@ namespace Vintagestory.GameContent
         }
 
 
-        private bool OnHelpHotkey(KeyCombination key)
+        private bool OnSurvivalHandbookHotkey(KeyCombination key)
         {
             if (dialog.IsOpened())
             {
                 dialog.TryClose();
-            } else
+            }
+            else
             {
                 dialog.TryOpen();
                 // dunno why
@@ -135,7 +140,7 @@ namespace Vintagestory.GameContent
                 if (capi.World.Player.InventoryManager.CurrentHoveredSlot?.Itemstack != null)
                 {
                     ItemStack stack = capi.World.Player.InventoryManager.CurrentHoveredSlot.Itemstack;
-                    string pageCode = GuiHandbookItemStackPage.PageCodeForStack(stack); 
+                    string pageCode = GuiHandbookItemStackPage.PageCodeForStack(stack);
 
                     if (!dialog.OpenDetailPageFor(pageCode))
                     {
@@ -159,6 +164,7 @@ namespace Vintagestory.GameContent
 
             return true;
         }
+
 
         public override void Dispose()
         {

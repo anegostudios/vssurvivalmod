@@ -96,9 +96,13 @@ namespace Vintagestory.GameContent
 
             if (!AnimManager.ActiveAnimationsByAnimCode.ContainsKey("feed") && !AnimManager.ActiveAnimationsByAnimCode.ContainsKey("rest"))
             {
-                if (ServerPos.Y < Pos.Y - 0.05 && !Collided)
+                if (ServerPos.Y < Pos.Y - 0.05 && !Collided && !FeetInLiquid)
                 {
                     SetAnimation("glide", 1);
+                }
+                if (FeetInLiquid)
+                {
+                    StopAnimation("glide");
                 }
 
                 if ((ServerPos.Y > Pos.Y - 0.02 || Collided) && !FeetInLiquid)
@@ -106,7 +110,7 @@ namespace Vintagestory.GameContent
                     SetAnimation("fly", 2.5f);
                 }
                 
-                if (FeetInLiquid && flapPauseDt <= 0 && Api.World.Rand.NextDouble() < 0.07)
+                if (FeetInLiquid && flapPauseDt <= 0 && Api.World.Rand.NextDouble() < 0.06)
                 {
                     flapPauseDt = 2 + 6 * (float)Api.World.Rand.NextDouble();
                     StopAnimation("fly");

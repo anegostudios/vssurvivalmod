@@ -1,6 +1,4 @@
-﻿using System.Linq;
-using Vintagestory.API.Common;
-using Vintagestory.API.MathTools;
+﻿using Vintagestory.API.Common;
 
 namespace Vintagestory.GameContent.Mechanics
 {

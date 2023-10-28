@@ -120,7 +120,7 @@ namespace Vintagestory.GameContent
                     {
                         foundtotal++;
                         foundtypes.Add(be.BlockName);
-                        be.BlockName = sapi.World.Blocks[be.MaterialIds[0]].GetPlacedBlockName(sapi.World, new BlockPos(x,y,z));
+                        be.BlockName = sapi.World.Blocks[be.BlockIds[0]].GetPlacedBlockName(sapi.World, new BlockPos(x,y,z));
                         be.MarkDirty(true);
                     }
                 }

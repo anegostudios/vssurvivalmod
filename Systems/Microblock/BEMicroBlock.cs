@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using Vintagestory.API.Client;
@@ -10,12 +12,15 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public partial class BlockEntityMicroBlock : BlockEntity, IRotatable
+    public partial class BlockEntityMicroBlock : BlockEntity, IRotatable, IAcceptsDecor, IMaterialExchangeable
     {
+        protected static int[] NoDecorIds = new int[6];
+        
         protected static ThreadLocal<CuboidWithMaterial[]> tmpCuboidTL = new ThreadLocal<CuboidWithMaterial[]>(() =>
         {
             var val = new CuboidWithMaterial[16 * 16 * 16];
@@ -37,11 +42,19 @@ namespace Vintagestory.GameContent
         protected uint[] originalCuboids;
         public uint[] OriginalVoxelCuboids => originalCuboids == null ? defaultOriginalVoxelCuboids : originalCuboids;
 
+        [Obsolete("Use BlockIds instead")]
+        public int[] MaterialIds => BlockIds;
         /// <summary>
-        /// List of block ids for the materials used
+        /// List of block ids for the materials used in this microblock
         /// </summary>
-        public int[] MaterialIds;
-        protected int[] MaterialIdsRotated;
+        public int[] BlockIds;
+        /// <summary>
+        /// List of decor block ids per block face, i.e. can only ever be null or be a 6 length array
+        /// </summary>
+        public int[] DecorIds = null;
+
+        protected int[] BlockIdsRotated;
+        protected int[] DecorIdsRotated;
         public int rotated;
 
         public MeshData Mesh;
@@ -57,7 +70,6 @@ namespace Vintagestory.GameContent
         public bool[] sidecenterSolid = new bool[6];
         public bool[] sideAlmostSolid = new bool[6];
         protected short rotationY;
-        protected byte nowmaterialIndex;
         public float sizeRel = 1;
         protected int totalVoxels;
         protected bool withColorMapData;
@@ -78,7 +90,7 @@ namespace Vintagestory.GameContent
         {
             bool collBoxCuboid = block.Attributes?.IsTrue("chiselShapeFromCollisionBox") == true;
 
-            MaterialIds = new int[] { block.BlockId };
+            BlockIds = new int[] { block.BlockId };
 
             if (!collBoxCuboid)
             {
@@ -116,22 +128,12 @@ namespace Vintagestory.GameContent
         }
 
 
-        public void SetNowMaterial(byte index)
-        {
-            nowmaterialIndex = (byte)GameMath.Clamp(index, 0, MaterialIds.Length - 1);
-        }
-
-        public void SetNowMaterialId(int materialId)
-        {
-            nowmaterialIndex = (byte)Math.Max(0, MaterialIds.IndexOf(materialId));
-        }
-
 
         #region Get block properties
 
         public byte[] GetLightHsv(IBlockAccessor ba)
         {
-            int[] matids = MaterialIds;
+            int[] matids = BlockIds;
             byte[] hsv = new byte[3];
             int q = 0;
 
@@ -168,16 +170,16 @@ namespace Vintagestory.GameContent
 
         public int GetLightAbsorption()
         {
-            if (MaterialIds == null || !absorbAnyLight || Api == null)
+            if (BlockIds == null || !absorbAnyLight || Api == null)
             {
                 return 0;
             }
 
             int absorb = 99;
 
-            for (int i = 0; i < MaterialIds.Length; i++)
+            for (int i = 0; i < BlockIds.Length; i++)
             {
-                Block block = Api.World.GetBlock(MaterialIds[i]);
+                Block block = Api.World.GetBlock(BlockIds[i]);
                 absorb = Math.Min(absorb, block.LightAbsorption);
             }
 
@@ -266,11 +268,11 @@ namespace Vintagestory.GameContent
         {
             base.GetBlockInfo(forPlayer, dsc);
 
-            dsc.AppendLine(BlockName.Substring(BlockName.IndexOf('\n') + 1));
+            dsc.AppendLine(GetPlacedBlockName());
 
-            if (forPlayer?.CurrentBlockSelection?.Face != null && MaterialIds != null)
+            if (forPlayer?.CurrentBlockSelection?.Face != null && BlockIds != null)
             {
-                Block block = Api.World.GetBlock(MaterialIds[0]);
+                Block block = Api.World.GetBlock(BlockIds[0]);
                 var mat = block.BlockMaterial;
                 if (mat == EnumBlockMaterial.Ore || mat == EnumBlockMaterial.Stone || mat == EnumBlockMaterial.Soil || mat == EnumBlockMaterial.Ceramic)
                 {
@@ -281,6 +283,49 @@ namespace Vintagestory.GameContent
                 }
             }
 
+        }
+
+        public string GetPlacedBlockName()
+        {
+            return GetPlacedBlockName(Api, VoxelCuboids, BlockIds, BlockName);
+        }
+
+        public static string GetPlacedBlockName(ICoreAPI api, List<uint> voxelCuboids, int[] blockIds, string blockName)
+        {
+            if ((blockName == null || blockName == "") && blockIds != null)
+            {
+                int mblockid = getMajorityMaterial(voxelCuboids, blockIds);
+                return api.World.Blocks[mblockid].GetHeldItemName(new ItemStack(api.World.Blocks[mblockid]));
+            }
+            else
+            {
+                return blockName.Substring(blockName.IndexOf('\n') + 1);
+            }
+        }
+
+        public static int getMajorityMaterial(List<uint> voxelCuboids, int[] blockIds)
+        {
+            Dictionary<int, int> volumeByBlockid = new Dictionary<int, int>();
+            CuboidWithMaterial cwm = new CuboidWithMaterial();
+            for (int i = 0; i < voxelCuboids.Count; i++)
+            {
+                FromUint(voxelCuboids[i], cwm);
+                var blockid = blockIds[cwm.Material];
+
+                if (volumeByBlockid.ContainsKey(blockid))
+                {
+                    volumeByBlockid[blockid] += cwm.SizeXYZ;
+                }
+                else
+                {
+                    volumeByBlockid[blockid] = cwm.SizeXYZ;
+                }
+            }
+
+            if (volumeByBlockid.Count == 0) return 0;
+
+            var mblockid = volumeByBlockid.MaxBy(vbb => vbb.Value).Key;
+            return mblockid;
         }
 
 
@@ -294,7 +339,6 @@ namespace Vintagestory.GameContent
             voxels = new bool[16, 16, 16];
             materials = new byte[16, 16, 16];
             CuboidWithMaterial cwm = tmpCuboids[0];
-
 
             for (int i = 0; i < VoxelCuboids.Count; i++)
             {
@@ -448,7 +492,7 @@ namespace Vintagestory.GameContent
 
             if (Voxels[voxelPos.X, voxelPos.Y, voxelPos.Z])
             {
-                return MaterialIds[VoxelMaterial[voxelPos.X, voxelPos.Y, voxelPos.Z]];
+                return BlockIds[VoxelMaterial[voxelPos.X, voxelPos.Y, voxelPos.Z]];
             }
 
             return 0;
@@ -672,7 +716,7 @@ namespace Vintagestory.GameContent
             }
             emitSideAo = lightshv[2] < 10 && doEmitSideAo ? 0x3F : 0;
 
-            if (MaterialIds.Length == 1 && Api.World.GetBlock(MaterialIds[0]).RenderPass == EnumChunkRenderPass.Meta)
+            if (BlockIds.Length == 1 && Api.World.GetBlock(BlockIds[0]).RenderPass == EnumChunkRenderPass.Meta)
             {
                 emitSideAo = 0;
             }
@@ -782,7 +826,7 @@ namespace Vintagestory.GameContent
 
             List<Cuboidf> selBoxesNoMeta = null;
             bool hasMetaBlock = false;
-            for (int i = 0; i < MaterialIds.Length; i++) hasMetaBlock |= worldForResolve.Blocks[MaterialIds[i]].RenderPass == EnumChunkRenderPass.Meta;
+            for (int i = 0; i < BlockIds.Length; i++) hasMetaBlock |= worldForResolve.Blocks[BlockIds[i]].RenderPass == EnumChunkRenderPass.Meta;
             if (hasMetaBlock) selBoxesNoMeta = new List<Cuboidf>();
 
 
@@ -794,7 +838,7 @@ namespace Vintagestory.GameContent
                 selectionBoxesTmp[i] = cwm.ToCuboidf();
                 totalVoxels += cwm.Volume;
 
-                if (hasMetaBlock && worldForResolve.Blocks[MaterialIds[cwm.Material]].RenderPass != EnumChunkRenderPass.Meta) selBoxesNoMeta.Add(selectionBoxesTmp[i]);
+                if (hasMetaBlock && worldForResolve.Blocks[BlockIds[cwm.Material]].RenderPass != EnumChunkRenderPass.Meta) selBoxesNoMeta.Add(selectionBoxesTmp[i]);
             }
 
             selectionBoxes = selectionBoxesTmp;
@@ -811,23 +855,14 @@ namespace Vintagestory.GameContent
         {
             base.FromTreeAttributes(tree, worldAccessForResolve);
 
-            MaterialIds = MaterialIdsFromAttributes(tree, worldAccessForResolve);
-            BlockName = tree.GetString("blockName", "");
+            BlockIds = MaterialIdsFromAttributes(tree, worldAccessForResolve);
+            DecorIds = (int[])(tree["decorIds"] as IntArrayAttribute)?.value.Clone();
+            BlockName = tree.GetString("blockName", null);
 
             int rot = tree.GetInt("rotation", 0);
             rotationY = (short)(((rot >> 10) & 0b1111111111) - 360); // 10 bits is enough for -360 .. 360
 
-            uint[] values = (tree["cuboids"] as IntArrayAttribute)?.AsUint;
-            // When loaded from json
-            if (values == null)
-            {
-                values = (tree["cuboids"] as LongArrayAttribute)?.AsUint;
-            }
-            if (values == null)
-            {
-                values = new uint[] { ToUint(0, 0, 0, 16, 16, 16, 0) };
-            }
-            VoxelCuboids = new List<uint>(values);
+            VoxelCuboids = new List<uint>(GetVoxelCuboids(tree));
 
             byte[] sideAo = tree.GetBytes("emitSideAo", new byte[] { 255 });
             if (sideAo.Length > 0)
@@ -890,11 +925,26 @@ namespace Vintagestory.GameContent
             RegenSelectionBoxes(worldAccessForResolve, null);
         }
 
+        public static uint[] GetVoxelCuboids(ITreeAttribute tree)
+        {
+            uint[] values = (tree["cuboids"] as IntArrayAttribute)?.AsUint;
+            // When loaded from json
+            if (values == null)
+            {
+                values = (tree["cuboids"] as LongArrayAttribute)?.AsUint;
+            }
+            if (values == null)
+            {
+                values = new uint[] { ToUint(0, 0, 0, 16, 16, 16, 0) };
+            }
+
+            return values;
+        }
+
         public static int[] MaterialIdsFromAttributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
         {
             if (tree["materials"] is IntArrayAttribute)
             {
-                // Pre 1.8 storage and Post 1.13-pre.2 storage
                 int[] ids = (tree["materials"] as IntArrayAttribute).value;
 
                 int[] valuesInt = new int[ids.Length];
@@ -907,6 +957,8 @@ namespace Vintagestory.GameContent
             }
             else
             {
+                // Old storage format
+
                 if (!(tree["materials"] is StringArrayAttribute))
                 {
                     return new int[] { worldAccessForResolve.GetBlock(new AssetLocation("rock-granite")).Id };
@@ -938,27 +990,20 @@ namespace Vintagestory.GameContent
         {
             base.ToTreeAttributes(tree);
 
-            IntArrayAttribute attr = new IntArrayAttribute();
-            attr.value = MaterialIds;
-
-            //if (tfMatrix != null) tree["tfMatrix"] = new FloatArrayAttribute(tfMatrix);
-
-            if (attr.value != null)
+            if (BlockIds != null)
             {
-                tree["materials"] = attr;
+                tree["materials"] = new IntArrayAttribute(BlockIds);
+            }
+            if (DecorIds != null)
+            {
+                tree["decorIds"] = new IntArrayAttribute(DecorIds);
             }
 
             tree.SetInt("rotation", (rotationY + 360) << 10);
-
             tree["cuboids"] = new IntArrayAttribute(VoxelCuboids.ToArray());
-
-
             tree.SetBytes("emitSideAo", new byte[] { (byte)emitSideAo });
-
             tree.SetBytes("sideSolid", new byte[] { (byte)GameMath.IntFromBools(sidecenterSolid) });
-
             tree.SetBytes("sideAlmostSolid", new byte[] { (byte)GameMath.IntFromBools(sideAlmostSolid) });
-
             tree.SetString("blockName", BlockName);
 
             if (originalCuboids != null)
@@ -1002,10 +1047,10 @@ namespace Vintagestory.GameContent
         {
             base.OnLoadCollectibleMappings(worldForNewMappings, oldBlockIdMapping, oldItemIdMapping, schematicSeed);
 
-            for (int i = 0; i < MaterialIds.Length; i++)
+            for (int i = 0; i < BlockIds.Length; i++)
             {
                 AssetLocation code;
-                if (oldBlockIdMapping.TryGetValue(MaterialIds[i], out code))
+                if (oldBlockIdMapping.TryGetValue(BlockIds[i], out code))
                 {
                     Block block = worldForNewMappings.GetBlock(code);
                     if (block == null)
@@ -1014,11 +1059,34 @@ namespace Vintagestory.GameContent
                         continue;
                     }
 
-                    MaterialIds[i] = block.Id;
+                    BlockIds[i] = block.Id;
                 }
                 else
                 {
-                    worldForNewMappings.Logger.Warning("Cannot load chiseled block id mapping @ {1}, block id {0} not found block registry. Will not display correctly.", MaterialIds[i], Pos);
+                    worldForNewMappings.Logger.Warning("Cannot load chiseled block id mapping @ {1}, block id {0} not found block registry. Will not display correctly.", BlockIds[i], Pos);
+                }
+            }
+
+            if (DecorIds != null)
+            {
+                for (int i = 0; i < DecorIds.Length; i++)
+                {
+                    AssetLocation code;
+                    if (oldBlockIdMapping.TryGetValue(DecorIds[i], out code))
+                    {
+                        Block block = worldForNewMappings.GetBlock(code);
+                        if (block == null)
+                        {
+                            worldForNewMappings.Logger.Warning("Cannot load chiseled decor block id mapping @ {1}, block code {0} not found block registry. Will not display correctly.", code, Pos);
+                            continue;
+                        }
+
+                        DecorIds[i] = block.Id;
+                    }
+                    else
+                    {
+                        worldForNewMappings.Logger.Warning("Cannot load chiseled decor block id mapping @ {1}, block id {0} not found block registry. Will not display correctly.", DecorIds[i], Pos);
+                    }
                 }
             }
         }
@@ -1027,10 +1095,19 @@ namespace Vintagestory.GameContent
         {
             base.OnStoreCollectibleMappings(blockIdMapping, itemIdMapping);
 
-            for (int i = 0; i < MaterialIds.Length; i++)
+            for (int i = 0; i < BlockIds.Length; i++)
             {
-                Block block = Api.World.GetBlock(MaterialIds[i]);
-                blockIdMapping[MaterialIds[i]] = block.Code;
+                Block block = Api.World.GetBlock(BlockIds[i]);
+                blockIdMapping[BlockIds[i]] = block.Code;
+            }
+
+            if (DecorIds != null)
+            {
+                for (int i = 0; i < DecorIds.Length; i++)
+                {
+                    Block block = Api.World.GetBlock(DecorIds[i]);
+                    blockIdMapping[DecorIds[i]] = block.Code;
+                }
             }
         }
 
@@ -1042,10 +1119,10 @@ namespace Vintagestory.GameContent
 
         public MeshData GenMesh()
         {
-            if (MaterialIds == null) return null;
+            if (BlockIds == null) return null;
             GenRotatedMaterialIds();
 
-            var mesh = CreateMesh(Api as ICoreClientAPI, VoxelCuboids, MaterialIdsRotated, OriginalVoxelCuboids, Pos);
+            var mesh = CreateMesh(Api as ICoreClientAPI, VoxelCuboids, BlockIdsRotated, DecorIdsRotated, OriginalVoxelCuboids, Pos);
 
             foreach (var val in Behaviors)
             {
@@ -1054,8 +1131,8 @@ namespace Vintagestory.GameContent
                     bebhmicroblock.RegenMesh();
                 }
             }
-
-            withColorMapData = Api.World.Blocks[MaterialIds[0]].ClimateColorMapResolved != null;
+            withColorMapData = false;
+            for (int i = 0; !withColorMapData && i < BlockIds.Length; i++) withColorMapData |= Api.World.Blocks[BlockIds[i]].ClimateColorMapResolved != null;
 
             return mesh;
         }
@@ -1065,36 +1142,40 @@ namespace Vintagestory.GameContent
             if (rotationY == 0)
             {
                 // Early exit in the most common case where there is no rotation
-                MaterialIdsRotated = MaterialIds;
+                BlockIdsRotated = BlockIds;
+                DecorIdsRotated = DecorIds;
                 return;
             }
 
-            if (MaterialIdsRotated == null || MaterialIdsRotated.Length < MaterialIds.Length) MaterialIdsRotated = new int[MaterialIds.Length];
-            for (var i = 0; i < MaterialIds.Length; i++)
+            if (BlockIdsRotated == null || BlockIdsRotated.Length < BlockIds.Length) BlockIdsRotated = new int[BlockIds.Length];
+            for (var i = 0; i < BlockIds.Length; i++)
             {
-                int id = MaterialIds[i];
+                int id = BlockIds[i];
                 Block block = Api.World.GetBlock(id);
                 var rotatedBlockCode = block.GetRotatedBlockCode(rotationY);
                 Block rotatedBlock = rotatedBlockCode == null ? null : Api.World.GetBlock(rotatedBlockCode);
-                MaterialIdsRotated[i] = rotatedBlock == null ? id : rotatedBlock.Id;
+                BlockIdsRotated[i] = rotatedBlock == null ? id : rotatedBlock.Id;
+            }
+
+            if (DecorIds != null)
+            {
+                if (DecorIdsRotated == null || DecorIdsRotated.Length < DecorIds.Length) DecorIdsRotated = new int[DecorIds.Length];
+                for (var i = 0; i < 4; i++)
+                {
+                    DecorIdsRotated[i] = DecorIds[GameMath.Mod(i + rotationY/90, 4)];
+                }
+
+                DecorIdsRotated[4] = DecorIds[4];
+                DecorIdsRotated[5] = DecorIds[5];
             }
         }
 
         public void RegenMesh(ICoreClientAPI capi)
         {
             GenRotatedMaterialIds();
-            Mesh = CreateMesh(capi, VoxelCuboids, MaterialIdsRotated, OriginalVoxelCuboids, Pos);
+            Mesh = CreateMesh(capi, VoxelCuboids, BlockIdsRotated, DecorIdsRotated, OriginalVoxelCuboids, Pos);
         }
 
-        public static MeshData CreateMesh(ICoreClientAPI capi, List<uint> voxelCuboids, int[] materials, BlockPos posForRnd = null, uint[] originalCuboids = null)
-        {
-            return CreateMesh(capi, voxelCuboids, materials, originalCuboids ?? defaultOriginalVoxelCuboids, posForRnd);
-        }
-
-        public MeshData CreateDecalMesh(ITexPositionSource decalTexSource)
-        {
-            return CreateDecalMesh(Api as ICoreClientAPI, VoxelCuboids, decalTexSource, OriginalVoxelCuboids);
-        }
 
         public void MarkMeshDirty()
         {
@@ -1104,13 +1185,15 @@ namespace Vintagestory.GameContent
         // Contributed by Xytabich#5684 on discord
         // Under MIT license (evidence is in email inbox of tyron, jan 18 2023)
 
-        public const int VOXELS_PER_SIDE = 18;// 16 per self and one for each neighbor
-        public const int VOXELS_SQ = VOXELS_PER_SIDE * VOXELS_PER_SIDE;
+        public const int EXT_VOXELS_PER_SIDE = 18;// 16 per self and one for each neighbor
+        public const int EXT_VOXELS_SQ = EXT_VOXELS_PER_SIDE * EXT_VOXELS_PER_SIDE;
 
         [ThreadStatic]
-        public static CuboidInfo[] tmpVoxels;
+        public static VoxelInfo[] tmpVoxels;
         [ThreadStatic]
-        public static RefList<VoxelMaterial> tmpMaterials;
+        public static RefList<VoxelMaterial> tmpBlockMaterials;
+        [ThreadStatic]
+        public static RefList<VoxelMaterial> tmpDecorMaterials;
 
         private static readonly SizeConverter ConvertPlaneX = ConvertPlaneXImpl;
         private static readonly SizeConverter ConvertPlaneY = ConvertPlaneYImpl;
@@ -1118,81 +1201,110 @@ namespace Vintagestory.GameContent
 
         private static readonly int[] shiftOffsetByFace = new int[6] { 0, 1, 1, 0, 1, 0 };
 
-        private static RefList<VoxelMaterial> getTmpMaterials()
+        private static RefList<VoxelMaterial> getOrCreateBlockMatRefList()
         {
-            return tmpMaterials ?? (tmpMaterials = new RefList<VoxelMaterial>());
+            return tmpBlockMaterials ?? (tmpBlockMaterials = new RefList<VoxelMaterial>());
+        }
+        private static RefList<VoxelMaterial> getOrCreateDecorMatRefList()
+        {
+            return tmpDecorMaterials ?? (tmpDecorMaterials = new RefList<VoxelMaterial>());
         }
 
-        private static CuboidInfo[] getTmpVoxels()
+        private static VoxelInfo[] getOrCreateCuboidInfoArray()
         {
-            return tmpVoxels ?? (tmpVoxels = new CuboidInfo[VOXELS_PER_SIDE * VOXELS_PER_SIDE * VOXELS_PER_SIDE]);
+            return tmpVoxels ?? (tmpVoxels = new VoxelInfo[EXT_VOXELS_PER_SIDE * EXT_VOXELS_PER_SIDE * EXT_VOXELS_PER_SIDE]);
         }
 
-        public unsafe static MeshData CreateMesh(ICoreClientAPI capi, List<uint> voxelCuboids, int[] materials, uint[] originalVoxelCuboids, BlockPos posForRnd = null)
+
+        public static MeshData CreateMesh(ICoreClientAPI capi, List<uint> voxelCuboids, int[] blockIds, int[] decorIds, BlockPos posForRnd = null, uint[] originalCuboids = null)
+        {
+            return CreateMesh(capi, voxelCuboids, blockIds, decorIds, originalCuboids ?? defaultOriginalVoxelCuboids, posForRnd);
+        }
+
+        public unsafe static MeshData CreateMesh(ICoreClientAPI capi, List<uint> voxelCuboids, int[] blockIds, int[] decorIds, uint[] originalVoxelCuboids, BlockPos pos = null)
         {
             var mesh = new MeshData(24, 36).WithColorMaps().WithRenderpasses().WithXyzFaces();
-            if (voxelCuboids == null || materials == null)
+
+            if (voxelCuboids == null || blockIds == null)
             {
                 return mesh;
             }
 
-            //coreClientAPI.World.FrameProfiler.Mark("patched-microblock-gen");
+            var blockMatList = getOrCreateBlockMatRefList();
+            blockMatList.Clear();
 
-            var matList = getTmpMaterials();
-            matList.Clear();
-
-            var voxels = getTmpVoxels();
-            fixed (CuboidInfo* ptr = voxels)
+            var voxels = getOrCreateCuboidInfoArray();
+            // Clear array of VoxelInfo structs
+            fixed (VoxelInfo* ptr = voxels)
             {
-                Unsafe.InitBlockUnaligned(ptr, 255, (uint)(sizeof(CuboidInfo) * voxels.Length));// 255 means "-1" for material field
+                Unsafe.InitBlockUnaligned(ptr, 255, (uint)(sizeof(VoxelInfo) * voxels.Length)); // 255 means "-1" for material field
 
-                if (posForRnd != null)
+                if (pos != null)
                 {
-                    FillNeighbors(capi, matList, ptr, posForRnd);
+                    FetchNeighborVoxels(capi, blockMatList, ptr, pos);
+                }
+            }
+
+            bool hasTopSoil = false;
+            int matIndex = blockMatList.Count;
+            for (int i = 0; i < blockIds.Length; i++)
+            {
+                var block = capi.World.GetBlock(blockIds[i]);
+                blockMatList.Add(VoxelMaterial.FromBlock(capi, block, pos, true));
+
+                hasTopSoil |= block.RenderPass == EnumChunkRenderPass.TopSoil;
+            }
+            if (hasTopSoil) mesh.CustomFloats = new CustomMeshDataPartFloat() { InterleaveOffsets = new int[] { 0 }, InterleaveSizes = new int[] { 2 }, InterleaveStride = 8 };
+
+            RefList<VoxelMaterial> decorMatList = null;
+
+            if (decorIds != null)
+            {
+                decorMatList = getOrCreateDecorMatRefList();
+                decorMatList.Clear();
+                for (int i = 0; i < decorIds.Length; i++)
+                {
+                    decorMatList.Add(decorIds[i] == 0 ? noMat : VoxelMaterial.FromBlock(capi, capi.World.GetBlock(decorIds[i]), pos, true));
                 }
             }
 
 
-            int matOffset = matList.Count;
-            for (int i = 0; i < materials.Length; i++)
-            {
-                var block = capi.World.GetBlock(materials[i]);
-                matList.Add(VoxelMaterial.FromBlock(capi, block, posForRnd, true));
-            }
-
+            // stackalloc to force the array onto the stack, not the heap
+            // original bounds info are required to figure out if we need to use inside or outside texture
             int* origVoxelBounds = stackalloc int[6];
             FromUint(originalVoxelCuboids[0],
                 out origVoxelBounds[BlockFacing.indexWEST], out origVoxelBounds[BlockFacing.indexDOWN], out origVoxelBounds[BlockFacing.indexNORTH],
                 out origVoxelBounds[BlockFacing.indexEAST], out origVoxelBounds[BlockFacing.indexUP], out origVoxelBounds[BlockFacing.indexSOUTH],
                 out _
             );
-            int** originalBoundsByFace = stackalloc int*[1] { origVoxelBounds };
+            
 
             var count = voxelCuboids.Count;
-            fixed (CuboidInfo* ptr = voxels)
+            fixed (VoxelInfo* voxelsPtr = voxels)
             {
                 int x0, y0, z0, x1, y1, z1, material;
                 for (int i = 0; i < count; i++)
                 {
                     FromUint(voxelCuboids[i], out x0, out y0, out z0, out x1, out y1, out z1, out material);
-                    FillCuboidEdges(ptr, x0, y0, z0, x1, y1, z1, matOffset + material);
+                    FillCuboidEdges(voxelsPtr, x0, y0, z0, x1, y1, z1, matIndex + material);
                 }
 
                 GenFaceInfo genFaceInfo = default;
                 genFaceInfo.capi = capi;
                 genFaceInfo.targetMesh = mesh;
-                genFaceInfo.originalBoundsByFace = originalBoundsByFace;
+                genFaceInfo.originalBounds = origVoxelBounds;
                 genFaceInfo.subPixelPaddingx = capi.BlockTextureAtlas.SubPixelPaddingX;
                 genFaceInfo.subPixelPaddingy = capi.BlockTextureAtlas.SubPixelPaddingY;
 
                 GenPlaneInfo genPlaneInfo = default;
-                genPlaneInfo.materials = matList;
-                genPlaneInfo.cuboids = ptr;
+                genPlaneInfo.blockMaterials = blockMatList;
+                genPlaneInfo.decorMaterials = decorMatList;
+                genPlaneInfo.voxels = voxelsPtr;
 
                 for (int i = 0; i < count; i++)
                 {
                     FromUint(voxelCuboids[i], out x0, out y0, out z0, out x1, out y1, out z1, out material);
-                    genPlaneInfo.materialIndex = matOffset + material;
+                    genPlaneInfo.materialIndex = matIndex + material;
                     GenCuboidMesh(ref genFaceInfo, ref genPlaneInfo, x0, y0, z0, x1, y1, z1);
                 }
             }
@@ -1200,6 +1312,11 @@ namespace Vintagestory.GameContent
             return mesh;
         }
 
+
+        public MeshData CreateDecalMesh(ITexPositionSource decalTexSource)
+        {
+            return CreateDecalMesh(Api as ICoreClientAPI, VoxelCuboids, decalTexSource, OriginalVoxelCuboids);
+        }
         public unsafe static MeshData CreateDecalMesh(ICoreClientAPI capi, List<uint> voxelCuboids, ITexPositionSource decalTexSource, uint[] originalVoxelCuboids)
         {
             var mesh = new MeshData(24, 36).WithColorMaps().WithRenderpasses().WithXyzFaces();
@@ -1208,7 +1325,7 @@ namespace Vintagestory.GameContent
                 return mesh;
             }
 
-            var matList = getTmpMaterials();
+            var matList = getOrCreateBlockMatRefList();
             matList.Clear();
             matList.Add(VoxelMaterial.FromTexSource(capi, decalTexSource, true));
 
@@ -1218,13 +1335,12 @@ namespace Vintagestory.GameContent
                 out origVoxelBounds[BlockFacing.indexEAST], out origVoxelBounds[BlockFacing.indexUP], out origVoxelBounds[BlockFacing.indexSOUTH],
                 out _
             );
-            int** originalBoundsByFace = stackalloc int*[1] { origVoxelBounds };
 
             var count = voxelCuboids.Count;
-            var voxels = getTmpVoxels();
-            fixed (CuboidInfo* ptr = voxels)
+            var voxels = getOrCreateCuboidInfoArray();
+            fixed (VoxelInfo* ptr = voxels)
             {
-                Unsafe.InitBlockUnaligned(ptr, 255, (uint)(sizeof(CuboidInfo) * voxels.Length));
+                Unsafe.InitBlockUnaligned(ptr, 255, (uint)(sizeof(VoxelInfo) * voxels.Length));
 
                 int x0, y0, z0, x1, y1, z1;
                 for (int i = 0; i < count; i++)
@@ -1236,13 +1352,13 @@ namespace Vintagestory.GameContent
                 GenFaceInfo genFaceInfo = default;
                 genFaceInfo.capi = capi;
                 genFaceInfo.targetMesh = mesh;
-                genFaceInfo.originalBoundsByFace = originalBoundsByFace;
+                genFaceInfo.originalBounds = origVoxelBounds;
                 genFaceInfo.subPixelPaddingx = capi.BlockTextureAtlas.SubPixelPaddingX;
                 genFaceInfo.subPixelPaddingy = capi.BlockTextureAtlas.SubPixelPaddingY;
 
                 GenPlaneInfo genPlaneInfo = default;
-                genPlaneInfo.materials = matList;
-                genPlaneInfo.cuboids = ptr;
+                genPlaneInfo.blockMaterials = matList;
+                genPlaneInfo.voxels = ptr;
                 genPlaneInfo.materialIndex = 0;
 
                 for (int i = 0; i < count; i++)
@@ -1256,7 +1372,8 @@ namespace Vintagestory.GameContent
         }
     
 
-        private static unsafe void FillNeighbors(ICoreClientAPI capi, RefList<VoxelMaterial> matList, CuboidInfo* voxels, BlockPos pos)
+        // Load in voxel material data from adjacent microblocks
+        private static unsafe void FetchNeighborVoxels(ICoreClientAPI capi, RefList<VoxelMaterial> matList, VoxelInfo* voxels, BlockPos pos)
         {
             var ba = capi.World.BlockAccessor;
             foreach (var face in BlockFacing.ALLFACES)
@@ -1264,7 +1381,7 @@ namespace Vintagestory.GameContent
                 var blockPos = pos.AddCopy(face);
                 if (ba.GetBlockEntity(blockPos) is BlockEntityMicroBlock bm)
                 {
-                    var materials = bm.MaterialIds;
+                    var materials = bm.BlockIds;
                     var voxCuboids = bm.VoxelCuboids;
                     if (materials == null || voxCuboids == null) continue;
                     var voxelCuboids = voxCuboids;
@@ -1287,7 +1404,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        private static unsafe void FillCuboidFace(CuboidInfo* cuboids, int x0, int y0, int z0, int x1, int y1, int z1, int material, BlockFacing face)
+        private static unsafe void FillCuboidFace(VoxelInfo* cuboids, int x0, int y0, int z0, int x1, int y1, int z1, int material, BlockFacing face)
         {
             switch (face.Index)
             {
@@ -1319,37 +1436,38 @@ namespace Vintagestory.GameContent
             z0++;
             z1++;
 
-            y0 *= VOXELS_PER_SIDE;
-            y1 *= VOXELS_PER_SIDE;
-            z0 *= VOXELS_SQ;
-            z1 *= VOXELS_SQ;
+            y0 *= EXT_VOXELS_PER_SIDE;
+            y1 *= EXT_VOXELS_PER_SIDE;
+            z0 *= EXT_VOXELS_SQ;
+            z1 *= EXT_VOXELS_SQ;
 
             switch (face.Index)
             {
                 case 0:
-                    FillPlane(cuboids, material, x0, x1, 1, y0, y1, VOXELS_PER_SIDE, 0);
+                    FillPlane(cuboids, material, x0, x1, 1, y0, y1, EXT_VOXELS_PER_SIDE, 0);
                     break;
                 case 1:
-                    FillPlane(cuboids, material, y0, y1, VOXELS_PER_SIDE, z0, z1, VOXELS_SQ, VOXELS_PER_SIDE - 1);
+                    FillPlane(cuboids, material, y0, y1, EXT_VOXELS_PER_SIDE, z0, z1, EXT_VOXELS_SQ, EXT_VOXELS_PER_SIDE - 1);
                     break;
                 case 2:
-                    FillPlane(cuboids, material, x0, x1, 1, y0, y1, VOXELS_PER_SIDE, (VOXELS_PER_SIDE - 1) * VOXELS_SQ);
+                    FillPlane(cuboids, material, x0, x1, 1, y0, y1, EXT_VOXELS_PER_SIDE, (EXT_VOXELS_PER_SIDE - 1) * EXT_VOXELS_SQ);
                     break;
                 case 3:
-                    FillPlane(cuboids, material, y0, y1, VOXELS_PER_SIDE, z0, z1, VOXELS_SQ, 0);
+                    FillPlane(cuboids, material, y0, y1, EXT_VOXELS_PER_SIDE, z0, z1, EXT_VOXELS_SQ, 0);
                     break;
                 case 4:
-                    FillPlane(cuboids, material, x0, x1, 1, z0, z1, VOXELS_SQ, (VOXELS_PER_SIDE - 1) * VOXELS_PER_SIDE);
+                    FillPlane(cuboids, material, x0, x1, 1, z0, z1, EXT_VOXELS_SQ, (EXT_VOXELS_PER_SIDE - 1) * EXT_VOXELS_PER_SIDE);
                     break;
                 case 5:
-                    FillPlane(cuboids, material, x0, x1, 1, z0, z1, VOXELS_SQ, 0);
+                    FillPlane(cuboids, material, x0, x1, 1, z0, z1, EXT_VOXELS_SQ, 0);
                     break;
             }
         }
 
-        public static unsafe void FillCuboidEdges(CuboidInfo* cuboids, int x0, int y0, int z0, int x1, int y1, int z1, int material)
+        // Populate the voxel array with materials for given cuboid, but only the outer 6 planes of this cuboid, not its insides
+        public static unsafe void FillCuboidEdges(VoxelInfo* cuboids, int x0, int y0, int z0, int x1, int y1, int z1, int material)
         {
-            // offset by 1, due to neighbors
+            // offset by 1, due to extended size array (18x18x18)
             x0++;
             x1++;
             y0++;
@@ -1357,22 +1475,22 @@ namespace Vintagestory.GameContent
             z0++;
             z1++;
 
-            y0 *= VOXELS_PER_SIDE;
-            y1 *= VOXELS_PER_SIDE;
-            z0 *= VOXELS_SQ;
-            z1 *= VOXELS_SQ;
+            y0 *= EXT_VOXELS_PER_SIDE;
+            y1 *= EXT_VOXELS_PER_SIDE;
+            z0 *= EXT_VOXELS_SQ;
+            z1 *= EXT_VOXELS_SQ;
 
-            FillPlane(cuboids, material, x0, x1, 1, y0, y1, VOXELS_PER_SIDE, z0);
-            FillPlane(cuboids, material, x0, x1, 1, y0, y1, VOXELS_PER_SIDE, z1 - VOXELS_SQ);
+            FillPlane(cuboids, material, x0, x1, 1, y0, y1, EXT_VOXELS_PER_SIDE, z0);
+            FillPlane(cuboids, material, x0, x1, 1, y0, y1, EXT_VOXELS_PER_SIDE, z1 - EXT_VOXELS_SQ);
 
-            FillPlane(cuboids, material, x0, x1, 1, z0, z1, VOXELS_SQ, y0);
-            FillPlane(cuboids, material, x0, x1, 1, z0, z1, VOXELS_SQ, y1 - VOXELS_PER_SIDE);
+            FillPlane(cuboids, material, x0, x1, 1, z0, z1, EXT_VOXELS_SQ, y0);
+            FillPlane(cuboids, material, x0, x1, 1, z0, z1, EXT_VOXELS_SQ, y1 - EXT_VOXELS_PER_SIDE);
 
-            FillPlane(cuboids, material, y0, y1, VOXELS_PER_SIDE, z0, z1, VOXELS_SQ, x0);
-            FillPlane(cuboids, material, y0, y1, VOXELS_PER_SIDE, z0, z1, VOXELS_SQ, x1 - 1);
+            FillPlane(cuboids, material, y0, y1, EXT_VOXELS_PER_SIDE, z0, z1, EXT_VOXELS_SQ, x0);
+            FillPlane(cuboids, material, y0, y1, EXT_VOXELS_PER_SIDE, z0, z1, EXT_VOXELS_SQ, x1 - 1);
         }
 
-        public static unsafe void FillPlane(CuboidInfo* ptr, int value, int fromX, int toX, int stepX, int fromY, int toY, int stepY, int z)
+        public static unsafe void FillPlane(VoxelInfo* ptr, int value, int fromX, int toX, int stepX, int fromY, int toY, int stepY, int z)
         {
             for (int x = fromX; x < toX; x += stepX)
             {
@@ -1383,9 +1501,11 @@ namespace Vintagestory.GameContent
             }
         }
 
+
+        static VoxelMaterial noMat = new VoxelMaterial();
         public static unsafe void GenCuboidMesh(ref GenFaceInfo genFaceInfo, ref GenPlaneInfo genPlaneInfo, int x0, int y0, int z0, int x1, int y1, int z1)
         {
-            // offset by 1, due to neighbors
+            // offset by 1, due to extended size array (18x18x18)
             x0++;
             x1++;
             y0++;
@@ -1393,33 +1513,35 @@ namespace Vintagestory.GameContent
             z0++;
             z1++;
 
-            y0 *= VOXELS_PER_SIDE;
-            y1 *= VOXELS_PER_SIDE;
-            z0 *= VOXELS_SQ;
-            z1 *= VOXELS_SQ;
+            y0 *= EXT_VOXELS_PER_SIDE;
+            y1 *= EXT_VOXELS_PER_SIDE;
+            z0 *= EXT_VOXELS_SQ;
+            z1 *= EXT_VOXELS_SQ;
 
-            genFaceInfo.SetInfo(ConvertPlaneX, BlockFacing.indexWEST);
-            genPlaneInfo.SetCoords(z0, z1, VOXELS_SQ, y0, y1, VOXELS_PER_SIDE, x0, x0 - 1);
+            
+
+            genFaceInfo.SetInfo(ConvertPlaneX, BlockFacing.indexWEST, genPlaneInfo.decorMaterials == null ? noMat : genPlaneInfo.decorMaterials[BlockFacing.indexWEST]);
+            genPlaneInfo.SetCoords(z0, z1, EXT_VOXELS_SQ, y0, y1, EXT_VOXELS_PER_SIDE, x0, x0 - 1);
             genPlaneInfo.GenPlaneMesh(ref genFaceInfo);
 
-            genFaceInfo.SetInfo(ConvertPlaneX, BlockFacing.indexEAST);
-            genPlaneInfo.SetCoords(z0, z1, VOXELS_SQ, y0, y1, VOXELS_PER_SIDE, x1 - 1, x1);
+            genFaceInfo.SetInfo(ConvertPlaneX, BlockFacing.indexEAST, genPlaneInfo.decorMaterials == null ? noMat : genPlaneInfo.decorMaterials[BlockFacing.indexEAST]);
+            genPlaneInfo.SetCoords(z0, z1, EXT_VOXELS_SQ, y0, y1, EXT_VOXELS_PER_SIDE, x1 - 1, x1);
             genPlaneInfo.GenPlaneMesh(ref genFaceInfo);
 
-            genFaceInfo.SetInfo(ConvertPlaneY, BlockFacing.indexDOWN);
-            genPlaneInfo.SetCoords(x0, x1, 1, z0, z1, VOXELS_SQ, y0, y0 - VOXELS_PER_SIDE);
+            genFaceInfo.SetInfo(ConvertPlaneY, BlockFacing.indexDOWN, genPlaneInfo.decorMaterials == null ? noMat : genPlaneInfo.decorMaterials[BlockFacing.indexDOWN]);
+            genPlaneInfo.SetCoords(x0, x1, 1, z0, z1, EXT_VOXELS_SQ, y0, y0 - EXT_VOXELS_PER_SIDE);
             genPlaneInfo.GenPlaneMesh(ref genFaceInfo);
 
-            genFaceInfo.SetInfo(ConvertPlaneY, BlockFacing.indexUP);
-            genPlaneInfo.SetCoords(x0, x1, 1, z0, z1, VOXELS_SQ, y1 - VOXELS_PER_SIDE, y1);
+            genFaceInfo.SetInfo(ConvertPlaneY, BlockFacing.indexUP, genPlaneInfo.decorMaterials == null ? noMat : genPlaneInfo.decorMaterials[BlockFacing.indexUP]);
+            genPlaneInfo.SetCoords(x0, x1, 1, z0, z1, EXT_VOXELS_SQ, y1 - EXT_VOXELS_PER_SIDE, y1);
             genPlaneInfo.GenPlaneMesh(ref genFaceInfo);
 
-            genFaceInfo.SetInfo(ConvertPlaneZ, BlockFacing.indexNORTH);
-            genPlaneInfo.SetCoords(x0, x1, 1, y0, y1, VOXELS_PER_SIDE, z0, z0 - VOXELS_SQ);
+            genFaceInfo.SetInfo(ConvertPlaneZ, BlockFacing.indexNORTH, genPlaneInfo.decorMaterials == null ? noMat : genPlaneInfo.decorMaterials[BlockFacing.indexNORTH]);
+            genPlaneInfo.SetCoords(x0, x1, 1, y0, y1, EXT_VOXELS_PER_SIDE, z0, z0 - EXT_VOXELS_SQ);
             genPlaneInfo.GenPlaneMesh(ref genFaceInfo);
 
-            genFaceInfo.SetInfo(ConvertPlaneZ, BlockFacing.indexSOUTH);
-            genPlaneInfo.SetCoords(x0, x1, 1, y0, y1, VOXELS_PER_SIDE, z1 - VOXELS_SQ, z1);
+            genFaceInfo.SetInfo(ConvertPlaneZ, BlockFacing.indexSOUTH, genPlaneInfo.decorMaterials == null ? noMat : genPlaneInfo.decorMaterials[BlockFacing.indexSOUTH]);
+            genPlaneInfo.SetCoords(x0, x1, 1, y0, y1, EXT_VOXELS_PER_SIDE, z1 - EXT_VOXELS_SQ, z1);
             genPlaneInfo.GenPlaneMesh(ref genFaceInfo);
         }
 
@@ -1434,15 +1556,15 @@ namespace Vintagestory.GameContent
             material = (int)((val >> 24) & 0xFu);
         }
 
-        private static bool CullFace(int self, int other, RefList<VoxelMaterial> materials)
+        private static bool isMergableMaterial(int selfMat, int otherMat, RefList<VoxelMaterial> materials)
         {
-            if (self == other) return true;
-            if (other >= 0)
+            if (selfMat == otherMat) return true;
+            if (otherMat >= 0)
             {
-                if (materials[self].BlockId == materials[other].BlockId) return true;
+                if (materials[selfMat].BlockId == materials[otherMat].BlockId) return true;
 
                 bool selfOpaque = true;
-                switch (materials[self].RenderPass)
+                switch (materials[selfMat].RenderPass)
                 {
                     case EnumChunkRenderPass.Liquid:
                     case EnumChunkRenderPass.OpaqueNoCull:
@@ -1455,7 +1577,7 @@ namespace Vintagestory.GameContent
                         break;
                 }
                 bool otherOpaque = true;
-                switch (materials[other].RenderPass)
+                switch (materials[otherMat].RenderPass)
                 {
                     case EnumChunkRenderPass.Meta:
                     case EnumChunkRenderPass.TopSoil:
@@ -1466,7 +1588,7 @@ namespace Vintagestory.GameContent
                 }
                 if (selfOpaque & otherOpaque) return true;
                 if (selfOpaque) return false;
-                return otherOpaque | materials[self].CullBetweenTransparents;
+                return otherOpaque | materials[selfMat].CullBetweenTransparents;
             }
             return false;
         }
@@ -1496,7 +1618,7 @@ namespace Vintagestory.GameContent
         }
 
         [StructLayout(LayoutKind.Sequential, Size = 8)]
-        public struct CuboidInfo
+        public struct VoxelInfo
         {
             public int Material;
             public ushort MainIndex;
@@ -1523,7 +1645,7 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            if (be.MaterialIds == null || be.VoxelCuboids == null) return;
+            if (be.BlockIds == null || be.VoxelCuboids == null) return;
             be.MarkMeshDirty();
             be.MarkDirty(true);
         }
@@ -1535,10 +1657,10 @@ namespace Vintagestory.GameContent
             public ICoreClientAPI capi;
             public MeshData targetMesh;
             public SizeConverter converter;
-            public int** originalBoundsByFace;
+            public int* originalBounds;
             public int posPacked;
             public int width;
-            public int height;
+            public int length;
             public int face;
             public BlockFacing facing;
 
@@ -1549,6 +1671,9 @@ namespace Vintagestory.GameContent
             public float texWidth;
             public float texHeight;
             public TextureAtlasPosition tpos;
+            public TextureAtlasPosition topsoiltpos;
+            public TextureAtlasPosition decortpos;
+            VoxelMaterial decorMat;
 
             // Locals
             public fixed int xyz[3];
@@ -1562,26 +1687,27 @@ namespace Vintagestory.GameContent
             public fixed float vOffsetByAxis[3];
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public void SetInfo(SizeConverter converter, int face)
+            public void SetInfo(SizeConverter converter, int face, VoxelMaterial decorMat)
             {
+                this.decorMat = decorMat;
                 this.face = face;
                 this.facing = BlockFacing.ALLFACES[face];
                 this.converter = converter;
             }
 
-            public void GenFace(in VoxelMaterial material)
+            public void GenFace(in VoxelMaterial blockMat)
             {
-                xyz[2] = posPacked / VOXELS_SQ;
-                posPacked -= xyz[2] * VOXELS_SQ;
+                xyz[2] = posPacked / EXT_VOXELS_SQ;
+                posPacked -= xyz[2] * EXT_VOXELS_SQ;
 
-                xyz[1] = posPacked / VOXELS_PER_SIDE;
-                posPacked -= xyz[1] * VOXELS_PER_SIDE;
+                xyz[1] = posPacked / EXT_VOXELS_PER_SIDE;
+                posPacked -= xyz[1] * EXT_VOXELS_PER_SIDE;
 
                 xyz[2]--;
                 xyz[1]--;
                 xyz[0] = posPacked - 1;
 
-                converter(width, height, out halfSizeX, out halfSizeY, out halfSizeZ);
+                converter(width, length, out halfSizeX, out halfSizeY, out halfSizeZ);
 
                 const float V2F = 1f / 16f;
                 posX = xyz[0] * V2F;
@@ -1590,8 +1716,8 @@ namespace Vintagestory.GameContent
                 centerX = posX + halfSizeX;
                 centerY = posY + halfSizeY;
                 centerZ = posZ + halfSizeZ;
-
-                InitMaterial(material);
+                
+                InitMaterial(blockMat, decorMat);
                 InitUV();
 
                 int start = (targetMesh.IndicesCount > 0) ? (targetMesh.Indices[targetMesh.IndicesCount - 1] + 1) : 0;
@@ -1602,7 +1728,6 @@ namespace Vintagestory.GameContent
                     if (targetMesh.VerticesCount >= targetMesh.VerticesMax)
                     {
                         targetMesh.GrowVertexBuffer();
-                        targetMesh.GrowNormalsBuffer();
                     }
                     int index = targetMesh.XyzCount;
                     targetMesh.xyz[index] = CubeMeshUtil.CubeVertices[ind * 3] * halfSizeX + centerX;
@@ -1615,6 +1740,12 @@ namespace Vintagestory.GameContent
                     targetMesh.Uv[index + 1] = tpos.y1 + v * texHeight - subPixelPaddingy;
 
                     targetMesh.Flags[targetMesh.VerticesCount++] = flags;
+
+                    if (targetMesh.CustomFloats != null)
+                    {
+                        if (topsoiltpos == null) targetMesh.CustomFloats.Add(0, 0);
+                        else targetMesh.CustomFloats.Add(topsoiltpos.x1 + u * texWidth - subPixelPaddingx, topsoiltpos.y1 + v * texHeight - subPixelPaddingy);
+                    }
                 }
 
                 int faceOffset = face * 6;
@@ -1623,15 +1754,69 @@ namespace Vintagestory.GameContent
                     targetMesh.AddIndex(start + CubeMeshUtil.CubeVertexIndices[faceOffset + i] - vertOffset);
                 }
                 targetMesh.AddXyzFace(facing.MeshDataIndex);
-                targetMesh.AddColorMapIndex(material.ClimateMapIndex, material.SeasonMapIndex);
-                targetMesh.AddRenderPass((short)(material.RenderPass == EnumChunkRenderPass.TopSoil ? EnumChunkRenderPass.Opaque : material.RenderPass));
+                targetMesh.AddTextureId(tpos.atlasTextureId);
+                targetMesh.AddColorMapIndex(blockMat.ClimateMapIndex, blockMat.SeasonMapIndex);
+                targetMesh.AddRenderPass((short)blockMat.RenderPass);
+                
+
+                if (decortpos != null)
+                {
+                    start = (targetMesh.IndicesCount > 0) ? (targetMesh.Indices[targetMesh.IndicesCount - 1] + 1) : 0;
+                    vertOffset = face * 4;
+                    texWidth = decortpos.x2 - decortpos.x1;
+                    texHeight = decortpos.y2 - decortpos.y1;
+
+                    for (int i = 0; i < 4; i++)
+                    {
+                        int ind = vertOffset + i;
+                        if (targetMesh.VerticesCount >= targetMesh.VerticesMax)
+                        {
+                            targetMesh.GrowVertexBuffer();
+                        }
+                        int index = targetMesh.XyzCount;
+
+                        float xg = 1 + Math.Abs(BlockFacing.ALLNORMALI[face].X * 0.01f);
+                        float yg = 1 + Math.Abs(BlockFacing.ALLNORMALI[face].Y * 0.01f);
+                        float zg = 1 + Math.Abs(BlockFacing.ALLNORMALI[face].Z * 0.01f);
+
+                        targetMesh.xyz[index] = CubeMeshUtil.CubeVertices[ind * 3] * halfSizeX * xg + centerX;
+                        targetMesh.xyz[index + 1] = CubeMeshUtil.CubeVertices[ind * 3 + 1] * halfSizeY * yg + centerY;
+                        targetMesh.xyz[index + 2] = CubeMeshUtil.CubeVertices[ind * 3 + 2] * halfSizeZ * zg + centerZ;
+
+                        GetScaledUV(ind * 2, out float u, out float v);
+                        index = targetMesh.UvCount;
+                        targetMesh.Uv[index] = decortpos.x1 + u * texWidth - subPixelPaddingx;
+                        targetMesh.Uv[index + 1] = decortpos.y1 + v * texHeight - subPixelPaddingy;
+
+                        targetMesh.Flags[targetMesh.VerticesCount++] = flags;
+                    }
+
+                    if (targetMesh.CustomFloats != null)
+                    {
+                        targetMesh.CustomFloats.Add(0, 0, 0, 0, 0, 0, 0, 0);
+                    }
+
+                    faceOffset = face * 6;
+                    for (int i = 0; i < 6; i++)
+                    {
+                        targetMesh.AddIndex(start + CubeMeshUtil.CubeVertexIndices[faceOffset + i] - vertOffset);
+                    }
+                    targetMesh.AddXyzFace(facing.MeshDataIndex);
+                    targetMesh.AddTextureId(decortpos.atlasTextureId);
+                    targetMesh.AddColorMapIndex(decorMat.ClimateMapIndex, decorMat.SeasonMapIndex);
+                    targetMesh.AddRenderPass((short)decorMat.RenderPass);
+                }
+
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            private void InitMaterial(in VoxelMaterial material)
+            private void InitMaterial(in VoxelMaterial material, in VoxelMaterial decorMat)
             {
-                bool isOutside = originalBoundsByFace[0][face] == xyz[(int)facing.Axis] + shiftOffsetByFace[face];
+                bool isOutside = originalBounds[face] == xyz[(int)facing.Axis] + shiftOffsetByFace[face];
                 tpos = isOutside ? material.Texture[face] : material.TextureInside[face];
+                topsoiltpos = material.TextureTopSoil;
+
+                decortpos = decorMat.Texture?[face] ?? null;
 
                 texWidth = tpos.x2 - tpos.x1;
                 texHeight = tpos.y2 - tpos.y1;
@@ -1691,82 +1876,97 @@ namespace Vintagestory.GameContent
             }
         }
 
+        /// <summary>
+        /// Is coordinate agnostic, can iterate over any of the 6 planes
+        /// </summary>
         public unsafe ref struct GenPlaneInfo
         {
-            public RefList<VoxelMaterial> materials;
-            public CuboidInfo* cuboids;
+            public RefList<VoxelMaterial> blockMaterials;
+            public RefList<VoxelMaterial> decorMaterials;
+
+            public VoxelInfo* voxels;
             public int materialIndex;
-            public int fromX;
-            public int toX;
-            public int stepX;
-            public int fromY;
-            public int toY;
-            public int stepY;
-            public int z;
+            
+            // Premultiplied values
+            public int fromA;
+            public int toA;
+            public int fromB;
+            public int toB;
+            public int c;
+
+            public int stepA;
+            public int stepB;
             public int faceOffsetZ;
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public void SetCoords(int fromX, int toX, int stepX, int fromY, int toY, int stepY, int z, int faceOffsetZ)
+            public void SetCoords(int fromA, int toA, int stepA, int fromB, int toY, int stepY, int c, int faceOffsetZ)
             {
-                this.fromX = fromX;
-                this.toX = toX;
-                this.stepX = stepX;
-                this.fromY = fromY;
-                this.toY = toY;
-                this.stepY = stepY;
-                this.z = z;
+                this.fromA = fromA;
+                this.toA = toA;
+                this.stepA = stepA;
+                this.fromB = fromB;
+                this.toB = toY;
+                this.stepB = stepY;
+                this.c = c;
                 this.faceOffsetZ = faceOffsetZ;
             }
 
             public void GenPlaneMesh(ref GenFaceInfo faceGenInfo)
             {
-                int x, y, size, index;
-                bool cullFace;
-                for (x = fromX; x < toX; x += stepX)
+                int a, b, sizeB, index;
+                bool mergable;
+
+                // Grow mergable face in A dimension
+                for (a = fromA; a < toA; a += stepA)
                 {
-                    size = 1;
-                    index = x + fromY + z;
-                    cullFace = CullFace(materialIndex, cuboids[x + fromY + faceOffsetZ].Material, materials);
-                    for (y = fromY + stepY; y < toY; y += stepY)
+                    sizeB = 1;
+                    // We are using premultiplied values so no need for (x * size + y) * size + z
+                    index = a + fromB + c; 
+
+                    mergable = isMergableMaterial(materialIndex, voxels[a + fromB + faceOffsetZ].Material, blockMaterials);
+                    for (b = fromB + stepB; b < toB; b += stepB)
                     {
-                        if (CullFace(materialIndex, cuboids[x + y + faceOffsetZ].Material, materials) == cullFace)
+                        if (isMergableMaterial(materialIndex, voxels[a + b + faceOffsetZ].Material, blockMaterials) == mergable)
                         {
-                            size++;
-                            cuboids[x + y + z].MainIndex = (ushort)index;
+                            sizeB++;
+                            voxels[a + b + c].MainIndex = (ushort)index;
                         }
                         else
                         {
-                            cuboids[index].Size = (byte)size;
-                            cuboids[index].CullFace = cullFace;
-                            cuboids[index].MainIndex = (ushort)index;
-                            size = 1;
-                            index = x + y + z;
-                            cullFace = !cullFace;
+                            voxels[index].Size = (byte)sizeB;
+                            voxels[index].CullFace = mergable;
+                            voxels[index].MainIndex = (ushort)index;
+                            sizeB = 1;
+                            index = a + b + c;
+                            mergable = !mergable;
                         }
                     }
 
-                    cuboids[index].Size = (byte)size;
-                    cuboids[index].CullFace = cullFace;
-                    cuboids[index].MainIndex = (ushort)index;
+                    voxels[index].Size = (byte)sizeB;
+                    voxels[index].CullFace = mergable;
+                    // MainIndex points to the first voxel of the same material of a given 1d segment inside a plane
+                    voxels[index].MainIndex = (ushort)index;
                 }
 
-                ref readonly var mat = ref materials[materialIndex];
-                faceGenInfo.flags = faceGenInfo.facing.NormalPackedFlags | mat.Flags;
+                ref readonly var blockMat = ref blockMaterials[materialIndex];
+                faceGenInfo.flags = faceGenInfo.facing.NormalPackedFlags | blockMat.Flags;
 
-                for (y = fromY; y < toY; y += stepY)
+                // Grow mergable face in B dimension
+                for (b = fromB; b < toB; b += stepB)
                 {
-                    size = 1;
-                    index = fromX + y + z;
-                    ref var current = ref cuboids[index];
-                    int prevSize = current.Size;
+                    sizeB = 1;
+                    index = fromA + b + c;
+                    ref var curVoxel = ref voxels[index];
+                    int sizeA = curVoxel.Size;
                     int prevIndex = index;
-                    cullFace = current.CullFace;
-                    bool skip = current.MainIndex != index;
-                    for (x = fromX + stepX; x < toX; x += stepX)
+                    mergable = curVoxel.CullFace;
+                    bool skip = curVoxel.MainIndex != index;
+
+                    for (a = fromA + stepA; a < toA; a += stepA)
                     {
-                        index = x + y + z;
-                        current = ref cuboids[index];
-                        if (current.MainIndex != index)
+                        index = a + b + c;
+                        curVoxel = ref voxels[index];
+                        if (curVoxel.MainIndex != index)
                         {
                             if (skip) continue;
                             skip = true;
@@ -1776,37 +1976,38 @@ namespace Vintagestory.GameContent
                             if (skip)
                             {
                                 skip = false;
-                                size = 1;
+                                sizeB = 1;
                                 prevIndex = index;
-                                prevSize = current.Size;
-                                cullFace = current.CullFace;
+                                sizeA = curVoxel.Size;
+                                mergable = curVoxel.CullFace;
                                 continue;
                             }
-                            else if (cullFace == current.CullFace && prevSize == current.Size)
+                            else if (mergable == curVoxel.CullFace && sizeA == curVoxel.Size)
                             {
-                                size++;
+                                sizeB++;
                                 continue;
                             }
                         }
 
-                        if (!cullFace)
+                        if (!mergable)
                         {
                             faceGenInfo.posPacked = prevIndex;
-                            faceGenInfo.width = size;
-                            faceGenInfo.height = prevSize;
-                            faceGenInfo.GenFace(mat);
+                            faceGenInfo.width = sizeB;
+                            faceGenInfo.length = sizeA;
+                            faceGenInfo.GenFace(blockMat);
                         }
-                        size = 1;
+                        sizeB = 1;
                         prevIndex = index;
-                        prevSize = current.Size;
-                        cullFace = current.CullFace;
+                        sizeA = curVoxel.Size;
+                        mergable = curVoxel.CullFace;
                     }
-                    if (!cullFace && !skip)
+
+                    if (!mergable && !skip)
                     {
                         faceGenInfo.posPacked = prevIndex;
-                        faceGenInfo.width = size;
-                        faceGenInfo.height = prevSize;
-                        faceGenInfo.GenFace(mat);
+                        faceGenInfo.width = sizeB;
+                        faceGenInfo.length = sizeA;
+                        faceGenInfo.GenFace(blockMat);
                     }
                 }
             }
@@ -1816,6 +2017,58 @@ namespace Vintagestory.GameContent
 
         #endregion
 
+        #region Worldgen
+
+        public override void OnPlacementBySchematic(ICoreServerAPI api, IBlockAccessor blockAccessor, BlockPos pos, Dictionary<int, Dictionary<int, int>> replaceBlocks, int centerrockblockid, Block layerBlock)
+        {
+            base.OnPlacementBySchematic(api, blockAccessor, pos, replaceBlocks, centerrockblockid, layerBlock);
+
+            if (replaceBlocks != null)
+            {
+                Dictionary<int, int> replaceByBlock;
+                for (int i = 0; i < BlockIds.Length; i++)
+                {
+                    if (replaceBlocks.TryGetValue(BlockIds[i], out replaceByBlock))
+                    {
+                        int newBlockId;
+                        if (replaceByBlock.TryGetValue(centerrockblockid, out newBlockId))
+                        {
+                            BlockIds[i] = blockAccessor.GetBlock(newBlockId).Id;
+                        }
+                    }
+                }
+            }
+
+            int newMatIndex = -1;
+            int len = BlockIds.Length;
+            for (int i = 0; i < len; i++)
+            {
+                if (BlockIds[i] == BlockMicroBlock.BlockLayerMetaBlockId)
+                {
+                    for (int j = 0; j < VoxelCuboids.Count; j++)
+                    {
+                        uint matindex = (VoxelCuboids[j] >> 24) & 0xff;
+                        if (matindex == i)
+                        {
+                            if (layerBlock == null) { VoxelCuboids.RemoveAt(j); j--; }
+                            else
+                            {
+                                if (newMatIndex < 0)
+                                {
+                                    BlockIds = BlockIds.Append(layerBlock.Id);
+                                    newMatIndex = BlockIds.Length - 1;
+                                }
+
+                                VoxelCuboids[j] = (VoxelCuboids[j] & clearMaterialMask) | ((uint)newMatIndex << 24);
+                            } 
+                        }
+                    }
+                }
+            }
+        }
+        const int clearMaterialMask = ~(0xff << 24);
+
+        #endregion
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
         {
@@ -1827,7 +2080,7 @@ namespace Vintagestory.GameContent
             base.OnTesselation(mesher, tesselator);
             if (withColorMapData)
             {
-                var cmapdata = (Api as ICoreClientAPI).World.GetColorMapData(Api.World.Blocks[MaterialIds[0]], Pos.X, Pos.Y, Pos.Z);
+                var cmapdata = (Api as ICoreClientAPI).World.GetColorMapData(Api.World.Blocks[BlockIds[0]], Pos.X, Pos.Y, Pos.Z);
                 mesher.AddMeshData(Mesh, cmapdata);
             }
             else
@@ -1838,6 +2091,28 @@ namespace Vintagestory.GameContent
             Block = Api.World.BlockAccessor.GetBlock(Pos);
 
             return true;
+        }
+
+        public void SetDecor(Block blockToPlace, BlockPos pos, BlockFacing face)
+        {
+            if (DecorIds == null) DecorIds = new int[6];
+            DecorIds[face.Index] = blockToPlace.Id;
+            MarkDirty(true);
+        }
+
+        public void ExchangeWith(ItemSlot fromSlot, ItemSlot toSlot)
+        {
+            var fromBlock = fromSlot.Itemstack?.Block;
+            var toBlock = toSlot.Itemstack?.Block;
+            if (fromBlock == null || toBlock == null) return;
+
+            for (int i = 0; i < BlockIds.Length; i++) 
+            {
+                if (BlockIds[i] == fromBlock.Id) BlockIds[i] = toBlock.Id;
+            }
+
+            RegenSelectionBoxes(Api.World, null);
+            MarkDirty(true, null);
         }
     }
 }

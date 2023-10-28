@@ -151,29 +151,33 @@ namespace Vintagestory.GameContent
 
             if (world.Side == EnumAppSide.Server)
             {
-                var beh = world.BlockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorDoor>();
-                float rotRad = beh?.RotateYRad ?? 0;
-
-                IterateOverEach(pos, rotRad, beh?.InvertHandles ?? false, (mpos) =>
-                {
-                    if (mpos == pos) return true;
-
-                    int dx = mpos.X - pos.X;
-                    int dy = mpos.Y - pos.Y;
-                    int dz = mpos.Z - pos.Z;
-
-                    string sdx = (dx < 0 ? "n" : (dx > 0 ? "p" : "")) + Math.Abs(dx);
-                    string sdy = (dy < 0 ? "n" : (dy > 0 ? "p" : "")) + Math.Abs(dy);
-                    string sdz = (dz < 0 ? "n" : (dz > 0 ? "p" : "")) + Math.Abs(dz);
-
-                    AssetLocation loc = new AssetLocation("multiblock-monolithic-" + sdx + "-" + sdy + "-" + sdz);
-                    Block block = world.GetBlock(loc);
-                    world.BlockAccessor.SetBlock(block.Id, mpos);
-                    return true;
-                });
+                placeMultiblockParts(world, pos);
             }
 
             return true;
+        }
+
+        public void placeMultiblockParts(IWorldAccessor world, BlockPos pos)
+        {
+            var beh = world.BlockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorDoor>();
+            float rotRad = beh?.RotateYRad ?? 0;
+
+            IterateOverEach(pos, rotRad, beh?.InvertHandles ?? false, (mpos) =>
+            {
+                if (mpos == pos) return true;
+                int dx = mpos.X - pos.X;
+                int dy = mpos.Y - pos.Y;
+                int dz = mpos.Z - pos.Z;
+
+                string sdx = (dx < 0 ? "n" : (dx > 0 ? "p" : "")) + Math.Abs(dx);
+                string sdy = (dy < 0 ? "n" : (dy > 0 ? "p" : "")) + Math.Abs(dy);
+                string sdz = (dz < 0 ? "n" : (dz > 0 ? "p" : "")) + Math.Abs(dz);
+
+                AssetLocation loc = new AssetLocation("multiblock-monolithic-" + sdx + "-" + sdy + "-" + sdz);
+                Block block = world.GetBlock(loc);
+                world.BlockAccessor.SetBlock(block.Id, mpos);
+                return true;
+            });
         }
 
         public override void OnBlockRemoved(IWorldAccessor world, BlockPos pos, ref EnumHandling handling)
@@ -202,6 +206,7 @@ namespace Vintagestory.GameContent
         public void IterateOverEach(BlockPos pos, float yRotRad, bool invertHandle, ActionConsumable<BlockPos> onBlock)
         {
             BlockPos tmpPos = new BlockPos();
+            tmpPos.dimension = pos.dimension;
 
             for (int dx = 0; dx < width; dx++)
             {

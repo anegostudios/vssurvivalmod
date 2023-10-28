@@ -45,7 +45,8 @@ namespace Vintagestory.GameContent
                     catch (Exception e)
                     {
                         capi.World.Logger.Error("Failed deserializing tradeProps attribute for entitiy {0}, exception logged to verbose debug", entitytype.Code);
-                        capi.World.Logger.VerboseDebug("Failed deserializing TradeProperties: {0}", e);
+                        capi.World.Logger.Error(e);
+                        capi.World.Logger.VerboseDebug("Failed deserializing TradeProperties:");
                         capi.World.Logger.VerboseDebug("=================");
                         capi.World.Logger.VerboseDebug("Tradeprops json:");
                         capi.World.Logger.VerboseDebug("{0}", entitytype.Server?.Attributes["tradeProps"].ToJsonToken());

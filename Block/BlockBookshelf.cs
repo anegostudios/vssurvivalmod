@@ -72,14 +72,14 @@ namespace Vintagestory.GameContent
 
             if (beshelf?.UsableSlots != null)
             {
-                List<Cuboidf> cubs = new List<Cuboidf>();
-
-                cubs.Add(new Cuboidf(0, 0, 0, 1, 1, 0.1f));
-                cubs.Add(new Cuboidf(0, 0, 0, 1, 1/16f, 0.5f));
-                cubs.Add(new Cuboidf(0, 15/16f, 0, 1, 1, 0.5f));
-                cubs.Add(new Cuboidf(0, 0, 0, 1/16f, 1, 0.5f));
-                cubs.Add(new Cuboidf(15/16f, 0, 0, 1, 1, 0.5f));
-
+                List<Cuboidf> cubs = new List<Cuboidf>
+                {
+                    new Cuboidf(0, 0, 0, 1, 1, 0.1f),
+                    new Cuboidf(0, 0, 0, 1, 1 / 16f, 0.5f),
+                    new Cuboidf(0, 15 / 16f, 0, 1, 1, 0.5f),
+                    new Cuboidf(0, 0, 0, 1 / 16f, 1, 0.5f),
+                    new Cuboidf(15 / 16f, 0, 0, 1, 1, 0.5f)
+                };
 
                 for (int i = 0; i < 14; i++)
                 {
@@ -156,7 +156,7 @@ namespace Vintagestory.GameContent
                 var texSource = overrideTexturesource;
                 if (texSource == null)
                 {
-                    var stexSource = new ShapeTextureSource(capi, shape);
+                    var stexSource = new ShapeTextureSource(capi, shape, rcshape.Base.ToString());
                     texSource = stexSource;
                     foreach (var val in textures)
                     {
@@ -207,9 +207,9 @@ namespace Vintagestory.GameContent
         {
             base.OnBeforeRender(capi, itemstack, target, ref renderinfo);
 
-            Dictionary<string, MeshRef> meshRefs;
-            meshRefs = ObjectCacheUtil.GetOrCreate(capi, "BookshelfMeshesInventory", () => new Dictionary<string, MeshRef>());
-            MeshRef meshref;
+            Dictionary<string, MultiTextureMeshRef> meshRefs;
+            meshRefs = ObjectCacheUtil.GetOrCreate(capi, "BookshelfMeshesInventory", () => new Dictionary<string, MultiTextureMeshRef>());
+            MultiTextureMeshRef meshref;
 
             string type = itemstack.Attributes.GetString("type", "");
             string material = itemstack.Attributes.GetString("material", "");
@@ -218,7 +218,7 @@ namespace Vintagestory.GameContent
             if (!meshRefs.TryGetValue(key, out meshref))
             {
                 MeshData mesh = GetOrCreateMesh(type, material);
-                meshref = capi.Render.UploadMesh(mesh);
+                meshref = capi.Render.UploadMultiTextureMesh(mesh);
                 meshRefs[key] = meshref;
             }
 

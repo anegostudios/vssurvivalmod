@@ -1,12 +1,7 @@
 ﻿using Newtonsoft.Json;
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
-using Vintagestory.API;
 using Vintagestory.API.Common;
-using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -50,7 +45,7 @@ namespace Vintagestory.GameContent
         }
     }
 
-    public class ItemStackRandomizer : Item
+    public class ItemStackRandomizer : Item, IResolvableCollectible
     {
         RandomStack[] Stacks;
 
@@ -98,7 +93,7 @@ namespace Vintagestory.GameContent
 
 
 
-        internal void Resolve(ItemSlot intoslot, IWorldAccessor worldForResolve)
+        public void Resolve(ItemSlot intoslot, IWorldAccessor worldForResolve)
         {
             object dval;
             worldForResolve.Api.ObjectCache.TryGetValue("donotResolveImports", out dval);
@@ -113,7 +108,6 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            ItemStack ownstack = intoslot.Itemstack;
             intoslot.Itemstack = null;
             
             if (Stacks == null)

@@ -2,13 +2,10 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
-using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
@@ -107,7 +104,7 @@ namespace Vintagestory.GameContent
             CookingRecipe recipe = GetCookingRecipe(capi.World, itemstack);
             ItemStack[] contents = GetNonEmptyContents(capi.World, itemstack);
 
-            MeshRef meshref = meshCache.GetOrCreateMealInContainerMeshRef(this, recipe, contents, new Vec3f(0, yoff/16f, 0));
+            MultiTextureMeshRef meshref = meshCache.GetOrCreateMealInContainerMeshRef(this, recipe, contents, new Vec3f(0, yoff/16f, 0));
             if (meshref != null) renderinfo.ModelRef = meshref;
         }
 
@@ -252,7 +249,7 @@ namespace Vintagestory.GameContent
             object obj;
             if (capi.ObjectCache.TryGetValue("cookedMeshRefs", out obj))
             {
-                Dictionary<int, MeshRef> meshrefs = obj as Dictionary<int, MeshRef>;
+                Dictionary<int, MultiTextureMeshRef> meshrefs = obj as Dictionary<int, MultiTextureMeshRef>;
 
                 foreach (var val in meshrefs)
                 {

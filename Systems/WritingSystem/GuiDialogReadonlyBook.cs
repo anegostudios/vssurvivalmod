@@ -124,9 +124,13 @@ namespace Vintagestory.GameContent
                 .BeginChildElements(bgBounds)
                     .AddRichtext("", font, textAreaBounds, "text")
 
-                    .AddSmallButton(Lang.Get("<"), prevPage, prevButtonBounds)
-                    .AddDynamicText("1/1", CairoFont.WhiteSmallText().WithOrientation(EnumTextOrientation.Center), pageLabelBounds, "pageNum")
-                    .AddSmallButton(Lang.Get(">"), nextPage, nextButtonBounds)
+                    .AddIf(Pages.Count > 1) 
+                        .AddSmallButton(Lang.Get("<"), prevPage, prevButtonBounds)
+                    .EndIf()
+                        .AddDynamicText("1/1", CairoFont.WhiteSmallText().WithOrientation(EnumTextOrientation.Center), pageLabelBounds, "pageNum")
+                    .AddIf(Pages.Count > 1)
+                        .AddSmallButton(Lang.Get(">"), nextPage, nextButtonBounds)
+                    .EndIf()
 
                     .AddSmallButton(Lang.Get("Close"), () => TryClose(), closeButton)
                     .AddIf(onTranscribedPressed != null)

@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using Vintagestory.API.Client;
+﻿using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 
 namespace Vintagestory.GameContent
@@ -49,7 +47,7 @@ namespace Vintagestory.GameContent
                 TutorialStepBase.Knap(capi, "knapknife", "tutorial-firststeps-6", (stack) => stack.Collectible.Code.Path.Contains("knifeblade"), 1),
                 TutorialStepBase.Craft(capi, "craftknife", "tutorial-firststeps-7", (stack) => stack.Collectible.Tool == EnumTool.Knife, 1),
                 TutorialStepBase.Collect(capi, "getcattails", "tutorial-firststeps-8", (stack) => stack.Collectible.Code.Path == "papyrustops" || stack.Collectible.Code.Path == "cattailtops", 10),
-                TutorialStepBase.Craft(capi, "craftbasket", "tutorial-firststeps-9", (stack) => stack.Collectible.StorageFlags == EnumItemStorageFlags.Backpack, 1),
+                TutorialStepBase.Craft(capi, "craftbasket", "tutorial-firststeps-9", (stack) => stack.Collectible.GetStorageFlags(stack) == EnumItemStorageFlags.Backpack, 1),
                 TutorialStepBase.Collect(capi, "getfood", "tutorial-firststeps-10", (stack) => stack.Collectible.NutritionProps != null, 10),
                 TutorialStepBase.Craft(capi, "knapaxe", "tutorial-firststeps-11", (stack) => stack.Collectible.Tool == EnumTool.Axe, 1),
                 TutorialStepBase.Collect(capi, "getlogs", "tutorial-firststeps-12", (stack) => stack.Collectible is BlockLog, 4),

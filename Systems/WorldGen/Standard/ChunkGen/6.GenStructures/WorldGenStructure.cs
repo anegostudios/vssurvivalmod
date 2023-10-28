@@ -1,9 +1,6 @@
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
@@ -75,7 +72,7 @@ namespace Vintagestory.ServerMods
         [JsonProperty]
         public NatFloat OffsetX = NatFloat.createGauss(0, 5);
         [JsonProperty]
-        public int OffsetY = 0;
+        public int? OffsetY = null;
         [JsonProperty]
         public NatFloat OffsetZ = NatFloat.createGauss(0, 5);
         [JsonProperty]
@@ -91,7 +88,7 @@ namespace Vintagestory.ServerMods
 
 
         internal BlockSchematicStructure[][] schematicDatas;
-        internal int[] replaceblockids = new int[0];
+        internal int[] replacewithblocklayersBlockids = new int[0];
         internal HashSet<int> insideblockids = new HashSet<int>();
 
         internal Dictionary<int, Dictionary<int, int>> resolvedRockTypeRemaps = null;
@@ -130,12 +127,12 @@ namespace Vintagestory.ServerMods
             unscaledMaxTemp = (int)TerraGenConfig.DescaleTemperature(MaxTemp);
 
 
-            this.schematicDatas = LoadSchematicsWithRotations<BlockSchematicStructure>(api, Schematics, config);
+            this.schematicDatas = LoadSchematicsWithRotations<BlockSchematicStructure>(api, Schematics, config, structureConfig.SchematicYOffsets, OffsetY);
 
             if (ReplaceWithBlocklayers != null)
             {
-                replaceblockids = new int[ReplaceWithBlocklayers.Length];
-                for (int i = 0; i < replaceblockids.Length; i++)
+                replacewithblocklayersBlockids = new int[ReplaceWithBlocklayers.Length];
+                for (int i = 0; i < replacewithblocklayersBlockids.Length; i++)
                 {
                     Block block = api.World.GetBlock(ReplaceWithBlocklayers[i]);
                     if (block == null)
@@ -143,7 +140,7 @@ namespace Vintagestory.ServerMods
                         throw new Exception(string.Format("Schematic with code {0} has replace block layer {1} defined, but no such block found!", Code, ReplaceWithBlocklayers[i]));
                     } else
                     {
-                        replaceblockids[i] = block.Id;
+                        replacewithblocklayersBlockids[i] = block.Id;
                     }
                     
                 }
@@ -166,6 +163,7 @@ namespace Vintagestory.ServerMods
                 }
             }
 
+            // For rocktyped ruins
             if (RockTypeRemapGroup != null)
             {
                 resolvedRockTypeRemaps = structureConfig.resolvedRocktypeRemapGroups[RockTypeRemapGroup];
@@ -215,9 +213,7 @@ namespace Vintagestory.ServerMods
 
             if (rain < unscaledMinRain || rain > unscaledMaxRain || unscaledtemp < unscaledMinTemp || unscaledtemp > unscaledMaxTemp) return false;
 
-            startPos.Y += OffsetY;
-
-            // Hardcoding crime here. Please don't look. Prevent generation of schematics on glaciers
+            // Hardcoding crime here. Please don't look. Takes these tasty cookies as a bribe. (Prevent generation of schematics on glaciers)
             if (unscaledtemp < 20 && startPos.Y > worldForCollectibleResolve.SeaLevel + 15) return false;
             
             rand.InitPositionSeed(startPos.X, startPos.Z);
@@ -440,6 +436,8 @@ namespace Vintagestory.ServerMods
             int orient = rand.NextInt(4);
             BlockSchematicStructure schematic = schematicDatas[num][orient];
 
+            pos = pos.AddCopy(0, schematic.OffsetY, 0);
+
             if (schematic.EntranceRotation != -1)
             {
                 orient = FindClearEntranceRotation(blockAccessor, schematicDatas[num], pos);
@@ -477,21 +475,21 @@ namespace Vintagestory.ServerMods
 
             if (diff > 3) return false;
 
-            pos.Y = minY;
+            pos.Y = minY + schematic.OffsetY;
 
 
             // Ensure not deeply submerged in water  =>  actually, that's now OK!
 
-            tmpPos.Set(pos.X, pos.Y + 1 + OffsetY, pos.Z);
+            tmpPos.Set(pos.X, pos.Y + 1, pos.Z);
             if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return false;
 
-            tmpPos.Set(pos.X + wdt, pos.Y + 1 + OffsetY, pos.Z);
+            tmpPos.Set(pos.X + wdt, pos.Y + 1, pos.Z);
             if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return false;
 
-            tmpPos.Set(pos.X, pos.Y + 1 + OffsetY, pos.Z + len);
+            tmpPos.Set(pos.X, pos.Y + 1, pos.Z + len);
             if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return false;
 
-            tmpPos.Set(pos.X + wdt, pos.Y + 1 + OffsetY, pos.Z + len);
+            tmpPos.Set(pos.X + wdt, pos.Y + 1, pos.Z + len);
             if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return false;
 
 
@@ -503,7 +501,7 @@ namespace Vintagestory.ServerMods
             LastPlacedSchematicLocation.Set(pos.X, pos.Y, pos.Z, pos.X + schematic.SizeX, pos.Y + schematic.SizeY, pos.Z + schematic.SizeZ);
             LastPlacedSchematic = schematic;
 
-            schematic.PlaceRespectingBlockLayers(blockAccessor, worldForCollectibleResolve, pos, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight, resolvedRockTypeRemaps, replaceblockids);
+            schematic.PlaceRespectingBlockLayers(blockAccessor, worldForCollectibleResolve, pos, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight, resolvedRockTypeRemaps, replacewithblocklayersBlockids);
 
             return true;
         }
@@ -514,6 +512,8 @@ namespace Vintagestory.ServerMods
             int num = rand.NextInt(schematicDatas.Length);
             int orient = rand.NextInt(4);
             BlockSchematicStructure schematic = schematicDatas[num][orient];
+
+            pos = pos.AddCopy(0, schematic.OffsetY, 0);
 
             if (schematic.EntranceRotation != -1)
             {
@@ -547,7 +547,7 @@ namespace Vintagestory.ServerMods
             int diff = GameMath.Max(centerY, topLeftY, topRightY, botLeftY, botRightY) - GameMath.Min(centerY, topLeftY, topRightY, botLeftY, botRightY);
             if (diff != 0) return false;
 
-            pos.Y = centerY + 1 + OffsetY;
+            pos.Y = centerY + 1 + schematic.OffsetY;
 
 
             // Ensure not floating on water
@@ -604,7 +604,7 @@ namespace Vintagestory.ServerMods
 
             LastPlacedSchematicLocation.Set(pos.X, pos.Y, pos.Z, pos.X + schematic.SizeX, pos.Y + schematic.SizeY, pos.Z + schematic.SizeZ);
             LastPlacedSchematic = schematic;
-            schematic.PlaceRespectingBlockLayers(blockAccessor, worldForCollectibleResolve, pos, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight, resolvedRockTypeRemaps, replaceblockids);
+            schematic.PlaceRespectingBlockLayers(blockAccessor, worldForCollectibleResolve, pos, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight, resolvedRockTypeRemaps, replacewithblocklayersBlockids);
             return true;
         }
 
@@ -659,7 +659,6 @@ namespace Vintagestory.ServerMods
                 if (!found) return false;
 
                 // 3. Random pathway
-                found = false;
                 int pathwayNum = rand.NextInt(schematicStruc[0].PathwayStarts.Length);
                 int targetOrientation;
                 int targetDistance = -1;
@@ -680,16 +679,16 @@ namespace Vintagestory.ServerMods
 
                 if (targetDistance == -1) return false;
 
+                schematic = schematicStruc[targetOrientation];
+
                 BlockPos pathwayStart = schematicStruc[targetOrientation].PathwayStarts[pathwayNum];
 
                 // Move back the structure so that the door aligns to the cave wall
                 targetPos.Add(
                     -pathwayStart.X - targetFacing.Normali.X * targetDistance,
-                    -pathwayStart.Y - targetFacing.Normali.Y * targetDistance,
+                    -pathwayStart.Y - targetFacing.Normali.Y * targetDistance + schematic.OffsetY,
                     -pathwayStart.Z - targetFacing.Normali.Z * targetDistance
                 );
-
-                schematic = schematicStruc[targetOrientation];
 
                 if (!TestUndergroundCheckPositions(blockAccessor, targetPos, schematic.UndergroundCheckPositions)) return false;
                 if (WouldOverlapAt(targetPos, schematic, worldForCollectibleResolve)) return false;
@@ -730,6 +729,7 @@ namespace Vintagestory.ServerMods
 
             if (resolvedRockTypeRemaps != null)
             {
+                // Rocktyped ruins
                 schematic.PlaceReplacingBlocks(blockAccessor, worldForCollectibleResolve, placePos, schematic.ReplaceMode, resolvedRockTypeRemaps);
                 
             } else
@@ -760,7 +760,7 @@ namespace Vintagestory.ServerMods
 
         private int CanPlacePathwayAt(IBlockAccessor blockAccessor, BlockPos[] pathway, BlockFacing towardsFacing, BlockPos targetPos)
         {
-            int quantityAir = 0;
+            int quantityAir;
             BlockPos tmpPos = new BlockPos();
 
             bool oppositeDir = rand.NextInt(2) > 0;

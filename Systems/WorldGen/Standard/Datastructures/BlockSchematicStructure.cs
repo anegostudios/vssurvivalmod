@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
@@ -23,6 +21,7 @@ namespace Vintagestory.ServerMods
         PlaceBlockDelegate handler = null;
         GenBlockLayers genBlockLayers;
 
+        public int OffsetY { get; set; }
 
         public override void Init(IBlockAccessor blockAccessor)
         {
@@ -86,15 +85,19 @@ namespace Vintagestory.ServerMods
         /// For placement of ruins during worldgen, replaces the topsoil with the area specific soil (e.g. sand)
         /// </summary>
         /// <param name="blockAccessor"></param>
-        /// <param name="blocks"></param>
+        /// <param name="worldForCollectibleResolve"></param>
         /// <param name="startPos"></param>
         /// <param name="climateUpLeft"></param>
         /// <param name="climateUpRight"></param>
         /// <param name="climateBotLeft"></param>
         /// <param name="climateBotRight"></param>
-        /// <param name="replaceblockids"></param>
+        /// <param name="replaceBlocks"></param>
+        /// <param name="replaceWithBlockLayersBlockids"></param>
+        /// <param name="replaceMetaBlocks"></param>
+        /// <param name="replaceBlockEntities">If true, deletes any existing block entities at that location</param>
+        /// <param name="suppressSoilIfAirBelow"></param>
         /// <returns></returns>
-        public int PlaceRespectingBlockLayers(IBlockAccessor blockAccessor, IWorldAccessor worldForCollectibleResolve, BlockPos startPos, int climateUpLeft, int climateUpRight, int climateBotLeft, int climateBotRight, Dictionary<int, Dictionary<int, int>> replaceBlocks, int[] replaceblockids, bool replaceMetaBlocks = true, bool replaceBlockEntities = false, bool suppressSoilIfAirBelow = false)
+        public int PlaceRespectingBlockLayers(IBlockAccessor blockAccessor, IWorldAccessor worldForCollectibleResolve, BlockPos startPos, int climateUpLeft, int climateUpRight, int climateBotLeft, int climateBotRight, Dictionary<int, Dictionary<int, int>> replaceBlocks, int[] replaceWithBlockLayersBlockids, bool replaceMetaBlocks = true, bool replaceBlockEntities = false, bool suppressSoilIfAirBelow = false)
         {
             if (genBlockLayers == null) genBlockLayers = worldForCollectibleResolve.Api.ModLoader.GetModSystem<GenBlockLayers>();
 
@@ -111,6 +114,8 @@ namespace Vintagestory.ServerMods
 
             resolveReplaceRemapsForBlockEntities(blockAccessor, worldForCollectibleResolve, replaceBlocks, centerrockblockid);
 
+            Dictionary<BlockPos, Block> layerBlockForBlockEntities = new Dictionary<BlockPos, Block>();
+
             for (int x = 0; x < SizeX; x++)
             {
                 for (int z = 0; z < SizeZ; z++)
@@ -120,23 +125,26 @@ namespace Vintagestory.ServerMods
 
                     mapchunk = blockAccessor.GetMapChunkAtBlockPos(curPos);
                     int rockblockid = mapchunk.TopRockIdMap[(curPos.Z % chunksize) * chunksize + curPos.X % chunksize];
-                    int depth = aboveLiqBlock.Id != 0 ? 1 : 0;
+                    int depth = mapchunk.WorldGenTerrainHeightMap[(curPos.Z % chunksize) * chunksize + curPos.X % chunksize] - (SizeY + startPos.Y); //aboveLiqBlock.Id != 0 ? 1 : 0;
 
                     int maxY = -1;
+                    int underWaterDepth = -1;
+                    if (aboveLiqBlock != null) underWaterDepth++;
 
                     bool highestBlockinCol = true;
                     for (int y = SizeY - 1; y >= 0; y--)
                     {
+                        depth++;
                         curPos.Set(x + startPos.X, y + startPos.Y, z + startPos.Z);
-                        Block newBlock = blocksByPos[x, y, z];
-                        if (newBlock == null) continue;
+                        Block block = blocksByPos[x, y, z];
+                        Block origBlock = block;
+                        if (block == null) continue;
 
-                        if (replaceMetaBlocks && newBlock == undergroundBlock) continue;
+                        if (replaceMetaBlocks && block == undergroundBlock) continue;
 
-
-                        if (newBlock.Replaceable < 1000)
+                        if (block.Replaceable < 1000 && depth >= 0)
                         {
-                            if (replaceblockids.Contains(newBlock.BlockId))
+                            if (replaceWithBlockLayersBlockids.Contains(block.BlockId) || block.CustomBlockLayerHandler)
                             {
                                 if (suppressSoilIfAirBelow && (y == 0 || blocksByPos[x, y - 1, z] == null)) // only check this on the bottom layer and if current newBlock is soil: any block in replaceblockids is assumed to be soil
                                 {
@@ -147,43 +155,49 @@ namespace Vintagestory.ServerMods
                                         while (yy < SizeY)    // clear any soil in the column above this
                                         {
                                             Block placedBlock = blocksByPos[x, yy, z];
-                                            if (placedBlock == null || !replaceblockids.Contains(placedBlock.BlockId)) break;
+                                            if (placedBlock == null || !replaceWithBlockLayersBlockids.Contains(placedBlock.BlockId)) break;
                                             blockAccessor.SetBlock(0, new BlockPos(curPos.X, startPos.Y + yy, curPos.Z), BlockLayersAccess.Solid);
                                             yy++;
                                         }
                                         continue;
                                     }
                                 }
-                                if (depth == 0 && replaceblockids.Length > 1)   // do not place top surface (typically grassy soil) directly beneath solid blocks other than logs, snow, ice
+                                if (depth == 0 && replaceWithBlockLayersBlockids.Length > 1)   // do not place top surface (typically grassy soil) directly beneath solid blocks other than logs, snow, ice
                                 {
                                     Block aboveBlock = blockAccessor.GetBlock(curPos.X, curPos.Y + 1, curPos.Z, BlockLayersAccess.SolidBlocks);
                                     if (aboveBlock.SideSolid[BlockFacing.DOWN.Index] && aboveBlock.BlockMaterial != EnumBlockMaterial.Wood && aboveBlock.BlockMaterial != EnumBlockMaterial.Snow && aboveBlock.BlockMaterial != EnumBlockMaterial.Ice) depth++;
                                 }
 
                                 int climate = GameMath.BiLerpRgbColor((float)x / chunksize, (float)z / chunksize, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight);
+                                var layerBlock = GetBlockLayerBlock((climate >> 8) & 0xff, (climate >> 16) & 0xff, curPos.Y - 1, rockblockid, depth, block, worldForCollectibleResolve.Blocks, curPos, underWaterDepth);
 
-                                newBlock = GetBlockLayerBlock((climate >> 8) & 0xff, (climate >> 16) & 0xff, curPos.Y - 1, rockblockid, depth, newBlock, worldForCollectibleResolve.Blocks, curPos);
+                                if (block.CustomBlockLayerHandler && layerBlock != block)
+                                {
+                                    layerBlockForBlockEntities[curPos.Copy()] = layerBlock;
+                                }
+                                else
+                                {
+                                    block = layerBlock;
+                                }
                             }
-
-                            depth++;
-                        }
+                        }                 
 
                         if (replaceBlocks != null)
                         {
                             Dictionary<int, int> replaceByBlock;
-                            if (replaceBlocks.TryGetValue(newBlock.Id, out replaceByBlock))
+                            if (replaceBlocks.TryGetValue(block.Id, out replaceByBlock))
                             {
                                 int newBlockId;
                                 if (replaceByBlock.TryGetValue(centerrockblockid, out newBlockId))
                                 {
-                                    newBlock = blockAccessor.GetBlock(newBlockId);
+                                    block = blockAccessor.GetBlock(newBlockId);
                                 }
                             }
                         }
 
-                        int p = handler(blockAccessor, curPos, newBlock, true);
+                        int p = handler(blockAccessor, curPos, block, true);
 
-                        if (newBlock.Id != 0 && !newBlock.SideSolid.All())
+                        if (block.Id != 0 && !block.SideSolid.All)
                         {
                             aboveLiqBlock = blockAccessor.GetBlock(curPos.X, curPos.Y + 1, curPos.Z, BlockLayersAccess.Fluid);
                             if (aboveLiqBlock.Id != 0)
@@ -206,9 +220,9 @@ namespace Vintagestory.ServerMods
                             }
                             placed += p;
 
-                            if (!newBlock.RainPermeable)
+                            if (!block.RainPermeable)
                             {
-                                if (newBlock == fillerBlock || newBlock == pathwayBlock)
+                                if (block == fillerBlock || block == pathwayBlock)
                                 {
                                     int lx = curPos.X % chunksize;
                                     int lz = curPos.Z % chunksize;
@@ -222,12 +236,12 @@ namespace Vintagestory.ServerMods
                         }
 
 
-                        byte[] lightHsv = newBlock.GetLightHsv(blockAccessor, curPos);
+                        byte[] lightHsv = block.GetLightHsv(blockAccessor, curPos);
 
                         if (lightHsv[2] > 0 && blockAccessor is IWorldGenBlockAccessor)
                         {
                             Block oldBlock = blockAccessor.GetBlock(curPos);
-                            ((IWorldGenBlockAccessor)blockAccessor).ScheduleBlockLightUpdate(curPos.Copy(), oldBlock.BlockId, newBlock.BlockId);
+                            ((IWorldGenBlockAccessor)blockAccessor).ScheduleBlockLightUpdate(curPos.Copy(), oldBlock.BlockId, block.BlockId);
                         }
                     }
 
@@ -243,7 +257,7 @@ namespace Vintagestory.ServerMods
             }
 
             PlaceDecors(blockAccessor, startPos);
-            PlaceEntitiesAndBlockEntities(blockAccessor, worldForCollectibleResolve, startPos, BlockCodesTmpForRemap, ItemCodes, replaceBlockEntities);
+            PlaceEntitiesAndBlockEntities(blockAccessor, worldForCollectibleResolve, startPos, BlockCodesTmpForRemap, ItemCodes, replaceBlockEntities, replaceBlocks, centerrockblockid, layerBlockForBlockEntities);
 
             return placed;
         }
@@ -366,8 +380,10 @@ namespace Vintagestory.ServerMods
 
 
 
-        private Block GetBlockLayerBlock(int unscaledRain, int unscaledTemp, int posY, int rockBlockId, int forDepth, Block defaultBlock, IList<Block> blocks, BlockPos pos)
+        private Block GetBlockLayerBlock(int unscaledRain, int unscaledTemp, int posY, int rockBlockId, int forDepth, Block defaultBlock, IList<Block> blocks, BlockPos pos, int underWaterDepth)
         {
+            if (blockLayerConfig == null) return defaultBlock;
+
             posY -= forDepth;
             float distx = (float)genBlockLayers.distort2dx.Noise(pos.X, pos.Z);
             float temperature = TerraGenConfig.GetScaledAdjustedTemperatureFloat(unscaledTemp, posY - TerraGenConfig.seaLevel + (int)(distx / 5));
@@ -380,18 +396,30 @@ namespace Vintagestory.ServerMods
 
             for (int j = 0; j < blockLayerConfig.Blocklayers.Length; j++)
             {
-                BlockLayer bl = blockLayerConfig.Blocklayers[j];
-                float yDist = bl.CalcYDistance(posY, mapheight);
-                float trfDist = bl.CalcTrfDistance(temperature, rainRel, fertilityRel);
-
-                if (trfDist + yDist > posRand) continue;
-
-                int blockId = bl.GetBlockId(posRand, temperature, rainRel, fertilityRel, rockBlockId, pos);
-                if (blockId != 0)
+                if (underWaterDepth < 0)
                 {
-                    if (forDepth-- > 0) continue;
-                    return blocks[blockId];
+                    BlockLayer bl = blockLayerConfig.Blocklayers[j];
+                    float yDist = bl.CalcYDistance(posY, mapheight);
+                    float trfDist = bl.CalcTrfDistance(temperature, rainRel, fertilityRel);
+
+                    if (trfDist + yDist > posRand) continue;
+
+                    int blockId = bl.GetBlockId(posRand, temperature, rainRel, fertilityRel, rockBlockId, pos);
+                    if (blockId != 0)
+                    {
+                        if (forDepth-- > 0) continue;
+                        return blocks[blockId];
+                    }
+                } else {
+
+                    if (j >= blockLayerConfig.LakeBedLayer.BlockCodeByMin.Length) continue;
+                    LakeBedBlockCodeByMin lbbc = blockLayerConfig.LakeBedLayer.BlockCodeByMin[j];
+                    if (!lbbc.Suitable(temperature, rainRel, (float)posY / mapheight, (float)posRand)) continue;
+                    if (underWaterDepth-- > 0) continue;
+
+                    return blocks[lbbc.GetBlockForMotherRock(rockBlockId)];
                 }
+                
             }
 
             return defaultBlock;
@@ -400,10 +428,10 @@ namespace Vintagestory.ServerMods
         public override BlockSchematic ClonePacked()
         {
             BlockSchematicStructure cloned = new BlockSchematicStructure();
-
             cloned.SizeX = SizeX;
             cloned.SizeY = SizeY;
             cloned.SizeZ = SizeZ;
+            cloned.OffsetY = OffsetY;
             cloned.GameVersion = GameVersion;
             cloned.BlockCodes = new Dictionary<int, AssetLocation>(BlockCodes);
             cloned.ItemCodes = new Dictionary<int, AssetLocation>(ItemCodes);

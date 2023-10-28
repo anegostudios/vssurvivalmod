@@ -37,9 +37,9 @@ namespace Vintagestory.GameContent
             pathModel.SetMode(EnumDrawMode.LineStrip);
             pathModelRef = null;
 
-            pathModel.AddVertex(0, 0, 0, ColorUtil.WhiteArgb);
+            pathModel.AddVertexSkipTex(0, 0, 0, ColorUtil.WhiteArgb);
             pathModel.AddIndex(0);
-            pathModel.AddVertex(1, 1, 1, ColorUtil.WhiteArgb);
+            pathModel.AddVertexSkipTex(1, 1, 1, ColorUtil.WhiteArgb);
             pathModel.AddIndex(1);
 
             updateModel = new MeshData(false);

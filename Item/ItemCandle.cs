@@ -1,8 +1,5 @@
-﻿using System;
-using System.Text;
-using Vintagestory.API.Client;
+﻿using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
@@ -46,9 +43,16 @@ namespace Vintagestory.GameContent
             }
             else
             {
-                nextblock = byEntity.World.GetBlock(loc.WithPathAppendix("-1"));
-                if (nextblock == null) return;
-
+                if (world.BlockAccessor.GetBlock(belowPos) is BlockFence)
+                {
+                    nextblock = world.GetBlock(new AssetLocation("candle"));  
+                }
+                else
+                {
+                    nextblock = byEntity.World.GetBlock(loc.WithPathAppendix("-1"));
+                    if (nextblock == null) return;
+                }
+                
                 Block blockAtTargetPos = world.BlockAccessor.GetBlock(offsetedPos);
                 if (!blockAtTargetPos.IsReplacableBy(nextblock)) return;
                 if (!world.BlockAccessor.GetBlock(belowPos).CanAttachBlockAt(world.BlockAccessor, nextblock, belowPos, BlockFacing.UP, new Cuboidi(1, 14, 1, 14, 15, 14))) return;

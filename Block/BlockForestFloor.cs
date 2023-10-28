@@ -1,15 +1,9 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
-using Vintagestory.API.Server;
 using Vintagestory.API.Util;
-using Vintagestory.ServerMods;
-using Vintagestory.ServerMods.NoObf;
 
 namespace Vintagestory.GameContent
 {

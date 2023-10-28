@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using Vintagestory.API.Client;
+﻿using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
@@ -66,7 +64,7 @@ namespace Vintagestory.GameContent
             // Prefer selected block face
             if (blockSel.Face.IsHorizontal || blockSel.Face == BlockFacing.UP)
             {
-                if (TryAttachTo(world, blockSel.Position, blockSel.Face)) return true;
+                if (TryAttachTo(world, blockSel.Position, blockSel.Face, itemstack)) return true;
             }
 
             // Otherwise attach to any possible face
@@ -76,7 +74,7 @@ namespace Vintagestory.GameContent
             {
                 if (faces[i] == BlockFacing.DOWN) continue;
 
-                if (TryAttachTo(world, blockSel.Position, faces[i])) return true;
+                if (TryAttachTo(world, blockSel.Position, faces[i], itemstack)) return true;
             }
 
             failureCode = "requireattachable";
@@ -116,7 +114,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        bool TryAttachTo(IWorldAccessor world, BlockPos blockpos, BlockFacing onBlockFace)
+        bool TryAttachTo(IWorldAccessor world, BlockPos blockpos, BlockFacing onBlockFace, ItemStack byItemstack)
         {
             BlockFacing onFace = onBlockFace;
 
@@ -129,7 +127,7 @@ namespace Vintagestory.GameContent
             if (block.CanAttachBlockAt(world.BlockAccessor, this, attachingBlockPos, onFace, attachmentArea))
             {
                 int blockId = world.BlockAccessor.GetBlock(CodeWithVariant("orientation", onBlockFace.Code)).BlockId;
-                world.BlockAccessor.SetBlock(blockId, blockpos);
+                world.BlockAccessor.SetBlock(blockId, blockpos, byItemstack);
                 return true;
             }
 

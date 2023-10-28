@@ -1,15 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
-using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
@@ -199,7 +195,7 @@ namespace Vintagestory.GameContent
                         List<ItemSlot> skipSlots = new List<ItemSlot>();
                         while (hotbarslot.StackSize > 0 && skipSlots.Count < inventory.Count)
                         {
-                            var wslot = inventory.GetBestSuitedSlot(hotbarslot, skipSlots);
+                            var wslot = inventory.GetBestSuitedSlot(hotbarslot, null, skipSlots);
                             if (wslot.slot == null) break;
 
                             if (hotbarslot.TryPutInto(Api.World, wslot.slot, bulk ? hotbarslot.StackSize : 1) > 0)

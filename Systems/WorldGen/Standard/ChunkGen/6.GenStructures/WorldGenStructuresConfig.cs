@@ -1,9 +1,5 @@
 ﻿using Newtonsoft.Json;
-using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
@@ -63,6 +59,8 @@ namespace Vintagestory.ServerMods
     {
         [JsonProperty]
         public Dictionary<string, Dictionary<AssetLocation, AssetLocation>> RocktypeRemapGroups = null;
+        [JsonProperty]
+        public Dictionary<string, int> SchematicYOffsets = null;
 
         public Dictionary<string, Dictionary<int, Dictionary<int, int>>> resolvedRocktypeRemapGroups = null;
 

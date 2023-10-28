@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Vintagestory.ServerMods
 {
@@ -58,13 +54,13 @@ namespace Vintagestory.ServerMods
                         int oldPixel = x - halfRange - 1;
                         if (oldPixel >= xStart)
                         {
-                            uint col = pixels[index + oldPixel];
+                            int col = (int)(pixels[index + oldPixel]);
                             if (col != 0)
                             {
-                                a -= ((byte) (col >> 24));
-                                r -= ((byte) (col >> 16));
-                                g -= ((byte) (col >> 8));
-                                b -= ((byte) col);
+                                a -= (col >> 24) & 0xff;
+                                r -= (col >> 16) & 0xff;
+                                g -= (col >> 8) & 0xff;
+                                b -= col & 0xff;
                             }
                             hits--;
                         }
@@ -72,13 +68,13 @@ namespace Vintagestory.ServerMods
                         int newPixel = x + halfRange;
                         if (newPixel < xEnd)
                         {
-                            uint col = pixels[index + newPixel];
+                            int col = (int)(pixels[index + newPixel]);
                             if (col != 0)
                             {
-                                a += ((byte) (col >> 24));
-                                r += ((byte) (col >> 16));
-                                g += ((byte) (col >> 8));
-                                b += ((byte) col);
+                                a += (col >> 24) & 0xff;
+                                r += (col >> 16) & 0xff;
+                                g += (col >> 8) & 0xff;
+                                b += col & 0xff;
                             }
                             hits++;
                         }
@@ -134,13 +130,13 @@ namespace Vintagestory.ServerMods
                         int oldPixel = y - halfRange - 1;
                         if (oldPixel >= yStart)
                         {
-                            uint col = pixels[index + oldPixelOffset];
+                            int col = (int)(pixels[index + oldPixelOffset]);
                             if (col != 0)
                             {
-                                a -= ((byte) (col >> 24));
-                                r -= ((byte) (col >> 16));
-                                g -= ((byte) (col >> 8));
-                                b -= ((byte) col);
+                                a -= (col >> 24) & 0xff;
+                                r -= (col >> 16) & 0xff;
+                                g -= (col >> 8) & 0xff;
+                                b -= col & 0xff;
                             }
                             hits--;
                         }
@@ -148,13 +144,13 @@ namespace Vintagestory.ServerMods
                         int newPixel = y + halfRange;
                         if (newPixel < yEnd)
                         {
-                            uint col = pixels[index + newPixelOffset];
+                            int col = (int)(pixels[index + newPixelOffset]);
                             if (col != 0)
                             {
-                                a += ((byte) (col >> 24));
-                                r += ((byte) (col >> 16));
-                                g += ((byte) (col >> 8));
-                                b += ((byte) col);
+                                a += (col >> 24) & 0xff;
+                                r += (col >> 16) & 0xff;
+                                g += (col >> 8) & 0xff;
+                                b += col & 0xff;
                             }
                             hits++;
                         }

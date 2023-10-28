@@ -100,13 +100,58 @@ namespace Vintagestory.GameContent
 
             tutorials["firststeps"] = new FirstStepsTutorial(capi);
 
-            api.ModLoader.GetModSystem<ModSystemHandbook>().OnInitCustomPages += ModSystemTutorial_OnInitCustomPages;
+            api.ModLoader.GetModSystem<ModSystemSurvivalHandbook>().OnInitCustomPages += ModSystemTutorial_OnInitCustomPages;
             api.Event.LevelFinalize += Event_LevelFinalize_Client;
             api.Event.LeaveWorld += Event_LeaveWorld_Client;
             api.Event.RegisterGameTickListener(onClientTick200ms, 200);
             capi.Input.AddHotkeyListener(onHotkey);
             capi.Input.InWorldAction += Input_InWorldAction;
-            api.RegisterCommand("tutorial", "", "", onTutorialCmd);
+            
+            api.ChatCommands.Create("tutorial")
+                .WithDescription("Interact with the tutorial system")
+                .BeginSubCommand("hud")
+                    .WithDescription("Toggle the tutorial HUD")
+                    .HandleWith(ToggleHud)
+                .EndSubCommand()
+                
+                .BeginSubCommand("restart")
+                    .WithDescription("Restart the currently selected tutorial")
+                    .HandleWith(OnTutRestart)
+                .EndSubCommand()
+                
+                .BeginSubCommand("skip")
+                    .WithDescription("Skip the currently selected tutorial")
+                .WithArgs(this.api.ChatCommands.Parsers.OptionalInt("skip_amount",1))
+                    .HandleWith(OnTutSkip)
+                .EndSubCommand()
+                ;
+        }
+
+        private TextCommandResult OnTutRestart(TextCommandCallingArgs args)
+        {
+            if (currentTutorialInst == null)
+            {
+                return TextCommandResult.Success("No current tutorial selected.");
+            }
+            currentTutorialInst.Restart();
+
+            reloadTutorialPage();
+            hud.loadHud(currentTutorialInst.PageCode);
+            return TextCommandResult.Success();
+        }
+
+        private TextCommandResult OnTutSkip(TextCommandCallingArgs args)
+        {
+            if (currentTutorialInst == null)
+            {
+                return TextCommandResult.Success("No current tutorial selected.");
+            }
+            var cnt = (int)args.Parsers[0].GetValue();
+            if (cnt <= 0) return TextCommandResult.Success();
+            currentTutorialInst.Skip(cnt);
+            reloadTutorialPage();
+            hud.loadHud(currentTutorialInst.PageCode);
+            return TextCommandResult.Success();
         }
 
         private void Input_InWorldAction(EnumEntityAction action, bool on, ref EnumHandling handled)
@@ -122,39 +167,6 @@ namespace Vintagestory.GameContent
             onStateUpdate((step) => step.OnHotkeyPressed(hotkeycode, keyComb));
         }
 
-        private void onTutorialCmd(int groupId, CmdArgs args)
-        {
-            if (currentTutorialInst == null)
-            {
-                capi.ShowChatMessage("No current tutorial selected.");
-                return;
-            }
-
-            string subcmd = args.PopWord();
-            if (subcmd == "hud")
-            {
-                toggleHud();
-            }
-
-            if (subcmd == "restart")
-            {
-                currentTutorialInst.Restart();
-
-                reloadTutorialPage();
-                hud.loadHud(currentTutorialInst.PageCode);
-            }
-
-            if (subcmd == "skip")
-            {
-                int cnt = (int)args.PopInt(1);
-                if (cnt <= 0) return;
-                currentTutorialInst.Skip(cnt);
-                reloadTutorialPage();
-                hud.loadHud(currentTutorialInst.PageCode);
-            }
-        }
-
-
         public void StartTutorial(string code)
         {
             currentTutorialInst = tutorials[code];
@@ -167,8 +179,12 @@ namespace Vintagestory.GameContent
             tutorialModeActiveForPlayers.Add(capi.World.Player.PlayerUID);
         }
 
-        private void toggleHud()
+        private TextCommandResult ToggleHud(TextCommandCallingArgs args)
         {
+            if (currentTutorialInst == null)
+            {
+                return TextCommandResult.Success("No current tutorial selected.");
+            }
             if (hud.IsOpened())
             {
                 hud.TryClose();
@@ -177,6 +193,7 @@ namespace Vintagestory.GameContent
                 hud.TryOpen();
                 hud.loadHud(currentTutorialInst.PageCode);
             }
+            return TextCommandResult.Success();
         }
 
         private void Event_LeaveWorld_Client()

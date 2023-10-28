@@ -20,6 +20,7 @@ namespace Vintagestory.GameContent
         ILoadedSound ambientSound;
 
 
+        public bool Lit => burning;
         public ItemStack Contents => contents;
         public float FuelLevel => fuelLevel;
 

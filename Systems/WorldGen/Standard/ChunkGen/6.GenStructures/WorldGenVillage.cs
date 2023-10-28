@@ -1,13 +1,9 @@
 ﻿using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
-using Vintagestory.ServerMods;
 
 namespace Vintagestory.ServerMods
 {
@@ -18,7 +14,6 @@ namespace Vintagestory.ServerMods
         public string Path;
         public int OffsetY = 0;
         public double Weight;
-
         public BlockSchematicStructure[] Structures;
     }
 
@@ -73,6 +68,10 @@ namespace Vintagestory.ServerMods
         public string BuildProtectionName = null;
         [JsonProperty]
         public Dictionary<AssetLocation, AssetLocation> RockTypeRemaps = null;
+        [JsonProperty]
+        public string RockTypeRemapGroup = null; // For rocktyped ruins
+        [JsonProperty]
+        public Dictionary<string, int> OffsetYByCode;
 
         internal int[] replaceblockids = new int[0];
         internal Dictionary<int, Dictionary<int, int>> resolvedRockTypeRemaps = null;
@@ -80,18 +79,15 @@ namespace Vintagestory.ServerMods
         LCGRandom rand;
         double totalWeight;
 
-        public void Init(ICoreServerAPI api, BlockLayerConfig config, RockStrataConfig rockstrata, LCGRandom rand)
+        public void Init(ICoreServerAPI api, BlockLayerConfig config, Dictionary<string, Dictionary<int, Dictionary<int, int>>> resolvedRocktypeRemapGroups, Dictionary<string, int> schematicYOffsets, int? defaultOffsetY, RockStrataConfig rockstrata, LCGRandom rand)
         {
             this.rand = rand;
             totalWeight = 0;
-            
+
             for (int i = 0; i < Schematics.Length; i++)
             {
                 List<BlockSchematicStructure> schematics = new List<BlockSchematicStructure>();
-
-                string error = "";
                 IAsset[] assets;
-
                 VillageSchematic schem = Schematics[i];
 
                 totalWeight += schem.Weight;
@@ -107,35 +103,9 @@ namespace Vintagestory.ServerMods
 
                 for (int j = 0; j < assets.Length; j++)
                 {
-                    IAsset asset = assets[j];
-
-                    BlockSchematicStructure schematic = asset.ToObject<BlockSchematicStructure>();
-
-                    if (schematic == null)
-                    {
-                        api.World.Logger.Warning("Could not load {0}: {1}", Schematics[i], error);
-                        continue;
-                    }
-
-
-                    schematic.FromFileName = asset.Name;
-
-                    BlockSchematicStructure[] rotations = new BlockSchematicStructure[4];
-                    rotations[0] = schematic;
-
-                    for (int k = 0; k < 4; k++)
-                    {
-                        if (k > 0)
-                        {
-                            rotations[k] = rotations[0].ClonePacked() as BlockSchematicStructure;
-                            rotations[k].TransformWhilePacked(api.World, EnumOrigin.BottomCenter, k * 90);
-                        }
-                        rotations[k].blockLayerConfig = config;
-                        rotations[k].Init(api.World.BlockAccessor);
-                        rotations[k].LoadMetaInformationAndValidate(api.World.BlockAccessor, api.World, schematic.FromFileName);
-                    }
-                    
-                    schematics.AddRange(rotations);
+                    int offsety = WorldGenStructureBase.getOffsetY(schematicYOffsets, defaultOffsetY, OffsetYByCode, assets[j]);
+                    var sch = WorldGenStructureBase.LoadSchematic<BlockSchematicStructure>(api, assets[j], config, offsety);
+                    if (sch != null) schematics.AddRange(sch);
                 }
 
                 schem.Structures = schematics.ToArray();
@@ -159,6 +129,12 @@ namespace Vintagestory.ServerMods
                 }
             }
 
+            // For rocktyped ruins
+            if (RockTypeRemapGroup != null)
+            {
+                resolvedRockTypeRemaps = resolvedRocktypeRemapGroups[RockTypeRemapGroup];
+            }
+
             if (RockTypeRemaps != null)
             {
                 resolvedRockTypeRemaps = WorldGenStructuresConfigBase.ResolveRockTypeRemaps(RockTypeRemaps, rockstrata, api);
@@ -167,14 +143,14 @@ namespace Vintagestory.ServerMods
 
 
         BlockPos tmpPos = new BlockPos();
-        int climateUpLeft, climateUpRight, climateBotLeft, climateBotRight;
+        //int climateUpLeft, climateUpRight, climateBotLeft, climateBotRight;
 
         public bool TryGenerate(IBlockAccessor blockAccessor, IWorldAccessor worldForCollectibleResolve, BlockPos pos, int climateUpLeft, int climateUpRight, int climateBotLeft, int climateBotRight, DidGenerate didGenerateStructure)
         {
-            this.climateUpLeft = climateUpLeft;
+            /*this.climateUpLeft = climateUpLeft;
             this.climateUpRight = climateUpRight;
             this.climateBotLeft = climateBotLeft;
-            this.climateBotRight = climateBotRight;
+            this.climateBotRight = climateBotRight;*/
 
             rand.InitPositionSeed(pos.X, pos.Z);
 
@@ -182,7 +158,6 @@ namespace Vintagestory.ServerMods
             int minQuantity = (int)cnt;
             BlockPos schemPos = pos.Copy();
             Cuboidi location = new Cuboidi();
-
 
             List<GeneratableStructure> generatables = new List<GeneratableStructure>();
 
@@ -236,9 +211,11 @@ namespace Vintagestory.ServerMods
                     val.struc.PlaceRespectingBlockLayers(blockAccessor, worldForCollectibleResolve, val.pos, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight, resolvedRockTypeRemaps, replaceblockids);
                     didGenerateStructure(val.location, val.struc);
                 }
+
+                return true;
             }
 
-            return true;
+            return false;
         }
 
 
@@ -250,7 +227,7 @@ namespace Vintagestory.ServerMods
             int widthHalf = (int)Math.Ceiling(schematic.SizeX / 2f);
             int lengthHalf = (int)Math.Ceiling(schematic.SizeZ / 2f);
 
-            pos.Y += schem.OffsetY;
+            pos.Y += schematic.OffsetY;
 
             // Probe all 4 corners + center if they are on the same height
 
@@ -272,7 +249,7 @@ namespace Vintagestory.ServerMods
             int diff = GameMath.Max(centerY, topLeftY, topRightY, botLeftY, botRightY) - GameMath.Min(centerY, topLeftY, topRightY, botLeftY, botRightY);
             if (diff > 2) return null;
 
-            pos.Y += centerY - pos.Y + 1 + schem.OffsetY;
+            pos.Y += centerY - pos.Y + 1 + schematic.OffsetY;
             if (pos.Y <= 0) return null;
 
             // Ensure not floating on water

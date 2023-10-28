@@ -1,10 +1,8 @@
-﻿using System;
-using Vintagestory.API.Client;
+﻿using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
-using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -42,9 +40,9 @@ namespace Vintagestory.GameContent
             return this.param == null ? hook : hook + " " + param;
         }
 
-        public override void OnPlacementBySchematic(ICoreServerAPI api, IBlockAccessor blockAccessor, BlockPos pos)
+        public override void OnPlacementBySchematic(ICoreServerAPI api, IBlockAccessor blockAccessor, BlockPos pos, Dictionary<int, Dictionary<int, int>> replaceBlocks, int centerrockblockid, Block layerBlock)
         {
-            base.OnPlacementBySchematic(api, blockAccessor, pos);
+            base.OnPlacementBySchematic(api, blockAccessor, pos, replaceBlocks, centerrockblockid, layerBlock);
             TriggerWorldgenHook(api, blockAccessor, pos, hook, param);
         }
 

@@ -100,8 +100,18 @@ namespace Vintagestory.GameContent
             }
 
             api.ModLoader.GetModSystem<GenStructures>().OnPreventSchematicPlaceAt += OnPreventSchematicPlaceAt;
+            
+            api.Event.ServerRunPhase(EnumServerRunPhase.RunGame,() =>
+            {
+                if (!genStoryStructures) return;
+                api.ChatCommands.Create("tpstoryloc")
+                    .WithDescription("Teleport to a story structure instance")
+                    .RequiresPrivilege(Privilege.controlserver)
+                    .RequiresPlayer()
+                    .WithArgs(api.ChatCommands.Parsers.WordRange("code", scfg.Structures.Select(s=> s.Code).ToArray()))
+                    .HandleWith(OnTpStoryLoc);
+            });
 
-            api.RegisterCommand("tpstoryloc", "", "", onTpStoryLoc, Privilege.controlserver);
 
             api.ChatCommands
                 .Create("setstorystrucpos")
@@ -187,22 +197,19 @@ namespace Vintagestory.GameContent
             }
         }
 
-        private void onTpStoryLoc(IServerPlayer player, int groupId, CmdArgs args)
+        private TextCommandResult OnTpStoryLoc(TextCommandCallingArgs args)
         {
-            string code = args.PopWord();
-            if (code == null) return;
+            if (args[0] is not string code) return TextCommandResult.Success();
 
             if (storyStructureInstances.TryGetValue(code, out var storystruc))
             {
                 var pos = storystruc.CenterPos.Copy();
                 pos.Y = (storystruc.Location.Y1 + storystruc.Location.Y2) / 2;
-                player.Entity.TeleportTo(pos);
-                player.SendMessage(groupId, "Teleporting to " + code, EnumChatType.CommandSuccess);
+                args.Caller.Entity.TeleportTo(pos);
+                return TextCommandResult.Success("Teleporting to " + code);
             }
-            else
-            {
-                player.SendMessage(groupId, "No such story structure, " + code, EnumChatType.CommandSuccess);
-            }
+
+            return TextCommandResult.Success("No such story structure, " + code);
 
         }
 

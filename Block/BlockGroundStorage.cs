@@ -10,7 +10,7 @@ using Vintagestory.API.Util;
 namespace Vintagestory.GameContent
 
 {
-    public class BlockGroundStorage : Block
+    public class BlockGroundStorage : Block, ICombustible
     {
         ItemStack[] groundStorablesQuadrants;
         ItemStack[] groundStorablesHalves;
@@ -441,8 +441,22 @@ namespace Vintagestory.GameContent
             return base.GetPlacedBlockInteractionHelp(world, selection, forPlayer);
         }
 
+        public float GetBurnDuration(IWorldAccessor world, BlockPos pos)
+        {
+            var beg = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityGroundStorage;
+            if (beg != null)
+            {
+                var stack = beg.Inventory.FirstNonEmptySlot?.Itemstack;
+                if (stack?.Collectible?.CombustibleProps == null) return 0;
 
+                float dur = stack.Collectible.CombustibleProps.BurnDuration;
+                if (dur == 0) return 0;
 
+                return GameMath.Clamp(dur * (float)Math.Log(stack.StackSize), 1, 120);
+            }
+
+            return 0;
+        }
     }
 
 

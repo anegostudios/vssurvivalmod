@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -427,7 +425,7 @@ namespace Vintagestory.GameContent
         {
             KeyValuePair<ItemStack, int> contents = GetContents(api.World, itemStack);
 
-            string mat = contents.Key.Collectible.Variant["metal"];
+            string mat = contents.Key?.Collectible.Variant["metal"];
 
             if (HasSolidifed(itemStack, contents.Key, api.World))
             {
@@ -484,7 +482,7 @@ namespace Vintagestory.GameContent
 
         public bool HasSolidifed(ItemStack ownStack, ItemStack contentstack, IWorldAccessor world)
         {
-            if (ownStack?.Collectible == null) return false;
+            if (ownStack?.Collectible == null || contentstack == null) return false;
 
             return ownStack.Collectible.GetTemperature(world, ownStack) < 0.9 * contentstack.Collectible.GetMeltingPoint(world, null, null);
         }

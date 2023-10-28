@@ -85,23 +85,26 @@ namespace Vintagestory.GameContent
 
             double dy = desiredYPos - entity.ServerPos.Y;
             double yMot = GameMath.Clamp(dy, -1, 1);
-
-            
             float yawDist = GameMath.AngleRadDistance(entity.ServerPos.Yaw, desiredYaw);
 
             if (!entity.FeetInLiquid)
             {
                 entity.ServerPos.Yaw += GameMath.Clamp(yawDist, -curTurnRadPerSec * dt * (yMot < 0 ? 0.25f : 1), curTurnRadPerSec * dt * (yMot < 0 ? 0.25f : 1));
                 entity.ServerPos.Yaw = entity.ServerPos.Yaw % GameMath.TWOPI;
+            } else
+            {
+                if (entity.World.Rand.NextDouble() < 0.001)
+                {
+                    entity.ServerPos.Motion.Y = 0.02f;
+                }
             }
+
 
             double cosYaw = Math.Cos(entity.ServerPos.Yaw);
             double sinYaw = Math.Sin(entity.ServerPos.Yaw);
             entity.Controls.WalkVector.Set(sinYaw, yMot, cosYaw);
             entity.Controls.WalkVector.Mul(moveSpeed);
-
             if (yMot < 0) entity.Controls.WalkVector.Mul(0.75);
-            
 
             if (entity.Swimming)
             {
@@ -113,7 +116,6 @@ namespace Vintagestory.GameContent
             {
                 wanderDuration -= 10 * dt;
             }
-
 
             return wanderDuration > 0;
         }

@@ -1,9 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -84,6 +79,7 @@ namespace Vintagestory.GameContent
             ModelMat.Set(rpi.CameraMatrixOriginf).Translate(pos.X - camPos.X, pos.Y - camPos.Y, pos.Z - camPos.Z);
             outLineColorMul.A = 1 - GameMath.Clamp((float)Math.Sqrt(plrPos.SquareDistanceTo(pos.X, pos.Y, pos.Z)) / 5 - 1f, 0, 1);
 
+            rpi.LineWidth = api.Settings.Float["wireframethickness"];
             rpi.GLEnableDepthTest();
             rpi.GlToggleBlend(true);
             IShaderProgram prog = rpi.GetEngineShader(EnumShaderProgram.Wireframe);

@@ -71,7 +71,7 @@ namespace Vintagestory.GameContent
             if (obj == null) throw new ArgumentNullException("obj cannot be null");
             if (obj.Attributes?["waterTightContainerProps"].Exists == null) throw new ArgumentException("This collectible object has no waterTightContainerProps");
 
-            capi.Event.RegisterItemstackRenderer(obj, (inSlot, renderInfo, modelMat, posX, posY, posZ, size, color, rotate, showStackSize) => RenderLiquidItemStackGui(inSlot, renderInfo, modelMat, posX, posY, posZ, size, color, rotate, showStackSize), EnumItemRenderTarget.Gui);
+            capi.Event.RegisterItemstackRenderer(obj, RenderLiquidItemStackGui, EnumItemRenderTarget.Gui);
         }
 
 
@@ -81,7 +81,7 @@ namespace Vintagestory.GameContent
 
             WaterTightContainableProps props = BlockLiquidContainerBase.GetContainableProps(itemstack);
 
-            capi.Render.RenderMesh(renderInfo.ModelRef);
+            capi.Render.RenderMultiTextureMesh(renderInfo.ModelRef, "tex2d");
 
 
             if (showStackSize)

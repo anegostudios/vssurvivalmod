@@ -1,7 +1,4 @@
-﻿using Vintagestory.API;
-using Vintagestory.API.Common;
-using Vintagestory.API.Common.Entities;
-using Vintagestory.API.Datastructures;
+﻿using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent

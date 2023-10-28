@@ -1,6 +1,4 @@
-﻿using Vintagestory.API;
-using Vintagestory.API.Common;
-using Vintagestory.API.Common.Entities;
+﻿using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;

@@ -3,6 +3,10 @@ using System.Collections.Generic;
 
 namespace Vintagestory.GameContent
 {
+    /// <summary>
+    /// Useful for lists of structs
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
     public class RefList<T>
     {
         private T[] elements;

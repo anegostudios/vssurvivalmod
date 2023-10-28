@@ -1,11 +1,6 @@
-﻿using Newtonsoft.Json;
-using ProtoBuf;
+﻿using ProtoBuf;
 using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -72,63 +67,74 @@ namespace Vintagestory.ServerMods
             api.Network.GetChannel("upgradeTasks").SetMessageHandler<UpgradeHerePacket>(didUseBlock);
 
             api.Event.DidBreakBlock += Event_DidBreakBlock;
-
-            api.RegisterCommand("upgradearea", "Fixes chiseled blocks, pots and planters broken in v1.13", "", onUpgradeCmd, "worldedit");
-            api.RegisterCommand("setchiselblockmat", "Sets the material of a currently looked at chisel block to the material in the active hands", "", onSetChiselMat, "worldedit");
-            api.RegisterCommand("setchiseleditable", "Upgrade/Downgrade chiseled blocks to an editable/non-editable state in given area", "", onSetChiselEditable, "worldedit");
+            var parsers = api.ChatCommands.Parsers;
+            api.ChatCommands.GetOrCreate("we")
+                .BeginSubCommand("chisel")
+                    .BeginSubCommand("upgradearea")
+                        .WithDescription("Fixes chiseled blocks, pots and planters broken in v1.13")
+                        .HandleWith(OnUpgradeCmd)
+                    .EndSubCommand()
+                    
+                    .BeginSubCommand("setchiselblockmat")
+                        .WithDescription("Sets the material of a currently looked at chisel block to the material in the active hands")
+                        .HandleWith(OnSetChiselMat)
+                    .EndSubCommand()
+                    
+                    .BeginSubCommand("setchiseleditable")
+                        .WithDescription("Upgrade/Downgrade chiseled blocks to an editable/non-editable state in given area")
+                        .WithArgs(parsers.Bool("editable"), parsers.Bool("resetName"))
+                        .HandleWith(OnSetChiselEditable)
+                    .EndSubCommand()
+                .EndSubCommand();
         }
 
-        private void onSetChiselMat(IServerPlayer player, int groupId, CmdArgs args)
+        private TextCommandResult OnSetChiselMat(TextCommandCallingArgs textCommandCallingArgs)
         {
+            var player = textCommandCallingArgs.Caller.Player;
             BlockPos pos = player.CurrentBlockSelection?.Position;
             if (pos == null)
             {
-                player.SendMessage(groupId, "Look at a block first", EnumChatType.CommandError);
-                return;
+                return TextCommandResult.Success("Look at a block first");
             }
 
             BlockEntityChisel bechisel = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityChisel;
             if (bechisel == null)
             {
-                player.SendMessage(groupId, "Not looking at a chiseled block", EnumChatType.CommandError);
-                return;
+                return TextCommandResult.Success("Not looking at a chiseled block");
             }
 
             Block block = player.InventoryManager?.ActiveHotbarSlot?.Itemstack?.Block;
 
             if (block == null)
             {
-                player.SendMessage(groupId, "You need a block in your active hand", EnumChatType.CommandError);
-                return;
+                return TextCommandResult.Success("You need a block in your active hand");
             }
 
-            for (int i = 0; i < bechisel.MaterialIds.Length; i++)
+            for (int i = 0; i < bechisel.BlockIds.Length; i++)
             {
-                bechisel.MaterialIds[i] = block.Id;
+                bechisel.BlockIds[i] = block.Id;
             }
 
             bechisel.MarkDirty(true);
-            player.SendMessage(groupId, "Ok material set", EnumChatType.CommandError);
-            return;
+            return TextCommandResult.Success("Ok material set");
         }
 
-
-
-        private void onSetChiselEditable(IServerPlayer player, int groupId, CmdArgs args)
+        private TextCommandResult OnSetChiselEditable(TextCommandCallingArgs args)
         {
+            var player = args.Caller.Player;
             var wmod = api.ModLoader.GetModSystem<WorldEdit.WorldEdit>();
 
             var workspace = wmod.GetWorkSpace(player.PlayerUID);
 
             if (workspace == null || workspace.StartMarker == null || workspace.EndMarker == null)
             {
-                player.SendMessage(groupId, "Select an area with worldedit first", EnumChatType.CommandError);
-                return;
+                return TextCommandResult.Success("Select an area with worldedit first");
             }
 
-            bool editable = args.PopBool() == true;
-            bool resetName = args.PopBool() == true;
-
+            var editable = (bool)args.Parsers[0].GetValue();
+            var resetName = (bool)args.Parsers[1].GetValue();
+            
+            
             Block chiselBlock = api.World.GetBlock(new AssetLocation("chiseledblock"));
             Block microblock = api.World.GetBlock(new AssetLocation("microblock"));
 
@@ -170,29 +176,28 @@ namespace Vintagestory.ServerMods
 
                             if (resetName)
                             {
-                                be.BlockName = api.World.BlockAccessor.GetBlock(be.MaterialIds[0]).GetPlacedBlockName(api.World, pos);
+                                be.BlockName = api.World.BlockAccessor.GetBlock(be.BlockIds[0]).GetPlacedBlockName(api.World, pos);
                             }
                         }
                     }
                 }
             }
 
-            player.SendMessage(groupId, string.Format("Ok. {0} Chisel blocks exchanged", cnt), EnumChatType.CommandSuccess);
+            return TextCommandResult.Success(string.Format("Ok. {0} Chisel blocks exchanged", cnt));
         }
 
 
 
 
-        private void onUpgradeCmd(IServerPlayer player, int groupId, CmdArgs args)
+        private TextCommandResult OnUpgradeCmd(TextCommandCallingArgs textCommandCallingArgs)
         {
             var wmod = api.ModLoader.GetModSystem<WorldEdit.WorldEdit>();
 
-            var workspace = wmod.GetWorkSpace(player.PlayerUID);
+            var workspace = wmod.GetWorkSpace(textCommandCallingArgs.Caller.Player.PlayerUID);
 
             if (workspace == null || workspace.StartMarker == null || workspace.EndMarker == null)
             {
-                player.SendMessage(groupId, "Select an area with worldedit first", EnumChatType.CommandError);
-                return;
+                return TextCommandResult.Success("Select an area with worldedit first");
             }
 
             int startx = Math.Min(workspace.StartMarker.X, workspace.EndMarker.X);
@@ -224,13 +229,13 @@ namespace Vintagestory.ServerMods
                         if (block is BlockChisel)
                         {
                             BlockEntityChisel bechisel = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityChisel;
-                            if (bechisel.MaterialIds != null && bechisel.MaterialIds.Length > 0 && bechisel.MaterialIds[0] == graniteBlockId)
+                            if (bechisel.BlockIds != null && bechisel.BlockIds.Length > 0 && bechisel.BlockIds[0] == graniteBlockId)
                             {
 
                                 Block matblock = null;
                                 if (blocksByName.TryGetValue(bechisel.BlockName, out matblock))
                                 {
-                                    bechisel.MaterialIds[0] = matblock.Id;
+                                    bechisel.BlockIds[0] = matblock.Id;
                                     bechisel.MarkDirty(true);
                                 }
                             }
@@ -243,6 +248,7 @@ namespace Vintagestory.ServerMods
                     }
                 }
             }
+            return TextCommandResult.Success();
         }
 
         private void didUseBlock(IServerPlayer fromPlayer, UpgradeHerePacket networkMessage)

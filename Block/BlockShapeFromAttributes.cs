@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -15,13 +16,17 @@ namespace Vintagestory.GameContent
     {
         ICoreClientAPI capi;
         Shape shape;
+        string filenameForLogging;
         public Dictionary<string, CompositeTexture> textures = new Dictionary<string, CompositeTexture>();
         public TextureAtlasPosition firstTexPos;
 
-        public ShapeTextureSource(ICoreClientAPI capi, Shape shape)
+        HashSet<AssetLocation> missingTextures = new HashSet<AssetLocation>();
+
+        public ShapeTextureSource(ICoreClientAPI capi, Shape shape, string filenameForLogging)
         {
             this.capi = capi;
             this.shape = shape;
+            this.filenameForLogging = filenameForLogging;
         }
 
         public TextureAtlasPosition this[string textureCode]
@@ -35,6 +40,17 @@ namespace Vintagestory.GameContent
                     texturePath = ctex.Baked.BakedName;
                 } else {
                     shape.Textures.TryGetValue(textureCode, out texturePath);
+                }
+
+                if (texturePath == null)
+                {
+                    if (!missingTextures.Contains(texturePath))
+                    {
+                        capi.Logger.Warning("Shape {0} has an element using texture code {1}, but no such texture exists", filenameForLogging, textureCode);
+                        missingTextures.Add(texturePath);
+                    }
+                    
+                    return capi.BlockTextureAtlas.UnknownTexturePosition;
                 }
 
                 capi.BlockTextureAtlas.GetOrInsertTexture(texturePath, out _, out var texPos);
@@ -120,10 +136,10 @@ namespace Vintagestory.GameContent
 
             if (api is ICoreClientAPI capi)
             {
-                Dictionary<string, MeshRef> clutterMeshRefs = ObjectCacheUtil.TryGet<Dictionary<string, MeshRef>>(capi, ClassType + "MeshesInventory");
+                Dictionary<string, MultiTextureMeshRef> clutterMeshRefs = ObjectCacheUtil.TryGet<Dictionary<string, MultiTextureMeshRef>>(capi, ClassType + "MeshesInventory");
                 if (clutterMeshRefs != null)
                 {
-                    foreach (MeshRef mesh in clutterMeshRefs.Values) mesh.Dispose();
+                    foreach (MultiTextureMeshRef mesh in clutterMeshRefs.Values) mesh.Dispose();
                     ObjectCacheUtil.Delete(capi, ClassType + "MeshesInventory");
                 }
             }
@@ -140,7 +156,7 @@ namespace Vintagestory.GameContent
                 cprops.ShapeResolved = api.Assets.TryGet(cprops.ShapePath)?.ToObject<Shape>();
                 if (cprops.ShapeResolved == null)
                 {
-                    api.Logger.Error("Could not find "+ClassType+" shape " + cprops.ShapePath);
+                    api.Logger.Error("Block {0}: Could not find {1}, type {2} shape '{3}'.", this.Code, ClassType, cprops.Code, cprops.ShapePath);
                     continue;
                 }
                 var textures = new FastSmallDictionary<string, CompositeTexture>(1);
@@ -318,9 +334,9 @@ namespace Vintagestory.GameContent
         {
             base.OnBeforeRender(capi, itemstack, target, ref renderinfo);
 
-            Dictionary<string, MeshRef> clutterMeshRefs;
-            clutterMeshRefs = ObjectCacheUtil.GetOrCreate(capi, ClassType + "MeshesInventory", () => new Dictionary<string, MeshRef>());
-            MeshRef meshref;
+            Dictionary<string, MultiTextureMeshRef> clutterMeshRefs;
+            clutterMeshRefs = ObjectCacheUtil.GetOrCreate(capi, ClassType + "MeshesInventory", () => new Dictionary<string, MultiTextureMeshRef>());
+            MultiTextureMeshRef meshref;
 
             string type = itemstack.Attributes.GetString("type", "");
             var cprops = GetTypeProps(type, itemstack, null);
@@ -337,7 +353,7 @@ namespace Vintagestory.GameContent
             {
                 MeshData mesh = GetOrCreateMesh(cprops, null, otcode);
                 mesh = mesh.Clone().Rotate(new Vec3f(0.5f, 0.5f, 0.5f), rotX, rotY, rotZ);
-                meshref = capi.Render.UploadMesh(mesh);
+                meshref = capi.Render.UploadMultiTextureMesh(mesh);
                 clutterMeshRefs[hashkey] = meshref;
             }
 
@@ -444,7 +460,7 @@ namespace Vintagestory.GameContent
                 // Prio 0: Shape textures
                 if (texSource == null)
                 {
-                    var stexSource = new ShapeTextureSource(capi, shape);
+                    var stexSource = new ShapeTextureSource(capi, shape, cprops.ShapePath.ToString());
                     texSource = stexSource;
 
                     // Prio 1: Block wide custom textures

@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using Vintagestory.API;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
@@ -222,7 +220,7 @@ namespace Vintagestory.ServerMods
                     typeToSpawn = grouptypes[1 + rnd.Next(grouptypes.Length - 1)];
                 }
 
-                IBlockAccessor blockAccesssor = wgenBlockAccessor.GetChunkAtBlockPos(pos.X, pos.Y, pos.Z) == null ? api.World.BlockAccessor : wgenBlockAccessor;
+                IBlockAccessor blockAccesssor = wgenBlockAccessor.GetChunkAtBlockPos(pos) == null ? api.World.BlockAccessor : wgenBlockAccessor;
 
                 IMapChunk mapchunk = blockAccesssor.GetMapChunkAtBlockPos(pos);
                 if (mapchunk != null)
@@ -278,7 +276,7 @@ namespace Vintagestory.ServerMods
                     api.Logger.VerboseDebug("worldgen spawned one " + so.ForType.Code.Path);
 #endif
 
-                    if (wgenBlockAccessor.GetChunkAtBlockPos(pos.X, pos.Y, pos.Z) == null)
+                    if (wgenBlockAccessor.GetChunkAtBlockPos(pos) == null)
                     {
                         api.World.SpawnEntity(ent);
                     }

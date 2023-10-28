@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -84,8 +80,12 @@ namespace Vintagestory.GameContent
             Block block = Api.World.BlockAccessor.GetBlock(pos);
             if (block.CombustibleProps != null) return block.CombustibleProps.BurnDuration;
 
-            int firewoodq = BlockFirepit.GetFireWoodQuanity(Api.World, pos); // Currently hardcoded, awaiting combustible rewrite as a blockbehavior or as interface
-            return firewoodq > 0 ? 35 : 0;
+            if (block is ICombustible bic)
+            {
+                return bic.GetBurnDuration(Api.World, pos);
+            }
+
+            return 0;
         }
 
         public override void Initialize(ICoreAPI api, JsonObject properties)

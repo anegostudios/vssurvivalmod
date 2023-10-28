@@ -1,16 +1,10 @@
-﻿using ProtoBuf;
-using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
-using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
-using Vintagestory.API.Server;
-using Vintagestory.GameContent;
 
 
 namespace Vintagestory.GameContent
@@ -109,18 +103,18 @@ namespace Vintagestory.GameContent
         }
 
 
-        public MeshRef GetOrCreatePieMeshRef(ItemStack pieStack)
+        public MultiTextureMeshRef GetOrCreatePieMeshRef(ItemStack pieStack)
         {
-            Dictionary<int, MeshRef> meshrefs;
+            Dictionary<int, MultiTextureMeshRef> meshrefs;
 
             object obj;
             if (capi.ObjectCache.TryGetValue("pieMeshRefs", out obj))
             {
-                meshrefs = obj as Dictionary<int, MeshRef>;
+                meshrefs = obj as Dictionary<int, MultiTextureMeshRef>;
             }
             else
             {
-                capi.ObjectCache["pieMeshRefs"] = meshrefs = new Dictionary<int, MeshRef>();
+                capi.ObjectCache["pieMeshRefs"] = meshrefs = new Dictionary<int, MultiTextureMeshRef>();
             }
 
             if (pieStack == null) return null;
@@ -132,14 +126,14 @@ namespace Vintagestory.GameContent
 
             int mealhashcode = GetMealHashCode(pieStack.Block, contentStacks, null, extrakey);
 
-            MeshRef mealMeshRef;
+            MultiTextureMeshRef mealMeshRef;
 
             if (!meshrefs.TryGetValue(mealhashcode, out mealMeshRef))
             {
                 MeshData mesh = GetPieMesh(pieStack);
                 if (mesh == null) return null;
 
-                meshrefs[mealhashcode] = mealMeshRef = capi.Render.UploadMesh(mesh);
+                meshrefs[mealhashcode] = mealMeshRef = capi.Render.UploadMultiTextureMesh(mesh);
             }
 
             return mealMeshRef;
@@ -257,31 +251,31 @@ namespace Vintagestory.GameContent
             new AssetLocation("block/food/pie/fill-mixedcheese") 
         };
 
-        public MeshRef GetOrCreateMealInContainerMeshRef(Block containerBlock, CookingRecipe forRecipe, ItemStack[] contentStacks, Vec3f foodTranslate = null)
+        public MultiTextureMeshRef GetOrCreateMealInContainerMeshRef(Block containerBlock, CookingRecipe forRecipe, ItemStack[] contentStacks, Vec3f foodTranslate = null)
         {
-            Dictionary<int, MeshRef> meshrefs;
+            Dictionary<int, MultiTextureMeshRef> meshrefs;
 
             object obj;
             if (capi.ObjectCache.TryGetValue("cookedMeshRefs", out obj))
             {
-                meshrefs = obj as Dictionary<int, MeshRef>;
+                meshrefs = obj as Dictionary<int, MultiTextureMeshRef>;
             }
             else
             {
-                capi.ObjectCache["cookedMeshRefs"] = meshrefs = new Dictionary<int, MeshRef>();
+                capi.ObjectCache["cookedMeshRefs"] = meshrefs = new Dictionary<int, MultiTextureMeshRef>();
             }
 
             if (contentStacks == null) return null;
 
             int mealhashcode = GetMealHashCode(containerBlock, contentStacks, foodTranslate);
 
-            MeshRef mealMeshRef;
+            MultiTextureMeshRef mealMeshRef;
 
             if (!meshrefs.TryGetValue(mealhashcode, out mealMeshRef))
             {
                 MeshData mesh = GenMealInContainerMesh(containerBlock, forRecipe, contentStacks, foodTranslate);
                 
-                meshrefs[mealhashcode] = mealMeshRef = capi.Render.UploadMesh(mesh);
+                meshrefs[mealhashcode] = mealMeshRef = capi.Render.UploadMultiTextureMesh(mesh);
             }
 
             return mealMeshRef;
@@ -466,7 +460,7 @@ namespace Vintagestory.GameContent
             object obj;
             if (capi.ObjectCache.TryGetValue("cookedMeshRefs", out obj))
             {
-                Dictionary<int, MeshRef> meshrefs = obj as Dictionary<int, MeshRef>;
+                Dictionary<int, MultiTextureMeshRef> meshrefs = obj as Dictionary<int, MultiTextureMeshRef>;
 
                 foreach (var val in meshrefs)
                 {

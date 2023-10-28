@@ -1,5 +1,4 @@
 ﻿using System;
-using Vintagestory.API;
 
 
 namespace Vintagestory.ServerMods

@@ -174,6 +174,13 @@ namespace Vintagestory.GameContent
             return base.GetLightHsv(blockAccessor, pos, stack);
         }
 
+        EnumIgniteState IIgnitable.OnTryIgniteStack(EntityAgent byEntity, BlockPos pos, ItemSlot slot, float secondsIgniting)
+        {
+            BlockEntityCoalPile bea = byEntity.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityCoalPile;
+            if (bea.IsBurning) return secondsIgniting > 2 ? EnumIgniteState.IgniteNow : EnumIgniteState.Ignitable;
+            return EnumIgniteState.NotIgnitable;
+        }
+
 
         public EnumIgniteState OnTryIgniteBlock(EntityAgent byEntity, BlockPos pos, float secondsIgniting)
         {

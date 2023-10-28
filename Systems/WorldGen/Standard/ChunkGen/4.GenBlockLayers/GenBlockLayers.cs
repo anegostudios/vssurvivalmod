@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using Vintagestory.API;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -14,17 +13,16 @@ namespace Vintagestory.ServerMods
         private ICoreServerAPI api;
         
         List<int> BlockLayersIds = new List<int>();
-        int[] layersUnderWater = new int[0];
         LCGRandom rnd;
         int mapheight;
         ClampedSimplexNoise grassDensity;
         ClampedSimplexNoise grassHeight;
-        RockStrataVariant dummyRock;
-        public BlockLayerConfig blockLayerConfig;
-        public SimplexNoise distort2dx;
         SimplexNoise distort2dz;
         int boilingWaterBlockId;
 
+        public int[] layersUnderWater = new int[0];
+        public BlockLayerConfig blockLayerConfig;
+        public SimplexNoise distort2dx;
 
         public override bool ShouldLoad(EnumAppSide side)
         {
@@ -47,8 +45,6 @@ namespace Vintagestory.ServerMods
                 this.api.Event.MapRegionGeneration(OnMapRegionGen, "standard");
                 this.api.Event.ChunkColumnGeneration(OnChunkColumnGeneration, EnumWorldGenPass.Terrain, "standard");
             }
-
-            dummyRock = new RockStrataVariant() { SoilpH = 6.5f, WeatheringFactor = 1f };
 
             distort2dx = new SimplexNoise(new double[] { 14, 9, 6, 3 }, new double[] { 1 / 100.0, 1 / 50.0, 1 / 25.0, 1 / 12.5 }, api.World.SeaLevel + 20980);
             distort2dz = new SimplexNoise(new double[] { 14, 9, 6, 3 }, new double[] { 1 / 100.0, 1 / 50.0, 1 / 25.0, 1 / 12.5 }, api.World.SeaLevel + 20981);
@@ -188,8 +184,8 @@ namespace Vintagestory.ServerMods
 
                     if (rocky < TerraGenConfig.seaLevel)
                     {
-                        // If rain below 50%, raise by up to 12 blocks
-                        float raise = Math.Max(0, (0.5f - rainRel) * 24);
+                        // If rain below 50%, raise by up to 20 blocks
+                        float raise = Math.Max(0, (0.5f - rainRel) * 40);
 
                         int sealevelrise = (int)Math.Min(raise, TerraGenConfig.seaLevel - rocky);
                         int curSealevel = chunks[0].MapChunk.WorldGenTerrainHeightMap[z * chunksize + x];

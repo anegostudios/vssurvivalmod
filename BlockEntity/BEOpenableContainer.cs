@@ -1,12 +1,9 @@
-﻿using System.Collections.Generic;
-using System.IO;
+﻿using System.IO;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
-using Vintagestory.API.Server;
 
 namespace Vintagestory.GameContent
 {
@@ -75,7 +72,7 @@ namespace Vintagestory.GameContent
                 Inventory.InvNetworkUtil.HandleClientPacket(player, packetid, data);
 
                 // Tell server to save this chunk to disk again
-                Api.World.BlockAccessor.GetChunkAtBlockPos(Pos.X, Pos.Y, Pos.Z).MarkModified();
+                Api.World.BlockAccessor.GetChunkAtBlockPos(Pos).MarkModified();
 
                 return;
             }

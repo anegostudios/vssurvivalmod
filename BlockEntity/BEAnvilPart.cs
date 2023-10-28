@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -13,9 +9,9 @@ namespace Vintagestory.GameContent
 {
     public class BlockEntityAnvilPart : BlockEntityContainer
     {
-        public MeshRef BaseMeshRef;
-        public MeshRef FluxMeshRef;
-        public MeshRef TopMeshRef;
+        public MultiTextureMeshRef BaseMeshRef;
+        public MultiTextureMeshRef FluxMeshRef;
+        public MultiTextureMeshRef TopMeshRef;
 
 
         InventoryGeneric inv;
@@ -55,14 +51,14 @@ namespace Vintagestory.GameContent
             {
                 MeshData meshdata;
                 capi.Tesselator.TesselateShape(Block, API.Common.Shape.TryGet(Api, "shapes/block/metal/anvil/build-flux.json"), out meshdata);
-                FluxMeshRef = capi.Render.UploadMesh(meshdata);
+                FluxMeshRef = capi.Render.UploadMultiTextureMesh(meshdata);
             }
             
             if (!inv[2].Empty && TopMeshRef == null)
             {
                 MeshData meshdata;
                 capi.Tesselator.TesselateShape(Block, API.Common.Shape.TryGet(Api, "shapes/block/metal/anvil/build-top.json"), out meshdata);
-                TopMeshRef = capi.Render.UploadMesh(meshdata);
+                TopMeshRef = capi.Render.UploadMultiTextureMesh(meshdata);
             }
         }
 

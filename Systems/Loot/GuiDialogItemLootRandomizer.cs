@@ -1,26 +1,31 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 
 namespace Vintagestory.GameContent
 {
-    /// <summary>
-    /// Concept:
-    /// 10 slots vertically stacked
-    /// on the right side 2 text inputs: Min chance / max chance in %
-    /// right top: 2 extra text inputs: "min/max no loot chance"
-    /// </summary>
     public class GuiDialogItemLootRandomizer : GuiDialogGeneric
     {
-        InventoryGeneric inv;
+        InventoryBase inv;
         bool save = false;
 
-        public GuiDialogItemLootRandomizer(ItemStack[] stacks, float[] chances, ICoreClientAPI capi) : base("Item Loot Randomizer", capi)
+        public GuiDialogItemLootRandomizer(InventoryBase inv, float[] chances, ICoreClientAPI capi, string title = "Item Loot Randomizer") : base(title, capi)
+        {
+            this.inv = inv;
+            createDialog(chances, title);
+        }
+
+        public GuiDialogItemLootRandomizer(ItemStack[] stacks, float[] chances, ICoreClientAPI capi, string title = "Item Loot Randomizer") : base(title, capi)
+        {
+            inv = new InventoryGeneric(10, "lootrandomizer-1", capi, null);
+            for (int i = 0; i < 10; i++) inv[i].Itemstack = stacks[i];
+
+            createDialog(chances, title);
+        }
+
+        private void createDialog(float[] chances, string title)
         {
             double pad = GuiElementItemSlotGrid.unscaledSlotPadding;
 
@@ -35,8 +40,7 @@ namespace Vintagestory.GameContent
             ElementBounds bgBounds = ElementBounds.Fill.WithFixedPadding(GuiStyle.ElementToDialogPadding);
             bgBounds.BothSizing = ElementSizing.FitToChildren;
 
-            inv = new InventoryGeneric(10, "lootrandomizer-1", capi, null);
-            for (int i = 0; i < 10; i++) inv[i].Itemstack = stacks[i];
+
 
             ElementBounds dialogBounds = ElementStdBounds
                 .AutosizedMainDialog.WithAlignment(EnumDialogArea.CenterMiddle)
@@ -44,11 +48,11 @@ namespace Vintagestory.GameContent
 
             float totalChance = chances.Sum();
             string text = "Total chance: " + (int)totalChance + "%";
-            
+
             SingleComposer = capi.Gui
                 .CreateCompo("itemlootrandomizer", dialogBounds)
                 .AddShadedDialogBG(bgBounds, true)
-                .AddDialogTitleBar("Item Loot Randomizer", OnTitleBarClose)
+                .AddDialogTitleBar(title, OnTitleBarClose)
                 .BeginChildElements(bgBounds)
                     .AddItemSlotGrid(inv, SendInvPacket, 10, slotBounds, "slots")
                     .AddNumberInput(chanceInputBounds = chanceInputBounds.FlatCopy(), (t) => OnTextChanced(0), CairoFont.WhiteDetailText(), "chance1")
@@ -77,13 +81,9 @@ namespace Vintagestory.GameContent
                 inp.SetValue("" + chances[i]);
             }
 
-            
-        
-
             SingleComposer.GetSlotGrid("slots").CanClickSlot = OnCanClickSlot;
         }
 
-        
         private bool OnSaveClicked()
         {
             save = true;
@@ -124,7 +124,6 @@ namespace Vintagestory.GameContent
                 totalChance += inp.GetValue();
             }
 
-            float chanceForMissingOnes = 100 / Math.Max(1, quantityFilledSlots);
             float scaleValue = 100f / totalChance;
 
             int totalNew = 0;
@@ -140,8 +139,6 @@ namespace Vintagestory.GameContent
                 }
 
                 int newVal = (int)(inp.GetValue() * scaleValue);
-
-                
 
                 if (inp.GetText().Length != 0)
                 {
@@ -176,7 +173,6 @@ namespace Vintagestory.GameContent
                 
             }
 
-
             inv[slotID].MarkDirty();
             UpdateRatios();
 
@@ -195,10 +191,6 @@ namespace Vintagestory.GameContent
             TryClose();
         }
 
-        public void ReloadValues()
-        {
-            
-        }
 
         public override string ToggleKeyCombinationCode
         {
@@ -219,7 +211,6 @@ namespace Vintagestory.GameContent
                     if (stack == null) continue;
 
                     GuiElementNumberInput inp = SingleComposer.GetNumberInput("chance" + (i + 1));
-
                     TreeAttribute subtree = new TreeAttribute();
                     subtree.SetItemstack("stack", stack.Clone());
                     subtree.SetFloat("chance", inp.GetValue());

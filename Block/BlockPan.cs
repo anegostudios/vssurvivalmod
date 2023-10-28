@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -149,7 +147,7 @@ namespace Vintagestory.GameContent
 
             string key = "pan-filled-" + blockMaterialCode + target;
 
-            renderinfo.ModelRef = ObjectCacheUtil.GetOrCreate<MeshRef>(capi, key, () =>
+            renderinfo.ModelRef = ObjectCacheUtil.GetOrCreate(capi, key, () =>
             {
                 AssetLocation shapeloc = new AssetLocation("shapes/block/wood/pan/filled.json");
                 Shape shape = API.Common.Shape.TryGet(capi, shapeloc);
@@ -162,7 +160,7 @@ namespace Vintagestory.GameContent
 
                 capi.Tesselator.TesselateShape("filledpan", shape, out meshdata, this);
 
-                return capi.Render.UploadMesh(meshdata);
+                return capi.Render.UploadMultiTextureMesh(meshdata);
             });
         }
 

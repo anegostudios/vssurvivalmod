@@ -163,5 +163,6 @@ namespace Vintagestory.GameContent
             Vec3d pos = new Vec3d(c.X + 0.5, c.Y + 0.5, c.Z + 0.5);
             return pos;
         }
+
     }
 }

@@ -30,8 +30,8 @@ namespace Vintagestory.GameContent
                 return result;
             }
         }
-        public string basePath;
 
+        public string basePath;
         AssetLocation woodbackPanelShapePath;
 
         public override void LoadTypes()
@@ -218,7 +218,7 @@ namespace Vintagestory.GameContent
             if (texSource == null)
             {
                 // Prio 0: Shape textures
-                stexSource = new ShapeTextureSource(capi, shape);
+                stexSource = new ShapeTextureSource(capi, shape, cprops.ShapePath.ToString());
                 texSource = stexSource;
 
                 // Prio 1: Block wide custom textures
@@ -239,7 +239,7 @@ namespace Vintagestory.GameContent
                 mesh.Translate(0, 0, 0.5f);
 
                 shape = bprops.Variant == "full" ? capi.Assets.TryGet(woodbackPanelShapePath)?.ToObject<Shape>() : bprops.ShapeResolved2;
-                texSource = new ShapeTextureSource(capi, shape);
+                texSource = new ShapeTextureSource(capi, shape, (bprops.Variant == "full" ? woodbackPanelShapePath : bprops.ShapePath2).ToString());
                 // Prio 1: Block wide custom textures
                 if (blockTextures != null && stexSource != null)
                 {
@@ -252,8 +252,7 @@ namespace Vintagestory.GameContent
 
                 capi.Tesselator.TesselateShape(ClassType + "block", shape, out var mesh2, texSource);
 
-                mesh2.Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 0, GameMath.PI, 0).Translate(0, 0, -0.5f);
-
+                //mesh2.Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 0, GameMath.PI, 0).Translate(0, 0, -0.5f);
                 mesh.AddMeshData(mesh2);
             }
 

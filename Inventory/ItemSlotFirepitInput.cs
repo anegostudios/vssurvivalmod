@@ -1,6 +1,4 @@
-﻿using System;
-using Vintagestory.API.Common;
-using Vintagestory.API.Config;
+﻿using Vintagestory.API.Config;
 
 namespace Vintagestory.API.Common
 {

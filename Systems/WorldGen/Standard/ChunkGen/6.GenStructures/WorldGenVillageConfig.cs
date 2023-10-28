@@ -1,9 +1,5 @@
 ﻿using Newtonsoft.Json;
-using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
@@ -19,7 +15,7 @@ namespace Vintagestory.ServerMods
 
         BlockLayerConfig blockLayerConfig;
 
-        internal void Init(ICoreServerAPI api)
+        internal void Init(ICoreServerAPI api, Dictionary<string, Dictionary<int, Dictionary<int, int>>> resolvedRocktypeRemapGroups, Dictionary<string, int> schematicYOffsets)
         {
             IAsset asset = api.Assets.Get("worldgen/rockstrata.json");
             RockStrataConfig rockstrata = asset.ToObject<RockStrataConfig>();
@@ -28,11 +24,10 @@ namespace Vintagestory.ServerMods
             blockLayerConfig = asset.ToObject<BlockLayerConfig>();
             blockLayerConfig.ResolveBlockIds(api, rockstrata);
 
-
             for (int i = 0; i < VillageTypes.Length; i++)
             {
                 LCGRandom rand = new LCGRandom(api.World.Seed + i + 512);
-                VillageTypes[i].Init(api, blockLayerConfig, rockstrata, rand);
+                VillageTypes[i].Init(api, blockLayerConfig, resolvedRocktypeRemapGroups, schematicYOffsets, null, rockstrata, rand);
             }
         }
     }

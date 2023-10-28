@@ -1,10 +1,6 @@
-﻿using System;
-using Vintagestory.API;
-using Vintagestory.API.Client;
+﻿using Vintagestory.API.Client;
 using Vintagestory.API.Client.Tesselation;
 using Vintagestory.API.Common;
-using Vintagestory.API.Common.Entities;
-using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
@@ -94,7 +90,7 @@ namespace Vintagestory.GameContent
         {
             if (VertexFlags.WindMode == EnumWindBitMode.NormalWind)
             {
-                bool waveOff = (byte)(lightRgbsByCorner[24] >> 24) < 159;  //corresponds with a sunlight level of less than 14
+                bool waveOff = (lightRgbsByCorner[24] >> 24 & 0xff) < 159;  //corresponds with a sunlight level of less than 14
 
                 setLeaveWaveFlags(sourceMesh, waveOff);
             }

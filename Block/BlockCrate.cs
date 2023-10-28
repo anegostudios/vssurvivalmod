@@ -2,11 +2,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
-using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
@@ -129,7 +127,7 @@ namespace Vintagestory.GameContent
 
             Props = Attributes.AsObject<CrateProperties>(null, Code.Domain);
 
-            PriorityInteract = true;
+            PlacedPriorityInteract = true;
         }
 
         public override bool DoPlaceBlock(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ItemStack byItemStack)
@@ -181,7 +179,7 @@ namespace Vintagestory.GameContent
         public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
         {
             string cacheKey = "crateMeshRefs" + FirstCodePart() + SubtypeInventory;
-            var meshrefs = ObjectCacheUtil.GetOrCreate(capi, cacheKey, () => new Dictionary<string, MeshRef>());
+            var meshrefs = ObjectCacheUtil.GetOrCreate(capi, cacheKey, () => new Dictionary<string, MultiTextureMeshRef>());
 
             string type = itemstack.Attributes.GetString("type", Props.DefaultType);
             string label = itemstack.Attributes.GetString("label");
@@ -198,7 +196,7 @@ namespace Vintagestory.GameContent
                 var contentStack = contentStacks == null || contentStacks.Length == 0 ? null : contentStacks[0];
 
                 var mesh = GenMesh(capi, contentStack, type, label, lidState, cshape, rot);
-                meshrefs[key] = renderinfo.ModelRef = capi.Render.UploadMesh(mesh);
+                meshrefs[key] = renderinfo.ModelRef = capi.Render.UploadMultiTextureMesh(mesh);
             }
         }
 
@@ -211,7 +209,7 @@ namespace Vintagestory.GameContent
             if (capi == null) return;
 
             string key = "crateMeshRefs" + FirstCodePart() + SubtypeInventory;
-            Dictionary<string, MeshRef> meshrefs = ObjectCacheUtil.TryGet<Dictionary<string, MeshRef>>(api, key);
+            Dictionary<string, MultiTextureMeshRef> meshrefs = ObjectCacheUtil.TryGet<Dictionary<string, MultiTextureMeshRef>>(api, key);
 
             if (meshrefs != null)
             {

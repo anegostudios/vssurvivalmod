@@ -54,7 +54,8 @@ namespace Vintagestory.GameContent
                 }
                 catch (Exception e)
                 {
-                    Api.Logger.Warning("Exception thrown when trying to interact with block {0}: {1}", block.Code.ToShortString(), e);
+                    Api.Logger.Warning("Exception thrown when trying to interact with block {0}:", block.Code.ToShortString());
+                    Api.Logger.Warning(e);
                 }
             }
         }

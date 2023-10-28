@@ -75,10 +75,7 @@ namespace Vintagestory.GameContent
 
         protected virtual float Inventory_OnAcquireTransitionSpeed(EnumTransitionType transType, ItemStack stack, float baseMul)
         {
-            float positionAwarePerishRate = 1;
-            if (transType == EnumTransitionType.Dry) positionAwarePerishRate = 0.75f;
-
-            return baseMul * positionAwarePerishRate;
+            return baseMul;
         }
 
         void loadToolMeshes()

@@ -1,5 +1,4 @@
 ﻿using ProtoBuf;
-using System.IO;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -131,7 +130,7 @@ namespace Vintagestory.GameContent
                 MarkDirty(true);
 
                 // Tell server to save this chunk to disk again
-                Api.World.BlockAccessor.GetChunkAtBlockPos(Pos.X, Pos.Y, Pos.Z).MarkModified();
+                Api.World.BlockAccessor.GetChunkAtBlockPos(Pos).MarkModified();
 
                 // 85% chance to get back the item
                 if (Api.World.Rand.NextDouble() < 0.85)

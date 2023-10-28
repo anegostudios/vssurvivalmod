@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
@@ -71,11 +70,7 @@ namespace Vintagestory.GameContent
 
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
-            if (blockSel == null || !byEntity.Controls.ShiftKey) return;
-
-            Block block = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
-
-            if (CanSqueezeInto(block, blockSel.Position))
+            if (blockSel?.Block != null && CanSqueezeInto(blockSel.Block, blockSel.Position) && byEntity.Controls.ShiftKey)
             {
                 handling = EnumHandHandling.PreventDefault;
                 if (api.World.Side == EnumAppSide.Client)
@@ -83,73 +78,92 @@ namespace Vintagestory.GameContent
                     byEntity.World.PlaySoundAt(new AssetLocation("sounds/player/squeezehoneycomb"), byEntity, null, true, 16, 0.5f);
                 }
             }
+            else
+            {
+                base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent,ref handling);
+            }
         }
 
         public override bool OnHeldInteractStep(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
-            if (blockSel == null || !byEntity.Controls.ShiftKey) return false;
-
-            if (byEntity.World is IClientWorldAccessor)
+            if (blockSel?.Block != null && CanSqueezeInto(blockSel.Block, blockSel.Position))
             {
-                ModelTransform tf = new ModelTransform();
-                tf.EnsureDefaultValues();
-                
-                tf.Translation.Set(Math.Min(0.6f, secondsUsed * 2), 0, 0); //-Math.Min(1.1f / 3, secondsUsed * 4 / 3f)
-                tf.Rotation.Y = Math.Min(20, secondsUsed * 90 * 2f);
-
-                if (secondsUsed > 0.4f)
+                if (!byEntity.Controls.ShiftKey) return false;
+                if (byEntity.World is IClientWorldAccessor)
                 {
-                    tf.Translation.X += (float)Math.Sin(secondsUsed * 30) / 10;
+                    ModelTransform tf = new ModelTransform();
+                    tf.EnsureDefaultValues();
+
+                    tf.Translation.Set(Math.Min(0.6f, secondsUsed * 2), 0,
+                        0); //-Math.Min(1.1f / 3, secondsUsed * 4 / 3f)
+                    tf.Rotation.Y = Math.Min(20, secondsUsed * 90 * 2f);
+
+                    if (secondsUsed > 0.4f)
+                    {
+                        tf.Translation.X += (float)Math.Sin(secondsUsed * 30) / 10;
+                    }
+
+                    byEntity.Controls.UsingHeldItemTransformBefore = tf;
                 }
 
-                byEntity.Controls.UsingHeldItemTransformBefore = tf;
+                return secondsUsed < 2f;
             }
-
-            return secondsUsed < 2f;
+            return base.OnHeldInteractStep(secondsUsed, slot, byEntity, blockSel, entitySel);
+            
         }
 
-        public override void OnHeldInteractStop(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        public override void OnHeldInteractStop(float secondsUsed, ItemSlot slot, EntityAgent byEntity,
+            BlockSelection blockSel, EntitySelection entitySel)
         {
-            if (blockSel == null) return;
-            if (secondsUsed < 1.9f) return;
-
-            IWorldAccessor world = byEntity.World;
-
-            Block block = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
-            if (!CanSqueezeInto(block, blockSel.Position)) return;
-
-            ItemStack honeyStack = new ItemStack(world.GetItem(new AssetLocation("honeyportion")), 99999);
-
-            BlockLiquidContainerTopOpened blockCnt = block as BlockLiquidContainerTopOpened;
-            if (blockCnt != null)
+            if (blockSel != null)
             {
-                if (blockCnt.TryPutLiquid(blockSel.Position, honeyStack, ContainedHoneyLitres) == 0) return;
-            }
-            else
-            {
-                var beg = api.World.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityGroundStorage;
-                if (beg != null)
+                Block block = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
+                if (CanSqueezeInto(block, blockSel.Position))
                 {
-                    ItemSlot squeezeIntoSlot = beg.Inventory.FirstOrDefault(gslot => gslot.Itemstack?.Block != null && CanSqueezeInto(gslot.Itemstack.Block, null));
-                    if (squeezeIntoSlot != null)
+                    if (secondsUsed < 1.9f) return;
+
+                    IWorldAccessor world = byEntity.World;
+
+                    if (!CanSqueezeInto(block, blockSel.Position)) return;
+
+                    ItemStack honeyStack = new ItemStack(world.GetItem(new AssetLocation("honeyportion")), 99999);
+
+                    BlockLiquidContainerTopOpened blockCnt = block as BlockLiquidContainerTopOpened;
+                    if (blockCnt != null)
                     {
-                        blockCnt = squeezeIntoSlot.Itemstack.Block as BlockLiquidContainerTopOpened;
-                        blockCnt.TryPutLiquid(squeezeIntoSlot.Itemstack, honeyStack, ContainedHoneyLitres);
-                        beg.MarkDirty(true);
+                        if (blockCnt.TryPutLiquid(blockSel.Position, honeyStack, ContainedHoneyLitres) == 0) return;
                     }
+                    else
+                    {
+                        var beg = api.World.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityGroundStorage;
+                        if (beg != null)
+                        {
+                            ItemSlot squeezeIntoSlot = beg.Inventory.FirstOrDefault(gslot =>
+                                gslot.Itemstack?.Block != null && CanSqueezeInto(gslot.Itemstack.Block, null));
+                            if (squeezeIntoSlot != null)
+                            {
+                                blockCnt = squeezeIntoSlot.Itemstack.Block as BlockLiquidContainerTopOpened;
+                                blockCnt.TryPutLiquid(squeezeIntoSlot.Itemstack, honeyStack, ContainedHoneyLitres);
+                                beg.MarkDirty(true);
+                            }
+                        }
+                    }
+
+                    slot.TakeOut(1);
+                    slot.MarkDirty();
+
+                    IPlayer byPlayer = null;
+                    if (byEntity is EntityPlayer) byPlayer = world.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
+                    ItemStack stack = new ItemStack(world.GetItem(new AssetLocation("beeswax")));
+                    if (byPlayer?.InventoryManager.TryGiveItemstack(stack) == false)
+                    {
+                        byEntity.World.SpawnItemEntity(stack, byEntity.SidedPos.XYZ);
+                    }
+
+                    return;
                 }
             }
-
-            slot.TakeOut(1);
-            slot.MarkDirty();
-
-            IPlayer byPlayer = null;
-            if (byEntity is EntityPlayer) byPlayer = world.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
-            ItemStack stack = new ItemStack(world.GetItem(new AssetLocation("beeswax")));
-            if (byPlayer?.InventoryManager.TryGiveItemstack(stack) == false)
-            {
-                byEntity.World.SpawnItemEntity(stack, byEntity.SidedPos.XYZ);
-            }
+            base.OnHeldInteractStop(secondsUsed, slot, byEntity, blockSel, entitySel);
         }
 
 

@@ -1,7 +1,4 @@
-﻿using Newtonsoft.Json.Linq;
-using System;
-using Vintagestory.API.Common;
-using Vintagestory.API.Datastructures;
+﻿using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent

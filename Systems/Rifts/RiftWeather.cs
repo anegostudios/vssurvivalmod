@@ -1,9 +1,7 @@
 ﻿using ProtoBuf;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -11,7 +9,6 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
-using Vintagestory.GameContent;
 
 namespace Vintagestory.GameContent
 {
@@ -112,17 +109,15 @@ namespace Vintagestory.GameContent
             api.Event.SaveGameCreated += Event_SaveGameCreated;
             api.Event.PlayerJoin += Event_PlayerJoin;
 
-            sapi.RegisterCommand("dweather", "", "", nDwCmd, Privilege.controlserver);
+            sapi.ChatCommands.Create("dweather")
+                .WithDescription("Show the current rift activity")
+                .RequiresPrivilege(Privilege.controlserver)
+                .HandleWith(_ => TextCommandResult.Success("Current rift activity: " + curPattern.Code));
         }
 
         private void Event_PlayerJoin(IServerPlayer byPlayer)
         {
             sapi.Network.GetChannel("riftWeather").SendPacket(new SpawnPatternPacket() { Pattern = curPattern }, byPlayer);
-        }
-
-        private void nDwCmd(IServerPlayer player, int groupId, CmdArgs args)
-        {
-            player.SendMessage(groupId, curPattern.Code, EnumChatType.Notification);
         }
 
         private void Event_SaveGameCreated()

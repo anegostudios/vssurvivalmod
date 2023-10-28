@@ -19,24 +19,29 @@ namespace Vintagestory.ServerMods
         {
             this.api = api;
             
-            //api.RegisterCommand("anvildebug", "Anvil debug info", "", onAnvilDebug, "worldedit");
+            // api.ChatCommands.GetOrCreate("debug")
+            //     .BeginSubCommand("anvildebug")
+            //         .WithDescription("Anvil debug info")
+            //         .RequiresPrivilege(Privilege.controlserver)
+            //         .HandleWith(OnAnvilDebug)
+            //     .EndSubCommand();
         }
 
-        private void onAnvilDebug(IServerPlayer player, int groupId, CmdArgs args)
+        private TextCommandResult OnAnvilDebug(TextCommandCallingArgs args)
         {
+            var player = args.Caller.Player;
             if (player.CurrentBlockSelection?.Position != null)
             {
                 BlockEntityAnvil bea = api.World.BlockAccessor.GetBlockEntity(player.CurrentBlockSelection.Position) as BlockEntityAnvil;
 
                 if (bea == null)
                 {
-                    player.SendMessage(groupId, "Not looking at an anvil", EnumChatType.CommandError);
-                    return;
+                    return TextCommandResult.Success("Not looking at an anvil");
                 }
 
-                player.SendMessage(groupId, bea.PrintDebugText(), EnumChatType.CommandSuccess);
+                return TextCommandResult.Success(bea.PrintDebugText());
             }
-            
+            return TextCommandResult.Success();
         }
     }
 }

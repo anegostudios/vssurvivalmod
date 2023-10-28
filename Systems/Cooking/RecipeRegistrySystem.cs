@@ -1,8 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Server;
@@ -41,34 +38,83 @@ namespace Vintagestory.GameContent
             return api.ModLoader.GetModSystem<RecipeRegistrySystem>().ClayFormingRecipes;
         }
 
+
+        /// <summary>
+        /// Registers a cooking recipe. Only use it if you really want to avoid using json files for recipes. 
+        /// </summary>
+        /// <param name="api"></param>
+        /// <param name="r"></param>
         public static void RegisterCookingRecipe(this ICoreServerAPI api, CookingRecipe r)
         {
             api.ModLoader.GetModSystem<RecipeRegistrySystem>().RegisterCookingRecipe(r);
         }
+
+        /// <summary>
+        /// Registers a smithing recipe. Only use it if you really want to avoid using json files for recipes. 
+        /// </summary>
+        /// <param name="api"></param>
+        /// <param name="r"></param>
         public static void RegisterSmithingRecipe(this ICoreServerAPI api, SmithingRecipe r)
         {
             api.ModLoader.GetModSystem<RecipeRegistrySystem>().RegisterSmithingRecipe(r);
         }
+
+        /// <summary>
+        /// Registers a clay forming recipe. Only use it if you really want to avoid using json files for recipes. 
+        /// </summary>
+        /// <param name="api"></param>
+        /// <param name="r"></param>
         public static void RegisterClayFormingRecipe(this ICoreServerAPI api, ClayFormingRecipe r)
         {
             api.ModLoader.GetModSystem<RecipeRegistrySystem>().RegisterClayFormingRecipe(r);
         }
+
+        /// <summary>
+        /// Registers a knapping recipe. Only use it if you really want to avoid using json files for recipes. 
+        /// </summary>
+        /// <param name="api"></param>
+        /// <param name="r"></param>
         public static void RegisterKnappingRecipe(this ICoreServerAPI api, KnappingRecipe r)
         {
             api.ModLoader.GetModSystem<RecipeRegistrySystem>().RegisterKnappingRecipe(r);
         }
+
+        /// <summary>
+        /// Registers a knapping recipe. Only use it if you really want to avoid using json files for recipes. 
+        /// </summary>
+        /// <param name="api"></param>
+        /// <param name="r"></param>
         public static void RegisterBarrelRecipe(this ICoreServerAPI api, BarrelRecipe r)
         {
             api.ModLoader.GetModSystem<RecipeRegistrySystem>().RegisterBarrelRecipe(r);
         }
+
+        /// <summary>
+        /// Registers a metal alloy. Only use it if you really want to avoid using json files for recipes. 
+        /// </summary>
+        /// <param name="api"></param>
+        /// <param name="r"></param>
         public static void RegisterMetalAlloy(this ICoreServerAPI api, AlloyRecipe r)
         {
             api.ModLoader.GetModSystem<RecipeRegistrySystem>().RegisterMetalAlloy(r);
         }
     }
 
+    public class DisableRecipeRegisteringSystem : ModSystem
+    {
+        public override double ExecuteOrder() => 99999;
+        public override bool ShouldLoad(EnumAppSide forSide) => forSide == EnumAppSide.Server;
+        public override void AssetsFinalize(ICoreAPI api)
+        {
+            RecipeRegistrySystem.canRegister = false;
+        }
+    }
+
     public class RecipeRegistrySystem : ModSystem
     {
+        public static bool canRegister = true;
+
+
         /// <summary>
         /// List of all loaded cooking recipes
         /// </summary>
@@ -98,6 +144,11 @@ namespace Vintagestory.GameContent
         public override double ExecuteOrder()
         {
             return 0.6;
+        }
+
+        public override void StartPre(ICoreAPI api)
+        {
+            canRegister = true;
         }
 
         public override void Start(ICoreAPI api)
@@ -137,6 +188,7 @@ namespace Vintagestory.GameContent
         /// <param name="recipe"></param>
         public void RegisterCookingRecipe(CookingRecipe recipe)
         {
+            if (!canRegister) throw new InvalidOperationException("Coding error: Can no long register cooking recipes. Register them during AssetsLoad/AssetsFinalize and with ExecuteOrder < 99999");
             CookingRecipes.Add(recipe);
         }
 
@@ -146,6 +198,7 @@ namespace Vintagestory.GameContent
         /// <param name="recipe"></param>
         public void RegisterBarrelRecipe(BarrelRecipe recipe)
         {
+            if (!canRegister) throw new InvalidOperationException("Coding error: Can no long register cooking recipes. Register them during AssetsLoad/AssetsFinalize and with ExecuteOrder < 99999");
             if (recipe.Code == null)
             {
                 throw new ArgumentException("Barrel recipes must have a non-null code! (choose freely)");
@@ -168,6 +221,7 @@ namespace Vintagestory.GameContent
         /// <param name="alloy"></param>
         public void RegisterMetalAlloy(AlloyRecipe alloy)
         {
+            if (!canRegister) throw new InvalidOperationException("Coding error: Can no long register cooking recipes. Register them during AssetsLoad/AssetsFinalize and with ExecuteOrder < 99999");
             MetalAlloys.Add(alloy);
         }
 
@@ -177,6 +231,7 @@ namespace Vintagestory.GameContent
         /// <param name="recipe"></param>
         public void RegisterClayFormingRecipe(ClayFormingRecipe recipe)
         {
+            if (!canRegister) throw new InvalidOperationException("Coding error: Can no long register cooking recipes. Register them during AssetsLoad/AssetsFinalize and with ExecuteOrder < 99999");
             recipe.RecipeId = ClayFormingRecipes.Count + 1;
 
             ClayFormingRecipes.Add(recipe);
@@ -189,6 +244,7 @@ namespace Vintagestory.GameContent
         /// <param name="recipe"></param>
         public void RegisterSmithingRecipe(SmithingRecipe recipe)
         {
+            if (!canRegister) throw new InvalidOperationException("Coding error: Can no long register cooking recipes. Register them during AssetsLoad/AssetsFinalize and with ExecuteOrder < 99999");
             recipe.RecipeId = SmithingRecipes.Count + 1;
 
             SmithingRecipes.Add(recipe);
@@ -200,14 +256,11 @@ namespace Vintagestory.GameContent
         /// <param name="recipe"></param>
         public void RegisterKnappingRecipe(KnappingRecipe recipe)
         {
+            if (!canRegister) throw new InvalidOperationException("Coding error: Can no long register cooking recipes. Register them during AssetsLoad/AssetsFinalize and with ExecuteOrder < 99999");
             recipe.RecipeId = KnappingRecipes.Count + 1;
 
             KnappingRecipes.Add(recipe);
         }
-
-
-
-
 
     }
 }

@@ -2,19 +2,16 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
-using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    
+
 
     // Aaaaah protobuf sux. v1.9.6 format:
     [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
@@ -138,46 +135,80 @@ namespace Vintagestory.GameContent
                 .RegisterMessageType(typeof(PrivGrantsData))
             ;
 
-            api.RegisterCommand("bre", "Player owned Block reinforcement privilege management", "[grant|revoke|grantgroup|revokegroup] [playername/groupname] [use or all]", onCmd, Privilege.chat);
-            api.RegisterCommand("gbre", "Group owned Block reinforcement privilege management", "[grant|revoke|grantgroup|revokegroup] members or [playername/groupname] [use or all]", onCmdGroup, Privilege.chat);
+            var parsers = api.ChatCommands.Parsers;
+            api.ChatCommands.Create("bre")
+                .WithDescription("Player owned Block reinforcement privilege management")
+                .RequiresPrivilege(Privilege.chat)
+                .BeginSubCommand("grant")
+                    .WithDescription("Grant a player access to your block reinforcements")
+                    .WithArgs(parsers.Word("playername"), parsers.WordRange("flag", "all", "use"))
+                    .HandleWith(OnCmdGrant)
+                .EndSubCommand()
+                
+                .BeginSubCommand("revoke")
+                    .WithDescription("Revoke access for a player to your block reinforcements")
+                    .WithArgs(parsers.Word("playername"))
+                    .HandleWith(OnCmdRevoke)
+                .EndSubCommand()
+                
+                .BeginSubCommand("grantgroup")
+                    .WithDescription("Grant a group access to your block reinforcements")
+                    .WithArgs(parsers.Word("groupname"), parsers.WordRange("flag", "all", "use"))
+                    .HandleWith(OnCmdGrantGroup)
+                .EndSubCommand()
+                
+                .BeginSubCommand("revokegroup")
+                    .WithDescription("Revoke access for a group to your block reinforcements")
+                .WithArgs(parsers.Word("groupname"))
+                    .HandleWith(OnCmdRevokeGroup)
+                .EndSubCommand()
+                ;
+            
+            api.ChatCommands.Create("gbre")
+                .WithDescription("Group owned Block reinforcement privilege management")
+                .RequiresPrivilege(Privilege.chat)
+                .BeginSubCommand("grant")
+                    .WithDescription("Grant a player access to your groups block reinforcements. Use default as group name to change the access type for members")
+                    .WithArgs(parsers.Word("playername"), parsers.WordRange("flag", "all", "use"))
+                    .HandleWith(OnCmdGroupGrant)
+                .EndSubCommand()
+                
+                .BeginSubCommand("revoke")
+                    .WithDescription("Revoke a player access to your groups block reinforcements. Use default as group name to revoke the access type for goup members")
+                    .WithArgs(parsers.Word("playername"))
+                    .HandleWith(OnCmdGroupRevoke)
+                .EndSubCommand()
+                
+                .BeginSubCommand("grantgroup")
+                    .WithDescription("Grant an other group access to your groups block reinforcements")
+                    .WithArgs(parsers.Word("groupname"), parsers.WordRange("flag", "all", "use"))
+                    .HandleWith(OnCmdGroupGrantGroup)
+                .EndSubCommand()
+                
+                .BeginSubCommand("revokegroup")
+                    .WithDescription("Revoke an others groups access to your groups block reinforcements")
+                    .WithArgs(parsers.Word("groupname"))
+                    .HandleWith(OnCmdGroupRevokeGroup)
+                .EndSubCommand()
+                ;
 
             api.Permissions.RegisterPrivilege("denybreakreinforced", "Deny the ability to break reinforced blocks", false);
         }
 
-        private void onCmdGroup(IServerPlayer player, int groupId, CmdArgs args)
+        private TextCommandResult OnCmdGroupRevokeGroup(TextCommandCallingArgs args)
         {
-            string privtype = args.PopWord();
-            string firstarg = args.PopWord();
-            string flagString = args.PopWord();
-
-            if (privtype == null)
-            {
-                player.SendMessage(groupId, "Syntax: /gbre [grant|revoke|grantgroup|revokegroup] default or [playername/groupname] [use or all]", EnumChatType.CommandError);
-                return;
-            }
-
-            EnumBlockAccessFlags flags;
-            if (flagString?.ToLowerInvariant() == "use") flags = EnumBlockAccessFlags.Use;
-            else if (flagString?.ToLowerInvariant() == "all") flags = EnumBlockAccessFlags.BuildOrBreak | EnumBlockAccessFlags.Use;
-            else
-            {
-                if (privtype == "grant")
-                {
-                    player.SendMessage(groupId, "Missing argument or argument is not 'use' or 'all'", EnumChatType.CommandError);
-                }
-                return;
-            }
-
+            var player = args.Caller.Player as IServerPlayer;
+            var groupId = args.Caller.FromChatGroupId;
+            var groupName = args.Parsers[0].GetValue() as string;
+            
             var group = player.GetGroup(groupId);
             if (group == null)
             {
-                player.SendMessage(groupId, "Type this command inside the group chat tab that you are a owner of", EnumChatType.CommandError);
-                return;
+                return TextCommandResult.Success("Type this command inside the group chat tab that you are a owner of");
             }
             if (group.Level != EnumPlayerGroupMemberShip.Owner)
             {
-                player.SendMessage(groupId, "Must be owner of the group to change access flags", EnumChatType.CommandError);
-                return;
+                return TextCommandResult.Success("Must be owner of the group to change access flags");
             }
 
             ReinforcedPrivilegeGrantsGroup groupGrants;
@@ -185,59 +216,177 @@ namespace Vintagestory.GameContent
             {
                 privGrantsByOwningGroupUid[groupId] = groupGrants = new ReinforcedPrivilegeGrantsGroup();
             }
-
-            if (firstarg == "default")
-            {
-                if (privtype == "grant")
-                {
-                    groupGrants.DefaultGrants = flags;
-                    player.SendMessage(groupId, "Default access for group members set to " + flagString, EnumChatType.CommandError);
-                } else
-                {
-                    groupGrants.DefaultGrants = 0;
-                    player.SendMessage(groupId, "All access revoked for group members", EnumChatType.CommandError);
-                }
-                
-
-                SyncPrivData();
-                return;
-            }
-
-            if (privtype == "grant" || privtype == "revoke")
-            {
-                grantRevokeGroupOwned2Player(player, groupId, privtype, firstarg, flagString, flags, groupGrants);
-
-                return;
-            }
-
-            if (privtype == "grantgroup" || privtype == "revokegroup")
-            {
-                grantRevokeGroupOwned2Group(player, groupId, privtype, firstarg, flags);
-                return;
-            }
-
-
-            player.SendMessage(groupId, "Syntax: /gbre [grant|revoke|grantgroup|revokegroup] members or [playername/groupname] [use or all]", EnumChatType.CommandError);
-            return;
+            return GrantRevokeGroupOwned2Group(player, groupId, args.Command.Name, groupName ,"none", EnumBlockAccessFlags.None, groupGrants);
         }
 
-        protected void grantRevokeGroupOwned2Player(IServerPlayer player, int groupId, string privtype, string firstarg, string flagString, EnumBlockAccessFlags flags, ReinforcedPrivilegeGrantsGroup groupGrants)
+        private TextCommandResult OnCmdGroupGrantGroup(TextCommandCallingArgs args)
         {
-            (api as ICoreServerAPI).PlayerData.ResolvePlayerName(firstarg, (result, playeruid) =>
+            var player = args.Caller.Player as IServerPlayer;
+            var groupId = args.Caller.FromChatGroupId;
+            var groupName = args.Parsers[0].GetValue() as string;
+            var flagString = args.Parsers[1].GetValue() as string;
+            
+            var group = player.GetGroup(groupId);
+            if (group == null)
+            {
+                return TextCommandResult.Success("Type this command inside the group chat tab that you are a owner of");
+            }
+            if (group.Level != EnumPlayerGroupMemberShip.Owner)
+            {
+                return TextCommandResult.Success("Must be owner of the group to change access flags");
+            }
+            
+            var flags = GetFlags(flagString);
+
+            ReinforcedPrivilegeGrantsGroup groupGrants;
+            if (!privGrantsByOwningGroupUid.TryGetValue(groupId, out groupGrants))
+            {
+                privGrantsByOwningGroupUid[groupId] = groupGrants = new ReinforcedPrivilegeGrantsGroup();
+            }
+            return GrantRevokeGroupOwned2Group(player, groupId, args.Command.Name, groupName ,flagString, flags, groupGrants);
+        }
+
+        private static EnumBlockAccessFlags GetFlags(string flagString)
+        {
+            var flags = EnumBlockAccessFlags.None;
+            if (flagString != null)
+            {
+                if (flagString.ToLowerInvariant() == "use") flags = EnumBlockAccessFlags.Use;
+                if (flagString.ToLowerInvariant() == "all")
+                    flags = EnumBlockAccessFlags.BuildOrBreak | EnumBlockAccessFlags.Use;
+            }
+
+            return flags;
+        }
+
+        private TextCommandResult OnCmdGroupRevoke(TextCommandCallingArgs args)
+        {
+            var player = args.Caller.Player as IServerPlayer;
+            var groupId = args.Caller.FromChatGroupId;
+            var playerName = args.Parsers[0].GetValue() as string;
+            
+            var group = player.GetGroup(groupId);
+            if (group == null)
+            {
+                return TextCommandResult.Success("Type this command inside the group chat tab that you are a owner of");
+            }
+            if (group.Level != EnumPlayerGroupMemberShip.Owner)
+            {
+                return TextCommandResult.Success("Must be owner of the group to change access flags");
+            }
+            
+            
+            ReinforcedPrivilegeGrantsGroup groupGrants;
+            if (!privGrantsByOwningGroupUid.TryGetValue(groupId, out groupGrants))
+            {
+                privGrantsByOwningGroupUid[groupId] = groupGrants = new ReinforcedPrivilegeGrantsGroup();
+            }
+            
+            if (playerName == "default")
+            {
+                groupGrants.DefaultGrants = 0;
+                SyncPrivData();
+                return TextCommandResult.Success("All access revoked for group members");
+            }
+            GrantRevokeGroupOwned2Player(player, groupId, args.Command.Name, playerName, "none", EnumBlockAccessFlags.None, groupGrants);
+            return TextCommandResult.Success();
+        }
+
+        private TextCommandResult OnCmdGroupGrant(TextCommandCallingArgs args)
+        {
+            var player = args.Caller.Player as IServerPlayer;
+            var groupId = args.Caller.FromChatGroupId;
+            var playerName = args.Parsers[0].GetValue() as string;
+            var flagString = args.Parsers[1].GetValue() as string;
+            
+            var group = player.GetGroup(groupId);
+            if (group == null)
+            {
+                return TextCommandResult.Success("Type this command inside the group chat tab that you are a owner of");
+            }
+            if (group.Level != EnumPlayerGroupMemberShip.Owner)
+            {
+                return TextCommandResult.Success("Must be owner of the group to change access flags");
+            }
+            
+            var flags = GetFlags(flagString);
+            
+            ReinforcedPrivilegeGrantsGroup groupGrants;
+            if (!privGrantsByOwningGroupUid.TryGetValue(groupId, out groupGrants))
+            {
+                privGrantsByOwningGroupUid[groupId] = groupGrants = new ReinforcedPrivilegeGrantsGroup();
+            }
+            if (playerName == "default")
+            {
+                groupGrants.DefaultGrants = flags;
+                SyncPrivData();
+                return TextCommandResult.Success("Default access for group members set to " + flagString);
+            }
+            GrantRevokeGroupOwned2Player(player, groupId, args.Command.Name, playerName, flagString, flags, groupGrants);
+            return TextCommandResult.Success();
+        }
+
+        private TextCommandResult OnCmdGrantGroup(TextCommandCallingArgs args)
+        {
+            var groupName = args.Parsers[0].GetValue() as string;
+            var flagString = args.Parsers[1].GetValue() as string;
+            var flags = GetFlags(flagString);
+            return SetGroupPrivilege(args.Caller.Player as IServerPlayer, groupName, flags);
+        }
+
+        private TextCommandResult OnCmdRevokeGroup(TextCommandCallingArgs args)
+        {
+            var groupName = args.Parsers[0].GetValue() as string;
+            return SetGroupPrivilege(args.Caller.Player as IServerPlayer, groupName, EnumBlockAccessFlags.None);
+        }
+
+        private TextCommandResult OnCmdGrant(TextCommandCallingArgs args)
+        {
+            var playerName = args.Parsers[0].GetValue() as string;
+            var flagString = args.Parsers[1].GetValue() as string;
+            var sapi = api as ICoreServerAPI;
+            
+            var flags = GetFlags(flagString);
+            IServerPlayerData plrData = null;
+            plrData = sapi.PlayerData.GetPlayerDataByLastKnownName(playerName);
+            if (plrData == null)
+            {
+                return TextCommandResult.Success("No player with such name found or never connected to this server");
+            }   
+            return SetPlayerPrivilege(args.Caller.Player as IServerPlayer, plrData.PlayerUID, flags);
+        }
+
+        private TextCommandResult OnCmdRevoke(TextCommandCallingArgs args)
+        {
+            var playerName = args.Parsers[0].GetValue() as string;
+            var sapi = api as ICoreServerAPI;
+            IServerPlayerData plrData;
+            plrData = sapi.PlayerData.GetPlayerDataByLastKnownName(playerName);
+            if (plrData == null)
+            {
+                return TextCommandResult.Success( "No player with such name found or never connected to this server");
+            }
+            
+            return SetPlayerPrivilege(args.Caller.Player as IServerPlayer, plrData.PlayerUID, EnumBlockAccessFlags.None);
+        }
+        
+        protected void GrantRevokeGroupOwned2Player(IServerPlayer player, int groupId, string command, string playername, string flagString, EnumBlockAccessFlags flags, ReinforcedPrivilegeGrantsGroup groupGrants)
+        {
+            (api as ICoreServerAPI).PlayerData.ResolvePlayerName(playername, (result, playeruid) =>
             {
                 if (result == EnumServerResponse.Good)
                 {
-                    if (privtype == "grant")
+                    if (command == "grant")
                     {
                         groupGrants.PlayerGrants[playeruid] = flags;
-                        player.SendMessage(groupId, flagString + " access set for player " + firstarg, EnumChatType.CommandError);
+                        player.SendMessage(groupId, flagString + " access set for player " + playername, EnumChatType.CommandError);
                         SyncPrivData();
                     }
                     else
                     {
                         if (groupGrants.PlayerGrants.Remove(playeruid))
                         {
-                            player.SendMessage(groupId, "All access revoked for player " + firstarg, EnumChatType.CommandError);
+                            player.SendMessage(groupId, "All access revoked for player " + playername, EnumChatType.CommandError);
                             SyncPrivData();
                         }
                         else
@@ -250,86 +399,48 @@ namespace Vintagestory.GameContent
 
                 if (result == EnumServerResponse.Offline)
                 {
-                    player.SendMessage(groupId, Lang.Get("Player with name '{0}' is not online and auth server is offline. Cannot check if this player exists. Try again later.", firstarg), EnumChatType.CommandError);
+                    player.SendMessage(groupId, Lang.Get("Player with name '{0}' is not online and auth server is offline. Cannot check if this player exists. Try again later.", playername), EnumChatType.CommandError);
                     return;
                 }
 
-                player.SendMessage(groupId, Lang.Get("No player with name '{0}' exists", firstarg), EnumChatType.CommandError);
+                player.SendMessage(groupId, Lang.Get("No player with name '{0}' exists", playername), EnumChatType.CommandError);
             });
         }
 
-        protected void grantRevokeGroupOwned2Group(IServerPlayer player, int sourceGroupId, string privtype, string targetGroupName, EnumBlockAccessFlags flags)
+        protected TextCommandResult GrantRevokeGroupOwned2Group(IServerPlayer player, int groupId, string command, string groupname, string flagString, EnumBlockAccessFlags flags, ReinforcedPrivilegeGrantsGroup groupGrants)
         {
-            // [insert code here \o/]
+            var group = (api as ICoreServerAPI).Groups.GetPlayerGroupByName(groupname);
+            
+            if(group == null)
+                return TextCommandResult.Success(Lang.Get("No group with name '{0}' exists", groupname));
+            
+            string msg;
+            if (command == "grant")
+            {
+                groupGrants.GroupGrants[group.Uid] = flags;
+                msg = flagString + " access set for group " + groupname;
+                SyncPrivData();
+            }
+            else
+            {
+                if (groupGrants.GroupGrants.Remove(group.Uid))
+                {
+                    msg = "All access revoked for group " + groupname;
+                }
+                else
+                {
+                    msg = "This group has no access. No action taken.";
+                    SyncPrivData();
+                }
+            }
+            return TextCommandResult.Success(msg);
         }
 
         private void Event_PlayerJoin(IServerPlayer byPlayer)
         {
             serverChannel?.SendPacket(new PrivGrantsData() { privGrantsByOwningPlayerUid = privGrantsByOwningPlayerUid, privGrantsByOwningGroupUid = privGrantsByOwningGroupUid }, byPlayer);
         }
-
-        private void onCmd(IServerPlayer player, int groupId, CmdArgs args)
-        {
-            string subcmd = args.PopWord();
-            string plrgrpname = args.PopWord();
-            string flagString = args.PopWord();
-
-            EnumBlockAccessFlags flags = EnumBlockAccessFlags.None;
-            if (flagString != null) {
-                if (flagString.ToLowerInvariant() == "use") flags = EnumBlockAccessFlags.Use;
-                if (flagString.ToLowerInvariant() == "all") flags = EnumBlockAccessFlags.BuildOrBreak | EnumBlockAccessFlags.Use;
-            }
-
-            if (subcmd == null || plrgrpname == null)
-            {
-                player.SendMessage(groupId, "Syntax: /bre [grant|revoke|grantgroup|revokegroup] [playername/groupname] [use or all]", EnumChatType.CommandError);
-                return;
-            }
-
-            ICoreServerAPI sapi = api as ICoreServerAPI;
-            IServerPlayerData plrData = null;
-
-            if (subcmd == "grant" || subcmd == "revoke")
-            {
-                plrData = sapi.PlayerData.GetPlayerDataByLastKnownName(plrgrpname);
-                if (plrData == null)
-                {
-                    player.SendMessage(groupId, "No player with such name found or never connected to this server", EnumChatType.CommandError);
-                    return;
-                }
-            }
-
- 
-            switch (subcmd)
-            {
-                case "grant":
-                    if (flags == EnumBlockAccessFlags.None)
-                    {
-                        player.SendMessage(groupId, "Invalid or missing access flag. Declare 'use' or 'all'", EnumChatType.CommandError);
-                        return;
-                    }
-                    SetPlayerPrivilege(player, groupId, plrData.PlayerUID, flags);
-                    break;
-
-                case "revoke":
-                    SetPlayerPrivilege(player, groupId, plrData.PlayerUID, EnumBlockAccessFlags.None);
-                    break;
-
-                case "grantgroup":
-                    if (flags == EnumBlockAccessFlags.None)
-                    {
-                        player.SendMessage(groupId, "Invalid or missing access flag. Declare 'use' or 'all'", EnumChatType.CommandError);
-                        return;
-                    }
-                    SetGroupPrivilege(player, groupId, plrgrpname, flags);
-                    break;
-
-                case "revokegroup":
-                    SetGroupPrivilege(player, groupId, plrgrpname, EnumBlockAccessFlags.None); ;
-                    break;
-            }
-        }
-
+        
         private void onChunkData(ChunkReinforcementData msg)
         {
             IWorldChunk chunk = api.World.BlockAccessor.GetChunk(msg.chunkX, msg.chunkY, msg.chunkZ);
@@ -478,7 +589,7 @@ namespace Vintagestory.GameContent
 
             reinforcmentsOfChunk.Remove(index3d);
 
-            saveReinforcments(reinforcmentsOfChunk, pos);
+            SaveReinforcments(reinforcmentsOfChunk, pos);
             return true;
         }
 
@@ -571,17 +682,25 @@ namespace Vintagestory.GameContent
 
             BlockReinforcement bre;
             if (reinforcmentsOfChunk.TryGetValue(index3d, out bre))
-            {
-                if (bre.PlayerUID != byPlayer.PlayerUID || bre.Locked) return false;
+            {   
+                var membership = byPlayer.GetGroup(bre.GroupUid);
+                bool isAllowed = bre.PlayerUID == byPlayer.PlayerUID;
+                if (membership != null)
+                {
+                    isAllowed |= membership.Level == EnumPlayerGroupMemberShip.Owner;
+                    isAllowed |= membership.Level == EnumPlayerGroupMemberShip.Op;
+                }
+                    
+                if (!isAllowed || bre.Locked) return false;
                 bre.Locked = true;
                 bre.LockedByItemCode = itemCode;
-                saveReinforcments(reinforcmentsOfChunk, pos);
+                SaveReinforcments(reinforcmentsOfChunk, pos);
                 return true;
             }
 
             reinforcmentsOfChunk[index3d] = new BlockReinforcement() { PlayerUID = byPlayer.PlayerUID, LastPlayername = byPlayer.PlayerName, Strength = 0, Locked = true, LockedByItemCode = itemCode };
 
-            saveReinforcments(reinforcmentsOfChunk, pos);
+            SaveReinforcments(reinforcmentsOfChunk, pos);
 
             return true;
         }
@@ -614,7 +733,7 @@ namespace Vintagestory.GameContent
             {
                 reinforcmentsOfChunk.Remove(index3d);
             }
-            saveReinforcments(reinforcmentsOfChunk, pos);
+            SaveReinforcments(reinforcmentsOfChunk, pos);
         }
 
         public void ClearReinforcement(BlockPos pos)
@@ -627,7 +746,7 @@ namespace Vintagestory.GameContent
 
             if (reinforcmentsOfChunk.Remove(index3d))
             {
-                saveReinforcments(reinforcmentsOfChunk, pos);
+                SaveReinforcments(reinforcmentsOfChunk, pos);
             }
         }
 
@@ -669,7 +788,7 @@ namespace Vintagestory.GameContent
                 };
             }
             
-            saveReinforcments(reinforcmentsOfChunk, pos);
+            SaveReinforcments(reinforcmentsOfChunk, pos);
             
             return true;
         }
@@ -705,13 +824,14 @@ namespace Vintagestory.GameContent
                         {
                             reinforcmentsOfChunk[val.Key] = val.Value.Update();
                         }
-                        saveReinforcments(reinforcmentsOfChunk, pos);
+                        SaveReinforcments(reinforcmentsOfChunk, pos);
 
                         api.World.Logger.Warning("Ok, converted");
 
                     } catch (Exception e2)
                     {
-                        api.World.Logger.VerboseDebug("Failed reading block reinforcments at block position {0}, will discard, sorry. Exception: {1}", pos, e2);
+                        api.World.Logger.VerboseDebug("Failed reading block reinforcments at block position {0}, will discard, sorry.", pos);
+                        api.World.Logger.VerboseDebug(LoggerBase.CleanStackTrace(e2.ToString()));
                     }
 
                     reinforcmentsOfChunk = new Dictionary<int, BlockReinforcement>();
@@ -725,7 +845,7 @@ namespace Vintagestory.GameContent
             return reinforcmentsOfChunk;
         }
 
-        void saveReinforcments(Dictionary<int, BlockReinforcement> reif, BlockPos pos)
+        void SaveReinforcments(Dictionary<int, BlockReinforcement> reif, BlockPos pos)
         {
             int chunksize = api.World.BlockAccessor.ChunkSize;
             int chunkX = pos.X / chunksize;
@@ -745,7 +865,7 @@ namespace Vintagestory.GameContent
 
         #region Privilege Stuff
 
-        public void SetPlayerPrivilege(IServerPlayer owningPlayer, int chatGroupId, string forPlayerUid, EnumBlockAccessFlags access)
+        public TextCommandResult SetPlayerPrivilege(IServerPlayer owningPlayer, string forPlayerUid, EnumBlockAccessFlags access)
         {
             ReinforcedPrivilegeGrants grants;
             if (!privGrantsByOwningPlayerUid.TryGetValue(owningPlayer.PlayerUID, out grants))
@@ -754,25 +874,27 @@ namespace Vintagestory.GameContent
                 privGrantsByOwningPlayerUid[owningPlayer.PlayerUID] = grants;
             }
 
+            string msg;
             if (access == EnumBlockAccessFlags.None)
             {
                 if (grants.PlayerGrants.Remove(forPlayerUid))
                 {
-                    owningPlayer.SendMessage(chatGroupId, Lang.Get("Ok, privilege revoked from player."), EnumChatType.CommandSuccess);
+                    msg = Lang.Get("Ok, privilege revoked from player.");
                 } else
                 {
-                    owningPlayer.SendMessage(chatGroupId, Lang.Get("No action taken. Player does not have any privilege to your reinforced blocks."), EnumChatType.CommandSuccess);
+                    msg = Lang.Get("No action taken. Player does not have any privilege to your reinforced blocks.");
                 }
             } else
             {
                 grants.PlayerGrants[forPlayerUid] = access;
-                owningPlayer.SendMessage(chatGroupId, Lang.Get("Ok, Privilege for player set."), EnumChatType.CommandSuccess);
+                msg = Lang.Get("Ok, Privilege for player set.");
             }
 
             SyncPrivData();
+            return TextCommandResult.Success(msg);
         }
 
-        public void SetGroupPrivilege(IServerPlayer owningPlayer, int chatGroupId, string forGroupName, EnumBlockAccessFlags access)
+        public TextCommandResult SetGroupPrivilege(IServerPlayer owningPlayer,string forGroupName, EnumBlockAccessFlags access)
         {
             ReinforcedPrivilegeGrants grants;
             if (!privGrantsByOwningPlayerUid.TryGetValue(owningPlayer.PlayerUID, out grants))
@@ -781,31 +903,32 @@ namespace Vintagestory.GameContent
                 privGrantsByOwningPlayerUid[owningPlayer.PlayerUID] = grants;
             }
 
+            string msg;
             PlayerGroup group = (api as ICoreServerAPI).Groups.GetPlayerGroupByName(forGroupName);
             if (group == null)
             {
-                owningPlayer.SendMessage(chatGroupId, Lang.Get("No such group found"), EnumChatType.CommandError);
-                return;
+                return TextCommandResult.Success(Lang.Get("No such group found"));
             }
 
             if (access == EnumBlockAccessFlags.None)
             {
                 if (grants.GroupGrants.Remove(group.Uid))
                 {
-                    owningPlayer.SendMessage(chatGroupId, Lang.Get("Ok, privilege revoked from group."), EnumChatType.CommandSuccess);
+                    msg = Lang.Get("Ok, privilege revoked from group.");
                 }
                 else
                 {
-                    owningPlayer.SendMessage(chatGroupId, Lang.Get("No action taken. Group does not have any privilege to your reinforced blocks."), EnumChatType.CommandSuccess);
+                    msg = Lang.Get("No action taken. Group does not have any privilege to your reinforced blocks.");
                 }
             }
             else
             {
                 grants.GroupGrants[group.Uid] = access;
-                owningPlayer.SendMessage(chatGroupId, Lang.Get("Ok, Privilege for group set."), EnumChatType.CommandSuccess);
+                msg = Lang.Get("Ok, Privilege for group set.");
             }
 
             SyncPrivData();
+            return TextCommandResult.Success(msg);
         }
 
 

@@ -1,10 +1,6 @@
 ﻿using ProtoBuf;
-using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -26,7 +22,6 @@ namespace Vintagestory.GameContent
     {
         public string InventoryId;
         public int SlotId;
-
         public float TotalChance;
     }
 
@@ -35,16 +30,10 @@ namespace Vintagestory.GameContent
     public class ModLootRandomizer : ModSystem
     {
         ICoreClientAPI capi;
-        ICoreServerAPI sapi;
         Dictionary<ItemSlot, GuiDialogGeneric> dialogs = new Dictionary<ItemSlot, GuiDialogGeneric>();
-
-        IServerNetworkChannel serverChannel;
         IClientNetworkChannel clientChannel;
 
-        public override bool ShouldLoad(EnumAppSide side)
-        {
-            return true;
-        }
+        public override bool ShouldLoad(EnumAppSide side) => true;
 
         public override void Start(ICoreAPI api)
         {
@@ -67,10 +56,7 @@ namespace Vintagestory.GameContent
 
         public override void StartServerSide(ICoreServerAPI api)
         {
-            this.sapi = api;
-
-            serverChannel =
-               api.Network.RegisterChannel("lootrandomizer")
+            api.Network.RegisterChannel("lootrandomizer")
                .RegisterMessageType(typeof(SaveLootRandomizerAttributes))
                .RegisterMessageType(typeof(SaveStackRandomizerAttributes))
                .SetMessageHandler<SaveLootRandomizerAttributes>(OnLootRndMsg)
@@ -88,7 +74,6 @@ namespace Vintagestory.GameContent
             {
                 slot.Itemstack.Attributes.FromBytes(new BinaryReader(ms));
             }
-            
         }
 
         
@@ -96,7 +81,6 @@ namespace Vintagestory.GameContent
         {
             ItemSlot slot = fromPlayer.InventoryManager.GetInventory(networkMessage.InventoryId)?[networkMessage.SlotId];
             if (slot == null) return;
-
             slot.Itemstack.Attributes.SetFloat("totalChance", networkMessage.TotalChance);
         }
 
@@ -124,7 +108,6 @@ namespace Vintagestory.GameContent
                 stacks[i].ResolveBlockOrItem(capi.World);
                 i++;
             }
-            
 
             dialogs[slot] = new GuiDialogItemLootRandomizer(stacks, chances, capi);
             dialogs[slot].TryOpen();
@@ -193,7 +176,6 @@ namespace Vintagestory.GameContent
                     SlotId = slot.Inventory.GetSlotId(slot)
                 });
             }
-
         }
 
 

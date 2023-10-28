@@ -86,7 +86,7 @@ namespace Vintagestory.GameContent
                     if (!AvailableSkinPartsByCode.ContainsKey(partCode)) continue;
 
                     SkinnablePart part = AvailableSkinPartsByCode[partCode];
-                    SkinnablePartVariant variant = null;
+                    SkinnablePartVariant variant;
 
                     string code = (val.Value as StringAttribute).value;
                     if (part.VariantsByCode.TryGetValue(code, out variant))
@@ -182,12 +182,7 @@ namespace Vintagestory.GameContent
 
             if (entity.Api.Side == EnumAppSide.Server && AppliedSkinParts.Count == 0)
             {
-                foreach (var val in AvailableSkinParts)
-                {
-                    string partCode = val.Code;
-                    string variantCode = val.Variants[entity.World.Rand.Next(val.Variants.Length)].Code;
-                    selectSkinPart(partCode, variantCode, false, false);
-                }
+                entity.Api.ModLoader.GetModSystem<CharacterSystem>().randomizeSkin(entity, null, false);
             }
 
             onVoiceConfigChanged();
@@ -260,7 +255,6 @@ namespace Vintagestory.GameContent
         {
             // Make a copy so we don't mess up the original
             Shape newShape = entityShape.Clone();
-            newShape.ResolveAndLoadJoints("head");
             entityShape = newShape;
 
             foreach (var val in AppliedSkinParts)
@@ -353,6 +347,7 @@ namespace Vintagestory.GameContent
                 int posy = part.TextureRenderTo.Y;
 
                 capi.EntityTextureAtlas.RenderTextureIntoAtlas(
+                    skinTexPos.atlasTextureId,
                     texture,
                     0,
                     0,
@@ -504,7 +499,8 @@ namespace Vintagestory.GameContent
                     elem.Children = elem.Children.Append(val);
                 }
 
-                val.SetJointIdRecursive(elem.JointId);
+                val.ParentElement = elem;
+
                 val.WalkRecursive((el) =>
                 {
                     foreach (var face in el.FacesResolved)

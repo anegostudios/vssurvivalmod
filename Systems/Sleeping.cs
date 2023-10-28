@@ -1,14 +1,10 @@
 ﻿using ProtoBuf;
-using System;
-using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
-using Vintagestory.GameContent;
 
 namespace Vintagestory.GameContent
 {
@@ -138,20 +134,6 @@ namespace Vintagestory.GameContent
         private void ServerSlowTick(float dt)
         {
             bool nowAllSleeping = AreAllPlayersSleeping();
-
-            if (nowAllSleeping)
-            {
-                if (AllSleeping) // We drain hunger only after the second tick
-                {
-                    foreach (IPlayer player in sapi.World.AllOnlinePlayers)
-                    {
-                        IServerPlayer splr = player as IServerPlayer;
-                        splr.Entity.GetBehavior<EntityBehaviorHunger>()?.ConsumeSaturation((float)(api.World.Calendar.TotalDays - lastTickTotalDays) * 2000);
-                    }
-                }
-
-                lastTickTotalDays = api.World.Calendar.TotalDays;
-            }
 
             if (nowAllSleeping == AllSleeping) return;
 

@@ -1,8 +1,5 @@
-﻿using System;
-using Vintagestory.API.Client;
-using Vintagestory.API.Client.Tesselation;
+﻿using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
@@ -29,7 +26,7 @@ namespace Vintagestory.GameContent
 
             int groundOffset = 0;
 
-            bool enableWind = (byte)(lightRgbsByCorner[24] >> 24) >= 159;  //corresponds with a sunlight level of less than 14
+            bool enableWind = (lightRgbsByCorner[24] >> 24 & 0xff) >= 159;  //corresponds with a sunlight level of less than 14
 
             if (enableWind)
             {

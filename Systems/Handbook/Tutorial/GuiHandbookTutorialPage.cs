@@ -1,4 +1,5 @@
 ﻿using Cairo;
+using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -37,7 +38,7 @@ namespace Vintagestory.GameContent
             baseBounds = ElementBounds.Fixed(0, 0, 400, 100).WithParent(capi.Gui.WindowBounds);
             startStopButton = new GuiElementTextButton(capi, Lang.Get("Start"), CairoFont.WhiteSmallText(), CairoFont.WhiteSmallText(), onStartStopTutorial, ElementBounds.Fixed(0, 0).WithFixedPadding(6, 3).WithParent(baseBounds), EnumButtonStyle.Normal);
 
-            startStopButton.Text = tutorialActive ? Lang.Get("Stop") : Lang.Get("Start");
+            startStopButton.Text = tutorialActive ? Lang.Get("Stop Tutorial") : Lang.Get("Start Tutorial");
 
             ImageSurface surface = new ImageSurface(Format.Argb32, 1, 1);
             Context ctx = new Context(surface);
@@ -53,12 +54,15 @@ namespace Vintagestory.GameContent
             {
                 tutorialActive = true;
                 modsys.StartTutorial(pageCode.Substring("tutorial-".Length));
+
+                capi.Event.EnqueueMainThreadTask(() => capi.Gui.LoadedGuis.FirstOrDefault(dlg => dlg is GuiDialogSurvivalHandbook)?.TryClose(), "closehandbook");
             } else
             {
                 tutorialActive = false;
                 modsys.StopActiveTutorial();
+                recomposeButton();
             }
-            recomposeButton();
+            
             return true;
         }
 

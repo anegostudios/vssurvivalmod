@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -82,9 +81,9 @@ namespace Vintagestory.GameContent
 
         public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
         {
-            Dictionary<string, MeshRef> meshrefs = ObjectCacheUtil.GetOrCreate(capi, "blockLanternGuiMeshRefs", () =>
+            Dictionary<string, MultiTextureMeshRef> meshrefs = ObjectCacheUtil.GetOrCreate(capi, "blockLanternGuiMeshRefs", () =>
             {
-                return new Dictionary<string, MeshRef>();
+                return new Dictionary<string, MultiTextureMeshRef>();
             });
 
             string material = itemstack.Attributes.GetString("material");
@@ -92,14 +91,14 @@ namespace Vintagestory.GameContent
             string glass = itemstack.Attributes.GetString("glass", "quartz");
             
             string key = material + "-" + lining + "-" + glass;
-            MeshRef meshref;
+            MultiTextureMeshRef meshref;
             if (!meshrefs.TryGetValue(key, out meshref))
             {
                 AssetLocation shapeloc = Shape.Base.CopyWithPathPrefixAndAppendixOnce("shapes/", ".json");
                 Shape shape = API.Common.Shape.TryGet(capi, shapeloc);
 
                 MeshData mesh = GenMesh(capi, material, lining, glass, shape);
-                meshrefs[key] = meshref = capi.Render.UploadMesh(mesh);
+                meshrefs[key] = meshref = capi.Render.UploadMultiTextureMesh(mesh);
             }
             
             renderinfo.ModelRef = meshref;
@@ -114,7 +113,7 @@ namespace Vintagestory.GameContent
             object obj;
             if (capi.ObjectCache.TryGetValue("blockLanternGuiMeshRefs", out obj))
             {
-                Dictionary<string, MeshRef> meshrefs = obj as Dictionary<string, MeshRef>;
+                Dictionary<string, MultiTextureMeshRef> meshrefs = obj as Dictionary<string, MultiTextureMeshRef>;
 
                 foreach (var val in meshrefs)
                 {

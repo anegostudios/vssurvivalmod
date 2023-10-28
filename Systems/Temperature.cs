@@ -1,12 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
-using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -38,15 +35,17 @@ namespace Vintagestory.GameContent
 
         public override void StartServerSide(ICoreServerAPI api)
         {
-            api.RegisterCommand("exptempplot", "Export a 1 year long temperatures at a 6 hour interval at this location", "", onPlot, Privilege.controlserver);
-        }
-
-
-        private void onPlot(IServerPlayer player, int groupId, CmdArgs args)
-        {
-            exportPlotHere(player.Entity.Pos.AsBlockPos);
-
-            player.SendMessage(groupId, "ok exported", EnumChatType.Notification);
+            api.ChatCommands.GetOrCreate("debug")
+            .BeginSubCommand("exptempplot")
+                .WithDescription("Export a 1 year long temperatures at a 6 hour interval at this location")
+                .RequiresPrivilege(Privilege.controlserver)
+                .RequiresPlayer()
+                .HandleWith(args =>
+                {
+                    exportPlotHere(args.Caller.Entity.Pos.AsBlockPos);
+                    return TextCommandResult.Success("ok exported");
+                })
+            .EndSubCommand();
         }
 
         private void Event_OnGetClimate(ref ClimateCondition climate, BlockPos pos, EnumGetClimateMode mode, double totalDays)

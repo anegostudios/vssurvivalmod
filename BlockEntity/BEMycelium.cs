@@ -23,7 +23,15 @@ namespace Vintagestory.GameContent
         {
             base.StartServerSide(api);
 
-            api.RegisterCommand("mycdebug", "", "", onCmd, Privilege.controlserver);
+            api.ChatCommands.GetOrCreate("debug")
+                .BeginSubCommand("myc")
+                    .BeginSubCommand("regrow")
+                        .WithDescription("MyceliumSystem debug cmd")
+                        .RequiresPrivilege(Privilege.controlserver)
+                        .HandleWith(OnCmd)
+                    .EndSubCommand()
+                .EndSubCommand();
+                
             api.Event.SaveGameLoaded += Event_SaveGameLoaded;
 
             this.api = api;
@@ -35,26 +43,19 @@ namespace Vintagestory.GameContent
             rndn = new NormalRandom(api.World.Seed);
         }
 
-        private void onCmd(IServerPlayer player, int groupId, CmdArgs args)
+        private TextCommandResult OnCmd(TextCommandCallingArgs args)
         {
-            string cmd = args.PopWord();
+            BlockPos pos = args.Caller.Entity.Pos.XYZ.AsBlockPos;
 
-            BlockPos pos = player.Entity.Pos.XYZ.AsBlockPos;
-
-            switch (cmd)
+            BlockEntityMycelium bemc = api.World.BlockAccessor.GetBlockEntity(pos.DownCopy()) as BlockEntityMycelium;
+            if (bemc == null)
             {
-                case "regrow":
-                    BlockEntityMycelium bemc = api.World.BlockAccessor.GetBlockEntity(pos.DownCopy()) as BlockEntityMycelium;
-                    if (bemc == null)
-                    {
-                        player.SendMessage(groupId, "No mycelium below you", EnumChatType.Notification);
-                        return;
-                    }
-
-                    bemc.Regrow();
-
-                    break;
+                return TextCommandResult.Success("No mycelium below you");
             }
+
+            bemc.Regrow();
+
+            return TextCommandResult.Success();
         }
     }
 
@@ -280,7 +281,7 @@ namespace Vintagestory.GameContent
             {
                 for (int cz = mincz; cz <= maxcz; cz++)
                 {
-                    if (blockAccessor.GetChunk(cx, Pos.Y / chunksize, cz) == null) return false;
+                    if (blockAccessor.GetChunk(cx, Pos.InternalY / chunksize, cz) == null) return false;
                 }
             }
 

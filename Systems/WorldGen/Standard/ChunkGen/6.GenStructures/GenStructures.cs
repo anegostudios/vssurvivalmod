@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
@@ -42,7 +43,7 @@ namespace Vintagestory.ServerMods
 
         WorldGenStructuresConfig scfg;
 
-        WorldGenVillageConfig vcfg;
+        public WorldGenVillageConfig vcfg;
 
         LCGRandom strucRand; // Deterministic random
 
@@ -88,7 +89,7 @@ namespace Vintagestory.ServerMods
         }
 
 
-        internal void initWorldGen()
+        public void initWorldGen()
         {
             chunksize = api.WorldManager.ChunkSize;
             worldheight = api.WorldManager.MapSizeY;
@@ -105,9 +106,7 @@ namespace Vintagestory.ServerMods
 
             asset = api.Assets.Get("worldgen/villages.json");
             vcfg = asset.ToObject<WorldGenVillageConfig>();
-            vcfg.Init(api);
-
-            
+            vcfg.Init(api, scfg.resolvedRocktypeRemapGroups, scfg.SchematicYOffsets);
         }
 
         private void OnChunkColumnGenPostPass(IChunkColumnGenerateRequest request)
@@ -123,7 +122,7 @@ namespace Vintagestory.ServerMods
             IMapRegion region = chunks[0].MapChunk.MapRegion;
 
             DoGenStructures(region, chunkX, chunkZ, true, request.ChunkGenParams);
-            DoGenVillages(region, chunkX, chunkZ, true, request.ChunkGenParams);
+            TryGenVillages(region, chunkX, chunkZ, true, request.ChunkGenParams);
         }
 
         private void OnChunkColumnGen(IChunkColumnGenerateRequest request)
@@ -157,7 +156,7 @@ namespace Vintagestory.ServerMods
             
             
             DoGenStructures(region, chunkX, chunkZ, false, request.ChunkGenParams);
-            DoGenVillages(region, chunkX, chunkZ, false, request.ChunkGenParams);
+            TryGenVillages(region, chunkX, chunkZ, false, request.ChunkGenParams);
         }
 
         private void DoGenStructures(IMapRegion region, int chunkX, int chunkZ, bool postPass, ITreeAttribute chunkGenParams = null)
@@ -187,7 +186,7 @@ namespace Vintagestory.ServerMods
             for (int i = 0; i < shuffledStructures.Length; i++)
             {
                 WorldGenStructure struc = shuffledStructures[i];
-                if (struc.PostPass != postPass) continue;
+                 if (struc.PostPass != postPass) continue;
 
                 float chance = struc.Chance * scfg.ChanceMultiplier;
                 int toGenerate = 9999;
@@ -257,49 +256,52 @@ namespace Vintagestory.ServerMods
 
 
 
-        private void DoGenVillages(IMapRegion region, int chunkX, int chunkZ, bool postPass, ITreeAttribute chunkGenParams = null)
+        public void TryGenVillages(IMapRegion region, int chunkX, int chunkZ, bool postPass, ITreeAttribute chunkGenParams = null)
         {
-            BlockPos pos = new BlockPos();
-
             strucRand.InitPositionSeed(chunkX, chunkZ);
 
             for (int i = 0; i < vcfg.VillageTypes.Length; i++)
             {
                 WorldGenVillage struc = vcfg.VillageTypes[i];
                 if (struc.PostPass != postPass) continue;
-
                 float chance = struc.Chance * vcfg.ChanceMultiplier;
-
                 while (chance-- > strucRand.NextFloat())
                 {
-                    int dx = strucRand.NextInt(chunksize);
-                    int dz = strucRand.NextInt(chunksize);
-                    int ySurface = heightmap[dz * chunksize + dx];
-                    if (ySurface <= 0 || ySurface >= worldheight - 15) continue;
-
-                    pos.Set(chunkX * chunksize + dx, ySurface, chunkZ * chunksize + dz);
-
-                    struc.TryGenerate(worldgenBlockAccessor, api.World, pos, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight, (loc, schematic) =>
-                    {
-                        string code = struc.Code + (schematic == null ? "" : "/" + schematic.FromFileName);
-                        
-                        region.GeneratedStructures.Add(new GeneratedStructure() { Code = code, Group = struc.Group, Location = loc.Clone() });
-                        region.DirtyForSaving = true;
-
-                        if (struc.BuildProtected)
-                        {
-                            api.World.Claims.Add(new LandClaim()
-                            {
-                                Areas = new List<Cuboidi>() { loc.Clone() },
-                                Description = struc.BuildProtectionDesc,
-                                ProtectionLevel = 10,
-                                LastKnownOwnerName = struc.BuildProtectionName,
-                                AllowUseEveryone = true
-                            });
-                        }
-                    });
+                    GenVillage(worldgenBlockAccessor, region, struc, chunkX, chunkZ);
                 }
             }
+        }
+
+        public bool GenVillage(IBlockAccessor blockAccessor, IMapRegion region, WorldGenVillage struc, int chunkX, int chunkZ)
+        {
+            BlockPos pos = new BlockPos();
+
+            int dx = strucRand.NextInt(chunksize);
+            int dz = strucRand.NextInt(chunksize);
+            int ySurface = heightmap[dz * chunksize + dx];
+            if (ySurface <= 0 || ySurface >= worldheight - 15) return false;
+
+            pos.Set(chunkX * chunksize + dx, ySurface, chunkZ * chunksize + dz);
+
+            return struc.TryGenerate(blockAccessor, api.World, pos, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight, (loc, schematic) =>
+            {
+                string code = struc.Code + (schematic == null ? "" : "/" + schematic.FromFileName);
+
+                region.GeneratedStructures.Add(new GeneratedStructure() { Code = code, Group = struc.Group, Location = loc.Clone() });
+                region.DirtyForSaving = true;
+
+                if (struc.BuildProtected)
+                {
+                    api.World.Claims.Add(new LandClaim()
+                    {
+                        Areas = new List<Cuboidi>() { loc.Clone() },
+                        Description = struc.BuildProtectionDesc,
+                        ProtectionLevel = 10,
+                        LastKnownOwnerName = struc.BuildProtectionName,
+                        AllowUseEveryone = true
+                    });
+                }
+            });
         }
 
     }

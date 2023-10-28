@@ -9,7 +9,7 @@ namespace Vintagestory.GameContent
 {
     public class CachedModel
     {
-        public MeshRef MeshRef;
+        public MultiTextureMeshRef MeshRef;
         public float Age;
     }
 
@@ -56,13 +56,13 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public MeshRef GetOrCreateMeshRef(ItemStack forStack)
+        public MultiTextureMeshRef GetOrCreateMeshRef(ItemStack forStack)
         {
             long meshid = forStack.Attributes.GetLong("meshId", 0);
             
             if (!cachedModels.ContainsKey(meshid))
             {
-                MeshRef meshref = CreateModel(forStack);
+                MultiTextureMeshRef meshref = CreateModel(forStack);
                 forStack.Attributes.SetLong("meshId", nextMeshId);
                 cachedModels[nextMeshId++] = new CachedModel() { MeshRef = meshref, Age = 0 };
                 return meshref;
@@ -74,7 +74,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        private MeshRef CreateModel(ItemStack forStack)
+        private MultiTextureMeshRef CreateModel(ItemStack forStack)
         {
             ITreeAttribute tree = forStack.Attributes;
             if (tree == null) tree = new TreeAttribute();
@@ -105,10 +105,10 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            MeshData mesh = BlockEntityMicroBlock.CreateMesh(capi, voxelCuboids, materials, null, originalCuboids);
+            MeshData mesh = BlockEntityMicroBlock.CreateMesh(capi, voxelCuboids, materials, null, null, originalCuboids);
             mesh.Rgba.Fill((byte)255);
 
-            return capi.Render.UploadMesh(mesh);
+            return capi.Render.UploadMultiTextureMesh(mesh);
         }
 
 

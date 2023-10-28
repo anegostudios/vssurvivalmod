@@ -261,7 +261,7 @@ namespace Vintagestory.GameContent
 
         private void onTreeBlock(Vec4i pos, IBlockAccessor blockAccessor, HashSet<BlockPos> checkedPositions, BlockPos startPos, bool chopSpreadVertical, string treeFellingGroupCode, Queue<Vec4i> queue, Queue<Vec4i> leafqueue, int[] adjacentLeaves)
         {
-            Queue<Vec4i> outqueue = null;
+            Queue<Vec4i> outqueue;
             for (int i = 0; i < Vec3i.DirectAndIndirectNeighbours.Length; i++)
             {
                 Vec3i facing = Vec3i.DirectAndIndirectNeighbours[i];

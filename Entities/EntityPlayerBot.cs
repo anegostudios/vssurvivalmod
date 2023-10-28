@@ -1,8 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
@@ -53,6 +53,18 @@ namespace Vintagestory.GameContent
             {
                 (Properties.Client.Renderer as EntityShapeRenderer).DoRenderHeldItem = true;
             }
+
+            var inv = Properties.Attributes?["inventory"];
+            if (inv?.Exists == true)
+            {
+                foreach (var jstack in inv.AsArray<JsonItemStack>())
+                {
+                    if (jstack.Resolve(World, "player bot inventory"))
+                    {
+                        TryGiveItemStack(jstack.ResolvedItemstack);
+                    }
+                }
+            }
         }
 
         public override void OnGameTick(float dt)
@@ -66,8 +78,14 @@ namespace Vintagestory.GameContent
                 AnimManager.StopAnimation("idle1");
             }
 
-
             HandleHandAnimations(dt);
+        }
+
+        protected override Shape addGearToShape(ItemSlot slot, Shape entityShape, string shapePathForLogging)
+        {
+            if (!(slot is ItemSlotCharacter)) return entityShape; // Don't "wear" held items
+
+            return base.addGearToShape(slot, entityShape, shapePathForLogging);
         }
 
 
@@ -183,7 +201,8 @@ namespace Vintagestory.GameContent
         {
             base.OnInteract(byEntity, slot, hitPosition, mode);
 
-            if ((byEntity as EntityPlayer)?.Controls.Sneak == true && mode == EnumInteractMode.Interact && byEntity.World.Side == EnumAppSide.Server)
+            var eplr = byEntity as EntityPlayer;
+            if (eplr?.Controls.Sneak == true && mode == EnumInteractMode.Interact && byEntity.World.Side == EnumAppSide.Server && eplr.Player.WorldData.CurrentGameMode == EnumGameMode.Creative)
             {
                 if (!LeftHandItemSlot.Empty || !RightHandItemSlot.Empty)
                 {
@@ -277,6 +296,7 @@ namespace Vintagestory.GameContent
 
             return slot;
         }
+
 
         public override void DiscardAll()
         {

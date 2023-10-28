@@ -1,9 +1,8 @@
-﻿using Vintagestory.API.Common;
-using Vintagestory.API.MathTools;
+﻿using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent.Mechanics
 {
-   
+
     /// <summary>
     /// The most basic element of a mechanical power network - could be part of a block
     /// </summary>

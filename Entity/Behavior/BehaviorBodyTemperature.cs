@@ -242,7 +242,7 @@ namespace Vintagestory.GameContent
 
                 Wetness = GameMath.Clamp(
                     Wetness
-                    + conds.Rainfall * (rainExposed ? 0.06f : 0) * (conds.Temperature < -1 ? 0.2f : 1) /* Get wet 5 times slower with snow */
+                    + conds.Rainfall * (rainExposed ? 0.06f : 0) * (conds.Temperature < -1 ? 0.05f : 1) /* Get wet 20 times slower with snow */
                     + (entity.Swimming ? 1 : 0)
                     - (float)Math.Max(0, (api.World.Calendar.TotalHours - LastWetnessUpdateTotalHours) * GameMath.Clamp(nearHeatSourceStrength, 1, 2))
                 , 0, 1);
@@ -251,7 +251,7 @@ namespace Vintagestory.GameContent
                 accum = 0;
 
                 float sprintBonus = sprinterCounter / 2f;
-                float wetnessDebuff = (float)Math.Max(0, Wetness - 0.1) * 10f;
+                float wetnessDebuff = (float)Math.Max(0, Wetness - 0.1) * 15f;
 
                 // Can bear anything above 10 degrees without clothing, while standing still
                 float hereTemperature = conds.Temperature + clothingBonus + sprintBonus - wetnessDebuff;

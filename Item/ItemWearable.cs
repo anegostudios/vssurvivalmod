@@ -2,8 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
-using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -174,7 +172,8 @@ namespace Vintagestory.GameContent
                 }
                 catch (Exception e)
                 {
-                    api.World.Logger.Error("Failed loading statModifiers for item/block {0}. Will ignore. Exception: {1}", Code, e);
+                    api.World.Logger.Error("Failed loading statModifiers for item/block {0}. Will ignore.", Code);
+                    api.World.Logger.Error(e);
                     StatModifers = null;
                 }
             }
@@ -189,7 +188,8 @@ namespace Vintagestory.GameContent
                 }
                 catch (Exception e)
                 {
-                    api.World.Logger.Error("Failed loading defaultProtLoss for item/block {0}. Will ignore. Exception: {1}", Code, e);
+                    api.World.Logger.Error("Failed loading defaultProtLoss for item/block {0}. Will ignore.", Code);
+                    api.World.Logger.Error(e);
                 }
             }
 
@@ -202,7 +202,8 @@ namespace Vintagestory.GameContent
                 }
                 catch (Exception e)
                 {
-                    api.World.Logger.Error("Failed loading protectionModifiers for item/block {0}. Will ignore. Exception: {1}", Code, e);
+                    api.World.Logger.Error("Failed loading protectionModifiers for item/block {0}. Will ignore.", Code);
+                    api.World.Logger.Error(e);
                     ProtectionModifiers = null;
                 }
             }
@@ -223,7 +224,7 @@ namespace Vintagestory.GameContent
         {
             base.OnUnloaded(api);
 
-            Dictionary<string, MeshRef> armorMeshrefs = ObjectCacheUtil.TryGet<Dictionary<string, MeshRef>>(api, "armorMeshRefs");
+            Dictionary<string, MultiTextureMeshRef> armorMeshrefs = ObjectCacheUtil.TryGet<Dictionary<string, MultiTextureMeshRef>>(api, "armorMeshRefs");
             if (armorMeshrefs == null) return;
 
             foreach (var val in armorMeshrefs.Values)
@@ -241,14 +242,14 @@ namespace Vintagestory.GameContent
             JsonObject attrObj = itemstack.Collectible.Attributes;
             if (attrObj?["wearableAttachment"].Exists != true) return;
 
-            Dictionary<string, MeshRef> armorMeshrefs = ObjectCacheUtil.GetOrCreate(capi, "armorMeshRefs", () => new Dictionary<string, MeshRef>());
+            Dictionary<string, MultiTextureMeshRef> armorMeshrefs = ObjectCacheUtil.GetOrCreate(capi, "armorMeshRefs", () => new Dictionary<string, MultiTextureMeshRef>());
             string key = "armorModelRef-" + itemstack.Collectible.Code.ToString();
 
             if (!armorMeshrefs.TryGetValue(key, out renderinfo.ModelRef))
             {
                 ITexPositionSource texSource = capi.Tesselator.GetTextureSource(itemstack.Item);
                 var mesh = genMesh(capi, itemstack, texSource);
-                renderinfo.ModelRef = armorMeshrefs[key] = mesh == null ? renderinfo.ModelRef : capi.Render.UploadMesh(mesh);
+                renderinfo.ModelRef = armorMeshrefs[key] = mesh == null ? renderinfo.ModelRef : capi.Render.UploadMultiTextureMesh(mesh);
 
                 
             }

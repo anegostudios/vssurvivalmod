@@ -124,7 +124,7 @@ namespace Vintagestory.GameContent
         /// <summary>
         /// The speed this boat can reach at full power
         /// </summary>
-        public virtual float SpeedMultiplier => 0.75f;
+        public virtual float SpeedMultiplier => 1f;
 
         public double RenderOrder => 0;
         public int RenderRange => 999;
@@ -289,7 +289,9 @@ namespace Vintagestory.GameContent
 
             if (ForwardSpeed != 0.0)
             {
-                pos.Motion.Set(pos.GetViewVector().Mul((float)-ForwardSpeed).ToVec3d());
+                var targetmotion = pos.GetViewVector().Mul((float)-ForwardSpeed).ToVec3d();
+                pos.Motion.X = targetmotion.X;
+                pos.Motion.Z = targetmotion.Z;
             }
 
             if (AngularVelocity != 0.0)

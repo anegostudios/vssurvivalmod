@@ -1,11 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
@@ -154,17 +151,17 @@ namespace Vintagestory.GameContent
         {
             base.OnBeforeRender(capi, itemstack, target, ref renderinfo);
 
-            Dictionary<string, MeshRef> tapestryMeshes;
-            tapestryMeshes = ObjectCacheUtil.GetOrCreate(capi, "tapestryMeshesInventory", () => new Dictionary<string, MeshRef>());
+            Dictionary<string, MultiTextureMeshRef> tapestryMeshes;
+            tapestryMeshes = ObjectCacheUtil.GetOrCreate(capi, "tapestryMeshesInventory", () => new Dictionary<string, MultiTextureMeshRef>());
             renderinfo.NormalShaded = false;
-            MeshRef meshref;
+            MultiTextureMeshRef meshref;
 
             string type = itemstack.Attributes.GetString("type", "");
 
             if (!tapestryMeshes.TryGetValue(type, out meshref))
             {
                 MeshData mesh = genMesh(false, type, 0, true);
-                meshref = capi.Render.UploadMesh(mesh);
+                meshref = capi.Render.UploadMultiTextureMesh(mesh);
                 tapestryMeshes[type] = meshref;
             }
 

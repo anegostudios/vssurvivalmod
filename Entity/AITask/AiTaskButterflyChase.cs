@@ -1,5 +1,4 @@
-﻿using Vintagestory.API;
-using Vintagestory.API.Common;
+﻿using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
@@ -43,6 +42,7 @@ namespace Vintagestory.GameContent
         {
             if (entity.World.Rand.NextDouble() > 0.03) return false;
             if (cooldownUntilMs > entity.World.ElapsedMilliseconds) return false;
+            if (entity.FeetInLiquid) return false;
             if (cooldownUntilTotalHours > entity.World.Calendar.TotalHours) return false;
             if (whenInEmotionState != null && bhEmo?.IsInEmotionState(whenInEmotionState) != true) return false;
             if (whenNotInEmotionState != null && bhEmo?.IsInEmotionState(whenNotInEmotionState) == true) return false;

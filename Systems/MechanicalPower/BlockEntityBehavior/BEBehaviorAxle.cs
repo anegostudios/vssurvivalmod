@@ -1,7 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Text;
-using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -180,7 +178,7 @@ namespace Vintagestory.GameContent.Mechanics
                 throw (e);
 #else
                 Api.Logger.Error("Exception thrown in RequiresStand, will log exception but silently ignore it");
-                Api.Logger.Error("{0}", e);
+                Api.Logger.Error(e);
                 return false;
 #endif
             }

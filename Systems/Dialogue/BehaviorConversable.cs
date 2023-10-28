@@ -184,7 +184,8 @@ namespace Vintagestory.GameContent
                 return asset.ToObject<DialogueConfig>();
             } catch (Exception e)
             {
-                world.Logger.Error("Entitybehavior conversable for entity {0}, dialogue asset is invalid: {1}", entity.Code, e);
+                world.Logger.Error("Entitybehavior conversable for entity {0}, dialogue asset is invalid:", entity.Code);
+                world.Logger.Error(e);
                 return null;
             }
         }

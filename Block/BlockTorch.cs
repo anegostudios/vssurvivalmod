@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -27,6 +26,8 @@ namespace Vintagestory.GameContent
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
+
+            HeldPriorityInteract = true;
 
             var areas = Attributes?["attachmentAreas"].AsObject<Dictionary<string, RotatableCube>>(null);
             if (areas != null)
@@ -95,6 +96,87 @@ namespace Vintagestory.GameContent
             }
         }
 
+        public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
+        {
+            if (isExtinct && byEntity.World.BlockAccessor.GetBlock(blockSel.Position) is IIgnitable ign)
+            {
+                var state = ign.OnTryIgniteStack(byEntity, blockSel.Position, slot, 0);
+                if (state == EnumIgniteState.Ignitable)
+                {
+                    byEntity.World.PlaySoundAt(new AssetLocation("sounds/torch-ignite"), byEntity, (byEntity as EntityPlayer)?.Player, false, 16);
+                    handling = EnumHandHandling.PreventDefault;
+                    return;
+                }
+            }
+
+            base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handling);
+        }
+
+        public override bool OnHeldInteractStep(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        {
+            if (isExtinct && byEntity.World.BlockAccessor.GetBlock(blockSel.Position) is IIgnitable ign)
+            {
+                var state = ign.OnTryIgniteStack(byEntity, blockSel.Position, slot, secondsUsed);
+                if (state == EnumIgniteState.Ignitable)
+                {
+                    if (byEntity.World is IClientWorldAccessor)
+                    {
+                        ModelTransform tf = new ModelTransform();
+                        tf.EnsureDefaultValues();
+
+                        tf.Translation.Set(0, Math.Min(1.1f / 3, secondsUsed * 4 / 3f) / 2, -Math.Min(1.1f, secondsUsed * 4));
+                        tf.Rotation.X = -Math.Min(30, secondsUsed * 90 * 2f);
+                        tf.Rotation.Z = -Math.Min(20, secondsUsed * 90 * 4f);
+                        byEntity.Controls.UsingHeldItemTransformBefore = tf;
+
+
+                        if (secondsUsed > 0.25f && (int)(30 * secondsUsed) % 2 == 1)
+                        {
+                            Random rand = byEntity.World.Rand;
+                            Vec3d pos = blockSel.Position.ToVec3d().Add(blockSel.HitPosition).Add(rand.NextDouble() * 0.25 - 0.125, rand.NextDouble() * 0.25 - 0.125, rand.NextDouble() * 0.25 - 0.125);
+
+                            Block blockFire = byEntity.World.GetBlock(new AssetLocation("fire"));
+
+                            AdvancedParticleProperties props = blockFire.ParticleProperties[blockFire.ParticleProperties.Length - 1].Clone();
+                            props.basePos = pos;
+                            props.Quantity.avg = 0.5f;
+
+                            byEntity.World.SpawnParticles(props, null);
+
+                            props.Quantity.avg = 0;
+                        }
+                    }
+
+                    return true;
+                }
+                if (state == EnumIgniteState.IgniteNow)
+                {
+                    if (byEntity.World.Side == EnumAppSide.Client) return false;
+                    
+                    var stack = new ItemStack(byEntity.World.GetBlock(CodeWithVariant("state", "lit")));
+
+                    if (slot.StackSize == 1)
+                    {
+                        slot.Itemstack = stack;
+                    }
+                    else
+                    {
+                        slot.TakeOut(1);
+                        if (!byEntity.TryGiveItemStack(stack))
+                        {
+                            byEntity.World.SpawnItemEntity(stack, byEntity.Pos.XYZ);
+                        }
+                    }
+
+                    slot.MarkDirty();
+                    return false;
+                }
+            }
+
+            return base.OnHeldInteractStep(secondsUsed, slot, byEntity, blockSel, entitySel);
+        }
+
+
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)
         {
             if (Variant["state"] == "burnedout") return new ItemStack[0];
@@ -107,9 +189,7 @@ namespace Vintagestory.GameContent
         public EnumIgniteState OnTryIgniteBlock(EntityAgent byEntity, BlockPos pos, float secondsIgniting)
         {
             if (Variant["state"] == "burnedout") return EnumIgniteState.NotIgnitablePreventDefault;
-
             if (IsExtinct) return secondsIgniting > 1 ? EnumIgniteState.IgniteNow : EnumIgniteState.Ignitable;
-
             return EnumIgniteState.NotIgnitable;
         }
 
@@ -179,5 +259,10 @@ namespace Vintagestory.GameContent
             return true;
         }
 
+        EnumIgniteState IIgnitable.OnTryIgniteStack(EntityAgent byEntity, BlockPos pos, ItemSlot slot, float secondsIgniting)
+        {
+            if (!IsExtinct) return secondsIgniting > 2 ? EnumIgniteState.IgniteNow : EnumIgniteState.Ignitable;
+            return EnumIgniteState.NotIgnitable;
+        }
     }
 }

@@ -1,6 +1,4 @@
-﻿using Cairo;
-using System;
-using Vintagestory.API.Client;
+﻿using Vintagestory.API.Client;
 using Vintagestory.GameContent;
 
 namespace VSSurvivalMod.Systems.ChiselModes

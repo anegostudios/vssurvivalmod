@@ -1,13 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Collections.Generic;
 using System.Text;
-using System.Threading.Tasks;
-using Cairo;
 using Newtonsoft.Json.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -27,7 +22,7 @@ namespace Vintagestory.GameContent
 
         Dictionary<string, AssetLocation> tmpTextures = new Dictionary<string, AssetLocation>();
 
-        Dictionary<int, MeshRef> meshrefs => ObjectCacheUtil.GetOrCreate(api, "shieldmeshrefs", () => new Dictionary<int, MeshRef>());
+        Dictionary<int, MultiTextureMeshRef> meshrefs => ObjectCacheUtil.GetOrCreate(api, "shieldmeshrefs", () => new Dictionary<int, MultiTextureMeshRef>());
 
         public string Construction => Variant["construction"];
 
@@ -169,7 +164,7 @@ namespace Vintagestory.GameContent
             if (meshrefid == 0 || !meshrefs.TryGetValue(meshrefid, out renderinfo.ModelRef))
             {
                 int id = meshrefs.Count+1;
-                var modelref = capi.Render.UploadMesh(GenMesh(itemstack, capi.ItemTextureAtlas));
+                var modelref = capi.Render.UploadMultiTextureMesh(GenMesh(itemstack, capi.ItemTextureAtlas));
                 renderinfo.ModelRef = meshrefs[id] = modelref;
 
                 itemstack.TempAttributes.SetInt("meshRefId", id);

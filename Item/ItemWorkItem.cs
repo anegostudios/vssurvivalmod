@@ -4,7 +4,6 @@ using System.Linq;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
@@ -13,7 +12,7 @@ namespace Vintagestory.GameContent
 {
     public class CachedMeshRef
     {
-        public MeshRef meshref;
+        public MultiTextureMeshRef meshref;
         public int TextureId;
     }
 
@@ -43,7 +42,7 @@ namespace Vintagestory.GameContent
 
                     return new CachedMeshRef()
                     {
-                        meshref = capi.Render.UploadMesh(mesh),
+                        meshref = capi.Render.UploadMultiTextureMesh(mesh),
                         TextureId = textureid
                     };
                 });
@@ -70,7 +69,7 @@ namespace Vintagestory.GameContent
 
                 return new CachedMeshRef()
                 {
-                    meshref = capi.Render.UploadMesh(mesh),
+                    meshref = capi.Render.UploadMultiTextureMesh(mesh),
                     TextureId = textureid
                 };
             });

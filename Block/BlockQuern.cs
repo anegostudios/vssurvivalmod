@@ -1,11 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 using Vintagestory.GameContent.Mechanics;
@@ -124,6 +121,41 @@ namespace Vintagestory.GameContent
         public override bool HasMechPowerConnectorAt(IWorldAccessor world, BlockPos pos, BlockFacing face)
         {
             return face == BlockFacing.UP || face == BlockFacing.DOWN;
+        }
+
+        public override void OnEntityCollide(IWorldAccessor world, Entity entity, BlockPos pos, BlockFacing facing, Vec3d collideSpeed, bool isImpact)
+        {
+            base.OnEntityCollide(world, entity, pos, facing, collideSpeed, isImpact);
+
+            if (facing == BlockFacing.UP)
+            {
+                
+                if (entity.World.Side == EnumAppSide.Server)
+                {
+                    float frameTime = GlobalConstants.PhysicsFrameTime;
+                    var mpc = GetBEBehavior<BEBehaviorMPConsumer>(pos);
+                    if (mpc != null)
+                    {
+                        entity.SidedPos.Yaw += frameTime * mpc.TrueSpeed * 3f;
+                    }
+                }
+                else
+                {
+                    float frameTime = GlobalConstants.PhysicsFrameTime;
+                    var mpc = GetBEBehavior<BEBehaviorMPConsumer>(pos);
+                    var capi = api as ICoreClientAPI;
+                    if (capi.World.Player.Entity.EntityId == entity.EntityId)
+                    {
+                        if (capi.World.Player.CameraMode != EnumCameraMode.Overhead)
+                        {
+                            capi.Input.MouseYaw += frameTime * mpc.TrueSpeed * 3f;
+                        }
+                        capi.World.Player.Entity.BodyYaw += frameTime * mpc.TrueSpeed * 3f;
+                        capi.World.Player.Entity.WalkYaw += frameTime * mpc.TrueSpeed * 3f;
+                        capi.World.Player.Entity.Pos.Yaw += frameTime * mpc.TrueSpeed * 3f;
+                    }
+                }
+            }
         }
     }
 }

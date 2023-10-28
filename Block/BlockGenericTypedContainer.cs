@@ -2,11 +2,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
-using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
@@ -167,7 +165,7 @@ namespace Vintagestory.GameContent
 
         public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
         {
-            Dictionary<string, MeshRef> meshrefs = new Dictionary<string, MeshRef>();
+            Dictionary<string, MultiTextureMeshRef> meshrefs = new Dictionary<string, MultiTextureMeshRef>();
 
             string key = "genericTypedContainerMeshRefs" + FirstCodePart() + SubtypeInventory;
 
@@ -177,7 +175,7 @@ namespace Vintagestory.GameContent
 
                 foreach (var val in meshes)
                 {
-                    meshrefs[val.Key] = capi.Render.UploadMesh(val.Value);
+                    meshrefs[val.Key] = capi.Render.UploadMultiTextureMesh(val.Value);
                 }
 
                 return meshrefs;
@@ -189,9 +187,10 @@ namespace Vintagestory.GameContent
             if (!meshrefs.TryGetValue(type, out renderinfo.ModelRef))
             {
                 MeshData mesh = GenGuiMesh(capi, type);
-                meshrefs[type] = renderinfo.ModelRef = capi.Render.UploadMesh(mesh);
+                meshrefs[type] = renderinfo.ModelRef = capi.Render.UploadMultiTextureMesh(mesh);
             }
-            
+
+            base.OnBeforeRender(capi, itemstack, target, ref renderinfo);
         }
 
 
@@ -209,7 +208,7 @@ namespace Vintagestory.GameContent
             if (capi == null) return;
 
             string key = "genericTypedContainerMeshRefs" + FirstCodePart() + SubtypeInventory;
-            Dictionary<string, MeshRef> meshrefs = ObjectCacheUtil.TryGet<Dictionary<string, MeshRef>>(api, key);
+            Dictionary<string, MultiTextureMeshRef> meshrefs = ObjectCacheUtil.TryGet<Dictionary<string, MultiTextureMeshRef>>(api, key);
             
             if (meshrefs != null) {
                 foreach (var val in meshrefs)

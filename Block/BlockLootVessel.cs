@@ -1,11 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Vintagestory.API;
 using Vintagestory.API.Common;
-using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
@@ -165,93 +160,23 @@ namespace Vintagestory.GameContent
 
     public class BlockLootVessel : Block
     {
-        // Types of loot
-        // - Seed container (several seeds of one type)
-        // - Food container (bones, grain)
-        // - Forage container (flint, sticks, some logs, dry grass, stones, clay)
-        // - Ore container (some low level ores, rarely ingots)
-        // - Tool container (some half used stone and copper tools, rarely lantern)
-        // - Farming container (linen sack, flax fibers, flax twine, 
+        LootList lootList;
 
-        public static Dictionary<string, LootList> lootLists = new Dictionary<string, LootList>();
+        public override void OnLoaded(ICoreAPI api)
+        {
+            base.OnLoaded(api);
 
-        static BlockLootVessel() {
-
-            lootLists["seed"] = LootList.Create(1, 
-                LootItem.Item(1, 5, 7, "seeds-carrot", "seeds-onion", "seeds-spelt", "seeds-turnip", "seeds-rice", "seeds-rye", "seeds-soybean", "seeds-pumpkin", "seeds-cabbage")
-            );
-
-            lootLists["food"] = LootList.Create(1, 
-                LootItem.Item(3, 8, 15, "grain-spelt", "grain-rice", "grain-flax", "grain-rye"),
-                LootItem.Item(0.1f, 1, 1, "tuningcylinder-1", "tuningcylinder-2", "tuningcylinder-3", "tuningcylinder-4", "tuningcylinder-5", "tuningcylinder-6", "tuningcylinder-7", "tuningcylinder-8", "tuningcylinder-9")
-            );
-
-            lootLists["forage"] = LootList.Create(2.5f, 
-                LootItem.Item(1, 2, 6, "flint"),
-                LootItem.Item(1, 3, 9, "stick"),
-                LootItem.Item(1, 3, 16, "drygrass"),
-                LootItem.Item(1, 3, 24, "stone-andesite", "stone-chalk", "stone-claystone", "stone-granite", "stone-sandstone", "stone-shale"),
-                LootItem.Item(1, 3, 24, "clay-blue", "clay-fire"),
-                LootItem.Item(1, 3, 24, "cattailtops"),
-                LootItem.Item(1, 1, 4, "poultice-linen-horsetail"), 
-                LootItem.Item(0.5f, 1, 12, "flaxfibers"),
-                LootItem.Item(0.3f, 1, 3, "honeycomb"),
-                LootItem.Item(0.3f, 2, 6, "bamboostakes"),
-                LootItem.Item(0.3f, 2, 6, "beenade-closed")
-            );
-
-            lootLists["ore"] = LootList.Create(1.35f,
-                LootItem.Item(1, 2, 12, "ore-lignite", "ore-bituminouscoal"),
-                LootItem.Item(1, 2, 8, "nugget-nativecopper", "ore-quartz", "nugget-galena"),
-                LootItem.Item(0.2f, 4, 12, "nugget-galena", "nugget-cassiterite", "nugget-sphalerite", "nugget-bismuthinite"),
-                LootItem.Item(0.1f, 4, 12, "nugget-limonite", "nugget-nativegold", "nugget-chromite", "nugget-ilmenite", "nugget-nativesilver", "nugget-magnetite")
-            );
-
-            lootLists["tool"] = LootList.Create(2.2f, 
-                LootItem.Item(1, 1, 1, "axe-flint"),
-                LootItem.Item(1, 1, 1, "shovel-flint"),
-                LootItem.Item(1, 1, 1, "knife-generic-flint"),
-                LootItem.Item(0.1f, 1, 1, "axe-felling-copper", "axe-felling-copper", "axe-felling-tinbronze"),
-                LootItem.Item(0.1f, 1, 1, "shovel-copper", "shovel-copper", "shovel-tinbronze"),
-                LootItem.Item(0.1f, 1, 1, "pickaxe-copper"),
-                LootItem.Item(0.1f, 1, 1, "scythe-copper"),
-                LootItem.Item(0.1f, 1, 1, "knife-generic-copper", "knife-generic-copper", "knife-generic-tinbronze"),
-                LootItem.Item(0.1f, 1, 1, "blade-falx-copper", "blade-falx-copper", "blade-falx-tinbronze"),
-                LootItem.Item(0.1f, 2, 4, "gear-rusty")
-            );
-
-            lootLists["farming"] = LootList.Create(2.5f,
-                LootItem.Item(0.1f, 1, 1, "linensack"),
-                LootItem.Item(0.5f, 1, 1, "basket"),
-                LootItem.Item(0.75f, 3, 10, "feather"),
-                LootItem.Item(0.75f, 2, 10, "flaxfibers"),
-                LootItem.Item(0.35f, 2, 10, "flaxtwine"),
-                LootItem.Item(0.75f, 2, 4, "seeds-cabbage"),
-                LootItem.Item(0.75f, 5, 10, "cattailtops"),
-                LootItem.Item(0.1f, 1, 1, "scythe-copper", "scythe-tinbronze")
-            );
-
-            lootLists["arcticsupplies"] = LootList.Create(2.5f,
-                LootItem.Item(1.5f, 6, 24, "cattailtops"),
-                LootItem.Item(1.5f, 6, 16, "drygrass"),
-                LootItem.Item(1, 4, 7, "flint"),
-                LootItem.Item(1, 6, 12, "stick"),
-                LootItem.Item(1, 10, 24, "stone-andesite", "stone-chalk", "stone-granite", "stone-basalt"),
-                LootItem.Block(1, 4, 24, "soil-medium-none"),
-                LootItem.Item(1, 4, 24, "clay-blue", "clay-fire"),
-                LootItem.Item(0.5f, 1, 4, "poultice-linen-horsetail"),
-                LootItem.Item(0.5f, 1, 12, "flaxfibers"),
-                LootItem.Item(0.3f, 1, 3, "honeycomb"),
-                LootItem.Item(0.1f, 2, 4, "gear-rusty")
+            lootList = LootList.Create(
+                Attributes["lootTries"].AsInt(), 
+                Attributes["lootList"].AsObject<LootItem[]>()
             );
         }
 
         public override BlockDropItemStack[] GetDropsForHandbook(ItemStack handbookStack, IPlayer forPlayer)
         {
-            LootList list = lootLists[LastCodePart()];
             List<BlockDropItemStack> drops = new List<BlockDropItemStack>();
 
-            foreach (var val in list.lootItems)
+            foreach (var val in lootList.lootItems)
             {
                 for (int i = 0; i < val.codes.Length; i++)
                 {
@@ -266,7 +191,7 @@ namespace Vintagestory.GameContent
                     BlockDropItemStack stack = new BlockDropItemStack(lstack);
                     if (stack == null) continue;
                     
-                    stack.Quantity.avg = val.chance / list.TotalChance / val.codes.Length;
+                    stack.Quantity.avg = val.chance / lootList.TotalChance / val.codes.Length;
 
                     // Prevent duplicates
                     if (drops.FirstOrDefault(dstack => dstack.ResolvedItemstack.Equals(api.World, stack.ResolvedItemstack, GlobalConstants.IgnoredStackAttributes)) == null)
@@ -287,10 +212,9 @@ namespace Vintagestory.GameContent
                 return new ItemStack[] { new ItemStack(this) };
             }
 
-            LootList list = lootLists[LastCodePart()];
-            if (list == null) return new ItemStack[0];
+            if (lootList == null) return new ItemStack[0];
 
-            return list.GenerateLoot(world, byPlayer);
+            return lootList.GenerateLoot(world, byPlayer);
         }
 
         public override float OnGettingBroken(IPlayer player, BlockSelection blockSel, ItemSlot itemslot, float remainingResistance, float dt, int counter)

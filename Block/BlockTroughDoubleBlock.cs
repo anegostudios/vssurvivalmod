@@ -1,12 +1,7 @@
-﻿using System.Collections.Generic;
-using System.Text;
+﻿using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Common.Entities;
-using Vintagestory.API.Config;
-using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
-using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -165,20 +160,26 @@ namespace Vintagestory.GameContent
                 return dsc.ToString();
             }
 
-
             return base.GetPlacedBlockInfo(world, pos, forPlayer);
         }
 
 
         public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing, int rndIndex = -1)
         {
-            return capi.BlockTextureAtlas.GetRandomColor(Textures["wood"].Baked.TextureSubId, rndIndex);
+            if (Textures.TryGetValue("aged", out var ctex))
+            {
+                capi.BlockTextureAtlas.GetRandomColor(ctex.Baked.TextureSubId, rndIndex);
+            }
+            return base.GetRandomColor(capi, pos, facing, rndIndex);
         }
 
         public override int GetColorWithoutTint(ICoreClientAPI capi, BlockPos pos)
         {
-            int texSubId = Textures["wood"].Baked.TextureSubId;
-            return capi.BlockTextureAtlas.GetAverageColor(texSubId);
+            if (Textures.TryGetValue("aged", out var ctex))
+            {
+                return capi.BlockTextureAtlas.GetAverageColor(ctex.Baked.TextureSubId);
+            }
+            return base.GetColorWithoutTint(capi, pos);
         }
 
     }

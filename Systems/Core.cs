@@ -301,7 +301,8 @@ namespace Vintagestory.GameContent
             }
             catch (Exception e)
             {
-                api.World.Logger.Error("Failed loading survivalconfig.json, error {0}. Will initialize new one", e);
+                api.World.Logger.Error("Failed loading survivalconfig.json. Will initialize new one");
+                api.World.Logger.Error(e);
                 config = new SurvivalConfig();
             }
 
@@ -515,6 +516,7 @@ namespace Vintagestory.GameContent
             api.RegisterBlockClass("BlockTapestry", typeof(BlockTapestry));
 
             api.RegisterBlockClass("BlockBunchOCandles", typeof(BlockBunchOCandles));
+            api.RegisterBlockClass("BlockCandle", typeof(BlockCandle));
             api.RegisterBlockClass("BlockChute", typeof(BlockChute));
 
             api.RegisterBlockClass("BlockArchimedesScrew", typeof(BlockArchimedesScrew));
@@ -574,6 +576,11 @@ namespace Vintagestory.GameContent
 
             api.RegisterBlockClass("BlockBaseReturnTeleporter", typeof(BlockBaseReturnTeleporter));
             api.RegisterBlockClass("BlockCorpseReturnTeleporter", typeof(BlockCorpseReturnTeleporter));
+
+            api.RegisterBlockClass("BlockRandomizer", typeof(BlockRandomizer));
+            api.RegisterBlockClass("BlockScrollRack", typeof(BlockScrollRack));
+            api.RegisterBlockClass("BlockBasketTrap", typeof(BlockBasketTrap));
+            
         }
 
 
@@ -621,6 +628,9 @@ namespace Vintagestory.GameContent
             api.RegisterBlockBehaviorClass("JonasBoilerDoor", typeof(BlockBehaviorJonasBoilerDoor));
             api.RegisterBlockBehaviorClass("JonasHydraulicPump", typeof(BlockBehaviorJonasHydraulicPump));
             api.RegisterBlockBehaviorClass("JonasGasifier", typeof(BlockBehaviorJonasGasifier));
+            api.RegisterBlockBehaviorClass("UnstableRock", typeof(BlockBehaviorUnstableRock));
+            api.RegisterBlockBehaviorClass("CreatureContainer", typeof(BlockBehaviorCreatureContainer));
+
         }
 
         private void RegisterDefaultBlockEntityBehaviors()
@@ -782,6 +792,12 @@ namespace Vintagestory.GameContent
             api.RegisterBlockEntityClass("CorpseReturnTeleporter", typeof(BlockEntityCorpseReturnTeleporter));
             api.RegisterBlockEntityClass("BaseReturnTeleporter", typeof(BlockEntityBaseReturnTeleporter));
 
+            api.RegisterBlockEntityClass("BlockRandomizer", typeof(BlockEntityBlockRandomizer));
+
+            api.RegisterBlockEntityClass("ScrollRack", typeof(BlockEntityScrollRack));
+
+            api.RegisterBlockEntityClass("BasketTrap", typeof(BlockEntityBasketTrap));
+            api.RegisterBlockEntityClass("AnimalBasket", typeof(BlockEntityAnimalBasket));
         }
 
 
@@ -891,6 +907,8 @@ namespace Vintagestory.GameContent
             api.RegisterEntity("EntityEidolon", typeof(EntityEidolon));
             api.RegisterEntity("EntityEchoChamber", typeof(EntityEchoChamber));
             api.RegisterEntity("EntityMechHelper", typeof(EntityMechHelper));
+            api.RegisterEntity("EntityLibraryResonator", typeof(EntityLibraryResonator));
+            
         }
 
 

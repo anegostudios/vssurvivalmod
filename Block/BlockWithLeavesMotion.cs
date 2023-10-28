@@ -1,14 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Vintagestory.API.Client;
+﻿using Vintagestory.API.Client;
 using Vintagestory.API.Client.Tesselation;
 using Vintagestory.API.Common;
-using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
-using Vintagestory.API.Server;
 
 namespace Vintagestory.GameContent
 {
@@ -78,7 +71,7 @@ namespace Vintagestory.GameContent
                 for (int i = 0; i < flags.Length; i++) flags[i] = sourceMesh.Flags[i] & VertexFlags.WindModeBitsMask;
             }*/
 
-            bool enableWind = (byte)(lightRgbsByCorner[24] >> 24) >= 159;  //corresponds with a sunlight level of less than 14
+            bool enableWind = (lightRgbsByCorner[24] >> 24 & 0xff) >= 159;  //corresponds with a sunlight level of less than 14
             int groundOffset = 1;
             int sideDisableWindshear = 0;  //any bit set to 1 means no height-based wind shear on that tileSide (because adjoining solid block)
 
@@ -123,7 +116,7 @@ namespace Vintagestory.GameContent
             sideDisableWindwave = 0;  //any bit set to 1 means no Wave on that tileSide
             if (VertexFlags.WindMode == EnumWindBitMode.NoWind) return 0;
 
-            bool enableWind = (byte)(light >> 24) >= 159;  //corresponds with a sunlight level of less than 14
+            bool enableWind = (light >> 24 & 0xff) >= 159;  //corresponds with a sunlight level of less than 14
             int groundOffset = 1;
 
             if (enableWind)

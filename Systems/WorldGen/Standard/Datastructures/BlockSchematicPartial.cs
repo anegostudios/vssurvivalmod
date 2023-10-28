@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -109,7 +108,7 @@ namespace Vintagestory.ServerMods
 
                     be.FromTreeAttributes(tree, worldForResolve);
                     be.OnLoadCollectibleMappings(worldForResolve, BlockCodes, ItemCodes, schematicSeed);
-                    be.OnPlacementBySchematic(worldForResolve.Api as ICoreServerAPI, blockAccessor, curPos);
+                    be.OnPlacementBySchematic(worldForResolve.Api as ICoreServerAPI, blockAccessor, curPos, null, 0, null);
                 }
             }
 

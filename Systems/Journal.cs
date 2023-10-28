@@ -224,27 +224,30 @@ namespace Vintagestory.GameContent
 
             api.Event.RegisterEventBusListener(OnLoreDiscovery, 0.5, "loreDiscovery");
 
-            //api.RegisterCommand("alllore", "", "", onCmdAllLore, Privilege.controlserver);
-        }
+            // api.ChatCommands.GetOrCreate("debug")
+            //     .BeginSubCommand("alllore")
+            //         .WithDescription("Discover all lore content in the journal")
+            //         .RequiresPrivilege(Privilege.controlserver)
+            //         .HandleWith(DiscoverEverything)
+            //
+            //         .BeginSubCommand("clear")
+            //             .WithDescription("Clear the journal")
+            //             .RequiresPlayer()
+            //             .HandleWith(args =>
+            //             {
+            //                 Journal journal;
+            //                 if (!journalsByPlayerUid.TryGetValue(args.Caller.Player.PlayerUID, out journal))
+            //                 {
+            //                     journalsByPlayerUid[args.Caller.Player.PlayerUID] = journal = new Journal();
+            //                 }
+            //
+            //                 journal.Entries.Clear();
+            //
+            //                 return TextCommandResult.Success("Cleared.");
+            //             })
+            //         .EndSubCommand()
+            //     .EndSubCommand();
 
-        private void onCmdAllLore(IServerPlayer player, int groupId, CmdArgs args)
-        {
-            if (args.PopWord() == "clear")
-            {
-                Journal journal;
-                if (!journalsByPlayerUid.TryGetValue(player.PlayerUID, out journal))
-                {
-                    journalsByPlayerUid[player.PlayerUID] = journal = new Journal();
-                }
-
-                journal.Entries.Clear();
-
-                player.SendMessage(groupId, "Cleared.", EnumChatType.CommandSuccess);
-
-                return;
-            }
-
-            DiscoverEverything(player);
         }
 
         private void OnGameGettingSaved()
@@ -271,7 +274,8 @@ namespace Vintagestory.GameContent
                 
             } catch (Exception e)
             {
-                sapi.World.Logger.Error("Failed loading journalItemsByPlayerUid. Resetting. Exception: {0}", e);
+                sapi.World.Logger.Error("Failed loading journalItemsByPlayerUid. Resetting.");
+                sapi.World.Logger.Error(e);
             }
             if (journalsByPlayerUid == null) journalsByPlayerUid = new Dictionary<string, Journal>();
 
@@ -438,7 +442,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public void DiscoverLore(LoreDiscovery discovery, IServerPlayer plr, ItemSlot slot) 
+        public void DiscoverLore(LoreDiscovery discovery, IServerPlayer plr, ItemSlot slot)
         {
             string playerUid = plr.PlayerUID;
 
@@ -447,6 +451,7 @@ namespace Vintagestory.GameContent
             {
                 journalsByPlayerUid[playerUid] = journal = new Journal();
             }
+
 
             JournalEntry entry = null;
             ensureJournalAssetsLoaded();
@@ -469,10 +474,12 @@ namespace Vintagestory.GameContent
                 isNew = true;
             }
 
+            markNextLoreChapterDiscovered(plr, asset);
+
             int partnum = 0;
             int partcount = asset.Pieces.Length;
 
-            
+
 
             for (int i = 0; i < discovery.ChapterIds.Count; i++)
             {
@@ -498,13 +505,13 @@ namespace Vintagestory.GameContent
                 serverChannel.SendPacket(entry, plr);
             }
 
-            sapi.SendIngameDiscovery(plr, "lore-" + discovery.Code, null, partnum+1, partcount);
+            sapi.SendIngameDiscovery(plr, "lore-" + discovery.Code, null, partnum + 1, partcount);
             sapi.World.PlaySoundAt(new AssetLocation("sounds/effect/deepbell"), plr.Entity, null, false, 5, 0.5f);
         }
 
-
-        protected void DiscoverEverything(IServerPlayer plr)
+        protected TextCommandResult DiscoverEverything(TextCommandCallingArgs args)
         {
+            var plr = args.Caller.Player as IServerPlayer;
             JournalAsset[] journalAssets = sapi.World.AssetManager.GetMany<JournalAsset>(sapi.World.Logger, "config/lore/").Values.ToArray();
 
             Journal journal;
@@ -528,19 +535,12 @@ namespace Vintagestory.GameContent
                     serverChannel.SendPacket(piece, plr);
                 }
             }
+            return TextCommandResult.Success();
         }
 
 
         LoreDiscovery TryGetRandomLoreDiscovery(IWorldAccessor world, IPlayer serverplayer, string category)
         {
-            Dictionary<string, LoreDiscovery> discoveredLore;
-            loreDiscoveryiesByPlayerUid.TryGetValue(serverplayer.PlayerUID, out discoveredLore);
-
-            if (discoveredLore == null)
-            {
-                loreDiscoveryiesByPlayerUid[serverplayer.PlayerUID] = discoveredLore = new Dictionary<string, LoreDiscovery>();
-            }
-
             JournalAsset[] journalAssets;
 
             ensureJournalAssetsLoaded();
@@ -554,25 +554,47 @@ namespace Vintagestory.GameContent
                 JournalAsset journalAsset = journalAssets[i];
                 if (category != null && journalAsset.Category != category) continue;
 
-                if (!discoveredLore.ContainsKey(journalAsset.Code))
-                {
-                    return discoveredLore[journalAsset.Code] = new LoreDiscovery() { Code = journalAsset.Code, ChapterIds = new List<int>() { 0 } };
-                }
+                return markNextLoreChapterDiscovered(serverplayer, journalAsset);
+            }
 
-                LoreDiscovery ld = discoveredLore[journalAsset.Code];
+            return null;
+        }
 
-                for (int p = 0; p < journalAsset.Pieces.Length; p++)
+
+        /// <summary>
+        /// Marks the first undiscovered chapter of this lore as discovered and returns it
+        /// </summary>
+        /// <param name="plr"></param>
+        /// <param name="asset"></param>
+        /// <returns></returns>
+        private LoreDiscovery markNextLoreChapterDiscovered(IPlayer plr, JournalAsset asset)
+        {
+            Dictionary<string, LoreDiscovery> discoveredLore;
+            loreDiscoveryiesByPlayerUid.TryGetValue(plr.PlayerUID, out discoveredLore);
+            if (discoveredLore == null)
+            {
+                loreDiscoveryiesByPlayerUid[plr.PlayerUID] = discoveredLore = new Dictionary<string, LoreDiscovery>();
+            }
+
+            if (!discoveredLore.ContainsKey(asset.Code))
+            {
+                return discoveredLore[asset.Code] = new LoreDiscovery() { Code = asset.Code, ChapterIds = new List<int>() { 0 } };
+            }
+
+            LoreDiscovery ld = discoveredLore[asset.Code];
+
+            for (int p = 0; p < asset.Pieces.Length; p++)
+            {
+                if (!ld.ChapterIds.Contains(p))
                 {
-                    if (!ld.ChapterIds.Contains(p))
-                    {
-                        ld.ChapterIds.Add(p);
-                        return new LoreDiscovery() { Code = journalAsset.Code, ChapterIds = new List<int>() { p } };
-                    }
+                    ld.ChapterIds.Add(p);
+                    return new LoreDiscovery() { Code = asset.Code, ChapterIds = new List<int>() { p } };
                 }
             }
 
             return null;
         }
+
 
         bool DidDiscover(string playerUid, string loreCode, int chapterId)
         {

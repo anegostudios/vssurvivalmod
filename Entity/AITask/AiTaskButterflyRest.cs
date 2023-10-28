@@ -100,7 +100,6 @@ namespace Vintagestory.GameContent
 
             for (int i = 1; i >= 0; i--)
             {
-
                 tmpPos.Set((int)(entity.ServerPos.X + dx), 0, (int)(entity.ServerPos.Z + dz));
                 tmpPos.Y = entity.World.BlockAccessor.GetTerrainMapheightAt(tmpPos) + i;
 
@@ -122,10 +121,14 @@ namespace Vintagestory.GameContent
 
                 if (block.SideSolid[BlockFacing.UP.Index])
                 {
-                    double topPos = block.TopMiddlePos.Y;
-                    entity.WatchedAttributes.SetDouble("windWaveIntensity", block.VertexFlags?.WindMode != EnumWindBitMode.NoWind ? (weak ? topPos / 2 : topPos) : 0);
-                    MainTarget = tmpPos.ToVec3d().Add(block.TopMiddlePos.X, topPos - 1, block.TopMiddlePos.Z);
-                    return true;
+                    block = entity.World.BlockAccessor.GetBlock(tmpPos.UpCopy());
+                    if (!block.IsLiquid())
+                    {
+                        double topPos = block.TopMiddlePos.Y;
+                        entity.WatchedAttributes.SetDouble("windWaveIntensity", block.VertexFlags?.WindMode != EnumWindBitMode.NoWind ? (weak ? topPos / 2 : topPos) : 0);
+                        MainTarget = tmpPos.ToVec3d().Add(block.TopMiddlePos.X, topPos - 1, block.TopMiddlePos.Z);
+                        return true;
+                    }
                 }
             }
             
@@ -154,10 +157,18 @@ namespace Vintagestory.GameContent
 
             if (entity.World.Rand.NextDouble() > 0.05) return true;
 
-            if (taskState == 2)
+            if (entity.EntityId == 4774)
+            {
+                int a = 1;
+            }
+
+            //if (taskState == 2)
             {
                 var block = entity.World.BlockAccessor.GetBlock(entity.Pos.AsBlockPos.Down());
                 if (!block.SideSolid[BlockFacing.UP.Index]) return false;
+
+                block = entity.World.BlockAccessor.GetBlock(entity.Pos.AsBlockPos);
+                if (block.IsLiquid()) return false;
             }
 
             switch (reason)

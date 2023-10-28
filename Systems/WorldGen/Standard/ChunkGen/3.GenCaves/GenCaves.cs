@@ -29,8 +29,14 @@ namespace Vintagestory.ServerMods
 
                 api.Event.GetWorldgenBlockAccessor(OnWorldGenBlockAccessor);
 
-                api.RegisterCommand("gencaves", "Cave generator test tool. Deletes all chunks in the area and generates inverse caves around the world middle", "", CmdCaveGenTest, Privilege.controlserver);
-
+                api.ChatCommands.GetOrCreate("dev")
+                    .BeginSubCommand("gencaves")
+                    .WithDescription(
+                        "Cave generator test tool. Deletes all chunks in the area and generates inverse caves around the world middle")
+                    .RequiresPrivilege(Privilege.controlserver)
+                    .HandleWith(CmdCaveGenTest)
+                    .EndSubCommand();
+    
                 if (TerraGenConfig.DoDecorationPass)
                 {
                     api.Event.MapChunkGeneration(OnMapChunkGen, "standard");
@@ -67,9 +73,8 @@ namespace Vintagestory.ServerMods
                 }
             }
         }
-
-
-        private void CmdCaveGenTest(IServerPlayer player, int groupId, CmdArgs args)
+        
+        private TextCommandResult CmdCaveGenTest(TextCommandCallingArgs args)
         {
             caveRand = new LCGRandom(api.WorldManager.Seed + 123128);
             initWorldGen();
@@ -93,8 +98,7 @@ namespace Vintagestory.ServerMods
                     {
                         if (chunks[i] == null)
                         {
-                            player.SendMessage(groupId, "Cannot generate 10x10 area of caves, chunks are not loaded that far yet.", EnumChatType.CommandError);
-                            return;
+                            return TextCommandResult.Success( "Cannot generate 10x10 area of caves, chunks are not loaded that far yet.");
                         }
                     }
 
@@ -129,7 +133,7 @@ namespace Vintagestory.ServerMods
 
             airBlockId = 0;
 
-            player.SendMessage(groupId, "Generated and chunks force resend flags set", EnumChatType.Notification);
+            return TextCommandResult.Success("Generated and chunks force resend flags set");
         }
 
         private IServerChunk[] GetChunkColumn(int chunkX, int chunkZ)

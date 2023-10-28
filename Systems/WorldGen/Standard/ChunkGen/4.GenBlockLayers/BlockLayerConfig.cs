@@ -1,7 +1,6 @@
 ﻿using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
-using Vintagestory.API;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
@@ -122,8 +121,13 @@ namespace Vintagestory.ServerMods
 
         public bool Suitable(float temp, float rain, float yRel, LCGRandom rnd)
         {
+            return Suitable(temp, rain, yRel, rnd.NextFloat());
+        }
+
+        public bool Suitable(float temp, float rain, float yRel, float rnd)
+        {
             float transDistance = MinTemp - temp + transSize;
-            return rain >= MinRain && rain <= MaxRain && MinY <= yRel && MaxY >= yRel && transDistance <= rnd.NextFloat() * transSize;
+            return rain >= MinRain && rain <= MaxRain && MinY <= yRel && MaxY >= yRel && transDistance <= rnd * transSize;
         }
 
         public int GetBlockForMotherRock(int rockBlockid)

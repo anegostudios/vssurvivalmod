@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -128,7 +127,7 @@ namespace Vintagestory.ServerMods
             {
                 selectedBlock = ba.GetBlock(new AssetLocation("chiseledblock")) as BlockChisel;
             }
-            if (withItemStack?.Block == null || !ItemChisel.IsValidChiselingMaterial(we.sapi, withItemStack.Block, we.sapi.World.PlayerByUid(workspace.PlayerUID)))
+            if (withItemStack?.Block == null || !ItemChisel.IsValidChiselingMaterial(we.sapi, targetPos, withItemStack.Block, we.sapi.World.PlayerByUid(workspace.PlayerUID)))
             {
                 (we.sapi.World.PlayerByUid(workspace.PlayerUID) as IServerPlayer).SendIngameError("notmicroblock", Lang.Get("Must have a chisel material in hands"));
                 return false;
@@ -161,7 +160,6 @@ namespace Vintagestory.ServerMods
 
             if (!we.MayPlace(ba.GetBlock(blockId), brushPositions.Length)) return false;
 
-            EnumDepthLimit depthLimit = DepthLimit;
             BlockPos tmpPos = new BlockPos();
             Vec3i dvoxelpos = new Vec3i();
 
@@ -231,7 +229,7 @@ namespace Vintagestory.ServerMods
                 int hereMatBlockId = 0;
                 if (editData.voxels[dvoxelpos.X, dvoxelpos.Y, dvoxelpos.Z])
                 {
-                    hereMatBlockId = editData.be.MaterialIds[editData.voxelMaterial[dvoxelpos.X, dvoxelpos.Y, dvoxelpos.Z]];
+                    hereMatBlockId = editData.be.BlockIds[editData.voxelMaterial[dvoxelpos.X, dvoxelpos.Y, dvoxelpos.Z]];
                 }
 
                 bool setHere;
@@ -256,7 +254,7 @@ namespace Vintagestory.ServerMods
 
                 if (setHere)
                 {
-                    var matId = editData.be.MaterialIds.IndexOf(blockId);
+                    var matId = editData.be.BlockIds.IndexOf(blockId);
                     if (matId < 0) matId = editData.be.AddMaterial(withItemStack.Block);
 
                     editData.voxels[dvoxelpos.X, dvoxelpos.Y, dvoxelpos.Z] = true;
@@ -285,46 +283,44 @@ namespace Vintagestory.ServerMods
         public override void StartServerSide(ICoreServerAPI api)
         {
             sapi = api;
-            //sapi.RegisterCommand("chiselsetmat", "", "", onChiselSetMatCmd, "worldedit");
-            sapi.RegisterCommand("microblock", "", "", onMicroblockCmd, "worldedit");
-        }
+            sapi.ChatCommands.GetOrCreate("we")
+                .BeginSubCommand("microblock")
+                    .WithDescription("Recalculate microblocks")
+                    .RequiresPrivilege("worldedit")
+                    .BeginSubCommand("recalc")
+                        .WithDescription("Recalc")
+                        .RequiresPlayer()
+                        .HandleWith(OnMicroblockCmd)
+                    .EndSubCommand()
+                .EndSubCommand();
+        } 
 
-        private void onMicroblockCmd(IServerPlayer player, int groupId, CmdArgs args)
+        private TextCommandResult OnMicroblockCmd(TextCommandCallingArgs args)
         {
-            string subcmd = args.PopWord();
-
             var wmod = sapi.ModLoader.GetModSystem<WorldEdit.WorldEdit>();
-            var workspace = wmod.GetWorkSpace(player.PlayerUID);
+            var workspace = wmod.GetWorkSpace(args.Caller.Player.PlayerUID);
 
             if (workspace == null || workspace.StartMarker == null || workspace.EndMarker == null)
             {
-                player.SendMessage(groupId, "Select an area with worldedit first", EnumChatType.CommandError);
-                return;
+                return TextCommandResult.Success("Select an area with worldedit first");
             }
-
-
-            switch (subcmd)
+            
+            int i = 0;
+            sapi.World.BlockAccessor.WalkBlocks(workspace.StartMarker, workspace.EndMarker, (block, x, y, z) =>
             {
-                case "recalc":
-                    int i = 0;
-                    sapi.World.BlockAccessor.WalkBlocks(workspace.StartMarker, workspace.EndMarker, (block, x, y, z) =>
+                if (block is BlockMicroBlock)
+                {
+                    BlockEntityMicroBlock bemc = sapi.World.BlockAccessor.GetBlockEntity(new BlockPos(x, y, z)) as BlockEntityMicroBlock;
+                    if (bemc != null)
                     {
-                        if (block is BlockMicroBlock)
-                        {
-                            BlockEntityMicroBlock bemc = sapi.World.BlockAccessor.GetBlockEntity(new BlockPos(x, y, z)) as BlockEntityMicroBlock;
-                            if (bemc != null)
-                            {
-                                bemc.RebuildCuboidList();
-                                bemc.MarkDirty(true);
-                                i++;
-                            }
-                        }
-                    });
+                        bemc.RebuildCuboidList();
+                        bemc.MarkDirty(true);
+                        i++;
+                    }
+                }
+            });
 
-                    player.SendMessage(groupId, i + " microblocks recalced", EnumChatType.CommandError);
-
-                    break;
-            }
+            return TextCommandResult.Success(i + " microblocks recalced");
         }
     }
 }

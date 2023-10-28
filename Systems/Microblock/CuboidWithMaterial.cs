@@ -1,8 +1,21 @@
 ﻿using System;
+using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
+    public class CuboidWithBlock : CuboidWithMaterial
+    {
+        public int BlockId;
+
+        public CuboidWithBlock(CuboidWithMaterial cwm, int blockId)
+        {
+            this.BlockId = blockId;
+            this.Material = cwm.Material;
+            Set(cwm.X1, cwm.Y1, cwm.Z1, cwm.X2, cwm.Y2, cwm.Z2);
+        }
+    }
+
     public class CuboidWithMaterial : Cuboidi
     {
         public byte Material;

@@ -17,6 +17,7 @@ namespace Vintagestory.GameContent
         public static bool ForceDetailingMode = false;
         public static ChiselMode defaultMode = new OneByChiselMode();
         public ushort[] AvailMaterialQuantities;
+        protected byte nowmaterialIndex;
 
         public override void WasPlaced(Block block, string blockName)
         {
@@ -102,6 +103,29 @@ namespace Vintagestory.GameContent
                 UpdateVoxel(byPlayer, byPlayer.InventoryManager.ActiveHotbarSlot, voxelPos, blockSel.Face, isBreak);
             }
         }
+        public bool Interact(IPlayer byPlayer, BlockSelection blockSel)
+        {
+            if (byPlayer != null && byPlayer.InventoryManager.ActiveHotbarSlot?.Itemstack.Collectible.Tool == EnumTool.Knife)
+            {
+                int face = blockSel.Face.Index;
+                if (DecorIds != null && DecorIds[face] != 0)
+                {
+                    Api.World.SpawnItemEntity(new ItemStack(Api.World.Blocks[DecorIds[face]]), Pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                    DecorIds[face] = 0;
+                    MarkDirty(true, byPlayer);
+                }
+                return true;
+            }
+
+            return false;
+        }
+
+        public void SetNowMaterialId(int materialId)
+        {
+            nowmaterialIndex = (byte)Math.Max(0, BlockIds.IndexOf(materialId));
+        }
+
+
 
         internal void UpdateVoxel(IPlayer byPlayer, ItemSlot itemslot, Vec3i voxelPos, BlockFacing facing, bool isBreak)
         {
@@ -190,7 +214,7 @@ namespace Vintagestory.GameContent
                 BlockName = packet.Text;
                 MarkDirty(true, player);
                 // Tell server to save this chunk to disk again
-                Api.World.BlockAccessor.GetChunkAtBlockPos(Pos.X, Pos.Y, Pos.Z).MarkModified();
+                Api.World.BlockAccessor.GetChunkAtBlockPos(Pos).MarkModified();
             }
 
 
@@ -262,7 +286,10 @@ namespace Vintagestory.GameContent
                 foreach (var cubint in VoxelCuboids)
                 {
                     FromUint(cubint, cwm);
-                    usedSumMaterial += cwm.SizeXYZ;
+                    if (cwm.Material == materialId)
+                    {
+                        usedSumMaterial += cwm.SizeXYZ;
+                    }
                 }
                 usedSumMaterial += size * size * size;
 
@@ -286,7 +313,7 @@ namespace Vintagestory.GameContent
                 ;
 
                 int q = size * 5 - 2 + Api.World.Rand.Next(5);
-                Block block = Api.World.GetBlock(MaterialIds[materialId]);
+                Block block = Api.World.GetBlock(BlockIds[materialId]);
 
                 while (q-- > 0)
                 {
@@ -369,27 +396,65 @@ namespace Vintagestory.GameContent
             selectionBoxesVoxels = boxes.ToArray();
         }
 
-        public int AddMaterial(Block block)
+        public int AddMaterial(Block block, out bool isFull)
         {
             Cuboidf[] collboxes = block.GetCollisionBoxes(Api.World.BlockAccessor, Pos);
             int sum = 0;
+            if (collboxes == null) collboxes = new Cuboidf[] { Cuboidf.Default() };
+
             for (int i = 0; i < collboxes.Length; i++)
             {
                 Cuboidf box = collboxes[i];
                 sum += new Cuboidi((int)(16 * box.X1), (int)(16 * box.Y1), (int)(16 * box.Z1), (int)(16 * box.X2), (int)(16 * box.Y2), (int)(16 * box.Z2)).SizeXYZ;
             }
 
-            if (!MaterialIds.Contains(block.Id))
+            if (!BlockIds.Contains(block.Id))
             {
-                MaterialIds = MaterialIds.Append(block.Id);
+                foreach (int blockid in BlockIds)
+                {
+                    var matblock = Api.World.Blocks[blockid];
+                    var stack = matblock.OnPickBlock(Api.World, Pos);
+                    if (stack.Block?.Id == block.Id)
+                    {
+                        block = matblock;
+                    }
+                }
+            }
+
+
+            if (!BlockIds.Contains(block.Id))
+            {
+                isFull = false;
+                BlockIds = BlockIds.Append(block.Id);
                 if (AvailMaterialQuantities != null) AvailMaterialQuantities = AvailMaterialQuantities.Append((ushort)sum);
-                return MaterialIds.Length - 1;
-            } else
+                return BlockIds.Length - 1;
+            }
+            else
             {
-                int index = MaterialIds.IndexOf(block.Id);
+                int index = BlockIds.IndexOf(block.Id);
+                isFull = AvailMaterialQuantities[index] >= 16 * 16 * 16;
                 if (AvailMaterialQuantities != null) AvailMaterialQuantities[index] = (ushort)Math.Min(ushort.MaxValue, AvailMaterialQuantities[index] + sum);
                 return index;
             }
+        }
+
+        public int AddMaterial(Block block)
+        {
+            return AddMaterial(block, out _);
+        }
+
+        public bool RemoveMaterial(Block block)
+        {
+            if (BlockIds.Contains(block.Id))
+            {
+                int index = BlockIds.IndexOf(block.Id);
+                BlockIds = BlockIds.Remove(block.Id);
+                if (AvailMaterialQuantities != null) AvailMaterialQuantities = AvailMaterialQuantities.RemoveEntry(index);
+
+                return true;
+            }
+
+            return false;
         }
 
         #endregion
@@ -405,6 +470,7 @@ namespace Vintagestory.GameContent
             {
                 AvailMaterialQuantities = new ushort[intarrattr.value.Length];
                 for (int i = 0; i < intarrattr.value.Length; i++) AvailMaterialQuantities[i] = (ushort)intarrattr.value[i];
+                while (MaterialIds.Length > AvailMaterialQuantities.Length) AvailMaterialQuantities = AvailMaterialQuantities.Append((ushort)(16 * 16 * 16));
             }
         }
 
@@ -421,5 +487,7 @@ namespace Vintagestory.GameContent
                 tree["availMaterialQuantities"] = attr;
             }
         }
+
+
     }
 }

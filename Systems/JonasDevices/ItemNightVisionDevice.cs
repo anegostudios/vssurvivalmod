@@ -75,11 +75,11 @@ namespace Vintagestory.GameContent
 
             if (itemnvd != null)
             {
-                capi.Render.ShaderUniforms.NightVisonStrength = (float)GameMath.Clamp(fuelLeft * 20, 0, 0.8);
+                capi.Render.ShaderUniforms.NightVisionStrength = (float)GameMath.Clamp(fuelLeft * 20, 0, 0.8);
             }
             else
             {
-                capi.Render.ShaderUniforms.NightVisonStrength = 0;
+                capi.Render.ShaderUniforms.NightVisionStrength = 0;
             }
         }
 

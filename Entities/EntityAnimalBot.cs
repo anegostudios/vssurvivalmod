@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -21,7 +20,6 @@ namespace Vintagestory.GameContent
         bool IsFinished();
         void ToAttribute(ITreeAttribute tree);
         void FromAttribute(ITreeAttribute tree);
-        void Update(IServerPlayer player, ICoreAPI api, CmdArgs args);
     }
 
     public class NpcGotoCommand : INpcCommand
@@ -109,26 +107,6 @@ namespace Vintagestory.GameContent
             GotoSpeed = tree.GetFloat("gotoSpeed");
             AnimCode = tree.GetString("animCode");
         }
-
-        public void Update(IServerPlayer player, ICoreAPI api, CmdArgs args)
-        {
-            string type = args.PopWord();
-
-            switch (type)
-            {
-                case "gs":
-                    GotoSpeed = (float)args.PopFloat(0);
-                    player.SendMessage(GlobalConstants.CurrentChatGroup, "Ok goto speed updated to " + GotoSpeed, EnumChatType.Notification);
-                    return;
-
-                case "as":
-                    AnimSpeed = (float)args.PopFloat(0);
-                    player.SendMessage(GlobalConstants.CurrentChatGroup, "Ok animation speed updated to " + AnimSpeed, EnumChatType.Notification);
-                    return;
-            }
-
-            player.SendMessage(GlobalConstants.CurrentChatGroup, "Excpected gs or as", EnumChatType.Notification);
-        }
     }
 
     public class NpcTeleportCommand : INpcCommand
@@ -175,11 +153,6 @@ namespace Vintagestory.GameContent
         public void FromAttribute(ITreeAttribute tree)
         {
             Target = new Vec3d(tree.GetDouble("x"), tree.GetDouble("y"), tree.GetDouble("z"));
-        }
-
-        public void Update(IServerPlayer player, ICoreAPI api, CmdArgs args)
-        {
-            player.SendMessage(GlobalConstants.CurrentChatGroup, "Not implemented", EnumChatType.Notification);
         }
     }
 
@@ -248,12 +221,6 @@ namespace Vintagestory.GameContent
             AnimCode = tree.GetString("animCode");
             AnimSpeed = tree.GetFloat("animSpeed", 1);
         }
-
-
-        public void Update(IServerPlayer player, ICoreAPI api, CmdArgs args)
-        {
-            player.SendMessage(GlobalConstants.CurrentChatGroup, "Not implemented", EnumChatType.Notification);
-        }
     }
 
     public class NpcLookatCommand : INpcCommand
@@ -285,7 +252,6 @@ namespace Vintagestory.GameContent
             
         }
 
-
         public void FromAttribute(ITreeAttribute tree)
         {
             yaw = tree.GetFloat("yaw");
@@ -296,10 +262,9 @@ namespace Vintagestory.GameContent
             tree.SetFloat("yaw", yaw);
         }
 
-        public void Update(IServerPlayer player, ICoreAPI api, CmdArgs args)
+        public override string ToString()
         {
-            yaw = (float)args.PopFloat(0);
-            player.SendMessage(GlobalConstants.CurrentChatGroup, "Yaw " + yaw + " set", EnumChatType.Notification);
+            return "Look at " + yaw;
         }
     }
 
@@ -452,6 +417,9 @@ namespace Vintagestory.GameContent
                             break;
                         case "anim":
                             command = new NpcPlayAnimationCommand(this, null, 1f);
+                            break;
+                        case "lookat":
+                            command = new NpcLookatCommand(this, 0);
                             break;
                     }
 

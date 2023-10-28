@@ -1,12 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
+using System.Reflection;
 using System.Text;
-using System.Threading.Tasks;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -28,8 +30,7 @@ namespace Vintagestory.GameContent
         float charZoom = 1f;
         bool charNaked = true;
 
-        protected int dlgHeight = 433 + 50;
-
+        protected int dlgHeight = 433 + 80;
 
         public GuiDialogCreateCharacter(ICoreClientAPI capi, CharacterSystem modSys) : base(capi)
         {
@@ -86,7 +87,7 @@ namespace Vintagestory.GameContent
 
                 ElementBounds leftColBounds = ElementBounds.Fixed(0, ypos, 204, dlgHeight - 59).FixedGrow(2 * pad, 2 * pad);
 
-                insetSlotBounds = ElementBounds.Fixed(0, ypos + 2, 265, leftColBounds.fixedHeight - 2 * pad + 10).FixedRightOf(leftColBounds, 10);
+                insetSlotBounds = ElementBounds.Fixed(0, ypos + 2, 265, leftColBounds.fixedHeight - 2 * pad - 10).FixedRightOf(leftColBounds, 10);
                 ElementBounds rightColBounds = ElementBounds.Fixed(0, ypos, 54, dlgHeight - 59).FixedGrow(2 * pad, 2 * pad).FixedRightOf(insetSlotBounds, 10);
                 ElementBounds toggleButtonBounds = ElementBounds.Fixed(
                         (int)insetSlotBounds.fixedX + insetSlotBounds.fixedWidth / 2 - textExt.Width / RuntimeEnv.GUIScale / 2 - 12, 
@@ -175,13 +176,14 @@ namespace Vintagestory.GameContent
                     }
                 }
 
-                
-
                 Composers["createcharacter"]
                     .AddInset(insetSlotBounds, 2)
                     .AddToggleButton(Lang.Get("Show dressed"), smallfont, OnToggleDressOnOff, toggleButtonBounds, "showdressedtoggle")
-                    .AddSmallButton(Lang.Get("Randomize"), OnRandomizeSkin, ElementBounds.Fixed(0, dlgHeight - 30).WithAlignment(EnumDialogArea.LeftFixed).WithFixedPadding(12, 6), EnumButtonStyle.Normal)
-                    .AddSmallButton(Lang.Get("Confirm Skin"), OnNext, ElementBounds.Fixed(0, dlgHeight - 30).WithAlignment(EnumDialogArea.RightFixed).WithFixedPadding(12, 6), EnumButtonStyle.Normal)
+                    .AddButton(Lang.Get("Randomize"), () => { return OnRandomizeSkin(new Dictionary<string, string>()); }, ElementBounds.Fixed(0, dlgHeight - 25).WithAlignment(EnumDialogArea.LeftFixed).WithFixedPadding(8, 6), CairoFont.WhiteSmallText(), EnumButtonStyle.Small)
+                    .AddIf(capi.Settings.String.Exists("lastSkinSelection"))
+                        .AddButton(Lang.Get("Last selection"), () => { return OnRandomizeSkin(modSys.getPreviousSelection()); }, ElementBounds.Fixed(130, dlgHeight - 25).WithAlignment(EnumDialogArea.LeftFixed).WithFixedPadding(8, 6), CairoFont.WhiteSmallText(), EnumButtonStyle.Small)
+                    .EndIf()
+                    .AddSmallButton(Lang.Get("Confirm Skin"), OnNext, ElementBounds.Fixed(0, dlgHeight - 25).WithAlignment(EnumDialogArea.RightFixed).WithFixedPadding(12, 6), EnumButtonStyle.Normal)
                 ;
 
                 Composers["createcharacter"].GetToggleButton("showdressedtoggle").SetValue(!charNaked);
@@ -198,7 +200,6 @@ namespace Vintagestory.GameContent
                 insetSlotBounds = ElementBounds.Fixed(0, ypos + 25, 190, leftColBounds.fixedHeight - 2 * pad + 10).FixedRightOf(leftColBounds, 10);
 
                 ElementBounds rightSlotBounds = ElementStdBounds.SlotGrid(EnumDialogArea.None, 0, ypos, 1, rows).FixedGrow(2 * pad, 2 * pad).FixedRightOf(insetSlotBounds, 10);
-
                 ElementBounds prevButtonBounds = ElementBounds.Fixed(0, ypos + 25, 35, slotsize - 4).WithFixedPadding(2).FixedRightOf(insetSlotBounds, 20);
                 ElementBounds centerTextBounds = ElementBounds.Fixed(0, ypos + 25, 200, slotsize - 4 - 8).FixedRightOf(prevButtonBounds, 20);
 
@@ -232,6 +233,38 @@ namespace Vintagestory.GameContent
             tabElem.activeElement = curTab;
 
             Composers["createcharacter"].Compose();
+        }
+
+        private bool OnRandomizeSkin(Dictionary<string, string> preselection)
+        {
+            var entity = capi.World.Player.Entity;
+            var essr = entity.Properties.Client.Renderer as EntitySkinnableShapeRenderer;
+            essr.doReloadShapeAndSkin = false;
+
+            modSys.randomizeSkin(entity, preselection);
+            var skinMod = entity.GetBehavior<EntityBehaviorExtraSkinnable>();
+
+            foreach (var appliedPart in skinMod.AppliedSkinParts)
+            {
+                string partcode = appliedPart.PartCode;
+
+                var skinPart = skinMod.AvailableSkinParts.FirstOrDefault(part => part.Code == partcode);
+                int index = skinPart.Variants.IndexOf(part => part.Code == appliedPart.Code);
+
+                if (skinPart.Type == EnumSkinnableType.Texture && !skinPart.UseDropDown)
+                {
+                    Composers["createcharacter"].ColorListPickerSetValue("picker-" + partcode, index);
+                }
+                else
+                {
+                    Composers["createcharacter"].GetDropDown("dropdown-" + partcode).SetSelectedIndex(index);
+                }
+            }
+
+            essr.doReloadShapeAndSkin = true;
+            essr.TesselateShape();
+
+            return true;
         }
 
         private void OnToggleDressOnOff(bool on)
@@ -329,45 +362,9 @@ namespace Vintagestory.GameContent
             capi.Network.SendPacketClient(packet);
         }
 
-        private bool OnRandomizeSkin()
-        {
-            var skinMod = capi.World.Player.Entity.GetBehavior<EntityBehaviorExtraSkinnable>();
+     
 
-            var essr = capi.World.Player.Entity.Properties.Client.Renderer as EntitySkinnableShapeRenderer;
-            essr.doReloadShapeAndSkin = false;
 
-            bool mustached = capi.World.Rand.NextDouble() < 0.25;
-
-            foreach (var skinpart in skinMod.AvailableSkinParts) {
-
-                int index = capi.World.Rand.Next(skinpart.Variants.Length);
-
-                if ((skinpart.Code == "mustache" || skinpart.Code == "beard") && !mustached)
-                {
-                    index = 0;
-                }
-
-                string variantCode = skinpart.Variants[index].Code;
-
-                skinMod.selectSkinPart(skinpart.Code, variantCode);
-
-                string code = skinpart.Code;
-
-                if (skinpart.Type == EnumSkinnableType.Texture && !skinpart.UseDropDown)
-                {
-                    Composers["createcharacter"].ColorListPickerSetValue("picker-" + code, index);
-                }
-                else
-                {
-                    Composers["createcharacter"].GetDropDown("dropdown-" + code).SetSelectedIndex(index);
-                }
-            }
-
-            essr.doReloadShapeAndSkin = true;
-            essr.TesselateShape();
-
-            return true;
-        }
 
 
 
@@ -562,11 +559,11 @@ namespace Vintagestory.GameContent
                 capi.Render.RenderEntityToGui(
                     deltaTime,
                     capi.World.Player.Entity,
-                    insetSlotBounds.renderX + pad - GuiElement.scaled(95),
-                    insetSlotBounds.renderY + pad - GuiElement.scaled(0),
+                    insetSlotBounds.renderX + pad - GuiElement.scaled(110),
+                    insetSlotBounds.renderY + pad - GuiElement.scaled(15),
                     (float)GuiElement.scaled(230),
                     yaw,
-                    (float)GuiElement.scaled(180),
+                    (float)GuiElement.scaled(205),
                     ColorUtil.WhiteArgb);
             }
 
@@ -583,5 +580,7 @@ namespace Vintagestory.GameContent
         {
             get { return (float)GuiElement.scaled(280); }
         }
+
+
     }
 }

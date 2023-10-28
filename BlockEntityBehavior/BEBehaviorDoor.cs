@@ -129,15 +129,14 @@ namespace Vintagestory.GameContent
                         BlockPos rightDoorPos = Blockentity.Pos.AddCopy((2 * width - 1) * (int)Math.Round(Math.Sin(RotateYRad + 90)), 0, (2 * width - 1) * (int)Math.Round(Math.Cos(RotateYRad + 90)));
                         Api.World.BlockAccessor.SetBlock(Block.Id, rightDoorPos);
                         rightDoor = Block.GetBEBehavior<BEBehaviorDoor>(rightDoorPos);
-                        rightDoor.leftDoor = this;
                         rightDoor.RotateYRad = RotateYRad;
                         rightDoor.invertHandles = true;
+                        Block.GetBehavior<BlockBehaviorDoor>().placeMultiblockParts(Api.World, rightDoorPos);
                         this.rightDoor = rightDoor;
                         rightDoor.SetupRotationsAndColSelBoxes(true);
+                        rightDoor.leftDoor = this;
                         rightDoor.Blockentity.MarkDirty(true);
                     }
-
-
                 }
             }
 
@@ -251,6 +250,7 @@ namespace Vintagestory.GameContent
             if (Api.Side == EnumAppSide.Server)
             {
                 BlockPos tempPos = new BlockPos();
+                tempPos.dimension = Pos.dimension;
                 for (int y = 0; y < doorBh.height; y++)
                 {
                     tempPos.Set(Pos).Add(0, y, 0);

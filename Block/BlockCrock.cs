@@ -169,17 +169,17 @@ namespace Vintagestory.GameContent
             AssetLocation loc = LabelForContents(recipeCode, contents);
             if (loc == null) return;
 
-            Dictionary<string, MeshRef> meshrefs = ObjectCacheUtil.GetOrCreate(capi, "blockcrockGuiMeshRefs", () =>
+            Dictionary<string, MultiTextureMeshRef> meshrefs = ObjectCacheUtil.GetOrCreate(capi, "blockcrockGuiMeshRefs", () =>
             {
-                return new Dictionary<string, MeshRef>();
+                return new Dictionary<string, MultiTextureMeshRef>();
             });
 
             string key = Code.ToShortString() + loc.ToShortString();
-            MeshRef meshref;
+            MultiTextureMeshRef meshref;
             if (!meshrefs.TryGetValue(key, out meshref))
             {
                 MeshData mesh = GenMesh(capi, loc, new Vec3f(0, 270, 0));
-                meshrefs[key] = meshref = capi.Render.UploadMesh(mesh);
+                meshrefs[key] = meshref = capi.Render.UploadMultiTextureMesh(mesh);
             }
 
             renderinfo.ModelRef = meshref;
@@ -630,7 +630,7 @@ namespace Vintagestory.GameContent
             object obj;
             if (capi.ObjectCache.TryGetValue("blockcrockGuiMeshRefs", out obj))
             {
-                Dictionary<string, MeshRef> meshrefs = obj as Dictionary<string, MeshRef>;
+                Dictionary<string, MultiTextureMeshRef> meshrefs = obj as Dictionary<string, MultiTextureMeshRef>;
 
                 foreach (var val in meshrefs)
                 {

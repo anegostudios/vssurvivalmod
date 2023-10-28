@@ -1,8 +1,8 @@
-﻿using Cairo;
-using System;
+﻿using System;
 using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -11,6 +11,11 @@ using VSSurvivalMod.Systems.ChiselModes;
 
 namespace Vintagestory.GameContent
 {
+    public interface IConditionalChiselable
+    {
+        bool CanChisel(IWorldAccessor world, BlockPos pos, IPlayer player, out string errorCode);
+    }
+
     /// <summary>
     /// When right clicked on a block, this chisel tool will exchange given block into a chiseledblock which 
     /// takes on the model of the block the player interacted with in the first place, but with each voxel being selectable and removable
@@ -104,6 +109,21 @@ namespace Vintagestory.GameContent
             addMatItem?.Dispose();
         }
 
+
+        public override string GetHeldTpUseAnimation(ItemSlot activeHotbarSlot, Entity forEntity)
+        {
+            if ((api as ICoreClientAPI)?.World.Player.WorldData.CurrentGameMode == EnumGameMode.Creative) return null;
+
+            return base.GetHeldTpUseAnimation(activeHotbarSlot, forEntity);
+        }
+
+        public override string GetHeldTpHitAnimation(ItemSlot slot, Entity byEntity)
+        {
+            if ((api as ICoreClientAPI)?.World.Player.WorldData.CurrentGameMode == EnumGameMode.Creative) return null;
+
+            return base.GetHeldTpHitAnimation(slot, byEntity);
+        }
+
         public override void OnHeldAttackStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
         {
             IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
@@ -116,21 +136,22 @@ namespace Vintagestory.GameContent
             }
 
             if (blockSel?.Position == null) return;
-            Block block = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
+            var pos = blockSel.Position;
+            Block block = byEntity.World.BlockAccessor.GetBlock(pos);
 
-            if (api.ModLoader.GetModSystem<ModSystemBlockReinforcement>()?.IsReinforced(blockSel.Position) == true)
+            if (api.ModLoader.GetModSystem<ModSystemBlockReinforcement>()?.IsReinforced(pos) == true)
             {
                 byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
                 return;
             }
 
-            if (!byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            if (!byEntity.World.Claims.TryAccess(byPlayer, pos, EnumBlockAccessFlags.BuildOrBreak))
             {
                 byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
                 return;
             }
 
-            if (!IsChiselingAllowedFor(api, block, byPlayer))
+            if (!IsChiselingAllowedFor(api, pos, block, byPlayer))
             {
                 base.OnHeldAttackStart(slot, byEntity, blockSel, entitySel, ref handling);
                 return;
@@ -160,7 +181,8 @@ namespace Vintagestory.GameContent
             IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
 
             if (blockSel?.Position == null) return;
-            Block block = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
+            var pos = blockSel.Position;
+            Block block = byEntity.World.BlockAccessor.GetBlock(pos);
 
             if (byEntity.LeftHandItemSlot?.Itemstack?.Collectible?.Tool != EnumTool.Hammer && byPlayer?.WorldData.CurrentGameMode != EnumGameMode.Creative)
             {
@@ -170,13 +192,13 @@ namespace Vintagestory.GameContent
             }
 
 
-            if (api.ModLoader.GetModSystem<ModSystemBlockReinforcement>()?.IsReinforced(blockSel.Position) == true)
+            if (api.ModLoader.GetModSystem<ModSystemBlockReinforcement>()?.IsReinforced(pos) == true)
             {
                 byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
                 return;
             }
 
-            if (!byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            if (!byEntity.World.Claims.TryAccess(byPlayer, pos, EnumBlockAccessFlags.BuildOrBreak))
             {
                 byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
                 return;
@@ -186,9 +208,9 @@ namespace Vintagestory.GameContent
 
             if (block is BlockGroundStorage)
             {
-                BlockEntityGroundStorage begs = api.World.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityGroundStorage;
+                BlockEntityGroundStorage begs = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityGroundStorage;
                 var neslot = begs.Inventory.FirstNonEmptySlot;
-                if (neslot != null && neslot.Itemstack.Block != null && IsChiselingAllowedFor(api, neslot.Itemstack.Block, byPlayer))
+                if (neslot != null && neslot.Itemstack.Block != null && IsChiselingAllowedFor(api, pos, neslot.Itemstack.Block, byPlayer))
                 {
                     block = neslot.Itemstack.Block;
                 }
@@ -199,13 +221,13 @@ namespace Vintagestory.GameContent
                     if (!carvingTime)
                     {
                         byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
-                        api.World.BlockAccessor.MarkBlockDirty(blockSel.Position);
+                        api.World.BlockAccessor.MarkBlockDirty(pos);
                         return;
                     }
                 }
             }
 
-            if (!IsChiselingAllowedFor(api, block, byPlayer))
+            if (!IsChiselingAllowedFor(api, pos, block, byPlayer))
             {
                 base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handling);
                 return;
@@ -228,9 +250,6 @@ namespace Vintagestory.GameContent
             }
             
             
-            string blockName = block.GetPlacedBlockName(byEntity.World, blockSel.Position);
-
-            
             if (block is BlockChisel)
             {
                 OnBlockInteract(byEntity.World, byPlayer, blockSel, false, ref handling);
@@ -244,35 +263,45 @@ namespace Vintagestory.GameContent
             BlockEntityChisel be = byEntity.World.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityChisel;
             if (be == null) return;
 
-            be.WasPlaced(block, blockName);
+            be.WasPlaced(block, null);
 
             if (carvingTime)
             {
-                be.MaterialIds = be.MaterialIds.Append(api.World.GetBlock(new AssetLocation("creativeglow-35")).Id);
+                be.AddMaterial(api.World.GetBlock(new AssetLocation("creativeglow-35")));
             }
             
             handling = EnumHandHandling.PreventDefaultAction;
         }
 
-        public static bool IsChiselingAllowedFor(ICoreAPI api, Block block, IPlayer player)
+        public static bool IsChiselingAllowedFor(ICoreAPI api, BlockPos pos, Block block, IPlayer player)
         {
             if (block is BlockChisel) return true;
 
-            return IsValidChiselingMaterial(api, block, player);
+            return IsValidChiselingMaterial(api, pos, block, player);
         }
 
-        public static bool IsValidChiselingMaterial(ICoreAPI api, Block block, IPlayer player)
+        public static bool IsValidChiselingMaterial(ICoreAPI api, BlockPos pos, Block block, IPlayer player)
         {
             // Can't use a chiseled block as a material in a chiseled block
             if (block is BlockChisel) return false;
 
-            // First priority: microblockChiseling disabled
+            // 1. priority: microblockChiseling disabled
             ITreeAttribute worldConfig = api.World.Config;
             string mode = worldConfig.GetString("microblockChiseling");
             if (mode == "off") return false;
 
+            // 1.5 priority: Disabled by code
+            if (block is IConditionalChiselable icc || (icc = block.BlockBehaviors.FirstOrDefault(bh => bh is IConditionalChiselable) as IConditionalChiselable) != null)
+            {
+                string errorCode;
+                if (icc?.CanChisel(api.World, pos, player, out errorCode) == false || icc?.CanChisel(api.World, pos, player, out errorCode) == false)
+                {
+                    (api as ICoreClientAPI)?.TriggerIngameError(icc, errorCode, Lang.Get(errorCode));
+                    return false;
+                }
+            }
 
-            // Second priority: canChisel flag
+            // 2. priority: canChisel flag
             bool canChiselSet = block.Attributes?["canChisel"].Exists == true;
             bool canChisel = block.Attributes?["canChisel"].AsBool(false) == true;
 
@@ -283,8 +312,6 @@ namespace Vintagestory.GameContent
             // Third prio: Never non cubic blocks
             if (block.DrawType != EnumDrawType.Cube && block.Shape?.Base.Path != "block/basic/cube") return false;
 
-            // Fourth prio: Never tinted blocks (because then the chiseled block would have the wrong colors)
-            if (block.SeasonColorMap != null || block.ClimateColorMap != null) return false;
 
             // Otherwise if in creative mode, sure go ahead
             if (player?.WorldData.CurrentGameMode == EnumGameMode.Creative) return true;
@@ -330,22 +357,22 @@ namespace Vintagestory.GameContent
             BlockEntityChisel be = forPlayer.Entity.World.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityChisel;
             if (be != null)
             {    
-                if (be.MaterialIds.Length <= 1)
+                if (be.BlockIds.Length <= 1)
                 {
                     addMatItem.Linebreak = true;
                     return ToolModes.Append(addMatItem);
                 }
 
-                SkillItem[] mats = new SkillItem[be.MaterialIds.Length + 1];
-                for (int i = 0; i < be.MaterialIds.Length; i++)
+                SkillItem[] mats = new SkillItem[be.BlockIds.Length + 1];
+                for (int i = 0; i < be.BlockIds.Length; i++)
                 {
-                    Block block = api.World.GetBlock(be.MaterialIds[i]);
+                    Block block = api.World.GetBlock(be.BlockIds[i]);
                     ItemSlot dummySlot = new DummySlot();
                     dummySlot.Itemstack = new ItemStack(block);
                     mats[i] = new SkillItem()
                     {
                         Code = block.Code,
-                        Data = be.MaterialIds[i],
+                        Data = be.BlockIds[i],
                         Linebreak = i % 7 == 0,
                         Name = block.GetHeldItemName(dummySlot.Itemstack),
                         RenderHandler = (AssetLocation code, float dt, double atPosX, double atPosY) =>
@@ -374,27 +401,29 @@ namespace Vintagestory.GameContent
         public override void SetToolMode(ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel, int toolMode)
         {
             if (blockSel == null) return;
-
+            var pos = blockSel.Position;
             var mouseslot = byPlayer.InventoryManager.MouseItemSlot;
             if (!mouseslot.Empty && mouseslot.Itemstack.Block != null && !(mouseslot.Itemstack.Block is BlockChisel))
             {
-                BlockEntityChisel be = api.World.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityChisel;
-                if (IsValidChiselingMaterial(api, mouseslot.Itemstack.Block, byPlayer) && !be.MaterialIds.Contains(mouseslot.Itemstack.Block.Id))
+                BlockEntityChisel be = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityChisel;
+                if (IsValidChiselingMaterial(api, pos, mouseslot.Itemstack.Block, byPlayer))
                 {
                     if (byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
                     {
-                        var stack = mouseslot.TakeOut(1);
-                        mouseslot.MarkDirty();
-                        be.AddMaterial(stack.Block);
-                    } else
+                        bool isFull;
+                        be.AddMaterial(mouseslot.Itemstack.Block, out isFull);
+                        if (!isFull)
+                        {
+                            mouseslot.TakeOut(1);
+                            mouseslot.MarkDirty();
+                        }
+                    }
+                    else
                     {
                         be.AddMaterial(mouseslot.Itemstack.Block);
                     }
 
-                    
-                    
                     be.MarkDirty();
-
                     api.Event.PushEvent("keepopentoolmodedlg");
                 }
 
@@ -405,9 +434,9 @@ namespace Vintagestory.GameContent
             {
                 int matNum = toolMode - ToolModes.Length;
                 BlockEntityChisel be = api.World.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityChisel;
-                if (be != null && be.MaterialIds.Length > matNum)
+                if (be != null && be.BlockIds.Length > matNum)
                 {
-                    slot.Itemstack.Attributes.SetInt("materialId", be.MaterialIds[matNum]);
+                    slot.Itemstack.Attributes.SetInt("materialId", be.BlockIds[matNum]);
                     slot.MarkDirty();
                 }
 

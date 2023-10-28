@@ -1,5 +1,4 @@
 ﻿using Newtonsoft.Json.Linq;
-using System;
 using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
@@ -184,6 +183,8 @@ namespace Vintagestory.GameContent
         public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
         {
             base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
+
+            dsc.AppendLine(Lang.Get("Unusable clutter"));
 
             string type = inSlot.Itemstack.Attributes.GetString("type", "");
             if (type.StartsWithFast("banner-"))

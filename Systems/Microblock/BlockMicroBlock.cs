@@ -36,9 +36,9 @@ namespace Vintagestory.GameContent
         {
             get
             {
-                if (be?.MaterialIds != null && be.MaterialIds.Length > 0)
+                if (be?.BlockIds != null && be.BlockIds.Length > 0)
                 {
-                    Block block = be.Api.World.GetBlock(be.MaterialIds[0]);
+                    Block block = be.Api.World.GetBlock(be.BlockIds[0]);
                     return block;
                 }
 
@@ -55,6 +55,8 @@ namespace Vintagestory.GameContent
 
         public ThreadLocal<MicroBlockSounds> MBSounds = new ThreadLocal<MicroBlockSounds>(() => new MicroBlockSounds());
 
+        public static int BlockLayerMetaBlockId;
+
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
@@ -67,6 +69,8 @@ namespace Vintagestory.GameContent
             if (this == snowCovered2) snowLevel = 2;
             if (this == snowCovered3) snowLevel = 3;
 
+            CustomBlockLayerHandler = true;
+            BlockLayerMetaBlockId = api.World.GetBlock(new AssetLocation("meta-blocklayer")).Id;
 
             snowLayerBlockId = api.World.GetBlock(new AssetLocation("snowlayer-1")).Id;
 
@@ -182,9 +186,9 @@ namespace Vintagestory.GameContent
 
             BlockEntityMicroBlock bemc = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityMicroBlock;
 
-            if (bemc?.MaterialIds == null || bemc.MaterialIds.Length == 0) return new Vec4f(0, 0, 0, 0.6f);
+            if (bemc?.BlockIds == null || bemc.BlockIds.Length == 0) return new Vec4f(0, 0, 0, 0.6f);
 
-            Block block = api.World.GetBlock(bemc.MaterialIds[0]);
+            Block block = api.World.GetBlock(bemc.BlockIds[0]);
             int col = block.GetColor(capi, pos);
             float b = ((col & 0xff) + ((col >> 8) & 0xff) + ((col >> 16) & 0xff)) / 3f;
             if (b < 0.4 * 255) return new Vec4f(1, 1, 1, 0.6f);
@@ -195,9 +199,9 @@ namespace Vintagestory.GameContent
         {
             BlockEntityMicroBlock bemc = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityMicroBlock;
 
-            if (bemc?.MaterialIds != null && bemc.sideAlmostSolid[facing.Index] && bemc.MaterialIds.Length > 0 && bemc.VolumeRel >= 0.5f)
+            if (bemc?.BlockIds != null && bemc.sideAlmostSolid[facing.Index] && bemc.BlockIds.Length > 0 && bemc.VolumeRel >= 0.5f)
             {
-                Block block = api.World.GetBlock(bemc.MaterialIds[0]);
+                Block block = api.World.GetBlock(bemc.BlockIds[0]);
                 var mat = block.BlockMaterial;
                 if (mat == EnumBlockMaterial.Ore || mat == EnumBlockMaterial.Stone || mat == EnumBlockMaterial.Soil || mat == EnumBlockMaterial.Ceramic)
                 {
@@ -314,9 +318,9 @@ namespace Vintagestory.GameContent
             if (pos != null)
             {
                 BlockEntityMicroBlock be = blockAccessor.GetBlockEntity(pos) as BlockEntityMicroBlock;
-                if (be?.MaterialIds != null && be.MaterialIds.Length > 0)
+                if (be?.BlockIds != null && be.BlockIds.Length > 0)
                 {
-                    Block block = api.World.GetBlock(be.MaterialIds[0]);
+                    Block block = api.World.GetBlock(be.BlockIds[0]);
                     return block.BlockMaterial;
                 }
             } else
@@ -404,7 +408,7 @@ namespace Vintagestory.GameContent
             {
                 ITreeAttribute tree = byItemStack.Attributes.Clone();
                 tree.SetInt("posx", blockPos.X);
-                tree.SetInt("posy", blockPos.Y);
+                tree.SetInt("posy", blockPos.InternalY);
                 tree.SetInt("posz", blockPos.Z);
 
                 be.FromTreeAttributes(tree, world);
@@ -427,9 +431,9 @@ namespace Vintagestory.GameContent
         public override float GetResistance(IBlockAccessor blockAccessor, BlockPos pos)
         {
             BlockEntityMicroBlock be = blockAccessor.GetBlockEntity(pos) as BlockEntityMicroBlock;
-            if (be?.MaterialIds != null && be.MaterialIds.Length > 0)
+            if (be?.BlockIds != null && be.BlockIds.Length > 0)
             {
-                Block block = api.World.GetBlock(be.MaterialIds[0]);
+                Block block = api.World.GetBlock(be.BlockIds[0]);
                 return block.Resistance;
             }
 
@@ -501,9 +505,9 @@ namespace Vintagestory.GameContent
         public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing, int rndIndex = -1)
         {
             BlockEntityMicroBlock be = capi.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityMicroBlock;
-            if (be?.MaterialIds != null && be.MaterialIds.Length > 0)
+            if (be?.BlockIds != null && be.BlockIds.Length > 0)
             {
-                Block block = capi.World.GetBlock(be.MaterialIds[0]);
+                Block block = capi.World.GetBlock(be.BlockIds[0]);
                 if (block is BlockMicroBlock) return 0; // Prevent-chisel-ception. Happened to WQP, not sure why
 
                 return block.GetRandomColor(capi, pos, facing, rndIndex);
@@ -523,9 +527,9 @@ namespace Vintagestory.GameContent
         public override int GetColorWithoutTint(ICoreClientAPI capi, BlockPos pos)
         {
             BlockEntityMicroBlock be = capi.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityMicroBlock;
-            if (be?.MaterialIds != null && be.MaterialIds.Length > 0)
+            if (be?.BlockIds != null && be.BlockIds.Length > 0)
             {
-                Block block = capi.World.GetBlock(be.MaterialIds[0]);
+                Block block = capi.World.GetBlock(be.BlockIds[0]);
                 if (block is BlockMicroBlock) return 0; // Prevent-chisel-ception. Happened to WQP, not sure why
 
                 return block.GetColor(capi, pos);
@@ -547,12 +551,12 @@ namespace Vintagestory.GameContent
 
         public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
         {
-            if (inSlot.Itemstack.Attributes.HasAttribute("blockName"))
-            {
-                string bname = inSlot.Itemstack.Attributes.GetString("blockName", "");
-                dsc.AppendLine(bname.Substring(bname .IndexOf('\n') + 1));
-            }
-            
+            var tree = inSlot.Itemstack.Attributes;
+            string blockName = tree.GetString("blockName", null);
+            var blockIds = BlockEntityMicroBlock.MaterialIdsFromAttributes(tree, world);
+            var voxelCuboids = new List<uint>(BlockEntityMicroBlock.GetVoxelCuboids(tree));
+
+            dsc.AppendLine(BlockEntityMicroBlock.GetPlacedBlockName(api, voxelCuboids, blockIds, blockName));           
 
             base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
         }
@@ -560,7 +564,7 @@ namespace Vintagestory.GameContent
         public override string GetPlacedBlockName(IWorldAccessor world, BlockPos pos)
         {
             BlockEntityMicroBlock be = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityMicroBlock;
-            if (be != null) return be.BlockName.Split('\n')[0];
+            if (be != null) return be.GetPlacedBlockName();
 
             return base.GetPlacedBlockName(world, pos);
         }

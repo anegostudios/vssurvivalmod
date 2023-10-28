@@ -3,9 +3,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
@@ -40,6 +40,33 @@ namespace Vintagestory.GameContent
 
 
 
+    public class SeraphRandomizerConstraints
+    {
+        public Dictionary<string, Dictionary<string, Dictionary<string, RandomizerConstraint>>> Constraints;
+    }
+
+    public class RandomizerConstraint
+    {
+        public string[] Allow;
+        public string[] Disallow;
+
+        public string SelectRandom(Random rand, SkinnablePartVariant[] variants)
+        {
+            if (Allow != null)
+            {
+                return Allow[rand.Next(Allow.Length)];
+            }
+            if (Disallow != null)
+            {
+                var allowed = variants.Where(ele => !Disallow.Contains(ele.Code)).ToArray();
+                return allowed[rand.Next(allowed.Length)].Code;
+            }
+
+            return variants[rand.Next(variants.Length)].Code;
+        }
+    }
+
+
     public class CharacterSystem : ModSystem
     {
         ICoreAPI api;
@@ -57,6 +84,9 @@ namespace Vintagestory.GameContent
         public Dictionary<string, CharacterClass> characterClassesByCode = new Dictionary<string, CharacterClass>();
 
         public Dictionary<string, Trait> TraitsByCode = new Dictionary<string, Trait>();
+
+        SeraphRandomizerConstraints randomizerConstraints;
+
 
         public override void Start(ICoreAPI api)
         {
@@ -76,6 +106,8 @@ namespace Vintagestory.GameContent
         {
             this.capi = api;
 
+            api.Event.BlockTexturesLoaded += onLoadedUniversal;
+
             api.Network.GetChannel("charselection")
                 .SetMessageHandler<CharacterSelectedState>(onSelectedState)
             ;
@@ -83,7 +115,10 @@ namespace Vintagestory.GameContent
             api.Event.IsPlayerReady += Event_IsPlayerReady;
             api.Event.PlayerJoin += Event_PlayerJoin;
 
-            api.RegisterCommand("charsel", "", "", onCharSelCmd);
+
+            this.api.ChatCommands.Create("charsel")
+                .WithDescription("Open the character selection menu")
+                .HandleWith(onCharSelCmd);
 
             api.Event.BlockTexturesLoaded += loadCharacterClasses;
 
@@ -91,6 +126,11 @@ namespace Vintagestory.GameContent
             charDlg = api.Gui.LoadedGuis.Find(dlg => dlg is GuiDialogCharacterBase) as GuiDialogCharacterBase;
             charDlg.Tabs.Add(new GuiTab() { Name = Lang.Get("charactertab-traits"), DataInt = 1 });
             charDlg.RenderTabHandlers.Add(composeTraitsTab);
+        }
+
+        private void onLoadedUniversal()
+        {
+            randomizerConstraints = api.Assets.Get("config/seraphrandomizer.json").ToObject<SeraphRandomizerConstraints>();
         }
 
         private void composeTraitsTab(GuiComposer compo)
@@ -106,10 +146,6 @@ namespace Vintagestory.GameContent
 
             StringBuilder fulldesc = new StringBuilder();
             StringBuilder attributes = new StringBuilder();
-
-            //fulldesc.AppendLine(Lang.Get("characterdesc-" + chclass.Code));
-            //fulldesc.AppendLine();
-            //fulldesc.AppendLine(Lang.Get("traits-title"));
 
             var chartraits = chclass.Traits.Select(code => TraitsByCode[code]).OrderBy(trait => (int)trait.Type);
 
@@ -157,6 +193,7 @@ namespace Vintagestory.GameContent
 
         private void loadCharacterClasses()
         {
+            onLoadedUniversal();
             traits = api.Assets.Get("config/traits.json").ToObject<List<Trait>>();
             characterClasses = api.Assets.Get("config/characterclasses.json").ToObject<List<CharacterClass>>();
 
@@ -297,18 +334,25 @@ namespace Vintagestory.GameContent
             eplr.GetBehavior<EntityBehaviorHealth>()?.MarkDirty();
         }
 
-        private void onCharSelCmd(int groupId, CmdArgs args)
+        private TextCommandResult onCharSelCmd(TextCommandCallingArgs textCommandCallingArgs)
         {
-            if (createCharDlg == null)
+            var allowcharselonce = capi.World.Player.Entity.WatchedAttributes.GetBool("allowcharselonce") || capi.World.Player.WorldData.CurrentGameMode == EnumGameMode.Creative;
+
+            if (createCharDlg == null && allowcharselonce)
             {
                 createCharDlg = new GuiDialogCreateCharacter(capi, this);
                 createCharDlg.PrepAndOpen();
+            }
+            else if(createCharDlg == null)
+            {
+                return TextCommandResult.Success(Lang.Get("You don't have permission to change you character and class. An admin needs to grant you allowcharselonce permission"));
             }
 
             if (!createCharDlg.IsOpened())
             {
                 createCharDlg.TryOpen();
             }
+            return TextCommandResult.Success();
         }
 
         private void onSelectedState(CharacterSelectedState p)
@@ -318,12 +362,19 @@ namespace Vintagestory.GameContent
 
         private void Event_PlayerJoin(IClientPlayer byPlayer)
         {
-            if (!didSelect && byPlayer.PlayerUID == capi.World.Player.PlayerUID)
+            if (byPlayer.PlayerUID == capi.World.Player.PlayerUID)
             {
-                createCharDlg = new GuiDialogCreateCharacter(capi, this);
-                createCharDlg.PrepAndOpen();
-                createCharDlg.OnClosed += () => capi.PauseGame(false);
-                capi.Event.EnqueueMainThreadTask(() => capi.PauseGame(true), "pausegame");
+                if (!didSelect)
+                {
+                    createCharDlg = new GuiDialogCreateCharacter(capi, this);
+                    createCharDlg.PrepAndOpen();
+                    createCharDlg.OnClosed += () => capi.PauseGame(false);
+                    capi.Event.EnqueueMainThreadTask(() => capi.PauseGame(true), "pausegame");
+                    capi.Event.PushEvent("begincharacterselection");
+                } else
+                {
+                    capi.Event.PushEvent("skipcharacterselection");
+                }
             }
         }
 
@@ -390,31 +441,69 @@ namespace Vintagestory.GameContent
 
             if (!didSelect)
             {
-                randomizeSkin(byPlayer);
+                //randomizeSkin(byPlayer.Entity, getPreviousSelection(), false);
                 setCharacterClass(byPlayer.Entity, characterClasses[0].Code, false);
             }
 
             sapi.Network.GetChannel("charselection").SendPacket(new CharacterSelectedState() { DidSelect = didSelect }, byPlayer);
         }
 
-        private void randomizeSkin(IServerPlayer byPlayer)
+
+        public bool randomizeSkin(Entity entity, Dictionary<string, string> preSelection, bool playVoice = true)
         {
-            var skinMod = byPlayer.Entity.GetBehavior<EntityBehaviorExtraSkinnable>();
+            if (preSelection == null) preSelection = new Dictionary<string, string>();
+
+            var skinMod = entity.GetBehavior<EntityBehaviorExtraSkinnable>();
+
+            bool mustached = api.World.Rand.NextDouble() < 0.3;
+
+            Dictionary<string, RandomizerConstraint> currentConstraints = new Dictionary<string, RandomizerConstraint>();
 
             foreach (var skinpart in skinMod.AvailableSkinParts)
             {
                 int index = api.World.Rand.Next(skinpart.Variants.Length);
+                string variantCode = null;
 
-                if ((skinpart.Code == "mustache" || skinpart.Code == "beard") && api.World.Rand.NextDouble() < 0.5)
+                if (preSelection.TryGetValue(skinpart.Code, out variantCode))
                 {
-                    index = 0;
+                    index = skinpart.Variants.IndexOf(val => val.Code == variantCode);
+                }
+                else
+                {
+                    if (currentConstraints.TryGetValue(skinpart.Code, out var partConstraints))
+                    {
+                        variantCode = partConstraints.SelectRandom(api.World.Rand, skinpart.Variants);
+                        index = skinpart.Variants.IndexOf(val => val.Code == variantCode);
+                    }
+
+                    if ((skinpart.Code == "mustache" || skinpart.Code == "beard") && !mustached)
+                    {
+                        index = 0;
+                        variantCode = "none";
+                    }
                 }
 
-                string variantCode = skinpart.Variants[index].Code;
+                if (variantCode == null) variantCode = skinpart.Variants[index].Code;
 
-                skinMod.selectSkinPart(skinpart.Code, variantCode);
+                skinMod.selectSkinPart(skinpart.Code, variantCode, true, playVoice);
+
+                if (randomizerConstraints.Constraints.TryGetValue(skinpart.Code, out var partConstraintsGroup))
+                {
+                    if (partConstraintsGroup.TryGetValue(variantCode, out var constraints))
+                    {
+                        foreach (var val in constraints)
+                        {
+                            currentConstraints[val.Key] = val.Value;
+                        }
+                    }
+                }
+
+                if (skinpart.Code == "voicetype" && variantCode == "high") mustached = false;
             }
+
+            return true;
         }
+
 
         private void onCharacterSelection(IServerPlayer fromPlayer, CharacterSelectionPacket p)
         {
@@ -428,7 +517,8 @@ namespace Vintagestory.GameContent
 
             if (p.DidSelect)
             {
-                fromPlayer.SetModdata("createCharacter", SerializerUtil.Serialize<bool>(p.DidSelect));
+                fromPlayer.SetModdata("createCharacter", SerializerUtil.Serialize(true));
+                fromPlayer.Entity.WatchedAttributes.RemoveAttribute("allowcharselonce");
 
                 setCharacterClass(fromPlayer.Entity, p.CharacterClass, !didSelectBefore || fromPlayer.WorldData.CurrentGameMode == EnumGameMode.Creative);
 
@@ -470,6 +560,7 @@ namespace Vintagestory.GameContent
             {
                 skinParts[val.PartCode] = val.Code;
             }
+            if (didSelect) storePreviousSelection(skinParts);
 
             capi.Network.GetChannel("charselection").SendPacket(new CharacterSelectionPacket()
             {
@@ -484,6 +575,35 @@ namespace Vintagestory.GameContent
             capi.Network.SendPlayerNowReady();
 
             createCharDlg = null;
+
+            capi.Event.PushEvent("finishcharacterselection");
+        }
+
+
+
+        public Dictionary<string, string> getPreviousSelection()
+        {
+            Dictionary<string, string> lastSelection = new Dictionary<string, string>();
+            if (capi == null || !capi.Settings.String.Exists("lastSkinSelection")) return lastSelection;
+
+            var lastSele = capi.Settings.String["lastSkinSelection"];
+            var parts = lastSele.Split(",");
+            foreach (var part in parts)
+            {
+                var keyval = part.Split(":");
+                lastSelection[keyval[0]] = keyval[1];
+            }
+            return lastSelection;
+        }
+        public void storePreviousSelection(Dictionary<string, string> selection)
+        {
+            List<string> parts = new List<string>();
+            foreach (var val in selection)
+            {
+                parts.Add(val.Key + ":" + val.Value);
+            }
+
+            capi.Settings.String["lastSkinSelection"] = string.Join(",", parts);
         }
     }
 }

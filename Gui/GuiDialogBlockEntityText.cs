@@ -1,5 +1,4 @@
 ﻿using System;
-using System.IO;
 using Vintagestory.API.Client;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;

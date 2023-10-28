@@ -8,6 +8,7 @@ namespace Vintagestory.GameContent
     public class ModSystemGliding : ModSystem
     {
         ICoreClientAPI capi;
+        protected ILoadedSound glideSound;
 
         public override bool ShouldLoad(EnumAppSide forSide)
         {
@@ -22,6 +23,8 @@ namespace Vintagestory.GameContent
         }
         private void onClientTick(float dt)
         {
+            ToggleglideSounds(capi.World.Player.Entity.Controls.Gliding);
+
             foreach (var plr in capi.World.AllOnlinePlayers)
             {
                 if (plr.Entity == null) continue;
@@ -34,7 +37,11 @@ namespace Vintagestory.GameContent
                 if (plr.Entity.Controls.Gliding)
                 {
                     glidingAccum = Math.Min(3.01f / speed, glidingAccum + dt);
-                    if (!HasGilder) plr.Entity.Controls.Gliding = false;
+                    if (!HasGlider)
+                    {
+                        plr.Entity.Controls.Gliding = false;
+                        plr.Entity.WalkPitch = 0;
+                    }
                 }
                 else
                 {
@@ -53,10 +60,44 @@ namespace Vintagestory.GameContent
             }
         }
 
+
+        public void ToggleglideSounds(bool on)
+        {
+            if (on)
+            {
+                if (glideSound == null || !glideSound.IsPlaying)
+                {
+                    glideSound = capi.World.LoadSound(new SoundParams()
+                    {
+                        Location = new AssetLocation("sounds/effect/gliding.ogg"),
+                        ShouldLoop = true,
+                        Position = null,
+                        RelativePosition=true,
+                        DisposeOnFinish = false,
+                        Volume = 0
+                    });
+
+                    if (glideSound != null)
+                    {
+                        glideSound.Start();
+                        glideSound.PlaybackPosition = glideSound.SoundLengthSeconds * (float)capi.World.Rand.NextDouble();
+                        glideSound.FadeIn(1, (s) => { });
+                    }
+                }
+            }
+            else
+            {
+                glideSound?.Stop();
+                glideSound?.Dispose();
+                glideSound = null;
+            }
+        }
+
+
         private void Input_InWorldAction(EnumEntityAction action, bool on, ref EnumHandling handled)
         {
             var eplr = capi.World.Player.Entity;
-            if (action == EnumEntityAction.Jump && on && !eplr.OnGround && HasGilder && !eplr.Controls.IsFlying)
+            if (action == EnumEntityAction.Jump && on && !eplr.OnGround && HasGlider && !eplr.Controls.IsFlying)
             {
                 eplr.Controls.Gliding = true;
                 eplr.Controls.IsFlying = true;
@@ -69,12 +110,13 @@ namespace Vintagestory.GameContent
             }
         }
 
-        bool HasGilder {  
+        bool HasGlider {  
             get
             {
                 var inv = capi.World.Player.InventoryManager.GetOwnInventory(GlobalConstants.backpackInvClassName);
                 foreach (var slot in inv)
                 {
+                    if (!(slot is ItemSlotBackpack)) continue; // Don't search inside backpacks
                     if (slot.Itemstack?.Collectible is ItemGlider)
                     {
                         return true;

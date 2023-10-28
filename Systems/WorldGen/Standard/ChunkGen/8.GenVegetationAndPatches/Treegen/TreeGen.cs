@@ -4,7 +4,6 @@ using System.Threading;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
-using Vintagestory.GameContent;
 using Vintagestory.ServerMods.NoObf;
 
 namespace Vintagestory.ServerMods

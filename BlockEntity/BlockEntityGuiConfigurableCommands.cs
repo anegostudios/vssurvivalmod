@@ -129,7 +129,8 @@ namespace Vintagestory.GameContent
                     }
                     catch (Exception e)
                     {
-                        Api.Logger.Warning("Exception thrown when trying to call commands on init with block: {1}", e);
+                        Api.Logger.Warning("Exception thrown when trying to call commands on init with block:");
+                        Api.Logger.Warning(e);
                     }
                 }, 2000);
             }

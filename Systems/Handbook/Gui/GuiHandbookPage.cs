@@ -1,13 +1,5 @@
-﻿using System.Collections.Generic;
-using Cairo;
-using Vintagestory.API.MathTools;
-using Vintagestory.API.Client;
-using Vintagestory.API.Config;
+﻿using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using System;
-using System.Linq;
-using Vintagestory.API.Util;
-using Vintagestory.API.Datastructures;
 
 namespace Vintagestory.GameContent
 {

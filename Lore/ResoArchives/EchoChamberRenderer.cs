@@ -119,7 +119,8 @@ namespace Vintagestory.GameContent
             }
             catch (Exception e)
             {
-                capi.World.Logger.Fatal("Failed tesselating entity {0} with id {1}. Entity will probably be invisible!. The teselator threw {2}", entity.Code, entity.EntityId, e);
+                capi.World.Logger.Fatal("Failed tesselating entity {0} with id {1}. Entity will probably be invisible!.", entity.Code, entity.EntityId);
+                capi.World.Logger.Fatal(e);
                 return null;
             }
 
@@ -187,8 +188,6 @@ namespace Vintagestory.GameContent
             prog.UniformMatrix("viewMatrix", capi.Render.CurrentModelviewMatrix);
             prog.Uniform("addRenderFlags", 0);
             prog.Uniform("windWaveIntensity", (float)0);
-            prog.Uniform("skipRenderJointId", -1);
-            prog.Uniform("skipRenderJointId2", -1);
             prog.Uniform("entityId", (int)entity.EntityId);
             prog.Uniform("glitchFlicker", 0);
             prog.Uniform("frostAlpha", 0f);

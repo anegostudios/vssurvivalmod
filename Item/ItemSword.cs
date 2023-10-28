@@ -1,33 +1,60 @@
 ﻿using System;
-using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
-using Vintagestory.API.MathTools;
+using Vintagestory.API.Server;
 
 namespace Vintagestory.GameContent
 {
     public class ItemSword : Item
     {
+        public static float getHitDamageAtFrame(EntityAgent byEntity, string animCode)
+        {
+            if (byEntity.Properties.Client.AnimationsByMetaCode.TryGetValue(animCode, out var animdata))
+            {
+                if (animdata.Attributes?["damageAtFrame"].Exists == true)
+                {
+                    return animdata.Attributes["damageAtFrame"].AsFloat(-1) / animdata.AnimationSpeed;
+                }
+
+            }
+            return -1;
+        }
+        public static float getSoundAtFrame(EntityAgent byEntity, string animCode)
+        {
+            if (byEntity.Properties.Client.AnimationsByMetaCode.TryGetValue(animCode, out var animdata))
+            {
+                if (animdata.Attributes?["soundAtFrame"].Exists == true)
+                {
+                    return animdata.Attributes["soundAtFrame"].AsFloat(-1) / animdata.AnimationSpeed;
+                }
+            }
+            return -1;
+        }
+
         public override string GetHeldTpUseAnimation(ItemSlot activeHotbarSlot, Entity byEntity)
         {
             return "interactstatic";
         }
         public override void OnHeldAttackStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
         {
+            string anim = GetHeldTpHitAnimation(slot, byEntity);
+
             byEntity.Attributes.SetInt("didattack", 0);
 
-            byEntity.World.RegisterCallback((dt) =>
+            byEntity.AnimManager.RegisterFrameCallback(new AnimFrameCallback()
             {
-                IPlayer byPlayer = (byEntity as EntityPlayer).Player;
-                if (byPlayer == null) return;
+                Animation = anim,
+                Frame = getSoundAtFrame(byEntity, anim),
+                Callback = () => playStrikeSound(byEntity)
+            });
 
-                if (byEntity.Controls.HandUse == EnumHandInteract.HeldItemAttack)
-                {
-                    var pitch = (byEntity as EntityPlayer).talkUtil.pitchModifier;
-                    byPlayer.Entity.World.PlaySoundAt(new AssetLocation("sounds/player/strike"), byPlayer.Entity, byPlayer, pitch * 0.9f + (float)api.World.Rand.NextDouble() * 0.2f, 16, 0.35f);
-                }
-            }, (int)(400 / 1.25f));
+            byEntity.AnimManager.RegisterFrameCallback(new AnimFrameCallback()
+            {
+                Animation = anim,
+                Frame = getHitDamageAtFrame(byEntity, anim),
+                Callback = () => hitEntity(byEntity)
+            });
 
             handling = EnumHandHandling.PreventDefault;
         }
@@ -39,44 +66,50 @@ namespace Vintagestory.GameContent
 
         public override bool OnHeldAttackStep(float secondsPassed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSelection, EntitySelection entitySel)
         {
-            secondsPassed *= 1.25f;
-
-            float backwards = -Math.Min(0.35f, 2 * secondsPassed);
-            float stab = Math.Min(1.2f, 20 * Math.Max(0, secondsPassed - 0.35f));
-
-            if (byEntity.World.Side == EnumAppSide.Client)
-            {
-                IClientWorldAccessor world = byEntity.World as IClientWorldAccessor;
-                ModelTransform tf = new ModelTransform();
-                tf.EnsureDefaultValues();
-
-                float sum = stab + backwards;
-                float easeout = Math.Max(0, 2 * (secondsPassed - 1));
-
-                if (secondsPassed > 0.4f) sum = Math.Max(0, sum - easeout);
-
-                tf.Translation.Set(-1.4f * sum, 0, -sum * 0.8f * 2.6f);
-                tf.Rotation.Set(-sum * 90, 0, sum * 10);
-
-                byEntity.Controls.UsingHeldItemTransformAfter = tf;
-
-
-                if (stab > 1.15f && byEntity.Attributes.GetInt("didattack") == 0)
-                {
-                    world.TryAttackEntity(entitySel);
-                    byEntity.Attributes.SetInt("didattack", 1);
-                    world.AddCameraShake(0.25f);
-                }
-            }
-
-
-
-            return secondsPassed < 1.2f;
+            string animCode = GetHeldTpHitAnimation(slot, byEntity);
+            return byEntity.AnimManager.IsAnimationActive(animCode);
         }
 
         public override void OnHeldAttackStop(float secondsPassed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSelection, EntitySelection entitySel)
         {
 
+        }
+
+
+        protected virtual void playStrikeSound(EntityAgent byEntity)
+        {
+            IPlayer byPlayer = (byEntity as EntityPlayer).Player;
+            if (byPlayer == null) return;
+
+            if (byEntity.Controls.HandUse == EnumHandInteract.HeldItemAttack)
+            {
+                var pitch = (byEntity as EntityPlayer).talkUtil.pitchModifier;
+                byPlayer.Entity.World.PlaySoundAt(new AssetLocation("sounds/player/strike"), byPlayer.Entity, byPlayer, pitch * 0.9f + (float)api.World.Rand.NextDouble() * 0.2f, 16, 0.35f);
+            }
+        }
+
+        protected virtual void hitEntity(EntityAgent byEntity)
+        {
+            var entitySel = (byEntity as EntityPlayer)?.EntitySelection;
+
+            if (byEntity.World.Side == EnumAppSide.Client)
+            {
+                IClientWorldAccessor world = byEntity.World as IClientWorldAccessor;
+
+                if (byEntity.Attributes.GetInt("didattack") == 0)
+                {
+                    if (entitySel != null) world.TryAttackEntity(entitySel);
+                    byEntity.Attributes.SetInt("didattack", 1);
+                    world.AddCameraShake(0.25f);
+                }
+            }
+            else
+            {
+                if (byEntity.Attributes.GetInt("didattack") == 0 && entitySel != null)
+                {
+                    byEntity.Attributes.SetInt("didattack", 1);
+                }
+            }
         }
     }
 }

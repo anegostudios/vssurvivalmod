@@ -164,9 +164,22 @@ namespace Vintagestory.GameContent
         public override void StartServerSide(ICoreServerAPI api)
         {
             base.StartServerSide(api);
-            this.sapi = api;
+            sapi = api;
 
-            api.RegisterCommand("nexttempstorm", "", "Tells you the amount of days until the next storm", onCmdNextStorm, Privilege.controlserver);
+            api.ChatCommands.Create("nexttempstorm")
+                .WithDescription("Tells you the amount of days until the next storm")
+                .RequiresPrivilege(Privilege.controlserver)
+                .HandleWith(OnCmdNextStorm)
+                
+                .BeginSubCommand("now")
+                    .WithDescription("Start next temporal storm now")
+                    .HandleWith(_ =>
+                    {
+                        data.nextStormTotalDays = api.World.Calendar.TotalDays;
+                        return TextCommandResult.Success();
+                    })
+                .EndSubCommand()
+                ;
 
             serverChannel =
                api.Network.RegisterChannel("temporalstability")
@@ -231,24 +244,16 @@ namespace Vintagestory.GameContent
             api.Event.RegisterGameTickListener(onTempStormTick, 2000);
         }
 
-        private void onCmdNextStorm(IServerPlayer player, int groupId, CmdArgs args)
+        private TextCommandResult OnCmdNextStorm(TextCommandCallingArgs textCommandCallingArgs)
         {
             if (data.nowStormActive)
             {
-                double daysleft = data.stormActiveTotalDays - api.World.Calendar.TotalDays;
-                player.SendMessage(groupId, Lang.Get(data.nextStormStrength + " Storm still active for {0:0.##} days", daysleft), EnumChatType.Notification);
+                var daysleft = data.stormActiveTotalDays - api.World.Calendar.TotalDays;
+                return TextCommandResult.Success(Lang.Get(data.nextStormStrength + " Storm still active for {0:0.##} days", daysleft));
             }
-            else
-            {
-                if (args.PopWord() == "now")
-                {
-                    data.nextStormTotalDays = api.World.Calendar.TotalDays;
-                    return;
-                }
 
-                double nextStormDaysLeft = data.nextStormTotalDays - api.World.Calendar.TotalDays;
-                player.SendMessage(groupId, Lang.Get("temporalstorm-cmd-daysleft", nextStormDaysLeft), EnumChatType.Notification);
-            }
+            var nextStormDaysLeft = data.nextStormTotalDays - api.World.Calendar.TotalDays;
+            return TextCommandResult.Success(Lang.Get("temporalstorm-cmd-daysleft", nextStormDaysLeft));
         }
 
         private void Event_PlayerNowPlaying(IServerPlayer byPlayer)

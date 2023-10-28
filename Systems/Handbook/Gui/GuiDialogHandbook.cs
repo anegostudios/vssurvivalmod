@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Common.CommandAbbr;
 using Vintagestory.API.Config;
 using Vintagestory.API.Util;
 
@@ -25,18 +24,7 @@ namespace Vintagestory.GameContent
     public delegate List<GuiHandbookPage> OnCreatePagesDelegate();
     public delegate void OnComposePageDelegate(GuiHandbookPage page, GuiComposer detailViewGui, ElementBounds textBounds, ActionConsumable<string> openDetailPageFor);
 
-    // Concept:
-    // 1. Pressing H opens the GuiDialogKnowledgeBase
-    // 2. Top of the dialog has a search field to search for blocks and items
-    //    While hovering an itemstack in an itemslot it will pre-search the info of that item
-    // The block/item detail page contains
-    // - An icon of the block item
-    // - Name and description
-    // - Where it can be found (Dropped by: Block x, Monster y)
-    // - In which recipes in can be used (Grip recipe X, Smithing recipe z)
 
-    // By default every item and block in the creative inventory can be found through search
-    // but can be explicitly made to be included or excluded using item/block attributes
     public class GuiDialogHandbook : GuiDialog
     {
         public override double DrawOrder => 0.2; // Needs to be same as chest container guis so it can be on top of those dialogs if necessary
@@ -51,7 +39,7 @@ namespace Vintagestory.GameContent
         protected string currentSearchText;
         protected GuiComposer overviewGui;
         protected GuiComposer detailViewGui;
-        protected bool notReady;
+        protected bool loadingPagesAsync;
         protected double listHeight = 500;
         protected GuiTab[] tabs;
 
@@ -62,14 +50,12 @@ namespace Vintagestory.GameContent
         OnCreatePagesDelegate createPageHandlerAsync;
         OnComposePageDelegate composePageHandler;
 
+        public virtual string DialogTitle => "";
+
         public GuiDialogHandbook(ICoreClientAPI capi, OnCreatePagesDelegate createPageHandlerAsync, OnComposePageDelegate composePageHandler) : base(capi)
         {
             this.createPageHandlerAsync = createPageHandlerAsync;
-            this.composePageHandler = composePageHandler;
-
-            currentCatgoryCode = capi.Settings.String["currentHandbookCategoryCode"];
-
-            IPlayerInventoryManager invm = capi.World.Player.InventoryManager;
+            this.composePageHandler = composePageHandler;           
 
             capi.Settings.AddWatcher<float>("guiScale", (float val) =>
             {
@@ -80,27 +66,10 @@ namespace Vintagestory.GameContent
                     elem.Dispose();
                 }
             });
-            setupReloadCommand(capi);
-            capi.Event.HotkeysChanged += loadEntries;
+
             loadEntries();
         }
 
-        protected virtual void setupReloadCommand(ICoreClientAPI capi)
-        {
-            capi.ChatCommands
-                .GetOrCreate("debug")
-                .BeginSub("reloadhandbook")
-                    .WithDesc("Reload handbook pages")
-                    .HandleWith((args) =>
-                    {
-                        capi.Assets.Reload(AssetCategory.config);
-                        Lang.Load(capi.World.Logger, capi.Assets, capi.Settings.String["language"]);
-                        loadEntries();
-                        return TextCommandResult.Success("Lang file and handbook entries now reloaded");
-                    })
-                .EndSub()
-            ;
-        }
 
         protected virtual void loadEntries()
         {
@@ -113,8 +82,8 @@ namespace Vintagestory.GameContent
             codes.Add("stack");
             this.categoryCodes = codes.ToList();
 
-            notReady = true;
-            TyronThreadPool.QueueTask(() => LoadPages_Async());
+            loadingPagesAsync = true;
+            TyronThreadPool.QueueTask(LoadPages_Async);
 
             initOverviewGui();
             capi.Logger.VerboseDebug("Done creating handbook index GUI");
@@ -155,11 +124,15 @@ namespace Vintagestory.GameContent
                 .WithFixedAlignmentOffset(-6, 3)
             ;
 
+            tabs = genTabs(out curTab);
+
             overviewGui = capi.Gui
                 .CreateCompo("handbook-overview", dialogBounds)
                 .AddShadedDialogBG(bgBounds, true)
-                .AddDialogTitleBar(Lang.Get("Survival Handbook"), OnTitleBarClose)
-                .AddVerticalTabs(tabs = genTabs(out curTab), tabBounds, OnTabClicked, "verticalTabs")
+                .AddDialogTitleBar(DialogTitle, OnTitleBarClose)
+                .AddIf(tabs.Length > 0)
+                    .AddVerticalTabs(tabs, tabBounds, OnTabClicked, "verticalTabs")
+                .EndIf()
                 .AddTextInput(searchFieldBounds, FilterItemsBySearchText, CairoFont.WhiteSmallishText(), "searchField")
                 .BeginChildElements(bgBounds)
                     .BeginClip(clipBounds)
@@ -183,14 +156,16 @@ namespace Vintagestory.GameContent
 
             overviewGui.GetTextInput("searchField").SetPlaceHolderText(Lang.Get("Search..."));
 
-            overviewGui.GetVerticalTab("verticalTabs").SetValue(curTab, false);
+            if (tabs.Length > 0)
+            {
+                overviewGui.GetVerticalTab("verticalTabs").SetValue(curTab, false);
+                currentCatgoryCode = (tabs[curTab] as HandbookTab).CategoryCode;
+            }
 
             var btn = overviewGui.GetToggleButton("pausegame");
             if (btn != null) btn.SetValue(!capi.Settings.Bool["noHandbookPause"]);
 
             overviewGui.FocusElement(overviewGui.GetTextInput("searchField").TabIndex);
-
-            currentCatgoryCode = (tabs[curTab] as HandbookTab).CategoryCode;
         }
 
         protected virtual void onTogglePause(bool on)
@@ -199,55 +174,22 @@ namespace Vintagestory.GameContent
             capi.Settings.Bool["noHandbookPause"] = !on;
         }
 
-        GuiTab[] genTabs(out int curTab)
+        protected virtual GuiTab[] genTabs(out int curTab)
         {
-            List<GuiTab> tabs = new List<GuiTab>();
-
-            tabs.Add(new HandbookTab()
-            {
-                DataInt = 0,
-                Name = Lang.Get("handbook-category-tutorials"),
-                CategoryCode = "tutorial"
-            });
-            tabs.Add(new HandbookTab()
-            {
-                PaddingTop = 20,
-                DataInt = 0,
-                Name = Lang.Get("handbook-category-everything"),
-                CategoryCode = null
-            });
-
-            curTab = currentCatgoryCode == "tutorial" ? 0 : 1;
-
-            categoryCodes.Remove("tutorial");
-
-            for (int i = 0; i < categoryCodes.Count; i++)
-            {
-                int index = tabs.Count;
-
-                tabs.Add(new HandbookTab()
-                {
-                    DataInt = index,
-                    Name = Lang.Get("handbook-category-" + categoryCodes[i]),
-                    CategoryCode = categoryCodes[i]
-                });
-
-                if (currentCatgoryCode == categoryCodes[i])
-                {
-                    curTab = index;
-                }
-            }
-
-            return tabs.ToArray();
+            curTab = 0;
+            return new GuiTab[0];
         }
 
 
         protected virtual void OnTabClicked(int index, GuiTab tab)
         {
-            currentCatgoryCode = (tab as HandbookTab).CategoryCode;
+            selectTab((tab as HandbookTab).CategoryCode);
+        }
 
+        public void selectTab(string code)
+        {
+            currentCatgoryCode = code;
             FilterItems();
-
             capi.Settings.String["currentHandbookCategoryCode"] = currentCatgoryCode;
         }
 
@@ -306,7 +248,7 @@ namespace Vintagestory.GameContent
             detailViewGui = capi.Gui
                 .CreateCompo("handbook-detail", dialogBounds)
                 .AddShadedDialogBG(bgBounds, true)
-                .AddDialogTitleBar(Lang.Get("Survival Handbook"), OnTitleBarClose)
+                .AddDialogTitleBar(DialogTitle, OnTitleBarClose)
                 .AddVerticalTabs(genTabs(out curTab), tabBounds, OnDetailViewTabClicked, "verticalTabs")
                 .BeginChildElements(bgBounds)
                     .BeginClip(clipBounds)
@@ -314,7 +256,6 @@ namespace Vintagestory.GameContent
             ;
 
             composePageHandler(curPage.Page, detailViewGui, textBounds, OpenDetailPageFor);
-            //curPage.Page.ComposePage(detailViewGui, textBounds, allstacks, OpenDetailPageFor);
             var lastAddedElement = detailViewGui.LastAddedElement;
 
             detailViewGui
@@ -409,7 +350,6 @@ namespace Vintagestory.GameContent
         }
 
 
-
         protected void OnNewScrollbarvalueOverviewPage(float value)
         {
             GuiElementFlatList stacklist = overviewGui.GetFlatList("stacklist");
@@ -460,27 +400,9 @@ namespace Vintagestory.GameContent
 
 
 
-        protected HashSet<string> initCustomPages()
+        protected virtual HashSet<string> initCustomPages()
         {
-            List<GuiHandbookTextPage> textpages = capi.Assets.GetMany<GuiHandbookTextPage>(capi.Logger, "config/handbook").OrderBy(pair => pair.Key.ToString()).Select(pair => pair.Value).ToList();
-            HashSet<string> categoryCodes = new HashSet<string>();
-
-            foreach (var val in textpages)
-            {
-                var page = val;
-                page.Init(capi);
-                allHandbookPages.Add(page);
-            }
-
-            capi.ModLoader.GetModSystem<ModSystemHandbook>().TriggerOnInitCustomPages(allHandbookPages);
-            for (int i = 0; i < allHandbookPages.Count; i++)
-            {
-                var page = allHandbookPages[i];
-                categoryCodes.Add(page.CategoryCode);
-                pageNumberByPageCode[page.PageCode] = i;
-            }
-
-            return categoryCodes;
+            return new HashSet<string>();
         }
 
 
@@ -493,7 +415,7 @@ namespace Vintagestory.GameContent
                 pageNumberByPageCode[page.PageCode] = page.PageNumber = i;
             }
 
-            notReady = false;
+            loadingPagesAsync = false;
         }
 
         public void Search(string text)
@@ -526,13 +448,13 @@ namespace Vintagestory.GameContent
 
         public void FilterItems()
         {
-            string text = currentSearchText?.ToLowerInvariant();
+            string text = currentSearchText?.RemoveDiacritics().ToLowerInvariant();
             string[] texts = text == null ? new string[0] : text.Split(new string[] { " or " }, StringSplitOptions.RemoveEmptyEntries).OrderBy(str => str.Length).ToArray();
 
             List<WeightedHandbookPage> foundPages = new List<WeightedHandbookPage>();
             shownHandbookPages.Clear();
 
-            if (!notReady)
+            if (!loadingPagesAsync)
             {
                 for (int i = 0; i < allHandbookPages.Count; i++)
                 {

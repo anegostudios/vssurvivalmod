@@ -23,5 +23,13 @@ namespace Vintagestory.GameContent
             bechisel.RotateModel(dir > 0 ? 90 : -90, null);
             bechisel.MarkDirty(true);
         }
+
+        public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
+        {
+            var bechisel = api.World.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityChisel;
+            if (bechisel?.Interact(byPlayer, blockSel) == true) return true;
+
+            return base.OnBlockInteractStart(world, byPlayer, blockSel);
+        }
     }
 }

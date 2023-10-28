@@ -387,8 +387,11 @@ namespace Vintagestory.GameContent
 
             if (isSelf && (fogEffectStrength > 0.05 || glitchEffectStrength > 0.05))
             {
+                var str = capi.Settings.Float["instabilityWavingStrength"];
+
                 capi.Render.ShaderUniforms.GlitchStrength = (float)glitchEffectStrength;
-                capi.Render.ShaderUniforms.GlobalWorldWarp = (float)(capi.World.Rand.NextDouble() < 0.015 ? (Math.Max(0, glitchEffectStrength - 0.05f) * capi.World.Rand.NextDouble() * capi.World.Rand.NextDouble()) : 0);
+                capi.Render.ShaderUniforms.GlitchWaviness = (float)glitchEffectStrength * str;
+                capi.Render.ShaderUniforms.GlobalWorldWarp = (float)(capi.World.Rand.NextDouble() < 0.015 ? (Math.Max(0, glitchEffectStrength - 0.05f) * capi.World.Rand.NextDouble() * capi.World.Rand.NextDouble()) : 0) * str;
 
                 float tempStormJitterStrength = 9;
                 if (capi.Settings.Float.Exists("tempStormJitterStrength"))

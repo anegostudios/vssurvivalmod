@@ -93,7 +93,8 @@ namespace Vintagestory.GameContent
                 } catch (Exception e)
                 {
                     api.World.Logger.Error("Failed deserializing TradeProperties for trader {0}, exception logged to verbose debug", properties.Code);
-                    api.World.Logger.VerboseDebug("Failed deserializing TradeProperties: {0}", e);
+                    api.World.Logger.Error(e);
+                    api.World.Logger.VerboseDebug("Failed deserializing TradeProperties:");
                     api.World.Logger.VerboseDebug("=================");
                     api.World.Logger.VerboseDebug("Tradeprops json:");
                     api.World.Logger.VerboseDebug("{0}", Properties.Server.Attributes["tradeProps"].ToJsonToken());
@@ -115,7 +116,8 @@ namespace Vintagestory.GameContent
             } catch (Exception e)
             {
                 api.World.Logger.Error("Failed initializing trader inventory. Will recreate. Exception logged to verbose debug");
-                api.World.Logger.VerboseDebug("Failed initializing trader inventory. Will recreate. Exception {0}", e);
+                api.World.Logger.Error(e);
+                api.World.Logger.VerboseDebug("Failed initializing trader inventory. Will recreate.");
 
                 WatchedAttributes.RemoveAttribute("traderInventory");
                 Inventory = new InventoryTrader("traderInv", "" + EntityId, api);
@@ -177,7 +179,7 @@ namespace Vintagestory.GameContent
 
             // Make a copy so we don't mess up the original
             Shape newShape = entityShape.Clone();
-            newShape.ResolveAndLoadJoints("head");
+            newShape.ResolveAndFindJoints(Api.Logger, shapePathForLogging, "head");
             entityShape = newShape;
 
             string[] outfitCodes = OutfitCodes;
@@ -189,6 +191,170 @@ namespace Vintagestory.GameContent
 
                 addGearToShape(outfitCodes[i], cshapes[i], entityShape, shapePathForLogging, null, cshapes[i].Textures);
             }
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="code">Any unique Identifier</param>
+        /// <param name="cshape"></param>
+        /// <param name="entityShape"></param>
+        /// <param name="shapePathForLogging"></param>
+        /// <param name="disableElements"></param>
+        /// <returns></returns>
+        protected Shape addGearToShape(string code, CompositeShape cshape, Shape entityShape, string shapePathForLogging, string[] disableElements = null, Dictionary<string, AssetLocation> textureOverrides = null)
+        {
+            AssetLocation shapePath = cshape.Base.CopyWithPath("shapes/" + cshape.Base.Path + ".json");
+
+            if (disableElements != null)
+            {
+                foreach (var val in disableElements)
+                {
+                    entityShape.RemoveElementByName(val);
+                }
+            }
+
+            Shape armorShape = Shape.TryGet(Api, shapePath);
+            if (armorShape == null)
+            {
+                Api.World.Logger.Warning("Compositshape {0} (code: {2}) defined but not found or errored, was supposed to be at {1}. Part will be invisible.", cshape.Base, shapePath, code);
+                return null;
+            }
+
+            bool added = applyStepParents(null, armorShape.Elements, entityShape, code, cshape, shapePathForLogging);
+
+
+            if (added && armorShape.Textures != null)
+            {
+                Dictionary<string, AssetLocation> newdict = new Dictionary<string, AssetLocation>();
+                foreach (var val in armorShape.Textures)
+                {
+                    newdict[code + "-" + val.Key] = val.Value;
+                }
+
+                // Texture overrides
+                if (textureOverrides != null)
+                {
+                    foreach (var val in textureOverrides)
+                    {
+                        newdict[code + "-" + val.Key] = val.Value;
+                    }
+                }
+
+                armorShape.Textures = newdict;
+
+                foreach (var val in armorShape.Textures)
+                {
+                    CompositeTexture ctex = new CompositeTexture() { Base = val.Value };
+
+                    entityShape.TextureSizes[val.Key] = new int[] { armorShape.TextureWidth, armorShape.TextureHeight };
+
+                    AssetLocation armorTexLoc = val.Value;
+
+                    // Weird backreference to the shaperenderer. Should be refactored.
+                    var texturesByLoc = extraTextureByLocation;
+                    var texturesByName = extraTexturesByTextureName;
+
+                    BakedCompositeTexture bakedCtex;
+
+                    ICoreClientAPI capi = Api as ICoreClientAPI;
+
+                    if (!texturesByLoc.TryGetValue(armorTexLoc, out bakedCtex))
+                    {
+                        int textureSubId = 0;
+                        TextureAtlasPosition texpos;
+
+                        IAsset texAsset = Api.Assets.TryGet(val.Value.Clone().WithPathPrefixOnce("textures/").WithPathAppendixOnce(".png"));
+                        if (texAsset != null)
+                        {
+                            BitmapRef bmp = texAsset.ToBitmap(capi);
+                            capi.EntityTextureAtlas.InsertTexture(bmp, out textureSubId, out texpos);
+                        }
+                        else
+                        {
+                            capi.World.Logger.Warning("Entity armor shape {0} defined texture {1}, not no such texture found.", shapePath, val.Value);
+                        }
+
+                        ctex.Baked = new BakedCompositeTexture() { BakedName = val.Value, TextureSubId = textureSubId };
+
+                        texturesByName[val.Key] = ctex;
+                        texturesByLoc[armorTexLoc] = ctex.Baked;
+                    }
+                    else
+                    {
+                        ctex.Baked = bakedCtex;
+                        texturesByName[val.Key] = ctex;
+                    }
+                }
+
+                foreach (var val in armorShape.TextureSizes)
+                {
+                    entityShape.TextureSizes[val.Key] = val.Value;
+                }
+            }
+
+            return entityShape;
+        }
+
+        private bool applyStepParents(ShapeElement parentElem, ShapeElement[] elements, Shape toShape, string code, CompositeShape cshape, string shapePathForLogging)
+        {
+            bool added = false;
+
+            foreach (var cElem in elements)
+            {
+                ShapeElement refelem;
+
+                if (cElem.Children != null)
+                {
+                    added |= applyStepParents(cElem, cElem.Children, toShape, code, cshape, shapePathForLogging);
+                }
+
+                if (cElem.StepParentName != null)
+                {
+                    refelem = toShape.GetElementByName(cElem.StepParentName, StringComparison.InvariantCultureIgnoreCase);
+                    if (refelem == null)
+                    {
+                        Api.World.Logger.Warning("Shape {0} requires step parent element with name {1}, but no such element was found in shape {2}. Will not be visible.", cshape.Base, cElem.StepParentName, shapePathForLogging);
+                        continue;
+                    }
+                }
+                else
+                {
+                    if (parentElem == null)
+                    {
+                        Api.World.Logger.Warning("Entity armor shape element {0} in shape {1} did not define a step parent element. Will not be visible.", cElem.Name, cshape.Base);
+                    }
+                    continue;
+                }
+
+                if (parentElem != null)
+                {
+                    parentElem.Children = parentElem.Children.Remove(cElem);
+                }
+
+                if (refelem.Children == null)
+                {
+                    refelem.Children = new ShapeElement[] { cElem };
+                }
+                else
+                {
+                    refelem.Children = refelem.Children.Append(cElem);
+                }
+
+                cElem.SetJointIdRecursive(refelem.JointId);
+
+                cElem.WalkRecursive((el) =>
+                {
+                    foreach (var face in el.FacesResolved)
+                    {
+                        if (face != null) face.Texture = code + "-" + face.Texture;
+                    }
+                });
+
+                added = true;
+            }
+
+            return added;
         }
 
         private void RefreshBuyingSellingInventory(float refreshChance = 1.1f)
@@ -399,12 +565,12 @@ namespace Vintagestory.GameContent
         {
             base.OnReceivedServerPacket(packetid, data);
 
-            if (packetid == 1001)
+            if (packetid == (int)EntityServerPacketId.Hurt)
             {
                 if (!Alive) return;
                 talkUtil.Talk(EnumTalkType.Hurt);
             }
-            if (packetid == 1002)
+            if (packetid == (int)EntityServerPacketId.Death)
             {
                 talkUtil.Talk(EnumTalkType.Death);
             }
@@ -539,12 +705,12 @@ namespace Vintagestory.GameContent
         {
             if (type == "hurt" && World.Side == EnumAppSide.Server)
             {
-                (World.Api as ICoreServerAPI).Network.BroadcastEntityPacket(this.EntityId, 1001);
+                (World.Api as ICoreServerAPI).Network.BroadcastEntityPacket(this.EntityId, (int)EntityServerPacketId.Hurt);
                 return;
             }
             if (type == "death" && World.Side == EnumAppSide.Server)
             {
-                (World.Api as ICoreServerAPI).Network.BroadcastEntityPacket(this.EntityId, 1002);
+                (World.Api as ICoreServerAPI).Network.BroadcastEntityPacket(this.EntityId, (int)EntityServerPacketId.Death);
                 return;
             }
 

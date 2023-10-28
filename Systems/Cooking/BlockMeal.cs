@@ -661,7 +661,7 @@ namespace Vintagestory.GameContent
         
         public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
         {
-            MeshRef meshref = meshCache.GetOrCreateMealInContainerMeshRef(this, GetCookingRecipe(capi.World, itemstack), GetNonEmptyContents(capi.World, itemstack));
+            MultiTextureMeshRef meshref = meshCache.GetOrCreateMealInContainerMeshRef(this, GetCookingRecipe(capi.World, itemstack), GetNonEmptyContents(capi.World, itemstack));
             if (meshref != null) renderinfo.ModelRef = meshref;
         }
 
@@ -802,7 +802,10 @@ namespace Vintagestory.GameContent
                     world.SpawnCubeParticles(entityItem.ServerPos.XYZ, rndStack, 0.3f, 25, 1, null);
                 }
 
-                Block block = world.GetBlock(new AssetLocation(Attributes["eatenBlock"].AsString()));
+                var eatenBlock = Attributes["eatenBlock"].AsString();
+                if (eatenBlock == null) return;
+                Block block = world.GetBlock(new AssetLocation(eatenBlock));
+
                 entityItem.Itemstack = new ItemStack(block);
                 entityItem.WatchedAttributes.MarkPathDirty("itemstack");
             }

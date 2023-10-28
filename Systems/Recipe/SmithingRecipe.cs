@@ -1,13 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-using Vintagestory.API.Common;
-using Vintagestory.API.Server;
-using Vintagestory.API.Util;
+﻿using Vintagestory.API.Common;
 
 namespace Vintagestory.GameContent
 {

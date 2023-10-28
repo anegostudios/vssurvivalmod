@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
@@ -131,8 +130,6 @@ namespace Vintagestory.GameContent
         {
             if (capi.IsGamePaused) deltaTime = 0;
 
-            
-
             float targetRaiseyRel = 0;
             if (bh != null) targetRaiseyRel = GameMath.Clamp((float)bh.GlichEffectStrength * 5f - 3f, 0, 1);
             raiseyRelGears += (targetRaiseyRel - raiseyRelGears) * deltaTime;
@@ -146,7 +143,7 @@ namespace Vintagestory.GameContent
 
             if (!capi.IsGamePaused)
             {
-                tripodAnim.renderer.ShouldRender = raiseyRelTripod > 0;
+                tripodAnim.renderer.ShouldRender = raiseyRelTripod > 0.01f;
                 updateSuperMechState(deltaTime, stage);
             }
 
@@ -161,7 +158,7 @@ namespace Vintagestory.GameContent
 
             var plrPos = capi.World.Player.Entity.Pos;
 
-            tripodAccum += deltaTime / 50.0 * 2f;
+            tripodAccum += deltaTime / 50.0 * (0.33f + raiseyRelTripod) * 1.2f;
             tripodAccum = tripodAccum % 500000d;
 
             float d = (1 - raiseyRelTripod) * 900;
@@ -170,7 +167,7 @@ namespace Vintagestory.GameContent
             tripodPos.Y = capi.World.SeaLevel;
             tripodPos.Z = plrPos.Z + Math.Cos(tripodAccum) * (300d + d);
             tripodAnim.renderer.rotationDeg.Y = (float)((tripodAccum % GameMath.TWOPI) + GameMath.PI) * GameMath.RAD2DEG;
-            tripodAnim.renderer.renderColor.Set(0.5f, 0.5f, 0.5f, 1f);
+            tripodAnim.renderer.renderColor.Set(0.5f, 0.5f, 0.5f, Math.Min(1, raiseyRelTripod*2));
             tripodAnim.renderer.FogAffectedness = 1f - GameMath.Clamp(raiseyRelGears * 2.2f - 0.5f, 0, 0.9f);
 
             tripodAnim.OnRenderFrame(deltaTime, stage);

@@ -1,15 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
-using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Common.Entities;
-using Vintagestory.API.Datastructures;
-using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
-using Vintagestory.ServerMods;
 
 namespace Vintagestory.GameContent
 {
@@ -41,7 +35,8 @@ namespace Vintagestory.GameContent
 
             } catch (Exception e)
             {
-                byEntity.World.Logger.Error("Failed adding journal entry. Exception: {0}", e);
+                byEntity.World.Logger.Error("Failed adding journal entry.");
+                byEntity.World.Logger.Error(e);
             }
 
         }

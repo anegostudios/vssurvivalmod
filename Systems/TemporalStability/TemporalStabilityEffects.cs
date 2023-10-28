@@ -1,9 +1,5 @@
 ﻿using ProtoBuf;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -93,7 +89,15 @@ namespace Vintagestory.GameContent
 
             renderer = new GearRenderer(capi);
 
-            api.RegisterCommand("geartest", "", "", onCmdGearTest);
+            api.ChatCommands.GetOrCreate("debug")
+                .BeginSubCommand("geartest")
+                .WithDescription("")
+                .HandleWith(_ =>
+                {
+                    renderer.Init();
+                    return TextCommandResult.Success();
+                })
+                .EndSubCommand();
 
             api.Event.LevelFinalize += Event_LevelFinalize;
         }
@@ -267,28 +271,11 @@ namespace Vintagestory.GameContent
             }
 
         }
-
-
-
-
-
+        
         private void Event_LevelFinalize()
         {
             renderer.Init();
             capi.Logger.VerboseDebug("Done init huge gears");
         }
-
-        private void onCmdGearTest(int groupId, CmdArgs args)
-        {
-            renderer.Init();
-        }
-
-
-
-
-
-
-
-
     }
 }

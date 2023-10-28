@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using Vintagestory.API;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
@@ -10,6 +9,7 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
+
     /// <summary>
     /// Spawns an EntityBlockFalling when the user places a block that has air underneath it or if a neighbor block is
     /// removed and causes air to be underneath it.
@@ -35,7 +35,6 @@ namespace Vintagestory.GameContent
         public override void Initialize(JsonObject properties)
         {
             base.Initialize(properties);
-
 
             attachableFaces = null;
 

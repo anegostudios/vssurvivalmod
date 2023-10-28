@@ -1,5 +1,4 @@
-﻿using System;
-using Vintagestory.API.Common;
+﻿using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent

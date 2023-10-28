@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
@@ -199,7 +198,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override WeightedSlot GetBestSuitedSlot(ItemSlot sourceSlot, List<ItemSlot> skipSlots = null)
+        public override WeightedSlot GetBestSuitedSlot(ItemSlot sourceSlot, ItemStackMoveOperation op, List<ItemSlot> skipSlots = null)
         {
             if (!HaveCookingContainer)
             {
@@ -211,7 +210,7 @@ namespace Vintagestory.GameContent
                 skipSlots.Add(slots[6]);
             }
 
-            WeightedSlot slot = base.GetBestSuitedSlot(sourceSlot, skipSlots);
+            WeightedSlot slot = base.GetBestSuitedSlot(sourceSlot, op, skipSlots);
 
             return slot;
         }

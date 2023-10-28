@@ -91,7 +91,7 @@ namespace Vintagestory.ServerMods
 
         public ITreeGenerator GetGenerator(AssetLocation generatorCode)
         {
-            ITreeGenerator gen = null;
+            ITreeGenerator gen;
             sapi.World.TreeGenerators.TryGetValue(generatorCode, out gen);
             return gen;
         }

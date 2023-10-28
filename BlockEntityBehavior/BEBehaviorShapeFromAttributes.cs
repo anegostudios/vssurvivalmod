@@ -1,5 +1,4 @@
-﻿using System;
-using System.Text;
+﻿using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -40,10 +39,10 @@ namespace Vintagestory.GameContent
 
         public virtual void initShape()
         {
-            if (Type == null || Api.Side == EnumAppSide.Server) return;
+            if (Type == null || Api == null || Api.Side == EnumAppSide.Server) return;
 
             var cprops = clutterBlock?.GetTypeProps(Type, null, this);
-
+            
             if (cprops != null)
             {
                 if (cprops.Randomize)

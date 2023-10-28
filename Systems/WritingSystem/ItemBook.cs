@@ -12,7 +12,7 @@ namespace Vintagestory.GameContent
         public int Start, Length, LineCount;
     }
 
-    public class ItemBook : Item, IBookShelvable
+    public class ItemBook : Item
     {
         ModSystemEditableBook bookModSys;
         int maxPageCount;

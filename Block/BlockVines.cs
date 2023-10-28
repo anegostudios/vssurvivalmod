@@ -2,8 +2,6 @@
 using Vintagestory.API.Client;
 using Vintagestory.API.Client.Tesselation;
 using Vintagestory.API.Common;
-using Vintagestory.API.Common.Entities;
-using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
@@ -21,6 +19,68 @@ namespace Vintagestory.GameContent
         int[] origWindMode;
         BlockPos tmpPos = new BlockPos();
 
+        public override void OnDecalTesselation(IWorldAccessor world, MeshData decalMesh, BlockPos pos)
+        {
+            int verticesCount = decalMesh.VerticesCount;
+            bool enableWind = true; // (lightRgbsByCorner[24] >> 24 & 0xff) >= 159;  //corresponds with a sunlight level of less than 14
+
+            // Are we fully attached? => No wave
+            Block ablock = world.BlockAccessor.GetBlock(pos.AddCopy(VineFacing.Opposite));
+            if (!enableWind || (ablock.Id != 0 && ablock.CanAttachBlockAt(api.World.BlockAccessor, this, tmpPos.Set(pos).Add(VineFacing.Opposite), VineFacing) && !(ablock is BlockLeaves)))
+            {
+                for (int i = 0; i < verticesCount; i++)
+                {
+                    decalMesh.Flags[i] &= VertexFlags.ClearWindModeBitsMask;
+                }
+                return;
+            }
+
+            int windData =
+                ((api.World.BlockAccessor.GetBlock(pos.X, pos.Y + 1, pos.Z) is BlockVines) ? 1 : 0)
+                + ((api.World.BlockAccessor.GetBlock(pos.X, pos.Y + 2, pos.Z) is BlockVines) ? 1 : 0)
+                + ((api.World.BlockAccessor.GetBlock(pos.X, pos.Y + 3, pos.Z) is BlockVines) ? 1 : 0)
+            ;
+
+            int windDatam1;
+
+            if (windData == 3 && api.World.BlockAccessor.GetBlock(pos.X, pos.Y + 4, pos.Z) is BlockVines)
+            {
+                windDatam1 = windData << VertexFlags.WindDataBitsPos;
+            }
+            else
+            {
+                windDatam1 = (Math.Max(0, windData - 1) << VertexFlags.WindDataBitsPos);
+            }
+
+            windData = windData << VertexFlags.WindDataBitsPos;
+
+            // Is there a vine above thats attached? => Wave for the bottom half
+            Block ublock = world.BlockAccessor.GetBlock(pos.UpCopy());
+            if (ublock is BlockVines)
+            {
+                Block uablock = world.BlockAccessor.GetBlock(pos.AddCopy(VineFacing.Opposite).Up());
+                if (uablock.Id != 0 && uablock.CanAttachBlockAt(api.World.BlockAccessor, this, tmpPos.Set(pos).Up().Add(VineFacing.Opposite), VineFacing) && !(ablock is BlockLeaves))
+                {
+                    for (int i = 0; i < verticesCount; i++)
+                    {
+                        float y = decalMesh.xyz[i * 3 + 1];
+
+                        if (y > 0.5)
+                        {
+                            decalMesh.Flags[i] &= VertexFlags.ClearWindModeBitsMask;
+                        }
+                        else
+                        {
+                            decalMesh.Flags[i] = (decalMesh.Flags[i] & VertexFlags.ClearWindBitsMask) | origWindMode[i] | windData;
+                        }
+                    }
+                    return;
+                }
+            }
+
+            otherwiseAllWave(decalMesh, verticesCount, windData, windDatam1);
+        }
+
         public override void OnJsonTesselation(ref MeshData sourceMesh, ref int[] lightRgbsByCorner, BlockPos pos, Block[] chunkExtBlocks, int extIndex3d)
         {
             if (origWindMode == null)
@@ -31,7 +91,7 @@ namespace Vintagestory.GameContent
             }
 
             int verticesCount = sourceMesh.VerticesCount;
-            bool enableWind = (byte)(lightRgbsByCorner[24] >> 24) >= 159;  //corresponds with a sunlight level of less than 14
+            bool enableWind = (lightRgbsByCorner[24] >> 24 & 0xff) >= 159;  //corresponds with a sunlight level of less than 14
 
             // Are we fully attached? => No wave
             Block ablock = chunkExtBlocks[extIndex3d + TileSideEnum.MoveIndex[VineFacing.Opposite.Index]];
@@ -85,18 +145,23 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            // Otherwise all wave
+            otherwiseAllWave(sourceMesh, verticesCount, windData, windDatam1);
+        }
+
+
+        private void otherwiseAllWave(MeshData decalMesh, int verticesCount, int windData, int windDatam1)
+        {
             for (int i = 0; i < verticesCount; i++)
             {
-                float y = sourceMesh.xyz[i * 3 + 1];
+                float y = decalMesh.xyz[i * 3 + 1];
 
                 if (y > 0.5)
                 {
-                    sourceMesh.Flags[i] = (sourceMesh.Flags[i] & VertexFlags.ClearWindBitsMask) | origWindMode[i] | windDatam1;
+                    decalMesh.Flags[i] = (decalMesh.Flags[i] & VertexFlags.ClearWindBitsMask) | origWindMode[i] | windDatam1;
                 }
                 else
                 {
-                    sourceMesh.Flags[i] = (sourceMesh.Flags[i] & VertexFlags.ClearWindBitsMask) | origWindMode[i] | windData;
+                    decalMesh.Flags[i] = (decalMesh.Flags[i] & VertexFlags.ClearWindBitsMask) | origWindMode[i] | windData;
                 }
             }
         }
