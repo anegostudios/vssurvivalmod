@@ -172,6 +172,7 @@ namespace Vintagestory.GameContent
         }
 
         public bool AllowHalloweenEvent = true;
+        public readonly bool carvingTime = DateTime.Now.Month == 10 || DateTime.Now.Month == 11;
 
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
@@ -204,8 +205,6 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            bool carvingTime = false;
-
             if (block is BlockGroundStorage)
             {
                 BlockEntityGroundStorage begs = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityGroundStorage;
@@ -217,7 +216,6 @@ namespace Vintagestory.GameContent
 
                 if (AllowHalloweenEvent && block.Code.Path == "pumpkin-fruit-4")
                 {
-                    carvingTime = DateTime.Now.Month == 10 || DateTime.Now.Month == 11;
                     if (!carvingTime)
                     {
                         byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
