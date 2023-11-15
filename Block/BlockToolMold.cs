@@ -135,7 +135,11 @@ namespace Vintagestory.GameContent
 
         public override void OnHeldInteractStart(ItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handHandling)
         {
-            if (blockSel == null) return;
+            if (blockSel == null)
+            {
+                base.OnHeldInteractStart(itemslot, byEntity, blockSel, entitySel, firstEvent, ref handHandling);
+                return;
+            }
 
             BlockEntity be = byEntity.World.BlockAccessor.GetBlockEntity(blockSel.Position.AddCopy(blockSel.Face.Opposite));
 
@@ -154,16 +158,15 @@ namespace Vintagestory.GameContent
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
-            if (blockSel == null) return false;
+            if (blockSel == null) return base.OnBlockInteractStart(world, byPlayer, blockSel);
 
             BlockEntityToolMold be = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityToolMold;
             if (be != null)
             {
                 be.OnPlayerInteract(byPlayer, blockSel.Face, blockSel.HitPosition);
             }
-            
 
-            return true;
+            return base.OnBlockInteractStart(world, byPlayer, blockSel);
         }
 
 

@@ -24,6 +24,7 @@ namespace Vintagestory.GameContent
                     ShouldLoop = true,
                     Position = soundpos = Pos.XYZ.ToVec3f().Add(0.5f, 0.25f, 0.5f),
                     DisposeOnFinish = false,
+                    SoundType = EnumSoundType.Entity,
                     Volume = 0.25f
                 });
 

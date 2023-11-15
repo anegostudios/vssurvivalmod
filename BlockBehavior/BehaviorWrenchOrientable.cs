@@ -7,7 +7,7 @@ namespace Vintagestory.GameContent
 {
     public class BlockBehaviorWrenchOrientable : BlockBehavior
     {
-        public static Dictionary<string, List<AssetLocation>> VariantsByType = new Dictionary<string, List<AssetLocation>>();
+        public static Dictionary<string, SortedSet<AssetLocation>> VariantsByType = new ();
 
         public string BaseCode;
         bool hideInteractionHelpInSurvival;
@@ -62,8 +62,9 @@ namespace Vintagestory.GameContent
 
             if (BaseCode != null)
             {
-                List<AssetLocation> vars;
-                if (!VariantsByType.TryGetValue(BaseCode, out vars)) VariantsByType[BaseCode] = vars = new List<AssetLocation>();
+                if (!VariantsByType.TryGetValue(BaseCode, out var vars))
+                    VariantsByType[BaseCode] = vars = new SortedSet<AssetLocation>();
+                
                 vars.Add(block.Code);
             }
         }
@@ -71,6 +72,7 @@ namespace Vintagestory.GameContent
         public override void OnUnloaded(ICoreAPI api)
         {
             wrenchItems.Clear();
+            VariantsByType.Clear();
         }
     }
 }

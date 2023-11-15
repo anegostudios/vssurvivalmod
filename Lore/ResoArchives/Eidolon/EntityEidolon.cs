@@ -84,7 +84,7 @@ namespace Vintagestory.GameContent
                             DisposeOnFinish=false,
                             ShouldLoop=true,
                             Position = this.Pos.XYZ.ToVec3f(),
-                            SoundType = EnumSoundType.Sound,
+                            SoundType = EnumSoundType.Entity,
                             Volume = 0,
                             Range = 16
                         });

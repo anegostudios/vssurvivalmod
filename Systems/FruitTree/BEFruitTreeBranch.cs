@@ -84,7 +84,7 @@ namespace Vintagestory.GameContent
             GrowthDir = BlockFacing.UP;
             PartType = parentPlantStack?.Collectible.Variant["type"] == "cutting" ? EnumTreePartType.Cutting : EnumTreePartType.Branch;
             RootOff = new Vec3i();
-            TreeType = treeType;
+            TreeType ??= treeType;
 
             if (PartType == EnumTreePartType.Cutting && parentPlantStack != null)
             {

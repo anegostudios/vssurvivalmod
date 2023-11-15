@@ -38,7 +38,6 @@ namespace Vintagestory.GameContent
             {
                 harvestedBlockCode = AssetLocation.Create(code, block.Code.Domain);
             }
-            
         }
 
         public override void OnLoaded(ICoreAPI api)

@@ -1,10 +1,14 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Server;
 using VintagestoryAPI.Math.Vector;
 
 namespace Vintagestory.GameContent
@@ -36,11 +40,19 @@ namespace Vintagestory.GameContent
         {
             get
             {
+                var blocks = be.Api.World.Blocks;
+
+                if (!(defaultBlock is BlockChisel) && (defaultBlock as BlockMicroBlock).IsSoilNonSoilMix(be))
+                {
+                    return blocks[be.BlockIds.First(blockid => blocks[blockid].BlockMaterial == EnumBlockMaterial.Soil || blocks[blockid].BlockMaterial == EnumBlockMaterial.Gravel || blocks[blockid].BlockMaterial == EnumBlockMaterial.Sand)];
+                }
+
                 if (be?.BlockIds != null && be.BlockIds.Length > 0)
                 {
-                    Block block = be.Api.World.GetBlock(be.BlockIds[0]);
+                    Block block = blocks[be.getMajorityMaterial()];
                     return block;
                 }
+
 
                 return defaultBlock;
             }
@@ -195,7 +207,7 @@ namespace Vintagestory.GameContent
             return new Vec4f(0, 0, 0, 0.5f);
         }
 
-        public override int GetHeatRetention(BlockPos pos, BlockFacing facing)
+        public override int GetRetention(BlockPos pos, BlockFacing facing, EnumRetentionType type)
         {
             BlockEntityMicroBlock bemc = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityMicroBlock;
 
@@ -210,7 +222,7 @@ namespace Vintagestory.GameContent
                 return 1;
             }
 
-            return base.GetHeatRetention(pos, facing);
+            return base.GetRetention(pos, facing, type);
         }
 
         public override byte[] GetLightHsv(IBlockAccessor blockAccessor, BlockPos pos, ItemStack stack = null)
@@ -315,12 +327,20 @@ namespace Vintagestory.GameContent
 
         public override EnumBlockMaterial GetBlockMaterial(IBlockAccessor blockAccessor, BlockPos pos, ItemStack stack = null)
         {
+            if (blockAccessor is IWorldGenBlockAccessor) return base.GetBlockMaterial(blockAccessor, pos, stack);
+
             if (pos != null)
             {
+                if (IsSoilNonSoilMix(blockAccessor, pos))
+                {
+                    return EnumBlockMaterial.Soil;
+                }
+
                 BlockEntityMicroBlock be = blockAccessor.GetBlockEntity(pos) as BlockEntityMicroBlock;
+                
                 if (be?.BlockIds != null && be.BlockIds.Length > 0)
                 {
-                    Block block = api.World.GetBlock(be.BlockIds[0]);
+                    var block = api.World.Blocks[be.getMajorityMaterial()];
                     return block.BlockMaterial;
                 }
             } else
@@ -335,6 +355,27 @@ namespace Vintagestory.GameContent
             }
 
             return base.GetBlockMaterial(blockAccessor, pos, stack);
+        }
+
+        public virtual bool IsSoilNonSoilMix(IBlockAccessor blockAccessor, BlockPos pos)
+        {
+            return IsSoilNonSoilMix(GetBlockEntity<BlockEntityMicroBlock>(pos));
+
+        }
+
+        public virtual bool IsSoilNonSoilMix(BlockEntityMicroBlock be)
+        {
+            bool hasSoil = false;
+            bool hasNonSoil = false;
+
+            for (int i = 0; i < be.BlockIds.Length; i++)
+            {
+                var block = api.World.Blocks[be.BlockIds[i]];
+                hasSoil |= block.BlockMaterial == EnumBlockMaterial.Soil || block.BlockMaterial == EnumBlockMaterial.Sand || block.BlockMaterial == EnumBlockMaterial.Gravel;
+                hasNonSoil |= block.BlockMaterial != EnumBlockMaterial.Soil && block.BlockMaterial != EnumBlockMaterial.Sand && block.BlockMaterial != EnumBlockMaterial.Gravel; 
+            }
+
+            return hasSoil && hasNonSoil;
         }
 
         public override bool DoEmitSideAo(IGeometryTester caller, BlockFacing facing)
@@ -426,6 +467,53 @@ namespace Vintagestory.GameContent
         public override float OnGettingBroken(IPlayer player, BlockSelection blockSel, ItemSlot itemslot, float remainingResistance, float dt, int counter)
         {
             return base.OnGettingBroken(player, blockSel, itemslot, remainingResistance, dt, counter);
+        }
+
+
+        public override void OnBlockBroken(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1)
+        {
+            if (TryToRemoveSoilFirst(world, pos, byPlayer))
+            {
+                return;
+            }
+
+            base.OnBlockBroken(world, pos, byPlayer, dropQuantityMultiplier);
+        }
+
+        public virtual bool TryToRemoveSoilFirst(IWorldAccessor world, BlockPos pos, IPlayer byPlayer)
+        {
+            if (byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
+            {
+                var be = GetBlockEntity<BlockEntityMicroBlock>(pos);
+                bool removed = false;
+                Block block = null;
+
+                bool hasNonSoil = be.BlockIds.Any(bid => world.Blocks[bid].BlockMaterial != EnumBlockMaterial.Soil);
+
+                // If this microblock is a mix of soil and another material, remove the soil first and leave the rest intact
+                if (hasNonSoil)
+                {
+                    for (int i = 0; i < be.BlockIds.Length; i++)
+                    {
+                        block = world.Blocks[be.BlockIds[i]];
+                        if (block.BlockMaterial == EnumBlockMaterial.Soil)
+                        {
+                            be.RemoveMaterial(block);
+                            removed = true;
+                        }
+                    }
+
+                    if (removed)
+                    {
+                        world.PlaySoundAt(block.Sounds?.GetBreakSound(byPlayer), pos.X, pos.Y, pos.Z, byPlayer);
+                        SpawnBlockBrokenParticles(pos);
+                        be.MarkDirty(true);
+                        return true;
+                    }
+                }
+            }
+
+            return false;
         }
 
         public override float GetResistance(IBlockAccessor blockAccessor, BlockPos pos)

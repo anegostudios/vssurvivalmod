@@ -199,13 +199,16 @@ namespace Vintagestory.ServerMods
             rockGroupMaxThickness[0] = rockGroupMaxThickness[1] = rockGroupMaxThickness[2] = rockGroupMaxThickness[3] = 0;
             rockGroupCurrentThickness[0] = rockGroupCurrentThickness[1] = rockGroupCurrentThickness[2] = rockGroupCurrentThickness[3] = 0;
 
-            WeightedIndex[] indices = map[
+            WeightedIndex[] indices = new WeightedIndex[provinces.Variants.Length];
+            map.WeightsAt(
                 chunkInRegionX + lx * lerpMapInv,
-                chunkInRegionZ + lz * lerpMapInv
-            ];
+                chunkInRegionZ + lz * lerpMapInv,
+                indices
+            );
             for (int i = 0; i < indices.Length; i++)
             {
                 float w = indices[i].Weight;
+                if (w == 0) continue;
 
                 GeologicProvinceRockStrata[] localstrata = provinces.Variants[indices[i].Index].RockStrataIndexed;
 

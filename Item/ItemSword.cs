@@ -2,7 +2,6 @@
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
-using Vintagestory.API.Server;
 
 namespace Vintagestory.GameContent
 {
@@ -59,6 +58,7 @@ namespace Vintagestory.GameContent
             handling = EnumHandHandling.PreventDefault;
         }
 
+
         public override bool OnHeldAttackCancel(float secondsPassed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSelection, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)
         {
             return false;
@@ -67,6 +67,7 @@ namespace Vintagestory.GameContent
         public override bool OnHeldAttackStep(float secondsPassed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSelection, EntitySelection entitySel)
         {
             string animCode = GetHeldTpHitAnimation(slot, byEntity);
+
             return byEntity.AnimManager.IsAnimationActive(animCode);
         }
 
@@ -83,8 +84,9 @@ namespace Vintagestory.GameContent
 
             if (byEntity.Controls.HandUse == EnumHandInteract.HeldItemAttack)
             {
-                var pitch = (byEntity as EntityPlayer).talkUtil.pitchModifier;
-                byPlayer.Entity.World.PlaySoundAt(new AssetLocation("sounds/player/strike"), byPlayer.Entity, byPlayer, pitch * 0.9f + (float)api.World.Rand.NextDouble() * 0.2f, 16, 0.35f);
+                // Old voice pitch code left in so in the future if we add back in the voice to the strike sound we can just uncomment it.
+                // var pitch = (byEntity as EntityPlayer).talkUtil.pitchModifier;
+                byPlayer.Entity.World.PlaySoundAt(new AssetLocation("sounds/player/strike"), byPlayer.Entity, byPlayer,/* pitch * */ 0.9f + (float)api.World.Rand.NextDouble() * 0.2f, 16, 0.35f);
             }
         }
 

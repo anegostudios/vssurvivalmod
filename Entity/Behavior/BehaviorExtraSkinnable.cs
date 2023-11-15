@@ -27,7 +27,7 @@ namespace Vintagestory.GameContent
         public CompositeShape ShapeTemplate;
 
         public SkinnablePartVariant[] Variants;
-        public Vec2i TextureRenderTo = new Vec2i();
+        public Vec2i TextureRenderTo = null;
         public string TextureTarget;
         public AssetLocation TextureTemplate;
 
@@ -66,6 +66,8 @@ namespace Vintagestory.GameContent
         public SkinnablePart[] AvailableSkinParts;
         public string VoiceType = "altoflute";
         public string VoicePitch = "medium";
+
+        public string mainTextureCode;
 
 
         public List<AppliedSkinnablePartVariant> appliedTemp = new List<AppliedSkinnablePartVariant>();
@@ -114,6 +116,8 @@ namespace Vintagestory.GameContent
             {
                 entity.WatchedAttributes["skinConfig"] = skintree = new TreeAttribute();
             }
+
+            mainTextureCode = properties.Attributes["mainTextureCode"].AsString("seraph");
 
             entity.WatchedAttributes.RegisterModifiedListener("skinConfig", onSkinConfigChanged);
             entity.WatchedAttributes.RegisterModifiedListener("voicetype", onVoiceConfigChanged);
@@ -273,7 +277,7 @@ namespace Vintagestory.GameContent
                 SkinnablePart part;
                 AvailableSkinPartsByCode.TryGetValue(val.PartCode, out part);
 
-                if (part != null && part.Type == EnumSkinnableType.Texture && part.TextureTarget != null && part.TextureTarget != "seraph")
+                if (part != null && part.Type == EnumSkinnableType.Texture && part.TextureTarget != null && part.TextureTarget != mainTextureCode)
                 {
                     AssetLocation textureLoc;
                     if (part.TextureTemplate != null)
@@ -327,7 +331,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        private void Essr_OnReloadSkin(LoadedTexture atlas, TextureAtlasPosition skinTexPos)
+        private void Essr_OnReloadSkin(LoadedTexture atlas, TextureAtlasPosition skinTexPos, int textureSubId)
         {
             ICoreClientAPI capi = entity.World.Api as ICoreClientAPI;
 
@@ -336,15 +340,15 @@ namespace Vintagestory.GameContent
                 SkinnablePart part = AvailableSkinPartsByCode[val.PartCode];
 
                 if (part.Type != EnumSkinnableType.Texture) continue;
-                if (part.TextureTarget != null && part.TextureTarget != "seraph") continue;
-
+                if (part.TextureTarget != null && part.TextureTarget != mainTextureCode) continue;
+                
                 LoadedTexture texture = new LoadedTexture(capi);
 
                 capi.Render.GetOrLoadTexture(val.Texture.Clone().WithPathAppendixOnce(".png"), ref texture);
 
 
-                int posx = part.TextureRenderTo.X;
-                int posy = part.TextureRenderTo.Y;
+                int posx = part.TextureRenderTo?.X ?? 0;
+                int posy = part.TextureRenderTo?.Y ?? 0;
 
                 capi.EntityTextureAtlas.RenderTextureIntoAtlas(
                     skinTexPos.atlasTextureId,
@@ -354,9 +358,15 @@ namespace Vintagestory.GameContent
                     texture.Width,
                     texture.Height,
                     skinTexPos.x1 * capi.EntityTextureAtlas.Size.Width + posx,
-                    skinTexPos.y1 * capi.EntityTextureAtlas.Size.Height + posy
+                    skinTexPos.y1 * capi.EntityTextureAtlas.Size.Height + posy,
+                    part.Code == "baseskin" ? -1 : 0.005f
                 );
             }
+
+            var textures = entity.Properties.Client.Textures;
+
+            textures[mainTextureCode].Baked.TextureSubId = textureSubId;
+            textures["skinpart-" + mainTextureCode] = textures[mainTextureCode];
         }
 
 
@@ -433,7 +443,8 @@ namespace Vintagestory.GameContent
 
         protected Shape addSkinPart(AppliedSkinnablePartVariant part, Shape entityShape, string[] disableElements, string shapePathForLogging)
         {
-            if (AvailableSkinPartsByCode[part.PartCode].Type == EnumSkinnableType.Voice)
+            var skinpart = AvailableSkinPartsByCode[part.PartCode];
+            if (skinpart.Type == EnumSkinnableType.Voice)
             {
                 entity.WatchedAttributes.SetString("voicetype", part.Code);
                 return entityShape;
@@ -449,7 +460,7 @@ namespace Vintagestory.GameContent
 
             ICoreClientAPI api = entity.World.Api as ICoreClientAPI;
             AssetLocation shapePath;
-            CompositeShape tmpl = AvailableSkinPartsByCode[part.PartCode].ShapeTemplate;
+            CompositeShape tmpl = skinpart.ShapeTemplate;
 
             if (part.Shape == null && tmpl != null)
             {
@@ -461,14 +472,12 @@ namespace Vintagestory.GameContent
                 shapePath = part.Shape.Base.CopyWithPath("shapes/" + part.Shape.Base.Path + ".json");
             }
 
-
             Shape partShape = Shape.TryGet(api, shapePath);
             if (partShape == null)
             {
                 api.World.Logger.Warning("Entity skin shape {0} defined in entity config {1} not found or errored, was supposed to be at {2}. Skin part will be invisible.", shapePath, entity.Properties.Code, shapePath);
                 return null;
             }
-
 
             bool added = false;
             foreach (var val in partShape.Elements)
@@ -514,26 +523,25 @@ namespace Vintagestory.GameContent
 
             if (added && partShape.Textures != null)
             {
-                Dictionary<string, AssetLocation> newdict = new Dictionary<string, AssetLocation>();
-                foreach (var val in partShape.Textures)
-                {
-                    if (val.Key == "seraph") continue;
-
-                    newdict["skinpart-" + val.Key] = val.Value;
-                }
-
-                partShape.Textures = newdict;
+                var textures = entity.Properties.Client.Textures;
 
                 foreach (var val in partShape.Textures)
                 {
-                    if (val.Key == "seraph") continue;
-
-                    loadTexture(entityShape, val.Key, val.Value, partShape.TextureWidth, partShape.TextureHeight, shapePathForLogging);
+                    if (!textures.ContainsKey("skinpart-" + val.Key) && skinpart.TextureRenderTo == null)
+                    {
+                        var cmpt = textures["skinpart-" + val.Key] = new CompositeTexture(val.Value);
+                        cmpt.Bake(api.Assets);
+                        if (!api.EntityTextureAtlas.GetOrInsertTexture(cmpt.Baked.TextureFilenames[0], out int textureSubid, out _))
+                        {
+                            api.Logger.Warning("Skin part shape {0} defined texture {1}, no such texture found.", shapePathForLogging, val.Value);
+                        }
+                        cmpt.Baked.TextureSubId = textureSubid;
+                    }
                 }
 
                 foreach (var val in partShape.TextureSizes)
                 {
-                    entityShape.TextureSizes[val.Key] = val.Value;
+                    entityShape.TextureSizes["skinpart-" + val.Key] = val.Value;
                 }
             }
 
@@ -542,48 +550,20 @@ namespace Vintagestory.GameContent
 
         private void loadTexture(Shape entityShape, string code, AssetLocation location, int textureWidth, int textureHeight, string shapePathForLogging)
         {
-            ICoreClientAPI api = entity.World.Api as ICoreClientAPI;
+            var textures = entity.Properties.Client.Textures;
+            ICoreClientAPI capi = entity.World.Api as ICoreClientAPI;
 
-            CompositeTexture ctex = new CompositeTexture() { Base = location };
+            var cmpt = textures[code] = new CompositeTexture(location);
+            cmpt.Bake(capi.Assets);
+            if (!capi.EntityTextureAtlas.GetOrInsertTexture(cmpt.Baked.TextureFilenames[0], out int textureSubid, out _, null, -1))
+            {
+                capi.Logger.Warning("Skin part shape {0} defined texture {1}, no such texture found.", shapePathForLogging, location);
+            }
+            cmpt.Baked.TextureSubId = textureSubid;
 
             entityShape.TextureSizes[code] = new int[] { textureWidth, textureHeight };
-
-            AssetLocation shapeTexloc = location;
-
-            // Weird backreference to the shaperenderer. Should be refactored.
-            var texturesByLoc = (entity as EntityAgent).extraTextureByLocation;
-            var texturesByName = (entity as EntityAgent).extraTexturesByTextureName;
-
-            BakedCompositeTexture bakedCtex;
-
-
-            if (!texturesByLoc.TryGetValue(shapeTexloc, out bakedCtex))
-            {
-                int textureSubId = 0;
-                TextureAtlasPosition texpos;
-
-                IAsset texAsset = api.Assets.TryGet(location.Clone().WithPathPrefixOnce("textures/").WithPathAppendixOnce(".png"));
-                if (texAsset != null)
-                {
-                    BitmapRef bmp = texAsset.ToBitmap(api);
-                    api.EntityTextureAtlas.InsertTextureCached(location, bmp, out textureSubId, out texpos, -1);
-                }
-                else
-                {
-                    api.World.Logger.Warning("Skin part shape {0} defined texture {1}, no such texture found.", shapePathForLogging, location);
-                }
-
-                ctex.Baked = new BakedCompositeTexture() { BakedName = location, TextureSubId = textureSubId };
-
-                texturesByName[code] = ctex;
-                texturesByLoc[shapeTexloc] = ctex.Baked;
-            }
-            else
-            {
-                ctex.Baked = bakedCtex;
-                texturesByName[code] = ctex;
-            }
-        }
+            textures[code] = cmpt;
+         }
 
         public override string PropertyName()
         {

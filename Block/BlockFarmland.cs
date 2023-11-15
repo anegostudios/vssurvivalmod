@@ -80,7 +80,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override int GetHeatRetention(BlockPos pos, BlockFacing facing)
+        public override int GetRetention(BlockPos pos, BlockFacing facing, EnumRetentionType type)
         {
             return 3;
         }

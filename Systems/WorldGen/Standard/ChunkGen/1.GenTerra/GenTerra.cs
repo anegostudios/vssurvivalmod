@@ -5,6 +5,7 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
@@ -40,6 +41,7 @@ namespace Vintagestory.ServerMods
         {
             public double[] LerpedAmplitudes;
             public double[] LerpedThresholds;
+            public WeightedIndex[] landformWeights;
         }
         ThreadLocal<ThreadLocalTempData> tempDataThreadLocal;
 
@@ -55,6 +57,8 @@ namespace Vintagestory.ServerMods
             public int WaterBlockID;
         }
         ColumnResult[] columnResults;
+        bool[] layerFullySolid;
+        bool[] layerFullyEmpty;
         int[] borderIndicesByCardinal;
 
         public override bool ShouldLoad(EnumAppSide side)
@@ -89,7 +93,11 @@ namespace Vintagestory.ServerMods
             LoadGlobalConfig(api);
             LandformMapByRegion.Clear();
 
-            maxThreads = Math.Min(Environment.ProcessorCount, api.Server.Config.HostedMode ? 4 : 10);
+            /*
+             *  For info in 1.19 there are 7 running server threads: the main server ticking thread, chunkdbthread, ServerConsole, Relight, CompressChunks, ai-pathfinding, CheckLeafDecay.  There may also be multi-threaded worldgen adding 1-3 more active threads.  Typically 4 threads (ticking, chunkdbthread, ai-pathfinding and at least 1 worldgen thread) will be almost constantly active if there is worldgen demand
+                On a client, meanwhile, there will be at least the main rendering loop and the chunktesselator active.
+             */
+            maxThreads = Math.Clamp(Environment.ProcessorCount - (api.Server.IsDedicated ? 4 : 6), 1, api.Server.Config.HostedMode ? 4 : 10);  // We leave at least 4-6 threads free to avoid lag spikes due to CPU unavailability
 
             chunksize = api.WorldManager.ChunkSize;
             regionMapSize = (int)Math.Ceiling((double)api.WorldManager.MapSizeX / api.WorldManager.RegionSize);
@@ -125,9 +133,12 @@ namespace Vintagestory.ServerMods
             tempDataThreadLocal = new ThreadLocal<ThreadLocalTempData>(() => new ThreadLocalTempData
             {
                 LerpedAmplitudes = new double[terrainGenOctaves],
-                LerpedThresholds = new double[terrainGenOctaves]
+                LerpedThresholds = new double[terrainGenOctaves],
+                landformWeights = new WeightedIndex[NoiseLandforms.landforms.LandFormsByIndex.Length]
             });
             columnResults = new ColumnResult[chunksize * chunksize];
+            layerFullyEmpty = new bool[api.WorldManager.MapSizeY];
+            layerFullySolid = new bool[api.WorldManager.MapSizeY];
             taperMap = new WeightedTaper[chunksize * chunksize];
             for (int i = 0; i < chunksize * chunksize; i++) columnResults[i].ColumnBlockSolidities = new BitArray(api.WorldManager.MapSizeY);
 
@@ -267,7 +278,7 @@ namespace Vintagestory.ServerMods
         {
             landforms = NoiseLandforms.landforms;
             IMapChunk mapchunk = chunks[0].MapChunk;
-            int chunksize = this.chunksize;
+            const int chunksize = GlobalConstants.ChunkSize;
 
             int climateUpLeft;
             int climateUpRight;
@@ -332,10 +343,11 @@ namespace Vintagestory.ServerMods
             double[] octNoiseX0, octNoiseX1, octNoiseX2, octNoiseX3;
             double[] octThX0, octThX1, octThX2, octThX3;
 
-            GetInterpolatedOctaves(landLerpMap[baseX, baseZ], out octNoiseX0, out octThX0);
-            GetInterpolatedOctaves(landLerpMap[baseX + chunkPixelSize, baseZ], out octNoiseX1, out octThX1);
-            GetInterpolatedOctaves(landLerpMap[baseX, baseZ + chunkPixelSize], out octNoiseX2, out octThX2);
-            GetInterpolatedOctaves(landLerpMap[baseX + chunkPixelSize, baseZ + chunkPixelSize], out octNoiseX3, out octThX3);
+            WeightedIndex[] landformWeights = tempDataThreadLocal.Value.landformWeights;
+            GetInterpolatedOctaves(landLerpMap.WeightsAt(baseX, baseZ, landformWeights), out octNoiseX0, out octThX0);
+            GetInterpolatedOctaves(landLerpMap.WeightsAt(baseX + chunkPixelSize, baseZ, landformWeights), out octNoiseX1, out octThX1);
+            GetInterpolatedOctaves(landLerpMap.WeightsAt(baseX, baseZ + chunkPixelSize, landformWeights), out octNoiseX2, out octThX2);
+            GetInterpolatedOctaves(landLerpMap.WeightsAt(baseX + chunkPixelSize, baseZ + chunkPixelSize, landformWeights), out octNoiseX3, out octThX3);
 
             // Store heightmap in the map chunk
             ushort[] rainheightmap = chunks[0].MapChunk.RainHeightMap;
@@ -351,8 +363,11 @@ namespace Vintagestory.ServerMods
             float chunkBlockDelta = 1.0f / chunksize;
             float chunkPixelBlockStep = chunkPixelSize * chunkBlockDelta;
             double verticalNoiseRelativeFrequency = 0.5 / TerraGenConfig.terrainNoiseVerticalScale;
+            for (int y = 0; y < layerFullySolid.Length; y++) layerFullySolid[y] = true;   // Fill with true; later if any block in the layer is non-solid we will set it to false
+            for (int y = 0; y < layerFullyEmpty.Length; y++) layerFullyEmpty[y] = true;   // Fill with true; later if any block in the layer is non-solid we will set it to false
+            layerFullyEmpty[mapsizeY - 1] = false;  // The top block is always empty (air), leaving space for grass, snowlayer etc.
+            var landFormsByIndex = landforms.LandFormsByIndex;
 
-            
             Parallel.For(0, chunksize * chunksize, new ParallelOptions() { MaxDegreeOfParallelism = maxThreads }, chunkIndex2d => {
                 int lX = chunkIndex2d % chunksize;
                 int lZ = chunkIndex2d / chunksize;
@@ -362,7 +377,9 @@ namespace Vintagestory.ServerMods
                 double[] lerpedAmps = tempDataThreadLocal.Value.LerpedAmplitudes;
                 double[] lerpedTh = tempDataThreadLocal.Value.LerpedThresholds;
 
-                WeightedIndex[] columnWeightedIndices = landLerpMap[baseX + lX * chunkPixelBlockStep, baseZ + lZ * chunkPixelBlockStep];
+                // calculating these 1024 times is very costly: landLerpMap places on the heap 2 new Dictionary, 1 new SortedDictionary, and 3 new WeightedIndex[]
+                WeightedIndex[] columnLandformIndexedWeights = tempDataThreadLocal.Value.landformWeights;
+                landLerpMap.WeightsAt(baseX + lX * chunkPixelBlockStep, baseZ + lZ * chunkPixelBlockStep, columnLandformIndexedWeights);
                 for (int i = 0; i < terrainGenOctaves; i++)
                 {
                     lerpedAmps[i] = GameMath.BiLerp(octNoiseX0[i], octNoiseX1[i], octNoiseX2[i], octNoiseX3[i], lX * chunkBlockDelta, lZ * chunkBlockDelta);
@@ -401,13 +418,15 @@ namespace Vintagestory.ServerMods
 
                     // Value starts as the landform Y threshold.
                     double threshold = 0;
-                    for (int i = 0; i < columnWeightedIndices.Length; i++)
+                    for (int i = 0; i < columnLandformIndexedWeights.Length; i++)
                     {
+                        float weight = columnLandformIndexedWeights[i].Weight;
+                        if (weight == 0) continue;
                         // Sample the two values to lerp between. The value of distortedPosYBase is clamped in such a way that this always works.
                         // Underflow and overflow of distortedPosY result in linear extrapolation.
-                        float[] thresholds = landforms.LandFormsByIndex[columnWeightedIndices[i].Index].TerrainYThresholds;
+                        float[] thresholds = landFormsByIndex[columnLandformIndexedWeights[i].Index].TerrainYThresholds;
                         float thresholdValue = ContinueSampleDisplacedYThreshold(distortedPosYBase, distortedPosYSlide, thresholds);
-                        threshold += thresholdValue * columnWeightedIndices[i].Weight;
+                        threshold += thresholdValue * weight;
                     }
 
                     // Geo Upheaval modifier for threshold
@@ -443,47 +462,86 @@ namespace Vintagestory.ServerMods
                         //noiseSign = columnNoise.Noise(posY) - threshold;
                     }
 
-                    columnBlockSolidities[posY] = (noiseSign > 0);
+                    if (noiseSign > 0)  // solid
+                    {
+                        columnBlockSolidities[posY] = true;
+                        layerFullyEmpty[posY] = false;  // thread safe even when this is parallel
+                    }
+                    else
+                    {
+                        columnBlockSolidities[posY] = false;
+                        layerFullySolid[posY] = false;  // thread safe even when this is parallel
+                    }
                 }
             });
 
-            int chunkY = 0;
-            int lY = 1;
-            IChunkBlocks chunkBlockData = chunks[chunkY].Data;
-            chunkBlockData.SetBlockBulk(0, chunksize, chunksize, GlobalConfig.mantleBlockId);
-            for (int posY = 1; posY < mapsizeY - 1; posY++)
-            {
-                for (int lZ = 0; lZ < chunksize; lZ++)
-                {
-                    int worldZ = chunkZ * chunksize + lZ;
-                    for (int lX = 0; lX < chunksize; lX++)
-                    {
-                        int worldX = chunkX * chunksize + lX;
+            IChunkBlocks chunkBlockData = chunks[0].Data;
 
-                        int mapIndex = ChunkIndex2d(lX, lZ);
+            // First set all the fully solid layers in bulk, as much as possible
+            chunkBlockData.SetBlockBulk(0, chunksize, chunksize, GlobalConfig.mantleBlockId);
+            int yBase = 1;
+            for (; yBase < mapsizeY - 1; yBase++)
+            {
+                if (layerFullySolid[yBase])
+                {
+                    if (yBase % chunksize == 0)
+                    {
+                        chunkBlockData = chunks[yBase / chunksize].Data;
+                    }
+
+                    chunkBlockData.SetBlockBulk((yBase % chunksize) * chunksize * chunksize, chunksize, chunksize, rockID);
+                }
+                else break;
+            }
+
+            // Now figure out the top of the mixed layers (above yTop we have fully empty layers, i.e. air)
+            int seaLevel = TerraGenConfig.seaLevel;
+            int surfaceWaterId = 0;
+            int yTop = mapsizeY - 2;  // yTop never more than (mapSizey - 1), but leave the top block layer on the map always as air / for grass
+            while (yTop >= yBase && layerFullyEmpty[yTop]) yTop--;  // Decrease yTop, we don't need to generate anything for fully empty (air layers)
+            if (yTop < seaLevel) yTop = seaLevel;
+            yTop++;  // Add back one because this is going to be the loop until limit
+
+            // Then for the rest place blocks column by column (from yBase to yTop only; outside that range layers were already placed below, or are fully air above)
+            for (int lZ = 0; lZ < chunksize; lZ++)
+            {
+                int worldZ = chunkZ * chunksize + lZ;
+                int mapIndex = ChunkIndex2d(0, lZ);
+                for (int lX = 0; lX < chunksize; lX++)
+                {
+                    ColumnResult columnResult = columnResults[mapIndex];
+                    int waterID = columnResult.WaterBlockID;
+
+                    if (yBase < seaLevel && waterID != GlobalConfig.saltWaterBlockId)     // Finding the surface water / ice id, relevant only for fresh water and only if there is a non-solid block in the column below sea-level
+                    {
+                        int temp = (GameMath.BiLerpRgbColor(lX * chunkBlockDelta, lZ * chunkBlockDelta, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight) >> 16) & 0xFF;
+                        float distort = (float)distort2dx.Noise(chunkX * chunksize + lX, worldZ) / 20f;
+                        float tempf = TerraGenConfig.GetScaledAdjustedTemperatureFloat(temp, 0) + distort;
+                        surfaceWaterId = (tempf < TerraGenConfig.WaterFreezingTempOnGen) ? GlobalConfig.lakeIceBlockId : waterID;
+                    }
+
+                    terrainheightmap[mapIndex] = (ushort)(yBase - 1);   // Initially set the heightmaps to values reflecting the top of the fully solid layers
+                    rainheightmap[mapIndex] = (ushort)(yBase - 1);
+
+                    chunkBlockData = chunks[yBase / chunksize].Data;
+                    for (int posY = yBase; posY < yTop; posY++)
+                    {
+                        int lY = posY % chunksize;
                         int chunkIndex = ChunkIndex3d(lX, lY, lZ);
 
-                        ColumnResult columnResult = columnResults[mapIndex];
-                        bool isSolid = columnResult.ColumnBlockSolidities[posY];
-                        int waterID = columnResult.WaterBlockID;
-
-                        if (isSolid)
+                        if (columnResult.ColumnBlockSolidities[posY])  // if isSolid
                         {
                             terrainheightmap[mapIndex] = (ushort)posY;
                             rainheightmap[mapIndex] = (ushort)posY;
                             chunkBlockData[chunkIndex] = rockID;
                         }
-                        else if (posY < TerraGenConfig.seaLevel)
+                        else if (posY < seaLevel)
                         {
-                            rainheightmap[mapIndex] = (ushort)posY;
-
                             int blockId;
-                            if (posY == TerraGenConfig.seaLevel - 1)
+                            if (posY == seaLevel - 1)
                             {
-                                int temp = (GameMath.BiLerpRgbColor(lX * chunkBlockDelta, lZ * chunkBlockDelta, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight) >> 16) & 0xFF;
-                                float distort = (float)distort2dx.Noise(worldX, worldZ) / 20f;
-                                float tempf = TerraGenConfig.GetScaledAdjustedTemperatureFloat(temp, 0) + distort;
-                                blockId = (tempf < TerraGenConfig.WaterFreezingTempOnGen && waterID != GlobalConfig.saltWaterBlockId) ? GlobalConfig.lakeIceBlockId : waterID;
+                                rainheightmap[mapIndex] = (ushort)posY;   // We only need to set the rainheightmap on the top block
+                                blockId = surfaceWaterId;
                             }
                             else
                             {
@@ -492,15 +550,14 @@ namespace Vintagestory.ServerMods
 
                             chunkBlockData.SetFluid(chunkIndex, blockId);
                         }
-                    }
-                }
 
-                lY++;
-                if (lY == chunksize)
-                {
-                    lY = 0;
-                    chunkY++;
-                    chunkBlockData = chunks[chunkY].Data;
+                        if (lY == chunksize - 1)
+                        {
+                            chunkBlockData = chunks[(posY + 1) / chunksize].Data;  // Set up the next chunksBlockData value
+                        }
+                    }
+
+                    mapIndex++;
                 }
             }
 
@@ -541,9 +598,11 @@ namespace Vintagestory.ServerMods
                 double threshold = 0;
                 for (int i = 0; i < indices.Length; i++)
                 {
+                    float weight = indices[i].Weight;
+                    if (weight == 0) continue;
                     LandformVariant l = landforms.LandFormsByIndex[indices[i].Index];
-                    amplitude += l.TerrainOctaves[octave] * indices[i].Weight;
-                    threshold += l.TerrainOctaveThresholds[octave] * indices[i].Weight;
+                    amplitude += l.TerrainOctaves[octave] * weight;
+                    threshold += l.TerrainOctaveThresholds[octave] * weight;
                 }
 
                 amps[octave] = amplitude;

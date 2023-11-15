@@ -1,6 +1,6 @@
-﻿using Vintagestory.API.Client;
+﻿using System.Linq;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
@@ -54,7 +54,7 @@ namespace Vintagestory.GameContent
             }
 
             var block = api.World.BlockAccessor.GetBlock(blockSel.Position);
-            var iwre = api.World.BlockAccessor.GetInterface<IWrenchOrientable>(blockSel.Position);
+            var iwre = block.GetInterface<IWrenchOrientable>(api.World, blockSel.Position);
             if (iwre != null)
             {
                 Rotate(blockSel, dir, byPlayer, block, iwre);
@@ -64,12 +64,19 @@ namespace Vintagestory.GameContent
             BlockBehaviorWrenchOrientable bhWOrientable = block.GetBehavior<BlockBehaviorWrenchOrientable>();
             if (bhWOrientable == null) return false;
 
-            var types = BlockBehaviorWrenchOrientable.VariantsByType[bhWOrientable.BaseCode];
-
-            int index = types.IndexOf(bhWOrientable.block.Code);
-            if (index == -1) return false;
-
-            var newcode = types[GameMath.Mod(index + dir, types.Count)];
+            using var types = BlockBehaviorWrenchOrientable.VariantsByType[bhWOrientable.BaseCode].GetEnumerator();
+            
+            while (types.MoveNext())
+            {
+                if (types.Current != null && types.Current.Equals(bhWOrientable.block.Code))
+                {
+                    break;
+                }
+            }
+            // advance to the next element, if at end take first
+            var newcode = types.MoveNext()
+                ? types.Current
+                : BlockBehaviorWrenchOrientable.VariantsByType[bhWOrientable.BaseCode].First();
             var newblock = api.World.GetBlock(newcode);
 
             api.World.BlockAccessor.ExchangeBlock(newblock.Id, blockSel.Position);

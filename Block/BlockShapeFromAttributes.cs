@@ -93,6 +93,8 @@ namespace Vintagestory.GameContent
         Dictionary<int, Cuboidf[]> ColSelBoxesByDeg { get; }
         AssetLocation ShapePath { get; }
         Shape ShapeResolved { get; set; }
+
+        BlockDropItemStack[] Drops {get;set;}
         bool CanAttachBlockAt(Vec3f blockRot, BlockFacing blockFace, Cuboidi attachmentArea = null);
     }
 
@@ -183,6 +185,54 @@ namespace Vintagestory.GameContent
             }
 
             base.OnCollectTextures(api, textureDict);
+        }
+
+
+        public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
+        {
+            // We cannot call the base method, otherwise we'll destroy the block entity
+            //base.OnNeighbourBlockChange(world, pos, neibpos);
+
+            EnumHandling handled = EnumHandling.PassThrough;
+
+            foreach (BlockBehavior behavior in BlockBehaviors)
+            {
+                behavior.OnNeighbourBlockChange(world, pos, neibpos, ref handled);
+                if (handled == EnumHandling.PreventSubsequent) return;
+            }
+
+            // Block above was placed => remove snow cover
+            if (handled == EnumHandling.PassThrough && (this == snowCovered1 || this == snowCovered2 || this == snowCovered3))
+            {
+                if (pos.X == neibpos.X && pos.Z == neibpos.Z && pos.Y + 1 == neibpos.Y && world.BlockAccessor.GetBlock(neibpos).Id != 0)
+                {
+                    world.BlockAccessor.ExchangeBlock(notSnowCovered.Id, pos);
+                    world.BlockAccessor.MarkBlockDirty(pos);
+                    world.BlockAccessor.MarkBlockEntityDirty(pos);
+                }
+            }
+        }
+
+        public override void OnServerGameTick(IWorldAccessor world, BlockPos pos, object extra = null)
+        {
+            if (extra is string && (string)extra == "melt")
+            {
+                if (this == snowCovered3)
+                {
+                    world.BlockAccessor.ExchangeBlock(snowCovered2.Id, pos);
+                }
+                else if (this == snowCovered2)
+                {
+                    world.BlockAccessor.ExchangeBlock(snowCovered1.Id, pos);
+                }
+                else if (this == snowCovered1)
+                {
+                    world.BlockAccessor.ExchangeBlock(notSnowCovered.Id, pos);
+                }
+
+                world.BlockAccessor.MarkBlockDirty(pos);
+                world.BlockAccessor.MarkBlockEntityDirty(pos);
+            }
         }
 
 
@@ -387,9 +437,6 @@ namespace Vintagestory.GameContent
             if (bect != null)
             {
                 stack.Attributes.SetString("type", bect.Type);
-                //stack.Attributes.SetFloat("rotX", bect.rotateX);
-                //stack.Attributes.SetFloat("rotY", bect.rotateY);
-                //stack.Attributes.SetFloat("rotZ", bect.rotateZ);
                 if (bect.overrideTextureCode != null) stack.Attributes.SetString("overrideTextureCode", bect.overrideTextureCode);
             }
 

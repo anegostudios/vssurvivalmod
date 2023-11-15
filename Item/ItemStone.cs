@@ -29,6 +29,7 @@ namespace Vintagestory.GameContent
         {
             if (blockSel != null && byEntity.World.BlockAccessor.GetBlock(blockSel.Position) is BlockDisplayCase)
             {
+                base.OnHeldInteractStart(itemslot, byEntity, blockSel, entitySel, firstEvent, ref handling);
                 handling = EnumHandHandling.NotHandled;
                 return;
             }
@@ -69,6 +70,7 @@ namespace Vintagestory.GameContent
                     {
                         (this.api as ICoreClientAPI).TriggerIngameError(this, "toosoft", Lang.Get("This type of stone is too soft to be used for knapping."));
                     }
+
                     return;
                 }
 

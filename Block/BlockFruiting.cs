@@ -30,24 +30,13 @@ namespace Vintagestory.GameContent
                 return base.GetPlacedBlockInteractionHelp(world, selection, forPlayer);
             }
 
-            List<ItemStack> knifeStacklist = new List<ItemStack>();
-            foreach (Item item in world.Items)
-            {
-                if (item.Code == null) continue;
-
-                if (item.Tool == EnumTool.Knife)
-                {
-                    knifeStacklist.Add(new ItemStack(item));
-                }
-            }
-
             return new WorldInteraction[]
             {
                 new WorldInteraction()
                 {
                     ActionLangCode = "blockhelp-fruiting-harvest",
                     MouseButton = EnumMouseButton.Right,
-                    Itemstacks = knifeStacklist.ToArray()
+                    Itemstacks = BlockUtil.GetKnifeStacks(api)
                 }
             };
         }

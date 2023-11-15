@@ -31,24 +31,12 @@ namespace Vintagestory.GameContent
 
             interactions = ObjectCacheUtil.GetOrCreate(api, "mushromBlockInteractions", () =>
             {
-                List<ItemStack> knifeStacklist = new List<ItemStack>();
-                
-                foreach (Item item in api.World.Items)
-                {
-                    if (item.Code == null) continue;
-
-                    if (item.Tool == EnumTool.Knife)
-                    {
-                        knifeStacklist.Add(new ItemStack(item));
-                    }
-                }
-
                 return new WorldInteraction[] {
                     new WorldInteraction()
                     {
                         ActionLangCode = "blockhelp-mushroom-harvest",
                         MouseButton = EnumMouseButton.Left,
-                        Itemstacks = knifeStacklist.ToArray()
+                        Itemstacks = BlockUtil.GetKnifeStacks(api)
                     }
                 };
             });

@@ -50,7 +50,24 @@ namespace Vintagestory.GameContent
 
         private void InitInventory()
         {
-            if(Block?.Attributes != null)
+            parseBlockProperties();
+
+            if (inventory == null)
+            {
+                inventory = new InventoryGeneric(QuantitySlots, null, null, null);
+
+                inventory.OnInventoryClosed += OnInvClosed;
+                inventory.OnInventoryOpened += OnInvOpened;
+                inventory.SlotModified += OnSlotModifid;
+
+                inventory.OnGetAutoPushIntoSlot = GetAutoPushIntoSlot;
+                inventory.OnGetAutoPullFromSlot = GetAutoPullFromSlot;
+            }
+        }
+
+        private void parseBlockProperties()
+        {
+            if (Block?.Attributes != null)
             {
                 if (Block.Attributes["pullFaces"].Exists)
                 {
@@ -87,18 +104,6 @@ namespace Vintagestory.GameContent
                 inventoryClassName = Block.Attributes["inventoryClassName"].AsString(inventoryClassName);
                 ItemFlowObjectLangCode = Block.Attributes["itemFlowObjectLangCode"].AsString(ItemFlowObjectLangCode);
                 QuantitySlots = Block.Attributes["quantitySlots"].AsInt(QuantitySlots);
-            }
-
-            if (inventory == null)
-            {
-                inventory = new InventoryGeneric(QuantitySlots, null, null, null);
-
-                inventory.OnInventoryClosed += OnInvClosed;
-                inventory.OnInventoryOpened += OnInvOpened;
-                inventory.SlotModified += OnSlotModifid;
-
-                inventory.OnGetAutoPushIntoSlot = GetAutoPushIntoSlot;
-                inventory.OnGetAutoPullFromSlot = GetAutoPullFromSlot;
             }
         }
 
@@ -181,6 +186,9 @@ namespace Vintagestory.GameContent
                 // If we have a desired dir, try to go there
                 if (desiredDir != null)
                 {
+                    // Chunk is not yet loaded
+                    if (Api.World.BlockAccessor.GetChunkAtBlockPos(Pos.AddCopy(desiredDir)) == null) return;
+
                     // Try spit it out first
                     if (!TrySpitOut(desiredDir))
                     {
@@ -210,6 +218,9 @@ namespace Vintagestory.GameContent
                 }
                 else
                 {
+                    // Chunk is not yet loaded
+                    if (Api.World.BlockAccessor.GetChunkAtBlockPos(Pos.AddCopy(outputFace)) == null) return;
+
                     // Without a desired dir, try to spit it out anywhere first
                     if (!TrySpitOut(outputFace))
                     {
@@ -247,8 +258,10 @@ namespace Vintagestory.GameContent
         private void TryPullFrom(BlockFacing inputFace)
         {
             BlockPos InputPosition = Pos.AddCopy(inputFace);
+            var ba = Api.World.BlockAccessor;
+            var beContainer = ba.GetBlock(InputPosition).GetBlockEntity<BlockEntityContainer>(InputPosition);
 
-            if (Api.World.BlockAccessor.GetBlockEntity(InputPosition) is BlockEntityContainer beContainer)
+            if (beContainer != null)
             {
                 //do not both push and pull across the same chute-chute connection
                 if (beContainer.Block is BlockChute chute)
@@ -302,7 +315,11 @@ namespace Vintagestory.GameContent
         private bool TryPushInto(BlockFacing outputFace)
         {
             BlockPos OutputPosition = Pos.AddCopy(outputFace);
-            if (Api.World.BlockAccessor.GetBlockEntity(OutputPosition) is BlockEntityContainer beContainer)
+
+            var ba = Api.World.BlockAccessor;
+            var beContainer = ba.GetBlock(OutputPosition).GetBlockEntity<BlockEntityContainer>(OutputPosition);
+
+            if (beContainer != null)
             {
                 ItemSlot sourceSlot = inventory.FirstOrDefault(slot => !slot.Empty);
                 if ((sourceSlot?.Itemstack?.StackSize ?? 0) == 0) return false;  //seems FirstOrDefault() method can sometimes give a slot with stacksize == 0, weird
@@ -519,6 +536,12 @@ namespace Vintagestory.GameContent
             }
 
             base.OnBlockRemoved();
+        }
+
+        public override void OnExchanged(Block block)
+        {
+            base.OnExchanged(block);
+            parseBlockProperties();
         }
 
     }

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
@@ -54,8 +55,8 @@ namespace Vintagestory.ServerMods
 
             blockAccessor.BeginColumn();
             int seaLevel = TerraGenConfig.seaLevel - 1;
-            int chunksize = this.chunksize;
-            int chunksizeSquared = chunksize * chunksize;
+            const int chunksize = GlobalConstants.ChunkSize;
+            const int chunksizeSquared = chunksize * chunksize;
             int chunkY = seaLevel / chunksize;
             int yMax = chunks[0].MapChunk.YMax;
             int cyMax = Math.Min(yMax / chunksize + 1, api.World.BlockAccessor.MapSizeY / chunksize);
@@ -220,13 +221,14 @@ namespace Vintagestory.ServerMods
             }
 
             // Don't add anything unless it is in the current chunk
-            int chunkMask = ~(chunksize - 1);
+            const int chunksize = GlobalConstants.ChunkSize;
+            const int chunkMask = ~(chunksize - 1);
             if (((nposX ^ origX) & chunkMask) != 0) return;
             if (((nposZ ^ origZ) & chunkMask) != 0) return;
             if (((nposY ^ origY) & chunkMask) != 0) return;
 
-            chunkMask = chunksize - 1;
-            int index3d = ((nposY & chunkMask) * chunksize + (nposZ & chunkMask)) * chunksize + (nposX & chunkMask);
+            const int inChunkMask = chunksize - 1;
+            int index3d = ((nposY & inChunkMask) * chunksize + (nposZ & inChunkMask)) * chunksize + (nposX & inChunkMask);
             chunkVisitedNodes.Add(index3d);
         }
 

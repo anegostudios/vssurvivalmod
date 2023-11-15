@@ -376,8 +376,7 @@ namespace Vintagestory.GameContent
                     var region = chunks[0].MapChunk.MapRegion;
 
                     if (region.GeneratedStructures.FirstOrDefault(struc => struc.Code.Equals(code)) == null) {
-                        region.GeneratedStructures.Add(new GeneratedStructure() { Code = code, Group = structure.Group, Location = strucloc.Clone() });
-                        region.DirtyForSaving = true;
+                        region.AddGeneratedStructure(new GeneratedStructure() { Code = code, Group = structure.Group, Location = strucloc.Clone() });
                     }
 
                     if (blocksPlaced > 0 && structure.BuildProtected)

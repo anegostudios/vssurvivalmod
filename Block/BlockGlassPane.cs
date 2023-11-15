@@ -1,9 +1,26 @@
-﻿using Vintagestory.API.Common;
+﻿using Vintagestory.API.Client;
+using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockGlassPane : Block
+    public class BlockRainAmbient : Block
+    {
+        ICoreClientAPI capi;
+        public override void OnLoaded(ICoreAPI api)
+        {
+            base.OnLoaded(api);
+            capi = api as ICoreClientAPI;
+        }
+        public override bool ShouldPlayAmbientSound(IWorldAccessor world, BlockPos pos)
+        {
+            var conds = capi.World.Player.Entity.selfClimateCond;
+            return conds != null && conds.Rainfall > 0.1f && (world.BlockAccessor.GetRainMapHeightAt(pos) <= pos.Y || world.BlockAccessor.GetDistanceToRainFall(pos, 3, 1) <= 2);
+        }
+    }
+
+    public class BlockGlassPane : BlockRainAmbient
     {
         /// <summary>
         /// This is the light pass-through direction for the glass pane
@@ -109,7 +126,7 @@ namespace Vintagestory.GameContent
             return CodeWithVariant("type", type);
         }
 
-        public override int GetHeatRetention(BlockPos pos, BlockFacing facing)
+        public override int GetRetention(BlockPos pos, BlockFacing facing, EnumRetentionType type)
         {
             return 1;
         }

@@ -239,7 +239,7 @@ namespace Vintagestory.GameContent
 
         private void ensureMeshExists()
         {
-            mesh = ObjectCacheUtil.GetOrCreate(Api, "signmesh" + Block.Shape.Base + "/" + MeshAngleRad, () =>
+            mesh = ObjectCacheUtil.GetOrCreate(Api, "signmesh" + base.Block.Code.ToString() + "/" + base.Block.Shape.Base?.ToString() + "/" + this.MeshAngleRad, () =>
             {
                 ICoreClientAPI capi = Api as ICoreClientAPI;
                 var shape = capi.TesselatorManager.GetCachedShape(Block.Shape.Base);

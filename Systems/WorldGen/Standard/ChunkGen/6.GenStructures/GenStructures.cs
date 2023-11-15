@@ -230,8 +230,7 @@ namespace Vintagestory.ServerMods
                         
                         string code = struc.Code + (struc.LastPlacedSchematic == null ? "" : "/" + struc.LastPlacedSchematic.FromFileName);
 
-                        region.GeneratedStructures.Add(new GeneratedStructure() { Code = code, Group = struc.Group, Location = loc.Clone(), SuppressTreesAndShrubs = struc.SuppressTrees, SuppressRivulets = struc.SuppressWaterfalls });
-                        region.DirtyForSaving = true;
+                        region.AddGeneratedStructure(new GeneratedStructure() { Code = code, Group = struc.Group, Location = loc.Clone(), SuppressTreesAndShrubs = struc.SuppressTrees, SuppressRivulets = struc.SuppressWaterfalls });
 
                         if (struc.BuildProtected)
                         {
@@ -287,8 +286,7 @@ namespace Vintagestory.ServerMods
             {
                 string code = struc.Code + (schematic == null ? "" : "/" + schematic.FromFileName);
 
-                region.GeneratedStructures.Add(new GeneratedStructure() { Code = code, Group = struc.Group, Location = loc.Clone() });
-                region.DirtyForSaving = true;
+                region.AddGeneratedStructure(new GeneratedStructure() { Code = code, Group = struc.Group, Location = loc.Clone() });
 
                 if (struc.BuildProtected)
                 {

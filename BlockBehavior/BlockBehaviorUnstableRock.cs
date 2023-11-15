@@ -88,7 +88,7 @@ possible prefilter: start and end position form a cuboid. Check if position X is
 
         ICoreServerAPI sapi;
         ICoreAPI api;
-        bool Enabled => sapi != null && sapi.World.Config.GetString("blockGravity") == "sandgravelsoilcaveins" && sapi.Server.Config.AllowFallingBlocks;
+        bool Enabled => sapi != null && sapi.World.Config.GetString("caveIns") == "on" && sapi.Server.Config.AllowFallingBlocks;
 
         public BlockBehaviorUnstableRock(Block block) : base(block)
         {

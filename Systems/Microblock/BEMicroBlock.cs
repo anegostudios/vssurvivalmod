@@ -4,7 +4,6 @@ using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using Vintagestory.API.Client;
@@ -303,6 +302,11 @@ namespace Vintagestory.GameContent
             }
         }
 
+        public int getMajorityMaterial()
+        {
+            return getMajorityMaterial(VoxelCuboids, BlockIds);
+        }
+
         public static int getMajorityMaterial(List<uint> voxelCuboids, int[] blockIds)
         {
             Dictionary<int, int> volumeByBlockid = new Dictionary<int, int>();
@@ -502,7 +506,6 @@ namespace Vintagestory.GameContent
         {
             bool[,,] Voxels;
             byte[,,] VoxelMaterial;
-
             ConvertToVoxels(out Voxels, out VoxelMaterial);
 
             // Ok, now we can actually modify the voxel
@@ -891,11 +894,15 @@ namespace Vintagestory.GameContent
 
             if (worldAccessForResolve.Side == EnumAppSide.Client)
             {
+                if (Api != null)
+                {
+                    Mesh = GenMesh();
+                    Api.World.BlockAccessor.MarkBlockModified(Pos); // not sure why this one is needed
+                }
+
                 int chunksize = worldAccessForResolve.BlockAccessor.ChunkSize;
                 int lx = Pos.X % chunksize;
                 int lz = Pos.X % chunksize;
-
-                if (Api != null) Mesh = GenMesh();
 
                 // Update neighours only when
                 // a) Microblock was modified, i.e. api is not null and something triggered a resend of data
@@ -1112,6 +1119,41 @@ namespace Vintagestory.GameContent
         }
 
 
+        public virtual bool RemoveMaterial(Block block)
+        {
+            if (BlockIds.Contains(block.Id))
+            {
+                int index = BlockIds.IndexOf(block.Id);
+                BlockIds = BlockIds.Remove(block.Id);
+
+                for (int i = 0; i < VoxelCuboids.Count; i++)
+                {
+                    var material = (int)((VoxelCuboids[i] >> 24) & 0xFu);
+                    if (index == material)
+                    {
+                        VoxelCuboids.RemoveAt(i);
+                        i--;
+                    }
+                }
+
+                ShiftMaterialIndicesAt(index);
+                return true;
+            }
+
+            return false;
+        }
+
+        private void ShiftMaterialIndicesAt(int index)
+        {
+            for (int j = 0; j < VoxelCuboids.Count; j++)
+            {
+                var material = (VoxelCuboids[j] >> 24) & 0xFu;
+                if (material >= index)
+                {
+                    VoxelCuboids[index] = (uint)((VoxelCuboids[j] & ~(255 << 24)) | ((material-1) << 24));
+                }
+            }
+        }
 
         #endregion
 
@@ -2096,23 +2138,34 @@ namespace Vintagestory.GameContent
         public void SetDecor(Block blockToPlace, BlockPos pos, BlockFacing face)
         {
             if (DecorIds == null) DecorIds = new int[6];
-            DecorIds[face.Index] = blockToPlace.Id;
+
+            int rotfaceindex = face.IsVertical ? face.Index : BlockFacing.HORIZONTALS_ANGLEORDER[GameMath.Mod(face.HorizontalAngleIndex + rotationY / 90, 4)].Index;
+
+            DecorIds[rotfaceindex] = blockToPlace.Id;
             MarkDirty(true);
         }
 
-        public void ExchangeWith(ItemSlot fromSlot, ItemSlot toSlot)
+        public bool ExchangeWith(ItemSlot fromSlot, ItemSlot toSlot)
         {
             var fromBlock = fromSlot.Itemstack?.Block;
             var toBlock = toSlot.Itemstack?.Block;
-            if (fromBlock == null || toBlock == null) return;
+            if (fromBlock == null || toBlock == null) return false;
+
+            bool exchanged = false;
 
             for (int i = 0; i < BlockIds.Length; i++) 
             {
-                if (BlockIds[i] == fromBlock.Id) BlockIds[i] = toBlock.Id;
+                if (BlockIds[i] == fromBlock.Id)
+                {
+                    BlockIds[i] = toBlock.Id;
+                    exchanged = true;
+                }
             }
 
             RegenSelectionBoxes(Api.World, null);
             MarkDirty(true, null);
+
+            return exchanged;
         }
     }
 }

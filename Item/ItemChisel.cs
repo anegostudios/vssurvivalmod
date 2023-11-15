@@ -25,6 +25,9 @@ namespace Vintagestory.GameContent
         public SkillItem[] ToolModes;
         SkillItem addMatItem;
 
+        public static bool carvingTime = DateTime.Now.Month == 10 || DateTime.Now.Month == 11;
+        public static bool AllowHalloweenEvent = true;
+
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
@@ -171,7 +174,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public bool AllowHalloweenEvent = true;
+        
 
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
@@ -204,8 +207,6 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            bool carvingTime = false;
-
             if (block is BlockGroundStorage)
             {
                 BlockEntityGroundStorage begs = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityGroundStorage;
@@ -215,15 +216,11 @@ namespace Vintagestory.GameContent
                     block = neslot.Itemstack.Block;
                 }
 
-                if (AllowHalloweenEvent && block.Code.Path == "pumpkin-fruit-4")
+                if (block.Code.Path == "pumpkin-fruit-4" && (!carvingTime || !AllowHalloweenEvent))
                 {
-                    carvingTime = DateTime.Now.Month == 10 || DateTime.Now.Month == 11;
-                    if (!carvingTime)
-                    {
-                        byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
-                        api.World.BlockAccessor.MarkBlockDirty(pos);
-                        return;
-                    }
+                    byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
+                    api.World.BlockAccessor.MarkBlockDirty(pos);
+                    return;
                 }
             }
 
@@ -265,7 +262,7 @@ namespace Vintagestory.GameContent
 
             be.WasPlaced(block, null);
 
-            if (carvingTime)
+            if (carvingTime && block.Code.Path == "pumpkin-fruit-4")
             {
                 be.AddMaterial(api.World.GetBlock(new AssetLocation("creativeglow-35")));
             }
@@ -309,9 +306,11 @@ namespace Vintagestory.GameContent
             if (canChiselSet && !canChisel) return false;
 
 
-            // Third prio: Never non cubic blocks
+            // 3. prio: Never non cubic blocks
             if (block.DrawType != EnumDrawType.Cube && block.Shape?.Base.Path != "block/basic/cube") return false;
 
+            // 4. prio: Not decor blocks
+            if (block.HasBehavior<BlockBehaviorDecor>()) return false;
 
             // Otherwise if in creative mode, sure go ahead
             if (player?.WorldData.CurrentGameMode == EnumGameMode.Creative) return true;

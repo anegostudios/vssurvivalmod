@@ -694,7 +694,15 @@ namespace Vintagestory.ServerMods
                 if (WouldOverlapAt(targetPos, schematic, worldForCollectibleResolve)) return false;
 
                 LastPlacedSchematicLocation.Set(targetPos.X, targetPos.Y, targetPos.Z, targetPos.X + schematic.SizeX, targetPos.Y + schematic.SizeY, targetPos.Z + schematic.SizeZ);
-                schematic.Place(blockAccessor, worldForCollectibleResolve, targetPos);
+                
+                if (resolvedRockTypeRemaps != null)
+                {
+                    schematic.PlaceReplacingBlocks(blockAccessor, worldForCollectibleResolve, targetPos, schematic.ReplaceMode, resolvedRockTypeRemaps);
+                }
+                else
+                {
+                    schematic.Place(blockAccessor, worldForCollectibleResolve, targetPos);
+                }
 
                 // Free up a layer of blocks in front of the door
                 ushort blockId = 0; // blockAccessor.GetBlock(new AssetLocation("creativeblock-37")).BlockId;

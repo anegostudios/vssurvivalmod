@@ -35,10 +35,12 @@ namespace Vintagestory.GameContent
 
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handHandling)
         {
-            if (blockSel == null) return;
-            if (byEntity.Controls.ShiftKey) return;
+            if (blockSel == null || byEntity.Controls.ShiftKey)
+            {
+                base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handHandling);
+                return;
+            }
 
-            
             slot.Itemstack.TempAttributes.SetFloat("secondsUsed", 0);
 
             IPlayer byPlayer = null;
@@ -79,7 +81,11 @@ namespace Vintagestory.GameContent
 
             slot.Itemstack.TempAttributes.SetInt("refilled", 0);
             float remainingwater = GetRemainingWateringSeconds(slot.Itemstack);
-            if (remainingwater <= 0) return;
+            if (remainingwater <= 0)
+            {
+                base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handHandling);
+                return;
+            }
 
             if (byEntity.World.Side == EnumAppSide.Client)
             {
@@ -164,17 +170,17 @@ namespace Vintagestory.GameContent
 
         public override bool OnHeldInteractStep(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
-            if (blockSel == null) return false;
-            if (slot.Itemstack.TempAttributes.GetInt("refilled") > 0) return false;
+            if (blockSel == null) return base.OnHeldInteractStep(secondsUsed, slot, byEntity, blockSel, entitySel);
+            if (slot.Itemstack.TempAttributes.GetInt("refilled") > 0) return base.OnHeldInteractStep(secondsUsed, slot, byEntity, blockSel, entitySel);
 
             float prevsecondsused = slot.Itemstack.TempAttributes.GetFloat("secondsUsed");
             slot.Itemstack.TempAttributes.SetFloat("secondsUsed", secondsUsed);
 
             float remainingwater = GetRemainingWateringSeconds(slot.Itemstack);
             SetRemainingWateringSeconds(slot.Itemstack, remainingwater-= secondsUsed - prevsecondsused);
-            
 
-            if (remainingwater <= 0) return false;
+
+            if (remainingwater <= 0) return base.OnHeldInteractStep(secondsUsed, slot, byEntity, blockSel, entitySel);
 
             IWorldAccessor world = byEntity.World;
 

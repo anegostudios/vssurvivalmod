@@ -866,7 +866,7 @@ namespace Vintagestory.GameContent
             foreach (ItemSlot slot in inventory.CookingSlots)
             {
                 if (slot.Itemstack == null) continue;
-                if (!slot.Itemstack.FixMapping(oldBlockIdMapping, oldItemIdMapping, Api.World))
+                if (!slot.Itemstack.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve))
                 {
                     slot.Itemstack = null;
                 }

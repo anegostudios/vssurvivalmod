@@ -37,18 +37,14 @@ namespace Vintagestory.GameContent
 
             interactions = ObjectCacheUtil.GetOrCreate(api, "pieInteractions-", () =>
             {
-                List<ItemStack> knifeStacks = new List<ItemStack>();
+                var knifeStacks = BlockUtil.GetKnifeStacks(api);
                 List<ItemStack> fillStacks = new List<ItemStack>();
                 List<ItemStack> doughStacks = new List<ItemStack>();
 
-                if (knifeStacks.Count == 0 && fillStacks.Count == 0 && doughStacks.Count == 0)
+                if (fillStacks.Count == 0 && doughStacks.Count == 0)
                 {
                     foreach (CollectibleObject obj in api.World.Collectibles)
                     {
-                        if (obj.Tool == EnumTool.Knife || obj.Tool == EnumTool.Sword)
-                        {
-                            knifeStacks.Add(new ItemStack(obj));
-                        }
                         if (obj is ItemDough)
                         {
                             doughStacks.Add(new ItemStack(obj, 2));
@@ -68,7 +64,7 @@ namespace Vintagestory.GameContent
                     {
                         ActionLangCode = "blockhelp-pie-cut",
                         MouseButton = EnumMouseButton.Right,
-                        Itemstacks = knifeStacks.ToArray(),
+                        Itemstacks = knifeStacks,
                         GetMatchingStacks = (wi, bs, es) => {
                             BlockEntityPie bec = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityPie;
                             if (bec?.Inventory[0]?.Itemstack != null && (bec.Inventory[0].Itemstack.Collectible as BlockPie).State != "raw" && bec.SlicesLeft > 1)
@@ -112,7 +108,7 @@ namespace Vintagestory.GameContent
                     {
                         ActionLangCode = "blockhelp-pie-changecruststyle",
                         MouseButton = EnumMouseButton.Right,
-                        Itemstacks = knifeStacks.ToArray(),
+                        Itemstacks = knifeStacks,
                         GetMatchingStacks = (wi, bs, es) =>
                         {
                             BlockEntityPie bec = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityPie;

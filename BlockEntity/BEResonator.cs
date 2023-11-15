@@ -56,7 +56,7 @@ namespace Vintagestory.GameContent
                 float dist = GameMath.Sqrt(plrpos.SquareDistanceTo(Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5));
 
                 // 1/log(x * 0.7)-0.8
-                // https://www.desmos.com/calculator/8daazmgrze-
+                // https://www.desmos.com/calculator/e9rejsvrcj-
 
                 float volume = GameMath.Clamp(1 / (float)Math.Log10(Math.Max(1, dist * 0.7)) - 0.8f, 0, 1);
 

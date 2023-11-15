@@ -252,7 +252,7 @@ namespace Vintagestory.GameContent
 
                 capi.Tesselator.TesselateShape(ClassType + "block", shape, out var mesh2, texSource);
 
-                //mesh2.Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 0, GameMath.PI, 0).Translate(0, 0, -0.5f);
+                mesh2.Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 0, GameMath.PI, 0).Translate(0, 0, -0.5f);
                 mesh.AddMeshData(mesh2);
             }
 

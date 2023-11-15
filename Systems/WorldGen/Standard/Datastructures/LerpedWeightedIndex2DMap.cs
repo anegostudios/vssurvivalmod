@@ -66,9 +66,9 @@ namespace Vintagestory.ServerMods
                         {
                             int index = rawScalarValues[bz * sizeX + bx];
 
-                            if (indices.ContainsKey(index))
+                            if (indices.TryGetValue(index, out float prevValue))
                             {
-                                indices[index] += weightFrac;
+                                indices[index] = weightFrac + prevValue;
                             }
                             else
                             {
@@ -87,10 +87,49 @@ namespace Vintagestory.ServerMods
                 }
             }
         }
-        
+
 
 
         // Interpolated values
+        /// <summary>
+        /// Does lerp calculations using a working array provided by the caller (thread-safe).  The working array should be twice as long as the output array
+        /// </summary>
+        public WeightedIndex[] WeightsAt(float x, float z, WeightedIndex[] output)
+        {
+            for (int i = 0; i < output.Length; i++)
+            {
+                output[i].Index = i;
+                output[i].Weight = 0;
+            }
+
+            int posXLeft = (int)Math.Floor(x - 0.5f);
+            int posXRight = posXLeft + 1;
+
+            int posZLeft = (int)Math.Floor(z - 0.5f);
+            int posZRight = posZLeft + 1;
+
+            float fx = x - (posXLeft + 0.5f);
+            float fz = z - (posZLeft + 0.5f);
+
+            HalfBiLerp(   // Top
+                groups[(posZLeft + topleftPadding) * sizeX + posXLeft + topleftPadding],
+                groups[(posZLeft + topleftPadding) * sizeX + posXRight + topleftPadding],
+                fx,
+                output,
+                (1 - fz)
+            );
+
+            HalfBiLerp(    // Bottom
+                groups[(posZRight + topleftPadding) * sizeX + posXLeft + topleftPadding],
+                groups[(posZRight + topleftPadding) * sizeX + posXRight + topleftPadding],
+                fx,
+                output,
+                fz
+            );
+
+            return output;
+        }
+
         public WeightedIndex[] this[float x, float z]
         {
             get
@@ -183,6 +222,21 @@ namespace Vintagestory.ServerMods
             {
                 indices[i] = weightedIndices[i].Index;
                 weights[i] = weightedIndices[i].Weight;
+            }
+        }
+
+        private void HalfBiLerp(WeightedIndex[] left, WeightedIndex[] right, float lerp, WeightedIndex[] output, float overallweight)
+        {
+            for (int i = 0; i < left.Length; i++)
+            {
+                int index = left[i].Index;
+                output[index].Weight += ((1 - lerp) * left[i].Weight) * overallweight;
+            }
+
+            for (int i = 0; i < right.Length; i++)
+            {
+                int index = right[i].Index;
+                output[index].Weight += (lerp * right[i].Weight) * overallweight;
             }
         }
     }

@@ -10,17 +10,12 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class ItemShield : Item, ITexPositionSource, IContainedMeshSource
+
+    public class ItemShield : Item, IContainedMeshSource
     {
         float offY;
         float curOffY = 0;
         ICoreClientAPI capi;
-
-        ITextureAtlasAPI targetAtlas;
-
-        public Size2i AtlasSize => targetAtlas.Size;
-
-        Dictionary<string, AssetLocation> tmpTextures = new Dictionary<string, AssetLocation>();
 
         Dictionary<int, MultiTextureMeshRef> meshrefs => ObjectCacheUtil.GetOrCreate(api, "shieldmeshrefs", () => new Dictionary<int, MultiTextureMeshRef>());
 
@@ -28,33 +23,6 @@ namespace Vintagestory.GameContent
 
         Dictionary<string, Dictionary<string, int>> durabilityGains;
 
-        public TextureAtlasPosition this[string textureCode]
-        {
-            get
-            {
-                return getOrCreateTexPos(tmpTextures[textureCode]);
-            }
-        }
-
-        protected TextureAtlasPosition getOrCreateTexPos(AssetLocation texturePath)
-        {
-            TextureAtlasPosition texpos = targetAtlas[texturePath];
-
-            if (texpos == null)
-            {
-                IAsset texAsset = capi.Assets.TryGet(texturePath.Clone().WithPathPrefixOnce("textures/").WithPathAppendixOnce(".png"));
-                if (texAsset != null)
-                {
-                    targetAtlas.GetOrInsertTexture(texturePath, out _, out texpos, () => texAsset.ToBitmap(capi));
-                }
-                else
-                {
-                    capi.World.Logger.Warning("For render in shield {0}, require texture {1}, but no such texture found.", Code, texturePath);
-                }
-            }
-
-            return texpos;
-        }
 
 
         public override void OnLoaded(ICoreAPI api)
@@ -174,32 +142,54 @@ namespace Vintagestory.GameContent
         }
 
 
+        public override void OnHeldIdle(ItemSlot slot, EntityAgent byEntity)
+        {
+            string onhand = (byEntity.LeftHandItemSlot == slot) ? "left" : "right";
+            string notonhand = (byEntity.LeftHandItemSlot == slot) ? "right" : "left";
+
+
+            if (byEntity.Controls.Sneak)
+            {
+                if (!byEntity.AnimManager.IsAnimationActive("raiseshield-" + onhand))
+                {
+                    byEntity.AnimManager.StartAnimation("raiseshield-" + onhand);
+                }
+            } else
+            {
+                if (byEntity.AnimManager.IsAnimationActive("raiseshield-" + onhand)) byEntity.AnimManager.StopAnimation("raiseshield-" + onhand);
+            }
+
+            if (byEntity.AnimManager.IsAnimationActive("raiseshield-" + notonhand)) byEntity.AnimManager.StopAnimation("raiseshield-" + notonhand);
+
+            base.OnHeldIdle(slot, byEntity);
+        }
+
+
 
         public MeshData GenMesh(ItemStack itemstack, ITextureAtlasAPI targetAtlas)
         {
-            this.targetAtlas = targetAtlas;
-
+            var cnts = new ContainedTextureSource(api as ICoreClientAPI, targetAtlas, new Dictionary<string, AssetLocation>(), string.Format("For render in shield {0}", Code));
+            
             MeshData mesh;
-            tmpTextures.Clear();
+            cnts.Textures.Clear();
 
             string wood = itemstack.Attributes.GetString("wood");
             string metal = itemstack.Attributes.GetString("metal");
             string color = itemstack.Attributes.GetString("color");
             string deco = itemstack.Attributes.GetString("deco");
 
-            ITexPositionSource texSource = this;
 
             if (wood == null && metal == null && Construction != "crude" && Construction != "blackguard") return new MeshData();
 
             if (wood == null || wood == "") wood = "generic";
 
-            tmpTextures["front"] = tmpTextures["back"] = tmpTextures["handle"] = new AssetLocation("block/wood/planks/generic.png");
+            cnts.Textures["front"] = cnts.Textures["back"] = cnts.Textures["handle"] = new AssetLocation("block/wood/planks/generic.png");
 
             var shape = capi.TesselatorManager.GetCachedShape(this.Shape.Base);
 
             foreach (var ctex in shape.Textures)
             {
-                tmpTextures[ctex.Key] = ctex.Value;
+                cnts.Textures[ctex.Key] = ctex.Value;
             }
 
             switch (Construction)
@@ -211,42 +201,42 @@ namespace Vintagestory.GameContent
                 case "woodmetal":
                     if (wood != "generic")
                     {
-                        tmpTextures["handle"] = tmpTextures["back"] = tmpTextures["front"] = new AssetLocation("block/wood/debarked/" + wood + ".png");
+                        cnts.Textures["handle"] = cnts.Textures["back"] = cnts.Textures["front"] = new AssetLocation("block/wood/debarked/" + wood + ".png");
                     }
-                    tmpTextures["rim"] = new AssetLocation("block/metal/sheet/" + metal + "1.png");
+                    cnts.Textures["rim"] = new AssetLocation("block/metal/sheet/" + metal + "1.png");
 
 
                     if (deco == "ornate")
                     {
-                        tmpTextures["front"] = new AssetLocation("item/tool/shield/ornate/" + color + ".png");
+                        cnts.Textures["front"] = new AssetLocation("item/tool/shield/ornate/" + color + ".png");
                     }
                     break;
                 case "woodmetalleather":
                     if (wood != "generic")
                     {
-                        tmpTextures["handle"] = tmpTextures["back"] = tmpTextures["front"] = new AssetLocation("block/wood/debarked/" + wood + ".png");
+                        cnts.Textures["handle"] = cnts.Textures["back"] = cnts.Textures["front"] = new AssetLocation("block/wood/debarked/" + wood + ".png");
                     }
-                    tmpTextures["front"] = new AssetLocation("item/tool/shield/leather/" + color + ".png");
-                    tmpTextures["rim"] = new AssetLocation("block/metal/sheet/" + metal + "1.png");
+                    cnts.Textures["front"] = new AssetLocation("item/tool/shield/leather/" + color + ".png");
+                    cnts.Textures["rim"] = new AssetLocation("block/metal/sheet/" + metal + "1.png");
 
                     if (deco == "ornate")
                     {
-                        tmpTextures["front"] = new AssetLocation("item/tool/shield/ornate/" + color + ".png");
+                        cnts.Textures["front"] = new AssetLocation("item/tool/shield/ornate/" + color + ".png");
                     }
 
                     break;
                 case "metal":
-                    tmpTextures["rim"] = tmpTextures["handle"] = new AssetLocation("block/metal/sheet/" + metal + "1.png");
-                    tmpTextures["front"] = tmpTextures["back"] = new AssetLocation("block/metal/plate/" + metal + ".png");
+                    cnts.Textures["rim"] = cnts.Textures["handle"] = new AssetLocation("block/metal/sheet/" + metal + "1.png");
+                    cnts.Textures["front"] = cnts.Textures["back"] = new AssetLocation("block/metal/plate/" + metal + ".png");
 
                     if (deco == "ornate")
                     {
-                        tmpTextures["front"] = new AssetLocation("item/tool/shield/ornate/" + color + ".png");
+                        cnts.Textures["front"] = new AssetLocation("item/tool/shield/ornate/" + color + ".png");
                     }
                     break;
             }
 
-            capi.Tesselator.TesselateItem(this, out mesh, texSource);
+            capi.Tesselator.TesselateItem(this, out mesh, cnts);
 
             return mesh;
         }

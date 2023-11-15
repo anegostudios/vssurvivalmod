@@ -1,5 +1,6 @@
 ﻿using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -36,15 +37,49 @@ namespace Vintagestory.GameContent
         public Dictionary<string, CompositeTexture> Textures { get; set; }
         public string TextureFlipCode { get; set; }
         public string TextureFlipGroupCode { get; set; }
-        public Dictionary<string, bool> sideAttachable { get; set; }
+        public Dictionary<string, bool> SideAttachable { get; set; }
+        public BlockDropItemStack[] Drops { get; set; }
+
         public bool CanAttachBlockAt(Vec3f blockRot, BlockFacing blockFace, Cuboidi attachmentArea = null)
         {
-            if (sideAttachable != null)
+            if (SideAttachable != null)
             {
-                sideAttachable.TryGetValue(blockFace.Code, out var val);
+                SideAttachable.TryGetValue(blockFace.Code, out var val);
                 return val;
             }
             return false;
+        }
+
+        public ClutterTypeProps Clone()
+        {
+            return new ClutterTypeProps
+            {
+                GuiTf = this.GuiTransform?.Clone(),
+                FpTf = this.FpTtransform?.Clone(),
+                TpTf = this.TpTransform?.Clone(),
+                GroundTf = this.GroundTransform?.Clone(),
+                Code = this.Code,
+                Rotation = new Vec3f { X = this.Rotation.X, Y = this.Rotation.Y, Z = this.Rotation.Z },
+                ColSelBoxes = this.ColSelBoxes?.Select(box => box?.Clone()).ToArray(),
+                GuiTransform = this.GuiTransform?.Clone(),
+                FpTtransform = this.FpTtransform?.Clone(),
+                TpTransform = this.TpTransform?.Clone(),
+                GroundTransform = this.GroundTransform?.Clone(),
+                RotInterval = this.RotInterval,
+                FirstTexture = this.FirstTexture,
+                TexPos = this.TexPos?.Clone(),
+                ColSelBoxesByDeg = this.ColSelBoxesByDeg.ToDictionary(kv => kv.Key, kv => kv.Value?.Select(box => box?.Clone()).ToArray()),
+                ShapePath = this.ShapePath?.Clone(),
+                ShapeResolved = this.ShapeResolved?.Clone(),
+                Randomize = this.Randomize,
+                Climbable = this.Climbable,
+                LightHsv = this.LightHsv?.ToArray(),
+                Textures = this.Textures?.ToDictionary(kv => kv.Key, kv => kv.Value?.Clone()),
+                TextureFlipCode = this.TextureFlipCode,
+                TextureFlipGroupCode = this.TextureFlipGroupCode,
+                SideAttachable = this.SideAttachable?.ToDictionary(kv => kv.Key, kv => kv.Value),
+                Drops = this.Drops?.Select(drop => drop.Clone()).ToArray()
+            };
         }
     }
 

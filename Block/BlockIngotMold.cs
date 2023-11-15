@@ -21,39 +21,6 @@ namespace Vintagestory.GameContent
 
             if (LastCodePart() == "raw") return;
 
-            /*if (Attributes?["drop"].Exists == true)
-            {
-                JsonItemStack jstack = Attributes["drop"].AsObject<JsonItemStack>();
-                if (jstack != null)
-                {
-                    MetalProperty metals = api.Assets.TryGet("worldproperties/block/metal.json").ToObject<MetalProperty>();
-                    for (int i = 0; i < metals.Variants.Length; i++)
-                    {
-                        string metaltype = metals.Variants[i].Code.Path;
-                        string tooltype = LastCodePart();
-                        jstack.Code.Path = jstack.Code.Path.Replace("{tooltype}", tooltype).Replace("{metal}", metaltype);
-                        jstack.Resolve(api.World, "tool mold drop for " + Code);
-                        ItemStack stack = jstack.ResolvedItemstack;
-                        if (stack == null) continue;
-
-                        JToken token;
-
-                        if (stack.Collectible.Attributes?["handbook"].Exists != true)
-                        {
-                            if (stack.Collectible.Attributes == null) stack.Collectible.Attributes = new JsonObject(JToken.Parse("{ handbook: {} }"));
-                            else
-                            {
-                                token = stack.Collectible.Attributes.Token;
-                                token["handbook"] = JToken.Parse("{ }");
-                            }
-                        }
-
-                        token = stack.Collectible.Attributes["handbook"].Token;
-                        token["createdBy"] = JToken.FromObject(Lang.Get("Metal molding"));
-                    }
-                }
-            }*/
-
             interactionsLeft = ObjectCacheUtil.GetOrCreate(api, "ingotmoldBlockInteractionsLeft", () =>
             {
                 List<ItemStack> smeltedContainerStacks = new List<ItemStack>();
@@ -195,7 +162,11 @@ namespace Vintagestory.GameContent
 
         public override void OnHeldInteractStart(ItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
-            if (blockSel == null) return;
+            if (blockSel == null)
+            {
+                base.OnHeldInteractStart(itemslot, byEntity, blockSel, entitySel, firstEvent, ref handling);
+                return;
+            }
 
             BlockEntity be = byEntity.World.BlockAccessor.GetBlockEntity(blockSel.Position.AddCopy(blockSel.Face.Opposite));
 
@@ -215,7 +186,7 @@ namespace Vintagestory.GameContent
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
-            if (blockSel == null) return false;
+            if (blockSel == null) return base.OnBlockInteractStart(world, byPlayer, blockSel);
 
             BlockEntity be = world.BlockAccessor.GetBlockEntity(blockSel.Position);
 
@@ -225,7 +196,7 @@ namespace Vintagestory.GameContent
                 return beim.OnPlayerInteract(byPlayer, blockSel.Face, blockSel.HitPosition);
             }
 
-            return false;
+            return base.OnBlockInteractStart(world, byPlayer, blockSel);
         }
 
         public override void OnEntityCollide(IWorldAccessor world, Entity entity, BlockPos pos, BlockFacing facing, Vec3d collideSpeed, bool isImpact)

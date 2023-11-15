@@ -223,11 +223,13 @@ namespace Vintagestory.GameContent
             return drops.ToArray();
         }
 
-        public void ExchangeWith(ItemSlot fromSlot, ItemSlot toSlot)
+        public bool ExchangeWith(ItemSlot fromSlot, ItemSlot toSlot)
         {
-            if (Beams == null || Beams.Length == 0) return;
+            if (Beams == null || Beams.Length == 0) return false;
             var fromblock = fromSlot.Itemstack.Block;
             var toblock = toSlot.Itemstack.Block;
+
+            bool exchanged = false;
 
             foreach (var beam in Beams)
             {
@@ -235,10 +237,13 @@ namespace Vintagestory.GameContent
                 {
                     beam.Block = toblock;
                     beam.BlockId = toblock.Id;
+                    exchanged = true;
                 }
             }
 
             Blockentity.MarkDirty(true);
+
+            return exchanged;
         }
     }
 }

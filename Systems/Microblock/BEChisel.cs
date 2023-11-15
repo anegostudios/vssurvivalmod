@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Cairo.Freetype;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -105,13 +106,15 @@ namespace Vintagestory.GameContent
         }
         public bool Interact(IPlayer byPlayer, BlockSelection blockSel)
         {
-            if (byPlayer != null && byPlayer.InventoryManager.ActiveHotbarSlot?.Itemstack.Collectible.Tool == EnumTool.Knife)
+            if (byPlayer != null && byPlayer.InventoryManager.ActiveHotbarSlot?.Itemstack?.Collectible.Tool == EnumTool.Knife)
             {
-                int face = blockSel.Face.Index;
-                if (DecorIds != null && DecorIds[face] != 0)
+                var face = blockSel.Face;
+                int rotfaceindex = face.IsVertical ? face.Index : BlockFacing.HORIZONTALS_ANGLEORDER[GameMath.Mod(face.HorizontalAngleIndex + rotationY / 90, 4)].Index;
+
+                if (DecorIds != null && DecorIds[rotfaceindex] != 0)
                 {
-                    Api.World.SpawnItemEntity(new ItemStack(Api.World.Blocks[DecorIds[face]]), Pos.ToVec3d().Add(0.5, 0.5, 0.5));
-                    DecorIds[face] = 0;
+                    Api.World.SpawnItemEntity(new ItemStack(Api.World.Blocks[DecorIds[rotfaceindex]]), Pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                    DecorIds[rotfaceindex] = 0;
                     MarkDirty(true, byPlayer);
                 }
                 return true;
@@ -443,18 +446,15 @@ namespace Vintagestory.GameContent
             return AddMaterial(block, out _);
         }
 
-        public bool RemoveMaterial(Block block)
+        public override bool RemoveMaterial(Block block)
         {
-            if (BlockIds.Contains(block.Id))
-            {
-                int index = BlockIds.IndexOf(block.Id);
-                BlockIds = BlockIds.Remove(block.Id);
-                if (AvailMaterialQuantities != null) AvailMaterialQuantities = AvailMaterialQuantities.RemoveEntry(index);
-
-                return true;
+            int index = BlockIds.IndexOf(block.Id);
+            if (AvailMaterialQuantities != null && index >= 0)
+            {   
+                AvailMaterialQuantities = AvailMaterialQuantities.RemoveEntry(index);
             }
 
-            return false;
+            return base.RemoveMaterial(block);
         }
 
         #endregion

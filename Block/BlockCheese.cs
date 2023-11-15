@@ -17,25 +17,17 @@ namespace Vintagestory.GameContent
 
             InteractionHelpYOffset = 0.375f;
 
+            
+
             interactions = ObjectCacheUtil.GetOrCreate(api, "cheeseInteractions-", () =>
             {
-                List<ItemStack> knifeStacks = new List<ItemStack>();
-
-                foreach (CollectibleObject obj in api.World.Items)
-                {
-                    if (obj.Tool == EnumTool.Knife || obj.Tool == EnumTool.Sword)
-                    {
-                        knifeStacks.Add(new ItemStack(obj));
-                    }
-                }
-
                 return new WorldInteraction[]
                 {
                     new WorldInteraction()
                     {
                         ActionLangCode = "blockhelp-cheese-cut",
                         MouseButton = EnumMouseButton.Right,
-                        Itemstacks = knifeStacks.ToArray(),
+                        Itemstacks = BlockUtil.GetKnifeStacks(api),
                         GetMatchingStacks = (wi, bs, es) => {
                             BECheese bec = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BECheese;
                             if (bec != null && bec.SlicesLeft > 1)

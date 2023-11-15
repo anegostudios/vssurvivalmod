@@ -76,6 +76,7 @@ namespace Vintagestory.GameContent
         public string TextureFlipCode { get; set; }
 
         public string TextureFlipGroupCode { get; set; }
+        BlockDropItemStack[] IShapeTypeProps.Drops { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
 
         public bool CanAttachBlockAt(Vec3f blockRot, BlockFacing blockFace, Cuboidi attachmentArea = null)
         {

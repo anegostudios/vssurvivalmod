@@ -189,20 +189,20 @@ namespace Vintagestory.GameContent
             {
                 if (cshapes[i].Base == null) continue;
 
-                addGearToShape(outfitCodes[i], cshapes[i], entityShape, shapePathForLogging, null, cshapes[i].Textures);
+                addGearToShape(outfitCodes[i], cshapes[i], newShape, shapePathForLogging, null, cshapes[i].Textures);
             }
         }
 
         /// <summary>
         /// 
         /// </summary>
-        /// <param name="code">Any unique Identifier</param>
+        /// <param name="prefixcode">Any unique Identifier</param>
         /// <param name="cshape"></param>
         /// <param name="entityShape"></param>
         /// <param name="shapePathForLogging"></param>
         /// <param name="disableElements"></param>
         /// <returns></returns>
-        protected Shape addGearToShape(string code, CompositeShape cshape, Shape entityShape, string shapePathForLogging, string[] disableElements = null, Dictionary<string, AssetLocation> textureOverrides = null)
+        protected Shape addGearToShape(string prefixcode, CompositeShape cshape, Shape entityShape, string shapePathForLogging, string[] disableElements = null, Dictionary<string, AssetLocation> textureOverrides = null)
         {
             AssetLocation shapePath = cshape.Base.CopyWithPath("shapes/" + cshape.Base.Path + ".json");
 
@@ -217,144 +217,43 @@ namespace Vintagestory.GameContent
             Shape armorShape = Shape.TryGet(Api, shapePath);
             if (armorShape == null)
             {
-                Api.World.Logger.Warning("Compositshape {0} (code: {2}) defined but not found or errored, was supposed to be at {1}. Part will be invisible.", cshape.Base, shapePath, code);
+                Api.World.Logger.Warning("Compositshape {0} (code: {2}) defined but not found or errored, was supposed to be at {1}. Part will be invisible.", cshape.Base, shapePath, prefixcode);
                 return null;
             }
 
-            bool added = applyStepParents(null, armorShape.Elements, entityShape, code, cshape, shapePathForLogging);
+            var capi = Api as ICoreClientAPI;
 
-
-            if (added && armorShape.Textures != null)
+            if (textureOverrides != null)
             {
-                Dictionary<string, AssetLocation> newdict = new Dictionary<string, AssetLocation>();
-                foreach (var val in armorShape.Textures)
+                foreach (var val in textureOverrides)
                 {
-                    newdict[code + "-" + val.Key] = val.Value;
+                    armorShape.Textures[prefixcode + "-" + val.Key] = val.Value;
                 }
+            }
 
-                // Texture overrides
-                if (textureOverrides != null)
+            foreach (var val in armorShape.Textures)
+            {
+                entityShape.TextureSizes[prefixcode + "-" + val.Key] = new int[] { armorShape.TextureWidth, armorShape.TextureHeight };
+            }
+
+            var textures = Properties.Client.Textures;
+            entityShape.StepParentShape(armorShape, prefixcode, shapePath.ToShortString(), shapePathForLogging, Api.Logger, (texcode, loc) =>
+            {
+                var cmpt = textures[prefixcode + "-" + texcode] = new CompositeTexture(loc);
+                cmpt.Bake(capi.Assets);
+                capi.EntityTextureAtlas.GetOrInsertTexture(cmpt.Baked.TextureFilenames[0], out int textureSubid, out _);
+                cmpt.Baked.TextureSubId = textureSubid;
+            });
+
+            foreach (var val in entityShape.Textures)
+            {
+                if (!textures.ContainsKey(val.Key))
                 {
-                    foreach (var val in textureOverrides)
-                    {
-                        newdict[code + "-" + val.Key] = val.Value;
-                    }
-                }
-
-                armorShape.Textures = newdict;
-
-                foreach (var val in armorShape.Textures)
-                {
-                    CompositeTexture ctex = new CompositeTexture() { Base = val.Value };
-
-                    entityShape.TextureSizes[val.Key] = new int[] { armorShape.TextureWidth, armorShape.TextureHeight };
-
-                    AssetLocation armorTexLoc = val.Value;
-
-                    // Weird backreference to the shaperenderer. Should be refactored.
-                    var texturesByLoc = extraTextureByLocation;
-                    var texturesByName = extraTexturesByTextureName;
-
-                    BakedCompositeTexture bakedCtex;
-
-                    ICoreClientAPI capi = Api as ICoreClientAPI;
-
-                    if (!texturesByLoc.TryGetValue(armorTexLoc, out bakedCtex))
-                    {
-                        int textureSubId = 0;
-                        TextureAtlasPosition texpos;
-
-                        IAsset texAsset = Api.Assets.TryGet(val.Value.Clone().WithPathPrefixOnce("textures/").WithPathAppendixOnce(".png"));
-                        if (texAsset != null)
-                        {
-                            BitmapRef bmp = texAsset.ToBitmap(capi);
-                            capi.EntityTextureAtlas.InsertTexture(bmp, out textureSubId, out texpos);
-                        }
-                        else
-                        {
-                            capi.World.Logger.Warning("Entity armor shape {0} defined texture {1}, not no such texture found.", shapePath, val.Value);
-                        }
-
-                        ctex.Baked = new BakedCompositeTexture() { BakedName = val.Value, TextureSubId = textureSubId };
-
-                        texturesByName[val.Key] = ctex;
-                        texturesByLoc[armorTexLoc] = ctex.Baked;
-                    }
-                    else
-                    {
-                        ctex.Baked = bakedCtex;
-                        texturesByName[val.Key] = ctex;
-                    }
-                }
-
-                foreach (var val in armorShape.TextureSizes)
-                {
-                    entityShape.TextureSizes[val.Key] = val.Value;
+                    textures[val.Key] = new CompositeTexture(val.Value);
                 }
             }
 
             return entityShape;
-        }
-
-        private bool applyStepParents(ShapeElement parentElem, ShapeElement[] elements, Shape toShape, string code, CompositeShape cshape, string shapePathForLogging)
-        {
-            bool added = false;
-
-            foreach (var cElem in elements)
-            {
-                ShapeElement refelem;
-
-                if (cElem.Children != null)
-                {
-                    added |= applyStepParents(cElem, cElem.Children, toShape, code, cshape, shapePathForLogging);
-                }
-
-                if (cElem.StepParentName != null)
-                {
-                    refelem = toShape.GetElementByName(cElem.StepParentName, StringComparison.InvariantCultureIgnoreCase);
-                    if (refelem == null)
-                    {
-                        Api.World.Logger.Warning("Shape {0} requires step parent element with name {1}, but no such element was found in shape {2}. Will not be visible.", cshape.Base, cElem.StepParentName, shapePathForLogging);
-                        continue;
-                    }
-                }
-                else
-                {
-                    if (parentElem == null)
-                    {
-                        Api.World.Logger.Warning("Entity armor shape element {0} in shape {1} did not define a step parent element. Will not be visible.", cElem.Name, cshape.Base);
-                    }
-                    continue;
-                }
-
-                if (parentElem != null)
-                {
-                    parentElem.Children = parentElem.Children.Remove(cElem);
-                }
-
-                if (refelem.Children == null)
-                {
-                    refelem.Children = new ShapeElement[] { cElem };
-                }
-                else
-                {
-                    refelem.Children = refelem.Children.Append(cElem);
-                }
-
-                cElem.SetJointIdRecursive(refelem.JointId);
-
-                cElem.WalkRecursive((el) =>
-                {
-                    foreach (var face in el.FacesResolved)
-                    {
-                        if (face != null) face.Texture = code + "-" + face.Texture;
-                    }
-                });
-
-                added = true;
-            }
-
-            return added;
         }
 
         private void RefreshBuyingSellingInventory(float refreshChance = 1.1f)

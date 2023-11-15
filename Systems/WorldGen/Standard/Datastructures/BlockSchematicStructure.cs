@@ -105,6 +105,8 @@ namespace Vintagestory.ServerMods
             int placed = 0;
             int chunksize = blockAccessor.ChunkSize;
 
+            int chunkBaseX = (startPos.X / chunksize) * chunksize;
+            int chunkBaseZ = (startPos.Z / chunksize) * chunksize;
 
             curPos.Set(SizeX / 2 + startPos.X, startPos.Y, SizeZ / 2 + startPos.Z);
             IMapChunk mapchunk = blockAccessor.GetMapChunkAtBlockPos(curPos);
@@ -121,7 +123,7 @@ namespace Vintagestory.ServerMods
                 for (int z = 0; z < SizeZ; z++)
                 {
                     curPos.Set(x + startPos.X, startPos.Y, z + startPos.Z);
-                    var aboveLiqBlock = blockAccessor.GetBlock(curPos.X, curPos.Y + 1, curPos.Z, BlockLayersAccess.Fluid);
+                    
 
                     mapchunk = blockAccessor.GetMapChunkAtBlockPos(curPos);
                     int rockblockid = mapchunk.TopRockIdMap[(curPos.Z % chunksize) * chunksize + curPos.X % chunksize];
@@ -129,7 +131,6 @@ namespace Vintagestory.ServerMods
 
                     int maxY = -1;
                     int underWaterDepth = -1;
-                    if (aboveLiqBlock != null) underWaterDepth++;
 
                     bool highestBlockinCol = true;
                     for (int y = SizeY - 1; y >= 0; y--)
@@ -139,6 +140,9 @@ namespace Vintagestory.ServerMods
                         Block block = blocksByPos[x, y, z];
                         Block origBlock = block;
                         if (block == null) continue;
+
+                        var aboveLiqBlock = blockAccessor.GetBlock(curPos.X, curPos.Y + y, curPos.Z, BlockLayersAccess.Fluid);
+                        if (aboveLiqBlock != null && aboveLiqBlock.IsLiquid()) underWaterDepth++;
 
                         if (replaceMetaBlocks && block == undergroundBlock) continue;
 
@@ -168,7 +172,11 @@ namespace Vintagestory.ServerMods
                                     if (aboveBlock.SideSolid[BlockFacing.DOWN.Index] && aboveBlock.BlockMaterial != EnumBlockMaterial.Wood && aboveBlock.BlockMaterial != EnumBlockMaterial.Snow && aboveBlock.BlockMaterial != EnumBlockMaterial.Ice) depth++;
                                 }
 
-                                int climate = GameMath.BiLerpRgbColor((float)x / chunksize, (float)z / chunksize, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight);
+                                int climate = GameMath.BiLerpRgbColor(
+                                    (float)GameMath.Clamp((curPos.X - chunkBaseX) / (float)chunksize, 0, 1), 
+                                    (float)GameMath.Clamp((curPos.Z - chunkBaseZ) / (float)chunksize, 0, 1),
+                                    climateUpLeft, climateUpRight, climateBotLeft, climateBotRight
+                                );
                                 var layerBlock = GetBlockLayerBlock((climate >> 8) & 0xff, (climate >> 16) & 0xff, curPos.Y - 1, rockblockid, depth, block, worldForCollectibleResolve.Blocks, curPos, underWaterDepth);
 
                                 if (block.CustomBlockLayerHandler && layerBlock != block)

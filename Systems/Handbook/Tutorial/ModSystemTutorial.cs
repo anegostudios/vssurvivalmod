@@ -52,7 +52,7 @@ namespace Vintagestory.GameContent
 
         public string CurrentTutorial { get; private set; }
 
-        Dictionary<string, ITutorial> tutorials = new Dictionary<string, ITutorial>();
+        public OrderedDictionary<string, ITutorial> Tutorials = new OrderedDictionary<string, ITutorial>();
 
         public override bool ShouldLoad(EnumAppSide forSide)
         {
@@ -98,7 +98,7 @@ namespace Vintagestory.GameContent
                 .SetMessageHandler<BlockPlacedPacket>(onBlockPlaced)
             ;
 
-            tutorials["firststeps"] = new FirstStepsTutorial(capi);
+            Tutorials["firststeps"] = new FirstStepsTutorial(capi);
 
             api.ModLoader.GetModSystem<ModSystemSurvivalHandbook>().OnInitCustomPages += ModSystemTutorial_OnInitCustomPages;
             api.Event.LevelFinalize += Event_LevelFinalize_Client;
@@ -169,7 +169,7 @@ namespace Vintagestory.GameContent
 
         public void StartTutorial(string code)
         {
-            currentTutorialInst = tutorials[code];
+            currentTutorialInst = Tutorials[code];
             currentTutorialInst.Load();
             CurrentTutorial = code;
             hud.TryOpen();
@@ -237,7 +237,7 @@ namespace Vintagestory.GameContent
 
         private void ModSystemTutorial_OnInitCustomPages(List<GuiHandbookPage> pages)
         {
-            foreach (var val in tutorials)
+            foreach (var val in Tutorials)
             {
                 pages.Add(new GuiHandbookTutorialPage(capi, "tutorial-" + val.Key));
             }
@@ -330,7 +330,7 @@ namespace Vintagestory.GameContent
 
             if (tutorialInst == null)
             {
-                tutorialInst = tutorials[pagecode.Substring("tutorial-".Length)];
+                tutorialInst = Tutorials[pagecode.Substring("tutorial-".Length)];
             }
 
             var steps = tutorialInst.GetTutorialSteps(skipOld);

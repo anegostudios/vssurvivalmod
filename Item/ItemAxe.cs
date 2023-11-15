@@ -216,7 +216,7 @@ namespace Vintagestory.GameContent
             while (queue.Count > 0)
             {
                 Vec4i pos = queue.Dequeue();
-                foundPositions.Push(new BlockPos(pos));
+                foundPositions.Push(new BlockPos(pos.X, pos.Y, pos.Z, startPos.dimension));
                 resistance += pos.W + 1;      // leaves -> 1; branchyleaves -> 2; softwood -> 4 etc.
                 if (woodTier == 0) woodTier = pos.W;
                 if (foundPositions.Count > 2500) break;
@@ -249,7 +249,7 @@ namespace Vintagestory.GameContent
             while (leafqueue.Count > 0)
             {
                 Vec4i pos = leafqueue.Dequeue();
-                foundPositions.Push(new BlockPos(pos));
+                foundPositions.Push(new BlockPos(pos.X, pos.Y, pos.Z, startPos.dimension));
                 resistance += pos.W + 1;      // leaves -> 1; branchyleaves -> 2; softwood -> 4 etc.
                 if (foundPositions.Count > 2500) break;
 

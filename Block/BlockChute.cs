@@ -1,5 +1,4 @@
-﻿using System;
-using System.Linq;
+﻿using System.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
@@ -181,17 +180,18 @@ namespace Vintagestory.GameContent
         /// <summary>
         /// vert parameter 'suggests' an orientation for newly placed block to be opposite to existing chute
         /// </summary>
-        protected virtual bool HasConnector(IBlockAccessor worldmap, BlockPos pos, BlockFacing face, out BlockFacing vert)
+        protected virtual bool HasConnector(IBlockAccessor ba, BlockPos pos, BlockFacing face, out BlockFacing vert)
         {
-            if (worldmap.GetBlock(pos) is BlockChute chute)
+            if (ba.GetBlock(pos) is BlockChute chute)
             {
                 if (chute.HasItemFlowConnectorAt(BlockFacing.UP) && !chute.HasItemFlowConnectorAt(BlockFacing.DOWN)) vert = BlockFacing.DOWN;
                 else if (chute.HasItemFlowConnectorAt(BlockFacing.DOWN) && !chute.HasItemFlowConnectorAt(BlockFacing.UP)) vert = BlockFacing.UP;
                 else vert = null;
                 return chute.HasItemFlowConnectorAt(face);
             }
+
             vert = null;
-            return worldmap.GetBlockEntity(pos) is BlockEntityContainer;
+            return ba.GetBlock(pos).GetBlockEntity<BlockEntityContainer>(pos) != null;
         }
 
         public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
@@ -205,6 +205,7 @@ namespace Vintagestory.GameContent
         bool CanStay(IWorldAccessor world, BlockPos pos)
         {
             BlockPos npos = new BlockPos();
+            var ba = world.BlockAccessor;
 
             if (PullFaces != null)
             {
@@ -212,7 +213,7 @@ namespace Vintagestory.GameContent
                 {
                     BlockFacing face = BlockFacing.FromCode(val);
                     Block block = world.BlockAccessor.GetBlock(npos.Set(pos).Add(face));
-                    if (block.CanAttachBlockAt(world.BlockAccessor, this, pos, face) || (block as IBlockItemFlow)?.HasItemFlowConnectorAt(face.Opposite) == true || world.BlockAccessor.GetBlockEntity(npos) is BlockEntityContainer) return true;
+                    if (block.CanAttachBlockAt(world.BlockAccessor, this, pos, face) || (block as IBlockItemFlow)?.HasItemFlowConnectorAt(face.Opposite) == true || ba.GetBlock(pos).GetBlockEntity< BlockEntityContainer>(npos) != null) return true;
                 }
             }
 
@@ -222,12 +223,9 @@ namespace Vintagestory.GameContent
                 {
                     BlockFacing face = BlockFacing.FromCode(val);
                     Block block = world.BlockAccessor.GetBlock(npos.Set(pos).Add(face));
-                    if (block.CanAttachBlockAt(world.BlockAccessor, this, pos, face) || (block as IBlockItemFlow)?.HasItemFlowConnectorAt(face.Opposite) == true || world.BlockAccessor.GetBlockEntity(npos) is BlockEntityContainer) return true;
+                    if (block.CanAttachBlockAt(world.BlockAccessor, this, pos, face) || (block as IBlockItemFlow)?.HasItemFlowConnectorAt(face.Opposite) == true || ba.GetBlock(pos).GetBlockEntity<BlockEntityContainer>(npos) != null) return true;
                 }
             }
-
-
-            //if (world.BlockAccessor.GetBlock(pos.DownCopy()).Replaceable < 6000) return true;
 
             return false;
         }
@@ -235,7 +233,7 @@ namespace Vintagestory.GameContent
         
         public override BlockDropItemStack[] GetDropsForHandbook(ItemStack handbookStack, IPlayer forPlayer)
         {
-            return new BlockDropItemStack[] { new BlockDropItemStack(handbookStack) };
+            return new[] { new BlockDropItemStack(handbookStack) };
         }
 
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)
@@ -268,20 +266,56 @@ namespace Vintagestory.GameContent
 
         public override AssetLocation GetRotatedBlockCode(int angle)
         {
-            string[] angles = { "ns", "we" };
-            int index = angle / 90;
-            var lastCodePart = LastCodePart();
-            if (lastCodePart == "ud")
+            var dir = GameMath.Mod(angle / 90, 4);
+            switch (Type)
             {
-                return Code;
+                case  "elbow":
+                {
+                    var facing = BlockFacing.FromCode(Side);
+                    return CodeWithVariant("side",
+                        BlockFacing.HORIZONTALS[GameMath.Mod(facing.Index+dir+2, 4)].Code.ToLower());
+                }
+                case "3way":
+                {
+                    var facing = BlockFacing.FromCode(Side);
+                    return CodeWithVariant("side",
+                        BlockFacing.HORIZONTALS[GameMath.Mod(facing.Index+dir, 4)].Code.ToLower());
+                }
+                case "t":
+                {
+                    if ((Side.Equals("ns") || Side.Equals("we")) && (dir == 1 || dir == 3))
+                    {
+                        return CodeWithVariant("side",Side.Equals("ns") ? "we" : "ns");
+                    }
+                    var facing = Side switch
+                    {
+                        "ud-n" => BlockFacing.NORTH,
+                        "ud-e" => BlockFacing.EAST,
+                        "ud-s" => BlockFacing.SOUTH,
+                        "ud-w" => BlockFacing.WEST,
+                        _ => BlockFacing.NORTH
+                    };
+                    return CodeWithVariant("side","ud-"+
+                        BlockFacing.HORIZONTALS[GameMath.Mod(facing.Index+dir, 4)].Code.ToLower()[0]);
+                }
+                case "straight":
+                {
+                    if (Side.Equals("ud") || dir == 0 || dir == 2)
+                    {
+                        return Code;
+                    }
+                    return CodeWithVariant("side",Side.Equals("ns") ? "we" : "ns");
+                }
+                case "cross":
+                {
+                    if ((Side.Equals("ns") || Side.Equals("we")) && (dir == 1 || dir == 3))
+                    {
+                        return CodeWithVariant("side",Side.Equals("ns") ? "we" : "ns");
+                    }
+                    return Code;
+                }
             }
-            if (lastCodePart == "we" ) index++;
-            return CodeWithParts(angles[index % 2]);
-        }
-
-        public override AssetLocation GetHorizontallyFlippedBlockCode(EnumAxis axis)
-        {
-            return base.GetHorizontallyFlippedBlockCode(axis);
+            return Code;
         }
 
         public override AssetLocation GetVerticallyFlippedBlockCode()

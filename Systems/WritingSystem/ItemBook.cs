@@ -3,7 +3,9 @@ using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
+using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
+using Vintagestory.ServerMods;
 
 namespace Vintagestory.GameContent
 {
@@ -12,7 +14,42 @@ namespace Vintagestory.GameContent
         public int Start, Length, LineCount;
     }
 
-    public class ItemBook : Item
+    public class ItemRollable : Item, IContainedMeshSource
+    {
+        string rolledShape;
+
+        public override void OnLoaded(ICoreAPI api)
+        {
+            base.OnLoaded(api);
+
+            rolledShape = Attributes["rolledShape"].AsString();
+        }
+
+        public MeshData GenMesh(ItemStack itemstack, ITextureAtlasAPI targetAtlas, BlockPos atBlockPos)
+        {
+            if (Attributes.KeyExists("rolledShape") != true) return null;
+
+            var capi = api as ICoreClientAPI;
+            var loc = AssetLocation.Create(Attributes["rolledShape"].AsString(), Code.Domain).WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json");
+            var asset = capi.Assets.TryGet(loc);
+            var shape = asset.ToObject<Shape>();
+            var cnts = new ContainedTextureSource(capi, targetAtlas, shape.Textures, string.Format("For displayed item {0}", Code));
+
+            capi.Tesselator.TesselateShape(new TesselationMetaData() { TexSource = cnts }, shape, out var meshdata);
+            return meshdata;
+        }
+
+
+
+        public string GetMeshCacheKey(ItemStack itemstack)
+        {
+            return itemstack.Collectible.Code + "-" + rolledShape;
+        }
+    }
+
+
+
+    public class ItemBook : ItemRollable
     {
         ModSystemEditableBook bookModSys;
         int maxPageCount;
@@ -65,6 +102,7 @@ namespace Vintagestory.GameContent
             });
 
         }
+
 
 
         ItemSlot curSlot;

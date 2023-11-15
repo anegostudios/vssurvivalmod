@@ -169,10 +169,10 @@ namespace Vintagestory.ServerMods
             float tempModifier = worldConfig.GetString("globalTemperature", "1").ToFloat(1);
             float rainModifier = worldConfig.GetString("globalPrecipitation", "1").ToFloat(1);
             latdata.polarEquatorDistance = worldConfig.GetString("polarEquatorDistance", "50000").ToInt(50000);
-            upheavelCommonness = worldConfig.GetString("upheavelCommonness", "0.4").ToFloat(0.4f);
+            upheavelCommonness = worldConfig.GetString("upheavelCommonness", "0.3").ToFloat(0.3f);
             float landcover = worldConfig.GetString("landcover", "1").ToFloat(1f);
             float oceanscale = worldConfig.GetString("oceanscale", "1").ToFloat(1f);
-            float landformScale = worldConfig.GetString("landformScale", "1.2f").ToFloat(1.2f);
+            float landformScale = worldConfig.GetString("landformScale", "1.0").ToFloat(1.0f);
 
             switch (climate)
             {

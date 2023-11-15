@@ -338,21 +338,24 @@ namespace Vintagestory.GameContent
             return 1f;
         }
 
-        public override int GetHeatRetention(BlockPos pos, BlockFacing facing, ref EnumHandling handled)
+        public override int GetRetention(BlockPos pos, BlockFacing facing, EnumRetentionType type, ref EnumHandling handled)
         {
             handled = EnumHandling.PreventDefault;
             var beh = block.GetBEBehavior<BEBehaviorDoor>(pos);
             if (beh == null) return 0;
+
+            if (type == EnumRetentionType.Sound) return beh.Opened ? 0 : 3;
 
             if (!airtight) return 0;
             return beh.Opened ? 3 : 1;
         }
 
 
-        public int MBGetHeatRetention(BlockPos pos, BlockFacing facing, Vec3i offset)
+        public int MBGetRetention(BlockPos pos, BlockFacing facing, EnumRetentionType type, Vec3i offset)
         {
             var beh = block.GetBEBehavior< BEBehaviorDoor>(pos.AddCopy(offset.X, offset.Y, offset.Z));
             if (beh == null) return 0;
+            if (type == EnumRetentionType.Sound) return beh.Opened ? 0 : 3;
 
             if (!airtight) return 0;
             return beh.Opened ? 3 : 1; 

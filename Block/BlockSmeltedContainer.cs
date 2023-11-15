@@ -425,7 +425,7 @@ namespace Vintagestory.GameContent
         {
             KeyValuePair<ItemStack, int> contents = GetContents(api.World, itemStack);
 
-            string mat = contents.Key?.Collectible.Variant["metal"];
+            string mat = contents.Key?.Collectible?.Variant["metal"];
 
             if (HasSolidifed(itemStack, contents.Key, api.World))
             {

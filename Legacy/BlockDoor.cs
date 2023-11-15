@@ -183,7 +183,7 @@ namespace Vintagestory.GameContent
             return CodeWithVariant("horizontalorientation", nowFacing.Code);
         }
 
-        public override int GetHeatRetention(BlockPos pos, BlockFacing facing)
+        public override int GetRetention(BlockPos pos, BlockFacing facing, EnumRetentionType type)
         {
             if (!airtight) return 0;
             return open ? 3 : 1;

@@ -41,6 +41,8 @@ namespace Vintagestory.GameContent
         {
             if (Type == null || Api == null || Api.Side == EnumAppSide.Server) return;
 
+            
+
             var cprops = clutterBlock?.GetTypeProps(Type, null, this);
             
             if (cprops != null)
@@ -143,9 +145,26 @@ namespace Vintagestory.GameContent
 
         public void OnTransformed(ITreeAttribute tree, int degreeRotation, EnumAxis? flipAxis)
         {
-            rotateY = tree.GetFloat("meshAngle");
-            rotateY -= degreeRotation * GameMath.DEG2RAD;
-            tree.SetFloat("meshAngle", rotateY);
+            float thetaX = tree.GetFloat("rotateX");
+            float thetaY = tree.GetFloat("meshAngle");
+            float thetaZ = tree.GetFloat("rotateZ");
+            var cprops = clutterBlock?.GetTypeProps(Type, null, this);
+            if (cprops != null) thetaY += cprops.Rotation.Y * GameMath.DEG2RAD;
+            
+            float[] m = Mat4f.Create();
+            Mat4f.RotateY(m, m, -degreeRotation * GameMath.DEG2RAD);   // apply the new rotation
+            Mat4f.RotateX(m, m, thetaX);
+            Mat4f.RotateY(m, m, thetaY);
+            Mat4f.RotateZ(m, m, thetaZ);
+
+            Mat4f.ExtractEulerAngles(m, ref thetaX, ref thetaY, ref thetaZ);  // extract the new angles
+            if (cprops != null) thetaY -= cprops.Rotation.Y * GameMath.DEG2RAD;
+            tree.SetFloat("rotateX", thetaX);
+            tree.SetFloat("meshAngle", thetaY);
+            tree.SetFloat("rotateZ", thetaZ);
+            rotateX = thetaX;
+            rotateY = thetaY;
+            rotateZ = thetaZ;
         }
 
         public void Rotate(EntityAgent byEntity, BlockSelection blockSel, int dir)

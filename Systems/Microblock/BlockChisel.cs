@@ -1,12 +1,41 @@
-﻿using System.Text;
+﻿using System.Linq;
+using System.Text;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
+using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
     public class BlockChisel : BlockMicroBlock, IWrenchOrientable
     {
+        WorldInteraction[] interactions;
+
+        public override void OnLoaded(ICoreAPI api)
+        {
+            base.OnLoaded(api);
+
+            interactions = new WorldInteraction[]
+            {
+                new WorldInteraction()
+                {
+                    ActionLangCode = "blockhelp-chisel-removedeco",
+                    MouseButton = EnumMouseButton.Right,
+                    Itemstacks = BlockUtil.GetKnifeStacks(api),
+                    GetMatchingStacks = (wi, bs, es) => {
+                        var bec = GetBlockEntity<BlockEntityChisel>(bs.Position);
+                        if (bec?.DecorIds != null && bec.DecorIds[bs.Face.Index] != 0)
+                        {
+                            return wi.Itemstacks;
+                        }
+                        return null;
+                    }
+                }
+            };
+        }
+
         public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
         {
             base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
@@ -30,6 +59,26 @@ namespace Vintagestory.GameContent
             if (bechisel?.Interact(byPlayer, blockSel) == true) return true;
 
             return base.OnBlockInteractStart(world, byPlayer, blockSel);
+        }
+
+        public override bool TryToRemoveSoilFirst(IWorldAccessor world, BlockPos pos, IPlayer byPlayer)
+        {
+            return false;
+        }
+
+        public override bool IsSoilNonSoilMix(BlockEntityMicroBlock be)
+        {
+            return false;
+        }
+
+        public override bool IsSoilNonSoilMix(IBlockAccessor blockAccessor, BlockPos pos)
+        {
+            return false;
+        }
+
+        public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
+        {
+            return interactions.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
         }
     }
 }

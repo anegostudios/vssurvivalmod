@@ -37,6 +37,7 @@ namespace Vintagestory.GameContent
                     {
                         ActionLangCode = "heldhelp-chargebow",
                         MouseButton = EnumMouseButton.Right,
+                        HotKeyCode = "dropitems",
                         Itemstacks = stacks.ToArray()
                     }
                 };

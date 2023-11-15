@@ -108,8 +108,8 @@ namespace Vintagestory.GameContent
 
                 return secondsUsed < 2f;
             }
+
             return base.OnHeldInteractStep(secondsUsed, slot, byEntity, blockSel, entitySel);
-            
         }
 
         public override void OnHeldInteractStop(float secondsUsed, ItemSlot slot, EntityAgent byEntity,

@@ -1,5 +1,4 @@
 ﻿using Cairo;
-using ProtoBuf;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -80,16 +79,16 @@ namespace Vintagestory.GameContent
             }
 
             string[] values = new string[] { null }.Append(orecodes.ToArray());
-            string[] names = new string[] { "Everything" }.Append(orecodes.ToArray());
-
-
+            string[] names = new string[] { "Everything" }.Append(orecodes.Select(code => Lang.Get("ore-"+code)).ToArray());
 
             ElementBounds dlgBounds =
                 ElementStdBounds.AutosizedMainDialog
                 .WithFixedPosition(
                     (compo.Bounds.renderX + compo.Bounds.OuterWidth) / RuntimeEnv.GUIScale + 10,
                     compo.Bounds.renderY / RuntimeEnv.GUIScale
-                );
+                )
+                .WithAlignment(EnumDialogArea.None)
+            ;
 
             ElementBounds bgBounds = ElementBounds.Fill.WithFixedPadding(GuiStyle.ElementToDialogPadding);
             bgBounds.BothSizing = ElementSizing.FitToChildren;

@@ -440,6 +440,7 @@ namespace Vintagestory.GameContent
             api.RegisterBlockClass("BlockWithGrassOverlay", typeof(BlockWithGrassOverlay));
             api.RegisterBlockClass("BlockTinted", typeof(BlockTinted));
             api.RegisterBlockClass("BlockGlassPane", typeof(BlockGlassPane));
+            api.RegisterBlockClass("BlockRainAmbient", typeof(BlockRainAmbient));
             api.RegisterBlockClass("BlockPlaceOnDrop", typeof(BlockPlaceOnDrop));
             api.RegisterBlockClass("BlockLooseGears", typeof(BlockLooseGears));
             api.RegisterBlockClass("BlockSpawner", typeof(BlockSpawner));
@@ -580,7 +581,10 @@ namespace Vintagestory.GameContent
             api.RegisterBlockClass("BlockRandomizer", typeof(BlockRandomizer));
             api.RegisterBlockClass("BlockScrollRack", typeof(BlockScrollRack));
             api.RegisterBlockClass("BlockBasketTrap", typeof(BlockBasketTrap));
-            
+            api.RegisterBlockClass("BlockAntlerMount", typeof(BlockAntlerMount));
+
+            api.RegisterBlockClass("BlockRockTyped", typeof(BlockRockTyped));
+
         }
 
 
@@ -795,6 +799,7 @@ namespace Vintagestory.GameContent
             api.RegisterBlockEntityClass("BlockRandomizer", typeof(BlockEntityBlockRandomizer));
 
             api.RegisterBlockEntityClass("ScrollRack", typeof(BlockEntityScrollRack));
+            api.RegisterBlockEntityClass("AntlerMount", typeof(BlockEntityAntlerMount));
 
             api.RegisterBlockEntityClass("BasketTrap", typeof(BlockEntityBasketTrap));
             api.RegisterBlockEntityClass("AnimalBasket", typeof(BlockEntityAnimalBasket));
@@ -875,6 +880,7 @@ namespace Vintagestory.GameContent
 
             api.RegisterItemClass("ItemLocatorMap", typeof(ItemLocatorMap));
             api.RegisterItemClass("ItemBook", typeof(ItemBook));
+            api.RegisterItemClass("ItemRollable", typeof(ItemRollable));
             api.RegisterItemClass("ItemDeadButterfly", typeof(ItemDeadButterfly));
             api.RegisterItemClass("ItemBugnet", typeof(ItemBugnet));
             api.RegisterItemClass("ItemGlider", typeof(ItemGlider));
@@ -923,6 +929,7 @@ namespace Vintagestory.GameContent
             api.RegisterEntityBehaviorClass("commandable", typeof(EntityBehaviorCommandable));
             api.RegisterEntityBehaviorClass("conversable", typeof(EntityBehaviorConversable));
             api.RegisterEntityBehaviorClass("boss", typeof(EntityBehaviorBoss));
+            api.RegisterEntityBehaviorClass("antlergrowth", typeof(EntityBehaviorAntlerGrowth));
         }
 
 

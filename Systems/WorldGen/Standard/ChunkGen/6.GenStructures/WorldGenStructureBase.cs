@@ -68,14 +68,14 @@ namespace Vintagestory.ServerMods
 
         public static int getOffsetY(Dictionary<string, int> schematicYOffsets, int? defaultOffsetY, Dictionary<string, int> OffsetYByCode, IAsset asset)
         {
-            var assloc = asset.Location.Path.Substring("worldgen/schematics/".Length).Replace(".json", "");
+            var assloc = asset.Location.PathOmittingPrefixAndSuffix("worldgen/schematics/", ".json");
             int offsety = 0;
             if (OffsetYByCode != null && OffsetYByCode.TryGetValue(assloc, out offsety)) { }
+            else if (schematicYOffsets != null && schematicYOffsets.TryGetValue(assloc, out offsety)) { }
             else if (defaultOffsetY != null)
             {
                 offsety = (int)defaultOffsetY;
             }
-            else if (schematicYOffsets != null && schematicYOffsets.TryGetValue(assloc, out offsety)) { }
 
             return offsety;
         }
