@@ -195,7 +195,7 @@ namespace Vintagestory.GameContent
 
         public void ReloadPage()
         {
-            if (browseHistory.Peek() != null)
+            if (browseHistory.Count > 0)
             {
                 initDetailGui();
             } else {
