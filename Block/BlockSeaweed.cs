@@ -41,7 +41,7 @@ namespace Vintagestory.GameContent
             if (block.LiquidCode != "saltwater") return false;
 
             int depth = 1;
-            while (depth < 10)
+            while (depth < 40)
             {
                 belowPos.Down();
                 block = blockAccessor.GetBlock(belowPos);
@@ -66,7 +66,7 @@ namespace Vintagestory.GameContent
 
         private void PlaceSeaweed(IBlockAccessor blockAccessor, BlockPos pos, int depth)
         {
-            int height = Math.Min(depth-1,  1 + random.Next(3) + random.Next(3));
+            int height = Math.Min(depth-1,  1 + random.Next(15) + random.Next(15));
 
             if (blocks == null)
             {
