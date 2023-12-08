@@ -25,23 +25,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="cairo-sharp">
-      <HintPath>..\..\..\AppData\Roaming\Vintagestory-pre7\Lib\cairo-sharp.dll</HintPath>
-    </Reference>
-    <Reference Include="SkiaSharp">
-      <HintPath>..\..\..\AppData\Roaming\Vintagestory\Lib\SkiaSharp.dll</HintPath>
-    </Reference>
-    <Reference Include="VintagestoryAPI">
-      <HintPath>..\..\..\AppData\Roaming\Vintagestory-pre7\VintagestoryAPI.dll</HintPath>
-    </Reference>
-    <Reference Include="VintagestoryLib">
-      <HintPath>..\..\..\AppData\Roaming\Vintagestory-pre7\VintagestoryLib.dll</HintPath>
-    </Reference>
-    <Reference Include="VSCreativeMod">
-      <HintPath>..\..\..\AppData\Roaming\Vintagestory-pre7\Mods\VSCreativeMod.dll</HintPath>
-    </Reference>
-    <Reference Include="VSEssentials">
-      <HintPath>..\..\..\AppData\Roaming\Vintagestory-pre7\Mods\VSEssentials.dll</HintPath>
-    </Reference>
+    <ProjectReference Include="..\Cairo\Cairo.csproj" />
+    <ProjectReference Include="..\VintagestoryApi\VintagestoryAPI.csproj" />
+    <ProjectReference Include="..\VSCreativeMod\VSCreativeMod.csproj" />
+    <ProjectReference Include="..\VSEssentials\VSEssentialsMod.csproj" />
   </ItemGroup>
 </Project>
