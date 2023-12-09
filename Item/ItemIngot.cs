@@ -91,7 +91,11 @@ namespace Vintagestory.GameContent
                     return null;
                 }
 
-                AddVoxelsFromIngot(api, ref beAnvil.Voxels);
+                if (AddVoxelsFromIngot(api, ref beAnvil.Voxels) == 0)
+                {
+                    if (api.Side == EnumAppSide.Client) (api as ICoreClientAPI).TriggerIngameError(this, "requireshammering", Lang.Get("Try hammering down before adding additional voxels"));
+                    return null;
+                }
             }
 
             return workItemStack;
@@ -127,8 +131,9 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public static void AddVoxelsFromIngot(ICoreAPI api, ref byte[,,] voxels, bool isBlisterSteel = false)
+        public static int AddVoxelsFromIngot(ICoreAPI api, ref byte[,,] voxels, bool isBlisterSteel = false)
         {
+            int totalAdded = 0;
             for (int x = 0; x < 7; x++)
             {
                 for (int z = 0; z < 3; z++)
@@ -141,6 +146,7 @@ namespace Vintagestory.GameContent
                         {
                             voxels[4 + x, y, 6 + z] = (byte)EnumVoxelMaterial.Metal;
                             added++;
+                            totalAdded++;
                         }
 
                         y++;
@@ -159,6 +165,8 @@ namespace Vintagestory.GameContent
                     }
                 }
             }
+
+            return totalAdded;
         }
 
         public ItemStack GetBaseMaterial(ItemStack stack)
