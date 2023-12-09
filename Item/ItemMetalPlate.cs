@@ -40,6 +40,7 @@ namespace Vintagestory.GameContent
 
             return api.GetSmithingRecipes()
                 .Where(r => r.Ingredient.SatisfiesAsIngredient(basemat))
+                .Where(r => r.Output.ResolvedItemstack.Collectible.Code != stack.Collectible.Code)
                 .OrderBy(r => r.Output.ResolvedItemstack.Collectible.Code) // Cannot sort by name, thats language dependent!
                 .ToList()
             ;
