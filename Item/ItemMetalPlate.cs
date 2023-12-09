@@ -1,6 +1,8 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 
 namespace Vintagestory.GameContent
 {
@@ -69,6 +71,13 @@ namespace Vintagestory.GameContent
             }
             else
             {
+                IAnvilWorkable workable = beAnvil.WorkItemStack.Collectible as IAnvilWorkable;
+                if (!workable.GetBaseMaterial(beAnvil.WorkItemStack).Equals(api.World, GetBaseMaterial(stack), GlobalConstants.IgnoredStackAttributes))
+                {
+                    if (api.Side == EnumAppSide.Client) (api as ICoreClientAPI).TriggerIngameError(this, "notequal", Lang.Get("Must be the same metal to add voxels"));
+                    return null;
+                }
+
                 AddVoxels(ref beAnvil.Voxels);
             }
 
