@@ -12,20 +12,25 @@ namespace Vintagestory.GameContent
     {
         public float ContainedHoneyLitres = 0.2f;
 
-        public bool CanSqueezeInto(Block block, BlockPos pos)
+        public bool CanSqueezeInto(Block block, BlockPos pos, BlockSelection blockSel)
         {
             if (block is BlockLiquidContainerTopOpened blcto)
             {
                 return pos == null || !blcto.IsFull(pos);
             }
 
-            if (pos != null)
+            if (pos != null && blockSel != null)
             {
                 var beg = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityGroundStorage;
                 if (beg != null)
                 {
-                    ItemSlot squeezeIntoSlot = beg.Inventory.FirstOrDefault(slot => slot.Itemstack?.Block != null && CanSqueezeInto(slot.Itemstack.Block, null));
-                    return squeezeIntoSlot != null && !(squeezeIntoSlot.Itemstack.Block as BlockLiquidContainerTopOpened).IsFull(squeezeIntoSlot.Itemstack);
+                    ItemSlot squeezeIntoSlot = beg.GetSlotAt(blockSel);
+
+                    if (squeezeIntoSlot?.Itemstack.Block != null)
+                    {
+                        return squeezeIntoSlot != null && !(squeezeIntoSlot.Itemstack.Block as BlockLiquidContainerTopOpened).IsFull(squeezeIntoSlot.Itemstack);
+                    }
+                    
                 }
             }
 
@@ -47,7 +52,7 @@ namespace Vintagestory.GameContent
                 {
                     if (block.Code == null) continue;
 
-                    if (CanSqueezeInto(block, null))
+                    if (CanSqueezeInto(block, null, null))
                     {
                         stacks.Add(new ItemStack(block));
                     }
@@ -138,9 +143,9 @@ namespace Vintagestory.GameContent
                         var beg = api.World.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityGroundStorage;
                         if (beg != null)
                         {
-                            ItemSlot squeezeIntoSlot = beg.Inventory.FirstOrDefault(gslot =>
-                                gslot.Itemstack?.Block != null && CanSqueezeInto(gslot.Itemstack.Block, null));
-                            if (squeezeIntoSlot != null)
+                            ItemSlot squeezeIntoSlot = beg.GetSlotAt(blockSel);
+
+                            if (squeezeIntoSlot != null && queezeIntoSlot?.Itemstack?.Block != null && CanSqueezeInto(squeezeIntoSlot.Itemstack.Block, null))
                             {
                                 blockCnt = squeezeIntoSlot.Itemstack.Block as BlockLiquidContainerTopOpened;
                                 blockCnt.TryPutLiquid(squeezeIntoSlot.Itemstack, honeyStack, ContainedHoneyLitres);
