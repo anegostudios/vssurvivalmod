@@ -1,12 +1,5 @@
-﻿using OpenTK.Windowing.GraphicsLibraryFramework;
-using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Reflection.Emit;
-using System.ServiceModel;
-using System.Text;
-using System.Threading.Tasks;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -151,13 +144,11 @@ namespace Vintagestory.GameContent
 
         static AssetLocation airFillerblockCode = new AssetLocation("meta-filler");
 
-        public override void OnPlacementBySchematic(ICoreServerAPI api, IBlockAccessor blockAccessor, BlockPos pos, Dictionary<int, Dictionary<int, int>> replaceBlocks, int centerrockblockid, Block layerBlock)
+        public override void OnPlacementBySchematic(ICoreServerAPI api, IBlockAccessor blockAccessor, BlockPos pos, Dictionary<int, Dictionary<int, int>> replaceBlocks, int centerrockblockid, Block layerBlock, bool resolveImports)
         {
-            base.OnPlacementBySchematic(api, blockAccessor, pos, replaceBlocks, centerrockblockid, layerBlock);
+            base.OnPlacementBySchematic(api, blockAccessor, pos, replaceBlocks, centerrockblockid, layerBlock, resolveImports);
 
-            object dval;
-            api.ObjectCache.TryGetValue("donotResolveImports", out dval);
-            if (dval is bool && (bool)dval) return;
+            if(!resolveImports) return;
 
             var ba = blockAccessor is IBlockAccessorRevertable ? api.World.BlockAccessor : blockAccessor;
 
@@ -169,6 +160,10 @@ namespace Vintagestory.GameContent
                 if (rnd <= 0 && block != null)
                 {
                     if (block.Code == airFillerblockCode) ba.SetBlock(0, pos);
+                    else if (block.Id == BlockMicroBlock.BlockLayerMetaBlockId)
+                    {
+                        ba.SetBlock(layerBlock?.Id ?? 0, pos);
+                    }
                     else
                     {
                         if (replaceBlocks != null)

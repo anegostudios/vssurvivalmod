@@ -69,7 +69,6 @@ namespace Vintagestory.ServerMods
 
             LoadGlobalConfig(api);
 
-            chunksize = api.WorldManager.ChunkSize;
             regionSize = api.WorldManager.RegionSize;
 
             // Unpadded region noise size in chunks
@@ -162,7 +161,6 @@ namespace Vintagestory.ServerMods
             int chunkZ = request.ChunkZ;
 
             preLoad(chunks, chunkX, chunkZ);
-            int chunksize = this.chunksize;
 
             for (int x = 0; x < chunksize; x++)
             {
@@ -190,7 +188,6 @@ namespace Vintagestory.ServerMods
 
         public void genBlockColumn(IServerChunk[] chunks, int chunkX, int chunkZ, int lx, int lz)
         {
-            int chunksize = this.chunksize;
             int surfaceY = heightMap[lz * chunksize + lx];
             int ylower = 1;
             int yupper = surfaceY;
@@ -199,7 +196,7 @@ namespace Vintagestory.ServerMods
             rockGroupMaxThickness[0] = rockGroupMaxThickness[1] = rockGroupMaxThickness[2] = rockGroupMaxThickness[3] = 0;
             rockGroupCurrentThickness[0] = rockGroupCurrentThickness[1] = rockGroupCurrentThickness[2] = rockGroupCurrentThickness[3] = 0;
 
-            WeightedIndex[] indices = new WeightedIndex[provinces.Variants.Length];
+            float[] indices = new float[provinces.Variants.Length];
             map.WeightsAt(
                 chunkInRegionX + lx * lerpMapInv,
                 chunkInRegionZ + lz * lerpMapInv,
@@ -207,10 +204,10 @@ namespace Vintagestory.ServerMods
             );
             for (int i = 0; i < indices.Length; i++)
             {
-                float w = indices[i].Weight;
+                float w = indices[i];
                 if (w == 0) continue;
 
-                GeologicProvinceRockStrata[] localstrata = provinces.Variants[indices[i].Index].RockStrataIndexed;
+                GeologicProvinceRockStrata[] localstrata = provinces.Variants[i].RockStrataIndexed;
 
                 rockGroupMaxThickness[0] += localstrata[0].ScaledMaxThickness * w;
                 rockGroupMaxThickness[1] += localstrata[1].ScaledMaxThickness * w;

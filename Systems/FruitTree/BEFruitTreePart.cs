@@ -44,7 +44,9 @@ namespace Vintagestory.GameContent
                     int textureSubId = ctex.Baked.TextureSubId;
                     if (textureSubId > 0) return capi.BlockTextureAtlas.Positions[textureSubId];
                 }
-                capi.BlockTextureAtlas.InsertTextureCached(ctex, out int newSubId, out var texPos);
+
+                ctex.Bake(capi.Assets);
+                capi.BlockTextureAtlas.GetOrInsertTexture(ctex.Baked.BakedName, out var newSubId, out var texPos);
                 ctex.Baked.TextureSubId = newSubId;
                 return texPos;
             }

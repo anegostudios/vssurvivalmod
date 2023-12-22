@@ -9,6 +9,16 @@ namespace Vintagestory.GameContent
 {
     public class ItemClosedBeenade : Item
     {
+        protected AssetLocation thrownEntityTypeCode;
+
+        public override void OnLoaded(ICoreAPI api)
+        {
+            base.OnLoaded(api);
+
+            string defaultCode = "thrownbeenade";
+            thrownEntityTypeCode = AssetLocation.Create(Attributes?["thrownEntityTypeCode"].AsString(defaultCode) ?? defaultCode, Code.Domain);
+        }
+
         public override string GetHeldTpUseAnimation(ItemSlot activeHotbarSlot, Entity byEntity)
         {
             return null;
@@ -69,7 +79,7 @@ namespace Vintagestory.GameContent
             if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
             byEntity.World.PlaySoundAt(new AssetLocation("sounds/player/throw"), byEntity, byPlayer, false, 8);
 
-            EntityProperties type = byEntity.World.GetEntityType(new AssetLocation("thrownbeenade"));
+            EntityProperties type = byEntity.World.GetEntityType(thrownEntityTypeCode);
             Entity entity = byEntity.World.ClassRegistry.CreateEntity(type);
             ((EntityThrownBeenade)entity).FiredBy = byEntity;
             ((EntityThrownBeenade)entity).Damage = damage;
@@ -91,6 +101,8 @@ namespace Vintagestory.GameContent
 
             byEntity.World.SpawnEntity(entity);
             byEntity.StartAnimation("throw");
+
+            if (byEntity is EntityPlayer) RefillSlotIfEmpty(slot, byEntity, (itemstack) => itemstack.Collectible.Code == Code);
         }
 
 
@@ -111,6 +123,5 @@ namespace Vintagestory.GameContent
                 }
             }.Append(base.GetHeldInteractionHelp(inSlot));
         }
-
     }
 }

@@ -94,34 +94,33 @@ namespace Vintagestory.ServerMods
         /// <summary>
         /// Does lerp calculations using a working array provided by the caller (thread-safe).  The working array should be twice as long as the output array
         /// </summary>
-        public WeightedIndex[] WeightsAt(float x, float z, WeightedIndex[] output)
+        public float[] WeightsAt(float x, float z, float[] output)
         {
             for (int i = 0; i < output.Length; i++)
             {
-                output[i].Index = i;
-                output[i].Weight = 0;
+                output[i] = 0;
             }
 
-            int posXLeft = (int)Math.Floor(x - 0.5f);
+            int posXLeft = (int)Math.Floor(x - 0.5f) + topleftPadding;
             int posXRight = posXLeft + 1;
 
-            int posZLeft = (int)Math.Floor(z - 0.5f);
+            int posZLeft = (int)Math.Floor(z - 0.5f) + topleftPadding;
             int posZRight = posZLeft + 1;
 
-            float fx = x - (posXLeft + 0.5f);
-            float fz = z - (posZLeft + 0.5f);
+            float fx = x - (posXLeft - topleftPadding + 0.5f);
+            float fz = z - (posZLeft - topleftPadding + 0.5f);
 
             HalfBiLerp(   // Top
-                groups[(posZLeft + topleftPadding) * sizeX + posXLeft + topleftPadding],
-                groups[(posZLeft + topleftPadding) * sizeX + posXRight + topleftPadding],
+                groups[posZLeft * sizeX + posXLeft],
+                groups[posZLeft * sizeX + posXRight],
                 fx,
                 output,
                 (1 - fz)
             );
 
             HalfBiLerp(    // Bottom
-                groups[(posZRight + topleftPadding) * sizeX + posXLeft + topleftPadding],
-                groups[(posZRight + topleftPadding) * sizeX + posXRight + topleftPadding],
+                groups[posZRight * sizeX + posXLeft],
+                groups[posZRight * sizeX + posXRight],
                 fx,
                 output,
                 fz
@@ -225,18 +224,18 @@ namespace Vintagestory.ServerMods
             }
         }
 
-        private void HalfBiLerp(WeightedIndex[] left, WeightedIndex[] right, float lerp, WeightedIndex[] output, float overallweight)
+        private void HalfBiLerp(WeightedIndex[] left, WeightedIndex[] right, float lerp, float[] output, float overallweight)
         {
             for (int i = 0; i < left.Length; i++)
             {
                 int index = left[i].Index;
-                output[index].Weight += ((1 - lerp) * left[i].Weight) * overallweight;
+                output[index] += ((1 - lerp) * left[i].Weight) * overallweight;
             }
 
             for (int i = 0; i < right.Length; i++)
             {
                 int index = right[i].Index;
-                output[index].Weight += (lerp * right[i].Weight) * overallweight;
+                output[index] += (lerp * right[i].Weight) * overallweight;
             }
         }
     }

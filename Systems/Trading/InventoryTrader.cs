@@ -165,7 +165,7 @@ namespace Vintagestory.GameContent
                 ItemSlotTrade slot = slots[16 + i] as ItemSlotTrade;
                 if (slot.Empty) continue;
 
-                if (slot.Itemstack.Equals(sellingSlot.Itemstack) && slot.Itemstack.StackSize + sellingSlot.TradeItem.Stack.StackSize <= slot.Itemstack.Collectible.MaxStackSize)
+                if (slot.Itemstack.Equals(Api.World, sellingSlot.Itemstack) && slot.Itemstack.StackSize + sellingSlot.TradeItem.Stack.StackSize <= slot.Itemstack.Collectible.MaxStackSize)
                 {
 
                     slot.Itemstack.StackSize += (sellingSlot as ItemSlotTrade).TradeItem.Stack.StackSize;
@@ -728,7 +728,7 @@ namespace Vintagestory.GameContent
             return slots[36 + index] as ItemSlotSurvival;
         }
 
-        string[] ignoredAttrs = GlobalConstants.IgnoredStackAttributes.Append("backpack").Append("condition");
+        string[] ignoredAttrs = GlobalConstants.IgnoredStackAttributes.Append("backpack", "condition");
 
         public ItemSlotTrade GetBuyingConditionsSlot(ItemStack forStack)
         {
@@ -737,7 +737,8 @@ namespace Vintagestory.GameContent
                 ItemSlotTrade slot = GetBuyingSlot(i);
                 if (slot.Itemstack == null) continue;
 
-                if (slot.Itemstack.Equals(Api.World, forStack, ignoredAttrs) || slot.Itemstack.Satisfies(forStack))
+                string[] ignoredAttributes = slot.TradeItem.AttributesToIgnore == null ? ignoredAttrs : ignoredAttrs.Append(slot.TradeItem.AttributesToIgnore.Split(','));
+                if (slot.Itemstack.Equals(Api.World, forStack, ignoredAttributes) || slot.Itemstack.Satisfies(forStack))
                 {
                     if (forStack.Collectible.IsReasonablyFresh(traderEntity.World, forStack)) return slot;
                 }

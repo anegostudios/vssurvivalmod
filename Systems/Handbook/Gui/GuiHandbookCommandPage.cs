@@ -19,7 +19,9 @@ namespace Vintagestory.GameContent
         string categoryCode;
         public override string CategoryCode => categoryCode;
         public override bool IsDuplicate => isDuplicate;
+#pragma warning disable CS0649 // Field is never assigned to, and will always have its default value
         private bool isDuplicate;
+#pragma warning restore CS0649 // Field is never assigned to, and will always have its default value
 
         public GuiHandbookCommandPage(IChatCommand command, string fullname, string categoryCode,
             bool isRootAlias = false)

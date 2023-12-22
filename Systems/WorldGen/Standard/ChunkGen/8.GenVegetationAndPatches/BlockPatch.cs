@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
@@ -76,6 +77,13 @@ namespace Vintagestory.ServerMods.NoObf
         /// </summary>
         [JsonProperty]
         public int MinWaterDepth = 3;
+
+        /// <summary>
+        /// This property can be specified to limit (or increase) the distance from the starting position - e.g. Tule near water should not be more than 1 block higher or lower
+        /// Conceivably something which spawns rarely in mountains e.g. Edelweiss would want this higher
+        /// </summary>
+        [JsonProperty]
+        public int MaxHeightDifferential = 8;
 
         /// <summary>
         /// When true, will be generated after shrubs and trees were generated
@@ -159,7 +167,7 @@ namespace Vintagestory.ServerMods.NoObf
         public void Generate(IBlockAccessor blockAccessor, LCGRandom rnd, int posX, int posY, int posZ, int firstBlockId)
         {
             float quantity = Quantity.nextFloat() + 1;
-            int chunkSize = blockAccessor.ChunkSize;
+            const int chunkSize = GlobalConstants.ChunkSize;
 
             Block[] blocks = getBlocks(firstBlockId);
             if (blocks.Length == 0) return;
@@ -181,13 +189,13 @@ namespace Vintagestory.ServerMods.NoObf
 
                 if (Placement == EnumBlockPatchPlacement.Underground)
                 {
-                    pos.Y = rnd.NextInt(Math.Max(1, chunk.MapChunk.WorldGenTerrainHeightMap[lz * blockAccessor.ChunkSize + lx] - 1));
+                    pos.Y = rnd.NextInt(Math.Max(1, chunk.MapChunk.WorldGenTerrainHeightMap[lz * GlobalConstants.ChunkSize + lx] - 1));
                 }
                 else
                 {
-                    pos.Y = chunk.MapChunk.RainHeightMap[lz * blockAccessor.ChunkSize + lx] + 1;
+                    pos.Y = chunk.MapChunk.RainHeightMap[lz * GlobalConstants.ChunkSize + lx] + 1;
 
-                    if (Math.Abs(pos.Y - posY) > 8 || pos.Y >= blockAccessor.MapSizeY - 1) continue;
+                    if (Math.Abs(pos.Y - posY) > MaxHeightDifferential || pos.Y >= blockAccessor.MapSizeY - 1) continue;
 
                     if (Placement == EnumBlockPatchPlacement.UnderWater)
                     {

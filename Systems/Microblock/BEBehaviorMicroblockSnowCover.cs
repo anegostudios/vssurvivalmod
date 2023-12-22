@@ -51,7 +51,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public void OnTransformed(ITreeAttribute tree, int byDegrees, EnumAxis? flipAroundAxis)
+        public void OnTransformed(IWorldAccessor worldAccessor, ITreeAttribute tree, int byDegrees, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, EnumAxis? flipAroundAxis)
         {
             uint[] snowcuboidValues = (tree["snowcuboids"] as IntArrayAttribute)?.AsUint;
             SnowCuboids = snowcuboidValues == null ? new List<uint>(0) : new List<uint>(snowcuboidValues);

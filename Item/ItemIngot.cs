@@ -82,16 +82,18 @@ namespace Vintagestory.GameContent
             } else
             {
                 if (isBlisterSteel) return null;
-
-                IAnvilWorkable workable = beAnvil.WorkItemStack.Collectible as IAnvilWorkable;
-
-                if (!workable.GetBaseMaterial(beAnvil.WorkItemStack).Equals(api.World, GetBaseMaterial(stack), GlobalConstants.IgnoredStackAttributes))
+                
+                if (!string.Equals(beAnvil.WorkItemStack.Collectible.Variant["metal"], stack.Collectible.Variant["metal"]))
                 {
                     if (api.Side == EnumAppSide.Client) (api as ICoreClientAPI).TriggerIngameError(this, "notequal", Lang.Get("Must be the same metal to add voxels"));
                     return null;
                 }
 
-                AddVoxelsFromIngot(api, ref beAnvil.Voxels);
+                if (AddVoxelsFromIngot(ref beAnvil.Voxels) == 0)
+                {
+                    if (api.Side == EnumAppSide.Client) (api as ICoreClientAPI).TriggerIngameError(this, "requireshammering", Lang.Get("Try hammering down before adding additional voxels"));
+                    return null;
+                }
             }
 
             return workItemStack;
@@ -122,13 +124,13 @@ namespace Vintagestory.GameContent
                             }
                         }
                     }
-
                 }
             }
         }
 
-        public static void AddVoxelsFromIngot(ICoreAPI api, ref byte[,,] voxels, bool isBlisterSteel = false)
+        public static int AddVoxelsFromIngot(ref byte[,,] voxels)
         {
+            int totalAdded = 0;
             for (int x = 0; x < 7; x++)
             {
                 for (int z = 0; z < 3; z++)
@@ -141,24 +143,14 @@ namespace Vintagestory.GameContent
                         {
                             voxels[4 + x, y, 6 + z] = (byte)EnumVoxelMaterial.Metal;
                             added++;
+                            totalAdded++;
                         }
 
                         y++;
                     }
-
-                    if (isBlisterSteel && y < 6)
-                    {
-                        if (api.World.Rand.NextDouble() < 0.5)
-                        {
-                            voxels[4 + x, y + 1, 6 + z] = (byte)EnumVoxelMaterial.Metal;
-                        }
-                        if (api.World.Rand.NextDouble() < 0.5)
-                        {
-                            voxels[4 + x, y + 1, 6 + z] = (byte)EnumVoxelMaterial.Slag;
-                        }
-                    }
                 }
             }
+            return totalAdded;
         }
 
         public ItemStack GetBaseMaterial(ItemStack stack)

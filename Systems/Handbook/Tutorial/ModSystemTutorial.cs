@@ -83,6 +83,7 @@ namespace Vintagestory.GameContent
 
         internal void StopActiveTutorial()
         {
+            currentTutorialInst.Save();
             hud.TryClose();
             CurrentTutorial = null;
             currentTutorialInst = null;

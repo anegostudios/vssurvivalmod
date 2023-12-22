@@ -353,12 +353,13 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void OnLoadCollectibleMappings(IWorldAccessor worldForResolve, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, int schematicSeed)
+        public override void OnLoadCollectibleMappings(IWorldAccessor worldForResolve, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, int schematicSeed, bool resolveImports)
         {
             if (contents?.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve) == false)
             {
                 contents = null;
             }
+            contents?.Collectible.OnLoadCollectibleMappings(worldForResolve, new DummySlot(contents), oldBlockIdMapping, oldItemIdMapping, resolveImports);
         }
 
         public override void OnStoreCollectibleMappings(Dictionary<int, AssetLocation> blockIdMapping, Dictionary<int, AssetLocation> itemIdMapping)
@@ -373,8 +374,8 @@ namespace Vintagestory.GameContent
                 {
                     itemIdMapping[contents.Id] = contents.Block.Code;
                 }
+                contents.Collectible.OnStoreCollectibleMappings(Api.World, new DummySlot(contents), blockIdMapping, itemIdMapping);
             }
-            
         }
 
         public override void OnBlockUnloaded()

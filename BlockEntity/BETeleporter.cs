@@ -128,7 +128,7 @@ namespace Vintagestory.GameContent
                     }
                     else
                     {
-                        sapi.WorldManager.LoadChunkColumnPriority((int)targetPos.X / Api.World.BlockAccessor.ChunkSize, (int)targetPos.Z / Api.World.BlockAccessor.ChunkSize, new ChunkLoadOptions()
+                        sapi.WorldManager.LoadChunkColumnPriority((int)targetPos.X / GlobalConstants.ChunkSize, (int)targetPos.Z / GlobalConstants.ChunkSize, new ChunkLoadOptions()
                         {
                             KeepLoaded = false
                         });

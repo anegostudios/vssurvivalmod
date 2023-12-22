@@ -94,5 +94,19 @@ namespace Vintagestory.GameContent
         {
             return interactions.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
         }
+
+        public override void OnUnloaded(ICoreAPI api)
+        {
+            base.OnUnloaded(api);
+
+            var cachedRefs = ObjectCacheUtil.TryGet<Dictionary<string, MultiTextureMeshRef>>(api, "combinedBookShelfWithLoreMeshRef");
+            if (cachedRefs != null)
+            {
+                foreach (var val in cachedRefs)
+                {
+                    val.Value.Dispose();
+                }
+            }
+        }
     }
 }

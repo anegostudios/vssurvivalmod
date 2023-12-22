@@ -59,7 +59,6 @@ namespace Vintagestory.ServerMods
 
             blocksludgygravel = api.World.GetBlock(new AssetLocation("sludgygravel"));
             boilingWaterBlockId = api.World.GetBlock(new AssetLocation("boilingwater-still-7")).Id;
-            chunksize = api.World.BlockAccessor.ChunkSize;
         }
 
 

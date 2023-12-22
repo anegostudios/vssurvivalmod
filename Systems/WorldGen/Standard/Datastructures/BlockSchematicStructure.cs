@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
@@ -9,19 +10,20 @@ namespace Vintagestory.ServerMods
 {
     public class BlockSchematicStructure : BlockSchematic
     {
-        public Dictionary<int, AssetLocation> BlockCodesTmpForRemap = new Dictionary<int, AssetLocation>();
+        public Dictionary<int, AssetLocation> BlockCodesTmpForRemap = new();
 
         public string FromFileName;
         public Dictionary<AssetLocation, AssetLocation> Remaps;
 
         public Block[,,] blocksByPos;
+        public Dictionary<BlockPos, Block> FluidBlocksByPos;
         public BlockLayerConfig blockLayerConfig;
         int mapheight;
 
         PlaceBlockDelegate handler = null;
         GenBlockLayers genBlockLayers;
 
-        public int OffsetY { get; set; }
+        public int OffsetY { get; set; } = -1;
 
         public override void Init(IBlockAccessor blockAccessor)
         {
@@ -30,6 +32,7 @@ namespace Vintagestory.ServerMods
             mapheight = blockAccessor.MapSizeY;
 
             blocksByPos = new Block[SizeX + 1, SizeY + 1, SizeZ + 1];
+            FluidBlocksByPos = new Dictionary<BlockPos, Block>();
 
             if (Remaps != null && Remaps.Count > 0)
             {
@@ -57,7 +60,15 @@ namespace Vintagestory.ServerMods
                 Block block = blockAccessor.GetBlock(BlockCodes[storedBlockid]);
                 if (block == null) continue;
 
-                blocksByPos[dx, dy, dz] = block;
+                if (block.ForFluidsLayer)
+                {
+                    FluidBlocksByPos.Add(new BlockPos(dx,dy,dz), block);   
+                }
+                else
+                {
+                    blocksByPos[dx, dy, dz] = block;
+                }
+
             }
 
             handler = null;
@@ -86,7 +97,7 @@ namespace Vintagestory.ServerMods
         /// </summary>
         /// <param name="blockAccessor"></param>
         /// <param name="worldForCollectibleResolve"></param>
-        /// <param name="startPos"></param>
+        /// <param name="startPos">Bottom left down corner of the structure.</param>
         /// <param name="climateUpLeft"></param>
         /// <param name="climateUpRight"></param>
         /// <param name="climateBotLeft"></param>
@@ -97,13 +108,14 @@ namespace Vintagestory.ServerMods
         /// <param name="replaceBlockEntities">If true, deletes any existing block entities at that location</param>
         /// <param name="suppressSoilIfAirBelow"></param>
         /// <returns></returns>
-        public int PlaceRespectingBlockLayers(IBlockAccessor blockAccessor, IWorldAccessor worldForCollectibleResolve, BlockPos startPos, int climateUpLeft, int climateUpRight, int climateBotLeft, int climateBotRight, Dictionary<int, Dictionary<int, int>> replaceBlocks, int[] replaceWithBlockLayersBlockids, bool replaceMetaBlocks = true, bool replaceBlockEntities = false, bool suppressSoilIfAirBelow = false)
+        public int PlaceRespectingBlockLayers(IBlockAccessor blockAccessor, IWorldAccessor worldForCollectibleResolve, BlockPos startPos, int climateUpLeft, int climateUpRight, int climateBotLeft, int climateBotRight, Dictionary<int, Dictionary<int, int>> replaceBlocks, int[] replaceWithBlockLayersBlockids, bool replaceMetaBlocks = true, bool replaceBlockEntities = false, bool suppressSoilIfAirBelow = false, bool displaceWater = false)
         {
             if (genBlockLayers == null) genBlockLayers = worldForCollectibleResolve.Api.ModLoader.GetModSystem<GenBlockLayers>();
 
             BlockPos curPos = new BlockPos();
+            BlockPos localCurrentPos = new BlockPos();
             int placed = 0;
-            int chunksize = blockAccessor.ChunkSize;
+            const int chunksize = GlobalConstants.ChunkSize;
 
             int chunkBaseX = (startPos.X / chunksize) * chunksize;
             int chunkBaseZ = (startPos.Z / chunksize) * chunksize;
@@ -122,27 +134,35 @@ namespace Vintagestory.ServerMods
             {
                 for (int z = 0; z < SizeZ; z++)
                 {
-                    curPos.Set(x + startPos.X, startPos.Y, z + startPos.Z);
-                    
+                    curPos.Set(x + startPos.X, startPos.Y, z + startPos.Z);                   
 
                     mapchunk = blockAccessor.GetMapChunkAtBlockPos(curPos);
                     int rockblockid = mapchunk.TopRockIdMap[(curPos.Z % chunksize) * chunksize + curPos.X % chunksize];
-                    int depth = mapchunk.WorldGenTerrainHeightMap[(curPos.Z % chunksize) * chunksize + curPos.X % chunksize] - (SizeY + startPos.Y); //aboveLiqBlock.Id != 0 ? 1 : 0;
+                    int terrheight = mapchunk.WorldGenTerrainHeightMap[(curPos.Z % chunksize) * chunksize + curPos.X % chunksize];
+                    int depth = terrheight - (SizeY + startPos.Y);
 
                     int maxY = -1;
                     int underWaterDepth = -1;
+                    var aboveLiqBlock = blockAccessor.GetBlock(curPos.X, curPos.Y + SizeY, curPos.Z, BlockLayersAccess.Fluid);
+                    if (aboveLiqBlock != null && aboveLiqBlock.IsLiquid()) underWaterDepth++;
 
                     bool highestBlockinCol = true;
                     for (int y = SizeY - 1; y >= 0; y--)
                     {
                         depth++;
                         curPos.Set(x + startPos.X, y + startPos.Y, z + startPos.Z);
-                        Block block = blocksByPos[x, y, z];
-                        Block origBlock = block;
+
+                        localCurrentPos.Set(x, y, z);
+                        var block = blocksByPos[x, y, z];
+                        FluidBlocksByPos.TryGetValue(localCurrentPos, out var fluidBlock);
+                        // use the fluid block if there is no solid block
+                        block ??= fluidBlock;
+
+                        aboveLiqBlock = blockAccessor.GetBlock(curPos.X, curPos.Y, curPos.Z, BlockLayersAccess.Fluid);
+                        if (aboveLiqBlock != null && aboveLiqBlock.IsLiquid()) underWaterDepth++;
+
                         if (block == null) continue;
 
-                        var aboveLiqBlock = blockAccessor.GetBlock(curPos.X, curPos.Y + y, curPos.Z, BlockLayersAccess.Fluid);
-                        if (aboveLiqBlock != null && aboveLiqBlock.IsLiquid()) underWaterDepth++;
 
                         if (replaceMetaBlocks && block == undergroundBlock) continue;
 
@@ -169,7 +189,10 @@ namespace Vintagestory.ServerMods
                                 if (depth == 0 && replaceWithBlockLayersBlockids.Length > 1)   // do not place top surface (typically grassy soil) directly beneath solid blocks other than logs, snow, ice
                                 {
                                     Block aboveBlock = blockAccessor.GetBlock(curPos.X, curPos.Y + 1, curPos.Z, BlockLayersAccess.SolidBlocks);
-                                    if (aboveBlock.SideSolid[BlockFacing.DOWN.Index] && aboveBlock.BlockMaterial != EnumBlockMaterial.Wood && aboveBlock.BlockMaterial != EnumBlockMaterial.Snow && aboveBlock.BlockMaterial != EnumBlockMaterial.Ice) depth++;
+                                    if (aboveBlock.SideSolid[BlockFacing.DOWN.Index] && aboveBlock.BlockMaterial != EnumBlockMaterial.Wood && aboveBlock.BlockMaterial != EnumBlockMaterial.Snow && aboveBlock.BlockMaterial != EnumBlockMaterial.Ice)
+                                    {
+                                        depth++;
+                                    }
                                 }
 
                                 int climate = GameMath.BiLerpRgbColor(
@@ -188,7 +211,7 @@ namespace Vintagestory.ServerMods
                                     block = layerBlock;
                                 }
                             }
-                        }                 
+                        }
 
                         if (replaceBlocks != null)
                         {
@@ -203,19 +226,31 @@ namespace Vintagestory.ServerMods
                             }
                         }
 
-                        int p = handler(blockAccessor, curPos, block, true);
-
-                        if (block.Id != 0 && !block.SideSolid.All)
+                        // if we only have a fluid block we need to clear the previous block so we can place fluids
+                        // in this case block == fluidBlock
+                        if (block.ForFluidsLayer)
                         {
-                            aboveLiqBlock = blockAccessor.GetBlock(curPos.X, curPos.Y + 1, curPos.Z, BlockLayersAccess.Fluid);
-                            if (aboveLiqBlock.Id != 0)
-                            {
-                                blockAccessor.SetBlock(aboveLiqBlock.BlockId, curPos, BlockLayersAccess.Fluid);
-                            }
+                            blockAccessor.SetBlock(0, curPos, BlockLayersAccess.Solid);
+                        }
+                        int p = handler(blockAccessor, curPos, block, true);
+                        // if we have both, place the fluid block after we placed the solid block
+                        if (fluidBlock != null && !block.Equals(fluidBlock))
+                        {
+                            handler(blockAccessor, curPos, fluidBlock, true);
                         }
 
                         if (p > 0)
                         {
+                            if (displaceWater) blockAccessor.SetBlock(0, curPos, BlockLayersAccess.Fluid);
+                            else if (block.Id != 0 && !block.SideSolid.All)
+                            {
+                                aboveLiqBlock = blockAccessor.GetBlock(curPos.X, curPos.Y + 1, curPos.Z, BlockLayersAccess.Fluid);
+                                if (aboveLiqBlock.Id != 0)
+                                {
+                                    blockAccessor.SetBlock(aboveLiqBlock.BlockId, curPos, BlockLayersAccess.Fluid);
+                                }
+                            }
+
                             if (highestBlockinCol)
                             {
                                 // Make any plants, tallgrass etc above this schematic fall, but do not do this test in lower blocks in the schematic (e.g. tables in trader caravan)
@@ -304,19 +339,19 @@ namespace Vintagestory.ServerMods
         /// </summary>
         /// <param name="blockAccessor"></param>
         /// <param name="worldForCollectibleResolve"></param>
-        /// <param name="startPos"></param>
+        /// <param name="startPos">Bottom left down corner of the structure.</param>
         /// <param name="mode"></param>
         /// <param name="replaceMetaBlocks"></param>
         /// <returns></returns>
-        public virtual int PlaceReplacingBlocks(IBlockAccessor blockAccessor, IWorldAccessor worldForCollectibleResolve, BlockPos startPos, EnumReplaceMode mode, Dictionary<int, Dictionary<int, int>> replaceBlocks, bool replaceMetaBlocks = true)
+        public virtual int PlaceReplacingBlocks(IBlockAccessor blockAccessor, IWorldAccessor worldForCollectibleResolve, BlockPos startPos, EnumReplaceMode mode, Dictionary<int, Dictionary<int, int>> replaceBlocks, int? rockBlockId, bool replaceMetaBlocks = true)
         {
             BlockPos curPos = new BlockPos();
             int placed = 0;
 
-            int chunksize = blockAccessor.ChunkSize;
+            const int chunksize = GlobalConstants.ChunkSize;
             curPos.Set(SizeX / 2 + startPos.X, startPos.Y, SizeZ / 2 + startPos.Z);
             IMapChunk mapchunk = blockAccessor.GetMapChunkAtBlockPos(curPos);
-            int centerrockblockid = mapchunk.TopRockIdMap[(curPos.Z % chunksize) * chunksize + curPos.X % chunksize];
+            int centerrockblockid = rockBlockId ?? mapchunk.TopRockIdMap[(curPos.Z % chunksize) * chunksize + curPos.X % chunksize];
             resolveReplaceRemapsForBlockEntities(blockAccessor, worldForCollectibleResolve, replaceBlocks, centerrockblockid);
 
 
@@ -357,28 +392,36 @@ namespace Vintagestory.ServerMods
 
                 curPos.Set(dx + startPos.X, dy + startPos.Y, dz + startPos.Z);
 
-                Block oldBlock = blockAccessor.GetBlock(curPos);
+                //Block oldBlock = blockAccessor.GetBlock(curPos);
                 Dictionary<int, int> replaceByBlock;
                 if (replaceBlocks.TryGetValue(newBlock.Id, out replaceByBlock))
                 {
                     int newBlockId;
-                    if (replaceByBlock.TryGetValue(oldBlock.Id, out newBlockId))
+                    if (replaceByBlock.TryGetValue(centerrockblockid/*oldBlock.Id*/, out newBlockId)) // don't seem to be able to use the oldblockid here. some blocks remain granite for some reason.
                     {
                         newBlock = blockAccessor.GetBlock(newBlockId);
                     }
                 }
+                // if we only have a fluid block we need to clear the previous block so we can place fluids
+                // schematics have solid block first and second fluid in the Indices array and the index (pos) is the same
+                if (newBlock.ForFluidsLayer && index != Indices[i-1])
+                {
+                    blockAccessor.SetBlock(0, curPos, BlockLayersAccess.Solid);
+                }
 
-                placed += handler(blockAccessor, curPos, newBlock, replaceMetaBlocks);
+                placed += handler(blockAccessor, curPos, newBlock, true);
 
                 if (newBlock.LightHsv[2] > 0 && blockAccessor is IWorldGenBlockAccessor)
                 {
+                    Block oldBlock = blockAccessor.GetBlock(curPos);
                     ((IWorldGenBlockAccessor)blockAccessor).ScheduleBlockLightUpdate(curPos.Copy(), oldBlock.BlockId, newBlock.BlockId);
                 }
             }
 
             if (!(blockAccessor is IBlockAccessorRevertable))
             {
-                PlaceEntitiesAndBlockEntities(blockAccessor, worldForCollectibleResolve, startPos, BlockCodesTmpForRemap, ItemCodes);
+                PlaceDecors(blockAccessor, startPos);
+                PlaceEntitiesAndBlockEntities(blockAccessor, worldForCollectibleResolve, startPos, BlockCodesTmpForRemap, ItemCodes, false, null, centerrockblockid);
             }
 
             return placed;
@@ -412,7 +455,7 @@ namespace Vintagestory.ServerMods
 
                     if (trfDist + yDist > posRand) continue;
 
-                    int blockId = bl.GetBlockId(posRand, temperature, rainRel, fertilityRel, rockBlockId, pos);
+                    int blockId = bl.GetBlockId(posRand, temperature, rainRel, fertilityRel, rockBlockId, pos, mapheight);
                     if (blockId != 0)
                     {
                         if (forDepth-- > 0) continue;

@@ -93,11 +93,9 @@ namespace Vintagestory.GameContent
             tree.SetString("type", type);
         }
 
-        public override void OnLoadCollectibleMappings(IWorldAccessor worldForNewMappings, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, int schematicSeed)
+        public override void OnLoadCollectibleMappings(IWorldAccessor worldForNewMappings, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, int schematicSeed, bool resolveImports)
         {
-            object dval;
-            worldForNewMappings.Api.ObjectCache.TryGetValue("donotResolveImports", out dval);
-            if (dval is bool && (bool)dval) return;
+            if(!resolveImports) return;
             bool found = false;
 
             double val = ((double)(uint)schematicSeed / uint.MaxValue);
@@ -109,17 +107,17 @@ namespace Vintagestory.GameContent
                     if (tapestryGroups[i][j] == type)
                     {
                         int rnd = GameMath.oaatHashMany(schematicSeed + ((i >= 3) ? 87987 : 0), 20);
-
+            
                         uint seed2 = GameMath.Mod((uint)schematicSeed + (uint)rnd, uint.MaxValue);
-
+            
                         val = ((double)seed2 / uint.MaxValue);
-
+            
                         int len = tapestryGroups[i].Length;
                         int pos = GameMath.oaatHashMany(j + schematicSeed, 20);
-
+            
                         type = tapestryGroups[i][GameMath.Mod(pos, len)];
                         found = true;
-
+            
                     }
                 }
             }
@@ -132,8 +130,6 @@ namespace Vintagestory.GameContent
                 }
                 return;
             }
-
-
 
             rotten = worldForNewMappings.Rand.NextDouble() < 0.75;
         }

@@ -180,7 +180,6 @@ namespace Vintagestory.ServerMods
         {
             worldgenBlockAccessor.BeginColumn();
             LCGRandom chunkRand = this.chunkRand;
-            int chunksize = this.chunksize;
             int quantityCaves = chunkRand.NextInt(100) < TerraGenConfig.CavesPerChunkColumn*100 ? 1 : 0;
 
             int rndSize = chunksize * chunksize * (worldheight - 20);
@@ -505,7 +504,6 @@ namespace Vintagestory.ServerMods
         private bool SetBlocks(IServerChunk[] chunks, float horRadius, float vertRadius, double centerX, double centerY, double centerZ, ushort[] terrainheightmap, ushort[] rainheightmap, int chunkX, int chunkZ, bool genHotSpring)
         {
             IMapChunk mapchunk = chunks[0].MapChunk;
-            int chunksize = this.chunksize;
 
             // One extra size for checking if we run into water
             horRadius++;

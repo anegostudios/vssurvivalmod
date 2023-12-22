@@ -1,5 +1,6 @@
 ﻿using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Server;
 
 namespace Vintagestory.GameContent
 {
@@ -15,6 +16,9 @@ namespace Vintagestory.GameContent
 
         public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos, ref EnumHandling handled)
         {
+            if (world.Side == EnumAppSide.Client) return;
+            if (!(world.Api as ICoreServerAPI).Server.Config.AllowFallingBlocks) return;
+
             handled = EnumHandling.PassThrough;
 
             if (IsSurroundedByNonSolid(world, pos))

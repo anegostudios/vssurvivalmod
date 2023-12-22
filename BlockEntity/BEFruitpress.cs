@@ -1,6 +1,5 @@
 ﻿using ProtoBuf;
 using System;
-using System.Linq;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -396,20 +395,11 @@ namespace Vintagestory.GameContent
                 int removeItems;
                 if (hprops.LitresPerItem == null)
                 {
-                    float availableLitres = (float)handStack.Attributes.GetDecimal("juiceableLitresLeft");
+                    var availableLitres = (float)handStack.Attributes.GetDecimal("juiceableLitresLeft");
                     transferableLitres = (float)Math.Min(availableLitres, juiceableLitresCapacity - juiceableLitresLeft);
-
-                    float litresPerItem = availableLitres / handStack.StackSize;
-
-                    // Round down to closest full stack sizes
-                    removeItems = (int)(transferableLitres / litresPerItem);
-                    transferableLitres = removeItems * litresPerItem;
-
-                    if (transferableLitres > 0)
-                    {
-                        handStack.Attributes.SetDouble("juiceableLitresLeft", availableLitres - transferableLitres);
-                    }
-
+                    // the juiceableLitresLeft is per item if we have a stack of multiple
+                    // so we only remove one item and add the liters for one
+                    removeItems = 1;
                 } else
                 {  
                     float desiredTransferSizeLitres = byPlayer.Entity.Controls.ShiftKey ? (float)hprops.LitresPerItem : Math.Min(handStack.StackSize, 4) * (float)hprops.LitresPerItem;

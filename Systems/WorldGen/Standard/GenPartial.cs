@@ -16,7 +16,6 @@ namespace Vintagestory.ServerMods
         public override void StartServerSide(ICoreServerAPI api)
         {
             this.api = api;
-            chunksize = api.WorldManager.ChunkSize;
 
             api.Event.InitWorldGenerator(initWorldGen, "standard");
         }

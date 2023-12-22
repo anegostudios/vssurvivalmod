@@ -133,6 +133,8 @@ namespace Vintagestory.GameContent
         Shape gliderShape_unfoldStep2;
         Shape gliderShape_unfolded;
 
+        bool subclassed = false;
+
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
@@ -145,8 +147,16 @@ namespace Vintagestory.GameContent
             }
         }
             
-        public Shape GetShape(ItemStack stack, EntityAgent forEntity)
+        public Shape GetShape(ItemStack stack, EntityAgent forEntity, string texturePrefixCode)
         {
+            if (!subclassed)
+            {
+                gliderShape_unfolded.SubclassForStepParenting(texturePrefixCode);
+                gliderShape_unfoldStep1.SubclassForStepParenting(texturePrefixCode);
+                gliderShape_unfoldStep2.SubclassForStepParenting(texturePrefixCode);
+                subclassed = true;
+            }
+
             int unfoldStep = forEntity.Attributes.GetInt("unfoldStep");
 
             if (unfoldStep == 1) return gliderShape_unfoldStep1;

@@ -89,13 +89,11 @@ namespace Vintagestory.ServerMods
         public void initWorldGen()
         {
             regionSize = sapi.WorldManager.RegionSize;
-            chunksize = sapi.World.BlockAccessor.ChunkSize;
             noiseSizeDensityMap = regionSize / TerraGenConfig.blockPatchesMapScale;
 
             LoadGlobalConfig(sapi);
 
             rnd = new LCGRandom(sapi.WorldManager.Seed - 87698);
-            chunksize = sapi.WorldManager.ChunkSize;
 
             treeSupplier.LoadTrees();
 

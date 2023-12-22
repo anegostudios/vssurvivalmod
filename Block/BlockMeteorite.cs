@@ -1,5 +1,6 @@
 ﻿using System;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
@@ -54,7 +55,7 @@ namespace Vintagestory.GameContent
 
             float impactRockRadius = craterRadius * 1.2f;
             int range = (int)Math.Ceiling(impactRockRadius);
-            int chunksize = api.World.BlockAccessor.ChunkSize;
+            const int chunksize = GlobalConstants.ChunkSize;
             Vec2i vecTmp = new Vec2i();
 
             // 1. Generate a basin of suevite and lower terrain

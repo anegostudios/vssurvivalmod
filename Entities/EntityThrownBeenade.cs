@@ -3,6 +3,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.GameContent;
 
 namespace Vintagestory.GameContent
 {
@@ -10,14 +11,11 @@ namespace Vintagestory.GameContent
     {
         bool beforeCollided;
         bool stuck;
-
         long msLaunch;
         Vec3d motionBeforeCollide = new Vec3d();
 
-        CollisionTester collTester = new CollisionTester();
-
         public Entity FiredBy;
-        internal float Damage;
+        public float Damage;
         public ItemStack ProjectileStack;
 
         public override bool IsInteractable
@@ -51,7 +49,7 @@ namespace Vintagestory.GameContent
 
             if (stuck)
             {
-                if (!beforeCollided && World is IServerWorldAccessor)
+                if (!beforeCollided && World.Side == EnumAppSide.Server)
                 {
                     float strength = GameMath.Clamp((float)motionBeforeCollide.Length() * 4, 0, 1);
 
@@ -70,7 +68,7 @@ namespace Vintagestory.GameContent
             }
 
 
-            if (World is IServerWorldAccessor)
+            if (Damage > 0 && World.Side == EnumAppSide.Server)
             {
                 Entity entity = World.GetNearestEntity(ServerPos.XYZ, 5f, 5f, (e) => {
                     if (e.EntityId == this.EntityId || (FiredBy != null && e.EntityId == FiredBy.EntityId && World.ElapsedMilliseconds - msLaunch < 500) || !e.IsInteractable)
@@ -151,4 +149,3 @@ namespace Vintagestory.GameContent
         }
     }
 }
-

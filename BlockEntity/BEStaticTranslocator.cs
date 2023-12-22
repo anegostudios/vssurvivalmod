@@ -279,8 +279,8 @@ namespace Vintagestory.GameContent
                 int dx = (int)(MinTeleporterRangeInBlocks + sapi.World.Rand.NextDouble() * addrange) * (2 * sapi.World.Rand.Next(2) - 1);
                 int dz = (int)(MinTeleporterRangeInBlocks + sapi.World.Rand.NextDouble() * addrange) * (2 * sapi.World.Rand.Next(2) - 1);
 
-                int chunkX = (Pos.X + dx) / sapi.World.BlockAccessor.ChunkSize;
-                int chunkZ = (Pos.Z + dz) / sapi.World.BlockAccessor.ChunkSize;
+                int chunkX = (Pos.X + dx) / GlobalConstants.ChunkSize;
+                int chunkZ = (Pos.Z + dz) / GlobalConstants.ChunkSize;
                 
                 if (!sapi.World.BlockAccessor.IsValidPos(Pos.X + dx, 1, Pos.Z + dz))
                 {
@@ -443,7 +443,7 @@ namespace Vintagestory.GameContent
 
         private BlockPos FindTranslocator(Cuboidi location, Dictionary<Vec2i, IServerChunk[]> columnsByChunkCoordinate, int centerCx, int centerCz)
         {
-            int chunksize = Api.World.BlockAccessor.ChunkSize;
+            const int chunksize = GlobalConstants.ChunkSize;
             
             for (int x = location.X1; x < location.X2; x++)
             {

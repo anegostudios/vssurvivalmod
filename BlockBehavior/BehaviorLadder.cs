@@ -315,12 +315,12 @@ namespace Vintagestory.GameContent
         public bool SideSolid(IBlockAccessor blockAccess, BlockPos pos, BlockFacing facing)
         {
             //public static readonly BlockFacing[] HORIZONTALS_ANGLEORDER = new BlockFacing[] { EAST, NORTH, WEST, SOUTH };
-            /// North: Negative Z
-            /// East: Positive X
-            /// South: Positive Z
-            /// West: Negative X
-            /// Up: Positive Y
-            /// Down: Negative Y
+            // North: Negative Z
+            // East: Positive X
+            // South: Positive Z
+            // West: Negative X
+            // Up: Positive Y
+            // Down: Negative Y
 
             Block block = blockAccess.GetBlock(pos.X + facing.Normali.X, pos.Y, pos.Z + facing.Normali.Z);
 

@@ -258,7 +258,6 @@ namespace Vintagestory.GameContent
 
             if (cprops.TexPos == null)
             {
-                api.Logger.Warning("No texture previously loaded for bookshelf block " + cprops.Code); // dafuq does this mean
                 cprops.TexPos = (texSource as ShapeTextureSource)?.firstTexPos;
                 cprops.TexPos.RndColors = new int[TextureAtlasPosition.RndColorsLength];
             }

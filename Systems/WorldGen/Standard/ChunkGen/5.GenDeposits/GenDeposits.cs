@@ -240,7 +240,6 @@ namespace Vintagestory.ServerMods
         
         public virtual void GenDeposit(IServerChunk[] chunks, int chunkX, int chunkZ, BlockPos depoCenterPos, DepositVariant variant)
         {
-            int chunksize = this.chunksize;
             int lx = GameMath.Mod(depoCenterPos.X, chunksize);
             int lz = GameMath.Mod(depoCenterPos.Z, chunksize);
 

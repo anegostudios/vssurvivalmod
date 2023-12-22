@@ -1,6 +1,7 @@
 ﻿using System;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -15,6 +16,23 @@ namespace Vintagestory.GameContent
         // Knife harvesting speed is equivalent to 50% of the plant breaking speed bonus
         public float KnifeHarvestingSpeed => 1f / ((MiningSpeed[EnumBlockMaterial.Plant] - 1) * 0.5f + 1);
 
+
+        public string knifeHitBlockAnimation;
+        public string knifeHitEntityAnimation;
+
+        public override string GetHeldTpHitAnimation(ItemSlot slot, Entity byEntity)
+        {
+            if ((byEntity as EntityPlayer)?.EntitySelection != null) return knifeHitEntityAnimation;
+            if ((byEntity as EntityPlayer)?.BlockSelection != null) return knifeHitBlockAnimation;
+            return base.GetHeldTpHitAnimation(slot, byEntity);
+        }
+
+        public override void OnLoaded(ICoreAPI api)
+        {
+            base.OnLoaded(api);
+            knifeHitBlockAnimation = Attributes["knifeHitBlockAnimation"].AsString(HeldTpHitAnimation);
+            knifeHitEntityAnimation = Attributes["knifeHitEntityAnimation"].AsString(HeldTpHitAnimation);
+        }
 
         static ItemKnife()
         {

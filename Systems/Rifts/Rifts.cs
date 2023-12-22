@@ -5,6 +5,7 @@ using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.CommandAbbr;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
@@ -410,7 +411,7 @@ namespace Vintagestory.GameContent
         private long getPlayerChunkIndex(IPlayer plr)
         {
             var pos = plr.Entity.Pos;
-            var cs = api.World.BlockAccessor.ChunkSize;
+            const int cs = GlobalConstants.ChunkSize;
             return (api as ICoreServerAPI).WorldManager.ChunkIndex3D((int)pos.X / cs, (int)pos.Y / cs, (int)pos.Z / cs);
         }
 

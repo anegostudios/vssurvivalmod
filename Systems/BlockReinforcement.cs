@@ -1,7 +1,6 @@
 ﻿using ProtoBuf;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -847,7 +846,7 @@ namespace Vintagestory.GameContent
 
         void SaveReinforcments(Dictionary<int, BlockReinforcement> reif, BlockPos pos)
         {
-            int chunksize = api.World.BlockAccessor.ChunkSize;
+            const int chunksize = GlobalConstants.ChunkSize;
             int chunkX = pos.X / chunksize;
             int chunkY = pos.Y / chunksize;
             int chunkZ = pos.Z / chunksize;
@@ -936,7 +935,7 @@ namespace Vintagestory.GameContent
 
         int toLocalIndex(BlockPos pos)
         {
-            return toLocalIndex(pos.X % api.World.BlockAccessor.ChunkSize, pos.Y % api.World.BlockAccessor.ChunkSize, pos.Z % api.World.BlockAccessor.ChunkSize);
+            return toLocalIndex(pos.X % GlobalConstants.ChunkSize, pos.Y % GlobalConstants.ChunkSize, pos.Z % GlobalConstants.ChunkSize);
         }
 
         int toLocalIndex(int x, int y, int z)

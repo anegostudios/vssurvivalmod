@@ -1,4 +1,5 @@
 ﻿using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.GameContent;
@@ -9,7 +10,7 @@ namespace Vintagestory.ServerMods
     public abstract class ModStdWorldGen : ModSystem
     {
         public GlobalConfig GlobalConfig;
-        public int chunksize;
+        protected const int chunksize = GlobalConstants.ChunkSize;
         GenStoryStructures modSys;
 
 
@@ -21,8 +22,6 @@ namespace Vintagestory.ServerMods
         public void LoadGlobalConfig(ICoreServerAPI api)
         {
             modSys = api.ModLoader.GetModSystem<GenStoryStructures>();
-
-            chunksize = api.World.BlockAccessor.ChunkSize;
 
             IAsset asset = api.Assets.Get("worldgen/global.json");
             GlobalConfig = asset.ToObject<GlobalConfig>();

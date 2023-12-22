@@ -1,6 +1,8 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 
 namespace Vintagestory.GameContent
 {
@@ -38,6 +40,7 @@ namespace Vintagestory.GameContent
 
             return api.GetSmithingRecipes()
                 .Where(r => r.Ingredient.SatisfiesAsIngredient(basemat))
+                .Where(r => r.Output.ResolvedItemstack.Collectible.Code != stack.Collectible.Code)
                 .OrderBy(r => r.Output.ResolvedItemstack.Collectible.Code) // Cannot sort by name, thats language dependent!
                 .ToList()
             ;
@@ -69,7 +72,19 @@ namespace Vintagestory.GameContent
             }
             else
             {
-                AddVoxels(ref beAnvil.Voxels);
+                if (!string.Equals(beAnvil.WorkItemStack.Collectible.Variant["metal"], stack.Collectible.Variant["metal"]))
+                {
+                    if (api.Side == EnumAppSide.Client)
+                        (api as ICoreClientAPI).TriggerIngameError(this, "notequal",
+                            Lang.Get("Must be the same metal to add voxels"));
+                    return null;
+                }
+
+                if (AddVoxels(ref beAnvil.Voxels) == 0)
+                {
+                    if (api.Side == EnumAppSide.Client) (api as ICoreClientAPI).TriggerIngameError(this, "requireshammering", Lang.Get("Try hammering down before adding additional voxels"));
+                    return null;
+                }
             }
 
             return workItemStack;
@@ -93,8 +108,9 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public static void AddVoxels(ref byte[,,] voxels)
+        public static int AddVoxels(ref byte[,,] voxels)
         {
+            int totalAdded = 0;
             for (int x = 0; x < 9; x++)
             {
                 for (int z = 0; z < 9; z++)
@@ -107,12 +123,14 @@ namespace Vintagestory.GameContent
                         {
                             voxels[3 + x, y, 3 + z] = (byte)EnumVoxelMaterial.Metal;
                             added++;
+                            totalAdded++;
                         }
 
                         y++;
                     }
                 }
             }
+            return totalAdded;
         }
 
         public ItemStack GetBaseMaterial(ItemStack stack)

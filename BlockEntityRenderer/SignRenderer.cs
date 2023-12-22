@@ -34,6 +34,7 @@ namespace Vintagestory.GameContent
 
         public float fontSize =20;
         EnumVerticalAlign verticalAlign;
+        internal bool translateable;
 
         public double RenderOrder
         {
@@ -122,6 +123,8 @@ namespace Vintagestory.GameContent
 
         public virtual void SetNewText(string text, int color)
         {
+            if (translateable) text = Lang.Get(text);
+
             font.WithColor(ColorUtil.ToRGBADoubles(color));
             loadedTexture?.Dispose();
             loadedTexture = null;
@@ -135,7 +138,6 @@ namespace Vintagestory.GameContent
                     VerPadding = (int)verPadding / 2,
                     //FillColor = new double[] { 0, 0, 0, 0.35 }
                 };
-
                 
                 loadedTexture = api.Gui.TextTexture.GenTextTexture(
                     text, 

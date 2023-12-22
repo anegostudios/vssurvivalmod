@@ -1198,12 +1198,13 @@ namespace Vintagestory.GameContent
 
 
 
-        public override void OnLoadCollectibleMappings(IWorldAccessor worldForResolve, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, int schematicSeed)
+        public override void OnLoadCollectibleMappings(IWorldAccessor worldForResolve, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, int schematicSeed, bool resolveImports)
         {
             if (workItemStack?.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve) == false)
             {
                 workItemStack = null;
             } 
+            workItemStack?.Collectible.OnLoadCollectibleMappings(Api.World, new DummySlot(workItemStack) ,oldBlockIdMapping, oldItemIdMapping, resolveImports);
         }
 
         public override void OnStoreCollectibleMappings(Dictionary<int, AssetLocation> blockIdMapping, Dictionary<int, AssetLocation> itemIdMapping)
@@ -1218,6 +1219,7 @@ namespace Vintagestory.GameContent
                 {
                     blockIdMapping[workItemStack.Id] = workItemStack.Block.Code;
                 }
+                workItemStack.Collectible.OnStoreCollectibleMappings(Api.World, new DummySlot(workItemStack), blockIdMapping, itemIdMapping);
             }
         }
 
@@ -1234,7 +1236,8 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        public void OnTransformed(ITreeAttribute tree, int degreeRotation, EnumAxis? flipAxis)
+        public void OnTransformed(IWorldAccessor worldAccessor, ITreeAttribute tree, int degreeRotation,
+            Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, EnumAxis? flipAxis)
         {
             MeshAngle = tree.GetFloat("meshAngle");
             MeshAngle -= degreeRotation * GameMath.DEG2RAD;

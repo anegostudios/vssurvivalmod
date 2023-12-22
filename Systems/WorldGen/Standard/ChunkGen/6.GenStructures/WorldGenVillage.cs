@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
@@ -15,13 +16,20 @@ namespace Vintagestory.ServerMods
         public int OffsetY = 0;
         public double Weight;
         public BlockSchematicStructure[] Structures;
+        public int MinQuantity = 0;
+        public int MaxQuantity = 9999;
+
+        // Used by worldgen
+        public int NowQuantity;
+
+        public bool ShouldGenerate => NowQuantity < MaxQuantity;
     }
 
     public class GeneratableStructure
     {
-        public BlockPos pos;
-        public BlockSchematicStructure struc;
-        public Cuboidi location;
+        public BlockPos StartPos;
+        public BlockSchematicStructure Structure;
+        public Cuboidi Location;
     }
 
     public class WorldGenVillage
@@ -32,10 +40,8 @@ namespace Vintagestory.ServerMods
         public string Name;
         [JsonProperty]
         public string Group;
-
         [JsonProperty]
         public VillageSchematic[] Schematics;
-
         [JsonProperty]
         public float Chance = 0.05f;
         [JsonProperty]
@@ -77,20 +83,19 @@ namespace Vintagestory.ServerMods
         internal Dictionary<int, Dictionary<int, int>> resolvedRockTypeRemaps = null;
 
         LCGRandom rand;
-        double totalWeight;
+        
+
+        
 
         public void Init(ICoreServerAPI api, BlockLayerConfig config, Dictionary<string, Dictionary<int, Dictionary<int, int>>> resolvedRocktypeRemapGroups, Dictionary<string, int> schematicYOffsets, int? defaultOffsetY, RockStrataConfig rockstrata, LCGRandom rand)
         {
             this.rand = rand;
-            totalWeight = 0;
 
             for (int i = 0; i < Schematics.Length; i++)
             {
                 List<BlockSchematicStructure> schematics = new List<BlockSchematicStructure>();
                 IAsset[] assets;
                 VillageSchematic schem = Schematics[i];
-
-                totalWeight += schem.Weight;
 
                 if (schem.Path.EndsWith("*"))
                 {
@@ -109,6 +114,10 @@ namespace Vintagestory.ServerMods
                 }
 
                 schem.Structures = schematics.ToArray();
+                if (schem.Structures.Length == 0)
+                {
+                    throw new Exception(string.Format("villages.json, village with code {0} has a schematic definition at index {1} that resolves into zero schematics. Please fix or remove this entry", Code, i));
+                }
             }
 
 
@@ -142,74 +151,105 @@ namespace Vintagestory.ServerMods
         }
 
 
-        BlockPos tmpPos = new BlockPos();
-        //int climateUpLeft, climateUpRight, climateBotLeft, climateBotRight;
-
+        
         public bool TryGenerate(IBlockAccessor blockAccessor, IWorldAccessor worldForCollectibleResolve, BlockPos pos, int climateUpLeft, int climateUpRight, int climateBotLeft, int climateBotRight, DidGenerate didGenerateStructure)
         {
-            /*this.climateUpLeft = climateUpLeft;
-            this.climateUpRight = climateUpRight;
-            this.climateBotLeft = climateBotLeft;
-            this.climateBotRight = climateBotRight;*/
-
             rand.InitPositionSeed(pos.X, pos.Z);
 
             float cnt = QuantityStructures.nextFloat(1, rand);
             int minQuantity = (int)cnt;
-            BlockPos schemPos = pos.Copy();
+            BlockPos botCenterPos = pos.Copy();
             Cuboidi location = new Cuboidi();
 
             List<GeneratableStructure> generatables = new List<GeneratableStructure>();
+            List<VillageSchematic> mustGenerate = new List<VillageSchematic>();
+            List<VillageSchematic> canGenerate = new List<VillageSchematic>();
+
+            for (int i = 0; i < Schematics.Length; i++)
+            {
+                var schem = Schematics[i];
+                schem.NowQuantity = 0;
+
+                if (schem.MinQuantity > 0)
+                {
+                    for (int j = 0; j < schem.MinQuantity; j++) mustGenerate.Add(schem);
+                }
+
+                if (schem.MaxQuantity > schem.MinQuantity) canGenerate.Add(schem);
+            }
 
             while (cnt-- > 0)
             {
                 if (cnt < 1 && rand.NextFloat() > cnt) break;
 
                 int tries = 30;
+                int dr = 0;
+                var totalWeight = getTotalWeight(canGenerate);
                 while (tries-- > 0)
                 {
-                    schemPos.Set(pos);
-                    schemPos.Add(rand.NextInt(50) - 25 , 0, rand.NextInt(50) - 25);
-                    schemPos.Y = blockAccessor.GetTerrainMapheightAt(schemPos);
+                    int r = Math.Min(16 + dr++ / 2, 24);
 
-                    double rndVal = rand.NextDouble() * totalWeight;
-                    int i = 0;
+                    botCenterPos.Set(pos);
+                    botCenterPos.Add(rand.NextInt(2*r) - r, 0, rand.NextInt(2*r) - r);
+                    botCenterPos.Y = blockAccessor.GetTerrainMapheightAt(botCenterPos);
+                    if (botCenterPos.Y == 0) continue;    // Can only be because it couldn't find a mapchunk or invalid position
+
                     VillageSchematic schem = null;
-                    while (rndVal > 0)
-                    {
-                        schem = Schematics[i++];
-                        rndVal -= schem.Weight;
-                    }
-                    BlockSchematicStructure struc = GetGeneratableStructure(schem, blockAccessor, worldForCollectibleResolve, schemPos);
+                    bool genRequired = mustGenerate.Count > 0;
 
-                    if (struc != null)
+                    if (genRequired)
                     {
-                        location.Set(schemPos.X, schemPos.Y, schemPos.Z, schemPos.X + struc.SizeX, schemPos.Y + struc.SizeY, schemPos.Z + struc.SizeZ);
-                        bool intersect = false;
-                        for (int k = 0; k < generatables.Count; k++)
+                        schem = mustGenerate[mustGenerate.Count - 1];
+                    }
+                    else
+                    {
+                        double rndVal = rand.NextDouble() * totalWeight;
+                        int i = 0;
+                        while (rndVal > 0)
                         {
-                            if (location.IntersectsOrTouches(generatables[k].location))
+                            schem = canGenerate[i++];
+                            if (schem.ShouldGenerate)
                             {
-                                intersect = true;
-                                break;
+                                rndVal -= schem.Weight;
                             }
                         }
+                    }
 
-                        if (!intersect)
+                    // First get a random structure from the VillageSchematic
+                    int num = rand.NextInt(schem.Structures.Length);
+                    BlockSchematicStructure struc = schem.Structures[num];
+
+                    location.Set(
+                        botCenterPos.X - struc.SizeX / 2, botCenterPos.Y, botCenterPos.Z - struc.SizeZ / 2,
+                        botCenterPos.X + (int)Math.Ceiling(struc.SizeX / 2f), botCenterPos.Y + struc.SizeY, botCenterPos.Z + (int)Math.Ceiling(struc.SizeZ / 2f)
+                    );
+
+                    bool intersect = false;
+                    for (int k = 0; k < generatables.Count; k++)
+                    {
+                        if (location.IntersectsOrTouches(generatables[k].Location))
                         {
-                            generatables.Add(new GeneratableStructure() { struc = struc, pos = schemPos.Copy(), location = location.Clone() });
+                            intersect = true;
+                            break;
                         }
-                        break;
+                    }
+
+                    if (!intersect && CanGenerateStructureAt(struc, blockAccessor, location))
+                    {
+                        if (genRequired) mustGenerate.RemoveAt(mustGenerate.Count - 1);
+                        schem.NowQuantity++;
+                        generatables.Add(new GeneratableStructure() { Structure = struc, StartPos = location.Start.AsBlockPos, Location = location.Clone() });
+                        tries = 0;
                     }
                 }
             }
 
-            if (generatables.Count >= minQuantity)
+            if (generatables.Count >= minQuantity && mustGenerate.Count == 0)
             {
                 foreach (var val in generatables)
                 {
-                    val.struc.PlaceRespectingBlockLayers(blockAccessor, worldForCollectibleResolve, val.pos, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight, resolvedRockTypeRemaps, replaceblockids);
-                    didGenerateStructure(val.location, val.struc);
+                    val.Structure.PlaceRespectingBlockLayers(blockAccessor, worldForCollectibleResolve, val.StartPos, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight, resolvedRockTypeRemaps, replaceblockids);
+                    didGenerateStructure(val.Location, val.Structure);
                 }
 
                 return true;
@@ -218,145 +258,96 @@ namespace Vintagestory.ServerMods
             return false;
         }
 
-
-        protected BlockSchematicStructure GetGeneratableStructure(VillageSchematic schem, IBlockAccessor blockAccessor, IWorldAccessor worldForCollectibleResolve, BlockPos pos)
+        private double getTotalWeight(List<VillageSchematic> canGenerate)
         {
-            int num = rand.NextInt(schem.Structures.Length);
-            BlockSchematicStructure schematic = schem.Structures[num];
-
-            int widthHalf = (int)Math.Ceiling(schematic.SizeX / 2f);
-            int lengthHalf = (int)Math.Ceiling(schematic.SizeZ / 2f);
-
-            pos.Y += schematic.OffsetY;
-
-            // Probe all 4 corners + center if they are on the same height
-
-            int centerY = blockAccessor.GetTerrainMapheightAt(pos);
-
-            tmpPos.Set(pos.X - widthHalf, 0, pos.Z - lengthHalf);
-            int topLeftY = blockAccessor.GetTerrainMapheightAt(tmpPos);
-
-            tmpPos.Set(pos.X + widthHalf, 0, pos.Z - lengthHalf);
-            int topRightY = blockAccessor.GetTerrainMapheightAt(tmpPos);
-
-            tmpPos.Set(pos.X - widthHalf, 0, pos.Z + lengthHalf);
-            int botLeftY = blockAccessor.GetTerrainMapheightAt(tmpPos);
-
-            tmpPos.Set(pos.X + widthHalf, 0, pos.Z + lengthHalf);
-            int botRightY = blockAccessor.GetTerrainMapheightAt(tmpPos);
-
-
-            int diff = GameMath.Max(centerY, topLeftY, topRightY, botLeftY, botRightY) - GameMath.Min(centerY, topLeftY, topRightY, botLeftY, botRightY);
-            if (diff > 2) return null;
-
-            pos.Y += centerY - pos.Y + 1 + schematic.OffsetY;
-            if (pos.Y <= 0) return null;
-
-            // Ensure not floating on water
-            tmpPos.Set(pos.X - widthHalf, pos.Y - 1, pos.Z - lengthHalf);
-            if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return null;
-
-            tmpPos.Set(pos.X + widthHalf, pos.Y - 1, pos.Z - lengthHalf);
-            if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return null;
-
-            tmpPos.Set(pos.X - widthHalf, pos.Y - 1, pos.Z + lengthHalf);
-            if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return null;
-
-            tmpPos.Set(pos.X + widthHalf, pos.Y - 1, pos.Z + lengthHalf);
-            if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return null;
-
-            // Ensure not submerged in water
-            tmpPos.Set(pos.X - widthHalf, pos.Y, pos.Z - lengthHalf);
-            if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return null;
-
-            tmpPos.Set(pos.X + widthHalf, pos.Y, pos.Z - lengthHalf);
-            if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return null;
-
-            tmpPos.Set(pos.X - widthHalf, pos.Y, pos.Z + lengthHalf);
-            if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return null;
-
-            tmpPos.Set(pos.X + widthHalf, pos.Y, pos.Z + lengthHalf);
-            if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return null;
-
-
-
-            tmpPos.Set(pos.X - widthHalf, pos.Y + 1, pos.Z - lengthHalf);
-            if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return null;
-
-            tmpPos.Set(pos.X + widthHalf, pos.Y + 1, pos.Z - lengthHalf);
-            if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return null;
-
-            tmpPos.Set(pos.X - widthHalf, pos.Y + 1, pos.Z + lengthHalf);
-            if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return null;
-
-            tmpPos.Set(pos.X + widthHalf, pos.Y + 1, pos.Z + lengthHalf);
-            if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return null;
-
-            if (!TestUndergroundCheckPositions(blockAccessor, pos, schematic.UndergroundCheckPositions)) return null;
-
-            if (isStructureAt(pos, worldForCollectibleResolve)) return null;
-
-            return schematic;
+            double weight = 0;
+            for (int i = 0; i < canGenerate.Count; i++)
+            {
+                var schem = canGenerate[i];
+                if (schem.ShouldGenerate) weight += schem.Weight;
+            }
+            return weight;
         }
 
 
-        BlockPos utestPos = new BlockPos();
-        private bool TestUndergroundCheckPositions(IBlockAccessor blockAccessor, BlockPos pos, BlockPos[] testPositionsDelta)
+        protected bool CanGenerateStructureAt(BlockSchematicStructure schematic, IBlockAccessor ba, Cuboidi location)
         {
+            BlockPos centerPos = new BlockPos(location.CenterX, location.Y1 + schematic.OffsetY, location.CenterZ);
+            BlockPos tmpPos = new BlockPos();
+
+            // 1. Make sure the terrain doesn't slope too much
+            int topLeftY = ba.GetTerrainMapheightAt(tmpPos.Set(location.X1, 0, location.Z1));
+            int topRightY = ba.GetTerrainMapheightAt(tmpPos.Set(location.X2, 0, location.Z1));
+            int botLeftY = ba.GetTerrainMapheightAt(tmpPos.Set(location.X1, 0, location.Z2));
+            int botRightY = ba.GetTerrainMapheightAt(tmpPos.Set(location.X2, 0, location.Z2));
+
+            int centerY = location.Y1;
+            int highestY = GameMath.Max(centerY, topLeftY, topRightY, botLeftY, botRightY);
+            int lowestY = GameMath.Min(centerY, topLeftY, topRightY, botLeftY, botRightY);
+            if (highestY - lowestY > 2) return false;
+
+            // 1.5. Adjust schematic location to be at the lowest point of all 4 corners, otherwise some corners will float
+            // "+1" because using the y-value from GetTerrainMapheightAt() means the structure will already be 1 block sunken into the ground. It is more intuitive for the builder when setting OffsetY=0 means the structure is placed on top of the surface
+            location.Y1 = lowestY + schematic.OffsetY + 1; 
+            location.Y2 = location.Y1 + schematic.SizeY;
+
+            // 2. Verify U Blocks are in solid ground
+            if (!testUndergroundCheckPositions(ba, location.Start.AsBlockPos, schematic.UndergroundCheckPositions)) return false;
+
+            // 3. Make sure not floating on, in, or under water. blockAccessor caches the current chunk so this should be decently fast in most cases
+            tmpPos.Set(location.X1, centerPos.Y - 1, location.Z1);
+            if (ba.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return false;
+            if (ba.GetBlock(tmpPos.Up(), BlockLayersAccess.Fluid).IsLiquid()) return false;
+            if (ba.GetBlock(tmpPos.Up(), BlockLayersAccess.Fluid).IsLiquid()) return false;
+
+            tmpPos.Set(location.X2, centerPos.Y - 1, location.Z1);
+            if (ba.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return false;
+            if (ba.GetBlock(tmpPos.Up(), BlockLayersAccess.Fluid).IsLiquid()) return false;
+            if (ba.GetBlock(tmpPos.Up(), BlockLayersAccess.Fluid).IsLiquid()) return false;
+
+            tmpPos.Set(location.X1, centerPos.Y - 1, location.Z2);
+            if (ba.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return false;
+            if (ba.GetBlock(tmpPos.Up(), BlockLayersAccess.Fluid).IsLiquid()) return false;
+            if (ba.GetBlock(tmpPos.Up(), BlockLayersAccess.Fluid).IsLiquid()) return false;
+
+            tmpPos.Set(location.X2, centerPos.Y - 1, location.Z2);
+            if (ba.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return false;
+            if (ba.GetBlock(tmpPos.Up(), BlockLayersAccess.Fluid).IsLiquid()) return false;
+            if (ba.GetBlock(tmpPos.Up(), BlockLayersAccess.Fluid).IsLiquid()) return false;
+
+            // 4. May not overlap with another ruin
+            if (overlapsExistingStructure(ba, location)) return false;
+
+            return true;
+        }
+
+
+        protected bool testUndergroundCheckPositions(IBlockAccessor blockAccessor, BlockPos pos, BlockPos[] testPositionsDelta)
+        {
+            int posX = pos.X;
+            int posY = pos.Y;
+            int posZ = pos.Z;
             for (int i = 0; i < testPositionsDelta.Length; i++)
             {
                 BlockPos deltapos = testPositionsDelta[i];
+                pos.Set(posX + deltapos.X, posY + deltapos.Y, posZ + deltapos.Z);
 
-                utestPos.Set(pos.X + deltapos.X, pos.Y + deltapos.Y, pos.Z + deltapos.Z);
-
-                Block block = blockAccessor.GetBlock(utestPos);
-                if (block.BlockMaterial != EnumBlockMaterial.Stone && block.BlockMaterial != EnumBlockMaterial.Soil) return false;
+                EnumBlockMaterial material = blockAccessor.GetBlock(pos, BlockLayersAccess.Solid).BlockMaterial;
+                if (material != EnumBlockMaterial.Stone && material != EnumBlockMaterial.Soil) return false;
             }
 
             return true;
         }
 
-        private int CanPlacePathwayAt(IBlockAccessor blockAccessor, BlockPos[] pathway, BlockFacing towardsFacing, BlockPos targetPos)
+        protected bool overlapsExistingStructure(IBlockAccessor ba, Cuboidi cuboid)
         {
-            int quantityAir = 0;
-            BlockPos tmpPos = new BlockPos();
-
-            bool oppositeDir = rand.NextInt(2) > 0;
-
-            for (int i = 3; i >= 1; i--)
-            {
-                int dist = oppositeDir ? 3 - i : i;
-                int dx = dist * towardsFacing.Normali.X;
-                int dz = dist * towardsFacing.Normali.Z;
-
-                quantityAir = 0;
-
-                for (int k = 0; k < pathway.Length; k++)
-                {
-                    tmpPos.Set(targetPos.X + pathway[k].X + dx, targetPos.Y + pathway[k].Y, targetPos.Z + pathway[k].Z + dz);
-
-                    Block block = blockAccessor.GetBlock(tmpPos);
-                    if (block.Id == 0) quantityAir++;
-                    else if (block.BlockMaterial != EnumBlockMaterial.Stone) return -1;
-                }
-
-                if (quantityAir > 0 && quantityAir < pathway.Length) return dist;
-            }
-
-            return -1;
-        }
-
-        public bool isStructureAt(BlockPos pos, IWorldAccessor world)
-        {
-            int rx = pos.X / world.BlockAccessor.RegionSize;
-            int rz = pos.Z / world.BlockAccessor.RegionSize;
-
-            IMapRegion mapregion = world.BlockAccessor.GetMapRegion(rx, rz);
+            int regsize = ba.RegionSize;
+            IMapRegion mapregion = ba.GetMapRegion(cuboid.CenterX / regsize, cuboid.CenterZ / regsize);
             if (mapregion == null) return false;
 
             foreach (var val in mapregion.GeneratedStructures)
             {
-                if (val.Location.Contains(pos))
+                if (val.Location.Intersects(cuboid))
                 {
                     return true;
                 }

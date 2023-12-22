@@ -1,5 +1,6 @@
 ﻿using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
@@ -78,9 +79,9 @@ namespace Vintagestory.GameContent
 
                     if (mat != EnumBlockMaterial.Leaves && mat != EnumBlockMaterial.Air) continue;
 
-                    int dx = pos.X % blockAccessor.ChunkSize;
-                    int dz = pos.Z % blockAccessor.ChunkSize;
-                    int surfacey = blockAccessor.GetMapChunkAtBlockPos(atPos).WorldGenTerrainHeightMap[dz * blockAccessor.ChunkSize + dx];
+                    int dx = pos.X % GlobalConstants.ChunkSize;
+                    int dz = pos.Z % GlobalConstants.ChunkSize;
+                    int surfacey = blockAccessor.GetMapChunkAtBlockPos(atPos).WorldGenTerrainHeightMap[dz * GlobalConstants.ChunkSize + dx];
                    
                     if (pos.Y - surfacey < 4) return false;
                     

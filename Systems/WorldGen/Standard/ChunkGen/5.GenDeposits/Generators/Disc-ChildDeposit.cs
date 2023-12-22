@@ -52,7 +52,6 @@ namespace Vintagestory.ServerMods
             radius++;
 
             int depositGradeIndex = PlaceBlock.AllowedVariants != null ? DepositRand.NextInt(PlaceBlock.AllowedVariants.Length) : 0;
-            int chunksize = this.chunksize;
 
             bool shouldGenSurfaceDeposit = DepositRand.NextFloat() > 0.35f && SurfaceBlock != null;
             float tries = RandomTries.nextFloat(1, DepositRand);

@@ -66,13 +66,10 @@ namespace Vintagestory.GameContent
         public SkinnablePart[] AvailableSkinParts;
         public string VoiceType = "altoflute";
         public string VoicePitch = "medium";
-
         public string mainTextureCode;
-
-
         public List<AppliedSkinnablePartVariant> appliedTemp = new List<AppliedSkinnablePartVariant>();
+        protected ITreeAttribute skintree;
 
-        ITreeAttribute skintree;
         public IReadOnlyList<AppliedSkinnablePartVariant> AppliedSkinParts
         {
             get
@@ -102,10 +99,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public EntityBehaviorExtraSkinnable(Entity entity) : base(entity)
-        {
-
-        }
+        public EntityBehaviorExtraSkinnable(Entity entity) : base(entity) { }
 
         public override void Initialize(EntityProperties properties, JsonObject attributes)
         {
@@ -298,7 +292,7 @@ namespace Vintagestory.GameContent
                     }
                     else
                     {
-                        entity.Api.Logger.Error("Skinpart has no textureSize: " + code + "  in: " + shapePathForLogging);
+                        entity.Api.Logger.Error("Skinpart has no textureSize: " + code + " in: " + shapePathForLogging);
                     }
                 }
             }
@@ -479,71 +473,21 @@ namespace Vintagestory.GameContent
                 return null;
             }
 
-            bool added = false;
-            foreach (var val in partShape.Elements)
+            string prefixcode = "skinpart";
+            partShape.SubclassForStepParenting(prefixcode);
+
+            var textures = entity.Properties.Client.Textures;
+            entityShape.StepParentShape(partShape, shapePath.ToShortString(), shapePathForLogging, api.Logger, (texcode, loc) =>
             {
-                ShapeElement elem;
-
-                if (val.StepParentName != null)
+                if (!textures.ContainsKey("skinpart-" + texcode) && skinpart.TextureRenderTo == null)
                 {
-                    elem = entityShape.GetElementByName(val.StepParentName, StringComparison.InvariantCultureIgnoreCase);
-                    if (elem == null)
-                    {
-                        api.World.Logger.Warning("Skin part shape {0} defined in entity config {1} requires step parent element with name {2}, but no such element was found in shape {3}. Will not be visible.", shapePath, entity.Properties.Code, val.StepParentName, shapePathForLogging);
-                        continue;
-                    }
+                    var cmpt = textures[prefixcode + "-" + texcode] = new CompositeTexture(loc);
+                    cmpt.Bake(api.Assets);
+                    api.EntityTextureAtlas.GetOrInsertTexture(cmpt.Baked.TextureFilenames[0], out int textureSubid, out _);
+                    cmpt.Baked.TextureSubId = textureSubid;
                 }
-                else
-                {
-                    api.World.Logger.Warning("Skin part shape element {0} in shape {1} defined in entity config {2} did not define a step parent element. Will not be visible.", val.Name, shapePath, entity.Properties.Code);
-                    continue;
-                }
+            });
 
-                if (elem.Children == null)
-                {
-                    elem.Children = new ShapeElement[] { val };
-                }
-                else
-                {
-                    elem.Children = elem.Children.Append(val);
-                }
-
-                val.ParentElement = elem;
-
-                val.WalkRecursive((el) =>
-                {
-                    foreach (var face in el.FacesResolved)
-                    {
-                        if (face != null) face.Texture = "skinpart-" + face.Texture;
-                    }
-                });
-
-                added = true;
-            }
-
-            if (added && partShape.Textures != null)
-            {
-                var textures = entity.Properties.Client.Textures;
-
-                foreach (var val in partShape.Textures)
-                {
-                    if (!textures.ContainsKey("skinpart-" + val.Key) && skinpart.TextureRenderTo == null)
-                    {
-                        var cmpt = textures["skinpart-" + val.Key] = new CompositeTexture(val.Value);
-                        cmpt.Bake(api.Assets);
-                        if (!api.EntityTextureAtlas.GetOrInsertTexture(cmpt.Baked.TextureFilenames[0], out int textureSubid, out _))
-                        {
-                            api.Logger.Warning("Skin part shape {0} defined texture {1}, no such texture found.", shapePathForLogging, val.Value);
-                        }
-                        cmpt.Baked.TextureSubId = textureSubid;
-                    }
-                }
-
-                foreach (var val in partShape.TextureSizes)
-                {
-                    entityShape.TextureSizes["skinpart-" + val.Key] = val.Value;
-                }
-            }
 
             return entityShape;
         }

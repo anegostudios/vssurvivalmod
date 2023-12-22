@@ -120,12 +120,26 @@ namespace Vintagestory.GameContent
             { "2", new TVec2i[] { new TVec2i(0, 1, "1") } }
         };
 
-
+        static Dictionary<string, TVec2i[]> neighbours1x3 = new Dictionary<string, TVec2i[]>()
+        {
+            { "1", new TVec2i[] { new TVec2i( 0, -1, "2"), new TVec2i(0, -2, "3") } },
+            { "2", new TVec2i[] { new TVec2i( 0, 1, "1"), new TVec2i(0, -1, "3") } },
+            { "3", new TVec2i[] { new TVec2i( 0, 2, "1"), new TVec2i(0, 1, "2") } }
+        };
+        
         static Dictionary<string, TVec2i[]> neighbours3x1 = new Dictionary<string, TVec2i[]>()
         {
             { "1", new TVec2i[] { new TVec2i(1, 0, "2"), new TVec2i(2, 0, "3") } },
             { "2", new TVec2i[] { new TVec2i(-1, 0, "1"), new TVec2i(1, 0, "3") } },
             { "3", new TVec2i[] { new TVec2i(-2, 0, "1"), new TVec2i(-1, 0, "2") } }
+        };
+
+        static Dictionary<string, TVec2i[]> neighbours4x1 = new Dictionary<string, TVec2i[]>()
+        {
+            { "1", new TVec2i[] { new TVec2i(1, 0, "2"), new TVec2i(2, 0, "3"), new TVec2i(3, 0, "4") } },
+            { "2", new TVec2i[] { new TVec2i(-1, 0, "1"), new TVec2i(1, 0, "3"), new TVec2i(2, 0, "4") } },
+            { "3", new TVec2i[] { new TVec2i(-2, 0, "1"), new TVec2i(-1, 0, "2"), new TVec2i(1, 0, "4") } },
+            { "4", new TVec2i[] { new TVec2i(-3, 0, "1"), new TVec2i(-2, 0, "2"), new TVec2i(-1, 0, "3") } }
         };
 
         static Dictionary<string, TVec2i[]> neighbours2x2 = new Dictionary<string, TVec2i[]>()
@@ -198,8 +212,14 @@ namespace Vintagestory.GameContent
                     case "1x2":
                         neighbours = neighbours1x2;
                         break;
+                    case "1x3":
+                        neighbours = neighbours1x3;
+                        break;
                     case "3x1":
                         neighbours = neighbours3x1;
+                        break;
+                    case "4x1":
+                        neighbours = neighbours4x1;
                         break;
                     case "2x2":
                         neighbours = neighbours2x2;

@@ -268,6 +268,7 @@ namespace Vintagestory.GameContent
             {
                 ownPropickReadings.RemoveAt(waypointIndex);
                 (api as ICoreClientAPI).Network.GetChannel("oremap").SendPacket(new DeleteReadingPacket() { Index=waypointIndex });
+                RebuildMapComponents();
                 return;
             }
             var plrReadings = getOrLoadReadings(player);

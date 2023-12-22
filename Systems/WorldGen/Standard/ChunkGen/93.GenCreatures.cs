@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
@@ -56,7 +57,6 @@ namespace Vintagestory.ServerMods
         {
             LoadGlobalConfig(api);
             rnd = new Random(api.WorldManager.Seed - 18722);
-            chunksize = api.WorldManager.ChunkSize;
             worldheight = api.WorldManager.MapSizeY;
 
             Dictionary<AssetLocation, EntityProperties> entityTypesByCode = new Dictionary<AssetLocation, EntityProperties>();
@@ -356,7 +356,7 @@ namespace Vintagestory.ServerMods
         {
             BlockPos blockPos = new BlockPos();
             IBlockAccessor blockAccess;
-            int chunksize = wgenBlockAccessor.ChunkSize;
+            const int chunksize = GlobalConstants.ChunkSize;
 
             Cuboidd entityCuboid = entityBoxRel.ToDouble().Translate(pos);
             Vec3d blockPosAsVec = new Vec3d();

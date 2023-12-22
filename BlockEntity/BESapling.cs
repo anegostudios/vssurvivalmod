@@ -103,7 +103,7 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            int chunksize = Api.World.BlockAccessor.ChunkSize;
+            const int chunksize = GlobalConstants.ChunkSize;
             foreach (BlockFacing facing in BlockFacing.HORIZONTALS)
             {
                 Vec3i dir = facing.Normali;

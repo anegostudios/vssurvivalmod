@@ -8,6 +8,13 @@ namespace Vintagestory.GameContent
 {
     public class ItemFirestarter : Item
     {
+        string igniteAnimation;
+
+        public override void OnLoaded(ICoreAPI api)
+        {
+            igniteAnimation = Attributes["igniteAnimation"].AsString();
+        }
+
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
             base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handling);
@@ -28,6 +35,8 @@ namespace Vintagestory.GameContent
             }                        
 
             handling = EnumHandHandling.PreventDefault;
+
+            byEntity.AnimManager.StartAnimation(igniteAnimation);
 
             if (api.Side == EnumAppSide.Client) {
                 api.Event.UnregisterCallback(ObjectCacheUtil.TryGet<long>(api, "firestartersound"));
@@ -107,6 +116,8 @@ namespace Vintagestory.GameContent
 
         public override void OnHeldInteractStop(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
+            byEntity.AnimManager.StopAnimation(igniteAnimation);
+
             if (blockSel == null) return;
             if (api.World.Side == EnumAppSide.Client) return;
             if (api.World.Rand.NextDouble() > 0.25) return;
@@ -139,6 +150,7 @@ namespace Vintagestory.GameContent
 
         public override bool OnHeldInteractCancel(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)
         {
+            byEntity.AnimManager.StopAnimation(igniteAnimation);
             api.Event.UnregisterCallback(ObjectCacheUtil.TryGet<long>(api, "firestartersound"));
             return true;
         }

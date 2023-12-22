@@ -119,10 +119,9 @@ namespace Vintagestory.GameContent
         public override bool ShouldExecute()
         {
             // React immediately on hurt, otherwise only 1/10 chance of execution
-            if (rand.NextDouble() > 0.1f && (whenInEmotionState == null || bhEmo?.IsInEmotionState(whenInEmotionState) != true)) return false;
+            if (rand.NextDouble() > 0.1f && (whenInEmotionState == null || IsInEmotionState(whenInEmotionState) != true)) return false;
 
-            if (whenInEmotionState != null && bhEmo?.IsInEmotionState(whenInEmotionState) != true) return false;
-            if (whenNotInEmotionState != null && bhEmo?.IsInEmotionState(whenNotInEmotionState) == true) return false;
+            if (!EmotionStatesSatisifed()) return false;
             if (lastSearchTotalMs + searchWaitMs > entity.World.ElapsedMilliseconds) return false;
             if (whenInEmotionState == null && rand.NextDouble() > 0.5f) return false;
             if (cooldownUntilMs > entity.World.ElapsedMilliseconds) return false;
@@ -253,10 +252,9 @@ namespace Vintagestory.GameContent
             var mc = ba.GetMapChunkAtBlockPos(entity.Pos.AsBlockPos);
             if (mc != null)
             {
-                int chunksize = ba.ChunkSize;
-                int lz = (int)entity.Pos.Z % chunksize;
-                int lx = (int)entity.Pos.X % chunksize;
-                var rockBlock = entity.World.Blocks[mc.TopRockIdMap[lz * chunksize + lx]];
+                int lz = (int)entity.Pos.Z % GlobalConstants.ChunkSize;
+                int lx = (int)entity.Pos.X % GlobalConstants.ChunkSize;
+                var rockBlock = entity.World.Blocks[mc.TopRockIdMap[lz * GlobalConstants.ChunkSize + lx]];
                 rocktype = rockBlock.Variant["rock"] ?? "granite";
             }
             loc.Path = loc.Path.Replace("{rock}", rocktype);

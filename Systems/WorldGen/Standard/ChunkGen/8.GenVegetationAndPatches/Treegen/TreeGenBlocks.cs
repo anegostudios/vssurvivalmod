@@ -133,25 +133,32 @@ namespace Vintagestory.ServerMods.NoObf
 
             if (leavesLevels == 0)
             {
+                int count = 0;
                 if (leavesBlockCode.SecondCodePart() == "grown" && leavesBranchyBlockCode.Path != "log-grown-baldcypress-ud")   // Temporary for testing/fine tuning.  Final code should specify all the leavesSubTypeCodes in each treegen JSON file, to give per-species control of how much we allow this effect - e.g. maple could be 1-5 instead of 1-7
                 {
                     int[] leavesSubTypeIds = new int[7];
                     int[] branchySubTypeIds = new int[7];
                     for (int j = 1; j < 8; j++)
                     {
-                        leavesSubTypeIds[j - 1] = api.WorldManager.GetBlockId(new AssetLocation(leavesBlockCode.Domain, leavesBlockCode.FirstCodePart() + "-grown" + j + "-" + leavesBlockCode.CodePartsAfterSecond()));
-                        branchySubTypeIds[j - 1] = api.WorldManager.GetBlockId(new AssetLocation(leavesBranchyBlockCode.Domain, leavesBranchyBlockCode.FirstCodePart() + "-grown" + j + "-" + leavesBranchyBlockCode.CodePartsAfterSecond()));
+                        int leaves = api.WorldManager.GetBlockId(new AssetLocation(leavesBlockCode.Domain, leavesBlockCode.FirstCodePart() + "-grown" + j + "-" + leavesBlockCode.CodePartsAfterSecond()));
+                        int branchyLeaves = api.WorldManager.GetBlockId(new AssetLocation(leavesBranchyBlockCode.Domain, leavesBranchyBlockCode.FirstCodePart() + "-grown" + j + "-" + leavesBranchyBlockCode.CodePartsAfterSecond()));
+                        if (leaves == 0 || branchyLeaves == 0) break;
+                        count++;
+                        leavesSubTypeIds[j - 1] = leaves;
+                        branchySubTypeIds[j - 1] = branchyLeaves;
                     }
-                    leavesByLevel[0] = new int[7];
-                    leavesByLevel[1] = new int[7];
-                    for (int j = 0; j < 7; j++)
+                    leavesByLevel[0] = new int[count];
+                    leavesByLevel[1] = new int[count];
+                    for (int j = 0; j < count; j++)
                     {
                         leavesByLevel[0][j] = leavesSubTypeIds[j];
                         leavesByLevel[1][j] = branchySubTypeIds[j];
+                        blockIds.Add(leavesSubTypeIds[j]);
+                        blockIds.Add(branchySubTypeIds[j]);
                     }
-
                 }
-                else
+                
+                if (count == 0)
                 {
                     leavesByLevel[0] = new int[1];
                     leavesByLevel[1] = new int[1];

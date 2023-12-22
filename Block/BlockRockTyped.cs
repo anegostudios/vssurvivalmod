@@ -1,10 +1,12 @@
 ﻿using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
-using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -93,6 +95,32 @@ namespace Vintagestory.GameContent
             var cprops = GetTypeProps(bect?.Type, null, bect);
 
             return cprops.Drops?.Select(drop => drop.GetNextItemStack(dropQuantityMultiplier)).ToArray() ?? base.GetDrops(world, pos, byPlayer);
+        }
+
+        public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
+        {
+            base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
+
+            string type = getRockType(inSlot.Itemstack.Attributes.GetString("type"));
+            dsc.AppendLine(Lang.Get("rock-" + type));
+        }
+
+        public override string GetPlacedBlockInfo(IWorldAccessor world, BlockPos pos, IPlayer forPlayer)
+        {
+            var bect = GetBEBehavior<BEBehaviorShapeFromAttributes>(pos);
+            if (bect?.Type != null)
+            {
+                return Lang.Get("rock-" + getRockType(bect.Type));
+            }
+
+            return base.GetPlacedBlockInfo(world, pos, forPlayer);
+        }
+
+        string getRockType(string type)
+        {
+            var parts = type.Split('-');
+            if (parts.Length < 3) return "unknown";
+            return parts[2];
         }
     }
 

@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Collections.Generic;
+using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -143,7 +144,7 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        public void OnTransformed(ITreeAttribute tree, int degreeRotation, EnumAxis? flipAxis)
+        public void OnTransformed(IWorldAccessor worldAccessor, ITreeAttribute tree, int degreeRotation, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, EnumAxis? flipAxis)
         {
             float thetaX = tree.GetFloat("rotateX");
             float thetaY = tree.GetFloat("meshAngle");
@@ -202,7 +203,7 @@ namespace Vintagestory.GameContent
             {
                 if (capi.Settings.Bool["extendedDebugInfo"] == true)
                 {
-                    dsc.AppendLine("Type:" + Type);
+                    dsc.AppendLine("<font color=\"#bbbbbb\">Type:" + Type + "</font>");
                 }
             }
         }

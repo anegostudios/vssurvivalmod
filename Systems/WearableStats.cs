@@ -8,7 +8,6 @@ using Vintagestory.API.Server;
 
 namespace Vintagestory.GameContent
 {
-
     public class ModSystemWearableStats : ModSystem
     {
         ICoreAPI api;
@@ -97,7 +96,7 @@ namespace Vintagestory.GameContent
                 AssetLocation loc = soundlocs[api.World.Rand.Next(soundlocs.Length)];
 
                 float pitch = (float)api.World.Rand.NextDouble() * 0.5f + 0.7f;
-                float volume = (float)api.World.Rand.NextDouble() * 0.3f + 0.7f;
+                float volume = entity.Player.Entity.Controls.Sneak ? 0.5f : 1f + (float)api.World.Rand.NextDouble() * 0.3f + 0.7f;
                 api.World.PlaySoundAt(loc, entity, api.Side == EnumAppSide.Server ? entity.Player : null, pitch, 16f, volume);
             }
         }
@@ -282,6 +281,7 @@ namespace Vintagestory.GameContent
 
                     var loc = shieldSlot.Itemstack.ItemAttributes["blockSound"].AsString("held/shieldblock");
                     api.World.PlaySoundAt(AssetLocation.Create(loc, shieldSlot.Itemstack.Collectible.Code.Domain).WithPathPrefixOnce("sounds/").WithPathAppendixOnce(".ogg"), player, null);
+                    player.Entity.AnimManager.StartAnimation("shieldBlock");
 
                     if (api.Side == EnumAppSide.Server)
                     {

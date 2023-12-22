@@ -88,7 +88,6 @@ namespace Vintagestory.ServerMods
         public MapLayerBase OreMap;
 
 
-        protected int chunksize;
         protected int worldheight;
         protected int regionChunkSize;
         protected int noiseSizeClimate;
@@ -107,7 +106,6 @@ namespace Vintagestory.ServerMods
 
         protected DiscDepositGenerator(ICoreServerAPI api, DepositVariant variant, LCGRandom depositRand, NormalizedSimplexNoise noiseGen) : base(api, variant, depositRand, noiseGen)
         {
-            chunksize = api.World.BlockAccessor.ChunkSize;
             worldheight = api.World.BlockAccessor.MapSizeY;
 
             regionSize = api.WorldManager.RegionSize;

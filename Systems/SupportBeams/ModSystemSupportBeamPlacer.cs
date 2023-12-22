@@ -1,7 +1,6 @@
 ﻿using ProtoBuf;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -470,7 +469,7 @@ namespace Vintagestory.GameContent
 
         public SupportBeamsData GetSbData(BlockPos pos)
         {
-            int chunksize = api.World.BlockAccessor.ChunkSize;
+            const int chunksize = GlobalConstants.ChunkSize;
             return GetSbData(pos.X / chunksize, pos.Y / chunksize, pos.Z / chunksize);
         }
 

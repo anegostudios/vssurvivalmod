@@ -398,11 +398,16 @@ namespace Vintagestory.GameContent
             metalContent?.Collectible.OnStoreCollectibleMappings(Api.World, new DummySlot(metalContent), blockIdMapping, itemIdMapping);
         }
 
-        public override void OnLoadCollectibleMappings(IWorldAccessor worldForResolve, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, int schematicSeed)
+        public override void OnLoadCollectibleMappings(IWorldAccessor worldForResolve, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, int schematicSeed, bool resolveImports)
         {
             if (metalContent?.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve) == null)
             {
                 metalContent = null;
+            }
+            // update the time for the temperature to the current ingame time if imported from another game
+            if ((metalContent?.Attributes["temperature"] as ITreeAttribute)?.HasAttribute("temperatureLastUpdate") == true)
+            {
+                ((ITreeAttribute)metalContent.Attributes["temperature"]).SetDouble("temperatureLastUpdate", worldForResolve.Calendar.TotalHours);
             }
         }
 

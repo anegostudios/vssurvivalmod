@@ -1,6 +1,4 @@
 ﻿using Newtonsoft.Json.Linq;
-using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -132,8 +130,6 @@ namespace Vintagestory.GameContent
         }
 
 
-
-
         public override bool DoPlaceBlock(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ItemStack byItemStack)
         {
             bool val = base.DoPlaceBlock(world, byPlayer, blockSel, byItemStack);
@@ -143,20 +139,25 @@ namespace Vintagestory.GameContent
                 var bect = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityAntlerMount;
                 if (bect != null)
                 {
-                    BlockPos targetPos = blockSel.DidOffset ? blockSel.Position.AddCopy(blockSel.Face.Opposite) : blockSel.Position;
-                    double dx = byPlayer.Entity.Pos.X - (targetPos.X + blockSel.HitPosition.X);
-                    double dz = (float)byPlayer.Entity.Pos.Z - (targetPos.Z + blockSel.HitPosition.Z);
-                    float angleHor = (float)Math.Atan2(dx, dz);
+                    for (int i = 0; i < 4; i++)
+                    {
+                        int faceIndex = (blockSel.Face.HorizontalAngleIndex + i) % 4;
 
-                    float intervalRad = GameMath.PIHALF;
-                    float roundRad = ((int)Math.Round(angleHor / intervalRad)) * intervalRad;
-                    bect.MeshAngleRad = roundRad;
-                    bect.OnBlockPlaced(byItemStack); // call again to regen mesh
+                        BlockPos attachingBlockPos = blockSel.Position.AddCopy(BlockFacing.HORIZONTALS_ANGLEORDER[faceIndex]);
+                        Block attachingBlock = world.BlockAccessor.GetBlock(attachingBlockPos);
+
+                        if (attachingBlock.CanAttachBlockAt(world.BlockAccessor, this, attachingBlockPos, blockSel.Face, null))
+                        {
+                            bect.MeshAngleRad = faceIndex * 90 * GameMath.DEG2RAD - GameMath.PIHALF;
+                            bect.OnBlockPlaced(byItemStack); // call again to regen mesh
+                        }
+                    }
                 }
             }
 
             return val;
         }
+
 
         public Shape GetOrCreateShape(string type, string material)
         {

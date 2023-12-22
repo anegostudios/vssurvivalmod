@@ -163,13 +163,11 @@ namespace Vintagestory.GameContent
             tree.SetInt("insideLocustCount", insideLocustCount);
         }
 
-        public override void OnLoadCollectibleMappings(IWorldAccessor worldForNewMappings, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, int schematicSeed)
+        public override void OnLoadCollectibleMappings(IWorldAccessor worldForNewMappings, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, int schematicSeed, bool resolveImports)
         {
-            base.OnLoadCollectibleMappings(worldForNewMappings, oldBlockIdMapping, oldItemIdMapping, schematicSeed);
+            base.OnLoadCollectibleMappings(worldForNewMappings, oldBlockIdMapping, oldItemIdMapping, schematicSeed, resolveImports);
 
-            object dval;
-            worldForNewMappings.Api.ObjectCache.TryGetValue("donotResolveImports", out dval);
-            if (dval is bool && (bool)dval) return;
+            if (!resolveImports) return;
 
             Data.WasImported = true;
             Data.LastSpawnTotalHours = 0;

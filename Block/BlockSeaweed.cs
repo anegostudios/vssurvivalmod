@@ -29,7 +29,7 @@ namespace Vintagestory.GameContent
             for (int i = 0; i < sourceMesh.FlagsCount; i++)
             {
                 float y = sourceMesh.xyz[i * 3 + 1];
-                sourceMesh.Flags[i] = (sourceMesh.Flags[i] & VertexFlags.ClearWindDataBitsMask) | (windData + (y > 0 ? 1 : 0)) << VertexFlags.WindDataBitsPos;
+                VertexFlags.ReplaceWindData(ref sourceMesh.Flags[i], windData + (y > 0 ? 1 : 0));
             }
         }
 

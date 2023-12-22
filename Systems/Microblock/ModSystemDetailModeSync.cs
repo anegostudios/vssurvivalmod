@@ -4,10 +4,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Server;
 using Vintagestory.GameContent;
 using Vintagestory.API.Common.CommandAbbr;
-using System;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
-using System.Linq;
 using System.Collections.Generic;
 
 namespace Vintagestory.ServerMods
@@ -42,7 +40,7 @@ namespace Vintagestory.ServerMods
                     .WithDesc("Microblock operations")
                     .BeginSub("fill")
                         .WithDesc("Fill empty space of microblocks with held block")
-                        .HandleWith((args)=>onCmdFill(args, false))
+                        .HandleWith((args) => onCmdFill(args, false))
                     .EndSub()
                     .BeginSub("clearname")
                         .WithDesc("Delete all block names")
@@ -140,7 +138,7 @@ namespace Vintagestory.ServerMods
                 {
                     if (delete)
                     {
-                        int delmatindex = be.MaterialIds.IndexOf(fillWitBlock.Id);
+                        int delmatindex = be.BlockIds.IndexOf(fillWitBlock.Id);
                         if (delmatindex < 0) return;
                         cnt++;
                         List<uint> cwms = new List<uint>();

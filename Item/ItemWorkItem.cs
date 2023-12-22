@@ -54,9 +54,9 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            int meshrefId = itemstack.Attributes.GetInt("meshRefId");
+            int meshrefId = itemstack.Attributes.GetInt("meshRefId", -1);  // NextMeshRefId commenced at 0, so -1 is an impossible actual meshrefId
 
-            if (!itemstack.Attributes.HasAttribute("meshRefId"))
+            if (meshrefId == -1)
             {
                 meshrefId = ++nextMeshRefId;
             }
@@ -88,7 +88,7 @@ namespace Vintagestory.GameContent
             textureId = 0;
             if (workitemStack == null) return null;
 
-            MeshData workItemMesh = new MeshData(24, 36, false);
+            MeshData workItemMesh = new MeshData(24, 36, false, true);
             workItemMesh.CustomBytes = new CustomMeshDataPartByte()
             {
                 Conversion = DataConversion.NormalizedFloat,
@@ -125,6 +125,7 @@ namespace Vintagestory.GameContent
             };
 
             textureId = tposMetal.atlasTextureId;
+            for (int i = 0; i < 6; i++) metalVoxelMesh.AddTextureId(textureId);
 
             metalVoxelMesh.XyzFaces = (byte[])CubeMeshUtil.CubeFaceIndices.Clone();
             metalVoxelMesh.XyzFacesCount = 6;

@@ -7,6 +7,7 @@ using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
@@ -310,12 +311,12 @@ namespace Vintagestory.GameContent
                                 {
                                     Cuboidd entityPos = collisionBox2.ToDouble().Translate(spawnPos);
                                     Cuboidd blockPos = Cuboidf.Default().ToDouble().Translate(spawnBlockPos);
-                                    /// North: Negative Z
-                                    /// East: Positive X
-                                    /// South: Positive Z
-                                    /// West: Negative X
-                                    /// Up: Positive Y
-                                    /// Down: Negative Y
+                                    // North: Negative Z
+                                    // East: Positive X
+                                    // South: Positive Z
+                                    // West: Negative X
+                                    // Up: Positive Y
+                                    // Down: Negative Y
 
                                     switch (face.Index)
                                     {
@@ -424,7 +425,7 @@ namespace Vintagestory.GameContent
         {
             ICoreServerAPI sapi = Api as ICoreServerAPI;
 
-            int chunksize = Api.World.BlockAccessor.ChunkSize;
+            const int chunksize = GlobalConstants.ChunkSize;
             int sizeX = sapi.WorldManager.MapSizeX / chunksize;
             int sizeY = sapi.WorldManager.MapSizeY / chunksize;
             int sizeZ = sapi.WorldManager.MapSizeZ / chunksize;
@@ -511,13 +512,11 @@ namespace Vintagestory.GameContent
             this.spawnedEntities = new HashSet<long>(values == null ? new long[0] : values);
         }
 
-        public override void OnLoadCollectibleMappings(IWorldAccessor worldForNewMappings, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, int schematicSeed)
+        public override void OnLoadCollectibleMappings(IWorldAccessor worldForNewMappings, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, int schematicSeed, bool resolveImports)
         {
-            base.OnLoadCollectibleMappings(worldForNewMappings, oldBlockIdMapping, oldItemIdMapping, schematicSeed);
+            base.OnLoadCollectibleMappings(worldForNewMappings, oldBlockIdMapping, oldItemIdMapping, schematicSeed, resolveImports);
 
-            object dval;
-            worldForNewMappings.Api.ObjectCache.TryGetValue("donotResolveImports", out dval);
-            if (dval is bool && (bool)dval) return;
+            if (!resolveImports) return;
 
             Data.WasImported = true;
             Data.LastSpawnTotalHours = 0;

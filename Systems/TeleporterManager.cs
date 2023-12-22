@@ -201,7 +201,7 @@ namespace Vintagestory.GameContent
             dialogSettings.OnGet = OnGetValuesDialog;
             dialogSettings.OnSet = OnSetValuesDialog;
 
-            dialog = new GuiJsonDialog(dialogSettings, capi);
+            dialog = new GuiJsonDialog(dialogSettings, capi, true);
             dialog.TryOpen();
         }
 

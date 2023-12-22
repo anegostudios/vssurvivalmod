@@ -3,6 +3,7 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
+using Vintagestory.API.Config;
 
 namespace Vintagestory.ServerMods
 {
@@ -58,7 +59,7 @@ namespace Vintagestory.ServerMods
 
         int noiseSizeOre;
         int regionSize;
-        int chunksize;
+        const int chunksize = GlobalConstants.ChunkSize;
         ICoreServerAPI api;
         internal DepositVariant parentDeposit;
         public bool addHandbookAttributes;
@@ -68,7 +69,6 @@ namespace Vintagestory.ServerMods
         {
             this.api = api;
             regionSize = api.WorldManager.RegionSize;
-            chunksize = api.World.BlockAccessor.ChunkSize;
             noiseSizeOre = regionSize / TerraGenConfig.oreMapScale;
         }
 

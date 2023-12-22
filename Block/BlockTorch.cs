@@ -98,6 +98,7 @@ namespace Vintagestory.GameContent
 
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
+            if(blockSel == null) return;
             if (isExtinct && byEntity.World.BlockAccessor.GetBlock(blockSel.Position) is IIgnitable ign)
             {
                 var state = ign.OnTryIgniteStack(byEntity, blockSel.Position, slot, 0);

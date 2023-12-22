@@ -103,7 +103,7 @@ namespace Vintagestory.GameContent
 
             ICoreServerAPI sapi = Api as ICoreServerAPI;
 
-            int chunksize = Api.World.BlockAccessor.ChunkSize;
+            const int chunksize = GlobalConstants.ChunkSize;
             int sizeX = sapi.WorldManager.MapSizeX / chunksize;
             int sizeY = sapi.WorldManager.MapSizeY / chunksize;
             int sizeZ = sapi.WorldManager.MapSizeZ / chunksize;

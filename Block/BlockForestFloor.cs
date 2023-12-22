@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
@@ -16,7 +17,7 @@ namespace Vintagestory.GameContent
         protected string[] growthStages = new string[] { "0", "1", "2", "3", "4", "5", "6", "7" };
 
         protected int growthLightLevel;
-        protected int chunksize;
+        protected const int chunksize = GlobalConstants.ChunkSize;
 
         protected float growthChanceOnTick = 0.16f;
 
@@ -37,8 +38,6 @@ namespace Vintagestory.GameContent
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
-
-            chunksize = api.World.BlockAccessor.ChunkSize;
 
             if (api is ICoreClientAPI)
             {

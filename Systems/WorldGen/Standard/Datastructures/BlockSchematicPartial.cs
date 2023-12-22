@@ -2,6 +2,7 @@
 using System.IO;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
@@ -12,9 +13,11 @@ namespace Vintagestory.ServerMods
     {
         public List<Entity> EntitiesDecoded;
 
-        public virtual int PlacePartial(IServerChunk[] chunks, IWorldGenBlockAccessor blockAccessor, IWorldAccessor worldForResolve, int chunkX, int chunkZ, BlockPos startPos, EnumReplaceMode mode, bool replaceMeta)
+        public virtual int PlacePartial(IServerChunk[] chunks, IWorldGenBlockAccessor blockAccessor,
+            IWorldAccessor worldForResolve, int chunkX, int chunkZ, BlockPos startPos, EnumReplaceMode mode,
+            bool replaceMeta, bool resolveImports)
         {
-            int chunksize = blockAccessor.ChunkSize;
+            const int chunksize = GlobalConstants.ChunkSize;
             Rectanglei rect = new Rectanglei(chunkX * chunksize, chunkZ * chunksize, chunksize, chunksize);
 
             if (!rect.IntersectsOrTouches(startPos.X, startPos.Z, startPos.X + SizeX, startPos.Z + SizeZ)) return 0;
@@ -107,12 +110,12 @@ namespace Vintagestory.ServerMods
                     tree.SetInt("posz", curPos.Z);
 
                     be.FromTreeAttributes(tree, worldForResolve);
-                    be.OnLoadCollectibleMappings(worldForResolve, BlockCodes, ItemCodes, schematicSeed);
-                    be.OnPlacementBySchematic(worldForResolve.Api as ICoreServerAPI, blockAccessor, curPos, null, 0, null);
+                    be.OnLoadCollectibleMappings(worldForResolve, BlockCodes, ItemCodes, schematicSeed, resolveImports);
+                    be.OnPlacementBySchematic(worldForResolve.Api as ICoreServerAPI, blockAccessor, curPos, null, 0, null, resolveImports);
                 }
             }
 
-            if (EntitiesDecoded == null) DecodeEntities(worldForResolve, startPos);
+            if (EntitiesDecoded == null) DecodeEntities(worldForResolve, startPos, worldForResolve as IServerWorldAccessor);
 
             foreach (Entity entity in EntitiesDecoded)
             {
@@ -122,12 +125,12 @@ namespace Vintagestory.ServerMods
                     if (blockAccessor is IWorldGenBlockAccessor)
                     {
                         blockAccessor.AddEntity(entity);
-                        entity.OnInitialized += () => entity.OnLoadCollectibleMappings(worldForResolve, BlockCodes, ItemCodes, schematicSeed);
+                        entity.OnInitialized += () => entity.OnLoadCollectibleMappings(worldForResolve, BlockCodes, ItemCodes, schematicSeed, resolveImports);
                     }
                     else
                     {
                         worldForResolve.SpawnEntity(entity);
-                        entity.OnLoadCollectibleMappings(worldForResolve, BlockCodes, ItemCodes, schematicSeed);
+                        entity.OnLoadCollectibleMappings(worldForResolve, BlockCodes, ItemCodes, schematicSeed, resolveImports);
                     }
                 }
             }
@@ -135,7 +138,7 @@ namespace Vintagestory.ServerMods
             return placed;
         }
 
-        private void DecodeEntities(IWorldAccessor worldForResolve, BlockPos startPos)
+        private void DecodeEntities(IWorldAccessor worldForResolve, BlockPos startPos, IServerWorldAccessor serverWorldAccessor)
         {
             EntitiesDecoded = new List<Entity>(Entities.Count);
             foreach (string entityData in Entities)
@@ -147,7 +150,7 @@ namespace Vintagestory.ServerMods
                     string className = reader.ReadString();
                     Entity entity = worldForResolve.ClassRegistry.CreateEntity(className);
                     entity.Api = worldForResolve.Api;   // FromBytes works better for some entities (e.g. EntityArmorStand) if the Api is already set
-                    entity.FromBytes(reader, false);
+                    entity.FromBytes(reader, false, serverWorldAccessor.RemappedEntities);
                     entity.DidImportOrExport(startPos);
 
                     EntitiesDecoded.Add(entity);

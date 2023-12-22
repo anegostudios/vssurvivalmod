@@ -90,14 +90,10 @@ namespace Vintagestory.GameContent
 
             api.Event.PushEvent("OpenStackRandomizerDialog", tree);
         }
-
-
-
-        public void Resolve(ItemSlot intoslot, IWorldAccessor worldForResolve)
+        
+        public void Resolve(ItemSlot intoslot, IWorldAccessor worldForResolve, bool resolveImports = true)
         {
-            object dval;
-            worldForResolve.Api.ObjectCache.TryGetValue("donotResolveImports", out dval);
-            if (dval is bool && (bool)dval) return;
+            if(!resolveImports) return;
 
             double diceRoll = rand.NextDouble();
             ITreeAttribute attributes = intoslot.Itemstack.Attributes;

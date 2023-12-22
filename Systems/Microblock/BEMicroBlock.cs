@@ -18,8 +18,6 @@ namespace Vintagestory.GameContent
 {
     public partial class BlockEntityMicroBlock : BlockEntity, IRotatable, IAcceptsDecor, IMaterialExchangeable
     {
-        protected static int[] NoDecorIds = new int[6];
-        
         protected static ThreadLocal<CuboidWithMaterial[]> tmpCuboidTL = new ThreadLocal<CuboidWithMaterial[]>(() =>
         {
             var val = new CuboidWithMaterial[16 * 16 * 16];
@@ -275,7 +273,7 @@ namespace Vintagestory.GameContent
                 var mat = block.BlockMaterial;
                 if (mat == EnumBlockMaterial.Ore || mat == EnumBlockMaterial.Stone || mat == EnumBlockMaterial.Soil || mat == EnumBlockMaterial.Ceramic)
                 {
-                    if (sideAlmostSolid[forPlayer.CurrentBlockSelection.Face.Index] && VolumeRel >= 0.5f)
+                    if (sideAlmostSolid[forPlayer.CurrentBlockSelection.Face.Index] || sideAlmostSolid[forPlayer.CurrentBlockSelection.Face.Opposite.Index] && VolumeRel >= 0.5f)
                     {
                         dsc.AppendLine(Lang.Get("Insulating block face"));
                     }
@@ -302,12 +300,12 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public int getMajorityMaterial()
+        public int GetMajorityMaterialId(ActionBoolReturn<int> filterblockId = null)
         {
-            return getMajorityMaterial(VoxelCuboids, BlockIds);
+            return getMajorityMaterial(VoxelCuboids, BlockIds, filterblockId);
         }
 
-        public static int getMajorityMaterial(List<uint> voxelCuboids, int[] blockIds)
+        public static int getMajorityMaterial(List<uint> voxelCuboids, int[] blockIds, ActionBoolReturn<int> filterblockId = null)
         {
             Dictionary<int, int> volumeByBlockid = new Dictionary<int, int>();
             CuboidWithMaterial cwm = new CuboidWithMaterial();
@@ -328,6 +326,7 @@ namespace Vintagestory.GameContent
 
             if (volumeByBlockid.Count == 0) return 0;
 
+            if (filterblockId != null && volumeByBlockid.Count == 0) volumeByBlockid = volumeByBlockid.Where(vbb => filterblockId?.Invoke(vbb.Key) == true).ToDictionary(kv => kv.Key, kv=>kv.Value);
             var mblockid = volumeByBlockid.MaxBy(vbb => vbb.Value).Key;
             return mblockid;
         }
@@ -469,7 +468,9 @@ namespace Vintagestory.GameContent
         }
 
 
-        public void OnTransformed(ITreeAttribute tree, int byDegrees, EnumAxis? flipAroundAxis)
+        public void OnTransformed(IWorldAccessor worldAccessor, ITreeAttribute tree, int byDegrees,
+            Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping,
+            EnumAxis? flipAroundAxis)
         {
             uint[] cuboidValues = (tree["cuboids"] as IntArrayAttribute)?.AsUint;
             VoxelCuboids = cuboidValues == null ? new List<uint>(0) : new List<uint>(cuboidValues);
@@ -477,12 +478,45 @@ namespace Vintagestory.GameContent
             RotateModel(byDegrees, flipAroundAxis);
 
             tree["cuboids"] = new IntArrayAttribute(VoxelCuboids.ToArray());
+            
+            var materialIds = (tree["materials"] as IntArrayAttribute)?.value;
+            if (materialIds != null)
+            {
+                var newMaterialIds = new int[materialIds.Length];
+                for (var i = 0; i < materialIds.Length; i++)
+                {
+                    var materialId = materialIds[i];
+
+                    if (oldBlockIdMapping.TryGetValue(materialId, out var code))
+                    {
+                        var block = worldAccessor.GetBlock(code);
+                        if (block != null)
+                        {
+                            var assetLocation = block.GetRotatedBlockCode(byDegrees);
+                            var newBlock = worldAccessor.GetBlock(assetLocation);
+                            newMaterialIds[i] = newBlock.Id;
+                        }
+                        else
+                        {
+                            newMaterialIds[i] = materialIds[i];
+                            worldAccessor.Logger.Warning("Cannot load chiseled block id mapping for rotation @ {1}, block id {0} not found block registry. Will not display correctly.", code, Pos);
+                        }
+                    }
+                    else
+                    {
+                        newMaterialIds[i] = materialIds[i];
+                        worldAccessor.Logger.Warning("Cannot load chiseled block id mapping for rotation @ {1}, block code {0} not found block registry. Will not display correctly.", BlockIds[i], Pos);
+                    }
+                }
+
+                tree["materials"] = new IntArrayAttribute(newMaterialIds);
+            }
 
             foreach (var val in Behaviors)
             {
                 if (val is IRotatable bhrot)
                 {
-                    bhrot.OnTransformed(tree, byDegrees, flipAroundAxis);
+                    bhrot.OnTransformed(worldAccessor ,tree, byDegrees, oldBlockIdMapping, oldItemIdMapping, flipAroundAxis);
                 }
             }
         }
@@ -699,7 +733,7 @@ namespace Vintagestory.GameContent
 
             this.VoxelCuboids = voxelCuboids;
 
-            bool doEmitSideAo = edgeVoxelsMissing[0] < 64 || edgeVoxelsMissing[1] < 64 || edgeVoxelsMissing[2] < 64 || edgeVoxelsMissing[3] < 64;
+            bool doEmitSideAo = edgeVoxelsMissing[0] < 64 || edgeVoxelsMissing[1] < 64 || edgeVoxelsMissing[2] < 64 || edgeVoxelsMissing[3] < 64 || edgeVoxelsMissing[4] < 64 || edgeVoxelsMissing[5] < 64;
 
             if (absorbAnyLight != doEmitSideAo)
             {
@@ -712,12 +746,18 @@ namespace Vintagestory.GameContent
                 }
             }
 
+            int emitFlags = 0;
             for (int i = 0; i < 6; i++)
             {
                 sidecenterSolid[i] = edgeCenterVoxelsMissing[i] < 5;
-                sideAlmostSolid[i] = edgeVoxelsMissing[i] <= 32;
+                if ((sideAlmostSolid[i] = edgeVoxelsMissing[i] <= 32)) emitFlags += 1 << i;
             }
-            emitSideAo = lightshv[2] < 10 && doEmitSideAo ? 0x3F : 0;
+            //if (emitFlags != 0x3F)
+            //{
+            //    if (emitFlags == 0x3E && emitFlags == 0x3D && emitFlags == 0x3B && emitFlags == 0x37) emitFlags = 0x3F;  // If only one side missing, treat as full cube
+            //    else emitFlags &= 0x30;
+            //}
+            emitSideAo = lightshv[2] < 10 && doEmitSideAo ? emitFlags : 0;
 
             if (BlockIds.Length == 1 && Api.World.GetBlock(BlockIds[0]).RenderPass == EnumChunkRenderPass.Meta)
             {
@@ -900,7 +940,7 @@ namespace Vintagestory.GameContent
                     Api.World.BlockAccessor.MarkBlockModified(Pos); // not sure why this one is needed
                 }
 
-                int chunksize = worldAccessForResolve.BlockAccessor.ChunkSize;
+                const int chunksize = GlobalConstants.ChunkSize;
                 int lx = Pos.X % chunksize;
                 int lz = Pos.X % chunksize;
 
@@ -947,7 +987,6 @@ namespace Vintagestory.GameContent
 
             return values;
         }
-
         public static int[] MaterialIdsFromAttributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
         {
             if (tree["materials"] is IntArrayAttribute)
@@ -992,7 +1031,7 @@ namespace Vintagestory.GameContent
                 return ids;
             }
         }
-
+        
         public override void ToTreeAttributes(ITreeAttribute tree)
         {
             base.ToTreeAttributes(tree);
@@ -1050,14 +1089,14 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void OnLoadCollectibleMappings(IWorldAccessor worldForNewMappings, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, int schematicSeed)
+        public override void OnLoadCollectibleMappings(IWorldAccessor worldForNewMappings, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, int schematicSeed, bool resolveImports)
         {
-            base.OnLoadCollectibleMappings(worldForNewMappings, oldBlockIdMapping, oldItemIdMapping, schematicSeed);
+            base.OnLoadCollectibleMappings(worldForNewMappings, oldBlockIdMapping, oldItemIdMapping, schematicSeed, resolveImports);
 
             for (int i = 0; i < BlockIds.Length; i++)
             {
                 AssetLocation code;
-                if (oldBlockIdMapping.TryGetValue(BlockIds[i], out code))
+                if (oldBlockIdMapping != null && oldBlockIdMapping.TryGetValue(BlockIds[i], out code))
                 {
                     Block block = worldForNewMappings.GetBlock(code);
                     if (block == null)
@@ -1070,7 +1109,12 @@ namespace Vintagestory.GameContent
                 }
                 else
                 {
-                    worldForNewMappings.Logger.Warning("Cannot load chiseled block id mapping @ {1}, block id {0} not found block registry. Will not display correctly.", BlockIds[i], Pos);
+                    // if a schematic gets rotated this BlockId is already the correct one, but if we cant find it either something is wrong
+                    var block = worldForNewMappings.GetBlock(BlockIds[i]);
+                    if (block == null)
+                    {
+                        worldForNewMappings.Logger.Warning("Cannot load chiseled block id mapping @ {1}, block id {0} not found block registry. Will not display correctly.", BlockIds[i], Pos);
+                    }
                 }
             }
 
@@ -2061,9 +2105,9 @@ namespace Vintagestory.GameContent
 
         #region Worldgen
 
-        public override void OnPlacementBySchematic(ICoreServerAPI api, IBlockAccessor blockAccessor, BlockPos pos, Dictionary<int, Dictionary<int, int>> replaceBlocks, int centerrockblockid, Block layerBlock)
+        public override void OnPlacementBySchematic(ICoreServerAPI api, IBlockAccessor blockAccessor, BlockPos pos, Dictionary<int, Dictionary<int, int>> replaceBlocks, int centerrockblockid, Block layerBlock, bool resolveImports)
         {
-            base.OnPlacementBySchematic(api, blockAccessor, pos, replaceBlocks, centerrockblockid, layerBlock);
+            base.OnPlacementBySchematic(api, blockAccessor, pos, replaceBlocks, centerrockblockid, layerBlock, resolveImports);
 
             if (replaceBlocks != null)
             {

@@ -789,7 +789,7 @@ namespace Vintagestory.GameContent
             baseMaterial?.Collectible.OnStoreCollectibleMappings(Api.World, new DummySlot(baseMaterial), blockIdMapping, itemIdMapping);
         }
 
-        public override void OnLoadCollectibleMappings(IWorldAccessor worldForResolve, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, int schematicSeed)
+        public override void OnLoadCollectibleMappings(IWorldAccessor worldForResolve, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, int schematicSeed, bool resolveImports)
         {
             if (workItemStack?.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve) == false)
             {
@@ -800,8 +800,9 @@ namespace Vintagestory.GameContent
             {
                 baseMaterial = null;
             }
+            workItemStack?.Collectible.OnLoadCollectibleMappings(worldForResolve, new DummySlot(workItemStack), oldBlockIdMapping, oldItemIdMapping, resolveImports);
+            baseMaterial?.Collectible.OnLoadCollectibleMappings(worldForResolve, new DummySlot(baseMaterial), oldBlockIdMapping, oldItemIdMapping, resolveImports);
         }
-
     }
 
     public enum EnumClayFormingPacket

@@ -670,6 +670,7 @@ namespace Vintagestory.GameContent
             api.RegisterBlockEntityBehaviorClass("ControlPointLampNode", typeof(BEBehaviorControlPointLampNode));
 
             api.RegisterBlockEntityBehaviorClass("ClutterBookshelfWithLore", typeof(BEBehaviorClutterBookshelfWithLore));
+            api.RegisterBlockEntityBehaviorClass("RockRubbleFromAttributes", typeof(BEBehaviorRockRubbleFromAttributes));
         }
 
         private void RegisterDefaultCollectibleBehaviors()
@@ -847,6 +848,7 @@ namespace Vintagestory.GameContent
             api.RegisterItemClass("ItemHoneyComb", typeof(ItemHoneyComb));
             api.RegisterItemClass("ItemOpenedBeenade", typeof(ItemOpenedBeenade));
             api.RegisterItemClass("ItemClosedBeenade", typeof(ItemClosedBeenade));
+            api.RegisterItemClass("ItemSnowball", typeof(ItemSnowball));
             api.RegisterItemClass("ItemCandle", typeof(ItemCandle));
             api.RegisterItemClass("ItemWearable", typeof(ItemWearable));
             api.RegisterItemClass("ItemStackRandomizer", typeof(ItemStackRandomizer));
@@ -902,6 +904,7 @@ namespace Vintagestory.GameContent
             api.RegisterEntity("EntityBeeMob", typeof(EntityBeeMob));
             api.RegisterEntity("EntityButterfly", typeof(EntityButterfly));
             api.RegisterEntity("EntityThrownBeenade", typeof(EntityThrownBeenade));
+            api.RegisterEntity("EntityThrownSnowball", typeof(EntityThrownSnowball));
             api.RegisterEntity("EntityTrader", typeof(EntityTrader));
             api.RegisterEntity("EntityStrawDummy", typeof(EntityStrawDummy));
             api.RegisterEntity("EntityGlowingAgent", typeof(EntityGlowingAgent));

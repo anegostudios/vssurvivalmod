@@ -52,11 +52,9 @@ namespace Vintagestory.GameContent
 
         }
 
-        internal void ResolveLoot(ItemSlot slot, IWorldAccessor worldForResolve)
+        internal void ResolveLoot(ItemSlot slot, IWorldAccessor worldForResolve, bool resolveImports)
         {
-            object dval;
-            worldForResolve.Api.ObjectCache.TryGetValue("donotResolveImports", out dval);
-            if (dval is bool && (bool)dval) return;
+            if(!resolveImports) return;
 
             double diceRoll = rand.NextDouble();
 

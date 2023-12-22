@@ -76,6 +76,15 @@ namespace Vintagestory.GameContent
 
             Block block = world.BlockAccessor.GetBlock(pos, BlockLayersAccess.Fluid);
             if (block.HasBehavior<BlockBehaviorFiniteSpreadingLiquid>()) updateOwnFlowDir(block, world, pos);
+
+            // Possibly overkill? But should ensure everything is correct
+            BlockPos npos = pos.Copy();
+            foreach (var val in Cardinal.ALL)
+            {
+                npos.Set(pos.X + val.Normali.X, pos.Y, pos.Z + val.Normali.Z);
+                Block neib = world.BlockAccessor.GetBlock(npos, BlockLayersAccess.Fluid);
+                if (neib.HasBehavior<BlockBehaviorFiniteSpreadingLiquid>()) updateOwnFlowDir(neib, world, npos);
+            }
         }
 
         private void SpreadAndUpdateLiquidLevels(IWorldAccessor world, BlockPos pos)
@@ -116,7 +125,7 @@ namespace Vintagestory.GameContent
                             {
                                 int nearbySourceBlockCount = CountNearbySourceBlocks(world.BlockAccessor, pos, ourBlock);
 
-                                if (nearbySourceBlockCount >= 3)
+                                if (nearbySourceBlockCount >= 3 || (nearbySourceBlockCount == 2 && CountNearbyDiagonalSources(world.BlockAccessor, pos, ourBlock) >= 3))
                                 {
                                     world.BlockAccessor.SetBlock(GetMoreLiquidBlockId(world, pos, ourBlock), pos, BlockLayersAccess.Fluid);
 
@@ -145,6 +154,20 @@ namespace Vintagestory.GameContent
             {
                 BlockFacing.HORIZONTALS[i].IterateThruFacingOffsets(qpos);
                 Block nblock = blockAccessor.GetBlock(qpos, BlockLayersAccess.Fluid);
+                if (IsSameLiquid(ourBlock, nblock) && IsLiquidSourceBlock(nblock)) nearbySourceBlockCount++;
+            }
+            return nearbySourceBlockCount;
+        }
+
+        private int CountNearbyDiagonalSources(IBlockAccessor blockAccessor, BlockPos pos, Block ourBlock)
+        {
+            BlockPos npos = pos.Copy();
+            int nearbySourceBlockCount = 0;
+            foreach (var val in Cardinal.ALL)
+            {
+                if (!val.IsDiagnoal) continue;
+                npos.Set(pos.X + val.Normali.X, pos.Y, pos.Z + val.Normali.Z);
+                Block nblock = blockAccessor.GetBlock(npos, BlockLayersAccess.Fluid);
                 if (IsSameLiquid(ourBlock, nblock) && IsLiquidSourceBlock(nblock)) nearbySourceBlockCount++;
             }
             return nearbySourceBlockCount;
@@ -231,7 +254,7 @@ namespace Vintagestory.GameContent
                     world.BulkBlockAccessor.SetBlock(replacementBlock.BlockId, pos.DownCopy());
                 }
 
-                NotifyNeighborsOfBlockChange(pos, world);
+                UpdateNeighbouringLiquids(pos, world);
                 GenerateSteamParticles(pos, world);
                 world.PlaySoundAt(collisionReplaceSound, pos.X, pos.Y, pos.Z, null, true, 16);
             }
@@ -331,13 +354,25 @@ namespace Vintagestory.GameContent
             world.SpawnParticles(steamParticles);
         }
 
-        private void NotifyNeighborsOfBlockChange(BlockPos pos, IWorldAccessor world)
+        /// <summary>
+        /// If any neighbours (up, down, and all horizontal neighbours including diagonals) are liquids, register a callback to update them, similar to triggering OnNeighbourBlockChange()
+        /// </summary>
+        private void UpdateNeighbouringLiquids(BlockPos pos, IWorldAccessor world)
         {
-            foreach (BlockFacing facing in BlockFacing.ALLFACES)
+            // First do down and up, as they are not included in Cardinals
+            BlockPos npos = pos.DownCopy();
+            Block neib = world.BlockAccessor.GetBlock(npos, BlockLayersAccess.Fluid);
+            if (neib.HasBehavior<BlockBehaviorFiniteSpreadingLiquid>()) world.RegisterCallbackUnique(OnDelayedWaterUpdateCheck, npos.Copy(), spreadDelay);
+            npos.Up(2);
+            neib = world.BlockAccessor.GetBlock(npos, BlockLayersAccess.Fluid);
+            if (neib.HasBehavior<BlockBehaviorFiniteSpreadingLiquid>()) world.RegisterCallbackUnique(OnDelayedWaterUpdateCheck, npos.Copy(), spreadDelay);
+
+            // Now do all horizontal neighbours including the diagonals, because water blocks can have diagonal flow
+            foreach (var val in Cardinal.ALL)
             {
-                BlockPos npos = pos.AddCopy(facing);
-                Block neib = world.BlockAccessor.GetBlock(npos, BlockLayersAccess.Fluid);
-                neib.OnNeighbourBlockChange(world, npos, pos);
+                npos.Set(pos.X + val.Normali.X, pos.Y, pos.Z + val.Normali.Z);
+                neib = world.BlockAccessor.GetBlock(npos, BlockLayersAccess.Fluid);
+                if (neib.HasBehavior<BlockBehaviorFiniteSpreadingLiquid>()) world.RegisterCallbackUnique(OnDelayedWaterUpdateCheck, npos.Copy(), spreadDelay);
             }
         }
 
@@ -452,12 +487,18 @@ namespace Vintagestory.GameContent
 
                 Vec3i normal = nblock.LiquidLevel < liquidLevel ? val.Normali : val.Opposite.Normali;
 
-                anySideFree |= !val.IsDiagnoal && nblock.Replaceable >= 6000;
+                if (!val.IsDiagnoal)
+                {
+                    nblock = world.BlockAccessor.GetBlock(npos, BlockLayersAccess.Solid);
+                    anySideFree |= !nblock.SideIsSolid(npos, val.Opposite.Index / 2);
+                }
 
                 dir.X += normal.X;
                 dir.Z += normal.Z;
             }
 
+            if (Math.Abs(dir.X) > Math.Abs(dir.Z)) dir.Z = 0;  // e.g. if both W and NW flow, the non-diagonal (W) takes priority
+            else if (Math.Abs(dir.Z) > Math.Abs(dir.X)) dir.X = 0;
             dir.X = Math.Sign(dir.X);
             dir.Z = Math.Sign(dir.Z);
 
@@ -489,7 +530,6 @@ namespace Vintagestory.GameContent
             return world.GetBlock(block.CodeWithParts(flowDir.Initial, "" + liquidLevel)).BlockId;
         }
 
-        
         private int GetFallingLiquidBlockId(Block ourBlock, IWorldAccessor world)
         {
             return world.GetBlock(ourBlock.CodeWithParts("d", "6")).BlockId;
@@ -548,8 +588,11 @@ namespace Vintagestory.GameContent
 
             Block neighborLiquid = world.BlockAccessor.GetBlock(npos, BlockLayersAccess.Fluid);
 
-            bool isSameLiquid = ourblock.LiquidCode == neighborLiquid.LiquidCode;
-            if (isSameLiquid) return neighborLiquid.LiquidLevel < ourblock.LiquidLevel;
+            // If the same liquids, we can replace if the neighbour liquid is at a lower level
+            if (neighborLiquid.LiquidCode == ourblock.LiquidCode) return neighborLiquid.LiquidLevel < ourblock.LiquidLevel;
+
+            // This is a special case intended for sea water / freshwater boundaries (until we have Brackish water blocks or another solution) - don't try to replace fresh water source blocks
+            if (neighborLiquid.LiquidLevel == MAXLEVEL && !IsDifferentCollidableLiquid(ourblock, neighborLiquid)) return false;
 
             if (neighborLiquid.BlockId != 0) return neighborLiquid.Replaceable >= ourblock.Replaceable;    // New physics: the more replaceable liquid can be overcome by the less replaceable
 

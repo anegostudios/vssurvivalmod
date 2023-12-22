@@ -58,7 +58,7 @@ namespace Vintagestory.ServerMods
     {
         protected ICoreServerAPI api;
         public TiledDungeonConfig Tcfg;
-        bool replaceMetaBlocks;
+        // bool replaceMetaBlocks;
 
         public override void StartServerSide(ICoreServerAPI api)
         {
@@ -82,8 +82,6 @@ namespace Vintagestory.ServerMods
             IAsset asset = api.Assets.Get("worldgen/tileddungeons.json");
             Tcfg = asset.ToObject<TiledDungeonConfig>();
             Tcfg.Init(api);
-
-            replaceMetaBlocks = !api.ObjectCache.ContainsKey("donotResolveImports") || (bool)api.ObjectCache["donotResolveImports"] != true;
         }
 
         private TextCommandResult OnCmdTiledCungeonCode(TextCommandCallingArgs args)
@@ -237,7 +235,7 @@ namespace Vintagestory.ServerMods
                     if (dungeon.TilesByCode.TryGetValue(placeTask.TileCode, out var tile))
                     {
                         var rndval = rnd.NextInt(tile.ResolvedSchematic.Length);
-                        tile.ResolvedSchematic[rndval][placeTask.Rotation].Place(ba, api.World, placeTask.Pos, replaceMetaBlocks);
+                        tile.ResolvedSchematic[rndval][placeTask.Rotation].Place(ba, api.World, placeTask.Pos, WorldEdit.WorldEdit.ReplaceMetaBlocks);
                     }
                     
                 }

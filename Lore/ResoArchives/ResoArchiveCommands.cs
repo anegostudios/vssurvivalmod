@@ -31,6 +31,11 @@ namespace Vintagestory.GameContent
                     .WithArgs(parsers.OptionalWord("lorecode"))
                     .HandleWith(onSetLoreCode)
                 .EndSub()
+                .BeginSub("settranslateable")
+                    .WithDesc("Set the looked at block as translatable, supported by sign blocks")
+                    .WithArgs(parsers.Bool("on or off"))
+                    .HandleWith(onSetTranslateable)
+                .EndSub()
                 .BeginSub("lampncfg")
                     .WithDesc("Set the network code of a light source")
                     .WithArgs(parsers.OptionalWord("networkcode"))
@@ -342,6 +347,27 @@ namespace Vintagestory.GameContent
         }
 
 
+        private TextCommandResult onSetTranslateable(TextCommandCallingArgs args)
+        {
+            BlockPos pos = (args.Caller.Player == null) ? args.Caller.Pos.AsBlockPos : args.Caller.Player?.CurrentBlockSelection?.Position;
+
+            if (args.Caller.Player != null && pos == null)
+            {
+                return TextCommandResult.Error("Need to look at a block");
+            }
+
+            var bec = sapi.World.BlockAccessor.GetBlockEntity(pos) as BlockEntitySign;
+            if (bec == null)
+            {
+                return TextCommandResult.Error("Selected block is not sign block");
+            }
+
+            bool on = (bool)args[0];
+
+            bec.Translateable = on;
+
+            return TextCommandResult.Success("Translatable " + (on ? "enabled" : "disabled"));
+        }
 
         private TextCommandResult onSetLoreCode(TextCommandCallingArgs args)
         {

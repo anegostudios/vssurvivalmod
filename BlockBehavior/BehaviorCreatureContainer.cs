@@ -9,7 +9,6 @@ using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
-using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -31,15 +30,15 @@ namespace Vintagestory.GameContent
             return itemStack.Attributes?.HasAttribute("animalSerialized") == true;
         }
 
-        public double GetStillAliveDays(IWorldAccessor world, ItemStack itemStack)
+        public static double GetStillAliveDays(IWorldAccessor world, ItemStack itemStack)
         {
-            return CreatureSurvivalDays - (world.Calendar.TotalDays - itemStack.Attributes.GetDouble("totalDaysCaught"));
+            double creatureSurvivalDays = itemStack.Block.GetBehavior<BlockBehaviorCreatureContainer>().CreatureSurvivalDays;
+
+            return creatureSurvivalDays - (world.Calendar.TotalDays - itemStack.Attributes.GetDouble("totalDaysCaught"));
         }
 
         static Dictionary<string, MultiTextureMeshRef> containedMeshrefs = new Dictionary<string, MultiTextureMeshRef>();
-
-        static float accum = 0f;
-
+        
         public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
         {
             if (HasAnimal(itemstack))
@@ -129,7 +128,7 @@ namespace Vintagestory.GameContent
                     return;
                 }
 
-                if (!ReleaseCreature(slot, byEntity.World, blockSel, byEntity))
+                if (!ReleaseCreature(slot, blockSel, byEntity))
                 {
                     sapi?.SendIngameError(plr, "nospace", Lang.Get("Not enough space to release animal here"));
                 }
@@ -167,9 +166,9 @@ namespace Vintagestory.GameContent
             return entity.Properties.Attributes?.IsTrue("basketCatchable") == true && entity.WatchedAttributes.GetAsInt("generation") > 4 && entity.Alive;
         }
 
-        public void CatchCreature(ItemSlot slot, Entity entity)
+        public static void CatchCreature(ItemSlot slot, Entity entity)
         {
-            if (api.World.Side == EnumAppSide.Client) return;
+            if (entity.World.Side == EnumAppSide.Client) return;
 
             var stack = slot.Itemstack;
 
@@ -178,32 +177,34 @@ namespace Vintagestory.GameContent
                 BinaryWriter writer = new BinaryWriter(ms);
                 entity.ToBytes(writer, false);
 
-                stack.Attributes.SetString("classname", api.ClassRegistry.GetEntityClassName(entity.GetType()));
+                stack.Attributes.SetString("classname", entity.Api.ClassRegistry.GetEntityClassName(entity.GetType()));
                 stack.Attributes.SetString("creaturecode", entity.Code.ToShortString());
                 stack.Attributes.SetBytes("animalSerialized", ms.ToArray());
 
                 double totalDaysReleased = entity.Attributes.GetDouble("totalDaysReleased");
                 double catchedDays = totalDaysReleased - entity.Attributes.GetDouble("totalDaysCaught");
-                double releasedDays = api.World.Calendar.TotalDays - totalDaysReleased;
+                double releasedDays = entity.World.Calendar.TotalDays - totalDaysReleased;
 
                 // A released creature should recover from being in a basket, at twice the speed that it can survive in a basket
                 // If it can survive 1 day in a basket
                 // It should fully recover after 0.5 days
                 double unrecoveredDays = Math.Max(0, catchedDays - releasedDays * 2);
 
-                stack.Attributes.SetDouble("totalDaysCaught", api.World.Calendar.TotalDays - unrecoveredDays);
+                stack.Attributes.SetDouble("totalDaysCaught", entity.World.Calendar.TotalDays - unrecoveredDays);
             }
 
             entity.Die(EnumDespawnReason.PickedUp);
         }
 
-        public bool ReleaseCreature(ItemSlot slot, IWorldAccessor world, BlockSelection blockSel, Entity byEntity) 
+        public static bool ReleaseCreature(ItemSlot slot, BlockSelection blockSel, Entity byEntity) 
         {
+            IWorldAccessor world = byEntity.World;
+
             if (world.Side == EnumAppSide.Client) return true;
 
             string classname = slot.Itemstack.Attributes.GetString("classname");
             string creaturecode = slot.Itemstack.Attributes.GetString("creaturecode");
-            Entity entity = api.ClassRegistry.CreateEntity(classname);
+            Entity entity = world.Api.ClassRegistry.CreateEntity(classname);
             var type = world.EntityTypes.FirstOrDefault(type => type.Code.ToShortString() == creaturecode);
             if (type == null) return false;
             var stack = slot.Itemstack;
@@ -211,7 +212,7 @@ namespace Vintagestory.GameContent
             using (MemoryStream ms = new MemoryStream(slot.Itemstack.Attributes.GetBytes("animalSerialized")))
             {
                 BinaryReader reader = new BinaryReader(ms);
-                entity.FromBytes(reader, false);
+                entity.FromBytes(reader, false, ((IServerWorldAccessor)world).RemappedEntities);
 
                 Vec3d spawnPos = blockSel.FullPosition;
 
@@ -240,7 +241,7 @@ namespace Vintagestory.GameContent
                 world.SpawnEntity(entity);
                 if (GetStillAliveDays(world, slot.Itemstack) < 0)
                 {
-                    (api as ICoreServerAPI).Event.EnqueueMainThreadTask(() =>
+                    (world.Api as ICoreServerAPI).Event.EnqueueMainThreadTask(() =>
                     {
                         entity.Properties.ResolvedSounds = null;
                         entity.Die(EnumDespawnReason.Death, new DamageSource() { CauseEntity = byEntity, Type = EnumDamageType.Hunger });

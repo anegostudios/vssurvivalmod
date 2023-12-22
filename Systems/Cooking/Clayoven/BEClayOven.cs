@@ -78,7 +78,7 @@ namespace Vintagestory.GameContent
         ILoadedSound ambientSound;
 
         /// <summary>
-        /// Slots 0-3: Baking items. Slot 0: Fuel
+        /// Slots 0-3: Baking items. Slot 0: Fuel  Note: Slot 0 doubles up for both uses, as an oven cannot hold both fuel and baking items at the same time!
         /// </summary>
         internal InventoryOven ovenInv;
 
@@ -301,11 +301,10 @@ namespace Vintagestory.GameContent
 
         protected virtual bool TryTake(IPlayer byPlayer)
         {
+            if (IsBurning) return false;    // We cannot remove fuel once it is lit
+
             for (int index = bakeableCapacity; index >= 0; index--)
             {
-                if (index == bakeableCapacity && !FuelSlot.Empty && FuelSlot.Itemstack.Collectible.Attributes?.IsTrue("isClayOvenFuel") == true)
-                    continue;
-
                 if (!ovenInv[index].Empty)
                 {
                     ItemStack stack = ovenInv[index].TakeOut(1);
@@ -778,7 +777,7 @@ namespace Vintagestory.GameContent
                     new Matrixf()
                     .Translate(off.X, off.Y, off.Z)
                     .Translate(0.5f, 0, 0.5f)
-                    .RotateYDeg(rotationDeg)
+                    .RotateYDeg(rotationDeg + (OvenContentMode == EnumOvenContentMode.Firewood ? 270 : 0))
                     .Scale(0.9f, scaleY, 0.9f)
                     .Translate(-0.5f, 0, -0.5f)
                     .Values

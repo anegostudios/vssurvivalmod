@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
@@ -35,7 +36,6 @@ namespace Vintagestory.ServerMods
         [JsonProperty]
         public int MaxYRoughness = 999;
         
-        protected int chunksize;
         protected int worldheight;
 
         protected int radiusX, radiusZ;
@@ -45,7 +45,6 @@ namespace Vintagestory.ServerMods
 
         public AlluvialDepositGenerator(ICoreServerAPI api, DepositVariant variant, LCGRandom depositRand, NormalizedSimplexNoise noiseGen) : base(api, variant, depositRand, noiseGen)
         {
-            chunksize = api.World.BlockAccessor.ChunkSize;
             worldheight = api.World.BlockAccessor.MapSizeY;
         }
 
@@ -72,7 +71,6 @@ namespace Vintagestory.ServerMods
         {
             int radius = Math.Min(64, (int)Radius.nextFloat(1, DepositRand));
             if (radius <= 0) return;
-            int chunksize = this.chunksize;
 
             // Let's deform that perfect circle a bit (+/- 25%)
             float deform = GameMath.Clamp(DepositRand.NextFloat() - 0.5f, -0.25f, 0.25f);

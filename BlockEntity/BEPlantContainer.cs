@@ -83,7 +83,7 @@ namespace Vintagestory.GameContent
                         BitmapRef bmp = capi.Assets.TryGet(textureLoc.Clone().WithPathPrefixOnce("textures/").WithPathAppendixOnce(".png"))?.ToBitmap(capi);
                         if (bmp != null)
                         {
-                            capi.BlockTextureAtlas.InsertTextureCached(textureLoc, bmp, out _, out texPos);
+                            capi.BlockTextureAtlas.GetOrInsertTexture(textureLoc, out _, out texPos, () => bmp);
                             bmp.Dispose();
                         }
                     }
@@ -99,7 +99,7 @@ namespace Vintagestory.GameContent
                     BitmapRef bmp = capi.Assets.TryGet(textureLoc.Clone().WithPathPrefixOnce("textures/").WithPathAppendixOnce(".png"))?.ToBitmap(capi);
                     if (bmp != null)
                     {
-                        capi.BlockTextureAtlas.InsertTextureCached(textureLoc, bmp, out _, out texPos);
+                        capi.BlockTextureAtlas.GetOrInsertTexture(textureLoc, out _, out texPos, () => bmp);
                         bmp.Dispose();
                         return texPos;
                     }

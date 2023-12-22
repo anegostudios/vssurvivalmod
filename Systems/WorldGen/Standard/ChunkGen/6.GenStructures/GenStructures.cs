@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using Vintagestory.API.Common;
-using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
@@ -91,7 +90,6 @@ namespace Vintagestory.ServerMods
 
         public void initWorldGen()
         {
-            chunksize = api.WorldManager.ChunkSize;
             worldheight = api.WorldManager.MapSizeY;
             regionChunkSize = api.WorldManager.RegionSize / chunksize;
 
@@ -161,7 +159,7 @@ namespace Vintagestory.ServerMods
 
         private void DoGenStructures(IMapRegion region, int chunkX, int chunkZ, bool postPass, ITreeAttribute chunkGenParams = null)
         {
-            BlockPos pos = new BlockPos();
+            BlockPos startPos = new BlockPos();
 
             ITreeAttribute chanceModTree = null;
             ITreeAttribute maxQuantityModTree = null;
@@ -186,7 +184,7 @@ namespace Vintagestory.ServerMods
             for (int i = 0; i < shuffledStructures.Length; i++)
             {
                 WorldGenStructure struc = shuffledStructures[i];
-                 if (struc.PostPass != postPass) continue;
+                if (struc.PostPass != postPass) continue;
 
                 float chance = struc.Chance * scfg.ChanceMultiplier;
                 int toGenerate = 9999;
@@ -212,19 +210,21 @@ namespace Vintagestory.ServerMods
                     {
                         if (struc.Depth != null)
                         {
-                            pos.Set(chunkX * chunksize + dx, ySurface - (int)struc.Depth.nextFloat(1, strucRand), chunkZ * chunksize + dz);
+                            startPos.Set(chunkX * chunksize + dx, ySurface - (int)struc.Depth.nextFloat(1, strucRand), chunkZ * chunksize + dz);
                         }
                         else
                         {
-                            pos.Set(chunkX * chunksize + dx, 8 + strucRand.NextInt(Math.Max(1, ySurface - 8 - 5)), chunkZ * chunksize + dz);
+                            startPos.Set(chunkX * chunksize + dx, 8 + strucRand.NextInt(Math.Max(1, ySurface - 8 - 5)), chunkZ * chunksize + dz);
                         }
                     }
                     else
                     {
-                        pos.Set(chunkX * chunksize + dx, ySurface, chunkZ * chunksize + dz);
+                        startPos.Set(chunkX * chunksize + dx, ySurface, chunkZ * chunksize + dz);
                     }
 
-                    if (struc.TryGenerate(worldgenBlockAccessor, api.World, pos, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight))
+                    if (startPos.Y <= 0) continue;
+
+                    if (struc.TryGenerate(worldgenBlockAccessor, api.World, startPos, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight))
                     {
                         Cuboidi loc = struc.LastPlacedSchematicLocation;
                         
@@ -275,8 +275,8 @@ namespace Vintagestory.ServerMods
         {
             BlockPos pos = new BlockPos();
 
-            int dx = strucRand.NextInt(chunksize);
-            int dz = strucRand.NextInt(chunksize);
+            int dx = chunksize / 2;
+            int dz = chunksize / 2;
             int ySurface = heightmap[dz * chunksize + dx];
             if (ySurface <= 0 || ySurface >= worldheight - 15) return false;
 

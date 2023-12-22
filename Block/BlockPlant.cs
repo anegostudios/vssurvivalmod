@@ -159,8 +159,6 @@ namespace Vintagestory.GameContent
             {
                 Block block = blockAccessor.GetBlock(pos.X, pos.Y - 1, pos.Z);
                 if (block.Fertility <= 0) return false;
-                //block = blockAccessor.GetBlock(pos, BlockLayersAccess.Fluid);
-                //return !block.SideSolid.Any(); wtf is his here for? it breaks reeds when they are in ce
                 return true;
             }
         }

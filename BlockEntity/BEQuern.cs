@@ -267,8 +267,6 @@ namespace Vintagestory.GameContent
 
 
             // Only tick on the server and merely sync to client
-
-            // Use up fuel
             if (CanGrind() && grindSpeed > 0)
             {
                 inputGrindTime += dt * grindSpeed;
@@ -653,10 +651,11 @@ namespace Vintagestory.GameContent
                 {
                     blockIdMapping[slot.Itemstack.Block.BlockId] = slot.Itemstack.Block.Code;
                 }
+                slot.Itemstack?.Collectible.OnStoreCollectibleMappings(Api.World, slot , blockIdMapping, itemIdMapping);
             }
         }
 
-        public override void OnLoadCollectibleMappings(IWorldAccessor worldForResolve, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, int schematicSeed)
+        public override void OnLoadCollectibleMappings(IWorldAccessor worldForResolve, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, int schematicSeed, bool resolveImports)
         {
             foreach (var slot in Inventory)
             {
@@ -665,6 +664,7 @@ namespace Vintagestory.GameContent
                 {
                     slot.Itemstack = null;
                 }
+                slot.Itemstack?.Collectible.OnLoadCollectibleMappings(worldForResolve, slot , oldBlockIdMapping, oldItemIdMapping, resolveImports);
             }
         }
 

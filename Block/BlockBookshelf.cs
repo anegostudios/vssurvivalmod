@@ -257,5 +257,16 @@ namespace Vintagestory.GameContent
         {
             return new ItemStack[] { OnPickBlock(world, pos) };
         }
+
+        public override void OnUnloaded(ICoreAPI api)
+        {
+            base.OnUnloaded(api);
+
+            var meshRefs = ObjectCacheUtil.TryGet< Dictionary<string, MultiTextureMeshRef>>(api, "BookshelfMeshesInventory");
+            if (meshRefs != null)
+            {
+                foreach (var val in meshRefs) val.Value?.Dispose();
+            }
+        }
     }
 }

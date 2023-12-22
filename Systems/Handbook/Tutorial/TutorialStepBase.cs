@@ -102,6 +102,8 @@ namespace Vintagestory.GameContent
         public override void Restart()
         {
             hotkeysPressed.Clear();
+            deferredActionTrigger = EnumEntityAction.None;
+            deferredActionPreReq = EnumEntityAction.None;
         }
 
         public override void Skip()
@@ -125,21 +127,40 @@ namespace Vintagestory.GameContent
 
 
         HashSet<EnumEntityAction> activeActions = new HashSet<EnumEntityAction>();
+        EnumEntityAction deferredActionTrigger = EnumEntityAction.None;
+        EnumEntityAction deferredActionPreReq = EnumEntityAction.None;
 
         public override bool OnAction(EnumEntityAction action, bool on)
         {
             if (on) activeActions.Add(action);
             else activeActions.Remove(action);
 
+            EnumEntityAction preCondition = action == EnumEntityAction.Sprint ? EnumEntityAction.Forward : EnumEntityAction.None;
+
             if (on && actionToHotkeyMapping.TryGetValue(action, out var keycode))
             {
-                if (keycode == "sprint")
+                if (preCondition != EnumEntityAction.None && !activeActions.Contains(preCondition))
                 {
-                    if (activeActions.Contains(EnumEntityAction.Sprint) && activeActions.Contains(EnumEntityAction.Forward)) return OnHotkeyPressed(keycode, null);
+                    deferredActionTrigger = preCondition;
+                    deferredActionPreReq = action;
                     return false;
                 }
 
+                if (action == deferredActionTrigger && activeActions.Contains(deferredActionPreReq) && actionToHotkeyMapping.TryGetValue(deferredActionPreReq, out var keycode2))
+                {
+                    deferredActionTrigger = EnumEntityAction.None;
+                    deferredActionPreReq = EnumEntityAction.None;
+                    bool preReqResult = OnHotkeyPressed(keycode2, null);
+                    return OnHotkeyPressed(keycode, null) || preReqResult;
+                }
+
                 return OnHotkeyPressed(keycode, null);
+            }
+
+            if (action == deferredActionPreReq && !on)
+            {
+                deferredActionTrigger = EnumEntityAction.None;
+                deferredActionPreReq = EnumEntityAction.None;
             }
 
             return false;

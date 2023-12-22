@@ -32,6 +32,8 @@ namespace Vintagestory.GameContent
 
         BlockSign blockSign;
 
+        public bool Translateable { get; set; }
+
         public virtual float MeshAngleRad
         {
             get { return angleRad; }
@@ -53,6 +55,8 @@ namespace Vintagestory.GameContent
             }
         }
 
+        
+
         public override void Initialize(ICoreAPI api)
         {
             base.Initialize(api);
@@ -63,6 +67,7 @@ namespace Vintagestory.GameContent
             {
                 signRenderer = new BlockEntitySignRenderer(Pos, (ICoreClientAPI)api, blockSign?.signConfig.CopyWithFontSize(this.fontSize));
                 signRenderer.fontSize = this.fontSize;
+                signRenderer.translateable = this.Translateable;
 
                 if (text.Length > 0) signRenderer.SetNewText(text, color);
 
@@ -97,9 +102,15 @@ namespace Vintagestory.GameContent
                 MeshAngleRad = tree.GetFloat("meshAngle", 0);
             }
 
-            signRenderer?.SetNewText(text, color);
-
             fontSize = tree.GetFloat("fontSize", blockSign?.signConfig?.FontSize ?? 20);
+            Translateable = tree.GetBool("translateable");
+
+            if (signRenderer != null)
+            {
+                signRenderer.fontSize = fontSize;
+                signRenderer.translateable = Translateable;
+                signRenderer.SetNewText(text, color);
+            }
         }
 
         public override void ToTreeAttributes(ITreeAttribute tree)
@@ -109,6 +120,7 @@ namespace Vintagestory.GameContent
             tree.SetString("text", text);
             tree.SetFloat("meshAngle", MeshAngleRad);
             tree.SetFloat("fontSize", fontSize);
+            tree.SetBool("translateable", Translateable);
         }
 
         public override void OnReceivedClientPacket(IPlayer player, int packetid, byte[] data)

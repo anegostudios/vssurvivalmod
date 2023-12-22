@@ -286,79 +286,91 @@ namespace Vintagestory.GameContent
             EntityProperties props = capi.World.GetEntityType(new AssetLocation("player"));
             Shape entityShape = props.Client.LoadedShape;
             AssetLocation shapePathForLogging = props.Client.Shape.Base;
+            Shape newShape;
 
-            Shape newShape = new Shape()
+            bool iswearableAttachment = attrObj.IsTrue("wearableAttachment");
+            if (!iswearableAttachment)
             {
-                Elements = entityShape.CloneElements(),
-                Animations = entityShape.Animations,
-                AnimationsByCrc32 = entityShape.AnimationsByCrc32,
-                AttachmentPointsByCode = entityShape.AttachmentPointsByCode,
-                JointsById = entityShape.JointsById,
-                TextureWidth = entityShape.TextureWidth,
-                TextureHeight = entityShape.TextureHeight,
-                Textures = null,
-            };
-
-            CompositeShape compArmorShape = !attrObj["attachShape"].Exists ? (itemstack.Class == EnumItemClass.Item ? itemstack.Item.Shape : itemstack.Block.Shape) : attrObj["attachShape"].AsObject<CompositeShape>(null, itemstack.Collectible.Code.Domain);
-
-            if (compArmorShape == null)
-            {
-                capi.World.Logger.Warning("Entity armor {0} {1} does not define a shape through either the shape property or the attachShape Attribute. Armor pieces will be invisible.", itemstack.Class, itemstack.Collectible.Code);
-                return null;
+                // No need to step parent anything if its just a texture on the seraph
+                newShape = entityShape;
             }
-
-            AssetLocation shapePath = compArmorShape.Base.CopyWithPath("shapes/" + compArmorShape.Base.Path + ".json");
-
-            Shape armorShape = API.Common.Shape.TryGet(capi, shapePath);
-            if (armorShape == null)
+            else
             {
-                capi.World.Logger.Warning("Entity wearable shape {0} defined in {1} {2} not found or errored, was supposed to be at {3}. Armor piece will be invisible.", compArmorShape.Base, itemstack.Class, itemstack.Collectible.Code, shapePath);
-                return null;
-            }
-
-            newShape.Textures = armorShape.Textures;
-
-            if (armorShape.Textures.Count > 0 && armorShape.TextureSizes.Count == 0)
-            {
-                foreach (var val in armorShape.Textures)
+                newShape = new Shape()
                 {
-                    armorShape.TextureSizes.Add(val.Key, new int[] { armorShape.TextureWidth, armorShape.TextureHeight });
+                    Elements = entityShape.CloneElements(),
+                    Animations = entityShape.Animations,
+                    AnimationsByCrc32 = entityShape.AnimationsByCrc32,
+                    AttachmentPointsByCode = entityShape.AttachmentPointsByCode,
+                    JointsById = entityShape.JointsById,
+                    TextureWidth = entityShape.TextureWidth,
+                    TextureHeight = entityShape.TextureHeight,
+                    Textures = null,
+                };
+
+                CompositeShape compArmorShape = !attrObj["attachShape"].Exists ? (itemstack.Class == EnumItemClass.Item ? itemstack.Item.Shape : itemstack.Block.Shape) : attrObj["attachShape"].AsObject<CompositeShape>(null, itemstack.Collectible.Code.Domain);
+
+                if (compArmorShape == null)
+                {
+                    capi.World.Logger.Warning("Entity armor {0} {1} does not define a shape through either the shape property or the attachShape Attribute. Armor pieces will be invisible.", itemstack.Class, itemstack.Collectible.Code);
+                    return null;
                 }
-            }
 
-            foreach (var val in armorShape.TextureSizes)
-            {
-                newShape.TextureSizes[val.Key] = val.Value;
-            }
+                AssetLocation shapePath = compArmorShape.Base.CopyWithPath("shapes/" + compArmorShape.Base.Path + ".json");
 
-            foreach (var val in armorShape.Elements)
-            {
-                ShapeElement elem;
-
-                if (val.StepParentName != null)
+                Shape armorShape = API.Common.Shape.TryGet(capi, shapePath);
+                if (armorShape == null)
                 {
-                    elem = newShape.GetElementByName(val.StepParentName, StringComparison.InvariantCultureIgnoreCase);
-                    if (elem == null)
+                    capi.World.Logger.Warning("Entity wearable shape {0} defined in {1} {2} not found or errored, was supposed to be at {3}. Armor piece will be invisible.", compArmorShape.Base, itemstack.Class, itemstack.Collectible.Code, shapePath);
+                    return null;
+                }
+
+                newShape.Textures = armorShape.Textures;
+
+                if (armorShape.Textures.Count > 0 && armorShape.TextureSizes.Count == 0)
+                {
+                    foreach (var val in armorShape.Textures)
                     {
-                        capi.World.Logger.Warning("Entity wearable shape {0} defined in {1} {2} requires step parent element with name {3}, but no such element was found in shape {3}. Will not be visible.", compArmorShape.Base, itemstack.Class, itemstack.Collectible.Code, val.StepParentName, shapePathForLogging);
-                        continue;
+                        armorShape.TextureSizes.Add(val.Key, new int[] { armorShape.TextureWidth, armorShape.TextureHeight });
                     }
                 }
-                else
+
+                foreach (var val in armorShape.TextureSizes)
                 {
-                    capi.World.Logger.Warning("Entity wearable shape element {0} in shape {1} defined in {2} {3} did not define a step parent element. Will not be visible.", val.Name, compArmorShape.Base, itemstack.Class, itemstack.Collectible.Code);
-                    continue;
+                    newShape.TextureSizes[val.Key] = val.Value;
                 }
 
-                if (elem.Children == null)
+                foreach (var val in armorShape.Elements)
                 {
-                    elem.Children = new ShapeElement[] { val };
-                }
-                else
-                {
-                    elem.Children = elem.Children.Append(val);
+                    ShapeElement elem;
+
+                    if (val.StepParentName != null)
+                    {
+                        elem = newShape.GetElementByName(val.StepParentName, StringComparison.InvariantCultureIgnoreCase);
+                        if (elem == null)
+                        {
+                            capi.World.Logger.Warning("Entity wearable shape {0} defined in {1} {2} requires step parent element with name {3}, but no such element was found in shape {3}. Will not be visible.", compArmorShape.Base, itemstack.Class, itemstack.Collectible.Code, val.StepParentName, shapePathForLogging);
+                            continue;
+                        }
+                    }
+                    else
+                    {
+                        capi.World.Logger.Warning("Entity wearable shape element {0} in shape {1} defined in {2} {3} did not define a step parent element. Will not be visible.", val.Name, compArmorShape.Base, itemstack.Class, itemstack.Collectible.Code);
+                        continue;
+                    }
+
+                    if (elem.Children == null)
+                    {
+                        elem.Children = new ShapeElement[] { val };
+                    }
+                    else
+                    {
+                        elem.Children = elem.Children.Append(val);
+                    }
                 }
             }
+
+
 
             MeshData meshdata;
 

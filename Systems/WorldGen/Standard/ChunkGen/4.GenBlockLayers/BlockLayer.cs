@@ -20,6 +20,10 @@ namespace Vintagestory.ServerMods
         public float MinFertility = 0;
         [JsonProperty]
         public float MaxFertility = 1;
+        [JsonProperty]
+        public float MinY = 0;
+        [JsonProperty]
+        public float MaxY = 1;
 
         public int BlockId;
 
@@ -142,7 +146,7 @@ namespace Vintagestory.ServerMods
             }
         }
 
-        public int GetBlockId(double posRand, float temp, float rainRel, float fertilityRel, int firstBlockId, BlockPos pos)
+        public int GetBlockId(double posRand, float temp, float rainRel, float fertilityRel, int firstBlockId, BlockPos pos, int mapheight)
         {
             if (noiseGen != null && noiseGen.Noise(pos.X / 20.0, pos.Y / 20.0, pos.Z / 20.0) < NoiseThreshold)
             {   
@@ -160,7 +164,7 @@ namespace Vintagestory.ServerMods
                 return mapppedBlockId;
             }
 
-
+            float yrel = (float)pos.Y / mapheight;
             for (int i = 0; i < BlockCodeByMin.Length; i++)
             {
                 BlockLayerCodeByMin blcv = BlockCodeByMin[i];
@@ -168,8 +172,9 @@ namespace Vintagestory.ServerMods
                 float tempDist = Math.Abs(temp - GameMath.Max(temp, blcv.MinTemp));
                 float rainDist = Math.Abs(rainRel - GameMath.Max(rainRel, blcv.MinRain));
                 float fertDist = Math.Abs(fertilityRel - GameMath.Clamp(fertilityRel, blcv.MinFertility, blcv.MaxFertility));
+                float ydist = Math.Abs(yrel - GameMath.Clamp(yrel, blcv.MinY, blcv.MaxY)) * 10f;
 
-                if (tempDist + rainDist + fertDist <= posRand)
+                if (tempDist + rainDist + fertDist + ydist <= posRand)
                 {
                     int mapppedBlockId = blcv.BlockId;
                     if (blcv.BlockIdMapping != null)

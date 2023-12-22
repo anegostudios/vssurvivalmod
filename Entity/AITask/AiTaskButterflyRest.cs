@@ -157,19 +157,12 @@ namespace Vintagestory.GameContent
 
             if (entity.World.Rand.NextDouble() > 0.05) return true;
 
-            if (entity.EntityId == 4774)
-            {
-                int a = 1;
-            }
 
-            //if (taskState == 2)
-            {
-                var block = entity.World.BlockAccessor.GetBlock(entity.Pos.AsBlockPos.Down());
-                if (!block.SideSolid[BlockFacing.UP.Index]) return false;
+            var block = entity.World.BlockAccessor.GetBlock(entity.Pos.AsBlockPos.Down());
+            if (!block.SideSolid[BlockFacing.UP.Index]) return false;
 
-                block = entity.World.BlockAccessor.GetBlock(entity.Pos.AsBlockPos);
-                if (block.IsLiquid()) return false;
-            }
+            block = entity.World.BlockAccessor.GetBlock(entity.Pos.AsBlockPos);
+            if (block.IsLiquid()) return false;
 
             switch (reason)
             {

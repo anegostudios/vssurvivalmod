@@ -1,14 +1,14 @@
-﻿using System;
+﻿using Cairo.Freetype;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
 using VintagestoryAPI.Math.Vector;
 
 namespace Vintagestory.GameContent
@@ -49,7 +49,7 @@ namespace Vintagestory.GameContent
 
                 if (be?.BlockIds != null && be.BlockIds.Length > 0)
                 {
-                    Block block = blocks[be.getMajorityMaterial()];
+                    Block block = blocks[be.GetMajorityMaterialId()];
                     return block;
                 }
 
@@ -121,6 +121,17 @@ namespace Vintagestory.GameContent
             }
 
             return base.GetLiquidBarrierHeightOnSide(face, pos);
+        }
+
+        public override bool SideIsSolid(BlockPos pos, int faceIndex)
+        {
+            BlockEntityMicroBlock bec = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityMicroBlock;
+            if (bec != null)
+            {
+                return bec.sideAlmostSolid[faceIndex];
+            }
+
+            return false;
         }
 
         public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
@@ -211,7 +222,7 @@ namespace Vintagestory.GameContent
         {
             BlockEntityMicroBlock bemc = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityMicroBlock;
 
-            if (bemc?.BlockIds != null && bemc.sideAlmostSolid[facing.Index] && bemc.BlockIds.Length > 0 && bemc.VolumeRel >= 0.5f)
+            if (bemc?.BlockIds != null && (bemc.sideAlmostSolid[facing.Index] || bemc.sideAlmostSolid[facing.Opposite.Index]) && bemc.BlockIds.Length > 0 && bemc.VolumeRel >= 0.5f)
             {
                 Block block = api.World.GetBlock(bemc.BlockIds[0]);
                 var mat = block.BlockMaterial;
@@ -340,7 +351,7 @@ namespace Vintagestory.GameContent
                 
                 if (be?.BlockIds != null && be.BlockIds.Length > 0)
                 {
-                    var block = api.World.Blocks[be.getMajorityMaterial()];
+                    var block = api.World.Blocks[be.GetMajorityMaterialId()];
                     return block.BlockMaterial;
                 }
             } else
@@ -365,6 +376,7 @@ namespace Vintagestory.GameContent
 
         public virtual bool IsSoilNonSoilMix(BlockEntityMicroBlock be)
         {
+            if (be == null) return false;
             bool hasSoil = false;
             bool hasNonSoil = false;
 
@@ -384,10 +396,10 @@ namespace Vintagestory.GameContent
             return bec?.DoEmitSideAo(facing.Index) ?? base.DoEmitSideAo(caller, facing);
         }
 
-        public override bool DoEmitSideAoByFlag(IGeometryTester caller, Vec3iAndFacingFlags vec)
+        public override bool DoEmitSideAoByFlag(IGeometryTester caller, Vec3iAndFacingFlags vec, int flags)
         {
             BlockEntityMicroBlock bec = caller.GetCurrentBlockEntityOnSide(vec) as BlockEntityMicroBlock;
-            return bec?.DoEmitSideAoByFlag(vec.OppositeFlags) ?? base.DoEmitSideAoByFlag(caller, vec);
+            return bec?.DoEmitSideAoByFlag(flags) ?? base.DoEmitSideAoByFlag(caller, vec, flags);
         }
 
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
@@ -413,6 +425,23 @@ namespace Vintagestory.GameContent
             if (Attributes?.IsTrue("dropSelf") == true)
             {
                 return new ItemStack[] { OnPickBlock(world, pos) };
+            }
+
+            BlockEntityMicroBlock be = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityMicroBlock;
+            if (be != null)
+            {
+                // Ruin hax: Drop a few stones rock typed blocks
+
+                var block = world.Blocks[be.GetMajorityMaterialId()];
+                string rocktype = block.Variant["rock"];
+                if (block.BlockMaterial == EnumBlockMaterial.Stone && rocktype != null)
+                {
+                    int q = GameMath.RoundRandom(world.Rand, be.VolumeRel * 4 * dropQuantityMultiplier);
+                    if (q <= 0) return new ItemStack[0];
+
+                    var stack = new ItemStack(world.GetItem(AssetLocation.Create("stone-" + rocktype, Code.Domain)));
+                    while (q-- > 0) world.SpawnItemEntity(stack, pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                }
             }
 
             return new ItemStack[0];
@@ -595,7 +624,9 @@ namespace Vintagestory.GameContent
             BlockEntityMicroBlock be = capi.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityMicroBlock;
             if (be?.BlockIds != null && be.BlockIds.Length > 0)
             {
-                Block block = capi.World.GetBlock(be.BlockIds[0]);
+                int blockid = be.GetMajorityMaterialId(blockid => capi.World.Blocks[blockid].BlockMaterial != EnumBlockMaterial.Meta);
+                Block block = capi.World.Blocks[blockid];
+
                 if (block is BlockMicroBlock) return 0; // Prevent-chisel-ception. Happened to WQP, not sure why
 
                 return block.GetRandomColor(capi, pos, facing, rndIndex);
@@ -657,22 +688,33 @@ namespace Vintagestory.GameContent
             return base.GetPlacedBlockName(world, pos);
         }
 
-
-        public override Block GetSnowCoveredVariant(BlockPos pos, float snowLevel)
-        {
-            return base.GetSnowCoveredVariant(pos, snowLevel);
-        }
-
-
         public override void PerformSnowLevelUpdate(IBulkBlockAccessor ba, BlockPos pos, Block newBlock, float snowLevel)
         {
-            if (newBlock.Id != Id && (BlockMaterial == EnumBlockMaterial.Snow || BlockId == 0 || this.FirstCodePart() == newBlock.FirstCodePart()))
+            if (newBlock.Id != Id && (BlockMaterial == EnumBlockMaterial.Snow || BlockId == 0 || FirstCodePart() == newBlock.FirstCodePart()))
             {
                 ba.ExchangeBlock(newBlock.Id, pos);
             }
         }
-
-
-
+        
+        // public override void OnLoadCollectibleMappings(IWorldAccessor worldForResolve, ItemSlot inSlot, Dictionary<int, AssetLocation> oldBlockIdMapping,
+        //     Dictionary<int, AssetLocation> oldItemIdMapping, bool resolveImports)
+        public override void OnLoadCollectibleMappings(IWorldAccessor worldForResolve, ItemSlot inSlot, Dictionary<int, AssetLocation> oldBlockIdMapping,
+            Dictionary<int, AssetLocation> oldItemIdMapping, bool resolveImports)
+        {
+            var blockIds = BlockEntityMicroBlock.MaterialIdsFromAttributes(inSlot.Itemstack.Attributes, worldForResolve);
+            foreach (var blockCode in oldBlockIdMapping)
+            {
+                var index = blockIds.IndexOf(blockCode.Key);
+                if (index != -1)
+                {
+                    var block = worldForResolve.GetBlock(blockCode.Value);
+                    if (block != null)
+                    {
+                        blockIds[index] = block.Id;
+                    }
+                }
+            }
+            inSlot.Itemstack.Attributes["materials"] = new IntArrayAttribute(blockIds);
+        }
     }
 }

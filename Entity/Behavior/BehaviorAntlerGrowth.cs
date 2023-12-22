@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Reflection;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
@@ -16,18 +15,16 @@ namespace Vintagestory.GameContent
         float grownDurationMonths;
         float shedDurationMonths;
 
-        int maxGrowth;
+        int MaxGrowth
+        {
+            get => entity.WatchedAttributes.GetInt("maxGrowth", 0);
+            set => entity.WatchedAttributes.SetInt("maxGrowth", value);
+        }
 
         double LastShedTotalDays
         {
-            get
-            {
-                return entity.WatchedAttributes.GetDouble("lastShedTotalDays", -1);
-            }
-            set
-            {
-                entity.WatchedAttributes.SetDouble("lastShedTotalDays", value);
-            }
+            get => entity.WatchedAttributes.GetDouble("lastShedTotalDays", -1);
+            set => entity.WatchedAttributes.SetDouble("lastShedTotalDays", value);
         }
 
         public EntityBehaviorAntlerGrowth(Entity entity) : base(entity)
@@ -52,9 +49,31 @@ namespace Vintagestory.GameContent
             readInventoryFromAttributes();
             var rnd = entity.World.Rand;
 
+        }
+
+        public override void OnEntitySpawn()
+        {
             if (entity.World.Side == EnumAppSide.Server)
             {
-                updateAntlerState();
+                ensureHasBirthDate();
+                OnGameTick(3.1f);
+            }
+        }
+
+        public override void OnEntityLoaded()
+        {
+            if (entity.World.Side == EnumAppSide.Server)
+            {
+                ensureHasBirthDate();
+                OnGameTick(3.1f);
+            }
+        }
+
+        private void ensureHasBirthDate()
+        {
+            if (!entity.WatchedAttributes.HasAttribute("birthTotalDays"))
+            {
+                entity.WatchedAttributes.SetDouble("birthTotalDays", entity.World.Calendar.TotalDays - entity.World.Rand.Next(900));
             }
         }
 
@@ -87,18 +106,54 @@ namespace Vintagestory.GameContent
 
         public override void OnGameTick(float deltaTime)
         {
-            if (beginGrowMonth >= 0 && entity.World.Side == EnumAppSide.Server)
+            if (entity.World.Side == EnumAppSide.Client) return;
+            accum3s += deltaTime;
+            if (accum3s > 3)
             {
-                accum3s += deltaTime;
-                if (accum3s > 3)
+                accum3s = 0;
+
+                if (beginGrowMonth >= 0)
                 {
-                    accum3s = 0;
-                    updateAntlerState();
+                    updateAntlerStateYearly();
+                } else
+                {
+                    if (growDurationMonths >= 0) updateAntlerStateOnetimeGrowth();
                 }
             }
         }
 
-        private void updateAntlerState()
+        private void updateAntlerStateOnetimeGrowth()
+        {
+            double creatureAgeMonths = (entity.World.Calendar.TotalDays - entity.WatchedAttributes.GetDouble("birthTotalDays")) / entity.World.Calendar.DaysPerMonth;
+
+            if (deerInv.Empty)
+            {
+                int cnt = variants.Length;
+                MaxGrowth = Math.Min(entity.World.Rand.Next(cnt) + entity.World.Rand.Next(cnt), cnt - 1);
+            }
+
+            int stage = (int)GameMath.Clamp(growDurationMonths / creatureAgeMonths * MaxGrowth, 0, MaxGrowth);
+            SetAntler(stage);
+        }
+
+        private void SetAntler(int stage)
+        {
+            string size = variants[stage];
+            var loc = new AssetLocation("antler-" + entity.Properties.Variant["type"] + "-" + size);
+            var item = entity.Api.World.GetItem(loc);
+            if (item == null)
+            {
+                entity.Api.Logger.Warning("Missing antler item of code " + loc);
+            }
+            else
+            {
+                deerInv[0].Itemstack = new ItemStack(item);
+                ToBytes(true);
+                entity.WatchedAttributes.MarkPathDirty("inventory");
+            }
+        }
+
+        private void updateAntlerStateYearly()
         {
             if (variants == null || variants.Length == 0) return;
 
@@ -133,19 +188,7 @@ namespace Vintagestory.GameContent
                 }
                 else
                 {
-                    string size = variants[stage];
-                    var loc = new AssetLocation("antler-" + entity.Properties.Variant["type"] + "-" + size);
-                    var item = entity.Api.World.GetItem(loc);
-                    if (item == null)
-                    {
-                        entity.Api.Logger.Warning("Missing antler item of code " + loc);
-                    }
-                    else 
-                    { 
-                        deerInv[0].Itemstack = new ItemStack(item);
-                        ToBytes(true);
-                        entity.WatchedAttributes.MarkPathDirty("inventory");
-                    }
+                    SetAntler(stage);
                 }
             }
         }
@@ -177,12 +220,12 @@ namespace Vintagestory.GameContent
             shedNow = distanceToMidGrowth > growDurationMonths/2 + grownDurationMonths;
 
             int cnt = variants.Length;
-            if (deerInv.Empty)
+            if (deerInv.Empty || MaxGrowth < 0)
             {
-                maxGrowth = Math.Min((entity.World.Rand.Next(cnt) + entity.World.Rand.Next(cnt))/2, cnt - 1);
+                MaxGrowth = Math.Min((entity.World.Rand.Next(cnt) + entity.World.Rand.Next(cnt))/2, cnt - 1);
             }
 
-            return (int)GameMath.Clamp(stageRel * cnt, 0, maxGrowth);
+            return (int)GameMath.Clamp(stageRel * cnt, 0, MaxGrowth);
         }
 
         public override void FromBytes(bool isSync)

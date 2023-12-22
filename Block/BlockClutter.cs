@@ -116,7 +116,7 @@ namespace Vintagestory.GameContent
         public override void LoadTypes()
         {
             var cluttertypes = Attributes["types"].AsObject<ClutterTypeProps[]>();
-            basePath = Attributes["shapeBasePath"].AsString();
+            basePath = "shapes/" + Attributes["shapeBasePath"].AsString() + "/";
 
             List<JsonItemStack> stacks = new List<JsonItemStack>();
 
@@ -136,17 +136,16 @@ namespace Vintagestory.GameContent
 
                 if (ct.ShapePath == null)
                 {
-                    ct.ShapePath = AssetLocation.Create("shapes/" + basePath + "/" + ct.Code + ".json", Code.Domain);
+                    ct.ShapePath = AssetLocation.Create(basePath + ct.Code + ".json", Code.Domain);
                 } else
                 {
                     if (ct.ShapePath.Path.StartsWith("/"))
                     {
-                        ct.ShapePath.Path = ct.ShapePath.Path.Substring(1);
-                        ct.ShapePath.WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json");
+                        ct.ShapePath.WithPathPrefixOnce("shapes").WithPathAppendixOnce(".json");
                     }
                     else
                     {
-                        ct.ShapePath.WithPathPrefixOnce("shapes/" + basePath + "/").WithPathAppendixOnce(".json");
+                        ct.ShapePath.WithPathPrefixOnce(basePath).WithPathAppendixOnce(".json");
                     }
                 }
                 

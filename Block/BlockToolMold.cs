@@ -163,7 +163,7 @@ namespace Vintagestory.GameContent
             BlockEntityToolMold be = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityToolMold;
             if (be != null)
             {
-                be.OnPlayerInteract(byPlayer, blockSel.Face, blockSel.HitPosition);
+                return be.OnPlayerInteract(byPlayer, blockSel.Face, blockSel.HitPosition);
             }
 
             return base.OnBlockInteractStart(world, byPlayer, blockSel);

@@ -175,7 +175,7 @@ namespace Vintagestory.GameContent.Mechanics
             catch (Exception e)
             {
 #if DEBUG
-                throw (e);
+                throw;
 #else
                 Api.Logger.Error("Exception thrown in RequiresStand, will log exception but silently ignore it");
                 Api.Logger.Error(e);

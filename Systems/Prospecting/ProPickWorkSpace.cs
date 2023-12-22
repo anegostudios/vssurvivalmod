@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.ServerMods;
@@ -95,7 +96,7 @@ namespace Vintagestory.GameContent
         // Tyrons Brute force way of getting the correct reading for a rock strata column
         public virtual int[] GetRockColumn(int posX, int posZ)
         {
-            int chunksize = sapi.World.BlockAccessor.ChunkSize;
+            const int chunksize = GlobalConstants.ChunkSize;
             DummyChunk[] chunks = new DummyChunk[sapi.World.BlockAccessor.MapSizeY / chunksize];
             int chunkX = posX / chunksize;
             int chunkZ = posZ / chunksize;
@@ -226,6 +227,16 @@ namespace Vintagestory.GameContent
 
                 public void ReleaseBulkReadLock()
                 {
+                }
+
+                public bool ContainsBlock(int id)
+                {
+                    throw new NotImplementedException();
+                }
+
+                public void FuzzyListBlockIds(List<int> reusableList)
+                {
+                    throw new NotImplementedException();
                 }
             }
 

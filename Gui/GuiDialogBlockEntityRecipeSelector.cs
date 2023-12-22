@@ -133,7 +133,7 @@ namespace Vintagestory.GameContent
 
         public override bool TryClose()
         {
-            ///capi.Logger.Notification("Call to GuiDialogBlockEntityRecipeSelector.TryClose");
+            //capi.Logger.Notification("Call to GuiDialogBlockEntityRecipeSelector.TryClose");
             return base.TryClose();
         }
 

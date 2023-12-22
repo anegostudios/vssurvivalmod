@@ -2,6 +2,7 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
@@ -201,7 +202,7 @@ namespace Vintagestory.ServerMods
             this.climateUpRight = climateUpRight;
             this.climateBotLeft = climateBotLeft;
             this.climateBotRight = climateBotRight;
-            int chunksize = blockAccessor.ChunkSize;
+            const int chunksize = GlobalConstants.ChunkSize;
 
             int climate = GameMath.BiLerpRgbColor((float)(startPos.X % chunksize) / chunksize, (float)(startPos.Z % chunksize) / chunksize, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight);
 
@@ -273,7 +274,7 @@ namespace Vintagestory.ServerMods
         /// <returns>The index for the rotation of the desired side to pick from the <see cref="schematicDatas"/>[num][rotation] North=0 East=1 South=2 West=3</returns>
         private int FindClearEntranceRotation(IBlockAccessor blockAccessor, BlockSchematicStructure[] schematics,  BlockPos pos)
         {
-            var chunksize = blockAccessor.ChunkSize;
+            const int chunksize = GlobalConstants.ChunkSize;
             var schematic = schematics[0];
             var entranceRot = GameMath.Clamp(schematics[0].EntranceRotation / 90, 0, 3);
             // pos is in the corner and not centered
@@ -429,18 +430,18 @@ namespace Vintagestory.ServerMods
             return (4 + lowSide - entranceRot) % 4;
         }
 
-        internal bool TryGenerateRuinAtSurface(IBlockAccessor blockAccessor, IWorldAccessor worldForCollectibleResolve, BlockPos pos)
+        internal bool TryGenerateRuinAtSurface(IBlockAccessor blockAccessor, IWorldAccessor worldForCollectibleResolve, BlockPos startPos)
         {
             if (schematicDatas.Length == 0) return false;
             int num = rand.NextInt(schematicDatas.Length);
             int orient = rand.NextInt(4);
             BlockSchematicStructure schematic = schematicDatas[num][orient];
 
-            pos = pos.AddCopy(0, schematic.OffsetY, 0);
+            startPos = startPos.AddCopy(0, schematic.OffsetY, 0);
 
             if (schematic.EntranceRotation != -1)
             {
-                orient = FindClearEntranceRotation(blockAccessor, schematicDatas[num], pos);
+                orient = FindClearEntranceRotation(blockAccessor, schematicDatas[num], startPos);
                 schematic = schematicDatas[num][orient];
             }
 
@@ -450,22 +451,21 @@ namespace Vintagestory.ServerMods
             int wdt = schematic.SizeX;
             int len = schematic.SizeZ;
 
-
-            tmpPos.Set(pos.X + wdthalf, 0, pos.Z + lenhalf);
-            int centerY = blockAccessor.GetTerrainMapheightAt(pos);
+            tmpPos.Set(startPos.X + wdthalf, 0, startPos.Z + lenhalf);
+            int centerY = blockAccessor.GetTerrainMapheightAt(startPos);
 
             // Probe all 4 corners + center if they either touch the surface or are sightly below ground
 
-            tmpPos.Set(pos.X, 0, pos.Z);
+            tmpPos.Set(startPos.X, 0, startPos.Z);
             int topLeftY = blockAccessor.GetTerrainMapheightAt(tmpPos);
 
-            tmpPos.Set(pos.X + wdt, 0, pos.Z);
+            tmpPos.Set(startPos.X + wdt, 0, startPos.Z);
             int topRightY = blockAccessor.GetTerrainMapheightAt(tmpPos);
 
-            tmpPos.Set(pos.X, 0, pos.Z + len);
+            tmpPos.Set(startPos.X, 0, startPos.Z + len);
             int botLeftY = blockAccessor.GetTerrainMapheightAt(tmpPos);
 
-            tmpPos.Set(pos.X + wdt, 0, pos.Z + len);
+            tmpPos.Set(startPos.X + wdt, 0, startPos.Z + len);
             int botRightY = blockAccessor.GetTerrainMapheightAt(tmpPos);
 
 
@@ -475,49 +475,51 @@ namespace Vintagestory.ServerMods
 
             if (diff > 3) return false;
 
-            pos.Y = minY + schematic.OffsetY;
+            startPos.Y = minY + schematic.OffsetY;
 
 
             // Ensure not deeply submerged in water  =>  actually, that's now OK!
 
-            tmpPos.Set(pos.X, pos.Y + 1, pos.Z);
+            tmpPos.Set(startPos.X, startPos.Y + 1, startPos.Z);
             if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return false;
 
-            tmpPos.Set(pos.X + wdt, pos.Y + 1, pos.Z);
+            tmpPos.Set(startPos.X + wdt, startPos.Y + 1, startPos.Z);
             if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return false;
 
-            tmpPos.Set(pos.X, pos.Y + 1, pos.Z + len);
+            tmpPos.Set(startPos.X, startPos.Y + 1, startPos.Z + len);
             if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return false;
 
-            tmpPos.Set(pos.X + wdt, pos.Y + 1, pos.Z + len);
+            tmpPos.Set(startPos.X + wdt, startPos.Y + 1, startPos.Z + len);
             if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return false;
 
+            // Generating exactly at "TerrainMapheightAt" means we will place it 1 block below ground. 
+            // With a offsetY of 0, the structure should literally be fully above ground. 
+            // But offsetY default is -1 so it will be just a block below the surface unless specified otherwise
+            startPos.Y++;
 
-            pos.Y--;
+            if (!satisfiesMinDistance(startPos, worldForCollectibleResolve)) return false;
+            if (WouldOverlapAt(startPos, schematic, worldForCollectibleResolve)) return false;
 
-            if (!satisfiesMinDistance(pos, worldForCollectibleResolve)) return false;
-            if (WouldOverlapAt(pos, schematic, worldForCollectibleResolve)) return false;
-
-            LastPlacedSchematicLocation.Set(pos.X, pos.Y, pos.Z, pos.X + schematic.SizeX, pos.Y + schematic.SizeY, pos.Z + schematic.SizeZ);
+            LastPlacedSchematicLocation.Set(startPos.X, startPos.Y, startPos.Z, startPos.X + schematic.SizeX, startPos.Y + schematic.SizeY, startPos.Z + schematic.SizeZ);
             LastPlacedSchematic = schematic;
 
-            schematic.PlaceRespectingBlockLayers(blockAccessor, worldForCollectibleResolve, pos, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight, resolvedRockTypeRemaps, replacewithblocklayersBlockids);
+            schematic.PlaceRespectingBlockLayers(blockAccessor, worldForCollectibleResolve, startPos, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight, resolvedRockTypeRemaps, replacewithblocklayersBlockids);
 
             return true;
         }
 
 
-        internal bool TryGenerateAtSurface(IBlockAccessor blockAccessor, IWorldAccessor worldForCollectibleResolve, BlockPos pos)
+        internal bool TryGenerateAtSurface(IBlockAccessor blockAccessor, IWorldAccessor worldForCollectibleResolve, BlockPos startPos)
         {
             int num = rand.NextInt(schematicDatas.Length);
             int orient = rand.NextInt(4);
             BlockSchematicStructure schematic = schematicDatas[num][orient];
 
-            pos = pos.AddCopy(0, schematic.OffsetY, 0);
+            startPos = startPos.AddCopy(0, schematic.OffsetY, 0);
 
             if (schematic.EntranceRotation != -1)
             {
-                orient = FindClearEntranceRotation(blockAccessor, schematicDatas[num], pos);
+                orient = FindClearEntranceRotation(blockAccessor, schematicDatas[num], startPos);
                 schematic = schematicDatas[num][orient];
             }
             
@@ -527,84 +529,84 @@ namespace Vintagestory.ServerMods
             int len = schematic.SizeZ;
 
 
-            tmpPos.Set(pos.X + wdthalf, 0, pos.Z + lenhalf);
+            tmpPos.Set(startPos.X + wdthalf, 0, startPos.Z + lenhalf);
             int centerY = blockAccessor.GetTerrainMapheightAt(tmpPos);
 
             // Probe all 4 corners + center if they are on the same height
-            tmpPos.Set(pos.X, 0, pos.Z);
+            tmpPos.Set(startPos.X, 0, startPos.Z);
             int topLeftY = blockAccessor.GetTerrainMapheightAt(tmpPos);
 
-            tmpPos.Set(pos.X + wdt, 0, pos.Z);
+            tmpPos.Set(startPos.X + wdt, 0, startPos.Z);
             int topRightY = blockAccessor.GetTerrainMapheightAt(tmpPos);
 
-            tmpPos.Set(pos.X, 0, pos.Z + len);
+            tmpPos.Set(startPos.X, 0, startPos.Z + len);
             int botLeftY = blockAccessor.GetTerrainMapheightAt(tmpPos);
 
-            tmpPos.Set(pos.X + wdt, 0, pos.Z + len);
+            tmpPos.Set(startPos.X + wdt, 0, startPos.Z + len);
             int botRightY = blockAccessor.GetTerrainMapheightAt(tmpPos);
 
             // Is the ground flat?
             int diff = GameMath.Max(centerY, topLeftY, topRightY, botLeftY, botRightY) - GameMath.Min(centerY, topLeftY, topRightY, botLeftY, botRightY);
             if (diff != 0) return false;
 
-            pos.Y = centerY + 1 + schematic.OffsetY;
+            startPos.Y = centerY + 1 + schematic.OffsetY;
 
 
             // Ensure not floating on water
-            tmpPos.Set(pos.X + wdthalf, pos.Y - 1, pos.Z + lenhalf);
+            tmpPos.Set(startPos.X + wdthalf, startPos.Y - 1, startPos.Z + lenhalf);
             if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return false;
 
        
-            tmpPos.Set(pos.X, pos.Y - 1, pos.Z);
+            tmpPos.Set(startPos.X, startPos.Y - 1, startPos.Z);
             if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return false;
 
-            tmpPos.Set(pos.X + wdt, pos.Y - 1, pos.Z);
+            tmpPos.Set(startPos.X + wdt, startPos.Y - 1, startPos.Z);
             if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return false;
 
-            tmpPos.Set(pos.X, pos.Y - 1, pos.Z + len);
+            tmpPos.Set(startPos.X, startPos.Y - 1, startPos.Z + len);
             if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return false;
 
-            tmpPos.Set(pos.X + wdt, pos.Y - 1, pos.Z + len);
+            tmpPos.Set(startPos.X + wdt, startPos.Y - 1, startPos.Z + len);
             if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return false;
 
             // Ensure not submerged in water
-            tmpPos.Set(pos.X, pos.Y, pos.Z);
+            tmpPos.Set(startPos.X, startPos.Y, startPos.Z);
             if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return false;
 
 
-            tmpPos.Set(pos.X + wdt, pos.Y, pos.Z + len);
+            tmpPos.Set(startPos.X + wdt, startPos.Y, startPos.Z + len);
             if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return false;
 
-            tmpPos.Set(pos.X + wdt, pos.Y, pos.Z);
+            tmpPos.Set(startPos.X + wdt, startPos.Y, startPos.Z);
             if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return false;
 
-            tmpPos.Set(pos.X, pos.Y, pos.Z + len);
+            tmpPos.Set(startPos.X, startPos.Y, startPos.Z + len);
             if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return false;
 
-            tmpPos.Set(pos.X + wdt, pos.Y, pos.Z + len);
-            if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return false;
-
-
-
-            tmpPos.Set(pos.X, pos.Y + 1, pos.Z);
-            if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return false;
-
-            tmpPos.Set(pos.X + wdt, pos.Y + 1, pos.Z);
-            if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return false;
-
-            tmpPos.Set(pos.X, pos.Y + 1, pos.Z + len);
-            if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return false;
-
-            tmpPos.Set(pos.X + wdt, pos.Y + 1, pos.Z + len);
+            tmpPos.Set(startPos.X + wdt, startPos.Y, startPos.Z + len);
             if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return false;
 
 
-            if (!satisfiesMinDistance(pos, worldForCollectibleResolve)) return false;
-            if (WouldOverlapAt(pos, schematic, worldForCollectibleResolve)) return false;
 
-            LastPlacedSchematicLocation.Set(pos.X, pos.Y, pos.Z, pos.X + schematic.SizeX, pos.Y + schematic.SizeY, pos.Z + schematic.SizeZ);
+            tmpPos.Set(startPos.X, startPos.Y + 1, startPos.Z);
+            if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return false;
+
+            tmpPos.Set(startPos.X + wdt, startPos.Y + 1, startPos.Z);
+            if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return false;
+
+            tmpPos.Set(startPos.X, startPos.Y + 1, startPos.Z + len);
+            if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return false;
+
+            tmpPos.Set(startPos.X + wdt, startPos.Y + 1, startPos.Z + len);
+            if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return false;
+
+
+            if (!satisfiesMinDistance(startPos, worldForCollectibleResolve)) return false;
+            if (WouldOverlapAt(startPos, schematic, worldForCollectibleResolve)) return false;
+
+            LastPlacedSchematicLocation.Set(startPos.X, startPos.Y, startPos.Z, startPos.X + schematic.SizeX, startPos.Y + schematic.SizeY, startPos.Z + schematic.SizeZ);
             LastPlacedSchematic = schematic;
-            schematic.PlaceRespectingBlockLayers(blockAccessor, worldForCollectibleResolve, pos, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight, resolvedRockTypeRemaps, replacewithblocklayersBlockids);
+            schematic.PlaceRespectingBlockLayers(blockAccessor, worldForCollectibleResolve, startPos, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight, resolvedRockTypeRemaps, replacewithblocklayersBlockids);
             return true;
         }
 
@@ -623,104 +625,9 @@ namespace Vintagestory.ServerMods
             BlockPos targetPos = pos.Copy();
             BlockSchematicStructure schematic;
 
-
             if (schematicStruc[0].PathwayStarts.Length > 0)
             {
-                // 1. Give up if non air block or mapheight is not at least 4 blocks higher
-                // 2. Search up to 4 blocks downwards. Give up if no stone is found.
-                // 3. Select one pathway randomly
-                // 4. For every horizontal orientation
-                //    - Get the correctly rotated version for this pathway
-                //    - Starting at 2 blocks away, move one block closer each iteration
-                //      - Check if 
-                //        - at every pathway block pos there is stone or air
-                //        - at least one pathway block has an air block facing towards center?
-                //      - If yes, remove the blocks that are in the way and place schematic
-
-                Block block = blockAccessor.GetBlock(targetPos);
-                if (block.Id != 0) return false;
-
-
-                // 1./2. Search an underground position that has air and a stone floor below
-                bool found = false;
-                for (int dy = 0; dy <= 4; dy++)
-                {
-                    targetPos.Down();
-                    block = blockAccessor.GetBlock(targetPos);
-
-                    if (block.BlockMaterial == EnumBlockMaterial.Stone)
-                    {
-                        targetPos.Up();
-                        found = true;
-                        break;
-                    }
-                }
-
-                if (!found) return false;
-
-                // 3. Random pathway
-                int pathwayNum = rand.NextInt(schematicStruc[0].PathwayStarts.Length);
-                int targetOrientation;
-                int targetDistance = -1;
-                BlockFacing targetFacing = null;
-                BlockPos[] pathway=null;
-
-                // 4. At that position search for a suitable stone wall in any direction
-                for (targetOrientation = 0; targetOrientation < 4; targetOrientation++)
-                {
-                    // Try every rotation
-                    pathway = schematicStruc[targetOrientation].PathwayOffsets[pathwayNum];
-                    // This is the facing we are currently checking
-                    targetFacing = schematicStruc[targetOrientation].PathwaySides[pathwayNum];
-
-                    targetDistance = CanPlacePathwayAt(blockAccessor, pathway, targetFacing, targetPos);
-                    if (targetDistance != -1) break;
-                }
-
-                if (targetDistance == -1) return false;
-
-                schematic = schematicStruc[targetOrientation];
-
-                BlockPos pathwayStart = schematicStruc[targetOrientation].PathwayStarts[pathwayNum];
-
-                // Move back the structure so that the door aligns to the cave wall
-                targetPos.Add(
-                    -pathwayStart.X - targetFacing.Normali.X * targetDistance,
-                    -pathwayStart.Y - targetFacing.Normali.Y * targetDistance + schematic.OffsetY,
-                    -pathwayStart.Z - targetFacing.Normali.Z * targetDistance
-                );
-
-                if (!TestUndergroundCheckPositions(blockAccessor, targetPos, schematic.UndergroundCheckPositions)) return false;
-                if (WouldOverlapAt(targetPos, schematic, worldForCollectibleResolve)) return false;
-
-                LastPlacedSchematicLocation.Set(targetPos.X, targetPos.Y, targetPos.Z, targetPos.X + schematic.SizeX, targetPos.Y + schematic.SizeY, targetPos.Z + schematic.SizeZ);
-                
-                if (resolvedRockTypeRemaps != null)
-                {
-                    schematic.PlaceReplacingBlocks(blockAccessor, worldForCollectibleResolve, targetPos, schematic.ReplaceMode, resolvedRockTypeRemaps);
-                }
-                else
-                {
-                    schematic.Place(blockAccessor, worldForCollectibleResolve, targetPos);
-                }
-
-                // Free up a layer of blocks in front of the door
-                ushort blockId = 0; // blockAccessor.GetBlock(new AssetLocation("creativeblock-37")).BlockId;
-                for (int i = 0; i < pathway.Length; i++)
-                {
-                    for (int d = 0; d <= targetDistance; d++)
-                    {
-                        tmpPos.Set(
-                            targetPos.X + pathwayStart.X + pathway[i].X + (d + 1) * targetFacing.Normali.X,
-                            targetPos.Y + pathwayStart.Y + pathway[i].Y + (d + 1) * targetFacing.Normali.Y,
-                            targetPos.Z + pathwayStart.Z + pathway[i].Z + (d + 1) * targetFacing.Normali.Z
-                        );
-
-                        blockAccessor.SetBlock(blockId, tmpPos);
-                    }
-                }
-
-                return true;
+                return tryGenerateAttachedToCave(blockAccessor, worldForCollectibleResolve, schematicStruc, targetPos);
             }
 
             schematic = schematicStruc[rand.NextInt(4)];
@@ -737,8 +644,21 @@ namespace Vintagestory.ServerMods
 
             if (resolvedRockTypeRemaps != null)
             {
-                // Rocktyped ruins
-                schematic.PlaceReplacingBlocks(blockAccessor, worldForCollectibleResolve, placePos, schematic.ReplaceMode, resolvedRockTypeRemaps);
+                Block rockBlock = null;
+
+                for (int i = 0; rockBlock == null && i < 10; i++)
+                {
+                    var block = blockAccessor.GetBlock(
+                        placePos.X + rand.NextInt(schematic.SizeX), 
+                        placePos.Y + rand.NextInt(schematic.SizeY), 
+                        placePos.Z + rand.NextInt(schematic.SizeZ), 
+                        BlockLayersAccess.Solid
+                    );
+
+                    if (block.BlockMaterial == EnumBlockMaterial.Stone) rockBlock = block;
+                }
+
+                schematic.PlaceReplacingBlocks(blockAccessor, worldForCollectibleResolve, placePos, schematic.ReplaceMode, resolvedRockTypeRemaps, rockBlock?.Id);
                 
             } else
             {
@@ -748,7 +668,108 @@ namespace Vintagestory.ServerMods
             return true;
         }
 
-        
+        private bool tryGenerateAttachedToCave(IBlockAccessor blockAccessor, IWorldAccessor worldForCollectibleResolve, BlockSchematicStructure[] schematicStruc, BlockPos targetPos)
+        {
+            // 1. Give up if non air block or mapheight is not at least 4 blocks higher
+            // 2. Search up to 4 blocks downwards. Give up if no stone is found.
+            // 3. Select one pathway randomly
+            // 4. For every horizontal orientation
+            //    - Get the correctly rotated version for this pathway
+            //    - Starting at 2 blocks away, move one block closer each iteration
+            //      - Check if 
+            //        - at every pathway block pos there is stone or air
+            //        - at least one pathway block has an air block facing towards center?
+            //      - If yes, remove the blocks that are in the way and place schematic
+
+            Block rockBlock = null;
+            Block block = blockAccessor.GetBlock(targetPos);
+            if (block.Id != 0) return false;
+
+            // 1./2. Search an underground position that has air and a stone floor below
+            bool found = false;
+            for (int dy = 0; dy <= 4; dy++)
+            {
+                targetPos.Down();
+                block = blockAccessor.GetBlock(targetPos);
+
+                if (block.BlockMaterial == EnumBlockMaterial.Stone)
+                {
+                    rockBlock = block;
+                    targetPos.Up();
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found) return false;
+
+            // 3. Random pathway
+            int pathwayNum = rand.NextInt(schematicStruc[0].PathwayStarts.Length);
+            int targetOrientation;
+            int targetDistance = -1;
+            BlockFacing targetFacing = null;
+            BlockPos[] pathway = null;
+
+            // 4. At that position search for a suitable stone wall in any direction
+            for (targetOrientation = 0; targetOrientation < 4; targetOrientation++)
+            {
+                // Try every rotation
+                pathway = schematicStruc[targetOrientation].PathwayOffsets[pathwayNum];
+                // This is the facing we are currently checking
+                targetFacing = schematicStruc[targetOrientation].PathwaySides[pathwayNum];
+
+                targetDistance = CanPlacePathwayAt(blockAccessor, pathway, targetFacing, targetPos);
+                if (targetDistance != -1) break;
+            }
+
+            if (targetDistance == -1) return false;
+
+            var schematic = schematicStruc[targetOrientation];
+
+            BlockPos pathwayStart = schematicStruc[targetOrientation].PathwayStarts[pathwayNum];
+
+            // Move back the structure so that the door aligns to the cave wall
+            targetPos.Add(
+                -pathwayStart.X - targetFacing.Normali.X * targetDistance,
+                -pathwayStart.Y - targetFacing.Normali.Y * targetDistance + schematic.OffsetY,
+                -pathwayStart.Z - targetFacing.Normali.Z * targetDistance
+            );
+
+            if (targetPos.Y <= 0) return false;
+            if (!TestUndergroundCheckPositions(blockAccessor, targetPos, schematic.UndergroundCheckPositions)) return false;
+            if (WouldOverlapAt(targetPos, schematic, worldForCollectibleResolve)) return false;
+
+            LastPlacedSchematicLocation.Set(targetPos.X, targetPos.Y, targetPos.Z, targetPos.X + schematic.SizeX, targetPos.Y + schematic.SizeY, targetPos.Z + schematic.SizeZ);
+            LastPlacedSchematic = schematic;
+
+            if (resolvedRockTypeRemaps != null)
+            {
+                schematic.PlaceReplacingBlocks(blockAccessor, worldForCollectibleResolve, targetPos, schematic.ReplaceMode, resolvedRockTypeRemaps, rockBlock.Id);
+            }
+            else
+            {
+                schematic.Place(blockAccessor, worldForCollectibleResolve, targetPos);
+            }
+
+            // Free up a layer of blocks in front of the door
+            ushort blockId = 0; // blockAccessor.GetBlock(new AssetLocation("creativeblock-37")).BlockId;
+            for (int i = 0; i < pathway.Length; i++)
+            {
+                for (int d = 0; d <= targetDistance; d++)
+                {
+                    tmpPos.Set(
+                        targetPos.X + pathwayStart.X + pathway[i].X + (d + 1) * targetFacing.Normali.X,
+                        targetPos.Y + pathwayStart.Y + pathway[i].Y + (d + 1) * targetFacing.Normali.Y,
+                        targetPos.Z + pathwayStart.Z + pathway[i].Z + (d + 1) * targetFacing.Normali.Z
+                    );
+
+                    blockAccessor.SetBlock(blockId, tmpPos);
+                }
+            }
+
+            return true;
+        }
+
 
         BlockPos utestPos = new BlockPos();
         private bool TestUndergroundCheckPositions(IBlockAccessor blockAccessor, BlockPos pos, BlockPos[] testPositionsDelta)

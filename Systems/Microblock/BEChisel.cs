@@ -1,5 +1,4 @@
-﻿using Cairo.Freetype;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -13,7 +12,7 @@ using VSSurvivalMod.Systems.ChiselModes;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockEntityChisel : BlockEntityMicroBlock, IRotatable
+    public class BlockEntityChisel : BlockEntityMicroBlock
     {
         public static bool ForceDetailingMode = false;
         public static ChiselMode defaultMode = new OneByChiselMode();
@@ -470,7 +469,7 @@ namespace Vintagestory.GameContent
             {
                 AvailMaterialQuantities = new ushort[intarrattr.value.Length];
                 for (int i = 0; i < intarrattr.value.Length; i++) AvailMaterialQuantities[i] = (ushort)intarrattr.value[i];
-                while (MaterialIds.Length > AvailMaterialQuantities.Length) AvailMaterialQuantities = AvailMaterialQuantities.Append((ushort)(16 * 16 * 16));
+                while (BlockIds.Length > AvailMaterialQuantities.Length) AvailMaterialQuantities = AvailMaterialQuantities.Append((ushort)(16 * 16 * 16));
             }
         }
 

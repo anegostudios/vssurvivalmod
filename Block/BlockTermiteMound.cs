@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
@@ -46,7 +47,7 @@ namespace Vintagestory.GameContent
                 if (!blockAccessor.GetBlock(pos.X - 1, pos.Y - 1, pos.Z - 0).SideSolid[BlockFacing.UP.Index]) return false;
             }
 
-            var ch = blockAccessor.ChunkSize;
+            var ch = GlobalConstants.ChunkSize;
             int rockId = blockAccessor.GetMapChunkAtBlockPos(pos).TopRockIdMap[(pos.Z % ch) * ch + (pos.X % ch)];
 
             Block tblock = null;

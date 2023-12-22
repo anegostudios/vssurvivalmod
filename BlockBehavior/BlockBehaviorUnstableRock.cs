@@ -5,7 +5,6 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Common.Entities;
-using Vintagestory.API.Config;
 
 namespace Vintagestory.GameContent
 {

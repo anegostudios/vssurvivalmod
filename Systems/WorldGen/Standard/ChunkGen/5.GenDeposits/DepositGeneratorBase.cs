@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
@@ -9,6 +10,7 @@ namespace Vintagestory.ServerMods
     public abstract class DepositGeneratorBase
     {
         public ICoreServerAPI Api;
+        protected const int chunksize = GlobalConstants.ChunkSize;
         public LCGRandom DepositRand;
         public NormalizedSimplexNoise DistortNoiseGen;
         protected DepositVariant variant;

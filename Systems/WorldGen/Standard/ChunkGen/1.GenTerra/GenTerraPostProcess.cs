@@ -42,7 +42,6 @@ namespace Vintagestory.ServerMods
         private void OnWorldGenBlockAccessor(IChunkProviderThread chunkProvider)
         {
             blockAccessor = chunkProvider.GetBlockAccessor(true);
-            chunksize = api.WorldManager.ChunkSize;
         }
 
 

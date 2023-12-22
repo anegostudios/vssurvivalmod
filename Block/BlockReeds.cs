@@ -12,6 +12,7 @@ namespace Vintagestory.GameContent
         WorldInteraction[] interactions = null;
         string climateColorMapInt;
         string seasonColorMapInt;
+        int maxWaterDepth;
 
         public override string ClimateColorMapForMap => climateColorMapInt;
         public override string SeasonColorMapForMap => seasonColorMapInt;
@@ -30,6 +31,7 @@ namespace Vintagestory.GameContent
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
+            maxWaterDepth = Attributes["maxWaterDepth"].AsInt(1);
 
             string hab = Variant["habitat"];
             if (hab == "water") habitatBlockCode = "water-still-7";
@@ -161,21 +163,21 @@ namespace Vintagestory.GameContent
                 return false;
             }
 
-            Block belowBlock = blockAccessor.GetBlock(pos.X, pos.Y - 1, pos.Z);
+            int yBelow = pos.Y - 1;
+            int depth = 0;
+
+            Block belowBlock = blockAccessor.GetBlock(pos.X, yBelow, pos.Z);
+            while (belowBlock.LiquidCode == "water")
+            {
+                if (++depth > maxWaterDepth) return false;
+                yBelow--;
+                belowBlock = blockAccessor.GetBlock(pos.X, yBelow, pos.Z);
+            }
+
             if (belowBlock.Fertility > 0)
             {
-                return TryGen(blockAccessor, pos);
+                return TryGen(blockAccessor, pos.DownCopy(depth));
             }
-
-            if (belowBlock.LiquidCode == "water")
-            {
-                belowBlock = blockAccessor.GetBlock(pos.X, pos.Y - 2, pos.Z);
-                if (belowBlock.Fertility > 0)
-                {
-                    return TryGen(blockAccessor, pos.DownCopy());
-                }
-            }
-
 
             return false;
         }

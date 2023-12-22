@@ -56,7 +56,7 @@ namespace Vintagestory.GameContent
                     if (texAsset != null)
                     {
                         BitmapRef bmp = texAsset.ToBitmap(api);
-                        api.BlockTextureAtlas.InsertTextureCached(texturePath, bmp, out _, out texpos);
+                        api.BlockTextureAtlas.GetOrInsertTexture(texturePath, out _, out texpos, () => bmp);
                     }
                     else
                     {

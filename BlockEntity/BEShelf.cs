@@ -33,7 +33,7 @@ namespace Vintagestory.GameContent
 
         protected override float Inventory_OnAcquireTransitionSpeed(EnumTransitionType transType, ItemStack stack, float baseMul)
         {
-            if (transType == EnumTransitionType.Dry) return room?.ExitCount == 0 ? 2f : 0.5f;
+            if (transType == EnumTransitionType.Dry || transType == EnumTransitionType.Melt) return room?.ExitCount == 0 ? 2f : 0.5f;
             if (Api == null) return 0;
 
             if (transType == EnumTransitionType.Perish || transType == EnumTransitionType.Ripen)

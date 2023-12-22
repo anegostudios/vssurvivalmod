@@ -90,6 +90,7 @@ namespace Vintagestory.GameContent
         protected MeshData fertilizerQuad;
         protected TextureAtlasPosition fertilizerTexturePos;
         ICoreClientAPI capi;
+        string[] creatureFoodTags;
 
         public override void Initialize(ICoreAPI api)
         {
@@ -107,6 +108,8 @@ namespace Vintagestory.GameContent
             allowcropDeath = Api.World.Config.GetBool("allowCropDeath", true);
             fertilityRecoverySpeed = Api.World.Config.GetFloat("fertilityRecoverySpeed", fertilityRecoverySpeed);
             growthRateMul = (float)Api.World.Config.GetDecimal("cropGrowthRateMul", growthRateMul);
+
+            creatureFoodTags = Block.Attributes["foodTags"].AsArray<string>();
 
             if (api is ICoreServerAPI)
             {
@@ -1168,22 +1171,18 @@ namespace Vintagestory.GameContent
 
 
         #region IAnimalFoodSource impl
-        public bool IsSuitableFor(Entity entity, string[] diet)
+        public bool IsSuitableFor(Entity entity, CreatureDiet diet)
         {
             if (diet == null) return false;
 
             Block cropBlock = GetCrop();
             if (cropBlock == null) return false;
 
-            for (int i = 0; i < diet.Length; i++)
-            {
-                if (cropBlock.WildCardMatch(diet[i])) return true;
-            }
-
-            return false;
+            // Use NoNutrition category because its a crop, not a loose item
+            return diet.Matches(EnumFoodCategory.NoNutrition, creatureFoodTags);
         }
 
-        public float ConsumeOnePortion()
+        public float ConsumeOnePortion(Entity entity)
         {
             Block cropBlock = GetCrop();
             if (cropBlock == null) return 0;
@@ -1209,17 +1208,6 @@ namespace Vintagestory.GameContent
         {
             mesher.AddMeshData(fertilizerQuad);
             return false;
-
-            // Just doesn't look right anymore when fertilized soil turns its texture into compost or terra preta
-            /*if (originalFertility == 0) return false;
-
-            int nowLevel = FertilityLevel((nutrients[0] + nutrients[1] + nutrients[2]) / 3);
-            Block farmlandBlock = api.World.BlockAccessor.GetBlock(pos);
-            Block nextFarmlandBlock = api.World.GetBlock(farmlandBlock.CodeWithParts(IsWatered ? "moist" : "dry", Fertilities.GetKeyAtIndex(nowLevel)));
-
-            mesher.AddMeshData((api as ICoreClientAPI).TesselatorManager.GetDefaultBlockMesh(nextFarmlandBlock));
-
-            return true;*/
         }
 
         public override void OnBlockRemoved()

@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
@@ -37,7 +38,7 @@ namespace Vintagestory.GameContent.Mechanics
 
 
         public float clientSpeed;
-        int chunksize;
+        const int chunksize = GlobalConstants.ChunkSize;
         public bool fullyLoaded;
         private bool firstTick = true;
 
@@ -85,8 +86,6 @@ namespace Vintagestory.GameContent.Mechanics
         public void Init(MechanicalPowerMod mechanicalPowerMod)
         {
             this.mechanicalPowerMod = mechanicalPowerMod;
-
-            chunksize = mechanicalPowerMod.Api.World.BlockAccessor.ChunkSize;
         }
 
         public void Join(IMechanicalPowerNode node)

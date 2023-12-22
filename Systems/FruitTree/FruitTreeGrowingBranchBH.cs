@@ -106,6 +106,7 @@ namespace Vintagestory.GameContent
 
 
             var baseClimate = Api.World.BlockAccessor.GetClimateAt(ownBe.Pos, EnumGetClimateMode.WorldGenValues);
+            if (baseClimate == null) return;
             while (totalDays - ownBe.lastGrowthAttemptTotalDays > growthStepDays)
             {
                 // Get midday temperature for testing (which is roughly the daily average)

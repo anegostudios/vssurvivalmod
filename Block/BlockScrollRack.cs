@@ -2,8 +2,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
@@ -249,6 +251,22 @@ namespace Vintagestory.GameContent
             drops[0].ResolvedItemstack.SetFrom(handbookStack);
 
             return drops;
+        }
+
+        public override string GetHeldItemName(ItemStack itemStack)
+        {
+            return Lang.Get("block-scrollrack-" + itemStack.Attributes.GetString("material"));
+        }
+
+        public override string GetPlacedBlockName(IWorldAccessor world, BlockPos pos)
+        {
+            var beshelf = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityScrollRack;
+            if (beshelf != null)
+            {
+                return Lang.Get("block-scrollrack-" + beshelf.Material);
+            }
+
+            return base.GetPlacedBlockName(world, pos);
         }
     }
 }

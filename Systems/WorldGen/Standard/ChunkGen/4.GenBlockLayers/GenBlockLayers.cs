@@ -4,7 +4,6 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
-using Vintagestory.ServerMods.NoObf;
 
 namespace Vintagestory.ServerMods
 {
@@ -395,7 +394,7 @@ namespace Vintagestory.ServerMods
 
                 if (trfDist + yDist <= posRand)
                 {
-                    int blockId = bl.GetBlockId(posRand, temperature, rainRel, fertilityRel, firstBlockId, pos);
+                    int blockId = bl.GetBlockId(posRand, temperature, rainRel, fertilityRel, firstBlockId, pos, mapheight);
                     if (blockId != 0)
                     {
                         BlockLayersIds.Add(blockId);

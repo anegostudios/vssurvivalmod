@@ -24,6 +24,8 @@ namespace Vintagestory.GameContent
             // 10. Craft a fire starter
             // 11. Create a fire pit
             // 12. Create a torch
+
+            //   Not yet implemented...
             // 13. Craft 30 cob
             // 14. Place 30 cob
             // 15. Craft a hay bed
@@ -47,7 +49,7 @@ namespace Vintagestory.GameContent
                 TutorialStepBase.Knap(capi, "knapknife", "tutorial-firststeps-6", (stack) => stack.Collectible.Code.Path.Contains("knifeblade"), 1),
                 TutorialStepBase.Craft(capi, "craftknife", "tutorial-firststeps-7", (stack) => stack.Collectible.Tool == EnumTool.Knife, 1),
                 TutorialStepBase.Collect(capi, "getcattails", "tutorial-firststeps-8", (stack) => stack.Collectible.Code.Path == "papyrustops" || stack.Collectible.Code.Path == "cattailtops", 10),
-                TutorialStepBase.Craft(capi, "craftbasket", "tutorial-firststeps-9", (stack) => stack.Collectible.GetStorageFlags(stack) == EnumItemStorageFlags.Backpack, 1),
+                TutorialStepBase.Craft(capi, "craftbasket", "tutorial-firststeps-9", (stack) => CollectibleObject.IsBackPack(stack), 1),
                 TutorialStepBase.Collect(capi, "getfood", "tutorial-firststeps-10", (stack) => stack.Collectible.NutritionProps != null, 10),
                 TutorialStepBase.Craft(capi, "knapaxe", "tutorial-firststeps-11", (stack) => stack.Collectible.Tool == EnumTool.Axe, 1),
                 TutorialStepBase.Collect(capi, "getlogs", "tutorial-firststeps-12", (stack) => stack.Collectible is BlockLog, 4),

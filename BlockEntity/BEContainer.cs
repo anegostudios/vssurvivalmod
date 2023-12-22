@@ -90,7 +90,7 @@ namespace Vintagestory.GameContent
         protected virtual float Inventory_OnAcquireTransitionSpeed(EnumTransitionType transType, ItemStack stack, float baseMul)
         {
             float positionAwarePerishRate = Api != null && transType == EnumTransitionType.Perish ? GetPerishRate() : 1;
-            if (transType == EnumTransitionType.Dry) positionAwarePerishRate = 0.25f;
+            if (transType == EnumTransitionType.Dry || transType == EnumTransitionType.Melt) positionAwarePerishRate = 0.25f;
 
             return baseMul * positionAwarePerishRate;
         }
@@ -235,7 +235,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override void OnLoadCollectibleMappings(IWorldAccessor worldForResolve, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, int schematicSeed)
+        public override void OnLoadCollectibleMappings(IWorldAccessor worldForResolve, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, int schematicSeed, bool resolveImports)
         {
             foreach (var slot in Inventory)
             {
@@ -246,19 +246,18 @@ namespace Vintagestory.GameContent
                     slot.Itemstack = null;
                 } else
                 {
-                    slot.Itemstack.Collectible.OnLoadCollectibleMappings(worldForResolve, slot, oldBlockIdMapping, oldItemIdMapping);
+                    slot.Itemstack.Collectible.OnLoadCollectibleMappings(worldForResolve, slot, oldBlockIdMapping, oldItemIdMapping, resolveImports);
                 }
-
                 
 
-                if (slot.Itemstack?.Collectible is ItemLootRandomizer)
+                if (slot.Itemstack?.Collectible is ItemLootRandomizer randomizer)
                 {
-                    (slot.Itemstack.Collectible as ItemLootRandomizer).ResolveLoot(slot, worldForResolve);
+                    randomizer.ResolveLoot(slot, worldForResolve, resolveImports);
                 }
 
-                if (slot.Itemstack?.Collectible is ItemStackRandomizer)
+                if (slot.Itemstack?.Collectible is ItemStackRandomizer stackRandomizer)
                 {
-                    (slot.Itemstack.Collectible as ItemStackRandomizer).Resolve(slot, worldForResolve);
+                    stackRandomizer.Resolve(slot, worldForResolve, resolveImports);
                 }
             }
         }

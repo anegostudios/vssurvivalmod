@@ -278,7 +278,7 @@ namespace Vintagestory.GameContent
                 mesher.AddMeshData(getMesh(slot.Itemstack), tfMatrices[index]);
             }
 
-            return false;
+            return base.OnTesselation(mesher, tessThreadTesselator);
         }
 
 

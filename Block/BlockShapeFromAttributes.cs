@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -179,7 +178,7 @@ namespace Vintagestory.GameContent
                     {
                         val.Value.Bake(api.Assets);
 
-                        val.Value.Baked.TextureSubId = textureDict.GetOrAddTextureLocation(new AssetLocationAndSource(val.Value.Baked.BakedName, sourceString));
+                        val.Value.Baked.TextureSubId = textureDict.GetOrAddTextureLocation(new AssetLocationAndSource(val.Value.Baked.BakedName, sourceString, Code));
                     }
                 }
             }

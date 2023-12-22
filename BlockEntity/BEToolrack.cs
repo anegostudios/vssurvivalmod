@@ -281,10 +281,11 @@ namespace Vintagestory.GameContent
                 {
                     blockIdMapping[slot.Itemstack.Block.BlockId] = slot.Itemstack.Block.Code;
                 }
+                slot.Itemstack.Collectible.OnStoreCollectibleMappings(Api.World, slot ,blockIdMapping, itemIdMapping);
             }
         }
 
-        public override void OnLoadCollectibleMappings(IWorldAccessor worldForResolve, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, int schematicSeed)
+        public override void OnLoadCollectibleMappings(IWorldAccessor worldForResolve, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, int schematicSeed, bool resolveImports)
         {
             foreach (var slot in inventory)
             {
@@ -292,6 +293,9 @@ namespace Vintagestory.GameContent
                 if (!slot.Itemstack.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve))
                 {
                     slot.Itemstack = null;
+                } else
+                {
+                    slot.Itemstack.Collectible.OnLoadCollectibleMappings(worldForResolve, slot, oldBlockIdMapping, oldItemIdMapping, resolveImports);
                 }
             }
         }

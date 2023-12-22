@@ -84,5 +84,11 @@ namespace Vintagestory.GameContent
             nblock = api.World.BlockAccessor.GetBlock(pos.DownCopy(), BlockLayersAccess.Fluid);
             return nblock.SideSolid[BlockFacing.UP.Index];
         }
+
+        public override bool ShouldPlayAmbientSound(IWorldAccessor world, BlockPos pos)
+        {
+            var conds = capi.World.Player.Entity.selfClimateCond;
+            return conds != null && conds.Rainfall > 0.1f && conds.Temperature > 3f && (world.BlockAccessor.GetRainMapHeightAt(pos) <= pos.Y || world.BlockAccessor.GetDistanceToRainFall(pos, 3, 1) <= 2);
+        }
     }
 }

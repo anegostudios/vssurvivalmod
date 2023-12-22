@@ -238,7 +238,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void OnLoadCollectibleMappings(IWorldAccessor worldForResolve, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, int schematicSeed)
+        public override void OnLoadCollectibleMappings(IWorldAccessor worldForResolve, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, int schematicSeed, bool resolveImports)
         {
             ItemStack stack = inventory?[0]?.Itemstack;
             if (stack?.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve) == false)

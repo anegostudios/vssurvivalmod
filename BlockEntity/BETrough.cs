@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Vintagestory.API.Client;
@@ -17,10 +18,8 @@ namespace Vintagestory.GameContent
         public JsonItemStack Content;
         public int QuantityPerFillLevel;
         public int MaxFillLevels;
-        public AssetLocation[] Foodfor;
         public string[] ShapesPerFillLevel;
         public string TextureCode;
-        public string FoodForDesc;
     }
 
     public class DoubleTroughPoiDummy : IAnimalFoodSource
@@ -36,12 +35,12 @@ namespace Vintagestory.GameContent
 
         public string Type => be.Type;
 
-        public float ConsumeOnePortion()
+        public float ConsumeOnePortion(Entity entity)
         {
-            return be.ConsumeOnePortion();
+            return be.ConsumeOnePortion(entity);
         }
 
-        public bool IsSuitableFor(Entity entity, string[] diet)
+        public bool IsSuitableFor(Entity entity, CreatureDiet diet)
         {
             return be.IsSuitableFor(entity, diet);
         }
@@ -105,25 +104,17 @@ namespace Vintagestory.GameContent
         }
 
 
-        public bool IsSuitableFor(Entity entity, string[] diet)
+        public bool IsSuitableFor(Entity entity, CreatureDiet diet)
         {
             ContentConfig config = contentConfigs.FirstOrDefault(c => c.Code == contentCode);
             if (config == null) return false;
 
-            for (int i = 0; i < config.Foodfor.Length; i++)
-            {
-                if (WildcardUtil.Match(config.Foodfor[i], entity.Code))
-                {
-                    return inventory[0].StackSize >= config.QuantityPerFillLevel;
-                }
-            }
-
-            return false; 
+            return diet.Matches(config.Content.ResolvedItemstack) && inventory[0].StackSize >= config.QuantityPerFillLevel;
         }
 
 
 
-        public float ConsumeOnePortion()
+        public float ConsumeOnePortion(Entity entity)
         {
             ContentConfig config = contentConfigs.FirstOrDefault(c => c.Code == contentCode);
             if (config == null) return 0f;
@@ -252,7 +243,7 @@ namespace Vintagestory.GameContent
             MeshData meshadd;
 
             blockTexPosSource = capi.Tesselator.GetTextureSource(Block);
-            Shape shape = API.Common.Shape.TryGet(Api, "shapes/" + shapeLoc + ".json");
+            Shape shape = Shape.TryGet(Api, "shapes/" + shapeLoc + ".json");
             capi.Tesselator.TesselateShape("betroughcontentsleft", shape, out meshbase, this, rotation);
 
             BlockTroughDoubleBlock doubleblock = Block as BlockTroughDoubleBlock;
@@ -364,8 +355,39 @@ namespace Vintagestory.GameContent
             dsc.AppendLine(Lang.Get("Portions: {0}", fillLevel));
 
             ItemStack contentsStack = config.Content.ResolvedItemstack;
-            if (contentsStack != null) dsc.AppendLine(Lang.Get(contentsStack.GetName()));
-            if (config.FoodForDesc != null) dsc.AppendLine(Lang.Get(config.FoodForDesc));
+            if (contentsStack != null)
+            {
+                var cobj = contentsStack.Collectible;
+                var foodCat = cobj.NutritionProps?.FoodCategory ?? EnumFoodCategory.NoNutrition;
+                var foodTags = cobj.Attributes?["foodTags"].AsArray<string>();
+
+                dsc.AppendLine(Lang.Get(contentsStack.GetName()));
+
+                HashSet<string> creatureNames = new HashSet<string>();
+                foreach (var entityType in Api.World.EntityTypes)
+                {
+                    var attr = entityType.Attributes;
+                    if (attr?["creatureDiet"].Exists == true)
+                    {
+                        var diet = attr["creatureDiet"].AsObject<CreatureDiet>();
+                        if (diet.Matches(foodCat, foodTags))
+                        {
+                            string code = attr?["creatureDietGroup"].AsString() ?? attr?["handbook"]["groupcode"].AsString() ?? "item-creature-" + entityType.Code; 
+                            creatureNames.Add(Lang.Get(code));
+                        }
+                    }
+                }
+
+                if (creatureNames.Count > 0)
+                {
+                    dsc.AppendLine(Lang.Get("trough-suitable", string.Join(", ", creatureNames)));
+                }
+                else
+                {
+                    dsc.AppendLine(Lang.Get("trough-unsuitable"));
+                }
+            }
+
         }
 
     }

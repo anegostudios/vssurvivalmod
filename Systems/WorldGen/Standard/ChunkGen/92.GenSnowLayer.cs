@@ -53,7 +53,6 @@ namespace Vintagestory.ServerMods
             blockLayerConfig.SnowLayer.BlockId = api.WorldManager.GetBlockId(blockLayerConfig.SnowLayer.BlockCode);
 
             rnd = new Random(api.WorldManager.Seed);
-            chunksize = api.WorldManager.ChunkSize;
             worldheight = api.WorldManager.MapSizeY;
 
             transSize = blockLayerConfig.SnowLayer.TransitionSize;

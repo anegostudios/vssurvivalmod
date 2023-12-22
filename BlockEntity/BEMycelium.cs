@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
@@ -183,18 +184,16 @@ namespace Vintagestory.GameContent
         bool setMushroomBlock(Block block)
         {
             this.mushroomBlock = block;
-            this.mushroomBlockCode = block.Code;
+            this.mushroomBlockCode = block?.Code;
 
-            if (Api != null)
-            {
-                if (block?.Attributes?["mushroomProps"].Exists != true) return false;
+            if (block == null || Api?.Side != EnumAppSide.Server) return false;
+            if (block.Attributes?["mushroomProps"].Exists != true) return false;
 
-                if (block != null) props = block.Attributes["mushroomProps"].AsObject<MushroomProps>();
-                MyceliumSystem.lcgrnd.InitPositionSeed(mushroomBlockCode.GetHashCode(), (int)Api.World.Calendar.GetHemisphere(Pos) + 5);
+            props = block.Attributes["mushroomProps"].AsObject<MushroomProps>();
+            MyceliumSystem.lcgrnd.InitPositionSeed(mushroomBlockCode.GetHashCode(), (int)Api.World.Calendar.GetHemisphere(Pos) + 5);
 
-                fruitingDays = 20 + MyceliumSystem.lcgrnd.NextDouble() * 20;
-                growingDays = 10 + MyceliumSystem.lcgrnd.NextDouble() * 10;
-            }
+            fruitingDays = 20 + MyceliumSystem.lcgrnd.NextDouble() * 20;
+            growingDays = 10 + MyceliumSystem.lcgrnd.NextDouble() * 10;
 
             return true;
         }
@@ -234,7 +233,7 @@ namespace Vintagestory.GameContent
 
             int cnt = 2 + rnd.NextInt(11);
             BlockPos pos = new BlockPos();
-            int chunkSize = blockAccessor.ChunkSize;
+            const int chunkSize = GlobalConstants.ChunkSize;
             List<Vec3i> offsets = new List<Vec3i>();
 
             if (!isChunkAreaLoaded(blockAccessor, growRange)) return;
@@ -251,7 +250,7 @@ namespace Vintagestory.GameContent
                 int lx = GameMath.Mod(pos.X, chunkSize);
                 int lz = GameMath.Mod(pos.Z, chunkSize);
 
-                pos.Y = mapChunk.WorldGenTerrainHeightMap[lz * blockAccessor.ChunkSize + lx] + 1;
+                pos.Y = mapChunk.WorldGenTerrainHeightMap[lz * GlobalConstants.ChunkSize + lx] + 1;
 
                 Block hereBlock = blockAccessor.GetBlock(pos);
                 Block belowBlock = blockAccessor.GetBlock(pos.X, pos.Y - 1, pos.Z);
@@ -270,7 +269,7 @@ namespace Vintagestory.GameContent
 
         private bool isChunkAreaLoaded(IBlockAccessor blockAccessor, int growRange)
         {
-            int chunksize = blockAccessor.ChunkSize;
+            const int chunksize = GlobalConstants.ChunkSize;
             int mincx = (Pos.X - growRange) / chunksize;
             int maxcx = (Pos.X + growRange) / chunksize;
 

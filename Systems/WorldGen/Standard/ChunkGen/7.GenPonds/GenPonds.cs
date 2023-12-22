@@ -3,7 +3,6 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
-using Vintagestory.ServerMods.NoObf;
 
 namespace Vintagestory.ServerMods
 {
@@ -93,11 +92,11 @@ namespace Vintagestory.ServerMods
             blockAccessor.BeginColumn();
             LCGRandom rand = this.rand;
             rand.InitPositionSeed(chunkX, chunkZ);
-            int chunksize = this.chunksize;
             int maxHeight = mapheight - 1;
             int pondYPos;
 
             ushort[] heightmap = chunks[0].MapChunk.RainHeightMap;
+            var mc = chunks[0].MapChunk;
 
             IntDataMap2D climateMap = chunks[0].MapChunk.MapRegion.ClimateMap;
             int regionChunkSize = api.WorldManager.RegionSize / chunksize;
@@ -151,7 +150,7 @@ namespace Vintagestory.ServerMods
                 dx = rand.NextInt(chunksize);
                 dz = rand.NextInt(chunksize);
 
-                pondYPos = (int)(rand.NextFloat() * heightmap[dz * chunksize + dx]);
+                pondYPos = (int)(rand.NextFloat() * (mc.WorldGenTerrainHeightMap[dz * chunksize + dx] - 1));
                 if (pondYPos <= 0 || pondYPos >= maxHeight) return;  //randomly exits, e.g. 1/96 of the time pondYPos will be 0
 
                 int chunkY = pondYPos / chunksize;
@@ -181,7 +180,6 @@ namespace Vintagestory.ServerMods
         /// </summary>
         public void TryPlacePondAt(int dx, int pondYPos, int dz, int chunkX, int chunkZ, int depth = 0)
         {
-            int chunksize = this.chunksize;
             int mapOffset = this.mapOffset;
             int searchSize = this.searchSize;
             int minBoundary = this.minBoundary;

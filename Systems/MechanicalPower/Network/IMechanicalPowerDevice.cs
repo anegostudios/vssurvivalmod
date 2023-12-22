@@ -42,6 +42,7 @@ namespace Vintagestory.GameContent.Mechanics
         bool isRotationReversed();
         /// <summary>
         /// True if the network inTurnDir is coming into this block instead of going out (may or may not be paired with counter-clockwise rotation)
+        /// </summary>
         bool isInvertedNetworkFor(BlockPos pos);
 
         /// <summary>

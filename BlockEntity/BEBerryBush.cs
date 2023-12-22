@@ -35,6 +35,8 @@ namespace Vintagestory.GameContent
 
         float growthRateMul = 1f;
 
+        public string[] creatureDietFoodTags;
+
         public BlockEntityBerryBush() : base()
         {
 
@@ -48,6 +50,8 @@ namespace Vintagestory.GameContent
 
             if (api is ICoreServerAPI)
             {
+                creatureDietFoodTags = Block.Attributes["foodTags"].AsArray<string>();
+
                 if (transitionHoursLeft <= 0)
                 {
                     transitionHoursLeft = GetHoursForNextStage();
@@ -319,18 +323,14 @@ namespace Vintagestory.GameContent
 
 
         #region IAnimalFoodSource impl
-        public bool IsSuitableFor(Entity entity, string[] diet)
+        public bool IsSuitableFor(Entity entity, CreatureDiet diet)
         {
             if (diet == null) return false;
-
-            if (!diet.Contains("Berry")) return false;
-
             if (!IsRipe()) return false;
-
-            return true;
+            return diet.Matches(EnumFoodCategory.NoNutrition, this.creatureDietFoodTags);
         }
 
-        public float ConsumeOnePortion()
+        public float ConsumeOnePortion(Entity entity)
         {
             AssetLocation loc = Block.CodeWithParts("empty");
             if (!loc.Valid)

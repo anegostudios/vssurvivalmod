@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
@@ -57,6 +58,8 @@ namespace Vintagestory.GameContent
         public int dy;
         [JsonProperty]
         public int dz;
+        [JsonProperty]
+        public int maxCount;
     }
 
     public class GenStoryStructures : ModStdWorldGen
@@ -178,7 +181,6 @@ namespace Vintagestory.GameContent
             genStoryStructures = api.World.Config.GetAsString("loreContent", "true").ToBool(true);
             if (!genStoryStructures) return;
 
-            chunksize = api.World.BlockAccessor.ChunkSize;
             strucRand = new LCGRandom(api.WorldManager.Seed + 1095);
             IAsset asset = api.Assets.Get("worldgen/storystructures.json");
             scfg = asset.ToObject<WorldGenStoryStructuresConfig>();
@@ -369,7 +371,7 @@ namespace Vintagestory.GameContent
 
                     var structure = scfg.Structures[i];
 
-                    int blocksPlaced = structure.schematicData.PlacePartial(chunks, worldgenBlockAccessor, api.World, chunkX, chunkZ, startPos, EnumReplaceMode.ReplaceAll, true);
+                    int blocksPlaced = structure.schematicData.PlacePartial(chunks, worldgenBlockAccessor, api.World, chunkX, chunkZ, startPos, EnumReplaceMode.ReplaceAll, true, true);
 
                     string code = structure.Code + ":" + structure.Schematics[0];
 
@@ -479,6 +481,8 @@ namespace Vintagestory.GameContent
                 pos = pos.AddCopy(hookStruct.offsetX, hookStruct.offsetY, hookStruct.offsetZ);
                 Vec3i[] offsets = new Vec3i[hookStruct.mainElements.Length];
                 BlockSchematicStructure[] structures = new BlockSchematicStructure[hookStruct.mainElements.Length];
+                int[] counts = new int[hookStruct.mainElements.Length];
+                int[] maxCounts = new int[hookStruct.mainElements.Length];
                 int structuresLength = 0;
                 foreach (var el in hookStruct.mainElements)
                 {
@@ -491,6 +495,7 @@ namespace Vintagestory.GameContent
                     var structure = asset.ToObject<BlockSchematicStructure>();
                     structure.Init(blockAccessor);
                     structures[structuresLength] = structure;
+                    maxCounts[structuresLength] = el.maxCount == 0 ? GlobalConstants.MaxWorldSizeY : el.maxCount;
                     offsets[structuresLength++] = new Vec3i(el.dx, el.dy, el.dz);
                 }
 
@@ -511,10 +516,12 @@ namespace Vintagestory.GameContent
                 for (int j = 0; j < 25; j++)
                 {
                     indices.Clear();
+                    for (int k = 0; k < counts.Length; k++) counts[k] = 0;
                     testHeight = pos.Y;
                     while (testHeight < height)
                     {
                         int i = rand.Next(structuresLength);
+                        if (counts[i] >= maxCounts[i]) continue;   // try again if this rand structure already reached its max count in this set of indices
                         int h = structures[i].SizeY;
                         if (testHeight + h > height)
                         {
@@ -525,6 +532,7 @@ namespace Vintagestory.GameContent
                             else
                             {
                                 indices.Add(i);
+                                counts[i]++;   // Probably redundant due to the break statement below, but does no harm
                             }
 
                             int newDiff = testHeight + h - height;
@@ -540,6 +548,7 @@ namespace Vintagestory.GameContent
                         }
 
                         indices.Add(i);
+                        counts[i]++;
                         testHeight += h;
                     }
                 }
@@ -549,7 +558,7 @@ namespace Vintagestory.GameContent
                     var struc = structures[ix];
                     var offset = offsets[ix];
                     BlockPos posPlace = pos.AddCopy(offset.X, offset.Y, offset.Z);
-                    struc.PlaceRespectingBlockLayers(blockAccessor, api.World, posPlace, 0, 0, 0, 0, null, new int[0], true, true);
+                    struc.PlaceRespectingBlockLayers(blockAccessor, api.World, posPlace, 0, 0, 0, 0, null, new int[0], true, true, false, true);
                     pos.Y += struc.SizeY;
                 }
             }

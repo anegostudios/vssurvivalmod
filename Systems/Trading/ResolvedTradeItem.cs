@@ -7,6 +7,10 @@ namespace Vintagestory.GameContent
     {
         //public string Name;
         public ItemStack Stack;
+        /// <summary>
+        /// Comma-separated string listing any custom attribute keys to ignore (for this TradeItem only, and only when the trader is buying) - for example, shield color
+        /// </summary>
+        public string AttributesToIgnore;
         public int Price;
         public int Stock;
         public RestockOpts Restock = new RestockOpts()
@@ -30,6 +34,7 @@ namespace Vintagestory.GameContent
         {
             //Name = tree.GetString("name");
             Stack = tree.GetItemstack("stack");
+            AttributesToIgnore = tree.GetString("attributesToIgnore", null);
             Price = tree.GetInt("price");
             Stock = tree.GetInt("stock");
             Restock = new RestockOpts()
@@ -49,6 +54,7 @@ namespace Vintagestory.GameContent
         {
             //tree.SetString("name", Name);
             tree.SetItemstack("stack", Stack);
+            if (AttributesToIgnore != null) tree.SetString("attributesToIgnore", AttributesToIgnore);
             tree.SetInt("price", Price);
             tree.SetInt("stock", Stock);
             tree.SetFloat("restockHourDelay", Restock.HourDelay);

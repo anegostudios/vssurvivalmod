@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Linq;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -96,7 +95,8 @@ namespace Vintagestory.GameContent
             double dX = args.X - x;
             double dY = args.Y - y;
 
-            if (mouseOver = Math.Abs(dX) < 8 && Math.Abs(dY) < 8)
+            var size = RuntimeEnv.GUIScale * 8;
+            if (mouseOver = Math.Abs(dX) < size && Math.Abs(dY) < size)
             {
                 var pageCodes = capi.ModLoader.GetModSystem<ModSystemOreMap>().prospectingMetaData.PageCodes;
                 var text = reading.ToHumanReadable(capi.Settings.String["language"], pageCodes);
@@ -117,7 +117,8 @@ namespace Vintagestory.GameContent
                 double dX = args.X - x;
                 double dY = args.Y - y;
 
-                if (Math.Abs(dX) < 7 && Math.Abs(dY) < 7)
+                var size = RuntimeEnv.GUIScale * 8;
+                if (Math.Abs(dX) < size && Math.Abs(dY) < size)
                 {
                     var dlg = new GuiDialogConfirm(capi, Lang.Get("Delete reading?"), onConfirmDone);
                     dlg.TryOpen();

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -74,7 +75,12 @@ namespace Vintagestory.GameContent
             {
                 if (loc.Path.Contains("*"))
                 {
-                    Block[] blocks = api.World.SearchBlocks(loc);
+                    Block[] blocks = api.World
+                        .SearchBlocks(loc)
+                        .OrderBy(block => block.Variant["col"].ToInt() + 1000 * block.Variant["row"].ToInt())
+                        .ToArray()
+                    ;
+
                     foreach (var block in blocks)
                     {
                         decorBlocks.Add(block);
@@ -100,6 +106,8 @@ namespace Vintagestory.GameContent
 
                 }
             }
+
+            
 
             if (api.Side == EnumAppSide.Client)
             {
@@ -328,7 +336,9 @@ namespace Vintagestory.GameContent
                     MouseButton = EnumMouseButton.Right
                 }
             }.Append(base.GetHeldInteractionHelp(inSlot, ref handling));
-
         }
+
+
+
     }
 }

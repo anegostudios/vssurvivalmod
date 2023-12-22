@@ -567,7 +567,7 @@ namespace Vintagestory.GameContent
             contentsRight?.Collectible.OnStoreCollectibleMappings(Api.World, new DummySlot(contentsRight), blockIdMapping, itemIdMapping);
         }
 
-        public override void OnLoadCollectibleMappings(IWorldAccessor worldForResolve, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, int schematicSeed)
+        public override void OnLoadCollectibleMappings(IWorldAccessor worldForResolve, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, int schematicSeed, bool resolveImports)
         {
             if (contentsLeft?.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve) == false)
             {

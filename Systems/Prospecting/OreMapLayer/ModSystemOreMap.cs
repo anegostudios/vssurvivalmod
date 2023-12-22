@@ -53,11 +53,12 @@ namespace Vintagestory.GameContent
 
         private void onDeleteReading(IServerPlayer fromPlayer, DeleteReadingPacket packet)
         {
-            var layers = capi.ModLoader.GetModSystem<WorldMapManager>().MapLayers;
+            var layers = api.ModLoader.GetModSystem<WorldMapManager>().MapLayers;
             var oml = layers.FirstOrDefault(ml => ml is OreMapLayer) as OreMapLayer;
             if (oml == null) return;
 
             oml.Delete(fromPlayer, packet.Index);
+            oml.RebuildMapComponents();
         }
 
         private void Event_PlayerJoin(IServerPlayer byPlayer)

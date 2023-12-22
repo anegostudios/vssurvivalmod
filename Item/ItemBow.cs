@@ -14,10 +14,15 @@ namespace Vintagestory.GameContent
     {
         WorldInteraction[] interactions;
 
+        string aimAnimation;
+
         public override void OnLoaded(ICoreAPI api)
         {
+            aimAnimation = Attributes["aimAnimation"].AsString();
+
             if (api.Side != EnumAppSide.Client) return;
             ICoreClientAPI capi = api as ICoreClientAPI;
+
 
             interactions = ObjectCacheUtil.GetOrCreate(api, "bowInteractions", () =>
             {
@@ -87,7 +92,7 @@ namespace Vintagestory.GameContent
             // Not ideal to code the aiming controls this way. Needs an elegant solution - maybe an event bus?
             byEntity.Attributes.SetInt("aiming", 1);
             byEntity.Attributes.SetInt("aimingCancel", 0);
-            byEntity.AnimManager.StartAnimation("bowaim");
+            byEntity.AnimManager.StartAnimation(aimAnimation);
 
             IPlayer byPlayer = null;
             if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
@@ -116,7 +121,7 @@ namespace Vintagestory.GameContent
         public override bool OnHeldInteractCancel(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)
         {
             byEntity.Attributes.SetInt("aiming", 0);
-            byEntity.AnimManager.StopAnimation("bowaim");
+            byEntity.AnimManager.StopAnimation(aimAnimation);
 
             if (byEntity.World is IClientWorldAccessor)
             {
@@ -138,7 +143,7 @@ namespace Vintagestory.GameContent
         {
             if (byEntity.Attributes.GetInt("aimingCancel") == 1) return;
             byEntity.Attributes.SetInt("aiming", 0);
-            byEntity.AnimManager.StopAnimation("bowaim");
+            byEntity.AnimManager.StopAnimation(aimAnimation);
 
             if (byEntity.World is IClientWorldAccessor)
             {

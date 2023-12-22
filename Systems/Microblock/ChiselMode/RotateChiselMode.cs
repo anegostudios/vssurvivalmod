@@ -1,7 +1,9 @@
 ﻿using Cairo;
 using System;
+using System.Drawing;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.GameContent;
 
@@ -14,6 +16,7 @@ namespace VSSurvivalMod.Systems.ChiselModes
         public override bool Apply(BlockEntityChisel chiselEntity, IPlayer byPlayer, Vec3i voxelPos, BlockFacing facing, bool isBreak, byte currentMaterialIndex)
         {
             chiselEntity.RotateModel(isBreak ? 90 : -90, null);
+            chiselEntity.RebuildCuboidList();
             return true;
         }
 

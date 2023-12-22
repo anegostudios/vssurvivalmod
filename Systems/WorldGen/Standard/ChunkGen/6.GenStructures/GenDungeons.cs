@@ -48,7 +48,6 @@ namespace Vintagestory.ServerMods
 
             worldgenBlockAccessor = chunkProvider.GetBlockAccessor(false);
             rand = new LCGRandom(api.WorldManager.Seed ^ 8991827198);
-            chunksize = api.World.BlockAccessor.ChunkSize;
             regionSize = api.World.BlockAccessor.RegionSize;
         }
 
@@ -144,7 +143,7 @@ namespace Vintagestory.ServerMods
                 
                 var rndval = rand.NextInt(tile.ResolvedSchematic.Length);
                 var schematic = tile.ResolvedSchematic[rndval][placeTask.Rotation];
-                schematic.PlacePartial(chunks, worldgenBlockAccessor, api.World, chunkX, chunkZ, placeTask.Pos, EnumReplaceMode.ReplaceAll, true);
+                schematic.PlacePartial(chunks, worldgenBlockAccessor, api.World, chunkX, chunkZ, placeTask.Pos, EnumReplaceMode.ReplaceAll, true, true);
 
                 string code = "dungeon/" + tile.Code + (schematic == null ? "" : "/" + schematic.FromFileName);
 

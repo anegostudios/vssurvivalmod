@@ -505,16 +505,16 @@ namespace Vintagestory.GameContent
 
 
         #region IAnimalFoodSource impl
-        public bool IsSuitableFor(Entity entity, string[] diet)
+        public bool IsSuitableFor(Entity entity, CreatureDiet diet)
         {
             if (diet == null) return false;
 
             if (isWildHive || !Harvestable) return false;
 
-            return diet.Contains("Honey");
+            return diet.FoodTags.Contains("lootableSweet");
         }
 
-        public float ConsumeOnePortion()
+        public float ConsumeOnePortion(Entity entity)
         {
             Api.World.BlockAccessor.BreakBlock(Pos, null, 1f);
             return 1f;

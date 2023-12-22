@@ -1,5 +1,4 @@
 ﻿using Cairo;
-using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -544,6 +543,14 @@ namespace Vintagestory.GameContent
                             components.Add(new ItemstackTextComponent(capi, prop.TransitionedStack.ResolvedItemstack, 40, 10, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs))));
                             break;
 
+                        case EnumTransitionType.Melt:
+                            if (haveText) components.Add(new ClearFloatTextComponent(capi, marginTop));
+                            haveText = true;
+                            addedItemStack = true;
+                            components.Add(new RichTextComponent(capi, Lang.Get("After {0} hours of open storage, melts into", prop.TransitionHours.avg) + "\n", CairoFont.WhiteSmallText().WithWeight(FontWeight.Bold)));
+                            components.Add(new ItemstackTextComponent(capi, prop.TransitionedStack.ResolvedItemstack, 40, 10, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs))));
+                            break;
+
                         case EnumTransitionType.Convert:
                             break;
 
@@ -710,6 +717,7 @@ namespace Vintagestory.GameContent
             List<ItemStack> curables = new List<ItemStack>();
             List<ItemStack> ripenables = new List<ItemStack>();
             List<ItemStack> dryables = new List<ItemStack>();
+            List<ItemStack> meltables = new List<ItemStack>();
             List<ItemStack> juiceables = new List<ItemStack>();
 
 
@@ -771,6 +779,13 @@ namespace Vintagestory.GameContent
                                 if (transitionedStack != null && transitionedStack.Equals(capi.World, stack, GlobalConstants.IgnoredStackAttributes) && !curables.Any(s => s.Equals(capi.World, transitionedStack, GlobalConstants.IgnoredStackAttributes)))
                                 {
                                     dryables.Add(val);
+                                }
+                                break;
+
+                            case EnumTransitionType.Melt:
+                                if (transitionedStack != null && transitionedStack.Equals(capi.World, stack, GlobalConstants.IgnoredStackAttributes) && !curables.Any(s => s.Equals(capi.World, transitionedStack, GlobalConstants.IgnoredStackAttributes)))
+                                {
+                                    meltables.Add(val);
                                 }
                                 break;
 
@@ -866,7 +881,7 @@ namespace Vintagestory.GameContent
             string customCreatedBy = stack.Collectible.Attributes?["handbook"]?["createdBy"]?.AsString(null);
             string bakingInitialIngredient = collObj.Attributes?["bakingProperties"]?.AsObject<BakingProperties>()?.InitialCode;
 
-            if (grecipes.Count > 0 || smithable || knappable || clayformable || customCreatedBy != null || bakables.Count > 0 || barrelRecipestext.Count > 0 || grindables.Count > 0 || curables.Count > 0 || ripenables.Count > 0 || dryables.Count > 0 || crushables.Count > 0 || bakingInitialIngredient != null || juiceables.Count > 0)
+            if (grecipes.Count > 0 || smithable || knappable || clayformable || customCreatedBy != null || bakables.Count > 0 || barrelRecipestext.Count > 0 || grindables.Count > 0 || curables.Count > 0 || ripenables.Count > 0 || dryables.Count > 0 || meltables.Count > 0 || crushables.Count > 0 || bakingInitialIngredient != null || juiceables.Count > 0)
             {
                 if (haveText) components.Add(new ClearFloatTextComponent(capi, marginTop));
                 haveText = true;
@@ -991,6 +1006,23 @@ namespace Vintagestory.GameContent
                     components.Add(new RichTextComponent(capi, "\n", CairoFont.WhiteSmallText()));
                 }
 
+                if (meltables.Count > 0)
+                {
+                    components.Add(new ClearFloatTextComponent(capi, marginTop));
+                    components.Add(new RichTextComponent(capi, "• " + Lang.Get("Melting") + "\n", CairoFont.WhiteSmallText()));
+
+                    while (meltables.Count > 0)
+                    {
+                        ItemStack dstack = meltables[0];
+                        meltables.RemoveAt(0);
+                        if (dstack == null) continue;
+
+                        SlideshowItemstackTextComponent comp = new SlideshowItemstackTextComponent(capi, dstack, meltables, 40, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
+                        components.Add(comp);
+                    }
+
+                    components.Add(new RichTextComponent(capi, "\n", CairoFont.WhiteSmallText()));
+                }
 
                 if (bakables.Count > 0)
                 {

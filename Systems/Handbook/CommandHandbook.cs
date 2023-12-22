@@ -219,8 +219,8 @@ namespace Vintagestory.GameContent
 
         public override void StartServerSide(ICoreServerAPI api)
         {
-            this.sapi = api;
-            api.Event.PlayerJoin += Event_PlayerJoin;
+            sapi = api;
+            api.Event.PlayerNowPlaying += Event_PlayerNowPlaying;
 
             api.ChatCommands.Create("chbr")
                 .RequiresPlayer()
@@ -230,7 +230,7 @@ namespace Vintagestory.GameContent
             ;
         }
 
-        private void Event_PlayerJoin(IServerPlayer byPlayer)
+        private void Event_PlayerNowPlaying(IServerPlayer byPlayer)
         {
             sendSyntaxPacket(byPlayer);
         }

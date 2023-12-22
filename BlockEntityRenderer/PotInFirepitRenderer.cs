@@ -147,6 +147,8 @@ namespace Vintagestory.GameContent
                         ShouldLoop = true,
                         Position = pos.ToVec3f().Add(0.5f, 0.25f, 0.5f),
                         DisposeOnFinish = false,
+                        Range = 10f,
+                        ReferenceDistance = 3f,
                         Volume = volume
                     });
                     cookingSound.Start();

@@ -27,7 +27,6 @@ namespace Vintagestory.GameContent
         // Server
         ICoreServerAPI sapi;
         IServerNetworkChannel serverChannel;
-        double lastTickTotalDays;
 
         // Client
         ICoreClientAPI capi;
