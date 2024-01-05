@@ -270,11 +270,8 @@ namespace Vintagestory.GameContent
                             if (!Enum.TryParse(strdress, true, out dresstype))
                             {
                                 player.TryGiveItemStack(stack);
-                                return;
+                                continue;
                             }
-                            
-
-
 
                             inv[(int)dresstype].Itemstack = stack;
                             inv[(int)dresstype].MarkDirty();
