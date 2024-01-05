@@ -267,16 +267,17 @@ namespace Vintagestory.GameContent
                         {
                             EnumCharacterDressType dresstype;
                             string strdress = stack.ItemAttributes["clothescategory"].AsString();
-                            if (!Enum.TryParse(strdress, true, out dresstype)) return;
+                            if (!Enum.TryParse(strdress, true, out dresstype))
+                            {
+                                player.TryGiveItemStack(stack);
+                                return;
+                            }
+                            
 
 
 
                             inv[(int)dresstype].Itemstack = stack;
                             inv[(int)dresstype].MarkDirty();
-                        }
-                        else
-                        {
-                            player.TryGiveItemStack(stack);
                         }
                     }
 
