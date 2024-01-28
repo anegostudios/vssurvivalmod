@@ -120,7 +120,7 @@ namespace Vintagestory.GameContent
                 var size = RuntimeEnv.GUIScale * 8;
                 if (Math.Abs(dX) < size && Math.Abs(dY) < size)
                 {
-                    var dlg = new GuiDialogConfirm(capi, Lang.Get("Delete reading?"), onConfirmDone);
+                    var dlg = new GuiDialogConfirm(capi, Lang.Get("prospecting-reading-confirmdelete"), onConfirmDone);
                     dlg.TryOpen();
                     var mapdlg = capi.ModLoader.GetModSystem<WorldMapManager>().worldMapDlg;
                     dlg.OnClosed += () => capi.Gui.RequestFocus(mapdlg);

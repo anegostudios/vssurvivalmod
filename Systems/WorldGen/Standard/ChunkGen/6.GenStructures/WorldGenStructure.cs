@@ -497,7 +497,7 @@ namespace Vintagestory.ServerMods
             // But offsetY default is -1 so it will be just a block below the surface unless specified otherwise
             startPos.Y++;
 
-            if (!satisfiesMinDistance(startPos, worldForCollectibleResolve)) return false;
+            if (!SatisfiesMinDistance(startPos, worldForCollectibleResolve)) return false;
             if (WouldOverlapAt(startPos, schematic, worldForCollectibleResolve)) return false;
 
             LastPlacedSchematicLocation.Set(startPos.X, startPos.Y, startPos.Z, startPos.X + schematic.SizeX, startPos.Y + schematic.SizeY, startPos.Z + schematic.SizeZ);
@@ -601,7 +601,7 @@ namespace Vintagestory.ServerMods
             if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return false;
 
 
-            if (!satisfiesMinDistance(startPos, worldForCollectibleResolve)) return false;
+            if (!SatisfiesMinDistance(startPos, worldForCollectibleResolve)) return false;
             if (WouldOverlapAt(startPos, schematic, worldForCollectibleResolve)) return false;
 
             LastPlacedSchematicLocation.Set(startPos.X, startPos.Y, startPos.Z, startPos.X + schematic.SizeX, startPos.Y + schematic.SizeY, startPos.Z + schematic.SizeZ);
@@ -639,7 +639,7 @@ namespace Vintagestory.ServerMods
 
             if (insideblockids.Count > 0 && !insideblockids.Contains(blockAccessor.GetBlock(targetPos).Id)) return false;
             if (!TestUndergroundCheckPositions(blockAccessor, placePos, schematic.UndergroundCheckPositions)) return false;
-            if (!satisfiesMinDistance(pos, worldForCollectibleResolve)) return false;
+            if (!SatisfiesMinDistance(pos, worldForCollectibleResolve)) return false;
             if (WouldOverlapAt(pos, schematic, worldForCollectibleResolve)) return false;
 
             if (resolvedRockTypeRemaps != null)
@@ -856,24 +856,29 @@ namespace Vintagestory.ServerMods
             return false;
         }
 
-        public bool satisfiesMinDistance(BlockPos pos, IWorldAccessor world)
+        public bool SatisfiesMinDistance(BlockPos pos, IWorldAccessor world)
         {
-            if (MinGroupDistance < 1) return true;
+            return SatisfiesMinDistance(pos, world, MinGroupDistance, Group);
+        }
+
+        public static bool SatisfiesMinDistance(BlockPos pos, IWorldAccessor world, int mingroupDistance, string group)
+        {
+            if (mingroupDistance < 1) return true;
 
             int regSize = world.BlockAccessor.RegionSize;
 
             int mapRegionSizeX = world.BlockAccessor.MapSizeX / regSize;
             int mapRegionSizeZ = world.BlockAccessor.MapSizeZ / regSize;
 
-            int x1 = pos.X - MinGroupDistance;
-            int z1 = pos.Z - MinGroupDistance; 
-            int x2 = pos.X + MinGroupDistance;
-            int z2 = pos.Z + MinGroupDistance;
+            int x1 = pos.X - mingroupDistance;
+            int z1 = pos.Z - mingroupDistance;
+            int x2 = pos.X + mingroupDistance;
+            int z2 = pos.Z + mingroupDistance;
 
             // Definition: Max structure size is 256x256x256
             //int maxStructureSize = 256;
 
-            int minDistSq = MinGroupDistance * MinGroupDistance;
+            int minDistSq = mingroupDistance * mingroupDistance;
 
             int minrx = GameMath.Clamp(x1 / regSize, 0, mapRegionSizeX);
             int minrz = GameMath.Clamp(z1 / regSize, 0, mapRegionSizeZ);
@@ -890,7 +895,7 @@ namespace Vintagestory.ServerMods
 
                     foreach (var val in mapregion.GeneratedStructures)
                     {
-                        if (val.Group == this.Group && val.Location.Center.SquareDistanceTo(pos.X, pos.Y, pos.Z) < minDistSq)
+                        if (val.Group == group && val.Location.Center.SquareDistanceTo(pos.X, pos.Y, pos.Z) < minDistSq)
                         {
                             return false;
                         }

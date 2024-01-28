@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -70,8 +71,7 @@ namespace Vintagestory.GameContent
             if (inv[index].Empty)
             {
                 int moved = slot.TryPutInto(Api.World, inv[index]);
-                updateMeshes();
-                MarkDirty(true);
+                MarkDirty();
                 return moved > 0;
             }
 
@@ -97,8 +97,7 @@ namespace Vintagestory.GameContent
                     Api.World.SpawnItemEntity(stack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
                 }
 
-                updateMeshes();
-                MarkDirty(true);
+                MarkDirty();
                 return true;
             }
 
@@ -114,6 +113,9 @@ namespace Vintagestory.GameContent
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
             base.FromTreeAttributes(tree, worldForResolving);
+
+            // Do this last!!!
+            RedrawAfterReceivingTreeAttributes(worldForResolving);     // Redraw on client after we have completed receiving the update from server
         }
 
 
@@ -149,6 +151,11 @@ namespace Vintagestory.GameContent
         protected override float[][] genTransformationMatrices()
         {
             throw new NotImplementedException();
+        }
+
+        public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
+        {
+            // No block info: we don't want to display food perish rate, as the Omok table can accept only Omok pieces!
         }
     }
 }

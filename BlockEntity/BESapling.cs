@@ -19,8 +19,8 @@ namespace Vintagestory.GameContent
     {
         double totalHoursTillGrowth;
         long growListenerId;
-        EnumTreeGrowthStage stage;
-        bool plantedFromSeed;
+        public EnumTreeGrowthStage stage;
+        public bool plantedFromSeed;
 
         MeshData dirtMoundMesh
         {

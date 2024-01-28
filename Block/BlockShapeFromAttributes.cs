@@ -578,7 +578,7 @@ namespace Vintagestory.GameContent
             }
             else
             {
-                var bect = GetBEBehavior<BEBehaviorShapeFromAttributes>(pos);
+                var bect = blockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorShapeFromAttributes>();
                 var cprops = GetTypeProps(bect?.Type, null, bect);
                 return cprops?.LightHsv ?? noLight;
             }

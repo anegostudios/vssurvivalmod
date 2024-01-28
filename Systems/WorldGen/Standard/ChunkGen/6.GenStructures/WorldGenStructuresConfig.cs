@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
@@ -50,7 +51,15 @@ namespace Vintagestory.ServerMods
             for (int i = 0; i < Structures.Length; i++)
             {
                 LCGRandom rand = new LCGRandom(api.World.Seed + i + 512);
-                Structures[i].Init(api, blockLayerConfig, rockstrata, this, rand);
+                try
+                {
+                    Structures[i].Init(api, blockLayerConfig, rockstrata, this, rand);
+                }
+                catch (Exception e)
+                {
+                    api.Logger.Error("The following exception occurred while initialising structure for worldgen: " + Structures[i].Code);
+                    api.Logger.Error(e);
+                }
             }
         }
     }

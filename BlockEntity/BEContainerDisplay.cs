@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -148,15 +149,23 @@ namespace Vintagestory.GameContent
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
             base.FromTreeAttributes(tree, worldForResolving);
+        }
 
+        /// <summary>
+        /// Methods implementing this class need to call this at the conclusion of their FromTreeAttributes implementation.  See BEGroundStorage for an example!
+        /// </summary>
+        protected virtual void RedrawAfterReceivingTreeAttributes(IWorldAccessor worldForResolving)
+        {
             if (worldForResolving.Side == EnumAppSide.Client && Api != null)
             {
                 updateMeshes();
+                MarkDirty(true);  // always redraw on client after updating meshes
             }
         }
 
         public virtual void updateMeshes()
         {
+            if (Api == null || Api.Side == EnumAppSide.Server) return;
             if (DisplayedItems == 0) return;
 
             for (int i = 0; i < DisplayedItems; i++)

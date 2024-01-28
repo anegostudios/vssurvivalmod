@@ -440,7 +440,7 @@ namespace Vintagestory.GameContent
                     if (q <= 0) return new ItemStack[0];
 
                     var stack = new ItemStack(world.GetItem(AssetLocation.Create("stone-" + rocktype, Code.Domain)));
-                    while (q-- > 0) world.SpawnItemEntity(stack, pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                    while (q-- > 0) world.SpawnItemEntity(stack.Clone(), pos.ToVec3d().Add(0.5, 0.5, 0.5));
                 }
             }
 
@@ -514,6 +514,8 @@ namespace Vintagestory.GameContent
             if (byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
             {
                 var be = GetBlockEntity<BlockEntityMicroBlock>(pos);
+                if (be == null) return false;
+
                 bool removed = false;
                 Block block = null;
 

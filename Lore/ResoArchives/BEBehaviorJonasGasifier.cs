@@ -5,22 +5,25 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
-using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class BEBehaviorJonasGasifier : BlockEntityBehavior, INetworkedLight, IIgnitable
+    public class BEBehaviorJonasGasifier : BlockEntityBehavior, INetworkedLight
     {
         ControlPoint cp;
         bool lit;
         public bool HasFuel => !inventory[0].Empty;
-        public bool Lit => lit;
+        public bool Lit
+        {
+            get => lit;
+            set => lit = value;
+        }
 
         ModSystemControlPoints modSys;
         string networkCode;
         InventoryGeneric inventory;
-        double burnStartTotalHours;
+        public double burnStartTotalHours;
 
         public BEBehaviorJonasGasifier(BlockEntity blockentity) : base(blockentity)
         {
@@ -54,7 +57,7 @@ namespace Vintagestory.GameContent
                     if (inventory.Empty)
                     {
                         lit = false;
-                        updateState();
+                        UpdateState();
                         break;
                     }
                 }
@@ -103,7 +106,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        void updateState()
+        public void UpdateState()
         {
             if (cp != null)
             {
@@ -197,31 +200,6 @@ namespace Vintagestory.GameContent
                     dsc.AppendLine(lit ? "On" : "Off");
                 }
             }
-        }
-
-        EnumIgniteState IIgnitable.OnTryIgniteStack(EntityAgent byEntity, BlockPos pos, ItemSlot slot, float secondsIgniting)
-        {
-            if (lit) return secondsIgniting > 3 ? EnumIgniteState.IgniteNow : EnumIgniteState.Ignitable;
-            return EnumIgniteState.NotIgnitable;
-        }
-
-
-        public EnumIgniteState OnTryIgniteBlock(EntityAgent byEntity, BlockPos pos, float secondsIgniting)
-        {
-            if (HasFuel && !lit)
-            {
-                return secondsIgniting > 2 ? EnumIgniteState.IgniteNow : EnumIgniteState.Ignitable;
-            }
-            
-            return EnumIgniteState.NotIgnitablePreventDefault;
-        }
-
-        public void OnTryIgniteBlockOver(EntityAgent byEntity, BlockPos pos, float secondsIgniting, ref EnumHandling handling)
-        {
-            handling = EnumHandling.PreventDefault;
-            lit = true;
-            burnStartTotalHours = Api.World.Calendar.TotalHours;
-            updateState();
         }
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)

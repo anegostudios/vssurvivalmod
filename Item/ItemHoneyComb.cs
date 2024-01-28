@@ -12,8 +12,10 @@ namespace Vintagestory.GameContent
     {
         public float ContainedHoneyLitres = 0.2f;
 
-        public bool CanSqueezeInto(Block block, BlockPos pos)
+        public bool CanSqueezeInto(Block block, BlockSelection blockSel)
         {
+            var pos = blockSel?.Position;
+
             if (block is BlockLiquidContainerTopOpened blcto)
             {
                 return pos == null || !blcto.IsFull(pos);
@@ -24,8 +26,12 @@ namespace Vintagestory.GameContent
                 var beg = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityGroundStorage;
                 if (beg != null)
                 {
-                    ItemSlot squeezeIntoSlot = beg.Inventory.FirstOrDefault(slot => slot.Itemstack?.Block != null && CanSqueezeInto(slot.Itemstack.Block, null));
-                    return squeezeIntoSlot != null && !(squeezeIntoSlot.Itemstack.Block as BlockLiquidContainerTopOpened).IsFull(squeezeIntoSlot.Itemstack);
+                    ItemSlot squeezeIntoSlot = beg.GetSlotAt(blockSel);
+
+                    if (squeezeIntoSlot?.Itemstack?.Block is BlockLiquidContainerTopOpened bowl)
+                    {
+                        return !bowl.IsFull(squeezeIntoSlot.Itemstack);
+                    }
                 }
             }
 
@@ -70,7 +76,7 @@ namespace Vintagestory.GameContent
 
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
-            if (blockSel?.Block != null && CanSqueezeInto(blockSel.Block, blockSel.Position) && byEntity.Controls.ShiftKey)
+            if (blockSel?.Block != null && CanSqueezeInto(blockSel.Block, blockSel) && byEntity.Controls.ShiftKey)
             {
                 handling = EnumHandHandling.PreventDefault;
                 if (api.World.Side == EnumAppSide.Client)
@@ -86,24 +92,12 @@ namespace Vintagestory.GameContent
 
         public override bool OnHeldInteractStep(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
-            if (blockSel?.Block != null && CanSqueezeInto(blockSel.Block, blockSel.Position))
+            if (blockSel?.Block != null && CanSqueezeInto(blockSel.Block, blockSel))
             {
                 if (!byEntity.Controls.ShiftKey) return false;
                 if (byEntity.World is IClientWorldAccessor)
                 {
-                    ModelTransform tf = new ModelTransform();
-                    tf.EnsureDefaultValues();
-
-                    tf.Translation.Set(Math.Min(0.6f, secondsUsed * 2), 0,
-                        0); //-Math.Min(1.1f / 3, secondsUsed * 4 / 3f)
-                    tf.Rotation.Y = Math.Min(20, secondsUsed * 90 * 2f);
-
-                    if (secondsUsed > 0.4f)
-                    {
-                        tf.Translation.X += (float)Math.Sin(secondsUsed * 30) / 10;
-                    }
-
-                    byEntity.Controls.UsingHeldItemTransformBefore = tf;
+                    byEntity.StartAnimation("squeezehoneycomb");
                 }
 
                 return secondsUsed < 2f;
@@ -115,16 +109,18 @@ namespace Vintagestory.GameContent
         public override void OnHeldInteractStop(float secondsUsed, ItemSlot slot, EntityAgent byEntity,
             BlockSelection blockSel, EntitySelection entitySel)
         {
+            byEntity.StopAnimation("squeezehoneycomb");
+
             if (blockSel != null)
             {
                 Block block = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
-                if (CanSqueezeInto(block, blockSel.Position))
+                if (CanSqueezeInto(block, blockSel))
                 {
                     if (secondsUsed < 1.9f) return;
 
                     IWorldAccessor world = byEntity.World;
 
-                    if (!CanSqueezeInto(block, blockSel.Position)) return;
+                    if (!CanSqueezeInto(block, blockSel)) return;
 
                     ItemStack honeyStack = new ItemStack(world.GetItem(new AssetLocation("honeyportion")), 99999);
 
@@ -138,9 +134,9 @@ namespace Vintagestory.GameContent
                         var beg = api.World.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityGroundStorage;
                         if (beg != null)
                         {
-                            ItemSlot squeezeIntoSlot = beg.Inventory.FirstOrDefault(gslot =>
-                                gslot.Itemstack?.Block != null && CanSqueezeInto(gslot.Itemstack.Block, null));
-                            if (squeezeIntoSlot != null)
+                            ItemSlot squeezeIntoSlot = beg.GetSlotAt(blockSel);
+
+                            if (squeezeIntoSlot != null && squeezeIntoSlot?.Itemstack?.Block != null && CanSqueezeInto(squeezeIntoSlot.Itemstack.Block, null))
                             {
                                 blockCnt = squeezeIntoSlot.Itemstack.Block as BlockLiquidContainerTopOpened;
                                 blockCnt.TryPutLiquid(squeezeIntoSlot.Itemstack, honeyStack, ContainedHoneyLitres);
@@ -164,6 +160,12 @@ namespace Vintagestory.GameContent
                 }
             }
             base.OnHeldInteractStop(secondsUsed, slot, byEntity, blockSel, entitySel);
+        }
+
+        public override bool OnHeldInteractCancel(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)
+        {
+            byEntity.StopAnimation("squeezehoneycomb");
+            return base.OnHeldInteractCancel(secondsUsed, slot, byEntity, blockSel, entitySel, cancelReason);
         }
 
 

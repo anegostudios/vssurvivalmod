@@ -84,5 +84,12 @@ namespace Vintagestory.GameContent
         {
             return 3;
         }
+
+
+        public override bool SideIsSolid(BlockPos pos, int faceIndex)
+        {
+            // Although the block has solid sides for general purposes (it's actually almost solid, but the top row of voxels is removed) it is not fully solid, and therefore adjacent liquid blocks should have their sides rendered
+            return faceIndex == BlockFacing.indexDOWN;
+        }
     }
 }

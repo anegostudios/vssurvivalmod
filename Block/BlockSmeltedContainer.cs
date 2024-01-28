@@ -444,12 +444,8 @@ namespace Vintagestory.GameContent
                 BlockEntitySmeltedContainer belmc = (BlockEntitySmeltedContainer)be;
                 belmc.contents.ResolveBlockOrItem(world);
 
-                /*return
-                    "Units: " + (int)(belmc.units) + "\n" +
-                    "Metal: " + belmc.contents.GetName() + "\n" +
-                    "Temperature: " + (int)belmc.Temperature + " °C\n"
-                ;*/
-                return Lang.Get("blocksmeltedcontainer-contents", (int)(belmc.units), belmc.contents.GetName(), (int)belmc.Temperature);
+                var metal = BlockSmeltingContainer.GetMetal(belmc.contents);
+                return Lang.Get("blocksmeltedcontainer-contents", belmc.units, metal, (int)belmc.Temperature);
             }
 
             return base.GetPlacedBlockInfo(world, pos, forPlayer);
@@ -462,20 +458,16 @@ namespace Vintagestory.GameContent
 
             if (contents.Key != null)
             {
-                // cheap hax to get metal name
-                string name = contents.Key.GetName();
-                string metal = name.Substring(name.IndexOf("(") + 1, name.Length - 1 - name.IndexOf("("));
+                var metal = BlockSmeltingContainer.GetMetal(contents.Key);
 
-                dsc.Append(Lang.Get("item-unitdrop", (int)(contents.Value), metal));
+                dsc.Append(Lang.Get("item-unitdrop", contents.Value, metal));
 
                 if (HasSolidifed(inSlot.Itemstack, contents.Key, world))
                 {
                     dsc.Append(Lang.Get("metalwork-toocold"));
                 }
             }
-
             
-
             base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
         }
 

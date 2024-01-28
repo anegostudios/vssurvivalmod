@@ -25,6 +25,7 @@ namespace Vintagestory.GameContent
 
         BlockEntityAnvil beAnvil;
         Vec4f glowRgb = new Vec4f();
+        protected Vec3f origin = new Vec3f(0, 0, 0);
 
         public AnvilWorkItemRenderer(BlockEntityAnvil beAnvil, BlockPos pos, ICoreClientAPI capi)
         {
@@ -98,6 +99,7 @@ namespace Vintagestory.GameContent
 
             rpi.RenderMesh(workItemMeshRef);
 
+            prog.UniformMatrix("modelMatrix", rpi.CurrentModelviewMatrix);
             prog.Stop();
         }
 
@@ -113,18 +115,23 @@ namespace Vintagestory.GameContent
             ModelMat.Set(rpi.CameraMatrixOriginf).Translate(pos.X - camPos.X, pos.Y - camPos.Y, pos.Z - camPos.Z);
             outLineColorMul.A = 1 - GameMath.Clamp((float)Math.Sqrt(plrPos.SquareDistanceTo(pos.X, pos.Y, pos.Z)) / 5 - 1f, 0, 1);
 
-            rpi.LineWidth = 2*api.Settings.Float["wireframethickness"];
+            float linewidth = 2 * api.Settings.Float["wireframethickness"];
+            rpi.LineWidth = linewidth;
             rpi.GLEnableDepthTest();
             rpi.GlToggleBlend(true);
 
             IShaderProgram prog = rpi.GetEngineShader(EnumShaderProgram.Wireframe);
-
             prog.Use();
+            prog.Uniform("origin", origin);
             prog.UniformMatrix("projectionMatrix", rpi.CurrentProjectionMatrix);
             prog.UniformMatrix("modelViewMatrix", ModelMat.Values);
             prog.Uniform("colorIn", outLineColorMul);
             rpi.RenderMesh(recipeOutlineMeshRef);
             prog.Stop();
+
+            if (linewidth != 1.6f) rpi.LineWidth = 1.6f;
+
+            rpi.GLDepthMask(false);   // Helps prevent HUD failing to draw at the start of the next frame, on macOS.  This may be the last GL settings call before the frame is finalised.  The block outline renderer sets this to false prior to rendering its mesh.
         }
 
 

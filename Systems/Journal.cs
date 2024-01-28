@@ -224,29 +224,31 @@ namespace Vintagestory.GameContent
 
             api.Event.RegisterEventBusListener(OnLoreDiscovery, 0.5, "loreDiscovery");
 
-            // api.ChatCommands.GetOrCreate("debug")
-            //     .BeginSubCommand("alllore")
-            //         .WithDescription("Discover all lore content in the journal")
-            //         .RequiresPrivilege(Privilege.controlserver)
-            //         .HandleWith(DiscoverEverything)
-            //
-            //         .BeginSubCommand("clear")
-            //             .WithDescription("Clear the journal")
-            //             .RequiresPlayer()
-            //             .HandleWith(args =>
-            //             {
-            //                 Journal journal;
-            //                 if (!journalsByPlayerUid.TryGetValue(args.Caller.Player.PlayerUID, out journal))
-            //                 {
-            //                     journalsByPlayerUid[args.Caller.Player.PlayerUID] = journal = new Journal();
-            //                 }
-            //
-            //                 journal.Entries.Clear();
-            //
-            //                 return TextCommandResult.Success("Cleared.");
-            //             })
-            //         .EndSubCommand()
-            //     .EndSubCommand();
+#if DEBUG
+            api.ChatCommands.GetOrCreate("debug")
+                 .BeginSubCommand("alllore")
+                     .WithDescription("Discover all lore content in the journal")
+                     .RequiresPrivilege(Privilege.controlserver)
+                     .HandleWith(DiscoverEverything)
+            
+                     .BeginSubCommand("clear")
+                         .WithDescription("Clear the journal")
+                         .RequiresPlayer()
+                         .HandleWith(args =>
+                         {
+                             Journal journal;
+                             if (!journalsByPlayerUid.TryGetValue(args.Caller.Player.PlayerUID, out journal))
+                             {
+                                 journalsByPlayerUid[args.Caller.Player.PlayerUID] = journal = new Journal();
+                             }
+            
+                             journal.Entries.Clear();
+            
+                             return TextCommandResult.Success("Cleared.");
+                         })
+                     .EndSubCommand()
+                 .EndSubCommand();
+#endif
 
         }
 
@@ -535,7 +537,7 @@ namespace Vintagestory.GameContent
                     serverChannel.SendPacket(piece, plr);
                 }
             }
-            return TextCommandResult.Success();
+            return TextCommandResult.Success("All lore added");
         }
 
 

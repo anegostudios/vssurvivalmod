@@ -374,6 +374,9 @@ namespace Vintagestory.GameContent.Mechanics
             hasLPounder = tree.GetBool("hasLPounder");
             hasRPounder = tree.GetBool("hasRPounder");
             hasAxle = tree.GetBool("hasAxle");
+
+            // Do this last!!!
+            RedrawAfterReceivingTreeAttributes(worldAccessForResolve);     // Redraw on client after we have completed receiving the update from server
         }
 
         public override void ToTreeAttributes(ITreeAttribute tree)

@@ -6,6 +6,8 @@ namespace Vintagestory.GameContent
 {
     public class ItemSword : Item
     {
+        protected AssetLocation strikeSound = new AssetLocation("sounds/player/strike");
+
         public static float getHitDamageAtFrame(EntityAgent byEntity, string animCode)
         {
             if (byEntity.Properties.Client.AnimationsByMetaCode.TryGetValue(animCode, out var animdata))
@@ -36,6 +38,26 @@ namespace Vintagestory.GameContent
         }
         public override void OnHeldAttackStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
         {
+            startAttack(slot, byEntity);
+            handling = EnumHandHandling.PreventDefault;
+        }
+
+        public override bool OnHeldAttackCancel(float secondsPassed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSelection, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)
+        {
+            return false;
+        }
+        public override bool OnHeldAttackStep(float secondsPassed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSelection, EntitySelection entitySel)
+        {
+            return stepAttack(slot, byEntity);
+        }
+        public override void OnHeldAttackStop(float secondsPassed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSelection, EntitySelection entitySel)
+        {
+
+        }
+
+
+        protected void startAttack(ItemSlot slot, EntityAgent byEntity)
+        {
             string anim = GetHeldTpHitAnimation(slot, byEntity);
 
             byEntity.Attributes.SetInt("didattack", 0);
@@ -53,27 +75,17 @@ namespace Vintagestory.GameContent
                 Frame = getHitDamageAtFrame(byEntity, anim),
                 Callback = () => hitEntity(byEntity)
             });
-
-            handling = EnumHandHandling.PreventDefault;
         }
 
-
-        public override bool OnHeldAttackCancel(float secondsPassed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSelection, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)
-        {
-            return false;
-        }
-
-        public override bool OnHeldAttackStep(float secondsPassed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSelection, EntitySelection entitySel)
+   
+     
+        protected bool stepAttack(ItemSlot slot, EntityAgent byEntity)
         {
             string animCode = GetHeldTpHitAnimation(slot, byEntity);
 
             return byEntity.AnimManager.IsAnimationActive(animCode);
         }
 
-        public override void OnHeldAttackStop(float secondsPassed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSelection, EntitySelection entitySel)
-        {
-
-        }
 
 
         protected virtual void playStrikeSound(EntityAgent byEntity)
@@ -83,9 +95,7 @@ namespace Vintagestory.GameContent
 
             if (byEntity.Controls.HandUse == EnumHandInteract.HeldItemAttack)
             {
-                // Old voice pitch code left in so in the future if we add back in the voice to the strike sound we can just uncomment it.
-                // var pitch = (byEntity as EntityPlayer).talkUtil.pitchModifier;
-                byPlayer.Entity.World.PlaySoundAt(new AssetLocation("sounds/player/strike"), byPlayer.Entity, byPlayer,/* pitch * */ 0.9f + (float)api.World.Rand.NextDouble() * 0.2f, 16, 0.35f);
+                byPlayer.Entity.World.PlaySoundAt(strikeSound, byPlayer.Entity, byPlayer, 0.9f + (float)api.World.Rand.NextDouble() * 0.2f, 16, 0.35f);
             }
         }
 

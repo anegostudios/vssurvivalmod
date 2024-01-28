@@ -85,9 +85,13 @@ namespace Vintagestory.GameContent
             get
             {
                 if (textureCode != "contents") return blockTexPosSource[textureCode];
-                ContentConfig config = contentConfigs.FirstOrDefault(c => c.Code == contentCode);
-
-                return config.TextureCode != null ? blockTexPosSource[config.TextureCode] : blockTexPosSource[textureCode];
+                var config = contentConfigs.FirstOrDefault(c => c.Code == contentCode);
+                var configTextureCode = config?.TextureCode;
+                if(configTextureCode?.Equals("*") == true)
+                {
+                    configTextureCode = "contents-" + Inventory.FirstNonEmptySlot.Itemstack.Collectible.Code.ToShortString();
+                }
+                return configTextureCode != null ? blockTexPosSource[configTextureCode] : blockTexPosSource[textureCode];
             }
         }
 
@@ -106,18 +110,48 @@ namespace Vintagestory.GameContent
 
         public bool IsSuitableFor(Entity entity, CreatureDiet diet)
         {
-            ContentConfig config = contentConfigs.FirstOrDefault(c => c.Code == contentCode);
-            if (config == null) return false;
+            if (inventory.Empty || diet == null) return false;
+            var config = contentConfigs.FirstOrDefault(c => c.Code == contentCode);
+            var contentResolvedItemstack = config?.Content?.ResolvedItemstack ?? ResolveWildcardContent(config, entity.World);
+            
+            if (contentResolvedItemstack == null) return false;
 
-            return diet.Matches(config.Content.ResolvedItemstack) && inventory[0].StackSize >= config.QuantityPerFillLevel;
+            return diet.Matches(contentResolvedItemstack) && inventory[0].StackSize >= config.QuantityPerFillLevel;
         }
 
+        private ItemStack ResolveWildcardContent(ContentConfig config, IWorldAccessor worldAccessor)
+        {
+            if (config?.Content?.Code == null) return null;
+            var searchObjects = new List<CollectibleObject>();
+            
+            switch (config.Content.Type)
+            {
+                case EnumItemClass.Block:
+                    searchObjects.AddRange(worldAccessor.SearchBlocks(config.Content.Code));
+                    break;
+                case EnumItemClass.Item:
+                    searchObjects.AddRange(worldAccessor.SearchItems(config.Content.Code));
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(config.Content.Type));
+            }
+            
+            foreach (var item in searchObjects)
+            {
+                if (item.Code.Equals(Inventory.FirstNonEmptySlot?.Itemstack?.Item?.Code))
+                {
+                    return new ItemStack(item);
+                }
+            }
+
+            return null;
+        }
 
 
         public float ConsumeOnePortion(Entity entity)
         {
             ContentConfig config = contentConfigs.FirstOrDefault(c => c.Code == contentCode);
-            if (config == null) return 0f;
+            if (config == null || inventory.Empty) return 0f;
 
             inventory[0].TakeOut(config.QuantityPerFillLevel);
 
@@ -160,7 +194,6 @@ namespace Vintagestory.GameContent
             }
 
             inventory.SlotModified += Inventory_SlotModified;
-
         }
 
         private void Inventory_SlotModified(int id)
@@ -321,14 +354,13 @@ namespace Vintagestory.GameContent
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
             base.FromTreeAttributes(tree, worldForResolving);
+            contentCode = tree.GetString("contentCode");
 
             if (Api?.Side == EnumAppSide.Client)
             {
                 currentMesh = GenMesh();
                 MarkDirty(true);
             }
-
-            contentCode = tree.GetString("contentCode");
         }
 
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
@@ -354,7 +386,8 @@ namespace Vintagestory.GameContent
 
             dsc.AppendLine(Lang.Get("Portions: {0}", fillLevel));
 
-            ItemStack contentsStack = config.Content.ResolvedItemstack;
+            ItemStack contentsStack = config.Content.ResolvedItemstack ?? ResolveWildcardContent(config, forPlayer.Entity.World);
+            
             if (contentsStack != null)
             {
                 var cobj = contentsStack.Collectible;

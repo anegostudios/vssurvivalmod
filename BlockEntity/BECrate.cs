@@ -61,14 +61,16 @@ namespace Vintagestory.GameContent
         {
             get
             {
+                if (preferredLidState == "closed") return preferredLidState;   // Early exit in this common situation - no point in testing contents if it's closed anyhow
+
                 if (inventory.Empty) return preferredLidState;
                 var stack = inventory.FirstNonEmptySlot.Itemstack;
+                if (stack == null || (stack.ItemAttributes != null && stack.ItemAttributes["inContainerTexture"].Exists)) return preferredLidState;
 
                 bool? displayInsideCrate = stack.ItemAttributes?["displayInsideCrate"].Exists != true ? null : stack.ItemAttributes?["displayInsideCrate"].AsBool(true);
+                bool hasContentTexture = (stack.Block != null && stack.Block.DrawType == EnumDrawType.Cube && displayInsideCrate != false) || displayInsideCrate == true;
 
-                bool hasContentTexture = stack.ItemAttributes?["inContainerTexture"].Exists == true || (stack.Block != null && stack.Block.DrawType == EnumDrawType.Cube && displayInsideCrate != false) || displayInsideCrate == true;
-
-                return hasContentTexture ? preferredLidState : "closed";
+                return hasContentTexture ? preferredLidState : "closed";    // Always show as closed if there is no content texture
             }
         }
 
@@ -89,8 +91,8 @@ namespace Vintagestory.GameContent
             {
                 loadOrCreateMesh();
             }
-
-            if (Api.Side == EnumAppSide.Server)
+            
+            if (api.Side == EnumAppSide.Server)
             {
                 inventory.SlotModified += Inventory_SlotModified;
             }
@@ -109,7 +111,10 @@ namespace Vintagestory.GameContent
                     this.label = nowLabel;
                     this.type = nowType;
                     this.preferredLidState = nowLidState;
-                    InitInventory(Block);
+                    if (Inventory == null)
+                    {
+                        InitInventory(Block);
+                    }
                     Inventory.LateInitialize(InventoryClassName + "-" + Pos.X + "/" + Pos.Y + "/" + Pos.Z, Api);
                     Inventory.ResolveBlocksOrItems();
                     Inventory.OnAcquireTransitionSpeed = Inventory_OnAcquireTransitionSpeed;
@@ -141,6 +146,9 @@ namespace Vintagestory.GameContent
                     int r = jobj["red"].AsInt();
                     int g = jobj["green"].AsInt();
                     int b = jobj["blue"].AsInt();
+
+                    // Remove previous label from atlas
+                    FreeAtlasSpace();
 
                     labelColor = ColorUtil.ToRgba(255, (int)GameMath.Clamp(r * 1.2f, 0, 255), (int)GameMath.Clamp(g * 1.2f, 0, 255), (int)GameMath.Clamp(b * 1.2f, 0, 255));
                     labelStack = inventory.FirstNonEmptySlot.Itemstack.Clone();
@@ -376,12 +384,17 @@ namespace Vintagestory.GameContent
 
         private ItemSlot GetAutoPushIntoSlot(BlockFacing atBlockFace, ItemSlot fromSlot)
         {
-            var slot = inventory.FirstNonEmptySlot;
-            if (slot == null) return inventory[0];
+            var slotNonEmpty = inventory.FirstNonEmptySlot;
+            if (slotNonEmpty == null) return inventory[0];
 
-            if (slot.Itemstack.Equals(Api.World, fromSlot.Itemstack, GlobalConstants.IgnoredStackAttributes))
+            if (slotNonEmpty.Itemstack.Equals(Api.World, fromSlot.Itemstack, GlobalConstants.IgnoredStackAttributes))
             {
-                return slot;
+                foreach (var slot in inventory)
+                {
+                    if (slot.Itemstack == null || slot.StackSize < slot.Itemstack.Collectible.MaxStackSize)
+                        return slot;
+                }
+                return null;
             }
 
             return null;
@@ -390,7 +403,6 @@ namespace Vintagestory.GameContent
         protected virtual void OnInvOpened(IPlayer player)
         {
             inventory.PutLocked = retrieveOnly && player.WorldData.CurrentGameMode != EnumGameMode.Creative;
-
         }
 
         protected virtual void OnInvClosed(IPlayer player)
@@ -505,7 +517,6 @@ namespace Vintagestory.GameContent
         {
             int stacksize = 0;
             foreach (var slot in inventory) stacksize += slot.StackSize;
-
             
             if (stacksize > 0) {
                 dsc.AppendLine(Lang.Get("Contents: {0}x{1}", stacksize, inventory.FirstNonEmptySlot.GetStackName()));
@@ -522,7 +533,6 @@ namespace Vintagestory.GameContent
         {
             FreeAtlasSpace();
             base.OnBlockUnloaded();
-            
         }
 
         public override void OnBlockRemoved()

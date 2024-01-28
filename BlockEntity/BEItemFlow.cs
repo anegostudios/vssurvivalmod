@@ -317,6 +317,9 @@ namespace Vintagestory.GameContent
             BlockPos OutputPosition = Pos.AddCopy(outputFace);
 
             var ba = Api.World.BlockAccessor;
+            
+            // Retrieve the block first to handle the possibility of it being a multiblock,
+            // as this overrides GetBlockEntity on the block to ensure the associated block entity is obtained.
             var beContainer = ba.GetBlock(OutputPosition).GetBlockEntity<BlockEntityContainer>(OutputPosition);
 
             if (beContainer != null)

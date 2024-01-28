@@ -380,6 +380,7 @@ namespace Vintagestory.GameContent
             api.RegisterBlockClass("BlockCactus", typeof(BlockCactus));
             api.RegisterBlockClass("BlockSlab", typeof(BlockSlab));
             api.RegisterBlockClass("BlockPlantContainer", typeof(BlockPlantContainer));
+            api.RegisterBlockClass("BlockSapling", typeof(BlockSapling));
             api.RegisterBlockClass("BlockSign", typeof(BlockSign));
             api.RegisterBlockClass("BlockSimpleCoating", typeof(BlockSimpleCoating));
             api.RegisterBlockClass("BlockFullCoating", typeof(BlockFullCoating));
@@ -557,8 +558,7 @@ namespace Vintagestory.GameContent
 
             api.RegisterBlockClass("BlockClutter", typeof(BlockClutter));
             api.RegisterBlockClass("BlockClutterBookshelf", typeof(BlockClutterBookshelf));
-            
-            
+
             api.RegisterBlockClass("BlockBookshelf", typeof(BlockBookshelf));
             api.RegisterBlockClass("BlockClutterBookshelfWithLore", typeof(BlockClutterBookshelfWithLore));
             api.RegisterBlockClass("BlockLooseRock", typeof(BlockLooseRock));
@@ -584,7 +584,8 @@ namespace Vintagestory.GameContent
             api.RegisterBlockClass("BlockAntlerMount", typeof(BlockAntlerMount));
 
             api.RegisterBlockClass("BlockRockTyped", typeof(BlockRockTyped));
-
+            
+            api.RegisterBlockClass("BlockGasifier", typeof(BlockGasifier));
         }
 
 
@@ -933,6 +934,7 @@ namespace Vintagestory.GameContent
             api.RegisterEntityBehaviorClass("conversable", typeof(EntityBehaviorConversable));
             api.RegisterEntityBehaviorClass("boss", typeof(EntityBehaviorBoss));
             api.RegisterEntityBehaviorClass("antlergrowth", typeof(EntityBehaviorAntlerGrowth));
+            api.RegisterEntityBehaviorClass("idleanimations", typeof(EntityBehaviorIdleAnimations));
         }
 
 

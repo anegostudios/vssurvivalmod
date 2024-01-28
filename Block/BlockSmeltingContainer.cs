@@ -156,13 +156,13 @@ namespace Vintagestory.GameContent
                 if (alloy != null)
                 {
                     double quantity = alloy.GetTotalOutputQuantity(stacks);
-                    return Lang.Get("Will create {0} units of {1}", (int)Math.Round(quantity * 100, 4), CheapMetalNameHax(alloy.Output.ResolvedItemstack));
+                    return Lang.Get("Will create {0} units of {1}", (int)Math.Round(quantity * 100, 4), GetMetal(alloy.Output.ResolvedItemstack));
                 }
 
                 MatchedSmeltableStack match = GetSingleSmeltableStack(stacks);
                 if (match != null)
                 {
-                    return Lang.Get("Will create {0} units of {1}", (int)Math.Round(match.stackSize * 100, 4), CheapMetalNameHax(match.output));
+                    return Lang.Get("Will create {0} units of {1}", (int)Math.Round(match.stackSize * 100, 4), GetMetal(match.output));
                 }
 
                 return null;
@@ -171,18 +171,26 @@ namespace Vintagestory.GameContent
             return null;
         }
 
-
-        public string CheapMetalNameHax(ItemStack ingot)
+        public static string GetMetal(ItemStack ingot)
         {
-            // cheap hax to get metal name
-            string name = ingot.GetName();
-            return
-                ingot.Collectible.Code.Path.Contains("ingot") ? name.Substring(name.IndexOf("(") + 1, name.Length - 1 - name.IndexOf("(")) :  name;
+            if (ingot.Collectible.Variant.TryGetValue("metal", out var name))
+            {
+                name = Lang.Get("material-" + name);
+            }
+            else
+            {
+                if (ingot.Collectible.Code.Path.Equals("ironbloom"))
+                {
+                    name = Lang.Get("material-iron");
+                }
+                else
+                {
+                    name = ingot.GetName();
+                }
+            }
+
+            return name;
         }
-
-
-        
-
 
         public AlloyRecipe GetMatchingAlloy(IWorldAccessor world, ItemStack[] stacks)
         {

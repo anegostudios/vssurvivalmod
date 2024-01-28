@@ -1740,6 +1740,32 @@ namespace Vintagestory.ServerMods
                     regCoords.Add(new Vec2i((chunkMidX + x) / regionChunkSize, (chunkMidZ + z) / regionChunkSize));
                 }
             }
+            
+            TreeAttribute tree = null;
+            if (deleteRegion)
+            {
+                Dictionary<long, List<GeneratedStructure>> regionStructures = new();
+                var chunkSize = api.WorldManager.ChunkSize;
+                foreach (Vec2i coord in coords)
+                {
+                    var regionIndex = api.WorldManager.MapRegionIndex2D(coord.X / regionChunkSize, coord.Y / regionChunkSize);
+                    var mapRegion = api.WorldManager.GetMapRegion(regionIndex);
+                    if (mapRegion.GeneratedStructures.Count > 0)
+                    {
+                        // only adds the region once
+                        regionStructures.TryAdd(regionIndex, mapRegion.GeneratedStructures);
+
+                        // remove the structures from each chunk that will be regenerated
+                        var structures = mapRegion.GeneratedStructures.Where(s =>
+                            coord.X == s.Location.Start.X / chunkSize &&
+                            coord.Y == s.Location.Start.Z / chunkSize);
+                        regionStructures[regionIndex].RemoveAll(s => structures.Contains(s));
+                    }
+                }
+
+                tree = new TreeAttribute();        
+                tree.SetBytes("GeneratedStructures", SerializerUtil.Serialize(regionStructures));
+            }
 
             foreach (Vec2i coord in coords)
             {
@@ -1755,10 +1781,9 @@ namespace Vintagestory.ServerMods
 
             if (!onlydelete)
             {
-                TreeAttribute tree = null;
                 if (landforms != null)
                 {
-                    tree = new TreeAttribute();
+                    tree ??= new TreeAttribute();
 
                     var list = NoiseLandforms.landforms.LandFormsByIndex;
                     int index = -1;
@@ -1782,31 +1807,6 @@ namespace Vintagestory.ServerMods
                 int leftToLoad = coords.Count;
                 bool sent = false;
                 api.WorldManager.SendChunks = false;
-                Dictionary<long, List<GeneratedStructure>> regionStructures = null;
-                if (deleteRegion)
-                {
-                    regionStructures = new();
-                    var chunkSize = api.WorldManager.ChunkSize;
-                    foreach (Vec2i coord in coords)
-                    {
-                        var regionIndex = api.WorldManager.MapRegionIndex2D(coord.X / regionChunkSize, coord.Y / regionChunkSize);
-                        var mapRegion = api.WorldManager.GetMapRegion(regionIndex);
-                        if (mapRegion.GeneratedStructures.Count > 0)
-                        {
-                            // only adds the region once
-                            regionStructures.TryAdd(regionIndex, mapRegion.GeneratedStructures);
-                            
-                            // remove the structures from each chunk that will be regenerated
-                            var structures = mapRegion.GeneratedStructures.Where(s =>
-                                coord.X == s.Location.Start.X / chunkSize &&
-                                coord.Y == s.Location.Start.Z / chunkSize);
-                            regionStructures[regionIndex].RemoveAll(s => structures.Contains(s));
-                        }
-                    }
-
-                    tree ??= new TreeAttribute();        
-                    tree.SetBytes("GeneratedStructures", SerializerUtil.Serialize(regionStructures));
-                }
 
                 foreach (Vec2i coord in coords)
                 {

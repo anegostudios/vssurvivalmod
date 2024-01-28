@@ -319,7 +319,12 @@ namespace Vintagestory.GameContent
                 }
 
                 MeshData md;
-                capi.Tesselator.TesselateShape("typedcontainer-decal", shape, out md, decalTexSource);
+                var texSource = new GenericContainerTextureSource
+                {
+                    blockTextureSource = decalTexSource,
+                    curType = be.type
+                };
+                capi.Tesselator.TesselateShape("typedcontainer-decal", shape, out md, texSource);
                 decalModelData = md;
 
                 decalModelData.Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 0, be.MeshAngle, 0);

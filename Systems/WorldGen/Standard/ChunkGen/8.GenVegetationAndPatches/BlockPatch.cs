@@ -172,6 +172,9 @@ namespace Vintagestory.ServerMods.NoObf
             Block[] blocks = getBlocks(firstBlockId);
             if (blocks.Length == 0) return;
 
+            ModStdWorldGen modSys = null;
+            if (blockAccessor is IWorldGenBlockAccessor wgba) wgba.WorldgenWorldAccessor.Api.ModLoader.GetModSystem<GenVegetationAndPatches>();
+
             while (quantity-- > 0)
             {
                 if (quantity < 1 && rnd.NextFloat() > quantity) break;
@@ -190,6 +193,7 @@ namespace Vintagestory.ServerMods.NoObf
                 if (Placement == EnumBlockPatchPlacement.Underground)
                 {
                     pos.Y = rnd.NextInt(Math.Max(1, chunk.MapChunk.WorldGenTerrainHeightMap[lz * GlobalConstants.ChunkSize + lx] - 1));
+                    if (modSys != null && modSys.SkipGenerationAt(pos, EnumWorldGenPass.Vegetation)) continue;
                 }
                 else
                 {

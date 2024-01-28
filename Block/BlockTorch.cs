@@ -98,24 +98,28 @@ namespace Vintagestory.GameContent
 
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
-            if(blockSel == null) return;
-            if (isExtinct && byEntity.World.BlockAccessor.GetBlock(blockSel.Position) is IIgnitable ign)
+            if (blockSel != null && byEntity.World.BlockAccessor.GetBlock(blockSel.Position) is IIgnitable ign)
             {
-                var state = ign.OnTryIgniteStack(byEntity, blockSel.Position, slot, 0);
-                if (state == EnumIgniteState.Ignitable)
+                if (isExtinct)
                 {
-                    byEntity.World.PlaySoundAt(new AssetLocation("sounds/torch-ignite"), byEntity, (byEntity as EntityPlayer)?.Player, false, 16);
-                    handling = EnumHandHandling.PreventDefault;
-                    return;
+                    var state = ign.OnTryIgniteStack(byEntity, blockSel.Position, slot, 0);
+                    if (state == EnumIgniteState.Ignitable)
+                    {
+                        byEntity.World.PlaySoundAt(new AssetLocation("sounds/torch-ignite"), byEntity, (byEntity as EntityPlayer)?.Player, false, 16);
+                        handling = EnumHandHandling.PreventDefault;
+                    }
                 }
+                else
+                {
+                    // prevent placing of torch while pointing at another torch (after igniting)
+                    handling = EnumHandHandling.Handled;
+                } 
             }
-
-            base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handling);
         }
 
         public override bool OnHeldInteractStep(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
-            if (isExtinct && byEntity.World.BlockAccessor.GetBlock(blockSel.Position) is IIgnitable ign)
+            if (isExtinct && blockSel != null && byEntity.World.BlockAccessor.GetBlock(blockSel.Position) is IIgnitable ign)
             {
                 var state = ign.OnTryIgniteStack(byEntity, blockSel.Position, slot, secondsUsed);
                 if (state == EnumIgniteState.Ignitable)

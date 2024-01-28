@@ -5,9 +5,19 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
 
 namespace Vintagestory.GameContent
 {
+    public class CollapsibleSearchResult
+    {
+        public float NearestSupportDistance;
+        public List<Vec4i> SupportPositions;
+        public bool Unconnected;
+
+        public float Instability;
+    }
+
     public class ModSystemExplosionAffectedStability : ModSystem
     {
         ICoreServerAPI sapi;
@@ -18,6 +28,7 @@ namespace Vintagestory.GameContent
         {
             sapi = api;
             api.Event.RegisterEventBusListener(onExplosion, 0.5, "onexplosion");
+            api.Event.DidPlaceBlock += OnBlockPlacedEvent;
         }
 
         private void onExplosion(string eventName, ref EnumHandling handling, IAttribute data)
@@ -40,10 +51,16 @@ namespace Vintagestory.GameContent
 
                 tmpPos.Set(pos.X + dx, pos.Y + dy, pos.Z + dz);
 
-                var block = sapi.World.BlockAccessor.GetBlock(tmpPos);
+                var block = sapi.World.BlockAccessor.GetBlock(tmpPos, BlockLayersAccess.Solid);
                 var bh = block.GetBehavior<BlockBehaviorUnstableRock>();
                 bh?.CheckCollapsible(sapi.World, tmpPos);
             }
+        }
+
+        private void OnBlockPlacedEvent(IServerPlayer byPlayer, int oldblockId, BlockSelection blockSel, ItemStack withItemStack)
+        {
+            var bh = withItemStack?.Block?.GetBehavior<BlockBehaviorUnstableRock>();
+            bh?.CheckCollapsible(sapi.World, blockSel.Position);
         }
     }
 
@@ -87,7 +104,7 @@ possible prefilter: start and end position form a cuboid. Check if position X is
 
         ICoreServerAPI sapi;
         ICoreAPI api;
-        bool Enabled => sapi != null && sapi.World.Config.GetString("caveIns") == "on" && sapi.Server.Config.AllowFallingBlocks;
+        bool Enabled => api.World.Config.GetString("caveIns") == "on" && (sapi == null || sapi.Server.Config.AllowFallingBlocks);
 
         public BlockBehaviorUnstableRock(Block block) : base(block)
         {
@@ -126,13 +143,6 @@ possible prefilter: start and end position form a cuboid. Check if position X is
         }
 
 
-        public override void OnBlockPlaced(IWorldAccessor world, BlockPos blockPos, ref EnumHandling handling)
-        {
-            base.OnBlockPlaced(world, blockPos, ref handling);
-            CheckCollapsible(world, blockPos);
-        }
-
-
         public override void OnBlockBroken(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, ref EnumHandling handling)
         {
             base.OnBlockBroken(world, pos, byPlayer, ref handling);
@@ -154,26 +164,33 @@ possible prefilter: start and end position form a cuboid. Check if position X is
             
             for (int i = 0; i < faces.Length; i++)
             {
-                if (i >= 2) break;
+                if (i >= 3) break;
                 if (CheckCollapsible(world, pos.AddCopy(faces[i]))) break;
             }
         }
 
         public bool CheckCollapsible(IWorldAccessor world, BlockPos pos)
         {
-            if (world.Side == EnumAppSide.Server)
-            {
-                if (!Enabled) return false;
-                if (world.Rand.NextDouble() > collapseChance) return false;
+            if (world.Side != EnumAppSide.Server) return false;
+            if (!Enabled) return false;
 
-                if (getNearestSupportDistance(pos, false, out var supportPositions) > maxSupportDistance)
-                {
-                    collapse(world, supportPositions, pos);
-                    return true;
-                }
+            var block = world.BlockAccessor.GetBlock(pos, BlockLayersAccess.Solid);
+            if (!block.HasBehavior<BlockBehaviorUnstableRock>()) return false;
+
+            var res = searchCollapsible(pos, false);
+
+            if (res.Unconnected)
+            {
+                collapse(world, res.SupportPositions, pos);
+            }
+            else
+            {
+                if (world.Rand.NextDouble()+0.001 > res.Instability) return false;
+                if (world.Rand.NextDouble() > collapseChance) return false;
+                collapse(world, res.SupportPositions, pos);
             }
 
-            return false;
+            return true;
         }
 
 
@@ -191,7 +208,7 @@ possible prefilter: start and end position form a cuboid. Check if position X is
 
                 if (entity == null)
                 {
-                    var block = world.BlockAccessor.GetBlock(pos);
+                    var block = world.BlockAccessor.GetBlock(pos, BlockLayersAccess.Solid);
                     var bh = block.GetBehavior<BlockBehaviorUnstableRock>();
 
                     EntityBlockFalling entityblock = new EntityBlockFalling(bh.collapsedBlock, world.BlockAccessor.GetBlockEntity(pos), pos, fallSound, impactDamageMul, true, dustIntensity);
@@ -201,23 +218,29 @@ possible prefilter: start and end position form a cuboid. Check if position X is
         }
 
 
-        private float getNearestSupportDistance(BlockPos startPos, bool ignoreBeams, out List<Vec4i> supportPositions)
+        private CollapsibleSearchResult searchCollapsible(BlockPos startPos, bool ignoreBeams)
         {
-            supportPositions = getNearestVerticalSupports(api.World, startPos);
+            var searchResult = getNearestVerticalSupports(api.World, startPos);
+            searchResult.NearestSupportDistance = 9999f;
 
-            float nearestDist = 9999f;
-
-            foreach (var pos in supportPositions) 
+            foreach (var pos in searchResult.SupportPositions) 
             {
-                nearestDist = Math.Min(nearestDist, GameMath.Sqrt(Math.Max(0, pos.HorDistanceSqTo(startPos.X, startPos.Z) - (pos.W - 1))));
+                searchResult.NearestSupportDistance = Math.Min(searchResult.NearestSupportDistance, GameMath.Sqrt(Math.Max(0, pos.HorDistanceSqTo(startPos.X, startPos.Z) - (pos.W - 1))));
             }
 
-            if (ignoreBeams) return nearestDist;
+            if (ignoreBeams)
+            {
+                searchResult.Instability = Math.Clamp(searchResult.NearestSupportDistance / (float)maxSupportDistance, 0, 99);
+                return searchResult;
+            }
 
             var sbp = api.ModLoader.GetModSystem<ModSystemSupportBeamPlacer>();
             double beamDist = sbp.GetStableMostBeam(startPos, out var startend);
 
-            return (float)Math.Min(nearestDist, beamDist);
+            searchResult.NearestSupportDistance = (float)Math.Min(searchResult.NearestSupportDistance, beamDist);
+            searchResult.Instability = Math.Clamp(searchResult.NearestSupportDistance / (float)maxSupportDistance, 0, 99);
+
+            return searchResult;
         }
 
         private float getNearestSupportDistance(List<Vec4i> supportPositions, BlockPos startPos)
@@ -256,48 +279,53 @@ possible prefilter: start and end position form a cuboid. Check if position X is
                     float distSq = npos.HorDistanceSqTo(startPos.X, startPos.Z);
                     if (distSq > maxSupportSearchDistanceSq) continue;
 
-                    float dist = getNearestSupportDistance(supportPositions, npos);
-                    if (dist > maxCollapseDistance)
-                    {
-                        var block = world.BlockAccessor.GetBlock(npos);
-                        if (block.HasBehavior<BlockBehaviorUnstableRock>())
-                        {
-                            unstableBlocks.Add(npos);
+                    var block = world.BlockAccessor.GetBlock(npos, BlockLayersAccess.Solid);
+                    bool canbeUnstable = block.HasBehavior<BlockBehaviorUnstableRock>();
+                    if (!canbeUnstable) continue;
 
-                            for (int dy = 1; dy < 4; dy++)
+                    float dist = getNearestSupportDistance(supportPositions, npos);
+                    if (dist > 0)
+                    {
+                        unstableBlocks.Add(npos);
+
+                        for (int dy = 1; dy < 4; dy++)
+                        {
+                            block = world.BlockAccessor.GetBlock(npos.X, npos.Y - dy, npos.Z);
+                            if (block.HasBehavior<BlockBehaviorUnstableRock>() && getVerticalSupportStrength(world, npos) == 0)
                             {
-                                block = world.BlockAccessor.GetBlock(npos.X, npos.Y - dy, npos.Z);
-                                if (block.HasBehavior<BlockBehaviorUnstableRock>())
-                                {
-                                    unstableBlocks.Add(npos.DownCopy(dy));
-                                }
+                                unstableBlocks.Add(npos.DownCopy(dy));
                             }
                         }
+
+                        if (unstableBlocks.Count > blocksToCollapse) return unstableBlocks;
+
+                        bfsQueue.Enqueue(npos);
                     }
 
-                    if (unstableBlocks.Count > blocksToCollapse) return unstableBlocks;
-
-                    bfsQueue.Enqueue(npos);
+                    
                 }
             }
 
             return unstableBlocks;
         }
 
-        List<Vec4i> getNearestVerticalSupports(IWorldAccessor world, BlockPos startpos)
+        CollapsibleSearchResult getNearestVerticalSupports(IWorldAccessor world, BlockPos startpos)
         {
             Queue<BlockPos> bfsQueue = new Queue<BlockPos>();
             bfsQueue.Enqueue(startpos);
             HashSet<BlockPos> visited = new HashSet<BlockPos>();
 
-            List<Vec4i> verticalSupports = new List<Vec4i>();
+            CollapsibleSearchResult res = new CollapsibleSearchResult();
+            res.SupportPositions = new List<Vec4i>();
 
-             int str;
-             if ((str = getVerticalSupportStrength(world, startpos)) > 0)
-             {
-                 verticalSupports.Add(new Vec4i(startpos, str));
-                 return verticalSupports;
-             }
+            int str;
+            if ((str = getVerticalSupportStrength(world, startpos)) > 0)
+            {
+                res.SupportPositions.Add(new Vec4i(startpos, str));
+                return res;
+            }
+
+            res.Unconnected = true;
 
             while (bfsQueue.Count > 0)
             {
@@ -308,21 +336,28 @@ possible prefilter: start and end position form a cuboid. Check if position X is
 
                 for (int i = 0; i < BlockFacing.HORIZONTALS.Length; i++)
                 {
-                    var npos = ipos.AddCopy(BlockFacing.HORIZONTALS[i]);
+                    var face = BlockFacing.HORIZONTALS[i];
+                    var npos = ipos.AddCopy(face);
                     float distSq = npos.HorDistanceSqTo(startpos.X, startpos.Z);
-                    if (distSq > maxSupportSearchDistanceSq) continue;
 
                     var block = world.BlockAccessor.GetBlock(npos);
 
                     // Stability cannot propagate through non-solid blocks
-                    if (!block.SideSolid.Horizontals)
+                    if (!block.SideIsSolid(npos, i) || !block.SideIsSolid(npos, face.Opposite.Index))
                     {
+                        continue;
+                    }
+
+                    if (distSq > maxSupportSearchDistanceSq)
+                    {
+                        res.Unconnected = !block.SideIsSolid(npos, BlockFacing.DOWN.Index);
                         continue;
                     }
 
                     if ((str = getVerticalSupportStrength(world, npos)) > 0)
                     {
-                        verticalSupports.Add(new Vec4i(npos, str));
+                        res.Unconnected = false;
+                        res.SupportPositions.Add(new Vec4i(npos, str));
                         continue;
                     }
 
@@ -330,19 +365,22 @@ possible prefilter: start and end position form a cuboid. Check if position X is
                 }
             }
 
-            return verticalSupports;
+            return res;
         }
+
 
         // Lets define: A block vertically suppported, if it has 4 or more solid blocks below it (or has a support beam below)
         public static int getVerticalSupportStrength(IWorldAccessor world, BlockPos npos)
         {
+            BlockPos tmppos = new BlockPos();
             for (int i = 1; i < 5; i++)
             {
-                var block = world.BlockAccessor.GetBlock(npos.X, npos.Y - i, npos.Z);
+                tmppos.Set(npos.X, npos.Y - i, npos.Z);
+                var block = world.BlockAccessor.GetBlock(tmppos);
                 int stab = block.Attributes?["unstableRockStabilization"].AsInt(0) ?? 0;
                 if (stab > 0) return stab;
 
-                if (!block.SideSolid.Verticals)
+                if (!block.SideIsSolid(tmppos, BlockFacing.UP.Index) || !block.SideIsSolid(tmppos, BlockFacing.DOWN.Index))
                 {
                     return 0;
                 }
@@ -353,19 +391,21 @@ possible prefilter: start and end position form a cuboid. Check if position X is
 
         public override string GetPlacedBlockInfo(IWorldAccessor world, BlockPos pos, IPlayer forPlayer)
         {
-            return string.Format("Instability: {0:0.#}%", getInstability(world, pos)*100);
+             if (!Enabled) return base.GetPlacedBlockInfo(world, pos, forPlayer);
+
+            return string.Format("Instability: {0:0.#}%", getInstability(pos)*100);
         }
 
-        public double getInstability(IWorldAccessor world, BlockPos pos)
+        public double getInstability(BlockPos pos)
         {
-            return Math.Clamp(getNearestSupportDistance(pos, false, out _)*2, 0, 10) / 10;
+            return Math.Clamp(searchCollapsible(pos, false).NearestSupportDistance/(float)maxSupportDistance, 0, 1);
         }
 
         public bool CanChisel(IWorldAccessor world, BlockPos pos, IPlayer player, out string errorCode)
         {
             errorCode = null;
 
-            if (getInstability(world, pos) >= 1 && player.WorldData.CurrentGameMode != EnumGameMode.Creative)
+            if (getInstability(pos) >= 1 && player.WorldData.CurrentGameMode != EnumGameMode.Creative)
             {
                 errorCode = "cantchisel-toounstable";
                 return false;

@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -152,11 +153,17 @@ namespace Vintagestory.GameContent
 
             var ba = blockAccessor is IBlockAccessorRevertable ? api.World.BlockAccessor : blockAccessor;
 
-            double rnd = api.World.Rand.NextDouble();
+            float sumchance = 0;
+            for (int i = 0; i < 10; i++)
+            {
+                sumchance += Chances[i];
+            }
+
+            double rnd = api.World.Rand.NextDouble() * Math.Max(100, sumchance);
             for (int i = 0; i < 10; i++)
             {
                 var block = inventory[i].Itemstack?.Block;
-                rnd -= Chances[i]/100f;
+                rnd -= Chances[i];
                 if (rnd <= 0 && block != null)
                 {
                     if (block.Code == airFillerblockCode) ba.SetBlock(0, pos);
@@ -179,18 +186,43 @@ namespace Vintagestory.GameContent
                             }
                         }
 
-                        ba.SetBlock(block.Id, pos);
-                        BlockEntity be;
-                        if (blockAccessor is IWorldGenBlockAccessor && block.EntityClass != null)
+                        var beHa = block.GetBehavior<BlockBehaviorHorizontalAttachable>();
+
+                        if (beHa != null)
                         {
-                            blockAccessor.SpawnBlockEntity(block.EntityClass, pos);
+                            var offset = api.World.Rand.Next(BlockFacing.HORIZONTALS.Length);
+                            for (var index = 0; index < BlockFacing.HORIZONTALS.Length; index++)
+                            {
+                                var facing = BlockFacing.HORIZONTALS[(index + offset) % BlockFacing.HORIZONTALS.Length];
+                                var newBlock = ba.GetBlock(block.CodeWithParts(facing.Code));
+                                var attachingBlockPos = pos.AddCopy(facing);
+                                var attachingBlock = ba.GetBlock(attachingBlockPos);
+                                if (!attachingBlock.CanAttachBlockAt(ba, newBlock, pos, facing)) continue;
+
+                                ba.SetBlock(newBlock.Id, pos);
+                                break;
+                            }
                         }
-                        be = blockAccessor.GetBlockEntity(pos);
-                        be?.OnBlockPlaced(inventory[i].Itemstack);
+                        else
+                        {
+                            ba.SetBlock(block.Id, pos);
+                            BlockEntity be;
+                            if (blockAccessor is IWorldGenBlockAccessor && block.EntityClass != null)
+                            {
+                                blockAccessor.SpawnBlockEntity(block.EntityClass, pos);
+                            }
+                            be = blockAccessor.GetBlockEntity(pos);
+                            be?.Initialize(api);
+                            be?.OnBlockPlaced(inventory[i].Itemstack);
+                        }
+
                     }
                     return;
                 }
             }
+
+            // At below 100% chance and miss: Turn to air block
+            ba.SetBlock(0, pos);
         }
 
         public override void OnBlockBroken(IPlayer byPlayer = null)

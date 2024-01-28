@@ -259,7 +259,6 @@ namespace Vintagestory.GameContent
                 beg.MeshAngle = roundRad;
                 beg.AttachFace = attachFace;
                 beg.OnPlayerInteractStart(player, blockSel);
-                beg.MarkDirty(true);
             }
 
             if (CollisionTester.AabbIntersect(

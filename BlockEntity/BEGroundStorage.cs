@@ -486,8 +486,7 @@ namespace Vintagestory.GameContent
 
             if (ok)
             {
-                MarkDirty(true);
-                updateMeshes();
+                MarkDirty();    // Don't re-draw on client yet, that will be handled in FromTreeAttributes after we receive an updating packet from the server  (updating meshes here would have the wrong inventory contents, and also create a potential race condition)
             }
 
             if (inventory.Empty)
@@ -864,15 +863,13 @@ namespace Vintagestory.GameContent
                 DetermineStorageProperties(null);
             }
 
-            if (worldForResolving.Side == EnumAppSide.Client && Api != null)
-            {
-                updateMeshes();
-            }
-
             MeshAngle = tree.GetFloat("meshAngle");
             AttachFace = BlockFacing.ALLFACES[tree.GetInt("attachFace")];
-        }
 
+
+            // Do this last!!!  Prevents bug where initially drawn with wrong rotation
+            RedrawAfterReceivingTreeAttributes(worldForResolving);     // Redraw on client after we have completed receiving the update from server
+        }
 
         public override void ToTreeAttributes(ITreeAttribute tree)
         {

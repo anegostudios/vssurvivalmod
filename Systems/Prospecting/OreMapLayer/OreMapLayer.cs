@@ -97,7 +97,7 @@ namespace Vintagestory.GameContent
                 capi.Gui
                     .CreateCompo(key, dlgBounds)
                     .AddShadedDialogBG(bgBounds, false)
-                    .AddDialogTitleBar(Lang.Get("Prospecting layer"), () => { guiDialogWorldMap.Composers[key].Enabled = false; })
+                    .AddDialogTitleBar(Lang.Get("maplayer-prospecting"), () => { guiDialogWorldMap.Composers[key].Enabled = false; })
                     .BeginChildElements(bgBounds)
                         .AddDropDown(values, names, 0, onSelectionChanged, ElementBounds.Fixed(0, 30, 160, 35))
                     .EndChildElements()

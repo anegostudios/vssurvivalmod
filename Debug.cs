@@ -1,9 +1,22 @@
-﻿using Vintagestory.API.Common;
+﻿using Vintagestory.API.Client;
+using Vintagestory.API.Common;
 using Vintagestory.API.Server;
 using Vintagestory.GameContent;
 
 namespace Vintagestory.ServerMods
 {
+    /*public class NoNerdPoleSystem : ModSystem
+    {
+        public override bool ShouldLoad(EnumAppSide forSide) => forSide == EnumAppSide.Server;
+        public override void StartServerSide(ICoreServerAPI api)
+        {
+            api.Event.CanPlaceOrBreakBlock += (IServerPlayer plr, BlockSelection bs, out string claimant) => {
+                if (!plr.Entity.Collided) { claimant = "nonerdpoleing"; return false; }
+                claimant = null; return true; 
+            }
+        }
+    }*/
+
 
     public class DebugSystem : ModSystem
     {

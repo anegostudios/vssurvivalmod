@@ -41,6 +41,8 @@ namespace Vintagestory.ServerMods
         [JsonProperty]
         public string Group;
         [JsonProperty]
+        public int MinGroupDistance = 0;
+        [JsonProperty]
         public VillageSchematic[] Schematics;
         [JsonProperty]
         public float Chance = 0.05f;
@@ -154,6 +156,8 @@ namespace Vintagestory.ServerMods
         
         public bool TryGenerate(IBlockAccessor blockAccessor, IWorldAccessor worldForCollectibleResolve, BlockPos pos, int climateUpLeft, int climateUpRight, int climateBotLeft, int climateBotRight, DidGenerate didGenerateStructure)
         {
+            if (!WorldGenStructure.SatisfiesMinDistance(pos, worldForCollectibleResolve, MinGroupDistance, Group)) return false;
+
             rand.InitPositionSeed(pos.X, pos.Z);
 
             float cnt = QuantityStructures.nextFloat(1, rand);

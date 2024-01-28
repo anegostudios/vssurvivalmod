@@ -81,6 +81,7 @@ namespace Vintagestory.GameContent
 
         private void ModSystemDrifterWeather_OnEnvText(StringBuilder sb)
         {
+            if (curPattern == null) return;   // curPattern can be null client-side if no packet yet received
             sb.AppendLine();
             sb.Append(Lang.Get("Rift activity: {0}", Lang.Get("rift-activity-" + curPattern.Code)));
         }

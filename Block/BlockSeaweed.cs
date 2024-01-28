@@ -24,6 +24,7 @@ namespace Vintagestory.GameContent
                 ((api.World.BlockAccessor.GetBlock(pos.X, pos.Y - 1, pos.Z) is BlockSeaweed) ? 1 : 0)
                 + ((api.World.BlockAccessor.GetBlock(pos.X, pos.Y - 2, pos.Z) is BlockSeaweed) ? 1 : 0)
                 + ((api.World.BlockAccessor.GetBlock(pos.X, pos.Y - 3, pos.Z) is BlockSeaweed) ? 1 : 0)
+                + ((api.World.BlockAccessor.GetBlock(pos.X, pos.Y - 4, pos.Z) is BlockSeaweed) ? 1 : 0)
             ;
 
             for (int i = 0; i < sourceMesh.FlagsCount; i++)
@@ -48,12 +49,11 @@ namespace Vintagestory.GameContent
 
                 if (block.Fertility > 0)
                 {
-                    belowPos.Up();
                     PlaceSeaweed(blockAccessor, belowPos, depth);
                     return true;
                 } else
                 {
-                    if (!block.IsLiquid()) return false;
+                    if (block is BlockSeaweed || !block.IsLiquid()) return false;   // Prevent placing seaweed over seaweed (for example might result on a 3-deep plant placed on top of a 5-deep plant's existing position, giving a plant with 2 tops at positions 3 and 5)
                 }
 
                 depth++;
@@ -66,7 +66,7 @@ namespace Vintagestory.GameContent
 
         private void PlaceSeaweed(IBlockAccessor blockAccessor, BlockPos pos, int depth)
         {
-            int height = Math.Min(depth-1,  1 + random.Next(3) + random.Next(3));
+            int height = Math.Min(depth - 1,  1 + random.Next(3) + random.Next(3));
 
             if (blocks == null)
             {
@@ -77,11 +77,13 @@ namespace Vintagestory.GameContent
                 };
             }
 
-            while (height-- > 0)
+            while (height-- > 1)
             {
-                blockAccessor.SetBlock(height == 0 ? blocks[1].BlockId : blocks[0].BlockId, pos);
                 pos.Up();
+                blockAccessor.SetBlock(blocks[0].BlockId, pos);   // section
             }
+            pos.Up();
+            blockAccessor.SetBlock(blocks[1].BlockId, pos);   // top
         }
     }
 }

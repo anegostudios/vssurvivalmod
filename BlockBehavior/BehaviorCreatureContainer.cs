@@ -16,6 +16,7 @@ namespace Vintagestory.GameContent
     {
         public double CreatureSurvivalDays = 1;
         ICoreAPI api;
+
         public BlockBehaviorCreatureContainer(Block block) : base(block)
         {
         }
@@ -113,6 +114,30 @@ namespace Vintagestory.GameContent
                 return EnumItemStorageFlags.Backpack;
             }
             return base.GetStorageFlags(itemstack, ref handling);
+        }
+
+        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref EnumHandling handling, ref string failureCode)
+        {
+            var slot = byPlayer.InventoryManager.ActiveHotbarSlot;
+
+            if (HasAnimal(slot.Itemstack))
+            {
+                handling = EnumHandling.PreventSubsequent;
+                if (world.Side == EnumAppSide.Client)
+                {
+                    handling = EnumHandling.PreventSubsequent;
+                    return false;
+                }
+
+                if (!ReleaseCreature(slot, blockSel, byPlayer.Entity))
+                {
+                    failureCode = "creaturenotplaceablehere";
+                }
+
+                return false;
+            }
+
+            return base.TryPlaceBlock(world, byPlayer, itemstack, blockSel, ref handling, ref failureCode);
         }
 
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handHandling, ref EnumHandling handling)
@@ -261,8 +286,11 @@ namespace Vintagestory.GameContent
         public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
         {
             base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
+            AddCreatureInfo(inSlot.Itemstack, dsc, world);
+        }
 
-            var stack = inSlot.Itemstack;
+        public void AddCreatureInfo(ItemStack stack, StringBuilder dsc, IWorldAccessor world)
+        {
             if (HasAnimal(stack))
             {
                 var alivedays = GetStillAliveDays(world, stack);

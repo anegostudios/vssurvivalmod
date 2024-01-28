@@ -1,9 +1,13 @@
-﻿using System;
+﻿using OpenTK.Windowing.GraphicsLibraryFramework;
+using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Vintagestory.API.Client;
+using Vintagestory.API.Common;
 using Vintagestory.API.Config;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace Vintagestory.GameContent
 {
@@ -14,6 +18,8 @@ namespace Vintagestory.GameContent
         string[] pages;
         int currentLoreItemIndex;
         int page;
+
+        ElementBounds containerBounds;
 
 
         public override string ToggleKeyCombinationCode
@@ -31,12 +37,20 @@ namespace Vintagestory.GameContent
         {
             double elemToDlgPad = GuiStyle.ElementToDialogPadding;
 
-            ElementBounds button = ElementBounds.Fixed(15, 40, 290, 30).WithFixedPadding(10, 2);
+            ElementBounds button = ElementBounds.Fixed(3, 3, 283, 25).WithFixedPadding(10, 2);
 
-            ElementBounds dialogBounds =
-                ElementBounds.Fixed(EnumDialogArea.LeftMiddle, 30, 0, 250, 500)
-                .ForkBoundingParent(elemToDlgPad, elemToDlgPad, elemToDlgPad, elemToDlgPad)
-            ;
+            ElementBounds lorelistBounds = ElementBounds.Fixed(0, 32, 285, 500);
+
+            ElementBounds clippingBounds = lorelistBounds.ForkBoundingParent();
+            ElementBounds insetBounds = lorelistBounds.FlatCopy().FixedGrow(6).WithFixedOffset(-3, -3);
+            ElementBounds scrollbarBounds = insetBounds.CopyOffsetedSibling(lorelistBounds.fixedWidth + 7).WithFixedWidth(20);
+
+
+            ElementBounds bgBounds = ElementBounds.Fill.WithFixedPadding(6);
+            bgBounds.BothSizing = ElementSizing.FitToChildren;
+            bgBounds.WithChildren(insetBounds, clippingBounds, scrollbarBounds);
+
+            ElementBounds dialogBounds = ElementStdBounds.AutosizedMainDialog.WithAlignment(EnumDialogArea.LeftMiddle).WithFixedAlignmentOffset(5,0);
 
             ClearComposers();
 
@@ -45,20 +59,46 @@ namespace Vintagestory.GameContent
                 .CreateCompo("loreList", dialogBounds)
                 .AddShadedDialogBG(ElementBounds.Fill)
                 .AddDialogTitleBar(Lang.Get("Journal Inventory"), CloseIconPressed)
+                .BeginChildElements(bgBounds)
+                    .AddInset(insetBounds, 3)
+                    .BeginClip(clippingBounds)
+                    .AddContainer(containerBounds = clippingBounds.ForkContainingChild(0, 0, 0, -3), "journallist")
             ;
+
+            var container = Composers["loreList"].GetContainer("journallist");
+
+            CairoFont hoverFont = CairoFont.WhiteSmallText().Clone().WithColor(GuiStyle.ActiveButtonTextColor);
 
             for (int i = 0; i < journalitems.Count; i++)
             {
                 int page = i;
-                Composers["loreList"].AddButton(Lang.Get(journalitems[i].Title), () => { return onClickItem(page); }, button, CairoFont.WhiteSmallText(), EnumButtonStyle.None, "button-"+i);
-
-                Composers["loreList"].GetButton("button-" + i).PlaySound = false;
-
+                GuiElementTextButton elem = new GuiElementTextButton(capi, Lang.Get(journalitems[i].Title), CairoFont.WhiteSmallText(), hoverFont, () => { return onClickItem(page); }, button, EnumButtonStyle.Small);
+                elem.SetOrientation(EnumTextOrientation.Left);
+                container.Add(elem);
                 button = button.BelowCopy();
             }
 
+            if (journalitems.Count == 0)
+            {
+                string vtmlCode = "<i>" + Lang.Get("No lore found. Collect lore in the world to fill this list!.") + "</i>";
+                container.Add(new GuiElementRichtext(capi, VtmlUtil.Richtextify(capi, vtmlCode, CairoFont.WhiteSmallText()), button));
+            }
 
-            Composers["loreList"].Compose();
+
+            Composers["loreList"]
+                    .EndClip()
+                    .AddVerticalScrollbar(OnNewScrollbarvalue, scrollbarBounds, "scrollbar")
+                .EndChildElements()
+                .Compose()
+            ;
+
+            containerBounds.CalcWorldBounds();
+            clippingBounds.CalcWorldBounds();
+
+            Composers["loreList"].GetScrollbar("scrollbar").SetHeights(
+                (float)(clippingBounds.fixedHeight),
+                (float)(containerBounds.fixedHeight)
+            );
         }
 
 
@@ -190,9 +230,9 @@ namespace Vintagestory.GameContent
 
         private void OnNewScrollbarvalue(float value)
         {
-            //ElementBounds bounds = journalInvDialog.GetSlotGrid("slotgrid").bounds;
-            //bounds.fixedY = 10 - GuiElementItemSlotGrid.unscaledSlotPadding - value;
-            //bounds.calcWorldBounds();
+            ElementBounds bounds = Composers["loreList"].GetContainer("journallist").Bounds;
+            bounds.fixedY = 0 - value;
+            bounds.CalcWorldBounds();
         }
 
 

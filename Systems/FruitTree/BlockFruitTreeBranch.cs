@@ -132,6 +132,7 @@ namespace Vintagestory.GameContent
             if (itemstack.Collectible.Variant["type"] == "cutting")
             {
                 curTreeType = itemstack.Attributes.GetString("type");
+                if (curTreeType == null) return;
 
                 var dict = ObjectCacheUtil.GetOrCreate(capi, "cuttingMeshRefs", () => new Dictionary<string, MultiTextureMeshRef>());
 

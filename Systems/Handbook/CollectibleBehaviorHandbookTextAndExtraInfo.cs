@@ -1,4 +1,5 @@
 ﻿using Cairo;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -217,7 +218,7 @@ namespace Vintagestory.GameContent
                     {
                         hstack.Resolve(Api.World, "handbook info", new AssetLocation());
 
-                        if (hstack.ResolvedItemstack.Equals(capi.World, stack, GlobalConstants.IgnoredStackAttributes))
+                        if (hstack.ResolvedItemstack != null && hstack.ResolvedItemstack.Equals(capi.World, stack, GlobalConstants.IgnoredStackAttributes))
                         {
                             string code = val.Code.Domain + ":item-creature-" + val.Code.Path;
                             if (val.Attributes?["handbook"]["groupcode"]?.Exists == true)
@@ -704,7 +705,8 @@ namespace Vintagestory.GameContent
 
             foreach (var val in capi.World.GridRecipes)
             {
-                if (val.ShowInCreatedBy && (val.Output.ResolvedItemstack?.Satisfies(stack) ?? false))
+                if (!val.ShowInCreatedBy) continue;
+                if (val.Output.ResolvedItemstack?.Satisfies(stack) ?? false)
                 {
                     grecipes.Add(val);
                 }
@@ -1089,6 +1091,24 @@ namespace Vintagestory.GameContent
                         {
                             grouped[recipe.RecipeGroup] = list = new List<GridRecipe>();
                         }
+                        
+                        if (recipe.CopyAttributesFrom != null && recipe.Ingredients.ContainsKey(recipe.CopyAttributesFrom))
+                        {
+                            var rec = recipe.Clone();
+
+                            var ingred = rec.Ingredients[recipe.CopyAttributesFrom];
+                            var cattr = stack.Attributes.Clone();
+                            cattr.MergeTree(ingred.ResolvedItemstack.Attributes);
+                            ingred.Attributes = new JsonObject(JToken.Parse(cattr.ToJsonToken()));
+                            rec.ResolveIngredients(capi.World);
+
+                            rec.Output.ResolvedItemstack.Attributes.MergeTree(stack.Attributes);
+
+                            list.Add(rec);
+                            outputStacks[i++] = rec.Output.ResolvedItemstack;
+                            continue;
+                        }
+
                         list.Add(recipe);
                         outputStacks[i++] = recipe.Output.ResolvedItemstack;
                     }

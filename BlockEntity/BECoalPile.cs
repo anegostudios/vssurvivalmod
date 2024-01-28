@@ -436,16 +436,19 @@ namespace Vintagestory.GameContent
 
                 if (entity == null)
                 {
-                    int prevstacksize = inventory[0].StackSize;
+                    ItemStack fallingStack = inventory[0].TakeOut(quantity);
+                    ItemStack remainingStack = inventory[0].Itemstack;
 
-                    inventory[0].Itemstack.StackSize = quantity;
+                    inventory[0].Itemstack = fallingStack;
                     EntityBlockFalling entityblock = new EntityBlockFalling(Block, this, pos, null, 1, true, 0.05f);
                     entityblock.DoRemoveBlock = false; // We want to split the pile, not remove it 
                     world.SpawnEntity(entityblock);
                     entityblock.ServerPos.Y -= 0.25f;
                     entityblock.Pos.Y -= 0.25f;
 
-                    inventory[0].Itemstack.StackSize = prevstacksize - quantity;
+                    inventory[0].Itemstack = remainingStack;
+                    if (inventory.Empty) Api.World.BlockAccessor.SetBlock(0, Pos);
+
                     return true;
                 }
             }

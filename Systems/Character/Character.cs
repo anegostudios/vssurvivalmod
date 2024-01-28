@@ -263,20 +263,18 @@ namespace Vintagestory.GameContent
                         }
 
                         ItemStack stack = jstack.ResolvedItemstack?.Clone();
-                        if (stack != null)
+                        if (stack == null) continue;
+
+                        EnumCharacterDressType dresstype;
+                        string strdress = stack.ItemAttributes["clothescategory"].AsString();
+                        if (!Enum.TryParse(strdress, true, out dresstype))
                         {
-                            EnumCharacterDressType dresstype;
-                            string strdress = stack.ItemAttributes["clothescategory"].AsString();
-                            if (!Enum.TryParse(strdress, true, out dresstype)) return;
-
-
-
-                            inv[(int)dresstype].Itemstack = stack;
-                            inv[(int)dresstype].MarkDirty();
+                            player.TryGiveItemStack(stack);
                         }
                         else
                         {
-                            player.TryGiveItemStack(stack);
+                            inv[(int)dresstype].Itemstack = stack;
+                            inv[(int)dresstype].MarkDirty();
                         }
                     }
 

@@ -1,4 +1,5 @@
-﻿using ProtoBuf;
+﻿using System.Collections.Generic;
+using ProtoBuf;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -18,7 +19,7 @@ namespace Vintagestory.GameContent
         public float FontSize;
     }
 
-    public class BlockEntitySign : BlockEntity
+    public class BlockEntitySign : BlockEntity , IRotatable
     {
         public string text = "";
         BlockEntitySignRenderer signRenderer;
@@ -258,6 +259,14 @@ namespace Vintagestory.GameContent
                 capi.Tesselator.TesselateShape(Block, shape, out mesh, new Vec3f(0, MeshAngleRad * GameMath.RAD2DEG, 0));
                 return mesh;
             });
+        }
+
+        public void OnTransformed(IWorldAccessor worldAccessor, ITreeAttribute tree, int degreeRotation, Dictionary<int, AssetLocation> oldBlockIdMapping,
+            Dictionary<int, AssetLocation> oldItemIdMapping, EnumAxis? flipAxis)
+        {
+            MeshAngleRad = tree.GetFloat("meshAngle");
+            MeshAngleRad -= degreeRotation * GameMath.DEG2RAD;
+            tree.SetFloat("meshAngle", MeshAngleRad);
         }
     }
 

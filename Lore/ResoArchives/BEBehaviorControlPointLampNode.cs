@@ -1,7 +1,10 @@
-﻿using System.Text;
+﻿using System.Collections.Generic;
+using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
+using Vintagestory.API.MathTools;
+using Vintagestory.API.Server;
 
 namespace Vintagestory.GameContent
 {
@@ -92,6 +95,19 @@ namespace Vintagestory.GameContent
             if (Api is ICoreClientAPI capi)
             {
                 if (capi.Settings.Bool["extendedDebugInfo"] == true) dsc.AppendLine("network code: " + networkCode);
+            }
+        }
+
+        public override void OnPlacementBySchematic(ICoreServerAPI api, IBlockAccessor blockAccessor, BlockPos pos, Dictionary<int, Dictionary<int, int>> replaceBlocks,
+            int centerrockblockid, Block layerBlock, bool resolveImports)
+        {
+            var cprops = (Block as BlockShapeFromAttributes)?.GetTypeProps(Type, null, this);
+            if (cprops?.LightHsv?[2] > 0)
+            {
+                if (blockAccessor is IWorldGenBlockAccessor wgen)
+                {
+                    wgen.ScheduleBlockLightUpdate(pos.Copy(), 0, Block.BlockId);
+                }
             }
         }
     }

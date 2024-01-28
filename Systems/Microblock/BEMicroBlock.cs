@@ -292,7 +292,8 @@ namespace Vintagestory.GameContent
             if ((blockName == null || blockName == "") && blockIds != null)
             {
                 int mblockid = getMajorityMaterial(voxelCuboids, blockIds);
-                return api.World.Blocks[mblockid].GetHeldItemName(new ItemStack(api.World.Blocks[mblockid]));
+                Block majorityBlock = api.World.Blocks[mblockid];
+                return majorityBlock.GetHeldItemName(new ItemStack(majorityBlock));
             }
             else
             {
@@ -326,7 +327,13 @@ namespace Vintagestory.GameContent
 
             if (volumeByBlockid.Count == 0) return 0;
 
-            if (filterblockId != null && volumeByBlockid.Count == 0) volumeByBlockid = volumeByBlockid.Where(vbb => filterblockId?.Invoke(vbb.Key) == true).ToDictionary(kv => kv.Key, kv=>kv.Value);
+            if (filterblockId != null)
+            {
+                volumeByBlockid = volumeByBlockid.Where(vbb => filterblockId?.Invoke(vbb.Key) == true).ToDictionary(kv => kv.Key, kv => kv.Value);
+            }
+            
+            if (volumeByBlockid.Count == 0) return 0;
+
             var mblockid = volumeByBlockid.MaxBy(vbb => vbb.Value).Key;
             return mblockid;
         }
@@ -498,14 +505,19 @@ namespace Vintagestory.GameContent
                         }
                         else
                         {
-                            newMaterialIds[i] = materialIds[i];
+                            newMaterialIds[i] = materialId;
                             worldAccessor.Logger.Warning("Cannot load chiseled block id mapping for rotation @ {1}, block id {0} not found block registry. Will not display correctly.", code, Pos);
                         }
                     }
                     else
                     {
-                        newMaterialIds[i] = materialIds[i];
-                        worldAccessor.Logger.Warning("Cannot load chiseled block id mapping for rotation @ {1}, block code {0} not found block registry. Will not display correctly.", BlockIds[i], Pos);
+                        // when we rotate block in worldedit multiple times the the new blockid form a previous rotation
+                        // won't be in the oldBlockIdMapping but the id is still valid so just use it if the block exists
+                        newMaterialIds[i] = materialId;
+                        if (materialId >= worldAccessor.Blocks.Count)
+                        {
+                            worldAccessor.Logger.Warning("Cannot load chiseled block id mapping for rotation @ {1}, block code {0} not found block registry. Will not display correctly.", materialId, Pos);
+                        }
                     }
                 }
 
@@ -1085,7 +1097,7 @@ namespace Vintagestory.GameContent
             tocuboid.X2 = (int)(((val) >> 12) & 15) + 1;
             tocuboid.Y2 = (int)(((val) >> 16) & 15) + 1;
             tocuboid.Z2 = (int)(((val) >> 20) & 15) + 1;
-            tocuboid.Material = (byte)((val >> 24) & 15);
+            tocuboid.Material = (byte)((val >> 24) & 0xff);
         }
 
 
@@ -2111,6 +2123,12 @@ namespace Vintagestory.GameContent
 
             if (replaceBlocks != null)
             {
+                if (BlockName != null && BlockName.Length > 0)
+                {
+                    string oldMajorityName = GetPlacedBlockName(api, VoxelCuboids, BlockIds, null);
+                    if (oldMajorityName == BlockName) BlockName = null;    // Clear the old BlockName if auto-generated, so that it gets regenerated because the result of auto-generation may change after materials are replaced
+                }
+
                 Dictionary<int, int> replaceByBlock;
                 for (int i = 0; i < BlockIds.Length; i++)
                 {

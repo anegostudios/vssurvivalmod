@@ -3,6 +3,8 @@ using System.Text;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Server;
+using Vintagestory.ServerMods;
 
 namespace Vintagestory.GameContent
 {
@@ -67,9 +69,14 @@ namespace Vintagestory.GameContent
             if (blockAccessor.GetBlock(pos).Replaceable < 6000) return false;
 
             pos = pos.Copy();
+
+            ModStdWorldGen modSys = null;
+            if (blockAccessor is IWorldGenBlockAccessor wgba) wgba.WorldgenWorldAccessor.Api.ModLoader.GetModSystem<GenVegetationAndPatches>();
+
             for (int i = 0; i < 5 + worldGenRand.NextInt(25); i++)
             {
-                if (pos.Y < 15) continue; // To hot for stalactites
+                if (pos.Y < 15) continue; // Too hot for stalactites
+                if (modSys != null && modSys.SkipGenerationAt(pos, EnumWorldGenPass.Vegetation)) continue;
 
                 didplace |= TryGenStalag(blockAccessor, pos, worldGenRand.NextInt(4), worldGenRand);
                 pos.X += worldGenRand.NextInt(9) - 4;

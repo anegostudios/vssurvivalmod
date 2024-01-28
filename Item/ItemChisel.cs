@@ -272,7 +272,11 @@ namespace Vintagestory.GameContent
 
         public static bool IsChiselingAllowedFor(ICoreAPI api, BlockPos pos, Block block, IPlayer player)
         {
-            if (block is BlockChisel) return true;
+            if (block is BlockMicroBlock)
+            {
+                if (block is BlockChisel) return true;
+                return false;   // Existing Microblocks (e.g. in ruins) cannot be further chiseled
+            }
 
             return IsValidChiselingMaterial(api, pos, block, player);
         }

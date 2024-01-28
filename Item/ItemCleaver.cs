@@ -1,11 +1,33 @@
 ﻿using System;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
-    public class ItemCleaver : Item
+    public class ItemCleaver : ItemSword
     {
+        public override void OnLoaded(ICoreAPI api)
+        {
+            base.OnLoaded(api);
+            strikeSound = new AssetLocation("sounds/tool/slash");
+        }
+
+        public override void OnHeldAttackStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
+        {
+            handling = EnumHandHandling.PreventDefault;
+        }
+
+        public override bool OnHeldAttackStep(float secondsPassed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSelection, EntitySelection entitySel)
+        {
+            return false;
+        }
+
+        public override string GetHeldTpUseAnimation(ItemSlot activeHotbarSlot, Entity byEntity)
+        {
+            return "cleaverhit";
+        }
+
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
             base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handling);
@@ -14,12 +36,7 @@ namespace Vintagestory.GameContent
             if (entitySel != null && entitySel.Entity.Alive && !(entitySel.Entity is EntityArmorStand))
             {
                 handling = EnumHandHandling.PreventDefault;
-
-                if (api.World.Side == EnumAppSide.Client)
-                {
-                    api.ObjectCache["slaughterSoundPlayed"] = false;
-                }
-
+                startAttack(slot, byEntity);
                 return;
             }
 
@@ -30,47 +47,29 @@ namespace Vintagestory.GameContent
         {
             if (entitySel != null)
             {
-                if (byEntity.World.Side == EnumAppSide.Client)
-                {
-                    ModelTransform tf = new ModelTransform();
-                    tf.EnsureDefaultValues();
-
-                    float offset = GameMath.Clamp(secondsUsed * 5, 0, 2f);
-
-                    byEntity.Controls.UsingHeldItemTransformBefore = tf;
-                    tf.Origin.Set(1f, 0, 0.5f);
-                    tf.Rotation.Set(0, 0, -offset * 15);
-                    tf.Translation.Set(0, Math.Min(1f, secondsUsed), 0);
-
-
-                    if (secondsUsed > 0.9f)
-                    {
-                        float offset2 = GameMath.Clamp((secondsUsed-0.9f) * 5 * 240, 0, 70f);
-                        tf.Rotation.Add(0, 0, offset2);
-                        tf.Translation.Add(0, -Math.Min(1f, (secondsUsed - 0.9f) * 10), 0);
-                    }
-                    if (secondsUsed > 1f)
-                    {
-                        if (api.ObjectCache.ContainsKey("slaughterSoundPlayed") && (bool)api.ObjectCache["slaughterSoundPlayed"] == false)
-                        {
-                            byEntity.World.PlaySoundAt(new AssetLocation("sounds/tool/slash"), entitySel.Entity, (byEntity as EntityPlayer)?.Player, false, 12);
-                            api.ObjectCache["slaughterSoundPlayed"] = true;
-                        }
-                    }
-
-                    byEntity.Controls.UsingHeldItemTransformBefore = tf;
-                }
-
-                return secondsUsed < 1.15f;
+                return stepAttack(slot, byEntity);
             }
 
             return false;
         }
 
-        public override void OnHeldInteractStop(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+        protected override void playStrikeSound(EntityAgent byEntity)
         {
-            if (entitySel == null || secondsUsed < 1.05f) return;
-            if (entitySel.Entity is EntityPlayer) return;
+            IPlayer byPlayer = (byEntity as EntityPlayer).Player;
+            if (byPlayer == null) return;
+
+            if (byEntity.Controls.HandUse == EnumHandInteract.HeldItemInteract)
+            {
+                byPlayer.Entity.World.PlaySoundAt(strikeSound, byPlayer.Entity, byPlayer, 0.9f + (float)api.World.Rand.NextDouble() * 0.2f, 16, 0.35f);
+            }
+        }
+
+        protected override void hitEntity(EntityAgent byEntity)
+        {
+            var entitySel = (byEntity as EntityPlayer)?.EntitySelection;
+            var slot = (byEntity as EntityPlayer)?.Player.InventoryManager.ActiveHotbarSlot;
+
+            if (entitySel == null || entitySel.Entity is EntityPlayer) return;   // entitySel can occasionally be null, especially if the player is moving the camera a lot while attacking
 
             int generation = entitySel.Entity.WatchedAttributes.GetInt("generation", 0);
 
@@ -92,40 +91,8 @@ namespace Vintagestory.GameContent
                 SourceEntity = byEntity,
                 Type = EnumDamageType.SlashingAttack
             }, dmg);
-
-            
         }
 
 
-        public override bool OnHeldInteractCancel(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)
-        {
-            //byEntity.World.Logger.Debug("{0} knife interact cancelled, seconds used {1}", byEntity.World.Side, secondsUsed);
-
-            return base.OnHeldInteractCancel(secondsUsed, slot, byEntity, blockSel, entitySel, cancelReason);
-        }
-
-
-        public override void OnHeldAttackStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
-        {
-            
-        }
-
-
-        public override bool OnHeldAttackCancel(float secondsPassed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSelection, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)
-        {
-            return false;
-        }
-
-
-        public override bool OnHeldAttackStep(float secondsPassed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSelection, EntitySelection entitySel)
-        {
-            return false;
-        }
-
-
-        public override void OnHeldAttackStop(float secondsPassed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSelection, EntitySelection entitySel)
-        {
-            
-        }
     }
 }

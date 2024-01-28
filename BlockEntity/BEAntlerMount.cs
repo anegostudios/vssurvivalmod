@@ -106,8 +106,7 @@ namespace Vintagestory.GameContent
             if (inv[invIndex].Empty)
             {
                 int moved = slot.TryPutInto(Api.World, inv[invIndex]);
-                updateMeshes();
-                MarkDirty(true);
+                MarkDirty();
                 return moved > 0;
             }
 
@@ -132,8 +131,7 @@ namespace Vintagestory.GameContent
                     Api.World.SpawnItemEntity(stack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
                 }
 
-                updateMeshes();
-                MarkDirty(true);
+                MarkDirty();
                 return true;
             }
 
@@ -177,6 +175,9 @@ namespace Vintagestory.GameContent
             MeshAngleRad = tree.GetFloat("meshAngleRad");
 
             init();
+
+            // Do this last!!!
+            RedrawAfterReceivingTreeAttributes(worldForResolving);     // Redraw on client after we have completed receiving the update from server
         }
 
 

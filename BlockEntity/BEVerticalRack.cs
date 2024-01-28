@@ -98,8 +98,7 @@ namespace Vintagestory.GameContent
                 if (inv[slotnum].Empty)
                 {
                     int moved = slot.TryPutInto(Api.World, inv[slotnum]);
-                    updateMeshes();
-                    MarkDirty(true);
+                    MarkDirty();
                     return moved > 0;
                 }
             }
@@ -125,8 +124,7 @@ namespace Vintagestory.GameContent
                     Api.World.SpawnItemEntity(stack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
                 }
 
-                updateMeshes();
-                MarkDirty(true);
+                MarkDirty();
                 return true;
             }
 
@@ -174,6 +172,15 @@ namespace Vintagestory.GameContent
             {
                 sb.AppendLine(slot.Itemstack.GetName());
             }
+        }
+
+
+        public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
+        {
+            base.FromTreeAttributes(tree, worldForResolving);
+
+            // Do this last!!!
+            RedrawAfterReceivingTreeAttributes(worldForResolving);     // Redraw on client after we have completed receiving the update from server
         }
     }
 }

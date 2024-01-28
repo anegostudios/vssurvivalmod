@@ -162,6 +162,7 @@ namespace Vintagestory.ServerMods
         {
             BlockSchematicPartial cloned = new BlockSchematicPartial();
 
+            cloned.GameVersion = GameVersion;
             cloned.SizeX = SizeX;
             cloned.SizeY = SizeY;
             cloned.SizeZ = SizeZ;

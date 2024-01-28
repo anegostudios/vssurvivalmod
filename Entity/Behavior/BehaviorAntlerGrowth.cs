@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Drawing;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
@@ -8,12 +9,16 @@ namespace Vintagestory.GameContent
 {
     public class EntityBehaviorAntlerGrowth : EntityBehavior
     {
-        InventoryGeneric deerInv;
-        string[] variants;
+        InventoryGeneric creatureInv;
+        Item[] variants;
         float beginGrowMonth;
         float growDurationMonths;
         float grownDurationMonths;
         float shedDurationMonths;
+        /// <summary>
+        /// If true, the creature sheds its antlers but drops no mountable antler item for the player to find, eg. water deer has tiny "fangs"
+        /// </summary>
+        bool noItemDrop;
 
         int MaxGrowth
         {
@@ -35,11 +40,26 @@ namespace Vintagestory.GameContent
         {
             base.Initialize(properties, attributes);
 
-            variants = attributes["variants"].AsArray<string>();
+            string[] variantnames = attributes["variants"].AsArray<string>();
+            if (variantnames != null)
+            {
+                variants = new Item[variantnames.Length];
+                string entityType = entity.Properties.Variant["type"];
+                for (int i = 0; i < variantnames.Length; i++)
+                {
+                    AssetLocation loc = new AssetLocation("antler-" + entityType + "-" + variantnames[i]);
+                    if ((variants[i] = entity.Api.World.GetItem(loc)) == null)
+                    {
+                        entity.Api.Logger.Warning("Missing antler item of code " + loc.ToShortString() + " for creature " + entity.Code.ToShortString());
+                    }
+                }
+            }
+
             beginGrowMonth = attributes["beginGrowMonth"].AsFloat(-1);
             growDurationMonths = attributes["growDurationMonths"].AsFloat();
             grownDurationMonths = attributes["grownDurationMonths"].AsFloat();
             shedDurationMonths = attributes["shedDurationMonths"].AsFloat();
+            noItemDrop = attributes["noItemDrop"].AsBool(false);
 
             if (entity.Api.Side == EnumAppSide.Client)
             {
@@ -85,19 +105,19 @@ namespace Vintagestory.GameContent
 
         private void readInventoryFromAttributes()
         {
-            if (deerInv == null)
+            if (creatureInv == null)
             {
-                deerInv = new InventoryGeneric(1, "antler-" + entity.EntityId, entity.Api, (id, inv) => new ItemSlot(inv));
-                deerInv.SlotModified += GearInv_SlotModified;
+                creatureInv = new InventoryGeneric(1, "antler-" + entity.EntityId, entity.Api, (id, inv) => new ItemSlot(inv));
+                creatureInv.SlotModified += GearInv_SlotModified;
             }
 
             ITreeAttribute tree = entity.WatchedAttributes["inventory"] as ITreeAttribute;
-            if (deerInv != null && tree != null)
+            if (creatureInv != null && tree != null)
             {
-                deerInv.FromTreeAttributes(tree);
+                creatureInv.FromTreeAttributes(tree);
             }
 
-            (entity as EntityAgent).GearInventory = deerInv;
+            (entity as EntityAgent).GearInventory = creatureInv;
 
             (entity.Properties.Client.Renderer as EntityShapeRenderer)?.MarkShapeModified();
         }
@@ -126,30 +146,24 @@ namespace Vintagestory.GameContent
         {
             double creatureAgeMonths = (entity.World.Calendar.TotalDays - entity.WatchedAttributes.GetDouble("birthTotalDays")) / entity.World.Calendar.DaysPerMonth;
 
-            if (deerInv.Empty)
+            if (creatureInv.Empty)
             {
                 int cnt = variants.Length;
-                MaxGrowth = Math.Min(entity.World.Rand.Next(cnt) + entity.World.Rand.Next(cnt), cnt - 1);
+                MaxGrowth = Math.Min((entity.World.Rand.Next(cnt) + entity.World.Rand.Next(cnt)) / 2, cnt - 1);
             }
 
-            int stage = (int)GameMath.Clamp(growDurationMonths / creatureAgeMonths * MaxGrowth, 0, MaxGrowth);
+            int stage = GameMath.Clamp((int)(creatureAgeMonths / (growDurationMonths * MaxGrowth)), 0, MaxGrowth);
             SetAntler(stage);
         }
 
         private void SetAntler(int stage)
         {
-            string size = variants[stage];
-            var loc = new AssetLocation("antler-" + entity.Properties.Variant["type"] + "-" + size);
-            var item = entity.Api.World.GetItem(loc);
-            if (item == null)
+            Item newItem = variants[GameMath.Clamp(stage, 0, variants.Length - 1)];   // deals with OutOfRangeException seen on TOPTS, cause is surprising given the clamp in calling code (updateAntlerStateOnetimeGrowth()) but maybe MaxGrowth for a creature was set on a previous game version when the creature had a different number of antler variants?
+            if (newItem == null) return;
+            ItemStack existing = creatureInv[0].Itemstack;
+            if (existing == null || newItem != existing.Item)  // Performance: do not update the inventory, serialize and markDirty if the item has not in fact changed
             {
-                entity.Api.Logger.Warning("Missing antler item of code " + loc);
-            }
-            else
-            {
-                deerInv[0].Itemstack = new ItemStack(item);
-                ToBytes(true);
-                entity.WatchedAttributes.MarkPathDirty("inventory");
+                SetCreatureItemStack(new ItemStack(newItem));
             }
         }
 
@@ -160,9 +174,7 @@ namespace Vintagestory.GameContent
             int stage = getGrowthStage(out bool shedNow);
             if (stage < 0)
             {
-                deerInv[0].Itemstack = null;
-                ToBytes(true);
-                entity.WatchedAttributes.MarkPathDirty("inventory");
+                SetCreatureItemStack(null);
             }
             else
             {
@@ -177,12 +189,10 @@ namespace Vintagestory.GameContent
                         return;
                     }
 
-                    if (!deerInv[0].Empty)
+                    if (!creatureInv[0].Empty)
                     {
-                        entity.World.SpawnItemEntity(deerInv[0].Itemstack, entity.Pos.XYZ);
-                        deerInv[0].Itemstack = null;
-                        ToBytes(true);
-                        entity.WatchedAttributes.MarkPathDirty("inventory");
+                        if (!noItemDrop) entity.World.SpawnItemEntity(creatureInv[0].Itemstack, entity.Pos.XYZ);
+                        SetCreatureItemStack(null);
                         LastShedTotalDays = entity.World.Calendar.TotalDays;
                     }
                 }
@@ -220,12 +230,21 @@ namespace Vintagestory.GameContent
             shedNow = distanceToMidGrowth > growDurationMonths/2 + grownDurationMonths;
 
             int cnt = variants.Length;
-            if (deerInv.Empty || MaxGrowth < 0)
+            if (creatureInv.Empty || MaxGrowth < 0)
             {
-                MaxGrowth = Math.Min((entity.World.Rand.Next(cnt) + entity.World.Rand.Next(cnt))/2, cnt - 1);
+                MaxGrowth = Math.Min((entity.World.Rand.Next(cnt) + entity.World.Rand.Next(cnt)) / 2, cnt - 1);
             }
 
             return (int)GameMath.Clamp(stageRel * cnt, 0, MaxGrowth);
+        }
+
+        private void SetCreatureItemStack(ItemStack stack)
+        {
+            creatureInv[0].Itemstack = stack;
+
+            // radfast 26/1/24:  Do we actually need the next two lines, when creatureInv.SlotModified has been set to GearInv_SlotModified ?
+            ToBytes(true);
+            entity.WatchedAttributes.MarkPathDirty("inventory");
         }
 
         public override void FromBytes(bool isSync)
@@ -237,7 +256,7 @@ namespace Vintagestory.GameContent
         {
             ITreeAttribute tree = new TreeAttribute();
             entity.WatchedAttributes["inventory"] = tree;
-            deerInv.ToTreeAttributes(tree);
+            creatureInv.ToTreeAttributes(tree);
         }
 
 

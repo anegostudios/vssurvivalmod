@@ -29,8 +29,10 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            if (!(block is IIgnitable ign) || ign.OnTryIgniteBlock(byEntity, blockSel.Position, 0) == EnumIgniteState.NotIgnitable)
+            EnumIgniteState state = EnumIgniteState.NotIgnitable;
+            if (!(block is IIgnitable ign) || (state = ign.OnTryIgniteBlock(byEntity, blockSel.Position, 0)) != EnumIgniteState.Ignitable)
             {
+                if (state == EnumIgniteState.NotIgnitablePreventDefault) handling = EnumHandHandling.PreventDefault;
                 return;
             }                        
 

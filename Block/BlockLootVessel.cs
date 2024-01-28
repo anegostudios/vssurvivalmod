@@ -63,21 +63,15 @@ namespace Vintagestory.GameContent
             };
         }
 
-        public ItemStack GetItemStack(IWorldAccessor world, int variant, float dropQuantityMul)
+        public ItemStack GetItemStack(IWorldAccessor world, int variant, int quantity)
         {
             ItemStack stack = null;
 
             AssetLocation code = codes[variant % codes.Length];
 
-            float qfloat = dropQuantityMul * (minQuantity + ((float)world.Rand.NextDouble() * (maxQuantity - minQuantity)));
-
-            int quantity = (int)GameMath.RoundRandom(world.Rand, qfloat);
-
-            if (quantity <= 0) return null;
-
             if (type == EnumItemClass.Block)
             {
-                Block block = world.GetBlock(code);
+                var block = world.GetBlock(code);
                 if (block != null)
                 {
                     stack = new ItemStack(block, quantity);
@@ -87,7 +81,7 @@ namespace Vintagestory.GameContent
                 }
             } else
             {
-                Item item = world.GetItem(code);
+                var item = world.GetItem(code);
                 if (item != null)
                 {
                     stack = new ItemStack(item, quantity);
@@ -99,6 +93,15 @@ namespace Vintagestory.GameContent
             }
 
             return stack;
+        }
+
+        public int GetDropQuantity(IWorldAccessor world, float dropQuantityMul)
+        {
+            var qfloat = dropQuantityMul * (minQuantity + ((float)world.Rand.NextDouble() * (maxQuantity - minQuantity)));
+
+            var quantity = GameMath.RoundRandom(world.Rand, qfloat);
+
+            return quantity;
         }
     }
 
@@ -130,7 +133,8 @@ namespace Vintagestory.GameContent
 
                     if (choice <= 0)
                     {
-                        ItemStack stack = lootItem.GetItemStack(world, variant, dropRate);
+                        var quantity = lootItem.GetDropQuantity(world, dropRate);
+                        var stack = lootItem.GetItemStack(world, variant, quantity);
                         if (stack != null)
                         {
                             stacks.Add(stack);
@@ -183,8 +187,6 @@ namespace Vintagestory.GameContent
                     var lstack = val.GetItemStack(api.World, i, 1);
                     if (lstack == null)
                     {
-                        AssetLocation code = val.codes[i % val.codes.Length];
-                        api.World.Logger.Warning("Unable to resolve loot vessel drop {0}, item wont drop.", code);
                         continue;
                     }
 

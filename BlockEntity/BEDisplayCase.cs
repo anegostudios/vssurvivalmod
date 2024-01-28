@@ -87,9 +87,7 @@ namespace Vintagestory.GameContent
                     float deg90 = GameMath.PIHALF;
                     rotations[index] = (int)Math.Round(angleHor / deg90) * deg90;
 
-                    updateMeshes();
-                    
-                    MarkDirty(true);
+                    MarkDirty();
                 }
                 
                 return moved > 0;
@@ -201,6 +199,9 @@ namespace Vintagestory.GameContent
                 tree.GetFloat("rotation2"),
                 tree.GetFloat("rotation3"),
             };
+
+            // Do this last!!!
+            RedrawAfterReceivingTreeAttributes(worldForResolving);     // Redraw on client after we have completed receiving the update from server
         }
 
         public override void ToTreeAttributes(API.Datastructures.ITreeAttribute tree)

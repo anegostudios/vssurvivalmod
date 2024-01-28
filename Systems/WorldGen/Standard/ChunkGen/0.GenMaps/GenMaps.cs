@@ -80,8 +80,8 @@ namespace Vintagestory.ServerMods
         {
             forceLandforms.Add(landform);
             ForceLandAt(landform.Area);
+
             var list = NoiseLandforms.landforms.LandFormsByIndex;
-            
             for (int i = 0; i < list.Length; i++)
             {
                 if (list[i].Code.Path == landform.LandformCode)
@@ -358,10 +358,10 @@ namespace Vintagestory.ServerMods
                 float minlf = -padRel_wobblepadlf * lfmapsize;
                 float maxlf = (1 + padRel_wobblepadlf) * lfmapsize;
 
-                float startX = GameMath.Clamp((float)rec.X1 / regionsize - regionX, -padRel_wobblepadlf, 1 + padRel_wobblepadlf) * lfmapsize;
-                float endX = GameMath.Clamp((float)rec.X2 / regionsize - regionX, -padRel_wobblepadlf, 1 + padRel_wobblepadlf) * lfmapsize;
-                float startZ = GameMath.Clamp((float)rec.Y1 / regionsize - regionZ, -padRel_wobblepadlf, 1 + padRel_wobblepadlf) * lfmapsize;
-                float endZ = GameMath.Clamp((float)rec.Y2 / regionsize - regionZ, -padRel_wobblepadlf, 1 + padRel_wobblepadlf) * lfmapsize;
+                float startX = GameMath.Clamp((float)rec.X1 / regionsize - regionX, -padRel_wobblepadlf, 1 + padRel_wobblepadlf) * lfmapsize - pad;
+                float endX = GameMath.Clamp((float)rec.X2 / regionsize - regionX, -padRel_wobblepadlf, 1 + padRel_wobblepadlf) * lfmapsize + pad;
+                float startZ = GameMath.Clamp((float)rec.Y1 / regionsize - regionZ, -padRel_wobblepadlf, 1 + padRel_wobblepadlf) * lfmapsize - pad;
+                float endZ = GameMath.Clamp((float)rec.Y2 / regionsize - regionZ, -padRel_wobblepadlf, 1 + padRel_wobblepadlf) * lfmapsize + pad;
 
                 if (endX >= minlf && startX <= maxlf && endZ >= minlf && startZ <= maxlf)
                 {

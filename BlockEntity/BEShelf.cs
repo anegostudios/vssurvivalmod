@@ -3,6 +3,7 @@ using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
@@ -71,7 +72,7 @@ namespace Vintagestory.GameContent
                     if (TryPut(slot, blockSel))
                     {
                         Api.World.PlaySoundAt(sound != null ? sound : new AssetLocation("sounds/player/build"), byPlayer.Entity, byPlayer, true, 16);
-                        updateMeshes();
+                        MarkDirty();
                         return true;
                     }
 
@@ -98,8 +99,7 @@ namespace Vintagestory.GameContent
                 if (inv[i].Empty)
                 {
                     int moved = slot.TryPutInto(Api.World, inv[i]);
-                    updateMeshes();
-                    MarkDirty(true);
+                    MarkDirty();
                     (Api as ICoreClientAPI)?.World.Player.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
 
                     return moved > 0;
@@ -134,8 +134,7 @@ namespace Vintagestory.GameContent
                     }
 
                     (Api as ICoreClientAPI)?.World.Player.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
-                    MarkDirty(true);
-                    updateMeshes();
+                    MarkDirty();
                     return true;
                 }
             }
@@ -165,6 +164,16 @@ namespace Vintagestory.GameContent
 
             return tfMatrices;
         }
+
+
+        public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
+        {
+            base.FromTreeAttributes(tree, worldForResolving);
+
+            // Do this last!!!
+            RedrawAfterReceivingTreeAttributes(worldForResolving);     // Redraw on client after we have completed receiving the update from server
+        }
+
 
 
         #region Block info

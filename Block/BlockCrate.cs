@@ -72,6 +72,7 @@ namespace Vintagestory.GameContent
 
 
         public Dictionary<int, ItemStackRenderCacheItem> itemStackRenders;
+        private Vec3f origin = new Vec3f(0.5f, 0.5f, 0.5f);
 
         public TextureAtlasPosition this[string textureCode]
         {
@@ -307,6 +308,22 @@ namespace Vintagestory.GameContent
 
             return null;
         }
+
+        public override void GetDecal(IWorldAccessor world, BlockPos pos, ITexPositionSource decalTexSource, ref MeshData decalModelData, ref MeshData blockModelData)
+        {
+            BlockEntityCrate be = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityCrate;
+            if (be != null)
+            {
+
+                decalModelData.Rotate(origin, 0, be.MeshAngle, 0);
+                decalModelData.Scale(origin, 15f / 16, 1f, 15f / 16);
+                return;
+            }
+
+            base.GetDecal(world, pos, decalTexSource, ref decalModelData, ref blockModelData);
+        }
+
+
 
 
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)

@@ -51,6 +51,7 @@ namespace Vintagestory.GameContent
                 foreach (var val in GlobalConstants.IgnoredStackAttributes) tree.RemoveAttribute(val);
                 tree.RemoveAttribute("durability");
 
+                tree = tree.SortedCopy(true);
                 if (tree.Count != 0)
                 {
                     string treeStr = tree.ToJsonToken();

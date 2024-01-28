@@ -360,14 +360,7 @@ namespace Vintagestory.GameContent
 
             try
             {
-                var rifts = sapi.WorldManager.SaveGame.GetData<List<Rift>>("rifts");
-                if (rifts != null)
-                {
-                    foreach (var rift in rifts)
-                    {
-                        riftsById[rift.RiftId] = rift;
-                    }
-                }
+                riftsById = sapi.WorldManager.SaveGame.GetData<Dictionary<int,Rift>>("rifts");
             }
             catch (Exception) {
                 

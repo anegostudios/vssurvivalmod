@@ -512,6 +512,7 @@ namespace Vintagestory.GameContent
                 height = (height / n) + hookStruct.endOffsetY;
                 if (maxheight - minheight < 5 && height - minheight < 2) height++;  // place it one block higher on relatively flat ground
                 if (height < api.World.SeaLevel) height = api.World.SeaLevel;
+                height = Math.Min(height, api.World.BlockAccessor.MapSizeY - 11);   // ensure enough space for most of the entrance, even if we are near the very top of the map
 
                 for (int j = 0; j < 25; j++)
                 {
@@ -541,7 +542,7 @@ namespace Vintagestory.GameContent
                                 bestDiff = newDiff;
                                 bestIndices.Clear();
                                 foreach (int ix in indices) bestIndices.Add(ix);
-                                if (bestDiff == 0) i = 25;  // early exit if we already have an optimal set of indices, by fast-forwarding outer loop;
+                                if (bestDiff == 0) j = 25;  // early exit if we already have an optimal set of indices, by fast-forwarding outer loop;
                             }
 
                             break;

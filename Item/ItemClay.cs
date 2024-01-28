@@ -2,6 +2,7 @@
 using Cairo;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
@@ -11,6 +12,30 @@ namespace Vintagestory.GameContent
     public class ItemClay : Item
     {
         SkillItem[] toolModes;
+
+        public override string GetHeldTpHitAnimation(ItemSlot slot, Entity byEntity)
+        {
+            return getClayFormAnim(byEntity) ?? base.GetHeldTpHitAnimation(slot, byEntity);
+        }
+        public override string GetHeldTpUseAnimation(ItemSlot activeHotbarSlot, Entity forEntity)
+        {
+            return getClayFormAnim(forEntity) ?? base.GetHeldTpUseAnimation(activeHotbarSlot, forEntity);
+        }
+
+
+        public string getClayFormAnim(Entity byEntity)
+        {
+            var plr = byEntity as EntityPlayer;
+            var pos = plr?.BlockSelection?.Position;
+            if (pos != null && plr.Controls.HandUse != EnumHandInteract.None)
+            {
+                if (api.World.BlockAccessor.GetBlock(pos) is BlockClayForm)
+                {
+                    return "clayform";
+                }
+            }
+            return null;
+        }
 
         public override void OnLoaded(ICoreAPI api)
         {

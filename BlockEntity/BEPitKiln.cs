@@ -432,6 +432,9 @@ namespace Vintagestory.GameContent
                     }
                 }
             }
+
+            // Do this last!!!
+            RedrawAfterReceivingTreeAttributes(worldForResolving);     // Redraw on client after we have completed receiving the update from server
         }
 
         public override void ToTreeAttributes(ITreeAttribute tree)
