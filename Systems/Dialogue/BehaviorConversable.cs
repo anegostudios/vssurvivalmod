@@ -210,7 +210,7 @@ namespace Vintagestory.GameContent
                         sapi.Network.SendEntityPacket(player as IServerPlayer, entity.EntityId, CloseConvoPacketId);
                     } else
                     {
-                        (world.Api as ICoreClientAPI).Network.SendEntityPacket(entity.EntityId, CloseConvoPacketId);
+                        Dialog?.TryClose();
                     }
                     break;
                 }
@@ -288,6 +288,8 @@ namespace Vintagestory.GameContent
         private void Dialog_OnClosed()
         {
             ControllerByPlayer.Clear();
+            Dialog = null;
+            
             (world.Api as ICoreClientAPI).Network.SendEntityPacket(entity.EntityId, CloseConvoPacketId);
         }
 
@@ -321,9 +323,7 @@ namespace Vintagestory.GameContent
 
             if (packetid == CloseConvoPacketId)
             {
-                ControllerByPlayer.Clear();
                 Dialog?.TryClose();
-                Dialog = null;
             }
         }
 
