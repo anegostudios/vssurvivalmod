@@ -461,6 +461,7 @@ namespace Vintagestory.GameContent
             SingleComposer.GetSlotGrid("traderBuyingSlots")?.OnGuiClosed(capi);
             SingleComposer.GetSlotGrid("playerSellingSlots")?.OnGuiClosed(capi);
 
+            auctionSlotInv[0].Itemstack = null;
             capi.Network.SendPacketClient(auctionSlotInv.Close(capi.World.Player));
 
             auctionSys.DidLeaveAuctionHouse();
