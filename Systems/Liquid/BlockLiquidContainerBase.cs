@@ -41,9 +41,9 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            string contentCode = gridRecipe.Attributes["liquidContainerProps"]["requiresContent"]["code"].AsString();
-            string contentType = gridRecipe.Attributes["liquidContainerProps"]["requiresContent"]["type"].AsString();
-            float litres = gridRecipe.Attributes["liquidContainerProps"]["requiresLitres"].AsFloat();
+            string contentCode = rprops["requiresContent"]["code"].AsString();
+            string contentType = rprops["requiresContent"]["type"].AsString();
+            float litres = rprops["requiresLitres"].AsFloat();
 
             string key = contentType + "-" + contentCode;
             ItemStack[] stacks;
