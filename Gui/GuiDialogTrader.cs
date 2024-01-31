@@ -56,7 +56,7 @@ namespace Vintagestory.GameContent
                 auctionSys.createAuctionSlotByPlayer[capi.World.Player.PlayerUID] = auctionSlotInv = new InventoryGeneric(1, "auctionslot-" + capi.World.Player.PlayerUID, capi);
             }
 
-            capi.Network.SendPacketClient(auctionSlotInv.Open(capi.World.Player));
+            capi.Network.SendPacketClient(capi.World.Player.InventoryManager.OpenInventory(auctionSlotInv));
 
             Compose();
         }
@@ -462,7 +462,7 @@ namespace Vintagestory.GameContent
             SingleComposer.GetSlotGrid("playerSellingSlots")?.OnGuiClosed(capi);
 
             auctionSlotInv[0].Itemstack = null;
-            capi.Network.SendPacketClient(auctionSlotInv.Close(capi.World.Player));
+            capi.World.Player.InventoryManager.CloseInventory(auctionSlotInv);
 
             auctionSys.DidLeaveAuctionHouse();
         }

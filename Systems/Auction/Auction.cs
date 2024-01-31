@@ -325,8 +325,6 @@ namespace Vintagestory.GameContent
         {
             if (createAuctionSlotByPlayer.TryGetValue(byPlayer.PlayerUID, out var inv))
             {
-                inv.DropAll(byPlayer.Entity.Pos.XYZ);
-                createAuctionSlotByPlayer[byPlayer.PlayerUID].Close(byPlayer);
                 byPlayer.InventoryManager.CloseInventory(createAuctionSlotByPlayer[byPlayer.PlayerUID]);
                 createAuctionSlotByPlayer.Remove(byPlayer.PlayerUID);
             }
@@ -347,7 +345,6 @@ namespace Vintagestory.GameContent
 
                         ainv.OnInventoryClosed += (plr) => ainv.DropAll(plr.Entity.Pos.XYZ);
                     }
-                    createAuctionSlotByPlayer[fromPlayer.PlayerUID].Open(fromPlayer);
                     fromPlayer.InventoryManager.OpenInventory(createAuctionSlotByPlayer[fromPlayer.PlayerUID]);
 
                     sendAuctions(auctions.Values, null, true, fromPlayer);
