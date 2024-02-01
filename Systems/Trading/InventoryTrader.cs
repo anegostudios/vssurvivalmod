@@ -789,37 +789,20 @@ namespace Vintagestory.GameContent
             WeightedSlot bestWSlot = new WeightedSlot();
 
             if (PutLocked || sourceSlot.Inventory == this) return bestWSlot;
+            
+            if (!IsTraderInterestedIn(sourceSlot.Itemstack)) return bestWSlot;
 
             // Don't allow any shift-clicking of currency
             if (CurrencyValuePerItem(sourceSlot) != 0) return bestWSlot;
 
-            // 1. Prefer already filled slots - only allowing shift-clicking into the 4 Selling Cart slots
             for (int i = 0; i < 4; i++)
             {
                 ItemSlot slot = GetSellingCartSlot(i);
                 if (skipSlots != null && skipSlots.Contains(slot)) continue;
 
-                if (slot.Itemstack != null && slot.CanTakeFrom(sourceSlot))
+                if (slot.CanTakeFrom(sourceSlot))
                 {
-                    float curWeight = GetSuitability(sourceSlot, slot, true);
-
-                    if (bestWSlot.slot == null || bestWSlot.weight < curWeight)
-                    {
-                        bestWSlot.slot = slot;
-                        bestWSlot.weight = curWeight;
-                    }
-                }
-            }
-
-            // 2. Otherwise use empty slots - again only allowing shift-clicking into the 4 Selling Cart slots
-            for (int i = 0; i < 4; i++)
-            {
-                ItemSlot slot = GetSellingCartSlot(i);
-                if (skipSlots != null && skipSlots.Contains(slot)) continue;
-
-                if (slot.Itemstack == null && slot.CanTakeFrom(sourceSlot))
-                {
-                    float curWeight = GetSuitability(sourceSlot, slot, false);
+                    float curWeight = GetSuitability(sourceSlot, slot, slot.Itemstack != null);
 
                     if (bestWSlot.slot == null || bestWSlot.weight < curWeight)
                     {
