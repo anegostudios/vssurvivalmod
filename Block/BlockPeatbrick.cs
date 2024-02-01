@@ -16,20 +16,34 @@ namespace Vintagestory.GameContent
         {
             handHandling = EnumHandHandling.PreventDefault;
 
-            if (blockSel == null || byEntity?.World == null || !byEntity.Controls.ShiftKey) return;
+            if (blockSel == null || byEntity?.World == null || !byEntity.Controls.ShiftKey)
+            {
+                base.OnHeldInteractStart(itemslot, byEntity, blockSel, entitySel, firstEvent, ref handHandling);
+                return;
+            }
 
             IPlayer byPlayer = null;
             if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
-            if (byPlayer == null) return;
+            if (byPlayer == null) 
+            {
+                base.OnHeldInteractStart(itemslot, byEntity, blockSel, entitySel, firstEvent, ref handHandling);
+                return;
+            }
+            
 
             if (!byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
             {
                 itemslot.MarkDirty();
+                base.OnHeldInteractStart(itemslot, byEntity, blockSel, entitySel, firstEvent, ref handHandling);
                 return;
             }
 
             BlockPeatPile block = byEntity.World.GetBlock(new AssetLocation("peatpile")) as BlockPeatPile;
-            if (block == null) return;
+            if (block == null)
+            {
+                base.OnHeldInteractStart(itemslot, byEntity, blockSel, entitySel, firstEvent, ref handHandling);
+                return;
+            }
 
             BlockEntity be = byEntity.World.BlockAccessor.GetBlockEntity(blockSel.Position);
             if (be is BlockEntityPeatPile)
