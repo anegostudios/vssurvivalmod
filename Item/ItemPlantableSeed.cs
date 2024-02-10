@@ -47,13 +47,21 @@ namespace Vintagestory.GameContent
 
         public override void OnHeldInteractStart(ItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handHandling)
         {
-            if (blockSel == null) return;
+            if (blockSel == null)
+            {
+                base.OnHeldInteractStart(itemslot, byEntity, blockSel, entitySel, firstEvent, ref handHandling);
+                return;
+            }
 
             BlockPos pos = blockSel.Position;
 
             string lastCodePart = itemslot.Itemstack.Collectible.LastCodePart();
 
-            if (lastCodePart == "bellpepper") return;
+            if (lastCodePart == "bellpepper")
+            {
+                base.OnHeldInteractStart(itemslot, byEntity, blockSel, entitySel, firstEvent, ref handHandling);
+                return;
+            }
 
             BlockEntity be = byEntity.World.BlockAccessor.GetBlockEntity(pos);
             if (be is BlockEntityFarmland)
@@ -79,6 +87,11 @@ namespace Vintagestory.GameContent
                 }
 
                 if (planted) handHandling = EnumHandHandling.PreventDefault;
+                return;
+            }
+            else
+            {
+                base.OnHeldInteractStart(itemslot, byEntity, blockSel, entitySel, firstEvent, ref handHandling);
             }
         }
 
