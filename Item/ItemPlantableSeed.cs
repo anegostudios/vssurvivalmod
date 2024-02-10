@@ -45,13 +45,18 @@ namespace Vintagestory.GameContent
             });
         }
 
+        public static string GetCodeWithoutFirstPart(ItemSlot itemslot)
+        {
+            return itemslot.Itemstack.Collectible.CodeEndWithoutParts(1);
+        }
+
         public override void OnHeldInteractStart(ItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handHandling)
         {
             if (blockSel == null) return;
 
             BlockPos pos = blockSel.Position;
 
-            string lastCodePart = itemslot.Itemstack.Collectible.LastCodePart();
+            string lastCodePart = GetCodeWithoutFirstPart(itemslot);
 
             if (lastCodePart == "bellpepper") return;
 
@@ -86,7 +91,7 @@ namespace Vintagestory.GameContent
         {
             base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
 
-            Block cropBlock = world.GetBlock(CodeWithPath("crop-" + inSlot.Itemstack.Collectible.LastCodePart() + "-1"));
+            Block cropBlock = world.GetBlock(CodeWithPath("crop-" + GetCodeWithoutFirstPart(inSlot) + "-1"));
             if (cropBlock == null || cropBlock.CropProps == null) return;
 
             dsc.AppendLine(Lang.Get("soil-nutrition-requirement") + cropBlock.CropProps.RequiredNutrient);
