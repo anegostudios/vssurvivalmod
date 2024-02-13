@@ -23,7 +23,7 @@ namespace Vintagestory.ServerMods
             asset = api.Assets.Get("worldgen/blocklayers.json");
             blockLayerConfig = asset.ToObject<BlockLayerConfig>();
             blockLayerConfig.ResolveBlockIds(api, rockstrata);
-            ResolvedSchematic = LoadSchematicsWithRotations<BlockSchematicPartial>(api, Schematics, blockLayerConfig, null, 0, "dungeontiles/");
+            ResolvedSchematic = LoadSchematicsWithRotations<BlockSchematicPartial>(api, Schematics, blockLayerConfig, null, null, 0, "dungeontiles/");
         }
     }
 }

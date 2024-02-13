@@ -41,6 +41,7 @@ using Vintagestory.API.Config;
 [assembly: ModInfo("Survival Mode", "survival",
     Version = GameVersion.ShortGameVersion,
     NetworkVersion = GameVersion.NetworkVersion,
+    CoreMod = true,
     IconPath = "game/textures/gui/modicon.png",
     Description = "Survival world blocks, items, crafting mechanics, creatures and pretty world generation",
     Authors = new[] { "Tyron" },
@@ -69,7 +70,8 @@ using Vintagestory.API.Config;
                     propickNodeSearchRadius: ""6"",
                     allowUndergroundFarming: ""false"",
                     temporalGearRespawnUses: ""20"",
-                    temporalStormSleeping: ""0""
+                    temporalStormSleeping: ""0"",
+                    clutterObtainable: ""ifrepaired""
 			    }
 		    },
 		    {
@@ -105,7 +107,8 @@ using Vintagestory.API.Config;
                     allowUndergroundFarming: ""true"",
                     temporalGearRespawnUses: ""-1"",
                     temporalStormSleeping: ""1"",
-                    classExclusiveRecipes: ""false""
+                    classExclusiveRecipes: ""false"",
+                    clutterObtainable: ""yes""
                 }
 			},
             {
@@ -146,6 +149,7 @@ using Vintagestory.API.Config;
                     allowUndergroundFarming: ""false"",
                     temporalGearRespawnUses: ""3"",
                     temporalStormSleeping: ""0"",
+                    clutterObtainable: ""ifrepaired""
 			    }
 		    },
             {
@@ -185,7 +189,8 @@ using Vintagestory.API.Config;
                     temporalStormSleeping: ""0"",
                     temporalRifts: ""off"",
                     temporalStability: ""false"",
-                    loreContent: ""false""
+                    loreContent: ""false"",
+                    clutterObtainable: ""no""
 			    }
 		    }
 	    ],
@@ -227,6 +232,7 @@ using Vintagestory.API.Config;
             { category: ""survivalchallenges"", code: ""allowMap"", dataType: ""bool"", default: ""true"" },
             { category: ""survivalchallenges"", code: ""colorAccurateWorldmap"", dataType: ""bool"", default: ""false"" },
             { category: ""survivalchallenges"", code: ""loreContent"", dataType: ""bool"", default: ""true"" },
+            { category: ""survivalchallenges"", code: ""clutterObtainable"", dataType: ""dropdown"", values: [""ifrepaired"", ""yes"", ""no""], names: [""ifrepaired"", ""yes"", ""no""], default: ""ifrepaired"" },
             
             { category: ""temporalstability"", code: ""temporalStorms"", dataType: ""dropdown"", values: [""off"", ""veryrare"", ""rare"", ""sometimes"", ""often"", ""veryoften""], names: [""Off"", ""Every 30-40 days, increase strength/frequency by 2.5% each time, capped at +25%"", ""Approx. every 20-30 days, increase strength/frequency by 5% each time, capped at +50%"", ""Approx. every 10-20 days, increase strength/frequency by +10% each time, capped at 100%"", ""Approx. every 5-10 days, increase strength/frequency by 15% each time, capped at +150%"", ""Approx. every 3-6 days, increase strength/frequency by 20% each time, capped at +200%""], default: ""sometimes"" },
             { category: ""temporalstability"", code: ""tempstormDurationMul"", dataType: ""dropdown"", values: [""2"", ""1.5"", ""1.25"", ""1"", ""0.75"", ""0.5"", ""0.25""], names: [""Much longer (200%)"", ""Longer (150%)"", ""Slightly longer (125%)"", ""Normal (100%)"", ""Slightly shorter (75%)"", ""Shorter (50%)"", ""Much Shorter (25%)""], default: ""1"" },

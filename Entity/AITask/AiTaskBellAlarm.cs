@@ -72,7 +72,7 @@ namespace Vintagestory.GameContent
             for (int i = 0; i < codes.Length; i++)
             {
                 string code = codes[i];
-                if (code.EndsWith("*")) beginswith.Add(code.Substring(0, code.Length - 1));
+                if (code.EndsWith('*')) beginswith.Add(code.Substring(0, code.Length - 1));
                 else exact.Add(code);
             }
 

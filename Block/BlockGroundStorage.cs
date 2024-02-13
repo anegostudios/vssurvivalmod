@@ -258,6 +258,7 @@ namespace Vintagestory.GameContent
             {
                 beg.MeshAngle = roundRad;
                 beg.AttachFace = attachFace;
+                beg.clientsideFirstPlacement = (world.Side == EnumAppSide.Client);
                 beg.OnPlayerInteractStart(player, blockSel);
             }
 

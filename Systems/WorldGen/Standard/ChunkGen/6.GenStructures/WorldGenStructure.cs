@@ -116,7 +116,7 @@ namespace Vintagestory.ServerMods
 
         GenStructures genStructuresSys;
 
-        public void Init(ICoreServerAPI api, BlockLayerConfig config, RockStrataConfig rockstrata, WorldGenStructuresConfigBase structureConfig, LCGRandom rand)
+        public void Init(ICoreServerAPI api, BlockLayerConfig config, RockStrataConfig rockstrata, WorldGenStructuresConfig structureConfig, LCGRandom rand)
         {
             this.rand = rand;
 
@@ -128,7 +128,7 @@ namespace Vintagestory.ServerMods
             unscaledMaxTemp = (int)TerraGenConfig.DescaleTemperature(MaxTemp);
 
 
-            this.schematicDatas = LoadSchematicsWithRotations<BlockSchematicStructure>(api, Schematics, config, structureConfig.SchematicYOffsets, OffsetY);
+            this.schematicDatas = LoadSchematicsWithRotations<BlockSchematicStructure>(api, Schematics, config, structureConfig, structureConfig.SchematicYOffsets, OffsetY);
 
             if (ReplaceWithBlocklayers != null)
             {
@@ -436,6 +436,7 @@ namespace Vintagestory.ServerMods
             int num = rand.NextInt(schematicDatas.Length);
             int orient = rand.NextInt(4);
             BlockSchematicStructure schematic = schematicDatas[num][orient];
+            schematic.Unpack(worldForCollectibleResolve.Api);
 
             startPos = startPos.AddCopy(0, schematic.OffsetY, 0);
 
@@ -443,6 +444,7 @@ namespace Vintagestory.ServerMods
             {
                 orient = FindClearEntranceRotation(blockAccessor, schematicDatas[num], startPos);
                 schematic = schematicDatas[num][orient];
+                schematic.Unpack(worldForCollectibleResolve.Api);
             }
 
             int wdthalf = (int)Math.Ceiling(schematic.SizeX / 2f);
@@ -514,6 +516,7 @@ namespace Vintagestory.ServerMods
             int num = rand.NextInt(schematicDatas.Length);
             int orient = rand.NextInt(4);
             BlockSchematicStructure schematic = schematicDatas[num][orient];
+            schematic.Unpack(worldForCollectibleResolve.Api);
 
             startPos = startPos.AddCopy(0, schematic.OffsetY, 0);
 
@@ -521,8 +524,9 @@ namespace Vintagestory.ServerMods
             {
                 orient = FindClearEntranceRotation(blockAccessor, schematicDatas[num], startPos);
                 schematic = schematicDatas[num][orient];
+                schematic.Unpack(worldForCollectibleResolve.Api);
             }
-            
+
             int wdthalf = (int)Math.Ceiling(schematic.SizeX / 2f);
             int lenhalf = (int)Math.Ceiling(schematic.SizeZ / 2f);
             int wdt = schematic.SizeX;
@@ -623,14 +627,15 @@ namespace Vintagestory.ServerMods
 
             BlockSchematicStructure[] schematicStruc = schematicDatas[num];
             BlockPos targetPos = pos.Copy();
-            BlockSchematicStructure schematic;
+            schematicStruc[0].Unpack(worldForCollectibleResolve.Api);
 
             if (schematicStruc[0].PathwayStarts.Length > 0)
             {
                 return tryGenerateAttachedToCave(blockAccessor, worldForCollectibleResolve, schematicStruc, targetPos);
             }
 
-            schematic = schematicStruc[rand.NextInt(4)];
+            BlockSchematicStructure schematic = schematicStruc[rand.NextInt(4)];
+            schematic.Unpack(worldForCollectibleResolve.Api);
 
             BlockPos placePos = schematic.AdjustStartPos(targetPos.Copy(), Origin);
 
@@ -704,19 +709,22 @@ namespace Vintagestory.ServerMods
             if (!found) return false;
 
             // 3. Random pathway
-            int pathwayNum = rand.NextInt(schematicStruc[0].PathwayStarts.Length);
-            int targetOrientation;
+            BlockSchematicStructure schematic = schematicStruc[0];
+            schematic.Unpack(worldForCollectibleResolve.Api);
+            int pathwayNum = rand.NextInt(schematic.PathwayStarts.Length);
             int targetDistance = -1;
             BlockFacing targetFacing = null;
             BlockPos[] pathway = null;
 
             // 4. At that position search for a suitable stone wall in any direction
-            for (targetOrientation = 0; targetOrientation < 4; targetOrientation++)
+            for (int targetOrientation = 0; targetOrientation < 4; targetOrientation++)
             {
+                schematic = schematicStruc[targetOrientation];
+                schematic.Unpack(worldForCollectibleResolve.Api);
                 // Try every rotation
-                pathway = schematicStruc[targetOrientation].PathwayOffsets[pathwayNum];
+                pathway = schematic.PathwayOffsets[pathwayNum];
                 // This is the facing we are currently checking
-                targetFacing = schematicStruc[targetOrientation].PathwaySides[pathwayNum];
+                targetFacing = schematic.PathwaySides[pathwayNum];
 
                 targetDistance = CanPlacePathwayAt(blockAccessor, pathway, targetFacing, targetPos);
                 if (targetDistance != -1) break;
@@ -724,9 +732,7 @@ namespace Vintagestory.ServerMods
 
             if (targetDistance == -1) return false;
 
-            var schematic = schematicStruc[targetOrientation];
-
-            BlockPos pathwayStart = schematicStruc[targetOrientation].PathwayStarts[pathwayNum];
+            BlockPos pathwayStart = schematic.PathwayStarts[pathwayNum];
 
             // Move back the structure so that the door aligns to the cave wall
             targetPos.Add(

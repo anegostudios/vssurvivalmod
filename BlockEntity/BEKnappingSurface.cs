@@ -52,12 +52,12 @@ namespace Vintagestory.GameContent
                 BaseMaterial.ResolveBlockOrItem(api.World);
             }
 
-            if (api is ICoreClientAPI)
+            if (api is ICoreClientAPI capi)
             {
-                ICoreClientAPI capi = (ICoreClientAPI)api;
                 workitemRenderer = new KnappingRenderer(Pos, capi);
 
                 RegenMeshAndSelectionBoxes();
+                capi.Event.ColorsPresetChanged += RegenMeshAndSelectionBoxes;
             }
         }
 
@@ -422,6 +422,7 @@ namespace Vintagestory.GameContent
 
             dlg?.TryClose();
             dlg?.Dispose();
+            if (Api is ICoreClientAPI capi) capi.Event.ColorsPresetChanged -= RegenMeshAndSelectionBoxes;
         }
 
 
@@ -613,6 +614,7 @@ namespace Vintagestory.GameContent
             base.OnBlockUnloaded();
 
             workitemRenderer?.Dispose();
+            if (Api is ICoreClientAPI capi) capi.Event.ColorsPresetChanged -= RegenMeshAndSelectionBoxes;
         }
 
 

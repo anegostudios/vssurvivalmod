@@ -59,7 +59,7 @@ namespace Vintagestory.GameContent
             float range = maxDist;
             lastSearchTotalMs = entity.World.ElapsedMilliseconds;
 
-            targetEntity = partitionUtil.GetNearestInteractableEntity(entity.ServerPos.XYZ, range, (e) => IsTargetableEntity(e, range) && hasDirectContact(e, range, range/2f) && aimableDirection(e));
+            targetEntity = partitionUtil.GetNearestEntity(entity.ServerPos.XYZ, range, (e) => IsTargetableEntity(e, range) && hasDirectContact(e, range, range/2f) && aimableDirection(e), EnumEntitySearchType.Creatures);
 
             return targetEntity != null;
         }

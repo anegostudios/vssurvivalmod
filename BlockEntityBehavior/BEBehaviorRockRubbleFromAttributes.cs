@@ -27,7 +27,7 @@ namespace Vintagestory.GameContent
         public override void OnPlacementBySchematic(ICoreServerAPI api, IBlockAccessor blockAccessor, BlockPos pos, Dictionary<int, Dictionary<int, int>> replaceBlocks, int centerrockblockid, Block layerBlock, bool resolveImports)
         {
             string toRock = api.World.Blocks[centerrockblockid].Variant["rock"];
-            if (toRock != null)
+            if (toRock != null && Type != null)
             {
                 Type = typeWithRockType(toRock);
             }

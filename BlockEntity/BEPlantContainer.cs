@@ -282,7 +282,7 @@ namespace Vintagestory.GameContent
 
             contentTexSource = content.Class == EnumItemClass.Block ? capi.Tesselator.GetTextureSource(content.Block) : capi.Tesselator.GetTextureSource(content.Item);
             List<IAsset> assets;
-            if (compoShape.Base.Path.EndsWith("*"))
+            if (compoShape.Base.Path.EndsWith('*'))
             {
                 assets = Api.Assets.GetManyInCategory("shapes", compoShape.Base.Path.Substring(0, compoShape.Base.Path.Length - 1), compoShape.Base.Domain);
             }

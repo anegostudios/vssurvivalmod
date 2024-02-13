@@ -82,7 +82,7 @@ namespace Vintagestory.GameContent
             bool isNewlyplaced = inventory == null;
             if (isNewlyplaced)
             {
-                InitInventory(Block);
+                InitInventory(Block, api);
             }
 
             base.Initialize(api);
@@ -90,11 +90,6 @@ namespace Vintagestory.GameContent
             if (api.Side == EnumAppSide.Client && !isNewlyplaced)
             {
                 loadOrCreateMesh();
-            }
-            
-            if (api.Side == EnumAppSide.Server)
-            {
-                inventory.SlotModified += Inventory_SlotModified;
             }
         }
 
@@ -111,10 +106,7 @@ namespace Vintagestory.GameContent
                     this.label = nowLabel;
                     this.type = nowType;
                     this.preferredLidState = nowLidState;
-                    if (Inventory == null)
-                    {
-                        InitInventory(Block);
-                    }
+                    InitInventory(Block, Api);   // We need to replace the inventory with one for the new type (may be a different size). It's OK to delete the existing inventory in a newly placed block, it can't hold anything
                     Inventory.LateInitialize(InventoryClassName + "-" + Pos.X + "/" + Pos.Y + "/" + Pos.Z, Api);
                     Inventory.ResolveBlocksOrItems();
                     Inventory.OnAcquireTransitionSpeed = Inventory_OnAcquireTransitionSpeed;
@@ -234,7 +226,7 @@ namespace Vintagestory.GameContent
             Api.World.PlaySoundAt(sound != null ? sound : new AssetLocation("sounds/player/build"), byPlayer.Entity, byPlayer, true, 16);
         }
 
-        protected virtual void InitInventory(Block block)
+        protected virtual void InitInventory(Block block, ICoreAPI api)
         {
             if (block?.Attributes != null)
             {
@@ -243,7 +235,7 @@ namespace Vintagestory.GameContent
                 quantitySlots = props["quantitySlots"].AsInt(quantitySlots);
                 retrieveOnly = props["retrieveOnly"].AsBool(false);
             }
-
+            
             inventory = new InventoryGeneric(quantitySlots, null, null, null);
             inventory.BaseWeight = 1f;
             inventory.OnGetSuitability = (sourceSlot, targetSlot, isMerge) => (isMerge ? (inventory.BaseWeight + 3) : (inventory.BaseWeight + 1)) + (sourceSlot.Inventory is InventoryBasePlayer ? 1 : 0);
@@ -266,6 +258,11 @@ namespace Vintagestory.GameContent
             inventory.PutLocked = retrieveOnly;
             inventory.OnInventoryClosed += OnInvClosed;
             inventory.OnInventoryOpened += OnInvOpened;
+            
+            if (api.Side == EnumAppSide.Server)
+            {
+                inventory.SlotModified += Inventory_SlotModified;
+            }
         }
 
 
@@ -317,11 +314,11 @@ namespace Vintagestory.GameContent
             {
                 if (tree.HasAttribute("blockCode"))
                 {
-                    InitInventory(block);
+                    InitInventory(block, worldForResolving.Api);
                 }
                 else
                 {
-                    InitInventory(null);
+                    InitInventory(null, worldForResolving.Api);
                 }
             }
 

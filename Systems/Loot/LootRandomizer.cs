@@ -5,6 +5,7 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -99,7 +100,7 @@ namespace Vintagestory.GameContent
             int i = 0;
             foreach (var val in slot.Itemstack.Attributes)
             {
-                if (!val.Key.StartsWith("stack") || !(val.Value is TreeAttribute)) continue;
+                if (!val.Key.StartsWithOrdinal("stack") || !(val.Value is TreeAttribute)) continue;
 
                 TreeAttribute subtree = val.Value as TreeAttribute;
 

@@ -479,18 +479,19 @@ namespace Vintagestory.GameContent
             bool anySideFree = false;
 
             BlockPos npos = pos.Copy();
+            IBlockAccessor blockAccessor = world.BlockAccessor;
             foreach (var val in Cardinal.ALL)
             {
                 npos.Set(pos.X + val.Normali.X, pos.Y, pos.Z + val.Normali.Z);
-                Block nblock = world.BlockAccessor.GetBlock(npos, BlockLayersAccess.Fluid);
+                Block nblock = blockAccessor.GetBlock(npos, BlockLayersAccess.Fluid);
                 if (nblock.LiquidLevel == liquidLevel || nblock.Replaceable < 6000 || !nblock.IsLiquid()) continue;
 
                 Vec3i normal = nblock.LiquidLevel < liquidLevel ? val.Normali : val.Opposite.Normali;
 
                 if (!val.IsDiagnoal)
                 {
-                    nblock = world.BlockAccessor.GetBlock(npos, BlockLayersAccess.Solid);
-                    anySideFree |= !nblock.SideIsSolid(npos, val.Opposite.Index / 2);
+                    nblock = blockAccessor.GetBlock(npos, BlockLayersAccess.Solid);
+                    anySideFree |= !nblock.SideIsSolid(blockAccessor, npos, val.Opposite.Index / 2);
                 }
 
                 dir.X += normal.X;
@@ -507,9 +508,9 @@ namespace Vintagestory.GameContent
             if (flowDir == null)
             {
                 pos.Y--;
-                Block downBlock = world.BlockAccessor.GetBlock(pos, BlockLayersAccess.Fluid);
+                Block downBlock = blockAccessor.GetBlock(pos, BlockLayersAccess.Fluid);
                 pos.Y += 2;
-                Block upBlock = world.BlockAccessor.GetBlock(pos, BlockLayersAccess.Fluid);
+                Block upBlock = blockAccessor.GetBlock(pos, BlockLayersAccess.Fluid);
                 pos.Y--;
                 bool downLiquid = IsSameLiquid(downBlock, block);
                 bool upLiquid = IsSameLiquid(upBlock, block);

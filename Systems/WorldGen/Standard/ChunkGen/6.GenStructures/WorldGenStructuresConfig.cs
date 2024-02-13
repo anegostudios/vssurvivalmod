@@ -37,6 +37,11 @@ namespace Vintagestory.ServerMods
         public WorldGenStructure[] Structures;
 
         BlockLayerConfig blockLayerConfig;
+        /// <summary>
+        /// Cache for every loaded schematic asset. The key is the AssetLocation + '~' + the yOffset (some can have a custom yOffset).  The value is an array with the schematic's four rotations
+        /// <br/>LoadSchematic<>() attempts first to find the desired schematic in the cache
+        /// </summary>
+        public Dictionary<string, BlockSchematicStructure[]> LoadedSchematicsCache;
 
         internal void Init(ICoreServerAPI api)
         {
@@ -47,6 +52,8 @@ namespace Vintagestory.ServerMods
             blockLayerConfig.ResolveBlockIds(api, rockstrata);
 
             ResolveRemaps(api, rockstrata);
+
+            LoadedSchematicsCache = new Dictionary<string, BlockSchematicStructure[]>();
 
             for (int i = 0; i < Structures.Length; i++)
             {

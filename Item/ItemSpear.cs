@@ -10,9 +10,49 @@ using Vintagestory.API.Util;
 namespace Vintagestory.GameContent
 {
 
+    public class ItemSpear : Item
+    {
+        public override void OnLoaded(ICoreAPI api)
+        {
+            base.OnLoaded(api);
 
-    public class ItemSpear : ItemSword
-    {        
+            GetCollectibleBehavior<CollectibleBehaviorAnimationAuthoritative>(true).OnBeginHitEntity += ItemSpear_OnBeginHitEntity;
+        }
+
+        private void ItemSpear_OnBeginHitEntity(EntityAgent byEntity, ref EnumHandling handling)
+        {
+            if (byEntity.World.Side == EnumAppSide.Client)
+            {
+                return;
+            }
+
+            var entitySel = (byEntity as EntityPlayer)?.EntitySelection;
+
+            if (byEntity.Attributes.GetInt("didattack") == 0 && entitySel != null)
+            {
+                byEntity.Attributes.SetInt("didattack", 1);
+
+                var slot = byEntity.ActiveHandItemSlot;
+
+                bool canhackEntity =
+                    entitySel.Entity.Properties.Attributes?["hackedEntity"].Exists == true
+                    && slot.Itemstack.ItemAttributes.IsTrue("hacking") == true && api.ModLoader.GetModSystem<CharacterSystem>().HasTrait((byEntity as EntityPlayer).Player, "technical")
+                ;
+                ICoreServerAPI sapi = api as ICoreServerAPI;
+
+                if (canhackEntity)
+                {
+                    sapi.World.PlaySoundAt(new AssetLocation("sounds/player/hackingspearhit.ogg"), entitySel.Entity, null);
+                }
+
+                if (api.World.Rand.NextDouble() < 0.15 && canhackEntity)
+                {
+                    SpawnEntityInPlaceOf(entitySel.Entity, entitySel.Entity.Properties.Attributes["hackedEntity"].AsString(), byEntity);
+                    sapi.World.DespawnEntity(entitySel.Entity, new EntityDespawnData() { Reason = EnumDespawnReason.Removed });
+                }
+            }
+        }
+
         public override string GetHeldTpUseAnimation(ItemSlot activeHotbarSlot, Entity byEntity)
         {
             return null;
@@ -117,41 +157,6 @@ namespace Vintagestory.GameContent
 
 
 
-
-        protected override void hitEntity(EntityAgent byEntity)
-        {
-            if (byEntity.World.Side == EnumAppSide.Client)
-            {
-                base.hitEntity(byEntity);
-                return;
-            }
-            
-            var entitySel = (byEntity as EntityPlayer)?.EntitySelection;
-
-            if (byEntity.Attributes.GetInt("didattack") == 0 && entitySel != null)
-            {
-                byEntity.Attributes.SetInt("didattack", 1);
-
-                var slot = byEntity.ActiveHandItemSlot;
-
-                bool canhackEntity =
-                    entitySel.Entity.Properties.Attributes?["hackedEntity"].Exists == true
-                    && slot.Itemstack.ItemAttributes.IsTrue("hacking") == true && api.ModLoader.GetModSystem<CharacterSystem>().HasTrait((byEntity as EntityPlayer).Player, "technical")
-                ;
-                ICoreServerAPI sapi = api as ICoreServerAPI;
-
-                if (canhackEntity)
-                {
-                    sapi.World.PlaySoundAt(new AssetLocation("sounds/player/hackingspearhit.ogg"), entitySel.Entity, null);
-                }
-
-                if (api.World.Rand.NextDouble() < 0.15 && canhackEntity)
-                {
-                    SpawnEntityInPlaceOf(entitySel.Entity, entitySel.Entity.Properties.Attributes["hackedEntity"].AsString(), byEntity);
-                    sapi.World.DespawnEntity(entitySel.Entity, new EntityDespawnData() { Reason = EnumDespawnReason.Removed });
-                }
-            }
-        }
 
 
 

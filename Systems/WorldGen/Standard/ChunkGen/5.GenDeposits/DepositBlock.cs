@@ -14,7 +14,7 @@ namespace Vintagestory.ServerMods
 
         public Dictionary<AssetLocation, string[]> AllowedVariantsByInBlock;
 
-        public bool IsWildCard => Code.Path.Contains("*");
+        public bool IsWildCard => Code.Path.Contains('*');
 
         public int MaxGrade;
 

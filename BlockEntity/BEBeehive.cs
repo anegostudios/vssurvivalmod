@@ -8,6 +8,7 @@ using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -228,8 +229,8 @@ namespace Vintagestory.GameContent
                 if (block.BlockMaterial != EnumBlockMaterial.Other) return;   // All types of skep and wildbeehive have BlockMaterial: "Other"
 
                 string blockcode = block.Code.Path;
-                if (blockcode.StartsWith("skep-empty")) scanEmptySkeps.Add(new BlockPos(x, y, z));
-                else if (blockcode.StartsWith("skep-populated") || blockcode.StartsWith("wildbeehive")) scanQuantityNearbyHives++;
+                if (blockcode.StartsWithOrdinal("skep-empty")) scanEmptySkeps.Add(new BlockPos(x, y, z));
+                else if (blockcode.StartsWithOrdinal("skep-populated") || blockcode.StartsWithOrdinal("wildbeehive")) scanQuantityNearbyHives++;
             });
 
             scanIteration++;

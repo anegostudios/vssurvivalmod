@@ -238,7 +238,7 @@ namespace Vintagestory.GameContent
         void updateScrollbarBounds()
         {
             if (listElem == null) return;
-            SingleComposer.GetScrollbar("scrollbar").Bounds.CalcWorldBounds();
+            SingleComposer.GetScrollbar("scrollbar")?.Bounds.CalcWorldBounds();
 
             SingleComposer.GetScrollbar("scrollbar")?.SetHeights(
                 (float)(clipBounds.fixedHeight),
@@ -517,7 +517,15 @@ namespace Vintagestory.GameContent
 
         public override bool PrefersUngrabbedMouse => false;
         public override float ZSize => 300; // Due to crossed out texture on bought out items
-
-
+        
+        public override void OnFinalizeFrame(float dt)
+        {
+            base.OnFinalizeFrame(dt);
+            if (IsOpened() && !IsInRangeOf(owningEntity.Pos.XYZ))
+            {
+                // Because we cant do it in here
+                capi.Event.EnqueueMainThreadTask(() => TryClose(), "closedlg");
+            }
+        }
     }
 }

@@ -5,13 +5,18 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
-    public class ItemCleaver : ItemSword
+    public class ItemCleaver : Item
     {
+        CollectibleBehaviorAnimationAuthoritative bhaa;
+
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
-            strikeSound = new AssetLocation("sounds/tool/slash");
+            bhaa = GetCollectibleBehavior<CollectibleBehaviorAnimationAuthoritative>(true);
+            bhaa.strikeSoundHandInteract = EnumHandInteract.HeldItemInteract;
+            bhaa.OnBeginHitEntity += Bhaa_OnBeginHitEntity;
         }
+
 
         public override void OnHeldAttackStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
         {
@@ -36,7 +41,7 @@ namespace Vintagestory.GameContent
             if (entitySel != null && entitySel.Entity.Alive && !(entitySel.Entity is EntityArmorStand))
             {
                 handling = EnumHandHandling.PreventDefault;
-                startAttack(slot, byEntity);
+                bhaa.StartAttack(slot, byEntity);
                 return;
             }
 
@@ -47,25 +52,17 @@ namespace Vintagestory.GameContent
         {
             if (entitySel != null)
             {
-                return stepAttack(slot, byEntity);
+                return bhaa.StepAttack(slot, byEntity);
             }
 
             return false;
         }
 
-        protected override void playStrikeSound(EntityAgent byEntity)
-        {
-            IPlayer byPlayer = (byEntity as EntityPlayer).Player;
-            if (byPlayer == null) return;
 
-            if (byEntity.Controls.HandUse == EnumHandInteract.HeldItemInteract)
-            {
-                byPlayer.Entity.World.PlaySoundAt(strikeSound, byPlayer.Entity, byPlayer, 0.9f + (float)api.World.Rand.NextDouble() * 0.2f, 16, 0.35f);
-            }
-        }
-
-        protected override void hitEntity(EntityAgent byEntity)
+        private void Bhaa_OnBeginHitEntity(EntityAgent byEntity, ref EnumHandling handling)
         {
+            handling = EnumHandling.PreventDefault;
+
             var entitySel = (byEntity as EntityPlayer)?.EntitySelection;
             var slot = (byEntity as EntityPlayer)?.Player.InventoryManager.ActiveHotbarSlot;
 
@@ -81,7 +78,7 @@ namespace Vintagestory.GameContent
             if (api.World.Rand.NextDouble() > slaughterChance)
             {
                 dmg = 1;
-            } 
+            }
 
             entitySel.Entity.ReceiveDamage(new DamageSource()
             {

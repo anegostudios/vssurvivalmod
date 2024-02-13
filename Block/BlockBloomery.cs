@@ -126,7 +126,7 @@ namespace Vintagestory.GameContent
         {
             ItemStack hotbarstack = byPlayer.InventoryManager.ActiveHotbarSlot.Itemstack;
 
-            if (hotbarstack != null && hotbarstack.Class == EnumItemClass.Block && hotbarstack.Collectible.Code.Path.StartsWith("bloomerychimney"))
+            if (hotbarstack != null && hotbarstack.Class == EnumItemClass.Block && hotbarstack.Collectible.Code.PathStartsWith("bloomerychimney"))
             {
                 Block aboveBlock = world.BlockAccessor.GetBlock(blockSel.Position.UpCopy());
                 if (aboveBlock.IsReplacableBy(hotbarstack.Block))

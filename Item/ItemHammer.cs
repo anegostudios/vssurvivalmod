@@ -44,7 +44,12 @@ namespace Vintagestory.GameContent
 
         public override void OnHeldAttackStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
         {
-            if (blockSel == null) return;
+            if (blockSel == null)
+            {
+                base.OnHeldAttackStart(slot, byEntity, blockSel, entitySel, ref handling);
+                return;
+            }
+
             IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
             if (byPlayer == null) return;
 
@@ -67,10 +72,17 @@ namespace Vintagestory.GameContent
                         byPlayer.Entity.World.PlaySoundAt(new AssetLocation("sounds/effect/anvilmergehit"), byPlayer, byPlayer);
                     }
                 }, 464);
+
+                slot.Itemstack.TempAttributes.SetBool("isAnvilAction", true);
+
                 return;
             }
 
-            if (!(byEntity.World.BlockAccessor.GetBlock(blockSel.Position) is BlockAnvil)) return;
+            if (!(byEntity.World.BlockAccessor.GetBlock(blockSel.Position) is BlockAnvil))
+            {
+                base.OnHeldAttackStart(slot, byEntity, blockSel, entitySel, ref handling);
+                return;
+            }
 
             
 
@@ -86,17 +98,29 @@ namespace Vintagestory.GameContent
                 }
             }, 440);
 
+            slot.Itemstack.TempAttributes.SetBool("isAnvilAction", true);
 
             handling = EnumHandHandling.PreventDefault;
         }
 
         public override bool OnHeldAttackCancel(float secondsPassed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSelection, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)
         {
+            if (!slot.Itemstack.TempAttributes.GetBool("isAnvilAction"))
+            {
+                return base.OnHeldAttackCancel(secondsPassed, slot, byEntity, blockSelection, entitySel, cancelReason);
+            }
+
+            slot.Itemstack.TempAttributes.SetBool("isAnvilAction", false);
             return false;
         }
 
         public override bool OnHeldAttackStep(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSelection, EntitySelection entitySel)
         {
+            if (!slot.Itemstack.TempAttributes.GetBool("isAnvilAction"))
+            {
+                return base.OnHeldAttackStep(secondsUsed, slot, byEntity, blockSelection, entitySel);
+            }
+
             if (blockSelection == null) return false;
 
             BlockEntity be = byEntity.World.BlockAccessor.GetBlockEntity(blockSelection.Position);
@@ -132,6 +156,12 @@ namespace Vintagestory.GameContent
 
         public override void OnHeldAttackStop(float secondsPassed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
+            if (!slot.Itemstack.TempAttributes.GetBool("isAnvilAction"))
+            {
+                base.OnHeldAttackStop(secondsPassed, slot, byEntity, blockSel, entitySel);
+                return;
+            }
+
             if (blockSel == null || secondsPassed < 0.4f) return;
             IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
 
@@ -145,12 +175,6 @@ namespace Vintagestory.GameContent
             BlockEntityAnvil bea = be as BlockEntityAnvil;
 
             if (bea == null) return;
-
-
-            /*if (bea.AvailableMetalVoxels <= 0 && GetToolMode(slot, byPlayer, blockSel) != 5)
-            {
-                return;
-            }*/
 
             // The server side call is made using a custom network packet
             if (byEntity.World is IClientWorldAccessor cWorld)

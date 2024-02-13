@@ -36,7 +36,7 @@ namespace Vintagestory.ServerMods
         [JsonProperty]
         public Dictionary<string, int> OffsetYByCode;
 
-        protected T[][] LoadSchematicsWithRotations<T>(ICoreAPI api, AssetLocation[] locs, BlockLayerConfig config, Dictionary<string, int> schematicYOffsets, int? defaultOffsetY, string pathPrefix = "schematics/") where T : BlockSchematicStructure
+        protected T[][] LoadSchematicsWithRotations<T>(ICoreAPI api, AssetLocation[] locs, BlockLayerConfig config, WorldGenStructuresConfig structureConfig, Dictionary<string, int> schematicYOffsets, int? defaultOffsetY, string pathPrefix = "schematics/") where T : BlockSchematicStructure
         {
             List<T[]> schematics = new List<T[]>();
 
@@ -46,7 +46,7 @@ namespace Vintagestory.ServerMods
 
                 var schematicLoc = Schematics[i];
 
-                if (locs[i].Path.EndsWith("*"))
+                if (locs[i].Path.EndsWith('*'))
                 {
                     assets = api.Assets.GetManyInCategory("worldgen", pathPrefix + schematicLoc.Path.Substring(0, schematicLoc.Path.Length - 1), schematicLoc.Domain).ToArray();
                 }
@@ -57,8 +57,9 @@ namespace Vintagestory.ServerMods
 
                 for (int j = 0; j < assets.Length; j++)
                 {
-                    int offsety = getOffsetY(schematicYOffsets, defaultOffsetY, OffsetYByCode, assets[j]);
-                    var sch = LoadSchematic<T>(api, assets[j], config, offsety);
+                    IAsset asset = assets[j];
+                    int offsety = getOffsetY(schematicYOffsets, defaultOffsetY, OffsetYByCode, asset);
+                    var sch = LoadSchematic<T>(api, asset, config, structureConfig, offsety);
                     if (sch != null) schematics.Add(sch);
                 }
             }
@@ -80,18 +81,23 @@ namespace Vintagestory.ServerMods
             return offsety;
         }
 
-        public static T[] LoadSchematic<T>(ICoreAPI api, IAsset asset, BlockLayerConfig config, int offsety) where T : BlockSchematicStructure
+        public static T[] LoadSchematic<T>(ICoreAPI api, IAsset asset, BlockLayerConfig config, WorldGenStructuresConfig structureConfig, int offsety) where T : BlockSchematicStructure
         {
+            string cacheKey = asset.Location.ToShortString() + "~" + offsety;
+            if (structureConfig != null && structureConfig.LoadedSchematicsCache.TryGetValue(cacheKey, out BlockSchematicStructure[] cached) && cached is T[] result) return result;
+
             T schematic = asset.ToObject<T>();
 
             if (schematic == null)
             {
                 api.World.Logger.Warning("Could not load schematic {0}", asset.Location);
+                if (structureConfig != null) structureConfig.LoadedSchematicsCache[cacheKey] = null;
                 return null;
             }
             
             schematic.OffsetY = offsety;
             schematic.FromFileName = asset.Name;
+            string location = asset.Location.ToShortString();
 
             T[] rotations = new T[4];
             rotations[0] = schematic;
@@ -105,10 +111,9 @@ namespace Vintagestory.ServerMods
                 }
 
                 rotations[k].blockLayerConfig = config;
-                rotations[k].Init(api.World.BlockAccessor);
-                rotations[k].LoadMetaInformationAndValidate(api.World.BlockAccessor, api.World, asset.Location.ToShortString());
             }
 
+            if (structureConfig != null) structureConfig.LoadedSchematicsCache[cacheKey] = rotations;
             return rotations;
         }
 
@@ -123,7 +128,7 @@ namespace Vintagestory.ServerMods
 
                 var schematicLoc = Schematics[i];
 
-                if (locs[i].Path.EndsWith("*"))
+                if (locs[i].Path.EndsWith('*'))
                 {
                     assets = api.Assets.GetManyInCategory("worldgen", pathPrefix + schematicLoc.Path.Substring(0, schematicLoc.Path.Length - 1), schematicLoc.Domain).ToArray();
                 }

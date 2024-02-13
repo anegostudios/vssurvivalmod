@@ -3,6 +3,7 @@ using System.Text;
 using Newtonsoft.Json.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -10,6 +11,26 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
+    public class ModSystemStopRaiseShieldAnim : ModSystem
+    {
+        ICoreClientAPI capi;
+        public override bool ShouldLoad(EnumAppSide forSide) => forSide == EnumAppSide.Client;
+
+        public override void StartClientSide(ICoreClientAPI api)
+        {
+            capi = api;
+            api.Event.AfterActiveSlotChanged += Event_AfterActiveSlotChanged;
+        }
+
+        private void Event_AfterActiveSlotChanged(ActiveSlotChangeEventArgs obj)
+        {
+            var eplr = capi.World.Player.Entity;
+            if (!(eplr.RightHandItemSlot.Itemstack?.Item is ItemShield) && eplr.AnimManager.IsAnimationActive("raiseshield-right"))
+            {
+                eplr.AnimManager.StopAnimation("raiseshield-right");
+            }
+        }
+    }
 
     public class ItemShield : Item, IContainedMeshSource
     {
@@ -146,7 +167,6 @@ namespace Vintagestory.GameContent
         {
             string onhand = (byEntity.LeftHandItemSlot == slot) ? "left" : "right";
             string notonhand = (byEntity.LeftHandItemSlot == slot) ? "right" : "left";
-
 
             if (byEntity.Controls.Sneak)
             {

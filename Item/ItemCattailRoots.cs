@@ -14,15 +14,19 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            bool waterBlock = byEntity.World.BlockAccessor.GetBlock(blockSel.Position.AddCopy(blockSel.Face), BlockLayersAccess.Fluid).LiquidCode == "water";
             Block block;
 
             if (this.Code.Path.Contains("papyrus"))
             {
-                block = byEntity.World.GetBlock(new AssetLocation(waterBlock ? "tallplant-papyrus-water-harvested-free" : "tallplant-papyrus-land-harvested-free"));
-            } else
+                block = byEntity.World.GetBlock(new AssetLocation("tallplant-papyrus-land-harvested-free"));
+            }
+            else if (this.Code.Path.Equals("tuleroot"))
             {
-                block = byEntity.World.GetBlock(new AssetLocation(waterBlock ? "tallplant-coopersreed-water-harvested-free" : "tallplant-coopersreed-land-harvested-free"));
+                block = byEntity.World.GetBlock(new AssetLocation("tallplant-tule-land-harvested-free"));
+            }
+            else
+            {
+                block = byEntity.World.GetBlock(new AssetLocation("tallplant-coopersreed-land-harvested-free"));
             }
 
             if (block == null)

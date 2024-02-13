@@ -91,5 +91,6 @@ namespace Vintagestory.GameContent
             // Although the block has solid sides for general purposes (it's actually almost solid, but the top row of voxels is removed) it is not fully solid, and therefore adjacent liquid blocks should have their sides rendered
             return faceIndex == BlockFacing.indexDOWN;
         }
+
     }
 }

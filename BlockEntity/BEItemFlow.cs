@@ -7,6 +7,7 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.GameContent.Mechanics;
 
 namespace Vintagestory.GameContent
 {
@@ -357,7 +358,15 @@ namespace Vintagestory.GameContent
                         if (beFlow != null)
                         {
                             targetSlot.Itemstack.Attributes.SetInt("chuteQHTravelled", outputFace.IsHorizontal ? (horTravelled + 1) : 0);
-                            targetSlot.Itemstack.Attributes.SetInt("chuteDir", outputFace.Index);
+                            // prevent an item from being pulled back from ArchimedesScrew and then stuck because of MaxHorizontalTravel - see GH issue 3549
+                            if (beFlow is BlockEntityArchimedesScrew)
+                            {
+                                targetSlot.Itemstack.Attributes.SetInt("chuteDir", BlockFacing.UP.Index);
+                            }
+                            else
+                            {
+                                targetSlot.Itemstack.Attributes.SetInt("chuteDir", outputFace.Index);
+                            }
                         }
                         else
                         {

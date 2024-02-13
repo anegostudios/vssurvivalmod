@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.VisualBasic;
+using System;
 using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -128,21 +129,35 @@ namespace Vintagestory.GameContent
             CookingRecipe recipe = GetMatchingCookingRecipe(world, stacks);
 
             Block block = world.GetBlock(CodeWithVariant("type", "cooked"));
-            ItemStack outputStack = new ItemStack(block);
 
             if (recipe != null)
             {
                 int quantityServings = recipe.GetQuantityServings(stacks);
 
-                for (int i = 0; i < stacks.Length; i++)
+                if (recipe.DirtyPot)
                 {
-                    CookingRecipeIngredient ingred = recipe.GetIngrendientFor(stacks[i]);
-                    ItemStack cookedStack = ingred.GetMatchingStack(stacks[i])?.CookedStack?.ResolvedItemstack.Clone();
-                    if (cookedStack != null)
+                    // For glue and similar, we destroy the ingredients and place the output item (from the recipe code) in slot 1
+                    Item outputItem = world.GetItem(new AssetLocation(recipe.DirtyPotOutput));
+                    if (outputItem != null)
                     {
-                        stacks[i] = cookedStack;
+                        stacks = new ItemStack[] { new ItemStack(outputItem, quantityServings) };
+                        block = world.GetBlock(new AssetLocation(Attributes["dirtiedBlockCode"].AsString()));
                     }
                 }
+                else
+                {
+                    for (int i = 0; i < stacks.Length; i++)
+                    {
+                        CookingRecipeIngredient ingred = recipe.GetIngrendientFor(stacks[i]);
+                        ItemStack cookedStack = ingred.GetMatchingStack(stacks[i])?.CookedStack?.ResolvedItemstack.Clone();
+                        if (cookedStack != null)
+                        {
+                            stacks[i] = cookedStack;
+                        }
+                    }
+                }
+
+                ItemStack outputStack = new ItemStack(block);
 
                 // Carry over and set perishable properties
                 TransitionableProperties cookedPerishProps = recipe.PerishableProps.Clone();
@@ -207,13 +222,19 @@ namespace Vintagestory.GameContent
             if (recipe != null)
             {
                 double quantity = recipe.GetQuantityServings(stacks);
-                if (quantity != 1)
+                string message;
+                string outputName = recipe.GetOutputName(world, stacks);
+                if (recipe.DirtyPot)
                 {
-                    return Lang.Get("mealcreation-makeplural", (int)quantity, recipe.GetOutputName(world, stacks).ToLowerInvariant());
-                } else
-                {
-                    return Lang.Get("mealcreation-makesingular", (int)quantity, recipe.GetOutputName(world, stacks).ToLowerInvariant());
+                    message = "mealcreation-nonfood";
+                    outputName = Lang.GetMatching(EnumItemClass.Item.Name() + "-" + recipe.DirtyPotOutput);
                 }
+                else
+                {
+                    message = quantity == 1 ? "mealcreation-makesingular" : "mealcreation-makeplural";
+                    // We need to use language plural format instead, here and all similar code!
+                }
+                return Lang.Get(message, (int)quantity, outputName.ToLower());
             }
 
             return null;
@@ -229,13 +250,15 @@ namespace Vintagestory.GameContent
             List<CookingRecipe> recipes = world.Api.GetCookingRecipes();
             if (recipes == null) return null;
 
-            for (int j = 0; j < recipes.Count; j++)
+            bool isDirtyPot = Attributes["isDirtyPot"].AsBool(false);
+            foreach (var recipe in recipes)
             {
-                if (recipes[j].Matches(stacks))
+                if (isDirtyPot && !recipe.DirtyPot) continue;   // Prevent normal food from being cooked in a dirty pot
+                if (recipe.Matches(stacks))
                 {
-                    if (recipes[j].GetQuantityServings(stacks) > MaxServingSize) continue;
+                    if (recipe.GetQuantityServings(stacks) > MaxServingSize) continue;
 
-                    return recipes[j];
+                    return recipe;
                 }
             }
 

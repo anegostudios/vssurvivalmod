@@ -37,7 +37,7 @@ namespace Vintagestory.GameContent
 
             foreach (var val in inSlot.Itemstack.Attributes)
             {
-                if (!val.Key.StartsWith("stack") || !(val.Value is TreeAttribute)) continue;
+                if (!val.Key.StartsWithOrdinal("stack") || !(val.Value is TreeAttribute)) continue;
 
                 TreeAttribute subtree = val.Value as TreeAttribute;
 
@@ -98,7 +98,7 @@ namespace Vintagestory.GameContent
             
             foreach (var val in inSlot.Itemstack.Attributes)
             {
-                if (!val.Key.StartsWith("stack") || !(val.Value is TreeAttribute)) continue;
+                if (!val.Key.StartsWithOrdinal("stack") || !(val.Value is TreeAttribute)) continue;
 
                 TreeAttribute subtree = val.Value as TreeAttribute;
 

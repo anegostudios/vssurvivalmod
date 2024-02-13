@@ -5,6 +5,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
+using static Vintagestory.API.Common.EntityAgent;
 
 namespace Vintagestory.GameContent
 {
@@ -220,8 +222,10 @@ namespace Vintagestory.GameContent
             double horizontalAngleProtectionRange = 120 / 2 * GameMath.DEG2RAD;
 
             ItemSlot[] shieldSlots = new ItemSlot[] { player.Entity.LeftHandItemSlot, player.Entity.RightHandItemSlot };
-            foreach (var shieldSlot in shieldSlots)
+
+            for (int i = 0; i < shieldSlots.Length; i++)
             {
+                var shieldSlot = shieldSlots[i];
                 var attr = shieldSlot.Itemstack?.ItemAttributes?["shield"];
                 if (attr == null || !attr.Exists) continue;
 
@@ -281,7 +285,9 @@ namespace Vintagestory.GameContent
 
                     var loc = shieldSlot.Itemstack.ItemAttributes["blockSound"].AsString("held/shieldblock");
                     api.World.PlaySoundAt(AssetLocation.Create(loc, shieldSlot.Itemstack.Collectible.Code.Domain).WithPathPrefixOnce("sounds/").WithPathAppendixOnce(".ogg"), player, null);
-                    player.Entity.AnimManager.StartAnimation("shieldBlock");
+                    
+                    (api as ICoreServerAPI).Network.BroadcastEntityPacket(player.Entity.EntityId, (int)EntityServerPacketId.PlayPlayerAnim, SerializerUtil.Serialize("shieldBlock" + ((i == 0) ? "L" : "R")));
+                    
 
                     if (api.Side == EnumAppSide.Server)
                     {

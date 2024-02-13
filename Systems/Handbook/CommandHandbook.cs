@@ -5,6 +5,7 @@ using System;
 using Vintagestory.API.Server;
 using System.Text;
 using ProtoBuf;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -290,7 +291,7 @@ namespace Vintagestory.GameContent
             // Seems to fix links like thos not working: block-labeledchest-east-{{ \"type\": \\\"normal-labeled\\\" }}
             target = target.Replace("\\", "");
 
-            if (target.StartsWith("tab-"))
+            if (target.StartsWithOrdinal("tab-"))
             {
                 if (!dialog.IsOpened()) dialog.TryOpen();
                 dialog.selectTab(target.Substring(4));

@@ -60,14 +60,14 @@ namespace Vintagestory.GameContent
         {
             for (int i = 0; i < allowedPrefixes.Length; i++)
             {
-                if (block.Code.Path.StartsWith(allowedPrefixes[i]))
+                if (block.Code.PathStartsWith(allowedPrefixes[i]))
                 {
                     // Disable scything on thick snow variants (-snow2, -snow3 etc.)
                     if (disallowedSuffixes != null)
                     {
                         for (int j = 0; j < disallowedSuffixes.Length; j++)
                         {
-                            if (block.Code.Path.EndsWith(disallowedSuffixes[j])) return false;
+                            if (block.Code.Path.EndsWithOrdinal(disallowedSuffixes[j])) return false;
                         }
                     }
 

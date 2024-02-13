@@ -52,7 +52,7 @@ namespace Vintagestory.GameContent
             {
                 if (!conditionsMet(Text[i].Conditions)) continue;
 
-                var text = Text[i].Value
+                var text = Lang.Get(Text[i].Value)
                     .Replace("{characterclass}", Lang.Get("characterclass-" + controller.PlayerEntity.WatchedAttributes.GetString("characterClass", null)))
                     .Replace("{playername}", controller.PlayerEntity.GetBehavior<EntityBehaviorNameTag>()?.DisplayName)
                     .Replace("{npcname}", controller.NPCEntity.GetBehavior<EntityBehaviorNameTag>()?.DisplayName)

@@ -57,7 +57,7 @@ namespace Vintagestory.GameContent
             {
                 Block block = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
                 haveKnappableStone = 
-                    block.Code.Path.StartsWith("loosestones") && 
+                    block.Code.PathStartsWith("loosestones") && 
                     block.FirstCodePart(1).Equals(itemslot.Itemstack.Collectible.FirstCodePart(1))
                 ;
             }

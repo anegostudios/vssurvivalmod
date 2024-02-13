@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ServiceModel.Channels;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -110,7 +111,7 @@ namespace Vintagestory.GameContent
 
         public virtual string GetMeshCacheKey(ItemStack itemstack)
         {
-            return ""+meshCache.GetMealHashCode(itemstack);
+            return "" + meshCache.GetMealHashCode(itemstack);
         }
 
 
@@ -124,11 +125,7 @@ namespace Vintagestory.GameContent
             TransitionState[] states = base.UpdateAndGetTransitionStates(world, inslot);
 
             ItemStack[] stacks = GetNonEmptyContents(world, inslot.Itemstack);
-            if (MealMeshCache.ContentsRotten(stacks)) {
-                inslot.Itemstack.Attributes.RemoveAttribute("recipeCode");
-                inslot.Itemstack.Attributes?.RemoveAttribute("quantityServings");
-            }
-            if (stacks == null || stacks.Length == 0)
+            if (stacks == null || stacks.Length == 0 || MealMeshCache.ContentsRotten(stacks))
             {
                 inslot.Itemstack.Attributes.RemoveAttribute("recipeCode");
                 inslot.Itemstack.Attributes?.RemoveAttribute("quantityServings");
@@ -284,18 +281,23 @@ namespace Vintagestory.GameContent
 
 
             if (recipe != null) {
-                if (servings == 1) {
-                    dsc.AppendLine(Lang.Get("{0} serving of {1}", Math.Round(servings, 1), recipe.GetOutputName(world, stacks)));
-                } else
+                string message;
+                string outputName = recipe.GetOutputName(world, stacks);
+                if (recipe.DirtyPot)
                 {
-                    dsc.AppendLine(Lang.Get("{0} servings of {1}", Math.Round(servings, 1), recipe.GetOutputName(world, stacks)));
+                    message = "nonfood-portions";
                 }
+                else
+                {
+                    message = "{0} servings of {1}";
+                }
+                dsc.AppendLine(Lang.Get(message, Math.Round(servings, 1), outputName));
             }
 
             BlockMeal mealblock = api.World.GetBlock(new AssetLocation("bowl-meal")) as BlockMeal;
             string nutriFacts = mealblock.GetContentNutritionFacts(api.World, inSlot, stacks, null);
 
-            if (nutriFacts != null) dsc.AppendLine(nutriFacts);
+            if (nutriFacts != null && recipe?.DirtyPot != true) dsc.AppendLine(nutriFacts);
 
             ItemSlot slot = BlockCrock.GetDummySlotForFirstPerishableStack(api.World, stacks, null, inSlot.Inventory);
             slot.Itemstack?.Collectible.AppendPerishableInfoText(slot, dsc, world);
@@ -448,5 +450,31 @@ namespace Vintagestory.GameContent
         {
             return interactions.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
         }
+
+
+        public override bool OnSmeltAttempt(InventoryBase inventorySmelting)
+        {
+            if (Attributes["isDirtyPot"].AsBool(false))
+            {
+                InventorySmelting inventory = (InventorySmelting)inventorySmelting;
+                ItemSlot slot = inventory[1];
+                int quantityServings = (int)((float)slot.Itemstack.Attributes.GetDecimal("quantityServings") + 0.001f);  // forgive some rounding errors, but otherwise round down
+                if (quantityServings > 0)
+                {
+                    ItemStack[] myStacks = GetNonEmptyContents(api.World, slot.Itemstack);
+                    if (myStacks.Length > 0)
+                    {
+                        inventory.CookingSlots[0].Itemstack = myStacks[0];
+                        inventory.CookingSlots[0].Itemstack.StackSize = quantityServings;
+                    }
+                }
+
+                slot.Itemstack = new ItemStack(api.World.GetBlock(new AssetLocation(Attributes["emptiedBlockCode"].AsString())));
+                return true;
+            }
+
+            return false;
+        }
+
     }
 }

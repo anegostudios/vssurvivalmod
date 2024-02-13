@@ -65,6 +65,11 @@ namespace Vintagestory.GameContent
 
         public void OnControllerInit(EntityPlayer playerEntity, EntityAgent npcEntity)
         {
+            if (DlgData == null)
+            {
+                playerEntity.Api.Logger.Warning("Trader dialogue system has not received initial state from server, may produce wrong dialogue for state-dependent cases eg. Treasure Hunter trader.");
+                DlgData = new DialogueData();   // radfast 4.2.24  It can sometimes be null on clients, maybe the onDialogueData packet was not received?
+            }
             OnDialogueControllerInit?.Invoke(DlgData, playerEntity, npcEntity);
         }
 

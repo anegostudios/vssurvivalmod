@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
@@ -25,6 +26,15 @@ namespace Vintagestory.GameContent
         Dictionary<string, PanningDrop[]> dropsBySourceMat;
 
         WorldInteraction[] interactions;
+
+        public override string GetHeldTpUseAnimation(ItemSlot activeHotbarSlot, Entity forEntity)
+        {
+            string blockMatCode = GetBlockMaterialCode(activeHotbarSlot.Itemstack);
+            if (blockMatCode == null) return null;
+
+            return base.GetHeldTpUseAnimation(activeHotbarSlot, forEntity);
+        }
+
 
         public override void OnLoaded(ICoreAPI api)
         {

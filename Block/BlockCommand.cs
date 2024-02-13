@@ -3,6 +3,7 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -28,7 +29,7 @@ namespace Vintagestory.GameContent
 
         public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
         {
-            bool isConditionalBlock = this.Code.Path.StartsWith("conditionalblock");
+            bool isConditionalBlock = this.Code.PathStartsWith("conditionalblock");
             var result = new WorldInteraction[isConditionalBlock ? 3 : 2];
             result[0] = new WorldInteraction()
             {

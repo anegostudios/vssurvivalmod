@@ -30,7 +30,7 @@ namespace Vintagestory.GameContent
 
                 foreach (CollectibleObject obj in api.World.Collectibles)
                 {
-                    if (obj.Code.Path.StartsWith("arrow-"))
+                    if (obj.Code.PathStartsWith("arrow-"))
                     {
                         stacks.Add(new ItemStack(obj));
                     }
@@ -62,7 +62,7 @@ namespace Vintagestory.GameContent
             {
                 if (invslot is ItemSlotCreative) return true;
 
-                if (invslot.Itemstack != null && invslot.Itemstack.Collectible.Code.Path.StartsWith("arrow-"))
+                if (invslot.Itemstack != null && invslot.Itemstack.Collectible.Code.PathStartsWith("arrow-"))
                 {
                     slot = invslot;
                     return false;

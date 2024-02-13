@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection.Emit;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -77,14 +78,13 @@ namespace Vintagestory.GameContent
 
             }
 
-            if (api is ICoreClientAPI)
+            if (api is ICoreClientAPI capi)
             {
-                ICoreClientAPI capi = (ICoreClientAPI)api;
                 capi.Event.RegisterRenderer(workitemRenderer = new ClayFormRenderer(Pos, capi), EnumRenderStage.Opaque);
                 capi.Event.RegisterRenderer(workitemRenderer, EnumRenderStage.AfterFinalComposition);
 
-                int layer = NextNotMatchingRecipeLayer();
-                RegenMeshAndSelectionBoxes(layer);
+                RegenMeshForNextLayer();
+                capi.Event.ColorsPresetChanged += RegenMeshForNextLayer;
             }
         }
 
@@ -121,8 +121,7 @@ namespace Vintagestory.GameContent
             slot.TakeOut(1);
             slot.MarkDirty();
 
-            int layer = NextNotMatchingRecipeLayer();
-            RegenMeshAndSelectionBoxes(layer);
+            RegenMeshForNextLayer();
             MarkDirty();
         }
 
@@ -515,6 +514,11 @@ namespace Vintagestory.GameContent
             }
         }
 
+        private void RegenMeshForNextLayer()
+        {
+            int layer = NextNotMatchingRecipeLayer();
+            RegenMeshAndSelectionBoxes(layer);
+        }
 
         public override void OnBlockRemoved()
         {
@@ -525,6 +529,8 @@ namespace Vintagestory.GameContent
                 workitemRenderer.Dispose();
                 workitemRenderer = null;
             }
+
+            if (Api is ICoreClientAPI capi) capi.Event.ColorsPresetChanged -= RegenMeshForNextLayer;
         }
 
 
@@ -551,8 +557,7 @@ namespace Vintagestory.GameContent
 
             if (modified)
             {
-                int layer = NextNotMatchingRecipeLayer();
-                RegenMeshAndSelectionBoxes(layer);
+                RegenMeshForNextLayer();
             }
         }
 
@@ -744,8 +749,7 @@ namespace Vintagestory.GameContent
                     selectedRecipeId = selectedRecipe.RecipeId;
                     capi.Network.SendBlockEntityPacket(pos.X, pos.Y, pos.Z, (int)EnumClayFormingPacket.SelectRecipe, SerializerUtil.Serialize(recipes[selectedIndex].RecipeId));
 
-                    int layer = NextNotMatchingRecipeLayer();
-                    RegenMeshAndSelectionBoxes(layer);
+                    RegenMeshForNextLayer();
                 },
                 () => {
                     capi.Network.SendBlockEntityPacket(pos.X, pos.Y, pos.Z, (int)EnumClayFormingPacket.CancelSelect);
@@ -779,6 +783,7 @@ namespace Vintagestory.GameContent
             base.OnBlockUnloaded();
 
             workitemRenderer?.Dispose();
+            if (Api is ICoreClientAPI capi) capi.Event.ColorsPresetChanged -= RegenMeshForNextLayer;
         }
 
 

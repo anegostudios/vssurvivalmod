@@ -49,7 +49,7 @@ namespace Vintagestory.GameContent
             ItemStack[] stacks;
             if (!recipeLiquidContents.TryGetValue(key, out stacks))
             {
-                if (contentCode.Contains("*"))
+                if (contentCode.Contains('*'))
                 {
                     EnumItemClass contentClass = contentType == "block" ? EnumItemClass.Block : EnumItemClass.Item;
                     List<ItemStack> lstacks = new List<ItemStack>();

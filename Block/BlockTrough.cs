@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
@@ -16,6 +17,10 @@ namespace Vintagestory.GameContent
 
         public BlockPos RootOffset = new BlockPos();
 
+        protected string[] unsuitableEntityCodesBeginsWith = new string[0];
+        protected string[] unsuitableEntityCodesExact;
+        protected string   unsuitableEntityFirstLetters = "";
+
         public void init()
         {
             CanStep = false; // Prevent creatures from walking on troughs
@@ -27,7 +32,7 @@ namespace Vintagestory.GameContent
 
                 foreach (var val in cfgs)
                 {
-                    if (!val.Content.Code.Path.Contains("*"))
+                    if (!val.Content.Code.Path.Contains('*'))
                     {
                         val.Content.Resolve(api.World, "troughcontentconfig");
                     }
@@ -40,7 +45,7 @@ namespace Vintagestory.GameContent
             List<ItemStack> allowedstacks = new List<ItemStack>();
             foreach (var val in contentConfigs)
             {
-                if (val.Content.Code.Path.Contains("*"))
+                if (val.Content.Code.Path.Contains('*'))
                 {
                     if (val.Content.Type == EnumItemClass.Block)
                     {
@@ -78,12 +83,31 @@ namespace Vintagestory.GameContent
                 }
             };
 
+            string[] codes = Attributes?["unsuitableFor"].AsArray<string>(new string[0]);
+            if (codes.Length > 0) AiTaskBaseTargetable.InitializeTargetCodes(codes, ref unsuitableEntityCodesExact, ref unsuitableEntityCodesBeginsWith, ref unsuitableEntityFirstLetters); ;
         }
-
 
         public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
         {
             return placeInteractionHelp.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
+        }
+
+        
+        public virtual bool UnsuitableForEntity(string testPath)  // Similar code to AiTaskBaseTargetable.IsTargetEntity(testPath)
+        {
+            if (unsuitableEntityFirstLetters.IndexOf(testPath[0]) < 0) return false;   // early exit if we don't have the first letter
+
+            for (int i = 0; i < unsuitableEntityCodesExact.Length; i++)
+            {
+                if (testPath == unsuitableEntityCodesExact[i]) return true;
+            }
+
+            for (int i = 0; i < unsuitableEntityCodesBeginsWith.Length; i++)
+            {
+                if (testPath.StartsWithFast(unsuitableEntityCodesBeginsWith[i])) return true;
+            }
+
+            return false;
         }
     }
 

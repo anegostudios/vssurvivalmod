@@ -23,6 +23,13 @@ namespace Vintagestory.GameContent
 
         public Block ExtinctVariant { get; private set; }
 
+        public override string GetHeldTpIdleAnimation(ItemSlot activeHotbarSlot, Entity forEntity, EnumHand hand)
+        {
+            if (forEntity.AnimManager.IsAnimationActive("startfire")) return null;
+
+            return base.GetHeldTpIdleAnimation(activeHotbarSlot, forEntity, hand);
+        }
+
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);

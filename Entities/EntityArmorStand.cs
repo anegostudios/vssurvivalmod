@@ -10,6 +10,8 @@ namespace Vintagestory.GameContent
 {
     public class EntityArmorStand : EntityHumanoid
     {
+        public override bool IsCreature { get { return false; } }
+
         InventoryGeneric gearInv;
         public override IInventory GearInventory => gearInv;
 

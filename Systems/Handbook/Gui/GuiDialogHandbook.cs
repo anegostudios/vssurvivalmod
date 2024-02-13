@@ -392,7 +392,14 @@ namespace Vintagestory.GameContent
             browseHistory.Clear();
             overviewGui.GetTextInput("searchField").SetValue("");
 
-            if (capi.IsSinglePlayer && !capi.OpenedToLan && !capi.Settings.Bool["noHandbookPause"]) capi.PauseGame(false);
+            if (capi.IsSinglePlayer && !capi.OpenedToLan && !capi.Settings.Bool["noHandbookPause"])
+            {
+                // Player might be still in the Create Character Dialog where he clicked one of the links there
+                if (capi.OpenedGuis.FirstOrDefault(dlg => dlg is GuiDialogCreateCharacter) == null)
+                {
+                    capi.PauseGame(false);
+                }
+            }
 
             base.OnGuiClosed();
         }

@@ -147,6 +147,12 @@ namespace Vintagestory.GameContent
                 var metal = metals.Variants[i];
                 metalsByCode[metal.Code.Path] = metal;
             }
+
+            if (api is ICoreClientAPI capi)
+            {
+                IAsset colorPresets = api.Assets.TryGet("config/colorpresets.json");
+                capi.ColorPreset.Initialize(colorPresets);
+            }
         }
 
         public override void AssetsFinalize(ICoreAPI api)
@@ -629,6 +635,7 @@ namespace Vintagestory.GameContent
             api.RegisterBlockBehaviorClass("Steaming", typeof(BlockBehaviorSteaming));
             api.RegisterBlockBehaviorClass("BlockEntityInteract", typeof(BlockBehaviorBlockEntityInteract));
             api.RegisterBlockBehaviorClass("Door", typeof(BlockBehaviorDoor));
+            api.RegisterBlockBehaviorClass("Reparable", typeof(BlockBehaviorReparable));
 
             api.RegisterBlockBehaviorClass("JonasBoilerDoor", typeof(BlockBehaviorJonasBoilerDoor));
             api.RegisterBlockBehaviorClass("JonasHydraulicPump", typeof(BlockBehaviorJonasHydraulicPump));
@@ -857,8 +864,6 @@ namespace Vintagestory.GameContent
             api.RegisterItemClass("ItemLiquidPortion", typeof(ItemLiquidPortion));
 
             api.RegisterItemClass("ItemKnife", typeof(ItemKnife));
-            api.RegisterItemClass("ItemWoodenClub", typeof(ItemWoodenClub));
-            api.RegisterItemClass("ItemSword", typeof(ItemSword));
             api.RegisterItemClass("ItemPoultice", typeof(ItemPoultice));
             api.RegisterItemClass("ItemRustyGear", typeof(ItemRustyGear));
             api.RegisterItemClass("ItemJournalEntry", typeof(ItemJournalEntry));

@@ -26,14 +26,14 @@ namespace Vintagestory.Client.NoObf
         {
             List<EntityAgent> foundBosses = new List<EntityAgent>();
 
-            partUtil.WalkInteractableEntities(capi.World.Player.Entity.Pos.XYZ, 30, (e) => {
+            partUtil.WalkEntities(capi.World.Player.Entity.Pos.XYZ, 30, (e) => {
                 EntityBehaviorBoss bh;
-                if (e.Alive && (bh = e.GetBehavior<EntityBehaviorBoss>()) != null)
+                if (e.Alive && e.IsInteractable && (bh = e.GetBehavior<EntityBehaviorBoss>()) != null)
                 {
                     if (bh.ShowHealthBar) foundBosses.Add(e as EntityAgent);
                 }
                 return true;
-            });
+            }, EnumEntitySearchType.Creatures);
 
             int reorganizePositionsAt = -1;
 

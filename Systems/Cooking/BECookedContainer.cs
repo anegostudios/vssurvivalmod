@@ -47,7 +47,7 @@ namespace Vintagestory.GameContent
 
         public CookingRecipe FromRecipe
         {
-            get { return Api.ModLoader.GetModSystem<RecipeRegistrySystem>().CookingRecipes.FirstOrDefault(rec => rec.Code == RecipeCode); }
+            get { return Api.GetCookingRecipe(RecipeCode); }
         }
 
         
@@ -280,7 +280,7 @@ namespace Vintagestory.GameContent
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
         {
             ItemStack[] contentStacks = GetNonEmptyContentStacks();
-            CookingRecipe recipe = Api.GetCookingRecipes().FirstOrDefault(rec => rec.Code == RecipeCode);
+            CookingRecipe recipe = Api.GetCookingRecipe(RecipeCode);
             if (recipe == null) return;
 
             float servings = QuantityServings;

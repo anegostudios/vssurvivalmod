@@ -171,7 +171,7 @@ namespace Vintagestory.GameContent
 
             for (int i = 0; i < ValidStacks.Length; i++)
             {
-                bool isWildCard = ValidStacks[i].Code.Path.Contains("*");
+                bool isWildCard = ValidStacks[i].Code.Path.Contains('*');
                 bool found =
                     (isWildCard && inputStack.Collectible.WildCardMatch(ValidStacks[i].Code))
                     || (!isWildCard && inputStack.Equals(world, ValidStacks[i].ResolvedItemstack, GlobalConstants.IgnoredStackAttributes))
@@ -195,7 +195,7 @@ namespace Vintagestory.GameContent
             {
                 var cstack = ValidStacks[i];
 
-                if (cstack.Code.Path.Contains("*"))
+                if (cstack.Code.Path.Contains('*'))
                 {
                     resolvedStacks.Add(cstack);
                     continue;

@@ -3,6 +3,7 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -133,7 +134,7 @@ namespace Vintagestory.GameContent
         public override bool ReceiveDamage(DamageSource damageSource, float damage)
         {
             // Invulnerable to his own boulders
-            if (damageSource.SourceEntity?.Code.Path.StartsWith("thrownboulder") == true)
+            if (damageSource.SourceEntity?.Code.PathStartsWith("thrownboulder") == true)
             {
                 return false;
             }

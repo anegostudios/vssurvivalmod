@@ -116,7 +116,12 @@ namespace Vintagestory.GameContent
             
             if (contentResolvedItemstack == null) return false;
 
-            return diet.Matches(contentResolvedItemstack) && inventory[0].StackSize >= config.QuantityPerFillLevel;
+            bool hasSuitableFood = diet.Matches(contentResolvedItemstack) && inventory[0].StackSize >= config.QuantityPerFillLevel;
+            if (hasSuitableFood && Block is BlockTroughBase trough)
+            {
+                return !(trough.UnsuitableForEntity(entity.Code.Path));   // e.g. prohibit chickens from eating from large trough
+            }
+            return false;
         }
 
         private ItemStack ResolveWildcardContent(ContentConfig config, IWorldAccessor worldAccessor)

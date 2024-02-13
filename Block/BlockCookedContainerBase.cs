@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using System.ServiceModel.Channels;
 using System.Text;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -49,7 +50,7 @@ namespace Vintagestory.GameContent
 
         public CookingRecipe GetCookingRecipe(IWorldAccessor world, ItemStack containerStack)
         {
-            return api.GetCookingRecipes().FirstOrDefault(rec => rec.Code == GetRecipeCode(world, containerStack));
+            return api.GetCookingRecipe(GetRecipeCode(world, containerStack));
         }
 
         public string GetRecipeCode(IWorldAccessor world, ItemStack containerStack)
@@ -88,7 +89,7 @@ namespace Vintagestory.GameContent
         public CookingRecipe GetMealRecipe(IWorldAccessor world, ItemStack containerStack)
         {
             string recipecode = GetRecipeCode(world, containerStack);
-            return api.GetCookingRecipes().FirstOrDefault((rec) => recipecode == rec.Code);
+            return api.GetCookingRecipe(recipecode);
         }
 
 
@@ -326,14 +327,20 @@ namespace Vintagestory.GameContent
 
             if (recipe != null)
             {
-                if (servings == 1)
+                string message;
+                string outputName = recipe.GetOutputName(world, stacks);
+                if (recipe.DirtyPot)
                 {
-                    return Lang.Get("contained-food-servings-singular", Math.Round(servings, 1), recipe.GetOutputName(world, stacks), ContainerNameShort, PerishableInfoCompactContainer(api, inSlot));
+                    message = "contained-nonfood-portions";
+                    int index = outputName.IndexOf('\n');
+                    if (index > 0) outputName = outputName.Substring(0, index);
                 }
                 else
                 {
-                    return Lang.Get("contained-food-servings-plural", Math.Round(servings, 1), recipe.GetOutputName(world, stacks), ContainerNameShort, PerishableInfoCompactContainer(api, inSlot));
+                    message = servings == 1 ? "contained-food-servings-singular" : "contained-food-servings-plural";
+                    // In 1.20 we need to use language plural format instead, here and all similar code!
                 }
+                return Lang.Get(message, Math.Round(servings, 1), outputName, ContainerNameShort, PerishableInfoCompactContainer(api, inSlot));
             }
 
             StringBuilder sb = new StringBuilder();
@@ -394,8 +401,6 @@ namespace Vintagestory.GameContent
         {
 
         }
-
-        
     }
 
 }

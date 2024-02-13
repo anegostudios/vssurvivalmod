@@ -1,6 +1,7 @@
 ﻿using System.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent.Mechanics
 {
@@ -37,7 +38,7 @@ namespace Vintagestory.GameContent.Mechanics
 
             BlockArchimedesScrew blockToPlace = this;
             BlockFacing[] facings = SuggestedHVOrientation(byPlayer, blockSel);
-            if (Variant["type"].StartsWith("ported"))
+            if (Variant["type"].StartsWithOrdinal("ported"))
             {
                 blockToPlace = api.World.GetBlock(CodeWithVariant("type", "ported-" + facings[0].Opposite.Code)) as BlockArchimedesScrew;
             }

@@ -163,14 +163,14 @@ namespace Vintagestory.GameContent
 
             workItemStack?.ResolveBlockOrItem(api.World);
             
-            if (api is ICoreClientAPI)
+            if (api is ICoreClientAPI capi)
             {
-                ICoreClientAPI capi = (ICoreClientAPI)api;
                 capi.Event.RegisterRenderer(workitemRenderer = new AnvilWorkItemRenderer(this, Pos, capi), EnumRenderStage.Opaque);
                 capi.Event.RegisterRenderer(workitemRenderer, EnumRenderStage.AfterFinalComposition);
 
                 RegenMeshAndSelectionBoxes();
                 capi.Tesselator.TesselateBlock(Block, out currentMesh);
+                capi.Event.ColorsPresetChanged += RegenMeshAndSelectionBoxes;
             }
 
             string metalType = Block.Variant["metal"];
@@ -961,6 +961,7 @@ namespace Vintagestory.GameContent
         {
             workitemRenderer?.Dispose();
             workitemRenderer = null;
+            if (Api is ICoreClientAPI capi) capi.Event.ColorsPresetChanged -= RegenMeshAndSelectionBoxes;
         }
 
         public override void OnBlockBroken(IPlayer byPlayer = null)
@@ -1228,6 +1229,7 @@ namespace Vintagestory.GameContent
             workitemRenderer?.Dispose();
             dlg?.TryClose();
             dlg?.Dispose();
+            if (Api is ICoreClientAPI capi) capi.Event.ColorsPresetChanged -= RegenMeshAndSelectionBoxes;
         }
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)

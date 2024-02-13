@@ -24,7 +24,7 @@ namespace Vintagestory.GameContent
                 {
                     if (block.Code == null) continue;
 
-                    if (block.Code.Path.StartsWith("soil"))
+                    if (block.Code.PathStartsWith("soil"))
                     {
                         stacks.Add(new ItemStack(block));
                     }
@@ -59,7 +59,7 @@ namespace Vintagestory.GameContent
 
             byEntity.Attributes.SetInt("didtill", 0);
 
-            if (block.Code.Path.StartsWith("soil"))
+            if (block.Code.PathStartsWith("soil"))
             {
                 handHandling = EnumHandHandling.PreventDefault;
             }
@@ -124,7 +124,7 @@ namespace Vintagestory.GameContent
             BlockPos pos = blockSel.Position;
             Block block = byEntity.World.BlockAccessor.GetBlock(pos);
 
-            if (!block.Code.Path.StartsWith("soil")) return;
+            if (!block.Code.PathStartsWith("soil")) return;
 
 
             string fertility = block.LastCodePart(1);

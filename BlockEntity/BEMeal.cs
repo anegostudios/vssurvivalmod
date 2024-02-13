@@ -24,7 +24,7 @@ namespace Vintagestory.GameContent
 
         public CookingRecipe FromRecipe
         {
-            get { return Api.GetCookingRecipes().FirstOrDefault(rec => rec.Code == RecipeCode); }
+            get { return Api.GetCookingRecipe(RecipeCode); }
         }
 
         bool wasRotten;

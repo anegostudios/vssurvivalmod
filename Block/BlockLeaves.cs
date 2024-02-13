@@ -3,6 +3,7 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -22,7 +23,7 @@ namespace Vintagestory.GameContent
             climateColorMapInt = ClimateColorMap;
             seasonColorMapInt = SeasonColorMap;
             string grown = Code.SecondCodePart();
-            if (grown.StartsWith("grown"))
+            if (grown.StartsWithOrdinal("grown"))
             {
                 if (!int.TryParse(grown.Substring(5), out ExtraColorBits)) ExtraColorBits = 0;
             }

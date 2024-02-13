@@ -7,6 +7,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
@@ -39,6 +40,7 @@ namespace Vintagestory.GameContent
         public string TextureFlipGroupCode { get; set; }
         public Dictionary<string, bool> SideAttachable { get; set; }
         public BlockDropItemStack[] Drops { get; set; }
+        public int Reparability { get; set; }
 
         public bool CanAttachBlockAt(Vec3f blockRot, BlockFacing blockFace, Cuboidi attachmentArea = null)
         {
@@ -78,7 +80,8 @@ namespace Vintagestory.GameContent
                 TextureFlipCode = this.TextureFlipCode,
                 TextureFlipGroupCode = this.TextureFlipGroupCode,
                 SideAttachable = this.SideAttachable?.ToDictionary(kv => kv.Key, kv => kv.Value),
-                Drops = this.Drops?.Select(drop => drop.Clone()).ToArray()
+                Drops = this.Drops?.Select(drop => drop.Clone()).ToArray(),
+                Reparability = this.Reparability
             };
         }
     }
@@ -139,7 +142,7 @@ namespace Vintagestory.GameContent
                     ct.ShapePath = AssetLocation.Create(basePath + ct.Code + ".json", Code.Domain);
                 } else
                 {
-                    if (ct.ShapePath.Path.StartsWith("/"))
+                    if (ct.ShapePath.Path.StartsWith('/'))
                     {
                         ct.ShapePath.WithPathPrefixOnce("shapes").WithPathAppendixOnce(".json");
                     }
@@ -192,21 +195,6 @@ namespace Vintagestory.GameContent
             if (code == null) return null;
             clutterByCode.TryGetValue(code, out var cprops);
             return cprops;
-        }
-
-        public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1)
-        {
-            var bec = GetBEBehavior<BEBehaviorShapeFromAttributes>(pos);
-
-            if ((bec == null || !bec.Collected) && world.Rand.NextDouble() < 0.5)
-            {
-                world.PlaySoundAt(new AssetLocation("sounds/effect/toolbreak"), pos.X + 0.5, pos.Y + 0.5, pos.Z + 0.5, null, false, 12);
-                return new ItemStack[0];
-            }
-
-            var stack = OnPickBlock(world, pos);
-            stack.Attributes.SetBool("collected", true);
-            return new ItemStack[] { stack };
         }
 
         public override BlockDropItemStack[] GetDropsForHandbook(ItemStack handbookStack, IPlayer forPlayer)

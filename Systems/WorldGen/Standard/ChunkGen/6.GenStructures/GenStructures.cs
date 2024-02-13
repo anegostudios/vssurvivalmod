@@ -104,7 +104,7 @@ namespace Vintagestory.ServerMods
 
             asset = api.Assets.Get("worldgen/villages.json");
             vcfg = asset.ToObject<WorldGenVillageConfig>();
-            vcfg.Init(api, scfg.resolvedRocktypeRemapGroups, scfg.SchematicYOffsets);
+            vcfg.Init(api, scfg);
         }
 
         private void OnChunkColumnGenPostPass(IChunkColumnGenerateRequest request)

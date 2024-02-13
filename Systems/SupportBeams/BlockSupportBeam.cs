@@ -13,6 +13,7 @@ namespace Vintagestory.GameContent
         {
             base.OnLoaded(api);
             bp = api.ModLoader.GetModSystem<ModSystemSupportBeamPlacer>();
+            PartialSelection = true;
         }
 
         public override Cuboidf[] GetSelectionBoxes(IBlockAccessor blockAccessor, BlockPos pos)
@@ -49,13 +50,35 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1)
+        public override void GetDecal(IWorldAccessor world, BlockPos pos, ITexPositionSource decalTexSource, ref MeshData decalModelData, ref MeshData blockModelData)
         {
             var be = api.World.BlockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorSupportBeam>();
-            if (be != null) return be.GetDrops(byPlayer);
+            if (be != null)
+            {
+                int beamIndex = (api as ICoreClientAPI)?.World.Player?.CurrentBlockSelection?.SelectionBoxIndex ?? 0;
 
-            return base.GetDrops(world, pos, byPlayer, dropQuantityMultiplier);
+                blockModelData = be.genMesh(beamIndex, null, null);
+                decalModelData = be.genMesh(beamIndex, decalTexSource, "decal");
+                return;
+            }
+
+            base.GetDecal(world, pos, decalTexSource, ref decalModelData, ref blockModelData);
         }
+
+        public override void OnBlockBroken(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1)
+        {
+            int? beamIndex = byPlayer?.CurrentBlockSelection?.SelectionBoxIndex;
+            var be = api.World.BlockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorSupportBeam>();
+
+            if (beamIndex != null && be != null && be.Beams.Length > 1)
+            {
+                be.BreakBeam((int)beamIndex);
+                return;
+            }
+
+            base.OnBlockBroken(world, pos, byPlayer, dropQuantityMultiplier);
+        }
+
 
 
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)

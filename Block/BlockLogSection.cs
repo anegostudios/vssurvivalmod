@@ -218,7 +218,7 @@ namespace Vintagestory.GameContent
             if (LastCodePart() == "ud") return Code;
 
             string[] angles = { "ns", "we" };
-            int index = angle / 90;
+            var index = GameMath.Mod(angle / 90, 4);
             if (LastCodePart() == "we") index++;
 
             return CodeWithParts(angles[index % 2]);

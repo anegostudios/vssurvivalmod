@@ -2,6 +2,7 @@
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -55,7 +56,7 @@ namespace Vintagestory.GameContent
                     foreach (BlockFacing facing in BlockFacing.HORIZONTALS)
                     {
                         Block block = api.World.BlockAccessor.GetBlock(farmland.Pos.AddCopy(facing).Up());
-                        if (block.Code.Path.StartsWith("pumpkin-vine"))
+                        if (block.Code.PathStartsWith("pumpkin-vine"))
                         {
                             allWithered &= block.LastCodePart() == "withered";    
                         }

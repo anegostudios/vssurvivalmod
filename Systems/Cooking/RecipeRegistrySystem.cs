@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -11,6 +12,12 @@ namespace Vintagestory.GameContent
         public static List<CookingRecipe> GetCookingRecipes(this ICoreAPI api)
         {
             return api.ModLoader.GetModSystem<RecipeRegistrySystem>().CookingRecipes;
+        }
+
+        public static CookingRecipe GetCookingRecipe(this ICoreAPI api, string recipecode)
+        {
+            var recipes = api.ModLoader.GetModSystem<RecipeRegistrySystem>().CookingRecipes;
+            return recipes.FirstOrDefault((rec) => recipecode == rec.Code);
         }
 
         public static List<BarrelRecipe> GetBarrelRecipes(this ICoreAPI api)

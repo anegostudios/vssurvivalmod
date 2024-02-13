@@ -4,6 +4,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -251,7 +252,7 @@ namespace Vintagestory.GameContent
             if (block != null)
             {
                 string code = block.Code.GetName();
-                return code.StartsWith("pumpkin-fruit");
+                return code.StartsWithOrdinal("pumpkin-fruit");
             }
             return false;
         }
@@ -287,7 +288,7 @@ namespace Vintagestory.GameContent
             if (parentBlock != null)
             {
                 string blockCode = parentBlock.Code.GetName();
-                if (blockCode.StartsWith("crop-pumpkin") || blockCode.StartsWith("pumpkin-vine"))
+                if (blockCode.StartsWithOrdinal("crop-pumpkin") || blockCode.StartsWithOrdinal("pumpkin-vine"))
                 {
                     return true;
                 }

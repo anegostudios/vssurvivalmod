@@ -57,7 +57,7 @@ namespace Vintagestory.GameContent
 
             foreach (var command in commands)
             {
-                if (commandsAfterWait == null && command.StartsWith("/wait"))
+                if (commandsAfterWait == null && command.StartsWithOrdinal("/wait"))
                 {
                     waitMs = command.Split(' ')[1].ToInt();
                     commandsAfterWait = new List<string>();
@@ -112,7 +112,7 @@ namespace Vintagestory.GameContent
         {
             base.Initialize(api);
 
-            if (Block.Attributes["runOnInitialize"]?.AsBool(false) == true)
+            if (api.Side == EnumAppSide.Server && Block.Attributes["runOnInitialize"]?.AsBool(false) == true)
             {
                 RegisterDelayedCallback((dt) =>
                 {

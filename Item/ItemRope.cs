@@ -41,6 +41,7 @@ namespace Vintagestory.GameContent
             // Disabled outside of creative mode because its too broken
             if ((byEntity as EntityPlayer)?.Player?.WorldData.CurrentGameMode != EnumGameMode.Creative)
             {
+                base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handling);
                 return;
             }
 

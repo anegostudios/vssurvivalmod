@@ -94,6 +94,10 @@ namespace Vintagestory.GameContent
         Shape ShapeResolved { get; set; }
 
         BlockDropItemStack[] Drops {get;set;}
+        /// <summary>
+        /// The quantity of resources (abstract units, but 1 corresponds to 1 resin) required to fully repair this clutter block, **PLUS ONE**.  0 means unspecified, 1 means no repair necessary, 6 means reparable with the equivalent of 5 resin.  -1 means cannot be repaired.  If unspecified (0), BlockClutter.Attributes["reparability"] will be checked as a general rule for all types
+        /// </summary>
+        public int Reparability { get; set; }
         bool CanAttachBlockAt(Vec3f blockRot, BlockFacing blockFace, Cuboidi attachmentArea = null);
     }
 
@@ -561,11 +565,6 @@ namespace Vintagestory.GameContent
             return mesh;
         }
 
-        public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1)
-        {
-            return new ItemStack[0];
-        }
-
         byte[] noLight = new byte[3];
 
         public override byte[] GetLightHsv(IBlockAccessor blockAccessor, BlockPos pos, ItemStack stack = null)
@@ -630,7 +629,7 @@ namespace Vintagestory.GameContent
         public override string GetPlacedBlockName(IWorldAccessor world, BlockPos pos)
         {
             var bect = GetBEBehavior<BEBehaviorShapeFromAttributes>(pos);
-            return Lang.GetMatching(Code.Domain + ":" + ClassType + "-" + bect?.Type?.Replace("/", "-"));
+            return Lang.GetMatching(bect?.GetFullCode() ?? "Unknown");
         }
 
         public override string GetPlacedBlockInfo(IWorldAccessor world, BlockPos pos, IPlayer forPlayer)

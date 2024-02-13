@@ -125,7 +125,12 @@ namespace Vintagestory.GameContent
 
         public override bool SideIsSolid(BlockPos pos, int faceIndex)
         {
-            BlockEntityMicroBlock bec = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityMicroBlock;
+            return SideIsSolid (api.World.BlockAccessor, pos, faceIndex);
+        }
+
+        public override bool SideIsSolid(IBlockAccessor blockAccessor, BlockPos pos, int faceIndex)
+        {
+            BlockEntityMicroBlock bec = blockAccessor.GetBlockEntity(pos) as BlockEntityMicroBlock;
             if (bec != null)
             {
                 return bec.sideAlmostSolid[faceIndex];
@@ -169,7 +174,7 @@ namespace Vintagestory.GameContent
             if (extra is string && (string)extra == "melt")
             {
                 var bec = world.BlockAccessor.GetBlockEntity(pos);
-                var bebeh = bec.GetBehavior<BEBehaviorMicroblockSnowCover>();
+                var bebeh = bec?.GetBehavior<BEBehaviorMicroblockSnowCover>();
                 if (bebeh == null) return;
 
                 if (this == snowCovered3)

@@ -6,6 +6,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 
 namespace Vintagestory.GameContent
@@ -47,6 +48,15 @@ namespace Vintagestory.GameContent
             dustParticles.WindAffectednes = 0.5f;
         }
 
+
+        public override string GetHeldTpHitAnimation(ItemSlot slot, Entity byEntity)
+        {
+            if ((byEntity as EntityPlayer)?.EntitySelection != null)
+            {
+                return "axehit";
+            }
+            return base.GetHeldTpHitAnimation(slot, byEntity);
+        }
 
         public override void OnHeldAttackStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
         {
@@ -285,7 +295,7 @@ namespace Vintagestory.GameContent
                 {
                     if (ngcode == null || leafqueue == null) continue;
                     // Leaves now can carry treeSubType value of 1-7 therefore do a separate check for the leaves
-                    if (block.BlockMaterial == EnumBlockMaterial.Leaves && ngcode.Length == treeFellingGroupCode.Length + 1 && ngcode.EndsWith(treeFellingGroupCode))
+                    if (block.BlockMaterial == EnumBlockMaterial.Leaves && ngcode.Length == treeFellingGroupCode.Length + 1 && ngcode.EndsWithOrdinal(treeFellingGroupCode))
                     {
                         outqueue = leafqueue;
                         int leafGroup = GameMath.Clamp(ngcode[0] - '0', 1, 7);

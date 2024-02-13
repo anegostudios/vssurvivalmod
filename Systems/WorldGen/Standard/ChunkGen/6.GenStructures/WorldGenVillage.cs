@@ -89,7 +89,7 @@ namespace Vintagestory.ServerMods
 
         
 
-        public void Init(ICoreServerAPI api, BlockLayerConfig config, Dictionary<string, Dictionary<int, Dictionary<int, int>>> resolvedRocktypeRemapGroups, Dictionary<string, int> schematicYOffsets, int? defaultOffsetY, RockStrataConfig rockstrata, LCGRandom rand)
+        public void Init(ICoreServerAPI api, BlockLayerConfig blockLayerConfig, WorldGenStructuresConfig structureConfig, Dictionary<string, Dictionary<int, Dictionary<int, int>>> resolvedRocktypeRemapGroups, Dictionary<string, int> schematicYOffsets, int? defaultOffsetY, RockStrataConfig rockstrata, LCGRandom rand)
         {
             this.rand = rand;
 
@@ -99,7 +99,7 @@ namespace Vintagestory.ServerMods
                 IAsset[] assets;
                 VillageSchematic schem = Schematics[i];
 
-                if (schem.Path.EndsWith("*"))
+                if (schem.Path.EndsWith('*'))
                 {
                     assets = api.Assets.GetManyInCategory("worldgen", "schematics/" + schem.Path.Substring(0, schem.Path.Length - 1)).ToArray();
                 }
@@ -111,7 +111,7 @@ namespace Vintagestory.ServerMods
                 for (int j = 0; j < assets.Length; j++)
                 {
                     int offsety = WorldGenStructureBase.getOffsetY(schematicYOffsets, defaultOffsetY, OffsetYByCode, assets[j]);
-                    var sch = WorldGenStructureBase.LoadSchematic<BlockSchematicStructure>(api, assets[j], config, offsety);
+                    var sch = WorldGenStructureBase.LoadSchematic<BlockSchematicStructure>(api, assets[j], blockLayerConfig, structureConfig, offsety);
                     if (sch != null) schematics.AddRange(sch);
                 }
 
@@ -238,7 +238,10 @@ namespace Vintagestory.ServerMods
                         }
                     }
 
-                    if (!intersect && CanGenerateStructureAt(struc, blockAccessor, location))
+                    if (intersect) continue;
+
+                    struc.Unpack(worldForCollectibleResolve.Api);
+                    if (CanGenerateStructureAt(struc, blockAccessor, location))
                     {
                         if (genRequired) mustGenerate.RemoveAt(mustGenerate.Count - 1);
                         schem.NowQuantity++;

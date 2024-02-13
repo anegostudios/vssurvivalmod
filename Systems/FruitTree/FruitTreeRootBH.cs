@@ -129,6 +129,8 @@ namespace Vintagestory.GameContent
             bool markDirty = false;
 
             var baseClimate = Api.World.BlockAccessor.GetClimateAt(be.Pos, EnumGetClimateMode.WorldGenValues);
+            if (baseClimate == null) return;   // Region not yet loaded, we cannot continue
+
             greenhouseTempBonus = getGreenhouseTempBonus();
 
             // Set up working state, used for efficiency if we are fast-forwarding, to avoid multiple redundant calls to RootBh_OnFruitingStateChange

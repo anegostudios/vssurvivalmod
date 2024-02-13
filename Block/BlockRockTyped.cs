@@ -94,9 +94,18 @@ namespace Vintagestory.GameContent
             var bect = GetBEBehavior<BEBehaviorShapeFromAttributes>(pos);
             var cprops = GetTypeProps(bect?.Type, null, bect);
 
-            return cprops.Drops?.Select(drop => drop.GetNextItemStack(dropQuantityMultiplier)).ToArray() ?? base.GetDrops(world, pos, byPlayer);
+            return cprops.Drops?.Select(drop => drop.GetNextItemStack(dropQuantityMultiplier)).ToArray() ?? new ItemStack[0];
         }
 
+        public override BlockDropItemStack[] GetDropsForHandbook(ItemStack handbookStack, IPlayer forPlayer)
+        {
+            var drops = base.GetDropsForHandbook(handbookStack, forPlayer);
+            drops[0] = drops[0].Clone();
+            drops[0].ResolvedItemstack.SetFrom(handbookStack);
+
+            return drops;
+        }
+        
         public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
         {
             base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);

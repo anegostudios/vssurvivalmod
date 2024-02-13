@@ -56,13 +56,15 @@ namespace Vintagestory.GameContent
             if (Beams == null) return null;
             if (collBoxes != null) return collBoxes;
 
-            Cuboidf[] cuboids = new Cuboidf[Beams.Length * 2];
+            Cuboidf[] cuboids = new Cuboidf[Beams.Length];
             for (int i = 0; i < Beams.Length; i++)
             {
                 float size = 1 / 8f;
                 var beam = Beams[i];
-                cuboids[2 * i] = new Cuboidf(beam.Start.X - size, beam.Start.Y - size, beam.Start.Z - size, beam.Start.X + size, beam.Start.Y + size, beam.Start.Z + size);
-                cuboids[2 * i + 1] = new Cuboidf(beam.End.X - size, beam.End.Y - size, beam.End.Z - size, beam.End.X + size, beam.End.Y + size, beam.End.Z + size);
+                cuboids[i] = new Cuboidf(beam.Start.X - size, beam.Start.Y - size, beam.Start.Z - size, beam.Start.X + size, beam.Start.Y + size, beam.Start.Z + size);
+
+                // This does not work when the beam extends into another block
+                //cuboids[2 * i + 1] = new Cuboidf(beam.End.X - size, beam.End.Y - size, beam.End.Z - size, beam.End.X + size, beam.End.Y + size, beam.End.Z + size);
             }
 
             return collBoxes = cuboids;
@@ -141,25 +143,34 @@ namespace Vintagestory.GameContent
         {
             if (Beams == null) return true;
 
-            var pos = Blockentity.Pos;
             for (int i = 0; i < Beams.Length; i++)
             {
-                var beam = Beams[i];
-                var start = beam.Start;
-                var end = beam.End;
-                var meshData = sbp.getOrCreateBeamMesh(beam.Block);
-                var mesh = ModSystemSupportBeamPlacer.generateMesh(start, end, BlockFacing.ALLFACES[beam.FacingIndex], meshData, beam.SlumpPerMeter);
-
-                float x = GameMath.MurmurHash3Mod(pos.X + i * 100, pos.Y + i * 100, pos.Z + i * 100, 500) / 50000f;
-                float y = GameMath.MurmurHash3Mod(pos.X - i * 100, pos.Y + i * 100, pos.Z + i * 100, 500) / 50000f;
-                float z = GameMath.MurmurHash3Mod(pos.X + i * 100, pos.Y + i * 100, pos.Z - i * 100, 500) / 50000f;
-                mesh.Translate(x, y, z);
+                MeshData mesh = genMesh(i, null, null);
 
                 mesher.AddMeshData(mesh);
             }
 
             return true;
         }
+
+        public MeshData genMesh(int beamIndex, ITexPositionSource texSource, string texSourceKey)
+        {
+            var pos = Blockentity.Pos;
+            var beam = Beams[beamIndex];
+            var start = beam.Start;
+            var end = beam.End;
+            var meshData = sbp.getOrCreateBeamMesh(beam.Block, texSource, texSourceKey);
+            var mesh = ModSystemSupportBeamPlacer.generateMesh(start, end, BlockFacing.ALLFACES[beam.FacingIndex], meshData, beam.SlumpPerMeter);
+
+            float x = GameMath.MurmurHash3Mod(pos.X + beamIndex * 100, pos.Y + beamIndex * 100, pos.Z + beamIndex * 100, 500) / 50000f;
+            float y = GameMath.MurmurHash3Mod(pos.X - beamIndex * 100, pos.Y + beamIndex * 100, pos.Z + beamIndex * 100, 500) / 50000f;
+            float z = GameMath.MurmurHash3Mod(pos.X + beamIndex * 100, pos.Y + beamIndex * 100, pos.Z - beamIndex * 100, 500) / 50000f;
+            mesh.Translate(x, y, z);
+            return mesh;
+        }
+
+
+
 
         public void OnTransformed(IWorldAccessor worldAccessor, ITreeAttribute tree, int degreeRotation,Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, EnumAxis? flipAxis)
         {
@@ -206,21 +217,24 @@ namespace Vintagestory.GameContent
                 foreach (var beam in Beams)
                 {
                     sbp.OnBeamRemoved(beam.Start.ToVec3d().Add(Pos), beam.End.ToVec3d().Add(Pos));
+
+                    Api.World.SpawnItemEntity(new ItemStack(beam.Block, (int)Math.Ceiling(beam.End.DistanceTo(beam.Start))), Pos.ToVec3d().Add(0.5));
                 }
             }
 
             base.OnBlockRemoved();
         }
 
-        public ItemStack[] GetDrops(IPlayer byPlayer)
+        public void BreakBeam(int beamIndex)
         {
-            List<ItemStack> drops = new List<ItemStack>();
-            foreach (var beam in Beams)
-            {
-                drops.Add(new ItemStack(beam.Block, (int)Math.Ceiling(beam.End.DistanceTo(beam.Start))));
-            }
+            if (beamIndex < 0 || beamIndex >= Beams.Length) return;
 
-            return drops.ToArray();
+            var beam = Beams[beamIndex];
+
+            Api.World.SpawnItemEntity(new ItemStack(beam.Block, (int)Math.Ceiling(beam.End.DistanceTo(beam.Start))), Pos.ToVec3d().Add(0.5));
+            sbp.OnBeamRemoved(beam.Start.ToVec3d().Add(Pos), beam.End.ToVec3d().Add(Pos));
+            Beams = Beams.RemoveEntry(beamIndex);
+            Blockentity.MarkDirty(true);
         }
 
         public bool ExchangeWith(ItemSlot fromSlot, ItemSlot toSlot)

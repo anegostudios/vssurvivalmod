@@ -152,7 +152,7 @@ namespace Vintagestory.GameContent
                 {
                     AssetLocation loc = AssetLocation.Create(soundloc, Code.Domain).WithPathPrefixOnce("sounds/");
 
-                    if (soundloc.EndsWith("*"))
+                    if (soundloc.EndsWith('*'))
                     {
                         loc.Path = loc.Path.TrimEnd('*');
                         FootStepSounds = api.Assets.GetLocations(loc.Path, loc.Domain).ToArray();
@@ -409,6 +409,23 @@ namespace Vintagestory.GameContent
         {
             base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
 
+            // Remove the descText from the base result so far, so that we can append it at the very end instead; this keeps all tabular data neatly together
+            // (a better solution would be for GetHeldItemInfo to call a GetHeldItemTabularInfo() method to generate all the tabular data, which can be overridden, prior to adding the descText, but hey, backward compatibility)
+
+            string descTextToAppend = "";
+            string descText = base.GetItemDescText();
+            if (descText.Length > 1)   // Only do this if the descText has material content
+            {
+                int descIndex = dsc.ToString().IndexOfOrdinal(descText);
+                if (descIndex >= 0)
+                {
+                    if (descIndex > 0) descIndex--;   // remove the newline as well
+                    else descTextToAppend = "\n";
+                    descTextToAppend += dsc.ToString(descIndex, dsc.Length - descIndex);
+                    dsc.Remove(descIndex, dsc.Length - descIndex);   // Remove the descText and everything subsequent, we will append it (descTextToAppend) at the end of this method instead
+                }
+            }
+
             if ((api as ICoreClientAPI).Settings.Bool["extendedDebugInfo"])
             {
                 if (DressType == EnumCharacterDressType.Unknown)
@@ -536,6 +553,8 @@ namespace Vintagestory.GameContent
                 dsc.AppendLine();
                 dsc.AppendLine(Lang.Get("clothing-maxwarmth", maxWarmth));
             }
+
+            dsc.Append(descTextToAppend);
         }
 
         public float GetWarmth(ItemSlot inslot)

@@ -187,8 +187,8 @@ namespace Vintagestory.GameContent
         }
 
         private bool IsCatchable(Entity entity)
-        {
-            return entity.Properties.Attributes?.IsTrue("basketCatchable") == true && entity.WatchedAttributes.GetAsInt("generation") > 4 && entity.Alive;
+        {       
+            return entity.Properties.Attributes?.IsTrue("basketCatchable") == true && entity.Properties.Attributes["trapChance"].AsFloat() > 0 && entity.WatchedAttributes.GetAsInt("generation") > 4 && entity.Alive;
         }
 
         public static void CatchCreature(ItemSlot slot, Entity entity)

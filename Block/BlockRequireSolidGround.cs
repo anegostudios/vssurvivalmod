@@ -89,8 +89,9 @@ namespace Vintagestory.GameContent
 
         internal virtual bool HasSolidGround(IBlockAccessor blockAccessor, BlockPos pos)
         {
-            Block block = blockAccessor.GetBlock(pos.DownCopy());
-            return block.CanAttachBlockAt(blockAccessor, this, pos, BlockFacing.UP);
+            Block block = blockAccessor.GetBlock(pos.Down());
+            pos.Up();
+            return block.SideIsSolid(blockAccessor, pos, BlockFacing.UP.Index);
         }
     }
 }

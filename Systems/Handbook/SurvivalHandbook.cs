@@ -53,7 +53,7 @@ namespace Vintagestory.GameContent
             // Seems to fix links like thos not working: block-labeledchest-east-{{ \"type\": \\\"normal-labeled\\\" }}
             target = target.Replace("\\", "");
 
-            if (target.StartsWith("tab-"))
+            if (target.StartsWithOrdinal("tab-"))
             {
                 if (!dialog.IsOpened()) dialog.TryOpen();
                 dialog.selectTab(target.Substring(4));

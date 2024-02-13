@@ -188,9 +188,15 @@ namespace Vintagestory.GameContent
         }
 
 
-        public MeshData getOrCreateBeamMesh(Block block)
+        public MeshData getOrCreateBeamMesh(Block block, ITexPositionSource texSource = null, string texSourceKey = null)
         {
             if (capi == null) return null;
+
+            if (texSource != null)
+            {
+                capi.Tesselator.TesselateShape(texSourceKey, capi.TesselatorManager.GetCachedShape(block.Shape.Base), out var cmeshData, texSource);
+                return cmeshData;
+            }
 
             if (!origBeamMeshes.TryGetValue(block, out var meshData))
             {

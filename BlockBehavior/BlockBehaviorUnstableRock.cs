@@ -327,6 +327,7 @@ possible prefilter: start and end position form a cuboid. Check if position X is
 
             res.Unconnected = true;
 
+            IBlockAccessor blockAccessor = world.BlockAccessor;
             while (bfsQueue.Count > 0)
             {
                 var ipos = bfsQueue.Dequeue();
@@ -340,17 +341,17 @@ possible prefilter: start and end position form a cuboid. Check if position X is
                     var npos = ipos.AddCopy(face);
                     float distSq = npos.HorDistanceSqTo(startpos.X, startpos.Z);
 
-                    var block = world.BlockAccessor.GetBlock(npos);
+                    var block = blockAccessor.GetBlock(npos);
 
                     // Stability cannot propagate through non-solid blocks
-                    if (!block.SideIsSolid(npos, i) || !block.SideIsSolid(npos, face.Opposite.Index))
+                    if (!block.SideIsSolid(blockAccessor, npos, i) || !block.SideIsSolid(blockAccessor, npos, face.Opposite.Index))
                     {
                         continue;
                     }
 
                     if (distSq > maxSupportSearchDistanceSq)
                     {
-                        res.Unconnected = !block.SideIsSolid(npos, BlockFacing.DOWN.Index);
+                        res.Unconnected = !block.SideIsSolid(blockAccessor, npos, BlockFacing.DOWN.Index);
                         continue;
                     }
 
@@ -373,14 +374,15 @@ possible prefilter: start and end position form a cuboid. Check if position X is
         public static int getVerticalSupportStrength(IWorldAccessor world, BlockPos npos)
         {
             BlockPos tmppos = new BlockPos();
+            IBlockAccessor blockAccessor = world.BlockAccessor;
             for (int i = 1; i < 5; i++)
             {
                 tmppos.Set(npos.X, npos.Y - i, npos.Z);
-                var block = world.BlockAccessor.GetBlock(tmppos);
+                var block = blockAccessor.GetBlock(tmppos);
                 int stab = block.Attributes?["unstableRockStabilization"].AsInt(0) ?? 0;
                 if (stab > 0) return stab;
 
-                if (!block.SideIsSolid(tmppos, BlockFacing.UP.Index) || !block.SideIsSolid(tmppos, BlockFacing.DOWN.Index))
+                if (!block.SideIsSolid(blockAccessor, tmppos, BlockFacing.UP.Index) || !block.SideIsSolid(blockAccessor, tmppos, BlockFacing.DOWN.Index))
                 {
                     return 0;
                 }

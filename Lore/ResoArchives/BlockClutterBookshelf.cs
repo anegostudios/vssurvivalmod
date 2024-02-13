@@ -299,5 +299,10 @@ namespace Vintagestory.GameContent
             bec?.GetBlockInfo(forPlayer, sb);
             return sb.ToString();
         }
+
+        public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1)
+        {
+            return new ItemStack[0];
+        }
     }
 }

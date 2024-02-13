@@ -432,14 +432,14 @@ namespace Vintagestory.GameContent
 
                 int drifterCount = 0;
                 plrPos = val.Entity.ServerPos.XYZ;
-                part.WalkInteractableEntities(plrPos, range + 5, (e) => {
+                part.WalkEntities(plrPos, range + 5, (e) => {
                     if (e.Code.Path.Contains("drifter"))
                     {
                         drifterCount++;
                         dHeadedDrifterCount += e.Code.Path.Contains("drifter-double-headed") ? 1 : 0;
                     }
                     return true; 
-                });
+                }, EnumEntitySearchType.Creatures);
 
                 doubleHeadedDrifterCountByPlayer.TryGetValue(val.PlayerUID, out int prevcnt);
                 doubleHeadedDrifterCountByPlayer[val.PlayerUID] = dHeadedDrifterCount + prevcnt;

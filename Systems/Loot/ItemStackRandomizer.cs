@@ -1,5 +1,6 @@
 ﻿using Newtonsoft.Json;
 using System;
+using System.Linq;
 using System.Text;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -138,30 +139,39 @@ namespace Vintagestory.GameContent
             base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
             float total = inSlot.Itemstack.Attributes.GetFloat("totalChance", 1);
 
+            dsc.Append("<font size=\"12\">");
             dsc.AppendLine(Lang.Get("With a {0}% chance, will generate one of the following:", (total * 100).ToString("0.#")));
 
-            for (int i = 0; i < Stacks.Length; i++)
-            {
-                if (Stacks[i].ResolvedStack == null) continue;
-
-                if (Stacks[i].Quantity.var == 0)
+            var sortedStacks = Stacks.Where(stack => stack.ResolvedStack != null).OrderBy(stack => stack.Chance).Reverse();
+            int i = 0;
+            foreach (var stack in sortedStacks) 
+            { 
+                if (stack.Quantity.var == 0)
                 {
-                    dsc.AppendLine(Lang.Get("{0}%: {1}x {2}",
-                        (Stacks[i].Chance * 100).ToString("0.#"),
-                        Stacks[i].Quantity.avg,
-                        Stacks[i].ResolvedStack.GetName())
+                    dsc.AppendLine(Lang.Get("{0}%\t {1}x {2}",
+                        (stack.Chance * 100).ToString("0.#"),
+                        stack.Quantity.avg,
+                        stack.ResolvedStack.GetName())
                     );
                 } else
                 {
-                    dsc.AppendLine(Lang.Get("{0}%: {1}-{2}x {3}",
-                        (Stacks[i].Chance * 100).ToString("0.#"),
-                        Stacks[i].Quantity.avg - Stacks[i].Quantity.var,
-                        Stacks[i].Quantity.avg + Stacks[i].Quantity.var,
-                        Stacks[i].ResolvedStack.GetName())
+                    dsc.AppendLine(Lang.Get("{0}%\t {1}-{2}x {3}",
+                        (stack.Chance * 100).ToString("0.#"),
+                        stack.Quantity.avg - stack.Quantity.var,
+                        stack.Quantity.avg + stack.Quantity.var,
+                        stack.ResolvedStack.GetName())
                     );
                 }
+
+                if (i++ > 50)
+                {
+                    dsc.AppendLine(Lang.Get("{0} more items. Check itemtype json file for full list.", sortedStacks.ToList().Count - i));
+                    break;
+                }
+
             }
 
+            dsc.Append("</font>");
             
 
         }

@@ -1988,6 +1988,7 @@ namespace Vintagestory.ServerMods
             var pos = args.Caller.Player.CurrentBlockSelection?.Position.AddCopy(0,struc.OffsetY ?? 0,0) ?? args.Caller.Pos.AsBlockPos.AddCopy(0,struc.OffsetY ?? 0,0);
             
             var schematic = struc.schematicDatas[schematicNum][schematicRot];
+            schematic.Unpack(api);
             var chunkX = pos.X / _chunksize;
             var chunkZ = pos.Z / _chunksize;
             var chunkY = pos.Y / _chunksize;

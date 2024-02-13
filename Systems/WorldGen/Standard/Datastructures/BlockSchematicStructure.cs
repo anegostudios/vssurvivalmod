@@ -110,6 +110,7 @@ namespace Vintagestory.ServerMods
         /// <returns></returns>
         public int PlaceRespectingBlockLayers(IBlockAccessor blockAccessor, IWorldAccessor worldForCollectibleResolve, BlockPos startPos, int climateUpLeft, int climateUpRight, int climateBotLeft, int climateBotRight, Dictionary<int, Dictionary<int, int>> replaceBlocks, int[] replaceWithBlockLayersBlockids, bool replaceMetaBlocks = true, bool replaceBlockEntities = false, bool suppressSoilIfAirBelow = false, bool displaceWater = false)
         {
+            Unpack(worldForCollectibleResolve.Api);
             if (genBlockLayers == null) genBlockLayers = worldForCollectibleResolve.Api.ModLoader.GetModSystem<GenBlockLayers>();
 
             BlockPos curPos = new BlockPos();
@@ -134,7 +135,8 @@ namespace Vintagestory.ServerMods
             {
                 for (int z = 0; z < SizeZ; z++)
                 {
-                    curPos.Set(x + startPos.X, startPos.Y, z + startPos.Z);                   
+                    curPos.Set(x + startPos.X, startPos.Y, z + startPos.Z);
+                    if (!blockAccessor.IsValidPos(curPos)) continue;    // Deal with cases where we are at the map edge
 
                     mapchunk = blockAccessor.GetMapChunkAtBlockPos(curPos);
                     int rockblockid = mapchunk.TopRockIdMap[(curPos.Z % chunksize) * chunksize + curPos.X % chunksize];
@@ -151,6 +153,7 @@ namespace Vintagestory.ServerMods
                     {
                         depth++;
                         curPos.Set(x + startPos.X, y + startPos.Y, z + startPos.Z);
+                        if (!blockAccessor.IsValidPos(curPos)) continue;    // Deal with cases where we are at the map edge
 
                         localCurrentPos.Set(x, y, z);
                         var block = blocksByPos[x, y, z];
@@ -345,6 +348,7 @@ namespace Vintagestory.ServerMods
         /// <returns></returns>
         public virtual int PlaceReplacingBlocks(IBlockAccessor blockAccessor, IWorldAccessor worldForCollectibleResolve, BlockPos startPos, EnumReplaceMode mode, Dictionary<int, Dictionary<int, int>> replaceBlocks, int? rockBlockId, bool replaceMetaBlocks = true)
         {
+            Unpack(worldForCollectibleResolve.Api);
             BlockPos curPos = new BlockPos();
             int placed = 0;
 
@@ -391,6 +395,7 @@ namespace Vintagestory.ServerMods
                 if (newBlock == null || (replaceMetaBlocks && newBlock == undergroundBlock)) continue;
 
                 curPos.Set(dx + startPos.X, dy + startPos.Y, dz + startPos.Z);
+                if (!blockAccessor.IsValidPos(curPos)) continue;    // Deal with cases where we are at the map edge
 
                 //Block oldBlock = blockAccessor.GetBlock(curPos);
                 Dictionary<int, int> replaceByBlock;
@@ -499,5 +504,18 @@ namespace Vintagestory.ServerMods
             return cloned;
         }
 
+        /// <summary>
+        /// Unpack blocks and indices to an array of positioned blocks, and other initialisation steps needed prior to placement and prior to Pathway checks
+        /// <br/>From 1.19.4 we do this Unpack() lazily, only when required, to save RAM [maybe also speeds up game start time, especially if mods add more schematics]
+        /// </summary>
+        /// <param name="api"></param>
+        public void Unpack(ICoreAPI api)
+        {
+            if (blocksByPos == null)
+            {
+                Init(api.World.BlockAccessor);
+                LoadMetaInformationAndValidate(api.World.BlockAccessor, api.World, FromFileName);
+            }
+        }
     }
 }

@@ -374,7 +374,7 @@ namespace Vintagestory.GameContent
                 throw new NotImplementedException();
             }
 
-            public void BreakAllDecorFast(IWorldAccessor world, BlockPos pos, int index3d)
+            public void BreakAllDecorFast(IWorldAccessor world, BlockPos pos, int index3d, bool callOnBrokenAsDecor = true)
             {
                 throw new NotImplementedException();
             }

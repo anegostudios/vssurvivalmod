@@ -42,7 +42,7 @@ namespace Vintagestory.GameContent
             {
                 var cfg = contentConfigs[i];
 
-                if (cfg.Content.Code.Path.Contains("*"))
+                if (cfg.Content.Code.Path.Contains('*'))
                 {
                     if (WildcardUtil.Match(cfg.Content.Code, sourceSlot.Itemstack.Collectible.Code)) return cfg;
                     continue;

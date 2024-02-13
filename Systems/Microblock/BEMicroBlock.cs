@@ -1659,10 +1659,13 @@ namespace Vintagestory.GameContent
             if (selfMat == otherMat) return true;
             if (otherMat >= 0)
             {
-                if (materials[selfMat].BlockId == materials[otherMat].BlockId) return true;
+                var self = materials[selfMat];
+                var other = materials[otherMat];
+                if (self.BlockId == other.BlockId) return true;
+                if (other.BlockId == 0) return false;   // Fix needed for legacy microblocks in Arctic where there is air as a material
 
                 bool selfOpaque = true;
-                switch (materials[selfMat].RenderPass)
+                switch (self.RenderPass)
                 {
                     case EnumChunkRenderPass.Liquid:
                     case EnumChunkRenderPass.OpaqueNoCull:
@@ -1675,7 +1678,7 @@ namespace Vintagestory.GameContent
                         break;
                 }
                 bool otherOpaque = true;
-                switch (materials[otherMat].RenderPass)
+                switch (other.RenderPass)
                 {
                     case EnumChunkRenderPass.Meta:
                     case EnumChunkRenderPass.TopSoil:
@@ -1686,7 +1689,7 @@ namespace Vintagestory.GameContent
                 }
                 if (selfOpaque & otherOpaque) return true;
                 if (selfOpaque) return false;
-                return otherOpaque | materials[selfMat].CullBetweenTransparents;
+                return otherOpaque | self.CullBetweenTransparents;
             }
             return false;
         }
@@ -2047,6 +2050,8 @@ namespace Vintagestory.GameContent
                 }
 
                 ref readonly var blockMat = ref blockMaterials[materialIndex];
+                if (blockMat.BlockId == 0) return;  // Necessary fix for any legacy ? microblocks in the Arctic (due to rockBlockId being 0 under lakeice)
+
                 faceGenInfo.flags = faceGenInfo.facing.NormalPackedFlags | blockMat.Flags;
 
                 // Grow mergable face in B dimension

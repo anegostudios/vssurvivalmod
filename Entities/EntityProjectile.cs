@@ -80,8 +80,8 @@ namespace Vintagestory.GameContent
             if (pos.Motion.Z < 0) projectileBox.Z1 += pos.Motion.Z * dtFac;
             else projectileBox.Z2 += pos.Motion.Z * dtFac;
             
-            ep.WalkInteractableEntities(pos.XYZ, 5f, (e) => {
-                if (e.EntityId == this.EntityId || (FiredBy != null && e.EntityId == FiredBy.EntityId && World.ElapsedMilliseconds - msLaunch < 500)) return true;
+            ep.WalkEntities(pos.XYZ, 5f, (e) => {
+                if (e.EntityId == this.EntityId || (FiredBy != null && e.EntityId == FiredBy.EntityId && World.ElapsedMilliseconds - msLaunch < 500) || !e.IsInteractable) return true;
 
                 Cuboidd eBox = e.SelectionBox.ToDouble().Translate(e.ServerPos.X, e.ServerPos.Y, e.ServerPos.Z);
 
@@ -92,7 +92,7 @@ namespace Vintagestory.GameContent
                 }
 
                 return true;
-            });
+            }, EnumEntitySearchType.Creatures);
         }
 
 

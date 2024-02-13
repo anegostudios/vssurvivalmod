@@ -73,7 +73,7 @@ namespace Vintagestory.GameContent
 
             foreach (var loc in decorCodesTmp)
             {
-                if (loc.Path.Contains("*"))
+                if (loc.Path.Contains('*'))
                 {
                     Block[] blocks = api.World
                         .SearchBlocks(loc)

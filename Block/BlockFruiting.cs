@@ -1,6 +1,7 @@
 ﻿using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -73,7 +74,7 @@ namespace Vintagestory.GameContent
             int count = 0;
             foreach (ShapeElement element in elements)
             {
-                if (element.Name.StartsWith("fruit"))
+                if (element.Name.StartsWithOrdinal("fruit"))
                 {
                     count++;
                 }
@@ -87,7 +88,7 @@ namespace Vintagestory.GameContent
             count = 0;
             foreach (ShapeElement element in elements)
             {
-                if (element.Name.StartsWith("fruit"))
+                if (element.Name.StartsWithOrdinal("fruit"))
                 {
                     //Used to obtain the child positions
                     double mainX = (element.From[0]) / 16.0;

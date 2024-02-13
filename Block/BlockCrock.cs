@@ -485,7 +485,7 @@ namespace Vintagestory.GameContent
 
             BlockMeal mealblock = world.GetBlock(new AssetLocation("bowl-meal")) as BlockMeal;
 
-            CookingRecipe recipe = api.GetCookingRecipes().FirstOrDefault((rec) => becrock.RecipeCode == rec.Code);
+            CookingRecipe recipe = api.GetCookingRecipe(becrock.RecipeCode);
             ItemStack[] stacks = becrock.inventory.Where(slot => !slot.Empty).Select(slot => slot.Itemstack).ToArray();
 
             if (stacks == null || stacks.Length == 0)

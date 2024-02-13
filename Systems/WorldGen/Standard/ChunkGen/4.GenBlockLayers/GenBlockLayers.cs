@@ -37,11 +37,12 @@ namespace Vintagestory.ServerMods
         {
             this.api = api;
 
+            this.api.Event.InitWorldGenerator(InitWorldGen, "standard");
+            this.api.Event.InitWorldGenerator(InitWorldGen, "superflat"); // Just the Init so that BlockSoil can grow grass; and both these are needed even if DecoPass is off
+            //this.api.Event.MapRegionGeneration(OnMapRegionGen, "standard");   // 8.2.24 commented out because the method has no code
+
             if (TerraGenConfig.DoDecorationPass)
             {
-                this.api.Event.InitWorldGenerator(InitWorldGen, "standard");
-                this.api.Event.InitWorldGenerator(InitWorldGen, "superflat"); // Just the Init so that BlockSoil can grow grass
-                this.api.Event.MapRegionGeneration(OnMapRegionGen, "standard");
                 this.api.Event.ChunkColumnGeneration(OnChunkColumnGeneration, EnumWorldGenPass.Terrain, "standard");
             }
 
@@ -258,6 +259,7 @@ namespace Vintagestory.ServerMods
             int j = 0;
             
             bool underWater = false;
+            bool underIce = false;
             bool first = true;
             int startPosY = pos.Y;
             
@@ -281,7 +283,8 @@ namespace Vintagestory.ServerMods
                 // Don't generate on ice (would otherwise cause snow above water, which collapses with block gravity enabled, causing massive lag)
                 if (blockId == GlobalConfig.lakeIceBlockId)
                 {
-                    break;
+                    underIce = true;     // radfast 30.1.24: Treat Lake ice just the same as water, so we ignore it but go down through it to see what is underneath...
+                    continue;              // Otherwise, it results in block columns in the Arctic with no TopRockIdMap set  (TopRockIdMap will be 0, which can break ruins)
                 }
 
                 if (blockId != 0)
@@ -289,6 +292,7 @@ namespace Vintagestory.ServerMods
                     if (heightMap != null && first)
                     {
                         chunks[0].MapChunk.TopRockIdMap[lz * chunksize + lx] = blockId;
+                        if (underIce) break;   // radfast 30.1.24: Note, under ice we do not set the sea/lake floor layers (gravel etc), for consistency with legacy worldgen prior to 1.19.4
 
                         LoadBlockLayers(posRand, rainRel, temp, unscaledTemp, startPosY + posyoffs, pos, blockId);
                         first = false;

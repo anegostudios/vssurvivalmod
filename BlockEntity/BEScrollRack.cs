@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Reflection;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -37,31 +39,36 @@ namespace Vintagestory.GameContent
 
         public int[] getOrCreateUsableSlots()
         {
-            if (UsableSlots != null) return UsableSlots;
-            genUsableSlots();
+            if (UsableSlots == null) genUsableSlots();
             return UsableSlots;
         }
+
         public Cuboidf[] getOrCreateSelectionBoxes()
         {
             getOrCreateUsableSlots();
             return UsableSelectionBoxes;
         }
 
+        /*
+         * Slots 0-11:
+         *   01 on the base  (always empty)
+         *   234 bottom row  (left only usable if another rack on the side...  but which is left depends on which way we are facing :o )
+         *   56 centre pair   (always usable)
+         *   789 top row    (left only usable if another rack on the side...  but which is left depends on which way we are facing :o )
+         *   1011 on the top (usable even if no other rack above)
+         */
+
         private void genUsableSlots()
         {
-            //var bot = isRack(new Vec3i(0, -1, 0));
             var left = isRack(BEBehaviorDoor.getAdjacentOffset(-1, 0, 0, MeshAngleRad, false));
-            var right = isRack(BEBehaviorDoor.getAdjacentOffset(1, 0, 0, MeshAngleRad, false));
 
             var slotsBySide = (Block as BlockScrollRack).slotsBySide;
             List<int> usableSlots = new List<int>();
 
             usableSlots.AddRange(slotsBySide["mid"]);
             usableSlots.AddRange(slotsBySide["top"]);
-
-            //if (bot) usableSlots.AddRange(slotsBySide["bot"]);
             if (left) usableSlots.AddRange(slotsBySide["left"]);
-            //if (right) usableSlots.AddRange(slotsBySide["right"]);
+            
             this.UsableSlots = usableSlots.ToArray();
 
             var hitboxes = (Block as BlockScrollRack).slotsHitBoxes;
@@ -125,9 +132,17 @@ namespace Vintagestory.GameContent
             {
                 var npos = slotside == "bot" ? Pos.DownCopy() : Pos.AddCopy(BEBehaviorDoor.getAdjacentOffset(1, 0, 0, MeshAngleRad, false));
                 var be = Api.World.BlockAccessor.GetBlockEntity<BlockEntityScrollRack>(npos);
-                var blockSelDown = blockSel.Clone();
-                blockSelDown.SelectionBoxIndex = oppositeSlotIndex[blockSelDown.SelectionBoxIndex];
-                return be?.OnInteract(byPlayer, blockSelDown) ?? false;
+                if (be == null) return false;
+                float theirAngle = GameMath.NormaliseAngleRad(be.MeshAngleRad);
+                float ourAngle = GameMath.NormaliseAngleRad(MeshAngleRad);
+                if (theirAngle % GameMath.PI == ourAngle % GameMath.PI)
+                {
+                    if (theirAngle != ourAngle && slotside == "right") return false;
+                    var blockSelDown = blockSel.Clone();
+                    blockSelDown.SelectionBoxIndex = oppositeSlotIndex[theirAngle == ourAngle ? blockSelDown.SelectionBoxIndex : blockSelDown.SelectionBoxIndex ^ 1];
+                    return be.OnInteract(byPlayer, blockSelDown);
+                }
+                return false;
             }
 
             ItemSlot slot = byPlayer.InventoryManager.ActiveHotbarSlot;
@@ -283,7 +298,7 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            int index = forPlayer.CurrentBlockSelection.SelectionBoxIndex - 5;
+            int index = forPlayer.CurrentBlockSelection.SelectionBoxIndex;
 
             if (index < 0 || index >= inv.Count)
             {
@@ -294,7 +309,31 @@ namespace Vintagestory.GameContent
             ItemSlot slot = inv[index];
             if (slot.Empty)
             {
-                sb.AppendLine(Lang.Get("Empty"));
+                // If we are a rack-edge slot and it is full in the other rack, show contents correctly - otherwise it shows 50/50 as empty depending on which of the two blocks the player is precisely looking at 
+                var slotSides = (Block as BlockScrollRack).slotSide;
+                var slotside = slotSides[index];
+                if (slotside == "bot")
+                {
+                    var be = Api.World.BlockAccessor.GetBlockEntity<BlockEntityScrollRack>(Pos.DownCopy());
+                    if (be != null)
+                    {
+                        float theirAngle = GameMath.NormaliseAngleRad(be.MeshAngleRad);
+                        float ourAngle = GameMath.NormaliseAngleRad(MeshAngleRad);
+                        if (theirAngle % GameMath.PI == ourAngle % GameMath.PI) slot = be.inv[theirAngle == ourAngle ? index + 10 : 11 - index];
+                    }
+                }
+                else if (slotside == "right")
+                {
+                    var be = Api.World.BlockAccessor.GetBlockEntity<BlockEntityScrollRack>(Pos.AddCopy(BEBehaviorDoor.getAdjacentOffset(1, 0, 0, MeshAngleRad, false)));
+                    if (be != null)
+                    {
+                        float theirAngle = GameMath.NormaliseAngleRad(be.MeshAngleRad);
+                        float ourAngle = GameMath.NormaliseAngleRad(MeshAngleRad);
+                        if (theirAngle == ourAngle) slot = be.inv[index - 2];
+                    }
+                }
+
+                sb.AppendLine(slot.Empty ? Lang.Get("Empty") : slot.Itemstack.GetName());
             }
             else
             {
@@ -312,7 +351,20 @@ namespace Vintagestory.GameContent
 
         internal void clearUsableSlots()
         {
-            UsableSlots = null;
+            genUsableSlots();
+            for (int i = 0; i < inv.Count; i++)
+            {
+                if (UsableSlots.Contains<int>(i)) continue;
+                ItemSlot slot = inv[i];
+                if (slot.Empty) continue;
+
+                // Drop contents which can no longer be held if neighbour removed
+                Vec3d vec = Pos.ToVec3d();
+                vec.Add(0.5 - GameMath.Cos(MeshAngleRad) * 0.6, 0.15, 0.5 + GameMath.Sin(MeshAngleRad) * 0.6);  // Add appropriate offset for the removed side, depending on orientation
+                Api.World.SpawnItemEntity(slot.Itemstack, vec);
+                slot.Itemstack = null;
+            }
+
             MarkDirty(true);
         }
     }

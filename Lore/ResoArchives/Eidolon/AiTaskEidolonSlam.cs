@@ -129,7 +129,7 @@ namespace Vintagestory.GameContent
             float range = maxDist;
             lastSearchTotalMs = entity.World.ElapsedMilliseconds;
 
-            targetEntity = partitionUtil.GetNearestInteractableEntity(entity.ServerPos.XYZ, range, (e) => IsTargetableEntity(e, range));
+            targetEntity = partitionUtil.GetNearestEntity(entity.ServerPos.XYZ, range, (e) => IsTargetableEntity(e, range), EnumEntitySearchType.Creatures);
 
             return targetEntity != null;
         }
@@ -169,7 +169,7 @@ namespace Vintagestory.GameContent
                 if (entity.World.Rand.NextDouble() < creatureSpawnChance)
                 {
                     int count = 0;
-                    partitionUtil.WalkInteractableEntities(pos, 7f, (e) => { if (e.Code.Equals(creatureCode) && e.Alive) count++; return true; });
+                    partitionUtil.WalkEntities(pos, 7f, (e) => { if (e.Code.Equals(creatureCode) && e.Alive) count++; return true; }, EnumEntitySearchType.Creatures);
 
                     creaturesLeftToSpawn = Math.Max(0, GameMath.RoundRandom(entity.World.Rand, creatureSpawnCount) - count);
                 }
@@ -183,7 +183,7 @@ namespace Vintagestory.GameContent
                 }
 
                 // Damage and knockback nearby creatures
-                partitionUtil.WalkInteractableEntities(pos, 9f, (e) =>
+                partitionUtil.WalkEntities(pos, 9f, (e) =>
                 {
                     if (e.EntityId == entity.EntityId || !e.IsInteractable) return true;
                     if (!e.Alive || !e.OnGround) return true;
@@ -216,7 +216,7 @@ namespace Vintagestory.GameContent
                     e.WatchedAttributes.SetFloat("onHurt", 0.01f); // Causes the client to be notified
 
                     return true;
-                });
+                }, EnumEntitySearchType.Creatures);
 
                 // One boulder on every player as well >:D
                 foreach (IServerPlayer plr in entity.World.AllOnlinePlayers)

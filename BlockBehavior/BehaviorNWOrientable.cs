@@ -52,7 +52,7 @@ namespace Vintagestory.GameContent
             handled = EnumHandling.PreventDefault;
 
             string[] angles = { "ns", "we" };
-            int index = angle / 90;
+            var index = GameMath.Mod(angle / 90, 4);
             if (block.Variant[variantCode] == "we") index++;
             return block.CodeWithVariant(variantCode, angles[index % 2]);
         }

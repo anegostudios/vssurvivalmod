@@ -1,9 +1,13 @@
-﻿using System.Collections.Generic;
+﻿using Newtonsoft.Json;
+using System;
+using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.ServerMods;
 
 namespace Vintagestory.GameContent
 {
@@ -11,13 +15,22 @@ namespace Vintagestory.GameContent
     public class BEBehaviorShapeFromAttributes : BlockEntityBehavior, IRotatable
     {
         public string Type;
-        protected BlockShapeFromAttributes clutterBlock;
+        public BlockShapeFromAttributes clutterBlock;
         protected MeshData mesh;
         public float rotateX;
         public float rotateZ;
         public bool Collected;
 
         public string overrideTextureCode;
+        /// <summary>
+        /// Range from 0.0 for fully broken, to 1.0 (or above) for fully repaired
+        /// </summary>
+        public float repairState;
+
+        /// <summary>
+        /// The amount of glue needed for a full repair (abstract units corresponding to 1 resin, **PLUS ONE**), e.g. 5 resin is shown as 6.   0 means unspecified (we don't use the repair system), -1 means cannot be repaired will alway shatter
+        /// </summary>
+        public int reparability;
 
         public BEBehaviorShapeFromAttributes(BlockEntity blockentity) : base(blockentity)
         {
@@ -35,6 +48,9 @@ namespace Vintagestory.GameContent
             if (Type != null)
             {
                 initShape();
+
+                var brep = clutterBlock.GetBehavior<BlockBehaviorReparable>();
+                brep?.Initialize(Type, this);
             }
         }
 
@@ -70,6 +86,8 @@ namespace Vintagestory.GameContent
             }
 
             initShape();
+            var brep = clutterBlock.GetBehavior<BlockBehaviorReparable>();
+            brep?.Initialize(Type, this);
         }
 
         public override void OnBlockRemoved()
@@ -101,6 +119,7 @@ namespace Vintagestory.GameContent
             rotateZ = tree.GetFloat("rotateZ");
             overrideTextureCode = tree.GetString("overrideTextureCode");
             Collected = tree.GetBool("collected");
+            repairState = tree.GetFloat("repairState");
 
             if ((mesh == null || prevType != Type || prevOverrideTextureCode != overrideTextureCode || rotateX != prevRotateX || rotateY != prevRotateY || rotateZ != prevRotateZ) && Api != null && worldAccessForResolve.Side == EnumAppSide.Client)
             {
@@ -133,6 +152,7 @@ namespace Vintagestory.GameContent
             tree.SetFloat("meshAngle", rotateY);
             tree.SetFloat("rotateZ", rotateZ);
             tree.SetBool("collected", Collected);
+            tree.SetFloat("repairState", repairState);
 
             if (overrideTextureCode!=null) tree.SetString("overrideTextureCode", overrideTextureCode);
             base.ToTreeAttributes(tree);
@@ -206,6 +226,11 @@ namespace Vintagestory.GameContent
                     dsc.AppendLine("<font color=\"#bbbbbb\">Type:" + Type + "</font>");
                 }
             }
+        }
+
+        public string GetFullCode()
+        {
+            return clutterBlock.Code.Domain + ":" + clutterBlock.ClassType + "-" + Type?.Replace("/", "-");
         }
     }
 }

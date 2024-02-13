@@ -9,7 +9,7 @@ using Vintagestory.API.Server;
 
 namespace Vintagestory.GameContent
 {
-    public class ItemKnife : ItemSword
+    public class ItemKnife : Item
     {
         public static SimpleParticleProperties particlesStab;
                 
@@ -123,8 +123,6 @@ namespace Vintagestory.GameContent
                 {
                     if (secondsUsed > 1.1f && !byEntity.Attributes.GetBool("didHurt", false))
                     {
-                        api.World.Logger.Notification("Server did hurt");
-
                         byEntity.ReceiveDamage(new DamageSource() { DamageTier = 0, Source = EnumDamageSource.Internal, Type = EnumDamageType.Injury }, 2);
                         slot?.Itemstack?.Collectible.DamageItem(byEntity.World, byEntity, slot, 1);
 
@@ -133,8 +131,6 @@ namespace Vintagestory.GameContent
 
                     if (secondsUsed >= 1.95f && !byEntity.Attributes.GetBool("stabPlayed", false))
                     {
-                        api.World.Logger.Notification("Server did stab played");
-
                         byEntity.GetBehavior<EntityBehaviorTemporalStabilityAffected>().AddStability(0.30);
                         
                         byEntity.LeftHandItemSlot.TakeOut(1);
@@ -215,7 +211,7 @@ namespace Vintagestory.GameContent
         {
             if (blockSel == null)
             {
-                startAttack(slot, byEntity);
+                base.OnHeldAttackStart(slot, byEntity, blockSel, entitySel, ref handling);
                 handling = EnumHandHandling.PreventDefault;
             }
         }

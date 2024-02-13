@@ -165,7 +165,7 @@ namespace Vintagestory.GameContent
             handlerId = RegisterDelayedCallback((dt) => {
                 if (sound.IsDisposed)
                 {
-                    Api.World.Logger.Notification("Echo chamber track is diposed? o.O");
+                    Api.World.Logger.Notification("Resonator track is diposed? o.O");
                 }
 
                 if (!wasStopped)

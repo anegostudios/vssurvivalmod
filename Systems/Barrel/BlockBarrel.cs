@@ -435,7 +435,7 @@ namespace Vintagestory.GameContent
         {
             string text = base.GetPlacedBlockInfo(world, pos, forPlayer);
             string aftertext = "";
-            int j = text.IndexOf(Environment.NewLine + Environment.NewLine);
+            int j = text.IndexOfOrdinal(Environment.NewLine + Environment.NewLine);
             if (j > 0)
             {
                 aftertext = text.Substring(j);

@@ -198,7 +198,7 @@ namespace Vintagestory.GameContent
             if (firstTick && api.Side == EnumAppSide.Server)
             {
                 BlockEntityTapestry beTas = api.World.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityTapestry;
-                if (beTas.Rotten) return;
+                if (beTas.Rotten || beTas.Type == null) return;
 
                 string baseCode = GetBaseCode(beTas.Type);
                 string size = Attributes["sizes"][baseCode].AsString();

@@ -7,6 +7,7 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
+using Vintagestory.ServerMods;
 
 namespace Vintagestory.GameContent
 {
@@ -24,7 +25,7 @@ namespace Vintagestory.GameContent
             OrderedDictionary<ItemStack, int> quantitiesByStack = new OrderedDictionary<ItemStack, int>();
             quantitiesByStack = mergeStacks(worldForResolve, stacks);
 
-            CookingRecipe recipe = worldForResolve.Api.GetCookingRecipes().FirstOrDefault(rec => rec.Code == recipeCode);
+            CookingRecipe recipe = worldForResolve.Api.GetCookingRecipe(recipeCode);
 
             if (recipeCode == null || recipe == null || quantitiesByStack.Count == 0) return "unknown";
 
@@ -241,11 +242,21 @@ namespace Vintagestory.GameContent
                         }
                     }
 
+                case "glueportion-pitch-hot":
+                case "glueportion-pitch-cold":
+                    {
+                        ItemStack stack = stacks[0];
+                        if (stack == null) return Lang.Get("unknown");
+                        if (stack.Collectible.Code.PathStartsWith("glueportion")) return stack.Collectible.GetHeldItemName(stack) + "\n\n" + stack.Collectible.GetItemDescText();  // Special case for Hardened pitch glue
+                        Item outputItem = worldForResolve.GetItem(new AssetLocation(recipe.DirtyPotOutput));
+                        if (outputItem != null) return outputItem.GetHeldItemName(new ItemStack(outputItem));
+                        return Lang.Get("unknown");
+                    }
             }
 
 
-            
-            switch(max)
+
+            switch (max)
             {
                 case 3:
                     MealFormat += "-hearty-" + recipeCode;
@@ -434,6 +445,8 @@ namespace Vintagestory.GameContent
         public bool Enabled = true;
         public CompositeShape Shape;
         public TransitionableProperties PerishableProps;
+        public bool DirtyPot = false;
+        public string DirtyPotOutput = "";
 
         public static Dictionary<string, ICookingRecipeNamingHelper> NamingRegistry = new Dictionary<string, ICookingRecipeNamingHelper>();
 
@@ -445,6 +458,8 @@ namespace Vintagestory.GameContent
             NamingRegistry["soup"] = new VanillaCookingRecipeNames();
             NamingRegistry["jam"] = new VanillaCookingRecipeNames();
             NamingRegistry["scrambledeggs"] = new VanillaCookingRecipeNames();
+            NamingRegistry["glueportion-pitch-hot"] = new VanillaCookingRecipeNames();
+            NamingRegistry["glueportion-pitch-cold"] = new VanillaCookingRecipeNames();
         }
 
         public bool Matches(ItemStack[] inputStacks)
@@ -601,8 +616,10 @@ namespace Vintagestory.GameContent
             if (Shape != null) writer.Write(Shape.Base.ToString());
 
             PerishableProps.ToBytes(writer);
-            
-      //      CanBeServedInto.ToBytes(writer);
+            writer.Write(DirtyPot);
+            writer.Write(DirtyPotOutput ?? "");
+
+            //      CanBeServedInto.ToBytes(writer);
         }
 
         /// <summary>
@@ -632,6 +649,8 @@ namespace Vintagestory.GameContent
             PerishableProps = new TransitionableProperties();
             PerishableProps.FromBytes(reader, resolver.ClassRegistry);
 
+            DirtyPot = reader.ReadBoolean();
+            DirtyPotOutput = reader.ReadString();
        //     CanBeServedInto = new JsonItemStack();
        //     CanBeServedInto.FromBytes(reader, resolver.ClassRegistry);
        //     CanBeServedInto.Resolve(resolver, "[FromBytes]");

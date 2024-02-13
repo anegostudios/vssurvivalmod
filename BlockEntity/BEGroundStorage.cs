@@ -29,6 +29,11 @@ namespace Vintagestory.GameContent
         protected Cuboidf[] selBoxes;
 
         ItemSlot isUsingSlot;
+        /// <summary>
+        /// Needed to suppress client-side "set this block to air on empty inventory" functionality for newly placed blocks
+        /// otherwise set block to air can be triggered e.g. by the second tick of a player's right-click block interaction client-side, before the first server packet arrived to set the inventory to non-empty (due to lag of any kind)
+        /// </summary>
+        public bool clientsideFirstPlacement = false;
 
         public override int DisplayedItems {
             get
@@ -489,7 +494,7 @@ namespace Vintagestory.GameContent
                 MarkDirty();    // Don't re-draw on client yet, that will be handled in FromTreeAttributes after we receive an updating packet from the server  (updating meshes here would have the wrong inventory contents, and also create a potential race condition)
             }
 
-            if (inventory.Empty)
+            if (inventory.Empty && !clientsideFirstPlacement)
             {
                 Api.World.BlockAccessor.SetBlock(0, Pos);
                 Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(Pos);
@@ -845,6 +850,7 @@ namespace Vintagestory.GameContent
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
             base.FromTreeAttributes(tree, worldForResolving);
+            clientsideFirstPlacement = false;
 
             forceStorageProps = tree.GetBool("forceStorageProps");
             if (forceStorageProps)

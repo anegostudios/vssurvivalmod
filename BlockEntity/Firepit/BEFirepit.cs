@@ -549,9 +549,12 @@ namespace Vintagestory.GameContent
 
         public bool canSmeltInput()
         {
+            if (inputStack == null) return false;
+
+            if (inputStack.Collectible.OnSmeltAttempt(inventory)) MarkDirty(true);
+
             return
-                inputStack != null
-                && inputStack.Collectible.CanSmelt(Api.World, inventory, inputSlot.Itemstack, outputSlot.Itemstack)
+                inputStack.Collectible.CanSmelt(Api.World, inventory, inputSlot.Itemstack, outputSlot.Itemstack)
                 && (inputStack.Collectible.CombustibleProps == null || !inputStack.Collectible.CombustibleProps.RequiresContainer)
             ;
         }

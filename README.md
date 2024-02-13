@@ -1,7 +1,7 @@
 # Vintage Story Survival Mod
 The Vanilla Survival Mod
 
-This is proprietary software owned by Anego Studios. All rights reserved. 
+This is proprietary software owned by Anego Studios. All rights reserved.
 
 You may NOT sell this software in any way, shape or form.
 You may NOT distribute this software in its unmodified form.

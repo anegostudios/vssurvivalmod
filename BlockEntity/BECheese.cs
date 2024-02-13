@@ -37,6 +37,7 @@ namespace Vintagestory.GameContent
         {
             get
             {
+                if (inv[0].Empty) return 0;
                 ItemCheese cheese = inv[0].Itemstack.Collectible as ItemCheese;
                 switch (cheese?.Part)
                 {
@@ -51,6 +52,7 @@ namespace Vintagestory.GameContent
 
         public ItemStack TakeSlice()
         {
+            if (inv[0].Empty) return null;
             ItemCheese cheese = inv[0].Itemstack.Collectible as ItemCheese;
             MarkDirty(true);
 

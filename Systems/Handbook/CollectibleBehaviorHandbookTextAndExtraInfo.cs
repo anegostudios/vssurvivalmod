@@ -19,6 +19,12 @@ namespace Vintagestory.GameContent
 
     public class CollectibleBehaviorHandbookTextAndExtraInfo : CollectibleBehavior
     {
+        protected const int TinyPadding = 2;   // Used to add tiny amounts of vertical padding after headings, so that things look less cramped
+        protected const int TinyIndent = 2;    // Used to indent the page contents following headings - this subtly helps headings to stand out more
+        protected const int MarginBottom = 3;  // Used following some (but not all) itemstack graphics
+        protected const int SmallPadding = 7;  // Used to separate bullets in the Created By list
+        protected const int MediumPadding = 14;  // Used before all headings
+
         public ExtraHandbookSection[] ExtraHandBookSections = null;
         ICoreAPI Api;
 
@@ -77,7 +83,6 @@ namespace Vintagestory.GameContent
                 }
             }
 
-
             addDropsInfo(capi, openDetailPageFor, stack, components, marginTop, breakBlocks);
             bool haveText = addObtainedThroughInfo(capi, openDetailPageFor, stack, components, marginTop, breakBlocks);
             haveText = addFoundInInfo(capi, openDetailPageFor, stack, components, marginTop, haveText);
@@ -109,9 +114,8 @@ namespace Vintagestory.GameContent
             }
             components.AddRange(VtmlUtil.Richtextify(capi, stack.GetDescription(capi.World, inSlot), CairoFont.WhiteSmallText()));
 
-            marginTop = 7;
-            marginBottom = 3;
-            components.Add(new ClearFloatTextComponent(capi, marginTop));
+            marginTop = SmallPadding;
+            marginBottom = MarginBottom;
         }
 
         protected void addDropsInfo(ICoreClientAPI capi, ActionConsumable<string> openDetailPageFor, ItemStack stack, List<RichTextComponentBase> components, float marginTop, List<ItemStack> breakBlocks)
@@ -155,7 +159,9 @@ namespace Vintagestory.GameContent
                     }
                     else
                     {
-                        components.Add(new RichTextComponent(capi, Lang.Get("Drops when broken") + "\n", CairoFont.WhiteSmallText().WithWeight(FontWeight.Bold)));
+                        bool haveText = components.Count > 0;
+                        AddHeading(components, capi, "Drops when broken", ref haveText);
+                        components.Add(new ClearFloatTextComponent(capi, TinyPadding));
                         int i = 0;
                         while (dropsStacks.Count > 0)
                         {
@@ -182,11 +188,9 @@ namespace Vintagestory.GameContent
                                 comp.ShowTooltip = false;
                                 components.Add(comp);
                             }
-
-
                         }
 
-                        components.Add(new ClearFloatTextComponent(capi, marginTop));
+                        components.Add(new ClearFloatTextComponent(capi, TinyPadding));
                     }
                 }
             }
@@ -240,26 +244,30 @@ namespace Vintagestory.GameContent
             }
 
 
-            bool haveText = false;
+            bool haveText = components.Count > 0;
 
             if (killCreatures.Count > 0)
             {
-                components.Add(new RichTextComponent(capi, Lang.Get("Obtained by killing") + "\n", CairoFont.WhiteSmallText().WithWeight(FontWeight.Bold)));
-                components.Add(new RichTextComponent(capi, string.Join(", ", killCreatures) + "\n", CairoFont.WhiteSmallText()));
-                haveText = true;
+                AddHeading(components, capi, "Obtained by killing", ref haveText);
+                components.Add(new ClearFloatTextComponent(capi, TinyPadding));
+                var comp = new RichTextComponent(capi, string.Join(", ", killCreatures) + "\n", CairoFont.WhiteSmallText());
+                comp.PaddingLeft = TinyIndent;
+                components.Add(comp);
             }
 
             if (harvestCreatures.Count > 0)
             {
-                components.Add(new RichTextComponent(capi, Lang.Get("Obtained by killing & harvesting") + "\n", CairoFont.WhiteSmallText().WithWeight(FontWeight.Bold)));
-                components.Add(new RichTextComponent(capi, string.Join(", ", harvestCreatures) + "\n", CairoFont.WhiteSmallText()));
-                haveText = true;
+                AddHeading(components, capi, "Obtained by killing & harvesting", ref haveText);
+                components.Add(new ClearFloatTextComponent(capi, TinyPadding));
+                var comp = new RichTextComponent(capi, string.Join(", ", harvestCreatures) + "\n", CairoFont.WhiteSmallText());
+                comp.PaddingLeft = TinyIndent;
+                components.Add(comp);
             }
 
             if (breakBlocks.Count > 0)
             {
-                if (haveText) components.Add(new ClearFloatTextComponent(capi, marginTop));
-                components.Add(new RichTextComponent(capi, Lang.Get("Obtained by breaking") + "\n", CairoFont.WhiteSmallText().WithWeight(FontWeight.Bold)));
+                AddHeading(components, capi, "Obtained by breaking", ref haveText);
+                components.Add(new ClearFloatTextComponent(capi, TinyPadding));
 
                 while (breakBlocks.Count > 0)
                 {
@@ -271,7 +279,7 @@ namespace Vintagestory.GameContent
                     components.Add(comp);
                 }
 
-                haveText = true;
+                components.Add(new ClearFloatTextComponent(capi, TinyPadding));
             }
 
             return haveText;
@@ -282,14 +290,16 @@ namespace Vintagestory.GameContent
             string customFoundIn = stack.Collectible.Attributes?["handbook"]?["foundIn"]?.AsString(null);
             if (customFoundIn != null)
             {
-                if (haveText) components.Add(new ClearFloatTextComponent(capi, marginTop));
-                components.Add(new RichTextComponent(capi, Lang.Get("Found in") + "\n", CairoFont.WhiteSmallText().WithWeight(FontWeight.Bold)));
-                components.Add(new RichTextComponent(capi, Lang.Get(customFoundIn), CairoFont.WhiteSmallText()));
-                haveText = true;
+                AddHeading(components, capi, "Found in", ref haveText);
+                var comp = new RichTextComponent(capi, Lang.Get(customFoundIn), CairoFont.WhiteSmallText());
+                comp.PaddingLeft = TinyIndent;
+                components.Add(comp);
             }
 
             if (collObj.Attributes?["hostRockFor"].Exists == true)
             {
+                AddHeading(components, capi, "Host rock for", ref haveText);
+
                 int[] blockids = collObj.Attributes?["hostRockFor"].AsArray<int>();
 
                 OrderedDictionary<string, List<ItemStack>> blocks = new OrderedDictionary<string, List<ItemStack>>();
@@ -312,20 +322,21 @@ namespace Vintagestory.GameContent
                     blocks[key].Add(new ItemStack(block));
                 }
 
-                if (haveText) components.Add(new ClearFloatTextComponent(capi, marginTop));
-                components.Add(new RichTextComponent(capi, Lang.Get("Host rock for") + "\n", CairoFont.WhiteSmallText().WithWeight(FontWeight.Bold)));
-
+                int firstPadding = TinyIndent;
                 foreach (var val in blocks)
                 {
-                    components.Add(new SlideshowItemstackTextComponent(capi, val.Value.ToArray(), 40, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs))));
+                    var comp = new SlideshowItemstackTextComponent(capi, val.Value.ToArray(), 40, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
+                    comp.PaddingLeft = firstPadding;
+                    firstPadding = 0;
+                    components.Add(comp);
                 }
-
-                haveText = true;
             }
 
 
             if (collObj.Attributes?["hostRock"].Exists == true)
             {
+                AddHeading(components, capi, "Occurs in host rock", ref haveText);
+
                 ushort[] blockids = collObj.Attributes?["hostRock"].AsArray<ushort>();
 
                 OrderedDictionary<string, List<ItemStack>> blocks = new OrderedDictionary<string, List<ItemStack>>();
@@ -348,15 +359,14 @@ namespace Vintagestory.GameContent
                     blocks[key].Add(new ItemStack(block));
                 }
 
-                if (haveText) components.Add(new ClearFloatTextComponent(capi, marginTop));
-                components.Add(new RichTextComponent(capi, Lang.Get("Occurs in host rock") + "\n", CairoFont.WhiteSmallText().WithWeight(FontWeight.Bold)));
-
+                int firstPadding = TinyIndent;
                 foreach (var val in blocks)
                 {
-                    components.Add(new SlideshowItemstackTextComponent(capi, val.Value.ToArray(), 40, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs))));
+                    var comp = new SlideshowItemstackTextComponent(capi, val.Value.ToArray(), 40, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
+                    comp.PaddingLeft = firstPadding;
+                    firstPadding = 0;
+                    components.Add(comp);
                 }
-
-                haveText = true;
             }
 
             return haveText;
@@ -378,11 +388,15 @@ namespace Vintagestory.GameContent
 
             if (alloyables.Count > 0)
             {
-                if (haveText) components.Add(new ClearFloatTextComponent(capi, marginTop));
-                components.Add(new RichTextComponent(capi, Lang.Get("Alloy for") + "\n", CairoFont.WhiteSmallText().WithWeight(FontWeight.Bold)));
+                AddHeading(components, capi, "Alloy for", ref haveText);
+
+                int firstPadding = TinyIndent;
                 foreach (var val in alloyables)
                 {
-                    components.Add(new ItemstackTextComponent(capi, val.Value, 40, 0, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs))));
+                    var comp = new ItemstackTextComponent(capi, val.Value, 40, 0, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
+                    comp.PaddingLeft = firstPadding;
+                    firstPadding = 0;
+                    components.Add(comp);
                 }
 
                 haveText = true;
@@ -406,8 +420,9 @@ namespace Vintagestory.GameContent
 
             if (alloyableFrom.Count > 0)
             {
-                if (haveText) components.Add(new ClearFloatTextComponent(capi, marginTop));
-                components.Add(new RichTextComponent(capi, Lang.Get("Alloyed from") + "\n", CairoFont.WhiteSmallText().WithWeight(FontWeight.Bold)));
+                AddHeading(components, capi, "Alloyed from", ref haveText);
+
+                int firstPadding = TinyIndent;
                 foreach (var val in alloyableFrom)
                 {
                     foreach (var ingred in val.Value)
@@ -416,6 +431,8 @@ namespace Vintagestory.GameContent
                         components.Add(new RichTextComponent(capi, ratio, CairoFont.WhiteSmallText()));
                         ItemstackComponentBase comp = new ItemstackTextComponent(capi, ingred.ResolvedItemstack, 30, 5, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
                         comp.offY = GuiElement.scaled(7);
+                        comp.PaddingLeft = firstPadding;
+                        firstPadding = 0;
                         components.Add(comp);
                     }
 
@@ -423,8 +440,6 @@ namespace Vintagestory.GameContent
                 }
 
                 components.Add(new RichTextComponent(capi, "\n", CairoFont.WhiteSmallText()));
-
-                haveText = true;
             }
 
             return haveText;
@@ -438,14 +453,13 @@ namespace Vintagestory.GameContent
                 var item = capi.World.GetItem(new AssetLocation(bp.ResultCode));
                 if (item != null)
                 {
-                    string title = Lang.Get("smeltdesc-bake-title");
-                    if (haveText) components.Add(new ClearFloatTextComponent(capi, marginTop));
-                    components.Add(new RichTextComponent(capi, title + "\n", CairoFont.WhiteSmallText().WithWeight(FontWeight.Bold)));
+                    AddHeading(components, capi, "smeltdesc-bake-title", ref haveText);
+
                     var cmp = new ItemstackTextComponent(capi, new ItemStack(item), 40, 10, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
                     cmp.ShowStacksize = true;
+                    cmp.PaddingLeft = TinyIndent;
                     components.Add(cmp);
                     components.Add(new ClearFloatTextComponent(capi, marginBottom));  //nice margin below the item graphic
-                    haveText = true;
                 }
             }
             else
@@ -453,51 +467,46 @@ namespace Vintagestory.GameContent
             if (collObj.CombustibleProps?.SmeltedStack?.ResolvedItemstack != null && !collObj.CombustibleProps.SmeltedStack.ResolvedItemstack.Equals(capi.World, stack, GlobalConstants.IgnoredStackAttributes))
             {
                 string smelttype = collObj.CombustibleProps.SmeltingType.ToString().ToLowerInvariant();
-                string title = Lang.Get("game:smeltdesc-" + smelttype + "-title");
+                AddHeading(components, capi, "game:smeltdesc-" + smelttype + "-title", ref haveText);
 
-
-                if (haveText) components.Add(new ClearFloatTextComponent(capi, marginTop));
-                components.Add(new RichTextComponent(capi, title + "\n", CairoFont.WhiteSmallText().WithWeight(FontWeight.Bold)));
                 var cmp = new ItemstackTextComponent(capi, collObj.CombustibleProps.SmeltedStack.ResolvedItemstack, 40, 10, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
                 cmp.ShowStacksize = true;
+                cmp.PaddingLeft = TinyIndent;
                 components.Add(cmp);
                 components.Add(new ClearFloatTextComponent(capi, marginBottom));  //nice margin below the item graphic
-                haveText = true;
             }
 
             // Pulverizes into
             if (collObj.CrushingProps?.CrushedStack?.ResolvedItemstack != null && !collObj.CrushingProps.CrushedStack.ResolvedItemstack.Equals(capi.World, stack, GlobalConstants.IgnoredStackAttributes))
             {
-                string title = Lang.Get("pulverizesdesc-title");
+                AddHeading(components, capi, "pulverizesdesc-title", ref haveText);
 
-                if (haveText) components.Add(new ClearFloatTextComponent(capi, marginTop));
-                components.Add(new RichTextComponent(capi, title + "\n", CairoFont.WhiteSmallText().WithWeight(FontWeight.Bold)));
                 var cmp = new ItemstackTextComponent(capi, collObj.CrushingProps.CrushedStack.ResolvedItemstack, 40, 10, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
                 cmp.ShowStacksize = true;
+                cmp.PaddingLeft = TinyIndent;
                 components.Add(cmp);
                 components.Add(new ClearFloatTextComponent(capi, marginBottom));  //nice margin below the item graphic
-                haveText = true;
             }
 
 
             // Grinds into
             if (collObj.GrindingProps?.GroundStack?.ResolvedItemstack != null && !collObj.GrindingProps.GroundStack.ResolvedItemstack.Equals(capi.World, stack, GlobalConstants.IgnoredStackAttributes))
             {
-                if (haveText) components.Add(new ClearFloatTextComponent(capi, marginTop));
-                components.Add(new RichTextComponent(capi, Lang.Get("Grinds into") + "\n", CairoFont.WhiteSmallText().WithWeight(FontWeight.Bold)));
+                AddHeading(components, capi, "Grinds into", ref haveText);
+
                 var cmp = new ItemstackTextComponent(capi, collObj.GrindingProps.GroundStack.ResolvedItemstack, 40, 10, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
                 cmp.ShowStacksize = true;
+                cmp.PaddingLeft = TinyIndent;
                 components.Add(cmp);
                 components.Add(new ClearFloatTextComponent(capi, marginBottom));  //nice margin below the item graphic
-                haveText = true;
             }
 
             // Juices into
             JuiceableProperties jprops = getjuiceableProps(inSlot.Itemstack);
             if (jprops != null)
             {
-                if (haveText) components.Add(new ClearFloatTextComponent(capi, marginTop));
-                components.Add(new RichTextComponent(capi, Lang.Get("Juices into") + "\n", CairoFont.WhiteSmallText().WithWeight(FontWeight.Bold)));
+                AddHeading(components, capi, "Juices into", ref haveText);
+
                 var jstack = jprops.LiquidStack.ResolvedItemstack.Clone();
                 if (jprops.LitresPerItem != null)
                 {
@@ -505,9 +514,9 @@ namespace Vintagestory.GameContent
                 }
                 var cmp = new ItemstackTextComponent(capi, jstack, 40, 10, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
                 cmp.ShowStacksize = jprops.LitresPerItem != null;
+                cmp.PaddingLeft = TinyIndent;
                 components.Add(cmp);
                 components.Add(new ClearFloatTextComponent(capi, marginBottom));  //nice margin below the item graphic
-                haveText = true;
             }
 
 
@@ -515,41 +524,48 @@ namespace Vintagestory.GameContent
 
             if (props != null)
             {
+                haveText = true;
+                var verticalSpace = new ClearFloatTextComponent(capi, MediumPadding);
+
                 bool addedItemStack = false;
                 foreach (var prop in props)
                 {
                     switch (prop.Type)
                     {
                         case EnumTransitionType.Cure:
-                            if (haveText) components.Add(new ClearFloatTextComponent(capi, marginTop));
-                            haveText = true;
+                            components.Add(verticalSpace);
                             addedItemStack = true;
                             components.Add(new RichTextComponent(capi, Lang.Get("After {0} hours, cures into", prop.TransitionHours.avg) + "\n", CairoFont.WhiteSmallText().WithWeight(FontWeight.Bold)));
-                            components.Add(new ItemstackTextComponent(capi, prop.TransitionedStack.ResolvedItemstack, 40, 10, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs))));
+                            var compc = new ItemstackTextComponent(capi, prop.TransitionedStack.ResolvedItemstack, 40, 10, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
+                            compc.PaddingLeft = TinyIndent;
+                            components.Add(compc);
                             break;
 
                         case EnumTransitionType.Ripen:
-                            if (haveText) components.Add(new ClearFloatTextComponent(capi, marginTop));
-                            haveText = true;
+                            components.Add(verticalSpace);
                             addedItemStack = true;
                             components.Add(new RichTextComponent(capi, Lang.Get("After {0} hours of open storage, ripens into", prop.TransitionHours.avg) + "\n", CairoFont.WhiteSmallText().WithWeight(FontWeight.Bold)));
-                            components.Add(new ItemstackTextComponent(capi, prop.TransitionedStack.ResolvedItemstack, 40, 10, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs))));
+                            var compr = new ItemstackTextComponent(capi, prop.TransitionedStack.ResolvedItemstack, 40, 10, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
+                            compr.PaddingLeft = TinyIndent;
+                            components.Add(compr);
                             break;
 
                         case EnumTransitionType.Dry:
-                            if (haveText) components.Add(new ClearFloatTextComponent(capi, marginTop));
-                            haveText = true;
+                            components.Add(verticalSpace);
                             addedItemStack = true;
                             components.Add(new RichTextComponent(capi, Lang.Get("After {0} hours of open storage, dries into", prop.TransitionHours.avg) + "\n", CairoFont.WhiteSmallText().WithWeight(FontWeight.Bold)));
-                            components.Add(new ItemstackTextComponent(capi, prop.TransitionedStack.ResolvedItemstack, 40, 10, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs))));
+                            var compd = new ItemstackTextComponent(capi, prop.TransitionedStack.ResolvedItemstack, 40, 10, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
+                            compd.PaddingLeft = TinyIndent;
+                            components.Add(compd);
                             break;
 
                         case EnumTransitionType.Melt:
-                            if (haveText) components.Add(new ClearFloatTextComponent(capi, marginTop));
-                            haveText = true;
+                            components.Add(verticalSpace);
                             addedItemStack = true;
                             components.Add(new RichTextComponent(capi, Lang.Get("After {0} hours of open storage, melts into", prop.TransitionHours.avg) + "\n", CairoFont.WhiteSmallText().WithWeight(FontWeight.Bold)));
-                            components.Add(new ItemstackTextComponent(capi, prop.TransitionedStack.ResolvedItemstack, 40, 10, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs))));
+                            var compm = new ItemstackTextComponent(capi, prop.TransitionedStack.ResolvedItemstack, 40, 10, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
+                            compm.PaddingLeft = TinyIndent;
+                            components.Add(compm);
                             break;
 
                         case EnumTransitionType.Convert:
@@ -647,8 +663,8 @@ namespace Vintagestory.GameContent
 
             if (recipestacks.Count > 0)
             {
-                if (haveText) components.Add(new ClearFloatTextComponent(capi, marginTop));
-                components.Add(new RichTextComponent(capi, Lang.Get("Ingredient for") + "\n", CairoFont.WhiteSmallText().WithWeight(FontWeight.Bold)));
+                AddHeading(components, capi, "Ingredient for", ref haveText);
+                components.Add(new ClearFloatTextComponent(capi, TinyPadding));
 
                 while (recipestacks.Count > 0)
                 {
@@ -660,7 +676,7 @@ namespace Vintagestory.GameContent
                     components.Add(comp);
                 }
 
-                haveText = true;
+                components.Add(new ClearFloatTextComponent(capi, MarginBottom));
             }
 
             return haveText;
@@ -804,80 +820,7 @@ namespace Vintagestory.GameContent
             }
 
 
-            List<RichTextComponentBase> barrelRecipestext = new List<RichTextComponentBase>();
-            Dictionary<string, List<BarrelRecipe>> brecipesbyCode = new Dictionary<string, List<BarrelRecipe>>();
-            foreach (var recipe in capi.GetBarrelRecipes())
-            {
-                ItemStack mixdStack = recipe.Output.ResolvedItemstack;
-
-                if (mixdStack != null && mixdStack.Equals(capi.World, stack, GlobalConstants.IgnoredStackAttributes))
-                {
-                    List<BarrelRecipe> tmp;
-
-                    if (!brecipesbyCode.TryGetValue(recipe.Code, out tmp))
-                    {
-                        brecipesbyCode[recipe.Code] = tmp = new List<BarrelRecipe>();
-                    }
-
-                    tmp.Add(recipe);
-                }
-            }
-
-
-
-            foreach (var recipes in brecipesbyCode.Values)
-            {
-                int ingredientsLen = recipes[0].Ingredients.Length;
-                ItemStack[][] ingstacks = new ItemStack[ingredientsLen][];
-                ItemStack[] outstacks = new ItemStack[recipes.Count];
-
-                for (int i = 0; i < recipes.Count; i++)
-                {
-                    if (recipes[i].Ingredients.Length != ingredientsLen)
-                    {
-                        throw new Exception("Barrel recipe with same name but different ingredient count! Sorry, this is not supported right now. Please make sure you choose different barrel recipe names if you have different ingredient counts.");
-                    }
-
-                    for (int j = 0; j < ingredientsLen; j++)
-                    {
-                        if (i == 0)
-                        {
-                            ingstacks[j] = new ItemStack[recipes.Count];
-                        }
-
-                        ingstacks[j][i] = recipes[i].Ingredients[j].ResolvedItemstack;
-                    }
-
-                    outstacks[i] = recipes[i].Output.ResolvedItemstack;
-                }
-
-                for (int i = 0; i < ingredientsLen; i++)
-                {
-                    if (i > 0)
-                    {
-                        RichTextComponent cmp = new RichTextComponent(capi, " + ", CairoFont.WhiteMediumText());
-                        cmp.VerticalAlign = EnumVerticalAlign.Middle;
-                        barrelRecipestext.Add(cmp);
-                    }
-
-                    SlideshowItemstackTextComponent scmp = new SlideshowItemstackTextComponent(capi, ingstacks[i], 40, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
-                    scmp.ShowStackSize = true;
-                    barrelRecipestext.Add(scmp);
-                }
-
-                var eqcomp = new RichTextComponent(capi, " = ", CairoFont.WhiteMediumText());
-                eqcomp.VerticalAlign = EnumVerticalAlign.Middle;
-                barrelRecipestext.Add(eqcomp);
-                var ocmp = new SlideshowItemstackTextComponent(capi, outstacks, 40, EnumFloat.Inline);
-
-                ocmp.ShowStackSize = true;
-                barrelRecipestext.Add(ocmp);
-
-                barrelRecipestext.Add(new ClearFloatTextComponent(capi, 10));
-            }
-
-
-
+            List<RichTextComponentBase> barrelRecipestext = BuildBarrelRecipesText(capi, stack, openDetailPageFor);
 
 
             string customCreatedBy = stack.Collectible.Attributes?["handbook"]?["createdBy"]?.AsString(null);
@@ -885,41 +828,46 @@ namespace Vintagestory.GameContent
 
             if (grecipes.Count > 0 || smithable || knappable || clayformable || customCreatedBy != null || bakables.Count > 0 || barrelRecipestext.Count > 0 || grindables.Count > 0 || curables.Count > 0 || ripenables.Count > 0 || dryables.Count > 0 || meltables.Count > 0 || crushables.Count > 0 || bakingInitialIngredient != null || juiceables.Count > 0)
             {
-                if (haveText) components.Add(new ClearFloatTextComponent(capi, marginTop));
-                haveText = true;
-                components.Add(new RichTextComponent(capi, Lang.Get("Created by") + "\n", CairoFont.WhiteSmallText().WithWeight(FontWeight.Bold)));
+                AddHeading(components, capi, "Created by", ref haveText);
 
+                var verticalSpaceSmall = new ClearFloatTextComponent(capi, SmallPadding);
+                var verticalSpace = new ClearFloatTextComponent(capi, TinyPadding + 1);   // The first bullet point has a smaller space than any later ones
 
                 if (smithable)
                 {
-                    components.Add(new ClearFloatTextComponent(capi, marginTop));
-                    components.Add(new RichTextComponent(capi, "• ", CairoFont.WhiteSmallText()));
-                    components.Add(new LinkTextComponent(capi, Lang.Get("Smithing") + "\n", CairoFont.WhiteSmallText(), (cs) => { openDetailPageFor("craftinginfo-smithing"); }));
+                    components.Add(verticalSpace);
+                    verticalSpace = verticalSpaceSmall;
+                    AddSubHeading(components, capi, openDetailPageFor, "Smithing", "craftinginfo-smithing");
                 }
                 if (knappable)
                 {
-                    components.Add(new ClearFloatTextComponent(capi, marginTop));
-                    components.Add(new RichTextComponent(capi, "• ", CairoFont.WhiteSmallText()));
-                    components.Add(new LinkTextComponent(capi, Lang.Get("Knapping") + "\n", CairoFont.WhiteSmallText(), (cs) => { openDetailPageFor("craftinginfo-knapping"); }));
+                    components.Add(verticalSpace);
+                    verticalSpace = verticalSpaceSmall;
+                    AddSubHeading(components, capi, openDetailPageFor, "Knapping", "craftinginfo-knapping");
                 }
                 if (clayformable)
                 {
-                    components.Add(new ClearFloatTextComponent(capi, marginTop));
-                    components.Add(new RichTextComponent(capi, "• ", CairoFont.WhiteSmallText()));
-                    components.Add(new LinkTextComponent(capi, Lang.Get("Clay forming") + "\n", CairoFont.WhiteSmallText(), (cs) => { openDetailPageFor("craftinginfo-clayforming"); }));
+                    components.Add(verticalSpace);
+                    verticalSpace = verticalSpaceSmall;
+                    AddSubHeading(components, capi, openDetailPageFor, "Clay forming", "craftinginfo-clayforming");
                 }
                 if (customCreatedBy != null)
                 {
-                    components.Add(new ClearFloatTextComponent(capi, marginTop));
-                    components.Add(new RichTextComponent(capi, "• ", CairoFont.WhiteSmallText()));
+                    components.Add(verticalSpace);
+                    verticalSpace = verticalSpaceSmall;
+                    var comp = new RichTextComponent(capi, "• ", CairoFont.WhiteSmallText());
+                    comp.PaddingLeft = TinyIndent;
+                    components.Add(comp);
                     components.AddRange(VtmlUtil.Richtextify(capi, Lang.Get(customCreatedBy) + "\n", CairoFont.WhiteSmallText()));
                 }
 
                 if (grindables.Count > 0)
                 {
-                    components.Add(new ClearFloatTextComponent(capi, marginTop));
-                    components.Add(new RichTextComponent(capi, "• " + Lang.Get("Grinding") + "\n", CairoFont.WhiteSmallText()));
+                    components.Add(verticalSpace);
+                    verticalSpace = verticalSpaceSmall;
+                    AddSubHeading(components, capi, openDetailPageFor, "Grinding", null);
 
+                    int firstPadding = TinyPadding;
                     while (grindables.Count > 0)
                     {
                         ItemStack dstack = grindables[0];
@@ -928,17 +876,21 @@ namespace Vintagestory.GameContent
 
                         SlideshowItemstackTextComponent comp = new SlideshowItemstackTextComponent(capi, dstack, grindables, 40, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
                         comp.ShowStackSize = true;
+                        comp.PaddingLeft = firstPadding;
+                        firstPadding = 0;
                         components.Add(comp);
                     }
 
-                    components.Add(new RichTextComponent(capi, "\n", CairoFont.WhiteSmallText().WithWeight(FontWeight.Bold)));
+                    components.Add(new RichTextComponent(capi, "\n", CairoFont.WhiteSmallText()));
                 }
 
                 if (crushables.Count > 0)
                 {
-                    components.Add(new ClearFloatTextComponent(capi, marginTop));
-                    components.Add(new RichTextComponent(capi, "• " + Lang.Get("Crushing") + "\n", CairoFont.WhiteSmallText()));
+                    components.Add(verticalSpace);
+                    verticalSpace = verticalSpaceSmall;
+                    AddSubHeading(components, capi, openDetailPageFor, "Crushing", null);
 
+                    int firstPadding = TinyPadding;
                     while (crushables.Count > 0)
                     {
                         ItemStack dstack = crushables[0];
@@ -947,18 +899,22 @@ namespace Vintagestory.GameContent
 
                         SlideshowItemstackTextComponent comp = new SlideshowItemstackTextComponent(capi, dstack, crushables, 40, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
                         comp.ShowStackSize = true;
+                        comp.PaddingLeft = firstPadding;
+                        firstPadding = 0;
                         components.Add(comp);
                     }
 
-                    components.Add(new RichTextComponent(capi, "\n", CairoFont.WhiteSmallText().WithWeight(FontWeight.Bold)));
+                    components.Add(new RichTextComponent(capi, "\n", CairoFont.WhiteSmallText()));
                 }
 
 
                 if (curables.Count > 0)
                 {
-                    components.Add(new ClearFloatTextComponent(capi, marginTop));
-                    components.Add(new RichTextComponent(capi, "• " + Lang.Get("Curing") + "\n", CairoFont.WhiteSmallText()));
+                    components.Add(verticalSpace);
+                    verticalSpace = verticalSpaceSmall;
+                    AddSubHeading(components, capi, openDetailPageFor, "Curing", null);
 
+                    int firstPadding = TinyPadding;
                     while (curables.Count > 0)
                     {
                         ItemStack dstack = curables[0];
@@ -966,6 +922,8 @@ namespace Vintagestory.GameContent
                         if (dstack == null) continue;
 
                         SlideshowItemstackTextComponent comp = new SlideshowItemstackTextComponent(capi, dstack, curables, 40, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
+                        comp.PaddingLeft = firstPadding;
+                        firstPadding = 0;
                         components.Add(comp);
                     }
                 }
@@ -974,9 +932,11 @@ namespace Vintagestory.GameContent
 
                 if (ripenables.Count > 0)
                 {
-                    components.Add(new ClearFloatTextComponent(capi, marginTop));
-                    components.Add(new RichTextComponent(capi, "• " + Lang.Get("Ripening") + "\n", CairoFont.WhiteSmallText()));
+                    components.Add(verticalSpace);
+                    verticalSpace = verticalSpaceSmall;
+                    AddSubHeading(components, capi, openDetailPageFor, "Ripening", null);
 
+                    int firstPadding = TinyPadding;
                     while (ripenables.Count > 0)
                     {
                         ItemStack dstack = ripenables[0];
@@ -984,6 +944,8 @@ namespace Vintagestory.GameContent
                         if (dstack == null) continue;
 
                         SlideshowItemstackTextComponent comp = new SlideshowItemstackTextComponent(capi, dstack, ripenables, 40, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
+                        comp.PaddingLeft = firstPadding;
+                        firstPadding = 0;
                         components.Add(comp);
                     }
 
@@ -992,9 +954,11 @@ namespace Vintagestory.GameContent
 
                 if (dryables.Count > 0)
                 {
-                    components.Add(new ClearFloatTextComponent(capi, marginTop));
-                    components.Add(new RichTextComponent(capi, "• " + Lang.Get("Drying") + "\n", CairoFont.WhiteSmallText()));
+                    components.Add(verticalSpace);
+                    verticalSpace = verticalSpaceSmall;
+                    AddSubHeading(components, capi, openDetailPageFor, "Drying", null);
 
+                    int firstPadding = TinyPadding;
                     while (dryables.Count > 0)
                     {
                         ItemStack dstack = dryables[0];
@@ -1002,6 +966,8 @@ namespace Vintagestory.GameContent
                         if (dstack == null) continue;
 
                         SlideshowItemstackTextComponent comp = new SlideshowItemstackTextComponent(capi, dstack, dryables, 40, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
+                        comp.PaddingLeft = firstPadding;
+                        firstPadding = 0;
                         components.Add(comp);
                     }
 
@@ -1010,9 +976,11 @@ namespace Vintagestory.GameContent
 
                 if (meltables.Count > 0)
                 {
-                    components.Add(new ClearFloatTextComponent(capi, marginTop));
-                    components.Add(new RichTextComponent(capi, "• " + Lang.Get("Melting") + "\n", CairoFont.WhiteSmallText()));
+                    components.Add(verticalSpace);
+                    verticalSpace = verticalSpaceSmall;
+                    AddSubHeading(components, capi, openDetailPageFor, "Melting", null);
 
+                    int firstPadding = TinyPadding;
                     while (meltables.Count > 0)
                     {
                         ItemStack dstack = meltables[0];
@@ -1020,6 +988,8 @@ namespace Vintagestory.GameContent
                         if (dstack == null) continue;
 
                         SlideshowItemstackTextComponent comp = new SlideshowItemstackTextComponent(capi, dstack, meltables, 40, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
+                        comp.PaddingLeft = firstPadding;
+                        firstPadding = 0;
                         components.Add(comp);
                     }
 
@@ -1028,9 +998,11 @@ namespace Vintagestory.GameContent
 
                 if (bakables.Count > 0)
                 {
-                    components.Add(new ClearFloatTextComponent(capi, marginTop));
-                    components.Add(new RichTextComponent(capi, "• " + Lang.Get("Cooking/Smelting/Baking") + "\n", CairoFont.WhiteSmallText()));
+                    components.Add(verticalSpace);
+                    verticalSpace = verticalSpaceSmall;
+                    AddSubHeading(components, capi, openDetailPageFor, "Cooking/Smelting/Baking", null);
 
+                    int firstPadding = TinyPadding;
                     while (bakables.Count > 0)
                     {
                         ItemStack dstack = bakables[0];
@@ -1038,7 +1010,9 @@ namespace Vintagestory.GameContent
                         if (dstack == null) continue;
 
                         SlideshowItemstackTextComponent comp = new SlideshowItemstackTextComponent(capi, dstack, bakables, 40, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
-                        comp.ShowStackSize = true;
+                        //comp.ShowStackSize = true;   // We don't want to show the stacksize, as the bakables were collected from allStacks and each has stackSize == maxStackSize
+                        comp.PaddingLeft = firstPadding;
+                        firstPadding = 0;
                         components.Add(comp);
                     }
 
@@ -1047,9 +1021,11 @@ namespace Vintagestory.GameContent
 
                 if (juiceables.Count > 0)
                 {
-                    components.Add(new ClearFloatTextComponent(capi, marginTop));
-                    components.Add(new RichTextComponent(capi, "• " + Lang.Get("Juicing") + "\n", CairoFont.WhiteSmallText()));
+                    components.Add(verticalSpace);
+                    verticalSpace = verticalSpaceSmall;
+                    AddSubHeading(components, capi, openDetailPageFor, "Juicing", null);
 
+                    int firstPadding = TinyPadding;
                     while (juiceables.Count > 0)
                     {
                         ItemStack dstack = juiceables[0];
@@ -1057,6 +1033,8 @@ namespace Vintagestory.GameContent
                         if (dstack == null) continue;
 
                         SlideshowItemstackTextComponent comp = new SlideshowItemstackTextComponent(capi, dstack, bakables, 40, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
+                        comp.PaddingLeft = firstPadding;
+                        firstPadding = 0;
                         components.Add(comp);
                     }
 
@@ -1066,18 +1044,22 @@ namespace Vintagestory.GameContent
 
                 if (bakingInitialIngredient != null)
                 {
-                    components.Add(new ClearFloatTextComponent(capi, marginTop));
-                    components.Add(new RichTextComponent(capi, "• " + Lang.Get("Baking (in oven)") + "\n", CairoFont.WhiteSmallText()));
+                    components.Add(verticalSpace);
+                    verticalSpace = verticalSpaceSmall;
+                    AddSubHeading(components, capi, openDetailPageFor, "Baking (in oven)", null);
                     CollectibleObject cobj = capi.World.GetItem(new AssetLocation(bakingInitialIngredient));
                     if (cobj == null) cobj = capi.World.GetBlock(new AssetLocation(bakingInitialIngredient));
 
-                    components.Add(new ItemstackTextComponent(capi, new ItemStack(cobj), 40, 10, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs))));
+                    var comp = new ItemstackTextComponent(capi, new ItemStack(cobj), 40, 10, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
+                    comp.PaddingLeft = TinyIndent;
+                    components.Add(comp);
                 }
 
                 if (grecipes.Count > 0)
                 {
-                    components.Add(new ClearFloatTextComponent(capi, marginTop));
-                    components.Add(new RichTextComponent(capi, "• " + Lang.Get("Crafting") + "\n", CairoFont.WhiteSmallText()));
+                    components.Add(verticalSpace);
+                    verticalSpace = verticalSpaceSmall;
+                    AddSubHeading(components, capi, openDetailPageFor, "Crafting", null);
 
                     OrderedDictionary<int, List<GridRecipe>> grouped = new OrderedDictionary<int, List<GridRecipe>>();
 
@@ -1113,32 +1095,41 @@ namespace Vintagestory.GameContent
                         outputStacks[i++] = recipe.Output.ResolvedItemstack;
                     }
 
+                    int j = 0;
                     foreach (var val in grouped)
                     {
+                        if (j++ % 2 == 0) components.Add(verticalSpaceSmall);    // Reset the component model with a small vertical element every 2nd grid recipe, otherwise horizontal aligment gets messed up
+
                         var comp = new SlideshowGridRecipeTextComponent(capi, val.Value.ToArray(), 40, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)), allStacks);
                         comp.VerticalAlign = EnumVerticalAlign.Top;
                         comp.PaddingRight = 8;
                         comp.UnscaledMarginTop = 8;
+                        comp.PaddingLeft = TinyPadding * 2 + (1 - j % 2) * 20;   // Add horizontal padding for every 2nd grid (i.e. the right hand side one when drawn)
 
                         components.Add(comp);
 
                         var ecomp = new RichTextComponent(capi, "=", CairoFont.WhiteMediumText());
-                        ecomp.VerticalAlign = EnumVerticalAlign.Middle;
+                        ecomp.VerticalAlign = EnumVerticalAlign.FixedOffset;
+                        ecomp.UnscaledMarginTop = 51;
+                        ecomp.PaddingRight = 5;
                         var ocomp = new SlideshowItemstackTextComponent(capi, outputStacks, 40, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
                         ocomp.overrideCurrentItemStack = () => comp.CurrentVisibleRecipe.Recipe.Output.ResolvedItemstack;
-                        ocomp.VerticalAlign = EnumVerticalAlign.Middle;
+                        ocomp.VerticalAlign = EnumVerticalAlign.FixedOffset;
+                        ocomp.UnscaledMarginTop = 50;
                         ocomp.ShowStackSize = true;
 
                         components.Add(ecomp);
                         components.Add(ocomp);
                     }
-                }
 
+                    components.Add(new ClearFloatTextComponent(capi, MarginBottom));  //nice margin below the grid graphic
+                }
 
                 if (barrelRecipestext.Count > 0)
                 {
-                    components.Add(new ClearFloatTextComponent(capi, marginTop));
-                    components.Add(new RichTextComponent(capi, "• " + Lang.Get("Mixing (in Barrel)") + "\n", CairoFont.WhiteSmallText()));
+                    components.Add(verticalSpace);
+                    verticalSpace = verticalSpaceSmall;
+                    AddSubHeading(components, capi, openDetailPageFor, "Mixing (in Barrel)", null);
                     components.AddRange(barrelRecipestext);
                 }
             }
@@ -1146,45 +1137,162 @@ namespace Vintagestory.GameContent
             return haveText;
         }
 
+        protected static void AddHeading(List<RichTextComponentBase> components, ICoreClientAPI capi, string heading, ref bool haveText)
+        {
+            if (haveText) components.Add(new ClearFloatTextComponent(capi, MediumPadding));
+            haveText = true;
+            var headc = new RichTextComponent(capi, Lang.Get(heading) + "\n", CairoFont.WhiteSmallText().WithWeight(FontWeight.Bold));
+            components.Add(headc);
+        }
+
+        protected void AddSubHeading(List<RichTextComponentBase> components, ICoreClientAPI capi, ActionConsumable<string> openDetailPageFor, string subheading, string detailpage)
+        {
+            if (detailpage == null)
+            {
+                var bullet = new RichTextComponent(capi, "• " + Lang.Get(subheading) + "\n", CairoFont.WhiteSmallText());
+                bullet.PaddingLeft = TinyIndent;
+                components.Add(bullet);
+            }
+            else
+            {
+                var bullet = new RichTextComponent(capi, "• ", CairoFont.WhiteSmallText());
+                bullet.PaddingLeft = TinyIndent;
+                components.Add(bullet);
+                components.Add(new LinkTextComponent(capi, Lang.Get(subheading) + "\n", CairoFont.WhiteSmallText(), (cs) => { openDetailPageFor(detailpage); }));
+            }
+        }
+
         protected void addExtraSections(ICoreClientAPI capi, ItemStack stack, List<RichTextComponentBase> components, float marginTop)
         {
-            if (ExtraHandBookSections != null)
+            if (ExtraHandBookSections != null)   // For example, Sold by trader
             {
+                bool haveText = true;
                 for (int i = 0; i < ExtraHandBookSections.Length; i++)
                 {
-                    components.Add(new ClearFloatTextComponent(capi, 16));
-                    components.Add(new RichTextComponent(capi, Lang.Get(ExtraHandBookSections[i].Title) + "\n", CairoFont.WhiteSmallText().WithWeight(FontWeight.Bold)));
+                    ExtraHandbookSection extraSection = ExtraHandBookSections[i];
+                    AddHeading(components, capi, extraSection.Title, ref haveText);
+                    components.Add(new ClearFloatTextComponent(capi, TinyPadding));
 
-                    if (ExtraHandBookSections[i].TextParts != null)
+                    var spacer = new RichTextComponent(capi, "", CairoFont.WhiteSmallText());
+                    spacer.PaddingLeft = TinyIndent;
+                    components.Add(spacer);
+
+                    if (extraSection.TextParts != null)
                     {
-                        components.AddRange(VtmlUtil.Richtextify(capi, string.Join(", ", ExtraHandBookSections[i].TextParts) + "\n", CairoFont.WhiteSmallText()));
+                        components.AddRange(VtmlUtil.Richtextify(capi, string.Join(", ", extraSection.TextParts) + "\n", CairoFont.WhiteSmallText()));
                     }
                     else
                     {
-                        components.AddRange(VtmlUtil.Richtextify(capi, Lang.Get(ExtraHandBookSections[i].Text) + "\n", CairoFont.WhiteSmallText()));
+                        components.AddRange(VtmlUtil.Richtextify(capi, Lang.Get(extraSection.Text) + "\n", CairoFont.WhiteSmallText()));
                     }
 
                 }
             }
 
-            string type = stack.Class.Name();
+            string domainAndType = collObj.Code.Domain + ":" + stack.Class.Name();
             string code = collObj.Code.ToShortString();
-            string langExtraSectionTitle = Lang.GetMatchingIfExists(collObj.Code.Domain + ":" + type + "-handbooktitle-" + code);
-            string langExtraSectionText = Lang.GetMatchingIfExists(collObj.Code.Domain + ":" + type + "-handbooktext-" + code);
+            string langExtraSectionTitle = Lang.GetMatchingIfExists(domainAndType + "-handbooktitle-" + code);
+            string langExtraSectionText = Lang.GetMatchingIfExists(domainAndType + "-handbooktext-" + code);
 
             if (langExtraSectionTitle != null || langExtraSectionText != null)
             {
-                components.Add(new ClearFloatTextComponent(capi, marginTop * 4));
+                components.Add(new ClearFloatTextComponent(capi, MediumPadding));
+
                 if (langExtraSectionTitle != null)
                 {
                     components.Add(new RichTextComponent(capi, langExtraSectionTitle + "\n", CairoFont.WhiteSmallText().WithWeight(FontWeight.Bold)));
-                    components.Add(new ClearFloatTextComponent(capi, marginTop));
+                    components.Add(new ClearFloatTextComponent(capi, TinyPadding));
                 }
                 if (langExtraSectionText != null)
                 {
+                    var spacer = new RichTextComponent(capi, "", CairoFont.WhiteSmallText());
+                    spacer.PaddingLeft = TinyIndent;
+                    components.Add(spacer);
                     components.AddRange(VtmlUtil.Richtextify(capi, langExtraSectionText + "\n", CairoFont.WhiteSmallText()));
                 }
             }
+        }
+
+        protected List<RichTextComponentBase> BuildBarrelRecipesText(ICoreClientAPI capi, ItemStack stack, ActionConsumable<string> openDetailPageFor)
+        {
+            List<RichTextComponentBase> barrelRecipesTexts = new List<RichTextComponentBase>();
+
+            List<BarrelRecipe> barrelRecipes = capi.GetBarrelRecipes();
+            if (barrelRecipes.Count == 0) return barrelRecipesTexts;
+
+            Dictionary<string, List<BarrelRecipe>> brecipesbyCode = new Dictionary<string, List<BarrelRecipe>>();
+            foreach (var recipe in barrelRecipes)
+            {
+                ItemStack mixdStack = recipe.Output.ResolvedItemstack;
+
+                if (mixdStack != null && mixdStack.Equals(capi.World, stack, GlobalConstants.IgnoredStackAttributes))
+                {
+                    List<BarrelRecipe> tmp;
+
+                    if (!brecipesbyCode.TryGetValue(recipe.Code, out tmp))
+                    {
+                        brecipesbyCode[recipe.Code] = tmp = new List<BarrelRecipe>();
+                    }
+
+                    tmp.Add(recipe);
+                }
+            }
+
+            foreach (var recipes in brecipesbyCode.Values)
+            {
+                int ingredientsLen = recipes[0].Ingredients.Length;
+                ItemStack[][] ingstacks = new ItemStack[ingredientsLen][];
+                ItemStack[] outstacks = new ItemStack[recipes.Count];
+
+                for (int i = 0; i < recipes.Count; i++)
+                {
+                    if (recipes[i].Ingredients.Length != ingredientsLen)
+                    {
+                        throw new Exception("Barrel recipe with same name but different ingredient count! Sorry, this is not supported right now. Please make sure you choose different barrel recipe names if you have different ingredient counts.");
+                    }
+
+                    for (int j = 0; j < ingredientsLen; j++)
+                    {
+                        if (i == 0)
+                        {
+                            ingstacks[j] = new ItemStack[recipes.Count];
+                        }
+
+                        ingstacks[j][i] = recipes[i].Ingredients[j].ResolvedItemstack;
+                    }
+
+                    outstacks[i] = recipes[i].Output.ResolvedItemstack;
+                }
+
+                int firstIndent = TinyIndent;
+                for (int i = 0; i < ingredientsLen; i++)
+                {
+                    if (i > 0)
+                    {
+                        RichTextComponent cmp = new RichTextComponent(capi, " + ", CairoFont.WhiteMediumText());
+                        cmp.VerticalAlign = EnumVerticalAlign.Middle;
+                        barrelRecipesTexts.Add(cmp);
+                    }
+
+                    SlideshowItemstackTextComponent scmp = new SlideshowItemstackTextComponent(capi, ingstacks[i], 40, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
+                    scmp.ShowStackSize = true;
+                    scmp.PaddingLeft = firstIndent;
+                    firstIndent = 0;
+                    barrelRecipesTexts.Add(scmp);
+                }
+
+                var eqcomp = new RichTextComponent(capi, " = ", CairoFont.WhiteMediumText());
+                eqcomp.VerticalAlign = EnumVerticalAlign.Middle;
+                barrelRecipesTexts.Add(eqcomp);
+                var ocmp = new SlideshowItemstackTextComponent(capi, outstacks, 40, EnumFloat.Inline);
+
+                ocmp.ShowStackSize = true;
+                barrelRecipesTexts.Add(ocmp);
+
+                barrelRecipesTexts.Add(new ClearFloatTextComponent(capi, 10));
+            }
+
+            return barrelRecipesTexts;
         }
 
         protected void addStorableInfo(ICoreClientAPI capi, ItemStack stack, List<RichTextComponentBase> components, float marginTop)
@@ -1194,41 +1302,44 @@ namespace Vintagestory.GameContent
 
             if (stack.ItemAttributes?.IsTrue("moldrackable") == true)
             {
-                storableComps.Add(new ClearFloatTextComponent(capi, marginTop));
-                storableComps.AddRange(VtmlUtil.Richtextify(capi, Lang.Get("handbook-storable-moldrack"), CairoFont.WhiteSmallText()));
+                AddPaddingAndRichText(storableComps, capi, "handbook-storable-moldrack");
             }
             if (stack.ItemAttributes?.IsTrue("shelvable") == true)
             {
-                storableComps.Add(new ClearFloatTextComponent(capi, marginTop));
-                storableComps.AddRange(VtmlUtil.Richtextify(capi, Lang.Get("handbook-storable-shelves"), CairoFont.WhiteSmallText()));
+                AddPaddingAndRichText(storableComps, capi, "handbook-storable-shelves");
             }
             if (stack.ItemAttributes?.IsTrue("displaycaseable") == true)
             {
-                storableComps.Add(new ClearFloatTextComponent(capi, marginTop));
-                storableComps.AddRange(VtmlUtil.Richtextify(capi, Lang.Get("handbook-storable-displaycase"), CairoFont.WhiteSmallText()));
+                AddPaddingAndRichText(storableComps, capi, "handbook-storable-displaycase");
             }
             if (stack.Collectible.Tool != null || stack.ItemAttributes?["rackable"].AsBool() == true)
             {
-                storableComps.Add(new ClearFloatTextComponent(capi, marginTop));
-                storableComps.AddRange(VtmlUtil.Richtextify(capi, Lang.Get("handbook-storable-toolrack"), CairoFont.WhiteSmallText()));
+                AddPaddingAndRichText(storableComps, capi, "handbook-storable-toolrack");
             }
             if (stack.Collectible.HasBehavior<CollectibleBehaviorGroundStorable>())
             {
-                storableComps.Add(new ClearFloatTextComponent(capi, marginTop));
-                storableComps.AddRange(VtmlUtil.Richtextify(capi, Lang.Get("handbook-storable-ground"), CairoFont.WhiteSmallText()));
+                AddPaddingAndRichText(storableComps, capi, "handbook-storable-ground");
             }
             if (stack.ItemAttributes?["waterTightContainerProps"].Exists == true)
             {
-                storableComps.Add(new ClearFloatTextComponent(capi, marginTop));
-                storableComps.AddRange(VtmlUtil.Richtextify(capi, Lang.Get("handbook-storable-barrel"), CairoFont.WhiteSmallText()));
+                AddPaddingAndRichText(storableComps, capi, "handbook-storable-barrel");
             }
 
             if (storableComps.Count > 0)
             {
-                components.Add(new ClearFloatTextComponent(capi, marginTop));
-                components.Add(new RichTextComponent(capi, Lang.Get("Storable in/on") + "\n", CairoFont.WhiteSmallText().WithWeight(FontWeight.Bold)));
+                bool haveText = components.Count > 0;
+                AddHeading(components, capi, "Storable in/on", ref haveText);
                 components.AddRange(storableComps);
             }
+        }
+
+        private void AddPaddingAndRichText(List<RichTextComponentBase> storableComps, ICoreClientAPI capi, string text)
+        {
+            storableComps.Add(new ClearFloatTextComponent(capi, TinyPadding));
+            var spacer = new RichTextComponent(capi, "", CairoFont.WhiteSmallText());
+            spacer.PaddingLeft = TinyIndent;
+            storableComps.Add(spacer);
+            storableComps.AddRange(VtmlUtil.Richtextify(capi, Lang.Get(text), CairoFont.WhiteSmallText()));
         }
 
         public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)

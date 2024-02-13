@@ -163,8 +163,8 @@ namespace Vintagestory.GameContent
             MeshData recipeOutlineMesh = new MeshData(24, 36, false, false, true, false);
             recipeOutlineMesh.SetMode(EnumDrawMode.Lines);
 
-            int greenCol = (170 << 24) | (100 << 16) | (200 << 8) | (100);
-            int orangeCol = (220 << 24) | (75 << 16) | (0 << 8) | (47);
+            int greenCol = api.ColorPreset.GetColor("anvilColorGreen");
+            int orangeCol = api.ColorPreset.GetColor("anvilColorRed");
             MeshData greenVoxelMesh = LineMeshUtil.GetCube(greenCol);
             MeshData orangeVoxelMesh = LineMeshUtil.GetCube(orangeCol);
             for (int i = 0; i < greenVoxelMesh.xyz.Length; i++)

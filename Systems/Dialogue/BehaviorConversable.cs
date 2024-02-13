@@ -53,12 +53,6 @@ namespace Vintagestory.GameContent
                 return controller;
             } else
             {
-                if (GameVersion.IsLowerVersionThan(GameVersion.ShortGameVersion, "1.18.0"))
-                {
-                    // Temporary during testing, reload assets on dialog open
-                    world.Api.Assets.Reload(AssetCategory.config);
-                }
-
                 dialogue = loadDialogue(dialogueLoc, player);
 
                 controller = ControllerByPlayer[player.PlayerUID] = new DialogueController(world.Api, player, entity as EntityAgent, dialogue);
