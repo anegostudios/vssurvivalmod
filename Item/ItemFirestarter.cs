@@ -159,7 +159,7 @@ namespace Vintagestory.GameContent
 
         public override WorldInteraction[] GetHeldInteractionHelp(ItemSlot inSlot)
         {
-            return new WorldInteraction[]
+            WorldInteraction[] interactions = new WorldInteraction[]
             {
                 new WorldInteraction
                 {
@@ -168,6 +168,8 @@ namespace Vintagestory.GameContent
                     MouseButton = EnumMouseButton.Right
                 }
             };
+
+            return base.GetHeldInteractionHelp(inSlot).Append(interactions);
         }
 
     }
