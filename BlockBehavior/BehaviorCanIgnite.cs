@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -190,7 +191,7 @@ namespace Vintagestory.GameContent
 
         public override WorldInteraction[] GetHeldInteractionHelp(ItemSlot inSlot, ref EnumHandling handling)
         {
-            return new WorldInteraction[]
+            WorldInteraction[] interactions = new WorldInteraction[]
             {
                 new WorldInteraction
                 {
@@ -199,6 +200,8 @@ namespace Vintagestory.GameContent
                     MouseButton = EnumMouseButton.Right
                 }
             };
+
+            return base.GetHeldInteractionHelp(inSlot, ref handling).Append(interactions);
         }
 
     }
