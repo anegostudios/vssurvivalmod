@@ -148,6 +148,10 @@ namespace Vintagestory.GameContent
 
             MeshData voxelMeshOffset = singleVoxelMesh.Clone();
 
+            int textureAtlasWidth = api.BlockTextureAtlas.Size.Width;
+            int textureAtlasHeight = api.BlockTextureAtlas.Size.Height;
+            float[] singleVoxelXYZ = singleVoxelMesh.xyz;
+            float[] voxelMeshOffsetXYZ = voxelMeshOffset.xyz;
             for (int x = 0; x < 16; x++)
             {
                 for (int y = 0; y < 16; y++)
@@ -160,15 +164,15 @@ namespace Vintagestory.GameContent
                         float py = y / 16f;
                         float pz = z / 16f;
 
-                        for (int i = 0; i < singleVoxelMesh.xyz.Length; i += 3)
+                        for (int i = 0; i < singleVoxelXYZ.Length; i += 3)
                         {
-                            voxelMeshOffset.xyz[i] = px + singleVoxelMesh.xyz[i];
-                            voxelMeshOffset.xyz[i + 1] = py + singleVoxelMesh.xyz[i + 1];
-                            voxelMeshOffset.xyz[i + 2] = pz + singleVoxelMesh.xyz[i + 2];
+                            voxelMeshOffsetXYZ[i] = px + singleVoxelXYZ[i];
+                            voxelMeshOffsetXYZ[i + 1] = py + singleVoxelXYZ[i + 1];
+                            voxelMeshOffsetXYZ[i + 2] = pz + singleVoxelXYZ[i + 2];
                         }
 
-                        float offsetX = ((((x+4*y) % 16f / 16f)) * 32f) / api.BlockTextureAtlas.Size.Width;
-                        float offsetY = (pz * 32f) / api.BlockTextureAtlas.Size.Height;
+                        float offsetX = ((((x+4*y) % 16f / 16f)) * 32f) / textureAtlasWidth;
+                        float offsetY = (pz * 32f) / textureAtlasHeight;
 
                         for (int i = 0; i < singleVoxelMesh.Uv.Length; i += 2)
                         {

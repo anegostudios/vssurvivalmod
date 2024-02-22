@@ -17,6 +17,9 @@ namespace Vintagestory.GameContent
         public bool handopenable;
         public bool airtight;
         ICoreAPI api;
+        public MeshData animatableOrigMesh;
+        public Shape animatableShape;
+        public string animatableDictKey;
 
         public BlockBehaviorDoor(Block block) : base(block)
         {

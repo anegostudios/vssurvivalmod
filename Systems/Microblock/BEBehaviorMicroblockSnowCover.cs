@@ -65,7 +65,7 @@ namespace Vintagestory.GameContent
 
         CuboidWithMaterial[] aboveCuboids = null;
 
-        void buildSnowCuboids(bool[,,] Voxels)
+        void buildSnowCuboids(BoolArray16x16x16 Voxels)
         {
             List<uint> snowCuboids = new List<uint>();
             List<uint> groundSnowCuboids = new List<uint>();
@@ -161,7 +161,7 @@ namespace Vintagestory.GameContent
 
         private void GenSnowMesh()
         {
-            bool[,,] Voxels;
+            BoolArray16x16x16 Voxels;
             byte[,,] VoxelMaterial;
             if (beMicroBlock != null)
             {
@@ -189,7 +189,7 @@ namespace Vintagestory.GameContent
 
         #region Snowgrow
 
-        protected bool TrySnowableSurfaceGrowX(CuboidWithMaterial cub, bool[,,] voxels, bool[,] voxelVisited, bool ground)
+        protected bool TrySnowableSurfaceGrowX(CuboidWithMaterial cub, BoolArray16x16x16 voxels, bool[,] voxelVisited, bool ground)
         {
             if (cub.X2 > 15) return false;
 
@@ -208,7 +208,7 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        protected bool TrySnowableSurfaceGrowZ(CuboidWithMaterial cub, bool[,,] voxels, bool[,] voxelVisited, bool ground)
+        protected bool TrySnowableSurfaceGrowZ(CuboidWithMaterial cub, BoolArray16x16x16 voxels, bool[,] voxelVisited, bool ground)
         {
             if (cub.Z2 > 15) return false;
 
@@ -285,7 +285,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public void RebuildCuboidList(bool[,,] voxels, byte[,,] voxelMaterial)
+        public void RebuildCuboidList(BoolArray16x16x16 voxels, byte[,,] voxelMaterial)
         {
             buildSnowCuboids(voxels);
         }
@@ -295,7 +295,8 @@ namespace Vintagestory.GameContent
             SnowLevel = (int)Block.snowLevel;
             if (SnowLevel == 0)
             {
-                var abovebe = Api.World.BlockAccessor.GetBlockEntity(Pos.UpCopy()) as BlockEntityMicroBlock;
+                var abovebe = Api.World.BlockAccessor.GetBlockEntity(Pos.Up()) as BlockEntityMicroBlock;
+                Pos.Down();  // reverse the Pos.Up() without creating a new BlockPos object
                 if (abovebe != null && abovebe.Block.snowLevel > 0 && abovebe.VolumeRel < 1 / 16f)
                 {
                     SnowLevel = (int)abovebe.Block.snowLevel;

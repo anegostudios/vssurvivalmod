@@ -32,6 +32,11 @@ namespace Vintagestory.GameContent
         /// </summary>
         public int reparability;
 
+        /// <summary>
+        /// Used for rotations, constant
+        /// </summary>
+        protected static Vec3f Origin = new Vec3f(0.5f, 0.5f, 0.5f);
+
         public BEBehaviorShapeFromAttributes(BlockEntity blockentity) : base(blockentity)
         {
         }
@@ -64,12 +69,15 @@ namespace Vintagestory.GameContent
             
             if (cprops != null)
             {
+                float angleY = rotateY + cprops.Rotation.Y * GameMath.DEG2RAD;
+                MeshData baseMesh = clutterBlock.GetOrCreateMesh(cprops, null, overrideTextureCode);
                 if (cprops.Randomize)
                 {
-                    mesh = clutterBlock.GetOrCreateMesh(cprops, null, overrideTextureCode).Clone().Rotate(new Vec3f(0.5f, 0.5f, 0.5f), rotateX, rotateY + cprops.Rotation.Y * GameMath.DEG2RAD, rotateZ).Scale(Vec3f.Zero, 1, 0.98f + GameMath.MurmurHash3Mod(Pos.X, Pos.Y, Pos.Z, 1000) / 1000f * 0.04f, 1);
+                    mesh = baseMesh.Clone().Rotate(Origin, rotateX, angleY, rotateZ).Scale(Vec3f.Zero, 1, 0.98f + GameMath.MurmurHash3Mod(Pos.X, Pos.Y, Pos.Z, 1000) / 1000f * 0.04f, 1);
                 } else
                 {
-                    mesh = clutterBlock.GetOrCreateMesh(cprops, null, overrideTextureCode).Clone().Rotate(new Vec3f(0.5f, 0.5f, 0.5f), rotateX, rotateY + cprops.Rotation.Y * GameMath.DEG2RAD, rotateZ);
+                    if (rotateX == 0 && angleY == 0 && rotateZ == 0) mesh = baseMesh;
+                    else mesh = baseMesh.Clone().Rotate(Origin, rotateX, angleY, rotateZ);
                 }
                 
             }

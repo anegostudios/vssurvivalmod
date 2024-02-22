@@ -288,14 +288,16 @@ namespace Vintagestory.GameContent
         private int NextNotMatchingRecipeLayer(int layerStart = 0)
         {
             if (SelectedRecipe == null) return 0;
+            if (layerStart < 0) return 0;
 
-            for (int layer = layerStart; layer < 16; layer++)
+            bool[,,] selectedRecipeVoxels = SelectedRecipe.Voxels;    // Performance: store the get{} result locally instead of 4k individual lookups
+            for (int x = 0; x < 16; x++)
             {
-                for (int x = 0; x < 16; x++)
+                for (int layer = layerStart; layer < 16; layer++)
                 {
                     for (int z = 0; z < 16; z++)
                     {
-                        if (Voxels[x, layer, z] != SelectedRecipe.Voxels[x, layer, z])
+                        if (Voxels[x, layer, z] != selectedRecipeVoxels[x, layer, z])
                         {
                             return layer;
                         }

@@ -16,7 +16,17 @@ namespace Vintagestory.GameContent
         {
             base.OnLoaded(api);
 
-            GetCollectibleBehavior<CollectibleBehaviorAnimationAuthoritative>(true).OnBeginHitEntity += ItemSpear_OnBeginHitEntity;
+            var bh = GetCollectibleBehavior<CollectibleBehaviorAnimationAuthoritative>(true);
+
+            if (bh == null)
+            {
+                api.World.Logger.Warning("Spear {0} uses ItemSpear class, but lacks required AnimationAuthoritative behavior. I'll take the freedom to add this behavior, but please fix json item type.", Code);
+                bh = new CollectibleBehaviorAnimationAuthoritative(this);
+                bh.OnLoaded(api);
+                CollectibleBehaviors = CollectibleBehaviors.Append(bh);
+            }
+
+            bh.OnBeginHitEntity += ItemSpear_OnBeginHitEntity;
         }
 
         private void ItemSpear_OnBeginHitEntity(EntityAgent byEntity, ref EnumHandling handling)

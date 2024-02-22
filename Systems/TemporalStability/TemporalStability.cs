@@ -511,6 +511,7 @@ namespace Vintagestory.GameContent
         private bool Event_OnTrySpawnEntity(IBlockAccessor blockAccessor, ref EntityProperties properties, Vec3d spawnPosition, long herdId)
         {
             if (!properties.Code.Path.StartsWithFast("drifter")) return true;
+            if (drifterTypes == null) return true;    // radfast 20.2.24: This will be null if Temporal Stability is disabled; but we still allow surface drifter spawn if drifters exist as a spawnable entity in the game (their runtime spawning is only disabled in Homo Sapiens mode via a patch). Could also think about returning false here if both Temporal Stability and Rifts systems are both off?
 
             IPlayer plr = api.World.NearestPlayer(spawnPosition.X, spawnPosition.Y, spawnPosition.Z);
             if (plr == null) return true;

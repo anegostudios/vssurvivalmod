@@ -2,6 +2,7 @@
 using Cairo;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
@@ -32,6 +33,15 @@ namespace Vintagestory.GameContent
             }
         }
 
+        public override string GetHeldTpHitAnimation(ItemSlot slot, Entity byEntity)
+        {
+            if ((byEntity as EntityPlayer)?.EntitySelection != null)
+            {
+                return "hammerhit";
+            }
+            return base.GetHeldTpHitAnimation(slot, byEntity);
+        }
+
         public override void OnUnloaded(ICoreAPI api)
         {
             for (int i = 0; toolModes != null && i < toolModes.Length; i++)
@@ -53,6 +63,9 @@ namespace Vintagestory.GameContent
             IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
             if (byPlayer == null) return;
 
+            string anim = GetHeldTpHitAnimation(slot, byEntity);
+            float framesound = CollectibleBehaviorAnimationAuthoritative.getSoundAtFrame(byEntity, anim);
+
 
             BlockEntity be = byEntity.World.BlockAccessor.GetBlockEntity(blockSel.Position);
 
@@ -65,15 +78,9 @@ namespace Vintagestory.GameContent
                     return;
                 }
 
-                byEntity.World.RegisterCallback((dt) =>
-                {
-                    if (byEntity.Controls.HandUse == EnumHandInteract.HeldItemAttack)
-                    {
-                        byPlayer.Entity.World.PlaySoundAt(new AssetLocation("sounds/effect/anvilmergehit"), byPlayer, byPlayer);
-                    }
-                }, 464);
-
                 slot.Itemstack.TempAttributes.SetBool("isAnvilAction", true);
+
+                byEntity.AnimManager.RegisterFrameCallback(new AnimFrameCallback() { Animation = anim, Frame = framesound, Callback = () => strikeAnvil(byEntity, true) });
 
                 return;
             }
@@ -82,23 +89,14 @@ namespace Vintagestory.GameContent
             {
                 base.OnHeldAttackStart(slot, byEntity, blockSel, entitySel, ref handling);
                 return;
-            }
-
-            
+            }            
 
             BlockEntityAnvil bea = be as BlockEntityAnvil;
             if (bea == null) return;
             bea.OnBeginUse(byPlayer, blockSel);
 
-            byEntity.World.RegisterCallback((dt) =>
-            {
-                if (byEntity.Controls.HandUse == EnumHandInteract.HeldItemAttack)
-                {
-                    byPlayer.Entity.World.PlaySoundAt(new AssetLocation("sounds/effect/anvilhit"), byPlayer, byPlayer);
-                }
-            }, 440);
-
             slot.Itemstack.TempAttributes.SetBool("isAnvilAction", true);
+            byEntity.AnimManager.RegisterFrameCallback(new AnimFrameCallback() { Animation = anim, Frame = framesound, Callback = () => strikeAnvil(byEntity, false) });
 
             handling = EnumHandHandling.PreventDefault;
         }
@@ -110,7 +108,12 @@ namespace Vintagestory.GameContent
                 return base.OnHeldAttackCancel(secondsPassed, slot, byEntity, blockSelection, entitySel, cancelReason);
             }
 
-            slot.Itemstack.TempAttributes.SetBool("isAnvilAction", false);
+            if (cancelReason == EnumItemUseCancelReason.Death || cancelReason == EnumItemUseCancelReason.Destroyed)
+            {
+                slot.Itemstack.TempAttributes.SetBool("isAnvilAction", false);
+                return true;
+            }
+
             return false;
         }
 
@@ -129,60 +132,46 @@ namespace Vintagestory.GameContent
                 return false;
             }
 
-            if (byEntity.World is IClientWorldAccessor)
-            {
-                ModelTransform tf = new ModelTransform();
-                tf.EnsureDefaultValues();
-
-                //30 - secondsUsed * 90 * 15 = -110
-                //-30 + secondsUsed * 90 * 15 = 110
-                //secondsUsed * 90 * 15 = 110 - 30
-                //secondsUsed = (110 - 30) / (90*15)
-
-                float speed = 5 + 20 * Math.Max(0, secondsUsed - 0.25f);
-                float start = secondsUsed * 120;
-                float rotationY = Math.Min(80, Math.Max(0, secondsUsed - 0.25f) * 90 * speed - start);
-
-
-                tf.Origin.Set(0, 0, 0.5f);
-                tf.Translation.Set(0, 0, Math.Max(-0.25f, -1.25f * Math.Max(0, secondsUsed - 0.25f)));
-                tf.Rotation.Y = rotationY;
-                byEntity.Controls.UsingHeldItemTransformBefore = tf;
-            }
-            
-
-            return secondsUsed < 0.6f;
+            string animCode = GetHeldTpHitAnimation(slot, byEntity);
+            return byEntity.AnimManager.IsAnimationActive(animCode);
         }
 
-        public override void OnHeldAttackStop(float secondsPassed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
+
+        protected virtual void strikeAnvil(EntityAgent byEntity, bool merge)
         {
-            if (!slot.Itemstack.TempAttributes.GetBool("isAnvilAction"))
+            IPlayer byPlayer = (byEntity as EntityPlayer).Player;
+            if (byPlayer == null) return;
+
+            if (byEntity.Controls.HandUse == EnumHandInteract.HeldItemAttack)
             {
-                base.OnHeldAttackStop(secondsPassed, slot, byEntity, blockSel, entitySel);
-                return;
+                var blockSel = byPlayer.CurrentBlockSelection;
+
+                BlockEntity be = byEntity.World.BlockAccessor.GetBlockEntity(blockSel.Position);
+                if (be is BlockEntityAnvilPart bep)
+                {
+                    bep.OnHammerHitOver(byPlayer, blockSel.HitPosition);
+                    return;
+                }
+
+                if (!(byEntity.World.BlockAccessor.GetBlock(blockSel.Position) is BlockAnvil)) return;
+                BlockEntityAnvil bea = be as BlockEntityAnvil;
+
+                if (bea == null) return;
+
+                if (api.World.Side == EnumAppSide.Client)
+                {
+                    bea.OnUseOver(byPlayer, blockSel.SelectionBoxIndex);
+                }
+
+                byPlayer.Entity.World.PlaySoundAt(
+                    merge ? new AssetLocation("sounds/effect/anvilmergehit") : new AssetLocation("sounds/effect/anvilhit"), 
+                    byPlayer.Entity, 
+                    byPlayer, 
+                    0.9f + (float)byEntity.World.Rand.NextDouble() * 0.2f, 
+                    16, 
+                    0.35f
+                );
             }
-
-            if (blockSel == null || secondsPassed < 0.4f) return;
-            IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
-
-            BlockEntity be = byEntity.World.BlockAccessor.GetBlockEntity(blockSel.Position);
-            if (be is BlockEntityAnvilPart bep)
-            {
-                bep.OnHammerHitOver(byPlayer, blockSel.HitPosition);
-            }
-
-            if (!(byEntity.World.BlockAccessor.GetBlock(blockSel.Position) is BlockAnvil)) return;
-            BlockEntityAnvil bea = be as BlockEntityAnvil;
-
-            if (bea == null) return;
-
-            // The server side call is made using a custom network packet
-            if (byEntity.World is IClientWorldAccessor cWorld)
-            {
-                
-                bea.OnUseOver(byPlayer, blockSel.SelectionBoxIndex);
-            }
-            
         }
 
 

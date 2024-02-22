@@ -897,6 +897,8 @@ namespace Vintagestory.GameContent
 
             api.RegisterItemClass("ItemNightvisiondevice", typeof(ItemNightvisiondevice));
             api.RegisterItemClass("ItemMechHelper", typeof(ItemMechHelper));
+
+            api.RegisterItemClass("ItemSword", typeof(ItemSword));
         }
 
 

@@ -157,6 +157,7 @@ namespace Vintagestory.GameContent
                         {
                             handslot.TryPutInto(byEntity.World, LeftHandItemSlot);
                         }
+
                         return;
                     }
 

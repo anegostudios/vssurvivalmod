@@ -2,6 +2,7 @@
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -13,6 +14,15 @@ namespace Vintagestory.GameContent
         {
             base.OnLoaded(api);
             bhaa = GetCollectibleBehavior<CollectibleBehaviorAnimationAuthoritative>(true);
+
+            if (bhaa == null)
+            {
+                api.World.Logger.Warning("Spear {0} uses ItemSpear class, but lacks required AnimationAuthoritative behavior. I'll take the freedom to add this behavior, but please fix json item type.", Code);
+                bhaa = new CollectibleBehaviorAnimationAuthoritative(this);
+                bhaa.OnLoaded(api);
+                CollectibleBehaviors = CollectibleBehaviors.Append(bhaa);
+            }
+
             bhaa.strikeSoundHandInteract = EnumHandInteract.HeldItemInteract;
             bhaa.OnBeginHitEntity += Bhaa_OnBeginHitEntity;
         }

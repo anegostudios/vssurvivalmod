@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Text;
 using Newtonsoft.Json.Linq;
 using Vintagestory.API.Client;
@@ -22,7 +23,21 @@ namespace Vintagestory.GameContent
             api.Event.AfterActiveSlotChanged += Event_AfterActiveSlotChanged;
         }
 
+        public override void AssetsFinalize(ICoreAPI api)
+        {
+            capi.World.Player.InventoryManager.GetHotbarInventory().SlotModified += ModSystemStopRaiseShieldAnim_SlotModified;
+        }
+
+        private void ModSystemStopRaiseShieldAnim_SlotModified(int slotid)
+        {
+            maybeStopRaiseShield();
+        }
         private void Event_AfterActiveSlotChanged(ActiveSlotChangeEventArgs obj)
+        {
+            maybeStopRaiseShield();
+        }
+
+        private void maybeStopRaiseShield()
         {
             var eplr = capi.World.Player.Entity;
             if (!(eplr.RightHandItemSlot.Itemstack?.Item is ItemShield) && eplr.AnimManager.IsAnimationActive("raiseshield-right"))

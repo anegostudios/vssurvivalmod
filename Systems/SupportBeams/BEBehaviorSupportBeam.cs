@@ -169,9 +169,6 @@ namespace Vintagestory.GameContent
             return mesh;
         }
 
-
-
-
         public void OnTransformed(IWorldAccessor worldAccessor, ITreeAttribute tree, int degreeRotation,Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, EnumAxis? flipAxis)
         {
             FromTreeAttributes(tree, null);
@@ -210,28 +207,28 @@ namespace Vintagestory.GameContent
             ToTreeAttributes(tree);
         }
 
-        public override void OnBlockRemoved()
+        public override void OnBlockBroken(IPlayer byPlayer = null)
         {
             if (Beams != null && sbp != null)
             {
-                foreach (var beam in Beams)
+                for (var i = Beams.Length -1 ; i >= 0; i--)
                 {
-                    sbp.OnBeamRemoved(beam.Start.ToVec3d().Add(Pos), beam.End.ToVec3d().Add(Pos));
-
-                    Api.World.SpawnItemEntity(new ItemStack(beam.Block, (int)Math.Ceiling(beam.End.DistanceTo(beam.Start))), Pos.ToVec3d().Add(0.5));
+                    BreakBeam(i, byPlayer?.WorldData.CurrentGameMode != EnumGameMode.Creative);
                 }
             }
-
-            base.OnBlockRemoved();
+            base.OnBlockBroken(byPlayer);
         }
 
-        public void BreakBeam(int beamIndex)
+        public void BreakBeam(int beamIndex, bool drop = true)
         {
             if (beamIndex < 0 || beamIndex >= Beams.Length) return;
 
             var beam = Beams[beamIndex];
 
-            Api.World.SpawnItemEntity(new ItemStack(beam.Block, (int)Math.Ceiling(beam.End.DistanceTo(beam.Start))), Pos.ToVec3d().Add(0.5));
+            if (drop)
+            {
+                Api.World.SpawnItemEntity(new ItemStack(beam.Block, (int)Math.Ceiling(beam.End.DistanceTo(beam.Start))), Pos.ToVec3d().Add(0.5));
+            }
             sbp.OnBeamRemoved(beam.Start.ToVec3d().Add(Pos), beam.End.ToVec3d().Add(Pos));
             Beams = Beams.RemoveEntry(beamIndex);
             Blockentity.MarkDirty(true);

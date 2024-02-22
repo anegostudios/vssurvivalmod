@@ -376,7 +376,7 @@ namespace Vintagestory.GameContent
             return new WorldInteraction[] { 
                 new WorldInteraction()
                 {
-                    ActionLangCode = Lang.Get("Change tool mode"),
+                    ActionLangCode = "Change tool mode",
                     HotKeyCodes = new string[] { "toolmodeselect" },
                     MouseButton = EnumMouseButton.None
                 }

@@ -51,7 +51,7 @@ namespace Vintagestory.GameContent
             {
                 AssetLocation loc = CodeWithVariant("state", "extinct");
                 ExtinctVariant = api.World.GetBlock(loc);
-                isExtinct = Variant["state"] == "extinct";
+                isExtinct = Variant["state"] == "extinct" || Variant["state"] == "burnedout";
                 isLit = Variant["state"] == "lit";
             }
 

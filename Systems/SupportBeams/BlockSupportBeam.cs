@@ -56,7 +56,10 @@ namespace Vintagestory.GameContent
             if (be != null)
             {
                 int beamIndex = (api as ICoreClientAPI)?.World.Player?.CurrentBlockSelection?.SelectionBoxIndex ?? 0;
-
+                if (beamIndex >= be.Beams.Length)
+                {
+                    return;
+                }
                 blockModelData = be.genMesh(beamIndex, null, null);
                 decalModelData = be.genMesh(beamIndex, decalTexSource, "decal");
                 return;
@@ -72,7 +75,7 @@ namespace Vintagestory.GameContent
 
             if (beamIndex != null && be != null && be.Beams.Length > 1)
             {
-                be.BreakBeam((int)beamIndex);
+                be.BreakBeam((int)beamIndex, byPlayer?.WorldData.CurrentGameMode != EnumGameMode.Creative);
                 return;
             }
 
@@ -92,18 +95,18 @@ namespace Vintagestory.GameContent
             {
                 new WorldInteraction()
                 {
-                    ActionLangCode = Lang.Get("Set Beam Start/End Point (Snap to 4x4 grid)"),
+                    ActionLangCode = "Set Beam Start/End Point (Snap to 4x4 grid)",
                     MouseButton = EnumMouseButton.Right
                 },
                 new WorldInteraction()
                 {
-                    ActionLangCode = Lang.Get("Set Beam Start/End Point (Snap to 16x16 grid)"),
+                    ActionLangCode = "Set Beam Start/End Point (Snap to 16x16 grid)",
                     MouseButton = EnumMouseButton.Right,
                     HotKeyCode = "sprint"
                 },
                 new WorldInteraction()
                 {
-                    ActionLangCode = Lang.Get("Cancel placement"),
+                    ActionLangCode = "Cancel placement",
                     MouseButton = EnumMouseButton.Left
                 },
             };

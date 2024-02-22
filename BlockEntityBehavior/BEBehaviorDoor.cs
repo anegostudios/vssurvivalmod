@@ -15,7 +15,6 @@ namespace Vintagestory.GameContent
         protected bool opened;
         protected bool invertHandles;
         protected MeshData mesh;
-        protected MeshData origMesh;
         protected Cuboidf[] boxesClosed, boxesOpened;
 
         public BlockFacing facingWhenClosed
@@ -143,9 +142,18 @@ namespace Vintagestory.GameContent
 
             if (Api.Side == EnumAppSide.Client)
             {
-                origMesh = animUtil.InitializeAnimator("door-" + Blockentity.Block.Variant["style"], null, null);
-
-                UpdateMeshAndAnimations();
+                if (doorBh.animatableOrigMesh == null)
+                {
+                    string animkey = "door-" + Blockentity.Block.Variant["style"];
+                    doorBh.animatableOrigMesh = animUtil.CreateMesh(animkey, null, out Shape shape, null);
+                    doorBh.animatableShape = shape;
+                    doorBh.animatableDictKey = animkey;
+                }
+                if (doorBh.animatableOrigMesh != null)
+                {
+                    animUtil.InitializeAnimator(doorBh.animatableDictKey, doorBh.animatableOrigMesh, doorBh.animatableShape, null);
+                    UpdateMeshAndAnimations();
+                }
             }
 
             UpdateHitBoxes();
@@ -153,7 +161,7 @@ namespace Vintagestory.GameContent
 
         protected virtual void UpdateMeshAndAnimations()
         {
-            mesh = origMesh.Clone();
+            mesh = doorBh.animatableOrigMesh.Clone();
             if (RotateYRad != 0)
             {
                 float rot = invertHandles ? -RotateYRad : RotateYRad;

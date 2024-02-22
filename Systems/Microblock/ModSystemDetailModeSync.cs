@@ -185,7 +185,7 @@ namespace Vintagestory.ServerMods
 
 
 
-        private static bool fillMicroblock(Block fillWitBlock, BlockEntityMicroBlock be, bool[,,] voxels, byte[,,] voxMats, bool edited)
+        private static bool fillMicroblock(Block fillWitBlock, BlockEntityMicroBlock be, BoolArray16x16x16 voxels, byte[,,] voxMats, bool edited)
         {
             byte matIndex = 0;
             for (int dx = 0; dx < 16; dx++)
