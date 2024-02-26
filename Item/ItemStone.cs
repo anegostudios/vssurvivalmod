@@ -10,6 +10,15 @@ namespace Vintagestory.GameContent
 {
     public class ItemStone : Item
     {
+        float damage;
+    
+        public override void OnLoaded(ICoreAPI api)
+        {
+            base.OnLoaded(api);
+    
+            damage = this.Attributes["damage"].AsFloat(1);
+        }
+        
         public override string GetHeldTpUseAnimation(ItemSlot activeHotbarSlot, Entity byEntity)
         {
             return null;
@@ -259,8 +268,6 @@ namespace Vintagestory.GameContent
 
             if (secondsUsed < 0.35f) return;
 
-            float damage = 1;
-            
             ItemStack stack = slot.TakeOut(1);
             slot.MarkDirty();
 
@@ -303,7 +310,7 @@ namespace Vintagestory.GameContent
         {
             base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
 
-            dsc.AppendLine(Lang.Get("1 blunt damage when thrown"));
+            dsc.AppendLine(Lang.Get("{0} blunt damage when thrown", damage));
         }
 
 
