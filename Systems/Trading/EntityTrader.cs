@@ -369,9 +369,6 @@ namespace Vintagestory.GameContent
             }
         }
 
-
-
-
         public override void OnInteract(EntityAgent byEntity, ItemSlot slot, Vec3d hitPosition, EnumInteractMode mode)
         {
             if (ConversableBh != null)
@@ -388,6 +385,7 @@ namespace Vintagestory.GameContent
             {
                 ConversableBh.Dialog?.TryClose();
                 TryOpenTradeDialog(triggeringEntity);
+                tradingWithPlayer = triggeringEntity as EntityPlayer;
                 return 0;
             }
 
@@ -539,7 +537,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            if (tradingWithPlayer != null && (tradingWithPlayer.Pos.SquareDistanceTo(this.Pos) > 5 || Inventory.openedByPlayerGUIds.Count == 0 || !Alive))
+            if (tradingWithPlayer != null && (tradingWithPlayer.Pos.SquareDistanceTo(Pos) > 5 || Inventory.openedByPlayerGUIds.Count == 0 || !Alive))
             {
                 dlg?.TryClose();
                 IPlayer tradingPlayer = tradingWithPlayer?.Player;

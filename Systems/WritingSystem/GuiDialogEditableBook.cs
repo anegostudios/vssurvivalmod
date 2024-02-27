@@ -194,6 +194,10 @@ namespace Vintagestory.GameContent
 
             AllPagesText = AllPagesText.Substring(0, curPagePos.Start) + pageText + AllPagesText.Substring(Math.Min(AllPagesText.Length, curPagePos.Start + curPagePos.Length));
             Pages = Pageize(AllPagesText, font, textAreaWidth, maxLines);
+            if (curPage >= Pages.Count)
+            {
+                curPage = Pages.Count - 1;
+            }
 
             return true;
         }

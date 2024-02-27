@@ -291,9 +291,9 @@ namespace Vintagestory.GameContent
             if (layerStart < 0) return 0;
 
             bool[,,] selectedRecipeVoxels = SelectedRecipe.Voxels;    // Performance: store the get{} result locally instead of 4k individual lookups
-            for (int x = 0; x < 16; x++)
+            for (int layer = layerStart; layer < 16; layer++)
             {
-                for (int layer = layerStart; layer < 16; layer++)
+                for (int x = 0; x < 16; x++)
                 {
                     for (int z = 0; z < 16; z++)
                     {

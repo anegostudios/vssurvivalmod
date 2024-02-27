@@ -143,15 +143,5 @@ namespace Vintagestory.GameContent
             textElem.Bounds.fixedY = 0 - value;
             textElem.Bounds.CalcWorldBounds();
         }
-        
-        public override void OnFinalizeFrame(float dt)
-        {
-            base.OnFinalizeFrame(dt);
-            if (IsOpened() && !IsInRangeOf(npcEntity.Pos.XYZ))
-            {
-                // Because we cant do it in here
-                capi.Event.EnqueueMainThreadTask(() => TryClose(), "closedlg");
-            }
-        }
     }
 }

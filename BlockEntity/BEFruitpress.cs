@@ -668,9 +668,12 @@ namespace Vintagestory.GameContent
             if (!BucketSlot.Empty)
             {
                 BlockLiquidContainerBase block = BucketSlot.Itemstack.Collectible as BlockLiquidContainerBase;
-                dsc.Append(Lang.Get("Container: "));
-                block.GetContentInfo(BucketSlot, dsc, Api.World);
-                dsc.AppendLine();
+                if (block != null)
+                {
+                    dsc.Append(Lang.Get("Container: "));
+                    block.GetContentInfo(BucketSlot, dsc, Api.World);
+                    dsc.AppendLine();
+                }
             }
 
             if (!MashSlot.Empty)

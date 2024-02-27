@@ -44,6 +44,11 @@ namespace Vintagestory.GameContent
 
         public void SetQuantityServings(IWorldAccessor world, ItemStack byItemStack, float value)
         {
+            if (value <= 0f)
+            {
+                SetRecipeCode(world, byItemStack, null);
+                return;
+            }
             byItemStack.Attributes.SetFloat("quantityServings", value);
         }
 
@@ -86,6 +91,20 @@ namespace Vintagestory.GameContent
             byItemStack.Attributes.SetFloat("quantityServings", value);
         }
 
+        internal void SetServingsMaybeEmpty(IWorldAccessor world, ItemSlot potslot, float value)
+        {
+            SetQuantityServings(world, potslot.Itemstack, value);
+            if (value <= 0f)
+            {
+                string emptyCode = Attributes["emptiedBlockCode"].AsString();
+                if (emptyCode != null)
+                {
+                    Block emptyPotBlock = world.GetBlock(new AssetLocation(emptyCode));
+                    if (emptyPotBlock != null) potslot.Itemstack = new ItemStack(emptyPotBlock);
+                }
+            }
+        }
+
         public CookingRecipe GetMealRecipe(IWorldAccessor world, ItemStack containerStack)
         {
             string recipecode = GetRecipeCode(world, containerStack);
@@ -120,21 +139,7 @@ namespace Vintagestory.GameContent
 
             bemeal.QuantityServings = servingsToTransfer;
 
-
-            SetServings(world, potslot.Itemstack, quantityServings - servingsToTransfer);
-
-            if (quantityServings - servingsToTransfer <= 0)
-            {
-                string loc = potslot.Itemstack.Collectible.Attributes["emptiedBlockCode"].AsString();
-                if (loc != null)
-                {
-                    Block emptyPotBlock = world.GetBlock(new AssetLocation(loc));
-                    potslot.Itemstack = new ItemStack(emptyPotBlock);
-                } else
-                {
-                    SetRecipeCode(api.World, potslot.Itemstack, null);
-                }
-            }
+            SetServingsMaybeEmpty(world, potslot, quantityServings - servingsToTransfer);
 
             potslot.MarkDirty();
             bemeal.MarkDirty(true);
@@ -187,19 +192,7 @@ namespace Vintagestory.GameContent
             float movedservings = Math.Min(remainingPlaceableServings, quantityServings);
             bemeal.QuantityServings = hisServings + movedservings;
 
-            SetServings(api.World, potslot.Itemstack, quantityServings - movedservings);
-            if (quantityServings - movedservings <= 0)
-            {
-                string loc = Attributes["emptiedBlockCode"].AsString();
-                if (loc != null)
-                {
-                    Block emptyPotBlock = api.World.GetBlock(new AssetLocation(loc));
-                    potslot.Itemstack = new ItemStack(emptyPotBlock);
-                } else
-                {
-                    SetRecipeCode(api.World, potslot.Itemstack, null);
-                }
-            }
+            SetServingsMaybeEmpty(api.World, potslot, quantityServings - movedservings);
 
             potslot.MarkDirty();
             bemeal.MarkDirty(true);
@@ -259,13 +252,7 @@ namespace Vintagestory.GameContent
                     float movedservings = Math.Min(remainingPlaceableServings, quantityServings);
                     mealcont.SetQuantityServings(world, bowlSlot.Itemstack, hisServings + movedservings);
 
-                    SetServings(world, potslot.Itemstack, quantityServings - movedservings);
-                    if (quantityServings - movedservings <= 0)
-                    {
-                        Block emptyPotBlock = world.GetBlock(new AssetLocation(Attributes["emptiedBlockCode"].AsString()));
-                        potslot.Itemstack = new ItemStack(emptyPotBlock);
-                    }
-
+                    SetServingsMaybeEmpty(world, potslot, quantityServings - movedservings);
 
                     potslot.Itemstack.Attributes.RemoveAttribute("sealed");
                     potslot.MarkDirty();
@@ -287,13 +274,7 @@ namespace Vintagestory.GameContent
             ItemStack stack = new ItemStack(mealblock);
             (mealblock as IBlockMealContainer).SetContents(ownRecipeCode, stack, stacks, servingsToTransfer);
 
-            SetServings(world, potslot.Itemstack, quantityServings - servingsToTransfer);
-
-            if (quantityServings - servingsToTransfer <= 0)
-            {
-                Block emptyPotBlock = world.GetBlock(new AssetLocation(Attributes["emptiedBlockCode"].AsString()));
-                potslot.Itemstack = new ItemStack(emptyPotBlock);
-            }
+            SetServingsMaybeEmpty(world, potslot, quantityServings - servingsToTransfer);
 
             potslot.MarkDirty();
 

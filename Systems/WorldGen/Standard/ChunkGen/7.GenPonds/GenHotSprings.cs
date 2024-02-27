@@ -117,7 +117,8 @@ namespace Vintagestory.ServerMods
                         checks++;
                         sum += surfaceY;
 
-                        lakeHere |= wgenBlockAccessor.GetBlock(baseX + lx, surfaceY+1, baseZ + lz, BlockLayersAccess.Fluid).LiquidCode == "water";
+                        Block fluidBlock = wgenBlockAccessor.GetBlock(baseX + lx, surfaceY + 1, baseZ + lz, BlockLayersAccess.Fluid);
+                        lakeHere |= (fluidBlock.Id != 0 && fluidBlock.LiquidCode != "boilingwater");   // Suppress hot springs also in lakeice, saltwater etc.
                     }
                 }
             }

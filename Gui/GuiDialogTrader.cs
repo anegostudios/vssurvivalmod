@@ -54,9 +54,11 @@ namespace Vintagestory.GameContent
             if (!auctionSys.createAuctionSlotByPlayer.TryGetValue(capi.World.Player.PlayerUID, out auctionSlotInv))
             {
                 auctionSys.createAuctionSlotByPlayer[capi.World.Player.PlayerUID] = auctionSlotInv = new InventoryGeneric(1, "auctionslot-" + capi.World.Player.PlayerUID, capi);
+                // a negative weight prevents the auction slot from being consider as a suitable slot when shift clicking an item in the hotbar, that is because the default weight is 0 and it checks for >= 0
+                auctionSlotInv.OnGetSuitability = (s, t, isMerge) => -1f;
             }
 
-            capi.Network.SendPacketClient(auctionSlotInv.Open(capi.World.Player));
+            capi.Network.SendPacketClient(capi.World.Player.InventoryManager.OpenInventory(auctionSlotInv));
 
             Compose();
         }
@@ -461,7 +463,8 @@ namespace Vintagestory.GameContent
             SingleComposer.GetSlotGrid("traderBuyingSlots")?.OnGuiClosed(capi);
             SingleComposer.GetSlotGrid("playerSellingSlots")?.OnGuiClosed(capi);
 
-            capi.Network.SendPacketClient(auctionSlotInv.Close(capi.World.Player));
+            auctionSlotInv[0].Itemstack = null;
+            capi.World.Player.InventoryManager.CloseInventory(auctionSlotInv);
 
             auctionSys.DidLeaveAuctionHouse();
         }
@@ -510,22 +513,11 @@ namespace Vintagestory.GameContent
                     }
                 }
             }
-
         }
 
         #endregion
 
         public override bool PrefersUngrabbedMouse => false;
         public override float ZSize => 300; // Due to crossed out texture on bought out items
-        
-        public override void OnFinalizeFrame(float dt)
-        {
-            base.OnFinalizeFrame(dt);
-            if (IsOpened() && !IsInRangeOf(owningEntity.Pos.XYZ))
-            {
-                // Because we cant do it in here
-                capi.Event.EnqueueMainThreadTask(() => TryClose(), "closedlg");
-            }
-        }
     }
 }

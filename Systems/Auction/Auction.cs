@@ -325,8 +325,6 @@ namespace Vintagestory.GameContent
         {
             if (createAuctionSlotByPlayer.TryGetValue(byPlayer.PlayerUID, out var inv))
             {
-                inv.DropAll(byPlayer.Entity.Pos.XYZ);
-                createAuctionSlotByPlayer[byPlayer.PlayerUID].Close(byPlayer);
                 byPlayer.InventoryManager.CloseInventory(createAuctionSlotByPlayer[byPlayer.PlayerUID]);
                 createAuctionSlotByPlayer.Remove(byPlayer.PlayerUID);
             }
@@ -344,10 +342,12 @@ namespace Vintagestory.GameContent
                     if (!createAuctionSlotByPlayer.ContainsKey(fromPlayer.PlayerUID))
                     {
                         var ainv = createAuctionSlotByPlayer[fromPlayer.PlayerUID] = new InventoryGeneric(1, "auctionslot-" + fromPlayer.PlayerUID, sapi);
-
+                        // a negative weight prevents the auction slot from being consider as a suitable slot when shift clicking an item in the hotbar, that is because the default weight is 0 and it checks for >= 0
+                        // this one here is for good measure but the important one in on the client side in the GuiDialogTrader constructor
+                        ainv.OnGetSuitability = (s, t, isMerge) => -1f;
                         ainv.OnInventoryClosed += (plr) => ainv.DropAll(plr.Entity.Pos.XYZ);
                     }
-                    createAuctionSlotByPlayer[fromPlayer.PlayerUID].Open(fromPlayer);
+
                     fromPlayer.InventoryManager.OpenInventory(createAuctionSlotByPlayer[fromPlayer.PlayerUID]);
 
                     sendAuctions(auctions.Values, null, true, fromPlayer);

@@ -368,5 +368,10 @@ namespace Vintagestory.GameContent
         {
             return false;
         }
+
+        public JsonObject MBGetAttributes(IBlockAccessor blockAccessor, BlockPos pos)
+        {
+            return null;
+        }
     }
 }

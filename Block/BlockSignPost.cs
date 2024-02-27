@@ -49,7 +49,7 @@ namespace Vintagestory.GameContent
             BlockPos supportingPos = bs.Position.DownCopy();
             Block supportingBlock = world.BlockAccessor.GetBlock(supportingPos);
 
-            if (supportingBlock.CanAttachBlockAt(world.BlockAccessor, this, bs.Position, bs.Face) || supportingBlock.Attributes?.IsTrue("partialAttachable") == true)
+            if (supportingBlock.CanAttachBlockAt(world.BlockAccessor, this, bs.Position, bs.Face) || supportingBlock.GetAttributes(world.BlockAccessor, bs.Position)?.IsTrue("partialAttachable") == true)
             {
                 world.BlockAccessor.SetBlock(BlockId, bs.Position);
                 return true;

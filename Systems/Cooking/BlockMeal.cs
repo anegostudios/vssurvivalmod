@@ -642,6 +642,13 @@ namespace Vintagestory.GameContent
 
         public void SetQuantityServings(IWorldAccessor world, ItemStack byItemStack, float value)
         {
+            if (value <= 0f)
+            {
+                byItemStack.Attributes.RemoveAttribute("recipeCode");
+                byItemStack.Attributes.RemoveAttribute("quantityServings");
+                byItemStack.Attributes.RemoveAttribute("contents");
+                return;
+            }
             byItemStack.Attributes.SetFloat("quantityServings", value);
         }
 

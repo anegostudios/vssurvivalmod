@@ -147,12 +147,18 @@ namespace Vintagestory.GameContent
                                     if (slot.Itemstack.Collectible is IBlockMealContainer mc)
                                     {
                                         float servingsLeft = mc.GetQuantityServings(world, slot.Itemstack) - 1f;
-                                        if (servingsLeft > 0f) mc.SetQuantityServings(world, slot.Itemstack, servingsLeft);
-                                        else
+                                        mc.SetQuantityServings(world, slot.Itemstack, servingsLeft);
+                                        if (servingsLeft <= 0f)
                                         {
-                                            Block emptyPotBlock = world.GetBlock(new AssetLocation(slot.Itemstack.Collectible.Attributes["emptiedBlockCode"].AsString()));
-                                            slot.Itemstack = new ItemStack(emptyPotBlock);
+                                            string emptyCode = slot.Itemstack.Collectible.Attributes["emptiedBlockCode"].AsString();
+                                            if (emptyCode != null)
+                                            {
+                                                Block emptyPotBlock = world.GetBlock(new AssetLocation(emptyCode));
+                                                if (emptyPotBlock != null) slot.Itemstack = new ItemStack(emptyPotBlock);
+                                            }
                                         }
+
+                                        slot.MarkDirty();
                                     }
                                     else slot.TakeOut(1);
                                 }

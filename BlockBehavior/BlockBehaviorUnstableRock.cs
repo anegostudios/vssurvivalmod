@@ -395,7 +395,7 @@ possible prefilter: start and end position form a cuboid. Check if position X is
         {
              if (!Enabled) return base.GetPlacedBlockInfo(world, pos, forPlayer);
 
-            return string.Format("Instability: {0:0.#}%", getInstability(pos)*100);
+            return Lang.Get("instability-percent", getInstability(pos) * 100);
         }
 
         public double getInstability(BlockPos pos)

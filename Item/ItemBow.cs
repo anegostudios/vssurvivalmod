@@ -129,7 +129,7 @@ namespace Vintagestory.GameContent
             }
 
             slot.Itemstack?.Attributes.SetInt("renderVariant", 0);
-            (byEntity as EntityPlayer)?.Player?.InventoryManager.BroadcastHotbarSlot();
+            if (cancelReason != EnumItemUseCancelReason.Destroyed) (byEntity as EntityPlayer)?.Player?.InventoryManager.BroadcastHotbarSlot();
 
             if (cancelReason != EnumItemUseCancelReason.ReleasedMouse)
             {

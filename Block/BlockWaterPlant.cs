@@ -69,7 +69,7 @@ namespace Vintagestory.GameContent
                 return true;
             }
 
-            if (belowBlock.LiquidCode == "water")   // This should be OK, as in worldgen blocks are either still water only, or not water at all
+            if (belowBlock.LiquidCode == "water")   // radfast 23.2.24: note this won't work in salt water!!  Otherwise should be OK, as in worldgen blocks are either still water only, or not water at all
             {
                 return TryPlaceBlockInWater(blockAccessor, pos);
             }
