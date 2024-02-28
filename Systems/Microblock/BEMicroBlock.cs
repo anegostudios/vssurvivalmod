@@ -1084,7 +1084,7 @@ namespace Vintagestory.GameContent
             tocuboid.X2 = (int)(((val) >> 12) & 15) + 1;
             tocuboid.Y2 = (int)(((val) >> 16) & 15) + 1;
             tocuboid.Z2 = (int)(((val) >> 20) & 15) + 1;
-            tocuboid.Material = (byte)((val >> 24) & 0xff);
+            tocuboid.Material = (byte)((val >> 24) & 0xffu);
         }
 
 
@@ -1171,7 +1171,7 @@ namespace Vintagestory.GameContent
 
                 for (int i = 0; i < VoxelCuboids.Count; i++)
                 {
-                    var material = (int)((VoxelCuboids[i] >> 24) & 0xFu);
+                    var material = (int)((VoxelCuboids[i] >> 24) & 0xFFu);
                     if (index == material)
                     {
                         VoxelCuboids.RemoveAt(i);
@@ -1190,7 +1190,7 @@ namespace Vintagestory.GameContent
         {
             for (int j = 0; j < VoxelCuboids.Count; j++)
             {
-                var material = (VoxelCuboids[j] >> 24) & 0xFu;
+                var material = (VoxelCuboids[j] >> 24) & 0xFFu;
                 if (material >= index)
                 {
                     VoxelCuboids[index] = (uint)((VoxelCuboids[j] & ~(255 << 24)) | ((material-1) << 24));
@@ -1637,7 +1637,7 @@ namespace Vintagestory.GameContent
             x1 = (int)(((val >> 12) & 0xF) + 1);
             y1 = (int)(((val >> 16) & 0xF) + 1);
             z1 = (int)(((val >> 20) & 0xF) + 1);
-            material = (int)((val >> 24) & 0xFu);
+            material = (int)((val >> 24) & 0xFFu);
         }
 
         private static bool isMergableMaterial(int selfMat, int otherMat, RefList<VoxelMaterial> materials)
@@ -2133,7 +2133,7 @@ namespace Vintagestory.GameContent
                 {
                     for (int j = 0; j < VoxelCuboids.Count; j++)
                     {
-                        uint matindex = (VoxelCuboids[j] >> 24) & 0xff;
+                        uint matindex = (VoxelCuboids[j] >> 24) & 0xffu;
                         if (matindex == i)
                         {
                             if (layerBlock == null) { VoxelCuboids.RemoveAt(j); j--; }

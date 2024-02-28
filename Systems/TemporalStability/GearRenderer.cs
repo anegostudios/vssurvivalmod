@@ -71,7 +71,6 @@ namespace Vintagestory.GameContent
             tripodAnim.renderer.LightAffected = false;
             tripodAnim.renderer.StabilityAffected = false;
             tripodAnim.renderer.ShouldRender = true;
-            tripodAnim.renderer.textureId = rustTexture.TextureId;
 
 
             bh = capi.World.Player.Entity.GetBehavior<EntityBehaviorTemporalStabilityAffected>();

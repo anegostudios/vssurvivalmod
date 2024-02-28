@@ -443,9 +443,11 @@ namespace Vintagestory.GameContent
             ownMesh = mesh.Clone().Rotate(origin, 0, MeshAngle, 0).Scale(origin, rndScale, rndScale, rndScale);
         }
 
-
+        bool generating = false;
         void genLabelMesh()
         {
+            if (generating) return;
+
             ItemStack stack = labelStack;
 
             if (LabelProps?.EditableShape != null && stack != null)
@@ -460,6 +462,7 @@ namespace Vintagestory.GameContent
                     return;
                 }
 
+                generating = true;
                 capi.Render.RenderItemStackToAtlas(stack, capi.BlockTextureAtlas, 52, (texSubid) =>
                 {
                     ownBlock.itemStackRenders[hashCode] = new ItemStackRenderCacheItem() { TextureSubId = texSubid, UsedCounter = new HashSet<int>() };
@@ -468,6 +471,7 @@ namespace Vintagestory.GameContent
                     GenLabelMeshWithItemStack(texSubid);
                     capi.BlockTextureAtlas.RegenMipMaps(capi.BlockTextureAtlas.Positions[texSubid].atlasNumber);
                     MarkDirty(true);
+                    generating = false;
                 }, ColorUtil.ColorOverlay(labelColor, ColorUtil.WhiteArgb, 0.65f), 0.5f, 1f);
                 
             }

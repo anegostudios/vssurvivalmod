@@ -106,7 +106,7 @@ namespace Vintagestory.GameContent
         {
             var bec = GetBEBehavior<BEBehaviorClutterBookshelf>(pos);
 
-            if (bec != null)
+            if (bec?.Variant != null)
             {
                 variantGroupsByCode.TryGetValue(bec.Variant, out var grp);
                 if (grp?.DoubleSided == true)
