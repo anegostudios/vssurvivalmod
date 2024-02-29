@@ -709,7 +709,9 @@ namespace Vintagestory.GameContent
 
             if (invSlot.Empty)
             {
-                if (hotbarSlot.TryPutInto(Api.World, invSlot, TransferQuantity) > 0)
+                bool putBulk = player.Entity.Controls.CtrlKey;
+
+                if (hotbarSlot.TryPutInto(Api.World, invSlot, putBulk ? BulkTransferQuantity : TransferQuantity) > 0)
                 {
                     Api.World.PlaySoundAt(StorageProps.PlaceRemoveSound.WithPathPrefixOnce("sounds/"), Pos.X, Pos.Y, Pos.Z, null, 0.88f + (float)Api.World.Rand.NextDouble() * 0.24f, 16);
                 }
