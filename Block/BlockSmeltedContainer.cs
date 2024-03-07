@@ -485,7 +485,7 @@ namespace Vintagestory.GameContent
             stack.Attributes.SetInt("units", units);
         }
 
-        KeyValuePair<ItemStack, int> GetContents(IWorldAccessor world, ItemStack stack)
+        public KeyValuePair<ItemStack, int> GetContents(IWorldAccessor world, ItemStack stack)
         {
             ItemStack outstack = stack.Attributes.GetItemstack("output");
             if (outstack != null)
