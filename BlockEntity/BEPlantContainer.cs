@@ -254,7 +254,7 @@ namespace Vintagestory.GameContent
                 return new Dictionary<string, MeshData[]>();
             });
 
-            float fillHeight = Block.Attributes["fillHeight"].AsFloat(0.4f);
+            float fillHeight = Block.Attributes == null ? 0.4f : Block.Attributes["fillHeight"].AsFloat(0.4f);
 
             MeshData[] meshwithVariants;
             string containersize = this.ContainerSize;

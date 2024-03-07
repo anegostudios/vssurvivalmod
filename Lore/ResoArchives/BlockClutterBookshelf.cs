@@ -297,6 +297,11 @@ namespace Vintagestory.GameContent
             StringBuilder sb = new StringBuilder();
             sb.AppendLine(Lang.GetMatching(Code.Domain + ":" + (bec?.Type?.Replace("/", "-") ?? "unknown")));
             bec?.GetBlockInfo(forPlayer, sb);
+            sb.AppendLine();
+            foreach (BlockBehavior bh in BlockBehaviors)
+            {
+                sb.Append(bh.GetPlacedBlockInfo(world, pos, forPlayer));
+            }
             return sb.ToString();
         }
 

@@ -150,17 +150,19 @@ namespace Vintagestory.GameContent
                 if (be is BlockEntityAnvilPart bep)
                 {
                     bep.OnHammerHitOver(byPlayer, blockSel.HitPosition);
-                    return;
                 }
-
-                if (!(byEntity.World.BlockAccessor.GetBlock(blockSel.Position) is BlockAnvil)) return;
-                BlockEntityAnvil bea = be as BlockEntityAnvil;
-
-                if (bea == null) return;
-
-                if (api.World.Side == EnumAppSide.Client)
+                else
                 {
-                    bea.OnUseOver(byPlayer, blockSel.SelectionBoxIndex);
+
+                    if (!(byEntity.World.BlockAccessor.GetBlock(blockSel.Position) is BlockAnvil)) return;
+                    BlockEntityAnvil bea = be as BlockEntityAnvil;
+
+                    if (bea == null) return;
+
+                    if (api.World.Side == EnumAppSide.Client)
+                    {
+                        bea.OnUseOver(byPlayer, blockSel.SelectionBoxIndex);
+                    }
                 }
 
                 byPlayer.Entity.World.PlaySoundAt(

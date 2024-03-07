@@ -96,6 +96,7 @@ namespace Vintagestory.GameContent
             if (blockToPlace != null && blockToPlace.CanPlaceBlock(world, byPlayer, blockSel, ref failureCode) && (blockToPlace as BlockChute).CanStay(world, blockSel.Position))
             {
                 world.BlockAccessor.SetBlock(blockToPlace.BlockId, blockSel.Position);
+                world.Logger.Audit("{0} placed a chute at {1}", byPlayer.PlayerName, blockSel.Position);
                 return true;
             }
 
@@ -107,6 +108,7 @@ namespace Vintagestory.GameContent
             if (blockToPlace != null && blockToPlace.CanPlaceBlock(world, byPlayer, blockSel, ref failureCode) && (blockToPlace as BlockChute).CanStay(world, blockSel.Position))
             {
                 world.BlockAccessor.SetBlock(blockToPlace.BlockId, blockSel.Position);
+                world.Logger.Audit("{0} placed a chute at {1}", byPlayer.PlayerName, blockSel.Position);
                 return true;
             }
 

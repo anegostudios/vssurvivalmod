@@ -215,7 +215,7 @@ namespace Vintagestory.GameContent
                 slowaccum = 0;
             }
 
-            if (accum > 1 && api.Side == EnumAppSide.Server) // Don't run on the server, it messes with freezingEffectStrength
+            if (accum > 1 && api.Side == EnumAppSide.Server) // Don't run on the client, it messes with freezingEffectStrength
             {
                 var eplr = entity as EntityPlayer;
                 IPlayer plr = eplr?.Player;
@@ -328,7 +328,7 @@ namespace Vintagestory.GameContent
             }
             else
             {
-                if (entity.AnimManager.ActiveAnimationsByAnimCode.ContainsKey("coldidle") || entity.AnimManager.ActiveAnimationsByAnimCode.ContainsKey("coldidleheld"))
+                if (entity.AnimManager.IsAnimationActive("coldidle") || entity.AnimManager.IsAnimationActive("coldidleheld"))
                 {
                     entity.StopAnimation("coldidle");
                     entity.StopAnimation("coldidleheld");

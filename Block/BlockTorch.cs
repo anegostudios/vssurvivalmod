@@ -120,8 +120,11 @@ namespace Vintagestory.GameContent
                 {
                     // prevent placing of torch while pointing at another torch (after igniting)
                     handling = EnumHandHandling.Handled;
-                } 
+                }
+                return;
             }
+
+            base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handling);
         }
 
         public override bool OnHeldInteractStep(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)

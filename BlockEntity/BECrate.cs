@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
@@ -32,6 +33,7 @@ namespace Vintagestory.GameContent
         int labelColor;
         
         ItemStack labelStack;
+        ModSystemLabelMeshCache labelCacheSys;
 
 
         public virtual float MeshAngle
@@ -89,6 +91,7 @@ namespace Vintagestory.GameContent
 
             if (api.Side == EnumAppSide.Client && !isNewlyplaced)
             {
+                labelCacheSys = api.ModLoader.GetModSystem<ModSystemLabelMeshCache>();
                 loadOrCreateMesh();
             }
         }
@@ -443,38 +446,18 @@ namespace Vintagestory.GameContent
             ownMesh = mesh.Clone().Rotate(origin, 0, MeshAngle, 0).Scale(origin, rndScale, rndScale, rndScale);
         }
 
-        bool generating = false;
+        bool requested = false;
         void genLabelMesh()
         {
-            if (generating) return;
-
-            ItemStack stack = labelStack;
-
-            if (LabelProps?.EditableShape != null && stack != null)
+            if (LabelProps?.EditableShape == null || labelStack == null || requested) return;
+            
+            requested = true;
+            labelCacheSys.RequestLabelTexture(labelColor, Pos, labelStack, (texSubId) =>
             {
-                var capi = Api as ICoreClientAPI;
-                int hashCode = stack.GetHashCode(GlobalConstants.IgnoredStackAttributes) + 23*labelColor.GetHashCode();
-
-                if (ownBlock.itemStackRenders.TryGetValue(hashCode, out var val))
-                {
-                    val.UsedCounter.Add(Pos.GetHashCode());
-                    GenLabelMeshWithItemStack(val.TextureSubId);
-                    return;
-                }
-
-                generating = true;
-                capi.Render.RenderItemStackToAtlas(stack, capi.BlockTextureAtlas, 52, (texSubid) =>
-                {
-                    ownBlock.itemStackRenders[hashCode] = new ItemStackRenderCacheItem() { TextureSubId = texSubid, UsedCounter = new HashSet<int>() };
-                    ownBlock.itemStackRenders[hashCode].UsedCounter.Add(Pos.GetHashCode());
-
-                    GenLabelMeshWithItemStack(texSubid);
-                    capi.BlockTextureAtlas.RegenMipMaps(capi.BlockTextureAtlas.Positions[texSubid].atlasNumber);
-                    MarkDirty(true);
-                    generating = false;
-                }, ColorUtil.ColorOverlay(labelColor, ColorUtil.WhiteArgb, 0.65f), 0.5f, 1f);
-                
-            }
+                GenLabelMeshWithItemStack(texSubId);
+                MarkDirty(true);
+                requested = false;
+            });
         }
 
 
@@ -544,19 +527,9 @@ namespace Vintagestory.GameContent
 
         private void FreeAtlasSpace()
         {
-            if (Api?.Side != EnumAppSide.Client) return;
-
             if (labelStack != null)
             {
-                int hashCode = labelStack.GetHashCode(GlobalConstants.IgnoredStackAttributes) + labelColor.GetHashCode();
-                if (ownBlock !=null && ownBlock.itemStackRenders.TryGetValue(hashCode, out var val))
-                {
-                    val.UsedCounter.Remove(Pos.GetHashCode());
-                    if (val.UsedCounter.Count == 0)
-                    {
-                        capi.BlockTextureAtlas.FreeTextureSpace(val.TextureSubId);
-                    }
-                }
+                labelCacheSys?.FreeLabelTexture(labelStack, labelColor, Pos);
             }
         }
 

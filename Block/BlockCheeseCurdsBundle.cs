@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
@@ -149,6 +150,13 @@ namespace Vintagestory.GameContent
                 return true;
             }
 
+            if (beccb.Rotten || beccb.Inventory.Empty)
+            {
+                beccb.Inventory.DropAll(beccb.Pos.ToVec3d().Add(0.5, 0.2, 0.5));
+                api.World.BlockAccessor.SetBlock(api.World.GetBlock(new AssetLocation("linen-normal-down")).Id, blockSel.Position);
+                return true;
+            }
+
             if (beccb.State == EnumCurdsBundleState.BundledStick && beccb.Squuezed)
             {
                 beccb.State = EnumCurdsBundleState.Opened;
@@ -171,6 +179,8 @@ namespace Vintagestory.GameContent
             if (beccb.State == EnumCurdsBundleState.OpenedSalted)
             {
                 ItemStack cheeseRoll = new ItemStack(api.World.GetItem(new AssetLocation("rawcheese-salted")));
+                
+
                 if (!byPlayer.InventoryManager.TryGiveItemstack(cheeseRoll, true))
                 {
                     api.World.SpawnItemEntity(cheeseRoll, byPlayer.Entity.Pos.XYZ.Add(0, 0.5, 0));
@@ -184,6 +194,8 @@ namespace Vintagestory.GameContent
 
             return true;
         }
+
+
 
         public override bool OnBlockInteractStep(float secondsUsed, IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {

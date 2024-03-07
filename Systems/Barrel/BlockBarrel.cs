@@ -13,18 +13,13 @@ namespace Vintagestory.GameContent
 {
     public class BlockBarrel : BlockLiquidContainerBase
     {
-
         public override bool AllowHeldLiquidTransfer => false;
+        protected string shapesBasePath => "shapes/block/wood/barrel/";
 
-        public override int GetContainerSlotId(BlockPos pos)
-        {
-            return 1;
-        }
+        public override int GetContainerSlotId(BlockPos pos) => 1;
 
-        public override int GetContainerSlotId(ItemStack containerStack)
-        {
-            return 1;
-        }
+        public override int GetContainerSlotId(ItemStack containerStack) => 1;
+
 
         #region Render
         public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
@@ -151,26 +146,32 @@ namespace Vintagestory.GameContent
 
 
 
+        #endregion
+
+
+        #region Mesh generation
+
         public MeshData GenMesh(ItemStack contentStack, ItemStack liquidContentStack, bool issealed, BlockPos forBlockPos = null)
         {
             ICoreClientAPI capi = api as ICoreClientAPI;
 
-            Shape shape = API.Common.Shape.TryGet(capi, "shapes/block/wood/barrel/"+ (issealed ? "closed" : "empty") +".json");
+            Shape shape = API.Common.Shape.TryGet(capi, shapesBasePath + (issealed ? "closed" : "empty") + ".json");
             MeshData barrelMesh;
             capi.Tesselator.TesselateShape(this, shape, out barrelMesh);
 
             if (!issealed)
             {
-                MeshData contentMesh = getContentMesh(contentStack, forBlockPos, "contents.json");
-                if (contentMesh != null) barrelMesh.AddMeshData(contentMesh);
+                var containerProps = liquidContentStack?.ItemAttributes?["waterTightContainerProps"];
 
-                bool isopaque = liquidContentStack?.ItemAttributes?["waterTightContainerProps"]?["isopaque"].AsBool(false) == true;
-                bool isliquid = liquidContentStack?.ItemAttributes?["waterTightContainerProps"].Exists == true;
-                if (liquidContentStack != null && (isliquid || contentStack == null))
+                MeshData contentMesh =
+                    getContentMeshFromAttributes(contentStack, liquidContentStack, forBlockPos) ??
+                    getContentMeshLiquids(contentStack, liquidContentStack, forBlockPos, containerProps) ??
+                    getContentMesh(contentStack, forBlockPos, shapesBasePath + "contents.json")
+                ;
+
+                if (contentMesh != null)
                 {
-                    string shapefilename = isliquid && !isopaque ? "liquidcontents.json" : "contents.json";
-                    contentMesh = getContentMesh(liquidContentStack, forBlockPos, shapefilename);
-                    if (contentMesh != null) barrelMesh.AddMeshData(contentMesh);
+                    barrelMesh.AddMeshData(contentMesh);
                 }
 
                 if (forBlockPos != null)
@@ -189,10 +190,34 @@ namespace Vintagestory.GameContent
             return barrelMesh;
         }
 
-        #endregion
+        private MeshData getContentMeshLiquids(ItemStack contentStack, ItemStack liquidContentStack, BlockPos forBlockPos, JsonObject containerProps)
+        {
+            bool isopaque = containerProps?["isopaque"].AsBool(false) == true;
+            bool isliquid = containerProps?.Exists == true;
+            if (liquidContentStack != null && (isliquid || contentStack == null))
+            {
+                string shapefilename = "contents.json";
+                if (isliquid) shapefilename = isopaque ? "opaqueliquidcontents.json" : "liquidcontents.json";
+
+                return getContentMesh(liquidContentStack, forBlockPos, shapesBasePath + shapefilename);
+            }
+
+            return null;
+        }
+
+        private MeshData getContentMeshFromAttributes(ItemStack contentStack, ItemStack liquidContentStack, BlockPos forBlockPos)
+        {
+            if (liquidContentStack?.ItemAttributes?["inBarrelShape"].Exists == true)
+            {
+                var loc = AssetLocation.Create(liquidContentStack.ItemAttributes?["inBarrelShape"].AsString(), contentStack.Collectible.Code.Domain).WithPathPrefixOnce("shapes").WithPathAppendixOnce(".json");
+                return getContentMesh(contentStack, forBlockPos, loc.ToString());
+            }
+
+            return null;
+        }
 
 
-        protected MeshData getContentMesh(ItemStack stack, BlockPos forBlockPos, string shapefilename)
+        protected MeshData getContentMesh(ItemStack stack, BlockPos forBlockPos, string shapefilepath)
         {
             ICoreClientAPI capi = api as ICoreClientAPI;
 
@@ -215,7 +240,12 @@ namespace Vintagestory.GameContent
 
             if (stack != null && contentSource != null)
             {
-                Shape shape = API.Common.Shape.TryGet(capi, "shapes/block/wood/barrel/" + shapefilename);
+                Shape shape = API.Common.Shape.TryGet(capi, shapefilepath);
+                if (shape == null)
+                {
+                    api.Logger.Warning(string.Format("Barrel block '{0}': Content shape {1} not found. Will try to default to another one.", Code, shapefilepath));
+                    return null;
+                }
                 MeshData contentMesh;
                 capi.Tesselator.TesselateShape("barrel", shape, out contentMesh, contentSource, new Vec3f(Shape.rotateX, Shape.rotateY, Shape.rotateZ), props?.GlowLevel ?? 0);
 
@@ -287,6 +317,7 @@ namespace Vintagestory.GameContent
             return contentSource;
         }
 
+        #endregion
 
 
         public override WorldInteraction[] GetHeldInteractionHelp(ItemSlot inSlot)

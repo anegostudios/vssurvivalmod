@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.Intrinsics.Arm;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -7,6 +8,7 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.ServerMods;
+using static System.TimeZoneInfo;
 
 namespace Vintagestory.GameContent
 {
@@ -38,11 +40,12 @@ namespace Vintagestory.GameContent
         public bool growOnlyWhereRainfallExposed = false;
 
         protected virtual int MaxStage => 3;
+        GenBlockLayers genBlockLayers;
 
-
+        private const int FullyGrownStage = 3;
         int GrowthStage(string stage)
         {
-            if (stage == "normal") return 3;
+            if (stage == "normal") return FullyGrownStage;
             if (stage == "sparse") return 2;
             if (stage == "verysparse") return 1;
             return 0;
@@ -73,7 +76,8 @@ namespace Vintagestory.GameContent
             {
                 (api as ICoreServerAPI).Event.ServerRunPhase(EnumServerRunPhase.RunGame, () =>
                 {
-                    blocklayerconfig = api.ModLoader.GetModSystem<GenBlockLayers>().blockLayerConfig;
+                    genBlockLayers = api.ModLoader.GetModSystem<GenBlockLayers>();
+                    blocklayerconfig = genBlockLayers.blockLayerConfig;
                 });
             }
 
@@ -149,7 +153,10 @@ namespace Vintagestory.GameContent
         protected Block tryGetBlockForGrowing(IWorldAccessor world, BlockPos pos)
         {
             int targetStage;
-            if (currentStage != MaxStage && (targetStage = getClimateSuitedGrowthStage(world, pos, world.BlockAccessor.GetClimateAt(pos, EnumGetClimateMode.WorldGenValues))) != currentStage)
+
+            ClimateCondition conds = GetClimateAt(world.BlockAccessor, pos);
+
+            if (currentStage != MaxStage && (targetStage = getClimateSuitedGrowthStage(world, pos, conds)) != currentStage)
             {
                 int nextStage = GameMath.Clamp(targetStage, currentStage - 1, currentStage + 1);
 
@@ -157,6 +164,25 @@ namespace Vintagestory.GameContent
             }
 
             return null;
+        }
+
+        private ClimateCondition GetClimateAt(IBlockAccessor blockAccessor, BlockPos pos)
+        {
+            if (genBlockLayers == null)
+            {
+                return blockAccessor.GetClimateAt(pos, EnumGetClimateMode.WorldGenValues);
+            }
+            else
+            {
+                // Some randomness stuff to hide straight lines in the climate transition system resulting from using lerp on a low resolution map
+                int rndY = genBlockLayers.RandomlyAdjustPosition(pos, out double rndX, out double rndZ);
+                int distx = (int)(Math.Round(rndX, 0));
+                int distz = (int)(Math.Round(rndZ, 0));
+                pos.Add(distx, rndY, distz);
+                var conds = blockAccessor.GetClimateAt(pos, EnumGetClimateMode.WorldGenValues);
+                pos.Add(-distx, -rndY, -distz);
+                return conds;
+            }
         }
 
         protected Block tryGetBlockForDying(IWorldAccessor world)
@@ -204,14 +230,13 @@ namespace Vintagestory.GameContent
         /// <returns>true if grass can grow on this block at this location, false otherwise</returns>
         protected bool canGrassGrowHere(IWorldAccessor world, BlockPos pos)
         {
-            string grasscoverage = Variant["grasscoverage"];
-            bool isFullyGrown = "normal".Equals(grasscoverage);
+            bool isFullyGrown = currentStage == FullyGrownStage;
 
             if (!isFullyGrown &&
                 world.BlockAccessor.GetLightLevel(pos, EnumLightLevelType.MaxLight) >= growthLightLevel &&
                 world.BlockAccessor.IsSideSolid(pos.X, pos.Y + 1, pos.Z, BlockFacing.DOWN) == false)
             {
-                return getClimateSuitedGrowthStage(world, pos, world.BlockAccessor.GetClimateAt(pos, EnumGetClimateMode.WorldGenValues)) != currentStage;
+                return getClimateSuitedGrowthStage(world, pos, GetClimateAt(world.BlockAccessor, pos)) != currentStage;
             }
             return false;
         }
@@ -222,34 +247,33 @@ namespace Vintagestory.GameContent
         {
             if (climate == null) return currentStage;  // Can occasionally be null, e.g. during running /wgen regen command
 
+            IMapChunk mapchunk = world.BlockAccessor.GetMapChunkAtBlockPos(pos);
+            if (mapchunk == null) return 0;
+
             ICoreServerAPI api = (ICoreServerAPI)world.Api;
             int mapheight = api.WorldManager.MapSizeY;
             float transitionSize = blocklayerconfig.blockLayerTransitionSize;
+            int topblockid = mapchunk.TopRockIdMap[(pos.Z % chunksize) * chunksize + (pos.X % chunksize)];
+
+            double posRand = (double)GameMath.MurmurHash3(pos.X, 1, pos.Z) / int.MaxValue;
+            posRand = (posRand + 1) * transitionSize;
+
+            int posY = pos.Y + (int)(genBlockLayers.distort2dx.Noise(-pos.X, -pos.Z) / 4.0);
 
             for (int j = 0; j < blocklayerconfig.Blocklayers.Length; j++)
             {
                 BlockLayer bl = blocklayerconfig.Blocklayers[j];
-                float yrel = (float)pos.Y / mapheight;
-                float tempDist = Math.Abs(climate.Temperature - GameMath.Clamp(climate.Temperature, bl.MinTemp, bl.MaxTemp));
-                float rainDist = Math.Abs(climate.WorldgenRainfall - GameMath.Clamp(climate.WorldgenRainfall, bl.MinRain, bl.MaxRain)) * 10f;
-                float fertDist = Math.Abs(climate.Fertility - GameMath.Clamp(climate.Fertility, bl.MinFertility, bl.MaxFertility)) * 10f;
-                float yDist = Math.Abs(yrel - GameMath.Clamp(yrel, bl.MinY, bl.MaxY)) * 10f;
+                float trfDist = bl.CalcTrfDistance(climate.Temperature, climate.WorldgenRainfall, climate.Fertility);
+                float yDist = bl.CalcYDistance(posY, mapheight);
 
-                double posRand = (double)GameMath.MurmurHash3(pos.X, 1, pos.Z) / int.MaxValue;
-                posRand = (posRand + 1) * transitionSize;
-
-                if (tempDist + rainDist + fertDist + yDist <= posRand)
+                if (trfDist + yDist <= posRand)
                 {
-                    IMapChunk mapchunk = world.BlockAccessor.GetMapChunkAtBlockPos(pos);
-                    if (mapchunk == null) return 0;
-
-                    int topblockid = mapchunk.TopRockIdMap[(pos.Z % chunksize) * chunksize + (pos.X % chunksize)];
                     int blockId = bl.GetBlockId(posRand, climate.Temperature, climate.WorldgenRainfall, climate.Fertility, topblockid, pos, mapheight);
 
                     Block block = world.Blocks[blockId];
-                    if (block is BlockSoil)
+                    if (block is BlockSoil blockSoil)
                     {
-                        return (block as BlockSoil).currentStage;
+                        return blockSoil.currentStage;
                     }
                 }
             }

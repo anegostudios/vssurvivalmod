@@ -3,6 +3,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.ServerMods
 {
@@ -155,8 +156,8 @@ namespace Vintagestory.ServerMods
             MapLayerBase ml;
             if (!maplayersByCode.TryGetValue(oremapCode, out ml))
             {
-                NoiseOre noiseOre = new NoiseOre(seed + oremapCode.GetHashCode());
-                maplayersByCode[oremapCode] = ml = GenMaps.GetOreMap(seed + oremapCode.GetHashCode() + 1, noiseOre, scaleMul, contrastMul, sub);
+                NoiseOre noiseOre = new NoiseOre(seed + oremapCode.GetNonRandomizedHashCode());
+                maplayersByCode[oremapCode] = ml = GenMaps.GetOreMap(seed + oremapCode.GetNonRandomizedHashCode() + 1, noiseOre, scaleMul, contrastMul, sub);
             }
 
             return ml;

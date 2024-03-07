@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
@@ -53,6 +54,106 @@ namespace Vintagestory.GameContent
     {
         public int TextureSubId;
         public HashSet<int> UsedCounter;
+        public List<Action<int>> onLabelTextureReady = new List<Action<int>>();
+    }
+
+    // Rendering of the label texture happens in the main thread, but requesting of those textures happens in the tesselation thread
+    // This means we need to carefully synchronize between threads, and also only ever generate 1 texture in cases where multiple blocks request the same label
+    public class ModSystemLabelMeshCache : ModSystem
+    {
+        ICoreClientAPI capi;
+        public override bool ShouldLoad(EnumAppSide side) => side == EnumAppSide.Client;
+        public ModSystemLabelMeshCache() { }
+
+        public override void StartClientSide(ICoreClientAPI api)
+        {
+            capi = api;
+        }
+
+        protected ConcurrentDictionary<int, ItemStackRenderCacheItem> itemStackRenders = new ConcurrentDictionary<int, ItemStackRenderCacheItem>();
+
+
+        public void RequestLabelTexture(int labelColor, BlockPos pos, ItemStack labelStack, Action<int> onLabelTextureReady)
+        {
+            int hashCode = labelStack.GetHashCode(GlobalConstants.IgnoredStackAttributes) + 23 * labelColor.GetHashCode();
+
+            if (itemStackRenders.TryGetValue(hashCode, out var val))
+            {
+                val.UsedCounter.Add(pos.GetHashCode());
+                if (val.TextureSubId != 0)
+                {
+                    onLabelTextureReady(val.TextureSubId);
+                } else
+                {
+                    val.onLabelTextureReady.Add(onLabelTextureReady);
+                }
+                return;
+            }
+            else
+            {
+                var isrci = itemStackRenders[hashCode] = new ItemStackRenderCacheItem() { UsedCounter = new HashSet<int>() };
+                isrci.UsedCounter.Add(pos.GetHashCode());
+                isrci.onLabelTextureReady.Add(onLabelTextureReady);
+            }
+
+            capi.Render.RenderItemStackToAtlas(labelStack, capi.BlockTextureAtlas, 52, (texSubid) =>
+            {
+                if (itemStackRenders.TryGetValue(hashCode, out var val))
+                {
+                    val.TextureSubId = texSubid;
+                    
+                    foreach (var cb in val.onLabelTextureReady)
+                    {
+                        cb.Invoke(texSubid);
+                    }
+                    val.onLabelTextureReady.Clear();
+
+                    regenMipMapsOnce(capi.BlockTextureAtlas.Positions[texSubid].atlasNumber);
+                } else
+                {
+                    capi.BlockTextureAtlas.FreeTextureSpace(texSubid);
+                }
+            }, ColorUtil.ColorOverlay(labelColor, ColorUtil.WhiteArgb, 0.65f), 0.5f, 1f);
+        }
+
+
+        ConcurrentDictionary<int, bool> mipmapRegenQueued = new ConcurrentDictionary<int, bool>();
+
+        // Delay recreation of mipmaps by 2 frames so we don't spam mipmap regens when many crates get loaded at once
+        private void regenMipMapsOnce(int atlasNumber)
+        {
+            if (mipmapRegenQueued.ContainsKey(atlasNumber))
+            {
+                return;
+            }
+            
+
+            mipmapRegenQueued[atlasNumber] = true;
+
+            capi.Event.EnqueueMainThreadTask(() => capi.Event.EnqueueMainThreadTask(() =>
+            {
+                capi.BlockTextureAtlas.RegenMipMaps(atlasNumber);
+                mipmapRegenQueued.Remove(atlasNumber);
+            }, "genmipmaps"), "genmipmaps");
+        }
+
+        public void FreeLabelTexture(ItemStack labelStack, int labelColor, BlockPos pos)
+        {
+            if (labelStack == null) return;
+            
+            int hashCode = labelStack.GetHashCode(GlobalConstants.IgnoredStackAttributes) + 23 * labelColor.GetHashCode();
+
+            if (itemStackRenders.TryGetValue(hashCode, out var val))
+            {
+                val.UsedCounter.Remove(pos.GetHashCode());
+                if (val.UsedCounter.Count == 0)
+                {
+                    capi.BlockTextureAtlas.FreeTextureSpace(val.TextureSubId);
+                    val.TextureSubId = 0;
+                }
+            }
+        }
+
     }
 
     public class BlockCrate : BlockContainer, ITexPositionSource
@@ -71,7 +172,6 @@ namespace Vintagestory.GameContent
         public string SubtypeInventory => Props?.VariantByGroupInventory == null ? "" : Variant[Props.VariantByGroupInventory];
 
 
-        public Dictionary<int, ItemStackRenderCacheItem> itemStackRenders;
         private Vec3f origin = new Vec3f(0.5f, 0.5f, 0.5f);
 
         public TextureAtlasPosition this[string textureCode]
@@ -119,11 +219,6 @@ namespace Vintagestory.GameContent
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
-
-            if (api.Side == EnumAppSide.Client)
-            {
-                itemStackRenders = ObjectCacheUtil.GetOrCreate(api as ICoreClientAPI, "itemStackBlockAtlasRenders", () => new Dictionary<int, ItemStackRenderCacheItem>());
-            }
 
             Props = Attributes.AsObject<CrateProperties>(null, Code.Domain);
 
@@ -400,7 +495,7 @@ namespace Vintagestory.GameContent
             BlockEntityGenericTypedContainer be = capi.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityGenericTypedContainer;
             if (be != null)
             {
-                CompositeTexture tex = null;
+                CompositeTexture tex;
                 if (!Textures.TryGetValue(be.type + "-lid", out tex))
                 {
                     Textures.TryGetValue(be.type + "-top", out tex);

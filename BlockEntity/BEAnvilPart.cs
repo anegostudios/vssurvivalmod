@@ -90,7 +90,7 @@ namespace Vintagestory.GameContent
                 Api.World.SpawnParticles(BlockEntityAnvil.smallMetalSparks, byPlayer);
             }
 
-            if (hammerHits > 11)
+            if (hammerHits > 11 && Api.Side == EnumAppSide.Server)
             {
                 Api.World.BlockAccessor.SetBlock(Api.World.GetBlock(new AssetLocation("anvil-" + Block.Variant["metal"])).Id, Pos);
             }

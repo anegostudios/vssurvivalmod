@@ -126,7 +126,7 @@ namespace Vintagestory.GameContent.Mechanics
         {
             if (AddStands)
             {
-                if (RequiresStand(Position, orients[0].Normali))
+                if (RequiresStand(Api.World, Position, orients[0].Normali))
                 {
                     // Add west stand
                     MeshData mesh = getStandMesh("west");
@@ -135,7 +135,7 @@ namespace Vintagestory.GameContent.Mechanics
                     if (mesh != null) mesher.AddMeshData(mesh);
                 }
 
-                if (RequiresStand(Position, orients[1].Normali))
+                if (RequiresStand(Api.World, Position, orients[1].Normali))
                 {
                     // Add east stand
                     MeshData mesh = getStandMesh("east");
@@ -147,15 +147,15 @@ namespace Vintagestory.GameContent.Mechanics
             return base.OnTesselation(mesher, tesselator);
         }
 
-        private bool RequiresStand(BlockPos pos, Vec3i vector)
+        private bool RequiresStand(IWorldAccessor world, BlockPos pos, Vec3i vector)
         {
             try
             {
-                BlockMPBase block = Api.World.BlockAccessor.GetBlock(pos.X + vector.X, pos.Y + vector.Y, pos.Z + vector.Z) as BlockMPBase;
+                BlockMPBase block = world.BlockAccessor.GetBlock(pos.X + vector.X, pos.Y + vector.Y, pos.Z + vector.Z) as BlockMPBase;
                 if (block == null) return true;
 
                 BlockPos sidePos = new BlockPos(pos.X + vector.X, pos.Y + vector.Y, pos.Z + vector.Z);
-                BEBehaviorMPBase bemp = Api.World.BlockAccessor.GetBlockEntity(sidePos)?.GetBehavior<BEBehaviorMPBase>();
+                BEBehaviorMPBase bemp = world.BlockAccessor.GetBlockEntity(sidePos)?.GetBehavior<BEBehaviorMPBase>();
                 if (bemp == null) return true;
 
                 BEBehaviorMPAxle bempaxle = bemp as BEBehaviorMPAxle;
@@ -164,21 +164,21 @@ namespace Vintagestory.GameContent.Mechanics
                     if (bemp is BEBehaviorMPBrake || bemp is BEBehaviorMPCreativeRotor)
                     {
                         BlockFacing side = BlockFacing.FromNormal(vector);
-                        if (side != null && block.HasMechPowerConnectorAt(Api.World, sidePos, side.Opposite)) return false;
+                        if (side != null && block.HasMechPowerConnectorAt(world, sidePos, side.Opposite)) return false;
                     }
                     return true;
                 }
 
-                if (bempaxle.orientations == orientations && IsAttachedToBlock(Api.World.BlockAccessor, block, sidePos)) return false;
-                return bempaxle.RequiresStand(sidePos, vector);
+                if (bempaxle.orientations == orientations && IsAttachedToBlock(world.BlockAccessor, block, sidePos)) return false;
+                return bempaxle.RequiresStand(world, sidePos, vector);
             }
             catch (Exception e)
             {
 #if DEBUG
                 throw;
 #else
-                Api.Logger.Error("Exception thrown in RequiresStand, will log exception but silently ignore it");
-                Api.Logger.Error(e);
+                world.Logger.Error("Exception thrown in RequiresStand, will log exception but silently ignore it: at " + pos);
+                world.Logger.Error(e);
                 return false;
 #endif
             }

@@ -44,6 +44,22 @@ namespace Vintagestory.GameContent
         public override string InventoryClassName => "curdsbundle";
 
         float meshangle;
+
+        public bool Rotten
+        {
+            get
+            {
+                bool rotten = false;
+                for (int i = 0; i < Inventory.Count; i++)
+                {
+                    rotten |= Inventory[i].Itemstack?.Collectible.Code.Path == "rot";
+                }
+
+                return rotten;
+            }
+        }
+
+
         public virtual float MeshAngle
         {
             get { return meshangle; }

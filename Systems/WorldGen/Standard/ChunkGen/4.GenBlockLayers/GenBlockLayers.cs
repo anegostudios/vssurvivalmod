@@ -16,12 +16,12 @@ namespace Vintagestory.ServerMods
         int mapheight;
         ClampedSimplexNoise grassDensity;
         ClampedSimplexNoise grassHeight;
-        SimplexNoise distort2dz;
         int boilingWaterBlockId;
 
         public int[] layersUnderWater = new int[0];
         public BlockLayerConfig blockLayerConfig;
         public SimplexNoise distort2dx;
+        public SimplexNoise distort2dz;
 
         public override bool ShouldLoad(EnumAppSide side)
         {
@@ -145,10 +145,7 @@ namespace Vintagestory.ServerMods
                 {
                     herePos.Set(chunkX * chunksize + x, 1, chunkZ * chunksize + z);
                     // Some weird randomnes stuff to hide fundamental bugs in the climate transition system :D T_T   (maybe not bugs but just fundamental shortcomings of using lerp on a very low resolution map)
-                    float distx = (float)distort2dx.Noise(herePos.X, herePos.Z);
-                    float distz = (float)distort2dz.Noise(herePos.X, herePos.Z);
-
-                    int disty = (int)(distort2dx.Noise(-herePos.X, -herePos.Z) / 4.0);
+                    int rnd = RandomlyAdjustPosition(herePos, out double distx, out double distz);
 
                     double posRand = (double)GameMath.MurmurHash3(herePos.X, 1, herePos.Z)/int.MaxValue;
                     double transitionRand = (posRand + 1) * transitionSize;
@@ -157,12 +154,11 @@ namespace Vintagestory.ServerMods
                     if (posY >= mapheight) continue;
 
                     int climate = climateMap.GetUnpaddedColorLerped(
-                        rdx * climateStep + climateStep * (float)(x + distx) / chunksize, 
-                        rdz * climateStep + climateStep * (float)(z + distz) / chunksize
+                        rdx * climateStep + climateStep * (x + (float)distx) / chunksize, 
+                        rdz * climateStep + climateStep * (z + (float)distz) / chunksize
                     );
                     
                     int tempUnscaled = (climate >> 16) & 0xff;
-                    int rnd = (int)(distx / 5);
                     float temp = TerraGenConfig.GetScaledAdjustedTemperatureFloat(tempUnscaled, posY - TerraGenConfig.seaLevel + rnd);
                     float tempRel = TerraGenConfig.GetAdjustedTemperature(tempUnscaled, posY - TerraGenConfig.seaLevel + rnd) / 255f;
                     float rainRel = TerraGenConfig.GetRainFall((climate >> 8) & 0xff, posY + rnd) / 255f;
@@ -205,6 +201,7 @@ namespace Vintagestory.ServerMods
                     }
 
                     herePos.Y = posY;
+                    int disty = (int)(distort2dx.Noise(-herePos.X, -herePos.Z) / 4.0);
                     posY = PutLayers(transitionRand, x, z, disty, herePos, chunks, rainRel, temp, tempUnscaled, heightMap);
 
                     if (prevY == TerraGenConfig.seaLevel - 1)
@@ -252,6 +249,12 @@ namespace Vintagestory.ServerMods
             }
         }
 
+        public int RandomlyAdjustPosition(BlockPos herePos, out double distx, out double distz)
+        {
+            distx = distort2dx.Noise(herePos.X, herePos.Z);
+            distz = distort2dz.Noise(herePos.X, herePos.Z);
+            return (int)(distx / 5);
+        }
 
         private int PutLayers(double posRand, int lx, int lz, int posyoffs, BlockPos pos, IServerChunk[] chunks, float rainRel, float temp, int unscaledTemp, ushort[] heightMap)
         {

@@ -214,6 +214,7 @@ namespace Vintagestory.GameContent
                 if (stacks.Length > 0 && stacks[0] != null && stacks[0].Collectible.Code.PathStartsWith("glueportion")) return stacks[0].Collectible.Attributes["repairGain"].AsFloat(0.2f);
 
                 var recipe = mc.GetRecipeCode(world, stack);
+                if (recipe == null) return 0f;                      // Covers the case of pies
                 Item outputItem = world.GetItem(new AssetLocation(recipe));
                 if (outputItem != null && outputItem.Attributes?["repairGain"].Exists == true)
                 {
