@@ -464,8 +464,8 @@ namespace Vintagestory.GameContent
                     case EnumGroundStorageLayout.SingleCenter:
                         if (StorageProps.RandomizeCenterRotation)
                         {
-                            float randomX = (float)(Api.World.Rand.NextDouble() * 6.28 - 3.14);
-                            float randomZ = (float)(Api.World.Rand.NextDouble() * 6.28 - 3.14);
+                            double randomX = Api.World.Rand.NextDouble() * 6.28 - 3.14;
+                            double randomZ = Api.World.Rand.NextDouble() * 6.28 - 3.14;
                             MeshAngle = (float)Math.Atan2(randomX, randomZ);
                         }
                         ok = putOrGetItemSingle(inventory[0], player, bs);
