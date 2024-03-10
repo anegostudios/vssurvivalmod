@@ -468,19 +468,15 @@ namespace Vintagestory.GameContent
 
                     case EnumGroundStorageLayout.WallHalves:
                     case EnumGroundStorageLayout.Halves:
-                        if (hitPos.X < 0.5)
-                        {
-                            ok = putOrGetItemSingle(inventory[0], player, bs);
-                        }
-                        else
-                        {
-                            ok = putOrGetItemSingle(inventory[1], player, bs);
-                        }
+                        int slotId = hitPos.X < 0.5 ? 0 : 1;
+                        ItemSlot toSlot = GetSuitableSlot(player, slotId);
+                        ok = putOrGetItemSingle(toSlot, player, bs);
                         break;
 
                     case EnumGroundStorageLayout.Quadrants:
-                        int pos = ((hitPos.X > 0.5) ? 2 : 0) + ((hitPos.Z > 0.5) ? 1 : 0);
-                        ok = putOrGetItemSingle(inventory[pos], player, bs);
+                        int slotId = ((hitPos.X > 0.5) ? 2 : 0) + ((hitPos.Z > 0.5) ? 1 : 0);
+                        ItemSlot toSlot = GetSuitableSlot(player, slotId);
+                        ok = putOrGetItemSingle(toSlot, player, bs);
                         break;
 
                     case EnumGroundStorageLayout.Stacking:
@@ -527,10 +523,63 @@ namespace Vintagestory.GameContent
             isUsingSlot = null;
         }
 
-
-
-
-
+        public ItemSlot GetSuitableSlot(IPlayer player, int slotId)
+        {
+            ItemSlot defaultSlot = inventory[slotId];
+            if (!player.InventoryManager.ActiveHotbarSlot.Empty || !defaultSlot.Empty)
+            {
+                return defaultSlot;
+            }
+        
+            BlockFacing blockFacing = BlockFacing.HorizontalFromAngle(MeshAngle).GetCCW();
+            BlockFacing playerFacing = BlockFacing.HorizontalFromAngle(GameMath.Mod(player.Entity.Pos.Yaw, (float)Math.PI * 2f));
+        
+            switch (StorageProps.Layout)
+            {
+                case EnumGroundStorageLayout.Halves:
+                case EnumGroundStorageLayout.WallHalves:
+                    return inventory.FirstNonEmptySlot;
+                case EnumGroundStorageLayout.Quadrants:
+                    if (blockFacing.Index == playerFacing.Index)
+                    {
+                        return slotId switch
+                        {
+                            3 => new ItemSlot[] { inventory[2], inventory[1], inventory[0], defaultSlot }.FirstOrDefault(slot => !slot.Empty),
+                            1 => new ItemSlot[] { inventory[0], inventory[3], inventory[2], defaultSlot }.FirstOrDefault(slot => !slot.Empty),
+                            _ => defaultSlot
+                        };
+                    }
+                    else if (blockFacing.Index == playerFacing.Opposite.Index)
+                    {
+                        return slotId switch
+                        {
+                            2 => new ItemSlot[] { inventory[3], inventory[0], inventory[1], defaultSlot }.FirstOrDefault(slot => !slot.Empty),
+                            0 => new ItemSlot[] { inventory[1], inventory[2], inventory[3], defaultSlot }.FirstOrDefault(slot => !slot.Empty),
+                            _ => defaultSlot
+                        };
+                    }
+                    else if (blockFacing.Index == playerFacing.GetCW().Index)
+                    {
+                        return slotId switch
+                        {
+                            3 => new ItemSlot[] { inventory[1], inventory[2], inventory[0], defaultSlot }.FirstOrDefault(slot => !slot.Empty),
+                            2 => new ItemSlot[] { inventory[0], inventory[3], inventory[1], defaultSlot }.FirstOrDefault(slot => !slot.Empty),
+                            _ => defaultSlot
+                        };
+                    }
+                    else if (blockFacing.Index == playerFacing.GetCCW().Index)
+                    {
+                        return slotId switch
+                        {
+                            0 => new ItemSlot[] { inventory[2], inventory[1], inventory[3], defaultSlot }.FirstOrDefault(slot => !slot.Empty),
+                            1 => new ItemSlot[] { inventory[3], inventory[0], inventory[2], defaultSlot }.FirstOrDefault(slot => !slot.Empty),
+                            _ => defaultSlot
+                        };
+                    }
+                    break;
+            }
+            return defaultSlot;
+        }
 
         public ItemSlot GetSlotAt(BlockSelection bs)
         {
