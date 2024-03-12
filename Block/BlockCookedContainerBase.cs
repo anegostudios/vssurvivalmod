@@ -10,7 +10,7 @@ namespace Vintagestory.GameContent
 {
     public class BlockCookedContainerBase : BlockContainer, IBlockMealContainer, IContainedInteractable, IContainedCustomName
     {
-        public bool IsEmpty(ItemStack stack)
+        public bool IsPotEmpty(ItemStack stack)
         {
             ItemStack[] nonEmptyContents = GetNonEmptyContents(api.World, stack);
             if (nonEmptyContents == null || nonEmptyContents.Length == 0)
@@ -375,7 +375,7 @@ namespace Vintagestory.GameContent
                 }
 
                 if (slot.Itemstack.Collectible is BlockCrock
-                    && !IsEmpty(api.World, slot.Itemstack)
+                    && !IsPotEmpty(api.World, slot.Itemstack)
                     && !targetSlot.Empty
                     && targetSlot.Itemstack != null
                     && targetSlot.StackSize > 0
