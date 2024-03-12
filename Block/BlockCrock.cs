@@ -79,7 +79,7 @@ namespace Vintagestory.GameContent
 
             if (recipeCode != null && recipeCode.Length > 0)
             {
-                var code = getMostCommonMealIngredient(contents);
+                var code = ostCommonMealIngredient(contents);
                 if (code != null && (label = CodeToLabel(code)) != null)
                 {
                     return AssetLocation.Create("shapes/block/clay/crock/label-" + label + ".json", Code.Domain);
@@ -730,6 +730,47 @@ namespace Vintagestory.GameContent
             }
     
             return base.GetHeldInteractionHelp(inSlot);
+        }
+    }
+
+    public override int GetMergableQuantity(ItemStack sinkStack, ItemStack sourceStack, EnumMergePriority priority)
+    {
+        if (priority == EnumMergePriority.DirectMerge)
+        {
+            if (!IsCrockEmpty(sinkStack)
+                && !sinkStack.Attributes.GetAsBool("sealed")
+                && sourceStack.Collectible.Attributes.KeyExists("canSealCrock")
+                && sourceStack.Collectible.Attributes["canSealCrock"].AsBool())
+            {
+                return 1;
+            }
+            return base.GetMergableQuantity(sinkStack, sourceStack, priority);
+        }
+        return base.GetMergableQuantity(sinkStack, sourceStack, priority);
+    }
+    
+    public override void TryMergeStacks(ItemStackMergeOperation op)
+    {
+        if (op.CurrentPriority == EnumMergePriority.DirectMerge)
+        {
+            if (!IsCrockEmpty(op.SinkSlot.Itemstack)
+                && !op.SinkSlot.Itemstack.Attributes.GetAsBool("sealed")
+                && op.SourceSlot.Itemstack.Collectible.Attributes.KeyExists("canSealCrock")
+                && op.SourceSlot.Itemstack.Collectible.Attributes["canSealCrock"].AsBool())
+            {
+                op.SinkSlot.Itemstack.Attributes.SetBool("sealed", true);
+                op.MovedQuantity = 1;
+                op.SourceSlot.TakeOut(1);
+                op.SinkSlot.MarkDirty();
+                return;
+            }
+            else
+            {
+                if (op.World.Api.Side == EnumAppSide.Client)
+                {
+                    (api as ICoreClientAPI)?.TriggerIngameError(this, "crockemptyorsealed", Lang.Get("ingameerror-crock-empty-or-sealed"));
+                }
+            }
         }
     }
 }
