@@ -79,7 +79,7 @@ namespace Vintagestory.GameContent
 
             if (recipeCode != null && recipeCode.Length > 0)
             {
-                var code = ostCommonMealIngredient(contents);
+                var code = getMostCommonMealIngredient(contents);
                 if (code != null && (label = CodeToLabel(code)) != null)
                 {
                     return AssetLocation.Create("shapes/block/clay/crock/label-" + label + ".json", Code.Domain);
