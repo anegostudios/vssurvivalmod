@@ -1243,6 +1243,7 @@ namespace Vintagestory.GameContent
                 int ingredientsLen = recipes[0].Ingredients.Length;
                 ItemStack[][] ingstacks = new ItemStack[ingredientsLen][];
                 ItemStack[] outstacks = new ItemStack[recipes.Count];
+                double sealHours = 0;
 
                 for (int i = 0; i < recipes.Count; i++)
                 {
@@ -1261,6 +1262,7 @@ namespace Vintagestory.GameContent
                         ingstacks[j][i] = recipes[i].Ingredients[j].ResolvedItemstack;
                     }
 
+                    sealHours = recipes[i].SealHours;
                     outstacks[i] = recipes[i].Output.ResolvedItemstack;
                 }
 
@@ -1288,6 +1290,11 @@ namespace Vintagestory.GameContent
 
                 ocmp.ShowStackSize = true;
                 barrelRecipesTexts.Add(ocmp);
+
+                string sealHoursText = (sealHours > 24.0) ? " " + Lang.Get("{0} days", Math.Round(sealHours / (double)capi.World.Calendar.HoursPerDay, 1)) : Lang.Get("{0} hours", Math.Round(sealHours));
+                var hoursCmp = new RichTextComponent(capi, sealHoursText, CairoFont.WhiteSmallText());
+                hoursCmp.VerticalAlign = EnumVerticalAlign.Middle;
+                barrelRecipesTexts.Add(hoursCmp);
 
                 barrelRecipesTexts.Add(new ClearFloatTextComponent(capi, 10));
             }
