@@ -54,7 +54,7 @@ namespace Vintagestory.GameContent
 
         public override void OnLoaded(ICoreAPI api)
         {
-            rand = new Random(api.World.Seed);
+            rand = new Random();
 
             this.Stacks = Attributes["stacks"].AsObject<RandomStack[]>();
             float totalchance = 0;

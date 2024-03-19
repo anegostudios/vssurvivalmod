@@ -1,6 +1,7 @@
 ﻿using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
@@ -98,6 +99,19 @@ namespace Vintagestory.ServerMods
     public class LakeBedLayerProperties
     {
         public LakeBedBlockCodeByMin[] BlockCodeByMin;
+
+        public int GetSuitable(float temp, float rainRel, float yRel, LCGRandom rand, int rockBlockId)
+        {
+            for (int i = 0; i < BlockCodeByMin.Length; i++)
+            {
+                if (BlockCodeByMin[i].Suitable(temp, rainRel, yRel, rand))
+                {
+                    return BlockCodeByMin[i].GetBlockForMotherRock(rockBlockId);
+                }
+            }
+
+            return 0;
+        }
     }
 
     [JsonObject(MemberSerialization.OptIn)]

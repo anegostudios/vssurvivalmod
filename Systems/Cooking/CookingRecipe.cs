@@ -233,13 +233,15 @@ namespace Vintagestory.GameContent
                         if (fruits[1] != null)
                         {
                             return Lang.Get("mealname-mixedjam", fruits[0].GetName(), fruits[1].GetName());
-                        } else
+                        }
+                        else if (fruits[0] != null)
                         {
                             string jamName = fruits[0].Collectible.LastCodePart() + "-jam";
                             string jamNameLocalised = Lang.Get(jamName);
                             if (jamName != jamNameLocalised) return jamNameLocalised;
                             return Lang.Get("mealname-singlejam", fruits[0].GetName());
                         }
+                        else return Lang.Get("unknown");
                     }
 
                 case "glueportion-pitch-hot":

@@ -397,7 +397,7 @@ namespace Vintagestory.GameContent
 
         private bool OnCopyLayer(int layer)
         {
-            if (layer == 0) return false;
+            if (layer <= 0 || layer > 15) return false;
 
             bool didplace = false;
             int quantity = 4;

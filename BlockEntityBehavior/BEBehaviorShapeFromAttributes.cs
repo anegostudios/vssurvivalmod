@@ -238,7 +238,7 @@ namespace Vintagestory.GameContent
 
         public string GetFullCode()
         {
-            return clutterBlock.Code.Domain + ":" + clutterBlock.ClassType + "-" + Type?.Replace("/", "-");
+            return clutterBlock.BaseCodeForName() + Type?.Replace("/", "-");
         }
     }
 }

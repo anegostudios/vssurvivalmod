@@ -17,7 +17,7 @@ namespace Vintagestory.GameContent
 
             if (bhaa == null)
             {
-                api.World.Logger.Warning("Spear {0} uses ItemSpear class, but lacks required AnimationAuthoritative behavior. I'll take the freedom to add this behavior, but please fix json item type.", Code);
+                api.World.Logger.Warning("Cleaver {0} uses ItemCleaver class, but lacks required AnimationAuthoritative behavior. I'll take the freedom to add this behavior, but please fix json item type.", Code);
                 bhaa = new CollectibleBehaviorAnimationAuthoritative(this);
                 bhaa.OnLoaded(api);
                 CollectibleBehaviors = CollectibleBehaviors.Append(bhaa);

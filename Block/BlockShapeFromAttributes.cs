@@ -673,5 +673,10 @@ namespace Vintagestory.GameContent
             return null;
 
         }
+
+        public virtual string BaseCodeForName()
+        {
+            return Code.Domain + ":" + ClassType + "-";
+        }
     }
 }

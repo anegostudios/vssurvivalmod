@@ -285,12 +285,6 @@ namespace Vintagestory.GameContent
             return Lang.GetMatching(Code.Domain + ":" + (type.Length == 0 ? "bookshelf-" + variant : type.Replace("/", "-")));
         }
 
-        public override string GetPlacedBlockName(IWorldAccessor world, BlockPos pos)
-        {
-            var bec = GetBEBehavior<BEBehaviorClutterBookshelf>(pos);
-            return Lang.GetMatching(Code.Domain + ":" + (bec?.Type?.Replace("/", "-") ?? "unknown"));
-        }
-
         public override string GetPlacedBlockInfo(IWorldAccessor world, BlockPos pos, IPlayer forPlayer)
         {
             var bec = GetBEBehavior<BEBehaviorClutterBookshelf>(pos);
@@ -308,6 +302,13 @@ namespace Vintagestory.GameContent
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1)
         {
             return new ItemStack[0];
+        }
+
+
+        //Suppress "bookshelf-" at start of localized name key; it will therefore normally start with "bookshelves-"
+        public override string BaseCodeForName()
+        {
+            return Code.Domain + ":";
         }
     }
 }

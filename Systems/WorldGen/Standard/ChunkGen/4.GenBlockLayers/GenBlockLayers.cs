@@ -277,21 +277,21 @@ namespace Vintagestory.ServerMods
 
                 pos.Y--;
 
-                if (blockId == GlobalConfig.waterBlockId || blockId == boilingWaterBlockId || blockId == GlobalConfig.saltWaterBlockId)
-                {
-                    underWater = true;   
-                    continue;
-                }
-
-                // Don't generate on ice (would otherwise cause snow above water, which collapses with block gravity enabled, causing massive lag)
-                if (blockId == GlobalConfig.lakeIceBlockId)
-                {
-                    underIce = true;     // radfast 30.1.24: Treat Lake ice just the same as water, so we ignore it but go down through it to see what is underneath...
-                    continue;              // Otherwise, it results in block columns in the Arctic with no TopRockIdMap set  (TopRockIdMap will be 0, which can break ruins)
-                }
-
                 if (blockId != 0)
                 {
+                    if (blockId == GlobalConfig.waterBlockId || blockId == boilingWaterBlockId || blockId == GlobalConfig.saltWaterBlockId)
+                    {
+                        underWater = true;
+                        continue;
+                    }
+
+                    // Don't generate on ice (would otherwise cause snow above water, which collapses with block gravity enabled, causing massive lag)
+                    if (blockId == GlobalConfig.lakeIceBlockId)
+                    {
+                        underIce = true;     // radfast 30.1.24: Treat Lake ice just the same as water, so we ignore it but go down through it to see what is underneath...
+                        continue;              // Otherwise, it results in block columns in the Arctic with no TopRockIdMap set  (TopRockIdMap will be 0, which can break ruins)
+                    }
+
                     if (heightMap != null && first)
                     {
                         chunks[0].MapChunk.TopRockIdMap[lz * chunksize + lx] = blockId;
@@ -428,18 +428,9 @@ namespace Vintagestory.ServerMods
             }
 
 
-            layersUnderWater = null;
-            for (int j = 0; j < blockLayerConfig.LakeBedLayer.BlockCodeByMin.Length; j++)
-            {
-                LakeBedBlockCodeByMin lbbc = blockLayerConfig.LakeBedLayer.BlockCodeByMin[j];
-                if (lbbc.Suitable(temperature, rainRel, (float)posY / api.WorldManager.MapSizeY, rnd))
-                {
-                    layersUnderWater = new int[] { lbbc.GetBlockForMotherRock(firstBlockId) };
-                    break;
-                }
-            }
-            if (layersUnderWater == null) layersUnderWater = new int[0];
-
+            int lakeBedId = blockLayerConfig.LakeBedLayer.GetSuitable(temperature, rainRel, (float)posY / api.WorldManager.MapSizeY, rnd, firstBlockId);
+            if (lakeBedId == 0) layersUnderWater = new int[0];
+            else layersUnderWater = new int[] { lakeBedId };
         }
 
      

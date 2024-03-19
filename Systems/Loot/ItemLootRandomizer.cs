@@ -13,7 +13,7 @@ namespace Vintagestory.GameContent
 
         public override void OnLoaded(ICoreAPI api)
         {
-            rand = new Random(api.World.Seed);
+            rand = new Random();
             base.OnLoaded(api);
         }
 

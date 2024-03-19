@@ -357,15 +357,8 @@ namespace Vintagestory.ServerMods
                 int rockBlockId = mapchunk.TopRockIdMap[lz * chunksize + lx];
                 if (rockBlockId == 0) continue;
 
-                LakeBedBlockCodeByMin[] codes = lakebedLayerConfig.BlockCodeByMin;
-                for (int i = 0; i < codes.Length; i++)
-                {
-                    if (codes[i].Suitable(temp, rainRel, (float)pondYPos / mapheight, rand))
-                    {
-                        chunkOneBlockBelow.Data[index] = codes[i].GetBlockForMotherRock(rockBlockId);
-                        break;
-                    }
-                }
+                int lakebedId = lakebedLayerConfig.GetSuitable(temp, rainRel, (float)pondYPos / mapheight, rand, rockBlockId);
+                if (lakebedId != 0) chunkOneBlockBelow.Data[index] = lakebedId;
             }
 
 

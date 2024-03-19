@@ -169,7 +169,7 @@ namespace Vintagestory.GameContent
             EntityBehaviorTaskAI taskAi = GetBehavior<EntityBehaviorTaskAI>();
 
             taskAi.TaskManager.OnShouldExecuteTask +=
-               (task) => ConversableBh == null || ConversableBh.ControllerByPlayer.Count == 0 || (task is AiTaskIdle || task is AiTaskSeekEntity || task is AiTaskGotoEntity);
+               (task) => (ConversableBh == null || ConversableBh.ControllerByPlayer.Count == 0 || (task is AiTaskIdle || task is AiTaskSeekEntity || task is AiTaskGotoEntity)) && tradingWithPlayer == null;
         }
 
 

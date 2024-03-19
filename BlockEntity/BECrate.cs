@@ -175,6 +175,8 @@ namespace Vintagestory.GameContent
 
                 if (inventory.Empty)
                 {
+                    FreeAtlasSpace();
+                    labelStack = null;
                     labelMesh = null;
                 }
 
@@ -451,6 +453,8 @@ namespace Vintagestory.GameContent
         {
             if (LabelProps?.EditableShape == null || labelStack == null || requested) return;
             
+            if (labelCacheSys == null) labelCacheSys = Api.ModLoader.GetModSystem<ModSystemLabelMeshCache>();
+
             requested = true;
             labelCacheSys.RequestLabelTexture(labelColor, Pos, labelStack, (texSubId) =>
             {

@@ -267,6 +267,7 @@ namespace Vintagestory.GameContent
 
             ItemStack[] stacks = GetContents(api.World, potslot.Itemstack);
             string code = bowlSlot.Itemstack.Block.Attributes["mealBlockCode"].AsString();
+            if (code == null) return false;
             Block mealblock = api.World.GetBlock(new AssetLocation(code));
 
             float servingsToTransfer = Math.Min(quantityServings, servingCapacity);

@@ -150,6 +150,7 @@ namespace Vintagestory.GameContent
                 {
                     capi.BlockTextureAtlas.FreeTextureSpace(val.TextureSubId);
                     val.TextureSubId = 0;
+                    itemStackRenders.Remove(hashCode);
                 }
             }
         }
@@ -368,7 +369,7 @@ namespace Vintagestory.GameContent
         public MeshData GenLabelMesh(ICoreClientAPI capi, string label, TextureAtlasPosition texPos, bool editableVariant, Vec3f rotation = null)
         {
             Props.Labels.TryGetValue(label, out var labelProps);
-            if (Props == null) throw new ArgumentException("No label props found for this label");
+            if (labelProps == null) throw new ArgumentException("No label props found for this label");
 
             AssetLocation shapeloc = (editableVariant ? labelProps.EditableShape : labelProps.Shape).Base.Clone().WithPathAppendixOnce(".json").WithPathPrefixOnce("shapes/");
             Shape shape = API.Common.Shape.TryGet(capi, shapeloc);
