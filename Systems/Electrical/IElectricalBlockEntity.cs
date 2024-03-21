@@ -68,8 +68,9 @@ namespace Vintagestory.GameContent.Electrical
         /// Should not actually alter a machines power.
         /// </summary>
         /// <param name="dt">DeltaTime (time betwen ticks in decimal seconds)</param>
+        /// <param name="isInsert">True for inserting power, false for extracting.</param>
         /// <returns>Power for this deltatime</returns>
-        ulong RatedPower(float dt);
+        ulong RatedPower(float dt, bool isInsert = false);
 
         /// <summary>
         /// Takes powerOffered and removes any power needed and returns power left over.<br/>
