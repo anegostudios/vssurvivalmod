@@ -22,7 +22,7 @@ namespace Vintagestory.GameContent.Electrical
         ulong CurrentPower { get; }
 
         /// <summary>
-        /// What type of Electrical Entity is this?         
+        /// What type of Electrical Entity is this?
         /// </summary>
         EnumElectricalEntityType ElectricalEntityType { get; }
 
@@ -49,18 +49,27 @@ namespace Vintagestory.GameContent.Electrical
         bool IsSleeping { get; }
 
         /// <summary>
-        /// Is this Machine Enabled? (On/Off) 
+        /// Is this Machine Enabled? (On/Off)
         /// </summary>
         bool IsEnabled { get; }
 
         /// <summary>
-        /// What is the Priority of this Entity? 
+        /// What is the Priority of this Entity?
         /// <br>1 = highest priority.</br>
         /// <br>If every entity is the same priority, then the priority system is negated.</br>
         /// <br>Example, higher priority generators are first to empty, machines are first to fill, etc.</br>
         /// <br>Can be hard-coded or set via GUI.</br>
         /// </summary>
         int Priority { get; }
+
+        /// <summary>
+        /// Power Needed/Available Rated to a machines MaxPPS given the deltaTime.<br/>
+        /// Used by the Electric Network to quickly determine power for a given tick time.<br/>
+        /// Should not actually alter a machines power.
+        /// </summary>
+        /// <param name="dt">DeltaTime (time betwen ticks in decimal seconds)</param>
+        /// <returns>Power for this deltatime</returns>
+        ulong RatedPower(float dt);
 
         /// <summary>
         /// Takes powerOffered and removes any power needed and returns power left over.<br/>
@@ -84,10 +93,10 @@ namespace Vintagestory.GameContent.Electrical
 
         /// <summary>
         /// Completely fill (or drain) power buffer.<br/>
-        /// A fast way for Electrical Networks to process power for this entity.<br/> 
+        /// A fast way for Electrical Networks to process power for this entity.<br/>
         /// </summary>
         /// <param name="drain">[Optional] Drain power to 0 if true.</param>
         void CheatPower(bool drain = false);
-        
+
     }
 }
