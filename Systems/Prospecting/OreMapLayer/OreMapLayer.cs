@@ -161,6 +161,7 @@ namespace Vintagestory.GameContent
 
         protected void ensureIconTexturesLoaded()
         {
+            oremapTexture?.Dispose();
             oremapTexture = oremapIconDele();
         }
 

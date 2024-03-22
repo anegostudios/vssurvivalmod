@@ -177,6 +177,7 @@ namespace Vintagestory.GameContent
         public override void OnHeldInteractStop(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
             byEntity.StopAnimation("insertgear");
+            byEntity.StopAnimation("knifecut");
 
             if (byEntity.LeftHandItemSlot?.Itemstack?.Collectible is ItemTemporalGear)
             {
@@ -191,7 +192,6 @@ namespace Vintagestory.GameContent
 
             if (bh != null && bh.Harvestable && secondsUsed >= KnifeHarvestingSpeed * bh.GetHarvestDuration(byEntity) - 0.1f)
             {
-                byEntity.StopAnimation("knifecut");
                 bh.SetHarvested((byEntity as EntityPlayer)?.Player);
                 slot?.Itemstack?.Collectible.DamageItem(byEntity.World, byEntity, slot, 3);
             }

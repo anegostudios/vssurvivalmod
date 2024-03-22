@@ -174,7 +174,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            slot.Itemstack.TempAttributes.SetBool("isAnvilAction", false);
+            slot.Itemstack?.TempAttributes.SetBool("isAnvilAction", false);
         }
 
         protected virtual void strikeAnvilSound(EntityAgent byEntity, bool merge)
