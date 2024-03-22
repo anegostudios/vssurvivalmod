@@ -816,7 +816,13 @@ namespace Vintagestory.GameContent
                 MeshData mesh = getMesh(stack);
                 if (mesh != null) return mesh;
 
-                var loc = AssetLocation.Create(Block.Attributes["ovenFuelShape"].AsString(), Block.Code.Domain).WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json");
+                string shapeLoc = this.Block.Attributes["ovenFuelShape"].AsString();
+                if (this.FuelSlot?.Itemstack?.Collectible.Attributes.KeyExists("ovenFuelShape") == true)
+                {
+                    shapeLoc = this.FuelSlot.Itemstack.Collectible.Attributes["ovenFuelShape"].AsString();
+                }   
+
+                var loc = AssetLocation.Create(shapeLoc, Block.Code.Domain).WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json");
                 nowTesselatingShape = Shape.TryGet(capi, loc);
                 nowTesselatingObj = stack.Collectible;
 
