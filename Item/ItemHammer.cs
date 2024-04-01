@@ -4,6 +4,7 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
@@ -63,37 +64,51 @@ namespace Vintagestory.GameContent
             IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
             if (byPlayer == null) return;
 
+            BlockEntity be = byEntity.World.BlockAccessor.GetBlockEntity(blockSel.Position);
+
+            if (!(be is BlockEntityAnvilPart) && !(byEntity.World.BlockAccessor.GetBlock(blockSel.Position) is BlockAnvil))
+            {
+                base.OnHeldAttackStart(slot, byEntity, blockSel, entitySel, ref handling);
+                return;
+            }
+
+            handling = EnumHandHandling.PreventDefault;
+        }
+
+
+        public override void OnHeldActionAnimStart(ItemSlot slot, EntityAgent byEntity, EnumHandInteract type)
+        {
+            var eplr = byEntity as EntityPlayer;
+            var byPlayer = eplr.Player;
+            var blockSel = eplr.BlockSelection;
+            if (type != EnumHandInteract.HeldItemAttack || blockSel == null) return;
 
             BlockEntity be = byEntity.World.BlockAccessor.GetBlockEntity(blockSel.Position);
 
             if (be is BlockEntityAnvilPart beap)
             {
-                handling = EnumHandHandling.PreventDefault;
-
                 if (!beap.TestReadyToMerge())
                 {
                     return;
                 }
 
                 startHitAction(slot, byEntity, true);
-
                 return;
             }
 
             if (!(byEntity.World.BlockAccessor.GetBlock(blockSel.Position) is BlockAnvil))
             {
-                base.OnHeldAttackStart(slot, byEntity, blockSel, entitySel, ref handling);
                 return;
-            }            
+            }
 
             BlockEntityAnvil bea = be as BlockEntityAnvil;
             if (bea == null) return;
             bea.OnBeginUse(byPlayer, blockSel);
 
             startHitAction(slot, byEntity, false);
-
-            handling = EnumHandHandling.PreventDefault;
         }
+
+
 
         private void startHitAction(ItemSlot slot, EntityAgent byEntity, bool merge)
         {
@@ -103,13 +118,10 @@ namespace Vintagestory.GameContent
             float framehitaction = CollectibleBehaviorAnimationAuthoritative.getHitDamageAtFrame(byEntity, anim);
 
             slot.Itemstack.TempAttributes.SetBool("isAnvilAction", true);
-
             var state = byEntity.AnimManager.GetAnimationState(anim);
-            if (state == null || state.AnimProgress < 0.1)
-            {
-                byEntity.AnimManager.RegisterFrameCallback(new AnimFrameCallback() { Animation = anim, Frame = framesound, Callback = () => strikeAnvilSound(byEntity, merge) });
-                byEntity.AnimManager.RegisterFrameCallback(new AnimFrameCallback() { Animation = anim, Frame = framehitaction, Callback = () => strikeAnvil(byEntity, slot) });
-            }
+
+            byEntity.AnimManager.RegisterFrameCallback(new AnimFrameCallback() { Animation = anim, Frame = framesound, Callback = () => strikeAnvilSound(byEntity, merge) });
+            byEntity.AnimManager.RegisterFrameCallback(new AnimFrameCallback() { Animation = anim, Frame = framehitaction, Callback = () => strikeAnvil(byEntity, slot) });
         }
 
         public override bool OnHeldAttackCancel(float secondsPassed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSelection, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)
