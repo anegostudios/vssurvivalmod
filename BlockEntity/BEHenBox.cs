@@ -82,7 +82,7 @@ namespace Vintagestory.GameContent
             parentGenerations[eggs] = entity.WatchedAttributes.GetInt("generation", 0);
             chickNames[eggs] = chickCode == null ? null : entity.Code.CopyWithPath(chickCode);
             eggs++;
-            Block replacementBlock = Api.World.GetBlock(new AssetLocation(Block.FirstCodePart() + "-" + eggs + (eggs > 1 ? "eggs" : "egg")));
+            Block replacementBlock = Api.World.GetBlock(Block.CodeWithVariant("eggCount", eggs + ((eggs > 1) ? "eggs" : "egg")));
             if (replacementBlock == null)
             {
                 return false;
