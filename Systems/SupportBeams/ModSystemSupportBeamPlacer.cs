@@ -491,7 +491,7 @@ namespace Vintagestory.GameContent
             }
             else
             {
-                sbdata = chunk.GetModdata<SupportBeamsData>("supportbeams");
+                chunk.LiveModData["supportbeams"] = sbdata = chunk.GetModdata<SupportBeamsData>("supportbeams");
             }
 
             if (sbdata == null)
