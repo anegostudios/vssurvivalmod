@@ -836,8 +836,8 @@ namespace Vintagestory.ServerMods
             int minrx = GameMath.Clamp(pos.X / regSize, 0, mapRegionSizeX);
             int minrz = GameMath.Clamp(pos.Z / regSize, 0, mapRegionSizeZ);
 
-            int maxrx = GameMath.Clamp(pos.X + schematic.SizeX / regSize, 0, mapRegionSizeX);
-            int maxrz = GameMath.Clamp(pos.Z + schematic.SizeZ / regSize, 0, mapRegionSizeZ);
+            int maxrx = GameMath.Clamp((pos.X + schematic.SizeX) / regSize, 0, mapRegionSizeX);
+            int maxrz = GameMath.Clamp((pos.Z + schematic.SizeZ) / regSize, 0, mapRegionSizeZ);
             
 
             tmpLoc.Set(pos.X, pos.Y, pos.Z, pos.X + schematic.SizeX, pos.Y + schematic.SizeY, pos.Z + schematic.SizeZ);

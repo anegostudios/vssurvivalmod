@@ -85,8 +85,16 @@ namespace Vintagestory.GameContent
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
             var be = GetBEBehavior<BEBehaviorClutterBookshelfWithLore>(blockSel.Position);
-            if (be != null) return be.OnInteract(byPlayer);
 
+            if (be != null)
+            {
+                if (be.OnInteract(byPlayer))
+                {
+                    return true;
+                }
+            }
+
+            // if there is no more lore content then we can repair it
             return base.OnBlockInteractStart(world, byPlayer, blockSel);
         }
 

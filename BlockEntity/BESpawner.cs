@@ -400,6 +400,23 @@ namespace Vintagestory.GameContent
         public override void OnBlockRemoved()
         {
             base.OnBlockRemoved();
+
+            var sapi = Api as ICoreServerAPI;
+            if (sapi != null)
+            {
+                sapi.Event.OnEntityDespawn -= Event_OnEntityDespawn;
+            }
+        }
+
+        public override void OnBlockUnloaded()
+        {
+            base.OnBlockUnloaded();
+
+            var sapi = Api as ICoreServerAPI;
+            if (sapi != null)
+            {
+                sapi.Event.OnEntityDespawn -= Event_OnEntityDespawn;
+            }
         }
 
 

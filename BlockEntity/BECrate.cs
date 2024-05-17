@@ -67,7 +67,7 @@ namespace Vintagestory.GameContent
 
                 if (inventory.Empty) return preferredLidState;
                 var stack = inventory.FirstNonEmptySlot.Itemstack;
-                if (stack == null || (stack.ItemAttributes != null && stack.ItemAttributes["inContainerTexture"].Exists)) return preferredLidState;
+                if (stack?.Collectible == null || (stack.ItemAttributes != null && stack.ItemAttributes["inContainerTexture"].Exists)) return preferredLidState;
 
                 bool? displayInsideCrate = stack.ItemAttributes?["displayInsideCrate"].Exists != true ? null : stack.ItemAttributes?["displayInsideCrate"].AsBool(true);
                 bool hasContentTexture = (stack.Block != null && stack.Block.DrawType == EnumDrawType.Cube && displayInsideCrate != false) || displayInsideCrate == true;

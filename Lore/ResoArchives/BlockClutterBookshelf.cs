@@ -299,11 +299,6 @@ namespace Vintagestory.GameContent
             return sb.ToString();
         }
 
-        public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1)
-        {
-            return new ItemStack[0];
-        }
-
 
         //Suppress "bookshelf-" at start of localized name key; it will therefore normally start with "bookshelves-"
         public override string BaseCodeForName()

@@ -297,7 +297,7 @@ namespace Vintagestory.GameContent
         private IGuiElementCell createCell(Auction auction, ElementBounds bounds)
         {
             bounds.fixedPaddingY = 0;
-            var cellElem = new AuctionCellEntry(capi, bounds, auction, didClickAuctionElem);
+            var cellElem = new AuctionCellEntry(capi, auctionSlotInv, bounds, auction, didClickAuctionElem);
             return cellElem;
         }
 
