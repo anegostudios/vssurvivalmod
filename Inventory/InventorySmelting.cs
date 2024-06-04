@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
@@ -17,7 +18,7 @@ namespace Vintagestory.GameContent
         public BlockPos pos;
         int defaultStorageType = (int)(EnumItemStorageFlags.General | EnumItemStorageFlags.Agriculture | EnumItemStorageFlags.Alchemy | EnumItemStorageFlags.Jewellery | EnumItemStorageFlags.Metallurgy | EnumItemStorageFlags.Outfit);
 
-        public ItemSlot[] CookingSlots { get { return HaveCookingContainer ? cookingSlots : new ItemSlot[0]; } }
+        public ItemSlot[] CookingSlots { get { return HaveCookingContainer ? cookingSlots.Take(slots[1].Itemstack.ItemAttributes["cookingContainerSlots"].AsInt(4)).ToArray() : new ItemSlot[0]); } }
 
         /// <summary>
         /// Returns the cooking slots
@@ -64,16 +65,16 @@ namespace Vintagestory.GameContent
             // slot 1 = input
             // slot 2 = output
             // slot 3,4,5,6 = extra input slots with crucible in input
-            slots = GenEmptySlots(7);
-            cookingSlots = new ItemSlot[] { slots[3], slots[4], slots[5], slots[6] };
+            slots = GenEmptySlots(11);
+            cookingSlots = new ItemSlot[] { slots[3], slots[4], slots[5], slots[6], slots[7], slots[8], slots[9], slots[10] };
             baseWeight = 4f;
             
         }
 
         public InventorySmelting(string className, string instanceID, ICoreAPI api) : base(className, instanceID, api)
         {
-            slots = GenEmptySlots(7);
-            cookingSlots = new ItemSlot[] { slots[3], slots[4], slots[5], slots[6] };
+            slots = GenEmptySlots(11);
+            cookingSlots = new ItemSlot[] { slots[3], slots[4], slots[5], slots[6], slots[7], slots[8], slots[9], slots[10] };
             baseWeight = 4f;
         }
 

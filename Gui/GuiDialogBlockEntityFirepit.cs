@@ -4,6 +4,7 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
+using System;
 
 namespace Vintagestory.GameContent
 {
@@ -82,7 +83,7 @@ namespace Vintagestory.GameContent
 
             ElementBounds stoveBounds = ElementBounds.Fixed(0, 0, 210, 250);
 
-            cookingSlotsSlotBounds = ElementStdBounds.SlotGrid(EnumDialogArea.None, 0, 30 + 45, 4, qCookingSlots / 4);
+            cookingSlotsSlotBounds = ElementStdBounds.SlotGrid(EnumDialogArea.None, 0, 30 + 45, 4, (int)Math.Ceiling(qCookingSlots / 4f));
             cookingSlotsSlotBounds.fixedHeight += 10;
 
             double top = cookingSlotsSlotBounds.fixedHeight + cookingSlotsSlotBounds.fixedY;
