@@ -18,7 +18,7 @@ namespace Vintagestory.GameContent
         public BlockPos pos;
         int defaultStorageType = (int)(EnumItemStorageFlags.General | EnumItemStorageFlags.Agriculture | EnumItemStorageFlags.Alchemy | EnumItemStorageFlags.Jewellery | EnumItemStorageFlags.Metallurgy | EnumItemStorageFlags.Outfit);
 
-        public ItemSlot[] CookingSlots { get { return HaveCookingContainer ? cookingSlots.Take(slots[1].Itemstack.ItemAttributes["cookingContainerSlots"].AsInt(4)).ToArray() : new ItemSlot[0]); } }
+        public ItemSlot[] CookingSlots { get { return HaveCookingContainer ? cookingSlots.Take(slots[1].Itemstack.ItemAttributes["cookingContainerSlots"].AsInt(4)).ToArray() : new ItemSlot[0]; } }
 
         /// <summary>
         /// Returns the cooking slots
