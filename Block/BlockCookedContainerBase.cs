@@ -276,7 +276,7 @@ namespace Vintagestory.GameContent
             (mealblock as IBlockMealContainer).SetContents(ownRecipeCode, stack, stacks, servingsToTransfer);
 
             SetServingsMaybeEmpty(world, potslot, quantityServings - servingsToTransfer);
-
+            potslot.Itemstack.Attributes.RemoveAttribute("sealed");
             potslot.MarkDirty();
 
             bowlSlot.Itemstack = stack;
