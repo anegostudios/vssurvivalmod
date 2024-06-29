@@ -38,6 +38,7 @@ namespace Vintagestory.GameContent
         public int WallOffY = 1;
         public AssetLocation PlaceRemoveSound = new AssetLocation("sounds/player/build");
         public bool RandomizeSoundPitch;
+        public bool RandomizeCenterRotation;
         public AssetLocation StackingModel;
 
         [Obsolete("Use ModelItemsToStackSizeRatio instead, which is now a float instead of int?")]
@@ -66,6 +67,7 @@ namespace Vintagestory.GameContent
                 WallOffY = WallOffY,
                 PlaceRemoveSound = PlaceRemoveSound,
                 RandomizeSoundPitch = RandomizeSoundPitch,
+                RandomizeCenterRotation = RandomizeCenterRotation,
                 StackingCapacity = StackingCapacity,
                 StackingModel = StackingModel,
                 StackingTextures = StackingTextures,
