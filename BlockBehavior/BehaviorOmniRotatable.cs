@@ -395,5 +395,83 @@ namespace Vintagestory.ServerMods
 
             return base.GetHeldBlockInfo(world, inSlot);
         }
+
+        public override void OnLoaded(ICoreAPI api)
+        {
+            ICoreClientAPI capi = api as ICoreClientAPI;
+    
+            modes = new SkillItem[3]
+            {
+                new SkillItem
+                {
+                    Code = new AssetLocation("slab-placemode-auto"),
+                    Name = Lang.Get("slab-placemode-auto")
+                },
+                new SkillItem
+                {
+                    Code = new AssetLocation("slab-placemode-horizontal"),
+                    Name = Lang.Get("slab-placemode-horizontal")
+                },
+                new SkillItem
+                {
+                    Code = new AssetLocation("slab-placemode-vertical"),
+                    Name = Lang.Get("slab-placemode-vertical")
+                },
+            };
+    
+            if (capi != null)
+            {
+                CairoFont fontConfig = new()
+                {
+                    Color = (double[])GuiStyle.DialogDefaultTextColor.Clone(),
+                    Fontname = GuiStyle.StandardFontName,
+                    UnscaledFontsize = GuiStyle.LargeFontSize
+                };
+    
+                modes[0].WithIcon(capi, capi.Gui.TextTexture.GenTextTexture("A", fontConfig, 48, 48, null));
+                modes[0].TexturePremultipliedAlpha = false;
+                modes[1].WithIcon(capi, capi.Gui.LoadSvgWithPadding(new AssetLocation("textures/icons/line-horizontal.svg"), 48, 48, 5, -1));
+                modes[1].TexturePremultipliedAlpha = false;
+                modes[2].WithIcon(capi, capi.Gui.LoadSvgWithPadding(new AssetLocation("textures/icons/line-vertical.svg"), 48, 48, 5, -1));
+                modes[2].TexturePremultipliedAlpha = false;
+            }
+        }    
+
+        public override SkillItem[] GetToolModes(ItemSlot slot, IClientPlayer forPlayer, BlockSelection blockSel)
+        {
+            return modes;
+        }
+    
+        public override int GetToolMode(ItemSlot slot, IPlayer byPlayer, BlockSelection blockSelection)
+        {
+            return slot.Itemstack.Attributes.GetInt("slabPlaceMode");
+        }
+    
+        public override void SetToolMode(ItemSlot slot, IPlayer byPlayer, BlockSelection blockSelection, int toolMode)
+        {
+            slot.Itemstack.Attributes.SetInt("slabPlaceMode", toolMode);
+        }
+
+        public override void OnUnloaded(ICoreAPI api)
+        {
+            int i = 0;
+            while (modes != null && i < modes.Length)
+            {
+                modes[i]?.Dispose();
+                i++;
+            }
+        }
+
+        public override WorldInteraction[] GetHeldInteractionHelp(ItemSlot inSlot, ref EnumHandling handling)
+        {
+            return new WorldInteraction[1]
+            {
+                new WorldInteraction
+                {
+                    ActionLangCode = "heldhelp-settoolmode",
+                    HotKeyCode = "toolmodeselect"
+                }
+            };
+        }
     }
 }
