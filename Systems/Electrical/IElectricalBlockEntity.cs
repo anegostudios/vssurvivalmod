@@ -7,12 +7,15 @@ namespace Vintagestory.GameContent.Electrical
     public interface IElectricalBlockEntity
     {
         /// <summary>
-        /// Max power this entity stores.
+        /// What is the max power this machine can hold?
+        /// <br>Type : Unsigned Long (ulong)</br>
+        /// <br>Max Value : 18,446,744,073,709,551,615</br>
         /// </summary>
         ulong MaxPower { get; }
 
-        /// <summary>
-        /// Max Power Per Second this Entity can handle, incoming and outgoing and generating.
+        /// What is the MAX Power per second this machine can give or accept
+        /// <br>Type : Unsigned Long (ulong)</br>
+        /// <br>Max Value : 18,446,744,073,709,551,615</br>
         /// </summary>
         ulong MaxPPS { get; }
 
@@ -22,7 +25,8 @@ namespace Vintagestory.GameContent.Electrical
         ulong CurrentPower { get; }
 
         /// <summary>
-        /// What type of Electrical Entity is this?
+        /// What sort of Machine is this?
+        /// <br>Valid Types: Consumer, Producer, Storage, Transformer, Toggle, Relay, Other</br>
         /// </summary>
         EnumElectricalEntityType ElectricalEntityType { get; }
 
@@ -99,5 +103,19 @@ namespace Vintagestory.GameContent.Electrical
         /// <param name="drain">[Optional] Drain power to 0 if true.</param>
         void CheatPower(bool drain = false);
 
+		/// <summary>
+        /// Returns the IElectricalBlockEntity for the BlockEntity or one of its behaviors at given position.
+        /// </summary>
+        /// <param name="blockAccessor">The accessor for the world</param>
+        /// <param name="pos">The position of the block</param>
+        /// <returns>The interface, or null if the block at that position does not implement it.</returns>
+        static IElectricalBlockEntity GetAtPos(IBlockAccessor blockAccessor, BlockPos pos)
+        {
+            BlockEntity entity = blockAccessor.GetBlockEntity(pos);
+            if (entity is IElectricalBlockEntity converted) {
+                return converted;
+            }
+            return entity?.GetBehavior<IElectricalBlockEntity>();
+        }
     }
 }
