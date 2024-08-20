@@ -14,6 +14,7 @@ namespace Vintagestory.GameContent
 
         AssetLocation harvestedBlockCode;
         Block harvestedBlock;
+        bool exchangeBlock;
         string interactionHelpCode;
 
         public BlockBehaviorHarvestable(Block block) : base(block)
@@ -27,6 +28,7 @@ namespace Vintagestory.GameContent
             interactionHelpCode = properties["harvestTime"].AsString("blockhelp-harvetable-harvest");
             harvestTime = properties["harvestTime"].AsFloat(0);
             harvestedStack = properties["harvestedStack"].AsObject<BlockDropItemStack>(null);
+            exchangeBlock = properties["exchangeBlock"].AsBool(false);
 
             string code = properties["harvestingSound"].AsString("game:sounds/block/leafy-picking");
             if (code != null) {
@@ -122,7 +124,14 @@ namespace Vintagestory.GameContent
 
                 if (harvestedBlock != null)
                 {
-                    world.BlockAccessor.SetBlock(harvestedBlock.BlockId, blockSel.Position);
+                    if (!exchangeBlock)
+                    {
+                        world.BlockAccessor.SetBlock(harvestedBlock.BlockId, blockSel.Position);
+                    }
+                    else
+                    {
+                        world.BlockAccessor.ExchangeBlock(harvestedBlock.BlockId, blockSel.Position);
+                    }
                 }
 
                 world.PlaySoundAt(harvestingSound, blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z, byPlayer);
